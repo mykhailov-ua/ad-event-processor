@@ -53,7 +53,7 @@ func resolveTikTokPixelCode(urlTemplate string) string {
 	return urlTemplate
 }
 
-func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
+func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate, apiTokenDecrypted string) error {
 	url := urlTemplate
 	if url == "" || !strings.HasPrefix(url, "http") {
 		url = "https://business-api.tiktok.com/open_api/v1.3/event/track/"

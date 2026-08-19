@@ -39,7 +39,7 @@ func (h *histogram) inc(status, errKind string) {
 	h.buckets[status+"\x00"+errKind]++
 }
 
-func (h *histogram) write(path string, generated string) error {
+func (h *histogram) write(path, generated string) error {
 	h.mu.Lock()
 	by := make(map[string]int64, len(h.byStatus))
 	for k, v := range h.byStatus {

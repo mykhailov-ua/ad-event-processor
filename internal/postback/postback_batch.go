@@ -22,12 +22,12 @@ func (w *PostbackWorker) loadPostbackConfigs(ctx context.Context, campaignIDs []
 		return nil, err
 	}
 	out := make(map[uuid.UUID]db.PostbackConfig, len(rows))
-	for _, row := range rows {
-		id, err := uuid.FromBytes(row.CampaignID.Bytes[:])
+	for i := range rows {
+		id, err := uuid.FromBytes(rows[i].CampaignID.Bytes[:])
 		if err != nil {
 			continue
 		}
-		out[id] = row
+		out[id] = rows[i]
 	}
 	return out, nil
 }
@@ -35,7 +35,7 @@ func (w *PostbackWorker) loadPostbackConfigs(ctx context.Context, campaignIDs []
 func uniqueCampaignIDsFromEvents(events []db.OutboxEvent, payloads []PostbackPayload) []uuid.UUID {
 	seen := make(map[uuid.UUID]struct{}, len(events))
 	out := make([]uuid.UUID, 0, len(events))
-	for i, ev := range events {
+	for i := range events {
 		if i < len(payloads) {
 			id := payloads[i].CampaignID
 			if _, ok := seen[id]; ok {
@@ -45,7 +45,7 @@ func uniqueCampaignIDsFromEvents(events []db.OutboxEvent, payloads []PostbackPay
 			out = append(out, id)
 			continue
 		}
-		payload, err := parsePostbackPayload(ev.Payload)
+		payload, err := parsePostbackPayload(events[i].Payload)
 		if err != nil {
 			continue
 		}

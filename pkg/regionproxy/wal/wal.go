@@ -340,14 +340,13 @@ func readHeaderWithFactor(src []byte) Header {
 	return hdr
 }
 
-func (w *WAL) ReadRawMessages(startSeq uint64, maxBytes uint32) ([]byte, *[]byte, error) {
+func (w *WAL) ReadRawMessages(startSeq uint64, maxBytes uint32) (data []byte, bufPtr *[]byte, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	pos := int64(0)
 	writePos := w.writePos.Load()
 	var out []byte
-	var bufPtr *[]byte
 
 	for len(w.mmap) > int(pos)+HeaderSize {
 		hdr := readHeader(w.mmap[pos:])

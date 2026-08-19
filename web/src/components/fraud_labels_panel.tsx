@@ -15,9 +15,7 @@ export type FraudLabelsPanelProps = {
   canWrite: boolean;
 };
 
-/**
- * Manual fraud label form and review table for the fraud dashboard.
- */
+
 export function FraudLabelsPanel({ customerId, canWrite }: FraudLabelsPanelProps) {
   const [labels, setLabels] = useState<FraudManualLabel[]>([]);
   const [loading, setLoading] = useState(true);

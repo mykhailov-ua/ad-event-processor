@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Issue or renew a Let's Encrypt certificate for a single hostname (appliance hook).
-# Usage: setup_domain_ssl.sh <hostname>
+
 set -euo pipefail
 
 HOST="${1:-${DOMAIN:-}}"
@@ -14,13 +13,13 @@ cd "$ROOT"
 
 if [[ -f deploy/installer/install.env ]]; then
   set -a
-  # shellcheck disable=SC1090
+
   source deploy/installer/install.env
   set +a
 fi
 if [[ -f .env ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source .env
   set +a
 fi

@@ -36,7 +36,7 @@ type CreateIntentResult struct {
 	DepositQRSVG   string
 }
 
-func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency string, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
+func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
 	providerName := DefaultCheckoutProvider(service.cfg)
 	if metadata != nil {
 		if pName := metadata["provider"]; pName != "" {
@@ -287,7 +287,7 @@ func ledgerIdempotencyKey(intentID uuid.UUID) string {
 	return "payment:" + intentID.String()
 }
 
-func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID string, eventType string, payload []byte, providerRef string, amountMicro int64, rawEvent string) error {
+func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, rawEvent string) error {
 	h := sha256.New()
 	h.Write(payload)
 	payloadHash := h.Sum(nil)
@@ -408,7 +408,7 @@ func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID string
 	return err
 }
 
-func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string, eventType string, payload []byte, providerRef string, amountMicro int64, txHash string, confirmations int) error {
+func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, txHash string, confirmations int) error {
 	h := sha256.New()
 	h.Write(payload)
 	payloadHash := h.Sum(nil)
@@ -551,7 +551,7 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID string
 	return err
 }
 
-func (service *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID string, eventType string, payload []byte, providerRefundID string, paymentIntentRef string, refundAmountMicro int64, refundStatus string) error {
+func (service *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRefundID, paymentIntentRef string, refundAmountMicro int64, refundStatus string) error {
 	h := sha256.New()
 	h.Write(payload)
 	payloadHash := h.Sum(nil)

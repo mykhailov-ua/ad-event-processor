@@ -193,7 +193,7 @@ func (r *probeRun) start(ctx context.Context) error {
 
 	r.attachUprobes()
 
-	r.otel = newOTelLogExporter(otelEndpointFromEnv())
+	r.otel = newOTelLogExporter(ctx, otelEndpointFromEnv())
 	if r.otel != nil {
 		slog.Info("otel log export enabled", "endpoint", r.otel.endpoint)
 	}

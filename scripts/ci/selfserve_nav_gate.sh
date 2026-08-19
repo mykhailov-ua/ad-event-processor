@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-serve shell must not link operator routes.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

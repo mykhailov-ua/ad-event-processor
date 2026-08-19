@@ -6,9 +6,9 @@ cd "$ROOT"
 MODE="${1:-apply}"
 CONF_SRC="${AD_EVENT_PROCESSOR_SYSCTL_CONF:-$ROOT/deploy/edge/99-ad-event-processor-sysctl.conf}"
 if [[ ! -f "$CONF_SRC" ]]; then
-  CONF_SRC="$ROOT/deploy/edge/99-espx-edge.conf"
+  CONF_SRC="$ROOT/deploy/edge/99-ad-event-processor-edge.conf"
 fi
-CONF_DST="${AD_EVENT_PROCESSOR_SYSCTL_CONF_DST:-${ESPX_SYSCTL_CONF:-/etc/sysctl.d/99-ad-event-processor-sysctl.conf}}"
+CONF_DST="${AD_EVENT_PROCESSOR_SYSCTL_CONF_DST:-${AD_EVENT_PROCESSOR_SYSCTL_CONF:-/etc/sysctl.d/99-ad-event-processor-sysctl.conf}}"
 
 log() { printf 'edge-sysctl: %s\n' "$*"; }
 warn() { printf 'edge-sysctl: WARN: %s\n' "$*" >&2; }

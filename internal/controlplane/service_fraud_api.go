@@ -27,15 +27,7 @@ func (s *Service) GetCampaignFraudConfigAPI(ctx context.Context, campaignID uuid
 }
 
 func (s *Service) UpdateCampaignFraudConfigAPI(ctx context.Context, campaignID uuid.UUID, req PatchCampaignFraudRequest) (CampaignFraudConfigDTO, error) {
-	upd := CampaignFraudConfigUpdate{
-		Preset:                req.Preset,
-		FraudThresholdPass:    req.FraudThresholdPass,
-		FraudThresholdSuspect: req.FraudThresholdSuspect,
-		FraudThresholdIVT:     req.FraudThresholdIVT,
-		FraudThresholdBlock:   req.FraudThresholdBlock,
-		GhostIVTEnabled:       req.GhostIVTEnabled,
-		BehaviorFlags:         req.BehaviorFlags,
-	}
+	upd := CampaignFraudConfigUpdate(req)
 	cfg, err := s.UpdateCampaignFraudConfig(ctx, campaignID, upd)
 	if err != nil {
 		return CampaignFraudConfigDTO{}, err

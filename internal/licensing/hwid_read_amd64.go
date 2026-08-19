@@ -9,7 +9,7 @@ import (
 //go:noescape
 func hwidRawOpenRead(pathPtr *byte, pathLen int, bufPtr *byte, bufLen int) int64
 
-func hwidRead(pathID uint8, suffix []byte, buf []byte) (int, error) {
+func hwidRead(pathID uint8, suffix, buf []byte) (int, error) {
 	if len(buf) == 0 {
 		return 0, syscall.EINVAL
 	}

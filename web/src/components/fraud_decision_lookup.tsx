@@ -17,9 +17,7 @@ export type FraudDecisionLookupProps = {
   canWrite?: boolean;
 };
 
-/**
- * Search form and result card for replayed fraud tier decisions.
- */
+
 export function FraudDecisionLookup({ customerId, canWrite = false }: FraudDecisionLookupProps) {
   const [ipHash, setIPHash] = useState('');
   const [campaignId, setCampaignId] = useState('');
@@ -130,7 +128,11 @@ export function FraudDecisionLookup({ customerId, canWrite = false }: FraudDecis
           />
         </label>
         <div>
-          <Button label={loading ? 'Looking up…' : 'Why blocked?'} type="submit" disabled={loading} />
+          <Button
+            label={loading ? 'Looking up…' : 'Why blocked?'}
+            type="submit"
+            disabled={loading}
+          />
         </div>
       </form>
 
@@ -139,7 +141,10 @@ export function FraudDecisionLookup({ customerId, canWrite = false }: FraudDecis
       {result ? (
         <div className="card stack stack--sm" data-testid="fraud-decision-result">
           <div className="cluster cluster--sm">
-            <StatusBadge status={tierBadge(result.tier)} label={fraudDecisionTierLabel(result.tier)} />
+            <StatusBadge
+              status={tierBadge(result.tier)}
+              label={fraudDecisionTierLabel(result.tier)}
+            />
             <span className="font-mono text-sm">score {result.score}</span>
             {result.score_missing ? (
               <span className="text-warning text-xs">ML score missing</span>
@@ -193,9 +198,7 @@ type SubsectionFeaturesProps = {
   thresholds: FraudDecision['campaign_thresholds'];
 };
 
-/**
- * Render named feature vector and campaign thresholds.
- */
+
 function SubsectionFeatures({ features, thresholds }: SubsectionFeaturesProps) {
   const rows = Object.entries(features).sort(([a], [b]) => a.localeCompare(b));
   return (

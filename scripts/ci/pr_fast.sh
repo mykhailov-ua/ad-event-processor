@@ -23,6 +23,6 @@ make test-fast
 bash "$SCRIPTS/ci/shard0_nil_gate.sh"
 bash "$SCRIPTS/ci/cold_path_json_gate.sh"
 bash "$SCRIPTS/ci/capi_staging_gate.sh"
-bash "$SCRIPTS/ci/check_no_espx.sh"
-bash "$SCRIPTS/ci/check_no_espx_core.sh"
+bash "$SCRIPTS/ci/check_no_legacy_naming.sh"
+bash "$SCRIPTS/ci/check_no_legacy_naming_core.sh"
 bash "$SCRIPTS/ci/admin_web.sh"

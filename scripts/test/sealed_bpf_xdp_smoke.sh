@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Sealed assets — XDP attach lab: valid JWT + sealed edge BPF attaches like dev baseline.
-# Harness: kernel_xdp_attach_lo_generic; drop proof via prog.Test (prog_test_same_maps), not lo RX.
-# Skips exit 0 when BTF/clang/root/bpf objects missing — see header in docs/LICENSE.md.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

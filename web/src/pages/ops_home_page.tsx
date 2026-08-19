@@ -532,7 +532,7 @@ export function OpsHomePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'espx-support-bundle.tar.gz';
+    a.download = 'ad-event-processor-support-bundle.tar.gz';
     a.click();
     URL.revokeObjectURL(url);
   }, []);

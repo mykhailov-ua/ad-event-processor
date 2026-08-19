@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-export DB_DSN="${DB_DSN:-postgres://user:pass@127.0.0.1:5432/espx?sslmode=disable}"
+export DB_DSN="${DB_DSN:-postgres://user:pass@127.0.0.1:5432/ad-event-processor?sslmode=disable}"
 export REDIS_PASSWORD="${REDIS_PASSWORD:-smoke}"
 export CH_ENABLED="${CH_ENABLED:-1}"
 export CH_DSN="${CH_DSN:-clickhouse://default:@127.0.0.1:9000/default}"

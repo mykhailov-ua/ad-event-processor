@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# Smoke: CPU isolation profile (cpuset pin, no cpu_quota).
-#
-# Usage:
-#   bash scripts/test/cpu_isolation_smoke.sh
-#
-# Env:
-#   CPU_ISOLATION_ENABLED=1   skip when 0 (unless CPU_ISOLATION_SMOKE_FORCE=1)
-#   CPU_ISOLATION_SMOKE_FORCE=1
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -14,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

@@ -35,7 +35,7 @@ export const AFFILIATE_POSTBACK_PRESETS: AffiliatePostbackPreset[] = [
     'cid={click_id}&payout={payout}&txid={tx_id}',
     '{subid}',
     '{payout}',
-    'Map MaxBounty {subid} → BidShard {click_id} on inbound; outbound uses BidShard macros.'
+    'Map MaxBounty {subid} → ad-event-processor {click_id} on inbound; outbound uses ad-event-processor macros.'
   ),
   preset(
     'clickdealer',
@@ -264,7 +264,7 @@ export const AFFILIATE_POSTBACK_PRESETS: AffiliatePostbackPreset[] = [
       'https://partner.example/postback?cid={click_id}&payout={payout}&txid={tx_id}&event={event_type}',
     network_click_token: '{click_id}',
     network_payout_token: '{payout}',
-    notes: 'Generic BidShard macros. Replace host and query keys to match the partner.',
+    notes: 'Generic ad-event-processor macros. Replace host and query keys to match the partner.',
   },
 ];
 

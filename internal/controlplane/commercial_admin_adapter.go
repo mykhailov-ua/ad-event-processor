@@ -80,13 +80,7 @@ func (a commercialAdminAdapter) ListSellers(ctx context.Context) ([]SellerDTO, e
 }
 
 func (a commercialAdminAdapter) CreateSeller(ctx context.Context, req SellerWriteRequest) (SellerDTO, error) {
-	row, err := a.svc.CreateSeller(ctx, SellerCreateSpec{
-		SellerID:       req.SellerID,
-		Domain:         req.Domain,
-		SellerType:     req.SellerType,
-		Name:           req.Name,
-		IsConfidential: req.IsConfidential,
-	})
+	row, err := a.svc.CreateSeller(ctx, SellerCreateSpec(req))
 	if err != nil {
 		return SellerDTO{}, err
 	}
@@ -94,13 +88,7 @@ func (a commercialAdminAdapter) CreateSeller(ctx context.Context, req SellerWrit
 }
 
 func (a commercialAdminAdapter) UpdateSeller(ctx context.Context, id int64, req SellerWriteRequest) (SellerDTO, error) {
-	row, err := a.svc.UpdateSeller(ctx, id, SellerUpdateSpec{
-		SellerID:       req.SellerID,
-		Domain:         req.Domain,
-		SellerType:     req.SellerType,
-		Name:           req.Name,
-		IsConfidential: req.IsConfidential,
-	})
+	row, err := a.svc.UpdateSeller(ctx, id, SellerUpdateSpec(req))
 	if err != nil {
 		return SellerDTO{}, err
 	}
@@ -124,13 +112,7 @@ func (a commercialAdminAdapter) ListAdsTxtEntries(ctx context.Context) ([]AdsTxt
 }
 
 func (a commercialAdminAdapter) CreateAdsTxtEntry(ctx context.Context, req AdsTxtWriteRequest) (AdsTxtEntryDTO, error) {
-	row, err := a.svc.CreateAdsTxtEntry(ctx, AdsTxtEntryCreateSpec{
-		Domain:             req.Domain,
-		PublisherAccountID: req.PublisherAccountID,
-		Relationship:       req.Relationship,
-		CertAuthorityID:    req.CertAuthorityID,
-		SortOrder:          req.SortOrder,
-	})
+	row, err := a.svc.CreateAdsTxtEntry(ctx, AdsTxtEntryCreateSpec(req))
 	if err != nil {
 		return AdsTxtEntryDTO{}, err
 	}
@@ -138,13 +120,7 @@ func (a commercialAdminAdapter) CreateAdsTxtEntry(ctx context.Context, req AdsTx
 }
 
 func (a commercialAdminAdapter) UpdateAdsTxtEntry(ctx context.Context, id int64, req AdsTxtWriteRequest) (AdsTxtEntryDTO, error) {
-	row, err := a.svc.UpdateAdsTxtEntry(ctx, id, AdsTxtEntryUpdateSpec{
-		Domain:             req.Domain,
-		PublisherAccountID: req.PublisherAccountID,
-		Relationship:       req.Relationship,
-		CertAuthorityID:    req.CertAuthorityID,
-		SortOrder:          req.SortOrder,
-	})
+	row, err := a.svc.UpdateAdsTxtEntry(ctx, id, AdsTxtEntryUpdateSpec(req))
 	if err != nil {
 		return AdsTxtEntryDTO{}, err
 	}
@@ -172,15 +148,7 @@ func (a commercialAdminAdapter) ValidateSupplyFiles(ctx context.Context) (Supply
 	if err != nil {
 		return SupplyValidationDTO{}, err
 	}
-	return SupplyValidationDTO{
-		SellersJSONValid:      report.SellersJSONValid,
-		SellersChecksumSHA256: report.SellersChecksumSHA256,
-		SellersCount:          report.SellersCount,
-		AdsTxtValid:           report.AdsTxtValid,
-		AdsTxtChecksumSHA256:  report.AdsTxtChecksumSHA256,
-		AdsTxtLineCount:       report.AdsTxtLineCount,
-		Issues:                report.Issues,
-	}, nil
+	return SupplyValidationDTO(report), nil
 }
 
 func mapSellerDTO(r SellerDTO) SellerDTO {

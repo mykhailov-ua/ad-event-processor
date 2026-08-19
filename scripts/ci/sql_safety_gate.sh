@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail on dynamic SQL string assembly in Go (sqlc-only cold path).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -32,7 +32,7 @@ scan 'concatenated SQL string' \
   '"(SELECT|INSERT|UPDATE|DELETE) .*"\s*\+'
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "sql-safety: use sqlc queries under internal/*/queries/ — see DEVELOPMENT.md#sql-safety"
+  echo "sql-safety: use sqlc queries under internal/*/queries/ — see docs/CI.md#sql-safety"
   exit 1
 fi
 

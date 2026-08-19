@@ -154,7 +154,7 @@ func checkEnvBoolDefaultOn(id, key, passDetail string) ChecklistRow {
 	return ChecklistRow{ID: id, Status: StatusWarn, Detail: key + "=0; network_operator expects wallet rail on"}
 }
 
-func envBool(key string) (bool, bool) {
+func envBool(key string) (value, ok bool) {
 	raw, ok := os.LookupEnv(key)
 	if !ok {
 		return false, true

@@ -41,7 +41,7 @@ var (
 	ErrDeploymentCampaignLimit      = errors.New("deployment active campaign limit reached for license tier")
 )
 
-func mapNotFound(err error, notFound error) error {
+func mapNotFound(err, notFound error) error {
 	if err == nil {
 		return nil
 	}

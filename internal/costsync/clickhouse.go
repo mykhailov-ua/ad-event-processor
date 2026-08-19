@@ -31,7 +31,8 @@ func (inserter *ClickHouseInserter) InsertSnapshots(ctx context.Context, lines [
 		return fmt.Errorf("prepare cost_snapshots batch: %w", err)
 	}
 
-	for i, line := range lines {
+	for i := range lines {
+		line := &lines[i]
 		hour := time.Date(line.Date.Year(), line.Date.Month(), line.Date.Day(), 0, 0, 0, 0, time.UTC)
 		amount := line.AmountMicro
 		if i < len(usdMicro) {
@@ -54,7 +55,8 @@ type MemorySnapshotInserter struct {
 }
 
 func (m *MemorySnapshotInserter) InsertSnapshots(_ context.Context, lines []CostLine, usdMicro []int64) error {
-	for i, line := range lines {
+	for i := range lines {
+		line := &lines[i]
 		amount := line.AmountMicro
 		if i < len(usdMicro) {
 			amount = usdMicro[i]

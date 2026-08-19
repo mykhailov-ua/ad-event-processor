@@ -1,5 +1,8 @@
 pre-commit:
   commands:
+    staged-not-ignored:
+      tags: hygiene
+      run: bash scripts/ci/check_staged_not_ignored.sh
     tier-a:
       tags: hygiene
       run: bash scripts/ci/tier_a.sh

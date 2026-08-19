@@ -21,28 +21,29 @@ type groupKey struct {
 	deliveryMode db.NotifierDeliveryMode
 }
 
-func groupClaimedNotifications(notifications []db.NotifierNotification) ([]notificationGroup, int) {
-	groups := make(map[groupKey][]db.NotifierNotification)
+func groupClaimedNotifications(notifications []db.NotifierNotification) (groups []notificationGroup, total int) {
+	byKey := make(map[groupKey][]db.NotifierNotification)
 	var orderedKeys []groupKey
 
-	for _, notification := range notifications {
+	for i := range notifications {
+		notification := &notifications[i]
 		key := groupKey{
 			provider:     notification.Provider,
 			recipient:    notification.Recipient,
 			title:        notification.Title.String,
 			deliveryMode: notification.DeliveryMode,
 		}
-		if _, exists := groups[key]; !exists {
+		if _, exists := byKey[key]; !exists {
 			orderedKeys = append(orderedKeys, key)
 		}
-		groups[key] = append(groups[key], notification)
+		byKey[key] = append(byKey[key], *notification)
 	}
 
-	out := make([]notificationGroup, 0, len(orderedKeys))
+	groups = make([]notificationGroup, 0, len(orderedKeys))
 	for _, key := range orderedKeys {
-		out = append(out, notificationGroup{key: key, items: groups[key]})
+		groups = append(groups, notificationGroup{key: key, items: byKey[key]})
 	}
-	return out, len(notifications)
+	return groups, len(notifications)
 }
 
 func (service *Service) processGroupsParallel(ctx context.Context, groups []notificationGroup) (int, error) {

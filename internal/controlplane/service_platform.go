@@ -247,7 +247,7 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	for _, row := range rows {
 		if err := s.advanceErasurePG(opCtx, row); err != nil {
 			if failErr := s.failErasure(opCtx, row.ID, err); failErr != nil {
-				return fmt.Errorf("privacy erasure: mark pg anonymize failed: %w (cause: %v)", failErr, err)
+				return fmt.Errorf("privacy erasure: mark pg anonymize failed: %w (cause: %w)", failErr, err)
 			}
 		}
 	}
@@ -262,7 +262,7 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	for _, row := range rows {
 		if err := s.enqueueErasureRedisPurge(opCtx, row); err != nil {
 			if failErr := s.failErasure(opCtx, row.ID, err); failErr != nil {
-				return fmt.Errorf("privacy erasure: mark redis purge failed: %w (cause: %v)", failErr, err)
+				return fmt.Errorf("privacy erasure: mark redis purge failed: %w (cause: %w)", failErr, err)
 			}
 		}
 	}
@@ -277,7 +277,7 @@ func (s *Service) ProcessPrivacyErasureTick(ctx context.Context) error {
 	for _, row := range rows {
 		if err := s.advanceErasureCH(opCtx, row); err != nil {
 			if failErr := s.failErasure(opCtx, row.ID, err); failErr != nil {
-				return fmt.Errorf("privacy erasure: mark clickhouse anonymize failed: %w (cause: %v)", failErr, err)
+				return fmt.Errorf("privacy erasure: mark clickhouse anonymize failed: %w (cause: %w)", failErr, err)
 			}
 		}
 	}

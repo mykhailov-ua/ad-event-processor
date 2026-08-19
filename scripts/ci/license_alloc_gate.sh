@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-C.D6 / V2-B.D3: license filter hot-path must stay 0 allocs/op.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

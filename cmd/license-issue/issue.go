@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -48,7 +49,7 @@ type issueResult struct {
 	LicenseKey   string
 }
 
-func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
+func runIssue(opts *issueOptions, stderr io.Writer) (res issueResult, code int) {
 	if opts.RecordHWID {
 		return runRecordHWID(opts, stderr)
 	}
@@ -59,8 +60,8 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 		reg := openRegistry(opts.TrialRegistry)
 		pending, err := reg.PreparePendingIssue(pendingID, opts.DeploymentID)
 		if err != nil {
-			fmt.Fprintf(stderr, "license-issue: approve pending: %v\n", err)
-			if err == trialregistry.ErrPendingNotFound || err == trialregistry.ErrPendingNotOpen {
+			_, _ = fmt.Fprintf(stderr, "license-issue: approve pending: %v\n", err)
+			if errors.Is(err, trialregistry.ErrPendingNotFound) || errors.Is(err, trialregistry.ErrPendingNotOpen) {
 				return issueResult{}, exitUsage
 			}
 			return issueResult{}, 1
@@ -84,7 +85,7 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 	}
 
 	if strings.TrimSpace(opts.Customer) == "" && !opts.MarkConverted {
-		fmt.Fprintln(stderr, "license-issue: --customer is required")
+		_, _ = fmt.Fprintln(stderr, "license-issue: --customer is required")
 		return issueResult{}, exitUsage
 	}
 
@@ -93,19 +94,19 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 	if opts.MarkConverted && strings.TrimSpace(opts.Customer) == "" {
 		dep := strings.TrimSpace(opts.DeploymentID)
 		if dep == "" {
-			fmt.Fprintln(stderr, "license-issue: --deployment-id is required with --mark-converted")
+			_, _ = fmt.Fprintln(stderr, "license-issue: --deployment-id is required with --mark-converted")
 			return issueResult{}, exitUsage
 		}
 		if err := reg.MarkConverted(dep); err != nil {
-			fmt.Fprintf(stderr, "license-issue: mark converted: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "license-issue: mark converted: %v\n", err)
 			return issueResult{}, 1
 		}
-		fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", dep)
+		_, _ = fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", dep)
 		return issueResult{DeploymentID: dep}, 0
 	}
 
 	if err := trialregistry.ValidateForceOverride(opts.Force, opts.ForceReason); err != nil {
-		fmt.Fprintf(stderr, "license-issue: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: %v\n", err)
 		return issueResult{}, 1
 	}
 
@@ -117,23 +118,23 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 	privPath := licensing.ResolvePrivateKeyFileForKID(keyID, strings.TrimSpace(opts.PrivateKeyFile))
 	privBytes, err := os.ReadFile(privPath)
 	if err != nil {
-		fmt.Fprintf(stderr, "license-issue: read private key %s: %v\n", privPath, err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: read private key %s: %v\n", privPath, err)
 		return issueResult{}, 1
 	}
 	priv, err := licensing.ParsePrivateKey(privBytes)
 	if err != nil {
-		fmt.Fprintf(stderr, "license-issue: parse private key: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: parse private key: %v\n", err)
 		return issueResult{}, 1
 	}
 
 	doc, err := licensing.LoadSKUFile(opts.SKUFile)
 	if err != nil {
-		fmt.Fprintf(stderr, "license-issue: load SKU file: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: load SKU file: %v\n", err)
 		return issueResult{}, 1
 	}
 	sku, err := doc.GetSKU(opts.SKUCode)
 	if err != nil {
-		fmt.Fprintf(stderr, "license-issue: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: %v\n", err)
 		return issueResult{}, 1
 	}
 	if opts.ValidDays > 0 {
@@ -156,7 +157,7 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 		}
 		if !opts.Force {
 			if err := reg.CheckPilotEligible(check); err != nil {
-				fmt.Fprintf(stderr, "license-issue: pilot denied deployment_id=%s: %v\n", depID, err)
+				_, _ = fmt.Fprintf(stderr, "license-issue: pilot denied deployment_id=%s: %v\n", depID, err)
 				return issueResult{}, exitUsage
 			}
 		}
@@ -179,7 +180,7 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 
 	token, err := licensing.SignJWT(claims, priv, keyID)
 	if err != nil {
-		fmt.Fprintf(stderr, "license-issue: sign: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: sign: %v\n", err)
 		return issueResult{}, 1
 	}
 
@@ -189,25 +190,25 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 			HWID:         hwid,
 			USDTTx:       opts.USDTTx,
 			DeploymentID: depID,
-			LicenseKey:   licenseKeyFromClaims(claims),
+			LicenseKey:   licenseKeyFromClaims(&claims),
 			ValidUntil:   claims.ValidUntil,
 			Force:        opts.Force,
 			ForceReason:  opts.ForceReason,
 			Operator:     opts.Operator,
 		}); err != nil {
-			fmt.Fprintf(stderr, "license-issue: record pilot issue: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "license-issue: record pilot issue: %v\n", err)
 			return issueResult{}, 1
 		}
 	}
 
 	if !isPilotSKU(opts.SKUCode) && opts.MarkConverted {
 		if err := reg.MarkConverted(depID); err != nil {
-			fmt.Fprintf(stderr, "license-issue: mark converted after issue: %v\n", err)
+			_, _ = fmt.Fprintf(stderr, "license-issue: mark converted after issue: %v\n", err)
 			return issueResult{}, 1
 		}
-		fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", depID)
+		_, _ = fmt.Fprintf(stderr, "license-issue: marked converted deployment_id=%s\n", depID)
 	} else if isPaidLicenseSKU(opts.SKUCode) && !opts.MarkConverted {
-		fmt.Fprintf(stderr, "license-issue: warning: paid SKU %q issued without --mark-converted (deployment_id=%s)\n", opts.SKUCode, depID)
+		_, _ = fmt.Fprintf(stderr, "license-issue: warning: paid SKU %q issued without --mark-converted (deployment_id=%s)\n", opts.SKUCode, depID)
 	}
 
 	return issueResult{
@@ -215,38 +216,38 @@ func runIssue(opts issueOptions, stderr io.Writer) (issueResult, int) {
 		DeploymentID: depID,
 		KeyID:        keyID,
 		ValidUntil:   claims.ValidUntil,
-		LicenseKey:   licenseKeyFromClaims(claims),
+		LicenseKey:   licenseKeyFromClaims(&claims),
 	}, 0
 }
 
-func runTrialMarkExpired(opts issueOptions, stderr io.Writer) (issueResult, int) {
+func runTrialMarkExpired(opts *issueOptions, stderr io.Writer) (res issueResult, code int) {
 	dep := strings.TrimSpace(opts.DeploymentID)
 	if dep == "" {
-		fmt.Fprintln(stderr, "license-issue: --trial-mark-expired requires --deployment-id")
+		_, _ = fmt.Fprintln(stderr, "license-issue: --trial-mark-expired requires --deployment-id")
 		return issueResult{}, exitUsage
 	}
 	reg := openRegistry(opts.TrialRegistry)
 	if err := reg.MarkExpired(dep); err != nil {
-		fmt.Fprintf(stderr, "license-issue: mark expired: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: mark expired: %v\n", err)
 		return issueResult{}, 1
 	}
-	fmt.Fprintf(stderr, "license-issue: marked expired deployment_id=%s\n", dep)
+	_, _ = fmt.Fprintf(stderr, "license-issue: marked expired deployment_id=%s\n", dep)
 	return issueResult{DeploymentID: dep}, 0
 }
 
-func runRecordHWID(opts issueOptions, stderr io.Writer) (issueResult, int) {
+func runRecordHWID(opts *issueOptions, stderr io.Writer) (res issueResult, code int) {
 	dep := strings.TrimSpace(opts.DeploymentID)
 	hwid := strings.TrimSpace(opts.HWIDV2)
 	if dep == "" || hwid == "" {
-		fmt.Fprintln(stderr, "license-issue: --record-hwid requires --deployment-id and --hwid-v2")
+		_, _ = fmt.Fprintln(stderr, "license-issue: --record-hwid requires --deployment-id and --hwid-v2")
 		return issueResult{}, exitUsage
 	}
 	reg := openRegistry(opts.TrialRegistry)
 	if err := reg.RecordHWID(dep, hwid); err != nil {
-		fmt.Fprintf(stderr, "license-issue: record hwid: %v\n", err)
+		_, _ = fmt.Fprintf(stderr, "license-issue: record hwid: %v\n", err)
 		return issueResult{}, 1
 	}
-	fmt.Fprintf(stderr, "license-issue: recorded hwid deployment_id=%s\n", dep)
+	_, _ = fmt.Fprintf(stderr, "license-issue: recorded hwid deployment_id=%s\n", dep)
 	return issueResult{DeploymentID: dep}, 0
 }
 
@@ -271,19 +272,19 @@ func isPaidLicenseSKU(code string) bool {
 	}
 }
 
-func licenseKeyFromClaims(claims licensing.LicenseClaims) string {
+func licenseKeyFromClaims(claims *licensing.LicenseClaims) string {
 	if sub := strings.TrimSpace(claims.Subject); sub != "" {
 		return sub
 	}
 	return strings.TrimSpace(claims.DeploymentID)
 }
 
-func writeIssueOutput(res issueResult, outFile string, stderr io.Writer) error {
+func writeIssueOutput(res *issueResult, outFile string, stderr io.Writer) error {
 	if strings.TrimSpace(outFile) != "" {
 		if err := os.WriteFile(outFile, []byte(res.Token), 0o600); err != nil {
 			return err
 		}
-		fmt.Fprintf(stderr, "license-issue: wrote JWT to %s (kid=%s deployment_id=%s valid_until=%s)\n",
+		_, _ = fmt.Fprintf(stderr, "license-issue: wrote JWT to %s (kid=%s deployment_id=%s valid_until=%s)\n",
 			outFile, res.KeyID, res.DeploymentID, res.ValidUntil.Format(time.RFC3339))
 		return nil
 	}
@@ -291,7 +292,7 @@ func writeIssueOutput(res issueResult, outFile string, stderr io.Writer) error {
 		_, _ = fmt.Fprintf(os.Stdout, "%s\n", res.Token)
 	}
 	if !res.ValidUntil.IsZero() {
-		fmt.Fprintf(stderr, "kid=%s deployment_id=%s valid_until=%s\n", res.KeyID, res.DeploymentID, res.ValidUntil.Format(time.RFC3339))
+		_, _ = fmt.Fprintf(stderr, "kid=%s deployment_id=%s valid_until=%s\n", res.KeyID, res.DeploymentID, res.ValidUntil.Format(time.RFC3339))
 	}
 	return nil
 }

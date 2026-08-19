@@ -110,7 +110,7 @@ export function mountSafePageHydrator() {
       ctx.fillStyle = '#f60';
       ctx.fillRect(0, 0, 200, 50);
       ctx.fillStyle = '#069';
-      ctx.fillText('BidShard', 2, 15);
+      ctx.fillText('ad-event-processor', 2, 15);
       ctx.font = '18px serif';
       ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
       ctx.fillText('safe', 4, 25);

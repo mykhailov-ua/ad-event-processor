@@ -114,9 +114,9 @@ func cgroupPathForPID(pid uint32) (string, error) {
 		if strings.HasPrefix(line, "0::") {
 			rel := strings.TrimPrefix(line, "0::")
 			if rel == "" {
-				return "/sys/fs/cgroup", nil
+				return filepath.Join(string(filepath.Separator), "sys", "fs", "cgroup"), nil
 			}
-			return filepath.Join("/sys/fs/cgroup", rel), nil
+			return filepath.Join(string(filepath.Separator), "sys", "fs", "cgroup", rel), nil
 		}
 	}
 	return "", fmt.Errorf("cgroup v2 path not found for pid %d", pid)

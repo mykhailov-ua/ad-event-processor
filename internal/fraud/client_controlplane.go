@@ -67,7 +67,10 @@ func (client *ControlplaneClient) BlockIP(ctx context.Context, ip string) error 
 		coldpath.CloseHTTPResponse(resp)
 		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusCreated {
 		return nil
@@ -80,7 +83,7 @@ func (client *ControlplaneClient) BlockIP(ctx context.Context, ip string) error 
 	return fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
 }
 
-func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error {
+func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
 	if client == nil {
 		return fmt.Errorf("management client: nil receiver")
 	}
@@ -112,7 +115,10 @@ func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action
 		coldpath.CloseHTTPResponse(resp)
 		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusOK {
 		return nil

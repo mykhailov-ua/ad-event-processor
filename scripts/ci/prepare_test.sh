@@ -12,29 +12,29 @@ docker compose up -d --build --remove-orphans
 
 echo "Waiting for services to become healthy"
 echo "Waiting for Postgres..."
-until docker exec espx-db-1 pg_isready -p 5440 -U ad_event_processor_user -d ad_event_processor > /dev/null 2>&1; do
+until docker exec ad-event-processor-db-1 pg_isready -p 5440 -U ad_event_processor_user -d ad_event_processor > /dev/null 2>&1; do
   sleep 1
 done
 
 echo "Waiting for ClickHouse..."
-until docker exec espx-clickhouse-1 wget -qO- http://127.0.0.1:8123/ping > /dev/null 2>&1; do
+until docker exec ad-event-processor-clickhouse-1 wget -qO- http://127.0.0.1:8123/ping > /dev/null 2>&1; do
   sleep 1
 done
 
 echo "Waiting for Redis shards..."
 for i in 0 1 2 3 4 5; do
-  until docker exec espx-redis-$i-1 redis-cli -p 6379 -a redis_secure_pass_456 ping > /dev/null 2>&1; do
+  until docker exec ad-event-processor-redis-$i-1 redis-cli -p 6379 -a redis_secure_pass_456 ping > /dev/null 2>&1; do
     sleep 1
   done
 done
 
 echo "Cleaning Redis shards"
 for i in 0 1 2 3 4 5; do
-  docker exec espx-redis-$i-1 redis-cli -p 6379 -a redis_secure_pass_456 FLUSHALL > /dev/null 2>&1
+  docker exec ad-event-processor-redis-$i-1 redis-cli -p 6379 -a redis_secure_pass_456 FLUSHALL > /dev/null 2>&1
 done
 
 echo "Resetting Postgres database"
-docker exec -i espx-db-1 psql -h localhost -p 5440 -U ad_event_processor_user -d ad_event_processor << 'EOF'
+docker exec -i ad-event-processor-db-1 psql -h localhost -p 5440 -U ad_event_processor_user -d ad_event_processor << 'EOF'
 TRUNCATE TABLE events CASCADE;
 TRUNCATE TABLE campaign_stats CASCADE;
 
@@ -88,7 +88,7 @@ ON CONFLICT (id) DO UPDATE SET current_spend = 0, status = 'ACTIVE', budget_limi
 EOF
 
 echo "Resetting ClickHouse database"
-docker exec -i espx-clickhouse-1 clickhouse-client --multiquery -u default --password secure_ch_pass -d ad_event_processor -q "
+docker exec -i ad-event-processor-clickhouse-1 clickhouse-client --multiquery -u default --password secure_ch_pass -d ad_event_processor -q "
 TRUNCATE TABLE impressions;
 TRUNCATE TABLE clicks;
 TRUNCATE TABLE conversions;
@@ -114,12 +114,12 @@ docker compose up -d --build --force-recreate processor tracker-0 tracker-1 trac
 
 echo "Triggering full campaign registry snapshot via Redis Pub/Sub"
 REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
-docker exec espx-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASS" \
+docker exec ad-event-processor-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASS" \
   PUBLISH campaigns:update "*" > /dev/null 2>&1
 sleep 3
 
 echo "Verification"
 echo "Active campaign count in Postgres:"
-docker exec espx-db-1 psql -h localhost -p 5440 -U ad_event_processor_user -d ad_event_processor -c "SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE';"
+docker exec ad-event-processor-db-1 psql -h localhost -p 5440 -U ad_event_processor_user -d ad_event_processor -c "SELECT COUNT(*) FROM campaigns WHERE status = 'ACTIVE';"
 
 echo "All systems ready for load test!"

@@ -7,26 +7,18 @@ export type LicenseInfo = {
   tier_warnings?: string[];
 };
 
-/** Days before pilot JWT expiry when upgrade CTA is shown. */
+
 export const PILOT_CONVERT_NUDGE_DAYS = 5;
 
-/** License settings path for offline JWT paste. */
+
 export const LICENSE_SETTINGS_PATH = '/settings/license';
 
-/**
- * Return true when plan_code is pilot (case-insensitive).
- * @param {string | undefined} planCode
- * @returns {boolean}
- */
+
 export function isPilotPlan(planCode?: string): boolean {
   return (planCode ?? '').trim().toLowerCase() === 'pilot';
 }
 
-/**
- * Return true when license is active and within pilot convert window.
- * @param {LicenseInfo | null | undefined} license
- * @returns {boolean}
- */
+
 export function isPilotConvertNudge(license?: LicenseInfo | null): boolean {
   if (!license?.state) return false;
   const state = license.state.toLowerCase();
@@ -36,11 +28,7 @@ export function isPilotConvertNudge(license?: LicenseInfo | null): boolean {
   return license.renew_days <= PILOT_CONVERT_NUDGE_DAYS;
 }
 
-/**
- * Return false when the shell should hide the license banner entirely.
- * @param {LicenseInfo | null | undefined} license
- * @returns {boolean}
- */
+
 export function shouldShowLicenseBanner(license?: LicenseInfo | null): boolean {
   if (!license?.state) return false;
   if (isPilotConvertNudge(license)) return true;
@@ -61,11 +49,7 @@ export type LicenseBannerCTA = {
   external: boolean;
 };
 
-/**
- * Resolve primary CTA for pilot convert nudge.
- * @param {string | undefined} supportUrl Vendor Telegram or site from /api/v1/meta.
- * @returns {LicenseBannerCTA}
- */
+
 export function resolvePilotConvertCTA(supportUrl?: string): LicenseBannerCTA {
   const url = (supportUrl ?? '').trim();
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('tg://')) {
@@ -74,11 +58,7 @@ export function resolvePilotConvertCTA(supportUrl?: string): LicenseBannerCTA {
   return { href: LICENSE_SETTINGS_PATH, label: 'Upgrade license', external: false };
 }
 
-/**
- * Build banner text segments for display.
- * @param {LicenseInfo} license
- * @returns {string[]}
- */
+
 export function buildLicenseBannerParts(license: LicenseInfo): string[] {
   const state = license.state!.toLowerCase();
   const parts: string[] = [];
@@ -103,11 +83,7 @@ export function buildLicenseBannerParts(license: LicenseInfo): string[] {
   return parts;
 }
 
-/**
- * Resolve banner severity for styling.
- * @param {LicenseInfo} license
- * @returns {'error' | 'warning'}
- */
+
 export function licenseBannerSeverity(license: LicenseInfo): 'error' | 'warning' {
   const state = license.state!.toLowerCase();
   if (license.banner_severity === 'error' || state === 'expired' || state === 'revoked') {

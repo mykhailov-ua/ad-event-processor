@@ -1,4 +1,3 @@
-// Package pb holds vtproto unmarshal helpers for ingestion wire types.
 package pb
 
 func appendReuseBytes(dst [][]byte, src []byte) [][]byte {

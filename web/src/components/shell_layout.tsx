@@ -227,7 +227,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
         style={sidebarStyle}
       >
         <div className="sidebar__head">
-          <Link to="/" className="sidebar__logo" title="BidShard home">
+          <Link to="/" className="sidebar__logo" title="ad-event-processor home">
             <Icon name="layers" size={32} className="sidebar__logo-icon" />
             <span className="sidebar__logo-text">
               <span className="sidebar__logo-bid">Bid</span>

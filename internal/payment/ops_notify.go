@@ -8,7 +8,7 @@ import (
 	"github.com/bidshard/ad-event-processor/internal/notify"
 )
 
-func resolveOpsAlertTarget(cfg *config.Config) (string, string, bool) {
+func resolveOpsAlertTarget(cfg *config.Config) (provider, recipient string, ok bool) {
 	return notify.ResolveOpsAlertTarget(cfg)
 }
 

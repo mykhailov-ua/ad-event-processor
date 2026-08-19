@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# On-demand TLS smoke: Caddy on-demand TLS ask endpoint + optional live SNI probe.
-# Usage:
-#   CONTROL_URL=http://127.0.0.1:8188 bash scripts/test/domain_on_demand_tls_smoke.sh
-#   DOMAIN_TLS_SMOKE_HOST=buyer.example.com CONTROL_URL=... bash scripts/test/domain_on_demand_tls_smoke.sh
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -42,7 +39,6 @@ if [[ -z "${DOMAIN_TLS_SMOKE_HOST:-}" ]]; then
   exit 0
 fi
 
-# Register custom domain then ask again (requires admin API).
 if [[ -z "${ADMIN_API_KEY:-}" ]]; then
   log "skip (ADMIN_API_KEY unset; cannot register ${ASK_HOST})"
   exit 0

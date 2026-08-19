@@ -95,7 +95,7 @@ func ParsePublicKey(keyBytes []byte) (ed25519.PublicKey, error) {
 	return nil, errors.New("invalid public key length")
 }
 
-func sscanf(s string, format string, a ...any) (int, error) {
+func sscanf(s, format string, a ...any) (int, error) {
 	var val byte
 	if len(s) != 2 {
 		return 0, errors.New("bad length")

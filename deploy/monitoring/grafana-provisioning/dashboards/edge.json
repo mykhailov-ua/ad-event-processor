@@ -288,7 +288,7 @@
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "BidShard Edge ingress",
+  "title": "ad-event-processor Edge ingress",
   "uid": "edge-perimeter",
   "version": 1
 }

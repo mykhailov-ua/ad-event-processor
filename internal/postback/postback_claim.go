@@ -49,8 +49,8 @@ type claimedPostbackEvent struct {
 
 func claimPostbackDispatchesInTx(ctx context.Context, q *db.Queries, events []db.OutboxEvent) ([]claimedPostbackEvent, error) {
 	claimed := make([]claimedPostbackEvent, 0, len(events))
-	for _, ev := range events {
-		payload, err := parsePostbackPayload(ev.Payload)
+	for i := range events {
+		payload, err := parsePostbackPayload(events[i].Payload)
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +65,7 @@ func claimPostbackDispatchesInTx(ctx context.Context, q *db.Queries, events []db
 			return nil, err
 		}
 		if rows > 0 {
-			claimed = append(claimed, claimedPostbackEvent{event: ev, hash: hash})
+			claimed = append(claimed, claimedPostbackEvent{event: events[i], hash: hash})
 			continue
 		}
 		existing, err := q.GetPostbackDispatch(ctx, hash)
@@ -73,14 +73,14 @@ func claimPostbackDispatchesInTx(ctx context.Context, q *db.Queries, events []db
 			return nil, fmt.Errorf("dispatch claim conflict lookup: %w", err)
 		}
 		if existing.Status == postbackDispatchStatusSent {
-			claimed = append(claimed, claimedPostbackEvent{event: ev, hash: hash, skip: true})
+			claimed = append(claimed, claimedPostbackEvent{event: events[i], hash: hash, skip: true})
 			continue
 		}
 		if existing.Status == postbackDispatchStatusDelivered {
-			claimed = append(claimed, claimedPostbackEvent{event: ev, hash: hash})
+			claimed = append(claimed, claimedPostbackEvent{event: events[i], hash: hash})
 			continue
 		}
-		claimed = append(claimed, claimedPostbackEvent{event: ev, hash: hash})
+		claimed = append(claimed, claimedPostbackEvent{event: events[i], hash: hash})
 	}
 	return claimed, nil
 }

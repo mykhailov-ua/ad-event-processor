@@ -147,8 +147,8 @@ func (outboxWorker *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32
 		}
 
 		ids := make([]int64, len(outboxEventents))
-		for i, outboxEvent := range outboxEventents {
-			ids[i] = outboxEvent.ID
+		for i := range outboxEventents {
+			ids[i] = outboxEventents[i].ID
 		}
 
 		err = txQueries.LeaseOutboxEvents(ctx, db.LeaseOutboxEventsParams{
@@ -164,7 +164,8 @@ func (outboxWorker *OutboxWorker) ProcessOutbox(ctx context.Context, limit int32
 
 	successCount := 0
 	var batchErrs []error
-	for _, outboxEvent := range outboxEventents {
+	for i := range outboxEventents {
+		outboxEvent := outboxEventents[i]
 		if err := outboxWorker.handleOutboxEvent(ctx, outboxEvent); err != nil {
 			slog.Error("failed to handle outbox outboxEventent", "id", outboxEvent.ID, "error", err)
 			SettlementErrorsTotal.Inc()

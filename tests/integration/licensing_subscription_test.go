@@ -96,7 +96,7 @@ func TestIntegration_Licensing(t *testing.T) {
 		}
 
 		claims := licensing.LicenseClaims{
-			Issuer:       "espx-license",
+			Issuer:       "ad-event-processor-license",
 			Subject:      uuid.NewString(),
 			DeploymentID: uuid.NewString(),
 			ValidFrom:    time.Now().Add(-24 * time.Hour),
@@ -114,8 +114,8 @@ func TestIntegration_Licensing(t *testing.T) {
 
 		require.NoError(t, os.WriteFile(tempFile, []byte(token), 0o644))
 
-		t.Setenv("ESPX_LICENSE_MODE", "file")
-		t.Setenv("ESPX_LICENSE_PATH", tempFile)
+		t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "file")
+		t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PATH", tempFile)
 
 		watcher := licensing.NewLicenseWatcher(dbPool, rdb, pub)
 		require.NoError(t, watcher.Start(ctx))

@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# Redis UDS transport latency proof (unix socket vs TCP loopback).
-#
-# Usage:
-#   bash scripts/perf/redis_uds_benchmark.sh
-# Env:
-#   UDS_DIAL_P50_BUDGET_NS=2500   p50 dial budget in ns (default 2.5 µs)
-#   UDS_BENCH_REQUESTS=100000     redis-benchmark -n
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -13,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi
@@ -35,7 +29,7 @@ die() {
   exit 1
 }
 
-CONTAINER="espx-uds-bench-$$"
+CONTAINER="ad-event-processor-uds-bench-$$"
 cleanup() {
   docker rm -f "$CONTAINER" > /dev/null 2>&1 || true
 }
@@ -45,12 +39,12 @@ log "artifacts → $OUT"
 log "uds_socket=$UDS_SOCK tcp_port=$TCP_PORT budget_p50_ns=$BUDGET_NS"
 
 docker run -d --name "$CONTAINER" --network host \
-  -v "$RUN_DIR:/run/espx" \
+  -v "$RUN_DIR:/run/ad-event-processor" \
   "$REDIS_IMAGE" \
   redis-server \
   --port "$TCP_PORT" \
   --bind 127.0.0.1 \
-  --unixsocket /run/espx/redis/redis-0.sock \
+  --unixsocket /run/ad-event-processor/redis/redis-0.sock \
   --unixsocketperm 777 \
   > /dev/null
 
@@ -63,8 +57,8 @@ done
 [[ -S "$UDS_SOCK" ]] || die "unix socket not created: $UDS_SOCK"
 
 log "redis-benchmark unix socket (-s)"
-docker run --rm --network host -v "$RUN_DIR:/run/espx" "$REDIS_IMAGE" \
-  redis-benchmark -s /run/espx/redis/redis-0.sock -n "$REQUESTS" -q -t ping \
+docker run --rm --network host -v "$RUN_DIR:/run/ad-event-processor" "$REDIS_IMAGE" \
+  redis-benchmark -s /run/ad-event-processor/redis/redis-0.sock -n "$REQUESTS" -q -t ping \
   2>&1 | tee "$OUT/redis-benchmark-uds.txt"
 
 log "redis-benchmark tcp loopback (-h 127.0.0.1 -p $TCP_PORT)"

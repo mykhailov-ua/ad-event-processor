@@ -24,7 +24,7 @@ func AuthMiddleware(tokenMaker Maker, rdb redis.UniversalClient, allowedRoles ..
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authorizationHeader := r.Header.Get(authorizationHeaderKey)
-			if len(authorizationHeader) == 0 {
+			if authorizationHeader == "" {
 				err := errors.New("authorization header is not provided")
 				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return

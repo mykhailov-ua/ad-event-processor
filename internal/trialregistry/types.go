@@ -5,10 +5,10 @@ import "time"
 type AnchorType string
 
 const (
-	AnchorTelegram      AnchorType = "telegram"
-	AnchorDeploymentID  AnchorType = "deployment_id"
-	AnchorHWID          AnchorType = "hwid"
-	AnchorUSDTTx        AnchorType = "usdt_tx"
+	AnchorTelegram     AnchorType = "telegram"
+	AnchorDeploymentID AnchorType = "deployment_id"
+	AnchorHWID         AnchorType = "hwid"
+	AnchorUSDTTx       AnchorType = "usdt_tx"
 )
 
 type Status string
@@ -67,12 +67,11 @@ type fileSnapshot struct {
 type PendingStatus string
 
 const (
-	PendingStatusOpen      PendingStatus = "pending"
-	PendingStatusApproved  PendingStatus = "approved"
-	PendingStatusRejected  PendingStatus = "rejected"
+	PendingStatusOpen     PendingStatus = "pending"
+	PendingStatusApproved PendingStatus = "approved"
+	PendingStatusRejected PendingStatus = "rejected"
 )
 
-// PendingRequest is a vendor-side trial signup captured before JWT issue.
 type PendingRequest struct {
 	ID               string        `json:"id"`
 	TelegramID       string        `json:"telegram_id"`

@@ -2,14 +2,14 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-# shellcheck source=../lib/go.sh
+
 source "$ROOT/scripts/lib/go.sh"
 
 echo "edge_pin_dir_smoke: static alignment"
 grep -q 'BPF_PIN_DIR' "$ROOT/deploy/edge/xdp/entrypoint.sh"
 grep -q '/sys/fs/bpf/ad-event-processor' "$ROOT/deploy/edge/xdp/entrypoint.sh"
-if grep -q '/sys/fs/bpf/espx' "$ROOT/deploy/edge/xdp/entrypoint.sh"; then
-  echo "edge_pin_dir_smoke: stale espx pin path in entrypoint.sh" >&2
+if grep -q '/sys/fs/bpf/ad-event-processor' "$ROOT/deploy/edge/xdp/entrypoint.sh"; then
+  echo "edge_pin_dir_smoke: stale ad-event-processor pin path in entrypoint.sh" >&2
   exit 1
 fi
 

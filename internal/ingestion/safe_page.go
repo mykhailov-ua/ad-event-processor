@@ -88,7 +88,7 @@ func resolveSafePageActionDelivery(
 const safePageStubPathPrefix = "/safe_page_stub"
 
 var (
-	safePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>BidShard</title></head><body><main><iframe src=\"")
+	safePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
 	safePageStubHTMLMid  = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main><script>")
 	safePageStubHTMLTail = []byte("</script></body></html>")
 )

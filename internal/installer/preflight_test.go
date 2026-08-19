@@ -202,7 +202,7 @@ func TestGoldenRenderSystemd(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(got) != string(want) {
+	if !bytes.Equal(got, want) {
 		t.Fatalf("systemd unit mismatch:\n%s", strings.TrimSpace(string(got)))
 	}
 }
@@ -244,7 +244,7 @@ func TestIdempotentApply(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if string(first) != string(second) {
+	if !bytes.Equal(first, second) {
 		t.Fatal("second apply changed secrets content")
 	}
 }

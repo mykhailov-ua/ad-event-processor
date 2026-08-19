@@ -19,7 +19,8 @@ import (
 const n1PostbackBatchSize = 20
 
 func legacyProcessBatchOutboxUpdates(ctx context.Context, w *PostbackWorker, claimed []claimedPostbackEvent) {
-	for _, c := range claimed {
+	for i := range claimed {
+		c := &claimed[i]
 		if c.skip {
 			_, _ = w.pool.Exec(ctx, "UPDATE outbox_events SET status = 'PROCESSED', processing_started_at = NULL WHERE id = $1", c.event.ID)
 			continue

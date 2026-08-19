@@ -246,7 +246,7 @@ func writeHotSegment(t *testing.T, dir, name string, payload []byte) string {
 	return path
 }
 
-func buildSegmentPayload(t *testing.T, impressions int, clicks int) []byte {
+func buildSegmentPayload(t *testing.T, impressions, clicks int) []byte {
 	t.Helper()
 	var buf bytes.Buffer
 	for i := range impressions {

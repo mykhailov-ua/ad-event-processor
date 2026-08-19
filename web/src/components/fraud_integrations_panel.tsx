@@ -14,18 +14,14 @@ export type FraudIntegrationsPanelProps = {
   customerId: string;
 };
 
-/**
- * Format ISO timestamp for integration health table cells.
- */
+
 function formatTs(iso?: string): string {
   if (!iso) return '—';
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 }
 
-/**
- * Read-only postback/CAPI health table for the fraud dashboard.
- */
+
 export function FraudIntegrationsPanel({ customerId }: FraudIntegrationsPanelProps) {
   const [rows, setRows] = useState<FraudIntegrationRow[]>([]);
   const [loading, setLoading] = useState(true);

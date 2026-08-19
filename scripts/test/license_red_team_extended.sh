@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Red-team steps 7–10 (S4.7): automatable subset; gdb/BTF steps skip with reason.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

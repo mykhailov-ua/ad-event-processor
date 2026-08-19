@@ -49,7 +49,7 @@ services:
 
   control:
     environment:
-      - ESPX_PROFILE=production
+      - AD_EVENT_PROCESSOR_PROFILE=production
       - EVENTS_RETENTION_DAYS=${EVENTS_RETENTION_DAYS:-90}
 
   processor:

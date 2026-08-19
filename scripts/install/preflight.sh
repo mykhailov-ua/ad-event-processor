@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host preflight for appliance install (no Go required). Prefer bin/ad-event-processor-install when present.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

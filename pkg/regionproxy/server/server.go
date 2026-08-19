@@ -580,8 +580,7 @@ func (s *Server) writeFetchResponse(c gnet.Conn, buf []byte, seq uint64, status 
 	fetchRespPool.Put(framePtr)
 }
 
-func countMessages(buf []byte) (uint32, uint32) {
-	var count, total uint32
+func countMessages(buf []byte) (count, total uint32) {
 	pos := 0
 	for pos+12 <= len(buf) {
 		length := binary.BigEndian.Uint32(buf[pos : pos+4])

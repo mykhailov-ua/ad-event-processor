@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-D.2: release binaries must not embed plaintext HWID sysfs paths.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

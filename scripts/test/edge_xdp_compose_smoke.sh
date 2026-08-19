@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Edge XDP compose smoke — BPF pin/attach in Docker lab stack.
-# Precondition: BTF vmlinux, Docker daemon — skips exit 0 when BTF/docker missing.
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -21,7 +20,6 @@ if ! docker info > /dev/null 2>&1; then
   exit 0
 fi
 
-# shellcheck disable=SC1091
 [[ -f .env ]] && set -a && source .env && set +a
 
 REDIS_PASS="${REDIS_PASSWORD:-your_redis_password_here}"

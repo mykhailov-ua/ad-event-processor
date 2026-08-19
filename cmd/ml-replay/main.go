@@ -177,7 +177,8 @@ func writeReplayCSV(w io.Writer, rows []replayRow, scores []float64) error {
 	ivt := uint8(fraud.FraudTierIVTMax)
 	block := uint8(100)
 
-	for i, row := range rows {
+	for i := range rows {
+		row := &rows[i]
 		mlScore := scores[i]
 		decision := fraud.DecideWithCampaign(row.FeatureRow, mlScore, pass, suspect, ivt, block)
 		action := shadowAction(decision.Tier, true)

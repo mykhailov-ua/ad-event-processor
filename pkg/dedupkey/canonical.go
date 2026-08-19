@@ -24,7 +24,7 @@ func FormatCanonical(scope Scope, factorU, factorD uuid.UUID) string {
 	)
 }
 
-func ParseCanonical(key string) (Scope, uuid.UUID, uuid.UUID, error) {
+func ParseCanonical(key string) (scope Scope, customerID, campaignID uuid.UUID, err error) {
 	parts := strings.Split(key, "|")
 	if len(parts) != 8 || parts[0] != versionPrefix {
 		return Scope{}, uuid.UUID{}, uuid.UUID{}, errors.New("dedupkey: invalid canonical format")

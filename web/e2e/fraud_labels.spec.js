@@ -71,7 +71,11 @@ test.describe('Fraud dashboard labels', () => {
       }
       if (route.request().method() === 'POST') {
         posted = true;
-        await route.fulfill({ status: 202, headers: { 'content-type': 'application/json' }, body: '{}' });
+        await route.fulfill({
+          status: 202,
+          headers: { 'content-type': 'application/json' },
+          body: '{}',
+        });
         return;
       }
       await route.continue();

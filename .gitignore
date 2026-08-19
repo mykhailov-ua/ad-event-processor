@@ -1,13 +1,18 @@
 # Secrets & environment
 .env
 .env.secrets
+.env.local
+.env.*.local
 *.env
+!.env.example
 
 # Build output & vendored deps
 bin/*
 !bin/.gitkeep
 dist/release/
 vendor/
+node_modules/
+web/dist/
 
 # Root-level binaries (go build -o ./<name> — use bin/ instead)
 /*.exe
@@ -32,7 +37,9 @@ deploy/vendor/license_private.key
 deploy/vendor/trial_registry.json
 deploy/vendor/keys/*/license_private.key
 license.jwt
+license.jwt/
 .license-*.jwt
+var/license.jwt
 
 # On-prem license / mmap runtime state (not sources)
 .license-spool/
@@ -67,9 +74,10 @@ deploy/nginx/certs/*.key
 deploy/nginx/certs/*.crt
 
 # IDE
-.cursor/
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 
 # Local runtime state
 campaigns_replica.json
@@ -154,11 +162,7 @@ script_flush.log
 sync-registry.log
 prepare.log
 
-# Local env overrides (secrets stay in .env / .env.secrets)
-.env.local
-.env.*.local
-
-# Editor & merge conflict junk
+# Local env overrides (secrets stay in .env.secrets)
 *~
 *.swp
 *.swo
@@ -171,6 +175,9 @@ Thumbs.db
 
 # GeoIP (download MaxMind separately; keep deploy/geoip/.gitkeep)
 deploy/geoip/*.mmdb
+
+# Visible in repo (override ~/.gitignore_global)
+!.cursorignore
 
 # Terraform state & plugins
 deploy/terraform/**/.terraform/

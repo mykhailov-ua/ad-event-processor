@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Read kernel TCP listen overflow counters (TcpExtListenOverflows / TcpExtListenDrops).
-# Used by scripts/perf/tcp_syn_drop_gate.sh and purgatory edge cascade.
+
 set -euo pipefail
 
 tcp_listen_counter() {

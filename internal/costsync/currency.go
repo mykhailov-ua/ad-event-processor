@@ -124,7 +124,10 @@ func (c *CurrencyConverter) fetchECBRates(ctx context.Context) (map[string]float
 		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("ecb: status %d", resp.StatusCode)
 	}

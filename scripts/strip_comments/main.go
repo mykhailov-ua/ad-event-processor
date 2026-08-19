@@ -82,13 +82,7 @@ func main() {
 				changed++
 			}
 		case ".sh":
-			ok, err := stripShellFile(path)
-			if err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-			if ok {
-				changed++
-			}
+			return nil
 		case ".c", ".h":
 			ok, err := stripCFile(path)
 			if err != nil {
@@ -123,7 +117,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("changed %d files\n", changed)
+	_, _ = fmt.Fprintf(os.Stdout, "changed %d files\n", changed)
 }
 
 func isGeneratedGo(path string, src []byte) bool {

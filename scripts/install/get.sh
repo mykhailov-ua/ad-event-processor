@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# One-liner installer: download release tarball or clone repo, then run bidshard-install.sh.
+
 set -euo pipefail
 
-REPO="${BIDSHARD_INSTALL_REPO:-bidshard/bidshard}"
-VERSION="${BIDSHARD_VERSION:-latest}"
-INSTALL_DIR="${BIDSHARD_INSTALL_DIR:-${HOME}/bidshard}"
-USE_GIT="${BIDSHARD_INSTALL_FROM_GIT:-0}"
-GET_SCRIPT_URL="${BIDSHARD_GET_SCRIPT_URL:-}"
+REPO="${AD_EVENT_PROCESSOR_INSTALL_REPO:-ad-event-processor/ad-event-processor}"
+VERSION="${AD_EVENT_PROCESSOR_VERSION:-latest}"
+INSTALL_DIR="${AD_EVENT_PROCESSOR_INSTALL_DIR:-${HOME}/ad-event-processor}"
+USE_GIT="${AD_EVENT_PROCESSOR_INSTALL_FROM_GIT:-0}"
+GET_SCRIPT_URL="${AD_EVENT_PROCESSOR_GET_SCRIPT_URL:-}"
 
 log() {
-  echo "bidshard-get: $*"
+  echo "ad-event-processor-get: $*"
 }
 
 need_cmd() {
   if ! command -v "$1" > /dev/null 2>&1; then
-    echo "bidshard-get: required command not found: $1" >&2
+    echo "ad-event-processor-get: required command not found: $1" >&2
     exit 1
   fi
 }
@@ -27,12 +27,12 @@ install_from_tarball() {
   local tag="$1"
   local tmp
   tmp="$(mktemp -d)"
-  for name in ad-event-processor-installer bidshard-installer; do
+  for name in ad-event-processor-installer; do
     local url="https://github.com/${REPO}/releases/download/${tag}/${name}.tar.gz"
     log "downloading ${url}"
     if curl -fsSL "$url" | tar -xz -C "$tmp" 2> /dev/null; then
       rm -rf "$INSTALL_DIR"
-      mv "$tmp/bidshard" "$INSTALL_DIR"
+      mv "$tmp/ad-event-processor" "$INSTALL_DIR"
       rm -rf "$tmp"
       return 0
     fi

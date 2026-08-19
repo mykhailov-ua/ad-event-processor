@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-LOG="${RESILIENCE_LOG:-/tmp/espx-resilience.log}"
+LOG="${RESILIENCE_LOG:-/tmp/ad-event-processor-resilience.log}"
 MIN_PROOFS="${RESILIENCE_MIN_PROOFS:-52}"
 export BROKER_FAULT_LAB=1
 

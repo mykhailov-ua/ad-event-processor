@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Cold-path eBPF soak: business load + cold gate checks + baseline compare.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -20,11 +20,11 @@ fi
 
 export BPF_GATE_STRICT=true
 export BPF_COLD_GATE=1
-export ESPX_BPF_PROBE=1
-export ESPX_BPF_SAMPLE_RATE="${ESPX_BPF_SAMPLE_RATE:-10}"
-export ESPX_BPF_SLOW_US="${ESPX_BPF_SLOW_US:-10000}"
-export ESPX_BPF_DUMP_INTERVAL="${ESPX_BPF_DUMP_INTERVAL:-60}"
-export ESPX_BPF_REFRESH_TARGETS="${ESPX_BPF_REFRESH_TARGETS:-30}"
+export AD_EVENT_PROCESSOR_BPF_PROBE=1
+export AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE="${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10}"
+export AD_EVENT_PROCESSOR_BPF_SLOW_US="${AD_EVENT_PROCESSOR_BPF_SLOW_US:-10000}"
+export AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL="${AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL:-60}"
+export AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS="${AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS:-30}"
 export LOAD_BPF_GATE=1
 export PROMETHEUS_URL="${PROMETHEUS_URL:-http://127.0.0.1:9190}"
 
@@ -62,7 +62,7 @@ mkdir -p "$OUT"
 log "session output: $OUT"
 
 log "running cold soak load test with BPF probe"
-CONSTRAINED=1 ESPX_BPF_PROBE=1 DURATION="$DURATION" \
+CONSTRAINED=1 AD_EVENT_PROCESSOR_BPF_PROBE=1 DURATION="$DURATION" \
   bash "$SCRIPTS/test/malformed.sh" "$MODE" 2>&1 | tee "$OUT/gate_run.log"
 
 SESSION_DIR=""

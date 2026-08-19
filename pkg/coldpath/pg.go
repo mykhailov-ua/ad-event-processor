@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -50,7 +51,7 @@ func ApplyTrackedSchemaMigrations(ctx context.Context, pool *pgxpool.Pool, dir s
 			continue
 		}
 
-		sqlBytes, err := os.ReadFile(dir + string(os.PathSeparator) + entry.Name())
+		sqlBytes, err := os.ReadFile(filepath.Join(dir, entry.Name()))
 		if err != nil {
 			return fmt.Errorf("read migration %s: %w", entry.Name(), err)
 		}

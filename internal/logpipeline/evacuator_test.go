@@ -1,6 +1,7 @@
 package logpipeline
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -48,7 +49,7 @@ func TestEvacuator_uploadsReadySegment(t *testing.T) {
 	if store.ObjectCount() != 1 {
 		t.Fatalf("expected 1 uploaded object, got %d", store.ObjectCount())
 	}
-	if got := store.ObjectData("segment_0001.log.zst"); string(got) != string(payload) {
+	if got := store.ObjectData("segment_0001.log.zst"); !bytes.Equal(got, payload) {
 		t.Fatalf("object bytes mismatch: %q", got)
 	}
 

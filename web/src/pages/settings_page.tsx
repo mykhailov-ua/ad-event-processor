@@ -385,7 +385,7 @@ export function SettingsPage() {
             <FormField label="Traffic format">
               <select
                 className="form-input"
-                value={cfg.ingress_schema ?? 'espx_native'}
+                value={cfg.ingress_schema ?? 'ad_event_processor_native'}
                 disabled={!canWrite}
                 onChange={(e) => updateField('ingress_schema', e.target.value)}
               >

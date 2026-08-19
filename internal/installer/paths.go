@@ -43,23 +43,23 @@ func installRoot() string {
 
 func secretsPath() string {
 	if root := installRoot(); root != "" {
-		return filepath.Join(root, "etc/ad-event-processor/secrets.env")
+		return filepath.Join(root, "etc", "ad-event-processor", "secrets.env")
 	}
 	return runtimepaths.SecretsEnvPath()
 }
 
 func licensePath() string {
 	if root := installRoot(); root != "" {
-		return filepath.Join(root, "etc/ad-event-processor/license.jwt")
+		return filepath.Join(root, "etc", "ad-event-processor", "license.jwt")
 	}
 	return runtimepaths.LicensePath()
 }
 
 func systemdUnitPath(name string) string {
 	if root := installRoot(); root != "" {
-		return filepath.Join(root, "etc/systemd/system", name)
+		return filepath.Join(root, "etc", "systemd", "system", name)
 	}
-	return filepath.Join("/etc/systemd/system", name)
+	return filepath.Join(string(filepath.Separator), "etc", "systemd", "system", name)
 }
 
 func packagesYAMLPath() string {

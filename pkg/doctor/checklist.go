@@ -123,7 +123,7 @@ func checkRedisTLS() ChecklistRow {
 func isExampleSecret(value string, examples ...string) bool {
 	lower := strings.ToLower(strings.TrimSpace(value))
 	for _, ex := range examples {
-		if lower == strings.ToLower(ex) {
+		if strings.EqualFold(lower, ex) {
 			return true
 		}
 	}

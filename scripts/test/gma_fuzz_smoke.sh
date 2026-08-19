@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# GMA fuzz smoke: 30s JA3 parse + link signer fuzz targets.
-# Skip (no go binary): not applicable.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

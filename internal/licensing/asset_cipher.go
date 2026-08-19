@@ -42,8 +42,7 @@ func SealAsset(label string, plaintext []byte, mck [32]byte) ([]byte, error) {
 	}
 	ciphertext := aead.Seal(nil, nonce, plaintext, []byte(label))
 	out := make([]byte, 0, 1+1+len(label)+len(nonce)+len(ciphertext))
-	out = append(out, assetSealVersion)
-	out = append(out, byte(len(label)))
+	out = append(out, assetSealVersion, byte(len(label)))
 	out = append(out, []byte(label)...)
 	out = append(out, nonce...)
 	out = append(out, ciphertext...)

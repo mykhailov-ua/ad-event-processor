@@ -1,4 +1,3 @@
-// Package server implements the gnet broker listener and connection handlers.
 package server
 
 import (

@@ -3,6 +3,7 @@ package ingestion
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/config"
 	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
@@ -79,6 +80,7 @@ func TestAdsPacketHandler_preboundMetricsOnReject(t *testing.T) {
 	}
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
 	h.React(req, conn)
+	require.NotNil(t, waitMockGnetWritten(conn, 2*time.Second))
 
 	afterBlocked := testutil.ToFloat64(h.trackMetrics.blockedCampaignNotFound)
 	afterDecision := testutil.ToFloat64(h.trackMetrics.decisionCampaignNotFound)

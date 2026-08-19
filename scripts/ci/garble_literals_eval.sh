@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Compare tracker binary size with/without garble -literals (S3.4 / V2-D.1 eval).
-# Release default: tracker literals=0, control/processor literals=1 (see release_garble.sh).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

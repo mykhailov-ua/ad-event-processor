@@ -1,4 +1,3 @@
-// Package loadreport renders BPF load-test session reports and gate checks.
 package loadreport
 
 import (
@@ -74,6 +73,12 @@ type procSample struct {
 	ThreadDelta   int64   `json:"thread_delta"`
 	ThreadFork    int64   `json:"thread_fork"`
 	ThreadExit    int64   `json:"thread_exit"`
+	StartRSSKB    int64   `json:"start_rss_kb"`
+	EndRSSKB      int64   `json:"end_rss_kb"`
+	PeakRSSKB     int64   `json:"peak_rss_kb"`
+	RSSDelta      int64   `json:"rss_delta"`
+	MinFlt        int64   `json:"min_flt"`
+	MajFlt        int64   `json:"maj_flt"`
 }
 
 type cgroupSample struct {
@@ -197,12 +202,12 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 
 	loadgenStats := loadgenGroup(data.PIDStats)
 	totalOnCPU := int64(0)
-	for _, s := range data.PIDStats {
-		totalOnCPU += s.OnCPUNs
+	for i := range data.PIDStats {
+		totalOnCPU += data.PIDStats[i].OnCPUNs
 	}
 	loadgenOnCPU := int64(0)
-	for _, s := range loadgenStats {
-		loadgenOnCPU += s.OnCPUNs
+	for i := range loadgenStats {
+		loadgenOnCPU += loadgenStats[i].OnCPUNs
 	}
 	loadgenPct := 0.0
 	if totalOnCPU > 0 {
@@ -218,7 +223,8 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 		sort.Slice(loadgenStats, func(i, j int) bool {
 			return loadgenStats[i].OnCPUNs > loadgenStats[j].OnCPUNs
 		})
-		for _, s := range loadgenStats {
+		for i := range loadgenStats {
+			s := &loadgenStats[i]
 			delta := rssEnd[s.PID] - rssStart[s.PID]
 			name := s.Name
 			if name == "" {
@@ -238,7 +244,8 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 	b.WriteString("| Process | Role | ctx/s | runqueue avg (µs) | runqueue p99 (µs) | on-CPU % | minor flt | major flt |\n")
 	b.WriteString("|---------|------|-------|-------------------|-------------------|----------|-----------|-----------|\n")
 	serviceStats := filterServicePIDStats(data.PIDStats)
-	for _, s := range serviceStats {
+	for i := range serviceStats {
+		s := &serviceStats[i]
 		name := s.Name
 		if name == "" {
 			name = fmt.Sprintf("%d", s.PID)
@@ -270,9 +277,9 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 
 func loadgenGroup(stats []pidStat) []pidStat {
 	var out []pidStat
-	for _, s := range stats {
-		if s.Role == "loadgen" {
-			out = append(out, s)
+	for i := range stats {
+		if stats[i].Role == "loadgen" {
+			out = append(out, stats[i])
 		}
 	}
 	return out
@@ -284,9 +291,9 @@ func isLoadgenRole(role string) bool {
 
 func filterServicePIDStats(stats []pidStat) []pidStat {
 	var out []pidStat
-	for _, s := range stats {
-		if !isLoadgenRole(s.Role) {
-			out = append(out, s)
+	for i := range stats {
+		if !isLoadgenRole(stats[i].Role) {
+			out = append(out, stats[i])
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -300,7 +307,7 @@ func filterServicePIDStats(stats []pidStat) []pidStat {
 	return out
 }
 
-func readRSSMaps(bpfDir string) (map[int]int, map[int]int) {
+func readRSSMaps(bpfDir string) (rssStart, rssEnd map[int]int) {
 	start := make(map[int]int)
 	end := make(map[int]int)
 	for path, store := range map[string]map[int]int{
@@ -458,7 +465,8 @@ func writeFDSection(b *strings.Builder, data *bpfSummary) {
 		sort.Slice(sorted, func(i, j int) bool {
 			return sorted[i].PeakOpenFDs > sorted[j].PeakOpenFDs
 		})
-		for _, s := range sorted {
+		for i := range sorted {
+			s := &sorted[i]
 			name := s.Name
 			if name == "" {
 				name = fmt.Sprintf("%d", s.PID)
@@ -479,7 +487,8 @@ func writeFDSection(b *strings.Builder, data *bpfSummary) {
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].FDOpenPerSec > sorted[j].FDOpenPerSec
 	})
-	for _, s := range sorted {
+	for i := range sorted {
+		s := &sorted[i]
 		name := s.Name
 		if name == "" {
 			name = fmt.Sprintf("%d", s.PID)
@@ -500,7 +509,8 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 		sort.Slice(sorted, func(i, j int) bool {
 			return sorted[i].PeakThreads > sorted[j].PeakThreads
 		})
-		for _, s := range sorted {
+		for i := range sorted {
+			s := &sorted[i]
 			name := s.Name
 			if name == "" {
 				name = fmt.Sprintf("%d", s.PID)
@@ -520,7 +530,8 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].ThreadFork > sorted[j].ThreadFork
 	})
-	for _, s := range sorted {
+	for i := range sorted {
+		s := &sorted[i]
 		if s.ThreadFork == 0 && s.ThreadExit == 0 {
 			continue
 		}
@@ -535,7 +546,7 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 
 func writeMarkersSection(b *strings.Builder, markers []markerStat) {
 	b.WriteString("## Hot path uprobes (Go)\n\n")
-	b.WriteString("Requires tracker built with `-tags " + naming.DeprecatedBPFTraceBuildTag() + "` and bpf-collector uprobes attached.\n\n")
+	fmt.Fprintf(b, "Requires tracker built with `-tags %s` and bpf-collector uprobes attached.\n\n", naming.DeprecatedBPFTraceBuildTag())
 	b.WriteString("| role | marker | slot | count | avg (µs) | p99 (µs) | max (µs) |\n")
 	b.WriteString("|------|--------|------|-------|----------|----------|----------|\n")
 	sorted := append([]markerStat(nil), markers...)

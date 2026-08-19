@@ -22,7 +22,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func setupBillingTestDB(t testing.TB) (*pgxpool.Pool, func()) {
+func setupBillingTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -41,18 +41,19 @@ func setupBillingTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 
-	pool, err := pgxpool.New(ctx, connStr)
+	pool, err = pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal/ingestion/migrations"))
-	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal/ledger/migrations"))
+	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal", "ingestion", "migrations"))
+	applyBillingMigrations(t, pool, filepath.Join(baseDir, "internal", "ledger", "migrations"))
 
-	return pool, func() {
+	cleanup = func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}
+	return
 }
 
 func applyBillingMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {

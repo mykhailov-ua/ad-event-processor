@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-D.5: garbled release binaries pass license math + strings obfuscation gate.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

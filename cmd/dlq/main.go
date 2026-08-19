@@ -229,7 +229,7 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 	return nil
 }
 
-func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream string, batchSize int64, rateLimit int64) error {
+func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream string, batchSize, rateLimit int64) error {
 	startID := "0-0"
 	var totalProcessed int64
 
@@ -322,7 +322,7 @@ func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream 
 	return nil
 }
 
-func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream string, batchSize int64, rateLimit int64) error {
+func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream string, batchSize, rateLimit int64) error {
 	file, err := os.Open(srcFile)
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)

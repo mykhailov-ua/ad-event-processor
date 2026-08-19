@@ -27,15 +27,15 @@ func TestClickRedirectGnet_forceSafeInPlace(t *testing.T) {
 
 	path := "/click?campaign_id=" + cid.String() + "&type=click&gclid=GCLID1"
 	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
-		"Connection":            "keep-alive",
-		"Content-Length":        "0",
-		"User-Agent":            "Mozilla/5.0",
-		"X-BidShard-Force-Safe": "1",
+		"Connection":                      "keep-alive",
+		"Content-Length":                  "0",
+		"User-Agent":                      "Mozilla/5.0",
+		"X-ad-event-processor-Force-Safe": "1",
 	}, nil))
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
-	require.Contains(t, resp, "X-BidShard-Safe-Page: 1")
+	require.Contains(t, resp, "X-ad-event-processor-Safe-Page: 1")
 }
 
 func TestClickRedirectGnet_fraudInPlace(t *testing.T) {
@@ -68,7 +68,7 @@ func TestClickRedirectGnet_fraudInPlace(t *testing.T) {
 	}, nil))
 
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
-	require.Contains(t, string(conn.Written()), "X-BidShard-Safe-Page: 1")
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-Page: 1")
 }
 
 type fraudRejectFilter struct{}

@@ -17,19 +17,13 @@ export type FraudMlHealthPayload = {
 const PROXY_LABEL_DISCLAIMER =
   'Shadow precision is estimated on proxy labels, not human-audited ground truth.';
 
-/**
- * Human-readable disclaimer for shadow precision metrics.
- */
+
 export function fraudProxyLabelDisclaimer(): string {
   return PROXY_LABEL_DISCLAIMER;
 }
 
-/**
- * Map backend ML eval status to StatusBadge status.
- */
-export function mlEvalBadgeStatus(
-  status?: MlEvalStatus
-): 'ok' | 'warning' | 'failed' | 'pending' {
+
+export function mlEvalBadgeStatus(status?: MlEvalStatus): 'ok' | 'warning' | 'failed' | 'pending' {
   switch (status) {
     case 'healthy':
       return 'ok';
@@ -43,9 +37,7 @@ export function mlEvalBadgeStatus(
   }
 }
 
-/**
- * Map backend ML eval status to a short operator label.
- */
+
 export function mlEvalStatusLabel(status?: MlEvalStatus): string {
   switch (status) {
     case 'healthy':
@@ -61,9 +53,7 @@ export function mlEvalStatusLabel(status?: MlEvalStatus): string {
   }
 }
 
-/**
- * Format eval age for display; returns warning flag when older than threshold hours.
- */
+
 export function formatMlEvalAge(
   generatedAt?: string,
   warningHours = 24
@@ -90,9 +80,7 @@ export function formatMlEvalAge(
   };
 }
 
-/**
- * Format shadow precision for display with explicit proxy wording.
- */
+
 export function formatShadowPrecision(value?: number): string {
   if (value == null || value <= 0) return '—';
   return `${(value * 100).toFixed(1)}% (proxy)`;

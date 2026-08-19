@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -19,7 +20,7 @@ func ApplyGooseMigrationsDir(ctx context.Context, pool *pgxpool.Pool, dir string
 		return fmt.Errorf("read migrations dir %s: %w", dir, err)
 	}
 	return applyGooseEntries(ctx, pool, entries, func(name string) ([]byte, error) {
-		return os.ReadFile(dir + string(os.PathSeparator) + name)
+		return os.ReadFile(filepath.Join(dir, name))
 	})
 }
 

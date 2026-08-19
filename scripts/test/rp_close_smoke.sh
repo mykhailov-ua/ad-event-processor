@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Referrer-policy closure smoke — baseline audit, attestation, proxy unit paths.
-# Run from repo root: bash scripts/test/rp_close_smoke.sh
-# Skip load/BPF lab: RP_SKIP_LOAD=1 (default when Docker stack unavailable)
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 ROOT="$(pwd)"
@@ -25,5 +23,5 @@ fi
 
 echo "== RP: load cohort (needs constrained stack) =="
 bash scripts/test/prepare_constrained_stack.sh
-PCT_CLICK_PROXY=10 ESPX_BPF_PROBE=1 bash scripts/test/malformed.sh business
+PCT_CLICK_PROXY=10 AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business
 echo "rp_close_smoke: load run complete — paste go run ./cmd/load-report all var/load-test/<ts>/"

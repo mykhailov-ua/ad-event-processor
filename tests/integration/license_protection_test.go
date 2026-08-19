@@ -59,7 +59,7 @@ func TestIntegration_LicenseProtection_hwidMismatchBlocksIngest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
 	claims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-time.Hour),
@@ -109,7 +109,7 @@ func TestIntegration_LicenseProtection_hwidMatchAllowsIngest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
 	claims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-time.Hour),
@@ -148,7 +148,7 @@ func TestIntegration_LicenseProtection_validJWTAllowsIngest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
 	claims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-time.Hour),
@@ -190,7 +190,7 @@ func TestIntegration_LicenseProtection_fakePGRowWithoutJWTBlocked(t *testing.T) 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
 	expiredClaims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-72 * time.Hour),

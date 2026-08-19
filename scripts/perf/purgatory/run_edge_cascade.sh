@@ -1,20 +1,16 @@
 #!/usr/bin/env bash
-# P0 edge cascade: netem loss (sub-1%) + FILTER_TIMEOUT=100 + SCRIPT FLUSH herd
-# + accept-queue pressure (Connection: close burst) under eBPF probe.
-#
-# Hypothesis: cascade of ListenOverflow / NOSCRIPT herd / timeout-aligned 503,
-# not "just slow p99". Artifacts → var/purgatory/edge-<ts>/
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
-# shellcheck source=common.sh
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 export PATH="${ROOT}/bin:${PATH}"
 
 if [[ -f "${ROOT}/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "${ROOT}/.env"
   set +a
 fi
@@ -24,7 +20,7 @@ OUT="${RUN_DIR}/edge-${TS}"
 mkdir -p "$OUT" "$STATE_DIR"
 log "edge-cascade artifacts → ${OUT}"
 
-TRACKER_CTR="${TRACKER_CTR:-bidshard-tracker-0-1}"
+TRACKER_CTR="${TRACKER_CTR:-ad-event-processor-tracker-0-1}"
 TARGET_URL="${TARGET_URL:-http://127.0.0.1:8181/track}"
 BENCH_DURATION="${BENCH_DURATION:-60s}"
 BENCH_CONNECTIONS="${BENCH_CONNECTIONS:-10000}"
@@ -33,9 +29,9 @@ BURST_CONNECTIONS="${BURST_CONNECTIONS:-4000}"
 BURST_DURATION="${BURST_DURATION:-12s}"
 BURST_AT_SEC="${BURST_AT_SEC:-15}"
 FLUSH_AT_SEC="${FLUSH_AT_SEC:-18}"
-REDIS_SHARD_CTR="${REDIS_SHARD_CTR:-bidshard-redis-1-1}"
+REDIS_SHARD_CTR="${REDIS_SHARD_CTR:-ad-event-processor-redis-1-1}"
 REDIS_PASS="${REDIS_PASSWORD:-your_redis_password_here}"
-# Force edge defaults (common.sh otherwise pins loss=1% / dup=1%).
+
 NETEM_DELAY="${EDGE_NETEM_DELAY:-5ms}"
 NETEM_LOSS="${EDGE_NETEM_LOSS:-0.3%}"
 NETEM_DUPLICATE="${EDGE_NETEM_DUPLICATE:-0%}"
@@ -51,7 +47,7 @@ require_cmd docker taskset curl python3
 [[ -x "${ROOT}/bin/bpf-collector" ]] || die "missing ${ROOT}/bin/bpf-collector"
 [[ -f "${ROOT}/deploy/dev/bpf/loadtest_probe.o" ]] || die "missing BPF object (make bpf-dev)"
 
-PRIV_CTR="${PRIV_CTR:-espx-purgatory-priv}"
+PRIV_CTR="${PRIV_CTR:-ad-event-processor-purgatory-priv}"
 
 ensure_priv() {
   if docker inspect -f '{{.State.Running}}' "$PRIV_CTR" 2> /dev/null | grep -q true; then
@@ -101,7 +97,7 @@ snapshot_listen() {
   local dest=$1
   {
     echo "# at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-    # Prefer nstat absolute counters when available.
+
     nstat -az 2> /dev/null | rg 'ListenOverflows|ListenDrops|TCPBacklogDrop|SyncookiesFailed|TCPFastOpenListenOverflow' || true
     ss -ltn 2> /dev/null | rg ':8181|:8180' || true
   } > "$dest"
@@ -133,9 +129,6 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ---------------------------------------------------------------------------
-# 1) Tracker with prod-like FILTER_TIMEOUT + LOCAL_QUOTA=off
-# ---------------------------------------------------------------------------
 OVERRIDES="${OUT}/compose.edge.yaml"
 cat > "$OVERRIDES" << EOF
 services:
@@ -151,9 +144,6 @@ EOF
 
 COMPOSE=(docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" -f "$OVERRIDES")
 
-# ---------------------------------------------------------------------------
-# 2) Degrade network FIRST, then recreate listener so somaxconn binds
-# ---------------------------------------------------------------------------
 log "netem delay=${NETEM_DELAY} loss=${NETEM_LOSS} dup=${NETEM_DUPLICATE}; somaxconn=128"
 priv "tc qdisc del dev lo root 2>/dev/null || true
 tc qdisc add dev lo root netem delay ${NETEM_DELAY} loss ${NETEM_LOSS} duplicate ${NETEM_DUPLICATE}
@@ -206,12 +196,9 @@ kill -0 "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || {
   echo $! > "${OUT}/stress-ng.pid"
 }
 
-# ---------------------------------------------------------------------------
-# 3) eBPF
-# ---------------------------------------------------------------------------
 BPF_DIR="${OUT}/bpf"
 mkdir -p "$BPF_DIR"
-ESPX_BPF_NATIVE=1 ESPX_BPF_TRACK_LOADGEN=1 ESPX_BPF_LOADGEN_COMM=wrk \
+AD_EVENT_PROCESSOR_BPF_NATIVE=1 AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN=1 AD_EVENT_PROCESSOR_BPF_LOADGEN_COMM=wrk \
   bash "${SCRIPTS}/test/bpf_resolve_targets.sh" "${BPF_DIR}/targets.json" tracker,nginx,redis,processor
 
 log "bpf-collector start"
@@ -220,8 +207,8 @@ cd ${ROOT}
 nohup ./bin/bpf-collector \
   -session-dir ${BPF_DIR} \
   -bpf-object ${ROOT}/deploy/dev/bpf/loadtest_probe.o \
-  -sample-rate ${ESPX_BPF_SAMPLE_RATE:-10} \
-  -slow-us ${ESPX_BPF_SLOW_US:-10000} \
+  -sample-rate ${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10} \
+  -slow-us ${AD_EVENT_PROCESSOR_BPF_SLOW_US:-10000} \
   -discover-loadgen=true \
   -loadgen-comms wrk \
   -dump-interval 10s \
@@ -239,9 +226,6 @@ done
 date -u +%Y-%m-%dT%H:%M:%SZ > ${BPF_DIR}/collector.ready
 "
 
-# ---------------------------------------------------------------------------
-# 4) Load + mid-flight injectors
-# ---------------------------------------------------------------------------
 BODY='{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}'
 LUA_KA="${OUT}/track_ka.lua"
 LUA_CLOSE="${OUT}/track_close.lua"
@@ -284,7 +268,6 @@ set +e
 WRK_PID=$!
 set -e
 
-# Mid-flight: close-burst (accept pressure) then SCRIPT FLUSH (NOSCRIPT herd)
 (
   sleep "$BURST_AT_SEC"
   date -u +%Y-%m-%dT%H:%M:%SZ > "${OUT}/burst.at"
@@ -310,7 +293,7 @@ BURST_BG=$!
       echo "flush_out=${out}"
       echo "flush_ec=$?"
     fi
-    # Optional brief event-loop stall if DEBUG allowed.
+
     if dout="$(docker exec "$REDIS_SHARD_CTR" redis-cli -a "$REDIS_PASS" --no-auth-warning DEBUG SLEEP 0.05 2>&1)" \
       && ! grep -qiE 'ERR|error' <<< "$dout"; then
       echo "debug_sleep=ok out=${dout}"
@@ -332,7 +315,6 @@ wait "$FLUSH_BG" 2> /dev/null || true
 snapshot_listen "${OUT}/listen.after.txt"
 snapshot_tracker_metrics "${OUT}/metrics.after.txt"
 
-# Lua quantiles
 python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" << 'PY' || true
 import re, json, sys
 from pathlib import Path
@@ -364,7 +346,6 @@ Path(sys.argv[2]).write_text(json.dumps(out, indent=2))
 print(json.dumps(out, indent=2))
 PY
 
-# NOSCRIPT delta
 python3 - "${OUT}/metrics.before.txt" "${OUT}/metrics.after.txt" "${OUT}/noscript.delta.txt" << 'PY' || true
 import re, sys
 from pathlib import Path
@@ -383,7 +364,6 @@ PY
 docker inspect -f '{{.State.Status}} OOM={{.State.OOMKilled}} Exit={{.State.ExitCode}}' "$TRACKER_CTR" \
   | tee "${OUT}/tracker.state.txt"
 
-# Stop BPF + reports
 if [[ -f "${BPF_DIR}/collector.pid" ]]; then
   BPID="$(cat "${BPF_DIR}/collector.pid")"
   priv "kill -TERM ${BPID} 2>/dev/null || true

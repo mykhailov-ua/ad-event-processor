@@ -6,8 +6,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 OUT_JSON="${1:?targets.json path required}"
 WANT="${2:-tracker,nginx,redis,processor}"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-SAMPLE_RATE="${ESPX_BPF_SAMPLE_RATE:-1}"
-NATIVE="${ESPX_BPF_NATIVE:-0}"
+SAMPLE_RATE="${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-1}"
+NATIVE="${AD_EVENT_PROCESSOR_BPF_NATIVE:-0}"
 
 mkdir -p "$(dirname "$OUT_JSON")"
 
@@ -94,7 +94,7 @@ resolve_native_defaults() {
 
 resolve_native_custom() {
   local spec item role pattern
-  spec="${ESPX_BPF_NATIVE_PATTERNS:-}"
+  spec="${AD_EVENT_PROCESSOR_BPF_NATIVE_PATTERNS:-}"
   [[ -z "$spec" ]] && return 0
   IFS=',' read -r -a items <<< "$spec"
   for item in "${items[@]}"; do
@@ -107,7 +107,7 @@ resolve_native_custom() {
 
 parse_extra_targets() {
   local spec item pid role name
-  spec="${ESPX_BPF_EXTRA_TARGETS:-}"
+  spec="${AD_EVENT_PROCESSOR_BPF_EXTRA_TARGETS:-}"
   [[ -z "$spec" ]] && return 0
   IFS=',' read -r -a items <<< "$spec"
   for item in "${items[@]}"; do
@@ -121,20 +121,20 @@ parse_extra_targets() {
 }
 
 if [[ "$WANT" == *tracker* ]]; then
-  for pat in 'espx-tracker-0' 'espx-tracker-1' 'tracker-0' 'tracker-1'; do
+  for pat in 'ad-event-processor-tracker-0' 'ad-event-processor-tracker-1' 'tracker-0' 'tracker-1'; do
     resolve_container "$pat" "$role_tracker" || true
   done
 fi
 if [[ "$WANT" == *nginx* ]]; then
-  resolve_container 'espx-nginx' "$role_nginx" || true
+  resolve_container 'ad-event-processor-nginx' "$role_nginx" || true
 fi
 if [[ "$WANT" == *redis* ]]; then
   for i in 0 1 2 3; do
-    resolve_container "espx-redis-${i}" "$role_redis" || true
+    resolve_container "ad-event-processor-redis-${i}" "$role_redis" || true
   done
 fi
 if [[ "$WANT" == *processor* ]]; then
-  resolve_container 'espx-processor' "$role_processor" || true
+  resolve_container 'ad-event-processor-processor' "$role_processor" || true
 fi
 
 if [[ "$NATIVE" == "1" ]]; then
@@ -146,7 +146,7 @@ parse_extra_targets
 
 entries="${entries%,}"
 if [[ -z "$entries" ]]; then
-  printf 'bpf-resolve-targets: WARN no PIDs found (stack running? set ESPX_BPF_NATIVE=1 or ESPX_BPF_EXTRA_TARGETS)\n' >&2
+  printf 'bpf-resolve-targets: WARN no PIDs found (stack running? set AD_EVENT_PROCESSOR_BPF_NATIVE=1 or AD_EVENT_PROCESSOR_BPF_EXTRA_TARGETS)\n' >&2
 fi
 
 cat > "$OUT_JSON" << EOF

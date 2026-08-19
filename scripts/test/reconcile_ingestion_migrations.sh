@@ -22,10 +22,10 @@ psql_exec() {
 
 log "marking 00020 applied when campaigns.budget_limit is already bigint"
 psql_exec -v ON_ERROR_STOP=1 << 'SQL'
-INSERT INTO public.espx_migrations (filename)
+INSERT INTO public.ad_event_processor_migrations (filename)
 SELECT '00020_change_money_to_bigint.sql'
 WHERE NOT EXISTS (
-    SELECT 1 FROM public.espx_migrations WHERE filename = '00020_change_money_to_bigint.sql'
+    SELECT 1 FROM public.ad_event_processor_migrations WHERE filename = '00020_change_money_to_bigint.sql'
 )
 AND EXISTS (
     SELECT 1

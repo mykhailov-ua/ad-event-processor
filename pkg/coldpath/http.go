@@ -81,16 +81,16 @@ func CloseHTTPResponse(resp *http.Response) {
 	_ = resp.Body.Close()
 }
 
-func ParseAPIPagination(r *http.Request) (int32, int32) {
+func ParseAPIPagination(r *http.Request) (limit, maxLimit int32) {
 	return ParseAPIPaginationWith(r, 50, 1000)
 }
 
-func ParseAPIPaginationWith(r *http.Request, defaultLimit, maxLimit int32) (int32, int32) {
-	limit := defaultLimit
+func ParseAPIPaginationWith(r *http.Request, defaultLimit, maxLimit int32) (limit, offset int32) {
+	limit = defaultLimit
 	if l, err := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 32); err == nil && l > 0 {
 		limit = int32(l)
 	}
-	offset := int32(0)
+	offset = 0
 	if o, err := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 32); err == nil && o > 0 {
 		offset = int32(o)
 	}

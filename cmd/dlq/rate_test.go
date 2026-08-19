@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func setupRateTestRedis(t *testing.T) (*redis.Client, func()) {
+func setupRateTestRedis(t *testing.T) (rdb *redis.Client, cleanup func()) {
 	ctx := context.Background()
 
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
@@ -30,14 +30,15 @@ func setupRateTestRedis(t *testing.T) (*redis.Client, func()) {
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb = redis.NewClient(&redis.Options{
 		Addr: endpoint,
 	})
 
-	return rdb, func() {
+	cleanup = func() {
 		_ = rdb.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
+	return
 }
 
 func TestRequeueDLQ_RateLimiting(t *testing.T) {

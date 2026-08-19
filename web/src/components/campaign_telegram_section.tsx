@@ -288,7 +288,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
           </label>
           {ingestUrl ? (
             <div className="toolbar-row text-sm">
-              <span className="text-muted">BidShard ingest URL:</span>
+              <span className="text-muted">ad-event-processor ingest URL:</span>
               <code className="code-inline flex-1">{ingestUrl}</code>
               <Button
                 label="Copy"

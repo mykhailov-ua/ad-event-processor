@@ -6,7 +6,7 @@ source "$SCRIPTS/lib/bpf_collector.sh"
 cd "$ROOT"
 
 CMD="${1:-status}"
-SESSION_ROOT="${ESPX_BPF_SESSION_ROOT:-$ROOT/var/bpf-session}"
+SESSION_ROOT="${AD_EVENT_PROCESSOR_BPF_SESSION_ROOT:-$ROOT/var/bpf-session}"
 CURRENT_LINK="$SESSION_ROOT/current"
 CURRENT_PATH_FILE="$SESSION_ROOT/current_path"
 
@@ -32,11 +32,11 @@ case "$CMD" in
       OUT="$SESSION_ROOT/$OUT"
     fi
     mkdir -p "$OUT"
-    export ESPX_BPF_NATIVE="${ESPX_BPF_NATIVE:-1}"
-    export ESPX_BPF_TRACK_LOADGEN="${ESPX_BPF_TRACK_LOADGEN:-0}"
-    export ESPX_BPF_DUMP_INTERVAL="${ESPX_BPF_DUMP_INTERVAL:-30}"
-    export ESPX_BPF_REFRESH_TARGETS="${ESPX_BPF_REFRESH_TARGETS:-30}"
-    export ESPX_BPF_METRICS_ADDR="${ESPX_BPF_METRICS_ADDR:-:9464}"
+    export AD_EVENT_PROCESSOR_BPF_NATIVE="${AD_EVENT_PROCESSOR_BPF_NATIVE:-1}"
+    export AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN="${AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN:-0}"
+    export AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL="${AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL:-30}"
+    export AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS="${AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS:-30}"
+    export AD_EVENT_PROCESSOR_BPF_METRICS_ADDR="${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR:-:9464}"
     bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT"
     if [[ ! -f "$OUT/bpf/collector.ready" ]]; then
       log "ERROR: bpf collector did not start — see $OUT/bpf/collector.log"
@@ -46,7 +46,7 @@ case "$CMD" in
     ln -sfn "$(basename "$OUT")" "$CURRENT_LINK"
     printf '%s\n' "$OUT" > "$CURRENT_PATH_FILE"
     log "session started: $OUT"
-    log "metrics: ${ESPX_BPF_METRICS_ADDR} (/metrics)"
+    log "metrics: ${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR} (/metrics)"
     log "stop: bash scripts/dev/bpf_session.sh stop"
     ;;
   stop)
@@ -81,7 +81,7 @@ case "$CMD" in
   report)
     OUT="$(resolve_out_dir "${2:-}")"
     source "$SCRIPTS/lib/go.sh"
-    if ! espx_go_run ./cmd/load-report bpf "$OUT"; then
+    if ! ad_event_processor_go_run ./cmd/load-report bpf "$OUT"; then
       log "ERROR: report failed (go missing or no bpf/maps/summary.json)"
       exit 1
     fi

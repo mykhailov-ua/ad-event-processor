@@ -51,7 +51,7 @@ func WriteBidsHTTPResponse(buf []byte, w BidResponseWire, opts HTTPWriteOpts) (i
 	return writeHTTP200JSONGzip(buf, jsonEnd)
 }
 
-func WriteNoBidHTTPResponse(buf []byte, requestID []byte, nbr int, opts HTTPWriteOpts) (int, error) {
+func WriteNoBidHTTPResponse(buf, requestID []byte, nbr int, opts HTTPWriteOpts) (int, error) {
 	if !opts.Gzip {
 		if len(buf) < BidHTTPHdrSize+16 {
 			return 0, ErrBodyTooLarge
@@ -98,7 +98,7 @@ func writeHTTP200JSONGzip(buf, jsonBody []byte) (int, error) {
 	return bodyOff + compLen, nil
 }
 
-func WriteJSONHTTPResponse(buf []byte, body []byte, opts HTTPWriteOpts) (int, error) {
+func WriteJSONHTTPResponse(buf, body []byte, opts HTTPWriteOpts) (int, error) {
 	return writeHTTP200JSON(buf, body, opts)
 }
 
@@ -116,7 +116,7 @@ func writeBid200Header(buf []byte, gzip bool) {
 	copy(buf[n+bidHTTPContentLenDigits:], bidHTTPHdrSuffix)
 }
 
-func patchContentLength12(buf []byte, off int, n int) {
+func patchContentLength12(buf []byte, off, n int) {
 	for i := bidHTTPContentLenDigits - 1; i >= 0; i-- {
 		buf[off+i] = byte('0' + n%10)
 		n /= 10

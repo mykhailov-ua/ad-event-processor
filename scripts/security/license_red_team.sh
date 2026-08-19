@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Automates P0 license bypass scenarios (S0.5–S0.7). Requires Docker for integration tests.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

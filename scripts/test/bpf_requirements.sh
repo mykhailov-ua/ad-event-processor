@@ -2,7 +2,7 @@
 set -euo pipefail
 
 _SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-# shellcheck source=../lib/go.sh
+
 source "$_SCRIPTS/lib/go.sh"
 
 ok=0
@@ -50,10 +50,10 @@ else
 fi
 
 GO_BIN=""
-if GO_BIN="$(espx_go_bin 2> /dev/null)"; then
+if GO_BIN="$(ad_event_processor_go_bin 2> /dev/null)"; then
   check go "$GO_BIN" version
 else
-  printf 'bpf-requirements: FAIL go (set ESPX_GO_BIN)\n' >&2
+  printf 'bpf-requirements: FAIL go (set AD_EVENT_PROCESSOR_GO_BIN)\n' >&2
   ok=1
 fi
 warn_check clang clang --version

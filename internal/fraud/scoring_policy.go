@@ -127,11 +127,11 @@ func AdjustProbabilityWithConfig(row FeatureRow, mlProbability float64, cfg Poli
 	return prob, proxy, structural, fpGuard
 }
 
-func AdjustProbability(row FeatureRow, mlProbability float64) (float64, bool, bool, bool) {
+func AdjustProbability(row FeatureRow, mlProbability float64) (probability float64, pass, suspect, block bool) {
 	return AdjustProbabilityWithConfig(row, mlProbability, GetPolicyConfig())
 }
 
-func MapProbabilityTierWithThresholds(probability float64, pass, suspect, ivt, block uint8) (FraudTier, int) {
+func MapProbabilityTierWithThresholds(probability float64, pass, suspect, ivt, block uint8) (tier FraudTier, clamped int) {
 	score := ProbabilityToFraudScore(probability)
 	if pass == 0 {
 		pass = domain.DefaultFraudThresholdPass

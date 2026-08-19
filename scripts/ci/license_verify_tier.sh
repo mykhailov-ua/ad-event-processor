@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Licensing verification tiers (baseline / crypto / entanglement / release).
-# Skips print reason and exit 0; failures exit 1.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

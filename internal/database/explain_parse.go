@@ -167,7 +167,8 @@ func AnalyzeExplainPlan(queryName string, plan ExplainPlan, hotPath bool, smallT
 			Message:  fmt.Sprintf("execution time %.2f ms exceeds %.0f ms budget", plan.ExecutionTimeMS, execLimit),
 		})
 	}
-	for _, n := range plan.Nodes {
+	for i := range plan.Nodes {
+		n := &plan.Nodes[i]
 		if n.NodeType == "Seq Scan" && n.ActualRows > smallTableRows {
 			if n.RowsRemoved > n.ActualRows {
 				out = append(out, ExplainFinding{

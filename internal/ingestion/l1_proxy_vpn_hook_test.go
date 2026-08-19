@@ -53,7 +53,7 @@ func TestClickRedirect_L15Match_SafeView(t *testing.T) {
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
-	require.Contains(t, resp, "X-BidShard-Safe-View: l15")
+	require.Contains(t, resp, "X-ad-event-processor-Safe-View: l15")
 	require.Greater(t, len(conn.Written()), len("HTTP/1.1 200 OK\r\n\r\n")+64)
 	require.Equal(t, 0, filter.calls)
 }
@@ -64,7 +64,7 @@ func TestClickRedirect_L15NoMatch_FallsThrough(t *testing.T) {
 	h.ConfigureProxyVPN(buildTestProxyVPNTable(t, "54.0.0.0/8 16509 vpn"))
 
 	conn := serveClickFromIP(h, cid, "8.8.8.8")
-	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View: l15")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 1, filter.calls)
 }
 
@@ -74,7 +74,7 @@ func TestClickRedirect_L15ISPOnly_NoSafeView(t *testing.T) {
 	h.ConfigureProxyVPN(buildTestProxyVPNTable(t, "54.0.0.0/8 12345 isp"))
 
 	conn := serveClickFromIP(h, cid, "54.1.2.3")
-	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View: l15")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 1, filter.calls)
 }
 
@@ -84,7 +84,7 @@ func TestClickRedirect_L15CampaignDisabled_FallsThrough(t *testing.T) {
 	h.ConfigureProxyVPN(buildTestProxyVPNTable(t, "54.0.0.0/8 16509 vpn"))
 
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
-	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View: l15")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 1, filter.calls)
 }
 
@@ -92,7 +92,7 @@ func TestClickRedirect_L15TableNil_FailOpen(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := l15HookHandler(t, true, filter)
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
-	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View: l15")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 1, filter.calls)
 }
 
@@ -103,7 +103,7 @@ func TestClickRedirect_L15RunsAfterL1Miss(t *testing.T) {
 	h.ConfigureProxyVPN(buildTestProxyVPNTable(t, "54.0.0.0/8 16509 vpn"))
 
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
-	require.Contains(t, string(conn.Written()), "X-BidShard-Safe-View: l15")
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 0, filter.calls)
 }
 
@@ -114,7 +114,7 @@ func TestClickRedirect_L15RunsAfterL1Hit(t *testing.T) {
 	h.ConfigureProxyVPN(buildTestProxyVPNTable(t, "54.0.0.0/8 16509 vpn"))
 
 	conn := serveClickFromIP(h, cid, "54.230.17.9")
-	require.Contains(t, string(conn.Written()), "X-BidShard-Safe-View: l1")
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l1")
 	require.Equal(t, 0, filter.calls)
 }
 

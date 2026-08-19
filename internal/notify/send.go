@@ -329,7 +329,7 @@ func sendProvider(ctx context.Context, cfg Config, breakers Breakers, provider d
 	}
 }
 
-func postJSON(ctx context.Context, client *http.Client, url string, payload any) ([]byte, int, error) {
+func postJSON(ctx context.Context, client *http.Client, url string, payload any) (body []byte, status int, err error) {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return nil, 0, err

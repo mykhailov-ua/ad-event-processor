@@ -13,8 +13,8 @@ type redisStub struct {
 	err  error
 }
 
-func (s *redisStub) SMembers(_ context.Context, key string) *redis.StringSliceCmd {
-	cmd := redis.NewStringSliceCmd(context.Background())
+func (s *redisStub) SMembers(ctx context.Context, key string) *redis.StringSliceCmd {
+	cmd := redis.NewStringSliceCmd(ctx)
 	if s.err != nil {
 		cmd.SetErr(s.err)
 		return cmd
@@ -35,6 +35,6 @@ func newLPMMap(t *testing.T) *ebpf.Map {
 	if err != nil {
 		t.Skipf("BPF map unavailable: %v", err)
 	}
-	t.Cleanup(func() { m.Close() })
+	t.Cleanup(func() { _ = m.Close() })
 	return m
 }

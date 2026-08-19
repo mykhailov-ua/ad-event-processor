@@ -30,9 +30,7 @@ export type FraudDecision = {
   campaign_thresholds: FraudDecisionThresholds;
 };
 
-/**
- * Look up a replayed fraud decision for a hashed IP in the customer scope.
- */
+
 export async function fetchFraudDecision(
   customerId: string,
   params: { ip_hash: string; campaign_id?: string; hours?: number }
@@ -55,9 +53,7 @@ export async function fetchFraudDecision(
   return res.data ?? null;
 }
 
-/**
- * Human-readable tier label for fraud decision cards.
- */
+
 export function fraudDecisionTierLabel(tier: string): string {
   switch (tier) {
     case 'pass':
@@ -79,9 +75,7 @@ export type FraudOverrideRequest = {
   ip_hash?: string;
 };
 
-/**
- * Clear campaign ML boost and/or remove a false-positive fraud blacklist entry.
- */
+
 export async function postFraudOverride(
   customerId: string,
   body: FraudOverrideRequest

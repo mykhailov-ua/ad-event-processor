@@ -9,7 +9,7 @@ var (
 	metricsBound atomic.Bool
 )
 
-func BindMetrics(rate func(float64), queueDepth func(float64), lagObserve func(float64)) {
+func BindMetrics(rate, queueDepth, lagObserve func(float64)) {
 	rateFn = rate
 	queueDepthFn = queueDepth
 	lagObserveFn = lagObserve

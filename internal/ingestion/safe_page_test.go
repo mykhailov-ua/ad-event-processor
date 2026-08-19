@@ -129,8 +129,8 @@ func TestParseSafePageStubCampaignID(t *testing.T) {
 }
 
 func TestHttp1MatchForceSafeHeader(t *testing.T) {
-	assert.True(t, http1MatchForceSafeHeader([]byte("X-BidShard-Force-Safe")))
-	assert.False(t, http1MatchForceSafeHeader([]byte("X-BidShard-Safe-Page")))
+	assert.True(t, http1MatchForceSafeHeader([]byte("X-ad-event-processor-Force-Safe")))
+	assert.False(t, http1MatchForceSafeHeader([]byte("X-ad-event-processor-Safe-Page")))
 }
 
 func TestHttp1ForceSafeValue(t *testing.T) {

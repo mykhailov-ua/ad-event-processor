@@ -62,7 +62,10 @@ func tonicFetchEPCDaily(ctx context.Context, client *http.Client, base string, c
 		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		return nil, fmt.Errorf("tonic epc/daily: read body: %w", err)
@@ -127,7 +130,10 @@ func tonicFetchStatsByCountry(ctx context.Context, client *http.Client, base str
 		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		return nil, fmt.Errorf("tonic stats_by_country: read body: %w", err)
@@ -208,7 +214,10 @@ func fetchSystem1RSOCCosts(ctx context.Context, client *http.Client, baseURL str
 		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		return nil, fmt.Errorf("system1 rsoc: read body: %w", err)

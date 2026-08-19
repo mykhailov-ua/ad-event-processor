@@ -11,7 +11,7 @@ func TestParseCommand(t *testing.T) {
 	require.Equal(t, "trial", cmd)
 	require.Empty(t, args)
 
-	cmd, args = parseCommand("/start@BidShardBot hello")
+	cmd, args = parseCommand("/start@ad-event-processorBot hello")
 	require.Equal(t, "start", cmd)
 	require.Equal(t, "hello", args)
 

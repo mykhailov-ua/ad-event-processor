@@ -156,21 +156,21 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 	iter := m.Iterate()
 	for iter.Next(&key, &perCPU) {
 		var agg PIDStats
-		for _, v := range perCPU {
-			agg.CtxSwitchOut += v.CtxSwitchOut
-			agg.CtxSwitchIn += v.CtxSwitchIn
-			agg.VoluntaryCtx += v.VoluntaryCtx
-			agg.InvoluntaryCtx += v.InvoluntaryCtx
-			agg.RunqueueNs += v.RunqueueNs
-			agg.RunqueueSamples += v.RunqueueSamples
-			agg.OnCPUNs += v.OnCPUNs
-			agg.MinorFaults += v.MinorFaults
-			agg.FdOpen += v.FdOpen
-			agg.FdClose += v.FdClose
-			agg.SocketOpen += v.SocketOpen
-			agg.SocketAccept += v.SocketAccept
-			agg.ThreadFork += v.ThreadFork
-			agg.ThreadExit += v.ThreadExit
+		for i := range perCPU {
+			agg.CtxSwitchOut += perCPU[i].CtxSwitchOut
+			agg.CtxSwitchIn += perCPU[i].CtxSwitchIn
+			agg.VoluntaryCtx += perCPU[i].VoluntaryCtx
+			agg.InvoluntaryCtx += perCPU[i].InvoluntaryCtx
+			agg.RunqueueNs += perCPU[i].RunqueueNs
+			agg.RunqueueSamples += perCPU[i].RunqueueSamples
+			agg.OnCPUNs += perCPU[i].OnCPUNs
+			agg.MinorFaults += perCPU[i].MinorFaults
+			agg.FdOpen += perCPU[i].FdOpen
+			agg.FdClose += perCPU[i].FdClose
+			agg.SocketOpen += perCPU[i].SocketOpen
+			agg.SocketAccept += perCPU[i].SocketAccept
+			agg.ThreadFork += perCPU[i].ThreadFork
+			agg.ThreadExit += perCPU[i].ThreadExit
 		}
 		name, role := r.lookupTarget(key, agg.Role)
 		row := dumpedPIDStats{
@@ -226,7 +226,7 @@ func (r *probeRun) aggregatePIDStats(durationSec float64) ([]dumpedPIDStats, err
 	return out, nil
 }
 
-func (r *probeRun) lookupTarget(pid uint32, role uint8) (string, uint8) {
+func (r *probeRun) lookupTarget(pid uint32, role uint8) (name string, outRole uint8) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if t, ok := r.tracked[pid]; ok {
@@ -256,8 +256,8 @@ func (r *probeRun) aggregateSyscalls() ([]dumpedSyscall, error) {
 		if merged[k] == nil {
 			merged[k] = &acc{}
 		}
-		for _, h := range perCPU {
-			mergeHist(&merged[k].hist, h)
+		for i := range perCPU {
+			mergeHist(&merged[k].hist, &perCPU[i])
 		}
 		_, merged[k].role = r.lookupTarget(key.PID, 0)
 	}
@@ -286,7 +286,7 @@ func (r *probeRun) aggregateSyscalls() ([]dumpedSyscall, error) {
 			Count:     a.hist.Count,
 			SumNs:     a.hist.SumNs,
 			AvgUs:     avgUs,
-			P99Us:     histP99Us(a.hist),
+			P99Us:     histP99Us(&a.hist),
 			MaxUs:     float64(a.hist.MaxNs) / 1000,
 		}
 		if totalWall > 0 {
@@ -297,7 +297,7 @@ func (r *probeRun) aggregateSyscalls() ([]dumpedSyscall, error) {
 	return rows, nil
 }
 
-func mergeHist(dst *Hist, src Hist) {
+func mergeHist(dst, src *Hist) {
 	dst.Count += src.Count
 	dst.SumNs += src.SumNs
 	if src.MaxNs > dst.MaxNs {
@@ -308,7 +308,7 @@ func mergeHist(dst *Hist, src Hist) {
 	}
 }
 
-func histP99Us(h Hist) float64 {
+func histP99Us(h *Hist) float64 {
 	if h.Count == 0 {
 		return 0
 	}
@@ -378,10 +378,10 @@ func (r *probeRun) enrichRunqueueP99(stats []dumpedPIDStats) {
 			continue
 		}
 		var agg Hist
-		for _, h := range perCPU {
-			mergeHist(&agg, h)
+		for j := range perCPU {
+			mergeHist(&agg, &perCPU[j])
 		}
-		stats[i].RunqueueP99Us = histP99Us(agg)
+		stats[i].RunqueueP99Us = histP99Us(&agg)
 	}
 }
 
@@ -423,8 +423,8 @@ func (r *probeRun) aggregateMarkers() ([]dumpedMarker, error) {
 	iter := m.Iterate()
 	for iter.Next(&key, &perCPU) {
 		var agg Hist
-		for _, h := range perCPU {
-			mergeHist(&agg, h)
+		for i := range perCPU {
+			mergeHist(&agg, &perCPU[i])
 		}
 		if agg.Count == 0 {
 			continue
@@ -439,7 +439,7 @@ func (r *probeRun) aggregateMarkers() ([]dumpedMarker, error) {
 			CampaignSlot: key.CampaignSlot,
 			Count:        agg.Count,
 			AvgUs:        avgUs,
-			P99Us:        histP99Us(agg),
+			P99Us:        histP99Us(&agg),
 			MaxUs:        float64(agg.MaxNs) / 1000,
 		})
 	}

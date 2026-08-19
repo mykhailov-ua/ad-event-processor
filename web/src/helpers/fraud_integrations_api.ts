@@ -13,18 +13,14 @@ export type FraudIntegrationRow = {
   last_error?: string;
 };
 
-/**
- * List postback/CAPI integration health for a customer scope.
- */
+
 export async function fetchFraudIntegrations(customerId: string): Promise<FraudIntegrationRow[]> {
   const qs = new URLSearchParams({ customer_id: customerId });
   const res = await api<FraudIntegrationRow[]>(`/api/v1/fraud/integrations?${qs.toString()}`);
   return Array.isArray(res.data) ? res.data : [];
 }
 
-/**
- * Human-readable label for integration health status badges.
- */
+
 export function fraudIntegrationStatusLabel(status: FraudIntegrationHealthStatus): string {
   switch (status) {
     case 'configured':
@@ -40,9 +36,7 @@ export function fraudIntegrationStatusLabel(status: FraudIntegrationHealthStatus
   }
 }
 
-/**
- * Map integration health status to StatusBadge status.
- */
+
 export function fraudIntegrationBadgeStatus(
   status: FraudIntegrationHealthStatus
 ): 'ok' | 'warning' | 'failed' | 'pending' {

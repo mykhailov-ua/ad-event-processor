@@ -17,7 +17,7 @@ import (
 
 const chJanitorTestImage = "clickhouse/clickhouse-server:24.3-alpine"
 
-func setupCHJanitorIntegration(t *testing.T) (driver.Conn, func()) {
+func setupCHJanitorIntegration(t *testing.T) (conn driver.Conn, cleanup func()) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("clickhouse integration test (run in make test-full / CI full-test)")
@@ -46,13 +46,13 @@ func setupCHJanitorIntegration(t *testing.T) (driver.Conn, func()) {
 	}
 	opts.DialTimeout = 10 * time.Second
 
-	conn, err := chgo.Open(opts)
+	conn, err = chgo.Open(opts)
 	require.NoError(t, err)
 	require.Eventually(t, func() bool {
 		return conn.Ping(context.Background()) == nil
 	}, 30*time.Second, 500*time.Millisecond, "clickhouse ping")
 
-	cleanup := func() {
+	cleanup = func() {
 		_ = conn.Close()
 		_ = chContainer.Terminate(ctx)
 	}
@@ -101,7 +101,7 @@ func TestCHPartitionJanitor_Recompress_RealCH(t *testing.T) {
 	require.NoError(t, conn.Exec(ctx, `SYSTEM START MERGES impressions`))
 
 	offPeak := time.Date(2026, 1, 1, 3, 0, 0, 0, time.UTC)
-	j := NewCHPartitionJanitor(conn, CHJanitorOptions{
+	j := NewCHPartitionJanitor(conn, &CHJanitorOptions{
 		RecompressPartsThreshold: 8,
 		OffPeakStartHourUTC:      2,
 		OffPeakEndHourUTC:        6,
@@ -121,7 +121,7 @@ func TestCHPartitionJanitor_EmergencyDrop_RealCH(t *testing.T) {
 	insertImpressionPart(t, conn, "emergency-drop-"+uuid.NewString(), oldMonth)
 
 	var alerted bool
-	j := NewCHPartitionJanitor(conn, CHJanitorOptions{
+	j := NewCHPartitionJanitor(conn, &CHJanitorOptions{
 		EmergencyDropPercent: 90,
 		DiskUsedPercentFn: func(context.Context) (float64, error) {
 			return 95.0, nil
@@ -152,7 +152,7 @@ func TestCHPartitionJanitor_RetentionDrop_RealCH(t *testing.T) {
 	oldMonth := time.Date(2020, 1, 15, 0, 0, 0, 0, time.UTC)
 	insertImpressionPart(t, conn, "retention-"+uuid.NewString(), oldMonth)
 
-	j := NewCHPartitionJanitor(conn, CHJanitorOptions{RetentionDays: 180})
+	j := NewCHPartitionJanitor(conn, &CHJanitorOptions{RetentionDays: 180})
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	require.NoError(t, j.runRetentionDrop(ctx))

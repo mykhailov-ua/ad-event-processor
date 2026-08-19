@@ -36,7 +36,7 @@ func NewCSRFMiddleware(adminAPIKey string) func(http.Handler) http.Handler {
 				}
 
 				if len(adminKeyBytes) > 0 {
-					if key := r.Header.Get("X-Admin-API-Key"); len(key) > 0 &&
+					if key := r.Header.Get("X-Admin-API-Key"); key != "" &&
 						subtle.ConstantTimeCompare([]byte(key), adminKeyBytes) == 1 {
 						next.ServeHTTP(w, r)
 						return

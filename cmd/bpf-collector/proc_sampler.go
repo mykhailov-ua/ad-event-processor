@@ -42,6 +42,12 @@ type procSamplePeak struct {
 	SocketAccept uint64  `json:"socket_accept"`
 	ThreadFork   uint64  `json:"thread_fork"`
 	ThreadExit   uint64  `json:"thread_exit"`
+	StartRSSKB   uint64  `json:"start_rss_kb"`
+	EndRSSKB     uint64  `json:"end_rss_kb"`
+	PeakRSSKB    uint64  `json:"peak_rss_kb"`
+	RSSDelta     int64   `json:"rss_delta"`
+	MinFlt       uint64  `json:"min_flt"`
+	MajFlt       uint64  `json:"maj_flt"`
 }
 
 func (r *probeRun) procSampleLoop(ctx context.Context) {
@@ -115,6 +121,11 @@ func aggregateProcSamples(sessionDir string, durationSec float64, bpfStats []dum
 		lastFD       uint64
 		firstThreads uint64
 		lastThreads  uint64
+		firstRSS     uint64
+		lastRSS      uint64
+		peakRSS      uint64
+		minFlt       uint64
+		majFlt       uint64
 		count        uint64
 		seenFirst    bool
 	}
@@ -133,10 +144,12 @@ func aggregateProcSamples(sessionDir string, durationSec float64, bpfStats []dum
 		if !a.seenFirst {
 			a.firstFD = row.OpenFDs
 			a.firstThreads = row.Threads
+			a.firstRSS = row.VMRSSKB
 			a.seenFirst = true
 		}
 		a.lastFD = row.OpenFDs
 		a.lastThreads = row.Threads
+		a.lastRSS = row.VMRSSKB
 		a.count++
 		if row.OpenFDs > a.peakFD {
 			a.peakFD = row.OpenFDs
@@ -147,11 +160,20 @@ func aggregateProcSamples(sessionDir string, durationSec float64, bpfStats []dum
 		if row.Threads > a.peakThreads {
 			a.peakThreads = row.Threads
 		}
+		if row.VMRSSKB > a.peakRSS {
+			a.peakRSS = row.VMRSSKB
+		}
+		if row.MinFlt > a.minFlt {
+			a.minFlt = row.MinFlt
+		}
+		if row.MajFlt > a.majFlt {
+			a.majFlt = row.MajFlt
+		}
 	}
 
 	bpfByPID := map[uint32]dumpedPIDStats{}
-	for _, s := range bpfStats {
-		bpfByPID[s.PID] = s
+	for i := range bpfStats {
+		bpfByPID[bpfStats[i].PID] = bpfStats[i]
 	}
 
 	var out []procSamplePeak
@@ -168,6 +190,12 @@ func aggregateProcSamples(sessionDir string, durationSec float64, bpfStats []dum
 			FdDelta:      int64(a.lastFD) - int64(a.firstFD),
 			ThreadDelta:  int64(a.lastThreads) - int64(a.firstThreads),
 			SampleCount:  a.count,
+			StartRSSKB:   a.firstRSS,
+			EndRSSKB:     a.lastRSS,
+			PeakRSSKB:    a.peakRSS,
+			RSSDelta:     int64(a.lastRSS) - int64(a.firstRSS),
+			MinFlt:       a.minFlt,
+			MajFlt:       a.majFlt,
 		}
 		if st, ok := bpfByPID[pid]; ok && durationSec > 0 {
 			peak.FdOpenRate = float64(st.FdOpen) / durationSec
@@ -187,7 +215,8 @@ func peaksFromMemSnapshots(sessionDir string, bpfStats []dumpedPIDStats, duratio
 	memEnd := readMemSnap(filepath.Join(sessionDir, "mem-end.json"))
 
 	var out []procSamplePeak
-	for _, st := range bpfStats {
+	for i := range bpfStats {
+		st := &bpfStats[i]
 		peak := procSamplePeak{
 			PID:          st.PID,
 			Name:         st.Name,
@@ -202,9 +231,14 @@ func peaksFromMemSnapshots(sessionDir string, bpfStats []dumpedPIDStats, duratio
 			peak.PeakOpenFDs = s.OpenFDs
 			peak.PeakSocketFD = s.SocketFDs
 			peak.PeakThreads = s.Threads
+			peak.StartRSSKB = s.VMRSSKB
+			peak.PeakRSSKB = s.VMRSSKB
+			peak.MinFlt = s.MinFlt
+			peak.MajFlt = s.MajFlt
 		}
 		if e, ok := memEnd[st.PID]; ok {
 			peak.EndOpenFDs = e.OpenFDs
+			peak.EndRSSKB = e.VMRSSKB
 			if e.OpenFDs > peak.PeakOpenFDs {
 				peak.PeakOpenFDs = e.OpenFDs
 			}
@@ -214,8 +248,18 @@ func peaksFromMemSnapshots(sessionDir string, bpfStats []dumpedPIDStats, duratio
 			if e.Threads > peak.PeakThreads {
 				peak.PeakThreads = e.Threads
 			}
+			if e.VMRSSKB > peak.PeakRSSKB {
+				peak.PeakRSSKB = e.VMRSSKB
+			}
+			if e.MinFlt > peak.MinFlt {
+				peak.MinFlt = e.MinFlt
+			}
+			if e.MajFlt > peak.MajFlt {
+				peak.MajFlt = e.MajFlt
+			}
 		}
 		peak.FdDelta = int64(peak.EndOpenFDs) - int64(peak.StartOpenFDs)
+		peak.RSSDelta = int64(peak.EndRSSKB) - int64(peak.StartRSSKB)
 		if durationSec > 0 {
 			peak.FdOpenRate = st.FdOpenPerSec
 			peak.FdCloseRate = st.FdClosePerSec
@@ -235,8 +279,8 @@ func readMemSnap(path string) map[uint32]procMemSnapshot {
 	if json.Unmarshal(data, &snap) != nil {
 		return out
 	}
-	for _, p := range snap.Processes {
-		out[p.PID] = p
+	for i := range snap.Processes {
+		out[snap.Processes[i].PID] = snap.Processes[i]
 	}
 	return out
 }

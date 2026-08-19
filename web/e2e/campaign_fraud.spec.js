@@ -167,6 +167,8 @@ test.describe('Campaign fraud tab', () => {
     await page.getByTestId('fraud-threshold-fraud_threshold_pass').fill('25');
     await page.getByTestId('fraud-preview-impact').click();
     await expect(page.getByTestId('fraud-preview-panel')).toContainText('7');
-    await expect(page.getByTestId('fraud-preview-panel')).toContainText('estimate based on last 7d');
+    await expect(page.getByTestId('fraud-preview-panel')).toContainText(
+      'estimate based on last 7d'
+    );
   });
 });

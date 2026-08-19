@@ -2,7 +2,7 @@
 <VAST version="4.2">
   <Ad id="ad-linear-30s">
     <InLine>
-      <AdSystem>BidShard Test</AdSystem>
+      <AdSystem>ad-event-processor Test</AdSystem>
       <AdTitle>Linear 30s</AdTitle>
       <Creatives>
         <Creative id="cr-1001" sequence="1">

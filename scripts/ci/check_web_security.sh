@@ -14,7 +14,6 @@ if rg -l '\.jsx$' web/src 2> /dev/null | grep -q .; then
   exit 1
 fi
 
-# React imports allowed under pages/, components/, helpers/use_*.ts, and entry shells.
 react_violations=()
 while IFS= read -r file; do
   case "$file" in

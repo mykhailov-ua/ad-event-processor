@@ -21,9 +21,9 @@ func ledgerLineFromRow(row billingdb.ListCustomerLedgerInWindowRow) LedgerLineDT
 	}
 }
 
-func mapLedgerLines(rows []billingdb.ListCustomerLedgerInWindowRow, limit int32) ([]LedgerLineDTO, string) {
+func mapLedgerLines(rows []billingdb.ListCustomerLedgerInWindowRow, limit int32) (lines []LedgerLineDTO, nextCursor string) {
 	out := coldpath.MapSlice(rows, ledgerLineFromRow)
-	nextCursor := ""
+	nextCursor = ""
 	if int32(len(out)) == limit && len(out) > 0 {
 		nextCursor = fmt.Sprintf("%d", out[len(out)-1].ID)
 	}

@@ -56,14 +56,14 @@ func cohortPublicKeyPaths(kid string) []string {
 	}
 	var paths []string
 	if root := strings.TrimSpace(os.Getenv("ROOT")); root != "" {
-		paths = append(paths, filepath.Join(root, "deploy/vendor/keys", kid, "license_public.key"))
+		paths = append(paths, filepath.Join(root, "deploy", "vendor", "keys", kid, "license_public.key"))
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		paths = append(paths, filepath.Join(cwd, "deploy/vendor/keys", kid, "license_public.key"))
+		paths = append(paths, filepath.Join(cwd, "deploy", "vendor", "keys", kid, "license_public.key"))
 	}
 	paths = append(paths,
-		filepath.Join("deploy/vendor/keys", kid, "license_public.key"),
-		filepath.Join("deploy/vendor", "license_"+kid+"_public.key"),
+		filepath.Join("deploy", "vendor", "keys", kid, "license_public.key"),
+		filepath.Join("deploy", "vendor", "license_"+kid+"_public.key"),
 	)
 	return paths
 }
@@ -75,14 +75,14 @@ func cohortPrivateKeyPaths(kid string) []string {
 	}
 	var paths []string
 	if root := strings.TrimSpace(os.Getenv("ROOT")); root != "" {
-		paths = append(paths, filepath.Join(root, "deploy/vendor/keys", kid, "license_private.key"))
+		paths = append(paths, filepath.Join(root, "deploy", "vendor", "keys", kid, "license_private.key"))
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		paths = append(paths, filepath.Join(cwd, "deploy/vendor/keys", kid, "license_private.key"))
+		paths = append(paths, filepath.Join(cwd, "deploy", "vendor", "keys", kid, "license_private.key"))
 	}
 	paths = append(paths,
-		filepath.Join("deploy/vendor/keys", kid, "license_private.key"),
-		filepath.Join("deploy/vendor", "license_"+kid+"_private.key"),
+		filepath.Join("deploy", "vendor", "keys", kid, "license_private.key"),
+		filepath.Join("deploy", "vendor", "license_"+kid+"_private.key"),
 	)
 	return paths
 }
@@ -102,7 +102,7 @@ func ResolvePrivateKeyFileForKID(kid, explicitPath string) string {
 	if kid == "" || kid == DefaultLicenseKeyID {
 		return "deploy/vendor/license_private.key"
 	}
-	return filepath.Join("deploy/vendor/keys", kid, "license_private.key")
+	return filepath.Join("deploy", "vendor", "keys", kid, "license_private.key")
 }
 
 func VerifyJWTResolved(tokenStr string) (*LicenseClaims, error) {

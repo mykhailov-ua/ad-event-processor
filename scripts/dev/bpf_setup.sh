@@ -26,11 +26,11 @@ bash "$SCRIPTS/test/bpf_build.sh"
 
 log "building bpf-collector"
 mkdir -p "$ROOT/bin"
-if ! espx_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector; then
-  log "ERROR: bpf-collector build failed — set ESPX_GO_BIN=/path/to/go"
+if ! ad_event_processor_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector; then
+  log "ERROR: bpf-collector build failed — set AD_EVENT_PROCESSOR_GO_BIN=/path/to/go"
   exit 1
 fi
 
 log "ready: deploy/dev/bpf/loadtest_probe.o bin/bpf-collector"
 log "standalone session: sudo make bpf-session-start"
-log "load test: sudo ESPX_BPF_PROBE=1 bash scripts/test/malformed.sh business"
+log "load test: sudo AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business"

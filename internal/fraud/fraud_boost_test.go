@@ -26,7 +26,7 @@ func (m *mockFraudManagement) BlockIP(ctx context.Context, ip string) error {
 	return nil
 }
 
-func (m *mockFraudManagement) EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error {
+func (m *mockFraudManagement) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
 	m.enqueued = append(m.enqueued, struct {
 		action     string
 		ip         string

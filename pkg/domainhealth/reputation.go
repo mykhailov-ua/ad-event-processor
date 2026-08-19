@@ -16,7 +16,7 @@ const (
 	reputationTimeout       = 8 * time.Second
 	reputationMaxJSONBytes  = 1 << 20
 	defaultFacebookGraphAPI = "https://graph.facebook.com/v19.0"
-	reputationClientID      = "bidshard"
+	reputationClientID      = "ad-event-processor"
 	reputationClientVersion = "1.0"
 )
 
@@ -114,7 +114,7 @@ type safeBrowsingResponse struct {
 	Matches []safeBrowsingMatch `json:"matches"`
 }
 
-func (r *ReputationChecker) checkSafeBrowsing(ctx context.Context, pageURL string) (bool, string, error) {
+func (r *ReputationChecker) checkSafeBrowsing(ctx context.Context, pageURL string) (blocked bool, threat string, err error) {
 	body, err := json.Marshal(safeBrowsingRequest{
 		Client: safeBrowsingClient{ClientID: reputationClientID, ClientVersion: reputationClientVersion},
 		ThreatInfo: safeBrowsingThreatInfo{
@@ -163,7 +163,7 @@ func (r *ReputationChecker) checkSafeBrowsing(ctx context.Context, pageURL strin
 	if len(out.Matches) == 0 {
 		return false, "", nil
 	}
-	threat := out.Matches[0].ThreatType
+	threat = out.Matches[0].ThreatType
 	if threat == "" {
 		threat = "match"
 	}
@@ -174,7 +174,7 @@ type facebookScrapeResponse struct {
 	IsBlocked bool `json:"is_blocked"`
 }
 
-func (r *ReputationChecker) checkFacebookScrape(ctx context.Context, pageURL string) (bool, string, error) {
+func (r *ReputationChecker) checkFacebookScrape(ctx context.Context, pageURL string) (blocked bool, reason string, err error) {
 	u, err := url.Parse(r.cfg.FacebookGraphBase + "/")
 	if err != nil {
 		return false, "", err

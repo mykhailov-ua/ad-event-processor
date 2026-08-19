@@ -24,7 +24,7 @@ func main() {
 }
 
 func printUsage(w *os.File) {
-	fmt.Fprintf(w, `usage: vendor-trial-bot <command>
+	_, _ = fmt.Fprintf(w, `usage: vendor-trial-bot <command>
 
 commands:
   run   long-poll Telegram and enqueue /trial requests

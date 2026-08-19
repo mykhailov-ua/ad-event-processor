@@ -1,24 +1,15 @@
 #!/usr/bin/env bash
-# Prove no TcpExtListenOverflows / ListenDrops under loadgen.
-# when host backlog is tuned (deploy/sysctl/99-bidshard-sysctl.conf) and Redis uses
-# --tcp-backlog 2048.
-#
-# Usage:
-#   bash scripts/perf/tcp_syn_drop_gate.sh
-# Env:
-#   TARGET_RPS=30000  DURATION=60s  WORKERS=32
-#   MAX_LISTEN_OVERFLOW_DELTA=0  MAX_LISTEN_DROP_DELTA=0
-#   SKIP_PREPARE=1  SKIP_SYSCTL_CHECK=1
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-# shellcheck source=../lib/tcp_listen_counters.sh
+
 source "$SCRIPTS/lib/tcp_listen_counters.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi
@@ -48,7 +39,7 @@ log "target_rps=$TARGET_RPS duration=$DURATION max_overflow_delta=$MAX_OVERFLOW_
 
 if [[ "${SKIP_SYSCTL_CHECK:-0}" != "1" ]]; then
   if ! tcp_sysctl_backlog_check "$SYSCTL_MIN"; then
-    die "backlog sysctl below $SYSCTL_MIN — apply deploy/sysctl/99-bidshard-sysctl.conf (or SKIP_SYSCTL_CHECK=1)"
+    die "backlog sysctl below $SYSCTL_MIN — apply deploy/sysctl/99-ad-event-processor-sysctl.conf (or SKIP_SYSCTL_CHECK=1)"
   fi
   log "sysctl backlog OK (>= $SYSCTL_MIN)"
 else

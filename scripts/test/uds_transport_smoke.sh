@@ -1,22 +1,5 @@
 #!/usr/bin/env bash
-# Smoke: co-located unix transport on a running appliance stack.
-#
-# Probes Redis/Postgres/ClickHouse unix sockets and HTTP health over unix
-# (control, broker, trackers, optional region-proxy).
-#
-# Usage:
-#   bash scripts/test/uds_transport_smoke.sh
-#
-# Env:
-#   TRANSPORT_USE_UDS=1          skip when 0 (unless UDS_SMOKE_FORCE=1)
-#   UDS_SMOKE_RUN_DIR=/run/ad-event-processor
-#   UDS_SMOKE_TRACKER_COUNT=4    tracker instances 0..N-1
-#   UDS_SMOKE_COMPOSE_FILE=deploy/compose/docker-compose.yaml
-#   UDS_SMOKE_SKIP_CH=1          skip ClickHouse native probe
-#   UDS_SMOKE_FORCE=1            run even when TRANSPORT_USE_UDS=0
-#   UDS_SMOKE_OFFLINE=1          only check socket paths exist (no I/O)
-#
-# Requires: docker (for live probes via shared volume), or host-visible sockets.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -24,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi
@@ -205,7 +188,6 @@ else
   exit 0
 fi
 
-# Redis shards (from REDIS_ADDRS or default 0..3)
 if [[ -n "${REDIS_ADDRS:-}" ]]; then
   IFS=',' read -r -a redis_addrs <<< "$REDIS_ADDRS"
   for addr in "${redis_addrs[@]}"; do
@@ -240,7 +222,6 @@ if socket_exists "$rp_health"; then
   check "region-proxy health" http_unix_probe "$rp_health" "/health"
 fi
 
-# gnet sockets: existence only (no HTTP health server)
 check "broker gnet socket" socket_exists "${RUN_DIR}/broker/gnet.sock"
 if socket_exists "${RUN_DIR}/region-proxy/gnet.sock"; then
   check "region-proxy gnet socket" socket_exists "${RUN_DIR}/region-proxy/gnet.sock"

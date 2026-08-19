@@ -18,8 +18,8 @@ type FXRateCache map[string]int64
 func (c *CurrencyConverter) PrepareFXCache(ctx context.Context, lines []CostLine, rateDate time.Time) (FXRateCache, error) {
 	cache := make(FXRateCache)
 	curSet := make(map[string]struct{})
-	for _, line := range lines {
-		cur := normalizeCurrency(line.Currency)
+	for i := range lines {
+		cur := normalizeCurrency(lines[i].Currency)
 		if cur == "" || cur == "USD" {
 			continue
 		}

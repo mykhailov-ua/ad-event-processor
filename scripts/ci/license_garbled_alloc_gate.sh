@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# S1.1 / V2-A.D6: garbled release tracker compiles; hot-path license alloc gate stays green.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

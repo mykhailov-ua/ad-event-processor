@@ -17,7 +17,7 @@ redis_cmd() {
     fi
     return
   fi
-  docker exec espx-redis-0-1 redis-cli "$@"
+  docker exec ad-event-processor-redis-0-1 redis-cli "$@"
 }
 
 log() { printf 'seed-load-test-limits: %s\n' "$*"; }

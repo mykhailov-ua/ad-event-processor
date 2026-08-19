@@ -165,9 +165,9 @@ func postClickCampaign(t *testing.T, h *ingestion.AdsPacketHandler, campaignID u
 	return status, elapsed
 }
 
-func postClickCampaignBody(t *testing.T, h *ingestion.AdsPacketHandler, campaignID uuid.UUID, clickID string) (int, string) {
+func postClickCampaignBody(t *testing.T, h *ingestion.AdsPacketHandler, campaignID uuid.UUID, clickID string) (status int, body string) {
 	t.Helper()
-	status, body, _ := postClickCampaignFull(t, h, campaignID, clickID)
+	status, body, _ = postClickCampaignFull(t, h, campaignID, clickID)
 	return status, body
 }
 

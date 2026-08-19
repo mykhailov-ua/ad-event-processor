@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-LOG="${BROKER_FAULT_LAB_LOG:-/tmp/espx-broker-fault-lab.log}"
+LOG="${BROKER_FAULT_LAB_LOG:-/tmp/ad-event-processor-broker-fault-lab.log}"
 export BROKER_FAULT_LAB=1
 
 echo "Broker fault lab (durability and coordination)"
@@ -38,7 +38,7 @@ if command -v docker > /dev/null 2>&1 && [ "${BROKER_FAULT_SKIP_SENTINEL:-0}" !=
   export BROKER_REDIS_SENTINEL_MASTER=broker-coord
   export BROKER_REDIS_SENTINEL_ADDRS=127.0.0.1:26379
   export BROKER_REDIS_URL=redis://127.0.0.1:6379/0
-  export BROKER_FAULT_SENTINEL_STOP_CONTAINER=espx-broker-redis
+  export BROKER_FAULT_SENTINEL_STOP_CONTAINER=ad-event-processor-broker-redis
 
   go test -count=1 -v -run 'TestFault_RedisSentinelFailover' -timeout 10m ./pkg/broker/server/... 2>&1 | tee -a "$LOG"
 

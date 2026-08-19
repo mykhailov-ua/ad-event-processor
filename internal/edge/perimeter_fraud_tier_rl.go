@@ -37,7 +37,7 @@ func DefaultFraudRLConfig() FraudRLConfig {
 	}
 }
 
-func MapFraudRLTier(score int) (FraudRLTier, int) {
+func MapFraudRLTier(score int) (tier FraudRLTier, clamped int) {
 	if score < 0 {
 		score = 0
 	}

@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
-# Ops gate (automatable subset).
-#
-# Local / CI wiring checks before v1.0.0-pilot-gray:
-#   bash scripts/ops/section0_gate.sh
-#
-# Skip pr_fast (slow or tier_a drift on branch):
-#   SECTION0_SKIP_PR_FAST=1 bash scripts/ops/section0_gate.sh
-#
-# Live Meta CAPI on staging (manual, needs credentials):
-#   TRACK_URL=... CAMPAIGN_ID=... META_TEST_EVENT_CODE=... bash scripts/test/capi_meta_staging.sh
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

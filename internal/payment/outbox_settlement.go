@@ -41,12 +41,12 @@ func (outboxWorker *OutboxWorker) requireSettlementAPI() (domain.PaymentSettleme
 	return api, nil
 }
 
-func parseSettlementCustomerAndIntent(customerIDStr, paymentIntentIDStr string) (uuid.UUID, uuid.UUID, error) {
-	customerID, err := uuid.Parse(customerIDStr)
+func parseSettlementCustomerAndIntent(customerIDStr, paymentIntentIDStr string) (customerID, paymentIntentID uuid.UUID, err error) {
+	customerID, err = uuid.Parse(customerIDStr)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("invalid customer id: %w", err)
 	}
-	paymentIntentID, err := uuid.Parse(paymentIntentIDStr)
+	paymentIntentID, err = uuid.Parse(paymentIntentIDStr)
 	if err != nil {
 		return uuid.Nil, uuid.Nil, fmt.Errorf("invalid payment intent id: %w", err)
 	}

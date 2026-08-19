@@ -286,10 +286,10 @@ install_systemd() {
     log "installed /etc/ad-event-processor/edge-nic-tune.env (edit INGRESS_INTERFACE if needed)"
   fi
   install -m 0755 "$SCRIPTS/edge/nic_tune.sh" /usr/local/bin/edge_nic_tune.sh
-  install -m 0644 "$unit_src" /etc/systemd/system/espx-edge-nic-tune.service
+  install -m 0644 "$unit_src" /etc/systemd/system/ad-event-processor-edge-nic-tune.service
   systemctl daemon-reload
-  systemctl enable espx-edge-nic-tune.service
-  log "installed espx-edge-nic-tune.service; run: systemctl start espx-edge-nic-tune"
+  systemctl enable ad-event-processor-edge-nic-tune.service
+  log "installed ad-event-processor-edge-nic-tune.service; run: systemctl start ad-event-processor-edge-nic-tune"
 }
 
 case "$MODE" in

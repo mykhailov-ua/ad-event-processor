@@ -39,9 +39,11 @@ func RenderComposeEnv(cfg Config) []byte {
 	if tz := strings.TrimSpace(cfg.Timezone); tz != "" {
 		lines = append(lines, "PLATFORM_TIMEZONE="+tz)
 	}
-	lines = append(lines, "REDIS_ADDRS="+RedisAddrsForProfile(cfg.Profile))
-	lines = append(lines, "EDGE_EXPOSE_CLICK="+boolString(cfg.EdgeExposeClick))
-	lines = append(lines, "EDGE_EXPOSE_OPENRTB="+boolString(cfg.EdgeExposeOpenRTB))
+	lines = append(lines,
+		"REDIS_ADDRS="+RedisAddrsForProfile(cfg.Profile),
+		"EDGE_EXPOSE_CLICK="+boolString(cfg.EdgeExposeClick),
+		"EDGE_EXPOSE_OPENRTB="+boolString(cfg.EdgeExposeOpenRTB),
+	)
 	return []byte(strings.Join(lines, "\n") + "\n")
 }
 

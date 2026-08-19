@@ -39,10 +39,10 @@ func BenchmarkClickRedirectGnet_forceSafe(b *testing.B) {
 	h, cid := benchSafePageCampaign(b)
 	path := "/click?campaign_id=" + cid.String() + "&type=click&click_id=bench-safe&user_id=u1&gclid=GCLID99"
 	inbound := BuildGnetHTTP("GET", path, map[string]string{
-		"Connection":            "keep-alive",
-		"Content-Length":        "0",
-		"User-Agent":            "Mozilla/5.0",
-		"X-BidShard-Force-Safe": "1",
+		"Connection":                      "keep-alive",
+		"Content-Length":                  "0",
+		"User-Agent":                      "Mozilla/5.0",
+		"X-ad-event-processor-Force-Safe": "1",
 	}, nil)
 	_, req, err := parseHTTP1(inbound, 1<<20, nil)
 	if err != nil {

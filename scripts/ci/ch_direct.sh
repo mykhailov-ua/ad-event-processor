@@ -12,7 +12,7 @@ fi
 
 declare -A allowed=()
 while IFS= read -r line; do
-  [[ -z "$line" || "$line" =~ ^# ]] && continue
+  [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
   allowed["$line"]=1
 done < "$ALLOWLIST"
 

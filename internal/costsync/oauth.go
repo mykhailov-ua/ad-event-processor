@@ -37,7 +37,10 @@ func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret
 		coldpath.CloseHTTPResponse(resp)
 		return "", time.Time{}, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("meta oauth refresh: read body: %w", err)
@@ -82,7 +85,10 @@ func refreshGoogleOAuth(ctx context.Context, client *http.Client, clientID, clie
 		coldpath.CloseHTTPResponse(resp)
 		return "", time.Time{}, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("meta oauth refresh: read body: %w", err)

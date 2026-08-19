@@ -33,7 +33,7 @@ func main() {
 }
 
 func printUsage(w *os.File) {
-	fmt.Fprintf(w, `usage: trial-registry <command>
+	_, _ = fmt.Fprintf(w, `usage: trial-registry <command>
 
 commands:
   expire-stale     mark active anchors expired when valid_until < now
@@ -103,7 +103,7 @@ func runListPending(args []string) int {
 		return 0
 	}
 	for _, req := range pending {
-		fmt.Printf("%s\ttelegram=%s\tuser=%s\trequested=%s\n",
+		_, _ = fmt.Fprintf(os.Stdout, "%s\ttelegram=%s\tuser=%s\trequested=%s\n",
 			req.ID,
 			req.TelegramID,
 			req.TelegramUsername,

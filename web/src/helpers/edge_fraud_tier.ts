@@ -33,9 +33,7 @@ export function fraudTierBandRows(): FraudTierBandRow[] {
   );
 }
 
-/**
- * Build tier band table rows from campaign-specific threshold ceilings.
- */
+
 export function fraudTierBandRowsFromThresholds(
   passMax: number,
   suspectMax: number,

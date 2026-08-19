@@ -49,7 +49,7 @@ func (store *IdempotencyStore) Release(ctx context.Context, ip string) error {
 	return nil
 }
 
-func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip string, modelVersion string, reason string) (bool, error) {
+func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip, modelVersion, reason string) (bool, error) {
 	if store == nil || store.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")
 	}
@@ -67,7 +67,7 @@ func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip 
 	return tag.RowsAffected() > 0, nil
 }
 
-func (store *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip string, modelVersion string, reason string) error {
+func (store *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip, modelVersion, reason string) error {
 	if store == nil || store.pool == nil {
 		return fmt.Errorf("idempotency store: nil pool")
 	}

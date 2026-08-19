@@ -33,7 +33,7 @@ func TestRegistry_licenseRecheck_clockSkewBlocksIngest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
 	claims := licensing.LicenseClaims{
-		Issuer:       "espx-license",
+		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		ValidFrom:    time.Now().Add(-time.Hour),

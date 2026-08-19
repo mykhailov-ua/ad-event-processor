@@ -2,8 +2,8 @@
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <service-name>"
-    exit 1
+  echo "Usage: $0 <service-name>"
+  exit 1
 fi
 
 SERVICE_NAME=$1
@@ -14,13 +14,12 @@ PKG_NAME=$(echo "$SERVICE_NAME" | tr '-' '_')
 
 echo "🚀 Scaffolding service: $SERVICE_NAME"
 
-# Create directories
 mkdir -p "$INTERNAL_DIR"/{db,pb,queries,migrations}
 mkdir -p "$CMD_DIR"
 
 SCHEMA_NAME="$(echo "$PKG_NAME" | tr '-' '_')"
 
-cat > "$INTERNAL_DIR/migrations/00001_init.sql" <<EOF
+cat > "$INTERNAL_DIR/migrations/00001_init.sql" << EOF
 -- +goose Up
 CREATE SCHEMA IF NOT EXISTS ${SCHEMA_NAME};
 
@@ -28,8 +27,7 @@ CREATE SCHEMA IF NOT EXISTS ${SCHEMA_NAME};
 DROP SCHEMA IF EXISTS ${SCHEMA_NAME} CASCADE;
 EOF
 
-# 1. internal/$SERVICE_NAME/service.go
-cat <<EOF > "$INTERNAL_DIR/service.go"
+cat << EOF > "$INTERNAL_DIR/service.go"
 package $PKG_NAME
 
 import (
@@ -59,8 +57,7 @@ func (s *Service) Stop(ctx context.Context) error {
 }
 EOF
 
-# 2. internal/$SERVICE_NAME/handler.go
-cat <<EOF > "$INTERNAL_DIR/handler.go"
+cat << EOF > "$INTERNAL_DIR/handler.go"
 package $PKG_NAME
 
 import (
@@ -77,13 +74,11 @@ func (s *Service) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 EOF
 
-# 3. internal/$SERVICE_NAME/queries/models.sql
-cat <<EOF > "$INTERNAL_DIR/queries/models.sql"
+cat << EOF > "$INTERNAL_DIR/queries/models.sql"
 -- Empty models file for sqlc
 EOF
 
-# 4. cmd/$SERVICE_NAME/main.go
-cat <<EOF > "$CMD_DIR/main.go"
+cat << EOF > "$CMD_DIR/main.go"
 package main
 
 import (
@@ -105,7 +100,7 @@ func main() {
 
 	dsn := os.Getenv("DB_DSN")
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5430/bidshard?sslmode=disable"
+		dsn = "postgres://postgres:postgres:5430/ad_event_processor?sslmode=disable"
 	}
 
 	pool, err := pgxpool.New(ctx, dsn)
@@ -153,8 +148,7 @@ func main() {
 }
 EOF
 
-# 5. Update sqlc.yaml
-cat <<EOF >> "$ROOT_DIR/sqlc.yaml"
+cat << EOF >> "$ROOT_DIR/sqlc.yaml"
   - schema: "internal/$SERVICE_NAME/migrations"
     queries: "internal/$SERVICE_NAME/queries"
     engine: "postgresql"

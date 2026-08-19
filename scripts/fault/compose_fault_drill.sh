@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Compose-layer fault drills: RAM proof, broker cutover, noscript, spool, sentinel, TCP.
-#
-# Usage:
-#   bash scripts/fault/compose_fault_drill.sh [all|ram|cutover|noscript|spool|sentinel|tcp]
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

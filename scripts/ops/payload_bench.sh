@@ -51,11 +51,11 @@ set_nginx_body_limit() {
 }
 
 reload_nginx() {
-  if docker ps --format '{{.Names}}' | grep -q '^espx-nginx-1$'; then
-    docker exec espx-nginx-1 nginx -s reload 2> /dev/null || docker restart espx-nginx-1
+  if docker ps --format '{{.Names}}' | grep -q '^ad-event-processor-nginx-1$'; then
+    docker exec ad-event-processor-nginx-1 nginx -s reload 2> /dev/null || docker restart ad-event-processor-nginx-1
     sleep 2
   else
-    log "WARN: espx-nginx-1 not running"
+    log "WARN: ad-event-processor-nginx-1 not running"
   fi
 }
 

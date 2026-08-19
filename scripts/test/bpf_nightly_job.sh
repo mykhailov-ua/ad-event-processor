@@ -10,12 +10,12 @@ case "$KIND" in
     BASELINE_DIR=".ci-baselines/bpf/hot"
     GATE_SCRIPT="$SCRIPTS/ci/bpf_resource_gate.sh"
     OUT_LOG="bpf_hot_nightly.log"
-  ;;
+    ;;
   cold)
     BASELINE_DIR=".ci-baselines/bpf/cold"
     GATE_SCRIPT="$SCRIPTS/ci/bpf_cold_soak.sh"
     OUT_LOG="bpf_cold_nightly.log"
-  ;;
+    ;;
   *)
     echo "usage: $0 hot|cold" >&2
     exit 2

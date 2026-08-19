@@ -48,7 +48,7 @@ type brokerWorker struct {
 func NewBrokerConsumerGroup(
 	store domain.EventStore,
 	cfg BrokerConsumerGroupConfig,
-	logger *logger.Logger,
+	lg *logger.Logger,
 ) (*BrokerConsumerGroup, error) {
 	if cfg.BatchSize <= 0 {
 		cfg.BatchSize = 50000
@@ -81,7 +81,7 @@ func NewBrokerConsumerGroup(
 		cfg:           cfg,
 		store:         store,
 		offsetTracker: offsetTracker,
-		logger:        logger,
+		logger:        lg,
 	}
 
 	return bcg, nil

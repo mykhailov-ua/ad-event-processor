@@ -40,7 +40,7 @@ func ProbabilityToFraudScore(probability float64) int {
 	return ClampFraudScore(int(probability*100 + 0.5))
 }
 
-func MapFraudScoreTier(score int) (FraudTier, int) {
+func MapFraudScoreTier(score int) (tier FraudTier, clamped int) {
 	score = ClampFraudScore(score)
 	switch {
 	case score <= FraudTierPassMax:
@@ -54,7 +54,7 @@ func MapFraudScoreTier(score int) (FraudTier, int) {
 	}
 }
 
-func MapProbabilityTier(probability float64) (FraudTier, int) {
+func MapProbabilityTier(probability float64) (tier FraudTier, clamped int) {
 	return MapFraudScoreTier(ProbabilityToFraudScore(probability))
 }
 

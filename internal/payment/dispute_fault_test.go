@@ -40,7 +40,7 @@ func TestFault_PaymentDisputeConcurrentWebhookSameEventID(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			stripeCents, _ := payment.MicroToStripeAmount(10_000_000)
-			payload := fmt.Sprintf(`{"id":"%s","type":"charge.dispute.funds_withdrawn","data":{"object":{"id":"%s","amount":%d,"payment_intent":"%s","status":"needs_response"}}}`,
+			payload := fmt.Sprintf(`{"id":%q,"type":"charge.dispute.funds_withdrawn","data":{"object":{"id":%q,"amount":%d,"payment_intent":%q,"status":"needs_response"}}}`,
 				eventID, disputeID, stripeCents, seed.ProviderRef)
 			_ = svc.ProcessStripeDisputeWebhook(ctx, eventID, "charge.dispute.funds_withdrawn", []byte(payload), disputeID, seed.ProviderRef, 10_000_000, "needs_response")
 		}()

@@ -37,6 +37,13 @@ func TestLicenseEnv_prefersADEventProcessor(t *testing.T) {
 	assert.Equal(t, "1", config.LicenseEnv("REQUIRED"))
 }
 
+func TestLicensePathFromEnv_defaultDevPath(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PATH", "")
+	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_PATH"), "")
+	assert.Equal(t, config.DevLicenseRelPath, config.LicensePathFromEnv())
+	assert.Equal(t, config.DevLicenseRelPath, config.DefaultLicensePath())
+}
+
 func TestLicenseProbeEnabled_withFile(t *testing.T) {
 	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "")
 	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_REQUIRED"), "")

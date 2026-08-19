@@ -14,9 +14,7 @@ export type FraudMlHealthTileProps = {
   customerId?: string | null;
 };
 
-/**
- * Compact ML trust tile for buyer overview; fetches fraud dashboard ML fields.
- */
+
 export function FraudMlHealthTile({ customerId }: FraudMlHealthTileProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<FraudMlHealthPayload | null>(null);
@@ -60,7 +58,9 @@ export function FraudMlHealthTile({ customerId }: FraudMlHealthTileProps) {
       <div className="metric-card__value font-mono text-sm">
         {loading ? '…' : formatShadowPrecision(data?.ml_precision)}
       </div>
-      <p className={`text-xs ${evalAge.warning || data?.ml_eval_stale ? 'text-warning' : 'text-muted'}`}>
+      <p
+        className={`text-xs ${evalAge.warning || data?.ml_eval_stale ? 'text-warning' : 'text-muted'}`}
+      >
         {loading ? 'Loading eval…' : evalAge.label}
       </p>
     </a>
@@ -71,9 +71,7 @@ export type FraudMlTrustPanelProps = {
   data: FraudMlHealthPayload;
 };
 
-/**
- * Trust & health panel for the fraud role dashboard.
- */
+
 export function FraudMlTrustPanel({ data }: FraudMlTrustPanelProps) {
   const evalAge = formatMlEvalAge(data.ml_eval_generated_at);
   const shards =

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-C.D8 / V2-D.5: garbled tracker must not embed obvious license symbols/strings.
+
 set -euo pipefail
 
 BIN="${1:?usage: release_strings_gate.sh <path/to/tracker>}"

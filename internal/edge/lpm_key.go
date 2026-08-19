@@ -87,7 +87,7 @@ func parseIPv4(s string) (uint32, bool) {
 }
 
 func parseUint8(s string) (uint8, bool) {
-	if len(s) == 0 || len(s) > 2 {
+	if s == "" || len(s) > 2 {
 		return 0, false
 	}
 	var n uint8

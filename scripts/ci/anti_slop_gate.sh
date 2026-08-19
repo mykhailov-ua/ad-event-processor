@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Detect test/bench honesty violations (AI slop): ignored errors, weak skips, mock benches.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -26,13 +26,11 @@ SCOPE=(
   internal/payment
 )
 
-# Bare t.Skip()
 if rg -q 't\.Skip\(\)\s*$' "${SCOPE[@]}" pkg/ --glob '*_test.go' 2> /dev/null; then
   fail "bare t.Skip() without reason"
   rg 't\.Skip\(\)\s*$' "${SCOPE[@]}" pkg/ --glob '*_test.go' || true
 fi
 
-# Generic skip copy that hides missing integration harness.
 bad_skip_patterns=(
   't\.Skip\("skipping integration test'
   't\.Skip\("integration test"\)'
@@ -47,7 +45,6 @@ for pat in "${bad_skip_patterns[@]}"; do
   fi
 done
 
-# testing.Short() in scoped packages must cite integration: on the skip line.
 short_bad=0
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
@@ -72,12 +69,10 @@ if [[ "$short_bad" -ne 0 ]]; then
   fail "testing.Short() skip must use integration: prefix (scoped packages)"
 fi
 
-# Mock Redis bench must not claim SLA name without harness suffix.
 if rg -n '^func BenchmarkUnifiedFilter_Check\(b \*testing\.B\)' internal/ingestion --glob '*_test.go' 2> /dev/null; then
   fail "rename BenchmarkUnifiedFilter_Check to BenchmarkUnifiedFilter_Check_mock (mock Redis harness)"
 fi
 
-# Test-only branches in production handlers.
 if rg -n 'testing\.Testing\(\)' internal/controlplane internal/ingestion internal/payment pkg/ \
   --glob '*.go' --glob '!*_test.go' 2> /dev/null; then
   fail "testing.Testing() in production code"
@@ -88,7 +83,6 @@ if rg -n 'os\.Getenv\("CI"\)' internal/controlplane internal/ingestion internal/
   fail "os.Getenv(\"CI\") branch in production code"
 fi
 
-# Cold-path ignored errors (extends tier_a scope).
 pattern_err='_ = (json\.Unmarshal|w\.Write)'
 scan_err() {
   local path="$1"
@@ -106,21 +100,19 @@ while IFS= read -r -d '' file; do
   scan_err "$file"
 done < <(find internal/controlplane -name 'outbox_*.go' ! -name '*_test.go' -print0 2> /dev/null || true)
 
-# Package uses testcontainers but test file simulates DB with httptest only.
 while IFS= read -r dir; do
   [[ -z "$dir" ]] && continue
-  if rg -q 'testcontainers' "$dir" --glob '*_test.go' 2>/dev/null \
-    && rg -l 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2>/dev/null \
+  if rg -q 'testcontainers' "$dir" --glob '*_test.go' 2> /dev/null \
+    && rg -l 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2> /dev/null \
     | rg -q .; then
-    if rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2>/dev/null \
+    if rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2> /dev/null \
       | rg -v 'integration:|// mock HTTP upstream|// not a database' > /dev/null; then
       fail "httptest server in package with testcontainers ($dir) — use real PG/Redis for transaction tests"
       rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' || true
     fi
   fi
-done < <(find internal/controlplane internal/payment internal/ingestion -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+done < <(find internal/controlplane internal/payment internal/ingestion -mindepth 1 -maxdepth 1 -type d 2> /dev/null)
 
-# nolint:errcheck without ticket reference — warn only.
 if rg -n 'nolint:errcheck' internal/controlplane internal/ingestion internal/payment pkg/ \
   --glob '*.go' --glob '!*_test.go' 2> /dev/null \
   | rg -v 'nolint:errcheck.*(TODO|#[0-9]+|JIRA|GH-)' > /dev/null 2>&1; then
@@ -131,7 +123,7 @@ if rg -n 'nolint:errcheck' internal/controlplane internal/ingestion internal/pay
 fi
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "anti-slop: remediation — DEVELOPMENT.md#anti-slop; integration skips: integration: run make test-integration (Docker testcontainers)"
+  echo "anti-slop: remediation — docs/CI.md#anti-slop; integration skips: integration: run make test-integration (Docker testcontainers)"
   exit 1
 fi
 

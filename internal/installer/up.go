@@ -50,7 +50,7 @@ func RunUp() error {
 func waitControlHealth(root string) error {
 	url := managementBaseURL() + "/health"
 	script := fmt.Sprintf(
-		`for i in $(seq 1 60); do if curl -sf "%s" >/dev/null; then exit 0; fi; sleep 2; done; exit 1`,
+		`for i in $(seq 1 60); do if curl -sf %q >/dev/null; then exit 0; fi; sleep 2; done; exit 1`,
 		url,
 	)
 	cmd := exec.Command("bash", "-c", script)

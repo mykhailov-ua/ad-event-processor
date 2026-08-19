@@ -10,7 +10,7 @@ import {
   buildTrackPostbackURL,
   trafficGuideSummary,
 } from '../helpers/integration_kit.js';
-import { buildDirectTrackSnippet } from '../static/bidshard-track.js';
+import { buildDirectTrackSnippet } from '../static/ad-event-processor-track.js';
 import { buildOpenRTBBidURL } from '../helpers/openrtb_endpoint.js';
 import {
   TRAFFIC_SOURCE_TEMPLATES,
@@ -227,8 +227,8 @@ export function CampaignTrackingSection({
         <div className="stack text-sm">
           <p>
             Full wire contracts ship with the appliance as{' '}
-            <code className="code-inline">docs/TRAFFIC.md</code> (also in the operator
-            bundle). Summary:
+            <code className="code-inline">docs/TRAFFIC.md</code> (also in the operator bundle).
+            Summary:
           </p>
           <ul className="list-plain">
             <li>Campaign traffic → Click URL (GET /click).</li>
@@ -237,7 +237,7 @@ export function CampaignTrackingSection({
             </li>
             <li>Lander pixel → zero-redirect fetch() to the same /track URL.</li>
             <li>
-              Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; BidShard forwards
+              Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; ad-event-processor forwards
               after settlement.
             </li>
           </ul>
@@ -411,7 +411,7 @@ export function CampaignTrackingSection({
           testId="integration-inbound-curl"
         />
         <p className="text-muted text-sm">
-          Map network tokens to BidShard fields: click id → click_id, payout → payout_micro
+          Map network tokens to ad-event-processor fields: click id → click_id, payout → payout_micro
           (micro-units) or omit and settle later. Requires Content-Length; chunked encoding is
           rejected on /track.
         </p>
@@ -428,7 +428,7 @@ export function CampaignTrackingSection({
           testId="integration-direct-snippet"
         />
         <p className="text-muted text-sm">
-          Module loads bidshard-track.js; auto-picks fbclid/gclid/ttclid from the page query string.
+          Module loads ad-event-processor-track.js; auto-picks fbclid/gclid/ttclid from the page query string.
         </p>
       </SectionCard>
 

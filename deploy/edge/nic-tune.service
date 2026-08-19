@@ -1,5 +1,5 @@
 [Unit]
-Description=BidShard ingress NIC RX ring and IRQ tuning
+Description=ad-event-processor ingress NIC RX ring and IRQ tuning
 After=network-online.target
 Wants=network-online.target
 

@@ -190,14 +190,15 @@ func (w *Worker) syncDay(ctx context.Context, filterCustomer *uuid.UUID, filterN
 		return err
 	}
 
-	for _, credRow := range creds {
+	for i := range creds {
+		credRow := &creds[i]
 		if filterCustomer != nil && credRow.CustomerID.Bytes != *filterCustomer {
 			continue
 		}
 		if filterNetwork != "" && credRow.Network != filterNetwork {
 			continue
 		}
-		if err := w.syncCredential(ctx, credRow, date, trigger); err != nil {
+		if err := w.syncCredential(ctx, *credRow, date, trigger); err != nil {
 			slog.Warn("cost-sync network failed", "network", credRow.Network, "customer_id", credRow.CustomerID.Bytes, "error", err)
 			metrics.CostSyncRunsTotal.WithLabelValues("failed").Inc()
 		}

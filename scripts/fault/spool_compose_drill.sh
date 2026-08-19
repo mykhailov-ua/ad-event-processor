@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Compose drill: ClickHouse down -> processor spool; tracker stays healthy.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-# shellcheck source=../lib/stress_spool.sh
+
 source "$SCRIPTS/lib/stress_spool.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

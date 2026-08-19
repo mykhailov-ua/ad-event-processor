@@ -157,7 +157,10 @@ func (c *cloudflareClient) do(ctx context.Context, method, path string, body []b
 		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	limited := io.LimitReader(resp.Body, cloudflareMaxJSONBytes)
 	raw, err := io.ReadAll(limited)

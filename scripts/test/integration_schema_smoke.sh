@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Integration schema smoke: integration schema API (create + apply outbound webhook template).
-#
-# Usage:
-#   bash scripts/test/integration_schema_smoke.sh
-#   CONTROL_URL=http://127.0.0.1:8188 ADMIN_API_KEY=... CAMPAIGN_ID=... bash scripts/test/integration_schema_smoke.sh
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

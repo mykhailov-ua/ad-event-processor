@@ -66,8 +66,9 @@ func legacyListDisputesWithProvider(ctx context.Context, svc *Service) ([]Disput
 		return nil, err
 	}
 	items := make([]DisputeListItem, 0, len(intents))
-	for _, intent := range intents {
-		item := DisputeListItem{Intent: intent}
+	for i := range intents {
+		intent := &intents[i]
+		item := DisputeListItem{Intent: *intent}
 		dispute, derr := q.GetLatestDisputeForIntent(ctx, intent.ID)
 		if derr == nil {
 			item.ProviderDisputeID = dispute.ProviderDisputeID

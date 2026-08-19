@@ -76,7 +76,7 @@ func TestClickRedirect_TLSFingerprintMatch_SafeView(t *testing.T) {
 	conn := serveClickWithJA3(h, cid, "8.8.8.8", ja3)
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	resp := string(conn.Written())
-	require.Contains(t, resp, "X-BidShard-Safe-View: tls")
+	require.Contains(t, resp, "X-ad-event-processor-Safe-View: tls")
 	require.Contains(t, resp, "<title>Loading</title>")
 	require.Greater(t, len(conn.Written()), len("HTTP/1.1 200 OK\r\n\r\n")+64)
 	require.Equal(t, 0, filter.calls)
@@ -88,7 +88,7 @@ func TestClickRedirect_TLSFingerprintNoMatch_FallsThrough(t *testing.T) {
 	h.ConfigureTLSFingerprint(buildTestTLSFingerprintTable("ja3:771,4865"))
 
 	conn := serveClickWithJA3(h, cid, "8.8.8.8", "other-fingerprint")
-	require.NotContains(t, string(conn.Written()), "X-BidShard-Safe-View: tls")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: tls")
 	require.Equal(t, 1, filter.calls)
 }
 
@@ -105,7 +105,7 @@ func TestClickRedirect_L15MobileOnly_RejectsHosting(t *testing.T) {
 
 	conn := serveClickFromIP(h, cid, "203.0.113.50")
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
-	require.Contains(t, string(conn.Written()), "X-BidShard-Safe-View: l15")
+	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 0, filter.calls)
 }
 

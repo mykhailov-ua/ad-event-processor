@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Licensing admin smoke — renewal desk + sealed MCK + release hardening + release QA contract.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 bash scripts/ci/license_route_gap_gate.sh

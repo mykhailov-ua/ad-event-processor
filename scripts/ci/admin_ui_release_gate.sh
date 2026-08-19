@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Admin UI release gate — CI regression + optional full Playwright bundle.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

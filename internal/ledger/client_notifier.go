@@ -18,7 +18,7 @@ func NewNotifierAPI(ctx context.Context, cfg *config.Config) (notify.NotifierAPI
 	return notify.OpenAPI(ctx, cfg)
 }
 
-func ResolveInvoiceNotifierTarget(cfg *config.Config) (string, string) {
+func ResolveInvoiceNotifierTarget(cfg *config.Config) (provider, recipient string) {
 	if cfg == nil {
 		return "", ""
 	}

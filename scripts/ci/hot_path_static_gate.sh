@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hot-path static bans: fmt.Sprintf, interface{} boxing, context.WithValue in tracker handlers.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -11,11 +11,11 @@ mapfile -t HOT_FILES < <(
   find internal/ingestion internal/rtb \
     -name '*.go' ! -name '*_test.go' \
     \( \
-      -path 'internal/ingestion/handler.go' -o \
-      -path 'internal/ingestion/handler_http*.go' -o \
-      -path 'internal/ingestion/filter*.go' -o \
-      -path 'internal/ingestion/filters.go' -o \
-      -path 'internal/rtb/*.go' \
+    -path 'internal/ingestion/handler.go' -o \
+    -path 'internal/ingestion/handler_http*.go' -o \
+    -path 'internal/ingestion/filter*.go' -o \
+    -path 'internal/ingestion/filters.go' -o \
+    -path 'internal/rtb/*.go' \
     \) \
     ! -name '*_corpus.go' \
     ! -name '*_fault_corpus.go' \
@@ -65,7 +65,7 @@ for path in "${HOT_FILES[@]}"; do
 done
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "hot-path-static: see DEVELOPMENT.md#bpf-hot-static and ingestion.mdc hot-path rules"
+  echo "hot-path-static: see docs/CI.md#bpf-hot-static and .cursor/rules/hot-path.mdc"
   exit 1
 fi
 

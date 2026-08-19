@@ -1,22 +1,15 @@
 #!/usr/bin/env bash
-# Prove Redis RAM stays below budget under sustained /track load.
-# with broker-primary ingest (CH_INGEST_SOURCE=broker) and aggressive stream trim.
-#
-# Usage:
-#   bash scripts/perf/redis_ram_proof.sh
-# Env:
-#   TARGET_RPS=100000  RAM_MAX_BYTES=314572800 (300 MiB)  DURATION=90s
-#   SKIP_PREPARE=1     skip prepare_constrained_stack (stack already up)
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-# shellcheck source=../lib/redis_memory.sh
+
 source "$SCRIPTS/lib/redis_memory.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Domain health smoke: Cloudflare mock tests + reputation + ban integration.
-# Skip (no go): not applicable.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail on user-visible "fake shipped" copy in production admin routes.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -26,7 +26,7 @@ check_rg 'API-not-ready admission in user copy' '(?i)(not fully available yet|Sk
 check_rg 'empty table blames user to "connect API"' '(?i)connect [A-Za-z ]+ API'
 
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: web/DESIGN.md section 11 (anti-slop)."
+  echo "Remediation: docs/UI.md anti-slop section."
   exit 1
 fi
 

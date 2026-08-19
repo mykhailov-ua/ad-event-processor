@@ -108,14 +108,14 @@ func (store *S3Store) HeadObject(ctx context.Context, key string) (ObjectHead, e
 	return head, nil
 }
 
-func (store *S3Store) PutObject(ctx context.Context, key string, filePath string, digests fileDigests) error {
+func (store *S3Store) PutObject(ctx context.Context, key, filePath string, digests fileDigests) error {
 	if digests.Size < store.multipartThreshold {
 		return store.putSinglePart(ctx, key, filePath, digests)
 	}
 	return store.putMultipart(ctx, key, filePath, digests)
 }
 
-func (store *S3Store) putSinglePart(ctx context.Context, key string, filePath string, digests fileDigests) error {
+func (store *S3Store) putSinglePart(ctx context.Context, key, filePath string, digests fileDigests) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func (store *S3Store) putSinglePart(ctx context.Context, key string, filePath st
 	return nil
 }
 
-func (store *S3Store) putMultipart(ctx context.Context, key string, filePath string, digests fileDigests) error {
+func (store *S3Store) putMultipart(ctx context.Context, key, filePath string, digests fileDigests) error {
 	createOutput, err := store.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
 		Bucket: aws.String(store.bucket),
 		Key:    aws.String(store.objectKey(key)),
@@ -274,7 +274,7 @@ func (store *MemoryStore) HeadObject(_ context.Context, key string) (ObjectHead,
 	}, nil
 }
 
-func (store *MemoryStore) PutObject(_ context.Context, key string, filePath string, digests fileDigests) error {
+func (store *MemoryStore) PutObject(_ context.Context, key, filePath string, digests fileDigests) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err

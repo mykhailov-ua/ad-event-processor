@@ -62,7 +62,7 @@ func mapFacebookEventName(eventType string) string {
 	}
 }
 
-func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
+func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate, apiTokenDecrypted string) error {
 	url := urlTemplate
 	if url == "" || !strings.HasPrefix(url, "http") {
 		pixelID := urlTemplate

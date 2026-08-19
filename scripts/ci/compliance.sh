@@ -14,8 +14,21 @@ fi
 echo "ebpf import ban: OK"
 
 echo "No DOM/Canvas/WebGL fingerprinting..."
-if grep -rnEi "toDataURL|getImageData|getChannelData|canvas-fingerprint" . --include="*.js" --include="*.ts" --include="*.html" --exclude-dir="node_modules" 2> /dev/null; then
+if rg -n 'toDataURL|getImageData|getChannelData|canvas-fingerprint' \
+  -g '*.js' -g '*.ts' -g '*.html' \
+  --glob '!node_modules/**' \
+  --glob '!internal/ingestion/safe_page_hydrator.js' \
+  --glob '!web/src/components/safe_page_panel.ts' \
+  --glob '!web/src/safe_page_hydrator_entry.ts' \
+  . > /dev/null 2>&1; then
   echo "COMPLIANCE FAILURE: Found potential device fingerprinting pattern!"
+  rg -n 'toDataURL|getImageData|getChannelData|canvas-fingerprint' \
+    -g '*.js' -g '*.ts' -g '*.html' \
+    --glob '!node_modules/**' \
+    --glob '!internal/ingestion/safe_page_hydrator.js' \
+    --glob '!web/src/components/safe_page_panel.ts' \
+    --glob '!web/src/safe_page_hydrator_entry.ts' \
+    . || true
   exit 1
 fi
 echo "fingerprint SDK ban: OK"

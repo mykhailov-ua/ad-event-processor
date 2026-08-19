@@ -104,8 +104,15 @@ safe_validate_sqlc_yml() {
   [[ -f "$f" ]] || safe_die "sqlc.yaml missing: $f"
   local out
   while IFS= read -r line || [[ -n "$line" ]]; do
-    [[ "$line" =~ ^[[:space:]]*out:[[:space:]]*\"?([^\"# ]+)\"? ]] || continue
-    out="${BASH_REMATCH[1]}"
+    [[ "$line" =~ ^[[:space:]]*out:[[:space:]]* ]] || continue
+    out="${line#*:}"
+    out="${out#"${out%%[![:space:]]*}"}"
+    out="${out%\"}"
+    out="${out#\"}"
+    out="${out%\'}"
+    out="${out#\'}"
+    out="${out%%[[:space:]]*}"
+    [[ -n "$out" ]] || continue
     safe_assert_not_dangerous "$out" "sqlc out"
     [[ "$out" == internal/* ]] || safe_die "sqlc out must start with internal/: $out"
     [[ "$out" == */db || "$out" == */sqlc ]] || safe_die "sqlc out must end with /db or /sqlc: $out"
@@ -132,13 +139,13 @@ safe_sync_proto_gen() {
     rsync -a "$src/" "$dst_real/"
     found=1
   done
-  # outbox.proto uses go_package internal/controlplane/outboxpb (synced above).
+
   shopt -u nullglob
   [[ "$found" -eq 1 ]] || safe_die "api/gen has no internal/*/pb trees; check buf output"
 }
 
 safe_prune_service_vtproto() {
-  : # cold-path service protos removed; vtproto only for ingestion/rtb
+  :
 }
 
 safe_validate_codegen_configs() {

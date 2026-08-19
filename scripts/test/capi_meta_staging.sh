@@ -1,20 +1,5 @@
 #!/usr/bin/env bash
-# Staging smoke: Meta CAPI end-to-end (click → conversion → postback dispatch).
-# Requires a running stack + valid campaign CAPI config with test_event_code.
-#
-# Usage:
-#   TRACK_URL=https://trk.staging.example \
-#   CONTROL_URL=http://127.0.0.1:8188 \
-#   ADMIN_API_KEY=... \
-#   CAMPAIGN_ID=... \
-#   META_TEST_EVENT_CODE=TEST12345 \
-#   bash scripts/test/capi_meta_staging.sh
-#
-# Dry-run (prints plan only):
-#   CAPI_STAGING_DRY_RUN=1 bash scripts/test/capi_meta_staging.sh
-#
-# Metrics: postback-sender exposes ad_postback_dispatch_total on POSTBACK_METRICS_URL
-# (default http://127.0.0.1:9119/metrics). Provider label is "facebook" (Meta CAPI adapter).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -77,7 +62,7 @@ import json, subprocess, sys
 
 campaign_id, click_id, fbclid = sys.argv[1:4]
 customer = subprocess.check_output([
-    "docker", "exec", "bidshard-db-1", "psql", "-h", "/run/ad-event-processor/postgresql",
+    "docker", "exec", "ad-event-processor-db-1", "psql", "-h", "/run/ad-event-processor/postgresql",
     "-p", "5430", "-U", "ad_event_processor_user", "-d", "ad_event_processor",
     "-t", "-A", "-c",
     f"SELECT customer_id::text FROM campaigns WHERE id='{campaign_id}'::uuid;",
@@ -97,7 +82,7 @@ sql = (
     "'SEND_POSTBACK', convert_to(%s, 'UTF8'), 'PENDING');"
 )
 subprocess.check_call([
-    "docker", "exec", "bidshard-db-1", "psql", "-h", "/run/ad-event-processor/postgresql",
+    "docker", "exec", "ad-event-processor-db-1", "psql", "-h", "/run/ad-event-processor/postgresql",
     "-p", "5430", "-U", "ad_event_processor_user", "-d", "ad_event_processor",
     "-v", "ON_ERROR_STOP=1", "-c", sql.replace("%s", "'" + payload.replace("'", "''") + "'"),
 ])
@@ -113,7 +98,7 @@ if [[ -n "$ADMIN_API_KEY" && -n "$META_TEST_EVENT_CODE" ]]; then
     && echo "$cfg" | grep -q "\"test_event_code\":\"${META_TEST_EVENT_CODE}\""; then
     verified=1
   elif [[ -n "${CAPI_BOOTSTRAP_DB:-}" ]]; then
-    db_code="$(docker exec bidshard-db-1 psql -h /run/ad-event-processor/postgresql -p 5430 \
+    db_code="$(docker exec ad-event-processor-db-1 psql -h /run/ad-event-processor/postgresql -p 5430 \
       -U ad_event_processor_user -d ad_event_processor -t -A -c \
       "SELECT test_event_code FROM postback_configs WHERE campaign_id='${CAMPAIGN_ID}'::uuid;" 2> /dev/null | tr -d '[:space:]' || true)"
     if [[ "$db_code" == "$META_TEST_EVENT_CODE" ]]; then

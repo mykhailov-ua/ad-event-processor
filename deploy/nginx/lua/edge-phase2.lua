@@ -239,7 +239,7 @@ function _M.run_click()
     end
 
     if not args.gclid and not args.fbclid and not args.ttclid and not args.yclid and not args.w then
-        ngx.req.set_header("X-BidShard-Force-Safe", "1")
+        ngx.req.set_header("X-Ad-Event-Processor-Force-Safe", "1")
     end
 
     apply_campaign_rl(campaign_id, fraud_score)

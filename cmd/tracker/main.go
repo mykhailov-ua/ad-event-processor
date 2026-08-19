@@ -106,10 +106,7 @@ func main() {
 		if d, parseErr := time.ParseDuration(config.LicenseFileRecheckInterval()); parseErr == nil && d > 0 {
 			recheckInterval = d
 		}
-		licensePath := config.LicenseEnv("PATH")
-		if licensePath == "" {
-			licensePath = "license.jwt"
-		}
+		licensePath := config.LicensePathFromEnv()
 		registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
 			Required: true,
 			Path:     licensePath,
@@ -129,6 +126,7 @@ func main() {
 		slog.Error("failed to connect to redis shards", "error", err)
 		os.Exit(1)
 	}
+	database.StartRedisPoolStatsReporter(ctx, rdbs, 15*time.Second)
 	if rdbs[0] == nil {
 		slog.Warn("redis shard 0 not connected; running in degraded mode",
 			"replica", cfg.CampaignReplicaPath,

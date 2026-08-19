@@ -78,40 +78,30 @@ export type OpsMLManualLabel = {
 
 const OPS_ML_POLL_MS = 30_000;
 
-/**
- * Poll interval for ops ML model status refresh.
- */
+
 export function opsMlModelPollMs(): number {
   return OPS_ML_POLL_MS;
 }
 
-/**
- * Load platform ML model lifecycle and shard sync status.
- */
+
 export async function fetchOpsMLModelStatus(): Promise<MLModelStatus | null> {
   const res = await api<MLModelStatus>('/api/v1/ops/ml-model');
   return res.data ?? null;
 }
 
-/**
- * Load latest mixed proxy + audited shadow eval report.
- */
+
 export async function fetchOpsMLEvalReport(): Promise<MLEvalReport | null> {
   const res = await api<MLEvalReport>('/api/v1/ops/ml-model/eval');
   return res.data ?? null;
 }
 
-/**
- * Load platform-wide manual ML labels for ops review.
- */
+
 export async function fetchOpsMLManualLabels(): Promise<OpsMLManualLabel[]> {
   const res = await api<OpsMLManualLabel[]>('/api/v1/ops/ml-model/labels');
   return Array.isArray(res.data) ? res.data : [];
 }
 
-/**
- * Truncate artifact hash for compact table display.
- */
+
 export function truncateArtifactHash(hash?: string, head = 8, tail = 8): string {
   if (!hash) return '—';
   if (hash.length <= head + tail + 1) return hash;

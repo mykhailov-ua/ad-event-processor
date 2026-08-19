@@ -1,20 +1,22 @@
 {
-  "include": ["model"],
+  "include": [
+    "model"
+  ],
   "exclude": [
     "**/__pycache__",
     "**/.pytest_cache",
     "**/.ruff_cache",
     "model/.venv"
   ],
-  "venvPath": "model",
-  "venv": ".venv",
   "pythonVersion": "3.12",
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": "none",
   "executionEnvironments": [
     {
       "root": "model",
-      "extraPaths": ["model"]
+      "extraPaths": [
+        "model"
+      ]
     }
   ]
 }

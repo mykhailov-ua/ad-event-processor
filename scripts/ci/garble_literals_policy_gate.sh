@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-D.1: assert per-binary garble -literals policy (no full rebuild required).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

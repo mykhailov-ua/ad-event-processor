@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
-# CPU isolation status / verify for compose cpuset profile and native systemd drop-ins.
-#
-# Usage:
-#   bash scripts/ops/cpu_isolation.sh status
-#   bash scripts/ops/cpu_isolation.sh verify
-#
-# Env: reads CPU_ISOLATION_ENABLED and *_CPUSET from .env when present.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -13,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi
@@ -58,7 +52,7 @@ cmd_status() {
     warn "docker not available"
     return 0
   fi
-  for ctr in bidshard-tracker-0-1 espx-tracker-0-1 tracker-0; do
+  for ctr in ad-event-processor-tracker-0-1 tracker-0; do
     if docker ps --format '{{.Names}}' | grep -qx "$ctr"; then
       inspect_container "$ctr" || true
     fi
@@ -73,7 +67,7 @@ cmd_verify() {
   if ! command -v docker > /dev/null 2>&1 || ! docker info > /dev/null 2>&1; then
     die "docker required for verify"
   fi
-  # Resolve tracker container name from compose project.
+
   COMPOSE=(docker compose -f "$COMPOSE_FILE" -f deploy/compose/docker-compose.cpu-isolation.yaml --profile cpu-isolation)
   TRACKER_CID="$("${COMPOSE[@]}" ps -q tracker-0 2> /dev/null | head -1 || true)"
   if [[ -z "$TRACKER_CID" ]]; then

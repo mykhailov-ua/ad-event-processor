@@ -30,6 +30,15 @@ func TestCompareBPFSnapshots_fdDeltaRegression(t *testing.T) {
 	}
 }
 
+func TestCompareBPFSnapshots_rssDeltaRegression(t *testing.T) {
+	baseline := BPFSnapshot{Metrics: map[string]float64{"max_rss_delta_kb": 0}}
+	current := BPFSnapshot{Metrics: map[string]float64{"max_rss_delta_kb": 6144}}
+	res := CompareBPFSnapshots(baseline, current)
+	if res.Pass {
+		t.Fatal("expected fail on rss delta increase")
+	}
+}
+
 func TestSeedBPFSnapshotBaseline(t *testing.T) {
 	dir := filepath.Join("testdata", "bpf_gate_pass")
 	tmp := t.TempDir()

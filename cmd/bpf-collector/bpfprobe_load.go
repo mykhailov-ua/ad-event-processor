@@ -188,23 +188,35 @@ func (c *Collection) PutTargetCgroup(cgroupID uint64, role uint8) error {
 	return c.Maps.TargetCgroups.Put(cgroupID, role)
 }
 
-func DecodeSlowEvent(raw []byte) (tsNs uint64, pid, syscallID uint32, durNs uint64, role, kind uint8, campaignSlot uint16, markerID uint32) {
+type SlowEvent struct {
+	TSNs         uint64
+	PID          uint32
+	SyscallID    uint32
+	DurNs        uint64
+	Role         uint8
+	Kind         uint8
+	CampaignSlot uint16
+	MarkerID     uint32
+}
+
+func DecodeSlowEvent(raw []byte) SlowEvent {
 	if len(raw) < 24 {
-		return
+		return SlowEvent{}
 	}
-	tsNs = binary.LittleEndian.Uint64(raw[0:8])
-	pid = binary.LittleEndian.Uint32(raw[8:12])
-	syscallID = binary.LittleEndian.Uint32(raw[12:16])
-	durNs = binary.LittleEndian.Uint64(raw[16:24])
+	var e SlowEvent
+	e.TSNs = binary.LittleEndian.Uint64(raw[0:8])
+	e.PID = binary.LittleEndian.Uint32(raw[8:12])
+	e.SyscallID = binary.LittleEndian.Uint32(raw[12:16])
+	e.DurNs = binary.LittleEndian.Uint64(raw[16:24])
 	if len(raw) >= 26 {
-		role = raw[24]
-		kind = raw[25]
+		e.Role = raw[24]
+		e.Kind = raw[25]
 	}
 	if len(raw) >= 28 {
-		campaignSlot = binary.LittleEndian.Uint16(raw[26:28])
+		e.CampaignSlot = binary.LittleEndian.Uint16(raw[26:28])
 	}
 	if len(raw) >= 32 {
-		markerID = binary.LittleEndian.Uint32(raw[28:32])
+		e.MarkerID = binary.LittleEndian.Uint32(raw[28:32])
 	}
-	return
+	return e
 }

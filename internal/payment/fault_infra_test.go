@@ -182,7 +182,7 @@ func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID u
 	intent := result.Intent
 
 	providerRef := intent.ProviderRef
-	payload := fmt.Sprintf(`{"id":"evt_%s","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":%d}}}`,
+	payload := fmt.Sprintf(`{"id":"evt_%s","type":"payment_intent.succeeded","data":{"object":{"id":%q,"amount":%d}}}`,
 		idempotencyKey, providerRef, amountMicro)
 	err = svc.ProcessStripeWebhook(ctx, "evt_"+idempotencyKey, "payment_intent.succeeded", []byte(payload), providerRef, amountMicro, payload)
 	require.NoError(t, err)
@@ -215,11 +215,11 @@ func SeedSettledIntent(t *testing.T, infra *FaultInfra, customerID uuid.UUID, am
 	return seed
 }
 
-func ProcessRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *payment.Service, eventID string, providerRef string, refundID string, refundAmountMicro int64) int64 {
+func ProcessRefundWebhook(t *testing.T, pool *pgxpool.Pool, svc *payment.Service, eventID, providerRef, refundID string, refundAmountMicro int64) int64 {
 	t.Helper()
 	stripeCents, err := payment.MicroToStripeAmount(refundAmountMicro)
 	require.NoError(t, err)
-	payload := fmt.Sprintf(`{"id":"%s","type":"refund.created","data":{"object":{"id":"%s","amount":%d,"payment_intent":"%s","status":"succeeded"}}}`,
+	payload := fmt.Sprintf(`{"id":%q,"type":"refund.created","data":{"object":{"id":%q,"amount":%d,"payment_intent":%q,"status":"succeeded"}}}`,
 		eventID, refundID, stripeCents, providerRef)
 	err = svc.ProcessStripeRefundWebhook(context.Background(), eventID, "refund.created", []byte(payload), refundID, providerRef, refundAmountMicro, "succeeded")
 	require.NoError(t, err)

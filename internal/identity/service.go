@@ -432,7 +432,7 @@ func (service *Service) VerifyToken(ctx context.Context, accessToken string) (db
 	return user, nil
 }
 
-func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string, duration time.Duration) (string, string, error) {
+func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string, duration time.Duration) (accessToken, newRefreshToken string, err error) {
 	if service.rdb != nil {
 		cached, err := service.rdb.Get(ctx, "idempotency:refresh:"+refreshTokenStr).Result()
 		if err == nil && cached != "" {
@@ -443,10 +443,7 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 		}
 	}
 
-	var accessToken string
-	var newRefreshTokenStr string
-
-	err := service.repo.ExecTx(ctx, func(q db.Querier) error {
+	err = service.repo.ExecTx(ctx, func(q db.Querier) error {
 		session, err := q.GetSessionByRefreshTokenForUpdate(ctx, refreshTokenStr)
 		if err != nil {
 			slog.Warn("refresh token failed", slog.String("reason", "invalid refresh token"), slog.Any("error", err))
@@ -509,13 +506,13 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 			return err
 		}
 
-		newRefreshTokenStr = uuid.NewString()
+		newRefreshToken = uuid.NewString()
 		expiresAt := time.Now().Add(7 * 24 * time.Hour)
 
 		if _, err = q.CreateSession(ctx, db.CreateSessionParams{
 			ID:           pgtype.UUID{Bytes: newRefreshTokenID, Valid: true},
 			UserID:       user.ID,
-			RefreshToken: newRefreshTokenStr,
+			RefreshToken: newRefreshToken,
 			UserAgent:    session.UserAgent,
 			ClientIp:     session.ClientIp,
 			IsBlocked:    false,
@@ -536,12 +533,12 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 	}
 
 	if service.rdb != nil {
-		if errSet := service.rdb.Set(ctx, "idempotency:refresh:"+refreshTokenStr, accessToken+" "+newRefreshTokenStr, 5*time.Minute).Err(); errSet != nil {
+		if errSet := service.rdb.Set(ctx, "idempotency:refresh:"+refreshTokenStr, accessToken+" "+newRefreshToken, 5*time.Minute).Err(); errSet != nil {
 			slog.Error("failed to set idempotency cache", slog.Any("error", errSet))
 		}
 	}
 
-	return accessToken, newRefreshTokenStr, nil
+	return accessToken, newRefreshToken, nil
 }
 
 func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string) error {

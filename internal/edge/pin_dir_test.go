@@ -59,7 +59,7 @@ func TestEntrypointUsesCanonicalPinDir(t *testing.T) {
 	for root != "/" && !fileExists(filepath.Join(root, "go.mod")) {
 		root = filepath.Dir(root)
 	}
-	entrypoint := filepath.Join(root, "deploy/edge/xdp/entrypoint.sh")
+	entrypoint := filepath.Join(root, "deploy", "edge", "xdp", "entrypoint.sh")
 	require.FileExists(t, entrypoint)
 
 	data, err := os.ReadFile(entrypoint)
@@ -67,7 +67,7 @@ func TestEntrypointUsesCanonicalPinDir(t *testing.T) {
 	body := string(data)
 	assert.Contains(t, body, "BPF_PIN_DIR")
 	assert.Contains(t, body, DefaultBPFPinDir)
-	assert.NotContains(t, body, "/sys/fs/bpf/espx")
+	assert.NotContains(t, body, "/sys/fs/bpf/ad-event-processor")
 }
 
 func fileExists(path string) bool {

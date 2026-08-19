@@ -151,7 +151,7 @@ func probeTLS(ctx context.Context, host string) (tlsProbeResult, error) {
 	return tlsProbeResult{NotAfter: &notAfter}, nil
 }
 
-func classifySSL(notAfter time.Time, now time.Time) string {
+func classifySSL(notAfter, now time.Time) string {
 	remaining := notAfter.Sub(now)
 	if remaining <= 0 {
 		return SSLExpired

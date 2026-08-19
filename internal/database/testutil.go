@@ -22,7 +22,7 @@ type TestDBInfra struct {
 	PGContainer *postgres.PostgresContainer
 }
 
-func SetupTestDBInfra(t testing.TB) (*TestDBInfra, func()) {
+func SetupTestDBInfra(t testing.TB) (infra *TestDBInfra, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -52,14 +52,14 @@ func SetupTestDBInfra(t testing.TB) (*TestDBInfra, func()) {
 
 	applyIngestionMigrations(t, pool)
 
-	infra := &TestDBInfra{Pool: pool, PGContainer: pgContainer}
+	infra = &TestDBInfra{Pool: pool, PGContainer: pgContainer}
 	return infra, func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}
 }
 
-func SetupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
+func SetupTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	infra, cleanup := SetupTestDBInfra(t)
 	return infra.Pool, cleanup
 }
@@ -69,25 +69,24 @@ func applyIngestionMigrations(t testing.TB, pool *pgxpool.Pool) {
 	ctx := context.Background()
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	migrationsDir := filepath.Join(baseDir, "internal/ingestion/migrations")
+	migrationsDir := filepath.Join(baseDir, "internal", "ingestion", "migrations")
 	if err := coldpath.ApplyTrackedSchemaMigrations(ctx, pool, migrationsDir); err != nil {
 		t.Fatalf("failed to apply ingestion migrations: %s", err)
 	}
 }
 
-// ApplyLedgerMigrations applies internal/ledger/migrations on a test pool (vendor.*, billing.*).
 func ApplyLedgerMigrations(t testing.TB, pool *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	migrationsDir := filepath.Join(baseDir, "internal/ledger/migrations")
+	migrationsDir := filepath.Join(baseDir, "internal", "ledger", "migrations")
 	if err := coldpath.ApplyTrackedSchemaMigrations(ctx, pool, migrationsDir); err != nil {
 		t.Fatalf("failed to apply ledger migrations: %s", err)
 	}
 }
 
-func SetupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
+func SetupTestRedis(t testing.TB) (client redis.UniversalClient, cleanup func()) {
 	ctx := context.Background()
 
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")

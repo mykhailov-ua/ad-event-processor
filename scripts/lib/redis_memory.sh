@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Helpers to sample Redis used_memory from compose services redis-0..redis-N.
+
 set -euo pipefail
 
 redis_memory_used_bytes() {

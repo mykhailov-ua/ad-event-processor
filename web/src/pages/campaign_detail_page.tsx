@@ -109,7 +109,16 @@ function parseDaypartHours(raw: string): number[] {
 function allowedTabIds(masked: boolean): string[] {
   const list = ['overview', 'stats', 'config'];
   if (!masked) {
-    list.push('tracking', 'postbacks', 'fraud', 'filters', 'margin', 'events', 'creative', 'telegram');
+    list.push(
+      'tracking',
+      'postbacks',
+      'fraud',
+      'filters',
+      'margin',
+      'events',
+      'creative',
+      'telegram'
+    );
   }
   return list;
 }
@@ -169,9 +178,7 @@ function EventsTableSkeleton() {
   );
 }
 
-/**
- * Campaign detail with tabs, pause/resume, and lazy-loaded panel sections.
- */
+
 export function CampaignDetailPage() {
   const { id = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -460,8 +467,7 @@ export function CampaignDetailPage() {
       return;
     }
     const url = configForm.target_url.trim();
-    if (url && !/^https?:\/\//i.test(url)) {
-      setConfigError('Target URL must start with http:// or https://');
+    if (url && !/^https?:\/\      setConfigError('Target URL must start with http:// or https://');
       return;
     }
     body.target_url = url;
@@ -489,8 +495,7 @@ export function CampaignDetailPage() {
         setConfigError('Proxy upstream URL is required when click delivery is reverse proxy');
         return;
       }
-      if (!/^https?:\/\//i.test(proxyURL)) {
-        setConfigError('Proxy upstream URL must start with http:// or https://');
+      if (!/^https?:\/\        setConfigError('Proxy upstream URL must start with http:// or https://');
         return;
       }
       body.proxy_upstream_url = proxyURL;

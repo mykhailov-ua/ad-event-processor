@@ -6,6 +6,12 @@ cd "$ROOT"
 
 fail=0
 
+echo "tier_a: check sources-only runtime artifacts..."
+if [[ -e license.jwt ]]; then
+  echo "sources-only: repo-root license.jwt must not exist (use var/license.jwt for local dev)" >&2
+  fail=1
+fi
+
 echo "tier_a: check docs layout..."
 for forbidden in docs/COMPLIANCE_MATRIX.md docs/MILESTONE.md docs/SELF_HOSTED.md docs/PROTECTION.md; do
   if [[ -f "$forbidden" ]]; then
@@ -22,17 +28,21 @@ for required in docs/ARCHITECTURE.md docs/DEVELOPMENT.md; do
 done
 
 allowed_docs=(
-  README.md
+  INDEX.md
   ARCHITECTURE.md
+  BILLING.md
+  CI.md
   DEVELOPMENT.md
   LICENSE.md
   NAMING.md
   PARSER.md
-  QUICKSTART.md
   REGIONS.md
   RTB.md
   SHARDING.md
+  START.md
   TRAFFIC.md
+  TRIAL.md
+  UI.md
   XDP.md
 )
 
@@ -104,7 +114,7 @@ if git rev-parse --verify "$BASE" > /dev/null 2>&1; then
       | rg "$pattern_milestone" \
       | rg -v 'milestoneTag|milestoneWord|check_no_milestone_refs' || true
   )
-  if ((${#diff_hits[@]})); then
+  if ((${#diff_hits[@]} > 0)); then
     echo "check_no_milestone_refs: forbidden milestone tag in diff:"
     printf '  %s\n' "${diff_hits[@]}"
     fail=1
@@ -148,7 +158,7 @@ mapfile -t slog_hits < <(
     --glob '!internal/controlplane/service.go' 2> /dev/null || true
 )
 
-if ((${#slog_hits[@]})); then
+if ((${#slog_hits[@]} > 0)); then
   echo "check_no_service_slog: slog forbidden in service_*.go (except service.go lifecycle):"
   printf '  %s\n' "${slog_hits[@]}"
   fail=1
@@ -178,7 +188,7 @@ while IFS= read -r -d '' file; do
 done < <(find internal/controlplane -maxdepth 1 -name '*_handlers.go' ! -name '*_test.go' -print0 2> /dev/null || true)
 
 echo "tier_a: check brand boundary..."
-pattern_brand='BidShard|bidshard\.com'
+pattern_brand='ad-event-processor|ad-event-processor\.com'
 scan_brand() {
   local path="$1"
   case "$path" in

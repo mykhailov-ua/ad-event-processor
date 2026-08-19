@@ -4,7 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-LOG="${MR_RESILIENCE_DRILL_LOG:-/tmp/espx-mr-resilience-drill.log}"
+LOG="${MR_RESILIENCE_DRILL_LOG:-/tmp/ad-event-processor-mr-resilience-drill.log}"
 MIN_MR_PROOFS="${RESILIENCE_MIN_PROOFS_MR:-12}"
 
 echo "=== Multi-region resilience drill ==="

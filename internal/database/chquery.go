@@ -242,7 +242,7 @@ SELECT max(latest) FROM (
 	return lag, nil
 }
 
-func Freshness(lag time.Duration, staleThreshold time.Duration) (stale bool, lagSeconds int) {
+func Freshness(lag, staleThreshold time.Duration) (stale bool, lagSeconds int) {
 	if staleThreshold <= 0 {
 		staleThreshold = defaultCHStaleThreshold
 	}

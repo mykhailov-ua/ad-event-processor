@@ -22,7 +22,7 @@ ensure_golangci_lint() {
 lint_extra_args() {
   local -n out=$1
   out=()
-  # Incremental on PR/CI: contextcheck debt is retired file-by-file; new issues still fail.
+
   if [[ "${LINT_STRICT:-}" == "1" ]]; then
     return 0
   fi

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -464,7 +465,10 @@ func (s *TelegramServiceImpl) sendBotMessage(ctx context.Context, botToken strin
 		coldpath.CloseHTTPResponse(resp)
 		return err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		var errData struct {
@@ -508,7 +512,10 @@ func (s *TelegramServiceImpl) TestPostback(ctx context.Context, id uuid.UUID) er
 		coldpath.CloseHTTPResponse(resp)
 		return err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("postback url returned status code %d", resp.StatusCode)
 	}

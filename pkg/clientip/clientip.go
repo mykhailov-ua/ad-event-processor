@@ -86,7 +86,7 @@ func FromRequest(r *http.Request, trusted Trusted) string {
 	return remoteIP
 }
 
-func FromProxyPeer(peerIP string, xff, xRealIP string, trusted Trusted) string {
+func FromProxyPeer(peerIP, xff, xRealIP string, trusted Trusted) string {
 	parsedPeer := net.ParseIP(peerIP)
 	if !trusted.Contains(parsedPeer) {
 		return peerIP
@@ -107,22 +107,23 @@ func FromProxyPeer(peerIP string, xff, xRealIP string, trusted Trusted) string {
 func lastPublicXFF(xff string) (string, bool) {
 	last := len(xff)
 	for i := len(xff) - 1; i >= -1; i-- {
-		if i == -1 || xff[i] == ',' {
-			start := i + 1
-			for start < last && xff[start] == ' ' {
-				start++
-			}
-			end := last
-			for end > start && xff[end-1] == ' ' {
-				end--
-			}
-			if start < end {
-				if ip, ok := publicClientIP(xff[start:end]); ok {
-					return ip, true
-				}
-			}
-			last = i
+		if i != -1 && xff[i] != ',' {
+			continue
 		}
+		start := i + 1
+		for start < last && xff[start] == ' ' {
+			start++
+		}
+		end := last
+		for end > start && xff[end-1] == ' ' {
+			end--
+		}
+		if start < end {
+			if ip, ok := publicClientIP(xff[start:end]); ok {
+				return ip, true
+			}
+		}
+		last = i
 	}
 	return "", false
 }

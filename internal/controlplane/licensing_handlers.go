@@ -47,13 +47,13 @@ type LicensingHTTPHandlers struct {
 	WriteServiceError     func(http.ResponseWriter, error)
 }
 
-func (licensing *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
-	if licensing == nil || licensing.Pool == nil {
+func (h *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil || h.Pool == nil {
 		return
 	}
-	limit := licensing.ApplyRateLimit
-	applyLimit := licensing.LicenseApplyRateLimit
-	perm := licensing.RequirePermission
+	limit := h.ApplyRateLimit
+	applyLimit := h.LicenseApplyRateLimit
+	perm := h.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -64,18 +64,18 @@ func (licensing *LicensingHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/license/status", limit(perm("customers:read", licensing.getLicenseStatus)))
-	if licensing.LicenseService != nil {
-		mux.HandleFunc("POST /api/v1/license/apply", limit(applyLimit(perm("settings:write", licensing.postLicenseApply))))
+	mux.HandleFunc("GET /api/v1/license/status", limit(perm("customers:read", h.getLicenseStatus)))
+	if h.LicenseService != nil {
+		mux.HandleFunc("POST /api/v1/license/apply", limit(applyLimit(perm("settings:write", h.postLicenseApply))))
 	}
 }
 
-func (licensing *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.Request) {
-	q := db.New(licensing.Pool)
+func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.Request) {
+	q := db.New(h.Pool)
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, licensing.LicenseDiagnostics))
+			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, h.LicenseDiagnostics))
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -87,12 +87,12 @@ func (licensing *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, 
 		licRow.State,
 		licRow.ValidUntil.Time,
 		licRow.ValidUntil.Valid,
-		licensing.LicenseDiagnostics,
+		h.LicenseDiagnostics,
 	)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (licensing *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, r *http.Request) {
+func (h *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
@@ -102,19 +102,19 @@ func (licensing *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}
-	if err := licensing.LicenseService.ApplyLicenseToken(r.Context(), req.Token); err != nil {
-		if licensing.WriteServiceError != nil {
-			licensing.WriteServiceError(w, err)
+	if err := h.LicenseService.ApplyLicenseToken(r.Context(), req.Token); err != nil {
+		if h.WriteServiceError != nil {
+			h.WriteServiceError(w, err)
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-	q := db.New(licensing.Pool)
+	q := db.New(h.Pool)
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, licensing.LicenseDiagnostics))
+			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, h.LicenseDiagnostics))
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -125,7 +125,7 @@ func (licensing *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, 
 		licRow.State,
 		licRow.ValidUntil.Time,
 		licRow.ValidUntil.Valid,
-		licensing.LicenseDiagnostics,
+		h.LicenseDiagnostics,
 	)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }

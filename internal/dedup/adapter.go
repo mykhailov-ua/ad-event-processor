@@ -1,4 +1,3 @@
-// Package dedup implements Postgres-backed deduplication adapters for ingestion.
 package dedup
 
 import (

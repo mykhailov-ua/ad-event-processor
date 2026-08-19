@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/trialregistry"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 )
 
 const (
@@ -131,7 +133,7 @@ func handleMessage(ctx context.Context, client *http.Client, cfg botConfig, reg 
 
 	switch cmd {
 	case "start", "help":
-		reply := "BidShard pilot signup.\n\nSend /trial to request a pilot license. A vendor operator will review and send your JWT."
+		reply := branding.ProductName() + " pilot signup.\n\nSend /trial to request a pilot license. A vendor operator will review and send your JWT."
 		sendBotMessage(ctx, client, cfg, chatID, reply)
 	case "trial":
 		if cfg.DryRun {
@@ -145,7 +147,7 @@ func handleMessage(ctx context.Context, client *http.Client, cfg botConfig, reg 
 		if err != nil {
 			slog.Error("enqueue pending failed", "telegram_id", userID, "error", err)
 			text := "Could not queue your request. Contact vendor support."
-			if err == trialregistry.ErrTrialTelegramUsed {
+			if errors.Is(err, trialregistry.ErrTrialTelegramUsed) {
 				text = "A pilot was already issued for this Telegram account."
 			}
 			sendBotMessage(ctx, client, cfg, chatID, text)
@@ -163,7 +165,7 @@ func handleMessage(ctx context.Context, client *http.Client, cfg botConfig, reg 
 	}
 }
 
-func parseCommand(text string) (string, string) {
+func parseCommand(text string) (cmd, args string) {
 	text = strings.TrimSpace(text)
 	if text == "" {
 		return "", ""
@@ -175,11 +177,11 @@ func parseCommand(text string) (string, string) {
 	if len(fields) == 0 {
 		return "", ""
 	}
-	cmd := strings.TrimPrefix(fields[0], "/")
+	cmd = strings.TrimPrefix(fields[0], "/")
 	if i := strings.IndexByte(cmd, '@'); i >= 0 {
 		cmd = cmd[:i]
 	}
-	args := ""
+	args = ""
 	if len(fields) > 1 {
 		args = strings.Join(fields[1:], " ")
 	}
@@ -203,7 +205,7 @@ func fetchUpdates(ctx context.Context, client *http.Client, cfg botConfig, offse
 	}
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates?%s", cfg.Token, q.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +213,7 @@ func fetchUpdates(ctx context.Context, client *http.Client, cfg botConfig, offse
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -254,7 +256,7 @@ func sendBotMessage(ctx context.Context, client *http.Client, cfg botConfig, cha
 		slog.Error("sendMessage failed", "error", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		slog.Error("sendMessage bad status", "status", resp.StatusCode, "body", string(body))

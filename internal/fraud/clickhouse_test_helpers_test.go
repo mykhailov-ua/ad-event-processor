@@ -19,7 +19,7 @@ import (
 
 const clickHouseTestImage = "clickhouse/clickhouse-server:24.3-alpine"
 
-func setupClickHouseTest(t *testing.T) (driver.Conn, func()) {
+func setupClickHouseTest(t *testing.T) (conn driver.Conn, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -37,8 +37,8 @@ func setupClickHouseTest(t *testing.T) (driver.Conn, func()) {
 	dsn, err := chContainer.ConnectionString(ctx)
 	require.NoError(t, err)
 
-	conn := openClickHouseTestConn(t, dsn)
-	cleanup := func() {
+	conn = openClickHouseTestConn(t, dsn)
+	cleanup = func() {
 		_ = conn.Close()
 		_ = chContainer.Terminate(ctx)
 	}

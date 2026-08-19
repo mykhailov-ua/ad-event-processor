@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Release QA — fuzz smoke, extended red-team, garbled tracker alloc gate.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 

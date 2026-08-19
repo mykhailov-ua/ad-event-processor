@@ -66,7 +66,7 @@ func CaptureStrictContention(sessionDir, promURL string) (*StrictContentionSnaps
 		}
 		shard := strings.TrimPrefix(row.Labels, "shard=")
 		p99Str := prom.scalar(fmt.Sprintf(
-			`histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker",shard="%s"}[%s])) by (le)) * 1000`,
+			`histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker",shard=%q}[%s])) by (le)) * 1000`,
 			shard, rateWindow,
 		))
 		luaRows = append(luaRows, promVectorRow{Value: p99Str, Labels: row.Labels})

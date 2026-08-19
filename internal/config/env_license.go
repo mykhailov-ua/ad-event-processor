@@ -13,11 +13,18 @@ func LicenseRequiredFromEnv() bool {
 	return ProfileFromEnv() == "production"
 }
 
+// DevLicenseRelPath is the local-dev license file under gitignored var/.
+const DevLicenseRelPath = "var/license.jwt"
+
+func DefaultLicensePath() string {
+	return DevLicenseRelPath
+}
+
 func LicensePathFromEnv() string {
 	if v := LicenseEnv("PATH"); v != "" {
 		return v
 	}
-	return "license.jwt"
+	return DefaultLicensePath()
 }
 
 func LicenseFilePresent() bool {

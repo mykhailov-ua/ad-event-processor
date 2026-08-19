@@ -26,7 +26,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
+func setupPostgresInfra(t *testing.T) (pool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -45,12 +45,12 @@ func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
 	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 
-	pool, err := pgxpool.New(ctx, connStr)
+	pool, err = pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	migrationsDir := filepath.Join(filepath.Dir(filename), "../ingestion/migrations")
+	migrationsDir := filepath.Join(filepath.Dir(filename), "..", "ingestion", "migrations")
 	entries, err := os.ReadDir(migrationsDir)
 	require.NoError(t, err)
 
@@ -72,7 +72,7 @@ func setupPostgresInfra(t *testing.T) (*pgxpool.Pool, func()) {
 		require.NoError(t, err, "migration %s failed", entry.Name())
 	}
 
-	cleanup := func() {
+	cleanup = func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}

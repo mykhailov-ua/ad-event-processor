@@ -77,8 +77,8 @@ func PaginatedList[T, R any](
 	count func() (int64, error),
 	list func() ([]T, error),
 	mapFn func(T) R,
-) ([]R, int64, error) {
-	total, err := count()
+) (items []R, total int64, err error) {
+	total, err = count()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -95,8 +95,8 @@ func PaginatedList[T, R any](
 func PaginatedQuery[T any](
 	count func() (int64, error),
 	list func() ([]T, error),
-) ([]T, int64, error) {
-	total, err := count()
+) (items []T, total int64, err error) {
+	total, err = count()
 	if err != nil {
 		return nil, 0, err
 	}

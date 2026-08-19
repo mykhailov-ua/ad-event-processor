@@ -31,27 +31,27 @@ func DefaultPostgresConfig() PostgresConfig {
 	}
 }
 
-func SetupAdsPostgres(t testing.TB) (*pgxpool.Pool, func()) {
+func SetupAdsPostgres(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
-	pool, cleanup := SetupPostgres(t, DefaultPostgresConfig())
-	return pool, cleanup
+	pool, cleanup = SetupPostgres(t, DefaultPostgresConfig())
+	return
 }
 
-func SetupAdsPaymentPostgres(t testing.TB) (*pgxpool.Pool, func()) {
+func SetupAdsPaymentPostgres(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
 	cfg := DefaultPostgresConfig()
 	cfg.DatabaseName = "payment_test_db"
 	cfg.Username = "postgres"
 	cfg.Password = "secure_password"
 	cfg.MigrationDirs = []string{AdsMigrationsDir(), PaymentMigrationsDir()}
-	pool, cleanup := SetupPostgres(t, cfg)
-	return pool, cleanup
+	pool, cleanup = SetupPostgres(t, cfg)
+	return
 }
 
-func SetupPostgres(t testing.TB, cfg PostgresConfig) (*pgxpool.Pool, func()) {
+func SetupPostgres(t testing.TB, cfg PostgresConfig) (pool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
-	_, pool, cleanup := setupPostgresContainer(t, cfg)
-	return pool, cleanup
+	_, pool, cleanup = setupPostgresContainer(t, cfg)
+	return
 }
 
 func SetupAdsPostgresContainer(t testing.TB) (*postgres.PostgresContainer, *pgxpool.Pool, func()) {

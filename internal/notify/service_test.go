@@ -25,7 +25,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
+func setupTestDB(t testing.TB) (pool *pgxpool.Pool, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -48,20 +48,21 @@ func setupTestDB(t testing.TB) (*pgxpool.Pool, func()) {
 		t.Fatalf("failed to get connection string: %s", err)
 	}
 
-	pool, err := pgxpool.New(ctx, connStr)
+	pool, err = pgxpool.New(ctx, connStr)
 	if err != nil {
 		t.Fatalf("failed to connect to db: %s", err)
 	}
 
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	notifierMigrationsDir := filepath.Join(baseDir, "internal/notify/migrations")
+	notifierMigrationsDir := filepath.Join(baseDir, "internal", "notify", "migrations")
 	applyMigrations(t, pool, notifierMigrationsDir)
 
-	return pool, func() {
+	cleanup = func() {
 		pool.Close()
 		_ = pgContainer.Terminate(ctx)
 	}
+	return
 }
 
 func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {

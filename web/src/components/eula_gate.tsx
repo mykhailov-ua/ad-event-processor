@@ -52,7 +52,7 @@ export function EulaGate({ version, text, onAccepted }: EulaGateProps) {
               checked={checked}
               onChange={(e) => setChecked(e.target.checked)}
             />
-            {' I accept the BidShard on-premise license agreement'}
+            {' I accept the ad-event-processor on-premise license agreement'}
           </label>
           <div className="form-actions">
             <Button

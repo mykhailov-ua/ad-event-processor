@@ -104,7 +104,7 @@ func (p EdgeXDPProbe) Run(ctx context.Context) Result {
 	}
 }
 
-func ebpfEntitled(ctx context.Context, deps ProbeDeps) (bool, string) {
+func ebpfEntitled(ctx context.Context, deps ProbeDeps) (entitled bool, reason string) {
 	if deps.Redis == nil {
 		return true, ""
 	}

@@ -15,11 +15,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (s *Service) AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action string, targetType string, targetID *uuid.UUID, changes any, metadata any) {
+func (s *Service) AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any) {
 	s.auditLogMasked(ctx, q, adminID, action, targetType, targetID, changes, metadata, authz.IsMaskedMutation(ctx))
 }
 
-func (s *Service) auditLogMasked(ctx context.Context, q db.Querier, adminID uuid.UUID, action string, targetType string, targetID *uuid.UUID, changes any, metadata any, isMasked bool) {
+func (s *Service) auditLogMasked(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any, isMasked bool) {
 	changesJSON, err := coldpath.MarshalJSON(changes)
 	if err != nil {
 		slog.Error("audit marshal changes failed", "error", err, "admin_id", adminID, "action", action)

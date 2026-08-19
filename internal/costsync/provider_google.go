@@ -77,7 +77,10 @@ func fetchGoogleCosts(ctx context.Context, client *http.Client, baseURL string, 
 		coldpath.CloseHTTPResponse(resp)
 		return nil, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		return nil, fmt.Errorf("google ads: read body: %w", err)

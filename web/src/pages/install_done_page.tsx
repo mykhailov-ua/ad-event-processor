@@ -112,7 +112,7 @@ export function InstallDonePage() {
         </div>
 
         <p className="text-muted text-sm mt-3">
-          Run on server: bash scripts/install/bidshard-install.sh doctor
+          Run on server: bash scripts/install/ad-event-processor-install.sh doctor
         </p>
       </div>
     </div>

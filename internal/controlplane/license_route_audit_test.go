@@ -42,9 +42,9 @@ func TestLicense_StatusDTOFields_documentedInTypes(t *testing.T) {
 func TestLicense_VERIFYCatalog_coversBaselineProperties(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	verifyMD := readRepoFile(t, root, "internal/licensing/VERIFY.md")
+	verifyMD := readRepoFile(t, root, "docs/LICENSE.md")
 	for _, prop := range []string{"P-C2-01", "P-C3-03", "P-C4-03", "P-HWID-01"} {
-		require.Contains(t, verifyMD, prop, "VERIFY.md missing %s", prop)
+		require.Contains(t, verifyMD, prop, "LICENSE.md missing %s", prop)
 	}
 }
 

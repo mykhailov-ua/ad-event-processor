@@ -6,6 +6,7 @@ import (
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"github.com/bidshard/ad-event-processor/pkg/branding"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
@@ -15,7 +16,7 @@ import (
 var respClickSafeViewL15 = buildSafeViewL15Response()
 
 func buildSafeViewL15Response() []byte {
-	head := "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nX-BidShard-Safe-View: l15\r\nConnection: keep-alive\r\nContent-Length: "
+	head := "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n" + branding.HTTPSafeViewHeader + ": l15\r\nConnection: keep-alive\r\nContent-Length: "
 	out := make([]byte, 0, len(head)+5+4+len(safeViewCIDRBody))
 	out = append(out, head...)
 	out = strconv.AppendInt(out, int64(len(safeViewCIDRBody)), 10)

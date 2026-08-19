@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Click proxy smoke: proxy /click with httptest upstream (TCP loopback).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

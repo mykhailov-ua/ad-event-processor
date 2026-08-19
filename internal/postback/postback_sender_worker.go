@@ -140,8 +140,8 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 	}
 
 	eventIDs := make([]int64, len(events))
-	for i, ev := range events {
-		eventIDs[i] = ev.ID
+	for i := range events {
+		eventIDs[i] = events[i].ID
 	}
 
 	_, err = tx.Exec(ctx, `
@@ -162,7 +162,8 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 	}
 
 	payloads := make([]PostbackPayload, len(claimed))
-	for i, c := range claimed {
+	for i := range claimed {
+		c := &claimed[i]
 		if c.skip {
 			continue
 		}
@@ -178,7 +179,8 @@ func (w *PostbackWorker) ProcessBatch(ctx context.Context) error {
 	}
 
 	var processedIDs, failedIDs, processingIDs []int64
-	for _, c := range claimed {
+	for i := range claimed {
+		c := &claimed[i]
 		if c.skip {
 			processedIDs = append(processedIDs, c.event.ID)
 			continue
@@ -361,7 +363,7 @@ func (w *PostbackWorker) dispatchWithRetry(ctx context.Context, adapter Postback
 	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
-func (w *PostbackWorker) getLimiter(targetURL string, provider string) *rate.Limiter {
+func (w *PostbackWorker) getLimiter(targetURL, provider string) *rate.Limiter {
 	key := provider
 	if u, err := url.Parse(targetURL); err == nil && u.Host != "" {
 		key = u.Host
@@ -388,7 +390,7 @@ func randInt64(upper int64) int64 {
 	return val % upper
 }
 
-func EncryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
+func EncryptAESGCM(plaintext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -404,7 +406,7 @@ func EncryptAESGCM(plaintext []byte, key []byte) ([]byte, error) {
 	return gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
-func DecryptAESGCM(ciphertext []byte, key []byte) ([]byte, error) {
+func DecryptAESGCM(ciphertext, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

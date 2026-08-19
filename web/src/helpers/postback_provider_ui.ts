@@ -31,7 +31,7 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     showMacros: true,
     supportsTestEventCode: false,
     eventMappingHint:
-      'Outbound webhook keeps BidShard event_type; map names in the partner template if needed.',
+      'Outbound webhook keeps ad-event-processor event_type; map names in the partner template if needed.',
   },
   facebook: {
     label: 'Meta Conversions API',
@@ -49,7 +49,7 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     showMacros: false,
     supportsTestEventCode: true,
     eventMappingHint:
-      'BidShard → Meta: conversion/purchase → Purchase; lead → Lead; install → CompleteRegistration; click → ViewContent.',
+      'ad-event-processor → Meta: conversion/purchase → Purchase; lead → Lead; install → CompleteRegistration; click → ViewContent.',
   },
   google: {
     label: 'Google Ads offline conversions',
@@ -65,7 +65,7 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     showMacros: false,
     supportsTestEventCode: false,
     eventMappingHint:
-      'Google uses the conversion action resource above; BidShard event_type selects when to fire, not the Ads action name.',
+      'Google uses the conversion action resource above; ad-event-processor event_type selects when to fire, not the Ads action name.',
   },
   tiktok: {
     label: 'TikTok Events API',
@@ -80,7 +80,7 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     showMacros: false,
     supportsTestEventCode: true,
     eventMappingHint:
-      'BidShard → TikTok: conversion/purchase → CompletePayment; lead → Contact; install → Download; click → ClickButton.',
+      'ad-event-processor → TikTok: conversion/purchase → CompletePayment; lead → Contact; install → Download; click → ClickButton.',
   },
 };
 

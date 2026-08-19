@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# perf stat cache-miss A/B gate for hot-path benches (nightly, non-blocking for PR).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

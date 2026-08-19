@@ -32,7 +32,7 @@ type authTestInfra struct {
 	RedisContainer testcontainers.Container
 }
 
-func setupAuthTestInfra(t *testing.T) (*authTestInfra, func()) {
+func setupAuthTestInfra(t *testing.T) (infra *authTestInfra, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -64,7 +64,7 @@ func setupAuthTestInfra(t *testing.T) (*authTestInfra, func()) {
 	rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
 	require.NoError(t, rdb.Ping(ctx).Err())
 
-	infra := &authTestInfra{
+	infra = &authTestInfra{
 		Pool:           pool,
 		Redis:          rdb,
 		Store:          db.NewStore(pool),
@@ -72,13 +72,13 @@ func setupAuthTestInfra(t *testing.T) (*authTestInfra, func()) {
 		RedisContainer: redisContainer,
 	}
 
-	cleanup := func() {
+	cleanup = func() {
 		_ = rdb.Close()
 		pool.Close()
 		_ = redisContainer.Terminate(ctx)
 		_ = pgContainer.Terminate(ctx)
 	}
-	return infra, cleanup
+	return
 }
 
 func (infra *authTestInfra) newService(t *testing.T) *Service {
@@ -91,7 +91,7 @@ func (infra *authTestInfra) newService(t *testing.T) *Service {
 	return NewService(infra.Store, tokenMaker, hasher, lockout, infra.Redis)
 }
 
-func (infra *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, password string) (uuid.UUID, string, string) {
+func (infra *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, password string) (userID uuid.UUID, accessToken, refreshToken string) {
 	t.Helper()
 	ctx := context.Background()
 	userID, err := svc.Register(ctx, RegisterDTO{Email: email, Password: password, Role: RoleUser})

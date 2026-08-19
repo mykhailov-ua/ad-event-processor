@@ -191,7 +191,7 @@ func (webhookHandler *WebhookHandler) handleStripeDisputeEvent(w http.ResponseWr
 	_, _ = w.Write([]byte("OK"))
 }
 
-func verifyStripeSignature(payload []byte, sigHeader string, secret string, now time.Time) bool {
+func verifyStripeSignature(payload []byte, sigHeader, secret string, now time.Time) bool {
 	if secret == "" {
 		return false
 	}

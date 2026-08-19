@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Go HKDF/MCK derivation vs OpenSSL 3 kdf (requires openssl in PATH).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

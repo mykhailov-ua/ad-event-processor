@@ -43,7 +43,7 @@ log "writing to $OUT"
   ulimit -n 2> /dev/null || true
 } > "$OUT/host-$(timestamp).txt"
 
-for c in espx-tracker-0-1 espx-tracker-1-1 espx-tracker-2-1 espx-tracker-3-1 espx-processor-1 espx-nginx-1; do
+for c in ad-event-processor-tracker-0-1 ad-event-processor-tracker-1-1 ad-event-processor-tracker-2-1 ad-event-processor-tracker-3-1 ad-event-processor-processor-1 ad-event-processor-nginx-1; do
   snapshot_container "$c" || true
 done
 

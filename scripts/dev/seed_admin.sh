@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Seed local dev admin: .env defaults, platform bootstrap, admin user.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -111,7 +111,7 @@ bootstrap_platform() {
 					tracking_domain: "track.local",
 					default_currency: "USD",
 					timezone: "UTC",
-					ingress_schema: "espx_native",
+					ingress_schema: "ad_event_processor_native",
 					profile: "single_vps",
 					network_interface: "eth0",
 					telemetry_enabled: true,
@@ -183,7 +183,6 @@ elif [[ "$token_generated" -eq 1 && "$control_up" -eq 1 ]]; then
   wait_control "$CONTROL_URL" || die "control did not become healthy after recreate"
 fi
 
-# Redis and control share host networking; recreate control without redis leaves stale sessions.
 if [[ "$control_up" -eq 1 ]] && ! curl -sf "${CONTROL_URL}/health" > /dev/null 2>&1; then
   log "control unhealthy; recreating redis-0 and control"
   CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 \

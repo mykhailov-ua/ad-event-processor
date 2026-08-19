@@ -2,7 +2,8 @@ package loadreport
 
 func checkBPFFDLeak(summary *bpfSummary) []BPFGateCheck {
 	var checks []BPFGateCheck
-	for _, s := range summary.PIDStats {
+	for i := range summary.PIDStats {
+		s := &summary.PIDStats[i]
 		if s.Role != "tracker" && s.Role != "processor" {
 			continue
 		}
@@ -24,9 +25,9 @@ func checkBPFFDLeak(summary *bpfSummary) []BPFGateCheck {
 
 func trackerHWCacheMisses(summary *bpfSummary) uint64 {
 	var total uint64
-	for _, hw := range summary.HardwarePerf {
-		if hw.Role == "tracker" {
-			total += hw.CacheMisses
+	for i := range summary.HardwarePerf {
+		if summary.HardwarePerf[i].Role == "tracker" {
+			total += summary.HardwarePerf[i].CacheMisses
 		}
 	}
 	return total

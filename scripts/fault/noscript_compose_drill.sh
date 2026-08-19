@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Compose drill: SCRIPT FLUSH under /track load.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -7,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

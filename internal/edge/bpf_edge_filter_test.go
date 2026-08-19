@@ -63,7 +63,7 @@ func buildSYNPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	return pkt
 }
 
-func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport uint16, window uint16, ttl byte, mss uint16) []byte {
+func buildSYNPacketWithMSS(t *testing.T, src, dst net.IP, dport, window uint16, ttl byte, mss uint16) []byte {
 	t.Helper()
 	src4 := src.To4()
 	dst4 := dst.To4()

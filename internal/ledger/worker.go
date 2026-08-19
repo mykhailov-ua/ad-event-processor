@@ -271,7 +271,7 @@ WHERE action = 'pause' AND created_at > now() - interval '1 day'
 	}
 
 	batch := &pgx.Batch{}
-	notify := make([]*Decision, 0, len(pauseDecisions))
+	notifications := make([]*Decision, 0, len(pauseDecisions))
 	for _, d := range pauseDecisions {
 		key := marginGuardPauseKey{campaignID: d.CampaignID, placement: d.PlacementID}
 		if _, ok := existing[key]; ok {
@@ -284,7 +284,7 @@ WHERE action = 'pause' AND created_at > now() - interval '1 day'
 			PlacementID: d.PlacementID,
 		})
 		batch.Queue(marginGuardOutboxInsertSQL, "PAUSE_PLACEMENT", payload)
-		notify = append(notify, d)
+		notifications = append(notifications, d)
 	}
 	if batch.Len() == 0 {
 		return nil
@@ -298,7 +298,7 @@ WHERE action = 'pause' AND created_at > now() - interval '1 day'
 		}
 	}
 
-	for _, d := range notify {
+	for _, d := range notifications {
 		w.notifyMarginGuardPause(ctx, d)
 		slog.Info("margin guard applied decision",
 			"campaign_id", d.CampaignID,

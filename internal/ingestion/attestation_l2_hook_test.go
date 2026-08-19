@@ -72,7 +72,7 @@ func TestClickRedirect_AttestationMissing_ServesStub(t *testing.T) {
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	body := string(conn.Written())
 	require.Contains(t, body, "<script>")
-	require.Contains(t, body, "BidShard")
+	require.Contains(t, body, "ad-event-processor")
 	require.Equal(t, 0, filter.calls, "attestation stub must short-circuit before FilterEngine")
 }
 

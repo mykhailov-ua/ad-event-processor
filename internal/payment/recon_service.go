@@ -187,8 +187,8 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 	seenTopupIntents := make(map[uuid.UUID]struct{}, len(intents))
 
 	intentIDs := make([]uuid.UUID, 0, len(intents))
-	for _, intent := range intents {
-		intentIDs = append(intentIDs, uuid.UUID(intent.ID.Bytes))
+	for i := range intents {
+		intentIDs = append(intentIDs, uuid.UUID(intents[i].ID.Bytes))
 	}
 
 	ledgerByIntent := make(map[uuid.UUID]PaymentIntentLedger)
@@ -200,7 +200,8 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 		}
 	}
 
-	for _, intent := range intents {
+	for i := range intents {
+		intent := &intents[i]
 		intentID := uuid.UUID(intent.ID.Bytes)
 		customerID := uuid.UUID(intent.CustomerID.Bytes)
 		seenTopupIntents[intentID] = struct{}{}
@@ -301,7 +302,8 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 	if err != nil {
 		return nil, 0, err
 	}
-	for _, row := range deadOutbox {
+	for i := range deadOutbox {
+		row := &deadOutbox[i]
 		findings = append(findings, FinancialReconFinding{
 			Kind:               db.PaymentFinancialFindingKindDEADOUTBOX,
 			PaymentAmountMicro: 0,

@@ -8,11 +8,11 @@ import (
 )
 
 const (
-	DefaultRegistryPath   = "deploy/vendor/trial_registry.json"
-	EnvRegistryPath       = "BIDSHARD_VENDOR_TRIAL_REGISTRY"
-	EnvHWIDCooldownDays   = "BIDSHARD_VENDOR_TRIAL_HWID_COOLDOWN_DAYS"
-	EnvForceEnabled        = "BIDSHARD_VENDOR_TRIAL_FORCE"
-	EnvVendorTrialBotToken = "BIDSHARD_VENDOR_TRIAL_BOT_TOKEN"
+	DefaultRegistryPath     = "deploy/vendor/trial_registry.json"
+	EnvRegistryPath         = "BIDSHARD_VENDOR_TRIAL_REGISTRY"
+	EnvHWIDCooldownDays     = "BIDSHARD_VENDOR_TRIAL_HWID_COOLDOWN_DAYS"
+	EnvForceEnabled         = "BIDSHARD_VENDOR_TRIAL_FORCE"
+	EnvVendorTrialBotToken  = "BIDSHARD_VENDOR_TRIAL_BOT_TOKEN"
 	defaultHWIDCooldownDays = 60
 )
 

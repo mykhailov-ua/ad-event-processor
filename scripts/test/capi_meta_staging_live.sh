@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
-# Live wrapper for scripts/test/capi_meta_staging.sh (local or staging stack).
-#
-# Usage:
-#   set -a; source .env; set +a
-#   export META_TEST_EVENT_CODE=TEST12345   # from Meta Events Manager
-#   export CAMPAIGN_ID=<uuid-with-facebook-capi-configured>
-#   export TRACK_URL=http://127.0.0.1:8181  # or https://trk.staging.example
-#   bash scripts/test/capi_meta_staging_live.sh
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -14,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

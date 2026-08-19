@@ -19,18 +19,14 @@ import {
 
 type OpsMlTab = 'overview' | 'eval' | 'labels';
 
-/**
- * Format ISO timestamp for ops ML tables.
- */
+
 function formatTs(iso?: string): string {
   if (!iso) return '—';
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 }
 
-/**
- * Render version row cells for active or syncing model.
- */
+
 function VersionSummary({ version, title }: { version?: MLModelVersion | null; title: string }) {
   if (!version) {
     return (
@@ -57,9 +53,7 @@ function VersionSummary({ version, title }: { version?: MLModelVersion | null; t
   );
 }
 
-/**
- * Horizontal bar chart for top feature importance values.
- */
+
 function FeatureImportanceChart({ items }: { items: MLFeatureImportance[] }) {
   if (!items.length) {
     return <p className="text-muted text-sm">No feature importance in artifact metadata.</p>;
@@ -97,9 +91,7 @@ function FeatureImportanceChart({ items }: { items: MLFeatureImportance[] }) {
   );
 }
 
-/**
- * Render one eval metrics block (proxy or audited).
- */
+
 function EvalMetricsBlock({
   title,
   block,
@@ -150,9 +142,7 @@ function EvalMetricsBlock({
   );
 }
 
-/**
- * Ops ML model lifecycle, shard sync, and manual labels page.
- */
+
 export function OpsMlModelPage() {
   const [tab, setTab] = useState<OpsMlTab>('overview');
   const [status, setStatus] = useState<MLModelStatus | null>(null);
@@ -279,9 +269,13 @@ export function OpsMlModelPage() {
                 />
               </dd>
               <dt>Precision (proxy)</dt>
-              <dd className="font-mono">{status?.precision != null ? status.precision.toFixed(4) : '—'}</dd>
+              <dd className="font-mono">
+                {status?.precision != null ? status.precision.toFixed(4) : '—'}
+              </dd>
               <dt>Recall (proxy)</dt>
-              <dd className="font-mono">{status?.recall != null ? status.recall.toFixed(4) : '—'}</dd>
+              <dd className="font-mono">
+                {status?.recall != null ? status.recall.toFixed(4) : '—'}
+              </dd>
             </dl>
           </section>
 

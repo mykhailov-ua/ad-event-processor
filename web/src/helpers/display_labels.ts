@@ -2,9 +2,9 @@ const EXACT: Record<string, string> = {
   single_vps: 'Single VPS',
   compose_dev: 'Docker Compose (development)',
 
-  ad_event_processor_native: 'BidShard native',
-  espx_native: 'BidShard native (legacy)',
-  native_v1: 'BidShard native (legacy)',
+  ad_event_processor_native: 'ad-event-processor native',
+  ad_event_processor_native: 'ad-event-processor native (legacy)',
+  native_v1: 'ad-event-processor native (legacy)',
   openrtb_3: 'OpenRTB 3.0',
 
   ACTIVE: 'Active',

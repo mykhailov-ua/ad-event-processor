@@ -25,8 +25,8 @@ func (service *Service) invoicesFromDB(ctx context.Context, invoiceRows []db.Bil
 		return nil, nil
 	}
 	ids := make([]pgtype.UUID, len(invoiceRows))
-	for i, row := range invoiceRows {
-		ids[i] = row.ID
+	for i := range invoiceRows {
+		ids[i] = invoiceRows[i].ID
 	}
 	lineRows, err := service.queries.ListInvoiceLinesByInvoiceIDs(ctx, ids)
 	if err != nil {
@@ -38,8 +38,8 @@ func (service *Service) invoicesFromDB(ctx context.Context, invoiceRows []db.Bil
 		linesByInvoice[key] = append(linesByInvoice[key], line)
 	}
 	invoices := make([]domain.Invoice, 0, len(invoiceRows))
-	for _, row := range invoiceRows {
-		invoices = append(invoices, invoiceFromDBRow(row, linesByInvoice[row.ID.Bytes]))
+	for i := range invoiceRows {
+		invoices = append(invoices, invoiceFromDBRow(invoiceRows[i], linesByInvoice[invoiceRows[i].ID.Bytes]))
 	}
 	return invoices, nil
 }

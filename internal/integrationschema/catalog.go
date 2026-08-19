@@ -54,8 +54,8 @@ func SchemaRootDir() string {
 	return candidates[0]
 }
 
-func LoadBundledTemplate(entry TemplateCatalogEntry) ([]byte, Kind, any, error) {
-	raw, err := os.ReadFile(filepath.Join(SchemaRootDir(), entry.File))
+func LoadBundledTemplate(entry TemplateCatalogEntry) (raw []byte, kind Kind, schema any, err error) {
+	raw, err = os.ReadFile(filepath.Join(SchemaRootDir(), entry.File))
 	if err != nil {
 		return nil, "", nil, fmt.Errorf("read %s: %w", entry.File, err)
 	}

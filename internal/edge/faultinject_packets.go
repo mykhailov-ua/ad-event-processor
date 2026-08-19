@@ -7,7 +7,7 @@ import (
 
 const TrackerPort = 8180
 
-func BuildSYNPacket(src net.IP, dst net.IP, dport uint16) []byte {
+func BuildSYNPacket(src, dst net.IP, dport uint16) []byte {
 	src4 := src.To4()
 	dst4 := dst.To4()
 	if src4 == nil || dst4 == nil {

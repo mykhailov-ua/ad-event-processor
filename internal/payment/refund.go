@@ -17,7 +17,7 @@ type ReverseBalancePayload struct {
 	ProviderRefundID     string `json:"provider_refund_id"`
 }
 
-func reverseBalancePayload(intentID uuid.UUID, customerID uuid.UUID, amountMicro int64, providerRefundID string) ReverseBalancePayload {
+func reverseBalancePayload(intentID, customerID uuid.UUID, amountMicro int64, providerRefundID string) ReverseBalancePayload {
 	return ReverseBalancePayload{
 		CustomerID:           customerID.String(),
 		AmountMicro:          amountMicro,

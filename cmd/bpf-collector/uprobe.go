@@ -79,7 +79,7 @@ func (r *probeRun) findTrackerBinary() string {
 		if t.Role != roleTracker || t.PID == 0 {
 			continue
 		}
-		exe, err := os.Readlink(filepath.Join("/proc", strconv.FormatUint(uint64(t.PID), 10), "exe"))
+		exe, err := os.Readlink(filepath.Join(string(filepath.Separator), "proc", strconv.FormatUint(uint64(t.PID), 10), "exe"))
 		if err != nil {
 			continue
 		}

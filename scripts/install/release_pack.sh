@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pack a minimal installer tarball (no Go source) for GitHub Releases.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -14,10 +14,9 @@ VERSION="${VERSION#v}"
 STAGE="$ROOT/dist/ad-event-processor-installer-stage"
 OUT_DIR="$ROOT/dist"
 TARBALL="$OUT_DIR/ad-event-processor-installer-${VERSION}.tar.gz"
-LEGACY_TARBALL="$OUT_DIR/bidshard-installer-${VERSION}.tar.gz"
 
 rm -rf "$STAGE"
-mkdir -p "$STAGE/bidshard"
+mkdir -p "$STAGE/ad-event-processor"
 
 copy_tree() {
   local src="$1"
@@ -26,55 +25,51 @@ copy_tree() {
   cp -a "$src" "$dst/"
 }
 
-# Root compose entry
-cp "$ROOT/docker-compose.yaml" "$STAGE/bidshard/"
-mkdir -p "$STAGE/bidshard/deploy/compose"
-cp "$ROOT/deploy/compose/docker-compose.yaml" "$STAGE/bidshard/deploy/compose/"
-cp "$ROOT/deploy/compose/docker-compose.release.yaml" "$STAGE/bidshard/deploy/compose/"
+cp "$ROOT/docker-compose.yaml" "$STAGE/ad-event-processor/"
+mkdir -p "$STAGE/ad-event-processor/deploy/compose"
+cp "$ROOT/deploy/compose/docker-compose.yaml" "$STAGE/ad-event-processor/deploy/compose/"
+cp "$ROOT/deploy/compose/docker-compose.release.yaml" "$STAGE/ad-event-processor/deploy/compose/"
 
-cp "$ROOT/.env.example" "$STAGE/bidshard/"
-mkdir -p "$STAGE/bidshard/deploy/installer"
-cp "$ROOT/deploy/installer/install.env.example" "$STAGE/bidshard/deploy/installer/"
-cp "$ROOT/deploy/installer/install.yaml.example" "$STAGE/bidshard/deploy/installer/"
-cp "$ROOT/deploy/installer/packages.yaml" "$STAGE/bidshard/deploy/installer/"
+cp "$ROOT/.env.example" "$STAGE/ad-event-processor/"
+mkdir -p "$STAGE/ad-event-processor/deploy/installer"
+cp "$ROOT/deploy/installer/install.env.example" "$STAGE/ad-event-processor/deploy/installer/"
+cp "$ROOT/deploy/installer/install.yaml.example" "$STAGE/ad-event-processor/deploy/installer/"
+cp "$ROOT/deploy/installer/packages.yaml" "$STAGE/ad-event-processor/deploy/installer/"
 
-mkdir -p "$STAGE/bidshard/deploy/geoip"
-touch "$STAGE/bidshard/deploy/geoip/.gitkeep"
+mkdir -p "$STAGE/ad-event-processor/deploy/geoip"
+touch "$STAGE/ad-event-processor/deploy/geoip/.gitkeep"
 
-mkdir -p "$STAGE/bidshard/scripts/install" "$STAGE/bidshard/scripts/dev" "$STAGE/bidshard/scripts/lib" "$STAGE/bidshard/scripts/ci"
-cp "$ROOT/scripts/install/ad-event-processor-install.sh" "$STAGE/bidshard/scripts/install/"
-cp "$ROOT/scripts/install/preflight.sh" "$STAGE/bidshard/scripts/install/"
-cp "$ROOT/scripts/install/bidshard-install.sh" "$STAGE/bidshard/scripts/install/"
-cp "$ROOT/scripts/install/get.sh" "$STAGE/bidshard/scripts/install/"
-mkdir -p "$STAGE/bidshard/deploy/ingress/caddy"
-cp "$ROOT/deploy/ingress/caddy/Caddyfile.example" "$STAGE/bidshard/deploy/ingress/caddy/"
-mkdir -p "$STAGE/bidshard/deploy/ingress/caddy/generated" "$STAGE/bidshard/deploy/ingress/certs"
-touch "$STAGE/bidshard/deploy/ingress/caddy/generated/.gitkeep"
-touch "$STAGE/bidshard/deploy/ingress/certs/.gitkeep"
-cp "$ROOT/scripts/install/render_ingress.sh" "$STAGE/bidshard/scripts/install/"
-cp "$ROOT/scripts/dev/stack.sh" "$STAGE/bidshard/scripts/dev/"
-cp "$ROOT/scripts/lib/paths.sh" "$STAGE/bidshard/scripts/lib/"
-cp "$ROOT/scripts/lib/installer_env.sh" "$STAGE/bidshard/scripts/lib/"
-cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/bidshard/scripts/lib/"
-cp "$ROOT/scripts/ci/deps.sh" "$STAGE/bidshard/scripts/ci/"
+mkdir -p "$STAGE/ad-event-processor/scripts/install" "$STAGE/ad-event-processor/scripts/dev" "$STAGE/ad-event-processor/scripts/lib" "$STAGE/ad-event-processor/scripts/ci"
+cp "$ROOT/scripts/install/ad-event-processor-install.sh" "$STAGE/ad-event-processor/scripts/install/"
+cp "$ROOT/scripts/install/preflight.sh" "$STAGE/ad-event-processor/scripts/install/"
+cp "$ROOT/scripts/install/get.sh" "$STAGE/ad-event-processor/scripts/install/"
+mkdir -p "$STAGE/ad-event-processor/deploy/ingress/caddy"
+cp "$ROOT/deploy/ingress/caddy/Caddyfile.example" "$STAGE/ad-event-processor/deploy/ingress/caddy/"
+mkdir -p "$STAGE/ad-event-processor/deploy/ingress/caddy/generated" "$STAGE/ad-event-processor/deploy/ingress/certs"
+touch "$STAGE/ad-event-processor/deploy/ingress/caddy/generated/.gitkeep"
+touch "$STAGE/ad-event-processor/deploy/ingress/certs/.gitkeep"
+cp "$ROOT/scripts/install/render_ingress.sh" "$STAGE/ad-event-processor/scripts/install/"
+cp "$ROOT/scripts/dev/stack.sh" "$STAGE/ad-event-processor/scripts/dev/"
+cp "$ROOT/scripts/lib/paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/lib/installer_env.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
+cp "$ROOT/scripts/ci/deps.sh" "$STAGE/ad-event-processor/scripts/ci/"
 
-mkdir -p "$STAGE/bidshard/bin"
+mkdir -p "$STAGE/ad-event-processor/bin"
 echo "release_pack: building linux/amd64 ad-event-processor-install CLI..."
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/bidshard/bin/ad-event-processor-install" ./cmd/installer
-chmod +x "$STAGE/bidshard/bin/ad-event-processor-install"
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o "$STAGE/ad-event-processor/bin/ad-event-processor-install" ./cmd/installer
+chmod +x "$STAGE/ad-event-processor/bin/ad-event-processor-install"
 
-mkdir -p "$STAGE/bidshard/deploy/vendor"
+mkdir -p "$STAGE/ad-event-processor/deploy/vendor"
 if [[ -f "$ROOT/deploy/vendor/license_public.key" ]]; then
-  cp "$ROOT/deploy/vendor/license_public.key" "$STAGE/bidshard/deploy/vendor/"
+  cp "$ROOT/deploy/vendor/license_public.key" "$STAGE/ad-event-processor/deploy/vendor/"
 fi
 
 mkdir -p "$OUT_DIR"
-tar -czf "$TARBALL" -C "$STAGE" bidshard
-cp -f "$TARBALL" "$LEGACY_TARBALL"
+tar -czf "$TARBALL" -C "$STAGE" ad-event-processor
 rm -rf "$STAGE"
 
 bash "$ROOT/scripts/ci/verify_release_pack.sh" "$TARBALL"
 
 echo "release_pack: $TARBALL"
-echo "release_pack: $LEGACY_TARBALL (legacy alias tarball)"
-echo "Upload to GitHub Releases as ad-event-processor-installer.tar.gz (and bidshard-installer.tar.gz alias) for tag v${VERSION}"
+echo "Upload to GitHub Releases as ad-event-processor-installer.tar.gz for tag v${VERSION}"

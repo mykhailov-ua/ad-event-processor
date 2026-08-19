@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Required fault_proof lines after scripts/fault/run.sh (noscript, spool, sentinel).
+
 set -euo pipefail
 
-LOG="${1:-${RESILIENCE_LOG:-/tmp/espx-resilience.log}}"
+LOG="${1:-${RESILIENCE_LOG:-/tmp/ad-event-processor-resilience.log}}"
 if [ ! -f "$LOG" ]; then
   echo "FAIL: resilience log not found: $LOG" >&2
   exit 1

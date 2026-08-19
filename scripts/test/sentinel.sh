@@ -73,7 +73,7 @@ run_sentinel_test() {
     -e SENTINEL_FAULT_TEST=1 \
     -e REDIS_PASSWORD="$REDIS_PASSWORD" \
     -e REDIS_SENTINEL_ADDRS=sentinel-0:26379,sentinel-1:26379,sentinel-2:26379 \
-    -e REDIS_MASTER_NAMES=espx-shard-0,espx-shard-1,espx-shard-2,espx-shard-3 \
+    -e REDIS_MASTER_NAMES=ad-event-processor-shard-0,ad-event-processor-shard-1,ad-event-processor-shard-2,ad-event-processor-shard-3 \
     -e REDIS_ADDRS=redis-0:6379,redis-1:6379,redis-2:6379,redis-3:6379 \
     "$@" \
     debian:bookworm-slim \
@@ -82,28 +82,28 @@ run_sentinel_test() {
 
 start_load_worker() {
   build_sentinel_test
-  docker rm -f espx_sentinel_load > /dev/null 2>&1 || true
-  docker run -d --name espx_sentinel_load --network "$NET" \
+  docker rm -f ad_event_processor_sentinel_load > /dev/null 2>&1 || true
+  docker run -d --name ad_event_processor_sentinel_load --network "$NET" \
     -v "$TEST_BIN:/sentinel.test:ro" \
     -e SENTINEL_FAULT_TEST=1 \
     -e SENTINEL_LOAD_WORKER=1 \
     -e SENTINEL_LOAD_TARGET_RPS="$SENTINEL_LOAD_TARGET_RPS" \
     -e REDIS_PASSWORD="$REDIS_PASSWORD" \
     -e REDIS_SENTINEL_ADDRS=sentinel-0:26379,sentinel-1:26379,sentinel-2:26379 \
-    -e REDIS_MASTER_NAMES=espx-shard-0,espx-shard-1,espx-shard-2,espx-shard-3 \
+    -e REDIS_MASTER_NAMES=ad-event-processor-shard-0,ad-event-processor-shard-1,ad-event-processor-shard-2,ad-event-processor-shard-3 \
     -e REDIS_ADDRS=redis-0:6379,redis-1:6379,redis-2:6379,redis-3:6379 \
     debian:bookworm-slim \
     /sentinel.test -test.count=1 -test.timeout=10m -test.v -test.run TestSentinelFailoverLoadWorker
 }
 
 stop_load_worker() {
-  if docker ps -q -f name=espx_sentinel_load | grep -q .; then
-    docker stop -t 5 espx_sentinel_load > /dev/null
+  if docker ps -q -f name=ad_event_processor_sentinel_load | grep -q .; then
+    docker stop -t 5 ad_event_processor_sentinel_load > /dev/null
   fi
-  if docker ps -aq -f name=espx_sentinel_load | grep -q .; then
+  if docker ps -aq -f name=ad_event_processor_sentinel_load | grep -q .; then
     echo "test_sentinel_failover: load worker logs:"
-    docker logs espx_sentinel_load 2>&1 | tail -30 || true
-    docker rm -f espx_sentinel_load > /dev/null 2>&1 || true
+    docker logs ad_event_processor_sentinel_load 2>&1 | tail -30 || true
+    docker rm -f ad_event_processor_sentinel_load > /dev/null 2>&1 || true
   fi
 }
 
@@ -155,7 +155,7 @@ sleep "$LOAD_WARMUP_SEC"
 echo "test_sentinel_failover: pausing redis-0 master (keeps DNS; stop removes hostname and breaks Sentinel)..."
 FAILOVER_START_MS="$(now_ms)"
 "${COMPOSE[@]}" pause redis-0
-wait_sentinel_master_promoted espx-shard-0
+wait_sentinel_master_promoted ad-event-processor-shard-0
 FAILOVER_END_MS="$(now_ms)"
 FAILOVER_DURATION_MS=$((FAILOVER_END_MS - FAILOVER_START_MS))
 echo "test_sentinel_failover: promotion duration_ms=$FAILOVER_DURATION_MS (max=${SENTINEL_FAILOVER_MAX_MS})"

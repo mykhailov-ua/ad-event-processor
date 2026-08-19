@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Shared BPF collector lifecycle helpers.
 
 bpf_collector_pid_alive() {
   local pid="${1:-}"
@@ -8,7 +7,7 @@ bpf_collector_pid_alive() {
     return 0
   fi
   if command -v sudo > /dev/null 2>&1; then
-    local pass="${ESPX_BPF_SUDO_PASS:-}"
+    local pass="${AD_EVENT_PROCESSOR_BPF_SUDO_PASS:-}"
     if [[ -n "$pass" ]]; then
       printf '%s\n' "$pass" | sudo -S kill -0 "$pid" 2> /dev/null
       return $?
@@ -30,7 +29,6 @@ bpf_collector_log_ready() {
   [[ -f "$log_file" ]] && grep -q 'bpf-collector running' "$log_file" 2> /dev/null
 }
 
-# Wait until collector logs success or exits; return 0 only when probe attached.
 bpf_wait_collector_ready() {
   local pid="${1:-}"
   local log_file="${2:-}"
@@ -69,7 +67,7 @@ bpf_require_privileged_collector() {
   if [[ "$(id -u)" == "0" ]]; then
     return 0
   fi
-  local pass="${ESPX_BPF_SUDO_PASS:-}"
+  local pass="${AD_EVENT_PROCESSOR_BPF_SUDO_PASS:-}"
   if [[ -n "$pass" ]]; then
     return 0
   fi
@@ -78,6 +76,6 @@ bpf_require_privileged_collector() {
   fi
   printf '%s: ERROR: bpf-collector needs root for memlock/BPF attach\n' "$prefix" >&2
   printf '%s: run: sudo bash scripts/dev/bpf_session.sh start\n' "$prefix" >&2
-  printf '%s: or set ESPX_BPF_SUDO_PASS for passwordless sudo via -S\n' "$prefix" >&2
+  printf '%s: or set AD_EVENT_PROCESSOR_BPF_SUDO_PASS for passwordless sudo via -S\n' "$prefix" >&2
   return 1
 }

@@ -2,8 +2,8 @@
 local _M = {}
 
 function _M.header_filter()
-    if ngx.header["X-BidShard-Safe-Page"] then
-        ngx.header["X-BidShard-Safe-Page"] = nil
+    if ngx.header["X-Ad-Event-Processor-Safe-Page"] then
+        ngx.header["X-Ad-Event-Processor-Safe-Page"] = nil
         ngx.ctx.safe_page = true
         ngx.header.content_length = nil
     end

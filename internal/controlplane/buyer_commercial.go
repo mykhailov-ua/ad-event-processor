@@ -32,7 +32,7 @@ func pacingDriftPct(impressions7d int64, status string) float64 {
 	return 100 - estimateDeliveryPct(impressions7d, status)
 }
 
-func pausedUnderDelivery(impressions7d int64, budgetMicro int64) bool {
+func pausedUnderDelivery(impressions7d, budgetMicro int64) bool {
 	if budgetMicro <= 0 {
 		return false
 	}

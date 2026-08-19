@@ -21,11 +21,7 @@ func (a fraudLabelsAPIAdapter) UpsertMLManualLabelForCustomer(ctx context.Contex
 func (a fraudLabelsAPIAdapter) BulkUpsertMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, rows []FraudManualLabelRow) (int, error) {
 	inputs := make([]MLManualLabelInput, len(rows))
 	for i, row := range rows {
-		inputs[i] = MLManualLabelInput{
-			IPHash: row.IPHash,
-			Label:  row.Label,
-			Reason: row.Reason,
-		}
+		inputs[i] = MLManualLabelInput(row)
 	}
 	return a.svc.BulkUpsertMLManualLabelsForCustomer(ctx, customerID, inputs)
 }

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Fail when a live report catalog entry lacks an explicit route (would mount report_stub.js).
-# Requires python3 or node on PATH for live-key extraction (admin_web.sh already needs node for build).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

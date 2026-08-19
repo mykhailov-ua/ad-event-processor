@@ -317,7 +317,7 @@ func querySmartAlertMetricBatch(
 		if err != nil {
 			return nil, err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var campID uuid.UUID
 			var n uint64
@@ -334,7 +334,7 @@ func querySmartAlertMetricBatch(
 		if err != nil {
 			return nil, err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var campID uuid.UUID
 			var n uint64
@@ -356,7 +356,7 @@ func querySmartAlertMetricBatch(
 		if err != nil {
 			return nil, err
 		}
-		defer rows.Close()
+		defer func() { _ = rows.Close() }()
 		for rows.Next() {
 			var campID uuid.UUID
 			var profitMicro, spendMicro int64
@@ -387,7 +387,7 @@ func mergeClickCounts(
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	for rows.Next() {
 		var campID uuid.UUID
 		var n uint64

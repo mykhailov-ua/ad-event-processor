@@ -16,7 +16,7 @@ import (
 
 const clickHouseTestImage = "clickhouse/clickhouse-server:24.3-alpine"
 
-func setupClickHouseIntegration(t *testing.T) (driver.Conn, func()) {
+func setupClickHouseIntegration(t *testing.T) (conn driver.Conn, cleanup func()) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("clickhouse integration test (run in make test-full / CI full-test)")
@@ -37,12 +37,12 @@ func setupClickHouseIntegration(t *testing.T) (driver.Conn, func()) {
 	dsn, err := chContainer.ConnectionString(ctx)
 	require.NoError(t, err)
 
-	conn := openClickHouseTestConn(t, dsn)
-	cleanup := func() {
+	conn = openClickHouseTestConn(t, dsn)
+	cleanup = func() {
 		_ = conn.Close()
 		_ = chContainer.Terminate(ctx)
 	}
-	return conn, cleanup
+	return
 }
 
 func openClickHouseTestConn(t *testing.T, dsn string) driver.Conn {

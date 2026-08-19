@@ -7,9 +7,7 @@ export type IconProps = {
   className?: string;
 };
 
-/**
- * Parse a static Phosphor SVG primitive tag into a React element.
- */
+
 function parseIconElement(tag: string): ReactElement | null {
   const m = tag.match(/^<(\w+)\b([^>]*)\/?>$/);
   if (!m) return null;
@@ -39,8 +37,7 @@ export function Icon({ name, size = 16, className }: IconProps) {
 
   return (
     <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 256 256"
+      xmlns="http:      viewBox="0 0 256 256"
       fill="currentColor"
       aria-hidden="true"
       focusable="false"

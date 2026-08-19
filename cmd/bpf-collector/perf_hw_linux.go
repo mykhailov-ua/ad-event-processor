@@ -65,7 +65,8 @@ func readPerfCounter(pid int, config uint64) (uint64, bool) {
 
 func (r *probeRun) collectHardwarePerf(pidStats []dumpedPIDStats) []map[string]any {
 	var out []map[string]any
-	for _, s := range pidStats {
+	for i := range pidStats {
+		s := &pidStats[i]
 		if s.Role != "tracker" && s.Role != "processor" {
 			continue
 		}

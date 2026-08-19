@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -98,7 +99,10 @@ func (c *LicenseClient) Activate(ctx context.Context, deploymentID, fingerprint 
 		c.recordFailure()
 		return "", err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		c.recordFailure()
@@ -116,7 +120,7 @@ func (c *LicenseClient) Activate(ctx context.Context, deploymentID, fingerprint 
 	return res.Token, nil
 }
 
-func (c *LicenseClient) Heartbeat(ctx context.Context, deploymentID, fingerprint string, uptime int64) (string, bool, error) {
+func (c *LicenseClient) Heartbeat(ctx context.Context, deploymentID, fingerprint string, uptime int64) (token string, changed bool, err error) {
 	if c.IsTripped() {
 		return "", false, errors.New("license client circuit breaker tripped")
 	}
@@ -147,7 +151,10 @@ func (c *LicenseClient) Heartbeat(ctx context.Context, deploymentID, fingerprint
 		c.recordFailure()
 		return "", false, err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusNotModified {
 		c.recordSuccess()

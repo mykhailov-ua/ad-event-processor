@@ -1,4 +1,4 @@
-BidShard On-Premise Software License Agreement (Pilot)
+ad-event-processor On-Premise Software License Agreement (Pilot)
 
 By installing or using this software you agree to the following terms.
 

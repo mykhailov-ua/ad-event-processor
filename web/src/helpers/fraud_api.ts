@@ -51,17 +51,17 @@ export type PreviewCampaignFraudRequest = {
   fraud_threshold_block?: number;
 };
 
-/**
- * Load per-campaign fraud tier thresholds and ghost IVT toggle.
- */
-export async function fetchCampaignFraudConfig(campaignId: string): Promise<CampaignFraudConfig | null> {
-  const res = await api<CampaignFraudConfig>(`/api/v1/campaigns/${encodeURIComponent(campaignId)}/fraud`);
+
+export async function fetchCampaignFraudConfig(
+  campaignId: string
+): Promise<CampaignFraudConfig | null> {
+  const res = await api<CampaignFraudConfig>(
+    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/fraud`
+  );
   return res.data ?? null;
 }
 
-/**
- * Update fraud thresholds or apply a named sensitivity preset.
- */
+
 export async function patchCampaignFraudConfig(
   campaignId: string,
   body: PatchCampaignFraudRequest
@@ -76,9 +76,7 @@ export async function patchCampaignFraudConfig(
   return res.data ?? null;
 }
 
-/**
- * Estimate how many IPs would be affected by proposed fraud thresholds (7d shadow sample).
- */
+
 export async function previewCampaignFraudImpact(
   campaignId: string,
   body: PreviewCampaignFraudRequest
@@ -115,9 +113,7 @@ export const FRAUD_PRESET_OPTIONS: Array<{
   },
 ];
 
-/**
- * Load platform fraud sensitivity presets (cached server-side ~5 min).
- */
+
 export async function fetchFraudPresets(): Promise<FraudPolicyPreset[]> {
   const res = await api<FraudPolicyPreset[]>('/api/v1/fraud/presets');
   if (Array.isArray(res.data) && res.data.length > 0) {
@@ -148,16 +144,12 @@ export type FraudManualLabelRequest = {
 
 const IP_HASH_RE = /^[0-9a-fA-F]{32}$/;
 
-/**
- * Validate a 32-character hex IP hash for manual fraud labels.
- */
+
 export function isValidFraudIPHash(value: string): boolean {
   return IP_HASH_RE.test(value.trim());
 }
 
-/**
- * List buyer-scoped manual fraud labels.
- */
+
 export async function fetchFraudLabels(
   customerId: string,
   limit = 50
@@ -170,9 +162,7 @@ export async function fetchFraudLabels(
   return Array.isArray(res.data) ? res.data : [];
 }
 
-/**
- * Upsert a manual fraud label for the customer scope.
- */
+
 export async function postFraudLabel(
   customerId: string,
   body: FraudManualLabelRequest

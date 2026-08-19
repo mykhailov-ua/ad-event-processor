@@ -57,6 +57,31 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 	return clients, breakers, nil
 }
 
+func StartRedisPoolStatsReporter(ctx context.Context, clients []redis.UniversalClient, interval time.Duration) {
+	if interval <= 0 {
+		interval = 15 * time.Second
+	}
+	ticker := time.NewTicker(interval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				for i, c := range clients {
+					if c == nil {
+						continue
+					}
+					if cli, ok := c.(*redis.Client); ok {
+						metrics.RecordRedisPoolStats(i, cli.PoolStats())
+					}
+				}
+			}
+		}
+	}()
+}
+
 func SetShard0ClientNilMetric(clients []redis.UniversalClient) {
 	setShard0ClientNilMetric(clients)
 }

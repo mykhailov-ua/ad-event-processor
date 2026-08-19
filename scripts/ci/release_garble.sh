@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Release build with optional garble obfuscation (S1.1 / S1.8 / V2-D.1).
-# Usage: release_garble.sh <out_dir> [cmd ...]
-# Env: RELEASE_GARBLE=1|0, GARBLE_SEED, ASSET_SEAL_SALT, GOOS, GOARCH, CGO_ENABLED=0
-# Garble literals (V2-D.1): unset GARBLE_LITERALS → control/processor=1, tracker=0.
-# Override all: GARBLE_LITERALS=0|1. Per cmd: GARBLE_LITERALS_TRACKER=0|1, etc.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

@@ -23,7 +23,7 @@ func TestBundleRedactionGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := RedactLog([]string{strings.TrimSpace(string(raw))})
-	if string(got) != string(want) {
+	if !bytes.Equal(got, want) {
 		t.Fatalf("redact mismatch:\n--- got ---\n%s--- want ---\n%s", got, want)
 	}
 	forbidden := []*regexp.Regexp{

@@ -51,7 +51,7 @@ func NormalizeMaxActivations(maxActivations int32) int {
 	return int(maxActivations)
 }
 
-func EvaluateActivate(fingerprint string, licenseKey string, maxActivations int32, activations []ActivationRecord, deployment *DeploymentRecord) ActivationDecision {
+func EvaluateActivate(fingerprint, licenseKey string, maxActivations int32, activations []ActivationRecord, deployment *DeploymentRecord) ActivationDecision {
 	if fingerprint == "" {
 		return ActivationDecision{Allow: false, DenyReason: ErrFingerprintRequired.Error()}
 	}
@@ -85,7 +85,7 @@ func EvaluateActivate(fingerprint string, licenseKey string, maxActivations int3
 	}
 }
 
-func EvaluateHeartbeat(fingerprint string, licenseKey string, activations []ActivationRecord, deployment *DeploymentRecord) ActivationDecision {
+func EvaluateHeartbeat(fingerprint, licenseKey string, activations []ActivationRecord, deployment *DeploymentRecord) ActivationDecision {
 	if fingerprint == "" {
 		return ActivationDecision{Allow: false, DenyReason: ErrFingerprintRequired.Error()}
 	}

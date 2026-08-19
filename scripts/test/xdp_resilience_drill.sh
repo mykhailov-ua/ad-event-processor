@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Enterprise XDP resilience drill. Manual / workflow_dispatch only.
-# Precondition: BTF vmlinux readable; root for XDP attach; BPF objects via go generate — skips exit 0 when BTF/BPF missing.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -25,7 +24,6 @@ if [[ "$(id -u)" -ne 0 ]]; then
   exec sudo -E bash "$0" "$@"
 fi
 
-# shellcheck disable=SC1091
 [[ -f .env ]] && set -a && source .env && set +a
 
 REDIS_PASS="${REDIS_PASSWORD:-your_redis_password_here}"

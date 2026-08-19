@@ -13,5 +13,6 @@ func TestMain(m *testing.M) {
 		goleak.IgnoreTopFunction("github.com/bidshard/ad-event-processor/internal/ingestion.(*IDRingBuffer).refillWorker"),
 		goleak.IgnoreTopFunction("github.com/panjf2000/ants/v2.(*poolCommon).purgeStaleWorkers"),
 		goleak.IgnoreTopFunction("github.com/panjf2000/ants/v2.(*poolCommon).ticktock"),
+		goleak.IgnoreTopFunction("github.com/redis/go-redis/v9/maintnotifications.(*CircuitBreakerManager).cleanupLoop"),
 	)
 }

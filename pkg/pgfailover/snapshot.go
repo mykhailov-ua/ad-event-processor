@@ -46,7 +46,7 @@ func SyncCustomers(ctx context.Context, primary, standby *pgxpool.Pool) error {
 	return rows.Err()
 }
 
-func SyncBalanceLedgerPaginated(ctx context.Context, primary, standby *pgxpool.Pool, cfg SnapshotSyncConfig) (pages int, rows int, err error) {
+func SyncBalanceLedgerPaginated(ctx context.Context, primary, standby *pgxpool.Pool, cfg SnapshotSyncConfig) (pages, rows int, err error) {
 	pageSize := cfg.pageSize()
 	var lastID int64
 	for {

@@ -24,7 +24,7 @@ func (store *faultInjectedStore) HeadObject(ctx context.Context, key string) (Ob
 	return store.inner.HeadObject(ctx, key)
 }
 
-func (store *faultInjectedStore) PutObject(ctx context.Context, key string, filePath string, digests fileDigests) error {
+func (store *faultInjectedStore) PutObject(ctx context.Context, key, filePath string, digests fileDigests) error {
 	store.uploadCalls.Add(1)
 	if store.failUpload.Load() > 0 {
 		store.failUpload.Add(^uint32(0))

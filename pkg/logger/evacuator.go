@@ -119,7 +119,7 @@ func NewMockS3Uploader() *MockS3Uploader {
 	}
 }
 
-func (m *MockS3Uploader) UploadMultipart(key string, filePath string) (string, error) {
+func (m *MockS3Uploader) UploadMultipart(key, filePath string) (string, error) {
 	if m.FailRoute {
 		return "", fmt.Errorf("simulated S3 connectivity failure")
 	}

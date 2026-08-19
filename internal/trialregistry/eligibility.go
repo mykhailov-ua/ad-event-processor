@@ -24,7 +24,8 @@ func checkIdentityAnchor(anchors []AnchorRecord, anchorType AnchorType, value st
 	if value == "" {
 		return nil
 	}
-	for _, rec := range anchors {
+	for i := range anchors {
+		rec := &anchors[i]
 		if rec.AnchorType != anchorType || rec.AnchorValue != value {
 			continue
 		}
@@ -50,7 +51,8 @@ func checkHWIDAnchor(now time.Time, cooldown time.Duration, anchors []AnchorReco
 		return nil
 	}
 	cutoff := now.Add(-cooldown)
-	for _, rec := range anchors {
+	for i := range anchors {
+		rec := &anchors[i]
 		if rec.AnchorType != AnchorHWID || rec.AnchorValue != hwid {
 			continue
 		}

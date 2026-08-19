@@ -1,13 +1,5 @@
 #!/usr/bin/env bash
-# ISO-18 P1: StrictFlush / settlement contention load drill.
-# Produces var/load-test/strict-contention-<ts>/ with baseline vs low-budget sessions + compare report.
-#
-# Needs: Docker, constrained compose stack, Prometheus on :9190.
-# Skip: exit 0 with message if docker unavailable.
-#
-# Usage:
-#   bash scripts/test/strict_flush_contention.sh
-#   PREPARE=0 DURATION=60s RATE=600 bash scripts/test/strict_flush_contention.sh
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

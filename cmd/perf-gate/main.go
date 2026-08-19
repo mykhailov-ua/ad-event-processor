@@ -106,8 +106,8 @@ func verifyRawZeroAlloc(filename string) error {
 	return scanner.Err()
 }
 
-func runBenchstatCSVComparison(baseline, pr string) (bool, string, error) {
-	_, err := exec.LookPath("benchstat")
+func runBenchstatCSVComparison(baseline, pr string) (regression bool, table string, err error) {
+	_, err = exec.LookPath("benchstat")
 	if err != nil {
 		return false, "", fmt.Errorf("benchstat tool not found. Please install it using: go install golang.org/x/perf/cmd/benchstat@latest")
 	}
@@ -122,13 +122,13 @@ func runBenchstatCSVComparison(baseline, pr string) (bool, string, error) {
 		return false, "", fmt.Errorf("benchstat error: %w (stderr: %s)", err, stderrBuf.String())
 	}
 
-	regressionDetected, table := parseCSVOutput(stdoutBuf.String())
-	return regressionDetected, table, nil
+	regressionDetected, parsedTable := parseCSVOutput(stdoutBuf.String())
+	return regressionDetected, parsedTable, nil
 }
 
-func parseCSVOutput(csvContent string) (bool, string) {
+func parseCSVOutput(csvContent string) (regression bool, table string) {
 	var rows []CompareRow
-	var regression bool
+	var regressionDetected bool
 
 	reader := csv.NewReader(strings.NewReader(csvContent))
 
@@ -178,13 +178,13 @@ func parseCSVOutput(csvContent string) (bool, string) {
 				val, parseErr := strconv.ParseFloat(record[3], 64)
 				if parseErr == nil && val > 0.0 {
 					status = "FAIL (Memory Bloat)"
-					regression = true
+					regressionDetected = true
 				}
 			case "allocs/op":
 				val, parseErr := strconv.ParseFloat(record[3], 64)
 				if parseErr == nil && val > 0.0 {
 					status = "FAIL (Memory Leak)"
-					regression = true
+					regressionDetected = true
 				}
 			case "sec/op":
 				if delta != "~" && strings.HasPrefix(delta, "+") {
@@ -195,7 +195,7 @@ func parseCSVOutput(csvContent string) (bool, string) {
 					if err1 == nil && err2 == nil {
 						if deltaPct > 12.0 && pVal < 0.05 {
 							status = "FAIL (CPU Regression)"
-							regression = true
+							regressionDetected = true
 						}
 					}
 				}
@@ -226,10 +226,10 @@ func parseCSVOutput(csvContent string) (bool, string) {
 	}
 	_ = w.Flush()
 
-	return regression, tableBuilder.String()
+	return regressionDetected, tableBuilder.String()
 }
 
-func formatValue(valStr string, unit string) string {
+func formatValue(valStr, unit string) string {
 	if valStr == "" {
 		return "-"
 	}

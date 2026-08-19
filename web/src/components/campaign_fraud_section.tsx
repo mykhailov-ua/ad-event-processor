@@ -22,7 +22,11 @@ export type CampaignFraudSectionProps = {
   canWrite: boolean;
 };
 
-type ThresholdField = 'fraud_threshold_pass' | 'fraud_threshold_suspect' | 'fraud_threshold_ivt' | 'fraud_threshold_block';
+type ThresholdField =
+  | 'fraud_threshold_pass'
+  | 'fraud_threshold_suspect'
+  | 'fraud_threshold_ivt'
+  | 'fraud_threshold_block';
 
 const THRESHOLD_FIELDS: Array<{ key: ThresholdField; label: string }> = [
   { key: 'fraud_threshold_pass', label: 'Pass max' },
@@ -39,9 +43,7 @@ function thresholdsOrdered(cfg: CampaignFraudConfig): boolean {
   );
 }
 
-/**
- * Campaign fraud sensitivity controls: presets, tier sliders, ghost IVT.
- */
+
 export function CampaignFraudSection({ campaignId, canWrite }: CampaignFraudSectionProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -133,7 +135,10 @@ export function CampaignFraudSection({ campaignId, canWrite }: CampaignFraudSect
       if (updated) {
         setConfig(updated);
         setDraft(updated);
-        pushToastMessage({ title: 'Fraud settings saved', message: 'Thresholds updated for this campaign.' });
+        pushToastMessage({
+          title: 'Fraud settings saved',
+          message: 'Thresholds updated for this campaign.',
+        });
       }
     } catch (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -244,8 +249,8 @@ export function CampaignFraudSection({ campaignId, canWrite }: CampaignFraudSect
       <section className="stack" data-testid="fraud-preview-panel">
         <h3 className="subsection-title">Impact preview (7 days)</h3>
         <p className="text-muted text-xs">
-          Estimate how many unique IPs would leave the pass tier under the draft thresholds before you
-          save.
+          Estimate how many unique IPs would leave the pass tier under the draft thresholds before
+          you save.
         </p>
         <div className="button-row">
           <Button

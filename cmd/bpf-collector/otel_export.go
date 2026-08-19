@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -17,9 +18,10 @@ type otelLogExporter struct {
 	client   *http.Client
 	ch       chan map[string]any
 	wg       sync.WaitGroup
+	ctx      context.Context
 }
 
-func newOTelLogExporter(endpoint string) *otelLogExporter {
+func newOTelLogExporter(ctx context.Context, endpoint string) *otelLogExporter {
 	ep := strings.TrimSpace(endpoint)
 	if ep == "" {
 		return nil
@@ -32,6 +34,7 @@ func newOTelLogExporter(endpoint string) *otelLogExporter {
 		endpoint: ep,
 		client:   &http.Client{Timeout: 5 * time.Second},
 		ch:       make(chan map[string]any, 256),
+		ctx:      ctx,
 	}
 	e.wg.Add(1)
 	go e.loop()
@@ -60,7 +63,7 @@ func (e *otelLogExporter) loop() {
 			batch = batch[:0]
 			return
 		}
-		req, err := http.NewRequest(http.MethodPost, e.endpoint, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(e.ctx, http.MethodPost, e.endpoint, bytes.NewReader(body))
 		if err != nil {
 			slog.Debug("otel request", "error", err)
 			batch = batch[:0]
@@ -109,7 +112,7 @@ func (e *otelLogExporter) close() {
 }
 
 func otelEndpointFromEnv() string {
-	for _, key := range []string{"ESPX_BPF_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"} {
+	for _, key := range []string{"BIDSHARD_BPF_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"} {
 		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 			return v
 		}

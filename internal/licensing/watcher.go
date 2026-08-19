@@ -51,10 +51,7 @@ func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed2
 	if mode == "" {
 		mode = "file"
 	}
-	path := config.LicenseEnv("PATH")
-	if path == "" {
-		path = "license.jwt"
-	}
+	path := config.LicensePathFromEnv()
 	spoolDir := config.LicenseEnv("SPOOL_DIR")
 	if spoolDir == "" {
 		spoolDir = filepath.Join(filepath.Dir(path), ".license-spool")

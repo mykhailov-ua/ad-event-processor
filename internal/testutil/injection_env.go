@@ -16,21 +16,21 @@ type InjectionEnv struct {
 	RedisContainer testcontainers.Container
 }
 
-func NewInjectionEnv(t testing.TB) (*InjectionEnv, func()) {
+func NewInjectionEnv(t testing.TB) (env *InjectionEnv, cleanup func()) {
 	t.Helper()
 
 	pgContainer, pool, cleanupPG := SetupAdsPostgresContainer(t)
 	redisContainer, rdb, cleanupRedis := SetupRedisContainer(t)
 
-	env := &InjectionEnv{
+	env = &InjectionEnv{
 		Pool:           pool,
 		Redis:          rdb,
 		PGContainer:    pgContainer,
 		RedisContainer: redisContainer,
 	}
-	cleanup := func() {
+	cleanup = func() {
 		cleanupRedis()
 		cleanupPG()
 	}
-	return env, cleanup
+	return
 }

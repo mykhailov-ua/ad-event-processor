@@ -1,21 +1,5 @@
 #!/usr/bin/env bash
-# Smoke: OpenResty :443 TCP TLS config accepts kTLS; optional kernel offload proof.
-#
-# Usage:
-#   bash scripts/test/nginx_ktls_smoke.sh
-#
-# Env:
-#   EDGE_KTLS=1              skip when 0 (unless NGINX_KTLS_SMOKE_FORCE=1)
-#   NGINX_KTLS_SMOKE_FORCE=1 run even when EDGE_KTLS=0
-#   OPENRESTY_IMAGE=openresty/openresty:alpine
-#
-# Proves:
-#   nginx -t with ssl_conf_command Options KTLS (always, needs Docker)
-#   /proc/net/tls_stat TlsTxSw increase after HTTPS curl — only when host
-#   `tls` module is loaded (otherwise skip live offload, exit 0)
-#
-# Does not prove: QUIC/HTTP3 kTLS (unsupported), Caddy ingress TLS, or a CPU
-# percent win on /track proxy_pass.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -23,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

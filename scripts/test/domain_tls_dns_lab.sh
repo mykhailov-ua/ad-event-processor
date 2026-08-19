@@ -1,24 +1,15 @@
 #!/usr/bin/env bash
-# DNS lab: /etc/hosts SNI + Caddy on-demand TLS (internal issuer on INGRESS_HTTPS_PORT).
-#
-# Prerequisites (auto with DNS_LAB_BRINGUP=1):
-#   docker compose: db, redis-0, control, tracker-0, nginx, ingress (profile)
-#
-# Usage:
-#   DNS_LAB_USE_PREPARE=1 DNS_LAB_BRINGUP=1 bash scripts/test/domain_tls_dns_lab.sh
-#   DOMAIN_TLS_SMOKE_HOST=buyer-tls-lab.test ADMIN_API_KEY=... bash scripts/test/domain_tls_dns_lab.sh
-#
-# AC-3: first TLS handshake ≤ 5s after domain registered (internal CA, harness=dns_lab_internal).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-# shellcheck source=scripts/lib/dns_lab_hosts.sh
+
 source "$SCRIPTS/lib/dns_lab_hosts.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env" 2> /dev/null || true
   set +a
 fi

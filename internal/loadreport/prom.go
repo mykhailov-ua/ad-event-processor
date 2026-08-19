@@ -174,9 +174,9 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 			continue
 		}
 		shard := strings.TrimPrefix(row.Labels, "shard=")
-		p99 := prom.scalar(fmt.Sprintf(`histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker",shard="%s"}[5m])) by (le)) * 1000`, shard))
-		ops := prom.scalar(fmt.Sprintf(`sum(rate(ad_redis_ops_total{job="tracker",shard="%s"}[5m]))`, shard))
-		noscript := prom.scalar(fmt.Sprintf(`sum(rate(ad_redis_lua_noscript_total{job="tracker",shard="%s"}[5m]))`, shard))
+		p99 := prom.scalar(fmt.Sprintf(`histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker",shard=%q}[5m])) by (le)) * 1000`, shard))
+		ops := prom.scalar(fmt.Sprintf(`sum(rate(ad_redis_ops_total{job="tracker",shard=%q}[5m]))`, shard))
+		noscript := prom.scalar(fmt.Sprintf(`sum(rate(ad_redis_lua_noscript_total{job="tracker",shard=%q}[5m]))`, shard))
 		fmt.Fprintf(b, "| %s | %s | %s | %s |\n", shard, p99, ops, noscript)
 	}
 	b.WriteString("\n")
@@ -208,8 +208,8 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 	b.WriteString("| Store | p99 batch write (ms) | errors/s |\n")
 	b.WriteString("|-------|---------------------|----------|\n")
 	for _, typ := range []string{"postgres", "clickhouse"} {
-		p99 := prom.scalar(fmt.Sprintf(`histogram_quantile(0.99, sum(rate(ad_db_write_duration_seconds_bucket{job="processor",type="%s"}[5m])) by (le)) * 1000`, typ))
-		errRate := prom.scalar(fmt.Sprintf(`sum(rate(ad_db_write_errors_total{job="processor",type="%s"}[5m]))`, typ))
+		p99 := prom.scalar(fmt.Sprintf(`histogram_quantile(0.99, sum(rate(ad_db_write_duration_seconds_bucket{job="processor",type=%q}[5m])) by (le)) * 1000`, typ))
+		errRate := prom.scalar(fmt.Sprintf(`sum(rate(ad_db_write_errors_total{job="processor",type=%q}[5m]))`, typ))
 		if errRate == "na" {
 			errRate = "0"
 		}
@@ -319,21 +319,21 @@ func writeStraceSection(b *strings.Builder, outDir string) {
 	}
 }
 
-func readStatusHistogram(outDir string) (*statusHistogramFile, string) {
+func readStatusHistogram(outDir string) (hist *statusHistogramFile, label string) {
 	path := filepath.Join(outDir, "status-histogram.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, ""
 	}
-	var hist statusHistogramFile
-	if json.Unmarshal(data, &hist) != nil {
+	var h statusHistogramFile
+	if json.Unmarshal(data, &h) != nil {
 		return nil, ""
 	}
-	return &hist, "loadgen"
+	return &h, "loadgen"
 }
 
 func writeStatusHistogramSection(b *strings.Builder, hist *statusHistogramFile, label string) {
-	b.WriteString("\n## " + label + " HTTP status histogram\n\n")
+	fmt.Fprintf(b, "\n## %s HTTP status histogram\n\n", label)
 	total := int64(0)
 	for _, v := range hist.ByStatus {
 		total += v

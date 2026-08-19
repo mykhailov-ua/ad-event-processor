@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
-# Compare peak Redis used_memory dual-path vs broker-only cutover.
-#
-# Usage:
-#   bash scripts/perf/redis_ram_cutover_compare.sh
-# Env:
-#   TARGET_RPS=50000  DURATION=45s  SKIP_PREPARE=1
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-# shellcheck source=../lib/redis_memory.sh
+
 source "$SCRIPTS/lib/redis_memory.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

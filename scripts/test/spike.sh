@@ -21,7 +21,7 @@ log "ensuring stack (constrained=${CONSTRAINED})"
 bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-pre" || true
 
 BPF_PID=""
-if [[ "${ESPX_BPF_PROBE:-0}" == "1" ]]; then
+if [[ "${AD_EVENT_PROCESSOR_BPF_PROBE:-0}" == "1" ]]; then
   bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
   [[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi

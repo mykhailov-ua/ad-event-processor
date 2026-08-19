@@ -1,29 +1,9 @@
 #!/usr/bin/env bash
-# 03_run_torture_benchmark.sh
-#
-# Launch the SUT inside /sys/fs/cgroup/purgatory and drive 10k keep-alive
-# POST /track connections for 60s (wrk preferred, k6 fallback).
-# On completion: dump cgroup cpu.stat / memory.events, OOM evidence, RPS + latency.
-#
-# Prerequisites:
-#   sudo bash 01_setup_purgatory_cgroup.sh
-#   sudo bash 02_degrade_network_and_cache.sh
-#   Built binary at TARGET_BIN (default: $ROOT/bin/tracker) OR TARGET_PID of a
-#   running process you want to move into the cgroup.
-#
-# Usage (root):
-#   sudo bash scripts/perf/purgatory/03_run_torture_benchmark.sh
-#   TARGET_BIN=./bin/tracker TARGET_PORT=8181 \
-#     BENCH_CONNECTIONS=10000 BENCH_DURATION=60s \
-#     sudo -E bash .../03_run_torture_benchmark.sh
-#
-# Attach an already-running tracker instead of spawning:
-#   TARGET_PID=$(pgrep -n tracker) SKIP_START=1 sudo -E bash .../03_run_torture_benchmark.sh
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=common.sh
+
 source "${SCRIPT_DIR}/common.sh"
 
 require_root
@@ -33,7 +13,6 @@ ensure_state_dir
 
 [[ -d "$CGROUP_PATH" ]] || die "cgroup ${CGROUP_PATH} missing — run 01_setup_purgatory_cgroup.sh"
 
-# Prefer wrk; accept wrk2; fall back to k6.
 LOADGEN=""
 if have_cmd wrk; then
   LOADGEN=wrk
@@ -46,7 +25,6 @@ else
 fi
 log "load generator: ${LOADGEN}"
 
-# Optional cgexec presence check (used only as a soft capability probe).
 if have_cmd cgexec; then
   log "cgexec available (will prefer cgroup.procs attach on cgroup v2)"
 else
@@ -58,7 +36,6 @@ OUT="${RUN_DIR}/${TS}"
 mkdir -p "$OUT"
 log "artifacts → ${OUT}"
 
-# Snapshot cpu.stat before load so we can delta throttle counters.
 CPU_STAT_BEFORE="${OUT}/cpu.stat.before"
 read_cpu_stat > "$CPU_STAT_BEFORE"
 MEM_EVENTS_BEFORE="${OUT}/memory.events.before"
@@ -73,7 +50,7 @@ cleanup_sut_on_exit() {
   if [[ "$STARTED_BY_US" -eq 1 ]] && [[ -n "$SUT_PID" ]] && kill -0 "$SUT_PID" 2> /dev/null; then
     log "stopping SUT pid=${SUT_PID}"
     kill -TERM "$SUT_PID" 2> /dev/null || true
-    # Brief grace, then KILL (may already be OOM-killed).
+
     for _ in 1 2 3 4 5; do
       kill -0 "$SUT_PID" 2> /dev/null || break
       sleep 0.2
@@ -84,9 +61,6 @@ cleanup_sut_on_exit() {
 }
 trap cleanup_sut_on_exit EXIT
 
-# ---------------------------------------------------------------------------
-# Start or attach SUT inside purgatory cgroup
-# ---------------------------------------------------------------------------
 if [[ "${SKIP_START:-0}" == "1" ]] || [[ -n "${TARGET_PID:-}" ]]; then
   SUT_PID="${TARGET_PID:-}"
   [[ -n "$SUT_PID" ]] || die "SKIP_START=1 requires TARGET_PID"
@@ -95,17 +69,14 @@ if [[ "${SKIP_START:-0}" == "1" ]] || [[ -n "${TARGET_PID:-}" ]]; then
 else
   [[ -x "$TARGET_BIN" ]] || die "TARGET_BIN not executable: ${TARGET_BIN} (build tracker or set TARGET_BIN / TARGET_PID)"
   log "starting ${TARGET_BIN} inside ${CGROUP_PATH}"
-  # Hostile Go runtime defaults under 64 MiB: tight GC, single P matching cpuset.
+
   export GOMAXPROCS="${GOMAXPROCS:-1}"
   export GOMEMLIMIT="${GOMEMLIMIT:-60MiB}"
   export GOGC="${GOGC:-50}"
 
-  # Spawn, then move into cgroup before it accepts much traffic.
-  # Using a pipe-sync so we know the real PID after fork.
   FIFO="${STATE_DIR}/sut.ready.$$"
   mkfifo "$FIFO"
-  # Extra args for the binary: TARGET_ARGS="--addr :8181" (word-split intentionally).
-  # shellcheck disable=SC2086
+
   (
     echo $$ > "${CGROUP_PATH}/cgroup.procs"
     echo ready > "$FIFO"
@@ -113,7 +84,7 @@ else
   ) > "${OUT}/sut.stdout" 2> "${OUT}/sut.stderr" &
   SUT_PID=$!
   STARTED_BY_US=1
-  # Wait for child to enter cgroup (or die). Timeout avoids FIFO deadlock.
+
   if ! timeout 5 cat "$FIFO" > /dev/null; then
     rm -f "$FIFO"
     die "SUT failed to signal readiness within 5s; see ${OUT}/sut.stderr"
@@ -123,7 +94,6 @@ else
   cg_path="$(awk -F: '$1=="0"{print $3}' "/proc/${SUT_PID}/cgroup" 2> /dev/null || echo '?')"
   log "SUT pid=${SUT_PID} cgroup=${cg_path}"
 
-  # Wait until TCP listen is up (best-effort).
   log "waiting for ${TARGET_HOST}:${TARGET_PORT}"
   ready=0
   for _ in $(seq 1 100); do
@@ -144,30 +114,23 @@ else
   [[ "$ready" -eq 1 ]] || warn "listen probe timed out; continuing anyway"
 fi
 
-# Confirm membership.
 if ! grep -qx "$SUT_PID" "${CGROUP_PATH}/cgroup.procs" 2> /dev/null; then
-  # Child may have re-parented threads; check any tid or warn.
+
   warn "PID ${SUT_PID} not listed in cgroup.procs (threads may differ); forcing attach"
   cgroup_attach_pid "$SUT_PID" || true
 fi
 
-# ---------------------------------------------------------------------------
-# Valid POST /track payload (minimal JSON matching HTTP1DFA_Happy corpus)
-# ---------------------------------------------------------------------------
 TRACK_BODY="{\"campaign_id\":\"${TRACK_CAMPAIGN_ID}\",\"type\":\"click\"}"
 BODY_FILE="${OUT}/track_body.json"
 printf '%s' "$TRACK_BODY" > "$BODY_FILE"
 
-# ---------------------------------------------------------------------------
-# Load generation — 10k keep-alive connections, 60s
-# ---------------------------------------------------------------------------
 LOAD_LOG="${OUT}/loadgen.log"
 log "driving ${BENCH_CONNECTIONS} connections for ${BENCH_DURATION} → ${TARGET_URL}"
 
 run_wrk() {
   local bin=$1
   local lua="${OUT}/track.lua"
-  # wrk Lua: POST keep-alive with fixed body.
+
   cat > "$lua" << EOF
 wrk.method = "POST"
 wrk.body   = [=[${TRACK_BODY}]=]
@@ -175,8 +138,7 @@ wrk.headers["Content-Type"] = "application/json"
 wrk.headers["Connection"]   = "keep-alive"
 wrk.headers["Accept"]       = "application/json"
 EOF
-  # wrk: -c connections -t threads -d duration --latency
-  # wrk2: adds -R rate; we omit calibrated rate to maximize pressure.
+
   if [[ "$bin" == "wrk2" ]]; then
     wrk2 -t "$BENCH_THREADS" -c "$BENCH_CONNECTIONS" -d "$BENCH_DURATION" \
       --latency -R "${BENCH_RATE:-50000}" -s "$lua" "$TARGET_URL" \
@@ -190,7 +152,7 @@ EOF
 
 run_k6() {
   local js="${OUT}/track_k6.js"
-  # Parse duration like 60s → 60.
+
   local secs
   secs="$(echo "$BENCH_DURATION" | sed -E 's/^([0-9]+).*/\1/')"
   cat > "$js" << EOF
@@ -233,9 +195,6 @@ case "$LOADGEN" in
   k6) run_k6 || warn "k6 exited non-zero" ;;
 esac
 
-# ---------------------------------------------------------------------------
-# Post-run: cgroup throttle, OOM, latency parse
-# ---------------------------------------------------------------------------
 CPU_STAT_AFTER="${OUT}/cpu.stat.after"
 read_cpu_stat > "$CPU_STAT_AFTER"
 MEM_EVENTS_AFTER="${OUT}/memory.events.after"
@@ -256,7 +215,6 @@ THROTTLED_USEC_DELTA=$((THROTTLED_USEC_AFTER - THROTTLED_USEC_BEFORE))
 
 OOM_DELTA=$((OOM_AFTER - OOM_BEFORE))
 
-# Kernel ring buffer OOM lines for this PID / binary name.
 OOM_DMESG="${OUT}/oom_dmesg.txt"
 { dmesg -T 2> /dev/null || journalctl -k -n 200 --no-pager 2> /dev/null || true; } \
   | grep -iE "oom|killed process|${SUT_PID}" \
@@ -267,23 +225,16 @@ if [[ -n "$SUT_PID" ]] && kill -0 "$SUT_PID" 2> /dev/null; then
   SUT_ALIVE=1
 fi
 
-# --- Parse RPS / latency from wrk or k6 ------------------------------------
 METRICS_JSON="${OUT}/metrics.json"
 parse_wrk_metrics() {
-  # wrk --latency sample:
-  #   Requests/sec:   12345.67
-  #   Latency Distribution
-  #      50%  1.23ms
-  #      75%  ...
-  #      90%  ...
-  #      99%  ...
+
   local rps p50 p95 p99 p999
   rps="$(awk '/Requests\/sec:/ { print $2 }' "$LOAD_LOG" | tail -1)"
   p50="$(awk '/^[[:space:]]*50%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
-  # wrk does not print p95 by default; approximate from 90/99 if present.
+
   p95="$(awk '/^[[:space:]]*90%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
   p99="$(awk '/^[[:space:]]*99%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
-  # wrk2 / hdr histograms sometimes expose 99.9
+
   p999="$(awk '/^[[:space:]]*99\.9%/ { print $2$3 }' "$LOAD_LOG" | tail -1)"
   [[ -n "$p999" ]] || p999="n/a (wrk has no p99.9; use wrk2/k6)"
   cat > "$METRICS_JSON" << EOF
@@ -308,7 +259,7 @@ parse_k6_metrics() {
     echo '{"loadgen":"k6","error":"no summary"}' > "$METRICS_JSON"
     return
   fi
-  # Prefer jq; fall back to python3.
+
   if have_cmd jq; then
     jq '{
 		  loadgen: "k6",

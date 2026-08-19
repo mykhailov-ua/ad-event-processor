@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Seed campaign 000…001 for StrictFlush / local-quanta strict drill.
-# Requires: docker compose load-test stack up, postgres migrated.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

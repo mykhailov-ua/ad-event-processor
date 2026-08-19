@@ -35,7 +35,7 @@ var hwidPathEnc = [hwidPathCount][]byte{
 	hwidPathNetDir:            {0x75, 0x29, 0x23, 0x29, 0x75, 0x39, 0x36, 0x3b, 0x29, 0x29, 0x75, 0x34, 0x3f, 0x2e},
 }
 
-func decodeHWIDPath(pathID uint8, suffix []byte, dst []byte) int {
+func decodeHWIDPath(pathID uint8, suffix, dst []byte) int {
 	if int(pathID) >= len(hwidPathEnc) {
 		return 0
 	}

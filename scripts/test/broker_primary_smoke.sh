@@ -1,31 +1,15 @@
 #!/usr/bin/env bash
-# Smoke: broker-primary ClickHouse ingest (CH_INGEST_SOURCE=broker).
-#
-# Unit gates (always when go available):
-#   - BrokerProducer hot-path tests
-#   - BrokerConsumerGroup batch/offset tests
-#
-# Live stack (optional, when docker + running compose):
-#   - broker health unix probe
-#   - processor logs show Redis _ch disabled and broker bridge enabled
-#
-# Usage:
-#   bash scripts/test/broker_primary_smoke.sh
-#
-# Env:
-#   CH_INGEST_SOURCE=broker     skip when not broker (unless BROKER_PRIMARY_SMOKE_FORCE=1)
-#   BROKER_PRIMARY_SMOKE_FORCE=1
-#   BROKER_PRIMARY_SKIP_LIVE=1  unit tests only
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
-# shellcheck source=../lib/go.sh
+
 source "$SCRIPTS/lib/go.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env"
   set +a
 fi

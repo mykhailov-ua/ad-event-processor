@@ -70,8 +70,8 @@ func (a *notifierAPI) SendNotificationBatch(ctx context.Context, inputs []Notifi
 		return nil, nil
 	}
 	out := make([]SendNotificationResult, 0, len(inputs))
-	for _, item := range inputs {
-		result, err := a.svc.SendNotificationInput(ctx, item)
+	for i := range inputs {
+		result, err := a.svc.SendNotificationInput(ctx, inputs[i])
 		if err != nil {
 			return nil, err
 		}

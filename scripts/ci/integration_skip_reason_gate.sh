@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail on bare t.Skip() in Go tests — skip reason required (S7.7).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

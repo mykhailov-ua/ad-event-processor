@@ -119,7 +119,7 @@ type mockTokenMaker struct {
 	verifyErr error
 }
 
-func (m *mockTokenMaker) CreateToken(userID uuid.UUID, sessionID uuid.UUID, role string, customerID uuid.UUID, duration time.Duration) (string, error) {
+func (m *mockTokenMaker) CreateToken(userID, sessionID uuid.UUID, role string, customerID uuid.UUID, duration time.Duration) (string, error) {
 	return "token", m.createErr
 }
 

@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-// ExpireStale marks active anchors expired when valid_until is before at.
-// Returns the number of anchor rows updated.
 func (r *Registry) ExpireStale(at time.Time) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -38,7 +36,6 @@ func (r *Registry) ExpireStale(at time.Time) (int, error) {
 	return changed, nil
 }
 
-// DeploymentHasStatus reports whether any anchor exists for deployment_id.
 func (r *Registry) DeploymentHasStatus(deploymentID string, status Status) (bool, error) {
 	deploymentID = strings.TrimSpace(deploymentID)
 	if deploymentID == "" {
@@ -52,7 +49,8 @@ func (r *Registry) DeploymentHasStatus(deploymentID string, status Status) (bool
 	if err != nil {
 		return false, err
 	}
-	for _, rec := range snap.Anchors {
+	for i := range snap.Anchors {
+		rec := &snap.Anchors[i]
 		if rec.DeploymentID == deploymentID && rec.Status == status {
 			return true, nil
 		}

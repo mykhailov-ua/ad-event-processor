@@ -6,9 +6,9 @@ LUA_DIR="${ROOT}/deploy/nginx/lua"
 
 if command -v luajit > /dev/null 2>&1; then
   luajit "${LUA_DIR}/tests/node_weights_test.lua" "${LUA_DIR}"
-elif docker ps --format '{{.Names}}' 2> /dev/null | grep -q '^espx-nginx-1$'; then
-  docker exec espx-nginx-1 /usr/local/openresty/luajit/bin/luajit /etc/nginx/lua/tests/node_weights_test.lua /etc/nginx/lua
+elif docker ps --format '{{.Names}}' 2> /dev/null | grep -q '^ad-event-processor-nginx-1$'; then
+  docker exec ad-event-processor-nginx-1 /usr/local/openresty/luajit/bin/luajit /etc/nginx/lua/tests/node_weights_test.lua /etc/nginx/lua
 else
-  echo "luajit not found and espx-nginx-1 not running; install luajit or start edge stack" >&2
+  echo "luajit not found and ad-event-processor-nginx-1 not running; install luajit or start edge stack" >&2
   exit 1
 fi

@@ -613,8 +613,7 @@ export function RoleDashboardPage() {
     }
     if (role === 'fraud') {
       const perms = user?.permissions ?? [];
-      const canWrite =
-        can(perms, 'campaigns:write') || can(perms, 'shards:write');
+      const canWrite = can(perms, 'campaigns:write') || can(perms, 'shards:write');
       return <FraudBody data={data} canWrite={canWrite} />;
     }
     return <EmptyBlock title="Unknown role" description="This dashboard role is not configured." />;

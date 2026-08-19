@@ -118,7 +118,7 @@ func (campaignListStub) BlockCampaignPlacement(context.Context, uuid.UUID, strin
 	return nil
 }
 
-func mapPublisherTestError(err error) (int, string, string) {
+func mapPublisherTestError(err error) (status int, code string, message string) {
 	if errors.Is(err, controlplane.ErrPublisherScopeRequired) {
 		return http.StatusForbidden, "FORBIDDEN", err.Error()
 	}

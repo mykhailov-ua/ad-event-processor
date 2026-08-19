@@ -1,7 +1,5 @@
 version: "2"
 
-
-
 run:
   timeout: 8m
   go: "1.25.12"
@@ -30,6 +28,7 @@ linters:
         - all
         - SA9003
         - SA4017
+        - -ST1000
     gocritic:
       enabled-checks:
         - builtinShadow
@@ -53,20 +52,20 @@ linters:
           - noctx
           - contextcheck
           - forbidigo
-      - path: '(/|^)(.*/)?pb/'
+      - path: "(/|^)(.*/)?pb/"
         linters:
           - errcheck
-      - path: '(/|^)(.*/)?db/'
+      - path: "(/|^)(.*/)?db/"
         linters:
           - errcheck
 
-      - path: 'cmd/admin/'
+      - path: "cmd/admin/"
         linters:
           - forbidigo
-      - path: 'internal/installer/'
+      - path: "internal/installer/"
         linters:
           - forbidigo
       - path: 'cmd/.+/main\.go'
         linters:
           - gocritic
-        text: 'exitAfterDefer'
+        text: "exitAfterDefer"

@@ -31,10 +31,7 @@ func (r *Registry) ConfigureLicenseEnforcement(cfg RegistryLicenseConfig) {
 	}
 	r.licenseEnforced.Store(true)
 	if cfg.Path == "" {
-		cfg.Path = config.LicenseEnv("PATH")
-	}
-	if cfg.Path == "" {
-		cfg.Path = "license.jwt"
+		cfg.Path = config.LicensePathFromEnv()
 	}
 	if cfg.Interval <= 0 {
 		cfg.Interval = 5 * time.Minute
@@ -47,10 +44,7 @@ func (r *Registry) StartLicenseRecheck(ctx context.Context, cfg RegistryLicenseC
 		return
 	}
 	if cfg.Path == "" {
-		cfg.Path = config.LicenseEnv("PATH")
-	}
-	if cfg.Path == "" {
-		cfg.Path = "license.jwt"
+		cfg.Path = config.LicensePathFromEnv()
 	}
 	if cfg.Interval <= 0 {
 		cfg.Interval = 5 * time.Minute

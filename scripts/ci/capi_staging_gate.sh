@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CI: CAPI Meta staging script wiring (dry-run only; no live stack).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

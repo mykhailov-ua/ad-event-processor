@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-C.D3: default test paths must not compile license_guard (guards off in dev/CI builds).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

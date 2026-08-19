@@ -113,7 +113,7 @@ func appendBidObject(dst []byte, p BidWire, defaultBidID []byte) []byte {
 	return dst
 }
 
-func AppendNoBidResponse(dst []byte, requestID []byte, nbr int) []byte {
+func AppendNoBidResponse(dst, requestID []byte, nbr int) []byte {
 	dst = append(dst, `{"id":`...)
 	if len(requestID) > 0 {
 		dst = appendJSONBytes(dst, requestID)
@@ -165,7 +165,7 @@ func NBRFromReason(reason string) int {
 	}
 }
 
-func appendJSONBytes(dst []byte, b []byte) []byte {
+func appendJSONBytes(dst, b []byte) []byte {
 	dst = append(dst, '"')
 	for i := range b {
 		c := b[i]
@@ -197,10 +197,7 @@ func appendMicroPrice(dst []byte, micro int64) []byte {
 		whole = -whole
 	}
 	dst = appendUint(dst, uint64(whole))
-	dst = append(dst, '.')
-	dst = append(dst,
-		byte('0'+frac/100000),
-	)
+	dst = append(dst, '.', byte('0'+frac/100000))
 	frac %= 100000
 	dst = append(dst, byte('0'+frac/10000))
 	frac %= 10000
@@ -208,8 +205,7 @@ func appendMicroPrice(dst []byte, micro int64) []byte {
 	frac %= 1000
 	dst = append(dst, byte('0'+frac/100))
 	frac %= 100
-	dst = append(dst, byte('0'+frac/10))
-	dst = append(dst, byte('0'+frac%10))
+	dst = append(dst, byte('0'+frac/10), byte('0'+frac%10))
 	return dst
 }
 

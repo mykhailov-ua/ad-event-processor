@@ -41,10 +41,7 @@ func (s *Service) ApplyLicenseToken(ctx context.Context, token string) error {
 		}
 	}
 
-	path := config.LicenseEnv("PATH")
-	if path == "" {
-		path = "license.jwt"
-	}
+	path := config.LicensePathFromEnv()
 	if err := licensing.InstallToken(path, token, nil); err != nil {
 		if errors.Is(err, licensing.ErrInvalidSignature) || errors.Is(err, licensing.ErrInvalidTokenFormat) {
 			return errValidation("invalid license token")

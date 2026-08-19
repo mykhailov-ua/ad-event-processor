@@ -35,7 +35,7 @@ func resolveGoogleConversionAction(urlTemplate, eventType string) string {
 	return action
 }
 
-func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate string, apiTokenDecrypted string) error {
+func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *PostbackPayload, urlTemplate, apiTokenDecrypted string) error {
 	url := urlTemplate
 	if url == "" || !strings.HasPrefix(url, "http") {
 		url = "https://googleads.googleapis.com/v15/customers/default/offlineUserDataJobs:run"

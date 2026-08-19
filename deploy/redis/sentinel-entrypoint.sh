@@ -16,11 +16,11 @@ EOF
 i=0
 while [ "$i" -lt "$REDIS_SHARD_COUNT" ]; do
   cat >> "$CONF" << EOF
-sentinel monitor espx-shard-${i} redis-${i} 6379 2
-sentinel auth-pass espx-shard-${i} ${REDIS_PASSWORD}
-sentinel down-after-milliseconds espx-shard-${i} 5000
-sentinel failover-timeout espx-shard-${i} 10000
-sentinel parallel-syncs espx-shard-${i} 1
+sentinel monitor ad-event-processor-shard-${i} redis-${i} 6379 2
+sentinel auth-pass ad-event-processor-shard-${i} ${REDIS_PASSWORD}
+sentinel down-after-milliseconds ad-event-processor-shard-${i} 5000
+sentinel failover-timeout ad-event-processor-shard-${i} 10000
+sentinel parallel-syncs ad-event-processor-shard-${i} 1
 EOF
   i=$((i + 1))
 done

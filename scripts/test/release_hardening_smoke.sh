@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Release hardening — fast smoke (policy + garble:ignore); p99 lab is separate.
+
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 bash scripts/ci/garble_literals_policy_gate.sh

@@ -183,7 +183,7 @@ func TestFault_PaymentPGTerminateDuringWebhook(t *testing.T) {
 	intent := result.Intent
 	providerRef := intent.ProviderRef
 	eventID := "evt_pg_kill_" + uuid.New().String()
-	payload := fmt.Sprintf(`{"id":"%s","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":7000000}}}`,
+	payload := fmt.Sprintf(`{"id":%q,"type":"payment_intent.succeeded","data":{"object":{"id":%q,"amount":7000000}}}`,
 		eventID, providerRef)
 
 	require.NoError(t, infra.PGContainer.Terminate(ctx))

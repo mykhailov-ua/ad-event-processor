@@ -163,7 +163,6 @@ const (
 	FraudPresetAggressive   = "aggressive"
 )
 
-// ResolveFraudPreset maps a named sensitivity preset to ordered tier thresholds.
 func ResolveFraudPreset(name string) (pass, suspect, ivt, block uint8, ok bool) {
 	switch name {
 	case FraudPresetConservative:

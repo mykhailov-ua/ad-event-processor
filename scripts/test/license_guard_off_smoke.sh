@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-C.D2: guard kill switches allow normal engineering tooling (gdb/strace/delve).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

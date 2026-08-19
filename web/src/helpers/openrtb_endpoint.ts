@@ -1,17 +1,12 @@
-/**
- * Build OpenRTB 2.6 bid endpoint URL for a tracking host.
- */
+
 export function buildOpenRTBBidURL(host: string): string {
-  const h = (host || '').replace(/^https?:\/\//, '').trim();
-  if (!h) {
+  const h = (host || '').replace(/^https?:\/\  if (!h) {
     return 'https://track.example/openrtb/bid';
   }
   return `https://${h}/openrtb/bid`;
 }
 
-/**
- * Human-readable routing hint for SSP onboarding.
- */
+
 export function openRTBRoutingHint(opts: {
   edgeExposeOpenRTB?: boolean;
   edgePortHint?: string;
@@ -23,7 +18,7 @@ export function openRTBRoutingHint(opts: {
   return `Tracker ports${opts.trackerPortHint ?? ':8181–8184'} (enable edge OpenRTB in Platform settings for :8180)`;
 }
 
-/** Minimal OpenRTB 2.6 bid request for validate-bid smoke. */
+
 export const VALIDATE_BID_FIXTURE = {
   id: 'req-smoke-001',
   tmax: 250,

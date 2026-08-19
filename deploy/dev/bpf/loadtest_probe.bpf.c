@@ -10,9 +10,9 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
-#include "espx_pt_regs.h"
-#include "espx_probe.h"
-#include "espx_trace.h"
+#include "ad_event_processor_pt_regs.h"
+#include "ad_event_processor_probe.h"
+#include "ad_event_processor_trace.h"
 
 char LICENSE[] SEC("license") = "GPL";
 
@@ -183,15 +183,15 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 	ts = bpf_ktime_get_ns();
 	bpf_map_update_elem(&syscall_enter, &pid_tgid, &ts, BPF_ANY);
 
-	if (syscall_id == ESPX_NR_connect || syscall_id == ESPX_NR_sendto) {
+	if (syscall_id == AD_EVENT_PROCESSOR_NR_connect || syscall_id == AD_EVENT_PROCESSOR_NR_sendto) {
 		struct espx_syscall_peer peer = {};
 		void *addr;
 
 		addr = (void *)ctx->args[1];
-		if (syscall_id == ESPX_NR_sendto)
+		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto)
 			addr = (void *)ctx->args[4];
 		peer.dport = espx_read_sockaddr_port(addr);
-		if (syscall_id == ESPX_NR_sendto)
+		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto)
 			peer.sendto_len = (__u32)ctx->args[2];
 		bpf_map_update_elem(&syscall_peer, &pid_tgid, &peer, BPF_ANY);
 	}
@@ -250,7 +250,7 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 	if (hist)
 		espx_hist_record(hist, delta);
 
-	if (syscall_id == ESPX_NR_connect || syscall_id == ESPX_NR_sendto) {
+	if (syscall_id == AD_EVENT_PROCESSOR_NR_connect || syscall_id == AD_EVENT_PROCESSOR_NR_sendto) {
 		struct espx_syscall_peer *peer;
 		struct espx_net_stats *nst;
 		__u16 dport = 0;
@@ -260,7 +260,7 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 			dport = peer->dport;
 		bpf_map_delete_elem(&syscall_peer, &pid_tgid);
 
-		if (syscall_id == ESPX_NR_connect && syscall_ret == 0) {
+		if (syscall_id == AD_EVENT_PROCESSOR_NR_connect && syscall_ret == 0) {
 			nst = net_stats_mut(pid, dport);
 			if (nst) {
 				nst->connects++;
@@ -268,8 +268,8 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 				nst->connect_samples++;
 			}
 		}
-		if (syscall_id == ESPX_NR_sendto && syscall_ret > 0 && dport == ESPX_PG_PORT) {
-			nst = net_stats_mut(pid, ESPX_PG_PORT);
+		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto && syscall_ret > 0 && dport == AD_EVENT_PROCESSOR_PG_PORT) {
+			nst = net_stats_mut(pid, AD_EVENT_PROCESSOR_PG_PORT);
 			if (nst) {
 				nst->sendto_calls++;
 				nst->sendto_bytes += (__u64)syscall_ret;
@@ -284,7 +284,7 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 		ev.syscall_id = syscall_id;
 		ev.duration_ns = delta;
 		ev.role = role;
-		ev.kind = ESPX_SLOW_KIND_SYSCALL;
+		ev.kind = AD_EVENT_PROCESSOR_SLOW_KIND_SYSCALL;
 		ev.campaign_slot = 0;
 		ev.marker_id = 0;
 		bpf_ringbuf_output(&slow_events, &ev, sizeof(ev), 0);
@@ -572,7 +572,7 @@ int espx_trace_exit(struct pt_regs *ctx)
 		ev.pid = pid;
 		ev.duration_ns = delta;
 		ev.role = role;
-		ev.kind = ESPX_SLOW_KIND_UPROBE;
+		ev.kind = AD_EVENT_PROCESSOR_SLOW_KIND_UPROBE;
 		ev.campaign_slot = (__u16)slot;
 		ev.marker_id = enter_id;
 		bpf_ringbuf_output(&slow_events, &ev, sizeof(ev), 0);

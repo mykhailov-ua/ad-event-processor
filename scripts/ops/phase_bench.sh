@@ -97,7 +97,7 @@ flood() {
 redis_cli() {
   if command -v redis-cli > /dev/null 2>&1; then
     redis-cli -p "$REDIS_PORT" -a "$REDIS_PASS" --no-auth-warning "$@"
-  elif docker exec espx-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASS" --no-auth-warning "$@" 2> /dev/null; then
+  elif docker exec ad-event-processor-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASS" --no-auth-warning "$@" 2> /dev/null; then
     return 0
   else
     log "redis-cli unavailable; cannot prepare blocked_ip scenario"
@@ -109,7 +109,7 @@ prepare_blocked_ip() {
   log "adding 127.0.0.1 to blacklist:manual on redis shard 0"
   redis_cli SADD blacklist:manual 127.0.0.1 > /dev/null
   log "reloading nginx to clear warm per-IP cache paths"
-  docker exec espx-nginx-1 nginx -s reload 2> /dev/null || true
+  docker exec ad-event-processor-nginx-1 nginx -s reload 2> /dev/null || true
   sleep 6
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail when exported functions in web/src lack a JSDoc block immediately above.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -12,7 +12,7 @@ while IFS= read -r -d '' srcfile; do
   case "$srcfile" in
     *.test.js | */icon.js) continue ;;
   esac
-  # TypeScript modules are gated by tsc; skip JSDoc export lint for .ts
+
   case "$srcfile" in
     *.ts) continue ;;
   esac

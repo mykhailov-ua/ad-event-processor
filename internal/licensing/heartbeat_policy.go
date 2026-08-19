@@ -33,7 +33,7 @@ func LoadHeartbeatPolicyFromEnv() HeartbeatPolicy {
 	return p
 }
 
-func OfflineDays(offlineSince time.Time, now time.Time) int {
+func OfflineDays(offlineSince, now time.Time) int {
 	if offlineSince.IsZero() {
 		return 0
 	}

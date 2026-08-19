@@ -1,7 +1,7 @@
 services:
   redis:
     image: redis:7-alpine
-    container_name: espx-broker-redis
+    container_name: ad-event-processor-broker-redis
     network_mode: host
     command: ['redis-server', '--port', '6379', '--appendonly', 'yes', '--tcp-backlog', '2048']
 
@@ -18,7 +18,7 @@ services:
     image: alpine:latest
     network_mode: host
     command:
-      - /app/espx-broker
+      - /app/ad-event-processor-broker
       - -addr
       - 127.0.0.1:19093
       - -health-addr
@@ -30,7 +30,7 @@ services:
       - -redis-url
       - redis://127.0.0.1:6379/0
     volumes:
-      - ${ESPX_BROKER_BIN:-./deploy/broker/bin/espx-broker}:/app/espx-broker:ro
+      - ${AD_EVENT_PROCESSOR_BROKER_BIN:-./deploy/broker/bin/ad-event-processor-broker}:/app/ad-event-processor-broker:ro
       - broker-1-data:/data
     depends_on:
       - redis
@@ -39,7 +39,7 @@ services:
     image: alpine:latest
     network_mode: host
     command:
-      - /app/espx-broker
+      - /app/ad-event-processor-broker
       - -addr
       - 127.0.0.1:19094
       - -health-addr
@@ -51,7 +51,7 @@ services:
       - -redis-url
       - redis://127.0.0.1:6379/0
     volumes:
-      - ${ESPX_BROKER_BIN:-./deploy/broker/bin/espx-broker}:/app/espx-broker:ro
+      - ${AD_EVENT_PROCESSOR_BROKER_BIN:-./deploy/broker/bin/ad-event-processor-broker}:/app/ad-event-processor-broker:ro
       - broker-2-data:/data
     depends_on:
       - redis

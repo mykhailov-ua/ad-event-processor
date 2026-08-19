@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: scaffold_test.sh <package-path> [--scenario <name>] [--force]
 
 Generate integration test boilerplate for a flat internal service package.
@@ -212,8 +212,8 @@ IMPORTS+=('"github.com/stretchr/testify/require"')
 
 SCHEMA_NAME="$(echo "$PKG_NAME" | tr '-' '_')"
 
-if [[ "$GENERATE_HELPERS" -eq 1 && ( ! -f "$HELPERS_FILE" || "$FORCE" -eq 1 ) ]]; then
-  cat > "$HELPERS_FILE" <<EOF
+if [[ "$GENERATE_HELPERS" -eq 1 && (! -f "$HELPERS_FILE" || "$FORCE" -eq 1) ]]; then
+  cat > "$HELPERS_FILE" << EOF
 package $PKG_NAME
 
 import (
@@ -235,12 +235,12 @@ fi
 
 {
   if [[ "$HOT_PATH" -eq 1 ]]; then
-    cat <<'EOF'
+    cat << 'EOF'
 // Hot-path package: integration tests prove wiring only; cite make test-alloc-gate for SLA evidence.
 EOF
   fi
 
-  cat <<EOF
+  cat << EOF
 package $PKG_NAME
 
 import (
@@ -250,7 +250,7 @@ EOF
     printf '\t%s\n' "$imp"
   done
 
-  cat <<EOF
+  cat << EOF
 )
 
 const integrationSkipReason = "integration: run make test-integration (Docker testcontainers)"
@@ -262,7 +262,7 @@ func Test${SERVICE_TITLE}_${SCENARIO_TITLE}_integration(t *testing.T) {
 EOF
 
   if [[ "$SETUP_FUNC" == setupAuthTestInfra ]]; then
-    cat <<EOF
+    cat << EOF
 
 	infra, cleanup := setupAuthTestInfra(t)
 	defer cleanup()
@@ -274,7 +274,7 @@ EOF
 	require.NotNil(t, infra.Pool, "integration scaffold must exercise real Postgres")
 EOF
   elif [[ "$SETUP_RETURNS_POOL" -eq 1 ]]; then
-    cat <<EOF
+    cat << EOF
 
 	pool, cleanup := ${SETUP_FUNC}(t)
 	defer cleanup()
@@ -283,19 +283,19 @@ EOF
 	ctx := context.Background()
 EOF
     if [[ -n "$SMOKE_METHOD" && "$SMOKE_METHOD" == GetNotification ]]; then
-      cat <<EOF
+      cat << EOF
 
 	_, err := svc.${SMOKE_METHOD}(ctx, ${SMOKE_ARG})
 	require.ErrorIs(t, err, ${SMOKE_ERR}, "integration scaffold must hit Postgres via service API")
 EOF
     elif [[ -n "$SMOKE_METHOD" && "$SMOKE_METHOD" == Start ]]; then
-      cat <<EOF
+      cat << EOF
 
 	require.NoError(t, svc.Start(ctx))
 	require.NoError(t, svc.Stop(ctx))
 EOF
     else
-      cat <<EOF
+      cat << EOF
 
 	_ = svc
 	_ = ctx
@@ -306,14 +306,14 @@ EOF
 
   if [[ "$USES_REDIS" -eq 1 ]]; then
     if [[ "$SETUP_RETURNS_POOL" -ne 1 && "$SETUP_FUNC" != setupAuthTestInfra ]]; then
-      cat <<EOF
+      cat << EOF
 
 	rdb, cleanupRedis := testutil.SetupRedis(t)
 	defer cleanupRedis()
 	require.NotNil(t, rdb, "integration scaffold must exercise real Redis")
 EOF
     elif [[ "$SETUP_RETURNS_POOL" -eq 1 ]]; then
-      cat <<EOF
+      cat << EOF
 
 	rdb, cleanupRedis := testutil.SetupRedis(t)
 	defer cleanupRedis()
@@ -323,14 +323,14 @@ EOF
   fi
 
   if [[ "$USES_BUDGET_INVARIANT" -eq 1 ]]; then
-    cat <<'EOF'
+    cat << 'EOF'
 
 	// Replace campaignID with a seeded campaign before enabling budget invariant checks.
 	// domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
 EOF
   fi
 
-  cat <<EOF
+  cat << EOF
 }
 
 func Test${SERVICE_TITLE}_${SCENARIO_TITLE}HeldOut_integration(t *testing.T) {
@@ -340,7 +340,7 @@ func Test${SERVICE_TITLE}_${SCENARIO_TITLE}HeldOut_integration(t *testing.T) {
 EOF
 
   if [[ -n "$HELD_OUT_METHOD" && -n "$HELD_OUT_ERR" ]]; then
-    cat <<EOF
+    cat << EOF
 
 	pool, cleanup := ${SETUP_FUNC}(t)
 	defer cleanup()
@@ -352,7 +352,7 @@ EOF
 	require.ErrorIs(t, err, ${HELD_OUT_ERR}, "held-out case must fail when input validation is removed")
 EOF
   elif [[ "$HELD_OUT_METHOD" == Start ]]; then
-    cat <<EOF
+    cat << EOF
 
 	pool, cleanup := ${SETUP_FUNC}(t)
 	defer cleanup()
@@ -367,13 +367,13 @@ EOF
 	require.True(t, schemaExists, "held-out case: service migrations must create schema ${SCHEMA_NAME}")
 EOF
   else
-    cat <<EOF
+    cat << EOF
 
 	t.Fatal("scaffold_test: add a held-out negative assertion for this package")
 EOF
   fi
 
-  cat <<'EOF'
+  cat << 'EOF'
 }
 EOF
 } > "$TEST_FILE"

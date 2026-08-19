@@ -35,7 +35,7 @@ const INDEX_HTML = `<!doctype html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BidShard Admin</title>
+    <title>ad-event-processor Admin</title>
 ${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
     <link rel="stylesheet" href="/src/styles/a11y.css?v=${ts}" />
   </head>
@@ -51,7 +51,7 @@ const LOGIN_HTML = `<!doctype html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign in — BidShard Admin</title>
+    <title>Sign in — ad-event-processor Admin</title>
 ${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
     <link rel="stylesheet" href="/src/styles/a11y.css?v=${ts}" />
   </head>

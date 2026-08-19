@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fail if customer release tarball contains vendor-only artifacts (S1.6).
+
 set -euo pipefail
 
 TARBALL="${1:?usage: verify_release_pack.sh <tarball>}"

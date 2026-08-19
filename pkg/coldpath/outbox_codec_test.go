@@ -29,7 +29,8 @@ func TestOutboxProtoRoundTrip_registeredType(t *testing.T) {
 		},
 		func(b []byte) (benchCampaignPayload, error) {
 			var p benchCampaignPayload
-			return p, UnmarshalJSON(b, &p)
+			err := UnmarshalJSON(b, &p)
+			return p, err
 		},
 	)
 
@@ -49,7 +50,8 @@ func TestUnmarshalStrict_legacyJSON(t *testing.T) {
 		func(p benchCampaignPayload) ([]byte, error) { return MarshalJSON(p) },
 		func(b []byte) (benchCampaignPayload, error) {
 			var p benchCampaignPayload
-			return p, UnmarshalJSON(b, &p)
+			err := UnmarshalJSON(b, &p)
+			return p, err
 		},
 	)
 	out, err := UnmarshalStrict[benchCampaignPayload](raw)

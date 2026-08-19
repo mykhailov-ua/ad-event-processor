@@ -2,11 +2,7 @@ import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
 import { to } from '../lib/to.js';
 import { isParallelSlotError, parallelAll } from './request_multiplex.js';
-import type {
-  CampaignDTO,
-  CampaignListResponse,
-  CampaignMarginDTO,
-} from '../types/campaign.js';
+import type { CampaignDTO, CampaignListResponse, CampaignMarginDTO } from '../types/campaign.js';
 
 export type MarginGuardPolicy = {
   id?: string;

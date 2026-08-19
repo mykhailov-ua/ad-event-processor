@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/edge"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
 	"github.com/bidshard/ad-event-processor/pkg/netaddr"
 
@@ -62,6 +63,14 @@ func main() {
 		slog.Error("pin maps", "error", err)
 		os.Exit(1)
 	}
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		metrics.RecordXDPPinnedMapCount(*pinDir)
+		for range ticker.C {
+			metrics.RecordXDPPinnedMapCount(*pinDir)
+		}
+	}()
 
 	var xdpLink link.Link
 	if ebpfEdgeAttachAllowed() {

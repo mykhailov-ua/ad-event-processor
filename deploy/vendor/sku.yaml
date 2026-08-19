@@ -1,6 +1,6 @@
 # Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
-# Sign offline: use bidshard-license repo CLI
-# go run ./cmd/bidshard-license --sku <code> --customer-name "Acme" --deployment-id <uuid> [--fingerprint <host_fp>]
+# Sign offline: use ad-event-processor-license repo CLI
+# go run ./cmd/ad-event-processor-license --sku <code> --customer-name "Acme" --deployment-id <uuid> [--fingerprint <host_fp>]
 #
 # Schema:
 #   skus[].code              - JWT sku/plan claim (required, unique)

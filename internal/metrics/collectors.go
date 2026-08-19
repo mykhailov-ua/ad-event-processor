@@ -188,6 +188,26 @@ var (
 		Help: "Current used memory of Redis instance in bytes",
 	}, []string{"shard"})
 
+	RedisPoolTotalConns = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_redis_pool_total_conns",
+		Help: "Current total connections in the go-redis pool for a shard",
+	}, []string{"shard"})
+
+	RedisPoolIdleConns = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_redis_pool_idle_conns",
+		Help: "Current idle connections in the go-redis pool for a shard",
+	}, []string{"shard"})
+
+	RedisPoolMissesTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_redis_pool_misses_total",
+		Help: "Total new connections opened by the go-redis pool (pool churn)",
+	}, []string{"shard"})
+
+	RedisPoolTimeoutsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_redis_pool_timeouts_total",
+		Help: "Total pool wait timeouts for the go-redis pool",
+	}, []string{"shard"})
+
 	DlqSize = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_dlq_size_total",
 		Help: "Current number of events in the Dead Letter Queue",
@@ -1297,6 +1317,10 @@ var (
 	XDPFingerprintTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_xdp_fingerprint_total",
 		Help: "Passive SYN TCP fingerprints emitted to ringbuf (cold path, score only)",
+	})
+	XDPPinnedMapCount = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_xdp_pinned_map_count",
+		Help: "Number of pinned BPF maps in the XDP pin directory",
 	})
 
 	EventsRetentionDeletedTotal = promauto.NewCounter(prometheus.CounterOpts{

@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
-# Local CAPI smoke bootstrap: DB prep, mock Meta receiver, postback config, stack env.
-#
-# Usage (from repo root):
-#   bash scripts/test/capi_meta_bootstrap.sh
-#   bash scripts/test/capi_meta_bootstrap.sh run   # bootstrap + capi_meta_staging.sh
-#
-# Optional env:
-#   CAMPAIGN_ID=00000000-0000-0000-0000-000000000005
-#   META_MOCK_PORT=9199
-#   META_TEST_EVENT_CODE=TEST12345
-# Real Meta: set META_CAPI_URL (https://graph.facebook.com/...) and META_ACCESS_TOKEN instead of mock.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -34,7 +24,7 @@ die() {
 load_env() {
   if [[ -f "$ROOT/.env" ]]; then
     set -a
-    # shellcheck disable=SC1091
+
     source "$ROOT/.env"
     set +a
   fi
@@ -47,7 +37,7 @@ load_env() {
   : "${TOKEN_SYMMETRIC_KEY:=01234567890123456789012345678901}"
   export POSTBACK_ENCRYPTION_KEY="${POSTBACK_ENCRYPTION_KEY:-$TOKEN_SYMMETRIC_KEY}"
   export DB_DSN="${DB_DSN:-postgres://${DB_USER}:${DB_PASSWORD}@127.0.0.1:${DB_PORT}/${DB_NAME}?sslmode=disable}"
-  # Local compose runs redis-0..3 only; override .env six-shard list for host-network trackers.
+
   export REDIS_ADDRS="127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482"
   export CH_ENABLED="${CH_ENABLED:-0}"
   export TRACKER_INGRESS_SCHEMA="${TRACKER_INGRESS_SCHEMA:-ad_event_processor_native}"
@@ -55,7 +45,7 @@ load_env() {
 }
 
 psql_exec() {
-  docker exec bidshard-db-1 psql -h /run/ad-event-processor/postgresql -p "$DB_PORT" \
+  docker exec ad-event-processor-db-1 psql -h /run/ad-event-processor/postgresql -p "$DB_PORT" \
     -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -c "$1"
 }
 
@@ -64,7 +54,7 @@ ensure_stack() {
   CH_ENABLED="${CH_ENABLED}" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
     CH_INGEST_SOURCE="$CH_INGEST_SOURCE" \
     docker compose up -d db redis-0 redis-1 redis-2 redis-3 > /dev/null
-  # Broker optional for CAPI lab — tracker/processor ingest via Redis when CH_INGEST_SOURCE=redis.
+
   CH_ENABLED="${CH_ENABLED}" CH_INGEST_SOURCE="$CH_INGEST_SOURCE" REDIS_ADDRS="$REDIS_ADDRS" \
     docker compose up -d --no-deps control > /dev/null || true
   CH_INGEST_SOURCE="$CH_INGEST_SOURCE" REDIS_ADDRS="$REDIS_ADDRS" TRACKER_INGRESS_SCHEMA="$TRACKER_INGRESS_SCHEMA" \
@@ -188,9 +178,9 @@ trim_event_streams() {
 
 sync_registry() {
   log "publishing registry reload for ${CAMPAIGN_ID}"
-  docker exec bidshard-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASSWORD" \
+  docker exec ad-event-processor-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASSWORD" \
     PUBLISH campaigns:update "$CAMPAIGN_ID" > /dev/null 2>&1 || true
-  docker exec bidshard-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASSWORD" \
+  docker exec ad-event-processor-redis-0-1 redis-cli -p 6379 -a "$REDIS_PASSWORD" \
     PUBLISH campaigns:update '*' > /dev/null 2>&1 || true
   sleep 3
 }

@@ -40,7 +40,7 @@ func (r *probeRun) discoverLoadgenPIDs() {
 			continue
 		}
 		pid := uint32(pid64)
-		comm, err := os.ReadFile(filepath.Join("/proc", e.Name(), "comm"))
+		comm, err := os.ReadFile(filepath.Join(string(filepath.Separator), "proc", e.Name(), "comm"))
 		if err != nil {
 			continue
 		}
@@ -85,7 +85,7 @@ func parseLoadgenComms(raw string) []string {
 }
 
 func (r *probeRun) trackLoadgenChildren(leader uint32, comm string) {
-	entries, err := os.ReadDir("/proc")
+	entries, err := os.ReadDir(filepath.Join(string(filepath.Separator), "proc"))
 	if err != nil {
 		return
 	}
@@ -95,7 +95,7 @@ func (r *probeRun) trackLoadgenChildren(leader uint32, comm string) {
 			continue
 		}
 		pid := uint32(pid64)
-		statusPath := filepath.Join("/proc", e.Name(), "status")
+		statusPath := filepath.Join(string(filepath.Separator), "proc", e.Name(), "status")
 		tgid := procTGID(statusPath)
 		if tgid != leader || pid == leader {
 			continue

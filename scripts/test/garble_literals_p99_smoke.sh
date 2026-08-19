@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Release hardening — garble p99 lab: tracker with literals=0 vs forced literals=1 under load.
-# Acceptance: literals p99 <= baseline * (1 + GARBLE_LITERALS_P99_BUDGET_PCT/100), default +10%.
-# Harness: load-test stack + Prometheus histogram_quantile(0.99).
-# Skips exit 0 when docker/prometheus/stack unavailable.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -10,7 +7,7 @@ cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source "$ROOT/.env" 2> /dev/null || true
   set +a
 fi

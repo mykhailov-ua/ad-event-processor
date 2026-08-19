@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# V2-D.D3: release tracker must not embed plaintext production Ed25519 pubkey hex.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

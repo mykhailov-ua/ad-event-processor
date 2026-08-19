@@ -25,7 +25,7 @@ type PartitionManager struct {
 	wg        sync.WaitGroup
 }
 
-func NewPartitionManager(pool dbExecutor, retentionDays int, preCreateDays int) *PartitionManager {
+func NewPartitionManager(pool dbExecutor, retentionDays, preCreateDays int) *PartitionManager {
 	return &PartitionManager{
 		pool:      pool,
 		retention: retentionDays,
@@ -76,7 +76,7 @@ func (pm *PartitionManager) createPartition(ctx context.Context, date time.Time)
 	return err
 }
 
-func (pm *PartitionManager) dropPartitions(ctx context.Context, now time.Time, olderThan time.Time) error {
+func (pm *PartitionManager) dropPartitions(ctx context.Context, now, olderThan time.Time) error {
 	query := `
 		SELECT child.relname
 		FROM pg_inherits

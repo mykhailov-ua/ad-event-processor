@@ -47,7 +47,7 @@ type CHPartitionJanitor struct {
 	wg                       sync.WaitGroup
 }
 
-func NewCHPartitionJanitor(conn driver.Conn, opts CHJanitorOptions) *CHPartitionJanitor {
+func NewCHPartitionJanitor(conn driver.Conn, opts *CHJanitorOptions) *CHPartitionJanitor {
 	retention := opts.RetentionDays
 	if retention <= 0 {
 		retention = 180

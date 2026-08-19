@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -50,7 +51,8 @@ func (s *TelegramServiceImpl) relayPostbacks(ctx context.Context, campaignID uui
 			coldpath.CloseHTTPResponse(resp)
 			continue
 		}
-		coldpath.CloseHTTPResponse(resp)
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
 	}
 }
 

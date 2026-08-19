@@ -13,7 +13,6 @@ import (
 
 const fraudDecisionDisclaimer = "Decision as of last scorer window; replay uses stored features and shadow ML score."
 
-// FraudDecisionDisclaimer returns the operator-facing replay disclaimer.
 func FraudDecisionDisclaimer() string {
 	return fraudDecisionDisclaimer
 }

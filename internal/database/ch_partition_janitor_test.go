@@ -53,7 +53,7 @@ func TestCHPartitionJanitor_EmergencyDropAlerter(t *testing.T) {
 	var gotTable, gotPart string
 	var gotPct float64
 
-	j := NewCHPartitionJanitor(nil, CHJanitorOptions{
+	j := NewCHPartitionJanitor(nil, &CHJanitorOptions{
 		OnEmergencyDrop: func(table, partition string, diskPct float64) {
 			alerted = true
 			gotTable = table

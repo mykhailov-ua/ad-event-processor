@@ -95,7 +95,7 @@ func RedisClientOptions(addr, password string) *redis.Options {
 	}
 }
 
-func ParseRedisURL(raw string, password string) (redis.UniversalClient, error) {
+func ParseRedisURL(raw, password string) (redis.UniversalClient, error) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return nil, fmt.Errorf("redis url is empty")

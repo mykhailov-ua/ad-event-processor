@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# V2-C.D1: gdb attach denied when license_guard + ptrace watchdog active.
-# Harness: license_guard_release (test binary subprocess, not full garbled tracker).
-# Precondition: Linux, gdb in PATH, -tags=license_guard — skips exit 0 when missing.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

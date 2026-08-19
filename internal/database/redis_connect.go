@@ -9,11 +9,11 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-func ConnectRedis(ctx context.Context, addr string, password string) (redis.UniversalClient, error) {
+func ConnectRedis(ctx context.Context, addr, password string) (redis.UniversalClient, error) {
 	return ConnectRedisWithBreaker(ctx, addr, password, nil)
 }
 
-func ConnectRedisWithBreaker(ctx context.Context, addr string, password string, breaker *RedisBreaker) (redis.UniversalClient, error) {
+func ConnectRedisWithBreaker(ctx context.Context, addr, password string, breaker *RedisBreaker) (redis.UniversalClient, error) {
 	uopts := netaddr.RedisUniversalOptions(addr, password)
 
 	rdb := redis.NewUniversalClient(uopts)

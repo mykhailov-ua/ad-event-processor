@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reject integration test boilerplate that cannot prove real infra behavior (AI slop guard).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -22,7 +22,7 @@ while IFS= read -r -d '' file; do
   fi
 
   if ! rg -qi 't\.Skip\([^)]*integration' "$file"; then
-    # Allow skip reason in delegated setup helpers within the same package.
+
     pkg_dir="$(dirname "$file")"
     if ! rg -qi 't\.Skip\([^)]*integration' "$pkg_dir" --glob '*_test.go' 2> /dev/null; then
       echo "integration-test-slop: skip reason must mention integration in $file (or package helpers)" >&2

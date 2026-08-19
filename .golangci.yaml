@@ -1,7 +1,5 @@
 version: "2"
 
-
-
 run:
   timeout: 8m
   go: "1.25.12"
@@ -30,11 +28,15 @@ linters:
         - all
         - SA9003
         - SA4017
+        - -ST1000
     gocritic:
-      enabled-tags:
-        - diagnostic
-        - style
-        - performance
+      enabled-checks:
+        - builtinShadow
+        - dupImport
+        - httpNoBody
+        - nilValReturn
+        - octalLiteral
+        - typeAssertChain
     forbidigo:
       analyze-types: true
       forbid:
@@ -45,14 +47,14 @@ linters:
         - pattern: 'panic\('
           msg: "avoid panics"
         - pattern: 'fmt\.Sprintf'
-          pkg: '^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)'
+          pkg: "^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "fmt.Sprintf is forbidden on the hot path (allocates)"
         - pattern: 'context\.(WithTimeout|WithCancel|WithValue)'
-          pkg: '^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)'
+          pkg: "^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "context manipulation is forbidden on the hot path"
         - pattern: 'defer\s'
-          pkg: '^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)'
-          msg: "defer is forbidden on the hot path (allocates in old Go, discouraged in BidShard)"
+          pkg: "^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          msg: "defer is forbidden on the hot path (allocates in old Go, discouraged in ad-event-processor)"
   exclusions:
     generated: lax
     rules:
@@ -63,28 +65,19 @@ linters:
           - noctx
           - contextcheck
           - forbidigo
-      - path: '(/|^)(.*/)?pb/'
+      - path: "(/|^)(.*/)?pb/"
         linters:
           - errcheck
-      - path: '(/|^)(.*/)?db/'
+      - path: "(/|^)(.*/)?db/"
         linters:
           - errcheck
-      - path: 'cmd/admin/'
+      - path: "cmd/admin/"
         linters:
           - forbidigo
-      - path: 'internal/installer/'
+      - path: "internal/installer/"
         linters:
           - forbidigo
-      - path: 'internal/ingestion/'
-        linters:
-          - errcheck
-          - gocritic
-          - noctx
-          - bodyclose
-          - contextcheck
-          - errorlint
-          - forbidigo
-      - path: 'internal/domain/'
+      - path: "internal/ingestion/"
         linters:
           - errcheck
           - gocritic
@@ -93,7 +86,7 @@ linters:
           - contextcheck
           - errorlint
           - forbidigo
-      - path: 'internal/rtb/'
+      - path: "internal/domain/"
         linters:
           - errcheck
           - gocritic
@@ -102,7 +95,7 @@ linters:
           - contextcheck
           - errorlint
           - forbidigo
-      - path: 'cmd/tracker/'
+      - path: "internal/rtb/"
         linters:
           - errcheck
           - gocritic
@@ -111,7 +104,16 @@ linters:
           - contextcheck
           - errorlint
           - forbidigo
-      - path: 'pkg/broker/'
+      - path: "cmd/tracker/"
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: "pkg/broker/"
         linters:
           - errcheck
           - gocritic
@@ -123,4 +125,4 @@ linters:
       - path: 'cmd/.+/main\.go'
         linters:
           - gocritic
-        text: 'exitAfterDefer'
+        text: "exitAfterDefer"

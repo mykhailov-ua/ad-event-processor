@@ -74,8 +74,8 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 		return
 	}
 	configByCampaign := make(map[uuid.UUID]db.PostbackConfig, len(configs))
-	for _, cfg := range configs {
-		configByCampaign[uuid.UUID(cfg.CampaignID.Bytes)] = cfg
+	for i := range configs {
+		configByCampaign[uuid.UUID(configs[i].CampaignID.Bytes)] = configs[i]
 	}
 
 	campaigns, err := e.queries.ListCampaignsByIDs(ctx, campaignIDs)
@@ -84,13 +84,14 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 		return
 	}
 	campaignByID := make(map[uuid.UUID]db.Campaign, len(campaigns))
-	for _, camp := range campaigns {
-		campaignByID[uuid.UUID(camp.ID.Bytes)] = camp
+	for i := range campaigns {
+		campaignByID[uuid.UUID(campaigns[i].ID.Bytes)] = campaigns[i]
 	}
 
 	eventTypes := make([]string, 0, len(pending))
 	payloads := make([][]byte, 0, len(pending))
-	for _, item := range pending {
+	for i := range pending {
+		item := &pending[i]
 		cfg, ok := configByCampaign[item.campaignID]
 		if !ok {
 			continue

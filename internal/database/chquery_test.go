@@ -25,8 +25,11 @@ func TestCHQuery_NoConnection(t *testing.T) {
 	t.Parallel()
 
 	var q *CHQuery
-	_, err := q.Query(context.Background(), "SELECT 1")
+	rows, err := q.Query(context.Background(), "SELECT 1")
 	require.Error(t, err)
+	if rows != nil {
+		_ = rows.Close()
+	}
 }
 
 func TestCHQuery_HeavyGroupByKilled(t *testing.T) {

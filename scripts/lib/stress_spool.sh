@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# stress-ng I/O pressure on a directory (CH spool fault drills).
+
 set -euo pipefail
 
 stress_ng_available() {
@@ -9,7 +9,7 @@ stress_ng_available() {
 start_stress_ng_spool() {
   local dir="$1"
   local duration_sec="${2:-30}"
-  local log_file="${3:-/tmp/espx-stress-spool.log}"
+  local log_file="${3:-/tmp/ad-event-processor-stress-spool.log}"
   if ! stress_ng_available; then
     return 1
   fi
@@ -34,5 +34,5 @@ stop_stress_ng_pid() {
 resolve_processor_ch_spool_mount() {
   local cid="$1"
   [[ -n "$cid" ]] || return 1
-  docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/spool/espx/ch"}}{{.Source}}{{end}}{{end}}' "$cid"
+  docker inspect -f '{{range .Mounts}}{{if eq .Destination "/var/spool/ad-event-processor/ch"}}{{.Source}}{{end}}{{end}}' "$cid"
 }

@@ -68,8 +68,8 @@ func (h *Handler) listDisputes(ctx context.Context, customerID *uuid.UUID, limit
 		return nil, total, nil
 	}
 	out := make([]domain.Dispute, 0, len(items))
-	for _, item := range items {
-		out = append(out, disputeFromListItem(item))
+	for i := range items {
+		out = append(out, disputeFromListItem(items[i]))
 	}
 	return out, total, nil
 }

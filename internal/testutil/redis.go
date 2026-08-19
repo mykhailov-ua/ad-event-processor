@@ -9,13 +9,13 @@ import (
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )
 
-func SetupRedis(t testing.TB) (redis.UniversalClient, func()) {
+func SetupRedis(t testing.TB) (rdb redis.UniversalClient, cleanup func()) {
 	t.Helper()
-	_, client, cleanup := SetupRedisContainer(t)
-	return client, cleanup
+	_, rdb, cleanup = SetupRedisContainer(t)
+	return
 }
 
-func SetupRedisContainer(t testing.TB) (testcontainers.Container, redis.UniversalClient, func()) {
+func SetupRedisContainer(t testing.TB) (container testcontainers.Container, rdb redis.UniversalClient, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 
@@ -29,13 +29,14 @@ func SetupRedisContainer(t testing.TB) (testcontainers.Container, redis.Universa
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
 
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+	rdb = redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs: []string{endpoint},
 	})
+	container = redisContainer
 
-	cleanup := func() {
+	cleanup = func() {
 		_ = rdb.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
-	return redisContainer, rdb, cleanup
+	return
 }

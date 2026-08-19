@@ -89,7 +89,6 @@ func (r *Registry) GetPending(id string) (PendingRequest, error) {
 	return PendingRequest{}, ErrPendingNotFound
 }
 
-// PreparePendingIssue marks a pending row approved and returns deployment_id for JWT issue.
 func (r *Registry) PreparePendingIssue(id, deploymentID string) (PendingRequest, error) {
 	id = strings.TrimSpace(id)
 	if id == "" {
@@ -176,7 +175,8 @@ func telegramAnchorBlocksPilot(now time.Time, anchors []AnchorRecord, telegramID
 	if telegramID == "" {
 		return nil
 	}
-	for _, rec := range anchors {
+	for i := range anchors {
+		rec := &anchors[i]
 		if rec.AnchorType != AnchorTelegram || rec.AnchorValue != telegramID {
 			continue
 		}

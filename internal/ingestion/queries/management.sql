@@ -62,27 +62,6 @@ WHERE campaign_id = ANY($1::uuid[])
   AND placement_id = ''
   AND created_at > now() - INTERVAL '1 hour';
 
-SELECT
-  payment_intent_id,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_TOPUP' THEN amount ELSE 0 END), 0)::bigint AS topup_micro,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_REFUND' THEN ABS(amount) ELSE 0 END), 0)::bigint AS refund_micro,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK' THEN ABS(amount) ELSE 0 END), 0)::bigint AS chargeback_micro,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK_REVERSAL' THEN amount ELSE 0 END), 0)::bigint AS chargeback_reversal_micro,
-  BOOL_OR(type = 'PAYMENT_TOPUP') AS has_topup
-FROM balance_ledger
-WHERE payment_intent_id = ANY($1::uuid[])
-GROUP BY payment_intent_id;
-
-SELECT customer_id, id AS campaign_id
-FROM campaigns
-WHERE customer_id = ANY($1::uuid[])
-  AND deleted_at IS NULL;
-
-SELECT rule_id
-FROM alert_rule_events
-WHERE rule_id = ANY($1::uuid[])
-  AND window_start = $2;
-
 SELECT * FROM balance_ledger
 WHERE idempotency_hash = $1;
 
@@ -105,6 +84,17 @@ WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK';
 SELECT COALESCE(SUM(amount), 0)::bigint AS total_reversal_micro
 FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK_REVERSAL';
+
+SELECT
+  payment_intent_id,
+  COALESCE(SUM(CASE WHEN type = 'PAYMENT_TOPUP' THEN amount ELSE 0 END), 0)::bigint AS topup_micro,
+  COALESCE(SUM(CASE WHEN type = 'PAYMENT_REFUND' THEN ABS(amount) ELSE 0 END), 0)::bigint AS refund_micro,
+  COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK' THEN ABS(amount) ELSE 0 END), 0)::bigint AS chargeback_micro,
+  COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK_REVERSAL' THEN amount ELSE 0 END), 0)::bigint AS chargeback_reversal_micro,
+  BOOL_OR(type = 'PAYMENT_TOPUP') AS has_topup
+FROM balance_ledger
+WHERE payment_intent_id = ANY($1::uuid[])
+GROUP BY payment_intent_id;
 
 SELECT id FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK'
@@ -165,6 +155,16 @@ SELECT customer_id, COUNT(*) as active_campaigns, COALESCE(SUM(current_spend), 0
 FROM campaigns
 WHERE customer_id = ANY(@customer_ids::uuid[]) AND status = 'ACTIVE'
 GROUP BY customer_id;
+
+SELECT customer_id, id AS campaign_id
+FROM campaigns
+WHERE customer_id = ANY($1::uuid[])
+  AND deleted_at IS NULL;
+
+SELECT rule_id
+FROM alert_rule_events
+WHERE rule_id = ANY($1::uuid[])
+  AND window_start = $2;
 
 SELECT COUNT(*) FROM balance_ledger
 WHERE customer_id = $1;

@@ -487,7 +487,7 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 			httpFold[key[16]] == 'g' {
 			return http1AssignTransferEncoding(hFlags, val)
 		}
-	case 21:
+	case 31:
 		if http1MatchForceSafeHeader(key) && http1ForceSafeValue(val) {
 			req.ForceSafe = true
 		}
@@ -496,11 +496,11 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 }
 
 func http1MatchForceSafeHeader(key []byte) bool {
-	if len(key) != 21 {
+	if len(key) != 31 {
 		return false
 	}
-	const lit = "x-bidshard-force-safe"
-	for i := 0; i < 21; i++ {
+	const lit = "x-ad-event-processor-force-safe"
+	for i := 0; i < 31; i++ {
 		if httpFold[key[i]] != lit[i] {
 			return false
 		}

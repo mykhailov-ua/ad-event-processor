@@ -100,9 +100,9 @@ func applyServiceBinaries(profile *InstallProfile, dryRun bool) error {
 
 func rollbackUnitPath(service string) string {
 	if root := installRoot(); root != "" {
-		return filepath.Join(root, "etc/systemd/system", RollbackSystemdUnitPrefix+service+".service")
+		return filepath.Join(root, "etc", "systemd", "system", RollbackSystemdUnitPrefix+service+".service")
 	}
-	return filepath.Join("/etc/systemd/system", RollbackSystemdUnitPrefix+service+".service")
+	return filepath.Join(string(filepath.Separator), "etc", "systemd", "system", RollbackSystemdUnitPrefix+service+".service")
 }
 
 func renderRollbackUnit(service string) []byte {

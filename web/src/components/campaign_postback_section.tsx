@@ -146,7 +146,7 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
       <p className="text-muted text-sm">
         When a tracked event matches the target type, the postback worker dispatches to the provider
         below. CAPI adapters use click IDs captured on redirect (/click) or zero-redirect /track
-        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner → BidShard) is configured on the{' '}
+        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner → ad-event-processor) is configured on the{' '}
         <Link to={`/campaigns/${campaignId}?tab=tracking`} className="text-sm">
           Integration
         </Link>{' '}
@@ -202,7 +202,7 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
         <p className="text-muted text-sm" data-testid="affiliate-postback-notes">
           {selectedPreset.notes ||
             `Network tokens: click=${selectedPreset.network_click_token}, payout=${selectedPreset.network_payout_token}. ` +
-              'Replace REPLACE_HOST with the partner postback host. Outbound macros are BidShard {click_id}/{payout}/{tx_id}.'}
+              'Replace REPLACE_HOST with the partner postback host. Outbound macros are ad-event-processor {click_id}/{payout}/{tx_id}.'}
         </p>
       ) : null}
 

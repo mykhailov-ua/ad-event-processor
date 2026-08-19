@@ -30,7 +30,7 @@ func (g *SettlementFaultGate) downErr() error {
 	return fmt.Errorf("connection refused")
 }
 
-func (g *SettlementFaultGate) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRef string) (bool, int64, error) {
+func (g *SettlementFaultGate) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider, providerRef string) (bool, int64, error) {
 	g.mu.Lock()
 	down := g.down
 	g.mu.Unlock()
@@ -40,7 +40,7 @@ func (g *SettlementFaultGate) ApplyPaymentCredit(ctx context.Context, customerID
 	return g.api.ApplyPaymentCredit(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerRef)
 }
 
-func (g *SettlementFaultGate) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerRefundID string) (bool, int64, error) {
+func (g *SettlementFaultGate) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider, providerRefundID string) (bool, int64, error) {
 	g.mu.Lock()
 	down := g.down
 	g.mu.Unlock()
@@ -50,7 +50,7 @@ func (g *SettlementFaultGate) ApplyPaymentRefund(ctx context.Context, customerID
 	return g.api.ApplyPaymentRefund(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerRefundID)
 }
 
-func (g *SettlementFaultGate) ApplyPaymentChargeback(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
+func (g *SettlementFaultGate) ApplyPaymentChargeback(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider, providerDisputeID string) (bool, int64, error) {
 	g.mu.Lock()
 	down := g.down
 	g.mu.Unlock()
@@ -60,7 +60,7 @@ func (g *SettlementFaultGate) ApplyPaymentChargeback(ctx context.Context, custom
 	return g.api.ApplyPaymentChargeback(ctx, customerID, amountMicro, ledgerIdempotencyKey, paymentIntentID, provider, providerDisputeID)
 }
 
-func (g *SettlementFaultGate) ApplyPaymentChargebackReversal(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider string, providerDisputeID string) (bool, int64, error) {
+func (g *SettlementFaultGate) ApplyPaymentChargebackReversal(ctx context.Context, customerID uuid.UUID, amountMicro int64, ledgerIdempotencyKey string, paymentIntentID uuid.UUID, provider, providerDisputeID string) (bool, int64, error) {
 	g.mu.Lock()
 	down := g.down
 	g.mu.Unlock()

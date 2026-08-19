@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sealed assets — bpf2go prereq + collection load; optional XDP attach when root + SEALED_BPF_XDP_SMOKE=1.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

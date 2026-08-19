@@ -406,7 +406,10 @@ func (w *SmartAlertsWorker) deliverWebhook(ctx context.Context, url string, body
 		coldpath.CloseHTTPResponse(resp)
 		return "failed", err.Error()
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, smartAlertMaxWebhookBytes))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "failed", fmt.Sprintf("http %d", resp.StatusCode)

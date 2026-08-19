@@ -34,18 +34,18 @@ func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir str
 			}
 			continue
 		}
-		tsNs, pid, syscallID, durNs, role, kind, campaignSlot, markerID := DecodeSlowEvent(rec.RawSample)
+		e := DecodeSlowEvent(rec.RawSample)
 		row := map[string]any{
-			"ts_ns":         tsNs,
-			"pid":           pid,
-			"role":          roleName(role),
-			"syscall_id":    syscallID,
-			"syscall_name":  syscallName(int(syscallID)),
-			"duration_us":   durNs / 1000,
-			"kind":          kind,
-			"campaign_slot": campaignSlot,
-			"marker_id":     markerID,
-			"marker_name":   markerName(markerID),
+			"ts_ns":         e.TSNs,
+			"pid":           e.PID,
+			"role":          roleName(e.Role),
+			"syscall_id":    e.SyscallID,
+			"syscall_name":  syscallName(int(e.SyscallID)),
+			"duration_us":   e.DurNs / 1000,
+			"kind":          e.Kind,
+			"campaign_slot": e.CampaignSlot,
+			"marker_id":     e.MarkerID,
+			"marker_name":   markerName(e.MarkerID),
 		}
 		_ = enc.Encode(row)
 		if otel != nil {

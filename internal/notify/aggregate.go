@@ -21,7 +21,8 @@ func buildAggregatedBody(items []db.NotifierNotification) string {
 
 	firstTime := lead.CreatedAt.Time
 	lastTime := lead.CreatedAt.Time
-	for _, item := range items {
+	for i := range items {
+		item := &items[i]
 		if item.CreatedAt.Time.Before(firstTime) {
 			firstTime = item.CreatedAt.Time
 		}
@@ -33,8 +34,8 @@ func buildAggregatedBody(items []db.NotifierNotification) string {
 	sb.WriteString(fmt.Sprintf("Last seen: %s\n", lastTime.Format(time.RFC3339)))
 
 	uniqueBodies := make(map[string]bool)
-	for _, item := range items {
-		uniqueBodies[item.Body] = true
+	for i := range items {
+		uniqueBodies[items[i].Body] = true
 	}
 	if len(uniqueBodies) > 1 {
 		sb.WriteString("\nUnique event details:\n")

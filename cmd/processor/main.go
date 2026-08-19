@@ -176,7 +176,7 @@ func main() {
 		if exchangeDays <= 0 {
 			exchangeDays = 30
 		}
-		chJanitor = database.NewCHPartitionJanitor(chConn, database.CHJanitorOptions{
+		chJanitor = database.NewCHPartitionJanitor(chConn, &database.CHJanitorOptions{
 			RetentionDays: cfg.CHRawRetentionDays,
 			ExtraTables: []database.CHTableRetention{
 				{Table: "rtb_deal_outcomes", Days: dealDays},

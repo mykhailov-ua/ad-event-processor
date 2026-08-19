@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Smoke: GET /click through edge when EDGE_EXPOSE_CLICK is on.
-# Usage: EDGE_URL=http://127.0.0.1:8180 CAMPAIGN_ID=<uuid> bash scripts/test/edge_click_smoke.sh
+
 set -euo pipefail
 
 EDGE_URL="${EDGE_URL:-http://127.0.0.1:8180}"

@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"bytes"
 	"encoding/binary"
 	"os"
 	"path/filepath"
@@ -321,7 +322,7 @@ func TestLoggerEncryptionDecryption(t *testing.T) {
 		actualLine := data[:length]
 		data = data[length:]
 
-		if string(actualLine) != string(expectedLine) {
+		if !bytes.Equal(actualLine, expectedLine) {
 			t.Errorf("mismatch: got %q, want %q", actualLine, expectedLine)
 		}
 	}

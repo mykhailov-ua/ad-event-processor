@@ -16,7 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Regression ceilings calibrated via testcontainers + newBareService (no background workers).
 const (
 	queryBudgetListCampaigns = 8
 	queryBudgetGetCampaign   = 6

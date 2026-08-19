@@ -17,7 +17,7 @@ print_scenarios() {
 
 | ID | Fault | Manual steps | CI analogue |
 |----|-------|--------------|-------------|
-| A | Shard 0 outage | `docker stop espx-redis-0-1`; verify shards 1–3 p99 <80ms | tests/resilience/shard_outage_fault_test.go |
+| A | Shard 0 outage | `docker stop ad-event-processor-redis-0-1`; verify shards 1–3 p99 <80ms | tests/resilience/shard_outage_fault_test.go |
 | B | Sentinel failover | `docker kill` redis master under load | sentinel-resilience workflow |
 | C | Processor↔PG partition | block tcp/5432 on processor | processor_pg_partition |
 | D | Clock drift +3600s | shift tracker clock; TTC must pass | clock_drift_fault_test.go |

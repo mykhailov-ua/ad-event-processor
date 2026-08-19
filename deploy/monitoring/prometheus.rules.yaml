@@ -108,7 +108,7 @@ groups:
         annotations:
           summary: 'Redis EVALSHA NOSCRIPT fallback detected'
           description: 'Shard {{ $labels.shard }} is falling back from EVALSHA to EVAL. Run SCRIPT LOAD on startup or after Redis restart (https://redis.io/docs/interact/programmability/eval-intro/#evalsha).'
-          runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#redis-restart-runbook'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#redis-restart-runbook'
 
       - alert: RedisLuaScriptNotLoaded
         expr: ad_redis_lua_script_loaded == 0
@@ -118,7 +118,7 @@ groups:
         annotations:
           summary: 'Unified filter Lua script not loaded on shard'
           description: 'Shard {{ $labels.shard }} missing SCRIPT LOAD for unified-filter.lua.'
-          runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#redis-restart-runbook'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#redis-restart-runbook'
 
       - alert: BPFLoadgenOnCPUHigh
         expr: ad_event_processor_bpf_oncpu_pct{role="loadgen"} > 25
@@ -127,7 +127,7 @@ groups:
           severity: warning
         annotations:
           summary: 'BPF loadgen on-CPU above gate threshold (25%)'
-          description: 'Load generator {{ $labels.name }} is competing with SUT during BPF session (DEVELOPMENT.md#bpf-hot-gate).'
+          description: 'Load generator {{ $labels.name }} is competing with SUT during BPF session (CI.md#bpf-hot-gate).'
 
       - alert: BPFTCPRetransDetected
         expr: increase(ad_event_processor_bpf_tcp_retrans_total[5m]) > 0
@@ -300,7 +300,7 @@ groups:
         annotations:
           summary: 'Control outbox lag above 30s'
           description: 'Oldest PENDING outbox event is {{ $value | humanizeDuration }} old. Hot-path Redis may be stale vs Postgres.'
-          runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#post-deploy-redis-reconciliation'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#post-deploy-redis-reconciliation'
 
       - alert: TrackerHealthDegraded
         expr: ad_tracker_health_degraded == 1
@@ -310,7 +310,7 @@ groups:
         annotations:
           summary: 'Tracker health probe DEGRADED'
           description: 'Tracker /health reports DEGRADED (postgres or redis shard unreachable). Check ad_tracker_redis_shard_healthy and /health body redis= shard map.'
-          runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#shard-down-blast-radius'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#shard-down-blast-radius'
 
       - alert: TrackerRedisShardUnhealthy
         expr: ad_tracker_redis_shard_healthy == 0
@@ -644,7 +644,7 @@ groups:
         annotations:
           summary: 'Payment financial recon: missing ledger topup'
           description: 'Settled payment intent without matching balance_ledger TOPUP row. See payment.financial_recon_findings.'
-          runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#payment'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#payment'
 
       - alert: PaymentFinancialReconDeadOutbox
         expr: increase(payment_financial_recon_findings_total{kind="DEAD_OUTBOX"}[65m]) > 0
@@ -654,4 +654,4 @@ groups:
         annotations:
           summary: 'Payment financial recon: dead outbox rows'
           description: 'Payment outbox rows stuck without settlement path (e.g. refund before topup). See payment.financial_recon_findings.'
-          runbook_url: 'https://github.com/mykhailov-ua/espx/blob/main/docs/DEVELOPMENT.md#payment'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#payment'

@@ -9,7 +9,7 @@ describe('affiliate_postback_presets', () => {
     assert.equal(ids.size, 36);
   });
 
-  it('MaxBounty template uses BidShard click_id and payout macros', () => {
+  it('MaxBounty template uses ad-event-processor click_id and payout macros', () => {
     const mb = affiliatePostbackById('maxbounty');
     assert.ok(mb);
     assert.ok(mb!.url_template.includes('{click_id}'));

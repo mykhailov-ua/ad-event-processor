@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render Caddyfile for compose ingress profile.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -11,14 +11,14 @@ mkdir -p "$GEN_DIR"
 
 if [[ -f deploy/installer/install.env ]]; then
   set -a
-  # shellcheck disable=SC1090
+
   source deploy/installer/install.env
   set +a
 fi
 
 if [[ -f .env ]]; then
   set -a
-  # shellcheck disable=SC1091
+
   source .env
   set +a
 fi
@@ -50,7 +50,7 @@ ask_url() {
   if [[ -n "$CADDY_TLS_ASK_TOKEN" ]]; then
     q="?token=${CADDY_TLS_ASK_TOKEN}"
   fi
-  # Caddy appends ?domain=<SNI> (or &domain= when q is non-empty).
+
   echo "http://127.0.0.1:${MANAGEMENT_PORT}/api/v1/ops/domains/tls-allowed${q}"
 }
 

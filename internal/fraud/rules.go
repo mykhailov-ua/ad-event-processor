@@ -196,7 +196,7 @@ func hasIPPrefix(ip, prefix string) bool {
 	if ip == prefix {
 		return true
 	}
-	if len(prefix) > 0 && prefix[len(prefix)-1] == '.' {
+	if prefix != "" && prefix[len(prefix)-1] == '.' {
 		return len(ip) >= len(prefix) && ip[:len(prefix)] == prefix
 	}
 	return false

@@ -1,5 +1,5 @@
 #!/bin/sh
-# shellcheck disable=SC2034
+
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

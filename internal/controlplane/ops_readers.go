@@ -547,7 +547,10 @@ func fetchMetrics(ctx context.Context, client *http.Client, url string) ([]byte,
 		coldpath.CloseHTTPResponse(resp)
 		return nil, "", err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
 		return nil, "", err

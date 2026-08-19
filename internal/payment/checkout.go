@@ -88,7 +88,7 @@ func CreateCheckout(
 	}
 }
 
-func createMockCheckout(idempotencyKey string) (string, string, error) {
+func createMockCheckout(idempotencyKey string) (providerRef, checkoutURL string, err error) {
 	return "pi_mock_" + idempotencyKey, "https://checkout.stripe.dev/pay/mock_" + idempotencyKey, nil
 }
 
@@ -99,7 +99,7 @@ func createStripeCheckout(
 	currency string,
 	metadata map[string]string,
 	idempotencyKey string,
-) (string, string, error) {
+) (providerRef, checkoutURL string, err error) {
 	secretKey := string(cfg.StripeSecretKey)
 	if secretKey == "" {
 		return "", "", ErrProviderNotConfigured
@@ -111,7 +111,7 @@ func createStripeCheckout(
 	return createStripeCheckoutSession(secretKey, cfg.StripeCheckoutSuccessURL, cfg.StripeCheckoutCancelURL, amountMicro, currency, metadata, idempotencyKey)
 }
 
-func createStripeCheckoutSession(secretKey, successURL, cancelURL string, amountMicro int64, currency string, metadata map[string]string, idempotencyKey string) (providerRef string, checkoutURL string, err error) {
+func createStripeCheckoutSession(secretKey, successURL, cancelURL string, amountMicro int64, currency string, metadata map[string]string, idempotencyKey string) (providerRef, checkoutURL string, err error) {
 	cents, err := MicroToStripeAmount(amountMicro)
 	if err != nil {
 		return "", "", err

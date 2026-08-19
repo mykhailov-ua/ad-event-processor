@@ -2,12 +2,12 @@ package coldpath
 
 import "testing"
 
-func listFirstPagination(count func() (int64, error), list func() ([]int, error)) ([]int, int64, error) {
-	rows, err := list()
+func listFirstPagination(count func() (int64, error), list func() ([]int, error)) (rows []int, total int64, err error) {
+	rows, err = list()
 	if err != nil {
 		return nil, 0, err
 	}
-	total, err := count()
+	total, err = count()
 	if err != nil {
 		return nil, 0, err
 	}

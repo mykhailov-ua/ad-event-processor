@@ -34,12 +34,12 @@ func TestRunIssue_approvePending(t *testing.T) {
 		ApprovePendingID: pending.ID,
 		PrivateKeyFile:   privPath,
 	}
-	res, code := runIssue(opts, &bytes.Buffer{})
+	res, code := runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 	require.NotEmpty(t, res.Token)
 	require.NotEmpty(t, res.DeploymentID)
 
-	_, code = runIssue(opts, &bytes.Buffer{})
+	_, code = runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, exitUsage, code)
 }
 
@@ -55,11 +55,11 @@ func TestRunIssue_pilotDenyRepeatTelegram(t *testing.T) {
 		TelegramID:     "1001",
 		PrivateKeyFile: privPath,
 	}
-	_, code := runIssue(opts, &bytes.Buffer{})
+	_, code := runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	opts.Customer = "Buyer B"
-	_, code = runIssue(opts, &bytes.Buffer{})
+	_, code = runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, exitUsage, code)
 }
 
@@ -76,13 +76,13 @@ func TestRunIssue_pilotForceOverride(t *testing.T) {
 		TelegramID:     "2002",
 		PrivateKeyFile: privPath,
 	}
-	_, code := runIssue(opts, &bytes.Buffer{})
+	_, code := runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	opts.Customer = "Buyer B"
 	opts.Force = true
 	opts.ForceReason = "support approved"
-	_, code = runIssue(opts, &bytes.Buffer{})
+	_, code = runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	data, err := os.ReadFile(regPath)
@@ -106,7 +106,7 @@ func TestRunIssue_recordHWID(t *testing.T) {
 		DeploymentID: dep,
 		HWIDV2:       "hwid-test-hash",
 	}
-	_, code := runIssue(opts, &bytes.Buffer{})
+	_, code := runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	reg := trialregistry.New(regPath, 0)
@@ -131,7 +131,7 @@ func TestRunIssue_starterMarkConvertedDeniesPilot(t *testing.T) {
 		DeploymentID:   dep,
 		PrivateKeyFile: privPath,
 	}
-	_, code := runIssue(pilot, &bytes.Buffer{})
+	_, code := runIssue(&pilot, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	starter := issueOptions{
@@ -142,11 +142,11 @@ func TestRunIssue_starterMarkConvertedDeniesPilot(t *testing.T) {
 		MarkConverted:  true,
 		PrivateKeyFile: privPath,
 	}
-	_, code = runIssue(starter, &bytes.Buffer{})
+	_, code = runIssue(&starter, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	pilot.Customer = "Another Trial"
-	_, code = runIssue(pilot, &bytes.Buffer{})
+	_, code = runIssue(&pilot, &bytes.Buffer{})
 	require.Equal(t, exitUsage, code)
 }
 
@@ -167,7 +167,7 @@ func TestRunIssue_trialMarkExpired(t *testing.T) {
 		TrialMarkExpired: true,
 		DeploymentID:     dep,
 	}
-	_, code := runIssue(opts, &bytes.Buffer{})
+	_, code := runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	err := reg.CheckPilotEligible(trialregistry.CheckInput{TelegramID: "5005"})
@@ -185,7 +185,7 @@ func TestRunIssue_paidWithoutMarkConvertedWarns(t *testing.T) {
 		DeploymentID:   "550e8400-e29b-41d4-a716-446655440001",
 		PrivateKeyFile: privPath,
 	}
-	_, code := runIssue(opts, &stderr)
+	_, code := runIssue(&opts, &stderr)
 	require.Equal(t, 0, code)
 	require.Contains(t, stderr.String(), "warning: paid SKU")
 	require.Contains(t, stderr.String(), "without --mark-converted")
@@ -203,11 +203,11 @@ func TestRunIssue_starterSkipsPilotEligible(t *testing.T) {
 		TelegramID:     "3003",
 		PrivateKeyFile: privPath,
 	}
-	_, code := runIssue(opts, &bytes.Buffer{})
+	_, code := runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 
 	opts.Customer = "Paid Buyer 2"
-	_, code = runIssue(opts, &bytes.Buffer{})
+	_, code = runIssue(&opts, &bytes.Buffer{})
 	require.Equal(t, 0, code)
 }
 

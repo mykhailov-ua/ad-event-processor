@@ -33,7 +33,7 @@ func TestProcessStripeRefundWebhook_noDoubleDebit(t *testing.T) {
 
 	stripeCents, err := MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)
-	successPayload := fmt.Sprintf(`{"id":"evt_topup","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":%d}}}`, providerRef, stripeCents)
+	successPayload := fmt.Sprintf(`{"id":"evt_topup","type":"payment_intent.succeeded","data":{"object":{"id":%q,"amount":%d}}}`, providerRef, stripeCents)
 	err = svc.ProcessStripeWebhook(ctx, "evt_topup", "payment_intent.succeeded", []byte(successPayload), providerRef, amountMicro, successPayload)
 	require.NoError(t, err)
 

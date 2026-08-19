@@ -21,22 +21,22 @@ build_collector() {
     return 0
   fi
   mkdir -p "$ROOT/bin"
-  if ! espx_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector; then
+  if ! ad_event_processor_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector; then
     log "ERROR: bpf-collector build failed"
     exit 1
   fi
 }
 
 sudo_collector() {
-  local pass="${ESPX_BPF_SUDO_PASS:-}"
+  local pass="${AD_EVENT_PROCESSOR_BPF_SUDO_PASS:-}"
   local collector_quoted
   collector_quoted="$(printf '%q ' "${COLLECTOR_CMD[@]}")"
   local launch_inner="ulimit -l unlimited 2>/dev/null || true; : > $(printf '%q' "$LOG_FILE"); nohup ${collector_quoted} >>$(printf '%q' "$LOG_FILE") 2>&1 & echo \$! > $(printf '%q' "$PID_FILE")"
   if [[ -n "$pass" ]]; then
-    printf '%s\n' "$pass" | sudo -S env PATH="${PATH:-/usr/local/go/bin:/usr/bin:/bin}" ESPX_REPO_ROOT="$ROOT" \
+    printf '%s\n' "$pass" | sudo -S env PATH="${PATH:-/usr/local/go/bin:/usr/bin:/bin}" AD_EVENT_PROCESSOR_REPO_ROOT="$ROOT" \
       bash -c "$launch_inner" 2> /dev/null
   elif sudo -n true 2> /dev/null; then
-    sudo -n env PATH="${PATH:-/usr/local/go/bin:/usr/bin:/bin}" ESPX_REPO_ROOT="$ROOT" \
+    sudo -n env PATH="${PATH:-/usr/local/go/bin:/usr/bin:/bin}" AD_EVENT_PROCESSOR_REPO_ROOT="$ROOT" \
       bash -c "$launch_inner"
   else
     return 1
@@ -45,7 +45,7 @@ sudo_collector() {
 
 kill_collector() {
   local pid=$1
-  local pass="${ESPX_BPF_SUDO_PASS:-}"
+  local pass="${AD_EVENT_PROCESSOR_BPF_SUDO_PASS:-}"
   if [[ -z "$pid" ]]; then
     return 0
   fi
@@ -74,36 +74,36 @@ case "$CMD" in
     mkdir -p "$BPF_DIR"
     rm -f "$READY_FILE"
     if ! bash "$SCRIPTS/test/bpf_requirements.sh"; then
-      log "preflight failed — set ESPX_BPF_PROBE=0 to skip"
+      log "preflight failed — set AD_EVENT_PROCESSOR_BPF_PROBE=0 to skip"
       exit 1
     fi
     if ! bpf_require_privileged_collector; then
       exit 1
     fi
     bash "$SCRIPTS/test/bpf_build.sh"
-    bash "$SCRIPTS/test/bpf_resolve_targets.sh" "$TARGETS_JSON" "${ESPX_BPF_TARGETS:-tracker,nginx,redis,processor}"
+    bash "$SCRIPTS/test/bpf_resolve_targets.sh" "$TARGETS_JSON" "${AD_EVENT_PROCESSOR_BPF_TARGETS:-tracker,nginx,redis,processor}"
 
     build_collector
     if [[ ! -x "$ROOT/bin/bpf-collector" ]]; then
       log "ERROR: missing $ROOT/bin/bpf-collector (run: make bpf-dev)"
       exit 1
     fi
-    if [[ ! -f "${ESPX_BPF_OBJECT:-$ROOT/deploy/dev/bpf/loadtest_probe.o}" ]]; then
+    if [[ ! -f "${AD_EVENT_PROCESSOR_BPF_OBJECT:-$ROOT/deploy/dev/bpf/loadtest_probe.o}" ]]; then
       log "ERROR: missing BPF object (run: make bpf-dev)"
       exit 1
     fi
 
-    SAMPLE="${ESPX_BPF_SAMPLE_RATE:-1}"
-    SLOW_US="${ESPX_BPF_SLOW_US:-10000}"
-    BPF_OBJ="${ESPX_BPF_OBJECT:-$ROOT/deploy/dev/bpf/loadtest_probe.o}"
+    SAMPLE="${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-1}"
+    SLOW_US="${AD_EVENT_PROCESSOR_BPF_SLOW_US:-10000}"
+    BPF_OBJ="${AD_EVENT_PROCESSOR_BPF_OBJECT:-$ROOT/deploy/dev/bpf/loadtest_probe.o}"
     DISCOVER_LOADGEN=0
-    if [[ "${ESPX_BPF_TRACK_LOADGEN:-1}" == "1" ]]; then
+    if [[ "${AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN:-1}" == "1" ]]; then
       DISCOVER_LOADGEN=1
     fi
-    DUMP_INTERVAL="${ESPX_BPF_DUMP_INTERVAL:-0}"
-    REFRESH_TARGETS="${ESPX_BPF_REFRESH_TARGETS:-0}"
-    METRICS_ADDR="${ESPX_BPF_METRICS_ADDR:-}"
-    LOADGEN_COMM="${ESPX_BPF_LOADGEN_COMM:-loadgen}"
+    DUMP_INTERVAL="${AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL:-0}"
+    REFRESH_TARGETS="${AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS:-0}"
+    METRICS_ADDR="${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR:-}"
+    LOADGEN_COMM="${AD_EVENT_PROCESSOR_BPF_LOADGEN_COMM:-loadgen}"
 
     ulimit -l unlimited 2> /dev/null || true
 
@@ -125,8 +125,8 @@ case "$CMD" in
     if [[ -n "$METRICS_ADDR" ]]; then
       COLLECTOR_CMD+=(-metrics-addr "$METRICS_ADDR")
     fi
-    if [[ -n "${ESPX_BPF_TRACKER_BINARY:-}" ]]; then
-      COLLECTOR_CMD+=(-tracker-binary "$ESPX_BPF_TRACKER_BINARY")
+    if [[ -n "${AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY:-}" ]]; then
+      COLLECTOR_CMD+=(-tracker-binary "$AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY")
     fi
 
     launch_bg() {
@@ -136,7 +136,7 @@ case "$CMD" in
     }
 
     if [[ "$(id -u)" == "0" ]]; then
-      launch_bg env ESPX_REPO_ROOT="$ROOT" "${COLLECTOR_CMD[@]}"
+      launch_bg env AD_EVENT_PROCESSOR_REPO_ROOT="$ROOT" "${COLLECTOR_CMD[@]}"
     elif sudo_collector; then
       :
     else
@@ -170,7 +170,7 @@ case "$CMD" in
     else
       log "WARN: no maps/summary.json (collector may have failed — see $LOG_FILE)"
     fi
-    if espx_go_run ./cmd/load-report bpf "$OUT_DIR"; then
+    if ad_event_processor_go_run ./cmd/load-report bpf "$OUT_DIR"; then
       :
     else
       log "WARN: load-report skipped (go unavailable or no summary)"

@@ -35,7 +35,8 @@ func (inserter *ClickHouseRollupInserter) InsertRollups(ctx context.Context, row
 		return fmt.Errorf("prepare audit_log_rollups batch: %w", err)
 	}
 
-	for _, row := range rows {
+	for i := range rows {
+		row := &rows[i]
 		if err := batch.Append(
 			row.RollupHour,
 			row.CampaignID,

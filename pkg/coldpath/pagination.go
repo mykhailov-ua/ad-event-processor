@@ -51,7 +51,7 @@ func DecodeCursor(cursor string) (int, error) {
 	return offset, nil
 }
 
-func ClampLimitOffset(limit, offset, defaultLimit, maxLimit int32) (int32, int32) {
+func ClampLimitOffset(limit, offset, defaultLimit, maxLimit int32) (clampedLimit, clampedOffset int32) {
 	if limit <= 0 {
 		limit = defaultLimit
 	}

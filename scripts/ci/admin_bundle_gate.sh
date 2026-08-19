@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Admin bundle size gate (uncompressed bytes in web/dist/src/*.js).
-# Limits (post-React Phase 0): total ≤ 1.25 MB, main.js ≤ 500 KB, each lazy chunk ≤ 180 KB.
-# Forbids chart.js in dist/. uPlot allowed in lazy ops chart chunk only.
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -29,7 +27,6 @@ if grep -riE '\bchart\.js\b' "$DIST_DIR" > /dev/null 2>&1; then
   exit 1
 fi
 
-# Bundled entry + chunks (gzip-ish budget via uncompressed bytes).
 TOTAL_BYTES=$(find "$DIST_DIR/src" -name '*.js' -print0 | xargs -0 cat | wc -c)
 MAX_BYTES=$((1280 * 1024))
 

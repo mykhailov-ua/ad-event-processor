@@ -17,11 +17,11 @@ func main() {
 		os.Exit(exitUsage)
 	}
 
-	res, code := runIssue(opts, os.Stderr)
+	res, code := runIssue(&opts, os.Stderr)
 	if code != 0 {
 		os.Exit(code)
 	}
-	if err := writeIssueOutput(res, opts.OutFile, os.Stderr); err != nil {
+	if err := writeIssueOutput(&res, opts.OutFile, os.Stderr); err != nil {
 		fmt.Fprintf(os.Stderr, "license-issue: write out file: %v\n", err)
 		os.Exit(1)
 	}

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Block merge when heap escapes grow in hot-path source files (ingestion/rtb handlers).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -12,11 +12,11 @@ mapfile -t HOT_FILES < <(
   find internal/ingestion internal/rtb \
     -name '*.go' ! -name '*_test.go' \
     \( \
-      -path 'internal/ingestion/handler.go' -o \
-      -path 'internal/ingestion/handler_http*.go' -o \
-      -path 'internal/ingestion/filter*.go' -o \
-      -path 'internal/ingestion/filters.go' -o \
-      -path 'internal/rtb/*.go' \
+    -path 'internal/ingestion/handler.go' -o \
+    -path 'internal/ingestion/handler_http*.go' -o \
+    -path 'internal/ingestion/filter*.go' -o \
+    -path 'internal/ingestion/filters.go' -o \
+    -path 'internal/rtb/*.go' \
     \) \
     ! -name '*_corpus.go' \
     ! -name '*_fault_corpus.go' \
@@ -56,11 +56,11 @@ if [[ "$COUNT" -gt "$BASELINE" ]]; then
 fi
 
 BASE="${DIFF_ASSERTION_BASE:-}"
-if [[ -z "$BASE" ]] && git rev-parse --verify origin/main >/dev/null 2>&1; then
+if [[ -z "$BASE" ]] && git rev-parse --verify origin/main > /dev/null 2>&1; then
   BASE="origin/main"
 fi
 
-if [[ -n "$BASE" ]] && git merge-base --is-ancestor "$BASE" HEAD 2>/dev/null; then
+if [[ -n "$BASE" ]] && git merge-base --is-ancestor "$BASE" HEAD 2> /dev/null; then
   while IFS= read -r file; do
     [[ -z "$file" ]] && continue
     if grep -F "$file" "$REPORT" | grep -q 'escapes to heap'; then
@@ -68,7 +68,7 @@ if [[ -n "$BASE" ]] && git merge-base --is-ancestor "$BASE" HEAD 2>/dev/null; th
       grep -F "$file" "$REPORT" | grep 'escapes to heap' || true
       exit 1
     fi
-  done < <(git diff --name-only "${BASE}"...HEAD -- "${HOT_FILES[@]}" 2>/dev/null || true)
+  done < <(git diff --name-only "${BASE}"...HEAD -- "${HOT_FILES[@]}" 2> /dev/null || true)
 fi
 
 echo "escape-heap-gate: OK"

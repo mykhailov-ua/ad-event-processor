@@ -72,7 +72,8 @@ func (e *promExporter) refresh() {
 	e.connectAvgUs.Reset()
 	e.tcpRetrans.Reset()
 
-	for _, s := range pidStats {
+	for i := range pidStats {
+		s := &pidStats[i]
 		lbl := prometheus.Labels{"role": s.Role, "name": s.Name}
 		e.oncpuPct.With(lbl).Set(s.OnCPUPct)
 		e.runqueueP99Us.With(lbl).Set(s.RunqueueP99Us)

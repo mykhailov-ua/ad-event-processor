@@ -48,6 +48,38 @@ func TestCheckBPFResourceGate_failTrackerConnect(t *testing.T) {
 	}
 }
 
+func TestCheckBPFResourceGate_failTrackerRSS(t *testing.T) {
+	dir := t.TempDir()
+	writeBPFGateSummary(t, dir, `{
+  "duration_sec": 60,
+  "network": [{"role":"tracker","connects":0}],
+  "proc_samples": [{"role":"tracker","rss_delta":8192,"maj_flt":0}]
+}`)
+	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Pass {
+		t.Fatal("expected fail on tracker rss delta")
+	}
+}
+
+func TestCheckBPFResourceGate_failMajorFaults(t *testing.T) {
+	dir := t.TempDir()
+	writeBPFGateSummary(t, dir, `{
+  "duration_sec": 60,
+  "network": [{"role":"tracker","connects":0}],
+  "proc_samples": [{"role":"tracker","rss_delta":1024,"maj_flt":3}]
+}`)
+	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Pass {
+		t.Fatal("expected fail on major faults")
+	}
+}
+
 func TestCheckBPFResourceGate_missingSummarySkipsWhenNotStrict(t *testing.T) {
 	t.Setenv("BPF_GATE_STRICT", "0")
 	dir := t.TempDir()

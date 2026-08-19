@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Orchestrate purgatory torture + eBPF probe without host sudo password.
-# Uses: docker update (cgroup limits), privileged sidecar (tc/sysctl),
-#       user-space stress-ng/wrk, root-in-container bpf-collector (pid=host).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
-# shellcheck source=common.sh
+
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
 
 export PATH="${ROOT}/bin:${PATH}"
@@ -15,15 +13,13 @@ OUT="${RUN_DIR}/${TS}"
 mkdir -p "$OUT" "$STATE_DIR"
 log "run artifacts → ${OUT}"
 
-TRACKER_CTR="${TRACKER_CTR:-bidshard-tracker-0-1}"
+TRACKER_CTR="${TRACKER_CTR:-ad-event-processor-tracker-0-1}"
 TARGET_URL="${TARGET_URL:-http://127.0.0.1:8181/track}"
 BENCH_DURATION="${BENCH_DURATION:-60s}"
 BENCH_CONNECTIONS="${BENCH_CONNECTIONS:-10000}"
 BENCH_THREADS="${BENCH_THREADS:-4}"
-# Survival defaults raised for cleaner signal (less CFS thrash / FD pressure):
-#   1.0 vCPU + 512 MiB + GOMAXPROCS matched to quota.
-# Strict keeps the original 64 MiB OOM envelope.
-PHASE="${PHASE:-survival}" # strict|survival
+
+PHASE="${PHASE:-survival}"
 if [[ "$PHASE" == "strict" ]]; then
   MEM_BYTES="${MEM_BYTES:-67108864}"
   MEM_LABEL="64MiB"
@@ -35,7 +31,7 @@ else
   CPUS="${CPUS:-1.0}"
   GOMAXPROCS_PIN="${GOMAXPROCS_PIN:-1}"
 fi
-# cpu.max microseconds: CPUS * 100000 period.
+
 CPU_MAX_QUOTA="$(awk -v c="$CPUS" 'BEGIN { printf "%d", c * 100000 + 0.5 }')"
 CPU_MAX_SPEC="${CPU_MAX_QUOTA} 100000"
 
@@ -45,7 +41,7 @@ require_cmd docker taskset
 [[ -x "${ROOT}/bin/bpf-collector" ]] || die "missing ${ROOT}/bin/bpf-collector"
 [[ -f "${ROOT}/deploy/dev/bpf/loadtest_probe.o" ]] || die "missing BPF object (make bpf-dev)"
 
-PRIV_CTR="${PRIV_CTR:-espx-purgatory-priv}"
+PRIV_CTR="${PRIV_CTR:-ad-event-processor-purgatory-priv}"
 
 ensure_priv() {
   if docker inspect -f '{{.State.Running}}' "$PRIV_CTR" 2> /dev/null | grep -q true; then
@@ -66,7 +62,7 @@ mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true
 mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null || true
 apt-get update -qq && apt-get install -y -qq iproute2 procps >/dev/null && exec sleep infinity' \
     > /dev/null
-  # wait for apt finish
+
   for _ in $(seq 1 120); do
     if docker exec "$PRIV_CTR" bash -lc 'command -v tc >/dev/null' 2> /dev/null; then
       return 0
@@ -81,7 +77,6 @@ priv() {
   docker exec "$PRIV_CTR" bash -lc "$*"
 }
 
-# Snapshot originals for cleanup
 SYSCTL_KEYS=(
   net.core.rmem_max net.core.wmem_max
   net.ipv4.tcp_rmem net.ipv4.tcp_wmem
@@ -98,39 +93,36 @@ docker inspect -f '{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}} {{.HostConfig
 cleanup() {
   local ec=$?
   log "cleanup (exit=${ec})"
-  # stress-ng
+
   if [[ -f "${OUT}/stress-ng.pid" ]]; then
     kill "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || true
   fi
   pkill -f 'stress-ng --cache' 2> /dev/null || true
-  # bpf collector
+
   if [[ -f "${OUT}/bpf/collector.pid" ]]; then
     kill "$(cat "${OUT}/bpf/collector.pid")" 2> /dev/null || true
     priv "kill -TERM $(cat "${OUT}/bpf/collector.pid") 2>/dev/null || true" || true
   fi
-  # restore tc
+
   priv 'tc qdisc del dev lo root 2>/dev/null || true; tc qdisc add dev lo root noqueue 2>/dev/null || true' || true
-  # restore sysctl
+
   if [[ -f "${OUT}/sysctl.backup" ]]; then
     while IFS= read -r line; do
       [[ -z "$line" ]] && continue
       priv "sysctl -w '${line}' >/dev/null" || true
     done < "${OUT}/sysctl.backup"
   fi
-  # restore docker limits + GOMAXPROCS to load-test defaults
+
   docker update --cpus=2 --memory=536870912 --memory-swap=536870912 "$TRACKER_CTR" > /dev/null 2>&1 || true
   docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" \
     up -d --no-build --force-recreate --no-deps tracker-0 > /dev/null 2>&1 || true
-  # remove host purgatory cgroup if empty
+
   priv "rmdir /sys/fs/cgroup/purgatory 2>/dev/null || true" || true
   docker rm -f "$PRIV_CTR" > /dev/null 2>&1 || true
   return "$ec"
 }
 trap cleanup EXIT
 
-# ---------------------------------------------------------------------------
-# 1) Pin GOMAXPROCS to cgroup quota, then apply docker CPU/memory limits
-# ---------------------------------------------------------------------------
 OVERRIDES="${OUT}/compose.gomax.yaml"
 cat > "$OVERRIDES" << EOF
 services:
@@ -145,7 +137,7 @@ EOF
 log "recreating ${TRACKER_CTR} with GOMAXPROCS=${GOMAXPROCS_PIN} LOCAL_QUOTA=off Lua histogram 100% sample"
 COMPOSE=(docker compose -f "${ROOT}/docker-compose.yaml" -f "${ROOT}/docker-compose.load-test.yaml" -f "$OVERRIDES")
 "${COMPOSE[@]}" up -d --no-build --force-recreate --no-deps tracker-0
-# Wait healthy
+
 for _ in $(seq 1 60); do
   if docker inspect -f '{{.State.Health.Status}}' "$TRACKER_CTR" 2> /dev/null | grep -q healthy; then
     break
@@ -168,7 +160,6 @@ if ! docker inspect -f '{{.State.Running}}' "$TRACKER_CTR" | grep -q true; then
   die "tracker dead under survival memory — abort"
 fi
 
-# Confirm runtime pin (distroless has no printenv)
 docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$TRACKER_CTR" \
   | awk -F= '$1=="GOMAXPROCS"{print $2; found=1} END{if(!found) print "unset"}' \
   | tee "${OUT}/gomaxprocs.txt"
@@ -179,8 +170,7 @@ fi
 
 TRACKER_PID="$(docker inspect -f '{{.State.Pid}}' "$TRACKER_CTR")"
 log "tracker host pid=${TRACKER_PID}"
-# Host purgatory cgroup exists for operators; docker update already applies limits.
-# Do NOT migrate the container PID out of docker's cgroup (breaks the runtime).
+
 priv "mkdir -p /sys/fs/cgroup/purgatory
 echo '+cpu +cpuset +memory' > /sys/fs/cgroup/cgroup.subtree_control 2>/dev/null || true
 echo 0 > /sys/fs/cgroup/purgatory/cpuset.mems 2>/dev/null || true
@@ -192,7 +182,7 @@ echo ok" || warn "host purgatory cgroup setup partial"
 
 CID="$(docker inspect -f '{{.Id}}' "$TRACKER_CTR")"
 CG_PATH=""
-# Prefer docker scope path (reliable on systemd + cgroup v2).
+
 for cand in \
   "/sys/fs/cgroup/system.slice/docker-${CID}.scope" \
   "/sys/fs/cgroup/docker/${CID}"; do
@@ -218,9 +208,6 @@ if [[ -n "$CG_PATH" ]]; then
   cp "${CG_PATH}/memory.current" "${OUT}/memory.current.before" 2> /dev/null || true
 fi
 
-# ---------------------------------------------------------------------------
-# 2) Network degrade + L3 pollution
-# ---------------------------------------------------------------------------
 log "applying tc netem on lo + degraded sysctl"
 priv 'tc qdisc del dev lo root 2>/dev/null || true
 tc qdisc add dev lo root netem delay 5ms loss 1% duplicate 1%
@@ -243,13 +230,10 @@ kill -0 "$(cat "${OUT}/stress-ng.pid")" 2> /dev/null || {
   echo $! > "${OUT}/stress-ng.pid"
 }
 
-# ---------------------------------------------------------------------------
-# 3) eBPF probe session (collector must run as root)
-# ---------------------------------------------------------------------------
 BPF_DIR="${OUT}/bpf"
 mkdir -p "$BPF_DIR"
 log "resolving BPF targets"
-ESPX_BPF_NATIVE=1 ESPX_BPF_TRACK_LOADGEN=1 ESPX_BPF_LOADGEN_COMM=wrk \
+AD_EVENT_PROCESSOR_BPF_NATIVE=1 AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN=1 AD_EVENT_PROCESSOR_BPF_LOADGEN_COMM=wrk \
   bash "${SCRIPTS}/test/bpf_resolve_targets.sh" "${BPF_DIR}/targets.json" tracker,nginx,redis,processor
 
 log "starting bpf-collector as root (privileged sidecar)"
@@ -258,8 +242,8 @@ cd ${ROOT}
 nohup ./bin/bpf-collector \
   -session-dir ${BPF_DIR} \
   -bpf-object ${ROOT}/deploy/dev/bpf/loadtest_probe.o \
-  -sample-rate ${ESPX_BPF_SAMPLE_RATE:-10} \
-  -slow-us ${ESPX_BPF_SLOW_US:-10000} \
+  -sample-rate ${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10} \
+  -slow-us ${AD_EVENT_PROCESSOR_BPF_SLOW_US:-10000} \
   -discover-loadgen=true \
   -loadgen-comms wrk \
   -dump-interval 15s \
@@ -278,9 +262,6 @@ date -u +%Y-%m-%dT%H:%M:%SZ > ${BPF_DIR}/collector.ready
 echo collector_pid=\$(cat ${BPF_DIR}/collector.pid)
 "
 
-# ---------------------------------------------------------------------------
-# 4) wrk 10k keep-alive POST /track for 60s
-# ---------------------------------------------------------------------------
 BODY='{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}'
 LUA="${OUT}/track.lua"
 cat > "$LUA" << EOF
@@ -294,7 +275,6 @@ EOF
 log "raising nofile for 10k connections"
 ulimit -n 1048576 2> /dev/null || ulimit -n 65536 || true
 
-# Snapshot Prometheus / tracker metrics before load (Lua + handler).
 METRICS_PORT="${METRICS_PORT:-9101}"
 PROM_URL="${PROMETHEUS_URL:-http://127.0.0.1:9190}"
 snapshot_tracker_metrics() {
@@ -319,12 +299,12 @@ log "wrk exit=${WRK_EC}"
 
 log "metrics snapshot after → ${OUT}/metrics.after.txt"
 snapshot_tracker_metrics "${OUT}/metrics.after.txt"
-# Direct Lua p50/p99 from tracker histogram (no Prom job label dependency).
+
 python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" << 'PY' || true
 import re, json, sys
 from pathlib import Path
 text = Path(sys.argv[1]).read_text()
-# Parse ad_redis_lua_duration_seconds_bucket{shard="N",le="X"} V
+
 buckets = {}
 counts = {}
 for line in text.splitlines():
@@ -350,14 +330,14 @@ def quantile(cum, q):
     return None
 out = {}
 for shard, rows in sorted(buckets.items()):
-    # cumulative already in prometheus histogram buckets
+
     rows_sorted = []
     for le, v in rows:
         if le == "+Inf":
             rows_sorted.append((le, v))
         else:
             rows_sorted.append((le, v))
-    # ensure numeric order except +Inf last
+
     nums = [(float(le), v) for le, v in rows if le != "+Inf"]
     nums.sort()
     cum = [(str(le), v) for le, v in nums] + [(le, v) for le, v in rows if le == "+Inf"]
@@ -371,16 +351,12 @@ Path(sys.argv[2]).write_text(json.dumps(out, indent=2))
 print(json.dumps(out, indent=2))
 PY
 
-# ---------------------------------------------------------------------------
-# 5) Collect metrics
-# ---------------------------------------------------------------------------
 sleep 2
 cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after" 2> /dev/null || true
 cp "${CG_PATH}/memory.events" "${OUT}/memory.events.after" 2> /dev/null || true
 docker inspect -f '{{.State.Status}} OOM={{.State.OOMKilled}} Exit={{.State.ExitCode}}' "$TRACKER_CTR" \
   | tee "${OUT}/tracker.state.txt"
 
-# Stop BPF cleanly and render report
 if [[ -f "${BPF_DIR}/collector.pid" ]]; then
   BPID="$(cat "${BPF_DIR}/collector.pid")"
   priv "kill -TERM ${BPID} 2>/dev/null || true
@@ -396,17 +372,15 @@ else
   tail -80 "${BPF_DIR}/collector.log" 2> /dev/null | tee "${OUT}/bpf-collector.tail.txt" || true
 fi
 
-# Prometheus bottleneck report (handler p99, Redis Lua p99/shard, …)
 log "load-report prom → ${OUT}/bottleneck-report.md (PROM=${PROM_URL})"
 (cd "$ROOT" && go run ./cmd/load-report prom "$OUT" --prom "$PROM_URL") \
   > "${OUT}/load-report-prom.log" 2>&1 \
   || warn "load-report prom failed — see ${OUT}/load-report-prom.log"
-# Also try `all` for SLA section without failing the run
+
 (cd "$ROOT" && LOAD_SLA_GATE=0 go run ./cmd/load-report all "$OUT" --prom "$PROM_URL") \
   > "${OUT}/load-report-all.log" 2>&1 \
   || warn "load-report all soft-failed — see ${OUT}/load-report-all.log"
 
-# Build REPORT.txt
 {
   echo "=== ESPX Purgatory + eBPF Report (${TS}) ==="
   echo "phase: ${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN}"

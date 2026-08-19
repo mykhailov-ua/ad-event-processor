@@ -76,7 +76,7 @@ func CheckBPFResourceGate(outDir, promURL string) (BPFGateResult, error) {
 					Value:  "missing",
 					Limit:  "present",
 					OK:     true,
-					Detail: "skipped (no BPF session; set ESPX_BPF_PROBE=1)",
+					Detail: "skipped (no BPF session; set BIDSHARD_BPF_PROBE=1)",
 				}},
 				Pass: true,
 			}, nil
@@ -206,6 +206,7 @@ func checkBPFSummaryChecks(summary *bpfSummary) []BPFGateCheck {
 	})
 
 	checks = append(checks, checkBPFFDLeak(summary)...)
+	checks = append(checks, checkBPFRSSChecks(summary, []string{"tracker"}, 5120)...)
 
 	for _, s := range summary.CgroupSamples {
 		if s.MemoryMaxEvents > 0 {
@@ -258,7 +259,11 @@ func checkBPFGatePrometheus(promURL string) []BPFGateCheck {
 		luaCheck.OK = luaMax < bpfRedisLuaP99FailMs
 	}
 
-	return []BPFGateCheck{handlerCheck, luaCheck}
+	checks := []BPFGateCheck{handlerCheck, luaCheck}
+	checks = append(checks, checkBPFDiskSpoolPrometheus(prom)...)
+	checks = append(checks, checkBPFRedisPoolPrometheus(prom, rateWindow)...)
+	checks = append(checks, checkBPFExtraGatesPrometheus(prom, rateWindow)...)
+	return checks
 }
 
 func redisLuaP99MaxMs(prom *promClient, rateWindow string) (float64, bool) {
@@ -274,7 +279,7 @@ func redisLuaP99MaxMs(prom *promClient, rateWindow string) (float64, bool) {
 		}
 		shard := strings.TrimPrefix(row.Labels, "shard=")
 		p99Str := prom.scalar(fmt.Sprintf(
-			`histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker",shard="%s"}[%s])) by (le)) * 1000`,
+			`histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket{job="tracker",shard=%q}[%s])) by (le)) * 1000`,
 			shard, rateWindow,
 		))
 		if p99Str == "na" || p99Str == "" {
@@ -334,7 +339,7 @@ func WriteBPFGateReport(outDir, promURL string) (string, error) {
 	if result.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString("\n**Result: FAIL** — see DEVELOPMENT.md#bpf-hot-gate thresholds.\n")
+		b.WriteString("\n**Result: FAIL** — see docs/CI.md#bpf-hot-gate thresholds.\n")
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
 		return "", err
@@ -368,7 +373,7 @@ func strictMissingCheck(name, limit, detail string) BPFGateCheck {
 	return skipCheck(name, "skipped ("+detail+")")
 }
 
-func promScalarCheck(name, limit string, raw string, failDetail string) BPFGateCheck {
+func promScalarCheck(name, limit, raw, failDetail string) BPFGateCheck {
 	check := BPFGateCheck{
 		Name:   name,
 		Limit:  limit,
@@ -446,14 +451,14 @@ func hotSyscallRatePerSec(hot []syscallStat, role, syscall string, durationSec f
 }
 
 func ctxSwitchRatio(stats []pidStat, role string) (float64, bool) {
-	for _, s := range stats {
-		if s.Role != role {
+	for i := range stats {
+		if stats[i].Role != role {
 			continue
 		}
-		if s.VoluntaryCtx <= 0 {
+		if stats[i].VoluntaryCtx <= 0 {
 			return 0, false
 		}
-		return float64(s.InvoluntaryCtx) / float64(s.VoluntaryCtx), true
+		return float64(stats[i].InvoluntaryCtx) / float64(stats[i].VoluntaryCtx), true
 	}
 	return 0, false
 }
@@ -463,9 +468,9 @@ func maxCgroupThrottle(samples []cgroupSample) (float64, bool) {
 		return 0, false
 	}
 	maxPct := samples[0].ThrottlePct
-	for _, s := range samples[1:] {
-		if s.ThrottlePct > maxPct {
-			maxPct = s.ThrottlePct
+	for i := 1; i < len(samples); i++ {
+		if samples[i].ThrottlePct > maxPct {
+			maxPct = samples[i].ThrottlePct
 		}
 	}
 	return maxPct, true
@@ -474,11 +479,11 @@ func maxCgroupThrottle(samples []cgroupSample) (float64, bool) {
 func loadgenOnCPUPct(stats []pidStat) (float64, bool) {
 	var totalOnCPU, loadgenOnCPU int64
 	var hasLoadgen bool
-	for _, s := range stats {
-		totalOnCPU += s.OnCPUNs
-		if s.Role == "loadgen" {
+	for i := range stats {
+		totalOnCPU += stats[i].OnCPUNs
+		if stats[i].Role == "loadgen" {
 			hasLoadgen = true
-			loadgenOnCPU += s.OnCPUNs
+			loadgenOnCPU += stats[i].OnCPUNs
 		}
 	}
 	if !hasLoadgen || totalOnCPU <= 0 {

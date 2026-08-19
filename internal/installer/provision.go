@@ -34,7 +34,7 @@ func RunProvision(yes bool) error {
 		fmt.Print("Proceed? [y/N]: ")
 		var response string
 		_, _ = fmt.Scanln(&response)
-		if strings.ToLower(response) != "y" {
+		if !strings.EqualFold(response, "y") {
 			return fmt.Errorf("provisioning aborted by user")
 		}
 	}

@@ -63,7 +63,7 @@ func hwidMatchPtr(diag licensing.LicenseDiagnostics) *bool {
 	return &match
 }
 
-func cliLicenseSnapshotFns(cfg *config.Config) (func() (licensing.LicenseState, bool), func() (licensing.LicenseDiagnostics, bool)) {
+func cliLicenseSnapshotFns(cfg *config.Config) (stateFn func() (licensing.LicenseState, bool), diagFn func() (licensing.LicenseDiagnostics, bool)) {
 	var once sync.Once
 	var diag licensing.LicenseDiagnostics
 	var state licensing.LicenseState
@@ -74,15 +74,15 @@ func cliLicenseSnapshotFns(cfg *config.Config) (func() (licensing.LicenseState, 
 			diag, state, ready = loadCLILicense(cfg)
 		})
 	}
-	stateFn := func() (licensing.LicenseState, bool) {
+	stateFn = func() (licensing.LicenseState, bool) {
 		load()
 		return state, ready
 	}
-	diagFn := func() (licensing.LicenseDiagnostics, bool) {
+	diagFn = func() (licensing.LicenseDiagnostics, bool) {
 		load()
 		return diag, ready
 	}
-	return stateFn, diagFn
+	return
 }
 
 func loadCLILicense(cfg *config.Config) (licensing.LicenseDiagnostics, licensing.LicenseState, bool) {

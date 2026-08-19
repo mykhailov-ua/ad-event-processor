@@ -5,12 +5,12 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 MODE="${1:-report}"
-EDGE_CONF="$ROOT/deploy/edge/99-espx-edge.conf"
-LOADTEST_CONF="$ROOT/deploy/edge/99-espx-loadtest.conf"
-BIDSHARD_CONF="$ROOT/deploy/sysctl/99-bidshard-sysctl.conf"
-CONF_DST_EDGE="${ESPX_SYSCTL_CONF:-/etc/sysctl.d/99-espx-edge.conf}"
-CONF_DST_LOAD="${ESPX_LOADTEST_SYSCTL_CONF:-/etc/sysctl.d/99-espx-loadtest.conf}"
-CONF_DST_BIDSHARD="${BIDSHARD_SYSCTL_CONF:-/etc/sysctl.d/99-bidshard-sysctl.conf}"
+EDGE_CONF="$ROOT/deploy/edge/99-ad-event-processor-edge.conf"
+LOADTEST_CONF="$ROOT/deploy/edge/99-ad-event-processor-loadtest.conf"
+BASE_SYSCTL_CONF="$ROOT/deploy/sysctl/99-ad-event-processor-sysctl.conf"
+CONF_DST_EDGE="${AD_EVENT_PROCESSOR_SYSCTL_CONF:-/etc/sysctl.d/99-ad-event-processor-edge.conf}"
+CONF_DST_LOAD="${AD_EVENT_PROCESSOR_LOADTEST_SYSCTL_CONF:-/etc/sysctl.d/99-ad-event-processor-loadtest.conf}"
+CONF_DST_BASE="${AD_EVENT_PROCESSOR_BASE_SYSCTL_CONF:-/etc/sysctl.d/99-ad-event-processor-sysctl.conf}"
 
 log() { printf 'host-tune: %s\n' "$*"; }
 warn() { printf 'host-tune: WARN: %s\n' "$*" >&2; }
@@ -137,7 +137,7 @@ apply_tuning() {
   local nr
   nr="$(ulimit -n 2> /dev/null || echo 0)"
   if [[ "$nr" -lt 100000 ]]; then
-    warn "current shell ulimit -n=$nr; add '* soft nofile 1048576' to /etc/security/limits.d/99-espx-loadtest.conf and re-login"
+    warn "current shell ulimit -n=$nr; add '* soft nofile 1048576' to /etc/security/limits.d/99-ad-event-processor-loadtest.conf and re-login"
   fi
   log "apply: done — run: bash scripts/test/host_tune.sh verify"
 }

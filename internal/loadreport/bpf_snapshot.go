@@ -64,9 +64,12 @@ func CaptureBPFSnapshot(sessionDir string, summary *bpfSummary) BPFSnapshot {
 	metrics["processor_pg_connects"] = float64(procPGConnects)
 	metrics["processor_pg_sendto_bytes"] = float64(procPGSendtoBytes)
 	metrics["tracker_hw_cache_misses"] = float64(trackerHWCacheMisses(summary))
-	metrics["max_fd_delta"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p procSample) int64 { return p.FDDelta }))
-	metrics["max_thread_delta"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p procSample) int64 { return p.ThreadDelta }))
-	metrics["max_peak_open_fds"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p procSample) int64 { return p.PeakOpenFDs }))
+	metrics["max_fd_delta"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.FDDelta }))
+	metrics["max_thread_delta"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.ThreadDelta }))
+	metrics["max_peak_open_fds"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.PeakOpenFDs }))
+	metrics["max_rss_delta_kb"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.RSSDelta }))
+	metrics["max_peak_rss_kb"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.PeakRSSKB }))
+	metrics["max_majflt"] = float64(maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.MajFlt }))
 
 	for _, s := range summary.CgroupSamples {
 		if s.MemoryMaxEvents > 0 {
@@ -82,10 +85,10 @@ func CaptureBPFSnapshot(sessionDir string, summary *bpfSummary) BPFSnapshot {
 	}
 }
 
-func maxProcSampleInt64(samples []procSample, pick func(procSample) int64) int64 {
+func maxProcSampleInt64(samples []procSample, pick func(*procSample) int64) int64 {
 	var peak int64
-	for _, s := range samples {
-		v := pick(s)
+	for i := range samples {
+		v := pick(&samples[i])
 		if v > peak {
 			peak = v
 		}
@@ -194,7 +197,7 @@ func compareBPFMetric(name string, baseline, current float64, pass bool) (string
 			return "FAIL (PG connect churn)", false
 		}
 		return "OK", pass
-	case "max_fd_delta", "max_thread_delta", "cgroup_memory_max_events":
+	case "max_fd_delta", "max_thread_delta", "cgroup_memory_max_events", "max_rss_delta_kb", "max_peak_rss_kb", "max_majflt":
 		if current > baseline {
 			return "FAIL (regression)", false
 		}
@@ -280,7 +283,7 @@ func WriteBPFGateCompareReport(baselineDir, sessionDir, promURL string) (string,
 	if compare.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString(fmt.Sprintf("\n**Result: FAIL** — regression > %.0f%% or cold-path leak (DEVELOPMENT.md#bpf-ci-arch).\n", bpfRegressionPct))
+		b.WriteString(fmt.Sprintf("\n**Result: FAIL** — regression > %.0f%% or cold-path leak (docs/CI.md#bpf-ci-arch).\n", bpfRegressionPct))
 	}
 	if err := os.WriteFile(reportPath, []byte(b.String()), 0o644); err != nil {
 		return "", err
@@ -301,8 +304,8 @@ func bpfColdGateEnabled() bool {
 }
 
 func checkBPFColdPathChecks(summary *bpfSummary) []BPFGateCheck {
-	maxFD := maxProcSampleInt64(summary.ProcSamples, func(p procSample) int64 { return p.FDDelta })
-	maxThread := maxProcSampleInt64(summary.ProcSamples, func(p procSample) int64 { return p.ThreadDelta })
+	maxFD := maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.FDDelta })
+	maxThread := maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.ThreadDelta })
 
 	checks := []BPFGateCheck{
 		{
@@ -320,7 +323,8 @@ func checkBPFColdPathChecks(summary *bpfSummary) []BPFGateCheck {
 			Detail: "cold path: thread/goroutine delta",
 		},
 	}
-	for _, s := range summary.ProcSamples {
+	for i := range summary.ProcSamples {
+		s := &summary.ProcSamples[i]
 		if s.FDOpenPerSec > 0 && s.FDClosePerSec > 0 && s.FDOpenPerSec > s.FDClosePerSec*2 {
 			checks = append(checks, BPFGateCheck{
 				Name:   "fd_open_close_imbalance_" + s.Role,
@@ -332,6 +336,7 @@ func checkBPFColdPathChecks(summary *bpfSummary) []BPFGateCheck {
 			break
 		}
 	}
+	checks = append(checks, checkBPFRSSChecks(summary, []string{"control", "processor", "region-proxy"}, 51200)...)
 	return checks
 }
 

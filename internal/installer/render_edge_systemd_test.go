@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"bytes"
 	"os"
 	"strings"
 	"testing"
@@ -21,7 +22,7 @@ func TestGoldenRenderEdgeSystemdUnits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(xdp) != string(wantXDP) {
+	if !bytes.Equal(xdp, wantXDP) {
 		t.Fatalf("edge-xdp unit mismatch:\n%s", strings.TrimSpace(string(xdp)))
 	}
 
@@ -33,7 +34,7 @@ func TestGoldenRenderEdgeSystemdUnits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(sync) != string(wantSync) {
+	if !bytes.Equal(sync, wantSync) {
 		t.Fatalf("edge-bpf-sync unit mismatch:\n%s", strings.TrimSpace(string(sync)))
 	}
 }

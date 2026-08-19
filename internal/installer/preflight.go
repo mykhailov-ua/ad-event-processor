@@ -25,7 +25,7 @@ type PreflightResults struct {
 	Passed bool             `json:"passed"`
 }
 
-func RunPreflight(strict bool, asJSON bool) (*PreflightResults, error) {
+func RunPreflight(strict, asJSON bool) (*PreflightResults, error) {
 	checks := getPreflightChecks()
 	results := &PreflightResults{
 		Checks: make([]PreflightCheck, 0, len(checks)),

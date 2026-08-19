@@ -56,6 +56,6 @@ func (p *Partition) AppendLeader(epoch uint64, payload []byte) (uint64, error) {
 	return p.wal.Append(payload)
 }
 
-func (p *Partition) ReadRawMessages(startOffset uint64, maxBytes uint32) ([]byte, *[]byte, error) {
+func (p *Partition) ReadRawMessages(startOffset uint64, maxBytes uint32) (data []byte, bufPtr *[]byte, err error) {
 	return p.wal.ReadRawMessages(startOffset, maxBytes)
 }

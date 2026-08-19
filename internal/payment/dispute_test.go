@@ -33,7 +33,7 @@ func TestProcessStripeDisputeWebhook_noDoubleChargeback(t *testing.T) {
 
 	stripeCents, err := MicroToStripeAmount(amountMicro)
 	require.NoError(t, err)
-	successPayload := fmt.Sprintf(`{"id":"evt_topup","type":"payment_intent.succeeded","data":{"object":{"id":"%s","amount":%d}}}`, providerRef, stripeCents)
+	successPayload := fmt.Sprintf(`{"id":"evt_topup","type":"payment_intent.succeeded","data":{"object":{"id":%q,"amount":%d}}}`, providerRef, stripeCents)
 	err = svc.ProcessStripeWebhook(ctx, "evt_topup", "payment_intent.succeeded", []byte(successPayload), providerRef, amountMicro, successPayload)
 	require.NoError(t, err)
 
@@ -43,7 +43,7 @@ func TestProcessStripeDisputeWebhook_noDoubleChargeback(t *testing.T) {
 	require.NoError(t, err)
 
 	mkPayload := func(eventID string) string {
-		return fmt.Sprintf(`{"id":"%s","type":"charge.dispute.funds_withdrawn","data":{"object":{"id":"%s","amount":%d,"payment_intent":"%s","status":"needs_response"}}}`,
+		return fmt.Sprintf(`{"id":%q,"type":"charge.dispute.funds_withdrawn","data":{"object":{"id":%q,"amount":%d,"payment_intent":%q,"status":"needs_response"}}}`,
 			eventID, disputeID, withdrawCents, providerRef)
 	}
 

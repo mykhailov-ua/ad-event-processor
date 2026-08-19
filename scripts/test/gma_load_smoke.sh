@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AC-GMA-1 smoke: GET /click with X-TLS-JA3 against a live tracker (optional).
+
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

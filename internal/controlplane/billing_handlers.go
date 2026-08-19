@@ -701,6 +701,14 @@ func writeBillingLocalError(w http.ResponseWriter, err error) {
 	WriteBillingError(w, err)
 }
 
+type CompositeReadService struct {
+	pool                *pgxpool.Pool
+	cfg                 *config.Config
+	paymentProviderName string
+	queries             *billingdb.Queries
+	chQuery             *database.CHQuery
+}
+
 func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters AdminInvoiceFilters, limit, offset int32) (AdminInvoiceListResult, error) {
 	if s == nil || s.queries == nil {
 		return AdminInvoiceListResult{}, fmt.Errorf("composite read service not configured")
@@ -1056,14 +1064,6 @@ func (billHandlers *BillingHTTPHandlers) listDisputes(w http.ResponseWriter, r *
 
 const ledgerInvariantToleranceMicro = int64(1)
 
-type CompositeReadService struct {
-	pool                *pgxpool.Pool
-	cfg                 *config.Config
-	paymentProviderName string
-	queries             *billingdb.Queries
-	chQuery             *database.CHQuery
-}
-
 func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config) *CompositeReadService {
 	if pool == nil {
 		return nil
@@ -1225,7 +1225,8 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 
 	invoiceDTOs := make([]domain.InvoiceSummary, 0, len(invoices))
 	var invoiceTotal int64
-	for _, inv := range invoices {
+	for i := range invoices {
+		inv := &invoices[i]
 		month := ""
 		if inv.BillingMonth.Valid {
 			month = inv.BillingMonth.Time.UTC().Format("2006-01")
@@ -1354,7 +1355,7 @@ func (s *CompositeReadService) GetWallet(ctx context.Context, customerID uuid.UU
 	return wallet, nil
 }
 
-func (s *CompositeReadService) ListLedgerLines(ctx context.Context, customerID uuid.UUID, month time.Time, cursorID int64, limit int32) ([]LedgerLineDTO, string, int64, error) {
+func (s *CompositeReadService) ListLedgerLines(ctx context.Context, customerID uuid.UUID, month time.Time, cursorID int64, limit int32) (lines []LedgerLineDTO, nextCursor string, total int64, err error) {
 	if s == nil || s.pool == nil {
 		return nil, "", 0, fmt.Errorf("composite read service not configured")
 	}
@@ -1530,17 +1531,17 @@ func (s *CompositeReadService) ListDeliveries(ctx context.Context, invoiceID str
 	out := make([]DeliveryDTO, 0, 4)
 	for rows.Next() {
 		var (
-			id, status, provider, recipient, templateID string
-			errorMessage                                pgtype.Text
-			retryCount                                  int32
-			createdAt, updatedAt                        time.Time
+			id, deliveryStatus, provider, recipient, templateID string
+			errorMessage                                        pgtype.Text
+			retryCount                                          int32
+			createdAt, updatedAt                                time.Time
 		)
-		if err := rows.Scan(&id, &status, &provider, &recipient, &templateID, &errorMessage, &retryCount, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&id, &deliveryStatus, &provider, &recipient, &templateID, &errorMessage, &retryCount, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
 		dto := DeliveryDTO{
 			ID:         id,
-			Status:     status,
+			Status:     deliveryStatus,
 			Provider:   provider,
 			Recipient:  recipient,
 			TemplateID: templateID,
@@ -1612,7 +1613,7 @@ func (s *CompositeReadService) UpsertTaxProfile(ctx context.Context, customerID 
 	return out, nil
 }
 
-func ParseStatementPeriod(fromRaw, toRaw, monthRaw string) (time.Time, time.Time, error) {
+func ParseStatementPeriod(fromRaw, toRaw, monthRaw string) (fromOut time.Time, toOut time.Time, err error) {
 	if monthRaw != "" {
 		month, err := time.Parse("2006-01", monthRaw)
 		if err != nil {
