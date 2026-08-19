@@ -1,0 +1,21 @@
+---
+description: In-process RTB auction, OpenRTB 2.6, catalog snapshots
+globs: internal/rtb/**, internal/openrtb/**, internal/ingestion/rtb*.go, internal/ingestion/openrtb*.go
+alwaysApply: false
+---
+
+`RunAuction` p99 < 15 us; candidates scanned p99 < 500; 0 allocs/op.
+
+Ingress: `/track` (`applyRtbAuction`) and `POST /openrtb/bid` (`openrtb_exchange.go` -> DFA parse -> `RunAuction` -> in-place bid response).
+
+Packages: `internal/rtb/` auction core; `internal/openrtb/` wire codec (no ingestion import); tracker glue in `internal/ingestion/rtb_*.go`, `openrtb_*.go`; admin in `controlplane` `service_rtb.go`, `rtb_handlers.go`.
+
+Registry: `atomic.Pointer[catalogSnapshot]` swapped on cold rebuild; hot readers never lock.
+
+Winner: bid x CTR (PPM); tie-break weight then raw bid. Clearing first/second price + reserve. Geo 64 shards via `req.GeoHash & 63`. Budget CAS in `CheckAndSpendAll`.
+
+OpenRTB 2.6 hot path: DFA parse, micro-units, `WriteBidHTTPResponse` fixed header + in-place JSON — no `json.Marshal` on production path. `json.Marshal` tests/cold only.
+
+Modes: `RTB_MODE` off | shadow | live. Shadow runs `RunAuctionEval` without spend.
+
+Related: `hot-path.mdc`, `data-layer.mdc`, `docs/RTB.md`.

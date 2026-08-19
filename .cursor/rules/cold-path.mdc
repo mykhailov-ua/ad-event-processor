@@ -1,0 +1,30 @@
+---
+description: Cold path anti-enterprise, flat handlers, no Provider layers
+globs: internal/notify/**, internal/payment/**, internal/ledger/**, internal/costsync/**, internal/controlplane/**, internal/identity/**, internal/fraud/**, pkg/coldpath/**, cmd/control/**
+alwaysApply: false
+---
+
+Cold path = stdlib HTTP, Postgres transactions, outbox, webhooks, background pollers. Not `/track` or gnet (see `hot-path.mdc`). Overrides generic abstraction defaults in `code-style.mdc`.
+
+Forbidden: Clean/hexagonal ceremony, GoF Provider/Factory/Strategy maps, single-impl interfaces, `map[string]any` JSON builders, `dto/`/`mappers/`/`usecase/` trees, mock scaffolding unless user asks.
+
+Allowed: sqlc `db.Queries` called directly; flat `Service` struct with pool+cfg; `*_worker.go` pollers started from `main` or `OpenModule.StartWorkers`; `context.Context` on every I/O boundary.
+
+Density: minimum LoC with correct idempotency and audit. Flat control flow; collapse single-use helpers. ~30 lines sequential Go beats 3 files + 2 interfaces.
+
+Provider style (required):
+
+- `SendSlack(ctx, cfg, breaker, recipient, title, body string) error`
+- `CreateCheckout(ctx, cfg, provider, amountMicro, ...) (ref, url string, err error)`
+
+Not: `type NotifierProvider interface`, `ProviderBundle`, `NewProvidersFromConfig`.
+
+Concurrency: no `go` inside send/checkout/fetch paths; synchronous under `ctx`. Async only via existing outbox/worker tickers at module bootstrap.
+
+Types: HTTP body struct or sqlc row is source of truth — no parallel API DTO + service DTO + mapper file. `coldpath.DecodeBody[T]` into `T` passed straight to `Service`.
+
+Delete useless tests: pure arithmetic, stdlib-only, nil receiver smoke, field echo, static meta smoke, duplicates.
+
+Package layout: `send.go`, `checkout.go`, `service_<domain>.go` — no new `providers/` or `services/` subtrees.
+
+Grep before submit: `interface {`, `Mock`, `Factory`, `map[string]any` in touched package.

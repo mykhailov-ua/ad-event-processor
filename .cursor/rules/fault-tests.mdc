@@ -1,0 +1,21 @@
+---
+description: Fault injection tests, resilience proofs, outbox idempotency
+globs: **/*_fault_test.go, **/fault_*.go, scripts/test/**
+alwaysApply: false
+---
+
+Apply when adding failure modes, outbox handlers, or resilience tests.
+
+Fault tests live in `*_fault_test.go` / `fault_*` packages. Prove idempotency under duplicate webhooks, Redis outages, PG txn failures, and outbox replays.
+
+Outbox: handler error -> row stays pending and retries; permanent failure -> mark failed + ops alert. Duplicate event IDs must not double-apply side effects.
+
+Alerts (examples): `ad_management_outbox_oldest_pending_seconds` > 30 s; processor lag; Redis circuit open sustained.
+
+Load-test abort rules tie to `core.mdc` (p99 > 80 ms for 30 s).
+
+New hot-path write paths need a fault proof case or explicit waiver in PR.
+
+HTMX/UI faults: out of scope — JSON API only.
+
+Related: `hot-path.mdc`, `control-plane.mdc`, `scripts/test/run_resilience.sh`.

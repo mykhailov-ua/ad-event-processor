@@ -1,0 +1,23 @@
+---
+description: Defensive perimeter, edge maps, no hack-back tooling
+globs: internal/edge/**, deploy/nginx/**, internal/controlplane/**, cmd/edge-bpf-sync/**
+alwaysApply: false
+---
+
+Defensive perimeter only — no offensive tooling in repo.
+
+Auto-blocks enter BPF maps only after local breach (rate limit, operator RBAC block, fraud outbox). TTL in map value; allowlist before deny. Sync path: control outbox -> Redis -> `edge-bpf-sync` -> pinned maps.
+
+Tarpit: nginx edge when `EDGE_TARPIT_ENABLED=true`; capped duration; never on billing/settlement paths.
+
+Workers do not open outbound streams to visitor IPs being blocked. No SYN/UDP flood helpers.
+
+Banned imports: using `cilium/ebpf` in tracker/control hot packages for compliance maps (edge binaries only).
+
+Checklist for edge/compliance changes:
+
+- No outbound network to visitor IPs from control workers.
+- Map updates only via sync pipeline, not direct management kernel writes.
+- Metrics and ops docs updated when adding deny reasons.
+
+Related: `edge.mdc`, `docs/ARCHITECTURE.md`.

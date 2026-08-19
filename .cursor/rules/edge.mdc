@@ -1,0 +1,22 @@
+---
+description: Nginx/OpenResty edge, Lua DFA, XDP BPF sync
+globs: deploy/nginx/**, deploy/edge/**, internal/edge/**, cmd/edge-xdp/**
+alwaysApply: false
+---
+
+Edge: OpenResty/nginx ingress + optional XDP L4 filter. Compliance map policy: `compliance.mdc`.
+
+Listeners: :8180 HTTP/1.1; :443 H2/H3/H1.1 ALPN. Dev certs: `deploy/nginx/certs/generate-dev-certs.sh`.
+
+L7 (`access-check.lua`): rate limit, circuit breaker, blacklist cache, body DFA (`edge-parse-dfa.lua`), per-campaign RL, proxy to tracker pool.
+
+`TRACKER_INGRESS_SCHEMA` must match tracker config:
+
+- `openrtb_3` (default): edge reads `request.item[0].id`
+- native track: edge scans `campaign_id` — tracker `ParseTrackRequestJSON*` / vtproto
+
+Shard selection must match Go `StaticSlotSharder`: `slot = crc32(campaign_id) & 1023` -> `slot_table[slot]`.
+
+XDP: deny maps synced control outbox -> Redis shard-0 -> `cmd/edge-bpf-sync` -> `/sys/fs/bpf/`. Attach via `cmd/edge-xdp`. Control never writes kernel maps directly.
+
+Related: `compliance.mdc`, `data-layer.mdc` shard-0 notes.

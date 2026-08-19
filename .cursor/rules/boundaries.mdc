@@ -1,0 +1,27 @@
+---
+description: cmd ownership, forbidden imports, when to split binaries
+globs: cmd/**, internal/**
+alwaysApply: false
+---
+
+Apply when adding services, imports, or cross-package dependencies.
+
+Default deploy: `cmd/control` modular monolith (admin :8188, payment webhooks :8187, in-process identity/payment/billing/notifier). Schemas: `payment`, `billing`, `notifier` plus shared `public` (campaigns, events, balance_ledger, outbox).
+
+Sidecars (optional): `cmd/ivt-detector`, `cmd/fraud-scorer`, `cmd/log-evacuator` (tools profile). Settlement runs in-process in control — no standalone settlement binary.
+
+Never inject into tracker hot path: cron loops, Postgres writes not required for ingest, external RPC from `processTrack()` or filter pipeline.
+
+Tracker must not import `internal/fraud` scoring (cold `cmd/fraud-scorer` / processor only).
+
+New domain workflow:
+
+1. `CREATE SCHEMA`, migrations under `internal/<svc>/migrations/`, wire into `cmd/control` via `OpenModule`.
+2. Standalone `cmd/<svc>` only with external webhooks/credentials and score >= 11 on internal criteria — else package + worker in control/processor.
+3. Node-local I/O (log evacuator, mmap broker): utility binary near data, no network API.
+
+Do not split for folder layout when DB is already shared. Do not create microservices without active callers.
+
+New standalone needs: `internal/<svc>/`, `cmd/<svc>/main.go`, migrations, config pool limits, compose entry, at least one real client.
+
+Related: `docs/ARCHITECTURE.md`, `hot-path.mdc`, `core.mdc`.

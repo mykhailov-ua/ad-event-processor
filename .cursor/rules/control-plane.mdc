@@ -1,0 +1,27 @@
+---
+description: Control plane outbox, workers, admin API, settlement
+globs: internal/controlplane/**, cmd/control/**
+alwaysApply: false
+---
+
+Apply with `cold-path.mdc` for admin/billing/payment/notifier edits.
+
+Topology: clients -> `cmd/control` HTTP -> `controlplane` / `adminapi` / workers -> Postgres; Redis config via outbox only. Tracker uses streams -> processor -> PG/CH. No direct Redis writes from admin handlers.
+
+Routes:
+
+- `/api/v1/*` — operators and automation.
+- `/api/v1/selfserve/*` — advertiser API keys.
+- `/admin/*` — deprecated; do not extend HTMX.
+
+Outbox: config mutations enqueue `outbox_events` in the same PG transaction as the change. Workers apply Redis side effects.
+
+Workers (control only): volume meter, recon, ledger invariant, slot migration, brand MAB, bid-floor optimizer, ops scraper. Never run these in tracker replicas.
+
+Settlement: payment webhooks -> payment outbox -> in-process `SettlementHandler` -> `balance_ledger`. No settlement RPC.
+
+RBAC: permissions on routes (`campaigns:read`, `customers:write`, ...). License snapshot gates modules (multi-region, CH paths). Hot path reads JWT file snapshot only.
+
+Reporting: campaign stats from PG `campaign_stats` + CH MVs (`stale=true` when CH lag > 5 min). Balances from `balance_ledger` only.
+
+Related: `data-layer.mdc`, `code-style.mdc`, `boundaries.mdc`.

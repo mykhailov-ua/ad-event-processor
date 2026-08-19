@@ -1,0 +1,23 @@
+---
+description: Redis StaticSlot, Postgres ledger, ClickHouse, Lua tiers
+globs: internal/database/**, internal/clickhouse/**, internal/**/queries/**, internal/ingestion/migrations/**
+alwaysApply: false
+---
+
+Redis: 4 standalone masters + Sentinel (not Cluster). Route `campaign_id` -> CRC32C slot -> shard. Each `EVALSHA` must hit one shard.
+
+Shard 0 global: pub/sub `campaigns:update`, auth lockout, brand creatives. Replicated to all shards via outbox: config, blacklists, fraud boosts, placement pauses.
+
+Shard-local: budgets, dedup, streams, ingress counters. Key catalog: `internal/domain/redis_key_catalog.go` for slot migration.
+
+Lua: tier B `budget-fast.lua` (impressions); tier C `unified-filter.lua` (fcap, pacing, TTC); refill `local-quota-refill.lua`. IP rate limits at edge/XDP only — not in Lua. p99 < 10 ms per shard.
+
+Shard-0 outage: reroute via `campaign_routing` triplet when configured; else `503 shard_unavailable`. Control pub/sub remains shard-0 SPOF until Sentinel promote.
+
+Postgres: settlement and budget authority. Budget invariant tests required. sqlc per service under `internal/<svc>/db/`.
+
+ClickHouse: analytics and IVT batch paths only — not hot ingest authority.
+
+Streams: processor consumes Redis streams -> PG events, `balance_ledger`, CH batches.
+
+Related: `docs/ARCHITECTURE.md`, `docs/SHARDING.md`.

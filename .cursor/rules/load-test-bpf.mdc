@@ -1,0 +1,29 @@
+---
+description: BPF + Prometheus load-test validation before perf claims
+globs: scripts/test/**, scripts/dev/bpf*, cmd/bpf-collector/**, cmd/loadgen/**, deploy/dev/bpf/**
+alwaysApply: false
+---
+
+Before claiming hot-path perf wins, run Prometheus bottleneck report and optional BPF session report.
+
+Quick path:
+
+- `make bpf-dev` — build probe + collector
+- `AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business` — loadgen + reports under `var/load-test/<timestamp>/`
+- `go run ./cmd/load-report all` — `bottleneck-report.md` + `bpf-report.md`
+
+Standalone session: `make bpf-session-start` / `make bpf-session-stop` (no loadgen).
+
+Env (common): `AD_EVENT_PROCESSOR_BPF_PROBE=1`, `AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE` (use 10 on laptops), `AD_EVENT_PROCESSOR_BPF_SLOW_US`, `AD_EVENT_PROCESSOR_BPF_TARGETS=tracker,nginx,redis,processor`.
+
+Artifacts in `var/load-test/<utc>/`: `bottleneck-report.md`, `bpf-report.md`, `bpf/maps/summary.json`, `events.ndjson`.
+
+Interpretation:
+
+- Trust BPF for host scheduling; trust Prometheus for app SLOs.
+- High loadgen CPU on laptop often caps RPS before tracker Lua.
+- Abort if handler p99 > 80 ms for 30 s (`malformed.sh`).
+
+Not for CI/production deploy. Requires root/CAP_BPF on dev host. Does not replace production `edge-xdp` compliance maps.
+
+Related: `hot-path.mdc`, `core.mdc`, `docs/DEVELOPMENT.md`.

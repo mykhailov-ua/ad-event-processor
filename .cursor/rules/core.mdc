@@ -1,0 +1,45 @@
+---
+description: SLA, sources-only repo, doc routing, commits, rule index
+alwaysApply: true
+---
+
+Client docs: `docs/INDEX.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`.
+Open backlog: `docs/DEVELOPMENT.md` only. Do not duplicate backlog in docs or rules.
+
+Doc routing: behavior and topology -> `docs/ARCHITECTURE.md`; dev, CI, backlog -> `docs/DEVELOPMENT.md`; engineering rules -> `.cursor/rules/*.mdc`. Do not duplicate agent rules into docs.
+
+SLA and budgets
+
+- Tracker `ad_http_request_duration_seconds`: p95 < 50 ms, p99 < 80 ms, ceiling 100 ms.
+- Production `FILTER_TIMEOUT_MS` <= 100; dev default 5000 ms.
+- Redis unified-filter Lua p99 < 10 ms per shard.
+- Geo filter p99 < 10 us (sampled).
+- `RunAuction` p99 < 15 us; p99 candidates scanned < 500.
+- Fraud boost snapshot: incremental < 500 us per `FilterEngine.Check`; `BenchmarkFilterFraudBoost` ~90 ns, 0 allocs/op.
+- `GetShard` (StaticSlot): ~5.6 ns, 0 allocs/op.
+- Load-test abort: control-cohort p99 > 80 ms for 30 s or budget invariant violation.
+- Budget invariant: `current_spend <= budget_limit` in Postgres; spend tests use `AssertBudgetInvariant` (+/-1 micro-unit).
+
+Sources-only repo
+
+Fresh clone is not runnable out of the box: run `make gen` / `make proto`, provide env/secrets, build BPF, fetch GeoIP, start compose. Do not commit generated code, `bin/*`, `.cache/`, `var/`, secrets, or runtime JWT files. Canonical ignore: root `.gitignore`. Local dev license path: `var/license.jwt` (not repo root `license.jwt`).
+
+Commit policy
+
+- Title: imperative, plain English; lead with Add, Remove, Fix, Wire, Drop, Guard, Reject; name concrete surface (route, handler, table, env var, binary).
+- Avoid: `refactor:`, `docs:`, `chore:`, vague umbrellas (`perf`, `cleanup`, `misc`, `WIP`), milestone tokens (`M-…`, `GAP-…`).
+- Body optional: why and what to verify; no file manifest.
+- One logical change set per commit; no docs-only commits unless code ships in the same commit.
+
+Rules (flat `.cursor/rules/`)
+
+- `core.mdc`, `quality.mdc` — always on.
+- `code-style.mdc` — layout, types, sqlc, proto, PR gates.
+- `hot-path.mdc` — `/track`, gnet, filters, 0 allocs.
+- `cold-path.mdc` — admin, payment, ledger, notify; no Provider/Factory layers.
+- `data-layer.mdc` — Redis StaticSlot, Postgres, ClickHouse.
+- `boundaries.mdc` — `cmd/*` ownership and imports.
+- `control-plane.mdc` — outbox, workers, admin API.
+- `rtb.mdc`, `edge.mdc`, `compliance.mdc`, `fault-tests.mdc`, `load-test-bpf.mdc`.
+
+Precedence: `core.mdc` on SLA and repo policy; `hot-path.mdc` on ingest; `cold-path.mdc` on notify/payment/ledger/controlplane; `code-style.mdc` on structure; `boundaries.mdc` on imports.

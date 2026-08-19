@@ -1,0 +1,35 @@
+---
+description: Tracker ingest zero-alloc, gnet, FilterEngine, BCE, benchmarks
+globs: internal/ingestion/**, internal/campaignmodel/**, cmd/tracker/**, pkg/broker/**
+alwaysApply: false
+---
+
+Apply when changing `/track`, filters, parse, or gnet handlers.
+
+SLA: handler p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10 ms/shard; 0 allocs/op on parse/filter/auction (`make test-alloc-gate`).
+
+Forbidden on request path: defer in loops, closures, `interface{}` boxing, `sync.Map`, `fmt.Sprintf`, string `+`, dynamic Prometheus labels, `context.WithValue`.
+
+Use: vtproto pools, byte-slice parse, `unsafe.String` only while gnet frame lives (copy before async), pre-bound metrics, stack `[N]byte` + append.
+
+Deadlines: `FilterDeadlineMono = monotonicNano() + timeout` at entry — no wall clock in filter loops.
+
+gnet: HTTP/1.1 FSM on ring buffer; `PinnedWorkerPool` by campaign hash; padded queues against false sharing.
+
+FilterEngine order before Redis: emergency breaker -> fraud/geo -> schedule -> ML boost snapshot -> unified Lua.
+
+Atomics: pad contended fields (`cpu.CacheLinePad`); `atomic.Pointer` snapshot swap on catalog rebuild; load atomics once per loop.
+
+BCE: length check before indexed loop; `_ = buf[len(buf)-1]` hint when needed.
+
+RTB: presorted buckets, early break on score floor; see `rtb.mdc`.
+
+Verification:
+
+- `make test-alloc-gate`
+- `go test -run='^$' -bench=. -benchmem ./internal/ingestion/...`
+- objdump: reject `panicIndex`, `newobject`, `json.*` in hot loops
+
+PR: no new `interface{}` on `/track`; fault proof per `fault-tests.mdc` for new write paths.
+
+Related: `core.mdc`, `rtb.mdc`, `load-test-bpf.mdc`.
