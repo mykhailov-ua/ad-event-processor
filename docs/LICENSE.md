@@ -1,17 +1,16 @@
 # Pilot: offline license (on-prem)
 
-Closed-network installs with **no license server**, **no outbound license pings**. You receive a signed JWT monthly after payment and paste it into the install or admin UI.
+Closed-network installs: no license server, no outbound license pings. Vendor delivers signed JWT monthly; customer pastes into install or admin UI.
 
-## Vendor (you) — first-time setup
+## Vendor setup
 
 ```bash
-# Once: generate keypair (private key stays local, never in customer tarball)
 bash scripts/vendor/gen_license_keypair.sh
 git add deploy/vendor/license_public.key
-# deploy/vendor/license_private.key is gitignored — back up offline
+# deploy/vendor/license_private.key gitignored — back up offline
 ```
 
-Issue a monthly license for a customer:
+Issue monthly JWT:
 
 ```bash
 export AD_EVENT_PROCESSOR_LICENSE_PRIVATE_KEY_FILE=deploy/vendor/license_private.key
@@ -19,98 +18,51 @@ export AD_EVENT_PROCESSOR_LICENSE_PRIVATE_KEY_FILE=deploy/vendor/license_private
 go run ./cmd/license-issue \
   --sku pilot \
   --customer "Acme Media" \
-  --deployment-id "<uuid-from-customer-settings-or-email>" \
-  --fingerprint "<host-fingerprint-from-install>" \
+  --deployment-id "<uuid>" \
+  --fingerprint "<host-fingerprint>" \
   --days 35 \
   --out /tmp/acme-license.jwt
-
-# Email / deliver the JWT file contents to the customer (single line)
 ```
 
-Record `deployment_id` per customer — reuse the same ID on renewal JWTs.
+Reuse same `deployment_id` on renewals. USDT billing: [BILLING.md](BILLING.md).
 
-### Pilot trial registry (repeat-trial gate)
+### Trial registry
 
-Pilot issue checks a **vendor-local** file registry (`deploy/vendor/trial_registry.json` by default). See [TRIAL_ABUSE.md](TRIAL_ABUSE.md).
+Pilot checks vendor-local registry (`deploy/vendor/trial_registry.json`). See [TRIAL.md](TRIAL.md).
 
 ```bash
 export BIDSHARD_VENDOR_TRIAL_REGISTRY=deploy/vendor/trial_registry.json
 
-go run ./cmd/license-issue \
-  --sku pilot \
-  --customer "Acme Media" \
-  --telegram-id "<buyer-telegram-user-id>" \
-  --deployment-id "<uuid>" \
-  --out /tmp/acme-pilot.jwt
-
-# After bundle: record hwid anchor
-go run ./cmd/license-issue \
-  --record-hwid \
-  --deployment-id "<uuid>" \
-  --hwid-v2 "<hwid_v2-from-support-bundle>"
-
-# Pilot ended without conversion
-go run ./cmd/license-issue \
-  --trial-mark-expired \
-  --deployment-id "<uuid>"
-
-# Bulk expire stale pilots (cron on vendor host)
+go run ./cmd/license-issue --sku pilot --customer "Acme" --telegram-id "<id>" --deployment-id "<uuid>" --out /tmp/acme-pilot.jwt
+go run ./cmd/license-issue --record-hwid --deployment-id "<uuid>" --hwid-v2 "<hwid_v2>"
+go run ./cmd/license-issue --trial-mark-expired --deployment-id "<uuid>"
 go run ./cmd/trial-registry expire-stale
-
-# Optional: Telegram capture bot (vendor workstation; no signing key on bot host)
-export BIDSHARD_VENDOR_TRIAL_BOT_TOKEN="<from @BotFather>"
-go run ./cmd/vendor-trial-bot run
-
-# Review queue and issue pilot JWT
 go run ./cmd/trial-registry list-pending
-go run ./cmd/license-issue \
-  --approve-pending "<pending-id>" \
-  --out /tmp/acme-pilot.jwt
-
-# Reject spam signups
-go run ./cmd/trial-registry reject-pending --id "<pending-id>" --reason "spam"
-
-# Paid conversion: same deployment_id, then mark converted
-go run ./cmd/license-issue \
-  --sku starter \
-  --customer "Acme Media" \
-  --deployment-id "<uuid>" \
-  --hwid-v2 "<hwid_v2>" \
-  --mark-converted \
-  --out /tmp/acme-starter.jwt
+go run ./cmd/license-issue --approve-pending "<pending-id>" --out /tmp/acme-pilot.jwt
+go run ./cmd/license-issue --sku starter --deployment-id "<uuid>" --hwid-v2 "<hwid_v2>" --mark-converted --out /tmp/acme-starter.jwt
 ```
 
-Force re-issue (audit): `BIDSHARD_VENDOR_TRIAL_FORCE=1` plus `--force --force-reason "..."`.
+Force re-issue: `BIDSHARD_VENDOR_TRIAL_FORCE=1` + `--force --force-reason "..."`.
 
-## Customer — first install
+## Customer install
 
-In `deploy/installer/install.env`:
+`deploy/installer/install.env`:
 
 ```bash
 AD_EVENT_PROCESSOR_LICENSE_MODE=file
-AD_EVENT_PROCESSOR_LICENSE_KEY=<paste full JWT line from vendor>
+AD_EVENT_PROCESSOR_LICENSE_KEY=<JWT line>
 TELEMETRY_ENABLED=false
 ```
-
-Then:
 
 ```bash
 bash scripts/install/ad-event-processor-install.sh --yes
 ```
 
-Install writes `license.jwt`, sets `AD_EVENT_PROCESSOR_LICENSE_MODE=file`, clears license server URL, disables product telemetry ping.
+## Renewal
 
-## Customer — monthly renewal (after payment)
-
-**Option A — Admin UI:** Settings → License renewal → paste new JWT → Apply.
-
-**Option B — CLI on the server:**
-
-```bash
-bash scripts/install/ad-event-processor-install.sh license-apply '<JWT>'
-```
-
-**Option C — API:**
+- **Admin:** Settings → License renewal → paste JWT → Apply.
+- **CLI:** `bash scripts/install/ad-event-processor-install.sh license-apply '<JWT>'`
+- **API:**
 
 ```bash
 curl -sS -X POST http://127.0.0.1:8188/api/v1/license/apply \
@@ -119,195 +71,185 @@ curl -sS -X POST http://127.0.0.1:8188/api/v1/license/apply \
   -d '{"token":"<JWT>"}'
 ```
 
-No restart required — entitlements reload immediately.
+No restart — entitlements reload immediately.
 
 ## License states
 
 | State | Tracking |
 |-------|----------|
 | ACTIVE | Normal |
-| GRACE | JWT expired but within `grace_days` (7) — renew soon |
-| EXPIRED | Tracking blocked |
+| GRACE | JWT expired, within `grace_days` (7) |
+| EXPIRED | Blocked |
 
-Pilot SKU (`deploy/vendor/sku.yaml`): 10-day validity, 5k RPS cap, OpenRTB off, 7-day grace, **hard bind** (host fingerprint).
+Pilot SKU (`deploy/vendor/sku.yaml`): 10-day validity, 5k RPS cap, OpenRTB off, 7-day grace, hard bind.
 
-## Host fingerprint (hard bind)
+## Host fingerprint / HWID v2
 
-On first install the installer prints `deployment fingerprint=...`. Include this value when requesting a renewal JWT:
+Installer prints `deployment fingerprint=...` — include in renewal request. Mismatch blocks ingest on another VPS.
 
-```bash
-go run ./cmd/license-issue \
-  --sku pilot \
-  --customer "Acme Media" \
-  --deployment-id "<uuid>" \
-  --fingerprint "<host-fingerprint-from-install>" \
-  --out /tmp/acme-license.jwt
-```
-
-Mismatching fingerprint on another VPS blocks ingest even with a copied `license.jwt`.
-
-### HWID v2 (Argon2id, recommended for new renewals)
-
-Renewal JWTs may include an `hwid_hash` claim (Argon2id over DMI UUID, root disk id, NIC MAC, and CPU model/cores). The support bundle and doctor output export `hwid_v2` alongside the legacy `host_fingerprint`.
-
-Issue with HWID v2 (preferred when the customer bundle includes `hwid_v2`):
+HWID v2 (Argon2id, preferred): bundle exports `hwid_v2`.
 
 ```bash
 go run ./cmd/license-issue \
-  --sku pilot \
-  --customer "Acme Media" \
-  --deployment-id "<uuid>" \
+  --sku pilot --customer "Acme" --deployment-id "<uuid>" \
   --hwid-v2 "<hwid_v2-from-support-bundle>" \
   --out /tmp/acme-license.jwt
 ```
 
-When `hwid_hash` is present in the JWT, verification uses HWID v2 only; legacy `--fingerprint` remains valid for older tokens without `hwid_hash`.
+When JWT has `hwid_hash`, verification uses HWID v2 only; legacy `--fingerprint` for older tokens without `hwid_hash`.
 
-Regenerate golden HWID vectors (vendor CI only): `bash scripts/security/license_vector_gen.sh`
+Vectors: `bash scripts/security/license_vector_gen.sh`
 
-## Vendor renewal checklist (support)
+## Verification catalog
 
-Before issuing a renewal JWT:
+Authz: `Authz(token, host, t) ≜ V ∧ B ∧ R ∧ S`. Gate: `make license-verify`.
 
-1. Customer ticket includes **same** `deployment_id` as prior invoice (Settings → License or support bundle `version.json`).
-2. Compare `host_fingerprint` or `hwid_v2` from support bundle with values used at first install (`AD_EVENT_PROCESSOR_DEPLOYMENT_FINGERPRINT` on server or install log).
-3. Reject renewal when fingerprint, HWID v2, or deployment_id changed without a signed migration note.
-4. Issue JWT with matching `--deployment-id` and `--hwid-v2` (or legacy `--fingerprint` when `hwid_hash` is absent).
+| ID | Property |
+| --- | --- |
+| P-C2-01 | Invalid signature or payload ⇒ reject |
+| P-C2-02 | Hard bind mismatch ⇒ reject |
+| P-C2-03 | Revoked ⇒ not ingestible |
+| P-C2-04 | Past grace ⇒ expired |
+| P-C2-05 | PG ACTIVE without valid file JWT ⇒ ingest blocked |
+| P-C3-01 | `DetermineState` pure in `(claims, t, revoked)` |
+| P-C3-02 | Non-revoked JWT state monotonic non-increasing |
+| P-C3-03 | `IngestAllowed` false iff state ∈ {EXPIRED, REVOKED} |
+| P-C3-04 | Wall clock rewind vs monotonic ⇒ expired |
+| P-C3-05 | NTP-sized drift within threshold ⇒ not expired |
+| P-C3-06 | Global skew watch forces expired state |
+| P-C3-07 | Registry recheck on skew ⇒ ingest blocked |
+| P-C4-01 | `Effective(e, e)` stable under re-merge |
+| P-C4-02 | `Effective` associative merge |
+| P-C4-03 | Customer limits never exceed deployment ceiling |
+| P-HWID-01 | Argon2id hash deterministic for fixed telemetry |
+| P-HWID-02 | Missing DMI does not panic; stable hash |
+| P-KEY-01 | XOR-masked embedded key decodes to production Ed25519 pubkey |
+| P-KEY-02 | Plaintext production pubkey hex not in `public_key.go` |
+| P-D2-01 | XOR path tables decode to expected sysfs targets |
+| P-D2-02 | amd64 uses raw `openat`/`read` syscall shim |
+| P-D2-03 | Release tracker has no plaintext HWID paths |
+| P-D4-01 | `sha256(vault:tag)` derivation matches CI |
+| P-D4-02 | Wrong release salt ⇒ AEAD open fails |
+| P-D4-03 | CI smoke with `ASSET_SEAL_SALT` set |
+| P-C6-01 | MCK deterministic for fixed JWT + HWID + deployment_id |
+| P-C6-02 | Different HWID ⇒ different MCK |
+| P-C6-03 | Seal/open round-trip; wrong MCK ⇒ open fails |
+| P-C6-04 | Feature seed coupling gates RPS/OpenRTB when enabled |
+| P-C6-05 | Per-release `ASSET_SEAL_SALT` mixed into AEAD HKDF |
+| P-C6-06 | Hot path uses inline state deny, not `IngestAllowed` call |
+| P-C6-07 | Cold paths scatter inline bitmask checks |
+| P-C6-08 | Valid license + sealed blob ⇒ `ebpf.NewCollection` |
+| P-C6-09 | Sealed vs unsealed XDP attach on lab host |
+| P-C6-10 | Sealed `unified-filter.lua` decrypt at tracker startup |
+| P-C8-01 | TracerPid > 0 trips guard + epoch invalidate |
+| P-C8-02 | Suspicious maps trip guard |
+| P-C8-03 | `.text` hash mismatch trips guard |
+| P-C8-04 | Env kill switch disables guard |
+| P-C8-05 | Ptrace watchdog child: busy tracer slot trips guard |
+| P-C8-06 | Ptrace watchdog re-exec child claims parent tracer |
+| P-C8-07 | Guard off: engineering tooling documented |
+| P-C8-08 | Fault suite does not require `license_guard` tag |
+| P-C8-09 | Release strings gate (symbols + pubkey + license plaintext) |
+| P-C8-10 | gdb attach denied with guard + ptrace watchdog |
+| P-D1-01 | Default: tracker `literals=0`, control/processor `literals=1` |
+| P-D1-02 | `GARBLE_LITERALS` overrides all binaries |
+| P-D1-03 | `internal/ingestion` package `//garble:ignore` for tracker literals eval |
+| P-D1-04 | Tracker p99 with `-literals` within +10% baseline (lab) |
+| P-D5-01 | Garbled tracker/processor/control build |
+| P-D5-02 | Garbled binary strings gate |
+| P-D5-03 | License math after garble build |
+| P-QA-01 | Nightly fuzz workflow documents JWT/HWID targets |
+| P-QA-02 | Short fuzz smoke + extended red-team |
+| P-QA-03 | Garbled tracker build + license alloc subset |
+| P-QA-04 | Full garbled release (tracker/processor/control) |
 
-## Revocation (chargeback)
+## Renewal checklist
 
-Issue a revocation JWT — ingest stops after customer applies it or tracker rechecks the file:
+1. Same `deployment_id` as prior invoice.
+2. Compare `host_fingerprint` or `hwid_v2` from support bundle with install values.
+3. Reject fingerprint/HWID/deployment_id change without signed migration note.
+4. Issue with matching `--deployment-id` and `--hwid-v2` (or legacy `--fingerprint`).
+
+## Revocation
 
 ```bash
 go run ./cmd/license-issue \
-  --sku pilot \
-  --customer "Acme Media" \
-  --deployment-id "<uuid>" \
-  --fingerprint "<host-fingerprint>" \
-  --revoke \
-  --out /tmp/acme-revoke.jwt
+  --sku pilot --deployment-id "<uuid>" --fingerprint "<fp>" \
+  --revoke --out /tmp/acme-revoke.jwt
 ```
 
-## License red-team (vendor / CI)
+## Red-team / closed contour
 
 ```bash
 make license-red-team
 ```
 
-Runs integration tests for empty PG row, fake ACTIVE row, and expired JWT bypass scenarios.
-
-## Closed contour checklist
-
 | Check | Setting |
 |-------|---------|
 | No license server | `AD_EVENT_PROCESSOR_LICENSE_MODE=file`, empty `AD_EVENT_PROCESSOR_LICENSE_SERVER` |
-| No product telemetry | `AD_EVENT_PROCESSOR_TELEMETRY_OPT_IN=0` |
-| Verify key in image/env | `deploy/vendor/license_public.key` or `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` |
-| Status | `GET /api/v1/license/status` or Overview license banner |
+| No telemetry | `AD_EVENT_PROCESSOR_TELEMETRY_OPT_IN=0` |
+| Verify key | `deploy/vendor/license_public.key` or `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` |
+| Status | `GET /api/v1/license/status` |
 
-## Support bundle
+Support bundle: ask for `deployment_id` from Settings or `GET /api/v1/meta`.
 
-Ask customer for `deployment_id` from Settings or `GET /api/v1/meta` before issuing renewal JWT.
+## Release images
 
-## Release images (SKU surface)
+| Tag suffix | Binaries | Use |
+|------------|----------|-----|
+| `v1.0.0-pilot` | tracker, processor, control | Full single-VPS |
+| `v1.0.0-pilot-ingest` | tracker, processor | Ingest-only |
 
-| Tag suffix | Binaries | Use case |
-|------------|----------|----------|
-| `v1.0.0-pilot` (default tag) | tracker, processor, control | Full single-VPS pilot |
-| `v1.0.0-pilot-ingest` | tracker, processor | Ingest-only workers (no admin binary in image) |
-
-Set `AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/<org>/ad-event-processor:<tag>-ingest` for ingest-only deployments.
+`AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/<org>/ad-event-processor:<tag>-ingest`
 
 ## EULA
 
-Install requires `--accept-eula` (non-interactive) or interactive acceptance during `ad-event-processor-install.sh up`.
+Install: `--accept-eula` or interactive during `ad-event-processor-install.sh up`. Text: `pkg/legal/EULA.txt`, version `2026-01`.
 
-First admin login shows a click-through if EULA was not recorded at bootstrap. Text: `pkg/legal/EULA.txt`, version `2026-01`.
-
-## Garble literals (Release hardening)
-
-Release garble builds apply `-literals` per binary:
+## Garble literals (release)
 
 | Binary | Default `-literals` |
 | --- | --- |
-| `tracker` | off (hot path; enable only after eval) |
-| `processor` | on |
-| `control` | on |
+| tracker | off |
+| processor | on |
+| control | on |
 
-Override all: `GARBLE_LITERALS=0|1`. Per binary: `GARBLE_LITERALS_TRACKER=1`, etc.
+Override: `GARBLE_LITERALS=0|1`, `GARBLE_LITERALS_TRACKER=1`. Eval: `make garble-literals-eval`, `make garble-literals-policy-gate`, `make garble-literals-p99-smoke`.
 
-Evaluate tracker size impact before enabling literals on ingest:
+## Sealed assets
 
-```bash
-make garble-literals-eval
-make garble-literals-policy-gate
-```
-
-p99 acceptance (+10% vs baseline): `make garble-literals-p99-smoke` (load-test stack + Prometheus). Size-only eval: `make garble-literals-eval`.
-
-## Sealed BPF + XDP attach lab (Sealed assets)
-
-Valid JWT on bound host must load sealed edge BPF and attach XDP like the unsealed baseline:
+Valid JWT on bound host loads sealed BPF + XDP:
 
 ```bash
-# Prereq: clang + BTF
 sudo apt install -y clang llvm libbpf-dev linux-libc-dev
-make bpf-edge-prereq-gate          # go generate + sealed unit tests; skip if no clang
-
+make bpf-edge-prereq-gate
 sudo SEALED_BPF_XDP_SMOKE=1 make sealed-bpf-xdp-smoke
 ```
 
-Harness: `kernel_xdp_attach_lo_generic` on `lo`; drop proof via `prog.Test` on the same maps (`drop_assertion=prog_test_same_maps`), not raw loopback RX.
-
-### Sealed unified-filter.lua (V2-B.4)
-
-Vendor seal (enterprise images):
+Seal unified-filter.lua:
 
 ```bash
 go run ./cmd/license-asset-seal \
   --label unified-filter \
   --in internal/ingestion/unified-filter.lua \
   --out internal/ingestion/unified_filter_sealed.bin \
-  --license license.jwt
+  --license var/license.jwt
 ```
 
-Runtime: tracker calls `InitUnifiedFilterLua()` at cold startup. When `AD_EVENT_PROCESSOR_LICENSE_MODE=enterprise` and `unified_filter_sealed.bin` exists, decrypts with MCK from `license.jwt`. Missing blob falls back to embedded `//go:embed` script (pilot transition). Override path: `AD_EVENT_PROCESSOR_UNIFIED_FILTER_SEALED_BLOB`.
+Runtime: `InitUnifiedFilterLua()` at cold startup. Enterprise mode + blob → decrypt via MCK from JWT. Fallback: embedded script. Override: `AD_EVENT_PROCESSOR_UNIFIED_FILTER_SEALED_BLOB`.
 
 ## License guard (V2-C)
 
-Release garble builds (`license_guard` tag) enable cold-path anti-debug probes on tracker, processor, and control.
+Release garble (`license_guard` tag): cold-path anti-debug on tracker, processor, control.
 
 | Env | Effect |
 | --- | --- |
-| `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` | Disable all guard probes (gdb/strace friendly) |
-| `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE=0` | Disable ptrace watchdog child only; keep TracerPid/maps/text checks |
-
-Ptrace watchdog (V2-C.2): on startup a re-exec child attaches to the parent with `PTRACE_ATTACH`, occupying the tracer slot so external debuggers get `EBUSY`. If another tracer is already present, the license epoch is invalidated (`ptrace_busy`). When `kernel.yama.ptrace_scope` blocks attach, the watchdog skips with a warning (no trip).
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` | Disable all probes |
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE=0` | Disable ptrace watchdog only |
 
 ```bash
 go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
-make license-guard-off-smoke
-make license-guard-fault-gate
-make license-gdb-guard-smoke          # automated gdb attach denial (harness=license_guard_release)
-make license-red-team-extended        # red-team steps 7–10 (automated subset)
+make license-guard-off-smoke license-guard-fault-gate license-gdb-guard-smoke license-red-team-extended
 ```
 
-### Lab gdb drill (V2-C.D1)
-
-Automated smoke (test binary subprocess):
-
-```bash
-make license-gdb-guard-smoke
-# or: LICENSE_GDB_SMOKE=1 go test -tags=license_guard ./internal/licensing/ -run GDBAttachDenied -count=1
-```
-
-Full release tracker on a lab host:
-
-```bash
-RELEASE_GARBLE=1 LICENSE_GUARD=1 make release-garble
-# run tracker with valid license.jwt, then:
-gdb -p "$(pgrep -n tracker)"
-```
-
-Harness: `license_guard_release`. Expect `ptrace: Operation not permitted` / attach failure, or license epoch invalid within the background probe window. Use `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` to confirm gdb works when guard is intentionally disabled (C.D2).
-
+Lab gdb drill: `RELEASE_GARBLE=1 LICENSE_GUARD=1 make release-garble` then `gdb -p "$(pgrep -n tracker)"`. Expect attach failure or epoch invalid. Disable guard: `AD_EVENT_PROCESSOR_LICENSE_GUARD=0`.

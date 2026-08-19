@@ -1,23 +1,17 @@
 # Multi-region deployment (Enterprise)
 
-**Not part of appliance SKU.** Enable only with Enterprise license (`features.multi_region`), installer profile, and compose profile `multi-region`.
-
-See also: [ARCHITECTURE.md](ARCHITECTURE.md) section 11.
-
----
+**Not appliance SKU.** Requires Enterprise license (`features.multi_region`), installer profile, compose profile `multi-region`. See [ARCHITECTURE.md](ARCHITECTURE.md) §11.
 
 ## Components
 
 | Piece | Path | Role |
 | :--- | :--- | :--- |
-| `region-proxy` | `cmd/region-proxy`, `pkg/regionproxy/` | Regional WAL ingress, quorum book/ack, uplink to global control |
-| Regional processor | `cmd/processor` with `MULTI_REGION_ENABLED=1` | Spend sync batches → region-proxy (`REGION_PROXY_ADDR`) |
-| Global control | `control` | `IngestRegionProxyBatch`, operation leases, global PG truth |
-| Compose | `deploy/compose/docker-compose.yaml` | Services under `--profile multi-region` only |
+| `region-proxy` | `cmd/region-proxy`, `pkg/regionproxy/` | Regional WAL ingress, quorum book/ack, uplink |
+| Regional processor | `cmd/processor` + `MULTI_REGION_ENABLED=1` | Spend sync → region-proxy |
+| Global control | `control` | `IngestRegionProxyBatch`, operation leases, global PG |
+| Compose | `deploy/compose/docker-compose.yaml` | `--profile multi-region` |
 
-License: pilot `multi_region: false` in `deploy/vendor/sku.yaml`. Runtime gate in `internal/controlplane/serve.go`.
-
----
+Pilot: `multi_region: false` in `deploy/vendor/sku.yaml`.
 
 ## Environment (regional cell)
 
@@ -25,60 +19,38 @@ License: pilot `multi_region: false` in `deploy/vendor/sku.yaml`. Runtime gate i
 | :--- | :--- |
 | `MULTI_REGION_ENABLED=1` | Regional processor mode |
 | `REGION_CODE` | Cell identifier |
-| `REGION_PROXY_ADDR` | `region-proxy` listen address |
-| `REGION_PROXY_REDIS_URL` | Optional Redis for proxy metadata |
-| `GLOBAL_SPEND_BATCH_MIN` | Min batch before spend-sync flush (default 100) |
-
-Stack with profile:
+| `REGION_PROXY_ADDR` | region-proxy listen |
+| `REGION_PROXY_REDIS_URL` | Optional proxy metadata Redis |
+| `GLOBAL_SPEND_BATCH_MIN` | Min batch before flush (default 100) |
 
 ```bash
 docker compose -f deploy/compose/docker-compose.yaml --profile multi-region up -d
-# or dev stack:
 bash scripts/dev/stack.sh --profile multi-region
 ```
 
----
-
 ## Region-proxy WAL
 
-Regional processors write events to an append-only WAL (`pkg/regionproxy/wal/`):
+Append-only WAL (`pkg/regionproxy/wal/`): group commit (`fsyncSem` capacity 1), crash recovery via `Recover()` (discards torn records). Quorum: `pkg/regionproxy/quorum` (operation leases when multi-region enabled).
 
-- **Group commit**: `fsyncSem` capacity 1 serializes `fsync`; concurrent appends share one sync.
-- **Crash recovery**: `Recover()` scans tail, discards torn records, remaps segment before accepting traffic.
-
-Quorum helpers live in `pkg/regionproxy/quorum` (used by `control` operation leases when multi-region is enabled).
-
----
-
-## 90-minute operator resilience drill
-
-Runner:
+## 90-minute resilience drill
 
 ```bash
 bash scripts/test/mr_resilience_drill.sh
 ```
 
-Optional CI: `.github/workflows/enterprise-resilience.yaml` (`workflow_dispatch`).
+1. **0–10 min:** p99 &lt; 80 ms; node weights healthy.
+2. **10–20 min:** MR fault suite — ≥12 `mr_*` `fault_proof` lines.
+3. **20–35 min:** Quorum partition — only 1/3 region-proxy active; global updates blocked.
+4. **35–50 min:** Stop regional PG; lease expires; local budget continues.
+5. **50–65 min:** Kill region-proxy replica; RTO &lt; 120 s.
+6. **65–75 min:** Pause global PG 60 s; trackers online; proxies spool WAL.
+7. **75–85 min:** `AssertBudgetInvariant` — Redis vs PG ±1 micro-unit.
+8. **85–90 min:** Teardown, outboxes drained.
 
-### Checklist
+Unit proofs: `go test -run 'TestFault_(Score|OperationLease|Region|Proxy|Disk|Global|Quorum)' ./internal/controlplane/...`
 
-1. **Min 0–10 (Baseline)**: p99 &lt; 80 ms; node weights healthy.
-2. **Min 10–20 (Fault injection)**: MR fault suite — at least 12 `mr_*` `fault_proof` lines (subset of `run_resilience.sh`).
-3. **Min 20–35 (Quorum)**: Partition so only 1/3 region-proxy replicas active; global updates blocked.
-4. **Min 35–50 (Lease partition)**: Stop regional PostgreSQL; lease expires; local budget spend continues.
-5. **Min 50–65 (Proxy failover)**: Kill a `region-proxy` replica; RTO **&lt; 120 s**.
-6. **Min 65–75 (Global DB outage)**: Pause global PostgreSQL 60 s; trackers online; proxies spool WAL.
-7. **Min 75–85 (Invariants)**: `AssertBudgetInvariant` — Redis vs PG within ±1 micro-unit.
-8. **Min 85–90 (Teardown)**: Logs, restore config, outboxes drained.
+E2E: `tests/e2e/region_proxy_uplink_test.go`, `region_proxy_ingress_test.go`.
 
-Unit MR proofs (no full geo stack): `go test -run 'TestFault_(Score|OperationLease|Region|Proxy|Disk|Global|Quorum)' ./internal/controlplane/...`
+## Import boundaries
 
-E2E (often skipped in CI): `tests/e2e/region_proxy_uplink_test.go`, `region_proxy_ingress_test.go`.
-
----
-
-## Import boundaries (appliance)
-
-Production hot-path ingestion (`internal/ingestion`, non-`_test`) does **not** import `pkg/regionproxy`. Spend sync uses `SpendSyncTransport` interface; `cmd/processor` wires `region-proxy` client only when `MULTI_REGION_ENABLED=1`.
-
-Cold-path `internal/controlplane/operation_lease.go` still uses `pkg/regionproxy/quorum` when Enterprise multi-region is enabled — acceptable until lease store is abstracted.
+Hot-path `internal/ingestion` (non-`_test`) does **not** import `pkg/regionproxy`. `cmd/processor` wires region-proxy client only when `MULTI_REGION_ENABLED=1`. Cold-path `operation_lease.go` uses `pkg/regionproxy/quorum` when Enterprise multi-region enabled.

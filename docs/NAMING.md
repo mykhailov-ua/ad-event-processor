@@ -1,21 +1,21 @@
-# Naming: BidShard vs ad-event-processor
+# Naming
 
-**Public product:** **BidShard** (README, sales kit, buyer-facing guides).
+**Public product name:** **ad-event-processor**.
 
-**Engineering stack id:** **ad-event-processor** (Go module path, compose service names, internal docs). Do not use legacy **espx** in new code or customer docs.
+**Engineering stack id:** **ad-event-processor** (Go module, compose services, internal docs).
 
-## Where each name appears
+Legacy tokens (`BidShard`, `espx`, `ESPX_`) are forbidden in new code and docs.
+
+## Surfaces
 
 | Surface | Name |
 | :--- | :--- |
-| `README.md`, `docs/QUICKSTART.md`, `docs/TRAFFIC.md`, `deploy/vendor/*` | BidShard |
-| `go.mod`, `internal/*`, `cmd/*`, `docs/DEVELOPMENT.md`, `docs/ARCHITECTURE.md` | ad-event-processor |
-| Docker compose project / volumes | `ad_event_processor_*` (historical prefix; not renamed in v1 appliance) |
+| `docs/INDEX.md`, `docs/START.md`, `docs/TRAFFIC.md`, `deploy/vendor/*` | `ad-event-processor` |
+| `go.mod`, `internal/*`, `cmd/*`, `docs/DEVELOPMENT.md`, `docs/ARCHITECTURE.md` | `ad-event-processor` |
+| Docker compose project / volumes | `ad_event_processor_*` (historical; not renamed in v1) |
 
-## Prefix allowlist (migration)
+Guard: `scripts/ci/check_no_legacy_naming.sh`. Admin UI product strings say **ad-event-processor**; API paths stay `/api/v1/*` on control `:8188`.
 
-Paths still containing `espx` in env var names or scripts are listed in `scripts/ci/check_no_espx.sh`. New symbols must not add `espx` or `ESPX_` except documented allowlist entries.
+## Migration (upgrades)
 
-## Admin UI
-
-Embedded SPA: product strings say **BidShard**; API paths remain `/api/v1/*` on control `:8188`.
+After env renames (`REDIS_ADDRS`, `DB_DSN`, `AD_EVENT_PROCESSOR_LICENSE_*`): recreate compose stack and run `bash scripts/install/ad-event-processor-install.sh apply`. Details: [START.md](START.md).
