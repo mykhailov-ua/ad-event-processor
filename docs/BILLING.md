@@ -2,7 +2,7 @@
 
 Vendor-only: USDT license sales, tier ladder, invoices. Customer appliance does not process license payment — it verifies offline JWT.
 
-**See also:** [LICENSE.md](LICENSE.md), [TRIAL.md](TRIAL.md), `deploy/vendor/sku.yaml`.
+**See also:** [LICENSE.md](LICENSE.md), [TRIAL.md](TRIAL.md), [SALES_KIT.md](../deploy/vendor/SALES_KIT.md), `deploy/vendor/sku.yaml`.
 
 ## Tier ladder (USDT / month)
 
