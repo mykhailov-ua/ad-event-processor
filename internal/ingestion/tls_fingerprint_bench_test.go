@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"hash/crc32"
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -55,6 +56,20 @@ func BenchmarkTLS_Fingerprint_MatchBranch_SafeView(b *testing.B) {
 	var hit bool
 	for i := 0; i < b.N; i++ {
 		hit, _ = h.tlsFingerprintShouldSafeView(probes[i&63], nil, uuidNil, "")
+	}
+	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
+}
+
+func BenchmarkTLS_Fingerprint_AllowlistBranch(b *testing.B) {
+	ja3 := []byte("771,4865-4866,0-23,29-23-24,0")
+	h := crc32.ChecksumIEEE(ja3)
+	table := NewTLSFingerprintTable()
+	table.Publish(buildTLSFingerprintSnapshot([]uint32{h}, nil, []uint32{h}, nil, 1))
+	b.ReportAllocs()
+	b.ResetTimer()
+	var hit bool
+	for i := 0; i < b.N; i++ {
+		hit = table.shouldBlockJA3(ja3)
 	}
 	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
 }

@@ -31,6 +31,13 @@ func TestParseTLSFingerprintFeed(t *testing.T) {
 	require.Len(t, ja4, 1)
 }
 
+func TestParseTLSFingerprintAllowFeed(t *testing.T) {
+	data := []byte("# in-app allow\nja3:771,4865-4866\nja4:t13d1516h2\n")
+	ja3, ja4 := parseTLSFingerprintAllowFeed(data)
+	require.Len(t, ja3, 1)
+	require.Len(t, ja4, 1)
+}
+
 func TestTLSFingerprintTable_AllowlistBeforeBlocklist(t *testing.T) {
 	ja3 := []byte("771,4865-4866,0-23,29-23-24,0")
 	h := crc32.ChecksumIEEE(ja3)

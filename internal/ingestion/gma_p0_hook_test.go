@@ -52,6 +52,14 @@ func buildTestTLSFingerprintTable(ja3Line string) *TLSFingerprintTable {
 	return table
 }
 
+func buildTestTLSFingerprintTableBlockAllow(blockLine, allowLine string) *TLSFingerprintTable {
+	ja3Block, ja4Block := parseTLSFingerprintFeed([]byte(blockLine))
+	ja3Allow, ja4Allow := parseTLSFingerprintAllowFeed([]byte(allowLine))
+	table := NewTLSFingerprintTable()
+	table.Publish(buildTLSFingerprintSnapshot(ja3Block, ja4Block, ja3Allow, ja4Allow, 1))
+	return table
+}
+
 func TestHTTP1Assign_TLSJA3Direct(t *testing.T) {
 	var req parsedHTTPRequest
 	var flags uint8
@@ -90,6 +98,20 @@ func TestClickRedirect_TLSFingerprintNoMatch_FallsThrough(t *testing.T) {
 	h.ConfigureTLSFingerprint(buildTestTLSFingerprintTable("ja3:771,4865"))
 
 	conn := serveClickWithJA3(h, cid, "8.8.8.8", "other-fingerprint")
+	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: tls")
+	require.Equal(t, 1, filter.calls)
+}
+
+func TestClickRedirect_TLSFingerprintAllowlist_NoSafeView(t *testing.T) {
+	ja3 := "771,4865-4866,0-23,29-23-24,0"
+	filter := &countingFilter{}
+	h, cid := tlsHookHandler(t, true, filter)
+	h.ConfigureTLSFingerprint(buildTestTLSFingerprintTableBlockAllow(
+		"ja3:"+ja3,
+		"ja3:"+ja3,
+	))
+
+	conn := serveClickWithJA3(h, cid, "8.8.8.8", ja3)
 	require.NotContains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: tls")
 	require.Equal(t, 1, filter.calls)
 }
