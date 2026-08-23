@@ -23,6 +23,8 @@ Default `/sys/fs/bpf/ad-event-processor`. Key maps: `blocklist_v4`, `blocklist_v
 
 IPv6 deny/allow use `BPF_MAP_TYPE_LPM_TRIE` with `BPF_F_NO_PREALLOC` (`blocklist_v6`, `allow_v6`). bpf-sync applies Redis sets to both v4 host keys and v6 host keys; allowlist lookup runs before blocklist on IPv6 TCP to tracker ingress.
 
+**Blocklist scale (Phase 6):** LPM deny maps `max_entries=786432` (was 524288). Hot path sync reads `blacklist:changelog:{add,remove}` ZSETs on shard 0 between full refreshes; control-plane `syncGlobalSetMemberToAllShards` and XDP autoban append changelog rows. Full `SMEMBERS` of manual/auto/fraud runs at startup and every 5 minutes only.
+
 ## `edge-xdp`
 
 CAP_BPF + CAP_NET_ADMIN. Flags: `-iface`/`INGRESS_INTERFACE`, `-pin-dir`/`BPF_PIN_DIR`, `-mode`/`XDP_MODE` (`generic`|`native`|`offload`, default `generic`). Config map: `XDP_SYN_COOKIE` (off), `XDP_FINGERPRINT` (on).
@@ -41,7 +43,7 @@ Start after maps pinned. Required: `REDIS_ADDRS` (shard 0).
 
 | Variable | Default |
 | :--- | :--- |
-| `SYNC_INTERVAL` | `5s` |
+| `SYNC_INTERVAL` | `5s` (incremental ZSET delta; full `SMEMBERS` every 5 min) |
 | `STATS_INTERVAL` | `2s` |
 | `VIOLATION_POLL_INTERVAL` | `250ms` |
 | `FINGERPRINT_POLL_INTERVAL` | `500ms` |

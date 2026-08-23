@@ -25,6 +25,7 @@ type autoBanReader interface {
 	SRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
 	ZRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
 	ZRangeByScore(ctx context.Context, key string, opt *redis.ZRangeBy) *redis.StringSliceCmd
+	ZRangeByScoreWithScores(ctx context.Context, key string, opt *redis.ZRangeBy) *redis.ZSliceCmd
 }
 
 // SyncBlocklistFromRedis pulls manual/auto/fraud sets from Redis into the XDP blocklist map.

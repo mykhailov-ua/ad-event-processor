@@ -70,9 +70,16 @@ func (s *autoBanStub) ZRangeByScore(_ context.Context, key string, opt *redis.ZR
 		return cmd
 	}
 	out := make([]string, 0, len(z))
+	min, exclusive := parseZMin(opt)
 	for member, score := range z {
-		if opt != nil && opt.Min != "" && score < parseZMin(opt.Min) {
-			continue
+		if opt != nil && opt.Min != "" {
+			if exclusive {
+				if score <= min {
+					continue
+				}
+			} else if score < min {
+				continue
+			}
 		}
 		out = append(out, member)
 	}
@@ -80,13 +87,43 @@ func (s *autoBanStub) ZRangeByScore(_ context.Context, key string, opt *redis.ZR
 	return cmd
 }
 
-func parseZMin(zMin string) float64 {
-	if zMin == "" || zMin == "-inf" {
-		return 0
+func (s *autoBanStub) ZRangeByScoreWithScores(_ context.Context, key string, opt *redis.ZRangeBy) *redis.ZSliceCmd {
+	cmd := redis.NewZSliceCmd(context.Background())
+	z := s.zsets[key]
+	if z == nil {
+		cmd.SetVal(nil)
+		return cmd
+	}
+	min, exclusive := parseZMin(opt)
+	out := make([]redis.Z, 0, len(z))
+	for member, score := range z {
+		if opt != nil && opt.Min != "" {
+			if exclusive {
+				if score <= min {
+					continue
+				}
+			} else if score < min {
+				continue
+			}
+		}
+		out = append(out, redis.Z{Score: score, Member: member})
+	}
+	cmd.SetVal(out)
+	return cmd
+}
+
+func parseZMin(opt *redis.ZRangeBy) (float64, bool) {
+	if opt == nil || opt.Min == "" || opt.Min == "-inf" {
+		return 0, false
+	}
+	if len(opt.Min) > 0 && opt.Min[0] == '(' {
+		var f float64
+		_, _ = fmt.Sscanf(opt.Min[1:], "%f", &f)
+		return f, true
 	}
 	var f float64
-	_, _ = fmt.Sscanf(zMin, "%f", &f)
-	return f
+	_, _ = fmt.Sscanf(opt.Min, "%f", &f)
+	return f, false
 }
 
 func TestActiveAutoBans_expiredLeaseRemoved(t *testing.T) {

@@ -18,7 +18,10 @@ func RecordAutoBan(ctx context.Context, rdb redis.Cmdable, ip string, ttl time.D
 	pipe.SAdd(ctx, redisKeyBlacklistAuto, ip)
 	pipe.ZAdd(ctx, redisKeyBlacklistAutoTTL, redis.Z{Score: expiresAt, Member: ip})
 	_, err := pipe.Exec(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	return RecordBlacklistChangelog(ctx, rdb, redisKeyBlacklistAuto, ip, true)
 }
 
 func loadAutoBans(ctx context.Context, rdb denySetReader) ([]string, error) {
