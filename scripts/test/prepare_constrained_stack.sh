@@ -2,20 +2,22 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/load_test_env.sh"
 cd "$ROOT"
+
+load_test_compose COMPOSE "$ROOT"
+export SKIP_CODEGEN="${SKIP_CODEGEN:-1}"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
   if ! source "$ROOT/.env" 2> /dev/null; then
-    log "WARN: .env present but not sourced (parse error); using compose defaults"
+    printf 'prepare-constrained: WARN: .env present but not sourced (parse error); using compose defaults\n'
   fi
   set +a
 fi
 DB_PORT="${DB_PORT:-5430}"
 DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}}"
 
-COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
-export SKIP_CODEGEN="${SKIP_CODEGEN:-1}"
 DATA_SERVICES=(
   db redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse processor prometheus grafana
 )
@@ -140,18 +142,21 @@ ON CONFLICT (deployment_id) DO UPDATE SET
 EOF
 
 log "starting trackers (registry Sync on boot + pub/sub watch)"
-"${COMPOSE[@]}" up -d --build --force-recreate "${TRACKER_SERVICES[@]}"
+"${COMPOSE[@]}" up -d --build --force-recreate tracker-0 tracker-1
 
-"${COMPOSE[@]}" stop tracker-2 tracker-3 2> /dev/null || true
-
-for port in 8181 8182; do
+while IFS= read -r port; do
   for _ in $(seq 1 120); do
     if curl -sf "http://127.0.0.1:${port}/health" > /dev/null 2>&1; then
       break
     fi
     sleep 1
   done
-done
+done < <(load_test_constrained_ingest_ports)
+
+"${COMPOSE[@]}" stop tracker-2 tracker-3 2> /dev/null || true
+"${COMPOSE[@]}" rm -f tracker-2 tracker-3 2> /dev/null || true
+
+"${COMPOSE[@]}" up -d --no-deps nginx
 
 log "full registry snapshot (campaigns:update *)"
 bash "$SCRIPTS/test/sync_tracker_registry.sh"

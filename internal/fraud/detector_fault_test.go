@@ -171,7 +171,7 @@ func TestFault_ivtDetectorOutboxBackpressure(t *testing.T) {
 	for range 5 {
 		_, err := pool.Exec(ctx, `
 			INSERT INTO outbox_events (event_type, payload, status)
-			VALUES ('UPDATE_BLACKLIST', '{"action":"add"}', 'PENDING')`)
+			VALUES ('UPDATE_CAMPAIGN_PACING', '{"campaign_id":"00000000-0000-0000-0000-000000000001","pacing_mode":"even"}', 'PENDING')`)
 		require.NoError(t, err)
 	}
 

@@ -63,7 +63,7 @@ VALUES ($1, $2, $3, 'FEE', $4) RETURNING id`, args: []any{custID, campID, int64(
 SELECT * FROM balance_ledger WHERE idempotency_hash = $1`, args: []any{hash}},
 		{name: "controlplane.GetPendingOutboxEventsForUpdate", hotPath: true, sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 SELECT * FROM outbox_events WHERE status = 'PENDING'
-ORDER BY CASE event_type WHEN 'UPDATE_BLACKLIST' THEN 0 WHEN 'PAUSE_CAMPAIGN' THEN 0 ELSE 1 END, created_at ASC
+ORDER BY CASE event_type WHEN 'UPDATE_BLACKLIST' THEN 0 WHEN 'ML_BLACKLIST_ADD' THEN 0 WHEN 'ML_SCORE_BOOST' THEN 0 WHEN 'ML_GHOST_IVT' THEN 0 WHEN 'PAUSE_CAMPAIGN' THEN 0 ELSE 1 END, created_at ASC
 LIMIT 100 FOR UPDATE SKIP LOCKED`},
 		{
 			name: "controlplane.GetDrainingCampaignsForUpdate", sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)

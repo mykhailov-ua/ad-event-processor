@@ -21,6 +21,21 @@ var (
 		Help: "Detector cycles skipped due to management outbox backpressure",
 	})
 
+	ivtOutboxBackpressureActive = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ivt_outbox_backpressure_active",
+		Help: "1 when ivt-detector paused for non-enforcement outbox backlog",
+	})
+
+	ivtOutboxBackpressurePending = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ivt_outbox_backpressure_pending",
+		Help: "PENDING outbox rows counted toward ivt-detector backpressure (excludes enforcement fast-lane types)",
+	})
+
+	ivtOutboxBackpressureLimit = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ivt_outbox_backpressure_limit",
+		Help: "Configured IVT_DETECTOR_OUTBOX_PENDING_LIMIT threshold",
+	})
+
 	fraudScoringDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "fraud_scoring_duration_seconds",
 		Help:    "Duration of ML scoring in seconds",

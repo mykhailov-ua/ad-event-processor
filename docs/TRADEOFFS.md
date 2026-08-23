@@ -610,7 +610,61 @@ go test ./internal/ingestion/ -run='^$' -bench='BenchmarkStreamProducer_' -bench
 
 ---
 
-## 19. Frequently Asked Questions (FAQ)
+## 19. DC ASN hot feed: full lookup for non-anonymous IPs (P8-3)
+
+### Problem
+
+MaxMind `IsAnonymous` (anonymous VPN, hosting, proxy, Tor) catches most datacenter traffic at full rate. A separate operator-maintained `dc_asn.txt` feed covers hosting ASNs that GeoIP labels as non-anonymous. With uniform 1/8 sampling on ASN lookup (`DC_ASN_SAMPLE_MASK=7`), ~7/8 of those hosting events evaded L1 `datacenter_ip`.
+
+### Chosen approach (B)
+
+When GeoIP returns `IsAnonymous==false` and the `DCASNTable` snapshot is ready, run MaxMind ASN lookup and O(1) feed membership on **every** event. When GeoIP already flags anonymous/hosting, apply `datacenter_ip` immediately and skip redundant ASN lookup. When GeoIP errors, fall back to the configured sample mask (default 1/8) to cap ASN DB load.
+
+Rejected for this release:
+
+| Option | Why not |
+| :--- | :--- |
+| **(A)** Higher sample rate only | Still probabilistic bypass on hosting IPs |
+| **(C)** Roaring bitmap | Feed is small; `map[uint32]struct{}` RCU snapshot is already O(1) with simpler ops |
+
+### Trade-offs we accept
+
+* Extra MaxMind ASN lookups on non-anonymous IPs (one mmap read per checked event; pooled `asnResult`).
+* `DC_ASN_SAMPLE_MASK` now applies only on GeoIP `IsAnonymous` errors, not the happy path.
+* Mobile carrier denylist (AS3215, AS12322) unchanged on hot path.
+
+### Verification
+
+* `TestFraudFilter_DCASN_holdout` — hosting ASN + `IsAnonymous=false` + heavy sample mask still flags every check.
+* `TestFraudFilter_DCASN_mobileAS3215_negative` / `AS12322` preserved.
+* `make test-alloc-gate` / `escape_heap_gate.sh` on touched hot files.
+
+---
+
+## 21. OS fingerprint TTL normalization (P8-4)
+
+### Problem
+
+Raw captured TTL compared against fixed thresholds (90/100) false-flagged Windows clients at TTL 64 (common after hop decay from initial 128). CDN/L4 ingress without `X-TCP-TTL` caused silent fail-open without observability.
+
+### Chosen approach
+
+Normalize `initial_ttl = min({32,64,128,255} >= captured_ttl)` before UA family compare. Flag non-Windows UA families when initial TTL is 128 or 255; treat Windows UA + normalized 64 as ambiguous (no signal). Keep bounded window heuristics. Increment `ad_os_fingerprint_skipped_total{reason=no_tcp_headers}` when UA present but `X-TCP-TTL` missing.
+
+### Trade-offs we accept
+
+* CDN-terminated traffic must disable `OS_FINGERPRINT_MISMATCH_ENABLED` or accept skip metric only.
+* Window-only mismatches still fire without TTL contradiction.
+* Not full p0f — no syscall/`getsockopt` on tracker.
+
+### Verification
+
+* `TestOSFingerprint_holdout_windowsTTL64NotFlagged`, `TestDeviceFilter_osFingerprintSkippedNoTCPHeaders`.
+* P3-3 negatives: `TestOSFingerprintMismatch_mobileTTL64NotFlagged`.
+
+---
+
+## 20. Frequently Asked Questions (FAQ)
 
 **Does the `/track` endpoint write directly to Postgres?**  
 No. `/track` writes only to Redis Streams (or local quanta memory logs). Background processors (`cmd/processor`) consume stream events and update Postgres asynchronously.

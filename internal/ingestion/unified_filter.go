@@ -198,18 +198,18 @@ type UnifiedFilter struct {
 	rollbackScriptHash           string
 	fastPathEnabled              atomic.Bool
 
-	luaDurationObservers     []prometheus.Observer
-	luaFastDurationObservers []prometheus.Observer
-	luaFastPathCounters      []prometheus.Counter
-	luaFullPathCounters      []prometheus.Counter
-	luaNoScriptCounters      []prometheus.Counter
-	redisObservability       redisShardObservability
-	regionCode               uint8
-	evalPinWorkers           int
-	evalPins                 *filterEvalPin
-	breakers                 []*database.RedisBreaker
-	filterSlowNs             int64
-	evalFallbackGate         chan struct{}
+	luaDurationObservers        []prometheus.Observer
+	luaFastDurationObservers    []prometheus.Observer
+	luaFastPathCounters         []prometheus.Counter
+	luaFullPathCounters         []prometheus.Counter
+	luaNoScriptCounters         []prometheus.Counter
+	redisObservability          redisShardObservability
+	regionCode                  uint8
+	evalPinWorkers              int
+	evalPins                    *filterEvalPin
+	breakers                    []*database.RedisBreaker
+	filterSlowNs                int64
+	evalFallbackGate            chan struct{}
 	placementBL                 *PlacementBlacklistFilter
 	fraudBL                     *FraudBlacklistFilter
 	ingressRPDHandledExternally bool
@@ -639,6 +639,13 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f.placementBL != nil {
 		if err := f.placementBL.Check(ctx, evt); err != nil {
 			return err
+		}
+	}
+
+	if f.fraudBL != nil {
+		_ = f.fraudBL.Check(ctx, evt)
+		if eventHasFraudL3(evt) {
+			return nil
 		}
 	}
 

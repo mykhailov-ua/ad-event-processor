@@ -141,8 +141,7 @@ func probeBlocklistDrop(t *testing.T, objs *EdgeObjects) uint32 {
 	require.NoError(t, InitConfigWith(objs.Config, InitOptions{}))
 
 	victim := net.IPv4(203, 0, 113, 77)
-	key := bpfLPMKey(HostKey(victim[0], victim[1], victim[2], victim[3]))
-	require.NoError(t, objs.BlocklistV4.Update(key, uint8(1), ebpf.UpdateAny))
+	require.NoError(t, objs.BlocklistHostV4.Update(HostKey(victim[0], victim[1], victim[2], victim[3]).Addr, uint8(1), ebpf.UpdateAny))
 
 	pkt := buildSYNPacket(t, victim, net.IPv4(10, 0, 0, 1), trackerPort)
 	ret, _, err := objs.XdpEdgeFilter.Test(pkt)

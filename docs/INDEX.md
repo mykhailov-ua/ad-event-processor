@@ -7,7 +7,7 @@ Single-word index for `docs/`. Engineering stack id: **ad-event-processor** — 
 | Role | Read first |
 | :--- | :--- |
 | **Operator / on-prem** | [START.md](START.md) then [LICENSE.md](LICENSE.md) |
-| **Developer** | [DEVELOPMENT.md](DEVELOPMENT.md) then [ARCHITECTURE.md](ARCHITECTURE.md), [TRADEOFFS.md](TRADEOFFS.md) |
+| **Developer** | [DEVELOPMENT.md](DEVELOPMENT.md) then [ARCHITECTURE.md](ARCHITECTURE.md), [STRUCTURE.md](STRUCTURE.md), [TRADEOFFS.md](TRADEOFFS.md) |
 | **Buyer / integrator** | [TRAFFIC.md](TRAFFIC.md) |
 | **CI / merge gates** | [CI.md](CI.md) |
 
@@ -25,6 +25,7 @@ Single-word index for `docs/`. Engineering stack id: **ad-event-processor** — 
 | [REGIONS.md](REGIONS.md) | Enterprise multi-region |
 | [RTB.md](RTB.md) | OpenRTB shadow to live |
 | [SHARDING.md](SHARDING.md) | Shard 0 failure matrix |
+| [STRUCTURE.md](STRUCTURE.md) | BidShard target repo layout and package split map |
 | [START.md](START.md) | Single-VPS installer |
 | [TRAFFIC.md](TRAFFIC.md) | `/click`, `/track`, CAPI, macros |
 | [TRADEOFFS.md](TRADEOFFS.md) | Architecture trade-offs, rejected alternatives |

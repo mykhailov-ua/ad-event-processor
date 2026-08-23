@@ -2,15 +2,17 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/load_test_env.sh"
 cd "$ROOT"
 
 CONSTRAINED="${CONSTRAINED:-1}"
 OUT="$ROOT/var/load-test/$(date -u +%Y%m%dT%H%M%SZ)"
 mkdir -p "$OUT"
 
-COMPOSE=(docker compose)
 if [[ "$CONSTRAINED" == "1" ]]; then
-  COMPOSE+=(-f docker-compose.yaml -f docker-compose.load-test.yaml)
+  load_test_compose COMPOSE "$ROOT"
+else
+  COMPOSE=(docker compose)
 fi
 
 log() { printf 'load-spike: %s\n' "$*"; }
@@ -26,7 +28,11 @@ if [[ "${AD_EVENT_PROCESSOR_BPF_PROBE:-0}" == "1" ]]; then
   [[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi
 
-TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182}"
+if [[ "$CONSTRAINED" == "1" ]]; then
+  TRACKER_BASES="${TRACKER_BASES:-$LOAD_TEST_CONSTRAINED_TRACKER_BASES_CSV}"
+else
+  TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182}"
+fi
 BASE_RATE="${BASE_RATE:-200}"
 SPIKE_MULT="${SPIKE_MULT:-10}"
 

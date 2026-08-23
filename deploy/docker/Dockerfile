@@ -11,13 +11,16 @@ RUN node web/scripts/build.mjs
 
 FROM golang:1.25.12-alpine AS builder
 ARG SKIP_CODEGEN=0
+ARG TRACKER_BPF_TRACE=0
 RUN apk add --no-cache bash
 COPY --from=modules /go/pkg/mod /go/pkg/mod
 WORKDIR /src
 COPY . .
 COPY --from=web /src/web/dist ./web/dist
 RUN if [ "$SKIP_CODEGEN" = "1" ]; then echo "skip codegen (pre-generated tree)"; else bash scripts/ci/gen.sh --proto; fi
-RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/tracker ./cmd/tracker
+RUN TRACKER_TAGS="timetzdata"; \
+  if [ "$TRACKER_BPF_TRACE" = "1" ]; then TRACKER_TAGS="${TRACKER_TAGS} ad_event_processor_bpf_trace"; fi; \
+  CGO_ENABLED=0 GOOS=linux go build -tags "$TRACKER_TAGS" -ldflags="-s -w" -o /bin/tracker ./cmd/tracker
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/processor ./cmd/processor
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/ivt-detector ./cmd/ivt-detector
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/fraud-scorer ./cmd/fraud-scorer

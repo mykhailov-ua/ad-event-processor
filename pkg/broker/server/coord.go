@@ -100,6 +100,9 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 	}
 
 	pwd := os.Getenv("BROKER_REDIS_PASSWORD")
+	if pwd == "" {
+		pwd = os.Getenv("REDIS_PASSWORD")
+	}
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		if strings.HasPrefix(redisURL, "unix://") || netaddr.IsUnixSocketPath(redisURL) {

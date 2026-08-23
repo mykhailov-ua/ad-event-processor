@@ -1,0 +1,92 @@
+---
+description: Naming standards, forbidden legacy tokens, and cryptic identifiers
+globs: **/*.go, **/*.lua, **/*.sql, **/*.md, **/*.yaml, .env*
+alwaysApply: true
+---
+
+# Naming and Structure Standards
+
+Strictly forbid "trash naming" (cryptic numbers, abbreviations, legacy tokens) and enforce semantic clarity inspired by `lead-intent-processor`.
+
+## 1. Forbidden "Trash Naming"
+
+Do NOT use cryptic suffixes, meaningless numbers, or lazy abbreviations.
+
+| Pattern | Why | Better Alternative |
+| :--- | :--- | :--- |
+| `m1`, `m2`, `m8` | Cryptic milestone/versioning | `load_test_milestone_8`, `v2_reconciler` |
+| `n1`, `n2` | Meaningless numeric tags | `ledger_fix_2026`, `consistency_patch` |
+| `v1_old`, `new_logic` | Temporal naming (rot immediately) | `legacy_v1_compat`, `batch_processor_v2` |
+| `f1`, `f2` | Lazy filter/field abbreviations | `license_filter`, `geo_filter` |
+| `ch`, `pg`, `rd` | Common driver abbreviations | `clickhouse`, `postgres`, `redis` |
+| `res`, `res2` | Generic result variables | `auction_result`, `auth_response` |
+
+## 2. Legacy Token Ban (CRITICAL)
+
+The following tokens are strictly forbidden in new code, documentation, and variables. Existing occurrences must be removed when touched.
+
+- **`BidShard`** (except in global workspace context `bidshard/`) -> use `ad-event-processor`
+- **`espx`** / **`espx_`** / **`ESPX_`** -> use `ad-event` or `ad_event`
+- **`legacy`** / **`old`** without specific context (e.g. `legacy_v1_api`)
+
+## 3. Semantic Clarity (Lead-Intent Style)
+
+Match the naming quality and structure of `lead-intent-processor`.
+
+### Structs and Fields
+- **No God Structs:** Avoid `Service` structs with 50+ unrelated fields.
+- **Explicit Roles:** `PostgresGate` is too vague. Use `PostgresWriteGate` or `PostgresCampaignStore`.
+- **Field Names:** `settlePoolField` is trash. Use `SettlementPool`.
+
+### Comments
+- **Explain "Why", not "What":**
+    - BAD: `// Increment i by 1`
+    - GOOD: `// Advance offset to skip the CRC32 header limb`
+- **Invariants:** Document financial and performance constraints (SLA p99, budget balance).
+
+## 4. Root Clutter Ban
+
+The repository root is NOT a junk drawer.
+
+- **Banned in root:** `*.log`, `*.txt` (except README/LICENSE/BACKLOG), ad-hoc `.env.*` (move to `config/env/`).
+- **Temporary artifacts:** Must live in `var/` or be gitignored.
+- **Compiled binaries:** Never in root (use `bin/`).
+
+## 5. Bad vs Good Examples
+
+### Variable Naming
+```go
+// BAD
+f := openFilter()
+v1 := f.Check(req)
+
+// GOOD
+geoFilter := openGeoFilter()
+verdict := geoFilter.Check(request)
+```
+
+### Struct Naming
+```go
+// BAD
+type Service struct {
+    ch driver.Conn
+    m8 *Worker
+}
+
+// GOOD
+type ClickHouseStore struct {
+    conn driver.Conn
+    loadTestWorker *LoadTestWorker
+}
+```
+
+### Path Naming
+```go
+// BAD
+internal/controlplane/service_campaign_m8.go
+
+// GOOD
+internal/campaign/load_test_worker.go
+```
+
+Related: `docs/STRUCTURE.md`, `code-style.mdc`, `anti-slop.mdc`.

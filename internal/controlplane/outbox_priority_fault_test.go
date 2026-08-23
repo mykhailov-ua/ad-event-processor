@@ -39,7 +39,7 @@ func TestFault_OutboxPriorityLanes(t *testing.T) {
 
 	_, err = pool.Exec(ctx, `
 		INSERT INTO outbox_events (event_type, payload)
-		SELECT 'UPDATE_CAMPAIGN_PACING', $1::jsonb
+		SELECT 'UPDATE_CAMPAIGN_PACING', $1
 		FROM generate_series(1, $2)`, pacingPayload, pacingBacklog)
 	require.NoError(t, err)
 

@@ -8,10 +8,11 @@ Apply when editing Go, Lua, or sqlc SQL.
 
 Layout
 
-- One flat `package` per service under `internal/<name>/`. Allowed subdirs only: `db/`, `queries/`, `migrations/`, `pb/` (generated).
-- Banned: nested domain packages (`internal/ingestion/filter/`, `internal/controlplane/fraud/`). Navigate `controlplane` by filename tag (`service_fraud.go`, `blacklist_janitor.go`).
-- `cmd/<binary>/main.go` wires config and pools only; no business logic in `main`.
-- `pkg/` has no `internal/` imports. `internal/campaignmodel` is shared hot-path vocabulary only (no json/db tags).
+- One package per functional domain under `internal/<name>/`. Follow `docs/STRUCTURE.md` for the target split.
+- Allowed subdirs: `db/`, `queries/`, `migrations/`, `pb/` (generated), and domain-specific sub-slices (e.g. `internal/fraud/admin/`).
+- Banned: `dto/`, `usecase/`, `providers/`, `repositories/` ceremony.
+- `cmd/<binary>/main.go` wires config and modules only; no business logic in `main`.
+- `pkg/` has no `internal/` imports. `internal/domain` (formerly `campaignmodel`) is shared hot-path vocabulary only (no json/db tags).
 
 Files
 

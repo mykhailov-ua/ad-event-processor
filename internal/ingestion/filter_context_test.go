@@ -54,3 +54,14 @@ func TestAttachFraudAccumulator_reusesWithoutReset(t *testing.T) {
 	assert.Equal(t, acc1, acc2)
 	assert.True(t, acc2.has(FraudReasonIPv4Rotation))
 }
+
+func TestEventHasFraudL3_holdout(t *testing.T) {
+	evt := &domain.Event{}
+	assert.False(t, eventHasFraudL3(evt))
+	acc := attachFraudAccumulator(evt)
+	acc.add(FraudReasonDatacenterIP)
+	assert.False(t, eventHasFraudL3(evt))
+	acc.add(FraudReasonL3Blocklist)
+	assert.True(t, eventHasFraudL3(evt))
+	releaseFraudAccumulator(evt, acc)
+}

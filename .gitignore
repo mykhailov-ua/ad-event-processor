@@ -5,6 +5,8 @@
 .env.*.local
 *.env
 !.env.example
+!.env.load-test
+deploy/compose/.env.load-test.runtime
 
 # Build output & vendored deps
 bin/*

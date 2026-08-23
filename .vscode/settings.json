@@ -8,5 +8,9 @@
       "docker-compose*.yaml",
       "deploy/compose/*.yaml"
     ]
-  }
+  },
+  "gopls": {
+    "buildFlags": ["-tags=ad_event_processor_bpf_trace"]
+  },
+  "go.buildTags": "ad_event_processor_bpf_trace"
 }

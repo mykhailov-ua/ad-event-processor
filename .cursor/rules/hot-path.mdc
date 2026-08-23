@@ -66,6 +66,7 @@ Rules:
 - `internal/campaignmodel` / hot `internal/domain`: **no struct tags** (no json/db/protobuf on hot structs).
 - Registry: `atomic.Pointer` snapshot swap on catalog rebuild; load once per request loop.
 - Pad contended atomics: `cpu.CacheLinePad` around MPSC queue heads, breaker counters.
+- **Naming:** Follow `naming.mdc`. Strictly avoid single-letter names or cryptic numbers in filter/auction loops to ensure cache-line visibility during debugging.
 
 ### Sharding — StaticSlot + asm
 

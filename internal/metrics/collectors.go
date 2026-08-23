@@ -102,6 +102,11 @@ var (
 		Help: "L2 os_fingerprint_mismatch signals (edge TCP TTL/window vs UA family)",
 	})
 
+	OSFingerprintSkippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_os_fingerprint_skipped_total",
+		Help: "OS fingerprint checks skipped (CDN ingress without edge TCP hints)",
+	}, []string{"reason"})
+
 	DCASNCheckTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_dc_asn_check_total",
 		Help: "Sampled hot-path DC ASN lookups",

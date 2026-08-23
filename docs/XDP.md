@@ -19,9 +19,11 @@ Without entitlement: pins maps, skips attach; bpf-sync idles. Lab compose: `dock
 
 ## Pin directory (`BPF_PIN_DIR`)
 
-Default `/sys/fs/bpf/ad-event-processor`. Key maps: `blocklist_v4`, `blocklist_v6`, `allow_v4`, `allow_v6`, `syn_ratelimit_v4`, `syn_subnet_ratelimit_v4`, `ratelimit_v4`, `stats`, `config`, `violations`, `fingerprints`.
+Default `/sys/fs/bpf/ad-event-processor`. Key maps: `blocklist_v4`, `blocklist_v6`, `blocklist_host_v4`, `blocklist_host_v6`, `allow_v4`, `allow_v6`, `syn_ratelimit_v4`, `syn_subnet_ratelimit_v4`, `ratelimit_v4`, `stats`, `config`, `violations`, `fingerprints`.
 
-IPv6 deny/allow use `BPF_MAP_TYPE_LPM_TRIE` with `BPF_F_NO_PREALLOC` (`blocklist_v6`, `allow_v6`). bpf-sync applies Redis sets to both v4 host keys and v6 host keys; allowlist lookup runs before blocklist on IPv6 TCP to tracker ingress.
+**Blocklist topology (P8-6):** exact host IPv4/IPv6 keys (`/32`, `/128`) live in `BPF_MAP_TYPE_LRU_HASH` (`blocklist_host_v4`, `blocklist_host_v6`); CIDR prefixes stay in `BPF_MAP_TYPE_LPM_TRIE` (`blocklist_v4`, `blocklist_v6`, `BPF_F_NO_PREALLOC`). Per-packet lookup checks host HASH before prefix LPM. `BlocklistStore` and bpf-sync route by prefix length; allowlist-before-deny unchanged.
+
+IPv6 allow uses `BPF_MAP_TYPE_LPM_TRIE` (`allow_v6`). bpf-sync applies Redis sets to host HASH and prefix LPM maps; allowlist lookup runs before blocklist on IPv6 TCP to tracker ingress.
 
 **Blocklist scale (Phase 6):** LPM deny maps `max_entries=786432` (was 524288). Hot path sync reads `blacklist:changelog:{add,remove}` ZSETs on shard 0 between full refreshes; control-plane `syncGlobalSetMemberToAllShards` and XDP autoban append changelog rows. Full `SMEMBERS` of manual/auto/fraud runs at startup and every 5 minutes only.
 
@@ -91,3 +93,16 @@ High-volume /24 bursts dropped at cap. Optional NIC tune: `scripts/ops/nic_tune.
 | Load fail | `/sys/kernel/btf/vmlinux`; kernel ≥ 6.1 |
 | Stale list | bpf-sync logs; Redis shard 0 |
 | False drops | Lua list vs BPF map lag |
+| Missing OS fingerprint | CDN in front of edge: no `X-TCP-TTL`; set `OS_FINGERPRINT_MISMATCH_ENABLED=false` on tracker or accept `ad_os_fingerprint_skipped_total` |
+
+## OS fingerprint TCP hints (tracker L2)
+
+Edge `edge-ingress.lua` forwards `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS` from `ngx.ctx` or `tcp_fp_cache` (populated by `edge-tcp-fp-sync` reading Redis `edge:tcp_fp:*` written by `edge-bpf-sync` / XDP `fingerprints` map). Without direct client TCP visibility (CDN, L4 LB, or fingerprint sync off), headers are absent and tracker skips the check.
+
+| Env | Guidance |
+| :--- | :--- |
+| `OS_FINGERPRINT_MISMATCH_ENABLED` | `true` only on direct-edge tracker; `false` or shadow behind CDN |
+| `edge-tcp-fp-sync` | Required on Nginx workers when fingerprint signal enabled |
+| `XDP_FINGERPRINT` | On in XDP config map when using bpf-sync fingerprint poll |
+
+Tracker normalizes captured TTL to initial TTL before UA family compare; see `docs/TRADEOFFS.md` section 19 and `deploy/vendor/ANTIFRAUD.md`.

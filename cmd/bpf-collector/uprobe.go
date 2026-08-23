@@ -31,7 +31,7 @@ func (r *probeRun) attachUprobes() {
 		bin = r.findTrackerBinary()
 	}
 	if bin == "" {
-		slog.Info("uprobes skipped: tracker binary not found (build tracker with -tags " + naming.DeprecatedBPFTraceBuildTag() + ")")
+		slog.Info("uprobes skipped: tracker binary not found (build tracker with -tags " + naming.BPFTraceBuildTag() + ")")
 		return
 	}
 	if r.coll == nil {
@@ -66,7 +66,7 @@ func (r *probeRun) attachUprobes() {
 		attached++
 	}
 	if attached == 0 {
-		slog.Info("uprobes not attached", "binary", bin, "hint", "go build -tags "+naming.DeprecatedBPFTraceBuildTag()+" -o bin/tracker ./cmd/tracker")
+		slog.Info("uprobes not attached", "binary", bin, "hint", "go build -tags "+naming.BPFTraceBuildTag()+" -o bin/tracker ./cmd/tracker")
 		return
 	}
 	slog.Info("uprobes attached", "binary", bin, "count", attached)

@@ -56,18 +56,18 @@ func (s *BlocklistSyncState) needsFullSync(now time.Time) bool {
 	return now.Sub(s.lastFullSync) >= blocklistFullSyncInterval
 }
 
-func (s *BlocklistStore) ApplyHostListDelta(v4Map, v6Map *ebpf.Map, adds, removes []string) (added, removed int, err error) {
+func (s *BlocklistStore) ApplyHostListDelta(maps BlocklistMaps, adds, removes []string) (added, removed int, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, ip := range adds {
-		a, err := s.applyHostAdd(v4Map, v6Map, ip)
+		a, err := s.applyHostAdd(maps, ip)
 		if err != nil {
 			return added, removed, err
 		}
 		added += a
 	}
 	for _, ip := range removes {
-		r, err := s.applyHostRemove(v4Map, v6Map, ip)
+		r, err := s.applyHostRemove(maps, ip)
 		if err != nil {
 			return added, removed, err
 		}
@@ -76,7 +76,7 @@ func (s *BlocklistStore) ApplyHostListDelta(v4Map, v6Map *ebpf.Map, adds, remove
 	return added, removed, nil
 }
 
-func (s *BlocklistStore) applyHostAdd(v4Map, v6Map *ebpf.Map, ip string) (int, error) {
+func (s *BlocklistStore) applyHostAdd(maps BlocklistMaps, ip string) (int, error) {
 	if ip == "" {
 		return 0, nil
 	}
@@ -85,18 +85,19 @@ func (s *BlocklistStore) applyHostAdd(v4Map, v6Map *ebpf.Map, ip string) (int, e
 		return 0, nil
 	}
 	if v4, ok := ParseHost(ip); ok {
-		if _, exists := s.hosts[v4]; exists {
+		addr := beToBPFAddr(v4)
+		if _, exists := s.hosts[addr]; exists {
 			return 0, nil
 		}
-		if v4Map != nil {
-			if err := v4Map.Update(KeyFromIP(v4), blockedMarker, ebpf.UpdateAny); err != nil {
+		if maps.V4Host != nil {
+			if err := maps.V4Host.Update(addr, blockedMarker, ebpf.UpdateAny); err != nil {
 				return 0, err
 			}
 		}
-		s.hosts[v4] = struct{}{}
+		s.hosts[addr] = struct{}{}
 		return 1, nil
 	}
-	if v6Map == nil {
+	if maps.V6Host == nil {
 		return 0, nil
 	}
 	key, ok := ParseIPv6Host(ip)
@@ -107,30 +108,31 @@ func (s *BlocklistStore) applyHostAdd(v4Map, v6Map *ebpf.Map, ip string) (int, e
 	if _, exists := s.v6Hosts[id]; exists {
 		return 0, nil
 	}
-	if err := v6Map.Update(key, blockedMarker, ebpf.UpdateAny); err != nil {
+	if err := maps.V6Host.Update(key.Addr, blockedMarker, ebpf.UpdateAny); err != nil {
 		return 0, err
 	}
 	s.v6Hosts[id] = key
 	return 1, nil
 }
 
-func (s *BlocklistStore) applyHostRemove(v4Map, v6Map *ebpf.Map, ip string) (int, error) {
+func (s *BlocklistStore) applyHostRemove(maps BlocklistMaps, ip string) (int, error) {
 	if ip == "" {
 		return 0, nil
 	}
 	if v4, ok := ParseHost(ip); ok {
-		if _, exists := s.hosts[v4]; !exists {
+		addr := beToBPFAddr(v4)
+		if _, exists := s.hosts[addr]; !exists {
 			return 0, nil
 		}
-		if v4Map != nil {
-			if err := v4Map.Delete(KeyFromIP(v4)); err != nil {
+		if maps.V4Host != nil {
+			if err := maps.V4Host.Delete(addr); err != nil {
 				return 0, err
 			}
 		}
-		delete(s.hosts, v4)
+		delete(s.hosts, addr)
 		return 1, nil
 	}
-	if v6Map == nil {
+	if maps.V6Host == nil {
 		return 0, nil
 	}
 	key, ok := ParseIPv6Host(ip)
@@ -141,7 +143,7 @@ func (s *BlocklistStore) applyHostRemove(v4Map, v6Map *ebpf.Map, ip string) (int
 	if _, exists := s.v6Hosts[id]; !exists {
 		return 0, nil
 	}
-	if err := v6Map.Delete(key); err != nil {
+	if err := maps.V6Host.Delete(key.Addr); err != nil {
 		return 0, err
 	}
 	delete(s.v6Hosts, id)
@@ -152,7 +154,7 @@ func (s *BlocklistStore) applyHostRemove(v4Map, v6Map *ebpf.Map, ip string) (int
 func SyncBlocklistIncremental(
 	ctx context.Context,
 	rdb autoBanReader,
-	v4Map, v6Map *ebpf.Map,
+	maps BlocklistMaps,
 	store *BlocklistStore,
 	state *BlocklistSyncState,
 ) (added, removed int, err error) {
@@ -161,7 +163,7 @@ func SyncBlocklistIncremental(
 	}
 	now := time.Now()
 	if state == nil || state.needsFullSync(now) {
-		a, r, err := SyncBlocklistFromRedis(ctx, rdb, v4Map, v6Map, store)
+		a, r, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -182,7 +184,7 @@ func SyncBlocklistIncremental(
 		return 0, 0, fmt.Errorf("changelog remove: %w", err)
 	}
 
-	a, r, err := store.ApplyHostListDelta(v4Map, v6Map, adds, removes)
+	a, r, err := store.ApplyHostListDelta(maps, adds, removes)
 	if err != nil {
 		return 0, 0, err
 	}

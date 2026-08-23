@@ -2,8 +2,8 @@
 local _M = {}
 
 _M.list = {
-    { host = "127.0.0.1", port = 8181, node_id = "tracker-1" },
-    { host = "127.0.0.1", port = 8182, node_id = "tracker-2" },
+    { host = "127.0.0.1", port = 8100, node_id = "tracker-1" },
+    { host = "127.0.0.1", port = 8200, node_id = "tracker-2" },
 }
 
 function _M.index_for_node_id(node_id)

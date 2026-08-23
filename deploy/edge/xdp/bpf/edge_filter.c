@@ -149,6 +149,20 @@ struct {
 } blocklist_v6 SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 786432);
+	__type(key, __u32);
+	__type(value, __u8);
+} blocklist_host_v4 SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(max_entries, 786432);
+	__type(key, struct in6_addr);
+	__type(value, __u8);
+} blocklist_host_v6 SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
 	__uint(max_entries, 65536);
 	__type(key, struct ipv6_lpm_key);
@@ -688,6 +702,11 @@ static __always_inline int xdp_filter_ipv6_tcp(struct ipv6hdr *ip6, struct tcphd
 		return XDP_PASS;
 	}
 
+	if (bpf_map_lookup_elem(&blocklist_host_v6, &ip6->saddr)) {
+		stat_inc(XDP_STAT_DROP_BLOCKLIST);
+		return XDP_DROP;
+	}
+
 	struct ipv6_lpm_key bl_key = {};
 	ipv6_lpm_key_from_addr(&bl_key, &ip6->saddr);
 	if (bpf_map_lookup_elem(&blocklist_v6, &bl_key)) {
@@ -765,6 +784,12 @@ int xdp_edge_filter(struct xdp_md *ctx)
 	};
 	if (bpf_map_lookup_elem(&allow_v4, &al_key)) {
 		stat_idx = XDP_STAT_PASS_ALLOWLIST;
+		goto out;
+	}
+
+	if (bpf_map_lookup_elem(&blocklist_host_v4, &src_ip)) {
+		action = XDP_DROP;
+		stat_idx = XDP_STAT_DROP_BLOCKLIST;
 		goto out;
 	}
 

@@ -17,6 +17,8 @@ func pinMaps(objs *edge.EdgeObjects, pinDir string) error {
 	pins := map[string]*ebpf.Map{
 		"blocklist_v4":            objs.BlocklistV4,
 		"blocklist_v6":            objs.BlocklistV6,
+		"blocklist_host_v4":       objs.BlocklistHostV4,
+		"blocklist_host_v6":       objs.BlocklistHostV6,
 		"allow_v4":                objs.AllowV4,
 		"allow_v6":                objs.AllowV6,
 		"syn_ratelimit_v4":        objs.SynRatelimitV4,

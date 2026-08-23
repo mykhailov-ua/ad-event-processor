@@ -337,6 +337,15 @@ groups:
           description: 'Oldest PENDING outbox event is {{ $value | humanizeDuration }} old. Hot-path Redis may be stale vs Postgres.'
           runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#post-deploy-redis-reconciliation'
 
+      - alert: IVTDetectorOutboxBackpressure
+        expr: ivt_outbox_backpressure_active == 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'IVT detector paused for outbox backpressure'
+          description: 'Non-enforcement outbox backlog (ivt_outbox_backpressure_pending) reached IVT_DETECTOR_OUTBOX_PENDING_LIMIT. ML enforcement fast lane still drains; raise limit or drain pacing backlog. See deploy/vendor/ANTIFRAUD.md.'
+
       - alert: TrackerHealthDegraded
         expr: ad_tracker_health_degraded == 1
         for: 1m

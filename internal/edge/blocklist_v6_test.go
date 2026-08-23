@@ -56,9 +56,10 @@ func TestParseIPv6Prefix_64(t *testing.T) {
 
 func TestBlocklistStore_ApplyDiffIPv6(t *testing.T) {
 	m := newLPMMapV6(t)
+	maps := BlocklistMaps{V6Host: newHostHashMapV6(t), V6Prefix: m}
 	store := NewBlocklistStore()
 
-	added, removed, err := store.ApplyDiff(nil, m, nil, nil, []string{"2001:db8::dead"})
+	added, removed, err := store.ApplyDiff(maps, nil, nil, []string{"2001:db8::dead"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
@@ -67,10 +68,10 @@ func TestBlocklistStore_ApplyDiffIPv6(t *testing.T) {
 	var marker uint8
 	key, ok := ParseIPv6Host("2001:db8::dead")
 	require.True(t, ok)
-	require.NoError(t, m.Lookup(key, &marker))
+	require.NoError(t, maps.V6Host.Lookup(key.Addr, &marker))
 	assert.Equal(t, blockedMarker, marker)
 
-	added, removed, err = store.ApplyDiff(nil, m, nil, nil, nil)
+	added, removed, err = store.ApplyDiff(maps, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, added)
 	assert.Equal(t, 1, removed)
@@ -80,6 +81,7 @@ func TestBlocklistStore_ApplyDiffIPv6(t *testing.T) {
 func TestFault_BlocklistV6XDPDrop(t *testing.T) {
 	objs := loadTestObjects(t)
 	store := NewBlocklistStore()
+	maps := blocklistMapsFromObjects(objs)
 
 	victim := parseTestIPv6(t, "2001:db8::9")
 	pkt := buildIPv6SYNPacket(t, victim, trackerPort)
@@ -89,7 +91,7 @@ func TestFault_BlocklistV6XDPDrop(t *testing.T) {
 	require.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 	require.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, controlPkt))
 
-	_, _, err := store.ApplyDiff(nil, objs.BlocklistV6, nil, nil, []string{victim.String()})
+	_, _, err := store.ApplyDiff(maps, nil, nil, []string{victim.String()})
 	require.NoError(t, err)
 
 	require.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))

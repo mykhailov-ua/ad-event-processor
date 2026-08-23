@@ -15,6 +15,8 @@ type dcASNSnapshot struct {
 	asn map[uint32]struct{}
 }
 
+// DCASNTable holds a generation-swapped ASN set from dc_asn.txt for O(1) hot-path
+// membership checks without MaxMind tree walks on match.
 type DCASNTable struct {
 	active atomic.Pointer[dcASNSnapshot]
 }

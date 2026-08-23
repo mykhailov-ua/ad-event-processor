@@ -23,7 +23,7 @@ func TestSyncBlocklistIncremental_changelogDelta(t *testing.T) {
 	base := float64(time.Now().Unix())
 	state := &BlocklistSyncState{lastFullSync: time.Now(), lastScore: base}
 
-	added, removed, err := SyncBlocklistIncremental(ctx, rdb, nil, nil, store, state)
+	added, removed, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 0, added)
 	require.Equal(t, 0, removed)
@@ -31,7 +31,7 @@ func TestSyncBlocklistIncremental_changelogDelta(t *testing.T) {
 	addScore := base + 1
 	require.NoError(t, rdb.ZAdd(ctx, redisKeyBlacklistChangelogAdd, redis.Z{Score: addScore, Member: "198.51.100.10"}).Err())
 
-	added, removed, err = SyncBlocklistIncremental(ctx, rdb, nil, nil, store, state)
+	added, removed, err = SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 1, added)
 	require.Equal(t, 0, removed)
@@ -40,7 +40,7 @@ func TestSyncBlocklistIncremental_changelogDelta(t *testing.T) {
 
 	removeScore := addScore + 1
 	require.NoError(t, rdb.ZAdd(ctx, redisKeyBlacklistChangelogRemove, redis.Z{Score: removeScore, Member: "198.51.100.10"}).Err())
-	added, removed, err = SyncBlocklistIncremental(ctx, rdb, nil, nil, store, state)
+	added, removed, err = SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 0, added)
 	require.Equal(t, 1, removed)
@@ -62,14 +62,14 @@ func TestSyncBlocklistIncremental_deltaSkipsSMembers_holdout(t *testing.T) {
 	state := &BlocklistSyncState{lastFullSync: time.Now(), lastScore: base}
 	store := NewBlocklistStore()
 
-	_, _, err := SyncBlocklistIncremental(ctx, stub, nil, nil, store, state)
+	_, _, err := SyncBlocklistIncremental(ctx, stub, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 0, stub.smembersCalls, "incremental tick must not SMEMBERS full sets")
 
 	stub.zsets[redisKeyBlacklistChangelogAdd] = map[string]float64{
 		"198.51.100.44": base + 1,
 	}
-	added, removed, err := SyncBlocklistIncremental(ctx, stub, nil, nil, store, state)
+	added, removed, err := SyncBlocklistIncremental(ctx, stub, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 1, added)
 	require.Equal(t, 0, removed)
@@ -90,7 +90,7 @@ func TestRecordAutoBan_changelog(t *testing.T) {
 
 	store := NewBlocklistStore()
 	state := &BlocklistSyncState{lastFullSync: time.Now(), lastScore: float64(time.Now().Unix()) - 1}
-	added, _, err := SyncBlocklistIncremental(ctx, rdb, nil, nil, store, state)
+	added, _, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 1, added)
 	require.Equal(t, 1, store.Len())
@@ -147,13 +147,13 @@ func BenchmarkSyncBlocklistFromRedis_fullSMEMBERS(b *testing.B) {
 	}
 	require.NoError(b, rdb.SAdd(ctx, redisKeyBlacklistFraud, members...).Err())
 
-	m := newLPMMapBench(b)
+	maps := newTestBlocklistMapsV4OnlyBench(b)
 	store := NewBlocklistStore()
 	b.ReportMetric(float64(n), "ips")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		store = NewBlocklistStore()
-		_, _, err := SyncBlocklistFromRedis(ctx, rdb, m, nil, store)
+		_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -180,7 +180,7 @@ func BenchmarkSyncBlocklistIncremental_changelogDelta(b *testing.B) {
 	zs := make([]redis.Z, deltaIPs)
 	for i := range deltaIPs {
 		zs[i] = redis.Z{
-			Score: score + float64(i),
+			Score:  score + float64(i),
 			Member: "203.0.113." + strconv.Itoa(i%250+1),
 		}
 	}
@@ -189,7 +189,7 @@ func BenchmarkSyncBlocklistIncremental_changelogDelta(b *testing.B) {
 	b.ReportMetric(deltaIPs, "delta_ips")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _, err := SyncBlocklistIncremental(ctx, rdb, nil, nil, store, state)
+		_, _, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
 		if err != nil {
 			b.Fatal(err)
 		}

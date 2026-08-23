@@ -129,9 +129,6 @@ func (f *UnifiedFilter) applyLuaGoPrechecks(
 	rdb redis.UniversalClient,
 	now time.Time,
 ) error {
-	if f.fraudBL != nil {
-		_ = f.fraudBL.Check(ctx, evt)
-	}
 	if f.ingressRPDHandledExternally {
 		return nil
 	}

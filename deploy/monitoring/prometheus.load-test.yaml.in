@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+rule_files:
+  - 'prometheus.rules.yaml'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - '127.0.0.1:${LOAD_TEST_ALERTMANAGER_PORT}'
+
+scrape_configs:
+  - job_name: 'tracker'
+    static_configs:
+      - targets: ['127.0.0.1:${LOAD_TEST_TRACKER_0_METRICS_PORT}', '127.0.0.1:${LOAD_TEST_TRACKER_1_METRICS_PORT}']
+  - job_name: 'processor'
+    static_configs:
+      - targets: ['127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}']
+  - job_name: 'nginx-edge'
+    static_configs:
+      - targets: ['127.0.0.1:${LOAD_TEST_EDGE_PORT}']
+    metrics_path: '/metrics/edge'

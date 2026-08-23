@@ -61,15 +61,16 @@ func TestFault_XDPSyncRedisOutage(t *testing.T) {
 
 	objs := loadTestObjects(t)
 	store := NewBlocklistStore()
+	maps := blocklistMapsFromObjects(objs)
 
 	require.NoError(t, rdb.SAdd(ctx, "blacklist:manual", "1.2.3.4").Err())
-	_, _, err := SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
+	_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 	require.NoError(t, err)
 	assert.Equal(t, 1, store.Len())
 
 	require.NoError(t, c.Terminate(ctx))
 
-	_, _, err = SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
+	_, _, err = SyncBlocklistFromRedis(ctx, rdb, maps, store)
 	assert.Error(t, err, "sync must fail when redis is down")
 	assert.Equal(t, 1, store.Len(), "store must preserve state on sync failure")
 
@@ -146,22 +147,23 @@ func (s *failingRedisStub) SMembers(ctx context.Context, key string) *redis.Stri
 func TestFault_XDPSyncInterruptedPartialUpdate(t *testing.T) {
 	objs := loadTestObjects(t)
 	store := NewBlocklistStore()
+	maps := blocklistMapsFromObjects(objs)
 
 	stub := &failingRedisStub{failAfter: 10}
-	added, _, err := SyncBlocklistFromRedis(context.Background(), stub, objs.BlocklistV4, nil, store)
+	added, _, err := SyncBlocklistFromRedis(context.Background(), stub, maps, store)
 	require.NoError(t, err)
 	assert.Equal(t, 2, added)
 	assert.Equal(t, 2, store.Len())
 
 	stub.failAfter = 0
-	_, _, err = SyncBlocklistFromRedis(context.Background(), stub, objs.BlocklistV4, nil, store)
+	_, _, err = SyncBlocklistFromRedis(context.Background(), stub, maps, store)
 	assert.Error(t, err)
 
 	assert.Equal(t, 2, store.Len(), "Store must not be partially updated or cleared")
 
 	var val uint8
-	require.NoError(t, objs.BlocklistV4.Lookup(KeyFromHost(198, 51, 100, 1), &val))
-	require.NoError(t, objs.BlocklistV4.Lookup(KeyFromHost(198, 51, 100, 2), &val))
+	require.NoError(t, objs.BlocklistHostV4.Lookup(HostKey(198, 51, 100, 1).Addr, &val))
+	require.NoError(t, objs.BlocklistHostV4.Lookup(HostKey(198, 51, 100, 2).Addr, &val))
 
 	testutil.LogFaultProof(t, "xdp_sync_interrupted", map[string]string{
 		"fault":           "partial_redis_failure",

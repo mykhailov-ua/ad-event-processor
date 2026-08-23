@@ -56,7 +56,7 @@ func BenchmarkApplyDiff_scratchOnly_10k(b *testing.B) {
 	store := NewBlocklistStore()
 	b.ReportAllocs()
 	for i := 0; i < b.N; i++ {
-		clear(store.scratch)
-		MergeHosts(store.scratch, manual, auto, fraud)
+		clear(store.scratchHosts)
+		MergeDenyV4(store.scratchHosts, store.v4Scratch, manual, auto, fraud)
 	}
 }

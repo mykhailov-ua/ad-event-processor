@@ -22,7 +22,7 @@ SLA and budgets
 
 Sources-only repo
 
-Fresh clone is not runnable out of the box: run `make gen` / `make proto`, provide env/secrets, build BPF, fetch GeoIP, start compose. Do not commit generated code, `bin/*`, `.cache/`, `var/`, secrets, or runtime JWT files. Canonical ignore: root `.gitignore`. Local dev license path: `var/license.jwt` (not repo root `license.jwt`).
+Fresh clone is not runnable out of the box: run `make gen` / `make proto`, provide env/secrets, build BPF, fetch GeoIP, start compose. Do not commit generated code, `bin/*`, `.cache/`, `var/`, secrets, or runtime JWT files. Canonical ignore: root `.gitignore`. Local dev license path: `var/license.jwt` (not repo root `license.jwt`). Root directory is NOT a junk drawer: no `*.txt` or `*.log` (except standard project files); use `var/` or `data/` instead.
 
 Commit policy
 
@@ -33,7 +33,7 @@ Commit policy
 
 Rules (flat `.cursor/rules/`)
 
-- `core.mdc`, `quality.mdc`, `anti-slop.mdc` — always on.
+- `core.mdc`, `quality.mdc`, `anti-slop.mdc`, `naming.mdc` — always on.
 - `code-style.mdc` — layout, types, sqlc, proto, PR gates.
 - `hot-path.mdc` — `/track`, parsers, gnet, SoA, asm, filters, 0 allocs.
 - `cold-path.mdc` — admin, payment, ledger, notify; flat handlers, pkg/coldpath.

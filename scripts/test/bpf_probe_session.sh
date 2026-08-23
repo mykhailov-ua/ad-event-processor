@@ -84,6 +84,9 @@ case "$CMD" in
     bash "$SCRIPTS/test/bpf_resolve_targets.sh" "$TARGETS_JSON" "${AD_EVENT_PROCESSOR_BPF_TARGETS:-tracker,nginx,redis,processor}"
 
     build_collector
+    if [[ -z "${AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY:-}" && -x "$ROOT/bin/tracker-bpf-trace" ]]; then
+      export AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY="$ROOT/bin/tracker-bpf-trace"
+    fi
     if [[ ! -x "$ROOT/bin/bpf-collector" ]]; then
       log "ERROR: missing $ROOT/bin/bpf-collector (run: make bpf-dev)"
       exit 1

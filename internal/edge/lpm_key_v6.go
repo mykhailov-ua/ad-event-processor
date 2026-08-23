@@ -86,6 +86,22 @@ func MergeIPv6Hosts(dst map[StoreID]IPv6Key, lists ...[]string) {
 	}
 }
 
+func MergeDenyV6(hosts map[StoreID]IPv6Key, prefixes map[StoreID]IPv6Key, lists ...[]string) {
+	for _, list := range lists {
+		for _, member := range list {
+			key, ok := ParseIPv6Prefix(member)
+			if !ok {
+				continue
+			}
+			if key.PrefixLen == 128 {
+				hosts[key.StoreKey()] = key
+				continue
+			}
+			prefixes[key.StoreKey()] = key
+		}
+	}
+}
+
 func MergeIPv6Prefixes(dst map[StoreID]IPv6Key, members []string) {
 	for _, member := range members {
 		key, ok := ParseIPv6Prefix(member)

@@ -56,17 +56,38 @@ func scanUAFamily(ua string) uint8 {
 	return uaFamilyUnknown
 }
 
+// normalizeCapturedTTL maps observed TTL to the smallest common initial TTL >= captured
+// (p0f-style: 32, 64, 128, 255).
+func normalizeCapturedTTL(captured uint8) uint8 {
+	switch {
+	case captured == 0:
+		return 0
+	case captured <= 32:
+		return 32
+	case captured <= 64:
+		return 64
+	case captured <= 128:
+		return 128
+	default:
+		return 255
+	}
+}
+
 func osFingerprintMismatch(ua string, ttl uint8, windowSet uint8, window uint16) bool {
 	family := scanUAFamily(ua)
 	if family == uaFamilyUnknown {
 		return false
 	}
-	if ttl >= 100 {
-		if family != uaFamilyWindows {
-			return true
+	initial := normalizeCapturedTTL(ttl)
+	if initial != 0 {
+		switch family {
+		case uaFamilyWindows:
+			// Windows default initial TTL is 128; captured 64 is ambiguous after hop decay.
+		case uaFamilyMobile, uaFamilyLinux, uaFamilyMac:
+			if initial == 128 || initial == 255 {
+				return true
+			}
 		}
-	} else if ttl <= 90 && family == uaFamilyWindows {
-		return true
 	}
 	if windowSet != 0 {
 		if family == uaFamilyWindows && window == 29200 {

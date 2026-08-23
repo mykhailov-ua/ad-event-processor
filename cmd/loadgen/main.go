@@ -11,13 +11,20 @@ import (
 	"time"
 )
 
+func envDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
 func main() {
 	mode := flag.String("mode", "full", "smoke|business|full")
 	rate := flag.Int("rate", 0, "target RPS (0 = mode default)")
 	duration := flag.Duration("duration", 0, "test duration (0 = mode default)")
 	outDir := flag.String("out", "", "session output directory")
-	trackers := flag.String("trackers", "http://127.0.0.1:8181,http://127.0.0.1:8182", "comma-separated tracker bases")
-	edgeURL := flag.String("edge", "http://127.0.0.1:8180", "nginx edge URL (empty to disable)")
+	trackers := flag.String("trackers", envDefault("LOAD_TEST_CONSTRAINED_TRACKER_BASES_CSV", "http://127.0.0.1:8181,http://127.0.0.1:8182"), "comma-separated tracker bases")
+	edgeURL := flag.String("edge", envDefault("LOAD_TEST_EDGE_URL", "http://127.0.0.1:8180"), "nginx edge URL (empty to disable)")
 	oversize := flag.Int("oversize-bytes", 65536, "oversize payload for invalid traffic")
 	pctBroken := flag.Int("pct-broken", 0, "business mode: broken traffic %")
 	pctGray := flag.Int("pct-gray", 0, "business mode: gray/fraud %")

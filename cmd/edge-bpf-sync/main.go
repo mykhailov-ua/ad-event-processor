@@ -28,6 +28,8 @@ func main() {
 	paths := edge.ResolvePinnedMapPaths()
 	blocklistPath := paths.Blocklist
 	blocklistV6Path := paths.BlocklistV6
+	blocklistHostV4Path := paths.BlocklistHostV4
+	blocklistHostV6Path := paths.BlocklistHostV6
 	allowlistPath := paths.Allowlist
 	allowlistV6Path := paths.AllowlistV6
 	statsPath := paths.Stats
@@ -61,6 +63,22 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = denyV6Map.Close() }()
+
+	denyHostV4Map, err := edge.LoadPinnedBlocklistHostV4Map(blocklistHostV4Path)
+	if err != nil {
+		slog.Error("open pinned blocklist host v4 map", "path", blocklistHostV4Path, "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = denyHostV4Map.Close() }()
+
+	denyHostV6Map, err := edge.LoadPinnedBlocklistHostV6Map(blocklistHostV6Path)
+	if err != nil {
+		slog.Error("open pinned blocklist host v6 map", "path", blocklistHostV6Path, "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = denyHostV6Map.Close() }()
+
+	denyMaps := edge.BlocklistMapsFromPinned(denyMap, denyV6Map, denyHostV4Map, denyHostV6Map)
 
 	allowMap, err := edge.LoadPinnedAllowlistMap(allowlistPath)
 	if err != nil {
@@ -149,7 +167,7 @@ func main() {
 	})
 
 	if edge.EbpfEdgeLicensed(ctx, rdb) {
-		if err := runSync(ctx, rdb, denyMap, denyV6Map, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
+		if err := runSync(ctx, rdb, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 			slog.Warn("initial edge bpf sync failed", "error", err)
 		}
 	} else {
@@ -187,7 +205,7 @@ func main() {
 				continue
 			}
 			if n > 0 {
-				if err := runSync(ctx, rdb, denyMap, denyV6Map, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
+				if err := runSync(ctx, rdb, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 					slog.Warn("post-violation bpf sync failed", "error", err)
 				}
 			}
@@ -206,7 +224,7 @@ func main() {
 			if !edge.EbpfEdgeLicensed(ctx, rdb) {
 				continue
 			}
-			if err := runSync(ctx, rdb, denyMap, denyV6Map, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
+			if err := runSync(ctx, rdb, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 				slog.Warn("edge bpf sync failed", "error", err)
 			}
 		}
@@ -233,8 +251,8 @@ func serveMetrics(ctx context.Context, port string) {
 	}
 }
 
-func runSync(ctx context.Context, rdb *redis.Client, denyMap, denyV6Map, allowMap, allowV6Map *ebpf.Map, denyStore *edge.BlocklistStore, allowStore *edge.AllowlistStore, denyState *edge.BlocklistSyncState) error {
-	denyAdded, denyRemoved, err := edge.SyncBlocklistIncremental(ctx, rdb, denyMap, denyV6Map, denyStore, denyState)
+func runSync(ctx context.Context, rdb *redis.Client, denyMaps edge.BlocklistMaps, allowMap, allowV6Map *ebpf.Map, denyStore *edge.BlocklistStore, allowStore *edge.AllowlistStore, denyState *edge.BlocklistSyncState) error {
+	denyAdded, denyRemoved, err := edge.SyncBlocklistIncremental(ctx, rdb, denyMaps, denyStore, denyState)
 	if err != nil {
 		return err
 	}

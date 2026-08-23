@@ -503,6 +503,14 @@ services:
         max-size: '100m'
         max-file: '3'
 
+  broker-data-init:
+    image: busybox:1.36
+    user: root
+    volumes:
+      - ad_event_processor_broker_data:/data
+    command: ['sh', '-c', 'chown -R 65532:65532 /data && chmod -R u+rwX /data']
+    restart: 'no'
+
   broker:
     build:
       context: ../..
@@ -513,6 +521,8 @@ services:
     network_mode: '${NET_MODE:-host}'
     env_file:
       - ../../.env
+    environment:
+      - BROKER_REDIS_PASSWORD=${REDIS_PASSWORD}
     command:
       - serve
       - -addr=/run/ad-event-processor/broker/gnet.sock
@@ -531,6 +541,8 @@ services:
       start_period: 10s
     restart: unless-stopped
     depends_on:
+      broker-data-init:
+        condition: service_completed_successfully
       redis-0:
         condition: service_healthy
     logging:

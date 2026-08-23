@@ -39,7 +39,7 @@ func TestFault_FraudOutboxBackpressure(t *testing.T) {
 	for range 5 {
 		_, err := pool.Exec(ctx, `
 			INSERT INTO outbox_events (event_type, payload, status)
-			VALUES ('ML_SCORE_BOOST', '{"action":"boost"}', 'PENDING')`)
+			VALUES ('UPDATE_CAMPAIGN_PACING', '{"campaign_id":"00000000-0000-0000-0000-000000000001","pacing_mode":"even"}', 'PENDING')`)
 		require.NoError(t, err)
 	}
 

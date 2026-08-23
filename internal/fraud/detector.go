@@ -105,18 +105,38 @@ func (detector *Detector) RunLoop(ctx context.Context) error {
 }
 
 func (detector *Detector) outboxBacklogged(ctx context.Context) (bool, error) {
-	if detector.pool == nil || detector.cfg.OutboxPendingLimit <= 0 {
+	pending, err := detector.countOutboxBackpressurePending(ctx)
+	if err != nil {
+		return false, err
+	}
+	limit := detector.cfg.OutboxPendingLimit
+	recordOutboxBackpressureState(pending >= limit && limit > 0, pending, limit)
+	if limit <= 0 {
 		return false, nil
 	}
+	return pending >= limit, nil
+}
 
-	var pending int64
-	err := detector.pool.QueryRow(ctx,
-		"SELECT COUNT(*) FROM outbox_events WHERE status = 'PENDING'",
-	).Scan(&pending)
-	if err != nil {
-		return false, fmt.Errorf("count pending outbox events: %w", err)
+func (detector *Detector) countOutboxBackpressurePending(ctx context.Context) (int64, error) {
+	if detector.pool == nil {
+		return 0, nil
 	}
-	return pending >= detector.cfg.OutboxPendingLimit, nil
+	var pending int64
+	err := detector.pool.QueryRow(ctx, outboxBackpressurePendingSQL, OutboxEnforcementEventTypes).Scan(&pending)
+	if err != nil {
+		return 0, fmt.Errorf("count pending outbox events: %w", err)
+	}
+	return pending, nil
+}
+
+func recordOutboxBackpressureState(active bool, pending, limit int64) {
+	if active {
+		ivtOutboxBackpressureActive.Set(1)
+	} else {
+		ivtOutboxBackpressureActive.Set(0)
+	}
+	ivtOutboxBackpressurePending.Set(float64(pending))
+	ivtOutboxBackpressureLimit.Set(float64(limit))
 }
 
 func (detector *Detector) PendingOutboxCount(ctx context.Context) (int64, error) {

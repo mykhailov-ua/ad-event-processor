@@ -29,6 +29,7 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 
 	objs := loadTestObjects(t)
 	store := NewBlocklistStore()
+	maps := blocklistMapsFromObjects(objs)
 
 	victim := net.IPv4(203, 0, 113, 150)
 	control := net.IPv4(10, 20, 30, 50)
@@ -53,7 +54,7 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 					return
 				default:
 				}
-				_, _, err := SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
+				_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 				if err != nil {
 					t.Errorf("scheduled sync worker %d: %v", id, err)
 					return
@@ -65,7 +66,7 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 
 	require.NoError(t, RecordAutoBan(ctx, rdb, victim.String(), 5*time.Minute))
 	earlyStart := time.Now()
-	_, _, err := SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
+	_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 	require.NoError(t, err)
 	earlyLatency := time.Since(earlyStart)
 	earlyDone <- earlyLatency
@@ -81,9 +82,9 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 
 	v4 := victim.To4()
 	require.NotNil(t, v4)
-	key := KeyFromHost(v4[0], v4[1], v4[2], v4[3])
+	hostAddr := HostKey(v4[0], v4[1], v4[2], v4[3]).Addr
 	var marker uint8
-	require.NoError(t, objs.BlocklistV4.Lookup(key, &marker))
+	require.NoError(t, objs.BlocklistHostV4.Lookup(hostAddr, &marker))
 	assert.Equal(t, uint8(1), marker)
 	assert.GreaterOrEqual(t, store.Len(), 1)
 

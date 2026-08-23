@@ -546,7 +546,7 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 
 func writeMarkersSection(b *strings.Builder, markers []markerStat) {
 	b.WriteString("## Hot path uprobes (Go)\n\n")
-	fmt.Fprintf(b, "Requires tracker built with `-tags %s` and bpf-collector uprobes attached.\n\n", naming.DeprecatedBPFTraceBuildTag())
+	fmt.Fprintf(b, "Requires tracker built with `-tags %s` and bpf-collector uprobes attached.\n\n", naming.BPFTraceBuildTag())
 	b.WriteString("| role | marker | slot | count | avg (µs) | p99 (µs) | max (µs) |\n")
 	b.WriteString("|------|--------|------|-------|----------|----------|----------|\n")
 	sorted := append([]markerStat(nil), markers...)

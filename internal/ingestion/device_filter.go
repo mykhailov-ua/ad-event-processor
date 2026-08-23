@@ -61,8 +61,10 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if tlsFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
 		addFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
-	if f.osFingerprintEnabled && evt.TCPTTLSet != 0 && evt.UA != "" {
-		if osFingerprintMismatch(evt.UA, evt.TCPTTL, evt.TCPWindowSet, evt.TCPWindow) {
+	if f.osFingerprintEnabled && evt.UA != "" {
+		if evt.TCPTTLSet == 0 {
+			metrics.OSFingerprintSkippedTotal.WithLabelValues("no_tcp_headers").Inc()
+		} else if osFingerprintMismatch(evt.UA, evt.TCPTTL, evt.TCPWindowSet, evt.TCPWindow) {
 			metrics.OSFingerprintMismatchTotal.Inc()
 			addFraudSignal(evt, FraudReasonOSFingerprint)
 		}

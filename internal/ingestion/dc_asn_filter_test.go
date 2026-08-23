@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
@@ -98,9 +99,9 @@ func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
 	table := NewDCASNTable()
 	table.Publish(buildDCASNSnapshot(map[uint32]struct{}{16509: {}}, 1))
 
-	geo := &MockGeoProvider{ASN: map[string]uint32{"54.230.17.9": 16509}}
+	geo := &anonErrGeoProvider{MockGeoProvider: MockGeoProvider{ASN: map[string]uint32{"54.230.17.9": 16509}}}
 	f := NewFraudFilter(geo)
-	f.ConfigureDCASN(table, geo, 0) // mask 127: only seq&127==0 samples
+	f.ConfigureDCASN(table, geo, 0) // mask 127: only seq&127==0 samples when GeoIP errors
 
 	evt := &domain.Event{IP: "54.230.17.9", StringBuffer: make([]byte, 0, 32)}
 	engine := NewFilterEngine(0, f)
@@ -119,6 +120,38 @@ func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
 	}
 	assert.Greater(t, shadowCount, 0)
 	assert.Less(t, shadowCount, 256)
+}
+
+func TestFraudFilter_DCASN_holdout(t *testing.T) {
+	table := NewDCASNTable()
+	table.Publish(buildDCASNSnapshot(map[uint32]struct{}{16509: {}}, 1))
+
+	geo := &MockGeoProvider{ASN: map[string]uint32{"54.230.17.9": 16509}}
+	f := NewFraudFilter(geo)
+	f.ConfigureDCASN(table, geo, 127) // heavy sampling: would skip most events without force path
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	evt.IP = "54.230.17.9"
+
+	for range 32 {
+		evt.FraudReason = ""
+		evt.FraudScore = 0
+		evt.StringBuffer = evt.StringBuffer[:0]
+		require.NoError(t, f.Check(context.Background(), evt))
+		assert.True(t, acc.has(FraudReasonDatacenterIP), "non-anonymous hosting ASN must always flag datacenter_ip")
+	}
+}
+
+type anonErrGeoProvider struct {
+	MockGeoProvider
+}
+
+func (p *anonErrGeoProvider) IsAnonymous(string) (bool, error) {
+	return false, errors.New("geo unavailable")
 }
 
 func TestFraudFilter_DCASN_engineL2Shadow(t *testing.T) {

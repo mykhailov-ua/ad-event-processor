@@ -49,8 +49,7 @@ func BenchmarkXDP_passSYN(b *testing.B) {
 
 func BenchmarkXDP_dropBlocklist(b *testing.B) {
 	objs := loadBenchObjects(b)
-	key := bpfLPMKey(HostKey(10, 9, 8, 7))
-	if err := objs.BlocklistV4.Update(key, uint8(1), ebpf.UpdateAny); err != nil {
+	if err := objs.BlocklistHostV4.Update(HostKey(10, 9, 8, 7).Addr, uint8(1), ebpf.UpdateAny); err != nil {
 		b.Fatal(err)
 	}
 	pkt := buildSYNPacketBench(net.IPv4(10, 9, 8, 7), trackerPort)

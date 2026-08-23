@@ -253,6 +253,55 @@ func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	require.False(t, f.localQuantaFullSkipEligible(evt, camp))
 }
 
+func TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+	ctx := context.Background()
+	rdb, cleanup := setupMiniredis(t)
+	defer cleanup()
+
+	counter := &evalCountRedis{UniversalClient: rdb}
+	f, ledger, stream := newLocalQuantaUnifiedFilter(t, counter)
+	campID := uuid.New()
+	reg := benchRegistryForCampaign(&domain.Campaign{
+		ID:         campID,
+		PacingMode: domain.PacingModeAsap,
+	})
+	f.registry = reg
+	engine := NewFilterEngine(time.Second, f)
+	engine.SetRegistry(reg)
+	require.NoError(t, f.PreloadScripts(ctx))
+	counter.evals.Store(0)
+
+	const localCredit = int64(5_000_000)
+	ledger.Credit(campID, localCredit, testQuotaChunkMicro)
+	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+
+	blockedIP := "198.51.100.77"
+	require.NoError(t, rdb.SAdd(ctx, fraudBlacklistKey, blockedIP).Err())
+
+	beforeSkip := testutil.ToFloat64(metrics.RedisLuaSkippedTotal)
+	beforeFull := testutil.ToFloat64(metrics.LocalQuotaFullSkipTotal)
+
+	evt := &domain.Event{
+		Type:         "click",
+		IP:           blockedIP,
+		UserID:       "l3-full-skip",
+		CampaignID:   campID,
+		ClickID:      uuid.NewString(),
+		StringBuffer: make([]byte, 0, 64),
+	}
+	checkCtx := attachFilterDeadline(ctx, time.Second)
+	require.ErrorIs(t, engine.Check(checkCtx, evt), ErrFraudDetected)
+	require.Equal(t, int64(0), counter.evals.Load(), "L3 must not call Redis EVAL on full-skip path")
+	require.Equal(t, localCredit, ledger.Remaining(campID), "L3 must not debit local quanta")
+	require.Equal(t, beforeSkip, testutil.ToFloat64(metrics.RedisLuaSkippedTotal))
+	require.Equal(t, beforeFull, testutil.ToFloat64(metrics.LocalQuotaFullSkipTotal))
+	require.Contains(t, evt.FraudReason, FraudReasonCodeL3Blocklist)
+	_ = stream
+}
+
 func TestLocalClickIdemCache_TryClaim(t *testing.T) {
 	cache := NewLocalClickIdemCache(time.Minute)
 	require.True(t, cache.TryClaim("click-a"))

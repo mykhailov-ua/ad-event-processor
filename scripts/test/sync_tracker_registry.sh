@@ -2,6 +2,10 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/load_test_env.sh"
+cd "$ROOT"
+
+load_test_compose COMPOSE "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
@@ -11,7 +15,6 @@ fi
 
 CHANNEL="${CAMPAIGN_UPDATE_CHANNEL:-campaigns:update}"
 PAYLOAD="${REGISTRY_FULL_SYNC_PAYLOAD:-*}"
-COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
 VERIFY_TRACKERS="${VERIFY_TRACKERS:-1}"
 VERIFY_RETRIES="${VERIFY_RETRIES:-30}"
@@ -46,7 +49,7 @@ if [[ "$VERIFY_TRACKERS" != "1" ]]; then
   exit 0
 fi
 
-for port in 8181 8182; do
+for port in $(load_test_constrained_ingest_ports); do
   accepted=0
   for _ in $(seq 1 "$VERIFY_RETRIES"); do
     if verify_track "$port"; then

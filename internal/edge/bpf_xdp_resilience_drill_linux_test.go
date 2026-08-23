@@ -67,7 +67,13 @@ func TestResilienceDrill_LoopbackBlocklistDrop(t *testing.T) {
 	require.NoError(t, rdb.SAdd(ctx, "blacklist:manual", victim.String()).Err())
 
 	store := edge.NewBlocklistStore()
-	_, _, err = edge.SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
+	maps := edge.BlocklistMaps{
+		V4Host:   objs.BlocklistHostV4,
+		V4Prefix: objs.BlocklistV4,
+		V6Host:   objs.BlocklistHostV6,
+		V6Prefix: objs.BlocklistV6,
+	}
+	_, _, err = edge.SyncBlocklistFromRedis(ctx, rdb, maps, store)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, store.Len(), 1)
 

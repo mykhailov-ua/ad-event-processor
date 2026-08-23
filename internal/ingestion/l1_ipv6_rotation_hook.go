@@ -36,10 +36,13 @@ func buildSafeViewIPv6RotationResponse() []byte {
 
 type ipv6RotationCell struct {
 	campaignHash atomic.Uint32
+	_            uint32
 	v6Hi         atomic.Uint64
 	windowStart  atomic.Int64
 	rotations    atomic.Uint32
+	_            uint32
 	distinctLo   [ipv6RotationDistinctSlots]atomic.Uint64
+	_            [localQuantaCacheLine]byte
 }
 
 type IPv6RotationTable struct {

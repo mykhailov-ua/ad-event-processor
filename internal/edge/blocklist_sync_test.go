@@ -14,19 +14,47 @@ func TestSyncBlocklistFromRedis_fraudOnly(t *testing.T) {
 	rdb := &redisStub{sets: map[string][]string{
 		redisKeyBlacklistFraud: {"198.51.100.9"},
 	}}
-	m := newLPMMap(t)
+	maps := newTestBlocklistMapsV4Only(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := SyncBlocklistFromRedis(ctx, rdb, m, nil, store)
+	added, removed, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
 	assert.Equal(t, 1, store.Len())
 
-	key := KeyFromHost(198, 51, 100, 9)
+	hostAddr := HostKey(198, 51, 100, 9).Addr
 	var val uint8
-	require.NoError(t, m.Lookup(key, &val))
+	require.NoError(t, maps.V4Host.Lookup(hostAddr, &val))
 	assert.Equal(t, blockedMarker, val)
+}
+
+func TestBlocklistStore_hostHashMap_holdout(t *testing.T) {
+	maps := newTestBlocklistMapsV4Only(t)
+	store := NewBlocklistStore()
+
+	host := "198.51.100.42"
+	cidr := "10.0.0.0/8"
+	added, _, err := store.ApplyDiff(maps, nil, nil, []string{host, cidr})
+	require.NoError(t, err)
+	require.Equal(t, 2, added)
+
+	hostAddr := HostKey(198, 51, 100, 42).Addr
+	var val uint8
+	require.NoError(t, maps.V4Host.Lookup(hostAddr, &val))
+	assert.Equal(t, blockedMarker, val)
+
+	hostLPM := HostKey(198, 51, 100, 42)
+	err = maps.V4Prefix.Lookup(hostLPM, &val)
+	assert.Error(t, err, "host /32 must not land in LPM trie")
+
+	prefix, ok := ParsePrefix(cidr)
+	require.True(t, ok)
+	require.NoError(t, maps.V4Prefix.Lookup(prefix, &val))
+	assert.Equal(t, blockedMarker, val)
+
+	err = maps.V4Host.Lookup(prefix.Addr, &val)
+	assert.Error(t, err, "CIDR prefix must not land in host HASH map")
 }
 
 func TestMergeDenyIPs_allSources(t *testing.T) {
@@ -48,23 +76,23 @@ func TestMergeDenyIPs_allSources(t *testing.T) {
 }
 
 func TestBlocklistApplyDiff_fraudRemoval(t *testing.T) {
-	m := newLPMMap(t)
+	maps := newTestBlocklistMapsV4Only(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := store.ApplyDiff(m, nil, nil, nil, []string{"198.51.100.1"})
+	added, removed, err := store.ApplyDiff(maps, nil, nil, []string{"198.51.100.1"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
 
-	added, removed, err = store.ApplyDiff(m, nil, nil, nil, nil)
+	added, removed, err = store.ApplyDiff(maps, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, added)
 	assert.Equal(t, 1, removed)
 	assert.Equal(t, 0, store.Len())
 
-	key := KeyFromHost(198, 51, 100, 1)
+	hostAddr := HostKey(198, 51, 100, 1).Addr
 	var val uint8
-	err = m.Lookup(key, &val)
+	err = maps.V4Host.Lookup(hostAddr, &val)
 	assert.Error(t, err)
 }
 
@@ -73,21 +101,21 @@ func TestBlocklistApplyDiff_skipsProtected(t *testing.T) {
 	defer os.Unsetenv("INSTALL_LAN_CIDR")
 	ResetProtectedForTest()
 
-	m := newLPMMap(t)
+	maps := newTestBlocklistMapsV4Only(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := store.ApplyDiff(m, nil, []string{"8.8.8.8", "192.168.1.10", "198.51.100.1"}, nil, nil)
+	added, removed, err := store.ApplyDiff(maps, nil, []string{"8.8.8.8", "192.168.1.10", "198.51.100.1"}, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
 
 	var val uint8
-	err = m.Lookup(KeyFromHost(198, 51, 100, 1), &val)
+	err = maps.V4Host.Lookup(HostKey(198, 51, 100, 1).Addr, &val)
 	require.NoError(t, err)
 
-	err = m.Lookup(KeyFromHost(8, 8, 8, 8), &val)
+	err = maps.V4Host.Lookup(HostKey(8, 8, 8, 8).Addr, &val)
 	assert.Error(t, err)
 
-	err = m.Lookup(KeyFromHost(192, 168, 1, 10), &val)
+	err = maps.V4Host.Lookup(HostKey(192, 168, 1, 10).Addr, &val)
 	assert.Error(t, err)
 }

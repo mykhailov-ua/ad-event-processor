@@ -1183,6 +1183,22 @@
           "legendFormat": "critical_drop/s",
           "range": true,
           "refId": "D"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "ivt_outbox_backpressure_active",
+          "legendFormat": "ivt_backpressure",
+          "range": true,
+          "refId": "E"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "ad_control_outbox_oldest_pending_seconds",
+          "legendFormat": "outbox_oldest_s",
+          "range": true,
+          "refId": "F"
         }
       ],
       "title": "Fraud Stream Backlog",

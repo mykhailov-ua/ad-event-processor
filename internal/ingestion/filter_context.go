@@ -97,6 +97,14 @@ func (a *fraudAccumulator) shouldShortCircuitFraudBudget() bool {
 	return a.countFlags(fraudSignalL1High) >= 2
 }
 
+func eventHasFraudL3(evt *domain.Event) bool {
+	if evt == nil || evt.Scratch == nil {
+		return false
+	}
+	acc := (*fraudAccumulator)(evt.Scratch)
+	return acc.hasFlags(fraudSignalL3)
+}
+
 func attachFilterDeadline(ctx context.Context, timeout time.Duration) context.Context {
 	if timeout <= 0 {
 		return ctx

@@ -155,6 +155,7 @@ func main() {
 	slog.Info("starting ivt detector",
 		"scan_interval_ms", cfg.IVT.ScanIntervalMs,
 		"window_sec", cfg.IVT.WindowSec,
+		"outbox_pending_limit", cfg.IVT.OutboxPendingLimit,
 	)
 
 	if rdb != nil {

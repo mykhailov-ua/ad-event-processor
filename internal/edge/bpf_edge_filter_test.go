@@ -213,11 +213,15 @@ func runXDP(t *testing.T, prog *ebpf.Program, pkt []byte) uint32 {
 	return ret
 }
 
+func updateBlocklistHostV4(t *testing.T, m *ebpf.Map, a, b, c, d byte) {
+	t.Helper()
+	require.NoError(t, m.Update(HostKey(a, b, c, d).Addr, uint8(1), ebpf.UpdateAny))
+}
+
 func TestXDP_dropBlocklistedSource(t *testing.T) {
 	objs := loadTestObjects(t)
 
-	key := bpfLPMKey(HostKey(192, 0, 2, 1))
-	require.NoError(t, objs.BlocklistV4.Update(key, uint8(1), ebpf.UpdateAny))
+	updateBlocklistHostV4(t, objs.BlocklistHostV4, 192, 0, 2, 1)
 
 	pkt := buildSYNPacket(t, net.IPv4(192, 0, 2, 1), net.IPv4(10, 0, 0, 1), trackerPort)
 	assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
@@ -226,8 +230,7 @@ func TestXDP_dropBlocklistedSource(t *testing.T) {
 func TestXDP_passNonTrackerPort(t *testing.T) {
 	objs := loadTestObjects(t)
 
-	key := bpfLPMKey(HostKey(192, 0, 2, 1))
-	require.NoError(t, objs.BlocklistV4.Update(key, uint8(1), ebpf.UpdateAny))
+	updateBlocklistHostV4(t, objs.BlocklistHostV4, 192, 0, 2, 1)
 
 	pkt := buildSYNPacket(t, net.IPv4(192, 0, 2, 1), net.IPv4(10, 0, 0, 1), 443)
 	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
@@ -317,9 +320,8 @@ func TestXDP_allowBypassBlocklist(t *testing.T) {
 	objs := loadTestObjects(t)
 
 	allowKey := bpfLPMKey(HostKey(192, 0, 2, 1))
-	denyKey := bpfLPMKey(HostKey(192, 0, 2, 1))
+	updateBlocklistHostV4(t, objs.BlocklistHostV4, 192, 0, 2, 1)
 	require.NoError(t, objs.AllowV4.Update(allowKey, uint8(1), ebpf.UpdateAny))
-	require.NoError(t, objs.BlocklistV4.Update(denyKey, uint8(1), ebpf.UpdateAny))
 
 	pkt := buildSYNPacket(t, net.IPv4(192, 0, 2, 1), net.IPv4(10, 0, 0, 1), trackerPort)
 	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
@@ -347,7 +349,7 @@ func TestXDP_allowCIDRPrefix(t *testing.T) {
 	p8, ok := ParsePrefix("10.0.0.0/8")
 	require.True(t, ok)
 	require.NoError(t, objs.AllowV4.Update(bpfLPMKey(p8), uint8(1), ebpf.UpdateAny))
-	require.NoError(t, objs.BlocklistV4.Update(bpfLPMKey(HostKey(10, 9, 8, 7)), uint8(1), ebpf.UpdateAny))
+	updateBlocklistHostV4(t, objs.BlocklistHostV4, 10, 9, 8, 7)
 
 	pkt := buildSYNPacket(t, net.IPv4(10, 9, 8, 7), net.IPv4(10, 0, 0, 1), trackerPort)
 	assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))

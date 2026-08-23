@@ -121,18 +121,21 @@ func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
 	isAnon, err := f.geo.IsAnonymous(evt.IP)
 	if err == nil && isAnon {
 		addFraudSignal(evt, FraudReasonDatacenterIP)
+		return nil
 	}
-	f.checkDCASN(evt)
+	// Hosting IPs missed by GeoIP IsAnonymous are checked on every event when the
+	// DC ASN snapshot is ready; sampling applies only on GeoIP errors.
+	f.checkDCASN(evt, err == nil && !isAnon)
 	return nil
 }
 
 const dcASNCheckSampleMask = 7
 
-func (f *FraudFilter) checkDCASN(evt *domain.Event) {
+func (f *FraudFilter) checkDCASN(evt *domain.Event, force bool) {
 	if f == nil || f.dcASN == nil || f.asnLookup == nil || !f.dcASN.Ready() || evt.IP == "" {
 		return
 	}
-	if !shouldSampleHistogram(f.sampleSeq.Add(1), f.sampleMask) {
+	if !force && !shouldSampleHistogram(f.sampleSeq.Add(1), f.sampleMask) {
 		return
 	}
 	metrics.DCASNCheckTotal.Inc()

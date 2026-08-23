@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cilium/ebpf"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -31,7 +30,7 @@ type autoBanReader interface {
 // SyncBlocklistFromRedis pulls manual/auto/fraud sets from Redis into the XDP blocklist map.
 // Pub/sub cache refresh for nginx uses deploy/nginx/lua/edge-blacklist-sync.lua and
 // edge.FraudQuarantineChannel payloads (see quarantine_pubsub.go).
-func SyncBlocklistFromRedis(ctx context.Context, rdb denySetReader, v4Map, v6Map *ebpf.Map, store *BlocklistStore) (added, removed int, err error) {
+func SyncBlocklistFromRedis(ctx context.Context, rdb denySetReader, maps BlocklistMaps, store *BlocklistStore) (added, removed int, err error) {
 	manual, err := rdb.SMembers(ctx, redisKeyBlacklistManual).Result()
 	if err != nil {
 		return 0, 0, fmt.Errorf("smembers %s: %w", redisKeyBlacklistManual, err)
@@ -44,5 +43,5 @@ func SyncBlocklistFromRedis(ctx context.Context, rdb denySetReader, v4Map, v6Map
 	if err != nil {
 		return 0, 0, fmt.Errorf("smembers %s: %w", redisKeyBlacklistFraud, err)
 	}
-	return store.ApplyDiff(v4Map, v6Map, manual, auto, fraud)
+	return store.ApplyDiff(maps, manual, auto, fraud)
 }

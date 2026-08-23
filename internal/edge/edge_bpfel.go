@@ -24,6 +24,14 @@ type EdgeEdgeConfig struct {
 	FingerprintEnabled uint32
 }
 
+type EdgeIn6Addr struct {
+	_    structs.HostLayout
+	In6U struct {
+		_       structs.HostLayout
+		U6Addr8 [16]uint8
+	}
+}
+
 type EdgeIpv4LpmKey struct {
 	_         structs.HostLayout
 	Prefixlen uint32
@@ -56,6 +64,8 @@ type EdgeSynState struct {
 const (
 	EdgeMapAllowV4              = "allow_v4"
 	EdgeMapAllowV6              = "allow_v6"
+	EdgeMapBlocklistHostV4      = "blocklist_host_v4"
+	EdgeMapBlocklistHostV6      = "blocklist_host_v6"
 	EdgeMapBlocklistV4          = "blocklist_v4"
 	EdgeMapBlocklistV6          = "blocklist_v6"
 	EdgeMapConfig               = "config"
@@ -124,6 +134,8 @@ type EdgeProgramSpecs struct {
 type EdgeMapSpecs struct {
 	AllowV4              *ebpf.MapSpec `ebpf:"allow_v4"`
 	AllowV6              *ebpf.MapSpec `ebpf:"allow_v6"`
+	BlocklistHostV4      *ebpf.MapSpec `ebpf:"blocklist_host_v4"`
+	BlocklistHostV6      *ebpf.MapSpec `ebpf:"blocklist_host_v6"`
 	BlocklistV4          *ebpf.MapSpec `ebpf:"blocklist_v4"`
 	BlocklistV6          *ebpf.MapSpec `ebpf:"blocklist_v6"`
 	Config               *ebpf.MapSpec `ebpf:"config"`
@@ -166,6 +178,8 @@ func (o *EdgeObjects) Close() error {
 type EdgeMaps struct {
 	AllowV4              *ebpf.Map `ebpf:"allow_v4"`
 	AllowV6              *ebpf.Map `ebpf:"allow_v6"`
+	BlocklistHostV4      *ebpf.Map `ebpf:"blocklist_host_v4"`
+	BlocklistHostV6      *ebpf.Map `ebpf:"blocklist_host_v6"`
 	BlocklistV4          *ebpf.Map `ebpf:"blocklist_v4"`
 	BlocklistV6          *ebpf.Map `ebpf:"blocklist_v6"`
 	Config               *ebpf.Map `ebpf:"config"`
@@ -184,6 +198,8 @@ func (m *EdgeMaps) Close() error {
 	return _EdgeClose(
 		m.AllowV4,
 		m.AllowV6,
+		m.BlocklistHostV4,
+		m.BlocklistHostV6,
 		m.BlocklistV4,
 		m.BlocklistV6,
 		m.Config,

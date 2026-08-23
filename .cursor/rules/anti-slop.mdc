@@ -7,7 +7,7 @@ Agents must not ship plausible-but-wrong code. Slop = code that compiles, looks 
 
 ## Lie modes (never)
 
-- Wrong naming vs `docs/NAMING.md` or existing symbols.
+- Wrong naming vs `docs/NAMING.md`, `docs/STRUCTURE.md`, or `naming.mdc`. Cryptic suffixes (`m8`, `n1`, `f1`) and legacy tokens (`BidShard`, `espx`) are slop.
 - Wrong types: sqlc row field vs DTO `json` tag mismatch.
 - Plausible logic that fails edge cases (parser budgets, budget invariant, idempotency).
 - Weakened tests to green CI without fixing behavior.

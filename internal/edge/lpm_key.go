@@ -145,6 +145,22 @@ func MergeHosts(dst map[uint32]struct{}, lists ...[]string) {
 	}
 }
 
+func MergeDenyV4(hosts map[uint32]struct{}, prefixes map[StoreID]IPv4Key, lists ...[]string) {
+	for _, list := range lists {
+		for _, member := range list {
+			key, ok := ParsePrefix(member)
+			if !ok {
+				continue
+			}
+			if key.PrefixLen == 32 {
+				hosts[key.Addr] = struct{}{}
+				continue
+			}
+			prefixes[key.StoreKey()] = key
+		}
+	}
+}
+
 func MergePrefixes(dst map[StoreID]IPv4Key, members []string) {
 	for _, member := range members {
 		key, ok := ParsePrefix(member)

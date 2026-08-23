@@ -20,11 +20,13 @@ const (
 
 type residentialProxyCell struct {
 	campaignHash atomic.Uint32
+	_            uint32
 	windowStart  atomic.Int64
 	events       atomic.Uint32
 	clicks       atomic.Uint32
 	userHashes   [residentialProxyDistinct]atomic.Uint32
 	uaHashes     [residentialProxyDistinct]atomic.Uint32
+	_            [localQuantaCacheLine*5 - (4 + 4 + 8 + 4 + 4 + residentialProxyDistinct*4*2)]byte
 }
 
 type ResidentialProxyRing struct {

@@ -1,5 +1,26 @@
+# Load-test overlay: ports from .env.load-test + deploy/compose/.env.load-test.runtime (generated).
+# Render nginx/prometheus: bash scripts/lib/render_load_test_config.sh
+
 x-go-load-test-env: &go_load_test_env
   GOMAXPROCS: '2'
+
+x-tracker-healthcheck: &tracker_healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 5
+  start_period: 30s
+
+x-tracker-lab-deploy-dual: &tracker_lab_deploy_dual
+  resources:
+    limits:
+      cpus: '2.0'
+      memory: 512M
+
+x-tracker-lab-deploy-scale: &tracker_lab_deploy_scale
+  resources:
+    limits:
+      cpus: '0.5'
+      memory: 448M
 
 x-tracker-lab-env: &tracker_lab_env
   GOMAXPROCS: '2'
@@ -8,51 +29,71 @@ x-tracker-lab-env: &tracker_lab_env
   TRACKER_INGRESS_SCHEMA: ad_event_processor_native
   AD_EVENT_PROCESSOR_LICENSE_REQUIRED: '0'
   ENV: development
-  REDIS_ADDRS: 127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482,127.0.0.1:6483,127.0.0.1:6484
+  TRANSPORT_USE_UDS: '0'
+  TRACKER_UNIX_SOCKET: ''
+  REDIS_ADDRS: ${LOAD_TEST_REDIS_ADDRS}
   QUOTA_MODE: live
   LOCAL_QUOTA_MODE: live
 
+x-tracker-lab-build: &tracker_lab_build
+  context: ../..
+  dockerfile: deploy/docker/Dockerfile
+  args:
+    SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
+    TRACKER_BPF_TRACE: '1'
+
 services:
   tracker-0:
+    build:
+      <<: *tracker_lab_build
     environment:
       <<: *tracker_lab_env
-      SERVER_PORT: '8181'
-      METRICS_PORT: '9101'
+      SERVER_PORT: ${LOAD_TEST_TRACKER_0_INGEST_PORT}
+      METRICS_PORT: ${LOAD_TEST_TRACKER_0_METRICS_PORT}
+    healthcheck:
+      <<: *tracker_healthcheck
+      test: ['CMD', '/tracker', '--health-probe', '${LOAD_TEST_TRACKER_0_HEALTH_URL}']
     deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 512M
+      <<: *tracker_lab_deploy_dual
 
   tracker-1:
+    build:
+      <<: *tracker_lab_build
     environment:
       <<: *tracker_lab_env
-      SERVER_PORT: '8182'
-      METRICS_PORT: '9102'
+      SERVER_PORT: ${LOAD_TEST_TRACKER_1_INGEST_PORT}
+      METRICS_PORT: ${LOAD_TEST_TRACKER_1_METRICS_PORT}
+    healthcheck:
+      <<: *tracker_healthcheck
+      test: ['CMD', '/tracker', '--health-probe', '${LOAD_TEST_TRACKER_1_HEALTH_URL}']
     deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 512M
+      <<: *tracker_lab_deploy_dual
 
   tracker-2:
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 448M
+    build:
+      <<: *tracker_lab_build
     environment:
-      - GOMAXPROCS=1
-      - GOMEMLIMIT=300MiB
+      <<: *tracker_lab_env
+      SERVER_PORT: ${LOAD_TEST_TRACKER_2_INGEST_PORT}
+      METRICS_PORT: ${LOAD_TEST_TRACKER_2_METRICS_PORT}
+    healthcheck:
+      <<: *tracker_healthcheck
+      test: ['CMD', '/tracker', '--health-probe', '${LOAD_TEST_TRACKER_2_HEALTH_URL}']
+    deploy:
+      <<: *tracker_lab_deploy_scale
+
   tracker-3:
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 448M
+    build:
+      <<: *tracker_lab_build
     environment:
-      - GOMAXPROCS=1
-      - GOMEMLIMIT=300MiB
+      <<: *tracker_lab_env
+      SERVER_PORT: ${LOAD_TEST_TRACKER_3_INGEST_PORT}
+      METRICS_PORT: ${LOAD_TEST_TRACKER_3_METRICS_PORT}
+    healthcheck:
+      <<: *tracker_healthcheck
+      test: ['CMD', '/tracker', '--health-probe', '${LOAD_TEST_TRACKER_3_HEALTH_URL}']
+    deploy:
+      <<: *tracker_lab_deploy_scale
 
   processor:
     environment:
@@ -62,6 +103,10 @@ services:
       - DB_PROCESSOR_MAX_CONNS=16
       - MAX_WORKERS=12
       - CH_MAX_WORKERS=2
+      - CH_USE_UDS=0
+      - PROCESSOR_PORT=${LOAD_TEST_PROCESSOR_PORT}
+      - SERVER_PORT=${LOAD_TEST_PROCESSOR_PORT}
+      - CH_DSN=clickhouse://default:${CH_PASSWORD:-secure_ch_pass}@127.0.0.1:9000/ad_event_processor
     deploy:
       resources:
         limits:
@@ -69,13 +114,14 @@ services:
           memory: 768M
 
   nginx:
-    depends_on: !override
+    depends_on: !reset
       tracker-0:
         condition: service_healthy
       tracker-1:
         condition: service_healthy
     environment:
       - EDGE_BL_STALE_SEC=3600
+      - REDIS_PORT=${LOAD_TEST_REDIS_PORT}
     volumes:
       - ../../deploy/nginx/nginx.load-test.conf:/etc/nginx/nginx.conf:ro
       - ../../deploy/nginx/nginx.load-test.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
@@ -123,36 +169,42 @@ services:
       - ../../deploy/clickhouse/config.load-test.yaml:/etc/clickhouse-server/config.d/memory_limit.yaml:ro
 
   redis-0:
+    ports: ['${LOAD_TEST_REDIS_0_PORT}:6379']
     deploy:
       resources:
         limits:
           cpus: '0.35'
           memory: 384M
   redis-1:
+    ports: ['${LOAD_TEST_REDIS_1_PORT}:6379']
     deploy:
       resources:
         limits:
           cpus: '0.35'
           memory: 384M
   redis-2:
+    ports: ['${LOAD_TEST_REDIS_2_PORT}:6379']
     deploy:
       resources:
         limits:
           cpus: '0.35'
           memory: 384M
   redis-3:
+    ports: ['${LOAD_TEST_REDIS_3_PORT}:6379']
     deploy:
       resources:
         limits:
           cpus: '0.35'
           memory: 384M
   redis-4:
+    ports: ['${LOAD_TEST_REDIS_4_PORT}:6379']
     deploy:
       resources:
         limits:
           cpus: '0.35'
           memory: 384M
   redis-5:
+    ports: ['${LOAD_TEST_REDIS_5_PORT}:6379']
     deploy:
       resources:
         limits:
@@ -160,6 +212,7 @@ services:
           memory: 384M
 
   prometheus:
+    command: ['--config.file=/etc/prometheus/prometheus.yaml', '--web.listen-address=:${LOAD_TEST_PROMETHEUS_PORT}']
     deploy:
       resources:
         limits:
@@ -175,10 +228,18 @@ services:
         limits:
           cpus: '0.25'
           memory: 256M
+    volumes:
+      - ../../deploy/monitoring/grafana-provisioning/datasources/datasource.load-test.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
 
   alertmanager:
+    command: ['--config.file=/etc/alertmanager/alertmanager.yaml', '--web.listen-address=:${LOAD_TEST_ALERTMANAGER_PORT}']
     deploy:
       resources:
         limits:
           cpus: '0.1'
           memory: 128M
+
+  control:
+    environment:
+      - MANAGEMENT_PORT=${LOAD_TEST_CONTROL_PORT}
+      - CONTROL_PORT=${LOAD_TEST_CONTROL_PORT}
