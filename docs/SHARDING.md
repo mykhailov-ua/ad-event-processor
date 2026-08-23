@@ -50,6 +50,32 @@ Full degradation: [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Hot campaign sub-shards (`BehaviorHighVolumeDebit`)
 
-Campaigns with `behavior_flags` high-volume debit use `{campaign_id:slot_N}` hash tags for `budget:quota:*` and `fcap:c:*` keys (`N = 0..3`), spreading Redis key heat while keeping each `EVALSHA` on a single shard. Lua scripts use `debitSubSlot(user_id|click_id)` for shard pick; StaticSlot campaign routing unchanged.
+Campaigns with `behavior_flags` bit `BehaviorHighVolumeDebit` spread budget/fcap heat across four sub-slots while each `EVALSHA` stays on a single Redis master.
 
-Verify: `go test ./internal/ingestion/ -run='DebitSubshard|MigrationFence' -count=1`
+### Enable
+
+Set `behavior_flags` on the campaign (ops API / admin). No tracker restart; registry sync picks up the flag. Pair with `LOCAL_QUOTA_MODE=live` for full-skip on eligible traffic.
+
+### Key layout
+
+| Key | Hash tag | Notes |
+| --- | --- | --- |
+| `budget:quota:{campaign_id}` | `{campaign_id:slot_N}` | `N = debitSubSlot(user_id \| click_id) % 4` |
+| `fcap:c:{campaign_id}:u:` | `{campaign_id:slot_N}` | Same sub-slot as quota debit |
+| `budget:sync:campaign:*`, migration fence | `{campaign_id}` | Unchanged; not sub-sharded |
+| `budget:campaign:*` (non-quota legacy) | `{campaign_id}` | Used when quota mode off |
+
+`resolveDebitShard` may route debits to `spreadHighVolumeShard(campaign_id, subSlot)` across Redis masters 1..N. StaticSlot campaign slot is unchanged; sub-slot picks the physical `rdbs[i]` client.
+
+### Invariants
+
+- Single-shard Lua: all keys in one `EVALSHA` share the sub-slot hash tag.
+- Migration: `migration_gen` / `BumpMigrationFences` unchanged; fence keys remain on `{campaign_id}`.
+- Budget: `domain.AssertBudgetInvariant` — `TestFault_HighVolumeDebit_subShardBudgetInvariant`.
+
+### Verify
+
+```bash
+go test ./internal/ingestion/ -run='DebitSubshard|MigrationFence|HighVolumeDebit' -count=1
+go test ./tests/e2e/ -run=Multishard -count=1   # needs Docker
+```

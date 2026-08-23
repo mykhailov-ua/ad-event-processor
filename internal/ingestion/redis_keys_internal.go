@@ -39,6 +39,18 @@ func appendCampaignHashTag(dst []byte, id uuid.UUID) []byte {
 	return domain.AppendCampaignHashTag(dst, id)
 }
 
+func appendCampaignSubHashTag(dst []byte, id uuid.UUID, sub int) []byte {
+	return domain.AppendCampaignSubHashTag(dst, id, sub)
+}
+
+func budgetQuotaKeySub(id uuid.UUID, sub int) string {
+	return domain.BudgetQuotaKeySub(id, sub)
+}
+
+func fcapKeyPrefixSub(campaignID uuid.UUID, brandFcapKey string, sub int) string {
+	return domain.FcapKeyPrefixSub(campaignID, brandFcapKey, sub)
+}
+
 func campaignHashTag(id uuid.UUID) string {
 	return domain.CampaignHashTag(id)
 }
