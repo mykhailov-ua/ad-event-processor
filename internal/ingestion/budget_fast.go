@@ -64,7 +64,6 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	wQuota := &scratch.wQuota
 	args := scratch.args
 	wrappers := &scratch.wrappers
-	precheck := &scratch.precheck
 
 	if campInfo == nil {
 		return errors.New("budget fast: missing campaign")
@@ -93,13 +92,6 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	wFrozen.buf = appendUUID(wFrozen.buf, evt.CampaignID)
 	budgetFrozenKey := unsafeString(wFrozen.buf)
 
-	var now time.Time
-	if campInfo.Location == nil || campInfo.Location == time.UTC {
-		now = CachedTimeUTC()
-	} else {
-		now = CachedTimeIn(campInfo.Location)
-	}
-
 	kv := scratch.keyVals[:]
 	kv[0].s = budgetSourceKey
 	kv[1].s = idempotencyKey
@@ -107,14 +99,12 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	kv[3].s = campInfo.CustomerSyncKey
 	kv[7].s = migrationFenceKey
 	kv[8].s = budgetFrozenKey
-	kv[9].s = fraudBlacklistKey
-
 	keyArgs := scratch.keyArgs
 	keyArgs[4] = &dirtyCampaignsKeyVal
 	keyArgs[5] = &dirtyCustomersKeyVal
 	keyArgs[6] = &f.streamKeyVal
-	keyArgs[9] = &kv[9]
-	maxRPDAny := f.fillLuaPrecheckKeys(evt, campInfo, now, precheck, kv, keyArgs[:], 11, 10)
+	keyArgs[9] = &fcapIgnoredKeyVal
+	fillLuaIgnoredPrecheckKeys(keyArgs[:], 11, 10)
 
 	wrappers.clickID.s = evt.ClickID
 	wrappers.evtType.s = evt.Type
@@ -136,8 +126,8 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	args[10] = &wrappers.userID
 	args[11] = f.skipBudgetDebitAny
 	args[12] = campInfo.LuaRoutingEpoch()
-	args[13] = maxRPDAny
-	args[14] = luaPrecheckIngressTTLAny
+	args[13] = zeroAny
+	args[14] = zeroAny
 	args[15] = &wrappers.placementID
 	wrappers.placementID.s = evt.PlacementID
 

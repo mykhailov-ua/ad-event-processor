@@ -22,23 +22,6 @@ if (redis_epoch > 0 and redis_epoch ~= routing_epoch) or frozen then
     return 11
 end
 
-local client_ip = ARGV[9] or ""
-local fraud_list_hit = false
-if client_ip ~= "" and KEYS[10] and KEYS[10] ~= "fcap:ignored" and redis_call("SISMEMBER", KEYS[10], client_ip) == 1 then
-    fraud_list_hit = true
-end
-
-local max_rpd = tonumber(ARGV[14]) or 0
-if max_rpd > 0 and KEYS[12] and KEYS[12] ~= "fcap:ignored" then
-    local ingress = redis_call("INCR", KEYS[12])
-    if ingress == 1 then
-        redis_call("EXPIRE", KEYS[12], tonumber(ARGV[15]) or 100800)
-    end
-    if ingress > max_rpd then
-        return 12
-    end
-end
-
 local amount = tonumber(ARGV[1]) or 0
 local skip_budget = ARGV[12] == "1"
 
@@ -82,7 +65,4 @@ if KEYS[7] and KEYS[7] ~= "fcap:ignored" and KEYS[7] ~= "" then
         "ua", ARGV[10])
 end
 
-if fraud_list_hit then
-    return 21
-end
 return 0

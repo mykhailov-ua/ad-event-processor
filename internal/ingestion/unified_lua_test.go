@@ -33,6 +33,7 @@ func newRealRedisUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *Unified
 		10_000,
 	)
 	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{rdb}))
+	f.SetFraudBlacklistFilter(NewFraudBlacklistFilter([]redis.UniversalClient{rdb}))
 	return f
 }
 

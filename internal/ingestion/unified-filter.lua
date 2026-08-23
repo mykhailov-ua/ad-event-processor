@@ -39,30 +39,14 @@ if (redis_epoch > 0 and redis_epoch ~= routing_epoch) or barriers[2] then
     return 11
 end
 
-local client_ip = ARGV[12] or ""
-local fraud_list_hit = false
-if client_ip ~= "" and KEYS[1] and KEYS[1] ~= "fcap:ignored" and redis_call("SISMEMBER", KEYS[1], client_ip) == 1 then
-    fraud_list_hit = true
-end
-
-local max_rpd = tonumber(ARGV[33]) or 0
-if max_rpd > 0 and KEYS[18] and KEYS[18] ~= "fcap:ignored" then
-    local ingress = redis_call("INCR", KEYS[18])
-    if ingress == 1 then
-        redis_call("EXPIRE", KEYS[18], tonumber(ARGV[34]) or 100800)
-    end
-    if ingress > max_rpd then
-        return 12
-    end
-end
-
 local evt_type = ARGV[10] or ""
 local ttc_min_ms = tonumber(ARGV[20]) or 0
 local now_ms = tonumber(ARGV[21]) or 0
 local ttc_fail_closed = ARGV[23] == "1"
+local ttc_in_go = ARGV[34] == "1"
 local ttc_bypass = false
 
-if not degraded and evt_type == "click" and ttc_min_ms > 0 then
+if not degraded and not ttc_in_go and evt_type == "click" and ttc_min_ms > 0 then
     local imp_ts_raw = redis_call("GET", KEYS[12])
     if imp_ts_raw then
         local imp_ts = tonumber(imp_ts_raw)
@@ -107,7 +91,7 @@ if not degraded and freq_limit > 0 and user_id ~= "" then
     end
 end
 
-local is_dup = redis_call("SET", KEYS[2], "1", "NX", "EX", ARGV[3])
+local is_dup = redis_call("SET", KEYS[2], "NX", "EX", ARGV[3])
 if not is_dup then
     return 2
 end
@@ -189,9 +173,6 @@ end
 
 if ttc_bypass then
     return 10
-end
-if fraud_list_hit then
-    return 21
 end
 if degraded then
     return 20

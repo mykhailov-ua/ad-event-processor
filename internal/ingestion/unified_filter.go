@@ -210,7 +210,9 @@ type UnifiedFilter struct {
 	breakers                 []*database.RedisBreaker
 	filterSlowNs             int64
 	evalFallbackGate         chan struct{}
-	placementBL              *PlacementBlacklistFilter
+	placementBL                 *PlacementBlacklistFilter
+	fraudBL                     *FraudBlacklistFilter
+	ingressRPDHandledExternally bool
 }
 
 func (f *UnifiedFilter) SetPlacementBlacklistFilter(p *PlacementBlacklistFilter) {
@@ -681,6 +683,16 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	}
 	rdb := f.rdbs[shard%len(f.rdbs)]
 
+	var now time.Time
+	if campInfo.Location == nil || campInfo.Location == time.UTC {
+		now = CachedTimeUTC()
+	} else {
+		now = CachedTimeIn(campInfo.Location)
+	}
+	if err := f.applyLuaGoPrechecks(ctx, evt, campInfo, rdb, now); err != nil {
+		return err
+	}
+
 	if f.fastPathEnabled.Load() && !f.needsFullLuaPath(evt, campInfo) {
 		if campInfo.FreqLimit > 0 && evt.UserID != "" {
 			exceeded, err := f.checkFreqLimitGo(evt, campInfo)
@@ -741,7 +753,6 @@ func (f *UnifiedFilter) runUnifiedLua(
 	wRefillLock := &scratch.wRefillLock
 	args := scratch.args
 	wrappers := &scratch.wrappers
-	precheck := &scratch.precheck
 
 	wDup.buf = wDup.buf[:0]
 	wDup.buf = appendCampaignHashTag(wDup.buf, evt.CampaignID)
@@ -819,7 +830,6 @@ func (f *UnifiedFilter) runUnifiedLua(
 	budgetFrozenKey := unsafeString(wFrozen.buf)
 
 	kv := scratch.keyVals[:]
-	kv[0].s = fraudBlacklistKey
 	kv[1].s = dupKey
 	kv[2].s = budgetSourceKey
 	kv[3].s = idempotencyKey
@@ -833,7 +843,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	kv[15].s = budgetFrozenKey
 
 	keyArgs := scratch.keyArgs
-	keyArgs[0] = &kv[0]
+	keyArgs[0] = &fcapIgnoredKeyVal
 	keyArgs[1] = &kv[1]
 	keyArgs[2] = &kv[2]
 	keyArgs[3] = &kv[3]
@@ -849,7 +859,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	keyArgs[14] = &refillNeededKeyVal
 	keyArgs[15] = &kv[14]
 	keyArgs[16] = &kv[15]
-	maxRPDAny := f.fillLuaPrecheckKeys(evt, campInfo, now, precheck, kv, keyArgs[:], 17, 18)
+	fillLuaIgnoredPrecheckKeys(keyArgs[:], 17, 18)
 	if evt.UserID != "" {
 		kv[10].s = unsafeString(wFcap.buf)
 		keyArgs[10] = &kv[10]
@@ -921,8 +931,12 @@ func (f *UnifiedFilter) runUnifiedLua(
 	}
 	args[30] = luaDegradeThresholdAny
 	args[31] = &wrappers.placementID
-	args[32] = maxRPDAny
-	args[33] = luaPrecheckIngressTTLAny
+	args[32] = zeroAny
+	if f.localTTC != nil {
+		args[33] = oneAny
+	} else {
+		args[33] = zeroAny
+	}
 
 	for i := range 2 {
 		seq := f.luaMetricsSeq.Add(1)

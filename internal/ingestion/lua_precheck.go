@@ -1,12 +1,14 @@
 package ingestion
 
 import (
+	"context"
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
+	redis "github.com/redis/go-redis/v9"
 )
 
 const (
@@ -107,37 +109,62 @@ func appendCampaignIngressDayKey(dst []byte, campaignID uuid.UUID, regionCode ui
 	return appendDate(dst, t)
 }
 
-func (f *UnifiedFilter) fillLuaPrecheckKeys(
+func (f *UnifiedFilter) SetFraudBlacklistFilter(bl *FraudBlacklistFilter) {
+	if f != nil {
+		f.fraudBL = bl
+	}
+}
+
+// SetIngressRPDHandledExternally skips campaign ingress INCR when EntitlementsFilter already ran.
+func (f *UnifiedFilter) SetIngressRPDHandledExternally(v bool) {
+	if f != nil {
+		f.ingressRPDHandledExternally = v
+	}
+}
+
+func (f *UnifiedFilter) applyLuaGoPrechecks(
+	ctx context.Context,
 	evt *domain.Event,
 	campInfo *domain.Campaign,
+	rdb redis.UniversalClient,
 	now time.Time,
-	scratch *luaPrecheckScratch,
-	kv []StringVal,
-	keyArgs []any,
-	ingressIdx, placementIdx int,
-) (maxRPDAny any) {
-	maxRPD := f.entitlementsMaxRPD(campInfo.CustomerID)
-	maxRPDAny = zeroAny
-	if maxRPD > 0 {
-		maxRPDAny = maxRPDAsAny(maxRPD)
-		w := &scratch.wIngress
-		w.buf = w.buf[:0]
-		w.buf = appendCampaignIngressDayKey(w.buf, evt.CampaignID, f.regionCode, campInfo.CustomerID, now)
-		kv[ingressIdx].s = unsafeString(w.buf)
-		keyArgs[ingressIdx] = &kv[ingressIdx]
-	} else {
-		keyArgs[ingressIdx] = &ingressIgnoredKeyVal
+) error {
+	if f.fraudBL != nil {
+		_ = f.fraudBL.Check(ctx, evt)
 	}
+	if f.ingressRPDHandledExternally {
+		return nil
+	}
+	return f.checkIngressRPDGo(ctx, evt, campInfo, rdb, now)
+}
 
-	if evt.PlacementID != "" {
-		w := &scratch.wPlacement
-		w.buf = appendCampaignHashTag(w.buf[:0], evt.CampaignID)
-		w.buf = append(w.buf, "blacklist:placement:"...)
-		w.buf = appendUUID(w.buf, evt.CampaignID)
-		kv[placementIdx].s = unsafeString(w.buf)
-		keyArgs[placementIdx] = &kv[placementIdx]
-	} else {
-		keyArgs[placementIdx] = &placementIgnoredKeyVal
+func (f *UnifiedFilter) checkIngressRPDGo(
+	ctx context.Context,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
+	rdb redis.UniversalClient,
+	now time.Time,
+) error {
+	maxRPD := f.entitlementsMaxRPD(campInfo.CustomerID)
+	if maxRPD == 0 || rdb == nil {
+		return nil
 	}
-	return maxRPDAny
+	var keyBuf []byte
+	keyBuf = appendCampaignIngressDayKey(keyBuf, evt.CampaignID, f.regionCode, campInfo.CustomerID, now)
+	redisKey := unsafeString(keyBuf)
+	pipe := rdb.Pipeline()
+	incr := pipe.Incr(ctx, redisKey)
+	pipe.Expire(ctx, redisKey, time.Duration(luaPrecheckIngressTTLSec)*time.Second)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil
+	}
+	if uint64(incr.Val()) > maxRPD {
+		return ErrDailyQuotaExceeded
+	}
+	return nil
+}
+
+func fillLuaIgnoredPrecheckKeys(keyArgs []any, ingressIdx, placementIdx int) {
+	keyArgs[ingressIdx] = &ingressIgnoredKeyVal
+	keyArgs[placementIdx] = &placementIgnoredKeyVal
 }

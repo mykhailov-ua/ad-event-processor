@@ -408,6 +408,8 @@ func main() {
 	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(rdbs), cfg.FilterTimeoutMs)
 	placementBL := ingestion.NewPlacementBlacklistFilter(rdbs)
 	unifiedFilter.SetPlacementBlacklistFilter(placementBL)
+	unifiedFilter.SetFraudBlacklistFilter(ingestion.NewFraudBlacklistFilter(rdbs))
+	unifiedFilter.SetIngressRPDHandledExternally(true)
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
 	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, rdbs)
