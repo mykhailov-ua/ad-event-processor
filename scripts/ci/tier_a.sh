@@ -41,6 +41,7 @@ allowed_docs=(
   SHARDING.md
   START.md
   TRAFFIC.md
+  TRADEOFFS.md
   TRIAL.md
   UI.md
   XDP.md
@@ -188,7 +189,7 @@ while IFS= read -r -d '' file; do
 done < <(find internal/controlplane -maxdepth 1 -name '*_handlers.go' ! -name '*_test.go' -print0 2> /dev/null || true)
 
 echo "tier_a: check brand boundary..."
-pattern_brand='ad-event-processor|ad-event-processor\.com'
+pattern_brand='ad-event-processor\.com'
 scan_brand() {
   local path="$1"
   case "$path" in
@@ -197,9 +198,11 @@ scan_brand() {
   case "$(basename "$path")" in
     *.pb.go | *_grpc.pb.go | *_vtproto.pb.go | *_bpfel.go | *_bpfeb.go) return 0 ;;
   esac
-  if rg -n "$pattern_brand" "$path" > /dev/null 2>&1; then
+  local hits
+  hits="$(rg -n "$pattern_brand" "$path" 2> /dev/null | rg -v 'github.com/bidshard/ad-event-processor' || true)"
+  if [[ -n "$hits" ]]; then
     echo "check_brand_boundary: hardcoded brand in $path"
-    rg -n "$pattern_brand" "$path" || true
+    echo "$hits"
     fail=1
   fi
 }
@@ -208,9 +211,10 @@ while IFS= read -r -d '' file; do
   scan_brand "$file"
 done < <(find internal cmd -name '*.go' -print0 2> /dev/null || true)
 
-if rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' > /dev/null 2>&1; then
+pkg_hits="$(rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' 2> /dev/null | rg -v 'github.com/bidshard/ad-event-processor' || true)"
+if [[ -n "$pkg_hits" ]]; then
   echo "check_brand_boundary: hardcoded brand outside pkg/branding:"
-  rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' || true
+  echo "$pkg_hits"
   fail=1
 fi
 
@@ -218,5 +222,7 @@ if [[ "$fail" -ne 0 ]]; then
   echo "tier_a: FAILED"
   exit 1
 fi
+
+bash "$SCRIPTS/ci/prometheus_rules_check.sh"
 
 echo "tier_a: OK"

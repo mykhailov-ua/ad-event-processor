@@ -1,4 +1,17 @@
 services:
+  run-dir-init:
+    image: busybox:1.36
+    command: ['/bin/sh', '/scripts/init-run-volume.sh']
+    volumes:
+      - ad_event_processor_run:/run/ad-event-processor
+      - type: bind
+        source: ./scripts/init-run-volume.sh
+        target: /scripts/init-run-volume.sh
+        read_only: true
+    networks:
+      - database
+    restart: 'no'
+
   tracker-0:
     build:
       context: ../..
@@ -21,8 +34,18 @@ services:
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
-      - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../var/license.jwt:/etc/ad-event-processor/license.jwt:ro
+      - type: bind
+        source: ../../deploy/geoip
+        target: /deploy/geoip
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../var/license.jwt
+        target: /etc/ad-event-processor/license.jwt
+        read_only: true
+        bind:
+          create_host_path: false
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
@@ -77,8 +100,18 @@ services:
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
-      - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../var/license.jwt:/etc/ad-event-processor/license.jwt:ro
+      - type: bind
+        source: ../../deploy/geoip
+        target: /deploy/geoip
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../var/license.jwt
+        target: /etc/ad-event-processor/license.jwt
+        read_only: true
+        bind:
+          create_host_path: false
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
@@ -133,8 +166,18 @@ services:
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
-      - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../var/license.jwt:/etc/ad-event-processor/license.jwt:ro
+      - type: bind
+        source: ../../deploy/geoip
+        target: /deploy/geoip
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../var/license.jwt
+        target: /etc/ad-event-processor/license.jwt
+        read_only: true
+        bind:
+          create_host_path: false
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
@@ -189,8 +232,18 @@ services:
       - GOMEMLIMIT=700MiB
       - GOGC=300
     volumes:
-      - ../../deploy/geoip:/deploy/geoip:ro
-      - ../../var/license.jwt:/etc/ad-event-processor/license.jwt:ro
+      - type: bind
+        source: ../../deploy/geoip
+        target: /deploy/geoip
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../var/license.jwt
+        target: /etc/ad-event-processor/license.jwt
+        read_only: true
+        bind:
+          create_host_path: false
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
     ulimits:
@@ -284,9 +337,17 @@ services:
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
       - ad_event_processor_ch_spool:/var/spool/ad-event-processor/ch:rw
-      - ../../deploy/geoip:/deploy/geoip:rw
-      - ad_event_processor_run:/run/ad-event-processor:rw
-      - ../../var/fraudscore/artifacts:/var/fraudscore/artifacts:ro
+      - type: bind
+        source: ../../deploy/geoip
+        target: /deploy/geoip
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../var/fraudscore/artifacts
+        target: /var/fraudscore/artifacts
+        read_only: true
+        bind:
+          create_host_path: false
     environment:
       - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=${REDIS_ADDRS}
@@ -356,7 +417,11 @@ services:
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
       - ad_event_processor_ch_spool_1:/var/spool/ad-event-processor/ch:rw
-      - ../../deploy/geoip:/deploy/geoip:rw
+      - type: bind
+        source: ../../deploy/geoip
+        target: /deploy/geoip
+        bind:
+          create_host_path: false
     environment:
       - DB_DSN=${DB_DSN}
       - REDIS_ADDRS=${REDIS_ADDRS}
@@ -492,7 +557,11 @@ services:
     env_file:
       - ../../.env
     volumes:
-      - ../../var/license.jwt:/etc/ad-event-processor/license.jwt
+      - type: bind
+        source: ../../var/license.jwt
+        target: /etc/ad-event-processor/license.jwt
+        bind:
+          create_host_path: false
       - ad_event_processor_run:/run/ad-event-processor:rw
     environment:
       - MANAGEMENT_PORT=8188
@@ -555,8 +624,18 @@ services:
     env_file:
       - ../../.env
     volumes:
-      - ../../deploy/ingress/caddy/generated/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ../../deploy/ingress/certs:/etc/caddy/certs:ro
+      - type: bind
+        source: ../../deploy/ingress/caddy/generated/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ../../deploy/ingress/certs
+        target: /etc/caddy/certs
+        read_only: true
+        bind:
+          create_host_path: false
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -666,7 +745,11 @@ services:
       - MANAGEMENT_URL=http://127.0.0.1:8188
       - ADMIN_API_KEY=${ADMIN_API_KEY}
     volumes:
-      - ../../var/fraudscore/artifacts:/var/fraudscore/artifacts:rw
+      - type: bind
+        source: ../../var/fraudscore/artifacts
+        target: /var/fraudscore/artifacts
+        bind:
+          create_host_path: false
     deploy:
       resources:
         limits:
@@ -701,7 +784,11 @@ services:
       - FRAUD_EVAL_INTERVAL_SEC=${FRAUD_EVAL_INTERVAL_SEC:-21600}
       - FRAUD_ARTIFACT_DIR=/var/fraudscore/artifacts
     volumes:
-      - ../../var/fraudscore:/var/fraudscore:rw
+      - type: bind
+        source: ../../var/fraudscore
+        target: /var/fraudscore
+        bind:
+          create_host_path: false
     deploy:
       resources:
         limits:
@@ -722,6 +809,9 @@ services:
     image: postgres:${POSTGRES_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     environment:
       - POSTGRES_USER=${DB_USER}
       - POSTGRES_PASSWORD=${DB_PASSWORD}
@@ -757,9 +847,9 @@ services:
           'CMD-SHELL',
           'pg_isready -h /run/ad-event-processor/postgresql -p ${DB_PORT} -U ${DB_USER} -d ${DB_NAME}',
         ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
     deploy:
       resources:
         limits:
@@ -814,9 +904,9 @@ services:
           'CMD-SHELL',
           'pg_isready -p ${PAYMENT_DB_PORT} -U ${PAYMENT_DB_USER} -d ${PAYMENT_DB_NAME}',
         ]
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
     deploy:
       resources:
         limits:
@@ -831,6 +921,9 @@ services:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     ports:
       - '6479:6379'
     command:
@@ -864,14 +957,17 @@ services:
       - database
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-1:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     ports:
       - '6480:6379'
     command:
@@ -905,14 +1001,17 @@ services:
       - database
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-2:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     ports:
       - '6481:6379'
     command:
@@ -946,14 +1045,17 @@ services:
       - database
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-3:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     ports:
       - '6482:6379'
     command:
@@ -987,9 +1089,9 @@ services:
       - database
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-4:
     profiles:
@@ -997,6 +1099,9 @@ services:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     ports:
       - '6483:6379'
     command:
@@ -1030,9 +1135,9 @@ services:
       - database
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-5:
     profiles:
@@ -1040,6 +1145,9 @@ services:
     image: redis:${REDIS_VERSION}
     env_file:
       - ../../.env
+    depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
     ports:
       - '6484:6379'
     command:
@@ -1073,9 +1181,9 @@ services:
       - database
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   clickhouse:
     image: clickhouse/clickhouse-server:${CH_VERSION}
@@ -1257,8 +1365,8 @@ services:
       - ${STORAGE_BOX_SSH_KEY_PATH:-~/.ssh/id_rsa}:/root/.ssh/id_rsa:ro
     environment:
       - LOG_DIR=/var/log/ad-event-processor
-      - STORAGE_BOX_HOST=${STORAGE_BOX_HOST}
-      - STORAGE_BOX_USER=${STORAGE_BOX_USER}
+      - STORAGE_BOX_HOST=${STORAGE_BOX_HOST:-}
+      - STORAGE_BOX_USER=${STORAGE_BOX_USER:-}
       - STORAGE_BOX_PATH=${STORAGE_BOX_PATH:-/}
       - RSYNC_BWLIMIT=${RSYNC_BWLIMIT:-5000}
     profiles:

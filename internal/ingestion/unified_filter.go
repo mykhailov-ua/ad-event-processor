@@ -210,6 +210,13 @@ type UnifiedFilter struct {
 	breakers                 []*database.RedisBreaker
 	filterSlowNs             int64
 	evalFallbackGate         chan struct{}
+	placementBL              *PlacementBlacklistFilter
+}
+
+func (f *UnifiedFilter) SetPlacementBlacklistFilter(p *PlacementBlacklistFilter) {
+	if f != nil {
+		f.placementBL = p
+	}
 }
 
 func (f *UnifiedFilter) SetFilterSlowMs(ms int) {
@@ -627,6 +634,12 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 
 	f.applyGoTTC(evt)
 
+	if f.placementBL != nil {
+		if err := f.placementBL.Check(ctx, evt); err != nil {
+			return err
+		}
+	}
+
 	if f.geo != nil {
 		if err := f.checkGeoBidFloor(evt); err != nil {
 			return err
@@ -767,7 +780,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 
 	if evt.UserID != "" {
 		wFcap.buf = wFcap.buf[:0]
-		wFcap.buf = append(wFcap.buf, campInfo.FcapKeyPrefix...)
+		wFcap.buf = append(wFcap.buf, fcapKeyPrefixForDebit(campInfo, evt.UserID, evt.ClickID)...)
 		wFcap.buf = append(wFcap.buf, evt.UserID...)
 	}
 

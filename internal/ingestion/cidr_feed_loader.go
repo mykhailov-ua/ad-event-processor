@@ -139,7 +139,10 @@ func (l *cidrFeedLoader) fetch(ctx context.Context, src cidrFeedSource) error {
 		coldpath.CloseHTTPResponse(resp)
 		return err
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("http %d", resp.StatusCode)
 	}

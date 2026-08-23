@@ -31,6 +31,9 @@ func hwidReadString(pathID uint8, suffix []byte) string {
 	if err != nil || n <= 0 {
 		return ""
 	}
+	if n > len(buf) {
+		n = len(buf)
+	}
 	return trimHWIDBytes(buf[:n])
 }
 
@@ -53,5 +56,9 @@ func hwidReadStringFromIDs(pathID uint8, midSuffix []byte, tailID uint8) string 
 	if ret < 0 {
 		return ""
 	}
-	return trimHWIDBytes(buf[:ret])
+	n = int(ret)
+	if n > len(buf) {
+		n = len(buf)
+	}
+	return trimHWIDBytes(buf[:n])
 }

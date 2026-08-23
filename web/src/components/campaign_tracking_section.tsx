@@ -237,8 +237,8 @@ export function CampaignTrackingSection({
             </li>
             <li>Lander pixel → zero-redirect fetch() to the same /track URL.</li>
             <li>
-              Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; ad-event-processor forwards
-              after settlement.
+              Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; ad-event-processor
+              forwards after settlement.
             </li>
           </ul>
           <p className="text-muted">
@@ -411,9 +411,9 @@ export function CampaignTrackingSection({
           testId="integration-inbound-curl"
         />
         <p className="text-muted text-sm">
-          Map network tokens to ad-event-processor fields: click id → click_id, payout → payout_micro
-          (micro-units) or omit and settle later. Requires Content-Length; chunked encoding is
-          rejected on /track.
+          Map network tokens to ad-event-processor fields: click id → click_id, payout →
+          payout_micro (micro-units) or omit and settle later. Requires Content-Length; chunked
+          encoding is rejected on /track.
         </p>
       </SectionCard>
 
@@ -428,7 +428,8 @@ export function CampaignTrackingSection({
           testId="integration-direct-snippet"
         />
         <p className="text-muted text-sm">
-          Module loads ad-event-processor-track.js; auto-picks fbclid/gclid/ttclid from the page query string.
+          Module loads ad-event-processor-track.js; auto-picks fbclid/gclid/ttclid from the page
+          query string.
         </p>
       </SectionCard>
 

@@ -32,3 +32,7 @@ func (f FeatureSet) EbpfEdgeEnabled() bool {
 func (f FeatureSet) MultiRegionEnabled() bool {
 	return f.Normalized().MultiRegion
 }
+
+func (f FeatureSet) ExternalResidentialIntelEnabled() bool {
+	return f.Normalized().ExternalResidentialIntel
+}

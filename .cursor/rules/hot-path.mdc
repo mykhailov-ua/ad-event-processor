@@ -1,35 +1,226 @@
 ---
-description: Tracker ingest zero-alloc, gnet, FilterEngine, BCE, benchmarks
-globs: internal/ingestion/**, internal/campaignmodel/**, cmd/tracker/**, pkg/broker/**
+description: Tracker ingest zero-alloc, parsers, gnet, FilterEngine, SoA, asm, chaos proofs
+globs: internal/ingestion/**, internal/campaignmodel/**, internal/domain/sharding*, cmd/tracker/**, pkg/broker/**, deploy/nginx/lua/**
 alwaysApply: false
 ---
 
-Apply when changing `/track`, filters, parse, or gnet handlers.
+Apply when changing `/track`, `/click`, `/tg/click`, `/openrtb/bid`, filters, parse, gnet, stream producer, local quanta, or edge-tracker alignment.
 
-SLA: handler p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10 ms/shard; 0 allocs/op on parse/filter/auction (`make test-alloc-gate`).
+Reference docs: `docs/PARSER.md`, `docs/TRADEOFFS.md` (hot-path ingest), `docs/ARCHITECTURE.md` (hot vs cold). Anti-slop: `anti-slop.mdc`.
 
-Forbidden on request path: defer in loops, closures, `interface{}` boxing, `sync.Map`, `fmt.Sprintf`, string `+`, dynamic Prometheus labels, `context.WithValue`.
+## SLA (non-negotiable)
 
-Use: vtproto pools, byte-slice parse, `unsafe.String` only while gnet frame lives (copy before async), pre-bound metrics, stack `[N]byte` + append.
+- Handler `ad_http_request_duration_seconds`: p95 < 50 ms, p99 < 80 ms, ceiling 100 ms.
+- Production `FILTER_TIMEOUT_MS` <= 100; dev default 5000 ms.
+- Redis unified-filter Lua p99 < 10 ms per shard.
+- Geo filter p99 < 10 us (sampled).
+- `RunAuction` p99 < 15 us; p99 candidates scanned < 500 (`rtb.mdc`).
+- Fraud boost snapshot: incremental < 500 us per `FilterEngine.Check`; `BenchmarkFilterFraudBoost` ~90 ns, 0 allocs/op.
+- `GetShard` (StaticSlot): ~5.6 ns, 0 allocs/op.
+- Load-test abort: control-cohort p99 > 80 ms for 30 s or budget invariant violation.
+- Budget invariant: `current_spend <= budget_limit` in Postgres; tests use `AssertBudgetInvariant` (+/-1 micro-unit).
+- Financial rule: **fail closed** (503) — never accept spend without debit+log alignment.
 
-Deadlines: `FilterDeadlineMono = monotonicNano() + timeout` at entry — no wall clock in filter loops.
+## Forbidden on request path (CI-enforced)
 
-gnet: HTTP/1.1 FSM on ring buffer; `PinnedWorkerPool` by campaign hash; padded queues against false sharing.
+`hot_path_static_gate.sh`, `lint_go_hotpath_forbid_gate.sh`, `escape_heap_gate.sh`:
 
-FilterEngine order before Redis: emergency breaker -> fraud/geo -> schedule -> ML boost snapshot -> unified Lua.
+- `defer` inside hot loops (OK at function entry for rare cleanup only if proven 0-alloc).
+- Closures that escape or capture per-request variables in filter/parse loops.
+- `interface{}` boxing, `sync.Map`, `fmt.Sprintf`, string `+` concat.
+- `context.WithValue`, `context.WithTimeout`, `context.WithCancel` on request path.
+- Dynamic Prometheus label values computed per event in inner loops.
+- `fmt.Errorf` on `/track` — use typed rejects (`filterRejectKind`, `NoBidReason`).
+- `json.Marshal` / `encoding/json` on production `/track` or OpenRTB bid response path.
+- `net/http` server for tracker ingest (gnet only).
+- Import `internal/fraud` ML inference — hot path reads `ml:score:boost:*` snapshot only.
+- Synchronous Postgres, ClickHouse, outbox, or external RPC from `processTrack()` or synchronous filter path.
 
-Atomics: pad contended fields (`cpu.CacheLinePad`); `atomic.Pointer` snapshot swap on catalog rebuild; load atomics once per loop.
+Allowed patterns:
 
-BCE: length check before indexed loop; `_ = buf[len(buf)-1]` hint when needed.
+- `sync.Pool` for `Event`, buffers, eval wire, OpenRTB scratch (`handler.go` pools).
+- `unsafe.String` / `unsafe.Slice` while gnet frame bytes are valid — copy before async (`evt.StringBuffer`, owned `[]byte`).
+- Pre-bound Prometheus counters/histograms with fixed label sets.
+- Stack `[N]byte` + `append` with known cap; `strconv.AppendInt` into reused buf.
+- `//go:linkname monotonicNano runtime.nanotime` — no `time.Now` in filter deadline loops.
 
-RTB: presorted buckets, early break on score floor; see `rtb.mdc`.
+## Data-oriented design (DoD)
 
-Verification:
+Hot path favors **flat data, columnar layout, snapshot readers** over pointer graphs and interface dispatch.
 
-- `make test-alloc-gate`
-- `go test -run='^$' -bench=. -benchmem ./internal/ingestion/...`
-- objdump: reject `panicIndex`, `newobject`, `json.*` in hot loops
+### Structure of Arrays (SoA) — RTB catalog
 
-PR: no new `interface{}` on `/track`; fault proof per `fault-tests.mdc` for new write paths.
+`internal/rtb/catalog_shard.go`: `CampaignAuctionRegistry` stores parallel slices (`CampaignIDs`, `Bids`, `CTRPPM`, `GeoHashes`, `Weights`, ...). Bucket indices (`GeoBucketStart`, `TargetBucketStart`) point into `candidateBucketSoA` for cache-friendly scans.
 
-Related: `core.mdc`, `rtb.mdc`, `load-test-bpf.mdc`.
+Rules:
+
+- Cold rebuild builds new `catalogSnapshot`; publish via `atomic.Pointer[catalogSnapshot].Store`.
+- Hot readers: single `loadCatalog()` atomic load per auction — no locks.
+- Presorted buckets by score; early break on score floor.
+- Geo shard: `req.GeoHash & 63` — 64-way partition.
+- Budget CAS in `CheckAndSpendAll` when `RTB_BUDGET_AUTHORITY=rtb`.
+- 0 allocs/op in `RunAuction` bench; scan cap p99 < 500 candidates.
+
+### Domain hot models
+
+- `internal/campaignmodel` / hot `internal/domain`: **no struct tags** (no json/db/protobuf on hot structs).
+- Registry: `atomic.Pointer` snapshot swap on catalog rebuild; load once per request loop.
+- Pad contended atomics: `cpu.CacheLinePad` around MPSC queue heads, breaker counters.
+
+### Sharding — StaticSlot + asm
+
+Production: `StaticSlotSharder` only. `JumpHashSharder` = tests/benches only.
+
+```
+slot  = CRC32C(campaign_id) & 1023
+shard = slot_table[slot]   // atomic.Value, zero-lock read
+```
+
+`internal/domain/sharding_amd64.s`: SSE4.2 `CRC32Q` on two `uint64` limbs of UUID — `NOSPLIT`, ~5.6 ns, 0 allocs. Non-amd64: `hash/crc32` Castagnoli table. **Edge Lua must match** (`edge-slot-map.lua`); parity tests in `sharding_test.go`.
+
+Keys: `{campaign_id}` hash tag so multi-key Lua stays on one master. Never Redis Cluster `MOVED` on hot path.
+
+## Parser and ingress security
+
+Scope: `internal/ingestion` + nginx `edge-phase2.lua`. Full matrix: `docs/PARSER.md`.
+
+### Design goals
+
+1. Reject hostile wire early — **zero allocs on reject path**.
+2. Close slow streams — incomplete bodies must not hold connections forever.
+3. Edge-tracker parity — same verdict on same wire (`http1IngressCanonical`, `differential_count` must be 0).
+
+### POST /track edge alignment
+
+| Rule | Edge (Lua) | Tracker (gnet) |
+| :--- | :---: | :---: |
+| `Content-Length` required | yes | yes (`http1TrackEdgePolicy`) |
+| Chunked rejected | yes | yes |
+| Duplicate/obfuscated `TE` rejected | yes | yes |
+
+Chunked allowed on `POST /openrtb/bid` only (chunk extensions rejected).
+
+Verify: `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` — `differential_count=0`.
+
+### GET /click
+
+Query-only; `GET` only; strict UUID `campaign_id`. Edge gate: `EDGE_EXPOSE_CLICK`. Shard: CRC32 slot table.
+
+### HTTP/1 slow-stream DoS
+
+| Knob | Default | Behavior |
+| :--- | ---: | :--- |
+| `HTTP1_INCOMPLETE_MAX` | 3 | Close after N incomplete passes |
+| `HTTP1_BODY_IDLE_MS` | 5000 | Wall idle since body expected |
+| `MaxRequestBodySize` | 1 MiB | Cap buffered incomplete body |
+
+Metric: `ad_http1_incomplete_close_total{reason}`. H2: `H2_INCOMPLETE_MAX=3`. Operator: nginx `client_body_timeout` at perimeter.
+
+### Framing and wire bombs
+
+- Chunk extensions (`;` in chunk size lines): rejected all paths; hex overflow guard; `chunkScratch` reset; cap > 64 KiB dropped.
+- H2 header block: 16 KiB cap (`h2MaxHeaderBlock`) -> `RST_STREAM`.
+- TE.TE obfuscation: duplicate `Transfer-Encoding`/`TE`, control chars, tab-obfuscated `chunked` rejected.
+- HPACK integer continuation: 8 octet cap (`h2MaxIntContinuationOctets`).
+- OpenRTB scan: `ORTB_SCAN_MAX_BYTES=262144`, `ORTB_MAX_QUOTE_CHECKS=65536`; metric `ad_ortb_scan_truncated_total`.
+- Protobuf: `PROTO_MAX_FIELDS=256`; pre-scan via `protoWireFieldCount` before `UnmarshalVT` (`proto_wire_budget.go`).
+- vtproto hot patch: `make proto` -> `patch-vtproto-hotpath` -> `appendReuseBytes` for repeated bytes (`pb/unmarshal_helpers.go`).
+
+### JSON parse budgets (track / ORTB)
+
+| Constant | Default | Effect |
+| :--- | ---: | :--- |
+| `MaxJSONTotalWSkip` | 4096 | Cumulative whitespace |
+| `MaxJSONStringScanBytes` | 65536 | Bytes in one string |
+| `MaxJSONStringEscapes` | 16384 | Escapes per string |
+| `MaxJSONKeyPairs` | 10000 | Key:value pairs |
+| `MaxJSONDepth` | 16 | Track JSON |
+| `OrtbMaxJSONDepth` | 32 | ORTB ingress |
+| `JSON_STRICT_UTF8` | on | Reject ill-formed UTF-8 |
+
+Use `jsonScanBudget` (`json_scan_budget.go`) — decrement on ws/string/escape/pair; reject when negative.
+
+### Sustained chaos pass criteria
+
+~90% valid protobuf `/track` + ~10% chaos. Pass: control p99 < 80 ms, `WorkerPoolRejectTotal` delta 0, >=500 control samples.
+
+```bash
+bash scripts/fault/parser_chaos_drill.sh
+bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=10
+go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v
+```
+
+Chaos tests emit `fault_proof gap=open|closed`.
+
+## gnet HTTP FSM
+
+- HTTP/1.1 DFA on ring buffer — no `net/http` per request.
+- `PinnedWorkerPool`: `runtime.LockOSThread()` per worker; route by campaign hash to same core.
+- MPSC queues: cache-line padded to avoid false sharing.
+- **Async filter offload**: after stream admission `TryReserve`, `FilterEngine.Check` (incl. `EVALSHA`) runs in detached goroutine — pinned workers return to epoll loop immediately. Response written from goroutine; copy `Accept`/`Origin` and event strings before write — no `unsafe.String` over freed frame.
+- Microbench reference: HTTP DFA ~539 ns; protobuf ~200 ns; spikes usually Redis/script contention not parse.
+
+## Filter chain order
+
+Execute cheapest first; network last:
+
+```
+License -> Emergency Breaker -> Geo -> Schedule -> Segment -> Fraud boost snapshot -> Consent -> UnifiedFilter (Redis Lua)
+```
+
+- `FilterDeadlineMono = monotonicNano() + timeout` at entry — **no wall clock** in filter loops.
+- `UnifiedFilter` last: only requests that passed all local gates incur Redis RTT.
+- Redis breaker open -> 503 `filterRejectInfra` (fail closed).
+- Producer overload -> 503 `filterRejectProducerOverload` **before** debit.
+
+## Stream producer, admission, rollback
+
+Layered strategy (`docs/TRADEOFFS.md`):
+
+1. `tryAcquireStreamAdmission` / `TryReserve` at `STREAM_PRODUCER_ADMISSION_PCT` (default 85%) **before** Lua debit.
+2. `SetDeferStreamToProducer(true)` -> Lua stream key `fcap:ignored`; single Go writer (`StreamProducer` / `BrokerProducer`).
+3. Post-debit enqueue fail -> `budget-rollback.lua` + local quanta ledger refund (200 ms rollback timeout).
+4. Local quanta full-skip (`LOCAL_QUOTA_MODE=live`): zero sync `EVALSHA` when eligible; coordinate stream keys to prevent dual `XADD`.
+
+Monitor: `ad_stream_producer_post_debit_rejected_total` should stay ~0; spike = tune admission or capacity.
+
+## Local quanta
+
+- Refill via `local-quota-refill.lua`; debit in Go `TrySpendDebit` (~16 ns).
+- Full-skip: local dedup + async publish; eventual consistency on crash — reconciled via refill/return scripts.
+- With `StreamProducer`: defer local-quanta stream lane to `fcap:ignored` — one writer.
+
+## BCE, pools, escape analysis
+
+- Length check before indexed loop; `_ = buf[len(buf)-1]` BCE hint when compiler cannot prove bounds.
+- Return objects to `sync.Pool` on **all** exit paths (parse reject included).
+- After hot-path edits: `make test-alloc-gate`; `go test -run='^$' -bench=. -benchmem ./internal/ingestion/...`.
+- `go build -gcflags=-m` on hot packages — no new escapes above `scripts/ci/baselines/escape_hot_path_heap_lines.count`.
+- objdump spot-check: no `panicIndex`, `newobject`, `json.*` in inner parse/filter loops.
+
+## GC and runtime tuning (tracker)
+
+- `GOGC=300`, `GOMEMLIMIT` ~700MiB on tracker; processor `GOGC=100`.
+- Pre-allocate pools and mmap buffers (GeoIP); avoid per-request heap growth.
+
+## Transport optimizations
+
+- Redis UDS when co-located: `REDIS_ADDRS` unix socket path; dial p50 gate `scripts/perf/redis_uds_benchmark.sh`.
+- CPU isolation: `CPU_ISOLATION_ENABLED=1`; verify `scripts/ops/cpu_isolation.sh verify`.
+
+## Verification checklist
+
+| Step | Command |
+| :--- | :--- |
+| Alloc gate | `make test-alloc-gate` |
+| Hot static | `bash scripts/ci/hot_path_static_gate.sh` |
+| Escape heap | `bash scripts/ci/escape_heap_gate.sh` |
+| Parser chaos | `go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1` |
+| Cross-hop edge | `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` |
+| TE/proto/HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE\|TestChaos_Proto_FieldBudget\|TestChaos_HPACK' -count=1` |
+| Stream admission | `go test ./internal/ingestion/ -run='TestStreamProducer\|TestUnifiedFilter_SetDefer\|TestUnifiedFilter_Rollback' -v` |
+| Perf claim | `AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business` (`load-test-bpf.mdc`) |
+
+PR: no new `interface{}` on `/track`; new write paths need fault proof (`fault-tests.mdc`).
+
+Related: `core.mdc`, `rtb.mdc`, `edge.mdc`, `data-layer.mdc`, `load-test-bpf.mdc`, `anti-slop.mdc`.

@@ -1,5 +1,5 @@
 ---
-description: Comments, verification honesty, web JSDoc, anti-slop
+description: Comments, verification honesty, web JSDoc
 alwaysApply: true
 ---
 
@@ -12,17 +12,13 @@ Comments explain why and constraints code cannot express.
 - Exported API: contract, errors, concurrency, idempotency.
 - Hot path: one comment per non-obvious decision.
 - `web/**`: JSDoc on every function, module constant, and block-scoped arrow callback.
-- No fake KPI cards or dead nav links in admin UI; wire only routes backed by `/api/v1`.
-- `scripts/ci/admin_web.sh` must pass before claiming admin UI work is done.
 
 Agents must not invent environment, generated artifacts, or benchmark runs.
 
-Lie modes: wrong naming; wrong types or sqlc row vs DTO mapping; plausible logic that fails edge cases; weakened tests; claiming tests pass without running them.
-
-Before claiming done:
+Before claiming done: see `anti-slop.mdc` (lie modes, CI gates, agent checklist). Summary:
 
 1. Every new symbol resolves.
 2. Hot path does not import cold fraud scoring.
 3. Explain why scripts/tests changed.
-4. Paste command + package path for verification runs.
-5. Add a test that fails without the change when behavior is non-obvious.
+4. Paste command + package path for verification runs actually executed.
+5. Add a holdout test that fails without the change when behavior is non-obvious (`testing.mdc`).

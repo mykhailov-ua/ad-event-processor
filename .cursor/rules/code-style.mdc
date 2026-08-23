@@ -46,7 +46,7 @@ PR verification
 - `make lint` before merge.
 - Perf-sensitive changes: `scripts/test/gate_run.sh` or CI `perf-gate.yaml`.
 
-Banned patterns (cold path detail in `cold-path.mdc`)
+Banned patterns (cold path detail in `cold-path.mdc`; slop gates in `anti-slop.mdc`)
 
 - Repository interfaces over sqlc, Provider/Factory maps, `map[string]any` JSON builders.
 - HTMX admin fragments — JSON `/api/v1` only (`control-plane.mdc`).

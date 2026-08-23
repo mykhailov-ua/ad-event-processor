@@ -27,5 +27,11 @@ func pinParsedHTTPRequest(ctx *connContext, req parsedHTTPRequest) parsedHTTPReq
 		ContentLength:    req.ContentLength,
 		HasContentLength: req.HasContentLength,
 		ForceSafe:        req.ForceSafe,
+		TCPMSS:           req.TCPMSS,
+		TCPMSSSet:        req.TCPMSSSet,
+		TCPTTL:           req.TCPTTL,
+		TCPTTLSet:        req.TCPTTLSet,
+		TCPWindow:        req.TCPWindow,
+		TCPWindowSet:     req.TCPWindowSet,
 	}
 }

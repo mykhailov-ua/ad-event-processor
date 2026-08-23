@@ -19,6 +19,46 @@ if ! docker compose "${ENV_FILE[@]}" config --services | grep -qx broker; then
   echo "default compose must include broker (CH_INGEST_SOURCE defaults to broker)" >&2
   exit 1
 fi
+if ! grep -q 'create_host_path: false' "$ROOT/deploy/compose/docker-compose.yaml"; then
+  echo "compose must set create_host_path: false on runtime bind mounts" >&2
+  exit 1
+fi
+
+echo "compose release overlay (image-only services)"
+RELEASE_ENV_FILE="$ROOT/.cache/compose-release-ci.env"
+mkdir -p "$ROOT/.cache"
+printf 'AD_EVENT_PROCESSOR_APP_IMAGE=ghcr.io/example/ad-event-processor:ci-test\n' > "$RELEASE_ENV_FILE"
+RELEASE_CFG="$ROOT/.cache/compose-release-ci.yaml"
+docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+  -f "$ROOT/deploy/compose/docker-compose.release.yaml" \
+  "${ENV_FILE[@]}" --env-file "$RELEASE_ENV_FILE" config > "$RELEASE_CFG" 2> /dev/null
+if ! grep -q 'image: ghcr.io/example/ad-event-processor:ci-test' "$RELEASE_CFG"; then
+  echo "release overlay must set AD_EVENT_PROCESSOR_APP_IMAGE on app services" >&2
+  exit 1
+fi
+if awk '/^  tracker-0:/{p=1} p&&/^  [a-z]/{if(!/^  tracker-0:/)exit} p' "$RELEASE_CFG" | grep -q 'build:'; then
+  echo "release overlay must remove build from tracker-0" >&2
+  exit 1
+fi
+
+echo "compose load-test overlay (nginx depends on two trackers)"
+docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+  -f "$ROOT/deploy/compose/docker-compose.load-test.yaml" \
+  "${ENV_FILE[@]}" config > /dev/null
+if docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+  -f "$ROOT/deploy/compose/docker-compose.load-test.yaml" \
+  "${ENV_FILE[@]}" config 2> /dev/null | grep -A20 '^  nginx:' | grep -q 'tracker-2:'; then
+  echo "load-test overlay must not require tracker-2/3 in nginx depends_on" >&2
+  exit 1
+fi
+if ! grep -q 'LOCAL_QUOTA_MODE: live' "$ROOT/deploy/compose/docker-compose.load-test.yaml"; then
+  echo "load-test overlay must set LOCAL_QUOTA_MODE=live on high-QPS trackers" >&2
+  exit 1
+fi
+if ! grep -q 'QUOTA_MODE: live' "$ROOT/deploy/compose/docker-compose.load-test.yaml"; then
+  echo "load-test overlay must set QUOTA_MODE=live with LOCAL_QUOTA_MODE=live" >&2
+  exit 1
+fi
 
 echo "compose cpu-isolation overlay + profile"
 docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \

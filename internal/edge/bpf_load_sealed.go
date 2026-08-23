@@ -115,7 +115,9 @@ func populateEdgeObjectsFromSpec(objs *EdgeObjects, spec *ebpf.CollectionSpec, o
 		}
 	}
 	assignMap(EdgeMapAllowV4, &objs.AllowV4)
+	assignMap(EdgeMapAllowV6, &objs.AllowV6)
 	assignMap(EdgeMapBlocklistV4, &objs.BlocklistV4)
+	assignMap(EdgeMapBlocklistV6, &objs.BlocklistV6)
 	assignMap(EdgeMapConfig, &objs.Config)
 	assignMap(EdgeMapGlobalSyn, &objs.GlobalSyn)
 	assignMap(EdgeMapProgArray, &objs.ProgArray)

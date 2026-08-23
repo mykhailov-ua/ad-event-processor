@@ -4,6 +4,13 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env" 2> /dev/null || printf 'load-malformed: WARN: .env present but not sourced (parse error)\n'
+  set +a
+fi
+
 MODE="${1:-full}"
 CONSTRAINED="${CONSTRAINED:-1}"
 RATE="${RATE:-}"
@@ -99,6 +106,7 @@ go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
 [[ -n "$BPF_PID" ]] && bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
 bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" 10
 
+export LOAD_SLA_GATE=1
 go run ./cmd/load-report all "$OUT"
 if [[ "${LOAD_TG_GATE:-0}" == "1" ]]; then
   go run ./cmd/load-report telegram "$OUT" --prom "${PROMETHEUS_URL:-http://127.0.0.1:9190}"

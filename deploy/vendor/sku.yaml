@@ -1,4 +1,5 @@
 # Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
+# Commercial capability matrix (antifraud shipped vs gates): deploy/vendor/SALES_KIT.md § Antifraud capability matrix
 # Sign offline: use ad-event-processor-license repo CLI
 # go run ./cmd/ad-event-processor-license --sku <code> --customer-name "Acme" --deployment-id <uuid> [--fingerprint <host_fp>]
 #
@@ -29,6 +30,7 @@ skus:
       multi_region: false
       slot_migration: false
       margin_guard: true
+      external_residential_intel: false
     limits:
       max_activations: 1
       max_regions: 1
@@ -56,6 +58,7 @@ skus:
       multi_region: false
       slot_migration: false
       margin_guard: true
+      external_residential_intel: false
     limits:
       max_activations: 1
       max_regions: 1
@@ -83,6 +86,7 @@ skus:
       multi_region: false
       slot_migration: false
       margin_guard: true
+      external_residential_intel: true
     limits:
       max_activations: 3
       max_regions: 1
@@ -110,6 +114,7 @@ skus:
       multi_region: true
       slot_migration: true
       margin_guard: true
+      external_residential_intel: true
     limits:
       max_activations: 10
       max_regions: 3
@@ -137,6 +142,7 @@ skus:
       multi_region: true
       slot_migration: true
       margin_guard: true
+      external_residential_intel: true
     limits:
       max_activations: 99
       max_regions: 99
@@ -165,6 +171,7 @@ skus:
       multi_region: false
       slot_migration: false
       margin_guard: true
+      external_residential_intel: false
     limits:
       max_activations: 1
       max_regions: 1
@@ -191,6 +198,7 @@ skus:
       multi_region: true
       slot_migration: true
       margin_guard: true
+      external_residential_intel: true
     limits:
       max_activations: 999
       max_regions: 99

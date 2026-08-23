@@ -2367,15 +2367,16 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	blacklistEvents := make([]db.OutboxEvent, 0)
 	otherEvents := make([]db.OutboxEvent, 0, len(events))
 	for _, ev := range events {
-		if ev.EventType == "UPDATE_BLACKLIST" {
+		switch ev.EventType {
+		case "UPDATE_BLACKLIST", "ML_BLACKLIST_ADD":
 			blacklistEvents = append(blacklistEvents, ev)
-		} else {
+		default:
 			otherEvents = append(otherEvents, ev)
 		}
 	}
 
 	if len(blacklistEvents) > 0 {
-		if err := worker.applyBlacklistPayloadsBatch(opCtx, blacklistEvents); err != nil {
+		if err := worker.applyBlacklistOutboxBatch(opCtx, blacklistEvents); err != nil {
 			for _, ev := range blacklistEvents {
 				revertIDs = append(revertIDs, ev.ID)
 				batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", ev.ID, err))
@@ -2461,10 +2462,7 @@ func ToUUID(u uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: u, Valid: true}
 }
 
-const (
-	fraudQuarantineChannel = "fraud:quarantine"
-	blacklistUpdateChannel = "blacklist:update"
-)
+const blacklistUpdateChannel = "blacklist:update"
 
 func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, events []db.OutboxEvent) error {
 	type reasonBatch struct {
@@ -2526,9 +2524,7 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 			}
 		}
 		if reason == "fraud" && len(batch.adds) > 0 {
-			for _, ip := range batch.adds {
-				_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, fraudQuarantineChannel, ip)
-			}
+			_ = publishFraudQuarantineBatch(ctx, worker.svc.rdbs, batch.adds)
 		}
 		for _, ip := range append(batch.adds, batch.removes...) {
 			_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, blacklistUpdateChannel, ip+":"+reason)
@@ -2558,7 +2554,7 @@ func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p Blackli
 		return fmt.Errorf("blacklist sync failed: %w", err)
 	}
 	if reason == "fraud" && p.Action == "add" {
-		_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, fraudQuarantineChannel, p.IP)
+		_ = publishFraudQuarantineBatch(ctx, worker.svc.rdbs, []string{p.IP})
 	}
 	_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, blacklistUpdateChannel, p.IP+":"+reason)
 	if !queuedAt.IsZero() {

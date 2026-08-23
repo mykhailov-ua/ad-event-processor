@@ -72,6 +72,9 @@ func readMountSourceUUID(pathID uint8) string {
 			return src
 		}
 	}
+	if sc.Err() != nil {
+		return ""
+	}
 	return ""
 }
 
@@ -100,6 +103,9 @@ func readRootBlockDevice() string {
 			return ""
 		}
 		return fields[5]
+	}
+	if sc.Err() != nil {
+		return ""
 	}
 	return ""
 }
@@ -166,6 +172,9 @@ func readCPUModel() string {
 			continue
 		}
 		return strings.TrimSpace(val)
+	}
+	if sc.Err() != nil {
+		return ""
 	}
 	return ""
 }

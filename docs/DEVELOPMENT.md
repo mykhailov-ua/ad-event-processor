@@ -2,6 +2,8 @@
 
 Stack identity: **ad-event-processor** — [NAMING.md](NAMING.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md). CI: [CI.md](CI.md).
 
+Open antifraud, capacity, and edge backlog (phase gates, verify commands, checkboxes) lives in repo-root [BACKLOG.md](../BACKLOG.md). Do not duplicate the task list in this guide.
+
 ## Requirements
 
 - Go 1.25+, Docker Compose, `make`, `clang`/`llvm` (eBPF)
@@ -276,20 +278,80 @@ CH: `tg_events_raw` → MV → `tg_events` (SHA256 only).
 
 ## Local Quanta Full-Skip
 
-`LOCAL_QUOTA_MODE=live`:
+`LOCAL_QUOTA_MODE=live` (requires `QUOTA_MODE=live` or `shadow`):
 1. CAS debit (`TrySpendDebit`, ~13 ns)
 2. Skip Redis Lua on eligible campaigns
 3. Local idempotency cache
-4. Async flush via `localQuantaStream` / `StreamProducer`
+4. Async event log via `BrokerProducer` / `StreamProducer` (`SetDeferStreamToProducer` sets local-quanta lane to `fcap:ignored` — single writer)
+
+Load-test / scale compose (`docker-compose.load-test.yaml`) sets `QUOTA_MODE=live` and `LOCAL_QUOTA_MODE=live` on `tracker-0` and `tracker-1` only.
+
+### Eligibility gates (operator runbook)
+
+Full-skip (zero sync `EVALSHA`) requires **all** of:
+
+| Gate | Reject path |
+| :--- | :--- |
+| `LOCAL_QUOTA_MODE=live` | Falls back to Lua or budget-fast |
+| `QUOTA_MODE=live` or `shadow` | `quotaEnabledAny` off |
+| Event type `impression` or `click` | Full Lua |
+| `LUA_FAST_PATH_ENABLED=1` (default) | Full Lua |
+| Not in local-quanta strict mode | Budget-fast Lua after local debit |
+| `needsFullLuaPath` false (no even pacing without rough gate, TTC cache when TTC enabled, fcap via `settingsWatcher` when `FreqLimit>0`) | Budget-fast or full Lua |
+| `placement_id` empty | Budget-fast Lua after local debit |
+| Customer `max_rpd` entitlement unset | Budget-fast Lua after local debit |
+| Local ledger has credit (`TrySpendDebit` ok) | Refill signaled; Lua path |
+| Stream admission reserved before filter | 503 before debit |
+| `BrokerProducer` or `StreamProducer` wired (`SetDeferStreamToProducer`) | Dual `XADD` risk if defer off |
+
+Local quanta debit is **not** Postgres budget authority — processor PG settlement and reconciliation correct drift after crash or strict flush.
+
+### Metrics and alerts
+
+| Metric | Meaning |
+| :--- | :--- |
+| `rate(ad_local_quota_full_skip_total[5m]) / rate(ad_local_quota_full_skip_eligible_total[5m])` | Full-skip share (`ad_local_quota_full_skip_ratio` in TRADEOFFS) |
+| `ad_stream_producer_queue_depth` | Per-shard producer backlog |
+| `ad_stream_producer_admission_rejected_total` | 503 before debit (healthy under overload) |
+| `ad_stream_producer_post_debit_rejected_total` | Rollback path — should stay ~0 |
+
+Alert `LocalQuotaFullSkipRatioLow`: eligible rate > 1/s and full-skip ratio < 80% for 5m (`deploy/monitoring/prometheus.rules.yaml`).
+
+Tracker startup logs `local quanta enabled` and, when live, the PromQL ratio line above.
 
 | Env | Default | Effect |
 | :--- | :--- | :--- |
 | `STREAM_PRODUCER_ADMISSION_PCT` | `85` | 503 before debit when queue ≥ pct; `0` disables |
 
-Metrics: `ad_stream_producer_queue_depth`, `ad_stream_producer_admission_rejected_total`, `ad_stream_producer_post_debit_rejected_total`.
-
 ```bash
 go test ./internal/ingestion/ -bench='BenchmarkLocalQuanta_FullSkip|BenchmarkAcceptLocalQuantaFullSkip' -benchmem
+go test ./internal/ingestion/ -run='TestUnifiedFilter_SetDefer|TestLocalQuanta' -count=1
+```
+
+## Redis / tracker hot-path monitoring (P0-2)
+
+Grafana: `deploy/monitoring/grafana-provisioning/dashboards/main.json` (uid `perf-overview`).
+
+| Panel | Metric | SLA / intent |
+| :--- | :--- | :--- |
+| Tracker HTTP p95/p99 | `ad_http_request_duration_seconds` | p95 < 50 ms, p99 < 80 ms |
+| Redis Lua p99/shard | `ad_redis_lua_duration_seconds` | p99 < 10 ms/shard |
+| Breaker state | `ad_redis_breaker_state` | 0 = closed |
+| Post-debit rejects | `ad_stream_producer_post_debit_rejected_total` | ~0 |
+| Stream queue depth | `ad_stream_producer_queue_depth` | admission at 85% default |
+| Redis ops/s | `ad_redis_ops_total` | shard load proxy |
+| Redis BPF on-CPU | `ad_event_processor_bpf_oncpu_pct{role="redis"}` | BPF session only |
+
+Alerts: `deploy/monitoring/prometheus.rules.yaml` — `RedisLuaLatencyHigh`, `RedisBreakerOpen`, `TrackerLatencyP99Sustained` (`for: 30s`, load-test abort), `StreamProducerPostDebitRejected`.
+
+Load-test abort wiring:
+
+- `scripts/test/malformed.sh` sets `LOAD_SLA_GATE=1` before `load-report all` (fails when tracker p99 ≥ 80 ms).
+- Parser chaos: `CHAOS_LOAD_P99_MS=80` (default) in `scripts/fault/parser_chaos_load.sh`.
+
+```bash
+bash scripts/ci/prometheus_rules_check.sh
+go test ./deploy/monitoring/ -count=1
 ```
 
 ## Doc Routing
@@ -303,6 +365,7 @@ go test ./internal/ingestion/ -bench='BenchmarkLocalQuanta_FullSkip|BenchmarkAcc
 | [TRAFFIC.md](TRAFFIC.md) | Buyer integration |
 | [PARSER.md](PARSER.md) | Ingress wire policy |
 | [SHARDING.md](SHARDING.md) | Shard 0 matrix |
+| [TRADEOFFS.md](TRADEOFFS.md) | Trade-offs, rejected alternatives |
 | [RTB.md](RTB.md) | OpenRTB shadow→live |
 | [TRIAL.md](TRIAL.md) | Pilot repeat-trial policy |
 | [BILLING.md](BILLING.md) | USDT tiers, invoices |

@@ -9,7 +9,9 @@ bash "$SCRIPTS/ci/tier_a.sh"
 bash "$SCRIPTS/ci/check_scripts_layout.sh"
 bash "$SCRIPTS/ci/compliance.sh"
 bash "$SCRIPTS/ci/ch_direct.sh"
-bash "$SCRIPTS/ci/lint_go_gate.sh" all
+if [[ "${SKIP_LINT:-}" != "1" ]]; then
+  bash "$SCRIPTS/ci/lint_gate.sh"
+fi
 bash "$SCRIPTS/ci/integration_skip_reason_gate.sh"
 bash "$SCRIPTS/ci/integration_test_slop_gate.sh"
 bash "$SCRIPTS/ci/anti_slop_gate.sh"

@@ -19,7 +19,9 @@ Without entitlement: pins maps, skips attach; bpf-sync idles. Lab compose: `dock
 
 ## Pin directory (`BPF_PIN_DIR`)
 
-Default `/sys/fs/bpf/ad-event-processor`. Key maps: `blocklist_v4`, `allow_v4`, `syn_ratelimit_v4`, `syn_subnet_ratelimit_v4`, `ratelimit_v4`, `stats`, `config`, `violations`, `fingerprints`.
+Default `/sys/fs/bpf/ad-event-processor`. Key maps: `blocklist_v4`, `blocklist_v6`, `allow_v4`, `allow_v6`, `syn_ratelimit_v4`, `syn_subnet_ratelimit_v4`, `ratelimit_v4`, `stats`, `config`, `violations`, `fingerprints`.
+
+IPv6 deny/allow use `BPF_MAP_TYPE_LPM_TRIE` with `BPF_F_NO_PREALLOC` (`blocklist_v6`, `allow_v6`). bpf-sync applies Redis sets to both v4 host keys and v6 host keys; allowlist lookup runs before blocklist on IPv6 TCP to tracker ingress.
 
 ## `edge-xdp`
 

@@ -34,6 +34,7 @@ func Effective(dep, cust Entitlements) Entitlements {
 	eff.Features.MultiRegion = depFeat.MultiRegion && custFeat.MultiRegion
 	eff.Features.SlotMigration = depFeat.SlotMigration && custFeat.SlotMigration
 	eff.Features.MarginGuard = depFeat.MarginGuard && custFeat.MarginGuard
+	eff.Features.ExternalResidentialIntel = depFeat.ExternalResidentialIntel && custFeat.ExternalResidentialIntel
 
 	return eff
 }

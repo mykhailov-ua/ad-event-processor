@@ -46,6 +46,7 @@ func newLocalQuantaUnifiedFilter(t testing.TB, rdb redis.UniversalClient) (*Unif
 	})
 	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream})
 	f.SetLocalQuantaMode("live")
+	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{rdb}))
 	t.Cleanup(stream.Close)
 	return f, ledger, stream
 }

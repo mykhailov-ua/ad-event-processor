@@ -14,13 +14,11 @@ export type FraudIntegrationsPanelProps = {
   customerId: string;
 };
 
-
 function formatTs(iso?: string): string {
   if (!iso) return '—';
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 }
-
 
 export function FraudIntegrationsPanel({ customerId }: FraudIntegrationsPanelProps) {
   const [rows, setRows] = useState<FraudIntegrationRow[]>([]);

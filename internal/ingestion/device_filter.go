@@ -7,18 +7,24 @@ import (
 	"sync"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 )
 
 type DeviceFilter struct {
-	settings   *SettingsWatcher
-	blockedTLS map[uint32]struct{}
-	mu         sync.RWMutex
+	settings             *SettingsWatcher
+	blockedTLS           map[uint32]struct{}
+	osFingerprintEnabled bool
+	mu                   sync.RWMutex
 }
 
 func NewDeviceFilter(settings *SettingsWatcher) *DeviceFilter {
-	f := &DeviceFilter{settings: settings}
+	f := &DeviceFilter{settings: settings, osFingerprintEnabled: true}
 	f.reloadBlocklist()
 	return f
+}
+
+func (f *DeviceFilter) SetOSFingerprintEnabled(enabled bool) {
+	f.osFingerprintEnabled = enabled
 }
 
 func (f *DeviceFilter) reloadBlocklist() {
@@ -51,6 +57,15 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	}
 	if deviceHintsMismatch(evt.SecCHUA, evt.UA) {
 		addFraudSignal(evt, FraudReasonDeviceMismatch)
+	}
+	if tlsFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
+		addFraudSignal(evt, FraudReasonDeviceMismatch)
+	}
+	if f.osFingerprintEnabled && evt.TCPTTLSet != 0 && evt.UA != "" {
+		if osFingerprintMismatch(evt.UA, evt.TCPTTL, evt.TCPWindowSet, evt.TCPWindow) {
+			metrics.OSFingerprintMismatchTotal.Inc()
+			addFraudSignal(evt, FraudReasonOSFingerprint)
+		}
 	}
 	return nil
 }

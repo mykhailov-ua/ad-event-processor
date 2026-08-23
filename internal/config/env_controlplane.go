@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"strings"
+	"time"
 )
 
 func loadControlplaneModules(cfg *Config) {
@@ -92,6 +93,31 @@ func loadManagementModules(cfg *Config) {
 	cfg.FraudScoring.Standalone = getEnvBool("FRAUD_SCORER_STANDALONE", false)
 	cfg.FraudScoring.ExplainLiveScore = getEnvBool("FRAUD_EXPLAIN_LIVE_SCORE", false)
 
+	cfg.ExternalResidentialIntel.Enabled = getEnvBool("EXTERNAL_RESIDENTIAL_INTEL_ENABLED", false)
+	cfg.ExternalResidentialIntel.ProviderURL = strings.TrimSpace(os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_URL"))
+	cfg.ExternalResidentialIntel.APIKey = Secret(strings.TrimSpace(os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_API_KEY")))
+	cfg.ExternalResidentialIntel.CacheTTL = 24 * time.Hour
+	if sec := getEnvInt("EXTERNAL_RESIDENTIAL_INTEL_CACHE_TTL_SEC", 86400); sec > 0 {
+		cfg.ExternalResidentialIntel.CacheTTL = time.Duration(sec) * time.Second
+	}
+	cfg.ExternalResidentialIntel.BatchSize = getEnvInt("EXTERNAL_RESIDENTIAL_INTEL_BATCH_SIZE", 32)
+	cfg.ExternalResidentialIntel.RecentLimit = getEnvInt("EXTERNAL_RESIDENTIAL_INTEL_RECENT_LIMIT", 128)
+	cfg.ExternalResidentialIntel.FeedDir = os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_FEED_DIR")
+	if cfg.ExternalResidentialIntel.FeedDir == "" {
+		cfg.ExternalResidentialIntel.FeedDir = os.Getenv("PROXY_VPN_FEED_DIR")
+	}
+	if cfg.ExternalResidentialIntel.FeedDir == "" {
+		cfg.ExternalResidentialIntel.FeedDir = "/var/lib/ad-event-processor/proxy-vpn"
+	}
+	cfg.ExternalResidentialIntel.ScanInterval = time.Duration(cfg.IVT.ScanIntervalMs) * time.Millisecond
+	if ms := getEnvInt("EXTERNAL_RESIDENTIAL_INTEL_SCAN_INTERVAL_MS", 0); ms > 0 {
+		cfg.ExternalResidentialIntel.ScanInterval = time.Duration(ms) * time.Millisecond
+	}
+	cfg.ExternalResidentialIntel.ProviderLabel = strings.TrimSpace(os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_PROVIDER_LABEL"))
+	if cfg.ExternalResidentialIntel.ProviderLabel == "" {
+		cfg.ExternalResidentialIntel.ProviderLabel = "http"
+	}
+
 	if len(cfg.AllowedOrigins) == 1 && cfg.AllowedOrigins[0] == "" {
 		cfg.AllowedOrigins = []string{"https://dashboard.example.com", "http://localhost:8188"}
 	}
@@ -170,6 +196,10 @@ func loadManagementModules(cfg *Config) {
 	cfg.GeoIP.DBPath = os.Getenv("GEOIP_DB_PATH")
 	if cfg.GeoIP.DBPath == "" {
 		cfg.GeoIP.DBPath = "deploy/geoip/GeoLite2-Country.mmdb"
+	}
+	cfg.GeoIP.ASNDBPath = os.Getenv("GEOIP_ASN_DB_PATH")
+	if cfg.GeoIP.ASNDBPath == "" {
+		cfg.GeoIP.ASNDBPath = "deploy/geoip/GeoLite2-ASN.mmdb"
 	}
 	cfg.GeoIP.StagingPath = os.Getenv("GEOIP_STAGING_PATH")
 	if cfg.GeoIP.StagingPath == "" {

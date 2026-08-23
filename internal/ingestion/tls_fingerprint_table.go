@@ -2,15 +2,28 @@ package ingestion
 
 import (
 	"hash/crc32"
+	"strings"
 	"sync/atomic"
 )
 
 const tlsFingerprintMaxLen = 512
 
+const suspiciousJA3PythonHash = "37b37375c33a2e6a17b2b6400c436321"
+
+var suspiciousJA3ExactHashes = initSuspiciousJA3Hashes()
+
+func initSuspiciousJA3Hashes() []uint32 {
+	h := []uint32{crc32.ChecksumIEEE([]byte(suspiciousJA3PythonHash))}
+	sortUint32s(h)
+	return h
+}
+
 type tlsFingerprintSnapshot struct {
-	gen uint64
-	ja3 []uint32
-	ja4 []uint32
+	gen      uint64
+	ja3Block []uint32
+	ja4Block []uint32
+	ja3Allow []uint32
+	ja4Allow []uint32
 }
 
 type TLSFingerprintTable struct {
@@ -34,7 +47,15 @@ func (t *TLSFingerprintTable) SnapshotSize() (ja3, ja4 int, gen uint64, ok bool)
 	if snap == nil {
 		return 0, 0, 0, false
 	}
-	return len(snap.ja3), len(snap.ja4), snap.gen, true
+	return len(snap.ja3Block), len(snap.ja4Block), snap.gen, true
+}
+
+func (t *TLSFingerprintTable) AllowlistSize() (ja3, ja4 int, ok bool) {
+	snap := t.active.Load()
+	if snap == nil {
+		return 0, 0, false
+	}
+	return len(snap.ja3Allow), len(snap.ja4Allow), true
 }
 
 func crc32FingerprintHash(b []byte) uint32 {
@@ -49,11 +70,23 @@ func (t *TLSFingerprintTable) MatchJA3(ja3 []byte) bool {
 		return false
 	}
 	snap := t.active.Load()
-	if snap == nil || len(snap.ja3) == 0 {
+	if snap == nil || len(snap.ja3Block) == 0 {
 		return false
 	}
 	h := crc32FingerprintHash(ja3)
-	return tlsHashBlocked(snap.ja3, h)
+	return tlsHashBlocked(snap.ja3Block, h)
+}
+
+func (t *TLSFingerprintTable) MatchJA3Allowed(ja3 []byte) bool {
+	if len(ja3) == 0 || len(ja3) > tlsFingerprintMaxLen {
+		return false
+	}
+	snap := t.active.Load()
+	if snap == nil || len(snap.ja3Allow) == 0 {
+		return false
+	}
+	h := crc32FingerprintHash(ja3)
+	return tlsHashBlocked(snap.ja3Allow, h)
 }
 
 func (t *TLSFingerprintTable) MatchJA4(ja4 []byte) bool {
@@ -61,11 +94,37 @@ func (t *TLSFingerprintTable) MatchJA4(ja4 []byte) bool {
 		return false
 	}
 	snap := t.active.Load()
-	if snap == nil || len(snap.ja4) == 0 {
+	if snap == nil || len(snap.ja4Block) == 0 {
 		return false
 	}
 	h := crc32FingerprintHash(ja4)
-	return tlsHashBlocked(snap.ja4, h)
+	return tlsHashBlocked(snap.ja4Block, h)
+}
+
+func (t *TLSFingerprintTable) MatchJA4Allowed(ja4 []byte) bool {
+	if len(ja4) == 0 || len(ja4) > tlsFingerprintMaxLen {
+		return false
+	}
+	snap := t.active.Load()
+	if snap == nil || len(snap.ja4Allow) == 0 {
+		return false
+	}
+	h := crc32FingerprintHash(ja4)
+	return tlsHashBlocked(snap.ja4Allow, h)
+}
+
+func (t *TLSFingerprintTable) shouldBlockJA3(ja3 []byte) bool {
+	if t.MatchJA3Allowed(ja3) {
+		return false
+	}
+	return t.MatchJA3(ja3)
+}
+
+func (t *TLSFingerprintTable) shouldBlockJA4(ja4 []byte) bool {
+	if t.MatchJA4Allowed(ja4) {
+		return false
+	}
+	return t.MatchJA4(ja4)
 }
 
 func tlsHashBlocked(sorted []uint32, h uint32) bool {
@@ -90,14 +149,79 @@ func tlsHashBlocked(sorted []uint32, h uint32) bool {
 	return false
 }
 
-func buildTLSFingerprintSnapshot(ja3, ja4 []uint32, gen uint64) *tlsFingerprintSnapshot {
-	sortUint32s(ja3)
-	sortUint32s(ja4)
+func buildTLSFingerprintSnapshot(ja3Block, ja4Block, ja3Allow, ja4Allow []uint32, gen uint64) *tlsFingerprintSnapshot {
+	sortUint32s(ja3Block)
+	sortUint32s(ja4Block)
+	sortUint32s(ja3Allow)
+	sortUint32s(ja4Allow)
 	return &tlsFingerprintSnapshot{
-		gen: gen,
-		ja3: ja3,
-		ja4: ja4,
+		gen:      gen,
+		ja3Block: ja3Block,
+		ja4Block: ja4Block,
+		ja3Allow: ja3Allow,
+		ja4Allow: ja4Allow,
 	}
+}
+
+func ja3BytesSuspicious(ja3 []byte) bool {
+	if len(ja3) == 0 || len(ja3) > tlsFingerprintMaxLen {
+		return false
+	}
+	h := crc32FingerprintHash(ja3)
+	if tlsHashBlocked(suspiciousJA3ExactHashes, h) {
+		return true
+	}
+	return ja3ContainsPythonRequests(ja3)
+}
+
+func ja3ContainsPythonRequests(ja3 []byte) bool {
+	needle := []byte("python-requests")
+	n := len(ja3)
+	m := len(needle)
+	if n < m {
+		return false
+	}
+	for i := 0; i <= n-m; i++ {
+		if ja3[i] != needle[0] {
+			continue
+		}
+		match := true
+		for j := 1; j < m; j++ {
+			if ja3[i+j] != needle[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return true
+		}
+	}
+	return false
+}
+
+func uaClaimsChromeNotChromium(ua string) bool {
+	if ua == "" {
+		return false
+	}
+	uaLower := strings.ToLower(ua)
+	return strings.Contains(uaLower, "chrome") && !strings.Contains(uaLower, "chromium")
+}
+
+func tlsFingerprintImpersonating(ua string, ja3, ja4, tlsHash []byte) bool {
+	if !uaClaimsChromeNotChromium(ua) {
+		return false
+	}
+	if ja3BytesSuspicious(ja3) || ja3BytesSuspicious(tlsHash) {
+		return true
+	}
+	return ja4BytesSuspicious(ja4)
+}
+
+func ja4BytesSuspicious(ja4 []byte) bool {
+	if len(ja4) == 0 || len(ja4) > tlsFingerprintMaxLen {
+		return false
+	}
+	return tlsHashBlocked(suspiciousJA3ExactHashes, crc32FingerprintHash(ja4))
 }
 
 func sortUint32s(a []uint32) {

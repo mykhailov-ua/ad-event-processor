@@ -213,6 +213,16 @@ type RolesReloader interface {
 
 type FraudThreatEnqueuer interface {
 	EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error
+	EnqueueFraudThreatBatch(ctx context.Context, items []FraudThreatEnqueueItem) (int, error)
+}
+
+type FraudThreatEnqueueItem struct {
+	Action     string  `json:"action"`
+	IP         string  `json:"ip"`
+	CampaignID string  `json:"campaign_id"`
+	Score      float64 `json:"score"`
+	Boost      int32   `json:"boost"`
+	TTLSeconds int64   `json:"ttl_seconds"`
 }
 
 type BlacklistAdmin interface {

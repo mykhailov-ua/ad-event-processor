@@ -5,7 +5,9 @@
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>
+#include <linux/in6.h>
 #include <linux/ip.h>
+#include <linux/ipv6.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
@@ -66,6 +68,11 @@ struct ipv4_lpm_key {
 	__u32 addr;
 };
 
+struct ipv6_lpm_key {
+	__u32 prefixlen;
+	__u8 addr[16];
+};
+
 struct syn_state {
 	__u64 window_start_ns;
 	__u32 count;
@@ -119,7 +126,7 @@ enum xdp_stats {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
-	__uint(max_entries, 524288);
+	__uint(max_entries, 786432);
 	__type(key, struct ipv4_lpm_key);
 	__type(value, __u8);
 	__uint(map_flags, BPF_F_NO_PREALLOC);
@@ -134,8 +141,24 @@ struct {
 } allow_v4 SEC(".maps");
 
 struct {
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__uint(max_entries, 786432);
+	__type(key, struct ipv6_lpm_key);
+	__type(value, __u8);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+} blocklist_v6 SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__uint(max_entries, 65536);
+	__type(key, struct ipv6_lpm_key);
+	__type(value, __u8);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+} allow_v6 SEC(".maps");
+
+struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__uint(max_entries, 524288);
+	__uint(max_entries, 786432);
 	__type(key, __u32);
 	__type(value, struct syn_state);
 } syn_ratelimit_v4 SEC(".maps");
@@ -650,6 +673,32 @@ int xdp_syn_cookie(struct xdp_md *ctx)
 	return XDP_TX;
 }
 
+static __always_inline void ipv6_lpm_key_from_addr(struct ipv6_lpm_key *key, const struct in6_addr *addr)
+{
+	key->prefixlen = 128;
+	__builtin_memcpy(key->addr, addr, 16);
+}
+
+static __always_inline int xdp_filter_ipv6_tcp(struct ipv6hdr *ip6, struct tcphdr *tcph)
+{
+	struct ipv6_lpm_key al_key = {};
+	ipv6_lpm_key_from_addr(&al_key, &ip6->saddr);
+	if (bpf_map_lookup_elem(&allow_v6, &al_key)) {
+		stat_inc(XDP_STAT_PASS_ALLOWLIST);
+		return XDP_PASS;
+	}
+
+	struct ipv6_lpm_key bl_key = {};
+	ipv6_lpm_key_from_addr(&bl_key, &ip6->saddr);
+	if (bpf_map_lookup_elem(&blocklist_v6, &bl_key)) {
+		stat_inc(XDP_STAT_DROP_BLOCKLIST);
+		return XDP_DROP;
+	}
+
+	stat_inc(XDP_STAT_PASS);
+	return XDP_PASS;
+}
+
 SEC("xdp")
 int xdp_edge_filter(struct xdp_md *ctx)
 {
@@ -663,8 +712,24 @@ int xdp_edge_filter(struct xdp_md *ctx)
 	if ((void *)(eth + 1) > data_end)
 		return XDP_PASS;
 
-	if (eth->h_proto != bpf_htons(ETH_P_IP))
-		return XDP_PASS;
+	if (eth->h_proto != bpf_htons(ETH_P_IP)) {
+		if (eth->h_proto != bpf_htons(ETH_P_IPV6))
+			return XDP_PASS;
+
+		struct ipv6hdr *ip6 = (void *)(eth + 1);
+		if ((void *)(ip6 + 1) > data_end)
+			return XDP_PASS;
+		if (ip6->nexthdr != IPPROTO_TCP)
+			return XDP_PASS;
+
+		struct tcphdr *tcph = (void *)(ip6 + 1);
+		if ((void *)(tcph + 1) > data_end)
+			return XDP_PASS;
+		if (bpf_ntohs(tcph->dest) != TRACKER_INGRESS_PORT)
+			return XDP_PASS;
+
+		return xdp_filter_ipv6_tcp(ip6, tcph);
+	}
 
 	struct iphdr *iph = (void *)(eth + 1);
 	if ((void *)(iph + 1) > data_end)

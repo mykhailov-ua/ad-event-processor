@@ -26,7 +26,7 @@ local function listen_loop()
                         break
                     end
                     if type(reply) == "table" and reply[1] == "message" then
-                        blacklist_sync.sync()
+                        blacklist_sync.apply_quarantine_message(reply[2])
                     end
                 end
                 red:close()

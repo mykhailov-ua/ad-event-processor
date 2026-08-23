@@ -437,6 +437,8 @@ func fillTgEventFromParsed(evt *domain.Event, eventType string, parsed *tgQueryP
 		evt.UA = unsafeString(req.UserAgent)
 	}
 	evt.TLSHash = unsafeString(req.TLSHash)
+	evt.TLSJA3 = unsafeString(req.TLSJA3)
+	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
 	evt.Payload = marshalTgBridgePayload(evt.Payload, parsed.bridgeToken)

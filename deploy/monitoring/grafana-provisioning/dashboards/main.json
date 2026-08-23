@@ -143,7 +143,7 @@
               "mode": "none"
             },
             "thresholdsStyle": {
-              "mode": "off"
+              "mode": "line"
             }
           },
           "mappings": [],
@@ -153,6 +153,14 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 80
               }
             ]
           },
@@ -234,7 +242,7 @@
         }
       ],
       "title": "Tracker HTTP Latency (p95 / p99)",
-      "description": "Handler-side latency histogram; use with nginx timing to separate edge vs Go time.",
+      "description": "Handler-side latency histogram (SLA: p95 < 50 ms, p99 < 80 ms). Load-test abort when p99 > 80 ms for 30 s.",
       "type": "timeseries"
     },
     {
@@ -973,6 +981,154 @@
       "type": "timeseries"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "#EF4444" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 0, "y": 30 },
+      "id": 21,
+      "options": {
+        "legend": {
+          "calcs": ["max", "lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "rate(ad_stream_producer_post_debit_rejected_total{job=\"tracker\"}[1m])",
+          "legendFormat": "post_debit_rejected/s",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Stream Producer Post-Debit Rejects",
+      "description": "Events debited then dropped on enqueue; should stay ~0 (rollback path). Spike → tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 6, "y": 30 },
+      "id": 22,
+      "options": {
+        "legend": {
+          "calcs": ["max", "lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "ad_stream_producer_queue_depth{job=\"tracker\"}",
+          "legendFormat": "queue shard={{shard}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Stream Producer Queue Depth",
+      "description": "Per-shard async XADD backlog; admission rejects before debit at STREAM_PRODUCER_ADMISSION_PCT (default 85%).",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 30 },
+      "id": 23,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "sum(rate(ad_redis_ops_total{job=\"tracker\"}[1m])) by (shard)",
+          "legendFormat": "ops/s shard={{shard}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis Ops Rate (per shard)",
+      "description": "Hot-path Redis command rate by shard; rising ops/s with Lua p99 growth signals single-thread ceiling.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2,
+            "showPoints": "never"
+          },
+          "unit": "percentunit"
+        }
+      },
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 30 },
+      "id": 24,
+      "options": {
+        "legend": {
+          "calcs": ["max", "lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "editorMode": "code",
+          "expr": "ad_event_processor_bpf_oncpu_pct{role=\"redis\"}",
+          "legendFormat": "oncpu {{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Redis BPF On-CPU %",
+      "description": "Requires AD_EVENT_PROCESSOR_BPF_PROBE=1 and bpf-collector scrape; proxy for Redis shard CPU saturation.",
+      "type": "timeseries"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "Prometheus"
@@ -989,7 +1145,7 @@
           "unit": "short"
         }
       },
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 72 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 38 },
       "id": 20,
       "options": {
         "legend": { "displayMode": "list", "placement": "bottom" },
@@ -1050,5 +1206,5 @@
   "timezone": "browser",
   "title": "Ad Event Processor - High Throughput Telemetry",
   "uid": "perf-overview",
-  "version": 3
+  "version": 4
 }

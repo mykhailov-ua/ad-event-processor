@@ -3,6 +3,7 @@ package ingestion
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"math"
 	"net/http"
 	"os"
@@ -152,7 +153,10 @@ func (c *ProcessorWeightController) pollHTTPWeights(ctx context.Context) float64
 		coldpath.CloseHTTPResponse(resp)
 		return 0
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		return 0
 	}

@@ -5,14 +5,17 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"time"
+
+	"github.com/bidshard/ad-event-processor/internal/domain"
 )
 
 const (
-	linkSigHexLen           = 32
-	linkSigMACBytes         = 16
-	linkSigningMaxTTL       = 3600
-	linkHMACBlockSize       = 64
-	linkSignInnerScratchLen = linkHMACBlockSize + maxClickQueryValue + 1 + 20
+	linkSigHexLen                = 32
+	linkSigMACBytes              = 16
+	linkSigningMaxTTL            = 3600
+	linkSigningTTLAttestationCap = 300
+	linkHMACBlockSize            = 64
+	linkSignInnerScratchLen      = linkHMACBlockSize + maxClickQueryValue + 1 + 20
 )
 
 var (
@@ -251,6 +254,19 @@ func LinkSigningExpires(now time.Time, ttlSec int32) int64 {
 		ttlSec = int32(linkSigningMaxTTL)
 	}
 	return now.Unix() + int64(ttlSec)
+}
+
+func EffectiveLinkSigningTTLSec(camp *domain.Campaign) int32 {
+	ttl := int32(900)
+	if camp != nil && camp.LinkSigningTTLSec > 0 {
+		ttl = camp.LinkSigningTTLSec
+	}
+	if camp != nil && domain.ResolveAttestationMode(camp.AttestationMode, camp.AttestationEnabled).RequiresProbe() {
+		if ttl > linkSigningTTLAttestationCap {
+			ttl = linkSigningTTLAttestationCap
+		}
+	}
+	return ttl
 }
 
 func parseLinkExpires(b []byte) (int64, bool) {

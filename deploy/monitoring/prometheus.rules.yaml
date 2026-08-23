@@ -82,6 +82,24 @@ groups:
           summary: 'Tracker p99 latency above SLA target (80ms)'
           description: 'p99 HTTP request duration at the Go tracker edge exceeds 80ms (100ms hard ceiling). Immediate investigation required.'
 
+      - alert: TrackerLatencyP99Sustained
+        expr: histogram_quantile(0.99, sum(rate(ad_http_request_duration_seconds_bucket[1m])) by (le)) > 0.08
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Tracker p99 above 80ms for 30s (load-test abort threshold)'
+          description: 'Sustained handler p99 above 80ms for 30s — same gate as load-malformed LOAD_SLA_GATE and core.mdc load-test abort. Check Redis Lua p99/shard, stream producer queue, and worker pool.'
+
+      - alert: StreamProducerPostDebitRejected
+        expr: rate(ad_stream_producer_post_debit_rejected_total[2m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Stream producer post-debit enqueue failures'
+          description: 'Budget debited but async enqueue failed (rollback path). ad_stream_producer_post_debit_rejected_total should stay ~0 — tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.'
+
       - alert: HighRequestLatency
         expr: histogram_quantile(0.95, sum(rate(ad_http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
         for: 1m
@@ -195,6 +213,23 @@ groups:
         annotations:
           summary: 'Budget cache miss ratio above 0.1%'
           description: 'Lua budget key miss rate (return -1) exceeds 0.1% of HTTP request rate. Check registry sync lag and budget warmer.'
+
+      - alert: LocalQuotaFullSkipRatioLow
+        expr: |
+          sum(rate(ad_local_quota_full_skip_eligible_total[5m])) > 1
+          and
+          (
+            sum(rate(ad_local_quota_full_skip_total[5m]))
+            /
+            sum(rate(ad_local_quota_full_skip_eligible_total[5m]))
+          ) < 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Local quanta full-skip ratio below 80%'
+          description: 'Eligible impressions/clicks are falling back to sync Redis Lua instead of full-skip. Check strict-mode hysteresis, placement_id or max-RPD traffic, stream producer defer (fcap:ignored), and refill worker health. Runbook: docs/DEVELOPMENT.md §Local Quanta Full-Skip.'
+          runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#local-quanta-full-skip'
 
       - alert: HandlerLogDrop
         expr: rate(ad_handler_log_drop_total[5m]) > 0

@@ -3,6 +3,8 @@ package ingestion
 import (
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func tlsHookHandler(t *testing.T, tlsEnabled bool, filter *countingFilter) (*AdsPacketHandler, uuid.UUID) {
+func tlsHookHandler(t *testing.T, tlsEnabled bool, filter EventFilter) (*AdsPacketHandler, uuid.UUID) {
 	t.Helper()
 	cid := uuid.New()
 	lockStaticCampaign(func(c *domain.Campaign) {
@@ -46,7 +48,7 @@ func serveClickWithJA3(h *AdsPacketHandler, cid uuid.UUID, ip, ja3 string) *Gnet
 func buildTestTLSFingerprintTable(ja3Line string) *TLSFingerprintTable {
 	ja3, ja4 := parseTLSFingerprintFeed([]byte(ja3Line))
 	table := NewTLSFingerprintTable()
-	table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, 1))
+	table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, nil, nil, 1))
 	return table
 }
 
@@ -107,6 +109,54 @@ func TestClickRedirect_L15MobileOnly_RejectsHosting(t *testing.T) {
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-View: l15")
 	require.Equal(t, 0, filter.calls)
+}
+
+func TestClickRedirect_SignedOfferLink_AttestationCapsTTL(t *testing.T) {
+	cid := uuid.New()
+	brandID := uuid.New()
+	staticCampaignMu.Lock()
+	staticCampaign = &domain.Campaign{
+		ID:                 cid,
+		CustomerID:         uuid.Nil,
+		BrandID:            &brandID,
+		Location:           time.UTC,
+		LinkSigningEnabled: true,
+		LinkSigningTTLSec:  900,
+		AttestationMode:    domain.AttestationModeLight,
+	}
+	staticCampaignMu.Unlock()
+	cachedMockCamp.Store(nil)
+
+	store := NewBrandCreativeStore(nil, 0)
+	store.cache.Store(&brandCreativeMapSnapshot{
+		byBrand: map[uuid.UUID][]brandCreativeEntry{
+			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://offer.test/lp", Weight: 100}}),
+		},
+	})
+
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
+	h.ConfigureLinkSigning([]byte("test-link-secret"))
+
+	now := time.Now().Unix()
+	path := "/click?campaign_id=" + cid.String() + "&type=click&click_id=clk-1"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0",
+	}, nil))
+	require.Equal(t, http.StatusFound, ParseGnetHTTPStatus(conn.Written()))
+	resp := string(conn.Written())
+	require.Contains(t, resp, "expires=")
+	idx := strings.Index(resp, "expires=")
+	require.Greater(t, idx, 0)
+	end := idx + len("expires=")
+	for end < len(resp) && resp[end] >= '0' && resp[end] <= '9' {
+		end++
+	}
+	expires, err := strconv.ParseInt(resp[idx+len("expires="):end], 10, 64)
+	require.NoError(t, err)
+	require.LessOrEqual(t, expires-now, int64(linkSigningTTLAttestationCap)+2)
 }
 
 func TestClickRedirect_SignedOfferLink_AppendsSig(t *testing.T) {

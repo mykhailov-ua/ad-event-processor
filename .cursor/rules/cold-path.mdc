@@ -1,30 +1,167 @@
 ---
-description: Cold path anti-enterprise, flat handlers, no Provider layers
-globs: internal/notify/**, internal/payment/**, internal/ledger/**, internal/costsync/**, internal/controlplane/**, internal/identity/**, internal/fraud/**, pkg/coldpath/**, cmd/control/**
+description: Cold path flat handlers, outbox, pkg/coldpath, no Provider layers, idempotency
+globs: internal/notify/**, internal/payment/**, internal/ledger/**, internal/costsync/**, internal/controlplane/**, internal/identity/**, internal/fraud/**, pkg/coldpath/**, cmd/control/**, cmd/ivt-detector/**, cmd/fraud-scorer/**
 alwaysApply: false
 ---
 
-Cold path = stdlib HTTP, Postgres transactions, outbox, webhooks, background pollers. Not `/track` or gnet (see `hot-path.mdc`). Overrides generic abstraction defaults in `code-style.mdc`.
+Cold path = stdlib HTTP, Postgres transactions, outbox, webhooks, background pollers, admin API, ML training/inference sidecars. Not `/track`, gnet, or filter `Check` (see `hot-path.mdc`). Overrides generic abstraction defaults in `code-style.mdc`. Anti-slop: `anti-slop.mdc`.
 
-Forbidden: Clean/hexagonal ceremony, GoF Provider/Factory/Strategy maps, single-impl interfaces, `map[string]any` JSON builders, `dto/`/`mappers/`/`usecase/` trees, mock scaffolding unless user asks.
+Reference: `docs/ARCHITECTURE.md` (cold path), `docs/BILLING.md`, `control-plane.mdc`, `data-layer.mdc`.
 
-Allowed: sqlc `db.Queries` called directly; flat `Service` struct with pool+cfg; `*_worker.go` pollers started from `main` or `OpenModule.StartWorkers`; `context.Context` on every I/O boundary.
+## Philosophy
 
-Density: minimum LoC with correct idempotency and audit. Flat control flow; collapse single-use helpers. ~30 lines sequential Go beats 3 files + 2 interfaces.
+Minimum LoC with correct idempotency, audit trail, and operator honesty. Flat control flow beats layered enterprise patterns. ~30 lines of sequential Go beats 3 files + 2 interfaces.
 
-Provider style (required):
+**Density target:** one `Service` struct, sqlc `db.Queries` called directly, workers in `*_worker.go` started from `main` or `OpenModule.StartWorkers`.
 
-- `SendSlack(ctx, cfg, breaker, recipient, title, body string) error`
-- `CreateCheckout(ctx, cfg, provider, amountMicro, ...) (ref, url string, err error)`
+## Forbidden (grep before submit)
 
-Not: `type NotifierProvider interface`, `ProviderBundle`, `NewProvidersFromConfig`.
+- Clean/hexagonal ceremony, GoF Provider/Factory/Strategy registries.
+- Single-implementation interfaces (`type NotifierProvider interface` with one Slack sender).
+- `ProviderBundle`, `NewProvidersFromConfig`, `map[string]any` JSON builders.
+- `dto/` / `mappers/` / `usecase/` / `repositories/` subtrees.
+- Repository interface wrapping sqlc when `db.Queries` suffices.
+- Parallel Entity + Model + View + DTO for the same table.
+- Mock scaffolding unless user explicitly asks.
+- `go` spawn inside send/checkout/fetch — async only via outbox/worker tickers at module bootstrap.
+- HTMX admin fragments — JSON `/api/v1` only (`control-plane.mdc`).
+- Redis `KEYS`, `FLUSHALL`, `FLUSHDB` (`cold_path_static_gate.sh`).
+- O(N) DB round-trips in loops on changed files (`cold_path_static_gate.sh` N+1 scan).
+- `_ = json.Unmarshal` / `_ = w.Write` in handlers (`anti_slop_gate.sh`).
+- `testing.Testing()` or `os.Getenv("CI")` in production code.
 
-Concurrency: no `go` inside send/checkout/fetch paths; synchronous under `ctx`. Async only via existing outbox/worker tickers at module bootstrap.
+Grep touched package: `interface {`, `Mock`, `Factory`, `map[string]any`.
 
-Types: HTTP body struct or sqlc row is source of truth — no parallel API DTO + service DTO + mapper file. `coldpath.DecodeBody[T]` into `T` passed straight to `Service`.
+## Allowed provider style (functions, not interfaces)
 
-Delete useless tests: pure arithmetic, stdlib-only, nil receiver smoke, field echo, static meta smoke, duplicates.
+```go
+SendSlack(ctx, cfg, breaker, recipient, title, body string) error
+CreateCheckout(ctx, cfg, provider, amountMicro, ...) (ref, url string, err error)
+```
 
-Package layout: `send.go`, `checkout.go`, `service_<domain>.go` — no new `providers/` or `services/` subtrees.
+Not: `type NotifierProvider interface`, indirection maps, adapter trees.
 
-Grep before submit: `interface {`, `Mock`, `Factory`, `map[string]any` in touched package.
+## Types and I/O boundaries
+
+- HTTP body struct or **sqlc row** is source of truth — no parallel API DTO + service DTO + mapper file.
+- Admin JSON: `FooDTO` with `json:"snake_case"` in handler/service file beside route.
+- Replica/pubsub: `fooReplicaDTO` with json tags near serialization only.
+- Map in one step at boundary: `db.Row -> toFooDTO()` or `db.Row -> campaignmodel.Campaign`.
+- Errors: sentinels in `errors.go`; `fmt.Errorf("...: %w", err)`; `errors.Is` at HTTP boundary via `mapServiceError` / `writeServiceError`.
+- `context.Context` on every I/O boundary (DB, Redis, HTTP client).
+
+## pkg/coldpath helpers
+
+Shared cold HTTP/JSON/UUID utilities — use instead of ad-hoc copies:
+
+| Helper | Use |
+| :--- | :--- |
+| `ReadLimitedBody(w, r, maxBytes)` | All admin/payment/webhook bodies |
+| `DecodeRequestOrBadRequest[T]` | Typed handler decode + 400 |
+| `DecodeBody[T]` | After size-limited read |
+| `DefaultMaxBody` | 65536 (64 KiB) default |
+| `SelfServePaymentIntentMaxBody` | 16 KiB |
+| `PaymentWebhookMaxBody` | 64 KiB |
+| `AlertmanagerWebhookMaxBody` | 1 MiB |
+| `ParsePathUUID` / `ParseUUID` | Path params |
+
+Gate: `bash scripts/ci/cold_path_json_gate.sh` — `TestReadLimitedBody`, `TestColdPathJSON`, `TestLoginBodySizeLimit`.
+
+Cold path uses `encoding/json` — never the hot-path DFA/jsonScanBudget stack.
+
+## Control plane topology
+
+Clients -> `cmd/control` -> `controlplane` / `adminapi` / workers -> Postgres. Config mutations -> `outbox_events` in **same PG transaction** -> `OutboxWorker` applies Redis side effects. Tracker never receives direct Redis writes from admin handlers.
+
+Routes:
+
+- `/api/v1/*` — operators and automation.
+- `/api/v1/selfserve/*` — advertiser API keys.
+- `/admin/*` — deprecated; do not extend.
+
+Workers (control only): outbox, volume meter, recon, ledger invariant, slot migration, brand MAB, bid-floor optimizer, ops scraper, shard-0 catchup. Never run in tracker.
+
+## Outbox patterns
+
+Polling over `LISTEN/NOTIFY` (`docs/TRADEOFFS.md`):
+
+- Claim: `SELECT ... FOR UPDATE SKIP LOCKED`.
+- Active poll 20 ms; idle backoff 250 ms; stuck `PROCESSING` reclaim after 1 min.
+- Handler error -> row stays pending, retries.
+- Permanent failure -> mark failed + ops alert.
+- Duplicate event IDs must not double-apply side effects (idempotency keys, `ON CONFLICT`).
+
+Alerts: `ad_management_outbox_oldest_pending_seconds` > 30 s.
+
+## Payment and settlement
+
+- Stripe webhooks -> `payment.payment_outbox` -> in-process `SettlementHandler` -> `balance_ledger`.
+- No settlement RPC; no synchronous balance update in webhook handler beyond outbox insert.
+- Budget authority: Postgres `current_spend` + `balance_ledger`; Redis budgets are operational limits reconciled async.
+
+## Postgres access
+
+- sqlc per service: `internal/<svc>/db/`, queries in `queries/*.sql`.
+- No raw `fmt.Sprintf` SQL (`sql_safety_gate.sh`).
+- Batch queries over N+1: preload IDs, `WHERE id = ANY($1::uuid[])`, join in one round-trip.
+- Transactions: scope minimal rows; `FOR UPDATE` only when ordering requires.
+
+## ML / fraud (cold only)
+
+- Train: `model/`; infer: `cmd/fraud-scorer`, `cmd/ivt-detector`.
+- Scores -> control ops HTTP -> outbox -> Redis `ml:score:boost:*`.
+- Hot path reads snapshot only — never import `internal/fraud` scoring into tracker.
+- `ivt-detector` pauses when outbox `PENDING` > 500.
+
+## Concurrency rules
+
+- Synchronous under `ctx` inside handler/service methods.
+- Async via existing worker tickers: outbox poll, payment outbox, notifier dispatch.
+- No unbounded goroutine per webhook/request.
+- Graceful shutdown: drain workers, respect `context` cancel on in-flight HTTP.
+
+## Package layout
+
+Flat under `internal/<name>/`:
+
+- `service.go`, `service_<domain>.go`, `handler.go`, `handler_<area>.go`, `*_worker.go`, `errors.go`.
+- Allowed subdirs: `db/`, `queries/`, `migrations/`, `pb/` (generated).
+- Exceptions: `controlplane/authz/`, `controlplane/outboxpb/`.
+- Banned new subtrees: `providers/`, `services/`, `usecase/`, `dto/`.
+
+## Tests — keep vs delete
+
+**Delete** useless tests:
+
+- Pure arithmetic wrappers.
+- Stdlib-only behavior (e.g. `json.Marshal` roundtrip with no app logic).
+- Nil receiver smoke with no contract.
+- Field echo without behavior.
+- Static route meta smoke duplicated elsewhere.
+- Duplicate coverage of same sqlc query.
+
+**Keep / add:**
+
+- Idempotency under duplicate webhook/outbox replay (`*_fault_test.go`).
+- Body size limit regressions (`TestColdPathJSON`).
+- Transaction boundary tests with real testcontainers (`*_integration_test.go` per `anti-slop.mdc`).
+- `AssertBudgetInvariant` on any spend path change.
+
+Run: `go test ./... -short` for touched packages; integration via `make test-integration`.
+
+## Admin UI (cold surface)
+
+React 19 + TypeScript in `web/`. Tokens in `web/src/styles/tokens.css` — no hard-coded hex.
+
+Anti-slop: `docs/UI.md`, `anti-slop.mdc`. Run `bash scripts/ci/admin_web.sh` before claiming UI done.
+
+## Verification
+
+```bash
+go test ./internal/<touched>/... -short -count=1
+bash scripts/ci/cold_path_static_gate.sh
+bash scripts/ci/cold_path_json_gate.sh
+bash scripts/ci/anti_slop_gate.sh
+```
+
+Related: `code-style.mdc`, `control-plane.mdc`, `boundaries.mdc`, `fault-tests.mdc`.

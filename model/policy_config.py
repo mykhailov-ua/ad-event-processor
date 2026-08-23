@@ -10,6 +10,7 @@ FRAUD_POLICY_PRESET_DEFAULTS: dict[str, dict[str, int]] = {
     "conservative": {"pass": 40, "suspect": 70, "ivt": 90, "block": 100},
     "balanced": {"pass": 30, "suspect": 60, "ivt": 80, "block": 100},
     "aggressive": {"pass": 20, "suspect": 45, "ivt": 65, "block": 85},
+    "gray_market": {"pass": 20, "suspect": 45, "ivt": 65, "block": 85},
 }
 
 import json

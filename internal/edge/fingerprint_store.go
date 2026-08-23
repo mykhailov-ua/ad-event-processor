@@ -25,6 +25,8 @@ type Entry struct {
 	SeenAt  time.Time
 }
 
+// Record stores edge SYN fingerprints in Redis for cold IVT correlation (tcp_edge_correlation).
+// Hot /track reads MSS via nginx edge-tcp-fp-sync -> X-TCP-MSS header.
 func Record(ctx context.Context, rdb redis.Cmdable, e Entry) error {
 	if rdb == nil || e.IP == "" {
 		return nil

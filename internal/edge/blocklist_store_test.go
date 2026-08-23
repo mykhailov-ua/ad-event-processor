@@ -36,10 +36,10 @@ func TestApplyDiff_reusesScratch(t *testing.T) {
 	store := NewBlocklistStore()
 	firstPtr := fmt.Sprintf("%p", store.scratch)
 
-	_, _, err := store.ApplyDiff(nil, []string{"1.2.3.4"}, nil, nil)
+	_, _, err := store.ApplyDiff(nil, nil, []string{"1.2.3.4"}, nil, nil)
 	require.Error(t, err)
 
-	_, _, err = store.ApplyDiff(nil, []string{"1.2.3.5"}, nil, nil)
+	_, _, err = store.ApplyDiff(nil, nil, []string{"1.2.3.5"}, nil, nil)
 	require.Error(t, err)
 	assert.Equal(t, firstPtr, fmt.Sprintf("%p", store.scratch))
 }

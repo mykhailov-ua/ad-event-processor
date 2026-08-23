@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/redis/go-redis/v9"
@@ -15,6 +16,14 @@ func publishControlChannelToAllShards(ctx context.Context, rdbs []redis.Universa
 	return forEachConnectedShard(ctx, rdbs, "publish_control_channel", func(_ int, rdb redis.UniversalClient) error {
 		return rdb.Publish(ctx, channel, payload).Err()
 	})
+}
+
+func publishFraudQuarantineBatch(ctx context.Context, rdbs []redis.UniversalClient, ips []string) error {
+	payload, err := edge.MarshalFraudQuarantinePayload(ips)
+	if err != nil {
+		return err
+	}
+	return publishControlChannelToAllShards(ctx, rdbs, edge.FraudQuarantineChannel, payload)
 }
 
 func publishCampaignControlToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel, campaignID string, queuedAt time.Time) error {

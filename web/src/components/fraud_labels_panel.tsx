@@ -15,7 +15,6 @@ export type FraudLabelsPanelProps = {
   canWrite: boolean;
 };
 
-
 export function FraudLabelsPanel({ customerId, canWrite }: FraudLabelsPanelProps) {
   const [labels, setLabels] = useState<FraudManualLabel[]>([]);
   const [loading, setLoading] = useState(true);

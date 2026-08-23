@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	rdb, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
-	pubsub := rdb.Subscribe(ctx, fraudQuarantineChannel)
+	pubsub := rdb.Subscribe(ctx, edge.FraudQuarantineChannel)
 	defer pubsub.Close()
 	_, err := pubsub.Receive(ctx)
 	require.NoError(t, err)
@@ -31,9 +32,10 @@ func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	svc := &Service{rdbs: []redis.UniversalClient{rdb}}
 	worker := &OutboxWorker{svc: svc}
 
+	ip := "203.0.113.10"
 	require.NoError(t, worker.applyBlacklistPayload(ctx, BlacklistPayload{
 		Action: "add",
-		IP:     "203.0.113.10",
+		IP:     ip,
 		Reason: "fraud",
 	}, time.Now()))
 
@@ -41,10 +43,12 @@ func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	require.NoError(t, err)
 	payload, ok := msg.(*redis.Message)
 	require.True(t, ok)
-	assert.Equal(t, fraudQuarantineChannel, payload.Channel)
-	assert.Equal(t, "203.0.113.10", payload.Payload)
+	assert.Equal(t, edge.FraudQuarantineChannel, payload.Channel)
+	expected, err := edge.MarshalFraudQuarantinePayload([]string{ip})
+	require.NoError(t, err)
+	assert.Equal(t, expected, payload.Payload)
 
-	isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "203.0.113.10").Result()
+	isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", ip).Result()
 	require.NoError(t, err)
 	assert.True(t, isMember)
 }

@@ -23,9 +23,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-1-replica:
     image: redis:${REDIS_VERSION}
@@ -51,9 +51,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-2-replica:
     image: redis:${REDIS_VERSION}
@@ -79,9 +79,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   redis-3-replica:
     image: redis:${REDIS_VERSION}
@@ -107,9 +107,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '6379', '-a', '${REDIS_PASSWORD}', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   sentinel-0:
     image: redis:${REDIS_VERSION}
@@ -134,9 +134,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '26379', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   sentinel-1:
     image: redis:${REDIS_VERSION}
@@ -155,9 +155,9 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '26379', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}
 
   sentinel-2:
     image: redis:${REDIS_VERSION}
@@ -176,6 +176,6 @@ services:
         condition: service_healthy
     healthcheck:
       test: ['CMD', 'redis-cli', '-p', '26379', 'ping']
-      interval: ${HEALTHCHECK_INTERVAL}
-      timeout: ${HEALTHCHECK_TIMEOUT}
-      retries: ${HEALTHCHECK_RETRIES}
+      interval: ${HEALTHCHECK_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_RETRIES:-5}

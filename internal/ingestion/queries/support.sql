@@ -1,3 +1,5 @@
+
+-- name: InsertSupportFeedback :exec
 INSERT INTO support.feedback (
     id,
     feedback_type,

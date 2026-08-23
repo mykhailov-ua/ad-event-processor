@@ -36,27 +36,80 @@
 | `tls_blocklist` | JA3/JA4 в блок-листе отпечатков | 45 | L1 |
 | `l3_blocklist` | IP в fraud blacklist | 100 | L3 |
 | `missing_imp_ts` | Клик без метки импрессии | 35 | L2 |
-| `device_mismatch` | Несовпадение device / TLS / UA | 35 | L2 |
+| `device_mismatch` | Sec-CH-UA vs UA; Chrome UA vs подозрительный JA3/JA4 (impersonation) | 35 | L2 |
 
-Пороги tier на кампании: **pass → suspect → ivt → block** (по умолчанию 30 / 60 / 80 / 100). Пресеты: `conservative`, `balanced`, `aggressive`.
+Пороги tier на кампании: **pass → suspect → ivt → block** (по умолчанию 30 / 60 / 80 / 100). Пресеты: `conservative`, `balanced`, `aggressive`, `gray_market`, `social_in_app`.
+
+### Пресет `social_in_app` (Facebook / TikTok / Instagram WebView)
+
+`PATCH /api/v1/campaigns/{id}/fraud` с `{"preset":"social_in_app"}`:
+
+| Действие | Поле кампании | Значение |
+| :--- | :--- | :--- |
+| Balanced fraud tier | `fraud_threshold_*` | 30 / 60 / 80 / 100 (как `balanced`) |
+| In-app WebView relax | `social_in_app_enabled` | `true` |
+| L1.5 proxy/VPN | `l15_proxy_vpn_block_enabled` | `true` |
+| TLS JA3/JA4 block | `tls_fingerprint_block_enabled` | `true` |
+| Mobile carriers only | `conn_type_policy` | `mobile_only` |
+
+**TLS safe-view на `/click`:** при `social_in_app_enabled` и UA с маркерами `FBAN`, `FBAV`, `musical_ly` или `Instagram` TLS blocklist **не** переводит клик в safe-view (типичный in-app TLS). Бот UA без маркеров остаётся на TLS safe-view. L2 attestation и другие сигналы **не** отключаются.
+
+**Allowlist feed:** оператор может добавить `ja3_allowlist.txt` / `ja4_allowlist.txt` рядом с `ja3_blocklist.txt`; allowlist проверяется **до** blocklist (in-app клиенты с известным JA3).
+
+UI: Campaign → Fraud → **Social in-app**; Configuration → conn type и GMA-чекбоксы обновляются после сохранения.
+
+### Пресет `gray_market` (операторский runbook)
+
+`PATCH /api/v1/campaigns/{id}/fraud` с `{"preset":"gray_market"}`:
+
+| Действие | Поле кампании | Значение |
+| :--- | :--- | :--- |
+| Агрессивные fraud tier | `fraud_threshold_*` | 20 / 45 / 65 / 85 (как `aggressive`) |
+| Safe page | `safe_page_enabled` | `true` |
+| L2 attestation | `attestation_enabled` | `true` (требует safe page) |
+| L1.5 proxy/VPN | `l15_proxy_vpn_block_enabled` | `true` |
+| TLS JA3/JA4 block | `tls_fingerprint_block_enabled` | `true` |
+| L1 DC/hosting CIDR feed | `l1_cidr_block_enabled` | `true` |
+| Подписанные ссылки | `link_signing_enabled` | `true` |
+
+**Не задаёт:** `safe_page_url` — оператор указывает URL в Configuration после пресета. Outbox `UPDATE_CAMPAIGN_FRAUD` обновляет registry snapshot на трекерах.
+
+UI: Campaign → Fraud → кнопка **Gray market (GMA)**; Configuration → GMA чекбоксы синхронизируются после сохранения.
 
 ML boost: `fraud_score += ml:score:boost` (снимок из Redis, ~90 ns на проверку).
 
 ## Цепочка фильтров `/track`
 
 ```
-License → Emergency Breaker → Geo → Schedule → Segment → VPP → Fraud (сигналы) → Device → Consent → UnifiedFilter (Redis Lua)
+License → License RPS → Emergency Breaker → Geo → Schedule → Segment → VPP
+  → Fraud (GeoIP DC) → Residential proxy ring → TCP MSS anomaly → Device
+  → Consent → Entitlements (ingress RPD) → UnifiedFilter (Lua / local quanta)
 ```
 
 Связанные проверки в той же цепочке:
 
 - **Geo** — страна / таргетинг (не IVT, но отсекает до Redis).
+- **Residential proxy ring** — L2 `residential_proxy` (hot, campaign-local; `RESIDENTIAL_PROXY_HOT_ENABLED`).
+- **TCP MSS** — L2 при аномальном MSS (`TCP_MSS_ANOMALY_ENABLED`).
 - **VPP** — smart pacing по ratio из Redis.
-- **FraudBlacklistFilter** — `blacklist:fraud`.
-- **FraudFilter** — анонимный / DC IP.
-- **DeviceFilter** — TLS fingerprint, device mismatch.
+- **FraudBlacklistFilter** — внутри Fraud filter path: `blacklist:fraud`.
+- **FraudFilter** — анонимный / DC IP (GeoIP + sampled DC ASN).
+- **DeviceFilter** — TLS impersonation, device mismatch (Sec-CH-UA, JA3).
+- **EntitlementsFilter** — ingress `MaxRequestsPerDay` (INCR до UnifiedFilter).
+- **Placement blacklist** — в UnifiedFilter (Go + cache); Lua **не** делает `HEXISTS` на hot path.
 - **Local TTC** — low TTC / missing impression timestamp (в т.ч. local quanta full-skip).
-- **UnifiedFilter (Lua)** — бюджет, dedup, fcap, pacing, TTC в Redis.
+- **UnifiedFilter** — бюджет, dedup, fcap, pacing; `LOCAL_QUOTA_MODE=live` → local quanta full-skip без sync `EVALSHA` когда eligible.
+
+### Local quanta full-skip (capacity)
+
+При `LOCAL_QUOTA_MODE=live`, credit в `LocalQuantaLedger`, и eligible click/impression:
+
+- Dedup клика — `localClickIdem` (in-memory), async `SET NX` в stream worker.
+- Placement blacklist и ingress RPD — **до** full-skip (Go), не в Lua.
+- Stream: `LocalQuantaStreamPublisher` или defer через `StreamProducer` (`fcap:ignored` coordination).
+- Кампании в strict-mode hysteresis, freq/pacing/even/TTC-fail-closed без Go substitute — **не** full-skip.
+
+High-volume campaigns (`BehaviorHighVolumeDebit`): budget/fcap keys с `{campaign_id:slot_N}` hash tag (4 sub-slots) — см. [SHARDING.md](../../docs/SHARDING.md).
 
 ## Периметр (до трекера)
 
@@ -69,7 +122,8 @@ License → Emergency Breaker → Geo → Schedule → Segment → VPP → Fraud
 
 **Опционально Enterprise — XDP/eBPF** (`ebpf_xdp_edge` в JWT):
 
-- Drop на NIC по blacklist до userspace.
+- Drop на NIC по blacklist до userspace (LPM trie, до ~786k v4 entries per map после BPF rebuild).
+- Incremental sync: ZSET `blacklist:changelog:add` / `remove` на shard 0 между полными SMEMBERS (5 min); control-plane fanout пишет changelog при `blacklist:*` updates.
 - SYN fingerprint ringbuf → корреляция с CH (`tcp_edge_correlation`).
 
 ## Защита клика и лендинга (GMA)
@@ -78,13 +132,29 @@ License → Emergency Breaker → Geo → Schedule → Segment → VPP → Fraud
 
 | Фича | Назначение |
 | :--- | :--- |
-| `l1_cidr_block_enabled` | Блок /24 ротации на L1 |
+| `l1_cidr_block_enabled` | L1 safe-view по статическим DC/hosting CIDR (AWS, GCP, Azure, Tor). **Не** детектор ротации /24 или /64 — для ротации см. ниже. |
 | `l15_proxy_vpn_block_enabled` | Proxy/VPN feed (LPM таблица) |
-| `tls_fingerprint_block_enabled` | JA3/JA4 blocklist + impersonation (Chrome UA vs подозрительный JA3) |
+| `tls_fingerprint_block_enabled` | JA3/JA4 blocklist + allowlist feed (`ja3_allowlist.txt` / `ja4_allowlist.txt` before blocklist) + impersonation (Chrome UA vs подозрительный JA3) |
 | `safe_page_enabled` | Safe page вместо лендинга при срабатывании |
 | `attestation_enabled` | HMAC attestation token на клике |
+| `attestation_mode` | `off` / `light` (L2 + safe view, FilterEngine runs) / `strict` (JS probe stub, no Redis on first click) |
+| `/track/verify` attestation | WebRTC, timezone, WebGL vendor/renderer, viewport, canvas/audio, permissions, bezier bot (behavior tier) |
+| Attestation + TTC combined | `attestation_mode` on + `missing_imp_ts` / `low_ttc` on `/click` -> force safe view; local TTC fail-closed when attestation on; link TTL capped at 300s |
 | `link_signing_enabled` | Подписанные ссылки с TTL |
 | `conn_type_policy` | Политика типа соединения |
+
+**Ротация IP (отдельно от L1 CIDR feed):**
+
+| Механизм | Где | Назначение |
+| :--- | :--- | :--- |
+| IPv6 /64 rotation velocity | Tracker env `IPV6_ROTATION_MODE` (`shadow` / `live`), `IPV6_ROTATION_THRESHOLD` | Динамическая ротация host-адресов внутри одного /64 на `/click` (L1 safe-view в `live`; в `shadow` — L2 сигнал без блока). |
+| IPv4 /24 sticky rotation | Tracker env `IPV4_ROTATION_MODE` (`shadow` / `live`), `IPV4_ROTATION_THRESHOLD`; ключ `(campaign, user_id, /24)` | Velocity по /24 для residential sticky pools на `/click` (L1 safe-view в `live`; в `shadow` — L2 `ipv4_rotation`, не sync PG). |
+| OS fingerprint (p0f-lite) | Tracker env `OS_FINGERPRINT_MISMATCH_ENABLED`; edge headers `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS` | L2 `os_fingerprint_mismatch` когда TTL/window не совпадают с UA family (bounded scan). |
+| DC ASN hot (sampled) | `DC_ASN_HOT_ENABLED`, feed `dc_asn.txt`, `GEOIP_ASN_DB_PATH` | Snapshot DC ASN set + MaxMind ASN lookup; L2 `datacenter_ip` на 1/8 событий (mask `DC_ASN_SAMPLE_MASK`, default 7). Mobile AS3215/AS12322 denylist. |
+| Residential proxy farm (hot) | `RESIDENTIAL_PROXY_HOT_ENABLED`, `RESIDENTIAL_PROXY_WINDOW` | Campaign-local ring; L2 `residential_proxy` when thresholds match `model/scoring_policy.py` (no ML on hot path). |
+| External residential intel (cold, SKU) | `EXTERNAL_RESIDENTIAL_INTEL_ENABLED`, `EXTERNAL_RESIDENTIAL_INTEL_URL`, JWT `external_residential_intel` | `ivt-detector` async enricher: provider lookup, Redis/CH cache TTL, append `external_residential.txt` for L1.5 feed reload. **No sync call from tracker.** |
+
+L1 CIDR feed и rotation velocity используют общий флаг кампании `l1_cidr_block_enabled` для включения L1 safe-view на `/click`.
 
 ## Холодный путь: IVT detector
 
@@ -100,13 +170,17 @@ License → Emergency Breaker → Geo → Schedule → Segment → VPP → Fraud
 | `interval_bot` | Бот с фиксированным интервалом кликов |
 | `datacenter_asn` | Трафик с DC ASN |
 | `tcp_edge_correlation` | Расхождение TCP fingerprint edge vs CH |
+| `external_residential_intel` | Cold enricher: external provider -> Redis/CH cache + L1.5 feed (`external_residential.txt`) |
 | `fraud_scoring_rule` | LightGBM/ONNX batch scoring |
 
 **Действия через outbox** (`POST /api/v1/ops/fraud-threat`):
 
+- Одиночный body: `action`, `ip`, `campaign_id`, `score`, `boost`, `ttl_seconds`
+- Bulk body: `items[]` (до 500 строк); один PG batch insert в outbox
+
 - `ML_SCORE_BOOST` → Redis `ml:score:boost:{campaign_id}`
 - `ML_GHOST_IVT` → `ghost_ivt_enabled=true` на кампании
-- `ML_BLACKLIST_ADD` → IP в `blacklist:fraud` (TTL)
+- `ML_BLACKLIST_ADD` → IP в `blacklist:fraud` (TTL); worker coalesce: один PG TX + synthetic `UPDATE_BLACKLIST` только для Redis (без nested outbox rows); один `fraud:quarantine` publish на shard с JSON `{"ips":[...]}`
 - `UPDATE_BLACKLIST` — ручной / auto blacklist
 
 Пауза детектора при `outbox PENDING > 500`.
@@ -152,13 +226,13 @@ License → Emergency Breaker → Geo → Schedule → Segment → VPP → Fraud
 
 ## Лицензирование (SKU)
 
-| SKU | `ivt_ml_detector` | `ml_fraud_boost` | eBPF edge |
-| :--- | :---: | :---: | :---: |
-| pilot / starter / pro | нет | нет | нет |
-| scale / network | да | да | нет |
-| enterprise | да | да | да |
+| SKU | `ivt_ml_detector` | `ml_fraud_boost` | `external_residential_intel` | eBPF edge |
+| :--- | :---: | :---: | :---: | :---: |
+| pilot / starter / pro | нет | нет | нет | нет |
+| scale / network | да | да | да | нет |
+| enterprise | да | да | да | да |
 
-Pilot: OpenRTB и ML выключены; базовые L1/L2 сигналы на трекере работают.
+Pilot: OpenRTB и ML выключены; базовые L1/L2 сигналы на трекере работают. External residential intel — только Scale+ JWT (`external_residential_intel: true`); cold enricher, не sync на `/track`.
 
 ## Что говорить покупателю
 

@@ -23,10 +23,12 @@ func requireBPF(t *testing.T) {
 
 func loadTestObjects(t *testing.T) *EdgeObjects {
 	t.Helper()
+	withBPFTestLock(t)
 	requireBPF(t)
 	var objs EdgeObjects
 	require.NoError(t, LoadEdgeObjectsForTest(&objs, nil))
 	require.NoError(t, InitConfigWith(objs.Config, InitOptions{}))
+	resetGlobalSynMap(t, objs.GlobalSyn)
 	wireTestProgArray(t, &objs)
 	t.Cleanup(func() { objs.Close() })
 	return &objs
@@ -247,10 +249,11 @@ func TestXDP_dropGlobalSYNFlood(t *testing.T) {
 	objs := loadTestObjects(t)
 
 	key := uint32(0)
-	cfg := DefaultConfig(InitOptions{})
+	cfg := DefaultConfig(InitOptions{SynCookieEnabled: false, DisableFingerprint: true})
 	cfg.AssumedCpus = 1
 	cfg.GlobalSynLimit = 1000
 	require.NoError(t, objs.Config.Update(&key, &cfg, ebpf.UpdateAny))
+	resetGlobalSynMap(t, objs.GlobalSyn)
 
 	const limit = 1000
 	var last uint32

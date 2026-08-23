@@ -16,6 +16,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+func applyCampaignAttestation(camp *Campaign, mode string, enabled bool, ttl int32) {
+	if camp == nil {
+		return
+	}
+	camp.AttestationEnabled = enabled
+	camp.AttestationTTLSec = ttl
+	camp.AttestationMode = ResolveAttestationMode(ParseAttestationMode(mode), enabled)
+}
+
 func CampaignFromDBRow(row db.Campaign) *Campaign {
 	id := uuid.UUID(row.ID.Bytes)
 	customerID := uuid.UUID(row.CustomerID.Bytes)
@@ -76,15 +85,15 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		MigrationGen:            row.MigrationGen,
 		SafePageURL:             row.SafePageUrl,
 		SafePageEnabled:         row.SafePageEnabled,
-		AttestationEnabled:      row.AttestationEnabled,
-		AttestationTTLSec:       row.AttestationTtlSec,
 		DmrEnabled:              row.DmrEnabled,
 		L1CIDRBlockEnabled:      row.L1CidrBlockEnabled,
 		L15ProxyVPNBlockEnabled: row.L15ProxyVpnBlockEnabled,
+		SocialInAppEnabled:      row.SocialInAppEnabled,
 		ClickDelivery:           row.ClickDelivery,
 		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
+	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	return camp
@@ -150,15 +159,15 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		MigrationGen:            row.MigrationGen,
 		SafePageURL:             row.SafePageUrl,
 		SafePageEnabled:         row.SafePageEnabled,
-		AttestationEnabled:      row.AttestationEnabled,
-		AttestationTTLSec:       row.AttestationTtlSec,
 		DmrEnabled:              row.DmrEnabled,
 		L1CIDRBlockEnabled:      row.L1CidrBlockEnabled,
 		L15ProxyVPNBlockEnabled: row.L15ProxyVpnBlockEnabled,
+		SocialInAppEnabled:      row.SocialInAppEnabled,
 		ClickDelivery:           row.ClickDelivery,
 		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
+	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
@@ -238,15 +247,15 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		MigrationGen:            row.MigrationGen,
 		SafePageURL:             row.SafePageUrl,
 		SafePageEnabled:         row.SafePageEnabled,
-		AttestationEnabled:      row.AttestationEnabled,
-		AttestationTTLSec:       row.AttestationTtlSec,
 		DmrEnabled:              row.DmrEnabled,
 		L1CIDRBlockEnabled:      row.L1CidrBlockEnabled,
 		L15ProxyVPNBlockEnabled: row.L15ProxyVpnBlockEnabled,
+		SocialInAppEnabled:      row.SocialInAppEnabled,
 		ClickDelivery:           row.ClickDelivery,
 		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
+	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 

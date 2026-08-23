@@ -738,6 +738,9 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 		if v, ok := values["subnet"].(string); ok {
 			event.IP = v
 		}
+		if v, ok := values["ipv6_prefix"].(string); ok {
+			event.PlacementID = v
+		}
 		if v, ok := values["fraud_reason"].(string); ok {
 			event.FraudReason = v
 		}

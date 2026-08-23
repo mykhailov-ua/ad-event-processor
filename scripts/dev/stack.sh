@@ -3,32 +3,8 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/installer_env.sh"
+source "$SCRIPTS/lib/dev_bind_mounts.sh"
 cd "$ROOT"
-
-DEV_LICENSE_REL="var/license.jwt"
-
-ensure_compose_license_file() {
-  local lic="$ROOT/$DEV_LICENSE_REL"
-  if [[ -e "$lic" && -d "$lic" ]]; then
-    echo "stack.sh: $lic is a directory (Docker bind-mount artifact); recreating as file" >&2
-    if command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
-      docker run --rm -v "$ROOT:/work" alpine rm -rf "/work/$DEV_LICENSE_REL" "/work/license.jwt" 2>/dev/null || true
-    fi
-  fi
-  if [[ -e "$ROOT/license.jwt" ]]; then
-    echo "stack.sh: remove repo-root license.jwt (use $DEV_LICENSE_REL)" >&2
-    if command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
-      docker run --rm -v "$ROOT:/work" alpine rm -rf /work/license.jwt 2>/dev/null || true
-    else
-      rm -rf "$ROOT/license.jwt" 2>/dev/null || true
-    fi
-  fi
-  mkdir -p "$ROOT/var"
-  if [[ ! -f "$lic" ]]; then
-    : > "$lic"
-    chmod 600 "$lic"
-  fi
-}
 
 ad_event_processor_read_env() {
   installer_read_env "$1"
@@ -77,7 +53,7 @@ ad_event_processor_stack_hardening() {
 }
 
 ad_event_processor_compose() {
-  ensure_compose_license_file
+  dev_prepare_compose_mounts
   local -a env_args=()
   local -a file_args=(-f "$ROOT/docker-compose.yaml")
   local -a profile_args=()
@@ -98,7 +74,10 @@ ad_event_processor_compose() {
   if [[ -f "$ROOT/install.compose.env" ]]; then
     env_args+=(--env-file "$ROOT/install.compose.env")
   fi
-  docker compose "${file_args[@]}" "${profile_args[@]}" "${env_args[@]}" "$@"
+  docker compose --project-directory "$ROOT" "${file_args[@]}" "${profile_args[@]}" "${env_args[@]}" "$@"
+  local rc=$?
+  dev_finalize_compose_mounts
+  return "$rc"
 }
 
 CMD="${1:-status}"

@@ -48,6 +48,15 @@ func TestSanitizeFeaturesForSKU_pilotBlocksOpenRTB(t *testing.T) {
 	require.True(t, out.MarginGuard)
 }
 
+func TestSanitizeFeaturesForSKU_scaleAllowsExternalResidentialIntel(t *testing.T) {
+	in := FeatureSet{ExternalResidentialIntel: true}
+	out := SanitizeFeaturesForSKU(SKUCodeScale, in)
+	require.True(t, out.ExternalResidentialIntelEnabled())
+
+	outPro := SanitizeFeaturesForSKU(SKUCodePro, in)
+	require.False(t, outPro.ExternalResidentialIntelEnabled())
+}
+
 func TestLoadSKUFile_pilotSmokeLimits(t *testing.T) {
 	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)

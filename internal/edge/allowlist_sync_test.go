@@ -17,7 +17,7 @@ func TestSyncAllowlistFromRedis_cidr(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewAllowlistStore()
 
-	added, removed, err := SyncAllowlistFromRedis(ctx, rdb, m, store)
+	added, removed, err := SyncAllowlistFromRedis(ctx, rdb, m, nil, store)
 	require.NoError(t, err)
 	assert.Equal(t, 2, added)
 	assert.Equal(t, 0, removed)
@@ -36,10 +36,10 @@ func TestAllowlistApplyDiff_cidrRemoval(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewAllowlistStore()
 
-	_, _, err := store.ApplyDiff(m, []string{"198.51.100.0/24"})
+	_, _, err := store.ApplyDiff(m, nil, []string{"198.51.100.0/24"})
 	require.NoError(t, err)
 
-	_, _, err = store.ApplyDiff(m, nil)
+	_, _, err = store.ApplyDiff(m, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, store.Len())
 

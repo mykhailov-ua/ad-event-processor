@@ -14,14 +14,15 @@ type Limits struct {
 }
 
 type FeatureSet struct {
-	RtbLive       bool `json:"rtb_live" yaml:"rtb_live"`
-	OpenRTBEngine bool `json:"openrtb_engine" yaml:"openrtb_engine"`
-	IvtMLDetector bool `json:"ivt_ml_detector" yaml:"ivt_ml_detector"`
-	EbpfXDPEdge   bool `json:"ebpf_xdp_edge" yaml:"ebpf_xdp_edge"`
-	MlFraudBoost  bool `json:"ml_fraud_boost" yaml:"ml_fraud_boost"`
-	MultiRegion   bool `json:"multi_region" yaml:"multi_region"`
-	SlotMigration bool `json:"slot_migration" yaml:"slot_migration"`
-	MarginGuard   bool `json:"margin_guard" yaml:"margin_guard"`
+	RtbLive                  bool `json:"rtb_live" yaml:"rtb_live"`
+	OpenRTBEngine            bool `json:"openrtb_engine" yaml:"openrtb_engine"`
+	IvtMLDetector            bool `json:"ivt_ml_detector" yaml:"ivt_ml_detector"`
+	EbpfXDPEdge              bool `json:"ebpf_xdp_edge" yaml:"ebpf_xdp_edge"`
+	MlFraudBoost             bool `json:"ml_fraud_boost" yaml:"ml_fraud_boost"`
+	MultiRegion              bool `json:"multi_region" yaml:"multi_region"`
+	SlotMigration            bool `json:"slot_migration" yaml:"slot_migration"`
+	MarginGuard              bool `json:"margin_guard" yaml:"margin_guard"`
+	ExternalResidentialIntel bool `json:"external_residential_intel" yaml:"external_residential_intel"`
 }
 
 type Entitlements struct {
@@ -44,14 +45,15 @@ type LimitsDTO struct {
 }
 
 type FeatureSetDTO struct {
-	RtbLive       bool `json:"rtb_live"`
-	OpenRTBEngine bool `json:"openrtb_engine"`
-	IvtMLDetector bool `json:"ivt_ml_detector"`
-	EbpfXDPEdge   bool `json:"ebpf_xdp_edge"`
-	MlFraudBoost  bool `json:"ml_fraud_boost"`
-	MultiRegion   bool `json:"multi_region"`
-	SlotMigration bool `json:"slot_migration"`
-	MarginGuard   bool `json:"margin_guard"`
+	RtbLive                  bool `json:"rtb_live"`
+	OpenRTBEngine            bool `json:"openrtb_engine"`
+	IvtMLDetector            bool `json:"ivt_ml_detector"`
+	EbpfXDPEdge              bool `json:"ebpf_xdp_edge"`
+	MlFraudBoost             bool `json:"ml_fraud_boost"`
+	MultiRegion              bool `json:"multi_region"`
+	SlotMigration            bool `json:"slot_migration"`
+	MarginGuard              bool `json:"margin_guard"`
+	ExternalResidentialIntel bool `json:"external_residential_intel"`
 }
 
 type LicenseStatusDTO struct {

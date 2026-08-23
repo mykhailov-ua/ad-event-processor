@@ -405,21 +405,22 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	redisKey := "entitlement:deployment"
 	features := SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized()
 	fields := map[string]any{
-		"state":                string(state),
-		"plan":                 claims.Plan,
-		"volume_band":          string(ParseVolumeBand(string(claims.VolumeBand))),
-		"valid_until":          claims.ValidUntil.Format(time.RFC3339),
-		"max_rps":              claims.Limits.MaxRPS,
-		"max_requests_per_day": claims.Limits.MaxRequestsPerDay,
-		"rtb_live":             boolToInt(features.RtbLive),
-		"openrtb_engine":       boolToInt(features.OpenRTBEnabled()),
-		"ivt_ml_detector":      boolToInt(features.IvtMLDetector),
-		"ebpf_xdp_edge":        boolToInt(features.EbpfXDPEdge),
-		"ml_fraud_boost":       boolToInt(features.MlFraudBoost),
-		"multi_region":         boolToInt(features.MultiRegion),
-		"slot_migration":       boolToInt(features.SlotMigration),
-		"offline_days":         offlineDays,
-		"banner_severity":      BannerSeverity(state),
+		"state":                      string(state),
+		"plan":                       claims.Plan,
+		"volume_band":                string(ParseVolumeBand(string(claims.VolumeBand))),
+		"valid_until":                claims.ValidUntil.Format(time.RFC3339),
+		"max_rps":                    claims.Limits.MaxRPS,
+		"max_requests_per_day":       claims.Limits.MaxRequestsPerDay,
+		"rtb_live":                   boolToInt(features.RtbLive),
+		"openrtb_engine":             boolToInt(features.OpenRTBEnabled()),
+		"ivt_ml_detector":            boolToInt(features.IvtMLDetector),
+		"ebpf_xdp_edge":              boolToInt(features.EbpfXDPEdge),
+		"ml_fraud_boost":             boolToInt(features.MlFraudBoost),
+		"multi_region":               boolToInt(features.MultiRegion),
+		"slot_migration":             boolToInt(features.SlotMigration),
+		"external_residential_intel": boolToInt(features.ExternalResidentialIntel),
+		"offline_days":               offlineDays,
+		"banner_severity":            BannerSeverity(state),
 	}
 	if offlineSince.IsZero() {
 		fields["offline_since"] = ""

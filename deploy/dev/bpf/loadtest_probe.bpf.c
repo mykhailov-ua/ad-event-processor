@@ -185,14 +185,20 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 
 	if (syscall_id == AD_EVENT_PROCESSOR_NR_connect || syscall_id == AD_EVENT_PROCESSOR_NR_sendto) {
 		struct espx_syscall_peer peer = {};
+		unsigned long syscall_args[6];
+		__u64 addr_u64;
 		void *addr;
 
-		addr = (void *)ctx->args[1];
+		if (bpf_probe_read_kernel(&syscall_args, sizeof(syscall_args), ctx->args) < 0)
+			return 0;
+
+		addr_u64 = syscall_args[1];
 		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto)
-			addr = (void *)ctx->args[4];
+			addr_u64 = syscall_args[4];
+		addr = (void *)addr_u64;
 		peer.dport = espx_read_sockaddr_port(addr);
 		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto)
-			peer.sendto_len = (__u32)ctx->args[2];
+			peer.sendto_len = (__u32)syscall_args[2];
 		bpf_map_update_elem(&syscall_peer, &pid_tgid, &peer, BPF_ANY);
 	}
 	return 0;

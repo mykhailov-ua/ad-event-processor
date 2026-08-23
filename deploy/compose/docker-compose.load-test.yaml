@@ -9,6 +9,8 @@ x-tracker-lab-env: &tracker_lab_env
   AD_EVENT_PROCESSOR_LICENSE_REQUIRED: '0'
   ENV: development
   REDIS_ADDRS: 127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482,127.0.0.1:6483,127.0.0.1:6484
+  QUOTA_MODE: live
+  LOCAL_QUOTA_MODE: live
 
 services:
   tracker-0:
@@ -67,13 +69,11 @@ services:
           memory: 768M
 
   nginx:
-    depends_on:
+    depends_on: !override
       tracker-0:
         condition: service_healthy
       tracker-1:
         condition: service_healthy
-      tracker-2: null
-      tracker-3: null
     environment:
       - EDGE_BL_STALE_SEC=3600
     volumes:

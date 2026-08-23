@@ -18,7 +18,7 @@ import (
 
 func newRealRedisUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *UnifiedFilter {
 	t.Helper()
-	return NewUnifiedFilter(
+	f := NewUnifiedFilter(
 		[]redis.UniversalClient{rdb},
 		NewJumpHashSharder(1),
 		&mockRegistry{},
@@ -32,6 +32,8 @@ func newRealRedisUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *Unified
 		"events",
 		10_000,
 	)
+	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{rdb}))
+	return f
 }
 
 func seedCampaignBudget(t testing.TB, ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID) {

@@ -222,4 +222,5 @@ const (
 	fraudManualLabelsDefaultLimit = 50
 	fraudManualLabelsMaxLimit     = 100
 	fraudManualLabelsBulkMax      = 500
+	fraudThreatBatchMax           = 500
 )

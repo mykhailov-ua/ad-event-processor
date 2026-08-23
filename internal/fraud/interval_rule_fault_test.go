@@ -35,6 +35,10 @@ func (blocker *poolBlacklistBlocker) EnqueueFraudThreat(context.Context, string,
 	return fmt.Errorf("not implemented")
 }
 
+func (blocker *poolBlacklistBlocker) EnqueueFraudThreatBatch(context.Context, []FraudThreatEnqueueItem) (int, error) {
+	return 0, fmt.Errorf("not implemented")
+}
+
 func TestFault_ivtIntervalAutoblock(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration test")

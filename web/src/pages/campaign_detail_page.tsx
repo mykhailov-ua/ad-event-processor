@@ -178,7 +178,6 @@ function EventsTableSkeleton() {
   );
 }
 
-
 export function CampaignDetailPage() {
   const { id = '' } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -467,7 +466,8 @@ export function CampaignDetailPage() {
       return;
     }
     const url = configForm.target_url.trim();
-    if (url && !/^https?:\/\      setConfigError('Target URL must start with http:// or https://');
+    if (url && !/^https?:\/\//i.test(url)) {
+      setConfigError('Target URL must start with http:// or https://');
       return;
     }
     body.target_url = url;
@@ -495,7 +495,8 @@ export function CampaignDetailPage() {
         setConfigError('Proxy upstream URL is required when click delivery is reverse proxy');
         return;
       }
-      if (!/^https?:\/\        setConfigError('Proxy upstream URL must start with http:// or https://');
+      if (!/^https?:\/\//i.test(proxyURL)) {
+        setConfigError('Proxy upstream URL must start with http:// or https://');
         return;
       }
       body.proxy_upstream_url = proxyURL;
@@ -1058,7 +1059,11 @@ export function CampaignDetailPage() {
                 <p className="text-muted text-sm">
                   TLS fingerprint blocklist, connection-type policy, L1/L1.5 safe-view gates, and
                   signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be set
-                  for link signing.
+                  for link signing. Apply preset <strong>Gray market (GMA)</strong> on the Fraud tab
+                  to enable safe page, attestation, L1/L1.5, TLS block, and link signing in one step
+                  (set <code>safe_page_url</code> separately). IPv6 /64 rotation velocity is
+                  separate from the DC CIDR feed — configure <code>IPV6_ROTATION_MODE</code> on the
+                  tracker (shadow/live); IPv4 /24 sticky rotation is planned (residential pools).
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-l1-cidr-block">
                   <input
@@ -1070,8 +1075,12 @@ export function CampaignDetailPage() {
                       setConfigForm((f) => ({ ...f, l1_cidr_block_enabled: e.target.checked }))
                     }
                   />{' '}
-                  L1 CIDR/ASN block (datacenter ranges)
+                  L1 DC/hosting CIDR feed (AWS, GCP, Azure, Tor)
                 </label>
+                <p className="text-muted text-sm">
+                  Static datacenter/hosting prefixes from edge feeds — not /24 or /64 rotation
+                  detection. Also gates L1 IPv6 rotation when enabled on the tracker.
+                </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-l15-proxy-vpn-block">
                   <input
                     id="cfg-l15-proxy-vpn-block"
@@ -1182,7 +1191,7 @@ export function CampaignDetailPage() {
                   ]
                 : []),
               ['TLS fingerprint block', campaign.tls_fingerprint_block_enabled ? 'on' : 'off'],
-              ['L1 CIDR block', campaign.l1_cidr_block_enabled ? 'on' : 'off'],
+              ['L1 DC/hosting CIDR feed', campaign.l1_cidr_block_enabled ? 'on' : 'off'],
               ['L1.5 proxy/VPN block', campaign.l15_proxy_vpn_block_enabled ? 'on' : 'off'],
               ['Conn type policy', campaign.conn_type_policy ?? 'block_vpn_hosting'],
               [
@@ -1232,7 +1241,11 @@ export function CampaignDetailPage() {
 
       {!masked && tab === 'fraud' ? (
         <div className="section-block">
-          <CampaignFraudSection campaignId={id} canWrite={canWriteCampaign} />
+          <CampaignFraudSection
+            campaignId={id}
+            canWrite={canWriteCampaign}
+            onCampaignFlagsChanged={() => reloadCampaign()}
+          />
         </div>
       ) : null}
 

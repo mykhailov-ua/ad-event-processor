@@ -42,7 +42,6 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   );
 }
 
-
 export function CampaignFlowsPage() {
   const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
   const [tab, setTab] = useState<FlowTab>('landers');
@@ -94,7 +93,8 @@ export function CampaignFlowsPage() {
       pushToastMessage({ title: 'Missing fields', message: 'Name and URL are required' });
       return;
     }
-    if (!/^https?:\/\      pushToastMessage({
+    if (!/^https?:\/\//i.test(url)) {
+      pushToastMessage({
         title: 'Invalid URL',
         message: 'URL must start with http:// or https://',
       });
@@ -121,7 +121,8 @@ export function CampaignFlowsPage() {
       pushToastMessage({ title: 'Missing fields', message: 'Name and URL are required' });
       return;
     }
-    if (!/^https?:\/\      pushToastMessage({
+    if (!/^https?:\/\//i.test(url)) {
+      pushToastMessage({
         title: 'Invalid URL',
         message: 'URL must start with http:// or https://',
       });

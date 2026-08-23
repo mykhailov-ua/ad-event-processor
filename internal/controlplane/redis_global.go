@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/database"
+	"github.com/bidshard/ad-event-processor/internal/edge"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -38,12 +39,21 @@ func deleteGlobalKeyFromAllShards(ctx context.Context, rdbs []redis.UniversalCli
 }
 
 func syncGlobalSetMemberToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, member string, add bool) error {
-	return forEachConnectedShard(ctx, rdbs, "sync_global_set_member", func(_ int, rdb redis.UniversalClient) error {
+	err := forEachConnectedShard(ctx, rdbs, "sync_global_set_member", func(_ int, rdb redis.UniversalClient) error {
 		if add {
 			return rdb.SAdd(ctx, key, member).Err()
 		}
 		return rdb.SRem(ctx, key, member).Err()
 	})
+	if err != nil {
+		return err
+	}
+	if len(rdbs) > 0 && rdbs[0] != nil {
+		if changelogErr := edge.RecordBlacklistChangelog(ctx, rdbs[0], key, member, add); changelogErr != nil {
+			return changelogErr
+		}
+	}
+	return nil
 }
 
 func syncGlobalSetReplaceToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string, members []interface{}) error {

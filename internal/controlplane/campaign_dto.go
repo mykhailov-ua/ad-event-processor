@@ -37,6 +37,7 @@ type CampaignDTO struct {
 	SafePageURL                string          `json:"safe_page_url,omitempty"`
 	SafePageEnabled            bool            `json:"safe_page_enabled"`
 	AttestationEnabled         bool            `json:"attestation_enabled"`
+	AttestationMode            string          `json:"attestation_mode,omitempty"`
 	AttestationTTLSec          int32           `json:"attestation_ttl_sec"`
 	DmrEnabled                 bool            `json:"dmr_enabled"`
 	L1CIDRBlockEnabled         bool            `json:"l1_cidr_block_enabled"`
@@ -193,6 +194,7 @@ type PatchCampaignRequest struct {
 	LinkSigningEnabled         *bool      `json:"link_signing_enabled,omitempty"`
 	LinkSigningTTLSec          *int32     `json:"link_signing_ttl_sec,omitempty"`
 	AttestationEnabled         *bool      `json:"attestation_enabled,omitempty"`
+	AttestationMode            *string    `json:"attestation_mode,omitempty"`
 	AttestationTTLSec          *int32     `json:"attestation_ttl_sec,omitempty"`
 	ReferrerFilter             *string    `json:"referrer_filter,omitempty"`
 	ClickDelivery              *string    `json:"click_delivery,omitempty"`

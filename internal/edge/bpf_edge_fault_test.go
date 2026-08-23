@@ -63,13 +63,13 @@ func TestFault_XDPSyncRedisOutage(t *testing.T) {
 	store := NewBlocklistStore()
 
 	require.NoError(t, rdb.SAdd(ctx, "blacklist:manual", "1.2.3.4").Err())
-	_, _, err := SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, store)
+	_, _, err := SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
 	require.NoError(t, err)
 	assert.Equal(t, 1, store.Len())
 
 	require.NoError(t, c.Terminate(ctx))
 
-	_, _, err = SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, store)
+	_, _, err = SyncBlocklistFromRedis(ctx, rdb, objs.BlocklistV4, nil, store)
 	assert.Error(t, err, "sync must fail when redis is down")
 	assert.Equal(t, 1, store.Len(), "store must preserve state on sync failure")
 
@@ -148,13 +148,13 @@ func TestFault_XDPSyncInterruptedPartialUpdate(t *testing.T) {
 	store := NewBlocklistStore()
 
 	stub := &failingRedisStub{failAfter: 10}
-	added, _, err := SyncBlocklistFromRedis(context.Background(), stub, objs.BlocklistV4, store)
+	added, _, err := SyncBlocklistFromRedis(context.Background(), stub, objs.BlocklistV4, nil, store)
 	require.NoError(t, err)
 	assert.Equal(t, 2, added)
 	assert.Equal(t, 2, store.Len())
 
 	stub.failAfter = 0
-	_, _, err = SyncBlocklistFromRedis(context.Background(), stub, objs.BlocklistV4, store)
+	_, _, err = SyncBlocklistFromRedis(context.Background(), stub, objs.BlocklistV4, nil, store)
 	assert.Error(t, err)
 
 	assert.Equal(t, 2, store.Len(), "Store must not be partially updated or cleared")

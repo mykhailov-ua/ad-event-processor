@@ -417,16 +417,7 @@ func (worker *OutboxWorker) handleFraudGhostIVT(ctx context.Context, payload []b
 }
 
 func (worker *OutboxWorker) handleFraudBlacklistAdd(ctx context.Context, payload []byte) error {
-	p, err := coldpath.UnmarshalStrict[FraudThreatPayload](payload)
-	if err != nil {
-		return err
-	}
-	if p.IP == "" {
-		return nil
-	}
-	ttl := p.TTLSeconds
-	_, err = worker.svc.blockIPWithTTL(ctx, p.IP, "fraud", &ttl, false)
-	return err
+	return worker.applyMLBlacklistSingle(ctx, payload)
 }
 
 func (worker *OutboxWorker) handleFraudModelVersion(ctx context.Context, payload []byte) error {

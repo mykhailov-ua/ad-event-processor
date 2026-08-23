@@ -43,4 +43,5 @@ func MergeFeatures(dst *FeatureSet, src FeatureSet) {
 	dst.MultiRegion = src.MultiRegion
 	dst.SlotMigration = src.SlotMigration
 	dst.MarginGuard = src.MarginGuard
+	dst.ExternalResidentialIntel = src.ExternalResidentialIntel
 }

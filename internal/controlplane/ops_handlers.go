@@ -554,14 +554,30 @@ func (ops *OpsHTTPHandlers) registerFraudThreatRoutes(mux *http.ServeMux) {
 
 func (ops *OpsHTTPHandlers) enqueueFraudThreat(w http.ResponseWriter, r *http.Request) {
 	req, err := coldpath.DecodeRequest[struct {
-		Action     string  `json:"action"`
-		IP         string  `json:"ip"`
-		CampaignID string  `json:"campaign_id"`
-		Score      float64 `json:"score"`
-		Boost      int32   `json:"boost"`
-		TTLSeconds int64   `json:"ttl_seconds"`
+		Action     string                   `json:"action"`
+		IP         string                   `json:"ip"`
+		CampaignID string                   `json:"campaign_id"`
+		Score      float64                  `json:"score"`
+		Boost      int32                    `json:"boost"`
+		TTLSeconds int64                    `json:"ttl_seconds"`
+		Items      []FraudThreatEnqueueItem `json:"items"`
 	}](w, r, coldpath.DefaultMaxBody)
-	if err != nil || req.Action == "" || req.CampaignID == "" {
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
+		return
+	}
+
+	if len(req.Items) > 0 {
+		n, err := ops.FraudThreat.EnqueueFraudThreatBatch(r.Context(), req.Items)
+		if err != nil {
+			ops.writeServiceError(w, err)
+			return
+		}
+		httpresponse.JSON(w, http.StatusOK, map[string]int{"enqueued": n})
+		return
+	}
+
+	if req.Action == "" || req.CampaignID == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return
 	}

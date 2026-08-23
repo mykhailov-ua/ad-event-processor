@@ -2,6 +2,7 @@ package edge
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -59,6 +60,33 @@ func (s *autoBanStub) ZRem(_ context.Context, key string, members ...interface{}
 	}
 	cmd.SetVal(1)
 	return cmd
+}
+
+func (s *autoBanStub) ZRangeByScore(_ context.Context, key string, opt *redis.ZRangeBy) *redis.StringSliceCmd {
+	cmd := redis.NewStringSliceCmd(context.Background())
+	z := s.zsets[key]
+	if z == nil {
+		cmd.SetVal(nil)
+		return cmd
+	}
+	out := make([]string, 0, len(z))
+	for member, score := range z {
+		if opt != nil && opt.Min != "" && score < parseZMin(opt.Min) {
+			continue
+		}
+		out = append(out, member)
+	}
+	cmd.SetVal(out)
+	return cmd
+}
+
+func parseZMin(zMin string) float64 {
+	if zMin == "" || zMin == "-inf" {
+		return 0
+	}
+	var f float64
+	_, _ = fmt.Sscanf(zMin, "%f", &f)
+	return f
 }
 
 func TestActiveAutoBans_expiredLeaseRemoved(t *testing.T) {

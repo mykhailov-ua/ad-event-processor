@@ -112,6 +112,9 @@ func setFilterDeadlineOnEvent(evt *domain.Event, timeout time.Duration) {
 }
 
 func attachFraudAccumulator(evt *domain.Event) *fraudAccumulator {
+	if evt != nil && evt.Scratch != nil {
+		return (*fraudAccumulator)(evt.Scratch)
+	}
 	acc := fraudAccPool.Get().(*fraudAccumulator)
 	acc.reset()
 	if evt != nil {

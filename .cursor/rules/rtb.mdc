@@ -1,21 +1,81 @@
 ---
-description: In-process RTB auction, OpenRTB 2.6, catalog snapshots
+description: In-process RTB auction, SoA catalog, OpenRTB 2.6, budget CAS
 globs: internal/rtb/**, internal/openrtb/**, internal/ingestion/rtb*.go, internal/ingestion/openrtb*.go
 alwaysApply: false
 ---
 
 `RunAuction` p99 < 15 us; candidates scanned p99 < 500; 0 allocs/op.
 
-Ingress: `/track` (`applyRtbAuction`) and `POST /openrtb/bid` (`openrtb_exchange.go` -> DFA parse -> `RunAuction` -> in-place bid response).
+Reference: `docs/RTB.md`, `docs/TRADEOFFS.md` (in-process RTB). Hot-path shared rules: `hot-path.mdc`.
 
-Packages: `internal/rtb/` auction core; `internal/openrtb/` wire codec (no ingestion import); tracker glue in `internal/ingestion/rtb_*.go`, `openrtb_*.go`; admin in `controlplane` `service_rtb.go`, `rtb_handlers.go`.
+## Ingress paths
 
-Registry: `atomic.Pointer[catalogSnapshot]` swapped on cold rebuild; hot readers never lock.
+- `/track`: `applyRtbAuction` before main filter chain (mode-dependent).
+- `POST /openrtb/bid`: `openrtb_exchange.go` -> DFA parse -> `RunAuction` -> in-place bid response.
+- OpenRTB does **not** run full `FilterEngine` chain — dedicated exchange path only.
 
-Winner: bid x CTR (PPM); tie-break weight then raw bid. Clearing first/second price + reserve. Geo 64 shards via `req.GeoHash & 63`. Budget CAS in `CheckAndSpendAll`.
+Packages:
 
-OpenRTB 2.6 hot path: DFA parse, micro-units, `WriteBidHTTPResponse` fixed header + in-place JSON — no `json.Marshal` on production path. `json.Marshal` tests/cold only.
+- `internal/rtb/` — auction core, SoA catalog, budget store.
+- `internal/openrtb/` — wire codec (no ingestion import).
+- Tracker glue: `internal/ingestion/rtb_*.go`, `openrtb_*.go`.
+- Admin: `controlplane` `service_rtb.go`, `rtb_handlers.go`.
 
-Modes: `RTB_MODE` off | shadow | live. Shadow runs `RunAuctionEval` without spend.
+## Structure of Arrays (SoA) catalog
 
-Related: `hot-path.mdc`, `data-layer.mdc`, `docs/RTB.md`.
+`catalogSnapshot` holds `[64]*CampaignAuctionRegistry` (geo shards). Each registry:
+
+- Parallel slices: `CampaignIDs`, `Bids`, `CTRPPM`, `Reserves`, `DailyBudgets`, `GeoHashes`, `Weights`, `BoostPPM`, `DeviceMasks`, `CategoryMasks`, `DaypartMasks`, ...
+- Bucket routing: `GeoBucketHash` + `GeoBucketStart` -> `GeoBucketSoA`; `TargetBucketKey` + `TargetBucketStart` -> `TargetBucketSoA`.
+- `candidateBucketSoA`: columnar candidate indices for cache-friendly linear scan.
+- `creativeCacheSoA`: creative metadata without per-candidate pointer chase.
+
+Cold path rebuilds full snapshot; hot path:
+
+```go
+snap := registry.catalog.Load()  // atomic.Pointer[catalogSnapshot]
+```
+
+No mutex on read; never mutate snapshot in place.
+
+## Auction algorithm
+
+- Geo partition: `req.GeoHash & 63` (64 shards, `geoShardMask`).
+- Presorted buckets by effective score; early break when below score floor.
+- Winner: bid x CTR (PPM); tie-break weight then raw bid.
+- Clearing: first/second price + reserve per campaign config.
+- Scan budget: p99 < 500 candidates; reject unbounded catalog walks.
+
+## Budget authority
+
+- `RTB_BUDGET_AUTHORITY=rtb`: `CheckAndSpendAll` CAS in auction loop; skip separate budget debit downstream.
+- `BudgetStore` uses `atomic.Pointer[budgetSlice]` per spend dimension.
+- Shadow mode: `RunAuctionEval` logs winner without spend.
+
+## OpenRTB 2.6 hot path
+
+- DFA parse — no `encoding/json` on production bid path.
+- Micro-units throughout; fixed response header + in-place JSON body (`WriteBidHTTPResponse`).
+- Scan budgets: `ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`; depth `OrtbMaxJSONDepth=32`.
+- `json.Marshal` allowed in tests and cold admin paths only.
+- Chunked body allowed on `/openrtb/bid` only (not `/track`).
+
+## Modes
+
+| `RTB_MODE` | Behavior |
+| :--- | :--- |
+| `off` | Auction disabled |
+| `shadow` | `RunAuctionEval` only; no spend or campaign rewrite |
+| `live` | Rewrite `campaign_id`, real spend, bid response |
+
+## Verification
+
+```bash
+make test-alloc-gate
+go test ./internal/rtb/... -short -count=1
+go test ./internal/ingestion/ -run=OpenRTB -short -count=1
+bash scripts/ci/hot_path_static_gate.sh
+bash scripts/ci/escape_heap_gate.sh
+```
+
+Related: `hot-path.mdc`, `data-layer.mdc`, `edge.mdc` (TRACKER_INGRESS_SCHEMA).

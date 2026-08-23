@@ -45,3 +45,12 @@ func TestMapFraudTier_campaignThresholds(t *testing.T) {
 	pass, suspect, ivt, block := fraudThresholdsFromCampaign(camp)
 	assert.Equal(t, FraudTierSuspect, MapFraudTier(25, pass, suspect, ivt, block))
 }
+
+func TestAttachFraudAccumulator_reusesWithoutReset(t *testing.T) {
+	evt := &domain.Event{}
+	acc1 := attachFraudAccumulator(evt)
+	acc1.add(FraudReasonIPv4Rotation)
+	acc2 := attachFraudAccumulator(evt)
+	assert.Equal(t, acc1, acc2)
+	assert.True(t, acc2.has(FraudReasonIPv4Rotation))
+}

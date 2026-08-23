@@ -146,7 +146,8 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
       <p className="text-muted text-sm">
         When a tracked event matches the target type, the postback worker dispatches to the provider
         below. CAPI adapters use click IDs captured on redirect (/click) or zero-redirect /track
-        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner → ad-event-processor) is configured on the{' '}
+        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner → ad-event-processor) is configured
+        on the{' '}
         <Link to={`/campaigns/${campaignId}?tab=tracking`} className="text-sm">
           Integration
         </Link>{' '}

@@ -12,7 +12,8 @@ import (
 )
 
 type mockFraudManagement struct {
-	enqueued []struct {
+	batchCalls int
+	enqueued   []struct {
 		action     string
 		ip         string
 		campaignID string
@@ -27,15 +28,30 @@ func (m *mockFraudManagement) BlockIP(ctx context.Context, ip string) error {
 }
 
 func (m *mockFraudManagement) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
-	m.enqueued = append(m.enqueued, struct {
-		action     string
-		ip         string
-		campaignID string
-		score      float64
-		boost      int32
-		ttlSeconds int64
-	}{action, ip, campaignID, score, boost, ttlSeconds})
-	return nil
+	_, err := m.EnqueueFraudThreatBatch(ctx, []FraudThreatEnqueueItem{{
+		Action:     action,
+		IP:         ip,
+		CampaignID: campaignID,
+		Score:      score,
+		Boost:      boost,
+		TTLSeconds: ttlSeconds,
+	}})
+	return err
+}
+
+func (m *mockFraudManagement) EnqueueFraudThreatBatch(_ context.Context, items []FraudThreatEnqueueItem) (int, error) {
+	m.batchCalls++
+	for _, item := range items {
+		m.enqueued = append(m.enqueued, struct {
+			action     string
+			ip         string
+			campaignID string
+			score      float64
+			boost      int32
+			ttlSeconds int64
+		}{item.Action, item.IP, item.CampaignID, item.Score, item.Boost, item.TTLSeconds})
+	}
+	return len(items), nil
 }
 
 func TestDetector_FraudBoostEnforcement(t *testing.T) {
@@ -78,6 +94,7 @@ func TestDetector_FraudBoostEnforcement(t *testing.T) {
 	assert.Equal(t, 2, res.Enqueued)
 
 	require.Len(t, mgmt.enqueued, 1)
+	assert.Equal(t, 1, mgmt.batchCalls)
 	assert.Equal(t, "boost", mgmt.enqueued[0].action)
 	assert.Equal(t, "1.2.3.4", mgmt.enqueued[0].ip)
 	assert.Equal(t, campaignID, mgmt.enqueued[0].campaignID)

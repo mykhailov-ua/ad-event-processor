@@ -100,7 +100,10 @@ func (u *GeoIPUpdater) downloadAndInstall(ctx context.Context) error {
 		coldpath.CloseHTTPResponse(resp)
 		return fmt.Errorf("download maxmind archive: %w", err)
 	}
-	defer coldpath.CloseHTTPResponse(resp)
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))

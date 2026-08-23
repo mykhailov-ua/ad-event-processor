@@ -2,18 +2,18 @@
 
 GitHub Actions: `.github/workflows/`. Dependabot: `.github/dependabot.yml`. Job prefix: `Gate · …`.
 
-Run locally before PR: `bash scripts/ci/pr_fast.sh` (= **Gate · merge-pr-fast**).
+Run locally before PR: `bash scripts/ci/lint_gate.sh` (lint) and `bash scripts/ci/pr_fast.sh` (= **Gate · merge-pr-fast**, includes lint unless `SKIP_LINT=1`).
 
 ## Pipeline Overview
 
 ```text
 PR / push main
-  ci.yaml ── merge-pr-fast ──┬── merge-race-short
-                             ├── merge-integration
-                             ├── merge-govulncheck (optional)
-                             ├── merge-perf-smoke (optional)
-                             ├── merge-openrtb-fuzz (path-filter)
-                             └── merge-fraud-model (path-filter)
+  ci.yaml ── merge-lint ──┬── merge-pr-fast ──┬── merge-race-short
+                          │                   ├── merge-integration
+                          │                   ├── merge-govulncheck (optional)
+                          │                   ├── merge-perf-smoke (optional)
+                          │                   ├── merge-openrtb-fuzz (path-filter)
+                          │                   └── merge-fraud-model (path-filter)
 
 push main only
   ├── main-full-test, main-resilience, main-license-red-team
@@ -62,7 +62,8 @@ Toolchain: Go **1.25.12**, Node **22**.
 
 | Check | Script | Blocks |
 | :--- | :--- | :--- |
-| **Gate · merge-pr-fast** | `bash scripts/ci/pr_fast.sh` | Yes |
+| **Gate · merge-lint** | `lint_go_gate.sh` (full repo) + `go vet` + `lint_gopls_gate.sh` + `lint_lua_gate.sh` + `lint_ts_gate.sh` + `lint_configs_gate.sh` | Yes |
+| **Gate · merge-pr-fast** | `bash scripts/ci/pr_fast.sh` (`SKIP_LINT=1`; lint in merge-lint) | Yes |
 | **Gate · merge-race-short** | `bash scripts/ci/race_short.sh` | Yes |
 | **Gate · merge-integration** | `bash scripts/ci/integration_test.sh` | Yes |
 | Gate · merge-govulncheck | `bash scripts/ci/govulncheck.sh` | Optional |
@@ -70,9 +71,13 @@ Toolchain: Go **1.25.12**, Node **22**.
 | Gate · merge-fraud-model | `bash scripts/ci/fraudtrain.sh` | Optional (path) |
 | Gate · merge-perf-smoke | `bash scripts/ci/perf_smoke.sh` | Optional |
 
+### `merge-lint` steps
+
+`lint_go_gate.sh all` with `LINT_STRICT=1` (full repository, not diff-only), `go vet ./...`, `lint_gopls_gate.sh` (`gopls check -severity=warning`, `GOOS=linux` `GOARCH=amd64`), `lint_lua_gate.sh` (luacheck + LuaLS), `lint_ts_gate.sh` (`tsc` + `node --check` on repo JS), `lint_configs_gate.sh` (compose + nginx).
+
 ### `merge-pr-fast` steps
 
-Config validation, docs tier A, compliance, ClickHouse direct, `lint_go_gate.sh`, integration slop gates, anti-slop, SQL safety, hot/cold static gates, escape heap gate, `make test-alloc-gate`, `make test-fast`, shard0 nil gate, cold-path JSON gate, CAPI staging, `admin_web.sh`.
+Config validation, docs tier A, compliance, ClickHouse direct, integration slop gates, anti-slop, SQL safety, hot/cold static gates, escape heap gate, `make test-alloc-gate`, `make test-fast`, shard0 nil gate, cold-path JSON gate, CAPI staging, `admin_web.sh`. Lint runs in **merge-lint** (`SKIP_LINT=1` here).
 
 ### Main-only
 

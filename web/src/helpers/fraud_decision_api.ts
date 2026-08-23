@@ -30,7 +30,6 @@ export type FraudDecision = {
   campaign_thresholds: FraudDecisionThresholds;
 };
 
-
 export async function fetchFraudDecision(
   customerId: string,
   params: { ip_hash: string; campaign_id?: string; hours?: number }
@@ -53,7 +52,6 @@ export async function fetchFraudDecision(
   return res.data ?? null;
 }
 
-
 export function fraudDecisionTierLabel(tier: string): string {
   switch (tier) {
     case 'pass':
@@ -74,7 +72,6 @@ export type FraudOverrideRequest = {
   ip?: string;
   ip_hash?: string;
 };
-
 
 export async function postFraudOverride(
   customerId: string,

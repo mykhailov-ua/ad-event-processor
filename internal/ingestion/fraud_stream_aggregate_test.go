@@ -24,6 +24,29 @@ func Test_ipv4Subnet24Prefix(t *testing.T) {
 	assert.Equal(t, uint32(0xCB007100), prefix)
 }
 
+func Test_ipv6Subnet64And48Prefix(t *testing.T) {
+	hi, lo, ok := ipv6Subnet64FromIP("2001:db8:85a3::8a2e:370:7334")
+	require.True(t, ok)
+	assert.Equal(t, uint64(0x20010db885a30000), hi)
+	assert.Equal(t, uint64(0), lo)
+
+	hi48, ok := ipv6Subnet48FromIP("2001:db8:85a3::8a2e:370:7334")
+	require.True(t, ok)
+	assert.Equal(t, uint64(0x20010db885a30000), hi48)
+
+	hi, lo, ok = ipv6Subnet64FromIP("::1")
+	require.True(t, ok)
+	assert.Equal(t, uint64(0), hi)
+	assert.Equal(t, uint64(0), lo)
+}
+
+func Test_parseIPv6To128_compressed(t *testing.T) {
+	hi, lo, ok := parseIPv6To128("2001:db8::1")
+	require.True(t, ok)
+	assert.Equal(t, uint64(0x20010db800000000), hi)
+	assert.Equal(t, uint64(1), lo)
+}
+
 func Test_fraudAggregateExempt_L3(t *testing.T) {
 	evt := &domain.Event{FraudReason: FraudReasonCodeL3Blocklist}
 	assert.True(t, fraudAggregateExempt(evt))
@@ -198,8 +221,33 @@ func TestFraudStreamWriter_aggregateFlushToStream(t *testing.T) {
 	require.NotEmpty(t, rdb.lastArgs)
 	assert.Equal(t, "fraud_aggregate", rdb.lastArgs["type"])
 	assert.Equal(t, "192.168.10.0/24", rdb.lastArgs["subnet"])
+	assert.Equal(t, "", rdb.lastArgs["ipv6_prefix"])
 	assert.Equal(t, FraudReasonCodeLowTTC, rdb.lastArgs["fraud_reason"])
 	assert.Equal(t, "1", rdb.lastArgs["count"])
+}
+
+func TestFraudStreamWriter_aggregateIPv6Flush(t *testing.T) {
+	rdb := &capturingRedisXAdd{}
+	q := &FraudStreamWriter{
+		stream: "fraud-stream",
+		maxLen: 1000,
+		rdbs:   []redis.UniversalClient{rdb},
+		stopCh: make(chan struct{}),
+	}
+	primeFraudRingAggPressure(q)
+
+	evt := &domain.Event{
+		IP:          "2001:db8:85a3::8a2e:370:7334",
+		FraudReason: FraudReasonCodeLowTTC,
+	}
+	require.True(t, q.Enqueue(0, evt))
+
+	q.flushAggregates(true)
+	require.NotEmpty(t, rdb.allArgs)
+	assert.Equal(t, "fraud_aggregate", rdb.lastArgs["type"])
+	assert.Equal(t, "", rdb.lastArgs["subnet"])
+	assert.Contains(t, rdb.lastArgs["ipv6_prefix"], "/64")
+	assert.Contains(t, rdb.allArgs[len(rdb.allArgs)-2]["ipv6_prefix"], "/48")
 }
 
 func TestFraudStreamWriter_spike50kZeroRingDrops(t *testing.T) {
@@ -237,6 +285,7 @@ func TestFraudStreamWriter_aggregateTableOverflowIncrementsDropped(t *testing.T)
 	q := &FraudStreamWriter{stopCh: make(chan struct{})}
 	for i := range q.aggSlots {
 		cell := &q.aggSlots[i]
+		cell.prefixKind.Store(uint32(fraudAggPrefixV4))
 		cell.subnetPrefix.Store(uint32(0xC0000000 + uint32(i<<8)))
 		cell.reasonID.Store(uint32(FraudReasonLowTTC))
 		cell.count.Store(1)
@@ -258,6 +307,7 @@ func TestStreamConsumer_parseFraudAggregate(t *testing.T) {
 	evt := consumer.parseMessage("1-0", map[string]interface{}{
 		"type":         "fraud_aggregate",
 		"subnet":       "10.0.0.0/24",
+		"ipv6_prefix":  "2001:db8::/64",
 		"fraud_reason": "low_ttc",
 		"count":        "1500",
 		"window_ms":    "75",
@@ -265,6 +315,7 @@ func TestStreamConsumer_parseFraudAggregate(t *testing.T) {
 	require.NotNil(t, evt)
 	assert.Equal(t, fraudAggregateEventType, evt.Type)
 	assert.Equal(t, "10.0.0.0/24", evt.IP)
+	assert.Equal(t, "2001:db8::/64", evt.PlacementID)
 	assert.Equal(t, "low_ttc", evt.FraudReason)
 	assert.Equal(t, "1500", evt.ClickID)
 	assert.Equal(t, "75", evt.UserID)
@@ -276,6 +327,7 @@ func TestStreamConsumer_parseFraudAggregate(t *testing.T) {
 type capturingRedisXAdd struct {
 	mockRedisClient
 	lastArgs map[string]string
+	allArgs  []map[string]string
 }
 
 func (m *capturingRedisXAdd) Pipeline() redis.Pipeliner {
@@ -292,6 +344,7 @@ func (p *capturingPipeliner) XAdd(ctx context.Context, args *redis.XAddArgs) *re
 	switch vals := args.Values.(type) {
 	case []any:
 		p.parent.lastArgs = valuesToMap(vals)
+		p.parent.allArgs = append(p.parent.allArgs, p.parent.lastArgs)
 	case map[string]interface{}:
 		m := make(map[string]string, len(vals))
 		for k, v := range vals {
@@ -330,17 +383,17 @@ func BenchmarkFraudAggregate(b *testing.B) {
 	}
 }
 
-func TestFraudAggregate_ZeroAlloc(t *testing.T) {
+func TestFraudAggregate_ZeroAllocIPv6(t *testing.T) {
 	q := &FraudStreamWriter{stopCh: make(chan struct{})}
 	atomic.StoreUint32(&q.aggregating, 1)
 	evt := &domain.Event{
-		IP:          "203.0.113.10",
+		IP:          "2001:db8::1",
 		FraudReason: FraudReasonCodeLowTTC,
 	}
 	allocs := testing.AllocsPerRun(1000, func() {
 		q.aggregateEvent(evt)
 	})
 	if allocs != 0 {
-		t.Fatalf("aggregateEvent allocs/op = %v, want 0", allocs)
+		t.Fatalf("aggregateEvent ipv6 allocs/op = %v, want 0", allocs)
 	}
 }

@@ -57,6 +57,21 @@ var (
 		Name: "ml_shadow_action_total",
 		Help: "Shadow scoring enforcement actions (boost, ghost, blacklist)",
 	}, []string{"action"})
+
+	residentialIntelFeedAppendedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "residential_intel_feed_appended_total",
+		Help: "L1.5 external residential intel feed lines appended by cold enricher",
+	})
+
+	residentialIntelLookupsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "residential_intel_provider_lookups_total",
+		Help: "External residential intel provider lookups (cold path)",
+	})
+
+	residentialIntelErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "residential_intel_errors_total",
+		Help: "Residential intel enricher errors",
+	})
 )
 
 func recordShadowMetrics(mlScore float64, tier FraudTier, action string) {

@@ -212,9 +212,12 @@ func main() {
 
 	if mm, ok := geoProvider.(*ingestion.MaxMindProvider); ok {
 		metrics.GeoProviderStatus.Set(1)
+		if err := mm.ReloadASN(cfg.GeoIP.ASNDBPath); err != nil {
+			slog.Warn("geoip asn db load failed; hot DC ASN lookup disabled", "path", cfg.GeoIP.ASNDBPath, "error", err)
+		}
 		watcherInterval := time.Duration(cfg.GeoIP.WatcherIntervalSec) * time.Second
-		go ingestion.NewGeoIPWatcher(mm, cfg.GeoIP.DBPath, watcherInterval).Start(ctx)
-		slog.Info("geoip hot-reload watcher started", "path", cfg.GeoIP.DBPath, "interval", watcherInterval)
+		go ingestion.NewGeoIPWatcher(mm, cfg.GeoIP.DBPath, cfg.GeoIP.ASNDBPath, watcherInterval).Start(ctx)
+		slog.Info("geoip hot-reload watcher started", "country_path", cfg.GeoIP.DBPath, "asn_path", cfg.GeoIP.ASNDBPath, "interval", watcherInterval)
 	} else {
 		metrics.GeoProviderStatus.Set(0)
 	}
@@ -222,10 +225,33 @@ func main() {
 	geoFilter := ingestion.NewGeoFilter(geoProvider, registry)
 	scheduleFilter := ingestion.NewScheduleFilter(registry)
 	fraudFilter := ingestion.NewFraudFilter(geoProvider)
+	if cfg.DCASNHotEnabled {
+		dcASNTable := ingestion.NewDCASNTable()
+		if loader := ingestion.NewDCASNFeedLoader(cfg, dcASNTable); loader != nil {
+			go loader.Start(ctx)
+			slog.Info("dc asn hot loader started", "dir", cfg.DCASNFeedDir, "refresh", cfg.DCASNFeedRefresh)
+		}
+		if lookup, ok := geoProvider.(ingestion.ASNLookup); ok {
+			fraudFilter.ConfigureDCASN(dcASNTable, lookup, cfg.DCASNSampleMask)
+		}
+	}
+	var tcpMSSFilter ingestion.EventFilter
+	if cfg.TCPMSSAnomalyEnabled {
+		tcpMSSFilter = ingestion.NewTCPMSSFilter(cfg.TCPMSSAnomalyMinByte)
+	}
+	var residentialProxyFilter ingestion.EventFilter
+	if cfg.ResidentialProxyHotEnabled {
+		proxyRing := ingestion.NewResidentialProxyRing()
+		proxyRing.SetPolicy(ingestion.ResidentialProxyPolicyFromEnv())
+		proxyRing.SetWindow(cfg.ResidentialProxyWindow)
+		residentialProxyFilter = ingestion.NewResidentialProxyFilter(proxyRing)
+		slog.Info("residential proxy hot signal enabled", "window", cfg.ResidentialProxyWindow)
+	}
 
 	settingsWatcher := ingestion.NewSettingsWatcher(rdbs, cfg)
 	settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(pool), registry.IsStaleMode)
 	deviceFilter := ingestion.NewDeviceFilter(settingsWatcher)
+	deviceFilter.SetOSFingerprintEnabled(cfg.OSFingerprintMismatchEnabled)
 	go settingsWatcher.Start(ctx, time.Second)
 
 	breakerFilter := ingestion.NewEmergencyBreakerFilter(settingsWatcher)
@@ -380,6 +406,8 @@ func main() {
 	slog.Info("redis lua scripts preloaded", "shards", len(rdbs))
 
 	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(rdbs), cfg.FilterTimeoutMs)
+	placementBL := ingestion.NewPlacementBlacklistFilter(rdbs)
+	unifiedFilter.SetPlacementBlacklistFilter(placementBL)
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
 	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, rdbs)
@@ -391,7 +419,7 @@ func main() {
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
 	segmentFilter := ingestion.NewSegmentFilter(rdbs, registry, piiHasher)
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, deviceFilter, consentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, consentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	var rtbCatalog *ingestion.RtbCatalog
@@ -611,6 +639,20 @@ func main() {
 			go cidrLoader.Start(ctx)
 			slog.Info("cidr l1 loader started", "dir", cfg.CIDRFeedDir, "refresh", cfg.CIDRFeedRefresh, "download", cfg.CIDRFeedDownloadEnable)
 		}
+	}
+	if cfg.IPv6RotationL1Enabled {
+		rotTable := ingestion.NewIPv6RotationTable()
+		rotTable.SetMode(cfg.IPv6RotationMode)
+		rotTable.SetPolicy(uint64(cfg.IPv6RotationWindow.Nanoseconds()), cfg.IPv6RotationThreshold)
+		gnetHandler.ConfigureIPv6Rotation(rotTable)
+		slog.Info("ipv6 rotation l1 enabled", "mode", cfg.IPv6RotationMode, "window", cfg.IPv6RotationWindow, "threshold", cfg.IPv6RotationThreshold)
+	}
+	if cfg.IPv4RotationL1Enabled {
+		v4Rot := ingestion.NewIPv4RotationTable()
+		v4Rot.SetMode(cfg.IPv4RotationMode)
+		v4Rot.SetPolicy(uint64(cfg.IPv4RotationWindow.Nanoseconds()), cfg.IPv4RotationThreshold)
+		gnetHandler.ConfigureIPv4Rotation(v4Rot)
+		slog.Info("ipv4 rotation l1 enabled", "mode", cfg.IPv4RotationMode, "window", cfg.IPv4RotationWindow, "threshold", cfg.IPv4RotationThreshold)
 	}
 	if cfg.ProxyVPNL15Enabled {
 		proxyTable := ingestion.NewProxyVPNTable()

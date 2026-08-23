@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
@@ -74,20 +76,23 @@ const (
 )
 
 type clickQueryParsed struct {
-	campaignID  uuid.UUID
-	eventType   string
-	userID      string
-	clickID     string
-	placementID string
-	subs        SubIDSlots
-	fbclid      string
-	gclid       string
-	ttclid      string
-	passthrough []byte
-	dmr         bool
-	linkExpires int64
-	linkSig     string
-	ok          bool
+	campaignID              uuid.UUID
+	eventType               string
+	userID                  string
+	clickID                 string
+	placementID             string
+	subs                    SubIDSlots
+	fbclid                  string
+	gclid                   string
+	ttclid                  string
+	passthrough             []byte
+	dmr                     bool
+	linkExpires             int64
+	linkSig                 string
+	ipv6RotationShadow      bool
+	ipv4RotationShadow      bool
+	attestationLightMissing bool
+	ok                      bool
 }
 
 func (p *clickQueryParsed) reset() {
@@ -104,6 +109,9 @@ func (p *clickQueryParsed) reset() {
 	p.dmr = false
 	p.linkExpires = 0
 	p.linkSig = ""
+	p.ipv6RotationShadow = false
+	p.ipv4RotationShadow = false
+	p.attestationLightMissing = false
 	p.ok = false
 }
 
@@ -541,7 +549,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
 
-	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, parsed.campaignID); matched {
+	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, parsed.campaignID, ua); matched {
 		h.writeGnetSafeViewTLS(c, ctx, startMono, kind)
 		return gnet.None
 	}
@@ -550,15 +558,28 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		h.writeGnetSafeViewCIDR(c, ctx, startMono, feed)
 		return gnet.None
 	}
+	if h.l1IPv6RotationObserve(ip, parsed.campaignID, parsed, startMono) {
+		h.writeGnetSafeViewIPv6Rotation(c, ctx, startMono)
+		return gnet.None
+	}
+	if h.l1IPv4RotationObserve(ip, parsed.userID, parsed.campaignID, parsed, startMono) {
+		h.writeGnetSafeViewIPv4Rotation(c, ctx, startMono)
+		return gnet.None
+	}
 	if matched, connType := h.l15ProxyVPNShouldSafeView(ip, parsed.campaignID); matched {
 		h.writeGnetSafeViewL15(c, ctx, startMono, connType)
 		return gnet.None
 	}
 
-	if h.attestationRequired(parsed.campaignID) && !h.verifyAttestationCookie(req.Cookie, parsed.campaignID, ip, time.Now().Unix()) {
-		writeSafePageStubResponse(h, c, ctx, parsed.campaignID)
-		h.recordMetrics(startMono, http.StatusOK)
-		return gnet.None
+	mode := h.campaignAttestationMode(parsed.campaignID)
+	missingAttestation := mode.RequiresProbe() && !h.verifyAttestationCookie(req.Cookie, parsed.campaignID, ip, time.Now().Unix())
+	if missingAttestation {
+		if mode == domain.AttestationModeStrict {
+			writeSafePageStubResponse(h, c, ctx, parsed.campaignID)
+			h.recordMetrics(startMono, http.StatusOK)
+			return gnet.None
+		}
+		parsed.attestationLightMissing = true
 	}
 
 	if parsed.linkSig != "" {
@@ -593,8 +614,20 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	evt.IP = ip
 	evt.UA = ua
 	evt.TLSHash = unsafeString(req.TLSHash)
+	evt.TLSJA3 = unsafeString(req.TLSJA3)
+	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
+	attachFraudAccumulator(evt)
+	if parsed.attestationLightMissing {
+		addFraudSignal(evt, FraudReasonAttestationMissing)
+	}
+	if parsed.ipv6RotationShadow {
+		addFraudSignal(evt, FraudReasonDatacenterIP)
+	}
+	if parsed.ipv4RotationShadow {
+		addFraudSignal(evt, FraudReasonIPv4Rotation)
+	}
 
 	if h.udpControl != nil {
 		shard := h.sharder.GetShard(evt.CampaignID)
@@ -619,7 +652,11 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		}
 		defer lease.Release()
 		outcome := processTrack(context.Background(), h.trackProc, evt, nil)
-		action, safeURL := resolveSafePageAction(h.registry, evt.CampaignID, outcome, req.ForceSafe)
+		forceSafe := req.ForceSafe || parsed.attestationLightMissing
+		if mode.RequiresProbe() && clickHasTTCFraudSignal(evt) {
+			forceSafe = true
+		}
+		action, safeURL := resolveSafePageAction(h.registry, evt.CampaignID, outcome, forceSafe)
 		switch action {
 		case safePageActionInPlace:
 			h.write(c, respClickSafePage, ctx)
@@ -709,7 +746,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		return gnet.None
 	}
 	if camp, ok := h.registry.GetCampaign(evt.CampaignID); ok && camp != nil && camp.LinkSigningEnabled && len(h.linkSigningSecret) > 0 {
-		expires := LinkSigningExpires(time.Now(), camp.LinkSigningTTLSec)
+		expires := LinkSigningExpires(time.Now(), EffectiveLinkSigningTTLSec(camp))
 		loc = AppendLinkSignature(loc, h.linkSigningSecret, UnsafeBytes(clickID), expires)
 	}
 	ctx.extraBuf = loc
@@ -718,4 +755,13 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
 	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, h.clickDmrActive(evt.CampaignID, parsed.dmr))
 	return gnet.None
+}
+
+func clickHasTTCFraudSignal(evt *domain.Event) bool {
+	if evt == nil || evt.FraudReason == "" {
+		return false
+	}
+	reason := evt.FraudReason
+	return strings.Contains(reason, FraudReasonCodeMissingImpTS) ||
+		strings.Contains(reason, FraudReasonCodeLowTTC)
 }

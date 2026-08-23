@@ -17,7 +17,7 @@ func TestSyncBlocklistFromRedis_fraudOnly(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := SyncBlocklistFromRedis(ctx, rdb, m, store)
+	added, removed, err := SyncBlocklistFromRedis(ctx, rdb, m, nil, store)
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
@@ -51,12 +51,12 @@ func TestBlocklistApplyDiff_fraudRemoval(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := store.ApplyDiff(m, nil, nil, []string{"198.51.100.1"})
+	added, removed, err := store.ApplyDiff(m, nil, nil, nil, []string{"198.51.100.1"})
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)
 
-	added, removed, err = store.ApplyDiff(m, nil, nil, nil)
+	added, removed, err = store.ApplyDiff(m, nil, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 0, added)
 	assert.Equal(t, 1, removed)
@@ -76,7 +76,7 @@ func TestBlocklistApplyDiff_skipsProtected(t *testing.T) {
 	m := newLPMMap(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := store.ApplyDiff(m, []string{"8.8.8.8", "192.168.1.10", "198.51.100.1"}, nil, nil)
+	added, removed, err := store.ApplyDiff(m, nil, []string{"8.8.8.8", "192.168.1.10", "198.51.100.1"}, nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)

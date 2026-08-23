@@ -59,12 +59,14 @@ type campaignReplicaDTO struct {
 	SafePageURL        string                `json:"safe_page_url,omitempty"`
 	SafePageEnabled    bool                  `json:"safe_page_enabled"`
 	AttestationEnabled bool                  `json:"attestation_enabled"`
+	AttestationMode    string                `json:"attestation_mode,omitempty"`
 	AttestationTTLSec  int32                 `json:"attestation_ttl_sec"`
 	DmrEnabled         bool                  `json:"dmr_enabled"`
 
 	L1CIDRBlockEnabled         bool   `json:"l1_cidr_block_enabled"`
 	L15ProxyVPNBlockEnabled    bool   `json:"l15_proxy_vpn_block_enabled"`
 	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`
+	SocialInAppEnabled         bool   `json:"social_in_app_enabled"`
 	ConnTypePolicy             string `json:"conn_type_policy,omitempty"`
 	LinkSigningEnabled         bool   `json:"link_signing_enabled"`
 	LinkSigningTTLSec          int32  `json:"link_signing_ttl_sec"`
@@ -387,11 +389,13 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			SafePageURL:                info.campaign.SafePageURL,
 			SafePageEnabled:            info.campaign.SafePageEnabled,
 			AttestationEnabled:         info.campaign.AttestationEnabled,
+			AttestationMode:            string(info.campaign.AttestationMode),
 			AttestationTTLSec:          info.campaign.AttestationTTLSec,
 			DmrEnabled:                 info.campaign.DmrEnabled,
 			L1CIDRBlockEnabled:         info.campaign.L1CIDRBlockEnabled,
 			L15ProxyVPNBlockEnabled:    info.campaign.L15ProxyVPNBlockEnabled,
 			TLSFingerprintBlockEnabled: info.campaign.TLSFingerprintBlockEnabled,
+			SocialInAppEnabled:         info.campaign.SocialInAppEnabled,
 			ConnTypePolicy:             string(info.campaign.ConnTypePolicy),
 			LinkSigningEnabled:         info.campaign.LinkSigningEnabled,
 			LinkSigningTTLSec:          info.campaign.LinkSigningTTLSec,
@@ -506,11 +510,13 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				SafePageURL:                dto.SafePageURL,
 				SafePageEnabled:            dto.SafePageEnabled,
 				AttestationEnabled:         dto.AttestationEnabled,
+				AttestationMode:            domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
 				AttestationTTLSec:          dto.AttestationTTLSec,
 				DmrEnabled:                 dto.DmrEnabled,
 				L1CIDRBlockEnabled:         dto.L1CIDRBlockEnabled,
 				L15ProxyVPNBlockEnabled:    dto.L15ProxyVPNBlockEnabled,
 				TLSFingerprintBlockEnabled: dto.TLSFingerprintBlockEnabled,
+				SocialInAppEnabled:         dto.SocialInAppEnabled,
 				ConnTypePolicy:             domain.ConnTypePolicyFromString(dto.ConnTypePolicy),
 				LinkSigningEnabled:         dto.LinkSigningEnabled,
 				LinkSigningTTLSec:          dto.LinkSigningTTLSec,

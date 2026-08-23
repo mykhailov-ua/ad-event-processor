@@ -66,12 +66,6 @@ func (f *UnifiedFilter) localQuantaFullSkipEligible(evt *domain.Event, campInfo 
 	if !f.localQuantaEligible(evt, campInfo) {
 		return false
 	}
-	if evt.PlacementID != "" {
-		return false
-	}
-	if f.entitlementsMaxRPD(campInfo.CustomerID) > 0 {
-		return false
-	}
 	return true
 }
 
@@ -126,7 +120,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 
 	if f.localQuantaFullSkipEligible(evt, campInfo) {
 		metrics.LocalQuotaFullSkipEligibleTotal.Inc()
-		err := f.acceptLocalQuantaFullSkip(evt, campInfo, amount, subSlot)
+		err := f.acceptLocalQuantaFullSkip(ctx, evt, campInfo, amount, subSlot)
 		return true, err
 	}
 
@@ -165,7 +159,7 @@ func (f *UnifiedFilter) rollbackLocalQuantaSpend(campaignID uuid.UUID, subSlot i
 	}
 }
 
-func (f *UnifiedFilter) acceptLocalQuantaFullSkip(evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
+func (f *UnifiedFilter) acceptLocalQuantaFullSkip(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
 	if f.localClickIdem != nil && !f.localClickIdem.TryClaim(evt.ClickID) {
 		metrics.FilterLuaBranchTotal.WithLabelValues("duplicate").Inc()
 		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amountMicro)

@@ -94,7 +94,7 @@ type FraudStreamWriter struct {
 	aggWindowStart int64
 	_              [56]byte
 	aggSlots       [fraudAggTableSize]fraudAggCell
-	aggValScratch  [10]any
+	aggValScratch  [12]any
 
 	stream string
 	maxLen int64
@@ -531,7 +531,23 @@ func marshalFraudAggregateEntry(e fraudAggFlushEntry, windowMs int64) ([]byte, *
 	pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
 	DeepResetAdStreamEvent(pbEvt)
 	pbEvt.EventType = []byte(fraudAggregateEventType)
-	pbEvt.Ip = []byte(formatIPv4Subnet24(e.subnet))
+
+	subnetStr := ""
+	ipv6Str := ""
+	switch e.kind {
+	case fraudAggPrefixV4:
+		subnetStr = formatIPv4Subnet24(e.subnet)
+	case fraudAggPrefixV6_64:
+		ipv6Str = formatIPv6Prefix(e.v6Hi, e.v6Lo, 64)
+	case fraudAggPrefixV6_48:
+		ipv6Str = formatIPv6Prefix(e.v6Hi, 0, 48)
+	}
+	if subnetStr != "" {
+		pbEvt.Ip = []byte(subnetStr)
+	}
+	if ipv6Str != "" {
+		pbEvt.Payload = []byte(ipv6Str)
+	}
 	pbEvt.FraudReason = []byte(FraudReasonCode(FraudReasonID(e.reason)))
 	pbEvt.ClickId = []byte(strconv.FormatUint(e.count, 10))
 	pbEvt.UserId = []byte(strconv.FormatInt(windowMs, 10))

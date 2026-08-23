@@ -60,17 +60,47 @@ func (l *proxyVPNFeedLoader) Start(ctx context.Context) {
 
 func (l *proxyVPNFeedLoader) reloadOnce() {
 	path := filepath.Join(l.dir, "proxy_vpn.txt")
-	f, err := os.Open(path)
-	if err != nil {
-		metrics.ProxyVPNFeedRefreshErrorsTotal.Inc()
-		slog.Warn("proxy vpn feed open failed", "path", path, "error", err)
+	lines := l.scanFeedFile(path)
+	extPath := filepath.Join(l.dir, "external_residential.txt")
+	lines += l.scanFeedFile(extPath)
+	if lines == 0 {
+		metrics.ProxyVPNLPMUninitialized.Set(1)
 		return
 	}
-	defer func() { _ = f.Close() }()
-
+	gen := l.gen.Add(1)
 	var b proxyVPNBuilder
 	root4, root6 := int32(cidrNoIndex), int32(cidrNoIndex)
-	sc := bufio.NewScanner(f)
+	f, err := os.Open(path)
+	if err == nil {
+		defer func() { _ = f.Close() }()
+		l.scanFeedIntoBuilder(bufio.NewScanner(f), &b, &root4, &root6)
+	}
+	if ef, err := os.Open(extPath); err == nil {
+		defer func() { _ = ef.Close() }()
+		l.scanFeedIntoBuilder(bufio.NewScanner(ef), &b, &root4, &root6)
+	}
+	snap := b.snapshot(root4, root6, gen)
+	l.table.Publish(snap)
+	metrics.ProxyVPNFeedRefreshTotal.Inc()
+	metrics.ProxyVPNLPMPrefixes.Set(float64(len(snap.prefs)))
+	metrics.ProxyVPNLPMUninitialized.Set(0)
+	slog.Info("proxy vpn feed published", "prefixes", len(snap.prefs), "gen", gen, "lines", lines)
+}
+
+func (l *proxyVPNFeedLoader) scanFeedFile(path string) int {
+	f, err := os.Open(path)
+	if err != nil {
+		if path == filepath.Join(l.dir, "proxy_vpn.txt") {
+			metrics.ProxyVPNFeedRefreshErrorsTotal.Inc()
+			slog.Warn("proxy vpn feed open failed", "path", path, "error", err)
+		}
+		return 0
+	}
+	defer func() { _ = f.Close() }()
+	return l.scanFeedIntoBuilder(bufio.NewScanner(f), nil, nil, nil)
+}
+
+func (l *proxyVPNFeedLoader) scanFeedIntoBuilder(sc *bufio.Scanner, b *proxyVPNBuilder, root4, root6 *int32) int {
 	lines := 0
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
@@ -81,25 +111,17 @@ func (l *proxyVPNFeedLoader) reloadOnce() {
 		if !ok {
 			continue
 		}
-		b.addPrefix(prefix, connType, asn, &root4, &root6)
+		if b != nil {
+			b.addPrefix(prefix, connType, asn, root4, root6)
+		}
 		lines++
 	}
 	if err := sc.Err(); err != nil {
 		metrics.ProxyVPNFeedRefreshErrorsTotal.Inc()
-		slog.Warn("proxy vpn feed scan failed", "path", path, "error", err)
-		return
+		slog.Warn("proxy vpn feed scan failed", "error", err)
+		return 0
 	}
-	if lines == 0 {
-		metrics.ProxyVPNLPMUninitialized.Set(1)
-		return
-	}
-	gen := l.gen.Add(1)
-	snap := b.snapshot(root4, root6, gen)
-	l.table.Publish(snap)
-	metrics.ProxyVPNFeedRefreshTotal.Inc()
-	metrics.ProxyVPNLPMPrefixes.Set(float64(len(snap.prefs)))
-	metrics.ProxyVPNLPMUninitialized.Set(0)
-	slog.Info("proxy vpn feed published", "prefixes", len(snap.prefs), "gen", gen)
+	return lines
 }
 
 func parseProxyVPNFeedLine(line string) (netip.Prefix, uint8, uint32, bool) {

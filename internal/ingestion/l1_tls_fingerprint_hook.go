@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 	"github.com/bidshard/ad-event-processor/pkg/branding"
 
@@ -36,20 +37,26 @@ func newTLSFingerprintMetrics() tlsFingerprintMetrics {
 	}
 }
 
-func (h *AdsPacketHandler) tlsFingerprintShouldSafeView(ja3, ja4 []byte, campaignID uuid.UUID) (bool, string) {
+func (h *AdsPacketHandler) tlsFingerprintShouldSafeView(ja3, ja4 []byte, campaignID uuid.UUID, ua string) (bool, string) {
 	t := h.tlsFingerprintTable
 	if t == nil || !t.Ready() {
 		return false, ""
 	}
+	var camp *domain.Campaign
 	if h.registry != nil {
-		if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil && !camp.TLSFingerprintBlockEnabled {
+		c, ok := h.registry.GetCampaign(campaignID)
+		if !ok || c == nil || !c.TLSFingerprintBlockEnabled {
 			return false, ""
 		}
+		camp = c
 	}
-	if len(ja3) > 0 && t.MatchJA3(ja3) {
+	if camp != nil && camp.SocialInAppEnabled && uaMatchesInAppWebView(ua) {
+		return false, ""
+	}
+	if len(ja3) > 0 && t.shouldBlockJA3(ja3) {
 		return true, "ja3"
 	}
-	if len(ja4) > 0 && t.MatchJA4(ja4) {
+	if len(ja4) > 0 && t.shouldBlockJA4(ja4) {
 		return true, "ja4"
 	}
 	return false, ""

@@ -110,12 +110,22 @@ func (h *AdsPacketHandler) ConfigureAttestation(secrets [][]byte) {
 	}
 }
 
-func (h *AdsPacketHandler) attestationRequired(campaignID uuid.UUID) bool {
-	if h == nil || h.registry == nil || len(h.attestationKeys) == 0 {
-		return false
+func (h *AdsPacketHandler) campaignAttestationMode(campaignID uuid.UUID) domain.AttestationMode {
+	if h == nil || h.registry == nil {
+		return domain.AttestationModeOff
 	}
 	camp, ok := h.registry.GetCampaign(campaignID)
-	return ok && camp != nil && camp.AttestationEnabled && camp.SafePageEnabled
+	if !ok || camp == nil || !camp.SafePageEnabled {
+		return domain.AttestationModeOff
+	}
+	return domain.ResolveAttestationMode(camp.AttestationMode, camp.AttestationEnabled)
+}
+
+func (h *AdsPacketHandler) attestationRequired(campaignID uuid.UUID) bool {
+	if h == nil || len(h.attestationKeys) == 0 {
+		return false
+	}
+	return h.campaignAttestationMode(campaignID).RequiresProbe()
 }
 
 func buildAttestationSetCookie(token string, maxAge int32) []byte {

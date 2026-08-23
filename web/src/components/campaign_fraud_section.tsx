@@ -20,6 +20,7 @@ import { Checkbox } from './checkbox.js';
 export type CampaignFraudSectionProps = {
   campaignId: string;
   canWrite: boolean;
+  onCampaignFlagsChanged?: () => void;
 };
 
 type ThresholdField =
@@ -43,8 +44,11 @@ function thresholdsOrdered(cfg: CampaignFraudConfig): boolean {
   );
 }
 
-
-export function CampaignFraudSection({ campaignId, canWrite }: CampaignFraudSectionProps) {
+export function CampaignFraudSection({
+  campaignId,
+  canWrite,
+  onCampaignFlagsChanged,
+}: CampaignFraudSectionProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +143,9 @@ export function CampaignFraudSection({ campaignId, canWrite }: CampaignFraudSect
           title: 'Fraud settings saved',
           message: 'Thresholds updated for this campaign.',
         });
+        if (override?.preset === 'gray_market' || override?.preset === 'social_in_app') {
+          onCampaignFlagsChanged?.();
+        }
       }
     } catch (err) {
       if (err instanceof ConfirmCancelledError) return;

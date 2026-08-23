@@ -1,3 +1,7 @@
+/**
+ * Lightweight safe-page hydrator: interaction scoring + POST /track/verify.
+ * Scope: behavioral unlock probe only (mousemove/touch/scroll); not device fingerprinting for blocking.
+ */
 export function mountSafePageHydrator() {
   const scoreThreshold = 15;
   let score = 0;
@@ -78,21 +82,24 @@ export function mountSafePageHydrator() {
     });
   };
 
-  const collectWebGLRenderer = (): string => {
+  const collectWebGLInfo = (): { vendor: string; renderer: string } => {
     try {
       const canvas = document.createElement('canvas');
       const gl = (canvas.getContext('webgl') ??
         canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null;
       if (!gl) {
-        return '';
+        return { vendor: '', renderer: '' };
       }
       const ext = gl.getExtension('WEBGL_debug_renderer_info');
       if (!ext) {
-        return '';
+        return { vendor: '', renderer: '' };
       }
-      return String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) ?? '');
+      return {
+        vendor: String(gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) ?? ''),
+        renderer: String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) ?? ''),
+      };
     } catch {
-      return '';
+      return { vendor: '', renderer: '' };
     }
   };
 
@@ -159,6 +166,7 @@ export function mountSafePageHydrator() {
 
   const fingerprint = async () => {
     const notif = await collectNotificationStates();
+    const glInfo = collectWebGLInfo();
     return {
       ua: navigator.userAgent,
       lang: navigator.language,
@@ -169,7 +177,8 @@ export function mountSafePageHydrator() {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       webdriver: Boolean(navigator.webdriver),
       webrtc_local_ip: await collectWebRTCLocalIP(),
-      webgl_renderer: collectWebGLRenderer(),
+      webgl_vendor: glInfo.vendor,
+      webgl_renderer: glInfo.renderer,
       mobile: isMobile(),
       canvas_hash: await collectCanvasHash(),
       audio_hash: await collectAudioHash(),

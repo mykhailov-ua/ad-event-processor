@@ -10,7 +10,7 @@ func FuzzJA3Parse(f *testing.F) {
 	f.Fuzz(func(t *testing.T, line string) {
 		ja3, ja4 := parseTLSFingerprintFeed([]byte(line))
 		table := NewTLSFingerprintTable()
-		table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, 1))
+		table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, nil, nil, 1))
 		table.MatchJA3([]byte(line))
 		table.MatchJA4([]byte(line))
 	})

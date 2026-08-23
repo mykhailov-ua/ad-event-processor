@@ -130,6 +130,18 @@ func fcapKeyPrefix(campaignID uuid.UUID, brandFcapKey string) string {
 	return campaignHashTag(campaignID) + "fcap:c:" + idStr + ":u:"
 }
 
+func FcapKeyPrefixSub(campaignID uuid.UUID, brandFcapKey string, sub int) string {
+	if sub <= 0 || brandFcapKey != "" {
+		return fcapKeyPrefix(campaignID, brandFcapKey)
+	}
+	var buf [96]byte
+	b := AppendCampaignSubHashTag(buf[:0], campaignID, sub)
+	b = append(b, "fcap:c:"...)
+	b = appendUUID(b, campaignID)
+	b = append(b, ":u:"...)
+	return string(b)
+}
+
 func dailySpendKeyPrefix(campaignID uuid.UUID) string {
 	return campaignHashTag(campaignID) + "budget:daily_spent:campaign:" + campaignID.String() + ":"
 }

@@ -6,18 +6,22 @@ import (
 )
 
 const (
-	safePageAttestOK              = ""
-	safePageAttestWebRTCLeak      = "webrtc_leak"
-	safePageAttestTimezoneSpoof   = "timezone_spoof"
-	safePageAttestWebGLAutomation = "webgl_automation"
+	safePageAttestOK                  = ""
+	safePageAttestWebRTCLeak          = "webrtc_leak"
+	safePageAttestTimezoneSpoof       = "timezone_spoof"
+	safePageAttestWebGLAutomation     = "webgl_automation"
+	safePageAttestHeadlessViewport    = "headless_viewport"
+	safePageAttestWebGLVendorMismatch = "webgl_vendor_mismatch"
+	safePageAttestLangMismatch        = "lang_mismatch"
 )
 
 type safePageAttestationInput struct {
-	remoteIP    string
-	country     string
-	fingerprint safePageVerifyFingerprint
-	events      []safePageVerifyEvent
-	nowUnix     int64
+	remoteIP      string
+	country       string
+	fingerprint   safePageVerifyFingerprint
+	events        []safePageVerifyEvent
+	nowUnix       int64
+	behaviorScore int
 }
 
 func evaluateSafePageAttestation(in safePageAttestationInput) (fail bool, code string) {
@@ -30,6 +34,15 @@ func evaluateSafePageAttestation(in safePageAttestationInput) (fail bool, code s
 	if code := checkWebGLAutomation(in.fingerprint); code != "" {
 		return true, code
 	}
+	if code := checkWebGLVendorMismatch(in.fingerprint); code != "" {
+		return true, code
+	}
+	if code := checkHeadlessViewport(in.fingerprint); code != "" {
+		return true, code
+	}
+	if code := checkLangLanguagesMismatch(in.fingerprint); code != "" {
+		return true, code
+	}
 	if code := checkCanvasFingerprint(in.fingerprint); code != "" {
 		return true, code
 	}
@@ -39,8 +52,10 @@ func evaluateSafePageAttestation(in safePageAttestationInput) (fail bool, code s
 	if code := checkPermissionsMismatch(in.fingerprint); code != "" {
 		return true, code
 	}
-	if code := checkBezierBot(in.events); code != "" {
-		return true, code
+	if in.behaviorScore >= safePageVerifyMinEvents+3 {
+		if code := checkBezierBot(in.events); code != "" {
+			return true, code
+		}
 	}
 	return false, ""
 }
@@ -84,6 +99,59 @@ func checkWebGLAutomation(fp safePageVerifyFingerprint) string {
 		return safePageAttestWebGLAutomation
 	}
 	return ""
+}
+
+func checkWebGLVendorMismatch(fp safePageVerifyFingerprint) string {
+	v := strings.ToLower(strings.TrimSpace(fp.WebGLVendor))
+	r := strings.ToLower(strings.TrimSpace(fp.WebGLRenderer))
+	if v == "" {
+		return ""
+	}
+	ua := strings.ToLower(fp.UA)
+	isFirefoxUA := strings.Contains(ua, "firefox") || strings.Contains(ua, "gecko/")
+	isChromeUA := strings.Contains(ua, "chrome") && !strings.Contains(ua, "chromium")
+	vendorGoogle := strings.Contains(v, "google") || strings.Contains(r, "angle")
+	vendorMozilla := strings.Contains(v, "mozilla")
+	if isFirefoxUA && vendorGoogle {
+		return safePageAttestWebGLVendorMismatch
+	}
+	if isChromeUA && vendorMozilla && !vendorGoogle {
+		return safePageAttestWebGLVendorMismatch
+	}
+	return ""
+}
+
+func checkHeadlessViewport(fp safePageVerifyFingerprint) string {
+	if fp.Mobile {
+		return ""
+	}
+	if fp.OuterWidth <= 0 || fp.OuterHeight <= 0 {
+		return safePageAttestHeadlessViewport
+	}
+	if fp.InnerWidth > 0 && fp.OuterWidth > 0 && fp.OuterWidth < fp.InnerWidth {
+		return safePageAttestHeadlessViewport
+	}
+	if fp.InnerHeight > 0 && fp.OuterHeight > 0 && fp.OuterHeight < fp.InnerHeight {
+		return safePageAttestHeadlessViewport
+	}
+	if len(fp.Screen) >= 2 && fp.Screen[0] <= 0 && fp.Screen[1] <= 0 {
+		return safePageAttestHeadlessViewport
+	}
+	return ""
+}
+
+func checkLangLanguagesMismatch(fp safePageVerifyFingerprint) string {
+	lang := strings.ToLower(strings.TrimSpace(fp.Lang))
+	if lang == "" || len(fp.Languages) == 0 {
+		return ""
+	}
+	for _, l := range fp.Languages {
+		ll := strings.ToLower(strings.TrimSpace(l))
+		if ll == lang || strings.HasPrefix(ll, lang+"-") || strings.HasPrefix(lang, ll+"-") {
+			return ""
+		}
+	}
+	return safePageAttestLangMismatch
 }
 
 func isPrivateIPv4(ip string) bool {

@@ -207,6 +207,47 @@ function _M.connect_any_shard()
     return nil, last_err, nil
 end
 
+function _M.stamp_ips(ips)
+    if not ips or #ips == 0 then
+        return false
+    end
+
+    local new_ver = (cache:get("_bl_ver") or 0) + 1
+    local stamped = 0
+
+    for _, ip in ipairs(ips) do
+        if ip and ip ~= "" then
+            cache:set("b:" .. ip, new_ver)
+            stamped = stamped + 1
+        end
+    end
+
+    if stamped == 0 then
+        return false
+    end
+
+    cache:set("_bl_ver", new_ver)
+    cache:set("_bl_sync_ts", ngx.time())
+    local prev = cache:get("_bl_count") or 0
+    cache:set("_bl_count", prev + stamped)
+    ngx.log(ngx.INFO, "edge_blacklist_sync: stamped ", stamped, " IPs (ver=", new_ver, ")")
+    return true
+end
+
+function _M.apply_quarantine_message(payload)
+    if not payload or payload == "" then
+        return _M.sync()
+    end
+    if payload:sub(1, 1) == "{" then
+        local cjson = require "cjson.safe"
+        local obj = cjson.decode(payload)
+        if obj and obj.ips and type(obj.ips) == "table" then
+            return _M.stamp_ips(obj.ips)
+        end
+    end
+    return _M.stamp_ips({payload})
+end
+
 function _M.sync()
     local red, err, shard_idx = _M.connect_any_shard()
     if not red then

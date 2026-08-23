@@ -10,7 +10,12 @@ export type FraudPolicyPreset = {
   updated_at?: string;
 };
 
-export type FraudSensitivityPreset = 'conservative' | 'balanced' | 'aggressive';
+export type FraudSensitivityPreset =
+  | 'conservative'
+  | 'balanced'
+  | 'aggressive'
+  | 'gray_market'
+  | 'social_in_app';
 
 export type CampaignFraudConfig = {
   campaign_id: string;
@@ -51,7 +56,6 @@ export type PreviewCampaignFraudRequest = {
   fraud_threshold_block?: number;
 };
 
-
 export async function fetchCampaignFraudConfig(
   campaignId: string
 ): Promise<CampaignFraudConfig | null> {
@@ -60,7 +64,6 @@ export async function fetchCampaignFraudConfig(
   );
   return res.data ?? null;
 }
-
 
 export async function patchCampaignFraudConfig(
   campaignId: string,
@@ -75,7 +78,6 @@ export async function patchCampaignFraudConfig(
   );
   return res.data ?? null;
 }
-
 
 export async function previewCampaignFraudImpact(
   campaignId: string,
@@ -111,21 +113,36 @@ export const FRAUD_PRESET_OPTIONS: Array<{
     label: 'Aggressive',
     description: 'More blocks; lower score bands before action.',
   },
+  {
+    id: 'gray_market',
+    label: 'Gray market (GMA)',
+    description:
+      'Aggressive fraud tiers plus safe page, L2 attestation, L1/L1.5/TLS blocks, and signed links.',
+  },
+  {
+    id: 'social_in_app',
+    label: 'Social in-app',
+    description:
+      'Balanced tiers, mobile-only conn policy, L1.5/TLS blocks; TLS safe-view skipped for FB/TikTok/Instagram WebView UA.',
+  },
 ];
-
 
 export async function fetchFraudPresets(): Promise<FraudPolicyPreset[]> {
   const res = await api<FraudPolicyPreset[]>('/api/v1/fraud/presets');
   if (Array.isArray(res.data) && res.data.length > 0) {
     return res.data;
   }
-  return FRAUD_PRESET_OPTIONS.map((opt) => ({
-    name: opt.id,
-    pass: opt.id === 'conservative' ? 40 : opt.id === 'aggressive' ? 20 : 30,
-    suspect: opt.id === 'conservative' ? 70 : opt.id === 'aggressive' ? 45 : 60,
-    ivt: opt.id === 'conservative' ? 90 : opt.id === 'aggressive' ? 65 : 80,
-    block: opt.id === 'conservative' ? 100 : opt.id === 'aggressive' ? 85 : 100,
-  }));
+  return FRAUD_PRESET_OPTIONS.map((opt) => {
+    const aggressive = opt.id === 'aggressive' || opt.id === 'gray_market';
+    const conservative = opt.id === 'conservative';
+    return {
+      name: opt.id,
+      pass: conservative ? 40 : aggressive ? 20 : 30,
+      suspect: conservative ? 70 : aggressive ? 45 : 60,
+      ivt: conservative ? 90 : aggressive ? 65 : 80,
+      block: conservative ? 100 : aggressive ? 85 : 100,
+    };
+  });
 }
 
 export type FraudManualLabel = {
@@ -144,11 +161,9 @@ export type FraudManualLabelRequest = {
 
 const IP_HASH_RE = /^[0-9a-fA-F]{32}$/;
 
-
 export function isValidFraudIPHash(value: string): boolean {
   return IP_HASH_RE.test(value.trim());
 }
-
 
 export async function fetchFraudLabels(
   customerId: string,
@@ -161,7 +176,6 @@ export async function fetchFraudLabels(
   const res = await api<FraudManualLabel[]>(`/api/v1/fraud/labels?${qs.toString()}`);
   return Array.isArray(res.data) ? res.data : [];
 }
-
 
 export async function postFraudLabel(
   customerId: string,

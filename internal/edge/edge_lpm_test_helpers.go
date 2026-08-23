@@ -38,3 +38,19 @@ func newLPMMap(t *testing.T) *ebpf.Map {
 	t.Cleanup(func() { _ = m.Close() })
 	return m
 }
+
+func newLPMMapV6(t *testing.T) *ebpf.Map {
+	t.Helper()
+	m, err := ebpf.NewMap(&ebpf.MapSpec{
+		Type:       ebpf.LPMTrie,
+		KeySize:    20,
+		ValueSize:  1,
+		MaxEntries: 4096,
+		Flags:      1,
+	})
+	if err != nil {
+		t.Skipf("BPF map unavailable: %v", err)
+	}
+	t.Cleanup(func() { _ = m.Close() })
+	return m
+}

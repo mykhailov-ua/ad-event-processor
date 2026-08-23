@@ -7,6 +7,7 @@
     "?/init.lua"
   ],
   "workspace.library": [
+    "internal/ingestion/types",
     "${3rd}/OpenResty/library"
   ],
   "workspace.checkThirdParty": true,
@@ -15,7 +16,8 @@
     "redis",
     "KEYS",
     "ARGV",
-    "bit"
+    "bit",
+    "arg"
   ],
   "diagnostics.disable": [
     "need-check-nil",

@@ -19,7 +19,7 @@ func benchTLSFingerprintTable(tb testing.TB, n int) (*TLSFingerprintTable, [][]b
 	}
 	ja3, ja4 := parseTLSFingerprintFeed(lines)
 	table := NewTLSFingerprintTable()
-	table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, 1))
+	table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, nil, nil, 1))
 
 	probes := make([][]byte, 64)
 	for i := range probes {
@@ -54,7 +54,7 @@ func BenchmarkTLS_Fingerprint_MatchBranch_SafeView(b *testing.B) {
 	b.ResetTimer()
 	var hit bool
 	for i := 0; i < b.N; i++ {
-		hit, _ = h.tlsFingerprintShouldSafeView(probes[i&63], nil, uuidNil)
+		hit, _ = h.tlsFingerprintShouldSafeView(probes[i&63], nil, uuidNil, "")
 	}
 	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
 }

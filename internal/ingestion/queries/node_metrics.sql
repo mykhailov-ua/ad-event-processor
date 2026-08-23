@@ -1,3 +1,5 @@
+
+-- name: InsertNodeMetricBucket :exec
 INSERT INTO node_metric_buckets (
     node_id, region_code, role, bucket_ts, metric,
     value_p50, value_p99, value_mean, sample_count
@@ -8,6 +10,7 @@ ON CONFLICT (node_id, bucket_ts, metric) DO UPDATE SET
     value_mean = EXCLUDED.value_mean,
     sample_count = EXCLUDED.sample_count;
 
+-- name: ListNodeMetricBucketsWindow :many
 SELECT node_id, region_code, role, bucket_ts, metric,
        value_p50, value_p99, value_mean, sample_count
 FROM node_metric_buckets
@@ -17,9 +20,11 @@ WHERE region_code = $1
   AND bucket_ts < $4
 ORDER BY bucket_ts DESC, node_id, metric;
 
+-- name: DeleteExpiredNodeMetricBuckets :execrows
 DELETE FROM node_metric_buckets
 WHERE bucket_ts < $1;
 
+-- name: AggregateNodeMetricBucketsForDay :many
 SELECT
     region_code,
     role,
@@ -33,6 +38,7 @@ WHERE bucket_ts >= $1
   AND bucket_ts < $2
 GROUP BY region_code, role, metric;
 
+-- name: UpsertNodeMetricDailySnapshot :exec
 INSERT INTO node_metric_daily_snapshots (
     day, region_code, role, metric,
     value_p50, value_p99, value_mean, sample_count
@@ -43,6 +49,7 @@ ON CONFLICT (day, region_code, role, metric) DO UPDATE SET
     value_mean = EXCLUDED.value_mean,
     sample_count = EXCLUDED.sample_count;
 
+-- name: GetNodeMetricDailySnapshot :one
 SELECT day, region_code, role, metric,
        value_p50, value_p99, value_mean, sample_count
 FROM node_metric_daily_snapshots
@@ -51,6 +58,7 @@ WHERE day = $1
   AND role = $3
   AND metric = $4;
 
+-- name: ListNodeMetricDailySnapshotsByDay :many
 SELECT day, region_code, role, metric,
        value_p50, value_p99, value_mean, sample_count
 FROM node_metric_daily_snapshots
@@ -59,6 +67,7 @@ WHERE day = $1
   AND role = $3
 ORDER BY metric;
 
+-- name: ListNodeMetricBucketsRegionRoleWindow :many
 SELECT node_id, region_code, role, bucket_ts, metric,
        value_p50, value_p99, value_mean, sample_count
 FROM node_metric_buckets
@@ -68,6 +77,7 @@ WHERE region_code = $1
   AND bucket_ts < $4
 ORDER BY node_id, metric, bucket_ts;
 
+-- name: UpsertNodeCapacityScore :exec
 INSERT INTO node_capacity_scores (
     node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
@@ -78,16 +88,19 @@ ON CONFLICT (node_id, region_code, role) DO UPDATE SET
     epoch_id = EXCLUDED.epoch_id,
     updated_at = NOW();
 
+-- name: ListNodeCapacityScoresByRegionRole :many
 SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 FROM node_capacity_scores
 WHERE region_code = $1
   AND role = $2;
 
+-- name: ListNodeCapacityScoresByRole :many
 SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 FROM node_capacity_scores
 WHERE role = $1
 ORDER BY region_code, node_id;
 
+-- name: ListNodeCapacityScoresByRegion :many
 SELECT node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 FROM node_capacity_scores
 WHERE region_code = $1

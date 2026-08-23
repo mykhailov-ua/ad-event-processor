@@ -1346,43 +1346,83 @@ func (s *Service) blockIPWithTTL(ctx context.Context, ip string, source string, 
 }
 
 func (s *Service) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
-	p := FraudThreatPayload{
+	_, err := s.EnqueueFraudThreatBatch(ctx, []FraudThreatEnqueueItem{{
 		Action:     action,
 		IP:         ip,
 		CampaignID: campaignID,
 		Score:      score,
 		Boost:      boost,
 		TTLSeconds: ttlSeconds,
+	}})
+	return err
+}
+
+func fraudThreatOutboxEventType(action string) (string, error) {
+	switch action {
+	case "boost":
+		return "ML_SCORE_BOOST", nil
+	case "ghost":
+		return "ML_GHOST_IVT", nil
+	case "blacklist":
+		return "ML_BLACKLIST_ADD", nil
+	default:
+		return "", fmt.Errorf("unknown ml threat action: %s", action)
 	}
-	if _, err := uuid.Parse(p.CampaignID); err != nil {
-		return fmt.Errorf("invalid campaign id: %w", err)
+}
+
+func fraudThreatPayloadFromItem(item FraudThreatEnqueueItem) FraudThreatPayload {
+	return FraudThreatPayload(item)
+}
+
+func (s *Service) EnqueueFraudThreatBatch(ctx context.Context, items []FraudThreatEnqueueItem) (int, error) {
+	if len(items) == 0 {
+		return 0, errValidation("items required")
+	}
+	if len(items) > fraudThreatBatchMax {
+		return 0, errValidation(fmt.Sprintf("max %d items per bulk request", fraudThreatBatchMax))
 	}
 
-	return pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
+	var inserted int
+	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
-		payload, err := coldpath.MarshalOutbox(p)
-		if err != nil {
-			return fmt.Errorf("marshal ml threat payload: %w", err)
+		eventTypes := make([]string, 0, len(items))
+		payloads := make([][]byte, 0, len(items))
+
+		for i, item := range items {
+			if item.Action == "" || item.CampaignID == "" {
+				return errValidation(fmt.Sprintf("row %d: action and campaign_id required", i+1))
+			}
+			if _, err := uuid.Parse(item.CampaignID); err != nil {
+				return errValidation(fmt.Sprintf("row %d: invalid campaign_id format", i+1))
+			}
+
+			eventType, err := fraudThreatOutboxEventType(item.Action)
+			if err != nil {
+				return err
+			}
+
+			payload, err := coldpath.MarshalOutbox(fraudThreatPayloadFromItem(item))
+			if err != nil {
+				return fmt.Errorf("row %d: marshal ml threat payload: %w", i+1, err)
+			}
+
+			eventTypes = append(eventTypes, eventType)
+			payloads = append(payloads, payload)
 		}
 
-		var eventType string
-		switch p.Action {
-		case "boost":
-			eventType = "ML_SCORE_BOOST"
-		case "ghost":
-			eventType = "ML_GHOST_IVT"
-		case "blacklist":
-			eventType = "ML_BLACKLIST_ADD"
-		default:
-			return fmt.Errorf("unknown ml threat action: %s", p.Action)
+		if err := q.CreateOutboxEventsBatch(ctx, db.CreateOutboxEventsBatchParams{
+			EventTypes: eventTypes,
+			Payloads:   payloads,
+		}); err != nil {
+			return err
 		}
-
-		_, err = q.CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
-			EventType: eventType,
-			Payload:   payload,
-		})
-		return err
+		inserted = len(items)
+		return nil
 	})
+	if err != nil {
+		return 0, err
+	}
+	return inserted, nil
 }
 
 func (s *Service) UnblockExpiredBlacklist(ctx context.Context, rows []db.ListExpiredBlacklistIPsRow) (int, error) {

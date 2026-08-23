@@ -122,6 +122,7 @@ func TestShard0Nil_FraudStreamAggregateFlushesHealthyShard(t *testing.T) {
 	rdbs := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 	q := NewFraudStreamWriter(rdbs, "fraud:agg", 1000)
+	q.aggSlots[0].prefixKind.Store(uint32(fraudAggPrefixV4))
 	q.aggSlots[0].subnetPrefix.Store(0x0A000000)
 	q.aggSlots[0].reasonID.Store(uint32(FraudReasonLowTTC))
 	q.aggSlots[0].count.Store(3)

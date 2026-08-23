@@ -17,7 +17,6 @@ export type FraudDecisionLookupProps = {
   canWrite?: boolean;
 };
 
-
 export function FraudDecisionLookup({ customerId, canWrite = false }: FraudDecisionLookupProps) {
   const [ipHash, setIPHash] = useState('');
   const [campaignId, setCampaignId] = useState('');
@@ -197,7 +196,6 @@ type SubsectionFeaturesProps = {
   features: Record<string, number>;
   thresholds: FraudDecision['campaign_thresholds'];
 };
-
 
 function SubsectionFeatures({ features, thresholds }: SubsectionFeaturesProps) {
   const rows = Object.entries(features).sort(([a], [b]) => a.localeCompare(b));

@@ -23,6 +23,8 @@ type Event struct {
 	IP                 string
 	UA                 string
 	TLSHash            string
+	TLSJA3             string
+	TLSJA4             string
 	SecCHUA            string
 	AcceptLang         string
 	FraudReason        string
@@ -41,6 +43,12 @@ type Event struct {
 	ClickIDBuf         [36]byte
 	UserPIIHash        [16]byte
 	HasUserPIIHash     bool
+	TCPMSS             uint8
+	TCPMSSSet          uint8
+	TCPTTL             uint8
+	TCPTTLSet          uint8
+	TCPWindow          uint16
+	TCPWindowSet       uint8
 }
 
 func (event *Event) Reset() {
@@ -57,6 +65,8 @@ func (event *Event) Reset() {
 	event.IP = ""
 	event.UA = ""
 	event.TLSHash = ""
+	event.TLSJA3 = ""
+	event.TLSJA4 = ""
 	event.SecCHUA = ""
 	event.AcceptLang = ""
 	event.FraudReason = ""
@@ -72,6 +82,12 @@ func (event *Event) Reset() {
 	event.GeoCountry = ""
 	event.ClearingPriceMicro = 0
 	event.HasUserPIIHash = false
+	event.TCPMSS = 0
+	event.TCPMSSSet = 0
+	event.TCPTTL = 0
+	event.TCPTTLSet = 0
+	event.TCPWindow = 0
+	event.TCPWindowSet = 0
 	if cap(event.StringBuffer) > 2048 {
 		event.StringBuffer = make([]byte, 0, 256)
 	} else {

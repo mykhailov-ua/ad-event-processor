@@ -24,9 +24,10 @@ func (finder stubFinder) FindSuspiciousIPs(context.Context) ([]SuspiciousIP, err
 }
 
 type countingManagement struct {
-	mu    sync.Mutex
-	calls map[string]int
-	fail  atomic.Uint32
+	mu         sync.Mutex
+	calls      map[string]int
+	batchCalls int
+	fail       atomic.Uint32
 }
 
 func (mgmt *countingManagement) BlockIP(_ context.Context, ip string) error {
@@ -55,6 +56,23 @@ func (mgmt *countingManagement) EnqueueFraudThreat(_ context.Context, action, ip
 	}
 	mgmt.calls[ip]++
 	return nil
+}
+
+func (mgmt *countingManagement) EnqueueFraudThreatBatch(_ context.Context, items []FraudThreatEnqueueItem) (int, error) {
+	mgmt.mu.Lock()
+	defer mgmt.mu.Unlock()
+	if mgmt.calls == nil {
+		mgmt.calls = make(map[string]int)
+	}
+	if mgmt.fail.Load() > 0 {
+		mgmt.fail.Add(^uint32(0))
+		return 0, ErrManagementUnavailable
+	}
+	mgmt.batchCalls++
+	for _, item := range items {
+		mgmt.calls[item.IP]++
+	}
+	return len(items), nil
 }
 
 func (mgmt *countingManagement) count(ip string) int {

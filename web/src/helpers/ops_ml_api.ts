@@ -78,29 +78,24 @@ export type OpsMLManualLabel = {
 
 const OPS_ML_POLL_MS = 30_000;
 
-
 export function opsMlModelPollMs(): number {
   return OPS_ML_POLL_MS;
 }
-
 
 export async function fetchOpsMLModelStatus(): Promise<MLModelStatus | null> {
   const res = await api<MLModelStatus>('/api/v1/ops/ml-model');
   return res.data ?? null;
 }
 
-
 export async function fetchOpsMLEvalReport(): Promise<MLEvalReport | null> {
   const res = await api<MLEvalReport>('/api/v1/ops/ml-model/eval');
   return res.data ?? null;
 }
 
-
 export async function fetchOpsMLManualLabels(): Promise<OpsMLManualLabel[]> {
   const res = await api<OpsMLManualLabel[]>('/api/v1/ops/ml-model/labels');
   return Array.isArray(res.data) ? res.data : [];
 }
-
 
 export function truncateArtifactHash(hash?: string, head = 8, tail = 8): string {
   if (!hash) return '—';

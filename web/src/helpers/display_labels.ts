@@ -3,7 +3,6 @@ const EXACT: Record<string, string> = {
   compose_dev: 'Docker Compose (development)',
 
   ad_event_processor_native: 'ad-event-processor native',
-  ad_event_processor_native: 'ad-event-processor native (legacy)',
   native_v1: 'ad-event-processor native (legacy)',
   openrtb_3: 'OpenRTB 3.0',
 

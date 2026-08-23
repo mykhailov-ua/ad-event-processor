@@ -104,6 +104,19 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			return err
 		}
 
+		grayMarketPreset := upd.Preset != nil && domain.IsGrayMarketFraudPreset(*upd.Preset)
+		if grayMarketPreset {
+			if err := applyGrayMarketGMAPreset(ctx, tx, campaignID); err != nil {
+				return err
+			}
+		}
+		socialInAppPreset := upd.Preset != nil && domain.IsSocialInAppFraudPreset(*upd.Preset)
+		if socialInAppPreset {
+			if err := applySocialInAppPreset(ctx, tx, campaignID); err != nil {
+				return err
+			}
+		}
+
 		updated, err := q.UpdateCampaignFraudConfig(ctx, db.UpdateCampaignFraudConfigParams{
 			ID:                    domain.ToUUID(campaignID),
 			FraudThresholdPass:    int16(pass),

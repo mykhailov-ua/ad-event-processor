@@ -1,0 +1,26 @@
+{
+  "cases": [
+    {
+      "id": "residential_proxy_positive",
+      "op": "residential_proxy_signal",
+      "row": {
+        "events": 275,
+        "clicks": 4,
+        "unique_users": 32,
+        "unique_uas": 11
+      },
+      "want": true
+    },
+    {
+      "id": "residential_proxy_negative",
+      "op": "residential_proxy_signal",
+      "row": {
+        "events": 1000,
+        "clicks": 120,
+        "unique_users": 80,
+        "unique_uas": 70
+      },
+      "want": false
+    }
+  ]
+}

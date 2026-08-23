@@ -349,6 +349,22 @@ func parseContentLengthStrict(b []byte) (int, bool) {
 	return val, true
 }
 
+func parseTCPMSSHeader(b []byte) (uint8, bool) {
+	n, ok := parseContentLengthStrict(b)
+	if !ok || n < 0 || n > 255 {
+		return 0, false
+	}
+	return uint8(n), true
+}
+
+func parseTCPWindowHeader(b []byte) (uint16, bool) {
+	n, ok := parseContentLengthStrict(b)
+	if !ok || n < 0 || n > 65535 {
+		return 0, false
+	}
+	return uint16(n), true
+}
+
 func trimHTTPKey(b []byte) []byte {
 	end := len(b)
 	for end > 0 && (b[end-1] == ' ' || b[end-1] == '\t') {
@@ -437,6 +453,18 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 					req.TLSJA4 = val
 				}
 			}
+		case 0x63742d78:
+			if foldKeyU32(key, 4) == 0x736d2d70 && httpFold[key[8]] == 's' {
+				if mss, ok := parseTCPMSSHeader(val); ok {
+					req.TCPMSS = mss
+					req.TCPMSSSet = 1
+				}
+			} else if foldKeyU32(key, 4) == 0x74742d70 && httpFold[key[8]] == 'l' {
+				if ttl, ok := parseTCPMSSHeader(val); ok {
+					req.TCPTTL = ttl
+					req.TCPTTLSet = 1
+				}
+			}
 		}
 	case 10:
 		switch foldKeyU32(key, 0) {
@@ -450,7 +478,12 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 			}
 		}
 	case 12:
-		if foldKeyU64(key, 0) == 0x2d746e65746e6f63 && foldKeyU32(key, 8) == 0x65707974 {
+		if foldKeyU64(key, 0) == 0x69772d7063742d78 && foldKeyU32(key, 8) == 0x776f646e {
+			if win, ok := parseTCPWindowHeader(val); ok {
+				req.TCPWindow = win
+				req.TCPWindowSet = 1
+			}
+		} else if foldKeyU64(key, 0) == 0x2d746e65746e6f63 && foldKeyU32(key, 8) == 0x65707974 {
 			req.ContentType = val
 		}
 	case 14:

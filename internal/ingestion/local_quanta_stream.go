@@ -208,7 +208,7 @@ func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *doma
 	if camp != nil && camp.FreqLimit > 0 {
 		slot.freqLimit = uint32(camp.FreqLimit)
 		slot.freqWindow = camp.FreqWindow
-		slot.fcapLen = uint16(copyLocalQuantaField(slot.fcapPrefix[:], camp.FcapKeyPrefix))
+		slot.fcapLen = uint16(copyLocalQuantaField(slot.fcapPrefix[:], fcapKeyPrefixForDebit(camp, evt.UserID, evt.ClickID)))
 	}
 
 	slot.data = data

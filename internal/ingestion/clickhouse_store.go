@@ -310,6 +310,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 			count, windowMs := fraudAggregateFields(e)
 			err = batch.Append(
 				piihash.FixedString16(pii.subnetHash),
+				e.PlacementID,
 				e.FraudReason,
 				count,
 				windowMs,

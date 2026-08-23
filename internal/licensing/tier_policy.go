@@ -23,11 +23,13 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.MlFraudBoost = false
 		out.MultiRegion = false
 		out.SlotMigration = false
-	case SKUCodePro, SKUCodeScale:
+		out.ExternalResidentialIntel = false
+	case SKUCodePro:
+		out.EbpfXDPEdge = false
+		out.ExternalResidentialIntel = false
+	case SKUCodeScale:
 		out.EbpfXDPEdge = false
 	case SKUCodeNetwork:
-
-		out.EbpfXDPEdge = false
 	}
 	return out
 }

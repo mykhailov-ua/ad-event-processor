@@ -71,12 +71,17 @@ var filterRejectSpecs = [...]filterRejectSpec{
 type FraudReasonID uint8
 
 const (
-	FraudReasonCodeDatacenterIP   = "datacenter_ip"
-	FraudReasonCodeLowTTC         = "low_ttc"
-	FraudReasonCodeMissingImpTS   = "missing_imp_ts"
-	FraudReasonCodeL3Blocklist    = "l3_blocklist"
-	FraudReasonCodeTLSBlocklist   = "tls_blocklist"
-	FraudReasonCodeDeviceMismatch = "device_mismatch"
+	FraudReasonCodeDatacenterIP       = "datacenter_ip"
+	FraudReasonCodeLowTTC             = "low_ttc"
+	FraudReasonCodeMissingImpTS       = "missing_imp_ts"
+	FraudReasonCodeL3Blocklist        = "l3_blocklist"
+	FraudReasonCodeTLSBlocklist       = "tls_blocklist"
+	FraudReasonCodeDeviceMismatch     = "device_mismatch"
+	FraudReasonCodeTCPMSSAnomaly      = "tcp_mss_anomaly"
+	FraudReasonCodeOSFingerprint      = "os_fingerprint_mismatch"
+	FraudReasonCodeIPv4Rotation       = "ipv4_rotation"
+	FraudReasonCodeResidentialProxy   = "residential_proxy"
+	FraudReasonCodeAttestationMissing = "attestation_missing"
 )
 
 const (
@@ -87,6 +92,11 @@ const (
 	FraudReasonL3Blocklist
 	FraudReasonTLSBlocklist
 	FraudReasonDeviceMismatch
+	FraudReasonTCPMSSAnomaly
+	FraudReasonOSFingerprint
+	FraudReasonIPv4Rotation
+	FraudReasonResidentialProxy
+	FraudReasonAttestationMissing
 	fraudReasonCount
 )
 
@@ -103,13 +113,18 @@ type fraudReasonEntry struct {
 }
 
 var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
-	FraudReasonNone:           {},
-	FraudReasonDatacenterIP:   {code: FraudReasonCodeDatacenterIP, weight: 45, flags: fraudSignalL1High},
-	FraudReasonLowTTC:         {code: FraudReasonCodeLowTTC, weight: 45, flags: fraudSignalL1High},
-	FraudReasonMissingImpTS:   {code: FraudReasonCodeMissingImpTS, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonL3Blocklist:    {code: FraudReasonCodeL3Blocklist, weight: 100, flags: fraudSignalL3},
-	FraudReasonTLSBlocklist:   {code: FraudReasonCodeTLSBlocklist, weight: 45, flags: fraudSignalL1High},
-	FraudReasonDeviceMismatch: {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonNone:               {},
+	FraudReasonDatacenterIP:       {code: FraudReasonCodeDatacenterIP, weight: 45, flags: fraudSignalL1High},
+	FraudReasonLowTTC:             {code: FraudReasonCodeLowTTC, weight: 45, flags: fraudSignalL1High},
+	FraudReasonMissingImpTS:       {code: FraudReasonCodeMissingImpTS, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonL3Blocklist:        {code: FraudReasonCodeL3Blocklist, weight: 100, flags: fraudSignalL3},
+	FraudReasonTLSBlocklist:       {code: FraudReasonCodeTLSBlocklist, weight: 45, flags: fraudSignalL1High},
+	FraudReasonDeviceMismatch:     {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonTCPMSSAnomaly:      {code: FraudReasonCodeTCPMSSAnomaly, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonOSFingerprint:      {code: FraudReasonCodeOSFingerprint, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonIPv4Rotation:       {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonResidentialProxy:   {code: FraudReasonCodeResidentialProxy, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonAttestationMissing: {code: FraudReasonCodeAttestationMissing, weight: 35, flags: fraudSignalL2Weak},
 }
 
 func FraudReasonCode(id FraudReasonID) string {

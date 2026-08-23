@@ -20,7 +20,7 @@ gen:
 	bash scripts/ci/gen.sh --proto
 
 lint: gen fmt
-	bash scripts/ci/lint_go_gate.sh all
+	bash scripts/ci/lint_gate.sh
 
 test-fast: gen fmt
 	go test -short -count=1 -timeout=240s -p=1 ./internal/... ./pkg/...

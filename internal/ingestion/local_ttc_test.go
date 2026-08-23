@@ -32,6 +32,30 @@ func TestLocalTTCCache_missingImpFailClosed(t *testing.T) {
 	assert.Equal(t, localTTCMissingClosed, outcome)
 }
 
+func TestUnifiedFilter_applyGoTTC_attestationFailClosed(t *testing.T) {
+	campID := uuid.New()
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.ID = campID
+		c.AttestationMode = domain.AttestationModeLight
+		c.AttestationEnabled = false
+	})
+	cachedMockCamp.Store(nil)
+
+	f := NewUnifiedFilter(nil, NewJumpHashSharder(1), &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
+	f.SetTTCMin(time.Second)
+	f.SetLocalTTCCache(NewLocalTTCCache())
+
+	evt := &domain.Event{
+		Type:       "click",
+		CampaignID: campID,
+		UserID:     "no-imp-user",
+	}
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	f.applyGoTTC(evt)
+	assert.True(t, acc.has(FraudReasonMissingImpTS))
+}
+
 func TestUnifiedFilter_applyGoTTC_signalsLowTTC(t *testing.T) {
 	f := NewUnifiedFilter(nil, nil, &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	f.SetTTCMin(time.Second)

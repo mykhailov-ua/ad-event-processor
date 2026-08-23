@@ -53,3 +53,14 @@ func TestBudgetQuotaKeySub_hashTag(t *testing.T) {
 	assert.Contains(t, key, "{550e8400-e29b-41d4-a716-446655440000:slot_2}")
 	assert.Contains(t, key, "budget:quota:")
 }
+
+func TestFcapKeyPrefixForDebit_subShard(t *testing.T) {
+	camp := &domain.Campaign{
+		ID:            uuid.New(),
+		BehaviorFlags: domain.BehaviorHighVolumeDebit,
+	}
+	prefix := fcapKeyPrefixForDebit(camp, "user-42", "")
+	assert.Contains(t, prefix, ":slot_")
+	assert.Contains(t, prefix, "fcap:c:")
+	assert.Equal(t, domain.FcapKeyPrefix(camp.ID, ""), fcapKeyPrefixForDebit(camp, "", ""))
+}

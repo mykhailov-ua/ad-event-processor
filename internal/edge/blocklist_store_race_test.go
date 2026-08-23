@@ -22,7 +22,7 @@ func TestStore_concurrentApplyDiff(t *testing.T) {
 				"203.0.113.10",
 				"203.0.113.11",
 			}[i%4]
-			_, _, _ = store.ApplyDiff(m, []string{ip}, nil, nil)
+			_, _, _ = store.ApplyDiff(m, nil, []string{ip}, nil, nil)
 		}()
 	}
 	wg.Wait()

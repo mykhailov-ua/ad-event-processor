@@ -1,33 +1,43 @@
+-- name: CreateCustomer :one
 INSERT INTO customers (id, name, balance, currency)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 
+-- name: UpdateCustomerBalanceManagement :one
 UPDATE customers
 SET balance = balance + $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
 
+-- name: GetCustomerForUpdate :one
 SELECT * FROM customers
 WHERE id = $1
 FOR UPDATE;
 
+-- name: UpdateCampaignStatus :one
 UPDATE campaigns
 SET status = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
 
+-- name: GetCampaignFull :one
 SELECT c.*, 
        cr.primary_a_shard, cr.primary_b_shard, cr.reserve_shard, cr.h_ema, cr.c_ema, cr.routing_epoch
 FROM campaigns c
 LEFT JOIN campaign_routing cr ON c.id = cr.campaign_id
 WHERE c.id = $1;
 
+-- name: ListCampaignsByIDs :many
+SELECT * FROM campaigns WHERE id = ANY($1::uuid[]);
+
+-- name: CreateLedgerEntry :one
 INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash, payment_intent_id)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
+-- name: SumCampaignMarginWindow :one
 SELECT
   COALESCE(SUM(CASE WHEN type = 'FEE' THEN -amount ELSE 0 END), 0)::bigint AS advertiser_spend_micro,
   COALESCE(SUM(CASE WHEN type = 'rtb_cost' THEN amount ELSE 0 END), 0)::bigint AS rtb_cost_micro,
@@ -38,6 +48,7 @@ WHERE campaign_id = $1
   AND created_at >= $2
   AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout');
 
+-- name: SumCampaignMarginWindowByCampaignIDs :many
 SELECT
   campaign_id,
   COALESCE(SUM(CASE WHEN type = 'FEE' THEN -amount ELSE 0 END), 0)::bigint AS advertiser_spend_micro,
@@ -50,11 +61,13 @@ WHERE campaign_id = ANY(@campaign_ids::uuid[])
   AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout')
 GROUP BY campaign_id;
 
+-- name: ListMarginGuardPoliciesByCampaignIDs :many
 SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active
 FROM margin_guard_policies
 WHERE campaign_id = ANY($1::uuid[])
 ORDER BY campaign_id, id;
 
+-- name: ListRecentMarginGuardPausesByCampaigns :many
 SELECT DISTINCT campaign_id
 FROM margin_guard_activity
 WHERE campaign_id = ANY($1::uuid[])
@@ -62,140 +75,160 @@ WHERE campaign_id = ANY($1::uuid[])
   AND placement_id = ''
   AND created_at > now() - INTERVAL '1 hour';
 
+-- name: GetLedgerByHash :one
 SELECT * FROM balance_ledger
 WHERE idempotency_hash = $1;
 
+-- name: GetLedgerByHashForUpdate :one
 SELECT * FROM balance_ledger
 WHERE idempotency_hash = $1
 FOR UPDATE;
 
+-- name: GetLedgerByPaymentIntentForUpdate :one
 SELECT * FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_TOPUP'
 FOR UPDATE;
 
+-- name: SumPaymentRefundAmountForIntent :one
 SELECT COALESCE(SUM(ABS(amount)), 0)::bigint AS total_refunded_micro
 FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_REFUND';
 
+-- name: SumPaymentChargebackAmountForIntent :one
 SELECT COALESCE(SUM(ABS(amount)), 0)::bigint AS total_chargeback_micro
 FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK';
 
+-- name: SumPaymentChargebackReversalAmountForIntent :one
 SELECT COALESCE(SUM(amount), 0)::bigint AS total_reversal_micro
 FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK_REVERSAL';
 
+-- name: SumPaymentLedgerTotalsByIntentIDs :many
 SELECT
-  payment_intent_id,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_TOPUP' THEN amount ELSE 0 END), 0)::bigint AS topup_micro,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_REFUND' THEN ABS(amount) ELSE 0 END), 0)::bigint AS refund_micro,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK' THEN ABS(amount) ELSE 0 END), 0)::bigint AS chargeback_micro,
-  COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK_REVERSAL' THEN amount ELSE 0 END), 0)::bigint AS chargeback_reversal_micro,
-  BOOL_OR(type = 'PAYMENT_TOPUP') AS has_topup
+    payment_intent_id,
+    COALESCE(SUM(CASE WHEN type = 'PAYMENT_TOPUP' THEN amount ELSE 0 END), 0)::bigint AS topup_micro,
+    BOOL_OR(type = 'PAYMENT_TOPUP') AS has_topup,
+    COALESCE(SUM(CASE WHEN type = 'PAYMENT_REFUND' THEN ABS(amount) ELSE 0 END), 0)::bigint AS refund_micro,
+    COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK' THEN ABS(amount) ELSE 0 END), 0)::bigint AS chargeback_micro,
+    COALESCE(SUM(CASE WHEN type = 'PAYMENT_CHARGEBACK_REVERSAL' THEN amount ELSE 0 END), 0)::bigint AS chargeback_reversal_micro
 FROM balance_ledger
 WHERE payment_intent_id = ANY($1::uuid[])
 GROUP BY payment_intent_id;
 
+-- name: ListLedgerChargebackEntryIDs :many
 SELECT id FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_CHARGEBACK'
 ORDER BY id;
 
+-- name: ListLedgerChargebackEntryIDsByIntents :many
 SELECT payment_intent_id, id FROM balance_ledger
 WHERE type = 'PAYMENT_CHARGEBACK'
   AND payment_intent_id = ANY($1::uuid[])
 ORDER BY payment_intent_id, id;
 
+-- name: CreateStatusHistory :exec
 INSERT INTO campaign_status_history (campaign_id, old_status, new_status, reason)
 VALUES ($1, $2, $3, $4);
 
+-- name: SoftDeleteCampaign :exec
 UPDATE campaigns
 SET status = 'DELETED',
     deleted_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
+-- name: CreateAuditLog :one
 INSERT INTO admin_audit_log (admin_id, action, target_type, target_id, changes, metadata, is_masked)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
+-- name: CleanupAuditLogs :exec
 DELETE FROM admin_audit_log
 WHERE created_at < $1;
 
+-- name: ListAuditLogs :many
 SELECT * FROM admin_audit_log
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: CountAuditLogs :one
 SELECT COUNT(*) FROM admin_audit_log;
 
+-- name: ListAuditPaginated :many
 SELECT * FROM admin_audit_log
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: ListAuditLogsInRange :many
 SELECT * FROM admin_audit_log
 WHERE created_at >= $1 AND created_at < $2
 ORDER BY created_at ASC, id ASC
 LIMIT $3 OFFSET $4;
 
+-- name: ListAuditLogsExport :many
 SELECT * FROM admin_audit_log
 WHERE ($1::bigint = 0 OR id > $1)
 ORDER BY id ASC
 LIMIT $2;
 
+-- name: GetLedgerByPaymentIntent :one
 SELECT * FROM balance_ledger
 WHERE payment_intent_id = $1 AND type = 'PAYMENT_TOPUP'
 LIMIT 1;
 
+-- name: CountCustomers :one
 SELECT COUNT(*) FROM customers;
 
+-- name: ListCustomers :many
 SELECT * FROM customers
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
 
+-- name: GetCustomerStats :many
 SELECT customer_id, COUNT(*) as active_campaigns, COALESCE(SUM(current_spend), 0)::bigint as total_spend
 FROM campaigns
 WHERE customer_id = ANY(@customer_ids::uuid[]) AND status = 'ACTIVE'
 GROUP BY customer_id;
 
-SELECT customer_id, id AS campaign_id
-FROM campaigns
-WHERE customer_id = ANY($1::uuid[])
-  AND deleted_at IS NULL;
-
-SELECT rule_id
-FROM alert_rule_events
-WHERE rule_id = ANY($1::uuid[])
-  AND window_start = $2;
-
+-- name: CountCustomerLedger :one
 SELECT COUNT(*) FROM balance_ledger
 WHERE customer_id = $1;
 
+-- name: ListCustomerLedger :many
 SELECT * FROM balance_ledger
 WHERE customer_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
+-- name: ListCustomerLedgerByIDDesc :many
 SELECT * FROM balance_ledger
 WHERE customer_id = $1
 ORDER BY id DESC
 LIMIT 100;
 
+-- name: ListCustomerLedgerExport :many
 SELECT * FROM balance_ledger
 WHERE customer_id = @customer_id
   AND (@cursor_id::bigint = 0 OR id < @cursor_id::bigint)
 ORDER BY id DESC
 LIMIT @batch_limit;
 
+-- name: ListManagementReconRuns :many
 SELECT * FROM recon_runs
 ORDER BY id DESC
 LIMIT $1 OFFSET $2;
 
+-- name: CountManagementReconRuns :one
 SELECT COUNT(*) FROM recon_runs;
 
+-- name: CountCampaigns :one
 SELECT COUNT(*) FROM campaigns
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid);
 
+-- name: ListCampaigns :many
 SELECT * FROM campaigns
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
@@ -203,14 +236,23 @@ WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('custom
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: ListCampaignIDsByCustomers :many
+SELECT customer_id, id AS campaign_id
+FROM campaigns
+WHERE customer_id = ANY($1::uuid[])
+  AND deleted_at IS NULL;
+
+-- name: CountStatusHistory :one
 SELECT COUNT(*) FROM campaign_status_history
 WHERE campaign_id = $1;
 
+-- name: ListStatusHistory :many
 SELECT * FROM campaign_status_history
 WHERE campaign_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
+-- name: CreateBlacklistIP :one
 INSERT INTO ip_blacklist (ip, reason, expires_at)
 VALUES ($1, $2, $3)
 ON CONFLICT (ip) DO UPDATE
@@ -219,41 +261,53 @@ ON CONFLICT (ip) DO UPDATE
         expires_at = EXCLUDED.expires_at
 RETURNING *;
 
+-- name: CreateEdgeBlockAudit :one
 INSERT INTO edge_block_audit (ip, reason_id, ttl, source)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 
+-- name: DeleteBlacklistIP :exec
 DELETE FROM ip_blacklist
 WHERE ip = $1;
 
+-- name: ListExpiredBlacklistIPs :many
 SELECT ip, reason FROM ip_blacklist
 WHERE expires_at IS NOT NULL AND expires_at <= NOW()
 ORDER BY expires_at ASC
 LIMIT $1;
 
+-- name: CountBlacklist :one
 SELECT COUNT(*) FROM ip_blacklist;
 
+-- name: ListBlacklist :many
 SELECT * FROM ip_blacklist
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: GetAllBlacklist :many
 SELECT ip, reason FROM ip_blacklist;
 
+-- name: SetSystemSetting :exec
 INSERT INTO system_settings (key, value, updated_at)
 VALUES ($1, $2, CURRENT_TIMESTAMP)
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = CURRENT_TIMESTAMP;
 
+-- name: GetAllSystemSettings :many
 SELECT key, value FROM system_settings;
 
+-- name: GetSystemSetting :one
 SELECT value FROM system_settings WHERE key = $1;
 
+-- name: CreateOutboxEvent :one
 INSERT INTO outbox_events (event_type, payload)
 VALUES ($1, $2)
 RETURNING *;
 
+-- name: CreateOutboxEventsBatch :exec
 INSERT INTO outbox_events (event_type, payload)
 SELECT unnest(@event_types::text[]), unnest(@payloads::bytea[]);
 
+-- name: GetPendingOutboxEventsForUpdate :many
 SELECT * FROM outbox_events
 WHERE status = 'PENDING'
 ORDER BY
@@ -270,16 +324,19 @@ ORDER BY
 LIMIT $1
 FOR UPDATE SKIP LOCKED;
 
+-- name: MarkOutboxEventProcessed :exec
 UPDATE outbox_events
 SET status = 'PROCESSED'
 WHERE id = $1;
 
+-- name: GetDrainingCampaignsForUpdate :many
 SELECT * FROM campaigns
 WHERE status = 'DRAINING' AND updated_at < $1
 ORDER BY updated_at ASC
 LIMIT $2
 FOR UPDATE SKIP LOCKED;
 
+-- name: ListCustomersForScoring :many
 SELECT 
     c.id,
     COALESCE(FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - c.created_at)) / 86400), 0)::integer AS age_days,
@@ -290,30 +347,37 @@ LEFT JOIN balance_ledger l ON l.customer_id = c.id
     AND l.created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
 GROUP BY c.id;
 
+-- name: UpdateCustomerOverdraft :one
 UPDATE customers
 SET allowed_overdraft = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
 
+-- name: CreateBrand :one
 INSERT INTO advertiser_brands (id, customer_id, name)
 VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: GetBrand :one
 SELECT * FROM advertiser_brands WHERE id = $1 LIMIT 1;
 
+-- name: GetBrandForUpdate :one
 SELECT * FROM advertiser_brands WHERE id = $1 LIMIT 1 FOR UPDATE;
 
+-- name: ConfigureBrandFcap :exec
 UPDATE advertiser_brands
 SET freq_limit = $2,
     freq_window = $3,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
+-- name: ListBrandsByCustomer :many
 SELECT * FROM advertiser_brands
 WHERE customer_id = $1
 ORDER BY created_at DESC;
 
+-- name: GetCampaignsWithStats :many
 SELECT 
     c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key,
     COALESCE(SUM(s.impressions_count), 0)::bigint AS total_impressions,
@@ -324,12 +388,14 @@ LEFT JOIN campaign_stats s ON c.id = s.campaign_id
 WHERE c.customer_id = $1 AND c.status = 'ACTIVE'
 GROUP BY c.id;
 
+-- name: UpdateCampaignBudget :one
 UPDATE campaigns
 SET budget_limit = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
 
+-- name: GetAllActiveCampaignsWithStats :many
 SELECT 
     c.id, c.name, c.status, c.budget_limit, c.created_at, c.updated_at, c.customer_id, c.current_spend, c.deleted_at, c.pacing_mode, c.daily_budget, c.timezone, c.freq_limit, c.freq_window, c.target_countries, c.brand_id, c.brand_fcap_key, c.daypart_hours,
     COALESCE(SUM(s.impressions_count), 0)::bigint AS total_impressions,
@@ -340,16 +406,19 @@ LEFT JOIN campaign_stats s ON c.id = s.campaign_id
 WHERE c.status = 'ACTIVE'
 GROUP BY c.id;
 
+-- name: GetCampaignForUpdate :one
 SELECT * FROM campaigns
 WHERE id = $1
 FOR UPDATE;
 
+-- name: UpdateCampaignPacing :one
 UPDATE campaigns
 SET pacing_mode = $2,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateCampaignAdmin :one
 UPDATE campaigns
 SET name = $2,
     daily_budget = $3,
@@ -363,28 +432,32 @@ SET name = $2,
     safe_page_enabled = $11,
     attestation_enabled = $12,
     attestation_ttl_sec = $13,
-    dmr_enabled = $14,
-    click_delivery = $15,
-    proxy_upstream_url = $16,
-    proxy_rewrite_assets = $17,
-    tls_fingerprint_block_enabled = $18,
-    conn_type_policy = $19,
-    link_signing_enabled = $20,
-    link_signing_ttl_sec = $21,
-    l1_cidr_block_enabled = $22,
-    l15_proxy_vpn_block_enabled = $23,
+    attestation_mode = $14,
+    dmr_enabled = $15,
+    click_delivery = $16,
+    proxy_upstream_url = $17,
+    proxy_rewrite_assets = $18,
+    tls_fingerprint_block_enabled = $19,
+    conn_type_policy = $20,
+    link_signing_enabled = $21,
+    link_signing_ttl_sec = $22,
+    l1_cidr_block_enabled = $23,
+    l15_proxy_vpn_block_enabled = $24,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
 
+-- name: CountCampaignEvents :one
 SELECT COUNT(*)::bigint FROM events WHERE campaign_id = $1;
 
+-- name: ListCampaignEvents :many
 SELECT click_id, event_type, user_id, payload, ip_address, user_agent, created_at
 FROM events
 WHERE campaign_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
+-- name: UpdateCampaignFraudConfig :one
 UPDATE campaigns
 SET fraud_threshold_pass = $2,
     fraud_threshold_suspect = $3,
@@ -397,6 +470,7 @@ WHERE id = $1
 RETURNING *;
 
 
+-- name: SumLedgerSpendByCampaignWindow :many
 SELECT 
     campaign_id,
     COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0)::bigint AS total_spent_micro
@@ -406,6 +480,7 @@ WHERE created_at >= $1
   AND (type = 'FEE' OR type = 'RECONCILIATION_ADJUST' OR type = 'REFUND')
 GROUP BY campaign_id;
 
+-- name: SumLedgerSpendByCampaignWindowWithCustomer :many
 SELECT
     bl.campaign_id,
     c.customer_id,
@@ -417,10 +492,12 @@ WHERE bl.created_at >= $1
   AND (bl.type = 'FEE' OR bl.type = 'RECONCILIATION_ADJUST' OR bl.type = 'REFUND')
 GROUP BY bl.campaign_id, c.customer_id;
 
+-- name: CreateReconRun :one
 INSERT INTO recon_runs (period_start, period_end, status)
 VALUES ($1, $2, 'PENDING')
 RETURNING *;
 
+-- name: UpdateReconRun :exec
 UPDATE recon_runs
 SET status = $2,
     total_delta = $3,
@@ -429,22 +506,24 @@ SET status = $2,
     completed_at = NOW()
 WHERE id = $1;
 
+-- name: InsertReconDiscrepancy :exec
 INSERT INTO recon_discrepancies (
     run_id, campaign_id, customer_id, expected_spend, actual_spend, delta, redis_adjusted
 ) VALUES ($1, $2, $3, $4, $5, $6, $7);
 
+-- name: MaxCustomerReconLagMicro :one
 SELECT COALESCE(MAX(ABS(delta)), 0)::bigint AS max_lag_micro
 FROM recon_discrepancies
 WHERE customer_id = $1
   AND created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours';
 
-SELECT
-    customer_id,
-    COALESCE(MAX(ABS(delta)), 0)::bigint AS max_lag_micro
+-- name: ListCustomerReconLagMicro :many
+SELECT customer_id, COALESCE(MAX(ABS(delta)), 0)::bigint AS max_lag_micro
 FROM recon_discrepancies
 WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
 GROUP BY customer_id;
 
+-- name: SumCampaignStatsInRange :one
 SELECT
     COALESCE(SUM(impressions_count), 0)::bigint AS impressions,
     COALESCE(SUM(clicks_count), 0)::bigint AS clicks,
@@ -454,6 +533,7 @@ WHERE campaign_id = @campaign_id
   AND date >= @from_date::date
   AND date <= @to_date::date;
 
+-- name: SumCustomerCampaignStatsInRange :many
 SELECT
     cs.campaign_id,
     COALESCE(SUM(cs.impressions_count), 0)::bigint AS impressions,
@@ -466,14 +546,18 @@ WHERE c.customer_id = @customer_id
   AND cs.date <= @to_date::date
 GROUP BY cs.campaign_id;
 
+-- name: ListSellers :many
 SELECT * FROM sellers ORDER BY seller_id;
 
+-- name: GetSeller :one
 SELECT * FROM sellers WHERE id = $1;
 
+-- name: CreateSeller :one
 INSERT INTO sellers (seller_id, domain, seller_type, name, is_confidential)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: UpdateSeller :one
 UPDATE sellers
 SET seller_id = $2,
     domain = $3,
@@ -484,16 +568,21 @@ SET seller_id = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: DeleteSeller :exec
 DELETE FROM sellers WHERE id = $1;
 
+-- name: ListAdsTxtEntries :many
 SELECT * FROM ads_txt_entries ORDER BY sort_order, id;
 
+-- name: GetAdsTxtEntry :one
 SELECT * FROM ads_txt_entries WHERE id = $1;
 
+-- name: CreateAdsTxtEntry :one
 INSERT INTO ads_txt_entries (domain, publisher_account_id, relationship, cert_authority_id, sort_order)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
+-- name: UpdateAdsTxtEntry :one
 UPDATE ads_txt_entries
 SET domain = $2,
     publisher_account_id = $3,
@@ -504,24 +593,31 @@ SET domain = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: DeleteAdsTxtEntry :exec
 DELETE FROM ads_txt_entries WHERE id = $1;
 
+-- name: UpdateCampaignSupplyChain :one
 UPDATE campaigns
 SET supply_chain_nodes = $2,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 
+-- name: ListRtbDeals :many
 SELECT * FROM rtb_deals ORDER BY deal_id;
 
+-- name: GetRtbDeal :one
 SELECT * FROM rtb_deals WHERE id = $1;
 
+-- name: GetRtbDealByDealID :one
 SELECT * FROM rtb_deals WHERE deal_id = $1;
 
+-- name: CreateRtbDeal :one
 INSERT INTO rtb_deals (deal_id, floor_micro, geo_mask, cat_mask, pacing, customer_id, seats)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
+-- name: UpdateRtbDeal :one
 UPDATE rtb_deals
 SET deal_id = $2,
     floor_micro = $3,
@@ -534,8 +630,10 @@ SET deal_id = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: DeleteRtbDeal :exec
 DELETE FROM rtb_deals WHERE id = $1;
 
+-- name: UpsertRtbFloorSuggestion :exec
 INSERT INTO rtb_floor_suggestions (
     placement_id, deal_id, current_floor_micro, suggested_floor_micro,
     win_rate, sample_n, floor_bucket_micro, computed_at
@@ -549,17 +647,20 @@ ON CONFLICT (placement_id) DO UPDATE SET
     floor_bucket_micro = EXCLUDED.floor_bucket_micro,
     computed_at = EXCLUDED.computed_at;
 
+-- name: ListRtbFloorSuggestions :many
 SELECT placement_id, deal_id, current_floor_micro, suggested_floor_micro,
        win_rate, sample_n, floor_bucket_micro, computed_at
 FROM rtb_floor_suggestions
 ORDER BY placement_id;
 
+-- name: ListRtbFloorSuggestionsByPlacementIDs :many
 SELECT placement_id, deal_id, current_floor_micro, suggested_floor_micro,
        win_rate, sample_n, floor_bucket_micro, computed_at
 FROM rtb_floor_suggestions
 WHERE placement_id = ANY($1::text[])
 ORDER BY placement_id;
 
+-- name: UpsertCampaignShardAssignment :one
 INSERT INTO campaign_shard_assignment (
     campaign_id, primary_a_shard, primary_b_shard, reserve_shard, h_ema, c_ema, updated_at
 ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
@@ -572,26 +673,32 @@ ON CONFLICT (campaign_id) DO UPDATE SET
     updated_at = NOW()
 RETURNING *;
 
+-- name: GetCampaignShardAssignment :one
 SELECT * FROM campaign_shard_assignment
 WHERE campaign_id = $1;
 
+-- name: DeleteCampaignShardAssignment :exec
 DELETE FROM campaign_shard_assignment
 WHERE campaign_id = $1;
 
+-- name: GetCTVGtaxSettlement :one
 SELECT *
 FROM ctv_gtax_settlements
 WHERE settlement_id = $1;
 
+-- name: InsertCTVGtaxSettlement :one
 INSERT INTO ctv_gtax_settlements (
   settlement_id, customer_id, campaign_id, spend_micro, tax_micro, fee_ledger_id, tax_ledger_id
 ) VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
+-- name: ListActiveExperimentCohorts :many
 SELECT id, name, active, salt, variants, created_at, updated_at
 FROM experiment_cohorts
 WHERE active = TRUE
 ORDER BY name;
 
+-- name: UpsertExperimentCohort :one
 INSERT INTO experiment_cohorts (id, name, active, salt, variants)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (id) DO UPDATE
@@ -602,7 +709,14 @@ SET name = EXCLUDED.name,
     updated_at = now()
 RETURNING *;
 
+-- name: GetExperimentCohort :one
 SELECT id, name, active, salt, variants, created_at, updated_at
 FROM experiment_cohorts
 WHERE id = $1;
+
+-- name: ListExistingAlertRuleWindows :many
+SELECT rule_id
+FROM alert_rule_events
+WHERE rule_id = ANY($1::uuid[])
+  AND window_start = $2;
 

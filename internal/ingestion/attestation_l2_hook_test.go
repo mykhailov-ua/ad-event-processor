@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"testing"
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func attestationHookHandler(t *testing.T, filter *countingFilter) (*AdsPacketHandler, uuid.UUID) {
+func attestationHookHandler(t *testing.T, filter EventFilter) (*AdsPacketHandler, uuid.UUID) {
 	t.Helper()
 	secret := []byte("0123456789abcdef0123456789abcdef")
 	cid := uuid.New()
@@ -21,10 +22,12 @@ func attestationHookHandler(t *testing.T, filter *countingFilter) (*AdsPacketHan
 		c.SafePageEnabled = true
 		c.SafePageURL = "https://safe.example/white"
 		c.AttestationEnabled = true
+		c.AttestationMode = domain.AttestationModeStrict
 	})
 	t.Cleanup(func() {
 		lockStaticCampaign(func(c *domain.Campaign) {
 			c.AttestationEnabled = false
+			c.AttestationMode = domain.AttestationModeOff
 			c.SafePageEnabled = false
 			c.SafePageURL = ""
 		})
@@ -65,15 +68,14 @@ func TestHTTP1CookieHeaderParsed(t *testing.T) {
 	require.Equal(t, []byte("Attestation-Token=abc123"), req.Cookie)
 }
 
-func TestClickRedirect_AttestationMissing_ServesStub(t *testing.T) {
+func TestClickRedirect_AttestationStrictMissing_ServesStub(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := attestationHookHandler(t, filter)
 	conn := serveClickWithCookie(h, cid, "203.0.113.5", "")
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 	body := string(conn.Written())
 	require.Contains(t, body, "<script>")
-	require.Contains(t, body, "ad-event-processor")
-	require.Equal(t, 0, filter.calls, "attestation stub must short-circuit before FilterEngine")
+	require.Equal(t, 0, filter.calls, "strict attestation must short-circuit before FilterEngine")
 }
 
 func TestClickRedirect_AttestationValidCookie_FallsThrough(t *testing.T) {
@@ -92,7 +94,57 @@ func TestClickRedirect_AttestationValidCookie_FallsThrough(t *testing.T) {
 func TestClickRedirect_AttestationDisabled_FallsThrough(t *testing.T) {
 	filter := &countingFilter{}
 	h, cid := attestationHookHandler(t, filter)
-	lockStaticCampaign(func(c *domain.Campaign) { c.AttestationEnabled = false })
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.AttestationEnabled = false
+		c.AttestationMode = domain.AttestationModeOff
+	})
 	_ = serveClickWithCookie(h, cid, "203.0.113.5", "")
 	require.Equal(t, 1, filter.calls)
+}
+
+func TestClickRedirect_AttestationLightMissing_L2AndSafeView(t *testing.T) {
+	filter := &countingFilter{}
+	h, cid := attestationHookHandler(t, filter)
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.AttestationMode = domain.AttestationModeLight
+		c.AttestationEnabled = false
+	})
+	conn := serveClickWithCookie(h, cid, "203.0.113.5", "")
+	written := string(conn.Written())
+	require.Equal(t, 1, filter.calls, "light attestation must run FilterEngine")
+	require.Contains(t, written, "X-ad-event-processor-Safe-Page: 1", "light mode serves safe view header")
+}
+
+type missingImpSignalFilter struct{}
+
+func (missingImpSignalFilter) Check(_ context.Context, evt *domain.Event) error {
+	addFraudSignal(evt, FraudReasonMissingImpTS)
+	return nil
+}
+
+func TestClickRedirect_AttestationCookieMissingImp_ForceSafe(t *testing.T) {
+	h, cid := attestationHookHandler(t, missingImpSignalFilter{})
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.AttestationMode = domain.AttestationModeLight
+		c.AttestationEnabled = false
+	})
+	ip := "203.0.113.7"
+	now := time.Now().Unix()
+	token, err := MintAttestationToken(h.attestationKeys[0].secret, cid, ip, 300, now)
+	require.NoError(t, err)
+	conn := serveClickWithCookie(h, cid, ip, "Attestation-Token="+token)
+	written := string(conn.Written())
+	require.Contains(t, written, "X-ad-event-processor-Safe-Page: 1", "attestation + missing imp forces safe view")
+}
+
+func TestClickRedirect_AttestationOffMissingImp_NoForceSafe(t *testing.T) {
+	h, cid := attestationHookHandler(t, missingImpSignalFilter{})
+	lockStaticCampaign(func(c *domain.Campaign) {
+		c.AttestationMode = domain.AttestationModeOff
+		c.AttestationEnabled = false
+		c.SafePageEnabled = false
+	})
+	conn := serveClickWithCookie(h, cid, "203.0.113.8", "")
+	written := string(conn.Written())
+	require.NotContains(t, written, "X-ad-event-processor-Safe-Page: 1")
 }

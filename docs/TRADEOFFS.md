@@ -299,6 +299,28 @@ When `StreamProducer` is enabled, `SetDeferStreamToProducer(true)` also sets the
 ### Trade-offs We Accept
 * **Eventual Consistency:** Stream records may lag behind local in-memory debits. If a node crashes unexpectedly, unflushed local allocations are reconciled during periodic refill and return cycles (`local-quota-return.lua`). Operators monitor these operations via `ad_local_quota_*` Prometheus metrics.
 
+### Full-skip eligibility (Phase 6)
+Placement blacklist and ingress RPD are enforced in Go (`PlacementBlacklistFilter`, `EntitlementsFilter`) before local quanta full-skip. Lua no longer runs `HEXISTS` / ingress `INCR` on the hot debit path for those gates. In-app traffic with `placement_id` and licensed `MaxRequestsPerDay` can full-skip when local ledger credit is available.
+
+---
+
+## 6b. Static Redis Counter Offload (evaluation)
+
+### Problem
+At 100k+ QPS, per-campaign `{campaign_id}` hash tags concentrate budget, fcap, and ingress counters on one Redis master.
+
+### Options evaluated
+
+| Option | Verdict |
+| :--- | :--- |
+| **Local quanta + sub-shard keys** (`BehaviorHighVolumeDebit`, `{id:slot_N}` budget/fcap) | **Shipped** — spreads Lua keys within one cluster shard; no new datastore |
+| **Dragonfly** | Rejected for v1 — migration cost, dual-write epoch, StaticSlot parity unproven at our Lua atomicity model |
+| **Aerospike sidecar counters** | Rejected — breaks single-shard Lua `EVALSHA`; would require split atomic debit (forbidden without fence) |
+| **Quanta-only authority** | Partial — live mode already skips sync Lua; PG reconciliation remains source of truth |
+
+### Decision
+Prefer **sub-shard hash tags** and **local quanta full-skip** before external counter stores. Feature flag: `BehaviorHighVolumeDebit` on campaign. Budget invariant: `domain.AssertBudgetInvariant` + local quanta fault tests.
+
 ---
 
 ## 7. Zero-Allocation Protobuf Patches

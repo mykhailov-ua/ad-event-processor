@@ -19,13 +19,11 @@ import {
 
 type OpsMlTab = 'overview' | 'eval' | 'labels';
 
-
 function formatTs(iso?: string): string {
   if (!iso) return '—';
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 }
-
 
 function VersionSummary({ version, title }: { version?: MLModelVersion | null; title: string }) {
   if (!version) {
@@ -52,7 +50,6 @@ function VersionSummary({ version, title }: { version?: MLModelVersion | null; t
     </tr>
   );
 }
-
 
 function FeatureImportanceChart({ items }: { items: MLFeatureImportance[] }) {
   if (!items.length) {
@@ -90,7 +87,6 @@ function FeatureImportanceChart({ items }: { items: MLFeatureImportance[] }) {
     </div>
   );
 }
-
 
 function EvalMetricsBlock({
   title,
@@ -141,7 +137,6 @@ function EvalMetricsBlock({
     </section>
   );
 }
-
 
 export function OpsMlModelPage() {
   const [tab, setTab] = useState<OpsMlTab>('overview');

@@ -621,6 +621,10 @@ type AdsPacketHandler struct {
 	trackCORS               trackCORS
 	cidrTable               *CIDRTable
 	cidrMetrics             l1CIDRMetrics
+	ipv6RotationTable       *IPv6RotationTable
+	ipv6RotationMetrics     l1IPv6RotationMetrics
+	ipv4RotationTable       *IPv4RotationTable
+	ipv4RotationMetrics     l1IPv4RotationMetrics
 	tlsFingerprintTable     *TLSFingerprintTable
 	tlsFingerprintMetrics   tlsFingerprintMetrics
 	proxyVPNTable           *ProxyVPNTable
@@ -642,6 +646,22 @@ func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
 	}
 	h.cidrTable = table
 	h.cidrMetrics = newL1CIDRMetrics()
+}
+
+func (h *AdsPacketHandler) ConfigureIPv6Rotation(table *IPv6RotationTable) {
+	if h == nil {
+		return
+	}
+	h.ipv6RotationTable = table
+	h.ipv6RotationMetrics = newL1IPv6RotationMetrics()
+}
+
+func (h *AdsPacketHandler) ConfigureIPv4Rotation(table *IPv4RotationTable) {
+	if h == nil {
+		return
+	}
+	h.ipv4RotationTable = table
+	h.ipv4RotationMetrics = newL1IPv4RotationMetrics()
 }
 
 func (h *AdsPacketHandler) ConfigureTLSFingerprint(table *TLSFingerprintTable) {
@@ -1343,6 +1363,12 @@ type parsedHTTPRequest struct {
 	HasContentLength bool
 	ForceSafe        bool
 	Cookie           []byte
+	TCPMSS           uint8
+	TCPMSSSet        uint8
+	TCPTTL           uint8
+	TCPTTLSet        uint8
+	TCPWindow        uint16
+	TCPWindowSet     uint8
 }
 
 var (
@@ -1493,7 +1519,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		return gnet.None
 	}
 
-	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, fields.campaignID); matched {
+	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, fields.campaignID, ua); matched {
 		h.writeGnetSafeViewTLS(c, ctx, startMono, kind)
 		return gnet.None
 	}
@@ -1517,8 +1543,22 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		}
 	}
 	evt.TLSHash = unsafeString(req.TLSHash)
+	evt.TLSJA3 = unsafeString(req.TLSJA3)
+	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
+	if req.TCPMSSSet != 0 {
+		evt.TCPMSS = req.TCPMSS
+		evt.TCPMSSSet = 1
+	}
+	if req.TCPTTLSet != 0 {
+		evt.TCPTTL = req.TCPTTL
+		evt.TCPTTLSet = 1
+	}
+	if req.TCPWindowSet != 0 {
+		evt.TCPWindow = req.TCPWindow
+		evt.TCPWindowSet = 1
+	}
 
 	if h.udpControl != nil {
 		shard := h.sharder.GetShard(evt.CampaignID)

@@ -1,12 +1,10 @@
 import { isNetworkMacro } from '../models/traffic_source_templates.js';
 import { defaultClickTemplate } from './tracking_link.js';
 
-
 export function encodeClickParamValue(value: string): string {
   if (!value) return '';
   return isNetworkMacro(value) ? value : encodeURIComponent(value);
 }
-
 
 export function clickBaseURL(templateOrHost: string): string {
   const raw = String(templateOrHost || '').trim();
@@ -18,12 +16,11 @@ export function clickBaseURL(templateOrHost: string): string {
       const filled = raw.replaceAll('{campaign_id}', '00000000-0000-0000-0000-000000000000');
       const u = new URL(filled);
       return `${u.origin}${u.pathname}`;
-    } catch {
-      
-    }
+    } catch {}
   }
   const host = raw
-    .replace(/^https?:\/\    .replace(/\/+$/, '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '')
     .split('/')[0]!;
   return `https://${host}/click`;
 }
@@ -34,7 +31,6 @@ export type ClickUrlOptions = {
     Record<'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_term' | 'utm_content', string>
   >;
 };
-
 
 export function buildTemplatedClickURL(
   templateOrHost: string,

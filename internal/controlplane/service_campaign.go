@@ -142,7 +142,7 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 	adminPatch := req.Name != nil || req.DailyBudgetMicro != nil || req.Timezone != nil ||
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
-		req.SafePageURL != nil || req.SafePageEnabled != nil || req.AttestationEnabled != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
+		req.SafePageURL != nil || req.SafePageEnabled != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
 		req.L1CIDRBlockEnabled != nil || req.L15ProxyVPNBlockEnabled != nil ||
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
 		req.LinkSigningEnabled != nil || req.LinkSigningTTLSec != nil ||
@@ -245,6 +245,20 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 			if req.AttestationEnabled != nil {
 				attestationEnabled = *req.AttestationEnabled
 			}
+			attestationMode := locked.AttestationMode
+			if req.AttestationMode != nil {
+				parsedMode, _, err := parsePatchAttestationMode(req.AttestationMode)
+				if err != nil {
+					return err
+				}
+				attestationMode = string(parsedMode)
+			}
+			if safePageEnabled && !locked.SafePageEnabled && req.AttestationMode == nil && req.AttestationEnabled == nil {
+				attestationMode = string(domain.AttestationModeLight)
+			}
+			resolvedMode := domain.ResolveAttestationMode(domain.ParseAttestationMode(attestationMode), attestationEnabled)
+			attestationMode = string(resolvedMode)
+			attestationEnabled = resolvedMode.RequiresProbe()
 			attestationTTL := locked.AttestationTtlSec
 			if req.AttestationTTLSec != nil {
 				parsed, _, err := parsePatchAttestationTTLSec(req.AttestationTTLSec)
@@ -255,6 +269,9 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 			}
 			if attestationEnabled && !safePageEnabled {
 				return fmt.Errorf("attestation_enabled requires safe_page_enabled")
+			}
+			if resolvedMode.RequiresProbe() && !safePageEnabled {
+				return fmt.Errorf("attestation_mode requires safe_page_enabled")
 			}
 			dmrEnabled := locked.DmrEnabled
 			if req.DmrEnabled != nil {
@@ -326,6 +343,7 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 				SafePageEnabled:            safePageEnabled,
 				AttestationEnabled:         attestationEnabled,
 				AttestationTtlSec:          attestationTTL,
+				AttestationMode:            attestationMode,
 				DmrEnabled:                 dmrEnabled,
 				ClickDelivery:              clickDelivery,
 				ProxyUpstreamUrl:           proxyUpstream,
@@ -562,6 +580,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		SafePageURL:                c.SafePageUrl,
 		SafePageEnabled:            c.SafePageEnabled,
 		AttestationEnabled:         c.AttestationEnabled,
+		AttestationMode:            c.AttestationMode,
 		AttestationTTLSec:          c.AttestationTtlSec,
 		DmrEnabled:                 c.DmrEnabled,
 		L1CIDRBlockEnabled:         c.L1CidrBlockEnabled,

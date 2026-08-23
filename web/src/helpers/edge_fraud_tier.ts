@@ -33,7 +33,6 @@ export function fraudTierBandRows(): FraudTierBandRow[] {
   );
 }
 
-
 export function fraudTierBandRowsFromThresholds(
   passMax: number,
   suspectMax: number,

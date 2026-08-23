@@ -7,17 +7,13 @@ export type LicenseInfo = {
   tier_warnings?: string[];
 };
 
-
 export const PILOT_CONVERT_NUDGE_DAYS = 5;
 
-
 export const LICENSE_SETTINGS_PATH = '/settings/license';
-
 
 export function isPilotPlan(planCode?: string): boolean {
   return (planCode ?? '').trim().toLowerCase() === 'pilot';
 }
-
 
 export function isPilotConvertNudge(license?: LicenseInfo | null): boolean {
   if (!license?.state) return false;
@@ -27,7 +23,6 @@ export function isPilotConvertNudge(license?: LicenseInfo | null): boolean {
   if (license.renew_days == null) return false;
   return license.renew_days <= PILOT_CONVERT_NUDGE_DAYS;
 }
-
 
 export function shouldShowLicenseBanner(license?: LicenseInfo | null): boolean {
   if (!license?.state) return false;
@@ -49,7 +44,6 @@ export type LicenseBannerCTA = {
   external: boolean;
 };
 
-
 export function resolvePilotConvertCTA(supportUrl?: string): LicenseBannerCTA {
   const url = (supportUrl ?? '').trim();
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('tg://')) {
@@ -57,7 +51,6 @@ export function resolvePilotConvertCTA(supportUrl?: string): LicenseBannerCTA {
   }
   return { href: LICENSE_SETTINGS_PATH, label: 'Upgrade license', external: false };
 }
-
 
 export function buildLicenseBannerParts(license: LicenseInfo): string[] {
   const state = license.state!.toLowerCase();
@@ -82,7 +75,6 @@ export function buildLicenseBannerParts(license: LicenseInfo): string[] {
   for (const w of license.tier_warnings ?? []) parts.push(w);
   return parts;
 }
-
 
 export function licenseBannerSeverity(license: LicenseInfo): 'error' | 'warning' {
   const state = license.state!.toLowerCase();

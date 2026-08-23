@@ -74,7 +74,7 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 		buf := strconv.AppendInt(clickScratch[:0], int64(i), 10)
 		copy(evt.ClickIDBuf[:], buf)
 		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
-		_ = f.acceptLocalQuantaFullSkip(evt, camp, amount, 0)
+		_ = f.acceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
 	}
 }
 

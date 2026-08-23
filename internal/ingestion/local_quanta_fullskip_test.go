@@ -96,6 +96,47 @@ func TestUnifiedFilter_localQuanta_fullSkipDuplicate(t *testing.T) {
 	require.ErrorIs(t, f.Check(checkCtx, evt), ErrDuplicateEvent)
 }
 
+func TestUnifiedFilter_localQuanta_fullSkipWithPlacement(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+	ctx := context.Background()
+	rdb, cleanup := setupMiniredis(t)
+	defer cleanup()
+
+	counter := &evalCountRedis{UniversalClient: rdb}
+	f, ledger, _ := newLocalQuantaUnifiedFilter(t, counter)
+	require.NoError(t, f.PreloadScripts(ctx))
+	counter.evals.Store(0)
+
+	campID := uuid.New()
+	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
+	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+
+	evt := &domain.Event{
+		Type:        "impression",
+		IP:          "203.0.113.60",
+		UserID:      "placement-user",
+		CampaignID:  campID,
+		ClickID:     uuid.NewString(),
+		PlacementID: "zone-ok",
+	}
+	checkCtx := attachFilterDeadline(ctx, time.Second)
+	require.NoError(t, f.Check(checkCtx, evt))
+	require.Equal(t, int64(0), counter.evals.Load())
+
+	require.NoError(t, rdb.HSet(ctx, PlacementBlacklistKey(campID), "zone-bad", "1").Err())
+	blocked := &domain.Event{
+		Type:        "impression",
+		IP:          "203.0.113.61",
+		UserID:      "placement-user",
+		CampaignID:  campID,
+		ClickID:     uuid.NewString(),
+		PlacementID: "zone-bad",
+	}
+	require.ErrorIs(t, f.Check(checkCtx, blocked), ErrPlacementBlocked)
+}
+
 func TestLocalClickIdemCache_TryClaim(t *testing.T) {
 	cache := NewLocalClickIdemCache(time.Minute)
 	require.True(t, cache.TryClaim("click-a"))

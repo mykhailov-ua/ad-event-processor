@@ -64,6 +64,7 @@ TTL toDateTime(created_at) + INTERVAL 90 DAY;
 
 CREATE TABLE IF NOT EXISTS fraud_aggregate_spikes (
     subnet_hash FixedString(16),
+    ipv6_prefix String DEFAULT '',
     fraud_reason LowCardinality(String),
     event_count UInt64,
     window_ms UInt32,
@@ -71,7 +72,19 @@ CREATE TABLE IF NOT EXISTS fraud_aggregate_spikes (
 ) ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(created_at)
 ORDER BY (subnet_hash, fraud_reason, created_at)
-TTL toDateTime(created_at) + INTERVAL 90 DAY;
+    TTL toDateTime(created_at) + INTERVAL 90 DAY;
+
+CREATE TABLE IF NOT EXISTS residential_intel_cache (
+    ip_hash FixedString(16),
+    residential_proxy UInt8,
+    vpn UInt8,
+    proxy UInt8,
+    provider LowCardinality(String),
+    cached_at DateTime64(3, 'UTC')
+) ENGINE = MergeTree()
+PARTITION BY toYYYYMM(cached_at)
+ORDER BY (cached_at, ip_hash)
+TTL toDateTime(cached_at) + INTERVAL 90 DAY;
 
 CREATE TABLE IF NOT EXISTS audit_log_rollups (
     rollup_hour DateTime('UTC'),

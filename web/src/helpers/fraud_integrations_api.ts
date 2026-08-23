@@ -13,13 +13,11 @@ export type FraudIntegrationRow = {
   last_error?: string;
 };
 
-
 export async function fetchFraudIntegrations(customerId: string): Promise<FraudIntegrationRow[]> {
   const qs = new URLSearchParams({ customer_id: customerId });
   const res = await api<FraudIntegrationRow[]>(`/api/v1/fraud/integrations?${qs.toString()}`);
   return Array.isArray(res.data) ? res.data : [];
 }
-
 
 export function fraudIntegrationStatusLabel(status: FraudIntegrationHealthStatus): string {
   switch (status) {
@@ -35,7 +33,6 @@ export function fraudIntegrationStatusLabel(status: FraudIntegrationHealthStatus
       return status;
   }
 }
-
 
 export function fraudIntegrationBadgeStatus(
   status: FraudIntegrationHealthStatus

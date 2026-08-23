@@ -38,7 +38,13 @@ type safePageVerifyFingerprint struct {
 	Languages              []string `json:"languages"`
 	WebRTCLocalIP          string   `json:"webrtc_local_ip,omitempty"`
 	WebGLRenderer          string   `json:"webgl_renderer,omitempty"`
+	WebGLVendor            string   `json:"webgl_vendor,omitempty"`
 	Mobile                 bool     `json:"mobile,omitempty"`
+	OuterWidth             int      `json:"outer_width,omitempty"`
+	OuterHeight            int      `json:"outer_height,omitempty"`
+	InnerWidth             int      `json:"inner_width,omitempty"`
+	InnerHeight            int      `json:"inner_height,omitempty"`
+	PluginsLength          int      `json:"plugins_length,omitempty"`
 	CanvasHash             string   `json:"canvas_hash,omitempty"`
 	AudioHash              string   `json:"audio_hash,omitempty"`
 	NotificationPermission string   `json:"notification_permission,omitempty"`
@@ -195,11 +201,12 @@ func (h *AdsPacketHandler) reactTrackVerify(req parsedHTTPRequest, c gnet.Conn, 
 		country, _ = h.trackProc.ingestGeo.GetCountry(ip)
 	}
 	if fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		remoteIP:    ip,
-		country:     country,
-		fingerprint: verifyReq.Fingerprint,
-		events:      verifyReq.Events,
-		nowUnix:     time.Now().Unix(),
+		remoteIP:      ip,
+		country:       country,
+		fingerprint:   verifyReq.Fingerprint,
+		events:        verifyReq.Events,
+		nowUnix:       time.Now().Unix(),
+		behaviorScore: scoreSafePageBehavior(verifyReq.Events),
 	}); fail {
 		landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
 		if !ok {

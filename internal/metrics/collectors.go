@@ -87,6 +87,66 @@ var (
 		Help: "1 while the L1 CIDR table has no published snapshot (L1 fail-open)",
 	})
 
+	IPv4RotationMatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ipv4_rotation_match_total",
+		Help: "L1 IPv4 /24 rotation velocity live blocks on /click",
+	})
+
+	IPv4RotationShadowTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ipv4_rotation_shadow_total",
+		Help: "L1 IPv4 /24 rotation velocity shadow hits (L2 signal only)",
+	})
+
+	OSFingerprintMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_os_fingerprint_mismatch_total",
+		Help: "L2 os_fingerprint_mismatch signals (edge TCP TTL/window vs UA family)",
+	})
+
+	DCASNCheckTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_dc_asn_check_total",
+		Help: "Sampled hot-path DC ASN lookups",
+	})
+
+	DCASNMatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_dc_asn_match_total",
+		Help: "Hot-path DC ASN matches (L2 datacenter_ip signal)",
+	})
+
+	DCASNFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_dc_asn_feed_refresh_total",
+		Help: "DC ASN feed refresh cycles completed",
+	})
+
+	DCASNFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_dc_asn_feed_refresh_errors_total",
+		Help: "DC ASN feed refresh failures",
+	})
+
+	DCASNHotUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_dc_asn_hot_uninitialized",
+		Help: "1 when hot DC ASN snapshot is not loaded",
+	})
+
+	DCASNHotEntries = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_dc_asn_hot_entries",
+		Help: "DC ASN entries in hot-path snapshot",
+	})
+
+	ResidentialProxySignalTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_residential_proxy_signal_total",
+		Help: "L2 residential_proxy farm heuristic signals on hot path",
+	})
+
+	IPv6RotationMatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ipv6_rotation_match_total",
+		Help: "L1 IPv6 /64 rotation velocity live blocks on /click",
+	})
+
+	IPv6RotationShadowTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_ipv6_rotation_shadow_total",
+		Help: "L1 IPv6 /64 rotation velocity shadow hits (L2 signal only)",
+	})
+
 	CIDRLPMPrefixes = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_cidr_lpm_prefixes",
 		Help: "Number of CIDR prefixes in the active L1 snapshot",
@@ -116,6 +176,11 @@ var (
 		Name: "ad_proxy_vpn_lpm_prefixes",
 		Help: "Number of prefixes in the active L1.5 proxy/VPN snapshot",
 	})
+
+	TCPMSSAnomalyTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_tcp_mss_anomaly_total",
+		Help: "L2 TCP MSS anomaly signals on /track (edge high-byte MSS below threshold)",
+	}, []string{"kind"})
 
 	TLSFingerprintMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_tls_fingerprint_match_total",

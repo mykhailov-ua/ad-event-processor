@@ -103,24 +103,44 @@ func main() {
 	}
 
 	var chWrite driver.Conn
-	if scorer != nil && string(cfg.CHDSN) != "" {
+	needCHWrite := scorer != nil || cfg.ExternalResidentialIntelRuntimeEnabled()
+	if needCHWrite && string(cfg.CHDSN) != "" {
 		chWrite, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 		if err != nil {
-			slog.Error("failed to connect to clickhouse write path for shadow scores", "error", err)
+			slog.Error("failed to connect to clickhouse write path", "error", err)
 			os.Exit(1)
 		}
 		defer func() { _ = chWrite.Close() }()
 	}
 
-	snap, err := licensing.LoadDeploymentSnapshot(ctx, pool)
-	if err != nil {
-		slog.Warn("ivt detector: license_status unavailable; continuing with deployment defaults", "error", err)
+	snap, licErr := licensing.LoadDeploymentSnapshot(ctx, pool)
+	if licErr != nil {
+		slog.Warn("ivt detector: license_status unavailable; continuing with deployment defaults", "error", licErr)
 	} else if !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.IvtMLEnabled() }) {
 		slog.Error("ivt_ml_detector module not licensed; exiting")
 		os.Exit(1)
 	}
 
 	rdb := newRedisShard0(cfg)
+
+	var residentialEnricher *fraud.ResidentialIntelEnricher
+	if cfg.ExternalResidentialIntelRuntimeEnabled() {
+		if licErr == nil && !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.ExternalResidentialIntelEnabled() }) {
+			slog.Warn("external residential intel env enabled but SKU gate blocks provider; enricher disabled")
+		} else if rdb != nil {
+			residentialEnricher, err = fraud.NewResidentialIntelEnricherFromConfig(cfg, rdb, chWrite)
+			if err != nil {
+				slog.Error("failed to configure residential intel enricher", "error", err)
+				os.Exit(1)
+			}
+			if residentialEnricher != nil {
+				slog.Info("external residential intel enricher enabled",
+					"feed_dir", cfg.ExternalResidentialIntel.FeedDir,
+					"cache_ttl", cfg.ExternalResidentialIntel.CacheTTL,
+				)
+			}
+		}
+	}
 
 	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, rdb)
 
@@ -139,6 +159,14 @@ func main() {
 
 	if rdb != nil {
 		defer func() { _ = rdb.Close() }()
+	}
+
+	if residentialEnricher != nil {
+		go func() {
+			if enrichErr := residentialEnricher.RunLoop(ctx); enrichErr != nil && !errors.Is(enrichErr, context.Canceled) {
+				slog.Error("residential intel enricher stopped with error", "error", enrichErr)
+			}
+		}()
 	}
 
 	if err := detector.RunLoop(ctx); err != nil && !errors.Is(err, context.Canceled) {

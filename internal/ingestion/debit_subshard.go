@@ -48,3 +48,11 @@ func budgetQuotaKeyForDebit(campaignID uuid.UUID, subSlot int) string {
 	}
 	return domain.BudgetQuotaKeySub(campaignID, subSlot)
 }
+
+func fcapKeyPrefixForDebit(camp *domain.Campaign, userID, clickID string) string {
+	if camp == nil {
+		return ""
+	}
+	sub := debitSubSlot(camp, userID, clickID)
+	return domain.FcapKeyPrefixSub(camp.ID, camp.BrandFcapKey, sub)
+}

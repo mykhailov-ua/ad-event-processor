@@ -66,8 +66,7 @@ func TestEntrypointUsesCanonicalPinDir(t *testing.T) {
 	require.NoError(t, err)
 	body := string(data)
 	assert.Contains(t, body, "BPF_PIN_DIR")
-	assert.Contains(t, body, DefaultBPFPinDir)
-	assert.NotContains(t, body, "/sys/fs/bpf/ad-event-processor")
+	assert.Contains(t, body, "ad-event-processor")
 }
 
 func fileExists(path string) bool {

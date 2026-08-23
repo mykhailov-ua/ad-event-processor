@@ -116,6 +116,13 @@ func (f *UnifiedFilter) applyGoTTC(evt *domain.Event) {
 		return
 	}
 	failClosed := f.ttcFailClosedAny == oneAny
+	if !failClosed && f.registry != nil {
+		if camp, ok := f.getCampaign(evt); ok && camp != nil {
+			if domain.ResolveAttestationMode(camp.AttestationMode, camp.AttestationEnabled).RequiresProbe() {
+				failClosed = true
+			}
+		}
+	}
 	switch f.localTTC.CheckClick(evt.CampaignID, evt.UserID, minMs, failClosed) {
 	case localTTCLow:
 		addFraudSignal(evt, FraudReasonLowTTC)

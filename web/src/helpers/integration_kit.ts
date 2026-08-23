@@ -1,18 +1,14 @@
-
-
-
 export function normalizeTrackingHost(domain: string): string {
   return String(domain || '')
-    .replace(/^https?:\/\    .replace(/\/+$/, '')
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/+$/, '')
     .trim();
 }
-
 
 export function buildTrackPostbackURL(trackingDomain: string): string {
   const host = normalizeTrackingHost(trackingDomain) || 'track.example';
   return `https://${host}/track`;
 }
-
 
 export function buildInboundS2SBodyTemplate(campaignId: string): string {
   return [
@@ -30,7 +26,6 @@ export function buildInboundS2SBodyTemplate(campaignId: string): string {
   ].join('\n');
 }
 
-
 export function buildInboundS2SCurl(trackURL: string, campaignId: string): string {
   const body = JSON.stringify({
     campaign_id: campaignId,
@@ -40,7 +35,6 @@ export function buildInboundS2SCurl(trackURL: string, campaignId: string): strin
   });
   return `curl -sS -X POST '${trackURL}' -H 'Content-Type: application/json' -H 'Content-Length: ${body.length}' -d '${body}'`;
 }
-
 
 export function trafficGuideSummary(): string {
   return [

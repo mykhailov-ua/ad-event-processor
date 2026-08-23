@@ -48,8 +48,36 @@ jobs:
               - 'docker-compose*.yaml'
               - 'Dockerfile*'
 
+  merge-lint:
+    name: Gate · merge-lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+      - name: Lint Go (golangci-lint, full repository)
+        env:
+          LINT_STRICT: "1"
+        run: bash scripts/ci/lint_go_gate.sh all
+      - name: Vet Go packages
+        run: go vet ./...
+      - name: Lint Go (gopls check, warning+)
+        run: bash scripts/ci/lint_gopls_gate.sh
+      - name: Lint Lua (luacheck + lua-language-server)
+        run: bash scripts/ci/lint_lua_gate.sh
+      - name: Lint TypeScript/JavaScript (tsc)
+        run: bash scripts/ci/lint_ts_gate.sh
+      - name: Lint configs (compose + nginx)
+        run: bash scripts/ci/lint_configs_gate.sh
+
   merge-pr-fast:
     name: Gate · merge-pr-fast
+    needs: merge-lint
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -63,7 +91,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: PR fast checks (lint, alloc, unit -short, admin web)
+      - name: PR fast checks (alloc, unit -short, admin web; lint in merge-lint)
+        env:
+          SKIP_LINT: "1"
         run: bash scripts/ci/pr_fast.sh
 
   merge-race-short:

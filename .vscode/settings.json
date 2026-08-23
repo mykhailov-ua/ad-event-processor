@@ -1,0 +1,12 @@
+{
+  "yaml.customTags": [
+    "!override tag:yaml.org,2002:override",
+    "!reset tag:yaml.org,2002:reset"
+  ],
+  "yaml.schemas": {
+    "https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json": [
+      "docker-compose*.yaml",
+      "deploy/compose/*.yaml"
+    ]
+  }
+}

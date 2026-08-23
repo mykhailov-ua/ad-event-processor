@@ -17,11 +17,9 @@ export type FraudMlHealthPayload = {
 const PROXY_LABEL_DISCLAIMER =
   'Shadow precision is estimated on proxy labels, not human-audited ground truth.';
 
-
 export function fraudProxyLabelDisclaimer(): string {
   return PROXY_LABEL_DISCLAIMER;
 }
-
 
 export function mlEvalBadgeStatus(status?: MlEvalStatus): 'ok' | 'warning' | 'failed' | 'pending' {
   switch (status) {
@@ -37,7 +35,6 @@ export function mlEvalBadgeStatus(status?: MlEvalStatus): 'ok' | 'warning' | 'fa
   }
 }
 
-
 export function mlEvalStatusLabel(status?: MlEvalStatus): string {
   switch (status) {
     case 'healthy':
@@ -52,7 +49,6 @@ export function mlEvalStatusLabel(status?: MlEvalStatus): string {
       return 'Unknown';
   }
 }
-
 
 export function formatMlEvalAge(
   generatedAt?: string,
@@ -79,7 +75,6 @@ export function formatMlEvalAge(
     warning: ageHours > warningHours,
   };
 }
-
 
 export function formatShadowPrecision(value?: number): string {
   if (value == null || value <= 0) return '—';

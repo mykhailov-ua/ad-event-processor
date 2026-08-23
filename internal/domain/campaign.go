@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,6 +94,7 @@ type Campaign struct {
 	SafePageURL        string
 	SafePageEnabled    bool
 	AttestationEnabled bool
+	AttestationMode    AttestationMode
 	AttestationTTLSec  int32
 	DmrEnabled         bool
 
@@ -101,6 +103,8 @@ type Campaign struct {
 	L15ProxyVPNBlockEnabled bool
 
 	TLSFingerprintBlockEnabled bool
+
+	SocialInAppEnabled bool
 
 	ConnTypePolicy ConnTypePolicy
 
@@ -161,16 +165,30 @@ const (
 	FraudPresetConservative = "conservative"
 	FraudPresetBalanced     = "balanced"
 	FraudPresetAggressive   = "aggressive"
+	FraudPresetGrayMarket   = "gray_market"
+	FraudPresetSocialInApp  = "social_in_app"
 )
 
+func IsGrayMarketFraudPreset(name string) bool {
+	return strings.EqualFold(strings.TrimSpace(name), FraudPresetGrayMarket)
+}
+
+func IsSocialInAppFraudPreset(name string) bool {
+	return strings.EqualFold(strings.TrimSpace(name), FraudPresetSocialInApp)
+}
+
 func ResolveFraudPreset(name string) (pass, suspect, ivt, block uint8, ok bool) {
-	switch name {
+	switch strings.ToLower(strings.TrimSpace(name)) {
 	case FraudPresetConservative:
 		return 40, 70, 90, 100, true
 	case FraudPresetBalanced:
 		return DefaultFraudThresholdPass, DefaultFraudThresholdSuspect, DefaultFraudThresholdIVT, DefaultFraudThresholdBlock, true
 	case FraudPresetAggressive:
 		return 20, 45, 65, 85, true
+	case FraudPresetGrayMarket:
+		return 20, 45, 65, 85, true
+	case FraudPresetSocialInApp:
+		return DefaultFraudThresholdPass, DefaultFraudThresholdSuspect, DefaultFraudThresholdIVT, DefaultFraudThresholdBlock, true
 	default:
 		return 0, 0, 0, 0, false
 	}

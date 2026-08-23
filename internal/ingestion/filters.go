@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
 	"github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe"
+	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
@@ -82,7 +84,15 @@ func unsafeString(b []byte) string {
 }
 
 type FraudFilter struct {
-	geo GeoProvider
+	geo        GeoProvider
+	dcASN      *DCASNTable
+	asnLookup  ASNLookup
+	sampleSeq  atomic.Uint64
+	sampleMask uint64
+}
+
+type ASNLookup interface {
+	LookupASN(ip string) (uint32, bool)
 }
 
 func NewFraudFilter(geo GeoProvider) *FraudFilter {
@@ -91,12 +101,49 @@ func NewFraudFilter(geo GeoProvider) *FraudFilter {
 	}
 }
 
+func (f *FraudFilter) ConfigureDCASN(table *DCASNTable, lookup ASNLookup, sampleMaskCfg int) {
+	if f == nil {
+		return
+	}
+	f.dcASN = table
+	f.asnLookup = lookup
+	if sampleMaskCfg == 0 {
+		f.sampleMask = dcASNCheckSampleMask
+	} else {
+		f.sampleMask = histogramSampleMaskFromConfig(sampleMaskCfg)
+	}
+}
+
 func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
+	if evt == nil {
+		return nil
+	}
 	isAnon, err := f.geo.IsAnonymous(evt.IP)
 	if err == nil && isAnon {
 		addFraudSignal(evt, FraudReasonDatacenterIP)
 	}
+	f.checkDCASN(evt)
 	return nil
+}
+
+const dcASNCheckSampleMask = 7
+
+func (f *FraudFilter) checkDCASN(evt *domain.Event) {
+	if f == nil || f.dcASN == nil || f.asnLookup == nil || !f.dcASN.Ready() || evt.IP == "" {
+		return
+	}
+	if !shouldSampleHistogram(f.sampleSeq.Add(1), f.sampleMask) {
+		return
+	}
+	metrics.DCASNCheckTotal.Inc()
+	asn, ok := f.asnLookup.LookupASN(evt.IP)
+	if !ok {
+		return
+	}
+	if f.dcASN.IsDatacenter(asn) {
+		metrics.DCASNMatchTotal.Inc()
+		addFraudSignal(evt, FraudReasonDatacenterIP)
+	}
 }
 
 type GeoFilter struct {
@@ -279,6 +326,9 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 
 	var retErr error
 	for _, f := range e.filters {
+		if f == nil {
+			continue
+		}
 		if filterDeadlineExceededEvt(evt, ctx) {
 			retErr = ErrFilterTimeout
 			break

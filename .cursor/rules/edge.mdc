@@ -1,22 +1,69 @@
 ---
-description: Nginx/OpenResty edge, Lua DFA, XDP BPF sync
-globs: deploy/nginx/**, deploy/edge/**, internal/edge/**, cmd/edge-xdp/**
+description: Nginx/OpenResty edge, Lua DFA, tracker alignment, XDP BPF sync
+globs: deploy/nginx/**, deploy/edge/**, internal/edge/**, cmd/edge-xdp/**, cmd/edge-bpf-sync/**
 alwaysApply: false
 ---
 
-Edge: OpenResty/nginx ingress + optional XDP L4 filter. Compliance map policy: `compliance.mdc`.
+Edge: OpenResty/nginx ingress + optional XDP L4 filter. Compliance map policy: `compliance.mdc`. Parser alignment: `docs/PARSER.md`, `hot-path.mdc`.
 
-Listeners: :8180 HTTP/1.1; :443 H2/H3/H1.1 ALPN. Dev certs: `deploy/nginx/certs/generate-dev-certs.sh`.
+## Listeners
 
-L7 (`access-check.lua`): rate limit, circuit breaker, blacklist cache, body DFA (`edge-parse-dfa.lua`), per-campaign RL, proxy to tracker pool.
+- :8180 HTTP/1.1
+- :443 H2/H3/H1.1 ALPN
+- Dev certs: `deploy/nginx/certs/generate-dev-certs.sh`
+- Perimeter timeouts: `client_body_timeout` / `client_header_timeout` **5s**
 
-`TRACKER_INGRESS_SCHEMA` must match tracker config:
+## L7 pipeline (`access-check.lua`)
 
-- `openrtb_3` (default): edge reads `request.item[0].id`
-- native track: edge scans `campaign_id` — tracker `ParseTrackRequestJSON*` / vtproto
+Rate limit -> circuit breaker -> blacklist cache -> body DFA (`edge-parse-dfa.lua`) -> per-campaign RL -> proxy to tracker pool (:8181-8184).
 
-Shard selection must match Go `StaticSlotSharder`: `slot = crc32(campaign_id) & 1023` -> `slot_table[slot]`.
+## Tracker ingress schema (`TRACKER_INGRESS_SCHEMA`)
 
-XDP: deny maps synced control outbox -> Redis shard-0 -> `cmd/edge-bpf-sync` -> `/sys/fs/bpf/`. Attach via `cmd/edge-xdp`. Control never writes kernel maps directly.
+Must match tracker config:
 
-Related: `compliance.mdc`, `data-layer.mdc` shard-0 notes.
+| Mode | Edge behavior | Tracker parse |
+| :--- | :--- | :--- |
+| `openrtb_3` (default) | Read `request.item[0].id` | OpenRTB path |
+| native track | Scan `campaign_id` in body | `ParseTrackRequestJSON*` / vtproto |
+
+## POST /track edge-tracker parity (mandatory)
+
+| Rule | Edge (`edge-phase2.lua`) | Tracker (`http1TrackEdgePolicy`) |
+| :--- | :---: | :---: |
+| `Content-Length` required | yes | yes |
+| Chunked rejected | yes | yes |
+| Duplicate/obfuscated `TE` rejected | yes | yes |
+
+Chunked allowed on `POST /openrtb/bid` only.
+
+Verify: `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet` — `differential_count=0`.
+
+Implementation pairs: `http1TrackEdgePolicy` <-> `deploy/nginx/lua/edge-phase2.lua`; `http1IngressCanonical` for differential tests.
+
+## Shard selection (must match Go)
+
+```
+slot  = crc32(campaign_id) & 1023
+shard = slot_table[slot]
+```
+
+`edge-slot-map.lua` uses same Castagnoli CRC32C table as `sharding_amd64.s` / Go fallback. Control pushes slot table via outbox -> Redis shard 0 -> edge reload.
+
+## GET /click
+
+- Query-only; strict UUID `campaign_id`.
+- Gate: `EDGE_EXPOSE_CLICK` (404 when off on edge).
+- Tracker serves redirect on :8181-8184 regardless of edge flags.
+
+## XDP (optional enterprise)
+
+- Deny maps: control outbox -> Redis shard 0 -> `cmd/edge-bpf-sync` -> `/sys/fs/bpf/`.
+- Attach: `cmd/edge-xdp`. Control never writes kernel maps directly.
+- Decision path < 10 us; silent drop at NIC (no HTTP body for blocked IPs).
+- Requires BTF, modern kernel. Not a substitute for L7 parser budgets.
+
+## Tarpit
+
+`EDGE_TARPIT_ENABLED=true` on nginx edge only; capped duration; never on billing/settlement paths.
+
+Related: `compliance.mdc`, `data-layer.mdc`, `hot-path.mdc`, `docs/XDP.md`.

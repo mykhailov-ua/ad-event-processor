@@ -17,7 +17,14 @@ function _M.body_filter()
         if not ngx.ctx.safe_body then
             local cid = ngx.ctx.campaign_id or ""
             local res = ngx.location.capture("/safe_page_content", {
+                method = ngx.HTTP_GET,
+                body = "",
+                ctx = {},
+                vars = {},
                 args = { campaign_id = cid },
+                copy_all_vars = false,
+                share_all_vars = false,
+                always_forward_body = false,
             })
             if res.status == 200 and res.body and res.body ~= "" then
                 ngx.ctx.safe_body = res.body

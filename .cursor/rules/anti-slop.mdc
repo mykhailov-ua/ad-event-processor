@@ -1,0 +1,120 @@
+---
+description: AI slop gates, test honesty, UI product honesty, bench truth
+alwaysApply: true
+---
+
+Agents must not ship plausible-but-wrong code. Slop = code that compiles, looks idiomatic, and fails CI or operator trust. Remediation: `docs/CI.md` (Static Gates), `docs/UI.md` (Anti-slop).
+
+## Lie modes (never)
+
+- Wrong naming vs `docs/NAMING.md` or existing symbols.
+- Wrong types: sqlc row field vs DTO `json` tag mismatch.
+- Plausible logic that fails edge cases (parser budgets, budget invariant, idempotency).
+- Weakened tests to green CI without fixing behavior.
+- Claiming tests/benchmarks pass without running them.
+- Citing mock-bench ns/op as production `/track` p99 SLA.
+- Inventing env, generated artifacts, BPF reports, or benchmark output.
+
+## Go production slop (`scripts/ci/anti_slop_gate.sh`)
+
+Scope: `internal/controlplane`, `internal/ingestion`, `internal/payment`, `pkg/`.
+
+| Pattern | Why banned |
+| :--- | :--- |
+| Bare `t.Skip()` | Hides missing coverage |
+| `t.Skip("skipping integration test")` without `integration:` prefix | Gate cannot distinguish real skip |
+| `testing.Short()` skip without `integration:` in reason | Same |
+| `testing.Testing()` in non-test `.go` | Test hook in prod |
+| `os.Getenv("CI")` branch in prod | Environment-specific behavior |
+| `_ = json.Unmarshal` / `_ = w.Write` in `*_handlers.go`, `outbox_*.go` | Silent handler failures |
+| `nolint:errcheck` without ticket | Permanent error swallow |
+| `BenchmarkUnifiedFilter_Check` (unqualified) | Must be `_mock` — uses mock Redis |
+| `httptest.NewServer` in package that also uses testcontainers for DB | Fake infra when real PG/Redis required |
+
+Run: `bash scripts/ci/anti_slop_gate.sh` (in `pr_fast.sh`).
+
+## Integration test slop (`scripts/ci/integration_test_slop_gate.sh`)
+
+Every `*_integration_test.go` must:
+
+1. Guard with `testing.Short()` and skip reason containing `integration:`.
+2. Call a real infra helper (`testutil.SetupPostgres`, `SetupRedis`, `setupTestDB`, etc.).
+3. Contain behavioral assertions (`require.*` / `assert.*`).
+4. Never use `testify/mock`, `gomock`, or bare `t.Skip()`.
+5. Never leave scaffold placeholders (`scaffold_test: add a held-out negative assertion`, `integration scaffold must exercise real Postgres` only).
+
+Run: `bash scripts/ci/integration_test_slop_gate.sh`.
+
+## Hot-path static slop (`hot_path_static_gate.sh`, `lint_go_hotpath_forbid_gate.sh`, `escape_heap_gate.sh`)
+
+Files: `handler.go`, `handler_http*.go`, `filter*.go`, `filters.go`, `internal/rtb/*.go`.
+
+Banned in hot request path:
+
+- `fmt.Sprintf`, `interface{}` boxing, `context.WithValue`
+- `context.WithTimeout` / `context.WithCancel` in request-path sources and `internal/domain` (except allowlisted cold broker/store files)
+
+New heap escapes above baseline or in changed hot files fail `escape_heap_gate.sh`. After edits run `make test-alloc-gate`.
+
+## Cold-path static slop (`cold_path_static_gate.sh`, `cold_path_json_gate.sh`)
+
+- No `KEYS`, `FLUSHALL`, `FLUSHDB` in prod Go.
+- No new O(N) DB-in-loop patterns in changed controlplane/payment/ledger files (QueryRow per row in `for range`).
+- Body limits via `pkg/coldpath`: `DefaultMaxBody=64KiB`; handlers use `ReadLimitedBody` / `DecodeRequestOrBadRequest` — not raw `io.ReadAll`.
+
+Run: `bash scripts/ci/cold_path_static_gate.sh`; `go test ./pkg/coldpath/ -run TestReadLimitedBody`.
+
+## Bench honesty
+
+| Benchmark | Truth |
+| :--- | :--- |
+| `BenchmarkUnifiedFilter_Check_mock` | Mock Redis; Go wrapper only |
+| `BenchmarkLuaScript_Happy` | Needs testcontainers + `run_bench.sh` |
+| `BenchmarkAdsPacketHandlerProto` | No live filter chain |
+| `BenchmarkFilterFraudBoost` | Snapshot only; not LGBM |
+| `BenchmarkLGBMScorer_ScoreBatch10k` | Cold path (`internal/fraud`) only |
+
+Tracker p95/p99 SLA = load test / Prometheus (`malformed.sh`, `parser_chaos_load.sh`), not unit microbenches.
+
+## Admin UI slop (`check_ui_slop.sh`, `report_live_routes_gate.sh`)
+
+Forbidden in shipped `web/src/views`:
+
+- `(skeleton)` in user-visible copy
+- "not fully available yet" / "Skeleton shows expected"
+- Empty table blaming user to "connect API"
+- `live: true` on route without real `/api/v1` backend
+- Fetch then always empty table; `catch` -> empty with no error UI
+- "Saved" toast before 2xx; form fields not in Go DTO
+- Hardcoded demo KPIs; echoing secrets/tokens after save
+
+Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on errors; `apiConfirmed` on mutations; `npm run typecheck`; `bash scripts/ci/admin_web.sh` before claiming UI done.
+
+## Code slop patterns (no dedicated gate — still reject)
+
+- Provider/Factory/Strategy interfaces with one implementation (`cold-path.mdc`).
+- Repository interface over sqlc when `db.Queries` suffices.
+- `map[string]any` JSON builders on cold path.
+- Parallel Entity/Model/View/DTO for same table.
+- `defer` in hot-path loops; closures capturing per-request state on `/track`.
+- Dynamic Prometheus label values built per request in filter loops.
+- Importing `internal/fraud` scoring into tracker ingest.
+- Postgres/ClickHouse/outbox side effects inside `processTrack()` or filter `Check`.
+- Hand-editing `*.pb.go`, `*.sql.go`, bpf2go output.
+- Docs-only commits without code in the same changeset (`core.mdc`).
+
+## Fault and chaos proof slop
+
+- `fault_proof gap=open` without follow-up test or explicit PR waiver.
+- Chaos tests that pass only because chaos pct is 0.
+- Parser security change without `TestChaos_CrossHop_NginxGnet` differential_count=0.
+- New hot-path write path without fault proof (`fault-tests.mdc`).
+
+## Agent checklist before "done"
+
+1. Every new symbol resolves (`go build` / `go test -c`).
+2. Hot path does not import cold fraud scoring.
+3. Paste command + package path for verification runs actually executed.
+4. Explain why scripts/tests changed.
+5. Add a test that fails without the change when behavior is non-obvious.
+6. Run `bash scripts/ci/pr_fast.sh` scope appropriate to touched packages.

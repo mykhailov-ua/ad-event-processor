@@ -16,6 +16,7 @@ import (
 type BlacklistBlocker interface {
 	BlockIP(ctx context.Context, ip string) error
 	EnqueueFraudThreat(ctx context.Context, action string, ip string, campaignID string, score float64, boost int32, ttlSeconds int64) error
+	EnqueueFraudThreatBatch(ctx context.Context, items []FraudThreatEnqueueItem) (int, error)
 }
 
 const blacklistSourceFraud = "fraud"
@@ -84,28 +85,33 @@ func (client *ControlplaneClient) BlockIP(ctx context.Context, ip string) error 
 }
 
 func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
+	_, err := client.EnqueueFraudThreatBatch(ctx, []FraudThreatEnqueueItem{{
+		Action:     action,
+		IP:         ip,
+		CampaignID: campaignID,
+		Score:      score,
+		Boost:      boost,
+		TTLSeconds: ttlSeconds,
+	}})
+	return err
+}
+
+func (client *ControlplaneClient) EnqueueFraudThreatBatch(ctx context.Context, items []FraudThreatEnqueueItem) (int, error) {
 	if client == nil {
-		return fmt.Errorf("management client: nil receiver")
+		return 0, fmt.Errorf("management client: nil receiver")
 	}
-	if action == "" || campaignID == "" {
-		return fmt.Errorf("invalid fraud threat request")
+	if len(items) == 0 {
+		return 0, fmt.Errorf("invalid fraud threat batch request")
 	}
 
-	body, err := json.Marshal(map[string]any{
-		"action":      action,
-		"ip":          ip,
-		"campaign_id": campaignID,
-		"score":       score,
-		"boost":       boost,
-		"ttl_seconds": ttlSeconds,
-	})
+	body, err := json.Marshal(fraudThreatBatchRequest{Items: items})
 	if err != nil {
-		return fmt.Errorf("marshal fraud threat request: %w", err)
+		return 0, fmt.Errorf("marshal fraud threat batch request: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, client.baseURL+"/api/v1/ops/fraud-threat", bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("build fraud threat request: %w", err)
+		return 0, fmt.Errorf("build fraud threat batch request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Admin-API-Key", client.apiKey)
@@ -113,7 +119,7 @@ func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
 		coldpath.CloseHTTPResponse(resp)
-		return fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
+		return 0, fmt.Errorf("%w: %w", ErrManagementUnavailable, err)
 	}
 	defer func() {
 		_, _ = io.Copy(io.Discard, resp.Body)
@@ -121,12 +127,12 @@ func (client *ControlplaneClient) EnqueueFraudThreat(ctx context.Context, action
 	}()
 
 	if resp.StatusCode == http.StatusOK {
-		return nil
+		return len(items), nil
 	}
 
 	payload, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	if readErr != nil {
-		return fmt.Errorf("%w: status=%d read body: %w", ErrManagementUnavailable, resp.StatusCode, readErr)
+		return 0, fmt.Errorf("%w: status=%d read body: %w", ErrManagementUnavailable, resp.StatusCode, readErr)
 	}
-	return fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
+	return 0, fmt.Errorf("%w: status=%d body=%s", ErrManagementUnavailable, resp.StatusCode, strings.TrimSpace(string(payload)))
 }

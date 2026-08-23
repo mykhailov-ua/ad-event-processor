@@ -33,13 +33,13 @@ Commit policy
 
 Rules (flat `.cursor/rules/`)
 
-- `core.mdc`, `quality.mdc` — always on.
+- `core.mdc`, `quality.mdc`, `anti-slop.mdc` — always on.
 - `code-style.mdc` — layout, types, sqlc, proto, PR gates.
-- `hot-path.mdc` — `/track`, gnet, filters, 0 allocs.
-- `cold-path.mdc` — admin, payment, ledger, notify; no Provider/Factory layers.
+- `hot-path.mdc` — `/track`, parsers, gnet, SoA, asm, filters, 0 allocs.
+- `cold-path.mdc` — admin, payment, ledger, notify; flat handlers, pkg/coldpath.
 - `data-layer.mdc` — Redis StaticSlot, Postgres, ClickHouse.
 - `boundaries.mdc` — `cmd/*` ownership and imports.
 - `control-plane.mdc` — outbox, workers, admin API.
-- `rtb.mdc`, `edge.mdc`, `compliance.mdc`, `fault-tests.mdc`, `load-test-bpf.mdc`.
+- `rtb.mdc`, `edge.mdc`, `compliance.mdc`, `fault-tests.mdc`, `testing.mdc`, `load-test-bpf.mdc`.
 
-Precedence: `core.mdc` on SLA and repo policy; `hot-path.mdc` on ingest; `cold-path.mdc` on notify/payment/ledger/controlplane; `code-style.mdc` on structure; `boundaries.mdc` on imports.
+Precedence: `core.mdc` on SLA and repo policy; `anti-slop.mdc` on CI honesty and test/UI gates; `testing.mdc` on test taxonomy, holdouts, edge-case matrix; `hot-path.mdc` on ingest; `cold-path.mdc` on notify/payment/ledger/controlplane; `code-style.mdc` on structure; `boundaries.mdc` on imports.

@@ -39,6 +39,33 @@ function _M.record_and_forward()
     if tls_ja4 and tls_ja4 ~= "" then
         ngx.req.set_header("X-TLS-JA4", tls_ja4)
     end
+
+    local tcp_fp_cache = ngx.shared.tcp_fp_cache
+    local remote = ngx.var.remote_addr
+
+    local mss = ngx.ctx.tcp_mss
+    if not mss and tcp_fp_cache then
+        mss = tcp_fp_cache:get(remote)
+    end
+    if mss then
+        ngx.req.set_header("X-TCP-MSS", tostring(mss))
+    end
+
+    local ttl = ngx.ctx.tcp_ttl
+    if not ttl and tcp_fp_cache then
+        ttl = tcp_fp_cache:get("t:" .. remote)
+    end
+    if ttl then
+        ngx.req.set_header("X-TCP-TTL", tostring(ttl))
+    end
+
+    local win = ngx.ctx.tcp_window
+    if not win and tcp_fp_cache then
+        win = tcp_fp_cache:get("w:" .. remote)
+    end
+    if win then
+        ngx.req.set_header("X-TCP-WINDOW", tostring(win))
+    end
 end
 
 return _M

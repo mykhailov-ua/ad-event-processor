@@ -195,8 +195,7 @@ func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-test",
 	}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
-	defer svc.Close()
+	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
 
 	ctx := context.Background()
 	queries := db.New(pool)

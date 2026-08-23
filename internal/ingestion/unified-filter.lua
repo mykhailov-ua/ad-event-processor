@@ -45,11 +45,6 @@ if client_ip ~= "" and KEYS[1] and KEYS[1] ~= "fcap:ignored" and redis_call("SIS
     fraud_list_hit = true
 end
 
-local placement_id = ARGV[32] or ""
-if placement_id ~= "" and KEYS[19] and KEYS[19] ~= "fcap:ignored" and redis_call("HEXISTS", KEYS[19], placement_id) == 1 then
-    return 14
-end
-
 local max_rpd = tonumber(ARGV[33]) or 0
 if max_rpd > 0 and KEYS[18] and KEYS[18] ~= "fcap:ignored" then
     local ingress = redis_call("INCR", KEYS[18])

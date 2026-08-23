@@ -7,7 +7,7 @@ Single-word index for `docs/`. Engineering stack id: **ad-event-processor** — 
 | Role | Read first |
 | :--- | :--- |
 | **Operator / on-prem** | [START.md](START.md) then [LICENSE.md](LICENSE.md) |
-| **Developer** | [DEVELOPMENT.md](DEVELOPMENT.md) then [ARCHITECTURE.md](ARCHITECTURE.md) |
+| **Developer** | [DEVELOPMENT.md](DEVELOPMENT.md) then [ARCHITECTURE.md](ARCHITECTURE.md), [TRADEOFFS.md](TRADEOFFS.md) |
 | **Buyer / integrator** | [TRAFFIC.md](TRAFFIC.md) |
 | **CI / merge gates** | [CI.md](CI.md) |
 
@@ -27,6 +27,7 @@ Single-word index for `docs/`. Engineering stack id: **ad-event-processor** — 
 | [SHARDING.md](SHARDING.md) | Shard 0 failure matrix |
 | [START.md](START.md) | Single-VPS installer |
 | [TRAFFIC.md](TRAFFIC.md) | `/click`, `/track`, CAPI, macros |
+| [TRADEOFFS.md](TRADEOFFS.md) | Architecture trade-offs, rejected alternatives |
 | [TRIAL.md](TRIAL.md) | Pilot repeat-trial policy |
 | [UI.md](UI.md) | Admin tokens, templates, anti-slop |
 | [XDP.md](XDP.md) | Enterprise NIC-level XDP |

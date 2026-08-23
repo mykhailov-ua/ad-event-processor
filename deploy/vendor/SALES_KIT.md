@@ -99,7 +99,28 @@ Starter is priced above Keitaro on purpose: filters non-payers and funds real su
 | Telegram vendor support | 48h | 24h | 12h | SLA chat |
 | `ivt_ml` / fraud-scorer | — | optional | ✓ | ✓ |
 | eBPF XDP edge | blocked | blocked | blocked | Enterprise only |
+| External residential intel (cold) | blocked | blocked | ✓ (JWT) | ✓ (JWT) |
 | Quoted limits (sales) | 10k RPS, 1 host | 25k RPS, 1 host | 75k RPS, 3 hosts | custom |
+
+## Antifraud capability matrix (shipped vs backlog)
+
+Sales-facing map of **what runs today** vs SKU gates. Backlog IDs = repo [BACKLOG.md](../../BACKLOG.md) (do not promise unshipped rows).
+
+| Capability | Shipped | Backlog | SKU / config gate |
+| :--- | :---: | :--- | :--- |
+| IPv6 edge LPM + `/click` rotation velocity | ✓ | P2-1 – P2-3 | Tracker env `IPV6_ROTATION_*`; edge XDP IPv6 maps |
+| Residential proxy hot ring | ✓ | P3-1 – P3-6 | `RESIDENTIAL_PROXY_HOT_ENABLED` |
+| External residential intel (cold enricher) | ✓ | P3-* | `external_residential_intel` JWT; Scale+ |
+| Safe page + L2 attestation + headless signals | ✓ | P4-1 – P4-4 | Campaign `safe_page_*`, `attestation_*` |
+| Social in-app WebView (FB/TikTok/IG) | ✓ | P5-1 – P5-3 | Preset `social_in_app`; TLS allowlist feed |
+| Local quanta full-skip (0 sync Lua) | ✓ | P6-1 | `LOCAL_QUOTA_MODE=live` + ledger credit |
+| Lua placement/RPD precheck in Go | ✓ | P6-2 | UnifiedFilter + EntitlementsFilter |
+| XDP blocklist incremental sync (500k+) | ✓ | P6-4 | `ebpf_xdp_edge` Enterprise only |
+| Budget/fcap sub-shards (hot campaigns) | ✓ | P6-5 | `BehaviorHighVolumeDebit` on campaign |
+| `ivt_ml_detector` batch rules + ML boost | ✓ | — | Scale+ JWT (`ivt_ml_detector`, `ml_fraud_boost`) |
+| eBPF NIC drop | ✓ | P6-4 | Enterprise JWT (`ebpf_xdp_edge`) |
+
+**Not sold as unlimited QPS:** license enforces `max_rps` per tier; 100k+ QPS requires Scale/Network sizing + load proof (see BACKLOG Phase 6 verify), not mock benches.
 
 ## Pilot → paid (GTM)
 

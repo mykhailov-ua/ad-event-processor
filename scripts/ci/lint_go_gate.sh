@@ -26,7 +26,7 @@ lint_extra_args() {
   if [[ "${LINT_STRICT:-}" == "1" ]]; then
     return 0
   fi
-  if [[ "${CI:-}" == "true" || "${LINT_NEW_FROM_REV:-}" == "1" ]]; then
+  if [[ "${LINT_INCREMENTAL:-}" == "1" || "${LINT_NEW_FROM_REV:-}" == "1" ]]; then
     if git rev-parse --verify origin/main > /dev/null 2>&1; then
       out+=(--new-from-rev=origin/main)
     fi

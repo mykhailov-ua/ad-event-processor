@@ -185,7 +185,7 @@ func TestAcceptLocalQuantaFullSkip_ZeroAlloc(t *testing.T) {
 	const amount = int64(10_000)
 	allocs := testing.AllocsPerRun(100, func() {
 		ledger.Credit(campID, amount, testQuotaChunkMicro)
-		_ = f.acceptLocalQuantaFullSkip(evt, camp, amount, 0)
+		_ = f.acceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
 	})
 	if allocs != 0 {
 		t.Fatalf("acceptLocalQuantaFullSkip allocs = %v, want 0", allocs)

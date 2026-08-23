@@ -5,11 +5,6 @@ ad_event_processor_go_bin() {
     printf '%s' "${AD_EVENT_PROCESSOR_GO_BIN}"
     return 0
   fi
-  if [[ -n "${AD_EVENT_PROCESSOR_GO_BIN:-}" && -x "${AD_EVENT_PROCESSOR_GO_BIN}" ]]; then
-    printf 'ad-event-processor-go: WARN: AD_EVENT_PROCESSOR_GO_BIN is deprecated; use AD_EVENT_PROCESSOR_GO_BIN\n' >&2
-    printf '%s' "${AD_EVENT_PROCESSOR_GO_BIN}"
-    return 0
-  fi
   local go_bin=""
   go_bin="$(command -v go 2> /dev/null || true)"
   if [[ -z "$go_bin" && -x /usr/local/go/bin/go ]]; then
@@ -44,7 +39,3 @@ ad_event_processor_go_build() {
   fi
   "$go_bin" build "$@"
 }
-
-ad_event_processor_go_bin() { ad_event_processor_go_bin; }
-ad_event_processor_go_run() { ad_event_processor_go_run "$@"; }
-ad_event_processor_go_build() { ad_event_processor_go_build "$@"; }

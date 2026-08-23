@@ -27,6 +27,19 @@ func parsePatchAttestationTTLSec(raw *int32) (int32, bool, error) {
 	return v, true, nil
 }
 
+func parsePatchAttestationMode(raw *string) (domain.AttestationMode, bool, error) {
+	if raw == nil {
+		return domain.AttestationModeOff, false, nil
+	}
+	mode := domain.ParseAttestationMode(*raw)
+	switch mode {
+	case domain.AttestationModeOff, domain.AttestationModeLight, domain.AttestationModeStrict:
+		return mode, true, nil
+	default:
+		return domain.AttestationModeOff, false, errValidation("attestation_mode must be off, light, or strict")
+	}
+}
+
 func parsePatchConnTypePolicy(raw *string) (string, bool, error) {
 	if raw == nil {
 		return "", false, nil

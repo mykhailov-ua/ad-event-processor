@@ -143,14 +143,15 @@ func genEntitlements(t *rapid.T) licensing.Entitlements {
 			MaxExportChunkBytes: genLimit(t, "max_export_chunk_bytes"),
 		},
 		Features: licensing.FeatureSet{
-			RtbLive:       rapid.Bool().Draw(t, "rtb_live"),
-			OpenRTBEngine: rapid.Bool().Draw(t, "openrtb_engine"),
-			IvtMLDetector: rapid.Bool().Draw(t, "ivt_ml_detector"),
-			EbpfXDPEdge:   rapid.Bool().Draw(t, "ebpf_xdp_edge"),
-			MlFraudBoost:  rapid.Bool().Draw(t, "ml_fraud_boost"),
-			MultiRegion:   rapid.Bool().Draw(t, "multi_region"),
-			SlotMigration: rapid.Bool().Draw(t, "slot_migration"),
-			MarginGuard:   rapid.Bool().Draw(t, "margin_guard"),
+			RtbLive:                  rapid.Bool().Draw(t, "rtb_live"),
+			OpenRTBEngine:            rapid.Bool().Draw(t, "openrtb_engine"),
+			IvtMLDetector:            rapid.Bool().Draw(t, "ivt_ml_detector"),
+			EbpfXDPEdge:              rapid.Bool().Draw(t, "ebpf_xdp_edge"),
+			MlFraudBoost:             rapid.Bool().Draw(t, "ml_fraud_boost"),
+			MultiRegion:              rapid.Bool().Draw(t, "multi_region"),
+			SlotMigration:            rapid.Bool().Draw(t, "slot_migration"),
+			MarginGuard:              rapid.Bool().Draw(t, "margin_guard"),
+			ExternalResidentialIntel: rapid.Bool().Draw(t, "external_residential_intel"),
 		},
 	}
 }
@@ -191,5 +192,6 @@ func entitlementsEqual(a, b licensing.Entitlements) bool {
 		af.MultiRegion == bf.MultiRegion &&
 		af.SlotMigration == bf.SlotMigration &&
 		af.MarginGuard == bf.MarginGuard &&
+		af.ExternalResidentialIntel == bf.ExternalResidentialIntel &&
 		a.VolumeBand == b.VolumeBand
 }

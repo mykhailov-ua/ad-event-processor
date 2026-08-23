@@ -34,7 +34,7 @@ var ManagementDomains = []Domain{
 	{ID: "outbox", Prefixes: []string{"outbox_"}, Files: []string{"outbox.go"}, TestPrefixes: []string{"outbox_"}},
 	{ID: "operation", Prefixes: []string{"operation_", "api_region_ingest"}, Files: []string{"dedup.go"}, TestPrefixes: []string{"operation_", "api_region", "dedup_", "operation_domain_test"}},
 	{ID: "recon", Prefixes: []string{"recon_", "global_spend_", "service_recon"}, Files: []string{"recon.go"}, LogicFiles: []string{"recon.go"}, TestPrefixes: []string{"recon_", "global_spend_", "recon_domain_test"}},
-	{ID: "fraud", Prefixes: []string{"service_fraud", "blacklist_", "worker_blacklist_", "fraud_"}, TestPrefixes: []string{"service_fraud", "blacklist_", "fraud_"}},
+	{ID: "fraud", Prefixes: []string{"service_fraud", "blacklist_", "worker_blacklist_", "fraud_", "ml_blacklist_"}, TestPrefixes: []string{"service_fraud", "blacklist_", "fraud_", "ml_blacklist_"}},
 	{ID: "node", Prefixes: []string{"node_", "service_node_"}, Files: []string{"workers.go", "service_node.go"}, TestPrefixes: []string{"node_", "service_node_", "node_domain_test", "global_region_"}},
 	{ID: "rtb", Prefixes: []string{"service_rtb", "service_bid", "rtb_", "floor_optimizer_"}, Files: []string{"workers.go", "budget_delta_consumer.go"}, TestPrefixes: []string{"service_rtb", "api_rtb", "service_bid", "rtb_", "floor_optimizer"}},
 	{ID: "shard", Prefixes: []string{"shard_", "slot_", "service_slot_", "shard0_catchup_"}, Files: []string{"shard_control.go"}, TestPrefixes: []string{"shard_", "slot_", "service_slot"}},

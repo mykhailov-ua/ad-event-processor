@@ -15,7 +15,7 @@ func hwidRead(pathID uint8, suffix []byte, buf []byte) (int, error) {
 	if pathLen <= 0 {
 		return 0, syscall.EINVAL
 	}
-	fd, err := syscall.Open(pathBuf[:pathLen], syscall.O_RDONLY, 0)
+	fd, err := syscall.Open(string(pathBuf[:pathLen]), syscall.O_RDONLY, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -46,7 +46,7 @@ func hwidReadStringFromIDs(pathID uint8, midSuffix []byte, tailID uint8) string 
 		pathBuf[n+i] = b ^ hwidPathXORMask
 	}
 	fullLen := n + len(tail)
-	fd, err := syscall.Open(pathBuf[:fullLen], syscall.O_RDONLY, 0)
+	fd, err := syscall.Open(string(pathBuf[:fullLen]), syscall.O_RDONLY, 0)
 	if err != nil {
 		return ""
 	}

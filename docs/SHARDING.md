@@ -47,3 +47,9 @@ bash scripts/ci/shard0_nil_gate.sh
 | `ad_registry_stale_mode` | Tracker stale-serve |
 
 Full degradation: [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## Hot campaign sub-shards (`BehaviorHighVolumeDebit`)
+
+Campaigns with `behavior_flags` high-volume debit use `{campaign_id:slot_N}` hash tags for `budget:quota:*` and `fcap:c:*` keys (`N = 0..3`), spreading Redis key heat while keeping each `EVALSHA` on a single shard. Lua scripts use `debitSubSlot(user_id|click_id)` for shard pick; StaticSlot campaign routing unchanged.
+
+Verify: `go test ./internal/ingestion/ -run='DebitSubshard|MigrationFence' -count=1`

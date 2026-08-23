@@ -254,7 +254,7 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 		b.WriteString("Kernel/session detail: [bpf-report.md](bpf-report.md).\n")
 		for _, line := range strings.Split(string(bpfData), "\n") {
 			if strings.Contains(line, "loadgen share of tracked on-CPU") {
-				b.WriteString("- " + strings.TrimSpace(line) + "\n")
+				fmt.Fprintf(b, "- %s\n", strings.TrimSpace(line))
 				break
 			}
 		}
@@ -276,7 +276,7 @@ func writeStraceSection(b *strings.Builder, outDir string) {
 			shown := 0
 			for _, line := range lines {
 				if strings.Contains(line, "%") {
-					b.WriteString(line + "\n")
+					fmt.Fprintf(b, "%s\n", line)
 					shown++
 					if shown >= 8 {
 						break
@@ -379,7 +379,7 @@ func writeStatusHistogramSection(b *strings.Builder, hist *statusHistogramFile, 
 
 func write5xxSection(b *strings.Builder, outDir, promURL string, prom *promClient, hist *statusHistogramFile) {
 	b.WriteString("\n## 5xx reconciliation\n\n")
-	b.WriteString("Session: `" + outDir + "`\n\n")
+	fmt.Fprintf(b, "Session: `%s`\n\n", outDir)
 
 	if hist != nil {
 		b.WriteString("### Client status histogram (5xx detail)\n\n")

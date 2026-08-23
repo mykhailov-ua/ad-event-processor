@@ -200,7 +200,7 @@ func formatStrictContentionCompareMD(base, treat *StrictContentionSnapshot) stri
 	b.WriteString("## Verdict (automated heuristics)\n\n")
 	verdicts := strictContentionVerdicts(base, treat)
 	for _, v := range verdicts {
-		b.WriteString("- " + v + "\n")
+		fmt.Fprintf(&b, "- %s\n", v)
 	}
 	b.WriteString("\n")
 	b.WriteString("## Baseline detail\n\n")

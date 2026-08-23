@@ -14,7 +14,6 @@ export type FraudMlHealthTileProps = {
   customerId?: string | null;
 };
 
-
 export function FraudMlHealthTile({ customerId }: FraudMlHealthTileProps) {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<FraudMlHealthPayload | null>(null);
@@ -70,7 +69,6 @@ export function FraudMlHealthTile({ customerId }: FraudMlHealthTileProps) {
 export type FraudMlTrustPanelProps = {
   data: FraudMlHealthPayload;
 };
-
 
 export function FraudMlTrustPanel({ data }: FraudMlTrustPanelProps) {
   const evalAge = formatMlEvalAge(data.ml_eval_generated_at);

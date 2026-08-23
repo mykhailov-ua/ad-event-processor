@@ -345,38 +345,55 @@ type Config struct {
 	SlotMigrationDualWriteEnabled bool
 	SlotMigrationLagEpsilon       int64
 
-	CIDRL1Enabled               bool
-	CIDRFeedDir                 string
-	CIDRFeedRefresh             time.Duration
-	CIDRFeedURLAWS              string
-	CIDRFeedURLGCP              string
-	CIDRFeedURLAzure            string
-	CIDRFeedURLTor              string
-	CIDRFeedDownloadEnable      bool
-	ProxyVPNL15Enabled          bool
-	ProxyVPNFeedDir             string
-	ProxyVPNFeedRefresh         time.Duration
-	TLSFingerprintL1Enabled     bool
-	TLSFingerprintFeedDir       string
-	TLSFingerprintFeedRefresh   time.Duration
-	LinkSigningHMACSecret       Secret
-	AttestationHMACSecret       Secret
-	AttestationHMACSecretPrev   Secret
-	DomainPoolEnabled           bool
-	DomainPoolSyncInterval      time.Duration
-	FlowRoutingEnabled          bool
-	FlowSyncInterval            time.Duration
-	ProxyAllowHTTPInsecure      bool
-	SlotMigrationLagThreshold   int64
-	ElasticShardingEnabled      bool
-	ShardOrchestratorEnabled    bool
-	ShardOrchestratorIntervalMs int
-	TCPControlEnabled           bool
-	TCPControlHMACSecret        Secret
-	TCPControlBindAddr          string
-	TCPControlAddr              string
-	TCPTrackerAddrs             []string
-	ManagementURL               string
+	CIDRL1Enabled                bool
+	CIDRFeedDir                  string
+	CIDRFeedRefresh              time.Duration
+	CIDRFeedURLAWS               string
+	CIDRFeedURLGCP               string
+	CIDRFeedURLAzure             string
+	CIDRFeedURLTor               string
+	CIDRFeedDownloadEnable       bool
+	IPv6RotationL1Enabled        bool
+	IPv6RotationMode             string
+	IPv6RotationWindow           time.Duration
+	IPv6RotationThreshold        uint32
+	IPv4RotationL1Enabled        bool
+	IPv4RotationMode             string
+	IPv4RotationWindow           time.Duration
+	IPv4RotationThreshold        uint32
+	OSFingerprintMismatchEnabled bool
+	DCASNHotEnabled              bool
+	DCASNFeedDir                 string
+	DCASNFeedRefresh             time.Duration
+	DCASNSampleMask              int
+	ResidentialProxyHotEnabled   bool
+	ResidentialProxyWindow       time.Duration
+	TCPMSSAnomalyEnabled         bool
+	TCPMSSAnomalyMinByte         uint8
+	ProxyVPNL15Enabled           bool
+	ProxyVPNFeedDir              string
+	ProxyVPNFeedRefresh          time.Duration
+	TLSFingerprintL1Enabled      bool
+	TLSFingerprintFeedDir        string
+	TLSFingerprintFeedRefresh    time.Duration
+	LinkSigningHMACSecret        Secret
+	AttestationHMACSecret        Secret
+	AttestationHMACSecretPrev    Secret
+	DomainPoolEnabled            bool
+	DomainPoolSyncInterval       time.Duration
+	FlowRoutingEnabled           bool
+	FlowSyncInterval             time.Duration
+	ProxyAllowHTTPInsecure       bool
+	SlotMigrationLagThreshold    int64
+	ElasticShardingEnabled       bool
+	ShardOrchestratorEnabled     bool
+	ShardOrchestratorIntervalMs  int
+	TCPControlEnabled            bool
+	TCPControlHMACSecret         Secret
+	TCPControlBindAddr           string
+	TCPControlAddr               string
+	TCPTrackerAddrs              []string
+	ManagementURL                string
 
 	LuaFastPathEnabled bool
 
@@ -486,8 +503,21 @@ type Config struct {
 		ExplainLiveScore bool
 	}
 
+	ExternalResidentialIntel struct {
+		Enabled       bool
+		ProviderURL   string
+		APIKey        Secret
+		CacheTTL      time.Duration
+		BatchSize     int
+		RecentLimit   int
+		FeedDir       string
+		ScanInterval  time.Duration
+		ProviderLabel string
+	}
+
 	GeoIP struct {
 		DBPath              string
+		ASNDBPath           string
 		StagingPath         string
 		EditionID           string
 		LicenseKey          string
@@ -819,6 +849,10 @@ func (c *Config) IVTDetectorEnabled() bool {
 
 func (c *Config) FraudScoringEnabled() bool {
 	return c != nil && c.FraudScoring.Enabled
+}
+
+func (c *Config) ExternalResidentialIntelRuntimeEnabled() bool {
+	return c != nil && c.ExternalResidentialIntel.Enabled && c.ExternalResidentialIntel.ProviderURL != ""
 }
 
 func (c *Config) ProcessorPGStreamWorkers() int {

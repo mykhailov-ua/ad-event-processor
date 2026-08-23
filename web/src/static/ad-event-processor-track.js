@@ -1,3 +1,6 @@
+/**
+ * POST a conversion or event to the tracker /track endpoint (zero-redirect).
+ */
 export function adEventProcessorTrack(opts) {
   const body = {
     campaign_id: opts.campaignId,
@@ -24,6 +27,9 @@ export function adEventProcessorTrack(opts) {
   });
 }
 
+/**
+ * Build an inline module script that calls adEventProcessorTrack on the current page.
+ */
 export function buildDirectTrackSnippet(trackURL, campaignId) {
   return [
     '<script type="module">',

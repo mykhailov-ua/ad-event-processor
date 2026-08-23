@@ -3,6 +3,7 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/installer_env.sh"
+source "$SCRIPTS/lib/dev_bind_mounts.sh"
 cd "$ROOT"
 
 DEV_LICENSE_REL="var/license.jwt"
@@ -143,7 +144,9 @@ ensure_env() {
     token="$(openssl rand -hex 32)"
     sed -i "s/^INSTALL_BOOTSTRAP_TOKEN=.*/INSTALL_BOOTSTRAP_TOKEN=${token}/" .env
   fi
-  ensure_dev_license_file
+  if ! ad_event_processor_compose_dev_overlay; then
+    ensure_dev_license_file
+  fi
 }
 
 set_env_key() {
