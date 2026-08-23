@@ -307,19 +307,65 @@ Placement blacklist and ingress RPD are enforced in Go (`PlacementBlacklistFilte
 ## 6b. Static Redis Counter Offload (evaluation)
 
 ### Problem
-At 100k+ QPS, per-campaign `{campaign_id}` hash tags concentrate budget, fcap, and ingress counters on one Redis master.
+At 100k+ QPS, per-campaign `{campaign_id}` hash tags concentrate budget, fcap, and ingress counters on one Redis master thread. Redis executes Lua scripts single-threaded per shard; hot keys become the ceiling before Go CPU or network parsing.
 
 ### Options evaluated
 
-| Option | Verdict |
-| :--- | :--- |
-| **Local quanta + sub-shard keys** (`BehaviorHighVolumeDebit`, `{id:slot_N}` budget/fcap) | **Shipped** — spreads Lua keys within one cluster shard; no new datastore |
-| **Dragonfly** | Rejected for v1 — migration cost, dual-write epoch, StaticSlot parity unproven at our Lua atomicity model |
-| **Aerospike sidecar counters** | Rejected — breaks single-shard Lua `EVALSHA`; would require split atomic debit (forbidden without fence) |
-| **Quanta-only authority** | Partial — live mode already skips sync Lua; PG reconciliation remains source of truth |
+| Option | Verdict | Rationale |
+| :--- | :--- | :--- |
+| **Local quanta + sub-shard keys** (`BehaviorHighVolumeDebit`, `{id:slot_N}` budget/fcap) | **Shipped** | Spreads quota/fcap keys across four hash tags on the same StaticSlot master; each `EVALSHA` stays single-shard. No new datastore or migration epoch. |
+| **Dragonfly** | **Rejected (v1)** | Would require dual-write epoch, slot-map parity proof, and re-validation of every Lua script under Dragonfly threading. Our atomic debit + idem + stream contract assumes Redis command semantics and `StaticSlotSharder` routing — not proven at production scale. |
+| **Aerospike sidecar counters** | **Rejected** | Offloading only the counter breaks the single Lua atomic debit: budget check and idem `SET NX` must commit together (`anti-slop`: no split debit across Go+Lua without migration fence). Would add RTT and a second failure domain. |
+| **Quanta-only authority** | **Partial** | `LOCAL_QUOTA_MODE=live` already skips sync Lua for eligible campaigns; Postgres `current_spend` + `SyncWorker` remain source of truth. Does not remove Redis for campaigns outside full-skip eligibility. |
+
+### Dragonfly (detail)
+Dragonfly advertises multi-threaded Redis compatibility, but our production path depends on:
+- N standalone Redis masters + `StaticSlotSharder` (not Redis Cluster `MOVED`)
+- Hash-tagged multi-key Lua on one master per campaign
+- `migration_gen` / routing epoch fences during slot moves
+
+Replacing masters with Dragonfly without a full slot-migration replay and Lua parity suite risks silent budget drift. **Defer** until Phase 0 load lab proves Redis Lua p99 is still the limiter *after* local quanta + sub-shards, and a fenced dual-write soak passes `AssertBudgetInvariant`.
+
+### Aerospike (detail)
+A sidecar counter store could absorb ingress/fcap INCR heat, but budget debit today is:
+1. `MGET` spend + idem
+2. `SET NX` dedup
+3. `INCRBY` spend + sync keys
+
+Splitting step 3 to Aerospike while keeping idem in Redis creates a window where idem passes but debit fails (or vice versa). Recovery requires a new fence protocol — same class of work as slot migration. **Not worth it** while sub-shard keys and local quanta address the known hot-campaign shape.
+
+### Quanta-only (detail)
+Full local authority (no sync Lua at all) is attractive for 100k+ bursts but:
+- Full-skip requires placement/RPD/dedup in Go (Phase 6 P6-1/P6-2)
+- Crash before stream drain loses unflushed debits until refill/return reconciles
+- Operators already have `ad_local_quota_*` metrics and fault tests (`TestFault_LocalQuantaFullSkip_BudgetInvariant`)
+
+**Use quanta live mode** for eligible campaigns; do not replace Redis for the long tail without PG proofs.
 
 ### Decision
-Prefer **sub-shard hash tags** and **local quanta full-skip** before external counter stores. Feature flag: `BehaviorHighVolumeDebit` on campaign. Budget invariant: `domain.AssertBudgetInvariant` + local quanta fault tests.
+1. Enable **`BehaviorHighVolumeDebit`** on known hot campaigns (four sub-slots; see [SHARDING.md](SHARDING.md)).
+2. Enable **`LOCAL_QUOTA_MODE=live`** where full-skip eligibility holds.
+3. **Do not** introduce Dragonfly or Aerospike for static counters in v1.
+
+Budget invariant proofs: `domain.AssertBudgetInvariant` in `TestFault_HighVolumeDebit_subShardBudgetInvariant`, `TestFault_LocalQuantaFullSkip_BudgetInvariant`, and `TestFault_ShardLoadSpike`.
+
+### Monitoring (no external counter store)
+| Signal | Action |
+| :--- | :--- |
+| `ad_redis_lua_eval_duration_seconds` p99 per shard > 10 ms | Enable sub-shard flag on top campaigns; widen local quanta chunks |
+| `ad_redis_lua_skipped_total` flat under load | Full-skip eligibility too narrow — review placement/RPD Go gates |
+| `ad_local_quota_block_total` rising | Refill worker lag; check `budget:refill_needed` |
+| Single-campaign QPS > license `max_rps` | License throttle (expected), not infra autoscale |
+
+### Load test waiver (P6-3)
+Per-shard **100k QPS** validation requires the Docker load lab (`scripts/test/malformed.sh business`, BACKLOG Phase 0). That run is **not** a merge gate for this evaluation PR.
+
+Until the lab run completes, capacity claims rely on:
+- Integration fault: `TestFault_ShardLoadSpike` (control cohort p99 < 80 ms)
+- Unit/integration: `TestFault_HighVolumeDebit_subShardBudgetInvariant`
+- Mock bench `BenchmarkLuaScript_Happy` measures **Go wrapper + Redis only** — not production `/track` p99 (see `anti-slop.mdc`)
+
+**Risk:** Redis CPU saturation on a single hot campaign without `BehaviorHighVolumeDebit` or local quanta. **Mitigation:** ops runbook flags above; never sell unlimited QPS without license tier + load proof (`deploy/vendor/SALES_KIT.md`).
 
 ---
 
