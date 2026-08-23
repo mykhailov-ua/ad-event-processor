@@ -56,6 +56,7 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.True(t, l15)
 	require.True(t, tls)
 	require.Equal(t, string(domain.ConnTypeMobileOnly), connType)
+	require.Equal(t, string(domain.SocialInAppConnTypePolicy), connType)
 	require.Equal(t, int16(30), pass)
 	require.Equal(t, int16(100), block)
 
@@ -66,6 +67,7 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.True(t, camp.L15ProxyVPNBlockEnabled)
 	require.True(t, camp.TLSFingerprintBlockEnabled)
 	require.Equal(t, domain.ConnTypeMobileOnly, camp.ConnTypePolicy)
+	require.Equal(t, domain.SocialInAppConnTypePolicy, camp.ConnTypePolicy)
 }
 
 func TestResolveFraudPresetThresholds_socialInApp(t *testing.T) {

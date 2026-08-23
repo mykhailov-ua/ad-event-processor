@@ -26,3 +26,8 @@ func TestResolveFraudPreset(t *testing.T) {
 	_, _, _, _, ok = ResolveFraudPreset("unknown")
 	require.False(t, ok)
 }
+
+func TestSocialInAppConnTypePolicy_mobileOnly(t *testing.T) {
+	require.Equal(t, ConnTypeMobileOnly, SocialInAppConnTypePolicy)
+	require.True(t, IsSocialInAppFraudPreset(FraudPresetSocialInApp))
+}

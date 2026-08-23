@@ -29,6 +29,10 @@ const (
 	ConnTypeBlockVPNHosting ConnTypePolicy = "block_vpn_hosting"
 	ConnTypeMobileOnly      ConnTypePolicy = "mobile_only"
 	ConnTypeResidentialOnly ConnTypePolicy = "residential_only"
+
+	// SocialInAppConnTypePolicy is bundled by the social_in_app fraud preset.
+	// residential_only false-positives on mobile carrier ASNs in the L1.5 proxy/VPN feed.
+	SocialInAppConnTypePolicy = ConnTypeMobileOnly
 )
 
 type Campaign struct {

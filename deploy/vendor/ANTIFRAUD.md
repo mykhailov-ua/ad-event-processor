@@ -52,6 +52,8 @@
 | TLS JA3/JA4 block | `tls_fingerprint_block_enabled` | `true` |
 | Mobile carriers only | `conn_type_policy` | `mobile_only` |
 
+**Conn type policy (оператор):** для in-app соцсетей **не** используйте `residential_only` — L1.5 feed помечает мобильных операторов как `mobile`, и `residential_only` даёт false positive safe-view на легитимном FB/TikTok/IG трафике. Пресет `social_in_app` всегда ставит `mobile_only`: пропускает carrier/mobile, блокирует VPN/hosting/datacenter. Менять вручную на `residential_only` после пресета не рекомендуется.
+
 **TLS safe-view на `/click`:** при `social_in_app_enabled` и UA с маркерами `FBAN`, `FBAV`, `musical_ly` или `Instagram` TLS blocklist **не** переводит клик в safe-view (типичный in-app TLS). Бот UA без маркеров остаётся на TLS safe-view. L2 attestation и другие сигналы **не** отключаются.
 
 **Allowlist feed:** оператор может добавить `ja3_allowlist.txt` / `ja4_allowlist.txt` рядом с `ja3_blocklist.txt`; allowlist проверяется **до** blocklist (in-app клиенты с известным JA3).
