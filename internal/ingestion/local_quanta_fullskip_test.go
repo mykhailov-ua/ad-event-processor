@@ -8,10 +8,12 @@ import (
 	"time"
 
 	"github.com/bidshard/ad-event-processor/internal/domain"
+	"github.com/bidshard/ad-event-processor/internal/licensing"
 	"github.com/bidshard/ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 )
 
@@ -135,6 +137,120 @@ func TestUnifiedFilter_localQuanta_fullSkipWithPlacement(t *testing.T) {
 		PlacementID: "zone-bad",
 	}
 	require.ErrorIs(t, f.Check(checkCtx, blocked), ErrPlacementBlocked)
+}
+
+func TestUnifiedFilter_localQuanta_fullSkipEmptyPlacement(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+	ctx := context.Background()
+	rdb, cleanup := setupMiniredis(t)
+	defer cleanup()
+
+	counter := &evalCountRedis{UniversalClient: rdb}
+	f, ledger, _ := newLocalQuantaUnifiedFilter(t, counter)
+	require.NoError(t, f.PreloadScripts(ctx))
+	counter.evals.Store(0)
+
+	campID := uuid.New()
+	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
+	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+
+	evt := &domain.Event{
+		Type:       "click",
+		IP:         "203.0.113.62",
+		UserID:     "no-placement",
+		CampaignID: campID,
+		ClickID:    uuid.NewString(),
+	}
+	checkCtx := attachFilterDeadline(ctx, time.Second)
+	require.NoError(t, f.Check(checkCtx, evt))
+	require.Equal(t, int64(0), counter.evals.Load(), "empty placement_id must full-skip when other gates pass")
+}
+
+func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+	ctx := context.Background()
+	rdb, cleanup := setupMiniredis(t)
+	defer cleanup()
+
+	counter := &evalCountRedis{UniversalClient: rdb}
+	campID := uuid.New()
+	custID := uuid.New()
+	camp := &domain.Campaign{
+		ID:         campID,
+		CustomerID: custID,
+		PacingMode: domain.PacingModeAsap,
+	}
+	reg := benchRegistryForCampaign(camp)
+	reg.entitlements.Store(&entitlementsSnapshot{
+		licenseState: licensing.StateActive,
+		license: licensing.Entitlements{
+			Limits: licensing.Limits{MaxRequestsPerDay: 2},
+		},
+	})
+
+	uf, ledger, stream := newLocalQuantaUnifiedFilter(t, counter)
+	uf.registry = reg
+	require.NoError(t, uf.PreloadScripts(ctx))
+	counter.evals.Store(0)
+
+	sharder := NewJumpHashSharder(1)
+	entFilter := NewEntitlementsFilter(reg, sharder, []redis.UniversalClient{rdb})
+	engine := NewFilterEngine(time.Second, entFilter, uf)
+
+	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
+	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+
+	checkCtx := attachFilterDeadline(ctx, time.Second)
+	for i := range 2 {
+		evt := &domain.Event{
+			Type:       "impression",
+			IP:         "203.0.113.70",
+			UserID:     "rpd-user",
+			CampaignID: campID,
+			ClickID:    uuid.NewString(),
+		}
+		require.NoError(t, engine.Check(checkCtx, evt), "event %d", i)
+	}
+	require.Equal(t, int64(0), counter.evals.Load(), "ingress RPD must not force Lua when EntitlementsFilter runs first")
+
+	evt := &domain.Event{
+		Type:       "impression",
+		IP:         "203.0.113.71",
+		UserID:     "rpd-user",
+		CampaignID: campID,
+		ClickID:    uuid.NewString(),
+	}
+	require.ErrorIs(t, engine.Check(checkCtx, evt), ErrDailyQuotaExceeded)
+	_ = stream
+}
+
+func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
+	ledger := NewLocalQuantaLedger()
+	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
+		Rdbs:           []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
+		StreamName:     "events",
+		MaxLen:         1000,
+		IdempotencyTTL: time.Hour,
+	})
+	defer stream.Close()
+
+	strict := NewLocalQuantaStrict(5_000_000, 8_000_000)
+	f := NewUnifiedFilter(nil, nil, &mockRegistry{}, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
+	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
+	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Strict: strict, Stream: stream})
+	f.SetLocalQuantaMode("live")
+	f.SetLuaFastPathEnabled(true)
+
+	campID := uuid.New()
+	strict.UpdateFromRedisRemaining(campID, 1_000_000)
+	camp := &domain.Campaign{ID: campID, PacingMode: domain.PacingModeAsap}
+	evt := &domain.Event{Type: "click", CampaignID: campID, UserID: "u1", ClickID: "c1"}
+
+	require.False(t, f.localQuantaFullSkipEligible(evt, camp))
 }
 
 func TestLocalClickIdemCache_TryClaim(t *testing.T) {

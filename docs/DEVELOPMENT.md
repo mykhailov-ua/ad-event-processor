@@ -298,8 +298,9 @@ Full-skip (zero sync `EVALSHA`) requires **all** of:
 | `LUA_FAST_PATH_ENABLED=1` (default) | Full Lua |
 | Not in local-quanta strict mode | Budget-fast Lua after local debit |
 | `needsFullLuaPath` false (no even pacing without rough gate, TTC cache when TTC enabled, fcap via `settingsWatcher` when `FreqLimit>0`) | Budget-fast or full Lua |
-| `placement_id` empty | Budget-fast Lua after local debit |
-| Customer `max_rpd` entitlement unset | Budget-fast Lua after local debit |
+| Placement blacklist (when `placement_id` set) | Go `PlacementBlacklistFilter` before debit; blocked placement never full-skips |
+| Ingress `max_rpd` entitlement | Go `EntitlementsFilter` INCR before unified filter; full-skip does not duplicate in Lua |
+| Click dedup | `localClickIdem` on hot path; async `SET NX` in stream worker |
 | Local ledger has credit (`TrySpendDebit` ok) | Refill signaled; Lua path |
 | Stream admission reserved before filter | 503 before debit |
 | `BrokerProducer` or `StreamProducer` wired (`SetDeferStreamToProducer`) | Dual `XADD` risk if defer off |

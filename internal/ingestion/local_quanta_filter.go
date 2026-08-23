@@ -69,6 +69,10 @@ func (f *UnifiedFilter) localQuantaFullSkipEligible(evt *domain.Event, campInfo 
 	return true
 }
 
+// acceptLocalQuantaFullSkip skips sync Redis EVALSHA: placement blacklist is checked in Go
+// before local quanta; ingress RPD via EntitlementsFilter; click dedup via localClickIdem
+// (async SET NX in stream worker).
+
 func (f *UnifiedFilter) checkLocalQuanta(
 	ctx context.Context,
 	evt *domain.Event,
