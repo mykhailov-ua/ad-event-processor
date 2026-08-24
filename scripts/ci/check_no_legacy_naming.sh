@@ -46,9 +46,9 @@ strict_check() {
   fi
 }
 
-strict_check "docs/INDEX.md" "$ROOT/docs/INDEX.md"
-strict_check "docs/START.md" "$ROOT/docs/START.md"
-strict_check "docs/LICENSE.md" "$ROOT/docs/LICENSE.md"
+strict_check "docs/ARCHITECTURE.md" "$ROOT/docs/ARCHITECTURE.md"
+strict_check "docs/DEVELOPMENT.md" "$ROOT/docs/DEVELOPMENT.md"
+strict_check ".cursor/rules/licensing.mdc" "$ROOT/.cursor/rules/licensing.mdc"
 strict_check "web/src" "$ROOT/web/src"
 strict_check "web/e2e" "$ROOT/web/e2e" --glob '!**/node_modules/**'
 

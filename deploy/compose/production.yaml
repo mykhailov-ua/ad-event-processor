@@ -1,5 +1,6 @@
 services:
   db:
+    # App-side DSN must use sslmode=verify-full when this overlay is active.
     command:
       - postgres
       - -p

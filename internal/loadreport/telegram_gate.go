@@ -38,7 +38,7 @@ func CheckTelegramBPF(outDir string) (TelegramGateResult, error) {
 					Name:   "bpf_summary",
 					Value:  "missing",
 					OK:     true,
-					Detail: "skipped (no BPF session; set ADSTACK_BPF_PROBE=1)",
+					Detail: "skipped (no BPF session; set AD_EVENT_PROCESSOR_BPF_PROBE=1)",
 				}},
 				Pass: true,
 			}, nil

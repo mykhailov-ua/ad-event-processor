@@ -6,7 +6,7 @@ alwaysApply: false
 
 Apply when adding failure modes, outbox handlers, parser security, stream admission, or resilience tests.
 
-Reference: `docs/DEVELOPMENT.md` (Fault Injection), `docs/PARSER.md` (chaos checklist). Anti-slop: `anti-slop.mdc`. Holdout/edge-case matrix: `testing.mdc`.
+Reference: `development.mdc` (fault injection), `parser.mdc` (chaos checklist). Anti-slop: `anti-slop.mdc`. Holdout matrix: `testing.mdc`.
 
 ## Fault test placement
 
@@ -71,7 +71,7 @@ bash scripts/fault/parser_slow_body_drill.sh
 
 ## Shard and Redis faults
 
-- Shard 0 outage matrix: `docs/SHARDING.md`; gate `bash scripts/ci/shard0_nil_gate.sh`.
+- Shard 0 outage matrix: `data-layer.mdc`; gate `bash scripts/ci/shard0_nil_gate.sh`.
 - `TestFault_NOSCRIPTStorm`, `TestFault_CHSpoolDiskBlock` in ingestion.
 - Redis latency -> circuit breaker open -> 503 fail closed.
 - `scripts/fault/sentinel.sh`, `compose_fault_drill.sh` for compose-level drills.

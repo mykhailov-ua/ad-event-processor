@@ -1,6 +1,6 @@
 # Development Guide
 
-Stack identity: **ad-event-processor** — [NAMING.md](NAMING.md). Architecture: [ARCHITECTURE.md](ARCHITECTURE.md). CI: [CI.md](CI.md).
+Stack identity: **ad-event-processor** — `.cursor/rules/naming.mdc`. Architecture: [ARCHITECTURE.md](ARCHITECTURE.md). CI: `.cursor/rules/ci.mdc`.
 
 Open antifraud, capacity, and edge backlog (phase gates, verify commands, checkboxes) lives in repo-root [BACKLOG.md](../BACKLOG.md). Do not duplicate the task list in this guide.
 
@@ -24,6 +24,7 @@ make gen bpf-dev  # BPF → internal/edge/bpf_edge_bpf*.go
 | `internal/*/queries/*.sql` | `make gen` | `internal/<svc>/db/*.sql.go` |
 | `api/*.proto` | `make proto` | `internal/*/pb/*.pb.go` |
 | `deploy/edge/xdp/bpf/*.c` | `make gen bpf-dev` | bpf2go stubs |
+| `deploy/**/*.load-test.*.in` | `make load-test-config` | nginx/prometheus/grafana load-test configs |
 
 Scaffold new service:
 
@@ -153,7 +154,7 @@ Mock benches in `make test-alloc-gate`; integration benches need Docker + `run_b
 
 ## CI Merge Gates
 
-Run `bash scripts/ci/pr_fast.sh` before PR. Full reference: [CI.md](CI.md).
+Run `bash scripts/ci/pr_fast.sh` before PR. Full reference: `.cursor/rules/ci.mdc`.
 
 ## Fault Injection
 
@@ -168,7 +169,7 @@ Scenarios: instance kill, Redis latency → circuit breaker, shard 0 outage. Suc
 
 ### Shard 0 degradation
 
-Matrix: [SHARDING.md](SHARDING.md).
+Matrix: `.cursor/rules/data-layer.mdc`.
 
 **Tracker:**
 - Cold start: `CAMPAIGN_REPLICA_PATH` → `BootstrapFromReplica()`
@@ -235,7 +236,7 @@ Do not cut over until `_ch` PEL count = 0 on all shards.
 
 ## Enterprise Optional
 
-Not on default `single_vps`. Runbooks: [REGIONS.md](REGIONS.md), [XDP.md](XDP.md). Policy: [ARCHITECTURE.md](ARCHITECTURE.md) §11.
+Not on default `single_vps`. Runbooks: `.cursor/rules/regions.mdc`, `.cursor/rules/edge.mdc`. Policy: [ARCHITECTURE.md](ARCHITECTURE.md) §11.
 
 ML: train `model/`; infer `cmd/fraud-scorer`; hot path reads `ml:score:boost:*` only.
 
@@ -355,42 +356,23 @@ bash scripts/ci/prometheus_rules_check.sh
 go test ./deploy/monitoring/ -count=1
 ```
 
-## Doc Routing
-
-| Document | Role |
-| :--- | :--- |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | Topology, hot/cold, enterprise |
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Dev, CI, BPF, broker PEL |
-| [CI.md](CI.md) | Workflows, gates, thresholds |
-| [START.md](START.md) | Single-VPS installer |
-| [TRAFFIC.md](TRAFFIC.md) | Buyer integration |
-| [PARSER.md](PARSER.md) | Ingress wire policy |
-| [SHARDING.md](SHARDING.md) | Shard 0 matrix |
-| [TRADEOFFS.md](TRADEOFFS.md) | Trade-offs, rejected alternatives |
-| [RTB.md](RTB.md) | OpenRTB shadow→live |
-| [TRIAL.md](TRIAL.md) | Pilot repeat-trial policy |
-| [BILLING.md](BILLING.md) | USDT tiers, invoices |
-| [UI.md](UI.md) | Admin UI tokens, anti-slop |
-| [INDEX.md](INDEX.md) | Doc index |
-| [LICENSE.md](LICENSE.md) | Offline JWT license |
-
 ## Open Backlog: Trial Abuse
 
-Policy: [TRIAL.md](TRIAL.md). Check boxes when done; run listed tests before claiming complete.
+Policy: `.cursor/rules/licensing.mdc`. Check boxes when done; run listed tests before claiming complete.
 
 ### Phase 0 — Manual vendor ops
 
-- [ ] **0.1** Lock pilot numbers in [BILLING.md](BILLING.md) + [sku.yaml](../deploy/vendor/sku.yaml)
+- [ ] **0.1** Lock pilot numbers in `.cursor/rules/licensing.mdc` + [sku.yaml](../deploy/vendor/sku.yaml)
   - Test: `go test ./internal/licensing/ -run TestLoadSKUFile -count=1`
-- [ ] **0.2** Vendor issue checklist in [LICENSE.md](LICENSE.md) (telegram_id, deployment_id, hwid_v2)
+- [ ] **0.2** Vendor issue checklist in `.cursor/rules/licensing.mdc` (telegram_id, deployment_id, hwid_v2)
 
 ### Phase 1 — Trial registry + license-issue gate
 
-- [x] **1.1** `internal/trialregistry/` file store (`BIDSHARD_VENDOR_TRIAL_REGISTRY`)
+- [x] **1.1** `internal/trialregistry/` file store (`VENDOR_TRIAL_REGISTRY`)
   - Test: `go test ./internal/trialregistry/... -race -count=1`
 - [x] **1.2** Wire `cmd/license-issue`: `--telegram-id`, `--record-hwid`, `--trial-registry`
   - Test: `go test ./cmd/license-issue/... -count=1`
-- [x] **1.3** `--force` only with `BIDSHARD_VENDOR_TRIAL_FORCE=1` + `--force-reason`
+- [x] **1.3** `--force` only with `VENDOR_TRIAL_FORCE=1` + `--force-reason`
 
 ### Phase 2 — Pilot SKU alignment
 

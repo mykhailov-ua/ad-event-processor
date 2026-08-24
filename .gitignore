@@ -8,6 +8,12 @@
 !.env.load-test
 deploy/compose/.env.load-test.runtime
 
+# Rendered load-test configs (sources are *.load-test.*.in)
+deploy/nginx/nginx.load-test.conf
+deploy/nginx/lua/edge-tracker-peers.load-test.lua
+deploy/monitoring/prometheus.load-test.yaml
+deploy/monitoring/grafana-provisioning/datasources/datasource.load-test.yaml
+
 # Build output & vendored deps
 bin/*
 !bin/.gitkeep

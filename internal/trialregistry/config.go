@@ -9,10 +9,10 @@ import (
 
 const (
 	DefaultRegistryPath     = "deploy/vendor/trial_registry.json"
-	EnvRegistryPath         = "BIDSHARD_VENDOR_TRIAL_REGISTRY"
-	EnvHWIDCooldownDays     = "BIDSHARD_VENDOR_TRIAL_HWID_COOLDOWN_DAYS"
-	EnvForceEnabled         = "BIDSHARD_VENDOR_TRIAL_FORCE"
-	EnvVendorTrialBotToken  = "BIDSHARD_VENDOR_TRIAL_BOT_TOKEN"
+	EnvRegistryPath         = "VENDOR_TRIAL_REGISTRY"
+	EnvHWIDCooldownDays     = "VENDOR_TRIAL_HWID_COOLDOWN_DAYS"
+	EnvForceEnabled         = "VENDOR_TRIAL_FORCE"
+	EnvVendorTrialBotToken  = "VENDOR_TRIAL_BOT_TOKEN"
 	defaultHWIDCooldownDays = 60
 )
 

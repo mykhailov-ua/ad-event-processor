@@ -34,8 +34,8 @@ describe('license_banner helpers', () => {
   });
 
   it('resolves external support URL for pilot CTA', () => {
-    const cta = resolvePilotConvertCTA('https://t.me/bidshard_support');
-    assert.equal(cta.href, 'https://t.me/bidshard_support');
+    const cta = resolvePilotConvertCTA('https://t.me/vendor_support');
+    assert.equal(cta.href, 'https://t.me/vendor_support');
     assert.equal(cta.external, true);
     assert.equal(cta.label, 'Contact vendor');
   });

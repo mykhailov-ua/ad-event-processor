@@ -25,11 +25,22 @@ Do NOT use cryptic suffixes, meaningless numbers, or lazy abbreviations.
 
 The following tokens are strictly forbidden in new code, documentation, and variables. Existing occurrences must be removed when touched.
 
-- **`BidShard`** (except in global workspace context `bidshard/`) -> use `ad-event-processor`
+- **`BidShard`** -> use `ad-event-processor`
 - **`espx`** / **`espx_`** / **`ESPX_`** -> use `ad-event` or `ad_event`
 - **`legacy`** / **`old`** without specific context (e.g. `legacy_v1_api`)
 
-## 3. Semantic Clarity (Lead-Intent Style)
+## 3. Product vs stack surfaces
+
+| Surface | Name |
+| :--- | :--- |
+| Go module, imports, internal docs | `ad-event-processor` |
+| Docker compose volumes | `ad_event_processor_*` (historical prefix) |
+| Admin UI product strings | `ad-event-processor` |
+| API paths | `/api/v1/*` on control `:8188` |
+
+Guard: `scripts/ci/check_no_legacy_naming.sh`.
+
+## 4. Semantic Clarity (Lead-Intent Style)
 
 Match the naming quality and structure of `lead-intent-processor`.
 
@@ -39,12 +50,10 @@ Match the naming quality and structure of `lead-intent-processor`.
 - **Field Names:** `settlePoolField` is trash. Use `SettlementPool`.
 
 ### Comments
-- **Explain "Why", not "What":**
-    - BAD: `// Increment i by 1`
-    - GOOD: `// Advance offset to skip the CRC32 header limb`
-- **Invariants:** Document financial and performance constraints (SLA p99, budget balance).
 
-## 4. Root Clutter Ban
+Comment when and tone: `quality.mdc`. Naming-only reminder: explain **why**, not what the identifier already says; call out financial and SLA invariants at I/O boundaries.
+
+## 5. Root Clutter Ban
 
 The repository root is NOT a junk drawer.
 
@@ -52,7 +61,7 @@ The repository root is NOT a junk drawer.
 - **Temporary artifacts:** Must live in `var/` or be gitignored.
 - **Compiled binaries:** Never in root (use `bin/`).
 
-## 5. Bad vs Good Examples
+## 6. Bad vs Good Examples
 
 ### Variable Naming
 ```go
@@ -89,4 +98,4 @@ internal/controlplane/service_campaign_m8.go
 internal/campaign/load_test_worker.go
 ```
 
-Related: `docs/STRUCTURE.md`, `code-style.mdc`, `anti-slop.mdc`.
+Related: `structure.mdc`, `code-style.mdc`, `anti-slop.mdc`.

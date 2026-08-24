@@ -112,7 +112,7 @@ func (e *otelLogExporter) close() {
 }
 
 func otelEndpointFromEnv() string {
-	for _, key := range []string{"BIDSHARD_BPF_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"} {
+	for _, key := range []string{"AD_EVENT_PROCESSOR_BPF_OTEL_ENDPOINT", "OTEL_EXPORTER_OTLP_ENDPOINT", "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"} {
 		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
 			return v
 		}

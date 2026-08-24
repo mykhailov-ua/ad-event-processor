@@ -6,7 +6,7 @@ alwaysApply: false
 
 Apply when adding or changing tests, fuzz targets, fault proofs, or CI test gates.
 
-Cross-refs: `anti-slop.mdc` (slop gates, lie modes), `fault-tests.mdc` (chaos/outbox/parser proofs), `hot-path.mdc` (parser budgets), `cold-path.mdc` (integration/idempotency). Docs: `docs/PARSER.md`, `docs/DEVELOPMENT.md` (Fault Injection).
+Cross-refs: `anti-slop.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `parser.mdc`, `cold-path.mdc`, `development.mdc`.
 
 ## Test taxonomy
 
@@ -108,7 +108,7 @@ Parser security gaps (`TestChaos_ParserSecurity_PS_*`, `faultproof.Log` with `ga
 | PS-G13 | Quote-dense / nested payload escape bomb | `MaxJSONStringEscapes` |
 | PS-G10 | Duplicate OpenRTB keys | Last wins on `id`, `imp` |
 
-Wire / framing (not JSON): TE.TE obfuscation, HPACK continuation bomb, protobuf field budget (`PROTO_MAX_FIELDS`), HTTP/2 oversized frame, chunk extension `;`, slow-body spin (`HTTP1_INCOMPLETE_MAX`). See `docs/PARSER.md`.
+Wire / framing (not JSON): TE.TE obfuscation, HPACK continuation bomb, protobuf field budget (`PROTO_MAX_FIELDS`), HTTP/2 oversized frame, chunk extension `;`, slow-body spin (`HTTP1_INCOMPLETE_MAX`). See `parser.mdc`.
 
 OpenRTB: quote-dense 1 MB scan cap (`ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`); truncated scan must not wedge CPU (time bound in chaos tests).
 

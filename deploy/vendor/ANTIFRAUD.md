@@ -1,6 +1,6 @@
-# Антифрод BidShard (краткий обзор)
+# Антифрод ad-event-processor (краткий обзор)
 
-Внутренний документ для вендора и пресейла. Технические детали: [ARCHITECTURE.md](../../docs/ARCHITECTURE.md), [XDP.md](../../docs/XDP.md). Лимиты по SKU: [sku.yaml](./sku.yaml), [SALES_KIT.md](./SALES_KIT.md).
+Внутренний документ для вендора и пресейла. Технические детали: [ARCHITECTURE.md](../../docs/ARCHITECTURE.md), [edge.mdc](../../.cursor/rules/edge.mdc). Лимиты по SKU: [sku.yaml](./sku.yaml), [SALES_KIT.md](./SALES_KIT.md).
 
 ## Как устроено
 
@@ -140,7 +140,7 @@ Lua остаётся для атомарного debit + idempotency + MGET paci
 - Кампании в strict-mode hysteresis, freq/pacing/even/TTC-fail-closed без Go substitute — **не** full-skip.
 - L3 blacklist на full-skip: `FraudBlacklistFilter` в начале `UnifiedFilter.Check` (до local quanta debit); L1 ghost accept без `EVALSHA`.
 
-High-volume campaigns (`BehaviorHighVolumeDebit`): budget/fcap keys с `{campaign_id:slot_N}` hash tag (4 sub-slots) — см. [SHARDING.md](../../docs/SHARDING.md). Решение по внешним counter store: [TRADEOFFS.md](../../docs/TRADEOFFS.md) §6b (quanta-only, без Dragonfly/Aerospike на hot path).
+High-volume campaigns (`BehaviorHighVolumeDebit`): budget/fcap keys с `{campaign_id:slot_N}` hash tag (4 sub-slots) — см. [data-layer.mdc](../../.cursor/rules/data-layer.mdc). Решение по внешним counter store: [tradeoffs.mdc](../../.cursor/rules/tradeoffs.mdc) §6b (quanta-only, без Dragonfly/Aerospike на hot path).
 
 ## Периметр (до трекера)
 
@@ -158,7 +158,7 @@ High-volume campaigns (`BehaviorHighVolumeDebit`): budget/fcap keys с `{campaig
 - Allowlist lookup до blocklist на IPv6 TCP к tracker ingress.
 - SYN fingerprint ringbuf → корреляция с CH (`tcp_edge_correlation`).
 
-Подробнее: [XDP.md](../../docs/XDP.md).
+Подробнее: [edge.mdc](../../.cursor/rules/edge.mdc).
 
 ## Защита клика и лендинга (GMA)
 

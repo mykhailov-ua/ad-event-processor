@@ -27,4 +27,4 @@ RUN go install github.com/kyleconroy/sqlc/cmd/sqlc@latest \
     && go install github.com/go-task/task/v3/cmd/task@latest
 
 
-WORKDIR /workspaces/bidshard
+WORKDIR /workspaces/app

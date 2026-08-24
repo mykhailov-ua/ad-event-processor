@@ -382,7 +382,7 @@ log "load-report prom → ${OUT}/bottleneck-report.md (PROM=${PROM_URL})"
   || warn "load-report all soft-failed — see ${OUT}/load-report-all.log"
 
 {
-  echo "=== ESPX Purgatory + eBPF Report (${TS}) ==="
+  echo "=== Purgatory + eBPF Report (${TS}) ==="
   echo "phase: ${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN}"
   echo "url: ${TARGET_URL}"
   echo "tracker: ${TRACKER_CTR} pid=${TRACKER_PID}"

@@ -4,10 +4,25 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/load_test_env.sh"
 
 ROOT="${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+
+# Preserve nginx variables ($host, $remote_addr, etc.) during envsubst.
+export DOLLAR='$'
+
 CHECK_ONLY=0
 if [[ "${1:-}" == "--check" ]]; then
   CHECK_ONLY=1
 fi
+
+render_assert_no_unexpanded_env() {
+  local file=$1
+  local label=$2
+  if rg -q '\$\{[A-Z][A-Z0-9_]*\}' "$file"; then
+    printf 'render-load-test: unexpanded env vars in %s\n' "$label" >&2
+    rg -n '\$\{[A-Z][A-Z0-9_]*\}' "$file" >&2 || true
+    return 1
+  fi
+  return 0
+}
 
 render_one() {
   local in_file=$1
@@ -20,15 +35,25 @@ render_one() {
     local tmp
     tmp="$(mktemp)"
     envsubst < "$in_file" > "$tmp"
-    if ! diff -q "$tmp" "$out_file" > /dev/null 2>&1; then
+    if ! render_assert_no_unexpanded_env "$tmp" "$in_file"; then
       rm -f "$tmp"
-      printf 'render-load-test: drift: %s (run: bash scripts/lib/render_load_test_config.sh)\n' "$out_file" >&2
       return 1
+    fi
+    if [[ -f "$out_file" ]]; then
+      if ! diff -q "$tmp" "$out_file" > /dev/null 2>&1; then
+        rm -f "$tmp"
+        printf 'render-load-test: drift: %s (run: make load-test-config)\n' "$out_file" >&2
+        return 1
+      fi
     fi
     rm -f "$tmp"
     return 0
   fi
+  mkdir -p "$(dirname "$out_file")"
   envsubst < "$in_file" > "$out_file"
+  if ! render_assert_no_unexpanded_env "$out_file" "$in_file"; then
+    return 1
+  fi
 }
 
 load_test_bootstrap "$ROOT"
@@ -43,3 +68,9 @@ pairs=(
 for pair in "${pairs[@]}"; do
   render_one "${pair%%|*}" "${pair##*|}"
 done
+
+if [[ "$CHECK_ONLY" == "1" ]]; then
+  printf 'render-load-test: ok (templates)\n'
+else
+  printf 'render-load-test: wrote %d files (sources: *.load-test.*.in)\n' "${#pairs[@]}"
+fi

@@ -24,14 +24,14 @@
 #define AD_EVENT_PROCESSOR_SLOW_SYSCALL_NS 10000000ULL  
 #define AD_EVENT_PROCESSOR_DEFAULT_SAMPLE_RATE 1
 
-struct espx_hist {
+struct probe_hist {
 	__u64 buckets[AD_EVENT_PROCESSOR_HIST_BUCKETS];
 	__u64 count;
 	__u64 sum_ns;
 	__u64 max_ns;
 };
 
-struct espx_pid_stats {
+struct probe_pid_stats {
 	__u8 role;
 	__u8 _pad[7];
 	__u64 ctx_switch_out;
@@ -67,7 +67,7 @@ struct espx_pid_stats {
 #define AD_EVENT_PROCESSOR_AF_INET 2
 #define AD_EVENT_PROCESSOR_PG_PORT 5432
 
-static __always_inline __u16 espx_read_sockaddr_port(void *addr)
+static __always_inline __u16 probe_read_sockaddr_port(void *addr)
 {
 	__u16 family;
 	__u16 port_be;
@@ -83,7 +83,7 @@ static __always_inline __u16 espx_read_sockaddr_port(void *addr)
 	return bpf_ntohs(port_be);
 }
 
-static __always_inline int espx_is_hot_syscall(long syscall_id)
+static __always_inline int probe_is_hot_syscall(long syscall_id)
 {
 	switch (syscall_id) {
 	case AD_EVENT_PROCESSOR_NR_read:
@@ -110,7 +110,7 @@ static __always_inline int espx_is_hot_syscall(long syscall_id)
 #define AD_EVENT_PROCESSOR_NR_dup3 292
 #define AD_EVENT_PROCESSOR_NR_pipe2 293
 
-static __always_inline void espx_account_fd_exit(struct espx_pid_stats *st, long syscall_id, long ret)
+static __always_inline void probe_account_fd_exit(struct probe_pid_stats *st, long syscall_id, long ret)
 {
 	if (!st)
 		return;
@@ -142,23 +142,23 @@ static __always_inline void espx_account_fd_exit(struct espx_pid_stats *st, long
 	}
 }
 
-struct espx_syscall_key {
+struct probe_syscall_key {
 	__u32 pid;
 	__u32 syscall_id;
 };
 
-struct espx_syscall_hist_key {
+struct probe_syscall_hist_key {
 	__u32 pid;
 	__u32 syscall_id;
 };
 
-struct espx_net_key {
+struct probe_net_key {
 	__u32 pid;
 	__u16 dport;
 	__u16 _pad;
 };
 
-struct espx_net_stats {
+struct probe_net_stats {
 	__u64 connects;
 	__u64 connect_ns_sum;
 	__u64 connect_samples;
@@ -168,13 +168,13 @@ struct espx_net_stats {
 	__u64 sendto_bytes;
 };
 
-struct espx_syscall_peer {
+struct probe_syscall_peer {
 	__u16 dport;
 	__u16 _pad;
 	__u32 sendto_len;
 };
 
-struct espx_slow_event {
+struct probe_slow_event {
 	__u64 ts_ns;
 	__u32 pid;
 	__u32 syscall_id;
@@ -185,27 +185,27 @@ struct espx_slow_event {
 	__u32 marker_id;
 };
 
-struct espx_config {
+struct probe_config {
 	__u32 sample_rate;
 	__u32 slow_syscall_ns;
 	__u32 enabled;
 	__u32 _pad;
 };
 
-struct espx_marker_ts_key {
+struct probe_marker_ts_key {
 	__u64 pid_tgid;
 	__u32 marker_id;
 	__u32 _pad;
 };
 
-struct espx_marker_hist_key {
+struct probe_marker_hist_key {
 	__u32 pid;
 	__u32 marker_id;
 	__u32 campaign_slot;
 	__u32 _pad;
 };
 
-static __always_inline int espx_target_role(void *targets, __u32 pid)
+static __always_inline int probe_target_role(void *targets, __u32 pid)
 {
 	__u8 *role;
 
@@ -217,7 +217,7 @@ static __always_inline int espx_target_role(void *targets, __u32 pid)
 	return (int)*role;
 }
 
-static __always_inline int espx_cgroup_role(void *cgroups, __u64 cgid)
+static __always_inline int probe_cgroup_role(void *cgroups, __u64 cgid)
 {
 	__u8 *role;
 
@@ -229,21 +229,21 @@ static __always_inline int espx_cgroup_role(void *cgroups, __u64 cgid)
 	return (int)*role;
 }
 
-static __always_inline int espx_resolve_role(void *targets, void *cgroups, __u32 pid)
+static __always_inline int probe_resolve_role(void *targets, void *cgroups, __u32 pid)
 {
 	__u64 cgid;
 	__u8 role;
 
 	cgid = bpf_get_current_cgroup_id();
 	if (cgid) {
-		role = espx_cgroup_role(cgroups, cgid);
+		role = probe_cgroup_role(cgroups, cgid);
 		if (role)
 			return role;
 	}
-	return espx_target_role(targets, pid);
+	return probe_target_role(targets, pid);
 }
 
-static __always_inline int espx_should_sample(const struct espx_config *cfg)
+static __always_inline int probe_should_sample(const struct probe_config *cfg)
 {
 	__u32 rate;
 
@@ -257,7 +257,7 @@ static __always_inline int espx_should_sample(const struct espx_config *cfg)
 	return (bpf_get_prandom_u32() % rate) == 0;
 }
 
-static __always_inline void espx_hist_record(struct espx_hist *hist, __u64 delta_ns)
+static __always_inline void probe_hist_record(struct probe_hist *hist, __u64 delta_ns)
 {
 	__u32 bucket;
 	__u64 v;

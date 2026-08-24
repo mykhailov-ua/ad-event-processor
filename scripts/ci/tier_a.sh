@@ -28,23 +28,8 @@ for required in docs/ARCHITECTURE.md docs/DEVELOPMENT.md; do
 done
 
 allowed_docs=(
-  INDEX.md
   ARCHITECTURE.md
-  BILLING.md
-  CI.md
   DEVELOPMENT.md
-  LICENSE.md
-  NAMING.md
-  PARSER.md
-  REGIONS.md
-  RTB.md
-  SHARDING.md
-  START.md
-  TRAFFIC.md
-  TRADEOFFS.md
-  TRIAL.md
-  UI.md
-  XDP.md
 )
 
 for path in docs/*.md; do
@@ -64,7 +49,7 @@ for path in docs/*.md; do
 done
 
 if [[ -d docs/runbooks ]]; then
-  echo "docs layout: docs/runbooks/ must not exist (content in ARCHITECTURE.md / DEVELOPMENT.md)" >&2
+  echo "docs layout: docs/runbooks/ must not exist (content in .cursor/rules/*.mdc)" >&2
   fail=1
 fi
 

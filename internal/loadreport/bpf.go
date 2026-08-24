@@ -236,7 +236,7 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 		b.WriteString("\n")
 		fmt.Fprintf(b, "- **loadgen share of tracked on-CPU time:** %.1f%%\n", loadgenPct)
 	} else {
-		b.WriteString("_loadgen not observed (set ADSTACK_BPF_TRACK_LOADGEN=1 or ADSTACK_BPF_LOADGEN_COMM during load)._\n")
+		b.WriteString("_loadgen not observed (set AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN=1 or AD_EVENT_PROCESSOR_BPF_LOADGEN_COMM during load)._\n")
 	}
 	b.WriteString("\n")
 

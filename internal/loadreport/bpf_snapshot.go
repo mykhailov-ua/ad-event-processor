@@ -283,7 +283,7 @@ func WriteBPFGateCompareReport(baselineDir, sessionDir, promURL string) (string,
 	if compare.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString(fmt.Sprintf("\n**Result: FAIL** — regression > %.0f%% or cold-path leak (docs/CI.md#bpf-ci-arch).\n", bpfRegressionPct))
+		b.WriteString(fmt.Sprintf("\n**Result: FAIL** — regression > %.0f%% or cold-path leak (.cursor/rules/ci.mdc#bpf-ci-arch).\n", bpfRegressionPct))
 	}
 	if err := os.WriteFile(reportPath, []byte(b.String()), 0o644); err != nil {
 		return "", err

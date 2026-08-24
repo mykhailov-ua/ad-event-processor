@@ -20,4 +20,4 @@ Checklist for edge/compliance changes:
 - Map updates only via sync pipeline, not direct management kernel writes.
 - Metrics and ops docs updated when adding deny reasons.
 
-Related: `edge.mdc`, `docs/ARCHITECTURE.md`.
+Related: `edge.mdc`, `architecture.mdc`.

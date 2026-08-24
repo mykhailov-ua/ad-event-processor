@@ -83,7 +83,7 @@ func TestParseOpenRTB26_blocklists(t *testing.T) {
 	body := []byte(`{
 	  "id":"blk-1",
 	  "bcat":["IAB1","IAB2-3"],
-	  "badv":["evil.example","bidshard.local"],
+	  "badv":["evil.example","exchange.local"],
 	  "bapp":["com.blocked"],
 	  "imp":[{"id":"1","bidfloor":1.0,"banner":{"w":300,"h":250}}],
 	  "app":{"bundle":"com.blocked"},

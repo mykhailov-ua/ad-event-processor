@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const mckInfoLabel = "bidshard-mck-v1"
+const mckInfoLabel = "license-mck-v1"
 
 var ErrMCKDerivation = errors.New("mck derivation failed")
 

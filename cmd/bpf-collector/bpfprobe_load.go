@@ -7,11 +7,12 @@ import (
 	"os"
 
 	"ad-event-processor/pkg/naming"
+
 	"github.com/cilium/ebpf"
 )
 
 func bpfProgramName(suffix string) string {
-	return naming.DeprecatedBPFProgramPrefix() + suffix
+	return naming.BPFProbeProgramPrefix() + suffix
 }
 
 type Config struct {

@@ -10,7 +10,7 @@ Canonical tracker for open engineering work (audit 2026-08).
 - PR must paste **raw terminal output** for each checked Verify command (paraphrase = lie mode).
 - Do not check Verify boxes without running the command in the stated environment.
 
-Related: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md), [docs/TRADEOFFS.md](docs/TRADEOFFS.md), [docs/XDP.md](docs/XDP.md), [docs/CI.md](docs/CI.md).
+Related: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md), [.cursor/rules/tradeoffs.mdc](.cursor/rules/tradeoffs.mdc), [.cursor/rules/edge.mdc](.cursor/rules/edge.mdc), [.cursor/rules/ci.mdc](.cursor/rules/ci.mdc).
 
 Rule sources (precedence: `core.mdc` > `anti-slop.mdc` > path-specific): `.cursor/rules/hot-path.mdc`, `cold-path.mdc`, `data-layer.mdc`, `edge.mdc`, `boundaries.mdc`, `fault-tests.mdc`.
 
@@ -120,7 +120,7 @@ Every backlog item must declare its path. Wrong layer = slop.
 
 **Never (lie modes):**
 
-- Wrong naming vs `docs/NAMING.md` or existing symbols.
+- Wrong naming vs `.cursor/rules/naming.mdc` or existing symbols.
 - sqlc row field vs DTO `json` tag mismatch.
 - Plausible logic that fails parser budgets, budget invariant, or idempotency edge cases.
 - Claiming tests/benchmarks pass without running them.
@@ -139,7 +139,7 @@ bash scripts/ci/cold_path_static_gate.sh      # controlplane/fraud touch
 bash scripts/ci/integration_test_slop_gate.sh  # new *_integration_test.go
 ```
 
-**Admin UI items (P0-3, P5-*):** `npm run typecheck`, `bash scripts/ci/admin_web.sh`, `renderErrorBlock` on errors, `apiConfirmed` on mutations — no skeleton copy (`docs/UI.md`).
+**Admin UI items (P0-3, P5-*):** `npm run typecheck`, `bash scripts/ci/admin_web.sh`, `renderErrorBlock` on errors, `apiConfirmed` on mutations — no skeleton copy (`.cursor/rules/ui.mdc`).
 
 **Fault proof (`fault-tests.mdc`):** every new hot-path write path needs `*_fault_test.go` or chaos proof, or explicit PR waiver. Parser/security changes need `TestChaos_CrossHop_NginxGnet` with `differential_count=0`.
 
@@ -210,7 +210,7 @@ Goal: production defaults and observability. **No new detection logic on hot pat
 - [x] **P0-1 Local Quanta live on high-QPS trackers** — DONE only when all nested `[ ]` are `[x]`
   - Problem: Redis Lua bottleneck for non-full-skip campaigns.
   - Path: **data** + ops config (tracker reads `LOCAL_QUOTA_MODE`).
-  - Rules: `data-layer.mdc`, `hot-path.mdc`, `docs/TRADEOFFS.md`.
+  - Rules: `data-layer.mdc`, `hot-path.mdc`, `.cursor/rules/tradeoffs.mdc`.
   - Implement: set `LOCAL_QUOTA_MODE=live` in load-test / scale compose; alert on `ad_local_quota_full_skip_ratio` drop; document eligibility gates in runbook.
   - Avoid: enabling live without `StreamProducer` defer coordination (dual `XADD`); treating full-skip as budget authority without PG reconciliation.
   - Touch: `deploy/compose/`, `docs/DEVELOPMENT.md`, tracker startup logs/metrics.
@@ -364,19 +364,19 @@ Goal: remove PG/Redis amplification from `ivt-detector` blacklist storms. **All 
   - Rules: `edge.mdc`, `compliance.mdc`, `data-layer.mdc` (bpf-sync from shard 0).
   - Implement: `BPF_MAP_TYPE_LPM_TRIE` + `BPF_F_NO_PREALLOC`; extend `BlocklistStore.ApplyDiff`; v6 in `edge-bpf-sync`; allowlist before deny.
   - Avoid: control writing kernel maps; outbound probe to visitor IPs; prealloc map contention at scale.
-  - Touch: `deploy/edge/xdp/bpf/edge_filter.c`, `cmd/edge-bpf-sync/`, `internal/edge/blocklist_sync.go`, `docs/XDP.md`.
+  - Touch: `deploy/edge/xdp/bpf/edge_filter.c`, `cmd/edge-bpf-sync/`, `internal/edge/blocklist_sync.go`, `.cursor/rules/edge.mdc`.
   - **Done gate:**
     - [x] Path class correct; bpf-sync pipeline only (no control direct map write)
     - [x] Holdout test fails without the change (`TestFault_BlocklistV6XDPDrop`, `TestBlocklistStore_ApplyDiffIPv6`)
     - [x] `bash scripts/ci/anti_slop_gate.sh` passed
     - [x] `bash scripts/ci/pr_fast.sh` passed (scoped)
     - [x] Raw verify output pasted in PR (see [Phase 1-3 verify log](#phase-1-3-verify-log-local-2026-08-23))
-    - [x] `docs/XDP.md` updated in same commit
+    - [x] `.cursor/rules/edge.mdc` updated in same commit
     - [x] No lie modes
   - **Verify:**
     - [x] `go test ./internal/edge/... -count=1`
     - [x] `make bpf-dev` (if C changes) — `loadtest_probe.o` + `bin/bpf-collector` via `make bpf-dev` (fixed `scripts/lib/go.sh` self-recursion segfault)
-    - [x] Enterprise lab attach smoke (env documented in PR) — `docs/XDP.md` profile `enterprise-xdp`; `SEALED_BPF_XDP_SMOKE=1 sudo bash scripts/test/sealed_bpf_xdp_smoke.sh` on `lo`; prog_test skips when `kernel.unprivileged_bpf_disabled>=2` without root
+    - [x] Enterprise lab attach smoke (env documented in PR) — `.cursor/rules/edge.mdc` profile `enterprise-xdp`; `SEALED_BPF_XDP_SMOKE=1 sudo bash scripts/test/sealed_bpf_xdp_smoke.sh` on `lo`; prog_test skips when `kernel.unprivileged_bpf_disabled>=2` without root
 
 - [x] **P2-3 Dynamic IPv6 rotation policy on `/click`** — DONE only when all nested `[ ]` are `[x]`
   - Problem: static DC feeds miss per-/64 click rotation.
@@ -465,7 +465,7 @@ Goal: remove PG/Redis amplification from `ivt-detector` blacklist storms. **All 
 - [x] **P3-3 Passive OS fingerprint (p0f-lite) vs User-Agent** — DONE only when all nested `[ ]` are `[x]`
   - Problem: TTL/window/MSS vs UA family not checked on hot path.
   - Path: **edge** + **hot**.
-  - Rules: `edge.mdc`, `hot-path.mdc`, `docs/PARSER.md`.
+  - Rules: `edge.mdc`, `hot-path.mdc`, `.cursor/rules/parser.mdc`.
   - Implement: edge sets fixed headers (`X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS`); tracker DFA/byte scan UA family; L2 signal `os_fingerprint_mismatch`.
   - Avoid: full p0f library on hot path; per-request string parsing of UA beyond bounded scan.
   - Touch: `deploy/edge/xdp/bpf/edge_filter.c`, edge Lua, `internal/ingestion/device_filter.go`.
@@ -747,10 +747,10 @@ Goal: remove PG/Redis amplification from `ivt-detector` blacklist storms. **All 
 - [x] **P6-3 Static counter offload evaluation** — DONE only when all nested `[ ]` are `[x]`
   - Problem: Redis CPU saturation at extreme QPS.
   - Path: **architecture** (spike) + **data**.
-  - Rules: `docs/TRADEOFFS.md`, `data-layer.mdc`.
+  - Rules: `.cursor/rules/tradeoffs.mdc`, `data-layer.mdc`.
   - Implement: document Dragonfly vs Aerospike vs quanta-only; if implemented — feature flag, never break StaticSlot hash tag model without migration plan.
   - Avoid: claiming 100k QPS from mock bench; shipping external store without budget invariant proofs.
-  - Touch: `docs/TRADEOFFS.md`, optional `pkg/`.
+  - Touch: `.cursor/rules/tradeoffs.mdc`, optional `pkg/`.
   - **Done gate:**
     - [x] TRADEOFFS section with rejected/alternatives and decision
     - [x] If code shipped: feature flag + `AssertBudgetInvariant` under failover (`BehaviorHighVolumeDebit`, `TestFault_HighVolumeDebit_subShardBudgetInvariant`)
@@ -782,7 +782,7 @@ Goal: remove PG/Redis amplification from `ivt-detector` blacklist storms. **All 
 - [x] **P6-5 Campaign key sharding for hot campaigns** — DONE only when all nested `[ ]` are `[x]`
   - Problem: single `{campaign_id}` hash tag hotspot on one Redis master.
   - Path: **data** (Lua keys) + **hot**.
-  - Rules: `data-layer.mdc`, `docs/SHARDING.md`.
+  - Rules: `data-layer.mdc`, `.cursor/rules/data-layer.mdc`.
   - Implement: extend `debit_subshard.go` to budget/fcap keys; Lua must stay single-shard per `EVALSHA` — sub-shard keys share hash tag.
   - Avoid: Redis Cluster `MOVED`; multi-key Lua crossing masters; migration without fence epoch.
   - Touch: `debit_subshard.go`, `unified-filter.lua`, `redis_keys_internal.go`.
@@ -791,7 +791,7 @@ Goal: remove PG/Redis amplification from `ivt-detector` blacklist storms. **All 
     - [x] Holdout test fails without the change (`TestDebitSubShard_plainCampaignSingleHashTag_holdout`)
     - [x] `bash scripts/ci/anti_slop_gate.sh` passed
     - [x] `bash scripts/ci/pr_fast.sh` passed (scoped — `var/verify_p6.log`)
-    - [x] `docs/SHARDING.md` updated in same commit
+    - [x] `.cursor/rules/data-layer.mdc` updated in same commit
     - [x] Raw verify output pasted in PR (see [Phase 6 verify log](#phase-6-verify-log-local-2026-08-23))
     - [x] No lie modes
   - **Supplements:** budget, fault (if migration)
@@ -896,12 +896,12 @@ Goal: close security and resilience gaps found in extreme-load / antifraud audit
 
 - [x] **P8-3 DC ASN sampling follow-up** — DONE only when all nested `[ ]` are `[x]`
   - Problem: `DC_ASN_SAMPLE_MASK` (default 1/8) skips ASN hot feed on most events; hosting IP not flagged by `IsAnonymous` can evade L1 (`datacenter_ip` from feed only).
-  - Path: **hot** (snapshot reader) + **docs** (`docs/TRADEOFFS.md`).
+  - Path: **hot** (snapshot reader) + **docs** (`.cursor/rules/tradeoffs.mdc`).
   - Rules: `hot-path.mdc`, `data-layer.mdc`, `anti-slop.mdc`.
   - **Gate:** implement only after Phase 0 repro (metric or holdout fixture) proves bypass **or** PR documents explicit risk acceptance with `fault_proof gap=open` waiver. **Approach B shipped; holdout `TestFraudFilter_DCASN_holdout` is the repro fixture.**
   - Implement: pick one approach and document in TRADEOFFS: **(A)** env-tunable higher sample rate; **(B)** 100% ASN lookup when `IsAnonymous==false` and feed-ready; **(C)** dense set / roaring bitmap for feed ASNs only (O(1), no MaxMind tree on match path). Do **not** ship 2^32-bit flat bitmap without memory gate.
   - Avoid: 100% MaxMind tree lookup per event without alloc/latency proof; importing `internal/fraud` into tracker; weakening AS3215/AS12322 denylist tests.
-  - Touch: `internal/ingestion/filters.go`, `internal/ingestion/dc_asn_table.go`, `docs/TRADEOFFS.md`, `deploy/vendor/ANTIFRAUD.md`.
+  - Touch: `internal/ingestion/filters.go`, `internal/ingestion/dc_asn_table.go`, `.cursor/rules/tradeoffs.mdc`, `deploy/vendor/ANTIFRAUD.md`.
   - **Done gate:**
     - [x] Path class correct; snapshot RCU only on hot path
     - [x] Holdout test **fails without the change** (`TestFraudFilter_DCASN_holdout`: hosting IP, `IsAnonymous=false`, ASN in feed, mask 127 -> always `datacenter_ip`)
@@ -922,10 +922,10 @@ Goal: close security and resilience gaps found in extreme-load / antifraud audit
 - [x] **P8-4 OS fingerprint TTL normalize + CDN ingress guard** — DONE only when all nested `[ ]` are `[x]`
   - Problem: `osFingerprintMismatch` uses raw TTL thresholds (90/100) without initial-TTL normalization; CDN/L4 in front of edge reflects balancer stack -> false positives or fail-open when `X-TCP-TTL` missing.
   - Path: **edge** + **hot** + **docs**.
-  - Rules: `edge.mdc`, `hot-path.mdc`, `docs/PARSER.md`.
+  - Rules: `edge.mdc`, `hot-path.mdc`, `.cursor/rules/parser.mdc`.
   - Implement: normalize `initial_ttl = min({32,64,128,255} >= captured_ttl)` before UA family compare; keep bounded UA scan; metric `ad_os_fingerprint_skipped_total{reason=no_tcp_headers}`; runbook: enable `OS_FINGERPRINT_MISMATCH_ENABLED` only on direct edge + XDP `tcp_fp` sync path, off/shadow behind CDN.
   - Avoid: full p0f on hot path; `getsockopt` / syscall per request on tracker; dynamic Prometheus labels per event.
-  - Touch: `internal/ingestion/os_fingerprint_match.go`, `internal/ingestion/device_filter.go`, `deploy/nginx/lua/edge-ingress.lua`, `deploy/vendor/ANTIFRAUD.md`, `docs/XDP.md`.
+  - Touch: `internal/ingestion/os_fingerprint_match.go`, `internal/ingestion/device_filter.go`, `deploy/nginx/lua/edge-ingress.lua`, `deploy/vendor/ANTIFRAUD.md`, `.cursor/rules/edge.mdc`.
   - **Done gate:**
     - [x] Path class correct; no boundary violations
     - [x] Holdout test **fails without the change** (`TestOSFingerprint_holdout_windowsTTL64NotFlagged`; `TestDeviceFilter_osFingerprintSkippedNoTCPHeaders`)
@@ -974,14 +974,14 @@ Goal: close security and resilience gaps found in extreme-load / antifraud audit
   - **Gate:** implement only after P6-4 lab shows incremental update p99 or NIC drop regression at target entry count — otherwise waiver with `BenchmarkSyncBlocklistIncremental` + map size paste.
   - Implement: static CIDR prefixes remain LPM; exact host IPv4/IPv6 keys move to `BPF_MAP_TYPE_LRU_HASH` (pattern: existing `syn_ratelimit_v4`); bpf-sync and `BlocklistStore` route by prefix length; allowlist-before-deny unchanged.
   - Avoid: control direct kernel writes; breaking incremental changelog ZSET contract; lowering `max_entries` without kernel memory test.
-  - Touch: `deploy/edge/xdp/bpf/edge_filter.c`, `internal/edge/blocklist_store.go`, `internal/edge/blocklist_incremental.go`, `cmd/edge-bpf-sync/`, `docs/XDP.md`.
+  - Touch: `deploy/edge/xdp/bpf/edge_filter.c`, `internal/edge/blocklist_store.go`, `internal/edge/blocklist_incremental.go`, `cmd/edge-bpf-sync/`, `.cursor/rules/edge.mdc`.
   - **Done gate:**
     - [x] Path class correct; sync pipeline only (outbox -> Redis -> bpf-sync)
     - [x] Holdout test **fails without the change** (host add uses HASH map; CIDR uses LPM; incremental delta still skips full `SMEMBERS`)
     - [x] `bash scripts/ci/anti_slop_gate.sh` passed
     - [x] `bash scripts/ci/pr_fast.sh` passed (scoped) — waiver: `go test ./internal/edge/` + `go build ./...` (edge scope)
     - [x] Raw verify output pasted in PR (incremental bench + attach smoke or waiver)
-    - [x] `docs/XDP.md` updated in same commit
+    - [x] `.cursor/rules/edge.mdc` updated in same commit
     - [x] No lie modes
   - **Supplements:** edge
     - [x] `go test ./internal/edge/ -run='SyncBlocklistIncremental|BlocklistStore|RecordAutoBan' -count=1`
@@ -1058,7 +1058,7 @@ PASS	ok  	ad-event-processor/cmd/loadgen	0.002s
 -rw-r--r-- 1 root root 75968 Aug 23 16:54 deploy/dev/bpf/loadtest_probe.o
 ```
 
-Enterprise XDP attach: `docs/XDP.md` profile `enterprise-xdp`; lab smoke `SEALED_BPF_XDP_SMOKE=1 sudo bash scripts/test/sealed_bpf_xdp_smoke.sh` on `lo`. Local `TestFault_BlocklistV6XDPDrop` skips without MEMLOCK (prog_test runs in CI with rlimit).
+Enterprise XDP attach: `.cursor/rules/edge.mdc` profile `enterprise-xdp`; lab smoke `SEALED_BPF_XDP_SMOKE=1 sudo bash scripts/test/sealed_bpf_xdp_smoke.sh` on `lo`. Local `TestFault_BlocklistV6XDPDrop` skips without MEMLOCK (prog_test runs in CI with rlimit).
 
 ## Phase 0 verify log (local 2026-08-23)
 

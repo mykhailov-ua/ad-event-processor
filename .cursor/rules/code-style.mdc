@@ -8,7 +8,7 @@ Apply when editing Go, Lua, or sqlc SQL.
 
 Layout
 
-- One package per functional domain under `internal/<name>/`. Follow `docs/STRUCTURE.md` for the target split.
+- One package per functional domain under `internal/<name>/`. Follow `structure.mdc` for current layout.
 - Allowed subdirs: `db/`, `queries/`, `migrations/`, `pb/` (generated), and domain-specific sub-slices (e.g. `internal/fraud/admin/`).
 - Banned: `dto/`, `usecase/`, `providers/`, `repositories/` ceremony.
 - `cmd/<binary>/main.go` wires config and modules only; no business logic in `main`.

@@ -19,7 +19,7 @@ func TestOtelLogRecord(t *testing.T) {
 }
 
 func TestOtelEndpointFromEnv(t *testing.T) {
-	t.Setenv("BIDSHARD_BPF_OTEL_ENDPOINT", "http://127.0.0.1:4318")
+	t.Setenv("AD_EVENT_PROCESSOR_BPF_OTEL_ENDPOINT", "http://127.0.0.1:4318")
 	if got := otelEndpointFromEnv(); got != "http://127.0.0.1:4318" {
 		t.Fatalf("got %q", got)
 	}

@@ -384,7 +384,7 @@ fi
   > "${OUT}/load-report-all.log" 2>&1 || true
 
 {
-  echo "=== ESPX Edge Cascade + eBPF (${TS}) ==="
+  echo "=== Edge Cascade + eBPF (${TS}) ==="
   echo "netem: delay=${NETEM_DELAY} loss=${NETEM_LOSS} dup=${NETEM_DUPLICATE}"
   echo "FILTER_TIMEOUT_MS=${FILTER_TIMEOUT_MS} LOCAL_QUOTA=off GOMAXPROCS=${GOMAXPROCS_PIN} cpus=${CPUS}"
   echo "inject: burst@${BURST_AT_SEC}s close-c=${BURST_CONNECTIONS}; SCRIPT FLUSH@${FLUSH_AT_SEC}s on ${REDIS_SHARD_CTR}"

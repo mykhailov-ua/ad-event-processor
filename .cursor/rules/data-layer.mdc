@@ -6,7 +6,7 @@ alwaysApply: false
 
 Redis: 4 standalone masters + Sentinel (not Cluster). Route `campaign_id` -> CRC32C slot -> shard. Each `EVALSHA` must hit one shard. Hash tag `{campaign_id}` on all campaign-scoped keys.
 
-Reference: `docs/SHARDING.md`, `docs/TRADEOFFS.md`, `hot-path.mdc`.
+Reference: `architecture.mdc`, `tradeoffs.mdc`, `hot-path.mdc`.
 
 ## Static slot sharding
 
@@ -96,4 +96,30 @@ Per-shard `RedisBreaker`: `REDIS_BREAKER_FAIL_THRESHOLD=150` -> open -> `ErrRedi
 
 Redis UDS when co-located: auto-detect socket path in `redis_shards.go` / `redis_connect.go`. Bench: `scripts/perf/redis_uds_benchmark.sh`.
 
-Related: `docs/ARCHITECTURE.md`, `hot-path.mdc`, `control-plane.mdc`, `data-layer.mdc`.
+## Shard 0 failure matrix (nil client)
+
+| Component | Behavior |
+| :--- | :--- |
+| Control sync/outbox | Skip nil; fan-out 1..N; `ad_control_shard_fanout_skipped_total` |
+| Tracker campaign on shard 0 slot | `503 shard_unavailable` |
+| Tracker globals/fraud XADD | `firstConnectedRedisShard` |
+| Edge blacklist | `connect_any_shard()` Lua |
+
+Recovery: `Shard0CatchupWorker` or `POST /api/v1/ops/shards/0/catchup`. Env: `REDIS_SHARD0_OPTIONAL_STARTUP=1`, `CAMPAIGN_REPLICA_PATH`, `CAMPAIGN_UPDATE_BROKER_FALLBACK=1`.
+
+```bash
+go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ./internal/controlplane/ ./internal/ingestion/
+bash scripts/ci/shard0_nil_gate.sh
+```
+
+Metrics: `ad_shard0_client_nil`, `ad_shard0_catchup_last_success_timestamp`, `ad_registry_stale_mode`.
+
+## Hot campaign sub-shards (`BehaviorHighVolumeDebit`)
+
+Four sub-slots via `{campaign_id:slot_N}` hash tags; single-shard Lua invariant preserved. Pair with `LOCAL_QUOTA_MODE=live` for full-skip.
+
+```bash
+go test ./internal/ingestion/ -run='DebitSubshard|MigrationFence|HighVolumeDebit' -count=1
+```
+
+Related: `architecture.mdc`, `hot-path.mdc`, `control-plane.mdc`, `development.mdc`.

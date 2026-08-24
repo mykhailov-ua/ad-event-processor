@@ -104,7 +104,7 @@ func appendBidObject(dst []byte, p BidWire, defaultBidID []byte) []byte {
 	dst = append(dst, '"')
 	dst = append(dst, `,"cid":`...)
 	dst = appendJSONBytes(dst, p.CampaignID)
-	dst = append(dst, `,"adomain":["bidshard.local"]`...)
+	dst = append(dst, `,"adomain":["exchange.local"]`...)
 	if len(p.DealID) > 0 {
 		dst = append(dst, `,"dealid":`...)
 		dst = appendJSONBytes(dst, p.DealID)

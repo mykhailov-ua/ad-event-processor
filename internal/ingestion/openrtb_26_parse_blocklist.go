@@ -8,7 +8,7 @@ var (
 	openrtbKeyBApp = []byte(`"bapp"`)
 )
 
-var rtbExchangeADomain = []byte("bidshard.local")
+var rtbExchangeADomain = []byte("exchange.local")
 
 func parseBlocklistFieldsFromScan(payload []byte, scan openrtb26Scan, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
 	if scan.idxBCat >= 0 {

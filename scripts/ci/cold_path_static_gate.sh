@@ -50,7 +50,7 @@ else
 fi
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "cold-path-static: see docs/CI.md#bpf-cold-gate"
+  echo "cold-path-static: see .cursor/rules/ci.mdc#bpf-cold-gate"
   exit 1
 fi
 

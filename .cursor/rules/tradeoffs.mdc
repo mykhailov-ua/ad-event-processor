@@ -1,0 +1,46 @@
+---
+description: Rejected alternatives, hot-path strategy, verification evidence matrix
+globs: internal/ingestion/**, internal/domain/**, pkg/broker/**, internal/rtb/**
+alwaysApply: false
+---
+
+When choosing architecture, prefer evidence in tree over new patterns. Invariants: `architecture.mdc`. SLAs: `core.mdc`.
+
+## Rejected for production hot path
+
+| Alternative | Why not |
+| :--- | :--- |
+| **Jump Consistent Hash** | Large remap on scale; tests/benches only |
+| **Redis Cluster** | `MOVED` breaks multi-key Lua; operator-led static slots instead |
+| **Kafka/NATS on `/track`** | No atomic budget+accept; appliance footprint |
+| **Lua `XADD` in same script as debit** | Holds Redis thread; split to Go StreamProducer + rollback |
+| **LISTEN/NOTIFY for outbox** | Polling 20 ms chosen for reliability under load |
+| **Dragonfly/Aerospike v1** | Redis masters + Sentinel sufficient for appliance |
+
+## Local quanta and broker (detail)
+
+Goals: cut Redis stream RAM, crash-safe replay, controlled cutover with PEL drain. Scope: append-only segments + gnet server — not general message bus. Budget/settlement may stay on Redis Streams until broker `_pg` path proven.
+
+## Local quanta trade-off
+
+Full-skip = zero sync `EVALSHA` for eligible traffic; eventual consistency on crash — refill/return scripts reconcile. Coordinate stream keys when `StreamProducer` active to prevent dual `XADD`.
+
+## unsafe.String
+
+Lifetime ≤ gnet read frame. Copy `Accept`/`Origin` and event strings before async write from filter goroutine.
+
+## Verification matrix (must cite tests when claiming behavior)
+
+| Behavior | Test / gate |
+| :--- | :--- |
+| Admission race without reserve | `TestStreamProducerAdmissionRaceWithoutReserve` |
+| Reserve prevents queue full | `TestStreamProducerReservePreventsQueueFull` |
+| Dual stream write fix | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` |
+| Post-debit rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta` |
+| Static slot parity | `sharding_test.go`, edge Lua |
+| Budget invariant | `AssertBudgetInvariant` |
+| UDS dial | `redis_uds_benchmark.sh` |
+
+Operator signals: `ad_stream_producer_post_debit_rejected_total` ≈ 0; spike → tune admission or capacity.
+
+Related: `hot-path.mdc`, `data-layer.mdc`, `architecture.mdc`, `parser.mdc`.

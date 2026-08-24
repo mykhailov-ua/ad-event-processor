@@ -65,7 +65,7 @@ for path in "${HOT_FILES[@]}"; do
 done
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "hot-path-static: see docs/CI.md#bpf-hot-static and .cursor/rules/hot-path.mdc"
+  echo "hot-path-static: see .cursor/rules/ci.mdc#bpf-hot-static and .cursor/rules/hot-path.mdc"
   exit 1
 fi
 

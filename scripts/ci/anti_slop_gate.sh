@@ -123,7 +123,7 @@ if rg -n 'nolint:errcheck' internal/controlplane internal/ingestion internal/pay
 fi
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "anti-slop: remediation — docs/CI.md#anti-slop; integration skips: integration: run make test-integration (Docker testcontainers)"
+  echo "anti-slop: remediation — .cursor/rules/ci.mdc and anti-slop.mdc; integration skips: integration: run make test-integration (Docker testcontainers)"
   exit 1
 fi
 

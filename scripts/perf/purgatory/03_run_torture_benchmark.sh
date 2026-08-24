@@ -306,7 +306,7 @@ esac
 
 REPORT="${OUT}/REPORT.txt"
 {
-  echo "=== ESPX Purgatory Torture Report (${TS}) ==="
+  echo "=== Purgatory Torture Report (${TS}) ==="
   echo
   echo "-- SUT --"
   echo "pid:            ${SUT_PID}"

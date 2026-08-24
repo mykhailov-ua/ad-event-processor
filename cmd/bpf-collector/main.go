@@ -36,7 +36,7 @@ func main() {
 	sampleRate := flag.Uint("sample-rate", 1, "syscall sample rate (1=every event)")
 	slowUs := flag.Uint("slow-us", 10000, "slow syscall threshold microseconds")
 	discoverLoadgen := flag.Bool("discover-loadgen", true, "watch for load generator PIDs by /proc comm")
-	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default loadgen; env ADSTACK_BPF_LOADGEN_COMM)")
+	loadgenComms := flag.String("loadgen-comms", "", "comma-separated /proc comm names (default loadgen; env AD_EVENT_PROCESSOR_BPF_LOADGEN_COMM)")
 	discoverInterval := flag.Duration("discover-interval", 2*time.Second, "dynamic target scan interval")
 	dumpInterval := flag.Duration("dump-interval", 0, "periodic maps/summary.json dump (0=disabled)")
 	metricsAddr := flag.String("metrics-addr", "", "Prometheus /metrics listen address (empty=disabled)")

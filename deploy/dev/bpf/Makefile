@@ -10,7 +10,7 @@ OBJ := $(OUT_DIR)/loadtest_probe.o
 
 all: $(OBJ)
 
-$(OBJ): loadtest_probe.bpf.c ad_event_processor_probe.h ad_event_processor_pt_regs.h ad_event_processor_trace.h
+$(OBJ): loadtest_probe.bpf.c probe.h probe_pt_regs.h probe_trace.h
 	$(CLANG) $(BPF_CFLAGS) $(BPF_INCLUDES) -c loadtest_probe.bpf.c -o $@
 
 clean:

@@ -6,20 +6,11 @@ alwaysApply: false
 
 Apply when changing `/track`, `/click`, `/tg/click`, `/openrtb/bid`, filters, parse, gnet, stream producer, local quanta, or edge-tracker alignment.
 
-Reference docs: `docs/PARSER.md`, `docs/TRADEOFFS.md` (hot-path ingest), `docs/ARCHITECTURE.md` (hot vs cold). Anti-slop: `anti-slop.mdc`.
+Reference: `parser.mdc`, `tradeoffs.mdc`, `architecture.mdc`. Anti-slop: `anti-slop.mdc`.
 
-## SLA (non-negotiable)
+## SLA
 
-- Handler `ad_http_request_duration_seconds`: p95 < 50 ms, p99 < 80 ms, ceiling 100 ms.
-- Production `FILTER_TIMEOUT_MS` <= 100; dev default 5000 ms.
-- Redis unified-filter Lua p99 < 10 ms per shard.
-- Geo filter p99 < 10 us (sampled).
-- `RunAuction` p99 < 15 us; p99 candidates scanned < 500 (`rtb.mdc`).
-- Fraud boost snapshot: incremental < 500 us per `FilterEngine.Check`; `BenchmarkFilterFraudBoost` ~90 ns, 0 allocs/op.
-- `GetShard` (StaticSlot): ~5.6 ns, 0 allocs/op.
-- Load-test abort: control-cohort p99 > 80 ms for 30 s or budget invariant violation.
-- Budget invariant: `current_spend <= budget_limit` in Postgres; tests use `AssertBudgetInvariant` (+/-1 micro-unit).
-- Financial rule: **fail closed** (503) — never accept spend without debit+log alignment.
+Non-negotiable budgets: `core.mdc`. Financial rule: **fail closed** (503) — never accept spend without debit + stream reservation aligned.
 
 ## Forbidden on request path (CI-enforced)
 
@@ -34,7 +25,7 @@ Reference docs: `docs/PARSER.md`, `docs/TRADEOFFS.md` (hot-path ingest), `docs/A
 - `json.Marshal` / `encoding/json` on production `/track` or OpenRTB bid response path.
 - `net/http` server for tracker ingest (gnet only).
 - Import `internal/fraud` ML inference — hot path reads `ml:score:boost:*` snapshot only.
-- Synchronous Postgres, ClickHouse, outbox, or external RPC from `processTrack()` or synchronous filter path.
+- Synchronous Postgres, ClickHouse, outbox, or external RPC from `processTrack()` or synchronous filter path — see `architecture.mdc`
 
 Allowed patterns:
 
@@ -83,75 +74,7 @@ Keys: `{campaign_id}` hash tag so multi-key Lua stays on one master. Never Redis
 
 ## Parser and ingress security
 
-Scope: `internal/ingestion` + nginx `edge-phase2.lua`. Full matrix: `docs/PARSER.md`.
-
-### Design goals
-
-1. Reject hostile wire early — **zero allocs on reject path**.
-2. Close slow streams — incomplete bodies must not hold connections forever.
-3. Edge-tracker parity — same verdict on same wire (`http1IngressCanonical`, `differential_count` must be 0).
-
-### POST /track edge alignment
-
-| Rule | Edge (Lua) | Tracker (gnet) |
-| :--- | :---: | :---: |
-| `Content-Length` required | yes | yes (`http1TrackEdgePolicy`) |
-| Chunked rejected | yes | yes |
-| Duplicate/obfuscated `TE` rejected | yes | yes |
-
-Chunked allowed on `POST /openrtb/bid` only (chunk extensions rejected).
-
-Verify: `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` — `differential_count=0`.
-
-### GET /click
-
-Query-only; `GET` only; strict UUID `campaign_id`. Edge gate: `EDGE_EXPOSE_CLICK`. Shard: CRC32 slot table.
-
-### HTTP/1 slow-stream DoS
-
-| Knob | Default | Behavior |
-| :--- | ---: | :--- |
-| `HTTP1_INCOMPLETE_MAX` | 3 | Close after N incomplete passes |
-| `HTTP1_BODY_IDLE_MS` | 5000 | Wall idle since body expected |
-| `MaxRequestBodySize` | 1 MiB | Cap buffered incomplete body |
-
-Metric: `ad_http1_incomplete_close_total{reason}`. H2: `H2_INCOMPLETE_MAX=3`. Operator: nginx `client_body_timeout` at perimeter.
-
-### Framing and wire bombs
-
-- Chunk extensions (`;` in chunk size lines): rejected all paths; hex overflow guard; `chunkScratch` reset; cap > 64 KiB dropped.
-- H2 header block: 16 KiB cap (`h2MaxHeaderBlock`) -> `RST_STREAM`.
-- TE.TE obfuscation: duplicate `Transfer-Encoding`/`TE`, control chars, tab-obfuscated `chunked` rejected.
-- HPACK integer continuation: 8 octet cap (`h2MaxIntContinuationOctets`).
-- OpenRTB scan: `ORTB_SCAN_MAX_BYTES=262144`, `ORTB_MAX_QUOTE_CHECKS=65536`; metric `ad_ortb_scan_truncated_total`.
-- Protobuf: `PROTO_MAX_FIELDS=256`; pre-scan via `protoWireFieldCount` before `UnmarshalVT` (`proto_wire_budget.go`).
-- vtproto hot patch: `make proto` -> `patch-vtproto-hotpath` -> `appendReuseBytes` for repeated bytes (`pb/unmarshal_helpers.go`).
-
-### JSON parse budgets (track / ORTB)
-
-| Constant | Default | Effect |
-| :--- | ---: | :--- |
-| `MaxJSONTotalWSkip` | 4096 | Cumulative whitespace |
-| `MaxJSONStringScanBytes` | 65536 | Bytes in one string |
-| `MaxJSONStringEscapes` | 16384 | Escapes per string |
-| `MaxJSONKeyPairs` | 10000 | Key:value pairs |
-| `MaxJSONDepth` | 16 | Track JSON |
-| `OrtbMaxJSONDepth` | 32 | ORTB ingress |
-| `JSON_STRICT_UTF8` | on | Reject ill-formed UTF-8 |
-
-Use `jsonScanBudget` (`json_scan_budget.go`) — decrement on ws/string/escape/pair; reject when negative.
-
-### Sustained chaos pass criteria
-
-~90% valid protobuf `/track` + ~10% chaos. Pass: control p99 < 80 ms, `WorkerPoolRejectTotal` delta 0, >=500 control samples.
-
-```bash
-bash scripts/fault/parser_chaos_drill.sh
-bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=10
-go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1 -v
-```
-
-Chaos tests emit `fault_proof gap=open|closed`.
+Wire policy, budgets, edge parity, chaos commands: `parser.mdc`. Merge blocked without `TestChaos_CrossHop_NginxGnet` `differential_count=0`.
 
 ## gnet HTTP FSM
 
@@ -163,7 +86,7 @@ Chaos tests emit `fault_proof gap=open|closed`.
 
 ## Filter chain order
 
-Execute cheapest first; network last:
+Architectural invariant: local filters before any Redis RTT (`architecture.mdc`). Execute cheapest first:
 
 ```
 License -> Emergency Breaker -> Geo -> Schedule -> Segment -> Fraud boost snapshot -> Consent -> UnifiedFilter (Redis Lua)
@@ -176,7 +99,7 @@ License -> Emergency Breaker -> Geo -> Schedule -> Segment -> Fraud boost snapsh
 
 ## Stream producer, admission, rollback
 
-Layered strategy (`docs/TRADEOFFS.md`):
+Layered strategy (`tradeoffs.mdc`):
 
 1. `tryAcquireStreamAdmission` / `TryReserve` at `STREAM_PRODUCER_ADMISSION_PCT` (default 85%) **before** Lua debit.
 2. `SetDeferStreamToProducer(true)` -> Lua stream key `fcap:ignored`; single Go writer (`StreamProducer` / `BrokerProducer`).
@@ -211,14 +134,13 @@ Monitor: `ad_stream_producer_post_debit_rejected_total` should stay ~0; spike = 
 
 ## Verification checklist
 
+Architectural invariants: `architecture.mdc`. Parser/outbox fault proofs: `fault-tests.mdc`.
+
 | Step | Command |
 | :--- | :--- |
 | Alloc gate | `make test-alloc-gate` |
 | Hot static | `bash scripts/ci/hot_path_static_gate.sh` |
 | Escape heap | `bash scripts/ci/escape_heap_gate.sh` |
-| Parser chaos | `go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1` |
-| Cross-hop edge | `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` |
-| TE/proto/HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE\|TestChaos_Proto_FieldBudget\|TestChaos_HPACK' -count=1` |
 | Stream admission | `go test ./internal/ingestion/ -run='TestStreamProducer\|TestUnifiedFilter_SetDefer\|TestUnifiedFilter_Rollback' -v` |
 | Perf claim | `AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business` (`load-test-bpf.mdc`) |
 

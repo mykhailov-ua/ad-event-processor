@@ -1,0 +1,89 @@
+---
+description: Offline JWT license, trial registry, vendor billing, HWID, garble
+globs: internal/licensing/**, internal/trialregistry/**, cmd/license-issue/**, cmd/license-asset-seal/**, cmd/trial-registry/**, deploy/vendor/**, pkg/legal/**
+alwaysApply: false
+---
+
+Closed-network installs: Ed25519 JWT on disk; no license server ping. Module and product id: **ad-event-processor**. Customer file: `var/license.jwt` (not repo root).
+
+Hot path reads inline license snapshot only — not `IngestAllowed()` per request. Tracker garble off; control/processor garble on (`release_strings_gate`).
+
+## License states
+
+| State | Tracking |
+| :--- | :--- |
+| ACTIVE | Normal |
+| GRACE | JWT expired within `grace_days` (7) |
+| EXPIRED | Blocked |
+
+Pilot SKU (`deploy/vendor/sku.yaml`): 10 days, 5k RPS, OpenRTB off, hard bind optional.
+
+## Issue JWT (vendor)
+
+```bash
+export AD_EVENT_PROCESSOR_LICENSE_PRIVATE_KEY_FILE=deploy/vendor/license_private.key
+go run ./cmd/license-issue \
+  --sku pilot --customer "Acme" \
+  --deployment-id "<uuid>" --hwid-v2 "<hwid>" \
+  --out /tmp/acme.jwt
+```
+
+Reuse same `deployment_id` on renewals and tier upgrades. HWID v2 (Argon2id) preferred over legacy fingerprint when JWT has `hwid_hash`.
+
+Verification catalog (gate: `make license-verify`, `make license-red-team`):
+
+| ID | Property |
+| :--- | :--- |
+| P-C2-01 | Invalid signature or payload => reject |
+| P-C3-03 | `IngestAllowed` false iff state in {EXPIRED, REVOKED} |
+| P-C4-03 | Customer limits never exceed deployment ceiling |
+| P-HWID-01 | Argon2id hash deterministic for fixed telemetry |
+
+Status API: `GET /api/v1/license/status` (fields include `host_fingerprint`, `hwid_v2`, `hwid_match`, `days_to_expiry`).
+
+Release guard kill switches (lab gdb/strace/delve on garbled builds):
+
+| Env | Effect |
+| :--- | :--- |
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` | Disable all probes |
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE=0` | Disable ptrace watchdog only |
+
+## Trial registry (vendor plane)
+
+Repeat-trial defense at **JWT issue time**, not on buyer VPS.
+
+| Anchor | Use |
+| :--- | :--- |
+| `telegram` | Primary identity |
+| `deployment_id` | Links pilot → paid |
+| `hwid` | Block second pilot on same metal |
+| `usdt_tx` | One wallet → one buyer line |
+
+Env: `VENDOR_TRIAL_REGISTRY=deploy/vendor/trial_registry.json`. Force re-issue: `VENDOR_TRIAL_FORCE=1` + `--force --force-reason`.
+
+Reject pilot when prior `telegram` or `hwid` with status `active|expired`; same wallet on prior pilot. Do not hard-block IP /24 alone.
+
+CLI: `trial-registry list-pending`, `license-issue --approve-pending`, `--record-hwid`, `--mark-converted`.
+
+## Tier ladder (USDT / month)
+
+| SKU | USDT/mo | Hosts | Peak RPS |
+| :--- | ---: | ---: | ---: |
+| starter | $129 | 1 | 10k |
+| pro | $329 | 1 | 25k |
+| scale | $649 | 3 | 75k |
+| network | $1,199 | 10 | 150k |
+| enterprise | $2,500+ | 99 | custom |
+| pilot | $0 | 1 | 5k (10 days) |
+
+Enforcement: hosts + peak RPS + feature gates (OpenRTB, ML, eBPF). Unlimited campaigns on self-hosted — quote RPS and hosts only.
+
+Cryptomus webhook: vendor VPS only; verify `sign`; idempotency on `uuid`; JWT only on `paid` / `paid_over`. Appliance `POST /api/v1/selfserve/payment-intents` is ledger top-up, not license renewal.
+
+## Customer apply
+
+Admin Settings → License, or `license-apply`, or `POST /api/v1/license/apply`. No restart — entitlements reload immediately.
+
+Install env: `AD_EVENT_PROCESSOR_LICENSE_MODE=file`, `TELEMETRY_ENABLED=false` default.
+
+Related: `compliance.mdc`, `boundaries.mdc`, `core.mdc` (sources-only, no secrets in git).

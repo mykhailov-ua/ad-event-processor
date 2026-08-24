@@ -1,4 +1,4 @@
-# BidShard commercial sales kit (internal)
+# ad-event-processor commercial sales kit (internal)
 
 Vendor-only. Not shipped in customer tarballs. Runtime limits: [sku.yaml](./sku.yaml). Issue JWTs with `go run ./cmd/license-issue --sku <code> …`.
 
@@ -46,7 +46,7 @@ Quote **RPS** and **hosts** only. Never "X events/month" or "X campaigns include
 
 Price bands for negotiation: Starter **$119–149**, Pro **$299–349**, Scale **$599–699**. Default quote = mid-band above.
 
-**Setup / onboarding:** no separate setup line item. Copy: *«Install included with first paid month»*. First month invoice = license only. One Telegram install assist (≤ 2 h) on Starter+; redeploys self-serve via [START.md](../../docs/START.md).
+**Setup / onboarding:** no separate setup line item. Copy: *«Install included with first paid month»*. First month invoice = license only. One Telegram install assist (≤ 2 h) on Starter+; redeploys self-serve via [DEVELOPMENT.md](../../docs/DEVELOPMENT.md).
 
 Runtime gates: `SanitizeFeaturesForSKU`, `OpenRTBAllowed`, `EbpfEdgeAllowed`, `CheckHostActivation`, `LicenseRPSFilter` (licensed RPS + **10% burst** for ~45s before 429). Canonical limits: [sku.yaml](./sku.yaml) (`max_events_per_month: 0`, `max_requests_per_day: 0`, `max_active_campaigns: 0` = not enforced).
 
@@ -79,11 +79,11 @@ Do not force Binom-style "CH included" on entry — quote **$40–60 VPS** witho
 | Stack | License | VPS (typical) | **Total/mo** |
 | :--- | ---: | ---: | ---: |
 | Keitaro + VPS | $45–75 | $30–80 | **$75–155** |
-| BidShard **Starter** (ingest-only) | $129 | $40–60 | **$169–189** |
-| BidShard **Starter** + CH reports | $129 | $60–80 | **$189–209** |
+| ad-event-processor **Starter** (ingest-only) | $129 | $40–60 | **$169–189** |
+| ad-event-processor **Starter** + CH reports | $129 | $60–80 | **$189–209** |
 | Binom v2 | $149 | $40–80 | **$189–229** |
-| BidShard **Pro** (OpenRTB) | $329 | $40–80 | **$369–409** |
-| BidShard **Scale** (3 hosts) | $649 | $80–120 | **$729–769** |
+| ad-event-processor **Pro** (OpenRTB) | $329 | $40–80 | **$369–409** |
+| ad-event-processor **Scale** (3 hosts) | $649 | $80–120 | **$729–769** |
 
 Starter is priced above Keitaro on purpose: filters non-payers and funds real support. Pro/Scale are priced vs programmatic infra and host/RPS envelope, not campaign count.
 
@@ -149,7 +149,7 @@ Higher ARPU assumes fewer tire-kickers (no setup fee) and 2–3 Pro/Scale progra
 | :--- | :--- |
 | USDT confirmed → renewal JWT | **24 h** (Pro/Scale **12 h**) |
 | Onboarding | Included with first month; ≤ 2 h Telegram install assist |
-| Tier upgrade | New JWT only — no reinstall ([START.md § License tier upgrade](../../docs/START.md#license-tier-upgrade)) |
+| Tier upgrade | New JWT only — no reinstall (`.cursor/rules/licensing.mdc` — Customer apply) |
 | Pilot extension | Case-by-case +7 days max; requires written use-case |
 
 ## Issue flow (vendor)
@@ -165,6 +165,6 @@ go run ./cmd/license-issue \
   --out /tmp/acme-pro.jwt
 ```
 
-Send [USDT invoice](./USDT_INVOICE_TEMPLATE.md) first for new paid tiers (license line only — no setup fee row). After on-chain confirm, email JWT + renewal instructions ([LICENSE.md](../../docs/LICENSE.md)).
+Send [USDT invoice](./USDT_INVOICE_TEMPLATE.md) first for new paid tiers (license line only — no setup fee row). After on-chain confirm, email JWT + renewal instructions ([licensing.mdc](../../.cursor/rules/licensing.mdc)).
 
 Антифрод (питч и полный список фич): [ANTIFRAUD.md](./ANTIFRAUD.md).

@@ -57,7 +57,21 @@ func ProfileFromEnv() string {
 }
 
 func BPFEnv(suffix string) string {
-	return envStringDual("ADSTACK_BPF_"+suffix, naming.LegacyVendorEnvKey("BPF_"+suffix))
+	adEventKey := "AD_EVENT_PROCESSOR_BPF_" + suffix
+	if v, ok := os.LookupEnv(adEventKey); ok && strings.TrimSpace(v) != "" {
+		return v
+	}
+	adstackKey := "ADSTACK_BPF_" + suffix
+	if v, ok := os.LookupEnv(adstackKey); ok {
+		warnLegacyEnvOnce(adstackKey, adEventKey)
+		return v
+	}
+	legacyKey := naming.LegacyVendorEnvKey("BPF_" + suffix)
+	if v, ok := os.LookupEnv(legacyKey); ok {
+		warnLegacyEnvOnce(legacyKey, adEventKey)
+		return v
+	}
+	return ""
 }
 
 func RegionCodeFromEnv() int {

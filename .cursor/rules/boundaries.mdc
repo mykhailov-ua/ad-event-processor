@@ -24,4 +24,4 @@ Do not split for folder layout when DB is already shared. Do not create microser
 
 New standalone needs: `internal/<svc>/`, `cmd/<svc>/main.go`, migrations, config pool limits, compose entry, at least one real client.
 
-Related: `docs/ARCHITECTURE.md`, `hot-path.mdc`, `core.mdc`.
+Related: `architecture.mdc`, `hot-path.mdc`, `core.mdc`.

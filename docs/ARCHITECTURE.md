@@ -1,6 +1,46 @@
 # Platform Architecture
 
-Hot-path ingestion (tracker: p95 < 50 ms, p99 < 80 ms, max 100 ms, zero heap allocs) vs cold-path settlement (PostgreSQL truth, ClickHouse analytics, outbox → Redis). Stack identity: **ad-event-processor** — [NAMING.md](NAMING.md).
+Hot-path ingestion (tracker: p95 < 50 ms, p99 < 80 ms, max 100 ms, zero heap allocs) vs cold-path settlement (PostgreSQL truth, ClickHouse analytics, outbox → Redis). Stack identity: **ad-event-processor** — `.cursor/rules/naming.mdc`.
+
+## Architectural constraints
+
+These invariants are non-negotiable. Agent rules: `.cursor/rules/architecture.mdc`.
+
+### Hot path — what must not happen
+
+| Constraint | Why |
+| :--- | :--- |
+| **No Postgres, ClickHouse, or outbox** on `/track`, `/click`, `/openrtb/bid` accept path | DB ms latency breaks p99; truth is async via streams |
+| **No ML inference** per request | `fraud-scorer` batch → outbox → Redis snapshot; hot path reads boost only |
+| **No per-request catalog DB fetch** | Registry via atomic snapshot + `campaigns:update` pub/sub |
+| **No sequential Redis round-trips** per event | Each extra RTT adds p99 tail; one `EVALSHA` max (0 with local quanta full-skip) |
+| **No sync `XADD` in debit Lua** | Holds Redis thread; Go StreamProducer writes async with rollback on fail |
+| **No Redis between cheap filters** | Geo/schedule/segment are local; UnifiedFilter (Redis) runs **last** |
+| **No accept without debit alignment** | Post-debit enqueue fail → rollback; infra fail → **503**, not silent accept |
+| **Zero heap allocs** on ingest | CI: `make test-alloc-gate`, escape heap gate |
+
+### Hot path — allowed I/O per event
+
+| Stage | Sync I/O |
+| :--- | :--- |
+| Local filters | CPU only (incl. fraud boost snapshot read) |
+| Budget/dedup | 0 RTT (local quanta full-skip) or **1×** `EVALSHA` |
+| Event log | Async pipeline `XADD` (after admission reserve + debit) |
+| OpenRTB | In-process auction — no FilterEngine chain |
+
+### Cold path — what must happen
+
+| Constraint | Why |
+| :--- | :--- |
+| Mutation + outbox in **one PG transaction** | At-least-once fan-out without dual writes |
+| OutboxWorker on control only | Tracker never polls PG |
+| No O(N) DB queries in handler loops | Batch/`ANY($1)` — cold-path static gate |
+| `current_spend <= budget_limit` in PG | Financial invariant; Redis is cache, PG reconciles |
+| Processor does not touch `balance_ledger` | Ledger append stays on payment/settlement paths |
+
+### Sharding
+
+StaticSlot + CRC32C — not Redis Cluster (no `MOVED` on multi-key Lua). Edge shard pick must match Go. Details: Redis layout section below; ops matrix: `.cursor/rules/data-layer.mdc`.
 
 ## System Topology
 
@@ -95,7 +135,7 @@ Infra (compose): PostgreSQL `5430`, Redis `6479–6482` (4 shards default; `6483
 - `POST /openrtb/bid`: chunked OK; chunk extensions rejected.
 - Bounded parsers: `ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`, `PROTO_MAX_FIELDS`, HPACK limits.
 
-See [PARSER.md](PARSER.md). Verify: `bash scripts/fault/parser_chaos_drill.sh`.
+See `.cursor/rules/parser.mdc`. Verify: `bash scripts/fault/parser_chaos_drill.sh`.
 
 ## Request Lifecycle
 
@@ -245,12 +285,12 @@ Processor batch-inserts; MVs derived in CH. Local disk spool when CH down.
 
 - PII: rolling hash → `ip_hash`/`ua_hash` in CH.
 - Edge: Nginx Lua blacklist/rate limits.
-- XDP (Enterprise): NIC drop — [XDP.md](XDP.md).
+- XDP (Enterprise): NIC drop — `.cursor/rules/edge.mdc`.
 - Audit: `admin_audit_log` same TX as mutations.
 
 ## OpenRTB 2.6
 
-`POST /openrtb/bid` on tracker. Runbook: [RTB.md](RTB.md).
+`POST /openrtb/bid` on tracker. Runbook: `.cursor/rules/rtb.mdc`.
 
 ## Enterprise (optional)
 
@@ -258,8 +298,8 @@ Appliance (`single_vps`) ships without multi-region XDP. Pilot: `deploy/vendor/s
 
 | Feature | License JWT | Compose profile | Runbook |
 | :--- | :--- | :--- | :--- |
-| Multi-region | `multi_region: true` | `--profile multi-region` | [REGIONS.md](REGIONS.md) |
-| XDP edge | `ebpf_xdp_edge: true` | `--profile enterprise-xdp` | [XDP.md](XDP.md) |
+| Multi-region | `multi_region: true` | `--profile multi-region` | `.cursor/rules/regions.mdc` |
+| XDP edge | `ebpf_xdp_edge: true` | `--profile enterprise-xdp` | `.cursor/rules/edge.mdc` |
 
 Runtime: `control` refuses `MULTI_REGION_ENABLED=1` without entitlement; `edge-xdp` skips attach without license; doctor probe in `pkg/doctor/xdp_probe.go`.
 

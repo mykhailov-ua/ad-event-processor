@@ -4,7 +4,7 @@ globs: deploy/nginx/**, deploy/edge/**, internal/edge/**, cmd/edge-xdp/**, cmd/e
 alwaysApply: false
 ---
 
-Edge: OpenResty/nginx ingress + optional XDP L4 filter. Compliance map policy: `compliance.mdc`. Parser alignment: `docs/PARSER.md`, `hot-path.mdc`.
+Edge: OpenResty/nginx ingress + optional XDP L4 filter. Compliance map policy: `compliance.mdc`. Parser alignment: `parser.mdc`, `hot-path.mdc`.
 
 ## Listeners
 
@@ -66,4 +66,28 @@ shard = slot_table[slot]
 
 `EDGE_TARPIT_ENABLED=true` on nginx edge only; capped duration; never on billing/settlement paths.
 
-Related: `compliance.mdc`, `data-layer.mdc`, `hot-path.mdc`, `docs/XDP.md`.
+## XDP (Enterprise)
+
+Not appliance SKU. License `features.ebpf_xdp_edge`. Hot path must not import `internal/edge`.
+
+Flow: control outbox → Redis shard 0 → `edge-bpf-sync` → BPF maps → `edge-xdp` drop → Nginx → tracker.
+
+Pin dir default `/sys/fs/bpf/ad-event-processor`. Blocklist: host keys in LRU HASH (`/32`, `/128`); CIDR in LPM TRIE. Lookup: host HASH before prefix LPM. Allowlist before deny.
+
+Scale: LPM `max_entries=786432`. Incremental sync via `blacklist:changelog:{add,remove}` ZSETs on shard 0; full `SMEMBERS` at startup + every 5 min.
+
+| Binary | Role |
+| :--- | :--- |
+| `edge-xdp` | CAP_BPF + CAP_NET_ADMIN attach |
+| `edge-bpf-sync` | Redis → maps; `SYNC_INTERVAL=5s` default |
+
+OS fingerprint: edge forwards `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS` from `edge-tcp-fp-sync` / XDP fingerprints map. CDN/L4 LB: set `OS_FINGERPRINT_MISMATCH_ENABLED=false` or accept skip metrics.
+
+Rollback: stop bpf-sync → stop edge-xdp; Nginx Lua blacklist remains.
+
+```bash
+bash scripts/ci/compliance.sh
+go test ./internal/edge/... -count=1
+```
+
+Related: `compliance.mdc`, `data-layer.mdc`, `hot-path.mdc`, `licensing.mdc`.

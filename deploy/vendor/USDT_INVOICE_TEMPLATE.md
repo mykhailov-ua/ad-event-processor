@@ -4,11 +4,11 @@ Replace `{{…}}` placeholders. Send via Telegram or email **before** first paid
 
 ---
 
-**Subject:** BidShard {{TIER}} — USDT invoice · {{CUSTOMER_NAME}}
+**Subject:** ad-event-processor {{TIER}} — USDT invoice · {{CUSTOMER_NAME}}
 
 Hi {{CUSTOMER_NAME}},
 
-Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`). Onboarding is included with the first paid month — no separate setup fee.
+Invoice for your on-prem ad-event-processor license (**{{TIER}}** / SKU `{{SKU_CODE}}`). Onboarding is included with the first paid month — no separate setup fee.
 
 | Field | Value |
 | :--- | :--- |
@@ -36,11 +36,11 @@ Invoice for your on-prem BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`). O
 1. Admin UI → **Settings** → License → paste JWT → **Apply**, or  
 2. `bash scripts/install/ad-event-processor-install.sh license-apply '<JWT>'`
 
-Docs: [LICENSE.md](../../docs/LICENSE.md) · [START.md § License tier upgrade](../../docs/START.md#license-tier-upgrade)
+Docs: [licensing.mdc](../../.cursor/rules/licensing.mdc) · [DEVELOPMENT.md](../../docs/DEVELOPMENT.md)
 
 Tier limits reference: [sku.yaml](./sku.yaml) · internal ladder: [SALES_KIT.md](./SALES_KIT.md)
 
-— BidShard vendor support (Telegram: {{SUPPORT_TELEGRAM}})
+— ad-event-processor vendor support (Telegram: {{SUPPORT_TELEGRAM}})
 
 ---
 

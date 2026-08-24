@@ -44,9 +44,9 @@ http {
 
     init_worker_by_lua_file /etc/nginx/lua/init-worker.lua;
 
-    limit_req_zone $binary_remote_addr zone=track_ip:10m rate=3000r/s;
-    limit_req_zone $binary_remote_addr zone=admin_login_ip:10m rate=10r/m;
-    limit_req_zone $binary_remote_addr zone=admin_auth_ip:10m rate=60r/m;
+    limit_req_zone ${DOLLAR}binary_remote_addr zone=track_ip:10m rate=3000r/s;
+    limit_req_zone ${DOLLAR}binary_remote_addr zone=admin_login_ip:10m rate=10r/m;
+    limit_req_zone ${DOLLAR}binary_remote_addr zone=admin_auth_ip:10m rate=60r/m;
 
     upstream trackers {
         server 127.0.0.1:${LOAD_TEST_TRACKER_0_INGEST_PORT};
@@ -78,9 +78,9 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_pass http://control;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host ${DOLLAR}host;
+            proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
             proxy_connect_timeout 2s;
             proxy_read_timeout 30s;
         }
@@ -90,9 +90,9 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_pass http://control;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host ${DOLLAR}host;
+            proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
             proxy_connect_timeout 2s;
             proxy_read_timeout 30s;
         }
@@ -102,9 +102,9 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_pass http://control;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host ${DOLLAR}host;
+            proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
             proxy_connect_timeout 2s;
             proxy_read_timeout 30s;
         }
@@ -117,9 +117,9 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_pass http://trackers;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host ${DOLLAR}host;
+            proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
 
             proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
             proxy_connect_timeout 1s;
@@ -157,9 +157,9 @@ http {
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_pass http://trackers;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header Host ${DOLLAR}host;
+            proxy_set_header X-Real-IP ${DOLLAR}remote_addr;
+            proxy_set_header X-Forwarded-For ${DOLLAR}proxy_add_x_forwarded_for;
 
             proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
             proxy_connect_timeout 1s;

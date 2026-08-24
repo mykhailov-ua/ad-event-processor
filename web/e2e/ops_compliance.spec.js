@@ -131,7 +131,7 @@ test('ops danger zone reload RBAC via POST /ops/roles/reload', async ({ page }) 
     await route.fulfill({
       status: 200,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ status: 'reloaded', path: '/etc/bidshard/roles.yaml' }),
+      body: JSON.stringify({ status: 'reloaded', path: '/etc/operator/roles.yaml' }),
     });
   });
 

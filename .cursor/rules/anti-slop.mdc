@@ -3,11 +3,11 @@ description: AI slop gates, test honesty, UI product honesty, bench truth
 alwaysApply: true
 ---
 
-Agents must not ship plausible-but-wrong code. Slop = code that compiles, looks idiomatic, and fails CI or operator trust. Remediation: `docs/CI.md` (Static Gates), `docs/UI.md` (Anti-slop).
+Agents must not ship plausible-but-wrong code. Slop = code that compiles, looks idiomatic, and fails CI or operator trust. Remediation: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop).
 
 ## Lie modes (never)
 
-- Wrong naming vs `docs/NAMING.md`, `docs/STRUCTURE.md`, or `naming.mdc`. Cryptic suffixes (`m8`, `n1`, `f1`) and legacy tokens (`BidShard`, `espx`) are slop.
+- Wrong naming vs `naming.mdc` or `structure.mdc`. Cryptic suffixes (`m8`, `n1`, `f1`) and legacy tokens (`BidShard`, `espx`) are slop.
 - Wrong types: sqlc row field vs DTO `json` tag mismatch.
 - Plausible logic that fails edge cases (parser budgets, budget invariant, idempotency).
 - Weakened tests to green CI without fixing behavior.

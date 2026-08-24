@@ -110,59 +110,45 @@ func TestLoadTestComposeUsesEnvVars(t *testing.T) {
 	}
 }
 
-func TestLoadTestNginxRenderedFromEnvSource(t *testing.T) {
+func TestLoadTestNginxTemplateWiresEnvVars(t *testing.T) {
 	env := loadTestEnvFile(t)
 	count := loadTestInt(t, env, "LOAD_TEST_TRACKER_COUNT")
-	edge := loadTestInt(t, env, "LOAD_TEST_EDGE_PORT")
-	control := loadTestInt(t, env, "LOAD_TEST_CONTROL_PORT")
 
-	data, err := os.ReadFile("../../deploy/nginx/nginx.load-test.conf")
+	data, err := os.ReadFile("../../deploy/nginx/nginx.load-test.conf.in")
 	if err != nil {
-		t.Fatalf("read nginx.load-test.conf: %v", err)
+		t.Fatalf("read nginx.load-test.conf.in: %v", err)
 	}
 	content := string(data)
-	if !strings.Contains(content, fmt.Sprintf("listen %d", edge)) {
-		t.Fatalf("nginx.load-test.conf missing edge listen %d", edge)
-	}
-	if !strings.Contains(content, fmt.Sprintf("127.0.0.1:%d", control)) {
-		t.Fatalf("nginx.load-test.conf missing control upstream %d", control)
-	}
-	first := loadTestTrackerIngestPort(t, env, 0)
-	last := loadTestTrackerIngestPort(t, env, count-1)
-	if !strings.Contains(content, fmt.Sprintf("127.0.0.1:%d", first)) {
-		t.Fatalf("nginx.load-test.conf missing tracker-0 %d", first)
-	}
-	if !strings.Contains(content, fmt.Sprintf("127.0.0.1:%d", last)) {
-		t.Fatalf("nginx.load-test.conf missing tracker-%d %d", count-1, last)
+	for _, want := range []string{
+		"listen ${LOAD_TEST_EDGE_PORT}",
+		"server 127.0.0.1:${LOAD_TEST_CONTROL_PORT}",
+		"server 127.0.0.1:${LOAD_TEST_TRACKER_0_INGEST_PORT}",
+		fmt.Sprintf("server 127.0.0.1:${LOAD_TEST_TRACKER_%d_INGEST_PORT}", count-1),
+	} {
+		if !strings.Contains(content, want) {
+			t.Fatalf("nginx.load-test.conf.in missing %q", want)
+		}
 	}
 }
 
-func TestLoadTestPrometheusRenderedFromEnvSource(t *testing.T) {
+func TestLoadTestPrometheusTemplateWiresEnvVars(t *testing.T) {
 	env := loadTestEnvFile(t)
 	constrained := loadTestInt(t, env, "LOAD_TEST_CONSTRAINED_TRACKERS")
-	alertmanager := loadTestInt(t, env, "LOAD_TEST_ALERTMANAGER_PORT")
-	edge := loadTestInt(t, env, "LOAD_TEST_EDGE_PORT")
-	processor := loadTestInt(t, env, "LOAD_TEST_PROCESSOR_PORT")
 
-	data, err := os.ReadFile("../../deploy/monitoring/prometheus.load-test.yaml")
+	data, err := os.ReadFile("../../deploy/monitoring/prometheus.load-test.yaml.in")
 	if err != nil {
-		t.Fatalf("read prometheus.load-test.yaml: %v", err)
+		t.Fatalf("read prometheus.load-test.yaml.in: %v", err)
 	}
 	content := string(data)
-	if !strings.Contains(content, fmt.Sprintf("127.0.0.1:%d", alertmanager)) {
-		t.Fatalf("prometheus.load-test.yaml missing alertmanager %d", alertmanager)
-	}
-	if !strings.Contains(content, fmt.Sprintf("127.0.0.1:%d", edge)) {
-		t.Fatalf("prometheus.load-test.yaml missing edge %d", edge)
-	}
-	if !strings.Contains(content, fmt.Sprintf("127.0.0.1:%d", processor)) {
-		t.Fatalf("prometheus.load-test.yaml missing processor %d", processor)
-	}
-	for i := 0; i < constrained; i++ {
-		metrics := loadTestTrackerMetricsPort(t, env, i)
-		want := fmt.Sprintf("127.0.0.1:%d", metrics)
+	for _, want := range []string{
+		"127.0.0.1:${LOAD_TEST_ALERTMANAGER_PORT}",
+		"127.0.0.1:${LOAD_TEST_EDGE_PORT}",
+		"127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}",
+		"127.0.0.1:${LOAD_TEST_TRACKER_0_METRICS_PORT}",
+		fmt.Sprintf("127.0.0.1:${LOAD_TEST_TRACKER_%d_METRICS_PORT}", constrained-1),
+	} {
 		if !strings.Contains(content, want) {
-			t.Fatalf("prometheus.load-test.yaml missing %q", want)
+			t.Fatalf("prometheus.load-test.yaml.in missing %q", want)
 		}
 	}
 }

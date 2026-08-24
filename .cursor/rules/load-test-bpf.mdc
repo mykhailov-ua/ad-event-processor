@@ -26,4 +26,4 @@ Interpretation:
 
 Not for CI/production deploy. Requires root/CAP_BPF on dev host. Does not replace production `edge-xdp` compliance maps.
 
-Related: `hot-path.mdc`, `core.mdc`, `docs/DEVELOPMENT.md`.
+Related: `hot-path.mdc`, `core.mdc`, `development.mdc`.

@@ -26,7 +26,7 @@ check_rg 'API-not-ready admission in user copy' '(?i)(not fully available yet|Sk
 check_rg 'empty table blames user to "connect API"' '(?i)connect [A-Za-z ]+ API'
 
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: docs/UI.md anti-slop section."
+  echo "Remediation: .cursor/rules/ui.mdc anti-slop section."
   exit 1
 fi
 

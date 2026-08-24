@@ -1,12 +1,11 @@
 ---
-description: SLA, sources-only repo, doc routing, commits, rule index
+description: SLA, sources-only repo, rule index, commits, backlog routing
 alwaysApply: true
 ---
 
-Client docs: `docs/INDEX.md`, `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`.
-Open backlog: `docs/DEVELOPMENT.md` only. Do not duplicate backlog in docs or rules.
+Human docs: `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`. Agent rules: `.cursor/rules/*.mdc`. Open backlog: repo-root `BACKLOG.md` — do not duplicate in rules or docs.
 
-Doc routing: behavior and topology -> `docs/ARCHITECTURE.md`; dev, CI, backlog -> `docs/DEVELOPMENT.md`; engineering rules -> `.cursor/rules/*.mdc`. Do not duplicate agent rules into docs.
+Engineering rules live in `.cursor/rules/*.mdc`. Do not duplicate agent rules into `docs/`.
 
 SLA and budgets
 
@@ -33,13 +32,31 @@ Commit policy
 
 Rules (flat `.cursor/rules/`)
 
-- `core.mdc`, `quality.mdc`, `anti-slop.mdc`, `naming.mdc` — always on.
-- `code-style.mdc` — layout, types, sqlc, proto, PR gates.
-- `hot-path.mdc` — `/track`, parsers, gnet, SoA, asm, filters, 0 allocs.
-- `cold-path.mdc` — admin, payment, ledger, notify; flat handlers, pkg/coldpath.
-- `data-layer.mdc` — Redis StaticSlot, Postgres, ClickHouse.
-- `boundaries.mdc` — `cmd/*` ownership and imports.
-- `control-plane.mdc` — outbox, workers, admin API.
-- `rtb.mdc`, `edge.mdc`, `compliance.mdc`, `fault-tests.mdc`, `testing.mdc`, `load-test-bpf.mdc`.
+Always on: `core.mdc`, `quality.mdc`, `anti-slop.mdc`, `naming.mdc`.
 
-Precedence: `core.mdc` on SLA and repo policy; `anti-slop.mdc` on CI honesty and test/UI gates; `testing.mdc` on test taxonomy, holdouts, edge-case matrix; `hot-path.mdc` on ingest; `cold-path.mdc` on notify/payment/ledger/controlplane; `code-style.mdc` on structure; `boundaries.mdc` on imports.
+| Rule | Topic |
+| :--- | :--- |
+| `architecture.mdc` | Hot/cold invariants, I/O round-trip limits, fail-closed |
+| `structure.mdc` | Current flat layout, cmd map, future split backlog |
+| `development.mdc` | Codegen, compose, benchmarks, fault runbooks |
+| `ci.mdc` | Merge gates, BPF thresholds, test tiers |
+| `code-style.mdc` | Layout, types, sqlc, proto, PR gates |
+| `hot-path.mdc` | `/track`, parsers, gnet, filters, 0 allocs |
+| `parser.mdc` | Ingress wire policy, chaos verification |
+| `traffic.mdc` | `/click`, `/track`, macros, CAPI |
+| `cold-path.mdc` | Admin, payment, ledger, notify |
+| `data-layer.mdc` | Redis, Lua, PG, CH, sharding |
+| `boundaries.mdc` | `cmd/*` ownership and imports |
+| `control-plane.mdc` | Outbox, workers, admin API |
+| `rtb.mdc` | OpenRTB auction, shadow→live |
+| `edge.mdc` | Nginx Lua, XDP, tracker parity |
+| `compliance.mdc` | Defensive perimeter |
+| `licensing.mdc` | JWT, trial registry, USDT tiers |
+| `regions.mdc` | Enterprise multi-region |
+| `ui.mdc` | Admin React design system |
+| `tradeoffs.mdc` | Rejected alternatives, evidence matrix |
+| `fault-tests.mdc` | Chaos/outbox/parser proofs |
+| `testing.mdc` | Test taxonomy, holdouts |
+| `load-test-bpf.mdc` | Load test + BPF probes |
+
+Precedence: `core.mdc` on SLA and repo policy; `anti-slop.mdc` on CI honesty; `testing.mdc` on holdouts; `hot-path.mdc` on ingest; `cold-path.mdc` on admin/payment; `structure.mdc` on current layout (flat controlplane canonical).

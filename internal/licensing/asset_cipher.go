@@ -86,7 +86,7 @@ func OpenAsset(label string, sealed []byte, mck [32]byte) ([]byte, error) {
 }
 
 func assetAEADKey(mck [32]byte, label string) ([]byte, error) {
-	info := []byte("bidshard-asset-aead-v1:" + label)
+	info := []byte("license-asset-aead-v1:" + label)
 	salt := resolveAssetSealSalt()
 	out := make([]byte, 32)
 	reader := hkdf.New(sha256.New, mck[:], salt, info)

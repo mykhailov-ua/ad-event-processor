@@ -1342,7 +1342,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
       args:
-        SKIP_CODEGEN: ${SKIP_CODEGEN:-0}.log-compactor
+        SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
     volumes:
       - ad_event_processor_logs:/var/log/ad-event-processor:ro
       - log_compactor_state:/var/lib/ad-event-processor:rw
@@ -1370,7 +1370,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
       args:
-        SKIP_CODEGEN: ${SKIP_CODEGEN:-0}.log-evacuator
+        SKIP_CODEGEN: ${SKIP_CODEGEN:-0}
     volumes:
       - ad_event_processor_logs:/var/log/ad-event-processor:rw
       - ad_event_processor_run:/run/ad-event-processor:rw
@@ -1390,10 +1390,7 @@ services:
         max-file: '3'
 
 networks:
-  frontend:
-  backend:
   database:
-  monitoring:
 
 volumes:
   db_data:

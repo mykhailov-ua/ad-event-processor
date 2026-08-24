@@ -32,7 +32,7 @@ scan 'concatenated SQL string' \
   '"(SELECT|INSERT|UPDATE|DELETE) .*"\s*\+'
 
 if [[ "$failed" -ne 0 ]]; then
-  echo "sql-safety: use sqlc queries under internal/*/queries/ — see docs/CI.md#sql-safety"
+  echo "sql-safety: use sqlc queries under internal/*/queries/ — see .cursor/rules/ci.mdc#sql-safety"
   exit 1
 fi
 

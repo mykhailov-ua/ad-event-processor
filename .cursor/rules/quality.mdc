@@ -1,17 +1,9 @@
 ---
-description: Comments, verification honesty, web JSDoc
+description: Go receivers, comments, verification honesty, web JSDoc
 alwaysApply: true
 ---
 
-Comments explain why and constraints code cannot express.
-
-- One comment per constraint or decision, not per statement.
-- Tone: imperative ("Return...", "Mount..."). Dry, factual prose.
-- ASCII only (0x20-0x7E). No emojis or Unicode dashes.
-- Config fields: units, SLA ceilings, security boundaries.
-- Exported API: contract, errors, concurrency, idempotency.
-- Hot path: one comment per non-obvious decision.
-- `web/**`: JSDoc on every function, module constant, and block-scoped arrow callback.
+Comments explain why and constraints code cannot express. Type and field naming: `naming.mdc`. File layout: `code-style.mdc`.
 
 Agents must not invent environment, generated artifacts, or benchmark runs.
 
@@ -22,3 +14,94 @@ Before claiming done: see `anti-slop.mdc` (lie modes, CI gates, agent checklist)
 3. Explain why scripts/tests changed.
 4. Paste command + package path for verification runs actually executed.
 5. Add a holdout test that fails without the change when behavior is non-obvious (`testing.mdc`).
+
+## Tone and format
+
+- One comment per constraint or decision, not per statement.
+- Tone: imperative ("Return...", "Mount..."). Dry, factual prose.
+- ASCII only (0x20-0x7E). No emojis or Unicode dashes.
+- Config fields: units, SLA ceilings, security boundaries.
+- `web/**`: JSDoc on every function, module constant, and block-scoped arrow callback.
+
+## Method receivers
+
+### Default: shorten
+
+Receiver name is **1-2 lowercase letters** from the type name. Use the **same** receiver on every method of that type.
+
+| Type | Receiver | Not |
+| :--- | :--- | :--- |
+| `Service` | `s` | `service`, `svc`, `self` |
+| `Handlers` | `h` | `handlers`, `HTTPHandlers` |
+| `Store` | `st` | `store` (when file has multiple `Store` types, see below) |
+| `Limiter` | `l` | `limiter` |
+| `Receiver` | `r` | `receiver` |
+
+Derivation: first letter of exported type; add second letter when the type name is a compound (`HTTPHandlers` -> `h`, `RawEvent` row builders use package-level functions, not a receiver).
+
+### When to keep a longer receiver
+
+Use a **short word** (not the full type name) only when:
+
+1. **Collision in the same file:** two method sets would share `s` (e.g. `bot.Store` and `postback.Store` in one file) -> `bst` / `pst` or split files.
+2. **Type name is already the domain word** and 1-letter is ambiguous in file: `func (bot *Bot)` OK for `types.Bot` helpers; prefer package `bot` + receiver `b` for `bot.Client`.
+3. **Embedding wrapper:** receiver matches embedded field role (`func (a *adminHandlers)` only if type is unexported and file-local).
+
+Never use the **full type name** as receiver: `func (service *Service)` is banned.
+
+### Handler dependency interfaces
+
+Banned as interface or field names on HTTP handlers: `API`, `Backend`, `Provider`, `Service` (when the name only means "implementation"). Name the **route or domain role** (`MiniAppRoutes`, `CampaignReader`). File matches type: `mini_app_routes.go`, not `backend.go`.
+
+### Pointer vs value
+
+- **Pointer receiver** when methods mutate state, call mutating deps, or struct is non-trivial size.
+- **Value receiver** only for small immutable types or intentional copy semantics.
+- Do not mix pointer and value receivers on the same exported type without a documented reason in one comment on the type.
+
+### Unused receiver parameter
+
+- Test/bench **helpers** must not take `*testing.B` unless they call `b` (`ReportAllocs`, `Loop`, `ResetTimer`). Build fixtures in `func fixture() T` helpers.
+- If a method does not need the receiver, prefer a package function. Do not add fake `_ = s` to silence unused receiver.
+
+### Benchmark loops
+
+Use `for b.Loop() { ... }` (Go 1.24+), not `for i := 0; i < b.N; i++`. Drop redundant `ResetTimer()` before `Loop()`; setup stays outside the loop.
+
+## Comments
+
+### Do not comment
+
+- What the name already says (`// List bots`, `// return error`).
+- Every struct field, every import group, every branch.
+- Package doc that only repeats the directory name (`// Package telegram implements telegram`).
+- Interface or type doc that duplicates the type name without contract (`// Backend is the backend`).
+- Change logs, author names, or ticket URLs in code (use git).
+
+### Comment (one per decision)
+
+Add a single imperative line only where the code cannot express **why** or **constraint**:
+
+| Topic | Example |
+| :--- | :--- |
+| Wire/schema | External pubkey, protobuf field semantics, Redis hash tag for cluster slot |
+| Best-effort path | Error intentionally not returned; downstream must still run |
+| SLA / budget | Webhook ACK ceiling, rate limit matching vendor API |
+| Security | Trust anchor, fail-closed boundary, idempotency key scope |
+| Invariant | Financial balance, ordering, at-least-once vs exactly-once |
+| Exported API | Concurrency, error semantics, nil infra behavior when non-obvious |
+
+Best-effort error handling: either return the error, or one comment why propagation would break a stronger invariant (never silent `_ =` without one of these).
+
+### Exported symbols
+
+- Exported func/type: doc comment when errors, nil inputs, or concurrency are not obvious from the signature.
+- Exported cold-path handlers: document body limits and auth expectations only when not enforced in code at call site.
+- Hot path (`hot-path.mdc`): at most one comment per non-obvious branch; no narrative.
+
+### Tests
+
+- No comments on table-driven row labels unless the case name is insufficient for a failing holdout.
+- Fault tests may log `fault_proof ...`; that is telemetry, not a substitute for assertions.
+
+Related: `naming.mdc`, `anti-slop.mdc` (silent handler failures), `code-style.mdc` (file layout).

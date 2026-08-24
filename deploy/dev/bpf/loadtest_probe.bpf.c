@@ -10,9 +10,9 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
-#include "ad_event_processor_pt_regs.h"
-#include "ad_event_processor_probe.h"
-#include "ad_event_processor_trace.h"
+#include "probe_pt_regs.h"
+#include "probe.h"
+#include "probe_trace.h"
 
 char LICENSE[] SEC("license") = "GPL";
 
@@ -34,7 +34,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
 	__uint(max_entries, 1);
 	__type(key, __u32);
-	__type(value, struct espx_config);
+	__type(value, struct probe_config);
 } config SEC(".maps");
 
 struct {
@@ -48,21 +48,21 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 8192);
 	__type(key, __u64);
-	__type(value, struct espx_syscall_peer);
+	__type(value, struct probe_syscall_peer);
 } syscall_peer SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 4096);
-	__type(key, struct espx_syscall_hist_key);
-	__type(value, struct espx_hist);
+	__type(key, struct probe_syscall_hist_key);
+	__type(value, struct probe_hist);
 } syscall_hist SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 512);
 	__type(key, __u32);
-	__type(value, struct espx_pid_stats);
+	__type(value, struct probe_pid_stats);
 } pid_stats SEC(".maps");
 
 struct {
@@ -75,8 +75,8 @@ struct {
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 2048);
-	__type(key, struct espx_net_key);
-	__type(value, struct espx_net_stats);
+	__type(key, struct probe_net_key);
+	__type(value, struct probe_net_stats);
 } net_stats SEC(".maps");
 
 struct {
@@ -88,35 +88,35 @@ struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 512);
 	__type(key, __u32);
-	__type(value, struct espx_hist);
+	__type(value, struct probe_hist);
 } runqueue_hist SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 8192);
-	__type(key, struct espx_marker_ts_key);
+	__type(key, struct probe_marker_ts_key);
 	__type(value, __u64);
 } marker_enter_ts SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 2048);
-	__type(key, struct espx_marker_hist_key);
-	__type(value, struct espx_hist);
+	__type(key, struct probe_marker_hist_key);
+	__type(value, struct probe_hist);
 } marker_hist SEC(".maps");
 
-static __always_inline struct espx_config *probe_config(void)
+static __always_inline struct probe_config *probe_config(void)
 {
 	__u32 key = 0;
 
 	return bpf_map_lookup_elem(&config, &key);
 }
 
-static __always_inline struct espx_net_stats *net_stats_mut(__u32 pid, __u16 dport)
+static __always_inline struct probe_net_stats *net_stats_mut(__u32 pid, __u16 dport)
 {
-	struct espx_net_key nkey = {};
-	struct espx_net_stats *nst;
-	struct espx_net_stats nfresh = {};
+	struct probe_net_key nkey = {};
+	struct probe_net_stats *nst;
+	struct probe_net_stats nfresh = {};
 
 	nkey.pid = pid;
 	nkey.dport = dport;
@@ -128,10 +128,10 @@ static __always_inline struct espx_net_stats *net_stats_mut(__u32 pid, __u16 dpo
 	return nst;
 }
 
-static __always_inline struct espx_pid_stats *pid_stats_mut(__u32 pid, __u8 role)
+static __always_inline struct probe_pid_stats *pid_stats_mut(__u32 pid, __u8 role)
 {
-	struct espx_pid_stats *st;
-	struct espx_pid_stats init = {};
+	struct probe_pid_stats *st;
+	struct probe_pid_stats init = {};
 
 	st = bpf_map_lookup_elem(&pid_stats, &pid);
 	if (st)
@@ -142,7 +142,7 @@ static __always_inline struct espx_pid_stats *pid_stats_mut(__u32 pid, __u8 role
 }
 
 #if defined(__TARGET_ARCH_x86)
-static __always_inline __u32 espx_uprobe_slot(struct pt_regs *ctx)
+static __always_inline __u32 probe_uprobe_slot(struct pt_regs *ctx)
 {
 	__u32 slot = (__u32)ctx->di;
 	if (!slot)
@@ -150,7 +150,7 @@ static __always_inline __u32 espx_uprobe_slot(struct pt_regs *ctx)
 	return slot;
 }
 #else
-static __always_inline __u32 espx_uprobe_slot(struct pt_regs *ctx)
+static __always_inline __u32 probe_uprobe_slot(struct pt_regs *ctx)
 {
 	(void)ctx;
 	return 0;
@@ -158,9 +158,9 @@ static __always_inline __u32 espx_uprobe_slot(struct pt_regs *ctx)
 #endif
 
 SEC("tracepoint/raw_syscalls/sys_enter")
-int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
+int probe_sys_enter(struct trace_event_raw_sys_enter *ctx)
 {
-	struct espx_config *cfg;
+	struct probe_config *cfg;
 	__u64 pid_tgid;
 	__u32 pid;
 	__u64 ts;
@@ -174,17 +174,17 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
-	if (!espx_resolve_role(&target_pids, &target_cgroups, pid))
+	if (!probe_resolve_role(&target_pids, &target_cgroups, pid))
 		return 0;
 
-	if (!espx_should_sample(cfg) && !espx_is_hot_syscall(syscall_id))
+	if (!probe_should_sample(cfg) && !probe_is_hot_syscall(syscall_id))
 		return 0;
 
 	ts = bpf_ktime_get_ns();
 	bpf_map_update_elem(&syscall_enter, &pid_tgid, &ts, BPF_ANY);
 
 	if (syscall_id == AD_EVENT_PROCESSOR_NR_connect || syscall_id == AD_EVENT_PROCESSOR_NR_sendto) {
-		struct espx_syscall_peer peer = {};
+		struct probe_syscall_peer peer = {};
 		unsigned long syscall_args[6];
 		__u64 addr_u64;
 		void *addr;
@@ -196,7 +196,7 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto)
 			addr_u64 = syscall_args[4];
 		addr = (void *)addr_u64;
-		peer.dport = espx_read_sockaddr_port(addr);
+		peer.dport = probe_read_sockaddr_port(addr);
 		if (syscall_id == AD_EVENT_PROCESSOR_NR_sendto)
 			peer.sendto_len = (__u32)syscall_args[2];
 		bpf_map_update_elem(&syscall_peer, &pid_tgid, &peer, BPF_ANY);
@@ -205,19 +205,19 @@ int espx_sys_enter(struct trace_event_raw_sys_enter *ctx)
 }
 
 SEC("tracepoint/raw_syscalls/sys_exit")
-int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
+int probe_sys_exit(struct trace_event_raw_sys_exit *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_syscall_hist_key hkey;
-	struct espx_hist *hist;
-	struct espx_slow_event ev;
+	struct probe_config *cfg;
+	struct probe_syscall_hist_key hkey;
+	struct probe_hist *hist;
+	struct probe_slow_event ev;
 	__u64 *enter_ts;
 	__u64 pid_tgid;
 	__u32 pid;
 	__u64 now;
 	__u64 delta;
 	__u8 role;
-	struct espx_pid_stats *st;
+	struct probe_pid_stats *st;
 	long syscall_id;
 	long syscall_ret;
 
@@ -230,12 +230,12 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
-	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
+	role = probe_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
 	st = pid_stats_mut(pid, role);
-	espx_account_fd_exit(st, syscall_id, syscall_ret);
+	probe_account_fd_exit(st, syscall_id, syscall_ret);
 
 	enter_ts = bpf_map_lookup_elem(&syscall_enter, &pid_tgid);
 	if (!enter_ts)
@@ -248,17 +248,17 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 	hkey.syscall_id = syscall_id;
 	hist = bpf_map_lookup_elem(&syscall_hist, &hkey);
 	if (!hist) {
-		struct espx_hist fresh = {};
+		struct probe_hist fresh = {};
 
 		bpf_map_update_elem(&syscall_hist, &hkey, &fresh, BPF_NOEXIST);
 		hist = bpf_map_lookup_elem(&syscall_hist, &hkey);
 	}
 	if (hist)
-		espx_hist_record(hist, delta);
+		probe_hist_record(hist, delta);
 
 	if (syscall_id == AD_EVENT_PROCESSOR_NR_connect || syscall_id == AD_EVENT_PROCESSOR_NR_sendto) {
-		struct espx_syscall_peer *peer;
-		struct espx_net_stats *nst;
+		struct probe_syscall_peer *peer;
+		struct probe_net_stats *nst;
 		__u16 dport = 0;
 
 		peer = bpf_map_lookup_elem(&syscall_peer, &pid_tgid);
@@ -299,9 +299,9 @@ int espx_sys_exit(struct trace_event_raw_sys_exit *ctx)
 }
 
 SEC("tracepoint/sched/sched_wakeup")
-int espx_sched_wakeup(struct trace_event_raw_sched_wakeup *ctx)
+int probe_sched_wakeup(struct trace_event_raw_sched_wakeup *ctx)
 {
-	struct espx_config *cfg;
+	struct probe_config *cfg;
 	__u32 pid;
 	__u64 ts;
 	__u8 role;
@@ -311,7 +311,7 @@ int espx_sched_wakeup(struct trace_event_raw_sched_wakeup *ctx)
 		return 0;
 
 	pid = ctx->pid;
-	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
+	role = probe_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
@@ -321,12 +321,12 @@ int espx_sched_wakeup(struct trace_event_raw_sched_wakeup *ctx)
 }
 
 SEC("tracepoint/sched/sched_switch")
-int espx_sched_switch(struct trace_event_raw_sched_switch *ctx)
+int probe_sched_switch(struct trace_event_raw_sched_switch *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_pid_stats *st;
-	struct espx_hist *rq_hist;
-	struct espx_hist rq_fresh = {};
+	struct probe_config *cfg;
+	struct probe_pid_stats *st;
+	struct probe_hist *rq_hist;
+	struct probe_hist rq_fresh = {};
 	__u64 now;
 	__u32 prev_pid;
 	__u32 next_pid;
@@ -342,8 +342,8 @@ int espx_sched_switch(struct trace_event_raw_sched_switch *ctx)
 	now = bpf_ktime_get_ns();
 	prev_pid = ctx->prev_pid;
 	next_pid = ctx->next_pid;
-	prev_role = espx_resolve_role(&target_pids, &target_cgroups, prev_pid);
-	next_role = espx_resolve_role(&target_pids, &target_cgroups, next_pid);
+	prev_role = probe_resolve_role(&target_pids, &target_cgroups, prev_pid);
+	next_role = probe_resolve_role(&target_pids, &target_cgroups, next_pid);
 
 	if (prev_role) {
 		st = pid_stats_mut(prev_pid, prev_role);
@@ -375,7 +375,7 @@ int espx_sched_switch(struct trace_event_raw_sched_switch *ctx)
 					rq_hist = bpf_map_lookup_elem(&runqueue_hist, &next_pid);
 				}
 				if (rq_hist)
-					espx_hist_record(rq_hist, wait_ns);
+					probe_hist_record(rq_hist, wait_ns);
 			}
 		}
 	}
@@ -383,10 +383,10 @@ int espx_sched_switch(struct trace_event_raw_sched_switch *ctx)
 }
 
 SEC("tracepoint/exceptions/page_fault_user")
-int espx_page_fault_user(struct trace_event_raw_page_fault_user *ctx)
+int probe_page_fault_user(struct trace_event_raw_page_fault_user *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_pid_stats *st;
+	struct probe_config *cfg;
+	struct probe_pid_stats *st;
 	__u32 pid;
 	__u8 role;
 
@@ -395,7 +395,7 @@ int espx_page_fault_user(struct trace_event_raw_page_fault_user *ctx)
 		return 0;
 
 	pid = bpf_get_current_pid_tgid() >> 32;
-	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
+	role = probe_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
@@ -406,12 +406,12 @@ int espx_page_fault_user(struct trace_event_raw_page_fault_user *ctx)
 }
 
 SEC("kprobe/tcp_retransmit_skb")
-int espx_tcp_retransmit(struct pt_regs *ctx)
+int probe_tcp_retransmit(struct pt_regs *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_net_key key = {};
-	struct espx_net_stats *st;
-	struct espx_net_stats fresh = {};
+	struct probe_config *cfg;
+	struct probe_net_key key = {};
+	struct probe_net_stats *st;
+	struct probe_net_stats fresh = {};
 	__u32 pid;
 
 	cfg = probe_config();
@@ -419,7 +419,7 @@ int espx_tcp_retransmit(struct pt_regs *ctx)
 		return 0;
 
 	pid = bpf_get_current_pid_tgid() >> 32;
-	if (!espx_resolve_role(&target_pids, &target_cgroups, pid))
+	if (!probe_resolve_role(&target_pids, &target_cgroups, pid))
 		return 0;
 
 	key.pid = pid;
@@ -435,10 +435,10 @@ int espx_tcp_retransmit(struct pt_regs *ctx)
 }
 
 SEC("tracepoint/sched/sched_process_fork")
-int espx_sched_process_fork(struct trace_event_raw_sched_process_fork *ctx)
+int probe_sched_process_fork(struct trace_event_raw_sched_process_fork *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_pid_stats *st;
+	struct probe_config *cfg;
+	struct probe_pid_stats *st;
 	__u32 tgid;
 	__u8 role;
 
@@ -447,7 +447,7 @@ int espx_sched_process_fork(struct trace_event_raw_sched_process_fork *ctx)
 		return 0;
 
 	tgid = bpf_get_current_pid_tgid() >> 32;
-	role = espx_resolve_role(&target_pids, &target_cgroups, tgid);
+	role = probe_resolve_role(&target_pids, &target_cgroups, tgid);
 	if (!role)
 		return 0;
 
@@ -458,10 +458,10 @@ int espx_sched_process_fork(struct trace_event_raw_sched_process_fork *ctx)
 }
 
 SEC("tracepoint/sched/sched_process_exit")
-int espx_sched_process_exit(struct trace_event_raw_sched_process_exit *ctx)
+int probe_sched_process_exit(struct trace_event_raw_sched_process_exit *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_pid_stats *st;
+	struct probe_config *cfg;
+	struct probe_pid_stats *st;
 	__u32 tgid;
 	__u8 role;
 
@@ -470,7 +470,7 @@ int espx_sched_process_exit(struct trace_event_raw_sched_process_exit *ctx)
 		return 0;
 
 	tgid = bpf_get_current_pid_tgid() >> 32;
-	role = espx_resolve_role(&target_pids, &target_cgroups, tgid);
+	role = probe_resolve_role(&target_pids, &target_cgroups, tgid);
 	if (!role)
 		return 0;
 
@@ -480,11 +480,11 @@ int espx_sched_process_exit(struct trace_event_raw_sched_process_exit *ctx)
 	return 0;
 }
 
-SEC("uprobe/espx_trace_enter")
-int espx_trace_enter(struct pt_regs *ctx)
+SEC("uprobe/probe_trace_enter")
+int probe_trace_enter(struct pt_regs *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_marker_ts_key tkey;
+	struct probe_config *cfg;
+	struct probe_marker_ts_key tkey;
 	__u64 cookie;
 	__u32 marker_id;
 	__u32 slot;
@@ -503,10 +503,10 @@ int espx_trace_enter(struct pt_regs *ctx)
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
-	if (!espx_resolve_role(&target_pids, &target_cgroups, pid))
+	if (!probe_resolve_role(&target_pids, &target_cgroups, pid))
 		return 0;
 
-	slot = espx_uprobe_slot(ctx);
+	slot = probe_uprobe_slot(ctx);
 	ts = bpf_ktime_get_ns();
 	tkey.pid_tgid = pid_tgid;
 	tkey.marker_id = marker_id;
@@ -515,15 +515,15 @@ int espx_trace_enter(struct pt_regs *ctx)
 	return 0;
 }
 
-SEC("uprobe/espx_trace_exit")
-int espx_trace_exit(struct pt_regs *ctx)
+SEC("uprobe/probe_trace_exit")
+int probe_trace_exit(struct pt_regs *ctx)
 {
-	struct espx_config *cfg;
-	struct espx_marker_ts_key tkey;
-	struct espx_marker_hist_key hkey;
-	struct espx_hist *hist;
-	struct espx_hist fresh = {};
-	struct espx_slow_event ev;
+	struct probe_config *cfg;
+	struct probe_marker_ts_key tkey;
+	struct probe_marker_hist_key hkey;
+	struct probe_hist *hist;
+	struct probe_hist fresh = {};
+	struct probe_slow_event ev;
 	__u64 *enter_ts;
 	__u64 cookie;
 	__u32 exit_id;
@@ -547,11 +547,11 @@ int espx_trace_exit(struct pt_regs *ctx)
 
 	pid_tgid = bpf_get_current_pid_tgid();
 	pid = pid_tgid >> 32;
-	role = espx_resolve_role(&target_pids, &target_cgroups, pid);
+	role = probe_resolve_role(&target_pids, &target_cgroups, pid);
 	if (!role)
 		return 0;
 
-	slot = espx_uprobe_slot(ctx);
+	slot = probe_uprobe_slot(ctx);
 	tkey.pid_tgid = pid_tgid;
 	tkey.marker_id = enter_id;
 	enter_ts = bpf_map_lookup_elem(&marker_enter_ts, &tkey);
@@ -570,7 +570,7 @@ int espx_trace_exit(struct pt_regs *ctx)
 		hist = bpf_map_lookup_elem(&marker_hist, &hkey);
 	}
 	if (hist)
-		espx_hist_record(hist, delta);
+		probe_hist_record(hist, delta);
 
 	if (cfg->slow_syscall_ns && delta >= cfg->slow_syscall_ns) {
 		__builtin_memset(&ev, 0, sizeof(ev));

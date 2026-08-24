@@ -6,7 +6,7 @@ alwaysApply: false
 
 Cold path = stdlib HTTP, Postgres transactions, outbox, webhooks, background pollers, admin API, ML training/inference sidecars. Not `/track`, gnet, or filter `Check` (see `hot-path.mdc`). Overrides generic abstraction defaults in `code-style.mdc`. Anti-slop: `anti-slop.mdc`.
 
-Reference: `docs/ARCHITECTURE.md` (cold path), `docs/BILLING.md`, `control-plane.mdc`, `data-layer.mdc`.
+Reference: `architecture.mdc` (cold path), `licensing.mdc`, `control-plane.mdc`, `data-layer.mdc`.
 
 ## Philosophy
 
@@ -83,7 +83,7 @@ Workers (control only): outbox, volume meter, recon, ledger invariant, slot migr
 
 ## Outbox patterns
 
-Polling over `LISTEN/NOTIFY` (`docs/TRADEOFFS.md`):
+Polling over `LISTEN/NOTIFY` (`tradeoffs.mdc`):
 
 - Claim: `SELECT ... FOR UPDATE SKIP LOCKED`.
 - Active poll 20 ms; idle backoff 250 ms; stuck `PROCESSING` reclaim after 1 min.
@@ -153,7 +153,7 @@ Run: `go test ./... -short` for touched packages; integration via `make test-int
 
 React 19 + TypeScript in `web/`. Tokens in `web/src/styles/tokens.css` — no hard-coded hex.
 
-Anti-slop: `docs/UI.md`, `anti-slop.mdc`. Run `bash scripts/ci/admin_web.sh` before claiming UI done.
+Anti-slop: `ui.mdc`, `anti-slop.mdc`. Run `bash scripts/ci/admin_web.sh` before claiming UI done.
 
 ## Verification
 

@@ -76,7 +76,7 @@ func CheckBPFResourceGate(outDir, promURL string) (BPFGateResult, error) {
 					Value:  "missing",
 					Limit:  "present",
 					OK:     true,
-					Detail: "skipped (no BPF session; set BIDSHARD_BPF_PROBE=1)",
+					Detail: "skipped (no BPF session; set AD_EVENT_PROCESSOR_BPF_PROBE=1)",
 				}},
 				Pass: true,
 			}, nil
@@ -339,7 +339,7 @@ func WriteBPFGateReport(outDir, promURL string) (string, error) {
 	if result.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString("\n**Result: FAIL** — see docs/CI.md#bpf-hot-gate thresholds.\n")
+		b.WriteString("\n**Result: FAIL** — see .cursor/rules/ci.mdc#bpf-hot-gate thresholds.\n")
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
 		return "", err
