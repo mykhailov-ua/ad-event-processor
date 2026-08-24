@@ -128,7 +128,7 @@ func main() {
 		os.Exit(1)
 	}
 	elapsed := time.Since(startedAt).Round(time.Millisecond)
-	log.Printf("loadgen: done in %s — %s", elapsed, histPath)
+	log.Printf("loadgen: done in %s - %s", elapsed, histPath)
 }
 
 func modeDefaults(mode string, rate int, dur time.Duration) (int, time.Duration) {

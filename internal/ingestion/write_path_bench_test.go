@@ -42,10 +42,8 @@ func BenchmarkCHSpoolAppendDurably(b *testing.B) {
 	evt := benchWritePathEvent()
 	events := []*domain.Event{evt}
 	token := "bench-dedup-token"
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := spool.AppendDurably(token, events); err != nil {
 			b.Fatal(err)
 		}
@@ -56,10 +54,8 @@ func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
 	evt := benchWritePathEvent()
 	events := []*domain.Event{evt}
 	token := "bench-dedup-token"
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := marshalCHSpoolPayload(token, events); err != nil {
 			b.Fatal(err)
 		}
@@ -71,10 +67,8 @@ func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 	evt := benchWritePathEvent()
 	events := []*domain.Event{evt}
 	ctx := context.Background()
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := store.StoreBatch(ctx, events); err != nil {
 			b.Fatal(err)
 		}
@@ -96,10 +90,8 @@ func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
 	evt := benchWritePathEvent()
 	events := []*domain.Event{evt}
 	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "bench-ch-spool")
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := store.StoreBatch(ctx, events); err != nil {
 			b.Fatal(err)
 		}
@@ -155,14 +147,14 @@ func BenchmarkPostgresStoreBatch_integration(b *testing.B) {
 	evt := benchWritePathEvent()
 	events := []*domain.Event{evt}
 	ctx := context.Background()
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		evt.ClickID = "bench-pg-" + strconv.Itoa(i)
+	benchN := 0
+	for b.Loop() {
+		evt.ClickID = "bench-pg-" + strconv.Itoa(benchN)
 		if err := store.StoreBatch(ctx, events); err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }
 
@@ -186,10 +178,8 @@ func BenchmarkCHSpoolOpenFdDelta(b *testing.B) {
 		b.Fatal(err)
 	}
 	b.Logf("fd_after_open=%d delta=%d", len(afterOpen), len(afterOpen)-len(before))
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = spool.WritePos()
 	}
 	_ = spool.Close()

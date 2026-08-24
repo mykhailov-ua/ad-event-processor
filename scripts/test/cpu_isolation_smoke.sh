@@ -41,4 +41,4 @@ if ! command -v docker > /dev/null 2>&1 || ! docker info > /dev/null 2>&1; then
 fi
 
 bash "$SCRIPTS/ops/cpu_isolation.sh" verify
-log "passed (live cpuset verify — see fault_proof from cpu_isolation.sh)"
+log "passed (live cpuset verify - see fault_proof from cpu_isolation.sh)"

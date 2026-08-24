@@ -47,8 +47,8 @@ func TestFault_MarginGuardPause(t *testing.T) {
 	_, err = pool.Exec(ctx, `
 		INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash, created_at)
 		VALUES ($1, $2, -100000, 'FEE', 'mg-fee-1', now()),
-		       ($1, $2, 120000, 'rtb_cost', 'mg-rtb-1', now()),
-		       ($1, $2, 120000, 'publisher_payout', 'mg-pub-1', now())
+		 ($1, $2, 120000, 'rtb_cost', 'mg-rtb-1', now()),
+		 ($1, $2, 120000, 'publisher_payout', 'mg-pub-1', now())
 	`, customerID, campaignID)
 	require.NoError(t, err)
 

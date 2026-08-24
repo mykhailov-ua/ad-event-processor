@@ -33,7 +33,7 @@ if redis.call("EXISTS", marker) == 1 then
 end
 local remaining = redis.call("INCRBY", KEYS[1], -tonumber(ARGV[1]))
 if tonumber(remaining) <= 0 then
-    redis.call("DEL", KEYS[1])
+ redis.call("DEL", KEYS[1])
 end
 redis.call("SET", marker, "1", "EX", tonumber(ARGV[2]))
 return remaining

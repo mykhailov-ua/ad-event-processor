@@ -33,7 +33,7 @@ skip_gate() {
 
 on_linux() { [[ "$(uname -s)" == "Linux" ]]; }
 
-log "=== Tier baseline ==="
+log "Tier baseline"
 run_gate baseline-2 go test ./internal/licensing/ -count=1
 run_gate baseline-3 go test ./internal/licensing/ -run DeterministicVector -count=1
 run_gate baseline-4 bash scripts/security/license_red_team.sh
@@ -44,7 +44,7 @@ else
 fi
 run_gate baseline-6 go test ./internal/licensing/ -run 'VerifyJWT/Tampered' -count=1
 
-log "=== Tier crypto ==="
+log "Tier crypto"
 run_gate crypto-1 go test ./internal/licensing/ -run HKDF_RFC5869 -count=1
 run_gate crypto-2 go test ./internal/licensing/ -run HWID -count=1
 run_gate crypto-3 go test ./internal/licensing/ -run HWID_Deterministic -count=1
@@ -55,7 +55,7 @@ else
   skip_gate crypto-5 "set LICENSE_VERIFY_FUZZ=1 for 10s fuzz smoke"
 fi
 
-log "=== Tier entanglement ==="
+log "Tier entanglement"
 run_gate entangle-1 go test ./internal/licensing/ -run 'MCK|DeriveMCK' -count=1
 run_gate entangle-2 go test ./internal/licensing/ -run 'MCK_Sensitivity' -count=1
 run_gate entangle-3 go test ./internal/licensing/ -run Seal -count=1
@@ -83,7 +83,7 @@ else
   skip_gate garble-p99 "set GARBLE_LITERALS_P99_SMOKE=1 + load-test stack for garble p99 lab"
 fi
 
-log "=== Tier release (optional spot-check) ==="
+log "Tier release (optional spot-check)"
 if [[ "${LICENSE_VERIFY_GARBLED:-0}" == "1" ]]; then
   run_gate release-3 bash scripts/ci/license_red_team_garbled.sh
 else
@@ -99,7 +99,7 @@ else
   skip_gate release-6 "set LICENSE_VERIFY_RELEASE_QA=1 for fuzz+garble release QA smoke"
 fi
 
-log "=== Hot-path alloc ==="
+log "Hot-path alloc"
 run_gate license-alloc bash scripts/ci/license_alloc_gate.sh
 
 echo ""

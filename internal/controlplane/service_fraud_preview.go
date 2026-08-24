@@ -101,15 +101,15 @@ func (s *Service) queryCampaignShadowScores(ctx context.Context, campaignID uuid
 
 	query := `
 SELECT
-    argMax(s.score, s.created_at) AS ml_score
+ argMax(s.score, s.created_at) AS ml_score
 FROM ml_shadow_scores AS s
 INNER JOIN (
-    SELECT ip_hash
-    FROM ml_features_1m
-    WHERE campaign_id = ?
-      AND window_start >= subtractDays(now(), ?)
-    GROUP BY ip_hash
-    LIMIT ?
+ SELECT ip_hash
+ FROM ml_features_1m
+ WHERE campaign_id = ?
+ AND window_start >= subtractDays(now(), ?)
+ GROUP BY ip_hash
+ LIMIT ?
 ) AS f ON f.ip_hash = s.ip_hash
 WHERE s.created_at >= subtractDays(now(), ?)
 GROUP BY s.ip_hash

@@ -97,9 +97,8 @@ func BenchmarkNginxConfigWorker_writeDenyFile(b *testing.B) {
 	for i := range 1000 {
 		ips[i] = "192.168.1.1"
 	}
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = worker.writeDenyFile("test.conf", ips)
 	}
 }

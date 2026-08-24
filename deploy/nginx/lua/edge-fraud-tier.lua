@@ -1,4 +1,3 @@
-
 local _M = {}
 
 local PASS_MAX = 30

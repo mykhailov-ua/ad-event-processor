@@ -187,7 +187,7 @@ export function TelegramReportShell({
         </div>
       </form>
 
-      {loading ? <p className="loading-hint">Loading report…</p> : null}
+      {loading ? <p className="loading-hint">Loading report...</p> : null}
       {!loading ? children : null}
     </>
   );

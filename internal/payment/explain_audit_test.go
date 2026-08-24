@@ -58,7 +58,7 @@ SELECT * FROM payment.payment_intents WHERE idempotency_key = $1`,
 			name: "payment.CreatePaymentIntent",
 			sql: `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
 INSERT INTO payment.payment_intents (
-  id, customer_id, amount_micro, currency, status, provider, provider_ref, idempotency_key, metadata
+ id, customer_id, amount_micro, currency, status, provider, provider_ref, idempotency_key, metadata
 ) VALUES ($1, $2, $3, 'USD', 'CREATED', 'stripe', NULL, $4, '{}'::jsonb)`,
 			args: []any{ingestion.ToUUID(uuid.New()), ingestion.ToUUID(uuid.New()), int64(1_000_000), "explain-insert-" + uuid.NewString()},
 		},
@@ -94,7 +94,7 @@ FOR UPDATE SKIP LOCKED`,
 		rows.Close()
 		require.NoError(t, rows.Err(), qc.name)
 		plan := strings.Join(lines, "\n")
-		t.Logf("=== %s ===\n%s", qc.name, plan)
+		t.Logf("%s:\n%s", qc.name, plan)
 		require.NotContains(t, plan, "Seq Scan on payment_intents", qc.name)
 	}
 }

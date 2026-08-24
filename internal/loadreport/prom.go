@@ -234,12 +234,12 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 	b.WriteString("\n")
 
 	b.WriteString("## Interpretation hints\n\n")
-	b.WriteString("1. **Redis Lua p99 > 15ms** — kernel TCP/epoll or Redis single-threaded shard saturation; check `ad_redis_ops_total` per shard.\n")
-	b.WriteString("2. **clickhouse p99 >> postgres** — async_insert batching or LSM merge pressure; check CH `system.parts` and processor `ad_db_write_errors{type=clickhouse}`.\n")
-	b.WriteString("3. **pgx p99 spikes** — Postgres WAL/fsync or pool exhaustion (`DB_PROCESSOR_MAX_CONNS`); strace shows `write`/`fsync`/`epoll_wait` dominance.\n")
-	b.WriteString("4. **gnet connections near ulimit** — raise `worker_rlimit_nofile` / container ulimits; loadgen keep-alive reduces FD churn.\n")
-	b.WriteString("5. **fraud_stream_drop > 0** — fraud ring (4096) overflow; hot path lossy by design under malformed traffic.\n")
-	b.WriteString("6. **worker_pool_reject** — pinned worker queue full; ingestion exceeds parse+filter capacity.\n")
+	b.WriteString("1. **Redis Lua p99 > 15ms** - kernel TCP/epoll or Redis single-threaded shard saturation; check `ad_redis_ops_total` per shard.\n")
+	b.WriteString("2. **clickhouse p99 >> postgres** - async_insert batching or LSM merge pressure; check CH `system.parts` and processor `ad_db_write_errors{type=clickhouse}`.\n")
+	b.WriteString("3. **pgx p99 spikes** - Postgres WAL/fsync or pool exhaustion (`DB_PROCESSOR_MAX_CONNS`); strace shows `write`/`fsync`/`epoll_wait` dominance.\n")
+	b.WriteString("4. **gnet connections near ulimit** - raise `worker_rlimit_nofile` / container ulimits; loadgen keep-alive reduces FD churn.\n")
+	b.WriteString("5. **fraud_stream_drop > 0** - fraud ring (4096) overflow; hot path lossy by design under malformed traffic.\n")
+	b.WriteString("6. **worker_pool_reject** - pinned worker queue full; ingestion exceeds parse+filter capacity.\n")
 
 	hist, histLabel := readStatusHistogram(outDir)
 	if hist != nil {
@@ -267,7 +267,7 @@ func writeStraceSection(b *strings.Builder, outDir string) {
 		fmt.Fprintf(b, "Strace summaries captured under `%s`. Top syscalls per service:\n", outDir)
 		b.WriteString("```\n")
 		for _, f := range matches {
-			fmt.Fprintf(b, "=== %s ===\n", filepath.Base(f))
+			fmt.Fprintf(b, "%s:\n", filepath.Base(f))
 			data, err := os.ReadFile(f)
 			if err != nil {
 				continue
@@ -360,7 +360,7 @@ func writeStatusHistogramSection(b *strings.Builder, hist *statusHistogramFile, 
 		}
 		fmt.Fprintf(b, "| %s | %d | %.1f%% |%s\n", row.status, row.count, pct, mark)
 	}
-	b.WriteString("\nTop status×error buckets:\n")
+	b.WriteString("\nTop statusxerror buckets:\n")
 	limit := 12
 	if len(hist.Histogram) < limit {
 		limit = len(hist.Histogram)
@@ -414,7 +414,7 @@ func write5xxSection(b *strings.Builder, outDir, promURL string, prom *promClien
 		zero := hist.ByStatus["0"]
 		fmt.Fprintf(b, "\n- Client status\u2265500: **%d** (%.2f%%)\n", five, 100*float64(five)/float64(total))
 		fmt.Fprintf(b, "- Client status=0 (transport): **%d** (%.2f%%)\n", zero, 100*float64(zero)/float64(total))
-		b.WriteString("\nTop buckets (status × error):\n")
+		b.WriteString("\nTop buckets (status x error):\n")
 		limit := 15
 		if len(hist.Histogram) < limit {
 			limit = len(hist.Histogram)
@@ -447,7 +447,7 @@ func write5xxSection(b *strings.Builder, outDir, promURL string, prom *promClien
 	fmt.Fprintf(b, "- Tracker `ad_http_requests_total` 5xx: **%s**\n", trackerFiveStr)
 	if clientFive != "na" && clientFive != "0" && trackerFiveStr == "0" {
 		b.WriteString("\n> **Gap:** client sees 5xx but tracker hot-path counters show none.\n")
-		b.WriteString("> Dirty mix sends ~15% of requests to `EDGE_URL` (nginx, default :8180) — edge circuit breaker returns **503** under pressure.\n")
+		b.WriteString("> Dirty mix sends ~15% of requests to `EDGE_URL` (nginx, default :8180) - edge circuit breaker returns **503** under pressure.\n")
 		b.WriteString("> Compare direct tracker buckets (400/404/413) with `status=0` transport errors on keep-alive.\n")
 	}
 	_ = trackerFive

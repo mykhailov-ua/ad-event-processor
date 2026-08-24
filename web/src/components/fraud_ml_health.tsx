@@ -55,12 +55,12 @@ export function FraudMlHealthTile({ customerId }: FraudMlHealthTileProps) {
         ) : null}
       </div>
       <div className="metric-card__value font-mono text-sm">
-        {loading ? '…' : formatShadowPrecision(data?.ml_precision)}
+        {loading ? '...' : formatShadowPrecision(data?.ml_precision)}
       </div>
       <p
         className={`text-xs ${evalAge.warning || data?.ml_eval_stale ? 'text-warning' : 'text-muted'}`}
       >
-        {loading ? 'Loading eval…' : evalAge.label}
+        {loading ? 'Loading eval...' : evalAge.label}
       </p>
     </a>
   );
@@ -74,7 +74,7 @@ export function FraudMlTrustPanel({ data }: FraudMlTrustPanelProps) {
   const evalAge = formatMlEvalAge(data.ml_eval_generated_at);
   const shards =
     data.ml_shards_consistent == null
-      ? '—'
+      ? '-'
       : data.ml_shards_consistent
         ? 'All shards in sync'
         : 'Shard mismatch';
@@ -91,10 +91,10 @@ export function FraudMlTrustPanel({ data }: FraudMlTrustPanelProps) {
       </div>
       <dl className="definition-list">
         <dt>ML active version</dt>
-        <dd className="font-mono">{data.ml_active_version_id ?? '—'}</dd>
+        <dd className="font-mono">{data.ml_active_version_id ?? '-'}</dd>
         <dt>Artifact hash</dt>
         <dd className="font-mono text-sm">
-          {data.ml_artifact_hash ? `${data.ml_artifact_hash.slice(0, 12)}…` : '—'}
+          {data.ml_artifact_hash ? `${data.ml_artifact_hash.slice(0, 12)}...` : '-'}
         </dd>
         <dt>Shadow precision (proxy)</dt>
         <dd>{formatShadowPrecision(data.ml_precision)}</dd>
@@ -104,7 +104,7 @@ export function FraudMlTrustPanel({ data }: FraudMlTrustPanelProps) {
         <dd className="font-mono">{data.ml_label_method ?? 'proxy'}</dd>
         <dt>Eval generated</dt>
         <dd className={evalAge.warning || data.ml_eval_stale ? 'text-warning' : undefined}>
-          {data.ml_eval_generated_at ?? '—'}
+          {data.ml_eval_generated_at ?? '-'}
           {evalAge.label ? ` (${evalAge.label})` : ''}
         </dd>
         <dt>Shard sync</dt>

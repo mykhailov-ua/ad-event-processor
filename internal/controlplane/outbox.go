@@ -541,7 +541,7 @@ func (worker *OutboxWorker) recordOutboxLagMetrics(ctx context.Context) {
 	var oldestSeconds float64
 	err := worker.svc.GetPool().QueryRow(opCtx, `
 		SELECT COUNT(*)::bigint,
-		       COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::float8
+		 COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::float8
 		FROM outbox_events
 		WHERE status = 'PENDING'`).Scan(&pending, &oldestSeconds)
 	if err != nil {

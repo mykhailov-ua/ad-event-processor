@@ -345,7 +345,7 @@ export const TRAFFIC_SOURCE_TEMPLATES: TrafficSourceTemplate[] = [
     id: 'direct-custom',
     name: 'Direct / Custom',
     category: 'direct',
-    notes: 'Manual sub_ids — fill values or leave empty.',
+    notes: 'Manual sub_ids - fill values or leave empty.',
     params: [],
   },
 ];

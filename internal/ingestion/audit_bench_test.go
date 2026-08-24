@@ -28,8 +28,7 @@ func BenchmarkHandler_auditLog_impression_sampled(b *testing.B) {
 	defer domain.EventPool.Put(evt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		writeAuditLog(l, &seq, 127, 0, evt)
 	}
 }
@@ -51,8 +50,7 @@ func BenchmarkHandler_auditLog_click_always(b *testing.B) {
 	defer domain.EventPool.Put(evt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		writeAuditLog(l, &seq, 127, 0, evt)
 	}
 }
@@ -74,8 +72,7 @@ func BenchmarkHandler_auditLog_impression_unsampled(b *testing.B) {
 	defer domain.EventPool.Put(evt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		writeAuditLog(l, &seq, 0, 0, evt)
 	}
 }

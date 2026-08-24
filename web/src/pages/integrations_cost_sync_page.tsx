@@ -182,7 +182,7 @@ export function IntegrationsCostSyncPage() {
 
       {drillCampaignId ? (
         <p className="text-muted text-sm" data-testid="cost-sync-drill-campaign">
-          Discrepancy drill-down for campaign <span className="font-mono">{drillCampaignId}</span> —
+          Discrepancy drill-down for campaign <span className="font-mono">{drillCampaignId}</span> -
           review import history below.
         </p>
       ) : null}
@@ -200,7 +200,7 @@ export function IntegrationsCostSyncPage() {
         </label>
       ) : (
         <p className="text-muted text-sm">
-          Customer: <span className="font-mono">{customerId || '—'}</span>
+          Customer: <span className="font-mono">{customerId || '-'}</span>
         </p>
       )}
 
@@ -238,8 +238,8 @@ export function IntegrationsCostSyncPage() {
                 {credentials.map((c) => (
                   <tr key={c.network}>
                     <td>{c.network}</td>
-                    <td className="font-mono text-hint">{c.account_id || '—'}</td>
-                    <td>{c.updated_at ? new Date(c.updated_at).toLocaleString() : '—'}</td>
+                    <td className="font-mono text-hint">{c.account_id || '-'}</td>
+                    <td>{c.updated_at ? new Date(c.updated_at).toLocaleString() : '-'}</td>
                     <td>
                       {canWrite ? (
                         <Button
@@ -314,7 +314,7 @@ export function IntegrationsCostSyncPage() {
                 />
               </label>
               <Button
-                label={busy ? 'Saving…' : 'Save credential'}
+                label={busy ? 'Saving...' : 'Save credential'}
                 variant="primary"
                 size="sm"
                 loading={busy}
@@ -364,7 +364,7 @@ export function IntegrationsCostSyncPage() {
             </label>
           </div>
           <Button
-            label={busy ? 'Running…' : 'Run sync'}
+            label={busy ? 'Running...' : 'Run sync'}
             variant="primary"
             size="sm"
             loading={busy}
@@ -398,8 +398,8 @@ export function IntegrationsCostSyncPage() {
                 ) : null}
                 {history.map((row, i) => (
                   <tr key={`${row.cost_date}-${row.network}-${i}`}>
-                    <td>{row.cost_date ?? '—'}</td>
-                    <td>{row.network ?? '—'}</td>
+                    <td>{row.cost_date ?? '-'}</td>
+                    <td>{row.network ?? '-'}</td>
                     <td>
                       <StatusBadge
                         status={
@@ -414,7 +414,7 @@ export function IntegrationsCostSyncPage() {
                     </td>
                     <td>{String(row.rows_imported ?? 0)}</td>
                     <td className="font-mono">${formatMicro(row.total_amount_usd_micro ?? 0)}</td>
-                    <td>{row.trigger_source ?? '—'}</td>
+                    <td>{row.trigger_source ?? '-'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -85,15 +85,15 @@ export function SupportFeedbackPage() {
 
       {loading ? (
         <p className="text-muted" data-testid="feedback-loading">
-          Loading deployment info…
+          Loading deployment info...
         </p>
       ) : meta ? (
         <section className="card stack text-sm text-muted" data-testid="feedback-meta">
           <div>
-            Deployment: <span className="font-mono">{meta.deployment_id || '—'}</span>
+            Deployment: <span className="font-mono">{meta.deployment_id || '-'}</span>
           </div>
           <div>
-            Binary: <span className="font-mono">{meta.binary_version || '—'}</span>
+            Binary: <span className="font-mono">{meta.binary_version || '-'}</span>
           </div>
         </section>
       ) : null}

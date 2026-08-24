@@ -43,8 +43,7 @@ func TestHTTP2HpackStaticPostTrack(t *testing.T) {
 func BenchmarkHTTP2DecodeFrame(b *testing.B) {
 	buf := []byte{0x00, 0x00, 0x05, h2FrameData, 0x00, 0x00, 0x00, 0x00, 0x01, 'h', 'e', 'l', 'l', 'o'}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := decodeH2FrameHeader(buf)
 		if err != nil {
 			b.Fatal(err)

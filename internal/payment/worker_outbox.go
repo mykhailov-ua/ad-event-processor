@@ -122,8 +122,8 @@ func (outboxWorker *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 		UPDATE payment.payment_outbox
 		SET status = 'PENDING', lease_until = NULL
 		WHERE status = 'PROCESSING'
-		  AND lease_until IS NOT NULL
-		  AND lease_until < now()`)
+		 AND lease_until IS NOT NULL
+		 AND lease_until < now()`)
 	if err != nil && ctx.Err() == nil && !database.IsShutdownError(err) {
 		slog.Error("failed to reclaim stale payment outbox outboxEventents", "error", err)
 	}

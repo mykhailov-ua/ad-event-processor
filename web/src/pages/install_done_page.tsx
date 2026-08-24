@@ -9,7 +9,7 @@ type MetaPayload = {
 };
 
 function CheckRow({ status, label }: { status: HealthStatus; label: string }) {
-  const mark = status === 'pass' ? '✓' : status === 'fail' ? '✗' : '…';
+  const mark = status === 'pass' ? '+' : status === 'fail' ? 'x' : '...';
   return (
     <li className={`install-check install-check--${status}`}>
       {mark} {label}
@@ -85,8 +85,8 @@ export function InstallDonePage() {
             status={ingressEnabled ? 'pass' : 'pending'}
             label={
               ingressEnabled
-                ? 'Ingress (Caddy) enabled — HTTPS on tracking/admin hosts'
-                : 'Ingress optional — enable INGRESS_ENABLED=1 for automatic TLS'
+                ? 'Ingress (Caddy) enabled - HTTPS on tracking/admin hosts'
+                : 'Ingress optional - enable INGRESS_ENABLED=1 for automatic TLS'
             }
           />
         </ul>

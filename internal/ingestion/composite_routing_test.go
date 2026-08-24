@@ -127,9 +127,7 @@ func BenchmarkCompositeRouting_JSON(b *testing.B) {
 	var trackReq TrackRequest
 
 	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		trackReq.Reset()
 		_ = ParseTrackRequestJSON(&trackReq, jsonData)
 		_ = ComputeCompositeHashFromTrackReq(&trackReq)
@@ -157,9 +155,7 @@ func BenchmarkCompositeRouting_Protobuf(b *testing.B) {
 	_ = reqProto.UnmarshalVT(protoData)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resetAdEventInPlace(reqProto)
 		_ = reqProto.UnmarshalVT(protoData)
 		_ = ComputeCompositeHashFromProto(reqProto)

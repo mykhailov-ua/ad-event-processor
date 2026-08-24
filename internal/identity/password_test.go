@@ -71,14 +71,13 @@ func TestVerifyPassword_SecurityBoundsAndFormats(t *testing.T) {
 
 func BenchmarkHashPassword(b *testing.B) {
 	password := "benchmark_password"
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	hasher, err := NewPasswordHasher(65536, 3, 4)
 	if err != nil {
 		b.Fatalf("NewPasswordHasher failed: %v", err)
 	}
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = hasher.HashPassword(password)
 	}
 }
@@ -90,11 +89,9 @@ func BenchmarkVerifyPassword(b *testing.B) {
 		b.Fatalf("NewPasswordHasher failed: %v", err)
 	}
 	hash, _ := hasher.HashPassword(password)
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = VerifyPassword(password, hash)
 	}
 }

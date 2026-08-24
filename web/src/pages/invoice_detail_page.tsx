@@ -143,7 +143,7 @@ export function InvoiceDetailPage() {
     void loadDeliveries();
   };
 
-  if (loading) return <span className="text-muted">Loading…</span>;
+  if (loading) return <span className="text-muted">Loading...</span>;
 
   if (error) {
     const view = mapServiceError(error);
@@ -203,7 +203,7 @@ export function InvoiceDetailPage() {
       <div className="grid-stats section-block">
         <div className="metric-card">
           <div className="metric-card__label">Month</div>
-          <div className="metric-card__value">{invoice.billing_month ?? '—'}</div>
+          <div className="metric-card__value">{invoice.billing_month ?? '-'}</div>
         </div>
         <div className="metric-card">
           <div className="metric-card__label">Total</div>
@@ -248,7 +248,7 @@ export function InvoiceDetailPage() {
 
       <section className="section-block" data-testid="invoice-ledger-lines">
         <h2 className="subsection-title">Ledger lines</h2>
-        {ledgerLinesLoading ? <span className="text-muted">Loading…</span> : null}
+        {ledgerLinesLoading ? <span className="text-muted">Loading...</span> : null}
         <div className="table-wrapper elevation-raised">
           <table className="data-table">
             <thead>
@@ -274,13 +274,13 @@ export function InvoiceDetailPage() {
               ) : null}
               {ledgerLines.map((line) => (
                 <tr key={line.id}>
-                  <td className="font-mono">{String(line.id ?? '—')}</td>
+                  <td className="font-mono">{String(line.id ?? '-')}</td>
                   <td>{displayLabel(line.ledger_type)}</td>
                   <td className="font-mono">
                     {formatAmountMicro(line.amount_micro ?? 0, invoice.currency)}
                   </td>
                   <td className="text-muted text-sm">
-                    {line.created_at ? new Date(line.created_at).toLocaleString() : '—'}
+                    {line.created_at ? new Date(line.created_at).toLocaleString() : '-'}
                   </td>
                 </tr>
               ))}
@@ -321,7 +321,7 @@ export function InvoiceDetailPage() {
             />
           ) : null}
         </div>
-        {deliveriesLoading ? <span className="text-muted">Loading…</span> : null}
+        {deliveriesLoading ? <span className="text-muted">Loading...</span> : null}
         <div className="table-wrapper elevation-raised">
           <table className="data-table">
             <thead>
@@ -350,10 +350,10 @@ export function InvoiceDetailPage() {
                 <tr key={`${d.provider}-${d.updated_at}-${d.recipient}`}>
                   <td>{displayLabel(d.provider)}</td>
                   <td>{d.status}</td>
-                  <td className="font-mono text-xs">{d.recipient ?? '—'}</td>
-                  <td className="text-xs text-muted">{d.error_message ?? '—'}</td>
+                  <td className="font-mono text-xs">{d.recipient ?? '-'}</td>
+                  <td className="text-xs text-muted">{d.error_message ?? '-'}</td>
                   <td className="text-muted text-xs">
-                    {d.updated_at ? new Date(d.updated_at).toLocaleString() : '—'}
+                    {d.updated_at ? new Date(d.updated_at).toLocaleString() : '-'}
                   </td>
                 </tr>
               ))}

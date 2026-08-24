@@ -7,6 +7,7 @@ import {
   fetchOpsMLEvalReport,
   fetchOpsMLManualLabels,
   fetchOpsMLModelStatus,
+  fetchMLCHReport,
   opsMlModelPollMs,
   truncateArtifactHash,
   type MLEvalMetricsBlock,
@@ -17,10 +18,68 @@ import {
   type OpsMLManualLabel,
 } from '../helpers/ops_ml_api.js';
 
-type OpsMlTab = 'overview' | 'eval' | 'labels';
+type OpsMlTab = 'overview' | 'eval' | 'labels' | 'runtime';
+
+function runtimeRange(): { from: string; to: string } {
+  const to = new Date();
+  const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+function RuntimeRowsTable({
+  title,
+  rows,
+  testId,
+}: {
+  title: string;
+  rows: Record<string, unknown>[];
+  testId: string;
+}) {
+  const keys =
+    rows.length > 0
+      ? Object.keys(rows[0] ?? {}).slice(0, 6)
+      : ['score_bucket', 'row_count'];
+  return (
+    <section className="section-card stack" data-testid={testId}>
+      <h2 className="subsection-title">{title}</h2>
+      <div className="table-wrapper">
+        <table className="data-table">
+          <thead>
+            <tr>
+              {keys.map((key) => (
+                <th key={key} scope="col">
+                  {key}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={keys.length} className="text-muted">
+                  No rows in range.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, index) => (
+                <tr key={`${title}-${index}`}>
+                  {keys.map((key) => (
+                    <td key={key} className="font-mono text-sm">
+                      {row[key] == null ? '-' : String(row[key])}
+                    </td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
 
 function formatTs(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 }
@@ -31,7 +90,7 @@ function VersionSummary({ version, title }: { version?: MLModelVersion | null; t
       <tr>
         <td>{title}</td>
         <td colSpan={4} className="text-muted">
-          —
+          -
         </td>
       </tr>
     );
@@ -106,7 +165,7 @@ function EvalMetricsBlock({
         <dt>Status</dt>
         <dd className="font-mono">{metrics.status}</dd>
         <dt>Label method</dt>
-        <dd className="font-mono">{metrics.label_method ?? '—'}</dd>
+        <dd className="font-mono">{metrics.label_method ?? '-'}</dd>
         <dt>Labeled rows</dt>
         <dd className="font-mono">{metrics.labeled_rows ?? 0}</dd>
         {metrics.matched_rows != null ? (
@@ -147,6 +206,11 @@ export function OpsMlModelPage() {
   const [labels, setLabels] = useState<OpsMLManualLabel[]>([]);
   const [labelsLoaded, setLabelsLoaded] = useState(false);
   const [labelsLoading, setLabelsLoading] = useState(false);
+  const [runtimeLoaded, setRuntimeLoaded] = useState(false);
+  const [runtimeLoading, setRuntimeLoading] = useState(false);
+  const [scoreRows, setScoreRows] = useState<Record<string, unknown>[]>([]);
+  const [shadowRows, setShadowRows] = useState<Record<string, unknown>[]>([]);
+  const [spikeRows, setSpikeRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
 
@@ -188,6 +252,27 @@ export function OpsMlModelPage() {
     }
   }, []);
 
+  const loadRuntime = useCallback(async () => {
+    setRuntimeLoading(true);
+    const { from, to } = runtimeRange();
+    try {
+      const [scores, shadow, spikes] = await Promise.all([
+        fetchMLCHReport('score-distribution', from, to),
+        fetchMLCHReport('shadow-delta', from, to),
+        fetchMLCHReport('feature-spikes', from, to),
+      ]);
+      setScoreRows(scores);
+      setShadowRows(shadow);
+      setSpikeRows(spikes);
+      setRuntimeLoaded(true);
+      setError(null);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setRuntimeLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadStatus();
     const timer = window.setInterval(() => {
@@ -206,8 +291,13 @@ export function OpsMlModelPage() {
     void loadEval();
   }, [tab, evalLoaded, evalLoading, loadEval]);
 
+  useEffect(() => {
+    if (tab !== 'runtime' || runtimeLoaded || runtimeLoading) return;
+    void loadRuntime();
+  }, [tab, runtimeLoaded, runtimeLoading, loadRuntime]);
+
   if (loading && !status) {
-    return <span className="text-muted">Loading…</span>;
+    return <span className="text-muted">Loading...</span>;
   }
   if (error && !status) {
     return <ErrorBlock error={error} />;
@@ -248,6 +338,13 @@ export function OpsMlModelPage() {
           data-testid="ops-ml-labels-tab"
           onClick={() => setTab('labels')}
         />
+        <Button
+          label="CH runtime"
+          variant={tab === 'runtime' ? 'primary' : 'secondary'}
+          size="sm"
+          data-testid="ops-ml-runtime-tab"
+          onClick={() => setTab('runtime')}
+        />
       </div>
 
       {tab === 'overview' ? (
@@ -265,11 +362,11 @@ export function OpsMlModelPage() {
               </dd>
               <dt>Precision (proxy)</dt>
               <dd className="font-mono">
-                {status?.precision != null ? status.precision.toFixed(4) : '—'}
+                {status?.precision != null ? status.precision.toFixed(4) : '-'}
               </dd>
               <dt>Recall (proxy)</dt>
               <dd className="font-mono">
-                {status?.recall != null ? status.recall.toFixed(4) : '—'}
+                {status?.recall != null ? status.recall.toFixed(4) : '-'}
               </dd>
             </dl>
           </section>
@@ -299,7 +396,7 @@ export function OpsMlModelPage() {
             <h2 className="subsection-title">Redis shard consistency</h2>
             <dl className="definition-list">
               <dt>Version on shards</dt>
-              <dd className="font-mono">{status?.redis?.version_id || '—'}</dd>
+              <dd className="font-mono">{status?.redis?.version_id || '-'}</dd>
               <dt>Hash</dt>
               <dd className="font-mono" title={status?.redis?.hash}>
                 {truncateArtifactHash(status?.redis?.hash)}
@@ -363,17 +460,17 @@ export function OpsMlModelPage() {
       ) : tab === 'eval' ? (
         <section className="section-card stack" data-testid="ops-ml-eval-quality-panel">
           <h2 className="subsection-title">Eval quality</h2>
-          {evalLoading ? <p className="text-muted text-sm">Loading eval report…</p> : null}
+          {evalLoading ? <p className="text-muted text-sm">Loading eval report...</p> : null}
           {evalReport ? (
             <div className="stack stack--lg">
               <p className="text-muted text-xs">
-                Generated {formatTs(evalReport.generated_at)} · window {evalReport.hours ?? '—'}h ·
-                threshold {evalReport.threshold ?? '—'}
+                Generated {formatTs(evalReport.generated_at)} , window {evalReport.hours ?? '-'}h ,
+                threshold {evalReport.threshold ?? '-'}
               </p>
               <EvalMetricsBlock
                 title="Proxy metrics"
                 block={evalReport.proxy_metrics}
-                disclaimer="Proxy labels from ClickHouse heuristics — not accuracy or ground truth."
+                disclaimer="Proxy labels from ClickHouse heuristics - not accuracy or ground truth."
               />
               <EvalMetricsBlock
                 title="Audited metrics"
@@ -385,10 +482,17 @@ export function OpsMlModelPage() {
             <p className="text-muted text-sm">Eval report unavailable.</p>
           ) : null}
         </section>
+      ) : tab === 'runtime' ? (
+        <div className="stack stack--lg" data-testid="ops-ml-runtime-panel">
+          {runtimeLoading ? <p className="text-muted text-sm">Loading ClickHouse ML reports...</p> : null}
+          <RuntimeRowsTable title="Score distribution" rows={scoreRows} testId="ops-ml-score-distribution" />
+          <RuntimeRowsTable title="Shadow delta" rows={shadowRows} testId="ops-ml-shadow-delta" />
+          <RuntimeRowsTable title="Feature spikes" rows={spikeRows} testId="ops-ml-feature-spikes" />
+        </div>
       ) : (
         <section className="section-card stack" data-testid="ops-ml-labels-panel">
           <h2 className="subsection-title">Manual labels</h2>
-          {labelsLoading ? <p className="text-muted text-sm">Loading labels…</p> : null}
+          {labelsLoading ? <p className="text-muted text-sm">Loading labels...</p> : null}
           <div className="table-wrapper">
             <table className="data-table">
               <thead>
@@ -412,8 +516,8 @@ export function OpsMlModelPage() {
                   <tr key={`${row.ip_hash}-${row.created_at ?? ''}`}>
                     <td className="font-mono text-sm">{row.ip_hash}</td>
                     <td className="font-mono">{row.label}</td>
-                    <td>{row.reason || '—'}</td>
-                    <td>{row.source || '—'}</td>
+                    <td>{row.reason || '-'}</td>
+                    <td>{row.source || '-'}</td>
                     <td>{formatTs(row.created_at)}</td>
                   </tr>
                 ))}

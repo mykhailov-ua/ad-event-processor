@@ -12,17 +12,17 @@ func checkBPFRedisPoolPrometheus(prom *promClient, rateWindow string) []BPFGateC
 
 	var checks []BPFGateCheck
 
-	missesRate := prom.scalarOrZero(rate(`sum(rate(ad_redis_pool_misses_total[${window}]))`))
+	missesRate := prom.scalarOrZero(rate(`sum(rate(ad_redis_pool_misses_total{job="control"}[${window}]))`))
 	missVal, _ := strconv.ParseFloat(missesRate, 64)
 	checks = append(checks, BPFGateCheck{
 		Name:   "redis_pool_misses_rate",
 		Value:  missesRate,
 		Limit:  "0.5",
 		OK:     missVal <= 0.5,
-		Detail: "go-redis pool connection churn (new conns per second)",
+		Detail: "control plane go-redis pool connection churn (new conns per second)",
 	})
 
-	timeoutsRate := prom.scalarOrZero(rate(`sum(rate(ad_redis_pool_timeouts_total[${window}]))`))
+	timeoutsRate := prom.scalarOrZero(rate(`sum(rate(ad_redis_pool_timeouts_total{job="control"}[${window}]))`))
 	timeoutVal, _ := strconv.ParseFloat(timeoutsRate, 64)
 	checks = append(checks, BPFGateCheck{
 		Name:   "redis_pool_timeouts_rate",

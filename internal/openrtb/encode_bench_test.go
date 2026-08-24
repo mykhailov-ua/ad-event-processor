@@ -21,7 +21,7 @@ func BenchmarkAppendBidResponse(b *testing.B) {
 	}
 	var buf [2048]byte
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = AppendBidResponse(buf[:0], p)
 	}
 }
@@ -45,7 +45,7 @@ func BenchmarkWriteBidHTTPResponse(b *testing.B) {
 	}
 	var buf [2048]byte
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = WriteBidHTTPResponse(buf[:], p, HTTPWriteOpts{})
 	}
 }

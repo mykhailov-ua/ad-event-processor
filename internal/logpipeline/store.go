@@ -168,7 +168,7 @@ func (store *LocalTierStore) writeWarmFromPath(destKey string, plaintext io.Read
 
 	metaPath := strings.TrimSuffix(destPath, ".zst") + ".meta.json"
 	meta.DestSHA256 = digest.SHA256
-	metaBytes, err := json.MarshalIndent(meta, "", "  ")
+	metaBytes, err := json.MarshalIndent(meta, "", " ")
 	if err != nil {
 		return "", err
 	}

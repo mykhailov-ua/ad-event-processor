@@ -19,7 +19,7 @@ export type FilterToolbarProps = {
 
 export function FilterToolbar({
   search,
-  searchPlaceholder = 'Search…',
+  searchPlaceholder = 'Search...',
   searchValue = '',
   onSearch,
   chips,

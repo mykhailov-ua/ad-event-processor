@@ -92,7 +92,7 @@ var createTokenCmd = &cobra.Command{
 
 		fmt.Println("\nGenerated PASETO Token:")
 		fmt.Println(token)
-		fmt.Printf("Details:\n  User ID:     %s\n  Customer ID: %s\n  Role:        %s\n  Expires in:  %v\n",
+		fmt.Printf("Details:\n User ID: %s\n Customer ID: %s\n Role: %s\n Expires in: %v\n",
 			userID.String(), custID.String(), user.Role, duration)
 		return nil
 	},
@@ -159,14 +159,14 @@ var getUserCmd = &cobra.Command{
 		}
 
 		fmt.Printf("User Details:\n")
-		fmt.Printf("  ID:             %s\n", pgUUIDToGoogleUUID(user.ID).String())
-		fmt.Printf("  Email:          %s\n", user.Email)
-		fmt.Printf("  Role:           %s\n", user.Role)
-		fmt.Printf("  Customer ID:    %s\n", cIDStr)
-		fmt.Printf("  Blocked:        %t\n", user.IsBlocked)
-		fmt.Printf("  Email Verified: %t\n", user.EmailVerified)
-		fmt.Printf("  Created At:     %v\n", user.CreatedAt.Time)
-		fmt.Printf("  Updated At:     %v\n", user.UpdatedAt.Time)
+		fmt.Printf(" ID: %s\n", pgUUIDToGoogleUUID(user.ID).String())
+		fmt.Printf(" Email: %s\n", user.Email)
+		fmt.Printf(" Role: %s\n", user.Role)
+		fmt.Printf(" Customer ID: %s\n", cIDStr)
+		fmt.Printf(" Blocked: %t\n", user.IsBlocked)
+		fmt.Printf(" Email Verified: %t\n", user.EmailVerified)
+		fmt.Printf(" Created At: %v\n", user.CreatedAt.Time)
+		fmt.Printf(" Updated At: %v\n", user.UpdatedAt.Time)
 		return nil
 	},
 }
@@ -221,7 +221,7 @@ var createUserCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Successfully created user:\n  ID:    %s\n  Email: %s\n  Role:  %s\n",
+		fmt.Printf("Successfully created user:\n ID: %s\n Email: %s\n Role: %s\n",
 			pgUUIDToGoogleUUID(res.ID).String(), res.Email, res.Role)
 		return nil
 	},

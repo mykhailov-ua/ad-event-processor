@@ -14,10 +14,10 @@ func applySocialInAppPreset(ctx context.Context, tx pgx.Tx, campaignID uuid.UUID
 	tag, err := tx.Exec(ctx, `
 		UPDATE campaigns
 		SET social_in_app_enabled = true,
-		    tls_fingerprint_block_enabled = true,
-		    l15_proxy_vpn_block_enabled = true,
-		    conn_type_policy = $2,
-		    updated_at = CURRENT_TIMESTAMP
+		 tls_fingerprint_block_enabled = true,
+		 l15_proxy_vpn_block_enabled = true,
+		 conn_type_policy = $2,
+		 updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1`, domain.ToUUID(campaignID), string(domain.SocialInAppConnTypePolicy))
 	if err != nil {
 		return fmt.Errorf("apply social_in_app preset: %w", err)

@@ -2315,8 +2315,8 @@ func (worker *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 		UPDATE outbox_events
 		SET status = 'PENDING', processing_started_at = NULL
 		WHERE status = 'PROCESSING'
-		  AND processing_started_at IS NOT NULL
-		  AND processing_started_at < NOW() - INTERVAL '1 minute'`)
+		 AND processing_started_at IS NOT NULL
+		 AND processing_started_at < NOW() - INTERVAL '1 minute'`)
 	if err != nil && ctx.Err() == nil && !database.IsShutdownError(err) {
 		slog.Error("failed to reclaim stale outbox events", "err", err)
 	}

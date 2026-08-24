@@ -159,8 +159,7 @@ func BenchmarkBuildDmrResponse_ZeroAlloc(b *testing.B) {
 	url := []byte("https://offer.com/lander?sub1=123&sub2=test\"&name=John's")
 	var buf [4096]byte
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = BuildDmrResponse(buf[:0], url)
 	}
 }
@@ -169,8 +168,7 @@ func BenchmarkBuildDmrResponse_LongURL(b *testing.B) {
 	url := []byte("https://offer.example.com/path/to/landing?click_id=550e8400-e29b-41d4-a716-446655440000&sub1=facebook&sub2=campaign_123&sub3=adset_456&sub4=creative_789&sub5=retargeting&gclid=Cj0KCQiA3eGfBhD_ARIsADi3DYp&fbclid=IwAR2")
 	var buf [8192]byte
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = BuildDmrResponse(buf[:0], url)
 	}
 }
@@ -187,8 +185,7 @@ func BenchmarkWriteGnetClickDmrRedirect_ConnBufCap4096(b *testing.B) {
 	ctx.bufSlice = make([]byte, 0, 4096)
 	conn := NewGnetHarnessConn(nil)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ctx.bufSlice = ctx.bufSlice[:0]
 		h.writeGnetClickDmrRedirect(&ctx, conn, 0, url)
 	}

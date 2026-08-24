@@ -97,8 +97,8 @@ func (r *opsReader) listPostbackDLQInbox(ctx context.Context, sourceFilter strin
 	}
 	rows, err := r.svc.GetPool().Query(ctx, `
 		SELECT q.id, q.campaign_id, q.click_id, q.event_type, q.failures_count,
-		       COALESCE(q.last_error, ''), q.status, q.created_at,
-		       COALESCE(pc.provider, 'webhook') AS provider
+		 COALESCE(q.last_error, ''), q.status, q.created_at,
+		 COALESCE(pc.provider, 'webhook') AS provider
 		FROM postback_dlq q
 		LEFT JOIN postback_configs pc ON pc.campaign_id = q.campaign_id
 		ORDER BY q.created_at DESC

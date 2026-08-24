@@ -269,7 +269,7 @@ export function BillingPage() {
           onClick={() => onSort(key)}
         >
           {label}
-          {active ? (dir === 'asc' ? ' ↑' : ' ↓') : ''}
+          {active ? (dir === 'asc' ? ' ^' : ' v') : ''}
         </button>
       </th>
     );
@@ -348,7 +348,7 @@ export function BillingPage() {
           {!customerId && !sessionScoped ? (
             <AlertBanner variant="info" message="Enter customer_id for wallet and balance." />
           ) : null}
-          {wallet.loading ? <span className="text-muted">Loading…</span> : null}
+          {wallet.loading ? <span className="text-muted">Loading...</span> : null}
           <BlockingError error={wallet.error} />
           {wallet.data ? (
             <div className="grid-stats">
@@ -379,7 +379,7 @@ export function BillingPage() {
               <div className="metric-card">
                 <div className="metric-card__label">Provider</div>
                 <div className="metric-card__value">
-                  {wallet.data.payment_provider ?? '—'}
+                  {wallet.data.payment_provider ?? '-'}
                   {wallet.data.payment_provider_configured ? '' : ' (not configured)'}
                 </div>
               </div>
@@ -408,7 +408,7 @@ export function BillingPage() {
           {!customerId ? (
             <AlertBanner variant="info" message="Enter customer_id for ledger." />
           ) : null}
-          {balance.loading ? <span className="text-muted">Loading…</span> : null}
+          {balance.loading ? <span className="text-muted">Loading...</span> : null}
           <BlockingError error={balance.error} />
           <BlockingError error={ledger.error} />
           {balance.data ? (
@@ -470,9 +470,9 @@ export function BillingPage() {
                         <td className="font-mono">
                           {formatDecimalDisplay(String(row.amount ?? ''))}
                         </td>
-                        <td>{row.campaign_id ? <CopyableUuid uuid={row.campaign_id} /> : '—'}</td>
+                        <td>{row.campaign_id ? <CopyableUuid uuid={row.campaign_id} /> : '-'}</td>
                         <td className="text-muted">
-                          {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                          {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
                         </td>
                       </tr>
                     ))}
@@ -487,7 +487,7 @@ export function BillingPage() {
       {tab === 'invoices' ? (
         <div className="section-block stack">
           {customerId ? <InvoicePreviewPanel customerId={customerId} /> : null}
-          {invoices.loading ? <span className="text-muted">Loading…</span> : null}
+          {invoices.loading ? <span className="text-muted">Loading...</span> : null}
           <BlockingError error={invoices.error} />
           {invoices.data ? (
             <div>
@@ -551,9 +551,9 @@ export function BillingPage() {
                             <CopyableUuid uuid={inv.id ?? ''} />
                           </a>
                         </td>
-                        <td>{inv.billing_month ?? '—'}</td>
+                        <td>{inv.billing_month ?? '-'}</td>
                         <td>
-                          {inv.status ? <StatusBadge status={inv.status} kind="invoice" /> : '—'}
+                          {inv.status ? <StatusBadge status={inv.status} kind="invoice" /> : '-'}
                         </td>
                         <td className="font-mono">
                           {formatAmountMicro(inv.total_micro ?? 0, inv.currency)}
@@ -564,7 +564,7 @@ export function BillingPage() {
                               <CopyableUuid uuid={inv.customer_id} />
                             </a>
                           ) : (
-                            '—'
+                            '-'
                           )}
                         </td>
                       </tr>
@@ -591,7 +591,7 @@ export function BillingPage() {
               message="Enter customer_id to filter disputes, or apply empty to list all (admin)."
             />
           ) : null}
-          {disputes.loading ? <span className="text-muted">Loading…</span> : null}
+          {disputes.loading ? <span className="text-muted">Loading...</span> : null}
           <BlockingError error={disputes.error} />
           {disputes.data ? (
             <div>
@@ -641,14 +641,14 @@ export function BillingPage() {
                     {disputeRows.map((row) => (
                       <tr key={`${row.provider_dispute_id}-${row.intent_id}`}>
                         <td className="font-mono text-sm" data-testid="dispute-id">
-                          {row.provider_dispute_id || row.intent_id || '—'}
+                          {row.provider_dispute_id || row.intent_id || '-'}
                         </td>
-                        <td>{row.customer_id ? <CopyableUuid uuid={row.customer_id} /> : '—'}</td>
+                        <td>{row.customer_id ? <CopyableUuid uuid={row.customer_id} /> : '-'}</td>
                         <td className="font-mono">
                           {formatAmountMicro(row.amount_micro ?? 0, row.currency)}
                         </td>
                         <td className="text-muted text-sm">
-                          {row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}
+                          {row.updated_at ? new Date(row.updated_at).toLocaleString() : '-'}
                         </td>
                       </tr>
                     ))}

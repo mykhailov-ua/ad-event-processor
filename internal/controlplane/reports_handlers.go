@@ -3,10 +3,12 @@ package controlplane
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -95,18 +97,43 @@ type CampaignForecaster interface {
 	ForecastCampaign(ctx context.Context, in CampaignForecastInput) (CampaignForecastDTO, error)
 }
 
-const maxStatsRange = 90 * 24 * time.Hour
+const (
+	maxStatsRange    = 90 * 24 * time.Hour
+	maxStatsRangeDay = 365 * 24 * time.Hour
+)
 
-func parseStatsQuery(r *http.Request) (from, to time.Time, granularity string, err error) {
+func requestHasShardsRead(r *http.Request) bool {
+	if snap, ok := authz.SnapshotFromContext(r.Context()); ok {
+		return snap.Has(PermShardsRead)
+	}
+	user, ok := GetUser(r.Context())
+	if !ok {
+		return false
+	}
+	return HasPermission(user.Role, PermShardsRead)
+}
+
+func parseStatsQuery(r *http.Request, allowDayGranularity bool) (from, to time.Time, granularity string, err error) {
 	granularity = r.URL.Query().Get("granularity")
 	if granularity == "" {
 		granularity = "hour"
 	}
-	if granularity != "hour" {
-		return time.Time{}, time.Time{}, "", errInvalidQuery("granularity must be hour")
+	switch granularity {
+	case "hour":
+	case "day":
+		if !allowDayGranularity {
+			return time.Time{}, time.Time{}, "", errInvalidQuery("granularity must be hour")
+		}
+	default:
+		return time.Time{}, time.Time{}, "", errInvalidQuery("granularity must be hour or day")
 	}
 
-	now := time.Now().UTC().Truncate(time.Hour)
+	now := time.Now().UTC()
+	if granularity == "hour" {
+		now = now.Truncate(time.Hour)
+	} else {
+		now = now.Truncate(24 * time.Hour)
+	}
 	to = now
 	from = now.Add(-7 * 24 * time.Hour)
 
@@ -128,8 +155,12 @@ func parseStatsQuery(r *http.Request) (from, to time.Time, granularity string, e
 	if !to.After(from) {
 		return time.Time{}, time.Time{}, "", errInvalidQuery("to must be after from")
 	}
-	if to.Sub(from) > maxStatsRange {
-		return time.Time{}, time.Time{}, "", errInvalidQuery("time range exceeds 90 days")
+	maxRange := maxStatsRange
+	if granularity == "day" {
+		maxRange = maxStatsRangeDay
+	}
+	if to.Sub(from) > maxRange {
+		return time.Time{}, time.Time{}, "", errInvalidQuery(fmt.Sprintf("time range exceeds %d days", int(maxRange/(24*time.Hour))))
 	}
 	return from, to, granularity, nil
 }
@@ -216,6 +247,7 @@ type ReportsHTTPHandlers struct {
 	Pool                      *pgxpool.Pool
 	CHQuery                   *database.CHQuery
 	BuyerPortfolio            BuyerPortfolioReader
+	EdgeMetricsReader         func(context.Context) (EdgeMetricsPanelDTO, error)
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission         func(string, http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission      func([]string, http.HandlerFunc) http.HandlerFunc
@@ -245,12 +277,23 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	readCampaigns := []string{"campaigns:read", "campaigns:read:masked"}
-	mux.HandleFunc("GET /api/v1/reports/placements", limit(permAny(readCampaigns, reports.getPlacementsReport)))
-	mux.HandleFunc("GET /api/v1/reports/keywords", limit(permAny(readCampaigns, reports.getKeywordsReport)))
+	mux.HandleFunc("GET /api/v1/reports/placements", limit(permAny(readCampaigns, reports.wrapReport("placements", reports.getPlacementsReport))))
+	mux.HandleFunc("GET /api/v1/reports/keywords", limit(permAny(readCampaigns, reports.wrapReport("keywords", reports.getKeywordsReport))))
 	reports.registerIVTBySource(mux)
 	reports.registerTrafficSources(mux)
 	reports.registerGeoROI(mux)
 	reports.registerExtendedReports(mux)
+	reports.registerDataQualityReport(mux)
+	reports.registerFilterRejectsReport(mux)
+	reports.registerFraudBreakdownReport(mux)
+	reports.registerGhostImpressionFunnelReport(mux)
+	reports.registerRtbReports(mux)
+	reports.registerPostbackReconReport(mux)
+	reports.registerPacingDriftReport(mux)
+	reports.registerCostCoverageReport(mux)
+	reports.registerMLReports(mux)
+	reports.registerEdgeParityReport(mux)
+	reports.registerReportSchedules(mux)
 	reports.registerReportJobs(mux)
 }
 
@@ -500,7 +543,7 @@ func (reports *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
 			return perm(perms[0], next)
 		}
 	}
-	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, reports.getCampaignStats)))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, reports.wrapReport("campaign-stats", reports.getCampaignStats))))
 }
 
 func (reports *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Request) {
@@ -518,7 +561,7 @@ func (reports *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *h
 		}
 	}
 
-	from, to, granularity, err := parseStatsQuery(r)
+	from, to, granularity, err := parseStatsQuery(r, requestHasShardsRead(r))
 	if err != nil {
 		reports.writeServiceError(w, err)
 		return

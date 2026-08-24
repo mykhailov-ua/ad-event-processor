@@ -23,41 +23,41 @@ func ReportCHQueryTimeout() time.Duration {
 
 const placementReportQuery = `
 SELECT
-    placement_id,
-    campaign_id,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions,
-    sum(spend_micro) AS spend_micro,
-    sum(revenue_micro) AS revenue_micro
+ placement_id,
+ campaign_id,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions,
+ sum(spend_micro) AS spend_micro,
+ sum(revenue_micro) AS revenue_micro
 FROM (
-    SELECT
-        placement_id,
-        campaign_id,
-        toUInt64(0) AS impressions,
-        sum(click_count) AS clicks,
-        sum(conversion_count) AS conversions,
-        sum(spend_micro) AS spend_micro,
-        sum(revenue_micro) AS revenue_micro
-    FROM placement_stats_hourly
-    WHERE campaign_id IN (?)
-      AND hour >= ?
-      AND hour < ?
-    GROUP BY placement_id, campaign_id
-    UNION ALL
-    SELECT
-        placement_id,
-        campaign_id,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS conversions,
-        toInt64(0) AS spend_micro,
-        toInt64(0) AS revenue_micro
-    FROM impressions
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY placement_id, campaign_id
+ SELECT
+ placement_id,
+ campaign_id,
+ toUInt64(0) AS impressions,
+ sum(click_count) AS clicks,
+ sum(conversion_count) AS conversions,
+ sum(spend_micro) AS spend_micro,
+ sum(revenue_micro) AS revenue_micro
+ FROM placement_stats_hourly
+ WHERE campaign_id IN (?)
+ AND hour >= ?
+ AND hour < ?
+ GROUP BY placement_id, campaign_id
+ UNION ALL
+ SELECT
+ placement_id,
+ campaign_id,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toUInt64(0) AS conversions,
+ toInt64(0) AS spend_micro,
+ toInt64(0) AS revenue_micro
+ FROM impressions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY placement_id, campaign_id
 )
 GROUP BY placement_id, campaign_id
 ORDER BY placement_id, campaign_id
@@ -65,62 +65,62 @@ LIMIT ? OFFSET ?`
 
 const placementReportCountQuery = `
 SELECT count() FROM (
-    SELECT placement_id, campaign_id
-    FROM (
-        SELECT placement_id, campaign_id
-        FROM placement_stats_hourly
-        WHERE campaign_id IN (?)
-          AND hour >= ?
-          AND hour < ?
-        GROUP BY placement_id, campaign_id
-        UNION ALL
-        SELECT placement_id, campaign_id
-        FROM impressions
-        WHERE campaign_id IN (?)
-          AND created_at >= ?
-          AND created_at < ?
-        GROUP BY placement_id, campaign_id
-    )
-    GROUP BY placement_id, campaign_id
+ SELECT placement_id, campaign_id
+ FROM (
+ SELECT placement_id, campaign_id
+ FROM placement_stats_hourly
+ WHERE campaign_id IN (?)
+ AND hour >= ?
+ AND hour < ?
+ GROUP BY placement_id, campaign_id
+ UNION ALL
+ SELECT placement_id, campaign_id
+ FROM impressions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY placement_id, campaign_id
+ )
+ GROUP BY placement_id, campaign_id
 )`
 
 const keywordReportQuery = `
 SELECT
-    keyword,
-    campaign_id,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions,
-    sum(spend_micro) AS spend_micro,
-    sum(revenue_micro) AS revenue_micro
+ keyword,
+ campaign_id,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions,
+ sum(spend_micro) AS spend_micro,
+ sum(revenue_micro) AS revenue_micro
 FROM (
-    SELECT
-        nullIf(JSONExtractString(payload, 'keyword'), '') AS keyword,
-        campaign_id,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS conversions,
-        toInt64(0) AS spend_micro,
-        toInt64(0) AS revenue_micro
-    FROM impressions
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY keyword, campaign_id
-    UNION ALL
-    SELECT
-        nullIf(JSONExtractString(payload, 'keyword'), ''),
-        campaign_id,
-        toUInt64(0),
-        count(),
-        toUInt64(0),
-        toInt64(0),
-        toInt64(0)
-    FROM clicks
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY keyword, campaign_id
+ SELECT
+ nullIf(` + chDimKeywordExpr + `, '') AS keyword,
+ campaign_id,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toUInt64(0) AS conversions,
+ toInt64(0) AS spend_micro,
+ toInt64(0) AS revenue_micro
+ FROM impressions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY keyword, campaign_id
+ UNION ALL
+ SELECT
+ nullIf(` + chDimKeywordExpr + `, ''),
+ campaign_id,
+ toUInt64(0),
+ count(),
+ toUInt64(0),
+ toInt64(0),
+ toInt64(0)
+ FROM clicks
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY keyword, campaign_id
 )
 WHERE keyword != ''
 GROUP BY keyword, campaign_id
@@ -129,24 +129,24 @@ LIMIT ? OFFSET ?`
 
 const keywordReportCountQuery = `
 SELECT count() FROM (
-    SELECT keyword, campaign_id
-    FROM (
-        SELECT nullIf(JSONExtractString(payload, 'keyword'), '') AS keyword, campaign_id
-        FROM impressions
-        WHERE campaign_id IN (?)
-          AND created_at >= ?
-          AND created_at < ?
-        GROUP BY keyword, campaign_id
-        UNION ALL
-        SELECT nullIf(JSONExtractString(payload, 'keyword'), ''), campaign_id
-        FROM clicks
-        WHERE campaign_id IN (?)
-          AND created_at >= ?
-          AND created_at < ?
-        GROUP BY keyword, campaign_id
-    )
-    WHERE keyword != ''
-    GROUP BY keyword, campaign_id
+ SELECT keyword, campaign_id
+ FROM (
+ SELECT nullIf(` + chDimKeywordExpr + `, '') AS keyword, campaign_id
+ FROM impressions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY keyword, campaign_id
+ UNION ALL
+ SELECT nullIf(` + chDimKeywordExpr + `, ''), campaign_id
+ FROM clicks
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY keyword, campaign_id
+ )
+ WHERE keyword != ''
+ GROUP BY keyword, campaign_id
 )`
 
 func parseReportRange(r *http.Request) (from, to time.Time, err error) {
@@ -305,43 +305,43 @@ func queryKeywordReportRows(
 
 const placementIVTQuery = `
 SELECT
-    c.placement_id,
-    c.campaign_id,
-    count() AS clicks,
-    uniqIf(c.click_id, f.click_id != '') AS ivt_events
+ c.placement_id,
+ c.campaign_id,
+ count() AS clicks,
+ uniqIf(c.click_id, f.click_id != '') AS ivt_events
 FROM clicks AS c
 LEFT JOIN fraud_events AS f
-    ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+ ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
 WHERE c.campaign_id IN (?)
-  AND c.created_at >= ?
-  AND c.created_at < ?
+ AND c.created_at >= ?
+ AND c.created_at < ?
 GROUP BY c.placement_id, c.campaign_id`
 
 const keywordIVTQuery = `
 SELECT
-    nullIf(JSONExtractString(c.payload, 'keyword'), '') AS keyword,
-    c.campaign_id,
-    count() AS clicks,
-    uniqIf(c.click_id, f.click_id != '') AS ivt_events
+ nullIf(` + chDimKeywordExpr + `, '') AS keyword,
+ c.campaign_id,
+ count() AS clicks,
+ uniqIf(c.click_id, f.click_id != '') AS ivt_events
 FROM clicks AS c
 LEFT JOIN fraud_events AS f
-    ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+ ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
 WHERE c.campaign_id IN (?)
-  AND c.created_at >= ?
-  AND c.created_at < ?
+ AND c.created_at >= ?
+ AND c.created_at < ?
 GROUP BY keyword, c.campaign_id
 HAVING keyword != ''`
 
 const campaignEconomicsQuery = `
 SELECT
-    sum(spend_micro) AS spend_micro,
-    sum(revenue_micro) AS revenue_micro,
-    sum(click_count) AS clicks,
-    sum(conversion_count) AS conversions
+ sum(spend_micro) AS spend_micro,
+ sum(revenue_micro) AS revenue_micro,
+ sum(click_count) AS clicks,
+ sum(conversion_count) AS conversions
 FROM placement_stats_hourly
 WHERE campaign_id = ?
-  AND hour >= ?
-  AND hour < ?`
+ AND hour >= ?
+ AND hour < ?`
 
 type placementIVTRow struct {
 	PlacementID string
@@ -439,16 +439,16 @@ func QueryCampaignEconomicsCH(
 
 const telegramExportQuery = `
 SELECT
-    start_param,
-    countIf(event_type = 'tg_click') AS clicks,
-    countIf(event_type = 'tg_impression') AS impressions,
-    countIf(event_type = 'tg_conversion') AS conversions,
-    countIf(is_premium = 1) AS premium,
-    countIf(motivated = 1) AS motivated
+ start_param,
+ countIf(event_type = 'tg_click') AS clicks,
+ countIf(event_type = 'tg_impression') AS impressions,
+ countIf(event_type = 'tg_conversion') AS conversions,
+ countIf(is_premium = 1) AS premium,
+ countIf(motivated = 1) AS motivated
 FROM tg_events
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?
+ AND created_at >= ?
+ AND created_at < ?
 GROUP BY start_param
 ORDER BY clicks DESC
 LIMIT ? OFFSET ?`
@@ -457,8 +457,8 @@ const telegramExportCountQuery = `
 SELECT count(DISTINCT start_param)
 FROM tg_events
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?`
+ AND created_at >= ?
+ AND created_at < ?`
 
 type telegramExportCHRow struct {
 	StartParam  string

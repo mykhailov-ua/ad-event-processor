@@ -76,7 +76,7 @@ export function CampaignOwnerSection({
         title="Campaign owner"
         desc="Media buyer accountable for spend and portfolio filters (CPA-M5)."
       >
-        {loading ? <p className="text-muted text-sm">Loading team…</p> : null}
+        {loading ? <p className="text-muted text-sm">Loading team...</p> : null}
         {!loading && members.length === 0 ? (
           <p className="text-muted text-sm">No team members for this customer.</p>
         ) : null}
@@ -97,7 +97,7 @@ export function CampaignOwnerSection({
             >
               {!selected ? (
                 <option value="" disabled>
-                  Select owner…
+                  Select owner...
                 </option>
               ) : null}
               {members.map((m) => (

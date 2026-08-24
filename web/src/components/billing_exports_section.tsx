@@ -157,7 +157,7 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
           </select>
         </label>
         <Button
-          label={submitting ? 'Creating…' : 'Create export'}
+          label={submitting ? 'Creating...' : 'Create export'}
           variant="primary"
           size="sm"
           loading={submitting}
@@ -185,9 +185,9 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
                   <tr key={job.localId}>
                     <td className="font-mono text-xs">{job.id.slice(0, 8)}</td>
                     <td>{status}</td>
-                    <td className="font-mono">{String(job.bytes ?? '—')}</td>
+                    <td className="font-mono">{String(job.bytes ?? '-')}</td>
                     <td className="text-muted text-xs">
-                      {job.created_at ? new Date(job.created_at).toLocaleString() : '—'}
+                      {job.created_at ? new Date(job.created_at).toLocaleString() : '-'}
                     </td>
                     <td>
                       {status === 'COMPLETED' ? (
@@ -201,7 +201,7 @@ export function BillingExportsSection({ customerId, tenant }: BillingExportsSect
                       ) : status === 'FAILED' ? (
                         <span className="text-danger text-xs">{job.error ?? 'Failed'}</span>
                       ) : (
-                        <span className="text-muted text-xs">Running…</span>
+                        <span className="text-muted text-xs">Running...</span>
                       )}
                     </td>
                   </tr>

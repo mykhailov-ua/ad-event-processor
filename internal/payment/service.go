@@ -167,9 +167,9 @@ func (service *Service) finalizePaymentIntent(
 		row := tx.QueryRow(ctx, `
 			UPDATE payment.payment_intents
 			SET status = $2,
-			    provider_ref = COALESCE(NULLIF($3, ''), provider_ref),
-			    metadata = $4,
-			    updated_at = now()
+			 provider_ref = COALESCE(NULLIF($3, ''), provider_ref),
+			 metadata = $4,
+			 updated_at = now()
 			WHERE id = $1
 			RETURNING id, customer_id, amount_micro, currency, status, provider, provider_ref, idempotency_key, metadata, created_at, updated_at, refunded_amount_micro`,
 			intentID, status, provRef, metaBytes)

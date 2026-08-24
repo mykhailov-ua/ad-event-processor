@@ -47,7 +47,7 @@ export function PacingHealth({
       <p>{detail}</p>
       <p>
         <a href="/campaigns/portfolio">Portfolio (pacing drift)</a>
-        {' · '}
+        {' , '}
         <a href="/reports/placements">Placements</a>
       </p>
     </section>

@@ -90,7 +90,7 @@ func RunDoctor(asJSON bool) error {
 	}
 
 	if asJSON {
-		data, err := json.MarshalIndent(results, "", "  ")
+		data, err := json.MarshalIndent(results, "", " ")
 		if err != nil {
 			return err
 		}

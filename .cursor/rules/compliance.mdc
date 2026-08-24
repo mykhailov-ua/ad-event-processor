@@ -4,20 +4,56 @@ globs: internal/edge/**, deploy/nginx/**, internal/controlplane/**, cmd/edge-bpf
 alwaysApply: false
 ---
 
-Defensive perimeter only — no offensive tooling in repo.
+# Compliance and Defensive Perimeter
 
-Auto-blocks enter BPF maps only after local breach (rate limit, operator RBAC block, fraud outbox). TTL in map value; allowlist before deny. Sync path: control outbox -> Redis -> `edge-bpf-sync` -> pinned maps.
+## Purpose
 
-Tarpit: nginx edge when `EDGE_TARPIT_ENABLED=true`; capped duration; never on billing/settlement paths.
+Defensive perimeter only - no offensive tooling in repo. Documents how auto-blocks enter BPF maps, tarpit rules, and banned imports for compliance changes.
 
-Workers do not open outbound streams to visitor IPs being blocked. No SYN/UDP flood helpers.
+## Auto-block pipeline
 
-Banned imports: using `cilium/ebpf` in tracker/control hot packages for compliance maps (edge binaries only).
+Auto-blocks enter BPF maps only after local breach:
 
-Checklist for edge/compliance changes:
+| Trigger | Path |
+| :--- | :--- |
+| Rate limit breach | Edge Lua -> control outbox |
+| Operator RBAC block | Admin API -> outbox |
+| Fraud outbox event | Control worker -> Redis shard 0 |
 
-- No outbound network to visitor IPs from control workers.
-- Map updates only via sync pipeline, not direct management kernel writes.
-- Metrics and ops docs updated when adding deny reasons.
+TTL in map value; allowlist before deny. Sync path: control outbox -> Redis -> `edge-bpf-sync` -> pinned maps.
 
-Related: `edge.mdc`, `architecture.mdc`.
+Workers do **not** open outbound streams to visitor IPs being blocked. No SYN/UDP flood helpers.
+
+## Tarpit
+
+| Rule | Detail |
+| :--- | :--- |
+| Surface | Nginx edge when `EDGE_TARPIT_ENABLED=true` |
+| Duration | Capped |
+| Forbidden | Billing/settlement paths |
+
+## Banned imports
+
+Using `cilium/ebpf` in tracker/control hot packages for compliance maps - edge binaries only (`cmd/edge-xdp`, `cmd/edge-bpf-sync`).
+
+## Change checklist
+
+When editing edge/compliance code:
+
+| Check | Requirement |
+| :--- | :--- |
+| Outbound | No outbound network to visitor IPs from control workers |
+| Map updates | Only via sync pipeline - not direct management kernel writes |
+| Metrics | Update metrics and ops docs when adding deny reasons |
+| License | Enterprise XDP requires `features.ebpf_xdp_edge` in JWT |
+
+## Verification
+
+```bash
+bash scripts/ci/compliance.sh
+go test ./internal/edge/... -count=1
+```
+
+## Related rules
+
+`architecture.mdc`, `edge.mdc`, `licensing.mdc`.

@@ -13,7 +13,7 @@ import (
 func sentinelFaultConfig(t *testing.T) *config.Config {
 	t.Helper()
 	if os.Getenv("SENTINEL_FAULT_TEST") == "" {
-		t.Skip("set SENTINEL_FAULT_TEST=1 (run scripts/fault/sentinel.sh or CI sentinel job)")
+		t.Skip("set SENTINEL_FAULT_TEST=1 (run scripts/test/sentinel.sh or CI sentinel job)")
 	}
 	if testing.Short() {
 		t.Skip("sentinel fault skipped in -short")

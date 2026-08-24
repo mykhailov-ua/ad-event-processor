@@ -22,7 +22,7 @@ func BenchmarkWrapEventStoreAfterBatch_overhead(b *testing.B) {
 	batch := []*domain.Event{evt}
 	ctx := context.Background()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = wrapped.StoreBatch(ctx, batch)
 	}
 }

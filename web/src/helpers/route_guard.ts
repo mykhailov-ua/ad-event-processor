@@ -29,6 +29,7 @@ const ROUTE_ACCESS: Record<string, RouteAccess> = {
   '/ops/domains': { perms: ['settings:read'] },
   '/ops/shards': { perms: ['shards:read'] },
   '/ops/ml-model': { perms: ['shards:read'] },
+  '/ops/edge-parity': { perms: ['shards:read'] },
   '/ops/blacklist': { perms: ['shards:read'] },
   '/ops/recon': { perms: ['audit:read'] },
   '/ops/consent': { perms: ['shards:read'] },

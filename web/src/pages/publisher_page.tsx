@@ -54,11 +54,11 @@ export function PublisherPage() {
       <div className="page-header">
         <h1 className="page-header__title">Publisher dashboard</h1>
         <p className="page-header__desc">
-          Seller scope: <code className="code-inline">{dashboard?.seller_id || '—'}</code>
+          Seller scope: <code className="code-inline">{dashboard?.seller_id || '-'}</code>
           {dashboard?.publisher_account_id ? (
             <>
               {' '}
-              · account <code className="code-inline">{dashboard.publisher_account_id}</code>
+              , account <code className="code-inline">{dashboard.publisher_account_id}</code>
             </>
           ) : null}
         </p>
@@ -87,25 +87,25 @@ export function PublisherPage() {
             <div className="metric-card">
               <span className="metric-card__label">Impressions</span>
               <span className="metric-card__value">
-                {loading ? '…' : String(dashboard?.kpis.impressions ?? 0)}
+                {loading ? '...' : String(dashboard?.kpis.impressions ?? 0)}
               </span>
             </div>
             <div className="metric-card">
               <span className="metric-card__label">Fill rate</span>
               <span className="metric-card__value">
-                {loading ? '…' : pct(dashboard?.kpis.fill_rate ?? 0)}
+                {loading ? '...' : pct(dashboard?.kpis.fill_rate ?? 0)}
               </span>
             </div>
             <div className="metric-card">
               <span className="metric-card__label">eCPM</span>
               <span className="metric-card__value">
-                {loading ? '…' : `$${formatAmountMicro(dashboard?.kpis.ecpm_micro ?? 0)}`}
+                {loading ? '...' : `$${formatAmountMicro(dashboard?.kpis.ecpm_micro ?? 0)}`}
               </span>
             </div>
             <div className="metric-card">
               <span className="metric-card__label">IVT rate</span>
               <span className="metric-card__value">
-                {loading ? '…' : pct(dashboard?.kpis.ivt_rate ?? 0)}
+                {loading ? '...' : pct(dashboard?.kpis.ivt_rate ?? 0)}
               </span>
             </div>
           </div>
@@ -127,7 +127,7 @@ export function PublisherPage() {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={6}>Loading…</td>
+                      <td colSpan={6}>Loading...</td>
                     </tr>
                   ) : (
                     (dashboard?.placements ?? []).map((row) => (
@@ -179,15 +179,15 @@ export function PublisherPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={4}>Loading…</td>
+                    <td colSpan={4}>Loading...</td>
                   </tr>
                 ) : (
                   statements.map((row) => (
                     <tr key={row.id}>
                       <td>{row.created_at}</td>
                       <td>${formatAmountMicro(row.amount_micro)}</td>
-                      <td className="font-mono">{row.campaign_id || '—'}</td>
-                      <td className="font-mono text-sm">{row.idempotency_hash || '—'}</td>
+                      <td className="font-mono">{row.campaign_id || '-'}</td>
+                      <td className="font-mono text-sm">{row.idempotency_hash || '-'}</td>
                     </tr>
                   ))
                 )}
@@ -207,7 +207,7 @@ export function PublisherPage() {
       {tab === 'supply' ? (
         <div className="section-card stack" data-testid="publisher-supply-validation">
           <h2 className="subsection-title">ads.txt / sellers.json validation</h2>
-          {loading ? <p className="text-muted">Loading…</p> : null}
+          {loading ? <p className="text-muted">Loading...</p> : null}
           {!loading && validation ? (
             <dl className="definition-list">
               <dt>sellers.json</dt>
@@ -216,9 +216,9 @@ export function PublisherPage() {
                   status={validation.sellers_json_valid ? 'ok' : 'error'}
                   label={validation.sellers_json_valid ? 'valid' : 'invalid'}
                 />{' '}
-                {validation.sellers_count} sellers · SHA-256{' '}
+                {validation.sellers_count} sellers , SHA-256{' '}
                 <code className="code-inline">
-                  {validation.sellers_checksum_sha256.slice(0, 16)}…
+                  {validation.sellers_checksum_sha256.slice(0, 16)}...
                 </code>
               </dd>
               <dt>ads.txt</dt>
@@ -227,9 +227,9 @@ export function PublisherPage() {
                   status={validation.ads_txt_valid ? 'ok' : 'error'}
                   label={validation.ads_txt_valid ? 'valid' : 'invalid'}
                 />{' '}
-                {validation.ads_txt_line_count} lines · SHA-256{' '}
+                {validation.ads_txt_line_count} lines , SHA-256{' '}
                 <code className="code-inline">
-                  {validation.ads_txt_checksum_sha256.slice(0, 16)}…
+                  {validation.ads_txt_checksum_sha256.slice(0, 16)}...
                 </code>
               </dd>
               {(validation.issues ?? []).map((issue) => (

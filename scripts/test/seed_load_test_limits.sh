@@ -23,7 +23,7 @@ redis_cmd() {
 log() { printf 'seed-load-test-limits: %s\n' "$*"; }
 
 if ! redis_cmd PING > /dev/null 2>&1; then
-  log "WARN: redis not reachable on port $REDIS_PORT — skip"
+  log "WARN: redis not reachable on port $REDIS_PORT - skip"
   exit 0
 fi
 

@@ -1,69 +1,91 @@
 ---
-description: Naming standards, forbidden legacy tokens, and cryptic identifiers
-globs: **/*.go, **/*.lua, **/*.sql, **/*.md, **/*.yaml, .env*
+description: Naming, comments, forbidden legacy tokens - always applied on every edit
 alwaysApply: true
 ---
 
-# Naming and Structure Standards
+# Naming and Comments
 
-Strictly forbid "trash naming" (cryptic numbers, abbreviations, legacy tokens) and enforce semantic clarity inspired by `lead-intent-processor`.
+## Purpose
 
-## 1. Forbidden "Trash Naming"
+Always applied on every agent turn and every file edit. Forbid cryptic identifiers ("trash naming") and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Comment discipline: explain **why**, not what the name already says.
 
-Do NOT use cryptic suffixes, meaningless numbers, or lazy abbreviations.
+Guard script: `bash scripts/ci/check_no_legacy_naming.sh`. Receivers and JSDoc: `quality.mdc` (also always applied).
 
-| Pattern | Why | Better Alternative |
+## Forbidden trash naming
+
+Do not use cryptic suffixes, meaningless numbers, or lazy abbreviations.
+
+| Pattern | Why banned | Better alternative |
 | :--- | :--- | :--- |
 | `m1`, `m2`, `m8` | Cryptic milestone/versioning | `load_test_milestone_8`, `v2_reconciler` |
 | `n1`, `n2` | Meaningless numeric tags | `ledger_fix_2026`, `consistency_patch` |
-| `v1_old`, `new_logic` | Temporal naming (rot immediately) | `legacy_v1_compat`, `batch_processor_v2` |
+| `v1_old`, `new_logic` | Temporal naming (rots immediately) | `legacy_v1_compat`, `batch_processor_v2` |
 | `f1`, `f2` | Lazy filter/field abbreviations | `license_filter`, `geo_filter` |
 | `ch`, `pg`, `rd` | Common driver abbreviations | `clickhouse`, `postgres`, `redis` |
 | `res`, `res2` | Generic result variables | `auction_result`, `auth_response` |
 
-## 2. Legacy Token Ban (CRITICAL)
+## Legacy token ban (critical)
 
-The following tokens are strictly forbidden in new code, documentation, and variables. Existing occurrences must be removed when touched.
+Strictly forbidden in new code, documentation, and variable names. Remove existing occurrences when touched.
 
-- **`BidShard`** -> use `ad-event-processor`
-- **`espx`** / **`espx_`** / **`ESPX_`** -> use `ad-event` or `ad_event`
-- **`legacy`** / **`old`** without specific context (e.g. `legacy_v1_api`)
+| Forbidden | Use instead |
+| :--- | :--- |
+| `BidShard` | `ad-event-processor` |
+| `espx`, `espx_`, `ESPX_` | `ad-event` or `ad_event` |
+| `legacy`, `old` (without context) | Specific context, e.g. `legacy_v1_api` |
 
-## 3. Product vs stack surfaces
+## Product vs stack surfaces
 
-| Surface | Name |
+| Surface | Canonical name |
 | :--- | :--- |
 | Go module, imports, internal docs | `ad-event-processor` |
 | Docker compose volumes | `ad_event_processor_*` (historical prefix) |
 | Admin UI product strings | `ad-event-processor` |
-| API paths | `/api/v1/*` on control `:8188` |
+| Control plane API | `/api/v1/*` on `:8188` |
 
-Guard: `scripts/ci/check_no_legacy_naming.sh`.
+## Semantic clarity (lead-intent style)
 
-## 4. Semantic Clarity (Lead-Intent Style)
+Match naming quality and structure of `lead-intent-processor`.
 
-Match the naming quality and structure of `lead-intent-processor`.
+### Structs and fields
 
-### Structs and Fields
-- **No God Structs:** Avoid `Service` structs with 50+ unrelated fields.
-- **Explicit Roles:** `PostgresGate` is too vague. Use `PostgresWriteGate` or `PostgresCampaignStore`.
-- **Field Names:** `settlePoolField` is trash. Use `SettlementPool`.
+- **No god structs:** avoid `Service` structs with 50+ unrelated fields. Split by domain role or worker.
+- **Explicit roles:** `PostgresGate` is too vague. Use `PostgresWriteGate` or `PostgresCampaignStore`.
+- **Field names:** `settlePoolField` is trash. Use `SettlementPool`.
 
-### Comments
+### Handler and interface names
 
-Comment when and tone: `quality.mdc`. Naming-only reminder: explain **why**, not what the identifier already says; call out financial and SLA invariants at I/O boundaries.
+Banned as interface or field names on HTTP handlers: `API`, `Backend`, `Provider`, `Service` (when the name only means "implementation"). Name the **route or domain role** (`MiniAppRoutes`, `CampaignReader`). File matches type: `mini_app_routes.go`, not `backend.go`.
 
-## 5. Root Clutter Ban
+Banned ceremony subtrees: `dto/`, `usecase/`, `providers/`, `repositories/`. Allowed: `db/`, `queries/`, `migrations/`, `pb/`.
 
-The repository root is NOT a junk drawer.
+### File and path naming
 
-- **Banned in root:** `*.log`, `*.txt` (except README/LICENSE/BACKLOG), ad-hoc `.env.*` (move to `config/env/`).
-- **Temporary artifacts:** Must live in `var/` or be gitignored.
-- **Compiled binaries:** Never in root (use `bin/`).
+- Production Go: snake_case `<domain>_<rest>.go` - `track_core.go`, `service_campaigns.go`.
+- Split near 500 lines or when transport mixes with core logic.
+- Tests beside code: `*_test.go`, `*_bench_test.go`, `*_fault_test.go`.
 
-## 6. Bad vs Good Examples
+```go
+// BAD path
+internal/controlplane/service_campaign_m8.go
 
-### Variable Naming
+// GOOD path
+internal/campaign/load_test_worker.go
+```
+
+## Root clutter ban
+
+The repository root is not a junk drawer.
+
+| Banned in root | Allowed location |
+| :--- | :--- |
+| `*.log`, `*.txt` (except README/LICENSE) | `var/`, gitignored paths |
+| Ad-hoc `.env.*` | `config/env/` |
+| Temporary artifacts | `var/` or gitignored |
+| Compiled binaries | `bin/` |
+
+## Variable and struct examples
+
 ```go
 // BAD
 f := openFilter()
@@ -72,10 +94,7 @@ v1 := f.Check(req)
 // GOOD
 geoFilter := openGeoFilter()
 verdict := geoFilter.Check(request)
-```
 
-### Struct Naming
-```go
 // BAD
 type Service struct {
     ch driver.Conn
@@ -84,18 +103,73 @@ type Service struct {
 
 // GOOD
 type ClickHouseStore struct {
-    conn driver.Conn
+    conn           driver.Conn
     loadTestWorker *LoadTestWorker
 }
 ```
 
-### Path Naming
-```go
-// BAD
-internal/controlplane/service_campaign_m8.go
+## Comments - tone and format
 
-// GOOD
-internal/campaign/load_test_worker.go
-```
+| Rule | Detail |
+| :--- | :--- |
+| Quantity | One comment per constraint or decision, not per statement |
+| Tone | Imperative ("Return...", "Mount..."). Dry, factual prose |
+| Charset | ASCII only (0x20-0x7E) |
+| Config fields | Document units, SLA ceilings, security boundaries |
+| Financial / SLA | Call out invariants at I/O boundaries (budget, debit, outbox, webhook ACK) |
 
-Related: `structure.mdc`, `code-style.mdc`, `anti-slop.mdc`.
+## Comments - forbidden decoration (never)
+
+Banned in code comments, doc comments, commit messages, and `.cursor/rules` prose:
+
+| Pattern | Examples | Use instead |
+| :--- | :--- | :--- |
+| Line banners | `// ====`, `// ----`, `// ****`, `/* ===== */` | Blank line or one imperative sentence |
+| Section labels in comments | `// --- Helpers ---`, `// ### Section` | Name the function or drop the banner |
+| Unicode dashes | em dash, en dash, figure dash | ASCII `-` or rewrite with `:`, `;`, comma |
+| Ellipsis character | single-char ellipsis | `...` (three ASCII dots) if needed |
+| Emojis and symbols | checkmarks, warning icons, decorative bullets | Plain words: `FAIL`, `WARN`, `NOTE` |
+| Box drawing | `+---+`, pipe tables inside `//` blocks | Markdown in docs only; not in Go comments |
+| Script/log banners | `echo "== step =="`, `log "--- section ---"`, `=== title ===` in `scripts/` | Plain `echo "gate_name: step"` or `log "step"` |
+
+YAML frontmatter `---` in `.mdc` files is required metadata, not a comment banner.
+
+`.cursor/rules` tables use markdown `| :--- |` row syntax only; not repeated `---` or `===` separator lines in body text.
+
+## Comments - do not comment
+
+- What the name already says (`// List bots`, `// return error`).
+- Every struct field, every import group, every branch.
+- Package doc that only repeats the directory name.
+- Interface or type doc that duplicates the type name without contract.
+- Change logs, author names, or ticket URLs in code (use git).
+
+## Comments - comment (one per decision)
+
+Add a single imperative line only where code cannot express **why** or **constraint**:
+
+| Topic | Example |
+| :--- | :--- |
+| Wire/schema | External pubkey, protobuf field semantics, Redis hash tag for cluster slot |
+| Best-effort path | Error intentionally not returned; downstream must still run |
+| SLA / budget | Webhook ACK ceiling, rate limit matching vendor API |
+| Security | Trust anchor, fail-closed boundary, idempotency key scope |
+| Invariant | Financial balance, ordering, at-least-once vs exactly-once |
+| Exported API | Concurrency, error semantics, nil infra behavior when non-obvious |
+
+Best-effort error handling: either return the error, or one comment why propagation would break a stronger invariant (never silent `_ =` without one of these - see `anti-slop.mdc`).
+
+### Exported symbols
+
+- Exported func/type: doc comment when errors, nil inputs, or concurrency are not obvious from the signature.
+- Exported cold-path handlers: document body limits and auth expectations only when not enforced in code at call site.
+- Hot path (`hot-path.mdc`): at most one comment per non-obvious branch; no narrative.
+
+### Tests
+
+- No comments on table-driven row labels unless the case name is insufficient for a failing holdout.
+- Fault tests may log `fault_proof ...`; that is telemetry, not a substitute for assertions.
+
+## Related rules
+
+`anti-slop.mdc`, `code-style.mdc`, `quality.mdc`, `structure.mdc`.

@@ -87,7 +87,7 @@ func TestFault_ShardLoadSpike(t *testing.T) {
 		okCount.Load(), errCount.Load(), errPct)
 
 	require.GreaterOrEqual(t, okCount.Load(), uint64(shardLoadSpikeBaselineN*10),
-		"spike must reach at least 10× baseline event count")
+		"spike must reach at least 10x baseline event count")
 	require.Less(t, errPct, 0.1, "control cohort error rate must stay <0.1%% during spike")
 	require.Less(t, spikeP99, shardLoadSpikeP99Limit,
 		"control cohort p99 must stay <80 ms during sharp load rise")

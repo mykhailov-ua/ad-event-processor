@@ -404,7 +404,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			lease, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, streamProducers, brokerProducer, campaignID)
 			if !acquired {
 				spec := filterRejectSpecs[kind]
-				recordHTTPFilterReject(kind)
+				recordHTTPFilterReject(kind, evt)
 				w.Header().Set("Retry-After", "1")
 				http.Error(w, spec.body, spec.status)
 				status = spec.status
@@ -415,7 +415,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			outcome := processTrack(r.Context(), trackProc, evt, nil)
 			switch outcome.Status {
 			case trackStatusFraudAccepted:
-				recordHTTPFilterReject(outcome.RejectKind)
+				recordHTTPFilterReject(outcome.RejectKind, evt)
 				shard := sharder.GetShard(evt.CampaignID)
 				enqueueFraudReject(fraudWriter, shard, evt)
 				domain.EventPool.Put(evt)
@@ -428,7 +428,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			case trackStatusRejected:
 				spec := filterRejectSpecs[outcome.RejectKind]
 				domain.EventPool.Put(evt)
-				recordHTTPFilterReject(outcome.RejectKind)
+				recordHTTPFilterReject(outcome.RejectKind, evt)
 				if outcome.RejectKind == filterRejectConsent {
 					w.WriteHeader(http.StatusNoContent)
 					return
@@ -1566,7 +1566,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		if !h.udpControl.TryIngress(shard, workerID) {
 			h.write(c, respRateLimit, ctx)
 			h.recordMetrics(startMono, http.StatusTooManyRequests)
-			h.trackMetrics.recordFilterReject(filterRejectRateLimit)
+			h.recordTrackReject(ctx, evt, filterRejectRateLimit)
 			return gnet.None
 		}
 	}
@@ -1577,7 +1577,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			spec := filterRejectSpecs[kind]
 			h.write(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
-			h.trackMetrics.recordFilterReject(kind)
+			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
 
@@ -1610,7 +1610,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		spec := filterRejectSpecs[filterRejectProducerOverload]
 		h.write(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
-		h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
+		h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 		return gnet.None
 	}
 	landing := ResolveLandingURL(context.Background(), h.registry, h.creativeStore, &ctx.evt)

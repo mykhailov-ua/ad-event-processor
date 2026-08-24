@@ -1,4 +1,3 @@
-
 local hc = require "resty.upstream.healthcheck"
 local edge_config = require "edge-config"
 local blacklist_sync = require "edge-blacklist-sync"

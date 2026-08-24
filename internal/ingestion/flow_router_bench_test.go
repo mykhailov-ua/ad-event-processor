@@ -52,12 +52,13 @@ func benchFlowRouter(tb testing.TB) (*FlowRouter, [64][16]byte) {
 func BenchmarkFlowRouter_BanditSelect(b *testing.B) {
 	router, users := benchFlowRouter(b)
 	b.ReportAllocs()
-	b.ResetTimer()
 	var sel FlowSelection
 	var url []byte
 	var ok bool
-	for i := 0; i < b.N; i++ {
-		sel, url, ok = router.BanditSelect(users[i&63][:])
+	benchN := 0
+	for b.Loop() {
+		sel, url, ok = router.BanditSelect(users[benchN&63][:])
+		benchN++
 	}
 	flowRouterBenchSink = sel
 	if ok {
@@ -68,11 +69,12 @@ func BenchmarkFlowRouter_BanditSelect(b *testing.B) {
 func BenchmarkFlowRouter_Select(b *testing.B) {
 	router, users := benchFlowRouter(b)
 	b.ReportAllocs()
-	b.ResetTimer()
 	var sel FlowSelection
 	var ok bool
-	for i := 0; i < b.N; i++ {
-		sel, ok = router.Select(users[i&63][:])
+	benchN := 0
+	for b.Loop() {
+		sel, ok = router.Select(users[benchN&63][:])
+		benchN++
 	}
 	flowRouterBenchSink = sel
 	flowRouterBenchSink.PathIdx += boolToInt(ok)

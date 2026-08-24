@@ -25,7 +25,7 @@ func checkBPFDiskSpoolPrometheus(prom *promClient) []BPFGateCheck {
 		Detail: "disk gate shedding TierLow appends",
 	})
 
-	brokerDiskWritable := prom.scalar("ad_broker_disk_writable")
+	brokerDiskWritable := prom.scalar(`ad_broker_disk_writable{job="broker"}`)
 	if brokerDiskWritable != "na" && brokerDiskWritable != "" {
 		writableVal, _ := strconv.ParseFloat(brokerDiskWritable, 64)
 		checks = append(checks, BPFGateCheck{

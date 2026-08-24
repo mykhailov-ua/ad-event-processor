@@ -26,7 +26,7 @@ export function ApiKeyOnceModal({ open, name, rawKey, expiresAt, onClose }: ApiK
     <Modal
       open={open}
       title="API key created"
-      description={`Key "${name}" is shown once. Store it securely — it cannot be retrieved later.`}
+      description={`Key "${name}" is shown once. Store it securely - it cannot be retrieved later.`}
       onClose={onClose}
       testId="api-key-once-modal"
       actions={

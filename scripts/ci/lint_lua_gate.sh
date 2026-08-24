@@ -7,6 +7,27 @@ cd "$ROOT"
 LUA_LINT_IMAGE="${LUA_LINT_IMAGE:-openresty/openresty:alpine}"
 LUA_LS_VERSION="${LUA_LS_VERSION:-3.19.1}"
 
+run_lua_layout_gate() {
+  echo "lint_lua_gate: first-line layout (no leading blank or indent)..."
+  local fail=0
+  while IFS= read -r -d '' lua_file; do
+    local first_byte
+    first_byte="$(head -c1 "$lua_file" | od -An -tx1 | tr -d ' \n')"
+    if [[ "$first_byte" == "0a" ]]; then
+      echo "lint_lua_gate: leading blank line: $lua_file" >&2
+      fail=1
+      continue
+    fi
+    if head -1 "$lua_file" | grep -q '^[[:space:]]'; then
+      echo "lint_lua_gate: indented first line: $lua_file" >&2
+      fail=1
+    fi
+  done < <(find deploy/nginx/lua internal/ingestion -name '*.lua' -print0)
+  if [[ "$fail" -ne 0 ]]; then
+    exit 1
+  fi
+}
+
 run_luacheck() {
   echo "lint_lua_gate: luacheck (deploy/nginx/lua, internal/ingestion)..."
   if command -v luacheck > /dev/null 2>&1; then
@@ -72,6 +93,7 @@ run_lua_language_server() {
   fi
 }
 
+run_lua_layout_gate
 run_luacheck
 run_lua_language_server
 echo "lint_lua_gate: OK"

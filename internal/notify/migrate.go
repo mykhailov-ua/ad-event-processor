@@ -20,7 +20,7 @@ func ApplyMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	if _, err := pool.Exec(ctx, `
 		CREATE SCHEMA IF NOT EXISTS notifier;
 		CREATE TABLE IF NOT EXISTS notifier.schema_migrations (
-			filename   TEXT PRIMARY KEY,
+			filename TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
 	`); err != nil {

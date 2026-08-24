@@ -358,7 +358,7 @@ func TestFault_ScriptFlushUnderTrackRPS(t *testing.T) {
 
 	total := okCount.Load() + errCount.Load()
 	require.Equal(t, uint64(p0ScriptFlushWorkers*p0ScriptFlushPerW), total)
-	require.Greater(t, okCount.Load(), total*8/10, "≥80%% tracks succeed after EVAL fallback")
+	require.Greater(t, okCount.Load(), total*8/10, ">=80%% tracks succeed after EVAL fallback")
 
 	flushP99 := percentileDuration(latencies, 99)
 	require.Less(t, flushP99, shardLoadSpikeP99Limit,

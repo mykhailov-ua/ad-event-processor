@@ -31,16 +31,14 @@ func TestLuaMetricsSampleMask_constant(t *testing.T) {
 
 func BenchmarkMonoElapsedSeconds(b *testing.B) {
 	start := monotonicNano()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = monoElapsedSeconds(start)
 	}
 }
 
 func BenchmarkTimeSince_equivalent(b *testing.B) {
 	start := monotonicNano()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = monoElapsedSeconds(start)
 	}
 }
@@ -85,8 +83,7 @@ func BenchmarkObserveHistogramSampled_sampled(b *testing.B) {
 	var seq atomic.Uint64
 	start := monotonicNano()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		observeHistogramSampled(&seq, 127, spy, start)
 	}
 }
@@ -96,8 +93,7 @@ func BenchmarkObserveHistogramSampled_always(b *testing.B) {
 	var seq atomic.Uint64
 	start := monotonicNano()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		observeHistogramSampled(&seq, 0, spy, start)
 	}
 }

@@ -16,7 +16,7 @@ if command -v promtool > /dev/null 2>&1; then
   promtool check rules "$RULES"
   echo "prometheus_rules_check: promtool ok"
 else
-  echo "prometheus_rules_check: promtool not installed — go test only"
+  echo "prometheus_rules_check: promtool not installed - go test only"
 fi
 
 echo "prometheus_rules_check: ok"

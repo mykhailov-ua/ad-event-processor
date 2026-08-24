@@ -184,7 +184,7 @@ if resolve_run_volume; then
 elif [[ "${UDS_SMOKE_OFFLINE:-0}" == "1" ]]; then
   log "offline mode; probing host paths under $RUN_DIR"
 else
-  log "skip (tracker-0 not running — start compose stack first)"
+  log "skip (tracker-0 not running - start compose stack first)"
   exit 0
 fi
 

@@ -111,15 +111,15 @@ func loadFixtureRows(fixturesDir string) ([]replayRow, error) {
 func loadCHRows(ctx context.Context, conn driver.Conn, limit, minutes int) ([]replayRow, error) {
 	query := `
 SELECT
-    window_start,
-    ip_hash,
-    campaign_id,
-    events,
-    clicks,
-    spend_micro,
-    budget_limit_micro,
-    unique_users,
-    unique_uas
+ window_start,
+ ip_hash,
+ campaign_id,
+ events,
+ clicks,
+ spend_micro,
+ budget_limit_micro,
+ unique_users,
+ unique_uas
 FROM ml_features_1m
 WHERE window_start >= now() - INTERVAL ? MINUTE
 ORDER BY window_start DESC

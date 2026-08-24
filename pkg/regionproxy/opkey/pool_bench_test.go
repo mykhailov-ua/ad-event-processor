@@ -9,8 +9,7 @@ func BenchmarkPoolEnqueueDequeue(b *testing.B) {
 	slot.setDerived()
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for !q.Push(&slot) {
 		}
 		for {

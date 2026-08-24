@@ -97,8 +97,25 @@ export async function fetchOpsMLManualLabels(): Promise<OpsMLManualLabel[]> {
   return Array.isArray(res.data) ? res.data : [];
 }
 
+export type MLCHReportRow = Record<string, unknown>;
+
+export type MLCHReportEnvelope = {
+  rows?: MLCHReportRow[];
+};
+
+/** Fetch ClickHouse-backed ML operator report rows for the last 24h window. */
+export async function fetchMLCHReport(
+  endpoint: 'score-distribution' | 'shadow-delta' | 'feature-spikes',
+  from: string,
+  to: string
+): Promise<MLCHReportRow[]> {
+  const params = new URLSearchParams({ from, to, limit: '50' });
+  const res = await api<MLCHReportEnvelope>(`/api/v1/reports/ml/${endpoint}?${params.toString()}`);
+  return Array.isArray(res.data?.rows) ? res.data.rows : [];
+}
+
 export function truncateArtifactHash(hash?: string, head = 8, tail = 8): string {
-  if (!hash) return '—';
+  if (!hash) return '-';
   if (hash.length <= head + tail + 1) return hash;
-  return `${hash.slice(0, head)}…${hash.slice(-tail)}`;
+  return `${hash.slice(0, head)}...${hash.slice(-tail)}`;
 }

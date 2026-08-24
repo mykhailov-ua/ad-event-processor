@@ -87,7 +87,7 @@ export function OpsShardsPage() {
     void reload();
   };
 
-  if (loading) return <span className="text-muted">Loading…</span>;
+  if (loading) return <span className="text-muted">Loading...</span>;
   if (error) return <ErrorBlock error={error} />;
 
   return (
@@ -98,7 +98,7 @@ export function OpsShardsPage() {
           <h1 className="page-header__title">Redis shards</h1>
           {catchupTarget && canCatchup ? (
             <Button
-              label={catchupLoading ? 'Running…' : 'Run catch-up'}
+              label={catchupLoading ? 'Running...' : 'Run catch-up'}
               variant="danger"
               size="sm"
               className="ml-auto"
@@ -152,7 +152,7 @@ export function OpsShardsPage() {
               <tr key={s.shard_id} className={!s.ping_ok ? 'data-table__row--danger' : undefined}>
                 <td>{String(s.shard_id)}</td>
                 <td>{formatYesNo(s.ping_ok)}</td>
-                <td>{s.ping_latency_ms?.toFixed(1) ?? '—'}</td>
+                <td>{s.ping_latency_ms?.toFixed(1) ?? '-'}</td>
                 <td>{String(s.config_version_lag ?? 0)}</td>
                 <td>{formatYesNo(s.config_version_synced)}</td>
               </tr>

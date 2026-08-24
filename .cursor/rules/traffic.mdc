@@ -4,7 +4,11 @@ globs: internal/ingestion/**, web/src/**, deploy/nginx/**
 alwaysApply: false
 ---
 
-Wire policy for parsers: `parser.mdc`. RTB runbook: `rtb.mdc`.
+# Traffic Endpoints and Routing
+
+## Purpose
+
+Wire policy for parsers: `parser.mdc`. RTB runbook: `rtb.mdc`. Hot-path constraints: `hot-path.mdc`.
 
 ## Domain model
 
@@ -15,25 +19,27 @@ Wire policy for parsers: `parser.mdc`. RTB runbook: `rtb.mdc`.
 | Telegram Mini App | edge | `GET /tg/click`, `GET /tg/impression` |
 | Admin | `control.example.com` | `/admin`, `/api/v1/*` (:8188) |
 
-Keitaro/Voluum: Campaign URL (click) ≠ Postback URL (`/track`). Admin Integration tab shows both.
+Keitaro/Voluum: Campaign URL (click) != Postback URL (`/track`). Admin Integration tab shows both.
 
 ## GET /click
 
-- **302** redirect with macros; required `campaign_id` (UUID).
-- Full FilterEngine; debits click budget.
-- Edge: `EDGE_EXPOSE_CLICK=true` (404 on :8180 when off). Tracker :8181–8184 always serves click.
-- **DMR referer hiding** (`dmr=1` or campaign `dmr_enabled`): **200** meta refresh + `location.replace` instead of 302; `Referrer-Policy: no-referrer` on plain 302.
+| Rule | Detail |
+| :--- | :--- |
+| Response | **302** redirect with macros; required `campaign_id` (UUID) |
+| Filters | Full FilterEngine; debits click budget |
+| Edge gate | `EDGE_EXPOSE_CLICK=true` (404 on :8180 when off). Tracker :8181-8184 always serves click |
+| DMR referer | `dmr=1` or campaign `dmr_enabled`: **200** meta refresh + `location.replace` instead of 302; `Referrer-Policy: no-referrer` on plain 302 |
 
 ## POST /track
 
 - Body: native JSON, protobuf (`ad_event_processor_native`), or OpenRTB 3 ingress per Traffic format setting.
 - `Content-Length` required; chunked rejected (`parser.mdc`).
-- FilterEngine → stream → processor → **202**.
+- FilterEngine -> stream -> processor -> **202**.
 
 ## POST /openrtb/bid
 
 - OpenRTB 2.x JSON; chunked OK (extensions rejected).
-- `RunAuction` → bid/no-bid; **no** FilterEngine debit path.
+- `RunAuction` -> bid/no-bid; **no** FilterEngine debit path.
 - Exchange partners must use `/openrtb/bid`, not `/track`.
 
 ## RTB: /track vs /openrtb/bid
@@ -43,7 +49,7 @@ Keitaro/Voluum: Campaign URL (click) ≠ Postback URL (`/track`). Admin Integrat
 | Auction | Only when `RTB_MODE=shadow\|live` | Always (when licensed) |
 | After auction | FilterEngine chain | Bid/no-bid immediately |
 
-Lifecycle with RTB on track: parse → `applyRtbAuction` → `FilterEngine.Check` → 202 or reject.
+Lifecycle with RTB on track: parse -> `applyRtbAuction` -> `FilterEngine.Check` -> 202 or reject.
 
 | Knob | Default |
 | :--- | :--- |
@@ -57,14 +63,21 @@ Lifecycle with RTB on track: parse → `applyRtbAuction` → `FilterEngine.Check
 | :--- | :--- |
 | `{campaign_id}` | Required on click URL |
 | `{click_id}` | S2S correlation (set by processor) |
-| `{sub1}`…`{sub30}` | Source labels |
+| `{sub1}`...`{sub30}` | Source labels |
 | UTMs | Stored + passthrough |
 
 ## S2S and CAPI
 
-Inbound: affiliate → `POST /track`. Outbound: worker → Meta/Google/TikTok (Campaign → CAPI & Postbacks).
+Inbound: affiliate -> `POST /track`. Outbound: worker -> Meta/Google/TikTok (Campaign -> CAPI & Postbacks).
 
-**Postback token rotation** (`POSTBACK_ENCRYPTION_KEY`): pause sender → re-encrypt configs → restart sender + control → smoke `ad_postback_dispatch_total{status="success"}`. No dual-key window.
+**Postback token rotation** (`POSTBACK_ENCRYPTION_KEY`):
+
+1. Pause sender
+2. Re-encrypt configs
+3. Restart sender + control
+4. Smoke `ad_postback_dispatch_total{status="success"}`
+
+No dual-key window.
 
 ## Cost Sync / True ROI
 
@@ -72,17 +85,23 @@ Join keys: calendar day + campaign; prefer UUID in ad-network id; pass network i
 
 ## Zero-redirect tracking
 
-Host `ad-event-processor-track.js`; set `TRACK_CORS_ORIGINS`; script POSTs `/track`. `OPTIONS /track` → 204 when origin allowed.
+Host `ad-event-processor-track.js`; set `TRACK_CORS_ORIGINS`; script POSTs `/track`. `OPTIONS /track` -> 204 when origin allowed.
 
 ## Shard routing
 
 ```
-slot  = crc32_castagnoli(campaign_id) & 1023
+slot = crc32_castagnoli(campaign_id) & 1023
 shard = slot_table[slot]
 ```
 
-`/track`, `/tg/*`: campaign id from body DFA. `/click`: query UUID. `/openrtb/bid`: body peek or `X-Campaign-Id`.
+| Endpoint | Campaign ID source |
+| :--- | :--- |
+| `/track`, `/tg/*` | Body DFA |
+| `/click` | Query UUID |
+| `/openrtb/bid` | Body peek or `X-Campaign-Id` |
 
-Edge toggles: Platform settings → Expose click / OpenRTB → Apply to disk → reload nginx.
+Edge toggles: Platform settings -> Expose click / OpenRTB -> Apply to disk -> reload nginx.
 
-Related: `edge.mdc`, `hot-path.mdc`, `data-layer.mdc`, `architecture.mdc`.
+## Related rules
+
+`architecture.mdc`, `data-layer.mdc`, `edge.mdc`, `hot-path.mdc`, `parser.mdc`, `rtb.mdc`.

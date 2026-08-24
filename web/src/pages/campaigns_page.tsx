@@ -393,7 +393,7 @@ export function CampaignsPage() {
                 id="campaigns-customer-input"
                 type="text"
                 className="form-input form-input--sm"
-                placeholder="Customer UUID…"
+                placeholder="Customer UUID..."
                 value={customerIdInput}
                 onChange={(e) => setCustomerIdInput(e.target.value)}
               />
@@ -564,14 +564,14 @@ export function CampaignsPage() {
                   <StatusBadge status={c.status} kind="campaign" />
                 </td>
                 {buyerView ? (
-                  <td>{String(statFor(c).impressions || '—')}</td>
+                  <td>{String(statFor(c).impressions || '-')}</td>
                 ) : (
                   <td className="font-mono">
                     {formatUsdDecimal(c.budget_limit ?? '0.00', { full: showDetailedBudget })}
                   </td>
                 )}
                 {buyerView ? (
-                  <td>{String(statFor(c).clicks || '—')}</td>
+                  <td>{String(statFor(c).clicks || '-')}</td>
                 ) : (
                   <td className="font-mono">
                     {formatUsdDecimal(c.current_spend ?? '0.00', { full: showDetailedBudget })}
@@ -588,7 +588,7 @@ export function CampaignsPage() {
                         <CopyableUuid uuid={c.customer_id} />
                       </a>
                     ) : (
-                      '—'
+                      '-'
                     )}
                   </td>
                 ) : null}

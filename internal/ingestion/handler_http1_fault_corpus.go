@@ -36,7 +36,7 @@ func http1FaultMalformedCases() []http1FaultCase {
 		{name: "path_null_byte", payload: []byte("POST /tra\x00ck HTTP/1.1\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "fast_path_corrupt_version", payload: []byte("POST /track HTTP/2.0\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "fast_path_corrupt_method", payload: []byte("POST /track HTTP/1.1\r\nHost: x\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantOK: true},
-		{name: "utf8_header_value", payload: []byte("POST /track HTTP/1.1\r\nUser-Agent: тест\xFF\xFE\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
+		{name: "utf8_header_value", payload: []byte("POST /track HTTP/1.1\r\nUser-Agent: test\xFF\xFE\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "crlf_in_header_value", payload: []byte("POST /track HTTP/1.1\r\nX-Evil: foo\r\nbar\r\nContent-Length: 0\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "negative_looking_cl", payload: []byte("POST /track HTTP/1.1\r\nContent-Length: -1\r\n\r\n"), maxBody: maxBody, wantErr: errInvalidRequest},
 		{name: "leading_zero_cl", payload: []byte("POST /track HTTP/1.1\r\nContent-Length: 0005\r\n\r\nhello"), maxBody: maxBody, wantOK: true},

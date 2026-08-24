@@ -174,7 +174,7 @@ export function IntegrationsSupplyPage() {
         <h1 className="page-header__title">Supply files</h1>
         <p className="page-header__desc">
           Manage sellers.json and ads.txt. Export path:{' '}
-          <code className="code-inline">{exportPath || '—'}</code>
+          <code className="code-inline">{exportPath || '-'}</code>
         </p>
       </div>
 
@@ -225,7 +225,7 @@ export function IntegrationsSupplyPage() {
                     <td className="font-mono">{s.seller_id}</td>
                     <td>{s.domain}</td>
                     <td>{s.seller_type}</td>
-                    <td>{s.name || '—'}</td>
+                    <td>{s.name || '-'}</td>
                     <td>
                       {canWrite ? (
                         <Button
@@ -387,9 +387,9 @@ export function IntegrationsSupplyPage() {
       {tab === 'preview' ? (
         <div className="section-card stack">
           <h3 className="subsection-title">sellers.json</h3>
-          <pre className="code-block text-sm">{sellersPreview || 'Loading…'}</pre>
+          <pre className="code-block text-sm">{sellersPreview || 'Loading...'}</pre>
           <h3 className="subsection-title">ads.txt</h3>
-          <pre className="code-block text-sm">{adsPreview || 'Loading…'}</pre>
+          <pre className="code-block text-sm">{adsPreview || 'Loading...'}</pre>
         </div>
       ) : null}
 
@@ -401,17 +401,17 @@ export function IntegrationsSupplyPage() {
               <dt>sellers.json</dt>
               <dd>
                 {validation.sellers_json_valid ? 'valid' : 'invalid'}
-                {' · '}
+                {' , '}
                 {validation.sellers_count}
-                {' sellers · SHA-256 '}
+                {' sellers , SHA-256 '}
                 <code className="code-inline">{validation.sellers_checksum_sha256}</code>
               </dd>
               <dt>ads.txt</dt>
               <dd>
                 {validation.ads_txt_valid ? 'valid' : 'invalid'}
-                {' · '}
+                {' , '}
                 {validation.ads_txt_line_count}
-                {' lines · SHA-256 '}
+                {' lines , SHA-256 '}
                 <code className="code-inline">{validation.ads_txt_checksum_sha256}</code>
               </dd>
               {(validation.issues ?? []).map((issue) => (
@@ -421,7 +421,7 @@ export function IntegrationsSupplyPage() {
               ))}
             </dl>
           ) : (
-            <p className="text-muted">Loading validation…</p>
+            <p className="text-muted">Loading validation...</p>
           )}
         </div>
       ) : null}

@@ -268,35 +268,35 @@ const (
 SELECT campaign_id, count() AS n
 FROM clicks
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?
+ AND created_at >= ?
+ AND created_at < ?
 GROUP BY campaign_id`
 
 	smartAlertBotClicksByCampaignQuery = `
 SELECT campaign_id, count() AS n
 FROM fraud_events
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?
+ AND created_at >= ?
+ AND created_at < ?
 GROUP BY campaign_id`
 
 	smartAlertConversionsByCampaignQuery = `
 SELECT campaign_id, count() AS n
 FROM conversions
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?
+ AND created_at >= ?
+ AND created_at < ?
 GROUP BY campaign_id`
 
 	smartAlertROIByCampaignQuery = `
 SELECT
-    campaign_id,
-    sum(revenue_micro) - sum(spend_micro) AS profit_micro,
-    sum(spend_micro) AS spend_micro
+ campaign_id,
+ sum(revenue_micro) - sum(spend_micro) AS profit_micro,
+ sum(spend_micro) AS spend_micro
 FROM placement_stats_hourly
 WHERE campaign_id IN (?)
-  AND hour >= ?
-  AND hour < ?
+ AND hour >= ?
+ AND hour < ?
 GROUP BY campaign_id`
 )
 

@@ -22,7 +22,7 @@ func TestDNSProbeSkipEmptyHostname(t *testing.T) {
 }
 
 func TestDNSProbeSkipWhitespaceHostname(t *testing.T) {
-	r := (DNSProbe{Hostname: "  "}).Run(context.Background())
+	r := (DNSProbe{Hostname: " "}).Run(context.Background())
 	if r.Status != StatusSkip {
 		t.Fatalf("Status=%v want skip", r.Status)
 	}

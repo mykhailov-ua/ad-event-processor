@@ -18,10 +18,11 @@ func BenchmarkIPv6Rotation_observe(b *testing.B) {
 	now := monotonicNano()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 	var live bool
-	for i := 0; i < b.N; i++ {
-		live, _ = table.observe(campaignHash, v6Hi, uint64(i&63), now)
+	benchN := 0
+	for b.Loop() {
+		live, _ = table.observe(campaignHash, v6Hi, uint64(benchN&63), now)
+		benchN++
 	}
 	ipv6RotationBenchSink = ipv6RotationBenchSink || live
 }
@@ -47,10 +48,11 @@ func BenchmarkIPv6Rotation_ClickHook(b *testing.B) {
 	now := monotonicNano()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 	var block bool
-	for i := 0; i < b.N; i++ {
-		block = h.l1IPv6RotationObserve(ips[i%len(ips)], cid, parsed, now)
+	benchN := 0
+	for b.Loop() {
+		block = h.l1IPv6RotationObserve(ips[benchN%len(ips)], cid, parsed, now)
+		benchN++
 	}
 	ipv6RotationBenchSink = ipv6RotationBenchSink || block
 }

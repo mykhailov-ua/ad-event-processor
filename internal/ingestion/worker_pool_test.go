@@ -73,12 +73,13 @@ func BenchmarkPinnedWorkerPool(b *testing.B) {
 			const ring = 4096
 			ctxs := make([]connContext, ring)
 			b.ReportAllocs()
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				ctx := &ctxs[i%ring]
+			benchN := 0
+			for b.Loop() {
+				ctx := &ctxs[benchN%ring]
 				for !pool.SubmitOffload(ctx, nil) {
 					runtime.Gosched()
 				}
+				benchN++
 			}
 		})
 	}

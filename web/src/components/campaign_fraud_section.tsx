@@ -66,7 +66,7 @@ export function CampaignFraudSection({
       return {
         id: preset.name as FraudSensitivityPreset,
         label: fallback?.label ?? preset.name,
-        description: fallback?.description ?? `pass≤${preset.pass}, block≤${preset.block}`,
+        description: fallback?.description ?? `pass<=${preset.pass}, block<=${preset.block}`,
       };
     });
   }, [presets]);
@@ -107,7 +107,7 @@ export function CampaignFraudSection({
   const validationError = useMemo(() => {
     if (!draft) return null;
     if (!thresholdsOrdered(draft)) {
-      return 'Thresholds must be ordered: pass ≤ suspect ≤ ivt ≤ block (0–100).';
+      return 'Thresholds must be ordered: pass <= suspect <= ivt <= block (0-100).';
     }
     return null;
   }, [draft]);
@@ -191,7 +191,7 @@ export function CampaignFraudSection({
   };
 
   if (loading) {
-    return <p className="loading-hint">Loading fraud settings…</p>;
+    return <p className="loading-hint">Loading fraud settings...</p>;
   }
 
   if (!draft) {
@@ -261,7 +261,7 @@ export function CampaignFraudSection({
         </p>
         <div className="button-row">
           <Button
-            label={previewing ? 'Previewing…' : 'Preview impact'}
+            label={previewing ? 'Previewing...' : 'Preview impact'}
             variant="secondary"
             size="sm"
             disabled={previewing || saving || Boolean(validationError)}
@@ -331,7 +331,7 @@ export function CampaignFraudSection({
       {canWrite ? (
         <div className="button-row">
           <Button
-            label={saving ? 'Saving…' : 'Save thresholds'}
+            label={saving ? 'Saving...' : 'Save thresholds'}
             variant="primary"
             disabled={saving || Boolean(validationError)}
             onClick={() => void save()}

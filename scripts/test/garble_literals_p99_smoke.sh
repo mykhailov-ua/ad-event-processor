@@ -61,13 +61,13 @@ if ! command -v docker > /dev/null 2>&1 || ! docker info > /dev/null 2>&1; then
 fi
 
 if ! curl -sf --max-time 3 "${PROMETHEUS_URL%/}/-/ready" > /dev/null 2>&1; then
-  log "skip (prometheus not ready at $PROMETHEUS_URL — run: bash scripts/test/prepare_constrained_stack.sh)"
+  log "skip (prometheus not ready at $PROMETHEUS_URL - run: bash scripts/test/prepare_constrained_stack.sh)"
   exit 0
 fi
 
 cid="$("${COMPOSE[@]}" ps -q tracker-0 2> /dev/null || true)"
 if [[ -z "$cid" ]]; then
-  log "skip (tracker-0 not running — run: bash scripts/test/prepare_constrained_stack.sh)"
+  log "skip (tracker-0 not running - run: bash scripts/test/prepare_constrained_stack.sh)"
   exit 0
 fi
 
@@ -156,7 +156,7 @@ fi
 } | tee "$OUT/summary.txt"
 
 if [[ "$pass" -eq 1 ]]; then
-  log "ok — literals p99 within +${BUDGET_PCT}% of baseline"
+  log "ok - literals p99 within +${BUDGET_PCT}% of baseline"
   exit 0
 fi
 die "literals p99 ${literals_p99}ms exceeds budget ${max_allowed}ms (+${BUDGET_PCT}%)"

@@ -138,7 +138,7 @@ export function SelfServePortfolioPage() {
         <p className="page-header__desc">Campaign performance and pause/resume controls.</p>
       </div>
 
-      {loading ? <p className="loading-hint">Loading portfolio…</p> : null}
+      {loading ? <p className="loading-hint">Loading portfolio...</p> : null}
 
       {!loading ? (
         <div className="filter-row">
@@ -225,7 +225,7 @@ export function SelfServePortfolioPage() {
                       ? `${Number(c.pacing_drift_pct).toFixed(0)}%`
                       : String(driftScore)}
                   </td>
-                  <td>{c.utilization_pct != null ? `${c.utilization_pct.toFixed(0)}%` : '—'}</td>
+                  <td>{c.utilization_pct != null ? `${c.utilization_pct.toFixed(0)}%` : '-'}</td>
                   <td>{String(c.impressions_7d ?? 0)}</td>
                   <td>{String(c.clicks_7d ?? 0)}</td>
                   <td>{displayLabel(c.pacing_mode)}</td>

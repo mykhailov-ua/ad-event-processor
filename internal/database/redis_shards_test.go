@@ -116,14 +116,14 @@ func BenchmarkShardUniversalOptions_UDSParsing(b *testing.B) {
 
 	b.Run("UDS_Network", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = shardUniversalOptions(cfgUDS, 0, nil, RedisShardOptions{})
 		}
 	})
 
 	b.Run("TCP_Network", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = shardUniversalOptions(cfgTCP, 0, nil, RedisShardOptions{})
 		}
 	})

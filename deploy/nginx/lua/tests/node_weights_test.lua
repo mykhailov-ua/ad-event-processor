@@ -1,4 +1,3 @@
-
 package.path = arg[1] .. "/?.lua;;"
 
 local WEIGHT_SCALE = 1000000

@@ -69,7 +69,7 @@ func checkKernelVersion() PreflightCheck {
 
 	if major < 6 || (major == 6 && minor < 1) {
 		res.Status = StatusWarn
-		res.Message = fmt.Sprintf("Current version: %s (appliance OK; edge XDP needs ≥ 6.1 + BTF)", version)
+		res.Message = fmt.Sprintf("Current version: %s (appliance OK; edge XDP needs >= 6.1 + BTF)", version)
 	}
 
 	return res

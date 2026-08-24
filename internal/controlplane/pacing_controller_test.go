@@ -191,11 +191,9 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 	campaignRepo := domain.NewCampaignRepo(queries)
 	customerRepo := domain.NewCustomerRepo(queries)
 	syncWorker := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		err = svc.ClosedLoopPacingController(ctx, []*domain.SyncWorker{syncWorker})
 		if err != nil {
 			b.Fatal(err)

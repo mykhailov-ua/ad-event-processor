@@ -4,6 +4,10 @@ globs: pkg/regionproxy/**, cmd/region-proxy/**, internal/controlplane/*region*, 
 alwaysApply: false
 ---
 
+# Multi-Region (Enterprise)
+
+## Purpose
+
 **Not appliance SKU.** Requires Enterprise license (`features.multi_region`), compose profile `multi-region`. Pilot: `multi_region: false` in `deploy/vendor/sku.yaml`.
 
 ## Components
@@ -11,7 +15,7 @@ alwaysApply: false
 | Piece | Path | Role |
 | :--- | :--- | :--- |
 | `region-proxy` | `cmd/region-proxy`, `pkg/regionproxy/` | Regional WAL ingress, quorum book/ack, uplink |
-| Regional processor | `cmd/processor` + `MULTI_REGION_ENABLED=1` | Spend sync → region-proxy |
+| Regional processor | `cmd/processor` + `MULTI_REGION_ENABLED=1` | Spend sync -> region-proxy |
 | Global control | `cmd/control` | `IngestRegionProxyBatch`, operation leases, global PG |
 
 ```bash
@@ -31,18 +35,27 @@ WAL: append-only (`pkg/regionproxy/wal/`), group commit, `Recover()` discards to
 
 ## Import boundaries
 
-- Hot-path `internal/ingestion` (non-`_test`) must **not** import `pkg/regionproxy`.
-- `cmd/processor` wires region-proxy client only when `MULTI_REGION_ENABLED=1`.
-- Cold-path `operation_lease.go` uses quorum when Enterprise multi-region enabled.
+| Rule | Detail |
+| :--- | :--- |
+| Hot ingestion | `internal/ingestion` (non-`_test`) must **not** import `pkg/regionproxy` |
+| Processor | Wires region-proxy client only when `MULTI_REGION_ENABLED=1` |
+| Control plane | `operation_lease.go` uses quorum when Enterprise multi-region enabled |
 
 ## Resilience drill
 
 ```bash
-bash scripts/test/mr_resilience_drill.sh
+bash scripts/test/multi_region_resilience_drill.sh
 ```
 
-Prove: p99 < 80 ms baseline; ≥12 `mr_*` fault proofs; quorum partition; `AssertBudgetInvariant` Redis vs PG ±1 micro-unit.
+Prove:
+
+- p99 < 80 ms baseline
+- >= 12 `mr_*` fault proofs
+- Quorum partition handling
+- `AssertBudgetInvariant` Redis vs PG +/-1 micro-unit
 
 E2E: `tests/e2e/region_proxy_uplink_test.go`, `region_proxy_ingress_test.go`.
 
-Related: `architecture.mdc`, `data-layer.mdc`, `fault-tests.mdc`, `boundaries.mdc`.
+## Related rules
+
+`architecture.mdc`, `boundaries.mdc`, `data-layer.mdc`, `fault-tests.mdc`, `licensing.mdc`.

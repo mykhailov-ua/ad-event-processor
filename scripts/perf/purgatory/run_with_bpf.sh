@@ -11,7 +11,7 @@ export PATH="${ROOT}/bin:${PATH}"
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="${RUN_DIR}/${TS}"
 mkdir -p "$OUT" "$STATE_DIR"
-log "run artifacts → ${OUT}"
+log "run artifacts -> ${OUT}"
 
 TRACKER_CTR="${TRACKER_CTR:-ad-event-processor-tracker-0-1}"
 TARGET_URL="${TARGET_URL:-http://127.0.0.1:8181/track}"
@@ -150,14 +150,14 @@ log "PHASE=${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN
 docker update --cpus="$CPUS" --memory="${MEM_BYTES}" --memory-swap="${MEM_BYTES}" "$TRACKER_CTR"
 sleep 1
 if ! docker inspect -f '{{.State.Running}}' "$TRACKER_CTR" | grep -q true; then
-  log "tracker not running after limit apply — likely OOM under ${MEM_LABEL}"
+  log "tracker not running after limit apply - likely OOM under ${MEM_LABEL}"
   docker events --since 30s --until 0s --filter container="$TRACKER_CTR" 2> /dev/null | tee "${OUT}/docker.events.txt" || true
   docker logs "$TRACKER_CTR" 2>&1 | tail -50 | tee "${OUT}/tracker.oom.log" || true
   if [[ "$PHASE" == "strict" ]]; then
     printf 'OOM_OR_DEAD under 64MiB\n' | tee "${OUT}/REPORT.txt"
     exit 0
   fi
-  die "tracker dead under survival memory — abort"
+  die "tracker dead under survival memory - abort"
 fi
 
 docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$TRACKER_CTR" \
@@ -286,7 +286,7 @@ snapshot_tracker_metrics() {
       || true
   } > "$dest"
 }
-log "metrics snapshot before → ${OUT}/metrics.before.txt"
+log "metrics snapshot before -> ${OUT}/metrics.before.txt"
 snapshot_tracker_metrics "${OUT}/metrics.before.txt"
 
 log "wrk -t${BENCH_THREADS} -c${BENCH_CONNECTIONS} -d${BENCH_DURATION} ${TARGET_URL}"
@@ -297,7 +297,7 @@ WRK_EC=$?
 set -e
 log "wrk exit=${WRK_EC}"
 
-log "metrics snapshot after → ${OUT}/metrics.after.txt"
+log "metrics snapshot after -> ${OUT}/metrics.after.txt"
 snapshot_tracker_metrics "${OUT}/metrics.after.txt"
 
 python3 - "${OUT}/metrics.after.txt" "${OUT}/lua_quantiles.json" << 'PY' || true
@@ -366,34 +366,34 @@ fi
 sleep 1
 if [[ -f "${BPF_DIR}/maps/summary.json" ]]; then
   (cd "$ROOT" && go run ./cmd/load-report bpf "$OUT") > "${OUT}/bpf-report.md" 2> "${OUT}/bpf-report.err" \
-    || warn "load-report bpf failed — see ${OUT}/bpf-report.err"
+    || warn "load-report bpf failed - see ${OUT}/bpf-report.err"
 else
-  warn "no ${BPF_DIR}/maps/summary.json — check ${BPF_DIR}/collector.log"
+  warn "no ${BPF_DIR}/maps/summary.json - check ${BPF_DIR}/collector.log"
   tail -80 "${BPF_DIR}/collector.log" 2> /dev/null | tee "${OUT}/bpf-collector.tail.txt" || true
 fi
 
-log "load-report prom → ${OUT}/bottleneck-report.md (PROM=${PROM_URL})"
+log "load-report prom -> ${OUT}/bottleneck-report.md (PROM=${PROM_URL})"
 (cd "$ROOT" && go run ./cmd/load-report prom "$OUT" --prom "$PROM_URL") \
   > "${OUT}/load-report-prom.log" 2>&1 \
-  || warn "load-report prom failed — see ${OUT}/load-report-prom.log"
+  || warn "load-report prom failed - see ${OUT}/load-report-prom.log"
 
 (cd "$ROOT" && LOAD_SLA_GATE=0 go run ./cmd/load-report all "$OUT" --prom "$PROM_URL") \
   > "${OUT}/load-report-all.log" 2>&1 \
-  || warn "load-report all soft-failed — see ${OUT}/load-report-all.log"
+  || warn "load-report all soft-failed - see ${OUT}/load-report-all.log"
 
 {
-  echo "=== Purgatory + eBPF Report (${TS}) ==="
+  echo "Purgatory + eBPF Report (${TS})"
   echo "phase: ${PHASE} memory=${MEM_LABEL} cpus=${CPUS} GOMAXPROCS=${GOMAXPROCS_PIN}"
   echo "url: ${TARGET_URL}"
   echo "tracker: ${TRACKER_CTR} pid=${TRACKER_PID}"
   echo
-  echo "-- tracker state --"
+  echo "tracker state"
   cat "${OUT}/tracker.state.txt" 2> /dev/null || true
   echo "GOMAXPROCS=$(cat "${OUT}/gomaxprocs.txt" 2> /dev/null || echo '?')"
   echo
-  echo "-- cpu.stat before --"
+  echo "cpu.stat before"
   cat "${OUT}/cpu.stat.before" 2> /dev/null || true
-  echo "-- cpu.stat after --"
+  echo "cpu.stat after"
   cat "${OUT}/cpu.stat.after" 2> /dev/null || true
   if [[ -n "${CG_PATH:-}" && -f "${CG_PATH}/cpu.stat" ]]; then
     cp "${CG_PATH}/cpu.stat" "${OUT}/cpu.stat.after.docker" 2> /dev/null || true
@@ -401,21 +401,21 @@ log "load-report prom → ${OUT}/bottleneck-report.md (PROM=${PROM_URL})"
     cp "${CG_PATH}/memory.current" "${OUT}/memory.current.after.docker" 2> /dev/null || true
   fi
   echo
-  echo "-- memory.events after --"
+  echo "memory.events after"
   cat "${OUT}/memory.events.after" 2> /dev/null || true
   echo
-  echo "-- Lua quantiles (tracker :${METRICS_PORT} histogram) --"
+  echo "Lua quantiles (tracker :${METRICS_PORT} histogram)"
   cat "${OUT}/lua_quantiles.json" 2> /dev/null || echo "n/a"
   echo
-  echo "-- Prometheus bottleneck (excerpt) --"
+  echo "Prometheus bottleneck (excerpt)"
   if [[ -f "${OUT}/bottleneck-report.md" ]]; then
     head -n 80 "${OUT}/bottleneck-report.md"
   else
     echo "missing bottleneck-report.md"
   fi
   echo
-  echo "-- wrk --"
+  echo "wrk"
   cat "${OUT}/loadgen.log" 2> /dev/null || true
 } | tee "${OUT}/REPORT.txt"
 
-log "done → ${OUT}/REPORT.txt"
+log "done -> ${OUT}/REPORT.txt"

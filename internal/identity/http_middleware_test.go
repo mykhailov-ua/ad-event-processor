@@ -145,9 +145,7 @@ func BenchmarkAuthMiddleware(b *testing.B) {
 	req.Header.Set(authorizationHeaderKey, authorizationTypeBearer+" "+token)
 
 	rec := httptest.NewRecorder()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		handler.ServeHTTP(rec, req)
 		rec.Body.Reset()
 	}

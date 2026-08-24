@@ -35,8 +35,7 @@ func BenchmarkRunAuction_daypartGate(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.RunAuction(req)
 	}
 }
@@ -77,8 +76,7 @@ func BenchmarkRunAuction_freqCapGate(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.RunAuction(req)
 	}
 }

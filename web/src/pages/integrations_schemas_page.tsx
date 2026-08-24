@@ -65,7 +65,7 @@ function SchemaDetailRow({ schemaId, onClose }: { schemaId: string; onClose: () 
             <strong className="text-sm">Schema document</strong>
             <Button label="Close" variant="ghost" size="sm" onClick={onClose} />
           </div>
-          {loading ? <p className="text-muted text-sm">Loading…</p> : null}
+          {loading ? <p className="text-muted text-sm">Loading...</p> : null}
           {error ? <ErrorBlock error={error} /> : null}
           {detail ? (
             <pre className="code-block text-sm" data-testid="schema-detail-json">
@@ -201,7 +201,7 @@ export function IntegrationsSchemasPage() {
                 <span className="font-mono">{entry.name}</span>
                 <span className="text-muted text-sm">
                   {' '}
-                  v{entry.version} · {entry.category} · {entry.kind}
+                  v{entry.version} , {entry.category} , {entry.kind}
                 </span>
               </label>
             ))}
@@ -210,7 +210,7 @@ export function IntegrationsSchemasPage() {
             ) : null}
           </div>
           <Button
-            label={importBusy ? 'Importing…' : 'Import selected'}
+            label={importBusy ? 'Importing...' : 'Import selected'}
             variant="secondary"
             size="sm"
             loading={importBusy}
@@ -242,7 +242,7 @@ export function IntegrationsSchemasPage() {
                 data-testid="apply-schema-select"
                 onChange={(e) => setApplySchemaId(e.target.value)}
               >
-                <option value="">Select schema…</option>
+                <option value="">Select schema...</option>
                 {schemas.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name} v{s.version} ({s.kind})
@@ -252,7 +252,7 @@ export function IntegrationsSchemasPage() {
             </label>
           </div>
           <Button
-            label={applyBusy ? 'Applying…' : 'Apply schema'}
+            label={applyBusy ? 'Applying...' : 'Apply schema'}
             variant="primary"
             size="sm"
             loading={applyBusy}
@@ -280,7 +280,7 @@ export function IntegrationsSchemasPage() {
               {!loading && schemas.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="data-table__empty">
-                    No schemas yet — import or author one.
+                    No schemas yet - import or author one.
                   </td>
                 </tr>
               ) : null}
@@ -292,7 +292,7 @@ export function IntegrationsSchemasPage() {
                     <td>
                       <StatusBadge status={row.kind} kind="service" />
                     </td>
-                    <td>{row.updated_at ? new Date(row.updated_at).toLocaleString() : '—'}</td>
+                    <td>{row.updated_at ? new Date(row.updated_at).toLocaleString() : '-'}</td>
                     <td>
                       <Button
                         label={expandedSchemaId === row.id ? 'Hide JSON' : 'View JSON'}

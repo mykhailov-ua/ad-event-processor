@@ -13,8 +13,7 @@ func BenchmarkLinkSigner_Sign(b *testing.B) {
 	expires := time.Now().Add(15 * time.Minute).Unix()
 	dst := make([]byte, 0, 256)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		dst = AppendLinkSignature(dst[:0], secret, clickID, expires)
 	}
 	linkSignerBenchSink = len(dst) > 0
@@ -29,9 +28,8 @@ func BenchmarkLinkSigner_Verify(b *testing.B) {
 	sig := loc[len(loc)-linkSigHexLen:]
 	now := time.Now().Unix()
 	b.ReportAllocs()
-	b.ResetTimer()
 	var ok bool
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ok = h.verifyLinkSignature(clickID, sig, expires, now)
 	}
 	linkSignerBenchSink = ok

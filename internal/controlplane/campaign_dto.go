@@ -114,11 +114,19 @@ type CampaignHourlyBucketDTO struct {
 	Conversions int64  `json:"conversions"`
 }
 
+type CampaignDailyBucketDTO struct {
+	Day         string `json:"day"`
+	Impressions int64  `json:"impressions"`
+	Clicks      int64  `json:"clicks"`
+	Conversions int64  `json:"conversions"`
+}
+
 type CampaignStatsDTO struct {
 	CampaignID   string                    `json:"campaign_id"`
 	CurrentSpend string                    `json:"current_spend"`
 	Metrics      CampaignMetricsDTO        `json:"metrics"`
 	Hourly       []CampaignHourlyBucketDTO `json:"hourly"`
+	Daily        []CampaignDailyBucketDTO  `json:"daily,omitempty"`
 	Granularity  string                    `json:"granularity"`
 	From         string                    `json:"from"`
 	To           string                    `json:"to"`

@@ -95,38 +95,38 @@ func (s *Service) queryFraudExplainCH(ctx context.Context, ipHash string, hours 
 
 	query := `
 SELECT
-    f.window_start,
-    toString(f.campaign_id) AS campaign_id,
-    f.events,
-    f.clicks,
-    f.spend_micro,
-    f.budget_limit_micro,
-    f.unique_users,
-    f.unique_uas,
-    s.score,
-    s.model_name,
-    s.created_at,
-    s.has_shadow_score
+ f.window_start,
+ toString(f.campaign_id) AS campaign_id,
+ f.events,
+ f.clicks,
+ f.spend_micro,
+ f.budget_limit_micro,
+ f.unique_users,
+ f.unique_uas,
+ s.score,
+ s.model_name,
+ s.created_at,
+ s.has_shadow_score
 FROM ml_features_1m AS f
 LEFT JOIN (
-    SELECT
-        ip_hash,
-        argMax(score, created_at) AS score,
-        argMax(model_name, created_at) AS model_name,
-        max(created_at) AS created_at,
-        count() > 0 AS has_shadow_score
-    FROM ml_shadow_scores
-    WHERE ip_hash = ?
-      AND created_at >= subtractHours(now(), ?)
-    GROUP BY ip_hash
+ SELECT
+ ip_hash,
+ argMax(score, created_at) AS score,
+ argMax(model_name, created_at) AS model_name,
+ max(created_at) AS created_at,
+ count() > 0 AS has_shadow_score
+ FROM ml_shadow_scores
+ WHERE ip_hash = ?
+ AND created_at >= subtractHours(now(), ?)
+ GROUP BY ip_hash
 ) AS s ON f.ip_hash = s.ip_hash
 WHERE f.ip_hash = ?
-  AND f.window_start >= subtractHours(now(), ?)`
+ AND f.window_start >= subtractHours(now(), ?)`
 
 	args := []any{piihash.FixedString16([16]byte(ipBytes)), hours, piihash.FixedString16([16]byte(ipBytes)), hours}
 	if campaignID != uuid.Nil {
 		query += `
-  AND f.campaign_id = ?`
+ AND f.campaign_id = ?`
 		args = append(args, campaignID)
 	}
 	query += `

@@ -29,7 +29,7 @@ func RenderInvoicePDF(inv *domain.Invoice) []byte {
 	lines.WriteString(fmt.Sprintf("Tax %s\n", formatPDFMicro(inv.TaxMicro)))
 	lines.WriteString(fmt.Sprintf("Total %s\n", formatPDFMicro(inv.TotalMicro)))
 	for _, line := range inv.Lines {
-		lines.WriteString(fmt.Sprintf("  %s: %s (%d entries)\n",
+		lines.WriteString(fmt.Sprintf(" %s: %s (%d entries)\n",
 			line.LedgerType,
 			formatPDFMicro(line.AmountMicro),
 			line.EntryCount,

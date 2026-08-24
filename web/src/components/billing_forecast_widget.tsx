@@ -19,7 +19,7 @@ export function BillingForecastWidget({ customerId }: BillingForecastWidgetProps
   if (loading) {
     return (
       <p className="text-muted text-sm" data-testid="billing-forecast-loading">
-        Loading forecast…
+        Loading forecast...
       </p>
     );
   }
@@ -71,7 +71,7 @@ export function BillingForecastWidget({ customerId }: BillingForecastWidgetProps
         />
       ) : null}
       {data.low_confidence ? (
-        <AlertBanner variant="info" message="Low confidence — limited billing history." />
+        <AlertBanner variant="info" message="Low confidence - limited billing history." />
       ) : null}
       <div className="grid-stats">
         <div className="metric-card">
@@ -95,7 +95,7 @@ export function BillingForecastWidget({ customerId }: BillingForecastWidgetProps
         <div className="metric-card">
           <div className="metric-card__label">Days remaining</div>
           <div className="metric-card__value font-mono" data-testid="forecast-days-remaining">
-            {String(data.days_remaining ?? '—')}
+            {String(data.days_remaining ?? '-')}
           </div>
         </div>
       </div>

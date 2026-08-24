@@ -1,43 +1,78 @@
 ---
-description: SLA, sources-only repo, rule index, commits, backlog routing
+description: SLA, sources-only repo, rule index, commits
 alwaysApply: true
 ---
 
-Human docs: `docs/ARCHITECTURE.md`, `docs/DEVELOPMENT.md`. Agent rules: `.cursor/rules/*.mdc`. Open backlog: repo-root `BACKLOG.md` — do not duplicate in rules or docs.
+# Core Policy
 
-Engineering rules live in `.cursor/rules/*.mdc`. Do not duplicate agent rules into `docs/`.
+## Purpose
 
-SLA and budgets
+Canonical SLA ceilings, repository hygiene, commit conventions, and the rule index for `ad-event-processor`. Human architecture docs live in `docs/ARCHITECTURE.md` and `docs/DEVELOPMENT.md`. Do not duplicate task backlogs in rules or docs.
 
-- Tracker `ad_http_request_duration_seconds`: p95 < 50 ms, p99 < 80 ms, ceiling 100 ms.
-- Production `FILTER_TIMEOUT_MS` <= 100; dev default 5000 ms.
-- Redis unified-filter Lua p99 < 10 ms per shard.
-- Geo filter p99 < 10 us (sampled).
-- `RunAuction` p99 < 15 us; p99 candidates scanned < 500.
-- Fraud boost snapshot: incremental < 500 us per `FilterEngine.Check`; `BenchmarkFilterFraudBoost` ~90 ns, 0 allocs/op.
-- `GetShard` (StaticSlot): ~5.6 ns, 0 allocs/op.
-- Load-test abort: control-cohort p99 > 80 ms for 30 s or budget invariant violation.
-- Budget invariant: `current_spend <= budget_limit` in Postgres; spend tests use `AssertBudgetInvariant` (+/-1 micro-unit).
+Engineering rules live in `.cursor/rules/*.mdc`. Do not copy agent rules into `docs/`.
 
-Sources-only repo
+## SLA and budgets
 
-Fresh clone is not runnable out of the box: run `make gen` / `make proto`, provide env/secrets, build BPF, fetch GeoIP, start compose. Do not commit generated code, `bin/*`, `.cache/`, `var/`, secrets, or runtime JWT files. Canonical ignore: root `.gitignore`. Local dev license path: `var/license.jwt` (not repo root `license.jwt`). Root directory is NOT a junk drawer: no `*.txt` or `*.log` (except standard project files); use `var/` or `data/` instead.
+| Surface | Metric / knob | Ceiling |
+| :--- | :--- | :--- |
+| Tracker ingest | `ad_http_request_duration_seconds` p95 | < 50 ms |
+| Tracker ingest | `ad_http_request_duration_seconds` p99 | < 80 ms (hard ceiling 100 ms) |
+| Filter deadline | `FILTER_TIMEOUT_MS` (production) | <= 100 ms |
+| Filter deadline | `FILTER_TIMEOUT_MS` (dev default) | 5000 ms |
+| Redis unified-filter Lua | p99 per shard | < 10 ms |
+| Geo filter | p99 (sampled) | < 10 us |
+| RTB auction | `RunAuction` p99 | < 15 us |
+| RTB catalog scan | p99 candidates scanned | < 500 |
+| Fraud boost snapshot | incremental per `FilterEngine.Check` | < 500 us |
+| Fraud boost bench | `BenchmarkFilterFraudBoost` | ~90 ns, 0 allocs/op |
+| Static slot shard | `GetShard` (StaticSlot) | ~5.6 ns, 0 allocs/op |
+| Load-test abort | control-cohort p99 > 80 ms for 30 s | abort run |
+| Load-test abort | budget invariant violation | abort run |
+| Postgres budget | `current_spend <= budget_limit` | `AssertBudgetInvariant` (+/-1 micro-unit) |
 
-Commit policy
+Load-test abort triggers: control-cohort handler p99 above 80 ms for 30 seconds, or any budget invariant violation in Postgres.
 
-- Title: imperative, plain English; lead with Add, Remove, Fix, Wire, Drop, Guard, Reject; name concrete surface (route, handler, table, env var, binary).
-- Avoid: `refactor:`, `docs:`, `chore:`, vague umbrellas (`perf`, `cleanup`, `misc`, `WIP`), milestone tokens (`M-…`, `GAP-…`).
-- Body optional: why and what to verify; no file manifest.
-- One logical change set per commit; no docs-only commits unless code ships in the same commit.
+## Sources-only repository
 
-Rules (flat `.cursor/rules/`)
+A fresh clone is not runnable out of the box. Required bootstrap:
 
-Always on: `core.mdc`, `quality.mdc`, `anti-slop.mdc`, `naming.mdc`.
+1. `make gen` / `make proto` for sqlc and protobuf outputs.
+2. Provide env and secrets (see `.env.example`, `config/env/`).
+3. Build BPF artifacts (`make gen bpf-dev`).
+4. Fetch GeoIP data per `docs/DEVELOPMENT.md`.
+5. Start compose (`bash scripts/dev/stack.sh`).
 
-| Rule | Topic |
+**Never commit:** generated code, `bin/*`, `.cache/`, `var/`, secrets, or runtime JWT files. Canonical ignore: root `.gitignore`. Local dev license path: `var/license.jwt` (not repo-root `license.jwt`).
+
+**Root clutter ban:** no `*.txt` or `*.log` in repo root (except README, LICENSE). Use `var/` or `data/` for temporary artifacts. Compiled binaries go in `bin/`, not root.
+
+## Commit policy
+
+| Rule | Detail |
+| :--- | :--- |
+| Title style | Imperative plain English; lead with Add, Remove, Fix, Wire, Drop, Guard, Reject |
+| Title surface | Name concrete surface: route, handler, table, env var, binary |
+| Avoid prefixes | `refactor:`, `docs:`, `chore:`, vague umbrellas (`perf`, `cleanup`, `misc`, `WIP`) |
+| Avoid tokens | Milestone tokens (`M-...`, `GAP-...`) |
+| Body | Optional: why and what to verify; no file manifest |
+| Scope | One logical change set per commit |
+| Docs-only | No docs-only commits unless code ships in the same commit |
+
+## Rule index
+
+Always applied on every agent turn (no glob filter):
+
+| File | Scope |
+| :--- | :--- |
+| `core.mdc` | SLA, repo policy, commit style, rule index |
+| `naming.mdc` | Naming, trash tokens, legacy ban, comments (tone, when, examples) |
+| `quality.mdc` | Go receivers, web JSDoc, verification honesty |
+| `anti-slop.mdc` | CI honesty, slop gates, agent done-checklist |
+
+| Rule file | Topic |
 | :--- | :--- |
 | `architecture.mdc` | Hot/cold invariants, I/O round-trip limits, fail-closed |
-| `structure.mdc` | Current flat layout, cmd map, future split backlog |
+| `structure.mdc` | Current flat layout, cmd map, future split map |
 | `development.mdc` | Codegen, compose, benchmarks, fault runbooks |
 | `ci.mdc` | Merge gates, BPF thresholds, test tiers |
 | `code-style.mdc` | Layout, types, sqlc, proto, PR gates |
@@ -48,7 +83,7 @@ Always on: `core.mdc`, `quality.mdc`, `anti-slop.mdc`, `naming.mdc`.
 | `data-layer.mdc` | Redis, Lua, PG, CH, sharding |
 | `boundaries.mdc` | `cmd/*` ownership and imports |
 | `control-plane.mdc` | Outbox, workers, admin API |
-| `rtb.mdc` | OpenRTB auction, shadow→live |
+| `rtb.mdc` | OpenRTB auction, shadow to live |
 | `edge.mdc` | Nginx Lua, XDP, tracker parity |
 | `compliance.mdc` | Defensive perimeter |
 | `licensing.mdc` | JWT, trial registry, USDT tiers |
@@ -59,4 +94,17 @@ Always on: `core.mdc`, `quality.mdc`, `anti-slop.mdc`, `naming.mdc`.
 | `testing.mdc` | Test taxonomy, holdouts |
 | `load-test-bpf.mdc` | Load test + BPF probes |
 
-Precedence: `core.mdc` on SLA and repo policy; `anti-slop.mdc` on CI honesty; `testing.mdc` on holdouts; `hot-path.mdc` on ingest; `cold-path.mdc` on admin/payment; `structure.mdc` on current layout (flat controlplane canonical).
+## Precedence
+
+When rules conflict, apply in this order:
+
+1. `core.mdc` - SLA and repo policy.
+2. `anti-slop.mdc` - CI honesty and agent verification.
+3. `testing.mdc` - holdout tests and invariant proofs.
+4. `hot-path.mdc` - ingest path constraints.
+5. `cold-path.mdc` - admin, payment, ledger paths.
+6. `structure.mdc` - current flat controlplane layout is canonical.
+
+## Related rules
+
+`architecture.mdc`, `anti-slop.mdc`, `development.mdc`, `naming.mdc`, `quality.mdc`.

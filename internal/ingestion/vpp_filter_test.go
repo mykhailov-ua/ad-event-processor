@@ -41,7 +41,7 @@ func BenchmarkPacingRead(b *testing.B) {
 	sw.vppRatios.Store(&VPPRatioSnapshot{Ratios: map[uuid.UUID]float32{campID: 0.75}})
 
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = sw.GetVPPRatio(campID)
 	}
 }
@@ -49,7 +49,9 @@ func BenchmarkPacingRead(b *testing.B) {
 func BenchmarkVPPAllow(b *testing.B) {
 	campID := uuid.New()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		_ = vppAllow(campID, 0.75, int64(i))
+	benchN := 0
+	for b.Loop() {
+		_ = vppAllow(campID, 0.75, int64(benchN))
+		benchN++
 	}
 }

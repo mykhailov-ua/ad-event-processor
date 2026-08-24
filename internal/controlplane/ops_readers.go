@@ -96,8 +96,8 @@ func (r *opsReader) ListOutboxEvents(ctx context.Context, status, eventType, cur
 		SELECT id, event_type, status, created_at
 		FROM outbox_events
 		WHERE ($1::text = '' OR status = $1)
-		  AND ($2::text = '' OR event_type = $2)
-		  AND ($3::bigint = 0 OR id < $3)
+		 AND ($2::text = '' OR event_type = $2)
+		 AND ($3::bigint = 0 OR id < $3)
 		ORDER BY id DESC
 		LIMIT $4`, status, eventType, cursorID, limit+1)
 	if err != nil {

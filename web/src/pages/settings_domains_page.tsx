@@ -228,7 +228,7 @@ export function SettingsDomainsPage() {
       <section className="card stack" data-testid="domains-tls-check">
         <h2 className="h3">TLS on-demand allowlist</h2>
         <p className="text-muted text-sm">
-          Probe Caddy ask endpoint (<code>GET /api/v1/ops/domains/…/tls-allowed</code>). Pass ask
+          Probe Caddy ask endpoint (<code>GET /api/v1/ops/domains/.../tls-allowed</code>). Pass ask
           token when local bypass is disabled.
         </p>
         <div className="row gap-sm">
@@ -356,8 +356,8 @@ export function SettingsDomainsPage() {
                       </div>
                     ) : null}
                   </td>
-                  <td>{row.probe_latency_ms != null ? `${row.probe_latency_ms} ms` : '—'}</td>
-                  <td>{row.last_probe_at ? new Date(row.last_probe_at).toLocaleString() : '—'}</td>
+                  <td>{row.probe_latency_ms != null ? `${row.probe_latency_ms} ms` : '-'}</td>
+                  <td>{row.last_probe_at ? new Date(row.last_probe_at).toLocaleString() : '-'}</td>
                   <td className="row gap-xs">
                     {canWrite ? (
                       <Button

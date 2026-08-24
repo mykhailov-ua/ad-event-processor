@@ -46,7 +46,7 @@ build_one() {
       export PATH="$(go env GOPATH)/bin:${PATH}"
     fi
     if [[ -z "${GARBLE_SEED:-}" ]]; then
-      echo "release_garble: GARBLE_SEED unset — build is non-reproducible (set for CI/release)" >&2
+      echo "release_garble: GARBLE_SEED unset - build is non-reproducible (set for CI/release)" >&2
     fi
     garble_args=(-seed="${GARBLE_SEED:-}")
     if [[ "$literals" == "1" ]]; then

@@ -466,10 +466,10 @@ func (s *Service) RetryNotification(ctx context.Context, notificationID string) 
 	tag, err := s.GetPool().Exec(ctx, `
 		UPDATE notify.notifications
 		SET status = 'PENDING',
-		    retry_count = 0,
-		    error_message = NULL,
-		    claimed_at = NULL,
-		    updated_at = now()
+		 retry_count = 0,
+		 error_message = NULL,
+		 claimed_at = NULL,
+		 updated_at = now()
 		WHERE id = $1 AND status = 'FAILED'`, id)
 	if err != nil {
 		return fmt.Errorf("retry notification: %w", err)
@@ -939,28 +939,28 @@ func computeMABWeights(stats map[uuid.UUID]mabCreativeStat) map[uuid.UUID]int32 
 func (s *Service) queryMABCreativeStats(ctx context.Context, from, to time.Time) (map[uuid.UUID]mabCreativeStat, error) {
 	const query = `
 SELECT
-    campaign_id,
-    creative_id,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks
+ campaign_id,
+ creative_id,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks
 FROM (
-    SELECT
-        toString(campaign_id) AS campaign_id,
-        nullIf(JSONExtractString(payload, 'creative_id'), '') AS creative_id,
-        count() AS impressions,
-        toUInt64(0) AS clicks
-    FROM impressions
-    WHERE created_at >= ? AND created_at < ?
-    GROUP BY campaign_id, creative_id
-    UNION ALL
-    SELECT
-        toString(campaign_id),
-        nullIf(JSONExtractString(payload, 'creative_id'), ''),
-        toUInt64(0),
-        count() AS clicks
-    FROM clicks
-    WHERE created_at >= ? AND created_at < ?
-    GROUP BY campaign_id, creative_id
+ SELECT
+ toString(campaign_id) AS campaign_id,
+ nullIf(JSONExtractString(payload, 'creative_id'), '') AS creative_id,
+ count() AS impressions,
+ toUInt64(0) AS clicks
+ FROM impressions
+ WHERE created_at >= ? AND created_at < ?
+ GROUP BY campaign_id, creative_id
+ UNION ALL
+ SELECT
+ toString(campaign_id),
+ nullIf(JSONExtractString(payload, 'creative_id'), ''),
+ toUInt64(0),
+ count() AS clicks
+ FROM clicks
+ WHERE created_at >= ? AND created_at < ?
+ GROUP BY campaign_id, creative_id
 )
 GROUP BY campaign_id, creative_id`
 

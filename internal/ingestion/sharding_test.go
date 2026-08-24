@@ -119,8 +119,7 @@ func BenchmarkJumpHashSharder_10(b *testing.B) {
 	s := NewJumpHashSharder(10)
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = s.GetShard(id)
 	}
 }
@@ -129,8 +128,7 @@ func BenchmarkJumpHashSharder_1024(b *testing.B) {
 	s := NewJumpHashSharder(1024)
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = s.GetShard(id)
 	}
 }
@@ -138,8 +136,7 @@ func BenchmarkJumpHashSharder_1024(b *testing.B) {
 func BenchmarkCRC32Castagnoli(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = crc32Castagnoli(&id)
 	}
 }
@@ -147,8 +144,7 @@ func BenchmarkCRC32Castagnoli(b *testing.B) {
 func BenchmarkCampaignSlotIndex(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = CampaignSlotIndex(id)
 	}
 }
@@ -176,8 +172,7 @@ func BenchmarkStaticSlotSharder_10(b *testing.B) {
 	s := NewStaticSlotSharder(10)
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = s.GetShard(id)
 	}
 }
@@ -186,8 +181,7 @@ func BenchmarkStaticSlotSharder_1024(b *testing.B) {
 	s := NewStaticSlotSharder(1024)
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = s.GetShard(id)
 	}
 }

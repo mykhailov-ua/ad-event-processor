@@ -132,13 +132,13 @@ func (s *Service) ListPublisherStatements(ctx context.Context, bind PublisherBin
 		SELECT COUNT(*)
 		FROM balance_ledger
 		WHERE customer_id = $1
-		  AND type = 'publisher_payout'
-		  AND created_at >= $2
-		  AND created_at < $3
-		  AND (
-		    $4 = '' OR idempotency_hash LIKE $4 || '%' OR position($4 in idempotency_hash) > 0
-		    OR $5 = '' OR idempotency_hash LIKE $5 || '%' OR position($5 in idempotency_hash) > 0
-		  )`,
+		 AND type = 'publisher_payout'
+		 AND created_at >= $2
+		 AND created_at < $3
+		 AND (
+		 $4 = '' OR idempotency_hash LIKE $4 || '%' OR position($4 in idempotency_hash) > 0
+		 OR $5 = '' OR idempotency_hash LIKE $5 || '%' OR position($5 in idempotency_hash) > 0
+		 )`,
 		bind.CustomerID, from, to, scopeSeller, scopePub).Scan(&total)
 	if err != nil {
 		return nil, 0, err
@@ -148,13 +148,13 @@ func (s *Service) ListPublisherStatements(ctx context.Context, bind PublisherBin
 		SELECT id, amount, created_at, COALESCE(campaign_id::text, ''), COALESCE(idempotency_hash, '')
 		FROM balance_ledger
 		WHERE customer_id = $1
-		  AND type = 'publisher_payout'
-		  AND created_at >= $2
-		  AND created_at < $3
-		  AND (
-		    $4 = '' OR idempotency_hash LIKE $4 || '%' OR position($4 in idempotency_hash) > 0
-		    OR $5 = '' OR idempotency_hash LIKE $5 || '%' OR position($5 in idempotency_hash) > 0
-		  )
+		 AND type = 'publisher_payout'
+		 AND created_at >= $2
+		 AND created_at < $3
+		 AND (
+		 $4 = '' OR idempotency_hash LIKE $4 || '%' OR position($4 in idempotency_hash) > 0
+		 OR $5 = '' OR idempotency_hash LIKE $5 || '%' OR position($5 in idempotency_hash) > 0
+		 )
 		ORDER BY created_at DESC, id DESC
 		LIMIT $6 OFFSET $7`,
 		bind.CustomerID, from, to, scopeSeller, scopePub, limit, offset)
@@ -226,38 +226,38 @@ func (s *Service) ValidateSupplyFiles(ctx context.Context) (SupplyValidationRepo
 
 const publisherPlacementStatsQuery = `
 SELECT
-    placement_id,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(revenue_micro) AS revenue_micro
+ placement_id,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(revenue_micro) AS revenue_micro
 FROM (
-    SELECT
-        placement_id,
-        toUInt64(0) AS impressions,
-        sum(click_count) AS clicks,
-        sum(revenue_micro) AS revenue_micro
-    FROM placement_stats_hourly
-    WHERE hour >= ?
-      AND hour < ?
-      AND (
-        (? != '' AND startsWith(placement_id, ?))
-        OR (? != '' AND position(placement_id, ?) > 0)
-      )
-    GROUP BY placement_id
-    UNION ALL
-    SELECT
-        placement_id,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toInt64(0) AS revenue_micro
-    FROM impressions
-    WHERE created_at >= ?
-      AND created_at < ?
-      AND (
-        (? != '' AND startsWith(placement_id, ?))
-        OR (? != '' AND position(placement_id, ?) > 0)
-      )
-    GROUP BY placement_id
+ SELECT
+ placement_id,
+ toUInt64(0) AS impressions,
+ sum(click_count) AS clicks,
+ sum(revenue_micro) AS revenue_micro
+ FROM placement_stats_hourly
+ WHERE hour >= ?
+ AND hour < ?
+ AND (
+ (? != '' AND startsWith(placement_id, ?))
+ OR (? != '' AND position(placement_id, ?) > 0)
+ )
+ GROUP BY placement_id
+ UNION ALL
+ SELECT
+ placement_id,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toInt64(0) AS revenue_micro
+ FROM impressions
+ WHERE created_at >= ?
+ AND created_at < ?
+ AND (
+ (? != '' AND startsWith(placement_id, ?))
+ OR (? != '' AND position(placement_id, ?) > 0)
+ )
+ GROUP BY placement_id
 )
 GROUP BY placement_id
 ORDER BY impressions DESC

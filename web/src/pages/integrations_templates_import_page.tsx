@@ -101,7 +101,7 @@ export function IntegrationsTemplatesImportPage() {
 
       <section className="section-card stack">
         <h2 className="subsection-title">Bundled catalog</h2>
-        {loading ? <p className="text-muted">Loading…</p> : null}
+        {loading ? <p className="text-muted">Loading...</p> : null}
         {!loading && catalog.length === 0 ? (
           <p className="text-muted">No bundled templates on this deployment.</p>
         ) : null}
@@ -145,7 +145,7 @@ export function IntegrationsTemplatesImportPage() {
           ))}
         {canWrite ? (
           <Button
-            label={importing ? 'Importing…' : 'Import selected'}
+            label={importing ? 'Importing...' : 'Import selected'}
             variant="primary"
             size="sm"
             loading={importing}

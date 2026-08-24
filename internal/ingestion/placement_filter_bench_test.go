@@ -41,8 +41,7 @@ func setupPlacementBlacklistBench(t testing.TB, blacklisted bool) (*PlacementBla
 func BenchmarkPlacementBlacklistFilter_miss(b *testing.B) {
 	f, evt, ctx := setupPlacementBlacklistBench(b, false)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -50,8 +49,7 @@ func BenchmarkPlacementBlacklistFilter_miss(b *testing.B) {
 func BenchmarkPlacementBlacklistFilter_hit(b *testing.B) {
 	f, evt, ctx := setupPlacementBlacklistBench(b, true)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }

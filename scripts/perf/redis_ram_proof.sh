@@ -34,7 +34,7 @@ die() {
   exit 1
 }
 
-log "artifacts → $OUT"
+log "artifacts -> $OUT"
 log "target_rps=$TARGET_RPS duration=$DURATION ram_max_bytes=$RAM_MAX_BYTES"
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then

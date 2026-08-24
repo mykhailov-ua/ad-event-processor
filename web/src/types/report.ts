@@ -3,6 +3,12 @@ export type DataFreshness = {
   consistency: string;
   stale: boolean;
   ch_lag_seconds?: number;
+  sources?: Array<{
+    name: string;
+    consistency: string;
+    stale?: boolean;
+    ch_lag_seconds?: number;
+  }>;
 };
 
 export type ReportEnvelope<TRow = ReportRow> = {

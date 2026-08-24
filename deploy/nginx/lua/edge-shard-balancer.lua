@@ -1,4 +1,3 @@
-
 local balancer = require "ngx.balancer"
 local slot_map = require "edge-slot-map"
 local node_weights = require "edge-node-weights"

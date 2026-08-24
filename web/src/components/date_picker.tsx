@@ -142,11 +142,11 @@ export function DatePicker({
         <div className="custom-date-popover elevation-raised" onClick={(e) => e.stopPropagation()}>
           <div className="cdp-header">
             <button type="button" className="cdp-nav-btn" onClick={prevMonth}>
-              ‹
+              {'<'}
             </button>
             <span className="cdp-month-label">{`${MONTH_NAMES[viewMonth]} ${viewYear}`}</span>
             <button type="button" className="cdp-nav-btn" onClick={nextMonth}>
-              ›
+              {'>'}
             </button>
           </div>
 

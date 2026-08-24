@@ -21,7 +21,7 @@ function buildUrl(page: number) {
 }
 
 function formatBalance(bal: unknown) {
-  if (!bal) return '—';
+  if (!bal) return '-';
   return formatUsdDecimal(String(bal));
 }
 
@@ -78,7 +78,7 @@ export function CustomersPage() {
   }, [data?.items, sortState, searchQuery]);
 
   if (tenant && tenantId) {
-    return <span className="text-muted">Redirecting…</span>;
+    return <span className="text-muted">Redirecting...</span>;
   }
 
   if (error) {
@@ -142,7 +142,7 @@ export function CustomersPage() {
       <div className="mb-4">
         <FilterToolbar
           search
-          searchPlaceholder="Filter by name or ID…"
+          searchPlaceholder="Filter by name or ID..."
           searchValue={searchQuery}
           onSearch={setSearchQuery}
           pagination={

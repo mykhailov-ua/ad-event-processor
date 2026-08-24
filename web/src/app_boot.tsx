@@ -91,14 +91,14 @@ export function AppBoot() {
   if (phase === 'loading') {
     return (
       <div className="main" style={{ alignItems: 'center', justifyContent: 'center' }}>
-        <span className="text-muted">Loading…</span>
+        <span className="text-muted">Loading...</span>
       </div>
     );
   }
 
   if (phase === 'eula' && eula) {
     return (
-      <Suspense fallback={<span className="text-muted">Loading…</span>}>
+      <Suspense fallback={<span className="text-muted">Loading...</span>}>
         <AppProviders>
           <EulaGate version={eula.version} text={eula.text} onAccepted={() => setPhase('ready')} />
         </AppProviders>
@@ -110,7 +110,7 @@ export function AppBoot() {
     <Suspense
       fallback={
         <div className="main" style={{ alignItems: 'center', justifyContent: 'center' }}>
-          <span className="text-muted">Loading…</span>
+          <span className="text-muted">Loading...</span>
         </div>
       }
     >

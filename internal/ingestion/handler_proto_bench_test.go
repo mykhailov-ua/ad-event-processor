@@ -23,8 +23,7 @@ func benchProtoHandler(b *testing.B, pbPayload *pb.AdEvent) {
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
 	b.ReportAllocs()
 	b.SetBytes(int64(len(body)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		handler.React(req, conn)
 	}
 }
@@ -47,20 +46,6 @@ func BenchmarkAdsPacketHandlerProto_ExtraBytes(b *testing.B) {
 			ClickId:    []byte("test-click"),
 			UserId:     []byte("user123"),
 			ExtraBytes: []byte(`{"slot":"top","cpm":"1.25"}`),
-		},
-	})
-}
-
-func BenchmarkAdsPacketHandlerProto_ExtraRepeated_Legacy(b *testing.B) {
-	cid := uuid.New()
-	benchProtoHandler(b, &pb.AdEvent{
-		CampaignId: cid[:],
-		EventType:  []byte("click"),
-		Metadata: &pb.EventMetadata{
-			ClickId:     []byte("test-click"),
-			UserId:      []byte("user123"),
-			ExtraKeys:   [][]byte{[]byte("slot"), []byte("cpm")},
-			ExtraValues: [][]byte{[]byte("top"), []byte("1.25")},
 		},
 	})
 }

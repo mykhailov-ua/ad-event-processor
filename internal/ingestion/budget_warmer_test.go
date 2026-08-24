@@ -336,9 +336,7 @@ func BenchmarkBudgetCacheWarmer_WarmOne(b *testing.B) {
 		CurrentSpend:      100,
 		BudgetCampaignKey: "budget:campaign:" + campID.String(),
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = w.WarmOne(ctx, camp)
 	}
 }
@@ -357,9 +355,7 @@ func BenchmarkBudgetCacheWarmer_Warm(b *testing.B) {
 			BudgetCampaignKey: "budget:campaign:" + campID.String(),
 		}
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = w.Warm(ctx, campaigns)
 	}
 }

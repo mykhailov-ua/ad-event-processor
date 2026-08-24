@@ -13,7 +13,7 @@ import (
 
 func TestIntervalBotnetRule_Find_flagsTimerBot(t *testing.T) {
 	if testing.Short() {
-		t.Skip("clickhouse integration test")
+		t.Skip("integration: clickhouse testcontainers")
 	}
 
 	conn, cleanup := setupClickHouseTest(t)
@@ -49,7 +49,7 @@ func TestIntervalBotnetRule_Find_flagsTimerBot(t *testing.T) {
 
 func TestIntervalBotnetRule_Find_skipsJitteredTraffic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("clickhouse integration test")
+		t.Skip("integration: clickhouse testcontainers")
 	}
 
 	conn, cleanup := setupClickHouseTest(t)

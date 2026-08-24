@@ -67,15 +67,15 @@ func BenchmarkSegmentWrite(b *testing.B) {
 	defer func() { _ = seg.Close() }()
 
 	payload := []byte("hello world")
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
-		_, err := seg.Write(uint64(i), payload)
+	benchN := 0
+	for b.Loop() {
+		_, err := seg.Write(uint64(benchN), payload)
 		if err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }
 

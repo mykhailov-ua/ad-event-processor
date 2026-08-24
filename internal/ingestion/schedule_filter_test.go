@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alicebob/miniredis/v2"
 	"ad-event-processor/internal/domain"
+	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

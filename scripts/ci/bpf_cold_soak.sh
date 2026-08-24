@@ -66,7 +66,7 @@ CONSTRAINED=1 AD_EVENT_PROCESSOR_BPF_PROBE=1 DURATION="$DURATION" \
   bash "$SCRIPTS/test/malformed.sh" "$MODE" 2>&1 | tee "$OUT/gate_run.log"
 
 SESSION_DIR=""
-SESSION_DIR="$(grep -E '^load-malformed: done — ' "$OUT/gate_run.log" | tail -1 | sed 's/^load-malformed: done — //' || true)"
+SESSION_DIR="$(grep -E '^load-malformed: done - ' "$OUT/gate_run.log" | tail -1 | sed 's/^load-malformed: done - //' || true)"
 if [[ -z "$SESSION_DIR" || ! -d "$SESSION_DIR" ]]; then
   SESSION_DIR="$(ls -td "$ROOT/var/load-test"/*/ 2> /dev/null | head -1 || true)"
 fi
@@ -79,7 +79,7 @@ log "evaluating session: $SESSION_DIR"
 go run ./cmd/load-report bpf "$SESSION_DIR" >> "$GATE_LOG" 2>&1 || log "WARN: bpf report generation failed"
 
 if ! go run ./cmd/load-report bpf-gate-compare "$BASELINE_DIR" "$SESSION_DIR" --prom "$PROMETHEUS_URL" 2>&1 | tee "$OUT/bpf_gate_compare.log"; then
-  log "FAIL: bpf cold soak gate — see $SESSION_DIR/bpf-gate-compare.md"
+  log "FAIL: bpf cold soak gate - see $SESSION_DIR/bpf-gate-compare.md"
   exit 1
 fi
 

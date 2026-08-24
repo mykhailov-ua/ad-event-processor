@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/telemetry"
 )
@@ -263,7 +264,16 @@ func (m *preboundTrackMetrics) recordFilterReject(kind filterRejectKind) {
 	}
 }
 
-func recordHTTPFilterReject(kind filterRejectKind) {
+func recordHTTPFilterReject(kind filterRejectKind, evt *domain.Event) {
 	metrics.FilterBlockedTotal.WithLabelValues(filterRejectSpecs[kind].metricLabel).Inc()
 	telemetry.RecordRejected()
+	recordFilterRejectCountrySample(kind, evt, nil, 0)
+}
+
+func (h *AdsPacketHandler) recordTrackReject(ctx *connContext, evt *domain.Event, kind filterRejectKind) {
+	h.trackMetrics.recordFilterReject(kind)
+	if ctx == nil || evt == nil {
+		return
+	}
+	recordFilterRejectDimensions(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt, kind)
 }

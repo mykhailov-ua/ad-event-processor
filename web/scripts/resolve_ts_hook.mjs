@@ -1,5 +1,5 @@
 /**
- * Node custom loader: resolve foo.js → foo.ts when the TypeScript source exists.
+ * Node custom loader: resolve foo.js -> foo.ts when the TypeScript source exists.
  * Used by unit tests and micro-benchmarks that import source modules directly.
  */
 import { existsSync } from 'node:fs';

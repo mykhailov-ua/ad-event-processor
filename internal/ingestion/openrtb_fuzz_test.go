@@ -9,13 +9,13 @@ import (
 
 var (
 	fuzzOpenRTB26Seed = []byte(`{
-  "id":"req-1",
-  "tmax":250,
-  "imp":[{"id":"1","bidfloor":1.25,"pmp":{"deals":[{"id":"deal-a","wseat":["seat-1"]}]},"banner":{"w":300,"h":250}}],
-  "device":{"ip":"1.1.1.1","ua":"Mozilla","devicetype":1,"geo":{"country":"US"}},
-  "site":{"cat":["IAB1"],"domain":"example.com"},
-  "bcat":["IAB2-3"],"badv":["evil.com"],"bapp":["com.blocked"],"bseat":["blocked-seat"],
-  "regs":{"gdpr":1,"us_privacy":"1YNN"}
+ "id":"req-1",
+ "tmax":250,
+ "imp":[{"id":"1","bidfloor":1.25,"pmp":{"deals":[{"id":"deal-a","wseat":["seat-1"]}]},"banner":{"w":300,"h":250}}],
+ "device":{"ip":"1.1.1.1","ua":"Mozilla","devicetype":1,"geo":{"country":"US"}},
+ "site":{"cat":["IAB1"],"domain":"example.com"},
+ "bcat":["IAB2-3"],"badv":["evil.com"],"bapp":["com.blocked"],"bseat":["blocked-seat"],
+ "regs":{"gdpr":1,"us_privacy":"1YNN"}
 }`)
 
 	fuzzOpenRTB3Seed = []byte(`{"openrtb":{"ver":"3.0","item":[{"id":"1","flr":1.5,"deal_id":"d1","category_mask":3}]}}`)

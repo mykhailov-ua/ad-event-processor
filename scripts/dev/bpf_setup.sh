@@ -27,7 +27,7 @@ bash "$SCRIPTS/test/bpf_build.sh"
 log "building bpf-collector"
 mkdir -p "$ROOT/bin"
 if ! ad_event_processor_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collector; then
-  log "ERROR: bpf-collector build failed — set AD_EVENT_PROCESSOR_GO_BIN=/path/to/go"
+  log "ERROR: bpf-collector build failed - set AD_EVENT_PROCESSOR_GO_BIN=/path/to/go"
   exit 1
 fi
 

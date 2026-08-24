@@ -1,4 +1,3 @@
-
 local blacklist_sync = require "edge-blacklist-sync"
 
 local _M = {}

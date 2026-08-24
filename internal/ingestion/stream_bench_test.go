@@ -14,10 +14,9 @@ import (
 )
 
 func BenchmarkStreamWriteFlat(b *testing.B) {
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		valuesPtr := producerValuesPool.Get().(*[]any)
 		values := *valuesPtr
 		values[1] = "dummy-payload"
@@ -36,11 +35,9 @@ func BenchmarkStreamWriteProto(b *testing.B) {
 		UA:         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
 		CreatedAt:  time.Now(),
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		pbEvt := streamEventPool.Get().(*pb.AdStreamEvent)
 		pbEvt.ClickId = append(pbEvt.ClickId[:0], evt.ClickID...)
 		pbEvt.CampaignId = append(pbEvt.CampaignId[:0], evt.CampaignID[:]...)
@@ -90,11 +87,9 @@ func BenchmarkStreamReadFlat(b *testing.B) {
 		"ip":          "192.168.1.1",
 		"ua":          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 
@@ -161,11 +156,9 @@ func BenchmarkStreamReadProto(b *testing.B) {
 	values := map[string]interface{}{
 		"d": rawBytesStr,
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		evt := domain.EventPool.Get().(*domain.Event)
 		evt.Reset()
 
@@ -231,10 +224,9 @@ func TestStreamPayloadSizeComparison(t *testing.T) {
 }
 
 func BenchmarkDLQWriteFlat(b *testing.B) {
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		valuesPtr := dlqValuesPool.Get().(*[]any)
 		values := *valuesPtr
 		values[1] = "dummy-payload"
@@ -256,11 +248,9 @@ func BenchmarkDLQWriteProto(b *testing.B) {
 	errVal := "simulated poison pill error message"
 	msgID := "1716186000000-0"
 	workerID := "worker-asus-tuf-8f5b27"
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		pbDLQ := dlqEventPool.Get().(*pb.AdDLQEvent)
 		if pbDLQ.OriginalEvent == nil {
 			pbDLQ.OriginalEvent = new(pb.AdStreamEvent)

@@ -57,6 +57,11 @@ var (
 		Help: "Total number of events blocked by filters",
 	}, []string{"reason"})
 
+	FilterRejectCountryTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_filter_reject_country_total",
+		Help: "Sampled filter rejects by reason and ISO country (fixed label set)",
+	}, []string{"reason", "country"})
+
 	SafePageRedirectTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_safe_page_redirect_total",
 		Help: "GET /click redirects to campaign safe_page_url (fraud or placement blacklist)",
@@ -1267,6 +1272,10 @@ var (
 		Name: "ad_cost_sync_ch_errors_total",
 		Help: "ClickHouse cost_snapshots insert failures",
 	})
+	CostSyncLastSuccessTimestamp = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "ad_cost_sync_last_success_timestamp",
+		Help: "Unix timestamp of the last successful cost sync run per network",
+	}, []string{"network"})
 
 	LedgerBatchPauseTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ledger_batch_pause_total",

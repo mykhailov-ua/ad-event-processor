@@ -10,23 +10,23 @@ E2E_DIR="$WEB_DIR/e2e"
 
 skip_e2e="${ADMIN_RELEASE_SKIP_E2E:-1}"
 
-echo "== admin ui release: CI gates (e2e skipped by default) =="
+echo "admin ui release: CI gates (e2e skipped by default)"
 ADMIN_SKIP_E2E=1 bash "$SCRIPTS/ci/admin_web.sh"
 
 if [ "$skip_e2e" = "1" ]; then
-  echo "== admin ui release: e2e skipped (set ADMIN_RELEASE_SKIP_E2E=0 to run Playwright bundle) =="
+  echo "admin ui release: e2e skipped (set ADMIN_RELEASE_SKIP_E2E=0 to run Playwright bundle)"
   echo "admin ui release gate PASSED (typecheck + unit + slop gates only)."
   exit 0
 fi
 
-echo "== admin ui release: e2e running (ADMIN_RELEASE_SKIP_E2E=0) =="
+echo "admin ui release: e2e running (ADMIN_RELEASE_SKIP_E2E=0)"
 
 if [ ! -d "$E2E_DIR/node_modules/@playwright/test" ]; then
-  echo "== admin ui release: playwright install =="
+  echo "admin ui release: playwright install"
   (cd "$E2E_DIR" && npm ci && npx playwright install chromium)
 fi
 
-echo "== admin ui release: playwright bundle =="
+echo "admin ui release: playwright bundle"
 (cd "$WEB_DIR" && node scripts/build.mjs)
 (
   cd "$E2E_DIR" && npx playwright test \

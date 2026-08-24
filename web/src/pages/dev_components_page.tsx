@@ -162,9 +162,9 @@ export function DevComponentsPage() {
       </SectionCard>
 
       <SectionCard title="Alert banners" desc="Info, warning, and error tones.">
-        <AlertBanner variant="info" message="Info alert — check the ops dashboard." />
-        <AlertBanner variant="warning" message="Warning alert — pacing drift detected." />
-        <AlertBanner variant="error" message="Error alert — export job failed." />
+        <AlertBanner variant="info" message="Info alert - check the ops dashboard." />
+        <AlertBanner variant="warning" message="Warning alert - pacing drift detected." />
+        <AlertBanner variant="error" message="Error alert - export job failed." />
       </SectionCard>
 
       <SectionCard title="Status badges" desc="Campaign, service, and invoice mappings.">
@@ -188,7 +188,7 @@ export function DevComponentsPage() {
       <SectionCard title="Date picker" desc="Popover calendar + time selects; ISO value in state.">
         <FormField
           label="Report window start"
-          hint={`Selected: ${formatDisplayDateTime(new Date(reportFrom)) || '—'}`}
+          hint={`Selected: ${formatDisplayDateTime(new Date(reportFrom)) || '-'}`}
         >
           <DatePicker id="dev-report-from" value={reportFrom} onChange={setReportFrom} />
         </FormField>
@@ -270,7 +270,7 @@ export function DevComponentsPage() {
             <p className="text-hint">Section A inside PageStack gap=md</p>
           </div>
           <div className="settings-panel">
-            <p className="text-hint">Section B — consistent gap from PageStack</p>
+            <p className="text-hint">Section B - consistent gap from PageStack</p>
           </div>
         </PageStack>
       </SectionCard>

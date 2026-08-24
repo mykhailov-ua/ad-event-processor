@@ -19,9 +19,7 @@ func BenchmarkUpdateCampaigns(b *testing.B) {
 			Budget:       10000,
 		}
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		reg.UpdateCampaigns(campaigns)
 	}
 }

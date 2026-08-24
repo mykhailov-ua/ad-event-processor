@@ -18,7 +18,7 @@ const (
 var registerTopicScript = redis.NewScript(`
 local existing = redis.call('HGET', KEYS[1], ARGV[1])
 if existing then
-  return existing
+ return existing
 end
 local id = redis.call('INCR', KEYS[2])
 redis.call('HSET', KEYS[1], ARGV[1], id)

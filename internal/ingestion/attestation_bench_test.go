@@ -19,8 +19,7 @@ func BenchmarkAttestation_VerifyCookie(b *testing.B) {
 	h.ConfigureAttestation([][]byte{secret})
 	cookie := []byte("Attestation-Token=" + token)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if !h.verifyAttestationCookie(cookie, cid, "203.0.113.1", now+1) {
 			b.Fatal("verify failed")
 		}

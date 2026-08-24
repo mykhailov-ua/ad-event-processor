@@ -13,16 +13,14 @@ func BenchmarkIngestKey(b *testing.B) {
 	campaignID := uuid.New()
 	date := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = IngestKey(customerID, campaignID, date, "facebook", "ad-1", LineTypeSpend)
 	}
 }
 
 func BenchmarkCurrencyEURToUSD(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ConvertEURToUSD(100 * microUnit)
 	}
 }
@@ -44,9 +42,10 @@ func BenchmarkPersistLines(b *testing.B) {
 	}}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		lines[0].PlacementID = "ad-bench-" + string(rune('a'+i%26))
+	benchN := 0
+	for b.Loop() {
+		lines[0].PlacementID = "ad-bench-" + string(rune('a'+benchN%26))
 		_, _, _ = worker.persistLines(ctx, lines, lines[0].Date)
+		benchN++
 	}
 }

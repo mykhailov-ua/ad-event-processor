@@ -48,54 +48,52 @@ func trueROIReportRowsToMaps(rows []TrueROIReportRow) []map[string]any {
 
 const spendVelocityQuery = `
 SELECT
-    toStartOfHour(hour) AS bucket,
-    sum(spend_micro) AS spend_micro,
-    sum(click_count) AS clicks
+ toStartOfHour(hour) AS bucket,
+ sum(spend_micro) AS spend_micro,
+ sum(click_count) AS clicks
 FROM placement_stats_hourly
 WHERE campaign_id IN (?)
-  AND hour >= ?
-  AND hour < ?
+ AND hour >= ?
+ AND hour < ?
 GROUP BY bucket
 ORDER BY bucket
 LIMIT ? OFFSET ?`
 
 const daypartHeatmapQuery = `
 SELECT
-    toHour(created_at) AS hour_of_day,
-    count() AS clicks
+ toHour(created_at) AS hour_of_day,
+ count() AS clicks
 FROM clicks
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?
+ AND created_at >= ?
+ AND created_at < ?
 GROUP BY hour_of_day
 ORDER BY hour_of_day`
 
 const geoDeviceQuery = `
 SELECT
-    coalesce(nullIf(JSONExtractString(payload, 'country'), ''), 'ZZ') AS country,
-    coalesce(
-        nullIf(JSONExtractString(payload, 'device_type'), ''),
-        nullIf(JSONExtractString(payload, 'device'), ''),
-        'unknown'
-    ) AS device,
-    count() AS clicks
+ coalesce(` + chDimCountryExpr + `, 'ZZ') AS country,
+ coalesce(
+ ` + chDimDeviceExpr + `
+ ) AS device,
+ count() AS clicks
 FROM clicks
 WHERE campaign_id IN (?)
-  AND created_at >= ?
-  AND created_at < ?
+ AND created_at >= ?
+ AND created_at < ?
 GROUP BY country, device
 ORDER BY clicks DESC
 LIMIT ? OFFSET ?`
 
 const discrepancyQuery = `
 SELECT
-    campaign_id,
-    sum(spend_micro) AS buy_micro,
-    sum(revenue_micro) AS sell_micro
+ campaign_id,
+ sum(spend_micro) AS buy_micro,
+ sum(revenue_micro) AS sell_micro
 FROM placement_stats_hourly
 WHERE campaign_id IN (?)
-  AND hour >= ?
-  AND hour < ?
+ AND hour >= ?
+ AND hour < ?
 GROUP BY campaign_id
 HAVING buy_micro > 0 OR sell_micro > 0
 ORDER BY abs(sell_micro - buy_micro) DESC
@@ -103,14 +101,14 @@ LIMIT ? OFFSET ?`
 
 const trueRoiQuery = `
 SELECT
-    campaign_id,
-    sum(spend_micro) AS ad_spend_micro,
-    sum(revenue_micro) AS revenue_micro,
-    sum(conversion_count) AS conversions
+ campaign_id,
+ sum(spend_micro) AS ad_spend_micro,
+ sum(revenue_micro) AS revenue_micro,
+ sum(conversion_count) AS conversions
 FROM placement_stats_hourly
 WHERE campaign_id IN (?)
-  AND hour >= ?
-  AND hour < ?
+ AND hour >= ?
+ AND hour < ?
 GROUP BY campaign_id
 HAVING ad_spend_micro > 0 OR revenue_micro > 0 OR conversions > 0
 ORDER BY ad_spend_micro DESC
@@ -129,14 +127,14 @@ func (reports *ReportsHTTPHandlers) registerExtendedReports(mux *http.ServeMux) 
 		}
 	}
 	readCampaigns := []string{"campaigns:read", "campaigns:read:masked"}
-	mux.HandleFunc("GET /api/v1/reports/spend-velocity", limit(permAny(readCampaigns, reports.getSpendVelocityReport)))
-	mux.HandleFunc("GET /api/v1/reports/daypart-heatmap", limit(permAny(readCampaigns, reports.getDaypartHeatmapReport)))
-	mux.HandleFunc("GET /api/v1/reports/campaign-geo-device", limit(permAny(readCampaigns, reports.getCampaignGeoDeviceReport)))
-	mux.HandleFunc("GET /api/v1/reports/source-quality", limit(permAny(readCampaigns, reports.getSourceQualityReport)))
-	mux.HandleFunc("GET /api/v1/reports/discrepancy-buy-sell", limit(perm("customers:read", reports.getDiscrepancyBuySellReport)))
-	mux.HandleFunc("GET /api/v1/reports/true-roi", limit(permAny(readCampaigns, reports.getTrueROIReport)))
-	mux.HandleFunc("GET /api/v1/reports/campaign-overview", limit(permAny(readCampaigns, reports.getCampaignOverviewReport)))
-	mux.HandleFunc("GET /api/v1/reports/customer-portfolio", limit(perm("customers:read", reports.getCustomerPortfolioReport)))
+	mux.HandleFunc("GET /api/v1/reports/spend-velocity", limit(permAny(readCampaigns, reports.wrapReport("spend-velocity", reports.getSpendVelocityReport))))
+	mux.HandleFunc("GET /api/v1/reports/daypart-heatmap", limit(permAny(readCampaigns, reports.wrapReport("daypart-heatmap", reports.getDaypartHeatmapReport))))
+	mux.HandleFunc("GET /api/v1/reports/campaign-geo-device", limit(permAny(readCampaigns, reports.wrapReport("campaign-geo-device", reports.getCampaignGeoDeviceReport))))
+	mux.HandleFunc("GET /api/v1/reports/source-quality", limit(permAny(readCampaigns, reports.wrapReport("source-quality", reports.getSourceQualityReport))))
+	mux.HandleFunc("GET /api/v1/reports/discrepancy-buy-sell", limit(perm("customers:read", reports.wrapReport("discrepancy-buy-sell", reports.getDiscrepancyBuySellReport))))
+	mux.HandleFunc("GET /api/v1/reports/true-roi", limit(permAny(readCampaigns, reports.wrapReport("true-roi", reports.getTrueROIReport))))
+	mux.HandleFunc("GET /api/v1/reports/campaign-overview", limit(permAny(readCampaigns, reports.wrapReport("campaign-overview", reports.getCampaignOverviewReport))))
+	mux.HandleFunc("GET /api/v1/reports/customer-portfolio", limit(perm("customers:read", reports.wrapReport("customer-portfolio", reports.getCustomerPortfolioReport))))
 }
 
 func (reports *ReportsHTTPHandlers) getSpendVelocityReport(w http.ResponseWriter, r *http.Request) {

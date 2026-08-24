@@ -34,8 +34,7 @@ func BenchmarkValidateInitData(b *testing.B) {
 	raw := benchInitDataRaw(b)
 	botToken := "123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ"
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ValidateInitData(raw, botToken, 300)
 	}
 }

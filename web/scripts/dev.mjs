@@ -111,7 +111,7 @@ function startServer() {
     res.writeHead(404);
     res.end('Not found');
   }).listen(PORT, () => {
-    console.log(`Admin dev: http://127.0.0.1:${PORT} (API → ${API_TARGET})`);
+    console.log(`Admin dev: http://127.0.0.1:${PORT} (API -> ${API_TARGET})`);
     if (WATCH) console.log('Watching web/src for rebuilds');
   });
 }

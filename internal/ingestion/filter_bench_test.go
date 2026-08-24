@@ -36,9 +36,7 @@ func benchGeoFilterWithCountries(b *testing.B, geo GeoProvider) {
 		CampaignID: campID,
 	}
 	ctx := context.Background()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -71,9 +69,7 @@ func BenchmarkFraudFilter_DC(b *testing.B) {
 		IP: "1.1.1.66",
 	}
 	ctx := context.Background()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -87,9 +83,7 @@ func BenchmarkGeoFilter(b *testing.B) {
 		CampaignID: uuid.New(),
 	}
 	ctx := context.Background()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -101,9 +95,7 @@ func BenchmarkIPRateLimiter_Check(b *testing.B) {
 		IP: "192.168.1.1",
 	}
 	ctx := context.Background()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = l.Check(ctx, evt)
 	}
 }
@@ -116,9 +108,7 @@ func BenchmarkDuplicateEventFilter_Check(b *testing.B) {
 		ClickID: "click123",
 	}
 	ctx := context.Background()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -128,8 +118,7 @@ func BenchmarkKeyFormatting_impTSKey(b *testing.B) {
 		UserID:     "user123",
 		CampaignID: uuid.New(),
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := bufPool.Get().(*bufWrapper)
 		w.buf = w.buf[:0]
 		w.buf = append(w.buf, "imp_ts:"...)
@@ -146,8 +135,7 @@ func BenchmarkKeyFormatting_IPRateLimiter(b *testing.B) {
 	evt := &domain.Event{
 		IP: "192.168.1.1",
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := bufPool.Get().(*bufWrapper)
 		w.buf = w.buf[:0]
 		w.buf = append(w.buf, "ratelimit:ip:"...)
@@ -163,8 +151,7 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 		Type:    "click",
 		ClickID: "click123",
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		w := bufPool.Get().(*bufWrapper)
 		w.buf = w.buf[:0]
 		w.buf = append(w.buf, "dup:"...)
@@ -208,8 +195,7 @@ func BenchmarkUnifiedFilter_Check_mock(b *testing.B) {
 	ctx := context.Background()
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -223,9 +209,7 @@ func BenchmarkRedisBudgetManager_CheckAndSpend(b *testing.B) {
 	campaignID := uuid.New()
 	clickID := "click123"
 	amount := int64(100_000)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = bm.CheckAndSpend(ctx, customerID, campaignID, clickID, amount)
 	}
 }

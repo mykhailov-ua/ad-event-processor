@@ -125,8 +125,8 @@ export function ForecastModal({ open, opts, onClose }: ForecastModalProps) {
   };
 
   let statusMessage: string | null = null;
-  if (phase === 'loading') statusMessage = 'Loading forecast…';
-  else if (phase === 'retry') statusMessage = `Service busy — retry in ${countdown}s`;
+  if (phase === 'loading') statusMessage = 'Loading forecast...';
+  else if (phase === 'retry') statusMessage = `Service busy - retry in ${countdown}s`;
   else if (phase === 'error') statusMessage = error;
 
   const curve = forecast?.spend_curve ?? [];
@@ -143,9 +143,9 @@ export function ForecastModal({ open, opts, onClose }: ForecastModalProps) {
         <div className="stack">
           <dl>
             <dt>Impressions P50</dt>
-            <dd className="font-mono">{String(forecast.impressions_p50 ?? '—')}</dd>
+            <dd className="font-mono">{String(forecast.impressions_p50 ?? '-')}</dd>
             <dt>Impressions P90</dt>
-            <dd className="font-mono">{String(forecast.impressions_p90 ?? '—')}</dd>
+            <dd className="font-mono">{String(forecast.impressions_p90 ?? '-')}</dd>
             <dt>Low confidence</dt>
             <dd>{forecast.low_confidence ? 'Yes' : 'No'}</dd>
           </dl>

@@ -163,10 +163,10 @@ GROUP BY c.customer_id`, args: []any{time.Now().UTC().Add(-time.Hour), time.Now(
 
 		summaries = append(summaries, fmt.Sprintf("%s: plan=%.2fms exec, %d nodes, %d findings",
 			qc.name, plan.ExecutionTimeMS, len(plan.Nodes), len(findings)))
-		t.Logf("=== %s ===\n%s", qc.name, raw)
+		t.Logf("%s:\n%s", qc.name, raw)
 	}
 
-	t.Log("--- EXPLAIN AUDIT SUMMARY ---")
+	t.Log("EXPLAIN AUDIT SUMMARY")
 	for _, s := range summaries {
 		t.Log(s)
 	}
@@ -228,38 +228,38 @@ FROM generate_series(1, 500) g ON CONFLICT DO NOTHING`)
 
 	exec(`INSERT INTO campaigns (id, name, status, budget_limit, current_spend, customer_id, pacing_mode, timezone)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(g), 12, '0'))::uuid,
-  'camp-' || g,
-  (ARRAY['ACTIVE','PAUSED','DRAINING']::campaign_status_type[])[1 + (g % 3)],
-  100000000 + (g % 50) * 1000000,
-  (g % 30) * 1000000,
-  ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 500)), 12, '0'))::uuid,
-  'ASAP'::pacing_mode_type, 'UTC'
+ 'camp-' || g,
+ (ARRAY['ACTIVE','PAUSED','DRAINING']::campaign_status_type[])[1 + (g % 3)],
+ 100000000 + (g % 50) * 1000000,
+ (g % 30) * 1000000,
+ ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 500)), 12, '0'))::uuid,
+ 'ASAP'::pacing_mode_type, 'UTC'
 FROM generate_series(1, 5000) g ON CONFLICT DO NOTHING`)
 
 	exec(`INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 500)), 12, '0'))::uuid,
-  ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 5000)), 12, '0'))::uuid,
-  (g % 10) * 100000,
-  (ARRAY['FEE','TOPUP','PAYMENT_TOPUP','RELEASE']::ledger_type[])[1 + (g % 4)],
-  'explain-hash-' || g
+ ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 5000)), 12, '0'))::uuid,
+ (g % 10) * 100000,
+ (ARRAY['FEE','TOPUP','PAYMENT_TOPUP','RELEASE']::ledger_type[])[1 + (g % 4)],
+ 'explain-hash-' || g
 FROM generate_series(1, 50000) g ON CONFLICT DO NOTHING`)
 
 	exec(`INSERT INTO outbox_events (event_type, payload, status)
 SELECT (ARRAY['UPDATE_BLACKLIST','PAUSE_CAMPAIGN','CREATE_CAMPAIGN','SEND_POSTBACK','UPDATE_CAMPAIGN_PACING'])[1 + (g % 5)],
-  '{"campaign_id":"00000000-0000-4000-8000-000000000001"}'::jsonb,
-  (ARRAY['PENDING','PROCESSED','PENDING','PENDING','PROCESSED'])[1 + (g % 5)]
+ '{"campaign_id":"00000000-0000-4000-8000-000000000001"}'::jsonb,
+ (ARRAY['PENDING','PROCESSED','PENDING','PENDING','PROCESSED'])[1 + (g % 5)]
 FROM generate_series(1, 10000) g`)
 
 	exec(`INSERT INTO campaign_stats (campaign_id, date, impressions_count, clicks_count, conversions_count)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 5000)), 12, '0'))::uuid,
-  CURRENT_DATE - ((g % 30) || ' days')::interval,
-  g % 1000, g % 100, g % 10
+ CURRENT_DATE - ((g % 30) || ' days')::interval,
+ g % 1000, g % 100, g % 10
 FROM generate_series(1, 50000) g ON CONFLICT DO NOTHING`)
 
 	exec(`INSERT INTO admin_audit_log (admin_id, action, target_type, target_id, changes, metadata)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(g % 20), 12, '0'))::uuid,
-  'ACTION_' || (g % 10), 'campaign', ('00000000-0000-4000-8000-' || lpad(to_hex(g % 5000), 12, '0'))::uuid,
-  '{}'::jsonb, '{}'::jsonb
+ 'ACTION_' || (g % 10), 'campaign', ('00000000-0000-4000-8000-' || lpad(to_hex(g % 5000), 12, '0'))::uuid,
+ '{}'::jsonb, '{}'::jsonb
 FROM generate_series(1, 10000) g`)
 
 	exec(`INSERT INTO ip_blacklist (ip, reason, expires_at)
@@ -289,14 +289,14 @@ ON CONFLICT DO NOTHING`)
 		ON node_capacity_scores (region_code, role)`)
 	exec(`INSERT INTO node_capacity_scores (node_id, region_code, role, score, weight, provenance, epoch_id)
 VALUES ('processor', 0, 'processor', 0.9, 0.55, 'own_window', 1),
-       ('processor-1', 0, 'processor', 0.4, 0.45, 'own_window', 1)
+ ('processor-1', 0, 'processor', 0.4, 0.45, 'own_window', 1)
 ON CONFLICT DO NOTHING`)
 
 	exec(`INSERT INTO campaigns (id, name, status, budget_limit, current_spend, customer_id, pacing_mode, timezone, updated_at)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(9000 + g), 12, '0'))::uuid,
-  'drain-' || g, 'DRAINING', 100000000, 0,
-  ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 500)), 12, '0'))::uuid,
-  'ASAP'::pacing_mode_type, 'UTC', NOW() - ((g % 60) || ' minutes')::interval
+ 'drain-' || g, 'DRAINING', 100000000, 0,
+ ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % 500)), 12, '0'))::uuid,
+ 'ASAP'::pacing_mode_type, 'UTC', NOW() - ((g % 60) || ' minutes')::interval
 FROM generate_series(1, 200) g ON CONFLICT DO NOTHING`)
 
 	exec(`ANALYZE customers`)

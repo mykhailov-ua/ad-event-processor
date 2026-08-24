@@ -95,7 +95,7 @@ export function ReportsHubPage() {
       const polled = await pollReportJob(result.jobId, { signal: ctrl.signal });
       setExportStatus(
         polled.ok
-          ? `Export ${polled.status}: downloading…`
+          ? `Export ${polled.status}: downloading...`
           : `Export ${polled.status}: ${polled.message}`
       );
       if (polled.ok) {
@@ -132,7 +132,7 @@ export function ReportsHubPage() {
         <div className="page-header__row">
           <h1 className="page-header__title">Reports</h1>
           <span className="text-label-12 text-muted">
-            {liveCount} live · {REPORT_CATALOG.length} total
+            {liveCount} live , {REPORT_CATALOG.length} total
           </span>
         </div>
         <p className="page-header__desc">
@@ -144,8 +144,9 @@ export function ReportsHubPage() {
         <div className="settings-panel__header">
           <h2 className="settings-panel__title">Scheduled delivery</h2>
           <p className="settings-panel__desc">
-            Email and webhook schedules are planned. Configure recipients in Settings when
-            available.
+            Recurring CSV exports use cron schedules via{' '}
+            <code className="font-mono text-sm">POST /api/v1/report-schedules</code>. Completed
+            files appear under report export jobs.
           </p>
         </div>
       </section>
@@ -178,7 +179,11 @@ export function ReportsHubPage() {
                   return (
                     <tr key={card.key} data-report-key={card.key}>
                       <td>
-                        <a href={href} className="reports-hub__link">
+                        <a
+                          href={href}
+                          className="reports-hub__link"
+                          title={retiredAlt?.title}
+                        >
                           <Icon
                             name={reportIcon(card.key)}
                             size={14}
@@ -195,9 +200,9 @@ export function ReportsHubPage() {
                         ) : probeStub[card.key] === true ? (
                           <StatusBadge status="planned" kind="service" label="Planned" />
                         ) : probing ? (
-                          <StatusBadge status="pending" kind="invoice" label="Checking…" />
+                          <StatusBadge status="pending" kind="invoice" label="Checking..." />
                         ) : (
-                          <StatusBadge status="pending" kind="invoice" label="Checking…" />
+                          <StatusBadge status="pending" kind="invoice" label="Checking..." />
                         )}
                       </td>
                       <td className="reports-hub__actions-cell">
@@ -207,6 +212,7 @@ export function ReportsHubPage() {
                             label={retiredAlt ? retiredAlt.label : 'Open'}
                             variant="secondary"
                             size="sm"
+                            title={retiredAlt?.title}
                           />
                           {!card.retired ? (
                             <Button
@@ -270,11 +276,11 @@ export function ReportsHubPage() {
                   {savedViews.map((v, index) => (
                     <tr key={`${v.report_key ?? 'view'}-${index}`}>
                       <td>
-                        <span className="text-label-14">{v.report_key ?? '—'}</span>
+                        <span className="text-label-14">{v.report_key ?? '-'}</span>
                       </td>
                       <td>
                         <span className="font-mono text-copy-13 text-muted">
-                          {v.report_key ?? '—'}
+                          {v.report_key ?? '-'}
                         </span>
                       </td>
                       <td className="reports-hub__actions-cell">

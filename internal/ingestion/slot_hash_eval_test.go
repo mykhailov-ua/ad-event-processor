@@ -103,8 +103,7 @@ func TestSlotHashEntropy_CRC32Retained(t *testing.T) {
 func BenchmarkSlotHash_CRC32(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = crc32Castagnoli(&id)
 	}
 }
@@ -112,8 +111,7 @@ func BenchmarkSlotHash_CRC32(b *testing.B) {
 func BenchmarkSlotHash_xxhash64(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = xxhash.Sum64(id[:])
 	}
 }
@@ -121,8 +119,7 @@ func BenchmarkSlotHash_xxhash64(b *testing.B) {
 func BenchmarkSlotHash_murmur3(b *testing.B) {
 	id := uuid.New()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = murmur3_32(id[:], 0)
 	}
 }

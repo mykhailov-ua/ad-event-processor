@@ -486,7 +486,7 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 							"created_at":      time.Unix(orig.CreatedAtUnix, 0).Format(time.RFC3339),
 						},
 					}
-					prettyJSON, _ := json.MarshalIndent(m, "", "  ")
+					prettyJSON, _ := json.MarshalIndent(m, "", " ")
 					_, _ = fmt.Fprintf(os.Stdout, "%s\n", string(prettyJSON))
 				} else {
 					pbStream.Reset()
@@ -512,7 +512,7 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 							"created_at_unix": pbStream.CreatedAtUnix,
 							"created_at":      time.Unix(pbStream.CreatedAtUnix, 0).Format(time.RFC3339),
 						}
-						prettyJSON, _ := json.MarshalIndent(m, "", "  ")
+						prettyJSON, _ := json.MarshalIndent(m, "", " ")
 						_, _ = fmt.Fprintf(os.Stdout, "%s\n", string(prettyJSON))
 					} else {
 						_, _ = fmt.Fprintf(os.Stdout, "Format: Unknown Binary Protobuf\n")
@@ -521,7 +521,7 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 				}
 			} else {
 				_, _ = fmt.Fprintf(os.Stdout, "Format: Legacy Flat Map\n")
-				prettyJSON, _ := json.MarshalIndent(msg.Values, "", "  ")
+				prettyJSON, _ := json.MarshalIndent(msg.Values, "", " ")
 				_, _ = fmt.Fprintf(os.Stdout, "%s\n", string(prettyJSON))
 			}
 			startID = msg.ID
@@ -657,7 +657,7 @@ func editDLQMessage(ctx context.Context, rdb *redis.Client, stream, id string) e
 	}
 
 	editable := toEditable(id, pbDLQ)
-	jsonData, err := json.MarshalIndent(editable, "", "  ")
+	jsonData, err := json.MarshalIndent(editable, "", " ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal editable event to JSON: %w", err)
 	}

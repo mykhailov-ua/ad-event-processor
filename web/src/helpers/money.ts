@@ -35,7 +35,7 @@ export function formatMicro(micro: MoneyMicro): string {
 
 export function formatMoney(micro: number | string | null | undefined): string {
   const n = Number(micro);
-  if (!Number.isFinite(n)) return '—';
+  if (!Number.isFinite(n)) return '-';
   return `$${formatMicro(n)}`;
 }
 
@@ -53,7 +53,7 @@ export function formatAmountMicro(micro: number, currency = ''): string {
 }
 
 export function formatDecimalDisplay(decimal: string): string {
-  if (!decimal) return '—';
+  if (!decimal) return '-';
   return decimal;
 }
 
@@ -61,7 +61,7 @@ export function formatUsdDecimal(
   decimal: string | number | null | undefined,
   options: { full?: boolean; currency?: boolean } = {}
 ): string {
-  if (decimal == null || decimal === '') return '—';
+  if (decimal == null || decimal === '') return '-';
   const num = Number(decimal);
   if (!Number.isFinite(num)) return String(decimal);
   const prefix = options.currency !== false ? '$' : '';

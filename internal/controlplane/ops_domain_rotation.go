@@ -13,15 +13,15 @@ func (r *opsReader) ListDomainRotation(ctx context.Context) (DomainRotationListR
 	}
 	rows, err := r.svc.GetPool().Query(ctx, `
 		SELECT d.hostname, d.role, d.health_status, COALESCE(d.ssl_status, ''),
-		       dpd.pool_id, COALESCE(dpd.status, ''),
-		       COALESCE((
-		           SELECT COUNT(*)::bigint FROM campaigns c
-		           WHERE c.domain_pool_id = dpd.pool_id AND c.dmr_enabled = true AND c.deleted_at IS NULL
-		       ), 0),
-		       COALESCE((
-		           SELECT COUNT(*)::bigint FROM campaigns c
-		           WHERE c.domain_pool_id = dpd.pool_id AND c.status = 'active' AND c.deleted_at IS NULL
-		       ), 0)
+		 dpd.pool_id, COALESCE(dpd.status, ''),
+		 COALESCE((
+		 SELECT COUNT(*)::bigint FROM campaigns c
+		 WHERE c.domain_pool_id = dpd.pool_id AND c.dmr_enabled = true AND c.deleted_at IS NULL
+		 ), 0),
+		 COALESCE((
+		 SELECT COUNT(*)::bigint FROM campaigns c
+		 WHERE c.domain_pool_id = dpd.pool_id AND c.status = 'active' AND c.deleted_at IS NULL
+		 ), 0)
 		FROM domain_health_status d
 		LEFT JOIN domain_pool_domains dpd ON dpd.hostname = d.hostname
 		WHERE d.role IN ('tracking', 'admin')

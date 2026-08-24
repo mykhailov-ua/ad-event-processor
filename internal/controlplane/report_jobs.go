@@ -62,7 +62,7 @@ type ReportJobRunner struct {
 
 func NewReportJobRunner(exportDir string, deps ReportExportDeps) *ReportJobRunner {
 	if exportDir == "" {
-		exportDir = "./data/report-export"
+		exportDir = defaultReportExportDirPath()
 	}
 	return &ReportJobRunner{
 		exportDir: exportDir,
@@ -86,6 +86,10 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 	spec.Format = format
 	if _, _, err := parseReportRangeFromStrings(spec.From, spec.To); err != nil {
 		return "", err
+	}
+
+	if r.pgEnabled() {
+		return r.createJobPG(ctx, spec, idempotencyKey)
 	}
 
 	r.mu.Lock()
@@ -112,11 +116,18 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 	if idempotencyKey != "" {
 		r.byIdem[idempotencyKey] = jobID
 	}
-	go r.runJob(ctx, jobID)
+	go r.runJob(ctx, jobID, spec)
 	return jobID, nil
 }
 
 func (r *ReportJobRunner) GetJob(jobID string) (ReportJobStatusDTO, bool) {
+	if r.pgEnabled() {
+		dto, ok, err := r.getJobPG(context.Background(), jobID)
+		if err != nil {
+			return ReportJobStatusDTO{}, false
+		}
+		return dto, ok
+	}
 	r.mu.RLock()
 	rec, ok := r.jobs[jobID]
 	r.mu.RUnlock()
@@ -129,6 +140,13 @@ func (r *ReportJobRunner) GetJob(jobID string) (ReportJobStatusDTO, bool) {
 func (r *ReportJobRunner) ListJobsByCustomer(customerID string, limit int) []ReportJobStatusDTO {
 	if limit <= 0 {
 		limit = 10
+	}
+	if r.pgEnabled() {
+		out, err := r.listJobsByCustomerPG(context.Background(), customerID, limit)
+		if err != nil {
+			return nil
+		}
+		return out
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -156,6 +174,17 @@ func (r *ReportJobRunner) ListJobsByCustomer(customerID string, limit int) []Rep
 }
 
 func (r *ReportJobRunner) OpenDownload(jobID string) (*os.File, ReportJobStatusDTO, error) {
+	if r.pgEnabled() {
+		path, dto, err := r.openDownloadPG(context.Background(), jobID)
+		if err != nil {
+			return nil, dto, err
+		}
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, dto, err
+		}
+		return f, dto, nil
+	}
 	r.mu.RLock()
 	rec, ok := r.jobs[jobID]
 	r.mu.RUnlock()
@@ -202,37 +231,43 @@ func (r *ReportJobRunner) evictLocked(now time.Time) {
 	}
 }
 
-func (r *ReportJobRunner) runJob(parent context.Context, jobID string) {
-	ctx, cancel := context.WithTimeout(parent, reportJobRunTimeout)
+func (r *ReportJobRunner) runJob(_ context.Context, jobID string, spec ReportJobSpec) {
+	jobCtx, cancel := context.WithTimeout(context.Background(), reportJobRunTimeout)
 	defer cancel()
 
-	r.mu.Lock()
-	rec, ok := r.jobs[jobID]
-	if !ok {
+	if !r.pgEnabled() {
+		r.mu.Lock()
+		rec, ok := r.jobs[jobID]
+		if !ok {
+			r.mu.Unlock()
+			return
+		}
+		rec.status = JobStatusRunning
+		spec = rec.spec
 		r.mu.Unlock()
-		return
 	}
-	rec.status = JobStatusRunning
-	r.mu.Unlock()
 
 	if err := os.MkdirAll(r.exportDir, 0o750); err != nil {
-		r.failJob(jobID, err)
+		r.failJob(jobCtx, jobID, err)
 		return
 	}
 	path := filepath.Join(r.exportDir, jobID+".csv")
-	if err := r.writeReportCSV(ctx, path, rec.spec); err != nil {
-		r.failJob(jobID, err)
+	exportStart := time.Now()
+	if err := r.writeReportCSV(jobCtx, path, spec); err != nil {
+		observeReportQuery(spec.ReportKey, exportStart, err)
+		r.failJob(jobCtx, jobID, err)
 		return
 	}
-	select {
-	case <-ctx.Done():
-		r.failJob(jobID, ctx.Err())
-		return
-	default:
-	}
+	observeReportQuery(spec.ReportKey, exportStart, nil)
 	info, err := os.Stat(path)
 	if err != nil {
-		r.failJob(jobID, err)
+		r.failJob(jobCtx, jobID, err)
+		return
+	}
+	if r.pgEnabled() {
+		if err := completeReportJobPG(jobCtx, r.deps.Pool, jobID, path, info.Size()); err != nil {
+			r.failJob(jobCtx, jobID, err)
+		}
 		return
 	}
 	r.mu.Lock()
@@ -244,7 +279,11 @@ func (r *ReportJobRunner) runJob(parent context.Context, jobID string) {
 	r.mu.Unlock()
 }
 
-func (r *ReportJobRunner) failJob(jobID string, err error) {
+func (r *ReportJobRunner) failJob(ctx context.Context, jobID string, err error) {
+	if r.pgEnabled() {
+		_ = failReportJobPG(ctx, r.deps.Pool, jobID, err.Error())
+		return
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if rec, ok := r.jobs[jobID]; ok {

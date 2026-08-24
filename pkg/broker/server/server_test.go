@@ -1230,11 +1230,9 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 		payload[i] = 'a'
 	}
 
-	b.ResetTimer()
-
 	b.Run("Produce-Sequential", func(b *testing.B) {
 		b.SetBytes(int64(len(payload)))
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_, err := cli.Produce(context.Background(), topic, 0, payload)
 			if err != nil {
 				b.Fatal(err)
@@ -1244,27 +1242,31 @@ func BenchmarkBrokerThroughput(b *testing.B) {
 
 	b.Run("Fetch-Sequential", func(b *testing.B) {
 		b.SetBytes(int64(len(payload)))
-		for i := 0; i < b.N; i++ {
-			offset := uint64(i % b.N)
+		benchN := 0
+		for b.Loop() {
+			offset := uint64(benchN % b.N)
 			iter, err := cli.Fetch(context.Background(), topic, 0, offset, 1024)
 			if err != nil {
 				b.Fatal(err)
 			}
 			for iter.Next() {
 			}
+			benchN++
 		}
 	})
 
 	b.Run("FetchStream-Sequential", func(b *testing.B) {
 		b.SetBytes(int64(len(payload)))
-		for i := 0; i < b.N; i++ {
-			offset := uint64(i % b.N)
+		benchN := 0
+		for b.Loop() {
+			offset := uint64(benchN % b.N)
 			iter, err := cli.Fetch(context.Background(), topic, 0, offset, 1024)
 			if err != nil {
 				b.Fatal(err)
 			}
 			for iter.Next() {
 			}
+			benchN++
 		}
 	})
 }

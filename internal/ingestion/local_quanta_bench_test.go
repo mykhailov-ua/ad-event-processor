@@ -15,8 +15,7 @@ func BenchmarkLocalQuantaSpend(b *testing.B) {
 	ledger.Credit(id, 1_000_000_000, 1_000_000_000)
 	const amount = int64(10_000)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if !ledger.TrySpendLocal(id, amount) {
 			ledger.Credit(id, 1_000_000_000, 1_000_000_000)
 		}

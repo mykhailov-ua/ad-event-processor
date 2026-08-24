@@ -78,7 +78,7 @@ export function createTooltipHooks(
         }
         const x = u.data[0][idx] as number;
         const y = u.data[1][idx] as number;
-        tip.textContent = `${formatX(x)} · ${formatY(y)}`;
+        tip.textContent = `${formatX(x)} , ${formatY(y)}`;
         tip.hidden = false;
         const left = u.cursor.left ?? 0;
         const top = u.cursor.top ?? 0;

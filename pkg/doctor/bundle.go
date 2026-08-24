@@ -95,7 +95,7 @@ func sanitizedEnv() []byte {
 }
 
 func writeTarJSON(tw *tar.Writer, name string, v any) error {
-	raw, err := json.MarshalIndent(v, "", "  ")
+	raw, err := json.MarshalIndent(v, "", " ")
 	if err != nil {
 		return fmt.Errorf("marshal %s: %w", name, err)
 	}

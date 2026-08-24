@@ -52,8 +52,7 @@ func BenchmarkClickRedirectGnet_forceSafe(b *testing.B) {
 	h.React(req, conn)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn.written = conn.written[:0]
 		conn.responses = conn.responses[:0]
 		h.React(req, conn)
@@ -74,8 +73,7 @@ func BenchmarkSafePageStubGnet_E2E(b *testing.B) {
 	conn := NewGnetBenchConn(inbound)
 	h.React(req, conn)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn.written = conn.written[:0]
 		conn.responses = conn.responses[:0]
 		h.React(req, conn)
@@ -109,8 +107,7 @@ func BenchmarkTrackVerifyGnet_E2E(b *testing.B) {
 	h.React(req, conn)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn.written = conn.written[:0]
 		conn.responses = conn.responses[:0]
 		h.React(req, conn)
@@ -129,8 +126,7 @@ func BenchmarkResolveSafePageAction(b *testing.B) {
 	}
 	out := trackOutcome{Status: trackStatusFraudAccepted, RejectKind: filterRejectFraud}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = resolveSafePageAction(reg, id, out, false)
 	}
 }

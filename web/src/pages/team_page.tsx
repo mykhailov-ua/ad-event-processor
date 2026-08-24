@@ -215,7 +215,7 @@ export function TeamPage() {
         <AlertBanner variant="info" message="Enter a customer_id to load team overview." />
       ) : null}
 
-      {loading ? <p className="text-muted">Loading…</p> : null}
+      {loading ? <p className="text-muted">Loading...</p> : null}
       <BlockingError error={error} />
 
       {data && showBalance && (teamLead || can(perms, 'billing:read')) ? (
@@ -266,7 +266,7 @@ export function TeamPage() {
             </dd>
             <dt>Valid until</dt>
             <dd>
-              {data.license.valid_until ? new Date(data.license.valid_until).toLocaleString() : '—'}
+              {data.license.valid_until ? new Date(data.license.valid_until).toLocaleString() : '-'}
             </dd>
           </dl>
         </section>
@@ -295,7 +295,7 @@ export function TeamPage() {
                   <option value="TL">Team lead</option>
                 </select>
                 <Button
-                  label={inviting ? 'Inviting…' : 'Invite member'}
+                  label={inviting ? 'Inviting...' : 'Invite member'}
                   variant="primary"
                   size="sm"
                   loading={inviting}
@@ -369,7 +369,7 @@ export function TeamPage() {
                         )}
                       </td>
                       <td className="text-muted text-sm">
-                        {member.created_at ? new Date(member.created_at).toLocaleDateString() : '—'}
+                        {member.created_at ? new Date(member.created_at).toLocaleDateString() : '-'}
                       </td>
                       <td>
                         {member.is_blocked ? (

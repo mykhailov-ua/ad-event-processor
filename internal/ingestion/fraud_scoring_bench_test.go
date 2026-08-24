@@ -59,8 +59,7 @@ func resetFraudBenchEvent(evt *domain.Event) {
 func BenchmarkFilterEngine_Check_fraudScoring_noSignals(b *testing.B) {
 	engine, evt, ctx := benchFilterEngineFraudScoring(b, &countingFilter{})
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}
@@ -69,8 +68,7 @@ func BenchmarkFilterEngine_Check_fraudScoring_noSignals(b *testing.B) {
 func BenchmarkFilterEngine_Check_fraudScoring_L2Shadow(b *testing.B) {
 	engine, evt, ctx := benchFilterEngineFraudScoring(b, &fraudSignalsFilter{first: FraudReasonMissingImpTS})
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}
@@ -82,8 +80,7 @@ func BenchmarkFilterEngine_Check_fraudScoring_L1Reject(b *testing.B) {
 		second: FraudReasonLowTTC,
 	})
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}

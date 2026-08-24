@@ -4,24 +4,67 @@ globs: cmd/**, internal/**
 alwaysApply: false
 ---
 
-Apply when adding services, imports, or cross-package dependencies.
+# Binary and Import Boundaries
 
-Default deploy: `cmd/control` modular monolith (admin :8188, payment webhooks :8187, in-process identity/payment/billing/notifier). Schemas: `payment`, `billing`, `notifier` plus shared `public` (campaigns, events, balance_ledger, outbox).
+## Purpose
 
-Sidecars (optional): `cmd/ivt-detector`, `cmd/fraud-scorer`, `cmd/log-evacuator` (tools profile). Settlement runs in-process in control — no standalone settlement binary.
+Apply when adding services, imports, or cross-package dependencies. Defines which binaries exist, what tracker must never import, and when to split vs stay in `cmd/control`.
 
-Never inject into tracker hot path: cron loops, Postgres writes not required for ingest, external RPC from `processTrack()` or filter pipeline.
+## Default deployment model
 
-Tracker must not import `internal/fraud` scoring (cold `cmd/fraud-scorer` / processor only).
+`cmd/control` modular monolith:
 
-New domain workflow:
+- Admin `:8188`
+- Payment webhooks `:8187`
+- In-process identity/payment/billing/notifier
+
+Schemas: `payment`, `billing`, `notifier` plus shared `public` (campaigns, events, `balance_ledger`, outbox).
+
+Sidecars (optional): `cmd/ivt-detector`, `cmd/fraud-scorer`, `cmd/log-evacuator` (tools profile). Settlement runs in-process in control - no standalone settlement binary.
+
+## Tracker hot path - never inject
+
+| Forbidden in tracker | Reason |
+| :--- | :--- |
+| Cron loops unrelated to ingest | Cold-path scheduling |
+| Postgres writes not required for ingest | Hot/cold boundary |
+| External RPC from `processTrack()` or filter pipeline | SLA and fail-closed |
+| `internal/fraud` scoring import | ML is cold sidecar only |
+
+Tracker must not import `internal/fraud` scoring (`cmd/fraud-scorer` / processor only).
+
+## New domain workflow
 
 1. `CREATE SCHEMA`, migrations under `internal/<svc>/migrations/`, wire into `cmd/control` via `OpenModule`.
-2. Standalone `cmd/<svc>` only with external webhooks/credentials and score >= 11 on internal criteria — else package + worker in control/processor.
+2. Standalone `cmd/<svc>` only with external webhooks/credentials and score >= 11 on internal criteria - else package + worker in control/processor.
 3. Node-local I/O (log evacuator, mmap broker): utility binary near data, no network API.
 
-Do not split for folder layout when DB is already shared. Do not create microservices without active callers.
+## When not to split
 
-New standalone needs: `internal/<svc>/`, `cmd/<svc>/main.go`, migrations, config pool limits, compose entry, at least one real client.
+- Do not split for folder layout when DB is already shared.
+- Do not create microservices without active callers.
 
-Related: `architecture.mdc`, `hot-path.mdc`, `core.mdc`.
+## New standalone binary requirements
+
+| Requirement | Detail |
+| :--- | :--- |
+| Package | `internal/<svc>/` |
+| Entry | `cmd/<svc>/main.go` |
+| Schema | Migrations under `internal/<svc>/migrations/` |
+| Config | Pool limits in service config |
+| Deploy | Compose entry in `deploy/compose/` |
+| Client | At least one real caller in tree |
+
+## Import matrix
+
+```
+cmd/* -> internal/control | internal/<svc> | pkg/*
+internal/ingestion -> internal/domain, pkg/*, internal/rtb (auction glue)
+ NOT internal/controlplane admin, NOT internal/fraud scoring
+pkg/* -> stdlib and other pkg/* only
+internal/controlplane -> internal/<svc>/db, pkg/*, NOT internal/ingestion hot handlers
+```
+
+## Related rules
+
+`architecture.mdc`, `cold-path.mdc`, `core.mdc`, `hot-path.mdc`, `structure.mdc`.

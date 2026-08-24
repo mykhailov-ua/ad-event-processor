@@ -233,12 +233,12 @@ const verdict = regressionPct <= 30 ? 'OK (within 30% budget)' : 'REGRESSION (>3
 
 console.log('Metric chart benchmark (node --expose-gc, synthetic DOM + node-canvas 2d)');
 console.log('');
-console.log('| Implementation | ns/op | heap Δ (bytes) |');
+console.log('| Implementation | ns/op | heap delta (bytes) |');
 console.log('|----------------|------:|---------------:|');
 console.log(`| canvas (baseline) | ${canvasResult.nsPerOp} | ${canvasResult.heapDeltaBytes} |`);
 console.log(`| uplot | ${uplotResult.nsPerOp} | ${uplotResult.heapDeltaBytes} |`);
 console.log('');
 console.log(
-  `Regression vs canvas: ${regressionPct >= 0 ? '+' : ''}${regressionPct.toFixed(1)}% → ${verdict}`
+  `Regression vs canvas: ${regressionPct >= 0 ? '+' : ''}${regressionPct.toFixed(1)}% -> ${verdict}`
 );
 process.exit(regressionPct <= 30 ? 0 : 1);

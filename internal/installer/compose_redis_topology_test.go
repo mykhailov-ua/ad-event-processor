@@ -49,12 +49,12 @@ func TestStackSh_singleVPSRedisServiceList(t *testing.T) {
 }
 
 func extractServiceBlock(yaml, service string) string {
-	idx := strings.Index(yaml, "\n  "+service)
+	idx := strings.Index(yaml, "\n "+service)
 	if idx < 0 {
 		return ""
 	}
 	rest := yaml[idx+1:]
-	end := strings.Index(rest, "\n\n  ")
+	end := strings.Index(rest, "\n\n ")
 	if end < 0 {
 		return rest
 	}

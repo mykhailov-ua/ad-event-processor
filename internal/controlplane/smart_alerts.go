@@ -94,7 +94,7 @@ func (s *Service) ListSmartAlertRules(ctx context.Context, customerID uuid.UUID)
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, customer_id, campaign_id, name, metric, operator, threshold,
-		       window_minutes, webhook_url, enabled, created_at, updated_at
+		 window_minutes, webhook_url, enabled, created_at, updated_at
 		FROM alert_rules
 		WHERE customer_id = $1
 		ORDER BY created_at DESC`, domain.ToUUID(customerID))
@@ -158,7 +158,7 @@ func (s *Service) CreateSmartAlertRule(ctx context.Context, req UpsertSmartAlert
 			window_minutes, webhook_url, enabled
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, customer_id, campaign_id, name, metric, operator, threshold,
-		          window_minutes, webhook_url, enabled, created_at, updated_at`,
+		 window_minutes, webhook_url, enabled, created_at, updated_at`,
 		domain.ToUUID(customerID), campParam, name, metric, operator, req.Threshold,
 		window, webhookURL, req.Enabled,
 	)
@@ -202,10 +202,10 @@ func (s *Service) UpdateSmartAlertRule(ctx context.Context, ruleID uuid.UUID, re
 	row := s.pool.QueryRow(ctx, `
 		UPDATE alert_rules
 		SET name = $2, campaign_id = $3, metric = $4, operator = $5, threshold = $6,
-		    window_minutes = $7, webhook_url = $8, enabled = $9, updated_at = now()
+		 window_minutes = $7, webhook_url = $8, enabled = $9, updated_at = now()
 		WHERE id = $1
 		RETURNING id, customer_id, campaign_id, name, metric, operator, threshold,
-		          window_minutes, webhook_url, enabled, created_at, updated_at`,
+		 window_minutes, webhook_url, enabled, created_at, updated_at`,
 		domain.ToUUID(ruleID), name, campParam, metric, operator, req.Threshold,
 		window, webhookURL, req.Enabled,
 	)
@@ -242,8 +242,8 @@ func (s *Service) ListSmartAlertHistory(ctx context.Context, customerID uuid.UUI
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT id, rule_id, customer_id, campaign_id, window_start, window_end,
-		       metric, operator, threshold, observed_value, webhook_status, webhook_error,
-		       fired_at, acked_at, acked_by
+		 metric, operator, threshold, observed_value, webhook_status, webhook_error,
+		 fired_at, acked_at, acked_by
 		FROM alert_rule_events
 		WHERE customer_id = $1
 		ORDER BY fired_at DESC
@@ -366,7 +366,7 @@ func (w *SmartAlertsWorker) tick(ctx context.Context) {
 func (w *SmartAlertsWorker) loadEnabledRules(ctx context.Context) ([]smartAlertRuleRow, error) {
 	rows, err := w.svc.pool.Query(ctx, `
 		SELECT id, customer_id, campaign_id, name, metric, operator, threshold,
-		       window_minutes, webhook_url
+		 window_minutes, webhook_url
 		FROM alert_rules
 		WHERE enabled = true`)
 	if err != nil {

@@ -38,19 +38,19 @@ func TestScanOpenRTB26Payload_sectionsParity(t *testing.T) {
 
 func TestScanOpenRTB26Payload_topLevelParity(t *testing.T) {
 	payload := []byte(`{
-  "id":"req-1",
-  "bseat":["blocked"],
-  "tmax":250,
-  "bcat":["IAB2-3"],
-  "badv":["evil.com"],
-  "bapp":["com.blocked"],
-  "regs":{"gdpr":1,"us_privacy":"1YNN","coppa":0},
-  "cur":["USD"],
-  "bidfloorcur":"EUR",
-  "test":1,
-  "maxduration":30,
-  "imp":[{"id":"1","bidfloor":1.25,"devicetype":2,"wseat":["seat-1"],"cat":["IAB1"]}],
-  "source":{"ext":{"schain":{"nodes":[{"asi":"x"}]}}}
+ "id":"req-1",
+ "bseat":["blocked"],
+ "tmax":250,
+ "bcat":["IAB2-3"],
+ "badv":["evil.com"],
+ "bapp":["com.blocked"],
+ "regs":{"gdpr":1,"us_privacy":"1YNN","coppa":0},
+ "cur":["USD"],
+ "bidfloorcur":"EUR",
+ "test":1,
+ "maxduration":30,
+ "imp":[{"id":"1","bidfloor":1.25,"devicetype":2,"wseat":["seat-1"],"cat":["IAB1"]}],
+ "source":{"ext":{"schain":{"nodes":[{"asi":"x"}]}}}
 }`)
 	scan := scanOpenRTB26Payload(payload)
 	imp := bytes.Index(payload, openrtbKeyImp)

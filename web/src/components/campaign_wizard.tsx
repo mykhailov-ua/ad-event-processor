@@ -97,7 +97,7 @@ export function CampaignWizard({ open, customerId, onClose, onCreated }: Campaig
         <>
           <Button label="Cancel" variant="secondary" disabled={busy} onClick={onClose} />
           <Button
-            label={busy ? 'Creating…' : 'Create'}
+            label={busy ? 'Creating...' : 'Create'}
             variant="primary"
             loading={busy}
             disabled={busy}

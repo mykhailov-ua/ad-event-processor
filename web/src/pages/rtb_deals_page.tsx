@@ -122,7 +122,7 @@ export function RtbDealsPage() {
   };
 
   if (loading && deals.length === 0 && !error) {
-    return <p className="text-muted">Loading deals…</p>;
+    return <p className="text-muted">Loading deals...</p>;
   }
 
   if (error && deals.length === 0) {
@@ -195,7 +195,7 @@ export function RtbDealsPage() {
                 <td>{displayLabel(deal.pacing)}</td>
                 <td>{String(deal.seats)}</td>
                 <td className="text-muted text-xs">
-                  {deal.updated_at ? new Date(deal.updated_at).toLocaleString() : '—'}
+                  {deal.updated_at ? new Date(deal.updated_at).toLocaleString() : '-'}
                 </td>
                 {canWrite ? (
                   <td>

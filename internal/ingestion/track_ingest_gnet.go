@@ -138,14 +138,14 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 ) gnet.Action {
 	switch outcome.Status {
 	case trackStatusFraudAccepted:
-		h.trackMetrics.recordFilterReject(outcome.RejectKind)
+		h.recordTrackReject(ctx, evt, outcome.RejectKind)
 		shard := h.sharder.GetShard(evt.CampaignID)
 		enqueueFraudReject(h.fraudWriter, shard, evt)
 		h.writeGnetTrackAccepted(ctx, accept, origin, c, startMono, wReqID, requestIDStr, "")
 		return gnet.None
 	case trackStatusRejected:
 		spec := filterRejectSpecs[outcome.RejectKind]
-		h.trackMetrics.recordFilterReject(outcome.RejectKind)
+		h.recordTrackReject(ctx, evt, outcome.RejectKind)
 		h.write(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		return gnet.None
@@ -162,7 +162,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 					h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 				}
 				spec := filterRejectSpecs[filterRejectProducerOverload]
-				h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
+				h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 				h.write(c, spec.gnetResp, ctx)
 				h.recordMetrics(startMono, spec.status)
 				return gnet.None
@@ -172,7 +172,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 			}
 			spec := filterRejectSpecs[filterRejectProducerOverload]
-			h.trackMetrics.recordFilterReject(filterRejectProducerOverload)
+			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 			h.write(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
 			return gnet.None

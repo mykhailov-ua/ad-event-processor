@@ -52,4 +52,4 @@ bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" || true
 [[ -n "$BPF_PID" ]] && bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
 
 go run ./cmd/load-report prom "$OUT"
-log "done — $OUT/bottleneck-report.md"
+log "done - $OUT/bottleneck-report.md"

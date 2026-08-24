@@ -134,6 +134,56 @@ const GeoRoiReportPage = lazy(() =>
     default: mod.GeoRoiReportPage,
   }))
 );
+const DataQualityReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.DataQualityReportPage,
+  }))
+);
+const CostSyncCoverageReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.CostSyncCoverageReportPage,
+  }))
+);
+const FilterRejectsReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.FilterRejectsReportPage,
+  }))
+);
+const FraudBreakdownReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.FraudBreakdownReportPage,
+  }))
+);
+const GhostImpressionFunnelReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.GhostImpressionFunnelReportPage,
+  }))
+);
+const RtbOverviewReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.RtbOverviewReportPage,
+  }))
+);
+const RtbNoBidReasonsReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.RtbNoBidReasonsReportPage,
+  }))
+);
+const RtbGeoDeviceReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.RtbGeoDeviceReportPage,
+  }))
+);
+const PostbackReconReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.PostbackReconReportPage,
+  }))
+);
+const PacingDriftReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.PacingDriftReportPage,
+  }))
+);
 const TelegramSummaryPage = lazy(() =>
   import('./pages/report_telegram_summary_page.js').then((mod) => ({
     default: mod.TelegramSummaryPage,
@@ -227,6 +277,11 @@ const OpsMlModelPage = lazy(() =>
     default: mod.OpsMlModelPage,
   }))
 );
+const OpsEdgeParityPage = lazy(() =>
+  import('./pages/ops_edge_parity_page.js').then((mod) => ({
+    default: mod.OpsEdgeParityPage,
+  }))
+);
 const SupportFeedbackPage = lazy(() =>
   import('./pages/support_feedback_page.js').then((mod) => ({
     default: mod.SupportFeedbackPage,
@@ -294,7 +349,7 @@ const SelfServeCampaignCreatePage = lazy(() =>
 );
 
 function RouteFallback() {
-  return <span className="text-muted">Loading…</span>;
+  return <span className="text-muted">Loading...</span>;
 }
 
 function lazyRoute(element: ReactNode) {
@@ -353,6 +408,28 @@ export function AppRoutes() {
         <Route path="/reports/ivt-by-source" element={lazyRoute(<IvtBySourceReportPage />)} />
         <Route path="/reports/traffic-sources" element={lazyRoute(<TrafficSourcesReportPage />)} />
         <Route path="/reports/geo-roi" element={lazyRoute(<GeoRoiReportPage />)} />
+        <Route path="/reports/data-quality" element={lazyRoute(<DataQualityReportPage />)} />
+        <Route
+          path="/reports/cost-sync-coverage"
+          element={lazyRoute(<CostSyncCoverageReportPage />)}
+        />
+        <Route path="/reports/filter-rejects" element={lazyRoute(<FilterRejectsReportPage />)} />
+        <Route path="/reports/fraud-breakdown" element={lazyRoute(<FraudBreakdownReportPage />)} />
+        <Route
+          path="/reports/ghost-impression-funnel"
+          element={lazyRoute(<GhostImpressionFunnelReportPage />)}
+        />
+        <Route path="/reports/rtb/overview" element={lazyRoute(<RtbOverviewReportPage />)} />
+        <Route
+          path="/reports/rtb/no-bid-reasons"
+          element={lazyRoute(<RtbNoBidReasonsReportPage />)}
+        />
+        <Route path="/reports/rtb/geo-device" element={lazyRoute(<RtbGeoDeviceReportPage />)} />
+        <Route
+          path="/reports/postback-reconciliation"
+          element={lazyRoute(<PostbackReconReportPage />)}
+        />
+        <Route path="/reports/pacing-drift" element={lazyRoute(<PacingDriftReportPage />)} />
         <Route path="/reports/spend-velocity" element={lazyRoute(<SpendVelocityReportPage />)} />
         <Route path="/reports/daypart-heatmap" element={lazyRoute(<DaypartHeatmapReportPage />)} />
         <Route
@@ -387,6 +464,7 @@ export function AppRoutes() {
         <Route path="/ops/recon" element={lazyRoute(<OpsReconPage />)} />
         <Route path="/ops/consent" element={lazyRoute(<OpsConsentPage />)} />
         <Route path="/ops/ml-model" element={lazyRoute(<OpsMlModelPage />)} />
+        <Route path="/ops/edge-parity" element={lazyRoute(<OpsEdgeParityPage />)} />
         <Route path="/support/feedback" element={lazyRoute(<SupportFeedbackPage />)} />
         <Route path="/billing" element={lazyRoute(<BillingPage />)} />
         <Route path="/team" element={lazyRoute(<TeamPage />)} />

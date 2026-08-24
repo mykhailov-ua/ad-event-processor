@@ -12,7 +12,7 @@ const PAGE_SIZE = 50;
 type ServiceFilter = 'all' | 'management' | 'payment';
 
 function formatPeriod(value: string | undefined): string {
-  if (!value) return '—';
+  if (!value) return '-';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? value : d.toISOString().slice(0, 16).replace('T', ' ');
 }
@@ -141,14 +141,14 @@ export function OpsReconPage() {
               <tr key={`${row.service}-${row.created_at}-${row.period_start}`}>
                 <td>{row.service}</td>
                 <td className="font-mono text-xs">
-                  {`${formatPeriod(row.period_start)} → ${formatPeriod(row.period_end)}`}
+                  {`${formatPeriod(row.period_start)} -> ${formatPeriod(row.period_end)}`}
                 </td>
                 <td>
                   <StatusBadge status={statusTone(row.status)} label={row.status} kind="service" />
                 </td>
-                <td>{String(row.discrepancies_found ?? row.findings_count ?? '—')}</td>
+                <td>{String(row.discrepancies_found ?? row.findings_count ?? '-')}</td>
                 <td className="text-muted text-xs">
-                  {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                  {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
                 </td>
               </tr>
             ))}

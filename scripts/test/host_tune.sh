@@ -74,7 +74,7 @@ check_file() {
 }
 
 report_ulimit() {
-  log "--- session limits ---"
+  log "session limits"
   log "ulimit -n (open files) = $(ulimit -n 2> /dev/null || echo na)"
   log "ulimit -u (max processes) = $(ulimit -u 2> /dev/null || echo na)"
   if command -v systemctl > /dev/null 2>&1; then
@@ -83,7 +83,7 @@ report_ulimit() {
 }
 
 report_ss() {
-  log "--- TCP summary (ss -s) ---"
+  log "TCP summary (ss -s)"
   ss -s 2> /dev/null | sed 's/^/  /' || warn "ss not available"
 }
 
@@ -95,7 +95,7 @@ report_ptrace() {
 }
 
 report_status() {
-  log "=== load-test host preflight ==="
+  log "load-test host preflight"
   log "edge sysctl: $EDGE_CONF"
   check_file "$EDGE_CONF" "edge" || true
   log "load-test sysctl: $LOADTEST_CONF"
@@ -139,7 +139,7 @@ apply_tuning() {
   if [[ "$nr" -lt 100000 ]]; then
     warn "current shell ulimit -n=$nr; add '* soft nofile 1048576' to /etc/security/limits.d/99-ad-event-processor-loadtest.conf and re-login"
   fi
-  log "apply: done — run: bash scripts/test/host_tune.sh verify"
+  log "apply: done - run: bash scripts/test/host_tune.sh verify"
 }
 
 case "$MODE" in

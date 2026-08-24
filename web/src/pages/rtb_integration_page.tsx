@@ -106,7 +106,7 @@ function RuntimeHints({ runtime }: { runtime?: RtbRuntimeHints | null }) {
       <dt>RTB_MODE</dt>
       <dd className="font-mono">{enabled ? mode : 'off (RTB disabled)'}</dd>
       <dt>RTB_EXCHANGE_NO_BID_MODE</dt>
-      <dd className="font-mono">{runtime?.rtb_exchange_no_bid_mode || '—'}</dd>
+      <dd className="font-mono">{runtime?.rtb_exchange_no_bid_mode || '-'}</dd>
       <dt>Note</dt>
       <dd className="text-muted text-sm">
         Env-driven on tracker/control. RTB_MODE=shadow|live affects in-auction path on /track;
@@ -125,8 +125,8 @@ function ShadowSummary({ data }: { data: RtbShadowDiff | null }) {
       </p>
     );
   }
-  const parity = data.parity_rate != null ? `${(data.parity_rate * 100).toFixed(1)}%` : '—';
-  const mismatch = data.mismatch_rate != null ? `${(data.mismatch_rate * 100).toFixed(1)}%` : '—';
+  const parity = data.parity_rate != null ? `${(data.parity_rate * 100).toFixed(1)}%` : '-';
+  const mismatch = data.mismatch_rate != null ? `${(data.mismatch_rate * 100).toFixed(1)}%` : '-';
   return (
     <dl className="definition-list" data-testid="rtb-shadow-diff">
       <dt>Window</dt>
@@ -279,14 +279,14 @@ export function RtbIntegrationPage() {
       <div className="page-header">
         <h1 className="page-header__title">RTB integration</h1>
         <p className="page-header__desc">
-          OpenRTB 2.6 exchange onboarding — profile, env hints, validate-bid smoke, shadow parity.
+          OpenRTB 2.6 exchange onboarding - profile, env hints, validate-bid smoke, shadow parity.
         </p>
         <p className="text-muted text-sm">
-          <a href="/rtb/deals">← PMP deals</a>
+          <a href="/rtb/deals">{'<-'} PMP deals</a>
         </p>
       </div>
 
-      {loading ? <p className="loading-hint">Loading integration profile…</p> : null}
+      {loading ? <p className="loading-hint">Loading integration profile...</p> : null}
 
       {!loading && profile ? (
         <>
@@ -296,11 +296,11 @@ export function RtbIntegrationPage() {
             desc="Pre-flight gates before pointing exchange traffic at this stack."
           >
             <ul className="plain-list" data-testid="rtb-readiness-checklist">
-              <li>{profile.openrtb_version ? '✓' : '○'} OpenRTB version declared</li>
-              <li>{profile.runtime?.rtb_enabled ? '✓' : '○'} RTB enabled in runtime</li>
-              <li>{endpoints.edge_expose_openrtb ? '✓' : '○'} Edge OpenRTB route exposed</li>
-              <li>{validateResult?.valid ? '✓' : '○'} Validate-bid smoke passed</li>
-              <li>{supported.length > 0 ? '✓' : '○'} Capability matrix loaded</li>
+              <li>{profile.openrtb_version ? '+' : '-'} OpenRTB version declared</li>
+              <li>{profile.runtime?.rtb_enabled ? '+' : '-'} RTB enabled in runtime</li>
+              <li>{endpoints.edge_expose_openrtb ? '+' : '-'} Edge OpenRTB route exposed</li>
+              <li>{validateResult?.valid ? '+' : '-'} Validate-bid smoke passed</li>
+              <li>{supported.length > 0 ? '+' : '-'} Capability matrix loaded</li>
             </ul>
           </SectionCard>
 
@@ -316,7 +316,7 @@ export function RtbIntegrationPage() {
             ) : (
               <StatusBadge
                 status="neutral"
-                label="Tracker ports only — enable edge in Platform settings"
+                label="Tracker ports only - enable edge in Platform settings"
               />
             )}
           </SectionCard>
@@ -332,7 +332,7 @@ export function RtbIntegrationPage() {
           <SectionCard
             title="Integration profile"
             icon="clipboard-text"
-            desc={`OpenRTB ${profile.openrtb_version ?? '2.6'} — required fields and capability matrix.`}
+            desc={`OpenRTB ${profile.openrtb_version ?? '2.6'} - required fields and capability matrix.`}
           >
             <h3 className="subsection-title">Required</h3>
             <BulletList items={(profile.required ?? []) as string[]} />
@@ -358,7 +358,7 @@ export function RtbIntegrationPage() {
             />
             <div className="cluster--actions mt-2">
               <Button
-                label={validateBusy ? 'Validating…' : 'Run validate-bid'}
+                label={validateBusy ? 'Validating...' : 'Run validate-bid'}
                 variant="primary"
                 loading={validateBusy}
                 disabled={validateBusy}
@@ -395,7 +395,7 @@ export function RtbIntegrationPage() {
           <SectionCard
             title="Shadow diff (1h)"
             icon="git-compare"
-            desc="Shadow vs live winner parity — gate before RTB_MODE=live."
+            desc="Shadow vs live winner parity - gate before RTB_MODE=live."
           >
             <ShadowSummary data={shadow} />
           </SectionCard>
@@ -408,7 +408,7 @@ export function RtbIntegrationPage() {
             {canApplyFloors ? (
               <div className="cluster--actions mb-3">
                 <Button
-                  label={floorsBusy ? 'Working…' : 'Preview'}
+                  label={floorsBusy ? 'Working...' : 'Preview'}
                   variant="secondary"
                   size="sm"
                   loading={floorsBusy}
@@ -470,7 +470,7 @@ export function RtbIntegrationPage() {
             desc="Download ClickHouse bid/win snapshot and live-gate readiness for the last 24h."
           >
             <Button
-              label={reconcileBusy ? 'Exporting…' : 'Download reconcile JSON'}
+              label={reconcileBusy ? 'Exporting...' : 'Download reconcile JSON'}
               variant="secondary"
               size="sm"
               loading={reconcileBusy}

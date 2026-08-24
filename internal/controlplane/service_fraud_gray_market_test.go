@@ -46,9 +46,9 @@ func TestUpdateCampaignFraud_grayMarketPreset_appliesGMAFlags(t *testing.T) {
 	)
 	err = pool.QueryRow(ctx, `
 		SELECT safe_page_enabled, attestation_enabled, attestation_ttl_sec,
-		       l15_proxy_vpn_block_enabled, tls_fingerprint_block_enabled,
-		       l1_cidr_block_enabled, link_signing_enabled,
-		       fraud_threshold_pass, fraud_threshold_block
+		 l15_proxy_vpn_block_enabled, tls_fingerprint_block_enabled,
+		 l1_cidr_block_enabled, link_signing_enabled,
+		 fraud_threshold_pass, fraud_threshold_block
 		FROM campaigns WHERE id = $1`, campID).Scan(
 		&safePage, &attestation, &attTTL, &l15, &tls, &l1, &linkSign, &pass, &block,
 	)

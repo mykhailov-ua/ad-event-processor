@@ -19,5 +19,5 @@ test('role U campaigns load without manual customer uuid', async ({ page }) => {
 
   await page.goto('/campaigns');
   await expect(page.getByText('Tenant Camp')).toBeVisible();
-  await expect(page.locator('input[placeholder="Customer UUID…"]')).toHaveCount(0);
+  await expect(page.locator('input[placeholder="Customer UUID..."]')).toHaveCount(0);
 });

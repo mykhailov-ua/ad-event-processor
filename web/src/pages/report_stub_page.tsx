@@ -98,7 +98,7 @@ export function ReportStubPage() {
       const polled = await pollReportJob(result.jobId);
       setExportStatus(
         polled.ok
-          ? `Export ${polled.status}: downloading…`
+          ? `Export ${polled.status}: downloading...`
           : `Export ${polled.status}: ${polled.message}`
       );
       if (polled.ok) {
@@ -128,16 +128,21 @@ export function ReportStubPage() {
           <h1 className="page-header__title">{title}</h1>
         </div>
         <p className="text-muted">
-          <a href="/reports">← Reports hub</a>
+          <a href="/reports">{'<-'} Reports hub</a>
         </p>
       </div>
 
-      {loading ? <p className="text-muted">Checking availability…</p> : null}
+      {loading ? <p className="text-muted">Checking availability...</p> : null}
 
       {!loading && isRetiredReport(reportKey) ? (
-        <StubBanner
-          message={`${title} was retired. Use ${retiredAltLink?.label ?? 'a live report'} instead.`}
-        />
+        <>
+          <StubBanner
+            message={`${title} was retired. Use ${retiredAltLink?.label ?? 'a live report'} instead.`}
+          />
+          {retiredAltLink?.title ? (
+            <p className="text-sm text-muted">{retiredAltLink.title}</p>
+          ) : null}
+        </>
       ) : null}
 
       {!loading && !isRetiredReport(reportKey) && probe?.stub ? (
@@ -161,12 +166,13 @@ export function ReportStubPage() {
             label={retiredAltLink.label}
             variant="primary"
             size="sm"
+            title={retiredAltLink.title}
           />
         ) : (
           <div className="page-header__links">
             {copy.live.map((link, i) => (
               <span key={link.href}>
-                {i > 0 ? <span className="text-muted"> · </span> : null}
+                {i > 0 ? <span className="text-muted"> , </span> : null}
                 <a href={link.href}>{link.label}</a>
               </span>
             ))}

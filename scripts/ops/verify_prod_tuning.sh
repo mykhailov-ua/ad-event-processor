@@ -24,7 +24,7 @@ ENV="${ENV:-development}"
 FILTER_TIMEOUT_MS="${FILTER_TIMEOUT_MS:-0}"
 
 if [[ "$ENV" != "production" ]]; then
-  log "ENV=$ENV (not production) — FILTER_TIMEOUT_MS check skipped"
+  log "ENV=$ENV (not production) - FILTER_TIMEOUT_MS check skipped"
   exit 0
 fi
 

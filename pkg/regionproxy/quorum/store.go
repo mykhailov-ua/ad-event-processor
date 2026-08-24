@@ -92,8 +92,8 @@ func Transition(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, f
 	key := leaseKey(opID)
 	script := redis.NewScript(`
 if redis.call("HGET", KEYS[1], "state") == ARGV[1] then
-  redis.call("HSET", KEYS[1], "state", ARGV[2])
-  return 1
+ redis.call("HSET", KEYS[1], "state", ARGV[2])
+ return 1
 end
 return 0`)
 	res, err := script.Run(ctx, rdb, []string{key}, from, to).Int()

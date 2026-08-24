@@ -91,7 +91,7 @@ func WriteSLAReport(outDir, promURL string) (string, error) {
 	if result.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString("\n**Result: FAIL** — exchange or tracker p99 exceeded §5 budget.\n")
+		b.WriteString("\n**Result: FAIL** - exchange or tracker p99 exceeded section 5 budget.\n")
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
 		return "", err

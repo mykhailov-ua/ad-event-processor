@@ -182,8 +182,8 @@ function AdOpsBody({ data }: { data: RoleDashboardData }) {
                     <td>
                       <a href={`/campaigns/${c.id}`}>{c.name ?? c.id}</a>
                     </td>
-                    <td>{c.utilization_pct?.toFixed?.(1) ?? '—'}</td>
-                    <td>{c.pacing_drift_pct?.toFixed?.(1) ?? '—'}</td>
+                    <td>{c.utilization_pct?.toFixed?.(1) ?? '-'}</td>
+                    <td>{c.pacing_drift_pct?.toFixed?.(1) ?? '-'}</td>
                     <td className="font-mono">{formatAmountMicro(c.spend_micro ?? 0)}</td>
                   </tr>
                 ))}
@@ -218,16 +218,16 @@ function AdOpsBody({ data }: { data: RoleDashboardData }) {
                     : '/reports/placements';
                   return (
                     <tr key={`${s.campaign_id ?? ''}-${s.sub1 ?? ''}-${idx}`}>
-                      <td>{s.sub1 ?? s.sub2 ?? '—'}</td>
+                      <td>{s.sub1 ?? s.sub2 ?? '-'}</td>
                       <td>
                         {s.campaign_id ? (
                           <a href={`/campaigns/${s.campaign_id}`}>{s.campaign_id.slice(0, 8)}</a>
                         ) : (
-                          '—'
+                          '-'
                         )}
                       </td>
                       <td>{`${((s.ivt_rate ?? 0) * 100).toFixed(1)}%`}</td>
-                      <td>{s.quality_score != null ? s.quality_score.toFixed(1) : '—'}</td>
+                      <td>{s.quality_score != null ? s.quality_score.toFixed(1) : '-'}</td>
                       <td className="font-mono">{formatAmountMicro(s.spend_micro ?? 0)}</td>
                       <td>
                         <ButtonLink
@@ -279,13 +279,13 @@ function AccountantBody({
     <div className="stack section-block">
       <dl className="definition-list">
         <dt>Billing month</dt>
-        <dd>{close.billing_month ?? '—'}</dd>
+        <dd>{close.billing_month ?? '-'}</dd>
         <dt>Invariant OK</dt>
         <dd>{close.invariant_ok ? 'Yes' : 'No'}</dd>
         <dt>Tax country</dt>
-        <dd>{data.tax_country ?? '—'}</dd>
+        <dd>{data.tax_country ?? '-'}</dd>
         <dt>Tax scheme</dt>
-        <dd>{data.tax_scheme ?? data.tax_vat_id ?? '—'}</dd>
+        <dd>{data.tax_scheme ?? data.tax_vat_id ?? '-'}</dd>
       </dl>
       {customerId ? (
         <p className="text-sm">
@@ -340,7 +340,7 @@ function AccountantBody({
                             onClick={() => onDownload(j.id)}
                           />
                         ) : status === 'PENDING' || status === 'RUNNING' ? (
-                          <span className="text-muted text-sm">Polling…</span>
+                          <span className="text-muted text-sm">Polling...</span>
                         ) : live.error ? (
                           <span className="text-danger text-sm">{live.error}</span>
                         ) : null}
@@ -405,7 +405,7 @@ function FraudBody({ data, canWrite }: { data: RoleDashboardData; canWrite: bool
           </p>
           {thresholds.pass_max ? (
             <p className="text-muted text-xs">
-              {`API defaults: pass≤${thresholds.pass_max}, suspect≤${thresholds.suspect_max}, ivt≤${thresholds.ivt_max}, block≤${thresholds.block_above ?? thresholds.ivt_max}`}
+              {`API defaults: pass<=${thresholds.pass_max}, suspect<=${thresholds.suspect_max}, ivt<=${thresholds.ivt_max}, block<=${thresholds.block_above ?? thresholds.ivt_max}`}
             </p>
           ) : null}
         </div>
@@ -430,7 +430,7 @@ function FraudBody({ data, canWrite }: { data: RoleDashboardData; canWrite: bool
               <tbody>
                 {geoHints.map((hint) => (
                   <tr key={hint.country ?? ''}>
-                    <td>{hint.country ?? '—'}</td>
+                    <td>{hint.country ?? '-'}</td>
                     <td>{`${((hint.ivt_rate ?? 0) * 100).toFixed(1)}%`}</td>
                     <td className="font-mono">{String(hint.ivt_events ?? 0)}</td>
                     <td>

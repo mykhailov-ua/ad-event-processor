@@ -76,12 +76,7 @@ fi
 echo "tarpit cap: OK"
 
 if command -v luajit > /dev/null 2>&1; then
-  echo "Running tarpit_test.lua..."
-  luajit deploy/nginx/lua/tests/tarpit_test.lua deploy/nginx/lua
-  echo "tarpit_test.lua: OK"
-  echo "Running blacklist_sync_test.lua..."
-  luajit deploy/nginx/lua/tests/blacklist_sync_test.lua deploy/nginx/lua
-  echo "blacklist_sync_test.lua: OK"
+  bash "$SCRIPTS/test/nginx_lua_tests.sh" compliance
 fi
 
 echo "COMPLIANCE CHECK SUCCESSFUL: All defensive perimeter rules are met!"

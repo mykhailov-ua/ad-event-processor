@@ -35,58 +35,58 @@ type TrafficSourcesReportResponse struct {
 
 const trafficChannelExpr = `
 multiIf(
-    JSONExtractString(payload, 'gclid') != '', 'paid_search',
-    JSONExtractString(payload, 'fbclid') != '' OR JSONExtractString(payload, 'ttclid') != '', 'paid_social',
-    lower(JSONExtractString(payload, 'sub1')) = 'organic' OR lower(JSONExtractString(payload, 'sub2')) = 'organic', 'organic',
-    lower(JSONExtractString(payload, 'sub1')) = 'email' OR lower(JSONExtractString(payload, 'sub2')) = 'email', 'email',
-    lower(JSONExtractString(payload, 'sub1')) = 'affiliate' OR lower(JSONExtractString(payload, 'sub2')) = 'affiliate', 'affiliate',
-    JSONExtractString(payload, 'sub1') != '' OR JSONExtractString(payload, 'sub2') != '', 'custom',
-    'direct'
+ JSONExtractString(payload, 'gclid') != '', 'paid_search',
+ JSONExtractString(payload, 'fbclid') != '' OR JSONExtractString(payload, 'ttclid') != '', 'paid_social',
+ lower(JSONExtractString(payload, 'sub1')) = 'organic' OR lower(JSONExtractString(payload, 'sub2')) = 'organic', 'organic',
+ lower(JSONExtractString(payload, 'sub1')) = 'email' OR lower(JSONExtractString(payload, 'sub2')) = 'email', 'email',
+ lower(JSONExtractString(payload, 'sub1')) = 'affiliate' OR lower(JSONExtractString(payload, 'sub2')) = 'affiliate', 'affiliate',
+ JSONExtractString(payload, 'sub1') != '' OR JSONExtractString(payload, 'sub2') != '', 'custom',
+ 'direct'
 )`
 
 const trafficEventQuery = `
 SELECT
-    campaign_id,
-    channel,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions
+ campaign_id,
+ channel,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions
 FROM (
-    SELECT
-        campaign_id,
-        ` + trafficChannelExpr + ` AS channel,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS conversions
-    FROM impressions
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY campaign_id, channel
-    UNION ALL
-    SELECT
-        campaign_id,
-        ` + trafficChannelExpr + ` AS channel,
-        toUInt64(0),
-        count(),
-        toUInt64(0)
-    FROM clicks
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY campaign_id, channel
-    UNION ALL
-    SELECT
-        campaign_id,
-        ` + trafficChannelExpr + ` AS channel,
-        toUInt64(0),
-        toUInt64(0),
-        count()
-    FROM conversions
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY campaign_id, channel
+ SELECT
+ campaign_id,
+ ` + trafficChannelExpr + ` AS channel,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toUInt64(0) AS conversions
+ FROM impressions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY campaign_id, channel
+ UNION ALL
+ SELECT
+ campaign_id,
+ ` + trafficChannelExpr + ` AS channel,
+ toUInt64(0),
+ count(),
+ toUInt64(0)
+ FROM clicks
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY campaign_id, channel
+ UNION ALL
+ SELECT
+ campaign_id,
+ ` + trafficChannelExpr + ` AS channel,
+ toUInt64(0),
+ toUInt64(0),
+ count()
+ FROM conversions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY campaign_id, channel
 )
 GROUP BY campaign_id, channel`
 
@@ -101,7 +101,7 @@ type trafficCampaignChannelRow struct {
 func (reports *ReportsHTTPHandlers) registerTrafficSources(mux *http.ServeMux) {
 	limit := reports.ApplyRateLimit
 	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/traffic-sources", limit(perm("campaigns:read", reports.getTrafficSourcesReport)))
+	mux.HandleFunc("GET /api/v1/reports/traffic-sources", limit(perm("campaigns:read", reports.wrapReport("traffic-sources", reports.getTrafficSourcesReport))))
 }
 
 func (reports *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWriter, r *http.Request) {

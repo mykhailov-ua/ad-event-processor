@@ -38,7 +38,7 @@ export function buildInboundS2SCurl(trackURL: string, campaignId: string): strin
 
 export function trafficGuideSummary(): string {
   return [
-    'Click URL sends visitors through ad-event-processor (GET /click → 302 lander).',
+    'Click URL sends visitors through ad-event-processor (GET /click -> 302 lander).',
     'When a sale happens, the affiliate or your CRM POSTs JSON to the postback URL (POST /track).',
     'Optional: lander JS fires the same /track without a redirect (zero-redirect).',
     'CAPI forwards settled conversions to Meta / Google / TikTok from the CAPI & Postbacks tab.',

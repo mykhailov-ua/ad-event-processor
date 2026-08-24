@@ -97,9 +97,9 @@ func (r *RegionOutboxRelay) reclaimStaleProcessing(ctx context.Context) {
 		UPDATE outbox_region_delivery
 		SET status = 'PENDING', processing_started_at = NULL
 		WHERE region_code = $1
-		  AND status = 'PROCESSING'
-		  AND processing_started_at IS NOT NULL
-		  AND processing_started_at < NOW() - INTERVAL '1 minute'`, r.regionCode)
+		 AND status = 'PROCESSING'
+		 AND processing_started_at IS NOT NULL
+		 AND processing_started_at < NOW() - INTERVAL '1 minute'`, r.regionCode)
 	if err != nil && ctx.Err() == nil && !database.IsShutdownError(err) {
 		slog.Error("failed to reclaim stale region outbox deliveries", "region", r.regionCode, "error", err)
 	}
@@ -125,7 +125,7 @@ func (r *RegionOutboxRelay) ProcessPendingWithCount(ctx context.Context, limit i
 			FROM outbox_region_delivery d
 			JOIN outbox_events e ON e.id = d.outbox_event_id
 			WHERE d.region_code = $1
-			  AND d.status = 'PENDING'
+			 AND d.status = 'PENDING'
 			ORDER BY e.created_at ASC
 			LIMIT $2
 			FOR UPDATE OF d SKIP LOCKED`, r.regionCode, limit)

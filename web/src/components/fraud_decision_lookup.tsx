@@ -128,7 +128,7 @@ export function FraudDecisionLookup({ customerId, canWrite = false }: FraudDecis
         </label>
         <div>
           <Button
-            label={loading ? 'Looking up…' : 'Why blocked?'}
+            label={loading ? 'Looking up...' : 'Why blocked?'}
             type="submit"
             disabled={loading}
           />
@@ -176,7 +176,7 @@ export function FraudDecisionLookup({ customerId, canWrite = false }: FraudDecis
           {canWrite && result.tier !== 'pass' ? (
             <div className="button-row">
               <Button
-                label={overriding ? 'Submitting…' : 'Mark false positive'}
+                label={overriding ? 'Submitting...' : 'Mark false positive'}
                 variant="secondary"
                 size="sm"
                 disabled={overriding}
@@ -221,7 +221,7 @@ function SubsectionFeatures({ features, thresholds }: SubsectionFeaturesProps) {
         </table>
       </div>
       <p className="text-muted text-xs">
-        {`Campaign thresholds: pass≤${thresholds.pass_max}, suspect≤${thresholds.suspect_max}, ivt≤${thresholds.ivt_max}, block≤${thresholds.block_above}`}
+        {`Campaign thresholds: pass<=${thresholds.pass_max}, suspect<=${thresholds.suspect_max}, ivt<=${thresholds.ivt_max}, block<=${thresholds.block_above}`}
       </p>
     </div>
   );

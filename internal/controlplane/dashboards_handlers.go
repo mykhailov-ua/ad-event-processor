@@ -18,10 +18,11 @@ type PeriodDTO struct {
 }
 
 type DataFreshnessDTO struct {
-	AsOf         string `json:"as_of"`
-	Consistency  string `json:"consistency"`
-	Stale        bool   `json:"stale"`
-	CHLagSeconds int    `json:"ch_lag_seconds,omitempty"`
+	AsOf         string                   `json:"as_of"`
+	Consistency  string                   `json:"consistency"`
+	Stale        bool                     `json:"stale"`
+	CHLagSeconds int                      `json:"ch_lag_seconds,omitempty"`
+	Sources      []DataSourceFreshnessDTO `json:"sources,omitempty"`
 }
 
 type MetricsBlockDTO struct {
@@ -67,18 +68,19 @@ type BuyerAttentionDTO struct {
 }
 
 type BuyerCampaignPortfolioRowDTO struct {
-	ID             string  `json:"id"`
-	Name           string  `json:"name"`
-	Status         string  `json:"status"`
-	PacingMode     string  `json:"pacing_mode"`
-	Impressions7d  int64   `json:"impressions_7d"`
-	Clicks7d       int64   `json:"clicks_7d"`
-	SpendMicro     int64   `json:"spend_micro,omitempty"`
-	BudgetMicro    int64   `json:"budget_micro,omitempty"`
-	UtilizationPct float64 `json:"utilization_pct,omitempty"`
-	PacingDriftPct float64 `json:"pacing_drift_pct,omitempty"`
-	OverspendRisk  bool    `json:"overspend_risk,omitempty"`
-	MarginBreach   bool    `json:"margin_breach,omitempty"`
+	ID                      string  `json:"id"`
+	Name                    string  `json:"name"`
+	Status                  string  `json:"status"`
+	PacingMode              string  `json:"pacing_mode"`
+	Impressions7d           int64   `json:"impressions_7d"`
+	Clicks7d                int64   `json:"clicks_7d"`
+	SpendMicro              int64   `json:"spend_micro,omitempty"`
+	BudgetMicro             int64   `json:"budget_micro,omitempty"`
+	UtilizationPct          float64 `json:"utilization_pct,omitempty"`
+	PacingDriftPct          float64 `json:"pacing_drift_pct,omitempty"`
+	EstimatedPacingDriftPct float64 `json:"estimated_pacing_drift_pct,omitempty"`
+	OverspendRisk           bool    `json:"overspend_risk,omitempty"`
+	MarginBreach            bool    `json:"margin_breach,omitempty"`
 }
 
 type BuyerPortfolioDTO struct {

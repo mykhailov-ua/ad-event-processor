@@ -32,10 +32,8 @@ func BenchmarkScoreNodesInMemory_100Nodes(b *testing.B) {
 		}
 	}
 	neighbors := buildNeighborMediansByNode(nodeBuckets, defs)
-
-	b.ResetTimer()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for nodeID, buckets := range nodeBuckets {
 			_, _, _, _ = scoreNodeFromBuckets(nodeID, RoleTracker, buckets, defs, neighbors[nodeID], nil, now, windowStart, cfg)
 		}
@@ -56,7 +54,7 @@ func BenchmarkComputeCapacityScoreFromValues(b *testing.B) {
 	}
 	defs := DefaultTrackerMetrics()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ComputeCapacityScoreFromValues(RoleTracker, values, defs)
 	}
 }

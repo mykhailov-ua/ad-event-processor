@@ -18,9 +18,9 @@ func (s *Service) RtbReconcileCHStats(ctx context.Context, requestID string, win
 	since := time.Now().UTC().Add(-window)
 	query := `
 SELECT
-    count() AS bids,
-    sum(won) AS wins,
-    sumIf(price_micro, won = 1) AS spend_micro
+ count() AS bids,
+ sum(won) AS wins,
+ sumIf(price_micro, won = 1) AS spend_micro
 FROM rtb_exchange_log
 WHERE created_at >= ?
 `

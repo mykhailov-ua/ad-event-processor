@@ -98,8 +98,7 @@ func BenchmarkTgClickRedirectGnet_E2E(b *testing.B) {
 	h, req, conn := benchTgClickHandler(b)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(req.Path)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn.written = conn.written[:0]
 		conn.responses = conn.responses[:0]
 		h.React(req, conn)
@@ -111,8 +110,7 @@ func BenchmarkBuildTgRedirectLocation(b *testing.B) {
 	subs := [5]string{"fb"}
 	dst := make([]byte, 0, 512)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		dst, _ = buildTgRedirectLocation(dst[:0], base, "d5671191-236b-4e94-825e-399185a9bc8d", "bridge_abc123", subs, nil)
 	}
 }

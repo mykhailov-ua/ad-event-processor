@@ -91,7 +91,7 @@ export function parseFlowPaths(raw: FlowDTO['paths']): FlowPathDTO[] {
 }
 
 export function summarizeFlowPaths(paths: FlowPathDTO[]): string {
-  if (!paths.length) return '—';
+  if (!paths.length) return '-';
   const path = paths[0];
   const landerCount = path.landers?.length ?? 0;
   const offerCount = path.offers?.length ?? 0;

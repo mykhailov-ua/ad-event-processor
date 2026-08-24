@@ -102,15 +102,15 @@ func (c *CLI) Run() error {
 func (c *CLI) PrintUsage() {
 	fmt.Println("Usage: ad-event-processor-install <command> [options]")
 	fmt.Println("Commands:")
-	fmt.Println("  preflight [--strict] [--json]")
-	fmt.Println("  provision [--yes]")
-	fmt.Println("  configure [--interactive]")
-	fmt.Println("  up")
-	fmt.Println("  bootstrap")
-	fmt.Println("  apply     [--dry-run]")
-	fmt.Println("  rollback  <tracker|processor>")
-	fmt.Println("  doctor    [--json]")
-	fmt.Println("  license   <install|activate|status|host-id>")
+	fmt.Println(" preflight [--strict] [--json]")
+	fmt.Println(" provision [--yes]")
+	fmt.Println(" configure [--interactive]")
+	fmt.Println(" up")
+	fmt.Println(" bootstrap")
+	fmt.Println(" apply [--dry-run]")
+	fmt.Println(" rollback <tracker|processor>")
+	fmt.Println(" doctor [--json]")
+	fmt.Println(" license <install|activate|status|host-id>")
 }
 
 func (c *CLI) RunApply(dryRun bool) error {

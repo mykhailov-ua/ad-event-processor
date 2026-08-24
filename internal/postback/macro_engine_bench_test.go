@@ -16,7 +16,7 @@ var (
 
 func BenchmarkParseTemplate(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ParseTemplate(benchTemplate)
 	}
 }
@@ -24,7 +24,7 @@ func BenchmarkParseTemplate(b *testing.B) {
 func BenchmarkMacroRenderAppend_Stack(b *testing.B) {
 	b.ReportAllocs()
 	var scratch [MaxRenderedURLLen]byte
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = benchParsed.RenderStack(&benchCtx, &scratch)
 	}
 }
@@ -32,7 +32,7 @@ func BenchmarkMacroRenderAppend_Stack(b *testing.B) {
 func BenchmarkMacroRenderAppend_ReusedSlice(b *testing.B) {
 	b.ReportAllocs()
 	buf := make([]byte, 0, 256)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf = buf[:0]
 		_ = benchParsed.RenderAppend(buf, &benchCtx)
 	}

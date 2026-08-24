@@ -35,7 +35,7 @@ func TestChaos_CrossHop_NginxGnet(t *testing.T) {
 		"differential_count": fmt.Sprintf("%d", len(diffs)),
 		"elapsed_ms":         fmt.Sprintf("%d", elapsed.Milliseconds()),
 	})
-	require.Empty(t, diffs, "nginx↔gnet ingress differentials")
+	require.Empty(t, diffs, "nginx<->gnet ingress differentials")
 	require.Less(t, elapsed, 5*time.Second)
 }
 

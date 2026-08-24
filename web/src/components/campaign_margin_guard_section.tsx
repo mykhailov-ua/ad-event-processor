@@ -134,7 +134,7 @@ export function CampaignMarginGuardSection({
 
   return (
     <div className="stack">
-      {loading ? <p className="text-muted">Loading margin guard…</p> : null}
+      {loading ? <p className="text-muted">Loading margin guard...</p> : null}
       {error ? <p className="text-danger text-sm">{error}</p> : null}
       {margin ? (
         <div className="metric-row section-block">
@@ -164,7 +164,7 @@ export function CampaignMarginGuardSection({
           </div>
           <div className="metric-card">
             <div className="metric-card__label">Threshold (bps)</div>
-            <div className="metric-card__value">{String(margin.threshold_bps ?? '—')}</div>
+            <div className="metric-card__value">{String(margin.threshold_bps ?? '-')}</div>
           </div>
           <div className="metric-card">
             <div className="metric-card__label">Breach</div>
@@ -196,7 +196,7 @@ export function CampaignMarginGuardSection({
               ) : null}
               {policies.map((p, idx) => (
                 <tr key={`${p.name ?? ''}-${idx}`}>
-                  <td>{p.name ?? '—'}</td>
+                  <td>{p.name ?? '-'}</td>
                   <td>{String(p.min_clicks ?? 0)}</td>
                   <td>{String(p.roi_floor_pct ?? 0)}</td>
                   <td>{String(p.cost_over_revenue_threshold_bps ?? 0)}</td>
@@ -270,7 +270,7 @@ export function CampaignMarginGuardSection({
               onChange={(checked) => setForm((f) => ({ ...f, is_active: checked }))}
             />
             <Button
-              label={saving ? 'Saving…' : 'Create policy'}
+              label={saving ? 'Saving...' : 'Create policy'}
               variant="primary"
               size="sm"
               loading={saving}
@@ -309,10 +309,10 @@ export function CampaignMarginGuardSection({
               ) : null}
               {activity.map((row, idx) => (
                 <tr key={`${row.placement_id ?? ''}-${row.created_at ?? ''}-${idx}`}>
-                  <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
-                  <td className="font-mono text-hint">{row.placement_id ?? '—'}</td>
-                  <td>{row.action ?? '—'}</td>
-                  <td>{row.reason ?? '—'}</td>
+                  <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</td>
+                  <td className="font-mono text-hint">{row.placement_id ?? '-'}</td>
+                  <td>{row.action ?? '-'}</td>
+                  <td>{row.reason ?? '-'}</td>
                   <td>
                     {canWrite && row.action === 'pause' && row.placement_id ? (
                       <Button

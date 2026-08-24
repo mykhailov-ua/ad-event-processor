@@ -1015,7 +1015,7 @@
         }
       ],
       "title": "Stream Producer Post-Debit Rejects",
-      "description": "Events debited then dropped on enqueue; should stay ~0 (rollback path). Spike → tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.",
+      "description": "Events debited then dropped on enqueue; should stay ~0 (rollback path). Spike -> tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.",
       "type": "timeseries"
     },
     {
@@ -1202,7 +1202,7 @@
         }
       ],
       "title": "Fraud Stream Backlog",
-      "description": "Заполнение аналитического кольца, глубина очереди, возраст PEL на шард, частота сброса критических данных (GAP-OPS-04).",
+      "description": "Analytics ring fill, queue depth, PEL age per shard, critical data flush rate (GAP-OPS-04).",
       "type": "timeseries"
     }
   ],

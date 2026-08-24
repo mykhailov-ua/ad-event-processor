@@ -1,4 +1,3 @@
-
 local fp = require "edge-tls-fingerprint"
 
 fp.compute(ngx.ctx)

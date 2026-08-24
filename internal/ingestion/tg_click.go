@@ -447,7 +447,7 @@ func fillTgEventFromParsed(evt *domain.Event, eventType string, parsed *tgQueryP
 func (h *AdsPacketHandler) applyTgTrackFilter(outcome trackOutcome, evt *domain.Event, c gnet.Conn, ctx *connContext, startMono int64) (landing []byte, done bool) {
 	switch outcome.Status {
 	case trackStatusFraudAccepted:
-		h.trackMetrics.recordFilterReject(outcome.RejectKind)
+		h.recordTrackReject(ctx, evt, outcome.RejectKind)
 		shard := h.sharder.GetShard(evt.CampaignID)
 		enqueueFraudReject(h.fraudWriter, shard, evt)
 		h.write(c, respConsentDenied, ctx)
@@ -458,7 +458,7 @@ func (h *AdsPacketHandler) applyTgTrackFilter(outcome trackOutcome, evt *domain.
 		if outcome.RejectKind == filterRejectTimeout {
 			metrics.TgDeadlineExceededTotal.WithLabelValues("filter").Inc()
 		}
-		h.trackMetrics.recordFilterReject(outcome.RejectKind)
+		h.recordTrackReject(ctx, evt, outcome.RejectKind)
 		h.write(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		return nil, true
@@ -511,7 +511,7 @@ func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx 
 			spec := filterRejectSpecs[kind]
 			h.write(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
-			h.trackMetrics.recordFilterReject(kind)
+			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
 		defer lease.Release()
@@ -565,7 +565,7 @@ func (h *AdsPacketHandler) reactTgImpression(req parsedHTTPRequest, c gnet.Conn,
 			spec := filterRejectSpecs[kind]
 			h.write(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
-			h.trackMetrics.recordFilterReject(kind)
+			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
 		defer lease.Release()

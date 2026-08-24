@@ -69,7 +69,7 @@ export function TelegramBotsPage() {
             <tbody>
               {rows.map((row, index) => (
                 <tr key={`${String(row.bot_id)}-${index}`}>
-                  <td>{String(row.bot_id ?? '—')}</td>
+                  <td>{String(row.bot_id ?? '-')}</td>
                   <td>{String(row.clicks ?? 0)}</td>
                   <td>{String(row.impressions ?? 0)}</td>
                   <td>{String(row.premium ?? 0)}</td>

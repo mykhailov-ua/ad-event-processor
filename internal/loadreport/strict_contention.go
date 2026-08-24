@@ -157,28 +157,28 @@ func formatStrictContentionMD(s *StrictContentionSnapshot, title string) string 
 	if len(s.SyncLagTop) > 0 {
 		b.WriteString("### Top `ad_sync_lag_seconds`\n\n")
 		for _, row := range s.SyncLagTop {
-			fmt.Fprintf(&b, "- %s → %s sec\n", row.Labels, row.Value)
+			fmt.Fprintf(&b, "- %s -> %s sec\n", row.Labels, row.Value)
 		}
 		b.WriteString("\n")
 	}
 	if len(s.RedisLuaP99ByShard) > 0 {
 		b.WriteString("### Redis Lua p99 by shard (ms)\n\n")
 		for _, row := range s.RedisLuaP99ByShard {
-			fmt.Fprintf(&b, "- %s → %s ms\n", row.Labels, row.Value)
+			fmt.Fprintf(&b, "- %s -> %s ms\n", row.Labels, row.Value)
 		}
 		b.WriteString("\n")
 	}
 
 	b.WriteString("## Interpretation\n\n")
-	b.WriteString("- **Sync lag ↑ + local quota block ↑** under low remaining → strict-mode chain active (expected under low-budget drill).\n")
-	b.WriteString("- **Tracker p99 ≥ 80 ms** or **Lua p99 ≥ 10 ms** sustained → perf regression; tuning thresholds alone is insufficient.\n")
+	b.WriteString("- **Sync lag ^ + local quota block ^** under low remaining -> strict-mode chain active (expected under low-budget drill).\n")
+	b.WriteString("- **Tracker p99 >= 80 ms** or **Lua p99 >= 10 ms** sustained -> perf regression; tuning thresholds alone is insufficient.\n")
 	b.WriteString("- Tuning `QUOTA_STRICT_*` requires this report **before vs after** plus unchanged tracker p99.\n")
 	return b.String()
 }
 
 func formatStrictContentionCompareMD(base, treat *StrictContentionSnapshot) string {
 	var b strings.Builder
-	b.WriteString("# StrictFlush contention — baseline vs low-budget\n\n")
+	b.WriteString("# StrictFlush contention - baseline vs low-budget\n\n")
 	fmt.Fprintf(&b, "Generated: %s\n\n", time.Now().UTC().Format(time.RFC3339Nano))
 	fmt.Fprintf(&b, "Baseline session: `%s`\n", base.SessionDir)
 	fmt.Fprintf(&b, "Low-budget session: `%s`\n\n", treat.SessionDir)
@@ -187,7 +187,7 @@ func formatStrictContentionCompareMD(base, treat *StrictContentionSnapshot) stri
 		fmt.Fprintf(&b, "| %s | %s | %s | %s |\n", name, a, c, deltaLabel(a, c))
 	}
 
-	b.WriteString("| Metric | Baseline | Low-budget | Δ |\n")
+	b.WriteString("| Metric | Baseline | Low-budget | delta |\n")
 	b.WriteString("|--------|----------|------------|---|\n")
 	writeCompareRow("Tracker p99 (ms)", base.TrackerP99Ms, treat.TrackerP99Ms)
 	writeCompareRow("Tracker RPS", base.TrackerRPS, treat.TrackerRPS)
@@ -226,20 +226,20 @@ func deltaLabel(a, c string) string {
 func strictContentionVerdicts(base, treat *StrictContentionSnapshot) []string {
 	var out []string
 	if treatP99, err := strconv.ParseFloat(treat.TrackerP99Ms, 64); err == nil && treatP99 >= 80 {
-		out = append(out, fmt.Sprintf("FAIL: tracker p99 %.1f ms ≥ 80 ms SLA (harness=loadgen constrained stack)", treatP99))
+		out = append(out, fmt.Sprintf("FAIL: tracker p99 %.1f ms >= 80 ms SLA (harness=loadgen constrained stack)", treatP99))
 	} else {
 		out = append(out, "PASS: tracker p99 < 80 ms (or na)")
 	}
 	if lagB, errB := strconv.ParseFloat(base.SyncLagMaxSec, 64); errB == nil {
 		if lagT, errT := strconv.ParseFloat(treat.SyncLagMaxSec, 64); errT == nil && lagT > lagB+1 {
-			out = append(out, fmt.Sprintf("SIGNAL: sync_lag max rose %.3f → %.3f (strict chain likely)", lagB, lagT))
+			out = append(out, fmt.Sprintf("SIGNAL: sync_lag max rose %.3f -> %.3f (strict chain likely)", lagB, lagT))
 		}
 	}
 	if blockT, err := strconv.ParseFloat(treat.LocalQuotaBlockPerSec, 64); err == nil && blockT > 0 {
 		out = append(out, fmt.Sprintf("SIGNAL: local_quota_block rate %.3f/s > 0 under low-budget drill", blockT))
 	}
 	if luaT, err := strconv.ParseFloat(treat.RedisLuaP99MaxMs, 64); err == nil && luaT >= 10 {
-		out = append(out, fmt.Sprintf("WARN: Redis Lua p99 max %.1f ms ≥ 10 ms/shard SLA", luaT))
+		out = append(out, fmt.Sprintf("WARN: Redis Lua p99 max %.1f ms >= 10 ms/shard SLA", luaT))
 	}
 	if len(out) == 0 {
 		out = append(out, "No automated signals (metrics na or drill too short)")

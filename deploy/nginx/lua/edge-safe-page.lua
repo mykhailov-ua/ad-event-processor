@@ -1,4 +1,3 @@
-
 local _M = {}
 
 function _M.header_filter()

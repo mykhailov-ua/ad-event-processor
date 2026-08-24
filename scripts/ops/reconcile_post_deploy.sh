@@ -98,7 +98,7 @@ for i in "${!ADDRS[@]}"; do
 done
 
 if [ "$FAIL" -ne 0 ]; then
-  echo "redis_reconcile_post_deploy: DRIFT detected — re-run management cold sync or apply config manually" >&2
+  echo "redis_reconcile_post_deploy: DRIFT detected - re-run management cold sync or apply config manually" >&2
   exit 1
 fi
 

@@ -53,7 +53,11 @@ export function CommercialMetrics({ kpis, masked = false }: CommercialMetricsPro
       ))}
       {kpis.freshness ? (
         <div className="metric-card metric-card--freshness">
-          <FreshnessBadge stale={kpis.freshness.stale} lagSeconds={lagSeconds} />
+          <FreshnessBadge
+            stale={kpis.freshness.stale}
+            lagSeconds={lagSeconds}
+            sources={kpis.freshness.sources}
+          />
         </div>
       ) : null}
     </div>

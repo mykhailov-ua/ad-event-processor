@@ -23,13 +23,13 @@ function LayoutSwitcher({ children }: { children: ReactNode }) {
     location.pathname === '/selfserve' || location.pathname.startsWith('/selfserve/');
   if (selfServe) {
     return (
-      <Suspense fallback={<span className="text-muted">Loading…</span>}>
+      <Suspense fallback={<span className="text-muted">Loading...</span>}>
         <SelfServeShellLayout>{children}</SelfServeShellLayout>
       </Suspense>
     );
   }
   return (
-    <Suspense fallback={<span className="text-muted">Loading…</span>}>
+    <Suspense fallback={<span className="text-muted">Loading...</span>}>
       <ShellLayout>{children}</ShellLayout>
     </Suspense>
   );

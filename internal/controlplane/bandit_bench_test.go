@@ -20,8 +20,7 @@ func BenchmarkBandit_Update(b *testing.B) {
 	}
 	rng := rand.New(rand.NewSource(99))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		bandit.ThompsonWeights(arms, rng)
 	}
 }

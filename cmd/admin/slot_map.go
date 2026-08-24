@@ -290,7 +290,7 @@ var slotMapExplainCmd = &cobra.Command{
 
 		shards := config.ExpectedRedisShardCount
 		for _, q := range queries {
-			fmt.Printf("\n=== %s ===\n", q.name)
+			fmt.Printf("\n%s:\n", q.name)
 			rows, err := tx.Query(ctx, q.sql)
 			if err != nil {
 				return fmt.Errorf("%s: %w", q.name, err)

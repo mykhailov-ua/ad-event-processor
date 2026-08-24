@@ -1,4 +1,3 @@
-
 local _M = {}
 
 local dict = ngx.shared.node_weights

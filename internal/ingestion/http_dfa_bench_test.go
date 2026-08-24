@@ -32,8 +32,7 @@ func BenchmarkHTTP1DFA_Happy(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
 	b.SetBytes(int64(len(http1HappyCorpus)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := parseHTTP1(http1HappyCorpus, maxBody, nil)
 		if err != nil {
 			b.Fatal(err)
@@ -45,8 +44,7 @@ func BenchmarkHTTP1DFA_OpenRTBBid(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
 	b.SetBytes(int64(len(http1OpenRTBBidCorpus)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := parseHTTP1(http1OpenRTBBidCorpus, maxBody, nil)
 		if err != nil {
 			b.Fatal(err)
@@ -58,8 +56,7 @@ func BenchmarkHTTP1DFA_Worst(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
 	b.SetBytes(int64(len(http1WorstCorpus)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := parseHTTP1(http1WorstCorpus, maxBody, nil)
 		if err != nil {
 			b.Fatal(err)
@@ -71,8 +68,7 @@ func BenchmarkHTTP2DFA_Happy(b *testing.B) {
 	buf := []byte{0x00, 0x00, 0x05, h2FrameData, 0x00, 0x00, 0x00, 0x00, 0x01, 'h', 'e', 'l', 'l', 'o'}
 	b.SetBytes(int64(len(buf)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := decodeH2FrameHeader(buf)
 		if err != nil {
 			b.Fatal(err)
@@ -86,8 +82,7 @@ func BenchmarkHTTP2DFA_Worst(b *testing.B) {
 	b.SetBytes(int64(len(wire)))
 	b.ReportAllocs()
 	st := newH2ConnState()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		st.resetConn()
 		_, _, _, _, err := parseH2Ingress(wire, &st, 1<<20)
 		if err != nil {
@@ -100,8 +95,7 @@ func BenchmarkHTTP3DFA_Happy(b *testing.B) {
 	buf := []byte{0x25}
 	b.SetBytes(int64(len(buf)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := quicDecodeVarint(buf, 0)
 		if err != nil {
 			b.Fatal(err)
@@ -119,8 +113,7 @@ func BenchmarkHTTP3DFA_Worst(b *testing.B) {
 	wire := buf.Bytes()
 	b.SetBytes(int64(len(wire)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := h3ParseRequestFrames(wire, 1<<20)
 		if err != nil {
 			b.Fatal(err)

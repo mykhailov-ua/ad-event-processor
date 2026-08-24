@@ -50,8 +50,8 @@ export function SelfServeBillingPage() {
               {invoices.map((inv) => (
                 <tr key={inv.id}>
                   <td className="font-mono text-sm">{inv.id}</td>
-                  <td>{inv.status ?? '—'}</td>
-                  <td>{inv.created_at ?? '—'}</td>
+                  <td>{inv.status ?? '-'}</td>
+                  <td>{inv.created_at ?? '-'}</td>
                 </tr>
               ))}
               {invoices.length === 0 ? (

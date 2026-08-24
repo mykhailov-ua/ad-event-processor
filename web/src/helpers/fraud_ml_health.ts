@@ -77,6 +77,6 @@ export function formatMlEvalAge(
 }
 
 export function formatShadowPrecision(value?: number): string {
-  if (value == null || value <= 0) return '—';
+  if (value == null || value <= 0) return '-';
   return `${(value * 100).toFixed(1)}% (proxy)`;
 }

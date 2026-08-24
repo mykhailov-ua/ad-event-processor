@@ -19,7 +19,7 @@ func TestRouteRegistration(t *testing.T) {
 	mux := http.NewServeMux()
 	reportsHandler := &ReportsHTTPHandlers{}
 	dashboardsHandler := &DashboardsHTTPHandlers{}
-	viewsHandler := &ViewsHTTPHandlers{Store: NewViewsStore()}
+	viewsHandler := &ViewsHTTPHandlers{Store: NewViewsStore(nil)}
 
 	registry := RouteRegistry{
 		ReportsHTTP:    reportsHandler,
@@ -126,7 +126,7 @@ func TestDashboards_Campaign(t *testing.T) {
 func TestViews_CRUD(t *testing.T) {
 	t.Parallel()
 
-	h := &ViewsHTTPHandlers{Store: NewViewsStore()}
+	h := &ViewsHTTPHandlers{Store: NewViewsStore(nil)}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -219,7 +219,7 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 	otherCustomer := uuid.New().String()
 
 	h := &ViewsHTTPHandlers{
-		Store: NewViewsStore(),
+		Store: NewViewsStore(nil),
 		AuthorizeCustomerAccess: func(_ *http.Request, custID string) error {
 			if custID != customerID {
 				return ErrForbidden

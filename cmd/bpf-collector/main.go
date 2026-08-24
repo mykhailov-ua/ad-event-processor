@@ -300,7 +300,7 @@ func (r *probeRun) writeTimeline() error {
 	if row["grafana_url"] == "" {
 		row["grafana_url"] = "http://127.0.0.1:3100"
 	}
-	data, err := json.MarshalIndent(row, "", "  ")
+	data, err := json.MarshalIndent(row, "", " ")
 	if err != nil {
 		return err
 	}

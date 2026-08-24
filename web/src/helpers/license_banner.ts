@@ -58,7 +58,7 @@ export function buildLicenseBannerParts(license: LicenseInfo): string[] {
 
   if (isPilotConvertNudge(license)) {
     const days = license.renew_days ?? 0;
-    parts.push(`Pilot ends in ${days}d — upgrade to Starter to keep tracking live`);
+    parts.push(`Pilot ends in ${days}d - upgrade to Starter to keep tracking live`);
   } else {
     if (state !== 'valid' && state !== 'active') {
       parts.push(`License: ${license.state}`);

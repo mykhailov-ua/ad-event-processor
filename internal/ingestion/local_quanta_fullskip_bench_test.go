@@ -69,12 +69,13 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 	const amount = int64(10_000)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		buf := strconv.AppendInt(clickScratch[:0], int64(i), 10)
+	benchN := 0
+	for b.Loop() {
+		buf := strconv.AppendInt(clickScratch[:0], int64(benchN), 10)
 		copy(evt.ClickIDBuf[:], buf)
 		evt.ClickID = unsafeString(evt.ClickIDBuf[:len(buf)])
 		_ = f.acceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
+		benchN++
 	}
 }
 
@@ -141,9 +142,9 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 		idem.Release(evt.ClickID)
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		buf := strconv.AppendInt(clickScratch[:0], int64(i+1000), 10)
+	benchN := 0
+	for b.Loop() {
+		buf := strconv.AppendInt(clickScratch[:0], int64(benchN+1000), 10)
 		if len(buf) > len(evt.ClickIDBuf) {
 			b.Fatal("click id overflow")
 		}
@@ -153,6 +154,7 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 		_ = f.Check(ctx, evt)
 		stream.DrainBench()
 		idem.Release(evt.ClickID)
+		benchN++
 	}
 }
 

@@ -10,15 +10,15 @@ import (
 
 func validBidRequest26() []byte {
 	return []byte(`{
-  "id": "req-26-001",
-  "imp": [{
-    "id": "1",
-    "bidfloor": 0.5,
-    "banner": {"w": 300, "h": 250}
-  }],
-  "site": {"id": "site-1", "page": "https://example.com"},
-  "device": {"ip": "203.0.113.1", "ua": "Mozilla/5.0"},
-  "cur": ["USD"]
+ "id": "req-26-001",
+ "imp": [{
+ "id": "1",
+ "bidfloor": 0.5,
+ "banner": {"w": 300, "h": 250}
+ }],
+ "site": {"id": "site-1", "page": "https://example.com"},
+ "device": {"ip": "203.0.113.1", "ua": "Mozilla/5.0"},
+ "cur": ["USD"]
 }`)
 }
 
@@ -52,11 +52,11 @@ func TestValidateOpenRTB26_impMissingFormat(t *testing.T) {
 
 func TestValidateOpenRTB26_multipleInventory(t *testing.T) {
 	payload := []byte(`{
-	  "id":"x",
-	  "imp":[{"id":"1","bidfloor":0.5,"banner":{"w":1,"h":1}}],
-	  "site":{"id":"s"},
-	  "app":{"id":"a"},
-	  "device":{"ip":"1.1.1.1","ua":"x"}
+	 "id":"x",
+	 "imp":[{"id":"1","bidfloor":0.5,"banner":{"w":1,"h":1}}],
+	 "site":{"id":"s"},
+	 "app":{"id":"a"},
+	 "device":{"ip":"1.1.1.1","ua":"x"}
 	}`)
 	res := ValidateBytes(payload, ExchangeConfig{MultiImpMax: 1})
 	assert.False(t, res.Valid)
@@ -94,11 +94,11 @@ func TestValidate_rejectsOpenRTB30Bytes(t *testing.T) {
 
 func TestValidateOpenRTB26_rejectsNonUSDEUR(t *testing.T) {
 	payload := []byte(`{
-	  "id": "r1",
-	  "cur": ["GBP"],
-	  "imp": [{"id": "1", "bidfloor": 1.0, "banner": {"w":1,"h":1}}],
-	  "site": {"page": "https://example.com"},
-	  "device": {"ip": "1.1.1.1", "ua": "x"}
+	 "id": "r1",
+	 "cur": ["GBP"],
+	 "imp": [{"id": "1", "bidfloor": 1.0, "banner": {"w":1,"h":1}}],
+	 "site": {"page": "https://example.com"},
+	 "device": {"ip": "1.1.1.1", "ua": "x"}
 	}`)
 	res := ValidateBytes(payload, ExchangeConfig{MultiImpMax: 1})
 	assert.False(t, res.Valid)
@@ -107,11 +107,11 @@ func TestValidateOpenRTB26_rejectsNonUSDEUR(t *testing.T) {
 
 func TestValidateOpenRTB26_allowsEUR(t *testing.T) {
 	payload := []byte(`{
-	  "id": "r1",
-	  "cur": ["EUR"],
-	  "imp": [{"id": "1", "bidfloor": 1.0, "banner": {"w":1,"h":1}}],
-	  "site": {"page": "https://example.com"},
-	  "device": {"ip": "1.1.1.1", "ua": "x"}
+	 "id": "r1",
+	 "cur": ["EUR"],
+	 "imp": [{"id": "1", "bidfloor": 1.0, "banner": {"w":1,"h":1}}],
+	 "site": {"page": "https://example.com"},
+	 "device": {"ip": "1.1.1.1", "ua": "x"}
 	}`)
 	res := ValidateBytes(payload, ExchangeConfig{MultiImpMax: 1})
 	assert.True(t, res.Valid)

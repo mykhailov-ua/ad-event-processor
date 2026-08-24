@@ -20,7 +20,7 @@ const chJanitorTestImage = "clickhouse/clickhouse-server:24.3-alpine"
 func setupCHJanitorIntegration(t *testing.T) (conn driver.Conn, cleanup func()) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("clickhouse integration test (run in make test-full / CI full-test)")
+		t.Skip("integration: clickhouse testcontainers (run make test-full / CI full-test)")
 	}
 
 	ctx := context.Background()

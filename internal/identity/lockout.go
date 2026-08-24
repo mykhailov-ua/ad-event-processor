@@ -62,22 +62,22 @@ local max_global_attempts = tonumber(ARGV[4])
 local batch = redis.call("MGET", global_fail_key, fail_key)
 local global_fails = tonumber(batch[1]) or 0
 if global_fails >= max_global_attempts then
-    return -1
+ return -1
 end
 
 local fails = tonumber(batch[2]) or 0
 if fails >= max_attempts then
-    return 0
+ return 0
 end
 
 local inflight = tonumber(redis.call("INCR", inflight_key))
 if inflight == 1 then
-    redis.call("EXPIRE", inflight_key, 60)
+ redis.call("EXPIRE", inflight_key, 60)
 end
 
 if (fails + inflight) > max_attempts then
-    redis.call("DECR", inflight_key)
-    return 0
+ redis.call("DECR", inflight_key)
+ return 0
 end
 
 return 1
@@ -87,14 +87,14 @@ const decrInflightScript = `
 local key = KEYS[1]
 local val = tonumber(redis.call("GET", key) or "0")
 if val > 0 then
-    local res = redis.call("DECR", key)
-    if res == 0 then
-        redis.call("DEL", key)
-    end
-    return res
+ local res = redis.call("DECR", key)
+ if res == 0 then
+ redis.call("DEL", key)
+ end
+ return res
 else
-    redis.call("DEL", key)
-    return 0
+ redis.call("DEL", key)
+ return 0
 end
 `
 
@@ -109,20 +109,20 @@ local global_lockout_duration = tonumber(ARGV[5])
 
 local attempts = redis.call("INCR", key)
 if attempts == 1 then
-    redis.call("EXPIRE", key, attempt_window)
+ redis.call("EXPIRE", key, attempt_window)
 elseif attempts >= max_attempts then
-    redis.call("EXPIRE", key, lockout_duration)
+ redis.call("EXPIRE", key, lockout_duration)
 end
 
 local global_attempts = redis.call("INCR", global_key)
 if global_attempts == 1 then
-    redis.call("EXPIRE", global_key, 3600)
+ redis.call("EXPIRE", global_key, 3600)
 elseif global_attempts >= max_global_attempts then
-    redis.call("EXPIRE", global_key, global_lockout_duration)
+ redis.call("EXPIRE", global_key, global_lockout_duration)
 end
 
 if global_attempts >= max_global_attempts then
-    return -1
+ return -1
 end
 return attempts
 `

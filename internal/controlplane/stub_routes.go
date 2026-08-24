@@ -6,7 +6,7 @@ import (
 	"ad-event-processor/pkg/httpresponse"
 )
 
-const stubNotImplementedMessage = "planned API surface; not implemented — use /api/v1/reports/placements or /api/v1/reports/keywords"
+const stubNotImplementedMessage = "planned API surface; not implemented - use /api/v1/reports/placements or /api/v1/reports/keywords"
 
 type stubRoute struct {
 	Method     string

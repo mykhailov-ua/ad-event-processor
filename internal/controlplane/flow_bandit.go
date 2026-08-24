@@ -269,65 +269,65 @@ func (s *Service) queryFlowBanditStats(ctx context.Context, from, to time.Time) 
 ) {
 	const landerQuery = `
 SELECT
-    toString(campaign_id) AS campaign_id,
-    entity_id,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions,
-    sum(payout) AS payout
+ toString(campaign_id) AS campaign_id,
+ entity_id,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions,
+ sum(payout) AS payout
 FROM (
-    SELECT
-        campaign_id,
-        nullIf(JSONExtractString(payload, 'lander_id'), '') AS entity_id,
-        count() AS clicks,
-        toUInt64(0) AS conversions,
-        toFloat64(0) AS payout
-    FROM clicks
-    WHERE created_at >= ? AND created_at < ?
-      AND JSONExtractString(payload, 'lander_id') != ''
-    GROUP BY campaign_id, entity_id
-    UNION ALL
-    SELECT
-        campaign_id,
-        nullIf(JSONExtractString(payload, 'lander_id'), '') AS entity_id,
-        toUInt64(0),
-        count(),
-        sum(toFloat64OrZero(JSONExtractString(payload, 'payout')))
-    FROM conversions
-    WHERE created_at >= ? AND created_at < ?
-      AND JSONExtractString(payload, 'lander_id') != ''
-    GROUP BY campaign_id, entity_id
+ SELECT
+ campaign_id,
+ nullIf(JSONExtractString(payload, 'lander_id'), '') AS entity_id,
+ count() AS clicks,
+ toUInt64(0) AS conversions,
+ toFloat64(0) AS payout
+ FROM clicks
+ WHERE created_at >= ? AND created_at < ?
+ AND JSONExtractString(payload, 'lander_id') != ''
+ GROUP BY campaign_id, entity_id
+ UNION ALL
+ SELECT
+ campaign_id,
+ nullIf(JSONExtractString(payload, 'lander_id'), '') AS entity_id,
+ toUInt64(0),
+ count(),
+ sum(toFloat64OrZero(JSONExtractString(payload, 'payout')))
+ FROM conversions
+ WHERE created_at >= ? AND created_at < ?
+ AND JSONExtractString(payload, 'lander_id') != ''
+ GROUP BY campaign_id, entity_id
 )
 GROUP BY campaign_id, entity_id`
 
 	const offerQuery = `
 SELECT
-    toString(campaign_id) AS campaign_id,
-    entity_id,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions,
-    sum(payout) AS payout
+ toString(campaign_id) AS campaign_id,
+ entity_id,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions,
+ sum(payout) AS payout
 FROM (
-    SELECT
-        campaign_id,
-        nullIf(JSONExtractString(payload, 'offer_id'), '') AS entity_id,
-        count() AS clicks,
-        toUInt64(0) AS conversions,
-        toFloat64(0) AS payout
-    FROM clicks
-    WHERE created_at >= ? AND created_at < ?
-      AND JSONExtractString(payload, 'offer_id') != ''
-    GROUP BY campaign_id, entity_id
-    UNION ALL
-    SELECT
-        campaign_id,
-        nullIf(JSONExtractString(payload, 'offer_id'), '') AS entity_id,
-        toUInt64(0),
-        count(),
-        sum(toFloat64OrZero(JSONExtractString(payload, 'payout')))
-    FROM conversions
-    WHERE created_at >= ? AND created_at < ?
-      AND JSONExtractString(payload, 'offer_id') != ''
-    GROUP BY campaign_id, entity_id
+ SELECT
+ campaign_id,
+ nullIf(JSONExtractString(payload, 'offer_id'), '') AS entity_id,
+ count() AS clicks,
+ toUInt64(0) AS conversions,
+ toFloat64(0) AS payout
+ FROM clicks
+ WHERE created_at >= ? AND created_at < ?
+ AND JSONExtractString(payload, 'offer_id') != ''
+ GROUP BY campaign_id, entity_id
+ UNION ALL
+ SELECT
+ campaign_id,
+ nullIf(JSONExtractString(payload, 'offer_id'), '') AS entity_id,
+ toUInt64(0),
+ count(),
+ sum(toFloat64OrZero(JSONExtractString(payload, 'payout')))
+ FROM conversions
+ WHERE created_at >= ? AND created_at < ?
+ AND JSONExtractString(payload, 'offer_id') != ''
+ GROUP BY campaign_id, entity_id
 )
 GROUP BY campaign_id, entity_id`
 

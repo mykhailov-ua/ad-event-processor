@@ -44,8 +44,7 @@ func TestError(t *testing.T) {
 func BenchmarkJSON(b *testing.B) {
 	rec := httptest.NewRecorder()
 	data := map[string]string{"foo": "bar"}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		JSON(rec, http.StatusOK, data)
 		rec.Body.Reset()
 	}
@@ -53,8 +52,7 @@ func BenchmarkJSON(b *testing.B) {
 
 func BenchmarkError(b *testing.B) {
 	rec := httptest.NewRecorder()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		Error(rec, http.StatusBadRequest, "INVALID_INPUT", "missing field")
 		rec.Body.Reset()
 	}

@@ -241,7 +241,7 @@ func writeBPFReport(b *strings.Builder, bpfDir string, data *bpfSummary, timelin
 	b.WriteString("\n")
 
 	b.WriteString("## Scheduler / context switches (services)\n\n")
-	b.WriteString("| Process | Role | ctx/s | runqueue avg (µs) | runqueue p99 (µs) | on-CPU % | minor flt | major flt |\n")
+	b.WriteString("| Process | Role | ctx/s | runqueue avg (us) | runqueue p99 (us) | on-CPU % | minor flt | major flt |\n")
 	b.WriteString("|---------|------|-------|-------------------|-------------------|----------|-----------|-----------|\n")
 	serviceStats := filterServicePIDStats(data.PIDStats)
 	for i := range serviceStats {
@@ -361,7 +361,7 @@ func writeCgroupSection(b *strings.Builder, samples []cgroupSample) {
 func writeHotSyscallsSection(b *strings.Builder, hot []syscallStat) {
 	b.WriteString("## Hot syscalls (gnet / Redis path)\n\n")
 	b.WriteString("Always traced: `epoll_wait`, `read`, `write`, `writev`, `fsync`, `fdatasync`, `connect`, `sendto`, `recvfrom`, `futex`.\n\n")
-	b.WriteString("| Role | syscall | count | avg (µs) | p99 (µs) | max (µs) |\n")
+	b.WriteString("| Role | syscall | count | avg (us) | p99 (us) | max (us) |\n")
 	b.WriteString("|------|---------|-------|----------|----------|----------|\n")
 	sorted := append([]syscallStat(nil), hot...)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -404,7 +404,7 @@ func writeDiskDurabilitySection(b *strings.Builder, hot, syscalls []syscallStat)
 
 	b.WriteString("## Disk durability (group-commit / writev)\n\n")
 	b.WriteString("Tracks vectored writes and durability sync syscalls for region-proxy / broker mmap WAL paths (`pkg/iogate` group commit, `fsyncSem` capacity 1).\n\n")
-	b.WriteString("| Role | syscall | count | avg (µs) | p99 (µs) | max (µs) |\n")
+	b.WriteString("| Role | syscall | count | avg (us) | p99 (us) | max (us) |\n")
 	b.WriteString("|------|---------|-------|----------|----------|----------|\n")
 	sort.Slice(diskRows, func(i, j int) bool {
 		if diskRows[i].Count != diskRows[j].Count {
@@ -428,7 +428,7 @@ func writeDiskDurabilitySection(b *strings.Builder, hot, syscalls []syscallStat)
 		case syncReductionPct >= 70.0:
 			b.WriteString("- **Group-commit coalescing: PASS** (\u226570% fewer sync syscalls; mmap path may omit writev)\n")
 		default:
-			b.WriteString("- **Group-commit coalescing: FAIL** (sync rate still high — check `GroupCommitRecords` / disk gate)\n")
+			b.WriteString("- **Group-commit coalescing: FAIL** (sync rate still high - check `GroupCommitRecords` / disk gate)\n")
 		}
 	}
 	b.WriteString("\n")
@@ -459,7 +459,7 @@ func writeFDSection(b *strings.Builder, data *bpfSummary) {
 	b.WriteString("## File descriptors & sockets\n\n")
 	b.WriteString("Open FD counts come from `/proc/pid/fd` sampling every 2s; syscall counters (`openat`, `socket`, `accept`, `close`) are from BPF.\n\n")
 	if len(data.ProcSamples) > 0 {
-		b.WriteString("| Process | Role | peak FDs | peak sockets | FD Δ | open/s | close/s | socket() | accept() |\n")
+		b.WriteString("| Process | Role | peak FDs | peak sockets | FD delta | open/s | close/s | socket() | accept() |\n")
 		b.WriteString("|---------|------|----------|--------------|------|--------|---------|----------|----------|\n")
 		sorted := append([]procSample(nil), data.ProcSamples...)
 		sort.Slice(sorted, func(i, j int) bool {
@@ -503,7 +503,7 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 	b.WriteString("## OS threads\n\n")
 	b.WriteString("Thread count from `/proc/pid/status`; fork/exit events from `sched_process_{fork,exit}` tracepoints (per process TGID).\n\n")
 	if len(data.ProcSamples) > 0 {
-		b.WriteString("| Process | Role | peak threads | thread Δ | fork events | exit events |\n")
+		b.WriteString("| Process | Role | peak threads | thread delta | fork events | exit events |\n")
 		b.WriteString("|---------|------|--------------|----------|-------------|-------------|\n")
 		sorted := append([]procSample(nil), data.ProcSamples...)
 		sort.Slice(sorted, func(i, j int) bool {
@@ -547,7 +547,7 @@ func writeThreadsSection(b *strings.Builder, data *bpfSummary) {
 func writeMarkersSection(b *strings.Builder, markers []markerStat) {
 	b.WriteString("## Hot path uprobes (Go)\n\n")
 	fmt.Fprintf(b, "Requires tracker built with `-tags %s` and bpf-collector uprobes attached.\n\n", naming.BPFTraceBuildTag())
-	b.WriteString("| role | marker | slot | count | avg (µs) | p99 (µs) | max (µs) |\n")
+	b.WriteString("| role | marker | slot | count | avg (us) | p99 (us) | max (us) |\n")
 	b.WriteString("|------|--------|------|-------|----------|----------|----------|\n")
 	sorted := append([]markerStat(nil), markers...)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -568,7 +568,7 @@ func writeMarkersSection(b *strings.Builder, markers []markerStat) {
 
 func writeSyscallsWallSection(b *strings.Builder, syscalls []syscallStat) {
 	b.WriteString("## Syscalls (wall time)\n\n")
-	b.WriteString("| Role | syscall | count | avg (µs) | p99 (µs) | max (µs) | wall % |\n")
+	b.WriteString("| Role | syscall | count | avg (us) | p99 (us) | max (us) | wall % |\n")
 	b.WriteString("|------|---------|-------|----------|----------|----------|--------|\n")
 	sorted := append([]syscallStat(nil), syscalls...)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -625,7 +625,7 @@ func writeSlowEventsSection(b *strings.Builder, bpfDir string) {
 	b.WriteString("## Slow events\n\n")
 	if len(slowSyscall) > 0 {
 		b.WriteString("### Syscalls\n\n")
-		b.WriteString("| role | syscall | duration (µs) | pid |\n")
+		b.WriteString("| role | syscall | duration (us) | pid |\n")
 		b.WriteString("|------|---------|---------------|-----|\n")
 		limit := 25
 		if len(slowSyscall) < limit {
@@ -638,7 +638,7 @@ func writeSlowEventsSection(b *strings.Builder, bpfDir string) {
 	}
 	if len(slowUprobe) > 0 {
 		b.WriteString("### Hot path uprobes\n\n")
-		b.WriteString("| role | marker | slot | duration (µs) | pid |\n")
+		b.WriteString("| role | marker | slot | duration (us) | pid |\n")
 		b.WriteString("|------|--------|------|---------------|-----|\n")
 		limit := 25
 		if len(slowUprobe) < limit {
@@ -661,7 +661,7 @@ func writeSlowEventsSection(b *strings.Builder, bpfDir string) {
 
 func writeNetworkSection(b *strings.Builder, network []networkStat) {
 	b.WriteString("## Network (connect latency & TCP retrans)\n\n")
-	b.WriteString("| process | role | dport | connect avg (µs) | connects | sendto calls | sendto bytes | retrans |\n")
+	b.WriteString("| process | role | dport | connect avg (us) | connects | sendto calls | sendto bytes | retrans |\n")
 	b.WriteString("|---------|------|-------|------------------|----------|--------------|--------------|---------|\n")
 	sorted := append([]networkStat(nil), network...)
 	sort.Slice(sorted, func(i, j int) bool {
@@ -682,16 +682,16 @@ func writeNetworkSection(b *strings.Builder, network []networkStat) {
 
 func writeBPFInterpretation(b *strings.Builder) {
 	b.WriteString("## Interpretation\n\n")
-	b.WriteString("1. **loadgen on-CPU > 15%** — load generator competes with tracker; lower RATE or run generator on another host.\n")
-	b.WriteString("2. **tracker epoll_wait / read wall %** — gnet poll vs Redis RTT; compare with Prometheus redis_lua p99.\n")
+	b.WriteString("1. **loadgen on-CPU > 15%** - load generator competes with tracker; lower RATE or run generator on another host.\n")
+	b.WriteString("2. **tracker epoll_wait / read wall %** - gnet poll vs Redis RTT; compare with Prometheus redis_lua p99.\n")
 	b.WriteString("3. **involuntary ctx >> voluntary** - CPU oversubscription (GOMAXPROCS, compose CPU limits).\n")
-	b.WriteString("4. **cpu throttle % > 5%** — cgroup CPU limit is biting; raise compose cpus or lower RATE.\n")
-	b.WriteString("5. **memory max events > 0** — container hit memory.max; risk of OOM kill.\n")
-	b.WriteString("6. **tracker epoll_wait p99 high** — poll wait dominates; check connection count and Redis RTT.\n")
-	b.WriteString("7. **peak FDs growing / high open rate** — connection leak or missing close; compare peak sockets with Redis pool size.\n")
-	b.WriteString("8. **thread_fork >> thread_exit or peak threads climbing** — goroutine/thread pool growth; check GOMAXPROCS and gnet worker count.\n")
-	b.WriteString("9. **retrans > 0** — kernel TCP retry; check Redis/network fault or laptop Wi-Fi.\n")
-	b.WriteString("10. **filter_check p99 (uprobe)** — in-process FilterEngine.Check; compare with Prometheus handler p99.\n")
-	b.WriteString("11. **process_track p99 (uprobe)** — full /track handler path including RTB branch.\n")
+	b.WriteString("4. **cpu throttle % > 5%** - cgroup CPU limit is biting; raise compose cpus or lower RATE.\n")
+	b.WriteString("5. **memory max events > 0** - container hit memory.max; risk of OOM kill.\n")
+	b.WriteString("6. **tracker epoll_wait p99 high** - poll wait dominates; check connection count and Redis RTT.\n")
+	b.WriteString("7. **peak FDs growing / high open rate** - connection leak or missing close; compare peak sockets with Redis pool size.\n")
+	b.WriteString("8. **thread_fork >> thread_exit or peak threads climbing** - goroutine/thread pool growth; check GOMAXPROCS and gnet worker count.\n")
+	b.WriteString("9. **retrans > 0** - kernel TCP retry; check Redis/network fault or laptop Wi-Fi.\n")
+	b.WriteString("10. **filter_check p99 (uprobe)** - in-process FilterEngine.Check; compare with Prometheus handler p99.\n")
+	b.WriteString("11. **process_track p99 (uprobe)** - full /track handler path including RTB branch.\n")
 	b.WriteString("\n")
 }

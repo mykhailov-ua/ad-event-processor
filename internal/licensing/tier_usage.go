@@ -17,16 +17,16 @@ func TierUsageWarnings(limits Limits, activeCampaigns int, state LicenseState, v
 	}
 	switch state {
 	case StateGrace:
-		w = append(w, "License grace period — paste renewal JWT in Settings.")
+		w = append(w, "License grace period - paste renewal JWT in Settings.")
 	case StateOfflineWarn:
-		w = append(w, "License heartbeat offline — reconnect or renew soon.")
+		w = append(w, "License heartbeat offline - reconnect or renew soon.")
 	case StateOfflineGrace:
-		w = append(w, "License offline grace ending — renew JWT to avoid ingest block.")
+		w = append(w, "License offline grace ending - renew JWT to avoid ingest block.")
 	}
 	if state == StateActive && !validUntil.IsZero() && renewBeforeDays > 0 {
 		days := int(validUntil.Sub(now).Hours() / 24)
 		if days >= 0 && days <= renewBeforeDays {
-			w = append(w, fmt.Sprintf("License renews in %d day(s) — request USDT invoice early.", days))
+			w = append(w, fmt.Sprintf("License renews in %d day(s) - request USDT invoice early.", days))
 		}
 	}
 	return w

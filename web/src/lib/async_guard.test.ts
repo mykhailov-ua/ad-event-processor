@@ -28,7 +28,7 @@ describe('createGenerationGuard', () => {
 });
 
 describe('shouldCommitAsyncResult', () => {
-  it('rejects stale generations (∀ i < G: commit(i, G) = false)', () => {
+  it('rejects stale generations (for all i < G: commit(i, G) = false)', () => {
     const G = 5;
     for (let i = 1; i < G; i++) {
       assert.equal(shouldCommitAsyncResult(i, G), false);

@@ -87,22 +87,22 @@ func TestHandlerAPI_CampaignStatsClickHouseExplain(t *testing.T) {
 	query := `
 EXPLAIN indexes = 1
 SELECT
-    hour,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions
+ hour,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions
 FROM (
-    SELECT hour, impression_count AS impressions, toUInt64(0) AS clicks, toUInt64(0) AS conversions
-    FROM mv_campaign_hourly_impressions
-    WHERE campaign_id = ? AND hour >= ? AND hour < ?
-    UNION ALL
-    SELECT hour, toUInt64(0), click_count, toUInt64(0)
-    FROM mv_campaign_hourly_clicks
-    WHERE campaign_id = ? AND hour >= ? AND hour < ?
-    UNION ALL
-    SELECT hour, toUInt64(0), toUInt64(0), conversion_count
-    FROM mv_campaign_hourly_conversions
-    WHERE campaign_id = ? AND hour >= ? AND hour < ?
+ SELECT hour, impression_count AS impressions, toUInt64(0) AS clicks, toUInt64(0) AS conversions
+ FROM mv_campaign_hourly_impressions
+ WHERE campaign_id = ? AND hour >= ? AND hour < ?
+ UNION ALL
+ SELECT hour, toUInt64(0), click_count, toUInt64(0)
+ FROM mv_campaign_hourly_clicks
+ WHERE campaign_id = ? AND hour >= ? AND hour < ?
+ UNION ALL
+ SELECT hour, toUInt64(0), toUInt64(0), conversion_count
+ FROM mv_campaign_hourly_conversions
+ WHERE campaign_id = ? AND hour >= ? AND hour < ?
 )
 GROUP BY hour
 ORDER BY hour`

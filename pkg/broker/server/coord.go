@@ -196,7 +196,7 @@ func (c *Coordinator) IsLeaderReady(topic string) bool {
 var publishHWMScript = redis.NewScript(`
 local cur = redis.call('GET', KEYS[1])
 if cur and tonumber(cur) >= tonumber(ARGV[1]) then
-  return cur
+ return cur
 end
 redis.call('SET', KEYS[1], ARGV[1])
 return ARGV[1]

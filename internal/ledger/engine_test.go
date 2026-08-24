@@ -130,7 +130,7 @@ func BenchmarkEvaluate(b *testing.B) {
 		Conversions:  0,
 	}
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = Evaluate(policy, stats)
 	}
 }

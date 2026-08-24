@@ -101,9 +101,9 @@ func TestFault_MLBlacklistFastLaneDuringBacklog_holdout(t *testing.T) {
 		"fraud:quarantine publish must be once per shard during backlog")
 
 	faultproof.Log(t, "ml_blacklist_fast_lane_backlog", map[string]string{
-		"subsystem":       "management_outbox",
-		"pacing_backlog":  fmt.Sprintf("%d", pacingBacklog),
-		"ml_processed":    "true",
+		"subsystem":         "management_outbox",
+		"pacing_backlog":    fmt.Sprintf("%d", pacingBacklog),
+		"ml_processed":      "true",
 		"quarantine_shards": fmt.Sprintf("%d", shardCount),
 	})
 }

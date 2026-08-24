@@ -40,11 +40,9 @@ func BenchmarkSerialization_JSON(b *testing.B) {
 			return &buf
 		},
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		bufPtr := bufPool.Get().(*[]byte)
 		buf := (*bufPtr)[:0]
 		buf = append(buf, `{"level":"info","timestamp":"`...)
@@ -80,11 +78,9 @@ func BenchmarkSerialization_VtProto(b *testing.B) {
 			return &buf
 		},
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		rec := recPool.Get().(*pb.AdLogRecord)
 		rec.TimestampUnix = createdAt.Unix()
 		rec.CampaignId = campaignID[:]
@@ -116,11 +112,9 @@ func BenchmarkSerialization_VtProto(b *testing.B) {
 
 func BenchmarkDeserialization_JSON(b *testing.B) {
 	jsonData := []byte(`{"level":"info","timestamp":"2026-06-05T22:36:16Z","msg":"event successfully processed","campaign_id":"12345678-1234-1234-1234-1234567890ab","click_id":"click_1234567890_abc","type":"click","priority":0}`)
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var rec JSONLogRecord
 		err := json.Unmarshal(jsonData, &rec)
 		if err != nil {
@@ -142,11 +136,9 @@ func BenchmarkDeserialization_VtProto(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var dec pb.AdLogRecord
 		err := dec.UnmarshalVT(protoData)
 		if err != nil {

@@ -244,25 +244,11 @@ func TestHTTP1Parse_ZeroAlloc(t *testing.T) {
 	}
 }
 
-func BenchmarkHTTP1Parse_Legacy(b *testing.B) {
-	const maxBody = int64(1024 * 1024)
-	b.SetBytes(int64(len(nginxTrackCorpus)))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, _, err := parseHTTPLegacy(nginxTrackCorpus, maxBody)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func BenchmarkHTTP1Parse(b *testing.B) {
 	const maxBody = int64(1024 * 1024)
 	b.SetBytes(int64(len(nginxTrackCorpus)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := parseHTTP1(nginxTrackCorpus, maxBody, nil)
 		if err != nil {
 			b.Fatal(err)
@@ -274,99 +260,10 @@ func BenchmarkHTTP1Parse_Handler(b *testing.B) {
 	h := NewAdsPacketHandler(&config.Config{MaxRequestBodySize: 1024 * 1024}, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)
 	b.SetBytes(int64(len(nginxTrackCorpus)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := h.parseHTTP(nginxTrackCorpus, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
-	}
-}
-
-func parseHTTPLegacy(data []byte, maxBody int64) (int, parsedHTTPRequest, error) {
-	var req parsedHTTPRequest
-
-	lineEnd := bytes.Index(data, []byte("\r\n"))
-	if lineEnd < 0 {
-		return 0, req, errIncompleteRequest
-	}
-	reqLine := data[:lineEnd]
-
-	space1 := bytes.IndexByte(reqLine, ' ')
-	if space1 < 0 {
-		return 0, req, errInvalidRequest
-	}
-	req.Method = reqLine[:space1]
-
-	rest := reqLine[space1+1:]
-	space2 := bytes.IndexByte(rest, ' ')
-	if space2 < 0 {
-		return 0, req, errInvalidRequest
-	}
-	req.Path = rest[:space2]
-
-	idx := lineEnd + 2
-	for {
-		if idx >= len(data) {
-			return 0, req, errIncompleteRequest
-		}
-		if idx+2 <= len(data) && data[idx] == '\r' && data[idx+1] == '\n' {
-			idx += 2
-			break
-		}
-
-		lineEnd = bytes.Index(data[idx:], []byte("\r\n"))
-		if lineEnd < 0 {
-			return 0, req, errIncompleteRequest
-		}
-		headerLine := data[idx : idx+lineEnd]
-		idx += lineEnd + 2
-
-		colonIdx := bytes.IndexByte(headerLine, ':')
-		if colonIdx < 0 {
-			continue
-		}
-
-		key := trimSpaceBytes(headerLine[:colonIdx])
-		val := trimSpaceBytes(headerLine[colonIdx+1:])
-
-		assignHTTPHeaderLegacy(&req, key, val)
-	}
-
-	if req.HasContentLength && int64(req.ContentLength) > maxBody {
-		return 0, req, errPayloadTooLarge
-	}
-
-	totalLen := idx + req.ContentLength
-	if len(data) < totalLen {
-		return 0, req, errIncompleteRequest
-	}
-	req.Body = data[idx : idx+req.ContentLength]
-	return totalLen, req, nil
-}
-
-func assignHTTPHeaderLegacy(req *parsedHTTPRequest, key, val []byte) {
-	switch {
-	case equalFoldBytes(key, []byte("content-length")):
-		req.ContentLength = parseDecimal(val)
-		req.HasContentLength = true
-	case equalFoldBytes(key, []byte("content-type")):
-		req.ContentType = val
-	case equalFoldBytes(key, []byte("x-forwarded-for")):
-		req.ClientIP = val
-	case equalFoldBytes(key, []byte("x-real-ip")):
-		if len(req.ClientIP) == 0 {
-			req.ClientIP = val
-		}
-	case equalFoldBytes(key, []byte("user-agent")):
-		req.UserAgent = val
-	case equalFoldBytes(key, []byte("accept")):
-		req.Accept = val
-	case equalFoldBytes(key, []byte("x-tls-hash")):
-		req.TLSHash = val
-	case equalFoldBytes(key, []byte("sec-ch-ua")):
-		req.SecCHUA = val
-	case equalFoldBytes(key, []byte("accept-language")):
-		req.AcceptLang = val
 	}
 }

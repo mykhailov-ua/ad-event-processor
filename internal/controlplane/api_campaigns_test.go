@@ -203,7 +203,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	})
 
 	t.Run("PatchCampaign_EmptyNameRejected", func(t *testing.T) {
-		empty := "   "
+		empty := " "
 		_, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{Name: &empty})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "name is required")

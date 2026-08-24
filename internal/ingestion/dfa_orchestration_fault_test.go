@@ -28,7 +28,7 @@ func TestFraudScenarios_XDFA01_EdgeTrackerCampaignMismatch(t *testing.T) {
 	if campaignA == tr.CampaignID.String() {
 		t.Fatal("setup error: campaigns must differ")
 	}
-	t.Logf("XDFA-01: edge_campaign=%s tracker_campaign=%s — mismatch detectable by orchestration layer", campaignA, tr.CampaignID)
+	t.Logf("XDFA-01: edge_campaign=%s tracker_campaign=%s - mismatch detectable by orchestration layer", campaignA, tr.CampaignID)
 }
 
 func TestFraudScenarios_XDFA02_TLSHashParsedDespiteUAChrome(t *testing.T) {
@@ -40,7 +40,7 @@ func TestFraudScenarios_XDFA02_TLSHashParsedDespiteUAChrome(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(req.UserAgent), "Chrome")
 	assert.Equal(t, "37b37375c33a2e6a17b2b6400c436321", string(req.TLSHash))
-	t.Log("XDFA-02: HTTP FSM forwards both signals — IVT tcp_edge_rule / impersonation must correlate")
+	t.Log("XDFA-02: HTTP FSM forwards both signals - IVT tcp_edge_rule / impersonation must correlate")
 }
 
 func TestFraudScenarios_XDFA03_PipelinedValidThenSmuggled(t *testing.T) {

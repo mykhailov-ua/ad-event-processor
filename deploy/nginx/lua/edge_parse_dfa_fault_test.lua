@@ -1,4 +1,3 @@
-
 package.path = arg[1] .. "/?.lua;;"
 local dfa = require("edge-parse-dfa")
 

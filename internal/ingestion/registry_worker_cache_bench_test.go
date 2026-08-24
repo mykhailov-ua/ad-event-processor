@@ -22,8 +22,7 @@ func BenchmarkRegistry_GetCampaignWorker_hot(b *testing.B) {
 		_, _ = reg.GetCampaignWorker(0, id)
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.GetCampaignWorker(0, id)
 	}
 }
@@ -36,8 +35,7 @@ func BenchmarkRegistry_GetCampaign_mapLookup(b *testing.B) {
 		id: {campaign: camp},
 	}})
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.GetCampaign(id)
 	}
 }

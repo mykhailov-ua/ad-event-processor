@@ -40,12 +40,13 @@ func benchProxyVPNTable(tb testing.TB, n int) (*ProxyVPNTable, [][4]byte) {
 func BenchmarkProxyVPN_Lookup(b *testing.B) {
 	table, probes := benchProxyVPNTable(b, 10_000)
 	b.ReportAllocs()
-	b.ResetTimer()
 	var match bool
 	var connType uint8
 	var asn uint32
-	for i := 0; i < b.N; i++ {
-		match, connType, asn = table.Lookup4(probes[i&63])
+	benchN := 0
+	for b.Loop() {
+		match, connType, asn = table.Lookup4(probes[benchN&63])
+		benchN++
 	}
 	proxyVPNBenchSink.match = proxyVPNBenchSink.match || match
 	proxyVPNBenchSink.connType += connType
@@ -68,10 +69,11 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 		ipStrs[i] = netip.AddrFrom4(probes[i]).String()
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
-	for i := 0; i < b.N; i++ {
-		hit, _ = h.l15ProxyVPNShouldSafeView(ipStrs[i&63], cid)
+	benchN := 0
+	for b.Loop() {
+		hit, _ = h.l15ProxyVPNShouldSafeView(ipStrs[benchN&63], cid)
+		benchN++
 	}
 	proxyVPNBenchSink.match = proxyVPNBenchSink.match || hit
 }
@@ -79,12 +81,13 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 func BenchmarkProxyVPN_Extended_Lookup(b *testing.B) {
 	table, probes := benchProxyVPNTable(b, 10_000)
 	b.ReportAllocs()
-	b.ResetTimer()
 	var match bool
 	var connType uint8
-	for i := 0; i < b.N; i++ {
-		match, connType, _ = table.Lookup4(probes[i&63])
+	benchN := 0
+	for b.Loop() {
+		match, connType, _ = table.Lookup4(probes[benchN&63])
 		_ = connTypePolicyBlocks(domain.ConnTypeMobileOnly, match, connType)
+		benchN++
 	}
 	proxyVPNBenchSink.match = proxyVPNBenchSink.match || match
 }

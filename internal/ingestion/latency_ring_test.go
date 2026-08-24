@@ -137,8 +137,7 @@ func BenchmarkLatencyRing_RecordMono(b *testing.B) {
 	ring := NewLatencyRing(defaultLatencyRingCap)
 	start := monotonicNano()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ring.RecordMono(start)
 	}
 }
@@ -148,11 +147,12 @@ func BenchmarkLatencyRing_RecordAndFlush(b *testing.B) {
 	obs := &sumObserver{}
 	start := monotonicNano()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	benchN := 0
+	for b.Loop() {
 		ring.RecordMono(start)
-		if i%128 == 0 {
+		if benchN%128 == 0 {
 			ring.FlushTo(obs)
 		}
+		benchN++
 	}
 }

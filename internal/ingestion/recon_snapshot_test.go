@@ -48,9 +48,7 @@ func BenchmarkReconcileSnapshot(b *testing.B) {
 	defer cleanup()
 	campID := uuid.New()
 	require.NoError(b, rdb.Set(ctx, budgetCampaignKey(campID), 5_000_000, 0).Err())
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = FetchBudgetReconSnapshot(ctx, rdb, campID, false)
 	}
 }

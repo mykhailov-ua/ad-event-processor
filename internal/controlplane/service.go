@@ -62,6 +62,7 @@ type Service struct {
 	cloudflare        CloudflareAPI
 	reputation        *domainhealth.ReputationChecker
 	shard0Mu          sync.Mutex
+	reportJobRunner   *ReportJobRunner
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {

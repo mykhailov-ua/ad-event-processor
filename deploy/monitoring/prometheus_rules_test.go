@@ -17,9 +17,11 @@ func TestPrometheusRulesRedisHotPathAlerts(t *testing.T) {
 		"alert: RedisBreakerOpen",
 		"alert: TrackerLatencyP99Critical",
 		"alert: TrackerLatencyP99Sustained",
+		"alert: ReportQueryLatencyHigh",
 		"alert: StreamProducerPostDebitRejected",
 		"ad_redis_lua_duration_seconds_bucket",
 		"ad_http_request_duration_seconds_bucket",
+		"ad_report_query_duration_seconds_bucket",
 		"ad_stream_producer_post_debit_rejected_total",
 	} {
 		if !strings.Contains(content, want) {

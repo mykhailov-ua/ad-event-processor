@@ -146,14 +146,14 @@ func TestOutboxExplainAnalyze(t *testing.T) {
 SELECT id, event_type, payload, status, created_at FROM outbox_events
 WHERE status = 'PENDING'
 ORDER BY
-  CASE event_type
-    WHEN 'UPDATE_BLACKLIST' THEN 0
-    WHEN 'PAUSE_CAMPAIGN' THEN 0
-    WHEN 'CANCEL_CAMPAIGN' THEN 0
-    WHEN 'BUDGET_FREEZE' THEN 0
-    ELSE 1
-  END,
-  created_at ASC
+ CASE event_type
+ WHEN 'UPDATE_BLACKLIST' THEN 0
+ WHEN 'PAUSE_CAMPAIGN' THEN 0
+ WHEN 'CANCEL_CAMPAIGN' THEN 0
+ WHEN 'BUDGET_FREEZE' THEN 0
+ ELSE 1
+ END,
+ created_at ASC
 LIMIT 1000
 FOR UPDATE SKIP LOCKED;`)
 	require.NoError(t, err)
@@ -185,9 +185,7 @@ func BenchmarkProcessOutbox(b *testing.B) {
 	b.StopTimer()
 	seedEventsForBench(pool, b.N*1000)
 	b.StartTimer()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := worker.ProcessOutboxWithCount(ctx, 1000)
 		if err != nil {
 			b.Fatalf("ProcessOutbox failed: %v", err)

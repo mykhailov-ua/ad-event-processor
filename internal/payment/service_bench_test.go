@@ -14,11 +14,11 @@ func BenchmarkIsValidTransition(b *testing.B) {
 		db.PaymentPaymentIntentStatusSUCCEEDED,
 		db.PaymentPaymentIntentStatusFAILED,
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		from := statuses[i%len(statuses)]
-		to := statuses[(i+1)%len(statuses)]
+	benchN := 0
+	for b.Loop() {
+		from := statuses[benchN%len(statuses)]
+		to := statuses[(benchN+1)%len(statuses)]
 		_ = isValidTransition(from, to)
+		benchN++
 	}
 }

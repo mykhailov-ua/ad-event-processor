@@ -37,14 +37,14 @@ func LoadPinnedBlocklistV6Map(path string) (*ebpf.Map, error) {
 }
 
 type BlocklistStore struct {
-	mu           sync.Mutex
-	hosts        map[uint32]struct{}
-	v6Hosts      map[StoreID]IPv6Key
-	v4Prefixes   map[StoreID]IPv4Key
-	v6Prefixes   map[StoreID]IPv6Key
-	scratchHosts map[uint32]struct{}
-	v6Scratch    map[StoreID]IPv6Key
-	v4Scratch    map[StoreID]IPv4Key
+	mu            sync.Mutex
+	hosts         map[uint32]struct{}
+	v6Hosts       map[StoreID]IPv6Key
+	v4Prefixes    map[StoreID]IPv4Key
+	v6Prefixes    map[StoreID]IPv6Key
+	scratchHosts  map[uint32]struct{}
+	v6Scratch     map[StoreID]IPv6Key
+	v4Scratch     map[StoreID]IPv4Key
 	v6PrefScratch map[StoreID]IPv6Key
 }
 

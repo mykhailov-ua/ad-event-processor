@@ -163,7 +163,7 @@ var seedCmd = &cobra.Command{
 		}
 
 		fmt.Println("Seeding completed")
-		fmt.Printf("Seed Database stats:\n  Customers: %d\n  Users:     %d\n  Brands:    %d\n  Campaigns: %d\n",
+		fmt.Printf("Seed Database stats:\n Customers: %d\n Users: %d\n Brands: %d\n Campaigns: %d\n",
 			100, 100, 10, 1000)
 		return nil
 	},
@@ -232,18 +232,18 @@ var getCampaignCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Campaign Details:\n")
-		fmt.Printf("  ID:             %s\n", pgUUIDToGoogleUUID(camp.ID).String())
-		fmt.Printf("  Name:           %s\n", camp.Name)
-		fmt.Printf("  Status:         %s\n", camp.Status)
-		fmt.Printf("  Budget Limit:   %d\n", camp.BudgetLimit)
-		fmt.Printf("  Current Spend:  %d\n", camp.CurrentSpend)
-		fmt.Printf("  Pacing Mode:    %s\n", camp.PacingMode)
-		fmt.Printf("  Daily Budget:   %d\n", camp.DailyBudget)
-		fmt.Printf("  Customer ID:    %s\n", pgUUIDToGoogleUUID(camp.CustomerID).String())
-		fmt.Printf("  Target Nations: %s\n", strings.Join(camp.TargetCountries, ", "))
+		fmt.Printf(" ID: %s\n", pgUUIDToGoogleUUID(camp.ID).String())
+		fmt.Printf(" Name: %s\n", camp.Name)
+		fmt.Printf(" Status: %s\n", camp.Status)
+		fmt.Printf(" Budget Limit: %d\n", camp.BudgetLimit)
+		fmt.Printf(" Current Spend: %d\n", camp.CurrentSpend)
+		fmt.Printf(" Pacing Mode: %s\n", camp.PacingMode)
+		fmt.Printf(" Daily Budget: %d\n", camp.DailyBudget)
+		fmt.Printf(" Customer ID: %s\n", pgUUIDToGoogleUUID(camp.CustomerID).String())
+		fmt.Printf(" Target Nations: %s\n", strings.Join(camp.TargetCountries, ", "))
 		if camp.BrandID.Valid {
-			fmt.Printf("  Brand ID:       %s\n", pgUUIDToGoogleUUID(camp.BrandID).String())
-			fmt.Printf("  Brand FCAP Key: %s\n", camp.BrandFcapKey)
+			fmt.Printf(" Brand ID: %s\n", pgUUIDToGoogleUUID(camp.BrandID).String())
+			fmt.Printf(" Brand FCAP Key: %s\n", camp.BrandFcapKey)
 		}
 		return nil
 	},
@@ -286,7 +286,7 @@ var createCampaignCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Successfully created campaign:\n  ID:   %s\n  Name: %s\n  Cust: %s\n",
+		fmt.Printf("Successfully created campaign:\n ID: %s\n Name: %s\n Cust: %s\n",
 			pgUUIDToGoogleUUID(camp.ID).String(), camp.Name, pgUUIDToGoogleUUID(camp.CustomerID).String())
 		return nil
 	},
@@ -375,12 +375,12 @@ var getCustomerCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Customer Details:\n")
-		fmt.Printf("  ID:                %s\n", pgUUIDToGoogleUUID(cust.ID).String())
-		fmt.Printf("  Name:              %s\n", cust.Name)
-		fmt.Printf("  Balance:           %d\n", cust.Balance)
-		fmt.Printf("  Allowed Overdraft: %d\n", cust.AllowedOverdraft)
-		fmt.Printf("  Currency:          %s\n", cust.Currency)
-		fmt.Printf("  Created At:        %v\n", cust.CreatedAt.Time)
+		fmt.Printf(" ID: %s\n", pgUUIDToGoogleUUID(cust.ID).String())
+		fmt.Printf(" Name: %s\n", cust.Name)
+		fmt.Printf(" Balance: %d\n", cust.Balance)
+		fmt.Printf(" Allowed Overdraft: %d\n", cust.AllowedOverdraft)
+		fmt.Printf(" Currency: %s\n", cust.Currency)
+		fmt.Printf(" Created At: %v\n", cust.CreatedAt.Time)
 		return nil
 	},
 }
@@ -438,7 +438,7 @@ var createCustomerCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Successfully created customer:\n  ID:   %s\n  Name: %s\n  Bal:  %d\n",
+		fmt.Printf("Successfully created customer:\n ID: %s\n Name: %s\n Bal: %d\n",
 			pgUUIDToGoogleUUID(cust.ID).String(), cust.Name, cust.Balance)
 		return nil
 	},

@@ -170,10 +170,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 
 	opsReader := newOpsReader(svc)
 	fraudPresets := fraudPresetsAPIAdapter{svc: svc}
-	reportJobs := NewReportJobRunner(filepath.Join(".", "data", "report-exports"), ReportExportDeps{
-		Pool:    pool,
-		CHQuery: svc.CHQuery(),
-	})
+	reportJobs := h.svc.ReportJobRunner()
+	if reportJobs == nil {
+		reportJobs = h.svc.InitReportJobRunner(reportExportDirFromWire())
+	}
 
 	return RouteRegistry{
 		BillingHTTP: &BillingHTTPHandlers{
@@ -261,6 +261,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			Pool:                      pool,
 			CHQuery:                   svc.CHQuery(),
 			BuyerPortfolio:            svc,
+			EdgeMetricsReader:         FetchEdgeMetrics,
 			ApplyRateLimit:            limit,
 			RequirePermission:         perm,
 			RequireAnyPermission:      permAny,
@@ -285,7 +286,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			},
 		},
 		ViewsHTTP: &ViewsHTTPHandlers{
-			Store:                   NewViewsStore(),
+			Store:                   NewViewsStore(pool),
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			RequireAnyPermission:    permAny,

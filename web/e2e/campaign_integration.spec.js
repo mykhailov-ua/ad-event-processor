@@ -105,7 +105,7 @@ test('Integration tab shows click + inbound S2S copy rows', async ({ page }) => 
     'https://trk.example.com/track'
   );
   await expect(page.getByTestId('integration-inbound-body')).toContainText('"type": "conversion"');
-  await expect(page.getByTestId('integration-macro-table')).toContainText('{sub1}…{sub30}');
+  await expect(page.getByTestId('integration-macro-table')).toContainText('{sub1}...{sub30}');
   await expect(page.getByTestId('traffic-guide')).toBeVisible();
 
   const copyBtn = page.getByTestId('integration-click-url-copy');

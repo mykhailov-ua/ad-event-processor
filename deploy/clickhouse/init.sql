@@ -101,3 +101,23 @@ CREATE TABLE IF NOT EXISTS audit_log_rollups (
 PARTITION BY toYYYYMM(rollup_hour)
 ORDER BY (campaign_id, rollup_hour, event_type, source_segment, warm_dest_sha256)
 TTL rollup_hour + INTERVAL 365 DAY;
+
+CREATE TABLE IF NOT EXISTS filter_reject_rollups (
+    rollup_hour DateTime('UTC'),
+    reject_kind LowCardinality(String),
+    reject_count UInt64
+) ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(rollup_hour)
+ORDER BY (rollup_hour, reject_kind)
+TTL rollup_hour + INTERVAL 90 DAY;
+
+CREATE TABLE IF NOT EXISTS filter_reject_slices (
+    rollup_hour DateTime('UTC'),
+    reject_kind LowCardinality(String),
+    placement_id String DEFAULT '',
+    country FixedString(2) DEFAULT '',
+    reject_count UInt64
+) ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(rollup_hour)
+ORDER BY (rollup_hour, reject_kind, country, placement_id)
+TTL rollup_hour + INTERVAL 90 DAY;

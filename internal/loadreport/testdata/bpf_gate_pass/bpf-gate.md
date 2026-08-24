@@ -1,6 +1,6 @@
 # BPF resource gate (hot path)
 
-Generated: 2026-08-23T15:40:25Z
+Generated: 2026-08-24T12:41:14Z
 Session: `testdata/bpf_gate_pass`
 Prometheus: `http://127.0.0.1:1`
 Strict: `false`
@@ -19,7 +19,7 @@ Strict: `false`
 | redis_lua_p99_max_ms | na | 10 | SKIP | skipped (Prometheus unavailable) |
 | ch_spool_segments | 0 | 0 | PASS | ClickHouse spool segment backlog after settle (mmap WAL leak) |
 | disk_gate_degraded | 0 | 0 | PASS | disk gate shedding TierLow appends |
-| redis_pool_misses_rate | 0 | 0.5 | PASS | go-redis pool connection churn (new conns per second) |
+| redis_pool_misses_rate | 0 | 0.5 | PASS | control plane go-redis pool connection churn (new conns per second) |
 | redis_pool_timeouts_rate | 0 | 0 | PASS | go-redis pool wait timeouts |
 | processor_pg_acquire_wait_p99_ms | na | 100 | PASS | processor PG connection pool acquisition wait p99 |
 | go_gc_pause_p99_ms | na | 5 | PASS | Go runtime GC stop-the-world pause p99 |

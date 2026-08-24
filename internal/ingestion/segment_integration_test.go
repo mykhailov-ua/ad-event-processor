@@ -142,8 +142,7 @@ func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *domain
 func BenchmarkSegmentCheck_miss(b *testing.B) {
 	f, evt, ctx := setupSegmentFilterBench(b, false)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }
@@ -151,8 +150,7 @@ func BenchmarkSegmentCheck_miss(b *testing.B) {
 func BenchmarkSegmentCheck_hit(b *testing.B) {
 	f, evt, ctx := setupSegmentFilterBench(b, true)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = f.Check(ctx, evt)
 	}
 }

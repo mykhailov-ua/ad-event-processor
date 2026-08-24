@@ -35,69 +35,69 @@ type GeoROIReportResponse struct {
 	NextCursor string           `json:"next_cursor,omitempty"`
 }
 
-const geoCountryExpr = `coalesce(nullIf(JSONExtractString(payload, 'country'), ''), 'ZZ')`
+const geoCountryExpr = chDimCountryExpr
 
 const geoROIEventQuery = `
 SELECT
-    campaign_id,
-    country,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions,
-    sum(ivt_events) AS ivt_events
+ campaign_id,
+ country,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions,
+ sum(ivt_events) AS ivt_events
 FROM (
-    SELECT
-        campaign_id,
-        ` + geoCountryExpr + ` AS country,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS conversions,
-        toUInt64(0) AS ivt_events
-    FROM impressions
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY campaign_id, country
-    UNION ALL
-    SELECT
-        c.campaign_id,
-        coalesce(nullIf(JSONExtractString(c.payload, 'country'), ''), 'ZZ') AS country,
-        toUInt64(0) AS impressions,
-        count() AS clicks,
-        toUInt64(0) AS conversions,
-        uniqIf(c.click_id, f.click_id != '') AS ivt_events
-    FROM clicks AS c
-    LEFT JOIN fraud_events AS f
-        ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
-    WHERE c.campaign_id IN (?)
-      AND c.created_at >= ?
-      AND c.created_at < ?
-    GROUP BY c.campaign_id, country
-    UNION ALL
-    SELECT
-        campaign_id,
-        ` + geoCountryExpr + ` AS country,
-        toUInt64(0),
-        toUInt64(0),
-        count(),
-        toUInt64(0)
-    FROM conversions
-    WHERE campaign_id IN (?)
-      AND created_at >= ?
-      AND created_at < ?
-    GROUP BY campaign_id, country
+ SELECT
+ campaign_id,
+ ` + geoCountryExpr + ` AS country,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toUInt64(0) AS conversions,
+ toUInt64(0) AS ivt_events
+ FROM impressions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY campaign_id, country
+ UNION ALL
+ SELECT
+ c.campaign_id,
+ coalesce(` + chDimCountryExpr + `, 'ZZ') AS country,
+ toUInt64(0) AS impressions,
+ count() AS clicks,
+ toUInt64(0) AS conversions,
+ uniqIf(c.click_id, f.click_id != '') AS ivt_events
+ FROM clicks AS c
+ LEFT JOIN fraud_events AS f
+ ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+ WHERE c.campaign_id IN (?)
+ AND c.created_at >= ?
+ AND c.created_at < ?
+ GROUP BY c.campaign_id, country
+ UNION ALL
+ SELECT
+ campaign_id,
+ ` + geoCountryExpr + ` AS country,
+ toUInt64(0),
+ toUInt64(0),
+ count(),
+ toUInt64(0)
+ FROM conversions
+ WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ GROUP BY campaign_id, country
 )
 GROUP BY campaign_id, country`
 
 const geoROICampaignSpendQuery = `
 SELECT
-    campaign_id,
-    sum(spend_micro) AS spend_micro,
-    sum(revenue_micro) AS revenue_micro
+ campaign_id,
+ sum(spend_micro) AS spend_micro,
+ sum(revenue_micro) AS revenue_micro
 FROM placement_stats_hourly
 WHERE campaign_id IN (?)
-  AND hour >= ?
-  AND hour < ?
+ AND hour >= ?
+ AND hour < ?
 GROUP BY campaign_id`
 
 type geoCampaignCountryRow struct {
@@ -117,7 +117,7 @@ type campaignSpendTotals struct {
 func (reports *ReportsHTTPHandlers) registerGeoROI(mux *http.ServeMux) {
 	limit := reports.ApplyRateLimit
 	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/geo-roi", limit(perm("campaigns:read", reports.getGeoROIReport)))
+	mux.HandleFunc("GET /api/v1/reports/geo-roi", limit(perm("campaigns:read", reports.wrapReport("geo-roi", reports.getGeoROIReport))))
 }
 
 func (reports *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *http.Request) {

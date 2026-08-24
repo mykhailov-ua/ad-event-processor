@@ -36,9 +36,9 @@ func printUsage(w *os.File) {
 	_, _ = fmt.Fprintf(w, `usage: trial-registry <command>
 
 commands:
-  expire-stale     mark active anchors expired when valid_until < now
-  list-pending     print open pending trial requests
-  reject-pending   reject an open pending request by id
+ expire-stale mark active anchors expired when valid_until < now
+ list-pending print open pending trial requests
+ reject-pending reject an open pending request by id
 
 `)
 }

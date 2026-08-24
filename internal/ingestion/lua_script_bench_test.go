@@ -100,12 +100,13 @@ func BenchmarkLuaScript_Happy(b *testing.B) {
 
 	b.SetBytes(int64(len(payload)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		evt.ClickID = unsafeString(strconv.AppendInt(evt.ClickIDBuf[:0], int64(i), 10))
+	benchN := 0
+	for b.Loop() {
+		evt.ClickID = unsafeString(strconv.AppendInt(evt.ClickIDBuf[:0], int64(benchN), 10))
 		if err := f.Check(ctx, evt); err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }
 
@@ -155,11 +156,12 @@ func BenchmarkLuaScript_Worst(b *testing.B) {
 
 	b.SetBytes(int64(len(payload)))
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		evt.ClickID = unsafeString(strconv.AppendInt(evt.ClickIDBuf[:0], int64(i), 10))
+	benchN := 0
+	for b.Loop() {
+		evt.ClickID = unsafeString(strconv.AppendInt(evt.ClickIDBuf[:0], int64(benchN), 10))
 		if err := f.Check(ctx, evt); err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }

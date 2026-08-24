@@ -19,7 +19,7 @@ import (
 
 func TestHashSHA256_MetaParity(t *testing.T) {
 	want := sha256.Sum256([]byte("user@example.com"))
-	if got := hashSHA256("  User@Example.Com "); got != hex.EncodeToString(want[:]) {
+	if got := hashSHA256(" User@Example.Com "); got != hex.EncodeToString(want[:]) {
 		t.Fatalf("hashSHA256 = %q want %x", got, want)
 	}
 	if hashSHA256("") != "" {
@@ -38,7 +38,7 @@ func TestMapFacebookEventName(t *testing.T) {
 	}
 	for in, want := range cases {
 		if got := mapFacebookEventName(in); got != want {
-			t.Fatalf("%q → %q want %q", in, got, want)
+			t.Fatalf("%q -> %q want %q", in, got, want)
 		}
 	}
 }
@@ -170,8 +170,7 @@ func BenchmarkPostbackWorker_Saturation(b *testing.B) {
 		FBCLID:    "fb",
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := a.Send(context.Background(), client, payload, srv.URL, "tok"); err != nil {
 			b.Fatal(err)
 		}

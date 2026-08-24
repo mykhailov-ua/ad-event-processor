@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/load_test_env.sh"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
@@ -9,10 +10,13 @@ if [[ -f "$ROOT/.env" ]]; then
   set +a
 fi
 
+load_test_source_env "$ROOT" 2> /dev/null || true
+load_test_export_derived 2> /dev/null || true
+load_test_compose COMPOSE "$ROOT"
+
 DB_PORT="${DB_PORT:-5430}"
 DB_USER="${DB_USER:-ad_event_processor_user}"
 DB_NAME="${DB_NAME:-ad_event_processor}"
-COMPOSE=(docker compose -f docker-compose.yaml -f docker-compose.load-test.yaml)
 
 log() { printf 'reconcile-ingestion-migrations: %s\n' "$*"; }
 
@@ -22,19 +26,30 @@ psql_exec() {
 
 log "marking 00020 applied when campaigns.budget_limit is already bigint"
 psql_exec -v ON_ERROR_STOP=1 << 'SQL'
-INSERT INTO public.tracked_migrations (filename)
-SELECT '00020_change_money_to_bigint.sql'
-WHERE NOT EXISTS (
-    SELECT 1 FROM public.tracked_migrations WHERE filename = '00020_change_money_to_bigint.sql'
-)
-AND EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'public'
-      AND table_name = 'campaigns'
-      AND column_name = 'budget_limit'
-      AND data_type = 'bigint'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'tracked_migrations'
+    ) THEN
+        RETURN;
+    END IF;
+    INSERT INTO public.tracked_migrations (filename)
+    SELECT '00020_change_money_to_bigint.sql'
+    WHERE NOT EXISTS (
+        SELECT 1 FROM public.tracked_migrations WHERE filename = '00020_change_money_to_bigint.sql'
+    )
+    AND EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'campaigns'
+          AND column_name = 'budget_limit'
+          AND data_type = 'bigint'
+    );
+END $$;
 SQL
 
 log "repairing events.user_id (00010 drift on partitioned events)"

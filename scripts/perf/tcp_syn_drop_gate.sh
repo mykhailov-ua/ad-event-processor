@@ -34,12 +34,12 @@ die() {
   exit 1
 }
 
-log "artifacts → $OUT"
+log "artifacts -> $OUT"
 log "target_rps=$TARGET_RPS duration=$DURATION max_overflow_delta=$MAX_OVERFLOW_DELTA"
 
 if [[ "${SKIP_SYSCTL_CHECK:-0}" != "1" ]]; then
   if ! tcp_sysctl_backlog_check "$SYSCTL_MIN"; then
-    die "backlog sysctl below $SYSCTL_MIN — apply deploy/sysctl/99-ad-event-processor-sysctl.conf (or SKIP_SYSCTL_CHECK=1)"
+    die "backlog sysctl below $SYSCTL_MIN - apply deploy/sysctl/99-ad-event-processor-sysctl.conf (or SKIP_SYSCTL_CHECK=1)"
   fi
   log "sysctl backlog OK (>= $SYSCTL_MIN)"
 else

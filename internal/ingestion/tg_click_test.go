@@ -88,8 +88,7 @@ func BenchmarkParseTgQuery_ZeroAlloc(b *testing.B) {
 	scratch := make([]byte, 0, 512)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		scratch = parseTgQuery(path, scratch[:0], parsed)
 	}
 }

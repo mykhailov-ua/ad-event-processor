@@ -1,4 +1,3 @@
-
 local edge_uuid = require "edge-uuid"
 
 local _M = {}

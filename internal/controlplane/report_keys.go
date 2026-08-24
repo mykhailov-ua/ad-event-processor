@@ -1,0 +1,28 @@
+package controlplane
+
+func liveReportExportKeys() []string {
+	return []string{
+		"placements", "keywords", "pacing-drift", "filter-rejects", "fraud-breakdown", "ghost-impression-funnel",
+		"spend-velocity", "daypart-heatmap", "campaign-geo-device", "geo-roi", "source-quality",
+		"ivt-by-source", "rtb-overview", "rtb-no-bid-reasons", "rtb-geo-device", "traffic-sources",
+		"discrepancy-buy-sell", "true-roi", "customer-portfolio", "data-quality", "campaign-overview",
+		"postback-reconciliation", "telegram", "cost-sync-coverage",
+	}
+}
+
+// LiveReportMetricKeys is the fixed Prometheus label set for report handler metrics.
+func LiveReportMetricKeys() []string {
+	keys := append([]string(nil), liveReportExportKeys()...)
+	keys = append(keys,
+		"campaign-stats",
+		"edge-parity",
+		"ml/score-distribution",
+		"ml/shadow-delta",
+		"ml/feature-spikes",
+	)
+	return keys
+}
+
+func reportErrorReasons() []string {
+	return []string{"ch_unavailable", "bad_request", "forbidden", "query_timeout", "internal"}
+}

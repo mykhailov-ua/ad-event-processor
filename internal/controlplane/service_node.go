@@ -16,26 +16,26 @@ import (
 
 const upsertNodeCapacityScoreSQL = `
 INSERT INTO node_capacity_scores (
-    node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
+ node_id, region_code, role, score, weight, provenance, epoch_id, updated_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
 ON CONFLICT (node_id, region_code, role) DO UPDATE SET
-    score = EXCLUDED.score,
-    weight = EXCLUDED.weight,
-    provenance = EXCLUDED.provenance,
-    epoch_id = EXCLUDED.epoch_id,
-    updated_at = NOW()
+ score = EXCLUDED.score,
+ weight = EXCLUDED.weight,
+ provenance = EXCLUDED.provenance,
+ epoch_id = EXCLUDED.epoch_id,
+ updated_at = NOW()
 `
 
 const upsertRegionTrafficDialSQL = `
 INSERT INTO region_traffic_dial (
-    region_code, score, weight, provenance, epoch_id, updated_at
+ region_code, score, weight, provenance, epoch_id, updated_at
 ) VALUES ($1, $2, $3, $4, $5, NOW())
 ON CONFLICT (region_code) DO UPDATE SET
-    score = EXCLUDED.score,
-    weight = EXCLUDED.weight,
-    provenance = EXCLUDED.provenance,
-    epoch_id = EXCLUDED.epoch_id,
-    updated_at = NOW()
+ score = EXCLUDED.score,
+ weight = EXCLUDED.weight,
+ provenance = EXCLUDED.provenance,
+ epoch_id = EXCLUDED.epoch_id,
+ updated_at = NOW()
 `
 
 var regionalScorerRoles = []string{RoleTracker, RoleRegionProxy, RoleProcessor}

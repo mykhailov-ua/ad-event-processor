@@ -122,7 +122,7 @@ func (r *probeRun) dumpMaps() error {
 		Markers:       markers,
 		HardwarePerf:  r.collectHardwarePerf(pidStats),
 	}
-	data, err := json.MarshalIndent(bundle, "", "  ")
+	data, err := json.MarshalIndent(bundle, "", " ")
 	if err != nil {
 		return err
 	}

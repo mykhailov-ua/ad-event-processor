@@ -38,19 +38,19 @@ var budgetArgsPool = sync.Pool{
 
 const budgetLuaScript = `
 if redis.call("EXISTS", KEYS[2]) == 1 then
-    return 1
+ return 1
 end
 
 local b = redis.call("GET", KEYS[1])
 if not b then
-    return -1
+ return -1
 end
 
 local budget = tonumber(b)
 local amount = tonumber(ARGV[1])
 
 if budget < amount then
-    return 0
+ return 0
 end
 
 redis.call("INCRBY", KEYS[1], -amount)

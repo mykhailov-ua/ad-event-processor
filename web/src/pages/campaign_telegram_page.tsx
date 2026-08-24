@@ -27,8 +27,8 @@ export function CampaignTelegramPage() {
       <div className="page-header">
         <h1 className="page-header__title">Telegram Mini App</h1>
         <p className="text-muted">
-          <Link to={`/campaigns/${encodeURIComponent(id)}`}>← Campaign</Link>
-          {' · '}
+          <Link to={`/campaigns/${encodeURIComponent(id)}`}>{'<-'} Campaign</Link>
+          {' , '}
           <Link to={`/reports/telegram?campaign_id=${encodeURIComponent(id)}`}>
             Open full analytics
           </Link>

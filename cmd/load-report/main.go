@@ -37,7 +37,7 @@ func main() {
 		}
 		if err := runBPF(sessionDir); err != nil {
 			if errors.Is(err, loadreport.ErrNoBPFSummary) {
-				fmt.Fprintf(os.Stderr, "load-report bpf: no bpf/maps/summary.json — skipping\n")
+				fmt.Fprintf(os.Stderr, "load-report bpf: no bpf/maps/summary.json - skipping\n")
 				os.Exit(0)
 			}
 			fmt.Fprintln(os.Stderr, err)
@@ -54,7 +54,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		} else if errors.Is(err, loadreport.ErrNoBPFSummary) {
-			fmt.Fprintf(os.Stderr, "load-report bpf: no bpf/maps/summary.json — skipping\n")
+			fmt.Fprintf(os.Stderr, "load-report bpf: no bpf/maps/summary.json - skipping\n")
 		}
 		if err := runProm(sessionDir, promURL); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -256,15 +256,15 @@ func runStrictCompare(baselineDir, treatmentDir, promURL string) error {
 
 func usage() {
 	fmt.Fprintf(os.Stderr, `Usage:
-  load-report prom <session-dir> [--prom URL]
-  load-report bpf <session-dir>
-  load-report bpf-gate <session-dir> [--prom URL]
-  load-report bpf-gate-compare <baseline-dir> <session-dir> [--prom URL]
-  load-report sla <session-dir> [--prom URL]
-  load-report strict <session-dir> [--prom URL]
-  load-report strict-compare <baseline-dir> <treatment-dir>
-  load-report telegram <session-dir> [--prom URL]
-  load-report all <session-dir> [--prom URL]
+ load-report prom <session-dir> [--prom URL]
+ load-report bpf <session-dir>
+ load-report bpf-gate <session-dir> [--prom URL]
+ load-report bpf-gate-compare <baseline-dir> <session-dir> [--prom URL]
+ load-report sla <session-dir> [--prom URL]
+ load-report strict <session-dir> [--prom URL]
+ load-report strict-compare <baseline-dir> <treatment-dir>
+ load-report telegram <session-dir> [--prom URL]
+ load-report all <session-dir> [--prom URL]
 
 Default Prometheus URL: %s (override with PROMETHEUS_URL or --prom)
 Set LOAD_SLA_GATE=1 to fail load-report all on SLA breach.

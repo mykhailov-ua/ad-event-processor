@@ -57,7 +57,7 @@ func (r *probeRun) writeMemSnapshot(filename string) error {
 	}
 
 	path := filepath.Join(r.session.Dir, filename)
-	data, err := json.MarshalIndent(snap, "", "  ")
+	data, err := json.MarshalIndent(snap, "", " ")
 	if err != nil {
 		return err
 	}

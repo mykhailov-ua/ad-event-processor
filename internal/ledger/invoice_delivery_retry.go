@@ -37,10 +37,10 @@ func (service *Service) RetryInvoiceDelivery(ctx context.Context, inv *domain.In
 	tag, err := service.pool.Exec(ctx, `
 		UPDATE notify.notifications
 		SET status = 'PENDING',
-		    retry_count = 0,
-		    error_message = NULL,
-		    claimed_at = NULL,
-		    updated_at = now()
+		 retry_count = 0,
+		 error_message = NULL,
+		 claimed_at = NULL,
+		 updated_at = now()
 		WHERE id = $1::uuid AND status = 'FAILED'`, notifID)
 	if err != nil {
 		return fmt.Errorf("retry invoice delivery: %w", err)

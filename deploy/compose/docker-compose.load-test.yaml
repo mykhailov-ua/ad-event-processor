@@ -243,3 +243,22 @@ services:
     environment:
       - MANAGEMENT_PORT=${LOAD_TEST_CONTROL_PORT}
       - CONTROL_PORT=${LOAD_TEST_CONTROL_PORT}
+      - CONTROL_ENABLE_PAYMENT=0
+      - CONTROL_ENABLE_BILLING=0
+      - CONTROL_ENABLE_NOTIFIER=0
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+      - REPORT_EXPORT_DIR=/run/ad-event-processor/report-exports
+      - DB_TRACKER_MAX_CONNS=32
+      - DB_MIN_CONNS=4
+      - VOLUME_METER_ENABLED=0
+      - CH_USE_UDS=0
+      - CH_DSN=clickhouse://default:${CH_PASSWORD:-secure_ch_pass}@127.0.0.1:9000/ad_event_processor
+      - CH_READONLY_DSN=clickhouse://default:${CH_PASSWORD:-secure_ch_pass}@127.0.0.1:9000/ad_event_processor
+      - DB_DSN=postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT:-5430}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}
+      - REDIS_ADDRS=${LOAD_TEST_REDIS_ADDRS}
+    healthcheck:
+      test: ['CMD', '/control', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_CONTROL_PORT}/health']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

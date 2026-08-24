@@ -72,7 +72,7 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
       id: 'license-state',
       level: 'critical',
       title: 'License',
-      detail: `${license!.state}${license!.valid_until ? ` · until ${license!.valid_until}` : ''}`,
+      detail: `${license!.state}${license!.valid_until ? ` , until ${license!.valid_until}` : ''}`,
       route: '/settings',
     });
   }
@@ -238,7 +238,7 @@ export function buildHomeAlerts(input: HomeAlertInput): HomeAlertCard[] {
           id: `shard-circuit-${shard.shard_id ?? i}`,
           level: 'warning',
           title: `Shard ${shard.shard_id ?? i} config lag`,
-          detail: 'Redis config version not synced — circuit risk',
+          detail: 'Redis config version not synced - circuit risk',
           route: '/ops/shards',
         });
       }

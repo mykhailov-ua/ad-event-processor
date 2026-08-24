@@ -52,11 +52,12 @@ func benchCIDRTable(tb testing.TB, n int) (*CIDRTable, [][4]byte, [][16]byte) {
 func BenchmarkCIDR_LPM_Lookup_IPv4(b *testing.B) {
 	table, probe4, _ := benchCIDRTable(b, 50_000)
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
 	var feed uint8
-	for i := 0; i < b.N; i++ {
-		hit, feed = table.Match4(probe4[i&63])
+	benchN := 0
+	for b.Loop() {
+		hit, feed = table.Match4(probe4[benchN&63])
+		benchN++
 	}
 	cidrBenchSinkUint8 += feed
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
@@ -65,11 +66,12 @@ func BenchmarkCIDR_LPM_Lookup_IPv4(b *testing.B) {
 func BenchmarkCIDR_LPM_Lookup_IPv6(b *testing.B) {
 	table, _, probe6 := benchCIDRTable(b, 50_000)
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
 	var feed uint8
-	for i := 0; i < b.N; i++ {
-		hit, feed = table.Match6(probe6[i&63])
+	benchN := 0
+	for b.Loop() {
+		hit, feed = table.Match6(probe6[benchN&63])
+		benchN++
 	}
 	cidrBenchSinkUint8 += feed
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
@@ -82,11 +84,12 @@ func BenchmarkCIDR_LPM_Lookup_ParseIP(b *testing.B) {
 		"142.250.74.46", "2606:4700:4700::1111", "198.51.100.23",
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
 	var feed uint8
-	for i := 0; i < b.N; i++ {
-		hit, feed = table.MatchIP(ips[i%len(ips)])
+	benchN := 0
+	for b.Loop() {
+		hit, feed = table.MatchIP(ips[benchN%len(ips)])
+		benchN++
 	}
 	cidrBenchSinkUint8 += feed
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
@@ -108,10 +111,11 @@ func BenchmarkCIDR_MatchBranch_SafeView(b *testing.B) {
 		ipStrs[i] = netip.AddrFrom4(probe4[i]).String()
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
-	for i := 0; i < b.N; i++ {
-		hit, _ = h.l1CIDRShouldSafeView(ipStrs[i&63], cid)
+	benchN := 0
+	for b.Loop() {
+		hit, _ = h.l1CIDRShouldSafeView(ipStrs[benchN&63], cid)
+		benchN++
 	}
 	cidrBenchSinkBool = cidrBenchSinkBool || hit
 }

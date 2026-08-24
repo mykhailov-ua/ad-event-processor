@@ -127,7 +127,7 @@ export function FraudLabelsPanel({ customerId, canWrite }: FraudLabelsPanelProps
       {error ? <p className="text-danger text-sm">{error}</p> : null}
 
       {loading ? (
-        <p className="loading-hint">Loading labels…</p>
+        <p className="loading-hint">Loading labels...</p>
       ) : labels.length === 0 ? (
         <p className="text-muted text-sm">No manual labels for this customer yet.</p>
       ) : (
@@ -145,10 +145,10 @@ export function FraudLabelsPanel({ customerId, canWrite }: FraudLabelsPanelProps
             <tbody>
               {labels.map((row) => (
                 <tr key={row.ip_hash} data-testid={`fraud-label-row-${row.ip_hash.slice(0, 8)}`}>
-                  <td className="font-mono text-sm">{`${row.ip_hash.slice(0, 8)}…`}</td>
+                  <td className="font-mono text-sm">{`${row.ip_hash.slice(0, 8)}...`}</td>
                   <td>{row.label === 1 ? 'fraud' : 'legit'}</td>
-                  <td>{row.reason ?? '—'}</td>
-                  <td className="text-sm text-muted">{row.created_at ?? '—'}</td>
+                  <td>{row.reason ?? '-'}</td>
+                  <td className="text-sm text-muted">{row.created_at ?? '-'}</td>
                   {canWrite ? (
                     <td>
                       <div className="button-row">

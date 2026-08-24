@@ -13,7 +13,7 @@ import (
 
 const residentialIntelCHInsert = `
 INSERT INTO ad_event_processor.residential_intel_cache (
-    ip_hash, residential_proxy, vpn, proxy, provider, cached_at
+ ip_hash, residential_proxy, vpn, proxy, provider, cached_at
 ) VALUES (?, ?, ?, ?, ?, ?)`
 
 func insertResidentialIntelCH(ctx context.Context, conn driver.Conn, ip string, result ResidentialIntelResult, provider string, cachedAt time.Time) error {

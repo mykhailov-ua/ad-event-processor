@@ -1,0 +1,2 @@
+# Per-cohort license key pairs: keys/<kid>/license_public.key (+ license_private.key gitignored).
+# See deploy/vendor/KEYS.md.

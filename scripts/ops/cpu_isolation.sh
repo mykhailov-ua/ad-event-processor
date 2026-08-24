@@ -39,7 +39,7 @@ verify_no_cpu_quota() {
   line="$(inspect_container "$1" || return 1)"
   quota="$(echo "$line" | sed -n 's/.*cpu_quota=\([^ ]*\).*/\1/p')"
   if [[ -n "$quota" && "$quota" != "0" ]]; then
-    die "$1 has cpu_quota=$quota (want 0 — no CFS hard cap)"
+    die "$1 has cpu_quota=$quota (want 0 - no CFS hard cap)"
   fi
   log "ok  $line"
 }
@@ -71,7 +71,7 @@ cmd_verify() {
   COMPOSE=(docker compose -f "$COMPOSE_FILE" -f deploy/compose/docker-compose.cpu-isolation.yaml --profile cpu-isolation)
   TRACKER_CID="$("${COMPOSE[@]}" ps -q tracker-0 2> /dev/null | head -1 || true)"
   if [[ -z "$TRACKER_CID" ]]; then
-    die "tracker-0 not running — start stack with --profile cpu-isolation"
+    die "tracker-0 not running - start stack with --profile cpu-isolation"
   fi
   name="$(docker inspect "$TRACKER_CID" --format '{{.Name}}' | sed 's/^\///')"
   cpuset="$(docker inspect "$TRACKER_CID" --format '{{.HostConfig.CpusetCpus}}')"

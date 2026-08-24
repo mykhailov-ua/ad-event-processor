@@ -125,12 +125,12 @@ func (h *TelegramHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/telegram/postbacks/{id}", limit(perm([]string{"campaigns:write"}, h.deletePostback)))
 	mux.HandleFunc("POST /api/v1/telegram/postbacks/{id}/test", limit(perm([]string{"campaigns:write"}, h.testPostback)))
 
-	mux.HandleFunc("GET /api/v1/reports/telegram", limit(perm([]string{"reports:read"}, h.getTelegramReport)))
-	mux.HandleFunc("GET /api/v1/reports/telegram/summary", limit(perm([]string{"reports:read"}, h.getTelegramSummaryReport)))
-	mux.HandleFunc("GET /api/v1/reports/telegram/funnel", limit(perm([]string{"reports:read"}, h.getTelegramFunnelReport)))
-	mux.HandleFunc("GET /api/v1/reports/telegram/bots", limit(perm([]string{"reports:read"}, h.getTelegramBotsReport)))
-	mux.HandleFunc("GET /api/v1/reports/telegram/premium", limit(perm([]string{"reports:read"}, h.getTelegramPremiumReport)))
-	mux.HandleFunc("GET /api/v1/reports/telegram/fraud", limit(perm([]string{"reports:read"}, h.getTelegramFraudReport)))
+	mux.HandleFunc("GET /api/v1/reports/telegram", limit(perm([]string{"reports:read"}, observeReportHandler("telegram", h.getTelegramReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/summary", limit(perm([]string{"reports:read"}, observeReportHandler("telegram", h.getTelegramSummaryReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/funnel", limit(perm([]string{"reports:read"}, observeReportHandler("telegram", h.getTelegramFunnelReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/bots", limit(perm([]string{"reports:read"}, observeReportHandler("telegram", h.getTelegramBotsReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/premium", limit(perm([]string{"reports:read"}, observeReportHandler("telegram", h.getTelegramPremiumReport))))
+	mux.HandleFunc("GET /api/v1/reports/telegram/fraud", limit(perm([]string{"reports:read"}, observeReportHandler("telegram", h.getTelegramFraudReport))))
 	mux.HandleFunc("POST /api/v1/reports/telegram/export", limit(perm([]string{"reports:read"}, h.exportTelegramReport)))
 }
 

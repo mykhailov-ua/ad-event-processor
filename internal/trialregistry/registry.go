@@ -199,7 +199,7 @@ func (r *Registry) saveLocked(snap *fileSnapshot) error {
 	if snap.Version == 0 {
 		snap.Version = 1
 	}
-	data, err := json.MarshalIndent(snap, "", "  ")
+	data, err := json.MarshalIndent(snap, "", " ")
 	if err != nil {
 		return fmt.Errorf("encode trial registry: %w", err)
 	}

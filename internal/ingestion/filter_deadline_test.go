@@ -72,8 +72,7 @@ func BenchmarkFilterEngine_Check_noTimeout(b *testing.B) {
 	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = engine.Check(ctx, evt)
 	}
 }
@@ -83,8 +82,7 @@ func BenchmarkFilterEngine_Check_withDeadline(b *testing.B) {
 	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = engine.Check(ctx, evt)
 	}
 }

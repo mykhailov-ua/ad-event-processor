@@ -10,7 +10,7 @@ const LEDGER_CSV = [
   '',
 ].join('\n');
 
-test.describe('CPA held-out — ledger export', () => {
+test.describe('CPA held-out - ledger export', () => {
   test('ledger CSV download has header + data row with TOPUP', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 
@@ -73,7 +73,7 @@ test.describe('CPA held-out — ledger export', () => {
   });
 });
 
-test.describe('CPA held-out — campaign PATCH honesty', () => {
+test.describe('CPA held-out - campaign PATCH honesty', () => {
   test.fixme('budget save persists after reload', async ({ page }) => {
     await page.goto('/campaigns/00000000-0000-4000-8000-000000000001');
     await page.getByTestId('campaign-budget-total').fill('1000');
@@ -83,7 +83,7 @@ test.describe('CPA held-out — campaign PATCH honesty', () => {
   });
 });
 
-test.describe('CPA held-out — report actions', () => {
+test.describe('CPA held-out - report actions', () => {
   test('pause campaign POST before success toast', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
     const CAMPAIGN_ID = '550e8400-e29b-41d4-a716-446655440099';
@@ -118,7 +118,7 @@ test.describe('CPA held-out — report actions', () => {
   });
 });
 
-test.describe('CPA held-out — integration kit', () => {
+test.describe('CPA held-out - integration kit', () => {
   test('click URL includes dmr=1 when toggled', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
     const CAMPAIGN_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -163,7 +163,7 @@ test.describe('CPA held-out — integration kit', () => {
   });
 });
 
-test.describe('CPA held-out — publisher scope', () => {
+test.describe('CPA held-out - publisher scope', () => {
   test('publisher dashboard loads with scoped fixture', async ({ page }) => {
     await mockAuthedSession(page, PUBLISHER_USER);
 
@@ -261,7 +261,7 @@ test.describe('CPA held-out — publisher scope', () => {
   });
 });
 
-test.describe('CPA held-out — self-serve portal', () => {
+test.describe('CPA held-out - self-serve portal', () => {
   test('billing statement and payment intent in selfserve shell', async ({ page }) => {
     await mockAuthedSession(page, BUYER_USER);
 
@@ -323,7 +323,7 @@ test.describe('CPA held-out — self-serve portal', () => {
   });
 });
 
-test.describe('CPA held-out — ops consolidation', () => {
+test.describe('CPA held-out - ops consolidation', () => {
   test('consent browser is read-only list', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 

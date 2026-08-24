@@ -186,7 +186,7 @@ export function CustomerDetailPage() {
         {['Name', 'Balance', 'Currency', 'Created'].map((label) => (
           <div key={label} className="metric-card metric-card--loading">
             <div className="metric-card__label">{label}</div>
-            <div className="metric-card__value">…</div>
+            <div className="metric-card__value">...</div>
           </div>
         ))}
       </div>
@@ -215,7 +215,7 @@ export function CustomerDetailPage() {
           </div>
           {canReadCustomer ? (
             <Button
-              label={balanceExportBusy ? 'Exporting…' : 'Export balance CSV'}
+              label={balanceExportBusy ? 'Exporting...' : 'Export balance CSV'}
               variant="secondary"
               size="sm"
               data-testid="customer-balance-export"
@@ -254,15 +254,15 @@ export function CustomerDetailPage() {
           <dt>ID</dt>
           <dd className="font-mono text-secondary">{customer.id}</dd>
           <dt>Created</dt>
-          <dd>{customer.created_at ? new Date(customer.created_at).toLocaleString() : '—'}</dd>
+          <dd>{customer.created_at ? new Date(customer.created_at).toLocaleString() : '-'}</dd>
           <dt>Updated</dt>
-          <dd>{customer.updated_at ? new Date(customer.updated_at).toLocaleString() : '—'}</dd>
+          <dd>{customer.updated_at ? new Date(customer.updated_at).toLocaleString() : '-'}</dd>
         </dl>
       </section>
 
       <section className="section-block" data-testid="customer-tax-profile">
         <h2 className="subsection-title">Tax profile</h2>
-        {taxLoading ? <span className="text-muted">Loading…</span> : null}
+        {taxLoading ? <span className="text-muted">Loading...</span> : null}
         {taxError && !taxProfile ? (
           <p className="text-muted text-sm">Tax profile not available.</p>
         ) : null}
@@ -305,7 +305,7 @@ export function CustomerDetailPage() {
               />
             </FormField>
             <Button
-              label={taxSaving ? 'Saving…' : 'Save tax profile'}
+              label={taxSaving ? 'Saving...' : 'Save tax profile'}
               variant="primary"
               size="sm"
               type="submit"
@@ -316,11 +316,11 @@ export function CustomerDetailPage() {
         ) : taxProfile ? (
           <dl className="definition-list">
             <dt>Country</dt>
-            <dd>{taxProfile.country_code ?? '—'}</dd>
+            <dd>{taxProfile.country_code ?? '-'}</dd>
             <dt>Region</dt>
-            <dd>{taxProfile.tax_region ?? '—'}</dd>
+            <dd>{taxProfile.tax_region ?? '-'}</dd>
             <dt>Scheme</dt>
-            <dd>{taxProfile.tax_scheme ?? '—'}</dd>
+            <dd>{taxProfile.tax_scheme ?? '-'}</dd>
             <dt>Rate (bps)</dt>
             <dd className="font-mono">{String(taxProfile.tax_rate_bps ?? 0)}</dd>
           </dl>
@@ -336,7 +336,7 @@ export function CustomerDetailPage() {
           <h2 className="subsection-title">Wallet</h2>
           <Button label="Billing" variant="secondary" size="sm" onClick={openBilling} />
         </div>
-        {walletLoading ? <span className="text-muted">Loading…</span> : null}
+        {walletLoading ? <span className="text-muted">Loading...</span> : null}
         {wallet ? (
           <div className="metric-row section-block">
             <div className="metric-card">

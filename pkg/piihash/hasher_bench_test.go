@@ -19,8 +19,7 @@ func BenchmarkPIIHash_batch1000(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		for _, e := range events {
 			_ = h.HashIP(e.IP)
 			_ = h.HashUA(e.UA)
@@ -33,7 +32,7 @@ func BenchmarkPIIHash_singleIP(b *testing.B) {
 	h := piihash.TestHasher()
 	ip := "203.0.113.42"
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = h.HashIP(ip)
 	}
 }

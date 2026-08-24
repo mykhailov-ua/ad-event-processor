@@ -46,8 +46,8 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	)
 	err = pool.QueryRow(ctx, `
 		SELECT social_in_app_enabled, l15_proxy_vpn_block_enabled,
-		       tls_fingerprint_block_enabled, conn_type_policy,
-		       fraud_threshold_pass, fraud_threshold_block
+		 tls_fingerprint_block_enabled, conn_type_policy,
+		 fraud_threshold_pass, fraud_threshold_block
 		FROM campaigns WHERE id = $1`, campID).Scan(
 		&socialInApp, &l15, &tls, &connType, &pass, &block,
 	)

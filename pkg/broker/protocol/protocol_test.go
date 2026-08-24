@@ -148,8 +148,6 @@ func BenchmarkTopicRegistryLookup(b *testing.B) {
 		id, _ := registry.Register("topic-" + strconv.Itoa(i))
 		ids = append(ids, id)
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	b.RunParallel(func(pb *testing.PB) {
@@ -169,11 +167,9 @@ func BenchmarkBatchIterator(b *testing.B) {
 	for i := range 100 {
 		batch = AppendBatchMessage(batch, uint16(i%1000), []byte("message-payload-data-for-benchmarking"))
 	}
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		it := NewBatchIterator(batch)
 		count := 0
 		for it.Next() {
@@ -228,12 +224,10 @@ func BenchmarkReadFrame(b *testing.B) {
 
 	reqBufCopy := make([]byte, len(reqBuf))
 	copy(reqBufCopy, reqBuf)
-
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	r := bytes.NewReader(reqBufCopy)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		r.Reset(reqBufCopy)
 		cmd, seq, _, err := ReadFrame(r, readBuf, lenBuf)
 		if err != nil {
@@ -260,12 +254,10 @@ func BenchmarkReadFrameSizes(b *testing.B) {
 
 			reqBufCopy := make([]byte, len(reqBuf))
 			copy(reqBufCopy, reqBuf)
-
-			b.ResetTimer()
 			b.ReportAllocs()
 
 			r := bytes.NewReader(reqBufCopy)
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				r.Reset(reqBufCopy)
 				cmd, seq, _, err := ReadFrame(r, readBuf, lenBuf)
 				if err != nil {

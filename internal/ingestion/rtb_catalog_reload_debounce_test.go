@@ -29,7 +29,7 @@ func TestRtbCatalogReload_debounceCoalesces(t *testing.T) {
 	}
 
 	time.Sleep(120 * time.Millisecond)
-	assert.LessOrEqual(t, int(reloads.Load()), 2, "burst pubsub triggers should coalesce to ≤2 reloads in 500ms window")
+	assert.LessOrEqual(t, int(reloads.Load()), 2, "burst pubsub triggers should coalesce to <=2 reloads in 500ms window")
 }
 
 func TestRtbCatalogReload_debounceCancelStops(t *testing.T) {

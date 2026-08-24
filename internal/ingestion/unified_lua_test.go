@@ -210,8 +210,7 @@ func benchUnifiedFilterCheckRealRedis(b *testing.B) {
 	setFilterDeadlineOnEvent(evt, time.Second)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		evt.ClickID = ""
 		if err := f.Check(ctx, evt); err != nil {
 			b.Fatal(err)

@@ -108,26 +108,26 @@ func TestConfigureTrackRtb_skipLuaBudget(t *testing.T) {
 
 func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
 	openrtbPayload := []byte(`{
-  "openrtb": {
-    "ver": "3.0",
-    "domainspec": "adcom",
-    "domainver": "1.0",
-    "request": {
-      "id": "req-123456789",
-      "item": [
-        {
-          "id": "item-1",
-          "flr": 1.50
-        }
-      ],
-      "context": {
-        "device": {
-          "type": 4
-        }
-      }
-    }
-  },
-  "category_mask": 8
+ "openrtb": {
+ "ver": "3.0",
+ "domainspec": "adcom",
+ "domainver": "1.0",
+ "request": {
+ "id": "req-123456789",
+ "item": [
+ {
+ "id": "item-1",
+ "flr": 1.50
+ }
+ ],
+ "context": {
+ "device": {
+ "type": 4
+ }
+ }
+ }
+ },
+ "category_mask": 8
 }`)
 
 	evtOpenRTB := &domain.Event{
@@ -163,26 +163,26 @@ func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
 
 func BenchmarkBuildRtbTargeting_OpenRTB3(b *testing.B) {
 	openrtbPayload := []byte(`{
-  "openrtb": {
-    "ver": "3.0",
-    "domainspec": "adcom",
-    "domainver": "1.0",
-    "request": {
-      "id": "req-123456789",
-      "item": [
-        {
-          "id": "item-1",
-          "flr": 1.50
-        }
-      ],
-      "context": {
-        "device": {
-          "type": 4
-        }
-      }
-    }
-  },
-  "category_mask": 8
+ "openrtb": {
+ "ver": "3.0",
+ "domainspec": "adcom",
+ "domainver": "1.0",
+ "request": {
+ "id": "req-123456789",
+ "item": [
+ {
+ "id": "item-1",
+ "flr": 1.50
+ }
+ ],
+ "context": {
+ "device": {
+ "type": 4
+ }
+ }
+ }
+ },
+ "category_mask": 8
 }`)
 	evt := &domain.Event{
 		Payload:           openrtbPayload,
@@ -194,22 +194,7 @@ func BenchmarkBuildRtbTargeting_OpenRTB3(b *testing.B) {
 	attachOpenRTB3Scratch(evt, slot)
 	b.Cleanup(func() { releaseOpenRTB3Scratch(evt) })
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = buildRtbTargeting(evt, []byte("desktop"), 0, nil)
-	}
-}
-
-func BenchmarkBuildRtbTargeting_Legacy(b *testing.B) {
-	legacyPayload := []byte(`{"category_mask":4,"bid_micro":100}`)
-	evt := &domain.Event{
-		Payload:           legacyPayload,
-		IngestGeoResolved: true,
-		GeoHash:           12345,
-	}
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = buildRtbTargeting(evt, []byte("mobile"), 0, nil)
 	}
 }

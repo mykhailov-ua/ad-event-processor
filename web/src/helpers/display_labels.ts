@@ -86,7 +86,7 @@ function titleWord(word: string): string {
 
 export function humanizeToken(value: string): string {
   const s = String(value).trim();
-  if (!s) return '—';
+  if (!s) return '-';
   return s
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .split(/[_\s]+/)
@@ -97,7 +97,7 @@ export function humanizeToken(value: string): string {
 
 export function displayLabel(
   value: string | number | boolean | null | undefined,
-  fallback = '—'
+  fallback = '-'
 ): string {
   if (value == null || value === '') return fallback;
   const s = String(value);
@@ -108,7 +108,7 @@ export function displayLabel(
 }
 
 export function formatYesNo(value: boolean | null | undefined): string {
-  if (value == null) return '—';
+  if (value == null) return '-';
   return value ? 'Yes' : 'No';
 }
 
@@ -129,7 +129,7 @@ export const CURRENCY_SELECT_OPTIONS: SelectOption[] = [
   { value: 'AUD', label: 'Australian Dollar (AUD)' },
   { value: 'CNY', label: 'Chinese Yuan (CNY)' },
   { value: 'UAH', label: 'Ukrainian Hryvnia (UAH)' },
-  { value: 'PLN', label: 'Polish Złoty (PLN)' },
+  { value: 'PLN', label: 'Polish Zloty (PLN)' },
   { value: 'TRY', label: 'Turkish Lira (TRY)' },
   { value: 'KZT', label: 'Kazakhstani Tenge (KZT)' },
   { value: 'BRL', label: 'Brazilian Real (BRL)' },
@@ -156,7 +156,7 @@ export function currencySelectOptions(current = ''): SelectOption[] {
 }
 
 export const TIMEZONE_SELECT_OPTIONS: SelectOption[] = [
-  { value: 'UTC', label: 'UTC — Coordinated Universal Time' },
+  { value: 'UTC', label: 'UTC - Coordinated Universal Time' },
   { value: 'Europe/London', label: 'Europe/London' },
   { value: 'Europe/Berlin', label: 'Europe/Berlin' },
   { value: 'Europe/Paris', label: 'Europe/Paris' },

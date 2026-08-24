@@ -51,9 +51,8 @@ func BenchmarkLGBMScorer_ScoreBatch10k(b *testing.B) {
 	}
 
 	ctx := context.Background()
-	b.ResetTimer()
 	start := time.Now()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := scorer.ScoreBatch(ctx, rows); err != nil {
 			b.Fatalf("score batch: %v", err)
 		}

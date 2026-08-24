@@ -35,7 +35,7 @@ export function LicenseBanner({ license, supportUrl }: LicenseBannerProps) {
         background: `color-mix(in srgb, ${border} 12%, transparent)`,
       }}
     >
-      <span>{parts.join(' · ')}</span>
+      <span>{parts.join(' , ')}</span>
       <span style={{ display: 'inline-flex', gap: '12px', marginLeft: '8px' }}>
         {cta ? (
           <a

@@ -125,8 +125,7 @@ func BenchmarkFraudStreamWriter_Enqueue(b *testing.B) {
 		Payload:    []byte(`{"k":"v"}`),
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		q.Enqueue(0, evt)
 	}
 }

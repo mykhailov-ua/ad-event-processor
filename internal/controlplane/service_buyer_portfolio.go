@@ -40,6 +40,10 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		statsByCampaign[uuid.UUID(row.CampaignID.Bytes).String()] = row
 	}
 
+	var chLag time.Duration
+	if s.chQuery != nil {
+		chLag, _ = s.clickHouseIngestionLag(ctx)
+	}
 	resp := BuyerPortfolioDTO{
 		CustomerID: customerID.String(),
 		Period: PeriodDTO{
@@ -49,11 +53,7 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		Attention: make([]BuyerAttentionDTO, 0, 4),
 		Campaigns: make([]BuyerCampaignPortfolioRowDTO, 0, len(campaigns)),
 		KPIs: &MetricsBlockDTO{
-			Freshness: DataFreshnessDTO{
-				AsOf:        to.Format(time.RFC3339),
-				Consistency: "strong",
-				Stale:       s.chQuery == nil,
-			},
+			Freshness: portfolioFreshness(to, s.chQuery != nil, chLag),
 		},
 	}
 
@@ -109,7 +109,8 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		}
 		totalSpendMicro += spendMicro
 		util := campaignUtilizationPct(spendMicro, budgetMicro)
-		drift := pacingDriftPct(st.Impressions, c.Status)
+		estimatedDrift := pacingDriftPct(st.Impressions, c.Status)
+		drift := estimatedDrift
 		risk := overspendRisk(util, c.PacingMode, c.Status)
 		if risk {
 			resp.OverspendCount++
@@ -124,18 +125,19 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		}
 
 		resp.Campaigns = append(resp.Campaigns, BuyerCampaignPortfolioRowDTO{
-			ID:             c.ID,
-			Name:           c.Name,
-			Status:         c.Status,
-			PacingMode:     c.PacingMode,
-			Impressions7d:  st.Impressions,
-			Clicks7d:       st.Clicks,
-			SpendMicro:     spendMicro,
-			BudgetMicro:    budgetMicro,
-			UtilizationPct: util,
-			PacingDriftPct: drift,
-			OverspendRisk:  risk,
-			MarginBreach:   marginBreach,
+			ID:                      c.ID,
+			Name:                    c.Name,
+			Status:                  c.Status,
+			PacingMode:              c.PacingMode,
+			Impressions7d:           st.Impressions,
+			Clicks7d:                st.Clicks,
+			SpendMicro:              spendMicro,
+			BudgetMicro:             budgetMicro,
+			UtilizationPct:          util,
+			PacingDriftPct:          drift,
+			EstimatedPacingDriftPct: estimatedDrift,
+			OverspendRisk:           risk,
+			MarginBreach:            marginBreach,
 		})
 	}
 	if resp.KPIs != nil {

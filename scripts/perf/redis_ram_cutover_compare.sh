@@ -69,7 +69,7 @@ run_phase() {
     "$out_dir/memory-before.txt" "$out_dir/memory-after.txt"
 }
 
-log "artifacts → $OUT"
+log "artifacts -> $OUT"
 log "target_rps=$TARGET_RPS duration=$DURATION"
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then

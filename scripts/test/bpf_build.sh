@@ -13,7 +13,7 @@ fi
 
 if command -v clang > /dev/null 2>&1; then
   make -C "$BPF_DIR"
-  printf 'bpf-build: built with host clang → %s\n' "$OBJ"
+  printf 'bpf-build: built with host clang -> %s\n' "$OBJ"
   exit 0
 fi
 
@@ -28,4 +28,4 @@ docker run --rm \
   -w /work \
   quay.io/fedora/fedora:40 \
   bash -lc 'dnf install -y clang llvm make libbpf-devel >/dev/null && make clean && make'
-printf 'bpf-build: built in container → %s\n' "$OBJ"
+printf 'bpf-build: built in container -> %s\n' "$OBJ"

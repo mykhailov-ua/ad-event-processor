@@ -31,8 +31,7 @@ func BenchmarkClickProxy_Stream(b *testing.B) {
 		startMono: monotonicNano(),
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn.buf = conn.buf[:0]
 		h.clickProxyDeliver(conn, ctx, job)
 	}
@@ -43,9 +42,8 @@ func BenchmarkClickProxy_BuildUpstreamURL(b *testing.B) {
 	base := "https://upstream.example/offer?cid={click_id}"
 	pt := []byte("gclid=GCLID99&sub1=loadgen&click_id=bench")
 	b.ReportAllocs()
-	b.ResetTimer()
 	var out string
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		s, err := appendProxyUpstreamQuery(base, pt)
 		if err != nil {
 			b.Fatal(err)

@@ -104,8 +104,7 @@ func BenchmarkHTTP1ChunkedFragmented(b *testing.B) {
 	wire := fragmentedChunkedOpenRTBRequest()
 	var scratch []byte
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := parseHTTP1(wire, maxBody, &scratch)
 		if err != nil {
 			b.Fatal(err)

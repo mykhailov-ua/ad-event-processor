@@ -35,7 +35,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-log "artifacts → $OUT"
+log "artifacts -> $OUT"
 log "uds_socket=$UDS_SOCK tcp_port=$TCP_PORT budget_p50_ns=$BUDGET_NS"
 
 docker run -d --name "$CONTAINER" --network host \
@@ -79,7 +79,7 @@ go test -count=1 -v -run 'TestRedisUDS_(DialLatencyGate|DialVsTCP|PingLatency)$'
 p50_line="$(grep 'redis UDS dial n=' "$OUT/go-test.log" | tail -1 || true)"
 uds_p50_us=""
 if [[ -n "$p50_line" ]]; then
-  uds_p50_us="$(printf '%s' "$p50_line" | sed -E 's/.*p50=([0-9.]+)(µs|us|ns).*/\1/')"
+  uds_p50_us="$(printf '%s' "$p50_line" | sed -E 's/.*p50=([0-9.]+)(us|us|ns).*/\1/')"
   if printf '%s' "$p50_line" | grep -q 'p50=.*ns'; then
     uds_p50_us="$(
       python3 - << PY
@@ -127,4 +127,4 @@ if [[ "$passed" != "true" ]]; then
   die "UDS dial p50 budget not met (see $OUT/report.json)"
 fi
 
-log "PASS uds_dial_p50_us=${uds_p50_us} (<$((BUDGET_NS / 1000)) µs)"
+log "PASS uds_dial_p50_us=${uds_p50_us} (<$((BUDGET_NS / 1000)) us)"

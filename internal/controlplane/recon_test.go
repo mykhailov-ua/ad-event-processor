@@ -182,9 +182,7 @@ func BenchmarkRecon_AtomicAdjustment(b *testing.B) {
 	campID := uuid.New()
 	key := domain.CampaignSyncKey(campID)
 	rdb.data[key] = 50_000_000
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = rdb.Eval(context.Background(), "", []string{key}, int64(-1000))
 	}
 }

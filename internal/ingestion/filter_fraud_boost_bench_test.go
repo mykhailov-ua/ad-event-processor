@@ -46,8 +46,7 @@ func setupFilterFraudBoostBench(t testing.TB) (*FilterEngine, *domain.Event, con
 func BenchmarkFilterFraudBoost(b *testing.B) {
 	engine, evt, ctx := setupFilterFraudBoostBench(b)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		resetFraudBenchEvent(evt)
 		_ = engine.Check(ctx, evt)
 	}

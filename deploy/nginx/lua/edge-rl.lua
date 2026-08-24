@@ -1,4 +1,3 @@
-
 local edge_config = require "edge-config"
 local edge_fraud_tier = require "edge-fraud-tier"
 

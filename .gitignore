@@ -50,6 +50,7 @@ web/dist/
 deploy/vendor/license_private.key
 deploy/vendor/trial_registry.json
 deploy/vendor/keys/*/license_private.key
+!deploy/vendor/keys/.gitkeep
 license.jwt
 license.jwt/
 .license-*.jwt
@@ -89,15 +90,13 @@ deploy/nginx/certs/*.crt
 
 # IDE
 .idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/extensions.json
+.vscode/
 
 # Local runtime state
 campaigns_replica.json
 campaigns_replica.json.tmp
 var/
-# var/load-test/, var/fault-drill/, var/purgatory/, var/ram-proof/, var/bpf-session/, …
+# var/load-test/, var/fault-drill/, var/purgatory/, var/ram-proof/, var/bpf-session/, var/bpf-gate/, var/export_debug/, …
 *.log
 
 # Go test & profiling artifacts
@@ -135,7 +134,11 @@ escape_report.txt
 *_bench.txt
 *_gate.txt
 
-# CI workflow tee logs (repo root; also *.log)
+/bpf_resource_gate.log
+/bpf_hot_nightly.log
+/bpf_cold_nightly.log
+/bpf_export_soak_nightly.log
+/bpf_export_soak_gate.log
 /race_short.log
 /integration_test.log
 /perf_smoke.log

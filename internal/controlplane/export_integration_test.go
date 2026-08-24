@@ -81,7 +81,7 @@ done:
 	require.NoError(t, err)
 	text := string(body)
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
-	require.GreaterOrEqual(t, len(lines), 2, "CSV must have header + ≥1 ledger row")
+	require.GreaterOrEqual(t, len(lines), 2, "CSV must have header + >=1 ledger row")
 	require.True(t, strings.HasPrefix(text, "id,amount_micro,ledger_type,created_at"))
 	require.Contains(t, text, "TOPUP")
 	require.Contains(t, text, "1500000")

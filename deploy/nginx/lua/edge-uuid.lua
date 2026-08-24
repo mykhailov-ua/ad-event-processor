@@ -1,4 +1,3 @@
-
 local _M = {}
 
 -- 8-4-4-4-12 lowercase hex (canonical UUID string form).

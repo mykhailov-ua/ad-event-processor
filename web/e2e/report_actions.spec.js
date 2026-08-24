@@ -73,5 +73,5 @@ test('traffic-sources compare sends compare=previous query param', async ({ page
   await page.getByRole('button', { name: 'Load' }).click();
 
   await expect.poll(() => sawCompare).toBe(true);
-  await expect(page.getByText('Δ spend')).toBeVisible();
+  await expect(page.getByText('delta spend')).toBeVisible();
 });

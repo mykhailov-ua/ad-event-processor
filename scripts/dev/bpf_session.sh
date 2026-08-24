@@ -39,7 +39,7 @@ case "$CMD" in
     export AD_EVENT_PROCESSOR_BPF_METRICS_ADDR="${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR:-:9464}"
     bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT"
     if [[ ! -f "$OUT/bpf/collector.ready" ]]; then
-      log "ERROR: bpf collector did not start — see $OUT/bpf/collector.log"
+      log "ERROR: bpf collector did not start - see $OUT/bpf/collector.log"
       exit 1
     fi
     mkdir -p "$SESSION_ROOT"
@@ -67,9 +67,9 @@ case "$CMD" in
         if bpf_collector_pid_alive "$PID" && [[ -f "$OUT/bpf/collector.ready" ]]; then
           log "collector: running pid=$PID"
         elif bpf_collector_pid_alive "$PID"; then
-          log "collector: pid=$PID (not ready — see $OUT/bpf/collector.log)"
+          log "collector: pid=$PID (not ready - see $OUT/bpf/collector.log)"
         else
-          log "collector: dead (stale pid=$PID — see $OUT/bpf/collector.log)"
+          log "collector: dead (stale pid=$PID - see $OUT/bpf/collector.log)"
         fi
       else
         log "collector: not running"

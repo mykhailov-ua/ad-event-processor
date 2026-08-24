@@ -67,7 +67,7 @@ export function CampaignApplyTemplatesPanel({
     <SectionCard
       icon="plug"
       title="GM-M4 integration templates"
-      desc="Import presets under Integrations → Schemas, then apply traffic and affiliate wiring to this campaign."
+      desc="Import presets under Integrations -> Schemas, then apply traffic and affiliate wiring to this campaign."
     >
       <div className="form-row">
         <label className="form-field" htmlFor="apply-traffic-source">
@@ -79,7 +79,7 @@ export function CampaignApplyTemplatesPanel({
             data-testid="apply-traffic-source"
             onChange={(e) => setTrafficSource(e.target.value)}
           >
-            <option value="">— none —</option>
+            <option value="">- none -</option>
             {BUNDLED_TRAFFIC_TEMPLATES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
@@ -96,7 +96,7 @@ export function CampaignApplyTemplatesPanel({
             data-testid="apply-affiliate-network"
             onChange={(e) => setAffiliateNetwork(e.target.value)}
           >
-            <option value="">— none —</option>
+            <option value="">- none -</option>
             {BUNDLED_AFFILIATE_TEMPLATES.map((t) => (
               <option key={t.value} value={t.value}>
                 {t.label}
@@ -107,7 +107,7 @@ export function CampaignApplyTemplatesPanel({
       </div>
       <div data-testid="apply-campaign-templates">
         <Button
-          label={busy ? 'Applying…' : 'Apply templates to campaign'}
+          label={busy ? 'Applying...' : 'Apply templates to campaign'}
           variant="secondary"
           size="sm"
           loading={busy}

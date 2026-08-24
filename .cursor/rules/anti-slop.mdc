@@ -3,19 +3,30 @@ description: AI slop gates, test honesty, UI product honesty, bench truth
 alwaysApply: true
 ---
 
-Agents must not ship plausible-but-wrong code. Slop = code that compiles, looks idiomatic, and fails CI or operator trust. Remediation: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop).
+# Anti-Slop Policy
+
+## Purpose
+
+Agents must not ship plausible-but-wrong code. Slop = code that compiles, looks idiomatic, and fails CI or operator trust.
+
+Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verification honesty: `quality.mdc`.
 
 ## Lie modes (never)
 
-- Wrong naming vs `naming.mdc` or `structure.mdc`. Cryptic suffixes (`m8`, `n1`, `f1`) and legacy tokens (`BidShard`, `espx`) are slop.
-- Wrong types: sqlc row field vs DTO `json` tag mismatch.
-- Plausible logic that fails edge cases (parser budgets, budget invariant, idempotency).
-- Weakened tests to green CI without fixing behavior.
-- Claiming tests/benchmarks pass without running them.
-- Citing mock-bench ns/op as production `/track` p99 SLA.
-- Inventing env, generated artifacts, BPF reports, or benchmark output.
+| Lie mode | Project-specific example |
+| :--- | :--- |
+| Wrong naming | Cryptic suffixes (`m8`, `n1`, `f1`) or legacy tokens (`BidShard`, `espx`) per `naming.mdc` |
+| Charset slop | Emojis, Unicode dashes, ellipsis char, `===`/`---` banners in comments and `scripts/` echo/log (`naming.mdc`) |
+| Wrong types | sqlc row field vs admin `FooDTO` `json` tag mismatch on `/api/v1` handlers |
+| Plausible wrong logic | Parser budget bypass, budget invariant drift, outbox double-apply |
+| Weakened tests | Green CI by removing `AssertBudgetInvariant` or chaos assertions |
+| Unrun claims | Claiming `make test-alloc-gate` or `pr_fast.sh` passed without executing |
+| Mock bench as SLA | Citing `BenchmarkUnifiedFilter_Check_mock` ns/op as production `/track` p99 |
+| Invented artifacts | Fake BPF reports, env vars, or benchmark output under `var/load-test/` |
 
-## Go production slop (`scripts/ci/anti_slop_gate.sh`)
+## Go production slop
+
+Script: `bash scripts/ci/anti_slop_gate.sh` (included in `pr_fast.sh`).
 
 Scope: `internal/controlplane`, `internal/ingestion`, `internal/payment`, `pkg/`.
 
@@ -24,16 +35,16 @@ Scope: `internal/controlplane`, `internal/ingestion`, `internal/payment`, `pkg/`
 | Bare `t.Skip()` | Hides missing coverage |
 | `t.Skip("skipping integration test")` without `integration:` prefix | Gate cannot distinguish real skip |
 | `testing.Short()` skip without `integration:` in reason | Same |
-| `testing.Testing()` in non-test `.go` | Test hook in prod |
+| `testing.Testing()` in non-test `.go` | Test hook in production code |
 | `os.Getenv("CI")` branch in prod | Environment-specific behavior |
 | `_ = json.Unmarshal` / `_ = w.Write` in `*_handlers.go`, `outbox_*.go` | Silent handler failures |
 | `nolint:errcheck` without ticket | Permanent error swallow |
-| `BenchmarkUnifiedFilter_Check` (unqualified) | Must be `_mock` — uses mock Redis |
+| `BenchmarkUnifiedFilter_Check` (unqualified) | Must be `_mock` - uses mock Redis |
 | `httptest.NewServer` in package that also uses testcontainers for DB | Fake infra when real PG/Redis required |
 
-Run: `bash scripts/ci/anti_slop_gate.sh` (in `pr_fast.sh`).
+## Integration test slop
 
-## Integration test slop (`scripts/ci/integration_test_slop_gate.sh`)
+Script: `bash scripts/ci/integration_test_slop_gate.sh`.
 
 Every `*_integration_test.go` must:
 
@@ -41,11 +52,11 @@ Every `*_integration_test.go` must:
 2. Call a real infra helper (`testutil.SetupPostgres`, `SetupRedis`, `setupTestDB`, etc.).
 3. Contain behavioral assertions (`require.*` / `assert.*`).
 4. Never use `testify/mock`, `gomock`, or bare `t.Skip()`.
-5. Never leave scaffold placeholders (`scaffold_test: add a held-out negative assertion`, `integration scaffold must exercise real Postgres` only).
+5. Never leave scaffold placeholders (`scaffold_test: add a held-out negative assertion` only).
 
-Run: `bash scripts/ci/integration_test_slop_gate.sh`.
+## Hot-path static slop
 
-## Hot-path static slop (`hot_path_static_gate.sh`, `lint_go_hotpath_forbid_gate.sh`, `escape_heap_gate.sh`)
+Scripts: `hot_path_static_gate.sh`, `lint_go_hotpath_forbid_gate.sh`, `escape_heap_gate.sh`.
 
 Files: `handler.go`, `handler_http*.go`, `filter*.go`, `filters.go`, `internal/rtb/*.go`.
 
@@ -54,19 +65,23 @@ Banned in hot request path:
 - `fmt.Sprintf`, `interface{}` boxing, `context.WithValue`
 - `context.WithTimeout` / `context.WithCancel` in request-path sources and `internal/domain` (except allowlisted cold broker/store files)
 
-New heap escapes above baseline or in changed hot files fail `escape_heap_gate.sh`. After edits run `make test-alloc-gate`.
+New heap escapes above baseline or in changed hot files fail `escape_heap_gate.sh`. After hot-path edits run `make test-alloc-gate`.
 
-## Cold-path static slop (`cold_path_static_gate.sh`, `cold_path_json_gate.sh`)
+## Cold-path static slop
 
-- No `KEYS`, `FLUSHALL`, `FLUSHDB` in prod Go.
-- No new O(N) DB-in-loop patterns in changed controlplane/payment/ledger files (QueryRow per row in `for range`).
-- Body limits via `pkg/coldpath`: `DefaultMaxBody=64KiB`; handlers use `ReadLimitedBody` / `DecodeRequestOrBadRequest` — not raw `io.ReadAll`.
+Scripts: `cold_path_static_gate.sh`, `cold_path_json_gate.sh`.
+
+| Rule | Detail |
+| :--- | :--- |
+| Redis commands | No `KEYS`, `FLUSHALL`, `FLUSHDB` in production Go |
+| N+1 queries | No new O(N) DB-in-loop patterns in changed controlplane/payment/ledger files |
+| Body limits | `pkg/coldpath.DefaultMaxBody=64KiB`; handlers use `ReadLimitedBody` / `DecodeRequestOrBadRequest` - not raw `io.ReadAll` |
 
 Run: `bash scripts/ci/cold_path_static_gate.sh`; `go test ./pkg/coldpath/ -run TestReadLimitedBody`.
 
 ## Bench honesty
 
-| Benchmark | Truth |
+| Benchmark | What it actually measures |
 | :--- | :--- |
 | `BenchmarkUnifiedFilter_Check_mock` | Mock Redis; Go wrapper only |
 | `BenchmarkLuaScript_Happy` | Needs testcontainers + `run_bench.sh` |
@@ -76,7 +91,9 @@ Run: `bash scripts/ci/cold_path_static_gate.sh`; `go test ./pkg/coldpath/ -run T
 
 Tracker p95/p99 SLA = load test / Prometheus (`malformed.sh`, `parser_chaos_load.sh`), not unit microbenches.
 
-## Admin UI slop (`check_ui_slop.sh`, `report_live_routes_gate.sh`)
+## Admin UI slop
+
+Scripts: `check_ui_slop.sh`, `report_live_routes_gate.sh`.
 
 Forbidden in shipped `web/src/views`:
 
@@ -90,7 +107,7 @@ Forbidden in shipped `web/src/views`:
 
 Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on errors; `apiConfirmed` on mutations; `npm run typecheck`; `bash scripts/ci/admin_web.sh` before claiming UI done.
 
-## Code slop patterns (no dedicated gate — still reject)
+## Code slop patterns (no dedicated gate - still reject)
 
 - Provider/Factory/Strategy interfaces with one implementation (`cold-path.mdc`).
 - Repository interface over sqlc when `db.Queries` suffices.
@@ -107,14 +124,20 @@ Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on er
 
 - `fault_proof gap=open` without follow-up test or explicit PR waiver.
 - Chaos tests that pass only because chaos pct is 0.
-- Parser security change without `TestChaos_CrossHop_NginxGnet` differential_count=0.
+- Parser security change without `TestChaos_CrossHop_NginxGnet` `differential_count=0`.
 - New hot-path write path without fault proof (`fault-tests.mdc`).
 
 ## Agent checklist before "done"
 
-1. Every new symbol resolves (`go build` / `go test -c`).
-2. Hot path does not import cold fraud scoring.
-3. Paste command + package path for verification runs actually executed.
-4. Explain why scripts/tests changed.
-5. Add a test that fails without the change when behavior is non-obvious.
-6. Run `bash scripts/ci/pr_fast.sh` scope appropriate to touched packages.
+| Step | Command / action |
+| :--- | :--- |
+| 1 | Every new symbol resolves (`go build` / `go test -c`) |
+| 2 | Hot path does not import cold fraud scoring |
+| 3 | Paste command + package path for verification runs actually executed |
+| 4 | Explain why scripts/tests changed |
+| 5 | Add a test that fails without the change when behavior is non-obvious |
+| 6 | Run `bash scripts/ci/pr_fast.sh` scoped to touched packages |
+
+## Related rules
+
+`ci.mdc`, `cold-path.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.

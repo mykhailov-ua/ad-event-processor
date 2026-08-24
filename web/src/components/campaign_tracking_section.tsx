@@ -60,7 +60,7 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
   const modeDesc: Record<string, string> = {
     off: 'In-process auction on /track is disabled. campaign_id must be present in the postback body.',
     shadow:
-      'Auction runs before filters for metrics only — campaign_id in the body is unchanged. Use before promoting to live.',
+      'Auction runs before filters for metrics only - campaign_id in the body is unchanged. Use before promoting to live.',
     live: 'Auction may rewrite campaign_id to the winning line item before FilterEngine. No-bid rejects skip filters.',
   };
   const desc = modeDesc[mode] || modeDesc.off;
@@ -69,11 +69,11 @@ function RtbTrackSection({ platform, trackURL }: { platform: PlatformState; trac
     <SectionCard
       icon="zap"
       title="In-app auction on /track"
-      desc="Optional RTB_MODE=shadow|live — not a replacement for the OpenRTB exchange endpoint."
+      desc="Optional RTB_MODE=shadow|live - not a replacement for the OpenRTB exchange endpoint."
     >
       <p className="text-muted text-sm">
-        SDK / single-endpoint flows only. Exchange partners use POST /openrtb/bid — see section
-        below. Wire comparison is in `.cursor/rules/traffic.mdc` §2.1.
+        SDK / single-endpoint flows only. Exchange partners use POST /openrtb/bid - see section
+        below. Wire comparison is in `.cursor/rules/traffic.mdc` section 2.1.
       </p>
       <dl className="definition-list">
         <dt>RTB_MODE (tracker)</dt>
@@ -218,7 +218,7 @@ export function CampaignTrackingSection({
       <p className="text-muted text-sm" data-testid="integration-intro">
         {trafficGuideSummary()}{' '}
         <Link to={`/campaigns/${campaignId}?tab=postbacks`} className="text-sm">
-          CAPI & Postbacks →
+          CAPI & Postbacks {'->'}
         </Link>
       </p>
 
@@ -231,18 +231,18 @@ export function CampaignTrackingSection({
             Summary:
           </p>
           <ul className="list-plain">
-            <li>Campaign traffic → Click URL (GET /click).</li>
+            <li>Campaign traffic {'->'} Click URL (GET /click).</li>
             <li>
-              Affiliate / CRM conversion → inbound S2S POST /track (JSON, Content-Length required).
+              Affiliate / CRM conversion {'->'} inbound S2S POST /track (JSON, Content-Length required).
             </li>
-            <li>Lander pixel → zero-redirect fetch() to the same /track URL.</li>
+            <li>Lander pixel {'->'} zero-redirect fetch() to the same /track URL.</li>
             <li>
-              Ad platforms (Meta/Google/TikTok) → configure on CAPI & Postbacks; ad-event-processor
+              Ad platforms (Meta/Google/TikTok) {'->'} configure on CAPI & Postbacks; ad-event-processor
               forwards after settlement.
             </li>
           </ul>
           <p className="text-muted">
-            Edge tip: enable “Expose click URL on edge” in Platform settings so buyers hit :443
+            Edge tip: enable "Expose click URL on edge" in Platform settings so buyers hit :443
             instead of tracker ports.
           </p>
         </div>
@@ -259,7 +259,7 @@ export function CampaignTrackingSection({
         </p>
         <p>
           <Link to={`/campaigns/${campaignId}?tab=config`} className="text-sm">
-            Configure safe page →
+            Configure safe page {'->'}
           </Link>
         </p>
       </SectionCard>
@@ -270,7 +270,7 @@ export function CampaignTrackingSection({
         desc={
           platform.edgeClick
             ? 'Served on the edge (:8180/:443) with shard routing. Pick a traffic-source template to pre-fill network macros.'
-            : 'Enable “Expose click URL on edge” in Platform settings, or point traffic at tracker ports :8181–8184.'
+            : 'Enable "Expose click URL on edge" in Platform settings, or point traffic at tracker ports :8181-8184.'
         }
       >
         <label
@@ -316,7 +316,7 @@ export function CampaignTrackingSection({
           </label>
         ))}
         <details className="integration-sub-extend" data-testid="integration-sub11-30">
-          <summary>Sub 11–30</summary>
+          <summary>Sub 11-30</summary>
           <div className="stack mt-2">
             {EXTENDED_SUB_KEYS.map((key) => (
               <label key={key} className="form-field" htmlFor={`track-${key}`}>
@@ -393,7 +393,7 @@ export function CampaignTrackingSection({
       <SectionCard
         icon="download"
         title="Affiliate inbound S2S postback"
-        desc="Give this URL to the affiliate network or offer partner. They POST JSON when a conversion settles — distinct from CAPI outbound to Meta/Google/TikTok."
+        desc="Give this URL to the affiliate network or offer partner. They POST JSON when a conversion settles - distinct from CAPI outbound to Meta/Google/TikTok."
       >
         <IntegrationCopyRow
           label="Postback URL"
@@ -411,7 +411,7 @@ export function CampaignTrackingSection({
           testId="integration-inbound-curl"
         />
         <p className="text-muted text-sm">
-          Map network tokens to ad-event-processor fields: click id → click_id, payout →
+          Map network tokens to ad-event-processor fields: click id {'->'} click_id, payout {'->'}
           payout_micro (micro-units) or omit and settle later. Requires Content-Length; chunked
           encoding is rejected on /track.
         </p>
@@ -460,7 +460,7 @@ export function CampaignTrackingSection({
         <SectionCard
           icon="activity"
           title="OpenRTB exchange (SSP partners)"
-          desc="Separate from /track RTB_MODE. SSPs POST OpenRTB 2.6 bid requests here — not the SDK /track path."
+          desc="Separate from /track RTB_MODE. SSPs POST OpenRTB 2.6 bid requests here - not the SDK /track path."
         >
           <IntegrationCopyRow
             label="Bid endpoint"
@@ -469,14 +469,14 @@ export function CampaignTrackingSection({
           />
           <p>
             <Link to="/rtb/integration" className="text-sm">
-              RTB integration profile & validate-bid →
+              RTB integration profile & validate-bid {'->'}
             </Link>
           </p>
         </SectionCard>
       ) : (
         <p className="text-muted text-sm">
-          OpenRTB exchange: enable “Expose OpenRTB bid endpoint on edge” in Platform settings, or
-          point partners at tracker :8181–8184/openrtb/bid.{' '}
+          OpenRTB exchange: enable "Expose OpenRTB bid endpoint on edge" in Platform settings, or
+          point partners at tracker :8181-8184/openrtb/bid.{' '}
           <Link to="/rtb/integration">Integration onboarding</Link>
         </p>
       )}
@@ -499,11 +499,11 @@ export function CampaignTrackingSection({
                 ['{campaign_id}', 'Campaign UUID'],
                 ['{click_id}', 'Unique click id (generated on redirect)'],
                 ['{user_id}', 'Publisher user / visitor id'],
-                ['{sub1}…{sub30}', 'Arbitrary sub-ids for source tracking'],
-                ['{subid1}…{subid30}', 'Partner postback macro aliases'],
+                ['{sub1}...{sub30}', 'Arbitrary sub-ids for source tracking'],
+                ['{subid1}...{subid30}', 'Partner postback macro aliases'],
                 [
                   'gclid, ttclid, fbclid',
-                  'Attribution IDs — stored on event + forwarded to lander',
+                  'Attribution IDs - stored on event + forwarded to lander',
                 ],
                 ['ad_campaign_id', 'Network campaign id for Cost Sync join (often mirrors sub2)'],
               ] as const

@@ -26,7 +26,7 @@ groups:
           severity: warning
         annotations:
           summary: 'Redis shard 0 client slot is nil'
-          description: 'Process started with REDIS_SHARD0_OPTIONAL_STARTUP and shard 0 unreachable. Budget shards 1–N serve traffic; globals may be partial until shard 0 recovers. Runbook: docs/DEVELOPMENT.md §Shard 0 degradation.'
+          description: 'Process started with REDIS_SHARD0_OPTIONAL_STARTUP and shard 0 unreachable. Budget shards 1-N serve traffic; globals may be partial until shard 0 recovers. Runbook: docs/DEVELOPMENT.md section Shard 0 degradation.'
 
       - alert: ControlFanoutPartial
         expr: increase(ad_control_fanout_partial_total[5m]) > 0
@@ -44,7 +44,7 @@ groups:
           severity: critical
         annotations:
           summary: 'Shard-0 campaigns:update pub/sub unreachable'
-          description: 'Tracker registry is in stale-serve mode (REGISTRY_STALE_TTL exceeded). Shards 1–3 continue ingest; shard-0-homed campaigns return 503 shard_unavailable; unknown campaign IDs return 503 registry_stale; management outbox may stay PENDING until Sentinel promotes a replica. Runbook: docs/DEVELOPMENT.md §Shard-0 outage.'
+          description: 'Tracker registry is in stale-serve mode (REGISTRY_STALE_TTL exceeded). Shards 1-3 continue ingest; shard-0-homed campaigns return 503 shard_unavailable; unknown campaign IDs return 503 registry_stale; management outbox may stay PENDING until Sentinel promotes a replica. Runbook: docs/DEVELOPMENT.md section Shard-0 outage.'
 
       - alert: DatabaseWriteErrors
         expr: rate(ad_db_write_errors_total[1m]) > 0
@@ -89,7 +89,7 @@ groups:
           severity: critical
         annotations:
           summary: 'Tracker p99 above 80ms for 30s (load-test abort threshold)'
-          description: 'Sustained handler p99 above 80ms for 30s — same gate as load-malformed LOAD_SLA_GATE and core.mdc load-test abort. Check Redis Lua p99/shard, stream producer queue, and worker pool.'
+          description: 'Sustained handler p99 above 80ms for 30s - same gate as load-malformed LOAD_SLA_GATE and core.mdc load-test abort. Check Redis Lua p99/shard, stream producer queue, and worker pool.'
 
       - alert: StreamProducerPostDebitRejected
         expr: rate(ad_stream_producer_post_debit_rejected_total[2m]) > 0
@@ -98,7 +98,7 @@ groups:
           severity: critical
         annotations:
           summary: 'Stream producer post-debit enqueue failures'
-          description: 'Budget debited but async enqueue failed (rollback path). ad_stream_producer_post_debit_rejected_total should stay ~0 — tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.'
+          description: 'Budget debited but async enqueue failed (rollback path). ad_stream_producer_post_debit_rejected_total should stay ~0 - tune STREAM_PRODUCER_ADMISSION_PCT or queue capacity.'
 
       - alert: HighRequestLatency
         expr: histogram_quantile(0.95, sum(rate(ad_http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
@@ -108,6 +108,15 @@ groups:
         annotations:
           summary: 'Catastrophic HTTP request latency detected'
           description: 'p95 HTTP request duration at the Go tracker edge is above 500ms.'
+
+      - alert: ReportQueryLatencyHigh
+        expr: histogram_quantile(0.99, sum(rate(ad_report_query_duration_seconds_bucket[5m])) by (le, report_key)) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Report query p99 above 500ms'
+          description: 'Cold report {{ $labels.report_key }} p99 exceeds 500ms for 10m (ad_report_query_duration_seconds).'
 
       - alert: RedisLuaLatencyHigh
         expr: histogram_quantile(0.99, sum(rate(ad_redis_lua_duration_seconds_bucket[5m])) by (le, shard)) > 0.01
@@ -228,7 +237,7 @@ groups:
           severity: warning
         annotations:
           summary: 'Local quanta full-skip ratio below 80%'
-          description: 'Eligible impressions/clicks are falling back to sync Redis Lua instead of full-skip. Check strict-mode hysteresis, placement_id or max-RPD traffic, stream producer defer (fcap:ignored), and refill worker health. Runbook: docs/DEVELOPMENT.md §Local Quanta Full-Skip.'
+          description: 'Eligible impressions/clicks are falling back to sync Redis Lua instead of full-skip. Check strict-mode hysteresis, placement_id or max-RPD traffic, stream producer defer (fcap:ignored), and refill worker health. Runbook: docs/DEVELOPMENT.md section Local Quanta Full-Skip.'
           runbook_url: 'https://github.com/mykhailov-ua/ad-event-processor/blob/main/docs/DEVELOPMENT.md#local-quanta-full-skip'
 
       - alert: HandlerLogDrop
@@ -454,7 +463,7 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: 'RTB in-process auction p99 above 15µs'
+          summary: 'RTB in-process auction p99 above 15us'
           description: 'RTB RunAuction p99 exceeds the in-process SLA budget. Check dense geo shards and catalog size.'
 
       - alert: RtbAuctionCandidatesScannedHigh

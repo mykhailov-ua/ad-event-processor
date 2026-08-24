@@ -381,7 +381,7 @@ require_eula_acceptance() {
   fi
   read -r -p "Accept license agreement? [y/N]: " yn
   if [[ "${yn,,}" != "y" ]]; then
-    echo "ad-event-processor-install: install aborted — EULA not accepted" >&2
+    echo "ad-event-processor-install: install aborted - EULA not accepted" >&2
     exit 1
   fi
   ACCEPT_EULA=1
@@ -503,7 +503,7 @@ apply_platform_config() {
     echo "ad-event-processor-install: apply failed (${http_code}): ${body}" >&2
     return 1
   fi
-  echo "ad-event-processor-install: wrote install.compose.env — restarting stack"
+  echo "ad-event-processor-install: wrote install.compose.env - restarting stack"
   bash scripts/dev/stack.sh single-vps
 }
 
@@ -570,7 +570,7 @@ print_summary() {
     tracking_domain="$(python3 -c 'import json; print(json.load(open("platform_config.json")).get("tracking_domain",""))' 2> /dev/null || true)"
   fi
   echo ""
-  echo "=== ad-event-processor ready ==="
+  echo "ad-event-processor ready"
   echo "Control UI:  http://127.0.0.1:${port}"
   echo "Login:       http://127.0.0.1:${port}/login"
   echo "Bootstrap UI: http://127.0.0.1:${port}/bootstrap (alternative to CLI install)"

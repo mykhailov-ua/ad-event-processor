@@ -349,7 +349,7 @@ export function ShellLayout({ children }: ShellLayoutProps) {
             aria-expanded={sidebarOpen}
             onClick={openSidebar}
           >
-            ☰
+            =
           </button>
         </div>
         <div className="main__content">

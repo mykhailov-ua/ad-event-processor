@@ -34,7 +34,7 @@ var (
 
 func BenchmarkBuildPostbackPayloadFromEvent(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = buildPostbackPayloadFromEvent(benchConvEvent, benchCustomerID)
 	}
 }
@@ -42,15 +42,14 @@ func BenchmarkBuildPostbackPayloadFromEvent(b *testing.B) {
 func BenchmarkMarshalPostbackPayload(b *testing.B) {
 	pb := buildPostbackPayloadFromEvent(benchConvEvent, benchCustomerID)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = json.Marshal(pb)
 	}
 }
 
 func BenchmarkMergeEventPayloadInto(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var pb PostbackPayload
 		mergeEventPayloadInto(&pb, benchConversionPayload)
 	}
@@ -58,7 +57,7 @@ func BenchmarkMergeEventPayloadInto(b *testing.B) {
 
 func BenchmarkEventTypeMatches(b *testing.B) {
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if !eventTypeMatches("conversion", "conversion") {
 			b.Fatal()
 		}
@@ -128,7 +127,7 @@ func BenchmarkConversionEnqueue_skipNoConfig(b *testing.B) {
 	events := []*domain.Event{benchConvEvent}
 	ctx := context.Background()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		enq.OnBatchStored(ctx, events)
 	}
 }
@@ -138,7 +137,7 @@ func BenchmarkConversionEnqueue_fullCPU(b *testing.B) {
 	events := []*domain.Event{benchConvEvent}
 	ctx := context.Background()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		enq.OnBatchStored(ctx, events)
 	}
 }

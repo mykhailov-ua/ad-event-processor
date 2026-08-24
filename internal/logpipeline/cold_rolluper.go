@@ -1,7 +1,6 @@
 package logpipeline
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"strings"
@@ -101,13 +100,22 @@ func (cr *ColdRolluper) rollupOne(ctx context.Context, obj TierObject) error {
 		return err
 	}
 
-	rows, err := aggregateWarmSegment(bytes.NewReader(plain), obj.Key, digest.SHA256)
+	rows, sliceRows, err := aggregateWarmAndRejectSlices(plain, obj.Key, digest.SHA256)
 	if err != nil {
 		return err
 	}
 
-	if err := cr.inserter.InsertRollups(ctx, rows); err != nil {
-		return err
+	if len(rows) > 0 {
+		if err := cr.inserter.InsertRollups(ctx, rows); err != nil {
+			return err
+		}
+	}
+	if len(sliceRows) > 0 {
+		if sliceInserter, ok := cr.inserter.(FilterRejectSliceInserter); ok {
+			if err := sliceInserter.InsertFilterRejectSlices(ctx, sliceRows); err != nil {
+				return err
+			}
+		}
 	}
 
 	record := CheckpointRecord{

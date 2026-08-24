@@ -32,7 +32,7 @@ export function formatChartTime(ts: number): string {
 }
 
 export function formatClockTime(ts: number): string {
-  if (!Number.isFinite(ts) || ts <= 0) return '—';
+  if (!Number.isFinite(ts) || ts <= 0) return '-';
   return formatChartTime(ts);
 }
 

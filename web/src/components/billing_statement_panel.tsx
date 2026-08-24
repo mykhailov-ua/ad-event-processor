@@ -44,7 +44,7 @@ export function BillingStatementPanel({ customerId }: BillingStatementPanelProps
         />
       </label>
       <Button
-        label={loading ? 'Loading…' : 'Load statement'}
+        label={loading ? 'Loading...' : 'Load statement'}
         variant="secondary"
         size="sm"
         loading={loading}
@@ -69,7 +69,7 @@ export function BillingStatementPanel({ customerId }: BillingStatementPanelProps
             </div>
             {statement.reconciliation?.delta_micro != null ? (
               <div className="metric-card">
-                <div className="metric-card__label">Reconciliation Δ</div>
+                <div className="metric-card__label">Reconciliation delta</div>
                 <div className="metric-card__value font-mono">
                   {formatAmountMicro(statement.reconciliation.delta_micro, statement.currency)}
                 </div>
@@ -78,13 +78,13 @@ export function BillingStatementPanel({ customerId }: BillingStatementPanelProps
           </div>
           <dl className="definition-list">
             <dt>Period</dt>
-            <dd>{`${statement.period?.from ?? '—'} → ${statement.period?.to ?? '—'}`}</dd>
+            <dd>{`${statement.period?.from ?? '-'} -> ${statement.period?.to ?? '-'}`}</dd>
             {statement.tax_breakdown?.scheme ? (
               <>
                 <dt>Tax</dt>
                 <dd>
                   {statement.tax_breakdown.scheme} ({statement.tax_breakdown.rate_bps ?? 0} bps)
-                  {' · '}
+                  {' , '}
                   {formatAmountMicro(statement.tax_breakdown.tax_micro ?? 0, statement.currency)}
                 </dd>
               </>
@@ -103,9 +103,9 @@ export function BillingStatementPanel({ customerId }: BillingStatementPanelProps
                 <tbody>
                   {statement.invoices.map((inv) => (
                     <tr key={inv.id ?? inv.billing_month}>
-                      <td>{inv.billing_month ?? '—'}</td>
+                      <td>{inv.billing_month ?? '-'}</td>
                       <td>
-                        {inv.status ? <StatusBadge status={inv.status} kind="invoice" /> : '—'}
+                        {inv.status ? <StatusBadge status={inv.status} kind="invoice" /> : '-'}
                       </td>
                       <td className="font-mono">
                         {formatAmountMicro(

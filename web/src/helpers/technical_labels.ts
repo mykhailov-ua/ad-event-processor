@@ -15,7 +15,7 @@ const DETAIL_PATTERNS: DetailPattern[] = [
   {
     re: /^file-max=(\d+) somaxconn=(\d+)$/,
     fmt: (m) =>
-      `System limits OK — max open files: ${formatNum(m[1])}, TCP listen backlog: ${formatNum(m[2])}`,
+      `System limits OK - max open files: ${formatNum(m[1])}, TCP listen backlog: ${formatNum(m[2])}`,
   },
   {
     re: /^fs\.file-max=(\d+) want >= (\d+)$/,
@@ -37,7 +37,7 @@ const DETAIL_PATTERNS: DetailPattern[] = [
   },
   {
     re: /^bpf syscall unavailable$/,
-    fmt: () => 'BPF syscall is not available — edge XDP may not work',
+    fmt: () => 'BPF syscall is not available - edge XDP may not work',
   },
   {
     re: /^linux only$/,

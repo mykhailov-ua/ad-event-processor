@@ -27,11 +27,11 @@ func printUsage(w *os.File) {
 	_, _ = fmt.Fprintf(w, `usage: vendor-trial-bot <command>
 
 commands:
-  run   long-poll Telegram and enqueue /trial requests
+ run long-poll Telegram and enqueue /trial requests
 
 environment:
-  %s       bot token from @BotFather (never commit)
-  %s   trial registry file path
+ %s bot token from @BotFather (never commit)
+ %s trial registry file path
 
 `, envBotToken, envTrialRegistry)
 }

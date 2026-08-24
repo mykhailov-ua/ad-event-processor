@@ -32,43 +32,45 @@ type IVTBySourceReportResponse struct {
 
 const ivtBySourceQuery = `
 SELECT
-    campaign_id,
-    sub1,
-    sub2,
-    country,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(ivt_events) AS ivt_events
+ campaign_id,
+ sub1,
+ sub2,
+ country,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(ivt_events) AS ivt_events
 FROM (
-    SELECT
-        i.campaign_id,
-        nullIf(JSONExtractString(i.payload, 'sub1'), '') AS sub1,
-        nullIf(JSONExtractString(i.payload, 'sub2'), '') AS sub2,
-        nullIf(JSONExtractString(i.payload, 'country'), '') AS country,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS ivt_events
-    FROM impressions AS i
-    WHERE i.campaign_id IN (?)
-      AND i.created_at >= ?
-      AND i.created_at < ?
-    GROUP BY i.campaign_id, sub1, sub2, country
-    UNION ALL
-    SELECT
-        c.campaign_id,
-        nullIf(JSONExtractString(c.payload, 'sub1'), '') AS sub1,
-        nullIf(JSONExtractString(c.payload, 'sub2'), '') AS sub2,
-        nullIf(JSONExtractString(c.payload, 'country'), '') AS country,
-        toUInt64(0) AS impressions,
-        count() AS clicks,
-        uniqIf(c.click_id, f.click_id != '') AS ivt_events
-    FROM clicks AS c
-    LEFT JOIN fraud_events AS f
-        ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
-    WHERE c.campaign_id IN (?)
-      AND c.created_at >= ?
-      AND c.created_at < ?
-    GROUP BY c.campaign_id, sub1, sub2, country
+ SELECT
+ i.campaign_id,
+ ` + chDimSub1Expr + ` AS sub1,
+ ` + chDimSub2Expr + ` AS sub2,
+ nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ uniqIf(i.click_id, f.click_id != '') AS ivt_events
+ FROM impressions AS i
+ LEFT JOIN fraud_events AS f
+ ON i.click_id = f.click_id AND i.campaign_id = f.campaign_id
+ WHERE i.campaign_id IN (?)
+ AND i.created_at >= ?
+ AND i.created_at < ?
+ GROUP BY i.campaign_id, sub1, sub2, country
+ UNION ALL
+ SELECT
+ c.campaign_id,
+ ` + chDimSub1Expr + ` AS sub1,
+ ` + chDimSub2Expr + ` AS sub2,
+ nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ toUInt64(0) AS impressions,
+ count() AS clicks,
+ uniqIf(c.click_id, f.click_id != '') AS ivt_events
+ FROM clicks AS c
+ LEFT JOIN fraud_events AS f
+ ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+ WHERE c.campaign_id IN (?)
+ AND c.created_at >= ?
+ AND c.created_at < ?
+ GROUP BY c.campaign_id, sub1, sub2, country
 )
 GROUP BY campaign_id, sub1, sub2, country
 ORDER BY ivt_events DESC, clicks DESC
@@ -76,31 +78,31 @@ LIMIT ? OFFSET ?`
 
 const ivtBySourceCountQuery = `
 SELECT count() FROM (
-    SELECT campaign_id, sub1, sub2, country
-    FROM (
-        SELECT
-            i.campaign_id,
-            nullIf(JSONExtractString(i.payload, 'sub1'), '') AS sub1,
-            nullIf(JSONExtractString(i.payload, 'sub2'), '') AS sub2,
-            nullIf(JSONExtractString(i.payload, 'country'), '') AS country
-        FROM impressions AS i
-        WHERE i.campaign_id IN (?)
-          AND i.created_at >= ?
-          AND i.created_at < ?
-        GROUP BY i.campaign_id, sub1, sub2, country
-        UNION ALL
-        SELECT
-            c.campaign_id,
-            nullIf(JSONExtractString(c.payload, 'sub1'), '') AS sub1,
-            nullIf(JSONExtractString(c.payload, 'sub2'), '') AS sub2,
-            nullIf(JSONExtractString(c.payload, 'country'), '') AS country
-        FROM clicks AS c
-        WHERE c.campaign_id IN (?)
-          AND c.created_at >= ?
-          AND c.created_at < ?
-        GROUP BY c.campaign_id, sub1, sub2, country
-    )
-    GROUP BY campaign_id, sub1, sub2, country
+ SELECT campaign_id, sub1, sub2, country
+ FROM (
+ SELECT
+ i.campaign_id,
+ ` + chDimSub1Expr + ` AS sub1,
+ ` + chDimSub2Expr + ` AS sub2,
+ nullIf(` + chDimCountryExpr + `, 'ZZ') AS country
+ FROM impressions AS i
+ WHERE i.campaign_id IN (?)
+ AND i.created_at >= ?
+ AND i.created_at < ?
+ GROUP BY i.campaign_id, sub1, sub2, country
+ UNION ALL
+ SELECT
+ c.campaign_id,
+ ` + chDimSub1Expr + ` AS sub1,
+ ` + chDimSub2Expr + ` AS sub2,
+ nullIf(` + chDimCountryExpr + `, 'ZZ') AS country
+ FROM clicks AS c
+ WHERE c.campaign_id IN (?)
+ AND c.created_at >= ?
+ AND c.created_at < ?
+ GROUP BY c.campaign_id, sub1, sub2, country
+ )
+ GROUP BY campaign_id, sub1, sub2, country
 )`
 
 type ivtBySourceCHRow struct {
@@ -116,7 +118,7 @@ type ivtBySourceCHRow struct {
 func (reports *ReportsHTTPHandlers) registerIVTBySource(mux *http.ServeMux) {
 	limit := reports.ApplyRateLimit
 	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/ivt-by-source", limit(perm("audit:read", reports.getIVTBySourceReport)))
+	mux.HandleFunc("GET /api/v1/reports/ivt-by-source", limit(perm("audit:read", reports.wrapReport("ivt-by-source", reports.getIVTBySourceReport))))
 }
 
 func (reports *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, r *http.Request) {
@@ -228,37 +230,37 @@ func queryIVTBySourceRows(
 
 const worstIVTSourcesQuery = `
 SELECT
-    campaign_id,
-    sub1,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(ivt_events) AS ivt_events
+ campaign_id,
+ sub1,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(ivt_events) AS ivt_events
 FROM (
-    SELECT
-        i.campaign_id,
-        nullIf(JSONExtractString(i.payload, 'sub1'), '') AS sub1,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS ivt_events
-    FROM impressions AS i
-    WHERE i.campaign_id IN (?)
-      AND i.created_at >= ?
-      AND i.created_at < ?
-    GROUP BY i.campaign_id, sub1
-    UNION ALL
-    SELECT
-        c.campaign_id,
-        nullIf(JSONExtractString(c.payload, 'sub1'), '') AS sub1,
-        toUInt64(0) AS impressions,
-        count() AS clicks,
-        uniqIf(c.click_id, f.click_id != '') AS ivt_events
-    FROM clicks AS c
-    LEFT JOIN fraud_events AS f
-        ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
-    WHERE c.campaign_id IN (?)
-      AND c.created_at >= ?
-      AND c.created_at < ?
-    GROUP BY c.campaign_id, sub1
+ SELECT
+ i.campaign_id,
+ nullIf(` + chDimSub1Expr + `, '') AS sub1,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toUInt64(0) AS ivt_events
+ FROM impressions AS i
+ WHERE i.campaign_id IN (?)
+ AND i.created_at >= ?
+ AND i.created_at < ?
+ GROUP BY i.campaign_id, sub1
+ UNION ALL
+ SELECT
+ c.campaign_id,
+ nullIf(` + chDimSub1Expr + `, '') AS sub1,
+ toUInt64(0) AS impressions,
+ count() AS clicks,
+ uniqIf(c.click_id, f.click_id != '') AS ivt_events
+ FROM clicks AS c
+ LEFT JOIN fraud_events AS f
+ ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+ WHERE c.campaign_id IN (?)
+ AND c.created_at >= ?
+ AND c.created_at < ?
+ GROUP BY c.campaign_id, sub1
 )
 GROUP BY campaign_id, sub1
 ORDER BY ivt_events DESC, clicks DESC
@@ -310,34 +312,34 @@ func QueryWorstIVTSources(
 
 const worstIVTCountriesQuery = `
 SELECT
-    country,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(ivt_events) AS ivt_events
+ country,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(ivt_events) AS ivt_events
 FROM (
-    SELECT
-        nullIf(JSONExtractString(i.payload, 'country'), '') AS country,
-        count() AS impressions,
-        toUInt64(0) AS clicks,
-        toUInt64(0) AS ivt_events
-    FROM impressions AS i
-    WHERE i.campaign_id IN (?)
-      AND i.created_at >= ?
-      AND i.created_at < ?
-    GROUP BY country
-    UNION ALL
-    SELECT
-        nullIf(JSONExtractString(c.payload, 'country'), '') AS country,
-        toUInt64(0) AS impressions,
-        count() AS clicks,
-        uniqIf(c.click_id, f.click_id != '') AS ivt_events
-    FROM clicks AS c
-    LEFT JOIN fraud_events AS f
-        ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
-    WHERE c.campaign_id IN (?)
-      AND c.created_at >= ?
-      AND c.created_at < ?
-    GROUP BY country
+ SELECT
+ nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ count() AS impressions,
+ toUInt64(0) AS clicks,
+ toUInt64(0) AS ivt_events
+ FROM impressions AS i
+ WHERE i.campaign_id IN (?)
+ AND i.created_at >= ?
+ AND i.created_at < ?
+ GROUP BY country
+ UNION ALL
+ SELECT
+ nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ toUInt64(0) AS impressions,
+ count() AS clicks,
+ uniqIf(c.click_id, f.click_id != '') AS ivt_events
+ FROM clicks AS c
+ LEFT JOIN fraud_events AS f
+ ON c.click_id = f.click_id AND c.campaign_id = f.campaign_id
+ WHERE c.campaign_id IN (?)
+ AND c.created_at >= ?
+ AND c.created_at < ?
+ GROUP BY country
 )
 WHERE country != ''
 GROUP BY country

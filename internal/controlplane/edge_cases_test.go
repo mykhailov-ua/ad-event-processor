@@ -234,8 +234,8 @@ func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 		UPDATE outbox_events
 		SET status = 'PENDING', processing_started_at = NULL
 		WHERE status = 'PROCESSING'
-		  AND processing_started_at IS NOT NULL
-		  AND processing_started_at < NOW() - INTERVAL '1 minute'`)
+		 AND processing_started_at IS NOT NULL
+		 AND processing_started_at < NOW() - INTERVAL '1 minute'`)
 	require.NoError(t, err)
 
 	err = pool.QueryRow(ctx, "SELECT status FROM outbox_events WHERE id = $1", row.ID).Scan(&status)

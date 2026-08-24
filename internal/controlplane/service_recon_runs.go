@@ -100,7 +100,7 @@ func (s *Service) listPaymentReconRuns(ctx context.Context, limit, offset int32)
 
 	rows, err := pool.Query(ctx, `
 		SELECT id, period_start, period_end, status::text, findings_count, intents_checked,
-		       error_message, created_at, completed_at
+		 error_message, created_at, completed_at
 		FROM payment.financial_recon_runs
 		ORDER BY id DESC
 		LIMIT $1 OFFSET $2`, limit, offset)

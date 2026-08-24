@@ -52,15 +52,15 @@ type PausePlacementPayload struct {
 const (
 	marginGuardPlacementStatsQuery = `
 SELECT
-    campaign_id,
-    placement_id,
-    sum(spend_micro) AS spend,
-    sum(revenue_micro) AS revenue,
-    sum(click_count) AS clicks,
-    sum(conversion_count) AS conversions
+ campaign_id,
+ placement_id,
+ sum(spend_micro) AS spend,
+ sum(revenue_micro) AS revenue,
+ sum(click_count) AS clicks,
+ sum(conversion_count) AS conversions
 FROM placement_stats_hourly
 WHERE campaign_id IN (?)
-  AND hour >= subtractHours(now(), 24)
+ AND hour >= subtractHours(now(), 24)
 GROUP BY campaign_id, placement_id`
 
 	marginGuardActivityInsertSQL = `
@@ -253,7 +253,7 @@ func (w *Worker) applyDecisionsBatch(ctx context.Context, decisions []*Decision)
 	rows, err := w.pool.Query(ctx, `
 SELECT campaign_id, placement_id FROM margin_guard_activity
 WHERE action = 'pause' AND created_at > now() - interval '1 day'
-  AND campaign_id = ANY($1)`, campaignIDs)
+ AND campaign_id = ANY($1)`, campaignIDs)
 	if err != nil {
 		return err
 	}

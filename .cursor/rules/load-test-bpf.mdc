@@ -4,26 +4,75 @@ globs: scripts/test/**, scripts/dev/bpf*, cmd/bpf-collector/**, cmd/loadgen/**, 
 alwaysApply: false
 ---
 
-Before claiming hot-path perf wins, run Prometheus bottleneck report and optional BPF session report.
+# Load Test and BPF Probes
 
-Quick path:
+## Purpose
 
-- `make bpf-dev` — build probe + collector
-- `AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business` — loadgen + reports under `var/load-test/<timestamp>/`
-- `go run ./cmd/load-report all` — `bottleneck-report.md` + `bpf-report.md`
+Before claiming hot-path perf wins, run Prometheus bottleneck report and optional BPF session report. Does not replace production `edge-xdp` compliance maps. Requires root/CAP_BPF on dev host.
 
-Standalone session: `make bpf-session-start` / `make bpf-session-stop` (no loadgen).
+## Quick path
 
-Env (common): `AD_EVENT_PROCESSOR_BPF_PROBE=1`, `AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE` (use 10 on laptops), `AD_EVENT_PROCESSOR_BPF_SLOW_US`, `AD_EVENT_PROCESSOR_BPF_TARGETS=tracker,nginx,redis,processor`.
+```bash
+make bpf-dev
+AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business
+go run ./cmd/load-report all
+```
 
-Artifacts in `var/load-test/<utc>/`: `bottleneck-report.md`, `bpf-report.md`, `bpf/maps/summary.json`, `events.ndjson`.
+Loadgen + reports under `var/load-test/<timestamp>/`. Outputs: `bottleneck-report.md` + `bpf-report.md`.
 
-Interpretation:
+Standalone session (no loadgen):
 
-- Trust BPF for host scheduling; trust Prometheus for app SLOs.
-- High loadgen CPU on laptop often caps RPS before tracker Lua.
-- Abort if handler p99 > 80 ms for 30 s (`malformed.sh`).
+```bash
+make bpf-session-start
+make bpf-session-stop
+```
 
-Not for CI/production deploy. Requires root/CAP_BPF on dev host. Does not replace production `edge-xdp` compliance maps.
+## Environment
 
-Related: `hot-path.mdc`, `core.mdc`, `development.mdc`.
+| Variable | Role |
+| :--- | :--- |
+| `AD_EVENT_PROCESSOR_BPF_PROBE=1` | Enable BPF probe collection |
+| `AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE` | Use 10 on laptops |
+| `AD_EVENT_PROCESSOR_BPF_SLOW_US` | Slow-path threshold |
+| `AD_EVENT_PROCESSOR_BPF_TARGETS` | `tracker,nginx,redis,processor` |
+
+## Artifacts
+
+Under `var/load-test/<utc>/`:
+
+| File | Content |
+| :--- | :--- |
+| `bottleneck-report.md` | Prometheus SLO summary |
+| `bpf-report.md` | BPF scheduling and syscall view |
+| `bpf/maps/summary.json` | Map statistics |
+| `events.ndjson` | Raw probe events |
+
+## Interpretation
+
+| Source | Trust for |
+| :--- | :--- |
+| BPF reports | Host scheduling, syscall latency, worker pinning |
+| Prometheus | App SLOs (`ad_http_request_duration_seconds`, Lua p99, queue depth) |
+
+High loadgen CPU on laptop often caps RPS before tracker Lua - do not cite laptop RPS as production capacity.
+
+## Abort rules
+
+Abort if handler p99 > 80 ms for 30 s (`malformed.sh`, `core.mdc`). Also abort on budget invariant violation.
+
+## BPF gate thresholds (CI)
+
+When `PERF_RUNNER_LABEL` set, `bash scripts/ci/bpf_resource_gate.sh` enforces:
+
+| Metric | FAIL |
+| :--- | ---: |
+| tracker handler p99 | >= 80 ms |
+| Redis Lua p99/shard | >= 10 ms |
+| `tracker_outbound_connect` | > 0 |
+| `tracker_rss_delta_kb` | > 5120 |
+
+See `ci.mdc` for full BPF gate layers.
+
+## Related rules
+
+`ci.mdc`, `core.mdc`, `development.mdc`, `fault-tests.mdc`, `hot-path.mdc`.

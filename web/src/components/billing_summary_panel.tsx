@@ -31,7 +31,7 @@ export function BillingSummaryPanel() {
     return (
       <div className="section-card" data-testid="billing-summary-panel">
         <h3 className="subsection-title">Fleet billing summary</h3>
-        <p className="text-muted text-sm">Loading…</p>
+        <p className="text-muted text-sm">Loading...</p>
       </div>
     );
   }

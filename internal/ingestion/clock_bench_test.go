@@ -30,16 +30,14 @@ func buildProtoTrackPayload(b *testing.B) []byte {
 
 func BenchmarkHotPath_timeNow(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = time.Now()
 	}
 }
 
 func BenchmarkHotPath_monotonicNano(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = monotonicNano()
 	}
 }
@@ -47,8 +45,7 @@ func BenchmarkHotPath_monotonicNano(b *testing.B) {
 func BenchmarkHotPath_cachedTimeUTC(b *testing.B) {
 	storeCachedNowUTC()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = CachedTimeUTC()
 	}
 }
@@ -56,8 +53,7 @@ func BenchmarkHotPath_cachedTimeUTC(b *testing.B) {
 func BenchmarkHotPath_filterEngineDeadlineCheck(b *testing.B) {
 	ctx := attachFilterDeadline(context.Background(), 5*time.Second)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = filterDeadlineExceeded(ctx)
 	}
 }
@@ -67,8 +63,7 @@ func BenchmarkHotPath_filterEngineCheck_noTimeout(b *testing.B) {
 	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = engine.Check(ctx, evt)
 	}
 }
@@ -78,8 +73,7 @@ func BenchmarkHotPath_filterEngineCheck_withDeadline(b *testing.B) {
 	evt := &domain.Event{}
 	ctx := context.Background()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = engine.Check(ctx, evt)
 	}
 }
@@ -88,16 +82,14 @@ func BenchmarkHotPath_latencyRingRecord(b *testing.B) {
 	ring := NewLatencyRing(defaultLatencyRingCap)
 	start := monotonicNano()
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ring.RecordMono(start)
 	}
 }
 
 func BenchmarkHotPath_counterInc(b *testing.B) {
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		filterGeoLookupErrors.Inc()
 	}
 }
@@ -124,8 +116,7 @@ func BenchmarkHotPath_AdsPacketHandlerProto_reject404(b *testing.B) {
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		handler.React(req, conn)
 	}
 }
@@ -146,8 +137,7 @@ func BenchmarkHotPath_AdsPacketHandlerProto_infra503(b *testing.B) {
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		handler.React(req, conn)
 	}
 }

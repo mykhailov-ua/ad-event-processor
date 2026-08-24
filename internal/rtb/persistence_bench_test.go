@@ -34,9 +34,7 @@ func BenchmarkSaveSnapshot(b *testing.B) {
 		}
 	}
 	reg.UpdateCampaigns(campaigns)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		err := reg.SaveSnapshot(snapPath)
 		if err != nil {
 			b.Fatal(err)
@@ -76,9 +74,7 @@ func BenchmarkLoadSnapshot(b *testing.B) {
 
 	newStore := NewBudgetStore()
 	newReg := NewRegistry(newStore)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		err := newReg.LoadSnapshot(snapPath)
 		if err != nil {
 			b.Fatal(err)

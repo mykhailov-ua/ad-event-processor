@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-config load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-phase0 openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke clean-gitignored
+.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-config load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-preflight openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke clean-gitignored
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -250,13 +250,13 @@ telegram-fuzz-smoke:
 	bash scripts/test/telegram_fuzz_smoke.sh
 
 tg-hotpath-soak:
-	bash scripts/test/tg_hotpath_soak.sh
+	bash scripts/test/telegram_hotpath_soak.sh
 
 telegram-hotpath-gate:
 	bash scripts/test/telegram_hotpath_gate.sh
 
-edge-phase0:
-	bash scripts/ops/phase0.sh
+edge-preflight:
+	bash scripts/ops/edge_preflight.sh
 
 proto:
 	bash scripts/ci/gen.sh --proto

@@ -4,18 +4,22 @@ globs: scripts/ci/**, .github/workflows/**, Makefile, .ci-baselines/**
 alwaysApply: false
 ---
 
-Run before PR: `bash scripts/ci/lint_gate.sh` and `bash scripts/ci/pr_fast.sh` (`SKIP_LINT=1` in pr_fast; lint in merge-lint).
+# CI and Merge Gates
 
-Toolchain: Go **1.25.12**, Node **22**. Job prefix: `Gate · …`. Overlapping runs cancel in-progress except nightly/release.
+## Purpose
+
+GitHub Actions merge gates, local CI commands, BPF thresholds, and test tiers. Run before PR: `bash scripts/ci/lint_gate.sh` and `bash scripts/ci/pr_fast.sh` (`SKIP_LINT=1` in pr_fast; lint in merge-lint).
+
+Toolchain: Go **1.25.12**, Node **22**. Job prefix: `Gate merge-*` (GitHub Actions). Overlapping runs cancel in-progress except nightly/release.
 
 ## Required merge checks
 
-| Check | Script | Blocks |
-| :--- | :--- | :--- |
-| **Gate · merge-lint** | `lint_go_gate.sh all` + `go vet` + `lint_gopls_gate.sh` + `lint_lua_gate.sh` + `lint_ts_gate.sh` + `lint_configs_gate.sh` | Yes |
-| **Gate · merge-pr-fast** | `bash scripts/ci/pr_fast.sh` | Yes |
-| **Gate · merge-race-short** | `bash scripts/ci/race_short.sh` | Yes |
-| **Gate · merge-integration** | `bash scripts/ci/integration_test.sh` | Yes |
+| Check | Script | Blocks merge |
+| :--- | :--- | :---: |
+| Gate merge-lint | `lint_go_gate.sh all` + `go vet` + `lint_gopls_gate.sh` + `lint_lua_gate.sh` + `lint_ts_gate.sh` + `lint_configs_gate.sh` | Yes |
+| Gate merge-pr-fast | `bash scripts/ci/pr_fast.sh` | Yes |
+| Gate merge-race-short | `bash scripts/ci/race_short.sh` | Yes |
+| Gate merge-integration | `bash scripts/ci/integration_test.sh` | Yes |
 
 ### merge-pr-fast includes
 
@@ -25,9 +29,9 @@ Config validation, tier A docs, compliance, ClickHouse direct, integration slop,
 
 | Check | Script |
 | :--- | :--- |
-| Gate · main-full-test | `bash scripts/ci/full_test.sh` |
-| Gate · main-resilience | `bash scripts/fault/run.sh` (`RESILIENCE_MIN_PROOFS=52`, MR proofs ≥12) |
-| Gate · main-license-red-team | `make license-red-team` |
+| Gate main-full-test | `bash scripts/ci/full_test.sh` |
+| Gate main-resilience | `bash scripts/fault/run.sh` (`RESILIENCE_MIN_PROOFS=52`, MR proofs >=12) |
+| Gate main-license-red-team | `make license-red-team` |
 
 ## Path filters (ci.yaml)
 
@@ -55,7 +59,7 @@ Integration skips under `-short` need `integration:` in reason (`integration_ski
 ## BPF gate layers
 
 | Layer | Scope | Blocks merge |
-| :--- | :--- | :--- |
+| :--- | :--- | :---: |
 | A static | alloc-gate, race, anti-slop | PR |
 | B microbench | `gate_bench.sh`, perf-gate +12% | PR smoke / main strict |
 | C eBPF load | `bpf_resource_gate.sh`, `load-report bpf-gate` | When `PERF_RUNNER_LABEL` set |
@@ -66,22 +70,31 @@ Integration skips under `-short` need `integration:` in reason (`integration_ski
 
 | Metric | FAIL |
 | :--- | ---: |
-| tracker handler p99 | **≥ 80 ms** |
-| Redis Lua p99/shard | **≥ 10 ms** |
+| tracker handler p99 | **>= 80 ms** |
+| Redis Lua p99/shard | **>= 10 ms** |
 | `tracker_outbound_connect` | **> 0** |
 | `tracker_rss_delta_kb` | **> 5120** |
 
-Static: `hot_path_static_gate.sh` — no `fmt.Sprintf`, `context.With*`, hot `defer` in ingestion/rtb/tracker.
+Static: `hot_path_static_gate.sh` - no `fmt.Sprintf`, `context.With*`, hot `defer` in ingestion/rtb/tracker.
 
 ### Cold-path BPF FAIL
 
-`fd_delta > 0`, `max_rss_delta_kb > 51200`, `ch_spool_segments > 0`, `broker_disk_writable < 1`, `stream_producer_queue_depth_p99 ≥ 1000`, admin handler p99 > 500 ms.
+`fd_delta > 0`, `max_rss_delta_kb > 51200`, `ch_spool_segments > 0`, `broker_disk_writable < 1`, `stream_producer_queue_depth_p99 >= 1000`, admin handler p99 > 500 ms.
 
 Self-hosted perf runner: Linux amd64, BTF, `PERF_RUNNER_LABEL`, Go 1.25.12, Docker, clang/llvm/libbpf.
 
 ## Nightly (UTC)
 
-perf-nightly Mon 03:00; admin-stack-e2e Mon 03:00; license-fuzz Mon 04:00; compose-fault Mon 04:00; bpf-nightly Tue 04:00; parser-fuzz Sun 05:00. Baselines: `.ci-baselines/`.
+| Job | Schedule |
+| :--- | :--- |
+| perf-nightly | Mon 03:00 |
+| admin-stack-e2e | Mon 03:00 |
+| license-fuzz | Mon 04:00 |
+| compose-fault | Mon 04:00 |
+| bpf-nightly | Tue 04:00 |
+| parser-fuzz | Sun 05:00 |
+
+Baselines: `.ci-baselines/`.
 
 ## Local commands
 
@@ -95,4 +108,6 @@ export BPF_GATE_STRICT=true AD_EVENT_PROCESSOR_BPF_PROBE=1
 bash scripts/ci/bpf_resource_gate.sh
 ```
 
-Related: `anti-slop.mdc`, `testing.mdc`, `load-test-bpf.mdc`, `quality.mdc` (do not invent gate output).
+## Related rules
+
+`anti-slop.mdc`, `load-test-bpf.mdc`, `quality.mdc`, `testing.mdc`.

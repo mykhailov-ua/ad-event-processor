@@ -26,7 +26,7 @@ jobs:
         run: bash scripts/fault/sentinel_failover_env.sh
 
       - name: Sentinel failover resilience test
-        run: bash scripts/fault/sentinel.sh 2>&1 | tee sentinel.log
+        run: bash scripts/test/sentinel.sh 2>&1 | tee sentinel.log
 
       - name: Upload sentinel log
         if: failure()

@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type SavedViewDTO struct {
@@ -43,38 +45,50 @@ type UpdateViewRequest struct {
 var ErrViewNotFound = errors.New("view not found")
 
 type ViewsStore struct {
+	pool  *pgxpool.Pool
 	mu    sync.RWMutex
 	views map[string]SavedViewDTO
 }
 
-func NewViewsStore() *ViewsStore {
+func NewViewsStore(pool *pgxpool.Pool) *ViewsStore {
 	return &ViewsStore{
+		pool:  pool,
 		views: make(map[string]SavedViewDTO),
 	}
 }
 
-func (s *ViewsStore) CreateView(req CreateViewRequest, ownerID string) SavedViewDTO {
+func (s *ViewsStore) CreateView(ctx context.Context, req CreateViewRequest, ownerID string) (SavedViewDTO, error) {
+	if s.pgEnabled() {
+		return s.createViewPG(ctx, req, ownerID)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	id := uuid.New().String()
 	now := time.Now().UTC().Format(time.RFC3339)
+	spec := req.Spec
+	if len(spec) == 0 {
+		spec = json.RawMessage(`{}`)
+	}
 	view := SavedViewDTO{
 		ID:         id,
 		OwnerID:    ownerID,
 		CustomerID: req.CustomerID,
 		Name:       req.Name,
 		ReportKey:  req.ReportKey,
-		Spec:       req.Spec,
+		Spec:       spec,
 		IsShared:   req.IsShared,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
 	s.views[id] = view
-	return view
+	return view, nil
 }
 
-func (s *ViewsStore) GetView(id string) (SavedViewDTO, error) {
+func (s *ViewsStore) GetView(ctx context.Context, id string) (SavedViewDTO, error) {
+	if s.pgEnabled() {
+		return s.getViewPG(ctx, id)
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -85,20 +99,26 @@ func (s *ViewsStore) GetView(id string) (SavedViewDTO, error) {
 	return view, nil
 }
 
-func (s *ViewsStore) ListView(customerID string) []SavedViewDTO {
+func (s *ViewsStore) ListView(ctx context.Context, customerID string) ([]SavedViewDTO, error) {
+	if s.pgEnabled() {
+		return s.listViewsPG(ctx, customerID)
+	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var list []SavedViewDTO
+	list := make([]SavedViewDTO, 0, len(s.views))
 	for _, v := range s.views {
 		if v.CustomerID == customerID {
 			list = append(list, v)
 		}
 	}
-	return list
+	return list, nil
 }
 
-func (s *ViewsStore) UpdateView(id string, req UpdateViewRequest) (SavedViewDTO, error) {
+func (s *ViewsStore) UpdateView(ctx context.Context, id string, req UpdateViewRequest) (SavedViewDTO, error) {
+	if s.pgEnabled() {
+		return s.updateViewPG(ctx, id, req)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -117,7 +137,10 @@ func (s *ViewsStore) UpdateView(id string, req UpdateViewRequest) (SavedViewDTO,
 	return view, nil
 }
 
-func (s *ViewsStore) DeleteView(id string) error {
+func (s *ViewsStore) DeleteView(ctx context.Context, id string) error {
+	if s.pgEnabled() {
+		return s.deleteViewPG(ctx, id)
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -203,7 +226,11 @@ func (viewHandlers *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http
 	}
 
 	ownerID := "system"
-	view := viewHandlers.Store.CreateView(req, ownerID)
+	view, err := viewHandlers.Store.CreateView(r.Context(), req, ownerID)
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
 	httpresponse.JSON(w, http.StatusCreated, view)
 }
 
@@ -227,7 +254,11 @@ func (viewHandlers *ViewsHTTPHandlers) listViews(w http.ResponseWriter, r *http.
 		return
 	}
 
-	views := viewHandlers.Store.ListView(custIDStr)
+	views, err := viewHandlers.Store.ListView(r.Context(), custIDStr)
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		return
+	}
 	httpresponse.JSON(w, http.StatusOK, views)
 }
 
@@ -243,7 +274,7 @@ func (viewHandlers *ViewsHTTPHandlers) getView(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	view, err := viewHandlers.Store.GetView(id)
+	view, err := viewHandlers.Store.GetView(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
@@ -276,7 +307,7 @@ func (viewHandlers *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http
 		return
 	}
 
-	existing, err := viewHandlers.Store.GetView(id)
+	existing, err := viewHandlers.Store.GetView(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
@@ -289,7 +320,7 @@ func (viewHandlers *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http
 		return
 	}
 
-	updated, err := viewHandlers.Store.UpdateView(id, req)
+	updated, err := viewHandlers.Store.UpdateView(r.Context(), id, req)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -310,7 +341,7 @@ func (viewHandlers *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http
 		return
 	}
 
-	existing, err := viewHandlers.Store.GetView(id)
+	existing, err := viewHandlers.Store.GetView(r.Context(), id)
 	if err != nil {
 		if errors.Is(err, ErrViewNotFound) {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "view not found")
@@ -323,7 +354,7 @@ func (viewHandlers *ViewsHTTPHandlers) deleteView(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err := viewHandlers.Store.DeleteView(id); err != nil {
+	if err := viewHandlers.Store.DeleteView(r.Context(), id); err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}

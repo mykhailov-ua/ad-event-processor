@@ -1,5 +1,5 @@
 {
-  "description": "RFC 5869 HKDF-SHA-256 test vectors (cases 1–3), verified via golang.org/x/crypto/hkdf",
+  "description": "RFC 5869 HKDF-SHA-256 test vectors (cases 1-3), verified via golang.org/x/crypto/hkdf",
   "fixtures": [
     {
       "name": "case-1",

@@ -135,4 +135,4 @@ else
   echo "  budget:campaign:${CAMPAIGN_ID}=$val"
 fi
 
-echo "redis_migrate_campaign: OK — pause campaign before migrate, resume after verify (see docs/DEVELOPMENT.md#post-deploy-redis-reconciliation)"
+echo "redis_migrate_campaign: OK - pause campaign before migrate, resume after verify (see docs/DEVELOPMENT.md#post-deploy-redis-reconciliation)"

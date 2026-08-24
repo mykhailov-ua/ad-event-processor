@@ -33,7 +33,7 @@ func (s *Service) ListDomainHealth(ctx context.Context) ([]DomainHealthDTO, erro
 	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT hostname, role, health_status, ssl_status, ssl_not_after,
-		       http_status, probe_latency_ms, probe_detail, last_probe_at, updated_at
+		 http_status, probe_latency_ms, probe_detail, last_probe_at, updated_at
 		FROM domain_health_status
 		ORDER BY role, hostname`)
 	if err != nil {
@@ -65,7 +65,7 @@ func (s *Service) AddCustomDomain(ctx context.Context, hostname string) (DomainH
 		VALUES ($1, 'custom')
 		ON CONFLICT (hostname) DO UPDATE SET updated_at = now()
 		RETURNING hostname, role, health_status, ssl_status, ssl_not_after,
-		          http_status, probe_latency_ms, probe_detail, last_probe_at, updated_at`,
+		 http_status, probe_latency_ms, probe_detail, last_probe_at, updated_at`,
 		host)
 	return scanDomainHealth(row)
 }
@@ -105,7 +105,7 @@ func (s *Service) ProbeDomainNow(ctx context.Context, hostname string) (DomainHe
 	}
 	row := s.pool.QueryRow(ctx, `
 		SELECT hostname, role, health_status, ssl_status, ssl_not_after,
-		       http_status, probe_latency_ms, probe_detail, last_probe_at, updated_at
+		 http_status, probe_latency_ms, probe_detail, last_probe_at, updated_at
 		FROM domain_health_status WHERE hostname = $1`, host)
 	return scanDomainHealth(row)
 }
@@ -297,13 +297,13 @@ func (s *Service) probeAndStore(ctx context.Context, target domainTarget) error 
 	_, err := s.pool.Exec(ctx, `
 		UPDATE domain_health_status
 		SET health_status = $2,
-		    ssl_status = $3,
-		    ssl_not_after = $4,
-		    http_status = $5,
-		    probe_latency_ms = $6,
-		    probe_detail = $7,
-		    last_probe_at = $8,
-		    updated_at = now()
+		 ssl_status = $3,
+		 ssl_not_after = $4,
+		 http_status = $5,
+		 probe_latency_ms = $6,
+		 probe_detail = $7,
+		 last_probe_at = $8,
+		 updated_at = now()
 		WHERE hostname = $1`,
 		target.Hostname,
 		res.HealthStatus,

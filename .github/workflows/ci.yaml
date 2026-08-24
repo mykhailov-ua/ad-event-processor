@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   paths:
-    name: Gate · path-filter
+    name: Gate - path-filter
     runs-on: ubuntu-latest
     outputs:
       openrtb: ${{ steps.filter.outputs.openrtb }}
@@ -49,7 +49,7 @@ jobs:
               - 'Dockerfile*'
 
   merge-lint:
-    name: Gate · merge-lint
+    name: Gate - merge-lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -76,7 +76,7 @@ jobs:
         run: bash scripts/ci/lint_configs_gate.sh
 
   merge-pr-fast:
-    name: Gate · merge-pr-fast
+    name: Gate - merge-pr-fast
     needs: merge-lint
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -97,7 +97,7 @@ jobs:
         run: bash scripts/ci/pr_fast.sh
 
   merge-race-short:
-    name: Gate · merge-race-short
+    name: Gate - merge-race-short
     needs: merge-pr-fast
     if: always() && needs.merge-pr-fast.result == 'success'
     runs-on: ubuntu-latest
@@ -119,7 +119,7 @@ jobs:
           retention-days: 7
 
   merge-integration:
-    name: Gate · merge-integration
+    name: Gate - merge-integration
     needs: merge-pr-fast
     if: always() && needs.merge-pr-fast.result == 'success'
     runs-on: ubuntu-latest
@@ -141,7 +141,7 @@ jobs:
           retention-days: 7
 
   merge-govulncheck:
-    name: Gate · merge-govulncheck
+    name: Gate - merge-govulncheck
     needs: merge-pr-fast
     if: always() && needs.merge-pr-fast.result == 'success'
     runs-on: ubuntu-latest
@@ -156,7 +156,7 @@ jobs:
         run: bash scripts/ci/govulncheck.sh
 
   merge-perf-smoke:
-    name: Gate · merge-perf-smoke
+    name: Gate - merge-perf-smoke
     needs: merge-pr-fast
     if: always() && needs.merge-pr-fast.result == 'success'
     runs-on: ubuntu-latest
@@ -183,7 +183,7 @@ jobs:
           retention-days: 7
 
   merge-openrtb-fuzz:
-    name: Gate · merge-openrtb-fuzz
+    name: Gate - merge-openrtb-fuzz
     needs: [merge-pr-fast, paths]
     if: |
       always() && needs.merge-pr-fast.result == 'success' && (
@@ -202,7 +202,7 @@ jobs:
         run: make openrtb-fuzz-smoke
 
   merge-fraud-model:
-    name: Gate · merge-fraud-model
+    name: Gate - merge-fraud-model
     needs: [merge-pr-fast, paths]
     if: |
       always() && needs.merge-pr-fast.result == 'success' && (
@@ -226,7 +226,7 @@ jobs:
         run: bash scripts/ci/fraudtrain.sh
 
   main-full-test:
-    name: Gate · main-full-test
+    name: Gate - main-full-test
     needs: [merge-pr-fast, merge-race-short, paths]
     if: |
       always() &&
@@ -255,7 +255,7 @@ jobs:
           retention-days: 7
 
   main-resilience:
-    name: Gate · main-resilience
+    name: Gate - main-resilience
     needs: merge-pr-fast
     if: |
       always() && needs.merge-pr-fast.result == 'success' && (
@@ -285,7 +285,7 @@ jobs:
           retention-days: 7
 
   main-license-red-team:
-    name: Gate · main-license-red-team
+    name: Gate - main-license-red-team
     needs: merge-pr-fast
     if: |
       always() && needs.merge-pr-fast.result == 'success' && (

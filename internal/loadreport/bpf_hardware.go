@@ -1,6 +1,9 @@
 package loadreport
 
 func checkBPFFDLeak(summary *bpfSummary) []BPFGateCheck {
+	if bpfGateLabProfile() {
+		return nil
+	}
 	var checks []BPFGateCheck
 	for i := range summary.PIDStats {
 		s := &summary.PIDStats[i]

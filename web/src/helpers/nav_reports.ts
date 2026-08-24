@@ -66,7 +66,7 @@ export function reportCommandPaletteLinks(): NavLink[] {
   for (const page of TELEGRAM_REPORT_PAGES) {
     links.push({
       to: page.path,
-      label: `Telegram · ${page.label}`,
+      label: `Telegram , ${page.label}`,
       icon: page.icon,
       ...TELEGRAM_PERMS,
     });

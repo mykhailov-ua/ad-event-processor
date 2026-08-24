@@ -1,6 +1,7 @@
 package loadreport
 
 import (
+	"os"
 	"strconv"
 	"strings"
 )
@@ -73,7 +74,7 @@ func checkBPFExtraGatesPrometheus(prom *promClient, rateWindow string) []BPFGate
 	})
 
 	xdpPinned := prom.scalar("ad_xdp_pinned_map_count")
-	if xdpPinned != "na" && xdpPinned != "" {
+	if xdpPinned != "na" && xdpPinned != "" && !bpfGateLabProfile() {
 		xdpVal, _ := strconv.ParseFloat(xdpPinned, 64)
 		checks = append(checks, BPFGateCheck{
 			Name:   "xdp_pinned_map_count",
@@ -84,7 +85,37 @@ func checkBPFExtraGatesPrometheus(prom *promClient, rateWindow string) []BPFGate
 		})
 	}
 
+	if loadBPFGateEnabled() {
+		reportQuery := `histogram_quantile(0.99, sum(rate(ad_report_query_duration_seconds_bucket{job="control"}[${window}])) by (le)) * 1000`
+		if !bpfGateLabProfile() {
+			reportQuery = `histogram_quantile(0.99, sum(rate(ad_report_query_duration_seconds_bucket[${window}])) by (le)) * 1000`
+		}
+		reportP99 := prom.scalar(strings.ReplaceAll(reportQuery, "${window}", rateWindow))
+		reportVal, reportOk := parseFloatOrNa(reportP99)
+		check := BPFGateCheck{
+			Name:   "report_query_p99_ms",
+			Value:  reportP99,
+			Limit:  "500",
+			OK:     reportOk && reportVal < 500,
+			Detail: "cold report handler p99 vs 500ms SLA (ad_report_query_duration_seconds)",
+		}
+		if bpfGateLabProfile() && !reportOk {
+			check.OK = false
+			check.Detail = "required in lab cold soak (scrape control :8800 and wait for export jobs)"
+		}
+		checks = append(checks, check)
+	}
+
 	return checks
+}
+
+func loadBPFGateEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("LOAD_BPF_GATE"))) {
+	case "1", "true", "yes":
+		return true
+	default:
+		return false
+	}
 }
 
 func parseFloatOrNa(s string) (float64, bool) {

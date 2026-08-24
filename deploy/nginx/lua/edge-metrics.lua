@@ -1,4 +1,3 @@
-
 local _M = {}
 
 local metrics = ngx.shared.edge_metrics

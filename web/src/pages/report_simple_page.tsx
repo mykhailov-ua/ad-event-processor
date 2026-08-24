@@ -24,7 +24,7 @@ const ACTION_ENDPOINTS = new Set(['source-quality', 'true-roi', 'discrepancy-buy
 
 function formatCell(row: ReportRow, col: SimpleReportColumn) {
   const v = row[col.key];
-  if (v == null || v === '') return '—';
+  if (v == null || v === '') return '-';
   if (col.format === 'money') return formatMoney(v as string | number);
   if (col.format === 'rate') return `${(Number(v) * 100).toFixed(2)}%`;
   if (col.format === 'pct') return `${Number(v).toFixed(2)}%`;
@@ -109,7 +109,7 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
       <div className="page-header">
         <h1 className="page-header__title">{title}</h1>
         <p className="text-muted text-sm">
-          <a href="/reports">← Reports hub</a>
+          <a href="/reports">{'<-'} Reports hub</a>
         </p>
         {freshness ? (
           <FreshnessBadge stale={freshness.stale} lagSeconds={freshness.ch_lag_seconds} />
@@ -195,7 +195,7 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
                     {c.label}
                   </th>
                 ))}
-                {comparePeriod && enableCompare ? <th scope="col">Δ spend</th> : null}
+                {comparePeriod && enableCompare ? <th scope="col">delta spend</th> : null}
                 {enableActions ? <th scope="col">Actions</th> : null}
               </tr>
             </thead>
@@ -225,6 +225,13 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
           <div className="empty-state__title">No rows</div>
           <div className="empty-state__desc text-muted text-sm">
             Try a different date range or filters.
+            {endpoint === 'true-roi' ? (
+              <>
+                {' '}
+                Missing ad spend? Check{' '}
+                <a href="/reports/cost-sync-coverage">Cost sync coverage</a>.
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}

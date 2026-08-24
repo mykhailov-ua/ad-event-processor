@@ -116,3 +116,25 @@ func TestReconciliationWorker_DataDriftDetection(t *testing.T) {
 
 	assert.Equal(t, 0.0, driftVal2, "Campaign 2 should have exactly 0.0% drift")
 }
+
+func TestReconciliationWorker_campaignSpendBatchLookup(t *testing.T) {
+	const n = 50
+	campaigns := make([]*domain.Campaign, n)
+	spends := make(map[uuid.UUID]int64, n)
+	for i := range n {
+		id := uuid.New()
+		campaigns[i] = &domain.Campaign{ID: id, Status: domain.CampaignStatusActive}
+		spends[id] = int64((i + 1) * 1000)
+	}
+
+	pg := &MockPostgresDB{spends: spends}
+	pg.Healthy.Store(true)
+	ch := &MockClickHouseDB{}
+	repo := &MockCampaignRepository{campaigns: campaigns}
+
+	rw := NewReconciliationWorker(pg, ch, repo, 0.005, 5*time.Minute, 10*time.Minute)
+	require.NoError(t, rw.Reconcile(context.Background()))
+
+	require.Equal(t, int64(1), pg.getSpendsBatchCalls.Load())
+	require.Equal(t, int64(0), pg.getSpendCalls.Load())
+}

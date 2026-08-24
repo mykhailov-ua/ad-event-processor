@@ -90,9 +90,7 @@ func BenchmarkAdsPacketHandlerJSON(b *testing.B) {
 	}
 
 	conn := &mockGnetConn{written: make([]byte, 0, 512)}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		handler.React(req, conn)
 	}
 }

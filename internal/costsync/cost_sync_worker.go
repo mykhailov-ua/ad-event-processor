@@ -252,6 +252,7 @@ func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredenti
 
 	w.completeRun(ctx, run.ID, "COMPLETED", imported, totalUSD, "")
 	metrics.CostSyncRunsTotal.WithLabelValues("success").Inc()
+	metrics.CostSyncLastSuccessTimestamp.WithLabelValues(network).Set(float64(time.Now().Unix()))
 	metrics.CostSyncRowsImported.Add(float64(imported))
 	metrics.CostSyncDurationSeconds.WithLabelValues(network).Observe(time.Since(start).Seconds())
 
@@ -342,12 +343,12 @@ func (w *Worker) reconcileCampaigns(ctx context.Context, lines []CostLine, date 
 				COALESCE(SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END), 0)::bigint AS tracker_spend
 			FROM balance_ledger
 			WHERE created_at >= $1::date
-			  AND created_at < ($1::date + INTERVAL '1 day')
-			  AND type IN ('FEE', 'RECONCILIATION_ADJUST', 'REFUND')
+			 AND created_at < ($1::date + INTERVAL '1 day')
+			 AND type IN ('FEE', 'RECONCILIATION_ADJUST', 'REFUND')
 			GROUP BY campaign_id
 		) tr ON tr.campaign_id = c.id
 		WHERE c.id = ANY($2)
-		  AND COALESCE(cc.api_spend, 0) != COALESCE(tr.tracker_spend, 0)`, date, campaignIDs)
+		 AND COALESCE(cc.api_spend, 0) != COALESCE(tr.tracker_spend, 0)`, date, campaignIDs)
 	if err != nil {
 		return err
 	}

@@ -34,8 +34,7 @@ func BenchmarkOutboxDecode_CampaignProto(b *testing.B) {
 		b.Fatal(err)
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := coldpath.UnmarshalStrict[CampaignPayload](raw)
 		if err != nil {
 			b.Fatal(err)
@@ -46,8 +45,7 @@ func BenchmarkOutboxDecode_CampaignProto(b *testing.B) {
 func BenchmarkOutboxDecode_CampaignJSON(b *testing.B) {
 	raw := []byte(`{"campaign_id":"00000000-0000-0000-0000-000000000001","budget_limit":100500000}`)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, err := coldpath.UnmarshalStrict[CampaignPayload](raw)
 		if err != nil {
 			b.Fatal(err)

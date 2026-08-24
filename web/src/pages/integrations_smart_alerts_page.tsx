@@ -199,7 +199,7 @@ export function IntegrationsSmartAlertsPage() {
       <header className="page-header">
         <h1 className="h2">Smart Alerts</h1>
         <p className="text-muted">
-          Metric thresholds on ClickHouse data → JSON webhook (Slack, Discord, or custom).
+          Metric thresholds on ClickHouse data {'->'} JSON webhook (Slack, Discord, or custom).
         </p>
       </header>
 
@@ -313,7 +313,7 @@ export function IntegrationsSmartAlertsPage() {
             />
           </label>
           <label className="stack gap-xs">
-            <span>Campaign ID (optional — all campaigns when empty)</span>
+            <span>Campaign ID (optional - all campaigns when empty)</span>
             <input
               type="text"
               value={ruleForm.campaign_id}
@@ -458,7 +458,7 @@ export function IntegrationsSmartAlertsPage() {
                     <td>
                       <StatusBadge status={ev.webhook_status.toUpperCase()} />
                     </td>
-                    <td>{ev.acked_at ? 'Acked' : '—'}</td>
+                    <td>{ev.acked_at ? 'Acked' : '-'}</td>
                     <td>
                       {canWrite && !ev.acked_at ? (
                         <Button

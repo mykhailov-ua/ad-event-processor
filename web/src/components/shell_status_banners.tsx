@@ -19,8 +19,8 @@ export function ShellStatusBanners() {
       const detail = (e as CustomEvent<RateLimitedDetail>).detail;
       const retryAfterSec = detail?.retryAfterSec;
       const message = retryAfterSec
-        ? `Rate limited — retry in ${retryAfterSec}s`
-        : 'Rate limited — slow down and retry shortly';
+        ? `Rate limited - retry in ${retryAfterSec}s`
+        : 'Rate limited - slow down and retry shortly';
       setRateLimitDismissed(false);
       setRateLimitMessage(message);
       if (retryAfterSec && retryAfterSec > 0) {

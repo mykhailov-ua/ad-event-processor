@@ -8,7 +8,7 @@ const EN: Record<string, string> = {
   'nav.settings': 'Settings',
   'action.load': 'Load',
   'action.export': 'Export CSV',
-  'status.loading': 'Loading…',
+  'status.loading': 'Loading...',
   'report.compare': 'Compare with previous period',
 };
 

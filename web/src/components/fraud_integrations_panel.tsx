@@ -15,7 +15,7 @@ export type FraudIntegrationsPanelProps = {
 };
 
 function formatTs(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? iso : parsed.toLocaleString();
 }
@@ -67,7 +67,7 @@ export function FraudIntegrationsPanel({ customerId }: FraudIntegrationsPanelPro
             {loading ? (
               <tr>
                 <td colSpan={7} className="text-muted">
-                  Loading…
+                  Loading...
                 </td>
               </tr>
             ) : null}
@@ -82,7 +82,7 @@ export function FraudIntegrationsPanel({ customerId }: FraudIntegrationsPanelPro
               ? rows.map((row) => (
                   <tr key={row.campaign_id}>
                     <td>{row.name}</td>
-                    <td className="font-mono text-sm">{row.provider || '—'}</td>
+                    <td className="font-mono text-sm">{row.provider || '-'}</td>
                     <td>
                       <StatusBadge
                         status={fraudIntegrationBadgeStatus(row.health_status)}
@@ -91,7 +91,7 @@ export function FraudIntegrationsPanel({ customerId }: FraudIntegrationsPanelPro
                     </td>
                     <td>{formatTs(row.last_success_at)}</td>
                     <td className="font-mono">{String(row.dlq_count ?? 0)}</td>
-                    <td className="text-sm text-muted">{row.last_error || '—'}</td>
+                    <td className="text-sm text-muted">{row.last_error || '-'}</td>
                     <td>
                       <ButtonLink
                         href={`/campaigns/${encodeURIComponent(row.campaign_id)}?tab=postbacks`}

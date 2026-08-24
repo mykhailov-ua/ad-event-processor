@@ -17,7 +17,7 @@ var checkHints = map[string]string{
 	"disk":       "df -h && docker system df",
 	"tls":        "set DB_DSN sslmode=verify-full for production Postgres TLS",
 	"rtb_config": "review RTB settings in control UI or GET /api/v1/settings/platform",
-	"license":    "apply monthly JWT: Settings → License or POST /api/v1/license/apply",
+	"license":    "apply monthly JWT: Settings -> License or POST /api/v1/license/apply",
 	"edge_xdp":   "enable Enterprise license (ebpf_xdp_edge), BTF kernel, installer systemd units; bash scripts/install/ad-event-processor-install.sh apply",
 	"slotmap":    "reload nginx to re-sync edge-slot-map.lua from GET /api/v1/ops/shards/slot-map (docs/ARCHITECTURE.md section 4.1)",
 }

@@ -74,7 +74,7 @@ case "$CMD" in
     mkdir -p "$BPF_DIR"
     rm -f "$READY_FILE"
     if ! bash "$SCRIPTS/test/bpf_requirements.sh"; then
-      log "preflight failed — set AD_EVENT_PROCESSOR_BPF_PROBE=0 to skip"
+      log "preflight failed - set AD_EVENT_PROCESSOR_BPF_PROBE=0 to skip"
       exit 1
     fi
     if ! bpf_require_privileged_collector; then
@@ -164,14 +164,14 @@ case "$CMD" in
     kill_collector "$COL_PID"
     rm -f "$READY_FILE"
     if [[ -f "$LOG_FILE" ]] && grep -q "memlock rlimit" "$LOG_FILE" 2> /dev/null; then
-      log "WARN: collector failed memlock — run: sudo bash scripts/dev/bpf_session.sh start"
+      log "WARN: collector failed memlock - run: sudo bash scripts/dev/bpf_session.sh start"
     fi
     if [[ -f "$BPF_DIR/maps/summary.json" ]]; then
       log "maps dumped"
     elif [[ -f "$LOG_FILE" ]] && grep -q 'bpf-collector running' "$LOG_FILE" 2> /dev/null; then
-      log "WARN: no maps/summary.json — session may have ended before dump-interval (default 30s in bpf_session.sh start)"
+      log "WARN: no maps/summary.json - session may have ended before dump-interval (default 30s in bpf_session.sh start)"
     else
-      log "WARN: no maps/summary.json (collector may have failed — see $LOG_FILE)"
+      log "WARN: no maps/summary.json (collector may have failed - see $LOG_FILE)"
     fi
     if ad_event_processor_go_run ./cmd/load-report bpf "$OUT_DIR"; then
       :

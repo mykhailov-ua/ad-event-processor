@@ -20,7 +20,7 @@ func auditLogSampleMaskFromConfig(cfgVal int) uint64 {
 
 func auditLogPriority(eventType string) uint8 {
 	switch eventType {
-	case "click", "conversion":
+	case "click", "conversion", "filter_reject":
 		return 1
 	default:
 		return 0

@@ -47,13 +47,13 @@ if ! grep -q 'snippets/ssl_server.conf' "$ROOT/deploy/nginx/nginx.conf"; then
 fi
 
 if [[ ! -r /proc/net/tls_stat ]]; then
-  log "skip (kernel tls module not loaded — config ok; live offload not proven)"
+  log "skip (kernel tls module not loaded - config ok; live offload not proven)"
   printf 'fault_proof fault=nginx_ktls status=partial proof=nginx_t kernel_tls=absent harness=config_only\n'
   exit 0
 fi
 
 if ! command -v curl > /dev/null 2>&1; then
-  log "skip (curl missing for live offload probe — config ok)"
+  log "skip (curl missing for live offload probe - config ok)"
   printf 'fault_proof fault=nginx_ktls status=partial proof=nginx_t kernel_tls=present live=skipped harness=config_only\n'
   exit 0
 fi
@@ -103,7 +103,7 @@ done
 AFTER="$(read_tx)"
 
 if [[ "${AFTER:-0}" -le "${BEFORE:-0}" ]]; then
-  die "TlsTxSw did not increase (before=$BEFORE after=$AFTER) — kTLS TX not used"
+  die "TlsTxSw did not increase (before=$BEFORE after=$AFTER) - kTLS TX not used"
 fi
 
 log "ok  TlsTxSw $BEFORE -> $AFTER"

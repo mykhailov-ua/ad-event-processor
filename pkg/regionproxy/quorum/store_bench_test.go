@@ -18,14 +18,15 @@ func BenchmarkQuorumBook(b *testing.B) {
 	nodes := []string{"proxy-a", "proxy-b", "proxy-c"}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	benchN := 0
+	for b.Loop() {
 		opID := opBase
-		opID[15] = byte(i)
-		opID[14] = byte(i >> 8)
+		opID[15] = byte(benchN)
+		opID[14] = byte(benchN >> 8)
 		if _, err := Book(ctx, rdb, toBenchBytes(opID), nodes, "proxy-a"); err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }
 

@@ -25,8 +25,7 @@ func BenchmarkXDP_passSYN_noFingerprint(b *testing.B) {
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := objs.XdpEdgeFilter.Run(opts); err != nil {
 			b.Fatal(err)
 		}
@@ -39,8 +38,7 @@ func BenchmarkXDP_passSYN(b *testing.B) {
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := objs.XdpEdgeFilter.Run(opts); err != nil {
 			b.Fatal(err)
 		}
@@ -56,8 +54,7 @@ func BenchmarkXDP_dropBlocklist(b *testing.B) {
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := objs.XdpEdgeFilter.Run(opts); err != nil {
 			b.Fatal(err)
 		}
@@ -70,8 +67,7 @@ func BenchmarkXDP_passPPSACK(b *testing.B) {
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := objs.XdpEdgeFilter.Run(opts); err != nil {
 			b.Fatal(err)
 		}
@@ -85,8 +81,7 @@ func BenchmarkXDP_dropAnomaly(b *testing.B) {
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := objs.XdpEdgeFilter.Run(opts); err != nil {
 			b.Fatal(err)
 		}
@@ -108,8 +103,7 @@ func BenchmarkXDP_dropNonTCP(b *testing.B) {
 	opts := benchRunOptions(pkt)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := objs.XdpEdgeFilter.Run(opts); err != nil {
 			b.Fatal(err)
 		}

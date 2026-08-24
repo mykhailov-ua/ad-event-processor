@@ -18,9 +18,9 @@ die() {
 
 usage() {
   cat << EOF
-Usage: edge_rollout.sh <preflight|canary-start|canary-signoff|post-deploy>
+Usage: rollout.sh <preflight|canary-start|canary-signoff|post-deploy>
 
-  preflight       Phase 0: sysctl/NIC verify, prod tuning, baseline snapshot
+  preflight       Edge preflight: sysctl/NIC verify, prod tuning, baseline snapshot
   canary-start    Capture canary baseline before traffic shift (writes canary-start.txt)
   canary-signoff  Compare current SLA vs canary-start after CANARY_HOURS soak (default 48)
   post-deploy     redis_reconcile_post_deploy.sh + SLA verify
@@ -47,21 +47,21 @@ PY
 }
 
 preflight() {
-  bash "$SCRIPTS/edge/phase0.sh" "$ENV_FILE"
+  bash "$SCRIPTS/ops/edge_preflight.sh" "$ENV_FILE"
 }
 
 canary_start() {
   mkdir -p "$BASELINE_DIR"
-  STRICT=1 bash "$SCRIPTS/edge/baseline.sh" snapshot
+  STRICT=1 bash "$SCRIPTS/ops/baseline.sh" snapshot
   cp "$BASELINE_DIR/latest.txt" "$BASELINE_DIR/canary-start.txt"
   log "canary baseline saved to $BASELINE_DIR/canary-start.txt"
-  log "route canary ingress traffic; soak for ${CANARY_HOURS}h then: edge_rollout.sh canary-signoff"
+  log "route canary ingress traffic; soak for ${CANARY_HOURS}h then: rollout.sh canary-signoff"
 }
 
 canary_signoff() {
-  [[ -f "$BASELINE_DIR/canary-start.txt" ]] || die "missing $BASELINE_DIR/canary-start.txt — run canary-start first"
+  [[ -f "$BASELINE_DIR/canary-start.txt" ]] || die "missing $BASELINE_DIR/canary-start.txt - run canary-start first"
 
-  STRICT=1 bash "$SCRIPTS/edge/baseline.sh" verify
+  STRICT=1 bash "$SCRIPTS/ops/baseline.sh" verify
   cp "$BASELINE_DIR/latest.txt" "$BASELINE_DIR/canary-end.txt"
 
   local fail=0
@@ -78,13 +78,13 @@ canary_signoff() {
     die "canary sign-off failed: latency or edge alerts firing"
   fi
 
-  log "canary sign-off OK — proceed with full ingress rollout"
+  log "canary sign-off OK - proceed with full ingress rollout"
   log "compare baselines: diff $BASELINE_DIR/canary-start.txt $BASELINE_DIR/canary-end.txt"
 }
 
 post_deploy() {
-  bash "$SCRIPTS/deploy/reconcile_post_deploy.sh" "$ENV_FILE"
-  STRICT=1 bash "$SCRIPTS/edge/baseline.sh" verify
+  bash "$SCRIPTS/ops/reconcile_post_deploy.sh" "$ENV_FILE"
+  STRICT=1 bash "$SCRIPTS/ops/baseline.sh" verify
   log "post-deploy reconcile and SLA verify OK"
 }
 

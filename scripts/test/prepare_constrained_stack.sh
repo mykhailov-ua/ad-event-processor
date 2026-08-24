@@ -6,6 +6,7 @@ source "$SCRIPTS/lib/load_test_env.sh"
 cd "$ROOT"
 
 load_test_compose COMPOSE "$ROOT"
+load_test_export_derived
 export SKIP_CODEGEN="${SKIP_CODEGEN:-1}"
 
 if [[ -f "$ROOT/.env" ]]; then
@@ -29,6 +30,20 @@ die() {
   exit 1
 }
 
+wait_control_health() {
+  local url="${LOAD_TEST_CONTROL_URL:-http://127.0.0.1:${LOAD_TEST_CONTROL_PORT:-8800}}"
+  local i=0
+  while [[ $i -lt 120 ]]; do
+    if curl -sf "${url}/health" > /dev/null 2>&1; then
+      log "control ready at ${url}/health"
+      return 0
+    fi
+    sleep 2
+    i=$((i + 1))
+  done
+  die "control ${url}/health not ready within 240s"
+}
+
 log "bringing up data plane"
 "${COMPOSE[@]}" up -d --remove-orphans "${DATA_SERVICES[@]}"
 
@@ -45,7 +60,7 @@ bash "$SCRIPTS/test/reconcile_ingestion_migrations.sh"
 log "applying postgres migrations (ads, auth, billing)"
 export DB_DSN
 if ! go run ./cmd/migrate-cold-path --only=ads,auth,billing; then
-  die "postgres migrations failed — registry Sync will not load campaigns"
+  die "postgres migrations failed - registry Sync will not load campaigns"
 fi
 
 log "repairing schema drift after migrations"
@@ -59,6 +74,18 @@ TRUNCATE TABLE clicks;
 TRUNCATE TABLE conversions;
 TRUNCATE TABLE fraud_events;
 " 2> /dev/null || log "WARN: clickhouse truncate skipped"
+
+log "repairing clickhouse hash columns (legacy volume drift before control migrations)"
+"${COMPOSE[@]}" exec -T clickhouse clickhouse-client --multiquery -u default --password "${CLICKHOUSE_PASSWORD:-secure_ch_pass}" -d ad_event_processor -q "
+ALTER TABLE impressions ADD COLUMN IF NOT EXISTS ip_hash FixedString(16) DEFAULT '';
+ALTER TABLE impressions ADD COLUMN IF NOT EXISTS ua_hash FixedString(16) DEFAULT '';
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS ip_hash FixedString(16) DEFAULT '';
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS ua_hash FixedString(16) DEFAULT '';
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS ip_hash FixedString(16) DEFAULT '';
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS ua_hash FixedString(16) DEFAULT '';
+ALTER TABLE fraud_events ADD COLUMN IF NOT EXISTS ip_hash FixedString(16) DEFAULT '';
+ALTER TABLE fraud_events ADD COLUMN IF NOT EXISTS ua_hash FixedString(16) DEFAULT '';
+" 2> /dev/null || log "WARN: clickhouse column repair skipped"
 
 REDIS_PASS="${REDIS_PASSWORD:-redis_secure_pass_456}"
 log "flushing redis shards"
@@ -140,6 +167,10 @@ ON CONFLICT (deployment_id) DO UPDATE SET
     entitlements_json = EXCLUDED.entitlements_json,
     last_verified_at = EXCLUDED.last_verified_at;
 EOF
+
+log "starting control (after postgres/redis/clickhouse ready)"
+"${COMPOSE[@]}" up -d --build --no-deps --force-recreate control
+wait_control_health
 
 log "starting trackers (registry Sync on boot + pub/sub watch)"
 "${COMPOSE[@]}" up -d --build --force-recreate tracker-0 tracker-1

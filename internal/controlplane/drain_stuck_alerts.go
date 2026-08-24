@@ -38,7 +38,7 @@ func (s *Service) listStuckDrainJobs(ctx context.Context, olderThan time.Duratio
 		SELECT version, slot, state::text, COALESCE(last_error, ''), updated_at
 		FROM redis_slot_migration
 		WHERE state IN ('draining', 'failed')
-		  AND updated_at < NOW() - $1::interval
+		 AND updated_at < NOW() - $1::interval
 		ORDER BY updated_at ASC
 	`, fmt.Sprintf("%d seconds", int(olderThan.Seconds())))
 	if err != nil {

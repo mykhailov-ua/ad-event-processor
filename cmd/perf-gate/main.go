@@ -34,7 +34,7 @@ func main() {
 
 	fmt.Fprintf(os.Stderr, "PERFORMANCE GATE ANALYSIS\n")
 	fmt.Fprintf(os.Stderr, "Baseline File: %s\n", baselineFile)
-	fmt.Fprintf(os.Stderr, "PR File:       %s\n\n", prFile)
+	fmt.Fprintf(os.Stderr, "PR File: %s\n\n", prFile)
 
 	err := verifyRawZeroAlloc(prFile)
 	if err != nil {

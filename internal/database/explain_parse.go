@@ -181,7 +181,7 @@ func AnalyzeExplainPlan(queryName string, plan ExplainPlan, hotPath bool, smallT
 				out = append(out, ExplainFinding{
 					Severity: "info",
 					Query:    queryName,
-					Message:  fmt.Sprintf("seq scan on large relation %s (%d rows) — verify index coverage at scale", n.Relation, n.ActualRows),
+					Message:  fmt.Sprintf("seq scan on large relation %s (%d rows) - verify index coverage at scale", n.Relation, n.ActualRows),
 					Detail:   n.Raw,
 				})
 			}

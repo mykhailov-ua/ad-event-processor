@@ -146,14 +146,14 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
       <p className="text-muted text-sm">
         When a tracked event matches the target type, the postback worker dispatches to the provider
         below. CAPI adapters use click IDs captured on redirect (/click) or zero-redirect /track
-        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner → ad-event-processor) is configured
+        (fbclid, gclid, ttclid). Inbound affiliate S2S (partner {'->'} ad-event-processor) is configured
         on the{' '}
         <Link to={`/campaigns/${campaignId}?tab=tracking`} className="text-sm">
           Integration
         </Link>{' '}
         tab.
       </p>
-      {loading ? <p className="text-muted">Loading…</p> : null}
+      {loading ? <p className="text-muted">Loading...</p> : null}
       {error ? <p className="text-danger text-sm">{error}</p> : null}
 
       <label className="form-field" htmlFor="pb-provider">
@@ -189,7 +189,7 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
             value={affiliatePresetId}
             onChange={(e) => applyAffiliatePreset(e.target.value)}
           >
-            <option value="">— Select network —</option>
+            <option value="">- Select network -</option>
             {AFFILIATE_POSTBACK_PRESETS.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -289,7 +289,7 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
       {canWrite ? (
         <div className="toolbar-row">
           <Button
-            label={saving ? 'Saving…' : 'Save postback'}
+            label={saving ? 'Saving...' : 'Save postback'}
             variant="primary"
             size="sm"
             loading={saving}
@@ -297,7 +297,7 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
             onClick={() => void save()}
           />
           <Button
-            label={dryRunning ? 'Testing…' : 'Dry-run postback'}
+            label={dryRunning ? 'Testing...' : 'Dry-run postback'}
             variant="secondary"
             size="sm"
             loading={dryRunning}
@@ -341,9 +341,9 @@ export function CampaignPostbackSection({ campaignId, canWrite }: CampaignPostba
                 return (
                   <tr key={String(rowId)}>
                     <td>{String(rowId ?? '')}</td>
-                    <td>{typeof row.event_type === 'string' ? row.event_type : '—'}</td>
+                    <td>{typeof row.event_type === 'string' ? row.event_type : '-'}</td>
                     <td>{String(row.failures_count ?? 0)}</td>
-                    <td>{status || '—'}</td>
+                    <td>{status || '-'}</td>
                     <td>
                       {canWrite &&
                       status !== 'RETRIED' &&

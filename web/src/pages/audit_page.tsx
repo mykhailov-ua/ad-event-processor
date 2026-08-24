@@ -124,7 +124,7 @@ export function AuditPage() {
 
       {exportTruncated ? (
         <p className="text-warning text-sm mb-2" data-testid="audit-export-truncated">
-          {`Last export was truncated at cursor ${exportNextCursor ?? '—'}.`}
+          {`Last export was truncated at cursor ${exportNextCursor ?? '-'}.`}
         </p>
       ) : null}
 
@@ -178,13 +178,13 @@ export function AuditPage() {
             ) : null}
             {rows.map((row) => (
               <tr key={`${row.created_at}-${row.action}-${row.target_id}`}>
-                <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
-                <td>{row.action ?? '—'}</td>
+                <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</td>
+                <td>{row.action ?? '-'}</td>
                 <td>
-                  {row.target_type ?? '—'}
-                  {row.target_id ? ` · ${row.target_id.slice(0, 8)}…` : ''}
+                  {row.target_type ?? '-'}
+                  {row.target_id ? ` , ${row.target_id.slice(0, 8)}...` : ''}
                 </td>
-                <td className="font-mono text-hint">{row.admin_id?.slice(0, 8) ?? '—'}</td>
+                <td className="font-mono text-hint">{row.admin_id?.slice(0, 8) ?? '-'}</td>
               </tr>
             ))}
           </tbody>

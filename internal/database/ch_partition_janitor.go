@@ -178,9 +178,9 @@ func (j *CHPartitionJanitor) runEmergencyDrop(ctx context.Context, diskPct float
 SELECT table, partition
 FROM system.parts
 WHERE active
-  AND database = currentDatabase()
-  AND table IN ('impressions', 'clicks', 'conversions', 'fraud_events')
-  AND partition < ?
+ AND database = currentDatabase()
+ AND table IN ('impressions', 'clicks', 'conversions', 'fraud_events')
+ AND partition < ?
 GROUP BY table, partition
 ORDER BY partition ASC
 LIMIT 1`, currentPart)
@@ -221,8 +221,8 @@ func (j *CHPartitionJanitor) runRecompress(ctx context.Context) error {
 SELECT table, partition, count() AS parts
 FROM system.parts
 WHERE active
-  AND database = currentDatabase()
-  AND table IN ('impressions', 'clicks', 'conversions', 'fraud_events')
+ AND database = currentDatabase()
+ AND table IN ('impressions', 'clicks', 'conversions', 'fraud_events')
 GROUP BY table, partition
 HAVING parts >= ?
 ORDER BY parts DESC
@@ -351,10 +351,10 @@ func (j *CHPartitionJanitor) updateActivePartsMax(ctx context.Context) {
 	var maxParts uint64
 	err := j.conn.QueryRow(ctx, `
 SELECT max(parts) FROM (
-    SELECT count() AS parts
-    FROM system.parts
-    WHERE active AND database = currentDatabase()
-    GROUP BY table, partition
+ SELECT count() AS parts
+ FROM system.parts
+ WHERE active AND database = currentDatabase()
+ GROUP BY table, partition
 )`).Scan(&maxParts)
 	if err != nil {
 		slog.Warn("clickhouse active parts gauge failed", "error", err)

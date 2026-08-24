@@ -17,7 +17,7 @@ export function openRTBRoutingHint(opts: {
   if (opts.edgeExposeOpenRTB) {
     return `Edge nginx${opts.edgePortHint ?? ':8180'} (platform setting enabled)`;
   }
-  return `Tracker ports${opts.trackerPortHint ?? ':8181–8184'} (enable edge OpenRTB in Platform settings for :8180)`;
+  return `Tracker ports${opts.trackerPortHint ?? ':8181-8184'} (enable edge OpenRTB in Platform settings for :8180)`;
 }
 
 export const VALIDATE_BID_FIXTURE = {

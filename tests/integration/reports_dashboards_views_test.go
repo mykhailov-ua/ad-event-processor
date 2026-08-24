@@ -46,7 +46,7 @@ func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 	}
 
 	viewsHandler := &controlplane.ViewsHTTPHandlers{
-		Store: controlplane.NewViewsStore(),
+		Store: controlplane.NewViewsStore(nil),
 	}
 
 	mux := http.NewServeMux()

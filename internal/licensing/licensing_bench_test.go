@@ -20,8 +20,7 @@ func BenchmarkEffective(b *testing.B) {
 		Features: FeatureSet{RtbLive: false, MlFraudBoost: false},
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = Effective(dep, cust)
 	}
 }
@@ -45,8 +44,7 @@ func BenchmarkVerifyJWT(b *testing.B) {
 	token := benchJWT(b, priv, claims)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if _, err := VerifyJWT(token, pub); err != nil {
 			b.Fatal(err)
 		}
@@ -65,8 +63,7 @@ func BenchmarkLicenseSpoolAppend(b *testing.B) {
 
 	token := strings.Repeat("x", 400) + ".payload.sig"
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := spool.AppendDurably(token); err != nil {
 			b.Fatal(err)
 		}

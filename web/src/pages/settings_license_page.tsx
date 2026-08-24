@@ -80,7 +80,7 @@ export function SettingsLicensePage() {
         </p>
       </div>
 
-      {loading ? <p className="text-muted">Loading…</p> : null}
+      {loading ? <p className="text-muted">Loading...</p> : null}
       {error ? <ErrorBlock error={error} fallbackTitle="Failed to load license status" /> : null}
       {bindMismatch ? (
         <AlertBanner
@@ -92,11 +92,11 @@ export function SettingsLicensePage() {
         <section className="section-card stack" data-testid="license-status-panel">
           <dl className="definition-list">
             <dt>Deployment ID</dt>
-            <dd className="font-mono">{data.deployment_id || '—'}</dd>
+            <dd className="font-mono">{data.deployment_id || '-'}</dd>
             <dt>State</dt>
-            <dd>{data.state ? <StatusBadge status={data.state} /> : '—'}</dd>
+            <dd>{data.state ? <StatusBadge status={data.state} /> : '-'}</dd>
             <dt>Valid until</dt>
-            <dd>{data.valid_until ? new Date(data.valid_until).toLocaleString() : '—'}</dd>
+            <dd>{data.valid_until ? new Date(data.valid_until).toLocaleString() : '-'}</dd>
             {data.days_to_expiry != null && data.days_to_expiry > 0 ? (
               <>
                 <dt>Days to expiry</dt>
@@ -105,11 +105,11 @@ export function SettingsLicensePage() {
             ) : null}
             <dt>Host fingerprint</dt>
             <dd className="font-mono break-all" data-testid="license-host-fingerprint">
-              {data.host_fingerprint || '—'}
+              {data.host_fingerprint || '-'}
             </dd>
             <dt>HWID v2</dt>
             <dd className="font-mono break-all" data-testid="license-hwid-v2">
-              {data.hwid_v2 || '—'}
+              {data.hwid_v2 || '-'}
             </dd>
             {data.hwid_match != null ? (
               <>

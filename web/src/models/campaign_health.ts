@@ -100,6 +100,6 @@ export function deriveCampaignHealth(
   return {
     level,
     label: level === 'risk' ? 'At risk' : 'Watch',
-    title: reasons.join(' · '),
+    title: reasons.join(' , '),
   };
 }

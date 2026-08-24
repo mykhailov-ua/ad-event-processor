@@ -88,7 +88,7 @@ func TestAdaptiveChunkSizeStrict_lowersFloor(t *testing.T) {
 	require.LessOrEqual(t, inside, near)
 }
 
-func TestLuaBranchLabel_m14(t *testing.T) {
+func TestLuaBranchLabel(t *testing.T) {
 	require.Equal(t, "tier_degraded", luaBranchLabel(luaReturnTierDegraded))
 	require.Equal(t, "fraud_signal", luaBranchLabel(luaReturnFraudSignal))
 	require.Equal(t, "ok", luaBranchLabel(0))

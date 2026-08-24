@@ -126,7 +126,7 @@ export function DoctorPanel({ doctor, services, loading = false }: DoctorPanelPr
       <div className="doctor-panel__header">
         <h2 className="doctor-panel__title">Doctor</h2>
         {loading ? (
-          <span className="text-muted text-sm">Loading…</span>
+          <span className="text-muted text-sm">Loading...</span>
         ) : doctor?.overall ? (
           <StatusBadge status={doctor.overall} kind="service" />
         ) : null}

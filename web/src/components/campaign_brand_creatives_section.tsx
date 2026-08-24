@@ -81,7 +81,7 @@ export function CampaignBrandCreativesSection({
 
   const markOutboxQueued = (action: string) => {
     setOutboxHint(
-      `${action} queued to outbox — live on tracker typically within 60s (Redis brand creatives sync).`
+      `${action} queued to outbox - live on tracker typically within 60s (Redis brand creatives sync).`
     );
   };
 

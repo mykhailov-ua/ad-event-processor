@@ -69,7 +69,7 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 			FeatureSeedHex: fmt.Sprintf("%08x", seedU32),
 		}},
 	}
-	raw, err := json.MarshalIndent(out, "", "  ")
+	raw, err := json.MarshalIndent(out, "", " ")
 	require.NoError(t, err)
 	path := filepath.Join("testdata", "mck_derivation.json")
 	require.NoError(t, os.WriteFile(path, append(raw, '\n'), 0o644))

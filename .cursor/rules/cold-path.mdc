@@ -4,9 +4,13 @@ globs: internal/notify/**, internal/payment/**, internal/ledger/**, internal/cos
 alwaysApply: false
 ---
 
+# Cold Path - Admin, Payment, Ledger
+
+## Purpose
+
 Cold path = stdlib HTTP, Postgres transactions, outbox, webhooks, background pollers, admin API, ML training/inference sidecars. Not `/track`, gnet, or filter `Check` (see `hot-path.mdc`). Overrides generic abstraction defaults in `code-style.mdc`. Anti-slop: `anti-slop.mdc`.
 
-Reference: `architecture.mdc` (cold path), `licensing.mdc`, `control-plane.mdc`, `data-layer.mdc`.
+Reference: `architecture.mdc`, `control-plane.mdc`, `data-layer.mdc`, `licensing.mdc`.
 
 ## Philosophy
 
@@ -16,19 +20,21 @@ Minimum LoC with correct idempotency, audit trail, and operator honesty. Flat co
 
 ## Forbidden (grep before submit)
 
-- Clean/hexagonal ceremony, GoF Provider/Factory/Strategy registries.
-- Single-implementation interfaces (`type NotifierProvider interface` with one Slack sender).
-- `ProviderBundle`, `NewProvidersFromConfig`, `map[string]any` JSON builders.
-- `dto/` / `mappers/` / `usecase/` / `repositories/` subtrees.
-- Repository interface wrapping sqlc when `db.Queries` suffices.
-- Parallel Entity + Model + View + DTO for the same table.
-- Mock scaffolding unless user explicitly asks.
-- `go` spawn inside send/checkout/fetch — async only via outbox/worker tickers at module bootstrap.
-- HTMX admin fragments — JSON `/api/v1` only (`control-plane.mdc`).
-- Redis `KEYS`, `FLUSHALL`, `FLUSHDB` (`cold_path_static_gate.sh`).
-- O(N) DB round-trips in loops on changed files (`cold_path_static_gate.sh` N+1 scan).
-- `_ = json.Unmarshal` / `_ = w.Write` in handlers (`anti_slop_gate.sh`).
-- `testing.Testing()` or `os.Getenv("CI")` in production code.
+| Category | Forbidden |
+| :--- | :--- |
+| Architecture ceremony | Clean/hexagonal layers, GoF Provider/Factory/Strategy registries |
+| Single-impl interfaces | `type NotifierProvider interface` with one Slack sender |
+| Bundles | `ProviderBundle`, `NewProvidersFromConfig`, `map[string]any` JSON builders |
+| Subtrees | `dto/`, `mappers/`, `usecase/`, `repositories/` |
+| sqlc wrappers | Repository interface wrapping sqlc when `db.Queries` suffices |
+| Parallel types | Entity + Model + View + DTO for same table |
+| Mocks | Mock scaffolding unless user explicitly asks |
+| Goroutine spawn | `go` spawn inside send/checkout/fetch - async only via outbox/worker tickers at module bootstrap |
+| HTMX | Admin fragments - JSON `/api/v1` only (`control-plane.mdc`) |
+| Redis admin | `KEYS`, `FLUSHALL`, `FLUSHDB` (`cold_path_static_gate.sh`) |
+| N+1 | O(N) DB round-trips in loops on changed files (`cold_path_static_gate.sh`) |
+| Silent handlers | `_ = json.Unmarshal` / `_ = w.Write` in handlers (`anti_slop_gate.sh`) |
+| Test hooks | `testing.Testing()` or `os.Getenv("CI")` in production code |
 
 Grep touched package: `interface {`, `Mock`, `Factory`, `map[string]any`.
 
@@ -43,16 +49,18 @@ Not: `type NotifierProvider interface`, indirection maps, adapter trees.
 
 ## Types and I/O boundaries
 
-- HTTP body struct or **sqlc row** is source of truth — no parallel API DTO + service DTO + mapper file.
-- Admin JSON: `FooDTO` with `json:"snake_case"` in handler/service file beside route.
-- Replica/pubsub: `fooReplicaDTO` with json tags near serialization only.
-- Map in one step at boundary: `db.Row -> toFooDTO()` or `db.Row -> campaignmodel.Campaign`.
-- Errors: sentinels in `errors.go`; `fmt.Errorf("...: %w", err)`; `errors.Is` at HTTP boundary via `mapServiceError` / `writeServiceError`.
-- `context.Context` on every I/O boundary (DB, Redis, HTTP client).
+| Rule | Detail |
+| :--- | :--- |
+| Source of truth | HTTP body struct or **sqlc row** - no parallel API DTO + service DTO + mapper file |
+| Admin JSON | `FooDTO` with `json:"snake_case"` in handler/service file beside route |
+| Replica/pubsub | `fooReplicaDTO` with json tags near serialization only |
+| Mapping | One step at boundary: `db.Row -> toFooDTO()` or `db.Row -> campaignmodel.Campaign` |
+| Errors | Sentinels in `errors.go`; `fmt.Errorf("...: %w", err)`; `errors.Is` at HTTP boundary via `mapServiceError` / `writeServiceError` |
+| Context | `context.Context` on every I/O boundary (DB, Redis, HTTP client) |
 
 ## pkg/coldpath helpers
 
-Shared cold HTTP/JSON/UUID utilities — use instead of ad-hoc copies:
+Shared cold HTTP/JSON/UUID utilities - use instead of ad-hoc copies:
 
 | Helper | Use |
 | :--- | :--- |
@@ -65,19 +73,23 @@ Shared cold HTTP/JSON/UUID utilities — use instead of ad-hoc copies:
 | `AlertmanagerWebhookMaxBody` | 1 MiB |
 | `ParsePathUUID` / `ParseUUID` | Path params |
 
-Gate: `bash scripts/ci/cold_path_json_gate.sh` — `TestReadLimitedBody`, `TestColdPathJSON`, `TestLoginBodySizeLimit`.
+Gate: `bash scripts/ci/cold_path_json_gate.sh` - `TestReadLimitedBody`, `TestColdPathJSON`, `TestLoginBodySizeLimit`.
 
-Cold path uses `encoding/json` — never the hot-path DFA/jsonScanBudget stack.
+Cold path uses `encoding/json` - never the hot-path DFA/jsonScanBudget stack.
 
 ## Control plane topology
 
-Clients -> `cmd/control` -> `controlplane` / `adminapi` / workers -> Postgres. Config mutations -> `outbox_events` in **same PG transaction** -> `OutboxWorker` applies Redis side effects. Tracker never receives direct Redis writes from admin handlers.
+```
+Clients -> cmd/control -> controlplane / adminapi / workers -> Postgres
+Config mutations -> outbox_events in same PG transaction -> OutboxWorker applies Redis side effects
+Tracker never receives direct Redis writes from admin handlers
+```
 
 Routes:
 
-- `/api/v1/*` — operators and automation.
-- `/api/v1/selfserve/*` — advertiser API keys.
-- `/admin/*` — deprecated; do not extend.
+- `/api/v1/*` - operators and automation.
+- `/api/v1/selfserve/*` - advertiser API keys.
+- `/admin/*` - deprecated; do not extend.
 
 Workers (control only): outbox, volume meter, recon, ledger invariant, slot migration, brand MAB, bid-floor optimizer, ops scraper, shard-0 catchup. Never run in tracker.
 
@@ -85,13 +97,16 @@ Workers (control only): outbox, volume meter, recon, ledger invariant, slot migr
 
 Polling over `LISTEN/NOTIFY` (`tradeoffs.mdc`):
 
-- Claim: `SELECT ... FOR UPDATE SKIP LOCKED`.
-- Active poll 20 ms; idle backoff 250 ms; stuck `PROCESSING` reclaim after 1 min.
-- Handler error -> row stays pending, retries.
-- Permanent failure -> mark failed + ops alert.
-- Duplicate event IDs must not double-apply side effects (idempotency keys, `ON CONFLICT`).
+| Rule | Detail |
+| :--- | :--- |
+| Claim | `SELECT ... FOR UPDATE SKIP LOCKED` |
+| Poll interval | Active 20 ms; idle backoff 250 ms |
+| Stuck reclaim | `PROCESSING` reclaim after 1 min |
+| Handler error | Row stays pending, retries |
+| Permanent failure | Mark failed + ops alert |
+| Idempotency | Duplicate event IDs must not double-apply (`ON CONFLICT`, idempotency keys) |
 
-Alerts: `ad_management_outbox_oldest_pending_seconds` > 30 s.
+Alert: `ad_management_outbox_oldest_pending_seconds` > 30 s.
 
 ## Payment and settlement
 
@@ -110,7 +125,7 @@ Alerts: `ad_management_outbox_oldest_pending_seconds` > 30 s.
 
 - Train: `model/`; infer: `cmd/fraud-scorer`, `cmd/ivt-detector`.
 - Scores -> control ops HTTP -> outbox -> Redis `ml:score:boost:*`.
-- Hot path reads snapshot only — never import `internal/fraud` scoring into tracker.
+- Hot path reads snapshot only - never import `internal/fraud` scoring into tracker.
 - `ivt-detector` pauses when outbox `PENDING` > 500.
 
 ## Concurrency rules
@@ -129,7 +144,7 @@ Flat under `internal/<name>/`:
 - Exceptions: `controlplane/authz/`, `controlplane/outboxpb/`.
 - Banned new subtrees: `providers/`, `services/`, `usecase/`, `dto/`.
 
-## Tests — keep vs delete
+## Tests - keep vs delete
 
 **Delete** useless tests:
 
@@ -147,11 +162,9 @@ Flat under `internal/<name>/`:
 - Transaction boundary tests with real testcontainers (`*_integration_test.go` per `anti-slop.mdc`).
 - `AssertBudgetInvariant` on any spend path change.
 
-Run: `go test ./... -short` for touched packages; integration via `make test-integration`.
-
 ## Admin UI (cold surface)
 
-React 19 + TypeScript in `web/`. Tokens in `web/src/styles/tokens.css` — no hard-coded hex.
+React 19 + TypeScript in `web/`. Tokens in `web/src/styles/tokens.css` - no hard-coded hex.
 
 Anti-slop: `ui.mdc`, `anti-slop.mdc`. Run `bash scripts/ci/admin_web.sh` before claiming UI done.
 
@@ -164,4 +177,6 @@ bash scripts/ci/cold_path_json_gate.sh
 bash scripts/ci/anti_slop_gate.sh
 ```
 
-Related: `code-style.mdc`, `control-plane.mdc`, `boundaries.mdc`, `fault-tests.mdc`.
+## Related rules
+
+`anti-slop.mdc`, `boundaries.mdc`, `code-style.mdc`, `control-plane.mdc`, `fault-tests.mdc`, `ui.mdc`.

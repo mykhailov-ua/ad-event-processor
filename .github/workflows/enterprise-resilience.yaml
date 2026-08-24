@@ -21,7 +21,7 @@ jobs:
           cache: true
 
       - name: Multi-region resilience drill
-        run: bash scripts/test/mr_resilience_drill.sh 2>&1 | tee mr-resilience.log
+        run: bash scripts/test/multi_region_resilience_drill.sh 2>&1 | tee mr-resilience.log
 
       - name: Upload drill log
         if: failure()

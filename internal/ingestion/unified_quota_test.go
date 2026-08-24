@@ -284,12 +284,13 @@ func BenchmarkUnifiedFilter_Check_QuotaMode(b *testing.B) {
 	setFilterDeadlineOnEvent(evt, time.Second)
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		n := strconv.AppendInt(evt.ClickIDBuf[:0], int64(i), 10)
+	benchN := 0
+	for b.Loop() {
+		n := strconv.AppendInt(evt.ClickIDBuf[:0], int64(benchN), 10)
 		evt.ClickID = unsafeString(n)
 		if err := f.Check(ctx, evt); err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }

@@ -597,7 +597,7 @@ export function OpsHomePage() {
           <AlertBanner
             variant="warning"
             dismissKey="ops.stale-dashboard"
-            message="ClickHouse dashboards are stale — campaign KPIs may lag behind Postgres."
+            message="ClickHouse dashboards are stale - campaign KPIs may lag behind Postgres."
           />
           {incidents.affected_campaigns && incidents.affected_campaigns.length > 0 ? (
             <div className="mt-3">
@@ -619,7 +619,7 @@ export function OpsHomePage() {
         </section>
       ) : null}
 
-      {loading ? <span className="text-muted">Loading…</span> : null}
+      {loading ? <span className="text-muted">Loading...</span> : null}
 
       {!loading && summary ? (
         <div className="ops-kpi-strip section-block">
@@ -637,7 +637,7 @@ export function OpsHomePage() {
             </div>
             <div className="ops-kpi-chip">
               <span className="ops-kpi-chip__label">RPS estimate</span>
-              <span className="ops-kpi-chip__value">{summary.rps_estimate?.toFixed(1) ?? '—'}</span>
+              <span className="ops-kpi-chip__value">{summary.rps_estimate?.toFixed(1) ?? '-'}</span>
             </div>
             <div className="ops-kpi-chip">
               <span className="ops-kpi-chip__label">Emergency breaker</span>
@@ -705,7 +705,7 @@ export function OpsHomePage() {
               onChange={(e) => setInvariantFilter(e.target.value.trim())}
             />
             <Button
-              label={invariantLoading ? 'Checking…' : 'Check'}
+              label={invariantLoading ? 'Checking...' : 'Check'}
               variant="secondary"
               size="sm"
               loading={invariantLoading}
@@ -760,14 +760,14 @@ export function OpsHomePage() {
                     className="text-sm"
                     data-testid="ops-invariant-billing-link"
                   >
-                    Open billing →
+                    Open billing {'->'}
                   </a>
                   <a
                     href={`/billing?customer_id=${encodeURIComponent(invariantState.customer_id)}&tab=ledger`}
                     className="text-sm"
                     data-testid="ops-invariant-ledger-link"
                   >
-                    Open ledger →
+                    Open ledger {'->'}
                   </a>
                 </dd>
               ) : null}
@@ -788,7 +788,7 @@ export function OpsHomePage() {
           {slowApiPaths.length > 0 ? (
             <StatusHint
               tone="error"
-              message={`Slow API (p95 ≥ 500 ms): ${slowApiPaths.join(', ')}`}
+              message={`Slow API (p95 >= 500 ms): ${slowApiPaths.join(', ')}`}
             />
           ) : null}
           {rumEvents > 0 ? (
@@ -804,7 +804,7 @@ export function OpsHomePage() {
           <div className="flex items-center gap-2 mb-4">
             <h2 className="subsection-title">Shards</h2>
             <a href="/ops/shards" className="text-muted text-xs">
-              All shards →
+              All shards {'->'}
             </a>
           </div>
           <div className="table-wrapper elevation-raised">
@@ -840,7 +840,7 @@ export function OpsHomePage() {
             Reload RBAC role definitions from disk. Requires operator confirmation.
           </p>
           <Button
-            label={rolesReloading ? 'Reloading…' : 'Reload RBAC'}
+            label={rolesReloading ? 'Reloading...' : 'Reload RBAC'}
             variant="secondary"
             size="sm"
             icon="refresh-cw"
@@ -907,7 +907,7 @@ export function OpsHomePage() {
             />
           </div>
           {outboxLoading && outboxItems.length === 0 ? (
-            <span className="text-muted">Loading…</span>
+            <span className="text-muted">Loading...</span>
           ) : null}
           <div className="table-wrapper elevation-raised">
             <table className="data-table">
@@ -926,7 +926,7 @@ export function OpsHomePage() {
                     <td>{displayLabel(row.event_type)}</td>
                     <td>{row.status ?? ''}</td>
                     <td className="text-muted">
-                      {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                      {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
                     </td>
                   </tr>
                 ))}
@@ -940,7 +940,7 @@ export function OpsHomePage() {
         <div className="section-block" data-testid="ops-dlq-tab">
           <div className="row gap-sm items-center mb-4">
             <a href="/ops/dlq" className="text-muted text-sm" data-testid="ops-dlq-full-inbox-link">
-              Full DLQ inbox →
+              Full DLQ inbox {'->'}
             </a>
           </div>
           {dlqPartialErrors.length > 0 ? (
@@ -949,7 +949,7 @@ export function OpsHomePage() {
             </div>
           ) : null}
           {dlqLoading && dlqItems.length === 0 ? (
-            <span className="text-muted">Loading…</span>
+            <span className="text-muted">Loading...</span>
           ) : null}
           {dlqCursor ? (
             <div className="mb-4">
@@ -1002,15 +1002,15 @@ export function OpsHomePage() {
                     <td>{String(row.shard_id)}</td>
                     <td className="font-mono text-xs">{row.stream_id}</td>
                     <td className="font-mono text-xs">{row.entry_id}</td>
-                    <td className="font-mono text-xs">{row.campaign_id ?? '—'}</td>
+                    <td className="font-mono text-xs">{row.campaign_id ?? '-'}</td>
                     <td>{displayLabel(row.event_type ?? '')}</td>
                     <td className="text-xs text-muted" title={row.error ?? ''}>
                       {row.error
-                        ? `${row.error.slice(0, 48)}${row.error.length > 48 ? '…' : ''}`
-                        : '—'}
+                        ? `${row.error.slice(0, 48)}${row.error.length > 48 ? '...' : ''}`
+                        : '-'}
                     </td>
                     <td className="text-muted text-xs">
-                      {row.failed_at ? new Date(row.failed_at).toLocaleString() : '—'}
+                      {row.failed_at ? new Date(row.failed_at).toLocaleString() : '-'}
                     </td>
                     <td>{String(row.retry_count ?? 0)}</td>
                     {canShardsWrite ? (

@@ -10,11 +10,11 @@ import (
 )
 
 var openrtb26Sample = []byte(`{
-  "id":"req-1",
-  "tmax":250,
-  "imp":[{"id":"1","bidfloor":1.25,"pmp":{"deals":[{"id":"deal-a"}]}}],
-  "device":{"devicetype":1},
-  "site":{"cat":["IAB1"]}
+ "id":"req-1",
+ "tmax":250,
+ "imp":[{"id":"1","bidfloor":1.25,"pmp":{"deals":[{"id":"deal-a"}]}}],
+ "device":{"devicetype":1},
+ "site":{"cat":["IAB1"]}
 }`)
 
 func TestParseOpenRTB26_fields(t *testing.T) {
@@ -49,15 +49,15 @@ func TestParseOpenRTB26_audienceFields(t *testing.T) {
 
 func TestParseOpenRTB26_extensionFields(t *testing.T) {
 	body := []byte(`{
-	  "id":"ext-1",
-	  "source":{"tid":"supply-txn-42"},
-	  "imp":[{"id":"1","bidfloor":1.0,"secure":1,"pmp":{"private":1,"deals":[{"id":"d1"}]},
-	    "metric":[{"type":"viewability","value":0.85,"vendor":"EXCHANGE"}],
-	    "banner":{"w":728,"h":90}}],
-	  "site":{"domain":"news.example","page":"https://news.example/article"},
-	  "device":{"ip":"9.9.9.9","ua":"Mozilla/5.0","ifa":"AEBE52E7-03EE-455A-9553-811439C4D3BB","lmt":0,"connectiontype":2},
-	  "app":{"bundle":"com.foo","ver":"3.2.1"},
-	  "user":{"ext":{"eids":[{"source":"uidapi.com","uids":[{"id":"uid-abc","atype":1}]}]}}
+	 "id":"ext-1",
+	 "source":{"tid":"supply-txn-42"},
+	 "imp":[{"id":"1","bidfloor":1.0,"secure":1,"pmp":{"private":1,"deals":[{"id":"d1"}]},
+	 "metric":[{"type":"viewability","value":0.85,"vendor":"EXCHANGE"}],
+	 "banner":{"w":728,"h":90}}],
+	 "site":{"domain":"news.example","page":"https://news.example/article"},
+	 "device":{"ip":"9.9.9.9","ua":"Mozilla/5.0","ifa":"AEBE52E7-03EE-455A-9553-811439C4D3BB","lmt":0,"connectiontype":2},
+	 "app":{"bundle":"com.foo","ver":"3.2.1"},
+	 "user":{"ext":{"eids":[{"source":"uidapi.com","uids":[{"id":"uid-abc","atype":1}]}]}}
 	}`)
 	p := ParseOpenRTB26(body)
 	require.True(t, p.OK)
@@ -81,13 +81,13 @@ func TestParseOpenRTB26_extensionFields(t *testing.T) {
 
 func TestParseOpenRTB26_blocklists(t *testing.T) {
 	body := []byte(`{
-	  "id":"blk-1",
-	  "bcat":["IAB1","IAB2-3"],
-	  "badv":["evil.example","exchange.local"],
-	  "bapp":["com.blocked"],
-	  "imp":[{"id":"1","bidfloor":1.0,"banner":{"w":300,"h":250}}],
-	  "app":{"bundle":"com.blocked"},
-	  "device":{"ip":"1.2.3.4","ua":"Mozilla/5.0"}
+	 "id":"blk-1",
+	 "bcat":["IAB1","IAB2-3"],
+	 "badv":["evil.example","exchange.local"],
+	 "bapp":["com.blocked"],
+	 "imp":[{"id":"1","bidfloor":1.0,"banner":{"w":300,"h":250}}],
+	 "app":{"bundle":"com.blocked"},
+	 "device":{"ip":"1.2.3.4","ua":"Mozilla/5.0"}
 	}`)
 	p := ParseOpenRTB26(body)
 	require.True(t, p.OK)
@@ -99,11 +99,11 @@ func TestParseOpenRTB26_blocklists(t *testing.T) {
 	assert.True(t, checkBlocklistsParsed(p.OpenRTB26Hot, &p.OpenRTB26Cold, true))
 	assert.True(t, checkBlocklistsParsed(p.OpenRTB26Hot, &p.OpenRTB26Cold, false) == false)
 	body2 := []byte(`{
-	  "id":"blk-2",
-	  "badv":["evil.example"],
-	  "imp":[{"id":"1","bidfloor":1.0,"banner":{"w":300,"h":250}}],
-	  "site":{"domain":"ok.example"},
-	  "device":{"ip":"1.2.3.4","ua":"Mozilla/5.0"}
+	 "id":"blk-2",
+	 "badv":["evil.example"],
+	 "imp":[{"id":"1","bidfloor":1.0,"banner":{"w":300,"h":250}}],
+	 "site":{"domain":"ok.example"},
+	 "device":{"ip":"1.2.3.4","ua":"Mozilla/5.0"}
 	}`)
 	p2 := ParseOpenRTB26(body2)
 	require.True(t, p2.OK)
@@ -141,7 +141,7 @@ func TestParseOpenRTB26_multiImp(t *testing.T) {
 func BenchmarkParseOpenRTB26(b *testing.B) {
 	var out OpenRTB26Parsed
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ParseOpenRTB26Into(openrtb26Sample, &out)
 	}
 }
@@ -149,7 +149,7 @@ func BenchmarkParseOpenRTB26(b *testing.B) {
 func BenchmarkParseOpenRTB26Into_connReuse(b *testing.B) {
 	var ctx connContext
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ParseOpenRTB26Split(openrtb26Sample, &ctx.openrtbParsed.OpenRTB26Hot, &ctx.openrtbParsed.OpenRTB26Cold)
 	}
 }
@@ -157,7 +157,7 @@ func BenchmarkParseOpenRTB26Into_connReuse(b *testing.B) {
 func BenchmarkParseOpenRTB26Split_hotOnly(b *testing.B) {
 	var ctx connContext
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ParseOpenRTB26Split(openrtb26Sample, &ctx.openrtbParsed.OpenRTB26Hot, &ctx.openrtbParsed.OpenRTB26Cold)
 	}
 }
@@ -181,7 +181,7 @@ func BenchmarkWriteOpenRTB26BidHTTP(b *testing.B) {
 	}
 	var buf [1536]byte
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = openrtb.WriteBidHTTPResponse(buf[:], p, openrtb.HTTPWriteOpts{})
 	}
 }

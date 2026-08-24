@@ -25,7 +25,7 @@ if [[ "$(id -u)" -ne 0 ]]; then
     log "re-exec with sudo for XDP attach on ${IFACE}"
     exec sudo -E bash "$0" "$@"
   fi
-  log "skip (root required — run: sudo SEALED_BPF_XDP_SMOKE=1 $0)"
+  log "skip (root required - run: sudo SEALED_BPF_XDP_SMOKE=1 $0)"
   exit 0
 fi
 
@@ -33,11 +33,11 @@ if ! command -v clang > /dev/null 2>&1; then
   if [[ "$(id -u)" -eq 0 ]] && command -v apt-get > /dev/null 2>&1; then
     log "installing clang for bpf2go"
     if ! apt-get update -qq || ! apt-get install -y -qq clang llvm libbpf-dev linux-libc-dev; then
-      log "skip (clang install failed — run make bpf-dev)"
+      log "skip (clang install failed - run make bpf-dev)"
       exit 0
     fi
   else
-    log "skip (clang required — run make bpf-dev)"
+    log "skip (clang required - run make bpf-dev)"
     exit 0
   fi
 fi

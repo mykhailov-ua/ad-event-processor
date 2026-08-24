@@ -20,7 +20,7 @@ func BenchmarkCHPII_writePathOverhead(b *testing.B) {
 
 	b.Run("baseline_no_hash", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			for range events {
 			}
 		}
@@ -28,7 +28,7 @@ func BenchmarkCHPII_writePathOverhead(b *testing.B) {
 
 	b.Run("pii_hash_batch", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			for _, e := range events {
 				_ = hashEventPII(h, e)
 			}

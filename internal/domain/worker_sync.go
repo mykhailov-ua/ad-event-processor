@@ -155,7 +155,7 @@ func (w *SyncWorker) shouldFlushLedger() bool {
 
 const prepareSyncScript = `
 if redis.call("EXISTS", KEYS[3]) == 1 then
-    return {"0", ""}
+ return {"0", ""}
 end
 
 local batch = redis.call("MGET", KEYS[4], KEYS[2], KEYS[1])
@@ -164,30 +164,30 @@ local inflight = batch[2]
 local current = batch[3]
 
 if not txID or txID == "" then
-    txID = ARGV[2]
-    redis.call("SET", KEYS[4], txID)
+ txID = ARGV[2]
+ redis.call("SET", KEYS[4], txID)
 end
 
 local total = (tonumber(inflight) or 0) + (tonumber(current) or 0)
 
 if total <= 0 then
-    local cur_num = tonumber(current)
-    if cur_num and cur_num <= 0 then
-        redis.call("DEL", KEYS[1])
-    end
-    redis.call("DEL", KEYS[4])
-    return {"0", ""}
+ local cur_num = tonumber(current)
+ if cur_num and cur_num <= 0 then
+ redis.call("DEL", KEYS[1])
+ end
+ redis.call("DEL", KEYS[4])
+ return {"0", ""}
 end
 
 local cur_num = tonumber(current) or 0
 if cur_num > 0 then
-    local remaining = redis.call("INCRBY", KEYS[1], -cur_num)
-    redis.call("INCRBY", KEYS[2], cur_num)
-    if tonumber(remaining) <= 0 then
-        redis.call("DEL", KEYS[1])
-    end
+ local remaining = redis.call("INCRBY", KEYS[1], -cur_num)
+ redis.call("INCRBY", KEYS[2], cur_num)
+ if tonumber(remaining) <= 0 then
+ redis.call("DEL", KEYS[1])
+ end
 elseif cur_num <= 0 and current then
-    redis.call("DEL", KEYS[1])
+ redis.call("DEL", KEYS[1])
 end
 
 redis.call("SET", KEYS[3], "1", "EX", ARGV[1])
@@ -197,7 +197,7 @@ return {tostring(total), txID}
 const commitSyncScript = `
 local remaining = redis.call("INCRBY", KEYS[1], -tonumber(ARGV[1]))
 if tonumber(remaining) <= 0 then
-    redis.call("DEL", KEYS[1])
+ redis.call("DEL", KEYS[1])
 end
 
 local batch = redis.call("MGET", KEYS[5], KEYS[1])
@@ -208,7 +208,7 @@ local sync_num = tonumber(sync_val) or 0
 local inflight_num = tonumber(inflight_val) or 0
 
 if sync_num <= 0 and inflight_num <= 0 then
-    redis.call("SREM", KEYS[2], ARGV[2])
+ redis.call("SREM", KEYS[2], ARGV[2])
 end
 
 redis.call("DEL", KEYS[3])

@@ -15,6 +15,6 @@ func TestParseCommand(t *testing.T) {
 	require.Equal(t, "start", cmd)
 	require.Equal(t, "hello", args)
 
-	cmd, _ = parseCommand("  ")
+	cmd, _ = parseCommand(" ")
 	require.Empty(t, cmd)
 }

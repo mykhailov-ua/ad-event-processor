@@ -92,7 +92,7 @@ UPDATE customers SET balance = balance + $2, updated_at = NOW() WHERE id = $1`,
 		},
 	}
 
-	t.Logf("=== PG failover EXPLAIN audit (ledger_rows=%d, page_size=%d) ===", ledgerRows, pageSize)
+	t.Logf("PG failover EXPLAIN audit (ledger_rows=%d, page_size=%d)", ledgerRows, pageSize)
 
 	var summaries []string
 	warnCount := 0
@@ -113,10 +113,10 @@ UPDATE customers SET balance = balance + $2, updated_at = NOW() WHERE id = $1`,
 		}
 		summaries = append(summaries, fmt.Sprintf("%s: exec=%.3fms plan=%.3fms nodes=%d findings=%d",
 			qc.name, plan.ExecutionTimeMS, plan.PlanningTimeMS, len(plan.Nodes), len(findings)))
-		t.Logf("--- %s ---\n%s", qc.name, raw)
+		t.Logf("%s:\n%s", qc.name, raw)
 	}
 
-	t.Log("--- PG FAILOVER EXPLAIN SUMMARY ---")
+	t.Log("PG FAILOVER EXPLAIN SUMMARY")
 	for _, s := range summaries {
 		t.Log(s)
 	}
@@ -160,17 +160,17 @@ FROM generate_series(1, $1) g ON CONFLICT DO NOTHING`, customers)
 
 	exec(`INSERT INTO campaigns (id, name, status, budget_limit, current_spend, customer_id, pacing_mode, timezone)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(g), 12, '0'))::uuid,
-  'camp-' || g, 'ACTIVE', 100000000, 0,
-  ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % $1)), 12, '0'))::uuid,
-  'ASAP'::pacing_mode_type, 'UTC'
+ 'camp-' || g, 'ACTIVE', 100000000, 0,
+ ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % $1)), 12, '0'))::uuid,
+ 'ASAP'::pacing_mode_type, 'UTC'
 FROM generate_series(1, $2) g ON CONFLICT DO NOTHING`, customers, campaigns)
 
 	exec(`INSERT INTO balance_ledger (customer_id, campaign_id, amount, type, idempotency_hash)
 SELECT ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % $1)), 12, '0'))::uuid,
-  ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % $2)), 12, '0'))::uuid,
-  (g % 10) * 100000,
-  (ARRAY['FEE','TOPUP','PAYMENT_TOPUP','RELEASE']::ledger_type[])[1 + (g % 4)],
-  'explain-hash-' || g
+ ('00000000-0000-4000-8000-' || lpad(to_hex(1 + (g % $2)), 12, '0'))::uuid,
+ (g % 10) * 100000,
+ (ARRAY['FEE','TOPUP','PAYMENT_TOPUP','RELEASE']::ledger_type[])[1 + (g % 4)],
+ 'explain-hash-' || g
 FROM generate_series(1, $3) g ON CONFLICT DO NOTHING`, customers, campaigns, ledgerRows)
 
 	exec(`ANALYZE customers`)

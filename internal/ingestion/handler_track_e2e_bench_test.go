@@ -90,9 +90,9 @@ func BenchmarkTrackE2E_accept(b *testing.B) {
 
 	b.ReportAllocs()
 	b.SetBytes(int64(len(body)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		pbPayload.Metadata.UserId = []byte("bench-" + strconv.Itoa(i))
+	benchN := 0
+	for b.Loop() {
+		pbPayload.Metadata.UserId = []byte("bench-" + strconv.Itoa(benchN))
 		body, err := pbPayload.MarshalVT()
 		if err != nil {
 			b.Fatal(err)
@@ -100,6 +100,7 @@ func BenchmarkTrackE2E_accept(b *testing.B) {
 		req.Body = body
 		req.ContentLength = len(body)
 		handler.React(req, conn)
+		benchN++
 	}
 }
 

@@ -10,19 +10,19 @@ import (
 
 func TestDecodeEncodeRoundtrip(t *testing.T) {
 	raw := []byte(`{
-  "id": "req-golden-001",
-  "tmax": 250,
-  "test": 0,
-  "cur": ["USD"],
-  "imp": [{
-    "id": "imp-1",
-    "bidfloor": 1.25,
-    "bidfloorcur": "USD",
-    "banner": {"w": 300, "h": 250}
-  }],
-  "site": {"domain": "example.com", "page": "https://example.com/"},
-  "device": {"ip": "203.0.113.1", "ua": "Mozilla/5.0", "devicetype": 2, "geo": {"country": "USA"}},
-  "user": {"id": "u1"}
+ "id": "req-golden-001",
+ "tmax": 250,
+ "test": 0,
+ "cur": ["USD"],
+ "imp": [{
+ "id": "imp-1",
+ "bidfloor": 1.25,
+ "bidfloorcur": "USD",
+ "banner": {"w": 300, "h": 250}
+ }],
+ "site": {"domain": "example.com", "page": "https://example.com/"},
+ "device": {"ip": "203.0.113.1", "ua": "Mozilla/5.0", "devicetype": 2, "geo": {"country": "USA"}},
+ "user": {"id": "u1"}
 }`)
 	req, err := Decode(raw)
 	require.NoError(t, err)

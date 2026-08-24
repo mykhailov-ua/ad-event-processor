@@ -5,3 +5,7 @@ playwright-report/
 .playwright/
 coverage/
 *.lcov
+.env
+.env.local
+*.tsbuildinfo
+.vite/

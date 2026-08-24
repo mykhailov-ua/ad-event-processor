@@ -106,7 +106,7 @@ export function BuyerOverviewSection({
     return (
       <section className="buyer-overview" data-testid="buyer-overview">
         <h2 className="subsection-title">Buyer portfolio</h2>
-        <p className="loading-hint">Loading portfolio metrics…</p>
+        <p className="loading-hint">Loading portfolio metrics...</p>
       </section>
     );
   }
@@ -178,7 +178,7 @@ export function BuyerOverviewSection({
             {portfolio.attention.map((row) => (
               <li key={row.id} className="plain-list__item">
                 <a href={`/campaigns/${row.id}`}>{row.name}</a>
-                {` — ${row.reason}`}
+                {` - ${row.reason}`}
               </li>
             ))}
             {openSmartAlerts.map((evt) => (
@@ -188,7 +188,7 @@ export function BuyerOverviewSection({
                 >
                   Smart alert
                 </a>
-                {` — ${evt.metric} ${evt.operator} ${evt.threshold} (observed ${evt.observed_value})`}
+                {` - ${evt.metric} ${evt.operator} ${evt.threshold} (observed ${evt.observed_value})`}
               </li>
             ))}
           </ul>

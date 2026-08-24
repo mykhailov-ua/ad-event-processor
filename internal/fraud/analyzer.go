@@ -60,29 +60,29 @@ func (analyzer *Analyzer) FindSuspiciousIPs(ctx context.Context) ([]SuspiciousIP
 func (analyzer *Analyzer) findHighClickToImpRatio(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
 	query := `
 SELECT
-    c.ip_hash,
-    c.click_count,
-    coalesce(i.imp_count, toUInt64(0)) AS imp_count
+ c.ip_hash,
+ c.click_count,
+ coalesce(i.imp_count, toUInt64(0)) AS imp_count
 FROM (
-    SELECT ip_hash, count() AS click_count
-    FROM clicks
-    WHERE created_at >= now() - toIntervalSecond(?)
-      AND ` + emptyIPHashFilter + `
-    GROUP BY ip_hash
-    HAVING click_count >= ?
+ SELECT ip_hash, count() AS click_count
+ FROM clicks
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ GROUP BY ip_hash
+ HAVING click_count >= ?
 ) AS c
 LEFT JOIN (
-    SELECT ip_hash, count() AS imp_count
-    FROM impressions
-    WHERE created_at >= now() - toIntervalSecond(?)
-      AND ` + emptyIPHashFilter + `
-    GROUP BY ip_hash
+ SELECT ip_hash, count() AS imp_count
+ FROM impressions
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ GROUP BY ip_hash
 ) AS i ON c.ip_hash = i.ip_hash
 WHERE c.click_count >= ?
-  AND (
-    imp_count < ?
-    OR (toFloat64(c.click_count) / greatest(toFloat64(imp_count), 1.0)) >= ?
-  )`
+ AND (
+ imp_count < ?
+ OR (toFloat64(c.click_count) / greatest(toFloat64(imp_count), 1.0)) >= ?
+ )`
 
 	rows, err := analyzer.q.Query(
 		ctx,
@@ -130,25 +130,25 @@ func (analyzer *Analyzer) findSharedFingerprintClusters(ctx context.Context, win
 	query := `
 SELECT ip_hash
 FROM (
-    SELECT
-        ua_hash,
-        groupUniqArray(ip_hash) AS ips,
-        uniqCombined(ip_hash) AS ip_count
-    FROM (
-        SELECT ip_hash, ua_hash
-        FROM impressions
-        WHERE created_at >= now() - toIntervalSecond(?)
-          AND ` + emptyIPHashFilter + `
-          AND ua_hash != ''
-        UNION ALL
-        SELECT ip_hash, ua_hash
-        FROM clicks
-        WHERE created_at >= now() - toIntervalSecond(?)
-          AND ` + emptyIPHashFilter + `
-          AND ua_hash != ''
-    )
-    GROUP BY ua_hash
-    HAVING ip_count >= ?
+ SELECT
+ ua_hash,
+ groupUniqArray(ip_hash) AS ips,
+ uniqCombined(ip_hash) AS ip_count
+ FROM (
+ SELECT ip_hash, ua_hash
+ FROM impressions
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ AND ua_hash != ''
+ UNION ALL
+ SELECT ip_hash, ua_hash
+ FROM clicks
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ AND ua_hash != ''
+ )
+ GROUP BY ua_hash
+ HAVING ip_count >= ?
 )
 ARRAY JOIN ips AS ip_hash
 GROUP BY ip_hash

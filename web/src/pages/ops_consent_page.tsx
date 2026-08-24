@@ -49,7 +49,7 @@ export function OpsConsentPage() {
       <header className="page-header">
         <h1 className="h2">Consent proofs</h1>
         <p className="text-muted">
-          Read-only browser for <code>POST /api/v1/consent</code> receipts. Records are immutable —
+          Read-only browser for <code>POST /api/v1/consent</code> receipts. Records are immutable -
           no delete in UI.
         </p>
       </header>
@@ -77,7 +77,7 @@ export function OpsConsentPage() {
 
         {loading && items.length === 0 ? (
           <p className="text-muted" data-testid="consent-loading">
-            Loading proofs…
+            Loading proofs...
           </p>
         ) : null}
 
@@ -101,13 +101,13 @@ export function OpsConsentPage() {
                   <td>{purposeLabel(row.purposes)}</td>
                   <td>{row.source}</td>
                   <td className="text-muted text-sm">
-                    {row.recorded_at ? new Date(row.recorded_at).toLocaleString() : '—'}
+                    {row.recorded_at ? new Date(row.recorded_at).toLocaleString() : '-'}
                   </td>
                   <td className="text-sm text-muted">
                     {row.ad_storage ? 'ad' : ''}
-                    {row.ad_storage && row.analytics_storage ? ' · ' : ''}
+                    {row.ad_storage && row.analytics_storage ? ' , ' : ''}
                     {row.analytics_storage ? 'analytics' : ''}
-                    {!row.ad_storage && !row.analytics_storage ? '—' : ''}
+                    {!row.ad_storage && !row.analytics_storage ? '-' : ''}
                   </td>
                 </tr>
               ))}

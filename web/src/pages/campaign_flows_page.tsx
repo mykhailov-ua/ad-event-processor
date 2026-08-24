@@ -193,7 +193,7 @@ export function CampaignFlowsPage() {
         <Breadcrumbs items={[{ label: 'Campaigns', href: '/campaigns' }, { label: 'Flows' }]} />
         <h1 className="page-header__title">Landers, offers &amp; flows</h1>
         <p className="text-muted text-sm">
-          Declarative flow routing for /click — weighted lander and offer selection per path.
+          Declarative flow routing for /click - weighted lander and offer selection per path.
         </p>
       </div>
 
@@ -227,12 +227,12 @@ export function CampaignFlowsPage() {
                   id="lander-url"
                   className="form-input form-input--sm"
                   value={landerForm.url}
-                  placeholder="https://…"
+                  placeholder="https://..."
                   onChange={(e) => setLanderForm((f) => ({ ...f, url: e.target.value }))}
                 />
               </label>
               <Button
-                label={busy ? 'Saving…' : 'Create lander'}
+                label={busy ? 'Saving...' : 'Create lander'}
                 variant="primary"
                 size="sm"
                 loading={busy}
@@ -297,12 +297,12 @@ export function CampaignFlowsPage() {
                   id="offer-url"
                   className="form-input form-input--sm"
                   value={offerForm.url}
-                  placeholder="https://…"
+                  placeholder="https://..."
                   onChange={(e) => setOfferForm((f) => ({ ...f, url: e.target.value }))}
                 />
               </label>
               <Button
-                label={busy ? 'Saving…' : 'Create offer'}
+                label={busy ? 'Saving...' : 'Create offer'}
                 variant="primary"
                 size="sm"
                 loading={busy}
@@ -374,7 +374,7 @@ export function CampaignFlowsPage() {
                     value={flowForm.landerId}
                     onChange={(e) => setFlowForm((f) => ({ ...f, landerId: e.target.value }))}
                   >
-                    <option value="">Select…</option>
+                    <option value="">Select...</option>
                     {landers.map((l) => (
                       <option key={l.id} value={l.id}>
                         {l.name}
@@ -402,7 +402,7 @@ export function CampaignFlowsPage() {
                     value={flowForm.offerId}
                     onChange={(e) => setFlowForm((f) => ({ ...f, offerId: e.target.value }))}
                   >
-                    <option value="">Select…</option>
+                    <option value="">Select...</option>
                     {offers.map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name}
@@ -422,7 +422,7 @@ export function CampaignFlowsPage() {
                 </label>
               </div>
               <Button
-                label={busy ? 'Saving…' : 'Create flow'}
+                label={busy ? 'Saving...' : 'Create flow'}
                 variant="primary"
                 size="sm"
                 loading={busy}

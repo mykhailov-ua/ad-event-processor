@@ -153,7 +153,7 @@ func testProtoTrackBodyExtraBytes(t testing.TB) []byte {
 	return body
 }
 
-func testProtoTrackBodyExtraRepeatedLegacy(t testing.TB) []byte {
+func testProtoTrackBodyExtraRepeated(t testing.TB) []byte {
 	t.Helper()
 	id := uuid.New()
 	evt := &pb.AdEvent{
@@ -196,8 +196,8 @@ func TestAdEvent_UnmarshalVT_ExtraBytes_ZeroAlloc(t *testing.T) {
 	}
 }
 
-func TestAdEvent_UnmarshalVT_ExtraRepeated_LegacyZeroAlloc(t *testing.T) {
-	body := testProtoTrackBodyExtraRepeatedLegacy(t)
+func TestAdEvent_UnmarshalVT_ExtraRepeated_ZeroAlloc(t *testing.T) {
+	body := testProtoTrackBodyExtraRepeated(t)
 	var evt pb.AdEvent
 	evt.Metadata = &pb.EventMetadata{}
 
@@ -225,9 +225,8 @@ func BenchmarkTrackRequest_ParseJSON(b *testing.B) {
 
 	b.ReportAllocs()
 	b.SetBytes(int64(len(data)))
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		req.Reset()
 		if err := ParseTrackRequestJSON(&req, data); err != nil {
 			b.Fatal(err)
@@ -241,59 +240,10 @@ func BenchmarkTrackRequest_ParseJSONOpt(b *testing.B) {
 
 	b.ReportAllocs()
 	b.SetBytes(int64(len(data)))
-	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		req.Reset()
 		if err := ParseTrackRequestJSONOpt(&req, data); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkTrackRequest_ParseJSON_Legacy(b *testing.B) {
-	data := testTrackRequestJSON(b)
-	var req TrackRequest
-
-	b.ReportAllocs()
-	b.SetBytes(int64(len(data)))
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		req.Reset()
-		if err := parseTrackJSONLegacy(&req, data); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkTrackRequest_Unmarshal_Reflect(b *testing.B) {
-	data := testTrackRequestJSON(b)
-
-	b.ReportAllocs()
-	b.SetBytes(int64(len(data)))
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		var req trackRequestReflect
-		resetTrackRequestReflect(&req)
-		if err := json.Unmarshal(data, &req); err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func BenchmarkTrackRequest_UnmarshalJSON(b *testing.B) {
-	data := testTrackRequestJSON(b)
-
-	b.ReportAllocs()
-	b.SetBytes(int64(len(data)))
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		var req TrackRequest
-		req.Reset()
-		if err := req.UnmarshalJSON(data); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -319,200 +269,15 @@ func TestParseUUID(t *testing.T) {
 	require.False(t, ParseUUID([]byte("a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a1g"), &got))
 }
 
-func BenchmarkUUID_ParseBytes_Reflect(b *testing.B) {
-	id := uuid.New()
-	idBytes := []byte(id.String())
-
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		var err error
-		_, err = uuid.ParseBytes(idBytes)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
 func BenchmarkUUID_ParseUUID_Custom(b *testing.B) {
 	id := uuid.New()
 	idBytes := []byte(id.String())
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var got uuid.UUID
 		if !ParseUUID(idBytes, &got) {
 			b.Fatal("failed to parse")
 		}
 	}
-}
-
-func parseTrackJSONLegacy(v *TrackRequest, data []byte) error {
-	v.Reset()
-	if len(data) == 0 {
-		return errMalformedJSON
-	}
-
-	_ = data[len(data)-1]
-
-	n := len(data)
-	i := 0
-
-	for i < n && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
-		i++
-	}
-
-	if i >= n || data[i] != '{' {
-		return errMalformedJSON
-	}
-	i++
-
-	for i < n {
-		for i < n && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
-			i++
-		}
-		if i >= n {
-			return errMalformedJSON
-		}
-
-		if data[i] == '}' {
-			return nil
-		}
-
-		if data[i] != '"' {
-			return errMalformedJSON
-		}
-		i++
-
-		keyStart := i
-		for i < n && data[i] != '"' {
-			if data[i] == '\\' {
-				return errMalformedJSON
-			}
-			i++
-		}
-		if i >= n {
-			return errMalformedJSON
-		}
-		keyEnd := i
-		i++
-
-		key := data[keyStart:keyEnd]
-
-		for i < n && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
-			i++
-		}
-		if i >= n || data[i] != ':' {
-			return errMalformedJSON
-		}
-		i++
-
-		for i < n && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
-			i++
-		}
-		if i >= n {
-			return errMalformedJSON
-		}
-
-		isCampaignID := false
-		isUserID := false
-		isType := false
-		isClickID := false
-		isPayload := false
-		isPlacementID := false
-
-		switch len(key) {
-		case 4:
-			if key[0] == 't' && key[1] == 'y' && key[2] == 'p' && key[3] == 'e' {
-				isType = true
-			}
-		case 7:
-			if key[0] == 'p' && key[1] == 'a' && key[2] == 'y' && key[3] == 'l' && key[4] == 'o' && key[5] == 'a' && key[6] == 'd' {
-				isPayload = true
-			} else if key[0] == 'u' && key[1] == 's' && key[2] == 'e' && key[3] == 'r' && key[4] == '_' && key[5] == 'i' && key[6] == 'd' {
-				isUserID = true
-			}
-		case 8:
-			if key[0] == 'c' && key[1] == 'l' && key[2] == 'i' && key[3] == 'c' && key[4] == 'k' && key[5] == '_' && key[6] == 'i' && key[7] == 'd' {
-				isClickID = true
-			}
-		case 11:
-			if key[0] == 'c' && key[1] == 'a' && key[2] == 'm' && key[3] == 'p' && key[4] == 'a' && key[5] == 'i' && key[6] == 'g' && key[7] == 'n' && key[8] == '_' && key[9] == 'i' && key[10] == 'd' {
-				isCampaignID = true
-			}
-		case 12:
-			if key[0] == 'p' && key[1] == 'l' && key[2] == 'a' && key[3] == 'c' && key[4] == 'e' && key[5] == 'm' && key[6] == 'e' && key[7] == 'n' && key[8] == 't' && key[9] == '_' && key[10] == 'i' && key[11] == 'd' {
-				isPlacementID = true
-			}
-		}
-
-		switch {
-		case isCampaignID || isUserID || isType || isClickID || isPlacementID:
-			if data[i] != '"' {
-				return errMalformedJSON
-			}
-			i++
-			valStart := i
-			for i < n && data[i] != '"' {
-				if data[i] == '\\' {
-					i += 2
-				} else {
-					i++
-				}
-			}
-			if i >= n {
-				return errMalformedJSON
-			}
-			valEnd := i
-			i++
-
-			valBytes := data[valStart:valEnd]
-			switch {
-			case isCampaignID:
-				if !ParseUUID(valBytes, &v.CampaignID) {
-					return errMalformedJSON
-				}
-			case isUserID:
-				v.UserID = unsafeString(valBytes)
-			case isType:
-				v.Type = unsafeString(valBytes)
-			case isClickID:
-				v.ClickID = unsafeString(valBytes)
-			case isPlacementID:
-				v.PlacementID = unsafeString(valBytes)
-			}
-		case isPayload:
-			valStart := i
-			valEnd, err := skipJSONValue(data, i)
-			if err != nil {
-				return err
-			}
-			v.Payload = data[valStart:valEnd]
-			i = valEnd
-		default:
-			valEnd, err := skipJSONValue(data, i)
-			if err != nil {
-				return err
-			}
-			i = valEnd
-		}
-
-		for i < n && (data[i] == ' ' || data[i] == '\t' || data[i] == '\n' || data[i] == '\r') {
-			i++
-		}
-		if i >= n {
-			return errMalformedJSON
-		}
-
-		if data[i] == ',' {
-			i++
-			continue
-		} else if data[i] == '}' {
-			return nil
-		}
-		return errMalformedJSON
-	}
-
-	return errMalformedJSON
 }

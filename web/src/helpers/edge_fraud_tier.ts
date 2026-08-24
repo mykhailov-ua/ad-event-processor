@@ -42,17 +42,17 @@ export function fraudTierBandRowsFromThresholds(
   const suspect = Math.max(pass, Math.min(100, Math.round(suspectMax)));
   const ivt = Math.max(suspect, Math.min(100, Math.round(ivtMax)));
   return [
-    { tier: 'pass', range: `0–${pass}`, action: 'Allow' },
+    { tier: 'pass', range: `0-${pass}`, action: 'Allow' },
     {
       tier: 'suspect',
-      range: `${pass + 1}–${suspect}`,
+      range: `${pass + 1}-${suspect}`,
       action: 'Monitor / boost',
     },
     {
       tier: 'ivt',
-      range: `${suspect + 1}–${ivt}`,
+      range: `${suspect + 1}-${ivt}`,
       action: 'Ghost IVT (if enabled)',
     },
-    { tier: 'block', range: `${ivt + 1}–100`, action: 'Block at edge' },
+    { tier: 'block', range: `${ivt + 1}-100`, action: 'Block at edge' },
   ];
 }

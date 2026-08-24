@@ -1,4 +1,3 @@
-
 local q = tonumber(redis.call("GET", KEYS[1]) or "0")
 local chunk = tonumber(ARGV[1]) or 0
 if chunk <= 0 then

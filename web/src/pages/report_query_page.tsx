@@ -265,7 +265,7 @@ export function ReportQueryPage({ endpoint, title }: ReportQueryPageProps) {
               }}
             />
           </FormField>
-          <FormField label=" ">
+          <FormField label=" ">
             <Button
               label="Load"
               variant="primary"
@@ -313,7 +313,7 @@ export function ReportQueryPage({ endpoint, title }: ReportQueryPageProps) {
                 <th scope="col">CTR %</th>
                 {showFinancials ? <th scope="col">CPA</th> : null}
                 <th scope="col">IVT %</th>
-                {comparePeriod ? <th scope="col">Δ spend</th> : null}
+                {comparePeriod ? <th scope="col">delta spend</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -342,18 +342,18 @@ export function ReportQueryPage({ endpoint, title }: ReportQueryPageProps) {
                       </td>
                     ) : null}
                     {showFinancials ? (
-                      <td>{row.roi_pct != null ? Number(row.roi_pct).toFixed(2) : '—'}</td>
+                      <td>{row.roi_pct != null ? Number(row.roi_pct).toFixed(2) : '-'}</td>
                     ) : null}
-                    <td>{row.ctr != null ? (Number(row.ctr) * 100).toFixed(2) : '—'}</td>
+                    <td>{row.ctr != null ? (Number(row.ctr) * 100).toFixed(2) : '-'}</td>
                     {showFinancials ? (
                       <td className="font-mono">
-                        {row.cpa_micro != null ? formatAmountMicro(Number(row.cpa_micro)) : '—'}
+                        {row.cpa_micro != null ? formatAmountMicro(Number(row.cpa_micro)) : '-'}
                       </td>
                     ) : null}
-                    <td>{row.ivt_rate != null ? (Number(row.ivt_rate) * 100).toFixed(2) : '—'}</td>
+                    <td>{row.ivt_rate != null ? (Number(row.ivt_rate) * 100).toFixed(2) : '-'}</td>
                     {comparePeriod ? (
                       <td className="font-mono">
-                        {spendDelta != null ? formatAmountMicro(spendDelta) : '—'}
+                        {spendDelta != null ? formatAmountMicro(spendDelta) : '-'}
                       </td>
                     ) : null}
                   </tr>

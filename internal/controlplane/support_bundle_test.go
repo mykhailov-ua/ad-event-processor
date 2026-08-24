@@ -21,7 +21,7 @@ func TestBundleRedaction(t *testing.T) {
 	}
 	got := supportbundle.RedactLog([]string{strings.TrimSpace(string(raw))})
 	if string(got) != string(want) {
-		t.Fatalf("redact mismatch:\n--- got ---\n%s--- want ---\n%s", got, want)
+		t.Fatalf("redact mismatch:\ngot:\n%s\nwant:\n%s", got, want)
 	}
 	forbidden := []*regexp.Regexp{
 		regexp.MustCompile(`(?i)https?://`),

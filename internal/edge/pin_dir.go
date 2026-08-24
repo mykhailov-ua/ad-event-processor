@@ -13,10 +13,10 @@ const (
 	MapBlocklistHostV4 = "blocklist_host_v4"
 	MapBlocklistHostV6 = "blocklist_host_v6"
 	MapAllowV4         = "allow_v4"
-	MapAllowV6      = "allow_v6"
-	MapStats        = "stats"
-	MapViolations   = "violations"
-	MapFingerprints = "fingerprints"
+	MapAllowV6         = "allow_v6"
+	MapStats           = "stats"
+	MapViolations      = "violations"
+	MapFingerprints    = "fingerprints"
 )
 
 const (

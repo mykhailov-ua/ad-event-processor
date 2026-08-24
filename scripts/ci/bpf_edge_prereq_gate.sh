@@ -13,7 +13,7 @@ if [[ ! -r /sys/kernel/btf/vmlinux ]]; then
 fi
 
 if ! command -v clang > /dev/null 2>&1; then
-  log "skip (clang not in PATH — apt install clang llvm libbpf-dev)"
+  log "skip (clang not in PATH - apt install clang llvm libbpf-dev)"
   exit 0
 fi
 

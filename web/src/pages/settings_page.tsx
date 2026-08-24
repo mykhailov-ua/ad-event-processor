@@ -233,7 +233,7 @@ export function SettingsPage() {
   };
 
   if (loading && !view) {
-    return <span className="text-muted">Loading…</span>;
+    return <span className="text-muted">Loading...</span>;
   }
 
   if (error) {
@@ -275,7 +275,7 @@ export function SettingsPage() {
       {!canWrite ? (
         <AlertBanner
           variant="info"
-          message="Read-only access — you can view settings but cannot save or apply changes."
+          message="Read-only access - you can view settings but cannot save or apply changes."
         />
       ) : null}
 
@@ -286,14 +286,14 @@ export function SettingsPage() {
         <SettingsSummaryItem label="Traffic format">
           {displayLabel(cfg.ingress_schema)}
         </SettingsSummaryItem>
-        <SettingsSummaryItem label="Timezone">{cfg.timezone ?? '—'}</SettingsSummaryItem>
+        <SettingsSummaryItem label="Timezone">{cfg.timezone ?? '-'}</SettingsSummaryItem>
         <SettingsSummaryItem label="Click URL">
           {view.click_url_template ? (
             <code className="settings-summary__code" title={view.click_url_template}>
               {view.click_url_template}
             </code>
           ) : (
-            '—'
+            '-'
           )}
         </SettingsSummaryItem>
       </div>
@@ -416,13 +416,13 @@ export function SettingsPage() {
           >
             <div className="settings-check-group">
               <Checkbox
-                label="Telemetry enabled — export metrics to configured sinks"
+                label="Telemetry enabled - export metrics to configured sinks"
                 checked={cfg.telemetry_enabled ?? false}
                 disabled={!canWrite}
                 onChange={(checked) => updateField('telemetry_enabled', checked)}
               />
               <Checkbox
-                label="Edge XDP (Enterprise) — kernel-level IP filtering via installer systemd"
+                label="Edge XDP (Enterprise) - kernel-level IP filtering via installer systemd"
                 checked={cfg.edge_xdp ?? false}
                 disabled={!canWrite}
                 onChange={(checked) => updateField('edge_xdp', checked)}
@@ -430,18 +430,18 @@ export function SettingsPage() {
               <p className="text-muted text-sm">
                 Requires Enterprise license (ebpf_xdp_edge), kernel BTF (6.1+), and installer units{' '}
                 <code>ad-event-processor-edge-xdp</code> /{' '}
-                <code>ad-event-processor-edge-bpf-sync</code>. Saving updates platform YAML only —
+                <code>ad-event-processor-edge-bpf-sync</code>. Saving updates platform YAML only -
                 use Apply on the host, then verify Doctor on Ops.
               </p>
               {cfg.edge_xdp ? (
                 doctorLoading && !edgeXdpDoctorCheck ? (
                   <p className="text-muted text-sm settings-edge-xdp__status">
-                    Checking host runtime…
+                    Checking host runtime...
                   </p>
                 ) : !edgeXdpDoctorCheck || edgeXdpDoctorCheck.status === 'skip' ? (
                   <AlertBanner
                     variant="info"
-                    message="Platform flag enabled — confirm host Apply and Doctor status on /ops before expecting kernel filtering."
+                    message="Platform flag enabled - confirm host Apply and Doctor status on /ops before expecting kernel filtering."
                   />
                 ) : edgeXdpDoctorCheck.status === 'pass' ? (
                   <div className="settings-edge-xdp__status" data-testid="edge-xdp-runtime-status">
@@ -471,7 +471,7 @@ export function SettingsPage() {
                 )
               ) : null}
               <Checkbox
-                label="Developer mode — show raw sysctl values and API paths in the UI"
+                label="Developer mode - show raw sysctl values and API paths in the UI"
                 checked={devMode}
                 onChange={(checked) => {
                   setDevMode(checked);
@@ -549,7 +549,7 @@ export function SettingsPage() {
               desc="Reload role definitions from disk without restarting management."
             >
               <Button
-                label={rolesReloading ? 'Reloading…' : 'Reload RBAC'}
+                label={rolesReloading ? 'Reloading...' : 'Reload RBAC'}
                 variant="secondary"
                 size="sm"
                 icon="refresh-cw"
@@ -618,7 +618,7 @@ export function SettingsPage() {
             </p>
             <div className="settings-actions__buttons">
               <Button
-                label={applying ? 'Applying…' : 'Apply to disk'}
+                label={applying ? 'Applying...' : 'Apply to disk'}
                 variant="danger"
                 icon="shield"
                 loading={applying}
@@ -626,7 +626,7 @@ export function SettingsPage() {
                 onClick={() => void handleApply()}
               />
               <Button
-                label={saving ? 'Saving…' : 'Save'}
+                label={saving ? 'Saving...' : 'Save'}
                 variant="primary"
                 icon="check"
                 type="submit"

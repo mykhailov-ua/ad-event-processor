@@ -76,7 +76,7 @@ export function CustomerApiKeysSection({ canCreate }: CustomerApiKeysSectionProp
               />
             </label>
             <Button
-              label={busy ? 'Creating…' : 'Create API key'}
+              label={busy ? 'Creating...' : 'Create API key'}
               variant="primary"
               size="sm"
               loading={busy}

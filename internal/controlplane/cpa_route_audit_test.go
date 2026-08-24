@@ -65,22 +65,51 @@ func extractLiveReportKeys(src string) []string {
 	return keys
 }
 
+func extractReportPathOverrides(src string) map[string]string {
+	re := regexp.MustCompile(`'([^']+)':\s*'(/reports/[^']+)'`)
+	matches := re.FindAllStringSubmatch(src, -1)
+	out := make(map[string]string, len(matches))
+	for _, m := range matches {
+		if len(m) < 3 {
+			continue
+		}
+		out[m[1]] = m[2]
+	}
+	return out
+}
+
+func liveReportAPIPath(key string, uiOverrides map[string]string) string {
+	if ui, ok := uiOverrides[key]; ok {
+		return "GET /api/v1/reports" + strings.TrimPrefix(ui, "/reports")
+	}
+	return "GET /api/v1/reports/" + key
+}
+
+func liveReportUIPath(key string, uiOverrides map[string]string) string {
+	if ui, ok := uiOverrides[key]; ok {
+		return ui
+	}
+	return "/reports/" + key
+}
+
 func TestCPA_LiveReports_haveAPIAndUIRoute(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
 	reportTS := readRepoFile(t, root, "web/src/models/report.ts")
 	appRoutes := readRepoFile(t, root, "web/src/app_routes.tsx")
 	catalog := catalogRouteSet()
+	uiOverrides := extractReportPathOverrides(reportTS)
 
 	for _, key := range extractLiveReportKeys(reportTS) {
 		if key == "telegram" {
 			require.Contains(t, appRoutes, "/reports/telegram", "telegram report route")
 			continue
 		}
-		api := "GET /api/v1/reports/" + key
+		api := liveReportAPIPath(key, uiOverrides)
 		_, ok := catalog[api]
 		require.True(t, ok, "live report %q missing API catalog entry %s", key, api)
-		require.Contains(t, appRoutes, "/reports/"+key, "live report %q missing app route", key)
+		ui := liveReportUIPath(key, uiOverrides)
+		require.Contains(t, appRoutes, ui, "live report %q missing app route %s", key, ui)
 	}
 }
 

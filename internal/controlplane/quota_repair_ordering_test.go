@@ -156,7 +156,7 @@ func TestApplyQuotaRepair_topUpRedis_retryAfterPgCommit(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `
 		SELECT COUNT(*) FROM admin_audit_log
 		WHERE action = 'QUOTA_REPAIR_TOPUP' AND target_id = $1
-		  AND (metadata->>'outbox_event_id')::bigint = 88`,
+		 AND (metadata->>'outbox_event_id')::bigint = 88`,
 		domain.ToUUID(campID)).Scan(&auditCount))
 	assert.Equal(t, 1, auditCount, "PG audit must commit before Redis")
 

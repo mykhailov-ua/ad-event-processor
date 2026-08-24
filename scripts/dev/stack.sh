@@ -36,7 +36,7 @@ ad_event_processor_stack_hardening() {
       bash "$SCRIPTS/ops/sysctl.sh" apply || echo "stack.sh: WARN sysctl apply failed" >&2
     else
       if ! bash "$SCRIPTS/ops/sysctl.sh" verify 2> /dev/null; then
-        echo "stack.sh: WARN sysctl not applied — run: sudo bash scripts/ops/sysctl.sh apply" >&2
+        echo "stack.sh: WARN sysctl not applied - run: sudo bash scripts/ops/sysctl.sh apply" >&2
         echo "stack.sh: WARN recreate listeners after somaxconn change (see deploy/edge/99-ad-event-processor-sysctl.conf)" >&2
       fi
     fi
@@ -96,10 +96,6 @@ case "$CMD" in
     echo "stack.sh: full runs single-vps monolith" >&2
     ad_event_processor_compose --profile single_vps up -d "${SINGLE_VPS[@]}"
     ad_event_processor_stack_hardening
-    ;;
-  legacy-full | up-legacy-full)
-    echo "stack.sh: legacy-full removed; use single-vps or network-operator" >&2
-    exit 1
     ;;
   single-vps | up-single-vps)
     local -a prof=(--profile single_vps)
@@ -176,7 +172,7 @@ case "$CMD" in
     ;;
   status)
     ad_event_processor_compose ps
-    echo "--- multi-region profile ---"
+    echo "multi-region profile"
     ad_event_processor_compose --profile multi-region ps
     ;;
   build)
@@ -204,7 +200,7 @@ case "$CMD" in
     esac
     ;;
   *)
-    echo "usage: $0 {infra|full|legacy-full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
+    echo "usage: $0 {infra|full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
     exit 2
     ;;
 esac

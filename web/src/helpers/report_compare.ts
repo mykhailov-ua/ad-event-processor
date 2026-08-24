@@ -14,6 +14,6 @@ export function rowCompareDeltas(row: ReportRow): ReportCompareDeltas | null {
 
 export function formatSpendDelta(row: ReportRow): string {
   const delta = rowCompareDeltas(row)?.spend_micro_delta;
-  if (delta == null) return '—';
+  if (delta == null) return '-';
   return formatAmountMicro(delta);
 }

@@ -7,8 +7,8 @@ export type CopyableUuidProps = {
 };
 
 export function CopyableUuid({ uuid, className }: CopyableUuidProps) {
-  if (!uuid) return <span className="text-muted">—</span>;
-  const truncated = uuid.length > 16 ? `${uuid.slice(0, 8)}…${uuid.slice(-8)}` : uuid;
+  if (!uuid) return <span className="text-muted">-</span>;
+  const truncated = uuid.length > 16 ? `${uuid.slice(0, 8)}...${uuid.slice(-8)}` : uuid;
   return (
     <button
       type="button"

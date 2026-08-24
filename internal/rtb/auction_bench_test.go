@@ -33,9 +33,7 @@ func BenchmarkAuction(b *testing.B) {
 		GeoHash:      2,
 		MinBid:       150,
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.RunAuction(req)
 	}
 }
@@ -66,9 +64,7 @@ func BenchmarkAuction_highDensity(b *testing.B) {
 		GeoHash:      5,
 		MinBid:       50,
 	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.RunAuction(req)
 	}
 }
@@ -118,8 +114,7 @@ func BenchmarkRunAuction_MultiCreative(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = reg.RunAuction(req)
 	}
 }

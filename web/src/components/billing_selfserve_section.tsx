@@ -91,7 +91,7 @@ export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfSe
           />
         </label>
         <Button
-          label={topUpLoading ? 'Creating…' : 'Create payment'}
+          label={topUpLoading ? 'Creating...' : 'Create payment'}
           variant="primary"
           size="sm"
           loading={topUpLoading}
@@ -146,7 +146,7 @@ export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfSe
                   rel="noopener noreferrer"
                   data-testid="billing-topup-checkout-link"
                 >
-                  Open checkout →
+                  Open checkout {'->'}
                 </a>
               </p>
             ) : null}
@@ -166,7 +166,7 @@ export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfSe
             />
           </label>
           <Button
-            label={statementLoading ? 'Loading…' : 'Load statement'}
+            label={statementLoading ? 'Loading...' : 'Load statement'}
             variant="secondary"
             size="sm"
             loading={statementLoading}
@@ -185,7 +185,7 @@ export function BillingSelfServeSection({ customerId, buyerMode }: BillingSelfSe
                 {formatAmountMicro(statement.closing_balance_micro ?? 0, statement.currency)}
               </dd>
               <dt>Period</dt>
-              <dd>{`${statement.period?.from ?? '—'} → ${statement.period?.to ?? '—'}`}</dd>
+              <dd>{`${statement.period?.from ?? '-'} -> ${statement.period?.to ?? '-'}`}</dd>
             </dl>
           ) : null}
         </section>

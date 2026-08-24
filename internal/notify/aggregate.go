@@ -17,7 +17,7 @@ func buildAggregatedBody(items []db.NotifierNotification) string {
 	var sb strings.Builder
 	sb.WriteString(lead.Body)
 	sb.WriteString("\n\n---\n")
-	sb.WriteString(fmt.Sprintf("⚠️ [DEDUPLICATED] Accumulated %d similar events.\n", len(items)))
+	sb.WriteString(fmt.Sprintf("WARN [DEDUPLICATED] Accumulated %d similar events.\n", len(items)))
 
 	firstTime := lead.CreatedAt.Time
 	lastTime := lead.CreatedAt.Time

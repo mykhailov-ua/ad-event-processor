@@ -103,7 +103,7 @@ func (a *FinancialReconAlerter) sendAsync(ctx context.Context, key, title, body 
 func formatFinancialReconAlertBody(summary FinancialReconSummary, findings []FinancialReconFinding) string {
 	var b strings.Builder
 	b.WriteString("<b>Payment financial recon</b>\n")
-	b.WriteString(fmt.Sprintf("Run #%d\nPeriod: %s — %s\n",
+	b.WriteString(fmt.Sprintf("Run #%d\nPeriod: %s - %s\n",
 		summary.RunID,
 		summary.PeriodStart.UTC().Format(time.RFC3339),
 		summary.PeriodEnd.UTC().Format(time.RFC3339),
@@ -116,7 +116,7 @@ func formatFinancialReconAlertBody(summary FinancialReconSummary, findings []Fin
 		counts[string(f.Kind)]++
 	}
 	for kind, n := range counts {
-		b.WriteString(fmt.Sprintf("• %s: %d\n", kind, n))
+		b.WriteString(fmt.Sprintf("* %s: %d\n", kind, n))
 	}
 	return b.String()
 }

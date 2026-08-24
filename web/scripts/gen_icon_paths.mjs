@@ -60,7 +60,7 @@ if (missing.length) {
 
 const names = Object.keys(paths).sort();
 const lines = [
-  '/** Phosphor regular icon primitives (@phosphor-icons/core, MIT). Generated — do not edit. */',
+  '/** Phosphor regular icon primitives (@phosphor-icons/core, MIT). Generated - do not edit. */',
   '/** Run: npm run icons:gen */',
   'export const ICON_PATHS: Record<string, string[]> = {',
 ];

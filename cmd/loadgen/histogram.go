@@ -60,7 +60,7 @@ func (h *histogram) write(path, generated string) error {
 	}
 	defer func() { _ = f.Close() }()
 	enc := json.NewEncoder(f)
-	enc.SetIndent("", "  ")
+	enc.SetIndent("", " ")
 	return enc.Encode(out)
 }
 

@@ -364,15 +364,15 @@ func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.
 
 	rows, err := pool.Query(ctx, `
 		SELECT d.run_id,
-		       COUNT(*)::int,
-		       COALESCE(SUM(ABS(d.delta)), 0)::bigint,
-		       MIN(d.created_at) AS oldest,
-		       r.period_start,
-		       r.period_end
+		 COUNT(*)::int,
+		 COALESCE(SUM(ABS(d.delta)), 0)::bigint,
+		 MIN(d.created_at) AS oldest,
+		 r.period_start,
+		 r.period_end
 		FROM recon_discrepancies d
 		JOIN recon_runs r ON r.id = d.run_id
 		WHERE d.redis_adjusted = false
-		  AND d.created_at < NOW() - INTERVAL '1 hour'
+		 AND d.created_at < NOW() - INTERVAL '1 hour'
 		GROUP BY d.run_id, r.period_start, r.period_end`)
 	if err != nil {
 		slog.Error("failed to query stale unresolved recon discrepancies", "error", err)
@@ -474,7 +474,7 @@ func (w *ReconWorker) auditRedisPGLedger(ctx context.Context, pool *pgxpool.Pool
 	}
 	rows, err := pool.Query(ctx, `
 		SELECT c.id, c.customer_id, c.current_spend,
-		       COALESCE((SELECT SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) FROM balance_ledger bl WHERE bl.campaign_id = c.id), 0)::bigint AS ledger_spend
+		 COALESCE((SELECT SUM(CASE WHEN amount < 0 THEN -amount ELSE 0 END) FROM balance_ledger bl WHERE bl.campaign_id = c.id), 0)::bigint AS ledger_spend
 		FROM campaigns c
 		WHERE c.status IN ('ACTIVE', 'PAUSED', 'EXHAUSTED')
 		ORDER BY c.updated_at DESC
@@ -614,37 +614,14 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 	chCtx, cancel := chQueryContext(ctx)
 	defer cancel()
 
-	chRows, err := ch.Query(chCtx, `
-		SELECT campaign_id, toDate(timestamp) AS day, count() AS ch_total
-		FROM ad_event_processor.events_analytics
-		WHERE campaign_id IN (?)
-		  AND toDate(timestamp) >= ?
-		  AND toDate(timestamp) <= ?
-		GROUP BY campaign_id, day`, campaignIDs, minDay, maxDay)
+	chTotals, err := queryCHCampaignDailyEventTotals(chCtx, ch, campaignIDs, minDay, maxDay.Add(24*time.Hour))
 	if err != nil {
 		slog.Error("hyg30 audit B ch batch query failed", "error", err)
 		return
 	}
-	defer func() { _ = chRows.Close() }()
-
-	chTotals := make(map[string]uint64, len(pgStats))
-	for chRows.Next() {
-		var campID uuid.UUID
-		var day time.Time
-		var chTotal uint64
-		if err := chRows.Scan(&campID, &day, &chTotal); err != nil {
-			continue
-		}
-		key := campID.String() + "|" + day.Format("2006-01-02")
-		chTotals[key] = chTotal
-	}
-	if err := chRows.Err(); err != nil {
-		slog.Error("hyg30 audit B ch scan failed", "error", err)
-		return
-	}
 
 	for _, s := range pgStats {
-		key := s.campID.String() + "|" + s.day.Format("2006-01-02")
+		key := campaignDailyTotalKey(s.campID, s.day)
 		chTotal := chTotals[key]
 		if chTotal == 0 {
 			continue
@@ -1014,7 +991,7 @@ func (w *ReconWorker) loadCampaignBudgetPGBatch(ctx context.Context, campIDs []u
 	}
 	rows, err := w.svc.GetPool().Query(ctx, `
 		SELECT c.id, c.customer_id, c.budget_limit, c.current_spend, c.updated_at,
-		       COALESCE(q.reserved_amount, 0)
+		 COALESCE(q.reserved_amount, 0)
 		FROM campaigns c
 		LEFT JOIN campaign_quotas q ON q.campaign_id = c.id
 		WHERE c.id = ANY($1::uuid[])`, pgIDs)

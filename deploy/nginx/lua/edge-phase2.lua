@@ -1,4 +1,3 @@
-
 local edge_rl = require "edge-rl"
 local edge_metrics = require "edge-metrics"
 local edge_parse_dfa = require "edge-parse-dfa"

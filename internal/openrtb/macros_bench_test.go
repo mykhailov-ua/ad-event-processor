@@ -15,7 +15,7 @@ func BenchmarkAppendApplyMacros(b *testing.B) {
 	}
 	var buf [512]byte
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		macroBenchSink = AppendApplyMacros(buf[:0], template, ctx)
 	}
 }
@@ -23,7 +23,7 @@ func BenchmarkAppendApplyMacros(b *testing.B) {
 func BenchmarkAppendAuctionPrice(b *testing.B) {
 	var buf [32]byte
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		macroBenchSink = AppendAuctionPrice(buf[:0], 1_230_000)
 	}
 }
@@ -35,7 +35,7 @@ func BenchmarkGzipCompressInto(b *testing.B) {
 	}
 	dst := make([]byte, 512)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = gzipCompressInto(dst, src)
 	}
 }

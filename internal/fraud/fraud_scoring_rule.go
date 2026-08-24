@@ -109,15 +109,15 @@ func (r *fraudScoringRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 
 	query := `
 SELECT
-    window_start,
-    ip_hash,
-    campaign_id,
-    events,
-    clicks,
-    spend_micro,
-    budget_limit_micro,
-    unique_users,
-    unique_uas
+ window_start,
+ ip_hash,
+ campaign_id,
+ events,
+ clicks,
+ spend_micro,
+ budget_limit_micro,
+ unique_users,
+ unique_uas
 FROM ml_features_1m
 WHERE window_start >= subtractMinutes(now(), ?)
 ORDER BY window_start DESC

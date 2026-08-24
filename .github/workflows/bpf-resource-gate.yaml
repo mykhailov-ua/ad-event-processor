@@ -25,6 +25,11 @@ on:
       - 'deploy/dev/bpf/**'
       - 'scripts/ci/bpf_resource_gate.sh'
   workflow_dispatch:
+    inputs:
+      run_export_soak:
+        description: Run report export BPF soak (requires PERF_RUNNER_LABEL)
+        type: boolean
+        default: false
 
 concurrency:
   group: bpf-resource-gate-${{ github.ref }}
@@ -32,8 +37,8 @@ concurrency:
 
 jobs:
   bpf-resource-gate:
-    name: Gate · bpf-resource
-    if: ${{ vars.PERF_RUNNER_LABEL != '' }}
+    name: Gate - bpf-resource
+    if: ${{ vars.PERF_RUNNER_LABEL != '' && (github.event_name != 'workflow_dispatch' || !inputs.run_export_soak) }}
     runs-on: ${{ vars.PERF_RUNNER_LABEL }}
     timeout-minutes: 45
     env:
@@ -67,5 +72,45 @@ jobs:
             var/load-test/**/bpf-gate.md
             var/load-test/**/bpf/maps/summary.json
             var/load-test/**/bpf/events.ndjson
+          retention-days: 14
+          if-no-files-found: ignore
+
+  bpf-export-soak:
+    name: Gate - bpf-export-soak
+    if: ${{ vars.PERF_RUNNER_LABEL != '' && github.event_name == 'workflow_dispatch' && inputs.run_export_soak }}
+    runs-on: ${{ vars.PERF_RUNNER_LABEL }}
+    timeout-minutes: 60
+    env:
+      BPF_GATE_STRICT: 'true'
+      BPF_GATE_MODE: report-export-soak
+      BPF_COLD_GATE: '1'
+      LOAD_BPF_GATE: '1'
+      BPF_GATE_PROFILE: lab
+      BPF_GATE_DURATION: 5m
+      REPORT_EXPORT_SOAK_PARALLEL: '2'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.12'
+          cache: true
+
+      - name: Stabilize CPU
+        run: bash scripts/perf/stabilize_cpu.sh
+
+      - name: Run report export BPF soak
+        run: bash scripts/test/bpf_nightly_job.sh export 2>&1 | tee bpf_export_soak_gate.log
+
+      - name: Upload BPF export soak artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bpf-export-soak-gate
+          path: |
+            bpf_export_soak_gate.log
+            var/bpf-gate/**/*
           retention-days: 14
           if-no-files-found: ignore

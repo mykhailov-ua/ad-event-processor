@@ -1,4 +1,3 @@
-
 local redis = require "resty.redis"
 local edge_net = require "edge-net"
 

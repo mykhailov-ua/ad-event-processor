@@ -4,7 +4,11 @@ globs: internal/ingestion/**, deploy/nginx/lua/**, scripts/fault/parser*
 alwaysApply: false
 ---
 
-Scope: `internal/ingestion` + nginx edge seam only. Admin JSON uses `pkg/coldpath` 64KiB — not this file. XDP: `edge.mdc`.
+# Parser and Ingress Wire Policy
+
+## Purpose
+
+Scope: `internal/ingestion` + nginx edge seam only. Admin JSON uses `pkg/coldpath` 64KiB - not this file. XDP: `edge.mdc`.
 
 Design goals: reject hostile wire early (0 allocs on reject); close slow streams; edge-tracker parity; control cohort p99 < **80 ms** under chaos.
 
@@ -16,9 +20,11 @@ Design goals: reject hostile wire early (0 allocs on reject); close slow streams
 | Chunked rejected | yes | yes |
 | Duplicate/obfuscated `TE` rejected | yes | yes |
 
-Verify: `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` — `differential_count=0`.
+Verify: `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1` - `differential_count=0`.
 
 Chunked allowed on **`POST /openrtb/bid`** only.
+
+Implementation pairs: `http1TrackEdgePolicy` <-> `deploy/nginx/lua/edge-phase2.lua`; `http1IngressCanonical` for differential tests.
 
 ## GET /click
 
@@ -36,13 +42,15 @@ Metric: `ad_http1_incomplete_close_total{reason}`. H2: `H2_INCOMPLETE_MAX=3`.
 
 ## Framing budgets
 
-- Chunk extensions (`;`) rejected; hex overflow guard; cap > 64 KiB dropped.
-- H2 header block cap 16 KiB → `RST_STREAM`.
-- TE.TE obfuscation rejected.
-- OpenRTB: `ORTB_SCAN_MAX_BYTES=262144`, `ORTB_MAX_QUOTE_CHECKS=65536`.
-- Protobuf: `PROTO_MAX_FIELDS=256`; wire budget before `UnmarshalVT`.
-- HPACK continuation cap 8 octets.
-- vtproto hot patch: `make proto` -> `patch-vtproto-hotpath` -> `appendReuseBytes` (`pb/unmarshal_helpers.go`).
+| Rule | Detail |
+| :--- | :--- |
+| Chunk extensions | `;` rejected; hex overflow guard; cap > 64 KiB dropped |
+| H2 header block | Cap 16 KiB -> `RST_STREAM` |
+| TE.TE | Obfuscation rejected |
+| OpenRTB scan | `ORTB_SCAN_MAX_BYTES=262144`, `ORTB_MAX_QUOTE_CHECKS=65536` |
+| Protobuf | `PROTO_MAX_FIELDS=256`; wire budget before `UnmarshalVT` |
+| HPACK | Continuation cap 8 octets |
+| vtproto hot patch | `make proto` -> `patch-vtproto-hotpath` -> `appendReuseBytes` (`pb/unmarshal_helpers.go`) |
 
 ## JSON parse budgets
 
@@ -57,7 +65,11 @@ Metric: `ad_http1_incomplete_close_total{reason}`. H2: `H2_INCOMPLETE_MAX=3`.
 
 ## Sustained chaos
 
-~90% valid protobuf + ~10% chaos. Pass: control p99 < **80 ms**, `WorkerPoolRejectTotal` delta **0**, ≥500 control samples.
+~90% valid protobuf + ~10% chaos. Pass criteria:
+
+- Control p99 < **80 ms**
+- `WorkerPoolRejectTotal` delta **0**
+- >= 500 control samples
 
 ```bash
 bash scripts/fault/parser_chaos_drill.sh
@@ -67,12 +79,15 @@ go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1
 
 Chaos tests emit `fault_proof gap=open|closed`.
 
-## Verification checklist
+## Verification
 
 | Step | Command |
 | :--- | :--- |
 | Cross-hop | `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet` |
 | TE/proto/HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE\|TestChaos_Proto_FieldBudget\|TestChaos_HPACK'` |
 | Alloc gates | `make test-alloc-gate` |
+| Slow body | `go test ./internal/ingestion/ -run=TestChaos_ParserSecurity_PS_G01 -count=1 -v` |
 
-Related: `hot-path.mdc`, `edge.mdc`, `fault-tests.mdc`, `testing.mdc`.
+## Related rules
+
+`edge.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `testing.mdc`, `traffic.mdc`.

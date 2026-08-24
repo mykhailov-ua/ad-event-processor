@@ -33,10 +33,11 @@ func BenchmarkTLS_Fingerprint_Lookup(b *testing.B) {
 	table, probes := benchTLSFingerprintTable(b, 10_000)
 	ja3 := []byte("771,4865-42")
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
-	for i := 0; i < b.N; i++ {
-		hit = table.MatchJA3(probes[i&63]) || table.MatchJA3(ja3)
+	benchN := 0
+	for b.Loop() {
+		hit = table.MatchJA3(probes[benchN&63]) || table.MatchJA3(ja3)
+		benchN++
 	}
 	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
 }
@@ -52,10 +53,11 @@ func BenchmarkTLS_Fingerprint_MatchBranch_SafeView(b *testing.B) {
 		},
 	}
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
-	for i := 0; i < b.N; i++ {
-		hit, _ = h.tlsFingerprintShouldSafeView(probes[i&63], nil, uuidNil, "")
+	benchN := 0
+	for b.Loop() {
+		hit, _ = h.tlsFingerprintShouldSafeView(probes[benchN&63], nil, uuidNil, "")
+		benchN++
 	}
 	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit
 }
@@ -66,9 +68,8 @@ func BenchmarkTLS_Fingerprint_AllowlistBranch(b *testing.B) {
 	table := NewTLSFingerprintTable()
 	table.Publish(buildTLSFingerprintSnapshot([]uint32{h}, nil, []uint32{h}, nil, 1))
 	b.ReportAllocs()
-	b.ResetTimer()
 	var hit bool
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		hit = table.shouldBlockJA3(ja3)
 	}
 	tlsFingerprintBenchSink = tlsFingerprintBenchSink || hit

@@ -42,30 +42,30 @@ func (r *intervalBotnetRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 
 	query := `
 SELECT
-    sample_ip_hash,
-    variance,
-    n_intervals
+ sample_ip_hash,
+ variance,
+ n_intervals
 FROM (
-    SELECT
-        ip_hash,
-        any(ip_hash) AS sample_ip_hash,
-        varPop(delta_t) AS variance,
-        count() AS n_intervals
-    FROM (
-        SELECT
-            ip_hash,
-            dateDiff(
-                'millisecond',
-                lagInFrame(created_at, 1, created_at) OVER (PARTITION BY ip_hash ORDER BY created_at),
-                created_at
-            ) / 1000.0 AS delta_t
-        FROM clicks
-        WHERE created_at >= now() - toIntervalSecond(?)
-          AND ` + emptyIPHashFilter + `
-    )
-    WHERE delta_t > 0
-    GROUP BY ip_hash
-    HAVING n_intervals >= ? AND variance < ?
+ SELECT
+ ip_hash,
+ any(ip_hash) AS sample_ip_hash,
+ varPop(delta_t) AS variance,
+ count() AS n_intervals
+ FROM (
+ SELECT
+ ip_hash,
+ dateDiff(
+ 'millisecond',
+ lagInFrame(created_at, 1, created_at) OVER (PARTITION BY ip_hash ORDER BY created_at),
+ created_at
+ ) / 1000.0 AS delta_t
+ FROM clicks
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ )
+ WHERE delta_t > 0
+ GROUP BY ip_hash
+ HAVING n_intervals >= ? AND variance < ?
 )
 WHERE length(sample_ip_hash) > 0`
 

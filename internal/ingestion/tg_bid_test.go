@@ -29,8 +29,7 @@ func BenchmarkParseTgBidRequest_ZeroAlloc(b *testing.B) {
 	var parsed tgBidRequest
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = parseTgBidRequest(body, &parsed)
 	}
 }

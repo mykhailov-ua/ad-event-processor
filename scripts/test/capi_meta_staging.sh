@@ -22,12 +22,12 @@ die() {
 }
 
 if [[ "${CAPI_STAGING_DRY_RUN:-}" == "1" ]]; then
-  log "dry-run — would:"
+  log "dry-run - would:"
   log "  1. GET ${TRACK_URL:-<TRACK_URL>}/click?campaign_id=${CAMPAIGN_ID:-<id>}&fbclid=${FBCLID}"
   log "  2. POST ${TRACK_URL:-<TRACK_URL>}/track conversion JSON (email hashed server-side for CAPI)"
-  log "  3. Optional: GET ${CONTROL_URL}/api/v1/postbacks/config — verify test_event_code=${META_TEST_EVENT_CODE:-<unset>}"
+  log "  3. Optional: GET ${CONTROL_URL}/api/v1/postbacks/config - verify test_event_code=${META_TEST_EVENT_CODE:-<unset>}"
   log "  4. Poll ${POSTBACK_METRICS_URL} for ${METRIC_GREP}"
-  log "Set TRACK_URL, CAMPAIGN_ID before live run; configure CAPI token + test_event_code in Campaign → CAPI & Postbacks."
+  log "Set TRACK_URL, CAMPAIGN_ID before live run; configure CAPI token + test_event_code in Campaign -> CAPI & Postbacks."
   exit 0
 fi
 
@@ -109,7 +109,7 @@ if [[ -n "$ADMIN_API_KEY" && -n "$META_TEST_EVENT_CODE" ]]; then
   if [[ "$verified" == "1" ]]; then
     log "postback config includes test_event_code=${META_TEST_EVENT_CODE}"
   else
-    log "WARN: set test_event_code=${META_TEST_EVENT_CODE} in Campaign → CAPI & Postbacks (admin UI)"
+    log "WARN: set test_event_code=${META_TEST_EVENT_CODE} in Campaign -> CAPI & Postbacks (admin UI)"
   fi
 fi
 
@@ -135,4 +135,4 @@ for _ in $(seq 1 18); do
   sleep 5
 done
 
-die "timeout waiting for Meta CAPI dispatch metric — check postback-sender, DLQ, and Meta test stream"
+die "timeout waiting for Meta CAPI dispatch metric - check postback-sender, DLQ, and Meta test stream"

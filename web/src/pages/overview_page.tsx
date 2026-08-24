@@ -337,7 +337,7 @@ export function OverviewPage() {
         </div>
       ) : null}
 
-      {loading ? <div className="text-muted">Loading…</div> : null}
+      {loading ? <div className="text-muted">Loading...</div> : null}
 
       {!loading && (canOps || buyerMode) && homeAlerts.length > 0 ? (
         <HomeAlertFeed alerts={homeAlerts} />
@@ -352,7 +352,7 @@ export function OverviewPage() {
           />
           <OverviewMetric
             label="RPS (estimate)"
-            value={String(summary.rps_estimate ?? '—')}
+            value={String(summary.rps_estimate ?? '-')}
             icon="zap"
           />
           <OverviewMetric

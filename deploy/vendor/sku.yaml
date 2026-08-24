@@ -1,5 +1,5 @@
 # Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
-# Commercial capability matrix (antifraud shipped vs gates): deploy/vendor/SALES_KIT.md § Antifraud capability matrix
+# Commercial capability matrix (antifraud shipped vs gates): deploy/vendor/SALES.md section Antifraud capability matrix
 # Sign offline: use ad-event-processor-license repo CLI
 # go run ./cmd/ad-event-processor-license --sku <code> --customer-name "Acme" --deployment-id <uuid> [--fingerprint <host_fp>]
 #

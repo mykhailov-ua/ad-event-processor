@@ -56,7 +56,7 @@ export function EulaGate({ version, text, onAccepted }: EulaGateProps) {
           </label>
           <div className="form-actions">
             <Button
-              label={loading ? 'Saving…' : 'Continue'}
+              label={loading ? 'Saving...' : 'Continue'}
               variant="primary"
               type="submit"
               className="btn--block"

@@ -68,25 +68,25 @@ func (r *campaignCTRSpikeRule) Find(ctx context.Context) ([]SuspiciousIP, error)
 	query := `
 SELECT ip_hash
 FROM (
-    SELECT
-        campaign_id,
-        ip_hash,
-        countIf(event_type = 'click') AS clicks,
-        countIf(event_type = 'impression') AS imps
-    FROM (
-        SELECT campaign_id, ip_hash, 'click' AS event_type FROM clicks
-        WHERE created_at >= now() - toIntervalSecond(?)
-          AND ` + emptyIPHashFilter + `
-          AND campaign_id != toUUID('00000000-0000-0000-0000-000000000000')
-        UNION ALL
-        SELECT campaign_id, ip_hash, 'impression' AS event_type FROM impressions
-        WHERE created_at >= now() - toIntervalSecond(?)
-          AND ` + emptyIPHashFilter + `
-          AND campaign_id != toUUID('00000000-0000-0000-0000-000000000000')
-    )
-    GROUP BY campaign_id, ip_hash
-    HAVING clicks >= ?
-       AND (imps < 1 OR toFloat64(clicks) / greatest(toFloat64(imps), 1.0) >= ?)
+ SELECT
+ campaign_id,
+ ip_hash,
+ countIf(event_type = 'click') AS clicks,
+ countIf(event_type = 'impression') AS imps
+ FROM (
+ SELECT campaign_id, ip_hash, 'click' AS event_type FROM clicks
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ AND campaign_id != toUUID('00000000-0000-0000-0000-000000000000')
+ UNION ALL
+ SELECT campaign_id, ip_hash, 'impression' AS event_type FROM impressions
+ WHERE created_at >= now() - toIntervalSecond(?)
+ AND ` + emptyIPHashFilter + `
+ AND campaign_id != toUUID('00000000-0000-0000-0000-000000000000')
+ )
+ GROUP BY campaign_id, ip_hash
+ HAVING clicks >= ?
+ AND (imps < 1 OR toFloat64(clicks) / greatest(toFloat64(imps), 1.0) >= ?)
 )
 GROUP BY ip_hash`
 
@@ -138,11 +138,11 @@ func (r *datacenterASNRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 	query := `
 SELECT ip_hash, count() AS event_count
 FROM (
-    SELECT ip_hash FROM clicks
-    WHERE created_at >= now() - toIntervalSecond(?) AND ` + emptyIPHashFilter + `
-    UNION ALL
-    SELECT ip_hash FROM impressions
-    WHERE created_at >= now() - toIntervalSecond(?) AND ` + emptyIPHashFilter + `
+ SELECT ip_hash FROM clicks
+ WHERE created_at >= now() - toIntervalSecond(?) AND ` + emptyIPHashFilter + `
+ UNION ALL
+ SELECT ip_hash FROM impressions
+ WHERE created_at >= now() - toIntervalSecond(?) AND ` + emptyIPHashFilter + `
 )
 GROUP BY ip_hash
 HAVING event_count >= ?`

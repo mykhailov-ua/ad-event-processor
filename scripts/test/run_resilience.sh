@@ -31,7 +31,6 @@ go test -count=1 -v -run 'Fault' -timeout 20m \
   ./pkg/broker/server/... \
   ./internal/controlplane/... \
   ./internal/edge/... \
-  ./internal/edge/... \
   ./internal/rtb/... \
   ./internal/logevacuator/... \
   2>&1 | tee "$LOG"

@@ -35,7 +35,7 @@ export const AFFILIATE_POSTBACK_PRESETS: AffiliatePostbackPreset[] = [
     'cid={click_id}&payout={payout}&txid={tx_id}',
     '{subid}',
     '{payout}',
-    'Map MaxBounty {subid} → ad-event-processor {click_id} on inbound; outbound uses ad-event-processor macros.'
+    'Map MaxBounty {subid} -> ad-event-processor {click_id} on inbound; outbound uses ad-event-processor macros.'
   ),
   preset(
     'clickdealer',

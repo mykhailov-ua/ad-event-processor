@@ -40,7 +40,7 @@ bad_skip_patterns=(
 )
 for pat in "${bad_skip_patterns[@]}"; do
   if rg -q "$pat" "${SCOPE[@]}" --glob '*_test.go' 2> /dev/null; then
-    fail "weak skip reason (use integration: prefix) — pattern $pat"
+    fail "weak skip reason (use integration: prefix) - pattern $pat"
     rg -n "$pat" "${SCOPE[@]}" --glob '*_test.go' || true
   fi
 done
@@ -107,7 +107,7 @@ while IFS= read -r dir; do
     | rg -q .; then
     if rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2> /dev/null \
       | rg -v 'integration:|// mock HTTP upstream|// not a database' > /dev/null; then
-      fail "httptest server in package with testcontainers ($dir) — use real PG/Redis for transaction tests"
+      fail "httptest server in package with testcontainers ($dir) - use real PG/Redis for transaction tests"
       rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' || true
     fi
   fi
@@ -116,14 +116,55 @@ done < <(find internal/controlplane internal/payment internal/ingestion -mindept
 if rg -n 'nolint:errcheck' internal/controlplane internal/ingestion internal/payment pkg/ \
   --glob '*.go' --glob '!*_test.go' 2> /dev/null \
   | rg -v 'nolint:errcheck.*(TODO|#[0-9]+|JIRA|GH-)' > /dev/null 2>&1; then
-  warn "nolint:errcheck without ticket — prefer handling the error"
+  warn "nolint:errcheck without ticket - prefer handling the error"
   rg -n 'nolint:errcheck' internal/controlplane internal/ingestion internal/payment pkg/ \
     --glob '*.go' --glob '!*_test.go' \
     | rg -v 'nolint:errcheck.*(TODO|#[0-9]+|JIRA|GH-)' || true
 fi
 
+if find internal -name 'n1_fix_bench_test.go' -print -quit 2> /dev/null | rg -q .; then
+  fail "n1_fix_bench_test.go proof debris - use query_budget_test or domain holdout tests"
+  find internal -name 'n1_fix_bench_test.go' 2> /dev/null || true
+fi
+
+if rg -n 'func TestN1Fix_' internal --glob '*_test.go' 2> /dev/null; then
+  fail "TestN1Fix_* naming - rename to domain behavior (e.g. TestReconciliationWorker_*)"
+fi
+
+if rg -n '(echo|log) "[=]{2,}' scripts/ 2> /dev/null \
+  | rg -v 'cold_path_n1_allowlist' > /dev/null 2>&1; then
+  fail "script banner echo/log (== or ---) - use plain one-line messages"
+  rg -n '(echo|log) "[=]{2,}' scripts/ \
+    | rg -v 'cold_path_n1_allowlist' || true
+fi
+
+if rg -n 'func (Benchmark[^ (]*_Legacy|func parse[A-Za-z]*Legacy)' internal --glob '*_test.go' 2> /dev/null; then
+  fail "Legacy proof-debris benchmarks or parse*Legacy helpers in tests"
+fi
+
+if rg -n 'func Test[A-Za-z0-9]+_m[0-9]+\(' internal --glob '*_test.go' 2> /dev/null; then
+  fail "milestone trash test names (Test*_mN) - use domain behavior names"
+fi
+
+if rg -n '[\u2013\u2014\u2026\u00b7]' scripts/ --glob '*.sh' 2> /dev/null \
+  | rg -v 'cold_path_n1_allowlist' > /dev/null 2>&1; then
+  fail "Unicode dash or ellipsis in scripts/*.sh echo/log (use ASCII - and ...)"
+  rg -n '[\u2013\u2014\u2026\u00b7]' scripts/ --glob '*.sh' \
+    | rg -v 'cold_path_n1_allowlist' || true
+fi
+
+if rg -n 'for i := 0; i < b\.N' internal pkg cmd --glob '*_test.go' 2> /dev/null; then
+  fail "benchmark loops must use for b.Loop() (quality.mdc)"
+  rg -n 'for i := 0; i < b\.N' internal pkg cmd --glob '*_test.go' || true
+fi
+
+if rg -n '[\u2013\u2014\u2026\u00a7\u00b7]' deploy/monitoring --glob '*.yaml' 2> /dev/null; then
+  fail "Unicode punctuation in deploy/monitoring alerts (use ASCII - and section)"
+  rg -n '[\u2013\u2014\u2026\u00a7\u00b7]' deploy/monitoring --glob '*.yaml' || true
+fi
+
 if [[ "$failed" -ne 0 ]]; then
-  echo "anti-slop: remediation — .cursor/rules/ci.mdc and anti-slop.mdc; integration skips: integration: run make test-integration (Docker testcontainers)"
+  echo "anti-slop: remediation - .cursor/rules/ci.mdc and anti-slop.mdc; integration skips: integration: run make test-integration (Docker testcontainers)"
   exit 1
 fi
 

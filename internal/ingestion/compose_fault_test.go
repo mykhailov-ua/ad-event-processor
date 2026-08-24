@@ -104,7 +104,7 @@ func TestFault_NOSCRIPTStorm(t *testing.T) {
 	require.Greater(t, noscriptDelta, float64(0), "SCRIPT FLUSH must increment ad_redis_lua_noscript_total")
 
 	total := int64(workers * perWorker)
-	require.Greater(t, okCount.Load(), total*8/10, "≥80%% filter checks succeed after NOSCRIPT recovery")
+	require.Greater(t, okCount.Load(), total*8/10, ">=80%% filter checks succeed after NOSCRIPT recovery")
 
 	faultproof.Log(t, "noscript_storm", map[string]string{
 		"status":            "recovered",

@@ -39,12 +39,12 @@ kernel_check() {
   minor="${ver#*.}"
   minor="${minor%%.*}"
   if [[ "$major" -lt 6 ]] || { [[ "$major" -eq 6 ]] && [[ "$minor" -lt 1 ]]; }; then
-    warn "kernel ${ver} — appliance OK; edge XDP needs ≥ 6.1 + BTF"
+    warn "kernel ${ver} - appliance OK; edge XDP needs >= 6.1 + BTF"
   else
     pass "kernel ${ver}"
   fi
   if [[ ! -f /sys/kernel/btf/vmlinux ]]; then
-    warn "BTF missing — required only for edge_xdp profile"
+    warn "BTF missing - required only for edge_xdp profile"
   fi
 }
 
@@ -77,7 +77,7 @@ mem_check() {
   local kb
   kb="$(awk '/MemTotal:/ {print $2}' /proc/meminfo 2> /dev/null || echo 0)"
   if [[ "$kb" -gt 0 ]] && [[ "$kb" -lt 7000000 ]]; then
-    warn "RAM < 8 GB — appliance may be tight under load"
+    warn "RAM < 8 GB - appliance may be tight under load"
   else
     pass "memory"
   fi
@@ -88,7 +88,7 @@ docker_check() {
     pass "docker"
     return 0
   fi
-  warn "docker not ready — install will run provision (apt packages) unless --skip-provision"
+  warn "docker not ready - install will run provision (apt packages) unless --skip-provision"
   if [[ "$STRICT" == "1" ]]; then
     fail "docker required in --strict mode"
     return 1

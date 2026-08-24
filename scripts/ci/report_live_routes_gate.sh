@@ -44,6 +44,32 @@ for (const k of keys) console.log(k);
   fi
 }
 
+resolve_report_route_path() {
+  local report_file="$1"
+  local key="$2"
+  if command -v python3 > /dev/null 2>&1; then
+    python3 - "$report_file" "$key" << 'PY'
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+key = sys.argv[2]
+m = re.search(r"'%s':\s*'([^']+)'" % re.escape(key), src)
+print(m.group(1) if m else "/reports/" + key)
+PY
+  elif command -v node > /dev/null 2>&1; then
+    node - "$report_file" "$key" << 'NODE'
+const fs = require('fs');
+const src = fs.readFileSync(process.argv[1], 'utf8');
+const key = process.argv[2];
+const esc = key.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+const re = new RegExp("'" + esc + "':\\s*'([^']+)'");
+const m = src.match(re);
+process.stdout.write(m ? m[1] : '/reports/' + key);
+NODE
+  else
+    echo "/reports/${key}"
+  fi
+}
+
 live_markers=$(grep -cE 'live:[[:space:]]*true' "$REPORT_JS" || true)
 keys_tmp=$(mktemp)
 extract_live_report_keys "$REPORT_JS" > "$keys_tmp"
@@ -58,10 +84,11 @@ fi
 missing=0
 while IFS= read -r key; do
   [ -z "$key" ] && continue
-  if grep -q "/reports/${key}" "$APP_ROUTES_JS"; then
+  route_path=$(resolve_report_route_path "$REPORT_JS" "$key")
+  if grep -q "${route_path}" "$APP_ROUTES_JS"; then
     :
   else
-    echo "Error: live report '${key}' has no explicit route in app_routes"
+    echo "Error: live report '${key}' has no explicit route in app_routes (expected ${route_path})"
     missing=1
   fi
 done < "$keys_tmp"

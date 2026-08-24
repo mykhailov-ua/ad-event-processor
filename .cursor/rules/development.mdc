@@ -4,41 +4,55 @@ globs: Makefile, Taskfile.yaml, scripts/dev/**, scripts/fault/**, web/**, model/
 alwaysApply: false
 ---
 
-Sources-only repo: run `make gen` / `make proto` after clone. Open backlog: repo-root `BACKLOG.md` only — do not duplicate in rules.
+# Development Workflow
+
+## Purpose
+
+Codegen, local compose stack, benchmarks, fault injection runbooks, and admin release checks. Sources-only repo: run `make gen` / `make proto` after clone.
 
 Requirements: Go 1.25+, Docker Compose, `make`, clang/llvm for eBPF, Linux 5.8+ (XDP 6.1+).
 
 ## Codegen
 
 ```bash
-make gen          # sqlc → internal/<svc>/db/*.sql.go
-make proto        # buf + patch-vtproto-hotpath
-make gen bpf-dev  # BPF → internal/edge/bpf_edge_bpf*.go
+make gen # sqlc -> internal/<svc>/db/*.sql.go
+make proto # buf + patch-vtproto-hotpath
+make gen bpf-dev # BPF -> internal/edge/bpf_edge_bpf*.go
 ```
 
-Scaffold: `task scaffold -- my-service`, `task gen`, `task test-gen -- internal/my-service`.
+Scaffold new service:
 
-CH canonical DDL: `internal/clickhouse/migrate/00000_bootstrap_tables.sql` must match `deploy/clickhouse/init.sql`.
+```bash
+task scaffold -- my-service
+task gen
+task test-gen -- internal/my-service
+```
+
+ClickHouse canonical DDL: `internal/clickhouse/migrate/00000_bootstrap_tables.sql` must match `deploy/clickhouse/init.sql`.
 
 ## Local stack
 
 ```bash
 cp .env.example .env
 bash scripts/dev/stack.sh build
-bash scripts/dev/stack.sh full    # or ingest-only, single-vps
+bash scripts/dev/stack.sh full # or ingest-only, single-vps
 bash scripts/dev/preflight.sh
 ```
 
 | Profile | Services |
 | :--- | :--- |
-| `single-vps` / `full` | tracker, processor, control, PG, Redis ×4, CH |
-| `infra` | PG, Redis ×6 + Sentinel, CH |
+| `single-vps` / `full` | tracker, processor, control, PG, Redis x4, CH |
+| `infra` | PG, Redis x6 + Sentinel, CH |
 | `ingest-only` | tracker, processor, control; no CH |
 | `analytics-ml` | + fraud-scorer, ivt-detector |
 
-Admin web: `cd web && npm ci && npm run build` before control embed. Bootstrap: `scripts/dev/seed_admin.sh`. E2E: `scripts/test/admin_stack_e2e.sh`.
+Admin web before control embed:
 
-Types and layout: `code-style.mdc`, `structure.mdc`.
+```bash
+cd web && npm ci && npm run build
+```
+
+Bootstrap admin: `scripts/dev/seed_admin.sh`. E2E: `scripts/test/admin_stack_e2e.sh`.
 
 ## Fault injection
 
@@ -65,11 +79,13 @@ bash scripts/ci/admin_web.sh
 bash scripts/ci/admin_ui_release_gate.sh
 ```
 
-## Pre-PR
+## Pre-PR verification
 
 ```bash
 bash scripts/ci/lint_gate.sh
 bash scripts/ci/pr_fast.sh
 ```
 
-Related: `ci.mdc`, `code-style.mdc`, `testing.mdc`, `ui.mdc`, `core.mdc`.
+## Related rules
+
+`ci.mdc`, `code-style.mdc`, `core.mdc`, `testing.mdc`, `ui.mdc`.

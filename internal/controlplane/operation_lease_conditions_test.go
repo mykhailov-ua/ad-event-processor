@@ -199,7 +199,7 @@ func testConditionC6RenewMax(t *testing.T) {
 	_, err = pool.Exec(ctx, `
 		UPDATE operation_leases
 		SET lease_state = 'executing', executor_node_id = 'c6-exec', renew_count = 0,
-		    deadline_at = NOW() + INTERVAL '30 seconds'
+		 deadline_at = NOW() + INTERVAL '30 seconds'
 		WHERE op_id = $1`, domain.ToUUID(opID))
 	require.NoError(t, err)
 

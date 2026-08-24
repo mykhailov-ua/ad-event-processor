@@ -26,8 +26,7 @@ func BenchmarkStreamProducer_Process(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = p.Process(evt)
 	}
 }
@@ -42,8 +41,7 @@ func BenchmarkStreamProducer_AdmissionCheck(b *testing.B) {
 	campaignID := uuid.MustParse("44444444-4444-4444-4444-444444444444")
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, _ = tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID)
 	}
 }

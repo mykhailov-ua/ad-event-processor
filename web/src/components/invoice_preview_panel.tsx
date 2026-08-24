@@ -34,7 +34,7 @@ export function InvoicePreviewPanel({ customerId }: InvoicePreviewPanelProps) {
     <section className="section-card stack" data-testid="invoice-preview-panel">
       <h3 className="subsection-title">Invoice preview</h3>
       <p className="text-muted text-sm">
-        Dry-run totals for a billing month — does not create or send an invoice.
+        Dry-run totals for a billing month - does not create or send an invoice.
       </p>
       <label className="form-field" htmlFor="invoice-preview-month">
         Billing month
@@ -47,7 +47,7 @@ export function InvoicePreviewPanel({ customerId }: InvoicePreviewPanelProps) {
         />
       </label>
       <Button
-        label={loading ? 'Previewing…' : 'Preview invoice'}
+        label={loading ? 'Previewing...' : 'Preview invoice'}
         variant="secondary"
         size="sm"
         loading={loading}
@@ -96,7 +96,7 @@ export function InvoicePreviewPanel({ customerId }: InvoicePreviewPanelProps) {
                 <tbody>
                   {preview.lines.map((line) => (
                     <tr key={line.ledger_type ?? String(line.amount_micro)}>
-                      <td>{line.ledger_type ?? '—'}</td>
+                      <td>{line.ledger_type ?? '-'}</td>
                       <td className="font-mono">
                         {formatAmountMicro(line.amount_micro ?? 0, preview.currency)}
                       </td>

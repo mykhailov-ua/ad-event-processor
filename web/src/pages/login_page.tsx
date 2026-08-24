@@ -67,7 +67,7 @@ export function LoginPage() {
     return (
       <div className="login-page">
         <div className="login-box">
-          <span className="text-muted">Loading…</span>
+          <span className="text-muted">Loading...</span>
         </div>
       </div>
     );

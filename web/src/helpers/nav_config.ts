@@ -34,6 +34,7 @@ export const NAV_OVERFLOW_LINKS: NavLink[] = [
   },
   { to: '/ops/shards', label: 'Shards', icon: 'server', perm: 'shards:read' },
   { to: '/ops/ml-model', label: 'ML model', icon: 'bar-chart', perm: 'shards:read' },
+  { to: '/ops/edge-parity', label: 'Edge parity', icon: 'activity', perm: 'shards:read' },
   { to: '/ops/dlq', label: 'DLQ inbox', icon: 'package', perm: 'shards:read' },
   { to: '/ops/domains', label: 'Domain rotation', icon: 'globe', perm: 'settings:read' },
   { to: '/ops/recon', label: 'Reconciliation', icon: 'git-compare', perm: 'audit:read' },

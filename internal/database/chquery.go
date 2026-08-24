@@ -145,19 +145,29 @@ func (q *CHQuery) Query(ctx context.Context, query string, args ...any) (driver.
 		}
 		return nil, err
 	}
-	defer q.release()
 
 	qctx := ctx
+	var cancel context.CancelFunc
 	if q.queryTimeout > 0 {
-		var cancel context.CancelFunc
 		qctx, cancel = context.WithTimeout(ctx, q.queryTimeout)
-		defer cancel()
 	}
 
 	start := time.Now()
 	rows, err := q.conn.Query(q.withSettings(qctx), query, args...)
-	q.observe(start, query, err)
-	return rows, err
+	if err != nil {
+		if cancel != nil {
+			cancel()
+		}
+		q.release()
+		q.observe(start, query, err)
+		return nil, err
+	}
+	return &governedRows{
+		Rows:    rows,
+		release: q.release,
+		observe: func(closeErr error) { q.observe(start, query, closeErr) },
+		cancel:  cancel,
+	}, nil
 }
 
 func (q *CHQuery) QueryRow(ctx context.Context, query string, args ...any) driver.Row {
@@ -223,11 +233,11 @@ func (q *CHQuery) IngestionLag(ctx context.Context) (time.Duration, error) {
 	var latest time.Time
 	err := q.QueryRow(ctx, `
 SELECT max(latest) FROM (
-    SELECT max(created_at) AS latest FROM impressions
-    UNION ALL
-    SELECT max(created_at) FROM clicks
-    UNION ALL
-    SELECT max(created_at) FROM conversions
+ SELECT max(created_at) AS latest FROM impressions
+ UNION ALL
+ SELECT max(created_at) FROM clicks
+ UNION ALL
+ SELECT max(created_at) FROM conversions
 )`).Scan(&latest)
 	if err != nil {
 		return 0, err
@@ -303,4 +313,36 @@ func (r *governedRow) ScanStruct(dest any) error {
 
 func (r *governedRow) Err() error {
 	return r.row.Err()
+}
+
+type governedRows struct {
+	driver.Rows
+	release  func()
+	observe  func(error)
+	cancel   context.CancelFunc
+	finished bool
+}
+
+func (r *governedRows) finish(err error) {
+	if r.finished {
+		return
+	}
+	r.finished = true
+	if r.observe != nil {
+		r.observe(err)
+	}
+	if r.release != nil {
+		r.release()
+		r.release = nil
+	}
+	if r.cancel != nil {
+		r.cancel()
+		r.cancel = nil
+	}
+}
+
+func (r *governedRows) Close() error {
+	err := r.Rows.Close()
+	r.finish(err)
+	return err
 }

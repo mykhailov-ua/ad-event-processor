@@ -52,7 +52,7 @@ func (s *session) markEnded() error {
 
 func (s *session) writeMeta() error {
 	path := filepath.Join(s.Dir, "session.json")
-	data, err := json.MarshalIndent(s.Meta, "", "  ")
+	data, err := json.MarshalIndent(s.Meta, "", " ")
 	if err != nil {
 		return err
 	}

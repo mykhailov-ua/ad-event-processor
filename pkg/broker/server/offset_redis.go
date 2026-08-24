@@ -14,11 +14,11 @@ const redisOffsetsKeyPrefix = "ad_event_processor:broker:offsets:"
 var commitOffsetScript = redis.NewScript(`
 local cur = redis.call('HGET', KEYS[1], ARGV[1])
 if cur then
-  cur = tonumber(cur)
-  local newOff = tonumber(ARGV[2])
-  if newOff <= cur then
-    return cur
-  end
+ cur = tonumber(cur)
+ local newOff = tonumber(ARGV[2])
+ if newOff <= cur then
+ return cur
+ end
 end
 redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
 return ARGV[2]

@@ -42,33 +42,33 @@ const defaultBidFloorBucketMicro = int64(10_000)
 
 const upsertRtbFloorSuggestionSQL = `
 INSERT INTO rtb_floor_suggestions (
-    placement_id, deal_id, current_floor_micro, suggested_floor_micro,
-    win_rate, sample_n, floor_bucket_micro, computed_at
+ placement_id, deal_id, current_floor_micro, suggested_floor_micro,
+ win_rate, sample_n, floor_bucket_micro, computed_at
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (placement_id) DO UPDATE SET
-    deal_id = EXCLUDED.deal_id,
-    current_floor_micro = EXCLUDED.current_floor_micro,
-    suggested_floor_micro = EXCLUDED.suggested_floor_micro,
-    win_rate = EXCLUDED.win_rate,
-    sample_n = EXCLUDED.sample_n,
-    floor_bucket_micro = EXCLUDED.floor_bucket_micro,
-    computed_at = EXCLUDED.computed_at`
+ deal_id = EXCLUDED.deal_id,
+ current_floor_micro = EXCLUDED.current_floor_micro,
+ suggested_floor_micro = EXCLUDED.suggested_floor_micro,
+ win_rate = EXCLUDED.win_rate,
+ sample_n = EXCLUDED.sample_n,
+ floor_bucket_micro = EXCLUDED.floor_bucket_micro,
+ computed_at = EXCLUDED.computed_at`
 
 const chDealWinRatesQuery = `
 SELECT
-    deal_id,
-    countIf(outcome = 1) AS wins,
-    countIf(outcome = 0) AS losses
+ deal_id,
+ countIf(outcome = 1) AS wins,
+ countIf(outcome = 0) AS losses
 FROM rtb_deal_outcomes
 WHERE created_at >= subtractHours(now(), ?)
 GROUP BY deal_id`
 
 const chPlacementFloorBucketsQuery = `
 SELECT
-    deal_id,
-    intDiv(floor_micro, ?) * ? AS floor_bucket_micro,
-    countIf(outcome = 1) AS wins,
-    count() AS sample_n
+ deal_id,
+ intDiv(floor_micro, ?) * ? AS floor_bucket_micro,
+ countIf(outcome = 1) AS wins,
+ count() AS sample_n
 FROM rtb_deal_outcomes
 WHERE created_at >= subtractHours(now(), ?)
 GROUP BY deal_id, floor_bucket_micro`

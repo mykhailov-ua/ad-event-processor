@@ -21,7 +21,7 @@ func ApplyTrackedSchemaMigrations(ctx context.Context, pool *pgxpool.Pool, dir s
 	}
 	if _, err := pool.Exec(ctx, `
 		CREATE TABLE IF NOT EXISTS public.tracked_migrations (
-			filename   TEXT PRIMARY KEY,
+			filename TEXT PRIMARY KEY,
 			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
 		);
 	`); err != nil {

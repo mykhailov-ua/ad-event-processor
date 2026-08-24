@@ -20,9 +20,9 @@ func TestCheckBPFResourceGate_passFixture(t *testing.T) {
 func TestCheckBPFResourceGate_failFilterCheckP99(t *testing.T) {
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
-  "duration_sec": 60,
-  "markers": [{"role":"tracker","marker":"filter_check","p99_us":2500,"count":10}],
-  "network": [{"role":"tracker","connects":0}]
+ "duration_sec": 60,
+ "markers": [{"role":"tracker","marker":"filter_check","p99_us":2500,"count":10}],
+ "network": [{"role":"tracker","connects":0}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {
@@ -36,8 +36,8 @@ func TestCheckBPFResourceGate_failFilterCheckP99(t *testing.T) {
 func TestCheckBPFResourceGate_failTrackerConnect(t *testing.T) {
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
-  "duration_sec": 60,
-  "network": [{"role":"tracker","connects":2}]
+ "duration_sec": 60,
+ "network": [{"role":"tracker","connects":2}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {
@@ -48,12 +48,28 @@ func TestCheckBPFResourceGate_failTrackerConnect(t *testing.T) {
 	}
 }
 
+func TestCheckBPFResourceGate_labSkipsTrackerConnect(t *testing.T) {
+	t.Setenv("BPF_GATE_PROFILE", "lab")
+	dir := t.TempDir()
+	writeBPFGateSummary(t, dir, `{
+ "duration_sec": 60,
+ "network": [{"role":"tracker","connects":2}]
+}`)
+	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Pass {
+		t.Fatalf("expected lab skip pass, checks: %+v", res.Checks)
+	}
+}
+
 func TestCheckBPFResourceGate_failTrackerRSS(t *testing.T) {
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
-  "duration_sec": 60,
-  "network": [{"role":"tracker","connects":0}],
-  "proc_samples": [{"role":"tracker","rss_delta":8192,"maj_flt":0}]
+ "duration_sec": 60,
+ "network": [{"role":"tracker","connects":0}],
+ "proc_samples": [{"role":"tracker","rss_delta":8192,"maj_flt":0}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {
@@ -67,9 +83,9 @@ func TestCheckBPFResourceGate_failTrackerRSS(t *testing.T) {
 func TestCheckBPFResourceGate_failMajorFaults(t *testing.T) {
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
-  "duration_sec": 60,
-  "network": [{"role":"tracker","connects":0}],
-  "proc_samples": [{"role":"tracker","rss_delta":1024,"maj_flt":3}]
+ "duration_sec": 60,
+ "network": [{"role":"tracker","connects":0}],
+ "proc_samples": [{"role":"tracker","rss_delta":1024,"maj_flt":3}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {
@@ -103,10 +119,11 @@ func TestCheckBPFResourceGate_missingSummaryFailsWhenStrict(t *testing.T) {
 
 func TestCheckBPFResourceGate_strictFailsWithoutUprobes(t *testing.T) {
 	t.Setenv("BPF_GATE_STRICT", "1")
+	t.Setenv("BPF_GATE_PROFILE", "perf")
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
-  "duration_sec": 60,
-  "network": [{"role":"tracker","connects":0}]
+ "duration_sec": 60,
+ "network": [{"role":"tracker","connects":0}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {
@@ -114,6 +131,30 @@ func TestCheckBPFResourceGate_strictFailsWithoutUprobes(t *testing.T) {
 	}
 	if res.Pass {
 		t.Fatalf("expected fail without uprobes in strict mode, checks: %+v", res.Checks)
+	}
+}
+
+func TestCheckBPFResourceGate_labSkipsWithoutUprobes(t *testing.T) {
+	t.Setenv("BPF_GATE_STRICT", "1")
+	t.Setenv("BPF_GATE_PROFILE", "lab")
+	t.Setenv("BPF_COLD_GATE", "1")
+	t.Setenv("LOAD_BPF_GATE", "1")
+	dir := t.TempDir()
+	writeBPFGateSummary(t, dir, `{
+ "duration_sec": 60,
+ "network": [{"role":"tracker","connects":0}]
+}`)
+	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range res.Checks {
+		if c.Name == "filter_check_uprobe_p99_us" && (!c.OK || c.Value != "missing") {
+			t.Fatalf("expected lab skip for uprobes, got %+v", c)
+		}
+		if c.Name == "report_query_p99_ms" && c.OK {
+			t.Fatal("expected report_query gate to fail without Prometheus in unit test")
+		}
 	}
 }
 

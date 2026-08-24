@@ -106,7 +106,7 @@ export function CampaignFiltersSection({
       {canWrite ? (
         <div className="cluster--actions">
           <Button
-            label={saving ? 'Saving…' : 'Save filters'}
+            label={saving ? 'Saving...' : 'Save filters'}
             variant="primary"
             size="sm"
             loading={saving}

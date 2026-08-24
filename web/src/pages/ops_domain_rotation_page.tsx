@@ -54,7 +54,7 @@ export function OpsDomainRotationPage() {
       {error ? <ErrorBlock error={error} /> : null}
 
       <section className="section-block" data-testid="ops-domain-rotation">
-        {loading ? <p className="text-muted">Loading…</p> : null}
+        {loading ? <p className="text-muted">Loading...</p> : null}
         <div className="table-wrapper elevation-raised">
           <table className="data-table">
             <thead>
@@ -80,8 +80,8 @@ export function OpsDomainRotationPage() {
                       label={displayLabel(row.health_status)}
                     />
                   </td>
-                  <td>{row.ssl_status ? displayLabel(row.ssl_status) : '—'}</td>
-                  <td>{row.pool_domain_status ? displayLabel(row.pool_domain_status) : '—'}</td>
+                  <td>{row.ssl_status ? displayLabel(row.ssl_status) : '-'}</td>
+                  <td>{row.pool_domain_status ? displayLabel(row.pool_domain_status) : '-'}</td>
                   <td>{String(row.dmr_campaign_count)}</td>
                   <td>{String(row.active_campaign_count)}</td>
                 </tr>

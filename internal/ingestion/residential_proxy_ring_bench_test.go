@@ -43,10 +43,11 @@ func BenchmarkResidentialProxy_observe(b *testing.B) {
 	now := monotonicNano()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 	var signal bool
-	for i := 0; i < b.N; i++ {
-		_, signal = ring.observe(hash, true, uint32(i), uint32(i+1), now)
+	benchN := 0
+	for b.Loop() {
+		_, signal = ring.observe(hash, true, uint32(benchN), uint32(benchN+1), now)
+		benchN++
 	}
 	residentialProxyBenchSink = residentialProxyBenchSink || signal
 }

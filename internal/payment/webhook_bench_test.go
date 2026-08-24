@@ -20,9 +20,7 @@ func BenchmarkVerifyStripeSignature(b *testing.B) {
 	expectedMAC := mac.Sum(nil)
 	sig := hex.EncodeToString(expectedMAC)
 	sigHeader := fmt.Sprintf("t=%s,v1=%s", timestamp, sig)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = verifyStripeSignature(payload, sigHeader, secret, time.Unix(1672531199, 0))
 	}
 }

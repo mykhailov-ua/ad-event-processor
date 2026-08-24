@@ -25,7 +25,7 @@ local sync = tonumber(vals[2]) or 0
 local inflight = tonumber(vals[3]) or 0
 local quota = 0
 if ARGV[1] == "1" then
-    quota = tonumber(redis.call("GET", KEYS[4])) or 0
+ quota = tonumber(redis.call("GET", KEYS[4])) or 0
 end
 local has_lock = redis.call("EXISTS", KEYS[5])
 local has_fence = redis.call("EXISTS", KEYS[6])

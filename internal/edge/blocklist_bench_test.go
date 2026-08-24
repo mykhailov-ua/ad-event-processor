@@ -27,7 +27,7 @@ func BenchmarkMergeHosts_1k(b *testing.B) {
 	manual, auto, fraud := benchIPs(1000)
 	dst := make(map[uint32]struct{}, 1000)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		clear(dst)
 		MergeHosts(dst, manual, auto, fraud)
 	}
@@ -37,7 +37,7 @@ func BenchmarkMergeHosts_10k(b *testing.B) {
 	manual, auto, fraud := benchIPs(10000)
 	dst := make(map[uint32]struct{}, 10000)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		clear(dst)
 		MergeHosts(dst, manual, auto, fraud)
 	}
@@ -46,7 +46,7 @@ func BenchmarkMergeHosts_10k(b *testing.B) {
 func BenchmarkMergeDenyIPs_allocating_1k(b *testing.B) {
 	manual, auto, fraud := benchIPs(1000)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = MergeDenyIPs(manual, auto, fraud)
 	}
 }
@@ -55,7 +55,7 @@ func BenchmarkApplyDiff_scratchOnly_10k(b *testing.B) {
 	manual, auto, fraud := benchIPs(10000)
 	store := NewBlocklistStore()
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		clear(store.scratchHosts)
 		MergeDenyV4(store.scratchHosts, store.v4Scratch, manual, auto, fraud)
 	}

@@ -80,7 +80,7 @@ func (j *RetentionJanitor) deleteOlderThan(ctx context.Context, status string, a
 	tag, err := j.pool.Exec(ctx, `
 		DELETE FROM notify.notifications
 		WHERE status = $1
-		  AND created_at < NOW() - ($2::bigint * interval '1 second')`,
+		 AND created_at < NOW() - ($2::bigint * interval '1 second')`,
 		status, int64(age.Seconds()),
 	)
 	if err != nil {

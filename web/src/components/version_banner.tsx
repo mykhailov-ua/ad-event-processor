@@ -30,7 +30,7 @@ export function VersionBanner({ serverVersion }: VersionBannerProps) {
     return {
       prev,
       version,
-      message: `Server updated (${prev} → ${version}).${buildHint} Reload to pick up changes.`,
+      message: `Server updated (${prev} -> ${version}).${buildHint} Reload to pick up changes.`,
     };
   }, [serverVersion]);
 

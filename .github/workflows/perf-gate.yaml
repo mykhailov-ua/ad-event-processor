@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   perf-strict:
-    name: Gate · main-perf-strict
+    name: Gate - main-perf-strict
     runs-on: ${{ vars.PERF_RUNNER_LABEL || 'ubuntu-latest' }}
     timeout-minutes: 30
     env:
@@ -46,7 +46,7 @@ jobs:
           if [ "$PERF_GATE_STRICT" = "true" ]; then
             echo "Strict perf gate (self-hosted): zero-alloc + benchstat regression vs baseline"
           else
-            echo "Smoke perf gate (github-hosted): zero-alloc only — set repo variable PERF_RUNNER_LABEL for benchstat"
+            echo "Smoke perf gate (github-hosted): zero-alloc only - set repo variable PERF_RUNNER_LABEL for benchstat"
           fi
 
       - name: Stabilize CPU (performance governor)

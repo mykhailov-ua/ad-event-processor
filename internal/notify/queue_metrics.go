@@ -26,9 +26,9 @@ func StartQueueMetricsScraper(ctx context.Context, pool *pgxpool.Pool, interval 
 		var oldestProcessingSeconds float64
 		err := pool.QueryRow(scrapeCtx, `
 			SELECT COUNT(*) FILTER (WHERE status = 'PENDING')::bigint,
-			       COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at) FILTER (WHERE status = 'PENDING'))), 0)::float8,
-			       COUNT(*) FILTER (WHERE status = 'PROCESSING')::bigint,
-			       COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(claimed_at) FILTER (WHERE status = 'PROCESSING'))), 0)::float8
+			 COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at) FILTER (WHERE status = 'PENDING'))), 0)::float8,
+			 COUNT(*) FILTER (WHERE status = 'PROCESSING')::bigint,
+			 COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(claimed_at) FILTER (WHERE status = 'PROCESSING'))), 0)::float8
 			FROM notify.notifications
 			WHERE status IN ('PENDING', 'PROCESSING')`).Scan(
 			&pending, &oldestPendingSeconds, &processing, &oldestProcessingSeconds,

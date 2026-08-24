@@ -139,7 +139,7 @@ export function OpsDlqPage() {
           </div>
         ) : null}
 
-        {loading && items.length === 0 ? <p className="text-muted">Loading…</p> : null}
+        {loading && items.length === 0 ? <p className="text-muted">Loading...</p> : null}
 
         <div className="table-wrapper elevation-raised">
           <table className="data-table">
@@ -160,13 +160,13 @@ export function OpsDlqPage() {
                 <tr key={`${row.source}-${row.id}`}>
                   <td>{displayLabel(row.source)}</td>
                   <td className="font-mono text-sm">{row.id}</td>
-                  <td className="font-mono text-sm">{row.campaign_id ?? '—'}</td>
-                  <td>{row.event_type ?? '—'}</td>
-                  <td>{row.error ?? '—'}</td>
+                  <td className="font-mono text-sm">{row.campaign_id ?? '-'}</td>
+                  <td>{row.event_type ?? '-'}</td>
+                  <td>{row.error ?? '-'}</td>
                   <td className="text-muted text-sm">
-                    {row.failed_at ? new Date(row.failed_at).toLocaleString() : '—'}
+                    {row.failed_at ? new Date(row.failed_at).toLocaleString() : '-'}
                   </td>
-                  <td>{row.status ?? '—'}</td>
+                  <td>{row.status ?? '-'}</td>
                   {canRetry ? (
                     <td>
                       {isDlqInboxEntryRetryable(row) ? (

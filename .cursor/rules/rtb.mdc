@@ -4,22 +4,31 @@ globs: internal/rtb/**, internal/openrtb/**, internal/ingestion/rtb*.go, interna
 alwaysApply: false
 ---
 
-`RunAuction` p99 < 15 us; candidates scanned p99 < 500; 0 allocs/op.
+# RTB and OpenRTB Auction
 
-Reference: `rtb.mdc`, `traffic.mdc`, `tradeoffs.mdc`. Hot-path shared rules: `hot-path.mdc`.
+## Purpose
+
+In-process `RunAuction` on tracker. Targets: p99 < 15 us; candidates scanned p99 < 500; 0 allocs/op.
+
+Reference: `traffic.mdc`, `tradeoffs.mdc`, `hot-path.mdc`, `architecture.mdc`.
 
 ## Ingress paths
 
-- `/track`: `applyRtbAuction` before main filter chain (mode-dependent).
-- `POST /openrtb/bid`: `openrtb_exchange.go` -> DFA parse -> `RunAuction` -> in-place bid response.
-- OpenRTB does **not** run full `FilterEngine` chain — dedicated exchange path only.
+| Path | Flow |
+| :--- | :--- |
+| `/track` | `applyRtbAuction` before main filter chain (mode-dependent) |
+| `POST /openrtb/bid` | `openrtb_exchange.go` -> DFA parse -> `RunAuction` -> in-place bid response |
 
-Packages:
+OpenRTB does **not** run full `FilterEngine` chain - dedicated exchange path only.
 
-- `internal/rtb/` — auction core, SoA catalog, budget store.
-- `internal/openrtb/` — wire codec (no ingestion import).
-- Tracker glue: `internal/ingestion/rtb_*.go`, `openrtb_*.go`.
-- Admin: `controlplane` `service_rtb.go`, `rtb_handlers.go`.
+## Packages
+
+| Package | Role |
+| :--- | :--- |
+| `internal/rtb/` | Auction core, SoA catalog, budget store |
+| `internal/openrtb/` | Wire codec (no ingestion import) |
+| `internal/ingestion/rtb_*.go`, `openrtb_*.go` | Tracker glue |
+| `internal/controlplane/service_rtb.go`, `rtb_handlers.go` | Admin RTB API |
 
 ## Structure of Arrays (SoA) catalog
 
@@ -33,32 +42,39 @@ Packages:
 Cold path rebuilds full snapshot; hot path:
 
 ```go
-snap := registry.catalog.Load()  // atomic.Pointer[catalogSnapshot]
+snap := registry.catalog.Load() // atomic.Pointer[catalogSnapshot]
 ```
 
 No mutex on read; never mutate snapshot in place.
 
 ## Auction algorithm
 
-- Geo partition: `req.GeoHash & 63` (64 shards, `geoShardMask`).
-- Presorted buckets by effective score; early break when below score floor.
-- Winner: bid x CTR (PPM); tie-break weight then raw bid.
-- Clearing: first/second price + reserve per campaign config.
-- Scan budget: p99 < 500 candidates; reject unbounded catalog walks.
+| Rule | Detail |
+| :--- | :--- |
+| Geo partition | `req.GeoHash & 63` (64 shards, `geoShardMask`) |
+| Bucket order | Presorted by effective score; early break below score floor |
+| Winner | bid x CTR (PPM); tie-break weight then raw bid |
+| Clearing | First/second price + reserve per campaign config |
+| Scan budget | p99 < 500 candidates; reject unbounded catalog walks |
 
 ## Budget authority
 
-- `RTB_BUDGET_AUTHORITY=rtb`: `CheckAndSpendAll` CAS in auction loop; skip separate budget debit downstream.
-- `BudgetStore` uses `atomic.Pointer[budgetSlice]` per spend dimension.
-- Shadow mode: `RunAuctionEval` logs winner without spend.
+| Knob | Behavior |
+| :--- | :--- |
+| `RTB_BUDGET_AUTHORITY=rtb` | `CheckAndSpendAll` CAS in auction loop; skip separate budget debit downstream |
+| `BudgetStore` | `atomic.Pointer[budgetSlice]` per spend dimension |
+| Shadow mode | `RunAuctionEval` logs winner without spend |
 
 ## OpenRTB 2.6 hot path
 
-- DFA parse — no `encoding/json` on production bid path.
-- Micro-units throughout; fixed response header + in-place JSON body (`WriteBidHTTPResponse`).
-- Scan budgets: `ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`; depth `OrtbMaxJSONDepth=32`.
-- `json.Marshal` allowed in tests and cold admin paths only.
-- Chunked body allowed on `/openrtb/bid` only (not `/track`).
+| Rule | Detail |
+| :--- | :--- |
+| Parse | DFA - no `encoding/json` on production bid path |
+| Units | Micro-units throughout |
+| Response | Fixed response header + in-place JSON body (`WriteBidHTTPResponse`) |
+| Scan budgets | `ORTB_SCAN_MAX_BYTES`, `ORTB_MAX_QUOTE_CHECKS`; depth `OrtbMaxJSONDepth=32` |
+| `json.Marshal` | Tests and cold admin paths only |
+| Chunked body | Allowed on `/openrtb/bid` only (not `/track`) |
 
 ## Modes
 
@@ -68,11 +84,11 @@ No mutex on read; never mutate snapshot in place.
 | `shadow` | `RunAuctionEval` only; no spend or campaign rewrite |
 | `live` | Rewrite `campaign_id`, real spend, bid response |
 
-## Shadow → live runbook
+## Shadow to live runbook
 
 1. `GET /api/v1/rtb/integration-profile`
 2. `POST /api/v1/rtb/validate-bid-request` with `bid_request_min.json`
-3. Soak `RTB_MODE=shadow`; gate `GET /api/v1/rtb/shadow-diff?window=1h` — low mismatch, no PG budget violations
+3. Soak `RTB_MODE=shadow`; gate `GET /api/v1/rtb/shadow-diff?window=1h` - low mismatch, no PG budget violations
 4. Configure deals/floors via admin API
 5. `RTB_MODE=live`; `RTB_BUDGET_AUTHORITY=redis`; set exchange QPS/no-bid mode
 6. E2E: `go test ./tests/e2e/... -run 'RtbLive|OpenRTB26'`
@@ -90,4 +106,6 @@ bash scripts/ci/hot_path_static_gate.sh
 bash scripts/ci/escape_heap_gate.sh
 ```
 
-Related: `hot-path.mdc`, `data-layer.mdc`, `edge.mdc` (TRACKER_INGRESS_SCHEMA).
+## Related rules
+
+`data-layer.mdc`, `edge.mdc`, `hot-path.mdc`, `licensing.mdc`, `traffic.mdc`.

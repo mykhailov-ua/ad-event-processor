@@ -75,7 +75,7 @@ var budgetResetCmd = &cobra.Command{
 			return fmt.Errorf("failed to remove campaign from dirty set: %w", err)
 		}
 
-		fmt.Printf("Cleared Redis cache:\n  DEL %s (%d)\n  DEL %s (%d)\n  SREM budget:dirty_campaigns %s (%d)\n",
+		fmt.Printf("Cleared Redis cache:\n DEL %s (%d)\n DEL %s (%d)\n SREM budget:dirty_campaigns %s (%d)\n",
 			budgetKey, res1, syncKey, res2, campaignID, res3)
 
 		if resetSpend {

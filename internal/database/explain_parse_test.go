@@ -8,11 +8,11 @@ import (
 )
 
 func TestParseExplainPlan_outboxIndexScan(t *testing.T) {
-	raw := `Limit  (cost=0.42..8.44 rows=1 width=100) (actual time=0.015..0.016 rows=1 loops=1)
-  Buffers: shared hit=4
-  ->  Index Scan using idx_outbox_pending on outbox_events  (cost=0.42..8.44 rows=1 width=100) (actual time=0.014..0.014 rows=1 loops=1)
-        Index Cond: (status = 'PENDING'::text)
-        Buffers: shared hit=4
+	raw := `Limit (cost=0.42..8.44 rows=1 width=100) (actual time=0.015..0.016 rows=1 loops=1)
+ Buffers: shared hit=4
+ -> Index Scan using idx_outbox_pending on outbox_events (cost=0.42..8.44 rows=1 width=100) (actual time=0.014..0.014 rows=1 loops=1)
+ Index Cond: (status = 'PENDING'::text)
+ Buffers: shared hit=4
 Planning Time: 0.082 ms
 Execution Time: 0.035 ms`
 	plan := ParseExplainPlan(raw)
@@ -23,10 +23,10 @@ Execution Time: 0.035 ms`
 }
 
 func TestAnalyzeExplainPlan_seqScanLargeWithFilter(t *testing.T) {
-	raw := `Seq Scan on campaigns  (cost=0.00..1250.00 rows=5000 width=200) (actual time=0.01..2.5 rows=8000 loops=1)
-  Filter: (status = 'ACTIVE'::text)
-  Rows Removed by Filter: 12000
-  Buffers: shared hit=800
+	raw := `Seq Scan on campaigns (cost=0.00..1250.00 rows=5000 width=200) (actual time=0.01..2.5 rows=8000 loops=1)
+ Filter: (status = 'ACTIVE'::text)
+ Rows Removed by Filter: 12000
+ Buffers: shared hit=800
 Execution Time: 3.5 ms`
 	plan := ParseExplainPlan(raw)
 	require.Equal(t, int64(12000), plan.Nodes[0].RowsRemoved)
@@ -36,11 +36,11 @@ Execution Time: 3.5 ms`
 }
 
 func TestAnalyzeExplainPlan_nestedRowsRemovedAttachedToScan(t *testing.T) {
-	raw := `HashAggregate  (cost=1..2 rows=1 width=8) (actual time=5..5 rows=1 loops=1)
-  ->  Seq Scan on balance_ledger  (cost=0..1500 rows=12500 width=24) (actual time=0..4 rows=12500 loops=1)
-        Filter: (type = 'FEE'::ledger_type)
-        Rows Removed by Filter: 37500
-        Buffers: shared hit=667
+	raw := `HashAggregate (cost=1..2 rows=1 width=8) (actual time=5..5 rows=1 loops=1)
+ -> Seq Scan on balance_ledger (cost=0..1500 rows=12500 width=24) (actual time=0..4 rows=12500 loops=1)
+ Filter: (type = 'FEE'::ledger_type)
+ Rows Removed by Filter: 37500
+ Buffers: shared hit=667
 Execution Time: 5.5 ms`
 	plan := ParseExplainPlan(raw)
 	var scan *ExplainNode

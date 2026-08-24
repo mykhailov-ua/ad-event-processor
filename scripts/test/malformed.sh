@@ -5,12 +5,18 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/load_test_env.sh"
 cd "$ROOT"
 
+_MALFORMED_BPF_PROBE="${AD_EVENT_PROCESSOR_BPF_PROBE:-}"
+_MALFORMED_BPF_SUDO_PASS="${AD_EVENT_PROCESSOR_BPF_SUDO_PASS:-}"
+
 if [[ -f "$ROOT/.env" ]]; then
   set -a
   # shellcheck disable=SC1091
   source "$ROOT/.env" 2> /dev/null || printf 'load-malformed: WARN: .env present but not sourced (parse error)\n'
   set +a
 fi
+
+[[ -n "$_MALFORMED_BPF_PROBE" ]] && export AD_EVENT_PROCESSOR_BPF_PROBE="$_MALFORMED_BPF_PROBE"
+[[ -n "$_MALFORMED_BPF_SUDO_PASS" ]] && export AD_EVENT_PROCESSOR_BPF_SUDO_PASS="$_MALFORMED_BPF_SUDO_PASS"
 
 MODE="${1:-full}"
 CONSTRAINED="${CONSTRAINED:-1}"
@@ -43,13 +49,23 @@ die() {
 }
 
 if [[ "$(id -u)" -eq 0 && "${AD_EVENT_PROCESSOR_LOAD_MALFORMED_ROOT_OK:-0}" != "1" ]]; then
-  die "do not run as root/sudo — bpf_probe_session calls sudo internally; root breaks 'docker compose -f' (use: AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh smoke)"
+  die "do not run as root/sudo - bpf_probe_session calls sudo internally; root breaks 'docker compose -f' (use: AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh smoke)"
 fi
 
 case "$MODE" in
-  smoke | business | full) ;;
-  *) die "unknown mode: $MODE (use smoke|business|full)" ;;
+  smoke | business | full | report-export-soak) ;;
+  *) die "unknown mode: $MODE (use smoke|business|full|report-export-soak)" ;;
 esac
+
+REPORT_EXPORT_SOAK=0
+LG_MODE="$MODE"
+if [[ "$MODE" == "report-export-soak" ]]; then
+  export BPF_COLD_GATE=1
+  export BPF_GATE_PROFILE="${BPF_GATE_PROFILE:-lab}"
+  REPORT_EXPORT_SOAK=1
+  LG_MODE=business
+  PREPARE="${PREPARE:-1}"
+fi
 
 if [[ "$CONSTRAINED" == "1" ]]; then
   TRACKER_BASES="${TRACKER_BASES:-$LOAD_TEST_CONSTRAINED_TRACKER_BASES_CSV}"
@@ -110,7 +126,7 @@ if [[ "${AD_EVENT_PROCESSOR_BPF_PROBE:-0}" == "1" ]]; then
   [[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi
 
-LG_ARGS=(-mode "$MODE" -out "$OUT" -trackers "$TRACKER_BASES" -edge "${EDGE_URL:-$LOAD_TEST_EDGE_URL}" -oversize-bytes "$OVERSIZE_BYTES")
+LG_ARGS=(-mode "$LG_MODE" -out "$OUT" -trackers "$TRACKER_BASES" -edge "${EDGE_URL:-$LOAD_TEST_EDGE_URL}" -oversize-bytes "$OVERSIZE_BYTES")
 [[ -n "$RATE" ]] && LG_ARGS+=(-rate "$RATE")
 [[ -n "$DURATION" ]] && LG_ARGS+=(-duration "$DURATION")
 [[ -n "$PCT_BROKEN" ]] && LG_ARGS+=(-pct-broken "$PCT_BROKEN")
@@ -119,16 +135,28 @@ LG_ARGS=(-mode "$MODE" -out "$OUT" -trackers "$TRACKER_BASES" -edge "${EDGE_URL:
 [[ -n "$PCT_PROXY_VPN" ]] && LG_ARGS+=(-pct-proxy-vpn "$PCT_PROXY_VPN")
 [[ -n "$PCT_FLOW_ROUTE" ]] && LG_ARGS+=(-pct-flow-route "$PCT_FLOW_ROUTE")
 
-log "starting loadgen (${MODE})"
-go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
+log "starting loadgen (${LG_MODE})"
+if [[ "$REPORT_EXPORT_SOAK" == "1" ]]; then
+  go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log" &
+  LG_PID=$!
+  bash "$SCRIPTS/test/report_export_soak.sh" "$OUT" 2>&1 | tee "$OUT/report_export_soak.log" &
+  SOAK_PID=$!
+  wait "$LG_PID"
+  wait "$SOAK_PID" || die "report export soak failed"
+else
+  go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
+fi
 
 [[ -n "$SNAP_PID" ]] && wait "$SNAP_PID" 2> /dev/null || true
 [[ -n "$BPF_PID" ]] && bash "$SCRIPTS/test/bpf_probe_session.sh" stop "$OUT" "$BPF_PID" || true
 bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" 10
 
 export LOAD_SLA_GATE=1
+if [[ "${BPF_COLD_GATE:-0}" == "1" && "$REPORT_EXPORT_SOAK" == "1" ]]; then
+  export LOAD_SLA_GATE=0
+fi
 go run ./cmd/load-report all "$OUT"
 if [[ "${LOAD_TG_GATE:-0}" == "1" ]]; then
   go run ./cmd/load-report telegram "$OUT" --prom "${PROMETHEUS_URL:-$LOAD_TEST_PROMETHEUS_URL}"
 fi
-log "done — $OUT"
+log "done - $OUT"

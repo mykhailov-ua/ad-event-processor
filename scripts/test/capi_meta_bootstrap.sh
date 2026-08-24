@@ -230,7 +230,7 @@ main() {
   if [[ "${1:-}" == "run" ]]; then
     run_smoke
   else
-    log "bootstrap complete — run: bash scripts/test/capi_meta_bootstrap.sh run"
+    log "bootstrap complete - run: bash scripts/test/capi_meta_bootstrap.sh run"
   fi
 }
 

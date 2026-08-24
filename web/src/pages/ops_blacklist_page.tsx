@@ -170,7 +170,7 @@ export function OpsBlacklistPage() {
             onClick={() => void dryRun()}
           />
           <Button
-            label={busy ? 'Blocking…' : 'Block IP'}
+            label={busy ? 'Blocking...' : 'Block IP'}
             variant="danger"
             size="sm"
             loading={busy}
@@ -224,10 +224,10 @@ export function OpsBlacklistPage() {
             ) : null}
             {items.map((row) => (
               <tr key={`${row.ip}-${row.reason}-${row.created_at}`}>
-                <td className="font-mono">{row.ip ?? '—'}</td>
-                <td>{row.reason ?? '—'}</td>
-                <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '—'}</td>
-                <td>{row.expires_at ? new Date(row.expires_at).toLocaleString() : '—'}</td>
+                <td className="font-mono">{row.ip ?? '-'}</td>
+                <td>{row.reason ?? '-'}</td>
+                <td>{row.created_at ? new Date(row.created_at).toLocaleString() : '-'}</td>
+                <td>{row.expires_at ? new Date(row.expires_at).toLocaleString() : '-'}</td>
                 <td>
                   <Button
                     label="Unblock"

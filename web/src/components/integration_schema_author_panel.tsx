@@ -105,7 +105,7 @@ export function IntegrationSchemaAuthorPanel({
     <SectionCard
       icon="code"
       title="Author custom schema"
-      desc="POST JSON to integration_schemas — kind is inferred from tokens, url_template, or status_map."
+      desc="POST JSON to integration_schemas - kind is inferred from tokens, url_template, or status_map."
     >
       <div className="form-row" data-testid="integration-schema-author">
         <FormField label="Name" htmlFor="schema-author-name">
@@ -169,7 +169,7 @@ export function IntegrationSchemaAuthorPanel({
         </p>
       ) : null}
       <Button
-        label={busy ? 'Creating…' : 'Create schema'}
+        label={busy ? 'Creating...' : 'Create schema'}
         variant="primary"
         size="sm"
         loading={busy}

@@ -17,7 +17,7 @@ export function StandaloneBoot() {
   }, []);
 
   return (
-    <Suspense fallback={<span className="text-muted">Loading…</span>}>
+    <Suspense fallback={<span className="text-muted">Loading...</span>}>
       <AppProviders>
         <BrowserRouter>
           <div id="login-outlet" className="login-root">

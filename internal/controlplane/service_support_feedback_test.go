@@ -32,7 +32,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
 		Type:         "bug",
 		ContactEmail: "ops@example.com",
-		Message:      "   ",
+		Message:      " ",
 	})
 	if !errors.Is(err, ErrFeedbackEmptyMessage) {
 		t.Fatalf("message err=%v", err)

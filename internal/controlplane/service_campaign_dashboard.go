@@ -20,9 +20,10 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 	from := now.Add(-30 * 24 * time.Hour)
 
 	var spendMicro, revenueMicro, conversions int64
-	stale := s.chQuery == nil
+	chAvailable := s.chQuery != nil
+	usedCHMoney := false
 
-	if s.chQuery != nil {
+	if chAvailable {
 		chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
 		defer cancel()
 		econ, err := QueryCampaignEconomicsCH(chCtx, s.chQuery, campaignID, from, now)
@@ -32,6 +33,7 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 		spendMicro = econ.SpendMicro
 		revenueMicro = econ.RevenueMicro
 		conversions = econ.Conversions
+		usedCHMoney = spendMicro > 0 || revenueMicro > 0
 	}
 
 	if spendMicro == 0 && revenueMicro == 0 {
@@ -60,14 +62,11 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 		cpaMicro = spendMicro / conversions
 	}
 
-	freshness := DataFreshnessDTO{
-		AsOf:        now.Format(time.RFC3339),
-		Consistency: "eventual",
-		Stale:       stale,
+	var chLag time.Duration
+	if chAvailable {
+		chLag, _ = s.clickHouseIngestionLag(ctx)
 	}
-	if !stale {
-		freshness.Consistency = "strong"
-	}
+	freshness := campaignDashboardFreshness(now, usedCHMoney, chLag, chAvailable)
 
 	return CampaignDashboardDTO{
 		CampaignID: campaignID.String(),

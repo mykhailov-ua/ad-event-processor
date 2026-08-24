@@ -29,6 +29,7 @@ export type CustomerRangeReportPageProps = {
   columns: CustomerRangeColumn[];
   enableCompare?: boolean;
   enableActions?: boolean;
+  requireCustomer?: boolean;
 };
 
 export function CustomerRangeReportPage({
@@ -38,6 +39,7 @@ export function CustomerRangeReportPage({
   columns,
   enableCompare = true,
   enableActions = true,
+  requireCustomer = true,
 }: CustomerRangeReportPageProps) {
   const [searchParams] = useSearchParams();
   const user = auth.getUser();
@@ -59,7 +61,7 @@ export function CustomerRangeReportPage({
   const load = useCallback(async () => {
     const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
     const rangeErr = validateReportRange(from, rangeTo);
-    if (!cid) {
+    if (requireCustomer && !cid) {
       setValidationError(null);
       setRows([]);
       setError(null);
@@ -74,7 +76,8 @@ export function CustomerRangeReportPage({
     setValidationError(null);
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams({ customer_id: cid, from, to: rangeTo, limit: '50' });
+    const params = new URLSearchParams({ from, to: rangeTo, limit: '50' });
+    if (cid) params.set('customer_id', cid);
     if (comparePeriod) params.set('compare', 'previous');
     const [res, err] = await to(api(`/api/v1/reports/${endpoint}?${params.toString()}`));
     setLoading(false);
@@ -89,7 +92,7 @@ export function CustomerRangeReportPage({
       const qs = tenantReportQueryString({ customer_id: cid, from, to: rangeTo });
       window.history.replaceState(null, '', `${urlPath}?${qs}`);
     }
-  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, urlPath, comparePeriod]);
+  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, urlPath, comparePeriod, requireCustomer]);
 
   useEffect(() => {
     void load();
@@ -114,17 +117,17 @@ export function CustomerRangeReportPage({
           void load();
         }}
       >
-        {!sessionScoped ? (
+        {!requireCustomer || sessionScoped ? null : (
           <FormField label="Customer ID" htmlFor={`${endpoint}-customer`}>
             <input
               id={`${endpoint}-customer`}
               className="form-input"
-              placeholder="Customer UUID…"
+              placeholder="Customer UUID..."
               value={customerInput}
               onChange={(e) => setCustomerInput(e.target.value)}
             />
           </FormField>
-        ) : null}
+        )}
         <FormField label="From" htmlFor={`${endpoint}-from`}>
           <input
             id={`${endpoint}-from`}
@@ -155,11 +158,11 @@ export function CustomerRangeReportPage({
       </form>
 
       {validationError ? <AlertBanner variant="error" message={validationError} /> : null}
-      {!cid && !sessionScoped ? (
+      {requireCustomer && !cid && !sessionScoped ? (
         <AlertBanner variant="info" message="Enter a customer UUID to load report data." />
       ) : null}
 
-      {loading ? <p className="text-muted mt-4">Loading…</p> : null}
+      {loading ? <p className="text-muted mt-4">Loading...</p> : null}
 
       {rows.length > 0 ? (
         <div className="table-wrapper elevation-raised mt-4">
@@ -171,7 +174,7 @@ export function CustomerRangeReportPage({
                     {col.header}
                   </th>
                 ))}
-                {comparePeriod ? <th scope="col">Δ spend</th> : null}
+                {comparePeriod ? <th scope="col">delta spend</th> : null}
                 {enableActions ? <th scope="col">Actions</th> : null}
               </tr>
             </thead>
@@ -194,7 +197,7 @@ export function CustomerRangeReportPage({
         </div>
       ) : null}
 
-      {cid && !loading && rows.length === 0 ? (
+      {(!requireCustomer || cid) && !loading && rows.length === 0 ? (
         <div className="empty-state mt-4">
           <div className="empty-state__title">No rows</div>
           <div className="empty-state__desc text-muted text-sm">
@@ -215,38 +218,191 @@ export const IVT_REPORT_COLUMNS: CustomerRangeColumn[] = [
       </Link>
     ),
   },
-  { header: 'Sub1', render: (row) => <span className="font-mono">{String(row.sub1 ?? '—')}</span> },
-  { header: 'Sub2', render: (row) => <span className="font-mono">{String(row.sub2 ?? '—')}</span> },
-  { header: 'Country', render: (row) => String(row.country ?? '—') },
+  { header: 'Sub1', render: (row) => <span className="font-mono">{String(row.sub1 ?? '-')}</span> },
+  { header: 'Sub2', render: (row) => <span className="font-mono">{String(row.sub2 ?? '-')}</span> },
+  { header: 'Country', render: (row) => String(row.country ?? '-') },
   { header: 'Impr.', render: (row) => String(row.impressions ?? 0) },
   { header: 'IVT', render: (row) => String(row.ivt_events ?? 0) },
   {
     header: 'IVT %',
-    render: (row) => (row.ivt_rate != null ? `${(Number(row.ivt_rate) * 100).toFixed(2)}%` : '—'),
+    render: (row) => (row.ivt_rate != null ? `${(Number(row.ivt_rate) * 100).toFixed(2)}%` : '-'),
   },
 ];
 
 export const TRAFFIC_REPORT_COLUMNS: CustomerRangeColumn[] = [
-  { header: 'Channel', render: (row) => String(row.channel ?? '—') },
+  { header: 'Channel', render: (row) => String(row.channel ?? '-') },
   { header: 'Impr.', render: (row) => String(row.impressions ?? 0) },
   { header: 'Clicks', render: (row) => String(row.clicks ?? 0) },
   { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
   {
     header: 'ROI %',
-    render: (row) => (row.roi_pct != null ? `${Number(row.roi_pct).toFixed(2)}%` : '—'),
+    render: (row) => (row.roi_pct != null ? `${Number(row.roi_pct).toFixed(2)}%` : '-'),
   },
 ];
 
 export const GEO_REPORT_COLUMNS: CustomerRangeColumn[] = [
-  { header: 'Country', render: (row) => String(row.country ?? '—') },
+  { header: 'Country', render: (row) => String(row.country ?? '-') },
   { header: 'Clicks', render: (row) => String(row.clicks ?? 0) },
   {
     header: 'IVT %',
-    render: (row) => (row.ivt_rate != null ? `${(Number(row.ivt_rate) * 100).toFixed(2)}%` : '—'),
+    render: (row) => (row.ivt_rate != null ? `${(Number(row.ivt_rate) * 100).toFixed(2)}%` : '-'),
   },
   { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
   {
     header: 'ROI %',
-    render: (row) => (row.roi_pct != null ? `${Number(row.roi_pct).toFixed(2)}%` : '—'),
+    render: (row) => (row.roi_pct != null ? `${Number(row.roi_pct).toFixed(2)}%` : '-'),
   },
+];
+
+export const DATA_QUALITY_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Date', render: (row) => String(row.date ?? '-') },
+  { header: 'PG total', render: (row) => String(row.pg_total ?? 0) },
+  { header: 'CH total', render: (row) => String(row.ch_total ?? 0) },
+  {
+    header: 'Diff %',
+    render: (row) =>
+      row.diff_pct != null ? `${(Number(row.diff_pct) * 100).toFixed(2)}%` : '-',
+  },
+  { header: 'Severity', render: (row) => String(row.severity ?? '-') },
+];
+
+export const COST_SYNC_COVERAGE_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Clicks', render: (row) => String(row.clicks ?? 0) },
+  { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
+  { header: 'Gap', render: (row) => String(row.coverage_gap ?? '-') },
+  { header: 'Network', render: (row) => String(row.network ?? '-') },
+  { header: 'Last sync', render: (row) => String(row.last_sync_status ?? '-') },
+];
+
+export const FILTER_REJECT_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  { header: 'Reject kind', render: (row) => String(row.reject_kind ?? '-') },
+  { header: 'Count', render: (row) => String(row.reject_count ?? 0) },
+];
+
+export const FRAUD_BREAKDOWN_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Placement', render: (row) => String(row.placement_id ?? '-') },
+  { header: 'Reason', render: (row) => String(row.fraud_reason ?? '-') },
+  { header: 'Events', render: (row) => String(row.event_count ?? 0) },
+  { header: 'Ghost', render: (row) => String(row.ghost_count ?? 0) },
+  {
+    header: 'Ghost %',
+    render: (row) =>
+      row.ghost_ratio != null ? `${(Number(row.ghost_ratio) * 100).toFixed(2)}%` : '-',
+  },
+];
+
+export const GHOST_IMPRESSION_FUNNEL_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Placement', render: (row) => String(row.placement_id ?? '-') },
+  { header: 'Billable imps', render: (row) => String(row.billable_impressions ?? 0) },
+  { header: 'Ghost imps', render: (row) => String(row.ghost_impressions ?? 0) },
+  { header: 'IVT imps', render: (row) => String(row.ivt_impressions ?? 0) },
+  {
+    header: 'Ghost %',
+    render: (row) =>
+      row.ghost_rate != null ? `${(Number(row.ghost_rate) * 100).toFixed(2)}%` : '-',
+  },
+  {
+    header: 'IVT %',
+    render: (row) =>
+      row.ivt_impression_rate != null ? `${(Number(row.ivt_impression_rate) * 100).toFixed(2)}%` : '-',
+  },
+];
+
+export const RTB_OVERVIEW_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  { header: 'Deal', render: (row) => String(row.deal_id ?? '-') },
+  { header: 'Bids', render: (row) => String(row.bids ?? 0) },
+  { header: 'Wins', render: (row) => String(row.wins ?? 0) },
+  {
+    header: 'Win rate',
+    render: (row) =>
+      row.win_rate != null ? `${(Number(row.win_rate) * 100).toFixed(2)}%` : '-',
+  },
+  { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
+];
+
+export const RTB_NO_BID_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  { header: 'Reason', render: (row) => String(row.no_bid_reason ?? '-') },
+  { header: 'Count', render: (row) => String(row.bid_count ?? 0) },
+];
+
+export const RTB_GEO_DEVICE_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  { header: 'Country', render: (row) => String(row.country ?? '-') },
+  { header: 'Device OS', render: (row) => String(row.device_os ?? '-') },
+  { header: 'Bids', render: (row) => String(row.bids ?? 0) },
+  { header: 'Wins', render: (row) => String(row.wins ?? 0) },
+  {
+    header: 'Win rate',
+    render: (row) =>
+      row.win_rate != null ? `${(Number(row.win_rate) * 100).toFixed(2)}%` : '-',
+  },
+  { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
+];
+
+export const POSTBACK_RECON_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Click ID', render: (row) => <span className="font-mono">{String(row.click_id ?? '-')}</span> },
+  { header: 'Conversion', render: (row) => String(row.conversion_at ?? '-') },
+  { header: 'Value', render: (row) => formatMoney(row.conversion_value_micro as string | number) },
+  { header: 'Day fee', render: (row) => formatMoney(row.ledger_day_fee_micro as string | number) },
+  { header: 'Postback', render: (row) => String(row.postback_status ?? '-') },
+  { header: 'Status', render: (row) => String(row.reconcile_status ?? '-') },
+];
+
+export const PACING_DRIFT_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Date', render: (row) => String(row.date ?? '-') },
+  { header: 'Planned', render: (row) => formatMoney(row.planned_spend_micro as string | number) },
+  { header: 'Actual', render: (row) => formatMoney(row.actual_spend_micro as string | number) },
+  {
+    header: 'Drift %',
+    render: (row) =>
+      row.drift_pct != null ? `${(Number(row.drift_pct) * 100).toFixed(2)}%` : '-',
+  },
+  { header: 'Pacing', render: (row) => String(row.pacing_mode ?? '-') },
 ];

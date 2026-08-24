@@ -13,7 +13,7 @@ log() { printf 'compose-fault-drill: %s\n' "$*"; }
 run_drill() {
   local name="$1"
   shift
-  log "=== $name ==="
+  log "$name"
   "$@" 2>&1 | tee -a "$LOG"
 }
 

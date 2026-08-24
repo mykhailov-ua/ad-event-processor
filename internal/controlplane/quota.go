@@ -663,7 +663,7 @@ func (worker *OutboxWorker) quotaRepairPgAlreadyApplied(ctx context.Context, eve
 		SELECT EXISTS(
 			SELECT 1 FROM admin_audit_log
 			WHERE action = $1 AND target_id = $2
-			  AND (metadata->>'outbox_event_id')::bigint = $3
+			 AND (metadata->>'outbox_event_id')::bigint = $3
 		)`, auditAction, domain.ToUUID(campID), eventID).Scan(&exists)
 	return exists, err
 }

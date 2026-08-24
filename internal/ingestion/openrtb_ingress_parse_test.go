@@ -12,20 +12,20 @@ import (
 
 func TestParseOpenRTB3Payload_ReorderedNested(t *testing.T) {
 	payload := []byte(`{
-  "category_mask": 8,
-  "openrtb": {
-    "ver": "3.0",
-    "request": {
-      "context": {
-        "device": {"type": 4, "ip": "203.0.113.42"}
-      },
-      "id": "req-reordered",
-      "item": [
-        {"flr": 2.25, "id": "item-first", "spec": {"placement": {"tagid": "plc-1"}}}
-      ]
-    }
-  },
-  "deal_id": "deal-premium-1"
+ "category_mask": 8,
+ "openrtb": {
+ "ver": "3.0",
+ "request": {
+ "context": {
+ "device": {"type": 4, "ip": "203.0.113.42"}
+ },
+ "id": "req-reordered",
+ "item": [
+ {"flr": 2.25, "id": "item-first", "spec": {"placement": {"tagid": "plc-1"}}}
+ ]
+ }
+ },
+ "deal_id": "deal-premium-1"
 }`)
 
 	minBid, deviceType, categoryMask, isOpenRTB := ParseOpenRTB3Payload(payload)
@@ -58,15 +58,15 @@ func TestParseOpenRTB3Payload_DealIDZeroAlloc(t *testing.T) {
 func TestParseOpenRTB3Ingress(t *testing.T) {
 	camp := "550e8400-e29b-41d4-a716-446655440000"
 	payload := []byte(`{
-  "openrtb": {
-    "request": {
-      "id": "req-abc",
-      "item": [{"id": "` + camp + `", "flr": 1.5}],
-      "context": {"device": {"type": 2}}
-    }
-  },
-  "category_mask": 4,
-  "deal_id": "deal-1"
+ "openrtb": {
+ "request": {
+ "id": "req-abc",
+ "item": [{"id": "` + camp + `", "flr": 1.5}],
+ "context": {"device": {"type": 2}}
+ }
+ },
+ "category_mask": 4,
+ "deal_id": "deal-1"
 }`)
 	var req TrackRequest
 	require.NoError(t, ParseOpenRTB3Ingress(&req, payload))
@@ -138,19 +138,19 @@ func TestParseSchainNodesAt_negativeIndex(t *testing.T) {
 
 func BenchmarkParseOpenRTB3FSM(b *testing.B) {
 	payload := []byte(`{
-  "openrtb": {
-    "ver": "3.0",
-    "request": {
-      "id": "req-123456789",
-      "item": [{"id": "550e8400-e29b-41d4-a716-446655440000", "flr": 1.50}],
-      "context": {"device": {"type": 4}}
-    }
-  },
-  "category_mask": 8,
-  "deal_id": "deal-premium-1"
+ "openrtb": {
+ "ver": "3.0",
+ "request": {
+ "id": "req-123456789",
+ "item": [{"id": "550e8400-e29b-41d4-a716-446655440000", "flr": 1.50}],
+ "context": {"device": {"type": 4}}
+ }
+ },
+ "category_mask": 8,
+ "deal_id": "deal-premium-1"
 }`)
 	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = parseOpenRTB3FSM(payload)
 	}
 }

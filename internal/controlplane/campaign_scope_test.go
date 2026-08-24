@@ -55,7 +55,7 @@ func TestCampaignList_MediaBuyerScope(t *testing.T) {
 	_, err := pool.Exec(ctx, `
 		INSERT INTO campaigns (id, name, status, customer_id, budget_limit, current_spend, owner_user_id)
 		VALUES ($1, 'owned', 'ACTIVE', $4, 1000000, 0, $2),
-		       ($3, 'other', 'ACTIVE', $4, 1000000, 0, $5)`,
+		 ($3, 'other', 'ACTIVE', $4, 1000000, 0, $5)`,
 		campA, buyerA, campB, custID, buyerB)
 	require.NoError(t, err)
 

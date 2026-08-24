@@ -635,7 +635,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		if !h.udpControl.TryIngress(shard, workerID) {
 			h.write(c, respRateLimit, ctx)
 			h.recordMetrics(startMono, http.StatusTooManyRequests)
-			h.trackMetrics.recordFilterReject(filterRejectRateLimit)
+			h.recordTrackReject(ctx, evt, filterRejectRateLimit)
 			return gnet.None
 		}
 	}
@@ -647,7 +647,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			spec := filterRejectSpecs[kind]
 			h.write(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
-			h.trackMetrics.recordFilterReject(kind)
+			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
 		defer lease.Release()
@@ -667,7 +667,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		default:
 			switch outcome.Status {
 			case trackStatusFraudAccepted:
-				h.trackMetrics.recordFilterReject(outcome.RejectKind)
+				h.recordTrackReject(ctx, evt, outcome.RejectKind)
 				shard := h.sharder.GetShard(evt.CampaignID)
 				enqueueFraudReject(h.fraudWriter, shard, evt)
 				h.write(c, respConsentDenied, ctx)
@@ -675,7 +675,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 				return gnet.None
 			case trackStatusRejected:
 				spec := filterRejectSpecs[outcome.RejectKind]
-				h.trackMetrics.recordFilterReject(outcome.RejectKind)
+				h.recordTrackReject(ctx, evt, outcome.RejectKind)
 				h.write(c, spec.gnetResp, ctx)
 				h.recordMetrics(startMono, spec.status)
 				return gnet.None

@@ -462,7 +462,7 @@ export function CampaignDetailPage() {
     try {
       body.daypart_hours = parseDaypartHours(configForm.daypart_hours);
     } catch {
-      setConfigError('Daypart hours must be 0–23, comma-separated');
+      setConfigError('Daypart hours must be 0-23, comma-separated');
       return;
     }
     const url = configForm.target_url.trim();
@@ -555,7 +555,7 @@ export function CampaignDetailPage() {
         {['Status', 'Budget', 'Spend', 'Pacing'].map((label) => (
           <div key={label} className="metric-card metric-card--loading">
             <div className="metric-card__label">{label}</div>
-            <div className="metric-card__value">…</div>
+            <div className="metric-card__value">...</div>
           </div>
         ))}
       </div>
@@ -627,7 +627,7 @@ export function CampaignDetailPage() {
 
       {tab === 'overview' ? (
         <div className="section-block stack">
-          {dashboard.loading ? <span className="text-muted">Loading economics…</span> : null}
+          {dashboard.loading ? <span className="text-muted">Loading economics...</span> : null}
           {!dashboard.loading ? (
             <CommercialMetrics kpis={dashboard.data?.kpis} masked={masked} />
           ) : null}
@@ -686,7 +686,7 @@ export function CampaignDetailPage() {
 
       {tab === 'stats' ? (
         <div className="section-block stack">
-          {statsLoading ? <span className="text-muted">Loading statistics…</span> : null}
+          {statsLoading ? <span className="text-muted">Loading statistics...</span> : null}
           {statsError ? (
             <p className="text-danger text-sm">
               {statsError instanceof Error ? statsError.message : String(statsError)}
@@ -718,7 +718,7 @@ export function CampaignDetailPage() {
                 <div className="metric-card">
                   <div className="metric-card__label">Spend (API)</div>
                   <div className="metric-card__value font-mono">
-                    {masked ? '—' : formatUsdDecimal(stats.current_spend ?? '0.00')}
+                    {masked ? '-' : formatUsdDecimal(stats.current_spend ?? '0.00')}
                   </div>
                 </div>
               </div>
@@ -797,7 +797,7 @@ export function CampaignDetailPage() {
                 </label>
               </div>
               <label className="form-field" htmlFor="cfg-daypart">
-                Daypart hours (0–23, comma-separated; empty = all hours)
+                Daypart hours (0-23, comma-separated; empty = all hours)
                 <input
                   id="cfg-daypart"
                   className="form-input form-input--sm"
@@ -918,7 +918,7 @@ export function CampaignDetailPage() {
                 </select>
               </label>
               <p className="text-muted text-sm">
-                <a href="/campaigns/flows">Manage landers, offers &amp; flows →</a>
+                <a href="/campaigns/flows">Manage landers, offers &amp; flows {'->'}</a>
               </p>
               <div className="section-card stack" data-testid="campaign-safe-page-config">
                 <h4 className="subsection-title">Safe page (cloak companion)</h4>
@@ -1062,7 +1062,7 @@ export function CampaignDetailPage() {
                   for link signing. Apply preset <strong>Gray market (GMA)</strong> on the Fraud tab
                   to enable safe page, attestation, L1/L1.5, TLS block, and link signing in one step
                   (set <code>safe_page_url</code> separately). IPv6 /64 rotation velocity is
-                  separate from the DC CIDR feed — configure <code>IPV6_ROTATION_MODE</code> on the
+                  separate from the DC CIDR feed - configure <code>IPV6_ROTATION_MODE</code> on the
                   tracker (shadow/live); IPv4 /24 sticky rotation is planned (residential pools).
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-l1-cidr-block">
@@ -1078,7 +1078,7 @@ export function CampaignDetailPage() {
                   L1 DC/hosting CIDR feed (AWS, GCP, Azure, Tor)
                 </label>
                 <p className="text-muted text-sm">
-                  Static datacenter/hosting prefixes from edge feeds — not /24 or /64 rotation
+                  Static datacenter/hosting prefixes from edge feeds - not /24 or /64 rotation
                   detection. Also gates L1 IPv6 rotation when enabled on the tracker.
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-l15-proxy-vpn-block">
@@ -1158,7 +1158,7 @@ export function CampaignDetailPage() {
                 ) : null}
               </div>
               <Button
-                label={configSaving ? 'Saving…' : 'Save changes'}
+                label={configSaving ? 'Saving...' : 'Save changes'}
                 variant="primary"
                 size="sm"
                 loading={configSaving}
@@ -1170,7 +1170,7 @@ export function CampaignDetailPage() {
           <ConfigGrid
             rows={[
               ['ID', campaign.id],
-              ['Customer', campaign.customer_id ?? '—'],
+              ['Customer', campaign.customer_id ?? '-'],
               ['Timezone', campaign.timezone ?? 'UTC'],
               [
                 'Safe page',
@@ -1183,7 +1183,7 @@ export function CampaignDetailPage() {
               ],
               ...(normalizeClickDelivery(campaign.click_delivery) === 'proxy'
                 ? [
-                    ['Proxy upstream', campaign.proxy_upstream_url ?? '—'] as [string, string],
+                    ['Proxy upstream', campaign.proxy_upstream_url ?? '-'] as [string, string],
                     ['Proxy rewrite assets', campaign.proxy_rewrite_assets ? 'yes' : 'no'] as [
                       string,
                       string,
@@ -1211,7 +1211,7 @@ export function CampaignDetailPage() {
               [
                 'Schedule',
                 campaign.start_at || campaign.end_at
-                  ? `${campaign.start_at ? new Date(campaign.start_at).toLocaleString() : '—'} → ${campaign.end_at ? new Date(campaign.end_at).toLocaleString() : '—'}`
+                  ? `${campaign.start_at ? new Date(campaign.start_at).toLocaleString() : '-'} -> ${campaign.end_at ? new Date(campaign.end_at).toLocaleString() : '-'}`
                   : 'None',
               ],
               [
@@ -1220,7 +1220,7 @@ export function CampaignDetailPage() {
               ],
               [
                 'Created',
-                campaign.created_at ? new Date(campaign.created_at).toLocaleString() : '—',
+                campaign.created_at ? new Date(campaign.created_at).toLocaleString() : '-',
               ],
             ]}
           />
@@ -1312,11 +1312,11 @@ export function CampaignDetailPage() {
                     key={`${String(row.created_at ?? '')}-${String(row.click_id ?? '')}-${index}`}
                   >
                     <td>
-                      {row.created_at ? new Date(String(row.created_at)).toLocaleString() : '—'}
+                      {row.created_at ? new Date(String(row.created_at)).toLocaleString() : '-'}
                     </td>
-                    <td>{String(row.event_type ?? '—')}</td>
-                    <td className="font-mono text-hint">{String(row.click_id ?? '—')}</td>
-                    <td>{String(row.user_id ?? '—')}</td>
+                    <td>{String(row.event_type ?? '-')}</td>
+                    <td className="font-mono text-hint">{String(row.click_id ?? '-')}</td>
+                    <td>{String(row.user_id ?? '-')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1330,8 +1330,8 @@ export function CampaignDetailPage() {
           <div className="stack">
             <ConfigGrid
               rows={[
-                ['Target URL', campaign.target_url ?? '—'],
-                ['Brand ID', campaign.brand_id ?? '—'],
+                ['Target URL', campaign.target_url ?? '-'],
+                ['Brand ID', campaign.brand_id ?? '-'],
               ]}
             />
             <CampaignBrandCreativesSection

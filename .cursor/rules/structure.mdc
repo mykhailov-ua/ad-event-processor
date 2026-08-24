@@ -1,12 +1,18 @@
 ---
-description: Current flat repo layout, cmd map, future split backlog
+description: Current flat repo layout, cmd map, future split map
 globs: internal/**, cmd/**, pkg/**, api/**
 alwaysApply: false
 ---
 
-## Current canonical layout (do not refactor without explicit task)
+# Repository Structure
 
-Production code uses **flat domain packages**, not the staged migration tree:
+## Purpose
+
+Documents the **current canonical** flat layout. Do not refactor toward a staged migration tree without an explicit task.
+
+## Current canonical layout
+
+Production code uses **flat domain packages**, not layered ceremony subtrees.
 
 | Package | Role |
 | :--- | :--- |
@@ -17,11 +23,16 @@ Production code uses **flat domain packages**, not the staged migration tree:
 | `internal/domain/` | Shared hot-path types, sharding, budget invariants |
 | `internal/<svc>/` | Side domains: `payment/`, `ledger/`, `notify/`, `identity/`, `edge/`, `rtb/`, `openrtb/` |
 
-Module: `ad-event-processor`. `cmd/<binary>/main.go` wires config only — no business logic in `main`.
+Module: `ad-event-processor`. `cmd/<binary>/main.go` wires config only - no business logic in `main`.
 
-Banned ceremony: `dto/`, `usecase/`, `providers/`, `repositories/` subtrees. Allowed subdirs: `db/`, `queries/`, `migrations/`, `pb/`. Exceptions: `controlplane/authz/`, `controlplane/outboxpb/`.
+## Allowed vs banned subtrees
 
-Root clutter ban: no `*.log`, compiled binaries, ad-hoc `.env.*` in repo root — use `var/`, `config/env/`, `bin/`.
+| Allowed subdirs | Banned ceremony |
+| :--- | :--- |
+| `db/`, `queries/`, `migrations/`, `pb/` | `dto/`, `usecase/`, `providers/`, `repositories/` |
+| `controlplane/authz/`, `controlplane/outboxpb/` | Generic `services/` subtrees |
+
+Root clutter ban: no `*.log`, compiled binaries, ad-hoc `.env.*` in repo root - use `var/`, `config/env/`, `bin/`.
 
 ## cmd map
 
@@ -37,15 +48,22 @@ Root clutter ban: no `*.log`, compiled binaries, ad-hoc `.env.*` in repo root �
 ## Dependency arrows
 
 ```
-cmd → internal/control | cmd/*/main
+cmd -> internal/control | cmd/*/main
 ingest hot path must NOT import controlplane admin or internal/fraud scoring
 pkg/* must NOT import internal/*
 ```
 
-## Future target (BACKLOG only)
+Tracker (`internal/ingestion`) must not import `internal/controlplane` admin handlers or `internal/fraud` scoring. `pkg/*` is shared utilities only - no `internal/*` imports.
 
-Planned split map (not current): `controlplane` → `campaign/`, `billing/`, `fraud/admin/`, …; `ingestion` → `ingest/`, `filter/`, `stream/`, `track/`. See `BACKLOG.md` — **do not implement opportunistically**.
+## Future target (do not implement opportunistically)
+
+Planned split map (not current):
+
+- `controlplane` -> `campaign/`, `billing/`, `fraud/admin/`, ...
+- `ingestion` -> `ingest/`, `filter/`, `stream/`, `track/`
 
 Package cap when splitting: ~40 files or ~8k LOC per package; one domain per package; each domain gets `doc.go` with invariants.
 
-Related: `code-style.mdc`, `boundaries.mdc`, `naming.mdc`, `architecture.mdc`.
+## Related rules
+
+`boundaries.mdc`, `code-style.mdc`, `naming.mdc`, `architecture.mdc`.

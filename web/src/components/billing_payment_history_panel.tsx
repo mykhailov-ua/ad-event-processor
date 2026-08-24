@@ -103,14 +103,14 @@ export function BillingPaymentHistoryPanel({ customerId }: BillingPaymentHistory
                   key={row.intent_id ?? row.created_at}
                   data-testid={`payment-row-${row.intent_id}`}
                 >
-                  <td>{row.intent_id ? <CopyableUuid uuid={row.intent_id} /> : '—'}</td>
+                  <td>{row.intent_id ? <CopyableUuid uuid={row.intent_id} /> : '-'}</td>
                   <td className="font-mono">
                     {formatAmountMicro(row.amount_micro ?? 0, row.currency)}
                   </td>
-                  <td>{row.status ? formatPaymentStatus(row.status) : '—'}</td>
-                  <td>{row.provider ?? '—'}</td>
+                  <td>{row.status ? formatPaymentStatus(row.status) : '-'}</td>
+                  <td>{row.provider ?? '-'}</td>
                   <td className="text-muted text-sm">
-                    {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
+                    {row.created_at ? new Date(row.created_at).toLocaleString() : '-'}
                   </td>
                 </tr>
               ))}

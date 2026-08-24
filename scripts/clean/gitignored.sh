@@ -40,7 +40,7 @@ remaining="${remaining//[[:space:]]/}"
 ignored_untracked="${ignored_untracked//[[:space:]]/}"
 
 if [[ "$remaining" -ne 0 || "$ignored_untracked" -ne 0 ]]; then
-  echo "clean-gitignored: FAILED — ignored files remain on disk" >&2
+  echo "clean-gitignored: FAILED - ignored files remain on disk" >&2
   find . -path ./.git -prune -o -type f -print 2> /dev/null | git check-ignore --stdin 2> /dev/null | head -20 >&2 || true
   git ls-files --others -i --exclude-standard 2> /dev/null | head -20 >&2 || true
   echo "hint: sudo rm -rf <path> for root-owned artifacts, then re-run: bash scripts/clean/gitignored.sh" >&2

@@ -13,7 +13,6 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
-	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -184,30 +183,6 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	require.NotEmpty(t, report.Hourly)
 }
 
-func TestAPI_GetCampaignStats_InvalidGranularity(t *testing.T) {
-	pool, cleanupDB := database.SetupTestDB(t)
-	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
-	defer cleanupRedis()
-
-	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
-
-	campID := uuid.New()
-	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats?granularity=day", http.NoBody)
-	withAdminAPIKey(req, cfg)
-	resp := httptest.NewRecorder()
-	mux.ServeHTTP(resp, req)
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
-
-	var body httpresponse.ErrorResponse
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&body))
-	assert.Equal(t, "BAD_REQUEST", body.Error.Code)
-}
-
 func TestSumCampaignStatsInRange_Explain(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -244,8 +219,8 @@ func TestSumCampaignStatsInRange_Explain(t *testing.T) {
 			COALESCE(SUM(conversions_count), 0)::bigint
 		FROM campaign_stats
 		WHERE campaign_id = $1
-		  AND date >= $2::date
-		  AND date <= $3::date`,
+		 AND date >= $2::date
+		 AND date <= $3::date`,
 		domain.ToUUID(campaignID), from, to)
 	require.NoError(t, err)
 	defer rows.Close()

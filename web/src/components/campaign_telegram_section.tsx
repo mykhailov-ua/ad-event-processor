@@ -33,9 +33,9 @@ type TelegramBotForm = {
 };
 
 function maskSecret(value: string): string {
-  if (!value) return '—';
-  if (value.length <= 4) return '••••';
-  return `••••${value.slice(-4)}`;
+  if (!value) return '-';
+  if (value.length <= 4) return '****';
+  return `****${value.slice(-4)}`;
 }
 
 async function copyText(text: string): Promise<void> {
@@ -219,7 +219,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
   };
 
   if (loading) {
-    return <p className="text-muted">Loading Telegram settings…</p>;
+    return <p className="text-muted">Loading Telegram settings...</p>;
   }
 
   if (error) {
@@ -236,7 +236,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
           <Link to={`/reports/telegram?campaign_id=${encodeURIComponent(campaignId)}`}>
             Open full analytics
           </Link>
-          {' · '}
+          {' , '}
           Tracking endpoints: <code className="font-mono">/tg/click</code>,{' '}
           <code className="font-mono">/tg/impression</code>
         </p>
@@ -281,7 +281,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
               id="tg-webhook-url"
               className="form-input"
               disabled={!canWrite}
-              placeholder="https://your-domain/api/v1/telegram/webhook/…"
+              placeholder="https://your-domain/api/v1/telegram/webhook/..."
               value={bot.webhook_url}
               onChange={(e) => setBot((b) => ({ ...b, webhook_url: e.target.value }))}
             />
@@ -350,7 +350,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
           </label>
           {canWrite ? (
             <Button
-              label={saving ? 'Saving…' : 'Save bot config'}
+              label={saving ? 'Saving...' : 'Save bot config'}
               variant="primary"
               type="submit"
               loading={saving}
@@ -401,7 +401,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
               </p>
               <p className="text-muted">
                 Expires:{' '}
-                {deeplink.expires_at ? new Date(deeplink.expires_at).toLocaleString() : '—'}
+                {deeplink.expires_at ? new Date(deeplink.expires_at).toLocaleString() : '-'}
               </p>
               <div className="toolbar-row">
                 <code className="code-inline flex-1">{clickBridgeUrl(deeplink.token)}</code>
@@ -481,7 +481,7 @@ export function CampaignTelegramSection({ campaignId, canWrite }: CampaignTelegr
                 />
               </label>
               <Button
-                label={postbackBusy ? 'Adding…' : 'Add postback'}
+                label={postbackBusy ? 'Adding...' : 'Add postback'}
                 variant="primary"
                 size="sm"
                 type="submit"

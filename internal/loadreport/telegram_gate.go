@@ -136,7 +136,7 @@ func WriteTelegramGateReport(outDir, promURL string) (string, error) {
 	if result.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString("\n**Result: FAIL** — see TELEGRAM.md T9 / platform-sla.mdc SLA.\n")
+		b.WriteString("\n**Result: FAIL** - see TELEGRAM.md T9 / platform-sla.mdc SLA.\n")
 	}
 	if err := os.WriteFile(path, []byte(b.String()), 0o644); err != nil {
 		return "", err

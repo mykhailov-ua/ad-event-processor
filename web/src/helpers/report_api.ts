@@ -214,7 +214,7 @@ export async function submitReportExport(
       status: 429,
       stub: false,
       rateLimited: true,
-      message: `Rate limited — retry in ${Math.ceil(parseRetryAfterMs(apiErr) / 1000)}s`,
+      message: `Rate limited - retry in ${Math.ceil(parseRetryAfterMs(apiErr) / 1000)}s`,
     };
   }
   probeEnd(probe, { allocs: 1, bytes: 128 });
@@ -277,4 +277,35 @@ export function savedViewHref(view: SavedViewRow): string {
   if (spec.to) qs.set('to', String(spec.to));
   const q = qs.toString();
   return q ? `${base}?${q}` : base;
+}
+
+export type ReportScheduleInput = {
+  customerId: string;
+  reportKey: string;
+  cronExpr: string;
+  spec?: Record<string, unknown>;
+  format?: string;
+  enabled?: boolean;
+};
+
+export async function listReportSchedules(customerId: string): Promise<unknown[]> {
+  const params = new URLSearchParams({ customer_id: customerId });
+  const { data } = await api(`/api/v1/report-schedules?${params.toString()}`);
+  return Array.isArray(data) ? data : [];
+}
+
+export async function createReportSchedule(input: ReportScheduleInput): Promise<unknown> {
+  return (
+    await apiConfirmed('/api/v1/report-schedules', {
+      method: 'POST',
+      body: JSON.stringify({
+        customer_id: input.customerId,
+        report_key: input.reportKey,
+        cron_expr: input.cronExpr,
+        spec: input.spec ?? {},
+        format: input.format ?? 'csv',
+        enabled: input.enabled ?? true,
+      }),
+    })
+  ).data;
 }

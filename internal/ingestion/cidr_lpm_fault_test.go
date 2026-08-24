@@ -123,7 +123,7 @@ func TestCIDR_FeedRefreshFailClosed_FirstBootFailOpen(t *testing.T) {
 
 func TestCIDR_FeedLoader_LineFormats(t *testing.T) {
 	dir := t.TempDir()
-	writeFeedFile(t, dir, "tor.txt", "# exit nodes\n185.220.101.1\n185.220.101.2  # inline\njunk line\n2001:db8::1\n")
+	writeFeedFile(t, dir, "tor.txt", "# exit nodes\n185.220.101.1\n185.220.101.2 # inline\njunk line\n2001:db8::1\n")
 	writeFeedFile(t, dir, "other.txt", "203.0.113.0/24\n")
 
 	cfg := &config.Config{CIDRL1Enabled: true, CIDRFeedDir: dir, CIDRFeedRefresh: time.Hour}

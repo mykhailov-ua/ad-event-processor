@@ -62,10 +62,10 @@ func SendTelegram(ctx context.Context, cfg Config, breaker *CircuitBreaker, reci
 	if actions.AcknowledgeURL != "" || actions.BlockIPURL != "" {
 		var rows []telegramButtonRow
 		if actions.AcknowledgeURL != "" {
-			rows = append(rows, telegramButtonRow{{Text: "✅ Acknowledge Incident", URL: actions.AcknowledgeURL}})
+			rows = append(rows, telegramButtonRow{{Text: "Acknowledge Incident", URL: actions.AcknowledgeURL}})
 		}
 		if actions.BlockIPURL != "" {
-			rows = append(rows, telegramButtonRow{{Text: "🚫 Block IP " + actions.BlockIP, URL: actions.BlockIPURL}})
+			rows = append(rows, telegramButtonRow{{Text: "Block IP " + actions.BlockIP, URL: actions.BlockIPURL}})
 		}
 		payload.ReplyMarkup = &telegramReplyMarkup{InlineKeyboard: rows}
 	}
@@ -128,10 +128,10 @@ func SendSlack(ctx context.Context, cfg Config, breaker *CircuitBreaker, recipie
 		}
 		var buttons []slackButton
 		if actions.AcknowledgeURL != "" {
-			buttons = append(buttons, slackButton{Type: "button", Text: slackText{Type: "plain_text", Text: "✅ Acknowledge"}, URL: actions.AcknowledgeURL})
+			buttons = append(buttons, slackButton{Type: "button", Text: slackText{Type: "plain_text", Text: "Acknowledge"}, URL: actions.AcknowledgeURL})
 		}
 		if actions.BlockIPURL != "" {
-			buttons = append(buttons, slackButton{Type: "button", Style: "danger", Text: slackText{Type: "plain_text", Text: "🚫 Block IP " + actions.BlockIP}, URL: actions.BlockIPURL})
+			buttons = append(buttons, slackButton{Type: "button", Style: "danger", Text: slackText{Type: "plain_text", Text: "Block IP " + actions.BlockIP}, URL: actions.BlockIPURL})
 		}
 		blocks = append(blocks, slackBlock{Type: "actions", Elements: buttons})
 		payload = slackBlocksPayload{Blocks: blocks}

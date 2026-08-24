@@ -12,7 +12,7 @@ INTERNAL_DIR="$ROOT_DIR/internal/$SERVICE_NAME"
 CMD_DIR="$ROOT_DIR/cmd/$SERVICE_NAME"
 PKG_NAME=$(echo "$SERVICE_NAME" | tr '-' '_')
 
-echo "🚀 Scaffolding service: $SERVICE_NAME"
+echo "Scaffolding service: $SERVICE_NAME"
 
 mkdir -p "$INTERNAL_DIR"/{db,pb,queries,migrations}
 mkdir -p "$CMD_DIR"
@@ -163,5 +163,5 @@ cat << EOF >> "$ROOT_DIR/sqlc.yaml"
         emit_exact_table_names: false
 EOF
 
-echo "✅ Service $SERVICE_NAME scaffolded successfully!"
-echo "👉 Don't forget to run 'task gen' to generate sqlc code."
+echo "Service $SERVICE_NAME scaffolded successfully"
+echo "Run 'task gen' to generate sqlc code"

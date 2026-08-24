@@ -1,4 +1,4 @@
-# Reference template — runtime file is deploy/ingress/caddy/generated/Caddyfile
+# Reference template - runtime file is deploy/ingress/caddy/generated/Caddyfile
 # Generate: bash scripts/install/render_ingress.sh
 # On-demand TLS: INGRESS_TLS_MODE=on_demand CADDY_ACME_EMAIL=ops@example.com bash scripts/install/render_ingress.sh
 
@@ -21,4 +21,4 @@
 	reverse_proxy 127.0.0.1:8188
 }
 
-# On-demand mode (:443 catch-all) — see render_ingress.sh when INGRESS_TLS_MODE=on_demand
+# On-demand mode (:443 catch-all) - see render_ingress.sh when INGRESS_TLS_MODE=on_demand

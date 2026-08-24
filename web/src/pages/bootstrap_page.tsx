@@ -156,7 +156,7 @@ export function BootstrapPage() {
 
           <div className="form-actions">
             <Button
-              label={loading ? 'Initializing…' : 'Initialize platform'}
+              label={loading ? 'Initializing...' : 'Initialize platform'}
               variant="primary"
               type="submit"
               className="btn--block"

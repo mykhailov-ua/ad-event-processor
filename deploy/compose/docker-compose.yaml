@@ -1391,6 +1391,7 @@ services:
 
 networks:
   database:
+  monitoring:
 
 volumes:
   db_data:

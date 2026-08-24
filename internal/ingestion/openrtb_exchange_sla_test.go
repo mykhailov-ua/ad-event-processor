@@ -108,8 +108,7 @@ func BenchmarkOpenRTB26_exchangeGnet(b *testing.B) {
 		"Content-Length": itoa(len(body)),
 	}, body)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, conn := ServeGnetHarness(h, wire)
 		_ = conn.Written()
 	}
@@ -136,8 +135,7 @@ func BenchmarkRunOpenRTBExchangeParsed(b *testing.B) {
 	exCfg := openrtb.ExchangeConfig{MultiImpMax: 1, SeatID: []byte("1")}
 	var admBuf [openrtb26ImpMax][512]byte
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		var evt domain.Event
 		_ = runOpenRTBExchangeParsed(proc, &p.OpenRTB26Hot, &p.OpenRTB26Cold, []byte("bid-bench"), "8.8.8.8", exCfg, &admBuf, &evt)
 	}

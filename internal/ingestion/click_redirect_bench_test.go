@@ -52,8 +52,7 @@ func BenchmarkParseClickQuery(b *testing.B) {
 	parsed := &clickQueryParsed{}
 	b.ReportAllocs()
 	b.SetBytes(int64(len(path)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		scratch = parseClickQuery(path, scratch[:0], parsed)
 	}
 }
@@ -68,8 +67,7 @@ func BenchmarkParseClickQuery30Params(b *testing.B) {
 	parsed := &clickQueryParsed{}
 	b.ReportAllocs()
 	b.SetBytes(int64(len(path)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		scratch = parseClickQuery(path, scratch[:0], parsed)
 	}
 }
@@ -80,8 +78,7 @@ func BenchmarkBuildRedirectLocation(b *testing.B) {
 	pass := []byte("gclid=GCLID99&ttclid=TTC99")
 	dst := make([]byte, 0, 512)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		dst, _ = buildRedirectLocation(dst[:0], base, "bench-click", "u1", subs, pass)
 	}
 }
@@ -96,8 +93,7 @@ func BenchmarkClickRedirectGnet_E2E(b *testing.B) {
 	h.React(req, conn)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		conn.written = conn.written[:0]
 		conn.responses = conn.responses[:0]
 		h.React(req, conn)
@@ -109,8 +105,7 @@ func BenchmarkClickRedirectExpandMacros(b *testing.B) {
 	subs := SubIDSlots{"fb"}
 	dst := make([]byte, 0, 256)
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		dst = expandRedirectMacros(dst[:0], base, "bench-click", "u1", subs)
 	}
 }

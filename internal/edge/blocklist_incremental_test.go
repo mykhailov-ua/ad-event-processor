@@ -150,8 +150,7 @@ func BenchmarkSyncBlocklistFromRedis_fullSMEMBERS(b *testing.B) {
 	maps := newTestBlocklistMapsV4OnlyBench(b)
 	store := NewBlocklistStore()
 	b.ReportMetric(float64(n), "ips")
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		store = NewBlocklistStore()
 		_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
 		if err != nil {
@@ -187,8 +186,7 @@ func BenchmarkSyncBlocklistIncremental_changelogDelta(b *testing.B) {
 	require.NoError(b, rdb.ZAdd(ctx, redisKeyBlacklistChangelogAdd, zs...).Err())
 
 	b.ReportMetric(deltaIPs, "delta_ips")
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
 		if err != nil {
 			b.Fatal(err)

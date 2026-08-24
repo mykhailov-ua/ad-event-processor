@@ -79,7 +79,7 @@ export function SelfServeCampaignCreatePage() {
         </p>
       </div>
       <div className="section-card stack">
-        {loading ? <p className="text-muted">Loading templates…</p> : null}
+        {loading ? <p className="text-muted">Loading templates...</p> : null}
         {!loading ? (
           <>
             <label className="form-field" htmlFor="ss-template">
@@ -117,7 +117,7 @@ export function SelfServeCampaignCreatePage() {
               />
             </label>
             <Button
-              label={busy ? 'Creating…' : 'Create from template'}
+              label={busy ? 'Creating...' : 'Create from template'}
               variant="primary"
               loading={busy}
               disabled={!canWrite || busy || !templateId}

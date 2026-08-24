@@ -432,10 +432,10 @@ func TestSend_interactiveButtons(t *testing.T) {
 	}
 	var telegramRows []telegramButtonRow
 	if actions.AcknowledgeURL != "" {
-		telegramRows = append(telegramRows, telegramButtonRow{{Text: "✅ Acknowledge Incident", URL: actions.AcknowledgeURL}})
+		telegramRows = append(telegramRows, telegramButtonRow{{Text: "Acknowledge Incident", URL: actions.AcknowledgeURL}})
 	}
 	if actions.BlockIPURL != "" {
-		telegramRows = append(telegramRows, telegramButtonRow{{Text: "🚫 Block IP " + actions.BlockIP, URL: actions.BlockIPURL}})
+		telegramRows = append(telegramRows, telegramButtonRow{{Text: "Block IP " + actions.BlockIP, URL: actions.BlockIPURL}})
 	}
 	telegramMsg.ReplyMarkup = &telegramReplyMarkup{InlineKeyboard: telegramRows}
 
@@ -455,10 +455,10 @@ func TestSend_interactiveButtons(t *testing.T) {
 	}
 	var buttons []slackButton
 	if actions.AcknowledgeURL != "" {
-		buttons = append(buttons, slackButton{Type: "button", Text: slackText{Type: "plain_text", Text: "✅ Acknowledge"}, URL: actions.AcknowledgeURL})
+		buttons = append(buttons, slackButton{Type: "button", Text: slackText{Type: "plain_text", Text: "Acknowledge"}, URL: actions.AcknowledgeURL})
 	}
 	if actions.BlockIPURL != "" {
-		buttons = append(buttons, slackButton{Type: "button", Style: "danger", Text: slackText{Type: "plain_text", Text: "🚫 Block IP " + actions.BlockIP}, URL: actions.BlockIPURL})
+		buttons = append(buttons, slackButton{Type: "button", Style: "danger", Text: slackText{Type: "plain_text", Text: "Block IP " + actions.BlockIP}, URL: actions.BlockIPURL})
 	}
 	blocks = append(blocks, slackBlock{Type: "actions", Elements: buttons})
 

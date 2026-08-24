@@ -51,7 +51,7 @@ const LOGIN_HTML = `<!doctype html>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign in — ad-event-processor Admin</title>
+    <title>Sign in - ad-event-processor Admin</title>
 ${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
     <link rel="stylesheet" href="/src/styles/a11y.css?v=${ts}" />
   </head>
@@ -65,7 +65,7 @@ ${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'src'), { recursive: true });
 
-// Sources are *.worker.ts; esbuild entryNames keep basename → dist/src/workers/*.worker.js
+// Sources are *.worker.ts; esbuild entryNames keep basename -> dist/src/workers/*.worker.js
 const workerEntries = [
   join(SRC, 'workers', 'parse_json.worker.ts'),
   join(SRC, 'workers', 'report_aggregate.worker.ts'),
@@ -105,7 +105,7 @@ writeFileSync(join(DIST, 'index.html'), INDEX_HTML, 'utf8');
 writeFileSync(join(DIST, 'login.html'), LOGIN_HTML, 'utf8');
 
 console.log(
-  'dist: esbuild bundle → dist/src/{main,login,workers,chunks} + styles/static + HTML shells'
+  'dist: esbuild bundle -> dist/src/{main,login,workers,chunks} + styles/static + HTML shells'
 );
 
 const HYDRATOR_OUT = resolve(ROOT, '..', 'internal', 'ingestion', 'safe_page_hydrator.js');
@@ -125,4 +125,4 @@ await esbuild.build({
   },
 });
 
-console.log('hydrator: esbuild → internal/ingestion/safe_page_hydrator.js');
+console.log('hydrator: esbuild -> internal/ingestion/safe_page_hydrator.js');

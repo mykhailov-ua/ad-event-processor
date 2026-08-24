@@ -116,7 +116,7 @@ sysctl_set() {
 
 cgroup_attach_pid() {
   local pid=$1
-  [[ -d "$CGROUP_PATH" ]] || die "cgroup missing: ${CGROUP_PATH} (run 01_setup_purgatory_cgroup.sh first)"
+  [[ -d "$CGROUP_PATH" ]] || die "cgroup missing: ${CGROUP_PATH} (run setup_purgatory_cgroup.sh first)"
   [[ -d "/proc/${pid}" ]] || die "PID ${pid} is not running"
   echo "$pid" > "${CGROUP_PATH}/cgroup.procs"
 }

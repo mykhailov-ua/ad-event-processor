@@ -4,11 +4,15 @@ globs: web/**, scripts/ci/admin_web.sh, scripts/ci/check_ui*.sh, scripts/ci/repo
 alwaysApply: false
 ---
 
-Stack: React 19 + TypeScript. CSS tokens only — sources: `web/src/styles/tokens.css`, `main.css`, `components.css`, `a11y.css`. Visual: Geist zinc dark; Grafana Saga UX principles (not `@grafana/ui`).
+# Admin UI
+
+## Purpose
+
+React 19 + TypeScript admin surface. CSS tokens only - sources: `web/src/styles/tokens.css`, `main.css`, `components.css`, `a11y.css`. Visual: Geist zinc dark; Grafana Saga UX principles (not `@grafana/ui`).
 
 JSDoc: every function, module constant, block-scoped arrow callback (`quality.mdc`).
 
-## Tokens
+## Design tokens
 
 | Token | Usage |
 | :--- | :--- |
@@ -19,7 +23,7 @@ JSDoc: every function, module constant, block-scoped arrow callback (`quality.md
 | `--accent` | Primary CTA, links, focus |
 | `--radius-sm` (6px) | Buttons, inputs |
 | `--radius-lg`, `--radius-modal` (12px) | Modals, menus |
-| `--spacing-4` … `--spacing-48` | 4px grid; default gaps 16/24 |
+| `--spacing-4` ... `--spacing-48` | 4px grid; default gaps 16/24 |
 | `--success`, `--warning`, `--danger`, `--info` | Status only |
 
 Rules: border over shadow (shadows on modal/toast/menu only); dark default; **no hard-coded hex** in components.
@@ -41,21 +45,43 @@ Reuse before inventing:
 
 | Template | Structure |
 | :--- | :--- |
-| **Overview** | `PageHeader` → alerts → `KpiGrid` → sections |
-| **List** | header + filters + `data-table` + `EmptyState` |
-| **Detail** | header + tabs/panels + header actions |
-| **Settings** | header + `SectionCard` stack + action bar |
-| **Wizard** | stepper + one column + single primary CTA |
+| Overview | `PageHeader` -> alerts -> `KpiGrid` -> sections |
+| List | header + filters + `data-table` + `EmptyState` |
+| Detail | header + tabs/panels + header actions |
+| Settings | header + `SectionCard` stack + action bar |
+| Wizard | stepper + one column + single primary CTA |
 
 Required chrome: `PageHeader` on every authenticated page; `PageStack`; `PageSkeleton` loading; `EmptyState` for empty (title + one sentence + optional CTA).
 
-Confirm friction: `confirm_catalog` — low for renames; confirm for pause, revoke key, budget overwrite.
+Confirm friction: `confirm_catalog` - low for renames; confirm for pause, revoke key, budget overwrite.
+
+## API wiring workflow
+
+Before shipping a page:
+
+1. Read Go handler DTO first (`internal/controlplane/*_handlers.go`, `*_dto.go`).
+2. Match `json` field names in `web/src/types/` and `helpers/*_api.ts`.
+3. Gate live routes: `bash scripts/ci/report_live_routes_gate.sh` - `live: true` requires real `/api/v1` backend.
+4. Use `FreshnessBadge` when endpoint returns `stale` or freshness metadata.
 
 ## Product honesty (extends anti-slop)
 
-Forbidden: `live: true` on stub routes; fetch then always empty table; silent `catch`; "Saved" before 2xx; form fields not in Go DTO; hardcoded demo KPIs; echo secrets after save.
+Forbidden:
 
-Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on errors; `apiConfirmed` on mutations; money via `formatUsdDecimal` / `formatAmountMicro`.
+- `live: true` on stub routes
+- Fetch then always empty table
+- Silent `catch` without `renderErrorBlock`
+- "Saved" toast before 2xx
+- Form fields not in Go DTO
+- Hardcoded demo KPIs
+- Echo secrets after save
+
+Required:
+
+- `StubBanner` for 501
+- `renderErrorBlock` on errors
+- `apiConfirmed` on mutations
+- Money via `formatUsdDecimal` / `formatAmountMicro`
 
 ## Verification
 
@@ -66,4 +92,6 @@ bash scripts/ci/admin_web.sh
 
 Release: `admin_ui_release_gate.sh`, `admin_release_gate.sh`, `TestAdminStaticRoutes`.
 
-Related: `anti-slop.mdc`, `cold-path.mdc`, `development.mdc`.
+## Related rules
+
+`anti-slop.mdc`, `cold-path.mdc`, `control-plane.mdc`, `development.mdc`, `quality.mdc`.

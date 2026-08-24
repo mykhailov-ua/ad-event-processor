@@ -319,7 +319,7 @@ const benches = [
 
 console.log('Admin UI benchmarks (node --expose-gc)');
 console.log('');
-console.log('| Benchmark | ns/op | ops/s | heap Δ (bytes) |');
+console.log('| Benchmark | ns/op | ops/s | heap delta (bytes) |');
 console.log('|-----------|------:|------:|---------------:|');
 for (const row of benches) {
   console.log(`| ${row.name} | ${row.nsPerOp} | ${row.opsPerSec} | ${row.heapDeltaBytes} |`);

@@ -13,7 +13,7 @@ func TestMain(m *testing.M) {
 		fmt.Fprintf(os.Stderr, "edge_test: WARN RemoveMemlock: %v\n", err)
 	}
 	if disabled, _ := readUnprivilegedBPFDisabled(); disabled >= 2 {
-		fmt.Fprintf(os.Stderr, "edge_test: WARN kernel.unprivileged_bpf_disabled=%d — BPF map tests need root/CAP_BPF (prog_test skips)\n", disabled)
+		fmt.Fprintf(os.Stderr, "edge_test: WARN kernel.unprivileged_bpf_disabled=%d - BPF map tests need root/CAP_BPF (prog_test skips)\n", disabled)
 	}
 	os.Exit(m.Run())
 }

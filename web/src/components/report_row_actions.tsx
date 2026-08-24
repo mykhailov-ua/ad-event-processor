@@ -63,7 +63,7 @@ export function ReportRowActions({ row, customerId, reportEndpoint }: ReportRowA
   };
 
   if (!hasCampaign && reportEndpoint !== 'discrepancy-buy-sell') {
-    return <span className="text-muted text-xs">—</span>;
+    return <span className="text-muted text-xs">-</span>;
   }
 
   return (
@@ -95,7 +95,7 @@ export function ReportRowActions({ row, customerId, reportEndpoint }: ReportRowA
           {customerId ? (
             <ButtonLink
               href={smartAlertPrefillHref(ctx)}
-              label="Create alert…"
+              label="Create alert..."
               variant="secondary"
               size="sm"
               data-testid="report-action-alert"

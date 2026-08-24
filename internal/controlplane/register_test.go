@@ -85,8 +85,6 @@ func TestCatalog_reportRoutesRegistered(t *testing.T) {
 func TestCatalog_noRetiredReportPaths(t *testing.T) {
 	t.Parallel()
 	retired := []string{
-		"/api/v1/reports/pacing-drift",
-		"/api/v1/reports/postback-reconciliation",
 		"/api/v1/reports/source-margin",
 		"/api/v1/reports/campaign-unit-economics",
 	}

@@ -200,21 +200,21 @@ func BenchmarkRedisBreaker_AdaptiveHotPath(b *testing.B) {
 
 	b.Run("Allow", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			_ = breaker.Allow()
 		}
 	})
 
 	b.Run("RecordSuccess", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			breaker.RecordSuccess()
 		}
 	})
 
 	b.Run("RecordFailure", func(b *testing.B) {
 		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			breaker.RecordFailure()
 		}
 	})

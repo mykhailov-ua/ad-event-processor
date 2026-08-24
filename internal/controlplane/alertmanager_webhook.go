@@ -150,7 +150,7 @@ func FormatAlertmanagerAlert(alert AlertmanagerAlert) (title, body string) {
 	}
 	description := alert.Annotations["description"]
 	if description == "" {
-		description = "—"
+		description = "-"
 	}
 
 	title = fmt.Sprintf("%s: %s", branding.ProductName(), alertName)

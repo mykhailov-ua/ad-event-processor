@@ -38,11 +38,3 @@ type trackRequestReflect struct {
 	ClickID    string          `json:"click_id"`
 	Payload    json.RawMessage `json:"payload"`
 }
-
-func resetTrackRequestReflect(v *trackRequestReflect) {
-	v.CampaignID = uuid.Nil
-	v.UserID = ""
-	v.Type = ""
-	v.ClickID = ""
-	v.Payload = v.Payload[:0]
-}

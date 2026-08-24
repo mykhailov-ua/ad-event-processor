@@ -489,6 +489,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 	svc.StartOpsMetricScraper(ctx, scrapeURL)
 	slog.Info("ops metric scraper enabled", "url", scrapeURL)
+	svc.StartFilterRejectRollupWorker(ctx, scrapeURL)
+	svc.InitReportJobRunner(reportExportDirFromWire())
+	svc.StartReportJobWorker(ctx)
+	svc.StartReportScheduleWorker(ctx)
 
 	if cfg.Management.SmartAlertsEnabled {
 		interval := time.Duration(cfg.Management.SmartAlertsIntervalMin) * time.Minute

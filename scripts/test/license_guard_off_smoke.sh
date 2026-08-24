@@ -31,4 +31,4 @@ if ! grep -q 'LICENSE_GUARD_PTRACE=0' .cursor/rules/licensing.mdc; then
   die ".cursor/rules/licensing.mdc missing LICENSE_GUARD_PTRACE=0 ops note"
 fi
 
-log "ok — set AD_EVENT_PROCESSOR_LICENSE_GUARD=0 (or GUARD_PTRACE=0) before gdb/strace/delve on release builds"
+log "ok - set AD_EVENT_PROCESSOR_LICENSE_GUARD=0 (or GUARD_PTRACE=0) before gdb/strace/delve on release builds"

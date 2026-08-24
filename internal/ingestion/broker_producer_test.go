@@ -109,7 +109,7 @@ func TestBrokerProducer_LatencySLA(t *testing.T) {
 	p50 := percentileDuration(latencies, 50)
 	p99 := percentileDuration(latencies, 99)
 	t.Logf("BrokerProducer.Enqueue n=%d p50=%v p99=%v", iterations, p50, p99)
-	require.Less(t, p99, p99Budget, "broker Enqueue p99 must stay under 1 µs hot-path budget")
+	require.Less(t, p99, p99Budget, "broker Enqueue p99 must stay under 1 us hot-path budget")
 }
 
 func TestBrokerProducer_EnqueueAndFlush(t *testing.T) {
@@ -250,9 +250,7 @@ func BenchmarkTrackerToBroker(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		if err := bp.Enqueue(&evt); err != nil {
 			time.Sleep(10 * time.Microsecond)
 		}

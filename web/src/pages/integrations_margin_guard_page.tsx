@@ -103,13 +103,13 @@ export function IntegrationsMarginGuardPage() {
         </label>
       ) : (
         <p className="text-muted text-sm">
-          Customer: <span className="font-mono">{customerId || '—'}</span>
+          Customer: <span className="font-mono">{customerId || '-'}</span>
         </p>
       )}
 
       <div className="flex gap-2 items-center">
         <Button
-          label={loading ? 'Scanning…' : 'Scan campaigns'}
+          label={loading ? 'Scanning...' : 'Scan campaigns'}
           variant="secondary"
           size="sm"
           loading={loading}
@@ -151,7 +151,7 @@ export function IntegrationsMarginGuardPage() {
                 </td>
                 <td className="font-mono">${formatMicro(m.advertiser_spend_micro ?? 0)}</td>
                 <td className="font-mono">${formatMicro(m.rtb_cost_micro ?? 0)}</td>
-                <td>{String(m.threshold_bps ?? '—')}</td>
+                <td>{String(m.threshold_bps ?? '-')}</td>
                 <td>
                   <ButtonLink
                     label={canWrite ? 'Edit policy' : 'View'}

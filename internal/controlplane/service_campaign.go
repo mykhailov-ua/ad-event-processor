@@ -619,7 +619,7 @@ func (s *Service) SetClickHouseWrite(conn driver.Conn) {
 }
 
 func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, from, to time.Time, granularity string) (CampaignStatsDTO, error) {
-	if granularity != "hour" {
+	if granularity != "hour" && granularity != "day" {
 		return CampaignStatsDTO{}, fmt.Errorf("%w: %s", ErrUnsupportedGranularity, granularity)
 	}
 	if !to.After(from) {
@@ -650,6 +650,7 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 			Conversions: stats.Conversions,
 		},
 		Hourly:      []CampaignHourlyBucketDTO{},
+		Daily:       []CampaignDailyBucketDTO{},
 		Granularity: granularity,
 		From:        from.UTC().Format(time.RFC3339),
 		To:          to.UTC().Format(time.RFC3339),
@@ -666,11 +667,22 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 	chCtx, cancel := context.WithTimeout(ctx, chStatsTimeout)
 	defer cancel()
 
-	hourly, lag, err := s.queryClickHouseHourly(chCtx, campaignID, from, to)
-	if err != nil {
-		return CampaignStatsDTO{}, err
+	var lag time.Duration
+	if granularity == "hour" {
+		hourly, lagVal, err := s.queryClickHouseHourly(chCtx, campaignID, from, to)
+		if err != nil {
+			return CampaignStatsDTO{}, err
+		}
+		report.Hourly = hourly
+		lag = lagVal
+	} else {
+		daily, lagVal, err := s.queryClickHouseDaily(chCtx, campaignID, from, to)
+		if err != nil {
+			return CampaignStatsDTO{}, err
+		}
+		report.Daily = daily
+		lag = lagVal
 	}
-	report.Hourly = hourly
 	report.Consistency = "eventual"
 	report.Source = "ch"
 	report.Stale = lag > clickHouseStaleThreshold
@@ -690,22 +702,22 @@ func (s *Service) queryClickHouseHourly(ctx context.Context, campaignID uuid.UUI
 
 	query := `
 SELECT
-    hour,
-    sum(impressions) AS impressions,
-    sum(clicks) AS clicks,
-    sum(conversions) AS conversions
+ hour,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions
 FROM (
-    SELECT hour, impression_count AS impressions, toUInt64(0) AS clicks, toUInt64(0) AS conversions
-    FROM mv_campaign_hourly_impressions
-    WHERE campaign_id = ? AND hour >= ? AND hour < ?
-    UNION ALL
-    SELECT hour, toUInt64(0), click_count, toUInt64(0)
-    FROM mv_campaign_hourly_clicks
-    WHERE campaign_id = ? AND hour >= ? AND hour < ?
-    UNION ALL
-    SELECT hour, toUInt64(0), toUInt64(0), conversion_count
-    FROM mv_campaign_hourly_conversions
-    WHERE campaign_id = ? AND hour >= ? AND hour < ?
+ SELECT hour, impression_count AS impressions, toUInt64(0) AS clicks, toUInt64(0) AS conversions
+ FROM mv_campaign_hourly_impressions
+ WHERE campaign_id = ? AND hour >= ? AND hour < ?
+ UNION ALL
+ SELECT hour, toUInt64(0), click_count, toUInt64(0)
+ FROM mv_campaign_hourly_clicks
+ WHERE campaign_id = ? AND hour >= ? AND hour < ?
+ UNION ALL
+ SELECT hour, toUInt64(0), toUInt64(0), conversion_count
+ FROM mv_campaign_hourly_conversions
+ WHERE campaign_id = ? AND hour >= ? AND hour < ?
 )
 GROUP BY hour
 ORDER BY hour`
@@ -728,6 +740,71 @@ ORDER BY hour`
 		}
 		buckets = append(buckets, CampaignHourlyBucketDTO{
 			Hour:        r.hour.UTC().Format(time.RFC3339),
+			Impressions: int64(r.impressions),
+			Clicks:      int64(r.clicks),
+			Conversions: int64(r.conversions),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+
+	lag, err := s.clickHouseIngestionLag(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return buckets, lag, nil
+}
+
+func (s *Service) queryClickHouseDaily(ctx context.Context, campaignID uuid.UUID, from, to time.Time) ([]CampaignDailyBucketDTO, time.Duration, error) {
+	if s.chQuery == nil {
+		return nil, 0, nil
+	}
+	type row struct {
+		day         time.Time
+		impressions uint64
+		clicks      uint64
+		conversions uint64
+	}
+
+	query := `
+SELECT
+ day,
+ sum(impressions) AS impressions,
+ sum(clicks) AS clicks,
+ sum(conversions) AS conversions
+FROM (
+ SELECT day, impression_count AS impressions, toUInt64(0) AS clicks, toUInt64(0) AS conversions
+ FROM mv_campaign_daily_impressions
+ WHERE campaign_id = ? AND day >= toDate(?) AND day < toDate(?)
+ UNION ALL
+ SELECT day, toUInt64(0), click_count, toUInt64(0)
+ FROM mv_campaign_daily_clicks
+ WHERE campaign_id = ? AND day >= toDate(?) AND day < toDate(?)
+ UNION ALL
+ SELECT day, toUInt64(0), toUInt64(0), conversion_count
+ FROM mv_campaign_daily_conversions
+ WHERE campaign_id = ? AND day >= toDate(?) AND day < toDate(?)
+) GROUP BY day ORDER BY day`
+
+	rows, err := s.chQuery.Query(ctx, query,
+		campaignID, from.UTC(), to.UTC(),
+		campaignID, from.UTC(), to.UTC(),
+		campaignID, from.UTC(), to.UTC(),
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("clickhouse daily query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	buckets := make([]CampaignDailyBucketDTO, 0)
+	for rows.Next() {
+		var r row
+		if err := rows.Scan(&r.day, &r.impressions, &r.clicks, &r.conversions); err != nil {
+			return nil, 0, fmt.Errorf("clickhouse daily scan: %w", err)
+		}
+		buckets = append(buckets, CampaignDailyBucketDTO{
+			Day:         r.day.UTC().Format("2006-01-02"),
 			Impressions: int64(r.impressions),
 			Clicks:      int64(r.clicks),
 			Conversions: int64(r.conversions),
@@ -770,11 +847,11 @@ func (s *Service) clickHouseIngestionLag(ctx context.Context) (time.Duration, er
 	var latest time.Time
 	err := s.chQuery.QueryRow(ctx, `
 SELECT max(latest) FROM (
-    SELECT max(created_at) AS latest FROM impressions
-    UNION ALL
-    SELECT max(created_at) FROM clicks
-    UNION ALL
-    SELECT max(created_at) FROM conversions
+ SELECT max(created_at) AS latest FROM impressions
+ UNION ALL
+ SELECT max(created_at) FROM clicks
+ UNION ALL
+ SELECT max(created_at) FROM conversions
 )`).Scan(&latest)
 	if err != nil {
 		return 0, fmt.Errorf("clickhouse lag probe: %w", err)

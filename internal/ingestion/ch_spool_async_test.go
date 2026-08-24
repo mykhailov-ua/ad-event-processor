@@ -55,11 +55,12 @@ func BenchmarkCHSpool_AsyncAppend(b *testing.B) {
 	}
 
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		token := "token-" + strconv.Itoa(i)
+	benchN := 0
+	for b.Loop() {
+		token := "token-" + strconv.Itoa(benchN)
 		if err := spool.AppendDurably(token, []*domain.Event{evt}); err != nil {
 			b.Fatal(err)
 		}
+		benchN++
 	}
 }

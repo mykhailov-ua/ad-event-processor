@@ -142,6 +142,7 @@ func TestLoadTestPrometheusTemplateWiresEnvVars(t *testing.T) {
 	content := string(data)
 	for _, want := range []string{
 		"127.0.0.1:${LOAD_TEST_ALERTMANAGER_PORT}",
+		"127.0.0.1:${LOAD_TEST_CONTROL_PORT}",
 		"127.0.0.1:${LOAD_TEST_EDGE_PORT}",
 		"127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}",
 		"127.0.0.1:${LOAD_TEST_TRACKER_0_METRICS_PORT}",

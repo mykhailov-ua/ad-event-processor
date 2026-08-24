@@ -43,9 +43,7 @@ func BenchmarkGlobalSpendReconciler_ApplyBatch(b *testing.B) {
 		domain.NewStaticSlotSharder(1),
 		GlobalSpendReconcilerConfig{MinBatchSize: 100, MaxConcurrency: 8},
 	)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		b.StopTimer()
 		txns := buildSpendSyncTxns(campaignID, 100, 1_000, "bench")
 		batchKey := uuid.New().String()

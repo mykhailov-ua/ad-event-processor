@@ -57,8 +57,7 @@ func encodeHTTP3Varint(buf *bytes.Buffer, v uint64) {
 func BenchmarkHTTP3VarintDecode(b *testing.B) {
 	buf := []byte{0x7b, 0xbd}
 	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, err := quicDecodeVarint(buf, 0)
 		if err != nil {
 			b.Fatal(err)

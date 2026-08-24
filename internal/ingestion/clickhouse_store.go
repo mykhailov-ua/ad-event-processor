@@ -332,6 +332,8 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				e.CreatedAt,
 			)
 		case table == "clicks":
+			dims := extractAnalyticsDimensions(e)
+			payload := analyticsPayloadBytes(dims, e.Payload)
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
@@ -340,7 +342,12 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				piihash.FixedString16(pii.uaHash),
 				pii.saltVersion,
 				e.TLSHash,
-				unsafeString(e.Payload),
+				dims.sub1,
+				dims.sub2,
+				analyticsCountryCode(dims.country),
+				dims.deviceType,
+				dims.keyword,
+				unsafeString(payload),
 				e.CreatedAt,
 			)
 		case table == "tg_events_raw":
@@ -371,6 +378,8 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				e.Type,
 			)
 		default:
+			dims := extractAnalyticsDimensions(e)
+			payload := analyticsPayloadBytes(dims, e.Payload)
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
@@ -378,7 +387,12 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				piihash.FixedString16(pii.ipHash),
 				piihash.FixedString16(pii.uaHash),
 				pii.saltVersion,
-				unsafeString(e.Payload),
+				dims.sub1,
+				dims.sub2,
+				analyticsCountryCode(dims.country),
+				dims.deviceType,
+				dims.keyword,
+				unsafeString(payload),
 				e.CreatedAt,
 			)
 		}

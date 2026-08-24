@@ -16,7 +16,7 @@ func TestParseDecimalMicro(t *testing.T) {
 		{"150", 150000000},
 		{"0.000005", 5},
 		{"2.1234567", 2123456},
-		{"  0.75", 750000},
+		{" 0.75", 750000},
 	}
 
 	for _, tc := range tests {
@@ -29,32 +29,32 @@ func TestParseDecimalMicro(t *testing.T) {
 
 func TestParseOpenRTB3Payload(t *testing.T) {
 	payload := []byte(`{
-  "openrtb": {
-    "ver": "3.0",
-    "domainspec": "adcom",
-    "domainver": "1.0",
-    "request": {
-      "id": "req-123456789",
-      "item": [
-        {
-          "id": "item-1",
-          "flr": 1.50,
-          "spec": {
-            "placement": {
-              "tagid": "plc-mobile-banner"
-            }
-          }
-        }
-      ],
-      "context": {
-        "device": {
-          "type": 4,
-          "ip": "203.0.113.42"
-        }
-      }
-    }
-  },
-  "category_mask": 8
+ "openrtb": {
+ "ver": "3.0",
+ "domainspec": "adcom",
+ "domainver": "1.0",
+ "request": {
+ "id": "req-123456789",
+ "item": [
+ {
+ "id": "item-1",
+ "flr": 1.50,
+ "spec": {
+ "placement": {
+ "tagid": "plc-mobile-banner"
+ }
+ }
+ }
+ ],
+ "context": {
+ "device": {
+ "type": 4,
+ "ip": "203.0.113.42"
+ }
+ }
+ }
+ },
+ "category_mask": 8
 }`)
 
 	minBid, deviceType, categoryMask, isOpenRTB := ParseOpenRTB3Payload(payload)
@@ -72,32 +72,32 @@ func TestParseOpenRTB3Payload_NotOpenRTB(t *testing.T) {
 
 func TestParseOpenRTB3Payload_ZeroAlloc(t *testing.T) {
 	payload := []byte(`{
-  "openrtb": {
-    "ver": "3.0",
-    "domainspec": "adcom",
-    "domainver": "1.0",
-    "request": {
-      "id": "req-123456789",
-      "item": [
-        {
-          "id": "item-1",
-          "flr": 1.50,
-          "spec": {
-            "placement": {
-              "tagid": "plc-mobile-banner"
-            }
-          }
-        }
-      ],
-      "context": {
-        "device": {
-          "type": 4,
-          "ip": "203.0.113.42"
-        }
-      }
-    }
-  },
-  "category_mask": 8
+ "openrtb": {
+ "ver": "3.0",
+ "domainspec": "adcom",
+ "domainver": "1.0",
+ "request": {
+ "id": "req-123456789",
+ "item": [
+ {
+ "id": "item-1",
+ "flr": 1.50,
+ "spec": {
+ "placement": {
+ "tagid": "plc-mobile-banner"
+ }
+ }
+ }
+ ],
+ "context": {
+ "device": {
+ "type": 4,
+ "ip": "203.0.113.42"
+ }
+ }
+ }
+ },
+ "category_mask": 8
 }`)
 
 	allocs := testing.AllocsPerRun(1000, func() {

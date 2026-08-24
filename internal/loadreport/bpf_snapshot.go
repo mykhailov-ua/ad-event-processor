@@ -115,7 +115,7 @@ func SaveBPFSnapshot(path string, snap BPFSnapshot) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	data, err := json.MarshalIndent(snap, "", "  ")
+	data, err := json.MarshalIndent(snap, "", " ")
 	if err != nil {
 		return err
 	}
@@ -283,7 +283,7 @@ func WriteBPFGateCompareReport(baselineDir, sessionDir, promURL string) (string,
 	if compare.Pass {
 		b.WriteString("\n**Result: PASS**\n")
 	} else {
-		b.WriteString(fmt.Sprintf("\n**Result: FAIL** — regression > %.0f%% or cold-path leak (.cursor/rules/ci.mdc#bpf-ci-arch).\n", bpfRegressionPct))
+		b.WriteString(fmt.Sprintf("\n**Result: FAIL** - regression > %.0f%% or cold-path leak (.cursor/rules/ci.mdc#bpf-ci-arch).\n", bpfRegressionPct))
 	}
 	if err := os.WriteFile(reportPath, []byte(b.String()), 0o644); err != nil {
 		return "", err
@@ -304,6 +304,9 @@ func bpfColdGateEnabled() bool {
 }
 
 func checkBPFColdPathChecks(summary *bpfSummary) []BPFGateCheck {
+	if bpfGateLabProfile() {
+		return checkBPFColdPathChecksLab(summary)
+	}
 	maxFD := maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.FDDelta })
 	maxThread := maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.ThreadDelta })
 
@@ -338,6 +341,20 @@ func checkBPFColdPathChecks(summary *bpfSummary) []BPFGateCheck {
 	}
 	checks = append(checks, checkBPFRSSChecks(summary, []string{"control", "processor", "region-proxy"}, 51200)...)
 	return checks
+}
+
+func checkBPFColdPathChecksLab(summary *bpfSummary) []BPFGateCheck {
+	maxThread := maxProcSampleInt64(summary.ProcSamples, func(p *procSample) int64 { return p.ThreadDelta })
+	return []BPFGateCheck{
+		labSkipCheck("max_fd_delta", "na", "TCP pool warm-up on constrained Docker lab"),
+		{
+			Name:   "max_thread_delta",
+			Value:  strconvFormatInt(maxThread),
+			Limit:  "50",
+			OK:     maxThread <= 50,
+			Detail: "cold path: thread/goroutine delta",
+		},
+	}
 }
 
 func strconvFormatInt(v int64) string {

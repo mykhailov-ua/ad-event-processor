@@ -26,7 +26,7 @@ func CountLedgerDuplicatesSince(ctx context.Context, pool *pgxpool.Pool, since t
 		SELECT COUNT(*) FROM (
 			SELECT idempotency_hash FROM balance_ledger
 			WHERE idempotency_hash IS NOT NULL
-			  AND created_at >= $1
+			 AND created_at >= $1
 			GROUP BY idempotency_hash
 			HAVING COUNT(*) > 1
 		) d`, since).Scan(&n)

@@ -18,7 +18,7 @@ fi
 TS="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT="${RUN_DIR}/edge-${TS}"
 mkdir -p "$OUT" "$STATE_DIR"
-log "edge-cascade artifacts → ${OUT}"
+log "edge-cascade artifacts -> ${OUT}"
 
 TRACKER_CTR="${TRACKER_CTR:-ad-event-processor-tracker-0-1}"
 TARGET_URL="${TARGET_URL:-http://127.0.0.1:8181/track}"
@@ -375,7 +375,7 @@ if [[ -f "${BPF_DIR}/maps/summary.json" ]]; then
   (cd "$ROOT" && go run ./cmd/load-report bpf "$OUT") > "${OUT}/bpf-report.md" 2> "${OUT}/bpf-report.err" \
     || warn "load-report bpf failed"
 else
-  warn "no BPF summary — see ${BPF_DIR}/collector.log"
+  warn "no BPF summary - see ${BPF_DIR}/collector.log"
   tail -80 "${BPF_DIR}/collector.log" | tee "${OUT}/bpf-collector.tail.txt" || true
 fi
 (cd "$ROOT" && go run ./cmd/load-report prom "$OUT" --prom "$PROM_URL") \
@@ -384,18 +384,18 @@ fi
   > "${OUT}/load-report-all.log" 2>&1 || true
 
 {
-  echo "=== Edge Cascade + eBPF (${TS}) ==="
+  echo "Edge Cascade + eBPF (${TS})"
   echo "netem: delay=${NETEM_DELAY} loss=${NETEM_LOSS} dup=${NETEM_DUPLICATE}"
   echo "FILTER_TIMEOUT_MS=${FILTER_TIMEOUT_MS} LOCAL_QUOTA=off GOMAXPROCS=${GOMAXPROCS_PIN} cpus=${CPUS}"
   echo "inject: burst@${BURST_AT_SEC}s close-c=${BURST_CONNECTIONS}; SCRIPT FLUSH@${FLUSH_AT_SEC}s on ${REDIS_SHARD_CTR}"
   echo
-  echo "-- tracker --"
+  echo "tracker"
   cat "${OUT}/tracker.state.txt" 2> /dev/null || true
   echo
-  echo "-- noscript --"
+  echo "noscript"
   cat "${OUT}/noscript.delta.txt" 2> /dev/null || true
   echo
-  echo "-- listen counters --"
+  echo "listen counters"
   echo "BEFORE:"
   cat "${OUT}/listen.before.txt" 2> /dev/null || true
   echo "AFTER_FLUSH:"
@@ -403,27 +403,27 @@ fi
   echo "AFTER:"
   cat "${OUT}/listen.after.txt" 2> /dev/null || true
   echo
-  echo "-- redis flush --"
+  echo "redis flush"
   cat "${OUT}/redis.flush.log" 2> /dev/null || true
   echo
-  echo "-- Lua quantiles --"
+  echo "Lua quantiles"
   cat "${OUT}/lua_quantiles.json" 2> /dev/null || true
   echo
-  echo "-- cpu.stat --"
+  echo "cpu.stat"
   echo BEFORE
   cat "${OUT}/cpu.stat.before" 2> /dev/null || true
   echo AFTER
   cat "${OUT}/cpu.stat.after" 2> /dev/null || true
   echo
-  echo "-- bottleneck excerpt --"
+  echo "bottleneck excerpt"
   head -n 80 "${OUT}/bottleneck-report.md" 2> /dev/null || echo missing
   echo
-  echo "-- primary wrk --"
+  echo "primary wrk"
   cat "${OUT}/loadgen.log" 2> /dev/null || true
   echo
-  echo "-- burst wrk --"
+  echo "burst wrk"
   cat "${OUT}/burst.log" 2> /dev/null || true
 } | tee "${OUT}/REPORT.txt"
 
-log "done → ${OUT}/REPORT.txt"
+log "done -> ${OUT}/REPORT.txt"
 echo "$OUT"

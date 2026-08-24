@@ -15,12 +15,12 @@ import (
 
 const tcpEdgeCorrelationQuery = `
 SELECT
-    ip_hash,
-    any(tls_hash) AS ja3,
-    any(toString(campaign_id)) AS campaign_id
+ ip_hash,
+ any(tls_hash) AS ja3,
+ any(toString(campaign_id)) AS campaign_id
 FROM clicks
 WHERE created_at >= now() - toIntervalSecond(?)
-  AND ip_hash IN (?)
+ AND ip_hash IN (?)
 GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {

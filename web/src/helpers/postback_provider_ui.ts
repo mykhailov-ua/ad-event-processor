@@ -23,10 +23,10 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     primaryLabel: 'URL template',
     primaryPlaceholder: 'https://partner.example/postback?cid={click_id}&payout={payout}',
     primaryHelp:
-      'Macros: {click_id}, {payout}, {tx_id}, {event_type}, {sub1}…{sub30}, {subid1}…{subid30}',
+      'Macros: {click_id}, {payout}, {tx_id}, {event_type}, {sub1}...{sub30}, {subid1}...{subid30}',
     tokenLabel: 'Bearer token (optional)',
     tokenPlaceholder: 'Leave blank to keep saved token',
-    tokenHelp: 'Sent as Authorization: Bearer … when set.',
+    tokenHelp: 'Sent as Authorization: Bearer ... when set.',
     requiresToken: false,
     showMacros: true,
     supportsTestEventCode: false,
@@ -42,14 +42,14 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     primaryHelp:
       'Numeric Meta pixel ID. Stored as the postback template; Graph URL is built automatically.',
     tokenLabel: 'CAPI access token',
-    tokenPlaceholder: 'EAA…',
+    tokenPlaceholder: 'EAA...',
     tokenHelp:
       'System user or long-lived token with ads_management. Encrypted at rest; never shown after save.',
     requiresToken: true,
     showMacros: false,
     supportsTestEventCode: true,
     eventMappingHint:
-      'ad-event-processor → Meta: conversion/purchase → Purchase; lead → Lead; install → CompleteRegistration; click → ViewContent.',
+      'ad-event-processor -> Meta: conversion/purchase -> Purchase; lead -> Lead; install -> CompleteRegistration; click -> ViewContent.',
   },
   google: {
     label: 'Google Ads offline conversions',
@@ -58,7 +58,7 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     primaryPlaceholder: 'customers/1234567890/conversionActions/987654321',
     primaryHelp: 'Full Google Ads resource name for the conversion action (not the display name).',
     tokenLabel: 'OAuth access token',
-    tokenPlaceholder: 'ya29…',
+    tokenPlaceholder: 'ya29...',
     tokenHelp:
       'Short-lived OAuth 2.0 access token with https://www.googleapis.com/auth/adwords scope.',
     requiresToken: true,
@@ -75,12 +75,12 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     primaryHelp: 'Events API pixel code from TikTok Ads Manager.',
     tokenLabel: 'Access token',
     tokenPlaceholder: 'Leave blank to keep saved token',
-    tokenHelp: 'Sent as Access-Token header. Generate under Tools → Events API.',
+    tokenHelp: 'Sent as Access-Token header. Generate under Tools -> Events API.',
     requiresToken: true,
     showMacros: false,
     supportsTestEventCode: true,
     eventMappingHint:
-      'ad-event-processor → TikTok: conversion/purchase → CompletePayment; lead → Contact; install → Download; click → ClickButton.',
+      'ad-event-processor -> TikTok: conversion/purchase -> CompletePayment; lead -> Contact; install -> Download; click -> ClickButton.',
   },
 };
 

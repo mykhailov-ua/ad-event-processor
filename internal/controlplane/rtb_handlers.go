@@ -162,7 +162,7 @@ func (h *RtbHTTPHandlers) integrationProfile(w http.ResponseWriter, r *http.Requ
 				EdgeExposeOpenRTB: plat.EdgeExposeOpenRTB,
 				TrackingDomain:    domain,
 				EdgePortHint:      ":8180/openrtb/bid",
-				TrackerPortHint:   ":8181–8184/openrtb/bid",
+				TrackerPortHint:   ":8181-8184/openrtb/bid",
 			}
 		}
 	}

@@ -16,6 +16,7 @@ import (
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +37,7 @@ func faultTestEvent(clickID string) *domain.Event {
 func countLinuxFDs(t *testing.T) int {
 	t.Helper()
 	if runtime.GOOS != "linux" {
-		t.Skip("fd count requires linux /proc")
+		t.Skip("integration: fd count requires linux /proc")
 	}
 	entries, err := os.ReadDir("/proc/self/fd")
 	require.NoError(t, err)
@@ -259,7 +260,7 @@ func TestFault_CHSpool_FdRelease(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 	if runtime.GOOS != "linux" {
-		t.Skip("linux fd test")
+		t.Skip("integration: linux fd test")
 	}
 
 	dir := t.TempDir()

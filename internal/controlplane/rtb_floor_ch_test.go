@@ -25,10 +25,10 @@ func TestQueryClickHousePlacementFloorBuckets(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, conn.Exec(ctx, `
 CREATE TABLE IF NOT EXISTS rtb_deal_outcomes (
-    deal_id LowCardinality(String),
-    outcome UInt8,
-    floor_micro Int64,
-    created_at DateTime64(3, 'UTC')
+ deal_id LowCardinality(String),
+ outcome UInt8,
+ floor_micro Int64,
+ created_at DateTime64(3, 'UTC')
 ) ENGINE = MergeTree()
 ORDER BY (deal_id, created_at)`))
 
@@ -44,10 +44,10 @@ ORDER BY (deal_id, created_at)`))
 
 	rows, err := conn.Query(ctx, `
 SELECT
-    deal_id,
-    intDiv(floor_micro, 10000) * 10000 AS floor_bucket_micro,
-    countIf(outcome = 1) AS wins,
-    count() AS sample_n
+ deal_id,
+ intDiv(floor_micro, 10000) * 10000 AS floor_bucket_micro,
+ countIf(outcome = 1) AS wins,
+ count() AS sample_n
 FROM rtb_deal_outcomes
 WHERE created_at >= now() - INTERVAL 168 HOUR
 GROUP BY deal_id, floor_bucket_micro`)

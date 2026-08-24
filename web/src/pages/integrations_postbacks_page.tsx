@@ -33,7 +33,7 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
 }
 
 function formatTs(iso?: string): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
@@ -130,7 +130,7 @@ export function IntegrationsPostbacksPage() {
                     <td>{row.dlq_pending_count}</td>
                     <td>
                       <Link to={`/campaigns/${row.campaign_id}?tab=postbacks`} className="text-sm">
-                        Open →
+                        Open {'->'}
                       </Link>
                     </td>
                   </tr>
@@ -178,11 +178,11 @@ export function IntegrationsPostbacksPage() {
                   return (
                     <tr key={String(rowId)} data-testid={`postback-dlq-row-${rowId}`}>
                       <td>{String(rowId ?? '')}</td>
-                      <td className="font-mono text-sm">{String(row.campaign_id ?? '—')}</td>
-                      <td>{typeof row.event_type === 'string' ? row.event_type : '—'}</td>
+                      <td className="font-mono text-sm">{String(row.campaign_id ?? '-')}</td>
+                      <td>{typeof row.event_type === 'string' ? row.event_type : '-'}</td>
                       <td>{String(row.failures_count ?? 0)}</td>
-                      <td>{rowStatus || '—'}</td>
-                      <td className="text-sm text-muted">{String(row.last_error ?? '—')}</td>
+                      <td>{rowStatus || '-'}</td>
+                      <td className="text-sm text-muted">{String(row.last_error ?? '-')}</td>
                       <td>
                         {canRetry ? (
                           <Button

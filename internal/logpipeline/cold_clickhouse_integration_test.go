@@ -179,7 +179,7 @@ func TestAuditLogRollups_Explain_RealCH(t *testing.T) {
 					sum(fraud_event_count) AS fraud_events
 				FROM tmp_audit_log_rollups_seed
 				WHERE campaign_id = toUUID('00000000-0000-4000-8000-000000000042')
-				  AND rollup_hour >= now() - INTERVAL 7 DAY
+				 AND rollup_hour >= now() - INTERVAL 7 DAY
 				GROUP BY rollup_hour, event_type
 				ORDER BY rollup_hour DESC`,
 		},
@@ -218,7 +218,7 @@ func TestAuditLogRollups_Explain_RealCH(t *testing.T) {
 					sum(event_count) AS events
 				FROM tmp_audit_log_rollups_seed
 				WHERE rollup_hour >= now() - INTERVAL 90 DAY
-				  AND rollup_hour < now()
+				 AND rollup_hour < now()
 				GROUP BY month
 				ORDER BY month`,
 		},

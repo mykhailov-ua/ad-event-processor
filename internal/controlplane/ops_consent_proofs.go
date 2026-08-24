@@ -35,11 +35,11 @@ func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string
 
 	rows, err := r.svc.GetPool().Query(ctx, `
 		SELECT ce.id, ce.user_id_hash, ce.purposes, ce.source, ce.created_at,
-		       COALESCE(ucs.ad_storage, false), COALESCE(ucs.analytics_storage, false)
+		 COALESCE(ucs.ad_storage, false), COALESCE(ucs.analytics_storage, false)
 		FROM consent_events ce
 		LEFT JOIN user_consent_state ucs ON ucs.user_id_hash = ce.user_id_hash
 		WHERE ($1::bytea IS NULL OR ce.user_id_hash = $1)
-		  AND ($2::bigint = 0 OR ce.id < $2)
+		 AND ($2::bigint = 0 OR ce.id < $2)
 		ORDER BY ce.id DESC
 		LIMIT $3`, hashFilter, cursorID, limit+1)
 	if err != nil {

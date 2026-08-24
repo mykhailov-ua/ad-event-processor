@@ -4,25 +4,33 @@ globs: **/*_fault_test.go, **/fault_*.go, scripts/fault/**, scripts/test/**
 alwaysApply: false
 ---
 
+# Fault Tests and Resilience
+
+## Purpose
+
 Apply when adding failure modes, outbox handlers, parser security, stream admission, or resilience tests.
 
-Reference: `development.mdc` (fault injection), `parser.mdc` (chaos checklist). Anti-slop: `anti-slop.mdc`. Holdout matrix: `testing.mdc`.
+Reference: `development.mdc`, `parser.mdc`, `anti-slop.mdc`, `testing.mdc`.
 
 ## Fault test placement
 
-- `*_fault_test.go` beside code under test.
-- `fault_*` packages for shared corpora/harnesses.
-- Chaos/parser: `TestChaos_*` in `internal/ingestion/`.
-- Resilience scripts: `scripts/fault/run.sh`, `scripts/fault/compose_fault_drill.sh`.
+| Location | Content |
+| :--- | :--- |
+| `*_fault_test.go` | Beside code under test |
+| `fault_*` packages | Shared corpora/harnesses |
+| `TestChaos_*` | Parser/wire security in `internal/ingestion/` |
+| `scripts/fault/` | Resilience scripts (`run.sh`, `compose_fault_drill.sh`) |
 
 ## Outbox and payment idempotency
 
 Prove under:
 
-- Duplicate webhook delivery (same event ID twice).
-- Handler error mid-apply -> row stays pending, retries.
-- PG txn failure after enqueue -> no partial Redis side effect visible.
-- Outbox replay of same row -> no double-apply (idempotency key, version check).
+| Scenario | Expected behavior |
+| :--- | :--- |
+| Duplicate webhook delivery | Same event ID twice - no double-apply |
+| Handler error mid-apply | Row stays pending, retries |
+| PG txn failure after enqueue | No partial Redis side effect visible |
+| Outbox replay of same row | Idempotency key / version check prevents double-apply |
 
 Permanent failure path: mark failed + ops alert; not infinite retry loop.
 
@@ -32,8 +40,6 @@ Every new accept/spend/log path needs:
 
 1. Fault test or chaos proof, OR
 2. Explicit PR waiver citing risk and monitoring.
-
-Examples already in tree:
 
 | Behavior | Test |
 | :--- | :--- |
@@ -74,11 +80,11 @@ bash scripts/fault/parser_slow_body_drill.sh
 - Shard 0 outage matrix: `data-layer.mdc`; gate `bash scripts/ci/shard0_nil_gate.sh`.
 - `TestFault_NOSCRIPTStorm`, `TestFault_CHSpoolDiskBlock` in ingestion.
 - Redis latency -> circuit breaker open -> 503 fail closed.
-- `scripts/fault/sentinel.sh`, `compose_fault_drill.sh` for compose-level drills.
+- `scripts/test/sentinel.sh`, `compose_fault_drill.sh` for compose-level drills.
 
-## Load-test abort rules (`core.mdc`)
+## Load-test abort rules
 
-Abort when:
+Abort when (`core.mdc`):
 
 - Control-cohort handler p99 > 80 ms for 30 s.
 - Budget invariant violation (`current_spend > budget_limit`).
@@ -86,11 +92,13 @@ Abort when:
 
 ## Alerts (examples)
 
-- `ad_management_outbox_oldest_pending_seconds` > 30 s
-- Processor stream lag / PEL growth
-- `ad_stream_producer_post_debit_rejected_total` sustained > 0
-- Redis circuit open sustained per shard
-- `ad_broker_ingest_divergence_high` during broker shadow
+| Alert | Threshold |
+| :--- | :--- |
+| `ad_management_outbox_oldest_pending_seconds` | > 30 s |
+| Processor stream lag / PEL growth | Sustained increase |
+| `ad_stream_producer_post_debit_rejected_total` | Sustained > 0 |
+| Redis circuit open per shard | Sustained |
+| `ad_broker_ingest_divergence_high` | Active during broker shadow |
 
 ## Resilience run wrapper
 
@@ -101,6 +109,8 @@ bash scripts/fault/resilience_fault_gates.sh /tmp/resilience-fault.log
 
 Success logs `fault_proof fault=<name>`.
 
-HTMX/UI faults: out of scope — JSON API only.
+HTMX/UI faults: out of scope - JSON API only.
 
-Related: `hot-path.mdc`, `control-plane.mdc`, `load-test-bpf.mdc`, `data-layer.mdc`.
+## Related rules
+
+`control-plane.mdc`, `data-layer.mdc`, `hot-path.mdc`, `load-test-bpf.mdc`, `parser.mdc`.

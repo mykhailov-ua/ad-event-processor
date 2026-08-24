@@ -33,7 +33,7 @@ func TestGenHWIDVectorArtifacts(t *testing.T) {
 			HWIDHash string        `json:"hwid_hash"`
 		}{fx.Name, fx.Input, HashHWIDFromTelemetry(fx.Input)})
 	}
-	raw, err := json.MarshalIndent(out, "", "  ")
+	raw, err := json.MarshalIndent(out, "", " ")
 	if err != nil {
 		t.Fatal(err)
 	}

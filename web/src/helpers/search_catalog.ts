@@ -70,7 +70,7 @@ export function buildSearchItems(onClose: () => void = () => {}): SearchItem[] {
     if (navLinkVisible(permissions, permLink('customers:read', 'billing:read'))) {
       items.push({
         id: `billing-${id}`,
-        label: `Billing · ${shortCustomerId(id, 12)}`,
+        label: `Billing , ${shortCustomerId(id, 12)}`,
         hint: 'Customer billing',
         run: () => go(`/billing?customer_id=${encodeURIComponent(id)}`),
       });
@@ -78,7 +78,7 @@ export function buildSearchItems(onClose: () => void = () => {}): SearchItem[] {
     if (navLinkVisible(permissions, permLink('campaigns:read', 'campaigns:read:masked'))) {
       items.push({
         id: `campaigns-${id}`,
-        label: `Campaigns · ${shortCustomerId(id, 12)}`,
+        label: `Campaigns , ${shortCustomerId(id, 12)}`,
         hint: 'Customer campaigns',
         run: () => go(`/campaigns?customer_id=${encodeURIComponent(id)}`),
       });
