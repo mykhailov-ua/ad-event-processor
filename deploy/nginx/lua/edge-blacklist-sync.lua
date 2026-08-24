@@ -16,6 +16,7 @@ local REDIS_ADDRS = ""
 local REDIS_SENTINEL_ADDRS = ""
 local REDIS_MASTER_NAMES = ""
 local SENTINEL_CACHE_TTL = 5
+local CHANGELOG_MAX_IPS = 64
 
 local shards
 local sentinel_addrs
@@ -65,6 +66,7 @@ local function load_env()
     REDIS_ADDRS = getenv("REDIS_ADDRS") or ""
     REDIS_SENTINEL_ADDRS = getenv("REDIS_SENTINEL_ADDRS") or ""
     REDIS_MASTER_NAMES = getenv("REDIS_MASTER_NAMES") or ""
+    CHANGELOG_MAX_IPS = tonumber(getenv("EDGE_BLACKLIST_CHANGELOG_MAX_IPS") or "") or CHANGELOG_MAX_IPS
 end
 
 local function parse_addr_list(raw)
@@ -84,7 +86,7 @@ local function sentinel_master_addr(shard_idx, names, sentinels)
     if cached then
         local host, port = string.match(cached, "([^:]+):(%d+)")
         if host and port then
-            return {host = host, port = tonumber(port)}, nil
+            return { host = host, port = tonumber(port) }, nil
         end
     end
 
@@ -113,7 +115,7 @@ local function sentinel_master_addr(shard_idx, names, sentinels)
         return nil, "invalid master addr from sentinel"
     end
     sentinel_cache:set(cache_key, host .. ":" .. port, SENTINEL_CACHE_TTL)
-    return {host = host, port = port}, nil
+    return { host = host, port = port }, nil
 end
 
 local function ensure_redis_topology()
@@ -123,7 +125,7 @@ local function ensure_redis_topology()
     load_env()
     shards = parse_addr_list(REDIS_ADDRS)
     if #shards == 0 then
-        shards = {{host = REDIS_HOST, port = tonumber(REDIS_PORT)}}
+        shards = { { host = REDIS_HOST, port = tonumber(REDIS_PORT) } }
     end
     sentinel_addrs = parse_addr_list(REDIS_SENTINEL_ADDRS)
     master_names = {}
@@ -206,17 +208,50 @@ function _M.connect_any_shard()
     return nil, last_err, nil
 end
 
-function _M.stamp_ips(ips)
+local function append_pending_ips(ips)
+    if not ips or #ips == 0 then
+        return
+    end
+    local raw = cache:get("_bl_pending") or ""
+    for _, ip in ipairs(ips) do
+        if ip and ip ~= "" then
+            raw = raw .. ip .. "\n"
+        end
+    end
+    cache:set("_bl_pending", raw)
+end
+
+function _M.stamp_ips(ips, bump_version)
+    load_env()
     if not ips or #ips == 0 then
         return false
     end
+    if bump_version == nil then
+        bump_version = true
+    end
 
-    local new_ver = (cache:get("_bl_ver") or 0) + 1
+    local batch = ips
+    local deferred = {}
+    if #ips > CHANGELOG_MAX_IPS then
+        batch = {}
+        for i = 1, CHANGELOG_MAX_IPS do
+            batch[i] = ips[i]
+        end
+        for i = CHANGELOG_MAX_IPS + 1, #ips do
+            deferred[#deferred + 1] = ips[i]
+        end
+    end
+
+    local ver = cache:get("_bl_ver") or 0
+    if bump_version or ver == 0 then
+        ver = ver + 1
+        cache:set("_bl_ver", ver)
+    end
+
     local stamped = 0
-
-    for _, ip in ipairs(ips) do
+    for _, ip in ipairs(batch) do
         if ip and ip ~= "" then
-            cache:set("b:" .. ip, new_ver)
+            cache:set("b:" .. ip, ver)
             stamped = stamped + 1
         end
     end
@@ -225,12 +260,40 @@ function _M.stamp_ips(ips)
         return false
     end
 
-    cache:set("_bl_ver", new_ver)
+    if #deferred > 0 then
+        append_pending_ips(deferred)
+        ngx.log(ngx.WARN, "edge_blacklist_sync: deferred ", #deferred, " changelog IPs (cap=", CHANGELOG_MAX_IPS, ")")
+    end
+
     cache:set("_bl_sync_ts", ngx.time())
-    local prev = cache:get("_bl_count") or 0
-    cache:set("_bl_count", prev + stamped)
-    ngx.log(ngx.INFO, "edge_blacklist_sync: stamped ", stamped, " IPs (ver=", new_ver, ")")
+    if bump_version then
+        cache:set("_bl_count", stamped)
+    else
+        local prev = cache:get("_bl_count") or 0
+        cache:set("_bl_count", prev + stamped)
+    end
+    ngx.log(ngx.INFO, "edge_blacklist_sync: stamped ", stamped, " IPs (ver=", ver, ", bump=", tostring(bump_version), ")")
     return true
+end
+
+function _M.drain_pending_changelog()
+    local raw = cache:get("_bl_pending")
+    if not raw or raw == "" then
+        return 0
+    end
+    local ips = {}
+    for ip in string.gmatch(raw, "[^\n]+") do
+        ips[#ips + 1] = ip
+    end
+    if #ips == 0 then
+        cache:delete("_bl_pending")
+        return 0
+    end
+    cache:delete("_bl_pending")
+    if _M.stamp_ips(ips, false) then
+        return math.min(#ips, CHANGELOG_MAX_IPS)
+    end
+    return 0
 end
 
 function _M.apply_quarantine_message(payload)
@@ -241,10 +304,10 @@ function _M.apply_quarantine_message(payload)
         local cjson = require "cjson.safe"
         local obj = cjson.decode(payload)
         if obj and obj.ips and type(obj.ips) == "table" then
-            return _M.stamp_ips(obj.ips)
+            return _M.stamp_ips(obj.ips, false)
         end
     end
-    return _M.stamp_ips({payload})
+    return _M.stamp_ips({ payload }, false)
 end
 
 function _M.sync()

@@ -23,11 +23,11 @@ func TestSettlementHandler_GetLedgerEntry(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{SettlementInternalToken: "settlement-test-token"}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 
 	handler := NewSettlementHandler(svc, cfg)

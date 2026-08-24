@@ -24,8 +24,8 @@ func TestRedisURLFromAddr(t *testing.T) {
 }
 
 func TestParseRedisURL_unix(t *testing.T) {
-	rdb, err := ParseRedisURL("unix:///tmp/not-there.sock", "")
+	redisClient, err := ParseRedisURL("unix:///tmp/not-there.sock", "")
 	require.NoError(t, err)
-	require.NotNil(t, rdb)
-	_ = rdb.Close()
+	require.NotNil(t, redisClient)
+	_ = redisClient.Close()
 }

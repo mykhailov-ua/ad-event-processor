@@ -22,7 +22,7 @@ func TestFault_ReconDriftRefill(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -37,16 +37,16 @@ func TestFault_ReconDriftRefill(t *testing.T) {
 
 	sharder := domain.NewStaticSlotSharder(1)
 	cfg := &config.Config{ReconForceRefill: true}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 	require.NotNil(t, svc)
 
 	require.NoError(t, svc.forceRefillCampaignFromPG(ctx, campaignID, 500_000))
 
-	remaining, err := rdb.Get(ctx, domain.BudgetCampaignKey(campaignID)).Int64()
+	remaining, err := redisClient.Get(ctx, domain.BudgetCampaignKey(campaignID)).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(9_500_000), remaining)
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 
 	faultproof.Log(t, "recon_drift_within_band", map[string]string{
 		"fault":       "recon_drift_within_band",

@@ -26,11 +26,11 @@ return id
 `)
 
 type RedisTopicStore struct {
-	rdb redis.UniversalClient
+	redisClient redis.UniversalClient
 }
 
-func NewRedisTopicStore(rdb redis.UniversalClient) *RedisTopicStore {
-	return &RedisTopicStore{rdb: rdb}
+func NewRedisTopicStore(redisClient redis.UniversalClient) *RedisTopicStore {
+	return &RedisTopicStore{redisClient: redisClient}
 }
 
 func (s *RedisTopicStore) Load(ctx context.Context) (protocol.RegistrySnapshot, error) {
@@ -38,11 +38,11 @@ func (s *RedisTopicStore) Load(ctx context.Context) (protocol.RegistrySnapshot, 
 		Version: 1,
 		Topics:  make(map[string]uint16),
 	}
-	if s == nil || s.rdb == nil {
+	if s == nil || s.redisClient == nil {
 		return snap, nil
 	}
 
-	raw, err := s.rdb.HGetAll(ctx, redisTopicsHashKey).Result()
+	raw, err := s.redisClient.HGetAll(ctx, redisTopicsHashKey).Result()
 	if err != nil {
 		return snap, err
 	}
@@ -59,7 +59,7 @@ func (s *RedisTopicStore) Load(ctx context.Context) (protocol.RegistrySnapshot, 
 		}
 	}
 
-	nextStr, err := s.rdb.Get(ctx, redisTopicsNextKey).Result()
+	nextStr, err := s.redisClient.Get(ctx, redisTopicsNextKey).Result()
 	if err == nil {
 		if next64, convErr := strconv.ParseUint(nextStr, 10, 32); convErr == nil {
 			snap.NextID = uint32(next64)
@@ -72,14 +72,14 @@ func (s *RedisTopicStore) Load(ctx context.Context) (protocol.RegistrySnapshot, 
 }
 
 func (s *RedisTopicStore) Register(ctx context.Context, name string) (uint16, error) {
-	if s == nil || s.rdb == nil {
+	if s == nil || s.redisClient == nil {
 		return 0, fmt.Errorf("redis topic store is not configured")
 	}
 	if err := protocol.ValidateTopicNameForStore(name); err != nil {
 		return 0, err
 	}
 
-	res, err := registerTopicScript.Run(ctx, s.rdb, []string{redisTopicsHashKey, redisTopicsNextKey}, name).Result()
+	res, err := registerTopicScript.Run(ctx, s.redisClient, []string{redisTopicsHashKey, redisTopicsNextKey}, name).Result()
 	if err != nil {
 		return 0, err
 	}

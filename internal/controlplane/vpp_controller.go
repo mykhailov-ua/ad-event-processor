@@ -84,19 +84,19 @@ func (s *Service) RunVPPPacingController(ctx context.Context) error {
 }
 
 func (s *Service) pipelineWriteVPPRatios(ctx context.Context, byShard map[int][]vppRatioWrite) error {
-	rdbs := s.RedisShards()
+	redisShards := s.RedisShards()
 	for shard, writes := range byShard {
 		if len(writes) == 0 {
 			continue
 		}
-		if shard < 0 || shard >= len(rdbs) {
+		if shard < 0 || shard >= len(redisShards) {
 			return fmt.Errorf("redis shard %d out of range", shard)
 		}
-		rdb := rdbs[shard]
-		if rdb == nil {
+		redisClient := redisShards[shard]
+		if redisClient == nil {
 			return fmt.Errorf("redis shard %d unavailable", shard)
 		}
-		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			for _, w := range writes {
 				val := strconv.FormatFloat(float64(w.ratio), 'f', 4, 32)
 				pipe.Set(ctx, vppPacingRedisKey(w.campaignID), val, 20*time.Minute)

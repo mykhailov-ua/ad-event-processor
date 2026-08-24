@@ -102,7 +102,7 @@ func aggregateWarmSegment(r io.Reader, sourceSegment, warmSHA string) ([]RollupR
 			aggs[key] = agg
 		}
 		agg.eventCount++
-		if evt.FraudScore > 0 || evt.GhostEvent || len(evt.FraudReason) > 0 {
+		if evt.FraudScore > 0 || evt.SilentRejectEvent || len(evt.FraudReason) > 0 {
 			agg.fraudEventCount++
 		}
 		if isAlwaysKeepEvent(evt) {

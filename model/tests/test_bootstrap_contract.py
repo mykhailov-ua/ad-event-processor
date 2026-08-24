@@ -19,6 +19,6 @@ def test_bootstrap_synthetic_rejects_single_class_dataset() -> None:
         matrix = np.zeros((1, 16), dtype=np.float32)
         return matrix, labels, rows
 
-    bootstrap_mod.synthetic_dataset = _single_class  # type: ignore[method-assign]
+    bootstrap_mod.synthetic_dataset = _single_class
     with pytest.raises(ValueError, match="single class"):
         bootstrap_mod.bootstrap_synthetic()

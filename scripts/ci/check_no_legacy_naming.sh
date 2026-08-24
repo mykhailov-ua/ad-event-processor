@@ -46,11 +46,31 @@ strict_check() {
   fi
 }
 
+bureaucratic_check() {
+  local label="$1"
+  shift
+  local hits=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && hits+=("$line")
+  done < <(rg -n '\bGAP-[A-Z][A-Z0-9]*-[0-9]+\b' "$@" 2> /dev/null || true)
+
+  if ((${#hits[@]} > 0)); then
+    echo "check_no_legacy_naming: bureaucratic ticket ID in ${label} (use semantic slug; naming.mdc):"
+    printf '  %s\n' "${hits[@]}"
+    exit 1
+  fi
+}
+
 strict_check "docs/ARCHITECTURE.md" "$ROOT/docs/ARCHITECTURE.md"
 strict_check "docs/DEVELOPMENT.md" "$ROOT/docs/DEVELOPMENT.md"
 strict_check ".cursor/rules/licensing.mdc" "$ROOT/.cursor/rules/licensing.mdc"
 strict_check "web/src" "$ROOT/web/src"
 strict_check "web/e2e" "$ROOT/web/e2e" --glob '!**/node_modules/**'
+
+bureaucratic_check "README.md" "$ROOT/README.md"
+bureaucratic_check "docs/" "$ROOT/docs"
+bureaucratic_check "deploy/vendor/" "$ROOT/deploy/vendor"
+bureaucratic_check ".cursor/rules/" "$ROOT/.cursor/rules" --glob '*.mdc'
 
 is_allowlisted() {
   local rel="$1"

@@ -1,5 +1,4 @@
-# Load-test overlay: ports from .env.load-test + deploy/compose/.env.load-test.runtime (generated).
-# Materialize nginx/prometheus/grafana: make load-test-config
+
 
 x-go-load-test-env: &go_load_test_env
   GOMAXPROCS: '2'

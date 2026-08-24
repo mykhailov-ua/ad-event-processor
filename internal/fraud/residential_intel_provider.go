@@ -13,7 +13,7 @@ import (
 	"ad-event-processor/pkg/coldpath"
 )
 
-// ResidentialIntelProvider looks up residential/proxy classification for one IP (cold path only).
+
 type ResidentialIntelProvider interface {
 	Lookup(ctx context.Context, ip string) (ResidentialIntelResult, error)
 }
@@ -92,7 +92,7 @@ func (p *HTTPResidentialIntelProvider) Lookup(ctx context.Context, ip string) (R
 	return decoded, nil
 }
 
-// StubResidentialIntelProvider maps plain IPs to fixed results for tests.
+
 type StubResidentialIntelProvider struct {
 	Results map[string]ResidentialIntelResult
 }

@@ -37,21 +37,21 @@ type RtbBudgetMirrorWriter struct {
 
 	catalog  *RtbCatalog
 	registry *Registry
-	rdbs     []redis.UniversalClient
+	redisShards     []redis.UniversalClient
 	sharder  Sharder
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
 }
 
-func NewRtbBudgetMirrorWriter(catalog *RtbCatalog, registry *Registry, rdbs []redis.UniversalClient, sharder Sharder) *RtbBudgetMirrorWriter {
-	if catalog == nil || registry == nil || len(rdbs) == 0 || sharder == nil {
+func NewRtbBudgetMirrorWriter(catalog *RtbCatalog, registry *Registry, redisShards []redis.UniversalClient, sharder Sharder) *RtbBudgetMirrorWriter {
+	if catalog == nil || registry == nil || len(redisShards) == 0 || sharder == nil {
 		return nil
 	}
 	w := &RtbBudgetMirrorWriter{
 		catalog:  catalog,
 		registry: registry,
-		rdbs:     rdbs,
+		redisShards:     redisShards,
 		sharder:  sharder,
 		stopCh:   make(chan struct{}),
 	}
@@ -141,14 +141,14 @@ func (w *RtbBudgetMirrorWriter) applyDebit(ctx context.Context, campID rtb.Campa
 		return
 	}
 	shard := w.sharder.GetShard(uid)
-	if shard < 0 || shard >= len(w.rdbs) {
+	if shard < 0 || shard >= len(w.redisShards) {
 		return
 	}
-	rdb := w.rdbs[shard]
-	if rdb == nil {
+	redisClient := w.redisShards[shard]
+	if redisClient == nil {
 		return
 	}
-	_ = rdb.DecrBy(ctx, camp.BudgetCampaignKey, priceMicro).Err()
+	_ = redisClient.DecrBy(ctx, camp.BudgetCampaignKey, priceMicro).Err()
 }
 
 var _ rtb.BudgetSpendMirror = (*RtbBudgetMirrorWriter)(nil)

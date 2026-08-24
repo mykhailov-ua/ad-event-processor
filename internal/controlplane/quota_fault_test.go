@@ -41,7 +41,7 @@ func TestFault_QuotaRefillRace(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -57,11 +57,11 @@ func TestFault_QuotaRefillRace(t *testing.T) {
 		QuotaChunkSize:          quotaFaultChunkMicro,
 		QuotaRefillThresholdPct: 20,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	qm := NewQuotaManager(svc)
 
 	lockKey := "budget:refill_lock:" + campaignID.String()
-	require.NoError(t, rdb.Set(ctx, lockKey, "1", 10*time.Second).Err())
+	require.NoError(t, redisClient.Set(ctx, lockKey, "1", 10*time.Second).Err())
 
 	const workers = 32
 	var wg sync.WaitGroup
@@ -69,7 +69,7 @@ func TestFault_QuotaRefillRace(t *testing.T) {
 	for range workers {
 		go func() {
 			defer wg.Done()
-			_ = qm.refillCampaign(ctx, campaignID, 0, rdb)
+			_ = qm.refillCampaign(ctx, campaignID, 0, redisClient)
 		}()
 	}
 	wg.Wait()
@@ -79,11 +79,11 @@ func TestFault_QuotaRefillRace(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, quotaFaultChunkMicro, pgQuota.ReservedAmount, "exactly one PG chunk must be reserved")
 
-	redisQuota, err := rdb.Get(ctx, "budget:quota:"+campaignID.String()).Int64()
+	redisQuota, err := redisClient.Get(ctx, "budget:quota:"+campaignID.String()).Int64()
 	require.NoError(t, err)
 	require.Equal(t, quotaFaultChunkMicro, redisQuota, "exactly one Redis chunk must be credited")
 
-	exists, err := rdb.Exists(ctx, lockKey).Result()
+	exists, err := redisClient.Exists(ctx, lockKey).Result()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), exists, "refill lock must be consumed")
 

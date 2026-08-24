@@ -23,7 +23,7 @@ func (r *benchTrackRegistry) GetLicenseState() (licensing.LicenseState, licensin
 	return r.license, licensing.Entitlements{}
 }
 
-func buildTrackE2EAcceptHandler(b *testing.B, campID uuid.UUID, rdb redis.UniversalClient) *AdsPacketHandler {
+func buildTrackE2EAcceptHandler(b *testing.B, campID uuid.UUID, redisClient redis.UniversalClient) *AdsPacketHandler {
 	b.Helper()
 	ctx := context.Background()
 	registry := &benchTrackRegistry{license: licensing.StateActive}
@@ -32,12 +32,12 @@ func buildTrackE2EAcceptHandler(b *testing.B, campID uuid.UUID, rdb redis.Univer
 		b.Fatal("campaign missing")
 	}
 	cachedMockCamp.Store(cp)
-	seedCampaignBudget(b, ctx, rdb, campID)
+	seedCampaignBudget(b, ctx, redisClient, campID)
 
-	rdbs := []redis.UniversalClient{rdb}
+	redisShards := []redis.UniversalClient{redisClient}
 	sharder := NewJumpHashSharder(1)
 	unified := NewUnifiedFilter(
-		rdbs,
+		redisShards,
 		sharder,
 		registry,
 		nil,
@@ -58,18 +58,18 @@ func buildTrackE2EAcceptHandler(b *testing.B, campID uuid.UUID, rdb redis.Univer
 	engine := NewFilterEngine(2*time.Second, NewLicenseFilter(registry), unified)
 
 	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024}
-	return NewAdsPacketHandler(cfg, registry, engine, nil, rdbs, sharder, "fraud-stream", nil)
+	return NewAdsPacketHandler(cfg, registry, engine, nil, redisShards, sharder, "fraud-stream", nil)
 }
 
 func BenchmarkTrackE2E_accept(b *testing.B) {
 	if testing.Short() {
 		b.Skip()
 	}
-	rdb, cleanup := setupTestRedis(b)
+	redisClient, cleanup := setupTestRedis(b)
 	defer cleanup()
 
 	campID := uuid.New()
-	handler := buildTrackE2EAcceptHandler(b, campID, rdb)
+	handler := buildTrackE2EAcceptHandler(b, campID, redisClient)
 
 	pbPayload := buildProtoTrackPayloadWithCampaign(b, campID)
 	body, err := pbPayload.MarshalVT()

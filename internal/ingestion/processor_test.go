@@ -39,10 +39,10 @@ func TestStreamConsumer_Ingestion(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	producer := NewStreamProducer(rdb, "s1", 1000, 1*time.Second)
+	producer := NewStreamProducer(redisClient, "s1", 1000, 1*time.Second)
 	defer producer.Close()
 
 	err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
@@ -54,13 +54,13 @@ func TestStreamConsumer_BatchFlushing(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers Redis)")
 	}
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	mockStore := &MockEventStore{}
-	producer := NewStreamProducer(rdb, "s2", 1000, 1*time.Second)
+	producer := NewStreamProducer(redisClient, "s2", 1000, 1*time.Second)
 	defer producer.Close()
-	proc := NewStreamConsumer(mockStore, rdb, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute, 1*time.Second)
+	proc := NewStreamConsumer(mockStore, redisClient, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute, 1*time.Second)
 
 	proc.Start(context.Background())
 
@@ -83,17 +83,17 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	failStore := &FailingEventStore{
 		failErr: errors.New("simulated poison pill"),
 	}
 
-	producer := NewStreamProducer(rdb, "s_dlq", 1000, 1*time.Second)
+	producer := NewStreamProducer(redisClient, "s_dlq", 1000, 1*time.Second)
 	defer producer.Close()
 
-	proc := NewStreamConsumer(failStore, rdb, "s_dlq", "g_dlq", "c_dlq", 2, 1, 10*time.Millisecond, 1*time.Second, 10*time.Millisecond, 10*time.Millisecond, 1, 1*time.Minute, 1*time.Second)
+	proc := NewStreamConsumer(failStore, redisClient, "s_dlq", "g_dlq", "c_dlq", 2, 1, 10*time.Millisecond, 1*time.Second, 10*time.Millisecond, 10*time.Millisecond, 1, 1*time.Minute, 1*time.Second)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -106,11 +106,11 @@ func TestStreamConsumer_DLQ(t *testing.T) {
 	producer.Flush()
 
 	assert.Eventually(t, func() bool {
-		size, err := rdb.XLen(ctx, "ad:events:dlq").Result()
+		size, err := redisClient.XLen(ctx, "ad:events:dlq").Result()
 		return err == nil && size == 2
 	}, 3*time.Second, 50*time.Millisecond, "Should have 2 events in DLQ")
 
-	pending, err := rdb.XPending(ctx, "s_dlq", "g_dlq").Result()
+	pending, err := redisClient.XPending(ctx, "s_dlq", "g_dlq").Result()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), pending.Count)
 

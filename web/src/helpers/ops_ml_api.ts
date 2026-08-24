@@ -103,7 +103,7 @@ export type MLCHReportEnvelope = {
   rows?: MLCHReportRow[];
 };
 
-/** Fetch ClickHouse-backed ML operator report rows for the last 24h window. */
+
 export async function fetchMLCHReport(
   endpoint: 'score-distribution' | 'shadow-delta' | 'feature-spikes',
   from: string,

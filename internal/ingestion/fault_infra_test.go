@@ -152,10 +152,10 @@ func waitAdsPGReady(t *testing.T, pool *pgxpool.Pool) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func waitAdsRedisReady(t *testing.T, rdb redis.UniversalClient) {
+func waitAdsRedisReady(t *testing.T, redisClient redis.UniversalClient) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		return rdb.Ping(context.Background()).Err() == nil
+		return redisClient.Ping(context.Background()).Err() == nil
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
@@ -260,7 +260,7 @@ func seedFaultLicenseActive(registry *Registry, customerID uuid.UUID) {
 func buildFaultProductionFilterEngine(
 	timeout time.Duration,
 	registry *Registry,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	campaignRepo *CampaignRepo,
 	rateLimit int,
@@ -273,11 +273,11 @@ func buildFaultProductionFilterEngine(
 		StreamMaxLen:    maxStreamLen,
 	}
 	geoProvider := &MockGeoProvider{}
-	settingsWatcher := NewSettingsWatcher(rdbs, cfg)
-	consentStore := NewConsentStore(rdbs[0])
+	settingsWatcher := NewSettingsWatcher(redisShards, cfg)
+	consentStore := NewConsentStore(redisShards[0])
 
 	unifiedFilter := NewUnifiedFilter(
-		rdbs,
+		redisShards,
 		sharder,
 		registry,
 		campaignRepo,

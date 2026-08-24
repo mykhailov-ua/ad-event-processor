@@ -92,8 +92,8 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 				"score", candidate.Score,
 				"boost", candidate.Boost,
 			)
-		case "ghost":
-			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "ghost")
+		case "silent_reject", "ghost":
+			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "silent_reject")
 			if claimErr != nil {
 				return result, claimErr
 			}
@@ -103,7 +103,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 			}
 
 			batchItems = append(batchItems, FraudThreatEnqueueItem{
-				Action:     "ghost",
+				Action:     "silent_reject",
 				IP:         candidate.IP,
 				CampaignID: candidate.CampaignID,
 				Score:      candidate.Score,
@@ -112,11 +112,11 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 			batchClaimed = append(batchClaimed, claimedThreat{
 				ip:     candidate.IP,
 				reason: candidate.Reason,
-				action: "ghost",
+				action: "silent_reject",
 			})
 			batchPending++
-			fraudEnforcementEnqueuedTotal.WithLabelValues("ghost").Inc()
-			slog.Info("ivt detector staged ml ghost ivt",
+			fraudEnforcementEnqueuedTotal.WithLabelValues("silent_reject").Inc()
+			slog.Info("ivt detector staged ml silent reject",
 				"ip", candidate.IP,
 				"campaign_id", candidate.CampaignID,
 				"signal", candidate.Reason,
@@ -193,7 +193,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 
 func (detector *Detector) releaseThreatClaim(ctx context.Context, claim claimedThreat) {
 	switch claim.action {
-	case "boost", "ghost", "blacklist":
+	case "boost", "silent_reject", "ghost", "blacklist":
 		if releaseErr := detector.idem.ReleaseFraudEnforcement(ctx, claim.ip, claim.reason, claim.action); releaseErr != nil {
 			slog.Error("failed to release fraud enforcement claim after batch error",
 				"ip", claim.ip,

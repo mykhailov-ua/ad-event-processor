@@ -22,8 +22,8 @@ func isEdgeBlacklistSetKey(key string) bool {
 	}
 }
 
-func RecordBlacklistChangelog(ctx context.Context, rdb redis.Cmdable, setKey, member string, add bool) error {
-	if rdb == nil || !isEdgeBlacklistSetKey(setKey) || member == "" {
+func RecordBlacklistChangelog(ctx context.Context, redisClient redis.Cmdable, setKey, member string, add bool) error {
+	if redisClient == nil || !isEdgeBlacklistSetKey(setKey) || member == "" {
 		return nil
 	}
 	score := float64(time.Now().Unix())
@@ -31,7 +31,7 @@ func RecordBlacklistChangelog(ctx context.Context, rdb redis.Cmdable, setKey, me
 	if !add {
 		changelogKey = redisKeyBlacklistChangelogRemove
 	}
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	pipe.ZAdd(ctx, changelogKey, redis.Z{Score: score, Member: member})
 	pipe.Expire(ctx, changelogKey, blacklistChangelogTTL)
 	_, err := pipe.Exec(ctx)

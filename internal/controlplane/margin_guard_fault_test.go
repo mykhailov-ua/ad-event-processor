@@ -22,7 +22,7 @@ func TestFault_MarginGuardPause(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := testutil.SetupRedis(t)
+	redisClient, cleanupRedis := testutil.SetupRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -64,7 +64,7 @@ func TestFault_MarginGuardPause(t *testing.T) {
 	).Scan(&outboxCount))
 	require.Equal(t, 1, outboxCount)
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 
 	faultproof.Log(t, "margin_guard_pause", map[string]string{
 		"campaign_id": campaignID.String(),

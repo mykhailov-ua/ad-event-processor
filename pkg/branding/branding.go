@@ -1,4 +1,3 @@
-// Package branding provides product naming helpers.
 package branding
 
 import (
@@ -12,9 +11,8 @@ const (
 	defaultProductName = "ad-event-processor"
 	defaultVendorName  = "ad-event-processor"
 
-	// HTTPSafeViewHeader marks L1/L1.5/TLS safe-view substitution on ingest responses.
 	HTTPSafeViewHeader = "X-ad-event-processor-Safe-View"
-	// HTTPSafePageHeader marks click safe-page stub responses.
+
 	HTTPSafePageHeader = "X-ad-event-processor-Safe-Page"
 )
 
@@ -64,7 +62,6 @@ func SupportEmail() string {
 	return supportEmail
 }
 
-// SupportURL returns vendor support link (Telegram, site). Falls back to SiteURL.
 func SupportURL() string {
 	once.Do(initFromEnv)
 	if supportURL != "" {
@@ -86,7 +83,6 @@ func AlertTitle(subject string) string {
 	return ProductName() + ": " + subject
 }
 
-// HTTPUserAgent returns a branded User-Agent for outbound HTTP clients.
 func HTTPUserAgent(component string) string {
 	once.Do(initFromEnv)
 	return ProductName() + "-" + component + "/" + Version()

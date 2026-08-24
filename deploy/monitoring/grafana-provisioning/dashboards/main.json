@@ -1202,7 +1202,7 @@
         }
       ],
       "title": "Fraud Stream Backlog",
-      "description": "Analytics ring fill, queue depth, PEL age per shard, critical data flush rate (GAP-OPS-04).",
+      "description": "Analytics ring fill, queue depth, PEL age per shard, critical data flush rate.",
       "type": "timeseries"
     }
   ],

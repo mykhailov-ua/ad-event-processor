@@ -99,19 +99,19 @@ func (f *UnifiedFilter) processFilterEval(ctx context.Context, c redis.Universal
 }
 
 func (f *UnifiedFilter) openFilterEvalPins(ctx context.Context) error {
-	if f == nil || f.evalPinWorkers <= 0 || len(f.rdbs) == 0 {
+	if f == nil || f.evalPinWorkers <= 0 || len(f.redisShards) == 0 {
 		return nil
 	}
 	workers := f.evalPinWorkers
-	shards := len(f.rdbs)
+	shards := len(f.redisShards)
 	pin := &filterEvalPin{
 		workers: workers,
 		shards:  shards,
 		slots:   make([]filterEvalPinSlot, workers*shards),
 	}
 	for w := range workers {
-		for i, rdb := range f.rdbs {
-			client, ok := rdb.(*redis.Client)
+		for i, redisClient := range f.redisShards {
+			client, ok := redisClient.(*redis.Client)
 			if !ok {
 				continue
 			}

@@ -17,7 +17,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func setupRateTestRedis(t *testing.T) (rdb *redis.Client, cleanup func()) {
+func setupRateTestRedis(t *testing.T) (redisClient *redis.Client, cleanup func()) {
 	ctx := context.Background()
 
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
@@ -30,12 +30,12 @@ func setupRateTestRedis(t *testing.T) (rdb *redis.Client, cleanup func()) {
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
 
-	rdb = redis.NewClient(&redis.Options{
+	redisClient = redis.NewClient(&redis.Options{
 		Addr: endpoint,
 	})
 
 	cleanup = func() {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
 	return
@@ -46,7 +46,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	rdb, cleanup := setupRateTestRedis(t)
+	redisClient, cleanup := setupRateTestRedis(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -70,7 +70,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		err = rdb.XAdd(ctx, &redis.XAddArgs{
+		err = redisClient.XAdd(ctx, &redis.XAddArgs{
 			Stream: dlqStream,
 			Values: map[string]interface{}{
 				"d": ingestion.UnsafeString(data),
@@ -82,14 +82,14 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 	}
 
 	start := time.Now()
-	err := requeueDLQ(ctx, rdb, dlqStream, targetStream, 100, 0)
+	err := requeueDLQ(ctx, redisClient, dlqStream, targetStream, 100, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	elapsedUnlimited := time.Since(start)
 	t.Logf("Unlimited requeued %d events in %v", eventCount, elapsedUnlimited)
 
-	lenTarget, err := rdb.XLen(ctx, targetStream).Result()
+	lenTarget, err := redisClient.XLen(ctx, targetStream).Result()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 		t.Errorf("expected %d target events, got %d", eventCount, lenTarget)
 	}
 
-	rdb.Del(ctx, dlqStream, targetStream)
+	redisClient.Del(ctx, dlqStream, targetStream)
 
 	for i := range eventCount {
 		cid := uuid.New()
@@ -114,7 +114,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		rdb.XAdd(ctx, &redis.XAddArgs{
+		redisClient.XAdd(ctx, &redis.XAddArgs{
 			Stream: dlqStream,
 			Values: map[string]interface{}{
 				"d": ingestion.UnsafeString(data),
@@ -123,7 +123,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 	}
 
 	start = time.Now()
-	err = requeueDLQ(ctx, rdb, dlqStream, targetStream, 100, 20)
+	err = requeueDLQ(ctx, redisClient, dlqStream, targetStream, 100, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 		t.Errorf("expected throttled requeue to take at least 900ms, took %v", elapsedThrottled)
 	}
 
-	lenTarget, err = rdb.XLen(ctx, targetStream).Result()
+	lenTarget, err = redisClient.XLen(ctx, targetStream).Result()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestRestoreDLQ_RateLimiting(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	rdb, cleanup := setupRateTestRedis(t)
+	redisClient, cleanup := setupRateTestRedis(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -190,7 +190,7 @@ func TestRestoreDLQ_RateLimiting(t *testing.T) {
 	file.Close()
 
 	start := time.Now()
-	err = restoreDLQ(ctx, rdb, archivePath, targetStream, 10, 20)
+	err = restoreDLQ(ctx, redisClient, archivePath, targetStream, 10, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestRestoreDLQ_RateLimiting(t *testing.T) {
 		t.Errorf("expected throttled restore to take at least 900ms, took %v", elapsedThrottled)
 	}
 
-	lenTarget, err := rdb.XLen(ctx, targetStream).Result()
+	lenTarget, err := redisClient.XLen(ctx, targetStream).Result()
 	if err != nil {
 		t.Fatal(err)
 	}

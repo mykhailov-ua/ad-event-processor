@@ -277,7 +277,7 @@
           "refId": "B"
         }
       ],
-      "title": "Edge tarpit (GAP-CMP-01, EDGE_TARPIT_ENABLED)",
+      "title": "Edge tarpit (EDGE_TARPIT_ENABLED)",
       "type": "timeseries"
     }
   ],

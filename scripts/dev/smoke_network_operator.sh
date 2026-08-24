@@ -15,6 +15,6 @@ echo "$services" | grep -qx clickhouse
 echo "$services" | grep -qx control
 echo "$services" | grep -qx db-payment
 
-go run ./cmd/ad-event-processor doctor --profile network_operator
+go run ./cmd/operator doctor --profile network_operator
 
 echo "smoke_network_operator: ok"

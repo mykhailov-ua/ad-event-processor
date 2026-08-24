@@ -200,7 +200,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducer *BrokerProducer) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducer *BrokerProducer) http.Handler {
 	mux := http.NewServeMux()
 	trackCORS := newTrackCORS(cfg.TrackCORSOrigins)
 
@@ -211,7 +211,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 	}
 
 	trackLatencyRing := NewLatencyRing(defaultLatencyRingCap)
-	fraudWriter := NewFraudStreamWriter(rdbs, fraudStream, int64(cfg.StreamMaxLen))
+	fraudWriter := NewFraudStreamWriter(redisShards, fraudStream, int64(cfg.StreamMaxLen))
 	trackProc := newTrackProcessor(filterEngine, registry, creativeStore)
 
 	mux.Handle("GET /metrics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -229,7 +229,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			return
 		}
 
-		if !pingConnectedRedisShards(ctx, rdbs) {
+		if !pingConnectedRedisShards(ctx, redisShards) {
 			http.Error(w, "redis shard unreachable", http.StatusServiceUnavailable)
 			return
 		}
@@ -427,8 +427,12 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				return
 			case trackStatusRejected:
 				spec := filterRejectSpecs[outcome.RejectKind]
-				domain.EventPool.Put(evt)
 				recordHTTPFilterReject(outcome.RejectKind, evt)
+				if outcome.RejectKind == filterRejectFraudBlocked {
+					shard := sharder.GetShard(evt.CampaignID)
+					enqueueFraudReject(fraudWriter, shard, evt)
+				}
+				domain.EventPool.Put(evt)
 				if outcome.RejectKind == filterRejectConsent {
 					w.WriteHeader(http.StatusNoContent)
 					return
@@ -575,6 +579,7 @@ var (
 	respLicenseExpired     = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 15\r\nConnection: keep-alive\r\n\r\nlicense expired")
 	respDailyQuotaExceeded = []byte("HTTP/1.1 429 Too Many Requests\r\nContent-Type: text/plain\r\nRetry-After: 60\r\nContent-Length: 21\r\nConnection: keep-alive\r\n\r\ndaily quota exceeded")
 	respPlacementBlocked   = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 17\r\nConnection: keep-alive\r\n\r\nplacement blocked")
+	respFraudBlocked       = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: keep-alive\r\n\r\nfraud blocked")
 	respSegmentExcluded    = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 16\r\nConnection: keep-alive\r\n\r\nsegment excluded")
 	respSegmentNotIncluded = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 21\r\nConnection: keep-alive\r\n\r\nsegment not included")
 	respLinkSigForbidden   = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\ninvalid link signature")
@@ -596,7 +601,7 @@ type AdsPacketHandler struct {
 	creativeStore           *BrandCreativeStore
 	cfg                     *config.Config
 	pool                    Pinger
-	rdbs                    []redis.UniversalClient
+	redisShards                    []redis.UniversalClient
 	sharder                 Sharder
 	fraudStream             string
 	trackDurationObserver   prometheus.Observer
@@ -606,7 +611,7 @@ type AdsPacketHandler struct {
 	healthy                 atomic.Int32
 	healthzHits             atomic.Uint64
 	startedAtNano           atomic.Int64
-	rdbsHealthy             []atomic.Int32
+	redisShardsHealthy             []atomic.Int32
 	logger                  *logger.Logger
 	loggerShardCounter      atomic.Uint64
 	auditLogSeq             atomic.Uint64
@@ -819,7 +824,7 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 	}
 }
 
-func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, rdbs []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
+func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore) *AdsPacketHandler {
 	trackDurationObserver := metrics.HTTPRequestDuration.WithLabelValues("POST", "/track")
 	var trackStatusCounters [600]prometheus.Counter
 	for i := range 600 {
@@ -832,10 +837,10 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 		creativeStore:         creativeStore,
 		cfg:                   cfg,
 		pool:                  pool,
-		rdbs:                  rdbs,
+		redisShards:                  redisShards,
 		sharder:               sharder,
 		fraudStream:           fraudStream,
-		fraudWriter:           NewFraudStreamWriter(rdbs, fraudStream, int64(cfg.StreamMaxLen)),
+		fraudWriter:           NewFraudStreamWriter(redisShards, fraudStream, int64(cfg.StreamMaxLen)),
 		trackProc:             newTrackProcessor(filterEngine, registry, creativeStore),
 		trackDurationObserver: trackDurationObserver,
 		trackStatusCounters:   trackStatusCounters,
@@ -848,10 +853,10 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 	configureOrtbScanLimits(cfg)
 	configureJSONParseSecurity(cfg)
 	configureProtoMaxFields(cfg)
-	if n := len(rdbs); n > 0 {
-		h.rdbsHealthy = make([]atomic.Int32, n)
-		for i := range h.rdbsHealthy {
-			h.rdbsHealthy[i].Store(1)
+	if n := len(redisShards); n > 0 {
+		h.redisShardsHealthy = make([]atomic.Int32, n)
+		for i := range h.redisShardsHealthy {
+			h.redisShardsHealthy[i].Store(1)
 		}
 	}
 
@@ -959,13 +964,13 @@ func (h *AdsPacketHandler) SetHealthProbeState(healthy bool, shardOK ...bool) {
 		h.healthy.Store(0)
 	}
 	for i, ok := range shardOK {
-		if i >= len(h.rdbsHealthy) {
+		if i >= len(h.redisShardsHealthy) {
 			break
 		}
 		if ok {
-			h.rdbsHealthy[i].Store(1)
+			h.redisShardsHealthy[i].Store(1)
 		} else {
-			h.rdbsHealthy[i].Store(0)
+			h.redisShardsHealthy[i].Store(0)
 		}
 	}
 }
@@ -1150,15 +1155,15 @@ func (h *AdsPacketHandler) StartHealthProbe(ctx context.Context) {
 						slog.Error("health probe: postgres unreachable", "error", err)
 					}
 				}
-				for i, rdb := range h.rdbs {
-					if err := rdb.Ping(probeCtx).Err(); err != nil {
+				for i, redisClient := range h.redisShards {
+					if err := redisClient.Ping(probeCtx).Err(); err != nil {
 						ok = false
-						if i < len(h.rdbsHealthy) {
-							h.rdbsHealthy[i].Store(0)
+						if i < len(h.redisShardsHealthy) {
+							h.redisShardsHealthy[i].Store(0)
 						}
 						slog.Error("health probe: redis shard unreachable", "shard", i, "error", err)
-					} else if i < len(h.rdbsHealthy) {
-						h.rdbsHealthy[i].Store(1)
+					} else if i < len(h.redisShardsHealthy) {
+						h.redisShardsHealthy[i].Store(1)
 					}
 				}
 				cancel()
@@ -1167,9 +1172,9 @@ func (h *AdsPacketHandler) StartHealthProbe(ctx context.Context) {
 				} else {
 					h.healthy.Store(0)
 				}
-				shardStates := make([]int32, len(h.rdbsHealthy))
-				for i := range h.rdbsHealthy {
-					shardStates[i] = h.rdbsHealthy[i].Load()
+				shardStates := make([]int32, len(h.redisShardsHealthy))
+				for i := range h.redisShardsHealthy {
+					shardStates[i] = h.redisShardsHealthy[i].Load()
 				}
 				exportHealthProbeMetrics(ok, shardStates)
 			}

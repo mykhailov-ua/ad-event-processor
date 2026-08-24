@@ -32,19 +32,19 @@ func TestBrokerReconcileWorker_Divergence(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
 	ctx := context.Background()
 	stream := "events:shard0"
-	require.NoError(t, rdb.XAdd(ctx, &redis.XAddArgs{
+	require.NoError(t, redisClient.XAdd(ctx, &redis.XAddArgs{
 		Stream: stream,
 		Values: map[string]any{"payload": "a"},
 	}).Err())
-	require.NoError(t, rdb.XAdd(ctx, &redis.XAddArgs{
+	require.NoError(t, redisClient.XAdd(ctx, &redis.XAddArgs{
 		Stream: stream,
 		Values: map[string]any{"payload": "b"},
 	}).Err())
-	require.NoError(t, rdb.XAdd(ctx, &redis.XAddArgs{
+	require.NoError(t, redisClient.XAdd(ctx, &redis.XAddArgs{
 		Stream: stream,
 		Values: map[string]any{"payload": "c"},
 	}).Err())
@@ -57,7 +57,7 @@ func TestBrokerReconcileWorker_Divergence(t *testing.T) {
 		StreamName:          stream,
 		Interval:            time.Hour,
 		DivergenceThreshold: 1,
-	}, []redis.UniversalClient{rdb})
+	}, []redis.UniversalClient{redisClient})
 	require.NoError(t, w.cli.Connect())
 	w.sample(ctx)
 

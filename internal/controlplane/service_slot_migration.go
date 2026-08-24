@@ -180,7 +180,7 @@ func (s *Service) EnsureSlotMigrationJobs(ctx context.Context, draftVersion int3
 }
 
 func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot int16) error {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return fmt.Errorf("no redis shards configured")
 	}
 	migRepo := domain.NewSlotMigrationRepo(s.GetPool())
@@ -194,8 +194,8 @@ func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot
 		job.State == db.RedisSlotMigrationStateDone {
 		return nil
 	}
-	if job.SourceShard < 0 || int(job.SourceShard) >= len(s.rdbs) ||
-		job.TargetShard < 0 || int(job.TargetShard) >= len(s.rdbs) {
+	if job.SourceShard < 0 || int(job.SourceShard) >= len(s.redisShards) ||
+		job.TargetShard < 0 || int(job.TargetShard) >= len(s.redisShards) {
 		return fmt.Errorf("invalid shard indices source=%d target=%d", job.SourceShard, job.TargetShard)
 	}
 
@@ -211,8 +211,8 @@ func (s *Service) CopySlotMigrationData(ctx context.Context, version int32, slot
 		return err
 	}
 
-	src := s.rdbs[job.SourceShard]
-	dst := s.rdbs[job.TargetShard]
+	src := s.redisShards[job.SourceShard]
+	dst := s.redisShards[job.TargetShard]
 
 	if s.cfg != nil && s.cfg.MigrationFenceEnabled && !s.slotMigrationDualWriteEnabled() && len(slotCampaigns) > 0 {
 		if err := domain.BumpMigrationFences(ctx, s.GetPool(), src, slotCampaigns); err != nil {
@@ -314,11 +314,11 @@ func (s *Service) ActivateSlotMapVersionWithMigration(ctx context.Context, admin
 			if job.State != db.RedisSlotMigrationStateCopied {
 				return ErrSlotMigrationNotReady
 			}
-			if job.TargetShard < 0 || int(job.TargetShard) >= len(s.rdbs) {
+			if job.TargetShard < 0 || int(job.TargetShard) >= len(s.redisShards) {
 				return fmt.Errorf("invalid target shard %d for slot %d", job.TargetShard, row.Slot)
 			}
 			slotCampaigns := domain.FilterCampaignIDsBySlot(campaignIDs, row.Slot)
-			dst := s.rdbs[job.TargetShard]
+			dst := s.redisShards[job.TargetShard]
 			if !skipRewarm {
 				if err := domain.RewarmCampaignBudgetKeys(ctx, s.GetPool(), dst, slotCampaigns); err != nil {
 					return fmt.Errorf("pg re-warm slot %d: %w", row.Slot, err)
@@ -395,7 +395,7 @@ func (s *Service) ActivateSlotMapVersionWithMigration(ctx context.Context, admin
 }
 
 func (s *Service) DrainMigratingSlots(ctx context.Context, version int32) error {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return fmt.Errorf("no redis shards configured")
 	}
 	migRepo := domain.NewSlotMigrationRepo(s.GetPool())
@@ -422,10 +422,10 @@ func (s *Service) DrainMigratingSlots(ctx context.Context, version int32) error 
 		if job.Version != active {
 			continue
 		}
-		if job.SourceShard < 0 || int(job.SourceShard) >= len(s.rdbs) {
+		if job.SourceShard < 0 || int(job.SourceShard) >= len(s.redisShards) {
 			continue
 		}
-		src := s.rdbs[job.SourceShard]
+		src := s.redisShards[job.SourceShard]
 		slotCampaigns := domain.FilterCampaignIDsBySlot(campaignIDs, job.Slot)
 		for _, id := range slotCampaigns {
 			if _, err := migrator.DrainCampaignKeys(ctx, src, id); err != nil {
@@ -483,7 +483,7 @@ func (s *Service) RollbackSlotMapVersion(ctx context.Context, adminID uuid.UUID,
 }
 
 func (s *Service) CatchUpDualWriteSlots(ctx context.Context, draftVersion int32) error {
-	if !s.slotMigrationDualWriteEnabled() || len(s.rdbs) == 0 {
+	if !s.slotMigrationDualWriteEnabled() || len(s.redisShards) == 0 {
 		return nil
 	}
 	migRepo := domain.NewSlotMigrationRepo(s.GetPool())
@@ -495,12 +495,12 @@ func (s *Service) CatchUpDualWriteSlots(ctx context.Context, draftVersion int32)
 		if job.State != db.RedisSlotMigrationStateDualWriting {
 			continue
 		}
-		if job.SourceShard < 0 || int(job.SourceShard) >= len(s.rdbs) ||
-			job.TargetShard < 0 || int(job.TargetShard) >= len(s.rdbs) {
+		if job.SourceShard < 0 || int(job.SourceShard) >= len(s.redisShards) ||
+			job.TargetShard < 0 || int(job.TargetShard) >= len(s.redisShards) {
 			continue
 		}
-		src := s.rdbs[job.SourceShard]
-		dst := s.rdbs[job.TargetShard]
+		src := s.redisShards[job.SourceShard]
+		dst := s.redisShards[job.TargetShard]
 		_, lag, err := domain.CatchUpSlotMigrationDeltas(ctx, src, dst, job.Version, job.Slot)
 		if err != nil {
 			return fmt.Errorf("catch-up slot %d: %w", job.Slot, err)
@@ -530,12 +530,12 @@ func (s *Service) finalizeDualWriteSlot(
 	job db.RedisSlotMigration,
 	campaignIDs []uuid.UUID,
 ) error {
-	if job.SourceShard < 0 || int(job.SourceShard) >= len(s.rdbs) ||
-		job.TargetShard < 0 || int(job.TargetShard) >= len(s.rdbs) {
+	if job.SourceShard < 0 || int(job.SourceShard) >= len(s.redisShards) ||
+		job.TargetShard < 0 || int(job.TargetShard) >= len(s.redisShards) {
 		return fmt.Errorf("invalid shard indices source=%d target=%d", job.SourceShard, job.TargetShard)
 	}
-	src := s.rdbs[job.SourceShard]
-	dst := s.rdbs[job.TargetShard]
+	src := s.redisShards[job.SourceShard]
+	dst := s.redisShards[job.TargetShard]
 	cfg := s.dualWriteConfig()
 
 	lag, err := domain.SlotMigrationReplicationLag(ctx, src)
@@ -602,7 +602,7 @@ func (s *Service) dualWriteConfig() domain.SlotMigrationDualWriteConfig {
 }
 
 func (s *Service) BumpFencesForPendingMigrations(ctx context.Context) error {
-	if s.cfg == nil || !s.cfg.MigrationFenceEnabled || len(s.rdbs) == 0 {
+	if s.cfg == nil || !s.cfg.MigrationFenceEnabled || len(s.redisShards) == 0 {
 		return nil
 	}
 	migRepo := domain.NewSlotMigrationRepo(s.GetPool())
@@ -625,14 +625,14 @@ func (s *Service) BumpFencesForPendingMigrations(ctx context.Context) error {
 			job.State == db.RedisSlotMigrationStateDone {
 			continue
 		}
-		if job.SourceShard < 0 || int(job.SourceShard) >= len(s.rdbs) {
+		if job.SourceShard < 0 || int(job.SourceShard) >= len(s.redisShards) {
 			continue
 		}
 		slotCampaigns := domain.FilterCampaignIDsBySlot(campaignIDs, job.Slot)
 		if len(slotCampaigns) == 0 {
 			continue
 		}
-		src := s.rdbs[job.SourceShard]
+		src := s.redisShards[job.SourceShard]
 		if err := domain.BumpMigrationFences(ctx, s.GetPool(), src, slotCampaigns); err != nil {
 			return fmt.Errorf("bump fences slot %d: %w", job.Slot, err)
 		}
@@ -656,7 +656,7 @@ func (s *Service) listActiveCampaignUUIDs(ctx context.Context) ([]uuid.UUID, err
 }
 
 func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return fmt.Errorf("no redis shards configured")
 	}
 	campaignIDs, err := s.listActiveCampaignUUIDs(ctx)
@@ -667,7 +667,7 @@ func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {
 		return nil
 	}
 
-	sharder := domain.NewStaticSlotSharder(len(s.rdbs))
+	sharder := domain.NewStaticSlotSharder(len(s.redisShards))
 	perShard := make(map[int][]uuid.UUID)
 	for _, id := range campaignIDs {
 		shard := sharder.GetShard(id)
@@ -677,14 +677,18 @@ func (s *Service) VerifySlotMigrationR5(ctx context.Context) error {
 	}
 
 	for shard, ids := range perShard {
-		if shard < 0 || shard >= len(s.rdbs) {
+		if shard < 0 || shard >= len(s.redisShards) {
 			continue
 		}
-		rdb := s.rdbs[shard]
+		redisClient := s.redisShards[shard]
+		snaps, err := domain.ReadBudgetInvariants(ctx, s.GetPool(), redisClient, ids)
+		if err != nil {
+			return fmt.Errorf("r5 read shard %d: %w", shard, err)
+		}
 		for _, campID := range ids {
-			snap, err := domain.ReadBudgetInvariant(ctx, s.GetPool(), rdb, campID)
-			if err != nil {
-				return fmt.Errorf("r5 read shard %d campaign %s: %w", shard, campID, err)
+			snap, ok := snaps[campID]
+			if !ok {
+				return fmt.Errorf("r5 read shard %d campaign %s: not found", shard, campID)
 			}
 			spend := snap.BudgetLimit - snap.RedisRemaining
 			expected := snap.PGCurrentSpend + snap.SyncDelta

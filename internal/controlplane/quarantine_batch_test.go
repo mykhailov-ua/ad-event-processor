@@ -54,8 +54,8 @@ func TestQuarantineBatch_boundedPublishCount(t *testing.T) {
 	defer rdb3.Close()
 
 	var publishCount atomic.Int64
-	wrap := func(rdb redis.UniversalClient) redis.UniversalClient {
-		return &quarantinePublishCounter{UniversalClient: rdb, count: &publishCount}
+	wrap := func(redisClient redis.UniversalClient) redis.UniversalClient {
+		return &quarantinePublishCounter{UniversalClient: redisClient, count: &publishCount}
 	}
 
 	ctx := context.Background()
@@ -115,8 +115,8 @@ func TestFault_QuarantineBatchBoundedPublish(t *testing.T) {
 	defer rdb3.Close()
 
 	var publishCount atomic.Int64
-	wrap := func(rdb redis.UniversalClient) redis.UniversalClient {
-		return &quarantinePublishCounter{UniversalClient: rdb, count: &publishCount}
+	wrap := func(redisClient redis.UniversalClient) redis.UniversalClient {
+		return &quarantinePublishCounter{UniversalClient: redisClient, count: &publishCount}
 	}
 
 	ctx := context.Background()

@@ -24,7 +24,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -32,8 +32,8 @@ func TestCustomersList_Handler(t *testing.T) {
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
 
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -130,7 +130,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -138,8 +138,8 @@ func TestCampaignsList_Handler(t *testing.T) {
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
 
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()

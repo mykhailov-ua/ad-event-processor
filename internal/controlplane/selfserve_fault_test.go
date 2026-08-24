@@ -24,7 +24,7 @@ func TestFault_SelfServeIdempotentCreate(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -33,8 +33,8 @@ func TestFault_SelfServeIdempotentCreate(t *testing.T) {
 		SelfServeBudgetMinMicro: 1_000_000,
 		SelfServeBudgetMaxMicro: 100_000_000_000,
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 
 	custID := uuid.New()

@@ -191,8 +191,8 @@ func main() {
 		chJanitor.StartBackground(ctx, time.Duration(intervalH)*time.Hour)
 	}
 
-	var rdbs []redis.UniversalClient
-	rdbs, _, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+	var redisShards []redis.UniversalClient
+	redisShards, _, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
 		PoolSize: cfg.RedisPoolSize,
 	})
 	if err != nil {
@@ -201,7 +201,7 @@ func main() {
 	}
 
 	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
-		Rdbs:         rdbs,
+		RedisShards:         redisShards,
 		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
 		MaxLen:       cfg.StreamMaxLen,
 		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
@@ -265,7 +265,7 @@ func main() {
 	dedupAdapter := dedup.NewAdapter(pool, cfg.RegionCode, dedup.LoadRoutingEpoch(ctx, pool))
 
 	var ingestPgFailover *pgfailover.IngestRuntime
-	ingestPgFailover = pgfailover.StartIngestSubscribers(ctx, rdbs, pgfailover.IngestSubscriberConfig{
+	ingestPgFailover = pgfailover.StartIngestSubscribers(ctx, redisShards, pgfailover.IngestSubscriberConfig{
 		MaxConns: cfg.DBProcessorMaxConns,
 		MinConns: cfg.DBMinConns,
 		Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,
@@ -324,8 +324,8 @@ func main() {
 	var budgetDeltaConsumer *controlplane.BudgetDeltaConsumer
 	var syncWorkers []*ingestion.SyncWorker
 	var fraudMicrobatcher *fraud.MicroBatcher
-	if fraudScorer != nil && len(rdbs) > 0 {
-		fraudMicrobatcher = fraud.NewMicroBatcher(rdbs, fraudScorer, cfg.CampaignUpdateChannel)
+	if fraudScorer != nil && len(redisShards) > 0 {
+		fraudMicrobatcher = fraud.NewMicroBatcher(redisShards, fraudScorer, cfg.CampaignUpdateChannel)
 		go fraudMicrobatcher.Start(consumerCtx)
 	}
 
@@ -348,10 +348,10 @@ func main() {
 		)
 	}
 
-	for i, rdb := range rdbs {
+	for i, redisClient := range redisShards {
 		shardID := fmt.Sprintf("shard_%d", i)
 
-		sw := ingestion.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, procPgGate, 0)
+		sw := ingestion.NewSyncWorker(redisClient, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, procPgGate, 0)
 		sw.SetDedupAdapter(dedupAdapter)
 		sw.ConfigureBudgetContention(
 			ingestion.BudgetLockTTLSeconds(cfg.LedgerBatchFlushMs, cfg.BudgetSyncIntervalMs),
@@ -367,7 +367,7 @@ func main() {
 			settleFlush := time.Duration(cfg.SettlementFlushMs) * time.Millisecond
 			settleW := ingestion.NewSettlementWorker(
 				settleStore,
-				rdb,
+				redisClient,
 				cfg.RedisStreamName,
 				cfg.RedisGroupName+"_pg",
 				cfg.RedisConsumerID+"_"+shardID,
@@ -386,7 +386,7 @@ func main() {
 			if weightCtrl != nil {
 				settleW.SetWeightController(weightCtrl)
 			}
-			segmentHandler := ingestion.NewSegmentConversionHandler(campaignRepo, queries, []redis.UniversalClient{rdb}, piiHasher)
+			segmentHandler := ingestion.NewSegmentConversionHandler(campaignRepo, queries, []redis.UniversalClient{redisClient}, piiHasher)
 			settleW.SetOnMessageProcessed(segmentHandler.Handle)
 			pgSettlementWorkers = append(pgSettlementWorkers, settleW)
 			settleW.Start(consumerCtx)
@@ -397,7 +397,7 @@ func main() {
 		if chStore != nil && !cfg.BrokerPrimaryCH() {
 			cc := ingestion.NewStreamConsumer(
 				chStore,
-				rdb,
+				redisClient,
 				cfg.RedisStreamName,
 				cfg.RedisGroupName+"_ch",
 				cfg.RedisConsumerID+"_"+shardID,
@@ -430,7 +430,7 @@ func main() {
 		if chStore != nil && !cfg.BrokerPrimaryCH() {
 			fc := ingestion.NewStreamConsumer(
 				chStore,
-				rdb,
+				redisClient,
 				cfg.FraudStreamName,
 				cfg.RedisGroupName+"_fraud",
 				cfg.RedisConsumerID+"_fraud_"+shardID,
@@ -463,7 +463,7 @@ func main() {
 	if !cfg.BrokerPrimaryCH() {
 		ingestion.StartFraudLagPublisher(
 			ctx,
-			rdbs,
+			redisShards,
 			cfg.FraudStreamName,
 			cfg.RedisGroupName+"_fraud",
 			cfg.FraudConsumerLagSec,
@@ -560,7 +560,7 @@ func main() {
 			}
 		}
 
-		if len(rdbs) > 0 && !cfg.BrokerPrimaryCH() {
+		if len(redisShards) > 0 && !cfg.BrokerPrimaryCH() {
 			brokerReconcile = ingestion.NewBrokerReconcileWorker(ingestion.BrokerReconcileConfig{
 				BrokerAddr:          cfg.Broker.URL,
 				BrokerRedis:         brokerRedisURL,
@@ -570,7 +570,7 @@ func main() {
 				StreamName:          cfg.RedisStreamName,
 				Interval:            time.Duration(cfg.Broker.ReconcileIntervalMs) * time.Millisecond,
 				DivergenceThreshold: cfg.Broker.DivergenceThreshold,
-			}, rdbs)
+			}, redisShards)
 			brokerReconcile.Start(consumerCtx)
 		} else if cfg.BrokerPrimaryCH() {
 			slog.Info("processor: broker reconcile skipped (CH_INGEST_SOURCE=broker)")
@@ -631,12 +631,12 @@ func main() {
 				return false
 			}
 		}
-		for i, rdb := range rdbs {
-			if err := rdb.Ping(probeCtx).Err(); err != nil {
+		for i, redisClient := range redisShards {
+			if err := redisClient.Ping(probeCtx).Err(); err != nil {
 				return false
 			}
 			if cfg.RedisStreamName != "" {
-				if n, err := rdb.XLen(probeCtx, cfg.RedisStreamName).Result(); err == nil {
+				if n, err := redisClient.XLen(probeCtx, cfg.RedisStreamName).Result(); err == nil {
 					metrics.ProcessorStreamXLen.WithLabelValues(strconv.Itoa(i)).Set(float64(n))
 				}
 			}
@@ -767,8 +767,8 @@ func main() {
 		streamTrimmer.Wait()
 	}
 
-	for i, rdb := range rdbs {
-		if err := rdb.Close(); err != nil {
+	for i, redisClient := range redisShards {
+		if err := redisClient.Close(); err != nil {
 			slog.Error("failed to close redis shard", "shard", i, "error", err)
 		}
 	}

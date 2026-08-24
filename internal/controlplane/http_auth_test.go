@@ -264,9 +264,9 @@ func TestAuthHandler_MeRedisOutage(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
-	_ = rdb.Close()
+	_ = redisClient.Close()
 
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -279,7 +279,7 @@ func TestAuthHandler_MeRedisOutage(t *testing.T) {
 	token, err := tokenMaker.CreateToken(userID, uuid.New(), RoleAdmin, customerID, time.Hour)
 	require.NoError(t, err)
 
-	h := NewAuthHandler(nil, tokenMaker, []redis.UniversalClient{rdb}, cfg, nil)
+	h := NewAuthHandler(nil, tokenMaker, []redis.UniversalClient{redisClient}, cfg, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

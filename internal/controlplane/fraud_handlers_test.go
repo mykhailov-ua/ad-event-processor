@@ -50,8 +50,8 @@ func (s *campaignFraudStub) UpdateCampaignFraudConfig(_ context.Context, campaig
 		out.FraudThresholdIVT = 65
 		out.FraudThresholdBlock = 85
 	}
-	if req.GhostIVTEnabled != nil {
-		out.GhostIVTEnabled = *req.GhostIVTEnabled
+	if req.SilentRejectEnabled != nil {
+		out.SilentRejectEnabled = *req.SilentRejectEnabled
 	}
 	return out, nil
 }
@@ -114,7 +114,7 @@ func TestGetCampaignFraud_returnsConfig(t *testing.T) {
 			FraudThresholdSuspect: 60,
 			FraudThresholdIVT:     80,
 			FraudThresholdBlock:   100,
-			GhostIVTEnabled:       true,
+			SilentRejectEnabled:   true,
 		},
 	}
 	h := newCampaignFraudHandlers(stub)
@@ -129,7 +129,36 @@ func TestGetCampaignFraud_returnsConfig(t *testing.T) {
 	var out controlplane.CampaignFraudConfigDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	require.Equal(t, uint8(30), out.FraudThresholdPass)
-	require.True(t, out.GhostIVTEnabled)
+	require.True(t, out.SilentRejectEnabled)
+}
+
+func TestPatchCampaignFraud_legacySilentRejectJSONField(t *testing.T) {
+	campaignID := uuid.New()
+	stub := &campaignFraudStub{
+		cfg: controlplane.CampaignFraudConfigDTO{
+			FraudThresholdPass:    30,
+			FraudThresholdSuspect: 60,
+			FraudThresholdIVT:     80,
+			FraudThresholdBlock:   100,
+		},
+	}
+	h := newCampaignFraudHandlers(stub)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	body := `{"ghost_ivt_enabled":true}`
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/"+campaignID.String()+"/fraud", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.True(t, stub.patchOK)
+	require.NotNil(t, stub.patch.SilentRejectEnabled)
+	require.True(t, *stub.patch.SilentRejectEnabled)
+
+	var out controlplane.CampaignFraudConfigDTO
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
+	require.True(t, out.SilentRejectEnabled)
 }
 
 func TestPatchCampaignFraud_appliesPreset(t *testing.T) {
@@ -146,7 +175,7 @@ func TestPatchCampaignFraud_appliesPreset(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	body := `{"preset":"aggressive","ghost_ivt_enabled":true}`
+	body := `{"preset":"aggressive","silent_reject_enabled":true}`
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/"+campaignID.String()+"/fraud", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -159,7 +188,7 @@ func TestPatchCampaignFraud_appliesPreset(t *testing.T) {
 	var out controlplane.CampaignFraudConfigDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	require.Equal(t, uint8(20), out.FraudThresholdPass)
-	require.True(t, out.GhostIVTEnabled)
+	require.True(t, out.SilentRejectEnabled)
 }
 
 func TestPatchCampaignFraud_invalidJSON(t *testing.T) {

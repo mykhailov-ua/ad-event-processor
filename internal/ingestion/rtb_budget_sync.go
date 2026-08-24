@@ -60,15 +60,15 @@ func SyncRTBBudgetState(
 
 func loadRedisCampaignBudget(
 	ctx context.Context,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	camp *domain.Campaign,
 ) (int64, bool) {
 	shard := sharder.GetShard(camp.ID)
-	if shard < 0 || shard >= len(rdbs) {
+	if shard < 0 || shard >= len(redisShards) {
 		return 0, false
 	}
-	val, err := rdbs[shard].Get(ctx, camp.BudgetCampaignKey).Int64()
+	val, err := redisShards[shard].Get(ctx, camp.BudgetCampaignKey).Int64()
 	if err != nil {
 		return 0, false
 	}
@@ -80,12 +80,12 @@ func loadRedisCampaignBudget(
 
 func loadRedisDailySpend(
 	ctx context.Context,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	camp *domain.Campaign,
 ) (int64, bool) {
 	shard := sharder.GetShard(camp.ID)
-	if shard < 0 || shard >= len(rdbs) {
+	if shard < 0 || shard >= len(redisShards) {
 		return 0, false
 	}
 	loc := camp.Location
@@ -97,7 +97,7 @@ func loadRedisDailySpend(
 	keyBuf = appendDate(keyBuf, time.Now().In(loc))
 	key := string(keyBuf)
 
-	val, err := rdbs[shard].Get(ctx, key).Int64()
+	val, err := redisShards[shard].Get(ctx, key).Int64()
 	if err != nil {
 		return 0, false
 	}

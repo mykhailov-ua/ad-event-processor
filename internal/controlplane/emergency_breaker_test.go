@@ -20,7 +20,7 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -29,7 +29,7 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 		RateLimitWindowMs: 60000,
 	}
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -55,7 +55,7 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 	err = worker.ProcessOutbox(ctx)
 	require.NoError(t, err)
 
-	redisVal, err := rdb.HGet(ctx, "config:values", "emergency_breaker").Result()
+	redisVal, err := redisClient.HGet(ctx, "config:values", "emergency_breaker").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "true", redisVal)
 
@@ -64,7 +64,7 @@ func TestEmergencyCircuitBreaker(t *testing.T) {
 	err = worker.ProcessOutbox(ctx)
 	require.NoError(t, err)
 
-	redisVal, err = rdb.HGet(ctx, "config:values", "emergency_breaker").Result()
+	redisVal, err = redisClient.HGet(ctx, "config:values", "emergency_breaker").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "false", redisVal)
 }

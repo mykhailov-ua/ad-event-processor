@@ -20,19 +20,19 @@ func TestReconcileCampaignBudget_detectsDivergence(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
 	reg := &mockRegistry{}
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, int64(1_000_000), 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, int64(1_000_000), 0).Err())
 
 	store := rtb.NewBudgetStore()
 	store.SetBudget(CampaignIDFromUUID(campID), 900_000)
 
-	redisRem, rtbRem, ok := ReconcileCampaignBudget(ctx, store, []redis.UniversalClient{rdb}, NewJumpHashSharder(1), camp)
+	redisRem, rtbRem, ok := ReconcileCampaignBudget(ctx, store, []redis.UniversalClient{redisClient}, NewJumpHashSharder(1), camp)
 	require.True(t, ok)
 	assert.Equal(t, int64(1_000_000), redisRem)
 	assert.Equal(t, int64(900_000), rtbRem)
@@ -43,14 +43,14 @@ func TestRtbBudgetReconcileWorker_sample(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
 	reg := &mockRegistry{}
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, int64(2_000_000), 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, int64(2_000_000), 0).Err())
 
 	campCopy := *camp
 	campCopy.ID = campID
@@ -68,7 +68,7 @@ func TestRtbBudgetReconcileWorker_sample(t *testing.T) {
 		RtbBudgetReconcileConfig{DivergenceThreshold: 100, SampleSize: 4},
 		registry,
 		catalog,
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 	)
 	worker.sample(ctx)

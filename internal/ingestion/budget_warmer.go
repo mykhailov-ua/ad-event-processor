@@ -26,12 +26,12 @@ func RemainingBudgetMicro(c *domain.Campaign) int64 {
 }
 
 type BudgetCacheWarmer struct {
-	rdbs    []redis.UniversalClient
+	redisShards    []redis.UniversalClient
 	sharder Sharder
 }
 
-func NewBudgetCacheWarmer(rdbs []redis.UniversalClient, sharder Sharder) *BudgetCacheWarmer {
-	return &BudgetCacheWarmer{rdbs: rdbs, sharder: sharder}
+func NewBudgetCacheWarmer(redisShards []redis.UniversalClient, sharder Sharder) *BudgetCacheWarmer {
+	return &BudgetCacheWarmer{redisShards: redisShards, sharder: sharder}
 }
 
 type budgetWarmItem struct {
@@ -40,17 +40,17 @@ type budgetWarmItem struct {
 }
 
 func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*domain.Campaign) (int, error) {
-	if w == nil || len(w.rdbs) == 0 || len(campaigns) == 0 {
+	if w == nil || len(w.redisShards) == 0 || len(campaigns) == 0 {
 		return 0, nil
 	}
 
-	byShard := make([][]budgetWarmItem, len(w.rdbs))
+	byShard := make([][]budgetWarmItem, len(w.redisShards))
 	for _, camp := range campaigns {
 		if camp == nil || camp.BudgetCampaignKey == "" {
 			continue
 		}
 		shard := w.sharder.GetShard(camp.ID)
-		if shard < 0 || shard >= len(w.rdbs) {
+		if shard < 0 || shard >= len(w.redisShards) {
 			continue
 		}
 		byShard[shard] = append(byShard[shard], budgetWarmItem{
@@ -64,10 +64,10 @@ func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*domain.Campai
 		if len(items) == 0 {
 			continue
 		}
-		if shard < 0 || shard >= len(w.rdbs) || w.rdbs[shard] == nil {
+		if shard < 0 || shard >= len(w.redisShards) || w.redisShards[shard] == nil {
 			continue
 		}
-		pipe := w.rdbs[shard].Pipeline()
+		pipe := w.redisShards[shard].Pipeline()
 		cmds := make([]*redis.BoolCmd, len(items))
 		for i, item := range items {
 			cmds[i] = pipe.SetNX(ctx, item.key, item.val, budgetKeyTTL)
@@ -86,21 +86,21 @@ func (w *BudgetCacheWarmer) Warm(ctx context.Context, campaigns []*domain.Campai
 }
 
 func (w *BudgetCacheWarmer) WarmOne(ctx context.Context, camp *domain.Campaign) (bool, error) {
-	if w == nil || len(w.rdbs) == 0 || camp == nil || camp.BudgetCampaignKey == "" {
+	if w == nil || len(w.redisShards) == 0 || camp == nil || camp.BudgetCampaignKey == "" {
 		return false, nil
 	}
 	shard := w.sharder.GetShard(camp.ID)
-	if shard < 0 || shard >= len(w.rdbs) {
+	if shard < 0 || shard >= len(w.redisShards) {
 		return false, fmt.Errorf("invalid shard index %d for campaign %s", shard, camp.ID)
 	}
 
-	rdb := w.rdbs[shard]
-	if rdb == nil {
+	redisClient := w.redisShards[shard]
+	if redisClient == nil {
 		return false, nil
 	}
 	remaining := RemainingBudgetMicro(camp)
 
-	warmed, err := rdb.SetNX(ctx, camp.BudgetCampaignKey, remaining, budgetKeyTTL).Result()
+	warmed, err := redisClient.SetNX(ctx, camp.BudgetCampaignKey, remaining, budgetKeyTTL).Result()
 	if err != nil {
 		return false, fmt.Errorf("budget warm one shard %d: %w", shard, err)
 	}
@@ -118,14 +118,14 @@ func (w *BudgetCacheWarmer) WarmFromRegistry(ctx context.Context, reg *Registry)
 	return w.Warm(ctx, reg.ActiveCampaigns())
 }
 
-func warmBudgetKeyNX(ctx context.Context, rdb redis.UniversalClient, key string, remaining int64) error {
-	_, err := rdb.SetNX(ctx, key, remaining, budgetKeyTTL).Result()
+func warmBudgetKeyNX(ctx context.Context, redisClient redis.UniversalClient, key string, remaining int64) error {
+	_, err := redisClient.SetNX(ctx, key, remaining, budgetKeyTTL).Result()
 	return err
 }
 
 func tryRecoverBudgetFromRegistry(
 	ctx context.Context,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	registry domain.CampaignRegistry,
 	campaignID uuid.UUID,
 	budgetKey string,
@@ -140,7 +140,7 @@ func tryRecoverBudgetFromRegistry(
 	if camp.BudgetLimit == 0 && camp.CurrentSpend == 0 {
 		return false, nil
 	}
-	if err := warmBudgetKeyNX(ctx, rdb, budgetKey, RemainingBudgetMicro(camp)); err != nil {
+	if err := warmBudgetKeyNX(ctx, redisClient, budgetKey, RemainingBudgetMicro(camp)); err != nil {
 		return false, err
 	}
 	metrics.BudgetCacheRegistryRecoverTotal.Inc()

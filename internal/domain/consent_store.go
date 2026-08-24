@@ -12,7 +12,7 @@ import (
 )
 
 type ConsentStore struct {
-	rdb   redis.UniversalClient
+	redisClient   redis.UniversalClient
 	cache atomic.Value
 }
 
@@ -28,8 +28,8 @@ func (s *ConsentStore) snapshot() *consentMapSnapshot {
 	return v
 }
 
-func NewConsentStore(rdb redis.UniversalClient) *ConsentStore {
-	s := &ConsentStore{rdb: rdb}
+func NewConsentStore(redisClient redis.UniversalClient) *ConsentStore {
+	s := &ConsentStore{redisClient: redisClient}
 	s.cache.Store(&consentMapSnapshot{byHashHex: make(map[string]int16, 1024)})
 	return s
 }
@@ -42,10 +42,10 @@ func (s *ConsentStore) PurposesForUser(userID string) int16 {
 }
 
 func (s *ConsentStore) LoadFromRedis(ctx context.Context, hashHex string) {
-	if s.rdb == nil || hashHex == "" {
+	if s.redisClient == nil || hashHex == "" {
 		return
 	}
-	raw, err := s.rdb.Get(ctx, ConsentRedisKeyPrefix+hashHex).Result()
+	raw, err := s.redisClient.Get(ctx, ConsentRedisKeyPrefix+hashHex).Result()
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
 			slog.Warn("consent redis load failed", "hash", hashHex, "error", err)
@@ -74,15 +74,15 @@ func (s *ConsentStore) UpsertLocal(hashHex string, purposes int16) {
 	s.upsertLocal(hashHex, purposes)
 }
 
-func (s *ConsentStore) StartWatch(ctx context.Context, rdb redis.UniversalClient, channel string) {
-	if rdb == nil {
+func (s *ConsentStore) StartWatch(ctx context.Context, redisClient redis.UniversalClient, channel string) {
+	if redisClient == nil {
 		return
 	}
 	if channel == "" {
 		channel = ConsentDefaultUpdateChannel
 	}
 	go func() {
-		pubsub := rdb.Subscribe(ctx, channel)
+		pubsub := redisClient.Subscribe(ctx, channel)
 		defer func() { _ = pubsub.Close() }()
 		ch := pubsub.Channel(redis.WithChannelSize(256))
 		for {

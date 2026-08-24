@@ -23,7 +23,7 @@ func TestCohortConfig_FanoutAndRegistryReload(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -33,7 +33,7 @@ func TestCohortConfig_FanoutAndRegistryReload(t *testing.T) {
 
 	experimentID := uuid.New()
 	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 1}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	require.NoError(t, svc.UpsertExperimentCohort(ctx, ExperimentCohortSpec{
 		ID:     experimentID,

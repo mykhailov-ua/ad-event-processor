@@ -11,7 +11,7 @@ import (
 
 func BenchmarkQuorumBook(b *testing.B) {
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(b)
+	redisClient, cleanup := database.SetupTestRedis(b)
 	defer cleanup()
 
 	opBase := uuid.New()
@@ -23,7 +23,7 @@ func BenchmarkQuorumBook(b *testing.B) {
 		opID := opBase
 		opID[15] = byte(benchN)
 		opID[14] = byte(benchN >> 8)
-		if _, err := Book(ctx, rdb, toBenchBytes(opID), nodes, "proxy-a"); err != nil {
+		if _, err := Book(ctx, redisClient, toBenchBytes(opID), nodes, "proxy-a"); err != nil {
 			b.Fatal(err)
 		}
 		benchN++

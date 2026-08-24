@@ -16,6 +16,6 @@ for svc in clickhouse ivt-detector fraud-scorer; do
   echo "$services" | grep -qx "$svc"
 done
 
-go run ./cmd/ad-event-processor doctor --profile analytics_ml
+go run ./cmd/operator doctor --profile analytics_ml
 
 echo "smoke_analytics_ml: ok"

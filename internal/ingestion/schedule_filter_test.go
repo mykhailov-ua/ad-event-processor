@@ -33,16 +33,16 @@ func TestSelectLandingURL_StickyWeighted(t *testing.T) {
 func TestBrandCreativeStore_expiredDeadlineSkipsRedisLoad(t *testing.T) {
 	t.Parallel()
 	mr := miniredis.RunT(t)
-	rdb := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:        mr.Addr(),
 		ReadTimeout: 50 * time.Millisecond,
 	})
-	defer func() { _ = rdb.Close() }()
+	defer func() { _ = redisClient.Close() }()
 
 	brandID := uuid.New()
 	require.NoError(t, mr.Set("brand:creatives:"+brandID.String(), `[{"id":"a","url":"https://a.example","weight":1}]`))
 
-	store := NewBrandCreativeStore(rdb, 50)
+	store := NewBrandCreativeStore(redisClient, 50)
 	evt := &domain.Event{FilterDeadlineMono: monotonicNano() - 1}
 	assert.Nil(t, store.SelectLandingURLBytes(context.Background(), brandID, "user-1", evt))
 }
@@ -50,13 +50,13 @@ func TestBrandCreativeStore_expiredDeadlineSkipsRedisLoad(t *testing.T) {
 func TestBrandCreativeStore_loadFromRedisWithinDeadline(t *testing.T) {
 	t.Parallel()
 	mr := miniredis.RunT(t)
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr(), ReadTimeout: time.Second})
-	defer func() { _ = rdb.Close() }()
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr(), ReadTimeout: time.Second})
+	defer func() { _ = redisClient.Close() }()
 
 	brandID := uuid.New()
 	require.NoError(t, mr.Set("brand:creatives:"+brandID.String(), `[{"id":"a","url":"https://a.example","weight":1}]`))
 
-	store := NewBrandCreativeStore(rdb, 500)
+	store := NewBrandCreativeStore(redisClient, 500)
 	evt := &domain.Event{FilterDeadlineMono: monotonicNano() + int64(500*time.Millisecond)}
 	got := store.SelectLandingURLBytes(context.Background(), brandID, "user-1", evt)
 	assert.Equal(t, []byte("https://a.example"), got)

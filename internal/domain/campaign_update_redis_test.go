@@ -14,20 +14,20 @@ func TestPublishCampaignUpdateRedis(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	const channel = "campaigns:update-test"
 	campID := uuid.New().String()
 
-	pubsub := rdb.Subscribe(context.Background(), channel)
+	pubsub := redisClient.Subscribe(context.Background(), channel)
 	defer func() { _ = pubsub.Close() }()
 
-	require.NoError(t, PublishCampaignUpdateRedis(context.Background(), []redis.UniversalClient{rdb}, channel, campID))
+	require.NoError(t, PublishCampaignUpdateRedis(context.Background(), []redis.UniversalClient{redisClient}, channel, campID))
 
 	msg, err := pubsub.ReceiveMessage(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, campID, msg.Payload)
 
-	epoch, err := rdb.Get(context.Background(), CampaignEpochKey).Int64()
+	epoch, err := redisClient.Get(context.Background(), CampaignEpochKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(1), epoch)
 }

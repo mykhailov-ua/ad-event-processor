@@ -46,7 +46,7 @@ func (m *l1CIDRMetrics) recordMatch(feed uint8) {
 	m.match[CIDRFeedOther].Inc()
 }
 
-// l1CIDRShouldSafeView matches static DC/hosting CIDR feeds (AWS/GCP/Azure/Tor), not IP rotation velocity.
+
 func (h *AdsPacketHandler) l1CIDRShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
 	t := h.cidrTable
 	if t == nil || !t.Ready() {

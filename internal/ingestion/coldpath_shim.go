@@ -46,6 +46,7 @@ var (
 	BudgetLockTTLSeconds                = domain.BudgetLockTTLSeconds
 	FetchBudgetReconSnapshot            = domain.FetchBudgetReconSnapshot
 	ReadBudgetInvariant                 = domain.ReadBudgetInvariant
+	ReadBudgetInvariants                = domain.ReadBudgetInvariants
 	VerifyBudgetInvariant               = domain.VerifyBudgetInvariant
 	AssertBudgetInvariant               = domain.AssertBudgetInvariant
 	CampaignShardID                     = domain.CampaignShardID

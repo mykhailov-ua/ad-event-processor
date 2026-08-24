@@ -70,8 +70,8 @@ func TestCoordElectionDebounceSkipsEpochBump(t *testing.T) {
 		t.Fatal("expected epoch after first election")
 	}
 
-	rdb := coord.Redis()
-	_ = rdb.Del(ctx, leaderKey(pk)).Err()
+	redisClient := coord.Redis()
+	_ = redisClient.Del(ctx, leaderKey(pk)).Err()
 
 	time.Sleep(800 * time.Millisecond)
 

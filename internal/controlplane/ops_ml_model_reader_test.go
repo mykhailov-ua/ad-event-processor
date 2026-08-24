@@ -24,11 +24,11 @@ func TestOpsReader_GetMLModelStatus(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -52,9 +52,9 @@ func TestOpsReader_GetMLModelStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	appliedAt := time.Now().Unix()
-	require.NoError(t, rdb.Set(ctx, "ml:model:version", "v2", 0).Err())
-	require.NoError(t, rdb.Set(ctx, "ml:model:hash", "hash2", 0).Err())
-	require.NoError(t, rdb.Set(ctx, "ml:model:applied_at", appliedAt, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, "ml:model:version", "v2", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, "ml:model:hash", "hash2", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, "ml:model:applied_at", appliedAt, 0).Err())
 
 	tmpDir := t.TempDir()
 	reportPath := filepath.Join(tmpDir, "shadow_eval_report.json")

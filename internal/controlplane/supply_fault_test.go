@@ -28,14 +28,14 @@ func TestFault_SellersJSONInvalid(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	exportDir := t.TempDir()
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	cfg.Management.SupplyExportPath = exportDir
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 
@@ -77,14 +77,14 @@ func TestFault_SupplyOutboxRedelivery(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	exportDir := t.TempDir()
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	cfg.Management.SupplyExportPath = exportDir
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	_, err := svc.CreateSeller(ctx, SellerCreateSpec{

@@ -148,11 +148,11 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 	ctx := context.Background()
 	infra, cleanup := database.SetupTestDBInfra(t)
 	t.Cleanup(cleanup)
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	t.Cleanup(cleanupRedis)
 
 	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 1, NodeID: "proxy-a"}
-	svc := newBareService(t, infra.Pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, infra.Pool, []redis.UniversalClient{redisClient}, cfg)
 	worker := NewOperationLeaseWorker(svc)
 
 	opID := uuid.New()
@@ -183,7 +183,7 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 	slot.Seq = 99
 	slot.SetDerivedForTest()
 	copy(slot.OpID[:], opID[:])
-	committer := opkey.NewBatchCommitter(rdb, "proxy-a", replicas)
+	committer := opkey.NewBatchCommitter(redisClient, "proxy-a", replicas)
 	ready, err := committer.PrepareForward(ctx, &slot)
 	require.NoError(t, err)
 	require.False(t, ready)
@@ -200,7 +200,7 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 	committer.Complete(ctx, &slot)
 	require.Equal(t, uint64(1), committer.Committed())
 
-	st, err := quorum.ReadStatus(ctx, rdb, opIDBytes(opID), len(replicas))
+	st, err := quorum.ReadStatus(ctx, redisClient, opIDBytes(opID), len(replicas))
 	require.NoError(t, err)
 	require.Equal(t, quorum.StateCompleted, st.State)
 

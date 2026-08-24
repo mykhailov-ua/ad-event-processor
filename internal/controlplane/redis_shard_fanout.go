@@ -8,10 +8,10 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func forEachConnectedShard(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
-	return database.ForEachConnectedShard(ctx, rdbs, op, fn)
+func forEachConnectedShard(ctx context.Context, redisShards []redis.UniversalClient, op string, fn func(shard int, redisClient redis.UniversalClient) error) error {
+	return database.ForEachConnectedShard(ctx, redisShards, op, fn)
 }
 
-func forEachConnectedShardStrict(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
-	return database.ForEachConnectedShardStrict(ctx, rdbs, op, fn)
+func forEachConnectedShardStrict(ctx context.Context, redisShards []redis.UniversalClient, op string, fn func(shard int, redisClient redis.UniversalClient) error) error {
+	return database.ForEachConnectedShardStrict(ctx, redisShards, op, fn)
 }

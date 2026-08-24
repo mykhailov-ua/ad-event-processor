@@ -1,0 +1,2 @@
+# Paths exempt from cold-path O(N) DB-in-loop grep (justify each entry).
+# Prefer batch queries; keep this file empty when possible.

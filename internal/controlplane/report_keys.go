@@ -2,7 +2,7 @@ package controlplane
 
 func liveReportExportKeys() []string {
 	return []string{
-		"placements", "keywords", "pacing-drift", "filter-rejects", "fraud-breakdown", "ghost-impression-funnel",
+		"placements", "keywords", "pacing-drift", "filter-rejects", "fraud-breakdown", "silent-reject-impression-funnel",
 		"spend-velocity", "daypart-heatmap", "campaign-geo-device", "geo-roi", "source-quality",
 		"ivt-by-source", "rtb-overview", "rtb-no-bid-reasons", "rtb-geo-device", "traffic-sources",
 		"discrepancy-buy-sell", "true-roi", "customer-portfolio", "data-quality", "campaign-overview",
@@ -10,7 +10,7 @@ func liveReportExportKeys() []string {
 	}
 }
 
-// LiveReportMetricKeys is the fixed Prometheus label set for report handler metrics.
+
 func LiveReportMetricKeys() []string {
 	keys := append([]string(nil), liveReportExportKeys()...)
 	keys = append(keys,

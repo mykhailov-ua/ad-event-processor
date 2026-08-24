@@ -1,6 +1,4 @@
--- Forward ingress metadata to tracker. OS fingerprint (X-TCP-TTL/WINDOW/MSS) requires
--- direct edge + edge-tcp-fp-sync (XDP fingerprints map or SYN capture). Behind CDN/L4
--- these headers are absent: set OS_FINGERPRINT_MISMATCH_ENABLED=false on tracker.
+
 
 local edge_metrics = require "edge-metrics"
 

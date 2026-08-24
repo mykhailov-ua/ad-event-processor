@@ -63,16 +63,16 @@ func BumpMigrationFences(
 	return nil
 }
 
-func SetBudgetFrozen(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID) error {
-	if rdb == nil {
+func SetBudgetFrozen(ctx context.Context, redisClient redis.Cmdable, campaignID uuid.UUID) error {
+	if redisClient == nil {
 		return fmt.Errorf("nil redis client")
 	}
-	return rdb.Set(ctx, BudgetFrozenRedisKey(campaignID), "1", 0).Err()
+	return redisClient.Set(ctx, BudgetFrozenRedisKey(campaignID), "1", 0).Err()
 }
 
-func ClearBudgetFrozen(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID) error {
-	if rdb == nil {
+func ClearBudgetFrozen(ctx context.Context, redisClient redis.Cmdable, campaignID uuid.UUID) error {
+	if redisClient == nil {
 		return fmt.Errorf("nil redis client")
 	}
-	return rdb.Del(ctx, BudgetFrozenRedisKey(campaignID)).Err()
+	return redisClient.Del(ctx, BudgetFrozenRedisKey(campaignID)).Err()
 }

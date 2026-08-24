@@ -36,7 +36,7 @@ message AdStreamEvent {
   int64 created_at_unix = 7;
   uint32 fraud_score = 8;
   bytes fraud_reason = 9;
-  bool ghost_event = 10;
+  bool silent_reject_event = 10;
   bytes user_id = 11;
 }
 

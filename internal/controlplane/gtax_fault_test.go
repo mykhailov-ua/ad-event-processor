@@ -49,7 +49,7 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 	ensureBillingCTVProfileSchema(t, pool)
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -70,10 +70,10 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 			customer_id, country_code, tax_scheme, tax_rate_bps, ctv_gtax_enabled, ctv_gtax_rate_bps
 		) VALUES ($1, 'US', 'SALES_TAX', 725, TRUE, 500)`, domain.ToUUID(customerID))
 	require.NoError(t, err)
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
 
 	cfg := &config.Config{SettlementInternalToken: "gtax-test-token"}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	handler := NewSettlementHandler(svc, cfg)
 
@@ -109,8 +109,8 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 	require.Equal(t, 1, taxRows)
 
 	remaining := budgetLimit - spendMicro
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), remaining, 0).Err())
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), remaining, 0).Err())
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 
 	faultproof.Log(t, "gtax_settlement_replay", map[string]string{
 		"fault":         "gtax_settlement_replay",

@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -17,7 +18,7 @@ type CampaignFraudConfigDTO struct {
 	FraudThresholdSuspect uint8  `json:"fraud_threshold_suspect"`
 	FraudThresholdIVT     uint8  `json:"fraud_threshold_ivt"`
 	FraudThresholdBlock   uint8  `json:"fraud_threshold_block"`
-	GhostIVTEnabled       bool   `json:"ghost_ivt_enabled"`
+	SilentRejectEnabled   bool   `json:"silent_reject_enabled"`
 	BehaviorFlags         uint32 `json:"behavior_flags"`
 }
 
@@ -27,8 +28,40 @@ type PatchCampaignFraudRequest struct {
 	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
 	FraudThresholdIVT     *uint8  `json:"fraud_threshold_ivt,omitempty"`
 	FraudThresholdBlock   *uint8  `json:"fraud_threshold_block,omitempty"`
-	GhostIVTEnabled       *bool   `json:"ghost_ivt_enabled,omitempty"`
+	SilentRejectEnabled   *bool   `json:"silent_reject_enabled,omitempty"`
 	BehaviorFlags         *uint32 `json:"behavior_flags,omitempty"`
+}
+
+type patchCampaignFraudRequestRaw struct {
+	Preset                  *string `json:"preset,omitempty"`
+	FraudThresholdPass      *uint8  `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect   *uint8  `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT       *uint8  `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock     *uint8  `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled     *bool   `json:"silent_reject_enabled,omitempty"`
+	SilentRejectPatchLegacy *bool   `json:"ghost_ivt_enabled,omitempty"`
+	BehaviorFlags           *uint32 `json:"behavior_flags,omitempty"`
+}
+
+func decodePatchCampaignFraudRequest(body []byte) (PatchCampaignFraudRequest, error) {
+	var raw patchCampaignFraudRequestRaw
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return PatchCampaignFraudRequest{}, err
+	}
+	req := PatchCampaignFraudRequest{
+		Preset:                raw.Preset,
+		FraudThresholdPass:    raw.FraudThresholdPass,
+		FraudThresholdSuspect: raw.FraudThresholdSuspect,
+		FraudThresholdIVT:     raw.FraudThresholdIVT,
+		FraudThresholdBlock:   raw.FraudThresholdBlock,
+		BehaviorFlags:         raw.BehaviorFlags,
+	}
+	if raw.SilentRejectEnabled != nil {
+		req.SilentRejectEnabled = raw.SilentRejectEnabled
+	} else if raw.SilentRejectPatchLegacy != nil {
+		req.SilentRejectEnabled = raw.SilentRejectPatchLegacy
+	}
+	return req, nil
 }
 
 type CampaignFraudService interface {
@@ -68,7 +101,7 @@ func (campaigns *CampaignsHTTPHandlers) patchCampaignFraud(w http.ResponseWriter
 	if err != nil {
 		return
 	}
-	req, err := coldpath.DecodeBody[PatchCampaignFraudRequest](body)
+	req, err := decodePatchCampaignFraudRequest(body)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid request body")
 		return

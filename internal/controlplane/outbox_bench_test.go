@@ -26,13 +26,13 @@ func TestOutboxPerformanceMetrics(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-test",
 	}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), cfg)
 	svc.Close()
 
 	ctx := context.Background()
@@ -170,13 +170,13 @@ FOR UPDATE SKIP LOCKED;`)
 func BenchmarkProcessOutbox(b *testing.B) {
 	pool, cleanupDB := database.SetupTestDB(b)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(b)
+	redisClient, cleanupRedis := database.SetupTestRedis(b)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-bench",
 	}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	worker := NewOutboxWorker(svc)

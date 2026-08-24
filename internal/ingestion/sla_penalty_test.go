@@ -38,17 +38,17 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 	staticCampaign.DailyBudgetMicroAny = int64(10_000_000)
 	staticCampaign.Location = time.UTC
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 	ctx := context.Background()
 
-	_ = rdb.Del(ctx, "sla:penalty:active").Err()
+	_ = redisClient.Del(ctx, "sla:penalty:active").Err()
 
 	budgetSourceKey := "budget:campaign:" + campID.String()
-	_ = rdb.Set(ctx, budgetSourceKey, int64(10_000_000), 24*time.Hour).Err()
+	_ = redisClient.Set(ctx, budgetSourceKey, int64(10_000_000), 24*time.Hour).Err()
 
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		reg,
 		nil,
@@ -70,14 +70,14 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 		Type:       "click",
 	}
 
-	beforeBudget, _ := rdb.Get(ctx, budgetSourceKey).Int64()
+	beforeBudget, _ := redisClient.Get(ctx, budgetSourceKey).Int64()
 	err := f.Check(ctx, evt)
 	assert.NoError(t, err)
 
-	afterBudget, _ := rdb.Get(ctx, budgetSourceKey).Int64()
+	afterBudget, _ := redisClient.Get(ctx, budgetSourceKey).Int64()
 	assert.Equal(t, int64(1_000_000), beforeBudget-afterBudget)
 
-	_ = rdb.Set(ctx, "sla:penalty:active", "true", time.Minute).Err()
+	_ = redisClient.Set(ctx, "sla:penalty:active", "true", time.Minute).Err()
 
 	f.slaPenaltyActive.Store(true)
 
@@ -89,27 +89,27 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 		Type:       "click",
 	}
 
-	beforeBudget2, _ := rdb.Get(ctx, budgetSourceKey).Int64()
+	beforeBudget2, _ := redisClient.Get(ctx, budgetSourceKey).Int64()
 	err = f.Check(ctx, evt2)
 	assert.NoError(t, err)
 
-	afterBudget2, _ := rdb.Get(ctx, budgetSourceKey).Int64()
+	afterBudget2, _ := redisClient.Get(ctx, budgetSourceKey).Int64()
 
 	assert.Equal(t, int64(500_000), beforeBudget2-afterBudget2)
 
-	_ = rdb.Del(ctx, "sla:penalty:active").Err()
+	_ = redisClient.Del(ctx, "sla:penalty:active").Err()
 }
 
 func TestUnifiedFilter_SLASentinel_AutoDetection(t *testing.T) {
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	_ = rdb.Del(ctx, "sla:penalty:active").Err()
+	_ = redisClient.Del(ctx, "sla:penalty:active").Err()
 
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		&mockRegistry{},
 		nil,
@@ -145,7 +145,7 @@ func TestUnifiedFilter_SLASentinel_AutoDetection(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	assert.True(t, f.slaPenaltyActive.Load())
 
-	redisVal, err := rdb.Get(ctx, "sla:penalty:active").Bool()
+	redisVal, err := redisClient.Get(ctx, "sla:penalty:active").Bool()
 	assert.NoError(t, err)
 	assert.True(t, redisVal)
 
@@ -154,7 +154,7 @@ func TestUnifiedFilter_SLASentinel_AutoDetection(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 	assert.False(t, f.slaPenaltyActive.Load())
 
-	_, err = rdb.Get(ctx, "sla:penalty:active").Bool()
+	_, err = redisClient.Get(ctx, "sla:penalty:active").Bool()
 	assert.ErrorIs(t, err, redis.Nil)
 }
 

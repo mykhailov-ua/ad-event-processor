@@ -29,15 +29,15 @@ type aggStats struct {
 
 type MicroBatcher struct {
 	eventsChan            chan *domain.Event
-	rdbs                  []redis.UniversalClient
+	redisShards                  []redis.UniversalClient
 	scorer                Scorer
 	campaignUpdateChannel string
 }
 
-func NewMicroBatcher(rdbs []redis.UniversalClient, scorer Scorer, campaignUpdateChannel string) *MicroBatcher {
+func NewMicroBatcher(redisShards []redis.UniversalClient, scorer Scorer, campaignUpdateChannel string) *MicroBatcher {
 	return &MicroBatcher{
 		eventsChan:            make(chan *domain.Event, 10000),
-		rdbs:                  rdbs,
+		redisShards:                  redisShards,
 		scorer:                scorer,
 		campaignUpdateChannel: domain.DefaultCampaignUpdateChannel(campaignUpdateChannel),
 	}
@@ -89,7 +89,7 @@ func (m *MicroBatcher) Start(ctx context.Context) {
 }
 
 func (m *MicroBatcher) flush(ctx context.Context) {
-	if m.scorer == nil || len(m.rdbs) == 0 {
+	if m.scorer == nil || len(m.redisShards) == 0 {
 		return
 	}
 
@@ -165,11 +165,11 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 	for campaignID, fraudScore := range campaignBoost {
 		key := fmt.Sprintf("ml:score:boost:%s", campaignID)
 		value := strconv.Itoa(fraudScore)
-		if err := database.SyncGlobalStringToAllShards(ctx, m.rdbs, key, value, ScoreBoostTTL); err != nil {
+		if err := database.SyncGlobalStringToAllShards(ctx, m.redisShards, key, value, ScoreBoostTTL); err != nil {
 			slog.Error("failed to set micro-batch ml score boost to redis", "error", err, "campaign", campaignID)
 			continue
 		}
-		if err := domain.PublishCampaignUpdateRedis(ctx, m.rdbs, m.campaignUpdateChannel, campaignID); err != nil {
+		if err := domain.PublishCampaignUpdateRedis(ctx, m.redisShards, m.campaignUpdateChannel, campaignID); err != nil {
 			slog.Warn("failed to publish campaign update after ml boost", "error", err, "campaign", campaignID)
 		}
 		metrics.MicroBatchBoostsWrittenTotal.Inc()

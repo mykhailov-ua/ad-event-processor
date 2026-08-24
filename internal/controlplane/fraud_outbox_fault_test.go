@@ -66,8 +66,8 @@ func TestFault_FraudBoostPropagation(t *testing.T) {
 	elapsed := time.Since(start)
 
 	key := "ml:score:boost:" + campID.String()
-	for i, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-		val, getErr := rdb.Get(ctx, key).Int()
+	for i, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+		val, getErr := redisClient.Get(ctx, key).Int()
 		require.NoError(t, getErr, "shard %d missing boost key", i)
 		assert.Equal(t, 45, val, "shard %d boost mismatch", i)
 	}

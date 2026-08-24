@@ -56,7 +56,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	evt *domain.Event,
 	campInfo *domain.Campaign,
 	amount any,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	shard int,
 	scratch *budgetFastScratch,
 ) error {
@@ -140,13 +140,13 @@ func (f *UnifiedFilter) runBudgetFastLua(
 		}
 		f.redisObservability.recordLuaOp(shard, evt.CampaignID, sampleLua)
 		incRedisLuaTier(f.luaFastPathCounters, shard)
-		res, err := f.evalFastScript(ctx, rdb, shard, evt, keyArgs, args)
+		res, err := f.evalFastScript(ctx, redisClient, shard, evt, keyArgs, args)
 		f.noteLuaEvalDuration(shard, evt.CampaignID, "fast", luaStart, sampleLua, true)
 		if err != nil {
 			return err
 		}
 		if res == -1 {
-			retry, recErr := f.recoverBudgetAfterMiss(ctx, evt, rdb, budgetSourceKey, i)
+			retry, recErr := f.recoverBudgetAfterMiss(ctx, evt, redisClient, budgetSourceKey, i)
 			if recErr != nil {
 				return recErr
 			}
@@ -156,7 +156,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 			f.RecordShadowLuaOutcome(evt.CampaignID, true)
 			return ErrBudgetExhausted
 		}
-		if handled, handleErr := f.handleLuaResult(ctx, evt, campInfo, amount, rdb, budgetSourceKey, shard, res, sampleLua); handled {
+		if handled, handleErr := f.handleLuaResult(ctx, evt, campInfo, amount, redisClient, budgetSourceKey, shard, res, sampleLua); handled {
 			if res == 3 {
 				f.RecordShadowLuaOutcome(evt.CampaignID, true)
 			}
@@ -171,7 +171,7 @@ func (f *UnifiedFilter) handleLuaResult(
 	evt *domain.Event,
 	campInfo *domain.Campaign,
 	amount any,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	budgetSourceKey string,
 	shard int,
 	res int64,
@@ -235,8 +235,8 @@ func (f *UnifiedFilter) handleLuaResult(
 	}
 }
 
-func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *domain.Event, keyArgs [budgetFastKeyCount]any, args []any) (int64, error) {
-	res, err := f.evalShaPooledN(ctx, rdb, shard, evt, f.fastScriptHashAny, keyArgs[:], args, budgetFastKeyCount)
+func (f *UnifiedFilter) evalFastScript(ctx context.Context, redisClient redis.UniversalClient, shard int, evt *domain.Event, keyArgs [budgetFastKeyCount]any, args []any) (int64, error) {
+	res, err := f.evalShaPooledN(ctx, redisClient, shard, evt, f.fastScriptHashAny, keyArgs[:], args, budgetFastKeyCount)
 	if err != nil && isNoScriptErr(err) {
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
 		slog.Warn("redis lua NOSCRIPT encountered (fast script)", "shard", shard, "error", err)
@@ -251,13 +251,13 @@ func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalC
 			select {
 			case f.evalFallbackGate <- struct{}{}:
 				defer func() { <-f.evalFallbackGate }()
-				return f.evalPooledN(ctx, rdb, shard, evt, budgetFastLuaAny, keyArgs[:], args, budgetFastKeyCount)
+				return f.evalPooledN(ctx, redisClient, shard, evt, budgetFastLuaAny, keyArgs[:], args, budgetFastKeyCount)
 			default:
 				slog.Warn("redis lua NOSCRIPT fallback concurrency limit exceeded (fast script)", "shard", shard)
 				return -1, fmt.Errorf("redis lua EVAL fallback concurrency limit exceeded")
 			}
 		}
-		return f.evalPooledN(ctx, rdb, shard, evt, budgetFastLuaAny, keyArgs[:], args, budgetFastKeyCount)
+		return f.evalPooledN(ctx, redisClient, shard, evt, budgetFastLuaAny, keyArgs[:], args, budgetFastKeyCount)
 	}
 	return res, err
 }
@@ -265,7 +265,7 @@ func (f *UnifiedFilter) evalFastScript(ctx context.Context, rdb redis.UniversalC
 func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	ctx context.Context,
 	evt *domain.Event,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	budgetSourceKey string,
 	attempt int,
 ) (retry bool, err error) {
@@ -277,7 +277,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 		return false, ErrFilterTimeout
 	}
 
-	recovered, recErr := tryRecoverBudgetFromRegistry(ctx, rdb, f.registry, evt.CampaignID, budgetSourceKey)
+	recovered, recErr := tryRecoverBudgetFromRegistry(ctx, redisClient, f.registry, evt.CampaignID, budgetSourceKey)
 	if recErr != nil {
 		return false, recErr
 	}
@@ -317,7 +317,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	if remaining < 0 {
 		remaining = 0
 	}
-	if err := warmBudgetKeyNX(ctx, rdb, budgetSourceKey, remaining); err != nil {
+	if err := warmBudgetKeyNX(ctx, redisClient, budgetSourceKey, remaining); err != nil {
 		return false, err
 	}
 	return true, nil

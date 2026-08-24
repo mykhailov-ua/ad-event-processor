@@ -129,8 +129,8 @@ func main() {
 		}
 	}
 
-	rdb := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
-	defer func() { _ = rdb.Close() }()
+	redisClient := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
+	defer func() { _ = redisClient.Close() }()
 
 	ctx, cancel := lifecycle.NotifyContext(context.Background())
 	defer cancel()
@@ -144,7 +144,7 @@ func main() {
 
 	violationHandler := edge.NewViolationHandler(func(evt edge.ViolationEvent) error {
 		ip := edge.HostIPv4(evt.SrcIP)
-		if err := edge.RecordAutoBan(ctx, rdb, ip, autobanTTL); err != nil {
+		if err := edge.RecordAutoBan(ctx, redisClient, ip, autobanTTL); err != nil {
 			return err
 		}
 		slog.Info("xdp autoban recorded",
@@ -156,7 +156,7 @@ func main() {
 	})
 
 	fingerprintHandler := edge.NewFingerprintHandler(func(evt edge.FingerprintEvent) error {
-		return edge.Record(ctx, rdb, edge.Entry{
+		return edge.Record(ctx, redisClient, edge.Entry{
 			IP:      edge.HostIPv4(evt.SrcIP),
 			TCPHash: evt.TCPHash,
 			TTL:     evt.TTL,
@@ -166,8 +166,8 @@ func main() {
 		})
 	})
 
-	if edge.EbpfEdgeLicensed(ctx, rdb) {
-		if err := runSync(ctx, rdb, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
+	if edge.EbpfEdgeLicensed(ctx, redisClient) {
+		if err := runSync(ctx, redisClient, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 			slog.Warn("initial edge bpf sync failed", "error", err)
 		}
 	} else {
@@ -175,7 +175,7 @@ func main() {
 	}
 
 	if statsMap != nil {
-		lastStats = exportStats(ctx, rdb, statsMap, lastStats)
+		lastStats = exportStats(ctx, redisClient, statsMap, lastStats)
 	}
 
 	syncTicker := time.NewTicker(syncInterval)
@@ -196,7 +196,7 @@ func main() {
 			slog.Info("edge-bpf-sync stopped")
 			return
 		case <-violationTicker.C:
-			if violationReader == nil || !edge.EbpfEdgeLicensed(ctx, rdb) {
+			if violationReader == nil || !edge.EbpfEdgeLicensed(ctx, redisClient) {
 				continue
 			}
 			n, err := violationHandler.Drain(violationReader, violationInterval)
@@ -205,12 +205,12 @@ func main() {
 				continue
 			}
 			if n > 0 {
-				if err := runSync(ctx, rdb, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
+				if err := runSync(ctx, redisClient, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 					slog.Warn("post-violation bpf sync failed", "error", err)
 				}
 			}
 		case <-fingerprintTicker.C:
-			if fingerprintReader == nil || !edge.EbpfEdgeLicensed(ctx, rdb) {
+			if fingerprintReader == nil || !edge.EbpfEdgeLicensed(ctx, redisClient) {
 				continue
 			}
 			if _, err := fingerprintHandler.Drain(fingerprintReader, fingerprintInterval); err != nil {
@@ -218,13 +218,13 @@ func main() {
 			}
 		case <-statsTicker.C:
 			if statsMap != nil {
-				lastStats = exportStats(ctx, rdb, statsMap, lastStats)
+				lastStats = exportStats(ctx, redisClient, statsMap, lastStats)
 			}
 		case <-syncTicker.C:
-			if !edge.EbpfEdgeLicensed(ctx, rdb) {
+			if !edge.EbpfEdgeLicensed(ctx, redisClient) {
 				continue
 			}
-			if err := runSync(ctx, rdb, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
+			if err := runSync(ctx, redisClient, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 				slog.Warn("edge bpf sync failed", "error", err)
 			}
 		}
@@ -251,15 +251,17 @@ func serveMetrics(ctx context.Context, port string) {
 	}
 }
 
-func runSync(ctx context.Context, rdb *redis.Client, denyMaps edge.BlocklistMaps, allowMap, allowV6Map *ebpf.Map, denyStore *edge.BlocklistStore, allowStore *edge.AllowlistStore, denyState *edge.BlocklistSyncState) error {
-	denyAdded, denyRemoved, err := edge.SyncBlocklistIncremental(ctx, rdb, denyMaps, denyStore, denyState)
+func runSync(ctx context.Context, redisClient *redis.Client, denyMaps edge.BlocklistMaps, allowMap, allowV6Map *ebpf.Map, denyStore *edge.BlocklistStore, allowStore *edge.AllowlistStore, denyState *edge.BlocklistSyncState) error {
+	denyAdded, denyRemoved, err := edge.SyncBlocklistIncremental(ctx, redisClient, denyMaps, denyStore, denyState)
 	if err != nil {
 		return err
 	}
-	allowAdded, allowRemoved, err := edge.SyncAllowlistFromRedis(ctx, rdb, allowMap, allowV6Map, allowStore)
+	allowAdded, allowRemoved, err := edge.SyncAllowlistFromRedis(ctx, redisClient, allowMap, allowV6Map, allowStore)
 	if err != nil {
 		return err
 	}
+	edge.RecordBlocklistMapMetrics(denyMaps, denyStore)
+	edge.RecordBlocklistChangelogLagSeconds(ctx, redisClient, denyState)
 	slog.Info("edge bpf synced",
 		"deny_entries", denyStore.Len(),
 		"deny_added", denyAdded,
@@ -271,7 +273,7 @@ func runSync(ctx context.Context, rdb *redis.Client, denyMaps edge.BlocklistMaps
 	return nil
 }
 
-func exportStats(ctx context.Context, rdb *redis.Client, statsMap *ebpf.Map, last []uint64) []uint64 {
+func exportStats(ctx context.Context, redisClient *redis.Client, statsMap *ebpf.Map, last []uint64) []uint64 {
 	last = edge.ExportStatsToPrometheus(statsMap, last)
 	totals, err := edge.AggregateStats(statsMap)
 	if err != nil {
@@ -279,7 +281,7 @@ func exportStats(ctx context.Context, rdb *redis.Client, statsMap *ebpf.Map, las
 	}
 	snap := edge.BuildSnapshot(totals)
 	snap.UpdatedAt = time.Now().UTC()
-	if err := edge.WriteRedis(ctx, rdb, snap); err != nil {
+	if err := edge.WriteRedis(ctx, redisClient, snap); err != nil {
 		slog.Warn("write xdp stats snapshot", "error", err)
 	}
 	return last

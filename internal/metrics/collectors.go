@@ -1230,6 +1230,18 @@ var (
 		Name: "edge_blocklist_skip_allowlisted_total",
 		Help: "Total number of blocklist sync attempts skipped because the IP is allowlisted",
 	})
+	EdgeBlocklistMapFillRatio = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "edge_blocklist_map_fill_ratio",
+		Help: "BPF blocklist map occupancy as a fraction of max_entries (1.0 = full LRU pressure)",
+	}, []string{"map"})
+	EdgeBlocklistLRUEvictionTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "edge_blocklist_lru_eviction_total",
+		Help: "LRU host map inserts while at max_entries (one counter tick per insert that evicts)",
+	}, []string{"map"})
+	EdgeBlocklistChangelogLagSeconds = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "edge_blocklist_changelog_lag_seconds",
+		Help: "Seconds between now and the last edge-bpf-sync consumed blacklist changelog score",
+	})
 
 	EdgeTarpitDelaySeconds = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "edge_tarpit_delay_seconds",

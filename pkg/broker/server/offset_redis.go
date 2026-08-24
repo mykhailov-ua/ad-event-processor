@@ -25,11 +25,11 @@ return ARGV[2]
 `)
 
 type RedisOffsetStore struct {
-	rdb redis.UniversalClient
+	redisClient redis.UniversalClient
 }
 
-func NewRedisOffsetStore(rdb redis.UniversalClient) *RedisOffsetStore {
-	return &RedisOffsetStore{rdb: rdb}
+func NewRedisOffsetStore(redisClient redis.UniversalClient) *RedisOffsetStore {
+	return &RedisOffsetStore{redisClient: redisClient}
 }
 
 func redisOffsetsKey(topic string) string {
@@ -37,13 +37,13 @@ func redisOffsetsKey(topic string) string {
 }
 
 func (s *RedisOffsetStore) Commit(ctx context.Context, topic, group string, offset uint64) (uint64, error) {
-	if s == nil || s.rdb == nil {
+	if s == nil || s.redisClient == nil {
 		return 0, fmt.Errorf("redis offset store is not configured")
 	}
 	if err := validateOffsetKey(topic, group); err != nil {
 		return 0, err
 	}
-	res, err := commitOffsetScript.Run(ctx, s.rdb, []string{redisOffsetsKey(topic)}, group, strconv.FormatUint(offset, 10)).Result()
+	res, err := commitOffsetScript.Run(ctx, s.redisClient, []string{redisOffsetsKey(topic)}, group, strconv.FormatUint(offset, 10)).Result()
 	if err != nil {
 		return 0, err
 	}
@@ -51,13 +51,13 @@ func (s *RedisOffsetStore) Commit(ctx context.Context, topic, group string, offs
 }
 
 func (s *RedisOffsetStore) Committed(ctx context.Context, topic, group string) (uint64, error) {
-	if s == nil || s.rdb == nil {
+	if s == nil || s.redisClient == nil {
 		return 0, fmt.Errorf("redis offset store is not configured")
 	}
 	if err := validateOffsetKey(topic, group); err != nil {
 		return 0, err
 	}
-	val, err := s.rdb.HGet(ctx, redisOffsetsKey(topic), group).Result()
+	val, err := s.redisClient.HGet(ctx, redisOffsetsKey(topic), group).Result()
 	if errors.Is(err, redis.Nil) {
 		return 0, nil
 	}
@@ -91,13 +91,13 @@ func (s *RedisOffsetStore) MinCommitted(ctx context.Context, topic string) (uint
 }
 
 func (s *RedisOffsetStore) ListGroups(ctx context.Context, topic string) (map[string]uint64, error) {
-	if s == nil || s.rdb == nil {
+	if s == nil || s.redisClient == nil {
 		return nil, fmt.Errorf("redis offset store is not configured")
 	}
 	if err := validateTopicNameForOffset(topic); err != nil {
 		return nil, err
 	}
-	raw, err := s.rdb.HGetAll(ctx, redisOffsetsKey(topic)).Result()
+	raw, err := s.redisClient.HGetAll(ctx, redisOffsetsKey(topic)).Result()
 	if err != nil {
 		return nil, err
 	}

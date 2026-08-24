@@ -65,10 +65,10 @@ func seedGlobalSpendCampaignPG(t *testing.T, ctx context.Context, pool *pgxpool.
 	require.NoError(t, err)
 }
 
-func seedGlobalSpendCampaign(t *testing.T, ctx context.Context, pool *pgxpool.Pool, rdb redis.UniversalClient, customerID, campaignID uuid.UUID, budgetLimit int64) {
+func seedGlobalSpendCampaign(t *testing.T, ctx context.Context, pool *pgxpool.Pool, redisClient redis.UniversalClient, customerID, campaignID uuid.UUID, budgetLimit int64) {
 	t.Helper()
 	seedGlobalSpendCampaignPG(t, ctx, pool, customerID, campaignID, budgetLimit)
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
 }
 
 func makeGlobalSpendTxns(campaignID uuid.UUID, count int) []dedupkey.SpendSyncTxn {
@@ -91,15 +91,15 @@ func TestGlobalSpendApplyBatch_pgFailurePreservesRedisBudget(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
 	campaignID := uuid.New()
 	const budgetLimit = int64(50_000_000)
-	seedGlobalSpendCampaign(t, ctx, pool, rdb, customerID, campaignID, budgetLimit)
+	seedGlobalSpendCampaign(t, ctx, pool, redisClient, customerID, campaignID, budgetLimit)
 
-	reconciler := NewGlobalSpendReconciler(pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), GlobalSpendReconcilerConfig{
+	reconciler := NewGlobalSpendReconciler(pool, []redis.UniversalClient{redisClient}, domain.NewStaticSlotSharder(1), GlobalSpendReconcilerConfig{
 		MinBatchSize:   100,
 		MaxConcurrency: 4,
 	})
@@ -109,7 +109,7 @@ func TestGlobalSpendApplyBatch_pgFailurePreservesRedisBudget(t *testing.T) {
 	err := reconciler.ApplyBatch(ctx, "iso03-pg-fail", txns)
 	require.Error(t, err)
 
-	remaining, err := rdb.Get(ctx, domain.BudgetCampaignKey(campaignID)).Int64()
+	remaining, err := redisClient.Get(ctx, domain.BudgetCampaignKey(campaignID)).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, budgetLimit, remaining, "harness=global_spend_pg_first: PG failure must not debit Redis budget key")
 }

@@ -39,15 +39,15 @@ type tgEventPayload struct {
 type TelegramServiceImpl struct {
 	svc     *Service
 	pool    *pgxpool.Pool
-	rdbs    []redis.UniversalClient
+	redisShards    []redis.UniversalClient
 	limiter *TelegramRateLimiter
 }
 
-func NewTelegramService(svc *Service, pool *pgxpool.Pool, rdbs []redis.UniversalClient) *TelegramServiceImpl {
+func NewTelegramService(svc *Service, pool *pgxpool.Pool, redisShards []redis.UniversalClient) *TelegramServiceImpl {
 	return &TelegramServiceImpl{
 		svc:     svc,
 		pool:    pool,
-		rdbs:    rdbs,
+		redisShards:    redisShards,
 		limiter: NewTelegramRateLimiter(),
 	}
 }
@@ -118,15 +118,15 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 		return ValidateResult{Valid: false}, fmt.Errorf("marshal telegram event meta: %w", err)
 	}
 
-	rdb := s.svc.getRDB(campaignID)
-	if rdb == nil {
+	redisClient := s.svc.getRDB(campaignID)
+	if redisClient == nil {
 		return ValidateResult{Valid: false}, errors.New("no redis client for campaign")
 	}
 
 	redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
 	defer cancelR()
 	redisKey := fmt.Sprintf("{%s}tg:click:%s", campaignID.String(), clickID.String())
-	err = rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
+	err = redisClient.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
 	if err != nil {
 		return ValidateResult{Valid: false}, fmt.Errorf("failed to save click to redis: %w", err)
 	}
@@ -153,15 +153,15 @@ func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUI
 		return ClickMintResult{}, fmt.Errorf("marshal telegram event meta: %w", err)
 	}
 
-	rdb := s.svc.getRDB(campaignID)
-	if rdb == nil {
+	redisClient := s.svc.getRDB(campaignID)
+	if redisClient == nil {
 		return ClickMintResult{}, errors.New("no redis client for campaign")
 	}
 
 	redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
 	defer cancelR()
 	redisKey := fmt.Sprintf("{%s}tg:click:%s", campaignID.String(), clickID.String())
-	err = rdb.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
+	err = redisClient.Set(redisCtx, redisKey, metaBytes, 15*time.Minute).Err()
 	if err != nil {
 		return ClickMintResult{}, fmt.Errorf("failed to save click to redis: %w", err)
 	}
@@ -248,8 +248,8 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d DeeplinkDTO)
 		return DeeplinkDTO{}, err
 	}
 
-	rdb := s.svc.getRDB(d.CampaignID)
-	if rdb != nil {
+	redisClient := s.svc.getRDB(d.CampaignID)
+	if redisClient != nil {
 		redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
 		defer cancelR()
 		redisKey := "tg:deeplink:" + token
@@ -257,9 +257,9 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d DeeplinkDTO)
 		if err != nil {
 			return DeeplinkDTO{}, fmt.Errorf("marshal deeplink cache: %w", err)
 		}
-		set, err := rdb.SetNX(redisCtx, redisKey, dBytes, 7*24*time.Hour).Result()
+		set, err := redisClient.SetNX(redisCtx, redisKey, dBytes, 7*24*time.Hour).Result()
 		if err == nil && !set {
-			if cached, getErr := rdb.Get(redisCtx, redisKey).Bytes(); getErr == nil {
+			if cached, getErr := redisClient.Get(redisCtx, redisKey).Bytes(); getErr == nil {
 				var cachedD DeeplinkDTO
 				if json.Unmarshal(cached, &cachedD) == nil {
 					d = cachedD

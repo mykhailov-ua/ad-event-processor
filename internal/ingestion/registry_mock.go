@@ -30,6 +30,11 @@ func lockStaticCampaign(mut func(c *domain.Campaign)) {
 	mut(staticCampaign)
 }
 
+func configureMockRegistryCampaign(mut func(c *domain.Campaign)) {
+	lockStaticCampaign(mut)
+	cachedMockCamp.Store(nil)
+}
+
 func enrichMockCampaign(cp *domain.Campaign) {
 	if cp.Location == nil {
 		cp.Location = time.UTC

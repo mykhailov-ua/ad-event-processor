@@ -11,7 +11,7 @@ type FraudQuarantinePayload struct {
 	IPs []string `json:"ips"`
 }
 
-// MarshalFraudQuarantinePayload encodes one pub/sub message for fraud blacklist adds.
+
 func MarshalFraudQuarantinePayload(ips []string) (string, error) {
 	if len(ips) == 0 {
 		return "", fmt.Errorf("fraud quarantine payload: empty ip list")
@@ -38,7 +38,7 @@ func MarshalFraudQuarantinePayload(ips []string) (string, error) {
 	return string(raw), nil
 }
 
-// ParseFraudQuarantinePayload decodes batch JSON or a legacy single-IP string.
+
 func ParseFraudQuarantinePayload(raw string) ([]string, error) {
 	if raw == "" {
 		return nil, nil

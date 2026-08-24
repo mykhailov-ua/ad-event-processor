@@ -14,7 +14,7 @@ func isAlwaysKeepEvent(evt *pb.AdStreamEvent) bool {
 	case "click", "conversion":
 		return true
 	}
-	return evt.GhostEvent || evt.FraudScore > 0
+	return evt.SilentRejectEvent || evt.FraudScore > 0
 }
 
 func shouldSampleImpression(clickID []byte, sampleRate uint64) bool {

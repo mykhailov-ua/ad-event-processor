@@ -241,7 +241,7 @@ func computeMLEvalStatus(report fraudEvalReport, stale bool) string {
 }
 
 func (s *Service) readMLShardsConsistent(ctx context.Context) *bool {
-	if s == nil || len(s.rdbs) == 0 {
+	if s == nil || len(s.redisShards) == 0 {
 		return nil
 	}
 
@@ -251,11 +251,11 @@ func (s *Service) readMLShardsConsistent(ctx context.Context) *bool {
 	}
 
 	var shards []shardRedis
-	for _, rdb := range s.rdbs {
-		if rdb == nil {
+	for _, redisClient := range s.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		pipe := rdb.Pipeline()
+		pipe := redisClient.Pipeline()
 		verCmd := pipe.Get(ctx, "ml:model:version")
 		hashCmd := pipe.Get(ctx, "ml:model:hash")
 		if _, err := pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {

@@ -21,14 +21,14 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	ip := "203.0.113.91"
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{IP: ip, TCPHash: 0x123, SeenAt: time.Now().UTC()}))
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{IP: ip, TCPHash: 0x123, SeenAt: time.Now().UTC()}))
 
 	enricher := NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
 		Provider: &StubResidentialIntelProvider{
@@ -36,9 +36,9 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 				ip: {ResidentialProxy: true, VPN: true, Proxy: true},
 			},
 		},
-		Cache:      NewResidentialIntelCache(rdb, time.Hour),
+		Cache:      NewResidentialIntelCache(redisClient, time.Hour),
 		CHWrite:    conn,
-		RDB:        rdb,
+		RedisClient:        redisClient,
 		FeedDir:    t.TempDir(),
 		RecentLim:  16,
 		BatchLim:   16,
@@ -65,12 +65,12 @@ func TestResidentialIntelEnricher_integration_redisCacheAndFeed(t *testing.T) {
 		t.Skip("integration: residential intel enricher Redis cache + L1.5 feed append")
 	}
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
 	ip := "203.0.113.88"
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{IP: ip, TCPHash: 0xabc, SeenAt: time.Now().UTC()}))
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{IP: ip, TCPHash: 0xabc, SeenAt: time.Now().UTC()}))
 
 	feedDir := t.TempDir()
 	enricher := NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
@@ -79,8 +79,8 @@ func TestResidentialIntelEnricher_integration_redisCacheAndFeed(t *testing.T) {
 				ip: {ResidentialProxy: true, VPN: true},
 			},
 		},
-		Cache:     NewResidentialIntelCache(rdb, time.Hour),
-		RDB:       rdb,
+		Cache:     NewResidentialIntelCache(redisClient, time.Hour),
+		RedisClient:       redisClient,
 		FeedDir:   feedDir,
 		RecentLim: 8,
 		BatchLim:  8,

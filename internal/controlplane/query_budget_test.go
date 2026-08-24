@@ -29,15 +29,15 @@ func TestQueryBudget_ListCampaigns_HTTP(t *testing.T) {
 
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -74,15 +74,15 @@ func TestQueryBudget_GetCampaign_HTTP(t *testing.T) {
 
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -119,15 +119,15 @@ func TestQueryBudget_ListCustomers_HTTP(t *testing.T) {
 
 	pool, counter, cleanup := database.SetupTestDBWithQueryCounter(t)
 	defer cleanup()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

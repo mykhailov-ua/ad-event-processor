@@ -115,7 +115,7 @@ func (f *UnifiedFilter) SetFraudBlacklistFilter(bl *FraudBlacklistFilter) {
 	}
 }
 
-// SetIngressRPDHandledExternally skips campaign ingress INCR when EntitlementsFilter already ran.
+
 func (f *UnifiedFilter) SetIngressRPDHandledExternally(v bool) {
 	if f != nil {
 		f.ingressRPDHandledExternally = v
@@ -126,30 +126,30 @@ func (f *UnifiedFilter) applyLuaGoPrechecks(
 	ctx context.Context,
 	evt *domain.Event,
 	campInfo *domain.Campaign,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	now time.Time,
 ) error {
 	if f.ingressRPDHandledExternally {
 		return nil
 	}
-	return f.checkIngressRPDGo(ctx, evt, campInfo, rdb, now)
+	return f.checkIngressRPDGo(ctx, evt, campInfo, redisClient, now)
 }
 
 func (f *UnifiedFilter) checkIngressRPDGo(
 	ctx context.Context,
 	evt *domain.Event,
 	campInfo *domain.Campaign,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	now time.Time,
 ) error {
 	maxRPD := f.entitlementsMaxRPD(campInfo.CustomerID)
-	if maxRPD == 0 || rdb == nil {
+	if maxRPD == 0 || redisClient == nil {
 		return nil
 	}
 	var keyBuf []byte
 	keyBuf = appendCampaignIngressDayKey(keyBuf, evt.CampaignID, f.regionCode, campInfo.CustomerID, now)
 	redisKey := unsafeString(keyBuf)
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	incr := pipe.Incr(ctx, redisKey)
 	pipe.Expire(ctx, redisKey, time.Duration(luaPrecheckIngressTTLSec)*time.Second)
 	if _, err := pipe.Exec(ctx); err != nil {

@@ -29,7 +29,7 @@ test "$MR_PROOFS" -ge "$MIN_MR_PROOFS"
 for fault in \
   mr_score_cold_node \
   mr_lease_pg_partition \
-  mr_lease_ghost_executor \
+  mr_lease_standby_executor \
   mr_lease_dual_cas \
   mr_quorum_book \
   mr_global_pg_partition; do

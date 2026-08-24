@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,11 +22,11 @@ func TestDefaultFraudPolicyPresetDTOs_matchesDomain(t *testing.T) {
 	require.Equal(t, block, byName[domain.FraudPresetAggressive].Block)
 	require.Equal(t, suspect, byName[domain.FraudPresetAggressive].Suspect)
 	require.Equal(t, ivt, byName[domain.FraudPresetAggressive].IVT)
-	gm := byName[domain.FraudPresetGrayMarket]
-	require.Equal(t, uint8(20), gm.Pass)
-	require.Equal(t, uint8(85), gm.Block)
-	require.Equal(t, uint8(45), gm.Suspect)
-	require.Equal(t, uint8(65), gm.IVT)
+	legacy := byName[domain.FraudPresetEnhancedDefenseLegacy]
+	require.Equal(t, uint8(20), legacy.Pass)
+	require.Equal(t, uint8(85), legacy.Block)
+	require.Equal(t, uint8(45), legacy.Suspect)
+	require.Equal(t, uint8(65), legacy.IVT)
 }
 
 func TestResolveFraudPresetThresholds_fallbackWithoutPool(t *testing.T) {

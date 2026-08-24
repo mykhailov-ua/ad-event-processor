@@ -22,13 +22,13 @@ func TestStartIngestSubscribers_reconnectOnPublish(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	standbyDSN := pool.Config().ConnString() + "&application_name=standby"
 
 	var calls atomic.Int32
-	rt := pgfailover.StartIngestSubscribers(ctx, []redis.UniversalClient{rdb}, pgfailover.IngestSubscriberConfig{
+	rt := pgfailover.StartIngestSubscribers(ctx, []redis.UniversalClient{redisClient}, pgfailover.IngestSubscriberConfig{
 		MaxConns: 4,
 		MinConns: 1,
 		Interval: 50 * time.Millisecond,
@@ -41,7 +41,7 @@ func TestStartIngestSubscribers_reconnectOnPublish(t *testing.T) {
 	require.NotNil(t, rt)
 	defer rt.Stop()
 
-	require.NoError(t, pgfailover.PublishDSN(ctx, rdb, standbyDSN, 2))
+	require.NoError(t, pgfailover.PublishDSN(ctx, redisClient, standbyDSN, 2))
 
 	deadline := time.Now().Add(5 * time.Second)
 	for calls.Load() == 0 && time.Now().Before(deadline) {

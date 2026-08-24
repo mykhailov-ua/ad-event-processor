@@ -22,9 +22,9 @@ func setLicenseWatcher(w *licensing.LicenseWatcher) {
 	}
 }
 
-func startLicenseWatcher(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.UniversalClient, pubKey ed25519.PublicKey, svc *Service) error {
-	watcher := licensing.NewLicenseWatcher(pool, PickHealthyControlShard(rdbs), pubKey)
-	watcher.SetControlRedisShards(rdbs)
+func startLicenseWatcher(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.UniversalClient, pubKey ed25519.PublicKey, svc *Service) error {
+	watcher := licensing.NewLicenseWatcher(pool, PickHealthyControlShard(redisShards), pubKey)
+	watcher.SetControlRedisShards(redisShards)
 	setLicenseWatcher(watcher)
 	if err := watcher.Start(ctx); err != nil {
 		return err

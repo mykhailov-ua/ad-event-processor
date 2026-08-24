@@ -147,7 +147,7 @@ test('buyer overview shows fraud KPI tiles without opening fraud dashboard', asy
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         customer_id: 'cust-1',
-        ghost_ivt_campaigns: 2,
+        silent_reject_campaigns: 2,
         edge_blocked_fraud: 15,
         geo_hints: [{ country: 'US', ivt_rate: 0.12, clicks: 100 }],
       }),
@@ -156,7 +156,7 @@ test('buyer overview shows fraud KPI tiles without opening fraud dashboard', asy
 
   await page.goto('/');
   await expect(page.getByTestId('fraud-kpi-tiles')).toBeVisible();
-  await expect(page.getByTestId('fraud-kpi-ghost-ivt-campaigns')).toBeVisible();
+  await expect(page.getByTestId('fraud-kpi-silent-reject-campaigns')).toBeVisible();
   await expect(
     page.getByTestId('fraud-kpi-tiles').getByRole('link', { name: /High-IVT geo hints/i })
   ).toBeVisible();

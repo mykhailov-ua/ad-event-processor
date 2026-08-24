@@ -66,7 +66,7 @@ func (s *Service) enqueueRtbCatalogReload(ctx context.Context, q db.Querier, tri
 }
 
 func (s *Service) PublishRtbCatalogReload(ctx context.Context) error {
-	return publishControlChannelToAllShards(ctx, s.rdbs, domain.RtbCatalogReloadChannel(s.cfg), "reload")
+	return publishControlChannelToAllShards(ctx, s.redisShards, domain.RtbCatalogReloadChannel(s.cfg), "reload")
 }
 
 func (s *Service) ListRtbDeals(ctx context.Context) ([]RtbDealDTO, error) {

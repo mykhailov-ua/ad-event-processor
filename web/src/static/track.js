@@ -1,7 +1,9 @@
 /**
- * POST a conversion or event to the tracker /track endpoint (zero-redirect).
+ * POST /track from a landing page (browser pixel). Requires TRACK_CORS_ORIGINS on tracker.
+ * @param {Record<string, unknown>} opts
+ * @returns {Promise<unknown>}
  */
-export function adEventProcessorTrack(opts) {
+export function trackEvent(opts) {
   const body = {
     campaign_id: opts.campaignId,
     type: opts.type,
@@ -28,14 +30,17 @@ export function adEventProcessorTrack(opts) {
 }
 
 /**
- * Build an inline module script that calls adEventProcessorTrack on the current page.
+ * HTML module snippet for zero-redirect conversion on a landing page.
+ * @param {string} trackURL
+ * @param {string} campaignId
+ * @returns {string}
  */
 export function buildDirectTrackSnippet(trackURL, campaignId) {
   return [
     '<script type="module">',
-    `import { adEventProcessorTrack } from '/src/static/ad-event-processor-track.js';`,
+    `import { trackEvent } from '/src/static/track.js';`,
     'const params = new URLSearchParams(window.location.search);',
-    'adEventProcessorTrack({',
+    'trackEvent({',
     `  endpoint: '${trackURL}',`,
     `  campaignId: '${campaignId}',`,
     "  type: 'conversion',",

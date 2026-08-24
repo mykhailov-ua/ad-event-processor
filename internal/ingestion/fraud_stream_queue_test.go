@@ -43,8 +43,8 @@ func (p *countingPipeliner) XAdd(ctx context.Context, args *redis.XAddArgs) *red
 }
 
 func TestFraudStreamWriter_enqueueAndFlush(t *testing.T) {
-	rdb := &countingRedisXAdd{}
-	q := NewFraudStreamWriter([]redis.UniversalClient{rdb}, "fraud-stream", 1000)
+	redisClient := &countingRedisXAdd{}
+	q := NewFraudStreamWriter([]redis.UniversalClient{redisClient}, "fraud-stream", 1000)
 	require.NotNil(t, q)
 	defer q.Stop()
 
@@ -61,16 +61,16 @@ func TestFraudStreamWriter_enqueueAndFlush(t *testing.T) {
 	require.True(t, q.Enqueue(0, evt))
 
 	require.Eventually(t, func() bool {
-		return rdb.xadds.Load() == 1 && q.Pending() == 0
+		return redisClient.xadds.Load() == 1 && q.Pending() == 0
 	}, time.Second, 2*time.Millisecond)
 }
 
 func TestFraudStreamWriter_ringFullIncrementsDropMetric(t *testing.T) {
-	rdb := &mockRedisClient{}
+	redisClient := &mockRedisClient{}
 	q := &FraudStreamWriter{
 		stream: "fraud-stream",
 		maxLen: 1000,
-		rdbs:   []redis.UniversalClient{rdb},
+		redisShards:   []redis.UniversalClient{redisClient},
 		stopCh: make(chan struct{}),
 	}
 	q.allocCursor = fraudRingUsable
@@ -83,8 +83,8 @@ func TestFraudStreamWriter_ringFullIncrementsDropMetric(t *testing.T) {
 }
 
 func TestFraudStreamWriter_concurrentEnqueue(t *testing.T) {
-	rdb := &countingRedisXAdd{}
-	q := NewFraudStreamWriter([]redis.UniversalClient{rdb}, "fraud-stream", 1000)
+	redisClient := &countingRedisXAdd{}
+	q := NewFraudStreamWriter([]redis.UniversalClient{redisClient}, "fraud-stream", 1000)
 	require.NotNil(t, q)
 	defer q.Stop()
 
@@ -108,7 +108,7 @@ func TestFraudStreamWriter_concurrentEnqueue(t *testing.T) {
 	wg.Wait()
 	q.Stop()
 
-	assert.Greater(t, rdb.xadds.Load(), int32(0))
+	assert.Greater(t, redisClient.xadds.Load(), int32(0))
 }
 
 func BenchmarkFraudStreamWriter_Enqueue(b *testing.B) {

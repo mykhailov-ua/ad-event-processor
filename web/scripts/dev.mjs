@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-/**
- * Build admin dist (esbuild) and serve with API proxy for local admin dev.
- * Set ADMIN_DEV_WATCH=0 to skip fs.watch rebuilds.
- */
+
 import { createServer, request as httpRequest } from 'node:http';
 import { existsSync, readFileSync, watch } from 'node:fs';
 import { extname, resolve, dirname, join } from 'node:path';

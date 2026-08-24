@@ -23,7 +23,7 @@ import (
 
 type StreamConsumer struct {
 	store              domain.EventStore
-	rdb                redis.UniversalClient
+	redisClient                redis.UniversalClient
 	streamName         string
 	groupName          string
 	consumerID         string
@@ -102,7 +102,7 @@ var adLogRecordPool = sync.Pool{
 
 func NewStreamConsumer(
 	store domain.EventStore,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	streamName, groupName, consumerID string,
 	batchSize int,
 	maxWorkers int,
@@ -120,7 +120,7 @@ func NewStreamConsumer(
 
 	return &StreamConsumer{
 		store:              store,
-		rdb:                rdb,
+		redisClient:                redisClient,
 		streamName:         streamName,
 		groupName:          groupName,
 		consumerID:         uniqueConsumerID,
@@ -148,7 +148,7 @@ func (consumer *StreamConsumer) Start(ctx context.Context) {
 
 	procCtx, cancel := context.WithCancel(ctx)
 	consumer.cancel = cancel
-	err := consumer.rdb.XGroupCreateMkStream(ctx, consumer.streamName, consumer.groupName, "0").Err()
+	err := consumer.redisClient.XGroupCreateMkStream(ctx, consumer.streamName, consumer.groupName, "0").Err()
 	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
 		slog.Error("failed to create consumer group", "error", err, "stream", consumer.streamName, "group", consumer.groupName)
 	}
@@ -286,7 +286,7 @@ func (consumer *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 
 		xreadArgs.Count = readCount
 		xreadArgs.Block = blockTime
-		streams, err := consumer.rdb.XReadGroup(ctx, xreadArgs).Result()
+		streams, err := consumer.redisClient.XReadGroup(ctx, xreadArgs).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				if len(batch) > 0 && time.Since(lastFlush) >= consumer.flushInt {
@@ -380,7 +380,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.E
 	err := consumer.flushBatch(ctx, *batch, *msgIDs, workerID)
 	if err == nil {
 		consumer.recordSuccess(workerID)
-		_ = consumer.rdb.HDel(ctx, "ad:events:retries", (*msgIDs)...).Err()
+		_ = consumer.redisClient.HDel(ctx, "ad:events:retries", (*msgIDs)...).Err()
 		for _, e := range *batch {
 			domain.EventPool.Put(e)
 		}
@@ -402,7 +402,7 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.E
 	*retryCount++
 	consumer.recordFailure(workerID)
 
-	pipe := consumer.rdb.Pipeline()
+	pipe := consumer.redisClient.Pipeline()
 	incrCmds := make([]*redis.IntCmd, len(*msgIDs))
 	for i, id := range *msgIDs {
 		incrCmds[i] = pipe.HIncrBy(ctx, "ad:events:retries", id, 1)
@@ -450,8 +450,8 @@ func (consumer *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.E
 
 		if len(successfulMsgIDs) > 0 {
 			ackCtx, ackCancel := context.WithTimeout(ctx, consumer.writeTimeout)
-			_ = consumer.rdb.XAck(ackCtx, consumer.streamName, consumer.groupName, successfulMsgIDs...).Err()
-			_ = consumer.rdb.HDel(ackCtx, "ad:events:retries", successfulMsgIDs...).Err()
+			_ = consumer.redisClient.XAck(ackCtx, consumer.streamName, consumer.groupName, successfulMsgIDs...).Err()
+			_ = consumer.redisClient.HDel(ackCtx, "ad:events:retries", successfulMsgIDs...).Err()
 			ackCancel()
 		}
 
@@ -528,7 +528,7 @@ var (
 func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string, retryCount int, err error) error {
 	errStr := err.Error()
 
-	pipeWrite := consumer.rdb.Pipeline()
+	pipeWrite := consumer.redisClient.Pipeline()
 
 	writtenMsgIDs := make([]string, 0, len(batch))
 	valuesPtrs := make([]*[]any, 0, len(batch))
@@ -627,7 +627,7 @@ func (consumer *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.E
 		hasError = true
 	}
 
-	pipeAck := consumer.rdb.Pipeline()
+	pipeAck := consumer.redisClient.Pipeline()
 	ackedMsgIDs := make([]string, 0, len(batch))
 
 	ackCtx, ackCancel := context.WithTimeout(ctx, consumer.writeTimeout)
@@ -720,7 +720,7 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 				event.FraudReason = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.FraudReason):])
 			}
 			event.FraudScore = pbEvt.FraudScore
-			event.GhostEvent = pbEvt.GhostEvent
+			event.SilentRejectEvent = pbEvt.SilentRejectEvent
 			if len(pbEvt.UserId) > 0 {
 				event.StringBuffer = append(event.StringBuffer, pbEvt.UserId...)
 				event.UserID = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.UserId):])
@@ -866,7 +866,7 @@ func (consumer *StreamConsumer) flushBatch(ctx context.Context, batch []*domain.
 
 	ackCtx, cancel := context.WithTimeout(ctx, consumer.writeTimeout)
 	defer cancel()
-	if err := consumer.rdb.XAck(ackCtx, consumer.streamName, consumer.groupName, msgIDs...).Err(); err != nil {
+	if err := consumer.redisClient.XAck(ackCtx, consumer.streamName, consumer.groupName, msgIDs...).Err(); err != nil {
 		if !errors.Is(err, context.Canceled) {
 			slog.Error("xack failed after successful store", "error", err, "group", consumer.groupName, "batch_size", len(batch), "first_ids", firstN(msgIDs, 5))
 		}
@@ -881,7 +881,7 @@ func (consumer *StreamConsumer) recoverPending(ctx context.Context, consumerID s
 		case <-ctx.Done():
 			return
 		default:
-			entries, err := consumer.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+			entries, err := consumer.redisClient.XReadGroup(ctx, &redis.XReadGroupArgs{
 				Group:    consumer.groupName,
 				Consumer: consumerID,
 				Streams:  []string{consumer.streamName, "0"},
@@ -912,7 +912,7 @@ func (consumer *StreamConsumer) recoverPending(ctx context.Context, consumerID s
 					}
 					slog.Error("recovery flush failed, moving to DLQ", "error", err, "group", consumer.groupName)
 					_ = consumer.moveToDLQ(ctx, batch, msgIDs, consumerID, 1, fmt.Errorf("recovery flush failed: %w", err))
-					_ = consumer.rdb.HDel(ctx, "ad:events:retries", msgIDs...).Err()
+					_ = consumer.redisClient.HDel(ctx, "ad:events:retries", msgIDs...).Err()
 				}
 				for _, e := range batch {
 					domain.EventPool.Put(e)
@@ -920,7 +920,7 @@ func (consumer *StreamConsumer) recoverPending(ctx context.Context, consumerID s
 				return
 			}
 			consumer.recordSuccess(consumerID)
-			_ = consumer.rdb.HDel(ctx, "ad:events:retries", msgIDs...).Err()
+			_ = consumer.redisClient.HDel(ctx, "ad:events:retries", msgIDs...).Err()
 			for _, e := range batch {
 				domain.EventPool.Put(e)
 			}
@@ -934,7 +934,7 @@ func (consumer *StreamConsumer) drainNewMessages(ctx context.Context, consumerID
 		case <-ctx.Done():
 			return
 		default:
-			streams, err := consumer.rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+			streams, err := consumer.redisClient.XReadGroup(ctx, &redis.XReadGroupArgs{
 				Group:    consumer.groupName,
 				Consumer: consumerID,
 				Streams:  []string{consumer.streamName, ">"},
@@ -1005,7 +1005,7 @@ func (consumer *StreamConsumer) janitor(ctx context.Context) {
 func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 	startID := "0-0"
 	for {
-		entries, nextID, err := consumer.rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+		entries, nextID, err := consumer.redisClient.XAutoClaim(ctx, &redis.XAutoClaimArgs{
 			Stream:   consumer.streamName,
 			Group:    consumer.groupName,
 			Consumer: consumer.consumerID,
@@ -1021,7 +1021,7 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 		}
 
 		if len(entries) > 0 {
-			pipe := consumer.rdb.Pipeline()
+			pipe := consumer.redisClient.Pipeline()
 			incrCmds := make([]*redis.IntCmd, len(entries))
 			for i, msg := range entries {
 				incrCmds[i] = pipe.HIncrBy(ctx, "ad:events:retries", msg.ID, 1)
@@ -1054,7 +1054,7 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 					domain.EventPool.Put(e)
 				}
 				if len(delMsgIDs) > 0 {
-					_ = consumer.rdb.HDel(ctx, "ad:events:retries", delMsgIDs...).Err()
+					_ = consumer.redisClient.HDel(ctx, "ad:events:retries", delMsgIDs...).Err()
 				}
 			}
 
@@ -1066,7 +1066,7 @@ func (consumer *StreamConsumer) claimStuckMessages(ctx context.Context) {
 					}
 				} else {
 					consumer.recordSuccess("janitor")
-					_ = consumer.rdb.HDel(ctx, "ad:events:retries", msgIDs...).Err()
+					_ = consumer.redisClient.HDel(ctx, "ad:events:retries", msgIDs...).Err()
 				}
 				for _, e := range batch {
 					domain.EventPool.Put(e)
@@ -1096,7 +1096,7 @@ func (consumer *StreamConsumer) dlqMonitor(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			size, err := consumer.rdb.XLen(ctx, consumer.dlqStream()).Result()
+			size, err := consumer.redisClient.XLen(ctx, consumer.dlqStream()).Result()
 			if err != nil {
 				if !errors.Is(err, redis.Nil) && !errors.Is(err, context.Canceled) {
 					slog.Error("failed to get DLQ size", "error", err)

@@ -7,7 +7,7 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
-// TCPMSSFilter emits an L2 fraud signal when edge SYN MSS (high-byte encoding) is below threshold.
+
 type TCPMSSFilter struct {
 	minMSS uint8
 }

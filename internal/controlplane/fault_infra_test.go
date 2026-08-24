@@ -56,18 +56,18 @@ func setupControlFaultInfra(t *testing.T) (*controlFaultInfra, func()) {
 	endpoint, err := redisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
 
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
-	require.NoError(t, rdb.Ping(ctx).Err())
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
+	require.NoError(t, redisClient.Ping(ctx).Err())
 
 	infra := &controlFaultInfra{
 		Pool:           pool,
-		Redis:          rdb,
+		Redis:          redisClient,
 		PGContainer:    pgContainer,
 		RedisContainer: redisContainer,
 	}
 
 	cleanup := func() {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		pool.Close()
 		_ = redisContainer.Terminate(ctx)
 		_ = pgContainer.Terminate(ctx)
@@ -121,10 +121,10 @@ func waitFaultPGReady(t *testing.T, pool *pgxpool.Pool) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func waitFaultRedisReady(t *testing.T, rdb redis.UniversalClient) {
+func waitFaultRedisReady(t *testing.T, redisClient redis.UniversalClient) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		return rdb.Ping(context.Background()).Err() == nil
+		return redisClient.Ping(context.Background()).Err() == nil
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
@@ -157,7 +157,7 @@ func requireFaultActive(t *testing.T, faultActive func() bool, msg string) {
 
 func rebindBareService(svc *Service, infra *controlFaultInfra) {
 	svc.SetPool(infra.Pool)
-	svc.rdbs = []redis.UniversalClient{infra.Redis}
+	svc.redisShards = []redis.UniversalClient{infra.Redis}
 }
 
 func outboxStatus(t *testing.T, pool *pgxpool.Pool, eventID int64) string {

@@ -30,11 +30,11 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Test RTB", 1_000_000, "USD"))
@@ -53,7 +53,7 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 	require.Equal(t, int64(100_000), deal.FloorMicro)
 
 	channel := domain.RtbCatalogReloadChannel(svc.cfg)
-	sub := rdb.Subscribe(ctx, channel)
+	sub := redisClient.Subscribe(ctx, channel)
 	defer sub.Close()
 	_, err = sub.Receive(ctx)
 	require.NoError(t, err)

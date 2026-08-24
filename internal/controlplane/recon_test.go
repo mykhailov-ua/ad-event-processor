@@ -63,11 +63,11 @@ func (m *mockRedisForRecon) getVal(key string) int64 {
 }
 
 func TestRecon_RaceConcurrentAdjustments(t *testing.T) {
-	rdb := newMockRedisForRecon()
+	redisClient := newMockRedisForRecon()
 	campID := uuid.New()
 	key := domain.CampaignSyncKey(campID)
 
-	rdb.data[key] = 10_000_000
+	redisClient.data[key] = 10_000_000
 
 	const goroutines = 50
 	const deltaPerGoroutine = -100_000
@@ -82,14 +82,14 @@ func TestRecon_RaceConcurrentAdjustments(t *testing.T) {
 			defer wg.Done()
 			<-start
 
-			_ = rdb.Eval(context.Background(), "", []string{key}, int64(deltaPerGoroutine))
+			_ = redisClient.Eval(context.Background(), "", []string{key}, int64(deltaPerGoroutine))
 		}()
 	}
 
 	close(start)
 	wg.Wait()
 
-	final := rdb.getVal(key)
+	final := redisClient.getVal(key)
 	expected := int64(10_000_000) + (int64(goroutines) * deltaPerGoroutine)
 	assert.Equal(t, expected, final, "concurrent adjustments must be linear and race-free")
 	assert.GreaterOrEqual(t, final, int64(0), "budget must never go negative from recon corrections")
@@ -100,7 +100,7 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	ctx := context.Background()
@@ -108,7 +108,7 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 	key := domain.CampaignSyncKey(campID)
 	recon := &ReconService{}
 
-	require.NoError(t, rdb.Set(ctx, key, 10_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, key, 10_000_000, 0).Err())
 
 	const goroutines = 20
 	const deltaPerGoroutine = -100_000
@@ -120,14 +120,14 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			<-start
-			err := recon.adjustRedisBudgetAtomically(ctx, rdb, campID, deltaPerGoroutine)
+			err := recon.adjustRedisBudgetAtomically(ctx, redisClient, campID, deltaPerGoroutine)
 			require.NoError(t, err)
 		}()
 	}
 	close(start)
 	wg.Wait()
 
-	final, err := rdb.Get(ctx, key).Int64()
+	final, err := redisClient.Get(ctx, key).Int64()
 	if errors.Is(err, redis.Nil) {
 		final = 0
 	} else {
@@ -141,12 +141,12 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 	t.Run("LargeNegativeDeltaClampsToZero", func(t *testing.T) {
 		smallID := uuid.New()
 		smallKey := domain.CampaignSyncKey(smallID)
-		require.NoError(t, rdb.Set(ctx, smallKey, 1_000_000, 0).Err())
+		require.NoError(t, redisClient.Set(ctx, smallKey, 1_000_000, 0).Err())
 
-		err := recon.adjustRedisBudgetAtomically(ctx, rdb, smallID, -100_000_000)
+		err := recon.adjustRedisBudgetAtomically(ctx, redisClient, smallID, -100_000_000)
 		require.NoError(t, err)
 
-		exists, err := rdb.Exists(ctx, smallKey).Result()
+		exists, err := redisClient.Exists(ctx, smallKey).Result()
 		require.NoError(t, err)
 		assert.Equal(t, int64(0), exists, "Lua must delete key instead of leaving negative balance")
 	})
@@ -154,18 +154,18 @@ func TestRecon_AdjustRealRedis(t *testing.T) {
 
 func TestRecon_EdgeCases(t *testing.T) {
 	t.Run("LargeNegativeDeltaIsClampedByLua", func(t *testing.T) {
-		rdb := newMockRedisForRecon()
+		redisClient := newMockRedisForRecon()
 		campID := uuid.New()
 		key := domain.CampaignSyncKey(campID)
-		rdb.data[key] = 1_000_000
+		redisClient.data[key] = 1_000_000
 
 		err := func() error {
-			_, e := rdb.Eval(context.Background(), "", []string{key}, int64(-100_000_000)).Result()
+			_, e := redisClient.Eval(context.Background(), "", []string{key}, int64(-100_000_000)).Result()
 			return e
 		}()
 		require.NoError(t, err)
 
-		final := rdb.getVal(key)
+		final := redisClient.getVal(key)
 		assert.Equal(t, int64(0), final, "Lua must delete the key instead of allowing negative budget")
 	})
 }
@@ -178,11 +178,11 @@ func TestRecon_LedgerTypeSecurity(t *testing.T) {
 }
 
 func BenchmarkRecon_AtomicAdjustment(b *testing.B) {
-	rdb := newMockRedisForRecon()
+	redisClient := newMockRedisForRecon()
 	campID := uuid.New()
 	key := domain.CampaignSyncKey(campID)
-	rdb.data[key] = 50_000_000
+	redisClient.data[key] = 50_000_000
 	for b.Loop() {
-		_ = rdb.Eval(context.Background(), "", []string{key}, int64(-1000))
+		_ = redisClient.Eval(context.Background(), "", []string{key}, int64(-1000))
 	}
 }

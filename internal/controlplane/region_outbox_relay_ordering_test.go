@@ -24,7 +24,7 @@ func TestRegionOutboxRelay_strictOrderHaltsOnFailure(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -50,7 +50,7 @@ func TestRegionOutboxRelay_strictOrderHaltsOnFailure(t *testing.T) {
 	cfg := &config.Config{
 		RegionCode: 1,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	relay := NewRegionOutboxRelay(svc)
 
 	_, err = relay.ProcessPendingWithCount(ctx, 10)
@@ -66,7 +66,7 @@ func TestRegionOutboxRelay_strictOrderHaltsOnFailure(t *testing.T) {
 	assert.Equal(t, "PENDING", createStatus)
 	assert.Equal(t, "PENDING", updateStatus, "UPDATE must not run while CREATE is still pending")
 
-	version, err := rdb.Get(ctx, "config:version").Int64()
+	version, err := redisClient.Get(ctx, "config:version").Int64()
 	if err == nil {
 		assert.NotEqual(t, updateEventID, version, "UPDATE_SETTINGS must not apply when batch halted on CREATE")
 	} else {
@@ -89,7 +89,7 @@ func TestRegionOutboxRelay_strictOrderSucceedsAfterCreateFixed(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -131,19 +131,19 @@ func TestRegionOutboxRelay_strictOrderSucceedsAfterCreateFixed(t *testing.T) {
 	cfg := &config.Config{
 		RegionCode: 1,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	relay := NewRegionOutboxRelay(svc)
 
 	delivered, err := relay.ProcessPendingWithCount(ctx, 10)
 	require.NoError(t, err)
 	assert.Equal(t, 2, delivered)
 
-	version, err := rdb.Get(ctx, "config:version").Int64()
+	version, err := redisClient.Get(ctx, "config:version").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, updateEventID, version)
 
 	budgetKey := "budget:campaign:" + campaignID.String()
-	budget, err := rdb.Get(ctx, budgetKey).Int64()
+	budget, err := redisClient.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(3_000_000), budget)
 }

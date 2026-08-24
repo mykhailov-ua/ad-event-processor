@@ -31,36 +31,36 @@ func (f *UnifiedFilter) PreloadScripts(ctx context.Context) error {
 	if f == nil || f.script == nil || f.fastScript == nil || f.rollbackScript == nil {
 		return fmt.Errorf("unified filter scripts are nil")
 	}
-	for i, rdb := range f.rdbs {
-		if rdb == nil {
+	for i, redisClient := range f.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := f.preloadScriptsShard(ctx, i, rdb); err != nil {
+		if err := f.preloadScriptsShard(ctx, i, redisClient); err != nil {
 			return err
 		}
 	}
 	return f.openFilterEvalPins(ctx)
 }
 
-func (f *UnifiedFilter) preloadScriptsShard(ctx context.Context, shard int, rdb redis.UniversalClient) error {
+func (f *UnifiedFilter) preloadScriptsShard(ctx context.Context, shard int, redisClient redis.UniversalClient) error {
 	if f == nil || f.script == nil || f.fastScript == nil || f.rollbackScript == nil {
 		return fmt.Errorf("unified filter scripts are nil")
 	}
-	if rdb == nil {
+	if redisClient == nil {
 		return fmt.Errorf("preload filter scripts shard %d: redis client is nil", shard)
 	}
 	shardLabel := strconv.Itoa(shard)
-	if err := f.script.Load(ctx, rdb).Err(); err != nil {
+	if err := f.script.Load(ctx, redisClient).Err(); err != nil {
 		metrics.RedisLuaScriptLoaded.WithLabelValues(shardLabel).Set(0)
 		metrics.RedisLuaFastScriptLoaded.WithLabelValues(shardLabel).Set(0)
 		return fmt.Errorf("preload filter full script shard %d: %w", shard, err)
 	}
-	if err := f.fastScript.Load(ctx, rdb).Err(); err != nil {
+	if err := f.fastScript.Load(ctx, redisClient).Err(); err != nil {
 		metrics.RedisLuaScriptLoaded.WithLabelValues(shardLabel).Set(0)
 		metrics.RedisLuaFastScriptLoaded.WithLabelValues(shardLabel).Set(0)
 		return fmt.Errorf("preload budget fast script shard %d: %w", shard, err)
 	}
-	if err := f.rollbackScript.Load(ctx, rdb).Err(); err != nil {
+	if err := f.rollbackScript.Load(ctx, redisClient).Err(); err != nil {
 		return fmt.Errorf("preload budget rollback script shard %d: %w", shard, err)
 	}
 	metrics.RedisLuaScriptLoaded.WithLabelValues(shardLabel).Set(1)
@@ -72,11 +72,11 @@ func (f *UnifiedFilter) AttachReconnectPreload() {
 	if f == nil {
 		return
 	}
-	for i, rdb := range f.rdbs {
-		if rdb == nil {
+	for i, redisClient := range f.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		rdb.AddHook(newRedisShardPreloadHook(f, i))
+		redisClient.AddHook(newRedisShardPreloadHook(f, i))
 	}
 }
 
@@ -126,21 +126,21 @@ func (h *redisShardPreloadHook) schedulePreload(ctx context.Context) {
 	go func(parent context.Context) {
 		preloadCtx, cancel := context.WithTimeout(parent, 2*time.Second)
 		defer cancel()
-		if filter == nil || shard < 0 || shard >= len(filter.rdbs) {
+		if filter == nil || shard < 0 || shard >= len(filter.redisShards) {
 			return
 		}
-		rdb := filter.rdbs[shard]
-		if rdb == nil {
+		redisClient := filter.redisShards[shard]
+		if redisClient == nil {
 			return
 		}
-		if err := filter.preloadScriptsShard(preloadCtx, shard, rdb); err != nil {
+		if err := filter.preloadScriptsShard(preloadCtx, shard, redisClient); err != nil {
 			slog.Warn("redis lua reconnect preload failed", "shard", shard, "error", err)
 		}
 	}(ctx)
 }
 
-func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClient, shard int, evt *domain.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
-	res, err := f.evalShaPooled(ctx, rdb, shard, evt, f.scriptHashAny, keyArgs, args)
+func (f *UnifiedFilter) evalScript(ctx context.Context, redisClient redis.UniversalClient, shard int, evt *domain.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
+	res, err := f.evalShaPooled(ctx, redisClient, shard, evt, f.scriptHashAny, keyArgs, args)
 	if err != nil && isNoScriptErr(err) {
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
 		slog.Warn("redis lua NOSCRIPT encountered", "shard", shard, "error", err)
@@ -155,13 +155,13 @@ func (f *UnifiedFilter) evalScript(ctx context.Context, rdb redis.UniversalClien
 			select {
 			case f.evalFallbackGate <- struct{}{}:
 				defer func() { <-f.evalFallbackGate }()
-				return f.evalPooled(ctx, rdb, shard, evt, unifiedFilterLuaAny, keyArgs, args)
+				return f.evalPooled(ctx, redisClient, shard, evt, unifiedFilterLuaAny, keyArgs, args)
 			default:
 				slog.Warn("redis lua NOSCRIPT fallback concurrency limit exceeded", "shard", shard)
 				return -1, fmt.Errorf("redis lua EVAL fallback concurrency limit exceeded")
 			}
 		}
-		return f.evalPooled(ctx, rdb, shard, evt, unifiedFilterLuaAny, keyArgs, args)
+		return f.evalPooled(ctx, redisClient, shard, evt, unifiedFilterLuaAny, keyArgs, args)
 	}
 	return res, err
 }

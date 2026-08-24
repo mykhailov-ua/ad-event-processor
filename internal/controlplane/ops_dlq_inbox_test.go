@@ -22,8 +22,8 @@ func TestListDLQInbox_includesStreamEntries(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	campaignID := uuid.New()
 	pbDLQ := &pb.AdDLQEvent{
@@ -39,14 +39,14 @@ func TestListDLQInbox_includesStreamEntries(t *testing.T) {
 	require.NoError(t, err)
 
 	dlqStream := "ad:events:dlq"
-	msgID, err := rdb.XAdd(context.Background(), &redis.XAddArgs{
+	msgID, err := redisClient.XAdd(context.Background(), &redis.XAddArgs{
 		Stream: dlqStream,
 		Values: map[string]interface{}{"d": ingestion.UnsafeString(raw)},
 	}).Result()
 	require.NoError(t, err)
 
 	cfg := &config.Config{RedisStreamName: "ad:events:stream"}
-	svc := &Service{rdbs: []redis.UniversalClient{rdb}, cfg: cfg}
+	svc := &Service{redisShards: []redis.UniversalClient{redisClient}, cfg: cfg}
 	reader := newOpsReader(svc)
 
 	result, err := reader.ListDLQInbox(context.Background(), "stream", "", 50)

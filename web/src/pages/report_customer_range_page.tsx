@@ -96,7 +96,7 @@ export function CustomerRangeReportPage({
 
   useEffect(() => {
     void load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
   if (error) return <ErrorBlock error={error} />;
 
@@ -307,15 +307,15 @@ export const FRAUD_BREAKDOWN_REPORT_COLUMNS: CustomerRangeColumn[] = [
   { header: 'Placement', render: (row) => String(row.placement_id ?? '-') },
   { header: 'Reason', render: (row) => String(row.fraud_reason ?? '-') },
   { header: 'Events', render: (row) => String(row.event_count ?? 0) },
-  { header: 'Ghost', render: (row) => String(row.ghost_count ?? 0) },
+  { header: 'Silent reject', render: (row) => String(row.silent_reject_count ?? 0) },
   {
-    header: 'Ghost %',
+    header: 'Silent reject %',
     render: (row) =>
-      row.ghost_ratio != null ? `${(Number(row.ghost_ratio) * 100).toFixed(2)}%` : '-',
+      row.silent_reject_ratio != null ? `${(Number(row.silent_reject_ratio) * 100).toFixed(2)}%` : '-',
   },
 ];
 
-export const GHOST_IMPRESSION_FUNNEL_COLUMNS: CustomerRangeColumn[] = [
+export const SILENT_REJECT_IMPRESSION_FUNNEL_COLUMNS: CustomerRangeColumn[] = [
   {
     header: 'Campaign',
     render: (row) => (
@@ -326,12 +326,12 @@ export const GHOST_IMPRESSION_FUNNEL_COLUMNS: CustomerRangeColumn[] = [
   },
   { header: 'Placement', render: (row) => String(row.placement_id ?? '-') },
   { header: 'Billable imps', render: (row) => String(row.billable_impressions ?? 0) },
-  { header: 'Ghost imps', render: (row) => String(row.ghost_impressions ?? 0) },
+  { header: 'Silent reject imps', render: (row) => String(row.silent_reject_impressions ?? 0) },
   { header: 'IVT imps', render: (row) => String(row.ivt_impressions ?? 0) },
   {
-    header: 'Ghost %',
+    header: 'Silent reject %',
     render: (row) =>
-      row.ghost_rate != null ? `${(Number(row.ghost_rate) * 100).toFixed(2)}%` : '-',
+      row.silent_reject_rate != null ? `${(Number(row.silent_reject_rate) * 100).toFixed(2)}%` : '-',
   },
   {
     header: 'IVT %',

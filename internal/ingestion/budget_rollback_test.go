@@ -12,14 +12,14 @@ import (
 )
 
 func TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix(t *testing.T) {
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs: []string{"localhost:6379"},
 	})
-	defer func() { _ = rdb.Close() }()
+	defer func() { _ = redisClient.Close() }()
 
-	f := NewUnifiedFilter([]redis.UniversalClient{rdb}, nil, nil, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
+	f := NewUnifiedFilter([]redis.UniversalClient{redisClient}, nil, nil, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		Rdbs:           []redis.UniversalClient{rdb},
+		RedisShards:           []redis.UniversalClient{redisClient},
 		StreamName:     "events",
 		MaxLen:         1000,
 		IdempotencyTTL: time.Hour,

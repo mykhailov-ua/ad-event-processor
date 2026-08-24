@@ -130,7 +130,7 @@ type DBHealthChecker interface {
 }
 
 type UnifiedFilter struct {
-	rdbs                     []redis.UniversalClient
+	redisShards                     []redis.UniversalClient
 	sharder                  Sharder
 	script                   *redis.Script
 	scriptHash               string
@@ -325,7 +325,7 @@ func parseBidMicro(payload []byte) int64 {
 }
 
 func NewUnifiedFilter(
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	registry domain.CampaignRegistry,
 	repo domain.CampaignRepository,
@@ -344,7 +344,7 @@ func NewUnifiedFilter(
 	rollbackScript := redis.NewScript(budgetRollbackLua)
 	emptyGeoFloors := make(map[string]int64)
 	f := &UnifiedFilter{
-		rdbs:                         rdbs,
+		redisShards:                         redisShards,
 		sharder:                      sharder,
 		script:                       script,
 		scriptHash:                   script.Hash(),
@@ -380,12 +380,12 @@ func NewUnifiedFilter(
 		quotaRefillThresholdPctAny:   20,
 		quotaMode:                    "off",
 		localQuotaCache:              NewLocalQuotaCache(),
-		luaDurationObservers:         newRedisLuaObservers(len(rdbs)),
-		luaFastDurationObservers:     newRedisLuaTierObservers(len(rdbs)),
-		luaFastPathCounters:          newRedisLuaPathCounters(len(rdbs), true),
-		luaFullPathCounters:          newRedisLuaPathCounters(len(rdbs), false),
-		luaNoScriptCounters:          newRedisLuaNoScriptCounters(len(rdbs)),
-		redisObservability:           newRedisShardObservability(len(rdbs), luaMetricsSampleMask),
+		luaDurationObservers:         newRedisLuaObservers(len(redisShards)),
+		luaFastDurationObservers:     newRedisLuaTierObservers(len(redisShards)),
+		luaFastPathCounters:          newRedisLuaPathCounters(len(redisShards), true),
+		luaFullPathCounters:          newRedisLuaPathCounters(len(redisShards), false),
+		luaNoScriptCounters:          newRedisLuaNoScriptCounters(len(redisShards)),
+		redisObservability:           newRedisShardObservability(len(redisShards), luaMetricsSampleMask),
 		dbLookupTimeout:              2 * time.Second,
 		pgFallbackAllowed:            true,
 		evalFallbackGate:             make(chan struct{}, 32),
@@ -527,8 +527,8 @@ func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Dura
 
 				if !isActive && p95 > f.p95ThresholdMs {
 
-					for _, rdb := range f.rdbs {
-						_ = rdb.Set(ctx, "sla:penalty:active", true, 0).Err()
+					for _, redisClient := range f.redisShards {
+						_ = redisClient.Set(ctx, "sla:penalty:active", true, 0).Err()
 					}
 					f.slaPenaltyActive.Store(true)
 				} else if isActive {
@@ -536,8 +536,8 @@ func (f *UnifiedFilter) StartSLASentinel(ctx context.Context, interval time.Dura
 						if f.recoveryStartTime.IsZero() {
 							f.recoveryStartTime = time.Now()
 						} else if time.Since(f.recoveryStartTime) >= f.recoveryStableDuration {
-							for _, rdb := range f.rdbs {
-								_ = rdb.Del(ctx, "sla:penalty:active").Err()
+							for _, redisClient := range f.redisShards {
+								_ = redisClient.Del(ctx, "sla:penalty:active").Err()
 							}
 							f.slaPenaltyActive.Store(false)
 							f.recoveryStartTime = time.Time{}
@@ -688,7 +688,7 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if err != nil {
 		return err
 	}
-	rdb := f.rdbs[shard%len(f.rdbs)]
+	redisClient := f.redisShards[shard%len(f.redisShards)]
 
 	var now time.Time
 	if campInfo.Location == nil || campInfo.Location == time.UTC {
@@ -696,7 +696,7 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	} else {
 		now = CachedTimeIn(campInfo.Location)
 	}
-	if err := f.applyLuaGoPrechecks(ctx, evt, campInfo, rdb, now); err != nil {
+	if err := f.applyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now); err != nil {
 		return err
 	}
 
@@ -711,7 +711,7 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 			}
 		}
 		fastScratch := budgetFastScratchPool.Get().(*budgetFastScratch)
-		err := f.runBudgetFastLua(ctx, evt, campInfo, amount, rdb, shard, fastScratch)
+		err := f.runBudgetFastLua(ctx, evt, campInfo, amount, redisClient, shard, fastScratch)
 		budgetFastScratchPool.Put(fastScratch)
 		if err == nil {
 			if campInfo.FreqLimit > 0 && evt.UserID != "" {
@@ -719,7 +719,7 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 				go func(parent context.Context, key string, window int32) {
 					fcapCtx, cancel := context.WithTimeout(parent, 20*time.Millisecond)
 					defer cancel()
-					pipe := rdb.Pipeline()
+					pipe := redisClient.Pipeline()
 					pipe.Incr(fcapCtx, key)
 					pipe.Expire(fcapCtx, key, time.Duration(window)*time.Second)
 					_, _ = pipe.Exec(fcapCtx)
@@ -731,7 +731,7 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 
 	scratch := unifiedScratchPool.Get().(*unifiedCheckScratch)
 	scratch.acquire()
-	err = f.runUnifiedLua(ctx, evt, campInfo, amount, rdb, shard, scratch)
+	err = f.runUnifiedLua(ctx, evt, campInfo, amount, redisClient, shard, scratch)
 	scratch.release()
 	unifiedScratchPool.Put(scratch)
 	return err
@@ -742,7 +742,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	evt *domain.Event,
 	campInfo *domain.Campaign,
 	amount any,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	shard int,
 	scratch *unifiedCheckScratch,
 ) error {
@@ -954,7 +954,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 		}
 		f.redisObservability.recordLuaOp(shard, evt.CampaignID, sampleLua)
 		incRedisLuaTier(f.luaFullPathCounters, shard)
-		res, err := f.evalScript(ctx, rdb, shard, evt, keyArgs, args[:34])
+		res, err := f.evalScript(ctx, redisClient, shard, evt, keyArgs, args[:34])
 
 		f.noteLuaEvalDuration(shard, evt.CampaignID, "full", luaStart, sampleLua, false)
 
@@ -963,7 +963,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 		}
 
 		if res == -1 {
-			retry, recErr := f.recoverBudgetAfterMiss(ctx, evt, rdb, budgetSourceKey, i)
+			retry, recErr := f.recoverBudgetAfterMiss(ctx, evt, redisClient, budgetSourceKey, i)
 			if recErr != nil {
 				return recErr
 			}
@@ -973,7 +973,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 			return ErrBudgetExhausted
 		}
 
-		if handled, handleErr := f.handleLuaResult(ctx, evt, campInfo, amount, rdb, budgetSourceKey, shard, res, sampleLua); handled {
+		if handled, handleErr := f.handleLuaResult(ctx, evt, campInfo, amount, redisClient, budgetSourceKey, shard, res, sampleLua); handled {
 			return handleErr
 		}
 	}

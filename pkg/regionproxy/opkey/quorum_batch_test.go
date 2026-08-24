@@ -13,12 +13,12 @@ import (
 
 func TestBatchCommitter_quorumBeforeForward(t *testing.T) {
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	t.Cleanup(cleanup)
 
 	replicas := []string{"proxy-a", "proxy-b", "proxy-c"}
-	committerA := NewBatchCommitter(rdb, "proxy-a", replicas)
-	committerB := NewBatchCommitter(rdb, "proxy-b", replicas)
+	committerA := NewBatchCommitter(redisClient, "proxy-a", replicas)
+	committerB := NewBatchCommitter(redisClient, "proxy-b", replicas)
 
 	var slot Slot
 	slot.Seq = 42
@@ -36,7 +36,7 @@ func TestBatchCommitter_quorumBeforeForward(t *testing.T) {
 	assert.True(t, slot.Has(OpKeyFlagExecuting))
 
 	committerB.Complete(ctx, &slot)
-	st, err := quorum.ReadStatus(ctx, rdb, slot.OpID, len(replicas))
+	st, err := quorum.ReadStatus(ctx, redisClient, slot.OpID, len(replicas))
 	require.NoError(t, err)
 	assert.Equal(t, quorum.StateCompleted, st.State)
 }

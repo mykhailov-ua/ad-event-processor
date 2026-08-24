@@ -17,7 +17,7 @@ func TestSettingsWatcher(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -29,20 +29,20 @@ func TestSettingsWatcher(t *testing.T) {
 		ImpressionAmount: 10_000,
 	}
 
-	sw := NewSettingsWatcher([]redis.UniversalClient{rdb}, cfg)
+	sw := NewSettingsWatcher([]redis.UniversalClient{redisClient}, cfg)
 
 	assert.Equal(t, 100, sw.Get().RateLimitPerMin)
 	assert.Equal(t, int64(100_000), sw.Get().ClickAmount)
 
 	go sw.Start(ctx, 100*time.Millisecond)
 
-	err := rdb.HSet(ctx, "config:values", map[string]interface{}{
+	err := redisClient.HSet(ctx, "config:values", map[string]interface{}{
 		"rate_limit_per_min": "200",
 		"click_amount":       "0.25",
 	}).Err()
 	require.NoError(t, err)
 
-	err = rdb.Incr(ctx, "config:version").Err()
+	err = redisClient.Incr(ctx, "config:version").Err()
 	require.NoError(t, err)
 
 	assert.Eventually(t, func() bool {
@@ -57,11 +57,11 @@ func TestSettingsWatcher_shardFailover(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	var endpoint string
-	switch client := rdb.(type) {
+	switch client := redisClient.(type) {
 	case *redis.Client:
 		endpoint = client.Options().Addr
 	default:

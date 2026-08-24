@@ -22,14 +22,14 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 		t.Skip("skipping integration test in short mode")
 	}
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
 	scorer, err := NewLGBMScorer(testModelPath(t))
 	require.NoError(t, err)
 
-	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, scorer, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, scorer, "")
 	go mb.Start(ctx)
 
 	campaignID := uuid.New()
@@ -51,20 +51,20 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	key := fmt.Sprintf("ml:score:boost:%s", campaignID.String())
-	val, err := rdb.Get(ctx, key).Result()
+	val, err := redisClient.Get(ctx, key).Result()
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, val)
-	ttl, err := rdb.TTL(ctx, key).Result()
+	ttl, err := redisClient.TTL(ctx, key).Result()
 	require.NoError(t, err)
 	assert.True(t, ttl > 0 && ttl <= ScoreBoostTTL)
 }
 
 func TestMicroBatch_StreamLagPause(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	defer rdb.Close()
+	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	defer redisClient.Close()
 
-	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, nil, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "")
 
 	campaignID := uuid.New()
 	evt := &domain.Event{
@@ -83,10 +83,10 @@ func TestMicroBatch_StreamLagPause(t *testing.T) {
 }
 
 func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	defer rdb.Close()
+	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	defer redisClient.Close()
 
-	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, nil, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "")
 
 	campaignID := uuid.New()
 	for range 10000 {
@@ -124,10 +124,10 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 }
 
 func TestFault_MLProcessorLag(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
-	defer rdb.Close()
+	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	defer redisClient.Close()
 
-	mb := NewMicroBatcher([]redis.UniversalClient{rdb}, nil, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "")
 
 	campaignID := uuid.New()
 	evt := &domain.Event{

@@ -1,4 +1,4 @@
--- Global cache
+
 local redis_call = redis.call
 local tonumber = tonumber
 

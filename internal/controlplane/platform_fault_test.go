@@ -24,11 +24,11 @@ func TestFault_BatchSettlementDrain(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{SettlementInternalToken: "settlement-test-token"}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 
 	handler := NewSettlementHandler(svc, cfg)
@@ -84,19 +84,19 @@ func TestFault_SlotMigrationCutoverInvariant(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
-	rdbs := buildFourRedisShards(rdb, nil)
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := buildFourRedisShards(redisClient, nil)
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 2
-	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdbs[2])
+	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisShards[2])
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 0)
 	require.NoError(t, svc.CopyAllMigratingSlots(ctx, v))
 
 	require.NoError(t, svc.VerifySlotMigrationR5(ctx))
-	domain.AssertBudgetInvariant(t, ctx, svc.GetPool(), rdbs[0], campID)
+	domain.AssertBudgetInvariant(t, ctx, svc.GetPool(), redisShards[0], campID)
 
 	faultproof.Log(t, "slot_migration_cutover_invariant", map[string]string{
 		"subsystem":   "slot_migration",

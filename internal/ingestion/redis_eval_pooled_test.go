@@ -35,7 +35,7 @@ func TestRedisCmdLayoutMatchesResetMirror(t *testing.T) {
 }
 
 func TestEvalShaPooled_MockRedis(t *testing.T) {
-	rdb := &mockRedisClient{}
+	redisClient := &mockRedisClient{}
 	var keyArgs [unifiedFilterKeyCount]any
 	for i := range keyArgs {
 		keyArgs[i] = &StringVal{s: "k"}
@@ -44,7 +44,7 @@ func TestEvalShaPooled_MockRedis(t *testing.T) {
 	ctx := context.Background()
 	f := &UnifiedFilter{}
 
-	n, err := f.evalShaPooled(ctx, rdb, 0, nil, "abc123", keyArgs, args)
+	n, err := f.evalShaPooled(ctx, redisClient, 0, nil, "abc123", keyArgs, args)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,11 +54,11 @@ func TestEvalShaPooled_MockRedis(t *testing.T) {
 }
 
 func TestResetPooledRedisCmd_ReusesCmd(t *testing.T) {
-	rdb := &mockRedisClient{}
+	redisClient := &mockRedisClient{}
 	wire := []any{"evalsha", "hash", numKeys15Any, "k1"}
 	cmd := evalCmdPool.Get().(*redis.Cmd)
 	resetPooledRedisCmd(cmd, context.Background(), wire, 3)
-	if err := rdb.Process(context.Background(), cmd); err != nil {
+	if err := redisClient.Process(context.Background(), cmd); err != nil {
 		t.Fatal(err)
 	}
 	n, err := cmd.Int64()
@@ -67,7 +67,7 @@ func TestResetPooledRedisCmd_ReusesCmd(t *testing.T) {
 	}
 
 	resetPooledRedisCmd(cmd, context.Background(), wire, 3)
-	if err := rdb.Process(context.Background(), cmd); err != nil {
+	if err := redisClient.Process(context.Background(), cmd); err != nil {
 		t.Fatal(err)
 	}
 	n, err = cmd.Int64()

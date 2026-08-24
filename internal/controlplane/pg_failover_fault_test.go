@@ -84,8 +84,8 @@ func setupPgFailoverFaultInfra(t *testing.T) (*pgFailoverFaultInfra, func()) {
 	require.NoError(t, err)
 	redisEndpoint, err := redisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{redisEndpoint}})
-	require.NoError(t, rdb.Ping(ctx).Err())
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{redisEndpoint}})
+	require.NoError(t, redisClient.Ping(ctx).Err())
 
 	infra := &pgFailoverFaultInfra{
 		PrimaryPool:    primaryPool,
@@ -94,12 +94,12 @@ func setupPgFailoverFaultInfra(t *testing.T) (*pgFailoverFaultInfra, func()) {
 		StandbyDSN:     standbyDSN,
 		PrimaryPG:      primaryPG,
 		StandbyPG:      standbyPG,
-		Redis:          rdb,
+		Redis:          redisClient,
 		RedisContainer: redisContainer,
 	}
 
 	cleanup := func() {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		primaryPool.Close()
 		standbyPool.Close()
 		_ = redisContainer.Terminate(ctx)

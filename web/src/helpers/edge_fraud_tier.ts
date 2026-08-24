@@ -51,7 +51,7 @@ export function fraudTierBandRowsFromThresholds(
     {
       tier: 'ivt',
       range: `${suspect + 1}-${ivt}`,
-      action: 'Ghost IVT (if enabled)',
+      action: 'Silent reject (if enabled)',
     },
     { tier: 'block', range: `${ivt + 1}-100`, action: 'Block at edge' },
   ];

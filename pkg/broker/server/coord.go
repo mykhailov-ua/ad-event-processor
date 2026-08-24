@@ -33,7 +33,7 @@ const claimQueueCapacity = 64
 type Coordinator struct {
 	nodeID        string
 	tcpAddr       string
-	rdb           redis.UniversalClient
+	redisClient           redis.UniversalClient
 	host          CoordHost
 	cfg           CoordConfig
 	closeChan     chan struct{}
@@ -50,7 +50,7 @@ func NewCoordinator(nodeID string, tcpAddr string, redisURL string, host CoordHo
 }
 
 func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, host CoordHost, cfg CoordConfig) (*Coordinator, error) {
-	rdb, err := openCoordRedis(redisURL)
+	redisClient, err := openCoordRedis(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open redis: %w", err)
 	}
@@ -58,7 +58,7 @@ func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, ho
 	c := &Coordinator{
 		nodeID:        nodeID,
 		tcpAddr:       tcpAddr,
-		rdb:           rdb,
+		redisClient:           redisClient,
 		host:          host,
 		cfg:           cfg.normalized(),
 		closeChan:     make(chan struct{}),
@@ -106,11 +106,11 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		if strings.HasPrefix(redisURL, "unix://") || netaddr.IsUnixSocketPath(redisURL) {
-			rdb, parseErr := netaddr.ParseRedisURL(redisURL, pwd)
+			redisClient, parseErr := netaddr.ParseRedisURL(redisURL, pwd)
 			if parseErr != nil {
 				return nil, parseErr
 			}
-			return rdb, nil
+			return redisClient, nil
 		}
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (c *Coordinator) runClaimLoop(ctx context.Context) {
 }
 
 func (c *Coordinator) Redis() redis.UniversalClient {
-	return c.rdb
+	return c.redisClient
 }
 
 func (c *Coordinator) Stop() {
@@ -161,7 +161,7 @@ func (c *Coordinator) Stop() {
 		close(c.closeChan)
 	})
 	c.wg.Wait()
-	_ = c.rdb.Close()
+	_ = c.redisClient.Close()
 }
 
 func leaseHeld(st topicLeaderState) bool {
@@ -205,7 +205,7 @@ return ARGV[1]
 func (c *Coordinator) PublishLogHWM(ctx context.Context, topic string, hwm uint64) {
 	pubCtx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	_ = publishHWMScript.Run(pubCtx, c.rdb, []string{logHWMKey(topic)}, strconv.FormatUint(hwm, 10)).Err()
+	_ = publishHWMScript.Run(pubCtx, c.redisClient, []string{logHWMKey(topic)}, strconv.FormatUint(hwm, 10)).Err()
 }
 
 func (c *Coordinator) RequestClaim(topic string) {
@@ -223,13 +223,13 @@ func (c *Coordinator) claimTopic(ctx context.Context, topic string) {
 		return
 	}
 	lKey := leaderKey(topic)
-	ok, err := c.rdb.SetNX(ctx, lKey, c.nodeID, c.cfg.LeaseTTL).Result()
+	ok, err := c.redisClient.SetNX(ctx, lKey, c.nodeID, c.cfg.LeaseTTL).Result()
 	if err != nil || !ok {
 		return
 	}
 	epoch, bumped, err := c.acquireEpoch(ctx, topic, leaderEpochKey(topic))
 	if err != nil {
-		_ = c.rdb.Del(ctx, lKey).Err()
+		_ = c.redisClient.Del(ctx, lKey).Err()
 		return
 	}
 	c.clearRenewFailures(topic)
@@ -239,7 +239,7 @@ func (c *Coordinator) claimTopic(ctx context.Context, topic string) {
 func (c *Coordinator) HasLeader(topic string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	exists, err := c.rdb.Exists(ctx, leaderKey(topic)).Result()
+	exists, err := c.redisClient.Exists(ctx, leaderKey(topic)).Result()
 	return exists > 0, err
 }
 
@@ -268,12 +268,12 @@ func (c *Coordinator) runHeartbeatLoop(ctx context.Context) {
 		select {
 		case <-c.closeChan:
 			shutdownCtx, cancel := context.WithTimeout(ctx, time.Second)
-			_ = c.rdb.Del(shutdownCtx, "ad_event_processor:brokers:"+c.nodeID).Err()
+			_ = c.redisClient.Del(shutdownCtx, "ad_event_processor:brokers:"+c.nodeID).Err()
 			cancel()
 			return
 		case <-ticker.C:
 			beatCtx, cancel := context.WithTimeout(ctx, time.Second)
-			_ = c.rdb.Set(beatCtx, "ad_event_processor:brokers:"+c.nodeID, c.tcpAddr, lease).Err()
+			_ = c.redisClient.Set(beatCtx, "ad_event_processor:brokers:"+c.nodeID, c.tcpAddr, lease).Err()
 			cancel()
 		}
 	}
@@ -317,7 +317,7 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 	eKey := leaderEpochKey(topic)
 	lease := c.cfg.LeaseTTL
 
-	ok, err := c.rdb.SetNX(ctx, lKey, c.nodeID, lease).Result()
+	ok, err := c.redisClient.SetNX(ctx, lKey, c.nodeID, lease).Result()
 	if err != nil {
 		return
 	}
@@ -325,20 +325,20 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 	if ok {
 		epoch, bumped, err := c.acquireEpoch(ctx, topic, eKey)
 		if err != nil {
-			_ = c.rdb.Del(ctx, lKey).Err()
+			_ = c.redisClient.Del(ctx, lKey).Err()
 			return
 		}
 		if stopCh, exists := replications[topic]; exists {
 			close(stopCh)
 			delete(replications, topic)
 		}
-		_ = c.rdb.Expire(ctx, lKey, lease).Err()
+		_ = c.redisClient.Expire(ctx, lKey, lease).Err()
 		c.clearRenewFailures(topic)
 		c.onAcquiredLeadership(ctx, topic, epoch, bumped)
 		return
 	}
 
-	currentLeader, err := c.rdb.Get(ctx, lKey).Result()
+	currentLeader, err := c.redisClient.Get(ctx, lKey).Result()
 	if err == nil && currentLeader == c.nodeID {
 		epoch := c.readEpoch(ctx, topic)
 		if !c.renewLease(ctx, topic, lKey) {
@@ -382,8 +382,8 @@ func (c *Coordinator) coordTopic(ctx context.Context, topic string, replications
 }
 
 func (c *Coordinator) acquireEpoch(ctx context.Context, topic, eKey string) (uint64, bool, error) {
-	lastWinner, _ := c.rdb.Get(ctx, leaderLastWinnerKey(topic)).Result()
-	lastSince, _ := c.rdb.Get(ctx, leaderSinceKey(topic)).Result()
+	lastWinner, _ := c.redisClient.Get(ctx, leaderLastWinnerKey(topic)).Result()
+	lastSince, _ := c.redisClient.Get(ctx, leaderSinceKey(topic)).Result()
 	if lastWinner == c.nodeID && lastSince != "" {
 		if sinceUnix, err := strconv.ParseInt(lastSince, 10, 64); err == nil {
 			elapsed := time.Since(time.Unix(sinceUnix, 0))
@@ -391,31 +391,31 @@ func (c *Coordinator) acquireEpoch(ctx context.Context, topic, eKey string) (uin
 				epoch := c.readEpoch(ctx, topic)
 				if epoch > 0 {
 					now := strconv.FormatInt(time.Now().Unix(), 10)
-					_ = c.rdb.Set(ctx, leaderSinceKey(topic), now, 0).Err()
-					_ = c.rdb.Set(ctx, leaderLastWinnerKey(topic), c.nodeID, 0).Err()
+					_ = c.redisClient.Set(ctx, leaderSinceKey(topic), now, 0).Err()
+					_ = c.redisClient.Set(ctx, leaderLastWinnerKey(topic), c.nodeID, 0).Err()
 					return epoch, false, nil
 				}
 			}
 		}
 	}
-	epoch, err := c.rdb.Incr(ctx, eKey).Result()
+	epoch, err := c.redisClient.Incr(ctx, eKey).Result()
 	if err != nil {
 		return 0, false, err
 	}
 	now := strconv.FormatInt(time.Now().Unix(), 10)
-	_ = c.rdb.Set(ctx, leaderSinceKey(topic), now, 0).Err()
-	_ = c.rdb.Set(ctx, leaderLastWinnerKey(topic), c.nodeID, 0).Err()
+	_ = c.redisClient.Set(ctx, leaderSinceKey(topic), now, 0).Err()
+	_ = c.redisClient.Set(ctx, leaderLastWinnerKey(topic), c.nodeID, 0).Err()
 	return uint64(epoch), true, nil
 }
 
 func (c *Coordinator) renewLease(ctx context.Context, topic, lKey string) bool {
 	lease := c.cfg.LeaseTTL
-	ok, err := c.rdb.Expire(ctx, lKey, lease).Result()
+	ok, err := c.redisClient.Expire(ctx, lKey, lease).Result()
 	if err != nil || !ok {
 		c.recordRenewFailure(topic)
 		return false
 	}
-	currentLeader, err := c.rdb.Get(ctx, lKey).Result()
+	currentLeader, err := c.redisClient.Get(ctx, lKey).Result()
 	if err != nil || currentLeader != c.nodeID {
 		c.recordRenewFailure(topic)
 		return false
@@ -470,7 +470,7 @@ func (c *Coordinator) updateTopicMetrics(ctx context.Context, topic string) {
 }
 
 func (c *Coordinator) readEpoch(ctx context.Context, topic string) uint64 {
-	val, err := c.rdb.Get(ctx, leaderEpochKey(topic)).Result()
+	val, err := c.redisClient.Get(ctx, leaderEpochKey(topic)).Result()
 	if err != nil {
 		return 0
 	}
@@ -482,7 +482,7 @@ func (c *Coordinator) readEpoch(ctx context.Context, topic string) uint64 {
 }
 
 func (c *Coordinator) readLogHWM(ctx context.Context, topic string) uint64 {
-	val, err := c.rdb.Get(ctx, logHWMKey(topic)).Result()
+	val, err := c.redisClient.Get(ctx, logHWMKey(topic)).Result()
 	if err != nil {
 		return 0
 	}
@@ -649,7 +649,7 @@ func (c *Coordinator) replicate(ctx context.Context, topic string, leaderID stri
 			func() {
 				repCtx, cancel := context.WithTimeout(ctx, time.Second)
 				defer cancel()
-				leaderAddr, err := c.rdb.Get(repCtx, "ad_event_processor:brokers:"+leaderID).Result()
+				leaderAddr, err := c.redisClient.Get(repCtx, "ad_event_processor:brokers:"+leaderID).Result()
 				if err != nil {
 					if cli != nil {
 						_ = cli.Close()

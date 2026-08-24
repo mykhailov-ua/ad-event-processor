@@ -75,15 +75,15 @@ func TestUnifiedFilter_localQuanta_fullSkipDuplicate(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	f, ledger, _ := newLocalQuantaUnifiedFilter(t, rdb)
+	f, ledger, _ := newLocalQuantaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
 	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
 	clickID := uuid.NewString()
 	evt := &domain.Event{
@@ -103,17 +103,17 @@ func TestUnifiedFilter_localQuanta_fullSkipWithPlacement(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	counter := &evalCountRedis{UniversalClient: rdb}
+	counter := &evalCountRedis{UniversalClient: redisClient}
 	f, ledger, _ := newLocalQuantaUnifiedFilter(t, counter)
 	require.NoError(t, f.PreloadScripts(ctx))
 	counter.evals.Store(0)
 
 	campID := uuid.New()
 	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
 	evt := &domain.Event{
 		Type:        "impression",
@@ -127,7 +127,7 @@ func TestUnifiedFilter_localQuanta_fullSkipWithPlacement(t *testing.T) {
 	require.NoError(t, f.Check(checkCtx, evt))
 	require.Equal(t, int64(0), counter.evals.Load())
 
-	require.NoError(t, rdb.HSet(ctx, PlacementBlacklistKey(campID), "zone-bad", "1").Err())
+	require.NoError(t, redisClient.HSet(ctx, PlacementBlacklistKey(campID), "zone-bad", "1").Err())
 	blocked := &domain.Event{
 		Type:        "impression",
 		IP:          "203.0.113.61",
@@ -144,17 +144,17 @@ func TestUnifiedFilter_localQuanta_fullSkipEmptyPlacement(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	counter := &evalCountRedis{UniversalClient: rdb}
+	counter := &evalCountRedis{UniversalClient: redisClient}
 	f, ledger, _ := newLocalQuantaUnifiedFilter(t, counter)
 	require.NoError(t, f.PreloadScripts(ctx))
 	counter.evals.Store(0)
 
 	campID := uuid.New()
 	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -173,10 +173,10 @@ func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	counter := &evalCountRedis{UniversalClient: rdb}
+	counter := &evalCountRedis{UniversalClient: redisClient}
 	campID := uuid.New()
 	custID := uuid.New()
 	camp := &domain.Campaign{
@@ -198,11 +198,11 @@ func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 	counter.evals.Store(0)
 
 	sharder := NewJumpHashSharder(1)
-	entFilter := NewEntitlementsFilter(reg, sharder, []redis.UniversalClient{rdb})
+	entFilter := NewEntitlementsFilter(reg, sharder, []redis.UniversalClient{redisClient})
 	engine := NewFilterEngine(time.Second, entFilter, uf)
 
 	ledger.Credit(campID, 10_000_000, testQuotaChunkMicro)
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	for i := range 2 {
@@ -231,7 +231,7 @@ func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		Rdbs:           []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
+		RedisShards:           []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
 		StreamName:     "events",
 		MaxLen:         1000,
 		IdempotencyTTL: time.Hour,
@@ -258,10 +258,10 @@ func TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	counter := &evalCountRedis{UniversalClient: rdb}
+	counter := &evalCountRedis{UniversalClient: redisClient}
 	f, ledger, stream := newLocalQuantaUnifiedFilter(t, counter)
 	campID := uuid.New()
 	reg := benchRegistryForCampaign(&domain.Campaign{
@@ -276,10 +276,10 @@ func TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout(t *testing.T) {
 
 	const localCredit = int64(5_000_000)
 	ledger.Credit(campID, localCredit, testQuotaChunkMicro)
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
 	blockedIP := "198.51.100.77"
-	require.NoError(t, rdb.SAdd(ctx, fraudBlacklistKey, blockedIP).Err())
+	require.NoError(t, redisClient.SAdd(ctx, fraudBlacklistKey, blockedIP).Err())
 
 	beforeSkip := testutil.ToFloat64(metrics.RedisLuaSkippedTotal)
 	beforeFull := testutil.ToFloat64(metrics.LocalQuotaFullSkipTotal)

@@ -40,10 +40,10 @@ func TestOpsDashboard_insertSample_queryAPI(t *testing.T) {
 	require.NotEmpty(t, metrics.Points)
 	assert.Equal(t, 42.0, metrics.Points[len(metrics.Points)-1].Value)
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, &config.Config{})
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, &config.Config{})
 	defer svc.Close()
 	reader = &opsReader{svc: svc}
 	summary, err := reader.GetDashboardSummary(ctx)

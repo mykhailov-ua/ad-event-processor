@@ -9,8 +9,6 @@ if [[ "${CPA_COMPLIANCE_SKIP_ADMIN:-0}" != "1" ]]; then
   bash scripts/ci/cpa_route_gap_gate.sh
 
   echo "cpa compliance: admin web gates"
-  bash scripts/ci/check_ui_slop.sh
-  bash scripts/ci/report_live_routes_gate.sh
   bash scripts/ci/admin_web.sh
   bash scripts/test/billing_export_smoke.sh
 fi

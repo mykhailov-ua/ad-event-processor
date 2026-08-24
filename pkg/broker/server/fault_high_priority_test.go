@@ -116,10 +116,10 @@ func TestFault_LeaseExpiry_FrozenLeaderRejected(t *testing.T) {
 	requireEventually(t, func() bool {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		id, err := probeCoord.rdb.Get(ctx, leaderKey(pk)).Result()
+		id, err := probeCoord.redisClient.Get(ctx, leaderKey(pk)).Result()
 		return err == nil && id == "fault-freeze-leader"
 	}, 30*time.Second, 500*time.Millisecond, "subprocess leader must register in redis")
-	_ = probeCoord.rdb.Close()
+	_ = probeCoord.redisClient.Close()
 
 	follower := NewServer(allocFreeTCPAddr(t), followerDir, 10*1024*1024, 4096)
 	if err := follower.Start(); err != nil {

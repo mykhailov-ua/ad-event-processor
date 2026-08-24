@@ -224,6 +224,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/edge-parity"},
 	{Method: "GET", Path: "/api/v1/reports/filter-rejects"},
 	{Method: "GET", Path: "/api/v1/reports/fraud-breakdown"},
+	{Method: "GET", Path: "/api/v1/reports/silent-reject-impression-funnel"},
 	{Method: "GET", Path: "/api/v1/reports/ghost-impression-funnel"},
 	{Method: "GET", Path: "/api/v1/reports/ml/feature-spikes"},
 	{Method: "GET", Path: "/api/v1/reports/ml/score-distribution"},

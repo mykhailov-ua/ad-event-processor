@@ -18,7 +18,7 @@ var (
 	}, []string{"report_key", "reason"})
 )
 
-// PrimeReportMetricLabels registers zero observations so only fixed label values appear.
+
 func PrimeReportMetricLabels(reportKeys, errorReasons []string) {
 	for _, key := range reportKeys {
 		ReportQueryDurationSeconds.WithLabelValues(key)

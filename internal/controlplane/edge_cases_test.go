@@ -21,13 +21,13 @@ import (
 func TestEdge_RoundingAndSmallAmounts(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{}
 	cfg.Management.CancellationFeePercent = 10.0
 	cfg.Lifecycle.WaitTimeoutMs = 1
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	customerID := uuid.New()
@@ -56,13 +56,13 @@ func TestEdge_ConcurrentBalanceDepletion(t *testing.T) {
 func TestEdge_ResumingStuckSettlement(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{}
 	cfg.Management.CancellationFeePercent = 10
 	cfg.Lifecycle.WaitTimeoutMs = 1
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	customerID := uuid.New()
@@ -126,12 +126,12 @@ func (p *failingPipeliner) Publish(ctx context.Context, channel string, message 
 func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	failCampaignID := uuid.New().String()
 	wrappedRDB := &failingRedisClient{
-		UniversalClient: rdb,
+		UniversalClient: redisClient,
 		failCampaignID:  failCampaignID,
 	}
 
@@ -189,13 +189,13 @@ func TestEdge_OutboxPartialRedisFailure(t *testing.T) {
 func TestEdge_OutboxWorkerRecoveryOfProcessingEvents(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		CampaignUpdateChannel: "campaigns:update-test",
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	queries := db.New(pool)
@@ -258,11 +258,11 @@ func TestEdge_OutboxSetsRemainingBudget(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-test"}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -280,7 +280,7 @@ func TestEdge_OutboxSetsRemainingBudget(t *testing.T) {
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE campaigns SET current_spend = $1 WHERE id = $2", spend, campaignID)
 	require.NoError(t, err)
-	_, err = rdb.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
+	_, err = redisClient.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
 	require.NoError(t, err)
 
 	payload, err := json.Marshal(CampaignPayload{CampaignID: campaignID.String(), BudgetLimit: budget})
@@ -296,7 +296,7 @@ func TestEdge_OutboxSetsRemainingBudget(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	remaining, err := rdb.Get(ctx, "budget:campaign:"+campaignID.String()).Int64()
+	remaining, err := redisClient.Get(ctx, "budget:campaign:"+campaignID.String()).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, budget-spend, remaining)
 }

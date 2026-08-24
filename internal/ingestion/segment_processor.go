@@ -22,15 +22,15 @@ type segmentCampaignLoader interface {
 type SegmentConversionHandler struct {
 	repo    segmentCampaignLoader
 	queries db.Querier
-	rdbs    []redis.UniversalClient
+	redisShards    []redis.UniversalClient
 	hasher  *piihash.Hasher
 }
 
-func NewSegmentConversionHandler(repo segmentCampaignLoader, queries db.Querier, rdbs []redis.UniversalClient, hasher *piihash.Hasher) *SegmentConversionHandler {
+func NewSegmentConversionHandler(repo segmentCampaignLoader, queries db.Querier, redisShards []redis.UniversalClient, hasher *piihash.Hasher) *SegmentConversionHandler {
 	return &SegmentConversionHandler{
 		repo:    repo,
 		queries: queries,
-		rdbs:    rdbs,
+		redisShards:    redisShards,
 		hasher:  hasher,
 	}
 }
@@ -55,7 +55,7 @@ func (h *SegmentConversionHandler) Handle(evt *domain.Event, _ string) {
 		return
 	}
 	ttl := time.Duration(ttlHours) * time.Hour
-	if err := addSegmentMember(ctx, h.rdbs, camp.RetargetSegmentID, userHash, ttl); err != nil {
+	if err := addSegmentMember(ctx, h.redisShards, camp.RetargetSegmentID, userHash, ttl); err != nil {
 		return
 	}
 	if h.queries == nil {

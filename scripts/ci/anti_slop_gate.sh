@@ -132,10 +132,10 @@ if rg -n 'func TestN1Fix_' internal --glob '*_test.go' 2> /dev/null; then
 fi
 
 if rg -n '(echo|log) "[=]{2,}' scripts/ 2> /dev/null \
-  | rg -v 'cold_path_n1_allowlist' > /dev/null 2>&1; then
+  | rg -v 'cold_path_db_in_loop_allowlist' > /dev/null 2>&1; then
   fail "script banner echo/log (== or ---) - use plain one-line messages"
   rg -n '(echo|log) "[=]{2,}' scripts/ \
-    | rg -v 'cold_path_n1_allowlist' || true
+    | rg -v 'cold_path_db_in_loop_allowlist' || true
 fi
 
 if rg -n 'func (Benchmark[^ (]*_Legacy|func parse[A-Za-z]*Legacy)' internal --glob '*_test.go' 2> /dev/null; then
@@ -147,10 +147,10 @@ if rg -n 'func Test[A-Za-z0-9]+_m[0-9]+\(' internal --glob '*_test.go' 2> /dev/n
 fi
 
 if rg -n '[\u2013\u2014\u2026\u00b7]' scripts/ --glob '*.sh' 2> /dev/null \
-  | rg -v 'cold_path_n1_allowlist' > /dev/null 2>&1; then
+  | rg -v 'cold_path_db_in_loop_allowlist' > /dev/null 2>&1; then
   fail "Unicode dash or ellipsis in scripts/*.sh echo/log (use ASCII - and ...)"
   rg -n '[\u2013\u2014\u2026\u00b7]' scripts/ --glob '*.sh' \
-    | rg -v 'cold_path_n1_allowlist' || true
+    | rg -v 'cold_path_db_in_loop_allowlist' || true
 fi
 
 if rg -n 'for i := 0; i < b\.N' internal pkg cmd --glob '*_test.go' 2> /dev/null; then

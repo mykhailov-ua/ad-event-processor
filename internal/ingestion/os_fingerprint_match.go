@@ -1,6 +1,5 @@
 package ingestion
 
-// p0f-lite: compare edge SYN TTL/window hints against bounded UA family scan (no full p0f).
 
 const uaScanMax = 256
 
@@ -56,8 +55,7 @@ func scanUAFamily(ua string) uint8 {
 	return uaFamilyUnknown
 }
 
-// normalizeCapturedTTL maps observed TTL to the smallest common initial TTL >= captured
-// (p0f-style: 32, 64, 128, 255).
+
 func normalizeCapturedTTL(captured uint8) uint8 {
 	switch {
 	case captured == 0:
@@ -82,7 +80,7 @@ func osFingerprintMismatch(ua string, ttl uint8, windowSet uint8, window uint16)
 	if initial != 0 {
 		switch family {
 		case uaFamilyWindows:
-			// Windows default initial TTL is 128; captured 64 is ambiguous after hop decay.
+			
 		case uaFamilyMobile, uaFamilyLinux, uaFamilyMac:
 			if initial == 128 || initial == 255 {
 				return true

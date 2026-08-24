@@ -56,8 +56,8 @@ func TestBlockIP_MultipleShards(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Eventually(t, func() bool {
-			for _, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-				isMember, err := rdb.SIsMember(ctx, "blacklist:manual", testIP).Result()
+			for _, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+				isMember, err := redisClient.SIsMember(ctx, "blacklist:manual", testIP).Result()
 				if err != nil || !isMember {
 					return false
 				}
@@ -71,8 +71,8 @@ func TestBlockIP_MultipleShards(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Eventually(t, func() bool {
-			for _, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-				isMember, err := rdb.SIsMember(ctx, "blacklist:manual", testIP).Result()
+			for _, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+				isMember, err := redisClient.SIsMember(ctx, "blacklist:manual", testIP).Result()
 				if err != nil || isMember {
 					return false
 				}
@@ -85,15 +85,15 @@ func TestBlockIP_MultipleShards(t *testing.T) {
 		err := svc.BlockIP(ctx, "10.20.30.40", "auto")
 		require.NoError(t, err)
 
-		for _, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-			rdb.Del(ctx, "blacklist:auto")
+		for _, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+			redisClient.Del(ctx, "blacklist:auto")
 		}
 
 		err = svc.SyncSystemState(ctx)
 		require.NoError(t, err)
 
-		for i, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-			isMember, err := rdb.SIsMember(ctx, "blacklist:auto", "10.20.30.40").Result()
+		for i, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+			isMember, err := redisClient.SIsMember(ctx, "blacklist:auto", "10.20.30.40").Result()
 			require.NoError(t, err)
 			assert.True(t, isMember, "IP should be synced on shard %d", i+1)
 		}
@@ -105,8 +105,8 @@ func TestBlockIP_MultipleShards(t *testing.T) {
 		}))
 
 		assert.Eventually(t, func() bool {
-			for _, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-				val, err := rdb.HGet(ctx, redisConfigValuesKey, "rate_limit_per_min").Result()
+			for _, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+				val, err := redisClient.HGet(ctx, redisConfigValuesKey, "rate_limit_per_min").Result()
 				if err != nil || val != "77" {
 					return false
 				}

@@ -25,7 +25,7 @@ func TestFault_GlobalSpendReconciler(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -44,11 +44,11 @@ func TestFault_GlobalSpendReconciler(t *testing.T) {
 		"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
 		domain.ToUUID(campaignID), "MR Campaign", "ACTIVE", domain.ToUUID(customerID), budgetLimit)
 	require.NoError(t, err)
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
 
 	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 0, GlobalSpendBatchMin: 100}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	reconciler := NewGlobalSpendReconciler(pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), GlobalSpendReconcilerConfig{
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
+	reconciler := NewGlobalSpendReconciler(pool, []redis.UniversalClient{redisClient}, domain.NewStaticSlotSharder(1), GlobalSpendReconcilerConfig{
 		MinBatchSize:   100,
 		MaxConcurrency: 8,
 	})
@@ -86,7 +86,7 @@ func TestFault_GlobalSpendReconciler(t *testing.T) {
 	).Scan(&ledgerCount))
 	require.Equal(t, 100, ledgerCount)
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 
 	faultproof.Log(t, "mr_global_spend_reconciler", map[string]string{
 		"subsystem":   "global_spend_reconciler",

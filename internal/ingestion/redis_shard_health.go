@@ -7,17 +7,17 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func pingConnectedRedisShards(ctx context.Context, rdbs []redis.UniversalClient) bool {
-	if len(rdbs) == 0 {
+func pingConnectedRedisShards(ctx context.Context, redisShards []redis.UniversalClient) bool {
+	if len(redisShards) == 0 {
 		return true
 	}
 	checked := 0
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
 		checked++
-		if err := rdb.Ping(ctx).Err(); err != nil {
+		if err := redisClient.Ping(ctx).Err(); err != nil {
 			slog.Error("health check failed: redis shard", "shard", i, "error", err)
 			return false
 		}
@@ -25,10 +25,10 @@ func pingConnectedRedisShards(ctx context.Context, rdbs []redis.UniversalClient)
 	return checked > 0
 }
 
-func firstConnectedRedisShard(rdbs []redis.UniversalClient) redis.UniversalClient {
-	for _, rdb := range rdbs {
-		if rdb != nil {
-			return rdb
+func firstConnectedRedisShard(redisShards []redis.UniversalClient) redis.UniversalClient {
+	for _, redisClient := range redisShards {
+		if redisClient != nil {
+			return redisClient
 		}
 	}
 	return nil

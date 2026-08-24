@@ -17,9 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func edgePinFilter(t testing.TB, rdb redis.UniversalClient, pinWorkers int) *UnifiedFilter {
+func edgePinFilter(t testing.TB, redisClient redis.UniversalClient, pinWorkers int) *UnifiedFilter {
 	t.Helper()
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
 	f.SetFilterEvalPinWorkers(pinWorkers)
@@ -45,14 +45,14 @@ func TestEdgePin_ConcurrentDistinctWorkers(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	const workers = 32
-	f := edgePinFilter(t, rdb, workers)
+	f := edgePinFilter(t, redisClient, workers)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	const perG = 50
 	var (
@@ -90,13 +90,13 @@ func TestEdgePin_WorkerAboveTableFallsBack(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := edgePinFilter(t, rdb, 2)
+	f := edgePinFilter(t, redisClient, 2)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := edgeImpressionEvt(campID, 7)
 	require.Nil(t, f.evalPinConn(evt, 0))
@@ -108,13 +108,13 @@ func TestEdgePin_ReopensClosedConn(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := edgePinFilter(t, rdb, 1)
+	f := edgePinFilter(t, redisClient, 1)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	slot := f.evalPins.slot(0, 0)
 	require.NotNil(t, slot.conn)
@@ -130,15 +130,15 @@ func TestEdgePin_PoolReserveHeadroom(t *testing.T) {
 	}
 	ctx := context.Background()
 	const pinWorkers = 4
-	rdb, cleanup := setupTightPoolRedis(t, 4, pinWorkers)
+	redisClient, cleanup := setupTightPoolRedis(t, 4, pinWorkers)
 	defer cleanup()
 
-	f := edgePinFilter(t, rdb, pinWorkers)
+	f := edgePinFilter(t, redisClient, pinWorkers)
 	defer f.CloseFilterEvalPins()
 
 	errCh := make(chan error, 1)
 	go func() {
-		_, err := rdb.Get(ctx, "pool-pressure-probe").Result()
+		_, err := redisClient.Get(ctx, "pool-pressure-probe").Result()
 		if err != nil && !errors.Is(err, redis.Nil) {
 			errCh <- err
 			return
@@ -159,13 +159,13 @@ func TestEdgePin_UnsetWorkerIdxSkipsPin(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := edgePinFilter(t, rdb, 16)
+	f := edgePinFilter(t, redisClient, 16)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := edgeImpressionEvt(campID, -1)
 	require.Nil(t, f.evalPinConn(evt, 0))
@@ -177,16 +177,16 @@ func TestEdgePin_DeadlineStringNearDegradeThreshold(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	reg := &benchWorstRegistry{}
-	f := edgePinFilter(t, rdb, 1)
+	f := edgePinFilter(t, redisClient, 1)
 	f.registry = reg
 	f.SetTTCMin(500 * time.Millisecond)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -206,18 +206,18 @@ func TestEdgePin_ShutdownClosesPinsBeforeShard(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := edgePinFilter(t, rdb, 2)
+	f := edgePinFilter(t, redisClient, 2)
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := edgeImpressionEvt(campID, 0)
 	require.NoError(t, f.Check(ctx, evt))
 
 	f.CloseFilterEvalPins()
-	require.NoError(t, rdb.Close())
+	require.NoError(t, redisClient.Close())
 
 	err := f.Check(ctx, evt)
 	require.Error(t, err)
@@ -228,15 +228,15 @@ func TestEdgePin_ReopensAfterServerKill(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := edgePinFilter(t, rdb, 1)
+	f := edgePinFilter(t, redisClient, 1)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
-	require.NoError(t, rdb.Do(ctx, "CLIENT", "KILL", "TYPE", "normal").Err())
+	require.NoError(t, redisClient.Do(ctx, "CLIENT", "KILL", "TYPE", "normal").Err())
 
 	evt := edgeImpressionEvt(campID, 0)
 	require.NoError(t, f.Check(ctx, evt))
@@ -254,7 +254,7 @@ func setupTightPoolRedis(t testing.TB, basePool, stickyReserve int) (*redis.Clie
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
 	poolSize := basePool + stickyReserve
-	rdb := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:           endpoint,
 		PoolSize:       poolSize,
 		MaxActiveConns: poolSize,
@@ -263,11 +263,11 @@ func setupTightPoolRedis(t testing.TB, basePool, stickyReserve int) (*redis.Clie
 		ReadTimeout:    2 * time.Second,
 		WriteTimeout:   2 * time.Second,
 	})
-	if err := rdb.Ping(ctx).Err(); err != nil {
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		t.Fatalf("redis ping: %v", err)
 	}
-	return rdb, func() {
-		_ = rdb.Close()
+	return redisClient, func() {
+		_ = redisClient.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
 }

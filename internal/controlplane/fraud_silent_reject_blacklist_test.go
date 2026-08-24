@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
+func TestMLSilentRejectAndBlacklist_EndToEnd(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
@@ -22,45 +22,45 @@ func TestMLGhostAndBlacklist_EndToEnd(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
 
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx, `
-		INSERT INTO campaigns (id, name, status, budget_limit, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_block, ghost_ivt_enabled)
+		INSERT INTO campaigns (id, name, status, budget_limit, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_block, silent_reject_enabled)
 		VALUES ($1, 'Test Campaign', 'ACTIVE', 1000000000, 20, 50, 90, true)
 	`, campaignID)
 	require.NoError(t, err)
 
 	cfg := &config.Config{}
 	sharder := ingestion.NewStaticSlotSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 
 	worker := NewOutboxWorker(svc)
 
-	err = svc.EnqueueFraudThreat(ctx, "ghost", "1.1.1.1", campaignID.String(), 75.0, 0, 300)
+	err = svc.EnqueueFraudThreat(ctx, "silent_reject", "1.1.1.1", campaignID.String(), 75.0, 0, 300)
 	require.NoError(t, err)
 
 	processed, err := worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	_, err = pool.Exec(ctx, "UPDATE campaigns SET ghost_ivt_enabled = FALSE WHERE id = $1", campaignID)
+	_, err = pool.Exec(ctx, "UPDATE campaigns SET silent_reject_enabled = FALSE WHERE id = $1", campaignID)
 	require.NoError(t, err)
 
-	err = svc.EnqueueFraudThreat(ctx, "ghost", "1.1.1.1", campaignID.String(), 75.0, 0, 300)
+	err = svc.EnqueueFraudThreat(ctx, "silent_reject", "1.1.1.1", campaignID.String(), 75.0, 0, 300)
 	require.NoError(t, err)
 
 	processed, err = worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	var ghostEnabled bool
-	err = pool.QueryRow(ctx, "SELECT ghost_ivt_enabled FROM campaigns WHERE id = $1", campaignID).Scan(&ghostEnabled)
+	var silentRejectEnabled bool
+	err = pool.QueryRow(ctx, "SELECT silent_reject_enabled FROM campaigns WHERE id = $1", campaignID).Scan(&silentRejectEnabled)
 	require.NoError(t, err)
-	assert.True(t, ghostEnabled)
+	assert.True(t, silentRejectEnabled)
 
 	err = svc.EnqueueFraudThreat(ctx, "blacklist", "9.9.9.9", campaignID.String(), 95.0, 0, 3600)
 	require.NoError(t, err)

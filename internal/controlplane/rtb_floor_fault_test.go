@@ -24,7 +24,7 @@ func TestFault_floor_optimizer_dry_run(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -33,7 +33,7 @@ func TestFault_floor_optimizer_dry_run(t *testing.T) {
 		BidFloorAdjustPct:   10,
 		BidFloorMinMicro:    1000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -72,7 +72,7 @@ func TestApplyRtbFloorSuggestions_liveWritesRedisAndOutbox(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -81,7 +81,7 @@ func TestApplyRtbFloorSuggestions_liveWritesRedisAndOutbox(t *testing.T) {
 		BidFloorAdjustPct:   10,
 		BidFloorMinMicro:    1000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -104,7 +104,7 @@ func TestApplyRtbFloorSuggestions_liveWritesRedisAndOutbox(t *testing.T) {
 	assert.Equal(t, 1, result.Applied)
 	assert.Equal(t, 1, result.OutboxRows)
 
-	val, err := rdb.Get(ctx, domain.RtbFloorRedisKeyPrefix+"live-deal").Int64()
+	val, err := redisClient.Get(ctx, domain.RtbFloorRedisKeyPrefix+"live-deal").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(200_000), val)
 

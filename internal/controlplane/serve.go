@@ -80,17 +80,17 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("multi-region mode enabled", "region_code", cfg.RegionCode, "cell", cfg.MultiRegionCell(), "global", cfg.MultiRegionGlobal())
 	}
 
-	var rdbs []redis.UniversalClient
+	var redisShards []redis.UniversalClient
 	redisOpts := database.RedisShardOptions{
 		PoolSize: cfg.RedisPoolSize,
 	}
-	rdbs, _, err = database.ConnectRedisShards(ctx, cfg, redisOpts)
+	redisShards, _, err = database.ConnectRedisShards(ctx, cfg, redisOpts)
 	if err != nil {
 		slog.Error("failed to connect to redis shards", "error", err)
 		return err
 	}
 
-	sharder := domain.NewStaticSlotSharder(len(rdbs))
+	sharder := domain.NewStaticSlotSharder(len(redisShards))
 
 	controlAuthClient := opts.Auth
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
@@ -101,15 +101,15 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	SetTrustedProxies(cfg.TrustedProxies)
 
-	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(rdbs), cfg, controlAuthClient)
-	authMiddleware.SetControlRedisShards(rdbs)
+	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(redisShards), cfg, controlAuthClient)
+	authMiddleware.SetControlRedisShards(redisShards)
 	policyStore := InitPolicyStore()
 	authMiddleware.SetPolicyStore(policyStore)
 	authMiddleware.SetPool(pool)
-	authHandler := NewAuthHandler(controlAuthClient, tokenMaker, rdbs, cfg, authMiddleware)
+	authHandler := NewAuthHandler(controlAuthClient, tokenMaker, redisShards, cfg, authMiddleware)
 
 	if cfg.UDPControlEnabled {
-		udpSrv := NewUDPControlServer(cfg, pool, sharder, len(rdbs))
+		udpSrv := NewUDPControlServer(cfg, pool, sharder, len(redisShards))
 		if err := udpSrv.Start(ctx); err != nil {
 			slog.Error("udp control server start failed", "error", err)
 			return err
@@ -119,7 +119,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	var tcpSrv *TCPControlServer
 	if cfg.TCPControlEnabled {
-		tcpSrv = NewTCPControlServer(cfg, pool, sharder, len(rdbs))
+		tcpSrv = NewTCPControlServer(cfg, pool, sharder, len(redisShards))
 		if err := tcpSrv.Start(ctx); err != nil {
 			slog.Error("tcp control server start failed", "error", err)
 			return err
@@ -134,7 +134,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		}
 	}
 
-	svc := NewService(ctx, pool, rdbs, sharder, cfg)
+	svc := NewService(ctx, pool, redisShards, sharder, cfg)
 	svc.StartBackgroundWorker(func() {
 		NewShard0CatchupWorker(svc, redisOpts).Start(ctx)
 	})
@@ -205,13 +205,13 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Error("invalid AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY", "error", err)
 			return err
 		}
-		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
+		if err := startLicenseWatcher(ctx, pool, redisShards, pubKey, svc); err != nil {
 			return err
 		}
 		svc.StartLicenseRevokeQueueWorker(defaultLicenseRevokePoll)
 		slog.Info("started license revoke queue worker", "interval", defaultLicenseRevokePoll)
 	} else if pubKey, err := licensing.ResolvePublicKey(); err == nil {
-		if err := startLicenseWatcher(ctx, pool, rdbs, pubKey, svc); err != nil {
+		if err := startLicenseWatcher(ctx, pool, redisShards, pubKey, svc); err != nil {
 			return err
 		}
 		svc.StartLicenseRevokeQueueWorker(defaultLicenseRevokePoll)
@@ -229,12 +229,12 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	customerRepo := domain.NewCustomerRepoWithDB(pool, queries)
 	dedupAdapter := dedup.NewAdapter(pool, cfg.RegionCode, dedup.LoadRoutingEpoch(ctx, pool))
 	var syncWorkers []*domain.SyncWorker
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			slog.Warn("skipping budget sync worker for unavailable redis shard", "shard", i)
 			continue
 		}
-		sw := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, nil, 0)
+		sw := domain.NewSyncWorker(redisClient, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, nil, 0)
 		sw.SetDedupAdapter(dedupAdapter)
 		sw.ConfigureBudgetContention(
 			domain.BudgetLockTTLSeconds(cfg.LedgerBatchFlushMs, cfg.BudgetSyncIntervalMs),
@@ -247,7 +247,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	if cfg.MultiRegionGlobal() {
-		globalSpend := NewGlobalSpendReconciler(pgPools.Settle, rdbs, sharder, GlobalSpendReconcilerConfig{
+		globalSpend := NewGlobalSpendReconciler(pgPools.Settle, redisShards, sharder, GlobalSpendReconcilerConfig{
 			MinBatchSize:   cfg.GlobalSpendBatchMin,
 			MaxConcurrency: cfg.GlobalSpendMaxConcurrency,
 		})
@@ -474,11 +474,11 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	controlHandler := NewHandler(svc, cfg, authMiddleware, controlAuthClient, paymentClient, billingClient)
 	if mod, ok := opts.BillingModule.(*ledger.Module); ok && mod != nil {
-		controlHandler.invoiceDelivery = newInvoiceDeliveryRetryer(mod.Ledger(), rdbs)
+		controlHandler.invoiceDelivery = newInvoiceDeliveryRetryer(mod.Ledger(), redisShards)
 	}
 
 	mux := http.NewServeMux()
-	RegisterOpsRoutes(ctx, mux, pool, rdbs, cfg)
+	RegisterOpsRoutes(ctx, mux, pool, redisShards, cfg)
 	if alertmanagerWebhook != nil {
 		alertmanagerWebhook.Register(mux)
 		slog.Info("alertmanager webhook adapter enabled")
@@ -596,7 +596,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	svc.Close()
 
-	closeConnectedRedisShards(rdbs)
+	closeConnectedRedisShards(redisShards)
 	slog.Info("management server shutdown complete")
 	return ctx.Err()
 }

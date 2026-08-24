@@ -109,14 +109,14 @@ func TestFaultInjection_RedisTimeoutDuringIngestion(t *testing.T) {
 }
 
 func TestFaultInjection_PostgresCrashOnBudgetMiss(t *testing.T) {
-	rdb := &FailingRedisClient{
+	redisClient := &FailingRedisClient{
 		failEval: false,
 	}
 	dbRepo := &FailingCampaignRepo{
 		failErr: errors.New("fatal: pgx connection pool exhausted"),
 	}
 
-	bm := NewRedisBudgetManager(rdb, dbRepo, time.Hour)
+	bm := NewRedisBudgetManager(redisClient, dbRepo, time.Hour)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -134,7 +134,7 @@ func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	mockStore := &MockEventStore{
@@ -142,7 +142,7 @@ func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 	}
 
 	consumer := NewStreamConsumer(
-		mockStore, rdb, "poison-stream", "poison-group", "poison-c",
+		mockStore, redisClient, "poison-stream", "poison-group", "poison-c",
 		1, 1,
 		10*time.Millisecond,
 		50*time.Millisecond,
@@ -158,7 +158,7 @@ func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 
 	consumer.Start(ctx)
 
-	_, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err := redisClient.XAdd(ctx, &redis.XAddArgs{
 		Stream: "poison-stream",
 		MaxLen: 1000,
 		Approx: true,
@@ -167,11 +167,11 @@ func TestFaultInjection_StreamConsumerPoisonPillToDLQ(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Eventually(t, func() bool {
-		size, err := rdb.XLen(ctx, "ad:events:dlq").Result()
+		size, err := redisClient.XLen(ctx, "ad:events:dlq").Result()
 		return err == nil && size == 1
 	}, 5*time.Second, 50*time.Millisecond, "Corrupt stream message should be moved to DLQ as a poison pill")
 
-	pending, err := rdb.XPending(ctx, "poison-stream", "poison-group").Result()
+	pending, err := redisClient.XPending(ctx, "poison-stream", "poison-group").Result()
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), pending.Count, "DLQ'ed message must be deleted from main stream")
 

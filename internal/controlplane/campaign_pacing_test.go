@@ -26,7 +26,7 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -35,8 +35,8 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 		TokenSymmetricKey:     "01234567890123456789012345678901",
 	}
 
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -98,7 +98,7 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 		require.NoError(t, worker.ProcessOutbox(ctx))
 
 		assert.Eventually(t, func() bool {
-			val, rdbErr := rdb.HGet(ctx, "campaign:settings:"+campID.String(), "pacing_mode").Result()
+			val, rdbErr := redisClient.HGet(ctx, "campaign:settings:"+campID.String(), "pacing_mode").Result()
 			return rdbErr == nil && val == "ASAP"
 		}, 3*time.Second, 50*time.Millisecond)
 	})

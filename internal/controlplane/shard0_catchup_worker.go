@@ -22,8 +22,8 @@ func NewShard0CatchupWorker(svc *Service, redisOpts database.RedisShardOptions) 
 		interval:  30 * time.Second,
 	}
 	if svc != nil {
-		rdbs := svc.RedisShards()
-		w.shard0Seen = len(rdbs) > 0 && rdbs[0] == nil
+		redisShards := svc.RedisShards()
+		w.shard0Seen = len(redisShards) > 0 && redisShards[0] == nil
 	}
 	return w
 }
@@ -64,14 +64,14 @@ func (w *Shard0CatchupWorker) tick(ctx context.Context) {
 }
 
 func (w *Shard0CatchupWorker) shouldRunCatchup(ctx context.Context) bool {
-	rdbs := w.svc.RedisShards()
-	if len(rdbs) == 0 || rdbs[0] == nil {
+	redisShards := w.svc.RedisShards()
+	if len(redisShards) == 0 || redisShards[0] == nil {
 		return false
 	}
 	if w.shard0Seen {
 		return true
 	}
-	return shard0NeedsCatchup(ctx, rdbs)
+	return shard0NeedsCatchup(ctx, redisShards)
 }
 
 func (s *Service) tryReconnectShard0(ctx context.Context, opts database.RedisShardOptions) bool {
@@ -81,14 +81,14 @@ func (s *Service) tryReconnectShard0(ctx context.Context, opts database.RedisSha
 	s.shard0Mu.Lock()
 	defer s.shard0Mu.Unlock()
 
-	if len(s.rdbs) == 0 || s.rdbs[0] != nil {
+	if len(s.redisShards) == 0 || s.redisShards[0] != nil {
 		return false
 	}
-	rdb, err := database.ConnectRedisShard(ctx, s.cfg, 0, opts)
+	redisClient, err := database.ConnectRedisShard(ctx, s.cfg, 0, opts)
 	if err != nil {
 		return false
 	}
-	s.rdbs[0] = rdb
-	database.SetShard0ClientNilMetric(s.rdbs)
+	s.redisShards[0] = redisClient
+	database.SetShard0ClientNilMetric(s.redisShards)
 	return true
 }

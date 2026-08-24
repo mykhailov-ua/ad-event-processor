@@ -7,7 +7,7 @@ import (
 	"ad-event-processor/pkg/piihash"
 )
 
-func BenchmarkCHPII_writePathOverhead(b *testing.B) {
+func BenchmarkClickhousePII_writePathOverhead(b *testing.B) {
 	h := piihash.TestHasher()
 	events := make([]*domain.Event, 1000)
 	for i := range events {

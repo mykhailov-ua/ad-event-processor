@@ -49,8 +49,8 @@ func TestFraudBrokerSink_Produce(t *testing.T) {
 }
 
 func TestFraudStreamWriter_brokerFlushSkipsRedis(t *testing.T) {
-	rdb := &countingRedisXAdd{}
-	q := NewFraudStreamWriter([]redis.UniversalClient{rdb}, "fraud-stream", 1000)
+	redisClient := &countingRedisXAdd{}
+	q := NewFraudStreamWriter([]redis.UniversalClient{redisClient}, "fraud-stream", 1000)
 	require.NotNil(t, q)
 
 	mock := &mockFraudBrokerClient{}
@@ -64,6 +64,6 @@ func TestFraudStreamWriter_brokerFlushSkipsRedis(t *testing.T) {
 	}
 	require.True(t, q.Enqueue(1, evt))
 	q.Stop()
-	assert.Equal(t, 0, int(rdb.xadds.Load()))
+	assert.Equal(t, 0, int(redisClient.xadds.Load()))
 	assert.Equal(t, 1, mock.calls)
 }

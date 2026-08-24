@@ -25,9 +25,9 @@ func SetupRedisShards(t testing.TB, n int) []redis.UniversalClient {
 	t.Helper()
 	shards := make([]redis.UniversalClient, n)
 	for i := range shards {
-		rdb, cleanup := SetupRedis(t)
+		redisClient, cleanup := SetupRedis(t)
 		t.Cleanup(cleanup)
-		shards[i] = rdb
+		shards[i] = redisClient
 	}
 	return shards
 }
@@ -40,9 +40,9 @@ func SetupRedisShardsFault(t testing.TB, n int) *RedisShardFaultInfra {
 		Breakers:   make([]*database.RedisBreaker, n),
 	}
 	for i := range infra.Clients {
-		c, rdb, cleanup := SetupRedisClient(t)
+		c, redisClient, cleanup := SetupRedisClient(t)
 		infra.Containers[i] = c
-		infra.Clients[i] = rdb
+		infra.Clients[i] = redisClient
 		infra.cleanups = append(infra.cleanups, cleanup)
 
 		breaker := database.NewRedisBreaker(3, 2, 300*time.Millisecond)
@@ -69,7 +69,7 @@ func (infra *RedisShardFaultInfra) cleanup() {
 	}
 }
 
-func (infra *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, rdbs []redis.UniversalClient) {
+func (infra *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, redisShards []redis.UniversalClient) {
 	t.Helper()
 	ctx := context.Background()
 	endpoint, err := infra.Containers[idx].Endpoint(ctx, "")
@@ -86,8 +86,8 @@ func (infra *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, rdb
 
 	infra.Clients[idx] = client
 	infra.Breakers[idx] = breaker
-	if rdbs != nil && idx < len(rdbs) {
-		rdbs[idx] = client
+	if redisShards != nil && idx < len(redisShards) {
+		redisShards[idx] = client
 	}
 	require.NoError(t, client.Ping(ctx).Err())
 }
@@ -95,13 +95,13 @@ func (infra *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, rdb
 func SetupRedisClient(t testing.TB) (testcontainers.Container, *redis.Client, func()) {
 	t.Helper()
 	ctx := context.Background()
-	c, rdb, cleanup := SetupRedisContainer(t)
+	c, redisClient, cleanup := SetupRedisContainer(t)
 
 	endpoint, err := c.Endpoint(ctx, "")
 	if err != nil {
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
-	_ = rdb.Close()
+	_ = redisClient.Close()
 
 	client := redis.NewClient(&redis.Options{
 		Addr:         endpoint,
@@ -140,29 +140,29 @@ func StartRedisShardContainer(t testing.TB, c testcontainers.Container) {
 	require.NoError(t, c.Start(context.Background()))
 }
 
-func WaitRedisClientReady(t testing.TB, rdb redis.UniversalClient) {
+func WaitRedisClientReady(t testing.TB, redisClient redis.UniversalClient) {
 	t.Helper()
 	require.Eventually(t, func() bool {
-		return rdb.Ping(context.Background()).Err() == nil
+		return redisClient.Ping(context.Background()).Err() == nil
 	}, 30*time.Second, 100*time.Millisecond)
 }
 
-func TripRedisBreaker(t testing.TB, rdb redis.UniversalClient, breaker *database.RedisBreaker) {
+func TripRedisBreaker(t testing.TB, redisClient redis.UniversalClient, breaker *database.RedisBreaker) {
 	t.Helper()
 	ctx := context.Background()
 	require.Eventually(t, func() bool {
 		for range 3 {
-			_ = rdb.Ping(ctx).Err()
+			_ = redisClient.Ping(ctx).Err()
 		}
 		return breaker.State() == database.CircuitOpen
 	}, 10*time.Second, 50*time.Millisecond)
 }
 
-func WaitRedisBreakerClosed(t testing.TB, rdb redis.UniversalClient, breaker *database.RedisBreaker) {
+func WaitRedisBreakerClosed(t testing.TB, redisClient redis.UniversalClient, breaker *database.RedisBreaker) {
 	t.Helper()
 	ctx := context.Background()
 	require.Eventually(t, func() bool {
-		_ = rdb.Ping(ctx).Err()
+		_ = redisClient.Ping(ctx).Err()
 		return breaker.State() == database.CircuitClosed
 	}, 15*time.Second, 100*time.Millisecond)
 }

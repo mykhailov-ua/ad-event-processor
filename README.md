@@ -1,113 +1,213 @@
 # BidShard
 
-A high-performance, self-hosted tracker, ad event processor, and real-time bidding (RTB) engine designed for media buyers, affiliate marketing teams, and programmatic ad networks.
+Self-hosted ad event stack: high-throughput tracker (`/track`, `/click`), optional in-process OpenRTB exchange (`/openrtb/bid`), admin API and React UI (`:8188`), and async settlement pipeline (Postgres financial truth, ClickHouse analytics). Go module: `ad-event-processor`.
 
-`BidShard` is an enterprise-grade, independent on-premises platform built for campaign optimization, programmatic traffic ingestion, and intelligent fraud prevention. Unlike traditional cloud-based SaaS trackers, BidShard is deployed directly on your own infrastructure. This guarantees complete data privacy, protects your profitable campaigns and funnels from spying, and removes any arbitrary limits on campaigns or event volumes.
-
----
-
-## Why Media Buyers Choose BidShard
-
-### 1. Unlimited Campaigns, Clicks, and Offers
-Stop paying extra for scaling your traffic. Traditional SaaS trackers penalize your success by bumping you into more expensive subscription tiers as your click volume grows. BidShard runs on your own hardware: you pay a flat, predictable license fee based on your peak Request-Per-Second (RPS) capability and host count. The number of campaigns, landing pages, offers, and overall monthly click volume is always completely unlimited.
-
-### 2. High-Performance Architecture
-Every millisecond of redirect latency eats into your Conversion Rate (CR) and drops traffic on transit. BidShard is engineered on an ultra-fast Go and Redis stack, meticulously optimized for memory safety with **zero heap allocations on the hot path**.
-
-#### Low-Latency Engineering Details:
-- **Fast Path Isolation:** Ingestion (`/track` and `/click`) is isolated from cold analytical storage writes. Events are accepted instantly, debited in Redis, and pushed to lock-free asynchronous rings.
-- **Latency Benchmarks:** Under production load, average request processing time (**p95**) is **under 50 milliseconds**, and peak tail latency (**p99**) remains **under 80 milliseconds** (with a hard system ceiling of 100ms).
-- **Asynchronous Logging:** The tracker uses a high-performance `StreamProducer` to buffer events asynchronously into Redis Streams using batch `XADD` pipelines, avoiding any blocking disk I/O or Postgres writes during the request lifecycle.
-- **Go Pre-Filtering:** Cheap deterministic filters (License, Geo, Schedule, Segment, VPP) execute locally in-memory before evaluating heavier filters, minimizing Redis round-trips.
-- **Local Quanta Full-Skip:** High-volume campaigns can activate in-memory quota allocations, cutting out synchronous Redis network hops entirely for ultra-low latency.
-
-### 3. Margin Guard (Automatic ROI & Payout Protection)
-An integrated safety net that shields your budget from technical mishaps. If an offer goes down on the affiliate network side, a landing page host crashes, or a campaign suffers a sudden spike in clicks without conversions, Margin Guard reacts instantly:
-- Pauses the affected campaign or redirects traffic to your pre-configured safe fallback links.
-- Locks down budget bleeding when the ROI drops below your custom threshold.
-- Safely protects your working capital during overnight runs or unmonitored spikes.
-
-### 4. Native Cost Sync and Conversions API (CAPI)
-- **Cost Sync:** Automatically pull and synchronize ad spend from popular sources (Facebook, Google, TikTok, and more) directly into your dashboard for real-time, accurate net profit calculation.
-- **CAPI Integration:** Seamlessly send conversion events back to ad networks (including Meta CAPI) directly from your server. This bypasses ad-blockers, iOS tracking restrictions, and browser third-party cookie limitations, ensuring your ad algorithms receive clean, complete attribution data.
+Not a managed SaaS. A fresh clone is sources-only: run codegen, provide env, fetch GeoIP, build BPF if needed (see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)).
 
 ---
 
-## Advanced Antifraud & Landing Protection (GMA)
+## Features
 
-BidShard features a built-in, multi-layered filtering engine designed to block bots, crawlers, compliance moderators, and spy tools. The system proactively checks dozens of hot-path signals to keep your funnels clean and secure.
+### Stack layers
 
+| Layer | Role |
+| :--- | :--- |
+| Edge (nginx/OpenResty) | L7 ingress, rate limits, blacklist cache, body parsing, shard routing to tracker pool |
+| Tracker (`:8181-8184`) | Accept/reject under SLA; `FilterEngine`; Redis budget/dedup; async stream log |
+| Processor (`:8186`) | Redis stream consumers -> Postgres, ClickHouse |
+| Control (`:8188`) | Admin UI, `/api/v1/*`, outbox workers, billing, reports |
+| Optional sidecars | `ivt-detector`, `fraud-scorer`, `edge-xdp`, `edge-bpf-sync`, `region-proxy` |
+
+HTTP **202 on `/track`** means ingest accepted and validated on the hot path. It does **not** mean Postgres or ClickHouse committed the event.
+
+### Hot-path design
+
+On synchronous `/track`, `/click`, `/tg/*`, `/openrtb/bid`:
+
+| Rule | Detail |
+| :--- | :--- |
+| No sync databases | No Postgres, ClickHouse, outbox, or ML inference on the request thread |
+| Config snapshot | Campaign registry in `atomic.Pointer` + Redis pub/sub reload; no per-request PG fetch |
+| Redis budget | At most one `EVALSHA` per accepted event (`unified-filter.lua`); zero when local quanta full-skip eligible |
+| Stream log | `XADD` async via `StreamProducer`; not in the same Lua script as debit |
+| Fail closed | 503 when stream admission or Redis breaker is open |
+
+Sharding: `slot = CRC32C(campaign_id) & 1023`, `shard = slot_table[slot]`. Edge Lua and Go use the same static slot map. Redis: standalone masters + Sentinel (not Cluster); `{campaign_id}` hash tag keeps multi-key Lua on one master.
+
+gnet workers do not block on Redis: `FilterEngine.Check` (including `EVALSHA`) runs in a detached goroutine.
+
+### Traffic endpoints
+
+| Endpoint | Method | Role |
+| :--- | :--- | :--- |
+| `/click` | GET | 302 redirect with macros; full `FilterEngine`; click budget debit |
+| `/track` | POST | S2S postback / conversion ingest; JSON, protobuf, or OpenRTB 3 ingress per campaign format |
+| `/openrtb/bid` | POST | OpenRTB 2.x exchange; in-process auction; no full filter chain |
+| `/tg/click`, `/tg/impression` | GET | Telegram Mini App traffic |
+| `/api/v1/*` | * | Control plane (operators + self-serve API keys) |
+
+Wire policy (nginx <-> gnet parity, chaos-tested): `/track` requires `Content-Length` and rejects chunked `Transfer-Encoding`; `/openrtb/bid` allows chunked with size caps.
+
+Macros: `{campaign_id}`, `{click_id}`, `{sub1}`...`{sub30}`, UTMs. Zero-redirect tracking via `web/src/static/track.js` (POST `/track` with CORS). Outbound CAPI/postbacks to Meta/Google/TikTok run on cold-path workers.
+
+### Filter engine and budgeting
+
+Go-local filters run before Redis (license, geo, schedule, entitlements, fraud signals). `UnifiedFilter` is last.
+
+| Concern | Implementation |
+| :--- | :--- |
+| Budget / dedup / pacing | Atomic Lua on campaign shard |
+| Placement blacklist | In-process TTL cache (5 s); `HEXISTS` on miss |
+| Fraud blacklist (L3) | In-process TTL cache; `SISMEMBER` on miss |
+| Ingress RPD | `EntitlementsFilter` -> Redis `INCR` |
+| ML fraud boost | Go snapshot (`ml:score:boost:*`); async sync via `SettingsWatcher` |
+| Local quanta | `LOCAL_QUOTA_MODE=live` can eliminate sync `EVALSHA` for eligible traffic |
+
+Postgres holds financial truth (`current_spend`, `balance_ledger`); Redis budgets are operational limits reconciled async.
+
+### Antifraud
+
+Multi-layer: optional nginx/eBPF perimeter, Go `FilterEngine` on tracker, async IVT rules and ML on cold path.
+
+| Level | Behavior |
+| :--- | :--- |
+| L1 reject | Hard fraud signal(s); HTTP 403, or silent reject (decoy 202/302) when `silent_reject_enabled` |
+| L2 shadow | Accepted with `ShadowEvent=true`; logged to ClickHouse; no budget debit when fraud signals skip unified Lua |
+| L3 blacklist | IP on Redis `blacklist:fraud`; edge may 403 before tracker |
+
+Hot-path signals include datacenter IP, low TTC, TLS blocklist (JA3/JA4), device mismatch, TCP MSS anomaly, OS fingerprint mismatch, IPv4 rotation, residential proxy (SKU-gated), attestation missing. Presets: `conservative`, `balanced`, `aggressive`, `enhanced_defense`, `social_in_app`.
+
+Limits (see [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md)):
+
+- ML does not run on the tracker; `cmd/fraud-scorer` and `cmd/ivt-detector` are cold-path sidecars only.
+- XDP drops known L3/L4 bad IPs and syn-flood patterns, not app-layer residential fraud.
+- Behind CDN/ALB without edge TCP fingerprint sync, TCP MSS / TTL signals fail-open or must be disabled.
+- Cold-path ML `silent_reject` action adds IP to `blacklist:fraud`; it does not flip `silent_reject_enabled` on campaigns.
+
+Open work: [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.md).
+
+### OpenRTB / in-process RTB
+
+- Structure-of-Arrays in-memory catalog; `atomic.Pointer` read on hot path.
+- Auction: geo-partitioned scan; bid x CTR scoring; first/second price + reserve.
+- Modes: `RTB_MODE=off|shadow|live`; shadow uses `RunAuctionEval` without spend.
+- OpenRTB 2.6: DFA parse on hot path; in-place bid response write.
+- Admin: deals, floors, `validate-bid-request`, `shadow-diff`, reconcile export.
+
+`/track` runs RTB only when `RTB_MODE=shadow|live`. `/openrtb/bid` always runs auction when licensed. OpenRTB 3.0 and multi-imp >1 are not implemented.
+
+### Control plane and admin
+
+Single `cmd/control` modular monolith:
+
+- React admin SPA (`web/`) with role dashboards (buyer, adops, fraud, CFO, operator, campaign).
+- ~290 `/api/v1` routes: campaigns, customers, brands/creatives, supply (`sellers.json`, `ads.txt`), billing/invoices, ledger, disputes, margin guard, smart alerts, domains/TLS, flows/landers/offers, team/RBAC, integration schemas, postbacks, RTB admin, recon, reports, self-serve, Telegram, license, ops (DLQ, outbox, shards, doctor).
+
+Outbox: every config mutation + `outbox_events` in the same PG transaction; `OutboxWorker` polls ~20 ms and applies Redis side effects. Tracker never polls outbox.
+
+### Billing and analytics
+
+- Payment webhooks -> `payment_outbox` -> `SettlementHandler` -> `balance_ledger`.
+- Invoices, PDF export, tax profiles, self-serve payment intents, Cost Sync for true ROI reports.
+- ClickHouse ingest from processor; materialized views for report aggregates. Campaign stats may show `stale=true` when CH lag > 5 min.
+
+### Edge perimeter
+
+| Component | Role |
+| :--- | :--- |
+| nginx `:8180` / `:443` | Rate limit, circuit breaker, blacklist shared dict, body DFA, proxy to tracker |
+| `edge-blacklist-sync.lua` | Redis shard 0 -> nginx cache; changelog + periodic full sync |
+| `edge-xdp` + `edge-bpf-sync` | Optional (Enterprise license); BPF map drops at NIC |
+| Tarpit | Optional `EDGE_TARPIT_ENABLED`; capped; never on billing paths |
+
+### Multi-region (Enterprise)
+
+`region-proxy` with regional WAL, quorum book/ack, uplink to global control. Regional processor with `MULTI_REGION_ENABLED=1`. Requires Enterprise license (`features.multi_region`).
+
+### Engineering gates (CI)
+
+Hot-path static gates (no `fmt.Sprintf`, no `interface{}` boxing on ingest), allocation gate on `/track`, parser chaos nginx <-> gnet differential count = 0, fault tests for budget invariants and outbox ordering, license red-team verify tiers.
+
+---
+
+## Documentation
+
+| Document | Content |
+| :--- | :--- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Hot/cold boundary, topology, ports, Redis sharding |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local stack, codegen, tests, SLA gates |
+| [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md) | Fraud signals, layers, edge/XDP, cold-path ML |
+| [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.md) | Open antifraud work items |
+| [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml) | License SKU limits and feature flags |
+| `.cursor/rules/` | Engineering constraints (SLA, hot path, CI) |
+
+---
+
+## Services and ports
+
+| Binary | Port | Role |
+| :--- | :---: | :--- |
+| nginx edge | 8180, 443 | Ingress, Lua filters, proxy to tracker |
+| `tracker` | 8181-8184 | `/track`, `/click`, `/openrtb/bid`, `/tg/*` |
+| `processor` | 8186 | Redis stream consumers -> Postgres, ClickHouse |
+| `control` | 8188 | Admin UI, `/api/v1/*`, outbox workers |
+| payment webhooks | 8187 | Balance top-up hooks |
+
+Metrics: tracker `9101-9104`, processor `9106`, control `9108`. Postgres `5430`, Redis masters `6479-6482`, ClickHouse `9000` (compose defaults).
+
+---
+
+## SLA budgets (CI / load test)
+
+| Surface | Target |
+| :--- | :--- |
+| Tracker handler | p95 < 50 ms, p99 < 80 ms (abort load test if p99 > 80 ms for 30 s) |
+| Filter deadline | `FILTER_TIMEOUT_MS` <= 100 ms (production) |
+| Redis unified-filter Lua | p99 < 10 ms per shard |
+| Hot path ingest | Zero heap allocations on `/track` (`make test-alloc-gate`) |
+| RTB `RunAuction` | p99 < 15 us; candidate scan p99 < 500 (microbench scope) |
+
+Details: `.cursor/rules/core.mdc`, `.cursor/rules/hot-path.mdc`.
+
+---
+
+## Repository bootstrap
+
+Sources-only clone: run codegen, provide env, build BPF if needed, fetch GeoIP per DEVELOPMENT.md.
+
+```bash
+make gen
+make proto
+cp .env.example .env
+bash scripts/dev/stack.sh full
 ```
-Incoming Request
-  │
-  ├── Perimeter (Nginx Lua / eBPF) -> IP Blacklist / Syn Fingerprints (Microseconds)
-  │
-  ├── Go FilterEngine (Tracker)    -> Local Filters: Geo, Schedule, Device (Nanoseconds)
-  │                                -> Network/TLS: JA3/JA4 Fingerprints, TCP MSS Anomalies
-  │
-  └── Settlement & ML (Async)      -> ClickHouse Logging -> ivt-detector & fraud-scorer (ML Boost)
-```
 
-### Hot-Path Anti-Bot Signals & Network Auditing
-
-BidShard evaluates incoming traffic against a comprehensive array of real-time signals:
-1. **JA3/JA4 TLS Fingerprinting:** Identifies scraper bots and headless browsers that spoof their User-Agent but retain default curl, python, or Node.js TLS handshakes. Matches fingerprints against a fast local allowlist/blocklist.
-2. **TCP MSS & Initial TTL Anomalies:** Analyzes lower-level packet headers (via `X-TCP-MSS` and `X-TCP-TTL` passed from the edge) using passive OS fingerprinting (`p0f-lite` rules). This exposes virtualization anomalies—such as a Windows User-Agent arriving with Linux network stack signatures.
-3. **Sticky IP /24 & IPv6 /64 Rotation Limits:** Detects automated IP-rotation farms by monitoring click/impression velocity from matching subnets. Excessive rotation triggers L1 or L2 actions.
-4. **Local Residential Proxy Farm Detection:** Maintains a hot-ring cache of campaign-local click signatures to immediately identify and segment proxy-relayed bot traffic.
-5. **Datacenter & VPN IP Blocking:** Integrates a fast MaxMind GeoIP and custom ASN blacklist to intercept server-side cloud traffic (AWS, GCP, DigitalOcean, Tor) on the fly.
-
-### Multi-Level Reaction System
-
-* **L1 - Reject:** Hard-blocks known bots, bad subnets, and blacklisted IPs. `/click` requests route directly to safe-view landing pages or return a HTTP 204.
-* **L2 - Shadow:** Admits suspicious traffic but tags it as a `shadow_event`. It is visible in reports and ClickHouse analytics so you can study bot behavior without risking false positives on real users.
-* **Ghost IVT (Phantom Bypass):** An advanced protection mode. The tracker fake-accepts bot and spy tool requests, returning a successful status (HTTP 202/204) to mimic normal behavior. However, campaign budget is not debited, and conversion events or webhooks are never fired to ad networks. Bots think they successfully crawled your page, keeping your active funnels safely hidden.
-* **L3 - Blacklist:** Instantly quarantines malicious IPs into the Redis fast lane, syncing blocking rules across all instances within milliseconds.
-
-### Pre-configured Antifraud Presets
-
-* **Social In-App (Optimized for Facebook, TikTok, Instagram WebViews):**
-  A dedicated mode for social traffic. In-app mobile WebViews often have highly specific network fingerprints that can trigger false-positive bot alarms on standard trackers. This preset is fine-tuned for mobile carrier traffic, minimizing false blocks and keeping conversion rates as high as possible.
-* **Gray Market (Max GMA Protection with JS Attestation):**
-  The ultimate security mode. It deploys distributed Safe Page routing (cloaking) combined with interactive, lightweight JS browser attestation. On first click, the browser is silently audited for genuine human signatures (WebGL/canvas rendering, WebRTC audio-context capabilities, actual Bezier-curve mouse movements, or touch events), filtering out even the most sophisticated automated bot networks.
+License file default path: `var/license.jwt`. Issue JWT: `go run ./cmd/license-issue` (see `deploy/vendor/KEYS.md`).
 
 ---
 
-## Licensing & Tiers (USDT / Month)
+## Compose profiles
 
-Our licensing model is straightforward and transparent: you pay only for server node activations and peak RPS throughput. There are no monthly click quotas or SaaS caps.
-
-| Tier | Price | Hosts (Nodes) | Peak RPS | Key Features |
-| :--- | :--- | :--- | :--- | :--- |
-| **Starter** | $129 | 1 | 10k | Core Tracking, Cost Sync, Meta CAPI, Margin Guard |
-| **Pro** | $329 | 1 | 25k | All Starter features + OpenRTB engine for programmatic bidding |
-| **Scale** | $649 | 3 | 75k | All Pro features + Machine Learning (AI Antifraud), live residential proxy intelligence |
-| **Network** | $1,199 | 10 | 150k | All Scale features + Enterprise multi-region routing & failover |
-| **Enterprise** | $2,500+ | 99 | Custom | All Network features + eBPF/XDP network-level filtering |
-| **Pilot** | $0 | 1 | 5k | 10-day free access to test integrations and verify performance |
+| Profile | Services |
+| :--- | :--- |
+| `single-vps` / `full` | Tracker, processor, control, Postgres, Redis x4, ClickHouse |
+| `ingest-only` | Same without ClickHouse (lower RAM) |
+| `infra` | Datastores only for local Go binaries |
+| `analytics-ml` | Adds `fraud-scorer`, `ivt-detector` |
 
 ---
 
-## Deployment Profiles
+## Licensing
 
-Choose the best deployment layout based on your available server hardware:
+Monthly Ed25519 JWT; limits by peak RPS and host count per `deploy/vendor/sku.yaml`. Enforcement in `internal/licensing`. No per-campaign or per-event caps in SKU (`max_active_campaigns: 0`, `max_events_per_month: 0` = unlimited in license schema).
 
-1. **ingest-only (Lightweight Stack):**
-   - Runs exclusively on PostgreSQL and Redis. **No ClickHouse required.**
-   - Tiny server footprint: works perfectly on servers with just **6-8 GB RAM**.
-   - Ideal for solo buyers and agile teams who need lightning-fast redirects, Cost Sync, Margin Guard rules, and Meta CAPI without requiring heavy, raw event analytics tables. Reduces your monthly VPS hosting bills.
+| SKU | Peak RPS | Hosts | OpenRTB | ML boost / IVT | eBPF XDP | Multi-region |
+| :--- | ---: | ---: | :---: | :---: | :---: | :---: |
+| Starter | 10k | 1 | no | no | no | no |
+| Pro | 25k | 1 | yes | no | no | no |
+| Scale | 75k | 3 | yes | yes | no | no |
+| Network | 150k | 10 | yes | yes | no | yes |
+| Enterprise | custom | 99 | yes | yes | yes | yes |
+| Pilot | 5k | 1 | no | no | no | no |
 
-2. **single-vps (Full Analytical Stack):**
-   - Deploys ClickHouse alongside the core components to collect raw traffic event logs.
-   - Enables rich, multi-dimensional reporting (by placements, geos, devices, bot categories, and custom sub-IDs) in real time.
-   - Recommended hardware: **16 GB RAM** or more.
-
----
-
-## Quick Start
-
-To request a 10-day **Pilot** license, reach out to your account representative on Telegram. Once approved, you will receive a `license.jwt` file. Simply drop this license file into your server's configured path.
-
-For system administrators and DevOps engineers, detailed technical instructions, environment configurations, and setup guides are available in `docs/DEVELOPMENT.md`.
-
-To explore the low-latency system architecture and hot/cold path engineering details, read `docs/ARCHITECTURE.md`.
+Full fields: [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml).

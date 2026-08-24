@@ -22,7 +22,7 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		rdbs:         []redis.UniversalClient{&benchNoopRedis{}},
+		redisShards:         []redis.UniversalClient{&benchNoopRedis{}},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,
@@ -34,7 +34,7 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 	ledger.Credit(campID, int64(b.N)*10_000+1_000_000, testQuotaChunkMicro)
 
 	f := NewUnifiedFilter(
-		stream.rdbs,
+		stream.redisShards,
 		NewJumpHashSharder(1),
 		&mockRegistry{},
 		nil,
@@ -85,7 +85,7 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		rdbs:         []redis.UniversalClient{&benchNoopRedis{}},
+		redisShards:         []redis.UniversalClient{&benchNoopRedis{}},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,
@@ -103,7 +103,7 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 	reg := benchRegistryForCampaign(camp)
 
 	f := NewUnifiedFilter(
-		stream.rdbs,
+		stream.redisShards,
 		NewJumpHashSharder(1),
 		reg,
 		nil,
@@ -164,7 +164,7 @@ func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		rdbs:         []redis.UniversalClient{&benchNoopRedis{}},
+		redisShards:         []redis.UniversalClient{&benchNoopRedis{}},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,
@@ -184,7 +184,7 @@ func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
 	reg := benchRegistryForCampaign(camp)
 
 	f := NewUnifiedFilter(
-		stream.rdbs,
+		stream.redisShards,
 		NewJumpHashSharder(1),
 		reg,
 		nil,

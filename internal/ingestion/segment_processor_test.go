@@ -14,7 +14,7 @@ import (
 )
 
 func TestSegmentConversionHandler_skipsNonConversion(t *testing.T) {
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 	hasher := piihash.TestHasher()
 	segmentID := uuid.New()
@@ -25,17 +25,17 @@ func TestSegmentConversionHandler_skipsNonConversion(t *testing.T) {
 			SegmentTTLHours:   24,
 		},
 	}
-	h := NewSegmentConversionHandler(repo, nil, []redis.UniversalClient{rdb}, hasher)
+	h := NewSegmentConversionHandler(repo, nil, []redis.UniversalClient{redisClient}, hasher)
 	h.Handle(&domain.Event{Type: "click", UserID: "u1"}, "1-0")
 
 	ctx := context.Background()
-	member, err := segmentMemberExists(ctx, []redis.UniversalClient{rdb}, segmentID, hasher.HashUserID("u1"))
+	member, err := segmentMemberExists(ctx, []redis.UniversalClient{redisClient}, segmentID, hasher.HashUserID("u1"))
 	require.NoError(t, err)
 	require.False(t, member)
 }
 
 func TestSegmentConversionHandler_addsMember(t *testing.T) {
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 	hasher := piihash.TestHasher()
 	segmentID := uuid.New()
@@ -46,7 +46,7 @@ func TestSegmentConversionHandler_addsMember(t *testing.T) {
 			SegmentTTLHours:   24,
 		},
 	}
-	h := NewSegmentConversionHandler(repo, nil, []redis.UniversalClient{rdb}, hasher)
+	h := NewSegmentConversionHandler(repo, nil, []redis.UniversalClient{redisClient}, hasher)
 	h.Handle(&domain.Event{
 		Type:   conversionEventType,
 		UserID: "u1",
@@ -54,20 +54,20 @@ func TestSegmentConversionHandler_addsMember(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	member, err := segmentMemberExists(ctx, []redis.UniversalClient{rdb}, segmentID, hasher.HashUserID("u1"))
+	member, err := segmentMemberExists(ctx, []redis.UniversalClient{redisClient}, segmentID, hasher.HashUserID("u1"))
 	require.NoError(t, err)
 	require.True(t, member)
 }
 
 func TestSegmentFilter_includeRequiresMembership(t *testing.T) {
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 	hasher := piihash.TestHasher()
 	segmentID := uuid.New()
 	userID := "include-user"
 	userHash := hasher.HashUserID(userID)
 	ctx := context.Background()
-	require.NoError(t, addSegmentMember(ctx, []redis.UniversalClient{rdb}, segmentID, userHash, time.Hour))
+	require.NoError(t, addSegmentMember(ctx, []redis.UniversalClient{redisClient}, segmentID, userHash, time.Hour))
 
 	campID := uuid.New()
 	reg := &segmentTestRegistry{
@@ -75,7 +75,7 @@ func TestSegmentFilter_includeRequiresMembership(t *testing.T) {
 			campID: {ID: campID, SegmentIncludeID: segmentID},
 		},
 	}
-	filter := NewSegmentFilter([]redis.UniversalClient{rdb}, reg, hasher)
+	filter := NewSegmentFilter([]redis.UniversalClient{redisClient}, reg, hasher)
 	evt := &domain.Event{CampaignID: campID, UserID: userID}
 	require.NoError(t, filter.Check(ctx, evt))
 	require.ErrorIs(t, filter.Check(ctx, &domain.Event{CampaignID: campID, UserID: "other"}), ErrSegmentNotIncluded)

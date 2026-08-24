@@ -128,7 +128,7 @@ func TestFraudThreatHTTP_batchJSONRoundTrip(t *testing.T) {
 	campaignID := uuid.New().String()
 	raw, err := json.Marshal(map[string]any{
 		"items": []map[string]any{{
-			"action":      "ghost",
+			"action":      "silent_reject",
 			"ip":          "198.51.100.1",
 			"campaign_id": campaignID,
 			"score":       88,

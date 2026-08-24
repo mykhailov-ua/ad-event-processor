@@ -49,7 +49,7 @@ type VPPRatioSnapshot struct {
 }
 
 type SettingsWatcher struct {
-	rdbs                  []redis.UniversalClient
+	redisShards                  []redis.UniversalClient
 	campaignUpdateChannel string
 	currentVersion        int64
 	snapshot              atomic.Value
@@ -61,9 +61,9 @@ type SettingsWatcher struct {
 	staleCheck            func() bool
 }
 
-func NewSettingsWatcher(rdbs []redis.UniversalClient, initial *config.Config) *SettingsWatcher {
+func NewSettingsWatcher(redisShards []redis.UniversalClient, initial *config.Config) *SettingsWatcher {
 	sw := &SettingsWatcher{
-		rdbs: rdbs,
+		redisShards: redisShards,
 	}
 	if initial != nil {
 		sw.campaignUpdateChannel = initial.CampaignUpdateChannel
@@ -165,8 +165,8 @@ func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 }
 
 func (sw *SettingsWatcher) syncVPPRatios(ctx context.Context) {
-	rdb := sw.pickHealthyShard()
-	if rdb == nil {
+	redisClient := sw.pickHealthyShard()
+	if redisClient == nil {
 		return
 	}
 
@@ -174,11 +174,11 @@ func (sw *SettingsWatcher) syncVPPRatios(ctx context.Context) {
 	prefix := "campaign:"
 	suffix := ":pacing"
 
-	for attempt := 0; attempt < len(sw.rdbs); attempt++ {
+	for attempt := 0; attempt < len(sw.redisShards); attempt++ {
 		cursor := uint64(0)
 		ok := true
 		for {
-			keys, next, err := rdb.Scan(ctx, cursor, prefix+"*"+suffix, 100).Result()
+			keys, next, err := redisClient.Scan(ctx, cursor, prefix+"*"+suffix, 100).Result()
 			if err != nil {
 				slog.Warn("failed to scan vpp pacing keys from redis", "error", err)
 				ok = false
@@ -193,7 +193,7 @@ func (sw *SettingsWatcher) syncVPPRatios(ctx context.Context) {
 				if !ParseUUID(UnsafeBytes(parts[1]), &campID) {
 					continue
 				}
-				valStr, err := rdb.Get(ctx, key).Result()
+				valStr, err := redisClient.Get(ctx, key).Result()
 				if err != nil {
 					continue
 				}
@@ -218,8 +218,8 @@ func (sw *SettingsWatcher) syncVPPRatios(ctx context.Context) {
 			sw.vppRatios.Store(&VPPRatioSnapshot{Ratios: newRatios})
 			return
 		}
-		rdb = sw.nextShardAfter(rdb)
-		if rdb == nil {
+		redisClient = sw.nextShardAfter(redisClient)
+		if redisClient == nil {
 			return
 		}
 		newRatios = make(map[uuid.UUID]float32)
@@ -227,46 +227,46 @@ func (sw *SettingsWatcher) syncVPPRatios(ctx context.Context) {
 }
 
 func (sw *SettingsWatcher) pickHealthyShard() redis.UniversalClient {
-	if len(sw.rdbs) == 0 {
+	if len(sw.redisShards) == 0 {
 		return nil
 	}
-	for i := 1; i < len(sw.rdbs); i++ {
-		if sw.rdbs[i] != nil {
-			return sw.rdbs[i]
+	for i := 1; i < len(sw.redisShards); i++ {
+		if sw.redisShards[i] != nil {
+			return sw.redisShards[i]
 		}
 	}
-	return sw.rdbs[0]
+	return sw.redisShards[0]
 }
 
 func (sw *SettingsWatcher) nextShardAfter(cur redis.UniversalClient) redis.UniversalClient {
-	if len(sw.rdbs) == 0 {
+	if len(sw.redisShards) == 0 {
 		return nil
 	}
 	found := false
-	for _, rdb := range sw.rdbs {
-		if found && rdb != nil && rdb != cur {
-			return rdb
+	for _, redisClient := range sw.redisShards {
+		if found && redisClient != nil && redisClient != cur {
+			return redisClient
 		}
-		if rdb == cur {
+		if redisClient == cur {
 			found = true
 		}
 	}
-	for _, rdb := range sw.rdbs {
-		if rdb != nil && rdb != cur {
-			return rdb
+	for _, redisClient := range sw.redisShards {
+		if redisClient != nil && redisClient != cur {
+			return redisClient
 		}
 	}
 	return nil
 }
 
 func (sw *SettingsWatcher) readConfigVersion(ctx context.Context) (int64, redis.UniversalClient, error) {
-	for i, rdb := range sw.rdbs {
-		if rdb == nil {
+	for i, redisClient := range sw.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		v, err := rdb.Get(ctx, "config:version").Int64()
+		v, err := redisClient.Get(ctx, "config:version").Int64()
 		if err == nil {
-			return v, rdb, nil
+			return v, redisClient, nil
 		}
 		if !errors.Is(err, redis.Nil) {
 			slog.Warn("failed to check config version on redis shard", "shard", i, "error", err)
@@ -282,11 +282,11 @@ func (sw *SettingsWatcher) readConfigValues(ctx context.Context, preferred redis
 			return data, nil
 		}
 	}
-	for i, rdb := range sw.rdbs {
-		if rdb == nil || rdb == preferred {
+	for i, redisClient := range sw.redisShards {
+		if redisClient == nil || redisClient == preferred {
 			continue
 		}
-		data, err := rdb.HGetAll(ctx, "config:values").Result()
+		data, err := redisClient.HGetAll(ctx, "config:values").Result()
 		if err == nil {
 			return data, nil
 		}
@@ -296,7 +296,7 @@ func (sw *SettingsWatcher) readConfigValues(ctx context.Context, preferred redis
 }
 
 func (sw *SettingsWatcher) sync(ctx context.Context) {
-	v, rdb, err := sw.readConfigVersion(ctx)
+	v, redisClient, err := sw.readConfigVersion(ctx)
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
 			slog.Error("failed to check config version on all redis shards", "error", err)
@@ -310,7 +310,7 @@ func (sw *SettingsWatcher) sync(ctx context.Context) {
 		return
 	}
 
-	data, err := sw.readConfigValues(ctx, rdb)
+	data, err := sw.readConfigValues(ctx, redisClient)
 	if err != nil {
 		slog.Error("failed to fetch config values from redis", "error", err)
 		sw.trySyncFromPG(ctx)

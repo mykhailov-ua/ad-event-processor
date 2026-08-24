@@ -281,7 +281,7 @@ test('campaign creative tab PATCH links brand_id on first create', async ({ page
   expect(patchBody.brand_id).toBe('brand-link-1');
 });
 
-test('campaign config PATCH sends GMA fields', async ({ page }) => {
+test('campaign config PATCH sends defense fields', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
   await mockCampaignDetailApis(page);
 

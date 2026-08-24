@@ -22,8 +22,8 @@ func TestListDLQEntries_readsRedisShard(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	campaignID := uuid.New()
 	pbDLQ := &pb.AdDLQEvent{
@@ -39,14 +39,14 @@ func TestListDLQEntries_readsRedisShard(t *testing.T) {
 	require.NoError(t, err)
 
 	dlqStream := "ad:events:dlq"
-	msgID, err := rdb.XAdd(context.Background(), &redis.XAddArgs{
+	msgID, err := redisClient.XAdd(context.Background(), &redis.XAddArgs{
 		Stream: dlqStream,
 		Values: map[string]interface{}{"d": ingestion.UnsafeString(raw)},
 	}).Result()
 	require.NoError(t, err)
 
 	cfg := &config.Config{RedisStreamName: "ad:events:stream"}
-	svc := &Service{rdbs: []redis.UniversalClient{rdb}, cfg: cfg}
+	svc := &Service{redisShards: []redis.UniversalClient{redisClient}, cfg: cfg}
 	reader := newOpsReader(svc)
 
 	result, err := reader.ListDLQEntries(context.Background(), "", 50)
@@ -64,8 +64,8 @@ func TestEnqueueDLQRetry_requeuesAndDeletes(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	campID := uuid.New()
 	event := &pb.AdStreamEvent{
@@ -84,14 +84,14 @@ func TestEnqueueDLQRetry_requeuesAndDeletes(t *testing.T) {
 	dlqRaw, err := proto.Marshal(pbDLQ)
 	require.NoError(t, err)
 
-	msgID, err := rdb.XAdd(context.Background(), &redis.XAddArgs{
+	msgID, err := redisClient.XAdd(context.Background(), &redis.XAddArgs{
 		Stream: dlqStream,
 		Values: map[string]interface{}{"d": ingestion.UnsafeString(dlqRaw)},
 	}).Result()
 	require.NoError(t, err)
 
 	cfg := &config.Config{RedisStreamName: targetStream}
-	svc := &Service{rdbs: []redis.UniversalClient{rdb}, cfg: cfg}
+	svc := &Service{redisShards: []redis.UniversalClient{redisClient}, cfg: cfg}
 	reader := newOpsReader(svc)
 
 	err = reader.EnqueueDLQRetry(context.Background(), DLQRetryPayload{
@@ -101,11 +101,11 @@ func TestEnqueueDLQRetry_requeuesAndDeletes(t *testing.T) {
 	}, "idem-1")
 	require.NoError(t, err)
 
-	dlqLen, err := rdb.XLen(context.Background(), dlqStream).Result()
+	dlqLen, err := redisClient.XLen(context.Background(), dlqStream).Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), dlqLen)
 
-	targetMsgs, err := rdb.XRange(context.Background(), targetStream, "-", "+").Result()
+	targetMsgs, err := redisClient.XRange(context.Background(), targetStream, "-", "+").Result()
 	require.NoError(t, err)
 	require.Len(t, targetMsgs, 1)
 	assert.Contains(t, targetMsgs[0].Values, "d")
@@ -116,22 +116,22 @@ func TestEnqueueDLQRetry_idempotent(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	event := &pb.AdStreamEvent{EventType: []byte("click")}
 	pbDLQ := &pb.AdDLQEvent{OriginalEvent: event}
 	dlqRaw, err := proto.Marshal(pbDLQ)
 	require.NoError(t, err)
 
-	msgID, err := rdb.XAdd(context.Background(), &redis.XAddArgs{
+	msgID, err := redisClient.XAdd(context.Background(), &redis.XAddArgs{
 		Stream: "ad:events:dlq",
 		Values: map[string]interface{}{"d": ingestion.UnsafeString(dlqRaw)},
 	}).Result()
 	require.NoError(t, err)
 
 	cfg := &config.Config{RedisStreamName: "ad:events:stream"}
-	svc := &Service{rdbs: []redis.UniversalClient{rdb}, cfg: cfg}
+	svc := &Service{redisShards: []redis.UniversalClient{redisClient}, cfg: cfg}
 	reader := newOpsReader(svc)
 	payload := DLQRetryPayload{
 		ShardID: 0,
@@ -142,7 +142,7 @@ func TestEnqueueDLQRetry_idempotent(t *testing.T) {
 	require.NoError(t, reader.EnqueueDLQRetry(context.Background(), payload, "idem-dup"))
 	require.NoError(t, reader.EnqueueDLQRetry(context.Background(), payload, "idem-dup"))
 
-	targetLen, err := rdb.XLen(context.Background(), "ad:events:stream").Result()
+	targetLen, err := redisClient.XLen(context.Background(), "ad:events:stream").Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), targetLen)
 }

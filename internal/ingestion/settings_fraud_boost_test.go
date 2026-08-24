@@ -19,18 +19,18 @@ func TestApplyFraudBoostCampaign_updateAndRemove(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	sw := NewSettingsWatcher([]redis.UniversalClient{rdb}, &config.Config{})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	sw := NewSettingsWatcher([]redis.UniversalClient{redisClient}, &config.Config{})
 
 	ctx := context.Background()
 	campID := uuid.New()
 	key := fraudScoreBoostKey(campID)
 
-	require.NoError(t, rdb.Set(ctx, key, "42", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, key, "42", 0).Err())
 	sw.applyFraudBoostCampaign(ctx, campID)
 	require.Equal(t, uint8(42), sw.GetFraudScoreBoosts().Boosts[campID])
 
-	require.NoError(t, rdb.Del(ctx, key).Err())
+	require.NoError(t, redisClient.Del(ctx, key).Err())
 	sw.applyFraudBoostCampaign(ctx, campID)
 	_, ok := sw.GetFraudScoreBoosts().Boosts[campID]
 	require.False(t, ok)
@@ -40,11 +40,11 @@ func TestSettingsWatcher_fraudBoostSubscriber(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	const channel = "campaigns:update-test"
 
 	cfg := &config.Config{CampaignUpdateChannel: channel}
-	sw := NewSettingsWatcher([]redis.UniversalClient{rdb}, cfg)
+	sw := NewSettingsWatcher([]redis.UniversalClient{redisClient}, cfg)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -53,8 +53,8 @@ func TestSettingsWatcher_fraudBoostSubscriber(t *testing.T) {
 	campID := uuid.New()
 	key := fraudScoreBoostKey(campID)
 
-	require.NoError(t, rdb.Set(context.Background(), key, "42", 0).Err())
-	require.NoError(t, domain.PublishCampaignUpdateRedis(context.Background(), []redis.UniversalClient{rdb}, channel, campID.String()))
+	require.NoError(t, redisClient.Set(context.Background(), key, "42", 0).Err())
+	require.NoError(t, domain.PublishCampaignUpdateRedis(context.Background(), []redis.UniversalClient{redisClient}, channel, campID.String()))
 
 	assert.Eventually(t, func() bool {
 		return sw.GetFraudScoreBoosts().Boosts[campID] == 42

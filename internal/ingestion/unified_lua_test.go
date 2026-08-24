@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newRealRedisUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *UnifiedFilter {
+func newRealRedisUnifiedFilter(t testing.TB, redisClient redis.UniversalClient) *UnifiedFilter {
 	t.Helper()
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		&mockRegistry{},
 		nil,
@@ -32,17 +32,17 @@ func newRealRedisUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *Unified
 		"events",
 		10_000,
 	)
-	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{rdb}))
-	f.SetFraudBlacklistFilter(NewFraudBlacklistFilter([]redis.UniversalClient{rdb}))
+	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{redisClient}))
+	f.SetFraudBlacklistFilter(NewFraudBlacklistFilter([]redis.UniversalClient{redisClient}))
 	return f
 }
 
-func seedCampaignBudget(t testing.TB, ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID) {
+func seedCampaignBudget(t testing.TB, ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID) {
 	t.Helper()
 	reg := &mockRegistry{}
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 9_000_000_000_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, 9_000_000_000_000_000, 0).Err())
 }
 
 func TestVerify_1a_RedisSpec_EvalShaAfterScriptLoad(t *testing.T) {
@@ -50,14 +50,14 @@ func TestVerify_1a_RedisSpec_EvalShaAfterScriptLoad(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -81,15 +81,15 @@ func TestEvalScript_NOSCRIPTFallbackAfterScriptFlush(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
-	require.NoError(t, rdb.ScriptFlush(ctx).Err())
+	require.NoError(t, redisClient.ScriptFlush(ctx).Err())
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 	evt := &domain.Event{
 		Type:       "click",
 		IP:         "203.0.113.2",
@@ -111,18 +111,18 @@ func TestFilterRedisOptions_realClientRespectsReadTimeout(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	const filterMs = 30
-	client, ok := rdb.(*redis.Client)
+	client, ok := redisClient.(*redis.Client)
 	require.True(t, ok, "expected single-node redis client")
 	opts := FilterRedisOptions([]string{client.Options().Addr}, "", 4, filterMs)
 	slow := redis.NewUniversalClient(opts)
 	defer func() { _ = slow.Close() }()
 
 	require.NoError(t, slow.Ping(ctx).Err())
-	require.NoError(t, rdb.Do(ctx, "CLIENT", "PAUSE", 2000).Err())
+	require.NoError(t, redisClient.Do(ctx, "CLIENT", "PAUSE", 2000).Err())
 
 	start := time.Now()
 	err := slow.Ping(ctx).Err()
@@ -139,16 +139,16 @@ func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	const iterations = 500
 	latencies := make([]time.Duration, 0, iterations)
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	for i := range iterations {
 		evt := &domain.Event{
@@ -177,11 +177,11 @@ func TestVerify_1d_RealRedisLatencyProfile(t *testing.T) {
 
 func benchUnifiedFilterCheckRealRedis(b *testing.B) {
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(b)
+	redisClient, cleanup := setupTestRedis(b)
 	defer cleanup()
 
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		&mockRegistry{},
 		nil,
@@ -199,7 +199,7 @@ func benchUnifiedFilterCheckRealRedis(b *testing.B) {
 		b.Fatal(err)
 	}
 	campID := uuid.New()
-	seedCampaignBudget(b, ctx, rdb, campID)
+	seedCampaignBudget(b, ctx, redisClient, campID)
 
 	evt := &domain.Event{
 		Type:       "click",

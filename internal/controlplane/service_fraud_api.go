@@ -13,7 +13,7 @@ func toAdminCampaignFraudConfig(cfg CampaignFraudConfigDTO) CampaignFraudConfigD
 		FraudThresholdSuspect: cfg.FraudThresholdSuspect,
 		FraudThresholdIVT:     cfg.FraudThresholdIVT,
 		FraudThresholdBlock:   cfg.FraudThresholdBlock,
-		GhostIVTEnabled:       cfg.GhostIVTEnabled,
+		SilentRejectEnabled:   cfg.SilentRejectEnabled,
 		BehaviorFlags:         cfg.BehaviorFlags,
 	}
 }

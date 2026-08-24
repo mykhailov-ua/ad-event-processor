@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpdateCampaignFraud_grayMarketPreset_appliesGMAFlags(t *testing.T) {
+func TestUpdateCampaignFraud_enhancedDefensePreset_appliesDefenseFlags(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration: gray_market preset applies GMA flags (run make test-integration)")
+		t.Skip("integration: enhanced_defense preset applies defense flags (run make test-integration)")
 	}
 
 	pool, cleanupDB := database.SetupTestDB(t)
@@ -24,36 +24,39 @@ func TestUpdateCampaignFraud_grayMarketPreset_appliesGMAFlags(t *testing.T) {
 	ctx := context.Background()
 
 	custID := uuid.New()
-	require.NoError(t, svc.CreateCustomer(ctx, custID, "Gray Market Cust", 10_000_000, "USD"))
+	require.NoError(t, svc.CreateCustomer(ctx, custID, "Enhanced Defense Cust", 10_000_000, "USD"))
 	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
 		CustomerID:       custID,
-		Name:             "Gray Market Camp",
+		Name:             "Enhanced Defense Camp",
 		BudgetLimitMicro: 10_000_000,
 		PacingMode:       "ASAP",
 		Timezone:         "UTC",
-		IdempotencyKey:   "gray-market-camp-1",
+		IdempotencyKey:   "enhanced-defense-camp-1",
 	})
 	require.NoError(t, err)
 
-	preset := domain.FraudPresetGrayMarket
+	preset := domain.FraudPresetEnhancedDefense
 	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, CampaignFraudConfigUpdate{Preset: &preset})
 	require.NoError(t, err)
 
 	var (
-		safePage, attestation, l15, tls, l1, linkSign bool
-		attTTL                                        int32
-		pass, block                                   int16
+		safePage, silentReject, attestation, l15, tls, l1, linkSign bool
+		attTTL                                                      int32
+		clickDelivery                                               string
+		pass, block                                                 int16
 	)
 	err = pool.QueryRow(ctx, `
-		SELECT safe_page_enabled, attestation_enabled, attestation_ttl_sec,
+		SELECT safe_page_enabled, silent_reject_enabled, attestation_enabled, attestation_ttl_sec,
 		 l15_proxy_vpn_block_enabled, tls_fingerprint_block_enabled,
-		 l1_cidr_block_enabled, link_signing_enabled,
+		 l1_cidr_block_enabled, link_signing_enabled, click_delivery,
 		 fraud_threshold_pass, fraud_threshold_block
 		FROM campaigns WHERE id = $1`, campID).Scan(
-		&safePage, &attestation, &attTTL, &l15, &tls, &l1, &linkSign, &pass, &block,
+		&safePage, &silentReject, &attestation, &attTTL, &l15, &tls, &l1, &linkSign, &clickDelivery, &pass, &block,
 	)
 	require.NoError(t, err)
 	require.True(t, safePage)
+	require.True(t, silentReject)
+	require.Equal(t, "redirect", clickDelivery)
 	require.True(t, attestation)
 	require.GreaterOrEqual(t, attTTL, int32(60))
 	require.True(t, l15)
@@ -67,14 +70,16 @@ func TestUpdateCampaignFraud_grayMarketPreset_appliesGMAFlags(t *testing.T) {
 	require.NoError(t, err)
 	camp := domain.CampaignFromDBRow(row)
 	require.True(t, camp.SafePageEnabled)
+	require.True(t, camp.SilentRejectEnabled)
+	require.Equal(t, "redirect", camp.ClickDelivery)
 	require.True(t, camp.AttestationEnabled)
 	require.True(t, camp.L15ProxyVPNBlockEnabled)
 	require.True(t, camp.TLSFingerprintBlockEnabled)
 }
 
-func TestResolveFraudPresetThresholds_grayMarket(t *testing.T) {
+func TestResolveFraudPresetThresholds_enhancedDefense(t *testing.T) {
 	svc := &Service{}
-	pass, suspect, ivt, block, err := svc.resolveFraudPresetThresholds(t.Context(), domain.FraudPresetGrayMarket)
+	pass, suspect, ivt, block, err := svc.resolveFraudPresetThresholds(t.Context(), domain.FraudPresetEnhancedDefense)
 	require.NoError(t, err)
 	require.Equal(t, uint8(20), pass)
 	require.Equal(t, uint8(45), suspect)

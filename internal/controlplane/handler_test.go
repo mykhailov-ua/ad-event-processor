@@ -24,14 +24,14 @@ func TestManagementAPI_Hardening(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -48,7 +48,7 @@ func TestManagementAPI_Hardening(t *testing.T) {
 	t.Run("UpdateSettings_Success", func(t *testing.T) {
 		require.NoError(t, svc.UpdateSettings(context.Background(), map[string]string{"rate_limit_per_min": "500"}))
 		assert.Eventually(t, func() bool {
-			v, _ := rdb.Get(context.Background(), "config:version").Int64()
+			v, _ := redisClient.Get(context.Background(), "config:version").Int64()
 			return v == int64(1)
 		}, 2*time.Second, 20*time.Millisecond)
 	})
@@ -56,7 +56,7 @@ func TestManagementAPI_Hardening(t *testing.T) {
 	t.Run("Blacklist_Success", func(t *testing.T) {
 		require.NoError(t, svc.BlockIPWithTTL(context.Background(), "9.9.9.9", "manual", nil))
 		assert.Eventually(t, func() bool {
-			isMember, _ := rdb.SIsMember(context.Background(), "blacklist:manual", "9.9.9.9").Result()
+			isMember, _ := redisClient.SIsMember(context.Background(), "blacklist:manual", "9.9.9.9").Result()
 			return isMember
 		}, 2*time.Second, 20*time.Millisecond)
 	})

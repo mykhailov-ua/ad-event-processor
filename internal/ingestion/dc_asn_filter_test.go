@@ -101,7 +101,7 @@ func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
 
 	geo := &anonErrGeoProvider{MockGeoProvider: MockGeoProvider{ASN: map[string]uint32{"54.230.17.9": 16509}}}
 	f := NewFraudFilter(geo)
-	f.ConfigureDCASN(table, geo, 0) // mask 127: only seq&127==0 samples when GeoIP errors
+	f.ConfigureDCASN(table, geo, 0) 
 
 	evt := &domain.Event{IP: "54.230.17.9", StringBuffer: make([]byte, 0, 32)}
 	engine := NewFilterEngine(0, f)
@@ -128,7 +128,7 @@ func TestFraudFilter_DCASN_holdout(t *testing.T) {
 
 	geo := &MockGeoProvider{ASN: map[string]uint32{"54.230.17.9": 16509}}
 	f := NewFraudFilter(geo)
-	f.ConfigureDCASN(table, geo, 127) // heavy sampling: would skip most events without force path
+	f.ConfigureDCASN(table, geo, 127) 
 
 	evt := domain.EventPool.Get().(*domain.Event)
 	defer domain.EventPool.Put(evt)

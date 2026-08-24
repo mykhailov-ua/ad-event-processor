@@ -28,11 +28,11 @@ func TestFault_OutboxBudgetFreezePriority(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-freeze"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	const pacingBacklog = 200
@@ -50,7 +50,7 @@ func TestFault_OutboxBudgetFreezePriority(t *testing.T) {
 	campID := uuid.New()
 	freezePayload, err := json.Marshal(CampaignPayload{CampaignID: campID.String()})
 	require.NoError(t, err)
-	_, err = rdb.Set(ctx, "budget:campaign:"+campID.String(), 5_000_000, 0).Result()
+	_, err = redisClient.Set(ctx, "budget:campaign:"+campID.String(), 5_000_000, 0).Result()
 	require.NoError(t, err)
 
 	var freezeID int64
@@ -67,7 +67,7 @@ func TestFault_OutboxBudgetFreezePriority(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM outbox_events WHERE id = $1`, freezeID).Scan(&status))
 	require.Equal(t, "PROCESSED", status)
 
-	exists, err := rdb.Exists(ctx, domain.BudgetFrozenRedisKey(campID)).Result()
+	exists, err := redisClient.Exists(ctx, domain.BudgetFrozenRedisKey(campID)).Result()
 	require.NoError(t, err)
 	require.Equal(t, int64(1), exists)
 
@@ -86,7 +86,7 @@ func TestFault_SlotMigrationFence(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	campID := uuid.New()
@@ -101,10 +101,10 @@ func TestFault_SlotMigrationFence(t *testing.T) {
 		domain.ToUUID(campID), domain.ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, domain.BumpMigrationFences(ctx, pool, rdb, []uuid.UUID{campID}))
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campID), 10_000_000, 0).Err())
+	require.NoError(t, domain.BumpMigrationFences(ctx, pool, redisClient, []uuid.UUID{campID}))
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campID), 10_000_000, 0).Err())
 
-	f := testutil.NewLuaUnifiedFilter(rdb, nil)
+	f := testutil.NewLuaUnifiedFilter(redisClient, nil)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	const workers = 32
@@ -138,7 +138,7 @@ func TestFault_SlotMigrationFence(t *testing.T) {
 	require.Equal(t, int64(workers), fenced)
 	require.Equal(t, int64(0), debited)
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campID)
 
 	faultproof.Log(t, "slot_migration_fence", map[string]string{
 		"subsystem":         "slot_migration",

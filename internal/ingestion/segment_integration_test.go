@@ -49,11 +49,11 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	hasher := piihash.TestHasher()
-	rdbs := []redis.UniversalClient{rdb}
+	redisShards := []redis.UniversalClient{redisClient}
 	segmentID := uuid.New()
 	userID := "retarget-user-1"
 	userHash := hasher.HashUserID(userID)
@@ -67,14 +67,14 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 			SegmentTTLHours:   1,
 		},
 	}
-	handler := NewSegmentConversionHandler(repo, nil, rdbs, hasher)
+	handler := NewSegmentConversionHandler(repo, nil, redisShards, hasher)
 	handler.Handle(&domain.Event{
 		CampaignID: srcCampID,
 		Type:       conversionEventType,
 		UserID:     userID,
 	}, "1-0")
 
-	member, err := segmentMemberExists(ctx, rdbs, segmentID, userHash)
+	member, err := segmentMemberExists(ctx, redisShards, segmentID, userHash)
 	require.NoError(t, err)
 	require.True(t, member)
 
@@ -86,13 +86,13 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 			},
 		},
 	}
-	filter := NewSegmentFilter(rdbs, reg, hasher)
+	filter := NewSegmentFilter(redisShards, reg, hasher)
 	evt := &domain.Event{CampaignID: dstCampID, UserID: userID}
 	require.ErrorIs(t, filter.Check(ctx, evt), ErrSegmentExcluded)
 
-	require.NoError(t, addSegmentMember(ctx, rdbs, segmentID, userHash, time.Second))
+	require.NoError(t, addSegmentMember(ctx, redisShards, segmentID, userHash, time.Second))
 	time.Sleep(1100 * time.Millisecond)
-	member, err = segmentMemberExists(ctx, rdbs, segmentID, userHash)
+	member, err = segmentMemberExists(ctx, redisShards, segmentID, userHash)
 	require.NoError(t, err)
 	require.False(t, member)
 	require.NoError(t, filter.Check(ctx, evt))
@@ -118,7 +118,7 @@ func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *domain
 	t.Helper()
 	segmentID := uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 	campID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
-	rdbs := []redis.UniversalClient{&segmentGetMock{hit: member}}
+	redisShards := []redis.UniversalClient{&segmentGetMock{hit: member}}
 	reg := &segmentTestRegistry{
 		camps: map[uuid.UUID]*domain.Campaign{
 			campID: {
@@ -127,7 +127,7 @@ func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *domain
 			},
 		},
 	}
-	f := NewSegmentFilter(rdbs, reg, piihash.TestHasher())
+	f := NewSegmentFilter(redisShards, reg, piihash.TestHasher())
 	evt := &domain.Event{
 		CampaignID: campID,
 		UserID:     "bench-user",
@@ -157,14 +157,14 @@ func BenchmarkSegmentCheck_hit(b *testing.B) {
 
 func TestSegmentMemberExists_zeroAlloc(t *testing.T) {
 	segmentID := uuid.MustParse("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
-	rdbs := []redis.UniversalClient{&segmentGetMock{hit: false}}
+	redisShards := []redis.UniversalClient{&segmentGetMock{hit: false}}
 	userHash := piihash.TestHasher().HashUserID("bench-user")
 	ctx := context.Background()
 	for range 1000 {
-		_, _ = segmentMemberExists(ctx, rdbs, segmentID, userHash)
+		_, _ = segmentMemberExists(ctx, redisShards, segmentID, userHash)
 	}
 	avg := testing.AllocsPerRun(100, func() {
-		_, _ = segmentMemberExists(ctx, rdbs, segmentID, userHash)
+		_, _ = segmentMemberExists(ctx, redisShards, segmentID, userHash)
 	})
 	if avg > 0 {
 		t.Fatalf("segmentMemberExists allocated %.1f times per run, want 0", avg)

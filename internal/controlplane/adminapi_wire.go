@@ -101,7 +101,7 @@ func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, p
 	return err
 }
 
-func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.UniversalClient) RouteRegistry {
+func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.UniversalClient) RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
 		return RouteRegistry{}
 	}
@@ -493,7 +493,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, rdbs []redis.Univers
 			RequirePermission: perm,
 		},
 		TelegramHTTP: &TelegramHTTPHandlers{
-			Telegram:             NewTelegramService(svc, pool, rdbs),
+			Telegram:             NewTelegramService(svc, pool, redisShards),
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
 			WriteServiceError:    writeErr,

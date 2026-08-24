@@ -20,11 +20,11 @@ func NewInjectionEnv(t testing.TB) (env *InjectionEnv, cleanup func()) {
 	t.Helper()
 
 	pgContainer, pool, cleanupPG := SetupAdsPostgresContainer(t)
-	redisContainer, rdb, cleanupRedis := SetupRedisContainer(t)
+	redisContainer, redisClient, cleanupRedis := SetupRedisContainer(t)
 
 	env = &InjectionEnv{
 		Pool:           pool,
-		Redis:          rdb,
+		Redis:          redisClient,
 		PGContainer:    pgContainer,
 		RedisContainer: redisContainer,
 	}

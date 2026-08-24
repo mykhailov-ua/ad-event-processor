@@ -19,15 +19,15 @@ func TestUnifiedFilter_migrationFenceRejectsDebit(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
-	require.NoError(t, rdb.Set(ctx, MigrationFenceRedisKey(campID), 1, 0).Err())
+	seedCampaignBudget(t, ctx, redisClient, campID)
+	require.NoError(t, redisClient.Set(ctx, MigrationFenceRedisKey(campID), 1, 0).Err())
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -40,7 +40,7 @@ func TestUnifiedFilter_migrationFenceRejectsDebit(t *testing.T) {
 	err := f.Check(checkCtx, evt)
 	require.ErrorIs(t, err, ErrMigrationFenced)
 
-	remaining, err := rdb.Get(ctx, "budget:campaign:"+campID.String()).Int64()
+	remaining, err := redisClient.Get(ctx, "budget:campaign:"+campID.String()).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(9_000_000_000_000_000), remaining)
 }
@@ -50,15 +50,15 @@ func TestUnifiedFilter_budgetFrozenRejectsDebit(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
-	require.NoError(t, SetBudgetFrozen(ctx, rdb, campID))
+	seedCampaignBudget(t, ctx, redisClient, campID)
+	require.NoError(t, SetBudgetFrozen(ctx, redisClient, campID))
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -71,7 +71,7 @@ func TestUnifiedFilter_budgetFrozenRejectsDebit(t *testing.T) {
 	err := f.Check(checkCtx, evt)
 	require.ErrorIs(t, err, ErrMigrationFenced)
 
-	remaining, err := rdb.Get(ctx, "budget:campaign:"+campID.String()).Int64()
+	remaining, err := redisClient.Get(ctx, "budget:campaign:"+campID.String()).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(9_000_000_000_000_000), remaining)
 }
@@ -83,7 +83,7 @@ func TestBumpMigrationFences_setsRedisAndPG(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := setupTestRedis(t)
+	redisClient, cleanupRedis := setupTestRedis(t)
 	defer cleanupRedis()
 
 	campID := uuid.New()
@@ -98,13 +98,13 @@ func TestBumpMigrationFences_setsRedisAndPG(t *testing.T) {
 		ToUUID(campID), ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, BumpMigrationFences(ctx, pool, rdb, []uuid.UUID{campID}))
+	require.NoError(t, BumpMigrationFences(ctx, pool, redisClient, []uuid.UUID{campID}))
 
 	var gen int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT migration_gen FROM campaigns WHERE id = $1`, ToUUID(campID)).Scan(&gen))
 	require.Equal(t, int64(1), gen)
 
-	val, err := rdb.Get(ctx, MigrationFenceRedisKey(campID)).Int64()
+	val, err := redisClient.Get(ctx, MigrationFenceRedisKey(campID)).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(1), val)
 }
@@ -114,15 +114,15 @@ func TestFault_MigrationFenceConcurrentDebit(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
-	require.NoError(t, rdb.Set(ctx, MigrationFenceRedisKey(campID), 1, 0).Err())
+	seedCampaignBudget(t, ctx, redisClient, campID)
+	require.NoError(t, redisClient.Set(ctx, MigrationFenceRedisKey(campID), 1, 0).Err())
 
 	const workers = 32
 	var wg sync.WaitGroup
@@ -149,7 +149,7 @@ func TestFault_MigrationFenceConcurrentDebit(t *testing.T) {
 	wg.Wait()
 	require.Equal(t, int64(workers), fenced)
 
-	remaining, err := rdb.Get(ctx, "budget:campaign:"+campID.String()).Int64()
+	remaining, err := redisClient.Get(ctx, "budget:campaign:"+campID.String()).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(9_000_000_000_000_000), remaining)
 

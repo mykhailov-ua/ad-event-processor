@@ -9,7 +9,7 @@ export type FraudKpiGeoHint = {
 };
 
 export type FraudKpiPayload = {
-  ghost_ivt_campaigns?: number;
+  silent_reject_campaigns?: number;
   edge_blocked_fraud?: number;
   geo_hints?: FraudKpiGeoHint[];
 };
@@ -50,7 +50,9 @@ export function FraudKpiTiles({ loading = false, fraud, customerId }: FraudKpiTi
     ? fraud.geo_hints.filter((h) => Number(h.ivt_rate ?? 0) >= 0.1).length
     : null;
 
-  const ghost = loading ? '...' : String(fraud?.ghost_ivt_campaigns ?? '-');
+  const silentReject = loading
+    ? '...'
+    : String(fraud?.silent_reject_campaigns ?? '-');
   const blocked = loading ? '...' : String(fraud?.edge_blocked_fraud ?? '-');
   const geo = loading ? '...' : highIvt != null ? String(highIvt) : '-';
 
@@ -64,11 +66,11 @@ export function FraudKpiTiles({ loading = false, fraud, customerId }: FraudKpiTi
       </p>
       <div className="grid-stats">
         <LinkedMetric
-          label="Ghost IVT campaigns"
-          value={ghost}
+          label="Silent reject campaigns"
+          value={silentReject}
           icon="alert-triangle"
           href={`/dashboards/fraud${qs}`}
-          testId="fraud-kpi-ghost-ivt-campaigns"
+          testId="fraud-kpi-silent-reject-campaigns"
         />
         <LinkedMetric
           label="Edge blocked (fraud)"

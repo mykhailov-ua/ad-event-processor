@@ -11,13 +11,13 @@ import (
 
 func TestSyncAllowlistFromRedis_cidr(t *testing.T) {
 	ctx := context.Background()
-	rdb := &redisStub{sets: map[string][]string{
+	redisClient := &redisStub{sets: map[string][]string{
 		redisKeyAllowlistPartners: {"10.0.0.0/8", "203.0.113.5"},
 	}}
 	m := newLPMMap(t)
 	store := NewAllowlistStore()
 
-	added, removed, err := SyncAllowlistFromRedis(ctx, rdb, m, nil, store)
+	added, removed, err := SyncAllowlistFromRedis(ctx, redisClient, m, nil, store)
 	require.NoError(t, err)
 	assert.Equal(t, 2, added)
 	assert.Equal(t, 0, removed)

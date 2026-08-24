@@ -73,7 +73,7 @@ func (o *ShardOrchestrator) tick(ctx context.Context) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	numShards := int16(len(o.svc.rdbs))
+	numShards := int16(len(o.svc.redisShards))
 	if numShards <= 1 {
 		return
 	}
@@ -83,7 +83,7 @@ func (o *ShardOrchestrator) tick(ctx context.Context) {
 	maxEma := -1.0
 
 	for i := range numShards {
-		m, err := o.metricsProvider.GetMetrics(ctx, i, o.svc.rdbs[i])
+		m, err := o.metricsProvider.GetMetrics(ctx, i, o.svc.redisShards[i])
 		if err != nil {
 			slog.Warn("orchestrator: failed to get metrics", "shard", i, "error", err)
 			continue
@@ -145,7 +145,7 @@ func (o *ShardOrchestrator) migrateLoad(ctx context.Context, sourceShard int16) 
 		return err
 	}
 
-	sharder := domain.NewStaticSlotSharder(len(o.svc.rdbs))
+	sharder := domain.NewStaticSlotSharder(len(o.svc.redisShards))
 	var bestCampaign uuid.UUID
 	maxCampaignLoad := -1.0
 
@@ -170,7 +170,7 @@ func (o *ShardOrchestrator) migrateLoad(ctx context.Context, sourceShard int16) 
 
 	var targetShard int16 = -1
 	minEma := 1e18
-	for i := int16(0); i < int16(len(o.svc.rdbs)); i++ {
+	for i := int16(0); i < int16(len(o.svc.redisShards)); i++ {
 		if i == sourceShard {
 			continue
 		}
@@ -230,8 +230,8 @@ func (o *ShardOrchestrator) migrateLoad(ctx context.Context, sourceShard int16) 
 		return err
 	}
 
-	srcRdb := o.svc.rdbs[sourceShard]
-	dstRdb := o.svc.rdbs[targetShard]
+	srcRdb := o.svc.redisShards[sourceShard]
+	dstRdb := o.svc.redisShards[targetShard]
 	if err := domain.BumpMigrationFences(ctx, o.svc.GetPool(), srcRdb, []uuid.UUID{bestCampaign}); err != nil {
 		return err
 	}
@@ -291,26 +291,26 @@ func (q *ShardQuorumTracker) SetBreakerPctFunc(fn func(ctx context.Context, shar
 	q.mu.Unlock()
 }
 
-func (q *ShardQuorumTracker) ObserveShard(ctx context.Context, shard int, rdb redis.UniversalClient) {
-	if q == nil || shard < 0 || shard >= q.numShards || rdb == nil {
+func (q *ShardQuorumTracker) ObserveShard(ctx context.Context, shard int, redisClient redis.UniversalClient) {
+	if q == nil || shard < 0 || shard >= q.numShards || redisClient == nil {
 		return
 	}
 	now := time.Now()
 
 	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	pingErr := rdb.Ping(pingCtx).Err()
+	pingErr := redisClient.Ping(pingCtx).Err()
 	cancel()
 
 	sentinelUp := pingErr == nil
 	if pingErr == nil {
 		infoCtx, infoCancel := context.WithTimeout(ctx, 2*time.Second)
-		if info, err := rdb.Info(infoCtx, "replication").Result(); err != nil || info == "" {
+		if info, err := redisClient.Info(infoCtx, "replication").Result(); err != nil || info == "" {
 			sentinelUp = false
 		}
 		infoCancel()
 	}
 
-	breakerPct := q.readBreakerPct(ctx, shard, rdb)
+	breakerPct := q.readBreakerPct(ctx, shard, redisClient)
 
 	q.mu.Lock()
 	defer q.mu.Unlock()
@@ -319,12 +319,12 @@ func (q *ShardQuorumTracker) ObserveShard(ctx context.Context, shard int, rdb re
 	q.touch(&q.breakerOpen[shard], breakerPct >= trackerBreakerOpenPct, now)
 }
 
-func (q *ShardQuorumTracker) readBreakerPct(ctx context.Context, shard int, rdb redis.UniversalClient) float64 {
+func (q *ShardQuorumTracker) readBreakerPct(ctx context.Context, shard int, redisClient redis.UniversalClient) float64 {
 	if q.breakerPctFunc != nil {
 		return q.breakerPctFunc(ctx, shard)
 	}
 	key := fmt.Sprintf("control:tracker_breaker_open_pct:%d", shard)
-	v, err := rdb.Get(ctx, key).Result()
+	v, err := redisClient.Get(ctx, key).Result()
 	if err != nil {
 		return 0
 	}
@@ -363,7 +363,7 @@ func heldFor(since time.Time, now time.Time, d time.Duration) bool {
 
 func (s *Service) GetShardHealth(ctx context.Context) (ShardHealthReport, error) {
 	var report ShardHealthReport
-	report.Shards = make([]ShardHealthStatus, 0, len(s.rdbs))
+	report.Shards = make([]ShardHealthStatus, 0, len(s.redisShards))
 
 	settings, err := s.GetSettings(ctx)
 	if err != nil {
@@ -377,8 +377,8 @@ func (s *Service) GetShardHealth(ctx context.Context) (ShardHealthReport, error)
 	}
 	report.Outbox = outbox
 
-	for shardID, rdb := range s.rdbs {
-		status := probeShardHealth(ctx, shardID, rdb, outbox.LastProcessedEventID)
+	for shardID, redisClient := range s.redisShards {
+		status := probeShardHealth(ctx, shardID, redisClient, outbox.LastProcessedEventID)
 		report.Shards = append(report.Shards, status)
 	}
 	return report, nil
@@ -402,16 +402,16 @@ func (s *Service) outboxHealthSummary(ctx context.Context) (OutboxHealthSummary,
 	return summary, nil
 }
 
-func probeShardHealth(ctx context.Context, shardID int, rdb redis.UniversalClient, lastProcessedEventID int64) ShardHealthStatus {
+func probeShardHealth(ctx context.Context, shardID int, redisClient redis.UniversalClient, lastProcessedEventID int64) ShardHealthStatus {
 	status := ShardHealthStatus{ShardID: shardID}
-	if rdb == nil {
+	if redisClient == nil {
 		status.PingError = "redis client not configured"
 		return status
 	}
 
 	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	start := time.Now()
-	pingErr := rdb.Ping(pingCtx).Err()
+	pingErr := redisClient.Ping(pingCtx).Err()
 	cancel()
 	status.PingLatencyMs = float64(time.Since(start).Milliseconds())
 
@@ -423,7 +423,7 @@ func probeShardHealth(ctx context.Context, shardID int, rdb redis.UniversalClien
 
 	versionCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	version, err := rdb.Get(versionCtx, redisConfigVersionKey).Int64()
+	version, err := redisClient.Get(versionCtx, redisConfigVersionKey).Int64()
 	if errors.Is(err, redis.Nil) {
 		if lastProcessedEventID > 0 {
 			status.ConfigVersionLag = lastProcessedEventID
@@ -455,15 +455,15 @@ type ShardMetrics struct {
 }
 
 type ShardMetricsProvider interface {
-	GetMetrics(ctx context.Context, shardID int16, rdb redis.UniversalClient) (ShardMetrics, error)
+	GetMetrics(ctx context.Context, shardID int16, redisClient redis.UniversalClient) (ShardMetrics, error)
 }
 
 type RealShardMetricsProvider struct{}
 
-func (p *RealShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16, rdb redis.UniversalClient) (ShardMetrics, error) {
+func (p *RealShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16, redisClient redis.UniversalClient) (ShardMetrics, error) {
 	metrics := ShardMetrics{ShardID: shardID}
 
-	memInfo, err := rdb.Info(ctx, "memory").Result()
+	memInfo, err := redisClient.Info(ctx, "memory").Result()
 	if err == nil {
 		used := parseInfoInt64(memInfo, "used_memory")
 		maxmem := parseInfoInt64(memInfo, "maxmemory")
@@ -474,12 +474,12 @@ func (p *RealShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16
 		}
 	}
 
-	statsInfo, err := rdb.Info(ctx, "stats").Result()
+	statsInfo, err := redisClient.Info(ctx, "stats").Result()
 	if err == nil {
 		metrics.OpsPerSec = parseInfoInt64(statsInfo, "instantaneous_ops_per_sec")
 	}
 
-	cpuInfo, err := rdb.Info(ctx, "cpu").Result()
+	cpuInfo, err := redisClient.Info(ctx, "cpu").Result()
 	if err == nil {
 		sys := parseInfoFloat64(cpuInfo, "used_cpu_sys")
 		user := parseInfoFloat64(cpuInfo, "used_cpu_user")
@@ -502,7 +502,7 @@ type ShardAutoscaleConfig struct {
 }
 
 func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProvider, cfg ShardAutoscaleConfig) (int32, error) {
-	if !cfg.Enabled || len(s.rdbs) <= 1 {
+	if !cfg.Enabled || len(s.redisShards) <= 1 {
 		return 0, nil
 	}
 
@@ -514,11 +514,11 @@ func (s *Service) AutoscaleShards(ctx context.Context, provider ShardMetricsProv
 		cfg.SlotsToMigrate = 16
 	}
 
-	numShards := int16(len(s.rdbs))
+	numShards := int16(len(s.redisShards))
 	shardMetrics := make([]ShardMetrics, numShards)
 
 	for i := range numShards {
-		m, err := provider.GetMetrics(ctx, i, s.rdbs[i])
+		m, err := provider.GetMetrics(ctx, i, s.redisShards[i])
 		if err != nil {
 			continue
 		}

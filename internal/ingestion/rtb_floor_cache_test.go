@@ -26,11 +26,11 @@ func TestDealFloorCache_RefreshFromRedis(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
-	require.NoError(t, rdb.Set(context.Background(), RtbFloorRedisKeyPrefix+"deal-x", "250000", 0).Err())
-	cache := NewDealFloorCache(rdb)
+	require.NoError(t, redisClient.Set(context.Background(), RtbFloorRedisKeyPrefix+"deal-x", "250000", 0).Err())
+	cache := NewDealFloorCache(redisClient)
 	cache.Refresh(context.Background(), []string{"deal-x"})
 	v, ok := cache.Get("deal-x")
 	require.True(t, ok)

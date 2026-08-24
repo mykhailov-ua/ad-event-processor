@@ -96,7 +96,7 @@ func (worker *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, r
 	if len(rows) == 0 {
 		return nil
 	}
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
@@ -111,20 +111,20 @@ func (worker *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, r
 		addMembers[i] = ip
 	}
 
-	for i, rdb := range worker.svc.rdbs {
-		if rdb == nil {
+	for i, redisClient := range worker.svc.redisShards {
+		if redisClient == nil {
 			return fmt.Errorf("redis shard %d is nil", i)
 		}
-		if err := rdb.SAdd(ctx, key, addMembers...).Err(); err != nil {
+		if err := redisClient.SAdd(ctx, key, addMembers...).Err(); err != nil {
 			return fmt.Errorf("ml blacklist fast lane shard %d: %w", i, err)
 		}
 	}
 
-	if err := publishFraudQuarantineBatch(ctx, worker.svc.rdbs, ips); err != nil {
+	if err := publishFraudQuarantineBatch(ctx, worker.svc.redisShards, ips); err != nil {
 		return fmt.Errorf("ml blacklist quarantine fast lane: %w", err)
 	}
 	for _, ip := range ips {
-		_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, blacklistUpdateChannel, ip+":fraud")
+		_ = publishControlChannelToAllShards(ctx, worker.svc.redisShards, blacklistUpdateChannel, ip+":fraud")
 	}
 
 	if !maxQueued.IsZero() {

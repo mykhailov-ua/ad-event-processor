@@ -25,15 +25,15 @@ func TestSelfServe_CreateCampaign_requiresIdempotencyKey(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 
 	custID := uuid.New()
@@ -62,7 +62,7 @@ func TestSelfServe_CreateCampaign_insufficientBalance(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -71,8 +71,8 @@ func TestSelfServe_CreateCampaign_insufficientBalance(t *testing.T) {
 		SelfServeBudgetMinMicro: 1_000_000,
 		SelfServeBudgetMaxMicro: 100_000_000_000,
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 
 	custID := uuid.New()
@@ -104,15 +104,15 @@ func TestSelfServe_APIKey_requiresAuthService(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, _ := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, _ := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 
 	mux := http.NewServeMux()
@@ -132,15 +132,15 @@ func TestSelfServe_PauseResume(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 
 	custID := uuid.New()
@@ -174,15 +174,15 @@ func TestSelfServe_PaymentIntent_requiresIdempotencyKey(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 
 	custID := uuid.New()

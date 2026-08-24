@@ -20,14 +20,14 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:       "test-secret",
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -61,7 +61,7 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	assert.Equal(t, "closed", updated.Pacing)
 	assert.Equal(t, int64(300_000), updated.FloorMicro)
 
-	sub := rdb.Subscribe(ctx, "rtb:catalog:reload")
+	sub := redisClient.Subscribe(ctx, "rtb:catalog:reload")
 	defer sub.Close()
 	_, recvErr := sub.Receive(ctx)
 	require.NoError(t, recvErr)
@@ -96,11 +96,11 @@ func TestRtbDealsAPI_duplicateDealID(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -124,11 +124,11 @@ func TestRtbDealsAPI_invalidSeats(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -215,11 +215,11 @@ func TestRtbBudgetAuthority_settingsPropagation(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	require.NoError(t, svc.UpdateSettings(ctx, map[string]string{"rtb_budget_authority": "rtb"}))
@@ -228,7 +228,7 @@ func TestRtbBudgetAuthority_settingsPropagation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
 
-	val, err := rdb.HGet(ctx, "config:values", "rtb_budget_authority").Result()
+	val, err := redisClient.HGet(ctx, "config:values", "rtb_budget_authority").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "rtb", val)
 
@@ -237,7 +237,7 @@ func TestRtbBudgetAuthority_settingsPropagation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
 
-	val, err = rdb.HGet(ctx, "config:values", "rtb_budget_authority").Result()
+	val, err = redisClient.HGet(ctx, "config:values", "rtb_budget_authority").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "lua", val)
 }

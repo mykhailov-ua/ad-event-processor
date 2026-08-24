@@ -25,7 +25,7 @@ func TestReconcileBudgetSnapshot_detectsDriftAndEnqueuesAdjust(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -42,11 +42,11 @@ func TestReconcileBudgetSnapshot_detectsDriftAndEnqueuesAdjust(t *testing.T) {
 		domain.ToUUID(campaignID), budgetLimit, domain.ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), 9_000_000, 0).Err())
-	require.NoError(t, rdb.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), 9_000_000, 0).Err())
+	require.NoError(t, redisClient.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
 
 	cfg := &config.Config{QuotaChunkSize: 5_000_000, BudgetSyncIntervalMs: 5000, LedgerBatchFlushMs: 10000}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	worker := NewReconWorker(svc, time.Hour)
 
 	worker.ReconcileBudgetSnapshot(ctx)
@@ -73,7 +73,7 @@ func TestReconcileBudgetSnapshot_skipsInflightGrace(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -91,12 +91,12 @@ func TestReconcileBudgetSnapshot_skipsInflightGrace(t *testing.T) {
 		domain.ToUUID(campaignID), domain.ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), 5_000_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, tag+"budget:inflight:campaign:"+idStr, 4_000_000, 0).Err())
-	require.NoError(t, rdb.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), 5_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, tag+"budget:inflight:campaign:"+idStr, 4_000_000, 0).Err())
+	require.NoError(t, redisClient.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
 
 	cfg := &config.Config{BudgetSyncIntervalMs: 5000, LedgerBatchFlushMs: 10000}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	worker := NewReconWorker(svc, time.Hour)
 	worker.ReconcileBudgetSnapshot(ctx)
 
@@ -114,7 +114,7 @@ func TestReconcileBudgetSnapshot_skipsMigrationFence(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -130,11 +130,11 @@ func TestReconcileBudgetSnapshot_skipsMigrationFence(t *testing.T) {
 		domain.ToUUID(campaignID), domain.ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), 1_000_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, domain.MigrationFenceRedisKey(campaignID), "1", 0).Err())
-	require.NoError(t, rdb.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), 1_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.MigrationFenceRedisKey(campaignID), "1", 0).Err())
+	require.NoError(t, redisClient.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, &config.Config{})
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, &config.Config{})
 	NewReconWorker(svc, time.Hour).ReconcileBudgetSnapshot(ctx)
 
 	var discCount int
@@ -163,7 +163,7 @@ func TestFault_ReconUnderLoad(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -182,20 +182,20 @@ func TestFault_ReconUnderLoad(t *testing.T) {
 		domain.ToUUID(campaignID), budgetLimit, domain.ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), 16_000_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, domain.CampaignSyncKey(campaignID), 1_000_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, tag+"budget:inflight:campaign:"+idStr, 500_000, 0).Err())
-	require.NoError(t, rdb.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), 16_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.CampaignSyncKey(campaignID), 1_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, tag+"budget:inflight:campaign:"+idStr, 500_000, 0).Err())
+	require.NoError(t, redisClient.SAdd(ctx, "budget:dirty_campaigns", campaignID.String()).Err())
 
 	cfg := &config.Config{QuotaChunkSize: 5_000_000, BudgetSyncIntervalMs: 5000, LedgerBatchFlushMs: 10000}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	worker := NewReconWorker(svc, time.Hour)
 
 	worker.ReconcileBudgetSnapshot(ctx)
 	ob := NewOutboxWorker(svc)
 	require.NoError(t, ob.ProcessOutbox(ctx))
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 
 	faultproof.Log(t, "recon_under_load", map[string]string{
 		"subsystem":      "management_recon",

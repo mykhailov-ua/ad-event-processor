@@ -134,7 +134,7 @@ func defaultFraudPolicyPresetDTOs() []FraudPolicyPresetDTO {
 		domain.FraudPresetConservative,
 		domain.FraudPresetBalanced,
 		domain.FraudPresetAggressive,
-		domain.FraudPresetGrayMarket,
+		domain.FraudPresetEnhancedDefenseLegacy,
 		domain.FraudPresetSocialInApp,
 	}
 	out := make([]FraudPolicyPresetDTO, 0, len(names))
@@ -157,7 +157,7 @@ func defaultFraudPolicyPresetDTOs() []FraudPolicyPresetDTO {
 func (s *Service) resolveFraudPresetThresholds(ctx context.Context, name string) (uint8, uint8, uint8, uint8, error) {
 	name = strings.TrimSpace(strings.ToLower(name))
 	if name == "" {
-		return 0, 0, 0, 0, errValidation("preset must be conservative, balanced, aggressive, gray_market, or social_in_app")
+		return 0, 0, 0, 0, errValidation("preset must be conservative, balanced, aggressive, enhanced_defense, or social_in_app")
 	}
 	rows, err := s.cachedFraudPolicyPresetRows(ctx)
 	if err == nil {
@@ -169,7 +169,7 @@ func (s *Service) resolveFraudPresetThresholds(ctx context.Context, name string)
 	}
 	pass, suspect, ivt, block, ok := domain.ResolveFraudPreset(name)
 	if !ok {
-		return 0, 0, 0, 0, errValidation("preset must be conservative, balanced, aggressive, gray_market, or social_in_app")
+		return 0, 0, 0, 0, errValidation("preset must be conservative, balanced, aggressive, enhanced_defense, or social_in_app")
 	}
 	return pass, suspect, ivt, block, nil
 }

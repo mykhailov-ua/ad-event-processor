@@ -20,10 +20,10 @@ func TestBlockIPUsesOutbox(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -37,7 +37,7 @@ func TestBlockIPUsesOutbox(t *testing.T) {
 	assert.Equal(t, 1, outboxCount)
 
 	assert.Eventually(t, func() bool {
-		isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "10.0.0.1").Result()
+		isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", "10.0.0.1").Result()
 		return err == nil && isMember
 	}, 2*time.Second, 20*time.Millisecond)
 }
@@ -49,10 +49,10 @@ func TestBlockIP_ProtectedAndAudit(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()

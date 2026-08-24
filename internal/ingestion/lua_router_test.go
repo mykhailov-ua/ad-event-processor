@@ -56,20 +56,20 @@ func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := attachFilterDeadline(t.Context(), time.Second)
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	fFast := newRealRedisUnifiedFilter(t, rdb)
+	fFast := newRealRedisUnifiedFilter(t, redisClient)
 	fFast.SetLuaFastPathEnabled(true)
 	fFast.SetTTCMin(0)
 	require.NoError(t, fFast.PreloadScripts(ctx))
 
-	fFull := newRealRedisUnifiedFilter(t, rdb)
+	fFull := newRealRedisUnifiedFilter(t, redisClient)
 	fFull.SetLuaFastPathEnabled(false)
 	require.NoError(t, fFull.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evtFast := &domain.Event{
 		Type:       "impression",
@@ -92,7 +92,7 @@ func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {
 	reg := &mockRegistry{}
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	remaining, err := rdb.Get(ctx, camp.BudgetCampaignKey).Int64()
+	remaining, err := redisClient.Get(ctx, camp.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	const debitMicro = 10_000
 	const expected = int64(9_000_000_000_000_000) - 2*debitMicro

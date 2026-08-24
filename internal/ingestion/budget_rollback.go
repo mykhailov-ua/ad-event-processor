@@ -26,8 +26,8 @@ func (f *UnifiedFilter) RollbackRedisDebit(
 	if err != nil {
 		return fmt.Errorf("rollback: failed to resolve shard: %w", err)
 	}
-	rdb := f.rdbs[shard%len(f.rdbs)]
-	if rdb == nil {
+	redisClient := f.redisShards[shard%len(f.redisShards)]
+	if redisClient == nil {
 		return fmt.Errorf("rollback: redis client is nil for shard %d", shard)
 	}
 
@@ -59,9 +59,9 @@ func (f *UnifiedFilter) RollbackRedisDebit(
 		campInfo.CustomerID.String(),
 	}
 
-	err = rdb.EvalSha(ctx, f.rollbackScriptHash, keys, args...).Err()
+	err = redisClient.EvalSha(ctx, f.rollbackScriptHash, keys, args...).Err()
 	if err != nil && isNoScriptErr(err) {
-		err = rdb.Eval(ctx, budgetRollbackLua, keys, args...).Err()
+		err = redisClient.Eval(ctx, budgetRollbackLua, keys, args...).Err()
 	}
 
 	if err != nil {

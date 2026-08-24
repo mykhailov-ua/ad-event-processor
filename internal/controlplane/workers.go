@@ -966,7 +966,7 @@ type ReconWorker struct {
 func NewReconWorker(svc *Service, interval time.Duration) *ReconWorker {
 	numShards := 1
 	if svc != nil {
-		numShards = len(svc.rdbs)
+		numShards = len(svc.redisShards)
 	}
 	return &ReconWorker{
 		svc:      svc,
@@ -978,7 +978,7 @@ func NewReconWorker(svc *Service, interval time.Duration) *ReconWorker {
 func NewReconWorkerWithQuorum(svc *Service, interval, quorum time.Duration) *ReconWorker {
 	w := NewReconWorker(svc, interval)
 	if w.quorum != nil {
-		w.quorum = NewShardQuorumTracker(len(svc.rdbs), quorum)
+		w.quorum = NewShardQuorumTracker(len(svc.redisShards), quorum)
 	}
 	return w
 }
@@ -1104,16 +1104,16 @@ func (nginxWorker *NginxConfigWorker) Start(ctx context.Context, interval time.D
 }
 
 func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error {
-	if len(nginxWorker.svc.rdbs) == 0 {
+	if len(nginxWorker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
-	rdb := PickHealthyControlShard(nginxWorker.svc.rdbs)
-	if rdb == nil {
+	redisClient := PickHealthyControlShard(nginxWorker.svc.redisShards)
+	if redisClient == nil {
 		return fmt.Errorf("no healthy redis shard")
 	}
 
-	manual, err := rdb.SMembers(ctx, "blacklist:manual").Result()
+	manual, err := redisClient.SMembers(ctx, "blacklist:manual").Result()
 	if err != nil {
 		return fmt.Errorf("failed to fetch manual blacklist: %w", err)
 	}
@@ -1121,7 +1121,7 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 		return err
 	}
 
-	auto, err := rdb.SMembers(ctx, "blacklist:auto").Result()
+	auto, err := redisClient.SMembers(ctx, "blacklist:auto").Result()
 	if err != nil {
 		return fmt.Errorf("failed to fetch auto blacklist: %w", err)
 	}
@@ -2020,7 +2020,7 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 		return fmt.Errorf("failed to query syncing model version: %w", err)
 	}
 
-	numShards := len(o.svc.rdbs)
+	numShards := len(o.svc.redisShards)
 	if numShards == 0 {
 		return fmt.Errorf("no redis shards configured")
 	}
@@ -2074,9 +2074,9 @@ func (o *FraudModelSyncOrchestrator) Tick(ctx context.Context) error {
 				return fmt.Errorf("failed to update shard phase to ACTIVE: %w", err)
 			}
 
-			rdb := o.svc.rdbs[activeSyncShard]
-			if rdb != nil {
-				if err := syncMLModelMetaOnShard(ctx, rdb, versionID, artifactHash, time.Now().Unix()); err != nil {
+			redisClient := o.svc.redisShards[activeSyncShard]
+			if redisClient != nil {
+				if err := syncMLModelMetaOnShard(ctx, redisClient, versionID, artifactHash, time.Now().Unix()); err != nil {
 					return fmt.Errorf("failed to set ml model keys: %w", err)
 				}
 			}
@@ -2149,18 +2149,18 @@ func (o *FraudModelSyncOrchestrator) rollbackShard(ctx context.Context, shardID 
 	err = pool.QueryRow(ctx, "SELECT id, artifact_hash FROM ml_model_versions WHERE status = 'ACTIVE' LIMIT 1").Scan(&prevVersionID, &prevHash)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			rdb := o.svc.rdbs[shardID]
-			if rdb != nil {
-				rdb.Del(ctx, "ml:model:version", "ml:model:hash", "ml:model:applied_at")
+			redisClient := o.svc.redisShards[shardID]
+			if redisClient != nil {
+				redisClient.Del(ctx, "ml:model:version", "ml:model:hash", "ml:model:applied_at")
 			}
 			return nil
 		}
 		return fmt.Errorf("failed to query previous active model version: %w", err)
 	}
 
-	rdb := o.svc.rdbs[shardID]
-	if rdb != nil {
-		if err := syncMLModelMetaOnShard(ctx, rdb, prevVersionID, prevHash, time.Now().Unix()); err != nil {
+	redisClient := o.svc.redisShards[shardID]
+	if redisClient != nil {
+		if err := syncMLModelMetaOnShard(ctx, redisClient, prevVersionID, prevHash, time.Now().Unix()); err != nil {
 			return fmt.Errorf("rollback ml model keys: %w", err)
 		}
 	}
@@ -2496,17 +2496,17 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 		}
 	}
 
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
 	for reason, batch := range byReason {
 		key := "blacklist:" + reason
-		for i, rdb := range worker.svc.rdbs {
-			if rdb == nil {
+		for i, redisClient := range worker.svc.redisShards {
+			if redisClient == nil {
 				return fmt.Errorf("redis shard %d is nil", i)
 			}
-			_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 				for _, ip := range batch.removes {
 					pipe.SRem(ctx, key, ip)
 				}
@@ -2524,10 +2524,10 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 			}
 		}
 		if reason == "fraud" && len(batch.adds) > 0 {
-			_ = publishFraudQuarantineBatch(ctx, worker.svc.rdbs, batch.adds)
+			_ = publishFraudQuarantineBatch(ctx, worker.svc.redisShards, batch.adds)
 		}
 		for _, ip := range append(batch.adds, batch.removes...) {
-			_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, blacklistUpdateChannel, ip+":"+reason)
+			_ = publishControlChannelToAllShards(ctx, worker.svc.redisShards, blacklistUpdateChannel, ip+":"+reason)
 		}
 	}
 
@@ -2541,7 +2541,7 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 }
 
 func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPayload, queuedAt time.Time) error {
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 	reason := normalizeBlacklistReason(p.Reason)
@@ -2550,13 +2550,13 @@ func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p Blackli
 	if p.Action != "add" && p.Action != "remove" {
 		return fmt.Errorf("unknown blacklist action: %s", p.Action)
 	}
-	if err := syncGlobalSetMemberToAllShards(ctx, worker.svc.rdbs, key, p.IP, add); err != nil {
+	if err := syncGlobalSetMemberToAllShards(ctx, worker.svc.redisShards, key, p.IP, add); err != nil {
 		return fmt.Errorf("blacklist sync failed: %w", err)
 	}
 	if reason == "fraud" && p.Action == "add" {
-		_ = publishFraudQuarantineBatch(ctx, worker.svc.rdbs, []string{p.IP})
+		_ = publishFraudQuarantineBatch(ctx, worker.svc.redisShards, []string{p.IP})
 	}
-	_ = publishControlChannelToAllShards(ctx, worker.svc.rdbs, blacklistUpdateChannel, p.IP+":"+reason)
+	_ = publishControlChannelToAllShards(ctx, worker.svc.redisShards, blacklistUpdateChannel, p.IP+":"+reason)
 	if !queuedAt.IsZero() {
 		lag := time.Since(queuedAt).Seconds()
 		if lag >= 0 {
@@ -2592,11 +2592,11 @@ func (worker *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brand
 	if err != nil {
 		return err
 	}
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client")
 	}
 	key := "brand:creatives:" + brandIDStr
-	return syncKeyToAllShards(ctx, worker.svc.rdbs, key, payload, 0)
+	return syncKeyToAllShards(ctx, worker.svc.redisShards, key, payload, 0)
 }
 
 const (

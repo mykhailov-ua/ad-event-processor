@@ -226,7 +226,7 @@ func (s *Service) afterSlotMapActivated(ctx context.Context, version int32) {
 		version = row.ActiveVersion
 	}
 	if ss, ok := s.sharder.(*domain.StaticSlotSharder); ok {
-		_, _ = domain.LoadActiveSlotMap(ctx, s.GetPool(), ss, len(s.rdbs))
+		_, _ = domain.LoadActiveSlotMap(ctx, s.GetPool(), ss, len(s.redisShards))
 	}
 	s.publishRoutingCutover(ctx, routingEpoch, version)
 }

@@ -15,10 +15,10 @@ func TestPingConnectedRedisShards_nilSlotSkipped(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 
-	rdbs := []redis.UniversalClient{nil, redis.NewClient(&redis.Options{Addr: mr.Addr()})}
-	t.Cleanup(func() { _ = rdbs[1].Close() })
+	redisShards := []redis.UniversalClient{nil, redis.NewClient(&redis.Options{Addr: mr.Addr()})}
+	t.Cleanup(func() { _ = redisShards[1].Close() })
 
-	assert.True(t, pingConnectedRedisShards(context.Background(), rdbs))
+	assert.True(t, pingConnectedRedisShards(context.Background(), redisShards))
 }
 
 func TestPingConnectedRedisShards_allNilUnhealthy(t *testing.T) {

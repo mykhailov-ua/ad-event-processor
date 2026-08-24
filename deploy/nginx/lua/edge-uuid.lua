@@ -1,6 +1,6 @@
 local _M = {}
 
--- 8-4-4-4-12 lowercase hex (canonical UUID string form).
+
 local UUID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 
 function _M.normalize(s)

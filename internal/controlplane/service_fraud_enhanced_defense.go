@@ -10,10 +10,12 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func applyGrayMarketGMAPreset(ctx context.Context, tx pgx.Tx, campaignID uuid.UUID) error {
+func applyEnhancedDefensePreset(ctx context.Context, tx pgx.Tx, campaignID uuid.UUID) error {
 	tag, err := tx.Exec(ctx, `
 		UPDATE campaigns
 		SET safe_page_enabled = true,
+		 silent_reject_enabled = true,
+		 click_delivery = 'redirect',
 		 attestation_enabled = true,
 		 attestation_mode = 'strict',
 		 attestation_ttl_sec = CASE WHEN attestation_ttl_sec < 60 THEN 300 ELSE attestation_ttl_sec END,
@@ -24,7 +26,7 @@ func applyGrayMarketGMAPreset(ctx context.Context, tx pgx.Tx, campaignID uuid.UU
 		 updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1`, domain.ToUUID(campaignID))
 	if err != nil {
-		return fmt.Errorf("apply gray_market GMA preset: %w", err)
+		return fmt.Errorf("apply enhanced_defense preset: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return ErrCampaignNotFound

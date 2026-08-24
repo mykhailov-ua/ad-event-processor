@@ -24,7 +24,7 @@ func TestSlotMapAPI_RBAC(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -34,10 +34,10 @@ func TestSlotMapAPI_RBAC(t *testing.T) {
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 
-	authMW := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
+	authMW := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -78,12 +78,12 @@ func TestSlotMapAPI_markMigratingAndActivate(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc := NewService(context.Background(), pool, rdbs, nil, cfg)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc := NewService(context.Background(), pool, redisShards, nil, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()

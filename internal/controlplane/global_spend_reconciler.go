@@ -47,7 +47,7 @@ func globalSpendRedisMarkerKey(batchDedupKey string, campaignID uuid.UUID) strin
 
 type GlobalSpendReconciler struct {
 	pool           *pgxpool.Pool
-	rdbs           []redis.UniversalClient
+	redisShards           []redis.UniversalClient
 	sharder        domain.Sharder
 	campaignRepo   *domain.CampaignRepo
 	minBatchSize   int
@@ -64,7 +64,7 @@ type GlobalSpendReconcilerConfig struct {
 
 func NewGlobalSpendReconciler(
 	pool *pgxpool.Pool,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder domain.Sharder,
 	cfg GlobalSpendReconcilerConfig,
 ) *GlobalSpendReconciler {
@@ -80,7 +80,7 @@ func NewGlobalSpendReconciler(
 	}
 	return &GlobalSpendReconciler{
 		pool:           pool,
-		rdbs:           rdbs,
+		redisShards:           redisShards,
 		sharder:        sharder,
 		campaignRepo:   repo,
 		minBatchSize:   cfg.MinBatchSize,
@@ -199,7 +199,7 @@ func (r *GlobalSpendReconciler) globalSpendPgApplied(ctx context.Context, probeT
 }
 
 func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, batchDedupKey string, deltas map[uuid.UUID]int64) error {
-	if len(r.rdbs) == 0 {
+	if len(r.redisShards) == 0 {
 		return nil
 	}
 	ttlSec := int64(globalSpendRedisMarkerTTL / time.Second)
@@ -213,18 +213,18 @@ func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, batchDedu
 			continue
 		}
 		shardIdx := r.shardIndex(campID)
-		if shardIdx < 0 || shardIdx >= len(r.rdbs) {
+		if shardIdx < 0 || shardIdx >= len(r.redisShards) {
 			continue
 		}
-		rdb := r.rdbs[shardIdx]
+		redisClient := r.redisShards[shardIdx]
 		budgetKey := domain.BudgetCampaignKey(campID)
 		markerKey := globalSpendRedisMarkerKey(batchDedupKey, campID)
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(rdb redis.UniversalClient, budgetKey, markerKey string, amount int64) {
+		go func(redisClient redis.UniversalClient, budgetKey, markerKey string, amount int64) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			_, err := rdb.Eval(ctx, globalSpendCommitScript, []string{budgetKey, markerKey}, amount, ttlSec).Result()
+			_, err := redisClient.Eval(ctx, globalSpendCommitScript, []string{budgetKey, markerKey}, amount, ttlSec).Result()
 			if err != nil {
 				errMu.Lock()
 				if firstErr == nil {
@@ -232,7 +232,7 @@ func (r *GlobalSpendReconciler) commitRedisBudget(ctx context.Context, batchDedu
 				}
 				errMu.Unlock()
 			}
-		}(rdb, budgetKey, markerKey, amount)
+		}(redisClient, budgetKey, markerKey, amount)
 	}
 	wg.Wait()
 	return firstErr

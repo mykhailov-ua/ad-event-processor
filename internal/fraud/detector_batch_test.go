@@ -44,7 +44,7 @@ func TestDetector_oneHTTPBatchPerScan(t *testing.T) {
 		ips: []SuspiciousIP{
 			{IP: "203.0.113.1", Reason: "lgbm-v1", Score: 40, CampaignID: campaignID, Action: "boost", Boost: 40, TTLSeconds: 300},
 			{IP: "203.0.113.2", Reason: "lgbm-v1", Score: 50, CampaignID: campaignID, Action: "boost", Boost: 50, TTLSeconds: 300},
-			{IP: "203.0.113.3", Reason: "lgbm-v1", Score: 60, CampaignID: campaignID, Action: "ghost", TTLSeconds: 120},
+			{IP: "203.0.113.3", Reason: "lgbm-v1", Score: 60, CampaignID: campaignID, Action: "silent_reject", TTLSeconds: 120},
 		},
 	}
 

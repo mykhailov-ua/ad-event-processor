@@ -42,7 +42,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -52,7 +52,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 
 	campaignID := seedClickWithTLS(t, conn, ip, chromeUA, pythonJA3)
 
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xcafebabe,
 		SeenAt:  time.Now().UTC(),
@@ -60,7 +60,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 
 	rule := &tcpEdgeCorrelationRule{
 		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
+		redisClient: redisClient,
 		cfg: AnalyzerConfig{Window: time.Hour},
 	}
 
@@ -70,7 +70,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 	assert.Equal(t, ip, candidates[0].IP)
 	assert.Equal(t, campaignID.String(), candidates[0].CampaignID)
 	assert.Equal(t, "ivt_tcp_edge_correlation", candidates[0].Reason)
-	assert.Equal(t, "ghost", candidates[0].Action)
+	assert.Equal(t, "silent_reject", candidates[0].Action)
 	assert.Equal(t, float64(70), candidates[0].Score)
 }
 
@@ -82,7 +82,7 @@ func TestTCPEdgeCorrelationRule_SkipsMatchingUAJA3(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -91,7 +91,7 @@ func TestTCPEdgeCorrelationRule_SkipsMatchingUAJA3(t *testing.T) {
 	chromeJA3 := "chrome-ja3-fingerprint"
 
 	seedClickWithTLS(t, conn, ip, chromeUA, chromeJA3)
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 		IP:      ip,
 		TCPHash: 0x12345678,
 		SeenAt:  time.Now().UTC(),
@@ -99,7 +99,7 @@ func TestTCPEdgeCorrelationRule_SkipsMatchingUAJA3(t *testing.T) {
 
 	rule := &tcpEdgeCorrelationRule{
 		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
+		redisClient: redisClient,
 		cfg: AnalyzerConfig{Window: time.Hour},
 	}
 

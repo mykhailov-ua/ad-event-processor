@@ -26,33 +26,33 @@ func appendSegmentMemberKey(dst []byte, segmentID uuid.UUID, userHash [16]byte) 
 	return appendHex16(dst, userHash)
 }
 
-func pickSegmentShard(rdbs []redis.UniversalClient, segmentID uuid.UUID) redis.UniversalClient {
-	if len(rdbs) == 0 {
+func pickSegmentShard(redisShards []redis.UniversalClient, segmentID uuid.UUID) redis.UniversalClient {
+	if len(redisShards) == 0 {
 		return nil
 	}
 	var h uint32
 	for i := range 16 {
 		h = h*31 + uint32(segmentID[i])
 	}
-	start := int(h % uint32(len(rdbs)))
-	for i := range rdbs {
-		idx := (start + i) % len(rdbs)
-		if rdbs[idx] != nil {
-			return rdbs[idx]
+	start := int(h % uint32(len(redisShards)))
+	for i := range redisShards {
+		idx := (start + i) % len(redisShards)
+		if redisShards[idx] != nil {
+			return redisShards[idx]
 		}
 	}
 	return nil
 }
 
-func segmentMemberExists(ctx context.Context, rdbs []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte) (bool, error) {
-	rdb := pickSegmentShard(rdbs, segmentID)
-	if rdb == nil || segmentID == uuid.Nil {
+func segmentMemberExists(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte) (bool, error) {
+	redisClient := pickSegmentShard(redisShards, segmentID)
+	if redisClient == nil || segmentID == uuid.Nil {
 		return false, nil
 	}
 	w := bufPool.Get().(*bufWrapper)
 	w.buf = appendSegmentMemberKey(w.buf[:0], segmentID, userHash)
 	key := unsafeString(w.buf)
-	err := rdb.Get(ctx, key).Err()
+	err := redisClient.Get(ctx, key).Err()
 	bufPool.Put(w)
 	if errors.Is(err, redis.Nil) {
 		return false, nil
@@ -63,18 +63,18 @@ func segmentMemberExists(ctx context.Context, rdbs []redis.UniversalClient, segm
 	return true, nil
 }
 
-func addSegmentMember(ctx context.Context, rdbs []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte, ttl time.Duration) error {
+func addSegmentMember(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte, ttl time.Duration) error {
 	if segmentID == uuid.Nil || ttl <= 0 {
 		return nil
 	}
-	rdb := pickSegmentShard(rdbs, segmentID)
-	if rdb == nil {
+	redisClient := pickSegmentShard(redisShards, segmentID)
+	if redisClient == nil {
 		return nil
 	}
 	w := bufPool.Get().(*bufWrapper)
 	w.buf = appendSegmentMemberKey(w.buf[:0], segmentID, userHash)
 	key := unsafeString(w.buf)
-	err := rdb.Set(ctx, key, "1", ttl).Err()
+	err := redisClient.Set(ctx, key, "1", ttl).Err()
 	bufPool.Put(w)
 	return err
 }

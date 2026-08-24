@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )
@@ -86,6 +87,34 @@ func resolveSafePageActionDelivery(
 }
 
 const safePageStubPathPrefix = "/safe_page_stub"
+
+func appendSafePageStubPath(dst []byte, campaignID uuid.UUID) []byte {
+	dst = append(dst, safePageStubPathPrefix...)
+	dst = append(dst, "?campaign_id="...)
+	return append(dst, campaignID.String()...)
+}
+
+func (h *AdsPacketHandler) writeClickFraudSilentReject(
+	ctx *connContext,
+	c gnet.Conn,
+	evt *domain.Event,
+	outcome trackOutcome,
+	forceSafe bool,
+	startMono int64,
+) {
+	h.recordTrackReject(ctx, evt, outcome.RejectKind)
+	shard := h.sharder.GetShard(evt.CampaignID)
+	enqueueFraudReject(h.fraudWriter, shard, evt)
+
+	action, safeURL := resolveSafePageActionDelivery(h.registry, evt.CampaignID, outcome, forceSafe, safePageDeliveryRedirect)
+	if action == safePageActionRedirect && safeURL != "" {
+		h.writeGnetClickLandingRedirect(ctx, c, startMono, UnsafeBytes(safeURL), false)
+		return
+	}
+	loc := appendSafePageStubPath(ctx.bufSlice[:0], evt.CampaignID)
+	ctx.bufSlice = loc
+	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, true)
+}
 
 var (
 	safePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")

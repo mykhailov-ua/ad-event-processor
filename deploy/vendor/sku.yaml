@@ -1,19 +1,4 @@
-# Vendor SKU catalog (Layer V). Not shipped inside customer binaries.
-# Commercial capability matrix (antifraud shipped vs gates): deploy/vendor/SALES.md section Antifraud capability matrix
-# Sign offline: use ad-event-processor-license repo CLI
-# go run ./cmd/ad-event-processor-license --sku <code> --customer-name "Acme" --deployment-id <uuid> [--fingerprint <host_fp>]
-#
-# Schema:
-#   skus[].code              - JWT sku/plan claim (required, unique)
-#   skus[].price_usd_monthly - commercial reference (USDT); not enforced in binary
-#   skus[].valid_days        - JWT valid_until = issued_at + valid_days (default 30)
-#   skus[].grace_days        - JWT grace_days (default 7)
-#   skus[].features          - licensing.FeatureSet JSON (tier_policy.go sanitizes at runtime)
-#   skus[].limits            - licensing.Limits JSON (0 = unlimited: campaigns, events/mo, requests/day)
-#   skus[].bind.mode         - hard|fingerprint (1 host, FP in JWT) | multi (max_activations hosts)
-#
-# Tier enforcement (code): hosts (max_activations) + RPS + feature gates only.
-# No campaign count, monthly event, or daily request caps on self-hosted JWT (0 = disabled).
+
 
 skus:
   - code: starter

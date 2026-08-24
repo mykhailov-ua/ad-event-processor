@@ -277,7 +277,7 @@ func rtbFloorSuggestionDTO(row db.RtbFloorSuggestion) RtbFloorSuggestionDTO {
 }
 
 func (s *Service) ApplyRtbFloorSuggestions(ctx context.Context, dryRun bool, placementIDs []string) (RtbFloorsApplyResult, error) {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return RtbFloorsApplyResult{}, fmt.Errorf("no redis client available")
 	}
 	if s.GetPool() == nil {
@@ -300,11 +300,11 @@ func (s *Service) ApplyRtbFloorSuggestions(ctx context.Context, dryRun bool, pla
 		return result, nil
 	}
 
-	for _, rdb := range s.rdbs {
-		if rdb == nil {
+	for _, redisClient := range s.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		pipe := rdb.Pipeline()
+		pipe := redisClient.Pipeline()
 		for _, row := range rows {
 			key := domain.RtbFloorRedisKeyPrefix + row.DealID
 			pipe.Set(ctx, key, row.SuggestedFloorMicro, 0)

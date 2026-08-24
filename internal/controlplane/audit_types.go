@@ -120,7 +120,7 @@ type auditCampaignFraudChange struct {
 	FraudThresholdSuspect uint8 `json:"fraud_threshold_suspect"`
 	FraudThresholdIVT     uint8 `json:"fraud_threshold_ivt"`
 	FraudThresholdBlock   uint8 `json:"fraud_threshold_block"`
-	GhostIVTEnabled       bool  `json:"ghost_ivt_enabled"`
+	SilentRejectEnabled   bool  `json:"silent_reject_enabled"`
 	BehaviorFlags         int32 `json:"behavior_flags"`
 }
 

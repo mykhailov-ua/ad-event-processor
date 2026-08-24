@@ -15,7 +15,7 @@ import (
 type ReconnectFunc func(pool *pgxpool.Pool)
 
 type Subscriber struct {
-	rdb          redis.UniversalClient
+	redisClient          redis.UniversalClient
 	fencing      *FencingGate
 	reconnect    ReconnectFunc
 	maxConns     int
@@ -35,7 +35,7 @@ type SubscriberConfig struct {
 	Interval time.Duration
 }
 
-func NewSubscriber(rdb redis.UniversalClient, fencing *FencingGate, reconnect ReconnectFunc, cfg SubscriberConfig) *Subscriber {
+func NewSubscriber(redisClient redis.UniversalClient, fencing *FencingGate, reconnect ReconnectFunc, cfg SubscriberConfig) *Subscriber {
 	if cfg.Interval <= 0 {
 		cfg.Interval = time.Second
 	}
@@ -46,10 +46,10 @@ func NewSubscriber(rdb redis.UniversalClient, fencing *FencingGate, reconnect Re
 		cfg.MinConns = 1
 	}
 	if fencing == nil {
-		fencing = NewFencingGate(rdb)
+		fencing = NewFencingGate(redisClient)
 	}
 	return &Subscriber{
-		rdb:       rdb,
+		redisClient:       redisClient,
 		fencing:   fencing,
 		reconnect: reconnect,
 		maxConns:  cfg.MaxConns,
@@ -111,7 +111,7 @@ func (s *Subscriber) runNotifyLoop(ctx context.Context) {
 			return
 		default:
 		}
-		pubsub := s.rdb.Subscribe(ctx, NotifyChannel())
+		pubsub := s.redisClient.Subscribe(ctx, NotifyChannel())
 		ch := pubsub.Channel()
 		for {
 			select {
@@ -137,7 +137,7 @@ func (s *Subscriber) runNotifyLoop(ctx context.Context) {
 }
 
 func (s *Subscriber) refresh(ctx context.Context) {
-	dsn, epoch, err := ActiveDSN(ctx, s.rdb)
+	dsn, epoch, err := ActiveDSN(ctx, s.redisClient)
 	if err != nil {
 		if !errors.Is(err, redis.Nil) {
 			slog.Warn("pg failover dsn refresh failed", "error", err)

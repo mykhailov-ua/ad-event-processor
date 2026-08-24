@@ -13,17 +13,17 @@ import (
 )
 
 type EntitlementsFilter struct {
-	registry   *Registry
-	sharder    Sharder
-	rdbs       []redis.UniversalClient
-	regionCode uint8
+	registry    *Registry
+	sharder     Sharder
+	redisShards []redis.UniversalClient
+	regionCode  uint8
 }
 
-func NewEntitlementsFilter(registry *Registry, sharder Sharder, rdbs []redis.UniversalClient) *EntitlementsFilter {
+func NewEntitlementsFilter(registry *Registry, sharder Sharder, redisShards []redis.UniversalClient) *EntitlementsFilter {
 	return &EntitlementsFilter{
-		registry: registry,
-		sharder:  sharder,
-		rdbs:     rdbs,
+		registry:    registry,
+		sharder:     sharder,
+		redisShards: redisShards,
 	}
 }
 
@@ -33,9 +33,9 @@ func (f *EntitlementsFilter) SetRegionCode(code uint8) {
 	}
 }
 
-func (f *EntitlementsFilter) getRDB(id uuid.UUID) redis.UniversalClient {
+func (f *EntitlementsFilter) getRedisShardClient(id uuid.UUID) redis.UniversalClient {
 	shard := f.sharder.GetShard(id)
-	return f.rdbs[shard]
+	return f.redisShards[shard]
 }
 
 func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error {
@@ -83,12 +83,12 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 	b := IngressDayKey(keyBuf[:0], f.regionCode, custID, dateStr)
 	redisKey := unsafeString(b)
 
-	rdb := f.getRDB(custID)
-	if rdb == nil {
+	redisClient := f.getRedisShardClient(custID)
+	if redisClient == nil {
 		return nil
 	}
 
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	incr := pipe.Incr(ctx, redisKey)
 	pipe.Expire(ctx, redisKey, 28*time.Hour)
 	_, err = pipe.Exec(ctx)

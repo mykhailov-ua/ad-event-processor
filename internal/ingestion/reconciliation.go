@@ -22,16 +22,16 @@ type ReconciliationWorker struct {
 }
 
 func NewReconciliationWorker(
-	pg PostgresConn,
-	ch ClickHouseConn,
+	postgresConn PostgresConn,
+	clickhouseConn ClickHouseConn,
 	repo domain.CampaignRepository,
 	driftLimit float64,
 	lag time.Duration,
 	interval time.Duration,
 ) *ReconciliationWorker {
 	return &ReconciliationWorker{
-		pgConn:     pg,
-		chConn:     ch,
+		pgConn:     postgresConn,
+		chConn:     clickhouseConn,
 		repo:       repo,
 		driftLimit: driftLimit,
 		lag:        lag,

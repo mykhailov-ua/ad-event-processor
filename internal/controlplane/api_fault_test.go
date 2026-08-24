@@ -39,7 +39,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -48,8 +48,8 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	}
 	cfg.Management.RateLimitRPS = 100_000
 	cfg.Management.RateLimitBurst = 10_000
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	h.customerLimiter = newCustomerRateLimiter()
 	h.customerLimiter.limit = 1000
@@ -133,7 +133,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -142,8 +142,8 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	}
 	cfg.Management.RateLimitRPS = 100_000
 	cfg.Management.RateLimitBurst = 10_000
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	svc.SetClickHouse(conn, database.CHQueryConfig{})
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -233,13 +233,13 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	cfg.Management.RateLimitRPS = 100_000
 	cfg.Management.RateLimitBurst = 10_000
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	h.customerLimiter = newCustomerRateLimiter()
 	h.customerLimiter.limit = 1000

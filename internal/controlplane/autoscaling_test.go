@@ -23,7 +23,7 @@ func TestSmartBudgetAutoscaling(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 
 	cfg := &config.Config{
 		CampaignUpdateChannel:       "test:autoscaling-updates",
@@ -36,7 +36,7 @@ func TestSmartBudgetAutoscaling(t *testing.T) {
 	cfg.Lifecycle.WaitTimeoutMs = 500
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 
 	t.Cleanup(func() {
 		svc.Close()
@@ -68,19 +68,19 @@ func TestSmartBudgetAutoscaling(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = rdb.SAdd(ctx, "budget:dirty_campaigns", campaignA.String()).Err()
+	err = redisClient.SAdd(ctx, "budget:dirty_campaigns", campaignA.String()).Err()
 	require.NoError(t, err)
-	err = rdb.Set(ctx, "budget:sync:campaign:"+campaignA.String(), 5000000, 0).Err()
+	err = redisClient.Set(ctx, "budget:sync:campaign:"+campaignA.String(), 5000000, 0).Err()
 	require.NoError(t, err)
 
 	queries := db.New(pool)
 	campaignRepo := domain.NewCampaignRepo(queries)
 	customerRepo := domain.NewCustomerRepo(queries)
-	syncWorker := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
 
-	err = rdb.Set(ctx, "budget:campaign:"+campaignA.String(), 100000000, 0).Err()
+	err = redisClient.Set(ctx, "budget:campaign:"+campaignA.String(), 100000000, 0).Err()
 	require.NoError(t, err)
-	err = rdb.Set(ctx, "budget:campaign:"+campaignB.String(), 100000000, 0).Err()
+	err = redisClient.Set(ctx, "budget:campaign:"+campaignB.String(), 100000000, 0).Err()
 	require.NoError(t, err)
 
 	_, err = pool.Exec(ctx, "DELETE FROM outbox_events")
@@ -112,7 +112,7 @@ func TestSmartBudgetAutoscaling(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 2, outboxCount)
 
-	val, err := rdb.Get(ctx, "budget:sync:campaign:"+campaignA.String()).Result()
+	val, err := redisClient.Get(ctx, "budget:sync:campaign:"+campaignA.String()).Result()
 	assert.Equal(t, redis.Nil, err)
 	assert.Empty(t, val)
 

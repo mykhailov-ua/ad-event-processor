@@ -13,12 +13,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// ResidentialIntelEnricher async cold-path worker: provider lookup, Redis/CH cache, L1.5 feed append.
+
 type ResidentialIntelEnricher struct {
 	provider   ResidentialIntelProvider
 	cache      *ResidentialIntelCache
 	chWrite    driver.Conn
-	rdb        redis.Cmdable
+	redisClient        redis.Cmdable
 	feedDir    string
 	providerID string
 	recentLim  int
@@ -30,7 +30,7 @@ type ResidentialIntelEnricherConfig struct {
 	Provider   ResidentialIntelProvider
 	Cache      *ResidentialIntelCache
 	CHWrite    driver.Conn
-	RDB        redis.Cmdable
+	RedisClient        redis.Cmdable
 	FeedDir    string
 	ProviderID string
 	RecentLim  int
@@ -62,7 +62,7 @@ func NewResidentialIntelEnricher(cfg ResidentialIntelEnricherConfig) *Residentia
 		provider:   cfg.Provider,
 		cache:      cfg.Cache,
 		chWrite:    cfg.CHWrite,
-		rdb:        cfg.RDB,
+		redisClient:        cfg.RedisClient,
 		feedDir:    cfg.FeedDir,
 		providerID: providerID,
 		recentLim:  recent,
@@ -113,11 +113,11 @@ func (e *ResidentialIntelEnricher) Run(ctx context.Context) (ResidentialIntelRun
 	if e == nil {
 		return stats, fmt.Errorf("residential intel enricher: nil receiver")
 	}
-	if e.rdb == nil {
+	if e.redisClient == nil {
 		return stats, nil
 	}
 
-	entries, err := edge.ListRecent(ctx, e.rdb, e.recentLim)
+	entries, err := edge.ListRecent(ctx, e.redisClient, e.recentLim)
 	if err != nil {
 		residentialIntelErrorsTotal.Inc()
 		return stats, fmt.Errorf("list edge IPs: %w", err)

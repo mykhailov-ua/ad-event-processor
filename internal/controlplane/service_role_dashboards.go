@@ -256,12 +256,12 @@ func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (
 	}
 	now := time.Now().UTC()
 	from := now.Add(-7 * 24 * time.Hour)
-	var ghost int
+	var silentRejectCount int
 	err := s.GetPool().QueryRow(ctx, `
 		SELECT count(*)::int FROM campaigns
-		WHERE customer_id = $1 AND ghost_ivt_enabled = TRUE AND deleted_at IS NULL`,
+		WHERE customer_id = $1 AND silent_reject_enabled = TRUE AND deleted_at IS NULL`,
 		domain.ToUUID(customerID),
-	).Scan(&ghost)
+	).Scan(&silentRejectCount)
 	if err != nil {
 		return FraudDashboardDTO{}, err
 	}
@@ -295,20 +295,20 @@ func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (
 			From: from.Format(time.RFC3339),
 			To:   now.Format(time.RFC3339),
 		},
-		GhostIVTCampaigns:  ghost,
-		LabelsPending:      labelsPending,
-		EdgeBlockedFraud:   edge.Blocked["fraud_tier"],
-		MLActiveVersionID:  mlSnap.VersionID,
-		MLArtifactHash:     mlSnap.ArtifactHash,
-		MLPrecision:        mlSnap.Precision,
-		MLRecall:           mlSnap.Recall,
-		MLDriftDetected:    mlSnap.DriftDetected,
-		MLDriftSummary:     mlSnap.DriftSummary,
-		MLEvalGeneratedAt:  mlSnap.EvalGeneratedAt,
-		MLEvalStatus:       mlSnap.EvalStatus,
-		MLEvalStale:        mlSnap.EvalStale,
-		MLLabelMethod:      mlSnap.LabelMethod,
-		MLShardsConsistent: mlSnap.ShardsConsistent,
+		SilentRejectCampaigns: silentRejectCount,
+		LabelsPending:         labelsPending,
+		EdgeBlockedFraud:      edge.Blocked["fraud_tier"],
+		MLActiveVersionID:     mlSnap.VersionID,
+		MLArtifactHash:        mlSnap.ArtifactHash,
+		MLPrecision:           mlSnap.Precision,
+		MLRecall:              mlSnap.Recall,
+		MLDriftDetected:       mlSnap.DriftDetected,
+		MLDriftSummary:        mlSnap.DriftSummary,
+		MLEvalGeneratedAt:     mlSnap.EvalGeneratedAt,
+		MLEvalStatus:          mlSnap.EvalStatus,
+		MLEvalStale:           mlSnap.EvalStale,
+		MLLabelMethod:         mlSnap.LabelMethod,
+		MLShardsConsistent:    mlSnap.ShardsConsistent,
 		FraudTierThresholds: FraudTierThresholdsDTO{
 			Scope:      fraudTierThresholdScopePlatformDefault,
 			PassMax:    int(domain.DefaultFraudThresholdPass),

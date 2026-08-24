@@ -21,7 +21,7 @@ func TestCreditScoringAndOverdraft(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 
 	cfg := &config.Config{
 		CampaignUpdateChannel:       "test:credit-updates",
@@ -34,7 +34,7 @@ func TestCreditScoringAndOverdraft(t *testing.T) {
 	cfg.Lifecycle.WaitTimeoutMs = 500
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 
 	t.Cleanup(func() {
 		svc.Close()

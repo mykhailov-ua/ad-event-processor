@@ -52,8 +52,8 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 	if limit <= 0 {
 		limit = 50
 	}
-	rdbs := r.svc.rdbs
-	if len(rdbs) == 0 {
+	redisShards := r.svc.redisShards
+	if len(redisShards) == 0 {
 		return FanOutResult[DLQEntryDTO]{}, fmt.Errorf("redis not configured")
 	}
 
@@ -72,9 +72,9 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 		err     error
 	}
 
-	batches := make([]shardBatch, 0, len(rdbs))
-	for shardID, rdb := range rdbs {
-		if rdb == nil {
+	batches := make([]shardBatch, 0, len(redisShards))
+	for shardID, redisClient := range redisShards {
+		if redisClient == nil {
 			batches = append(batches, shardBatch{
 				shardID: shardID,
 				err:     fmt.Errorf("shard %d unavailable", shardID),
@@ -82,7 +82,7 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 			continue
 		}
 		start := sourceCursors[strconv.Itoa(shardID)]
-		items, next, readErr := readDLQShardPage(ctx, rdb, shardID, dlqStream, eventStream, start, limit)
+		items, next, readErr := readDLQShardPage(ctx, redisClient, shardID, dlqStream, eventStream, start, limit)
 		batches = append(batches, shardBatch{
 			shardID: shardID,
 			items:   items,
@@ -138,7 +138,7 @@ func (r *opsReader) listDLQEntries(ctx context.Context, cursor string, limit int
 
 func readDLQShardPage(
 	ctx context.Context,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	shardID int,
 	dlqStream, eventStream, start string,
 	limit int,
@@ -147,7 +147,7 @@ func readDLQShardPage(
 	if start != "" {
 		rangeStart = "(" + start
 	}
-	msgs, err := rdb.XRangeN(ctx, dlqStream, rangeStart, "+", int64(limit)).Result()
+	msgs, err := redisClient.XRangeN(ctx, dlqStream, rangeStart, "+", int64(limit)).Result()
 	if err != nil {
 		return nil, "", err
 	}
@@ -249,15 +249,15 @@ func (r *opsReader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload
 	if payload.EntryID == "" {
 		return errInvalidQuery("entry_id required")
 	}
-	rdbs := r.svc.rdbs
-	if len(rdbs) == 0 {
+	redisShards := r.svc.redisShards
+	if len(redisShards) == 0 {
 		return fmt.Errorf("redis not configured")
 	}
 	shardID := payload.ShardID
-	if shardID < 0 || shardID >= len(rdbs) || rdbs[shardID] == nil {
+	if shardID < 0 || shardID >= len(redisShards) || redisShards[shardID] == nil {
 		return errInvalidQuery("invalid shard_id")
 	}
-	rdb := rdbs[shardID]
+	redisClient := redisShards[shardID]
 
 	dlqStream := payload.Stream
 	if dlqStream == "" {
@@ -274,7 +274,7 @@ func (r *opsReader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload
 
 	if idempotencyKey != "" {
 		idemKey := fmt.Sprintf("ops:dlq-retry:%s:%s", payload.DLQID, idempotencyKey)
-		ok, err := rdb.SetNX(ctx, idemKey, "1", dlqRetryIdempotencyTTL).Result()
+		ok, err := redisClient.SetNX(ctx, idemKey, "1", dlqRetryIdempotencyTTL).Result()
 		if err != nil {
 			return fmt.Errorf("dlq retry idempotency: %w", err)
 		}
@@ -283,7 +283,7 @@ func (r *opsReader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload
 		}
 	}
 
-	msgs, err := rdb.XRange(ctx, dlqStream, dlqMsgID, dlqMsgID).Result()
+	msgs, err := redisClient.XRange(ctx, dlqStream, dlqMsgID, dlqMsgID).Result()
 	if err != nil {
 		return err
 	}
@@ -320,7 +320,7 @@ func (r *opsReader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload
 		return fmt.Errorf("dlq entry has no replayable payload")
 	}
 
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	pipe.XAdd(ctx, &redis.XAddArgs{Stream: targetStream, Values: values})
 	pipe.XDel(ctx, dlqStream, dlqMsgID)
 	if _, err := pipe.Exec(ctx); err != nil {

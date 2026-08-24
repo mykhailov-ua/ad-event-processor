@@ -372,7 +372,7 @@ export function OpsHomePage() {
       dlqGuardRef.current.invalidate();
       bundleGateRef.current.release();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- mount once; loadOpsData uses latest state via quiet poll
+  }, []); 
 
   useEffect(() => {
     void loadMetricSeries(chartsRangeHours);

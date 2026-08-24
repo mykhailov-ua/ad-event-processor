@@ -22,10 +22,10 @@ func TestProcessScheduleTickSkipsAlreadyAligned(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -106,10 +106,10 @@ func TestUpdateSettingsOutboxVersionIsIdempotent(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 
 	ctx := context.Background()
 	require.NoError(t, svc.UpdateSettings(ctx, map[string]string{"rate_limit_per_min": "42"}))
@@ -123,7 +123,7 @@ func TestUpdateSettingsOutboxVersionIsIdempotent(t *testing.T) {
 	err = pool.QueryRow(ctx, `SELECT id FROM outbox_events WHERE event_type = 'UPDATE_SETTINGS' ORDER BY id DESC LIMIT 1`).Scan(&eventID)
 	require.NoError(t, err)
 
-	version, err := rdb.Get(ctx, "config:version").Int64()
+	version, err := redisClient.Get(ctx, "config:version").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, eventID, version)
 
@@ -134,7 +134,7 @@ func TestUpdateSettingsOutboxVersionIsIdempotent(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, processed)
 
-	versionAfter, err := rdb.Get(ctx, "config:version").Int64()
+	versionAfter, err := redisClient.Get(ctx, "config:version").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, eventID, versionAfter)
 }

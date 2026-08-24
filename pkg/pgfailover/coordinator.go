@@ -68,7 +68,7 @@ type Coordinator struct {
 	coord     *server.Coordinator
 	promoter  Promoter
 	health    HealthCheck
-	rdb       redis.UniversalClient
+	redisClient       redis.UniversalClient
 	failures  int
 	failMu    sync.Mutex
 	failover  atomic.Bool
@@ -102,7 +102,7 @@ func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordin
 		coord:    coord,
 		promoter: promoter,
 		health:   health,
-		rdb:      coord.Redis(),
+		redisClient:      coord.Redis(),
 		closeCh:  make(chan struct{}),
 	}, nil
 }
@@ -125,7 +125,7 @@ func (c *Coordinator) Stop() {
 }
 
 func (c *Coordinator) Redis() redis.UniversalClient {
-	return c.rdb
+	return c.redisClient
 }
 
 func (c *Coordinator) IsLeader() bool {
@@ -188,7 +188,7 @@ func (c *Coordinator) executeFailover(ctx context.Context) error {
 	failoverCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	epoch, err := BumpEpoch(failoverCtx, c.rdb)
+	epoch, err := BumpEpoch(failoverCtx, c.redisClient)
 	if err != nil {
 		c.failover.Store(false)
 		return fmt.Errorf("bump fencing epoch: %w", err)
@@ -207,7 +207,7 @@ func (c *Coordinator) executeFailover(ctx context.Context) error {
 		return errors.New("promoted dsn empty")
 	}
 
-	if err := PublishDSN(failoverCtx, c.rdb, promotedDSN, epoch); err != nil {
+	if err := PublishDSN(failoverCtx, c.redisClient, promotedDSN, epoch); err != nil {
 		c.failover.Store(false)
 		return fmt.Errorf("publish dsn: %w", err)
 	}

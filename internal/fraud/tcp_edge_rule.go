@@ -25,17 +25,17 @@ GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {
 	q   *database.CHQuery
-	rdb redis.Cmdable
+	redisClient redis.Cmdable
 	cfg AnalyzerConfig
 }
 
 func (r *tcpEdgeCorrelationRule) Name() string { return "tcp_edge_correlation" }
 
 func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
-	if r == nil || r.q == nil || r.rdb == nil {
+	if r == nil || r.q == nil || r.redisClient == nil {
 		return nil, nil
 	}
-	entries, err := edge.ListRecent(ctx, r.rdb, 128)
+	entries, err := edge.ListRecent(ctx, r.redisClient, 128)
 	if err != nil {
 		return nil, fmt.Errorf("list tcp fingerprints: %w", err)
 	}
@@ -55,7 +55,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 		}
 		seenIP[e.IP] = struct{}{}
 		ips = append(ips, e.IP)
-		hashArgs = append(hashArgs, piihash.FixedString16(hashIPForCH(e.IP)))
+		hashArgs = append(hashArgs, piihash.FixedString16(hashIPForClickhouse(e.IP)))
 	}
 	if len(hashArgs) == 0 {
 		return nil, nil
@@ -94,7 +94,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 			CampaignID: campaignID,
 			Reason:     "ivt_tcp_edge_correlation",
 			Score:      70,
-			Action:     "ghost",
+			Action:     "silent_reject",
 			TTLSeconds: 3600,
 		})
 	}

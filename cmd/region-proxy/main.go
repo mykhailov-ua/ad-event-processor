@@ -70,16 +70,16 @@ func main() {
 		if raw == "" {
 			return fmt.Errorf("redis url is empty")
 		}
-		rdb, err := netaddr.ParseRedisURL(raw, "")
+		redisClient, err := netaddr.ParseRedisURL(raw, "")
 		if err != nil {
 			return err
 		}
 		defer func() {
-			if cl, ok := rdb.(interface{ Close() error }); ok {
+			if cl, ok := redisClient.(interface{ Close() error }); ok {
 				_ = cl.Close()
 			}
 		}()
-		return rdb.Ping(ctx).Err()
+		return redisClient.Ping(ctx).Err()
 	})
 
 	if err := srv.Start(); err != nil {

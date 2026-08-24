@@ -22,9 +22,6 @@ function parseIconElement(tag: string): ReactElement | null {
   return createElement(tagName, props);
 }
 
-/**
- * Render a Phosphor regular icon as inline SVG.
- */
 export function Icon({ name, size = 16, className }: IconProps) {
   const tags = ICON_PATHS[name];
   if (!tags?.length) return null;

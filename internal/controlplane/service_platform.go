@@ -383,49 +383,49 @@ func (s *Service) failErasure(ctx context.Context, id pgtype.UUID, err error) er
 }
 
 func (s *Service) PurgeUserDataRedis(ctx context.Context, hashHex, subjectUserID string) error {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return fmt.Errorf("no redis clients")
 	}
 	consentKey := domain.ConsentRedisKeyPrefix + hashHex
 	pattern := "*:u:" + subjectUserID
 	var firstErr error
 	var success int
-	for _, rdb := range s.rdbs {
-		if rdb == nil {
+	for _, redisClient := range s.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := rdb.Del(ctx, consentKey).Err(); err != nil && !errors.Is(err, redis.Nil) {
+		if err := redisClient.Del(ctx, consentKey).Err(); err != nil && !errors.Is(err, redis.Nil) {
 			if firstErr == nil {
 				firstErr = err
 			}
 			continue
 		}
 		success++
-		iter := rdb.Scan(ctx, 0, pattern, 200).Iterator()
+		iter := redisClient.Scan(ctx, 0, pattern, 200).Iterator()
 		for iter.Next(ctx) {
-			_ = rdb.Del(ctx, iter.Val()).Err()
+			_ = redisClient.Del(ctx, iter.Val()).Err()
 		}
 		_ = iter.Err()
 	}
 	if success == 0 && firstErr != nil {
 		return firstErr
 	}
-	_ = publishControlChannelToAllShards(ctx, s.rdbs, s.consentUpdateChannel(), hashHex)
+	_ = publishControlChannelToAllShards(ctx, s.redisShards, s.consentUpdateChannel(), hashHex)
 	return nil
 }
 
 func (s *Service) SyncUserConsentToRedis(ctx context.Context, hashHex string, purposes int16) error {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return fmt.Errorf("no redis clients")
 	}
 	val := strconv.FormatInt(int64(purposes), 10)
 	key := domain.ConsentRedisKeyPrefix + hashHex
 	wrote := 0
-	for _, rdb := range s.rdbs {
-		if rdb == nil {
+	for _, redisClient := range s.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := rdb.Set(ctx, key, val, 0).Err(); err != nil {
+		if err := redisClient.Set(ctx, key, val, 0).Err(); err != nil {
 			return err
 		}
 		wrote++
@@ -433,7 +433,7 @@ func (s *Service) SyncUserConsentToRedis(ctx context.Context, hashHex string, pu
 	if wrote == 0 {
 		return fmt.Errorf("no connected redis shard for consent write")
 	}
-	return publishControlChannelToAllShards(ctx, s.rdbs, s.consentUpdateChannel(), hashHex)
+	return publishControlChannelToAllShards(ctx, s.redisShards, s.consentUpdateChannel(), hashHex)
 }
 
 func (s *Service) consentUpdateChannel() string {
@@ -481,8 +481,8 @@ func (s *Service) RetryNotification(ctx context.Context, notificationID string) 
 }
 
 func (s *Service) WarmCampaignBudget(ctx context.Context, campaignID uuid.UUID) (int64, error) {
-	rdb := s.getRDB(campaignID)
-	if rdb == nil {
+	redisClient := s.getRDB(campaignID)
+	if redisClient == nil {
 		return 0, fmt.Errorf("no redis client available")
 	}
 	worker := NewOutboxWorker(s)
@@ -493,7 +493,7 @@ func (s *Service) WarmCampaignBudget(ctx context.Context, campaignID uuid.UUID) 
 	if remaining <= 0 {
 		return 0, nil
 	}
-	_, err = rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		return worker.setCampaignBudgetRemaining(ctx, pipe, campaignID.String(), campaignID, 0)
 	})
 	if err != nil {
@@ -1361,8 +1361,8 @@ func fraudThreatOutboxEventType(action string) (string, error) {
 	switch action {
 	case "boost":
 		return "ML_SCORE_BOOST", nil
-	case "ghost":
-		return "ML_GHOST_IVT", nil
+	case "silent_reject", "ghost":
+		return "ML_SILENT_REJECT", nil
 	case "blacklist":
 		return "ML_BLACKLIST_ADD", nil
 	default:
@@ -1606,7 +1606,7 @@ func (s *Service) SyncSystemState(ctx context.Context) error {
 		return fmt.Errorf("failed to get blacklist from db: %w", err)
 	}
 
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
@@ -1618,7 +1618,7 @@ func (s *Service) SyncSystemState(ctx context.Context) error {
 
 	for reason, ips := range reasonIPs {
 		key := "blacklist:" + reason
-		if err := syncGlobalSetReplaceToAllShards(ctx, s.rdbs, key, ips); err != nil {
+		if err := syncGlobalSetReplaceToAllShards(ctx, s.redisShards, key, ips); err != nil {
 			return fmt.Errorf("failed to sync blacklist key %s: %w", key, err)
 		}
 	}
@@ -1633,10 +1633,10 @@ func (s *Service) SyncSystemState(ctx context.Context) error {
 		for _, r := range st {
 			settingsMap[r.Key] = r.Value
 		}
-		if err := syncGlobalConfigToAllShards(ctx, s.rdbs, settingsMap, 0); err != nil {
+		if err := syncGlobalConfigToAllShards(ctx, s.redisShards, settingsMap, 0); err != nil {
 			return fmt.Errorf("failed to sync settings to redis: %w", err)
 		}
-		if err := replicateConfigVersionFromPrimary(ctx, s.rdbs); err != nil {
+		if err := replicateConfigVersionFromPrimary(ctx, s.redisShards); err != nil {
 			return err
 		}
 	}

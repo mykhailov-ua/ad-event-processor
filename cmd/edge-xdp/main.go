@@ -98,11 +98,11 @@ func ebpfEdgeAttachAllowed() bool {
 		return true
 	}
 
-	rdb := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
-	defer func() { _ = rdb.Close() }()
+	redisClient := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
+	defer func() { _ = redisClient.Close() }()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	return edge.EbpfEdgeLicensed(ctx, rdb)
+	return edge.EbpfEdgeLicensed(ctx, redisClient)
 }

@@ -1,6 +1,8 @@
-# BidShard Ed25519 Cryptographic Keys
+# Ed25519 license keys
 
-This directory contains per-cohort Ed25519 public verification keys used to authenticate self-hosted client licenses.
+Per-cohort public keys for offline JWT verification on customer installs.
 
-- **Default Pilot Key:** [license_public.key](./license_public.key) (Key ID / `kid`: `2026-01`).
-- **Directory Layout:** `keys/<kid>/license_public.key` (with the corresponding `license_private.key` signing keys gitignored locally for security).
+- Default pilot key: [license_public.key](./license_public.key) (`kid`: `2026-01`).
+- Layout: `keys/<kid>/license_public.key` (private keys local only, gitignored).
+
+Issue: `go run ./cmd/license-issue`. Verify catalog: `make license-verify`.

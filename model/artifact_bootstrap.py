@@ -249,7 +249,7 @@ def synthetic_dataset(count: int, seed: int = 42) -> tuple[np.ndarray, np.ndarra
 def bootstrap_synthetic() -> bool:
     """Train + calibrate. False only when ML dependencies are missing."""
     try:
-        import lightgbm as lgb  # noqa: F401
+        import lightgbm as lgb
         import numpy as np
         from sklearn.model_selection import train_test_split
     except ImportError:

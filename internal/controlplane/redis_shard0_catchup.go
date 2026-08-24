@@ -23,8 +23,8 @@ type mlModelMeta struct {
 	present   bool
 }
 
-func pickGlobalReconcileSource(ctx context.Context, rdbs []redis.UniversalClient) redis.UniversalClient {
-	if len(rdbs) == 0 {
+func pickGlobalReconcileSource(ctx context.Context, redisShards []redis.UniversalClient) redis.UniversalClient {
+	if len(redisShards) == 0 {
 		return nil
 	}
 	checkCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -36,18 +36,18 @@ func pickGlobalReconcileSource(ctx context.Context, rdbs []redis.UniversalClient
 		bestVer   int64 = -1
 		bestBLGen int64 = -1
 	)
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		version, verErr := rdb.Get(checkCtx, redisConfigVersionKey).Int64()
+		version, verErr := redisClient.Get(checkCtx, redisConfigVersionKey).Int64()
 		if verErr != nil {
 			if !errors.Is(verErr, redis.Nil) {
 				continue
 			}
 			version = -1
 		}
-		blGen, blErr := blacklistGenerationScore(checkCtx, rdb)
+		blGen, blErr := blacklistGenerationScore(checkCtx, redisClient)
 		if blErr != nil {
 			blGen = -1
 		}
@@ -55,7 +55,7 @@ func pickGlobalReconcileSource(ctx context.Context, rdbs []redis.UniversalClient
 			version > bestVer ||
 			(version == bestVer && blGen > bestBLGen) ||
 			(version == bestVer && blGen == bestBLGen && bestIdx > i) {
-			best = rdb
+			best = redisClient
 			bestIdx = i
 			bestVer = version
 			bestBLGen = blGen
@@ -64,17 +64,17 @@ func pickGlobalReconcileSource(ctx context.Context, rdbs []redis.UniversalClient
 	if best != nil {
 		return best
 	}
-	return PickHealthyControlShard(rdbs)
+	return PickHealthyControlShard(redisShards)
 }
 
-func blacklistGenerationScore(ctx context.Context, rdb redis.UniversalClient) (int64, error) {
-	keys, err := scanRedisKeys(ctx, rdb, globalBlacklistKeyPrefix+"*")
+func blacklistGenerationScore(ctx context.Context, redisClient redis.UniversalClient) (int64, error) {
+	keys, err := scanRedisKeys(ctx, redisClient, globalBlacklistKeyPrefix+"*")
 	if err != nil {
 		return 0, err
 	}
 	var total int64
 	for _, key := range keys {
-		n, err := rdb.SCard(ctx, key).Result()
+		n, err := redisClient.SCard(ctx, key).Result()
 		if err != nil {
 			return 0, err
 		}
@@ -83,23 +83,23 @@ func blacklistGenerationScore(ctx context.Context, rdb redis.UniversalClient) (i
 	return total, nil
 }
 
-func replicateConfigVersionFromPrimary(ctx context.Context, rdbs []redis.UniversalClient) error {
-	return replicateGlobalsFromPrimary(ctx, rdbs)
+func replicateConfigVersionFromPrimary(ctx context.Context, redisShards []redis.UniversalClient) error {
+	return replicateGlobalsFromPrimary(ctx, redisShards)
 }
 
-func replicateGlobalsFromPrimary(ctx context.Context, rdbs []redis.UniversalClient) error {
-	if len(rdbs) < 2 {
+func replicateGlobalsFromPrimary(ctx context.Context, redisShards []redis.UniversalClient) error {
+	if len(redisShards) < 2 {
 		return nil
 	}
-	source := pickGlobalReconcileSource(ctx, rdbs)
+	source := pickGlobalReconcileSource(ctx, redisShards)
 	if source == nil {
 		return nil
 	}
-	return forEachConnectedShard(ctx, rdbs, "replicate_globals", func(i int, rdb redis.UniversalClient) error {
-		if rdb == source {
+	return forEachConnectedShard(ctx, redisShards, "replicate_globals", func(i int, redisClient redis.UniversalClient) error {
+		if redisClient == source {
 			return nil
 		}
-		return replicateGlobalsToTarget(ctx, source, rdb)
+		return replicateGlobalsToTarget(ctx, source, redisClient)
 	})
 }
 
@@ -194,9 +194,9 @@ func readMLModelMeta(ctx context.Context, source redis.UniversalClient) (mlModel
 	return meta, nil
 }
 
-func scanRedisKeys(ctx context.Context, rdb redis.UniversalClient, pattern string) ([]string, error) {
+func scanRedisKeys(ctx context.Context, redisClient redis.UniversalClient, pattern string) ([]string, error) {
 	var keys []string
-	iter := rdb.Scan(ctx, 0, pattern, 100).Iterator()
+	iter := redisClient.Scan(ctx, 0, pattern, 100).Iterator()
 	for iter.Next(ctx) {
 		keys = append(keys, iter.Val())
 	}
@@ -206,15 +206,15 @@ func scanRedisKeys(ctx context.Context, rdb redis.UniversalClient, pattern strin
 	return keys, nil
 }
 
-func validateEdgeBlacklistSource(ctx context.Context, rdbs []redis.UniversalClient) error {
-	if len(rdbs) == 0 || rdbs[0] == nil {
+func validateEdgeBlacklistSource(ctx context.Context, redisShards []redis.UniversalClient) error {
+	if len(redisShards) == 0 || redisShards[0] == nil {
 		return fmt.Errorf("shard 0 not connected")
 	}
-	source := pickGlobalReconcileSource(ctx, rdbs)
+	source := pickGlobalReconcileSource(ctx, redisShards)
 	if source == nil {
 		return fmt.Errorf("no healthy reconcile source shard")
 	}
-	if source == rdbs[0] {
+	if source == redisShards[0] {
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func validateEdgeBlacklistSource(ctx context.Context, rdbs []redis.UniversalClie
 		if err != nil {
 			return fmt.Errorf("read %s from source: %w", key, err)
 		}
-		targetMembers, err := rdbs[0].SMembers(ctx, key).Result()
+		targetMembers, err := redisShards[0].SMembers(ctx, key).Result()
 		if err != nil {
 			return fmt.Errorf("read %s from shard 0: %w", key, err)
 		}
@@ -254,12 +254,12 @@ func stringSlicesEqual(a, b []string) bool {
 	return true
 }
 
-func shard0NeedsCatchup(ctx context.Context, rdbs []redis.UniversalClient) bool {
-	if len(rdbs) == 0 || rdbs[0] == nil {
+func shard0NeedsCatchup(ctx context.Context, redisShards []redis.UniversalClient) bool {
+	if len(redisShards) == 0 || redisShards[0] == nil {
 		return false
 	}
-	source := pickGlobalReconcileSource(ctx, rdbs)
-	if source == nil || source == rdbs[0] {
+	source := pickGlobalReconcileSource(ctx, redisShards)
+	if source == nil || source == redisShards[0] {
 		return false
 	}
 
@@ -267,7 +267,7 @@ func shard0NeedsCatchup(ctx context.Context, rdbs []redis.UniversalClient) bool 
 	defer cancel()
 
 	sourceVersion, sourceErr := source.Get(checkCtx, redisConfigVersionKey).Int64()
-	targetVersion, targetErr := rdbs[0].Get(checkCtx, redisConfigVersionKey).Int64()
+	targetVersion, targetErr := redisShards[0].Get(checkCtx, redisConfigVersionKey).Int64()
 	if sourceErr == nil && targetErr == nil && sourceVersion != targetVersion {
 		return true
 	}
@@ -284,7 +284,7 @@ func shard0NeedsCatchup(ctx context.Context, rdbs []redis.UniversalClient) bool 
 		if err != nil {
 			return true
 		}
-		targetMembers, err := rdbs[0].SMembers(checkCtx, key).Result()
+		targetMembers, err := redisShards[0].SMembers(checkCtx, key).Result()
 		if err != nil {
 			return true
 		}
@@ -299,7 +299,7 @@ func shard0NeedsCatchup(ctx context.Context, rdbs []redis.UniversalClient) bool 
 	if err != nil {
 		return false
 	}
-	targetSettings, err := rdbs[0].HLen(checkCtx, redisConfigValuesKey).Result()
+	targetSettings, err := redisShards[0].HLen(checkCtx, redisConfigValuesKey).Result()
 	if err != nil {
 		return true
 	}
@@ -310,23 +310,23 @@ func (s *Service) RunShard0Catchup(ctx context.Context) error {
 	if s == nil {
 		return fmt.Errorf("service not configured")
 	}
-	rdbs := s.RedisShards()
-	if len(rdbs) == 0 || rdbs[0] == nil {
+	redisShards := s.RedisShards()
+	if len(redisShards) == 0 || redisShards[0] == nil {
 		return fmt.Errorf("shard 0 not connected")
 	}
-	source := pickGlobalReconcileSource(ctx, rdbs)
+	source := pickGlobalReconcileSource(ctx, redisShards)
 	if source == nil {
 		return fmt.Errorf("no healthy reconcile source shard")
 	}
-	if source == rdbs[0] {
+	if source == redisShards[0] {
 		metrics.Shard0CatchupLastSuccessTimestamp.Set(float64(time.Now().Unix()))
 		return nil
 	}
 
-	if err := replicateGlobalsToTarget(ctx, source, rdbs[0]); err != nil {
+	if err := replicateGlobalsToTarget(ctx, source, redisShards[0]); err != nil {
 		return err
 	}
-	if err := validateEdgeBlacklistSource(ctx, rdbs); err != nil {
+	if err := validateEdgeBlacklistSource(ctx, redisShards); err != nil {
 		return err
 	}
 
@@ -334,7 +334,7 @@ func (s *Service) RunShard0Catchup(ctx context.Context) error {
 	if channel == "" {
 		channel = "campaigns:update"
 	}
-	if err := publishCampaignControlToAllShards(ctx, rdbs, channel, domain.RegistryFullSyncPayload, time.Time{}); err != nil {
+	if err := publishCampaignControlToAllShards(ctx, redisShards, channel, domain.RegistryFullSyncPayload, time.Time{}); err != nil {
 		return fmt.Errorf("publish campaign full-sync: %w", err)
 	}
 

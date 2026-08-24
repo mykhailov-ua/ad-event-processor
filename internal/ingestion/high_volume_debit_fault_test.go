@@ -56,11 +56,11 @@ func TestFault_HighVolumeDebit_subShardBudgetInvariant(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, domain.BehaviorHighVolumeDebit, camp.BehaviorFlags&domain.BehaviorHighVolumeDebit)
 
-	rdbs := []redis.UniversalClient{infra.Redis, infra.Redis, infra.Redis, infra.Redis}
+	redisShards := []redis.UniversalClient{infra.Redis, infra.Redis, infra.Redis, infra.Redis}
 	sharder := NewStaticSlotSharder(4)
 
 	f := NewUnifiedFilter(
-		rdbs,
+		redisShards,
 		sharder,
 		registry,
 		NewCampaignRepo(infra.Queries),

@@ -27,14 +27,14 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey:           "test-secret",
 		CampaignUpdateChannel: "test:delivery-routes",
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	custID := uuid.New()
@@ -117,7 +117,7 @@ func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -126,8 +126,8 @@ func TestManagementAPI_RoleUserForbiddenSettings(t *testing.T) {
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	authMdl := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMdl := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMdl, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -152,15 +152,15 @@ func TestManagementAPI_RoleUserForbiddenBlacklist(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{TokenSymmetricKey: "01234567890123456789012345678901"}
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	authMdl := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMdl := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMdl, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -183,15 +183,15 @@ func TestManagementAPI_RoleUserForbiddenEmergencyBreaker(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{TokenSymmetricKey: "01234567890123456789012345678901"}
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	authMdl := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMdl := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMdl, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

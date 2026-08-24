@@ -218,25 +218,25 @@ type FraudOverviewDTO struct {
 }
 
 type FraudDashboardDTO struct {
-	CustomerID          string                 `json:"customer_id"`
-	Period              PeriodDTO              `json:"period"`
-	GhostIVTCampaigns   int                    `json:"ghost_ivt_campaigns"`
-	LabelsPending       int                    `json:"labels_pending"`
-	EdgeBlockedFraud    uint64                 `json:"edge_blocked_fraud"`
-	MLActiveVersionID   string                 `json:"ml_active_version_id,omitempty"`
-	MLArtifactHash      string                 `json:"ml_artifact_hash,omitempty"`
-	MLPrecision         float64                `json:"ml_precision,omitempty"`
-	MLRecall            float64                `json:"ml_recall,omitempty"`
-	MLDriftDetected     bool                   `json:"ml_drift_detected,omitempty"`
-	MLDriftSummary      string                 `json:"ml_drift_summary,omitempty"`
-	MLEvalGeneratedAt   string                 `json:"ml_eval_generated_at,omitempty"`
-	MLEvalStatus        string                 `json:"ml_eval_status,omitempty"`
-	MLEvalStale         bool                   `json:"ml_eval_stale,omitempty"`
-	MLLabelMethod       string                 `json:"ml_label_method,omitempty"`
-	MLShardsConsistent  *bool                  `json:"ml_shards_consistent,omitempty"`
-	FraudTierThresholds FraudTierThresholdsDTO `json:"fraud_tier_thresholds"`
-	GeoHints            []FraudGeoHintDTO      `json:"geo_hints,omitempty"`
-	RecentLabels        []MLManualLabelDTO     `json:"recent_labels,omitempty"`
+	CustomerID            string                 `json:"customer_id"`
+	Period                PeriodDTO              `json:"period"`
+	SilentRejectCampaigns int                    `json:"silent_reject_campaigns"`
+	LabelsPending         int                    `json:"labels_pending"`
+	EdgeBlockedFraud      uint64                 `json:"edge_blocked_fraud"`
+	MLActiveVersionID     string                 `json:"ml_active_version_id,omitempty"`
+	MLArtifactHash        string                 `json:"ml_artifact_hash,omitempty"`
+	MLPrecision           float64                `json:"ml_precision,omitempty"`
+	MLRecall              float64                `json:"ml_recall,omitempty"`
+	MLDriftDetected       bool                   `json:"ml_drift_detected,omitempty"`
+	MLDriftSummary        string                 `json:"ml_drift_summary,omitempty"`
+	MLEvalGeneratedAt     string                 `json:"ml_eval_generated_at,omitempty"`
+	MLEvalStatus          string                 `json:"ml_eval_status,omitempty"`
+	MLEvalStale           bool                   `json:"ml_eval_stale,omitempty"`
+	MLLabelMethod         string                 `json:"ml_label_method,omitempty"`
+	MLShardsConsistent    *bool                  `json:"ml_shards_consistent,omitempty"`
+	FraudTierThresholds   FraudTierThresholdsDTO `json:"fraud_tier_thresholds"`
+	GeoHints              []FraudGeoHintDTO      `json:"geo_hints,omitempty"`
+	RecentLabels          []MLManualLabelDTO     `json:"recent_labels,omitempty"`
 }
 
 type FraudTierThresholdsDTO struct {

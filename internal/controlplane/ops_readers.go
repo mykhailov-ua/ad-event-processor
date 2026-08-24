@@ -1059,8 +1059,8 @@ func (r *opsReader) loadMLShardSyncState(ctx context.Context) ([]MLShardSyncDTO,
 }
 
 func (r *opsReader) readMLModelRedis(ctx context.Context) (MLModelRedisDTO, error) {
-	rdbs := r.svc.rdbs
-	if len(rdbs) == 0 {
+	redisShards := r.svc.redisShards
+	if len(redisShards) == 0 {
 		return MLModelRedisDTO{}, nil
 	}
 
@@ -1071,11 +1071,11 @@ func (r *opsReader) readMLModelRedis(ctx context.Context) (MLModelRedisDTO, erro
 	}
 
 	var shards []shardRedis
-	for _, rdb := range rdbs {
-		if rdb == nil {
+	for _, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		pipe := rdb.Pipeline()
+		pipe := redisClient.Pipeline()
 		verCmd := pipe.Get(ctx, "ml:model:version")
 		hashCmd := pipe.Get(ctx, "ml:model:hash")
 		appliedCmd := pipe.Get(ctx, "ml:model:applied_at")

@@ -85,7 +85,7 @@ Join keys: calendar day + campaign; prefer UUID in ad-network id; pass network i
 
 ## Zero-redirect tracking
 
-Host `ad-event-processor-track.js`; set `TRACK_CORS_ORIGINS`; script POSTs `/track`. `OPTIONS /track` -> 204 when origin allowed.
+Host `src/static/track.js` (admin dist); set `TRACK_CORS_ORIGINS`; script POSTs `/track`. `OPTIONS /track` -> 204 when origin allowed.
 
 ## Shard routing
 

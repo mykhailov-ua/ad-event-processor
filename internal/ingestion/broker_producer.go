@@ -38,7 +38,7 @@ type brokerProducerSlot struct {
 	ipLen         uint8
 	uaLen         uint8
 	fraudResLen   uint8
-	ghostEvent    bool
+	silentRejectEvent    bool
 
 	campaignID  [16]byte
 	clickID     [36]byte
@@ -276,7 +276,7 @@ func (bp *BrokerProducer) fillSlot(slot *brokerProducerSlot, evt *domain.Event) 
 	slot.campaignID = evt.CampaignID
 	slot.createdAtUnix = evt.CreatedAt.Unix()
 	slot.fraudScore = evt.FraudScore
-	slot.ghostEvent = evt.GhostEvent
+	slot.silentRejectEvent = evt.SilentRejectEvent
 
 	slot.clickIDLen = copyStrToFixed(slot.clickID[:], evt.ClickID)
 	slot.typeLen = copyStrToFixed(slot.eventType[:], evt.Type)
@@ -292,7 +292,7 @@ func (bp *BrokerProducer) fillSlotFromStream(slot *brokerProducerSlot, evt *pb.A
 	}
 	slot.createdAtUnix = evt.CreatedAtUnix
 	slot.fraudScore = evt.FraudScore
-	slot.ghostEvent = evt.GhostEvent
+	slot.silentRejectEvent = evt.SilentRejectEvent
 
 	slot.clickIDLen = copyBytesToFixed(slot.clickID[:], evt.ClickId)
 	slot.typeLen = copyBytesToFixed(slot.eventType[:], evt.EventType)
@@ -366,7 +366,7 @@ func (bp *BrokerProducer) flushPending(batch []pb.AdStreamEvent, buf *[]byte) {
 				evt.CampaignId = slot.campaignID[:]
 				evt.CreatedAtUnix = slot.createdAtUnix
 				evt.FraudScore = slot.fraudScore
-				evt.GhostEvent = slot.ghostEvent
+				evt.SilentRejectEvent = slot.silentRejectEvent
 
 				evt.ClickId = slot.clickID[:slot.clickIDLen]
 				evt.EventType = slot.eventType[:slot.typeLen]

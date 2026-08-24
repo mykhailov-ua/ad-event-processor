@@ -24,14 +24,14 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -115,10 +115,10 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	_, err = registry.Sync(ctx)
 	require.NoError(t, err)
 
-	filter := testutil.NewLuaUnifiedFilter(rdb, registry)
+	filter := testutil.NewLuaUnifiedFilter(redisClient, registry)
 
-	rdb.Set(ctx, "budget:campaign:"+campAID.String(), 1000000000, 0)
-	rdb.Set(ctx, "budget:campaign:"+campBID.String(), 1000000000, 0)
+	redisClient.Set(ctx, "budget:campaign:"+campAID.String(), 1000000000, 0)
+	redisClient.Set(ctx, "budget:campaign:"+campBID.String(), 1000000000, 0)
 
 	evtUser1A := &domain.Event{
 		CampaignID: campAID,

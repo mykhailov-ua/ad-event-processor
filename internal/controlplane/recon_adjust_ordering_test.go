@@ -74,7 +74,7 @@ func TestApplyReconciliationAdjust_pgFailurePreservesRedis(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	campID := uuid.New()
@@ -91,15 +91,15 @@ func TestApplyReconciliationAdjust_pgFailurePreservesRedis(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.NoError(t, rdb.Set(ctx, domain.CampaignSyncKey(campID), beforeSync, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, domain.CampaignSyncKey(campID), beforeSync, 0).Err())
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 	ob := NewOutboxWorker(svc)
 
 	err = ob.ApplyReconciliationAdjust(ctx, 42, payload)
 	require.Error(t, err)
 
-	after, err := rdb.Get(ctx, domain.CampaignSyncKey(campID)).Int64()
+	after, err := redisClient.Get(ctx, domain.CampaignSyncKey(campID)).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, beforeSync, after, "harness=pg_outbox_recon: PG failure must not move Redis sync key")
 

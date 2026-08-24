@@ -26,12 +26,12 @@ type PgFailoverRuntime struct {
 }
 
 func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
-	if s == nil || s.cfg == nil || !s.cfg.PgFailoverEnabled || len(s.rdbs) == 0 {
+	if s == nil || s.cfg == nil || !s.cfg.PgFailoverEnabled || len(s.redisShards) == 0 {
 		return nil
 	}
-	rdb := PickHealthyControlShard(s.rdbs)
+	redisClient := PickHealthyControlShard(s.redisShards)
 	rt := &PgFailoverRuntime{
-		fencing: pgfailover.NewFencingGate(rdb),
+		fencing: pgfailover.NewFencingGate(redisClient),
 	}
 	s.pgFencing = rt.fencing
 
@@ -51,10 +51,10 @@ func (s *Service) StartPgFailover(ctx context.Context) *PgFailoverRuntime {
 		MinConns: s.cfg.DBMinConns,
 		Interval: time.Duration(s.cfg.PgFailoverPollMs) * time.Millisecond,
 	}
-	rt.subscriber = pgfailover.NewSubscriber(rdb, rt.fencing, reconnect, subCfg)
+	rt.subscriber = pgfailover.NewSubscriber(redisClient, rt.fencing, reconnect, subCfg)
 	rt.subscriber.Start(ctx)
-	for _, shardRDB := range s.rdbs {
-		if shardRDB == nil || shardRDB == rdb {
+	for _, shardRDB := range s.redisShards {
+		if shardRDB == nil || shardRDB == redisClient {
 			continue
 		}
 		extra := pgfailover.NewSubscriber(shardRDB, rt.fencing, reconnect, subCfg)
@@ -157,13 +157,13 @@ func (rt *PgFailoverRuntime) CurrentDSN() string {
 }
 
 func (s *Service) requirePgFencing(ctx context.Context) error {
-	if s == nil || s.pgFencing == nil || len(s.rdbs) == 0 {
+	if s == nil || s.pgFencing == nil || len(s.redisShards) == 0 {
 		return nil
 	}
 	if err := s.pgFencing.Refresh(ctx); err != nil {
 		return err
 	}
-	reader := newPgFailoverShardReader(s.rdbs)
+	reader := newPgFailoverShardReader(s.redisShards)
 	_, epoch, err := reader.activeDSN(ctx)
 	if err != nil {
 		return err

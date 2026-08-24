@@ -20,18 +20,18 @@ func TestUnifiedFilter_LowTTC_ReturnsFraudDetected(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetTTCMin(300 * time.Millisecond)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	impKey := "imp_ts:user1:" + campID.String()
-	require.NoError(t, rdb.Set(ctx, impKey, strconv.FormatInt(time.Now().Add(-50*time.Millisecond).UnixMilli(), 10), 10*time.Minute).Err())
+	require.NoError(t, redisClient.Set(ctx, impKey, strconv.FormatInt(time.Now().Add(-50*time.Millisecond).UnixMilli(), 10), 10*time.Minute).Err())
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -52,15 +52,15 @@ func TestUnifiedFilter_impressionSetsImpTS_clickChecksTTC(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetTTCMin(50 * time.Millisecond)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	imp := &domain.Event{
 		Type:       "impression",
@@ -88,16 +88,16 @@ func TestUnifiedFilter_failClosed_missingImpTS_realRedis(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetTTCMin(300 * time.Millisecond)
 	f.SetTTCFailClosed(true)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	click := &domain.Event{
 		Type:       "click",

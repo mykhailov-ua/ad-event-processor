@@ -13,6 +13,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
@@ -114,10 +115,12 @@ func TestFault_FilterChainRedisLatency(t *testing.T) {
 }
 
 type rejectMatrixCase struct {
-	name       string
-	filter     EventFilter
-	wantStatus int
-	streamOK   bool
+	name         string
+	filter       EventFilter
+	wantStatus   int
+	streamOK     bool
+	silentReject bool
+	fraudCase    bool
 }
 
 func rejectMatrixCases() []rejectMatrixCase {
@@ -133,7 +136,8 @@ func rejectMatrixCases() []rejectMatrixCase {
 		{name: "campaign_not_found", filter: &errFilter{err: ErrCampaignNotFound}, wantStatus: http.StatusNotFound},
 		{name: "bid_floor", filter: &errFilter{err: ErrBidFloorNotMet}, wantStatus: http.StatusPaymentRequired},
 		{name: "filter_timeout", filter: &slowFilter{delay: 200 * time.Millisecond}, wantStatus: http.StatusGatewayTimeout},
-		{name: "fraud", filter: &errFilter{err: ErrFraudDetected}, wantStatus: http.StatusAccepted, streamOK: true},
+		{name: "fraud_silent_reject", filter: &errFilter{err: ErrFraudDetected}, wantStatus: http.StatusAccepted, streamOK: true, silentReject: true, fraudCase: true},
+		{name: "fraud_hard_reject", filter: &errFilter{err: ErrFraudDetected}, wantStatus: http.StatusForbidden, silentReject: false, fraudCase: true},
 		{name: "consent", filter: &errFilter{err: ErrConsentDenied}, wantStatus: http.StatusNoContent},
 		{name: "migration_fenced", filter: &errFilter{err: ErrMigrationFenced}, wantStatus: http.StatusServiceUnavailable},
 		{name: "redis_circuit", filter: &errFilter{err: database.ErrRedisCircuitOpen}, wantStatus: http.StatusServiceUnavailable},
@@ -162,28 +166,40 @@ func TestFault_HandlerRejectMatrix(t *testing.T) {
 		StreamMaxLen:       1000,
 	}
 	sharder := NewStaticSlotSharder(4)
-	registry := &mockRegistry{}
+	defaultRegistry := &mockRegistry{}
 
 	for _, tc := range rejectMatrixCases() {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var rdb redis.UniversalClient
+			registry := domain.CampaignRegistry(defaultRegistry)
+			body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
+			if tc.fraudCase {
+				campID := uuid.New()
+				body = []byte(`{"campaign_id":"` + campID.String() + `","type":"click","click_id":"c1"}`)
+				registry = stubCampaignRegistry{
+					ok: true,
+					camp: &domain.Campaign{
+						ID:                  campID,
+						SilentRejectEnabled: tc.silentReject,
+					},
+				}
+			}
+			var redisClient redis.UniversalClient
 			var counter *streamCountRedis
 			if tc.streamOK {
 				counter = &streamCountRedis{}
-				rdb = counter
+				redisClient = counter
 			}
 			timeout := time.Duration(cfg.FilterTimeoutMs) * time.Millisecond
 			if tc.name == "filter_timeout" {
 				timeout = 50 * time.Millisecond
 			}
 			h := NewAdsPacketHandler(cfg, registry, NewFilterEngine(timeout, tc.filter), nil, nil, sharder, "fraud-stream", nil)
-			if rdb != nil {
-				h = NewAdsPacketHandler(cfg, registry, NewFilterEngine(timeout, tc.filter), nil, []redis.UniversalClient{rdb}, sharder, "fraud-stream", nil)
+			if redisClient != nil {
+				h = NewAdsPacketHandler(cfg, registry, NewFilterEngine(timeout, tc.filter), nil, []redis.UniversalClient{redisClient}, sharder, "fraud-stream", nil)
 			}
 
-			body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)
 			var wg sync.WaitGroup
 			wg.Add(p0RejectConcurrency)
 			for range p0RejectConcurrency {

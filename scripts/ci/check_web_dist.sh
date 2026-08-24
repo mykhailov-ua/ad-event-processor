@@ -30,7 +30,7 @@ require "src/workers/report_aggregate.worker.js"
 require "src/styles/tokens.css"
 require "src/styles/system.css"
 require "src/styles/main.css"
-require "src/static/ad-event-processor-track.js"
+require "src/static/track.js"
 
 if ! grep -q '/src/main.js' "$DIST/index.html"; then
   echo "Error: index.html must reference /src/main.js (go:embed + static routes)"
@@ -45,15 +45,15 @@ if [ "$missing" -ne 0 ]; then
   exit 1
 fi
 
-TRACK_SNIPPET="$DIST/src/static/ad-event-processor-track.js"
+TRACK_SNIPPET="$DIST/src/static/track.js"
 if [ -f "$TRACK_SNIPPET" ]; then
   GZ_BYTES="$(gzip -c "$TRACK_SNIPPET" | wc -c | tr -d ' ')"
   MAX_GZ=2048
   if [ "$GZ_BYTES" -gt "$MAX_GZ" ]; then
-    echo "Error: ad-event-processor-track.js gzip size ${GZ_BYTES}B exceeds ${MAX_GZ}B SLA"
+    echo "Error: track.js gzip size ${GZ_BYTES}B exceeds ${MAX_GZ}B SLA"
     exit 1
   fi
-  echo "ad-event-processor-track.js gzip: ${GZ_BYTES}B (limit ${MAX_GZ}B)"
+  echo "track.js gzip: ${GZ_BYTES}B (limit ${MAX_GZ}B)"
 fi
 
 echo "Web dist hygiene: OK (embed entry + workers + styles + track snippet)"

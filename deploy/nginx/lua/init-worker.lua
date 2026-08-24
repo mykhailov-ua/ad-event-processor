@@ -11,7 +11,8 @@ if ngx.worker.id() ~= 0 then
 end
 
 local CONFIG_SYNC_INTERVAL = 5
-local BLACKLIST_SYNC_INTERVAL = 5
+local BLACKLIST_SYNC_INTERVAL = tonumber(os.getenv("EDGE_BLACKLIST_SYNC_INTERVAL_SEC") or "") or 5
+local BLACKLIST_CHANGELOG_DRAIN_INTERVAL = tonumber(os.getenv("EDGE_BLACKLIST_CHANGELOG_DRAIN_SEC") or "") or 1
 local SLOT_MAP_SYNC_INTERVAL = tonumber(os.getenv("SLOT_MAP_SYNC_INTERVAL_SEC") or "") or 10
 local NODE_WEIGHTS_SYNC_INTERVAL = tonumber(os.getenv("NODE_WEIGHTS_SYNC_INTERVAL_SEC") or "") or 10
 local TCP_FP_SYNC_INTERVAL = tonumber(os.getenv("TCP_FP_SYNC_INTERVAL_SEC") or "") or 2
@@ -46,6 +47,25 @@ end
 timer_ok, timer_err = ngx.timer.at(0, sync_blacklist)
 if not timer_ok then
     ngx.log(ngx.ERR, "failed to start blacklist sync: ", timer_err)
+end
+
+local function drain_blacklist_changelog(premature)
+    if premature then
+        return
+    end
+    local n = blacklist_sync.drain_pending_changelog()
+    if n > 0 then
+        ngx.log(ngx.INFO, "edge_blacklist_sync: drained ", n, " pending changelog IPs")
+    end
+    local ok, timer_err = ngx.timer.at(BLACKLIST_CHANGELOG_DRAIN_INTERVAL, drain_blacklist_changelog)
+    if not ok then
+        ngx.log(ngx.ERR, "failed to reschedule blacklist changelog drain: ", timer_err)
+    end
+end
+
+timer_ok, timer_err = ngx.timer.at(BLACKLIST_CHANGELOG_DRAIN_INTERVAL, drain_blacklist_changelog)
+if not timer_ok then
+    ngx.log(ngx.ERR, "failed to start blacklist changelog drain: ", timer_err)
 end
 
 quarantine_sub.start()
@@ -110,7 +130,7 @@ local ok, err = hc.spawn_checker({
     timeout = 1000,
     fall = 2,
     rise = 2,
-    valid_statuses = {200},
+    valid_statuses = { 200 },
     concurrency = 4,
 })
 if not ok then

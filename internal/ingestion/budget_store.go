@@ -64,14 +64,14 @@ return 1
 `
 
 type RedisBudgetManager struct {
-	rdb            redis.Cmdable
+	redisClient            redis.Cmdable
 	campaignRepo   domain.CampaignRepository
 	idempotencyTTL time.Duration
 }
 
-func NewRedisBudgetManager(rdb redis.Cmdable, repo domain.CampaignRepository, idempotencyTTL time.Duration) *RedisBudgetManager {
+func NewRedisBudgetManager(redisClient redis.Cmdable, repo domain.CampaignRepository, idempotencyTTL time.Duration) *RedisBudgetManager {
 	return &RedisBudgetManager{
-		rdb:            rdb,
+		redisClient:            redisClient,
 		campaignRepo:   repo,
 		idempotencyTTL: idempotencyTTL,
 	}
@@ -116,7 +116,7 @@ func (m *RedisBudgetManager) CheckAndSpend(ctx context.Context, customerID, camp
 	ba.args[3] = &ba.customerIDStr
 
 	for i := range 2 {
-		res, err := m.rdb.Eval(ctx, budgetLuaScript, ba.keys[:], ba.args[:]...).Int64()
+		res, err := m.redisClient.Eval(ctx, budgetLuaScript, ba.keys[:], ba.args[:]...).Int64()
 		if err != nil {
 			return false, err
 		}
@@ -136,7 +136,7 @@ func (m *RedisBudgetManager) CheckAndSpend(ctx context.Context, customerID, camp
 				remaining = 0
 			}
 
-			m.rdb.SetNX(ctx, ba.campaignKey, remaining, 24*time.Hour)
+			m.redisClient.SetNX(ctx, ba.campaignKey, remaining, 24*time.Hour)
 			continue
 		}
 

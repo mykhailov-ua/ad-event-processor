@@ -23,7 +23,7 @@ type CampaignFraudConfigUpdate struct {
 	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
 	FraudThresholdIVT     *uint8  `json:"fraud_threshold_ivt,omitempty"`
 	FraudThresholdBlock   *uint8  `json:"fraud_threshold_block,omitempty"`
-	GhostIVTEnabled       *bool   `json:"ghost_ivt_enabled,omitempty"`
+	SilentRejectEnabled   *bool   `json:"silent_reject_enabled,omitempty"`
 	BehaviorFlags         *uint32 `json:"behavior_flags,omitempty"`
 }
 
@@ -48,7 +48,7 @@ func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UU
 		FraudThresholdSuspect: uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:     uint8(row.FraudThresholdIvt),
 		FraudThresholdBlock:   uint8(row.FraudThresholdBlock),
-		GhostIVTEnabled:       row.GhostIvtEnabled,
+		SilentRejectEnabled:   row.SilentRejectEnabled,
 		BehaviorFlags:         uint32(row.BehaviorFlags),
 	}, nil
 }
@@ -67,7 +67,7 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		suspect := uint8(locked.FraudThresholdSuspect)
 		ivt := uint8(locked.FraudThresholdIvt)
 		block := uint8(locked.FraudThresholdBlock)
-		ghost := locked.GhostIvtEnabled
+		silentReject := locked.SilentRejectEnabled
 		flags := locked.BehaviorFlags
 
 		if upd.Preset != nil {
@@ -93,8 +93,8 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		if upd.FraudThresholdBlock != nil {
 			block = *upd.FraudThresholdBlock
 		}
-		if upd.GhostIVTEnabled != nil {
-			ghost = *upd.GhostIVTEnabled
+		if upd.SilentRejectEnabled != nil {
+			silentReject = *upd.SilentRejectEnabled
 		}
 		if upd.BehaviorFlags != nil {
 			flags = int32(*upd.BehaviorFlags)
@@ -104,11 +104,12 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			return err
 		}
 
-		grayMarketPreset := upd.Preset != nil && domain.IsGrayMarketFraudPreset(*upd.Preset)
-		if grayMarketPreset {
-			if err := applyGrayMarketGMAPreset(ctx, tx, campaignID); err != nil {
+		enhancedDefensePreset := upd.Preset != nil && domain.IsEnhancedDefenseFraudPreset(*upd.Preset)
+		if enhancedDefensePreset {
+			if err := applyEnhancedDefensePreset(ctx, tx, campaignID); err != nil {
 				return err
 			}
+			silentReject = true
 		}
 		socialInAppPreset := upd.Preset != nil && domain.IsSocialInAppFraudPreset(*upd.Preset)
 		if socialInAppPreset {
@@ -123,7 +124,7 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			FraudThresholdSuspect: int16(suspect),
 			FraudThresholdIvt:     int16(ivt),
 			FraudThresholdBlock:   int16(block),
-			GhostIvtEnabled:       ghost,
+			SilentRejectEnabled:   silentReject,
 			BehaviorFlags:         flags,
 		})
 		if err != nil {
@@ -139,7 +140,7 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			FraudThresholdSuspect: suspect,
 			FraudThresholdIVT:     ivt,
 			FraudThresholdBlock:   block,
-			GhostIVTEnabled:       ghost,
+			SilentRejectEnabled:   silentReject,
 			BehaviorFlags:         flags,
 		}, nil)
 
@@ -161,7 +162,7 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			FraudThresholdSuspect: uint8(updated.FraudThresholdSuspect),
 			FraudThresholdIVT:     uint8(updated.FraudThresholdIvt),
 			FraudThresholdBlock:   uint8(updated.FraudThresholdBlock),
-			GhostIVTEnabled:       updated.GhostIvtEnabled,
+			SilentRejectEnabled:   updated.SilentRejectEnabled,
 			BehaviorFlags:         uint32(updated.BehaviorFlags),
 		}
 		return nil
@@ -391,7 +392,7 @@ func (s *Service) ApplyFraudScoringOverride(ctx context.Context, req FraudScorin
 }
 
 func (s *Service) CheckAndHandleStaleEpochs(ctx context.Context) error {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return nil
 	}
 
@@ -399,11 +400,11 @@ func (s *Service) CheckAndHandleStaleEpochs(ctx context.Context) error {
 	var maxAppliedAt int64
 	var foundStale bool
 
-	for _, rdb := range s.rdbs {
-		if rdb == nil {
+	for _, redisClient := range s.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		val, err := rdb.Get(ctx, "ml:model:applied_at").Result()
+		val, err := redisClient.Get(ctx, "ml:model:applied_at").Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
 				continue

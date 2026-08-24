@@ -144,10 +144,10 @@ func TestFraudModelSync_CanaryRollback(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
 	svc.Close()
 
 	orchestrator := NewFraudModelSyncOrchestrator(svc)
@@ -176,7 +176,7 @@ func TestFraudModelSync_CanaryRollback(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "ROLLBACK", phase)
 
-	val, err := rdb.Get(ctx, "ml:model:version").Result()
+	val, err := redisClient.Get(ctx, "ml:model:version").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "v1", val)
 
@@ -197,7 +197,7 @@ func TestFraudModelSync_StaleEpochTighten(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(context.Background(), `
@@ -206,12 +206,12 @@ func TestFraudModelSync_StaleEpochTighten(t *testing.T) {
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
 	require.NoError(t, err)
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
 	svc.Close()
 
 	ctx := context.Background()
 
-	rdb.Set(ctx, "ml:model:applied_at", time.Now().Unix()-1000, 0)
+	redisClient.Set(ctx, "ml:model:applied_at", time.Now().Unix()-1000, 0)
 
 	err = svc.CheckAndHandleStaleEpochs(ctx)
 	require.NoError(t, err)

@@ -65,9 +65,9 @@ Always applied on every agent turn (no glob filter):
 | File | Scope |
 | :--- | :--- |
 | `core.mdc` | SLA, repo policy, commit style, rule index |
-| `naming.mdc` | Naming, trash tokens, legacy ban, comments (tone, when, examples) |
+| `naming.mdc` | Naming, trash tokens, legacy ban, marketing ban, comments |
 | `quality.mdc` | Go receivers, web JSDoc, verification honesty |
-| `anti-slop.mdc` | CI honesty, slop gates, agent done-checklist |
+| `anti-slop.mdc` | CI honesty, doc lie modes, slop gates, agent checklist |
 
 | Rule file | Topic |
 | :--- | :--- |

@@ -22,7 +22,7 @@ func TestFault_FingerprintConcurrentRecord(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	const (
@@ -41,7 +41,7 @@ func TestFault_FingerprintConcurrentRecord(t *testing.T) {
 			<-start
 			for i := range iters {
 				ip := fmt.Sprintf("203.0.113.%d", (id+i)%64)
-				if err := Record(ctx, rdb, Entry{
+				if err := Record(ctx, redisClient, Entry{
 					IP:      ip,
 					TCPHash: uint32(id*1000 + i),
 					TTL:     uint8(i % 256),
@@ -57,7 +57,7 @@ func TestFault_FingerprintConcurrentRecord(t *testing.T) {
 	close(start)
 	wg.Wait()
 
-	entries, err := ListRecent(ctx, rdb, 512)
+	entries, err := ListRecent(ctx, redisClient, 512)
 	require.NoError(t, err)
 	assert.Greater(t, len(entries), 0)
 	assert.Equal(t, int32(0), errs.Load())
@@ -76,11 +76,11 @@ func TestFault_FingerprintZSETOverflow(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	const members = 5000
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	now := float64(time.Now().Unix())
 	for i := range members {
 		member := fmt.Sprintf("198.18.%d.%d:%08x", i>>8, i&0xff, i)
@@ -89,7 +89,7 @@ func TestFault_FingerprintZSETOverflow(t *testing.T) {
 	_, err := pipe.Exec(ctx)
 	require.NoError(t, err)
 
-	entries, err := ListRecent(ctx, rdb, 128)
+	entries, err := ListRecent(ctx, redisClient, 128)
 	require.NoError(t, err)
 	assert.LessOrEqual(t, len(entries), 128)
 
@@ -106,7 +106,7 @@ func TestFault_FingerprintCorruptRedisMembers(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	corrupt := []string{
@@ -121,19 +121,19 @@ func TestFault_FingerprintCorruptRedisMembers(t *testing.T) {
 	}
 	now := float64(time.Now().Unix())
 	for i, m := range corrupt {
-		require.NoError(t, rdb.ZAdd(ctx, redisRecentKey, redis.Z{
+		require.NoError(t, redisClient.ZAdd(ctx, redisRecentKey, redis.Z{
 			Score:  now + float64(i),
 			Member: m,
 		}).Err())
 	}
 
-	require.NoError(t, Record(ctx, rdb, Entry{
+	require.NoError(t, Record(ctx, redisClient, Entry{
 		IP:      "203.0.113.99",
 		TCPHash: 0xcafebabe,
 		SeenAt:  time.Now().UTC(),
 	}))
 
-	entries, err := ListRecent(ctx, rdb, 256)
+	entries, err := ListRecent(ctx, redisClient, 256)
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 
@@ -161,10 +161,10 @@ func TestFault_FingerprintRedisOutageMidDrain(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
-	c, rdb, cleanup := testutil.SetupRedisClient(t)
+	c, redisClient, cleanup := testutil.SetupRedisClient(t)
 	defer cleanup()
 
-	require.NoError(t, Record(ctx, rdb, Entry{
+	require.NoError(t, Record(ctx, redisClient, Entry{
 		IP:      "203.0.113.1",
 		TCPHash: 0x11111111,
 		SeenAt:  time.Now().UTC(),
@@ -172,7 +172,7 @@ func TestFault_FingerprintRedisOutageMidDrain(t *testing.T) {
 
 	require.NoError(t, c.Terminate(ctx))
 
-	err := Record(ctx, rdb, Entry{
+	err := Record(ctx, redisClient, Entry{
 		IP:      "203.0.113.2",
 		TCPHash: 0x22222222,
 		SeenAt:  time.Now().UTC(),
@@ -192,10 +192,10 @@ func TestFault_FingerprintMaxFieldValues(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
-	require.NoError(t, Record(ctx, rdb, Entry{
+	require.NoError(t, Record(ctx, redisClient, Entry{
 		IP:      "203.0.113.255",
 		TCPHash: 0xffffffff,
 		TTL:     255,
@@ -204,7 +204,7 @@ func TestFault_FingerprintMaxFieldValues(t *testing.T) {
 		SeenAt:  time.Unix(1<<31-1, 0).UTC(),
 	}))
 
-	entries, err := ListRecent(ctx, rdb, 4)
+	entries, err := ListRecent(ctx, redisClient, 4)
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 	assert.Equal(t, uint32(0xffffffff), entries[0].TCPHash)

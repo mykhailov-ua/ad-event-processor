@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-/**
- * Bundle admin UI with esbuild into web/dist for go:embed.
- * Entry shells keep /src/main.js and /src/login.js paths (controlplane static routes).
- */
+
 import * as esbuild from 'esbuild';
 import { cpSync, mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -13,7 +10,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
 const SRC = join(ROOT, 'src');
 
-// Prefer local web/node_modules; fall back to repo root if present.
+
 const require = createRequire(import.meta.url);
 try {
   require.resolve('esbuild');
@@ -65,7 +62,7 @@ ${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'src'), { recursive: true });
 
-// Sources are *.worker.ts; esbuild entryNames keep basename -> dist/src/workers/*.worker.js
+
 const workerEntries = [
   join(SRC, 'workers', 'parse_json.worker.ts'),
   join(SRC, 'workers', 'report_aggregate.worker.ts'),

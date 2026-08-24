@@ -28,7 +28,7 @@ func TestPaymentService_Integration(t *testing.T) {
 	pool, cleanupDB := dbtest.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := dbtest.SetupTestRedis(t)
+	redisClient, cleanupRedis := dbtest.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -101,8 +101,8 @@ func TestPaymentService_Integration(t *testing.T) {
 	require.Len(t, outboxEvents, 1)
 	assert.Equal(t, "SETTLE_BALANCE", outboxEvents[0].EventType)
 
-	rdbs := []redis.UniversalClient{rdb}
-	mgmtSvc := controlplane.NewService(context.Background(), pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+	redisShards := []redis.UniversalClient{redisClient}
+	mgmtSvc := controlplane.NewService(context.Background(), pool, redisShards, ingestion.NewStaticSlotSharder(len(redisShards)), cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 
 	outboxWorker := payment.NewOutboxWorker(pool, cfg)

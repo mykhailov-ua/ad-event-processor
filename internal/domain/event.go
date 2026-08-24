@@ -29,7 +29,7 @@ type Event struct {
 	AcceptLang         string
 	FraudReason        string
 	FraudScore         uint32
-	GhostEvent         bool
+	SilentRejectEvent  bool
 	ShadowEvent        bool
 	CreatedAt          time.Time
 	StringBuffer       []byte
@@ -71,7 +71,7 @@ func (event *Event) Reset() {
 	event.AcceptLang = ""
 	event.FraudReason = ""
 	event.FraudScore = 0
-	event.GhostEvent = false
+	event.SilentRejectEvent = false
 	event.ShadowEvent = false
 	event.CreatedAt = time.Time{}
 	event.Scratch = nil

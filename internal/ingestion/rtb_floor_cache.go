@@ -13,12 +13,12 @@ import (
 )
 
 type DealFloorCache struct {
-	rdb  redis.UniversalClient
+	redisClient  redis.UniversalClient
 	snap atomic.Pointer[map[string]int64]
 }
 
-func NewDealFloorCache(rdb redis.UniversalClient) *DealFloorCache {
-	c := &DealFloorCache{rdb: rdb}
+func NewDealFloorCache(redisClient redis.UniversalClient) *DealFloorCache {
+	c := &DealFloorCache{redisClient: redisClient}
 	empty := make(map[string]int64)
 	c.snap.Store(&empty)
 	return c
@@ -37,14 +37,14 @@ func (c *DealFloorCache) Get(dealID string) (int64, bool) {
 }
 
 func (c *DealFloorCache) Refresh(ctx context.Context, dealIDs []string) {
-	if c == nil || c.rdb == nil || len(dealIDs) == 0 {
+	if c == nil || c.redisClient == nil || len(dealIDs) == 0 {
 		return
 	}
 	keys := make([]string, len(dealIDs))
 	for i, id := range dealIDs {
 		keys[i] = domain.RtbFloorRedisKeyPrefix + id
 	}
-	vals, err := c.rdb.MGet(ctx, keys...).Result()
+	vals, err := c.redisClient.MGet(ctx, keys...).Result()
 	if err != nil {
 		slog.Warn("deal floor cache refresh failed", "error", err)
 		return

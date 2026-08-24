@@ -1,62 +1,55 @@
-# BidShard USDT Invoice Template (Vendor Copy/Paste)
+# USDT invoice template (vendor)
 
-Replace the `{{...}}` placeholders before sending. Send this invoice via Telegram or email **before** the first paid month or when processing a tier upgrade.
+Replace `{{...}}` placeholders. Send before first paid month or tier upgrade.
 
 ---
 
-**Subject:** BidShard {{TIER}} - USDT Invoice - {{CUSTOMER_NAME}}
+**Subject:** ad-event-processor {{TIER}} - USDT invoice - {{CUSTOMER_NAME}}
 
 Hi {{CUSTOMER_NAME}},
 
-Here is the invoice for your self-hosted BidShard license (**{{TIER}}** / SKU `{{SKU_CODE}}`). Installation assistance and onboarding support are fully included with your first paid month—there are no separate setup fees.
+Invoice for self-hosted license **{{TIER}}** (SKU `{{SKU_CODE}}`). Installation support included with the first paid month.
 
-### Invoice Details
+### Invoice details
 
 | Field | Value |
 | :--- | :--- |
-| **Amount** | **{{AMOUNT_USDT}} USDT** |
-| **Billing Period** | {{PERIOD_START}} ──► {{PERIOD_END}} (30 days) |
-| **Deployment ID** | `{{DEPLOYMENT_ID}}` |
-| **Host Fingerprint** | `{{HOST_FINGERPRINT}}` *(required for hard-bound licenses)* |
+| Amount | **{{AMOUNT_USDT}} USDT** |
+| Period | {{PERIOD_START}} to {{PERIOD_END}} (30 days) |
+| Deployment ID | `{{DEPLOYMENT_ID}}` |
+| Host fingerprint | `{{HOST_FINGERPRINT}}` (required for hard-bound licenses) |
 
-### Payment Details (USDT Only)
+### Payment (USDT)
 
-| Network | Deposit Address |
+| Network | Address |
 | :--- | :--- |
-| **TRC-20 (Preferred)** | `{{WALLET_TRC20}}` |
-| **ERC-20** | `{{WALLET_ERC20}}` |
+| TRC-20 | `{{WALLET_TRC20}}` |
+| ERC-20 | `{{WALLET_ERC20}}` |
 
-*Optional Payment Memo:* `{{DEPLOYMENT_ID}}`
+Memo (optional): `{{DEPLOYMENT_ID}}`
+
+### After payment
+
+Reply with transaction hash. JWT delivery SLA:
+
+- Pro, Scale: 12 h
+- Starter, Network, Enterprise: 24 h
+
+### Apply license (no restart required)
+
+1. Admin UI: Settings -> License -> paste JWT -> Apply.
+2. CLI: `bash scripts/install/ad-event-processor-install.sh license-apply '<JWT>'`
 
 ---
 
-### After Payment Instructions
+## Example
 
-Once your transaction is submitted on-chain, please reply to this thread with the **transaction hash (TXID)**. We will issue and deliver your cryptographic license key (JWT) within our standard SLA window:
-- **12 Hours:** Pro and Scale Tiers
-- **24 Hours:** Starter, Network, and Enterprise Tiers
-
-### How to Apply Your License Key (Zero Downtime)
-
-Applying your new license does **not** require a system reinstall or server reboot. You can load it instantly:
-
-1. **Via Admin UI:** Navigate to **Settings** ──► **License** ──► Paste your JWT key ──► Click **Apply**.
-2. **Via Command Line:** Run the following installation helper script:
-   ```bash
-   bash scripts/install/ad-event-processor-install.sh license-apply '<YOUR_JWT>'
-   ```
-
----
-
-## Example Invoice (Filled Reference)
-
-| Field | Example Value |
+| Field | Example |
 | :--- | :--- |
-| **CUSTOMER_NAME** | Acme Media Group |
-| **TIER** | Pro Self-Hosted |
-| **SKU_CODE** | `pro` |
-| **AMOUNT_USDT** | 329 |
-| **DEPLOYMENT_ID** | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
-| **HOST_FINGERPRINT** | `sha256:4f3c7d...` |
-| **PERIOD_START** | 2026-09-01 |
-| **PERIOD_END** | 2026-10-01 |
+| CUSTOMER_NAME | Acme Media Group |
+| TIER | Pro |
+| SKU_CODE | `pro` |
+| AMOUNT_USDT | 329 |
+| DEPLOYMENT_ID | `a1b2c3d4-e5f6-7890-abcd-ef1234567890` |
+| PERIOD_START | 2026-09-01 |
+| PERIOD_END | 2026-10-01 |

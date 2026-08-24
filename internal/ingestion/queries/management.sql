@@ -316,6 +316,7 @@ ORDER BY
     WHEN 'ML_BLACKLIST_ADD' THEN 0
     WHEN 'ML_SCORE_BOOST' THEN 0
     WHEN 'ML_GHOST_IVT' THEN 0
+    WHEN 'ML_SILENT_REJECT' THEN 0
     WHEN 'PAUSE_CAMPAIGN' THEN 0
     WHEN 'CANCEL_CAMPAIGN' THEN 0
     WHEN 'BUDGET_FREEZE' THEN 0
@@ -466,7 +467,7 @@ SET fraud_threshold_pass = $2,
     fraud_threshold_suspect = $3,
     fraud_threshold_ivt = $4,
     fraud_threshold_block = $5,
-    ghost_ivt_enabled = $6,
+    silent_reject_enabled = $6,
     behavior_flags = $7,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1

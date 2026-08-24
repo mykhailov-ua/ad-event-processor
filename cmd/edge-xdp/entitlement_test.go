@@ -18,8 +18,8 @@ func TestEbpfEdgeAttachAllowed_deniedWhenEntitlementZero(t *testing.T) {
 
 	mr.HSet("entitlement:deployment", "ebpf_xdp_edge", "0")
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
-	assert.False(t, edge.EbpfEdgeLicensed(context.Background(), rdb))
+	assert.False(t, edge.EbpfEdgeLicensed(context.Background(), redisClient))
 }

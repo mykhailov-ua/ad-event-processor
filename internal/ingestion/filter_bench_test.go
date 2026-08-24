@@ -89,8 +89,8 @@ func BenchmarkGeoFilter(b *testing.B) {
 }
 
 func BenchmarkIPRateLimiter_Check(b *testing.B) {
-	rdb := &mockRedisClient{}
-	l := NewIPRateLimiter(rdb, 100, 10*time.Minute)
+	redisClient := &mockRedisClient{}
+	l := NewIPRateLimiter(redisClient, 100, 10*time.Minute)
 	evt := &domain.Event{
 		IP: "192.168.1.1",
 	}
@@ -101,8 +101,8 @@ func BenchmarkIPRateLimiter_Check(b *testing.B) {
 }
 
 func BenchmarkDuplicateEventFilter_Check(b *testing.B) {
-	rdb := &mockRedisClient{}
-	f := NewDuplicateEventFilter(rdb, 1*time.Hour)
+	redisClient := &mockRedisClient{}
+	f := NewDuplicateEventFilter(redisClient, 1*time.Hour)
 	evt := &domain.Event{
 		Type:    "click",
 		ClickID: "click123",
@@ -165,12 +165,12 @@ func BenchmarkKeyFormatting_DuplicateEventFilter(b *testing.B) {
 }
 
 func BenchmarkUnifiedFilter_Check_mock(b *testing.B) {
-	rdb := &mockRedisClient{}
+	redisClient := &mockRedisClient{}
 	sharder := NewJumpHashSharder(1)
 	registry := &mockRegistry{}
 
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		sharder,
 		registry,
 		nil,
@@ -201,8 +201,8 @@ func BenchmarkUnifiedFilter_Check_mock(b *testing.B) {
 }
 
 func BenchmarkRedisBudgetManager_CheckAndSpend(b *testing.B) {
-	rdb := &mockRedisClient{}
-	bm := NewRedisBudgetManager(rdb, nil, time.Hour)
+	redisClient := &mockRedisClient{}
+	bm := NewRedisBudgetManager(redisClient, nil, time.Hour)
 
 	ctx := context.Background()
 	customerID := uuid.New()

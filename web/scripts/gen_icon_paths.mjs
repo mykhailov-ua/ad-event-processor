@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-/**
- * Vendors Phosphor regular SVG primitives into web/src/lib/icon_paths.ts.
- * Run: npm run icons:gen (requires @phosphor-icons/core devDependency).
- */
+
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +12,7 @@ const outPath = path.join(webRoot, 'src/lib/icon_paths.ts');
 
 const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
 
-/** @param {string} svg */
+
 function parseSvgPrimitives(svg) {
   const inner = svg
     .trim()
@@ -34,7 +31,7 @@ function parseSvgPrimitives(svg) {
   return tags;
 }
 
-/** @type {Record<string, string[]>} */
+
 const paths = {};
 const missing = [];
 

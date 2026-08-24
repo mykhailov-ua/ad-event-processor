@@ -97,7 +97,7 @@ func TestAuction_freqCapMissingSnapshotFailOpen(t *testing.T) {
 	reg := NewRegistry(store)
 
 	prefixHash := HashBytes64([]byte("{abc}fcap:c:abc:u:"))
-	userHash := HashBytes64([]byte("ghost-user"))
+	userHash := HashBytes64([]byte("freqcap-user"))
 
 	reg.UpdateCampaigns([]CampaignData{{
 		ID: CampaignID(1), Bid: 200, DeviceMask: 1, CategoryMask: 1, GeoHashVal: 7,

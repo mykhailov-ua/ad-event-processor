@@ -26,11 +26,11 @@ func TestGetShardHealth_reportsPingAndConfigVersion(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, &config.Config{})
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, &config.Config{})
 
 	require.NoError(t, svc.UpdateSettings(ctx, map[string]string{"emergency_breaker": "false"}))
 	worker := NewOutboxWorker(svc)
@@ -42,7 +42,7 @@ func TestGetShardHealth_reportsPingAndConfigVersion(t *testing.T) {
 	).Scan(&lastProcessed))
 	require.Greater(t, lastProcessed, int64(0))
 
-	version, err := rdb.Get(ctx, redisConfigVersionKey).Int64()
+	version, err := redisClient.Get(ctx, redisConfigVersionKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, lastProcessed, version)
 
@@ -64,11 +64,11 @@ func TestGetShardHealth_configVersionLag(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, &config.Config{})
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, &config.Config{})
 
 	for range 2 {
 		_, err := db.New(pool).CreateOutboxEvent(ctx, db.CreateOutboxEventParams{
@@ -86,7 +86,7 @@ func TestGetShardHealth_configVersionLag(t *testing.T) {
 	).Scan(&lastProcessed))
 	require.GreaterOrEqual(t, lastProcessed, int64(2))
 
-	require.NoError(t, rdb.Set(ctx, redisConfigVersionKey, lastProcessed-1, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, redisConfigVersionKey, lastProcessed-1, 0).Err())
 
 	report, err := svc.GetShardHealth(ctx)
 	require.NoError(t, err)
@@ -101,11 +101,11 @@ func TestHandler_OpsShards_requiresPermShardsRead(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -133,7 +133,7 @@ func TestHandler_OpsShards_roleUserForbidden(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -142,8 +142,8 @@ func TestHandler_OpsShards_roleUserForbidden(t *testing.T) {
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	authMdl := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	authMdl := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMdl, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

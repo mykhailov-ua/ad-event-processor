@@ -29,7 +29,7 @@ INSERT INTO ml_shadow_scores (ip_hash, score, model_name, created_at)`)
 		var fixed [16]byte
 		ipHash, decErr := hex.DecodeString(featureRows[i].IPAddress)
 		if decErr != nil || len(ipHash) != 16 {
-			fixed = hashIPForCH(featureRows[i].IPAddress)
+			fixed = hashIPForClickhouse(featureRows[i].IPAddress)
 		} else {
 			copy(fixed[:], ipHash)
 		}

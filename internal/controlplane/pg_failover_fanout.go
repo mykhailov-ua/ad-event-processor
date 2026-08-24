@@ -10,20 +10,20 @@ import (
 )
 
 type pgFailoverShardReader struct {
-	rdbs []redis.UniversalClient
+	redisShards []redis.UniversalClient
 }
 
-func newPgFailoverShardReader(rdbs []redis.UniversalClient) *pgFailoverShardReader {
-	return &pgFailoverShardReader{rdbs: rdbs}
+func newPgFailoverShardReader(redisShards []redis.UniversalClient) *pgFailoverShardReader {
+	return &pgFailoverShardReader{redisShards: redisShards}
 }
 
 func (reader *pgFailoverShardReader) activeDSN(ctx context.Context) (string, uint64, error) {
 	var lastErr error
-	for i, rdb := range reader.rdbs {
-		if rdb == nil {
+	for i, redisClient := range reader.redisShards {
+		if redisClient == nil {
 			continue
 		}
-		dsn, epoch, err := pgfailover.ActiveDSN(ctx, rdb)
+		dsn, epoch, err := pgfailover.ActiveDSN(ctx, redisClient)
 		if err == nil && dsn != "" {
 			return dsn, epoch, nil
 		}

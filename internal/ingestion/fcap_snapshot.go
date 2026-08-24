@@ -14,26 +14,26 @@ import (
 var emptyFcapSnapshot = &rtb.FcapSnapshot{}
 
 func (sw *SettingsWatcher) syncFcapCounts(ctx context.Context) {
-	rdb := sw.pickHealthyShard()
-	if rdb == nil {
+	redisClient := sw.pickHealthyShard()
+	if redisClient == nil {
 		return
 	}
 
 	newCounts := make(map[uint64]uint32)
 	prefix := "fcap:c:"
 
-	for attempt := 0; attempt < len(sw.rdbs); attempt++ {
+	for attempt := 0; attempt < len(sw.redisShards); attempt++ {
 		cursor := uint64(0)
 		ok := true
 		for {
-			keys, next, err := rdb.Scan(ctx, cursor, prefix+"*", 200).Result()
+			keys, next, err := redisClient.Scan(ctx, cursor, prefix+"*", 200).Result()
 			if err != nil {
 				slog.Warn("fcap snapshot scan failed, trying next shard", "error", err)
 				ok = false
 				break
 			}
 			for _, key := range keys {
-				ingestFcapKey(newCounts, key, rdb, ctx)
+				ingestFcapKey(newCounts, key, redisClient, ctx)
 			}
 			cursor = next
 			if cursor == 0 {
@@ -48,15 +48,15 @@ func (sw *SettingsWatcher) syncFcapCounts(ctx context.Context) {
 			}
 			return
 		}
-		rdb = sw.nextShardAfter(rdb)
-		if rdb == nil {
+		redisClient = sw.nextShardAfter(redisClient)
+		if redisClient == nil {
 			return
 		}
 		newCounts = make(map[uint64]uint32)
 	}
 }
 
-func ingestFcapKey(counts map[uint64]uint32, key string, rdb redis.UniversalClient, ctx context.Context) {
+func ingestFcapKey(counts map[uint64]uint32, key string, redisClient redis.UniversalClient, ctx context.Context) {
 	idx := strings.LastIndex(key, ":u:")
 	if idx < 0 || idx+3 >= len(key) {
 		return
@@ -66,7 +66,7 @@ func ingestFcapKey(counts map[uint64]uint32, key string, rdb redis.UniversalClie
 	if userID == "" {
 		return
 	}
-	valStr, err := rdb.Get(ctx, key).Result()
+	valStr, err := redisClient.Get(ctx, key).Result()
 	if err != nil {
 		return
 	}

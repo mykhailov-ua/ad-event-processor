@@ -12,35 +12,35 @@ import (
 	"github.com/google/uuid"
 )
 
-type GhostImpressionFunnelRowDTO struct {
-	CampaignID          string  `json:"campaign_id"`
-	PlacementID         string  `json:"placement_id,omitempty"`
-	BillableImpressions int64   `json:"billable_impressions"`
-	GhostImpressions    int64   `json:"ghost_impressions"`
-	IVTImpressions      int64   `json:"ivt_impressions"`
-	GhostRate           float64 `json:"ghost_rate"`
-	IVTImpressionRate   float64 `json:"ivt_impression_rate"`
+type SilentRejectImpressionFunnelRowDTO struct {
+	CampaignID              string  `json:"campaign_id"`
+	PlacementID             string  `json:"placement_id,omitempty"`
+	BillableImpressions     int64   `json:"billable_impressions"`
+	SilentRejectImpressions int64   `json:"silent_reject_impressions"`
+	IVTImpressions          int64   `json:"ivt_impressions"`
+	SilentRejectRate        float64 `json:"silent_reject_rate"`
+	IVTImpressionRate       float64 `json:"ivt_impression_rate"`
 }
 
-type GhostImpressionFunnelReportResponse struct {
-	Rows       []GhostImpressionFunnelRowDTO `json:"rows"`
-	Freshness  DataFreshnessDTO              `json:"freshness"`
-	NextCursor string                        `json:"next_cursor,omitempty"`
+type SilentRejectImpressionFunnelReportResponse struct {
+	Rows       []SilentRejectImpressionFunnelRowDTO `json:"rows"`
+	Freshness  DataFreshnessDTO                     `json:"freshness"`
+	NextCursor string                               `json:"next_cursor,omitempty"`
 }
 
-const ghostImpressionFunnelQuery = `
+const silentRejectImpressionFunnelQuery = `
 SELECT
  campaign_id,
  placement_id,
  sum(billable_impressions) AS billable_impressions,
- sum(ghost_impressions) AS ghost_impressions,
+ sum(silent_reject_impressions) AS silent_reject_impressions,
  sum(ivt_impressions) AS ivt_impressions
 FROM (
  SELECT
  i.campaign_id,
  i.placement_id,
  count() AS billable_impressions,
- toUInt64(0) AS ghost_impressions,
+ toUInt64(0) AS silent_reject_impressions,
  toUInt64(0) AS ivt_impressions
  FROM impressions AS i
  WHERE i.campaign_id IN (?)
@@ -52,7 +52,7 @@ FROM (
  f.campaign_id,
  coalesce(nullIf(JSONExtractString(f.payload, 'placement_id'), ''), '') AS placement_id,
  toUInt64(0) AS billable_impressions,
- countIf(f.ghost_event = 1 AND f.event_type = 'impression') AS ghost_impressions,
+ countIf(f.silent_reject_event = 1 AND f.event_type = 'impression') AS silent_reject_impressions,
  toUInt64(0) AS ivt_impressions
  FROM fraud_events AS f
  WHERE f.campaign_id IN (?)
@@ -65,7 +65,7 @@ FROM (
  i.campaign_id,
  i.placement_id,
  toUInt64(0) AS billable_impressions,
- toUInt64(0) AS ghost_impressions,
+ toUInt64(0) AS silent_reject_impressions,
  uniqIf(i.click_id, fe.click_id != '') AS ivt_impressions
  FROM impressions AS i
  LEFT JOIN fraud_events AS fe
@@ -76,11 +76,11 @@ FROM (
  GROUP BY i.campaign_id, i.placement_id
 )
 GROUP BY campaign_id, placement_id
-HAVING billable_impressions > 0 OR ghost_impressions > 0 OR ivt_impressions > 0
-ORDER BY ghost_impressions DESC, ivt_impressions DESC
+HAVING billable_impressions > 0 OR silent_reject_impressions > 0 OR ivt_impressions > 0
+ORDER BY silent_reject_impressions DESC, ivt_impressions DESC
 LIMIT ? OFFSET ?`
 
-const ghostImpressionFunnelCountQuery = `
+const silentRejectImpressionFunnelCountQuery = `
 SELECT count() FROM (
  SELECT campaign_id, placement_id
  FROM (
@@ -88,7 +88,7 @@ SELECT count() FROM (
  i.campaign_id,
  i.placement_id,
  count() AS billable_impressions,
- toUInt64(0) AS ghost_impressions,
+ toUInt64(0) AS silent_reject_impressions,
  toUInt64(0) AS ivt_impressions
  FROM impressions AS i
  WHERE i.campaign_id IN (?)
@@ -100,7 +100,7 @@ SELECT count() FROM (
  f.campaign_id,
  coalesce(nullIf(JSONExtractString(f.payload, 'placement_id'), ''), '') AS placement_id,
  toUInt64(0),
- countIf(f.ghost_event = 1 AND f.event_type = 'impression'),
+ countIf(f.silent_reject_event = 1 AND f.event_type = 'impression'),
  toUInt64(0)
  FROM fraud_events AS f
  WHERE f.campaign_id IN (?)
@@ -124,20 +124,21 @@ SELECT count() FROM (
  GROUP BY i.campaign_id, i.placement_id
  )
  GROUP BY campaign_id, placement_id
- HAVING sum(billable_impressions) > 0 OR sum(ghost_impressions) > 0 OR sum(ivt_impressions) > 0
+ HAVING sum(billable_impressions) > 0 OR sum(silent_reject_impressions) > 0 OR sum(ivt_impressions) > 0
 )`
 
-func (reports *ReportsHTTPHandlers) registerGhostImpressionFunnelReport(mux *http.ServeMux) {
+func (reports *ReportsHTTPHandlers) registerSilentRejectImpressionFunnelReport(mux *http.ServeMux) {
 	limit := reports.ApplyRateLimit
 	permAny := reports.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	perms := []string{"audit:read", "campaigns:read"}
-	mux.HandleFunc("GET /api/v1/reports/ghost-impression-funnel", limit(permAny(perms, reports.wrapReport("ghost-impression-funnel", reports.getGhostImpressionFunnelReport))))
+	mux.HandleFunc("GET /api/v1/reports/silent-reject-impression-funnel", limit(permAny(perms, reports.wrapReport("silent-reject-impression-funnel", reports.getSilentRejectImpressionFunnelReport))))
+	mux.HandleFunc("GET /api/v1/reports/ghost-impression-funnel", limit(permAny(perms, reports.wrapReport("silent-reject-impression-funnel", reports.getSilentRejectImpressionFunnelReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getGhostImpressionFunnelReport(w http.ResponseWriter, r *http.Request) {
+func (reports *ReportsHTTPHandlers) getSilentRejectImpressionFunnelReport(w http.ResponseWriter, r *http.Request) {
 	customerID, ok := reports.resolveReportCustomerID(w, r)
 	if !ok {
 		return
@@ -162,8 +163,8 @@ func (reports *ReportsHTTPHandlers) getGhostImpressionFunnelReport(w http.Respon
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, GhostImpressionFunnelReportResponse{
-			Rows:      []GhostImpressionFunnelRowDTO{},
+		httpresponse.JSON(w, http.StatusOK, SilentRejectImpressionFunnelReportResponse{
+			Rows:      []SilentRejectImpressionFunnelRowDTO{},
 			Freshness: reports.reportFreshness(r.Context()),
 		})
 		return
@@ -171,7 +172,7 @@ func (reports *ReportsHTTPHandlers) getGhostImpressionFunnelReport(w http.Respon
 
 	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
 	defer cancel()
-	rows, total, err := queryGhostImpressionFunnelRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	rows, total, err := querySilentRejectImpressionFunnelRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
 		reports.writeServiceError(w, err)
 		return
@@ -180,32 +181,32 @@ func (reports *ReportsHTTPHandlers) getGhostImpressionFunnelReport(w http.Respon
 	if int64(page.Offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, GhostImpressionFunnelReportResponse{
+	httpresponse.JSON(w, http.StatusOK, SilentRejectImpressionFunnelReportResponse{
 		Rows:       rows,
 		Freshness:  reports.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
-func queryGhostImpressionFunnelRows(
+func querySilentRejectImpressionFunnelRows(
 	ctx context.Context,
 	chQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
-) ([]GhostImpressionFunnelRowDTO, int64, error) {
+) ([]SilentRejectImpressionFunnelRowDTO, int64, error) {
 	if chQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, ghostImpressionFunnelCountQuery,
+	if err := chQuery.QueryRow(ctx, silentRejectImpressionFunnelCountQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 	).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, ghostImpressionFunnelQuery,
+	chRows, err := chQuery.Query(ctx, silentRejectImpressionFunnelQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
@@ -216,29 +217,29 @@ func queryGhostImpressionFunnelRows(
 	}
 	defer func() { _ = chRows.Close() }()
 
-	out := make([]GhostImpressionFunnelRowDTO, 0, limit)
+	out := make([]SilentRejectImpressionFunnelRowDTO, 0, limit)
 	for chRows.Next() {
-		var row GhostImpressionFunnelRowDTO
+		var row SilentRejectImpressionFunnelRowDTO
 		if err := chRows.Scan(
 			&row.CampaignID,
 			&row.PlacementID,
 			&row.BillableImpressions,
-			&row.GhostImpressions,
+			&row.SilentRejectImpressions,
 			&row.IVTImpressions,
 		); err != nil {
 			return nil, 0, err
 		}
-		row.GhostRate = calcGhostImpressionRate(row.GhostImpressions, row.BillableImpressions)
+		row.SilentRejectRate = calcSilentRejectImpressionRate(row.SilentRejectImpressions, row.BillableImpressions)
 		row.IVTImpressionRate = calcIVTRate(row.IVTImpressions, row.BillableImpressions)
 		out = append(out, row)
 	}
 	return out, total, chRows.Err()
 }
 
-func calcGhostImpressionRate(ghostCount, billableImpressions int64) float64 {
-	denom := billableImpressions + ghostCount
+func calcSilentRejectImpressionRate(silentRejectCount, billableImpressions int64) float64 {
+	denom := billableImpressions + silentRejectCount
 	if denom <= 0 {
 		return 0
 	}
-	return float64(ghostCount) / float64(denom)
+	return float64(silentRejectCount) / float64(denom)
 }

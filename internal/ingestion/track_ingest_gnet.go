@@ -146,6 +146,10 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 	case trackStatusRejected:
 		spec := filterRejectSpecs[outcome.RejectKind]
 		h.recordTrackReject(ctx, evt, outcome.RejectKind)
+		if outcome.RejectKind == filterRejectFraudBlocked {
+			shard := h.sharder.GetShard(evt.CampaignID)
+			enqueueFraudReject(h.fraudWriter, shard, evt)
+		}
 		h.write(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		return gnet.None

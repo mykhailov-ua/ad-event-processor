@@ -131,7 +131,7 @@ func (rb *IDRingBuffer) refillWorker() {
 var globalIDRingBuffer = NewIDRingBuffer(16384)
 
 type StreamProducer struct {
-	rdb           redis.UniversalClient
+	redisClient           redis.UniversalClient
 	streamName    string
 	maxStreamLen  int64
 	writeTimeout  time.Duration
@@ -145,13 +145,13 @@ type StreamProducer struct {
 }
 
 func NewStreamProducer(
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	streamName string,
 	maxStreamLen int,
 	writeTimeout time.Duration,
 ) *StreamProducer {
 	p := &StreamProducer{
-		rdb:          rdb,
+		redisClient:          redisClient,
 		streamName:   streamName,
 		maxStreamLen: int64(maxStreamLen),
 		writeTimeout: writeTimeout,
@@ -233,7 +233,7 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 	pbEvt.CreatedAtUnix = evt.CreatedAt.Unix()
 	pbEvt.FraudScore = evt.FraudScore
 	pbEvt.FraudReason = UnsafeBytes(evt.FraudReason)
-	pbEvt.GhostEvent = evt.GhostEvent
+	pbEvt.SilentRejectEvent = evt.SilentRejectEvent
 
 	size := pbEvt.SizeVT()
 	bufPtr := byteBufPool.Get().(*[]byte)
@@ -383,7 +383,7 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
 	defer cancel()
 
-	pipe := p.rdb.Pipeline()
+	pipe := p.redisClient.Pipeline()
 
 	var wraps [500]*ByteSliceValue
 	var valuesPtrs [500]*[]any

@@ -69,9 +69,6 @@ func (f *UnifiedFilter) localQuantaFullSkipEligible(evt *domain.Event, campInfo 
 	return true
 }
 
-// acceptLocalQuantaFullSkip skips sync Redis EVALSHA: placement and fraud blacklist are checked in Go
-// before local quanta; ingress RPD via EntitlementsFilter; click dedup via localClickIdem
-// (async SET NX in stream worker).
 
 func (f *UnifiedFilter) checkLocalQuanta(
 	ctx context.Context,
@@ -133,7 +130,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 		f.rollbackLocalQuantaSpend(evt.CampaignID, subSlot, amount)
 		return true, err
 	}
-	rdb := f.rdbs[shard%len(f.rdbs)]
+	redisClient := f.redisShards[shard%len(f.redisShards)]
 
 	debitAny := f.clickAmountMicroAny
 	if evt.Type == "impression" {
@@ -143,7 +140,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 	prevSkip := f.skipBudgetDebitAny
 	f.skipBudgetDebitAny = oneAny
 	fastScratch := budgetFastScratchPool.Get().(*budgetFastScratch)
-	err = f.runBudgetFastLua(ctx, evt, campInfo, debitAny, rdb, shard, fastScratch)
+	err = f.runBudgetFastLua(ctx, evt, campInfo, debitAny, redisClient, shard, fastScratch)
 	f.skipBudgetDebitAny = prevSkip
 	budgetFastScratchPool.Put(fastScratch)
 

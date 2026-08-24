@@ -21,15 +21,15 @@ func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
-	pubsub := rdb.Subscribe(ctx, edge.FraudQuarantineChannel)
+	pubsub := redisClient.Subscribe(ctx, edge.FraudQuarantineChannel)
 	defer pubsub.Close()
 	_, err := pubsub.Receive(ctx)
 	require.NoError(t, err)
 
-	svc := &Service{rdbs: []redis.UniversalClient{rdb}}
+	svc := &Service{redisShards: []redis.UniversalClient{redisClient}}
 	worker := &OutboxWorker{svc: svc}
 
 	ip := "203.0.113.10"
@@ -48,7 +48,7 @@ func TestApplyBlacklistPayload_publishesQuarantine(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expected, payload.Payload)
 
-	isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", ip).Result()
+	isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", ip).Result()
 	require.NoError(t, err)
 	assert.True(t, isMember)
 }

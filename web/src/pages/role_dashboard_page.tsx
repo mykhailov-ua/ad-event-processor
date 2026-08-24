@@ -77,7 +77,7 @@ type RoleDashboardData = {
   tax_scheme?: string;
   tax_vat_id?: string;
   export_jobs?: ExportJobRow[];
-  ghost_ivt_campaigns?: number;
+  silent_reject_campaigns?: number;
   labels_pending?: number;
   edge_blocked_fraud?: number;
   ml_active_version_id?: string;
@@ -374,8 +374,8 @@ function FraudBody({ data, canWrite }: { data: RoleDashboardData; canWrite: bool
         <FraudMlTrustPanel data={data} />
       </Subsection>
       <dl className="definition-list">
-        <dt>Ghost IVT campaigns</dt>
-        <dd>{String(data.ghost_ivt_campaigns ?? 0)}</dd>
+        <dt>Silent reject campaigns</dt>
+        <dd>{String(data.silent_reject_campaigns ?? 0)}</dd>
         <dt>Labels queue (7d)</dt>
         <dd>{String(data.labels_pending ?? 0)}</dd>
         <dt>Edge blocked (fraud tier)</dt>

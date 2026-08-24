@@ -24,7 +24,7 @@ func TestClosedLoopPacingController(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -32,7 +32,7 @@ func TestClosedLoopPacingController(t *testing.T) {
 	}
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -53,7 +53,7 @@ func TestClosedLoopPacingController(t *testing.T) {
 	queries := db.New(pool)
 	campaignRepo := domain.NewCampaignRepo(queries)
 	customerRepo := domain.NewCustomerRepo(queries)
-	syncWorker := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
 
 	_, err = pool.Exec(ctx, "UPDATE campaigns SET current_spend = 50000, pacing_mode = 'EVEN' WHERE id = $1", domain.ToUUID(campaignID))
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -104,7 +104,7 @@ func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	}
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -134,7 +134,7 @@ func TestClosedLoopPacingController_EdgeCases(t *testing.T) {
 	queries := db.New(pool)
 	campaignRepo := domain.NewCampaignRepo(queries)
 	customerRepo := domain.NewCustomerRepo(queries)
-	syncWorker := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
 
 	err = svc.ClosedLoopPacingController(ctx, []*domain.SyncWorker{syncWorker})
 	require.NoError(t, err)
@@ -158,7 +158,7 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 	pool, cleanupDB := database.SetupTestDB(b)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(b)
+	redisClient, cleanupRedis := database.SetupTestRedis(b)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -166,7 +166,7 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 	}
 
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -190,7 +190,7 @@ func BenchmarkClosedLoopPacingController(b *testing.B) {
 	queries := db.New(pool)
 	campaignRepo := domain.NewCampaignRepo(queries)
 	customerRepo := domain.NewCustomerRepo(queries)
-	syncWorker := domain.NewSyncWorker(rdb, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, campaignRepo, customerRepo, 100*time.Millisecond, 0, nil, 0)
 	b.ReportAllocs()
 
 	for b.Loop() {

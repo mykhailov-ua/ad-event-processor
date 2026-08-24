@@ -16,22 +16,22 @@ func TestSyncBlocklistIncremental_changelogDelta(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	ctx := context.Background()
 
 	store := NewBlocklistStore()
 	base := float64(time.Now().Unix())
 	state := &BlocklistSyncState{lastFullSync: time.Now(), lastScore: base}
 
-	added, removed, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
+	added, removed, err := SyncBlocklistIncremental(ctx, redisClient, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 0, added)
 	require.Equal(t, 0, removed)
 
 	addScore := base + 1
-	require.NoError(t, rdb.ZAdd(ctx, redisKeyBlacklistChangelogAdd, redis.Z{Score: addScore, Member: "198.51.100.10"}).Err())
+	require.NoError(t, redisClient.ZAdd(ctx, redisKeyBlacklistChangelogAdd, redis.Z{Score: addScore, Member: "198.51.100.10"}).Err())
 
-	added, removed, err = SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
+	added, removed, err = SyncBlocklistIncremental(ctx, redisClient, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 1, added)
 	require.Equal(t, 0, removed)
@@ -39,8 +39,8 @@ func TestSyncBlocklistIncremental_changelogDelta(t *testing.T) {
 	require.Equal(t, addScore, state.lastScore)
 
 	removeScore := addScore + 1
-	require.NoError(t, rdb.ZAdd(ctx, redisKeyBlacklistChangelogRemove, redis.Z{Score: removeScore, Member: "198.51.100.10"}).Err())
-	added, removed, err = SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
+	require.NoError(t, redisClient.ZAdd(ctx, redisKeyBlacklistChangelogRemove, redis.Z{Score: removeScore, Member: "198.51.100.10"}).Err())
+	added, removed, err = SyncBlocklistIncremental(ctx, redisClient, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 0, added)
 	require.Equal(t, 1, removed)
@@ -80,17 +80,17 @@ func TestRecordAutoBan_changelog(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	ctx := context.Background()
 
-	require.NoError(t, RecordAutoBan(ctx, rdb, "203.0.113.88", time.Minute))
-	members, err := rdb.ZRange(ctx, redisKeyBlacklistChangelogAdd, 0, -1).Result()
+	require.NoError(t, RecordAutoBan(ctx, redisClient, "203.0.113.88", time.Minute))
+	members, err := redisClient.ZRange(ctx, redisKeyBlacklistChangelogAdd, 0, -1).Result()
 	require.NoError(t, err)
 	require.Equal(t, []string{"203.0.113.88"}, members)
 
 	store := NewBlocklistStore()
 	state := &BlocklistSyncState{lastFullSync: time.Now(), lastScore: float64(time.Now().Unix()) - 1}
-	added, _, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
+	added, _, err := SyncBlocklistIncremental(ctx, redisClient, BlocklistMaps{}, store, state)
 	require.NoError(t, err)
 	require.Equal(t, 1, added)
 	require.Equal(t, 1, store.Len())
@@ -100,11 +100,11 @@ func TestRecordBlacklistChangelog_manualSet(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	ctx := context.Background()
 
-	require.NoError(t, RecordBlacklistChangelog(ctx, rdb, redisKeyBlacklistManual, "203.0.113.1", true))
-	members, err := rdb.ZRange(ctx, redisKeyBlacklistChangelogAdd, 0, -1).Result()
+	require.NoError(t, RecordBlacklistChangelog(ctx, redisClient, redisKeyBlacklistManual, "203.0.113.1", true))
+	members, err := redisClient.ZRange(ctx, redisKeyBlacklistChangelogAdd, 0, -1).Result()
 	require.NoError(t, err)
 	require.Equal(t, []string{"203.0.113.1"}, members)
 }
@@ -137,7 +137,7 @@ func BenchmarkSyncBlocklistFromRedis_fullSMEMBERS(b *testing.B) {
 		b.Fatal(err)
 	}
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	ctx := context.Background()
 
 	ips := syntheticDenyIPs(n)
@@ -145,14 +145,14 @@ func BenchmarkSyncBlocklistFromRedis_fullSMEMBERS(b *testing.B) {
 	for i, ip := range ips {
 		members[i] = ip
 	}
-	require.NoError(b, rdb.SAdd(ctx, redisKeyBlacklistFraud, members...).Err())
+	require.NoError(b, redisClient.SAdd(ctx, redisKeyBlacklistFraud, members...).Err())
 
 	maps := newTestBlocklistMapsV4OnlyBench(b)
 	store := NewBlocklistStore()
 	b.ReportMetric(float64(n), "ips")
 	for b.Loop() {
 		store = NewBlocklistStore()
-		_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
+		_, _, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -168,7 +168,7 @@ func BenchmarkSyncBlocklistIncremental_changelogDelta(b *testing.B) {
 		b.Fatal(err)
 	}
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	ctx := context.Background()
 
 	store := NewBlocklistStore()
@@ -183,11 +183,11 @@ func BenchmarkSyncBlocklistIncremental_changelogDelta(b *testing.B) {
 			Member: "203.0.113." + strconv.Itoa(i%250+1),
 		}
 	}
-	require.NoError(b, rdb.ZAdd(ctx, redisKeyBlacklistChangelogAdd, zs...).Err())
+	require.NoError(b, redisClient.ZAdd(ctx, redisKeyBlacklistChangelogAdd, zs...).Err())
 
 	b.ReportMetric(deltaIPs, "delta_ips")
 	for b.Loop() {
-		_, _, err := SyncBlocklistIncremental(ctx, rdb, BlocklistMaps{}, store, state)
+		_, _, err := SyncBlocklistIncremental(ctx, redisClient, BlocklistMaps{}, store, state)
 		if err != nil {
 			b.Fatal(err)
 		}

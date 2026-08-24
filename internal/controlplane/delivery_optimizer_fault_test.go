@@ -24,7 +24,7 @@ func TestFault_DeliveryOptimizerSingleWriter(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -37,7 +37,7 @@ func TestFault_DeliveryOptimizerSingleWriter(t *testing.T) {
 		AutoscaleShiftAmount:        5_000_000,
 		MABMinImpressions:           1000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -66,7 +66,7 @@ func TestFault_DeliveryOptimizerSingleWriter(t *testing.T) {
 	var maxIDBefore int64
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COALESCE(MAX(id), 0) FROM outbox_events`).Scan(&maxIDBefore))
 
-	syncWorker := domain.NewSyncWorker(rdb, domain.NewCampaignRepo(db.New(pool)), domain.NewCustomerRepo(db.New(pool)), 0, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, domain.NewCampaignRepo(db.New(pool)), domain.NewCustomerRepo(db.New(pool)), 0, 0, nil, 0)
 	require.NoError(t, svc.RunDeliveryOptimizerTick(ctx, []*domain.SyncWorker{syncWorker}, false))
 
 	rows, err := pool.Query(ctx, `SELECT event_type, payload FROM outbox_events WHERE id > $1 ORDER BY id`, maxIDBefore)

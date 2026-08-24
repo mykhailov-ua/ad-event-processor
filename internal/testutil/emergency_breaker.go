@@ -7,8 +7,8 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-func NewSettingsWatcher(rdbs []redis.UniversalClient, cfg *config.Config) *ingestion.SettingsWatcher {
-	return ingestion.NewSettingsWatcher(rdbs, cfg)
+func NewSettingsWatcher(redisShards []redis.UniversalClient, cfg *config.Config) *ingestion.SettingsWatcher {
+	return ingestion.NewSettingsWatcher(redisShards, cfg)
 }
 
 func NewEmergencyBreakerFilter(watcher *ingestion.SettingsWatcher) *ingestion.EmergencyBreakerFilter {

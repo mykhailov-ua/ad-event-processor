@@ -26,7 +26,7 @@ func TestFault_DedupMultiRegionDuplicate(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -58,7 +58,7 @@ func TestFault_DedupMultiRegionDuplicate(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 1}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	relay := NewRegionOutboxRelay(svc)
 
 	for range 3 {
@@ -70,7 +70,7 @@ func TestFault_DedupMultiRegionDuplicate(t *testing.T) {
 	}
 
 	budgetKey := "budget:campaign:" + campaignID.String()
-	val, err := rdb.Get(ctx, budgetKey).Int64()
+	val, err := redisClient.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(8_000_000), val)
 

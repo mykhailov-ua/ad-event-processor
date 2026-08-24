@@ -37,7 +37,7 @@ type refillSignal struct {
 
 type QuotaRefillWorker struct {
 	ledger       *LocalQuantaLedger
-	rdbs         []redis.UniversalClient
+	redisShards         []redis.UniversalClient
 	sharder      Sharder
 	registry     domain.CampaignRegistry
 	baseChunk    int64
@@ -67,11 +67,11 @@ type QuotaRefillConfig struct {
 
 func NewQuotaRefillWorker(
 	ledger *LocalQuantaLedger,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	cfg QuotaRefillConfig,
 ) *QuotaRefillWorker {
-	if ledger == nil || len(rdbs) == 0 || sharder == nil {
+	if ledger == nil || len(redisShards) == 0 || sharder == nil {
 		return nil
 	}
 	chunk := cfg.BaseChunkMicro
@@ -84,7 +84,7 @@ func NewQuotaRefillWorker(
 	}
 	w := &QuotaRefillWorker{
 		ledger:       ledger,
-		rdbs:         rdbs,
+		redisShards:         redisShards,
 		sharder:      sharder,
 		baseChunk:    chunk,
 		thresholdPct: cfg.ThresholdPct,
@@ -170,7 +170,7 @@ func (w *QuotaRefillWorker) tryRefill(sig refillSignal) bool {
 	}
 	if n > 1 {
 		for sub := 0; sub < n; sub++ {
-			shard := spreadHighVolumeShard(len(w.rdbs), sig.campaignID, sub)
+			shard := spreadHighVolumeShard(len(w.redisShards), sig.campaignID, sub)
 			if w.tryRefillSlot(sig.campaignID, shard, sub) {
 				return true
 			}
@@ -181,7 +181,7 @@ func (w *QuotaRefillWorker) tryRefill(sig refillSignal) bool {
 }
 
 func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot int) bool {
-	if shard < 0 || shard >= len(w.rdbs) {
+	if shard < 0 || shard >= len(w.redisShards) {
 		metrics.LocalQuotaRefillTotal.WithLabelValues("skipped").Inc()
 		return true
 	}
@@ -201,21 +201,21 @@ func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot i
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	rdb := w.rdbs[shard]
-	if rdb == nil {
+	redisClient := w.redisShards[shard]
+	if redisClient == nil {
 		metrics.LocalQuotaRefillTotal.WithLabelValues("fail").Inc()
 		return false
 	}
 	lockKey := fmt.Sprintf("budget:refill_lock:%s", campaignID)
-	claimed, err := rdb.SetNX(ctx, lockKey, "1", refillLockTTL).Result()
+	claimed, err := redisClient.SetNX(ctx, lockKey, "1", refillLockTTL).Result()
 	if err != nil || !claimed {
 		metrics.LocalQuotaRefillTotal.WithLabelValues("skipped").Inc()
 		return false
 	}
-	defer func() { _ = rdb.Del(ctx, lockKey).Err() }()
+	defer func() { _ = redisClient.Del(ctx, lockKey).Err() }()
 
 	quotaKey := budgetQuotaKeyForDebit(campaignID, subSlot)
-	remaining, err := rdb.Get(ctx, quotaKey).Int64()
+	remaining, err := redisClient.Get(ctx, quotaKey).Int64()
 	if errors.Is(err, redis.Nil) {
 		remaining = 0
 		err = nil
@@ -236,7 +236,7 @@ func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot i
 	ema := w.ledger.RPSEMA(campaignID)
 	chunk := AdaptiveChunkSizeStrict(ema, w.floorMicro, w.ceilingMicro, w.baseChunk, remaining, w.strictEnter)
 
-	res, err := localQuotaRefillScript.Run(ctx, rdb, []string{quotaKey}, chunk).Int64()
+	res, err := localQuotaRefillScript.Run(ctx, redisClient, []string{quotaKey}, chunk).Int64()
 	if err != nil {
 		metrics.LocalQuotaRefillTotal.WithLabelValues("fail").Inc()
 		slog.Debug("local quota refill lua failed", "campaign_id", campaignID, "error", err)

@@ -116,7 +116,7 @@ func TestFault_XDPFingerprintRedisPipeline(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	objs := loadTestObjects(t)
@@ -133,7 +133,7 @@ func TestFault_XDPFingerprintRedisPipeline(t *testing.T) {
 	require.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 
 	handler := NewFingerprintHandler(func(evt FingerprintEvent) error {
-		return Record(ctx, rdb, Entry{
+		return Record(ctx, redisClient, Entry{
 			IP:      HostIPv4(evt.SrcIP),
 			TCPHash: evt.TCPHash,
 			TTL:     evt.TTL,
@@ -147,7 +147,7 @@ func TestFault_XDPFingerprintRedisPipeline(t *testing.T) {
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, n, 1)
 
-	entries, err := ListRecent(ctx, rdb, 8)
+	entries, err := ListRecent(ctx, redisClient, 8)
 	require.NoError(t, err)
 	require.NotEmpty(t, entries)
 	assert.Equal(t, src.String(), entries[0].IP)

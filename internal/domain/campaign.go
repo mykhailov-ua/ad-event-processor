@@ -30,8 +30,6 @@ const (
 	ConnTypeMobileOnly      ConnTypePolicy = "mobile_only"
 	ConnTypeResidentialOnly ConnTypePolicy = "residential_only"
 
-	// SocialInAppConnTypePolicy is bundled by the social_in_app fraud preset.
-	// residential_only false-positives on mobile carrier ASNs in the L1.5 proxy/VPN feed.
 	SocialInAppConnTypePolicy = ConnTypeMobileOnly
 )
 
@@ -87,7 +85,7 @@ type Campaign struct {
 	FraudThresholdSuspect uint8
 	FraudThresholdIVT     uint8
 	FraudThresholdBlock   uint8
-	GhostIVTEnabled       bool
+	SilentRejectEnabled   bool
 	BehaviorFlags         BehaviorFlags
 
 	RetargetSegmentID uuid.UUID
@@ -166,15 +164,21 @@ const (
 	DefaultFraudThresholdIVT     uint8 = 80
 	DefaultFraudThresholdBlock   uint8 = 100
 
-	FraudPresetConservative = "conservative"
-	FraudPresetBalanced     = "balanced"
-	FraudPresetAggressive   = "aggressive"
-	FraudPresetGrayMarket   = "gray_market"
-	FraudPresetSocialInApp  = "social_in_app"
+	FraudPresetConservative          = "conservative"
+	FraudPresetBalanced              = "balanced"
+	FraudPresetAggressive            = "aggressive"
+	FraudPresetEnhancedDefense       = "enhanced_defense"
+	FraudPresetEnhancedDefenseLegacy = "gray_market" // wire/DB alias for enhanced_defense
+	FraudPresetSocialInApp           = "social_in_app"
 )
 
-func IsGrayMarketFraudPreset(name string) bool {
-	return strings.EqualFold(strings.TrimSpace(name), FraudPresetGrayMarket)
+func IsEnhancedDefenseFraudPreset(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case FraudPresetEnhancedDefense, FraudPresetEnhancedDefenseLegacy:
+		return true
+	default:
+		return false
+	}
 }
 
 func IsSocialInAppFraudPreset(name string) bool {
@@ -189,7 +193,7 @@ func ResolveFraudPreset(name string) (pass, suspect, ivt, block uint8, ok bool) 
 		return DefaultFraudThresholdPass, DefaultFraudThresholdSuspect, DefaultFraudThresholdIVT, DefaultFraudThresholdBlock, true
 	case FraudPresetAggressive:
 		return 20, 45, 65, 85, true
-	case FraudPresetGrayMarket:
+	case FraudPresetEnhancedDefense, FraudPresetEnhancedDefenseLegacy:
 		return 20, 45, 65, 85, true
 	case FraudPresetSocialInApp:
 		return DefaultFraudThresholdPass, DefaultFraudThresholdSuspect, DefaultFraudThresholdIVT, DefaultFraudThresholdBlock, true

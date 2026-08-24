@@ -261,7 +261,7 @@ func (r *runner) invalidTraffic(base string, iter uint64) {
 	case 2:
 		b, _ := json.Marshal(map[string]any{
 			"campaign_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
-			"user_id":     "ghost",
+			"user_id":     "invalid-campaign-user",
 			"type":        "impression",
 			"click_id":    fmt.Sprintf("bad-%d", iter),
 		})

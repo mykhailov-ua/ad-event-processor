@@ -140,7 +140,7 @@ func TestCampaignFromDBRow_FraudConfig(t *testing.T) {
 		FraudThresholdSuspect: 55,
 		FraudThresholdIvt:     75,
 		FraudThresholdBlock:   95,
-		GhostIvtEnabled:       true,
+		SilentRejectEnabled:   true,
 		BehaviorFlags:         int32(domain.BehaviorLowTTC | domain.BehaviorVelIP),
 	}
 	camp := CampaignFromDBRow(row)
@@ -148,6 +148,6 @@ func TestCampaignFromDBRow_FraudConfig(t *testing.T) {
 	assert.Equal(t, uint8(55), camp.FraudThresholdSuspect)
 	assert.Equal(t, uint8(75), camp.FraudThresholdIVT)
 	assert.Equal(t, uint8(95), camp.FraudThresholdBlock)
-	assert.True(t, camp.GhostIVTEnabled)
+	assert.True(t, camp.SilentRejectEnabled)
 	assert.Equal(t, domain.BehaviorLowTTC|domain.BehaviorVelIP, camp.BehaviorFlags)
 }

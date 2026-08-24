@@ -40,7 +40,7 @@ type SettlementWorker struct {
 
 func NewSettlementWorker(
 	store domain.EventStore,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	streamName, groupName, consumerID string,
 	lanes, batchSize int,
 	flushInt, writeTimeout time.Duration,
@@ -59,7 +59,7 @@ func NewSettlementWorker(
 		flushInt = 100 * time.Millisecond
 	}
 	base := NewStreamConsumer(
-		store, rdb, streamName, groupName, consumerID,
+		store, redisClient, streamName, groupName, consumerID,
 		batchSize, 0,
 		flushInt, writeTimeout,
 		retryInitWait, retryMaxWait, maxRetries,
@@ -129,7 +129,7 @@ func (w *SettlementWorker) Start(ctx context.Context) {
 	procCtx, cancel := context.WithCancel(ctx)
 	w.consumer.cancel = cancel
 
-	err := w.consumer.rdb.XGroupCreateMkStream(procCtx, w.consumer.streamName, w.consumer.groupName, "0").Err()
+	err := w.consumer.redisClient.XGroupCreateMkStream(procCtx, w.consumer.streamName, w.consumer.groupName, "0").Err()
 	if err != nil && err.Error() != "BUSYGROUP Consumer Group name already exists" {
 		slog.Error("failed to create settlement consumer group", "error", err, "stream", w.consumer.streamName, "group", w.consumer.groupName)
 	}
@@ -203,7 +203,7 @@ func (w *SettlementWorker) readLoop(ctx context.Context) {
 			w.consumer.weightCtrl.ThrottleBeforeRead(ctx)
 		}
 
-		streams, err := w.consumer.rdb.XReadGroup(ctx, xreadArgs).Result()
+		streams, err := w.consumer.redisClient.XReadGroup(ctx, xreadArgs).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 				continue

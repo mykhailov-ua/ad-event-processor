@@ -26,7 +26,7 @@ func setupGlobalSpendTest(t *testing.T) (context.Context, *pgxpool.Pool, redis.U
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	t.Cleanup(cleanupDB)
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	t.Cleanup(cleanupRedis)
 
 	customerID := uuid.New()
@@ -41,8 +41,8 @@ func setupGlobalSpendTest(t *testing.T) (context.Context, *pgxpool.Pool, redis.U
 		domain.ToUUID(campaignID), "Global Spend Campaign", "ACTIVE", domain.ToUUID(customerID), budgetLimit)
 	require.NoError(t, err)
 
-	require.NoError(t, rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
-	return ctx, pool, rdb, campaignID
+	require.NoError(t, redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err())
+	return ctx, pool, redisClient, campaignID
 }
 
 func buildSpendSyncTxns(campaignID uuid.UUID, count int, amountMicro int64, prefix string) []dedupkey.SpendSyncTxn {
@@ -58,7 +58,7 @@ func buildSpendSyncTxns(campaignID uuid.UUID, count int, amountMicro int64, pref
 }
 
 func TestGlobalSpendReconciler_ApplyBatch(t *testing.T) {
-	ctx, pool, rdb, campaignID := setupGlobalSpendTest(t)
+	ctx, pool, redisClient, campaignID := setupGlobalSpendTest(t)
 
 	const (
 		txnCount   = 100
@@ -68,7 +68,7 @@ func TestGlobalSpendReconciler_ApplyBatch(t *testing.T) {
 
 	reconciler := NewGlobalSpendReconciler(
 		pool,
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		domain.NewStaticSlotSharder(1),
 		GlobalSpendReconcilerConfig{MinBatchSize: 100, MaxConcurrency: 4},
 	)
@@ -91,7 +91,7 @@ func TestGlobalSpendReconciler_ApplyBatch(t *testing.T) {
 	).Scan(&currentSpend))
 	assert.Equal(t, totalMicro, currentSpend)
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 
 	require.NoError(t, reconciler.ApplyBatch(ctx, "batch-1", txns))
 	require.NoError(t, pool.QueryRow(ctx,
@@ -101,7 +101,7 @@ func TestGlobalSpendReconciler_ApplyBatch(t *testing.T) {
 }
 
 func TestGlobalSpendReconciler_ConcurrentApply(t *testing.T) {
-	ctx, pool, rdb, campaignID := setupGlobalSpendTest(t)
+	ctx, pool, redisClient, campaignID := setupGlobalSpendTest(t)
 
 	const (
 		workers    = 24
@@ -111,7 +111,7 @@ func TestGlobalSpendReconciler_ConcurrentApply(t *testing.T) {
 
 	reconciler := NewGlobalSpendReconciler(
 		pool,
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		domain.NewStaticSlotSharder(1),
 		GlobalSpendReconcilerConfig{MinBatchSize: 100, MaxConcurrency: 8},
 	)
@@ -141,5 +141,5 @@ func TestGlobalSpendReconciler_ConcurrentApply(t *testing.T) {
 	).Scan(&ledgerCount))
 	assert.Equal(t, expectedRows, ledgerCount)
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisClient, campaignID)
 }

@@ -56,21 +56,21 @@ func TestFault_XDPSyncRedisOutage(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	c, rdb, cleanup := testutil.SetupRedisClient(t)
+	c, redisClient, cleanup := testutil.SetupRedisClient(t)
 	defer cleanup()
 
 	objs := loadTestObjects(t)
 	store := NewBlocklistStore()
 	maps := blocklistMapsFromObjects(objs)
 
-	require.NoError(t, rdb.SAdd(ctx, "blacklist:manual", "1.2.3.4").Err())
-	_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
+	require.NoError(t, redisClient.SAdd(ctx, "blacklist:manual", "1.2.3.4").Err())
+	_, _, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 	require.NoError(t, err)
 	assert.Equal(t, 1, store.Len())
 
 	require.NoError(t, c.Terminate(ctx))
 
-	_, _, err = SyncBlocklistFromRedis(ctx, rdb, maps, store)
+	_, _, err = SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 	assert.Error(t, err, "sync must fail when redis is down")
 	assert.Equal(t, 1, store.Len(), "store must preserve state on sync failure")
 

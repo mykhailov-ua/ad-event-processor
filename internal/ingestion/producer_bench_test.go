@@ -10,8 +10,8 @@ import (
 )
 
 func benchStreamProducer() *StreamProducer {
-	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
-	return NewStreamProducer(rdb, "bench-stream", 1000, 0)
+	redisClient := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
+	return NewStreamProducer(redisClient, "bench-stream", 1000, 0)
 }
 
 func BenchmarkStreamProducer_Process(b *testing.B) {

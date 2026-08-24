@@ -553,8 +553,8 @@ func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
 	}()
 }
 
-func (r *Registry) watchPubSubOnce(ctx context.Context, rdb redis.UniversalClient, channel string, staleDriver bool) error {
-	pubsub := rdb.Subscribe(ctx, channel)
+func (r *Registry) watchPubSubOnce(ctx context.Context, redisClient redis.UniversalClient, channel string, staleDriver bool) error {
+	pubsub := redisClient.Subscribe(ctx, channel)
 	defer func() { _ = pubsub.Close() }()
 
 	if _, err := pubsub.Receive(ctx); err != nil {

@@ -1,5 +1,4 @@
--- Unit tests for edge-uuid.lua (canonical UUID validation shared by click + slot-map).
--- Run: luajit deploy/nginx/lua/tests/uuid_test.lua "$(pwd)/deploy/nginx/lua"
+
 
 package.path = arg[1] .. "/?.lua;;"
 

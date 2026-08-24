@@ -13,7 +13,7 @@ func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID, clickID 
 
 	if campInfo != nil && campInfo.DebitSubShardCount() > 0 {
 		subSlot = debitSubSlot(campInfo, userID, clickID)
-		shard = spreadHighVolumeShard(len(f.rdbs), campaignID, subSlot)
+		shard = spreadHighVolumeShard(len(f.redisShards), campaignID, subSlot)
 	} else if campInfo != nil && campInfo.HasTriplet {
 		hash := ComputeCompositeHashUUID(campaignID, []byte(userID))
 		pct := hash % 100

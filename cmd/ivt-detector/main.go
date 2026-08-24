@@ -121,14 +121,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	rdb := newRedisShard0(cfg)
+	redisClient := newRedisShard0(cfg)
 
 	var residentialEnricher *fraud.ResidentialIntelEnricher
 	if cfg.ExternalResidentialIntelRuntimeEnabled() {
 		if licErr == nil && !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.ExternalResidentialIntelEnabled() }) {
 			slog.Warn("external residential intel env enabled but SKU gate blocks provider; enricher disabled")
-		} else if rdb != nil {
-			residentialEnricher, err = fraud.NewResidentialIntelEnricherFromConfig(cfg, rdb, chWrite)
+		} else if redisClient != nil {
+			residentialEnricher, err = fraud.NewResidentialIntelEnricherFromConfig(cfg, redisClient, chWrite)
 			if err != nil {
 				slog.Error("failed to configure residential intel enricher", "error", err)
 				os.Exit(1)
@@ -142,7 +142,7 @@ func main() {
 		}
 	}
 
-	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, rdb)
+	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, redisClient)
 
 	detector := fraud.NewDetector(
 		registry,
@@ -158,8 +158,8 @@ func main() {
 		"outbox_pending_limit", cfg.IVT.OutboxPendingLimit,
 	)
 
-	if rdb != nil {
-		defer func() { _ = rdb.Close() }()
+	if redisClient != nil {
+		defer func() { _ = redisClient.Close() }()
 	}
 
 	if residentialEnricher != nil {

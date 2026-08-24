@@ -22,14 +22,14 @@ func TestFault_EdgePhase1BlocksBlacklistedIP(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	const blockedIP = "203.0.113.50"
-	require.NoError(t, rdb.SAdd(ctx, redisKeyBlacklistManual, blockedIP).Err())
+	require.NoError(t, redisClient.SAdd(ctx, redisKeyBlacklistManual, blockedIP).Err())
 
 	cache := NewBlacklistCache(defaultStaleSec)
-	require.NoError(t, cache.SyncFromRedis(ctx, rdb))
+	require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 
 	var metrics Metrics
 	now := time.Now().Unix()
@@ -58,18 +58,18 @@ func TestFault_EdgeBlacklistPropagation(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	const newIP = "198.51.100.77"
 	cache := NewBlacklistCache(defaultStaleSec)
-	require.NoError(t, cache.SyncFromRedis(ctx, rdb))
+	require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 
 	now := time.Now().Unix()
 	require.Equal(t, Phase1Pass, cache.Phase1Check(newIP, now, nil))
 
 	addedAt := time.Now()
-	require.NoError(t, rdb.SAdd(ctx, redisKeyBlacklistManual, newIP).Err())
+	require.NoError(t, redisClient.SAdd(ctx, redisKeyBlacklistManual, newIP).Err())
 
 	var blockedWithin time.Duration
 	deadline := addedAt.Add(edgeBlacklistSyncInterval)
@@ -77,7 +77,7 @@ func TestFault_EdgeBlacklistPropagation(t *testing.T) {
 
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		require.NoError(t, cache.SyncFromRedis(ctx, rdb))
+		require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 		now = time.Now().Unix()
 		if cache.Phase1Check(newIP, now, &metrics) == Phase1Blocked403 {
 			blockedWithin = time.Since(addedAt)
@@ -109,18 +109,18 @@ func TestFault_EdgeFraudBlacklistPropagation(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	const fraudIP = "203.0.113.99"
 	cache := NewBlacklistCache(defaultStaleSec)
-	require.NoError(t, cache.SyncFromRedis(ctx, rdb))
+	require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 
 	now := time.Now().Unix()
 	require.Equal(t, Phase1Pass, cache.Phase1Check(fraudIP, now, nil))
 
 	addedAt := time.Now()
-	require.NoError(t, rdb.SAdd(ctx, redisKeyBlacklistFraud, fraudIP).Err())
+	require.NoError(t, redisClient.SAdd(ctx, redisKeyBlacklistFraud, fraudIP).Err())
 
 	var blockedWithin time.Duration
 	deadline := addedAt.Add(edgeBlacklistSyncInterval)
@@ -128,7 +128,7 @@ func TestFault_EdgeFraudBlacklistPropagation(t *testing.T) {
 
 	for time.Now().Before(deadline) {
 		time.Sleep(200 * time.Millisecond)
-		require.NoError(t, cache.SyncFromRedis(ctx, rdb))
+		require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 		now = time.Now().Unix()
 		if cache.Phase1Check(fraudIP, now, &metrics) == Phase1Blocked403 {
 			blockedWithin = time.Since(addedAt)
@@ -152,15 +152,15 @@ func TestFault_ASNWhitelistBypass(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	const blockedIP = "198.51.100.88"
-	require.NoError(t, rdb.SAdd(ctx, redisKeyBlacklistManual, blockedIP).Err())
+	require.NoError(t, redisClient.SAdd(ctx, redisKeyBlacklistManual, blockedIP).Err())
 
 	cache := NewBlacklistCache(defaultStaleSec)
 	cache.SetASNWhitelist(NewASNWhitelist("15169", ""))
-	require.NoError(t, cache.SyncFromRedis(ctx, rdb))
+	require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 
 	now := time.Now().Unix()
 	var metrics Metrics

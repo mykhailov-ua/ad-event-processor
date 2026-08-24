@@ -175,7 +175,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			},
 		)
 	case "fraud-breakdown":
-		if err := w.Write([]string{"campaign_id", "placement_id", "fraud_reason", "event_count", "ghost_count", "ghost_ratio"}); err != nil {
+		if err := w.Write([]string{"campaign_id", "placement_id", "fraud_reason", "event_count", "silent_reject_count", "silent_reject_ratio"}); err != nil {
 			return err
 		}
 		err = paginateCHExport(reportExportPageSize,
@@ -185,28 +185,28 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			func(row FraudBreakdownRowDTO) error {
 				return w.Write([]string{
 					row.CampaignID, row.PlacementID, row.FraudReason,
-					fmt.Sprintf("%d", row.EventCount), fmt.Sprintf("%d", row.GhostCount),
-					fmt.Sprintf("%.6f", row.GhostRatio),
+					fmt.Sprintf("%d", row.EventCount), fmt.Sprintf("%d", row.SilentRejectCount),
+					fmt.Sprintf("%.6f", row.SilentRejectRatio),
 				})
 			},
 		)
-	case "ghost-impression-funnel":
+	case "silent-reject-impression-funnel":
 		if err := w.Write([]string{
-			"campaign_id", "placement_id", "billable_impressions", "ghost_impressions",
-			"ivt_impressions", "ghost_rate", "ivt_impression_rate",
+			"campaign_id", "placement_id", "billable_impressions", "silent_reject_impressions",
+			"ivt_impressions", "silent_reject_rate", "ivt_impression_rate",
 		}); err != nil {
 			return err
 		}
 		err = paginateCHExport(reportExportPageSize,
-			func(offset, limit int) ([]GhostImpressionFunnelRowDTO, int64, error) {
-				return queryGhostImpressionFunnelRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+			func(offset, limit int) ([]SilentRejectImpressionFunnelRowDTO, int64, error) {
+				return querySilentRejectImpressionFunnelRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
 			},
-			func(row GhostImpressionFunnelRowDTO) error {
+			func(row SilentRejectImpressionFunnelRowDTO) error {
 				return w.Write([]string{
 					row.CampaignID, row.PlacementID,
-					fmt.Sprintf("%d", row.BillableImpressions), fmt.Sprintf("%d", row.GhostImpressions),
+					fmt.Sprintf("%d", row.BillableImpressions), fmt.Sprintf("%d", row.SilentRejectImpressions),
 					fmt.Sprintf("%d", row.IVTImpressions),
-					fmt.Sprintf("%.6f", row.GhostRate), fmt.Sprintf("%.6f", row.IVTImpressionRate),
+					fmt.Sprintf("%.6f", row.SilentRejectRate), fmt.Sprintf("%.6f", row.IVTImpressionRate),
 				})
 			},
 		)

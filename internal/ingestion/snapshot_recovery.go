@@ -35,23 +35,23 @@ type SnapshotReplicator struct {
 	mu          sync.RWMutex
 	pgConn      PostgresConn
 	chConn      ClickHouseConn
-	rdbs        []redis.UniversalClient
+	redisShards        []redis.UniversalClient
 	sharder     Sharder
 	clickCharge int64
 	impCharge   int64
 }
 
 func NewSnapshotReplicator(
-	pg PostgresConn,
-	ch ClickHouseConn,
-	rdbs []redis.UniversalClient,
+	postgresConn PostgresConn,
+	clickhouseConn ClickHouseConn,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	clickCharge, impCharge int64,
 ) *SnapshotReplicator {
 	return &SnapshotReplicator{
-		pgConn:      pg,
-		chConn:      ch,
-		rdbs:        rdbs,
+		pgConn:      postgresConn,
+		chConn:      clickhouseConn,
+		redisShards: redisShards,
 		sharder:     sharder,
 		clickCharge: clickCharge,
 		impCharge:   impCharge,
@@ -107,9 +107,9 @@ func (sr *SnapshotReplicator) RestoreSnapshot(ctx context.Context, snapshotData 
 
 		budgetKey := fmt.Sprintf("budget:campaign:%s", campID)
 		shardIdx := sr.sharder.GetShard(campID)
-		rdb := sr.rdbs[shardIdx%len(sr.rdbs)]
+		redisClient := sr.redisShards[shardIdx%len(sr.redisShards)]
 
-		if err := rdb.Set(ctx, budgetKey, remaining, 24*time.Hour).Err(); err != nil {
+		if err := redisClient.Set(ctx, budgetKey, remaining, 24*time.Hour).Err(); err != nil {
 			return nil, fmt.Errorf("failed to seed redis budget for %s: %w", campID, err)
 		}
 	}

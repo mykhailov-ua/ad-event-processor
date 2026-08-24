@@ -70,7 +70,7 @@ var (
 
 	mlShadowActionTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ml_shadow_action_total",
-		Help: "Shadow scoring enforcement actions (boost, ghost, blacklist)",
+		Help: "Shadow scoring enforcement actions (boost, silent_reject, blacklist)",
 	}, []string{"action"})
 
 	residentialIntelFeedAppendedTotal = promauto.NewCounter(prometheus.CounterOpts{

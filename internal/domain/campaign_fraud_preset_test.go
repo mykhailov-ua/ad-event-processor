@@ -14,14 +14,15 @@ func TestResolveFraudPreset(t *testing.T) {
 	require.Equal(t, DefaultFraudThresholdIVT, ivt)
 	require.Equal(t, DefaultFraudThresholdBlock, block)
 
-	pass, suspect, ivt, block, ok = ResolveFraudPreset(FraudPresetGrayMarket)
+	pass, suspect, ivt, block, ok = ResolveFraudPreset(FraudPresetEnhancedDefenseLegacy)
 	require.True(t, ok)
 	require.Equal(t, uint8(20), pass)
 	require.Equal(t, uint8(45), suspect)
 	require.Equal(t, uint8(65), ivt)
 	require.Equal(t, uint8(85), block)
-	require.True(t, IsGrayMarketFraudPreset("gray_market"))
-	require.False(t, IsGrayMarketFraudPreset("aggressive"))
+	require.True(t, IsEnhancedDefenseFraudPreset("enhanced_defense"))
+	require.True(t, IsEnhancedDefenseFraudPreset("gray_market"))
+	require.False(t, IsEnhancedDefenseFraudPreset("aggressive"))
 
 	_, _, _, _, ok = ResolveFraudPreset("unknown")
 	require.False(t, ok)

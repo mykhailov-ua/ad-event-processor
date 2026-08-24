@@ -22,7 +22,7 @@ type RtbBudgetReconcileWorker struct {
 	cfg      RtbBudgetReconcileConfig
 	registry *Registry
 	catalog  *RtbCatalog
-	rdbs     []redis.UniversalClient
+	redisShards     []redis.UniversalClient
 	sharder  Sharder
 	cancel   context.CancelFunc
 	wg       sync.WaitGroup
@@ -32,7 +32,7 @@ func NewRtbBudgetReconcileWorker(
 	cfg RtbBudgetReconcileConfig,
 	registry *Registry,
 	catalog *RtbCatalog,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 ) *RtbBudgetReconcileWorker {
 	if cfg.Interval <= 0 {
@@ -48,13 +48,13 @@ func NewRtbBudgetReconcileWorker(
 		cfg:      cfg,
 		registry: registry,
 		catalog:  catalog,
-		rdbs:     rdbs,
+		redisShards:     redisShards,
 		sharder:  sharder,
 	}
 }
 
 func (w *RtbBudgetReconcileWorker) Start(ctx context.Context) {
-	if w == nil || w.registry == nil || w.catalog == nil || len(w.rdbs) == 0 || w.sharder == nil {
+	if w == nil || w.registry == nil || w.catalog == nil || len(w.redisShards) == 0 || w.sharder == nil {
 		return
 	}
 	runCtx, cancel := context.WithCancel(ctx)
@@ -125,7 +125,7 @@ func (w *RtbBudgetReconcileWorker) sample(ctx context.Context) {
 		if camp == nil || camp.BudgetCampaignKey == "" {
 			continue
 		}
-		redisRem, ok := loadRedisCampaignBudget(sampleCtx, w.rdbs, w.sharder, camp)
+		redisRem, ok := loadRedisCampaignBudget(sampleCtx, w.redisShards, w.sharder, camp)
 		if !ok {
 			continue
 		}
@@ -152,14 +152,14 @@ func (w *RtbBudgetReconcileWorker) sample(ctx context.Context) {
 func ReconcileCampaignBudget(
 	ctx context.Context,
 	store *rtb.BudgetStore,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	camp *domain.Campaign,
 ) (redisRem int64, rtbRem int64, ok bool) {
-	if store == nil || camp == nil || len(rdbs) == 0 || sharder == nil {
+	if store == nil || camp == nil || len(redisShards) == 0 || sharder == nil {
 		return 0, 0, false
 	}
-	redisRem, ok = loadRedisCampaignBudget(ctx, rdbs, sharder, camp)
+	redisRem, ok = loadRedisCampaignBudget(ctx, redisShards, sharder, camp)
 	if !ok {
 		return 0, 0, false
 	}

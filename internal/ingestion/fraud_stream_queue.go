@@ -63,7 +63,7 @@ type fraudStreamSlot struct {
 	reason  [fraudSlotReasonMax]byte
 
 	fraudScore uint32
-	ghostEvent bool
+	silentRejectEvent bool
 }
 
 type FraudStreamWriter struct {
@@ -98,7 +98,7 @@ type FraudStreamWriter struct {
 
 	stream string
 	maxLen int64
-	rdbs   []redis.UniversalClient
+	redisShards   []redis.UniversalClient
 
 	brokerSink *FraudBrokerSink
 	useBroker  bool
@@ -108,14 +108,14 @@ type FraudStreamWriter struct {
 	aggWg  sync.WaitGroup
 }
 
-func NewFraudStreamWriter(rdbs []redis.UniversalClient, stream string, maxLen int64) *FraudStreamWriter {
-	if len(rdbs) == 0 || stream == "" {
+func NewFraudStreamWriter(redisShards []redis.UniversalClient, stream string, maxLen int64) *FraudStreamWriter {
+	if len(redisShards) == 0 || stream == "" {
 		return nil
 	}
 	q := &FraudStreamWriter{
 		stream: stream,
 		maxLen: maxLen,
-		rdbs:   rdbs,
+		redisShards:   redisShards,
 		stopCh: make(chan struct{}),
 	}
 	q.wg.Add(1)
@@ -168,7 +168,7 @@ func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *domain.Event) {
 	slot.payloadLen = uint16(copyFraudField(slot.payload[:], unsafeString(evt.Payload)))
 	slot.reasonLen = uint16(copyFraudField(slot.reason[:], evt.FraudReason))
 	slot.fraudScore = evt.FraudScore
-	slot.ghostEvent = evt.GhostEvent
+	slot.silentRejectEvent = evt.SilentRejectEvent
 	slot.ready.Store(1)
 }
 
@@ -176,7 +176,7 @@ func (q *FraudStreamWriter) Enqueue(shard int, evt *domain.Event) bool {
 	if q == nil || evt == nil {
 		return true
 	}
-	if shard < 0 || shard >= len(q.rdbs) {
+	if shard < 0 || shard >= len(q.redisShards) {
 		shard = 0
 	}
 
@@ -452,13 +452,13 @@ func (q *FraudStreamWriter) flushBatch(ctx context.Context, batch []*fraudStream
 		values = append(values, vals)
 
 		shard := slot.shard
-		if int(shard) >= len(q.rdbs) || q.rdbs[shard] == nil {
+		if int(shard) >= len(q.redisShards) || q.redisShards[shard] == nil {
 			filterFraudStreamWriteErrors.Inc()
 			continue
 		}
 		sb, ok := shards[shard]
 		if !ok {
-			sb = &shardBatch{pipe: q.rdbs[shard].Pipeline()}
+			sb = &shardBatch{pipe: q.redisShards[shard].Pipeline()}
 			shards[shard] = sb
 		}
 		cmd := sb.pipe.XAdd(ctx, &redis.XAddArgs{
@@ -502,7 +502,7 @@ func marshalFraudStreamSlot(slot *fraudStreamSlot) ([]byte, *ByteSliceValue, *[]
 	}
 	pbEvt.FraudScore = slot.fraudScore
 	pbEvt.FraudReason = slot.reason[:slot.reasonLen]
-	pbEvt.GhostEvent = slot.ghostEvent
+	pbEvt.SilentRejectEvent = slot.silentRejectEvent
 
 	size := pbEvt.SizeVT()
 	bufPtr := byteBufPool.Get().(*[]byte)

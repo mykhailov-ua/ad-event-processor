@@ -17,7 +17,7 @@ func TestRewarmCampaignBudgetKeys_FromPostgres(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	campID := uuid.New()
@@ -32,10 +32,10 @@ func TestRewarmCampaignBudgetKeys_FromPostgres(t *testing.T) {
 		ToUUID(campID), ToUUID(customerID))
 	require.NoError(t, err)
 
-	require.NoError(t, RewarmCampaignBudgetKeys(ctx, pool, rdb, []uuid.UUID{campID}))
+	require.NoError(t, RewarmCampaignBudgetKeys(ctx, pool, redisClient, []uuid.UUID{campID}))
 
 	key := budgetCampaignKey(campID)
-	val, err := rdb.Get(ctx, key).Int64()
+	val, err := redisClient.Get(ctx, key).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(750000), val)
 }

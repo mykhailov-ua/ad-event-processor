@@ -9,30 +9,30 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func RecordAutoBan(ctx context.Context, rdb redis.Cmdable, ip string, ttl time.Duration) error {
-	if rdb == nil || ip == "" {
+func RecordAutoBan(ctx context.Context, redisClient redis.Cmdable, ip string, ttl time.Duration) error {
+	if redisClient == nil || ip == "" {
 		return fmt.Errorf("nil redis client or empty ip")
 	}
 	expiresAt := float64(time.Now().Add(ttl).Unix())
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	pipe.SAdd(ctx, redisKeyBlacklistAuto, ip)
 	pipe.ZAdd(ctx, redisKeyBlacklistAutoTTL, redis.Z{Score: expiresAt, Member: ip})
 	_, err := pipe.Exec(ctx)
 	if err != nil {
 		return err
 	}
-	return RecordBlacklistChangelog(ctx, rdb, redisKeyBlacklistAuto, ip, true)
+	return RecordBlacklistChangelog(ctx, redisClient, redisKeyBlacklistAuto, ip, true)
 }
 
-func loadAutoBans(ctx context.Context, rdb denySetReader) ([]string, error) {
-	if ab, ok := rdb.(autoBanReader); ok {
+func loadAutoBans(ctx context.Context, redisClient denySetReader) ([]string, error) {
+	if ab, ok := redisClient.(autoBanReader); ok {
 		return activeAutoBans(ctx, ab)
 	}
-	return rdb.SMembers(ctx, redisKeyBlacklistAuto).Result()
+	return redisClient.SMembers(ctx, redisKeyBlacklistAuto).Result()
 }
 
-func activeAutoBans(ctx context.Context, rdb autoBanReader) ([]string, error) {
-	members, err := rdb.SMembers(ctx, redisKeyBlacklistAuto).Result()
+func activeAutoBans(ctx context.Context, redisClient autoBanReader) ([]string, error) {
+	members, err := redisClient.SMembers(ctx, redisKeyBlacklistAuto).Result()
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func activeAutoBans(ctx context.Context, rdb autoBanReader) ([]string, error) {
 	now := float64(time.Now().Unix())
 	active := make([]string, 0, len(members))
 	for _, ip := range members {
-		score, err := rdb.ZScore(ctx, redisKeyBlacklistAutoTTL, ip).Result()
+		score, err := redisClient.ZScore(ctx, redisKeyBlacklistAutoTTL, ip).Result()
 		if errors.Is(err, redis.Nil) {
 			active = append(active, ip)
 			continue
@@ -54,8 +54,8 @@ func activeAutoBans(ctx context.Context, rdb autoBanReader) ([]string, error) {
 			active = append(active, ip)
 			continue
 		}
-		_ = rdb.SRem(ctx, redisKeyBlacklistAuto, ip).Err()
-		_ = rdb.ZRem(ctx, redisKeyBlacklistAutoTTL, ip).Err()
+		_ = redisClient.SRem(ctx, redisKeyBlacklistAuto, ip).Err()
+		_ = redisClient.ZRem(ctx, redisKeyBlacklistAutoTTL, ip).Err()
 	}
 	return active, nil
 }

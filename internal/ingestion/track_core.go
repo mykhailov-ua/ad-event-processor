@@ -5,6 +5,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingestion/traceprobe"
+	"github.com/google/uuid"
 )
 
 type trackStatus uint8
@@ -65,7 +66,7 @@ func processTrackInner(ctx context.Context, p trackProcessor, evt *domain.Event,
 		if err := p.filterEngine.Check(ctx, evt); err != nil {
 			if kind, ok := classifyFilterErr(err); ok {
 				if kind == filterRejectFraud {
-					return trackOutcome{Status: trackStatusFraudAccepted, RejectKind: kind}
+					return fraudTrackOutcome(p.registry, evt)
 				}
 				return trackOutcome{Status: trackStatusRejected, RejectKind: kind}
 			}
@@ -83,4 +84,23 @@ func processTrackInner(ctx context.Context, p trackProcessor, evt *domain.Event,
 		evt.FilterDeadlineMono = 0
 	}
 	return trackOutcome{Status: trackStatusAccepted, LandingURL: landing}
+}
+
+func fraudTrackOutcome(registry domain.CampaignRegistry, evt *domain.Event) trackOutcome {
+	if evt != nil && campaignSilentRejectEnabled(registry, evt.CampaignID) {
+		evt.SilentRejectEvent = true
+		return trackOutcome{Status: trackStatusFraudAccepted, RejectKind: filterRejectFraud}
+	}
+	return trackOutcome{Status: trackStatusRejected, RejectKind: filterRejectFraudBlocked}
+}
+
+func campaignSilentRejectEnabled(registry domain.CampaignRegistry, campaignID uuid.UUID) bool {
+	if registry == nil {
+		return false
+	}
+	camp, ok := registry.GetCampaign(campaignID)
+	if !ok || camp == nil {
+		return false
+	}
+	return camp.SilentRejectEnabled
 }

@@ -267,9 +267,9 @@ func (r *RegionOutboxRelay) applyDeliveryDirect(opCtx, ctx context.Context, row 
 				return r.markDelivered(opCtx, row)
 			}
 		}
-		if r.svc != nil && len(r.svc.rdbs) > 0 && claim.DedupKey != "" {
+		if r.svc != nil && len(r.svc.redisShards) > 0 && claim.DedupKey != "" {
 			redisKey := dedupkey.RedisKey(claim.DedupKey)
-			ok, nxErr := setNXOnAllShards(opCtx, r.svc.rdbs, redisKey, "1", 48*time.Hour)
+			ok, nxErr := setNXOnAllShards(opCtx, r.svc.redisShards, redisKey, "1", 48*time.Hour)
 			if nxErr != nil {
 				return nxErr
 			}
@@ -305,9 +305,9 @@ func (r *RegionOutboxRelay) applyDeliverySideEffects(opCtx, ctx context.Context,
 			return r.markDelivered(opCtx, row)
 		}
 	}
-	if r.svc != nil && len(r.svc.rdbs) > 0 && claim.DedupKey != "" && claim.Outcome == dedup.OutcomeConfirmed {
+	if r.svc != nil && len(r.svc.redisShards) > 0 && claim.DedupKey != "" && claim.Outcome == dedup.OutcomeConfirmed {
 		redisKey := dedupkey.RedisKey(claim.DedupKey)
-		ok, nxErr := setNXOnAllShards(opCtx, r.svc.rdbs, redisKey, "1", 48*time.Hour)
+		ok, nxErr := setNXOnAllShards(opCtx, r.svc.redisShards, redisKey, "1", 48*time.Hour)
 		if nxErr != nil {
 			return nxErr
 		}

@@ -146,13 +146,13 @@ var slotMapCopyCmd = &cobra.Command{
 		defer pool.Close()
 
 		version, _ := cmd.Flags().GetInt32("version")
-		rdbs, _, err := getRedisShards(ctx)
+		redisShards, _, err := getRedisShards(ctx)
 		if err != nil {
 			return err
 		}
-		sharder := ingestion.NewStaticSlotSharder(len(rdbs))
+		sharder := ingestion.NewStaticSlotSharder(len(redisShards))
 		cfg, _ := config.Load()
-		svc := controlplane.NewService(ctx, pool, rdbs, sharder, cfg)
+		svc := controlplane.NewService(ctx, pool, redisShards, sharder, cfg)
 		defer svc.Close()
 		if err := svc.CopyAllMigratingSlots(ctx, version); err != nil {
 			return err
@@ -174,12 +174,12 @@ var slotMapMigrationsCmd = &cobra.Command{
 		defer pool.Close()
 
 		version, _ := cmd.Flags().GetInt32("version")
-		rdbs, _, err := getRedisShards(ctx)
+		redisShards, _, err := getRedisShards(ctx)
 		if err != nil {
 			return err
 		}
 		cfg, _ := config.Load()
-		svc := controlplane.NewService(ctx, pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+		svc := controlplane.NewService(ctx, pool, redisShards, ingestion.NewStaticSlotSharder(len(redisShards)), cfg)
 		defer svc.Close()
 		rows, err := svc.GetSlotMigrations(ctx, version)
 		if err != nil {
@@ -209,12 +209,12 @@ var slotMapRollbackCmd = &cobra.Command{
 		defer pool.Close()
 
 		prev, _ := cmd.Flags().GetInt32("previous-version")
-		rdbs, _, err := getRedisShards(ctx)
+		redisShards, _, err := getRedisShards(ctx)
 		if err != nil {
 			return err
 		}
 		cfg, _ := config.Load()
-		svc := controlplane.NewService(ctx, pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+		svc := controlplane.NewService(ctx, pool, redisShards, ingestion.NewStaticSlotSharder(len(redisShards)), cfg)
 		defer svc.Close()
 		if err := svc.RollbackSlotMapVersion(ctx, uuid.Nil, prev); err != nil {
 			return err

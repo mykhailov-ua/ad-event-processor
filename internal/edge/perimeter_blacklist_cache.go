@@ -45,16 +45,16 @@ func NewBlacklistCache(staleSec int64) *BlacklistCache {
 	}
 }
 
-func (c *BlacklistCache) SyncFromRedis(ctx context.Context, rdb redis.Cmdable) error {
-	manual, err := rdb.SMembers(ctx, redisKeyBlacklistManual).Result()
+func (c *BlacklistCache) SyncFromRedis(ctx context.Context, redisClient redis.Cmdable) error {
+	manual, err := redisClient.SMembers(ctx, redisKeyBlacklistManual).Result()
 	if err != nil {
 		return err
 	}
-	auto, err := rdb.SMembers(ctx, redisKeyBlacklistAuto).Result()
+	auto, err := redisClient.SMembers(ctx, redisKeyBlacklistAuto).Result()
 	if err != nil {
 		return err
 	}
-	fraud, err := rdb.SMembers(ctx, redisKeyBlacklistFraud).Result()
+	fraud, err := redisClient.SMembers(ctx, redisKeyBlacklistFraud).Result()
 	if err != nil {
 		return err
 	}

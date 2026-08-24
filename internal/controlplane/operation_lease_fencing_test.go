@@ -81,7 +81,7 @@ func TestFault_OperationLease_GhostExecutorFencingProof(t *testing.T) {
 	cfg := &config.Config{
 		MultiRegionEnabled: true,
 		RegionCode:         1,
-		NodeID:             "fence-ghost",
+		NodeID:             "fence-primary",
 		OpLeaseTimeoutSec:  30,
 		OpLeaseFencingDir:  fencingBase,
 	}
@@ -109,10 +109,10 @@ func TestFault_OperationLease_GhostExecutorFencingProof(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ghost := NewOperationLeaseWorker(svc)
-	ghost.nodeID = "fence-standby"
-	err = ghost.ExecuteOp(ctx, opID, func(ctx context.Context, _ db.OperationLease, _ dedup.ClaimResult) error {
-		t.Fatal("ghost must not apply after primary completed")
+	standbyWorker := NewOperationLeaseWorker(svc)
+	standbyWorker.nodeID = "fence-standby"
+	err = standbyWorker.ExecuteOp(ctx, opID, func(ctx context.Context, _ db.OperationLease, _ dedup.ClaimResult) error {
+		t.Fatal("standby must not apply after primary completed")
 		return nil
 	})
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestFault_OperationLease_GhostExecutorFencingProof(t *testing.T) {
 	_, err = os.Stat(fencingPath)
 	require.NoError(t, err)
 
-	faultproof.Log(t, "mr_lease_ghost_executor", map[string]string{
+	faultproof.Log(t, "mr_lease_standby_executor", map[string]string{
 		"subsystem":      "operation_lease",
 		"op_id":          opID.String(),
 		"replica_set_id": replicaSetID.String(),

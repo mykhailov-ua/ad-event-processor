@@ -25,7 +25,7 @@ type SpendSyncBroker interface {
 }
 
 type SyncWorker struct {
-	rdb                  redis.Cmdable
+	redisClient                  redis.Cmdable
 	campaignRepo         CampaignRepository
 	customerRepo         CustomerRepository
 	interval             time.Duration
@@ -45,7 +45,7 @@ type SyncWorker struct {
 }
 
 func NewSyncWorker(
-	rdb redis.Cmdable,
+	redisClient redis.Cmdable,
 	campaignRepo CampaignRepository,
 	customerRepo CustomerRepository,
 	interval time.Duration,
@@ -57,7 +57,7 @@ func NewSyncWorker(
 		maxConcurrency = maxConcurrencyDefault
 	}
 	return &SyncWorker{
-		rdb:                  rdb,
+		redisClient:                  redisClient,
 		campaignRepo:         campaignRepo,
 		customerRepo:         customerRepo,
 		interval:             interval,
@@ -124,7 +124,7 @@ func (w *SyncWorker) Wait(ctx context.Context) error {
 }
 
 func (w *SyncWorker) SyncAll(ctx context.Context) {
-	if w == nil || w.rdb == nil {
+	if w == nil || w.redisClient == nil {
 		return
 	}
 	w.syncMu.Lock()
@@ -224,7 +224,7 @@ func (w *SyncWorker) collectCampaignRollup(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	for {
-		keys, nextCursor, err := w.rdb.SScan(ctx, "budget:dirty_campaigns", w.dirtyScanCursor, "", 100).Result()
+		keys, nextCursor, err := w.redisClient.SScan(ctx, "budget:dirty_campaigns", w.dirtyScanCursor, "", 100).Result()
 		if err != nil {
 			break
 		}
@@ -440,7 +440,7 @@ func (w *SyncWorker) handleCampaignFlushError(ctx context.Context, id uuid.UUID,
 }
 
 func (w *SyncWorker) CommitRollupRedis(ctx context.Context, entry PendingRollup) {
-	w.rdb.Eval(ctx, commitSyncScript,
+	w.redisClient.Eval(ctx, commitSyncScript,
 		[]string{entry.InFlightKey, entry.DirtySet, entry.LockKey, entry.TxKey, entry.SyncKey},
 		entry.AmountMicro, entry.IDStr)
 }
@@ -479,7 +479,7 @@ func (w *SyncWorker) prepareBudgetEntity(ctx context.Context, prefix, idStr stri
 	}
 
 	newTxID := uuid.New().String()
-	res, err := w.rdb.Eval(ctx, prepareSyncScript,
+	res, err := w.redisClient.Eval(ctx, prepareSyncScript,
 		[]string{keys.syncKey, keys.inFlightKey, keys.lockKey, keys.txKey}, lockTTL, newTxID).Result()
 	if err != nil {
 		return uuid.UUID{}, 0, "", budgetEntityKeys{}, 0, false
@@ -494,7 +494,7 @@ func (w *SyncWorker) prepareBudgetEntity(ctx context.Context, prefix, idStr stri
 	txIDVal, ok2 := arr[1].(string)
 	if !ok1 || !ok2 || amountVal == "0" {
 		if amountVal == "0" {
-			w.rdb.SRem(ctx, keys.dirtySet, idStr)
+			w.redisClient.SRem(ctx, keys.dirtySet, idStr)
 		}
 		return uuid.UUID{}, 0, "", budgetEntityKeys{}, 0, false
 	}
@@ -507,14 +507,14 @@ func (w *SyncWorker) prepareBudgetEntity(ctx context.Context, prefix, idStr stri
 	redisRemaining := int64(0)
 	if prefix == "campaign" {
 		remKey := BudgetCampaignKey(id)
-		if rem, err := w.rdb.Get(ctx, remKey).Int64(); err == nil {
+		if rem, err := w.redisClient.Get(ctx, remKey).Int64(); err == nil {
 			redisRemaining = rem
 		}
 	}
 
-	ttl, err := w.rdb.TTL(ctx, keys.lockKey).Result()
+	ttl, err := w.redisClient.TTL(ctx, keys.lockKey).Result()
 	if err == nil && ttl > 0 && ttl < 10*time.Second {
-		_ = w.rdb.Expire(ctx, keys.lockKey, time.Duration(lockTTL)*time.Second).Err()
+		_ = w.redisClient.Expire(ctx, keys.lockKey, time.Duration(lockTTL)*time.Second).Err()
 		metrics.SyncLockExpiredTotal.Inc()
 	}
 
@@ -545,7 +545,7 @@ func (w *SyncWorker) syncEntity(ctx context.Context, prefix string, idStr string
 	}
 
 	if err := updateFn(ctx, id, amountMicro, txID); err == nil {
-		w.rdb.Eval(ctx, commitSyncScript,
+		w.redisClient.Eval(ctx, commitSyncScript,
 			[]string{keys.inFlightKey, keys.dirtySet, keys.lockKey, keys.txKey, keys.syncKey},
 			amountMicro, idStr)
 	}
@@ -563,7 +563,7 @@ func (w *SyncWorker) syncCustomers(ctx context.Context) {
 	var wg sync.WaitGroup
 
 	for {
-		keys, nextCursor, err := w.rdb.SScan(ctx, "budget:dirty_customers", cursor, "", 100).Result()
+		keys, nextCursor, err := w.redisClient.SScan(ctx, "budget:dirty_customers", cursor, "", 100).Result()
 		if err != nil {
 			break
 		}

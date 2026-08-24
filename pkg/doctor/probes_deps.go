@@ -34,9 +34,9 @@ func (p RedisProbe) Run(ctx context.Context) Result {
 	defer closeRedisShards(clients)
 
 	var maxLatency time.Duration
-	for i, rdb := range clients {
+	for i, redisClient := range clients {
 		shardStart := time.Now()
-		if err := rdb.Ping(ctx).Err(); err != nil {
+		if err := redisClient.Ping(ctx).Err(); err != nil {
 			return Result{
 				Name:    "redis",
 				Status:  StatusFail,

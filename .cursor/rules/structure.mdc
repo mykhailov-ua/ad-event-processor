@@ -40,7 +40,7 @@ Root clutter ban: no `*.log`, compiled binaries, ad-hoc `.env.*` in repo root - 
 | :--- | :--- |
 | Hot path | `tracker`, `campaign-shard` |
 | Cold ingest | `processor`, `broker`, log pipeline |
-| Control plane | `control`, `admin`, `postback-sender`, `dlq` |
+| Control plane | `control`, `admin`, `operator`, `postback-sender`, `dlq` |
 | Fraud / ML | `fraud-scorer`, `ivt-detector`, `ml-validate`, `ml-replay` |
 | Edge | `edge-xdp`, `edge-bpf-sync`, `region-proxy` |
 | Licensing / vendor | `license-issue`, `trial-registry`, `vendor-trial-bot` |

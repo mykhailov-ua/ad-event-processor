@@ -10,7 +10,7 @@ import {
   buildTrackPostbackURL,
   trafficGuideSummary,
 } from '../helpers/integration_kit.js';
-import { buildDirectTrackSnippet } from '../static/ad-event-processor-track.js';
+import { buildDirectTrackSnippet } from '../static/track.js';
 import { buildOpenRTBBidURL } from '../helpers/openrtb_endpoint.js';
 import {
   TRAFFIC_SOURCE_TEMPLATES,
@@ -250,16 +250,16 @@ export function CampaignTrackingSection({
 
       <SectionCard
         icon="shield"
-        title="Safe page vs money URL"
-        desc="Lightweight cloak companion: suspicious traffic can 302 to a safe URL while clean clicks reach brand landings."
+        title="Fallback landing vs brand landing"
+        desc="Compliance fallback: suspicious traffic can redirect to an alternate URL while valid clicks reach brand landings."
       >
         <p className="text-muted text-sm" data-testid="integration-safe-page-hint">
-          Money URL: weighted brand creatives (Creative tab) or campaign target URL. Safe URL:
-          white-page for IVT / placement blacklist hits when enabled under Configuration.
+          Brand landing: weighted brand creatives (Creative tab) or campaign target URL. Fallback
+          landing: alternate URL for IVT / placement blacklist hits when enabled under Configuration.
         </p>
         <p>
           <Link to={`/campaigns/${campaignId}?tab=config`} className="text-sm">
-            Configure safe page {'->'}
+            Configure compliance fallback {'->'}
           </Link>
         </p>
       </SectionCard>
@@ -428,7 +428,7 @@ export function CampaignTrackingSection({
           testId="integration-direct-snippet"
         />
         <p className="text-muted text-sm">
-          Module loads ad-event-processor-track.js; auto-picks fbclid/gclid/ttclid from the page
+          Module loads <code>src/static/track.js</code>; auto-picks fbclid/gclid/ttclid from the page
           query string.
         </p>
       </SectionCard>

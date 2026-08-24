@@ -18,7 +18,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ad-event-processor",
+	Use:   "operator",
 	Short: branding.ProductName() + " operator CLI",
 	Long:  "Operator-facing CLI for health checks, MVSS checklist, and support bundles.",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

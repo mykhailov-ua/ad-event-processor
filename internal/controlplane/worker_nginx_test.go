@@ -18,13 +18,13 @@ func TestNginxConfigWorker(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
 	defer svc.Close()
 
 	exportPath := t.TempDir()

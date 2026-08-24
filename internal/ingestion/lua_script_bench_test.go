@@ -51,10 +51,10 @@ func (*benchWorstRegistry) StartSync(context.Context, time.Duration) {
 }
 func (*benchWorstRegistry) Wait(context.Context) error { return nil }
 
-func newLuaBenchFilter(b testing.TB, rdb redis.UniversalClient, reg domain.CampaignRegistry, rateLimit int) *UnifiedFilter {
+func newLuaBenchFilter(b testing.TB, redisClient redis.UniversalClient, reg domain.CampaignRegistry, rateLimit int) *UnifiedFilter {
 	b.Helper()
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		reg,
 		nil,
@@ -80,13 +80,13 @@ func BenchmarkLuaScript_Happy(b *testing.B) {
 		b.Skip()
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(b)
+	redisClient, cleanup := setupTestRedis(b)
 	defer cleanup()
 
-	f := newLuaBenchFilter(b, rdb, &mockRegistry{}, 0)
+	f := newLuaBenchFilter(b, redisClient, &mockRegistry{}, 0)
 	f.SetTTCMin(0)
 	campID := uuid.New()
-	seedCampaignBudget(b, ctx, rdb, campID)
+	seedCampaignBudget(b, ctx, redisClient, campID)
 
 	payload := []byte(`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"impression"}`)
 	evt := &domain.Event{
@@ -115,14 +115,14 @@ func BenchmarkLuaScript_Worst(b *testing.B) {
 		b.Skip()
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(b)
+	redisClient, cleanup := setupTestRedis(b)
 	defer cleanup()
 
 	reg := &benchWorstRegistry{}
-	f := newLuaBenchFilter(b, rdb, reg, 100_000)
+	f := newLuaBenchFilter(b, redisClient, reg, 100_000)
 	f.SetTTCMin(500 * time.Millisecond)
 	campID := uuid.New()
-	seedCampaignBudget(b, ctx, rdb, campID)
+	seedCampaignBudget(b, ctx, redisClient, campID)
 
 	camp, ok := reg.GetCampaign(campID)
 	if !ok {
@@ -134,15 +134,15 @@ func BenchmarkLuaScript_Worst(b *testing.B) {
 			b.Fatal(err)
 		}
 	}
-	requireNoError(rdb.Set(ctx, camp.FcapKeyPrefix+"bench-worst", 0, 0).Err())
-	requireNoError(rdb.Set(ctx, camp.DailySpendKeyPrefix+time.Now().In(camp.Location).Format("20060102"), 0, 0).Err())
+	requireNoError(redisClient.Set(ctx, camp.FcapKeyPrefix+"bench-worst", 0, 0).Err())
+	requireNoError(redisClient.Set(ctx, camp.DailySpendKeyPrefix+time.Now().In(camp.Location).Format("20060102"), 0, 0).Err())
 	var impKey []byte
 	impKey = appendCampaignHashTag(impKey[:0], campID)
 	impKey = append(impKey, "imp_ts:"...)
 	impKey = append(impKey, "bench-worst"...)
 	impKey = append(impKey, ':')
 	impKey = appendUUID(impKey, campID)
-	requireNoError(rdb.Set(ctx, string(impKey), strconv.FormatInt(nowMs, 10), time.Hour).Err())
+	requireNoError(redisClient.Set(ctx, string(impKey), strconv.FormatInt(nowMs, 10), time.Hour).Err())
 
 	payload := []byte(`{"campaign_id":"00000000-0000-0000-0000-000000000001","type":"click"}`)
 	evt := &domain.Event{

@@ -22,11 +22,11 @@ func TestPipelineWriteVPPRatios_batchesPerShard(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	svc := &Service{
-		rdbs:    []redis.UniversalClient{rdb},
+		redisShards:    []redis.UniversalClient{redisClient},
 		sharder: domain.NewStaticSlotSharder(1),
 	}
 	c1, c2 := uuid.New(), uuid.New()
@@ -38,10 +38,10 @@ func TestPipelineWriteVPPRatios_batchesPerShard(t *testing.T) {
 	}
 	require.NoError(t, svc.pipelineWriteVPPRatios(ctx, writes))
 
-	raw1, err := rdb.Get(ctx, vppPacingRedisKey(c1)).Result()
+	raw1, err := redisClient.Get(ctx, vppPacingRedisKey(c1)).Result()
 	require.NoError(t, err)
 	assert.Equal(t, "0.7500", raw1)
-	raw2, err := rdb.Get(ctx, vppPacingRedisKey(c2)).Result()
+	raw2, err := redisClient.Get(ctx, vppPacingRedisKey(c2)).Result()
 	require.NoError(t, err)
 	assert.Equal(t, "1.0000", raw2)
 }
@@ -54,14 +54,14 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		PacingToleranceMargin: 0.0,
 	}
 	sharder := domain.NewStaticSlotSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -88,7 +88,7 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 
 	require.NoError(t, svc.RunVPPPacingController(ctx))
 
-	raw, err := rdb.Get(ctx, vppPacingRedisKey(campaignID)).Result()
+	raw, err := redisClient.Get(ctx, vppPacingRedisKey(campaignID)).Result()
 	require.NoError(t, err)
 	ratio, err := strconv.ParseFloat(raw, 32)
 	require.NoError(t, err)
@@ -104,11 +104,11 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{PacingToleranceMargin: 0.15}
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewStaticSlotSharder(1), cfg)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -135,7 +135,7 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 
 	require.NoError(t, svc.RunVPPPacingController(ctx))
 
-	raw, err := rdb.Get(ctx, vppPacingRedisKey(campaignID)).Result()
+	raw, err := redisClient.Get(ctx, vppPacingRedisKey(campaignID)).Result()
 	require.NoError(t, err)
 	ratio, err := strconv.ParseFloat(raw, 32)
 	require.NoError(t, err)
@@ -150,10 +150,10 @@ func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewStaticSlotSharder(1), &config.Config{})
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewStaticSlotSharder(1), &config.Config{})
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -174,7 +174,7 @@ func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 
 	require.NoError(t, svc.RunVPPPacingController(ctx))
 
-	exists, err := rdb.Exists(ctx, vppPacingRedisKey(campaignID)).Result()
+	exists, err := redisClient.Exists(ctx, vppPacingRedisKey(campaignID)).Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), exists)
 }

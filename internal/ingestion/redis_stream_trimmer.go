@@ -15,7 +15,7 @@ import (
 )
 
 type RedisStreamTrimmerConfig struct {
-	Rdbs         []redis.UniversalClient
+	RedisShards         []redis.UniversalClient
 	Streams      []string
 	MaxLen       int
 	TrimInterval time.Duration
@@ -40,7 +40,7 @@ func NewRedisStreamTrimmer(cfg RedisStreamTrimmerConfig) *RedisStreamTrimmer {
 }
 
 func (t *RedisStreamTrimmer) Start(ctx context.Context) {
-	if len(t.cfg.Rdbs) == 0 {
+	if len(t.cfg.RedisShards) == 0 {
 		return
 	}
 	runCtx, cancel := context.WithCancel(ctx)
@@ -67,13 +67,13 @@ func (t *RedisStreamTrimmer) Start(ctx context.Context) {
 	slog.Info("redis stream trimmer started",
 		"max_len", t.cfg.MaxLen,
 		"trim_interval", t.cfg.TrimInterval.String(),
-		"shards", len(t.cfg.Rdbs),
+		"shards", len(t.cfg.RedisShards),
 	)
 }
 
 func (t *RedisStreamTrimmer) TrimOnce(ctx context.Context) {
-	for i, rdb := range t.cfg.Rdbs {
-		if rdb == nil {
+	for i, redisClient := range t.cfg.RedisShards {
+		if redisClient == nil {
 			continue
 		}
 		shardLabel := strconv.Itoa(i)
@@ -82,13 +82,13 @@ func (t *RedisStreamTrimmer) TrimOnce(ctx context.Context) {
 			if stream == "" {
 				continue
 			}
-			cmd := rdb.XTrimMaxLenApprox(ctx, stream, int64(t.cfg.MaxLen), 0)
+			cmd := redisClient.XTrimMaxLenApprox(ctx, stream, int64(t.cfg.MaxLen), 0)
 			if err := cmd.Err(); err != nil && !errors.Is(err, redis.Nil) {
 				slog.Debug("redis stream xtrim error", "shard", i, "stream", stream, "error", err)
 			}
 		}
 
-		infoCmd := rdb.Info(ctx, "memory")
+		infoCmd := redisClient.Info(ctx, "memory")
 		if res, err := infoCmd.Result(); err == nil {
 			if usedBytes := parseRedisUsedMemory(res); usedBytes >= 0 {
 				metrics.RedisMemoryUsedBytes.WithLabelValues(shardLabel).Set(float64(usedBytes))

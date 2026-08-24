@@ -44,10 +44,10 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 	registry := &mockRegistry{}
 
 	t.Run("All Healthy", func(t *testing.T) {
-		rdbs := []redis.UniversalClient{&mockFailRedis{fail: false}}
+		redisShards := []redis.UniversalClient{&mockFailRedis{fail: false}}
 		pool := &mockPinger{fail: false}
 		sharder := NewJumpHashSharder(1)
-		handler := NewAdsPacketHandler(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream", nil)
+		handler := NewAdsPacketHandler(cfg, registry, nil, pool, redisShards, sharder, "fraud-stream", nil)
 		handler.SetHealthProbeState(true, true)
 		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
 
@@ -61,10 +61,10 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 	})
 
 	t.Run("Postgres Down", func(t *testing.T) {
-		rdbs := []redis.UniversalClient{&mockFailRedis{fail: false}}
+		redisShards := []redis.UniversalClient{&mockFailRedis{fail: false}}
 		pool := &mockPinger{fail: true}
 		sharder := NewJumpHashSharder(1)
-		handler := NewAdsPacketHandler(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream", nil)
+		handler := NewAdsPacketHandler(cfg, registry, nil, pool, redisShards, sharder, "fraud-stream", nil)
 		handler.SetHealthProbeState(false, true)
 		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
 
@@ -78,13 +78,13 @@ func TestHealthCheckPartialFailure(t *testing.T) {
 	})
 
 	t.Run("Redis Shard 2 Down", func(t *testing.T) {
-		rdbs := []redis.UniversalClient{
+		redisShards := []redis.UniversalClient{
 			&mockFailRedis{fail: false},
 			&mockFailRedis{fail: true},
 		}
 		pool := &mockPinger{fail: false}
 		sharder := NewJumpHashSharder(1)
-		handler := NewAdsPacketHandler(cfg, registry, nil, pool, rdbs, sharder, "fraud-stream", nil)
+		handler := NewAdsPacketHandler(cfg, registry, nil, pool, redisShards, sharder, "fraud-stream", nil)
 		handler.SetHealthProbeState(false, true, false)
 		handler.SetStartedAt(time.Now().Add(-301 * time.Second))
 

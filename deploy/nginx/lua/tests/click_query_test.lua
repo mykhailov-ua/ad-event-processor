@@ -1,5 +1,4 @@
--- Unit test for edge-click-query.lua (strict campaign_id UUID).
--- Run: lua deploy/nginx/lua/tests/click_query_test.lua "$(pwd)/deploy/nginx/lua"
+
 
 package.path = arg[1] .. "/?.lua;;"
 

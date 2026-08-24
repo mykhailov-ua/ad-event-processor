@@ -115,9 +115,9 @@ func main() {
 		slog.Info("license file recheck enabled", "path", licensePath, "interval", recheckInterval.String())
 	}
 
-	var rdbs []redis.UniversalClient
+	var redisShards []redis.UniversalClient
 	var breakers []*database.RedisBreaker
-	rdbs, breakers, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+	redisShards, breakers, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
 		PoolSize:         cfg.RedisPoolSize,
 		FilterTimeoutMs:  cfg.FilterTimeoutMs,
 		StickyPinWorkers: cfg.MaxWorkers,
@@ -126,8 +126,8 @@ func main() {
 		slog.Error("failed to connect to redis shards", "error", err)
 		os.Exit(1)
 	}
-	database.StartRedisPoolStatsReporter(ctx, rdbs, 15*time.Second)
-	if rdbs[0] == nil {
+	database.StartRedisPoolStatsReporter(ctx, redisShards, 15*time.Second)
+	if redisShards[0] == nil {
 		slog.Warn("redis shard 0 not connected; running in degraded mode",
 			"replica", cfg.CampaignReplicaPath,
 			"broker_fallback", cfg.CampaignUpdateBrokerFallback,
@@ -139,8 +139,8 @@ func main() {
 		channel = "campaigns:update"
 	}
 	campaignRepo := ingestion.NewCampaignRepo(queries)
-	sharder := ingestion.NewStaticSlotSharder(len(rdbs))
-	if version, loadErr := ingestion.LoadActiveSlotMap(ctx, pool, sharder, len(rdbs)); loadErr != nil {
+	sharder := ingestion.NewStaticSlotSharder(len(redisShards))
+	if version, loadErr := ingestion.LoadActiveSlotMap(ctx, pool, sharder, len(redisShards)); loadErr != nil {
 		slog.Warn("slot map load failed, using modulo fallback", "error", loadErr)
 	} else {
 		slog.Info("slot map loaded at startup", "version", version)
@@ -149,7 +149,7 @@ func main() {
 	slotMapWatcher := ingestion.NewSlotMapWatcher(ingestion.SlotMapWatcherConfig{
 		Pool:           pool,
 		Sharder:        sharder,
-		NumShards:      len(rdbs),
+		NumShards:      len(redisShards),
 		PollInterval:   time.Duration(cfg.SlotMapPollIntervalMs) * time.Millisecond,
 		BrokerURL:      cfg.Broker.URL,
 		BrokerRedisURL: cfg.Broker.RedisURL,
@@ -158,7 +158,7 @@ func main() {
 	})
 	go slotMapWatcher.Start(ctx)
 
-	budgetWarmer := ingestion.NewBudgetCacheWarmer(rdbs, sharder)
+	budgetWarmer := ingestion.NewBudgetCacheWarmer(redisShards, sharder)
 	registry.SetBudgetWarmer(budgetWarmer)
 	if warmed, err := budgetWarmer.WarmFromRegistry(ctx, registry); err != nil {
 		slog.Error("initial budget cache warm failed", "error", err)
@@ -167,8 +167,8 @@ func main() {
 	}
 
 	registry.ConfigureStaleMode(time.Duration(cfg.RegistryStaleTTLSec) * time.Second)
-	registry.StartWatchShards(ctx, rdbs, channel)
-	registry.StartEpochPoll(ctx, rdbs, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
+	registry.StartWatchShards(ctx, redisShards, channel)
+	registry.StartEpochPoll(ctx, redisShards, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
 
 	if cfg.CampaignUpdateBrokerFallback && cfg.Broker.URL != "" {
 		topic := cfg.CampaignUpdateBrokerTopic
@@ -190,7 +190,7 @@ func main() {
 	if consentChannel == "" {
 		consentChannel = ingestion.ConsentDefaultUpdateChannel
 	}
-	consentRdb := firstConnectedRedis(rdbs)
+	consentRdb := firstConnectedRedis(redisShards)
 	consentStore := ingestion.NewConsentStore(consentRdb)
 	if consentRdb != nil {
 		consentStore.StartWatch(ctx, consentRdb, consentChannel)
@@ -248,7 +248,7 @@ func main() {
 		slog.Info("residential proxy hot signal enabled", "window", cfg.ResidentialProxyWindow)
 	}
 
-	settingsWatcher := ingestion.NewSettingsWatcher(rdbs, cfg)
+	settingsWatcher := ingestion.NewSettingsWatcher(redisShards, cfg)
 	settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(pool), registry.IsStaleMode)
 	deviceFilter := ingestion.NewDeviceFilter(settingsWatcher)
 	deviceFilter.SetOSFingerprintEnabled(cfg.OSFingerprintMismatchEnabled)
@@ -258,7 +258,7 @@ func main() {
 	consentFilter := ingestion.NewConsentFilter(registry, consentStore)
 
 	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
-		Rdbs:         rdbs,
+		RedisShards:         redisShards,
 		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
 		MaxLen:       cfg.StreamMaxLen,
 		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
@@ -276,7 +276,7 @@ func main() {
 	}
 
 	unifiedFilter := ingestion.NewUnifiedFilter(
-		rdbs,
+		redisShards,
 		sharder,
 		registry,
 		campaignRepo,
@@ -324,7 +324,7 @@ func main() {
 		}
 		quotaRefillWorker = ingestion.NewQuotaRefillWorker(
 			localQuantaLedger,
-			rdbs,
+			redisShards,
 			sharder,
 			ingestion.QuotaRefillConfig{
 				BaseChunkMicro: chunkSize,
@@ -346,10 +346,10 @@ func main() {
 			TrackerID:  cfg.RedisConsumerID,
 			Timeout:    time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
 		})
-		localQuantaFlusher = ingestion.NewLocalQuantaFlusher(localQuantaLedger, rdbs, sharder, budgetDeltaPublisher)
+		localQuantaFlusher = ingestion.NewLocalQuantaFlusher(localQuantaLedger, redisShards, sharder, budgetDeltaPublisher)
 		idemCache := ingestion.NewLocalClickIdemCache(time.Duration(cfg.IdempotencyTTLHrs) * time.Hour)
 		localQuantaStream = ingestion.NewLocalQuantaStreamPublisher(ingestion.LocalQuantaStreamPublisherConfig{
-			Rdbs:           rdbs,
+			RedisShards:           redisShards,
 			StreamName:     trackerStreamName,
 			MaxLen:         cfg.StreamMaxLen,
 			IdempotencyTTL: time.Duration(cfg.IdempotencyTTLHrs) * time.Hour,
@@ -403,16 +403,16 @@ func main() {
 	if cfg.TTCFailClosed {
 		slog.Info("TTC fail-closed enabled: clicks without impression timestamp are rejected")
 	}
-	slog.Info("redis lua scripts preloaded", "shards", len(rdbs))
+	slog.Info("redis lua scripts preloaded", "shards", len(redisShards))
 
-	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(rdbs), cfg.FilterTimeoutMs)
-	placementBL := ingestion.NewPlacementBlacklistFilter(rdbs)
+	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(redisShards), cfg.FilterTimeoutMs)
+	placementBL := ingestion.NewPlacementBlacklistFilter(redisShards)
 	unifiedFilter.SetPlacementBlacklistFilter(placementBL)
-	unifiedFilter.SetFraudBlacklistFilter(ingestion.NewFraudBlacklistFilter(rdbs))
+	unifiedFilter.SetFraudBlacklistFilter(ingestion.NewFraudBlacklistFilter(redisShards))
 	unifiedFilter.SetIngressRPDHandledExternally(true)
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
-	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, rdbs)
+	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, redisShards)
 	entitlementsFilter.SetRegionCode(uint8(cfg.RegionCode))
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
 	if piiErr != nil {
@@ -420,7 +420,7 @@ func main() {
 		os.Exit(1)
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
-	segmentFilter := ingestion.NewSegmentFilter(rdbs, registry, piiHasher)
+	segmentFilter := ingestion.NewSegmentFilter(redisShards, registry, piiHasher)
 	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, consentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
@@ -429,7 +429,7 @@ func main() {
 	var rtbReconcile *ingestion.RtbBudgetReconcileWorker
 	rtbBudgetSync := ingestion.RtbBudgetSync{
 		Authority: ingestion.BudgetAuthorityShadow,
-		Redis:     rdbs,
+		Redis:     redisShards,
 		Sharder:   sharder,
 	}
 	if cfg.RtbEnabled() {
@@ -437,7 +437,7 @@ func main() {
 		rtbStore := rtb.NewBudgetStore()
 		rtbBudgetSync.Authority = ingestion.BudgetAuthorityFromConfig(cfg)
 		rtbCatalog = ingestion.NewRtbCatalog(rtbStore, rtbBudgetSync.Authority)
-		rtbHybrid = ingestion.NewHybridBalancer(len(rdbs), ingestion.HybridMaxRPSFromConfig(cfg))
+		rtbHybrid = ingestion.NewHybridBalancer(len(redisShards), ingestion.HybridMaxRPSFromConfig(cfg))
 		if cfg.RtbClearingMode == "first" {
 			rtbCatalog.SetClearingMode(rtb.ClearingFirstPrice)
 		}
@@ -450,8 +450,8 @@ func main() {
 		} else {
 			slog.Info("rtb deals loaded", "count", rtbCatalog.DealCount())
 		}
-		ingestion.StartRtbCatalogReloadWatch(ctx, queries, firstConnectedRedis(rdbs), ingestion.RtbCatalogReloadChannel(cfg), registry, rtbCatalog, cfg, rtbHybrid, rtbBudgetSync, settingsWatcher)
-		dealFloorCache := ingestion.NewDealFloorCache(firstConnectedRedis(rdbs))
+		ingestion.StartRtbCatalogReloadWatch(ctx, queries, firstConnectedRedis(redisShards), ingestion.RtbCatalogReloadChannel(cfg), registry, rtbCatalog, cfg, rtbHybrid, rtbBudgetSync, settingsWatcher)
+		dealFloorCache := ingestion.NewDealFloorCache(firstConnectedRedis(redisShards))
 		rtbCatalog.SetDealFloors(dealFloorCache)
 		ingestion.StartDealFloorRefresh(ctx, dealFloorCache, rtbCatalog, time.Duration(cfg.DealFloorRefreshIntervalMs)*time.Millisecond)
 		if allow, err := ingestion.LoadSupplyChainAllowlist(ctx, queries); err == nil {
@@ -461,7 +461,7 @@ func main() {
 		}
 		var rtbBudgetMirror *ingestion.RtbBudgetMirrorWriter
 		if rtbBudgetSync.Authority == ingestion.BudgetAuthorityRTB {
-			rtbBudgetMirror = ingestion.NewRtbBudgetMirrorWriter(rtbCatalog, registry, rdbs, sharder)
+			rtbBudgetMirror = ingestion.NewRtbBudgetMirrorWriter(rtbCatalog, registry, redisShards, sharder)
 			defer func() {
 				if rtbBudgetMirror != nil {
 					rtbBudgetMirror.Close()
@@ -477,7 +477,7 @@ func main() {
 			},
 			registry,
 			rtbCatalog,
-			rdbs,
+			redisShards,
 			sharder,
 		)
 		rtbReconcile.Start(ctx)
@@ -520,10 +520,10 @@ func main() {
 		}
 	}
 
-	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, rdbs, sharder, cfg.FraudStreamName, creativeStore)
+	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
 
 	if cfg.PgFailoverEnabled {
-		ingestPgFailover := pgfailover.StartIngestSubscribers(ctx, rdbs, pgfailover.IngestSubscriberConfig{
+		ingestPgFailover := pgfailover.StartIngestSubscribers(ctx, redisShards, pgfailover.IngestSubscriberConfig{
 			MaxConns: cfg.DBTrackerMaxConns,
 			MinConns: cfg.DBMinConns,
 			Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,
@@ -577,22 +577,22 @@ func main() {
 		}
 		slog.Info("fraud broker sink enabled", "addr", cfg.Broker.URL, "topic", cfg.Broker.FraudTopic)
 	} else if cfg.Broker.CHIngestSource != "broker" && cfg.RedisStreamName != "" {
-		streamProducers := make([]*ingestion.StreamProducer, len(rdbs))
+		streamProducers := make([]*ingestion.StreamProducer, len(redisShards))
 		writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
 		if writeTimeout <= 0 {
 			writeTimeout = 2 * time.Second
 		}
-		for i, rdb := range rdbs {
-			if rdb == nil {
+		for i, redisClient := range redisShards {
+			if redisClient == nil {
 				continue
 			}
-			streamProducers[i] = ingestion.NewStreamProducer(rdb, cfg.RedisStreamName, cfg.StreamMaxLen, writeTimeout)
+			streamProducers[i] = ingestion.NewStreamProducer(redisClient, cfg.RedisStreamName, cfg.StreamMaxLen, writeTimeout)
 		}
 		gnetHandler.SetStreamProducers(streamProducers)
-		slog.Info("redis stream producers enabled", "stream", cfg.RedisStreamName, "shards", len(rdbs))
+		slog.Info("redis stream producers enabled", "stream", cfg.RedisStreamName, "shards", len(redisShards))
 	}
 	ingestion.StartFraudBackpressureWatcher(ctx, ingestion.FraudBackpressureConfig{
-		Rdbs:        rdbs,
+		RedisShards:        redisShards,
 		Writer:      gnetHandler.FraudWriter(),
 		Stream:      cfg.FraudStreamName,
 		EventStream: cfg.RedisStreamName,
@@ -600,7 +600,7 @@ func main() {
 		LagSec:      cfg.FraudConsumerLagSec,
 		Interval:    2 * time.Second,
 	})
-	if udpCtrl := ingestion.NewUDPControlFromConfig(cfg, len(rdbs)); udpCtrl != nil {
+	if udpCtrl := ingestion.NewUDPControlFromConfig(cfg, len(redisShards)); udpCtrl != nil {
 		if err := udpCtrl.Start(ctx); err != nil {
 			slog.Error("udp control start failed", "error", err)
 			os.Exit(1)
@@ -841,21 +841,21 @@ func main() {
 
 	unifiedFilter.CloseFilterEvalPins()
 
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := rdb.Close(); err != nil {
+		if err := redisClient.Close(); err != nil {
 			slog.Error("failed to close redis shard", "shard", i, "error", err)
 		}
 	}
 	slog.Info("ad-event-tracker shutdown complete")
 }
 
-func firstConnectedRedis(rdbs []redis.UniversalClient) redis.UniversalClient {
-	for _, rdb := range rdbs {
-		if rdb != nil {
-			return rdb
+func firstConnectedRedis(redisShards []redis.UniversalClient) redis.UniversalClient {
+	for _, redisClient := range redisShards {
+		if redisClient != nil {
+			return redisClient
 		}
 	}
 	return nil

@@ -51,7 +51,7 @@ type Client struct {
 	lenBuf    []byte
 	timeout   time.Duration
 	redisURL  string
-	rdb       redis.Cmdable
+	redisClient       redis.Cmdable
 	fetchIter MessageIterator
 }
 
@@ -97,11 +97,11 @@ func (c *Client) Close() error {
 		err = c.conn.Close()
 		c.conn = nil
 	}
-	if c.rdb != nil {
-		if cl, ok := c.rdb.(interface{ Close() error }); ok {
+	if c.redisClient != nil {
+		if cl, ok := c.redisClient.(interface{ Close() error }); ok {
 			_ = cl.Close()
 		}
-		c.rdb = nil
+		c.redisClient = nil
 	}
 	return err
 }
@@ -428,19 +428,19 @@ func (c *Client) resolveLeaderAddr(ctx context.Context, topic string, partition 
 	if c.redisURL == "" {
 		return "", errors.New("redis URL not set")
 	}
-	if c.rdb == nil {
-		rdb, err := netaddr.ParseRedisURL(c.redisURL, "")
+	if c.redisClient == nil {
+		redisClient, err := netaddr.ParseRedisURL(c.redisURL, "")
 		if err != nil {
 			return "", err
 		}
-		c.rdb = rdb
+		c.redisClient = redisClient
 	}
 	tpKey := protocol.TopicPartitionID(topic, partition)
 	lookupCtx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	leaderID, err := c.rdb.Get(lookupCtx, "ad_event_processor:topics:"+tpKey+":leader").Result()
+	leaderID, err := c.redisClient.Get(lookupCtx, "ad_event_processor:topics:"+tpKey+":leader").Result()
 	if err != nil {
 		return "", err
 	}
-	return c.rdb.Get(lookupCtx, "ad_event_processor:brokers:"+leaderID).Result()
+	return c.redisClient.Get(lookupCtx, "ad_event_processor:brokers:"+leaderID).Result()
 }

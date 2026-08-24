@@ -16,18 +16,18 @@ func TestFetchBudgetReconSnapshot_atomic(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
 	tag := campaignHashTag(campID)
 	idStr := campID.String()
 
-	require.NoError(t, rdb.Set(ctx, budgetCampaignKey(campID), 8_000_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, campaignSyncKey(campID), 500_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, tag+"budget:inflight:campaign:"+idStr, 200_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, budgetCampaignKey(campID), 8_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, campaignSyncKey(campID), 500_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, tag+"budget:inflight:campaign:"+idStr, 200_000, 0).Err())
 
-	snap, err := FetchBudgetReconSnapshot(ctx, rdb, campID, false)
+	snap, err := FetchBudgetReconSnapshot(ctx, redisClient, campID, false)
 	require.NoError(t, err)
 	assert.Equal(t, int64(8_000_000), snap.Remaining)
 	assert.Equal(t, int64(500_000), snap.Sync)
@@ -44,11 +44,11 @@ func TestReconToleranceMicro(t *testing.T) {
 
 func BenchmarkReconcileSnapshot(b *testing.B) {
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(b)
+	redisClient, cleanup := database.SetupTestRedis(b)
 	defer cleanup()
 	campID := uuid.New()
-	require.NoError(b, rdb.Set(ctx, budgetCampaignKey(campID), 5_000_000, 0).Err())
+	require.NoError(b, redisClient.Set(ctx, budgetCampaignKey(campID), 5_000_000, 0).Err())
 	for b.Loop() {
-		_, _ = FetchBudgetReconSnapshot(ctx, rdb, campID, false)
+		_, _ = FetchBudgetReconSnapshot(ctx, redisClient, campID, false)
 	}
 }

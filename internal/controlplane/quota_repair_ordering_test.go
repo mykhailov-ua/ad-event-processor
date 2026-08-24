@@ -80,13 +80,13 @@ func TestApplyQuotaRepair_topUpRedis_pgFailurePreservesQuotaKey(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	campID := uuid.New()
 	const beforeQuota = int64(1_500_000)
 	quotaKey := fmt.Sprintf("budget:quota:%s", campID.String())
-	require.NoError(t, rdb.Set(ctx, quotaKey, beforeQuota, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, quotaKey, beforeQuota, 0).Err())
 
 	payload, err := coldpath.MarshalOutbox(QuotaRepairPayload{
 		CampaignID:  campID.String(),
@@ -97,14 +97,14 @@ func TestApplyQuotaRepair_topUpRedis_pgFailurePreservesQuotaKey(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 	ob := NewOutboxWorker(svc)
 	pool.Close()
 
 	err = ob.ApplyQuotaRepair(ctx, 42, payload)
 	require.Error(t, err)
 
-	after, err := rdb.Get(ctx, quotaKey).Int64()
+	after, err := redisClient.Get(ctx, quotaKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, beforeQuota, after, "harness=pg_outbox_quota_repair: PG Begin failure must not INCRBY quota key")
 }

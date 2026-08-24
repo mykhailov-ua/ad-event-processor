@@ -25,14 +25,14 @@ func TestManagementAPI_System(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -53,7 +53,7 @@ func TestManagementAPI_System(t *testing.T) {
 		assert.Equal(t, "0.05", got["click_amount"])
 
 		assert.Eventually(t, func() bool {
-			val, err := rdb.HGet(ctx, "config:values", "rate_limit_per_min").Result()
+			val, err := redisClient.HGet(ctx, "config:values", "rate_limit_per_min").Result()
 			return err == nil && val == "100"
 		}, 2*time.Second, 20*time.Millisecond)
 	})
@@ -62,7 +62,7 @@ func TestManagementAPI_System(t *testing.T) {
 		require.NoError(t, svc.BlockIPWithTTL(ctx, "192.168.1.50", "fraud", nil))
 
 		assert.Eventually(t, func() bool {
-			isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "192.168.1.50").Result()
+			isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", "192.168.1.50").Result()
 			return err == nil && isMember
 		}, 2*time.Second, 20*time.Millisecond)
 
@@ -90,7 +90,7 @@ func TestManagementAPI_System(t *testing.T) {
 		assert.Equal(t, http.StatusNoContent, respDel.Code)
 
 		assert.Eventually(t, func() bool {
-			isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "192.168.1.50").Result()
+			isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", "192.168.1.50").Result()
 			return err == nil && !isMember
 		}, 2*time.Second, 20*time.Millisecond)
 	})

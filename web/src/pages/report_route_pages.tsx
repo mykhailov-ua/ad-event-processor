@@ -5,7 +5,7 @@ import {
   COST_SYNC_COVERAGE_REPORT_COLUMNS,
   FILTER_REJECT_REPORT_COLUMNS,
   FRAUD_BREAKDOWN_REPORT_COLUMNS,
-  GHOST_IMPRESSION_FUNNEL_COLUMNS,
+  SILENT_REJECT_IMPRESSION_FUNNEL_COLUMNS,
   GEO_REPORT_COLUMNS,
   IVT_REPORT_COLUMNS,
   PACING_DRIFT_REPORT_COLUMNS,
@@ -112,13 +112,13 @@ export function FraudBreakdownReportPage() {
   );
 }
 
-export function GhostImpressionFunnelReportPage() {
+export function SilentRejectImpressionFunnelReportPage() {
   return (
     <CustomerRangeReportPage
-      title="Ghost impression funnel"
-      endpoint="ghost-impression-funnel"
-      urlPath="/reports/ghost-impression-funnel"
-      columns={GHOST_IMPRESSION_FUNNEL_COLUMNS}
+      title="Silent reject impression funnel"
+      endpoint="silent-reject-impression-funnel"
+      urlPath="/reports/silent-reject-impression-funnel"
+      columns={SILENT_REJECT_IMPRESSION_FUNNEL_COLUMNS}
       enableCompare={false}
       enableActions={false}
     />

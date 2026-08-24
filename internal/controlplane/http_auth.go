@@ -25,16 +25,16 @@ func apiKeyPrincipalID(apiKey string) uuid.UUID {
 type AuthHandler struct {
 	authClient     *AuthClient
 	tokenMaker     identity.Maker
-	rdbs           []redis.UniversalClient
+	redisShards           []redis.UniversalClient
 	cfg            *config.Config
 	authMiddleware *AuthMiddleware
 }
 
-func NewAuthHandler(authClient *AuthClient, tokenMaker identity.Maker, rdbs []redis.UniversalClient, cfg *config.Config, authMiddleware *AuthMiddleware) *AuthHandler {
+func NewAuthHandler(authClient *AuthClient, tokenMaker identity.Maker, redisShards []redis.UniversalClient, cfg *config.Config, authMiddleware *AuthMiddleware) *AuthHandler {
 	return &AuthHandler{
 		authClient:     authClient,
 		tokenMaker:     tokenMaker,
-		rdbs:           rdbs,
+		redisShards:           redisShards,
 		cfg:            cfg,
 		authMiddleware: authMiddleware,
 	}
@@ -190,7 +190,7 @@ func (h *AuthHandler) logout(w http.ResponseWriter, r *http.Request) {
 		payload, errPayload := h.tokenMaker.VerifyToken(accessCookie.Value)
 		if errPayload == nil {
 			ttl := time.Until(payload.ExpiredAt)
-			if errRev := identity.RevokeTokenSessionShards(r.Context(), h.rdbs, payload.ID, payload.SessionID, ttl); errRev != nil {
+			if errRev := identity.RevokeTokenSessionShards(r.Context(), h.redisShards, payload.ID, payload.SessionID, ttl); errRev != nil {
 				slog.Error("failed to revoke tokens on logout", "error", errRev)
 			}
 		}
@@ -240,10 +240,10 @@ func (h *AuthHandler) me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(h.rdbs) > 0 {
-		rdb := PickHealthyControlShard(h.rdbs)
-		if rdb != nil {
-			revoked, errRev := identity.CheckTokenRevocation(r.Context(), rdb, payload)
+	if len(h.redisShards) > 0 {
+		redisClient := PickHealthyControlShard(h.redisShards)
+		if redisClient != nil {
+			revoked, errRev := identity.CheckTokenRevocation(r.Context(), redisClient, payload)
 			if errRev != nil {
 				if h.cfg != nil && h.cfg.Env == "development" {
 					slog.Warn("redis revocation check failed in development, allowing /me", "error", errRev)

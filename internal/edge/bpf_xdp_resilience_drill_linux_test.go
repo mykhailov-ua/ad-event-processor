@@ -39,12 +39,12 @@ func TestResilienceDrill_LoopbackBlocklistDrop(t *testing.T) {
 	}
 	redisAddr = strings.Split(redisAddr, ",")[0]
 
-	rdb := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:     redisAddr,
 		Password: os.Getenv("REDIS_PASS"),
 	})
-	defer func() { _ = rdb.Close() }()
-	require.NoError(t, rdb.Ping(ctx).Err())
+	defer func() { _ = redisClient.Close() }()
+	require.NoError(t, redisClient.Ping(ctx).Err())
 
 	var objs edge.EdgeObjects
 	require.NoError(t, edge.LoadEdgeObjectsLenient(&objs, nil))
@@ -63,8 +63,8 @@ func TestResilienceDrill_LoopbackBlocklistDrop(t *testing.T) {
 	defer func() { _ = xdpLink.Close() }()
 
 	victim := net.IPv4(203, 0, 113, 150)
-	require.NoError(t, rdb.Del(ctx, "blacklist:manual").Err())
-	require.NoError(t, rdb.SAdd(ctx, "blacklist:manual", victim.String()).Err())
+	require.NoError(t, redisClient.Del(ctx, "blacklist:manual").Err())
+	require.NoError(t, redisClient.SAdd(ctx, "blacklist:manual", victim.String()).Err())
 
 	store := edge.NewBlocklistStore()
 	maps := edge.BlocklistMaps{
@@ -73,7 +73,7 @@ func TestResilienceDrill_LoopbackBlocklistDrop(t *testing.T) {
 		V6Host:   objs.BlocklistHostV6,
 		V6Prefix: objs.BlocklistV6,
 	}
-	_, _, err = edge.SyncBlocklistFromRedis(ctx, rdb, maps, store)
+	_, _, err = edge.SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, store.Len(), 1)
 

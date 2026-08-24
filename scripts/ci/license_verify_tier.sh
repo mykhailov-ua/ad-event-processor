@@ -89,8 +89,6 @@ if [[ "${LICENSE_VERIFY_GARBLED:-0}" == "1" ]]; then
 else
   skip_gate release-3 "set LICENSE_VERIFY_GARBLED=1 for garbled release check"
 fi
-skip_gate release-1 "TLC model optional (not vendored in tree)"
-skip_gate release-2 "Alloy model optional (not vendored in tree)"
 run_gate release-4 bash scripts/ci/license_fuzz_nightly_gate.sh
 run_gate release-5 bash scripts/test/license_red_team_extended.sh
 if [[ "${LICENSE_VERIFY_RELEASE_QA:-0}" == "1" ]]; then

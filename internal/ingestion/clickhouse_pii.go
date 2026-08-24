@@ -5,7 +5,7 @@ import (
 	"ad-event-processor/pkg/piihash"
 )
 
-type chPIIFields struct {
+type clickhousePIIFields struct {
 	ipHash      [16]byte
 	uaHash      [16]byte
 	userIDHash  [16]byte
@@ -13,11 +13,11 @@ type chPIIFields struct {
 	saltVersion uint8
 }
 
-func hashEventPII(h *piihash.Hasher, e *domain.Event) chPIIFields {
+func hashEventPII(h *piihash.Hasher, e *domain.Event) clickhousePIIFields {
 	if h == nil || e == nil {
-		return chPIIFields{}
+		return clickhousePIIFields{}
 	}
-	return chPIIFields{
+	return clickhousePIIFields{
 		ipHash:      h.HashIP(e.IP),
 		uaHash:      h.HashUA(e.UA),
 		userIDHash:  h.HashUserID(e.UserID),

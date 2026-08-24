@@ -13,11 +13,11 @@ func TestIPRateLimiter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	limiter := NewIPRateLimiter(rdb, 3, 2*time.Second)
+	limiter := NewIPRateLimiter(redisClient, 3, 2*time.Second)
 
 	evt1 := &domain.Event{IP: "192.168.1.1"}
 	evt2 := &domain.Event{IP: "192.168.1.2"}
@@ -37,11 +37,11 @@ func TestDuplicateEventFilter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	filter := NewDuplicateEventFilter(rdb, 1*time.Second)
+	filter := NewDuplicateEventFilter(redisClient, 1*time.Second)
 
 	evt := &domain.Event{ClickID: "click_abc_123"}
 	evtOther := &domain.Event{ClickID: "click_xyz_987"}
@@ -63,12 +63,12 @@ func TestFilterEngine(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	ctx := context.Background()
-	limiter := NewIPRateLimiter(rdb, 3, 5*time.Second)
-	dupFilter := NewDuplicateEventFilter(rdb, 5*time.Second)
+	limiter := NewIPRateLimiter(redisClient, 3, 5*time.Second)
+	dupFilter := NewDuplicateEventFilter(redisClient, 5*time.Second)
 
 	engine := NewFilterEngine(0, limiter, dupFilter)
 

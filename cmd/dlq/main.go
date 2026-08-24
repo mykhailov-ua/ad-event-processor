@@ -50,35 +50,35 @@ func main() {
 	if err != nil {
 		fatal("invalid redis url", "error", err)
 	}
-	rdb := redis.NewClient(opt)
-	defer func() { _ = rdb.Close() }()
+	redisClient := redis.NewClient(opt)
+	defer func() { _ = redisClient.Close() }()
 
-	if err := rdb.Ping(ctx).Err(); err != nil {
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		fatal("failed to connect to redis", "error", err)
 	}
 
 	switch *action {
 	case "archive":
-		if err := archiveDLQ(ctx, rdb, *stream, *dest, *batch); err != nil {
+		if err := archiveDLQ(ctx, redisClient, *stream, *dest, *batch); err != nil {
 			fatal("archive failed", "error", err)
 		}
 	case "requeue":
-		if err := requeueDLQ(ctx, rdb, *stream, *dest, *batch, *rateLimit); err != nil {
+		if err := requeueDLQ(ctx, redisClient, *stream, *dest, *batch, *rateLimit); err != nil {
 			fatal("requeue failed", "error", err)
 		}
 	case "restore":
-		if err := restoreDLQ(ctx, rdb, *dest, *stream, *batch, *rateLimit); err != nil {
+		if err := restoreDLQ(ctx, redisClient, *dest, *stream, *batch, *rateLimit); err != nil {
 			fatal("restore failed", "error", err)
 		}
 	case "inspect":
-		if err := inspectStream(ctx, rdb, *stream, *batch); err != nil {
+		if err := inspectStream(ctx, redisClient, *stream, *batch); err != nil {
 			fatal("inspect failed", "error", err)
 		}
 	case "edit":
 		if *id == "" {
 			fatal("message id required for edit action", "flag", "-id")
 		}
-		if err := editDLQMessage(ctx, rdb, *stream, *id); err != nil {
+		if err := editDLQMessage(ctx, redisClient, *stream, *id); err != nil {
 			fatal("edit failed", "error", err)
 		}
 	default:
@@ -86,7 +86,7 @@ func main() {
 	}
 }
 
-func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string, batchSize int64) error {
+func archiveDLQ(ctx context.Context, redisClient *redis.Client, stream, destFile string, batchSize int64) error {
 	file, err := os.OpenFile(destFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
@@ -105,7 +105,7 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 	pbStream := &pb.AdStreamEvent{}
 
 	for {
-		msgs, err := rdb.XRead(ctx, &redis.XReadArgs{
+		msgs, err := redisClient.XRead(ctx, &redis.XReadArgs{
 			Streams: []string{stream, startID},
 			Count:   batchSize,
 			Block:   time.Millisecond * 10,
@@ -119,7 +119,7 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 			break
 		}
 
-		pipe := rdb.Pipeline()
+		pipe := redisClient.Pipeline()
 		var msgIDs []string
 
 		for _, msg := range msgs[0].Messages {
@@ -229,7 +229,7 @@ func archiveDLQ(ctx context.Context, rdb *redis.Client, stream, destFile string,
 	return nil
 }
 
-func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream string, batchSize, rateLimit int64) error {
+func requeueDLQ(ctx context.Context, redisClient *redis.Client, dlqStream, targetStream string, batchSize, rateLimit int64) error {
 	startID := "0-0"
 	var totalProcessed int64
 
@@ -247,7 +247,7 @@ func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream 
 	}
 
 	for {
-		msgs, err := rdb.XRead(ctx, &redis.XReadArgs{
+		msgs, err := redisClient.XRead(ctx, &redis.XReadArgs{
 			Streams: []string{dlqStream, startID},
 			Count:   batchSize,
 			Block:   time.Millisecond * 10,
@@ -261,7 +261,7 @@ func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream 
 			break
 		}
 
-		pipe := rdb.Pipeline()
+		pipe := redisClient.Pipeline()
 		var msgIDs []string
 
 		for _, msg := range msgs[0].Messages {
@@ -322,7 +322,7 @@ func requeueDLQ(ctx context.Context, rdb *redis.Client, dlqStream, targetStream 
 	return nil
 }
 
-func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream string, batchSize, rateLimit int64) error {
+func restoreDLQ(ctx context.Context, redisClient *redis.Client, srcFile, targetStream string, batchSize, rateLimit int64) error {
 	file, err := os.Open(srcFile)
 	if err != nil {
 		return fmt.Errorf("failed to open archive file: %w", err)
@@ -338,7 +338,7 @@ func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream st
 	reader := bufio.NewReader(file)
 	var totalProcessed int64
 	var lengthBuf [4]byte
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	batchCount := 0
 
 	pbDLQ := &pb.AdDLQEvent{}
@@ -407,7 +407,7 @@ func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream st
 				"batch", batchCount,
 				"total", totalProcessed,
 			)
-			pipe = rdb.Pipeline()
+			pipe = redisClient.Pipeline()
 			batchCount = 0
 		}
 	}
@@ -426,7 +426,7 @@ func restoreDLQ(ctx context.Context, rdb *redis.Client, srcFile, targetStream st
 	return nil
 }
 
-func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchSize int64) error {
+func inspectStream(ctx context.Context, redisClient *redis.Client, stream string, batchSize int64) error {
 	startID := "0-0"
 	var totalProcessed int64
 
@@ -436,7 +436,7 @@ func inspectStream(ctx context.Context, rdb *redis.Client, stream string, batchS
 	pbStream := &pb.AdStreamEvent{}
 
 	for {
-		msgs, err := rdb.XRead(ctx, &redis.XReadArgs{
+		msgs, err := redisClient.XRead(ctx, &redis.XReadArgs{
 			Streams: []string{stream, startID},
 			Count:   batchSize,
 			Block:   time.Millisecond * 10,
@@ -636,8 +636,8 @@ func launchEditor(filepath string) error {
 	return fmt.Errorf("failed to start editor: please set your EDITOR environment variable")
 }
 
-func editDLQMessage(ctx context.Context, rdb *redis.Client, stream, id string) error {
-	msgs, err := rdb.XRange(ctx, stream, id, id).Result()
+func editDLQMessage(ctx context.Context, redisClient *redis.Client, stream, id string) error {
+	msgs, err := redisClient.XRange(ctx, stream, id, id).Result()
 	if err != nil {
 		return fmt.Errorf("failed to fetch message %s from stream: %w", id, err)
 	}
@@ -696,7 +696,7 @@ func editDLQMessage(ctx context.Context, rdb *redis.Client, stream, id string) e
 		return fmt.Errorf("failed to marshal modified event to Protobuf: %w", err)
 	}
 
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	pipe.XDel(ctx, stream, id)
 	pipe.XAdd(ctx, &redis.XAddArgs{
 		Stream: stream,

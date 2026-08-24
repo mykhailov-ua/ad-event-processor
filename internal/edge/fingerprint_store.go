@@ -25,15 +25,14 @@ type Entry struct {
 	SeenAt  time.Time
 }
 
-// Record stores edge SYN fingerprints in Redis for cold IVT correlation (tcp_edge_correlation).
-// Hot /track reads MSS via nginx edge-tcp-fp-sync -> X-TCP-MSS header.
-func Record(ctx context.Context, rdb redis.Cmdable, e Entry) error {
-	if rdb == nil || e.IP == "" {
+
+func Record(ctx context.Context, redisClient redis.Cmdable, e Entry) error {
+	if redisClient == nil || e.IP == "" {
 		return nil
 	}
 	score := float64(e.SeenAt.Unix())
 	member := fmt.Sprintf("%s:%08x", e.IP, e.TCPHash)
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	pipe.ZAdd(ctx, redisRecentKey, redis.Z{Score: score, Member: member})
 	pipe.HSet(ctx, redisByIPKey+e.IP,
 		"tcp_hash", fmt.Sprintf("%08x", e.TCPHash),
@@ -47,14 +46,14 @@ func Record(ctx context.Context, rdb redis.Cmdable, e Entry) error {
 	return err
 }
 
-func ListRecent(ctx context.Context, rdb redis.Cmdable, limit int) ([]Entry, error) {
-	if rdb == nil {
+func ListRecent(ctx context.Context, redisClient redis.Cmdable, limit int) ([]Entry, error) {
+	if redisClient == nil {
 		return nil, nil
 	}
 	if limit <= 0 {
 		limit = 256
 	}
-	members, err := rdb.ZRevRange(ctx, redisRecentKey, 0, int64(limit-1)).Result()
+	members, err := redisClient.ZRevRange(ctx, redisRecentKey, 0, int64(limit-1)).Result()
 	if err != nil {
 		return nil, err
 	}

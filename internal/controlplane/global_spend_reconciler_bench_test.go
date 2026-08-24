@@ -14,7 +14,7 @@ import (
 func BenchmarkGlobalSpendReconciler_ApplyBatch(b *testing.B) {
 	pool, cleanupDB := database.SetupTestDB(b)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(b)
+	redisClient, cleanupRedis := database.SetupTestRedis(b)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -33,13 +33,13 @@ func BenchmarkGlobalSpendReconciler_ApplyBatch(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	if err := rdb.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err(); err != nil {
+	if err := redisClient.Set(ctx, domain.BudgetCampaignKey(campaignID), budgetLimit, 0).Err(); err != nil {
 		b.Fatal(err)
 	}
 
 	reconciler := NewGlobalSpendReconciler(
 		pool,
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		domain.NewStaticSlotSharder(1),
 		GlobalSpendReconcilerConfig{MinBatchSize: 100, MaxConcurrency: 8},
 	)

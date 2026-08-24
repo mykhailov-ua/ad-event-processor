@@ -1,6 +1,5 @@
 
 
-
 #ifndef AD_EVENT_PROCESSOR_TRACE_H
 #define AD_EVENT_PROCESSOR_TRACE_H
 

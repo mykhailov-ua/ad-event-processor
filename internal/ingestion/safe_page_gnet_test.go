@@ -8,6 +8,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -38,16 +39,16 @@ func TestClickRedirectGnet_forceSafeInPlace(t *testing.T) {
 	require.Contains(t, resp, "X-ad-event-processor-Safe-Page: 1")
 }
 
-func TestClickRedirectGnet_fraudInPlace(t *testing.T) {
+func TestClickRedirectGnet_fraudRedirect(t *testing.T) {
 	cid := uuid.New()
 	brandID := uuid.New()
-	lockStaticCampaign(func(c *domain.Campaign) {
+	configureMockRegistryCampaign(func(c *domain.Campaign) {
 		c.ID = cid
 		c.BrandID = &brandID
 		c.SafePageEnabled = true
 		c.SafePageURL = "https://safe.example/white"
+		c.SilentRejectEnabled = true
 	})
-	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
 	store.cache.Store(&brandCreativeMapSnapshot{
@@ -67,8 +68,32 @@ func TestClickRedirectGnet_fraudInPlace(t *testing.T) {
 		"User-Agent":     "Mozilla/5.0",
 	}, nil))
 
-	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
-	require.Contains(t, string(conn.Written()), "X-ad-event-processor-Safe-Page: 1")
+	require.Equal(t, http.StatusFound, ParseGnetHTTPStatus(conn.Written()))
+	resp := string(conn.Written())
+	require.Contains(t, resp, "Location: https://safe.example/white")
+}
+
+func TestClickRedirectGnet_fraudSilentReject_noSafePage_not204(t *testing.T) {
+	cid := uuid.New()
+	configureMockRegistryCampaign(func(c *domain.Campaign) {
+		c.ID = cid
+		c.SilentRejectEnabled = true
+	})
+
+	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
+	engine := NewFilterEngine(0, &fraudRejectFilter{})
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, engine, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
+
+	path := "/click?campaign_id=" + cid.String() + "&type=click"
+	_, conn := ServeGnetHarness(h, BuildGnetHTTP("GET", path, map[string]string{
+		"Connection":     "keep-alive",
+		"Content-Length": "0",
+		"User-Agent":     "Mozilla/5.0",
+	}, nil))
+
+	status := ParseGnetHTTPStatus(conn.Written())
+	require.NotEqual(t, http.StatusNoContent, status)
+	require.Contains(t, []int{http.StatusFound, http.StatusOK}, status)
 }
 
 type fraudRejectFilter struct{}

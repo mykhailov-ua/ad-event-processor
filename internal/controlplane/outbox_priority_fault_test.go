@@ -23,11 +23,11 @@ func TestFault_OutboxPriorityLanes(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-priority"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	const pacingBacklog = 500
@@ -74,7 +74,7 @@ func TestFault_OutboxPriorityLanes(t *testing.T) {
 	).Scan(&pendingPacing))
 	assert.Equal(t, pacingBacklog, pendingPacing)
 
-	ok, err := rdb.SIsMember(ctx, "blacklist:manual", "203.0.113.99").Result()
+	ok, err := redisClient.SIsMember(ctx, "blacklist:manual", "203.0.113.99").Result()
 	require.NoError(t, err)
 	assert.True(t, ok, "blacklist side effect must land in Redis before pacing backlog drains")
 

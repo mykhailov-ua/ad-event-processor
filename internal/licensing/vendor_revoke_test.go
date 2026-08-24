@@ -24,7 +24,7 @@ func TestLicenseWatcher_vendorDBRevoke(t *testing.T) {
 	pool, cleanup := database.SetupTestDB(t)
 	defer cleanup()
 	database.ApplyLedgerMigrations(t, pool)
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	dir := t.TempDir()
@@ -59,7 +59,7 @@ func TestLicenseWatcher_vendorDBRevoke(t *testing.T) {
 	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_MODE"), "file")
 	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_PATH"), tokenPath)
 
-	w := NewLicenseWatcher(pool, rdb, pub)
+	w := NewLicenseWatcher(pool, redisClient, pub)
 	require.NoError(t, w.verifyAndReload(ctx))
 
 	state, _ := w.GetState()

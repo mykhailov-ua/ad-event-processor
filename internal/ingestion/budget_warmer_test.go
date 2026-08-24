@@ -75,7 +75,7 @@ func TestBudgetCacheWarmer_SetNXDoesNotOverwrite(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -86,14 +86,14 @@ func TestBudgetCacheWarmer_SetNXDoesNotOverwrite(t *testing.T) {
 	camp.CurrentSpend = 200_000
 	cachedMockCamp.Store(camp)
 
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 42, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, 42, 0).Err())
 
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 	warmed, err := w.Warm(ctx, []*domain.Campaign{camp})
 	require.NoError(t, err)
 	assert.Equal(t, 0, warmed)
 
-	val, err := rdb.Get(ctx, camp.BudgetCampaignKey).Int64()
+	val, err := redisClient.Get(ctx, camp.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), val)
 }
@@ -103,7 +103,7 @@ func TestBudgetCacheWarmer_insertsMissingKeys(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -114,12 +114,12 @@ func TestBudgetCacheWarmer_insertsMissingKeys(t *testing.T) {
 	camp.CurrentSpend = 1_000_000
 	cachedMockCamp.Store(camp)
 
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 	warmed, err := w.Warm(ctx, []*domain.Campaign{camp})
 	require.NoError(t, err)
 	assert.Equal(t, 1, warmed)
 
-	val, err := rdb.Get(ctx, camp.BudgetCampaignKey).Int64()
+	val, err := redisClient.Get(ctx, camp.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(4_000_000), val)
 }
@@ -174,7 +174,7 @@ func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -185,13 +185,13 @@ func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 		BudgetCampaignKey: "budget:campaign:" + campID.String(),
 	}
 
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 
 	warmed, err := w.WarmOne(ctx, camp)
 	require.NoError(t, err)
 	assert.True(t, warmed)
 
-	val, err := rdb.Get(ctx, camp.BudgetCampaignKey).Int64()
+	val, err := redisClient.Get(ctx, camp.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(1_500_000), val)
 
@@ -205,7 +205,7 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -224,7 +224,7 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 	}
 
 	r := newTestRegistry(t, mock)
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 	r.SetBudgetWarmer(w)
 
 	r.Add(campID, custID, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
@@ -241,7 +241,7 @@ func TestCampaignRegistry_UpdateAndWarmCampaign_Incremental(t *testing.T) {
 	assert.Equal(t, int64(3_000_000), campAfter.BudgetLimit)
 	assert.Equal(t, int64(1_000_000), campAfter.CurrentSpend)
 
-	val, err := rdb.Get(ctx, campAfter.BudgetCampaignKey).Int64()
+	val, err := redisClient.Get(ctx, campAfter.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(2_000_000), val)
 }
@@ -253,7 +253,7 @@ func TestCampaignRegistry_StartWatch_IncrementalWarm(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -272,17 +272,17 @@ func TestCampaignRegistry_StartWatch_IncrementalWarm(t *testing.T) {
 	}
 
 	r := newTestRegistry(t, mock)
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 	r.SetBudgetWarmer(w)
 
 	r.Add(campID, custID, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	channel := "test:campaign:updates:incremental"
-	r.StartWatch(ctx, rdb, channel)
+	r.StartWatch(ctx, redisClient, channel)
 
 	time.Sleep(200 * time.Millisecond)
 
-	err := rdb.Publish(ctx, channel, campID.String()).Err()
+	err := redisClient.Publish(ctx, channel, campID.String()).Err()
 	require.NoError(t, err)
 
 	assert.Eventually(t, func() bool {
@@ -292,7 +292,7 @@ func TestCampaignRegistry_StartWatch_IncrementalWarm(t *testing.T) {
 
 	campAfter, ok := r.GetCampaign(campID)
 	require.True(t, ok)
-	val, err := rdb.Get(ctx, campAfter.BudgetCampaignKey).Int64()
+	val, err := redisClient.Get(ctx, campAfter.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(4_000_000), val)
 }
@@ -327,8 +327,8 @@ func (r *benchmarkRedisClient) SetNX(ctx context.Context, key string, value any,
 
 func BenchmarkBudgetCacheWarmer_WarmOne(b *testing.B) {
 	ctx := context.Background()
-	rdb := &benchmarkRedisClient{}
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	redisClient := &benchmarkRedisClient{}
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 	campID := uuid.New()
 	camp := &domain.Campaign{
 		ID:                campID,
@@ -343,8 +343,8 @@ func BenchmarkBudgetCacheWarmer_WarmOne(b *testing.B) {
 
 func BenchmarkBudgetCacheWarmer_Warm(b *testing.B) {
 	ctx := context.Background()
-	rdb := &benchmarkRedisClient{}
-	w := NewBudgetCacheWarmer([]redis.UniversalClient{rdb}, NewJumpHashSharder(1))
+	redisClient := &benchmarkRedisClient{}
+	w := NewBudgetCacheWarmer([]redis.UniversalClient{redisClient}, NewJumpHashSharder(1))
 	campaigns := make([]*domain.Campaign, 10)
 	for i := range 10 {
 		campID := uuid.New()

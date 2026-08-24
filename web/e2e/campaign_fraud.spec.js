@@ -22,7 +22,7 @@ const FRAUD_CONFIG = {
   fraud_threshold_suspect: 60,
   fraud_threshold_ivt: 80,
   fraud_threshold_block: 100,
-  ghost_ivt_enabled: false,
+  silent_reject_enabled: false,
 };
 
 test.describe('Campaign fraud tab', () => {

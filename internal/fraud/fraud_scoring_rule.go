@@ -21,7 +21,7 @@ type campaignFraudConfig struct {
 	suspect uint8
 	ivt     uint8
 	block   uint8
-	ghost   bool
+	silentReject bool
 }
 
 type fraudScoringRule struct {
@@ -50,7 +50,7 @@ func (r *fraudScoringRule) fetchCampaignConfigs(ctx context.Context) (map[string
 	if r.pool == nil {
 		return nil, nil
 	}
-	rows, err := r.pool.Query(ctx, "SELECT id, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_ivt, fraud_threshold_block, ghost_ivt_enabled FROM campaigns")
+	rows, err := r.pool.Query(ctx, "SELECT id, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_ivt, fraud_threshold_block, silent_reject_enabled FROM campaigns")
 	if err != nil {
 		return nil, err
 	}
@@ -60,16 +60,16 @@ func (r *fraudScoringRule) fetchCampaignConfigs(ctx context.Context) (map[string
 	for rows.Next() {
 		var id uuid.UUID
 		var pass, suspect, ivt, block int16
-		var ghost bool
-		if err := rows.Scan(&id, &pass, &suspect, &ivt, &block, &ghost); err != nil {
+		var silentReject bool
+		if err := rows.Scan(&id, &pass, &suspect, &ivt, &block, &silentReject); err != nil {
 			return nil, err
 		}
 		configs[id.String()] = campaignFraudConfig{
-			pass:    uint8(pass),
-			suspect: uint8(suspect),
-			ivt:     uint8(ivt),
-			block:   uint8(block),
-			ghost:   ghost,
+			pass:         uint8(pass),
+			suspect:      uint8(suspect),
+			ivt:          uint8(ivt),
+			block:        uint8(block),
+			silentReject: silentReject,
 		}
 	}
 	return configs, nil
@@ -187,7 +187,7 @@ LIMIT ?`
 		suspect := uint8(0)
 		ivt := uint8(0)
 		block := uint8(0)
-		ghostEnabled := false
+		silentRejectEnabled := false
 
 		if configs != nil {
 			if cfg, ok := configs[featureRows[i].CampaignID]; ok {
@@ -195,7 +195,7 @@ LIMIT ?`
 				suspect = cfg.suspect
 				ivt = cfg.ivt
 				block = cfg.block
-				ghostEnabled = cfg.ghost
+				silentRejectEnabled = cfg.silentReject
 			}
 		}
 
@@ -216,18 +216,21 @@ LIMIT ?`
 				TTLSeconds: 300,
 			})
 		case FraudTierIVT:
-			if ghostEnabled {
-				action = "ghost"
-				out = append(out, SuspiciousIP{
-					IP:         ip,
-					Reason:     r.scorer.Name(),
-					Score:      float64(fraudScore),
-					CampaignID: featureRows[i].CampaignID,
-					Action:     "ghost",
-					Boost:      int32(fraudScore),
-					TTLSeconds: 300,
-				})
+			ttl := int64(3600)
+			action = "blacklist"
+			if silentRejectEnabled {
+				action = "silent_reject"
+				ttl = 300
 			}
+			out = append(out, SuspiciousIP{
+				IP:         ip,
+				Reason:     r.scorer.Name(),
+				Score:      float64(fraudScore),
+				CampaignID: featureRows[i].CampaignID,
+				Action:     action,
+				Boost:      int32(fraudScore),
+				TTLSeconds: ttl,
+			})
 		case FraudTierBlock:
 			action = "blacklist"
 			out = append(out, SuspiciousIP{

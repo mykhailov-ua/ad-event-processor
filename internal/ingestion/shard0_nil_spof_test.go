@@ -15,24 +15,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func rdbsWithNilShard0(t *testing.T, n int) []redis.UniversalClient {
+func redisShardsWithNilShard0(t *testing.T, n int) []redis.UniversalClient {
 	t.Helper()
 	require.GreaterOrEqual(t, n, 2)
-	rdbs := make([]redis.UniversalClient, n)
-	rdbs[0] = nil
+	redisShards := make([]redis.UniversalClient, n)
+	redisShards[0] = nil
 	for i := 1; i < n; i++ {
 		mr, err := miniredis.Run()
 		require.NoError(t, err)
 		t.Cleanup(mr.Close)
-		rdbs[i] = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-		t.Cleanup(func() { _ = rdbs[i].Close() })
+		redisShards[i] = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+		t.Cleanup(func() { _ = redisShards[i].Close() })
 	}
-	return rdbs
+	return redisShards
 }
 
 func TestShard0Nil_TrackerHealthSkipsNilShard0(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
-	ok := pingConnectedRedisShards(context.Background(), rdbs)
+	redisShards := redisShardsWithNilShard0(t, 4)
+	ok := pingConnectedRedisShards(context.Background(), redisShards)
 	assert.True(t, ok)
 }
 
@@ -78,50 +78,50 @@ func TestShard0Nil_BrokerReconcileSampleSkipsNilShard0(t *testing.T) {
 }
 
 func TestProof_Shard0Nil_SettingsWatcherPickHealthyShardSkipsNil(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
-	sw := NewSettingsWatcher(rdbs, &config.Config{})
+	redisShards := redisShardsWithNilShard0(t, 4)
+	sw := NewSettingsWatcher(redisShards, &config.Config{})
 
-	rdb := sw.pickHealthyShard()
-	require.NotNil(t, rdb)
-	_, err := rdb.Ping(context.Background()).Result()
+	redisClient := sw.pickHealthyShard()
+	require.NotNil(t, redisClient)
+	_, err := redisClient.Ping(context.Background()).Result()
 	require.NoError(t, err)
 }
 
 func TestProof_Shard0Nil_PickLocalGlobalShardSkipsNil(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
-	rdb := pickLocalGlobalShard(rdbs)
-	require.NotNil(t, rdb)
-	require.NoError(t, rdb.Ping(context.Background()).Err())
+	redisShards := redisShardsWithNilShard0(t, 4)
+	redisClient := pickLocalGlobalShard(redisShards)
+	require.NotNil(t, redisClient)
+	require.NoError(t, redisClient.Ping(context.Background()).Err())
 	t.Log("pickLocalGlobalShard skips nil shard 0")
 }
 
 func TestProof_Shard0Nil_RegistryStartWatchShardsNoPanic(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := redisShardsWithNilShard0(t, 4)
 	registry := &Registry{}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
 	require.NotPanics(t, func() {
-		registry.StartWatchShards(ctx, rdbs, "campaigns:proof")
+		registry.StartWatchShards(ctx, redisShards, "campaigns:proof")
 	})
 	cancel()
 	t.Log("Registry.StartWatchShards skips nil shard 0 without panic")
 }
 
 func TestProof_Shard0Nil_ReadFraudAggForceSkipsNil(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := redisShardsWithNilShard0(t, 4)
 	ctx := context.Background()
-	require.NoError(t, rdbs[1].Set(ctx, fraudAggForceKey, "1", 0).Err())
+	require.NoError(t, redisShards[1].Set(ctx, fraudAggForceKey, "1", 0).Err())
 
-	force := readFraudAggForce(ctx, rdbs)
+	force := readFraudAggForce(ctx, redisShards)
 	assert.True(t, force)
 	t.Log("readFraudAggForce reads from first non-nil shard")
 }
 
 func TestShard0Nil_FraudStreamAggregateFlushesHealthyShard(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := redisShardsWithNilShard0(t, 4)
 	ctx := context.Background()
-	q := NewFraudStreamWriter(rdbs, "fraud:agg", 1000)
+	q := NewFraudStreamWriter(redisShards, "fraud:agg", 1000)
 	q.aggSlots[0].prefixKind.Store(uint32(fraudAggPrefixV4))
 	q.aggSlots[0].subnetPrefix.Store(0x0A000000)
 	q.aggSlots[0].reasonID.Store(uint32(FraudReasonLowTTC))
@@ -134,39 +134,39 @@ func TestShard0Nil_FraudStreamAggregateFlushesHealthyShard(t *testing.T) {
 	after := testutil.ToFloat64(filterFraudStreamWriteErrors)
 	assert.Equal(t, before, after)
 
-	n, err := rdbs[1].XLen(ctx, "fraud:agg").Result()
+	n, err := redisShards[1].XLen(ctx, "fraud:agg").Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), n)
 }
 
 func TestShard0Nil_FirstConnectedRedisSkipsNil(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
-	rdb := firstConnectedRedisShard(rdbs)
-	require.NotNil(t, rdb)
-	require.NoError(t, rdb.Ping(context.Background()).Err())
+	redisShards := redisShardsWithNilShard0(t, 4)
+	redisClient := firstConnectedRedisShard(redisShards)
+	require.NotNil(t, redisClient)
+	require.NoError(t, redisClient.Ping(context.Background()).Err())
 }
 
 func TestShard0Nil_BrandCreativeStoreLoadsFromHealthyShard(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := redisShardsWithNilShard0(t, 4)
 	ctx := context.Background()
 	brandID := uuid.New()
 	key := "brand:creatives:" + brandID.String()
 	payload := `[{"id":"c1","url":"https://example.com","weight":1}]`
-	require.NoError(t, rdbs[1].Set(ctx, key, payload, 0).Err())
+	require.NoError(t, redisShards[1].Set(ctx, key, payload, 0).Err())
 
-	store := NewBrandCreativeStore(firstConnectedRedisShard(rdbs), 0)
+	store := NewBrandCreativeStore(firstConnectedRedisShard(redisShards), 0)
 	store.LoadFromRedis(ctx, brandID)
 	assert.Equal(t, "https://example.com", store.SelectLandingURL(context.Background(), brandID, "user", nil))
 }
 
 func TestShard0Nil_DealFloorCacheRefreshFromHealthyShard(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := redisShardsWithNilShard0(t, 4)
 	ctx := context.Background()
 	dealID := "deal-p2"
 	key := domain.RtbFloorRedisKeyPrefix + dealID
-	require.NoError(t, rdbs[1].Set(ctx, key, "5000", 0).Err())
+	require.NoError(t, redisShards[1].Set(ctx, key, "5000", 0).Err())
 
-	cache := NewDealFloorCache(firstConnectedRedisShard(rdbs))
+	cache := NewDealFloorCache(firstConnectedRedisShard(redisShards))
 	cache.Refresh(ctx, []string{dealID})
 	v, ok := cache.Get(dealID)
 	require.True(t, ok)
@@ -179,31 +179,31 @@ func TestShard0Nil_RtbCatalogReloadWatchNilRDBNoOp(t *testing.T) {
 	require.NotPanics(t, func() {
 		StartRtbCatalogReloadWatch(ctx, nil, nil, "rtb:reload", nil, nil, nil, nil, RtbBudgetSync{}, nil)
 	})
-	t.Log("StartRtbCatalogReloadWatch returns immediately when rdb is nil")
+	t.Log("StartRtbCatalogReloadWatch returns immediately when redisClient is nil")
 }
 
 func TestShard0Nil_PickSegmentShardSkipsNil(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
-	rdb := pickSegmentShard(rdbs, uuid.New())
-	require.NotNil(t, rdb)
-	require.NoError(t, rdb.Ping(context.Background()).Err())
+	redisShards := redisShardsWithNilShard0(t, 4)
+	redisClient := pickSegmentShard(redisShards, uuid.New())
+	require.NotNil(t, redisClient)
+	require.NoError(t, redisClient.Ping(context.Background()).Err())
 }
 
 func TestShard0Nil_SegmentPickShardSingleNil(t *testing.T) {
-	rdbs := []redis.UniversalClient{nil}
-	rdb := pickSegmentShard(rdbs, uuid.New())
-	assert.Nil(t, rdb)
+	redisShards := []redis.UniversalClient{nil}
+	redisClient := pickSegmentShard(redisShards, uuid.New())
+	assert.Nil(t, redisClient)
 	t.Log("pickSegmentShard with only nil shard returns nil (segment filter fail-open)")
 }
 
 func TestProof_Shard0Nil_ConsentStoreUsesHealthyShard(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := redisShardsWithNilShard0(t, 4)
 	ctx := context.Background()
 	hash := domain.HashUserIDHex("user-a")
 	key := domain.ConsentRedisKeyPrefix + hash
-	require.NoError(t, rdbs[1].Set(ctx, key, "3", 0).Err())
+	require.NoError(t, redisShards[1].Set(ctx, key, "3", 0).Err())
 
-	store := NewConsentStore(rdbs[1])
+	store := NewConsentStore(redisShards[1])
 	store.LoadFromRedis(ctx, hash)
 	assert.Equal(t, int16(3), store.PurposesForUser("user-a"))
 }

@@ -11,11 +11,11 @@ const (
 	entitlementEbpfXDPEdge   = "ebpf_xdp_edge"
 )
 
-func EbpfEdgeLicensed(ctx context.Context, rdb redis.Cmdable) bool {
-	if rdb == nil {
+func EbpfEdgeLicensed(ctx context.Context, redisClient redis.Cmdable) bool {
+	if redisClient == nil {
 		return true
 	}
-	enabled, err := rdb.HGet(ctx, entitlementDeploymentKey, entitlementEbpfXDPEdge).Int()
+	enabled, err := redisClient.HGet(ctx, entitlementDeploymentKey, entitlementEbpfXDPEdge).Int()
 	if err != nil {
 		return true
 	}

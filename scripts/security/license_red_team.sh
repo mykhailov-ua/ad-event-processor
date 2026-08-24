@@ -96,6 +96,3 @@ echo "license red-team summary: pass=$PASS fail=$FAIL skip=$SKIP"
 if [[ "$FAIL" -gt 0 ]]; then
   exit 1
 fi
-
-echo ""
-bash scripts/test/license_red_team_extended.sh

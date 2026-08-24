@@ -16,7 +16,7 @@ import (
 	"ad-event-processor/internal/domain"
 )
 
-func TestGrayMarketBaseline_inventorySymbolsExist(t *testing.T) {
+func TestEnhancedDefenseBaseline_inventorySymbolsExist(t *testing.T) {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	require.True(t, ok)
@@ -40,7 +40,7 @@ func TestGrayMarketBaseline_inventorySymbolsExist(t *testing.T) {
 	}
 }
 
-func TestGrayMarketBaseline_fraudFilter_datacenterOnly(t *testing.T) {
+func TestEnhancedDefenseBaseline_fraudFilter_datacenterOnly(t *testing.T) {
 	geo := &MockGeoProvider{}
 	f := NewFraudFilter(geo)
 	engine := NewFilterEngine(0, f)
@@ -59,7 +59,7 @@ func TestGrayMarketBaseline_fraudFilter_datacenterOnly(t *testing.T) {
 	assert.Equal(t, FraudReasonCodeDatacenterIP, evt.FraudReason)
 }
 
-func TestGrayMarketBaseline_safePageVerify_fingerprintSurface(t *testing.T) {
+func TestEnhancedDefenseBaseline_safePageVerify_fingerprintSurface(t *testing.T) {
 	fp := safePageVerifyFingerprint{
 		UA:        "Mozilla/5.0",
 		Lang:      "en",
@@ -77,7 +77,7 @@ func TestGrayMarketBaseline_safePageVerify_fingerprintSurface(t *testing.T) {
 	assert.Contains(t, hydrator, "RTCPeerConnection")
 }
 
-func TestGrayMarketBaseline_proxyVPNHarness_ready(t *testing.T) {
+func TestEnhancedDefenseBaseline_proxyVPNHarness_ready(t *testing.T) {
 	table := NewProxyVPNTable()
 	assert.False(t, table.Ready())
 	var ip [4]byte
@@ -88,14 +88,14 @@ func TestGrayMarketBaseline_proxyVPNHarness_ready(t *testing.T) {
 	assert.Zero(t, asn)
 }
 
-func TestGrayMarketBaseline_flowRouterHarness_ready(t *testing.T) {
+func TestEnhancedDefenseBaseline_flowRouterHarness_ready(t *testing.T) {
 	router := NewFlowRouter()
 	assert.False(t, router.Ready())
 	_, ok := router.Select([]byte("user-1"))
 	assert.False(t, ok)
 }
 
-func TestGrayMarketBaseline_productScopeGates(t *testing.T) {
+func TestEnhancedDefenseBaseline_productScopeGates(t *testing.T) {
 	const (
 		gateNoVisualEditors   = "no_grapejs_lp_builder"
 		gateNoLocalLanders    = "redirect_and_proxy_only"
@@ -135,7 +135,7 @@ func parseExportedOrTypeNames(t *testing.T, path string) map[string]struct{} {
 	return out
 }
 
-func TestGrayMarketBaseline_section2_harnessSymbolsPresent(t *testing.T) {
+func TestEnhancedDefenseBaseline_section2_harnessSymbolsPresent(t *testing.T) {
 	assert.NotNil(t, NewProxyVPNTable())
 	assert.NotNil(t, NewFlowRouter())
 }

@@ -28,15 +28,15 @@ func seedPgFencingCustomer(t *testing.T, pool ingestdb.DBTX, customerID uuid.UUI
 	require.NoError(t, err)
 }
 
-func wireStalePgFencingEpoch(t *testing.T, svc *Service, rdb redis.UniversalClient) {
+func wireStalePgFencingEpoch(t *testing.T, svc *Service, redisClient redis.UniversalClient) {
 	t.Helper()
 	ctx := context.Background()
-	gate := pgfailover.NewFencingGate(rdb)
+	gate := pgfailover.NewFencingGate(redisClient)
 	gate.AdvanceFloor(5)
 	svc.pgFencing = gate
-	require.NoError(t, rdb.Set(ctx, "ad_event_processor:pg:global:fencing_epoch", "5", 0).Err())
-	require.NoError(t, rdb.Set(ctx, "ad_event_processor:pg:global:dsn_epoch", "3", 0).Err())
-	require.NoError(t, rdb.Set(ctx, "ad_event_processor:pg:global:dsn", "postgres://stale", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, "ad_event_processor:pg:global:fencing_epoch", "5", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, "ad_event_processor:pg:global:dsn_epoch", "3", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, "ad_event_processor:pg:global:dsn", "postgres://stale", 0).Err())
 }
 
 func TestTopUpBalance_rejectsStalePgFencingEpoch(t *testing.T) {
@@ -48,15 +48,15 @@ func TestTopUpBalance_rejectsStalePgFencingEpoch(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
 	seedPgFencingCustomer(t, pool, customerID)
 
-	svc := NewService(ctx, pool, []redis.UniversalClient{rdb}, nil, &config.Config{})
+	svc := NewService(ctx, pool, []redis.UniversalClient{redisClient}, nil, &config.Config{})
 	defer svc.Close()
-	wireStalePgFencingEpoch(t, svc, rdb)
+	wireStalePgFencingEpoch(t, svc, redisClient)
 
 	err := svc.TopUpBalance(ctx, customerID, 1_000_000, "iso07-topup")
 	require.Error(t, err)
@@ -76,16 +76,16 @@ func TestApplyPaymentCredit_rejectsStalePgFencingEpoch(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
 	intentID := uuid.New()
 	seedPgFencingCustomer(t, pool, customerID)
 
-	svc := NewService(ctx, pool, []redis.UniversalClient{rdb}, nil, &config.Config{})
+	svc := NewService(ctx, pool, []redis.UniversalClient{redisClient}, nil, &config.Config{})
 	defer svc.Close()
-	wireStalePgFencingEpoch(t, svc, rdb)
+	wireStalePgFencingEpoch(t, svc, redisClient)
 
 	applied, ledgerID, err := svc.ApplyPaymentCredit(
 		ctx,

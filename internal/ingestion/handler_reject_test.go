@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -58,12 +59,26 @@ func TestAdsPacketHandler_FilterErrors(t *testing.T) {
 		assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 504")))
 	})
 
-	t.Run("ErrFraudDetected -> 202 silent accept", func(t *testing.T) {
-		rdb := &mockRedisXAdd{}
-		h := NewAdsPacketHandler(cfg, registry, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{rdb}, sharder, "fraud-stream", nil)
+	t.Run("ErrFraudDetected silent reject on -> 202", func(t *testing.T) {
+		configureMockRegistryCampaign(func(c *domain.Campaign) {
+			c.SilentRejectEnabled = true
+		})
+		redisClient := &mockRedisXAdd{}
+		h := NewAdsPacketHandler(cfg, registry, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{redisClient}, sharder, "fraud-stream", nil)
 		status, written := PostTrackGnetJSON(h, makeBody())
 		assert.Equal(t, http.StatusAccepted, status)
 		assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 202")))
+	})
+
+	t.Run("ErrFraudDetected silent reject off -> 403 holdout", func(t *testing.T) {
+		configureMockRegistryCampaign(func(c *domain.Campaign) {
+			c.SilentRejectEnabled = false
+		})
+		redisClient := &mockRedisXAdd{}
+		h := NewAdsPacketHandler(cfg, registry, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{redisClient}, sharder, "fraud-stream", nil)
+		status, written := PostTrackGnetJSON(h, makeBody())
+		assert.Equal(t, http.StatusForbidden, status)
+		assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 403")))
 	})
 
 	t.Run("redis circuit open -> 503 Retry-After", func(t *testing.T) {

@@ -20,12 +20,12 @@ const (
 var ErrStalePgFencingEpoch = errors.New("stale pg fencing epoch")
 
 type FencingGate struct {
-	rdb   redis.UniversalClient
+	redisClient   redis.UniversalClient
 	floor atomic.Uint64
 }
 
-func NewFencingGate(rdb redis.UniversalClient) *FencingGate {
-	return &FencingGate{rdb: rdb}
+func NewFencingGate(redisClient redis.UniversalClient) *FencingGate {
+	return &FencingGate{redisClient: redisClient}
 }
 
 func (g *FencingGate) Floor() uint64 {
@@ -33,10 +33,10 @@ func (g *FencingGate) Floor() uint64 {
 }
 
 func (g *FencingGate) Refresh(ctx context.Context) error {
-	if g == nil || g.rdb == nil {
+	if g == nil || g.redisClient == nil {
 		return nil
 	}
-	val, err := g.rdb.Get(ctx, redisFencingEpochKey).Result()
+	val, err := g.redisClient.Get(ctx, redisFencingEpochKey).Result()
 	if errors.Is(err, redis.Nil) {
 		return nil
 	}
@@ -83,27 +83,27 @@ func (g *FencingGate) AdvanceFloor(epoch uint64) {
 	}
 }
 
-func BumpEpoch(ctx context.Context, rdb redis.UniversalClient) (uint64, error) {
-	epoch, err := rdb.Incr(ctx, redisFencingEpochKey).Result()
+func BumpEpoch(ctx context.Context, redisClient redis.UniversalClient) (uint64, error) {
+	epoch, err := redisClient.Incr(ctx, redisFencingEpochKey).Result()
 	if err != nil {
 		return 0, err
 	}
 	return uint64(epoch), nil
 }
 
-func PublishDSN(ctx context.Context, rdb redis.UniversalClient, dsn string, fencingEpoch uint64) error {
-	pipe := rdb.Pipeline()
+func PublishDSN(ctx context.Context, redisClient redis.UniversalClient, dsn string, fencingEpoch uint64) error {
+	pipe := redisClient.Pipeline()
 	pipe.Set(ctx, redisActiveDSNKey, dsn, 0)
 	pipe.Set(ctx, redisDSNEpochKey, strconv.FormatUint(fencingEpoch, 10), 0)
 	pipe.Set(ctx, redisFencingEpochKey, strconv.FormatUint(fencingEpoch, 10), 0)
 	if _, err := pipe.Exec(ctx); err != nil {
 		return err
 	}
-	return rdb.Publish(ctx, redisNotifyChannel, dsn).Err()
+	return redisClient.Publish(ctx, redisNotifyChannel, dsn).Err()
 }
 
-func ActiveDSN(ctx context.Context, rdb redis.UniversalClient) (dsn string, epoch uint64, err error) {
-	pipe := rdb.Pipeline()
+func ActiveDSN(ctx context.Context, redisClient redis.UniversalClient) (dsn string, epoch uint64, err error) {
+	pipe := redisClient.Pipeline()
 	dsnCmd := pipe.Get(ctx, redisActiveDSNKey)
 	epochCmd := pipe.Get(ctx, redisDSNEpochKey)
 	if _, err = pipe.Exec(ctx); err != nil && !errors.Is(err, redis.Nil) {
@@ -131,14 +131,14 @@ func NotifyChannel() string {
 	return redisNotifyChannel
 }
 
-func WaitForDSN(ctx context.Context, rdb redis.UniversalClient, wantDSN string, interval time.Duration) error {
+func WaitForDSN(ctx context.Context, redisClient redis.UniversalClient, wantDSN string, interval time.Duration) error {
 	if interval <= 0 {
 		interval = 200 * time.Millisecond
 	}
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
-		dsn, _, err := ActiveDSN(ctx, rdb)
+		dsn, _, err := ActiveDSN(ctx, redisClient)
 		if err == nil && dsn == wantDSN {
 			return nil
 		}

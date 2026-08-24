@@ -90,8 +90,8 @@ func (worker *OutboxWorker) handleOutboxEvent(opCtx, ctx context.Context, ev db.
 		return worker.handlePurgeUserData(ctx, ev.Payload)
 	case "ML_SCORE_BOOST":
 		return worker.handleFraudScoreBoost(ctx, ev.Payload)
-	case "ML_GHOST_IVT":
-		return worker.handleFraudGhostIVT(ctx, ev.Payload)
+	case "ML_SILENT_REJECT", "ML_GHOST_IVT":
+		return worker.handleFraudSilentReject(ctx, ev.Payload)
 	case "ML_BLACKLIST_ADD":
 		return worker.handleFraudBlacklistAdd(ctx, ev.Payload)
 	case "ML_MODEL_VERSION":
@@ -118,11 +118,11 @@ func (worker *OutboxWorker) handleCreateCampaign(ctx context.Context, payload []
 	if err != nil {
 		return fmt.Errorf("invalid campaign id in payload: %w", err)
 	}
-	rdb := worker.svc.getRDB(campUUID)
-	if rdb == nil {
+	redisClient := worker.svc.getRDB(campUUID)
+	if redisClient == nil {
 		return fmt.Errorf("no redis client available")
 	}
-	_, err = rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		return worker.setCampaignBudgetRemaining(ctx, pipe, p.CampaignID, campUUID, p.BudgetLimit)
 	})
 	if err != nil {
@@ -152,11 +152,11 @@ func (worker *OutboxWorker) handleBudgetFreeze(ctx context.Context, payload []by
 	if err != nil {
 		return fmt.Errorf("invalid campaign id in payload: %w", err)
 	}
-	rdb := worker.svc.getRDB(campUUID)
-	if rdb == nil {
+	redisClient := worker.svc.getRDB(campUUID)
+	if redisClient == nil {
 		return nil
 	}
-	if err := domain.SetBudgetFrozen(ctx, rdb, campUUID); err != nil {
+	if err := domain.SetBudgetFrozen(ctx, redisClient, campUUID); err != nil {
 		return err
 	}
 	return worker.svc.publishCampaignUpdate(ctx, p.CampaignID)
@@ -225,11 +225,11 @@ func (worker *OutboxWorker) handleUpdateCampaignPacing(ctx context.Context, payl
 	if err != nil {
 		return fmt.Errorf("invalid campaign id in payload: %w", err)
 	}
-	rdb := worker.svc.getRDB(campUUID)
-	if rdb == nil {
+	redisClient := worker.svc.getRDB(campUUID)
+	if redisClient == nil {
 		return nil
 	}
-	_, err = rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err = redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		pipe.HSet(ctx, fmt.Sprintf("campaign:settings:%s", p.CampaignID), "pacing_mode", p.PacingMode)
 		return nil
 	})
@@ -244,10 +244,10 @@ func (worker *OutboxWorker) handleUpdateSettings(opCtx context.Context, eventID 
 	if err != nil {
 		return err
 	}
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
-	return syncGlobalConfigToAllShards(opCtx, worker.svc.rdbs, p.Settings, eventID)
+	return syncGlobalConfigToAllShards(opCtx, worker.svc.redisShards, p.Settings, eventID)
 }
 
 func (worker *OutboxWorker) handleUpdateBlacklist(ctx context.Context, payload []byte, queuedAt time.Time) error {
@@ -275,7 +275,7 @@ func (worker *OutboxWorker) handleConfigureBrandFcap(ctx context.Context, payloa
 		return nil
 	}
 	channel := worker.svc.campaignUpdateChannel()
-	return publishControlMessagesToAllShards(ctx, worker.svc.rdbs, channel, campIDs)
+	return publishControlMessagesToAllShards(ctx, worker.svc.redisShards, channel, campIDs)
 }
 
 func (worker *OutboxWorker) listActiveCampaignIDsByBrand(ctx context.Context, brandUUID uuid.UUID) ([]string, error) {
@@ -296,11 +296,11 @@ func (worker *OutboxWorker) listActiveCampaignIDsByBrand(ctx context.Context, br
 }
 
 func (worker *OutboxWorker) setCampaignBudgetAndPublish(ctx context.Context, p CampaignPayload, campUUID uuid.UUID) error {
-	rdb := worker.svc.getRDB(campUUID)
-	if rdb == nil {
+	redisClient := worker.svc.getRDB(campUUID)
+	if redisClient == nil {
 		return nil
 	}
-	_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		return worker.setCampaignBudgetRemaining(ctx, pipe, p.CampaignID, campUUID, p.BudgetLimit)
 	})
 	if err != nil {
@@ -310,11 +310,11 @@ func (worker *OutboxWorker) setCampaignBudgetAndPublish(ctx context.Context, p C
 }
 
 func (worker *OutboxWorker) deleteCampaignBudgetAndPublish(ctx context.Context, campaignIDStr string, campUUID uuid.UUID) error {
-	rdb := worker.svc.getRDB(campUUID)
-	if rdb == nil {
+	redisClient := worker.svc.getRDB(campUUID)
+	if redisClient == nil {
 		return nil
 	}
-	_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 		pipe.Del(ctx, fmt.Sprintf("budget:campaign:%s", campaignIDStr))
 		return nil
 	})
@@ -375,19 +375,19 @@ func (worker *OutboxWorker) handleFraudScoreBoost(ctx context.Context, payload [
 	if p.CampaignID == "" {
 		return nil
 	}
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
 	key := fmt.Sprintf("ml:score:boost:%s", p.CampaignID)
 	if p.Boost <= 0 || p.TTLSeconds <= 0 {
-		if err := deleteGlobalKeyFromAllShards(ctx, worker.svc.rdbs, key); err != nil {
+		if err := deleteGlobalKeyFromAllShards(ctx, worker.svc.redisShards, key); err != nil {
 			return err
 		}
 	} else {
 		ttl := time.Duration(p.TTLSeconds) * time.Second
 		boostStr := strconv.Itoa(int(p.Boost))
-		if err := syncGlobalStringToAllShards(ctx, worker.svc.rdbs, key, boostStr, ttl); err != nil {
+		if err := syncGlobalStringToAllShards(ctx, worker.svc.redisShards, key, boostStr, ttl); err != nil {
 			return err
 		}
 	}
@@ -395,25 +395,15 @@ func (worker *OutboxWorker) handleFraudScoreBoost(ctx context.Context, payload [
 	return worker.svc.publishCampaignUpdate(ctx, p.CampaignID)
 }
 
-func (worker *OutboxWorker) handleFraudGhostIVT(ctx context.Context, payload []byte) error {
+func (worker *OutboxWorker) handleFraudSilentReject(ctx context.Context, payload []byte) error {
 	p, err := coldpath.UnmarshalStrict[FraudThreatPayload](payload)
 	if err != nil {
 		return err
 	}
-	if p.CampaignID == "" {
+	if p.IP == "" {
 		return nil
 	}
-	campUUID, err := uuid.Parse(p.CampaignID)
-	if err != nil {
-		return fmt.Errorf("invalid campaign id: %w", err)
-	}
-
-	_, err = worker.svc.GetPool().Exec(ctx, "UPDATE campaigns SET ghost_ivt_enabled = TRUE WHERE id = $1", ToUUID(campUUID))
-	if err != nil {
-		return fmt.Errorf("failed to update ghost_ivt_enabled: %w", err)
-	}
-
-	return worker.svc.publishCampaignUpdate(ctx, p.CampaignID)
+	return worker.applyMLBlacklistSingle(ctx, payload)
 }
 
 func (worker *OutboxWorker) handleFraudBlacklistAdd(ctx context.Context, payload []byte) error {
@@ -426,32 +416,32 @@ func (worker *OutboxWorker) handleFraudModelVersion(ctx context.Context, payload
 		return err
 	}
 
-	if len(worker.svc.rdbs) == 0 {
+	if len(worker.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis shards configured")
 	}
 
 	writeToShard := func(shardID int) error {
-		rdb := worker.svc.rdbs[shardID]
-		if rdb == nil {
+		redisClient := worker.svc.redisShards[shardID]
+		if redisClient == nil {
 			return nil
 		}
-		if err := rdb.Set(ctx, "ml:model:version", p.ModelVersion, 0).Err(); err != nil {
+		if err := redisClient.Set(ctx, "ml:model:version", p.ModelVersion, 0).Err(); err != nil {
 			return fmt.Errorf("failed to set ml:model:version on shard %d: %w", shardID, err)
 		}
-		if err := rdb.Set(ctx, "ml:model:hash", p.Hash, 0).Err(); err != nil {
+		if err := redisClient.Set(ctx, "ml:model:hash", p.Hash, 0).Err(); err != nil {
 			return fmt.Errorf("failed to set ml:model:hash on shard %d: %w", shardID, err)
 		}
-		if err := rdb.Set(ctx, "ml:model:applied_at", time.Now().Unix(), 0).Err(); err != nil {
+		if err := redisClient.Set(ctx, "ml:model:applied_at", time.Now().Unix(), 0).Err(); err != nil {
 			return fmt.Errorf("failed to set ml:model:applied_at on shard %d: %w", shardID, err)
 		}
 		return nil
 	}
 
-	if p.ShardID >= 0 && p.ShardID < len(worker.svc.rdbs) {
+	if p.ShardID >= 0 && p.ShardID < len(worker.svc.redisShards) {
 		return writeToShard(p.ShardID)
 	}
 
-	for i := range worker.svc.rdbs {
+	for i := range worker.svc.redisShards {
 		if err := writeToShard(i); err != nil {
 			return err
 		}
@@ -471,7 +461,7 @@ func (worker *OutboxWorker) handlePausePlacement(ctx context.Context, payload []
 
 	key := domain.PlacementBlacklistKey(uuid.MustParse(p.CampaignID))
 	del := p.Action == "remove"
-	return syncGlobalHashFieldToAllShards(ctx, worker.svc.rdbs, key, p.PlacementID, "1", del)
+	return syncGlobalHashFieldToAllShards(ctx, worker.svc.redisShards, key, p.PlacementID, "1", del)
 }
 
 type PausePlacementPayload struct {

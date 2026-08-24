@@ -19,7 +19,7 @@ var (
 )
 
 type IPRateLimiter struct {
-	rdb           redis.UniversalClient
+	redisClient           redis.UniversalClient
 	limit         int
 	scriptHashAny any
 	scriptAny     any
@@ -27,10 +27,10 @@ type IPRateLimiter struct {
 	wire          [5]any
 }
 
-func NewIPRateLimiter(rdb redis.UniversalClient, limit int, window time.Duration) *IPRateLimiter {
+func NewIPRateLimiter(redisClient redis.UniversalClient, limit int, window time.Duration) *IPRateLimiter {
 	ms := window.Milliseconds()
 	l := &IPRateLimiter{
-		rdb:           rdb,
+		redisClient:           redisClient,
 		limit:         limit,
 		scriptHashAny: ipRateLimitScript.Hash(),
 		scriptAny:     ipRateLimitLuaAny,
@@ -70,7 +70,7 @@ func (l *IPRateLimiter) evalRateLimit(ctx context.Context, key string) (int64, e
 
 	cmd := evalCmdPool.Get().(*redis.Cmd)
 	resetPooledRedisCmd(cmd, ctx, l.wire[:], 3)
-	err := l.rdb.Process(ctx, cmd)
+	err := l.redisClient.Process(ctx, cmd)
 	val, intErr := cmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr
@@ -93,7 +93,7 @@ func (l *IPRateLimiter) evalRateLimitScript(ctx context.Context, key string) (in
 
 	cmd := evalCmdPool.Get().(*redis.Cmd)
 	resetPooledRedisCmd(cmd, ctx, l.wire[:], 3)
-	err := l.rdb.Process(ctx, cmd)
+	err := l.redisClient.Process(ctx, cmd)
 	val, intErr := cmd.Int64()
 	if intErr != nil && err == nil {
 		err = intErr

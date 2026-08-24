@@ -29,12 +29,12 @@ func TestSyncGlobalConfigToAllShards(t *testing.T) {
 	}
 	require.NoError(t, syncGlobalConfigToAllShards(ctx, []redis.UniversalClient{rdb1, rdb2}, settings, 99))
 
-	for i, rdb := range []redis.UniversalClient{rdb1, rdb2} {
-		val, err := rdb.HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
+	for i, redisClient := range []redis.UniversalClient{rdb1, rdb2} {
+		val, err := redisClient.HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
 		require.NoError(t, err, "shard %d", i)
 		assert.Equal(t, "true", val)
 
-		version, err := rdb.Get(ctx, redisConfigVersionKey).Int64()
+		version, err := redisClient.Get(ctx, redisConfigVersionKey).Int64()
 		require.NoError(t, err, "shard %d", i)
 		assert.Equal(t, int64(99), version)
 	}

@@ -14,26 +14,26 @@ import (
 const residentialIntelRedisPrefix = "intel:residential:"
 
 type ResidentialIntelCache struct {
-	rdb redis.Cmdable
+	redisClient redis.Cmdable
 	ttl time.Duration
 }
 
-func NewResidentialIntelCache(rdb redis.Cmdable, ttl time.Duration) *ResidentialIntelCache {
+func NewResidentialIntelCache(redisClient redis.Cmdable, ttl time.Duration) *ResidentialIntelCache {
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	return &ResidentialIntelCache{rdb: rdb, ttl: ttl}
+	return &ResidentialIntelCache{redisClient: redisClient, ttl: ttl}
 }
 
 func (c *ResidentialIntelCache) Get(ctx context.Context, ip string) (ResidentialIntelResult, bool, error) {
-	if c == nil || c.rdb == nil {
+	if c == nil || c.redisClient == nil {
 		return ResidentialIntelResult{}, false, nil
 	}
 	ip = strings.TrimSpace(ip)
 	if ip == "" {
 		return ResidentialIntelResult{}, false, ErrInvalidIP
 	}
-	raw, err := c.rdb.Get(ctx, residentialIntelRedisPrefix+ip).Result()
+	raw, err := c.redisClient.Get(ctx, residentialIntelRedisPrefix+ip).Result()
 	if errors.Is(err, redis.Nil) {
 		return ResidentialIntelResult{}, false, nil
 	}
@@ -48,7 +48,7 @@ func (c *ResidentialIntelCache) Get(ctx context.Context, ip string) (Residential
 }
 
 func (c *ResidentialIntelCache) Set(ctx context.Context, ip string, result ResidentialIntelResult) error {
-	if c == nil || c.rdb == nil {
+	if c == nil || c.redisClient == nil {
 		return nil
 	}
 	ip = strings.TrimSpace(ip)
@@ -59,7 +59,7 @@ func (c *ResidentialIntelCache) Set(ctx context.Context, ip string, result Resid
 	if err != nil {
 		return fmt.Errorf("marshal residential intel cache: %w", err)
 	}
-	if err := c.rdb.Set(ctx, residentialIntelRedisPrefix+ip, payload, c.ttl).Err(); err != nil {
+	if err := c.redisClient.Set(ctx, residentialIntelRedisPrefix+ip, payload, c.ttl).Err(); err != nil {
 		return fmt.Errorf("redis set residential intel: %w", err)
 	}
 	return nil

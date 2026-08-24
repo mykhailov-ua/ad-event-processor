@@ -28,8 +28,8 @@ export const REPORT_CATALOG: ReportCardDTO[] = [
   { key: 'filter-rejects', title: 'Filter rejects', icon: 'prohibit', live: true },
   { key: 'fraud-breakdown', title: 'Fraud breakdown', icon: 'shield-warning', live: true },
   {
-    key: 'ghost-impression-funnel',
-    title: 'Ghost impression funnel',
+    key: 'silent-reject-impression-funnel',
+    title: 'Silent reject impression funnel',
     icon: 'eye',
     live: true,
   },

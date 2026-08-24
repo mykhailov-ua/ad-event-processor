@@ -128,10 +128,10 @@ func TestAuthMiddleware_RedisOutage(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	_ = rdb.Close()
+	_ = redisClient.Close()
 
 	cfg := &config.Config{
 		TokenSymmetricKey: "01234567890123456789012345678901",
@@ -139,7 +139,7 @@ func TestAuthMiddleware_RedisOutage(t *testing.T) {
 	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	require.NoError(t, err)
 
-	m := NewAuthMiddleware(tokenMaker, rdb, cfg, nil)
+	m := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
 
 	targetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

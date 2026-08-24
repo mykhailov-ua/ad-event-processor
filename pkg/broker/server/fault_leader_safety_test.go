@@ -151,7 +151,7 @@ func TestFault_LeaderTakeover_HWMNeverRegresses(t *testing.T) {
 	setHWM := func(value string) {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := coord.rdb.Set(ctx, logHWMKey(tpKey), value, 0).Err(); err != nil {
+		if err := coord.redisClient.Set(ctx, logHWMKey(tpKey), value, 0).Err(); err != nil {
 			t.Fatalf("set hwm %s: %v", value, err)
 		}
 	}

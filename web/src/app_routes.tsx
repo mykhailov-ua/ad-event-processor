@@ -154,9 +154,9 @@ const FraudBreakdownReportPage = lazy(() =>
     default: mod.FraudBreakdownReportPage,
   }))
 );
-const GhostImpressionFunnelReportPage = lazy(() =>
+const SilentRejectImpressionFunnelReportPage = lazy(() =>
   import('./pages/report_route_pages.js').then((mod) => ({
-    default: mod.GhostImpressionFunnelReportPage,
+    default: mod.SilentRejectImpressionFunnelReportPage,
   }))
 );
 const RtbOverviewReportPage = lazy(() =>
@@ -416,8 +416,12 @@ export function AppRoutes() {
         <Route path="/reports/filter-rejects" element={lazyRoute(<FilterRejectsReportPage />)} />
         <Route path="/reports/fraud-breakdown" element={lazyRoute(<FraudBreakdownReportPage />)} />
         <Route
+          path="/reports/silent-reject-impression-funnel"
+          element={lazyRoute(<SilentRejectImpressionFunnelReportPage />)}
+        />
+        <Route
           path="/reports/ghost-impression-funnel"
-          element={lazyRoute(<GhostImpressionFunnelReportPage />)}
+          element={lazyRoute(<SilentRejectImpressionFunnelReportPage />)}
         />
         <Route path="/reports/rtb/overview" element={lazyRoute(<RtbOverviewReportPage />)} />
         <Route

@@ -36,7 +36,7 @@ func TestStreamConsumer_FlushBatch_XAckError(t *testing.T) {
 
 	p := &StreamConsumer{
 		store:        mockStore,
-		rdb:          mockRdb,
+		redisClient:          mockRdb,
 		streamName:   "test-stream",
 		groupName:    "test-group",
 		writeTimeout: 10 * time.Second,

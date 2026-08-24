@@ -30,11 +30,11 @@ func TestFault_DualOutboxWorkerRace(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-fault"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	require.NoError(t, svc.UpdateSettings(ctx, map[string]string{"rate_limit_per_min": "100"}))
@@ -63,11 +63,11 @@ func TestFault_DualOutboxWorkerRace(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT status FROM outbox_events WHERE id = $1`, eventID).Scan(&status))
 	assert.Equal(t, "PROCESSED", status)
 
-	version, err := rdb.Get(ctx, "config:version").Int64()
+	version, err := redisClient.Get(ctx, "config:version").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, eventID, version, "config:version must equal event id exactly once")
 
-	val, err := rdb.HGet(ctx, "config:values", "rate_limit_per_min").Result()
+	val, err := redisClient.HGet(ctx, "config:values", "rate_limit_per_min").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "100", val)
 
@@ -154,10 +154,10 @@ func TestFault_RedisSlowEventuallySucceeds(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	slowRDB := &slowRedisClient{UniversalClient: rdb, delay: 50 * time.Millisecond}
+	slowRDB := &slowRedisClient{UniversalClient: redisClient, delay: 50 * time.Millisecond}
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-slow"}
 	svc := newBareService(t, pool, []redis.UniversalClient{slowRDB}, cfg)
 	ctx := context.Background()
@@ -193,10 +193,10 @@ func TestFault_ScheduleTickRace(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 	ctx := context.Background()
 
 	custID := uuid.New()
@@ -252,10 +252,10 @@ func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -317,7 +317,7 @@ func TestFault_AutoscaleInsufficientTotalBudget(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -328,7 +328,7 @@ func TestFault_AutoscaleInsufficientTotalBudget(t *testing.T) {
 		AutoscaleMinRemainingBudget: 5_000_000,
 		AutoscaleShiftAmount:        10_000_000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -350,7 +350,7 @@ func TestFault_AutoscaleInsufficientTotalBudget(t *testing.T) {
 	require.NoError(t, err)
 
 	queries := db.New(pool)
-	syncWorker := domain.NewSyncWorker(rdb, domain.NewCampaignRepo(queries), domain.NewCustomerRepo(queries), 100*time.Millisecond, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, domain.NewCampaignRepo(queries), domain.NewCustomerRepo(queries), 100*time.Millisecond, 0, nil, 0)
 	_, err = pool.Exec(ctx, `DELETE FROM outbox_events`)
 	require.NoError(t, err)
 
@@ -386,11 +386,11 @@ func TestFault_DualOutboxWorkerManyEvents(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{CampaignUpdateChannel: "campaigns:update-fault-batch"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	const eventCount = 20

@@ -98,7 +98,7 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
 
   useEffect(() => {
     void load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
   if (error) return <ErrorBlock error={error} />;
 

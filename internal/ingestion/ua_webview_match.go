@@ -1,6 +1,5 @@
 package ingestion
 
-// Bounded UA scan for in-app WebView clients (Facebook / TikTok / Instagram).
 
 const uaWebViewScanMax = 256
 

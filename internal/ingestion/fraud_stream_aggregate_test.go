@@ -107,7 +107,7 @@ func TestFraudStreamWriter_L3NeverAggregated(t *testing.T) {
 	q := &FraudStreamWriter{
 		stream: "fraud-stream",
 		maxLen: 1000,
-		rdbs:   []redis.UniversalClient{&mockRedisClient{}},
+		redisShards:   []redis.UniversalClient{&mockRedisClient{}},
 		stopCh: make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
@@ -127,7 +127,7 @@ func TestFault_FraudStreamL3NeverAggregated(t *testing.T) {
 	q := &FraudStreamWriter{
 		stream: "fraud-stream-fault",
 		maxLen: 1000,
-		rdbs:   []redis.UniversalClient{&mockRedisClient{}},
+		redisShards:   []redis.UniversalClient{&mockRedisClient{}},
 		stopCh: make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
@@ -163,7 +163,7 @@ func TestFault_FraudStreamCriticalLaneAnalyticalFull(t *testing.T) {
 	q := &FraudStreamWriter{
 		stream: "fraud-crit",
 		maxLen: 1000,
-		rdbs:   []redis.UniversalClient{&mockRedisClient{}},
+		redisShards:   []redis.UniversalClient{&mockRedisClient{}},
 		stopCh: make(chan struct{}),
 	}
 	q.readCursor = 0
@@ -202,11 +202,11 @@ func TestFraudStreamWriter_SetForceAggregate(t *testing.T) {
 }
 
 func TestFraudStreamWriter_aggregateFlushToStream(t *testing.T) {
-	rdb := &capturingRedisXAdd{}
+	redisClient := &capturingRedisXAdd{}
 	q := &FraudStreamWriter{
 		stream: "fraud-stream",
 		maxLen: 1000,
-		rdbs:   []redis.UniversalClient{rdb},
+		redisShards:   []redis.UniversalClient{redisClient},
 		stopCh: make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
@@ -218,20 +218,20 @@ func TestFraudStreamWriter_aggregateFlushToStream(t *testing.T) {
 	require.True(t, q.Enqueue(0, evt))
 
 	q.flushAggregates(true)
-	require.NotEmpty(t, rdb.lastArgs)
-	assert.Equal(t, "fraud_aggregate", rdb.lastArgs["type"])
-	assert.Equal(t, "192.168.10.0/24", rdb.lastArgs["subnet"])
-	assert.Equal(t, "", rdb.lastArgs["ipv6_prefix"])
-	assert.Equal(t, FraudReasonCodeLowTTC, rdb.lastArgs["fraud_reason"])
-	assert.Equal(t, "1", rdb.lastArgs["count"])
+	require.NotEmpty(t, redisClient.lastArgs)
+	assert.Equal(t, "fraud_aggregate", redisClient.lastArgs["type"])
+	assert.Equal(t, "192.168.10.0/24", redisClient.lastArgs["subnet"])
+	assert.Equal(t, "", redisClient.lastArgs["ipv6_prefix"])
+	assert.Equal(t, FraudReasonCodeLowTTC, redisClient.lastArgs["fraud_reason"])
+	assert.Equal(t, "1", redisClient.lastArgs["count"])
 }
 
 func TestFraudStreamWriter_aggregateIPv6Flush(t *testing.T) {
-	rdb := &capturingRedisXAdd{}
+	redisClient := &capturingRedisXAdd{}
 	q := &FraudStreamWriter{
 		stream: "fraud-stream",
 		maxLen: 1000,
-		rdbs:   []redis.UniversalClient{rdb},
+		redisShards:   []redis.UniversalClient{redisClient},
 		stopCh: make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
@@ -243,11 +243,11 @@ func TestFraudStreamWriter_aggregateIPv6Flush(t *testing.T) {
 	require.True(t, q.Enqueue(0, evt))
 
 	q.flushAggregates(true)
-	require.NotEmpty(t, rdb.allArgs)
-	assert.Equal(t, "fraud_aggregate", rdb.lastArgs["type"])
-	assert.Equal(t, "", rdb.lastArgs["subnet"])
-	assert.Contains(t, rdb.lastArgs["ipv6_prefix"], "/64")
-	assert.Contains(t, rdb.allArgs[len(rdb.allArgs)-2]["ipv6_prefix"], "/48")
+	require.NotEmpty(t, redisClient.allArgs)
+	assert.Equal(t, "fraud_aggregate", redisClient.lastArgs["type"])
+	assert.Equal(t, "", redisClient.lastArgs["subnet"])
+	assert.Contains(t, redisClient.lastArgs["ipv6_prefix"], "/64")
+	assert.Contains(t, redisClient.allArgs[len(redisClient.allArgs)-2]["ipv6_prefix"], "/48")
 }
 
 func TestFraudStreamWriter_spike50kZeroRingDrops(t *testing.T) {

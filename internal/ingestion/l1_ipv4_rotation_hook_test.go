@@ -131,7 +131,7 @@ func TestIPv4RotationTable_observe_resetsWindow(t *testing.T) {
 	id := uuidFromBytes(0x03)
 	campaignHash := crc32Castagnoli(&id)
 	userHash := hashClickUserID("user-a")
-	subnet24 := uint32(0xCB007100) // 203.0.113.0
+	subnet24 := uint32(0xCB007100) 
 	now := monotonicNano()
 
 	live, shadow := table.observe(campaignHash, userHash, subnet24, 0xCB007101, now)

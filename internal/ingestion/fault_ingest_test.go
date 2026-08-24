@@ -148,8 +148,11 @@ func TestGnetHandler_filterEngineFailure_500AndCounter(t *testing.T) {
 func TestGnetHandler_fraudStreamWriteError_incrementsCounter(t *testing.T) {
 	before := testutil.ToFloat64(filterFraudStreamWriteErrors)
 	cfg := &config.Config{MaxRequestBodySize: 1024 * 1024, StreamMaxLen: 1000}
-	rdb := &mockRedisXAddFail{}
-	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{rdb}, NewJumpHashSharder(1), "fraud-stream", nil)
+	configureMockRegistryCampaign(func(c *domain.Campaign) {
+		c.SilentRejectEnabled = true
+	})
+	redisClient := &mockRedisXAddFail{}
+	h := NewAdsPacketHandler(cfg, &mockRegistry{}, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{redisClient}, NewJumpHashSharder(1), "fraud-stream", nil)
 	defer h.fraudWriter.Stop()
 
 	body := []byte(`{"campaign_id":"` + uuid.NewString() + `","type":"click","click_id":"c1"}`)

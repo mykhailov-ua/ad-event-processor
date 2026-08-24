@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-/**
- * Compare canvas vs uPlot metric chart update throughput.
- * Run: node --expose-gc web/scripts/bench/chart_metric.mjs
- */
+
 import { performance } from 'node:perf_hooks';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -12,11 +9,7 @@ import { Window } from 'happy-dom';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SRC = join(ROOT, 'src');
 
-/**
- * @param {number} n
- * @param {number} rangeMs
- * @param {number} seed
- */
+
 function makeMetricPoints(n, rangeMs, seed = 0) {
   const now = Date.now();
   const points = new Array(n);
@@ -30,9 +23,7 @@ function makeMetricPoints(n, rangeMs, seed = 0) {
   return points;
 }
 
-/**
- * Minimal browser globals for chart mount benchmarks.
- */
+
 function setupBenchDom() {
   const win = new Window({ url: 'http://localhost/', width: 640, height: 480 });
   const doc = win.document;
@@ -111,9 +102,7 @@ function setupBenchDom() {
   return { win, doc };
 }
 
-/**
- * @param {HTMLElement} el
- */
+
 function sizeElement(el, width, height) {
   el.style.width = `${width}px`;
   el.style.height = `${height}px`;
@@ -121,11 +110,7 @@ function sizeElement(el, width, height) {
   Object.defineProperty(el, 'clientHeight', { configurable: true, value: height });
 }
 
-/**
- * @param {string} name
- * @param {() => void} fn
- * @param {{ iterations?: number, warmup?: number }} [opts]
- */
+
 function bench(name, fn, opts = {}) {
   const iterations = opts.iterations ?? 200;
   const warmup = opts.warmup ?? 20;
@@ -146,11 +131,7 @@ function bench(name, fn, opts = {}) {
   };
 }
 
-/**
- * @param {typeof import('./metric_chart_canvas.js')} mod
- * @param {HTMLElement} container
- * @param {ReturnType<typeof makeMetricPoints>} points
- */
+
 function benchCanvas(mod, container, points) {
   const handle = mod.mountMetricChart(container, {
     title: 'Bench',
@@ -175,11 +156,7 @@ function benchCanvas(mod, container, points) {
   return updateBench;
 }
 
-/**
- * @param {typeof import('../../src/charts/metric_chart_uplot.js')} mod
- * @param {HTMLElement} container
- * @param {ReturnType<typeof makeMetricPoints>} points
- */
+
 function benchUplot(mod, container, points) {
   const handle = mod.mountMetricChart(container, {
     title: 'Bench',

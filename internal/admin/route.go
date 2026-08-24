@@ -1,6 +1,6 @@
 package admin
 
-// Route is one registered admin API endpoint.
+
 type Route struct {
 	Method string
 	Path   string
@@ -9,12 +9,12 @@ type Route struct {
 
 func (route Route) Key() string { return route.Method + " " + route.Path }
 
-// Catalog returns a copy of the static route catalog.
+
 func Catalog() []Route {
 	return append([]Route(nil), routeCatalog...)
 }
 
-// Routes exposes the route catalog for audit tests.
+
 func Routes() []Route {
 	return Catalog()
 }
@@ -193,6 +193,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/data-quality"},
 	{Method: "GET", Path: "/api/v1/reports/filter-rejects"},
 	{Method: "GET", Path: "/api/v1/reports/fraud-breakdown"},
+	{Method: "GET", Path: "/api/v1/reports/silent-reject-impression-funnel"},
 	{Method: "GET", Path: "/api/v1/reports/ghost-impression-funnel"},
 	{Method: "GET", Path: "/api/v1/reports/pacing-drift"},
 	{Method: "GET", Path: "/api/v1/reports/postback-reconciliation"},

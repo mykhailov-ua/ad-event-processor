@@ -1,8 +1,5 @@
 #!/usr/bin/env node
-/**
- * Admin UI micro-benchmarks (Go benchmem analogue).
- * Run: node --expose-gc web/scripts/bench/run.mjs
- */
+
 import { performance } from 'node:perf_hooks';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -19,12 +16,7 @@ const { sortRows, createSortState } = await import(
   pathToFileURL(join(SRC, 'lib/table_sort.js')).href
 );
 
-/**
- * Build synthetic hourly metrics for chart benchmarks.
- *
- * @param {number} n
- * @returns {Array<{ hour: string, impressions: number }>}
- */
+
 function makeHourly(n) {
   const rows = new Array(n);
   const base = Date.UTC(2024, 0, 1) / 1000;
@@ -35,12 +27,7 @@ function makeHourly(n) {
   return rows;
 }
 
-/**
- * Build synthetic report rows for merge benchmarks.
- *
- * @param {number} n
- * @returns {object[]}
- */
+
 function makeReportRows(n) {
   const rows = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -57,12 +44,7 @@ function makeReportRows(n) {
   return rows;
 }
 
-/**
- * Build synthetic campaign rows for sort benchmarks.
- *
- * @param {number} n
- * @returns {object[]}
- */
+
 function makeCampaignRows(n) {
   const rows = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -78,12 +60,7 @@ function makeCampaignRows(n) {
   return rows;
 }
 
-/**
- * Build synthetic buyer dashboard API payload.
- *
- * @param {number} n
- * @returns {object}
- */
+
 function makeBuyerDashboardPayload(n) {
   const campaigns = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -108,12 +85,7 @@ function makeBuyerDashboardPayload(n) {
   };
 }
 
-/**
- * Naive series builder using Date objects per point (pre-optimization baseline).
- *
- * @param {Array<{ hour: string, impressions?: number }>} hourly
- * @returns {{ x: Float64Array, y: Float64Array, length: number }}
- */
+
 function seriesFromHourlyNaive(hourly) {
   const n = hourly.length;
   const x = new Float64Array(n);
@@ -125,36 +97,19 @@ function seriesFromHourlyNaive(hourly) {
   return { x, y, length: n };
 }
 
-/**
- * Naive report merge using array spread (pre-optimization baseline).
- *
- * @param {object[]} existing
- * @param {object[]} batch
- * @returns {object[]}
- */
+
 function mergeReportRowsNaive(existing, batch) {
   return [...existing, ...batch];
 }
 
-/**
- * Naive table sort with separate reverse pass (pre-optimization baseline).
- *
- * @param {object[]} rows
- * @param {string} key
- * @returns {object[]}
- */
+
 function sortRowsNaive(rows, key) {
   const sorted = [...rows].sort((a, b) => String(a[key]).localeCompare(String(b[key])));
   sorted.reverse();
   return sorted;
 }
 
-/**
- * Naive buyer dashboard mapping via repeated object spreads (pre-P1 baseline).
- *
- * @param {object} data
- * @returns {object}
- */
+
 function mapBuyerDashboardNaive(data) {
   const campaigns = data?.campaigns ?? [];
   return {
@@ -163,14 +118,7 @@ function mapBuyerDashboardNaive(data) {
   };
 }
 
-/**
- * Run a timed benchmark loop and capture heap delta.
- *
- * @param {string} name
- * @param {() => void} fn
- * @param {{ iterations?: number, warmup?: number }} [opts]
- * @returns {{ name: string, iterations: number, ms: number, opsPerSec: number, heapDeltaBytes: number, nsPerOp: number }}
- */
+
 function bench(name, fn, opts = {}) {
   const iterations = opts.iterations ?? 200;
   const warmup = opts.warmup ?? 20;

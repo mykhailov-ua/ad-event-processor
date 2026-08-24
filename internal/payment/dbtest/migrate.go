@@ -100,7 +100,7 @@ func ApplyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
 	}
 }
 
-func SetupTestRedis(t testing.TB) (rdb redis.UniversalClient, cleanup func()) {
+func SetupTestRedis(t testing.TB) (redisClient redis.UniversalClient, cleanup func()) {
 	t.Helper()
 	ctx := context.Background()
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
@@ -111,12 +111,12 @@ func SetupTestRedis(t testing.TB) (rdb redis.UniversalClient, cleanup func()) {
 	if err != nil {
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
-	rdb = redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
-	if err := rdb.Ping(ctx).Err(); err != nil {
+	redisClient = redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		t.Fatalf("failed to ping redis: %s", err)
 	}
 	cleanup = func() {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
 	return

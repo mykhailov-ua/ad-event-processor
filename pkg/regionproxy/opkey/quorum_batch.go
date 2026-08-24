@@ -9,15 +9,15 @@ import (
 )
 
 type BatchCommitter struct {
-	rdb       redis.UniversalClient
+	redisClient       redis.UniversalClient
 	nodeID    string
 	replicas  []string
 	committed uint64
 }
 
-func NewBatchCommitter(rdb redis.UniversalClient, nodeID string, replicas []string) *BatchCommitter {
+func NewBatchCommitter(redisClient redis.UniversalClient, nodeID string, replicas []string) *BatchCommitter {
 	return &BatchCommitter{
-		rdb:      rdb,
+		redisClient:      redisClient,
 		nodeID:   nodeID,
 		replicas: replicas,
 	}
@@ -34,13 +34,13 @@ func (c *BatchCommitter) PrepareForward(ctx context.Context, slot *Slot) (bool, 
 	if slot == nil {
 		return false, nil
 	}
-	if c == nil || c.rdb == nil {
+	if c == nil || c.redisClient == nil {
 		if !slot.TryBook() {
 			return slot.Has(OpKeyFlagReplicaBooked), nil
 		}
 		return slot.TryClaimExecuting(), nil
 	}
-	st, err := quorum.Book(ctx, c.rdb, slot.OpID, c.replicas, c.nodeID)
+	st, err := quorum.Book(ctx, c.redisClient, slot.OpID, c.replicas, c.nodeID)
 	if err != nil {
 		return false, err
 	}
@@ -50,7 +50,7 @@ func (c *BatchCommitter) PrepareForward(ctx context.Context, slot *Slot) (bool, 
 	if !slot.TryBook() && !slot.Has(OpKeyFlagReplicaBooked) {
 		return false, nil
 	}
-	if err := quorum.Transition(ctx, c.rdb, slot.OpID, quorum.StateBooked, quorum.StateExecuting); err != nil {
+	if err := quorum.Transition(ctx, c.redisClient, slot.OpID, quorum.StateBooked, quorum.StateExecuting); err != nil {
 		return false, err
 	}
 	if !slot.TryClaimExecuting() {
@@ -60,10 +60,10 @@ func (c *BatchCommitter) PrepareForward(ctx context.Context, slot *Slot) (bool, 
 }
 
 func (c *BatchCommitter) Complete(ctx context.Context, slot *Slot) {
-	if c == nil || c.rdb == nil || slot == nil {
+	if c == nil || c.redisClient == nil || slot == nil {
 		return
 	}
-	if err := quorum.Transition(ctx, c.rdb, slot.OpID, quorum.StateExecuting, quorum.StateCompleted); err == nil {
+	if err := quorum.Transition(ctx, c.redisClient, slot.OpID, quorum.StateExecuting, quorum.StateCompleted); err == nil {
 		c.committed++
 	}
 }

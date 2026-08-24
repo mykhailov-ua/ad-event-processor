@@ -220,10 +220,10 @@ func (s *Service) savePlatformConfigTx(ctx context.Context, q db.Querier, cfg pl
 }
 
 func (s *Service) syncPlatformEdgeExpose(ctx context.Context, cfg platformconfig.Config) error {
-	if s == nil || len(s.rdbs) == 0 {
+	if s == nil || len(s.redisShards) == 0 {
 		return nil
 	}
-	return syncGlobalConfigToAllShards(ctx, s.rdbs, platformconfig.EdgeExposeRedisSettings(cfg), 0)
+	return syncGlobalConfigToAllShards(ctx, s.redisShards, platformconfig.EdgeExposeRedisSettings(cfg), 0)
 }
 
 func (s *Service) savePlatformRestartPendingTx(ctx context.Context, q db.Querier, pending []string) error {

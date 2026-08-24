@@ -54,7 +54,7 @@ func isFraudTelemetry(e *domain.Event) bool {
 	if e.Type == fraudAggregateEventType {
 		return false
 	}
-	return e.GhostEvent || e.FraudReason != "" || e.FraudScore > 0
+	return e.SilentRejectEvent || e.FraudReason != "" || e.FraudScore > 0
 }
 
 const fraudAggregateEventType = "fraud_aggregate"
@@ -63,8 +63,8 @@ func isFraudAggregateSpike(e *domain.Event) bool {
 	return e != nil && e.Type == fraudAggregateEventType
 }
 
-func fraudGhostFlag(e *domain.Event) uint8 {
-	if e.GhostEvent {
+func fraudSilentRejectFlag(e *domain.Event) uint8 {
+	if e.SilentRejectEvent {
 		return 1
 	}
 	return 0
@@ -328,7 +328,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				unsafeString(e.Payload),
 				e.FraudReason,
 				e.FraudScore,
-				fraudGhostFlag(e),
+				fraudSilentRejectFlag(e),
 				e.CreatedAt,
 			)
 		case table == "clicks":

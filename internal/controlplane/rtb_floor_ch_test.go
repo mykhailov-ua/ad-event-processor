@@ -113,7 +113,7 @@ func TestApplyRtbFloorSuggestions_dryRunWritesNoRedisOrOutbox(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -122,7 +122,7 @@ func TestApplyRtbFloorSuggestions_dryRunWritesNoRedisOrOutbox(t *testing.T) {
 		BidFloorAdjustPct:   10,
 		BidFloorMinMicro:    1000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -146,7 +146,7 @@ func TestApplyRtbFloorSuggestions_dryRunWritesNoRedisOrOutbox(t *testing.T) {
 	assert.Equal(t, 0, result.OutboxRows)
 	assert.NotEmpty(t, result.Suggestions)
 
-	_, err = rdb.Get(ctx, "rtb:floor:apply-deal").Result()
+	_, err = redisClient.Get(ctx, "rtb:floor:apply-deal").Result()
 	assert.Error(t, err)
 
 	var outboxCount int

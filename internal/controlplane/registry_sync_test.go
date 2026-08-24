@@ -25,7 +25,7 @@ func TestRegistryWatch(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -33,14 +33,14 @@ func TestRegistryWatch(t *testing.T) {
 
 	channel := "test:campaign:updates"
 	queries := db.New(pool)
-	registry := testutil.NewWatchingRegistry(t, queries, rdb, channel)
+	registry := testutil.NewWatchingRegistry(t, queries, redisClient, channel)
 
 	cfg := &config.Config{
 		CampaignUpdateChannel: channel,
 	}
 	cfg.Lifecycle.WaitTimeoutMs = 1
 	sharder := domain.NewJumpHashSharder(1)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, sharder, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, cfg)
 	defer svc.Close()
 
 	customerID := uuid.New()

@@ -62,7 +62,7 @@ func DeepResetAdStreamEvent(m *pb.AdStreamEvent) {
 	m.FraudReason = m.FraudReason[:0]
 	m.CreatedAtUnix = 0
 	m.FraudScore = 0
-	m.GhostEvent = false
+	m.SilentRejectEvent = false
 }
 
 func ClearAdStreamEvent(m *pb.AdStreamEvent) {
@@ -78,7 +78,7 @@ func ClearAdStreamEvent(m *pb.AdStreamEvent) {
 	m.FraudReason = nil
 	m.CreatedAtUnix = 0
 	m.FraudScore = 0
-	m.GhostEvent = false
+	m.SilentRejectEvent = false
 }
 
 func DeepResetAdDLQEvent(m *pb.AdDLQEvent) {

@@ -200,7 +200,7 @@ def main() -> int:
 
     try:
         upsert_ml_eval_report(report)
-    except Exception as err:  # noqa: BLE001 - persist failures must not hide eval errors
+    except Exception as err:
         print(f"{LOG_PREFIX}: postgres upsert failed: {err}", file=sys.stderr)
 
     stem = Path(args.output) if args.output else DEFAULT_OUT_DIR / "shadow_eval_report"

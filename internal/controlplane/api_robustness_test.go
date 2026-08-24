@@ -24,14 +24,14 @@ func TestManagementAPI_Robustness(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		AdminAPIKey: "test-secret",
 	}
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -79,7 +79,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		badPool, cleanupBadDB := database.SetupTestDB(t)
 		cleanupBadDB()
 
-		badSvc := NewService(context.Background(), badPool, []redis.UniversalClient{rdb}, nil, cfg)
+		badSvc := NewService(context.Background(), badPool, []redis.UniversalClient{redisClient}, nil, cfg)
 		defer badSvc.Close()
 		badH := NewHandler(badSvc, cfg, nil, nil, nil, nil)
 		badMux := http.NewServeMux()

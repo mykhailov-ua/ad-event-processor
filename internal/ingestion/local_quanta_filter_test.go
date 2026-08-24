@@ -23,22 +23,22 @@ func setupMiniredis(t testing.TB) (redis.UniversalClient, func()) {
 	t.Helper()
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	return rdb, func() {
-		_ = rdb.Close()
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	return redisClient, func() {
+		_ = redisClient.Close()
 		mr.Close()
 	}
 }
 
-func newLocalQuantaUnifiedFilter(t testing.TB, rdb redis.UniversalClient) (*UnifiedFilter, *LocalQuantaLedger, *LocalQuantaStreamPublisher) {
+func newLocalQuantaUnifiedFilter(t testing.TB, redisClient redis.UniversalClient) (*UnifiedFilter, *LocalQuantaLedger, *LocalQuantaStreamPublisher) {
 	t.Helper()
-	f := newQuotaUnifiedFilter(t, rdb)
+	f := newQuotaUnifiedFilter(t, redisClient)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
 	ledger := NewLocalQuantaLedger()
 	idem := NewLocalClickIdemCache(time.Hour)
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		Rdbs:           []redis.UniversalClient{rdb},
+		RedisShards:           []redis.UniversalClient{redisClient},
 		StreamName:     "events",
 		MaxLen:         1000,
 		IdempotencyTTL: time.Hour,
@@ -46,8 +46,8 @@ func newLocalQuantaUnifiedFilter(t testing.TB, rdb redis.UniversalClient) (*Unif
 	})
 	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger, Stream: stream})
 	f.SetLocalQuantaMode("live")
-	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{rdb}))
-	f.SetFraudBlacklistFilter(NewFraudBlacklistFilter([]redis.UniversalClient{rdb}))
+	f.SetPlacementBlacklistFilter(NewPlacementBlacklistFilter([]redis.UniversalClient{redisClient}))
+	f.SetFraudBlacklistFilter(NewFraudBlacklistFilter([]redis.UniversalClient{redisClient}))
 	t.Cleanup(stream.Close)
 	return f, ledger, stream
 }
@@ -79,18 +79,18 @@ func TestUnifiedFilter_localQuanta_clickLiveSkipsRedisDebit(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	f, ledger, _ := newLocalQuantaUnifiedFilter(t, rdb)
+	f, ledger, _ := newLocalQuantaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
 	const localCredit = int64(5_000_000)
 	ledger.Credit(campID, localCredit, testQuotaChunkMicro)
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
-	beforeQuota, err := rdb.Get(ctx, quotaKey(campID)).Int64()
+	beforeQuota, err := redisClient.Get(ctx, quotaKey(campID)).Int64()
 	require.NoError(t, err)
 	beforeSpend := testutil.ToFloat64(metrics.LocalQuotaSpendTotal)
 
@@ -104,7 +104,7 @@ func TestUnifiedFilter_localQuanta_clickLiveSkipsRedisDebit(t *testing.T) {
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	require.NoError(t, f.Check(checkCtx, evt))
 
-	afterQuota, err := rdb.Get(ctx, quotaKey(campID)).Int64()
+	afterQuota, err := redisClient.Get(ctx, quotaKey(campID)).Int64()
 	require.NoError(t, err)
 	require.Equal(t, beforeQuota, afterQuota, "live local quanta must skip Redis budget debit for clicks")
 
@@ -117,20 +117,20 @@ func TestUnifiedFilter_localQuanta_clickFastPathMatchesImpression(t *testing.T) 
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupMiniredis(t)
+	redisClient, cleanup := setupMiniredis(t)
 	defer cleanup()
 
-	fFast := newQuotaUnifiedFilter(t, rdb)
+	fFast := newQuotaUnifiedFilter(t, redisClient)
 	fFast.SetLuaFastPathEnabled(true)
 	fFast.SetTTCMin(0)
 	require.NoError(t, fFast.PreloadScripts(ctx))
 
-	fFull := newQuotaUnifiedFilter(t, rdb)
+	fFull := newQuotaUnifiedFilter(t, redisClient)
 	fFull.SetLuaFastPathEnabled(false)
 	require.NoError(t, fFull.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignQuota(t, ctx, rdb, campID, 10_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 10_000_000)
 
 	evtFast := &domain.Event{
 		Type:       "click",
@@ -151,7 +151,7 @@ func TestUnifiedFilter_localQuanta_clickFastPathMatchesImpression(t *testing.T) 
 	}
 	require.NoError(t, fFull.Check(checkCtx, evtFull))
 
-	remaining, err := rdb.Get(ctx, quotaKey(campID)).Int64()
+	remaining, err := redisClient.Get(ctx, quotaKey(campID)).Int64()
 	require.NoError(t, err)
 	expected := int64(10_000_000) - 2*fFast.clickAmountMicro
 	require.Equal(t, expected, remaining)

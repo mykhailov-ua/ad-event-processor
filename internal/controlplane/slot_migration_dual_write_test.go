@@ -17,10 +17,10 @@ func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc, pool, ctx := setupSlotMigrationFault(t, redisShards)
 	svc.cfg = &config.Config{
 		SlotMigrationEnabled:          false,
 		MigrationFenceEnabled:         true,
@@ -30,7 +30,7 @@ func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 	}
 
 	const slot int16 = 8
-	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, rdbs[0])
+	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, redisShards[0])
 	mapRepo := domain.NewSlotMapRepo(pool)
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 2)
 
@@ -40,11 +40,11 @@ func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 	require.Len(t, migrations, 1)
 	require.Equal(t, "dual_writing", migrations[0].State)
 
-	flag, err := rdbs[0].Get(ctx, domain.SlotMigrationDualWriteFlagKey).Result()
+	flag, err := redisShards[0].Get(ctx, domain.SlotMigrationDualWriteFlagKey).Result()
 	require.NoError(t, err)
 	require.NotEmpty(t, flag)
 
-	require.NoError(t, domain.PublishSlotMigrationDeltaTestHelper(ctx, rdbs[0], domain.SlotMigrationDelta{
+	require.NoError(t, domain.PublishSlotMigrationDeltaTestHelper(ctx, redisShards[0], domain.SlotMigrationDelta{
 		CampaignID: campID,
 		Amount:     500,
 		SpendKey:   domain.BudgetCampaignKey(campID),
@@ -52,29 +52,29 @@ func TestSlotMigration_DualWriteCopyAndActivate(t *testing.T) {
 	require.NoError(t, svc.CatchUpDualWriteSlots(ctx, v))
 
 	require.NoError(t, svc.ActivateSlotMapVersion(ctx, uuid.Nil, v))
-	domain.AssertBudgetInvariant(t, ctx, pool, rdbs[2], campID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisShards[2], campID)
 }
 
 func TestSlotMigration_DualWriteActivateBlockedOnLag(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc, pool, ctx := setupSlotMigrationFault(t, redisShards)
 	svc.cfg = &config.Config{
 		SlotMigrationDualWriteEnabled: true,
 		SlotMigrationLagEpsilon:       0,
 	}
 
 	const slot int16 = 8
-	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, rdbs[0])
+	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, redisShards[0])
 	mapRepo := domain.NewSlotMapRepo(pool)
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 2)
 	require.NoError(t, svc.CopyAllMigratingSlots(ctx, v))
 
-	require.NoError(t, domain.PublishSlotMigrationDeltaTestHelper(ctx, rdbs[0], domain.SlotMigrationDelta{
+	require.NoError(t, domain.PublishSlotMigrationDeltaTestHelper(ctx, redisShards[0], domain.SlotMigrationDelta{
 		CampaignID: campID,
 		Amount:     100,
 		SpendKey:   domain.BudgetCampaignKey(campID),

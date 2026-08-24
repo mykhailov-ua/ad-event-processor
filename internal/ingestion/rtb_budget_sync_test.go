@@ -34,14 +34,14 @@ func TestSyncRTBBudgetState_fromRedis(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
 	reg := &mockRegistry{}
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, int64(4_200_000), 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, int64(4_200_000), 0).Err())
 
 	store := rtb.NewBudgetStore()
 	campCopy := *camp
@@ -51,7 +51,7 @@ func TestSyncRTBBudgetState_fromRedis(t *testing.T) {
 
 	SyncRTBBudgetState(ctx, store, []*domain.Campaign{&campCopy}, nil, RtbBudgetSync{
 		Authority: BudgetAuthorityRTB,
-		Redis:     []redis.UniversalClient{rdb},
+		Redis:     []redis.UniversalClient{redisClient},
 		Sharder:   NewJumpHashSharder(1),
 	})
 
@@ -63,7 +63,7 @@ func TestLoadRedisDailySpend(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -75,9 +75,9 @@ func TestLoadRedisDailySpend(t *testing.T) {
 
 	keyBuf := append([]byte(nil), campCopy.DailySpendKeyPrefix...)
 	keyBuf = appendDate(keyBuf, time.Now().UTC())
-	require.NoError(t, rdb.Set(ctx, string(keyBuf), int64(500_000), 0).Err())
+	require.NoError(t, redisClient.Set(ctx, string(keyBuf), int64(500_000), 0).Err())
 
-	spent, ok := loadRedisDailySpend(ctx, []redis.UniversalClient{rdb}, NewJumpHashSharder(1), &campCopy)
+	spent, ok := loadRedisDailySpend(ctx, []redis.UniversalClient{redisClient}, NewJumpHashSharder(1), &campCopy)
 	require.True(t, ok)
 	assert.Equal(t, int64(500_000), spent)
 }

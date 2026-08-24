@@ -11,13 +11,13 @@ import (
 
 func TestSyncBlocklistFromRedis_fraudOnly(t *testing.T) {
 	ctx := context.Background()
-	rdb := &redisStub{sets: map[string][]string{
+	redisClient := &redisStub{sets: map[string][]string{
 		redisKeyBlacklistFraud: {"198.51.100.9"},
 	}}
 	maps := newTestBlocklistMapsV4Only(t)
 	store := NewBlocklistStore()
 
-	added, removed, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
+	added, removed, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 	require.NoError(t, err)
 	assert.Equal(t, 1, added)
 	assert.Equal(t, 0, removed)

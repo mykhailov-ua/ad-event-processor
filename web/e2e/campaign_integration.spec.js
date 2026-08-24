@@ -119,7 +119,9 @@ test('Integration tab shows zero-redirect snippet', async ({ page }) => {
 
   await page.goto(`/campaigns/${CAMPAIGN_ID}?tab=tracking`);
   await expect(page.getByTestId('integration-direct-snippet')).toBeVisible();
-  await expect(page.getByTestId('integration-direct-snippet')).toContainText('adEventProcessorTrack');
+  await expect(page.getByTestId('integration-direct-snippet')).toContainText(
+    'trackEvent'
+  );
   await expect(page.getByTestId('integration-direct-snippet')).toContainText(CAMPAIGN_ID);
 });
 

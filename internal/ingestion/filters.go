@@ -123,8 +123,7 @@ func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
 		addFraudSignal(evt, FraudReasonDatacenterIP)
 		return nil
 	}
-	// Hosting IPs missed by GeoIP IsAnonymous are checked on every event when the
-	// DC ASN snapshot is ready; sampling applies only on GeoIP errors.
+
 	f.checkDCASN(evt, err == nil && !isAnon)
 	return nil
 }
@@ -336,7 +335,7 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 			retErr = ErrFilterTimeout
 			break
 		}
-		if _, ok := f.(*UnifiedFilter); ok && acc.shouldShortCircuitFraudBudget() {
+		if _, ok := f.(*UnifiedFilter); ok && acc != nil && acc.count > 0 {
 			var camp *domain.Campaign
 			if e.registry != nil && evt != nil {
 				camp, _ = e.registry.GetCampaign(evt.CampaignID)
@@ -382,14 +381,14 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 }
 
 type DuplicateEventFilter struct {
-	rdb redis.Cmdable
-	ttl time.Duration
+	redisClient redis.Cmdable
+	ttl         time.Duration
 }
 
-func NewDuplicateEventFilter(rdb redis.Cmdable, ttl time.Duration) *DuplicateEventFilter {
+func NewDuplicateEventFilter(redisClient redis.Cmdable, ttl time.Duration) *DuplicateEventFilter {
 	return &DuplicateEventFilter{
-		rdb: rdb,
-		ttl: ttl,
+		redisClient: redisClient,
+		ttl:         ttl,
 	}
 }
 
@@ -406,7 +405,7 @@ func (f *DuplicateEventFilter) Check(ctx context.Context, evt *domain.Event) err
 	w.buf = append(w.buf, evt.ClickID...)
 	key := unsafeString(w.buf)
 
-	ok, err := f.rdb.SetNX(ctx, key, "1", f.ttl).Result()
+	ok, err := f.redisClient.SetNX(ctx, key, "1", f.ttl).Result()
 	bufPool.Put(w)
 
 	if err != nil {
@@ -442,6 +441,34 @@ type placementCacheItem struct {
 
 const placementCacheShards = 128
 
+// placementBlacklistCacheTTL bounds stale blacklist visibility without per-event HEXISTS.
+const placementBlacklistCacheTTL = 5 * time.Second
+
+const placementCacheMaxEntriesPerShard = 2048
+
+func placementCacheStore(shard *placementCacheShard, key placementCacheKey, item placementCacheItem, now int64) {
+	shard.mu.Lock()
+	if len(shard.m) >= placementCacheMaxEntriesPerShard {
+		placementCachePruneLocked(shard, now)
+	}
+	shard.m[key] = item
+	shard.mu.Unlock()
+}
+
+func placementCachePruneLocked(shard *placementCacheShard, now int64) {
+	for k, v := range shard.m {
+		if now >= v.expiry {
+			delete(shard.m, k)
+		}
+	}
+	for len(shard.m) >= placementCacheMaxEntriesPerShard {
+		for k := range shard.m {
+			delete(shard.m, k)
+			break
+		}
+	}
+}
+
 type placementCacheKey struct {
 	campaignID uuid.UUID
 	placement  string
@@ -453,12 +480,12 @@ type placementCacheShard struct {
 }
 
 type PlacementBlacklistFilter struct {
-	rdbs   []redis.UniversalClient
-	shards [placementCacheShards]placementCacheShard
+	redisShards []redis.UniversalClient
+	shards      [placementCacheShards]placementCacheShard
 }
 
-func NewPlacementBlacklistFilter(rdbs []redis.UniversalClient) *PlacementBlacklistFilter {
-	f := &PlacementBlacklistFilter{rdbs: rdbs}
+func NewPlacementBlacklistFilter(redisShards []redis.UniversalClient) *PlacementBlacklistFilter {
+	f := &PlacementBlacklistFilter{redisShards: redisShards}
 	for i := range placementCacheShards {
 		f.shards[i].m = make(map[placementCacheKey]placementCacheItem, 64)
 	}
@@ -491,8 +518,8 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 		return nil
 	}
 
-	rdb := pickLocalGlobalShard(f.rdbs)
-	if rdb == nil {
+	redisClient := pickLocalGlobalShard(f.redisShards)
+	if redisClient == nil {
 		return nil
 	}
 
@@ -502,18 +529,16 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	w.buf = appendUUID(w.buf, evt.CampaignID)
 	redisKey := unsafeString(w.buf)
 
-	isBlacklisted, err := rdb.HExists(ctx, redisKey, evt.PlacementID).Result()
+	isBlacklisted, err := redisClient.HExists(ctx, redisKey, evt.PlacementID).Result()
 	bufPool.Put(w)
 	if err != nil {
 		return nil
 	}
 
-	shard.mu.Lock()
-	shard.m[key] = placementCacheItem{
+	placementCacheStore(shard, key, placementCacheItem{
 		blacklisted: isBlacklisted,
-		expiry:      now + int64(5*time.Second),
-	}
-	shard.mu.Unlock()
+		expiry:      now + int64(placementBlacklistCacheTTL),
+	}, now)
 
 	if isBlacklisted {
 		return ErrPlacementBlocked

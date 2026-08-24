@@ -17,17 +17,17 @@ func TestReadRedisAnySkipsNilAndFindsSnapshot(t *testing.T) {
 	t.Cleanup(mr.Close)
 
 	ctx := context.Background()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	snap := Snapshot{
 		UpdatedAt: time.Unix(1_700_000_000, 0).UTC(),
 		Pass:      42,
 		Drops:     map[string]uint64{"syn": 1},
 	}
-	require.NoError(t, WriteRedis(ctx, rdb, snap))
+	require.NoError(t, WriteRedis(ctx, redisClient, snap))
 
-	got, err := ReadRedisAny(ctx, []redis.UniversalClient{nil, rdb})
+	got, err := ReadRedisAny(ctx, []redis.UniversalClient{nil, redisClient})
 	require.NoError(t, err)
 	assert.Equal(t, uint64(42), got.Pass)
 }

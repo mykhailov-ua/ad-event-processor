@@ -162,7 +162,7 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 
 	campaignID := uuid.New()
 	_, err := pool.Exec(ctx, `
-		INSERT INTO campaigns (id, name, status, budget_limit, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_block, ghost_ivt_enabled)
+		INSERT INTO campaigns (id, name, status, budget_limit, fraud_threshold_pass, fraud_threshold_suspect, fraud_threshold_block, silent_reject_enabled)
 		VALUES ($1, 'Test Campaign', 'ACTIVE', 1000000000, 20, 50, 90, true)
 	`, campaignID)
 	require.NoError(t, err)
@@ -203,7 +203,7 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 
 	c2, exists := candidateMap[ipHashHex("2.2.2.2")]
 	require.True(t, exists)
-	assert.Equal(t, "ghost", c2.Action)
+	assert.Equal(t, "silent_reject", c2.Action)
 
 	c1, exists := candidateMap[ipHashHex("1.1.1.1")]
 	require.True(t, exists)

@@ -1,12 +1,12 @@
-# BidShard Developer Guide
+# Development guide
 
-This document describes the local environment setup, codegen utilities, testing conventions, and runtime tuning protocols for the BidShard platform.
+Local environment setup, codegen, testing, and runtime tuning for `ad-event-processor`.
 
 ---
 
 ## Technical Prerequisites
 
-To develop, build, and test BidShard, your machine must meet the following requirements:
+Prerequisites:
 - **Go:** 1.25+
 - **Docker & Docker Compose** (supporting compose specification v2)
 - **Make** build utility

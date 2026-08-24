@@ -67,6 +67,12 @@ func (s *BlocklistStore) Len() int {
 	return len(s.hosts) + len(s.v6Hosts) + len(s.v4Prefixes) + len(s.v6Prefixes)
 }
 
+func (s *BlocklistStore) Stats() (v4Hosts, v6Hosts, v4Prefixes, v6Prefixes int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.hosts), len(s.v6Hosts), len(s.v4Prefixes), len(s.v6Prefixes)
+}
+
 func (s *BlocklistStore) ApplyDiff(maps BlocklistMaps, manual, auto, fraud []string) (added, removed int, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -118,6 +124,7 @@ func (s *BlocklistStore) applyV4Diff(maps BlocklistMaps) (added, removed int, er
 			continue
 		}
 		if maps.V4Host != nil {
+			recordLRUEvictionBeforeInsert(maps.V4Host, "blocklist_host_v4", len(s.hosts))
 			if err := maps.V4Host.Update(addr, blockedMarker, ebpf.UpdateAny); err != nil {
 				return added, removed, fmt.Errorf("upsert host %08x: %w", addr, err)
 			}
@@ -180,6 +187,7 @@ func (s *BlocklistStore) applyV6Diff(maps BlocklistMaps) (added, removed int, er
 			continue
 		}
 		if maps.V6Host != nil {
+			recordLRUEvictionBeforeInsert(maps.V6Host, "blocklist_host_v6", len(s.v6Hosts))
 			if err := maps.V6Host.Update(key.Addr, blockedMarker, ebpf.UpdateAny); err != nil {
 				return added, removed, fmt.Errorf("upsert v6 host %s: %w", ipStr, err)
 			}

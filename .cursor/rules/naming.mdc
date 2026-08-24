@@ -21,8 +21,26 @@ Do not use cryptic suffixes, meaningless numbers, or lazy abbreviations.
 | `n1`, `n2` | Meaningless numeric tags | `ledger_fix_2026`, `consistency_patch` |
 | `v1_old`, `new_logic` | Temporal naming (rots immediately) | `legacy_v1_compat`, `batch_processor_v2` |
 | `f1`, `f2` | Lazy filter/field abbreviations | `license_filter`, `geo_filter` |
-| `ch`, `pg`, `rd` | Common driver abbreviations | `clickhouse`, `postgres`, `redis` |
+| `ch`, `pg`, `rd`, `rdb`, `rdbs` | Driver/client abbreviations | `clickhouseConn`, `postgresConn`, `redisClient`, `redisShards` |
 | `res`, `res2` | Generic result variables | `auction_result`, `auth_response` |
+| `GAP_prefix_001` style codes, `WI-123` | Bureaucratic ticket/milestone IDs in docs, backlogs, UI copy | Semantic slug: `wire_silent_reject_hot_path` |
+| `M-8`, `M8` milestone tokens in titles | Milestone tokens in commits and headings | Concrete surface name: `silent_reject_hot_path` |
+
+## Forbidden bureaucratic naming
+
+Do not use ticket prefixes, gap codes, or milestone IDs in file names, backlog headings, commit titles, operator docs, or Grafana panel text.
+
+| Banned | Use instead |
+| :--- | :--- |
+| Ticket-style gap codes (`GAP` + team + number) | Describe the work: `antifraud_doc_code_parity` |
+| `P0 item #4`, `Action item 7` | Same semantic slug in `deploy/vendor/antifraud_backlog.md` |
+| `WI-4521`, `JIRA-123` | Link to tracker URL in PR description only; not in repo prose |
+
+Backlog files: one `### semantic_slug` per item; cross-reference by slug (`after silent_reject_rename_end_to_end`), not numeric codes.
+
+CI: `bash scripts/ci/check_no_legacy_naming.sh` rejects `GAP-<TEAM>-<digits>` in `README.md`, `docs/`, `deploy/vendor/`, `.cursor/rules/`.
+
+Exception: `fault_proof gap=open` in fault tests is telemetry, not a backlog ID (`fault-tests.mdc`).
 
 ## Legacy token ban (critical)
 
@@ -42,6 +60,26 @@ Strictly forbidden in new code, documentation, and variable names. Remove existi
 | Docker compose volumes | `ad_event_processor_*` (historical prefix) |
 | Admin UI product strings | `ad-event-processor` |
 | Control plane API | `/api/v1/*` on `:8188` |
+
+## Forbidden marketing prose
+
+Technical docs (`README.md`, `docs/`, `deploy/vendor/ANTIFRAUD.md`, `docs/ARCHITECTURE.md`, Grafana descriptions) must not read like sales copy. Lie catalog: `anti-slop.mdc` Documentation lie modes.
+
+| Banned in tech docs | Use instead |
+| :--- | :--- |
+| `enterprise-grade`, `premium`, `world-class` | Name the surface: `edge-xdp`, `FilterEngine` |
+| `ultra-low latency`, `ultra-fast`, `lightning-fast` | SLA from `core.mdc` or bench name + scope |
+| `guarantee`, `guaranteed`, `never` (unqualified) | Concrete behavior or `fail-closed` / batch-only ML |
+| `eliminated` (Redis/script ops) | File + function that runs the op, or "cached on miss" |
+| `hundreds of thousands of RPS` (unqualified) | Load-test config or measured metric |
+| `Why buyers choose`, competitor tables | Remove; SKU limits in `sku.yaml` only |
+| `unlimited` as hype | License field `max_active_campaigns: 0` = no cap in JWT schema |
+| `intelligent`, `AI-powered` (unqualified) | `cmd/fraud-scorer`, `cmd/ivt-detector`, SKU flag |
+| `complete data privacy`, `spy-tool` | Omit; not verifiable in code |
+
+`deploy/vendor/SALES.md`: SKU table and license workflow only; no competitor anchors or positioning essays.
+
+User-visible admin UI (`web/src`): no `(skeleton)`, demo KPIs, or "coming soon" without `StubBanner` (`ui.mdc`, `anti-slop.mdc`).
 
 ## Semantic clarity (lead-intent style)
 

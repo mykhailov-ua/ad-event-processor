@@ -165,16 +165,16 @@ func TestFault_OperationLease_GhostExecutor(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanup := database.SetupTestDB(t)
 	t.Cleanup(cleanup)
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	t.Cleanup(cleanupRedis)
 
 	cfg := &config.Config{
 		MultiRegionEnabled: true,
 		RegionCode:         1,
-		NodeID:             "ghost-primary",
+		NodeID:             "lease-primary-a",
 		OpLeaseTimeoutSec:  30,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	worker := NewOperationLeaseWorker(svc)
 
 	opID := uuid.New()
@@ -188,30 +188,30 @@ func TestFault_OperationLease_GhostExecutor(t *testing.T) {
 		Attempt:      1,
 		FactorU:      factorU,
 		Scope:        scope,
-		ReplicaNodes: []string{cfg.NodeID, "ghost-standby"},
-		BookAckNodes: []string{cfg.NodeID, "ghost-standby"},
+		ReplicaNodes: []string{cfg.NodeID, "lease-standby-b"},
+		BookAckNodes: []string{cfg.NodeID, "lease-standby-b"},
 	})
 	require.NoError(t, err)
 
-	redisKey := "lease:ghost:" + opID.String()
+	redisKey := "lease:standby:" + opID.String()
 	err = worker.ExecuteOp(ctx, opID, func(ctx context.Context, _ db.OperationLease, claim dedup.ClaimResult) error {
 		require.Equal(t, dedup.OutcomeConfirmed, claim.Outcome)
-		ok, err := rdb.SetNX(ctx, redisKey, "1", time.Hour).Result()
+		ok, err := redisClient.SetNX(ctx, redisKey, "1", time.Hour).Result()
 		require.NoError(t, err)
 		require.True(t, ok)
 		return nil
 	})
 	require.NoError(t, err)
 
-	ghost := NewOperationLeaseWorker(svc)
-	ghost.nodeID = "ghost-standby"
-	err = ghost.ExecuteOp(ctx, opID, func(ctx context.Context, _ db.OperationLease, claim dedup.ClaimResult) error {
-		t.Fatalf("ghost executor must not apply side effects on completed lease, outcome=%s", claim.Outcome)
+	standbyWorker := NewOperationLeaseWorker(svc)
+	standbyWorker.nodeID = "lease-standby-b"
+	err = standbyWorker.ExecuteOp(ctx, opID, func(ctx context.Context, _ db.OperationLease, claim dedup.ClaimResult) error {
+		t.Fatalf("standby executor must not apply side effects on completed lease, outcome=%s", claim.Outcome)
 		return nil
 	})
 	require.NoError(t, err)
 
-	val, err := rdb.Get(ctx, redisKey).Result()
+	val, err := redisClient.Get(ctx, redisKey).Result()
 	require.NoError(t, err)
 	require.Equal(t, "1", val)
 
@@ -219,7 +219,7 @@ func TestFault_OperationLease_GhostExecutor(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM dedup_key_proposals`).Scan(&proposalCount))
 	require.Equal(t, 1, proposalCount)
 
-	faultproof.Log(t, "mr_lease_ghost_executor", map[string]string{
+	faultproof.Log(t, "mr_lease_standby_executor", map[string]string{
 		"subsystem":     "operation_lease",
 		"op_id":         opID.String(),
 		"redis_budget":  val,

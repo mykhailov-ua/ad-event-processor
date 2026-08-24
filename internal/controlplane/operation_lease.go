@@ -333,13 +333,13 @@ func (w *OperationLeaseWorker) quorumRDB() redis.UniversalClient {
 	if w == nil || w.svc == nil {
 		return nil
 	}
-	return PickHealthyControlShard(w.svc.rdbs)
+	return PickHealthyControlShard(w.svc.redisShards)
 }
 
 func (w *OperationLeaseWorker) bookRedis(ctx context.Context, req OperationLeaseBookRequest) (OperationLeaseBookResult, error) {
 	empty := OperationLeaseBookResult{}
-	rdb := w.quorumRDB()
-	if rdb == nil {
+	redisClient := w.quorumRDB()
+	if redisClient == nil {
 		return empty, ErrLeaseQuorumNotMet
 	}
 	opID := opIDBytes(req.OpID)
@@ -348,7 +348,7 @@ func (w *OperationLeaseWorker) bookRedis(ctx context.Context, req OperationLease
 		replicas = []string{w.nodeID}
 	}
 	for _, n := range req.BookAckNodes {
-		st, err := quorum.AckBook(ctx, rdb, opID, len(replicas), n)
+		st, err := quorum.AckBook(ctx, redisClient, opID, len(replicas), n)
 		if err != nil {
 			return empty, err
 		}
@@ -356,7 +356,7 @@ func (w *OperationLeaseWorker) bookRedis(ctx context.Context, req OperationLease
 			return operationLeaseBookResultFromQuorum(st), nil
 		}
 	}
-	st, err := quorum.Book(ctx, rdb, opID, replicas, w.nodeID)
+	st, err := quorum.Book(ctx, redisClient, opID, replicas, w.nodeID)
 	if err != nil {
 		return empty, err
 	}
@@ -369,11 +369,11 @@ func (w *OperationLeaseWorker) bookRedis(ctx context.Context, req OperationLease
 
 func (w *OperationLeaseWorker) ackBookRedis(ctx context.Context, opID uuid.UUID, nodeID string, replicaCount int) (OperationLeaseBookResult, error) {
 	empty := OperationLeaseBookResult{}
-	rdb := w.quorumRDB()
-	if rdb == nil {
+	redisClient := w.quorumRDB()
+	if redisClient == nil {
 		return empty, ErrLeaseQuorumNotMet
 	}
-	st, err := quorum.AckBook(ctx, rdb, opIDBytes(opID), replicaCount, nodeID)
+	st, err := quorum.AckBook(ctx, redisClient, opIDBytes(opID), replicaCount, nodeID)
 	if err != nil {
 		return empty, err
 	}
@@ -381,11 +381,11 @@ func (w *OperationLeaseWorker) ackBookRedis(ctx context.Context, opID uuid.UUID,
 }
 
 func (w *OperationLeaseWorker) quorumStatusRedis(ctx context.Context, opID uuid.UUID, replicaCount int) (OperationLeaseBookResult, error) {
-	rdb := w.quorumRDB()
-	if rdb == nil {
+	redisClient := w.quorumRDB()
+	if redisClient == nil {
 		return OperationLeaseBookResult{}, ErrLeaseQuorumNotMet
 	}
-	st, err := quorum.ReadStatus(ctx, rdb, opIDBytes(opID), replicaCount)
+	st, err := quorum.ReadStatus(ctx, redisClient, opIDBytes(opID), replicaCount)
 	if err != nil {
 		return OperationLeaseBookResult{}, err
 	}

@@ -12,23 +12,23 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func publishControlChannelToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel, payload string) error {
-	return forEachConnectedShard(ctx, rdbs, "publish_control_channel", func(_ int, rdb redis.UniversalClient) error {
-		return rdb.Publish(ctx, channel, payload).Err()
+func publishControlChannelToAllShards(ctx context.Context, redisShards []redis.UniversalClient, channel, payload string) error {
+	return forEachConnectedShard(ctx, redisShards, "publish_control_channel", func(_ int, redisClient redis.UniversalClient) error {
+		return redisClient.Publish(ctx, channel, payload).Err()
 	})
 }
 
-func publishFraudQuarantineBatch(ctx context.Context, rdbs []redis.UniversalClient, ips []string) error {
+func publishFraudQuarantineBatch(ctx context.Context, redisShards []redis.UniversalClient, ips []string) error {
 	payload, err := edge.MarshalFraudQuarantinePayload(ips)
 	if err != nil {
 		return err
 	}
-	return publishControlChannelToAllShards(ctx, rdbs, edge.FraudQuarantineChannel, payload)
+	return publishControlChannelToAllShards(ctx, redisShards, edge.FraudQuarantineChannel, payload)
 }
 
-func publishCampaignControlToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel, campaignID string, queuedAt time.Time) error {
-	return forEachConnectedShard(ctx, rdbs, "publish_campaign_control", func(i int, rdb redis.UniversalClient) error {
-		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+func publishCampaignControlToAllShards(ctx context.Context, redisShards []redis.UniversalClient, channel, campaignID string, queuedAt time.Time) error {
+	return forEachConnectedShard(ctx, redisShards, "publish_campaign_control", func(i int, redisClient redis.UniversalClient) error {
+		_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			pipe.Incr(ctx, domain.CampaignEpochKey)
 			pipe.Publish(ctx, channel, campaignID)
 			return nil
@@ -46,9 +46,9 @@ func publishCampaignControlToAllShards(ctx context.Context, rdbs []redis.Univers
 	})
 }
 
-func publishControlMessagesToAllShards(ctx context.Context, rdbs []redis.UniversalClient, channel string, payloads []string) error {
-	return forEachConnectedShard(ctx, rdbs, "publish_control_messages", func(_ int, rdb redis.UniversalClient) error {
-		_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+func publishControlMessagesToAllShards(ctx context.Context, redisShards []redis.UniversalClient, channel string, payloads []string) error {
+	return forEachConnectedShard(ctx, redisShards, "publish_control_messages", func(_ int, redisClient redis.UniversalClient) error {
+		_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
 			pipe.Incr(ctx, domain.CampaignEpochKey)
 			for _, payload := range payloads {
 				pipe.Publish(ctx, channel, payload)
@@ -59,10 +59,10 @@ func publishControlMessagesToAllShards(ctx context.Context, rdbs []redis.Univers
 	})
 }
 
-func setNXOnAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) (bool, error) {
+func setNXOnAllShards(ctx context.Context, redisShards []redis.UniversalClient, key, value string, ttl time.Duration) (bool, error) {
 	allNew := true
-	err := forEachConnectedShardStrict(ctx, rdbs, "setnx", func(_ int, rdb redis.UniversalClient) error {
-		ok, err := rdb.SetNX(ctx, key, value, ttl).Result()
+	err := forEachConnectedShardStrict(ctx, redisShards, "setnx", func(_ int, redisClient redis.UniversalClient) error {
+		ok, err := redisClient.SetNX(ctx, key, value, ttl).Result()
 		if err != nil {
 			return err
 		}
@@ -74,10 +74,10 @@ func setNXOnAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, va
 	return allNew, err
 }
 
-func PickHealthyControlShard(rdbs []redis.UniversalClient) redis.UniversalClient {
-	for _, rdb := range rdbs {
-		if rdb != nil {
-			return rdb
+func PickHealthyControlShard(redisShards []redis.UniversalClient) redis.UniversalClient {
+	for _, redisClient := range redisShards {
+		if redisClient != nil {
+			return redisClient
 		}
 	}
 	return nil

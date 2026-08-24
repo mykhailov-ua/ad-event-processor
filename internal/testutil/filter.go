@@ -38,12 +38,12 @@ func MgmtTestRegistry() domain.CampaignRegistry {
 	return mgmtTestRegistry{}
 }
 
-func NewLuaUnifiedFilter(rdb redis.UniversalClient, registry domain.CampaignRegistry) FilterChecker {
+func NewLuaUnifiedFilter(redisClient redis.UniversalClient, registry domain.CampaignRegistry) FilterChecker {
 	if registry == nil {
 		registry = MgmtTestRegistry()
 	}
 	return ingestion.NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		domain.NewJumpHashSharder(1),
 		registry,
 		nil,

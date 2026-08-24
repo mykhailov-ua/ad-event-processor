@@ -72,10 +72,10 @@ func TestMeasuredPacingDriftPct_holdoutOverDelivery(t *testing.T) {
 	assert.InDelta(t, -0.5, measuredPacingDriftPct(100, 50), 0.0001)
 }
 
-func TestCalcGhostRatio_holdout(t *testing.T) {
+func TestCalcSilentRejectRatio_holdout(t *testing.T) {
 	t.Parallel()
 
-	assert.InDelta(t, 0.2, calcGhostRatio(2, 10), 0.0001)
+	assert.InDelta(t, 0.2, calcSilentRejectRatio(2, 10), 0.0001)
 }
 
 func TestCalcRtbWinRate_holdout(t *testing.T) {

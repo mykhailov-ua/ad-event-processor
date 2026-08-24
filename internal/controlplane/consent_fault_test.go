@@ -35,11 +35,11 @@ func TestFault_ConsentWebhookReplay(t *testing.T) {
 	secret := []byte("consent-test-secret")
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{ConsentHMACSecret: config.Secret(secret)}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -74,16 +74,16 @@ func TestFault_ConsentReadYourWrites(t *testing.T) {
 	secret := []byte("consent-ryw-secret")
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
 		ConsentHMACSecret:    config.Secret(secret),
 		ConsentUpdateChannel: "test:consent:update",
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
-	store := domain.NewConsentStore(rdb)
-	store.StartWatch(ctx, rdb, cfg.ConsentUpdateChannel)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
+	store := domain.NewConsentStore(redisClient)
+	store.StartWatch(ctx, redisClient, cfg.ConsentUpdateChannel)
 	worker := NewOutboxWorker(svc)
 
 	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{

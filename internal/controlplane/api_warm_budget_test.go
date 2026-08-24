@@ -21,11 +21,11 @@ func TestWarmCampaignBudgetAPI(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -38,14 +38,14 @@ func TestWarmCampaignBudgetAPI(t *testing.T) {
 
 	_, err = pool.Exec(ctx, "UPDATE campaigns SET current_spend = $1 WHERE id = $2", spend, campaignID)
 	require.NoError(t, err)
-	_, err = rdb.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
+	_, err = redisClient.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
 	require.NoError(t, err)
 
 	remaining, err := svc.WarmCampaignBudget(ctx, campaignID)
 	require.NoError(t, err)
 	assert.Equal(t, budget-spend, remaining)
 
-	val, err := rdb.Get(ctx, "budget:campaign:"+campaignID.String()).Int64()
+	val, err := redisClient.Get(ctx, "budget:campaign:"+campaignID.String()).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, budget-spend, val)
 }
@@ -56,15 +56,15 @@ func TestWarmCampaignBudget_noOutboxOrPubsub(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	channel := "campaigns:warm-budget-test"
 	cfg := &config.Config{AdminAPIKey: "test-secret", CampaignUpdateChannel: channel}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
-	sub := rdb.Subscribe(ctx, channel)
+	sub := redisClient.Subscribe(ctx, channel)
 	defer sub.Close()
 	_, err := sub.Receive(ctx)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestWarmCampaignBudget_noOutboxOrPubsub(t *testing.T) {
 
 	_, err = pool.Exec(ctx, "DELETE FROM outbox_events")
 	require.NoError(t, err)
-	_, err = rdb.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
+	_, err = redisClient.Del(ctx, "budget:campaign:"+campaignID.String()).Result()
 	require.NoError(t, err)
 
 	_, err = svc.WarmCampaignBudget(ctx, campaignID)
@@ -97,11 +97,11 @@ func TestWarmBudget_ExplainAnalyze(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -154,7 +154,7 @@ func TestOptimizeBidFloors_writesRedis(t *testing.T) {
 	}
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -163,7 +163,7 @@ func TestOptimizeBidFloors_writesRedis(t *testing.T) {
 		BidFloorAdjustPct:   10,
 		BidFloorMinMicro:    1000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 
 	ctx := context.Background()
 	customerID := uuid.New()
@@ -183,7 +183,7 @@ func TestOptimizeBidFloors_writesRedis(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, result.Applied)
 
-	val, err := rdb.Get(ctx, domain.RtbFloorRedisKeyPrefix+"opt-deal-1").Int64()
+	val, err := redisClient.Get(ctx, domain.RtbFloorRedisKeyPrefix+"opt-deal-1").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(200_000), val)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// bpfTestMu serializes prog_test map access across fuzz workers and package tests.
+
 var bpfTestMu sync.Mutex
 
 func withBPFTestLock(t *testing.T) {

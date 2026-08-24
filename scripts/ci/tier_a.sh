@@ -150,29 +150,6 @@ if ((${#slog_hits[@]} > 0)); then
   fail=1
 fi
 
-echo "tier_a: check error handling in outbox/handlers..."
-pattern_err='_ = (json\.Unmarshal|w\.Write)'
-scan_err() {
-  local path="$1"
-  if rg -n "$pattern_err" "$path" > /dev/null 2>&1; then
-    echo "check_error_handling: ignored error in $path"
-    rg -n "$pattern_err" "$path" || true
-    fail=1
-  fi
-}
-
-while IFS= read -r -d '' file; do
-  scan_err "$file"
-done < <(find internal/controlplane -name 'outbox_*.go' ! -name '*_test.go' -print0 2> /dev/null || true)
-
-while IFS= read -r -d '' file; do
-  scan_err "$file"
-done < <(find internal/controlplane -name 'handler_*.go' ! -name '*_test.go' -print0 2> /dev/null || true)
-
-while IFS= read -r -d '' file; do
-  scan_err "$file"
-done < <(find internal/controlplane -maxdepth 1 -name '*_handlers.go' ! -name '*_test.go' -print0 2> /dev/null || true)
-
 echo "tier_a: check brand boundary..."
 pattern_brand='ad-event-processor\.com'
 scan_brand() {

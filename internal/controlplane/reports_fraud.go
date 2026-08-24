@@ -13,12 +13,12 @@ import (
 )
 
 type FraudBreakdownRowDTO struct {
-	CampaignID  string  `json:"campaign_id"`
-	PlacementID string  `json:"placement_id,omitempty"`
-	FraudReason string  `json:"fraud_reason"`
-	EventCount  int64   `json:"event_count"`
-	GhostCount  int64   `json:"ghost_count"`
-	GhostRatio  float64 `json:"ghost_ratio"`
+	CampaignID        string  `json:"campaign_id"`
+	PlacementID       string  `json:"placement_id,omitempty"`
+	FraudReason       string  `json:"fraud_reason"`
+	EventCount        int64   `json:"event_count"`
+	SilentRejectCount int64   `json:"silent_reject_count"`
+	SilentRejectRatio float64 `json:"silent_reject_ratio"`
 }
 
 type FraudBreakdownReportResponse struct {
@@ -33,7 +33,7 @@ SELECT
  coalesce(JSONExtractString(payload, 'placement_id'), '') AS placement_id,
  fraud_reason,
  count() AS event_count,
- countIf(ghost_event = 1) AS ghost_count
+ countIf(silent_reject_event = 1) AS silent_reject_count
 FROM fraud_events
 WHERE campaign_id IN (?)
  AND created_at >= ?
@@ -135,20 +135,20 @@ func queryFraudBreakdownRows(
 	out := make([]FraudBreakdownRowDTO, 0, limit)
 	for chRows.Next() {
 		var row FraudBreakdownRowDTO
-		if err := chRows.Scan(&row.CampaignID, &row.PlacementID, &row.FraudReason, &row.EventCount, &row.GhostCount); err != nil {
+		if err := chRows.Scan(&row.CampaignID, &row.PlacementID, &row.FraudReason, &row.EventCount, &row.SilentRejectCount); err != nil {
 			return nil, 0, err
 		}
 		if row.EventCount > 0 {
-			row.GhostRatio = float64(row.GhostCount) / float64(row.EventCount)
+			row.SilentRejectRatio = calcSilentRejectRatio(row.SilentRejectCount, row.EventCount)
 		}
 		out = append(out, row)
 	}
 	return out, total, chRows.Err()
 }
 
-func calcGhostRatio(ghostCount, eventCount int64) float64 {
+func calcSilentRejectRatio(silentRejectCount, eventCount int64) float64 {
 	if eventCount <= 0 {
 		return 0
 	}
-	return float64(ghostCount) / float64(eventCount)
+	return float64(silentRejectCount) / float64(eventCount)
 }

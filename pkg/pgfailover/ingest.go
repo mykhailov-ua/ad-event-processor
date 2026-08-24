@@ -49,14 +49,14 @@ type IngestSubscriberConfig struct {
 
 func StartIngestSubscribers(
 	ctx context.Context,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	cfg IngestSubscriberConfig,
 	onReconnect ReconnectFunc,
 ) *IngestRuntime {
 	if onReconnect == nil {
 		return nil
 	}
-	primary := firstConnectedRedis(rdbs)
+	primary := firstConnectedRedis(redisShards)
 	if primary == nil {
 		slog.Warn("pg failover ingest disabled: no connected redis shard for DSN subscription")
 		return nil
@@ -76,11 +76,11 @@ func StartIngestSubscribers(
 	sub := NewSubscriber(primary, gate, onReconnect, subCfg)
 	sub.Start(ctx)
 	rt.subscribers = append(rt.subscribers, sub)
-	for _, rdb := range rdbs {
-		if rdb == nil || rdb == primary {
+	for _, redisClient := range redisShards {
+		if redisClient == nil || redisClient == primary {
 			continue
 		}
-		extra := NewSubscriber(rdb, gate, onReconnect, subCfg)
+		extra := NewSubscriber(redisClient, gate, onReconnect, subCfg)
 		extra.Start(ctx)
 		rt.subscribers = append(rt.subscribers, extra)
 	}
@@ -88,10 +88,10 @@ func StartIngestSubscribers(
 	return rt
 }
 
-func firstConnectedRedis(rdbs []redis.UniversalClient) redis.UniversalClient {
-	for _, rdb := range rdbs {
-		if rdb != nil {
-			return rdb
+func firstConnectedRedis(redisShards []redis.UniversalClient) redis.UniversalClient {
+	for _, redisClient := range redisShards {
+		if redisClient != nil {
+			return redisClient
 		}
 	}
 	return nil

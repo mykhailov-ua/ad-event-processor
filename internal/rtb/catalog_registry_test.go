@@ -137,13 +137,13 @@ func TestRegistry_saveSnapshot_consistentUnderConcurrentSpend(t *testing.T) {
 	}
 }
 
-func TestRegistry_runAuction_ghostWinnerBudgetNonNegative(t *testing.T) {
+func TestRegistry_runAuction_staleCatalogWinnerBudgetNonNegative(t *testing.T) {
 	store := NewBudgetStore()
 	reg := NewRegistry(store)
 	cid := CampaignID(1)
 	reg.UpdateCampaigns(singleCampaign(cid, 100, 1_000_000))
 
-	var ghostWins atomic.Int64
+	var staleCatalogWins atomic.Int64
 	var totalWins atomic.Int64
 	var wg sync.WaitGroup
 	stop := make(chan struct{})
@@ -162,7 +162,7 @@ func TestRegistry_runAuction_ghostWinnerBudgetNonNegative(t *testing.T) {
 				}
 				totalWins.Add(1)
 				if _, live := catalogIDs(reg)[res.CampaignID]; !live {
-					ghostWins.Add(1)
+					staleCatalogWins.Add(1)
 				}
 			}
 		}
@@ -185,7 +185,7 @@ func TestRegistry_runAuction_ghostWinnerBudgetNonNegative(t *testing.T) {
 	close(stop)
 	wg.Wait()
 
-	t.Logf("ghost wins: %d / %d total", ghostWins.Load(), totalWins.Load())
+	t.Logf("stale catalog wins: %d / %d total", staleCatalogWins.Load(), totalWins.Load())
 	assert.GreaterOrEqual(t, store.GetBudget(cid), int64(0))
 }
 

@@ -15,14 +15,14 @@ const invoiceRetryIdempotencyTTL = 24 * time.Hour
 
 type invoiceDeliveryRetryer struct {
 	ledger *ledger.Service
-	rdbs   []redis.UniversalClient
+	redisShards   []redis.UniversalClient
 }
 
-func newInvoiceDeliveryRetryer(svc *ledger.Service, rdbs []redis.UniversalClient) *invoiceDeliveryRetryer {
+func newInvoiceDeliveryRetryer(svc *ledger.Service, redisShards []redis.UniversalClient) *invoiceDeliveryRetryer {
 	if svc == nil {
 		return nil
 	}
-	return &invoiceDeliveryRetryer{ledger: svc, rdbs: rdbs}
+	return &invoiceDeliveryRetryer{ledger: svc, redisShards: redisShards}
 }
 
 func (r *invoiceDeliveryRetryer) RetryInvoiceDelivery(ctx context.Context, invoice *domain.Invoice, idempotencyKey string) error {
@@ -32,11 +32,11 @@ func (r *invoiceDeliveryRetryer) RetryInvoiceDelivery(ctx context.Context, invoi
 	if invoice == nil {
 		return fmt.Errorf("invoice required")
 	}
-	if idempotencyKey != "" && len(r.rdbs) > 0 {
-		rdb := PickHealthyControlShard(r.rdbs)
-		if rdb != nil {
+	if idempotencyKey != "" && len(r.redisShards) > 0 {
+		redisClient := PickHealthyControlShard(r.redisShards)
+		if redisClient != nil {
 			idemKey := fmt.Sprintf("billing:invoice-retry:%s:%s", invoice.ID, idempotencyKey)
-			ok, err := rdb.SetNX(ctx, idemKey, "1", invoiceRetryIdempotencyTTL).Result()
+			ok, err := redisClient.SetNX(ctx, idemKey, "1", invoiceRetryIdempotencyTTL).Result()
 			if err != nil {
 				return fmt.Errorf("invoice retry idempotency: %w", err)
 			}

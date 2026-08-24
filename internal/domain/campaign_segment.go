@@ -38,7 +38,7 @@ func ConnTypePolicyFromString(s string) ConnTypePolicy {
 	}
 }
 
-func applyCampaignGMAFields(c *Campaign, tlsBlock bool, connPolicy string, linkSign bool, linkTTL int32) {
+func applyCampaignLandingProtectionFields(c *Campaign, tlsBlock bool, connPolicy string, linkSign bool, linkTTL int32) {
 	if c == nil {
 		return
 	}

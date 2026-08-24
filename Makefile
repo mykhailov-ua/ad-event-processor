@@ -40,7 +40,7 @@ test-alloc-gate: gen fmt
 	bash scripts/test/telegram_fuzz_smoke.sh
 	bash scripts/test/cidr_fuzz_smoke.sh
 	bash scripts/test/click_proxy_fuzz_smoke.sh
-	bash scripts/test/gma_fuzz_smoke.sh
+	bash scripts/test/landing_protection_fuzz_smoke.sh
 
 management-domain-coverage:
 	bash scripts/ci/management_domain_coverage.sh
@@ -132,6 +132,7 @@ license-issue:
 
 license-red-team:
 	bash scripts/security/license_red_team.sh
+	bash scripts/test/license_red_team_extended.sh
 
 license-verify:
 	bash scripts/ci/license_verify_tier.sh

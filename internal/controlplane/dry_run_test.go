@@ -22,10 +22,10 @@ func TestDryRun_PauseCampaignNoSideEffects(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -57,7 +57,7 @@ func TestDryRun_PauseCampaignNoSideEffects(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM outbox_events`).Scan(&outboxAfter))
 	assert.Equal(t, outboxBefore, outboxAfter)
 
-	isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", "10.0.0.2").Result()
+	isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", "10.0.0.2").Result()
 	require.NoError(t, err)
 	assert.False(t, isMember)
 }
@@ -69,10 +69,10 @@ func TestDryRun_BlockIPNoSideEffects(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, domain.NewJumpHashSharder(1), nil)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, domain.NewJumpHashSharder(1), nil)
 	defer svc.Close()
 
 	ctx := context.Background()
@@ -90,7 +90,7 @@ func TestDryRun_BlockIPNoSideEffects(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM outbox_events WHERE event_type = 'UPDATE_BLACKLIST'`).Scan(&outboxCount))
 	assert.Equal(t, 0, outboxCount)
 
-	isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", ip).Result()
+	isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", ip).Result()
 	require.NoError(t, err)
 	assert.False(t, isMember)
 }

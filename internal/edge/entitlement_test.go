@@ -15,10 +15,10 @@ func TestEbpfEdgeLicensed_missingKeyFailsOpen(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(mr.Close)
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
-	assert.True(t, EbpfEdgeLicensed(context.Background(), rdb))
+	assert.True(t, EbpfEdgeLicensed(context.Background(), redisClient))
 }
 
 func TestEbpfEdgeLicensed_enabled(t *testing.T) {
@@ -28,10 +28,10 @@ func TestEbpfEdgeLicensed_enabled(t *testing.T) {
 
 	mr.HSet(entitlementDeploymentKey, entitlementEbpfXDPEdge, "1")
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
-	assert.True(t, EbpfEdgeLicensed(context.Background(), rdb))
+	assert.True(t, EbpfEdgeLicensed(context.Background(), redisClient))
 }
 
 func TestEbpfEdgeLicensed_deniedWhenZero(t *testing.T) {
@@ -41,10 +41,10 @@ func TestEbpfEdgeLicensed_deniedWhenZero(t *testing.T) {
 
 	mr.HSet(entitlementDeploymentKey, entitlementEbpfXDPEdge, "0")
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
-	assert.False(t, EbpfEdgeLicensed(context.Background(), rdb))
+	assert.False(t, EbpfEdgeLicensed(context.Background(), redisClient))
 }
 
 func TestEbpfEdgeLicensed_nilClientFailsOpen(t *testing.T) {

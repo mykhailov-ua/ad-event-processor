@@ -26,7 +26,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -34,8 +34,8 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
 
-	authMW, tokenMaker := integrationTestAuth(t, rdb, cfg)
-	svc := NewService(context.Background(), pool, []redis.UniversalClient{rdb}, nil, cfg)
+	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
 	defer svc.Close()
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
@@ -156,7 +156,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		assert.Equal(t, "PAUSED", got.Status)
 	})
 
-	t.Run("PatchCampaign_GMAFields", func(t *testing.T) {
+	t.Run("PatchCampaign_landingProtectionFields", func(t *testing.T) {
 		l1Block := false
 		l15Block := false
 		tlsBlock := false

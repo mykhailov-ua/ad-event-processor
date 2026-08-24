@@ -24,7 +24,7 @@ func insertResidentialIntelCH(ctx context.Context, conn driver.Conn, ip string, 
 	if ip == "" {
 		return ErrInvalidIP
 	}
-	hasher := chPIIHasher()
+	hasher := clickhousePIIHasher()
 	if hasher == nil {
 		return fmt.Errorf("residential intel ch: pii hasher unavailable")
 	}

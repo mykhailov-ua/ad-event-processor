@@ -156,10 +156,10 @@ func TestFault_CPUThrottle_ReplicationCatchesUp(t *testing.T) {
 	requireEventually(t, func() bool {
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
-		_, err := probeCoord.rdb.Get(ctx, leaderKey(topicPartitionKey(topic))).Result()
+		_, err := probeCoord.redisClient.Get(ctx, leaderKey(topicPartitionKey(topic))).Result()
 		return err == nil
 	}, 30*time.Second, 500*time.Millisecond, "redis reachable for leader subprocess")
-	_ = probeCoord.rdb.Close()
+	_ = probeCoord.redisClient.Close()
 
 	time.Sleep(3 * time.Second)
 

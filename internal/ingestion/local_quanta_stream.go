@@ -62,7 +62,7 @@ type localQuantaStreamLane struct {
 type LocalQuantaStreamPublisher struct {
 	stream       string
 	maxLen       int64
-	rdbs         []redis.UniversalClient
+	redisShards         []redis.UniversalClient
 	idemTTL      time.Duration
 	idem         *LocalClickIdemCache
 	writeTimeout time.Duration
@@ -75,7 +75,7 @@ type LocalQuantaStreamPublisher struct {
 }
 
 type LocalQuantaStreamPublisherConfig struct {
-	Rdbs           []redis.UniversalClient
+	RedisShards           []redis.UniversalClient
 	StreamName     string
 	MaxLen         int
 	IdempotencyTTL time.Duration
@@ -91,10 +91,10 @@ func (p *LocalQuantaStreamPublisher) ensureLanes() {
 		if len(p.lanes) > 0 {
 			return
 		}
-		if len(p.rdbs) == 0 {
-			p.rdbs = []redis.UniversalClient{nil}
+		if len(p.redisShards) == 0 {
+			p.redisShards = []redis.UniversalClient{nil}
 		}
-		p.lanes = make([]localQuantaStreamLane, len(p.rdbs))
+		p.lanes = make([]localQuantaStreamLane, len(p.redisShards))
 		for i := range p.lanes {
 			p.lanes[i].slots = make([]localQuantaStreamSlot, localQuantaStreamCapacity)
 		}
@@ -102,7 +102,7 @@ func (p *LocalQuantaStreamPublisher) ensureLanes() {
 }
 
 func NewLocalQuantaStreamPublisher(cfg LocalQuantaStreamPublisherConfig) *LocalQuantaStreamPublisher {
-	if len(cfg.Rdbs) == 0 || cfg.StreamName == "" {
+	if len(cfg.RedisShards) == 0 || cfg.StreamName == "" {
 		return nil
 	}
 	if cfg.IdempotencyTTL <= 0 {
@@ -114,7 +114,7 @@ func NewLocalQuantaStreamPublisher(cfg LocalQuantaStreamPublisherConfig) *LocalQ
 	p := &LocalQuantaStreamPublisher{
 		stream:       cfg.StreamName,
 		maxLen:       int64(cfg.MaxLen),
-		rdbs:         cfg.Rdbs,
+		redisShards:         cfg.RedisShards,
 		idemTTL:      cfg.IdempotencyTTL,
 		idem:         cfg.IdemCache,
 		writeTimeout: cfg.WriteTimeout,
@@ -411,11 +411,11 @@ type streamPipelineItem struct {
 }
 
 func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, shard int, slots []*localQuantaStreamSlot) int {
-	if shard < 0 || shard >= len(p.rdbs) {
+	if shard < 0 || shard >= len(p.redisShards) {
 		return 0
 	}
-	rdb := p.rdbs[shard]
-	if rdb == nil {
+	redisClient := p.redisShards[shard]
+	if redisClient == nil {
 		metrics.LocalQuotaStreamWriteErrorTotal.Add(float64(len(slots)))
 		return 0
 	}
@@ -458,7 +458,7 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 		}
 	}
 	if needIdem {
-		idemPipe := rdb.Pipeline()
+		idemPipe := redisClient.Pipeline()
 		idemCmds := make([]*redis.BoolCmd, len(items))
 		for i := range items {
 			if items[i].hasClick {
@@ -493,7 +493,7 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 	flushed := 0
 
 	if p.stream != "fcap:ignored" && p.stream != "" {
-		xaddPipe := rdb.Pipeline()
+		xaddPipe := redisClient.Pipeline()
 		xaddCmds := make([]*redis.StringCmd, len(accepted))
 		for i, item := range accepted {
 			xaddCmds[i] = xaddPipe.XAdd(ctx, &redis.XAddArgs{
@@ -549,7 +549,7 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 	}
 
 	if len(syncTotals) > 0 || fcapUpdates {
-		syncPipe := rdb.Pipeline()
+		syncPipe := redisClient.Pipeline()
 		for key, amt := range syncTotals {
 			if amt <= 0 {
 				continue

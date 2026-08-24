@@ -44,17 +44,17 @@ func TestStreamConsumer_CircuitBreakerStopsReads(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers Redis)")
 	}
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	failStore := &FailingEventStore{
 		failErr: errors.New("database connection refused"),
 	}
 
-	producer := NewStreamProducer(rdb, "cb-test", 1000, 1*time.Second)
+	producer := NewStreamProducer(redisClient, "cb-test", 1000, 1*time.Second)
 	defer producer.Close()
 	consumer := NewStreamConsumer(
-		failStore, rdb, "cb-test", "cb-group", "cb-c",
+		failStore, redisClient, "cb-test", "cb-group", "cb-c",
 		2, 1,
 		50*time.Millisecond,
 		1*time.Second,

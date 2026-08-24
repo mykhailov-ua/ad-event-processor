@@ -84,21 +84,21 @@ func (c *faultRedisCmdable) Del(ctx context.Context, keys ...string) *redis.IntC
 	return c.UniversalClient.Del(ctx, keys...)
 }
 
-func setupSlotMigrationFault(t *testing.T, rdbs []redis.UniversalClient) (*Service, *pgxpool.Pool, context.Context) {
+func setupSlotMigrationFault(t *testing.T, redisShards []redis.UniversalClient) (*Service, *pgxpool.Pool, context.Context) {
 	t.Helper()
 	pool, cleanupDB := database.SetupTestDB(t)
 	t.Cleanup(cleanupDB)
 	cfg := &config.Config{SlotMigrationEnabled: false}
-	svc := newBareService(t, pool, rdbs, cfg)
+	svc := newBareService(t, pool, redisShards, cfg)
 	return svc, pool, context.Background()
 }
 
-func buildFourRedisShards(base redis.UniversalClient, customize func(rdbs []redis.UniversalClient)) []redis.UniversalClient {
-	rdbs := []redis.UniversalClient{base, base, base, base}
+func buildFourRedisShards(base redis.UniversalClient, customize func(redisShards []redis.UniversalClient)) []redis.UniversalClient {
+	redisShards := []redis.UniversalClient{base, base, base, base}
 	if customize != nil {
-		customize(rdbs)
+		customize(redisShards)
 	}
-	return rdbs
+	return redisShards
 }
 
 func campaignIDForSlot(t *testing.T, slot int16) uuid.UUID {
@@ -113,7 +113,7 @@ func campaignIDForSlot(t *testing.T, slot int16) uuid.UUID {
 	return uuid.Nil
 }
 
-func seedCampaignForSlot(t *testing.T, svc *Service, pool *pgxpool.Pool, ctx context.Context, slot int16, rdb redis.UniversalClient) (uuid.UUID, int16) {
+func seedCampaignForSlot(t *testing.T, svc *Service, pool *pgxpool.Pool, ctx context.Context, slot int16, redisClient redis.UniversalClient) (uuid.UUID, int16) {
 	t.Helper()
 	campID := campaignIDForSlot(t, slot)
 	customerID := uuid.New()
@@ -124,7 +124,7 @@ func seedCampaignForSlot(t *testing.T, svc *Service, pool *pgxpool.Pool, ctx con
 		domain.ToUUID(campID), domain.ToUUID(customerID))
 	require.NoError(t, err)
 	key := domain.BudgetCampaignKey(campID)
-	require.NoError(t, rdb.Set(ctx, key, "777777", 0).Err())
+	require.NoError(t, redisClient.Set(ctx, key, "777777", 0).Err())
 	return campID, slot
 }
 
@@ -143,10 +143,10 @@ func TestFault_SlotMigrationActivateBeforeCopyRejected(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, 7, 2)
@@ -173,15 +173,15 @@ func TestFault_SlotMigrationCopyRedisPartition(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := buildFourRedisShards(rdb, func(rdbs []redis.UniversalClient) {
-		rdbs[3] = &faultRedisCmdable{UniversalClient: rdb, failDump: true}
+	redisShards := buildFourRedisShards(redisClient, func(redisShards []redis.UniversalClient) {
+		redisShards[3] = &faultRedisCmdable{UniversalClient: redisClient, failDump: true}
 	})
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 3
-	_, _ = seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdbs[3])
+	_, _ = seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisShards[3])
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 1)
 
@@ -213,17 +213,17 @@ func TestFault_SlotMigrationCopySlowEventuallySucceeds(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	slow := &faultRedisCmdable{UniversalClient: rdb, delay: 15 * time.Millisecond}
-	rdbs := buildFourRedisShards(rdb, func(rdbs []redis.UniversalClient) {
-		rdbs[0] = slow
-		rdbs[1] = slow
+	slow := &faultRedisCmdable{UniversalClient: redisClient, delay: 15 * time.Millisecond}
+	redisShards := buildFourRedisShards(redisClient, func(redisShards []redis.UniversalClient) {
+		redisShards[0] = slow
+		redisShards[1] = slow
 	})
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 0
-	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdbs[0])
+	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisShards[0])
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 1)
 
@@ -237,7 +237,7 @@ func TestFault_SlotMigrationCopySlowEventuallySucceeds(t *testing.T) {
 	assert.Equal(t, "copied", migrations[0].State)
 
 	key := domain.BudgetCampaignKey(campID)
-	val, err := rdbs[1].Get(ctx, key).Result()
+	val, err := redisShards[1].Get(ctx, key).Result()
 	require.NoError(t, err)
 	assert.Equal(t, "777777", val)
 
@@ -256,13 +256,13 @@ func TestFault_SlotMigrationConcurrentCopySameSlot(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 17
-	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdb)
+	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisClient)
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 3)
 
@@ -286,7 +286,7 @@ func TestFault_SlotMigrationConcurrentCopySameSlot(t *testing.T) {
 	assert.Equal(t, "copied", migrations[0].State)
 
 	key := domain.BudgetCampaignKey(campID)
-	val, err := rdbs[3].Get(ctx, key).Result()
+	val, err := redisShards[3].Get(ctx, key).Result()
 	require.NoError(t, err)
 	assert.Equal(t, "777777", val)
 
@@ -305,13 +305,13 @@ func TestFault_SlotMigrationConcurrentActivate(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 19
-	_, _ = seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdb)
+	_, _ = seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisClient)
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 2)
 	require.NoError(t, svc.CopyAllMigratingSlots(ctx, v))
@@ -360,9 +360,9 @@ func TestFault_SlotMapMetaLockContention(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	svc, _, ctx := setupSlotMigrationFault(t, []redis.UniversalClient{rdb})
+	svc, _, ctx := setupSlotMigrationFault(t, []redis.UniversalClient{redisClient})
 	repo := domain.NewSlotMapRepo(svc.GetPool())
 	active, err := repo.GetActiveVersion(ctx)
 	require.NoError(t, err)
@@ -468,16 +468,16 @@ func TestFault_SlotMigrationCopyIdempotentRetry(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	flaky := &faultRedisCmdable{UniversalClient: rdb}
-	rdbs := buildFourRedisShards(rdb, func(rdbs []redis.UniversalClient) {
-		rdbs[3] = flaky
+	flaky := &faultRedisCmdable{UniversalClient: redisClient}
+	redisShards := buildFourRedisShards(redisClient, func(redisShards []redis.UniversalClient) {
+		redisShards[3] = flaky
 	})
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 3
-	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdbs[3])
+	campID, _ := seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisShards[3])
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 1)
 
@@ -494,11 +494,11 @@ func TestFault_SlotMigrationCopyIdempotentRetry(t *testing.T) {
 	assert.Equal(t, "copied", migrations[0].State)
 
 	key := domain.BudgetCampaignKey(campID)
-	val, err := rdbs[1].Get(ctx, key).Result()
+	val, err := redisShards[1].Get(ctx, key).Result()
 	require.NoError(t, err)
 	assert.Equal(t, "777777", val)
 
-	domain.AssertBudgetInvariant(t, ctx, svc.GetPool(), rdbs[1], campID)
+	domain.AssertBudgetInvariant(t, ctx, svc.GetPool(), redisShards[1], campID)
 
 	faultproof.Log(t, "slot_migration_copy_retry_recovery", map[string]string{
 		"subsystem":   "slot_migration",
@@ -515,13 +515,13 @@ func TestFault_SlotMigrationRollbackAfterActivate(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := []redis.UniversalClient{rdb, rdb, rdb, rdb}
-	svc, _, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := []redis.UniversalClient{redisClient, redisClient, redisClient, redisClient}
+	svc, _, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 29
-	_, _ = seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, rdb)
+	_, _ = seedCampaignForSlot(t, svc, svc.GetPool(), ctx, slot, redisClient)
 	mapRepo := domain.NewSlotMapRepo(svc.GetPool())
 	prevActive, err := mapRepo.GetActiveVersion(ctx)
 	require.NoError(t, err)
@@ -555,17 +555,17 @@ func TestFault_DebitFencedDuringSlotCopy(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{MigrationFenceEnabled: true}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb, rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient, redisClient}, cfg)
 
 	const slot int16 = 5
-	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, rdb)
-	require.NoError(t, domain.BumpMigrationFences(ctx, pool, rdb, []uuid.UUID{campID}))
+	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, redisClient)
+	require.NoError(t, domain.BumpMigrationFences(ctx, pool, redisClient, []uuid.UUID{campID}))
 
-	f := testutil.NewLuaUnifiedFilter(rdb, nil)
+	f := testutil.NewLuaUnifiedFilter(redisClient, nil)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	evt := &domain.Event{
@@ -581,7 +581,7 @@ func TestFault_DebitFencedDuringSlotCopy(t *testing.T) {
 	require.ErrorIs(t, err, domain.ErrMigrationFenced)
 
 	key := domain.BudgetCampaignKey(campID)
-	remaining, err := rdb.Get(ctx, key).Int64()
+	remaining, err := redisClient.Get(ctx, key).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(777777), remaining)
 
@@ -599,26 +599,26 @@ func TestFault_SlotMigrationPGRewarmCutover(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := buildFourRedisShards(rdb, nil)
+	redisShards := buildFourRedisShards(redisClient, nil)
 	cfg := &config.Config{SlotMigrationEnabled: false, MigrationFenceEnabled: true}
-	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
+	svc, pool, ctx := setupSlotMigrationFault(t, redisShards)
 	svc.cfg = cfg
 
 	const slot int16 = 8
-	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, rdbs[0])
+	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, redisShards[0])
 	mapRepo := domain.NewSlotMapRepo(pool)
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 2)
 
 	require.NoError(t, svc.CopyAllMigratingSlots(ctx, v))
 	require.NoError(t, svc.ActivateSlotMapVersion(ctx, uuid.Nil, v))
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdbs[2], campID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisShards[2], campID)
 	require.NoError(t, svc.VerifySlotMigrationR5(ctx))
 
 	key := domain.BudgetCampaignKey(campID)
-	val, err := rdbs[2].Get(ctx, key).Int64()
+	val, err := redisShards[2].Get(ctx, key).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(777777), val)
 
@@ -636,10 +636,10 @@ func TestFault_SlotMigrationDualWriteCutover(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := buildFourRedisShards(rdb, nil)
-	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := buildFourRedisShards(redisClient, nil)
+	svc, pool, ctx := setupSlotMigrationFault(t, redisShards)
 	svc.cfg = &config.Config{
 		SlotMigrationEnabled:          false,
 		MigrationFenceEnabled:         true,
@@ -649,12 +649,12 @@ func TestFault_SlotMigrationDualWriteCutover(t *testing.T) {
 	}
 
 	const slot int16 = 8
-	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, rdbs[0])
+	campID, _ := seedCampaignForSlot(t, svc, pool, ctx, slot, redisShards[0])
 	mapRepo := domain.NewSlotMapRepo(pool)
 	v := prepareMigratingVersion(t, ctx, mapRepo, slot, 2)
 
 	require.NoError(t, svc.CopyAllMigratingSlots(ctx, v))
-	require.NoError(t, domain.PublishSlotMigrationDeltaTestHelper(ctx, rdbs[0], domain.SlotMigrationDelta{
+	require.NoError(t, domain.PublishSlotMigrationDeltaTestHelper(ctx, redisShards[0], domain.SlotMigrationDelta{
 		CampaignID: campID,
 		Amount:     250,
 		SpendKey:   domain.BudgetCampaignKey(campID),
@@ -662,7 +662,7 @@ func TestFault_SlotMigrationDualWriteCutover(t *testing.T) {
 	require.NoError(t, svc.CatchUpDualWriteSlots(ctx, v))
 	require.NoError(t, svc.ActivateSlotMapVersion(ctx, uuid.Nil, v))
 
-	domain.AssertBudgetInvariant(t, ctx, pool, rdbs[2], campID)
+	domain.AssertBudgetInvariant(t, ctx, pool, redisShards[2], campID)
 	require.NoError(t, svc.VerifySlotMigrationR5(ctx))
 
 	faultproof.Log(t, "slot_migration_dual_write", map[string]string{
@@ -679,10 +679,10 @@ func TestFault_SlotMigrationPGRewarmColdStart(t *testing.T) {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
 
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
-	rdbs := buildFourRedisShards(rdb, nil)
-	svc, pool, ctx := setupSlotMigrationFault(t, rdbs)
+	redisShards := buildFourRedisShards(redisClient, nil)
+	svc, pool, ctx := setupSlotMigrationFault(t, redisShards)
 
 	const slot int16 = 11
 	campID := campaignIDForSlot(t, slot)
@@ -700,7 +700,7 @@ func TestFault_SlotMigrationPGRewarmColdStart(t *testing.T) {
 	require.NoError(t, svc.ActivateSlotMapVersion(ctx, uuid.Nil, v))
 
 	key := domain.BudgetCampaignKey(campID)
-	val, err := rdbs[1].Get(ctx, key).Int64()
+	val, err := redisShards[1].Get(ctx, key).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(400000), val)
 

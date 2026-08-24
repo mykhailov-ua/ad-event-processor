@@ -606,7 +606,7 @@ func readRedisEpoch(t *testing.T, coord *Coordinator, topic string) uint64 {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	val, err := coord.rdb.Get(ctx, leaderEpochKey(topicPartitionKey(topic))).Result()
+	val, err := coord.redisClient.Get(ctx, leaderEpochKey(topicPartitionKey(topic))).Result()
 	if err != nil {
 		return 0
 	}

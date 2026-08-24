@@ -36,6 +36,9 @@ func TestProcessTrack_rejected(t *testing.T) {
 }
 
 func TestProcessTrack_fraudAccepted(t *testing.T) {
+	configureMockRegistryCampaign(func(c *domain.Campaign) {
+		c.SilentRejectEnabled = true
+	})
 	evt := domain.EventPool.Get().(*domain.Event)
 	defer domain.EventPool.Put(evt)
 	evt.CampaignID = uuid.New()
@@ -43,6 +46,26 @@ func TestProcessTrack_fraudAccepted(t *testing.T) {
 	out := processTrack(context.Background(), newTrackProcessor(NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), &mockRegistry{}, nil), evt, nil)
 	if out.Status != trackStatusFraudAccepted || out.RejectKind != filterRejectFraud {
 		t.Fatalf("outcome=%+v", out)
+	}
+	if !evt.SilentRejectEvent {
+		t.Fatal("expected silent_reject_event on silent reject fraud accept")
+	}
+}
+
+func TestProcessTrack_fraudHardReject_holdoutSilentRejectFlag(t *testing.T) {
+	configureMockRegistryCampaign(func(c *domain.Campaign) {
+		c.SilentRejectEnabled = false
+	})
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.CampaignID = uuid.New()
+
+	out := processTrack(context.Background(), newTrackProcessor(NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), &mockRegistry{}, nil), evt, nil)
+	if out.Status != trackStatusRejected || out.RejectKind != filterRejectFraudBlocked {
+		t.Fatalf("outcome=%+v", out)
+	}
+	if filterRejectSpecs[out.RejectKind].status != http.StatusForbidden {
+		t.Fatal("expected 403 spec")
 	}
 }
 

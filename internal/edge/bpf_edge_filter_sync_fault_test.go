@@ -24,7 +24,7 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	rdb, cleanup := database.SetupTestRedis(t)
+	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()
 
 	objs := loadTestObjects(t)
@@ -54,7 +54,7 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 					return
 				default:
 				}
-				_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
+				_, _, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 				if err != nil {
 					t.Errorf("scheduled sync worker %d: %v", id, err)
 					return
@@ -64,9 +64,9 @@ func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 		}(i)
 	}
 
-	require.NoError(t, RecordAutoBan(ctx, rdb, victim.String(), 5*time.Minute))
+	require.NoError(t, RecordAutoBan(ctx, redisClient, victim.String(), 5*time.Minute))
 	earlyStart := time.Now()
-	_, _, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
+	_, _, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 	require.NoError(t, err)
 	earlyLatency := time.Since(earlyStart)
 	earlyDone <- earlyLatency

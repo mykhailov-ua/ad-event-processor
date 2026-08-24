@@ -202,15 +202,15 @@ func hasIPPrefix(ip, prefix string) bool {
 	return false
 }
 
-func NewAnalyzerRegistry(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer Scorer, fraudScoringBatchSize int, rdb redis.Cmdable) *RuleRegistry {
+func NewAnalyzerRegistry(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer Scorer, fraudScoringBatchSize int, redisClient redis.Cmdable) *RuleRegistry {
 	analyzer := NewAnalyzer(q, cfg)
 	reg := NewRuleRegistry()
 	reg.Register(&highCTRRule{analyzer: analyzer})
 	reg.Register(&fingerprintRule{analyzer: analyzer})
 	reg.Register(&campaignCTRSpikeRule{q: q, cfg: cfg})
 	reg.Register(&intervalBotnetRule{q: q, cfg: cfg})
-	if rdb != nil {
-		reg.Register(&tcpEdgeCorrelationRule{q: q, rdb: rdb, cfg: cfg})
+	if redisClient != nil {
+		reg.Register(&tcpEdgeCorrelationRule{q: q, redisClient: redisClient, cfg: cfg})
 	}
 	if asn != nil {
 		reg.Register(&datacenterASNRule{q: q, cfg: cfg, asn: asn})

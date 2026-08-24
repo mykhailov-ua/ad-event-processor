@@ -39,7 +39,7 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	installRoot := t.TempDir()
@@ -47,11 +47,11 @@ func TestManagementAPI_PlatformSettingsCycle(t *testing.T) {
 		AdminAPIKey:           "test-secret",
 		InstallBootstrapToken: "install-token",
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	authStub := &platformAuthStub{}
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
 	mux := http.NewServeMux()
-	registry := h.BuildAdminAPIRegistry(pool, []redis.UniversalClient{rdb})
+	registry := h.BuildAdminAPIRegistry(pool, []redis.UniversalClient{redisClient})
 	registry.PlatformHTTP.AuthClient = authStub
 	registry.PlatformHTTP.Cfg = cfg
 	RegisterRoutes(mux, registry)

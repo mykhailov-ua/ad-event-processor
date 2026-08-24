@@ -25,7 +25,7 @@ type mockShardMetricsProvider struct {
 	metrics map[int16]ShardMetrics
 }
 
-func (p *mockShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16, rdb redis.UniversalClient) (ShardMetrics, error) {
+func (p *mockShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16, redisClient redis.UniversalClient) (ShardMetrics, error) {
 	m, ok := p.metrics[shardID]
 	if !ok {
 		return ShardMetrics{ShardID: shardID}, nil

@@ -23,11 +23,11 @@ func TestMLBlacklistBatch_noNestedUpdateBlacklistOutbox(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, &config.Config{})
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, &config.Config{})
 	worker := NewOutboxWorker(svc)
 
 	campaignID := uuid.New()
@@ -54,7 +54,7 @@ func TestMLBlacklistBatch_noNestedUpdateBlacklistOutbox(t *testing.T) {
 		require.NoError(t, pool.QueryRow(ctx, `
 			SELECT EXISTS(SELECT 1 FROM ip_blacklist WHERE ip = $1)`, ip).Scan(&exists))
 		require.True(t, exists, "ip %s", ip)
-		isMember, err := rdb.SIsMember(ctx, "blacklist:fraud", ip).Result()
+		isMember, err := redisClient.SIsMember(ctx, "blacklist:fraud", ip).Result()
 		require.NoError(t, err)
 		require.True(t, isMember, "redis ip %s", ip)
 	}
@@ -67,11 +67,11 @@ func TestMLBlacklistBatch_replayIdempotentRedis(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, &config.Config{})
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, &config.Config{})
 	worker := NewOutboxWorker(svc)
 
 	ip := "203.0.113.44"
@@ -93,7 +93,7 @@ func TestMLBlacklistBatch_replayIdempotentRedis(t *testing.T) {
 	_, err = worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
 
-	card1, err := rdb.SCard(ctx, "blacklist:fraud").Result()
+	card1, err := redisClient.SCard(ctx, "blacklist:fraud").Result()
 	require.NoError(t, err)
 	require.Equal(t, 1, int(card1))
 
@@ -104,7 +104,7 @@ func TestMLBlacklistBatch_replayIdempotentRedis(t *testing.T) {
 	_, err = worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
 
-	card2, err := rdb.SCard(ctx, "blacklist:fraud").Result()
+	card2, err := redisClient.SCard(ctx, "blacklist:fraud").Result()
 	require.NoError(t, err)
 	require.Equal(t, card1, card2, "replay must not grow blacklist:fraud set")
 }
@@ -150,8 +150,8 @@ func TestFault_MLBlacklistBatchPropagation(t *testing.T) {
 
 	for i := range 10 {
 		ip := fmtIP(i + 20)
-		for j, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-			ok, getErr := rdb.SIsMember(ctx, "blacklist:fraud", ip).Result()
+		for j, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+			ok, getErr := redisClient.SIsMember(ctx, "blacklist:fraud", ip).Result()
 			require.NoError(t, getErr, "shard %d", j)
 			require.True(t, ok, "shard %d ip %s", j, ip)
 		}

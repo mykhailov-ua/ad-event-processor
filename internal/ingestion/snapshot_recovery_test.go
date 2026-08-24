@@ -150,7 +150,7 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 	staticCampaign.DailyBudgetMicroAny = int64(50_000_000)
 	staticCampaign.Location = time.UTC
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 	ctx := context.Background()
 
@@ -164,11 +164,11 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 	ch := &MockClickHouseDB{}
 
 	budgetSourceKey := "budget:campaign:" + campID.String()
-	_ = rdb.Set(ctx, budgetSourceKey, int64(50_000_000), 24*time.Hour).Err()
+	_ = redisClient.Set(ctx, budgetSourceKey, int64(50_000_000), 24*time.Hour).Err()
 
 	sharder := NewJumpHashSharder(1)
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		sharder,
 		reg,
 		nil,
@@ -182,7 +182,7 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 		100000,
 	)
 
-	replicator := NewSnapshotReplicator(pg, ch, []redis.UniversalClient{rdb}, sharder, 10_000, 1_000)
+	replicator := NewSnapshotReplicator(pg, ch, []redis.UniversalClient{redisClient}, sharder, 10_000, 1_000)
 
 	const concurrency = 20
 	const iterations = 500
@@ -262,7 +262,7 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 	assert.NoError(t, err)
 	expectedFinalSpend := totalActualSpend[campID]
 
-	_ = rdb.Del(ctx, budgetSourceKey).Err()
+	_ = redisClient.Del(ctx, budgetSourceKey).Err()
 
 	pg.spends[campID] = 0
 	for k := range pg.idempotency {
@@ -275,7 +275,7 @@ func TestSnapshotRecovery_DisasterStressReplay(t *testing.T) {
 
 	assert.Equal(t, checkpointSpend, pg.spends[campID])
 
-	redisBudget, err := rdb.Get(ctx, budgetSourceKey).Int64()
+	redisBudget, err := redisClient.Get(ctx, budgetSourceKey).Int64()
 	assert.NoError(t, err)
 	assert.Equal(t, 50_000_000-checkpointSpend, redisBudget)
 

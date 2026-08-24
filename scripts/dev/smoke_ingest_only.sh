@@ -15,6 +15,6 @@ export REDIS_PASSWORD="${REDIS_PASSWORD:-smoke}"
 
 docker compose --profile ingest_only config > /dev/null
 bash "$SCRIPTS/ci/compose_profile_check.sh"
-go run ./cmd/ad-event-processor doctor --profile ingest_only
+go run ./cmd/operator doctor --profile ingest_only
 
 echo "smoke_ingest_only: ok"

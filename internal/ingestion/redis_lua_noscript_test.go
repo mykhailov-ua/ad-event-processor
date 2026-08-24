@@ -19,8 +19,8 @@ func TestRedisLua_NOSCRIPT_FallbackAndPreload(t *testing.T) {
 	require.NoError(t, err)
 	defer mr.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	defer func() { _ = rdb.Close() }()
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer func() { _ = redisClient.Close() }()
 
 	campID := uuid.New()
 	custID := uuid.New()
@@ -40,7 +40,7 @@ func TestRedisLua_NOSCRIPT_FallbackAndPreload(t *testing.T) {
 	reg := benchRegistryForCampaign(camp)
 
 	filter := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		reg,
 		nil,
@@ -81,8 +81,8 @@ func TestRedisLua_ReconnectPreloadSingleShard(t *testing.T) {
 	require.NoError(t, err)
 	defer mr.Close()
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	defer func() { _ = rdb.Close() }()
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	defer func() { _ = redisClient.Close() }()
 
 	campID := uuid.New()
 	custID := uuid.New()
@@ -101,7 +101,7 @@ func TestRedisLua_ReconnectPreloadSingleShard(t *testing.T) {
 	reg := benchRegistryForCampaign(camp)
 
 	filter := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		reg,
 		nil,
@@ -118,8 +118,8 @@ func TestRedisLua_ReconnectPreloadSingleShard(t *testing.T) {
 
 	ctx := context.Background()
 	require.NoError(t, filter.PreloadScripts(ctx))
-	require.NoError(t, rdb.ScriptFlush(ctx).Err())
-	require.NoError(t, filter.preloadScriptsShard(ctx, 0, rdb))
+	require.NoError(t, redisClient.ScriptFlush(ctx).Err())
+	require.NoError(t, filter.preloadScriptsShard(ctx, 0, redisClient))
 
 	evt := &domain.Event{
 		CampaignID: campID,

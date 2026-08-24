@@ -26,7 +26,7 @@ func TestFault_QuotaDriftRepair(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -49,7 +49,7 @@ func TestFault_QuotaDriftRepair(t *testing.T) {
 		QuotaChunkSize:  quotaFaultChunkMicro,
 		QuotaAutoRepair: true,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	worker := NewReconWorker(svc, time.Hour)
 
 	start := time.Now()
@@ -63,7 +63,7 @@ func TestFault_QuotaDriftRepair(t *testing.T) {
 	ob := NewOutboxWorker(svc)
 	require.NoError(t, ob.ProcessOutbox(ctx))
 
-	redisQuota, err := rdb.Get(ctx, "budget:quota:"+campaignID.String()).Int64()
+	redisQuota, err := redisClient.Get(ctx, "budget:quota:"+campaignID.String()).Int64()
 	require.NoError(t, err)
 	require.Equal(t, reserved, redisQuota)
 

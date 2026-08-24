@@ -92,11 +92,11 @@ func BenchmarkUnifiedFilter_Check_FastPath_RealRedis(b *testing.B) {
 		b.Skip()
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(b)
+	redisClient, cleanup := setupTestRedis(b)
 	defer cleanup()
 
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		&mockRegistry{},
 		nil,
@@ -116,7 +116,7 @@ func BenchmarkUnifiedFilter_Check_FastPath_RealRedis(b *testing.B) {
 		b.Fatal(err)
 	}
 	campID := uuid.New()
-	seedCampaignBudget(b, ctx, rdb, campID)
+	seedCampaignBudget(b, ctx, redisClient, campID)
 
 	evt := &domain.Event{
 		Type:       "impression",

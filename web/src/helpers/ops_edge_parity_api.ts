@@ -12,7 +12,7 @@ export type EdgeParityReport = {
   shard_mismatch_hint?: string;
 };
 
-/** Load edge ingress vs tracker event parity for the default 15-minute window. */
+
 export async function fetchEdgeParityReport(): Promise<EdgeParityReport | null> {
   const res = await api<EdgeParityReport>('/api/v1/reports/edge-parity');
   return res.data ?? null;

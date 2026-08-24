@@ -1,6 +1,5 @@
 package ingestion
 
-// Residential proxy farm thresholds; mirrors model/scoring_policy.py and internal/fraud/scoring_policy.go.
 
 type residentialProxyPolicy struct {
 	ProxyMinEvents             float64

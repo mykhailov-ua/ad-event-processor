@@ -156,7 +156,7 @@ func countDistinctHashes(slots []atomic.Uint32) int {
 	return n
 }
 
-// SeedForTest injects aggregate counters for unit tests.
+
 func (r *ResidentialProxyRing) SeedForTest(campaignID uuid.UUID, row residentialProxyRow) {
 	if r == nil {
 		return

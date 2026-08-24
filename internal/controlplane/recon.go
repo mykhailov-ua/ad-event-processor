@@ -128,13 +128,13 @@ func (worker *OutboxWorker) applyReconciliationAdjustRedis(
 	if p.RedisDelta == 0 {
 		return nil
 	}
-	if int(p.ShardID) >= len(worker.svc.rdbs) {
+	if int(p.ShardID) >= len(worker.svc.redisShards) {
 		return fmt.Errorf("invalid shard_id %d", p.ShardID)
 	}
-	rdb := worker.svc.rdbs[p.ShardID]
+	redisClient := worker.svc.redisShards[p.ShardID]
 	recon := NewReconService(worker.svc)
 
-	applied, err := recon.reconciliationRedisAdjustApplied(ctx, rdb, eventID, p, campID)
+	applied, err := recon.reconciliationRedisAdjustApplied(ctx, redisClient, eventID, p, campID)
 	if err != nil {
 		return err
 	}
@@ -142,15 +142,15 @@ func (worker *OutboxWorker) applyReconciliationAdjustRedis(
 		return nil
 	}
 
-	if err := recon.adjustRedisBudgetAtomically(ctx, rdb, campID, p.RedisDelta); err != nil {
+	if err := recon.adjustRedisBudgetAtomically(ctx, redisClient, campID, p.RedisDelta); err != nil {
 		return err
 	}
-	return recon.markReconciliationRedisAdjusted(ctx, rdb, eventID, p, campID)
+	return recon.markReconciliationRedisAdjusted(ctx, redisClient, eventID, p, campID)
 }
 
 func (reconService *ReconService) reconciliationRedisAdjustApplied(
 	ctx context.Context,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	eventID int64,
 	p ReconciliationAdjustPayload,
 	campID uuid.UUID,
@@ -170,7 +170,7 @@ func (reconService *ReconService) reconciliationRedisAdjustApplied(
 		}
 		return adjusted, nil
 	}
-	n, err := rdb.Exists(ctx, reconciliationRedisAppliedKey(eventID)).Result()
+	n, err := redisClient.Exists(ctx, reconciliationRedisAppliedKey(eventID)).Result()
 	if err != nil {
 		return false, err
 	}
@@ -179,7 +179,7 @@ func (reconService *ReconService) reconciliationRedisAdjustApplied(
 
 func (reconService *ReconService) markReconciliationRedisAdjusted(
 	ctx context.Context,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	eventID int64,
 	p ReconciliationAdjustPayload,
 	campID uuid.UUID,
@@ -193,7 +193,7 @@ func (reconService *ReconService) markReconciliationRedisAdjusted(
 		)
 		return err
 	}
-	return rdb.Set(ctx, reconciliationRedisAppliedKey(eventID), "1", 7*24*time.Hour).Err()
+	return redisClient.Set(ctx, reconciliationRedisAppliedKey(eventID), "1", 7*24*time.Hour).Err()
 }
 
 func pgUUID(id uuid.UUID) pgtype.UUID {
@@ -253,14 +253,14 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 	for campID, entry := range ledgerMap {
 		ledgerSpent := entry.spent
 		syncKey := domain.CampaignSyncKey(campID)
-		rdb := reconService.svc.getRDB(campID)
-		if rdb == nil {
+		redisClient := reconService.svc.getRDB(campID)
+		if redisClient == nil {
 			slog.Error("no redis shard for campaign in recon", "campaign_id", campID)
 			metrics.ReconAdjustmentErrors.Inc()
 			continue
 		}
 
-		syncVal, err := rdb.Get(opCtx, syncKey).Int64()
+		syncVal, err := redisClient.Get(opCtx, syncKey).Int64()
 		if err != nil && !errors.Is(err, redis.Nil) {
 			slog.Error("failed to fetch campaign sync budget from Redis in recon", "campaign_id", campID, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -395,7 +395,7 @@ func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.
 	}
 }
 
-func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID, delta int64) error {
+func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID, delta int64) error {
 	script := `
 		local key = KEYS[1]
 		local delta = tonumber(ARGV[1])
@@ -406,7 +406,7 @@ func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Contex
 		end
 		return newVal
 	`
-	_, err := rdb.Eval(ctx, script, []string{domain.CampaignSyncKey(campID)}, delta).Result()
+	_, err := redisClient.Eval(ctx, script, []string{domain.CampaignSyncKey(campID)}, delta).Result()
 	return err
 }
 
@@ -505,15 +505,15 @@ func (w *ReconWorker) auditRedisPGLedger(ctx context.Context, pool *pgxpool.Pool
 	byShard := make(map[int][]hyg30AuditRow)
 	for _, row := range auditRows {
 		shard := w.svc.sharder.GetShard(row.campID)
-		if shard < 0 || shard >= len(w.svc.rdbs) || w.svc.rdbs[shard] == nil {
+		if shard < 0 || shard >= len(w.svc.redisShards) || w.svc.redisShards[shard] == nil {
 			continue
 		}
 		byShard[shard] = append(byShard[shard], row)
 	}
 
 	for shard, shardRows := range byShard {
-		rdb := w.svc.rdbs[shard]
-		pipe := rdb.Pipeline()
+		redisClient := w.svc.redisShards[shard]
+		pipe := redisClient.Pipeline()
 		syncCmds := make(map[uuid.UUID]*redis.StringCmd, len(shardRows))
 		for _, row := range shardRows {
 			syncCmds[row.campID] = pipe.Get(ctx, domain.CampaignSyncKey(row.campID))
@@ -735,12 +735,12 @@ func (s *Service) forceRefillCampaignFromPG(ctx context.Context, campaignID uuid
 	if remaining < 0 {
 		remaining = 0
 	}
-	rdb := s.getRDB(campaignID)
-	if rdb == nil {
+	redisClient := s.getRDB(campaignID)
+	if redisClient == nil {
 		return errors.New("no redis shard")
 	}
 	key := domain.BudgetCampaignKey(campaignID)
-	return rdb.Set(ctx, key, remaining, 24*time.Hour).Err()
+	return redisClient.Set(ctx, key, remaining, 24*time.Hour).Err()
 }
 
 func (s *Service) settlePool() *pgxpool.Pool {
@@ -812,13 +812,13 @@ func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 		if w.quorum != nil && w.quorum.DeadShardConfirmed(shardIdx) {
 			continue
 		}
-		if shardIdx < 0 || shardIdx >= len(w.svc.rdbs) || w.svc.rdbs[shardIdx] == nil {
+		if shardIdx < 0 || shardIdx >= len(w.svc.redisShards) || w.svc.redisShards[shardIdx] == nil {
 			continue
 		}
 		byShard[shardIdx] = append(byShard[shardIdx], campID)
 	}
 	for shardIdx, ids := range byShard {
-		snaps, err := domain.BatchFetchBudgetReconSnapshots(ctx, w.svc.rdbs[shardIdx], ids, quotaMode)
+		snaps, err := domain.BatchFetchBudgetReconSnapshots(ctx, w.svc.redisShards[shardIdx], ids, quotaMode)
 		if err != nil {
 			slog.Error("budget snapshot recon: batch redis snapshot failed", "shard", shardIdx, "error", err)
 			continue
@@ -857,13 +857,13 @@ func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 
 func (w *ReconWorker) collectDirtyCampaignIDs(ctx context.Context) ([]uuid.UUID, error) {
 	seen := make(map[uuid.UUID]struct{})
-	for shardIdx, rdb := range w.svc.rdbs {
+	for shardIdx, redisClient := range w.svc.redisShards {
 		if w.quorum != nil && w.quorum.DeadShardConfirmed(shardIdx) {
 			continue
 		}
 		var cursor uint64
 		for {
-			keys, next, err := rdb.SScan(ctx, "budget:dirty_campaigns", cursor, "", 200).Result()
+			keys, next, err := redisClient.SScan(ctx, "budget:dirty_campaigns", cursor, "", 200).Result()
 			if err != nil {
 				return nil, err
 			}
@@ -899,7 +899,7 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 	if w.quorum != nil && w.quorum.DeadShardConfirmed(shardIdx) {
 		return false, false, true
 	}
-	if shardIdx >= len(w.svc.rdbs) {
+	if shardIdx >= len(w.svc.redisShards) {
 		return false, false, true
 	}
 	if !pgOk {

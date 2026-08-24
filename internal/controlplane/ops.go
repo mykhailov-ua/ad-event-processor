@@ -58,14 +58,14 @@ var defaultProcessorPeerOrder = []string{"processor", "processor-1"}
 
 var defaultTrackerPeerOrder = []string{"tracker-1", "tracker-2", "tracker-3", "tracker-4"}
 
-func RegisterOpsRoutes(ctx context.Context, mux *http.ServeMux, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) {
+func RegisterOpsRoutes(ctx context.Context, mux *http.ServeMux, pool *pgxpool.Pool, redisShards []redis.UniversalClient, cfg *config.Config) {
 	live := &lifecycle.Liveness{}
 	ready := &lifecycle.ReadinessProbe{}
 	ready.StartBackground(ctx, 2*time.Second, func(ctx context.Context) bool {
 		if err := pool.Ping(ctx); err != nil {
 			return false
 		}
-		if !pingConnectedRedisShards(ctx, rdbs) {
+		if !pingConnectedRedisShards(ctx, redisShards) {
 			return false
 		}
 		return licenseIngestReady()

@@ -67,7 +67,7 @@ func WriteBundle(ctx context.Context, opts BundleOptions) error {
 			return err
 		}
 	}
-	readme := []byte("Redacted operator bundle from ad-event-processor doctor. Full pprof/log redaction ships in GAP-SUP-01.\n")
+	readme := []byte("Redacted operator bundle from operator doctor. Full pprof/log redaction is a separate doctor bundle task.\n")
 	return writeTarBytes(tw, "README.txt", readme)
 }
 

@@ -17,14 +17,14 @@ var (
 )
 
 type SegmentFilter struct {
-	rdbs     []redis.UniversalClient
+	redisShards     []redis.UniversalClient
 	registry domain.CampaignRegistry
 	hasher   *piihash.Hasher
 }
 
-func NewSegmentFilter(rdbs []redis.UniversalClient, registry domain.CampaignRegistry, hasher *piihash.Hasher) *SegmentFilter {
+func NewSegmentFilter(redisShards []redis.UniversalClient, registry domain.CampaignRegistry, hasher *piihash.Hasher) *SegmentFilter {
 	return &SegmentFilter{
-		rdbs:     rdbs,
+		redisShards:     redisShards,
 		registry: registry,
 		hasher:   hasher,
 	}
@@ -49,7 +49,7 @@ func (f *SegmentFilter) Check(ctx context.Context, evt *domain.Event) error {
 		return nil
 	}
 	if camp.SegmentExcludeID != uuid.Nil {
-		member, err := segmentMemberExists(ctx, f.rdbs, camp.SegmentExcludeID, userHash)
+		member, err := segmentMemberExists(ctx, f.redisShards, camp.SegmentExcludeID, userHash)
 		if err != nil {
 			return nil
 		}
@@ -58,7 +58,7 @@ func (f *SegmentFilter) Check(ctx context.Context, evt *domain.Event) error {
 		}
 	}
 	if camp.SegmentIncludeID != uuid.Nil {
-		member, err := segmentMemberExists(ctx, f.rdbs, camp.SegmentIncludeID, userHash)
+		member, err := segmentMemberExists(ctx, f.redisShards, camp.SegmentIncludeID, userHash)
 		if err != nil {
 			return nil
 		}

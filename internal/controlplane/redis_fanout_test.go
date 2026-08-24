@@ -20,29 +20,29 @@ import (
 )
 
 func TestFanout_SetNXOnAllShards_failsOnShardError(t *testing.T) {
-	rdbs := make([]redis.UniversalClient, 3)
+	redisShards := make([]redis.UniversalClient, 3)
 	for i := 0; i < 3; i++ {
 		mr, err := miniredis.Run()
 		require.NoError(t, err)
 		t.Cleanup(mr.Close)
-		rdbs[i] = redis.NewClient(&redis.Options{Addr: mr.Addr()})
-		t.Cleanup(func() { _ = rdbs[i].Close() })
+		redisShards[i] = redis.NewClient(&redis.Options{Addr: mr.Addr()})
+		t.Cleanup(func() { _ = redisShards[i].Close() })
 	}
-	require.NoError(t, rdbs[1].Close())
+	require.NoError(t, redisShards[1].Close())
 
 	before := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
-	_, err := setNXOnAllShards(context.Background(), rdbs, "fanout:strict:nx", "1", time.Minute)
+	_, err := setNXOnAllShards(context.Background(), redisShards, "fanout:strict:nx", "1", time.Minute)
 	require.Error(t, err)
 	after := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
 	assert.Equal(t, before+1, after)
 }
 
 func TestShard0Nil_SetNXOnAllShardsIncrementsPartialMetric(t *testing.T) {
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 	before := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
 
-	_, err := setNXOnAllShards(ctx, rdbs, "metric:nx", "1", time.Minute)
+	_, err := setNXOnAllShards(ctx, redisShards, "metric:nx", "1", time.Minute)
 	require.Error(t, err)
 	after := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
 	assert.Equal(t, before+1, after)
@@ -57,7 +57,7 @@ func TestDedupFault_regionRelayBlocksOnIncompleteFanout(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdbs := rdbsWithNilShard0(t, 4)
+	redisShards := rdbsWithNilShard0(t, 4)
 
 	_, err := pool.Exec(ctx, `
 		INSERT INTO regions (code, name, active) VALUES (1, 'us-east', TRUE)
@@ -88,7 +88,7 @@ func TestDedupFault_regionRelayBlocksOnIncompleteFanout(t *testing.T) {
 	require.NoError(t, err)
 
 	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 1}
-	svc := newBareService(t, pool, rdbs, cfg)
+	svc := newBareService(t, pool, redisShards, cfg)
 	relay := NewRegionOutboxRelay(svc)
 
 	_, err = relay.ProcessPendingWithCount(ctx, 10)
@@ -108,6 +108,6 @@ func TestDedupFault_regionRelayBlocksOnIncompleteFanout(t *testing.T) {
 	assert.Equal(t, 0, idemCount)
 
 	budgetKey := "budget:campaign:" + campaignID.String()
-	_, budgetErr := rdbs[1].Get(ctx, budgetKey).Result()
+	_, budgetErr := redisShards[1].Get(ctx, budgetKey).Result()
 	require.Error(t, budgetErr, "CREATE_CAMPAIGN side effects must not run when dedup fanout incomplete")
 }

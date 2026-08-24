@@ -65,7 +65,7 @@ func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
 
 type AuthMiddleware struct {
 	tokenMaker    identity.Maker
-	rdb           redis.UniversalClient
+	redisClient           redis.UniversalClient
 	controlRdbs   []redis.UniversalClient
 	cfg           *config.Config
 	authClient    *AuthClient
@@ -74,7 +74,7 @@ type AuthMiddleware struct {
 	pool          *pgxpool.Pool
 }
 
-func NewAuthMiddleware(tokenMaker identity.Maker, rdb redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
+func NewAuthMiddleware(tokenMaker identity.Maker, redisClient redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
 	rps := defaultAPIKeyRPS
 	burst := defaultAPIKeyBurst
 	if cfg != nil && cfg.SelfServeAPIKeyRPS > 0 {
@@ -86,23 +86,23 @@ func NewAuthMiddleware(tokenMaker identity.Maker, rdb redis.UniversalClient, cfg
 	}
 	return &AuthMiddleware{
 		tokenMaker:    tokenMaker,
-		rdb:           rdb,
+		redisClient:           redisClient,
 		cfg:           cfg,
 		authClient:    authClient,
 		apiKeyLimiter: newAPIKeyRateLimiter(rps, burst),
 	}
 }
 
-func (m *AuthMiddleware) SetControlRedisShards(rdbs []redis.UniversalClient) {
-	m.controlRdbs = rdbs
+func (m *AuthMiddleware) SetControlRedisShards(redisShards []redis.UniversalClient) {
+	m.controlRdbs = redisShards
 }
 
 func (m *AuthMiddleware) controlRedis() []redis.UniversalClient {
 	if len(m.controlRdbs) > 0 {
 		return m.controlRdbs
 	}
-	if m.rdb != nil {
-		return []redis.UniversalClient{m.rdb}
+	if m.redisClient != nil {
+		return []redis.UniversalClient{m.redisClient}
 	}
 	return nil
 }
@@ -299,8 +299,8 @@ func (m *AuthMiddleware) SessionFromRequest(r *http.Request) (AuthenticatedUser,
 		return AuthenticatedUser{}, false
 	}
 
-	if rdbs := m.controlRedis(); len(rdbs) > 0 {
-		revoked, errRev := m.checkTokenRevocation(r.Context(), rdbs, payload)
+	if redisShards := m.controlRedis(); len(redisShards) > 0 {
+		revoked, errRev := m.checkTokenRevocation(r.Context(), redisShards, payload)
 		if errRev != nil || revoked {
 			return AuthenticatedUser{}, false
 		}
@@ -337,8 +337,8 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 		return AuthenticatedUser{}, false
 	}
 
-	if rdbs := m.controlRedis(); len(rdbs) > 0 {
-		revoked, errRev := m.checkTokenRevocation(r.Context(), rdbs, payload)
+	if redisShards := m.controlRedis(); len(redisShards) > 0 {
+		revoked, errRev := m.checkTokenRevocation(r.Context(), redisShards, payload)
 		if errRev != nil {
 			slog.Error("redis revocation check failed, blocking request to prevent security bypass", "error", errRev)
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
@@ -358,12 +358,12 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 	}, true
 }
 
-func (m *AuthMiddleware) checkTokenRevocation(ctx context.Context, rdbs []redis.UniversalClient, payload *identity.Payload) (bool, error) {
-	for i, rdb := range rdbs {
-		if rdb == nil {
+func (m *AuthMiddleware) checkTokenRevocation(ctx context.Context, redisShards []redis.UniversalClient, payload *identity.Payload) (bool, error) {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		revoked, err := identity.CheckTokenRevocation(ctx, rdb, payload)
+		revoked, err := identity.CheckTokenRevocation(ctx, redisClient, payload)
 		if err != nil {
 			if m.cfg != nil && m.cfg.Env == "development" {
 				slog.Warn("redis revocation check failed in development, allowing session",

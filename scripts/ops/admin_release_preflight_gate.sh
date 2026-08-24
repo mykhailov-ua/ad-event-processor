@@ -7,9 +7,6 @@ cd "$ROOT"
 
 ENV_FILE="${ENV_FILE:-.env.example}"
 
-echo "admin release preflight: admin web build"
-node "$ROOT/web/scripts/build.mjs"
-
 echo "admin release preflight: CAPI staging gate"
 bash "$SCRIPTS/ci/capi_staging_gate.sh"
 
@@ -23,13 +20,11 @@ fi
 echo "admin release preflight: redis topology"
 bash "$SCRIPTS/ops/verify_redis_topology.sh" "$ENV_FILE"
 
-echo "admin release preflight: admin_web CI"
-bash "$SCRIPTS/ci/admin_web.sh"
-
 if [[ "${ADMIN_RELEASE_SKIP_PR_FAST:-}" == "1" ]]; then
-  echo "admin_release_preflight: pr_fast skipped (ADMIN_RELEASE_SKIP_PR_FAST=1)"
+  echo "admin release preflight: admin_web (pr_fast skipped)"
+  bash "$SCRIPTS/ci/admin_web.sh"
 else
-  echo "admin release preflight: pr_fast"
+  echo "admin release preflight: pr_fast (includes admin_web)"
   bash "$SCRIPTS/ci/pr_fast.sh"
 fi
 

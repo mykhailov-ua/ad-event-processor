@@ -286,7 +286,7 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	reports.registerDataQualityReport(mux)
 	reports.registerFilterRejectsReport(mux)
 	reports.registerFraudBreakdownReport(mux)
-	reports.registerGhostImpressionFunnelReport(mux)
+	reports.registerSilentRejectImpressionFunnelReport(mux)
 	reports.registerRtbReports(mux)
 	reports.registerPostbackReconReport(mux)
 	reports.registerPacingDriftReport(mux)

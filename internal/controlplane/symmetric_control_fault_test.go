@@ -27,7 +27,7 @@ func TestFault_Shard0PubsubDown(t *testing.T) {
 	defer cleanupDB()
 
 	shardInfra := testutil.SetupRedisShardsFault(t, numShards)
-	rdbs := shardInfra.UniversalClients()
+	redisShards := shardInfra.UniversalClients()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -53,13 +53,13 @@ func TestFault_Shard0PubsubDown(t *testing.T) {
 
 	registry := testutil.NewAdsRegistry(t, queries)
 	registry.ConfigureStaleMode(30 * time.Second)
-	testutil.AttachBudgetCacheWarmer(registry, rdbs, sharder)
+	testutil.AttachBudgetCacheWarmer(registry, redisShards, sharder)
 	_, err = registry.Sync(ctx)
 	require.NoError(t, err)
 
 	channel := "campaigns:symmetric-control"
-	registry.StartWatchShards(ctx, rdbs, channel)
-	registry.StartEpochPoll(ctx, rdbs, 200*time.Millisecond)
+	registry.StartWatchShards(ctx, redisShards, channel)
+	registry.StartEpochPoll(ctx, redisShards, 200*time.Millisecond)
 
 	cfg := &config.Config{
 		CampaignUpdateChannel: channel,
@@ -67,7 +67,7 @@ func TestFault_Shard0PubsubDown(t *testing.T) {
 		RegistryPollMs:        200,
 	}
 
-	svc := NewService(context.Background(), pool, rdbs, sharder, cfg)
+	svc := NewService(context.Background(), pool, redisShards, sharder, cfg)
 	defer svc.Close()
 
 	testutil.StopRedisShardContainer(t, shardInfra.Containers[0])
@@ -82,7 +82,7 @@ func TestFault_Shard0PubsubDown(t *testing.T) {
 
 	require.Eventually(t, func() bool {
 		for shard := 1; shard < numShards; shard++ {
-			epoch, err := rdbs[shard].Get(ctx, domain.CampaignEpochKey).Int64()
+			epoch, err := redisShards[shard].Get(ctx, domain.CampaignEpochKey).Int64()
 			if err != nil || epoch < 1 {
 				return false
 			}

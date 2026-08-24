@@ -447,11 +447,7 @@ func fillTgEventFromParsed(evt *domain.Event, eventType string, parsed *tgQueryP
 func (h *AdsPacketHandler) applyTgTrackFilter(outcome trackOutcome, evt *domain.Event, c gnet.Conn, ctx *connContext, startMono int64) (landing []byte, done bool) {
 	switch outcome.Status {
 	case trackStatusFraudAccepted:
-		h.recordTrackReject(ctx, evt, outcome.RejectKind)
-		shard := h.sharder.GetShard(evt.CampaignID)
-		enqueueFraudReject(h.fraudWriter, shard, evt)
-		h.write(c, respConsentDenied, ctx)
-		h.recordMetrics(startMono, http.StatusNoContent)
+		h.writeClickFraudSilentReject(ctx, c, evt, outcome, false, startMono)
 		return nil, true
 	case trackStatusRejected:
 		spec := filterRejectSpecs[outcome.RejectKind]
@@ -459,6 +455,10 @@ func (h *AdsPacketHandler) applyTgTrackFilter(outcome trackOutcome, evt *domain.
 			metrics.TgDeadlineExceededTotal.WithLabelValues("filter").Inc()
 		}
 		h.recordTrackReject(ctx, evt, outcome.RejectKind)
+		if outcome.RejectKind == filterRejectFraudBlocked {
+			shard := h.sharder.GetShard(evt.CampaignID)
+			enqueueFraudReject(h.fraudWriter, shard, evt)
+		}
 		h.write(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		return nil, true

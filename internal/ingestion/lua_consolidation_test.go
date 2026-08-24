@@ -55,11 +55,11 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := attachFilterDeadline(t.Context(), time.Second)
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	reg := &mockRegistry{}
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.registry = reg
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
@@ -67,10 +67,10 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
-	require.NoError(t, rdb.HSet(ctx, PlacementBlacklistKey(campID), "zone-bad", "1").Err())
-	require.NoError(t, rdb.SAdd(ctx, fraudBlacklistKey, "203.0.113.66").Err())
+	require.NoError(t, redisClient.HSet(ctx, PlacementBlacklistKey(campID), "zone-bad", "1").Err())
+	require.NoError(t, redisClient.SAdd(ctx, fraudBlacklistKey, "203.0.113.66").Err())
 
 	placementEvt := &domain.Event{
 		Type:        "impression",
@@ -121,21 +121,21 @@ func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := attachFilterDeadline(t.Context(), time.Second)
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetLuaFastPathEnabled(false)
 	f.SetTTCMin(0)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	var rlKey []byte
 	rlKey = appendCampaignHashTag(rlKey[:0], campID)
 	rlKey = append(rlKey, "rl:ip:203.0.113.50"...)
-	require.NoError(t, rdb.Set(ctx, string(rlKey), 0, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, string(rlKey), 0, 0).Err())
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -146,7 +146,7 @@ func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 	}
 	require.NoError(t, f.Check(ctx, evt))
 
-	val, err := rdb.Get(ctx, string(rlKey)).Int64()
+	val, err := redisClient.Get(ctx, string(rlKey)).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), val, "rl:ip key must not be incremented by Lua")
 }
@@ -156,11 +156,11 @@ func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	reg := &benchWorstRegistry{}
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.registry = reg
 	f.SetLuaFastPathEnabled(false)
 	f.SetTTCMin(500 * time.Millisecond)
@@ -169,8 +169,8 @@ func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 	campID := uuid.New()
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 9_000_000_000_000_000, 0).Err())
-	require.NoError(t, rdb.Set(ctx, camp.FcapKeyPrefix+"degrade-user", 999, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, 9_000_000_000_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.FcapKeyPrefix+"degrade-user", 999, 0).Err())
 
 	before := testutil.ToFloat64(metrics.FilterTierDegradedTotal)
 

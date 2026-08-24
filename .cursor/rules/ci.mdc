@@ -23,7 +23,7 @@ Toolchain: Go **1.25.12**, Node **22**. Job prefix: `Gate merge-*` (GitHub Actio
 
 ### merge-pr-fast includes
 
-Config validation, tier A docs, compliance, ClickHouse direct, integration slop, anti-slop, SQL safety, hot/cold static gates, escape heap, `make test-alloc-gate`, `make test-fast`, shard0 nil gate, cold-path JSON, CAPI staging, `admin_web.sh`.
+Config validation, tier A docs, compliance, ClickHouse direct, integration slop, anti-slop, SQL safety, hot/cold static gates, escape heap, `make test-alloc-gate`, `make test-fast`, shard0 nil gate, cold-path JSON, CAPI staging, legacy naming, `antifraud_doc_gate.sh`, `admin_web.sh`. Gate layering rules: `anti-slop.mdc` (CI and script slop).
 
 ### Main-only (push `main`)
 
@@ -54,7 +54,7 @@ Optional: govulncheck, openrtb-fuzz, fraudtrain, perf-smoke.
 | Fault | `make test-fault` |
 | Alloc | `make test-alloc-gate` |
 
-Integration skips under `-short` need `integration:` in reason (`integration_skip_reason_gate.sh`).
+Integration skips under `-short` need `integration:` in reason (`anti_slop_gate.sh`, `integration_test_slop_gate.sh`).
 
 ## BPF gate layers
 

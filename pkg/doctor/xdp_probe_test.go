@@ -38,14 +38,14 @@ func TestEdgeXDPProbe_failsWhenMapsAndUnitsMissing(t *testing.T) {
 	t.Cleanup(mr.Close)
 	mr.HSet("entitlement:deployment", "ebpf_xdp_edge", "1")
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	probe := EdgeXDPProbe{
 		ConfigEnabled: true,
 		Deps: ProbeDeps{
 			Redis: func(context.Context) ([]redis.UniversalClient, error) {
-				return []redis.UniversalClient{rdb}, nil
+				return []redis.UniversalClient{redisClient}, nil
 			},
 		},
 	}
@@ -74,14 +74,14 @@ func TestEdgeXDPProbe_passesWhenReady(t *testing.T) {
 	t.Cleanup(mr.Close)
 	mr.HSet("entitlement:deployment", "ebpf_xdp_edge", "1")
 
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	t.Cleanup(func() { _ = rdb.Close() })
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = redisClient.Close() })
 
 	probe := EdgeXDPProbe{
 		ConfigEnabled: true,
 		Deps: ProbeDeps{
 			Redis: func(context.Context) ([]redis.UniversalClient, error) {
-				return []redis.UniversalClient{rdb}, nil
+				return []redis.UniversalClient{redisClient}, nil
 			},
 		},
 		StatsReader: func(context.Context) (edge.Snapshot, error) {

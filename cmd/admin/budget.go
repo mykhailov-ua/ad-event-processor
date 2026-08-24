@@ -47,30 +47,30 @@ var budgetResetCmd = &cobra.Command{
 			return err
 		}
 		defer func() {
-			for _, rdb := range redisClients {
-				_ = rdb.Close()
+			for _, redisClient := range redisClients {
+				_ = redisClient.Close()
 			}
 		}()
 
 		shardIdx := sharder.GetShard(campaignID)
-		rdb := redisClients[shardIdx]
+		redisClient := redisClients[shardIdx]
 
 		fmt.Printf("Campaign %s maps to Redis Shard %d/%d\n", campaignID, shardIdx, len(redisClients))
 
 		budgetKey := fmt.Sprintf("budget:campaign:%s", campaignID)
 		syncKey := fmt.Sprintf("budget:sync:campaign:%s", campaignID)
 
-		res1, err := rdb.Del(ctx, budgetKey).Result()
+		res1, err := redisClient.Del(ctx, budgetKey).Result()
 		if err != nil {
 			return fmt.Errorf("failed to delete remaining budget cache: %w", err)
 		}
 
-		res2, err := rdb.Del(ctx, syncKey).Result()
+		res2, err := redisClient.Del(ctx, syncKey).Result()
 		if err != nil {
 			return fmt.Errorf("failed to delete campaign sync accumulator: %w", err)
 		}
 
-		res3, err := rdb.SRem(ctx, "budget:dirty_campaigns", campaignID.String()).Result()
+		res3, err := redisClient.SRem(ctx, "budget:dirty_campaigns", campaignID.String()).Result()
 		if err != nil {
 			return fmt.Errorf("failed to remove campaign from dirty set: %w", err)
 		}

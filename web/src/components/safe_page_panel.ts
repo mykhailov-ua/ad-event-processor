@@ -1,7 +1,4 @@
-/**
- * Lightweight safe-page hydrator: interaction scoring + POST /track/verify.
- * Scope: behavioral unlock probe only (mousemove/touch/scroll); not device fingerprinting for blocking.
- */
+
 export function mountSafePageHydrator() {
   const scoreThreshold = 15;
   let score = 0;

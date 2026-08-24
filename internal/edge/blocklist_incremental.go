@@ -26,9 +26,9 @@ func changelogMinScoreExclusive(lastScore float64) string {
 	return fmt.Sprintf("(%g", lastScore)
 }
 
-func loadChangelogDelta(ctx context.Context, rdb changelogReader, key string, lastScore float64) (members []string, maxScore float64, err error) {
+func loadChangelogDelta(ctx context.Context, redisClient changelogReader, key string, lastScore float64) (members []string, maxScore float64, err error) {
 	maxScore = lastScore
-	zs, err := rdb.ZRangeByScoreWithScores(ctx, key, &redis.ZRangeBy{
+	zs, err := redisClient.ZRangeByScoreWithScores(ctx, key, &redis.ZRangeBy{
 		Min: changelogMinScoreExclusive(lastScore),
 		Max: "+inf",
 	}).Result()
@@ -90,6 +90,7 @@ func (s *BlocklistStore) applyHostAdd(maps BlocklistMaps, ip string) (int, error
 			return 0, nil
 		}
 		if maps.V4Host != nil {
+			recordLRUEvictionBeforeInsert(maps.V4Host, "blocklist_host_v4", len(s.hosts))
 			if err := maps.V4Host.Update(addr, blockedMarker, ebpf.UpdateAny); err != nil {
 				return 0, err
 			}
@@ -108,6 +109,7 @@ func (s *BlocklistStore) applyHostAdd(maps BlocklistMaps, ip string) (int, error
 	if _, exists := s.v6Hosts[id]; exists {
 		return 0, nil
 	}
+	recordLRUEvictionBeforeInsert(maps.V6Host, "blocklist_host_v6", len(s.v6Hosts))
 	if err := maps.V6Host.Update(key.Addr, blockedMarker, ebpf.UpdateAny); err != nil {
 		return 0, err
 	}
@@ -150,10 +152,9 @@ func (s *BlocklistStore) applyHostRemove(maps BlocklistMaps, ip string) (int, er
 	return 1, nil
 }
 
-// SyncBlocklistIncremental applies changelog deltas between periodic full SMEMBERS refreshes.
 func SyncBlocklistIncremental(
 	ctx context.Context,
-	rdb autoBanReader,
+	redisClient autoBanReader,
 	maps BlocklistMaps,
 	store *BlocklistStore,
 	state *BlocklistSyncState,
@@ -163,7 +164,7 @@ func SyncBlocklistIncremental(
 	}
 	now := time.Now()
 	if state == nil || state.needsFullSync(now) {
-		a, r, err := SyncBlocklistFromRedis(ctx, rdb, maps, store)
+		a, r, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 		if err != nil {
 			return 0, 0, err
 		}
@@ -175,11 +176,11 @@ func SyncBlocklistIncremental(
 	}
 
 	minScore := state.lastScore
-	adds, addMax, err := loadChangelogDelta(ctx, rdb, redisKeyBlacklistChangelogAdd, minScore)
+	adds, addMax, err := loadChangelogDelta(ctx, redisClient, redisKeyBlacklistChangelogAdd, minScore)
 	if err != nil {
 		return 0, 0, fmt.Errorf("changelog add: %w", err)
 	}
-	removes, removeMax, err := loadChangelogDelta(ctx, rdb, redisKeyBlacklistChangelogRemove, minScore)
+	removes, removeMax, err := loadChangelogDelta(ctx, redisClient, redisKeyBlacklistChangelogRemove, minScore)
 	if err != nil {
 		return 0, 0, fmt.Errorf("changelog remove: %w", err)
 	}

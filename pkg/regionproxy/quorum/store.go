@@ -36,8 +36,8 @@ func Required(replicaCount int) int32 {
 	return defaultQuorum
 }
 
-func Book(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaNodes []string, nodeID string) (Status, error) {
-	if rdb == nil {
+func Book(ctx context.Context, redisClient redis.UniversalClient, opID [16]byte, replicaNodes []string, nodeID string) (Status, error) {
+	if redisClient == nil {
 		return Status{}, fmt.Errorf("quorum book: redis unavailable")
 	}
 	if nodeID == "" {
@@ -49,7 +49,7 @@ func Book(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replica
 	}
 	key := leaseKey(opID)
 	ackKey := leaseAckKey(opID)
-	pipe := rdb.TxPipeline()
+	pipe := redisClient.TxPipeline()
 	pipe.HSetNX(ctx, key, "state", StateBooked)
 	pipe.HSet(ctx, key, "replica_count", replicaCount)
 	pipe.SAdd(ctx, ackKey, nodeID)
@@ -58,11 +58,11 @@ func Book(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replica
 	if _, err := pipe.Exec(ctx); err != nil {
 		return Status{}, fmt.Errorf("quorum book: %w", err)
 	}
-	return readStatus(ctx, rdb, opID, replicaCount)
+	return readStatus(ctx, redisClient, opID, replicaCount)
 }
 
-func AckBook(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaCount int, nodeID string) (Status, error) {
-	if rdb == nil {
+func AckBook(ctx context.Context, redisClient redis.UniversalClient, opID [16]byte, replicaCount int, nodeID string) (Status, error) {
+	if redisClient == nil {
 		return Status{}, fmt.Errorf("quorum ack book: redis unavailable")
 	}
 	if nodeID == "" {
@@ -73,7 +73,7 @@ func AckBook(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, repl
 	}
 	key := leaseKey(opID)
 	ackKey := leaseAckKey(opID)
-	pipe := rdb.TxPipeline()
+	pipe := redisClient.TxPipeline()
 	pipe.HSetNX(ctx, key, "state", StateBooked)
 	pipe.HSet(ctx, key, "replica_count", replicaCount)
 	pipe.SAdd(ctx, ackKey, nodeID)
@@ -82,11 +82,11 @@ func AckBook(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, repl
 	if _, err := pipe.Exec(ctx); err != nil {
 		return Status{}, fmt.Errorf("quorum ack book: %w", err)
 	}
-	return readStatus(ctx, rdb, opID, replicaCount)
+	return readStatus(ctx, redisClient, opID, replicaCount)
 }
 
-func Transition(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, from, to string) error {
-	if rdb == nil {
+func Transition(ctx context.Context, redisClient redis.UniversalClient, opID [16]byte, from, to string) error {
+	if redisClient == nil {
 		return fmt.Errorf("quorum transition: redis unavailable")
 	}
 	key := leaseKey(opID)
@@ -96,7 +96,7 @@ if redis.call("HGET", KEYS[1], "state") == ARGV[1] then
  return 1
 end
 return 0`)
-	res, err := script.Run(ctx, rdb, []string{key}, from, to).Int()
+	res, err := script.Run(ctx, redisClient, []string{key}, from, to).Int()
 	if err != nil {
 		return fmt.Errorf("quorum transition: %w", err)
 	}
@@ -106,17 +106,17 @@ return 0`)
 	return nil
 }
 
-func ReadStatus(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaCount int) (Status, error) {
+func ReadStatus(ctx context.Context, redisClient redis.UniversalClient, opID [16]byte, replicaCount int) (Status, error) {
 	if replicaCount <= 0 {
 		replicaCount = 1
 	}
-	return readStatus(ctx, rdb, opID, replicaCount)
+	return readStatus(ctx, redisClient, opID, replicaCount)
 }
 
-func readStatus(ctx context.Context, rdb redis.UniversalClient, opID [16]byte, replicaCount int) (Status, error) {
+func readStatus(ctx context.Context, redisClient redis.UniversalClient, opID [16]byte, replicaCount int) (Status, error) {
 	key := leaseKey(opID)
 	ackKey := leaseAckKey(opID)
-	pipe := rdb.TxPipeline()
+	pipe := redisClient.TxPipeline()
 	stateCmd := pipe.HGet(ctx, key, "state")
 	countCmd := pipe.HGet(ctx, key, "replica_count")
 	ackCmd := pipe.SCard(ctx, ackKey)

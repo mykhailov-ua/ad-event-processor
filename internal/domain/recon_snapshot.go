@@ -32,13 +32,13 @@ local has_fence = redis.call("EXISTS", KEYS[6])
 return {remaining, sync, inflight, quota, has_lock, has_fence}
 `
 
-func FetchBudgetReconSnapshot(ctx context.Context, rdb redis.Cmdable, campaignID uuid.UUID, quotaMode bool) (BudgetReconSnapshot, error) {
+func FetchBudgetReconSnapshot(ctx context.Context, redisClient redis.Cmdable, campaignID uuid.UUID, quotaMode bool) (BudgetReconSnapshot, error) {
 	keys := budgetReconSnapshotKeys(campaignID)
 	includeQuota := "0"
 	if quotaMode {
 		includeQuota = "1"
 	}
-	res, err := rdb.Eval(ctx, reconSnapshotScript, keys, includeQuota).Result()
+	res, err := redisClient.Eval(ctx, reconSnapshotScript, keys, includeQuota).Result()
 	if err != nil {
 		return BudgetReconSnapshot{}, err
 	}
@@ -62,7 +62,7 @@ type redisPipeliner interface {
 	Pipeline() redis.Pipeliner
 }
 
-func BatchFetchBudgetReconSnapshots(ctx context.Context, rdb redis.Cmdable, campaignIDs []uuid.UUID, quotaMode bool) (map[uuid.UUID]BudgetReconSnapshot, error) {
+func BatchFetchBudgetReconSnapshots(ctx context.Context, redisClient redis.Cmdable, campaignIDs []uuid.UUID, quotaMode bool) (map[uuid.UUID]BudgetReconSnapshot, error) {
 	out := make(map[uuid.UUID]BudgetReconSnapshot, len(campaignIDs))
 	if len(campaignIDs) == 0 {
 		return out, nil
@@ -71,10 +71,10 @@ func BatchFetchBudgetReconSnapshots(ctx context.Context, rdb redis.Cmdable, camp
 	if quotaMode {
 		includeQuota = "1"
 	}
-	pipeRdb, ok := rdb.(redisPipeliner)
+	pipeRdb, ok := redisClient.(redisPipeliner)
 	if !ok {
 		for _, campID := range campaignIDs {
-			snap, err := FetchBudgetReconSnapshot(ctx, rdb, campID, quotaMode)
+			snap, err := FetchBudgetReconSnapshot(ctx, redisClient, campID, quotaMode)
 			if err != nil {
 				return nil, err
 			}

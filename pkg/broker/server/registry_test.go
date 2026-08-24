@@ -26,13 +26,13 @@ func TestRedisTopicStoreSharedIDs(t *testing.T) {
 	}
 	redisURL := fmt.Sprintf("redis://%s/0", endpoint)
 
-	rdb, err := openCoordRedis(redisURL)
+	redisClient, err := openCoordRedis(redisURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = rdb.Close() }()
+	defer func() { _ = redisClient.Close() }()
 
-	store := NewRedisTopicStore(rdb)
+	store := NewRedisTopicStore(redisClient)
 	reqCtx, cancel := context.WithTimeout(ctx, MergeTimeout())
 	defer cancel()
 

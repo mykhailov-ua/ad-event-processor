@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 failed=0
-ALLOWLIST="$SCRIPTS/ci/cold_path_n1_allowlist.txt"
+ALLOWLIST="$SCRIPTS/ci/cold_path_db_in_loop_allowlist.txt"
 N1_PATTERN='for _, \w+ := range \w+ \{[^{}]{0,300}(GetPool\(\)\.QueryRow|pool\.QueryRow|\.QueryRow\(|GetCustomerDTO|GetCampaign\(|ReadBudgetInvariant)'
 
 fail() {

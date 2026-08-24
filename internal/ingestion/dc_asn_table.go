@@ -4,10 +4,10 @@ import (
 	"sync/atomic"
 )
 
-// Mobile carrier ASNs that must never false-positive as datacenter on hot path.
+
 var mobileASNDenylist = map[uint32]struct{}{
-	3215:  {}, // AS3215 Orange
-	12322: {}, // AS12322 Free Mobile
+	3215:  {}, 
+	12322: {}, 
 }
 
 type dcASNSnapshot struct {
@@ -15,8 +15,7 @@ type dcASNSnapshot struct {
 	asn map[uint32]struct{}
 }
 
-// DCASNTable holds a generation-swapped ASN set from dc_asn.txt for O(1) hot-path
-// membership checks without MaxMind tree walks on match.
+
 type DCASNTable struct {
 	active atomic.Pointer[dcASNSnapshot]
 }

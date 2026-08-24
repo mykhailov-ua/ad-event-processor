@@ -42,8 +42,8 @@ func TestFault_MLBlacklistFastLaneDuringBacklog_holdout(t *testing.T) {
 	defer rdb3.Close()
 
 	var publishCount atomic.Int64
-	wrap := func(rdb redis.UniversalClient) redis.UniversalClient {
-		return &quarantinePublishCounter{UniversalClient: rdb, count: &publishCount}
+	wrap := func(redisClient redis.UniversalClient) redis.UniversalClient {
+		return &quarantinePublishCounter{UniversalClient: redisClient, count: &publishCount}
 	}
 
 	ctx := context.Background()
@@ -90,8 +90,8 @@ func TestFault_MLBlacklistFastLaneDuringBacklog_holdout(t *testing.T) {
 		WHERE event_type = 'UPDATE_CAMPAIGN_PACING' AND status = 'PENDING'`).Scan(&pendingPacing))
 	assert.Equal(t, pacingBacklog, pendingPacing)
 
-	for _, rdb := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-		ok, getErr := rdb.SIsMember(ctx, "blacklist:fraud", mlIP).Result()
+	for _, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
+		ok, getErr := redisClient.SIsMember(ctx, "blacklist:fraud", mlIP).Result()
 		require.NoError(t, getErr)
 		require.True(t, ok)
 	}

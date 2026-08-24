@@ -21,9 +21,9 @@ const (
 	testQuotaRefillThreshold       = 20
 )
 
-func newQuotaUnifiedFilter(t testing.TB, rdb redis.UniversalClient) *UnifiedFilter {
+func newQuotaUnifiedFilter(t testing.TB, redisClient redis.UniversalClient) *UnifiedFilter {
 	t.Helper()
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetQuotaConfig("live", testQuotaChunkMicro, testQuotaRefillThreshold)
 	return f
 }
@@ -36,9 +36,9 @@ func quotaKey(campaignID uuid.UUID) string {
 	return string(buf)
 }
 
-func seedCampaignQuota(t testing.TB, ctx context.Context, rdb redis.UniversalClient, campID uuid.UUID, micro int64) {
+func seedCampaignQuota(t testing.TB, ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID, micro int64) {
 	t.Helper()
-	require.NoError(t, rdb.Set(ctx, quotaKey(campID), micro, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, quotaKey(campID), micro, 0).Err())
 }
 
 func TestUnifiedFilter_quotaDebit(t *testing.T) {
@@ -46,14 +46,14 @@ func TestUnifiedFilter_quotaDebit(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newQuotaUnifiedFilter(t, rdb)
+	f := newQuotaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignQuota(t, ctx, rdb, campID, 500_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 500_000)
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -65,7 +65,7 @@ func TestUnifiedFilter_quotaDebit(t *testing.T) {
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	require.NoError(t, f.Check(checkCtx, evt))
 
-	remaining, err := rdb.Get(ctx, quotaKey(campID)).Int64()
+	remaining, err := redisClient.Get(ctx, quotaKey(campID)).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(400_000), remaining)
 }
@@ -75,17 +75,17 @@ func TestUnifiedFilter_quotaDualRead_legacyFallback(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newQuotaUnifiedFilter(t, rdb)
+	f := newQuotaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
 	reg := &mockRegistry{}
 	camp, ok := reg.GetCampaign(campID)
 	require.True(t, ok)
-	require.NoError(t, rdb.Set(ctx, camp.BudgetCampaignKey, 300_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, camp.BudgetCampaignKey, 300_000, 0).Err())
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -97,10 +97,10 @@ func TestUnifiedFilter_quotaDualRead_legacyFallback(t *testing.T) {
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	require.NoError(t, f.Check(checkCtx, evt))
 
-	remaining, err := rdb.Get(ctx, camp.BudgetCampaignKey).Int64()
+	remaining, err := redisClient.Get(ctx, camp.BudgetCampaignKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(200_000), remaining)
-	exists, err := rdb.Exists(ctx, quotaKey(campID)).Result()
+	exists, err := redisClient.Exists(ctx, quotaKey(campID)).Result()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), exists)
 }
@@ -110,14 +110,14 @@ func TestUnifiedFilter_quotaExhausted_returns3(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newQuotaUnifiedFilter(t, rdb)
+	f := newQuotaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignQuota(t, ctx, rdb, campID, 50_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 50_000)
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -135,14 +135,14 @@ func TestUnifiedFilter_quotaRefill_thunderingHerd(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newQuotaUnifiedFilter(t, rdb)
+	f := newQuotaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignQuota(t, ctx, rdb, campID, 250_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 250_000)
 
 	const workers = 64
 	var wg sync.WaitGroup
@@ -163,7 +163,7 @@ func TestUnifiedFilter_quotaRefill_thunderingHerd(t *testing.T) {
 	}
 	wg.Wait()
 
-	count, err := rdb.SCard(ctx, "budget:refill_needed").Result()
+	count, err := redisClient.SCard(ctx, "budget:refill_needed").Result()
 	require.NoError(t, err)
 	require.Equal(t, int64(1), count, "refill lock must collapse parallel enqueue to one task")
 }
@@ -173,15 +173,15 @@ func TestUnifiedFilter_quotaOff_legacyPathUnchanged(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetQuotaConfig("off", testQuotaChunkMicro, testQuotaRefillThreshold)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
+	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -193,7 +193,7 @@ func TestUnifiedFilter_quotaOff_legacyPathUnchanged(t *testing.T) {
 	checkCtx := attachFilterDeadline(ctx, time.Second)
 	require.NoError(t, f.Check(checkCtx, evt))
 
-	count, err := rdb.SCard(ctx, "budget:refill_needed").Result()
+	count, err := redisClient.SCard(ctx, "budget:refill_needed").Result()
 	require.NoError(t, err)
 	require.Equal(t, int64(0), count)
 }
@@ -203,14 +203,14 @@ func TestUnifiedFilter_QuotaMode_LatencyProfile(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newQuotaUnifiedFilter(t, rdb)
+	f := newQuotaUnifiedFilter(t, redisClient)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignQuota(t, ctx, rdb, campID, 50_000_000_000)
+	seedCampaignQuota(t, ctx, redisClient, campID, 50_000_000_000)
 
 	const iterations = 300
 	latencies := make([]time.Duration, 0, iterations)
@@ -251,11 +251,11 @@ func BenchmarkUnifiedFilter_Check_QuotaMode(b *testing.B) {
 		b.Skip()
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(b)
+	redisClient, cleanup := setupTestRedis(b)
 	defer cleanup()
 
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		&mockRegistry{},
 		nil,
@@ -273,7 +273,7 @@ func BenchmarkUnifiedFilter_Check_QuotaMode(b *testing.B) {
 		b.Fatal(err)
 	}
 	campID := uuid.New()
-	seedCampaignQuota(b, ctx, rdb, campID, 900_000_000_000)
+	seedCampaignQuota(b, ctx, redisClient, campID, 900_000_000_000)
 
 	evt := &domain.Event{
 		Type:       "click",

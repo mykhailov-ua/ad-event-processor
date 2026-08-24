@@ -32,7 +32,7 @@ func TestRegistry_StartWatch_IncrementalOnlyOneCampaign(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -56,11 +56,11 @@ func TestRegistry_StartWatch_IncrementalOnlyOneCampaign(t *testing.T) {
 	r.Add(campID, custID, nil, "", domain.PacingModeAsap, 1000, "UTC", 0, 0, nil)
 
 	channel := "test:campaign:updates:hr-pub"
-	r.StartWatch(ctx, rdb, channel)
+	r.StartWatch(ctx, redisClient, channel)
 	time.Sleep(200 * time.Millisecond)
 
 	before := mock.listActiveCalls.Load()
-	require.NoError(t, rdb.Publish(ctx, channel, campID.String()).Err())
+	require.NoError(t, redisClient.Publish(ctx, channel, campID.String()).Err())
 
 	assert.Eventually(t, func() bool {
 		camp, ok := r.GetCampaign(campID)
@@ -77,7 +77,7 @@ func TestRegistry_StartWatch_FullSyncPayload(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
 	campID := uuid.New()
@@ -100,10 +100,10 @@ func TestRegistry_StartWatch_FullSyncPayload(t *testing.T) {
 
 	r := newTestRegistry(t, mock)
 	channel := "test:campaign:updates:full"
-	r.StartWatch(ctx, rdb, channel)
+	r.StartWatch(ctx, redisClient, channel)
 	time.Sleep(200 * time.Millisecond)
 
-	require.NoError(t, rdb.Publish(ctx, channel, RegistryFullSyncPayload).Err())
+	require.NoError(t, redisClient.Publish(ctx, channel, RegistryFullSyncPayload).Err())
 
 	assert.Eventually(t, func() bool {
 		return mock.listActiveCalls.Load() >= 1 && r.Exists(campID)

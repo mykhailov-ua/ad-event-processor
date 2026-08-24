@@ -14,7 +14,7 @@ import (
 const fraudAggForceKey = "fraud:agg_force"
 
 type FraudBackpressureConfig struct {
-	Rdbs        []redis.UniversalClient
+	RedisShards        []redis.UniversalClient
 	Writer      *FraudStreamWriter
 	Stream      string
 	EventStream string
@@ -24,7 +24,7 @@ type FraudBackpressureConfig struct {
 }
 
 func StartFraudBackpressureWatcher(ctx context.Context, cfg FraudBackpressureConfig) {
-	if cfg.Writer == nil || len(cfg.Rdbs) == 0 {
+	if cfg.Writer == nil || len(cfg.RedisShards) == 0 {
 		return
 	}
 	if cfg.Interval <= 0 {
@@ -41,7 +41,7 @@ func StartFraudBackpressureWatcher(ctx context.Context, cfg FraudBackpressureCon
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				force := readFraudAggForce(ctx, cfg.Rdbs)
+				force := readFraudAggForce(ctx, cfg.RedisShards)
 				cfg.Writer.SetForceAggregate(force)
 				publishStreamPELAges(ctx, cfg)
 			}
@@ -49,12 +49,12 @@ func StartFraudBackpressureWatcher(ctx context.Context, cfg FraudBackpressureCon
 	}()
 }
 
-func readFraudAggForce(ctx context.Context, rdbs []redis.UniversalClient) bool {
-	for _, rdb := range rdbs {
-		if rdb == nil {
+func readFraudAggForce(ctx context.Context, redisShards []redis.UniversalClient) bool {
+	for _, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		v, err := rdb.Get(ctx, fraudAggForceKey).Result()
+		v, err := redisClient.Get(ctx, fraudAggForceKey).Result()
 		if err != nil {
 			continue
 		}
@@ -65,11 +65,11 @@ func readFraudAggForce(ctx context.Context, rdbs []redis.UniversalClient) bool {
 	return false
 }
 
-func PublishFraudConsumerLag(ctx context.Context, rdb redis.UniversalClient, stream, group string, lagSec int) {
-	if rdb == nil || stream == "" || group == "" || lagSec <= 0 {
+func PublishFraudConsumerLag(ctx context.Context, redisClient redis.UniversalClient, stream, group string, lagSec int) {
+	if redisClient == nil || stream == "" || group == "" || lagSec <= 0 {
 		return
 	}
-	age := oldestPELIdleSeconds(ctx, rdb, stream, group)
+	age := oldestPELIdleSeconds(ctx, redisClient, stream, group)
 	if age < 0 {
 		return
 	}
@@ -80,13 +80,13 @@ func PublishFraudConsumerLag(ctx context.Context, rdb redis.UniversalClient, str
 		val = "1"
 		ttl = 2 * time.Duration(lagSec) * time.Second
 	}
-	if err := rdb.Set(ctx, fraudAggForceKey, val, ttl).Err(); err != nil {
+	if err := redisClient.Set(ctx, fraudAggForceKey, val, ttl).Err(); err != nil {
 		slog.Debug("fraud agg force publish failed", "error", err)
 	}
 }
 
-func oldestPELIdleSeconds(ctx context.Context, rdb redis.UniversalClient, stream, group string) float64 {
-	pending, err := rdb.XPendingExt(ctx, &redis.XPendingExtArgs{
+func oldestPELIdleSeconds(ctx context.Context, redisClient redis.UniversalClient, stream, group string) float64 {
+	pending, err := redisClient.XPendingExt(ctx, &redis.XPendingExtArgs{
 		Stream: stream,
 		Group:  group,
 		Start:  "-",
@@ -111,13 +111,13 @@ func publishStreamPELAges(ctx context.Context, cfg FraudBackpressureConfig) {
 	if group == "" {
 		group = "ad_event_processor"
 	}
-	for i, rdb := range cfg.Rdbs {
-		if rdb == nil {
+	for i, redisClient := range cfg.RedisShards {
+		if redisClient == nil {
 			continue
 		}
 		shard := strconv.Itoa(i)
 		for _, stream := range streams {
-			age := oldestPELIdleSeconds(ctx, rdb, stream, group)
+			age := oldestPELIdleSeconds(ctx, redisClient, stream, group)
 			if age < 0 {
 				age = 0
 			}
@@ -126,8 +126,8 @@ func publishStreamPELAges(ctx context.Context, cfg FraudBackpressureConfig) {
 	}
 }
 
-func StartFraudLagPublisher(ctx context.Context, rdbs []redis.UniversalClient, stream, group string, lagSec int, interval time.Duration) {
-	if len(rdbs) == 0 || stream == "" {
+func StartFraudLagPublisher(ctx context.Context, redisShards []redis.UniversalClient, stream, group string, lagSec int, interval time.Duration) {
+	if len(redisShards) == 0 || stream == "" {
 		return
 	}
 	if interval <= 0 {
@@ -144,11 +144,11 @@ func StartFraudLagPublisher(ctx context.Context, rdbs []redis.UniversalClient, s
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				for _, rdb := range rdbs {
-					if rdb == nil {
+				for _, redisClient := range redisShards {
+					if redisClient == nil {
 						continue
 					}
-					PublishFraudConsumerLag(ctx, rdb, stream, group, lagSec)
+					PublishFraudConsumerLag(ctx, redisClient, stream, group, lagSec)
 					break
 				}
 			}

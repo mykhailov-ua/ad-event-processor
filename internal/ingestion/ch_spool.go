@@ -476,7 +476,7 @@ func eventToStreamPB(e *domain.Event) *pb.AdStreamEvent {
 	pbEvt.Ua = append(pbEvt.Ua[:0], e.UA...)
 	pbEvt.FraudReason = append(pbEvt.FraudReason[:0], e.FraudReason...)
 	pbEvt.FraudScore = e.FraudScore
-	pbEvt.GhostEvent = e.GhostEvent
+	pbEvt.SilentRejectEvent = e.SilentRejectEvent
 	if !e.CreatedAt.IsZero() {
 		pbEvt.CreatedAtUnix = e.CreatedAt.Unix()
 	}
@@ -595,7 +595,7 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*domain.Event, error) {
 		evt.UA = string(append([]byte(nil), pbEvt.Ua...))
 		evt.FraudReason = string(append([]byte(nil), pbEvt.FraudReason...))
 		evt.FraudScore = pbEvt.FraudScore
-		evt.GhostEvent = pbEvt.GhostEvent
+		evt.SilentRejectEvent = pbEvt.SilentRejectEvent
 		if pbEvt.CreatedAtUnix > 0 {
 			evt.CreatedAt = time.Unix(pbEvt.CreatedAtUnix, 0).UTC()
 		}

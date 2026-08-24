@@ -24,11 +24,11 @@ func TestReconcileWindow_skipsAutoAdjustWhenDeltaExceedsChunk(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{QuotaChunkSize: 1_000_000}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	recon := NewReconService(svc)
 	ctx := context.Background()
 
@@ -54,7 +54,7 @@ func TestReconcileWindow_skipsAutoAdjustWhenDeltaExceedsChunk(t *testing.T) {
 	require.NoError(t, err)
 
 	syncKey := domain.CampaignSyncKey(campaignID)
-	require.NoError(t, rdb.Set(ctx, syncKey, 10_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, syncKey, 10_000_000, 0).Err())
 
 	require.NoError(t, recon.ReconcileWindow(ctx, start, end))
 
@@ -80,11 +80,11 @@ func TestReconcileWindow_autoAdjustsWithinChunk(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{QuotaChunkSize: 5_000_000}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	recon := NewReconService(svc)
 	ctx := context.Background()
 
@@ -110,7 +110,7 @@ func TestReconcileWindow_autoAdjustsWithinChunk(t *testing.T) {
 	require.NoError(t, err)
 
 	syncKey := domain.CampaignSyncKey(campaignID)
-	require.NoError(t, rdb.Set(ctx, syncKey, 1_000_000, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, syncKey, 1_000_000, 0).Err())
 
 	require.NoError(t, recon.ReconcileWindow(ctx, start, end))
 

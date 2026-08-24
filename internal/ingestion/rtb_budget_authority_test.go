@@ -16,16 +16,16 @@ func TestUnifiedFilter_skipBudgetDebit_preservesRedisBalance(t *testing.T) {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	ctx := context.Background()
-	rdb, cleanup := setupTestRedis(t)
+	redisClient, cleanup := setupTestRedis(t)
 	defer cleanup()
 
-	f := newRealRedisUnifiedFilter(t, rdb)
+	f := newRealRedisUnifiedFilter(t, redisClient)
 	f.SetSkipBudgetDebit(true)
 	require.NoError(t, f.PreloadScripts(ctx))
 
 	campID := uuid.New()
-	seedCampaignBudget(t, ctx, rdb, campID)
-	before, err := rdb.Get(ctx, "budget:campaign:"+campID.String()).Int64()
+	seedCampaignBudget(t, ctx, redisClient, campID)
+	before, err := redisClient.Get(ctx, "budget:campaign:"+campID.String()).Int64()
 	require.NoError(t, err)
 
 	evt := &domain.Event{
@@ -36,7 +36,7 @@ func TestUnifiedFilter_skipBudgetDebit_preservesRedisBalance(t *testing.T) {
 	}
 	require.NoError(t, f.Check(attachFilterDeadline(ctx, time.Second), evt))
 
-	after, err := rdb.Get(ctx, "budget:campaign:"+campID.String()).Int64()
+	after, err := redisClient.Get(ctx, "budget:campaign:"+campID.String()).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, before, after, "skip_budget must not debit Redis campaign budget")
 }

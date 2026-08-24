@@ -24,7 +24,7 @@ const registryFullSyncPayload = "*"
 
 type LicenseWatcher struct {
 	pool        *pgxpool.Pool
-	rdb         redis.UniversalClient
+	redisClient         redis.UniversalClient
 	controlRdbs []redis.UniversalClient
 	client      *LicenseClient
 	mode        string
@@ -46,7 +46,7 @@ type LicenseWatcher struct {
 	pubKey           ed25519.PublicKey
 }
 
-func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed25519.PublicKey) *LicenseWatcher {
+func NewLicenseWatcher(pool *pgxpool.Pool, redisClient redis.UniversalClient, pubKey ed25519.PublicKey) *LicenseWatcher {
 	mode := config.LicenseEnv("MODE")
 	if mode == "" {
 		mode = "file"
@@ -78,7 +78,7 @@ func NewLicenseWatcher(pool *pgxpool.Pool, rdb redis.UniversalClient, pubKey ed2
 
 	return &LicenseWatcher{
 		pool:         pool,
-		rdb:          rdb,
+		redisClient:          redisClient,
 		client:       client,
 		mode:         mode,
 		path:         path,
@@ -257,7 +257,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	SetLicenseMetrics(state, offlineDays)
 	UpdateLogWatermark(claims)
 
-	if w.pool == nil && w.rdb == nil {
+	if w.pool == nil && w.redisClient == nil {
 		return nil
 	}
 	err = w.updateDatabaseAndRedis(ctx, tokenStr, claims, state, offlineSince, offlineDays)
@@ -270,10 +270,10 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 }
 
 func (w *LicenseWatcher) loadOfflineSince(ctx context.Context) {
-	if w.rdb == nil {
+	if w.redisClient == nil {
 		return
 	}
-	ts, err := w.rdb.HGet(ctx, "entitlement:deployment", "offline_since").Result()
+	ts, err := w.redisClient.HGet(ctx, "entitlement:deployment", "offline_since").Result()
 	if err != nil || ts == "" {
 		return
 	}
@@ -428,7 +428,7 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		fields["offline_since"] = offlineSince.UTC().Format(time.RFC3339)
 	}
 
-	if err := w.rdb.HMSet(ctx, redisKey, fields).Err(); err != nil {
+	if err := w.redisClient.HMSet(ctx, redisKey, fields).Err(); err != nil {
 		return fmt.Errorf("redis HMSet failed: %w", err)
 	}
 
@@ -437,25 +437,25 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	return nil
 }
 
-func (w *LicenseWatcher) SetControlRedisShards(rdbs []redis.UniversalClient) {
-	w.controlRdbs = rdbs
+func (w *LicenseWatcher) SetControlRedisShards(redisShards []redis.UniversalClient) {
+	w.controlRdbs = redisShards
 }
 
 func (w *LicenseWatcher) controlRedis() []redis.UniversalClient {
 	if len(w.controlRdbs) > 0 {
 		return w.controlRdbs
 	}
-	if w.rdb != nil {
-		return []redis.UniversalClient{w.rdb}
+	if w.redisClient != nil {
+		return []redis.UniversalClient{w.redisClient}
 	}
 	return nil
 }
 
 func (w *LicenseWatcher) publishCampaignUpdate(ctx context.Context) {
 	channel := "campaigns:update"
-	for _, rdb := range w.controlRedis() {
-		if rdb != nil {
-			_ = rdb.Publish(ctx, channel, registryFullSyncPayload).Err()
+	for _, redisClient := range w.controlRedis() {
+		if redisClient != nil {
+			_ = redisClient.Publish(ctx, channel, registryFullSyncPayload).Err()
 		}
 	}
 }

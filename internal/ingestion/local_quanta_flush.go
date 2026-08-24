@@ -80,7 +80,7 @@ func (l *LocalQuantaLedger) FlushOccupied(fn func(campaignID uuid.UUID, remainin
 
 type LocalQuantaFlusher struct {
 	ledger    *LocalQuantaLedger
-	rdbs      []redis.UniversalClient
+	redisShards      []redis.UniversalClient
 	sharder   Sharder
 	registry  domain.CampaignRegistry
 	publisher *BudgetDeltaPublisher
@@ -88,16 +88,16 @@ type LocalQuantaFlusher struct {
 
 func NewLocalQuantaFlusher(
 	ledger *LocalQuantaLedger,
-	rdbs []redis.UniversalClient,
+	redisShards []redis.UniversalClient,
 	sharder Sharder,
 	publisher *BudgetDeltaPublisher,
 ) *LocalQuantaFlusher {
-	if ledger == nil || len(rdbs) == 0 || sharder == nil {
+	if ledger == nil || len(redisShards) == 0 || sharder == nil {
 		return nil
 	}
 	return &LocalQuantaFlusher{
 		ledger:    ledger,
-		rdbs:      rdbs,
+		redisShards:      redisShards,
 		sharder:   sharder,
 		publisher: publisher,
 	}
@@ -177,7 +177,7 @@ func (f *LocalQuantaFlusher) returnToRedis(ctx context.Context, campaignID uuid.
 		if amt <= 0 {
 			continue
 		}
-		shard := spreadHighVolumeShard(len(f.rdbs), campaignID, sub)
+		shard := spreadHighVolumeShard(len(f.redisShards), campaignID, sub)
 		if err := f.returnToRedisSlot(ctx, campaignID, amt, shard, sub); err != nil && firstErr == nil {
 			firstErr = err
 		}
@@ -189,13 +189,13 @@ func (f *LocalQuantaFlusher) returnToRedisSlot(ctx context.Context, campaignID u
 	if amount <= 0 {
 		return nil
 	}
-	if shard < 0 || shard >= len(f.rdbs) || f.rdbs[shard] == nil {
+	if shard < 0 || shard >= len(f.redisShards) || f.redisShards[shard] == nil {
 		return fmt.Errorf("invalid shard %d", shard)
 	}
 	quotaKey := budgetQuotaKeyForDebit(campaignID, subSlot)
 	runCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	_, err := localQuotaReturnScript.Run(runCtx, f.rdbs[shard], []string{quotaKey}, amount).Result()
+	_, err := localQuotaReturnScript.Run(runCtx, f.redisShards[shard], []string{quotaKey}, amount).Result()
 	return err
 }
 

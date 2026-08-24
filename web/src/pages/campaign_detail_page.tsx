@@ -921,10 +921,11 @@ export function CampaignDetailPage() {
                 <a href="/campaigns/flows">Manage landers, offers &amp; flows {'->'}</a>
               </p>
               <div className="section-card stack" data-testid="campaign-safe-page-config">
-                <h4 className="subsection-title">Safe page (cloak companion)</h4>
+                <h4 className="subsection-title">Compliance landing fallback</h4>
                 <p className="text-muted text-sm">
-                  When enabled, suspicious clicks (IVT / placement blacklist) redirect to the safe
-                  URL instead of the money landing. Clean traffic uses brand creatives as usual.
+                  When enabled, suspicious clicks (IVT / placement blacklist) redirect to the
+                  fallback URL instead of the brand landing. Valid traffic uses brand creatives as
+                  usual.
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-safe-page-enabled">
                   <input
@@ -935,15 +936,15 @@ export function CampaignDetailPage() {
                       setConfigForm((f) => ({ ...f, safe_page_enabled: e.target.checked }))
                     }
                   />{' '}
-                  Enable safe-page redirect
+                  Enable compliance landing fallback
                 </label>
                 <label className="form-field" htmlFor="cfg-safe-page-url">
-                  Safe page URL
+                  Fallback landing URL
                   <input
                     id="cfg-safe-page-url"
                     className="form-input"
                     type="url"
-                    placeholder="https://safe.example/white-page"
+                    placeholder="https://safe.example/alternate-landing"
                     value={configForm.safe_page_url}
                     onChange={(e) =>
                       setConfigForm((f) => ({ ...f, safe_page_url: e.target.value }))
@@ -961,7 +962,7 @@ export function CampaignDetailPage() {
                       setConfigForm((f) => ({ ...f, attestation_enabled: e.target.checked }))
                     }
                   />{' '}
-                  Require L2 attestation cookie (RP-M2)
+                  Require browser attestation cookie
                 </label>
                 {configForm.attestation_enabled ? (
                   <label className="form-field" htmlFor="cfg-attestation-ttl">
@@ -1054,16 +1055,17 @@ export function CampaignDetailPage() {
                   Enable DMR for campaign clicks
                 </label>
               </div>
-              <div className="section-card stack" data-testid="campaign-gma-config">
-                <h4 className="subsection-title">Gray-market defenses (GMA)</h4>
+              <div className="section-card stack" data-testid="campaign-defense-config">
+                <h4 className="subsection-title">Enhanced defense controls</h4>
                 <p className="text-muted text-sm">
-                  TLS fingerprint blocklist, connection-type policy, L1/L1.5 safe-view gates, and
+                  TLS fingerprint blocklist, connection-type policy, network-tier fallback gates, and
                   signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be set
-                  for link signing. Apply preset <strong>Gray market (GMA)</strong> on the Fraud tab
-                  to enable safe page, attestation, L1/L1.5, TLS block, and link signing in one step
-                  (set <code>safe_page_url</code> separately). IPv6 /64 rotation velocity is
-                  separate from the DC CIDR feed - configure <code>IPV6_ROTATION_MODE</code> on the
-                  tracker (shadow/live); IPv4 /24 sticky rotation is planned (residential pools).
+                  for link signing. Apply preset <strong>Enhanced defense</strong> on the Fraud tab
+                  to enable compliance landing fallback, attestation, network blocks, TLS block, and
+                  link signing in one step (set <code>safe_page_url</code> separately). IPv6 /64
+                  rotation velocity is separate from the DC CIDR feed - configure{' '}
+                  <code>IPV6_ROTATION_MODE</code> on the tracker (shadow/live); IPv4 /24 sticky
+                  rotation is planned (residential pools).
                 </p>
                 <label className="form-field checkbox-field" htmlFor="cfg-l1-cidr-block">
                   <input
@@ -1094,7 +1096,7 @@ export function CampaignDetailPage() {
                       }))
                     }
                   />{' '}
-                  L1.5 proxy/VPN safe view
+                  L1.5 proxy/VPN fallback gate
                 </label>
                 <label className="form-field checkbox-field" htmlFor="cfg-tls-fp-block">
                   <input
@@ -1173,7 +1175,7 @@ export function CampaignDetailPage() {
               ['Customer', campaign.customer_id ?? '-'],
               ['Timezone', campaign.timezone ?? 'UTC'],
               [
-                'Safe page',
+                'Compliance fallback',
                 campaign.safe_page_enabled ? campaign.safe_page_url || 'enabled (no URL)' : 'off',
               ],
               ['DMR', campaign.dmr_enabled ? 'on' : 'off'],

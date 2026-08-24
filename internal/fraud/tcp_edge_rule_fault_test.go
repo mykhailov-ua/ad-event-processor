@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFault_IVTCorrelationGhostOnly(t *testing.T) {
+func TestFault_IVTCorrelationSilentRejectOnly(t *testing.T) {
 	if testing.Short() {
 		t.Skip("ivt tcp edge correlation fault test")
 	}
@@ -25,7 +25,7 @@ func TestFault_IVTCorrelationGhostOnly(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -34,16 +34,16 @@ func TestFault_IVTCorrelationGhostOnly(t *testing.T) {
 	pythonJA3 := "37b37375c33a2e6a17b2b6400c436321"
 
 	seedClickWithTLS(t, conn, ip, chromeUA, pythonJA3)
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xdeadbeef,
 		SeenAt:  time.Now().UTC(),
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
-		cfg: AnalyzerConfig{Window: time.Hour},
+		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient: redisClient,
+		cfg:         AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
@@ -51,11 +51,11 @@ func TestFault_IVTCorrelationGhostOnly(t *testing.T) {
 	require.Len(t, candidates, 1)
 
 	c := candidates[0]
-	assert.Equal(t, "ghost", c.Action)
+	assert.Equal(t, "silent_reject", c.Action)
 	assert.Equal(t, "ivt_tcp_edge_correlation", c.Reason)
 	assert.NotEqual(t, "blacklist", c.Action)
 
-	testutil.LogFaultProof(t, "ivt_tcp_edge_ghost_only", map[string]string{
+	testutil.LogFaultProof(t, "ivt_tcp_edge_silent_reject_only", map[string]string{
 		"action":    c.Action,
 		"reason":    c.Reason,
 		"score":     fmt.Sprintf("%.0f", c.Score),
@@ -72,7 +72,7 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -81,21 +81,21 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	pythonJA3 := "37b37375c33a2e6a17b2b6400c436321"
 
 	seedClickWithTLS(t, conn, ip, chromeUA, pythonJA3)
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xabad1dea,
 		SeenAt:  time.Now().UTC(),
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
-		cfg: AnalyzerConfig{Window: time.Hour},
+		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient: redisClient,
+		cfg:         AnalyzerConfig{Window: time.Hour},
 	}
 
 	const goroutines = 24
 	var wg sync.WaitGroup
-	var ghostHits atomic.Int32
+	var silentRejectHits atomic.Int32
 	var errs atomic.Int32
 	start := make(chan struct{})
 
@@ -110,8 +110,8 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 				return
 			}
 			for _, c := range candidates {
-				if c.Action == "ghost" && c.Reason == "ivt_tcp_edge_correlation" {
-					ghostHits.Add(1)
+				if c.Action == "silent_reject" && c.Reason == "ivt_tcp_edge_correlation" {
+					silentRejectHits.Add(1)
 				}
 				if c.Action == "blacklist" {
 					errs.Add(1)
@@ -123,13 +123,13 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, int32(0), errs.Load())
-	assert.Equal(t, int32(goroutines), ghostHits.Load())
+	assert.Equal(t, int32(goroutines), silentRejectHits.Load())
 
 	testutil.LogFaultProof(t, "ivt_tcp_edge_concurrent_find", map[string]string{
-		"goroutines": fmt.Sprintf("%d", goroutines),
-		"ghost_hits": fmt.Sprintf("%d", ghostHits.Load()),
-		"errors":     fmt.Sprintf("%d", errs.Load()),
-		"blacklist":  "0",
+		"goroutines":         fmt.Sprintf("%d", goroutines),
+		"silent_reject_hits": fmt.Sprintf("%d", silentRejectHits.Load()),
+		"errors":             fmt.Sprintf("%d", errs.Load()),
+		"blacklist":          "0",
 	})
 }
 
@@ -141,7 +141,7 @@ func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -153,27 +153,27 @@ func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 
 	corrupt := []string{"", "bad", ":ff", "1.2.3.4:", "1.2.3.4:zzzzzzzz"}
 	for i, m := range corrupt {
-		require.NoError(t, rdb.ZAdd(ctx, "edge:tcp_fp:recent", redis.Z{
+		require.NoError(t, redisClient.ZAdd(ctx, "edge:tcp_fp:recent", redis.Z{
 			Score:  float64(i),
 			Member: m,
 		}).Err())
 	}
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 		IP:      ip,
 		TCPHash: 0xfeedface,
 		SeenAt:  time.Now().UTC(),
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
-		cfg: AnalyzerConfig{Window: time.Hour},
+		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient: redisClient,
+		cfg:         AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
-	assert.Equal(t, "ghost", candidates[0].Action)
+	assert.Equal(t, "silent_reject", candidates[0].Action)
 
 	testutil.LogFaultProof(t, "ivt_tcp_edge_corrupt_redis", map[string]string{
 		"corrupt_members": fmt.Sprintf("%d", len(corrupt)),
@@ -190,20 +190,20 @@ func TestFault_IVTCorrelationMissingClickHouse(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
-	require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 		IP:      "203.0.113.79",
 		TCPHash: 0x12345678,
 		SeenAt:  time.Now().UTC(),
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
-		cfg: AnalyzerConfig{Window: time.Hour},
+		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient: redisClient,
+		cfg:         AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
@@ -224,7 +224,7 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	ctx := context.Background()
@@ -234,7 +234,7 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	seedClickWithTLS(t, conn, "203.0.113.82", "Mozilla/5.0 Chrome/120.0.0.0", "37b37375c33a2e6a17b2b6400c436321")
 
 	for _, ip := range []string{"203.0.113.80", "203.0.113.81", "203.0.113.82"} {
-		require.NoError(t, edge.Record(ctx, rdb, edge.Entry{
+		require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{
 			IP:      ip,
 			TCPHash: 0x11111111,
 			SeenAt:  time.Now().UTC(),
@@ -242,22 +242,22 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	}
 
 	rule := &tcpEdgeCorrelationRule{
-		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
-		cfg: AnalyzerConfig{Window: time.Hour},
+		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient: redisClient,
+		cfg:         AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)
 	require.NotEmpty(t, candidates)
-	var ghostIP string
+	var correlatedIP string
 	for _, c := range candidates {
 		if c.IP == "203.0.113.82" {
-			ghostIP = c.IP
+			correlatedIP = c.IP
 			break
 		}
 	}
-	assert.Equal(t, "203.0.113.82", ghostIP)
+	assert.Equal(t, "203.0.113.82", correlatedIP)
 
 	testutil.LogFaultProof(t, "ivt_tcp_edge_broken_tls_data", map[string]string{
 		"seeded_ips":    "3",
@@ -274,13 +274,13 @@ func TestFault_IVTCorrelationRedisEmpty(t *testing.T) {
 	conn, cleanupCH := setupClickHouseTest(t)
 	defer cleanupCH()
 
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	rule := &tcpEdgeCorrelationRule{
-		q:   database.NewCHQuery(conn, database.CHQueryConfig{}),
-		rdb: rdb,
-		cfg: AnalyzerConfig{Window: time.Hour},
+		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient: redisClient,
+		cfg:         AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(context.Background())

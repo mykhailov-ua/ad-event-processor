@@ -35,9 +35,9 @@ func newDedicatedRedisShards(t *testing.T, n int) []redis.UniversalClient {
 	t.Helper()
 	shards := make([]redis.UniversalClient, n)
 	for i := range shards {
-		rdb, cleanup := database.SetupTestRedis(t)
+		redisClient, cleanup := database.SetupTestRedis(t)
 		t.Cleanup(cleanup)
-		shards[i] = rdb
+		shards[i] = redisClient
 	}
 	return shards
 }
@@ -58,13 +58,13 @@ func newIsolatedRedisShards(t *testing.T) []redis.UniversalClient {
 	shards := make([]redis.UniversalClient, testPubSubShards)
 	shards[0] = rdb0
 	for i := 1; i < testPubSubShards; i++ {
-		rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+		redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
 			Addrs: []string{endpoint},
 			DB:    i,
 		})
-		require.NoError(t, rdb.Ping(context.Background()).Err())
-		t.Cleanup(func() { _ = rdb.Close() })
-		shards[i] = rdb
+		require.NoError(t, redisClient.Ping(context.Background()).Err())
+		t.Cleanup(func() { _ = redisClient.Close() })
+		shards[i] = redisClient
 	}
 	return shards
 }
@@ -75,7 +75,7 @@ func TestPublishCampaignUpdate_FanOutAllShards(t *testing.T) {
 	}
 
 	shards := newDedicatedRedisShards(t, testPubSubShards)
-	svc := &Service{rdbs: shards, cfg: &config.Config{CampaignUpdateChannel: "test:pubsub:fanout"}}
+	svc := &Service{redisShards: shards, cfg: &config.Config{CampaignUpdateChannel: "test:pubsub:fanout"}}
 	ctx := context.Background()
 	channel := svc.campaignUpdateChannel()
 
@@ -109,7 +109,7 @@ func TestOutboxScheduleUpdate_PubSubOnAllShards(t *testing.T) {
 
 	channel := "test:schedule:pubsub:fanout"
 	svc := &Service{
-		rdbs:    shards,
+		redisShards:    shards,
 		sharder: domain.NewStaticSlotSharder(testPubSubShards),
 		cfg:     &config.Config{CampaignUpdateChannel: channel},
 	}
@@ -190,6 +190,6 @@ func TestOutboxCreateCampaign_BudgetOnCampaignShard(t *testing.T) {
 
 func TestPickHealthyControlShard(t *testing.T) {
 	assert.Nil(t, PickHealthyControlShard(nil))
-	rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:9"})
-	assert.Same(t, rdb, PickHealthyControlShard([]redis.UniversalClient{nil, rdb}))
+	redisClient := redis.NewClient(&redis.Options{Addr: "127.0.0.1:9"})
+	assert.Same(t, redisClient, PickHealthyControlShard([]redis.UniversalClient{nil, redisClient}))
 }

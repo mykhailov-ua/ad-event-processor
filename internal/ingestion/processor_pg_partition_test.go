@@ -178,12 +178,12 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 	endpoint, err := redisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
 
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
-	require.NoError(t, rdb.Ping(ctx).Err())
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
+	require.NoError(t, redisClient.Ping(ctx).Err())
 
 	base := &adsFaultInfra{
 		Pool:           pool,
-		Redis:          rdb,
+		Redis:          redisClient,
 		Queries:        db.New(pool),
 		PGContainer:    pgContainer,
 		RedisContainer: redisContainer,
@@ -196,7 +196,7 @@ func setupAdsProcessorPartitionInfra(t *testing.T) (*adsProcessorPartitionInfra,
 	}
 
 	cleanup := func() {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		pool.Close()
 		_ = processorContainer.Terminate(ctx)
 		_ = redisContainer.Terminate(ctx)
@@ -283,13 +283,13 @@ func (s *adsIngestStack) replaceConsumer(t *testing.T, infra *adsFaultInfra) {
 	s.Consumer.Start(s.ctx)
 }
 
-func waitFaultStreamDrained(t *testing.T, rdb redis.UniversalClient, stream, group string, campaignID uuid.UUID, pool *pgxpool.Pool, wantEvents int64) {
+func waitFaultStreamDrained(t *testing.T, redisClient redis.UniversalClient, stream, group string, campaignID uuid.UUID, pool *pgxpool.Pool, wantEvents int64) {
 	t.Helper()
 	require.Eventually(t, func() bool {
 		if countFaultCampaignEvents(t, pool, campaignID) < wantEvents {
 			return false
 		}
-		pending, err := rdb.XPending(context.Background(), stream, group).Result()
+		pending, err := redisClient.XPending(context.Background(), stream, group).Result()
 		return err == nil && pending.Count == 0
 	}, 20*time.Second, 100*time.Millisecond, "consumer must drain stream before partition")
 }

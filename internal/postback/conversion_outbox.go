@@ -50,7 +50,7 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 	pending := make([]pendingConversionEvent, 0, len(events))
 	campaignSet := make(map[uuid.UUID]struct{})
 	for _, evt := range events {
-		if evt == nil || evt.GhostEvent || evt.ShadowEvent || evt.FraudReason != "" {
+		if evt == nil || evt.SilentRejectEvent || evt.ShadowEvent || evt.FraudReason != "" {
 			continue
 		}
 		if evt.CampaignID == uuid.Nil || evt.ClickID == "" || evt.Type == "" {

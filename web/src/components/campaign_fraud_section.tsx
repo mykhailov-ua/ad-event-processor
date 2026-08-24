@@ -127,13 +127,13 @@ export function CampaignFraudSection({
     setError(null);
     try {
       const body = override?.preset
-        ? { preset: override.preset, ghost_ivt_enabled: draft.ghost_ivt_enabled }
+        ? { preset: override.preset, silent_reject_enabled: draft.silent_reject_enabled }
         : {
             fraud_threshold_pass: draft.fraud_threshold_pass,
             fraud_threshold_suspect: draft.fraud_threshold_suspect,
             fraud_threshold_ivt: draft.fraud_threshold_ivt,
             fraud_threshold_block: draft.fraud_threshold_block,
-            ghost_ivt_enabled: draft.ghost_ivt_enabled,
+            silent_reject_enabled: draft.silent_reject_enabled,
           };
       const updated = await patchCampaignFraudConfig(campaignId, body);
       if (updated) {
@@ -143,7 +143,10 @@ export function CampaignFraudSection({
           title: 'Fraud settings saved',
           message: 'Thresholds updated for this campaign.',
         });
-        if (override?.preset === 'gray_market' || override?.preset === 'social_in_app') {
+        if (
+          override?.preset === 'enhanced_defense' ||
+          override?.preset === 'social_in_app'
+        ) {
           onCampaignFlagsChanged?.();
         }
       }
@@ -318,13 +321,14 @@ export function CampaignFraudSection({
 
       <section className="stack">
         <Checkbox
-          checked={draft.ghost_ivt_enabled}
+          checked={draft.silent_reject_enabled}
           disabled={!canWrite || saving}
-          label="Ghost IVT enabled"
-          onChange={(checked) => setDraft({ ...draft, ghost_ivt_enabled: checked })}
+          label="Silent reject"
+          onChange={(checked) => setDraft({ ...draft, silent_reject_enabled: checked })}
         />
         <p className="text-muted text-xs">
-          Serve decoy content to IVT-tier traffic when the campaign allows it.
+          On L1 fraud: return success to the client but skip budget and postbacks. Off returns HTTP 403.
+          Enhanced defense preset turns this on and uses redirect decoys on clicks.
         </p>
       </section>
 

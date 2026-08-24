@@ -63,7 +63,7 @@ func TestFault_SafeFailover_LaggingLeaderNotReady(t *testing.T) {
 
 	rctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
-	if err := coord.rdb.Set(rctx, logHWMKey(pk), "100", 0).Err(); err != nil {
+	if err := coord.redisClient.Set(rctx, logHWMKey(pk), "100", 0).Err(); err != nil {
 		t.Fatal(err)
 	}
 

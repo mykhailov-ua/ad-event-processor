@@ -47,7 +47,7 @@ func TestQuotaManager_refillCampaign_modes(t *testing.T) {
 			ctx := context.Background()
 			pool, cleanupDB := database.SetupTestDB(t)
 			defer cleanupDB()
-			rdb, cleanupRedis := database.SetupTestRedis(t)
+			redisClient, cleanupRedis := database.SetupTestRedis(t)
 			defer cleanupRedis()
 
 			customerID := uuid.New()
@@ -63,19 +63,19 @@ func TestQuotaManager_refillCampaign_modes(t *testing.T) {
 				QuotaChunkSize:          quotaFaultChunkMicro,
 				QuotaRefillThresholdPct: 20,
 			}
-			svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+			svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 			qm := NewQuotaManager(svc)
 
 			lockKey := "budget:refill_lock:" + campaignID.String()
-			require.NoError(t, rdb.Set(ctx, lockKey, "1", 10*time.Second).Err())
-			require.NoError(t, qm.refillCampaign(ctx, campaignID, 0, rdb))
+			require.NoError(t, redisClient.Set(ctx, lockKey, "1", 10*time.Second).Err())
+			require.NoError(t, qm.refillCampaign(ctx, campaignID, 0, redisClient))
 
 			quotaRepo := domain.NewQuotaRepo(pool)
 			pgQuota, err := quotaRepo.GetQuota(ctx, svc.sharder, campaignID)
 			require.NoError(t, err)
 			require.Equal(t, tc.wantPGReserved, pgQuota.ReservedAmount)
 
-			redisQuota, err := rdb.Get(ctx, "budget:quota:"+campaignID.String()).Int64()
+			redisQuota, err := redisClient.Get(ctx, "budget:quota:"+campaignID.String()).Int64()
 			if tc.wantRedisQuota == 0 {
 				require.Error(t, err)
 				require.ErrorIs(t, err, redis.Nil)

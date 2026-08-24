@@ -3,14 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-bash scripts/ci/license_fuzz_nightly_gate.sh
-
+# Fuzz smoke and garbled alloc only; license_verify_tier runs fuzz_nightly + extended separately.
 echo "release_qa_smoke: fuzz smoke (VerifyJWT 10s, DecodeUnverified/JSONClaims 5s each)"
 go test ./internal/licensing/ -fuzz=FuzzVerifyJWT -fuzztime=10s -count=1
 go test ./internal/licensing/ -fuzz=FuzzDecodeUnverified -fuzztime=5s -count=1
 go test ./internal/licensing/ -fuzz=FuzzJSONClaims -fuzztime=5s -count=1
 
-bash scripts/test/license_red_team_extended.sh
 bash scripts/ci/license_garbled_alloc_gate.sh
 
 echo "fault_proof fault=release_qa_smoke harness=release_qa_fuzz_smoke pass=1"

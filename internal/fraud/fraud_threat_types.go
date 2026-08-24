@@ -1,6 +1,6 @@
 package fraud
 
-// FraudThreatEnqueueItem is the bulk fraud-threat ops API row shape.
+
 type FraudThreatEnqueueItem struct {
 	Action     string  `json:"action"`
 	IP         string  `json:"ip"`

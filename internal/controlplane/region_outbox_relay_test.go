@@ -59,7 +59,7 @@ func TestRegionOutboxRelay(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -100,7 +100,7 @@ func TestRegionOutboxRelay(t *testing.T) {
 		MultiRegionEnabled: true,
 		RegionCode:         1,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	relay := NewRegionOutboxRelay(svc)
 	require.NoError(t, relay.ProcessPending(ctx))
 
@@ -110,7 +110,7 @@ func TestRegionOutboxRelay(t *testing.T) {
 	require.Equal(t, "DELIVERED", deliveryStatus)
 
 	budgetKey := "budget:campaign:" + campaignID.String()
-	val, err := rdb.Get(ctx, budgetKey).Int64()
+	val, err := redisClient.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(5_000_000), val)
 
@@ -120,7 +120,7 @@ func TestRegionOutboxRelay(t *testing.T) {
 	require.Equal(t, 1, idemCount)
 
 	require.NoError(t, relay.ProcessPending(ctx))
-	val2, err := rdb.Get(ctx, budgetKey).Int64()
+	val2, err := redisClient.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, val, val2)
 
@@ -142,7 +142,7 @@ func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	_, err := pool.Exec(ctx, `
@@ -179,7 +179,7 @@ func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 		NodeID:             "relay-lease-1",
 		OpLeaseTimeoutSec:  30,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	relay := NewRegionOutboxRelay(svc)
 	leaseWorker := NewOperationLeaseWorker(svc)
 
@@ -214,7 +214,7 @@ func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 	require.Equal(t, string(LeaseStateCompleted), lease.LeaseState)
 
 	budgetKey := "budget:campaign:" + campaignID.String()
-	val, err := rdb.Get(ctx, budgetKey).Int64()
+	val, err := redisClient.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, int64(6_000_000), val)
 

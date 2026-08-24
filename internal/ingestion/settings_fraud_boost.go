@@ -75,11 +75,11 @@ func cloneFraudBoostMap(src map[uuid.UUID]uint8) map[uuid.UUID]uint8 {
 	return dst
 }
 
-func loadAllFraudBoostsFromShard(ctx context.Context, rdb redis.UniversalClient) (map[uuid.UUID]uint8, error) {
+func loadAllFraudBoostsFromShard(ctx context.Context, redisClient redis.UniversalClient) (map[uuid.UUID]uint8, error) {
 	newBoosts := make(map[uuid.UUID]uint8)
 	cursor := uint64(0)
 	for {
-		keys, next, err := rdb.Scan(ctx, cursor, fraudScoreBoostKeyPrefix+"*", 100).Result()
+		keys, next, err := redisClient.Scan(ctx, cursor, fraudScoreBoostKeyPrefix+"*", 100).Result()
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +88,7 @@ func loadAllFraudBoostsFromShard(ctx context.Context, rdb redis.UniversalClient)
 			if !ok {
 				continue
 			}
-			valStr, err := rdb.Get(ctx, key).Result()
+			valStr, err := redisClient.Get(ctx, key).Result()
 			if err != nil {
 				continue
 			}
@@ -107,17 +107,17 @@ func loadAllFraudBoostsFromShard(ctx context.Context, rdb redis.UniversalClient)
 }
 
 func (sw *SettingsWatcher) syncFraudScoreBoostsFull(ctx context.Context) {
-	rdb := sw.pickHealthyShard()
-	if rdb == nil {
+	redisClient := sw.pickHealthyShard()
+	if redisClient == nil {
 		return
 	}
 
-	for attempt := 0; attempt < len(sw.rdbs); attempt++ {
-		newBoosts, err := loadAllFraudBoostsFromShard(ctx, rdb)
+	for attempt := 0; attempt < len(sw.redisShards); attempt++ {
+		newBoosts, err := loadAllFraudBoostsFromShard(ctx, redisClient)
 		if err != nil {
 			slog.Warn("failed to scan ml boost keys from redis, trying next shard", "error", err)
-			rdb = sw.nextShardAfter(rdb)
-			if rdb == nil {
+			redisClient = sw.nextShardAfter(redisClient)
+			if redisClient == nil {
 				return
 			}
 			continue
@@ -128,15 +128,15 @@ func (sw *SettingsWatcher) syncFraudScoreBoostsFull(ctx context.Context) {
 }
 
 func (sw *SettingsWatcher) applyFraudBoostCampaign(ctx context.Context, campaignID uuid.UUID) {
-	rdb := sw.pickHealthyShard()
-	if rdb == nil {
+	redisClient := sw.pickHealthyShard()
+	if redisClient == nil {
 		return
 	}
 
 	prev := sw.GetFraudScoreBoosts()
 	next := cloneFraudBoostMap(prev.Boosts)
 
-	valStr, err := rdb.Get(ctx, fraudScoreBoostKey(campaignID)).Result()
+	valStr, err := redisClient.Get(ctx, fraudScoreBoostKey(campaignID)).Result()
 	if errors.Is(err, redis.Nil) {
 		delete(next, campaignID)
 		sw.fraudScoreBoosts.Store(&FraudScoreBoostSnapshot{Boosts: next})
@@ -175,12 +175,12 @@ func (sw *SettingsWatcher) runFraudBoostSubscriber(ctx context.Context) {
 }
 
 func (sw *SettingsWatcher) consumeFraudBoostUpdates(ctx context.Context, channel string) bool {
-	rdb := sw.pickHealthyShard()
-	if rdb == nil {
+	redisClient := sw.pickHealthyShard()
+	if redisClient == nil {
 		return true
 	}
 
-	pubsub := rdb.Subscribe(ctx, channel)
+	pubsub := redisClient.Subscribe(ctx, channel)
 	defer func() { _ = pubsub.Close() }()
 
 	for msg := range pubsub.Channel() {

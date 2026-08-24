@@ -9,11 +9,11 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func NewResidentialIntelEnricherFromConfig(cfg *config.Config, rdb redis.Cmdable, chWrite driver.Conn) (*ResidentialIntelEnricher, error) {
+func NewResidentialIntelEnricherFromConfig(cfg *config.Config, redisClient redis.Cmdable, chWrite driver.Conn) (*ResidentialIntelEnricher, error) {
 	if cfg == nil || !cfg.ExternalResidentialIntelRuntimeEnabled() {
 		return nil, nil
 	}
-	if rdb == nil {
+	if redisClient == nil {
 		return nil, nil
 	}
 	provider, err := NewHTTPResidentialIntelProvider(
@@ -24,12 +24,12 @@ func NewResidentialIntelEnricherFromConfig(cfg *config.Config, rdb redis.Cmdable
 	if err != nil {
 		return nil, err
 	}
-	cache := NewResidentialIntelCache(rdb, cfg.ExternalResidentialIntel.CacheTTL)
+	cache := NewResidentialIntelCache(redisClient, cfg.ExternalResidentialIntel.CacheTTL)
 	return NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
 		Provider:   provider,
 		Cache:      cache,
 		CHWrite:    chWrite,
-		RDB:        rdb,
+		RedisClient:        redisClient,
 		FeedDir:    cfg.ExternalResidentialIntel.FeedDir,
 		ProviderID: cfg.ExternalResidentialIntel.ProviderLabel,
 		RecentLim:  cfg.ExternalResidentialIntel.RecentLimit,

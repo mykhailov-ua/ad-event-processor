@@ -14,9 +14,9 @@ func TestRedisOffsetStore_Roundtrip(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
 	defer mr.Close()
-	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	redisClient := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 
-	store := NewRedisOffsetStore(rdb)
+	store := NewRedisOffsetStore(redisClient)
 	ctx := context.Background()
 
 	got, err := store.Commit(ctx, "tracker-logs", "g1", 10)

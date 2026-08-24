@@ -28,7 +28,7 @@ func TestFault_AutoscaleNoDoubleFreeze(t *testing.T) {
 
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	cfg := &config.Config{
@@ -39,7 +39,7 @@ func TestFault_AutoscaleNoDoubleFreeze(t *testing.T) {
 		AutoscaleMinRemainingBudget: 20_000_000,
 		AutoscaleShiftAmount:        10_000_000,
 	}
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, cfg)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
 	customerID := uuid.New()
@@ -58,7 +58,7 @@ func TestFault_AutoscaleNoDoubleFreeze(t *testing.T) {
 	require.NoError(t, err)
 
 	queries := db.New(pool)
-	syncWorker := domain.NewSyncWorker(rdb, domain.NewCampaignRepo(queries), domain.NewCustomerRepo(queries), 100*time.Millisecond, 0, nil, 0)
+	syncWorker := domain.NewSyncWorker(redisClient, domain.NewCampaignRepo(queries), domain.NewCustomerRepo(queries), 100*time.Millisecond, 0, nil, 0)
 	_, err = pool.Exec(ctx, `DELETE FROM outbox_events`)
 	require.NoError(t, err)
 

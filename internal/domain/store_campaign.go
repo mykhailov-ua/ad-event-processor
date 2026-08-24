@@ -79,7 +79,7 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		FraudThresholdSuspect:   uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:       uint8(row.FraudThresholdIvt),
 		FraudThresholdBlock:     uint8(row.FraudThresholdBlock),
-		GhostIVTEnabled:         row.GhostIvtEnabled,
+		SilentRejectEnabled:     row.SilentRejectEnabled,
 		BehaviorFlags:           BehaviorFlags(row.BehaviorFlags),
 		RequireConsentPurposes:  row.RequireConsentPurposes,
 		MigrationGen:            row.MigrationGen,
@@ -94,7 +94,7 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
-	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
+	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 	return camp
 }
@@ -153,7 +153,7 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		FraudThresholdSuspect:   uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:       uint8(row.FraudThresholdIvt),
 		FraudThresholdBlock:     uint8(row.FraudThresholdBlock),
-		GhostIVTEnabled:         row.GhostIvtEnabled,
+		SilentRejectEnabled:     row.SilentRejectEnabled,
 		BehaviorFlags:           BehaviorFlags(row.BehaviorFlags),
 		RequireConsentPurposes:  row.RequireConsentPurposes,
 		MigrationGen:            row.MigrationGen,
@@ -168,7 +168,7 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
-	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
+	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
 	if row.PrimaryAShard.Valid {
@@ -241,7 +241,7 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		FraudThresholdSuspect:   uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:       uint8(row.FraudThresholdIvt),
 		FraudThresholdBlock:     uint8(row.FraudThresholdBlock),
-		GhostIVTEnabled:         row.GhostIvtEnabled,
+		SilentRejectEnabled:     row.SilentRejectEnabled,
 		BehaviorFlags:           BehaviorFlags(row.BehaviorFlags),
 		RequireConsentPurposes:  row.RequireConsentPurposes,
 		MigrationGen:            row.MigrationGen,
@@ -256,7 +256,7 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		ProxyRewriteAssets:      row.ProxyRewriteAssets,
 	}
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
-	applyCampaignGMAFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
+	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
 
 	if row.PrimaryAShard.Valid {

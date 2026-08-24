@@ -16,7 +16,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func integrationTestAuth(t *testing.T, rdb redis.UniversalClient, cfg *config.Config) (*AuthMiddleware, identity.Maker) {
+func integrationTestAuth(t *testing.T, redisClient redis.UniversalClient, cfg *config.Config) (*AuthMiddleware, identity.Maker) {
 	t.Helper()
 	if cfg.TokenSymmetricKey == "" {
 		cfg.TokenSymmetricKey = "01234567890123456789012345678901"
@@ -25,7 +25,7 @@ func integrationTestAuth(t *testing.T, rdb redis.UniversalClient, cfg *config.Co
 	if err != nil {
 		t.Fatalf("token maker: %v", err)
 	}
-	return NewAuthMiddleware(tokenMaker, rdb, cfg, nil), tokenMaker
+	return NewAuthMiddleware(tokenMaker, redisClient, cfg, nil), tokenMaker
 }
 
 func withSessionUser(req *http.Request, tokenMaker identity.Maker, role string, customerID uuid.UUID) {
@@ -40,18 +40,18 @@ func withAdminAPIKey(req *http.Request, cfg *config.Config) {
 	req.Header.Set("X-Admin-API-Key", string(cfg.AdminAPIKey))
 }
 
-func newBareService(t *testing.T, pool *pgxpool.Pool, rdbs []redis.UniversalClient, cfg *config.Config) *Service {
+func newBareService(t *testing.T, pool *pgxpool.Pool, redisShards []redis.UniversalClient, cfg *config.Config) *Service {
 	t.Helper()
 	if cfg == nil {
 		cfg = &config.Config{}
 	}
-	shardCount := len(rdbs)
+	shardCount := len(redisShards)
 	if shardCount == 0 {
 		shardCount = 1
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	svc := &Service{
-		rdbs:    rdbs,
+		redisShards:    redisShards,
 		sharder: domain.NewStaticSlotSharder(shardCount),
 		cfg:     cfg,
 		ctx:     ctx,

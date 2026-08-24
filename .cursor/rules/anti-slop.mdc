@@ -23,8 +23,75 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Unrun claims | Claiming `make test-alloc-gate` or `pr_fast.sh` passed without executing |
 | Mock bench as SLA | Citing `BenchmarkUnifiedFilter_Check_mock` ns/op as production `/track` p99 |
 | Invented artifacts | Fake BPF reports, env vars, or benchmark output under `var/load-test/` |
+| Doc ahead of code | Admin flag or doc behavior with no hot-path reader; cite `deploy/vendor/antifraud_backlog.md` |
+| Partial rename as shipped | Migration/UI/API field renamed (`silent_reject_enabled`) while ingestion, outbox, or reports still use old semantics |
+| ML action semantics lie | Doc or operator text implies per-IP ghosting; code flips campaign PG flag or only enqueues when flag already on |
+| Analytics name drift | Reports/UI still `ghost_*` while wire/CH uses `silent_reject_event`; funnels under-count silent rejects |
+| Product-prefixed embed paths | Static like `ad-event-processor-track.js` / `adEventProcessorTrack` in shipped snippets (`web/src/static/track.js`, `trackEvent`) |
+| Marketing in tech docs | See **Documentation lie modes** below and `naming.mdc` marketing ban |
+| Gate bureaucracy | New `*_gate.sh` that only wraps existing gates, or `exit 0` when the named check failed |
+| Orchestrator double-run | `pr_fast.sh` child re-invokes a gate `pr_fast` already runs (naming, `admin_web`, skip-reason scan) |
 
-## Go production slop
+## CI and script slop
+
+Agents must not add CI layers that repeat work without new assertions. One gate = one contract; orchestrators compose gates once.
+
+### Banned patterns (reintroduced in 2026 cleanup - do not add back)
+
+| Pattern | Why slop | Canonical shape |
+| :--- | :--- | :--- |
+| Subset gate duplicating full gate | `check_no_legacy_naming_core.sh` re-scanned `internal/` subset already covered by `check_no_legacy_naming.sh` allowlist | Single `check_no_legacy_naming.sh` in `pr_fast.sh` |
+| Doc gate calling unrelated gate | `antifraud_doc_gate.sh` invoked full legacy naming; `pr_fast` already runs naming before it | `antifraud_doc_gate.sh` = ANTIFRAUD.md vs code only |
+| Thin skip gate | `integration_skip_reason_gate.sh` only checked bare `t.Skip()`; subset of `anti_slop_gate.sh` | `anti_slop_gate.sh` + `integration_test_slop_gate.sh` in `pr_fast` |
+| Same static scan in two tiers | `tier_a.sh` and `anti_slop_gate.sh` both scanned `_ = json.Unmarshal` / `_ = w.Write` in handlers/outbox | Keep scan in `anti_slop_gate.sh` only |
+| Hardcoded script inventory | `check_scripts_layout.sh` listed ~30 "required" paths that must exist on disk | CI/Makefile ref check + `verify_redis_topology_test.sh` only |
+| Fake pass on failure | `license_red_team_garbled.sh` used `exit 0` when garble build failed | Named gate must `exit 1` on failure; optional tier uses env flag + `skip_gate`, not silent pass |
+| Always-SKIP gate rows | `license_verify_tier.sh` `release-1` / `release-2` for models not in tree | Omit gate rows; document optional tooling in `DEVELOPMENT.md` if needed |
+| Duplicate gate invocation | `admin_web.sh` called `selfserve_nav_gate.sh` twice | One call per gate per orchestrator |
+| Matryoshka test orchestrators | `license_red_team.sh` tail-called `license_red_team_extended.sh` while `license_verify_tier` also ran extended | `make license-red-team` = red-team then extended; `license_verify_tier` owns tier matrix |
+| Smoke re-running parent gates | `release_qa_smoke.sh` re-ran `license_fuzz_nightly_gate` + extended already in `license_verify_tier` | `release_qa_smoke.sh` = go fuzz smoke + `license_garbled_alloc_gate` only |
+| Preflight double admin | `admin_release_preflight_gate.sh` ran `admin_web.sh` then `pr_fast.sh` (which ends with `admin_web`) | `pr_fast` **or** `admin_web` when `ADMIN_RELEASE_SKIP_PR_FAST=1` |
+| Smoke before full orchestrator | `cpa_compliance_smoke.sh` called `check_ui_slop` / `report_live_routes` then `admin_web.sh` | Call `admin_web.sh` once (sub-gates live inside it) |
+
+### License verify composition (canonical)
+
+| Entry | Runs |
+| :--- | :--- |
+| `make license-red-team` | `scripts/security/license_red_team.sh` then `scripts/test/license_red_team_extended.sh` |
+| `make license-verify` | `scripts/ci/license_verify_tier.sh` (baseline, crypto, entangle, release-4..6 optional, alloc) |
+| `release_qa_smoke.sh` | Fuzz targets + `license_garbled_alloc_gate` only; not fuzz_nightly or extended |
+
+Do not add a new `*_gate.sh` whose body is only `bash` lines to other gates unless it encodes a new env matrix or fail-closed contract. Prefer extending the leaf gate or the single orchestrator (`pr_fast.sh`, `license_verify_tier.sh`, `admin_web.sh`).
+
+## Documentation lie modes (never)
+
+Applies to `README.md`, `docs/`, `deploy/vendor/`, admin user-visible copy, Grafana panel text. Engineering tone only: paths, HTTP codes, SLA from `core.mdc`, license facts from `sku.yaml`.
+
+| Lie | What code actually does | Write instead |
+| :--- | :--- | :--- |
+| Microbench as prod SLA | `BenchmarkFilterFraudBoost` ~90 ns/op is isolated `FilterEngine.Check`; prod is full chain + Redis Lua | Name bench; E2E p99 from load test / Prometheus |
+| "Reads boost in-memory under 90 ns" beside Redis | Boost snapshot is Go `atomic.Value` map; ML writer uses Redis in background | "Snapshot lookup in Go; Redis sync async" |
+| "Eliminated `SISMEMBER` / `HEXISTS` / INCR" | `FraudBlacklistFilter` still `SISMEMBER`; placement cache misses `HEXISTS`; RPD uses Redis `INCR` | "Cached with Redis on miss" or implement cache first |
+| "Local atomic ingress RPD" | `EntitlementsFilter` / `lua_precheck` Redis `INCR` | State Redis INCR or implement local counter |
+| `silent_reject_enabled` "wired" | Only PG migration + admin PATCH; hot path ignored flag | `fraudTrackOutcome` reads registry; holdout tests; decoy 202/302 vs 403 |
+| ML `ghost` / `silent_reject` action | Per-IP decoy or auto-enable campaign | Outbox adds IP to `blacklist:fraud`; does not `UPDATE silent_reject_enabled`; legacy action alias `ghost` only on enqueue |
+| IVT tier ML "enforcement" | Doc implies all tiers get boost/blacklist | `FraudTierIVT` with flag off must blacklist or document no-op; suspect=boost, block=blacklist |
+| L2 shadow billing omitted | "Shadow accepted, logged to CH" | State whether `UnifiedFilter` Lua ran; fraud signals before Lua skip debit when short-circuited |
+| Fraud stream parity | "All fraud rejects in CH" | Silent accept enqueues fraud stream; hard 403 must too if funnels count blocks |
+| `silent_reject_event` unset | Silent reject returns 202 but analytics empty | Set event flag on silent accept; CH column `silent_reject_event`; not legacy `ghost_event` in new code |
+| XDP stops residential fraud | XDP drops listed L3/L4; rotating proxies evade host maps | "L4 flood + known IPs"; optional `ebpf_xdp_edge` |
+| JA3/TCP MSS as client signals | Tracker reads edge headers; CDN terminates TCP | CDN disclaimer; `edge.mdc` disable flags |
+| "Guarantee", "never" (ML on hot path) | OK if qualified: ML in sidecar only | "Batch only"; cite `cmd/fraud-scorer` |
+| Mixed ns / us / ms in one claim | Different layers have different budgets | Table per layer: edge, local filter, Redis Lua, handler E2E |
+
+Open implementation gaps: `deploy/vendor/antifraud_backlog.md` (semantic slugs, not ticket IDs). Do not close backlog items in docs alone.
+
+CI: `bash scripts/ci/antifraud_doc_gate.sh` (in `pr_fast.sh`; stale hot-path text, false eliminated claims, legacy naming in vendor docs).
+
+## Forbidden marketing prose (`naming.mdc`)
+
+Banned words and sections in technical docs (not in `deploy/vendor/SALES.md` SKU tables): `enterprise-grade`, `premium`, `ultra-low`, `guarantee`, `hundreds of thousands`, `Why * choose`, competitor comparison tables, "crush" / "eliminates fees" pitch. Price tiers: cite `sku.yaml` only without competitor anchors.
+
 
 Script: `bash scripts/ci/anti_slop_gate.sh` (included in `pr_fast.sh`).
 
@@ -107,6 +174,12 @@ Forbidden in shipped `web/src/views`:
 
 Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on errors; `apiConfirmed` on mutations; `npm run typecheck`; `bash scripts/ci/admin_web.sh` before claiming UI done.
 
+Forbidden in `web/src` copy and embed snippets:
+
+- Report catalog keys/titles `ghost-impression-funnel`, column headers "Ghost" when API field is `silent_reject_*` (canonical route `silent-reject-impression-funnel`; legacy URL alias ok one release)
+- Product-prefixed static filenames (`ad-event-processor-track.js`); use `web/src/static/track.js` and export `trackEvent`
+- User-visible "fixed" for antifraud flags when only admin toggle or migration landed
+
 ## Code slop patterns (no dedicated gate - still reject)
 
 - Provider/Factory/Strategy interfaces with one implementation (`cold-path.mdc`).
@@ -119,6 +192,8 @@ Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on er
 - Postgres/ClickHouse/outbox side effects inside `processTrack()` or filter `Check`.
 - Hand-editing `*.pb.go`, `*.sql.go`, bpf2go output.
 - Docs-only commits without code in the same changeset (`core.mdc`).
+- Cold-path ML enforcement that mutates operator campaign config (`silent_reject_enabled`) instead of per-IP Redis/CH effects.
+- Empty `garble_policy.go` or missing `//garble:ignore` while `TestGarblePolicy_ingestionPackageIgnored` expects it.
 
 ## Fault and chaos proof slop
 
@@ -136,7 +211,10 @@ Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on er
 | 3 | Paste command + package path for verification runs actually executed |
 | 4 | Explain why scripts/tests changed |
 | 5 | Add a test that fails without the change when behavior is non-obvious |
-| 6 | Run `bash scripts/ci/pr_fast.sh` scoped to touched packages |
+| 6 | Doc claims match code or cite `antifraud_backlog.md` slug; run `antifraud_doc_gate.sh` when touching vendor antifraud docs |
+| 7 | Run `bash scripts/ci/pr_fast.sh` scoped to touched packages |
+| 8 | Antifraud: verify silent reject path (flag, decoy HTTP, stream/CH flag, ML action) in code before closing backlog item |
+| 9 | New CI script: no duplicate gate in parent + child; no `exit 0` on failed check; no hardcoded "must exist" script lists |
 
 ## Related rules
 

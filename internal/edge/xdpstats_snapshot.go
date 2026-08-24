@@ -19,8 +19,8 @@ type Snapshot struct {
 	Fingerprints uint64            `json:"fingerprints"`
 }
 
-func WriteRedis(ctx context.Context, rdb redis.Cmdable, snap Snapshot) error {
-	if rdb == nil {
+func WriteRedis(ctx context.Context, redisClient redis.Cmdable, snap Snapshot) error {
+	if redisClient == nil {
 		return nil
 	}
 	snap.UpdatedAt = snap.UpdatedAt.UTC()
@@ -28,14 +28,14 @@ func WriteRedis(ctx context.Context, rdb redis.Cmdable, snap Snapshot) error {
 	if err != nil {
 		return err
 	}
-	return rdb.Set(ctx, redisSnapshotKey, raw, 10*time.Minute).Err()
+	return redisClient.Set(ctx, redisSnapshotKey, raw, 10*time.Minute).Err()
 }
 
-func ReadRedis(ctx context.Context, rdb redis.Cmdable) (Snapshot, error) {
-	if rdb == nil {
+func ReadRedis(ctx context.Context, redisClient redis.Cmdable) (Snapshot, error) {
+	if redisClient == nil {
 		return Snapshot{}, fmt.Errorf("redis client is nil")
 	}
-	raw, err := rdb.Get(ctx, redisSnapshotKey).Bytes()
+	raw, err := redisClient.Get(ctx, redisSnapshotKey).Bytes()
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -46,16 +46,16 @@ func ReadRedis(ctx context.Context, rdb redis.Cmdable) (Snapshot, error) {
 	return snap, nil
 }
 
-func ReadRedisAny(ctx context.Context, rdbs []redis.UniversalClient) (Snapshot, error) {
-	if len(rdbs) == 0 {
+func ReadRedisAny(ctx context.Context, redisShards []redis.UniversalClient) (Snapshot, error) {
+	if len(redisShards) == 0 {
 		return Snapshot{}, fmt.Errorf("no redis client available")
 	}
 	var lastErr error
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		snap, err := ReadRedis(ctx, rdb)
+		snap, err := ReadRedis(ctx, redisClient)
 		if err == nil {
 			return snap, nil
 		}

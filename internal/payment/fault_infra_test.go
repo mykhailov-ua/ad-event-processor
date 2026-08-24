@@ -76,8 +76,8 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	endpoint, err := redisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
 
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
-	require.NoError(t, rdb.Ping(ctx).Err())
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
+	require.NoError(t, redisClient.Ping(ctx).Err())
 
 	cfg := &config.Config{
 		PaymentInternalToken:    "payment_fault_token",
@@ -86,14 +86,14 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 		MaxRetries:              3,
 	}
 
-	rdbs := []redis.UniversalClient{rdb}
-	mgmtSvc := controlplane.NewService(context.Background(), pool, rdbs, ingestion.NewStaticSlotSharder(len(rdbs)), cfg)
+	redisShards := []redis.UniversalClient{redisClient}
+	mgmtSvc := controlplane.NewService(context.Background(), pool, redisShards, ingestion.NewStaticSlotSharder(len(redisShards)), cfg)
 	settleHandler := controlplane.NewSettlementHandler(mgmtSvc, cfg)
 	settlementGate := NewSettlementFaultGate(settleHandler.PaymentSettlement())
 
 	infra := &FaultInfra{
 		Pool:            pool,
-		Redis:           rdb,
+		Redis:           redisClient,
 		PGContainer:     pgContainer,
 		RedisContainer:  redisContainer,
 		Cfg:             cfg,
@@ -102,7 +102,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	}
 
 	cleanup := func() {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		pool.Close()
 		_ = redisContainer.Terminate(ctx)
 		_ = pgContainer.Terminate(ctx)

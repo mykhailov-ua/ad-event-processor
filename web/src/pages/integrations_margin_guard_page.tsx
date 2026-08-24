@@ -68,7 +68,7 @@ export function IntegrationsMarginGuardPage() {
 
   useEffect(() => {
     if (isCustomerUuid(customerId)) void scan();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- initial scan only when UUID preset
+  }, []); 
 
   const emptyMsg = !isCustomerUuid(customerId)
     ? 'Enter customer UUID and scan.'

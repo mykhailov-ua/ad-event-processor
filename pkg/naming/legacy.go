@@ -24,7 +24,7 @@ func DeprecatedBPFMetricPrefix() string {
 	return DeprecatedStackSlug() + "_bpf_"
 }
 
-// BPFProbeProgramPrefix is the ELF symbol prefix for load-test BPF probe programs.
+
 func BPFProbeProgramPrefix() string {
 	return "probe_"
 }

@@ -37,7 +37,7 @@ func ReloadRtbCatalog(
 func StartRtbCatalogReloadWatch(
 	ctx context.Context,
 	q *db.Queries,
-	rdb redis.UniversalClient,
+	redisClient redis.UniversalClient,
 	channel string,
 	registry *Registry,
 	catalog *RtbCatalog,
@@ -46,7 +46,7 @@ func StartRtbCatalogReloadWatch(
 	budgetSync RtbBudgetSync,
 	watcher *SettingsWatcher,
 ) {
-	if rdb == nil || catalog == nil || q == nil {
+	if redisClient == nil || catalog == nil || q == nil {
 		return
 	}
 	if channel == "" {
@@ -64,7 +64,7 @@ func StartRtbCatalogReloadWatch(
 	}
 
 	go func() {
-		pubsub := rdb.Subscribe(ctx, channel)
+		pubsub := redisClient.Subscribe(ctx, channel)
 		defer func() { _ = pubsub.Close() }()
 
 		ch := pubsub.Channel(redis.WithChannelSize(64))

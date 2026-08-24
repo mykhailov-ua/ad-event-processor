@@ -45,9 +45,9 @@ func TestUnifiedFilter_GeoBidFloor(t *testing.T) {
 	campID := uuid.New()
 	reg := &mockRegistry{}
 
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	f := NewUnifiedFilter(
-		[]redis.UniversalClient{rdb},
+		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 		reg,
 		nil,

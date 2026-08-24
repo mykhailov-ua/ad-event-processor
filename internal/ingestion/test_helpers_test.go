@@ -22,11 +22,11 @@ func setupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
 	if err != nil {
 		t.Fatalf("failed to get redis endpoint: %s", err)
 	}
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+	redisClient := redis.NewUniversalClient(&redis.UniversalOptions{
 		Addrs: []string{endpoint},
 	})
-	return rdb, func() {
-		_ = rdb.Close()
+	return redisClient, func() {
+		_ = redisClient.Close()
 		_ = redisContainer.Terminate(ctx)
 	}
 }

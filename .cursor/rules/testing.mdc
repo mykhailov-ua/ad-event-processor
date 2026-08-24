@@ -135,7 +135,7 @@ Edge nginx Lua and tracker gnet must agree on the same wire:
 
 ## Fuzz targets
 
-Existing: `FuzzJA3Parse`, `FuzzLinkSignerVerify`, `FuzzSafePageVerifyParse` (`gma_fuzz_test.go`).
+Existing: `FuzzJA3Parse`, `FuzzLinkSignerVerify`, `FuzzSafePageVerifyParse` (`landing_protection_fuzz_test.go`).
 
 Rules:
 

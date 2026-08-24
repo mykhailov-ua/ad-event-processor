@@ -6,7 +6,7 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-// BlocklistMaps routes exact host keys to LRU HASH maps and CIDR prefixes to LPM tries.
+
 type BlocklistMaps struct {
 	V4Host   *ebpf.Map
 	V4Prefix *ebpf.Map

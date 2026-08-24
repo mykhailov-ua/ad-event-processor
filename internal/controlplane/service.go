@@ -33,7 +33,7 @@ import (
 type Service struct {
 	pool              *pgxpool.Pool
 	settlePoolField   *pgxpool.Pool
-	rdbs              []redis.UniversalClient
+	redisShards              []redis.UniversalClient
 	sharder           domain.Sharder
 	cfg               *config.Config
 	pgGate            *PostgresGate
@@ -104,11 +104,11 @@ func (s *Service) startWorker(fn func()) {
 	}()
 }
 
-func NewService(ctx context.Context, pool *pgxpool.Pool, rdbs []redis.UniversalClient, sharder domain.Sharder, cfg *config.Config) *Service {
+func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.UniversalClient, sharder domain.Sharder, cfg *config.Config) *Service {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Service{
 		pool:    pool,
-		rdbs:    rdbs,
+		redisShards:    redisShards,
 		sharder: sharder,
 		cfg:     cfg,
 		ctx:     ctx,
@@ -247,7 +247,7 @@ func (s *Service) RedisShards() []redis.UniversalClient {
 	if s == nil {
 		return nil
 	}
-	return s.rdbs
+	return s.redisShards
 }
 
 func (s *Service) GetPool() *pgxpool.Pool {
@@ -785,8 +785,8 @@ func (s *Service) campaignUpdateChannel() string {
 
 func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) error {
 	var pubErr error
-	if len(s.rdbs) > 0 {
-		pubErr = publishCampaignControlToAllShards(ctx, s.rdbs, s.campaignUpdateChannel(), campaignID, time.Time{})
+	if len(s.redisShards) > 0 {
+		pubErr = publishCampaignControlToAllShards(ctx, s.redisShards, s.campaignUpdateChannel(), campaignID, time.Time{})
 	} else {
 		pubErr = fmt.Errorf("no redis pubsub client available")
 	}
@@ -822,14 +822,14 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 }
 
 func (s *Service) getRDB(campaignID uuid.UUID) redis.UniversalClient {
-	if len(s.rdbs) == 0 {
+	if len(s.redisShards) == 0 {
 		return nil
 	}
-	if len(s.rdbs) == 1 {
-		return s.rdbs[0]
+	if len(s.redisShards) == 1 {
+		return s.redisShards[0]
 	}
 	idx := s.sharder.GetShard(campaignID)
-	return s.rdbs[idx%len(s.rdbs)]
+	return s.redisShards[idx%len(s.redisShards)]
 }
 
 func (s *Service) ListAuditLogRows(ctx context.Context, limit, offset int32) ([]db.AdminAuditLog, int64, error) {

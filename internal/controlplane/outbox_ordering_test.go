@@ -23,7 +23,7 @@ func TestOutboxWorker_strictOrderHaltsOnFailure(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	badCreatePayload := []byte("{")
@@ -41,7 +41,7 @@ func TestOutboxWorker_strictOrderHaltsOnFailure(t *testing.T) {
 		VALUES ('UPDATE_SETTINGS', $1, NOW() - INTERVAL '1 second') RETURNING id`, updatePayload).Scan(&updateEventID)
 	require.NoError(t, err)
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 	worker := NewOutboxWorker(svc)
 
 	processed, err := worker.ProcessOutboxWithCount(ctx, 10)
@@ -56,7 +56,7 @@ func TestOutboxWorker_strictOrderHaltsOnFailure(t *testing.T) {
 	assert.Equal(t, "PENDING", createStatus)
 	assert.Equal(t, "PENDING", updateStatus, "UPDATE must not run while CREATE is still pending")
 
-	version, err := rdb.Get(ctx, "config:version").Int64()
+	version, err := redisClient.Get(ctx, "config:version").Int64()
 	if err == nil {
 		assert.NotEqual(t, updateEventID, version, "UPDATE_SETTINGS must not apply when batch halted on CREATE")
 	} else {
@@ -73,7 +73,7 @@ func TestOutboxWorker_strictOrderSucceedsInSequence(t *testing.T) {
 	ctx := context.Background()
 	pool, cleanupDB := database.SetupTestDB(t)
 	defer cleanupDB()
-	rdb, cleanupRedis := database.SetupTestRedis(t)
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
 	defer cleanupRedis()
 
 	customerID := uuid.New()
@@ -107,19 +107,19 @@ func TestOutboxWorker_strictOrderSucceedsInSequence(t *testing.T) {
 		VALUES ('UPDATE_SETTINGS', $1, NOW() - INTERVAL '1 second') RETURNING id`, updatePayload).Scan(&updateEventID)
 	require.NoError(t, err)
 
-	svc := newBareService(t, pool, []redis.UniversalClient{rdb}, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, nil)
 	worker := NewOutboxWorker(svc)
 
 	processed, err := worker.ProcessOutboxWithCount(ctx, 10)
 	require.NoError(t, err)
 	assert.Equal(t, 2, processed)
 
-	version, err := rdb.Get(ctx, "config:version").Int64()
+	version, err := redisClient.Get(ctx, "config:version").Int64()
 	require.NoError(t, err)
 	assert.Equal(t, updateEventID, version)
 
 	budgetKey := "budget:campaign:" + campaignID.String()
-	budget, err := rdb.Get(ctx, budgetKey).Int64()
+	budget, err := redisClient.Get(ctx, budgetKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(3_000_000), budget)
 }

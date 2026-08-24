@@ -205,13 +205,13 @@ func writeReplayCSV(w io.Writer, rows []replayRow, scores []float64) error {
 	return cw.Error()
 }
 
-func shadowAction(tier fraud.FraudTier, ghostEnabled bool) string {
+func shadowAction(tier fraud.FraudTier, silentRejectEnabled bool) string {
 	switch tier {
 	case fraud.FraudTierSuspect:
 		return "boost"
 	case fraud.FraudTierIVT:
-		if ghostEnabled {
-			return "ghost"
+		if silentRejectEnabled {
+			return "silent_reject"
 		}
 	case fraud.FraudTierBlock:
 		return "blacklist"

@@ -20,18 +20,18 @@ func SetPIIHasher(h *piihash.Hasher) {
 	}
 }
 
-func chPIIHasher() *piihash.Hasher {
+func clickhousePIIHasher() *piihash.Hasher {
 	piiHasherMu.RLock()
 	defer piiHasherMu.RUnlock()
 	return piiHasher
 }
 
-func hashIPForCH(ip string) [16]byte {
-	return chPIIHasher().HashIP(ip)
+func hashIPForClickhouse(ip string) [16]byte {
+	return clickhousePIIHasher().HashIP(ip)
 }
 
 func ipHashHex(ip string) string {
-	h := hashIPForCH(ip)
+	h := hashIPForClickhouse(ip)
 	return hex.EncodeToString(h[:])
 }
 

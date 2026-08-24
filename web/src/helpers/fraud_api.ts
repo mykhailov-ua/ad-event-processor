@@ -14,8 +14,14 @@ export type FraudSensitivityPreset =
   | 'conservative'
   | 'balanced'
   | 'aggressive'
-  | 'gray_market'
+  | 'enhanced_defense'
   | 'social_in_app';
+
+
+export function normalizeFraudPresetId(id: string): FraudSensitivityPreset | string {
+  if (id === 'gray_market') return 'enhanced_defense';
+  return id;
+}
 
 export type CampaignFraudConfig = {
   campaign_id: string;
@@ -23,7 +29,7 @@ export type CampaignFraudConfig = {
   fraud_threshold_suspect: number;
   fraud_threshold_ivt: number;
   fraud_threshold_block: number;
-  ghost_ivt_enabled: boolean;
+  silent_reject_enabled: boolean;
   behavior_flags?: number;
 };
 
@@ -33,7 +39,7 @@ export type PatchCampaignFraudRequest = {
   fraud_threshold_suspect?: number;
   fraud_threshold_ivt?: number;
   fraud_threshold_block?: number;
-  ghost_ivt_enabled?: boolean;
+  silent_reject_enabled?: boolean;
 };
 
 export type CampaignFraudPreview = {
@@ -114,10 +120,10 @@ export const FRAUD_PRESET_OPTIONS: Array<{
     description: 'More blocks; lower score bands before action.',
   },
   {
-    id: 'gray_market',
-    label: 'Gray market (GMA)',
+    id: 'enhanced_defense',
+    label: 'Enhanced defense',
     description:
-      'Aggressive fraud tiers plus safe page, L2 attestation, L1/L1.5/TLS blocks, and signed links.',
+      'Tight tiers, silent reject, safe-page redirect on fraud, attestation, VPN/TLS blocks, signed links.',
   },
   {
     id: 'social_in_app',
@@ -133,7 +139,7 @@ export async function fetchFraudPresets(): Promise<FraudPolicyPreset[]> {
     return res.data;
   }
   return FRAUD_PRESET_OPTIONS.map((opt) => {
-    const aggressive = opt.id === 'aggressive' || opt.id === 'gray_market';
+    const aggressive = opt.id === 'aggressive' || opt.id === 'enhanced_defense';
     const conservative = opt.id === 'conservative';
     return {
       name: opt.id,
