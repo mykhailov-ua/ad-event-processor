@@ -309,7 +309,7 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusUnauthorized, "UNAUTHORIZED", ErrInstallTokenInvalid.Error()
 	}
 
-	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) || errors.Is(err, ErrDeploymentCampaignLimit) {
+	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) || errors.Is(err, ErrDeploymentCampaignLimit) || errors.Is(err, ErrDeploymentTenantLimit) {
 		return http.StatusTooManyRequests, "LIMIT_EXCEEDED", err.Error()
 	}
 

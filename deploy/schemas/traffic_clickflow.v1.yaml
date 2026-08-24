@@ -1,0 +1,20 @@
+version: 1
+tokens:
+  - name: click_id
+    query_key: click_id
+    max_len: 128
+  - name: zone_id
+    query_key: zone_id
+    max_len: 64
+  - name: clickflow_campaign_id
+    query_key: clickflow_camp_id
+    max_len: 64
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: sub1
+    source: query
+    key: sub1
+    required: false

@@ -20,11 +20,29 @@ func TestSanitizeFeaturesForSKU_starterBlocksOpenRTBAndXDP(t *testing.T) {
 	require.False(t, out.MlFraudBoostEnabled())
 }
 
-func TestSanitizeFeaturesForSKU_proAllowsRTBBlocksXDP(t *testing.T) {
-	in := FeatureSet{RtbLive: true, EbpfXDPEdge: true}
+func TestSanitizeFeaturesForSKU_proAllowsIVTBlocksOpenRTBAndXDP(t *testing.T) {
+	in := FeatureSet{
+		RtbLive:       true,
+		OpenRTBEngine: true,
+		EbpfXDPEdge:   true,
+		IvtMLDetector: false,
+		MlFraudBoost:  true,
+	}
 	out := SanitizeFeaturesForSKU(SKUCodePro, in)
-	require.True(t, out.OpenRTBEnabled())
+	require.False(t, out.OpenRTBEnabled())
+	require.True(t, out.IvtMLEnabled())
+	require.False(t, out.MlFraudBoostEnabled())
 	require.False(t, out.EbpfEdgeEnabled())
+}
+
+func TestLoadSKUFile_proTierFeatures(t *testing.T) {
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	sku, err := doc.GetSKU(SKUCodePro)
+	require.NoError(t, err)
+	require.False(t, sku.Features.OpenRTBEngine)
+	require.True(t, sku.Features.IvtMLDetector)
+	require.False(t, sku.Features.MlFraudBoost)
 }
 
 func TestSanitizeFeaturesForSKU_pilotBlocksOpenRTB(t *testing.T) {
@@ -62,7 +80,7 @@ func TestLoadSKUFile_pilotSmokeLimits(t *testing.T) {
 	require.NoError(t, err)
 	sku, err := doc.GetSKU(SKUCodePilot)
 	require.NoError(t, err)
-	require.Equal(t, 10, sku.ValidDays)
+	require.Equal(t, 14, sku.ValidDays)
 	require.Equal(t, uint64(5000), sku.Limits.MaxRPS)
 	require.Equal(t, uint64(3), sku.Limits.MaxAPIKeys)
 	require.Equal(t, uint64(1), sku.Limits.MaxTenants)

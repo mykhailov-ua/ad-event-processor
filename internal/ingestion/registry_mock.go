@@ -24,6 +24,13 @@ var (
 	cachedMockCamp   atomic.Pointer[domain.Campaign]
 )
 
+func resetStaticCampaignBaseline() {
+	lockStaticCampaign(func(c *domain.Campaign) {
+		*c = domain.Campaign{CustomerID: uuid.Nil, Location: time.UTC}
+	})
+	cachedMockCamp.Store(nil)
+}
+
 func lockStaticCampaign(mut func(c *domain.Campaign)) {
 	staticCampaignMu.Lock()
 	defer staticCampaignMu.Unlock()
@@ -31,7 +38,10 @@ func lockStaticCampaign(mut func(c *domain.Campaign)) {
 }
 
 func configureMockRegistryCampaign(mut func(c *domain.Campaign)) {
-	lockStaticCampaign(mut)
+	lockStaticCampaign(func(c *domain.Campaign) {
+		*c = domain.Campaign{CustomerID: uuid.Nil, Location: time.UTC}
+		mut(c)
+	})
 	cachedMockCamp.Store(nil)
 }
 

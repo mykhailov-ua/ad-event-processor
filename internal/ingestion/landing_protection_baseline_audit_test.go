@@ -19,7 +19,7 @@ func TestLandingProtectionBaseline_inventorySymbolsExist(t *testing.T) {
 
 	symbols := map[string][]string{
 		"tls_fingerprint_table.go":   {"TLSFingerprintTable", "MatchJA3"},
-		"l1_tls_fingerprint_hook.go": {"tlsFingerprintShouldSafeView"},
+		"landing_tls_fingerprint_hook.go": {"tlsFingerprintShouldSafeView"},
 		"link_signer.go":             {"AppendLinkSignature", "VerifyLinkSignature"},
 		"proxy_vpn_lpm.go":           {"ProxyVPNTable", "parseProxyVPNConnFlags"},
 		"click_redirect.go":          {"reactClickRedirect"},
@@ -35,7 +35,7 @@ func TestLandingProtectionBaseline_inventorySymbolsExist(t *testing.T) {
 func TestLandingProtectionBaseline_productScopeGates(t *testing.T) {
 	const (
 		gateEdgeJA3Headers    = "edge_header_pass_x_tls_ja3_ja4"
-		gateNoExternalIPAPI   = "local_in_memory_l15_only"
+		gateNoExternalIPAPI   = "local_in_memory_proxy_vpn_only"
 		gateSignColdVerifyHot = "sign_cold_verify_hot_alloc_pool"
 		gateBanditColdOnly    = "bandit_router_cold_worker_only"
 	)

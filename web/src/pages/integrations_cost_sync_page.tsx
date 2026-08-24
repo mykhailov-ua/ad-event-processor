@@ -37,6 +37,11 @@ type CostSyncHistoryRow = {
   trigger_source?: string;
 };
 
+/** Revcontent Stats API uses client_credentials; worker fetches Bearer tokens. */
+function usesClientCredentialsAuth(network: string): boolean {
+  return network === 'revcontent';
+}
+
 function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   return (
     <>
@@ -275,7 +280,7 @@ export function IntegrationsCostSyncPage() {
                   </select>
                 </label>
                 <label className="form-field">
-                  Account ID
+                  {usesClientCredentialsAuth(credForm.network) ? 'Client ID' : 'Account ID'}
                   <input
                     className="form-input"
                     value={credForm.account_id}
@@ -283,36 +288,57 @@ export function IntegrationsCostSyncPage() {
                   />
                 </label>
               </div>
-              <label className="form-field">
-                Access token
-                <input
-                  className="form-input font-mono"
-                  type="password"
-                  autoComplete="off"
-                  value={credForm.access_token}
-                  onChange={(e) => setCredForm((f) => ({ ...f, access_token: e.target.value }))}
-                />
-              </label>
-              <label className="form-field">
-                Refresh token (optional)
-                <input
-                  className="form-input font-mono"
-                  type="password"
-                  autoComplete="off"
-                  value={credForm.refresh_token}
-                  onChange={(e) => setCredForm((f) => ({ ...f, refresh_token: e.target.value }))}
-                />
-              </label>
-              <label className="form-field">
-                API key (optional)
-                <input
-                  className="form-input font-mono"
-                  type="password"
-                  autoComplete="off"
-                  value={credForm.api_key}
-                  onChange={(e) => setCredForm((f) => ({ ...f, api_key: e.target.value }))}
-                />
-              </label>
+              {usesClientCredentialsAuth(credForm.network) ? (
+                <>
+                  <p className="text-muted text-sm">
+                    Stats API credentials from Revcontent Account Settings. Access token is fetched
+                    automatically before each sync (~24h TTL).
+                  </p>
+                  <label className="form-field">
+                    Client secret
+                    <input
+                      className="form-input font-mono"
+                      type="password"
+                      autoComplete="off"
+                      value={credForm.api_key}
+                      onChange={(e) => setCredForm((f) => ({ ...f, api_key: e.target.value }))}
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="form-field">
+                    Access token
+                    <input
+                      className="form-input font-mono"
+                      type="password"
+                      autoComplete="off"
+                      value={credForm.access_token}
+                      onChange={(e) => setCredForm((f) => ({ ...f, access_token: e.target.value }))}
+                    />
+                  </label>
+                  <label className="form-field">
+                    Refresh token (optional)
+                    <input
+                      className="form-input font-mono"
+                      type="password"
+                      autoComplete="off"
+                      value={credForm.refresh_token}
+                      onChange={(e) => setCredForm((f) => ({ ...f, refresh_token: e.target.value }))}
+                    />
+                  </label>
+                  <label className="form-field">
+                    API key (optional)
+                    <input
+                      className="form-input font-mono"
+                      type="password"
+                      autoComplete="off"
+                      value={credForm.api_key}
+                      onChange={(e) => setCredForm((f) => ({ ...f, api_key: e.target.value }))}
+                    />
+                  </label>
+                </>
+              )}
               <Button
                 label={busy ? 'Saving...' : 'Save credential'}
                 variant="primary"

@@ -45,7 +45,7 @@ describe('traffic_source_templates', () => {
     assert.ok(!url.includes('%7B%7Bcampaign.id%7D%7D'));
   });
 
-  it('appends dmr=1 and UTM params (CPA-M4 fixture)', () => {
+  it('appends dmr=1 and UTM params', () => {
     const fb = trafficSourceById('meta-facebook')!;
     const url = buildTemplatedClickURL(
       'https://trk.example.com/click?campaign_id={campaign_id}&sub1={sub1}',

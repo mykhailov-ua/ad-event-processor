@@ -73,7 +73,7 @@ func applyControlplaneDefaults(cfg *Config) {
 
 func loadManagementModules(cfg *Config) {
 	cfg.IVT.Enabled = getEnvBool("IVT_DETECTOR_ENABLED", true)
-	cfg.IVT.ScanIntervalMs = getEnvInt("IVT_DETECTOR_SCAN_INTERVAL_MS", 300000)
+	cfg.IVT.ScanIntervalMs = getEnvInt("IVT_DETECTOR_SCAN_INTERVAL_MS", 60000)
 	cfg.IVT.OutboxPendingLimit = getEnvInt64("IVT_DETECTOR_OUTBOX_PENDING_LIMIT", 500)
 	cfg.IVT.WindowSec = getEnvInt("IVT_DETECTOR_WINDOW_SEC", 3600)
 	cfg.IVT.MinClicks = uint64(getEnvInt64("IVT_DETECTOR_MIN_CLICKS", 10))
@@ -84,7 +84,7 @@ func loadManagementModules(cfg *Config) {
 	cfg.IVT.IntervalMaxVariance = getEnvFloat("IVT_DETECTOR_INTERVAL_MAX_VARIANCE", 0.005)
 
 	cfg.FraudScoring.Enabled = getEnvBool("FRAUD_SCORING_ENABLED", false)
-	cfg.FraudScoring.ScanIntervalMs = getEnvInt("FRAUD_SCORING_SCAN_INTERVAL_MS", 300000)
+	cfg.FraudScoring.ScanIntervalMs = getEnvInt("FRAUD_SCORING_SCAN_INTERVAL_MS", 60000)
 	cfg.FraudScoring.BatchSize = getEnvInt("FRAUD_SCORING_BATCH_SIZE", 1000)
 	cfg.FraudScoring.ModelPath = os.Getenv("FRAUD_SCORING_MODEL_PATH")
 	if cfg.FraudScoring.ModelPath == "" {
@@ -92,6 +92,10 @@ func loadManagementModules(cfg *Config) {
 	}
 	cfg.FraudScoring.Standalone = getEnvBool("FRAUD_SCORER_STANDALONE", false)
 	cfg.FraudScoring.ExplainLiveScore = getEnvBool("FRAUD_EXPLAIN_LIVE_SCORE", false)
+	cfg.FraudScoring.MicrobatchEnabled = getEnvBool("FRAUD_MICROBATCH_ENABLED", true)
+	cfg.FraudScoring.MicrobatchFlushMs = getEnvInt("FRAUD_MICROBATCH_FLUSH_MS", 50)
+	cfg.FraudScoring.MicrobatchMaxLagSec = getEnvInt("FRAUD_MICROBATCH_MAX_LAG_SEC", 30)
+	cfg.FraudScoring.BoostFullResyncSec = getEnvInt("FRAUD_BOOST_FULL_RESYNC_SEC", 10)
 
 	cfg.ExternalResidentialIntel.Enabled = getEnvBool("EXTERNAL_RESIDENTIAL_INTEL_ENABLED", false)
 	cfg.ExternalResidentialIntel.ProviderURL = strings.TrimSpace(os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_URL"))
@@ -192,6 +196,7 @@ func loadManagementModules(cfg *Config) {
 	cfg.Control.EnableNotifier = getEnvBool("CONTROL_ENABLE_NOTIFIER", true)
 	cfg.Control.EnableMarginGuard = getEnvBool("CONTROL_ENABLE_MARGIN_GUARD", true)
 	cfg.Control.EnableCostSync = getEnvBool("CONTROL_ENABLE_COST_SYNC", true)
+	cfg.Control.EnablePlatformCampaignSync = getEnvBool("CONTROL_ENABLE_PLATFORM_CAMPAIGN_SYNC", true)
 
 	cfg.GeoIP.DBPath = os.Getenv("GEOIP_DB_PATH")
 	if cfg.GeoIP.DBPath == "" {

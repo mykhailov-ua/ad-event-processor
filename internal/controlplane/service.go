@@ -14,6 +14,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/landerhost"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/fraud"
 	"ad-event-processor/internal/metrics"
@@ -63,6 +64,7 @@ type Service struct {
 	reputation        *domainhealth.ReputationChecker
 	shard0Mu          sync.Mutex
 	reportJobRunner   *ReportJobRunner
+	landerStore       *landerhost.Store
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {
@@ -117,6 +119,7 @@ func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.Uni
 	if cfg != nil {
 		s.pgGate = NewPostgresGate(cfg.DBTrackerMaxConns)
 		s.cloudflare = NewCloudflareClient(string(cfg.Management.CloudflareAPIToken), cfg.Management.CloudflareAPIBase)
+		s.initLanderStore()
 	}
 	s.startWorker(func() {
 		if cfg == nil {
@@ -310,6 +313,9 @@ func (s *Service) GetCampaignRow(ctx context.Context, id uuid.UUID) (db.Campaign
 }
 
 func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string, balance int64, currency string) error {
+	if err := s.enforceDeploymentTenantCap(ctx); err != nil {
+		return err
+	}
 	_, err := db.New(s.pool).CreateCustomer(ctx, db.CreateCustomerParams{
 		ID:       domain.ToUUID(id),
 		Name:     name,

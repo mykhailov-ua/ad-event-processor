@@ -17,10 +17,10 @@ import (
 const campaignConfigCacheTTL = 60 * time.Second
 
 type campaignFraudConfig struct {
-	pass    uint8
-	suspect uint8
-	ivt     uint8
-	block   uint8
+	pass         uint8
+	suspect      uint8
+	ivt          uint8
+	block        uint8
 	silentReject bool
 }
 
@@ -213,7 +213,7 @@ LIMIT ?`
 				CampaignID: featureRows[i].CampaignID,
 				Action:     "boost",
 				Boost:      int32(fraudScore),
-				TTLSeconds: 300,
+				TTLSeconds: int64(ScoreBoostTTL.Seconds()),
 			})
 		case FraudTierIVT:
 			ttl := int64(3600)

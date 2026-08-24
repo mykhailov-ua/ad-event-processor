@@ -15,6 +15,7 @@ type RouteRegistry struct {
 	SelfServeHTTP         *SelfServeHTTPHandlers
 	PostbackHTTP          *PostbackHTTPHandlers
 	CostSyncHTTP          *CostSyncHTTPHandlers
+	PlatformCampaignHTTP  *PlatformCampaignHTTPHandlers
 	MarginGuardHTTP       *MarginGuardHTTPHandlers
 	SmartAlertsHTTP       *SmartAlertsHTTPHandlers
 	DomainHealthHTTP      *DomainHealthHTTPHandlers
@@ -84,6 +85,14 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/cost-sync/credentials/{network}"},
 	{Method: "GET", Path: "/api/v1/cost-sync/history"},
 	{Method: "POST", Path: "/api/v1/cost-sync/run"},
+	{Method: "GET", Path: "/api/v1/platform-campaigns/links"},
+	{Method: "PUT", Path: "/api/v1/platform-campaigns/links/{campaign_id}/{network}"},
+	{Method: "DELETE", Path: "/api/v1/platform-campaigns/links/{campaign_id}/{network}"},
+	{Method: "POST", Path: "/api/v1/platform-campaigns/links/{campaign_id}/{network}/refresh"},
+	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/pause"},
+	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/resume"},
+	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/budget"},
+	{Method: "POST", Path: "/api/v1/platform-campaigns/sync-run"},
 	{Method: "GET", Path: "/api/v1/brands"},
 	{Method: "POST", Path: "/api/v1/brands"},
 	{Method: "GET", Path: "/api/v1/brands/{id}/creatives"},
@@ -156,8 +165,19 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/domains/park"},
 	{Method: "GET", Path: "/api/v1/flows"},
 	{Method: "POST", Path: "/api/v1/flows"},
+	{Method: "GET", Path: "/api/v1/flows/{id}"},
+	{Method: "PUT", Path: "/api/v1/flows/{id}"},
 	{Method: "GET", Path: "/api/v1/landers"},
 	{Method: "POST", Path: "/api/v1/landers"},
+	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-upload"},
+	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-editor"},
+	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
+	{Method: "PUT", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
+	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-publish"},
+	{Method: "GET", Path: "/lp/{lander_id}/"},
+	{Method: "GET", Path: "/lp/{lander_id}/{path...}"},
+	{Method: "GET", Path: "/lp-preview/{lander_id}/"},
+	{Method: "GET", Path: "/lp-preview/{lander_id}/{path...}"},
 	{Method: "GET", Path: "/api/v1/offers"},
 	{Method: "POST", Path: "/api/v1/offers"},
 	{Method: "GET", Path: "/api/v1/ops/domains/tls-allowed"},
@@ -325,6 +345,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.CostSyncHTTP != nil {
 		routes.CostSyncHTTP.Register(mux)
+	}
+	if routes.PlatformCampaignHTTP != nil {
+		routes.PlatformCampaignHTTP.Register(mux)
 	}
 	if routes.MarginGuardHTTP != nil {
 		routes.MarginGuardHTTP.Register(mux)

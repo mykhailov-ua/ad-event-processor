@@ -103,12 +103,99 @@ func TestFraudScoringEnabled_defaultFalse(t *testing.T) {
 	if cfg.FraudScoringEnabled() {
 		t.Fatal("FRAUD_SCORING_ENABLED must default to false")
 	}
+	if cfg.FraudMicrobatchEnabled() {
+		t.Fatal("microbatch must stay off when scoring disabled")
+	}
 
 	t.Setenv("FRAUD_SCORING_ENABLED", "true")
 	cfg2 := &Config{}
 	cfg2.FraudScoring.Enabled = getEnvBool("FRAUD_SCORING_ENABLED", false)
+	cfg2.FraudScoring.MicrobatchEnabled = getEnvBool("FRAUD_MICROBATCH_ENABLED", true)
 	if !cfg2.FraudScoringEnabled() {
 		t.Fatal("FRAUD_SCORING_ENABLED=true must enable scoring")
+	}
+	if !cfg2.FraudMicrobatchEnabled() {
+		t.Fatal("FRAUD_MICROBATCH_ENABLED defaults true when scoring enabled")
+	}
+}
+
+func TestFraudScoring_defaults(t *testing.T) {
+	t.Setenv("FRAUD_SCORING_SCAN_INTERVAL_MS", "")
+	t.Setenv("FRAUD_MICROBATCH_FLUSH_MS", "")
+	t.Setenv("FRAUD_BOOST_FULL_RESYNC_SEC", "")
+	t.Setenv("IVT_DETECTOR_SCAN_INTERVAL_MS", "")
+	cfg := &Config{}
+	loadManagementModules(cfg)
+	if cfg.FraudScoring.ScanIntervalMs != 60000 {
+		t.Fatalf("ScanIntervalMs=%d want 60000", cfg.FraudScoring.ScanIntervalMs)
+	}
+	if cfg.IVT.ScanIntervalMs != 60000 {
+		t.Fatalf("IVT ScanIntervalMs=%d want 60000", cfg.IVT.ScanIntervalMs)
+	}
+	if cfg.FraudScoring.MicrobatchFlushMs != 50 {
+		t.Fatalf("MicrobatchFlushMs=%d want 50", cfg.FraudScoring.MicrobatchFlushMs)
+	}
+	if cfg.FraudScoring.BoostFullResyncSec != 10 {
+		t.Fatalf("BoostFullResyncSec=%d want 10", cfg.FraudScoring.BoostFullResyncSec)
+	}
+	if !cfg.FraudScoring.MicrobatchEnabled {
+		t.Fatal("MicrobatchEnabled must default true")
+	}
+}
+
+func TestApplyModeratorIntelWhenEntitled(t *testing.T) {
+	cfg := &Config{}
+	ApplyModeratorIntelWhenEntitled(cfg, true)
+	if !cfg.ModeratorIntelEnabled {
+		t.Fatal("expected moderator intel enabled when entitled and env unset")
+	}
+
+	t.Setenv("MODERATOR_INTEL_ENABLED", "0")
+	cfg2 := &Config{}
+	ApplyModeratorIntelWhenEntitled(cfg2, true)
+	if cfg2.ModeratorIntelEnabled {
+		t.Fatal("explicit MODERATOR_INTEL_ENABLED=0 must not be overridden")
+	}
+}
+
+func TestTierAIngestDefaults(t *testing.T) {
+	cfg := &Config{}
+	if err := loadIngestModules(cfg, "development"); err != nil {
+		t.Fatalf("loadIngestModules: %v", err)
+	}
+	if cfg.IPv4RotationMode != "live" {
+		t.Fatalf("IPv4RotationMode=%q want live", cfg.IPv4RotationMode)
+	}
+	if cfg.IPv6RotationMode != "live" {
+		t.Fatalf("IPv6RotationMode=%q want live", cfg.IPv6RotationMode)
+	}
+	if !cfg.IPv4RotationEnabled || !cfg.IPv6RotationEnabled {
+		t.Fatal("IPv4/IPv6 rotation enabled by default")
+	}
+	if !cfg.CIDRBlockEnabled || !cfg.ProxyVPNBlockEnabled || !cfg.TLSFingerprintEnabled {
+		t.Fatal("landing protection feeds enabled by default")
+	}
+	if cfg.DCASNSampleMask != -1 {
+		t.Fatalf("DCASNSampleMask=%d want -1", cfg.DCASNSampleMask)
+	}
+}
+
+func TestLoad_ttcFailClosedDefaultTrue(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("SERVER_PORT", "8181")
+	t.Setenv("DB_DSN", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("REDIS_ADDRS", "127.0.0.1:6479,127.0.0.1:6480,127.0.0.1:6481,127.0.0.1:6482")
+	t.Setenv("TOKEN_SYMMETRIC_KEY", "01234567890123456789012345678901")
+	t.Setenv("TTC_FAIL_CLOSED", "")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !cfg.TTCFailClosed {
+		t.Fatal("TTCFailClosed must default true")
+	}
+	if cfg.FraudConsumerLagSec != 60 {
+		t.Fatalf("FraudConsumerLagSec=%d want 60", cfg.FraudConsumerLagSec)
 	}
 }
 

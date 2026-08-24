@@ -69,32 +69,32 @@ func init() {
 }
 
 type Service struct {
-	repo        db.Store
-	tokenMaker  Maker
-	hasher      *PasswordHasher
-	lockout     *LockoutLimiter
-	rdb         redis.UniversalClient
-	controlRdbs []redis.UniversalClient
-	rehashSem   chan struct{}
-	cryptoSem   chan struct{}
-	mailer      Mailer
+	repo               db.Store
+	tokenMaker         Maker
+	hasher             *PasswordHasher
+	lockout            *LockoutLimiter
+	redisClient        redis.UniversalClient
+	controlRedisShards []redis.UniversalClient
+	rehashSem          chan struct{}
+	cryptoSem          chan struct{}
+	mailer             Mailer
 }
 
-func (service *Service) SetControlRedisShards(rdbs []redis.UniversalClient) {
-	service.controlRdbs = rdbs
+func (service *Service) SetControlRedisShards(redisShards []redis.UniversalClient) {
+	service.controlRedisShards = redisShards
 }
 
 func (service *Service) controlRedis() []redis.UniversalClient {
-	if len(service.controlRdbs) > 0 {
-		return service.controlRdbs
+	if len(service.controlRedisShards) > 0 {
+		return service.controlRedisShards
 	}
-	if service.rdb != nil {
-		return []redis.UniversalClient{service.rdb}
+	if service.redisClient != nil {
+		return []redis.UniversalClient{service.redisClient}
 	}
 	return nil
 }
 
-func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout *LockoutLimiter, rdb redis.UniversalClient) *Service {
+func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout *LockoutLimiter, redisClient redis.UniversalClient) *Service {
 	gomaxprocs := runtime.GOMAXPROCS(0)
 	p := 1
 	if hasher != nil {
@@ -108,14 +108,14 @@ func NewService(repo db.Store, tokenMaker Maker, hasher *PasswordHasher, lockout
 	}
 
 	return &Service{
-		repo:       repo,
-		tokenMaker: tokenMaker,
-		hasher:     hasher,
-		lockout:    lockout,
-		rdb:        rdb,
-		rehashSem:  make(chan struct{}, 2),
-		cryptoSem:  make(chan struct{}, cryptoLimit),
-		mailer:     SlogMailer{},
+		repo:        repo,
+		tokenMaker:  tokenMaker,
+		hasher:      hasher,
+		lockout:     lockout,
+		redisClient: redisClient,
+		rehashSem:   make(chan struct{}, 2),
+		cryptoSem:   make(chan struct{}, cryptoLimit),
+		mailer:      SlogMailer{},
 	}
 }
 
@@ -295,7 +295,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 
 	if errors.Is(verifyErr, ErrInsecureHashParameters) {
 		lockKey := "lock:rehash:" + email
-		ok, errLock := service.rdb.SetNX(ctx, lockKey, "1", time.Minute).Result()
+		ok, errLock := service.redisClient.SetNX(ctx, lockKey, "1", time.Minute).Result()
 		if errLock != nil {
 			slog.Error("failed to acquire rehash lock", slog.String("email", email), slog.Any("error", errLock))
 		}
@@ -306,7 +306,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 					defer func() {
 						<-service.rehashSem
 						cleanupCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-						if errDel := service.rdb.Del(cleanupCtx, lockKey).Err(); errDel != nil {
+						if errDel := service.redisClient.Del(cleanupCtx, lockKey).Err(); errDel != nil {
 							slog.Error("failed to release rehash lock", slog.String("email", userEmail), slog.Any("error", errDel))
 						}
 						cancel()
@@ -327,7 +327,7 @@ func (service *Service) Login(ctx context.Context, email, password, userAgent, c
 				}(password, email)
 			default:
 				cleanupCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-				if errDel := service.rdb.Del(cleanupCtx, lockKey).Err(); errDel != nil {
+				if errDel := service.redisClient.Del(cleanupCtx, lockKey).Err(); errDel != nil {
 					slog.Error("failed to release rehash lock on default", slog.String("email", email), slog.Any("error", errDel))
 				}
 				cancel()
@@ -433,8 +433,8 @@ func (service *Service) VerifyToken(ctx context.Context, accessToken string) (db
 }
 
 func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string, duration time.Duration) (accessToken, newRefreshToken string, err error) {
-	if service.rdb != nil {
-		cached, err := service.rdb.Get(ctx, "idempotency:refresh:"+refreshTokenStr).Result()
+	if service.redisClient != nil {
+		cached, err := service.redisClient.Get(ctx, "idempotency:refresh:"+refreshTokenStr).Result()
 		if err == nil && cached != "" {
 			parts := strings.Split(cached, " ")
 			if len(parts) == 2 {
@@ -451,8 +451,8 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 		}
 
 		if session.IsBlocked {
-			if service.rdb != nil {
-				cached, errCached := service.rdb.Get(ctx, "idempotency:refresh:"+refreshTokenStr).Result()
+			if service.redisClient != nil {
+				cached, errCached := service.redisClient.Get(ctx, "idempotency:refresh:"+refreshTokenStr).Result()
 				if errCached == nil && cached != "" {
 					parts := strings.Split(cached, " ")
 					if len(parts) == 2 {
@@ -532,8 +532,8 @@ func (service *Service) RefreshToken(ctx context.Context, refreshTokenStr string
 		return "", "", err
 	}
 
-	if service.rdb != nil {
-		if errSet := service.rdb.Set(ctx, "idempotency:refresh:"+refreshTokenStr, accessToken+" "+newRefreshToken, 5*time.Minute).Err(); errSet != nil {
+	if service.redisClient != nil {
+		if errSet := service.redisClient.Set(ctx, "idempotency:refresh:"+refreshTokenStr, accessToken+" "+newRefreshToken, 5*time.Minute).Err(); errSet != nil {
 			slog.Error("failed to set idempotency cache", slog.Any("error", errSet))
 		}
 	}
@@ -556,8 +556,8 @@ func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string)
 		if len(shards) > 0 {
 			var wg sync.WaitGroup
 			key := "revoked:session:" + sessionID
-			for i, rdb := range shards {
-				if rdb == nil {
+			for i, redisClient := range shards {
+				if redisClient == nil {
 					continue
 				}
 				wg.Add(1)
@@ -566,7 +566,7 @@ func (service *Service) RevokeToken(ctx context.Context, refreshTokenStr string)
 					if errSet := client.Set(ctx, key, "1", ttl).Err(); errSet != nil {
 						slog.Error("failed to set revoked session in redis", slog.String("session_id", sessionID), slog.Int("shard", idx), slog.Any("error", errSet))
 					}
-				}(i, rdb)
+				}(i, redisClient)
 			}
 			wg.Wait()
 		}
@@ -792,7 +792,7 @@ func (service *Service) VerifyAPIKey(ctx context.Context, rawKey string) (db.Use
 func (service *Service) RequestEmailVerification(ctx context.Context, userID uuid.UUID) (string, error) {
 	token := uuid.NewString()
 	key := "auth:email_verify:" + token
-	if err := service.rdb.Set(ctx, key, userID.String(), 24*time.Hour).Err(); err != nil {
+	if err := service.redisClient.Set(ctx, key, userID.String(), 24*time.Hour).Err(); err != nil {
 		return "", err
 	}
 	service.AuditLog(ctx, userID, "EMAIL_VERIFICATION_REQUESTED", "user", userID.String(), "", "", nil, nil)
@@ -801,12 +801,12 @@ func (service *Service) RequestEmailVerification(ctx context.Context, userID uui
 
 func (service *Service) ConfirmEmailVerification(ctx context.Context, token string) (uuid.UUID, error) {
 	key := "auth:email_verify:" + token
-	userIDStr, err := service.rdb.Get(ctx, key).Result()
+	userIDStr, err := service.redisClient.Get(ctx, key).Result()
 	if err != nil {
 		return uuid.Nil, ErrInvalidToken
 	}
 
-	if delErr := service.rdb.Del(ctx, key).Err(); delErr != nil {
+	if delErr := service.redisClient.Del(ctx, key).Err(); delErr != nil {
 		slog.Warn("failed to delete email verification token from Redis", "token", token, "error", delErr)
 	}
 
@@ -857,12 +857,12 @@ func (service *Service) UnblockUser(ctx context.Context, email string) error {
 }
 
 func (service *Service) notifyNewIPLogin(ctx context.Context, user db.User, clientIP, userAgent string) {
-	if service.rdb == nil || service.mailer == nil || clientIP == "" || clientIP == "unknown" {
+	if service.redisClient == nil || service.mailer == nil || clientIP == "" || clientIP == "unknown" {
 		return
 	}
 	userID := uuid.UUID(user.ID.Bytes).String()
 	knownKey := "auth:known_ips:" + userID
-	added, err := service.rdb.SAdd(ctx, knownKey, clientIP).Result()
+	added, err := service.redisClient.SAdd(ctx, knownKey, clientIP).Result()
 	if err != nil {
 		slog.Error("failed to record known login IP", slog.String("user_id", userID), slog.Any("error", err))
 		return
@@ -870,7 +870,7 @@ func (service *Service) notifyNewIPLogin(ctx context.Context, user db.User, clie
 	if added == 0 {
 		return
 	}
-	count, err := service.rdb.SCard(ctx, knownKey).Result()
+	count, err := service.redisClient.SCard(ctx, knownKey).Result()
 	if err != nil || count <= 1 {
 		return
 	}

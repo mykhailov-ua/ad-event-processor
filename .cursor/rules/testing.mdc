@@ -102,15 +102,15 @@ Parser security gaps (`TestChaos_ParserSecurity_PS_*`):
 
 | Gap | Attack | Budget constant |
 | :--- | :--- | :--- |
-| PS-H01 | `sync.Pool` cap poisoning | `maxPoolObjectSize` |
-| PS-H02 | Key-pair flood | `MaxJSONKeyPairs` |
-| PS-H04 | Backslash escape walk in key | `MaxJSONStringScanBytes` |
-| PS-H05 | Overlong UTF-8 (`\xc0\xaf`) | `JSON_STRICT_UTF8` |
-| PS-G09 | Non-ASCII key bytes | Reject |
-| PS-G11 | Lone surrogate `\uD800` | Reject |
-| PS-G12 | Distributed whitespace bomb | `MaxJSONTotalWSkip` |
-| PS-G13 | Quote-dense escape bomb | `MaxJSONStringEscapes` |
-| PS-G10 | Duplicate OpenRTB keys | Last wins on `id`, `imp` |
+| json_pool_cap_poisoning | `sync.Pool` cap poisoning | `maxPoolObjectSize` |
+| json_key_pair_flood | Key-pair flood | `MaxJSONKeyPairs` |
+| json_key_escape_walk | Backslash escape walk in key | `MaxJSONStringScanBytes` |
+| json_overlong_utf8 | Overlong UTF-8 (`\xc0\xaf`) | `JSON_STRICT_UTF8` |
+| json_non_ascii_key | Non-ASCII key bytes | Reject |
+| json_lone_surrogate | Lone surrogate `\uD800` | Reject |
+| json_whitespace_bomb | Distributed whitespace bomb | `MaxJSONTotalWSkip` |
+| json_quote_escape_bomb | Quote-dense escape bomb | `MaxJSONStringEscapes` |
+| openrtb_duplicate_keys | Duplicate OpenRTB keys | Last wins on `id`, `imp` |
 
 Wire / framing: TE.TE obfuscation, HPACK continuation bomb, protobuf field budget (`PROTO_MAX_FIELDS`), HTTP/2 oversized frame, chunk extension `;`, slow-body spin (`HTTP1_INCOMPLETE_MAX`). See `parser.mdc`.
 

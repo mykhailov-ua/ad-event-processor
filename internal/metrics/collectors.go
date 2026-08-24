@@ -164,7 +164,7 @@ var (
 
 	ProxyVPNLPMMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_proxy_vpn_lpm_match_total",
-		Help: "L1.5 proxy/VPN pre-filter matches (fixed labels: vpn, hosting)",
+		Help: "Proxy/VPN pre-filter matches (fixed labels: vpn, hosting)",
 	}, []string{"kind"})
 
 	ProxyVPNFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -179,13 +179,43 @@ var (
 
 	ProxyVPNLPMUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_proxy_vpn_lpm_uninitialized",
-		Help: "1 while the L1.5 proxy/VPN table has no published snapshot",
+		Help: "1 while the proxy/VPN table has no published snapshot",
 	})
 
 	ProxyVPNLPMPrefixes = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_proxy_vpn_lpm_prefixes",
-		Help: "Number of prefixes in the active L1.5 proxy/VPN snapshot",
+		Help: "Number of prefixes in the active proxy/VPN snapshot",
 	})
+
+	ModeratorIntelFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_moderator_intel_feed_refresh_total",
+		Help: "Moderator intel feed refresh cycles completed",
+	})
+
+	ModeratorIntelFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_moderator_intel_feed_refresh_errors_total",
+		Help: "Moderator intel feed parse or verify failures; previous snapshot retained",
+	})
+
+	ModeratorIntelLPMMatchTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_moderator_intel_lpm_match_total",
+		Help: "Moderator intel pre-filter matches by network label",
+	}, []string{"network"})
+
+	ModeratorIntelLPMUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_moderator_intel_lpm_uninitialized",
+		Help: "1 while the moderator intel table has no published snapshot",
+	})
+
+	ModeratorIntelLPMPrefixes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_moderator_intel_lpm_prefixes",
+		Help: "Number of prefixes in the active moderator intel snapshot",
+	})
+
+	ReviewTrafficRouteTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_review_traffic_route_total",
+		Help: "Review-traffic signal matches routed by campaign policy action",
+	}, []string{"action", "signal"})
 
 	TCPMSSAnomalyTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_tcp_mss_anomaly_total",
@@ -1181,6 +1211,10 @@ var (
 	MicroBatchProcessedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_micro_batch_processed_total",
 		Help: "Total number of events processed by the micro-batcher",
+	})
+	MicroBatchDroppedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_micro_batch_dropped_total",
+		Help: "Total number of events dropped because the micro-batch queue was full",
 	})
 	MicroBatchBoostsWrittenTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_micro_batch_boosts_written_total",

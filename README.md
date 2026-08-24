@@ -1,4 +1,4 @@
-# BidShard
+# ad-event-processor
 
 Self-hosted ad event stack: high-throughput tracker (`/track`, `/click`), optional in-process OpenRTB exchange (`/openrtb/bid`), admin API and React UI (`:8188`), and async settlement pipeline (Postgres financial truth, ClickHouse analytics). Go module: `ad-event-processor`.
 
@@ -48,7 +48,7 @@ gnet workers do not block on Redis: `FilterEngine.Check` (including `EVALSHA`) r
 
 Wire policy (nginx <-> gnet parity, chaos-tested): `/track` requires `Content-Length` and rejects chunked `Transfer-Encoding`; `/openrtb/bid` allows chunked with size caps.
 
-Macros: `{campaign_id}`, `{click_id}`, `{sub1}`...`{sub30}`, UTMs. Zero-redirect tracking via `web/src/static/track.js` (POST `/track` with CORS). Outbound CAPI/postbacks to Meta/Google/TikTok run on cold-path workers.
+Macros: `{campaign_id}`, `{click_id}`, `{sub1}`...`{sub30}`, UTMs. Zero-redirect tracking via `web/src/static/track.js` (POST `/track` with CORS). Traffic wiring, Cost Sync, CAPI, and templates: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 ### Filter engine and budgeting
 
@@ -100,10 +100,14 @@ Open work: [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.
 
 Single `cmd/control` modular monolith:
 
-- React admin SPA (`web/`) with role dashboards (buyer, adops, fraud, CFO, operator, campaign).
+- React admin SPA (`web/`) with role dashboards (buyer, adops, fraud, CFO, operator, campaign) and integration screens under `/integrations/*` (see below).
 - ~290 `/api/v1` routes: campaigns, customers, brands/creatives, supply (`sellers.json`, `ads.txt`), billing/invoices, ledger, disputes, margin guard, smart alerts, domains/TLS, flows/landers/offers, team/RBAC, integration schemas, postbacks, RTB admin, recon, reports, self-serve, Telegram, license, ops (DLQ, outbox, shards, doctor).
 
 Outbox: every config mutation + `outbox_events` in the same PG transaction; `OutboxWorker` polls ~20 ms and applies Redis side effects. Tracker never polls outbox.
+
+### Integrations
+
+Traffic ingest, Cost Sync (22 networks, daily campaign-level spend), outbound CAPI (Meta/Google/TikTok + webhook), 82 bundled traffic click schemas plus 77 affiliate templates, and Enterprise Meta/Google platform campaign sync. Full tables, credential fields, and explicit non-goals: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 ### Billing and analytics
 
@@ -134,8 +138,10 @@ Hot-path static gates (no `fmt.Sprintf`, no `interface{}` boxing on ingest), all
 
 | Document | Content |
 | :--- | :--- |
+| [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Cost Sync, CAPI, bundled schemas, platform sync |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Hot/cold boundary, topology, ports, Redis sharding |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local stack, codegen, tests, SLA gates |
+| [docs/MANAGED_SAAS.md](docs/MANAGED_SAAS.md) | Vendor-hosted isolated compose cells |
 | [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md) | Fraud signals, layers, edge/XDP, cold-path ML |
 | [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.md) | Open antifraud work items |
 | [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml) | License SKU limits and feature flags |
@@ -175,6 +181,20 @@ Details: `.cursor/rules/core.mdc`, `.cursor/rules/hot-path.mdc`.
 
 Sources-only clone: run codegen, provide env, build BPF if needed, fetch GeoIP per DEVELOPMENT.md.
 
+**One command (dev appliance):**
+
+```bash
+bash scripts/install/appliance_bootstrap.sh
+```
+
+Default profile `ingest-only` (~4 GB RAM). Full stack with ClickHouse:
+
+```bash
+bash scripts/install/appliance_bootstrap.sh --profile full
+```
+
+Manual steps (equivalent):
+
 ```bash
 make gen
 make proto
@@ -201,13 +221,13 @@ License file default path: `var/license.jwt`. Issue JWT: `go run ./cmd/license-i
 
 Monthly Ed25519 JWT; limits by peak RPS and host count per `deploy/vendor/sku.yaml`. Enforcement in `internal/licensing`. No per-campaign or per-event caps in SKU (`max_active_campaigns: 0`, `max_events_per_month: 0` = unlimited in license schema).
 
-| SKU | Peak RPS | Hosts | OpenRTB | ML boost / IVT | eBPF XDP | Multi-region |
-| :--- | ---: | ---: | :---: | :---: | :---: | :---: |
-| Starter | 10k | 1 | no | no | no | no |
-| Pro | 25k | 1 | yes | no | no | no |
-| Scale | 75k | 3 | yes | yes | no | no |
-| Network | 150k | 10 | yes | yes | no | yes |
-| Enterprise | custom | 99 | yes | yes | yes | yes |
-| Pilot | 5k | 1 | no | no | no | no |
+| SKU | Peak RPS | Hosts | IVT detector | ML boost | OpenRTB | eBPF XDP | Multi-region |
+| :--- | ---: | ---: | :---: | :---: | :---: | :---: | :---: |
+| Starter | 10k | 1 | no | no | no | no | no |
+| Pro | 25k | 1 | yes | no | no | no | no |
+| Scale | 75k | 3 | yes | yes | yes | no | no |
+| Network | 150k | 10 | yes | yes | yes | no | yes |
+| Enterprise | custom | 99 | yes | yes | yes | yes | yes |
+| Pilot | 5k | 1 | no | no | no | no | no |
 
 Full fields: [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml).

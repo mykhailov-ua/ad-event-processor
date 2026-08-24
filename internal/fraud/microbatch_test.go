@@ -10,11 +10,14 @@ import (
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func TestMicroBatch_AggregationAndScoring(t *testing.T) {
@@ -29,7 +32,7 @@ func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	scorer, err := NewLGBMScorer(testModelPath(t))
 	require.NoError(t, err)
 
-	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, scorer, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, scorer, "", DefaultMicroBatcherConfig())
 	go mb.Start(ctx)
 
 	campaignID := uuid.New()
@@ -64,7 +67,7 @@ func TestMicroBatch_StreamLagPause(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer redisClient.Close()
 
-	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "", DefaultMicroBatcherConfig())
 
 	campaignID := uuid.New()
 	evt := &domain.Event{
@@ -80,13 +83,39 @@ func TestMicroBatch_StreamLagPause(t *testing.T) {
 	mb.Enqueue(evt, msgID)
 
 	assert.Len(t, mb.eventsChan, 0)
+	assert.True(t, mb.paused.Load())
+}
+
+func TestMicroBatch_refreshBoostTTLWhenPaused(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: microbatch redis ttl refresh")
+	}
+
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	ctx := context.Background()
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "", DefaultMicroBatcherConfig())
+	campaignID := uuid.New()
+	mb.lastBoosts.Store(map[string]int{campaignID.String(): 42})
+	mb.paused.Store(true)
+
+	mb.refreshBoostTTL(ctx)
+
+	key := fmt.Sprintf("ml:score:boost:%s", campaignID.String())
+	val, err := redisClient.Get(ctx, key).Result()
+	require.NoError(t, err)
+	assert.Equal(t, "42", val)
+	ttl, err := redisClient.TTL(ctx, key).Result()
+	require.NoError(t, err)
+	assert.True(t, ttl > 0 && ttl <= ScoreBoostTTL)
 }
 
 func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer redisClient.Close()
 
-	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "", DefaultMicroBatcherConfig())
 
 	campaignID := uuid.New()
 	for range 10000 {
@@ -111,6 +140,7 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 	msgID := fmt.Sprintf("%d-0", time.Now().UnixNano()/1e6)
 
 	done := make(chan bool, 1)
+	beforeDrop := testutil.ToFloat64(metrics.MicroBatchDroppedTotal)
 	go func() {
 		mb.Enqueue(evt, msgID)
 		done <- true
@@ -121,13 +151,14 @@ func TestMicroBatch_BoundedQueueDrop(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Enqueue blocked on full channel")
 	}
+	assert.Equal(t, beforeDrop+1, testutil.ToFloat64(metrics.MicroBatchDroppedTotal))
 }
 
 func TestFault_MLProcessorLag(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
 	defer redisClient.Close()
 
-	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "")
+	mb := NewMicroBatcher([]redis.UniversalClient{redisClient}, nil, "", DefaultMicroBatcherConfig())
 
 	campaignID := uuid.New()
 	evt := &domain.Event{

@@ -50,8 +50,8 @@ func TestCPA_HeldOut_ListDLQInbox_capiVsPostbackFilter(t *testing.T) {
 	ctx := context.Background()
 	reader := newOpsReader(svc)
 
-	_, campWebhook := seedCustomerCampaign(t, ctx, svc.pool, "m8-webhook")
-	_, campCAPI := seedCustomerCampaign(t, ctx, svc.pool, "m8-capi")
+	_, campWebhook := seedCustomerCampaign(t, ctx, svc.pool, "heldout-webhook")
+	_, campCAPI := seedCustomerCampaign(t, ctx, svc.pool, "heldout-capi")
 	q := db.New(svc.pool)
 
 	payload, err := json.Marshal(map[string]string{"click_id": "clk-1"})
@@ -113,17 +113,17 @@ func TestCPA_HeldOut_ListConsentProofs_filtersByUser(t *testing.T) {
 	reader := newOpsReader(svc)
 
 	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{
-		UserID:   "m8-user-a",
+		UserID:   "heldout-user-a",
 		Purposes: domain.ConsentPurposeAdStorage,
 		Source:   "cmp",
 	}))
 	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{
-		UserID:   "m8-user-b",
+		UserID:   "heldout-user-b",
 		Purposes: domain.ConsentPurposeAnalytics,
 		Source:   "web",
 	}))
 
-	filtered, err := reader.ListConsentProofs(ctx, "m8-user-a", "", 50)
+	filtered, err := reader.ListConsentProofs(ctx, "heldout-user-a", "", 50)
 	require.NoError(t, err)
 	require.Len(t, filtered.Items, 1)
 	assert.Equal(t, "cmp", filtered.Items[0].Source)
@@ -143,7 +143,7 @@ func TestCPA_HeldOut_ListDomainRotation_dmrCounts(t *testing.T) {
 	poolID := uuid.MustParse("55555555-5555-4555-8555-555555555555")
 	host := "trk-m8.example"
 	_, err := svc.pool.Exec(ctx, `
-		INSERT INTO domain_pools (id, name) VALUES ($1, 'm8-rotation-pool')
+		INSERT INTO domain_pools (id, name) VALUES ($1, 'heldout-rotation-pool')
 		ON CONFLICT (name) DO NOTHING`, poolID)
 	require.NoError(t, err)
 	_, err = svc.pool.Exec(ctx, `
@@ -157,8 +157,8 @@ func TestCPA_HeldOut_ListDomainRotation_dmrCounts(t *testing.T) {
 		ON CONFLICT (hostname) DO UPDATE SET pool_id = EXCLUDED.pool_id`, poolID, host)
 	require.NoError(t, err)
 
-	_, campDMR := seedCustomerCampaign(t, ctx, svc.pool, "m8-dmr")
-	_, campPlain := seedCustomerCampaign(t, ctx, svc.pool, "m8-plain")
+	_, campDMR := seedCustomerCampaign(t, ctx, svc.pool, "heldout-dmr")
+	_, campPlain := seedCustomerCampaign(t, ctx, svc.pool, "heldout-plain")
 	_, err = svc.pool.Exec(ctx, `UPDATE campaigns SET domain_pool_id = $1, dmr_enabled = true WHERE id = $2`,
 		poolID, domain.ToUUID(campDMR))
 	require.NoError(t, err)
@@ -186,8 +186,8 @@ func TestCPA_HeldOut_GetIncidentSnapshot_staleListsCampaigns(t *testing.T) {
 	ctx := context.Background()
 	reader := newOpsReader(svc)
 
-	_, campID := seedCustomerCampaign(t, ctx, svc.pool, "m8-incident")
-	_, err := svc.pool.Exec(ctx, `UPDATE campaigns SET name = 'M8 Incident Camp' WHERE id = $1`, domain.ToUUID(campID))
+	_, campID := seedCustomerCampaign(t, ctx, svc.pool, "heldout-incident")
+	_, err := svc.pool.Exec(ctx, `UPDATE campaigns SET name = 'Held-out incident camp' WHERE id = $1`, domain.ToUUID(campID))
 	require.NoError(t, err)
 
 	snap, err := reader.GetIncidentSnapshot(ctx)
@@ -198,7 +198,7 @@ func TestCPA_HeldOut_GetIncidentSnapshot_staleListsCampaigns(t *testing.T) {
 	for _, c := range snap.AffectedCampaigns {
 		if c.CampaignID == campID.String() {
 			found = true
-			assert.Equal(t, "M8 Incident Camp", c.Name)
+			assert.Equal(t, "Held-out incident camp", c.Name)
 			break
 		}
 	}
@@ -211,7 +211,7 @@ func TestCPA_HeldOut_RetryDLQInbox_postbackRequeuesOutbox(t *testing.T) {
 	ctx := context.Background()
 	reader := newOpsReader(svc)
 
-	_, campaignID := seedCustomerCampaign(t, ctx, svc.pool, "m8-retry")
+	_, campaignID := seedCustomerCampaign(t, ctx, svc.pool, "heldout-retry")
 	q := db.New(svc.pool)
 	payload, err := json.Marshal(map[string]string{"click_id": "clk-retry"})
 	require.NoError(t, err)
@@ -228,7 +228,7 @@ func TestCPA_HeldOut_RetryDLQInbox_postbackRequeuesOutbox(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.NoError(t, reader.RetryDLQInbox(ctx, "postback", strconv.FormatInt(dlqRow.ID, 10), "idem-m8-retry"))
+	require.NoError(t, reader.RetryDLQInbox(ctx, "postback", strconv.FormatInt(dlqRow.ID, 10), "idem-heldout-retry"))
 
 	var outboxCount int
 	require.NoError(t, svc.pool.QueryRow(ctx, `

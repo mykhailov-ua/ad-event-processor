@@ -70,6 +70,13 @@ func fraudSilentRejectFlag(e *domain.Event) uint8 {
 	return 0
 }
 
+func reviewRoutedFlag(e *domain.Event) uint8 {
+	if e.ReviewRoutedEvent {
+		return 1
+	}
+	return 0
+}
+
 func fraudAggregateFields(e *domain.Event) (uint64, uint32) {
 	var count uint64
 	var windowMs uint32
@@ -347,6 +354,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				analyticsCountryCode(dims.country),
 				dims.deviceType,
 				dims.keyword,
+				reviewRoutedFlag(e),
 				unsafeString(payload),
 				e.CreatedAt,
 			)

@@ -28,8 +28,16 @@ const (
 )
 
 type OAuthConfig struct {
-	MetaAppID, MetaAppSecret           string
-	GoogleClientID, GoogleClientSecret string
+	MetaAppID, MetaAppSecret                 string
+	GoogleClientID, GoogleClientSecret       string
+	TikTokAppID, TikTokAppSecret             string
+	MicrosoftClientID, MicrosoftClientSecret string
+	SnapchatClientID, SnapchatClientSecret   string
+	SnapchatTokenURL                         string
+	LinkedInClientID, LinkedInClientSecret   string
+	LinkedInTokenURL                         string
+	PinterestClientID, PinterestClientSecret string
+	PinterestTokenURL                        string
 }
 
 type Worker struct {
@@ -71,6 +79,29 @@ func WithOAuth(cfg OAuthConfig) WorkerOption {
 		if cfg.GoogleClientID != "" {
 			w.oauth.GoogleClientID = cfg.GoogleClientID
 			w.oauth.GoogleClientSecret = cfg.GoogleClientSecret
+		}
+		if cfg.TikTokAppID != "" {
+			w.oauth.TikTokAppID = cfg.TikTokAppID
+			w.oauth.TikTokAppSecret = cfg.TikTokAppSecret
+		}
+		if cfg.MicrosoftClientID != "" {
+			w.oauth.MicrosoftClientID = cfg.MicrosoftClientID
+			w.oauth.MicrosoftClientSecret = cfg.MicrosoftClientSecret
+		}
+		if cfg.SnapchatClientID != "" {
+			w.oauth.SnapchatClientID = cfg.SnapchatClientID
+			w.oauth.SnapchatClientSecret = cfg.SnapchatClientSecret
+			w.oauth.SnapchatTokenURL = cfg.SnapchatTokenURL
+		}
+		if cfg.LinkedInClientID != "" {
+			w.oauth.LinkedInClientID = cfg.LinkedInClientID
+			w.oauth.LinkedInClientSecret = cfg.LinkedInClientSecret
+			w.oauth.LinkedInTokenURL = cfg.LinkedInTokenURL
+		}
+		if cfg.PinterestClientID != "" {
+			w.oauth.PinterestClientID = cfg.PinterestClientID
+			w.oauth.PinterestClientSecret = cfg.PinterestClientSecret
+			w.oauth.PinterestTokenURL = cfg.PinterestTokenURL
 		}
 	}
 }
@@ -221,13 +252,13 @@ func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredenti
 		return err
 	}
 
-	cred, err := w.decryptCredential(credRow)
+	cred, err := w.DecryptCredential(credRow)
 	if err != nil {
 		w.completeRun(ctx, run.ID, "FAILED", 0, 0, err.Error())
 		return err
 	}
 
-	if err := w.maybeRefreshToken(ctx, network, credRow, &cred); err != nil {
+	if err := w.MaybeRefreshToken(ctx, network, credRow, &cred); err != nil {
 		w.completeRun(ctx, run.ID, "FAILED", 0, 0, err.Error())
 		return err
 	}
@@ -398,7 +429,7 @@ func reconciliationHash(customerID, campaignID uuid.UUID, date time.Time) string
 	return hex.EncodeToString(sum[:])
 }
 
-func (w *Worker) decryptCredential(row db.CostSyncCredential) (Credential, error) {
+func (w *Worker) DecryptCredential(row db.CostSyncCredential) (Credential, error) {
 	cred := Credential{
 		CustomerID: row.CustomerID.Bytes,
 		Network:    row.Network,
@@ -436,15 +467,16 @@ func (w *Worker) decryptCredential(row db.CostSyncCredential) (Credential, error
 	return cred, nil
 }
 
-func (w *Worker) maybeRefreshToken(ctx context.Context, network string, row db.CostSyncCredential, cred *Credential) error {
+func (w *Worker) MaybeRefreshToken(ctx context.Context, network string, row db.CostSyncCredential, cred *Credential) error {
 	if !cred.ExpiresAt.IsZero() && time.Until(cred.ExpiresAt) > 5*time.Minute {
 		return nil
 	}
 
 	var (
-		token   string
-		expires time.Time
-		err     error
+		token      string
+		newRefresh string
+		expires    time.Time
+		err        error
 	)
 	switch network {
 	case "facebook":
@@ -457,6 +489,35 @@ func (w *Worker) maybeRefreshToken(ctx context.Context, network string, row db.C
 			return nil
 		}
 		token, expires, err = refreshGoogleOAuth(ctx, w.httpClient, w.oauth.GoogleClientID, w.oauth.GoogleClientSecret, *cred)
+	case "tiktok":
+		if w.oauth.TikTokAppID == "" || w.oauth.TikTokAppSecret == "" {
+			return nil
+		}
+		token, newRefresh, expires, err = refreshTikTokOAuth(ctx, w.httpClient, w.networkBaseURL["tiktok"], w.oauth.TikTokAppID, w.oauth.TikTokAppSecret, *cred)
+	case "revcontent":
+		token, expires, err = refreshRevcontentOAuth(ctx, w.httpClient, w.networkBaseURL["revcontent"], *cred)
+	case "microsoft_ads":
+		if w.oauth.MicrosoftClientID == "" || w.oauth.MicrosoftClientSecret == "" {
+			return nil
+		}
+		token, expires, err = refreshMicrosoftOAuth(ctx, w.httpClient, w.oauth.MicrosoftClientID, w.oauth.MicrosoftClientSecret, *cred)
+	case "snapchat":
+		if w.oauth.SnapchatClientID == "" || w.oauth.SnapchatClientSecret == "" {
+			return nil
+		}
+		token, newRefresh, expires, err = refreshSnapchatOAuth(ctx, w.httpClient, w.oauth.SnapchatTokenURL, w.oauth.SnapchatClientID, w.oauth.SnapchatClientSecret, *cred)
+	case "linkedin":
+		if w.oauth.LinkedInClientID == "" || w.oauth.LinkedInClientSecret == "" {
+			return nil
+		}
+		token, newRefresh, expires, err = refreshLinkedInOAuth(ctx, w.httpClient, w.oauth.LinkedInTokenURL, w.oauth.LinkedInClientID, w.oauth.LinkedInClientSecret, *cred)
+	case "pinterest":
+		if w.oauth.PinterestClientID == "" || w.oauth.PinterestClientSecret == "" {
+			return nil
+		}
+		token, newRefresh, expires, err = refreshPinterestOAuth(ctx, w.httpClient, w.oauth.PinterestTokenURL, w.oauth.PinterestClientID, w.oauth.PinterestClientSecret, *cred)
+	case "trafficstars":
+		token, expires, err = refreshTrafficStarsOAuth(ctx, w.httpClient, w.networkBaseURL["trafficstars"], *cred)
 	default:
 		return nil
 	}
@@ -470,12 +531,19 @@ func (w *Worker) maybeRefreshToken(ctx context.Context, network string, row db.C
 	if err != nil {
 		return err
 	}
+	refreshEnc := row.RefreshTokenEncrypted
+	if newRefresh != "" {
+		refreshEnc, err = postback.EncryptAESGCM([]byte(newRefresh), w.encryptionKey)
+		if err != nil {
+			return err
+		}
+	}
 	_, err = db.New(w.pool).UpsertCostSyncCredential(ctx, db.UpsertCostSyncCredentialParams{
 		CustomerID:            row.CustomerID,
 		Network:               row.Network,
 		AccountID:             row.AccountID,
 		AccessTokenEncrypted:  enc,
-		RefreshTokenEncrypted: row.RefreshTokenEncrypted,
+		RefreshTokenEncrypted: refreshEnc,
 		ApiKeyEncrypted:       row.ApiKeyEncrypted,
 		ExtraConfig:           row.ExtraConfig,
 		TokenExpiresAt:        pgtype.Timestamptz{Time: expires, Valid: true},

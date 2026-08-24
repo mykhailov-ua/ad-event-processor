@@ -40,18 +40,18 @@ func TestUpdateCampaignFraud_enhancedDefensePreset_appliesDefenseFlags(t *testin
 	require.NoError(t, err)
 
 	var (
-		safePage, silentReject, attestation, l15, tls, l1, linkSign bool
-		attTTL                                                      int32
-		clickDelivery                                               string
-		pass, block                                                 int16
+		safePage, silentReject, attestation, proxyVPNBlock, tls, cidrBlock, linkSign bool
+		attTTL                                                                       int32
+		clickDelivery                                                                string
+		pass, block                                                                  int16
 	)
 	err = pool.QueryRow(ctx, `
 		SELECT safe_page_enabled, silent_reject_enabled, attestation_enabled, attestation_ttl_sec,
-		 l15_proxy_vpn_block_enabled, tls_fingerprint_block_enabled,
-		 l1_cidr_block_enabled, link_signing_enabled, click_delivery,
+		 proxy_vpn_block_enabled, tls_fingerprint_block_enabled,
+		 cidr_block_enabled, link_signing_enabled, click_delivery,
 		 fraud_threshold_pass, fraud_threshold_block
 		FROM campaigns WHERE id = $1`, campID).Scan(
-		&safePage, &silentReject, &attestation, &attTTL, &l15, &tls, &l1, &linkSign, &clickDelivery, &pass, &block,
+		&safePage, &silentReject, &attestation, &attTTL, &proxyVPNBlock, &tls, &cidrBlock, &linkSign, &clickDelivery, &pass, &block,
 	)
 	require.NoError(t, err)
 	require.True(t, safePage)
@@ -59,9 +59,9 @@ func TestUpdateCampaignFraud_enhancedDefensePreset_appliesDefenseFlags(t *testin
 	require.Equal(t, "redirect", clickDelivery)
 	require.True(t, attestation)
 	require.GreaterOrEqual(t, attTTL, int32(60))
-	require.True(t, l15)
+	require.True(t, proxyVPNBlock)
 	require.True(t, tls)
-	require.True(t, l1)
+	require.True(t, cidrBlock)
 	require.True(t, linkSign)
 	require.Equal(t, int16(20), pass)
 	require.Equal(t, int16(85), block)
@@ -73,7 +73,7 @@ func TestUpdateCampaignFraud_enhancedDefensePreset_appliesDefenseFlags(t *testin
 	require.True(t, camp.SilentRejectEnabled)
 	require.Equal(t, "redirect", camp.ClickDelivery)
 	require.True(t, camp.AttestationEnabled)
-	require.True(t, camp.L15ProxyVPNBlockEnabled)
+	require.True(t, camp.ProxyVPNBlockEnabled)
 	require.True(t, camp.TLSFingerprintBlockEnabled)
 }
 

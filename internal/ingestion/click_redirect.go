@@ -92,6 +92,7 @@ type clickQueryParsed struct {
 	ipv6RotationShadow      bool
 	ipv4RotationShadow      bool
 	attestationLightMissing bool
+	reviewTrafficMatched    bool
 	ok                      bool
 }
 
@@ -112,6 +113,7 @@ func (p *clickQueryParsed) reset() {
 	p.ipv6RotationShadow = false
 	p.ipv4RotationShadow = false
 	p.attestationLightMissing = false
+	p.reviewTrafficMatched = false
 	p.ok = false
 }
 
@@ -549,25 +551,16 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	ip := extractClientIPGnet(ctx, &req, c, h.cfg.TrustedProxies)
 	ua := unsafeString(req.UserAgent)
 
-	if matched, kind := h.tlsFingerprintShouldSafeView(req.TLSJA3, req.TLSJA4, parsed.campaignID, ua); matched {
-		h.writeGnetSafeViewTLS(c, ctx, startMono, kind)
+	if h.applyReviewTrafficPolicy(req, c, ctx, parsed, ip, ua, startMono) {
 		return gnet.None
 	}
 
-	if matched, feed := h.l1CIDRShouldSafeView(ip, parsed.campaignID); matched {
-		h.writeGnetSafeViewCIDR(c, ctx, startMono, feed)
-		return gnet.None
-	}
 	if h.l1IPv6RotationObserve(ip, parsed.campaignID, parsed, startMono) {
 		h.writeGnetSafeViewIPv6Rotation(c, ctx, startMono)
 		return gnet.None
 	}
 	if h.l1IPv4RotationObserve(ip, parsed.userID, parsed.campaignID, parsed, startMono) {
 		h.writeGnetSafeViewIPv4Rotation(c, ctx, startMono)
-		return gnet.None
-	}
-	if matched, connType := h.l15ProxyVPNShouldSafeView(ip, parsed.campaignID); matched {
-		h.writeGnetSafeViewL15(c, ctx, startMono, connType)
 		return gnet.None
 	}
 
@@ -755,6 +748,9 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	}
 	ctx.extraBuf = loc
 
+	if parsed.reviewTrafficMatched {
+		evt.ReviewRoutedEvent = true
+	}
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
 	h.writeGnetClickLandingRedirect(ctx, c, startMono, loc, h.clickDmrActive(evt.CampaignID, parsed.dmr))

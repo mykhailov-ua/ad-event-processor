@@ -100,9 +100,13 @@ type Campaign struct {
 	AttestationTTLSec  int32
 	DmrEnabled         bool
 
-	L1CIDRBlockEnabled bool
+	CIDRBlockEnabled bool
 
-	L15ProxyVPNBlockEnabled bool
+	ProxyVPNBlockEnabled bool
+
+	ModeratorIntelEnabled bool
+
+	ReviewTrafficAction ReviewTrafficAction
 
 	TLSFingerprintBlockEnabled bool
 

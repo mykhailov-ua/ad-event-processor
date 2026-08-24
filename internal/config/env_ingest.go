@@ -116,7 +116,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 		cfg.BudgetDeltaTopic = "budget-deltas"
 	}
 
-	cfg.CIDRL1Enabled = getEnvBool("CIDR_L1_ENABLED", true)
+	cfg.CIDRBlockEnabled = getEnvBool("CIDR_BLOCK_ENABLED", true)
 	cfg.CIDRFeedDir = os.Getenv("CIDR_FEED_DIR")
 	if cfg.CIDRFeedDir == "" {
 		cfg.CIDRFeedDir = "/var/lib/ad-event-processor/cidr"
@@ -135,10 +135,10 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.CIDRFeedURLTor = os.Getenv("CIDR_FEED_URL_TOR")
 	cfg.CIDRFeedDownloadEnable = getEnvBool("CIDR_FEED_DOWNLOAD_ENABLED", false)
 
-	cfg.IPv6RotationL1Enabled = getEnvBool("IPV6_ROTATION_L1_ENABLED", true)
+	cfg.IPv6RotationEnabled = getEnvBool("IPV6_ROTATION_ENABLED", true)
 	cfg.IPv6RotationMode = os.Getenv("IPV6_ROTATION_MODE")
 	if cfg.IPv6RotationMode == "" {
-		cfg.IPv6RotationMode = "shadow"
+		cfg.IPv6RotationMode = "live"
 	}
 	cfg.IPv6RotationWindow = time.Minute
 	if raw := os.Getenv("IPV6_ROTATION_WINDOW"); raw != "" {
@@ -148,10 +148,10 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	}
 	cfg.IPv6RotationThreshold = uint32(getEnvInt("IPV6_ROTATION_THRESHOLD", 6))
 
-	cfg.IPv4RotationL1Enabled = getEnvBool("IPV4_ROTATION_L1_ENABLED", true)
+	cfg.IPv4RotationEnabled = getEnvBool("IPV4_ROTATION_ENABLED", true)
 	cfg.IPv4RotationMode = os.Getenv("IPV4_ROTATION_MODE")
 	if cfg.IPv4RotationMode == "" {
-		cfg.IPv4RotationMode = "shadow"
+		cfg.IPv4RotationMode = "live"
 	}
 	cfg.IPv4RotationWindow = time.Minute
 	if raw := os.Getenv("IPV4_ROTATION_WINDOW"); raw != "" {
@@ -174,7 +174,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 			cfg.DCASNFeedRefresh = d
 		}
 	}
-	cfg.DCASNSampleMask = getEnvInt("DC_ASN_SAMPLE_MASK", 7)
+	cfg.DCASNSampleMask = getEnvInt("DC_ASN_SAMPLE_MASK", -1)
 
 	cfg.ResidentialProxyHotEnabled = getEnvBool("RESIDENTIAL_PROXY_HOT_ENABLED", true)
 	cfg.ResidentialProxyWindow = 5 * time.Minute
@@ -187,13 +187,13 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.TCPMSSAnomalyEnabled = getEnvBool("TCP_MSS_ANOMALY_ENABLED", true)
 	cfg.TCPMSSAnomalyMinByte = uint8(getEnvInt("TCP_MSS_ANOMALY_MIN_BYTE", 2))
 
-	cfg.ProxyVPNL15Enabled = getEnvBool("PROXY_VPN_L15_ENABLED", true)
+	cfg.ProxyVPNBlockEnabled = getEnvBool("PROXY_VPN_BLOCK_ENABLED", true)
 	cfg.ProxyVPNFeedDir = os.Getenv("PROXY_VPN_FEED_DIR")
 	if cfg.ProxyVPNFeedDir == "" {
 		cfg.ProxyVPNFeedDir = "/var/lib/ad-event-processor/proxy-vpn"
 	}
 	cfg.ProxyVPNFeedRefresh = 24 * time.Hour
-	cfg.TLSFingerprintL1Enabled = getEnvBool("TLS_FINGERPRINT_L1_ENABLED", true)
+	cfg.TLSFingerprintEnabled = getEnvBool("TLS_FINGERPRINT_ENABLED", true)
 	cfg.TLSFingerprintFeedDir = os.Getenv("TLS_FINGERPRINT_FEED_DIR")
 	if cfg.TLSFingerprintFeedDir == "" {
 		cfg.TLSFingerprintFeedDir = "/var/lib/ad-event-processor/tls-fingerprint"
@@ -222,6 +222,23 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 			cfg.ProxyVPNFeedRefresh = time.Duration(n) * time.Second
 		}
 	}
+
+	cfg.ModeratorIntelEnabled = getEnvBool("MODERATOR_INTEL_ENABLED", false)
+	cfg.ModeratorIntelFeedDir = strings.TrimSpace(os.Getenv("MODERATOR_INTEL_FEED_DIR"))
+	if cfg.ModeratorIntelFeedDir == "" {
+		cfg.ModeratorIntelFeedDir = "/var/lib/ad-event-processor/moderator-intel"
+	}
+	cfg.ModeratorIntelFeedRefresh = 24 * time.Hour
+	if raw := strings.TrimSpace(os.Getenv("MODERATOR_INTEL_FEED_REFRESH_INTERVAL")); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
+			cfg.ModeratorIntelFeedRefresh = d
+		}
+	}
+	cfg.ModeratorIntelFeedURL = strings.TrimSpace(os.Getenv("MODERATOR_INTEL_FEED_URL"))
+	cfg.ModeratorIntelFeedSecret = strings.TrimSpace(os.Getenv("MODERATOR_INTEL_FEED_SECRET"))
+	cfg.ModeratorIntelFeedDownload = getEnvBool("MODERATOR_INTEL_FEED_DOWNLOAD", false)
+	cfg.ModeratorIntelAllowUnsigned = getEnvBool("MODERATOR_INTEL_ALLOW_UNSIGNED", false)
+
 	cfg.DomainPoolEnabled = getEnvBool("DOMAIN_POOL_ENABLED", true)
 	cfg.DomainPoolSyncInterval = 30 * time.Second
 	if raw := strings.TrimSpace(os.Getenv("DOMAIN_POOL_SYNC_INTERVAL")); raw != "" {
@@ -251,4 +268,16 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.SlotMigrationLagEpsilon = getEnvInt64("SLOT_MIGRATION_LAG_EPSILON", 0)
 	cfg.SlotMigrationLagThreshold = getEnvInt64("SLOT_MIGRATION_LAG_THRESHOLD", 1000)
 	return nil
+}
+
+func ModeratorIntelEnvExplicitlySet() bool {
+	_, ok := os.LookupEnv("MODERATOR_INTEL_ENABLED")
+	return ok
+}
+
+func ApplyModeratorIntelWhenEntitled(cfg *Config, entitled bool) {
+	if cfg == nil || !entitled || ModeratorIntelEnvExplicitlySet() {
+		return
+	}
+	cfg.ModeratorIntelEnabled = true
 }

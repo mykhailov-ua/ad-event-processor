@@ -335,21 +335,32 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 			retErr = ErrFilterTimeout
 			break
 		}
-		if _, ok := f.(*UnifiedFilter); ok && acc != nil && acc.count > 0 {
+		if uf, ok := f.(*UnifiedFilter); ok && acc != nil && acc.count > 0 {
 			var camp *domain.Campaign
 			if e.registry != nil && evt != nil {
 				camp, _ = e.registry.GetCampaign(evt.CampaignID)
 			}
-			layer, err := applyFraudLayerDecision(evt, acc, camp, boost)
-			if err != nil {
-				retErr = err
+			if acc.shouldShortCircuitFraudBudget() {
+				layer, err := applyFraudLayerDecision(evt, acc, camp, boost)
+				if err != nil {
+					retErr = err
+					break
+				}
+				if layer == FraudLayerL1Reject {
+					retErr = ErrFraudDetected
+				}
 				break
 			}
-			if layer == FraudLayerL1Reject {
-				retErr = ErrFraudDetected
-				break
-			}
-			if layer == FraudLayerL2Shadow {
+			tier := applyFraudAccumulatorForCampaign(evt, acc, camp)
+			if decideFraudLayer(acc, tier) == FraudLayerL2Shadow {
+				prevSkip := uf.skipBudgetDebitAny
+				uf.skipBudgetDebitAny = oneAny
+				if err := uf.Check(ctx, evt); err != nil {
+					uf.skipBudgetDebitAny = prevSkip
+					retErr = err
+					break
+				}
+				uf.skipBudgetDebitAny = prevSkip
 				break
 			}
 			continue

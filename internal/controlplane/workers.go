@@ -2462,7 +2462,7 @@ func ToUUID(u uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: u, Valid: true}
 }
 
-const blacklistUpdateChannel = "blacklist:update"
+const blacklistUpdateChannel = domain.BlacklistUpdateChannel
 
 func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, events []db.OutboxEvent) error {
 	type reasonBatch struct {

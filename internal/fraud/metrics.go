@@ -75,7 +75,7 @@ var (
 
 	residentialIntelFeedAppendedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "residential_intel_feed_appended_total",
-		Help: "L1.5 external residential intel feed lines appended by cold enricher",
+		Help: "External residential intel feed lines appended by cold enricher",
 	})
 
 	residentialIntelLookupsTotal = promauto.NewCounter(prometheus.CounterOpts{

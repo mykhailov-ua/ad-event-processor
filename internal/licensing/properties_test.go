@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/licensing"
+
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 )
@@ -152,6 +153,8 @@ func genEntitlements(t *rapid.T) licensing.Entitlements {
 			SlotMigration:            rapid.Bool().Draw(t, "slot_migration"),
 			MarginGuard:              rapid.Bool().Draw(t, "margin_guard"),
 			ExternalResidentialIntel: rapid.Bool().Draw(t, "external_residential_intel"),
+			ModeratorIntelFeed:       rapid.Bool().Draw(t, "moderator_intel_feed"),
+			AdPlatformCampaignAPI:    rapid.Bool().Draw(t, "ad_platform_campaign_api"),
 		},
 	}
 }
@@ -193,5 +196,7 @@ func entitlementsEqual(a, b licensing.Entitlements) bool {
 		af.SlotMigration == bf.SlotMigration &&
 		af.MarginGuard == bf.MarginGuard &&
 		af.ExternalResidentialIntel == bf.ExternalResidentialIntel &&
+		af.ModeratorIntelFeed == bf.ModeratorIntelFeed &&
+		af.AdPlatformCampaignAPI == bf.AdPlatformCampaignAPI &&
 		a.VolumeBand == b.VolumeBand
 }

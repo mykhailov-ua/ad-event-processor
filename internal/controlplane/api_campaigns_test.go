@@ -157,24 +157,24 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	})
 
 	t.Run("PatchCampaign_landingProtectionFields", func(t *testing.T) {
-		l1Block := false
-		l15Block := false
+		cidrBlock := false
+		proxyVPNBlock := false
 		tlsBlock := false
 		connPolicy := "mobile_only"
 		linkSign := true
 		linkTTL := int32(1200)
 
 		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
-			L1CIDRBlockEnabled:         &l1Block,
-			L15ProxyVPNBlockEnabled:    &l15Block,
+			CIDRBlockEnabled:         &cidrBlock,
+			ProxyVPNBlockEnabled:    &proxyVPNBlock,
 			TLSFingerprintBlockEnabled: &tlsBlock,
 			ConnTypePolicy:             &connPolicy,
 			LinkSigningEnabled:         &linkSign,
 			LinkSigningTTLSec:          &linkTTL,
 		})
 		require.NoError(t, err)
-		assert.False(t, updated.L1CIDRBlockEnabled)
-		assert.False(t, updated.L15ProxyVPNBlockEnabled)
+		assert.False(t, updated.CIDRBlockEnabled)
+		assert.False(t, updated.ProxyVPNBlockEnabled)
 		assert.False(t, updated.TLSFingerprintBlockEnabled)
 		assert.Equal(t, "mobile_only", updated.ConnTypePolicy)
 		assert.True(t, updated.LinkSigningEnabled)

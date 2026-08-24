@@ -104,7 +104,7 @@ func TestFraudScenarios_HTTP1_HeaderValueCRLFInjection(t *testing.T) {
 	payload := []byte("POST /track HTTP/1.1\r\nX-Evil: safe\r\n continuation\r\nContent-Length: 0\r\n\r\n")
 	_, _, err := parseHTTP1(payload, 1024, nil)
 	if err == nil {
-		t.Fatal("GAP H1-04b: obs-fold continuation in header value accepted")
+		t.Fatal("obs-fold continuation in header value accepted")
 	}
 }
 

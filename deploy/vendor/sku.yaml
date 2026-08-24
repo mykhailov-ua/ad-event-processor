@@ -16,6 +16,8 @@ skus:
       slot_migration: false
       margin_guard: true
       external_residential_intel: false
+      moderator_intel_feed: false
+      ad_platform_campaign_api: false
     limits:
       max_activations: 1
       max_regions: 1
@@ -35,15 +37,17 @@ skus:
     valid_days: 30
     grace_days: 7
     features:
-      rtb_live: true
-      openrtb_engine: true
+      rtb_live: false
+      openrtb_engine: false
       ebpf_xdp_edge: false
-      ivt_ml_detector: false
+      ivt_ml_detector: true
       ml_fraud_boost: false
       multi_region: false
       slot_migration: false
       margin_guard: true
       external_residential_intel: false
+      moderator_intel_feed: false
+      ad_platform_campaign_api: false
     limits:
       max_activations: 1
       max_regions: 1
@@ -72,6 +76,8 @@ skus:
       slot_migration: false
       margin_guard: true
       external_residential_intel: true
+      moderator_intel_feed: true
+      ad_platform_campaign_api: false
     limits:
       max_activations: 3
       max_regions: 1
@@ -100,6 +106,8 @@ skus:
       slot_migration: true
       margin_guard: true
       external_residential_intel: true
+      moderator_intel_feed: true
+      ad_platform_campaign_api: false
     limits:
       max_activations: 10
       max_regions: 3
@@ -128,6 +136,8 @@ skus:
       slot_migration: true
       margin_guard: true
       external_residential_intel: true
+      moderator_intel_feed: true
+      ad_platform_campaign_api: true
     limits:
       max_activations: 99
       max_regions: 99
@@ -139,12 +149,44 @@ skus:
       max_events_per_month: 0
       max_export_chunk_bytes: 1073741824
     bind:
-      mode: multi
+      mode: fingerprint
+
+  - code: managed_saas
+    display_name: Managed SaaS cell (vendor-hosted)
+    price_usd_monthly: 0
+    deployment_mode: managed_saas
+    valid_days: 30
+    grace_days: 7
+    offline_grace_days: 3
+    features:
+      rtb_live: true
+      openrtb_engine: true
+      ebpf_xdp_edge: false
+      ivt_ml_detector: true
+      ml_fraud_boost: true
+      multi_region: true
+      slot_migration: true
+      margin_guard: true
+      external_residential_intel: true
+      moderator_intel_feed: true
+      ad_platform_campaign_api: true
+    limits:
+      max_activations: 3
+      max_regions: 5
+      max_api_keys: 25
+      max_rps: 200000
+      max_requests_per_day: 0
+      max_active_campaigns: 0
+      max_tenants: 25
+      max_events_per_month: 0
+      max_export_chunk_bytes: 104857600
+    bind:
+      mode: soft
 
   - code: pilot
-    display_name: Pilot on-prem (10-day JWT)
+    display_name: Pilot on-prem (14-day JWT)
     price_usd_monthly: 0
-    valid_days: 10
+    valid_days: 14
     grace_days: 7
     offline_grace_days: 0
     features:
@@ -157,6 +199,8 @@ skus:
       slot_migration: false
       margin_guard: true
       external_residential_intel: false
+      moderator_intel_feed: false
+      ad_platform_campaign_api: false
     limits:
       max_activations: 1
       max_regions: 1
@@ -184,6 +228,8 @@ skus:
       slot_migration: true
       margin_guard: true
       external_residential_intel: true
+      moderator_intel_feed: true
+      ad_platform_campaign_api: true
     limits:
       max_activations: 999
       max_regions: 99

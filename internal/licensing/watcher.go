@@ -24,7 +24,7 @@ const registryFullSyncPayload = "*"
 
 type LicenseWatcher struct {
 	pool        *pgxpool.Pool
-	redisClient         redis.UniversalClient
+	redisClient redis.UniversalClient
 	controlRdbs []redis.UniversalClient
 	client      *LicenseClient
 	mode        string
@@ -78,7 +78,7 @@ func NewLicenseWatcher(pool *pgxpool.Pool, redisClient redis.UniversalClient, pu
 
 	return &LicenseWatcher{
 		pool:         pool,
-		redisClient:          redisClient,
+		redisClient:  redisClient,
 		client:       client,
 		mode:         mode,
 		path:         path,
@@ -373,9 +373,10 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	}
 
 	entitlements := Entitlements{
-		VolumeBand: ParseVolumeBand(string(claims.VolumeBand)),
-		Limits:     claims.Limits,
-		Features:   SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
+		DeploymentMode: NormalizeDeploymentMode(claims.DeploymentMode),
+		VolumeBand:     ParseVolumeBand(string(claims.VolumeBand)),
+		Limits:         claims.Limits,
+		Features:       SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
 	}
 	entitlementsJSON, err := json.Marshal(entitlements)
 	if err != nil {
@@ -407,6 +408,7 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	fields := map[string]any{
 		"state":                      string(state),
 		"plan":                       claims.Plan,
+		"deployment_mode":            NormalizeDeploymentMode(claims.DeploymentMode),
 		"volume_band":                string(ParseVolumeBand(string(claims.VolumeBand))),
 		"valid_until":                claims.ValidUntil.Format(time.RFC3339),
 		"max_rps":                    claims.Limits.MaxRPS,
@@ -419,6 +421,8 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		"multi_region":               boolToInt(features.MultiRegion),
 		"slot_migration":             boolToInt(features.SlotMigration),
 		"external_residential_intel": boolToInt(features.ExternalResidentialIntel),
+		"moderator_intel_feed":       boolToInt(features.ModeratorIntelFeed),
+		"ad_platform_campaign_api":   boolToInt(features.AdPlatformCampaignAPI),
 		"offline_days":               offlineDays,
 		"banner_severity":            BannerSeverity(state),
 	}

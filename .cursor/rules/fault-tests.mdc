@@ -71,7 +71,7 @@ Pass criteria:
 Slow-body DoS:
 
 ```bash
-go test ./internal/ingestion/ -run=TestChaos_ParserSecurity_PS_G01 -count=1 -v
+go test ./internal/ingestion/ -run=TestChaos_ParserSecurity_http1_incomplete_body -count=1 -v
 bash scripts/fault/parser_slow_body_drill.sh
 ```
 

@@ -309,8 +309,8 @@ test('campaign config PATCH sends defense fields', async ({ page }) => {
   });
 
   await page.goto('/campaigns/camp-edit-1?tab=config');
-  await page.getByTestId('cfg-l1-cidr-block').uncheck();
-  await page.getByTestId('cfg-l15-proxy-vpn-block').uncheck();
+  await page.getByTestId('cfg-cidr-block').uncheck();
+  await page.getByTestId('cfg-proxy-vpn-block').uncheck();
   await page.getByTestId('cfg-tls-fp-block').uncheck();
   await page.getByTestId('cfg-conn-type-policy').selectOption('mobile_only');
   await page.getByTestId('cfg-link-signing').check();
@@ -318,8 +318,8 @@ test('campaign config PATCH sends defense fields', async ({ page }) => {
   await confirmAndSave(page);
 
   await expect.poll(() => patchBody).not.toBeNull();
-  expect(patchBody.l1_cidr_block_enabled).toBe(false);
-  expect(patchBody.l15_proxy_vpn_block_enabled).toBe(false);
+  expect(patchBody.cidr_block_enabled).toBe(false);
+  expect(patchBody.proxy_vpn_block_enabled).toBe(false);
   expect(patchBody.tls_fingerprint_block_enabled).toBe(false);
   expect(patchBody.conn_type_policy).toBe('mobile_only');
   expect(patchBody.link_signing_enabled).toBe(true);

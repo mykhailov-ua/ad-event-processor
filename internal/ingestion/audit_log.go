@@ -61,6 +61,7 @@ func writeAuditLog(
 	pbEvt.FraudScore = evt.FraudScore
 	pbEvt.FraudReason = UnsafeBytes(evt.FraudReason)
 	pbEvt.SilentRejectEvent = evt.SilentRejectEvent
+	pbEvt.ReviewRoutedEvent = evt.ReviewRoutedEvent
 
 	size := pbEvt.SizeVT()
 	bufPtr := logBufPool.Get().(*[]byte)

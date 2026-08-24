@@ -1,10 +1,14 @@
 package controlplane
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
+	billingdb "ad-event-processor/internal/ledger/db"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/trialregistry"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,4 +52,27 @@ func TestToLicenseStatusResponse_watcherDiagnosticsEnrich(t *testing.T) {
 	require.NotNil(t, resp.HWIDMatch)
 	require.False(t, *resp.HWIDMatch)
 	require.Equal(t, 12, resp.DaysToExpiry)
+}
+
+func TestEnrichLicenseStatusTrialSurface_pilotUpgrade(t *testing.T) {
+	t.Setenv(trialregistry.EnvTrialSelfServeURL, "https://t.me/vendor_trial_bot")
+	resp := enrichLicenseStatusTrialSurface(LicenseStatusResponse{
+		State:    "ACTIVE",
+		PlanCode: licensing.SKUCodePilot,
+	})
+	require.Equal(t, licensing.SKUCodeStarter, resp.UpgradePlanCode)
+	require.Equal(t, licensing.PilotTrialValidDays, resp.PilotValidDays)
+	require.Equal(t, "https://t.me/vendor_trial_bot", resp.TrialSelfServeURL)
+}
+
+func TestEnrichLicenseStatusFromRow_maxRPS(t *testing.T) {
+	ent := licensing.Entitlements{Limits: licensing.Limits{MaxRPS: 5000}}
+	raw, err := json.Marshal(ent)
+	require.NoError(t, err)
+	resp := enrichLicenseStatusFromRow(LicenseStatusResponse{State: "ACTIVE", PlanCode: "pilot"}, billingdb.BillingLicenseStatus{
+		PlanCode:         "pilot",
+		EntitlementsJson: raw,
+	})
+	require.Equal(t, uint64(5000), resp.MaxRPS)
+	require.Equal(t, licensing.SKUCodeStarter, resp.UpgradePlanCode)
 }

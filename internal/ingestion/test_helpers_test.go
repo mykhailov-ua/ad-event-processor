@@ -13,6 +13,9 @@ import (
 )
 
 func setupTestRedis(t testing.TB) (redis.UniversalClient, func()) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
 	ctx := context.Background()
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")
 	if err != nil {

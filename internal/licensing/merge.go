@@ -44,4 +44,6 @@ func MergeFeatures(dst *FeatureSet, src FeatureSet) {
 	dst.SlotMigration = src.SlotMigration
 	dst.MarginGuard = src.MarginGuard
 	dst.ExternalResidentialIntel = src.ExternalResidentialIntel
+	dst.ModeratorIntelFeed = src.ModeratorIntelFeed
+	dst.AdPlatformCampaignAPI = src.AdPlatformCampaignAPI
 }

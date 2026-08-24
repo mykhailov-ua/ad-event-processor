@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { mockAuthedSession, ADMIN_USER, PUBLISHER_USER, BUYER_USER } from './helpers.js';
 
 const CUSTOMER_ID = '550e8400-e29b-41d4-a716-446655440001';
-const EXPORT_JOB_ID = 'cpa-m2-export-held-out';
+const EXPORT_JOB_ID = 'cpa-export-held-out';
 
 const LEDGER_CSV = [
   'id,amount_micro,ledger_type,created_at',
@@ -371,7 +371,7 @@ test.describe('CPA held-out - ops consolidation', () => {
             {
               id: '11',
               source: 'capi',
-              campaign_id: 'camp-m8',
+              campaign_id: 'camp-heldout',
               event_type: 'conversion',
               error: '401',
               failed_at: '2026-08-12T10:00:00Z',

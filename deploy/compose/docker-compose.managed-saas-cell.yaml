@@ -1,0 +1,11 @@
+# Vendor-managed SaaS cell overlay.
+# One isolated compose project per buyer: set COMPOSE_PROJECT_NAME=saas-<cell_id> and issue SKU managed_saas JWT.
+# Not a shared multi-tenant control plane; each cell has dedicated PG, Redis, and ClickHouse volumes.
+
+services:
+  control:
+    environment:
+      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-managed_saas}
+  tracker-0:
+    environment:
+      - DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-managed_saas}

@@ -1,6 +1,5 @@
 package admin
 
-
 type Route struct {
 	Method string
 	Path   string
@@ -9,11 +8,9 @@ type Route struct {
 
 func (route Route) Key() string { return route.Method + " " + route.Path }
 
-
 func Catalog() []Route {
 	return append([]Route(nil), routeCatalog...)
 }
-
 
 func Routes() []Route {
 	return Catalog()
@@ -127,8 +124,19 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/domains/park"},
 	{Method: "GET", Path: "/api/v1/flows"},
 	{Method: "POST", Path: "/api/v1/flows"},
+	{Method: "GET", Path: "/api/v1/flows/{id}"},
+	{Method: "PUT", Path: "/api/v1/flows/{id}"},
 	{Method: "GET", Path: "/api/v1/landers"},
 	{Method: "POST", Path: "/api/v1/landers"},
+	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-upload"},
+	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-editor"},
+	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
+	{Method: "PUT", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
+	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-publish"},
+	{Method: "GET", Path: "/lp/{lander_id}/"},
+	{Method: "GET", Path: "/lp/{lander_id}/{path...}"},
+	{Method: "GET", Path: "/lp-preview/{lander_id}/"},
+	{Method: "GET", Path: "/lp-preview/{lander_id}/{path...}"},
 	{Method: "GET", Path: "/api/v1/offers"},
 	{Method: "POST", Path: "/api/v1/offers"},
 	{Method: "GET", Path: "/api/v1/ops/domains/tls-allowed"},

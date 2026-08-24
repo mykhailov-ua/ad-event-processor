@@ -14,7 +14,7 @@ var (
 	cidrBenchSinkBool  bool
 	cidrBenchSinkUint8 uint8
 
-	cidrBenchCampaign = domain.Campaign{L1CIDRBlockEnabled: true}
+	cidrBenchCampaign = domain.Campaign{CIDRBlockEnabled: true}
 )
 
 func benchCIDRTable(tb testing.TB, n int) (*CIDRTable, [][4]byte, [][16]byte) {
@@ -103,7 +103,7 @@ func BenchmarkCIDR_MatchBranch_SafeView(b *testing.B) {
 			ok:   true,
 		},
 		cidrTable:   table,
-		cidrMetrics: newL1CIDRMetrics(),
+		cidrMetrics: newCIDRBlockMetrics(),
 	}
 	cid := uuid.MustParse("00000000-0000-4000-8000-000000000001")
 	ipStrs := make([]string, len(probe4))
@@ -114,7 +114,7 @@ func BenchmarkCIDR_MatchBranch_SafeView(b *testing.B) {
 	var hit bool
 	benchN := 0
 	for b.Loop() {
-		hit, _ = h.l1CIDRShouldSafeView(ipStrs[benchN&63], cid)
+		hit, _ = h.cidrBlockShouldSafeView(ipStrs[benchN&63], cid)
 		benchN++
 	}
 	cidrBenchSinkBool = cidrBenchSinkBool || hit

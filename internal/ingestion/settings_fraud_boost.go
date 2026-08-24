@@ -16,7 +16,6 @@ import (
 
 const (
 	fraudScoreBoostKeyPrefix = "ml:score:boost:"
-	fraudBoostFullResync     = 30 * time.Second
 )
 
 func fraudScoreBoostKey(campaignID uuid.UUID) string {

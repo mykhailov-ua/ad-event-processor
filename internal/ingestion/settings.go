@@ -49,13 +49,14 @@ type VPPRatioSnapshot struct {
 }
 
 type SettingsWatcher struct {
-	redisShards                  []redis.UniversalClient
+	redisShards           []redis.UniversalClient
 	campaignUpdateChannel string
 	currentVersion        int64
 	snapshot              atomic.Value
 	fraudScoreBoosts      atomic.Value
 	vppRatios             atomic.Value
 	fcapSnap              atomic.Pointer[rtb.FcapSnapshot]
+	boostFullResync       time.Duration
 	onChange              []SettingsChangeListener
 	pgSync                func(context.Context) (map[string]string, int64, error)
 	staleCheck            func() bool
@@ -67,6 +68,12 @@ func NewSettingsWatcher(redisShards []redis.UniversalClient, initial *config.Con
 	}
 	if initial != nil {
 		sw.campaignUpdateChannel = initial.CampaignUpdateChannel
+		if initial.FraudScoring.BoostFullResyncSec > 0 {
+			sw.boostFullResync = time.Duration(initial.FraudScoring.BoostFullResyncSec) * time.Second
+		}
+	}
+	if sw.boostFullResync <= 0 {
+		sw.boostFullResync = 10 * time.Second
 	}
 
 	sw.snapshot.Store(&DynamicConfig{
@@ -146,7 +153,7 @@ func (sw *SettingsWatcher) Start(ctx context.Context, interval time.Duration) {
 	go sw.runFraudBoostSubscriber(ctx)
 
 	ticker := time.NewTicker(interval)
-	boostResync := time.NewTicker(fraudBoostFullResync)
+	boostResync := time.NewTicker(sw.boostFullResync)
 	defer ticker.Stop()
 	defer boostResync.Stop()
 

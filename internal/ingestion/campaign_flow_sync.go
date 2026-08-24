@@ -7,8 +7,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"ad-event-processor/pkg/landerhost"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 type flowPathJSON struct {
@@ -24,20 +27,33 @@ type flowPathJSON struct {
 }
 
 type campaignFlowSync struct {
-	pool     *pgxpool.Pool
-	table    *CampaignFlowTable
-	interval time.Duration
-	gen      atomic.Uint64
+	pool          *pgxpool.Pool
+	table         *CampaignFlowTable
+	interval      time.Duration
+	gen           atomic.Uint64
+	publicBase    string
+	reloadChannel string
+	redisShard    redis.UniversalClient
 }
 
-func NewCampaignFlowSync(pool *pgxpool.Pool, table *CampaignFlowTable, interval time.Duration) *campaignFlowSync {
+func NewCampaignFlowSync(pool *pgxpool.Pool, table *CampaignFlowTable, interval time.Duration, publicBase string, redisShard redis.UniversalClient, reloadChannel string) *campaignFlowSync {
 	if pool == nil || table == nil {
 		return nil
 	}
 	if interval <= 0 {
 		interval = 30 * time.Second
 	}
-	return &campaignFlowSync{pool: pool, table: table, interval: interval}
+	if reloadChannel == "" {
+		reloadChannel = "flow:reload"
+	}
+	return &campaignFlowSync{
+		pool:          pool,
+		table:         table,
+		interval:      interval,
+		publicBase:    publicBase,
+		reloadChannel: reloadChannel,
+		redisShard:    redisShard,
+	}
 }
 
 func (s *campaignFlowSync) Start(ctx context.Context) {
@@ -47,6 +63,9 @@ func (s *campaignFlowSync) Start(ctx context.Context) {
 	s.reloadOnce(ctx)
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
+	if s.redisShard != nil {
+		go s.runReloadSubscriber(ctx)
+	}
 	for {
 		select {
 		case <-ctx.Done():
@@ -57,8 +76,28 @@ func (s *campaignFlowSync) Start(ctx context.Context) {
 	}
 }
 
+func (s *campaignFlowSync) runReloadSubscriber(ctx context.Context) {
+	pubsub := s.redisShard.Subscribe(ctx, s.reloadChannel)
+	defer pubsub.Close()
+	ch := pubsub.Channel()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			if msg == nil {
+				continue
+			}
+			s.reloadOnce(ctx)
+		}
+	}
+}
+
 func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
-	landerURLs, err := s.loadURLMap(ctx, "landers")
+	landerURLs, err := s.loadLanderURLMap(ctx)
 	if err != nil {
 		slog.Warn("campaign flow sync landers", "error", err)
 		return
@@ -99,6 +138,35 @@ func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
 	}
 	_ = s.gen.Add(1)
 	s.table.Publish(&campaignFlowRegistrySnapshot{byCampaign: byCampaign})
+}
+
+func (s *campaignFlowSync) loadLanderURLMap(ctx context.Context) (map[uuid.UUID][]byte, error) {
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, COALESCE(url, ''), hosted_asset_id
+		FROM landers`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make(map[uuid.UUID][]byte)
+	for rows.Next() {
+		var id uuid.UUID
+		var url string
+		var hostedAssetID *uuid.UUID
+		if err := rows.Scan(&id, &url, &hostedAssetID); err != nil {
+			return nil, err
+		}
+		if url != "" {
+			out[id] = []byte(url)
+			continue
+		}
+		if hostedAssetID != nil && *hostedAssetID != uuid.Nil && s.publicBase != "" {
+			if hosted := landerhost.PublicURL(s.publicBase, id); hosted != "" {
+				out[id] = []byte(hosted)
+			}
+		}
+	}
+	return out, rows.Err()
 }
 
 func (s *campaignFlowSync) loadURLMap(ctx context.Context, table string) (map[uuid.UUID][]byte, error) {

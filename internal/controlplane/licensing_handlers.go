@@ -2,12 +2,15 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
 
 	"ad-event-processor/internal/ledger/db"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/trialregistry"
+	"ad-event-processor/pkg/branding"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -18,13 +21,20 @@ import (
 const licenseStateUnconfigured = "UNCONFIGURED"
 
 type LicenseStatusResponse struct {
-	DeploymentID    string `json:"deployment_id"`
-	State           string `json:"state"`
-	ValidUntil      string `json:"valid_until,omitempty"`
-	HostFingerprint string `json:"host_fingerprint,omitempty"`
-	HWIDv2          string `json:"hwid_v2,omitempty"`
-	HWIDMatch       *bool  `json:"hwid_match,omitempty"`
-	DaysToExpiry    int    `json:"days_to_expiry,omitempty"`
+	DeploymentID      string `json:"deployment_id"`
+	State             string `json:"state"`
+	ValidUntil        string `json:"valid_until,omitempty"`
+	HostFingerprint   string `json:"host_fingerprint,omitempty"`
+	HWIDv2            string `json:"hwid_v2,omitempty"`
+	HWIDMatch         *bool  `json:"hwid_match,omitempty"`
+	DaysToExpiry      int    `json:"days_to_expiry,omitempty"`
+	PlanCode          string `json:"plan_code,omitempty"`
+	MaxRPS            uint64 `json:"max_rps,omitempty"`
+	UpgradePlanCode   string `json:"upgrade_plan_code,omitempty"`
+	TrialSelfServeURL string `json:"trial_self_serve_url,omitempty"`
+	PilotValidDays    int    `json:"pilot_valid_days,omitempty"`
+	DeploymentMode    string `json:"deployment_mode,omitempty"`
+	SupportURL        string `json:"support_url,omitempty"`
 }
 
 type ApplyLicenseRequest struct {
@@ -75,7 +85,9 @@ func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, h.LicenseDiagnostics))
+			resp := toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, h.LicenseDiagnostics)
+			resp = enrichLicenseStatusTrialSurface(resp)
+			httpresponse.JSON(w, http.StatusOK, resp)
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -89,6 +101,7 @@ func (h *LicensingHTTPHandlers) getLicenseStatus(w http.ResponseWriter, r *http.
 		licRow.ValidUntil.Valid,
 		h.LicenseDiagnostics,
 	)
+	resp = enrichLicenseStatusFromRow(resp, licRow)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
@@ -114,7 +127,9 @@ func (h *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, r *http.
 	licRow, err := q.GetLicenseStatus(r.Context())
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			httpresponse.JSON(w, http.StatusOK, toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, h.LicenseDiagnostics))
+			resp := toLicenseStatusResponse("", licenseStateUnconfigured, time.Time{}, false, h.LicenseDiagnostics)
+			resp = enrichLicenseStatusTrialSurface(resp)
+			httpresponse.JSON(w, http.StatusOK, resp)
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -127,6 +142,7 @@ func (h *LicensingHTTPHandlers) postLicenseApply(w http.ResponseWriter, r *http.
 		licRow.ValidUntil.Valid,
 		h.LicenseDiagnostics,
 	)
+	resp = enrichLicenseStatusFromRow(resp, licRow)
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
@@ -162,5 +178,29 @@ func toLicenseStatusResponse(deploymentID, state string, validUntil time.Time, v
 
 	resp.HostFingerprint = licensing.HostFingerprint()
 	resp.HWIDv2 = licensing.HostHWID()
+	return resp
+}
+
+func enrichLicenseStatusFromRow(resp LicenseStatusResponse, row db.BillingLicenseStatus) LicenseStatusResponse {
+	resp.PlanCode = row.PlanCode
+	if len(row.EntitlementsJson) > 0 {
+		var ent licensing.Entitlements
+		if err := json.Unmarshal(row.EntitlementsJson, &ent); err == nil {
+			resp.MaxRPS = ent.Limits.MaxRPS
+			resp.DeploymentMode = licensing.NormalizeDeploymentMode(ent.DeploymentMode)
+		}
+	}
+	return enrichLicenseStatusTrialSurface(resp)
+}
+
+func enrichLicenseStatusTrialSurface(resp LicenseStatusResponse) LicenseStatusResponse {
+	resp.SupportURL = branding.SupportURL()
+	if trialURL := trialregistry.SelfServeURL(); trialURL != "" {
+		resp.TrialSelfServeURL = trialURL
+		resp.PilotValidDays = licensing.PilotTrialValidDays
+	}
+	if upgrade := licensing.UpgradePlanForLicense(resp.PlanCode, resp.State); upgrade != "" {
+		resp.UpgradePlanCode = upgrade
+	}
 	return resp
 }

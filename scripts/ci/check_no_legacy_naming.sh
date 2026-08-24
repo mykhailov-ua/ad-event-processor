@@ -61,6 +61,22 @@ bureaucratic_check() {
   fi
 }
 
+milestone_check() {
+  local label="$1"
+  shift
+  local pattern='(\bCPA-M[0-9]+\b|\bGM-M[0-9]+\b|\bRP-M[0-9]+\b|\bGMM4\b|\bPS-[GH][0-9]{2}\b|\bL1CIDRBlockEnabled\b|\bL15ProxyVPNBlockEnabled\b|\bIPv6RotationL1Enabled\b|\bIPv4RotationL1Enabled\b|\bTLSFingerprintL1Enabled\b|\bwriteGnetSafeViewL15\b|\bl15HookHandler\b|\bl1HookHandler\b)'
+  local hits=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && hits+=("$line")
+  done < <(rg -n "$pattern" "$@" 2> /dev/null || true)
+
+  if ((${#hits[@]} > 0)); then
+    echo "check_no_legacy_naming: milestone or gap token in ${label} (use semantic slug; naming.mdc):"
+    printf '  %s\n' "${hits[@]}"
+    exit 1
+  fi
+}
+
 strict_check "docs/ARCHITECTURE.md" "$ROOT/docs/ARCHITECTURE.md"
 strict_check "docs/DEVELOPMENT.md" "$ROOT/docs/DEVELOPMENT.md"
 strict_check ".cursor/rules/licensing.mdc" "$ROOT/.cursor/rules/licensing.mdc"
@@ -71,6 +87,11 @@ bureaucratic_check "README.md" "$ROOT/README.md"
 bureaucratic_check "docs/" "$ROOT/docs"
 bureaucratic_check "deploy/vendor/" "$ROOT/deploy/vendor"
 bureaucratic_check ".cursor/rules/" "$ROOT/.cursor/rules" --glob '*.mdc'
+
+milestone_check "internal/" "$ROOT/internal"
+milestone_check "web/src" "$ROOT/web/src"
+milestone_check "web/e2e" "$ROOT/web/e2e" --glob '!**/node_modules/**'
+milestone_check ".env.example" "$ROOT/.env.example"
 
 is_allowlisted() {
   local rel="$1"

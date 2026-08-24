@@ -43,6 +43,8 @@ type BillingHTTPHandlers struct {
 	ResolveSelfServeCustomerID func(*http.Request) (uuid.UUID, error)
 
 	CustomerBalance              CustomerBalanceReader
+	UsageExport                  UsageDailyExporter
+	ResolveUsageExportCustomerFilter func(*http.Request, string, string) (string, string, error)
 	Disputes                     DisputeLister
 	LimitExportByCustomer        func(http.HandlerFunc) http.HandlerFunc
 	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
@@ -161,6 +163,7 @@ func (billHandlers *BillingHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 
 	billHandlers.registerBalanceRoutes(mux)
+	billHandlers.registerUsageExportRoutes(mux)
 	billHandlers.registerDisputeRoutes(mux)
 }
 

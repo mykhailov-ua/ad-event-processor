@@ -16,8 +16,14 @@ export type SelfServeInvoice = {
   created_at?: string;
 };
 
-export async function fetchSelfServeTemplates(): Promise<SelfServeTemplate[]> {
-  const { data } = await api<{ items?: SelfServeTemplate[] }>('/api/v1/selfserve/templates');
+export async function fetchSelfServeTemplates(customerId?: string): Promise<SelfServeTemplate[]> {
+  const qs =
+    customerId && customerId.trim()
+      ? `?customer_id=${encodeURIComponent(customerId.trim())}`
+      : '';
+  const { data } = await api<{ items?: SelfServeTemplate[] }>(
+    `/api/v1/selfserve/templates${qs}`
+  );
   return data?.items ?? [];
 }
 

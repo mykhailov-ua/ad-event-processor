@@ -16,6 +16,7 @@ import (
 	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/notify"
+	"ad-event-processor/internal/platformsync"
 )
 
 func Run(ctx context.Context, cfg *config.Config, opts Options) error {
@@ -64,6 +65,9 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 	if opts.CostSync {
 		start("cost-sync", func(runCtx context.Context) error { return serveCostSync(runCtx, cfg) })
+	}
+	if opts.PlatformCampaignSync {
+		start("platform-campaign-sync", func(runCtx context.Context) error { return servePlatformCampaignSync(runCtx, cfg) })
 	}
 
 	if opts.Management {
@@ -167,8 +171,69 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 			GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
 		}))
 	}
+	if os.Getenv("TIKTOK_APP_ID") != "" && os.Getenv("TIKTOK_APP_SECRET") != "" {
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			TikTokAppID:     os.Getenv("TIKTOK_APP_ID"),
+			TikTokAppSecret: os.Getenv("TIKTOK_APP_SECRET"),
+		}))
+	}
+	if os.Getenv("MICROSOFT_ADS_CLIENT_ID") != "" && os.Getenv("MICROSOFT_ADS_CLIENT_SECRET") != "" {
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			MicrosoftClientID:     os.Getenv("MICROSOFT_ADS_CLIENT_ID"),
+			MicrosoftClientSecret: os.Getenv("MICROSOFT_ADS_CLIENT_SECRET"),
+		}))
+	}
+	if os.Getenv("SNAPCHAT_CLIENT_ID") != "" && os.Getenv("SNAPCHAT_CLIENT_SECRET") != "" {
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			SnapchatClientID:     os.Getenv("SNAPCHAT_CLIENT_ID"),
+			SnapchatClientSecret: os.Getenv("SNAPCHAT_CLIENT_SECRET"),
+		}))
+	}
+	if os.Getenv("LINKEDIN_CLIENT_ID") != "" && os.Getenv("LINKEDIN_CLIENT_SECRET") != "" {
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			LinkedInClientID:     os.Getenv("LINKEDIN_CLIENT_ID"),
+			LinkedInClientSecret: os.Getenv("LINKEDIN_CLIENT_SECRET"),
+		}))
+	}
+	if os.Getenv("PINTEREST_CLIENT_ID") != "" && os.Getenv("PINTEREST_CLIENT_SECRET") != "" {
+		workerOpts = append(workerOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			PinterestClientID:     os.Getenv("PINTEREST_CLIENT_ID"),
+			PinterestClientSecret: os.Getenv("PINTEREST_CLIENT_SECRET"),
+		}))
+	}
 
 	worker := costsync.NewWorker(pool, key, workerOpts...)
 	worker.Start(ctx)
+	return ctx.Err()
+}
+
+func servePlatformCampaignSync(ctx context.Context, cfg *config.Config) error {
+	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	key := []byte(os.Getenv("COST_SYNC_ENCRYPTION_KEY"))
+	if len(key) == 0 {
+		key = []byte(os.Getenv("POSTBACK_ENCRYPTION_KEY"))
+	}
+
+	costOpts := []costsync.WorkerOption{}
+	if os.Getenv("META_APP_ID") != "" && os.Getenv("META_APP_SECRET") != "" {
+		costOpts = append(costOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			MetaAppID:     os.Getenv("META_APP_ID"),
+			MetaAppSecret: os.Getenv("META_APP_SECRET"),
+		}))
+	}
+	if os.Getenv("GOOGLE_OAUTH_CLIENT_ID") != "" && os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET") != "" {
+		costOpts = append(costOpts, costsync.WithOAuth(costsync.OAuthConfig{
+			GoogleClientID:     os.Getenv("GOOGLE_OAUTH_CLIENT_ID"),
+			GoogleClientSecret: os.Getenv("GOOGLE_OAUTH_CLIENT_SECRET"),
+		}))
+	}
+	costWorker := costsync.NewWorker(pool, key, costOpts...)
+	platformWorker := platformsync.NewWorker(pool, key, costWorker)
+	platformWorker.Start(ctx)
 	return ctx.Err()
 }

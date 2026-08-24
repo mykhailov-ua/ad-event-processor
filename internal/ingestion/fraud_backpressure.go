@@ -14,7 +14,7 @@ import (
 const fraudAggForceKey = "fraud:agg_force"
 
 type FraudBackpressureConfig struct {
-	RedisShards        []redis.UniversalClient
+	RedisShards []redis.UniversalClient
 	Writer      *FraudStreamWriter
 	Stream      string
 	EventStream string
@@ -31,7 +31,7 @@ func StartFraudBackpressureWatcher(ctx context.Context, cfg FraudBackpressureCon
 		cfg.Interval = 2 * time.Second
 	}
 	if cfg.LagSec <= 0 {
-		cfg.LagSec = 30
+		cfg.LagSec = 60
 	}
 	go func() {
 		ticker := time.NewTicker(cfg.Interval)
@@ -134,7 +134,7 @@ func StartFraudLagPublisher(ctx context.Context, redisShards []redis.UniversalCl
 		interval = 2 * time.Second
 	}
 	if lagSec <= 0 {
-		lagSec = 30
+		lagSec = 60
 	}
 	go func() {
 		ticker := time.NewTicker(interval)

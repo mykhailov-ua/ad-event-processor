@@ -15,11 +15,11 @@ import (
 )
 
 type Module struct {
-	Handler *Handler
-	pool    *pgxpool.Pool
-	rdbs    []redis.UniversalClient
-	cancel  context.CancelFunc
-	wg      sync.WaitGroup
+	Handler     *Handler
+	pool        *pgxpool.Pool
+	redisShards []redis.UniversalClient
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
 }
 
 func (m *Module) Close() {
@@ -33,9 +33,9 @@ func (m *Module) Close() {
 	if m.pool != nil {
 		m.pool.Close()
 	}
-	for _, rdb := range m.rdbs {
-		if rdb != nil {
-			_ = rdb.Close()
+	for _, redisClient := range m.redisShards {
+		if redisClient != nil {
+			_ = redisClient.Close()
 		}
 	}
 }
@@ -55,29 +55,29 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	if err != nil {
 		return nil, err
 	}
-	var controlRdbs []redis.UniversalClient
+	var controlRedisShards []redis.UniversalClient
 	var errShards error
-	controlRdbs, _, errShards = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+	controlRedisShards, _, errShards = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
 		PoolSize: cfg.RedisPoolSize,
 	})
-	var rdb redis.UniversalClient
+	var redisClient redis.UniversalClient
 	if errShards != nil {
-		rdb, err = database.ConnectRedisShard(ctx, cfg, 0, database.RedisShardOptions{
+		redisClient, err = database.ConnectRedisShard(ctx, cfg, 0, database.RedisShardOptions{
 			PoolSize: cfg.RedisPoolSize,
 		})
 		if err != nil {
 			pool.Close()
 			return nil, fmt.Errorf("connect redis shard 0 fallback: %w (shards err: %w)", err, errShards)
 		}
-		controlRdbs = []redis.UniversalClient{rdb}
+		controlRedisShards = []redis.UniversalClient{redisClient}
 	} else {
-		if len(controlRdbs) > 0 {
-			rdb = controlRdbs[0]
+		if len(controlRedisShards) > 0 {
+			redisClient = controlRedisShards[0]
 		}
-		if rdb == nil {
-			for _, shard := range controlRdbs {
+		if redisClient == nil {
+			for _, shard := range controlRedisShards {
 				if shard != nil {
-					rdb = shard
+					redisClient = shard
 					break
 				}
 			}
@@ -87,15 +87,15 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	tokenMaker, err := NewPasetoMaker(string(cfg.TokenSymmetricKey))
 	if err != nil {
 		pool.Close()
-		_ = rdb.Close()
-		for _, shard := range controlRdbs {
-			if shard != nil && shard != rdb {
+		_ = redisClient.Close()
+		for _, shard := range controlRedisShards {
+			if shard != nil && shard != redisClient {
 				_ = shard.Close()
 			}
 		}
 		return nil, err
 	}
-	lockoutLimiter := NewLockoutLimiter(controlRdbs...)
+	lockoutLimiter := NewLockoutLimiter(controlRedisShards...)
 	hasher, err := NewPasswordHasher(
 		uint32(cfg.Argon2Memory),
 		uint32(cfg.Argon2Iterations),
@@ -103,22 +103,22 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 	)
 	if err != nil {
 		pool.Close()
-		_ = rdb.Close()
-		for _, shard := range controlRdbs {
-			if shard != nil && shard != rdb {
+		_ = redisClient.Close()
+		for _, shard := range controlRedisShards {
+			if shard != nil && shard != redisClient {
 				_ = shard.Close()
 			}
 		}
 		return nil, err
 	}
-	authService := NewService(repo, tokenMaker, hasher, lockoutLimiter, rdb)
-	authService.SetControlRedisShards(controlRdbs)
+	authService := NewService(repo, tokenMaker, hasher, lockoutLimiter, redisClient)
+	authService.SetControlRedisShards(controlRedisShards)
 	workerCtx, workerCancel := context.WithCancel(ctx)
 	mod := &Module{
-		Handler: NewHandler(authService, cfg),
-		pool:    pool,
-		rdbs:    append([]redis.UniversalClient{rdb}, controlRdbs...),
-		cancel:  workerCancel,
+		Handler:     NewHandler(authService, cfg),
+		pool:        pool,
+		redisShards: append([]redis.UniversalClient{redisClient}, controlRedisShards...),
+		cancel:      workerCancel,
 	}
 	cleanupWorker := NewSessionCleanupWorker(authService)
 	mod.wg.Add(1)

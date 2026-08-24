@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { to } from '../lib/to.js';
 import * as auth from '../helpers/auth.js';
 import { can } from '../helpers/permissions.js';
@@ -14,6 +15,7 @@ import {
   fetchOffers,
   parseFlowPaths,
   summarizeFlowPaths,
+  uploadHostedLanderZip,
   type FlowDTO,
   type LanderDTO,
   type OfferDTO,
@@ -43,6 +45,7 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
 }
 
 export function CampaignFlowsPage() {
+  const navigate = useNavigate();
   const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
   const [tab, setTab] = useState<FlowTab>('landers');
   const [loading, setLoading] = useState(true);
@@ -89,11 +92,11 @@ export function CampaignFlowsPage() {
     if (!canWrite || busy) return;
     const name = landerForm.name.trim();
     const url = landerForm.url.trim();
-    if (!name || !url) {
-      pushToastMessage({ title: 'Missing fields', message: 'Name and URL are required' });
+    if (!name) {
+      pushToastMessage({ title: 'Missing fields', message: 'Name is required' });
       return;
     }
-    if (!/^https?:\/\//i.test(url)) {
+    if (url && !/^https?:\/\//i.test(url)) {
       pushToastMessage({
         title: 'Invalid URL',
         message: 'URL must start with http:// or https://',
@@ -101,7 +104,7 @@ export function CampaignFlowsPage() {
       return;
     }
     setBusy(true);
-    const [, err] = await to(createLander(name, url));
+    const [, err] = await to(createLander(name, url || undefined));
     setBusy(false);
     if (err) {
       if (err instanceof ConfirmCancelledError) return;
@@ -110,6 +113,29 @@ export function CampaignFlowsPage() {
     }
     setLanderForm({ name: '', url: '' });
     pushToastMessage({ title: 'Lander created', message: name });
+    await reload();
+  };
+
+  /**
+   * Upload a ZIP archive for an existing lander and publish hosted files.
+   * @param landerId - Lander UUID.
+   * @param file - ZIP file selected in the browser.
+   */
+  const submitHostedLanderZip = async (landerId: string, file: File) => {
+    if (!canWrite || busy) return;
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+      pushToastMessage({ title: 'Invalid file', message: 'Select a .zip archive' });
+      return;
+    }
+    setBusy(true);
+    const [, err] = await to(uploadHostedLanderZip(landerId, file));
+    setBusy(false);
+    if (err) {
+      if (err instanceof ConfirmCancelledError) return;
+      pushToastMessage({ title: 'Upload failed', message: mapServiceError(err).message });
+      return;
+    }
+    pushToastMessage({ title: 'Hosted lander published', message: file.name });
     await reload();
   };
 
@@ -163,7 +189,7 @@ export function CampaignFlowsPage() {
       return;
     }
     setBusy(true);
-    const [, err] = await to(
+    const [created, err] = await to(
       createFlow(name, [
         {
           weight: 100,
@@ -180,6 +206,10 @@ export function CampaignFlowsPage() {
     }
     setFlowForm({ name: '', landerId: '', landerWeight: '100', offerId: '', offerWeight: '100' });
     pushToastMessage({ title: 'Flow created', message: name });
+    if (created?.id) {
+      navigate(`/campaigns/flows/${created.id}/builder`);
+      return;
+    }
     await reload();
   };
 
@@ -222,12 +252,12 @@ export function CampaignFlowsPage() {
                 />
               </label>
               <label className="form-field" htmlFor="lander-url">
-                Landing URL
+                Landing URL (optional if hosting ZIP below)
                 <input
                   id="lander-url"
                   className="form-input form-input--sm"
                   value={landerForm.url}
-                  placeholder="https://..."
+                  placeholder="https://... or leave empty for hosted ZIP"
                   onChange={(e) => setLanderForm((f) => ({ ...f, url: e.target.value }))}
                 />
               </label>
@@ -247,15 +277,16 @@ export function CampaignFlowsPage() {
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>URL</th>
+                  <th>URL / hosted</th>
                   <th>ID</th>
+                  {canWrite ? <th>Hosted</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {loading ? <TableSkeleton cols={3} /> : null}
+                {loading ? <TableSkeleton cols={canWrite ? 4 : 3} /> : null}
                 {!loading && landers.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-muted">
+                    <td colSpan={canWrite ? 4 : 3} className="text-muted">
                       No landers yet
                     </td>
                   </tr>
@@ -264,10 +295,41 @@ export function CampaignFlowsPage() {
                   ? landers.map((row) => (
                       <tr key={row.id}>
                         <td>{row.name}</td>
-                        <td className="font-mono text-sm">{row.url}</td>
+                        <td className="font-mono text-sm">
+                          {row.hosted_url || row.url || (
+                            <span className="text-muted">no URL yet</span>
+                          )}
+                        </td>
                         <td>
                           <CopyableUuid uuid={row.id} />
                         </td>
+                        {canWrite ? (
+                          <td>
+                            <div className="stack">
+                              <input
+                                type="file"
+                                accept=".zip,application/zip"
+                                data-testid={`lander-zip-${row.id}`}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    void submitHostedLanderZip(row.id, file);
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                              {row.hosted_asset_id || row.hosted_url ? (
+                                <Link
+                                  className="text-sm"
+                                  to={`/campaigns/landers/${row.id}/editor`}
+                                  data-testid={`lander-editor-${row.id}`}
+                                >
+                                  Edit files
+                                </Link>
+                              ) : null}
+                            </div>
+                          </td>
+                        ) : null}
                       </tr>
                     ))
                   : null}
@@ -439,13 +501,14 @@ export function CampaignFlowsPage() {
                   <th>Name</th>
                   <th>Paths</th>
                   <th>ID</th>
+                  {canWrite ? <th>Builder</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {loading ? <TableSkeleton cols={3} /> : null}
+                {loading ? <TableSkeleton cols={canWrite ? 4 : 3} /> : null}
                 {!loading && flows.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-muted">
+                    <td colSpan={canWrite ? 4 : 3} className="text-muted">
                       No flows yet
                     </td>
                   </tr>
@@ -458,6 +521,17 @@ export function CampaignFlowsPage() {
                         <td>
                           <CopyableUuid uuid={row.id} />
                         </td>
+                        {canWrite ? (
+                          <td>
+                            <Link
+                              className="text-sm"
+                              to={`/campaigns/flows/${row.id}/builder`}
+                              data-testid={`flow-builder-${row.id}`}
+                            >
+                              Edit flow
+                            </Link>
+                          </td>
+                        ) : null}
                       </tr>
                     ))
                   : null}

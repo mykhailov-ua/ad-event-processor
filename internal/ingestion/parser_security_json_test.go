@@ -17,7 +17,7 @@ func TestChaos_ParserSecurity_PS_G09_UnicodeKeyRejected(t *testing.T) {
 	err := ParseTrackRequestJSON(&req, body)
 	require.Error(t, err, "non-ASCII key must be rejected")
 	faultproof.Log(t, "parser_security_ps_g09", map[string]string{
-		"gap_id": "PS-G09",
+		"gap_id": "json_non_ascii_key",
 		"gap":    "closed",
 	})
 }
@@ -29,7 +29,7 @@ func TestChaos_ParserSecurity_PS_G10_DuplicateKeyLastWins(t *testing.T) {
 	require.Equal(t, "second", string(parsed.RequestID[:parsed.RequestIDLen]))
 	require.Equal(t, "imp-b", string(parsed.ImpID[:parsed.ImpIDLen]))
 	faultproof.Log(t, "parser_security_ps_g10", map[string]string{
-		"gap_id": "PS-G10",
+		"gap_id": "openrtb_duplicate_keys",
 		"gap":    "closed",
 	})
 }
@@ -40,7 +40,7 @@ func TestChaos_ParserSecurity_PS_G11_LoneSurrogateRejected(t *testing.T) {
 	err := ParseTrackRequestJSON(&req, body)
 	require.Error(t, err, "lone high surrogate must reject parse")
 	faultproof.Log(t, "parser_security_ps_g11", map[string]string{
-		"gap_id": "PS-G11",
+		"gap_id": "json_lone_surrogate",
 		"gap":    "closed",
 	})
 }
@@ -56,7 +56,7 @@ func TestChaos_ParserSecurity_PS_G12_DistributedWSBomb(t *testing.T) {
 	err := ParseTrackRequestJSON(&req, []byte(b.String()))
 	require.Error(t, err, "distributed whitespace bomb must be rejected")
 	faultproof.Log(t, "parser_security_ps_g12", map[string]string{
-		"gap_id": "PS-G12",
+		"gap_id": "json_whitespace_bomb",
 		"gap":    "closed",
 	})
 }
@@ -68,7 +68,7 @@ func TestChaos_ParserSecurity_PS_G13_QuoteDenseStringRejected(t *testing.T) {
 	err := ParseTrackRequestJSON(&req, []byte(body))
 	require.Error(t, err)
 	faultproof.Log(t, "parser_security_ps_g13", map[string]string{
-		"gap_id": "PS-G13",
+		"gap_id": "json_quote_escape_bomb",
 		"gap":    "closed",
 	})
 }
@@ -80,7 +80,7 @@ func TestChaos_ParserSecurity_PS_G13_NestedPayloadEscapeBomb(t *testing.T) {
 	err := ParseTrackRequestJSON(&req, []byte(body))
 	require.Error(t, err, "nested payload escape bomb must honor MaxJSONStringEscapes")
 	faultproof.Log(t, "parser_security_ps_g13_nested", map[string]string{
-		"gap_id": "PS-G13",
+		"gap_id": "json_quote_escape_bomb",
 		"gap":    "closed",
 		"path":   "payload",
 	})

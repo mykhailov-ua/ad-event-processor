@@ -1,0 +1,1 @@
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS review_routed_event UInt8 DEFAULT 0;

@@ -104,6 +104,8 @@ func (worker *OutboxWorker) handleOutboxEvent(opCtx, ctx context.Context, ev db.
 		return worker.handleApplyGTVSettlement(ctx, ev.Payload)
 	case "TELEGRAM_EVENT":
 		return worker.handleTelegramEvent(ctx, ev.Payload)
+	case "LANDER_PUBLISHED":
+		return worker.handleLanderPublished(ctx, ev.Payload)
 	default:
 		return fmt.Errorf("unknown outbox event type: %s", ev.EventType)
 	}

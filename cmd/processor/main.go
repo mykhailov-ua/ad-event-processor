@@ -201,7 +201,7 @@ func main() {
 	}
 
 	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
-		RedisShards:         redisShards,
+		RedisShards:  redisShards,
 		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
 		MaxLen:       cfg.StreamMaxLen,
 		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
@@ -244,7 +244,7 @@ func main() {
 	}
 
 	var fraudScorer fraud.Scorer
-	if cfg.FraudScoringEnabled() {
+	if cfg.FraudMicrobatchEnabled() {
 		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
 		if snapErr == nil && snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.MlFraudBoostEnabled() }) {
 			var err error
@@ -253,10 +253,16 @@ func main() {
 				slog.Error("failed to initialize fraud scorer for processor micro-batching", "error", err, "path", cfg.FraudScoring.ModelPath)
 				os.Exit(1)
 			}
-			slog.Info("initialized fraud scorer for processor micro-batching", "path", cfg.FraudScoring.ModelPath)
+			slog.Info("initialized fraud scorer for processor micro-batching",
+				"path", cfg.FraudScoring.ModelPath,
+				"flush_ms", cfg.FraudScoring.MicrobatchFlushMs,
+				"max_lag_sec", cfg.FraudScoring.MicrobatchMaxLagSec,
+			)
 		} else {
 			slog.Info("ml_fraud_boost not licensed; processor fraud micro-batching disabled")
 		}
+	} else if cfg.FraudScoringEnabled() {
+		slog.Info("FRAUD_MICROBATCH_ENABLED=false; processor fraud micro-batching disabled")
 	}
 
 	campaignRepo := ingestion.NewCampaignRepoWithDB(pool, queries)
@@ -325,7 +331,11 @@ func main() {
 	var syncWorkers []*ingestion.SyncWorker
 	var fraudMicrobatcher *fraud.MicroBatcher
 	if fraudScorer != nil && len(redisShards) > 0 {
-		fraudMicrobatcher = fraud.NewMicroBatcher(redisShards, fraudScorer, cfg.CampaignUpdateChannel)
+		mbCfg := fraud.MicroBatcherConfig{
+			FlushInterval:   time.Duration(cfg.FraudScoring.MicrobatchFlushMs) * time.Millisecond,
+			MaxStreamLagSec: float64(cfg.FraudScoring.MicrobatchMaxLagSec),
+		}
+		fraudMicrobatcher = fraud.NewMicroBatcher(redisShards, fraudScorer, cfg.CampaignUpdateChannel, mbCfg)
 		go fraudMicrobatcher.Start(consumerCtx)
 	}
 

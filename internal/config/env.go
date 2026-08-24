@@ -204,13 +204,14 @@ type Config struct {
 		FacebookGraphAPIBase        string
 	}
 	Control struct {
-		EnableAuth        bool
-		EnableManagement  bool
-		EnablePayment     bool
-		EnableBilling     bool
-		EnableNotifier    bool
-		EnableMarginGuard bool
-		EnableCostSync    bool
+		EnableAuth                 bool
+		EnableManagement           bool
+		EnablePayment              bool
+		EnableBilling              bool
+		EnableNotifier             bool
+		EnableMarginGuard          bool
+		EnableCostSync             bool
+		EnablePlatformCampaignSync bool
 	}
 	CampaignUpdateChannel   string
 	RtbCatalogReloadChannel string
@@ -345,7 +346,7 @@ type Config struct {
 	SlotMigrationDualWriteEnabled bool
 	SlotMigrationLagEpsilon       int64
 
-	CIDRL1Enabled                bool
+	CIDRBlockEnabled                bool
 	CIDRFeedDir                  string
 	CIDRFeedRefresh              time.Duration
 	CIDRFeedURLAWS               string
@@ -353,11 +354,11 @@ type Config struct {
 	CIDRFeedURLAzure             string
 	CIDRFeedURLTor               string
 	CIDRFeedDownloadEnable       bool
-	IPv6RotationL1Enabled        bool
+	IPv6RotationEnabled        bool
 	IPv6RotationMode             string
 	IPv6RotationWindow           time.Duration
 	IPv6RotationThreshold        uint32
-	IPv4RotationL1Enabled        bool
+	IPv4RotationEnabled        bool
 	IPv4RotationMode             string
 	IPv4RotationWindow           time.Duration
 	IPv4RotationThreshold        uint32
@@ -370,10 +371,17 @@ type Config struct {
 	ResidentialProxyWindow       time.Duration
 	TCPMSSAnomalyEnabled         bool
 	TCPMSSAnomalyMinByte         uint8
-	ProxyVPNL15Enabled           bool
+	ProxyVPNBlockEnabled           bool
 	ProxyVPNFeedDir              string
 	ProxyVPNFeedRefresh          time.Duration
-	TLSFingerprintL1Enabled      bool
+	ModeratorIntelEnabled        bool
+	ModeratorIntelFeedDir        string
+	ModeratorIntelFeedRefresh    time.Duration
+	ModeratorIntelFeedURL        string
+	ModeratorIntelFeedSecret     string
+	ModeratorIntelFeedDownload   bool
+	ModeratorIntelAllowUnsigned  bool
+	TLSFingerprintEnabled      bool
 	TLSFingerprintFeedDir        string
 	TLSFingerprintFeedRefresh    time.Duration
 	LinkSigningHMACSecret        Secret
@@ -383,6 +391,11 @@ type Config struct {
 	DomainPoolSyncInterval       time.Duration
 	FlowRoutingEnabled           bool
 	FlowSyncInterval             time.Duration
+	LanderStoreRoot              string
+	LanderPublicBaseURL          string
+	LanderMaxZipBytes            int64
+	FlowReloadChannel            string
+	LanderPreviewSecret          string
 	ProxyAllowHTTPInsecure       bool
 	SlotMigrationLagThreshold    int64
 	ElasticShardingEnabled       bool
@@ -495,12 +508,16 @@ type Config struct {
 	}
 
 	FraudScoring struct {
-		Enabled          bool
-		ScanIntervalMs   int
-		BatchSize        int
-		ModelPath        string
-		Standalone       bool
-		ExplainLiveScore bool
+		Enabled             bool
+		ScanIntervalMs      int
+		BatchSize           int
+		ModelPath           string
+		Standalone          bool
+		ExplainLiveScore    bool
+		MicrobatchEnabled   bool
+		MicrobatchFlushMs   int
+		MicrobatchMaxLagSec int
+		BoostFullResyncSec  int
 	}
 
 	ExternalResidentialIntel struct {
@@ -590,7 +607,7 @@ func Load() (*Config, error) {
 		RedisPassword:                   Secret(os.Getenv("REDIS_PASSWORD")),
 		RedisStreamName:                 os.Getenv("REDIS_STREAM_NAME"),
 		FraudStreamName:                 os.Getenv("FRAUD_STREAM_NAME"),
-		FraudConsumerLagSec:             getEnvInt("FRAUD_CONSUMER_LAG_SEC", 30),
+		FraudConsumerLagSec:             getEnvInt("FRAUD_CONSUMER_LAG_SEC", 60),
 		H2IncompleteMax:                 getEnvInt("H2_INCOMPLETE_MAX", 3),
 		HTTP1IncompleteMax:              getEnvInt("HTTP1_INCOMPLETE_MAX", 3),
 		HTTP1BodyIdleMs:                 getEnvIntDefaultHTTP1BodyIdle(appEnv),
@@ -667,7 +684,7 @@ func Load() (*Config, error) {
 		MaxRequestBodySize:              getEnvInt64("MAX_REQUEST_BODY_SIZE", 1048576),
 		DuplicateTTLSec:                 getEnvInt("DUPLICATE_TTL_SEC", 10),
 		TTCMinMs:                        getEnvInt("TTC_MIN_MS", 300),
-		TTCFailClosed:                   getEnvBool("TTC_FAIL_CLOSED", false),
+		TTCFailClosed:                   getEnvBool("TTC_FAIL_CLOSED", true),
 		CHDSN:                           Secret(os.Getenv("CH_DSN")),
 		CHEnabled:                       clickHouseEnabledFromEnv(),
 		CHBatchSize:                     getEnvInt("CH_BATCH_SIZE", 50000),
@@ -773,6 +790,7 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	loadEdgeModules(cfg)
+	loadLanderHostModules(cfg)
 	loadDatabaseModules(cfg)
 	cfg.ManagementURL = os.Getenv("CONTROL_URL")
 	if cfg.ManagementURL == "" {
@@ -849,6 +867,10 @@ func (c *Config) IVTDetectorEnabled() bool {
 
 func (c *Config) FraudScoringEnabled() bool {
 	return c != nil && c.FraudScoring.Enabled
+}
+
+func (c *Config) FraudMicrobatchEnabled() bool {
+	return c != nil && c.FraudScoring.Enabled && c.FraudScoring.MicrobatchEnabled
 }
 
 func (c *Config) ExternalResidentialIntelRuntimeEnabled() bool {
@@ -971,4 +993,24 @@ func getEnvIntDefaultHTTP1BodyIdle(appEnv string) int {
 		return 5000
 	}
 	return 500
+}
+
+func loadLanderHostModules(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	cfg.LanderStoreRoot = strings.TrimSpace(os.Getenv("LANDER_STORE_ROOT"))
+	if cfg.LanderStoreRoot == "" {
+		cfg.LanderStoreRoot = "var/landers"
+	}
+	cfg.LanderPublicBaseURL = strings.TrimSpace(os.Getenv("LANDER_PUBLIC_BASE_URL"))
+	if cfg.LanderPublicBaseURL == "" {
+		cfg.LanderPublicBaseURL = strings.TrimSpace(os.Getenv("TRACKER_PUBLIC_URL"))
+	}
+	cfg.LanderMaxZipBytes = int64(getEnvInt("LANDER_MAX_ZIP_BYTES", 32<<20))
+	cfg.FlowReloadChannel = strings.TrimSpace(os.Getenv("FLOW_RELOAD_CHANNEL"))
+	if cfg.FlowReloadChannel == "" {
+		cfg.FlowReloadChannel = "flow:reload"
+	}
+	cfg.LanderPreviewSecret = strings.TrimSpace(os.Getenv("LANDER_PREVIEW_SECRET"))
 }

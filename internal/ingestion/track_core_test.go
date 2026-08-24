@@ -56,6 +56,7 @@ func TestProcessTrack_fraudHardReject_holdoutSilentRejectFlag(t *testing.T) {
 	configureMockRegistryCampaign(func(c *domain.Campaign) {
 		c.SilentRejectEnabled = false
 	})
+	t.Cleanup(resetStaticCampaignBaseline)
 	evt := domain.EventPool.Get().(*domain.Event)
 	defer domain.EventPool.Put(evt)
 	evt.CampaignID = uuid.New()

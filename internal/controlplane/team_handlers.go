@@ -60,6 +60,7 @@ type TeamLicenseDTO struct {
 type TeamOverviewDTO struct {
 	CustomerID   string          `json:"customer_id"`
 	CustomerName string          `json:"customer_name"`
+	CostCenter   string          `json:"cost_center,omitempty"`
 	BalanceMicro int64           `json:"balance_micro,omitempty"`
 	Currency     string          `json:"currency,omitempty"`
 	License      *TeamLicenseDTO `json:"license,omitempty"`
@@ -162,8 +163,8 @@ func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uu
 	var out TeamOverviewDTO
 	out.CustomerID = customerID.String()
 
-	err := s.Pool.QueryRow(ctx, `SELECT name, balance, currency FROM customers WHERE id = $1`, customerID).
-		Scan(&out.CustomerName, &out.BalanceMicro, &out.Currency)
+	err := s.Pool.QueryRow(ctx, `SELECT name, balance, currency, COALESCE(cost_center, '') FROM customers WHERE id = $1`, customerID).
+		Scan(&out.CustomerName, &out.BalanceMicro, &out.Currency, &out.CostCenter)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return TeamOverviewDTO{}, pgx.ErrNoRows

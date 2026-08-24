@@ -85,6 +85,7 @@ const (
 	FraudReasonCodeIPv4Rotation       = "ipv4_rotation"
 	FraudReasonCodeResidentialProxy   = "residential_proxy"
 	FraudReasonCodeAttestationMissing = "attestation_missing"
+	FraudReasonCodeModeratorIP        = "moderator_ip"
 )
 
 const (
@@ -100,6 +101,7 @@ const (
 	FraudReasonIPv4Rotation
 	FraudReasonResidentialProxy
 	FraudReasonAttestationMissing
+	FraudReasonModeratorIP
 	fraudReasonCount
 )
 
@@ -128,6 +130,7 @@ var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
 	FraudReasonIPv4Rotation:       {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: fraudSignalL2Weak},
 	FraudReasonResidentialProxy:   {code: FraudReasonCodeResidentialProxy, weight: 35, flags: fraudSignalL2Weak},
 	FraudReasonAttestationMissing: {code: FraudReasonCodeAttestationMissing, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonModeratorIP:        {code: FraudReasonCodeModeratorIP, weight: 45, flags: fraudSignalL1High},
 }
 
 func FraudReasonCode(id FraudReasonID) string {

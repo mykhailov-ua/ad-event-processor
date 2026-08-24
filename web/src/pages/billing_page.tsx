@@ -35,6 +35,7 @@ import { RecentCustomers } from '../components/recent_customers.js';
 import { StatusBadge } from '../components/status_badge.js';
 import { TabBar } from '../components/tab_bar.js';
 import { BillingExportsSection } from '../components/billing_exports_section.js';
+import { BillingUsageExportSection } from '../components/billing_usage_export_section.js';
 import { BillingSelfServeSection } from '../components/billing_selfserve_section.js';
 import { BillingSummaryPanel } from '../components/billing_summary_panel.js';
 import { BillingStatementPanel } from '../components/billing_statement_panel.js';
@@ -578,8 +579,12 @@ export function BillingPage() {
       ) : null}
 
       {tab === 'exports' ? (
-        <div className="section-block">
+        <div className="section-block stack">
           <BillingExportsSection customerId={customerId} tenant={sessionScoped} />
+          <BillingUsageExportSection
+            customerId={customerId}
+            tenant={sessionScoped}
+          />
         </div>
       ) : null}
 

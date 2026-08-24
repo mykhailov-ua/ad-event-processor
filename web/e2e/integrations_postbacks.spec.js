@@ -5,7 +5,7 @@ const CAMPAIGN_ID = '550e8400-e29b-41d4-a716-446655440000';
 const DLQ_ID = 42;
 
 test.describe('Integrations postbacks page', () => {
-  test('CPA-M4: DLQ retry POST before toast', async ({ page }) => {
+  test('postback DLQ retry POST before toast', async ({ page }) => {
     await mockAuthedSession(page, ADMIN_USER);
 
     let retryPosted = false;

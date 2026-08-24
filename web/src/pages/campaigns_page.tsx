@@ -27,7 +27,6 @@ import { AlertBanner } from '../components/alert_banner.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
 import { Button, ButtonLink } from '../components/button.js';
 import { CampaignHealthBadge } from '../components/campaign_health_badge.js';
-import { CampaignWizard, useCampaignWizard } from '../components/campaign_wizard.js';
 import { CampaignStatusLegend } from '../components/status_legend.js';
 import { Checkbox } from '../components/checkbox.js';
 import { CopyableUuid } from '../components/copyable_uuid.js';
@@ -91,7 +90,6 @@ function TableSkeleton({ cols, rows = 5 }: { cols: number; rows?: number }) {
 
 export function CampaignsPage() {
   const navigate = useNavigate();
-  const { wizardOpen, wizardCustomerId, openWizard, closeWizard } = useCampaignWizard();
   const [searchParams] = useSearchParams();
   const customerInputRef = useRef<HTMLInputElement>(null);
 
@@ -376,7 +374,10 @@ export function CampaignsPage() {
               label="Create campaign"
               variant="primary"
               size="sm"
-              onClick={() => openWizard(effectiveCustomerId)}
+              onClick={() => {
+                const params = new URLSearchParams({ customer_id: effectiveCustomerId });
+                navigate(`/campaigns/wizard?${params.toString()}`);
+              }}
             />
           ) : null}
           <span className="text-muted text-sm">{loading ? '' : `${total} total`}</span>
@@ -597,16 +598,6 @@ export function CampaignsPage() {
           </tbody>
         </table>
       </div>
-
-      <CampaignWizard
-        open={wizardOpen}
-        customerId={wizardCustomerId}
-        onClose={closeWizard}
-        onCreated={(cid) => {
-          closeWizard();
-          navigate(`/campaigns/${cid}`);
-        }}
-      />
     </>
   );
 }

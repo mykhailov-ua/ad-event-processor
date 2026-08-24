@@ -63,8 +63,10 @@ type campaignReplicaDTO struct {
 	AttestationTTLSec  int32                 `json:"attestation_ttl_sec"`
 	DmrEnabled         bool                  `json:"dmr_enabled"`
 
-	L1CIDRBlockEnabled         bool   `json:"l1_cidr_block_enabled"`
-	L15ProxyVPNBlockEnabled    bool   `json:"l15_proxy_vpn_block_enabled"`
+	CIDRBlockEnabled         bool   `json:"cidr_block_enabled"`
+	ProxyVPNBlockEnabled    bool   `json:"proxy_vpn_block_enabled"`
+	ModeratorIntelEnabled      bool   `json:"moderator_intel_enabled"`
+	ReviewTrafficAction        string `json:"review_traffic_action,omitempty"`
 	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`
 	SocialInAppEnabled         bool   `json:"social_in_app_enabled"`
 	ConnTypePolicy             string `json:"conn_type_policy,omitempty"`
@@ -392,8 +394,10 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			AttestationMode:            string(info.campaign.AttestationMode),
 			AttestationTTLSec:          info.campaign.AttestationTTLSec,
 			DmrEnabled:                 info.campaign.DmrEnabled,
-			L1CIDRBlockEnabled:         info.campaign.L1CIDRBlockEnabled,
-			L15ProxyVPNBlockEnabled:    info.campaign.L15ProxyVPNBlockEnabled,
+			CIDRBlockEnabled:         info.campaign.CIDRBlockEnabled,
+			ProxyVPNBlockEnabled:    info.campaign.ProxyVPNBlockEnabled,
+			ModeratorIntelEnabled:      info.campaign.ModeratorIntelEnabled,
+			ReviewTrafficAction:        string(info.campaign.ReviewTrafficAction),
 			TLSFingerprintBlockEnabled: info.campaign.TLSFingerprintBlockEnabled,
 			SocialInAppEnabled:         info.campaign.SocialInAppEnabled,
 			ConnTypePolicy:             string(info.campaign.ConnTypePolicy),
@@ -513,8 +517,10 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				AttestationMode:            domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
 				AttestationTTLSec:          dto.AttestationTTLSec,
 				DmrEnabled:                 dto.DmrEnabled,
-				L1CIDRBlockEnabled:         dto.L1CIDRBlockEnabled,
-				L15ProxyVPNBlockEnabled:    dto.L15ProxyVPNBlockEnabled,
+				CIDRBlockEnabled:         dto.CIDRBlockEnabled,
+				ProxyVPNBlockEnabled:    dto.ProxyVPNBlockEnabled,
+				ModeratorIntelEnabled:      dto.ModeratorIntelEnabled,
+				ReviewTrafficAction:        domain.ParseReviewTrafficAction(dto.ReviewTrafficAction),
 				TLSFingerprintBlockEnabled: dto.TLSFingerprintBlockEnabled,
 				SocialInAppEnabled:         dto.SocialInAppEnabled,
 				ConnTypePolicy:             domain.ConnTypePolicyFromString(dto.ConnTypePolicy),

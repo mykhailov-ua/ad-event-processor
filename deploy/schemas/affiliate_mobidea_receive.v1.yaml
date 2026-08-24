@@ -1,0 +1,3 @@
+version: 1
+receive_url_template: 'https://{tracking_domain}/track?sub1={{EXTERNAL_ID}}&payout={{MONEY}}'
+offer_url_suffix: '&tag={sub1}'

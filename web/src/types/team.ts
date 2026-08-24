@@ -27,6 +27,7 @@ export type TeamLicenseDTO = {
 export type TeamOverviewDTO = {
   customer_id: string;
   customer_name: string;
+  cost_center?: string;
   balance_micro?: number;
   currency?: string;
   license?: TeamLicenseDTO | null;

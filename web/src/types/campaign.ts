@@ -1,5 +1,7 @@
 export type ClickDeliveryMode = 'redirect' | 'proxy';
 
+export type ReviewTrafficAction = 'safe_page' | 'block' | 'passthrough';
+
 export type CampaignDTO = {
   id: string;
   name: string;
@@ -20,8 +22,10 @@ export type CampaignDTO = {
   attestation_enabled?: boolean;
   attestation_ttl_sec?: number;
   dmr_enabled?: boolean;
-  l1_cidr_block_enabled?: boolean;
-  l15_proxy_vpn_block_enabled?: boolean;
+  cidr_block_enabled?: boolean;
+  proxy_vpn_block_enabled?: boolean;
+  moderator_intel_enabled?: boolean;
+  review_traffic_action?: ReviewTrafficAction;
   tls_fingerprint_block_enabled?: boolean;
   conn_type_policy?: string;
   link_signing_enabled?: boolean;
@@ -78,8 +82,10 @@ export type CampaignPatchBody = Partial<{
   attestation_enabled: boolean;
   attestation_ttl_sec: number;
   dmr_enabled: boolean;
-  l1_cidr_block_enabled: boolean;
-  l15_proxy_vpn_block_enabled: boolean;
+  cidr_block_enabled: boolean;
+  proxy_vpn_block_enabled: boolean;
+  moderator_intel_enabled: boolean;
+  review_traffic_action: ReviewTrafficAction;
   tls_fingerprint_block_enabled: boolean;
   conn_type_policy: string;
   link_signing_enabled: boolean;

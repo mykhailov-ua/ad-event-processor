@@ -1,0 +1,26 @@
+version: 1
+tokens:
+  - name: click_id
+    query_key: click_id
+    max_len: 128
+  - name: site_id
+    query_key: site_id
+    max_len: 64
+  - name: ph_camp_id
+    query_key: ph_camp_id
+    max_len: 64
+  - name: feed_id
+    query_key: feed_id
+    max_len: 64
+  - name: country
+    query_key: country
+    max_len: 8
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: sub1
+    source: query
+    key: sub1
+    required: false

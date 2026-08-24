@@ -1,0 +1,23 @@
+version: 1
+tokens:
+  - name: click_id
+    query_key: click_id
+    max_len: 128
+  - name: widget_id
+    query_key: widget_id
+    max_len: 64
+  - name: teaser_id
+    query_key: teaser_id
+    max_len: 64
+  - name: adskeeper_campaign_id
+    query_key: adskeeper_camp_id
+    max_len: 64
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: sub1
+    source: query
+    key: sub1
+    required: false

@@ -73,7 +73,7 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 	writeFeedFile(t, dir, "aws.json", `{"prefixes":[{"ip_prefix":"54.0.0.0/8"}]}`)
 
 	cfg := &config.Config{
-		CIDRL1Enabled:          true,
+		CIDRBlockEnabled:          true,
 		CIDRFeedDir:            dir,
 		CIDRFeedRefresh:        time.Hour,
 		CIDRFeedDownloadEnable: false,
@@ -81,7 +81,7 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 	table := NewCIDRTable()
 	loader := NewCIDRFeedLoader(cfg, table)
 	if loader == nil {
-		t.Fatal("loader nil with CIDR_L1_ENABLED=true")
+		t.Fatal("loader nil with CIDR_BLOCK_ENABLED=true")
 	}
 	loader.refreshOnce(context.Background())
 	if !table.Ready() {
@@ -105,7 +105,7 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 func TestCIDR_FeedRefreshFailClosed_FirstBootFailOpen(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{
-		CIDRL1Enabled:   true,
+		CIDRBlockEnabled:   true,
 		CIDRFeedDir:     dir,
 		CIDRFeedRefresh: time.Hour,
 	}
@@ -126,7 +126,7 @@ func TestCIDR_FeedLoader_LineFormats(t *testing.T) {
 	writeFeedFile(t, dir, "tor.txt", "# exit nodes\n185.220.101.1\n185.220.101.2 # inline\njunk line\n2001:db8::1\n")
 	writeFeedFile(t, dir, "other.txt", "203.0.113.0/24\n")
 
-	cfg := &config.Config{CIDRL1Enabled: true, CIDRFeedDir: dir, CIDRFeedRefresh: time.Hour}
+	cfg := &config.Config{CIDRBlockEnabled: true, CIDRFeedDir: dir, CIDRFeedRefresh: time.Hour}
 	table := NewCIDRTable()
 	NewCIDRFeedLoader(cfg, table).refreshOnce(context.Background())
 
@@ -154,7 +154,7 @@ func TestCIDR_FeedLoader_AzureJSON(t *testing.T) {
 	dir := t.TempDir()
 	writeFeedFile(t, dir, "azure.json", `{"values":[{"properties":{"addressPrefixes":["20.190.128.0/18","2603:1000::/24"]}}]}`)
 
-	cfg := &config.Config{CIDRL1Enabled: true, CIDRFeedDir: dir, CIDRFeedRefresh: time.Hour}
+	cfg := &config.Config{CIDRBlockEnabled: true, CIDRFeedDir: dir, CIDRFeedRefresh: time.Hour}
 	table := NewCIDRTable()
 	NewCIDRFeedLoader(cfg, table).refreshOnce(context.Background())
 
@@ -183,10 +183,10 @@ func TestCIDR_FeedLoader_DisabledWhenConfigOff(t *testing.T) {
 	if l := NewCIDRFeedLoader(nil, NewCIDRTable()); l != nil {
 		t.Fatal("nil config must disable loader")
 	}
-	if l := NewCIDRFeedLoader(&config.Config{CIDRL1Enabled: false}, NewCIDRTable()); l != nil {
-		t.Fatal("CIDR_L1_ENABLED=false must disable loader")
+	if l := NewCIDRFeedLoader(&config.Config{CIDRBlockEnabled: false}, NewCIDRTable()); l != nil {
+		t.Fatal("CIDR_BLOCK_ENABLED=false must disable loader")
 	}
-	if l := NewCIDRFeedLoader(&config.Config{CIDRL1Enabled: true}, nil); l != nil {
+	if l := NewCIDRFeedLoader(&config.Config{CIDRBlockEnabled: true}, nil); l != nil {
 		t.Fatal("nil table must disable loader")
 	}
 }

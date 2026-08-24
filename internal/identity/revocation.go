@@ -13,15 +13,15 @@ const revocationCheckTimeout = 100 * time.Millisecond
 
 const defaultUserRevocationTTL = 24 * time.Hour
 
-func CheckTokenRevocation(ctx context.Context, rdb redis.UniversalClient, payload *Payload) (revoked bool, err error) {
-	if rdb == nil || payload == nil {
+func CheckTokenRevocation(ctx context.Context, redisClient redis.UniversalClient, payload *Payload) (revoked bool, err error) {
+	if redisClient == nil || payload == nil {
 		return false, nil
 	}
 
 	ctxRevoked, cancel := context.WithTimeout(ctx, revocationCheckTimeout)
 	defer cancel()
 
-	cmds, errPipe := rdb.Pipelined(ctxRevoked, func(pipe redis.Pipeliner) error {
+	cmds, errPipe := redisClient.Pipelined(ctxRevoked, func(pipe redis.Pipeliner) error {
 		pipe.Exists(ctxRevoked, "revoked:token:"+payload.ID.String())
 		pipe.Exists(ctxRevoked, "revoked:session:"+payload.SessionID.String())
 		pipe.Exists(ctxRevoked, "revoked:user:"+payload.UserID.String())
@@ -50,60 +50,60 @@ func CheckTokenRevocation(ctx context.Context, rdb redis.UniversalClient, payloa
 	return false, nil
 }
 
-func RevokeUserAccess(ctx context.Context, rdb redis.UniversalClient, userID uuid.UUID, ttl time.Duration) error {
-	if rdb == nil {
+func RevokeUserAccess(ctx context.Context, redisClient redis.UniversalClient, userID uuid.UUID, ttl time.Duration) error {
+	if redisClient == nil {
 		return nil
 	}
 	if ttl <= 0 {
 		ttl = defaultUserRevocationTTL
 	}
-	return rdb.Set(ctx, "revoked:user:"+userID.String(), "1", ttl).Err()
+	return redisClient.Set(ctx, "revoked:user:"+userID.String(), "1", ttl).Err()
 }
 
-func ClearUserRevocation(ctx context.Context, rdb redis.UniversalClient, userID uuid.UUID) error {
-	if rdb == nil {
+func ClearUserRevocation(ctx context.Context, redisClient redis.UniversalClient, userID uuid.UUID) error {
+	if redisClient == nil {
 		return nil
 	}
-	return rdb.Del(ctx, "revoked:user:"+userID.String()).Err()
+	return redisClient.Del(ctx, "revoked:user:"+userID.String()).Err()
 }
 
-func RevokeTokenSession(ctx context.Context, rdb redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
-	if rdb == nil || ttl <= 0 {
+func RevokeTokenSession(ctx context.Context, redisClient redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
+	if redisClient == nil || ttl <= 0 {
 		return nil
 	}
-	pipe := rdb.Pipeline()
+	pipe := redisClient.Pipeline()
 	pipe.Set(ctx, "revoked:token:"+tokenID.String(), "true", ttl)
 	pipe.Set(ctx, "revoked:session:"+sessionID.String(), "true", ttl)
 	_, err := pipe.Exec(ctx)
 	return err
 }
 
-func RevokeTokenSessionShards(ctx context.Context, rdbs []redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
-	if len(rdbs) == 0 || ttl <= 0 {
+func RevokeTokenSessionShards(ctx context.Context, redisShards []redis.UniversalClient, tokenID, sessionID uuid.UUID, ttl time.Duration) error {
+	if len(redisShards) == 0 || ttl <= 0 {
 		return nil
 	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := RevokeTokenSession(ctx, rdb, tokenID, sessionID, ttl); err != nil {
+		if err := RevokeTokenSession(ctx, redisClient, tokenID, sessionID, ttl); err != nil {
 			return fmt.Errorf("shard %d: %w", i, err)
 		}
 	}
 	return nil
 }
 
-func checkTokenRevocationShards(ctx context.Context, rdbs []redis.UniversalClient, payload *Payload) (bool, error) {
-	if payload == nil || len(rdbs) == 0 {
+func checkTokenRevocationShards(ctx context.Context, redisShards []redis.UniversalClient, payload *Payload) (bool, error) {
+	if payload == nil || len(redisShards) == 0 {
 		return false, nil
 	}
 	ctxRevoked, cancel := context.WithTimeout(ctx, revocationCheckTimeout)
 	defer cancel()
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		revoked, err := CheckTokenRevocation(ctxRevoked, rdb, payload)
+		revoked, err := CheckTokenRevocation(ctxRevoked, redisClient, payload)
 		if err != nil {
 			return false, fmt.Errorf("shard %d: %w", i, err)
 		}
@@ -114,30 +114,30 @@ func checkTokenRevocationShards(ctx context.Context, rdbs []redis.UniversalClien
 	return false, nil
 }
 
-func revokeUserAccessShards(ctx context.Context, rdbs []redis.UniversalClient, userID uuid.UUID, ttl time.Duration) error {
-	if len(rdbs) == 0 {
+func revokeUserAccessShards(ctx context.Context, redisShards []redis.UniversalClient, userID uuid.UUID, ttl time.Duration) error {
+	if len(redisShards) == 0 {
 		return nil
 	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := RevokeUserAccess(ctx, rdb, userID, ttl); err != nil {
+		if err := RevokeUserAccess(ctx, redisClient, userID, ttl); err != nil {
 			return fmt.Errorf("shard %d: %w", i, err)
 		}
 	}
 	return nil
 }
 
-func clearUserRevocationShards(ctx context.Context, rdbs []redis.UniversalClient, userID uuid.UUID) error {
-	if len(rdbs) == 0 {
+func clearUserRevocationShards(ctx context.Context, redisShards []redis.UniversalClient, userID uuid.UUID) error {
+	if len(redisShards) == 0 {
 		return nil
 	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
 			continue
 		}
-		if err := ClearUserRevocation(ctx, rdb, userID); err != nil {
+		if err := ClearUserRevocation(ctx, redisClient, userID); err != nil {
 			return fmt.Errorf("shard %d: %w", i, err)
 		}
 	}

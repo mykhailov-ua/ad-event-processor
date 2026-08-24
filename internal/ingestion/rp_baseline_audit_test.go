@@ -22,7 +22,7 @@ func TestRPBaseline_inventorySymbolsExist(t *testing.T) {
 		"safe_page_verify.go":        {"reactTrackVerify"},
 		"attestation_token.go":       {"MintAttestationToken", "ConfigureAttestation"},
 		"cidr_lpm.go":                {"CIDRTable"},
-		"l1_tls_fingerprint_hook.go": {"tlsFingerprintShouldSafeView"},
+		"landing_tls_fingerprint_hook.go": {"tlsFingerprintShouldSafeView"},
 	}
 	for rel, want := range symbols {
 		found := parseExportedOrTypeNames(t, filepath.Join(ingestionDir, rel))

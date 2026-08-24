@@ -12,10 +12,12 @@ import (
 
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/costsync"
+	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/edge"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/openrtb"
 	"ad-event-processor/internal/payment"
+	"ad-event-processor/internal/platformsync"
 	"ad-event-processor/pkg/doctor"
 	"ad-event-processor/pkg/platformconfig"
 	"ad-event-processor/pkg/supportbundle"
@@ -151,8 +153,10 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 
 	var costWorker *costsync.Worker
+	var platformWorker *platformsync.Worker
 	if h.cfg != nil && h.cfg.Control.EnableCostSync && len(encKey) >= 32 {
 		costWorker = costsync.NewWorker(pool, encKey)
+		platformWorker = platformsync.NewWorker(pool, encKey, costWorker)
 	}
 
 	selfServePaymentProvider := ""
@@ -189,6 +193,8 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequireSelfServePermission:   selfServePerm,
 			ResolveSelfServeCustomerID:   h.resolveSelfServeCustomerIDForBilling,
 			CustomerBalance:              svc,
+			UsageExport:                  svc,
+			ResolveUsageExportCustomerFilter: h.resolveUsageExportCustomerFilter,
 			Disputes:                     svc,
 			LimitExportByCustomer:        h.limitExportByCustomer,
 			ResolveDisputeCustomerFilter: h.resolveDisputeCustomerFilter,
@@ -320,6 +326,22 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			Worker:            costWorker,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
+		},
+		PlatformCampaignHTTP: &PlatformCampaignHTTPHandlers{
+			Pool:              pool,
+			Worker:            platformWorker,
+			ApplyRateLimit:    limit,
+			RequirePermission: perm,
+			Audit: func(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any) {
+				svc.AuditLog(ctx, q, adminID, action, targetType, targetID, changes, metadata)
+			},
+			ResolveActorID: func(r *http.Request) uuid.UUID {
+				u, ok := GetUser(r.Context())
+				if !ok {
+					return uuid.Nil
+				}
+				return u.UserID
+			},
 		},
 		MarginGuardHTTP: &MarginGuardHTTPHandlers{
 			Service:           svc,
@@ -454,6 +476,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		},
 		CustomersHTTP: &CustomersHTTPHandlers{
 			Customers:               svc,
+			CostCenter:              svc,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			AuthorizeCustomerAccess: authCustomer,
@@ -560,6 +583,20 @@ func (h *Handler) resolveDisputeCustomerFilter(r *http.Request) (string, error) 
 		return u.CustomerID.String(), nil
 	}
 	return customerFilter, nil
+}
+
+func (h *Handler) resolveUsageExportCustomerFilter(r *http.Request, customerID, costCenter string) (string, string, error) {
+	u, ok := GetUser(r.Context())
+	if !ok {
+		return customerID, costCenter, nil
+	}
+	if u.IsUser() || u.IsTeamLead() || u.IsMediaBuyer() {
+		if customerID != "" && customerID != u.CustomerID.String() {
+			return "", "", errForbidden
+		}
+		return u.CustomerID.String(), "", nil
+	}
+	return customerID, costCenter, nil
 }
 
 func (h *Handler) adminRequireTeamWrite() func(http.HandlerFunc) http.HandlerFunc {

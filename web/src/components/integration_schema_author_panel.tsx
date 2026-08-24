@@ -16,6 +16,10 @@ import { FormField } from './form_field.js';
 const KIND_OPTIONS: { value: IntegrationSchemaKind; label: string }[] = [
   { value: 'inbound_tokens', label: 'Inbound tokens (traffic source)' },
   { value: 'outbound_postback', label: 'Outbound postback (affiliate)' },
+  {
+    value: 'affiliate_receive_postback',
+    label: 'Affiliate receive postback (panel URL)',
+  },
   { value: 'status_mapping', label: 'Status mapping' },
 ];
 

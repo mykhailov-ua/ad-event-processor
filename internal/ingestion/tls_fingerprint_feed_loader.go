@@ -21,7 +21,7 @@ type tlsFingerprintFeedLoader struct {
 }
 
 func NewTLSFingerprintFeedLoader(cfg *config.Config, table *TLSFingerprintTable) *tlsFingerprintFeedLoader {
-	if cfg == nil || !cfg.TLSFingerprintL1Enabled || table == nil {
+	if cfg == nil || !cfg.TLSFingerprintEnabled || table == nil {
 		return nil
 	}
 	dir := cfg.TLSFingerprintFeedDir

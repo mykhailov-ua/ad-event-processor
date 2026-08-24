@@ -39,6 +39,7 @@ var (
 	ErrSelfServeDailyCreateLimit    = errors.New("self-serve daily campaign create limit reached")
 	ErrSelfServeBudgetOutOfRange    = errors.New("self-serve budget out of allowed range")
 	ErrDeploymentCampaignLimit      = errors.New("deployment active campaign limit reached for license tier")
+	ErrDeploymentTenantLimit        = errors.New("deployment tenant limit reached for license tier")
 )
 
 func mapNotFound(err, notFound error) error {

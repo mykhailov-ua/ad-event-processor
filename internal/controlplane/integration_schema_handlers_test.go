@@ -43,7 +43,7 @@ func TestIntegrationSchemaHandlers_createAndApply(t *testing.T) {
 		"placeholders": ["click_id", "sub1"]
 	}`)
 	createReq := map[string]any{
-		"name":    "m6-outbound-smoke",
+		"name":    "outbound-smoke",
 		"version": 1,
 		"schema":  json.RawMessage(schemaBody),
 	}

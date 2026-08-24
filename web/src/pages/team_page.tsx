@@ -16,6 +16,7 @@ import {
   denyTeamBudget,
   fetchTeamBudgetApprovals,
   inviteTeamMember,
+  updateCustomerCostCenter,
   updateTeamMember,
 } from '../helpers/team_api.js';
 import { to } from '../lib/to.js';
@@ -63,9 +64,30 @@ export function TeamPage() {
   const showBalance = can(perms, 'billing:read') || can(perms, 'customers:read');
   const readOnlyNote = isBillingReadOnly(perms, user?.role);
   const canManageTeam = teamLead && !mediaBuyer;
+  const canEditCostCenter = can(perms, 'customers:write') && !mediaBuyer && Boolean(customerId);
 
   const url = teamOverviewUrl(customerId, sessionScoped);
   const { data, loading, error, reload } = useResource<TeamOverviewDTO>(url, { skip: !url });
+
+  const [costCenterInput, setCostCenterInput] = useState('');
+  const [savingCostCenter, setSavingCostCenter] = useState(false);
+
+  useEffect(() => {
+    setCostCenterInput(data?.cost_center ?? '');
+  }, [data?.cost_center]);
+
+  const saveCostCenter = async () => {
+    if (!customerId || savingCostCenter) return;
+    setSavingCostCenter(true);
+    const [, err] = await to(updateCustomerCostCenter(customerId, costCenterInput));
+    setSavingCostCenter(false);
+    if (err) {
+      surfaceServiceErrorToast(err);
+      return;
+    }
+    pushToastMessage({ title: 'Cost center saved', message: 'Workspace billing label updated.' });
+    reload();
+  };
 
   useEffect(() => {
     if (error) surfaceServiceErrorToast(error);
@@ -247,6 +269,32 @@ export function TeamPage() {
               <Link to="/billing">View wallet</Link> (read-only)
             </p>
           ) : null}
+        </section>
+      ) : null}
+
+      {data && canEditCostCenter ? (
+        <section className="section-card stack mb-6" data-testid="team-cost-center-panel">
+          <h2 className="subsection-title">Cost center</h2>
+          <p className="text-muted text-sm">
+            Optional label for agency pass-through billing and usage export filters.
+          </p>
+          <div className="form-row">
+            <input
+              className="input"
+              type="text"
+              maxLength={64}
+              value={costCenterInput}
+              placeholder="e.g. agency-west"
+              onChange={(e) => setCostCenterInput(e.target.value)}
+            />
+            <Button
+              label={savingCostCenter ? 'Saving...' : 'Save'}
+              variant="secondary"
+              size="sm"
+              disabled={savingCostCenter}
+              onClick={saveCostCenter}
+            />
+          </div>
         </section>
       ) : null}
 

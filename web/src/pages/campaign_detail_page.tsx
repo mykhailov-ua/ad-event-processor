@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import type { CampaignDTO, ClickDeliveryMode } from '../types/campaign.js';
+import type { CampaignDTO, ClickDeliveryMode, ReviewTrafficAction } from '../types/campaign.js';
 import type { ReportRow } from '../types/report.js';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
@@ -228,8 +228,10 @@ export function CampaignDetailPage() {
     click_delivery: 'redirect' as ClickDeliveryMode,
     proxy_upstream_url: '',
     proxy_rewrite_assets: false,
-    l1_cidr_block_enabled: true,
-    l15_proxy_vpn_block_enabled: true,
+    cidr_block_enabled: true,
+    proxy_vpn_block_enabled: true,
+    moderator_intel_enabled: false,
+    review_traffic_action: 'safe_page' as ReviewTrafficAction,
     tls_fingerprint_block_enabled: true,
     conn_type_policy: 'block_vpn_hosting',
     link_signing_enabled: false,
@@ -291,8 +293,10 @@ export function CampaignDetailPage() {
       click_delivery: normalizeClickDelivery(campaign.click_delivery),
       proxy_upstream_url: campaign.proxy_upstream_url ?? '',
       proxy_rewrite_assets: campaign.proxy_rewrite_assets === true,
-      l1_cidr_block_enabled: campaign.l1_cidr_block_enabled !== false,
-      l15_proxy_vpn_block_enabled: campaign.l15_proxy_vpn_block_enabled !== false,
+      cidr_block_enabled: campaign.cidr_block_enabled !== false,
+      proxy_vpn_block_enabled: campaign.proxy_vpn_block_enabled !== false,
+      moderator_intel_enabled: campaign.moderator_intel_enabled === true,
+      review_traffic_action: (campaign.review_traffic_action ?? 'safe_page') as ReviewTrafficAction,
       tls_fingerprint_block_enabled: campaign.tls_fingerprint_block_enabled !== false,
       conn_type_policy: campaign.conn_type_policy ?? 'block_vpn_hosting',
       link_signing_enabled: campaign.link_signing_enabled === true,
@@ -503,8 +507,10 @@ export function CampaignDetailPage() {
       body.proxy_rewrite_assets = configForm.proxy_rewrite_assets;
     }
     body.tls_fingerprint_block_enabled = configForm.tls_fingerprint_block_enabled;
-    body.l1_cidr_block_enabled = configForm.l1_cidr_block_enabled;
-    body.l15_proxy_vpn_block_enabled = configForm.l15_proxy_vpn_block_enabled;
+    body.cidr_block_enabled = configForm.cidr_block_enabled;
+    body.proxy_vpn_block_enabled = configForm.proxy_vpn_block_enabled;
+    body.moderator_intel_enabled = configForm.moderator_intel_enabled;
+    body.review_traffic_action = configForm.review_traffic_action;
     body.conn_type_policy = configForm.conn_type_policy;
     body.link_signing_enabled = configForm.link_signing_enabled;
     const linkTTL = Number.parseInt(configForm.link_signing_ttl_sec, 10);
@@ -986,7 +992,7 @@ export function CampaignDetailPage() {
                 <h4 className="subsection-title">Click delivery (reverse proxy)</h4>
                 <p className="text-muted text-sm">
                   Default redirect sends the browser to the landing URL. Reverse proxy mode fetches
-                  the upstream through the tracker edge (RP-M3).
+                  the upstream through the tracker edge reverse proxy.
                 </p>
                 <label className="form-field" htmlFor="cfg-click-delivery">
                   Delivery mode
@@ -1067,36 +1073,69 @@ export function CampaignDetailPage() {
                   <code>IPV6_ROTATION_MODE</code> on the tracker (shadow/live); IPv4 /24 sticky
                   rotation is planned (residential pools).
                 </p>
-                <label className="form-field checkbox-field" htmlFor="cfg-l1-cidr-block">
+                <label className="form-field checkbox-field" htmlFor="cfg-cidr-block">
                   <input
-                    id="cfg-l1-cidr-block"
+                    id="cfg-cidr-block"
                     type="checkbox"
-                    checked={configForm.l1_cidr_block_enabled}
-                    data-testid="cfg-l1-cidr-block"
+                    checked={configForm.cidr_block_enabled}
+                    data-testid="cfg-cidr-block"
                     onChange={(e) =>
-                      setConfigForm((f) => ({ ...f, l1_cidr_block_enabled: e.target.checked }))
+                      setConfigForm((f) => ({ ...f, cidr_block_enabled: e.target.checked }))
                     }
                   />{' '}
-                  L1 DC/hosting CIDR feed (AWS, GCP, Azure, Tor)
+                  Datacenter/hosting CIDR feed (AWS, GCP, Azure, Tor)
                 </label>
                 <p className="text-muted text-sm">
                   Static datacenter/hosting prefixes from edge feeds - not /24 or /64 rotation
-                  detection. Also gates L1 IPv6 rotation when enabled on the tracker.
+                  detection. Also gates IPv6 rotation when enabled on the tracker.
                 </p>
-                <label className="form-field checkbox-field" htmlFor="cfg-l15-proxy-vpn-block">
+                <label className="form-field checkbox-field" htmlFor="cfg-proxy-vpn-block">
                   <input
-                    id="cfg-l15-proxy-vpn-block"
+                    id="cfg-proxy-vpn-block"
                     type="checkbox"
-                    checked={configForm.l15_proxy_vpn_block_enabled}
-                    data-testid="cfg-l15-proxy-vpn-block"
+                    checked={configForm.proxy_vpn_block_enabled}
+                    data-testid="cfg-proxy-vpn-block"
                     onChange={(e) =>
                       setConfigForm((f) => ({
                         ...f,
-                        l15_proxy_vpn_block_enabled: e.target.checked,
+                        proxy_vpn_block_enabled: e.target.checked,
                       }))
                     }
                   />{' '}
-                  L1.5 proxy/VPN fallback gate
+                  Proxy/VPN hosting block
+                </label>
+                <label className="form-field checkbox-field" htmlFor="cfg-moderator-intel">
+                  <input
+                    id="cfg-moderator-intel"
+                    type="checkbox"
+                    checked={configForm.moderator_intel_enabled}
+                    data-testid="cfg-moderator-intel"
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        moderator_intel_enabled: e.target.checked,
+                      }))
+                    }
+                  />{' '}
+                  Moderator intel feed (safe page on match)
+                </label>
+                <label className="form-field" htmlFor="cfg-review-traffic-action">
+                  Review traffic action
+                  <select
+                    id="cfg-review-traffic-action"
+                    data-testid="cfg-review-traffic-action"
+                    value={configForm.review_traffic_action}
+                    onChange={(e) =>
+                      setConfigForm((f) => ({
+                        ...f,
+                        review_traffic_action: e.target.value as ReviewTrafficAction,
+                      }))
+                    }
+                  >
+                    <option value="safe_page">Safe page (default)</option>
+                    <option value="block">Block (403)</option>
+                    <option value="passthrough">Passthrough (offer flow)</option>
+                  </select>
                 </label>
                 <label className="form-field checkbox-field" htmlFor="cfg-tls-fp-block">
                   <input
@@ -1193,8 +1232,10 @@ export function CampaignDetailPage() {
                   ]
                 : []),
               ['TLS fingerprint block', campaign.tls_fingerprint_block_enabled ? 'on' : 'off'],
-              ['L1 DC/hosting CIDR feed', campaign.l1_cidr_block_enabled ? 'on' : 'off'],
-              ['L1.5 proxy/VPN block', campaign.l15_proxy_vpn_block_enabled ? 'on' : 'off'],
+              ['Datacenter CIDR feed', campaign.cidr_block_enabled ? 'on' : 'off'],
+              ['Proxy/VPN block', campaign.proxy_vpn_block_enabled ? 'on' : 'off'],
+              ['Moderator intel feed', campaign.moderator_intel_enabled ? 'on' : 'off'],
+              ['Review traffic action', campaign.review_traffic_action ?? 'safe_page'],
               ['Conn type policy', campaign.conn_type_policy ?? 'block_vpn_hosting'],
               [
                 'Link signing',

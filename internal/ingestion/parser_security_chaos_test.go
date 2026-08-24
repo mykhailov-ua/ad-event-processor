@@ -42,7 +42,7 @@ func TestChaos_ParserSecurity_PS_G01_SlowBodyStall(t *testing.T) {
 		gap = "closed"
 	}
 	faultproof.Log(t, "parser_security_ps_g01", map[string]string{
-		"gap_id":      "PS-G01",
+		"gap_id":      "http1_incomplete_body_spin_close",
 		"gap":         gap,
 		"conn_closed": boolStr(closed),
 		"reason":      reason,
@@ -63,7 +63,7 @@ func TestChaos_ParserSecurity_PS_G02_ChunkExtCRLF(t *testing.T) {
 		gap = "closed"
 	}
 	faultproof.Log(t, "parser_security_ps_g02", map[string]string{
-		"gap_id": "PS-G02",
+		"gap_id": "http1_chunked_te_smuggling",
 		"gap":    gap,
 		"err":    errString(err),
 	})
@@ -90,7 +90,7 @@ func TestChaos_ParserSecurity_PS_G03_QuoteDenseORTB(t *testing.T) {
 		gap = "closed"
 	}
 	faultproof.Log(t, "parser_security_ps_g03", map[string]string{
-		"gap_id":     "PS-G03",
+		"gap_id":     "openrtb_scan_budget",
 		"gap":        gap,
 		"elapsed_ns": elapsed.String(),
 		"ok":         boolStr(hot.OK),
@@ -104,7 +104,7 @@ func TestChaos_ParserSecurity_PS_G05_TETabObfuscation(t *testing.T) {
 	_, _, err := parseHTTP1(wire, 1<<20, nil)
 	require.ErrorIs(t, err, errInvalidRequest)
 	faultproof.Log(t, "parser_security_ps_g05", map[string]string{
-		"gap_id": "PS-G05",
+		"gap_id": "wire_parser_budget",
 		"gap":    "closed",
 		"err":    errString(err),
 	})

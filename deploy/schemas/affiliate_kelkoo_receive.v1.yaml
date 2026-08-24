@@ -1,0 +1,3 @@
+version: 1
+receive_url_template: 'https://{tracking_domain}/track?sub1={clickId}&payout={commission}&status={status}'
+offer_url_suffix: '&clickId={sub1}'

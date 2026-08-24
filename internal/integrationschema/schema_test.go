@@ -75,24 +75,24 @@ func TestIntegrationSchema_InboundClickQueryRoundTrip(t *testing.T) {
 	inbound := parsed.(*integrationschema.InboundTokensSchema)
 	q, err := integrationschema.BuildInboundClickQuery(inbound, map[string]string{
 		"campaign_id": "550e8400-e29b-41d4-a716-446655440000",
-		"click_id":    "clk-m6-rt",
+		"click_id":    "clk-roundtrip",
 		"gclid":       "gclid-abc",
 		"sub1":        "facebook",
 	})
 	require.NoError(t, err)
 	require.Contains(t, q, "campaign_id=550e8400")
-	require.Contains(t, q, "click_id=clk-m6-rt")
+	require.Contains(t, q, "click_id=clk-roundtrip")
 	require.Contains(t, q, "gclid=gclid-abc")
 	require.Contains(t, q, "sub1=facebook")
 
 	tpl := postback.ParseTemplate("https://aff.example.com/pb?click_id={click_id}&sub1={sub1}")
 	var scratch [postback.MaxRenderedURLLen]byte
-	ctx := postback.EventContext{ClickID: "clk-m6-rt"}
+	ctx := postback.EventContext{ClickID: "clk-roundtrip"}
 	ctx.SubIDs[0] = "facebook"
 	rendered := string(tpl.RenderStack(&ctx, &scratch))
-	require.True(t, strings.Contains(rendered, "clk-m6-rt"))
+	require.True(t, strings.Contains(rendered, "clk-roundtrip"))
 	require.True(t, strings.Contains(rendered, "facebook"))
-	t.Logf("fault_proof fault=integration_schema_roundtrip harness=unit click_id=clk-m6-rt sub1=facebook")
+	t.Logf("fault_proof fault=integration_schema_roundtrip harness=unit click_id=clk-roundtrip sub1=facebook")
 }
 
 func TestIntegrationSchema_TokenMaxLenRejected(t *testing.T) {

@@ -99,6 +99,43 @@ func TestFraudBlacklistFilter_cacheMissThenHit_holdout(t *testing.T) {
 	})
 }
 
+func TestParseBlacklistUpdatePayload(t *testing.T) {
+	t.Run("ipv4", func(t *testing.T) {
+		ip, reason, ok := parseBlacklistUpdatePayload("198.51.100.10:fraud")
+		require.True(t, ok)
+		require.Equal(t, "198.51.100.10", ip)
+		require.Equal(t, "fraud", reason)
+	})
+	t.Run("ipv6", func(t *testing.T) {
+		ip, reason, ok := parseBlacklistUpdatePayload("2001:db8::1:fraud")
+		require.True(t, ok)
+		require.Equal(t, "2001:db8::1", ip)
+		require.Equal(t, "fraud", reason)
+	})
+}
+
+func TestFraudBlacklistFilter_invalidateForcesRedisRecheck(t *testing.T) {
+	mock := &fraudSIsMemberMock{hit: false}
+	f := NewFraudBlacklistFilter([]redis.UniversalClient{mock})
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	evt.IP = "198.51.100.55"
+	ctx := context.Background()
+
+	require.NoError(t, f.Check(ctx, evt))
+	require.Equal(t, int32(1), mock.sisMemberN.Load())
+
+	mock.hit = true
+	f.InvalidateIP(evt.IP)
+
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+	require.NoError(t, f.Check(ctx, evt))
+	require.Equal(t, int32(2), mock.sisMemberN.Load())
+	assert.True(t, acc.has(FraudReasonL3Blocklist))
+}
+
 type errSIsMemberMock struct {
 	mockRedisClient
 }

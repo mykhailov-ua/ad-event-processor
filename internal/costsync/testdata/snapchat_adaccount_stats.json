@@ -1,0 +1,21 @@
+{
+  "request_status": "success",
+  "timeseries_stats": [
+    {
+      "sub_request_status": "success",
+      "timeseries_stat": {
+        "id": "camp-snap-42",
+        "type": "CAMPAIGN",
+        "granularity": "DAY",
+        "timeseries": [
+          {
+            "start_time": "2026-08-24T00:00:00.000+00:00",
+            "stats": {
+              "spend": 12500000
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

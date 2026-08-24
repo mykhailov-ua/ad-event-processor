@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"ad-event-processor/internal/database"
@@ -29,17 +30,21 @@ type aggStats struct {
 
 type MicroBatcher struct {
 	eventsChan            chan *domain.Event
-	redisShards                  []redis.UniversalClient
+	redisShards           []redis.UniversalClient
 	scorer                Scorer
 	campaignUpdateChannel string
+	cfg                   MicroBatcherConfig
+	paused                atomic.Bool
+	lastBoosts            atomic.Value
 }
 
-func NewMicroBatcher(redisShards []redis.UniversalClient, scorer Scorer, campaignUpdateChannel string) *MicroBatcher {
+func NewMicroBatcher(redisShards []redis.UniversalClient, scorer Scorer, campaignUpdateChannel string, cfg MicroBatcherConfig) *MicroBatcher {
 	return &MicroBatcher{
 		eventsChan:            make(chan *domain.Event, 10000),
-		redisShards:                  redisShards,
+		redisShards:           redisShards,
 		scorer:                scorer,
 		campaignUpdateChannel: domain.DefaultCampaignUpdateChannel(campaignUpdateChannel),
+		cfg:                   cfg.normalized(),
 	}
 }
 
@@ -59,24 +64,29 @@ func (m *MicroBatcher) Enqueue(evt *domain.Event, msgID string) {
 			}
 			metrics.ProcessorStreamLagSeconds.WithLabelValues("fraud").Set(lagSec)
 
-			if lagSec > 30 {
+			if lagSec > m.cfg.MaxStreamLagSec {
+				m.paused.Store(true)
 				metrics.MicroBatchPaused.Set(1)
 				return
 			}
 		}
 	}
+	m.paused.Store(false)
 	metrics.MicroBatchPaused.Set(0)
 
 	select {
 	case m.eventsChan <- evt:
 		metrics.MicroBatchProcessedTotal.Inc()
 	default:
+		metrics.MicroBatchDroppedTotal.Inc()
 	}
 }
 
 func (m *MicroBatcher) Start(ctx context.Context) {
-	ticker := time.NewTicker(100 * time.Millisecond)
+	ticker := time.NewTicker(m.cfg.FlushInterval)
+	refreshTicker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
+	defer refreshTicker.Stop()
 
 	for {
 		select {
@@ -84,6 +94,10 @@ func (m *MicroBatcher) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			m.flush(ctx)
+		case <-refreshTicker.C:
+			if m.paused.Load() {
+				m.refreshBoostTTL(ctx)
+			}
 		}
 	}
 }
@@ -173,5 +187,33 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 			slog.Warn("failed to publish campaign update after ml boost", "error", err, "campaign", campaignID)
 		}
 		metrics.MicroBatchBoostsWrittenTotal.Inc()
+	}
+	if len(campaignBoost) > 0 {
+		copyBoosts := make(map[string]int, len(campaignBoost))
+		for campaignID, fraudScore := range campaignBoost {
+			copyBoosts[campaignID] = fraudScore
+		}
+		m.lastBoosts.Store(copyBoosts)
+	}
+}
+
+func (m *MicroBatcher) refreshBoostTTL(ctx context.Context) {
+	if m == nil || len(m.redisShards) == 0 {
+		return
+	}
+	raw := m.lastBoosts.Load()
+	if raw == nil {
+		return
+	}
+	boosts, ok := raw.(map[string]int)
+	if !ok || len(boosts) == 0 {
+		return
+	}
+	for campaignID, fraudScore := range boosts {
+		key := fmt.Sprintf("ml:score:boost:%s", campaignID)
+		value := strconv.Itoa(fraudScore)
+		if err := database.SyncGlobalStringToAllShards(ctx, m.redisShards, key, value, ScoreBoostTTL); err != nil {
+			slog.Warn("failed to refresh micro-batch ml score boost ttl", "error", err, "campaign", campaignID)
+		}
 	}
 }

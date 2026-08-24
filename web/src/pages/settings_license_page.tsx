@@ -10,11 +10,16 @@ import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { surfaceServiceErrorToast } from '../helpers/service_error_toast.js';
 import { useResource } from '../helpers/use_resource.js';
 import { Breadcrumbs } from '../components/breadcrumbs.js';
-import { Button } from '../components/button.js';
+import { Button, ButtonLink } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { Icon } from '../components/icon.js';
 import { StatusBadge } from '../components/status_badge.js';
 import { AlertBanner } from '../components/alert_banner.js';
+import {
+  formatLicenseRpsCap,
+  resolveLicenseUpgradeHref,
+  showLicenseUpgradePath,
+} from '../helpers/license_upgrade.js';
 
 export function SettingsLicensePage() {
   const user = auth.getUser();
@@ -63,6 +68,9 @@ export function SettingsLicensePage() {
   };
 
   const bindMismatch = data?.hwid_match === false;
+  const showUpgrade = data ? showLicenseUpgradePath(data.plan_code, data.state) : false;
+  const upgradeHref = resolveLicenseUpgradeHref(data?.support_url);
+  const rpsCap = formatLicenseRpsCap(data?.max_rps);
 
   return (
     <>
@@ -95,6 +103,18 @@ export function SettingsLicensePage() {
             <dd className="font-mono">{data.deployment_id || '-'}</dd>
             <dt>State</dt>
             <dd>{data.state ? <StatusBadge status={data.state} /> : '-'}</dd>
+            {data.plan_code ? (
+              <>
+                <dt>Plan</dt>
+                <dd>{data.plan_code}</dd>
+              </>
+            ) : null}
+            {data.max_rps != null && data.max_rps > 0 ? (
+              <>
+                <dt>RPS cap</dt>
+                <dd>{rpsCap}</dd>
+              </>
+            ) : null}
             <dt>Valid until</dt>
             <dd>{data.valid_until ? new Date(data.valid_until).toLocaleString() : '-'}</dd>
             {data.days_to_expiry != null && data.days_to_expiry > 0 ? (
@@ -118,6 +138,50 @@ export function SettingsLicensePage() {
               </>
             ) : null}
           </dl>
+        </section>
+      ) : null}
+
+      {showUpgrade ? (
+        <section className="section-card stack" data-testid="license-upgrade-panel">
+          <h2 className="section-card__title">Pilot and upgrade</h2>
+          {data?.trial_self_serve_url ? (
+            <p className="text-muted text-sm">
+              Request a {data.pilot_valid_days ?? 14}-day pilot ({rpsCap}) via Telegram. One pilot per
+              Telegram account and host (trial registry).
+            </p>
+          ) : (
+            <p className="text-muted text-sm">
+              Contact your vendor for a {data?.pilot_valid_days ?? 14}-day pilot JWT ({rpsCap} on pilot SKU).
+            </p>
+          )}
+          {data?.trial_self_serve_url ? (
+            <ButtonLink
+              label="Request pilot on Telegram"
+              variant="secondary"
+              size="sm"
+              href={data.trial_self_serve_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="license-trial-self-serve"
+            />
+          ) : null}
+          {data?.upgrade_plan_code === 'starter' ? (
+            <>
+              <p className="text-muted text-sm">
+                Upgrade to Starter on-prem for higher RPS and production support. Paste a Starter JWT below
+                after purchase.
+              </p>
+              <ButtonLink
+                label="Contact vendor to upgrade"
+                variant="primary"
+                size="sm"
+                href={upgradeHref.href}
+                target={upgradeHref.external ? '_blank' : undefined}
+                rel={upgradeHref.external ? 'noopener noreferrer' : undefined}
+                data-testid="license-upgrade-starter-cta"
+              />
+            </>
+          ) : null}
         </section>
       ) : null}
 

@@ -2,7 +2,7 @@ package fraud
 
 import "time"
 
-const ScoreBoostTTL = 300 * time.Second
+const ScoreBoostTTL = 900 * time.Second
 
 func microbatchBoostScore(row FeatureRow, mlProbability float64) (int, bool) {
 	decision := DecideWithPolicy(row, mlProbability, GetPolicyConfig())

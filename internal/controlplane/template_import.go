@@ -18,7 +18,7 @@ import (
 )
 
 func (s *Service) ListBundledTemplates(_ context.Context) []integrationschema.TemplateCatalogEntry {
-	return integrationschema.GMM4TemplateCatalog
+	return integrationschema.BundledIntegrationTemplateCatalog
 }
 
 func (s *Service) ImportBundledTemplates(ctx context.Context, names []string) ([]IntegrationSchemaDTO, error) {
@@ -34,7 +34,7 @@ func (s *Service) ImportBundledTemplates(ctx context.Context, names []string) ([
 		}
 	}
 	var out []IntegrationSchemaDTO
-	for _, entry := range integrationschema.GMM4TemplateCatalog {
+	for _, entry := range integrationschema.BundledIntegrationTemplateCatalog {
 		if !wantAll {
 			if _, ok := want[entry.Name]; !ok {
 				continue
@@ -225,6 +225,17 @@ func (s *Service) applyIntegrationSchema(ctx context.Context, campaignID, schema
 			return nil, err
 		}
 		applied["url_template"] = tpl
+	case integrationschema.KindAffiliateReceivePostback:
+		parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
+		if err != nil || parsedKind != integrationschema.KindAffiliateReceivePostback {
+			return nil, fmt.Errorf("invalid affiliate receive schema")
+		}
+		recv := parsed.(*integrationschema.AffiliateReceivePostbackSchema)
+		panelURL := integrationschema.BuildAffiliateReceivePanelURL(trackingDomain, recv)
+		applied["panel_postback_url"] = panelURL
+		if suffix := strings.TrimSpace(recv.OfferURLSuffix); suffix != "" {
+			applied["offer_url_suffix"] = suffix
+		}
 	case integrationschema.KindStatusMapping:
 		if _, err := tx.Exec(ctx, `
 			UPDATE campaigns SET status_integration_schema_id = $2, updated_at = NOW() WHERE id = $1`,
@@ -245,8 +256,4 @@ func (s *Service) applyIntegrationSchema(ctx context.Context, campaignID, schema
 func postbackEncryptionKey(s *Service) []byte {
 	_ = s
 	return []byte("postback-encryption-secret-key32")
-}
-
-func (s *Service) ImportGMM4Templates(ctx context.Context) ([]IntegrationSchemaDTO, error) {
-	return s.ImportBundledTemplates(ctx, nil)
 }

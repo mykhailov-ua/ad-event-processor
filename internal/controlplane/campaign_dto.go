@@ -40,8 +40,10 @@ type CampaignDTO struct {
 	AttestationMode            string          `json:"attestation_mode,omitempty"`
 	AttestationTTLSec          int32           `json:"attestation_ttl_sec"`
 	DmrEnabled                 bool            `json:"dmr_enabled"`
-	L1CIDRBlockEnabled         bool            `json:"l1_cidr_block_enabled"`
-	L15ProxyVPNBlockEnabled    bool            `json:"l15_proxy_vpn_block_enabled"`
+	CIDRBlockEnabled         bool            `json:"cidr_block_enabled"`
+	ProxyVPNBlockEnabled    bool            `json:"proxy_vpn_block_enabled"`
+	ModeratorIntelEnabled      bool            `json:"moderator_intel_enabled"`
+	ReviewTrafficAction        string          `json:"review_traffic_action,omitempty"`
 	TLSFingerprintBlockEnabled bool            `json:"tls_fingerprint_block_enabled"`
 	ConnTypePolicy             string          `json:"conn_type_policy,omitempty"`
 	LinkSigningEnabled         bool            `json:"link_signing_enabled"`
@@ -166,6 +168,12 @@ type LedgerExportResult struct {
 	Bytes      int
 }
 
+type UsageExportResult struct {
+	NextCursor string
+	Truncated  bool
+	Bytes      int
+}
+
 type AuditLogDTO struct {
 	ID         int64           `json:"id"`
 	AdminID    string          `json:"admin_id,omitempty"`
@@ -195,8 +203,10 @@ type PatchCampaignRequest struct {
 	SafePageURL                *string    `json:"safe_page_url,omitempty"`
 	SafePageEnabled            *bool      `json:"safe_page_enabled,omitempty"`
 	DmrEnabled                 *bool      `json:"dmr_enabled,omitempty"`
-	L1CIDRBlockEnabled         *bool      `json:"l1_cidr_block_enabled,omitempty"`
-	L15ProxyVPNBlockEnabled    *bool      `json:"l15_proxy_vpn_block_enabled,omitempty"`
+	CIDRBlockEnabled         *bool      `json:"cidr_block_enabled,omitempty"`
+	ProxyVPNBlockEnabled    *bool      `json:"proxy_vpn_block_enabled,omitempty"`
+	ModeratorIntelEnabled      *bool      `json:"moderator_intel_enabled,omitempty"`
+	ReviewTrafficAction        *string    `json:"review_traffic_action,omitempty"`
 	TLSFingerprintBlockEnabled *bool      `json:"tls_fingerprint_block_enabled,omitempty"`
 	ConnTypePolicy             *string    `json:"conn_type_policy,omitempty"`
 	LinkSigningEnabled         *bool      `json:"link_signing_enabled,omitempty"`

@@ -74,7 +74,7 @@ export function CampaignOwnerSection({
       <SectionCard
         icon="user"
         title="Campaign owner"
-        desc="Media buyer accountable for spend and portfolio filters (CPA-M5)."
+        desc="Media buyer accountable for spend and portfolio filters."
       >
         {loading ? <p className="text-muted text-sm">Loading team...</p> : null}
         {!loading && members.length === 0 ? (

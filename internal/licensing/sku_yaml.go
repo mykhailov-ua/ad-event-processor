@@ -30,7 +30,8 @@ type SKUDefinition struct {
 	Bind                 struct {
 		Mode string `yaml:"mode"`
 	} `yaml:"bind"`
-	SupportTier string `yaml:"support_tier"`
+	SupportTier    string `yaml:"support_tier"`
+	DeploymentMode string `yaml:"deployment_mode"`
 }
 
 func LoadSKUFile(path string) (*SKUFile, error) {
@@ -113,6 +114,7 @@ func (sku SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 		Features:     SanitizeFeaturesForSKU(sku.Code, sku.Features).Normalized(),
 		SupportTier:  sku.SupportTier,
 	}
+	claims.DeploymentMode = NormalizeDeploymentMode(strings.TrimSpace(sku.DeploymentMode))
 	claims.Bind.Mode = sku.Bind.Mode
 	if claims.Bind.Mode == "" {
 		claims.Bind.Mode = "soft"

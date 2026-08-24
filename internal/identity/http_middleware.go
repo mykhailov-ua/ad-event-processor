@@ -20,7 +20,7 @@ const (
 	authorizationTypeBearer = "bearer"
 )
 
-func AuthMiddleware(tokenMaker Maker, rdb redis.UniversalClient, allowedRoles ...string) func(http.Handler) http.Handler {
+func AuthMiddleware(tokenMaker Maker, redisClient redis.UniversalClient, allowedRoles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authorizationHeader := r.Header.Get(authorizationHeaderKey)
@@ -43,7 +43,7 @@ func AuthMiddleware(tokenMaker Maker, rdb redis.UniversalClient, allowedRoles ..
 				return
 			}
 
-			revoked, errRev := CheckTokenRevocation(r.Context(), rdb, payload)
+			revoked, errRev := CheckTokenRevocation(r.Context(), redisClient, payload)
 			if errRev != nil {
 				AuthTokenErrors.WithLabelValues("revocation_check_failed").Inc()
 				slog.Error("failed to check token revocation in redis (fail-closed)", slog.Any("error", errRev))

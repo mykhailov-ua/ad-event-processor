@@ -358,6 +358,13 @@ SET allowed_overdraft = $2,
 WHERE id = $1
 RETURNING *;
 
+-- name: UpdateCustomerCostCenter :one
+UPDATE customers
+SET cost_center = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING *;
+
 -- name: CreateBrand :one
 INSERT INTO advertiser_brands (id, customer_id, name)
 VALUES ($1, $2, $3)
@@ -445,8 +452,10 @@ SET name = $2,
     conn_type_policy = $20,
     link_signing_enabled = $21,
     link_signing_ttl_sec = $22,
-    l1_cidr_block_enabled = $23,
-    l15_proxy_vpn_block_enabled = $24,
+    cidr_block_enabled = $23,
+    proxy_vpn_block_enabled = $24,
+    moderator_intel_enabled = $25,
+    review_traffic_action = $26,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

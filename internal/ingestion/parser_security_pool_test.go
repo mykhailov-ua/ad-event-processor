@@ -26,7 +26,7 @@ func TestRequestBufferPool_NoCapPoisoning(t *testing.T) {
 
 	require.LessOrEqual(t, gotCap, maxPoolObjectSize)
 	faultproof.Log(t, "parser_security_ps_h01", map[string]string{
-		"gap_id":  "PS-H01",
+		"gap_id":  "json_pool_cap_poisoning",
 		"gap":     "closed",
 		"max_cap": strconv.Itoa(gotCap),
 	})
@@ -60,7 +60,7 @@ func TestChaos_ParserSecurity_PS_H02_KeyPairFlood(t *testing.T) {
 	require.False(t, ok)
 
 	faultproof.Log(t, "parser_security_ps_h02", map[string]string{
-		"gap_id": "PS-H02",
+		"gap_id": "json_key_pair_flood",
 		"gap":    "closed",
 	})
 }
@@ -76,7 +76,7 @@ func TestChaos_ParserSecurity_PS_H04_KeyEscapeWalk(t *testing.T) {
 	require.Less(t, time.Since(start), 2*time.Second)
 
 	faultproof.Log(t, "parser_security_ps_h04", map[string]string{
-		"gap_id": "PS-H04",
+		"gap_id": "json_key_escape_walk",
 		"gap":    "closed",
 	})
 }
@@ -91,7 +91,7 @@ func TestChaos_ParserSecurity_PS_H05_OverlongUTF8(t *testing.T) {
 	require.Error(t, err)
 
 	faultproof.Log(t, "parser_security_ps_h05", map[string]string{
-		"gap_id": "PS-H05",
+		"gap_id": "json_overlong_utf8",
 		"gap":    "closed",
 	})
 }

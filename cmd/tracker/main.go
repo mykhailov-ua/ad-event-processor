@@ -258,7 +258,7 @@ func main() {
 	consentFilter := ingestion.NewConsentFilter(registry, consentStore)
 
 	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
-		RedisShards:         redisShards,
+		RedisShards:  redisShards,
 		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
 		MaxLen:       cfg.StreamMaxLen,
 		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
@@ -349,7 +349,7 @@ func main() {
 		localQuantaFlusher = ingestion.NewLocalQuantaFlusher(localQuantaLedger, redisShards, sharder, budgetDeltaPublisher)
 		idemCache := ingestion.NewLocalClickIdemCache(time.Duration(cfg.IdempotencyTTLHrs) * time.Hour)
 		localQuantaStream = ingestion.NewLocalQuantaStreamPublisher(ingestion.LocalQuantaStreamPublisherConfig{
-			RedisShards:           redisShards,
+			RedisShards:    redisShards,
 			StreamName:     trackerStreamName,
 			MaxLen:         cfg.StreamMaxLen,
 			IdempotencyTTL: time.Duration(cfg.IdempotencyTTLHrs) * time.Hour,
@@ -408,7 +408,11 @@ func main() {
 	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(redisShards), cfg.FilterTimeoutMs)
 	placementBL := ingestion.NewPlacementBlacklistFilter(redisShards)
 	unifiedFilter.SetPlacementBlacklistFilter(placementBL)
-	unifiedFilter.SetFraudBlacklistFilter(ingestion.NewFraudBlacklistFilter(redisShards))
+	fraudBL := ingestion.NewFraudBlacklistFilter(redisShards)
+	unifiedFilter.SetFraudBlacklistFilter(fraudBL)
+	if fraudBL != nil {
+		go fraudBL.RunInvalidationSubscriber(ctx, "")
+	}
 	unifiedFilter.SetIngressRPDHandledExternally(true)
 	licenseFilter := ingestion.NewLicenseFilter(registry)
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
@@ -592,7 +596,7 @@ func main() {
 		slog.Info("redis stream producers enabled", "stream", cfg.RedisStreamName, "shards", len(redisShards))
 	}
 	ingestion.StartFraudBackpressureWatcher(ctx, ingestion.FraudBackpressureConfig{
-		RedisShards:        redisShards,
+		RedisShards: redisShards,
 		Writer:      gnetHandler.FraudWriter(),
 		Stream:      cfg.FraudStreamName,
 		EventStream: cfg.RedisStreamName,
@@ -634,7 +638,7 @@ func main() {
 		slog.Info("tcp routing snapshot client enabled", "control_addr", cfg.TCPControlAddr)
 	}
 	gnetHandler.ConfigureIngestGeo(geoProvider)
-	if cfg.CIDRL1Enabled {
+	if cfg.CIDRBlockEnabled {
 		cidrTable := ingestion.NewCIDRTable()
 		gnetHandler.ConfigureCIDR(cidrTable)
 		if cidrLoader := ingestion.NewCIDRFeedLoader(cfg, cidrTable); cidrLoader != nil {
@@ -642,21 +646,21 @@ func main() {
 			slog.Info("cidr l1 loader started", "dir", cfg.CIDRFeedDir, "refresh", cfg.CIDRFeedRefresh, "download", cfg.CIDRFeedDownloadEnable)
 		}
 	}
-	if cfg.IPv6RotationL1Enabled {
+	if cfg.IPv6RotationEnabled {
 		rotTable := ingestion.NewIPv6RotationTable()
 		rotTable.SetMode(cfg.IPv6RotationMode)
 		rotTable.SetPolicy(uint64(cfg.IPv6RotationWindow.Nanoseconds()), cfg.IPv6RotationThreshold)
 		gnetHandler.ConfigureIPv6Rotation(rotTable)
 		slog.Info("ipv6 rotation l1 enabled", "mode", cfg.IPv6RotationMode, "window", cfg.IPv6RotationWindow, "threshold", cfg.IPv6RotationThreshold)
 	}
-	if cfg.IPv4RotationL1Enabled {
+	if cfg.IPv4RotationEnabled {
 		v4Rot := ingestion.NewIPv4RotationTable()
 		v4Rot.SetMode(cfg.IPv4RotationMode)
 		v4Rot.SetPolicy(uint64(cfg.IPv4RotationWindow.Nanoseconds()), cfg.IPv4RotationThreshold)
 		gnetHandler.ConfigureIPv4Rotation(v4Rot)
 		slog.Info("ipv4 rotation l1 enabled", "mode", cfg.IPv4RotationMode, "window", cfg.IPv4RotationWindow, "threshold", cfg.IPv4RotationThreshold)
 	}
-	if cfg.ProxyVPNL15Enabled {
+	if cfg.ProxyVPNBlockEnabled {
 		proxyTable := ingestion.NewProxyVPNTable()
 		gnetHandler.ConfigureProxyVPN(proxyTable)
 		if proxyLoader := ingestion.NewProxyVPNFeedLoader(cfg, proxyTable); proxyLoader != nil {
@@ -664,7 +668,24 @@ func main() {
 			slog.Info("proxy vpn l1.5 loader started", "dir", cfg.ProxyVPNFeedDir, "refresh", cfg.ProxyVPNFeedRefresh)
 		}
 	}
-	if cfg.TLSFingerprintL1Enabled {
+	if config.LicenseFilePresent() {
+		if verified, licErr := licensing.VerifyLicenseFile(config.LicensePathFromEnv(), nil, "", time.Now().UTC()); licErr == nil &&
+			verified.State != licensing.StateExpired && verified.State != licensing.StateRevoked {
+			config.ApplyModeratorIntelWhenEntitled(cfg, verified.Entitlements.Features.ModeratorIntelFeedEnabled())
+		}
+	}
+	if cfg.ModeratorIntelEnabled {
+		moderatorTable := ingestion.NewModeratorIPTable()
+		gnetHandler.ConfigureModeratorIntel(moderatorTable)
+		if moderatorLoader := ingestion.NewModeratorIntelFeedLoader(cfg, moderatorTable); moderatorLoader != nil {
+			go moderatorLoader.Start(ctx)
+			slog.Info("moderator intel loader started",
+				"dir", cfg.ModeratorIntelFeedDir,
+				"refresh", cfg.ModeratorIntelFeedRefresh,
+				"download", cfg.ModeratorIntelFeedDownload)
+		}
+	}
+	if cfg.TLSFingerprintEnabled {
 		tlsTable := ingestion.NewTLSFingerprintTable()
 		gnetHandler.ConfigureTLSFingerprint(tlsTable)
 		if tlsLoader := ingestion.NewTLSFingerprintFeedLoader(cfg, tlsTable); tlsLoader != nil {
@@ -698,7 +719,7 @@ func main() {
 	if cfg.FlowRoutingEnabled {
 		flowTable := ingestion.NewCampaignFlowTable()
 		gnetHandler.ConfigureCampaignFlow(flowTable)
-		if flowSync := ingestion.NewCampaignFlowSync(pool, flowTable, cfg.FlowSyncInterval); flowSync != nil {
+		if flowSync := ingestion.NewCampaignFlowSync(pool, flowTable, cfg.FlowSyncInterval, cfg.LanderPublicBaseURL, firstConnectedRedis(redisShards), cfg.FlowReloadChannel); flowSync != nil {
 			go flowSync.Start(ctx)
 			slog.Info("campaign flow sync started", "interval", cfg.FlowSyncInterval)
 		}

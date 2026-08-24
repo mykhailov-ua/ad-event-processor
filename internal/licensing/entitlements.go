@@ -23,12 +23,15 @@ type FeatureSet struct {
 	SlotMigration            bool `json:"slot_migration" yaml:"slot_migration"`
 	MarginGuard              bool `json:"margin_guard" yaml:"margin_guard"`
 	ExternalResidentialIntel bool `json:"external_residential_intel" yaml:"external_residential_intel"`
+	ModeratorIntelFeed       bool `json:"moderator_intel_feed" yaml:"moderator_intel_feed"`
+	AdPlatformCampaignAPI    bool `json:"ad_platform_campaign_api" yaml:"ad_platform_campaign_api"`
 }
 
 type Entitlements struct {
-	VolumeBand VolumeBand `json:"volume_band,omitempty"`
-	Limits     Limits     `json:"limits"`
-	Features   FeatureSet `json:"features"`
+	DeploymentMode string     `json:"deployment_mode,omitempty"`
+	VolumeBand     VolumeBand `json:"volume_band,omitempty"`
+	Limits         Limits     `json:"limits"`
+	Features       FeatureSet `json:"features"`
 }
 
 type LimitsDTO struct {
@@ -54,6 +57,8 @@ type FeatureSetDTO struct {
 	SlotMigration            bool `json:"slot_migration"`
 	MarginGuard              bool `json:"margin_guard"`
 	ExternalResidentialIntel bool `json:"external_residential_intel"`
+	ModeratorIntelFeed       bool `json:"moderator_intel_feed"`
+	AdPlatformCampaignAPI    bool `json:"ad_platform_campaign_api"`
 }
 
 type LicenseStatusDTO struct {

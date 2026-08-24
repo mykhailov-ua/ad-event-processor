@@ -29,7 +29,7 @@ func TestChaos_CrossHop_NginxGnet(t *testing.T) {
 	elapsed := time.Since(start)
 
 	faultproof.Log(t, "parser_security_ps_g04", map[string]string{
-		"gap_id":             "PS-G04",
+		"gap_id":             "http1_ingress_corpus",
 		"gap":                boolGapStr(len(diffs) == 0),
 		"corpus_cases":       fmt.Sprintf("%d", len(corpus)),
 		"differential_count": fmt.Sprintf("%d", len(diffs)),

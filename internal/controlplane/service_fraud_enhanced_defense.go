@@ -19,9 +19,9 @@ func applyEnhancedDefensePreset(ctx context.Context, tx pgx.Tx, campaignID uuid.
 		 attestation_enabled = true,
 		 attestation_mode = 'strict',
 		 attestation_ttl_sec = CASE WHEN attestation_ttl_sec < 60 THEN 300 ELSE attestation_ttl_sec END,
-		 l15_proxy_vpn_block_enabled = true,
+		 proxy_vpn_block_enabled = true,
 		 tls_fingerprint_block_enabled = true,
-		 l1_cidr_block_enabled = true,
+		 cidr_block_enabled = true,
 		 link_signing_enabled = true,
 		 updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1`, domain.ToUUID(campaignID))

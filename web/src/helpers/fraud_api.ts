@@ -129,7 +129,7 @@ export const FRAUD_PRESET_OPTIONS: Array<{
     id: 'social_in_app',
     label: 'Social in-app',
     description:
-      'Balanced tiers, mobile-only conn policy, L1.5/TLS blocks; TLS safe-view skipped for FB/TikTok/Instagram WebView UA.',
+      'Balanced tiers, mobile-only conn policy, proxy/VPN and TLS blocks; TLS safe-view skipped for FB/TikTok/Instagram WebView UA.',
   },
 ];
 

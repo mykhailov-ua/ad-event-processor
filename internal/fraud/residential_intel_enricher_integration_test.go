@@ -36,13 +36,13 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 				ip: {ResidentialProxy: true, VPN: true, Proxy: true},
 			},
 		},
-		Cache:      NewResidentialIntelCache(redisClient, time.Hour),
-		CHWrite:    conn,
-		RedisClient:        redisClient,
-		FeedDir:    t.TempDir(),
-		RecentLim:  16,
-		BatchLim:   16,
-		ProviderID: "stub",
+		Cache:       NewResidentialIntelCache(redisClient, time.Hour),
+		CHWrite:     conn,
+		RedisClient: redisClient,
+		FeedDir:     t.TempDir(),
+		RecentLim:   16,
+		BatchLim:    16,
+		ProviderID:  "stub",
 	})
 
 	stats, err := enricher.Run(ctx)
@@ -62,7 +62,7 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 
 func TestResidentialIntelEnricher_integration_redisCacheAndFeed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration: residential intel enricher Redis cache + L1.5 feed append")
+		t.Skip("integration: residential intel enricher Redis cache + proxy/VPN feed append")
 	}
 
 	redisClient, cleanupRedis := database.SetupTestRedis(t)
@@ -79,11 +79,11 @@ func TestResidentialIntelEnricher_integration_redisCacheAndFeed(t *testing.T) {
 				ip: {ResidentialProxy: true, VPN: true},
 			},
 		},
-		Cache:     NewResidentialIntelCache(redisClient, time.Hour),
-		RedisClient:       redisClient,
-		FeedDir:   feedDir,
-		RecentLim: 8,
-		BatchLim:  8,
+		Cache:       NewResidentialIntelCache(redisClient, time.Hour),
+		RedisClient: redisClient,
+		FeedDir:     feedDir,
+		RecentLim:   8,
+		BatchLim:    8,
 	})
 
 	stats, err := enricher.Run(ctx)

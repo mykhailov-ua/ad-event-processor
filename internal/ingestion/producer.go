@@ -131,7 +131,7 @@ func (rb *IDRingBuffer) refillWorker() {
 var globalIDRingBuffer = NewIDRingBuffer(16384)
 
 type StreamProducer struct {
-	redisClient           redis.UniversalClient
+	redisClient   redis.UniversalClient
 	streamName    string
 	maxStreamLen  int64
 	writeTimeout  time.Duration
@@ -151,7 +151,7 @@ func NewStreamProducer(
 	writeTimeout time.Duration,
 ) *StreamProducer {
 	p := &StreamProducer{
-		redisClient:          redisClient,
+		redisClient:  redisClient,
 		streamName:   streamName,
 		maxStreamLen: int64(maxStreamLen),
 		writeTimeout: writeTimeout,
@@ -234,6 +234,7 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 	pbEvt.FraudScore = evt.FraudScore
 	pbEvt.FraudReason = UnsafeBytes(evt.FraudReason)
 	pbEvt.SilentRejectEvent = evt.SilentRejectEvent
+	pbEvt.ReviewRoutedEvent = evt.ReviewRoutedEvent
 
 	size := pbEvt.SizeVT()
 	bufPtr := byteBufPool.Get().(*[]byte)

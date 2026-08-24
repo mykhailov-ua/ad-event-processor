@@ -36,3 +36,11 @@ func (f FeatureSet) MultiRegionEnabled() bool {
 func (f FeatureSet) ExternalResidentialIntelEnabled() bool {
 	return f.Normalized().ExternalResidentialIntel
 }
+
+func (f FeatureSet) ModeratorIntelFeedEnabled() bool {
+	return f.Normalized().ModeratorIntelFeed
+}
+
+func (f FeatureSet) AdPlatformCampaignAPIEnabled() bool {
+	return f.Normalized().AdPlatformCampaignAPI
+}

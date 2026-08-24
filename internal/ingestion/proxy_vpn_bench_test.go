@@ -57,11 +57,11 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 	table, probes := benchProxyVPNTable(b, 50_000)
 	h := &AdsPacketHandler{
 		registry: stubCampaignRegistry{
-			camp: &domain.Campaign{L15ProxyVPNBlockEnabled: true},
+			camp: &domain.Campaign{ProxyVPNBlockEnabled: true},
 			ok:   true,
 		},
 		proxyVPNTable:      table,
-		l15ProxyVPNMetrics: newL15ProxyVPNMetrics(),
+		proxyVPNBlockMetrics: newProxyVPNBlockMetrics(),
 	}
 	cid := uuid.MustParse("00000000-0000-4000-8000-000000000001")
 	ipStrs := make([]string, len(probes))
@@ -72,7 +72,7 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 	var hit bool
 	benchN := 0
 	for b.Loop() {
-		hit, _ = h.l15ProxyVPNShouldSafeView(ipStrs[benchN&63], cid)
+		hit, _ = h.proxyVPNBlockShouldSafeView(ipStrs[benchN&63], cid)
 		benchN++
 	}
 	proxyVPNBenchSink.match = proxyVPNBenchSink.match || hit

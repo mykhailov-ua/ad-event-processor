@@ -140,4 +140,15 @@ if ! docker compose --profile enterprise-xdp config 2> /dev/null | grep -q 'netw
   exit 1
 fi
 
+echo "compose managed-saas-cell overlay"
+docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+  -f "$ROOT/deploy/compose/docker-compose.managed-saas-cell.yaml" \
+  "${ENV_FILE[@]}" --profile single_vps config > /dev/null
+if ! docker compose -f "$ROOT/deploy/compose/docker-compose.yaml" \
+  -f "$ROOT/deploy/compose/docker-compose.managed-saas-cell.yaml" \
+  "${ENV_FILE[@]}" --profile single_vps config 2> /dev/null | grep -q 'DEPLOYMENT_MODE'; then
+  echo "managed-saas-cell overlay must set DEPLOYMENT_MODE on control" >&2
+  exit 1
+fi
+
 echo "compose_profile_check: ok"

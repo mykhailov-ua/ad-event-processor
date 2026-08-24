@@ -97,14 +97,28 @@ func TestEnhancedDefenseBaseline_flowRouterHarness_ready(t *testing.T) {
 
 func TestEnhancedDefenseBaseline_productScopeGates(t *testing.T) {
 	const (
-		gateNoVisualEditors   = "no_grapejs_lp_builder"
-		gateNoLocalLanders    = "redirect_and_proxy_only"
-		gateNoFlowBuilderUI   = "declarative_backend_lists_only"
-		gateNoExternalIPIntel = "local_in_memory_l15_only"
+		gateHostedLanderEditor        = "hosted_lander_code_editor"
+		gateLocalLanders              = "local_zip_hosting"
+		gateVisualFlowBuilder         = "visual_flow_builder_ui"
+		gateModeratorIntelFeed        = "moderator_intel_feed"
+		gateReviewTrafficPolicy       = "review_traffic_policy"
+		gateGuidedFirstCampaignWizard = "guided_first_campaign_wizard"
+		gateAdPlatformCampaignAPI     = "ad_platform_campaign_api"
+		gateExtendedTrialSelfserve    = "extended_trial_selfserve"
+		gateWorkspaceBillingSplit     = "workspace_billing_split"
+		gateManagedSaasTenantPlane    = "managed_saas_tenant_plane"
+		gateNoExternalIPIntel         = "local_in_memory_proxy_vpn_only"
 	)
-	assert.NotEmpty(t, gateNoVisualEditors)
-	assert.NotEmpty(t, gateNoLocalLanders)
-	assert.NotEmpty(t, gateNoFlowBuilderUI)
+	assert.NotEmpty(t, gateHostedLanderEditor)
+	assert.NotEmpty(t, gateLocalLanders)
+	assert.NotEmpty(t, gateVisualFlowBuilder)
+	assert.NotEmpty(t, gateModeratorIntelFeed)
+	assert.NotEmpty(t, gateReviewTrafficPolicy)
+	assert.NotEmpty(t, gateGuidedFirstCampaignWizard)
+	assert.NotEmpty(t, gateAdPlatformCampaignAPI)
+	assert.NotEmpty(t, gateExtendedTrialSelfserve)
+	assert.NotEmpty(t, gateWorkspaceBillingSplit)
+	assert.NotEmpty(t, gateManagedSaasTenantPlane)
 	assert.NotEmpty(t, gateNoExternalIPIntel)
 }
 

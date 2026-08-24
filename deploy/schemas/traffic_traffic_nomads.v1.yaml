@@ -1,0 +1,23 @@
+version: 1
+tokens:
+  - name: click_id
+    query_key: sub1
+    max_len: 128
+  - name: tn_campaign_id
+    query_key: tn_campaign_id
+    max_len: 64
+  - name: publisher_id
+    query_key: pubid
+    max_len: 64
+  - name: zone_id
+    query_key: zone
+    max_len: 64
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: click_id
+    source: query
+    key: click_id
+    required: false

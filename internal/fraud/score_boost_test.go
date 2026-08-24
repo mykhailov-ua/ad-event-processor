@@ -28,5 +28,5 @@ func TestMicrobatchBoostScore_suspectTierOnly(t *testing.T) {
 }
 
 func TestScoreBoostTTL_matchesOutbox(t *testing.T) {
-	assert.Equal(t, 300*time.Second, ScoreBoostTTL)
+	assert.Equal(t, 900*time.Second, ScoreBoostTTL)
 }

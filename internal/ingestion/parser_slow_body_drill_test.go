@@ -32,7 +32,7 @@ func TestParserSlowBodyDrill_P99Isolation(t *testing.T) {
 	}
 
 	faultproof.Log(t, "parser_slow_body_drill", map[string]string{
-		"gap_id":       "PS-G01",
+		"gap_id":       "http1_incomplete_body_spin_close",
 		"gap":          gap,
 		"connections":  fmt.Sprintf("%d", cfg.Connections),
 		"control_reqs": fmt.Sprintf("%d", res.ControlReqs),

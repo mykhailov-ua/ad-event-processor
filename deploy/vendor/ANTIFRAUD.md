@@ -78,6 +78,7 @@ Registry: `fraudReasonRegistry` in `filter_errors.go`.
 | `os_fingerprint_mismatch` | 35 | L2-weak | TTL vs UA family; disable behind CDN (`edge.mdc`) |
 | `ipv4_rotation` | 35 | L2-weak | Subnet velocity tables |
 | `residential_proxy` | 35 | L2-weak | Hot cache / intel enricher; SKU `external_residential_intel` |
+| `moderator_ip` | 45 | L1-high | Signed `moderator_intel_v1` snapshot; per-campaign `moderator_intel_enabled` (default off) |
 | `attestation_missing` | 35 | L2-weak | Light attestation on `/click` |
 
 Admin presets: `conservative`, `balanced`, `aggressive`, `enhanced_defense`, `social_in_app` (`service_fraud_presets.go`). Campaign fraud PATCH: `/api/v1/campaigns/{id}/fraud`.
@@ -102,7 +103,7 @@ JA3/JA4 spoofing and ECH reduce standalone TLS block efficacy.
 ### `social_in_app`
 
 - `conn_type_policy` may restrict to mobile carriers when configured.
-- TLS block on `/click` skipped for in-app WebView UA markers (`FBAN`, `FBAV`, `musical_ly`, `Instagram`) when `social_in_app_enabled` (`l1_tls_fingerprint_hook.go`).
+- TLS block on `/click` skipped for in-app WebView UA markers (`FBAN`, `FBAV`, `musical_ly`, `Instagram`) when `social_in_app_enabled` (`landing_tls_fingerprint_hook.go`).
 - Attestation and other filters still run.
 
 ### `enhanced_defense`
@@ -123,7 +124,7 @@ Placement and fraud blacklist run inside `UnifiedFilter.Check` before `EVALSHA`.
 | Fraud blacklist | `FraudBlacklistFilter` in `filter_layer.go` | 128-shard in-memory TTL cache (5 s, max 2048 entries/shard); `SISMEMBER` on miss |
 | Ingress RPD | `EntitlementsFilter` + `SetIngressRPDHandledExternally(true)` in `cmd/tracker/main.go` | One `INCR` + `EXPIRE` per event on `ingress:day:{region?}{customer_id}:{date}`. Flag skips `UnifiedFilter.checkIngressRPDGo` so Lua precheck does not double-count |
 | TTC signal | `applyGoTTC` in `UnifiedFilter.Check` | No Lua TTC branch when computed in Go |
-| ML boost | `GetFraudScoreBoosts()` in fraud filter | None on read; `ml:score:boost:*` synced async via `SettingsWatcher` |
+| ML boost | `GetFraudScoreBoosts()` in fraud filter | None on read; `ml:score:boost:*` synced async via `SettingsWatcher` (pub/sub + `FRAUD_BOOST_FULL_RESYNC_SEC`, default 10s). Processor `MicroBatcher` flush default 50ms (`FRAUD_MICROBATCH_FLUSH_MS`).
 
 Local quanta (`LOCAL_QUOTA_MODE=live`) can eliminate sync `EVALSHA` for eligible traffic.
 

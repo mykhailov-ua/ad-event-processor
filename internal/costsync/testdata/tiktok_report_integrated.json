@@ -1,0 +1,17 @@
+{
+  "code": 0,
+  "message": "OK",
+  "data": {
+    "list": [
+      {
+        "dimensions": {
+          "campaign_id": "camp-99",
+          "stat_time_day": "2026-08-24"
+        },
+        "metrics": {
+          "spend": "12.50"
+        }
+      }
+    ]
+  }
+}

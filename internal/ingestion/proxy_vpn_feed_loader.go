@@ -24,7 +24,7 @@ type proxyVPNFeedLoader struct {
 }
 
 func NewProxyVPNFeedLoader(cfg *config.Config, table *ProxyVPNTable) *proxyVPNFeedLoader {
-	if cfg == nil || !cfg.ProxyVPNL15Enabled || table == nil {
+	if cfg == nil || !cfg.ProxyVPNBlockEnabled || table == nil {
 		return nil
 	}
 	l := &proxyVPNFeedLoader{

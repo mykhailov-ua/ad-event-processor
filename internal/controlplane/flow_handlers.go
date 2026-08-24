@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"time"
 
@@ -15,17 +16,23 @@ import (
 type FlowService interface {
 	CreateLander(ctx context.Context, req CreateLanderRequest) (LanderDTO, error)
 	ListLanders(ctx context.Context) ([]LanderDTO, error)
+	UploadHostedLanderZip(ctx context.Context, landerID uuid.UUID, zipReader io.ReaderAt, zipSize int64) (LanderDTO, error)
+	ServeHostedLanderFile(ctx context.Context, landerID uuid.UUID, relPath string) (io.ReadCloser, string, error)
 	CreateOffer(ctx context.Context, req CreateOfferRequest) (OfferDTO, error)
 	ListOffers(ctx context.Context) ([]OfferDTO, error)
 	CreateFlow(ctx context.Context, req CreateFlowRequest) (FlowDTO, error)
 	ListFlows(ctx context.Context) ([]FlowDTO, error)
+	GetFlow(ctx context.Context, flowID uuid.UUID) (FlowDTO, error)
+	UpdateFlow(ctx context.Context, flowID uuid.UUID, req UpdateFlowRequest) (FlowDTO, error)
 }
 
 type LanderDTO struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	CreatedAt time.Time `json:"created_at"`
+	ID            uuid.UUID  `json:"id"`
+	Name          string     `json:"name"`
+	URL           string     `json:"url,omitempty"`
+	HostedAssetID *uuid.UUID `json:"hosted_asset_id,omitempty"`
+	HostedURL     string     `json:"hosted_url,omitempty"`
+	CreatedAt     time.Time  `json:"created_at"`
 }
 
 type OfferDTO struct {
@@ -97,6 +104,9 @@ func (h *FlowHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/offers", limit(perm("campaigns:write", h.createOffer)))
 	mux.HandleFunc("GET /api/v1/flows", limit(perm("campaigns:read", h.listFlows)))
 	mux.HandleFunc("POST /api/v1/flows", limit(perm("campaigns:write", h.createFlow)))
+	mux.HandleFunc("GET /api/v1/flows/{id}", limit(perm("campaigns:read", h.getFlow)))
+	mux.HandleFunc("PUT /api/v1/flows/{id}", limit(perm("campaigns:write", h.updateFlow)))
+	h.RegisterHostedLanderRoutes(mux)
 }
 
 func (h *FlowHTTPHandlers) listLanders(w http.ResponseWriter, r *http.Request) {
@@ -172,4 +182,44 @@ func (h *FlowHTTPHandlers) createFlow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, dto)
+}
+
+func (h *FlowHTTPHandlers) getFlow(w http.ResponseWriter, r *http.Request) {
+	id, err := coldpath.ParsePathUUID(r, "id")
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid flow id")
+		return
+	}
+	dto, err := h.Service.GetFlow(r.Context(), id)
+	if err != nil {
+		if err.Error() == "flow not found" {
+			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, dto)
+}
+
+func (h *FlowHTTPHandlers) updateFlow(w http.ResponseWriter, r *http.Request) {
+	id, err := coldpath.ParsePathUUID(r, "id")
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid flow id")
+		return
+	}
+	req, ok := coldpath.DecodeRequestOrBadRequest[UpdateFlowRequest](w, r, coldpath.DefaultMaxBody)
+	if !ok {
+		return
+	}
+	dto, err := h.Service.UpdateFlow(r.Context(), id, req)
+	if err != nil {
+		if err.Error() == "flow not found" {
+			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", err.Error())
+			return
+		}
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, dto)
 }

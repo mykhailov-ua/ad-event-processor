@@ -1,0 +1,30 @@
+version: 1
+tokens:
+  - name: fbclid
+    query_key: fbclid
+    max_len: 256
+  - name: utm_source
+    query_key: utm_source
+    max_len: 128
+  - name: utm_medium
+    query_key: utm_medium
+    max_len: 128
+  - name: utm_campaign
+    query_key: utm_campaign
+    max_len: 128
+  - name: utm_content
+    query_key: utm_content
+    max_len: 128
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: click_id
+    source: query
+    key: click_id
+    required: false
+  - name: sub1
+    source: query
+    key: sub1
+    required: false

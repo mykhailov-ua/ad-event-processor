@@ -1,0 +1,20 @@
+version: 1
+tokens:
+  - name: click_id
+    query_key: sub1
+    max_len: 128
+  - name: zone_id
+    query_key: zone_id
+    max_len: 64
+  - name: onclicka_campaign_id
+    query_key: onclicka_camp_id
+    max_len: 64
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: click_id
+    source: query
+    key: click_id
+    required: false

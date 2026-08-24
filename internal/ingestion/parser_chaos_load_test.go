@@ -34,7 +34,7 @@ func TestChaos_ParserLoad_CX02(t *testing.T) {
 	}
 
 	faultproof.Log(t, "parser_chaos_load", map[string]string{
-		"gap_id":       "PS-G08",
+		"gap_id":       "parser_chaos_cross_hop",
 		"gap":          gap,
 		"total_reqs":   fmt.Sprintf("%d", res.TotalReqs),
 		"control_reqs": fmt.Sprintf("%d", res.ControlReqs),
@@ -65,7 +65,7 @@ func TestChaos_ParserSecurity_PS_G08_LoadMix(t *testing.T) {
 	require.Equal(t, float64(0), res.PoolRejects)
 	require.Greater(t, res.ControlReqs, int64(100))
 	faultproof.Log(t, "parser_security_ps_g08", map[string]string{
-		"gap_id": "PS-G08",
+		"gap_id": "parser_chaos_cross_hop",
 		"gap":    "closed",
 		"p99_ms": fmt.Sprintf("%.3f", float64(res.P99Nanos)/float64(time.Millisecond)),
 	})

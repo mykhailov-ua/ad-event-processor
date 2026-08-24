@@ -40,20 +40,20 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
-		socialInApp, l15, tls bool
-		connType              string
-		pass, block           int16
+		socialInApp, proxyVPNBlock, tls bool
+		connType                        string
+		pass, block                     int16
 	)
 	err = pool.QueryRow(ctx, `
-		SELECT social_in_app_enabled, l15_proxy_vpn_block_enabled,
+		SELECT social_in_app_enabled, proxy_vpn_block_enabled,
 		 tls_fingerprint_block_enabled, conn_type_policy,
 		 fraud_threshold_pass, fraud_threshold_block
 		FROM campaigns WHERE id = $1`, campID).Scan(
-		&socialInApp, &l15, &tls, &connType, &pass, &block,
+		&socialInApp, &proxyVPNBlock, &tls, &connType, &pass, &block,
 	)
 	require.NoError(t, err)
 	require.True(t, socialInApp)
-	require.True(t, l15)
+	require.True(t, proxyVPNBlock)
 	require.True(t, tls)
 	require.Equal(t, string(domain.ConnTypeMobileOnly), connType)
 	require.Equal(t, string(domain.SocialInAppConnTypePolicy), connType)
@@ -64,7 +64,7 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.NoError(t, err)
 	camp := domain.CampaignFromDBRow(row)
 	require.True(t, camp.SocialInAppEnabled)
-	require.True(t, camp.L15ProxyVPNBlockEnabled)
+	require.True(t, camp.ProxyVPNBlockEnabled)
 	require.True(t, camp.TLSFingerprintBlockEnabled)
 	require.Equal(t, domain.ConnTypeMobileOnly, camp.ConnTypePolicy)
 	require.Equal(t, domain.SocialInAppConnTypePolicy, camp.ConnTypePolicy)

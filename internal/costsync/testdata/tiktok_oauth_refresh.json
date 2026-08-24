@@ -1,0 +1,9 @@
+{
+  "code": 0,
+  "message": "OK",
+  "data": {
+    "access_token": "refreshed-tok",
+    "refresh_token": "refresh-rotated",
+    "expires_in": 86400
+  }
+}

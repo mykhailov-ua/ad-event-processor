@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"ad-event-processor/pkg/landerhost"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,15 +20,22 @@ func (s *Service) CreateLander(ctx context.Context, req CreateLanderRequest) (La
 	}
 	name := strings.TrimSpace(req.Name)
 	url := strings.TrimSpace(req.URL)
-	if name == "" || url == "" {
-		return LanderDTO{}, fmt.Errorf("name and url are required")
+	if name == "" {
+		return LanderDTO{}, fmt.Errorf("name is required")
+	}
+	if url == "" {
+		url = ""
 	}
 	var dto LanderDTO
 	err := s.pool.QueryRow(ctx, `
-		INSERT INTO landers (name, url) VALUES ($1, $2)
-		RETURNING id, name, url, created_at`, name, url).Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt)
+		INSERT INTO landers (name, url) VALUES ($1, NULLIF($2, ''))
+		RETURNING id, name, COALESCE(url, ''), hosted_asset_id, created_at`, name, url).Scan(
+		&dto.ID, &dto.Name, &dto.URL, &dto.HostedAssetID, &dto.CreatedAt)
 	if err != nil {
 		return LanderDTO{}, err
+	}
+	if dto.HostedAssetID != nil {
+		dto.HostedURL = landerhost.PublicURL(s.landerPublicBase(ctx), dto.ID)
 	}
 	return dto, nil
 }
@@ -35,16 +44,22 @@ func (s *Service) ListLanders(ctx context.Context) ([]LanderDTO, error) {
 	if s == nil || s.pool == nil {
 		return nil, fmt.Errorf("service unavailable")
 	}
-	rows, err := s.pool.Query(ctx, `SELECT id, name, url, created_at FROM landers ORDER BY created_at DESC`)
+	rows, err := s.pool.Query(ctx, `
+		SELECT id, name, COALESCE(url, ''), hosted_asset_id, created_at
+		FROM landers ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
+	publicBase := s.landerPublicBase(ctx)
 	var out []LanderDTO
 	for rows.Next() {
 		var dto LanderDTO
-		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.CreatedAt); err != nil {
+		if err := rows.Scan(&dto.ID, &dto.Name, &dto.URL, &dto.HostedAssetID, &dto.CreatedAt); err != nil {
 			return nil, err
+		}
+		if dto.HostedAssetID != nil {
+			dto.HostedURL = landerhost.PublicURL(publicBase, dto.ID)
 		}
 		out = append(out, dto)
 	}
@@ -101,6 +116,9 @@ func (s *Service) CreateFlow(ctx context.Context, req CreateFlowRequest) (FlowDT
 	if len(req.Paths) == 0 {
 		return FlowDTO{}, fmt.Errorf("paths are required")
 	}
+	if err := s.validateFlowPaths(ctx, req.Paths); err != nil {
+		return FlowDTO{}, err
+	}
 	raw, err := json.Marshal(req.Paths)
 	if err != nil {
 		return FlowDTO{}, err
@@ -133,6 +151,79 @@ func (s *Service) ListFlows(ctx context.Context) ([]FlowDTO, error) {
 		out = append(out, dto)
 	}
 	return out, rows.Err()
+}
+
+func (s *Service) GetFlow(ctx context.Context, flowID uuid.UUID) (FlowDTO, error) {
+	if s == nil || s.pool == nil {
+		return FlowDTO{}, fmt.Errorf("service unavailable")
+	}
+	if flowID == uuid.Nil {
+		return FlowDTO{}, fmt.Errorf("flow id is required")
+	}
+	var dto FlowDTO
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, name, paths, created_at FROM flows WHERE id = $1`,
+		flowID).Scan(&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return FlowDTO{}, fmt.Errorf("flow not found")
+		}
+		return FlowDTO{}, err
+	}
+	return dto, nil
+}
+
+type UpdateFlowRequest struct {
+	Name  string        `json:"name"`
+	Paths []FlowPathDTO `json:"paths"`
+}
+
+func (s *Service) UpdateFlow(ctx context.Context, flowID uuid.UUID, req UpdateFlowRequest) (FlowDTO, error) {
+	if s == nil || s.pool == nil {
+		return FlowDTO{}, fmt.Errorf("service unavailable")
+	}
+	if flowID == uuid.Nil {
+		return FlowDTO{}, fmt.Errorf("flow id is required")
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return FlowDTO{}, fmt.Errorf("name is required")
+	}
+	if len(req.Paths) == 0 {
+		return FlowDTO{}, fmt.Errorf("paths are required")
+	}
+	if err := s.validateFlowPaths(ctx, req.Paths); err != nil {
+		return FlowDTO{}, err
+	}
+	raw, err := json.Marshal(req.Paths)
+	if err != nil {
+		return FlowDTO{}, err
+	}
+	var dto FlowDTO
+	err = s.pool.QueryRow(ctx, `
+		UPDATE flows SET name = $2, paths = $3::jsonb, updated_at = now()
+		WHERE id = $1
+		RETURNING id, name, paths, created_at`, flowID, name, raw).Scan(
+		&dto.ID, &dto.Name, &dto.Paths, &dto.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return FlowDTO{}, fmt.Errorf("flow not found")
+		}
+		return FlowDTO{}, err
+	}
+	_ = s.publishFlowReload(ctx)
+	return dto, nil
+}
+
+func (s *Service) publishFlowReload(ctx context.Context) error {
+	if s == nil {
+		return nil
+	}
+	channel := flowReloadChannel
+	if s.cfg != nil && strings.TrimSpace(s.cfg.FlowReloadChannel) != "" {
+		channel = strings.TrimSpace(s.cfg.FlowReloadChannel)
+	}
+	return publishFlowReload(ctx, s.redisShards, channel)
 }
 
 func (s *Service) AssignCampaignFlow(ctx context.Context, campaignID, flowID uuid.UUID) error {

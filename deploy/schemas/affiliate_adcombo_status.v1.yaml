@@ -1,0 +1,6 @@
+version: 1
+status_map:
+  lead: lead
+  hold: hold
+  reject: trash
+  trash: trash

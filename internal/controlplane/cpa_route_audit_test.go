@@ -20,15 +20,15 @@ type cpaProductGap struct {
 }
 
 var cpaProductGaps = []cpaProductGap{
-	{Area: "Customer billing forecast", API: "GET /api/v1/customers/{id}/billing/forecast", APIRequired: true, UI: "/customers/:id", UIMissing: false, Phase: "CPA-M2"},
-	{Area: "Invoice ledger lines", API: "GET /api/v1/billing/invoices/{id}/ledger-lines", APIRequired: true, UI: "/billing/invoices/:id", UIMissing: false, Phase: "CPA-M2"},
-	{Area: "Postback/CAPI DLQ (buyer)", API: "GET /api/v1/postbacks/dlq", APIRequired: true, UI: "/integrations/postbacks", UIMissing: false, Phase: "CPA-M4"},
-	{Area: "Team invite / assign", API: "POST /api/v1/team/members", APIRequired: true, UI: "/team", UIMissing: false, Phase: "CPA-M5"},
-	{Area: "Publisher dashboard", API: "GET /api/v1/publisher/dashboard", APIRequired: true, UI: "/publisher", UIMissing: false, Phase: "CPA-M6"},
-	{Area: "Self-serve portal", API: "GET /api/v1/selfserve/templates", APIRequired: true, UI: "/selfserve", UIMissing: false, Phase: "CPA-M7"},
-	{Area: "Unified DLQ inbox", API: "GET /api/v1/ops/dlq/inbox", APIRequired: true, UI: "/ops/dlq", UIMissing: false, Phase: "CPA-M8"},
-	{Area: "Consent proof browser", API: "GET /api/v1/ops/consent/proofs", APIRequired: true, UI: "/ops/consent", UIMissing: false, Phase: "CPA-M8"},
-	{Area: "Support feedback form", API: "POST /api/v1/support/feedback", APIRequired: true, UI: "/support/feedback", UIMissing: false, Phase: "CPA-M8"},
+	{Area: "Customer billing forecast", API: "GET /api/v1/customers/{id}/billing/forecast", APIRequired: true, UI: "/customers/:id", UIMissing: false, Phase: "customer_billing"},
+	{Area: "Invoice ledger lines", API: "GET /api/v1/billing/invoices/{id}/ledger-lines", APIRequired: true, UI: "/billing/invoices/:id", UIMissing: false, Phase: "customer_billing"},
+	{Area: "Postback/CAPI DLQ (buyer)", API: "GET /api/v1/postbacks/dlq", APIRequired: true, UI: "/integrations/postbacks", UIMissing: false, Phase: "postback_dlq"},
+	{Area: "Team invite / assign", API: "POST /api/v1/team/members", APIRequired: true, UI: "/team", UIMissing: false, Phase: "team_workspace"},
+	{Area: "Publisher dashboard", API: "GET /api/v1/publisher/dashboard", APIRequired: true, UI: "/publisher", UIMissing: false, Phase: "publisher_portal"},
+	{Area: "Self-serve portal", API: "GET /api/v1/selfserve/templates", APIRequired: true, UI: "/selfserve", UIMissing: false, Phase: "selfserve_portal"},
+	{Area: "Unified DLQ inbox", API: "GET /api/v1/ops/dlq/inbox", APIRequired: true, UI: "/ops/dlq", UIMissing: false, Phase: "ops_console"},
+	{Area: "Consent proof browser", API: "GET /api/v1/ops/consent/proofs", APIRequired: true, UI: "/ops/consent", UIMissing: false, Phase: "ops_console"},
+	{Area: "Support feedback form", API: "POST /api/v1/support/feedback", APIRequired: true, UI: "/support/feedback", UIMissing: false, Phase: "ops_console"},
 }
 
 func readRepoFile(t *testing.T, root, rel string) string {

@@ -61,8 +61,34 @@ bash scripts/dev/stack.sh full    # Launches PostgreSQL, Redis Shards, and Click
 | :--- | :--- | :--- |
 | `single-vps` / `full` | Tracker, Processor, Control API, Postgres, Redis x4, ClickHouse | Complete local development mimicking production environments. |
 | `infra` | PostgreSQL, Redis x6 (with Sentinel), ClickHouse | Running core datastores while executing Go microservices locally. |
-| `ingest-only` | Tracker, Processor, Control API, PostgreSQL, Redis x4 (No ClickHouse) | Low-memory execution. Focuses on redirects and Meta CAPI syncs. |
+| `ingest-only` | Tracker, Processor, Control API, PostgreSQL, Redis x4 (No ClickHouse) | Low-memory execution. Focuses on redirects and Meta CAPI syncs. **Min RAM ~4 GB.** |
 | `analytics-ml` | Core Stack + `fraud-scorer` + `ivt-detector` | Training and testing machine learning models and IVT filters. |
+
+### One-click appliance bootstrap
+
+From a fresh clone (Go + Docker required):
+
+```bash
+bash scripts/install/appliance_bootstrap.sh
+```
+
+The script runs `make gen`, seeds a pilot JWT when `deploy/vendor/license_private.key` is present, downloads GeoIP when `MAXMIND_LICENSE_KEY` is set, starts compose, runs `seed_admin.sh`, and prints click URL plus integration template import curl.
+
+| Flag | Effect |
+| :--- | :--- |
+| `--profile full` | Start ClickHouse and full `single_vps` stack (~8 GB RAM) |
+| `--with-bpf` | Also run `make gen bpf-dev` |
+| `--skip-up` | Codegen/license/geoip only |
+| `--dry-run` | Same as `--skip-up` but prints summary at end |
+| `--skip-geoip` | Skip MaxMind download |
+
+Minimum RAM (comfortable dev):
+
+| Profile | RAM | Compose command |
+| :--- | ---: | :--- |
+| `ingest-only` | 4 GB | `bash scripts/dev/stack.sh ingest-only` |
+| `full` / `single-vps` | 8 GB | `bash scripts/dev/stack.sh full` |
+| `analytics-ml` | 12 GB+ | `bash scripts/dev/stack.sh analytics-ml` |
 
 To verify that all local systems are operating cleanly, run:
 ```bash
@@ -100,6 +126,41 @@ make build-bin
 | **HTTP 403 Forbidden on Write** | Missing administrative ACLs | Verify your account `permissions[]` via `/api/v1/auth/me`. |
 | **HTTP 403 CSRF Failure** | Browser failed to load session | Refresh the page. Ensure the auth handshake completed cleanly. |
 | **Stale Dashboard Metrics** | Browser UI cache out of sync | Perform a hard browser reload (`Ctrl + F5` or `Cmd + Shift + R`). |
+
+---
+
+## Hosted landers
+
+Operators can upload ZIP archives and edit HTML/CSS/JS in the admin UI (`Campaigns` -> `Flows` -> lander row).
+
+| Surface | Path / env |
+| :--- | :--- |
+| ZIP upload | `POST /api/v1/landers/{id}/hosted-upload` |
+| File editor | `/campaigns/landers/{id}/editor` |
+| Live traffic | `{LANDER_PUBLIC_BASE_URL}/lp/{lander_id}/` (nginx alias in prod) |
+| Draft preview | `/lp-preview/{lander_id}/?token=...` (control plane, token TTL 1 h) |
+
+Env vars (see `.env.example`): `LANDER_STORE_ROOT`, `LANDER_PUBLIC_BASE_URL`, `LANDER_MAX_ZIP_BYTES`, `LANDER_PREVIEW_SECRET`, `FLOW_RELOAD_CHANNEL`.
+
+Dev default store: `var/landers/`. Mount the same path on edge nginx for static `/lp/` without proxying through control.
+
+---
+
+## Moderator intel feed
+
+Scale+ SKU feature (`moderator_intel_feed`). Tracker pulls a signed `moderator_intel_v1` JSON pack into `MODERATOR_INTEL_FEED_DIR` on a refresh interval. Hot path matches visitor IPs against an in-memory LPM table; when the campaign flag `moderator_intel_enabled` is on, `/click` serves the safe page (defensive only, no outbound probing).
+
+| Surface | Path / env |
+| :--- | :--- |
+| Feed format | `moderator_intel_v1.json` + `moderator_intel_v1.sig` (HMAC-SHA256) |
+| Campaign toggle | Admin campaign config -> "Moderator intel feed" |
+| Signal | `moderator_ip` (L1-high, weight 45) |
+
+Env vars (see `.env.example`): `MODERATOR_INTEL_ENABLED`, `MODERATOR_INTEL_FEED_DIR`, `MODERATOR_INTEL_FEED_REFRESH_INTERVAL`, optional `MODERATOR_INTEL_FEED_URL`, `MODERATOR_INTEL_FEED_SECRET`, `MODERATOR_INTEL_FEED_DOWNLOAD`, `MODERATOR_INTEL_ALLOW_UNSIGNED`.
+
+Corrupt or unsigned refresh retains the last good snapshot (fail-open on first boot with empty table).
+
+Campaign `review_traffic_action` (`safe_page`, `block`, `passthrough`) applies when TLS/CIDR/proxy-VPN/moderator intel signals match on `/click`.
 
 ---
 

@@ -49,6 +49,7 @@ func TestClickRedirectGnet_fraudRedirect(t *testing.T) {
 		c.SafePageURL = "https://safe.example/white"
 		c.SilentRejectEnabled = true
 	})
+	t.Cleanup(resetStaticCampaignBaseline)
 
 	store := NewBrandCreativeStore(nil, 0)
 	store.cache.Store(&brandCreativeMapSnapshot{

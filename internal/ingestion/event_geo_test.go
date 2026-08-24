@@ -26,6 +26,7 @@ func TestEnsureIngestGeo_cachesForGeoFilter(t *testing.T) {
 	campID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	staticCampaign.ID = campID
 	staticCampaign.TargetCountries = map[string]struct{}{"US": {}}
+	t.Cleanup(resetStaticCampaignBaseline)
 	evt.CampaignID = campID
 	err := f.Check(t.Context(), evt)
 	assert.NoError(t, err)

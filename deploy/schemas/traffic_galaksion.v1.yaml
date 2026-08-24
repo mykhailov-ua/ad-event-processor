@@ -1,0 +1,29 @@
+version: 1
+tokens:
+  - name: click_id
+    query_key: sub1
+    max_len: 128
+  - name: zone_id
+    query_key: zone_id
+    max_len: 64
+  - name: creative_id
+    query_key: creative_id
+    max_len: 64
+  - name: galaksion_campaign_id
+    query_key: galaksion_camp_id
+    max_len: 64
+  - name: device
+    query_key: device
+    max_len: 32
+  - name: os
+    query_key: os
+    max_len: 32
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: click_id
+    source: query
+    key: click_id
+    required: false

@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"ad-event-processor/pkg/coldpath"
@@ -15,6 +16,7 @@ type CustomerDTO struct {
 	Name            string `json:"name"`
 	Balance         string `json:"balance"`
 	Currency        string `json:"currency"`
+	CostCenter      string `json:"cost_center,omitempty"`
 	ActiveCampaigns int64  `json:"active_campaigns"`
 	TotalSpend      string `json:"total_spend"`
 	CreatedAt       string `json:"created_at"`
@@ -28,8 +30,13 @@ type CustomerReader interface {
 	GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerDTO, error)
 }
 
+type CustomerCostCenterUpdater interface {
+	UpdateCustomerCostCenter(ctx context.Context, customerID uuid.UUID, costCenter string) (CustomerDTO, error)
+}
+
 type CustomersHTTPHandlers struct {
 	Customers               CustomerReader
+	CostCenter              CustomerCostCenterUpdater
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCustomerAccess func(*http.Request, string) error
@@ -50,6 +57,9 @@ func (h *CustomersHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("GET /api/v1/customers", limit(perm("customers:read", h.listCustomers)))
 	mux.HandleFunc("GET /api/v1/customers/{id}", limit(perm("customers:read", h.getCustomer)))
+	if h.CostCenter != nil {
+		mux.HandleFunc("PATCH /api/v1/customers/{id}/cost-center", limit(perm("customers:write", h.patchCustomerCostCenter)))
+	}
 }
 
 func (h *CustomersHTTPHandlers) listCustomers(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +86,32 @@ func (h *CustomersHTTPHandlers) getCustomer(w http.ResponseWriter, r *http.Reque
 		}
 	}
 	cust, err := h.Customers.GetCustomerDTO(r.Context(), customerID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, cust)
+}
+
+func (h *CustomersHTTPHandlers) patchCustomerCostCenter(w http.ResponseWriter, r *http.Request) {
+	rawID := r.PathValue("id")
+	customerID, err := uuid.Parse(rawID)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, customerID.String()); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	var req PatchCustomerCostCenterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json body")
+		return
+	}
+	cust, err := h.CostCenter.UpdateCustomerCostCenter(r.Context(), customerID, req.CostCenter)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

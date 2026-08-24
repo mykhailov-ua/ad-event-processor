@@ -83,7 +83,7 @@ func TestXDP_fingerprintDoesNotCauseDrop(t *testing.T) {
 	}
 }
 
-func TestCompliance_M22C3_noFingerprintBlockMap(t *testing.T) {
+func TestCompliance_edgeNoFingerprintBlockMap(t *testing.T) {
 	data, err := os.ReadFile("../../deploy/edge/xdp/bpf/edge_filter.c")
 	require.NoError(t, err)
 	src := string(data)

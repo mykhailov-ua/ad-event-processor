@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	gaqlDateRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
-	hexTokenRE = regexp.MustCompile(`^[0-9a-f]+$`)
+	gaqlDateRE   = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
+	gaqlDigitsRE = regexp.MustCompile(`^\d+$`)
+	hexTokenRE   = regexp.MustCompile(`^[0-9a-f]+$`)
 )
 
 func ValidClickHouseIdentifier(name string) bool {
@@ -30,6 +31,13 @@ func ValidGAQLDate(date string) bool {
 	}
 	_, err := time.Parse("2006-01-02", date)
 	return err == nil
+}
+
+func ValidGAQLDigits(value string) bool {
+	if value == "" || len(value) > 32 {
+		return false
+	}
+	return gaqlDigitsRE.MatchString(value)
 }
 
 func ValidCHHexToken(token string) bool {

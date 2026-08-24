@@ -34,6 +34,9 @@ func (m *MockDBHealthWithDelay) Ping(ctx context.Context) error {
 }
 
 func TestUnifiedFilter_LatencySLA(t *testing.T) {
+	redisClient, cleanup := setupTestRedis(t)
+	defer cleanup()
+
 	campID := uuid.New()
 	custID := uuid.New()
 	reg := &mockRegistry{}
@@ -46,9 +49,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	staticCampaign.CustomerIDStrAny = custID.String()
 	staticCampaign.DailyBudgetMicroAny = int64(10_000_000)
 	staticCampaign.Location = time.UTC
-
-	redisClient, cleanup := setupTestRedis(t)
-	defer cleanup()
+	t.Cleanup(resetStaticCampaignBaseline)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

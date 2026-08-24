@@ -183,8 +183,8 @@ func TestAPI_ExportCustomerBalance_BufferOverflowCap(t *testing.T) {
 	assert.NotEmpty(t, resp.Header().Get("X-Next-Cursor"))
 
 	bytesWritten, _ := strconv.Atoi(resp.Header().Get("X-Export-Bytes"))
-	assert.LessOrEqual(t, bytesWritten, ledgerExportMaxBytes)
-	assert.Greater(t, bytesWritten, ledgerExportMaxBytes-50_000)
+	assert.LessOrEqual(t, bytesWritten, defaultExportChunkMaxBytes)
+	assert.Greater(t, bytesWritten, defaultExportChunkMaxBytes-50_000)
 }
 
 func TestAPI_ExportCustomerBalance_RateLimit(t *testing.T) {

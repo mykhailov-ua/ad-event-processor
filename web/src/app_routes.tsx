@@ -34,6 +34,21 @@ const CampaignFlowsPage = lazy(() =>
     default: mod.CampaignFlowsPage,
   }))
 );
+const LanderEditorPage = lazy(() =>
+  import('./pages/lander_editor_page.js').then((mod) => ({
+    default: mod.LanderEditorPage,
+  }))
+);
+const FlowBuilderPage = lazy(() =>
+  import('./pages/flow_builder_page.js').then((mod) => ({
+    default: mod.FlowBuilderPage,
+  }))
+);
+const FirstCampaignWizardPage = lazy(() =>
+  import('./pages/first_campaign_wizard_page.js').then((mod) => ({
+    default: mod.FirstCampaignWizardPage,
+  }))
+);
 const CampaignDetailPage = lazy(() =>
   import('./pages/campaign_detail_page.js').then((mod) => ({
     default: mod.CampaignDetailPage,
@@ -369,7 +384,16 @@ export function AppRoutes() {
         <Route path="/customers" element={lazyRoute(<CustomersPage />)} />
         <Route path="/customers/:id" element={lazyRoute(<CustomerDetailPage />)} />
         <Route path="/campaigns" element={lazyRoute(<CampaignsPage />)} />
+        <Route path="/campaigns/wizard" element={lazyRoute(<FirstCampaignWizardPage />)} />
         <Route path="/campaigns/flows" element={lazyRoute(<CampaignFlowsPage />)} />
+        <Route
+          path="/campaigns/landers/:id/editor"
+          element={lazyRoute(<LanderEditorPage />)}
+        />
+        <Route
+          path="/campaigns/flows/:id/builder"
+          element={lazyRoute(<FlowBuilderPage />)}
+        />
         <Route path="/campaigns/:id" element={lazyRoute(<CampaignDetailPage />)} />
         <Route path="/rtb/deals" element={lazyRoute(<RtbDealsPage />)} />
         <Route path="/billing/invoices/:id" element={lazyRoute(<InvoiceDetailPage />)} />

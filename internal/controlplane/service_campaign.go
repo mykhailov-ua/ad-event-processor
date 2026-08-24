@@ -143,7 +143,8 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 		req.FreqLimit != nil || req.FreqWindow != nil || req.TargetCountries != nil ||
 		req.TargetURL != nil || req.ReferrerFilter != nil ||
 		req.SafePageURL != nil || req.SafePageEnabled != nil || req.AttestationEnabled != nil || req.AttestationMode != nil || req.AttestationTTLSec != nil || req.DmrEnabled != nil ||
-		req.L1CIDRBlockEnabled != nil || req.L15ProxyVPNBlockEnabled != nil ||
+		req.CIDRBlockEnabled != nil || req.ProxyVPNBlockEnabled != nil || req.ModeratorIntelEnabled != nil ||
+		req.ReviewTrafficAction != nil ||
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
 		req.LinkSigningEnabled != nil || req.LinkSigningTTLSec != nil ||
 		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil
@@ -277,13 +278,25 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 			if req.DmrEnabled != nil {
 				dmrEnabled = *req.DmrEnabled
 			}
-			l1CidrBlock := locked.L1CidrBlockEnabled
-			if req.L1CIDRBlockEnabled != nil {
-				l1CidrBlock = *req.L1CIDRBlockEnabled
+			cidrBlock := locked.CidrBlockEnabled
+			if req.CIDRBlockEnabled != nil {
+				cidrBlock = *req.CIDRBlockEnabled
 			}
-			l15ProxyVPNBlock := locked.L15ProxyVpnBlockEnabled
-			if req.L15ProxyVPNBlockEnabled != nil {
-				l15ProxyVPNBlock = *req.L15ProxyVPNBlockEnabled
+			proxyVPNBlock := locked.ProxyVpnBlockEnabled
+			if req.ProxyVPNBlockEnabled != nil {
+				proxyVPNBlock = *req.ProxyVPNBlockEnabled
+			}
+			moderatorIntel := locked.ModeratorIntelEnabled
+			if req.ModeratorIntelEnabled != nil {
+				moderatorIntel = *req.ModeratorIntelEnabled
+			}
+			reviewTrafficAction := locked.ReviewTrafficAction
+			if req.ReviewTrafficAction != nil {
+				parsed := domain.ParseReviewTrafficAction(*req.ReviewTrafficAction)
+				if !parsed.Valid() {
+					return fmt.Errorf("invalid review_traffic_action")
+				}
+				reviewTrafficAction = string(parsed)
 			}
 			tlsFingerprintBlock := locked.TlsFingerprintBlockEnabled
 			if req.TLSFingerprintBlockEnabled != nil {
@@ -352,8 +365,10 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 				ConnTypePolicy:             connTypePolicy,
 				LinkSigningEnabled:         linkSigningEnabled,
 				LinkSigningTtlSec:          linkSigningTTL,
-				L1CidrBlockEnabled:         l1CidrBlock,
-				L15ProxyVpnBlockEnabled:    l15ProxyVPNBlock,
+				CidrBlockEnabled:         cidrBlock,
+				ProxyVpnBlockEnabled:    proxyVPNBlock,
+				ModeratorIntelEnabled:      moderatorIntel,
+				ReviewTrafficAction:        reviewTrafficAction,
 			})
 			if err != nil {
 				return err
@@ -583,8 +598,10 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		AttestationMode:            c.AttestationMode,
 		AttestationTTLSec:          c.AttestationTtlSec,
 		DmrEnabled:                 c.DmrEnabled,
-		L1CIDRBlockEnabled:         c.L1CidrBlockEnabled,
-		L15ProxyVPNBlockEnabled:    c.L15ProxyVpnBlockEnabled,
+		CIDRBlockEnabled:         c.CidrBlockEnabled,
+		ProxyVPNBlockEnabled:    c.ProxyVpnBlockEnabled,
+		ModeratorIntelEnabled:      c.ModeratorIntelEnabled,
+		ReviewTrafficAction:        string(domain.ParseReviewTrafficAction(c.ReviewTrafficAction)),
 		TLSFingerprintBlockEnabled: c.TlsFingerprintBlockEnabled,
 		ConnTypePolicy:             c.ConnTypePolicy,
 		LinkSigningEnabled:         c.LinkSigningEnabled,

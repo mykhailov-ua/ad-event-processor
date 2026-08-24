@@ -80,11 +80,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	require.NoError(t, json.NewDecoder(ownerResp.Body).Decode(&ownerReport))
 	leakMarker := ownerReport.Balance
 	require.NotEmpty(t, leakMarker)
-	paths := []string{
-		"/api/v1/customers/" + victimID.String() + "/balance",
-		"/api/v1/campaigns/" + campID.String() + "/stats",
-		"/api/v1/customers/" + victimID.String() + "/balance/export?format=csv",
-	}
+	paths := tenantIsolationProbePaths(victimID.String(), campID.String())
 
 	var forbidden atomic.Int32
 	var wg sync.WaitGroup
@@ -276,7 +272,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 			if resp.Code == http.StatusOK && resp.Header().Get("X-Export-Truncated") == "true" {
 				truncations.Add(1)
 				bytesWritten, _ := strconv.Atoi(resp.Header().Get("X-Export-Bytes"))
-				assert.LessOrEqual(t, bytesWritten, ledgerExportMaxBytes)
+				assert.LessOrEqual(t, bytesWritten, defaultExportChunkMaxBytes)
 			}
 		}()
 	}
@@ -294,8 +290,8 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 
 	page1IDs := parseExportCSVIds(t, resp1.Body.String())
 	bytesWritten, _ := strconv.Atoi(resp1.Header().Get("X-Export-Bytes"))
-	require.LessOrEqual(t, bytesWritten, ledgerExportMaxBytes)
-	require.Greater(t, bytesWritten, ledgerExportMaxBytes-50_000)
+	require.LessOrEqual(t, bytesWritten, defaultExportChunkMaxBytes)
+	require.Greater(t, bytesWritten, defaultExportChunkMaxBytes-50_000)
 
 	req2, _ := http.NewRequest("GET", exportURL+"&cursor="+cursor, http.NoBody)
 	withAdminAPIKey(req2, cfg)
@@ -323,7 +319,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 		"rows_seeded":      strconv.Itoa(rows),
 		"workers":          strconv.Itoa(apiFaultWorkers),
 		"truncated":        "true",
-		"max_bytes":        strconv.Itoa(ledgerExportMaxBytes),
+		"max_bytes":        strconv.Itoa(defaultExportChunkMaxBytes),
 		"cursor_resume_ok": "true",
 		"baseline_ok":      "true",
 		"fault_type":       "oversized_ledger_export",

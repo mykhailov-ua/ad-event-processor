@@ -19,7 +19,7 @@ func TestTLSFingerprint_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 
 	table := NewTLSFingerprintTable()
 	cfg := &config.Config{
-		TLSFingerprintL1Enabled:   true,
+		TLSFingerprintEnabled:   true,
 		TLSFingerprintFeedDir:     dir,
 		TLSFingerprintFeedRefresh: time.Hour,
 	}
@@ -56,7 +56,7 @@ func TestTLSFingerprint_FeedLoaderLoadsAllowlist(t *testing.T) {
 
 	table := NewTLSFingerprintTable()
 	cfg := &config.Config{
-		TLSFingerprintL1Enabled:   true,
+		TLSFingerprintEnabled:   true,
 		TLSFingerprintFeedDir:     dir,
 		TLSFingerprintFeedRefresh: time.Hour,
 	}

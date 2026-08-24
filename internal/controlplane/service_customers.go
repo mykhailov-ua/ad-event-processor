@@ -22,7 +22,6 @@ import (
 type LedgerDTO = BalanceLedgerDTO
 
 const (
-	ledgerExportMaxBytes   = 10 * 1024 * 1024
 	ledgerExportBatchLimit = 500
 )
 
@@ -67,6 +66,7 @@ func (s *Service) ListCustomers(ctx context.Context, limit, offset int32) ([]Cus
 			Name:            r.Name,
 			Balance:         formatMicro(r.Balance),
 			Currency:        r.Currency,
+			CostCenter:      r.CostCenter,
 			ActiveCampaigns: st.ActiveCampaigns,
 			TotalSpend:      formatMicro(st.TotalSpend),
 			CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
@@ -97,6 +97,7 @@ func (s *Service) GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerDTO
 		Name:            r.Name,
 		Balance:         formatMicro(r.Balance),
 		Currency:        r.Currency,
+		CostCenter:      r.CostCenter,
 		ActiveCampaigns: st.ActiveCampaigns,
 		TotalSpend:      formatMicro(st.TotalSpend),
 		CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
@@ -156,7 +157,7 @@ func (s *Service) ExportCustomerLedgerCSV(ctx context.Context, customerID uuid.U
 		return LedgerExportResult{}, err
 	}
 
-	limited := &limitedWriter{w: w, limit: ledgerExportMaxBytes}
+	limited := &limitedWriter{w: w, limit: exportChunkMaxBytes()}
 	cw := csv.NewWriter(limited)
 	if err := cw.Write([]string{"id", "customer_id", "campaign_id", "amount", "type", "idempotency_hash", "created_at"}); err != nil {
 		return LedgerExportResult{}, err

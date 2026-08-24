@@ -49,7 +49,7 @@ type cidrFeedLoader struct {
 }
 
 func NewCIDRFeedLoader(cfg *config.Config, table *CIDRTable) *cidrFeedLoader {
-	if cfg == nil || !cfg.CIDRL1Enabled || table == nil {
+	if cfg == nil || !cfg.CIDRBlockEnabled || table == nil {
 		return nil
 	}
 	l := &cidrFeedLoader{

@@ -260,6 +260,22 @@ func (h *IntegrationSchemaHTTPHandlers) applySchema(w http.ResponseWriter, r *ht
 			return
 		}
 		applied["url_template"] = tpl
+	case integrationschema.KindAffiliateReceivePostback:
+		parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
+		if err != nil || parsedKind != integrationschema.KindAffiliateReceivePostback {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid affiliate receive schema")
+			return
+		}
+		recv := parsed.(*integrationschema.AffiliateReceivePostbackSchema)
+		trackingDomain := ""
+		if h.ResolveTrackingDomain != nil {
+			trackingDomain = h.ResolveTrackingDomain(r.Context())
+		}
+		panelURL := integrationschema.BuildAffiliateReceivePanelURL(trackingDomain, recv)
+		applied["panel_postback_url"] = panelURL
+		if suffix := strings.TrimSpace(recv.OfferURLSuffix); suffix != "" {
+			applied["offer_url_suffix"] = suffix
+		}
 	case integrationschema.KindInboundTokens:
 		parsedKind, parsed, err := integrationschema.ParseDocument(schemaBody)
 		if err != nil || parsedKind != integrationschema.KindInboundTokens {

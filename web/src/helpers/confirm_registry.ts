@@ -101,7 +101,7 @@ const registry = new Map<string, ConfirmEntry>([
     'POST /integration/schemas/{id}/apply',
     { level: 'standard', label: 'Apply integration schema' },
   ],
-  ['POST /campaigns/{id}/apply-templates', { level: 'standard', label: 'Apply GM-M4 templates' }],
+  ['POST /campaigns/{id}/apply-templates', { level: 'standard', label: 'Apply bundled integration templates' }],
 ]);
 
 export function getConfirmLevel(method: string, path: string): ConfirmEntry {

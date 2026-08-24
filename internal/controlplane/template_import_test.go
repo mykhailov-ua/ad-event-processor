@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestGMM4_ImportAndApplyCampaignTemplates(t *testing.T) {
+func TestImportAndApplyCampaignTemplates(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}

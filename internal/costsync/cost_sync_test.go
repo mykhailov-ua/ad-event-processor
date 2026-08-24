@@ -99,6 +99,173 @@ func TestOAuthRefresh_GoogleHttptest(t *testing.T) {
 	require.True(t, expires.After(time.Now()))
 }
 
+func TestOAuthRefresh_TikTokHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/open_api/v1.3/oauth2/refresh_token/", r.URL.Path)
+		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
+		var body map[string]string
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+		require.Equal(t, "tt-app", body["app_id"])
+		require.Equal(t, "tt-secret", body["secret"])
+		require.Equal(t, "refresh_token", body["grant_type"])
+		require.Equal(t, "rt-old", body["refresh_token"])
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"code":    0,
+			"message": "OK",
+			"data": map[string]any{
+				"access_token":  "tt-new",
+				"refresh_token": "rt-new",
+				"expires_in":    86400,
+			},
+		})
+	}))
+	defer srv.Close()
+
+	access, refresh, expires, err := refreshTikTokOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, srv.URL+"/open_api/v1.3", "tt-app", "tt-secret", Credential{RefreshToken: "rt-old"})
+	require.NoError(t, err)
+	require.Equal(t, "tt-new", access)
+	require.Equal(t, "rt-new", refresh)
+	require.True(t, expires.After(time.Now().Add(23*time.Hour)))
+}
+
+func TestOAuthRefresh_RevcontentHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/oauth/token", r.URL.Path)
+		require.Equal(t, "application/x-www-form-urlencoded", r.Header.Get("Content-Type"))
+		_ = r.ParseForm()
+		require.Equal(t, "client_credentials", r.FormValue("grant_type"))
+		require.Equal(t, "rc-client", r.FormValue("client_id"))
+		require.Equal(t, "rc-secret", r.FormValue("client_secret"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "rev-new",
+			"expires_in":   86400,
+		})
+	}))
+	defer srv.Close()
+
+	token, expires, err := refreshRevcontentOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, srv.URL, Credential{AccountID: "rc-client", APIKey: "rc-secret"})
+	require.NoError(t, err)
+	require.Equal(t, "rev-new", token)
+	require.True(t, expires.After(time.Now().Add(23*time.Hour)))
+}
+
+func TestOAuthRefresh_MicrosoftAdsHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/common/oauth2/v2.0/token", r.URL.Path)
+		_ = r.ParseForm()
+		require.Equal(t, "refresh_token", r.FormValue("grant_type"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "ms-new",
+			"expires_in":   3600,
+		})
+	}))
+	defer srv.Close()
+
+	client := &http.Client{Transport: roundTripRewriteHost(srv.URL, nil)}
+	token, expires, err := refreshMicrosoftOAuth(context.Background(), client, "ms-client", "ms-secret", Credential{RefreshToken: "rt-ms"})
+	require.NoError(t, err)
+	require.Equal(t, "ms-new", token)
+	require.True(t, expires.After(time.Now()))
+}
+
+func TestOAuthRefresh_SnapchatHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/login/oauth2/access_token", r.URL.Path)
+		_ = r.ParseForm()
+		require.Equal(t, "refresh_token", r.FormValue("grant_type"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "snap-new",
+			"refresh_token": "snap-rt-new",
+			"expires_in":    3600,
+		})
+	}))
+	defer srv.Close()
+
+	access, refresh, expires, err := refreshSnapchatOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, srv.URL+"/login/oauth2/access_token", "snap-client", "snap-secret", Credential{RefreshToken: "rt-snap"})
+	require.NoError(t, err)
+	require.Equal(t, "snap-new", access)
+	require.Equal(t, "snap-rt-new", refresh)
+	require.True(t, expires.After(time.Now()))
+}
+
+func TestOAuthRefresh_LinkedInHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/oauth/v2/accessToken", r.URL.Path)
+		_ = r.ParseForm()
+		require.Equal(t, "refresh_token", r.FormValue("grant_type"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "li-new",
+			"refresh_token": "li-rt-new",
+			"expires_in":    1800,
+		})
+	}))
+	defer srv.Close()
+
+	access, refresh, expires, err := refreshLinkedInOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, srv.URL+"/oauth/v2/accessToken", "li-client", "li-secret", Credential{RefreshToken: "rt-li"})
+	require.NoError(t, err)
+	require.Equal(t, "li-new", access)
+	require.Equal(t, "li-rt-new", refresh)
+	require.True(t, expires.After(time.Now()))
+}
+
+func TestOAuthRefresh_PinterestHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v5/oauth/token", r.URL.Path)
+		_ = r.ParseForm()
+		require.Equal(t, "refresh_token", r.FormValue("grant_type"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token":  "pin-new",
+			"refresh_token": "pin-rt-new",
+			"expires_in":    3600,
+		})
+	}))
+	defer srv.Close()
+
+	access, refresh, expires, err := refreshPinterestOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, srv.URL+"/v5/oauth/token", "pin-client", "pin-secret", Credential{RefreshToken: "rt-pin"})
+	require.NoError(t, err)
+	require.Equal(t, "pin-new", access)
+	require.Equal(t, "pin-rt-new", refresh)
+	require.True(t, expires.After(time.Now()))
+}
+
+func TestOAuthRefresh_TrafficStarsHttptest(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/v1/auth/token", r.URL.Path)
+		_ = r.ParseForm()
+		require.Equal(t, "refresh_token", r.FormValue("grant_type"))
+		require.Equal(t, "offline-key", r.FormValue("refresh_token"))
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"access_token": "ts-new",
+			"expires_in":   36000,
+		})
+	}))
+	defer srv.Close()
+
+	token, expires, err := refreshTrafficStarsOAuth(context.Background(), &http.Client{
+		Transport: roundTripRewriteHost(srv.URL, nil),
+	}, srv.URL, Credential{RefreshToken: "offline-key"})
+	require.NoError(t, err)
+	require.Equal(t, "ts-new", token)
+	require.True(t, expires.After(time.Now().Add(9*time.Hour)))
+}
+
 func roundTripRewriteHost(target string, base http.RoundTripper) http.RoundTripper {
 	if base == nil {
 		base = http.DefaultTransport
@@ -344,7 +511,7 @@ func TestUpsertCredential_EncryptionRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	worker := NewWorker(pool, []byte("postback-encryption-secret-key32"))
-	cred, err := worker.decryptCredential(row)
+	cred, err := worker.DecryptCredential(row)
 	require.NoError(t, err)
 	require.Equal(t, "access", cred.AccessToken)
 	require.Equal(t, "refresh", cred.RefreshToken)

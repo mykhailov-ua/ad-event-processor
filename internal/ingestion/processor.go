@@ -23,7 +23,7 @@ import (
 
 type StreamConsumer struct {
 	store              domain.EventStore
-	redisClient                redis.UniversalClient
+	redisClient        redis.UniversalClient
 	streamName         string
 	groupName          string
 	consumerID         string
@@ -120,7 +120,7 @@ func NewStreamConsumer(
 
 	return &StreamConsumer{
 		store:              store,
-		redisClient:                redisClient,
+		redisClient:        redisClient,
 		streamName:         streamName,
 		groupName:          groupName,
 		consumerID:         uniqueConsumerID,
@@ -721,6 +721,7 @@ func (consumer *StreamConsumer) parseMessage(id string, values map[string]interf
 			}
 			event.FraudScore = pbEvt.FraudScore
 			event.SilentRejectEvent = pbEvt.SilentRejectEvent
+			event.ReviewRoutedEvent = pbEvt.ReviewRoutedEvent
 			if len(pbEvt.UserId) > 0 {
 				event.StringBuffer = append(event.StringBuffer, pbEvt.UserId...)
 				event.UserID = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.UserId):])

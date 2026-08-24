@@ -1,0 +1,12 @@
+{
+  "elements": [
+    {
+      "costInUsd": "18.75",
+      "dateRange": {
+        "start": { "day": 24, "month": 8, "year": 2026 },
+        "end": { "day": 24, "month": 8, "year": 2026 }
+      },
+      "pivotValues": ["urn:li:sponsoredCampaign:88042"]
+    }
+  ]
+}

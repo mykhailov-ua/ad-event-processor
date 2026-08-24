@@ -1,10 +1,25 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
+import type { CustomerDTO } from '../types/customer.js';
 import type { TeamBudgetApprovalDTO, TeamMemberDTO, TeamOverviewDTO } from '../types/team.js';
 
 export async function fetchTeamOverview(customerId?: string): Promise<TeamOverviewDTO> {
   const params = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : '';
   const res = await api<TeamOverviewDTO>(`/api/v1/team/overview${params}`);
+  return res.data;
+}
+
+export async function updateCustomerCostCenter(
+  customerId: string,
+  costCenter: string
+): Promise<CustomerDTO> {
+  const res = await apiConfirmed<CustomerDTO>(
+    `/api/v1/customers/${encodeURIComponent(customerId)}/cost-center`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ cost_center: costCenter }),
+    }
+  );
   return res.data;
 }
 

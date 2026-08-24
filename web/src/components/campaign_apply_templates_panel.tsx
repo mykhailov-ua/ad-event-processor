@@ -66,7 +66,7 @@ export function CampaignApplyTemplatesPanel({
   return (
     <SectionCard
       icon="plug"
-      title="GM-M4 integration templates"
+      title="Bundled integration templates"
       desc="Import presets under Integrations -> Schemas, then apply traffic and affiliate wiring to this campaign."
     >
       <div className="form-row">

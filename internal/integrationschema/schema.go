@@ -21,9 +21,10 @@ const (
 type Kind string
 
 const (
-	KindInboundTokens    Kind = "inbound_tokens"
-	KindOutboundPostback Kind = "outbound_postback"
-	KindStatusMapping    Kind = "status_mapping"
+	KindInboundTokens           Kind = "inbound_tokens"
+	KindOutboundPostback        Kind = "outbound_postback"
+	KindAffiliateReceivePostback Kind = "affiliate_receive_postback"
+	KindStatusMapping           Kind = "status_mapping"
 )
 
 type InboundTokenDef struct {
@@ -49,6 +50,12 @@ type OutboundPostbackSchema struct {
 	Version      int      `json:"version"`
 	URLTemplate  string   `json:"url_template"`
 	Placeholders []string `json:"placeholders"`
+}
+
+type AffiliateReceivePostbackSchema struct {
+	Version            int    `json:"version"`
+	ReceiveURLTemplate string `json:"receive_url_template"`
+	OfferURLSuffix     string `json:"offer_url_suffix,omitempty"`
 }
 
 type StatusMappingSchema struct {
@@ -119,6 +126,15 @@ func ParseDocument(raw []byte) (Kind, any, error) {
 			return "", nil, err
 		}
 		return kind, &s, nil
+	case KindAffiliateReceivePostback:
+		var s AffiliateReceivePostbackSchema
+		if err := decodeStrict(jsonBytes, &s); err != nil {
+			return "", nil, err
+		}
+		if err := validateAffiliateReceivePostback(&s); err != nil {
+			return "", nil, err
+		}
+		return kind, &s, nil
 	case KindStatusMapping:
 		var s StatusMappingSchema
 		if err := decodeStrict(jsonBytes, &s); err != nil {
@@ -135,10 +151,11 @@ func ParseDocument(raw []byte) (Kind, any, error) {
 
 func detectKind(jsonBytes []byte) (Kind, error) {
 	var probe struct {
-		Tokens       []json.RawMessage `json:"tokens"`
-		Placeholders []string          `json:"placeholders"`
-		URLTemplate  string            `json:"url_template"`
-		StatusMap    map[string]string `json:"status_map"`
+		Tokens             []json.RawMessage `json:"tokens"`
+		Placeholders       []string          `json:"placeholders"`
+		URLTemplate        string            `json:"url_template"`
+		ReceiveURLTemplate string            `json:"receive_url_template"`
+		StatusMap          map[string]string `json:"status_map"`
 	}
 	if err := json.Unmarshal(jsonBytes, &probe); err != nil {
 		return "", fmt.Errorf("invalid schema json: %w", err)
@@ -146,12 +163,14 @@ func detectKind(jsonBytes []byte) (Kind, error) {
 	switch {
 	case len(probe.Tokens) > 0:
 		return KindInboundTokens, nil
+	case probe.ReceiveURLTemplate != "":
+		return KindAffiliateReceivePostback, nil
 	case probe.URLTemplate != "" || len(probe.Placeholders) > 0:
 		return KindOutboundPostback, nil
 	case len(probe.StatusMap) > 0:
 		return KindStatusMapping, nil
 	default:
-		return "", errors.New("cannot detect schema kind (expected tokens, url_template/placeholders, or status_map)")
+		return "", errors.New("cannot detect schema kind (expected tokens, receive_url_template, url_template/placeholders, or status_map)")
 	}
 }
 
@@ -203,6 +222,34 @@ func validateInboundTokens(s *InboundTokensSchema) error {
 		}
 	}
 	return nil
+}
+
+func validateAffiliateReceivePostback(s *AffiliateReceivePostbackSchema) error {
+	if s.Version != 1 {
+		return fmt.Errorf("unsupported affiliate receive schema version %d", s.Version)
+	}
+	tpl := strings.TrimSpace(s.ReceiveURLTemplate)
+	if tpl == "" {
+		return errors.New("affiliate receive schema requires receive_url_template")
+	}
+	if len(tpl) > MaxURLTemplate {
+		return fmt.Errorf("receive_url_template exceeds %d bytes", MaxURLTemplate)
+	}
+	if !strings.Contains(tpl, "{tracking_domain}") {
+		return errors.New("receive_url_template must include {tracking_domain}")
+	}
+	return nil
+}
+
+func BuildAffiliateReceivePanelURL(trackingDomain string, s *AffiliateReceivePostbackSchema) string {
+	host := strings.TrimSpace(trackingDomain)
+	if host == "" {
+		host = "track.example.com"
+	}
+	host = strings.TrimPrefix(host, "https://")
+	host = strings.TrimPrefix(host, "http://")
+	host = strings.TrimSuffix(host, "/")
+	return strings.ReplaceAll(s.ReceiveURLTemplate, "{tracking_domain}", host)
 }
 
 func validateOutboundPostback(s *OutboundPostbackSchema) error {

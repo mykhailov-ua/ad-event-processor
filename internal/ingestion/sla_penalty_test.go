@@ -25,6 +25,9 @@ func (m *MockDBHealth) Ping(ctx context.Context) error {
 }
 
 func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
+	redisClient, cleanup := setupTestRedis(t)
+	defer cleanup()
+
 	campID := uuid.New()
 	custID := uuid.New()
 	reg := &mockRegistry{}
@@ -37,9 +40,7 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 	staticCampaign.CustomerIDStrAny = custID.String()
 	staticCampaign.DailyBudgetMicroAny = int64(10_000_000)
 	staticCampaign.Location = time.UTC
-
-	redisClient, cleanup := setupTestRedis(t)
-	defer cleanup()
+	t.Cleanup(resetStaticCampaignBaseline)
 	ctx := context.Background()
 
 	_ = redisClient.Del(ctx, "sla:penalty:active").Err()

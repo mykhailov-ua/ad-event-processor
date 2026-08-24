@@ -91,11 +91,27 @@ func validateAndApplyDefaults(cfg *Config) error {
 		cfg.Postback.StaleProcessingSec = 120
 	}
 
+	if cfg.IVT.ScanIntervalMs <= 0 {
+		cfg.IVT.ScanIntervalMs = 60000
+	}
+
 	if cfg.FraudScoring.ScanIntervalMs <= 0 {
-		cfg.FraudScoring.ScanIntervalMs = 300000
+		cfg.FraudScoring.ScanIntervalMs = 60000
 	}
 	if cfg.FraudScoring.BatchSize <= 0 {
 		cfg.FraudScoring.BatchSize = 1000
+	}
+	if cfg.FraudScoring.MicrobatchFlushMs <= 0 {
+		cfg.FraudScoring.MicrobatchFlushMs = 50
+	}
+	if cfg.FraudScoring.MicrobatchMaxLagSec <= 0 {
+		cfg.FraudScoring.MicrobatchMaxLagSec = 30
+	}
+	if cfg.FraudScoring.BoostFullResyncSec <= 0 {
+		cfg.FraudScoring.BoostFullResyncSec = 10
+	}
+	if cfg.FraudConsumerLagSec <= 0 {
+		cfg.FraudConsumerLagSec = 60
 	}
 
 	if cfg.Billing.ExportFetchRows <= 0 {

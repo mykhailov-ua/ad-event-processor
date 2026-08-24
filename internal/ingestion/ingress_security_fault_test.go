@@ -22,7 +22,7 @@ func TestFault_SecurityGap_H1_04b_ObsFoldContinuation(t *testing.T) {
 	}
 
 	faultproof.Log(t, "security_gap_h1_04b", map[string]string{
-		"gap_id":      "H1-04b",
+		"gap_id":      "http1_obs_fold_continuation",
 		"gap":         gap,
 		"disposition": disposition,
 		"risk":        "header_injection_obs_fold",
@@ -49,7 +49,7 @@ func TestFault_SecurityGap_XDFA_04_ProtoAsJSON(t *testing.T) {
 	}
 
 	faultproof.Log(t, "security_gap_xdfa_04", map[string]string{
-		"gap_id":      "XDFA-04",
+		"gap_id":      "track_proto_json_confusion",
 		"gap":         gap,
 		"disposition": disposition,
 		"risk":        "content_type_confusion_proto_json",
@@ -80,7 +80,7 @@ func TestFault_SecurityGap_G_J05b_DeepNestedJSON(t *testing.T) {
 	require.ErrorIs(t, parseErr, ErrMalformed)
 
 	faultproof.Log(t, "security_gap_g_j05b", map[string]string{
-		"gap_id":      "G-J05b",
+		"gap_id":      "json_deep_nested_stack",
 		"gap":         "closed",
 		"disposition": "rejected",
 		"risk":        "deep_nested_json_stack",

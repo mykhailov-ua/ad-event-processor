@@ -1,0 +1,26 @@
+version: 1
+tokens:
+  - name: impression_id
+    query_key: sub1
+    max_len: 128
+  - name: website_id
+    query_key: website_id
+    max_len: 64
+  - name: country
+    query_key: country
+    max_len: 8
+  - name: popads_campaign_id
+    query_key: popads_camp_id
+    max_len: 64
+  - name: bid
+    query_key: bid
+    max_len: 32
+macros:
+  - name: campaign_id
+    source: query
+    key: campaign_id
+    required: true
+  - name: click_id
+    source: query
+    key: click_id
+    required: false

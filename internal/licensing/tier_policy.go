@@ -3,13 +3,14 @@ package licensing
 import "strings"
 
 const (
-	SKUCodePilot      = "pilot"
-	SKUCodeStarter    = "starter"
-	SKUCodePro        = "pro"
-	SKUCodeScale      = "scale"
-	SKUCodeNetwork    = "network"
-	SKUCodeEnterprise = "enterprise"
-	SKUCodeLicense    = "license"
+	SKUCodePilot       = "pilot"
+	SKUCodeStarter     = "starter"
+	SKUCodePro         = "pro"
+	SKUCodeScale       = "scale"
+	SKUCodeNetwork     = "network"
+	SKUCodeEnterprise  = "enterprise"
+	SKUCodeManagedSaas = "managed_saas"
+	SKUCodeLicense     = "license"
 )
 
 func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
@@ -24,12 +25,20 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.MultiRegion = false
 		out.SlotMigration = false
 		out.ExternalResidentialIntel = false
+		out.ModeratorIntelFeed = false
+		out.AdPlatformCampaignAPI = false
 	case SKUCodePro:
+		out.RtbLive = false
+		out.OpenRTBEngine = false
+		out.IvtMLDetector = true
+		out.MlFraudBoost = false
 		out.EbpfXDPEdge = false
 		out.ExternalResidentialIntel = false
+		out.ModeratorIntelFeed = false
+		out.AdPlatformCampaignAPI = false
 	case SKUCodeScale:
 		out.EbpfXDPEdge = false
-	case SKUCodeNetwork:
+	case SKUCodeNetwork, SKUCodeEnterprise, SKUCodeManagedSaas, SKUCodeLicense:
 	}
 	return out
 }
