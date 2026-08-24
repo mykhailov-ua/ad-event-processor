@@ -3,7 +3,7 @@ package postback
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

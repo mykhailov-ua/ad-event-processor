@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/trialregistry"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/internal/trialregistry"
+	"ad-event-processor/pkg/branding"
 )
 
 const (

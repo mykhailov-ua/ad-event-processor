@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

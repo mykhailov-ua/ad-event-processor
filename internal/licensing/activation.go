@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/coldpath"
 )
 
 const HeartbeatJWTMaxTTL = 72 * time.Hour

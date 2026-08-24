@@ -9,12 +9,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/broker/log"
-	"github.com/bidshard/ad-event-processor/pkg/broker/server"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
-	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/broker/log"
+	"ad-event-processor/pkg/broker/server"
+	"ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/runtimepaths"
 )
 
 func runServe(args []string) {

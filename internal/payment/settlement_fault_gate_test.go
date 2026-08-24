@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 )

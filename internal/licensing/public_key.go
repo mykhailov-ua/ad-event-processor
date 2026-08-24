@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 const defaultPublicKeyRelPath = "deploy/vendor/license_public.key"

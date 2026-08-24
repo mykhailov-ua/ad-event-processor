@@ -1,6 +1,6 @@
 package ingestion
 
-import "github.com/bidshard/ad-event-processor/internal/domain"
+import "ad-event-processor/internal/domain"
 
 func udpShardPayloadLen(numShards uint8) int {
 	return domain.UDPShardPayloadLen(numShards)

@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/branding"
 )
 
 type FinancialReconAlerter struct {

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

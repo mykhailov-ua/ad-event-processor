@@ -3,8 +3,8 @@ package ingestion
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
 )
 
 // TCPMSSFilter emits an L2 fraud signal when edge SYN MSS (high-byte encoding) is below threshold.

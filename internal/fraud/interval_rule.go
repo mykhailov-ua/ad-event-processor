@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
+	"ad-event-processor/internal/database"
 )
 
 const (

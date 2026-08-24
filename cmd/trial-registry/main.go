@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/trialregistry"
+	"ad-event-processor/internal/trialregistry"
 )
 
 func main() {

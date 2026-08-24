@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/ingestion"
 
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/testutil"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

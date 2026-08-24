@@ -8,10 +8,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/testutil"
 
-	"github.com/bidshard/ad-event-processor/internal/postback"
+	"ad-event-processor/internal/postback"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"

@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/identity/db"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/identity/db"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"

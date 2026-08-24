@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/doctor"
+	"ad-event-processor/pkg/doctor"
 
 	"github.com/spf13/cobra"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/httpresponse"
 	"github.com/stretchr/testify/require"
 )
 

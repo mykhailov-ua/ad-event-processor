@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/netaddr"
 
 	redis "github.com/redis/go-redis/v9"
 )

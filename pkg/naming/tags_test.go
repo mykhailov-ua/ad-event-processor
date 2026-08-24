@@ -3,7 +3,7 @@ package naming_test
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 )
 
 func TestBPFTraceBuildTag(t *testing.T) {

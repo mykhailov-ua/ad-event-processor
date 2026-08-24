@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
-	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/pkg/broker/client"
+	bserver "ad-event-processor/pkg/broker/server"
 
 	"github.com/google/uuid"
 )

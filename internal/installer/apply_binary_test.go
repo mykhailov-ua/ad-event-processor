@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 
 	"gopkg.in/yaml.v3"
 )

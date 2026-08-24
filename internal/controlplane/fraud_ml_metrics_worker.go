@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 )
 
 const fraudMLEvalMetricsInterval = 2 * time.Minute

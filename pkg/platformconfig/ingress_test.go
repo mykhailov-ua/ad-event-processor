@@ -3,8 +3,8 @@ package platformconfig_test
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/stretchr/testify/assert"
 )

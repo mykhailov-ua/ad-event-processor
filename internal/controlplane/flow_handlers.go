@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )

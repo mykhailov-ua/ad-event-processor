@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/lifecycle"
 
 	"github.com/stretchr/testify/require"
 )

@@ -5,10 +5,10 @@ import (
 	"errors"
 	"os"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/telemetry"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ledger"
 
 	"github.com/redis/go-redis/v9"
 )

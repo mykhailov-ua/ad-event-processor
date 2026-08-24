@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/ingestion"
 )
 
 func NewAdsRegistry(t testing.TB, repo db.Querier) *ingestion.Registry {

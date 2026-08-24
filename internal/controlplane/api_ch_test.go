@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"ad-event-processor/internal/clickhouse/migrate"
 
 	chgo "github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"

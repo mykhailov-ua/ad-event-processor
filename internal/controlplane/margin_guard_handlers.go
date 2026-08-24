@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/bidshard/ad-event-processor/internal/ledger"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/ledger"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )

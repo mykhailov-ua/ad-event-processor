@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/logger"
 
 	"github.com/google/uuid"
 )

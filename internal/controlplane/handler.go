@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/httpresponse"
 )
 
 type Handler struct {

@@ -8,9 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

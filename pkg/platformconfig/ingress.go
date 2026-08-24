@@ -3,7 +3,7 @@ package platformconfig
 import (
 	"log/slog"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 )
 
 func NormalizeIngressSchema(raw string) string {

@@ -8,12 +8,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/internal/telemetry"
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/telemetry"
+	"ad-event-processor/pkg/broker/client"
+	"ad-event-processor/pkg/iogate"
 
 	"golang.org/x/sys/cpu"
 )

@@ -11,11 +11,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/pkg/broker"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/pkg/broker"
+	"ad-event-processor/pkg/lifecycle"
 )
 
 func main() {
@@ -59,7 +59,7 @@ func printUsage() {
 	_, _ = fmt.Fprintf(os.Stdout, "  serve      Run mmap WAL broker (gnet ingress)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "  replay     Replay historical WAL segments to target storage (e.g. clickhouse)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "\nOptions for replay:\n")
-	_, _ = fmt.Fprintf(os.Stdout, "  --data-dir     Path to broker WAL data directory (e.g. /var/lib/bidshard/broker)\n")
+	_, _ = fmt.Fprintf(os.Stdout, "  --data-dir     Path to broker WAL data directory (e.g. /var/lib/ad-event-processor/broker)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "  --topic        Topic name to replay (default: ad-events)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "  --from         RFC3339 start timestamp filter (e.g. 2026-08-08T12:00:00Z)\n")
 	_, _ = fmt.Fprintf(os.Stdout, "  --to           RFC3339 end timestamp filter (e.g. 2026-08-08T18:00:00Z)\n")
@@ -72,7 +72,7 @@ func runReplay(args []string) {
 	fs := flag.NewFlagSet("replay", flag.ExitOnError)
 
 	var (
-		dataDir   = fs.String("data-dir", "var/lib/bidshard/broker", "Path to broker WAL data directory")
+		dataDir   = fs.String("data-dir", "var/lib/ad-event-processor/broker", "Path to broker WAL data directory")
 		topic     = fs.String("topic", "ad-events", "Topic name")
 		fromStr   = fs.String("from", "", "RFC3339 start timestamp filter")
 		toStr     = fs.String("to", "", "RFC3339 end timestamp filter")

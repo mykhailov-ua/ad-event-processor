@@ -1,8 +1,8 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/rtb"
 )
 
 func rtbPrefilterReject(watcher *SettingsWatcher, catalog *RtbCatalog, targeting RtbTargetingInput) rtb.NoBidReason {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 )

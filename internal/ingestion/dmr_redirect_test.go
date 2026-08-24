@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

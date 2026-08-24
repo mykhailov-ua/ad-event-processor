@@ -3,7 +3,7 @@ package platformconfig
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/coldpath"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

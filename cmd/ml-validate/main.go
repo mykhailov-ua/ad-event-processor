@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/fraud"
+	"ad-event-processor/internal/fraud"
 )
 
 type featureFixture struct {

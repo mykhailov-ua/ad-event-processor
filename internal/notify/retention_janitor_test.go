@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/notify/db"
+	"ad-event-processor/internal/notify/db"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

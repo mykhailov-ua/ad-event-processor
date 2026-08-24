@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,7 @@ func TestFault_MLWorkerDown(t *testing.T) {
 	out, err := runAtModuleRoot(t, "go", "list", "-deps", "./cmd/tracker")
 	require.NoError(t, err, string(out))
 	deps := string(out)
-	assert.NotContains(t, deps, "github.com/bidshard/ad-event-processor/internal/fraud")
+	assert.NotContains(t, deps, "ad-event-processor/internal/fraud")
 	assert.NotContains(t, deps, "github.com/zhongdai/go-lgbm")
 
 	ctx := context.Background()

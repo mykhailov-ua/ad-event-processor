@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/pkg/naming"
 )
 
 func RunLicense(cmd string) error {

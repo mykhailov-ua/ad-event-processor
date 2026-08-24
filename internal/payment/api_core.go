@@ -3,8 +3,8 @@ package payment
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"

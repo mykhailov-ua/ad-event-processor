@@ -4,10 +4,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/runtimepaths"
 )
 
 func repoRoot() string {

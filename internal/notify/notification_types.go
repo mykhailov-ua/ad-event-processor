@@ -3,7 +3,7 @@ package notify
 import (
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/notify/db"
+	"ad-event-processor/internal/notify/db"
 )
 
 type Notification struct {

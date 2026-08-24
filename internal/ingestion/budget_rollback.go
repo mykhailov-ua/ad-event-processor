@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 //go:embed budget-rollback.lua

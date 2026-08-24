@@ -1,6 +1,6 @@
 package ingestion
 
-import "github.com/bidshard/ad-event-processor/internal/domain"
+import "ad-event-processor/internal/domain"
 
 type (
 	Sharder           = domain.Sharder

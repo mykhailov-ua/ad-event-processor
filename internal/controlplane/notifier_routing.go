@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/notify"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/notify"
 )
 
 func resolveOpsAlertTarget(cfg *config.Config) (string, string, bool) {

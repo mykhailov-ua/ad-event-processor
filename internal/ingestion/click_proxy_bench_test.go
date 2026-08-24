@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 func benchClickProxyHandler(b *testing.B) (*AdsPacketHandler, *httptest.Server, *streamCaptureConn) {

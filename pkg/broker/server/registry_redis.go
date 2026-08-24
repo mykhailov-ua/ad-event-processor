@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/broker/protocol"
 	"github.com/redis/go-redis/v9"
 )
 

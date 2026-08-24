@@ -1,9 +1,9 @@
 package server
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/keygen"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/opkey"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/regionproxy/keygen"
+	"ad-event-processor/pkg/regionproxy/opkey"
 )
 
 func init() {

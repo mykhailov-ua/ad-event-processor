@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/branding"
 
 	"github.com/spf13/cobra"
 )

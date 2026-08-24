@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/legal"
+	"ad-event-processor/pkg/legal"
 
 	"github.com/stretchr/testify/require"
 )

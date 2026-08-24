@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingestion/pb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/proxyupstream"
+	"ad-event-processor/pkg/proxyupstream"
 )
 
 func FuzzProxyUpstreamURL(f *testing.F) {

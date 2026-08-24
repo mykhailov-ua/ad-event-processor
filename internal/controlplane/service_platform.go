@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/internal/ledger"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/edge"
+	"ad-event-processor/internal/ledger"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

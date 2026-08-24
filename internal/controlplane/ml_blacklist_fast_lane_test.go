@@ -7,9 +7,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

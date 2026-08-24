@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/money"
 )
 
 type taboolaReportResponse struct {

@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/notify"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/notify"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

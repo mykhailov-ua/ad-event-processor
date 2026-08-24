@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
-	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/ingestion/pb"
+	bserver "ad-event-processor/pkg/broker/server"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

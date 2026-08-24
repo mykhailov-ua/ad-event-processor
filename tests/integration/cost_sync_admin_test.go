@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/internal/costsync"
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/costsync"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

@@ -13,11 +13,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/fraud"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/fraud"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/pkg/lifecycle"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

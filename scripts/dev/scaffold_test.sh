@@ -206,7 +206,7 @@ IMPORTS=(
   '"testing"'
 )
 if [[ "$SETUP_FUNC" == setupIntegrationPostgres || "$USES_REDIS" -eq 1 ]]; then
-  IMPORTS+=('"github.com/bidshard/ad-event-processor/internal/testutil"')
+  IMPORTS+=('"ad-event-processor/internal/testutil"')
 fi
 IMPORTS+=('"github.com/stretchr/testify/require"')
 
@@ -219,7 +219,7 @@ package $PKG_NAME
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/testutil"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

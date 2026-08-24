@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/fraud"
-	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/fraud"
+	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
 )

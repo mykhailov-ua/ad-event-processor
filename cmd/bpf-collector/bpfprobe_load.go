@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 	"github.com/cilium/ebpf"
 )
 

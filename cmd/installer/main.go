@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bidshard/ad-event-processor/internal/installer"
+	"ad-event-processor/internal/installer"
 )
 
 func main() {

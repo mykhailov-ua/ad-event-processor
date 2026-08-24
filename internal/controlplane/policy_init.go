@@ -3,7 +3,7 @@ package controlplane
 import (
 	"log/slog"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/controlplane/authz"
 )
 
 func InitPolicyStore() *authz.Store {

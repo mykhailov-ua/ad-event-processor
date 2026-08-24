@@ -2,7 +2,7 @@
 
 package licensing
 
-import "github.com/bidshard/ad-event-processor/internal/metrics"
+import "ad-event-processor/internal/metrics"
 
 func init() {
 	guardTripRecorder = func(reason string) {

@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/internal/notify"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/notify"
+	"ad-event-processor/pkg/branding"
+	"ad-event-processor/pkg/coldpath"
 )
 
 type AlertmanagerAlert struct {

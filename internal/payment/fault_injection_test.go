@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/internal/payment"
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/payment"
+	"ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

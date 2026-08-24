@@ -6,7 +6,7 @@ import (
 	"crypto/subtle"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 const (

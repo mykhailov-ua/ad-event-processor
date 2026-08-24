@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
 	"golang.org/x/sys/unix"
 )

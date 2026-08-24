@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/trialregistry"
+	"ad-event-processor/internal/trialregistry"
 
 	"github.com/stretchr/testify/require"
 )

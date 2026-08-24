@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/iogate"
 )
 
 var (

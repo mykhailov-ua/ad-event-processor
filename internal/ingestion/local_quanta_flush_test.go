@@ -12,7 +12,7 @@ import (
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 )
 
 func TestLocalQuantaFlusher_FlushOnPause(t *testing.T) {

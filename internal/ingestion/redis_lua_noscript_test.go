@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"

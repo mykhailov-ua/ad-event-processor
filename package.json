@@ -1,5 +1,5 @@
 {
-  "name": "bidshard",
+  "name": "ad-event-processor",
   "private": true,
   "type": "module",
   "scripts": {

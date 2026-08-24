@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rtb.v1;
 
-option go_package = "github.com/bidshard/ad-event-processor/internal/rtb/pb;pb";
+option go_package = "ad-event-processor/internal/rtb/pb;pb";
 
 message VastDocument {
   bytes version = 1;

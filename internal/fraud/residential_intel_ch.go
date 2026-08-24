@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	"ad-event-processor/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )

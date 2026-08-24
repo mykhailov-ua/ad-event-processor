@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/supportbundle"
+	"ad-event-processor/pkg/supportbundle"
 )
 
 func TestBundleRedaction(t *testing.T) {

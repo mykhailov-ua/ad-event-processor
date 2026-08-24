@@ -6,11 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/config"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

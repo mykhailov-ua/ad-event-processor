@@ -1,6 +1,6 @@
 package installer
 
-import "github.com/bidshard/ad-event-processor/internal/edge"
+import "ad-event-processor/internal/edge"
 
 const legacyStackSlug = "es" + "px"
 

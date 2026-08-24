@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/rtb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 )
 
 type GeoIPWatcher struct {

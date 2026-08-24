@@ -1,4 +1,4 @@
-module github.com/bidshard/ad-event-processor
+module ad-event-processor
 
 go 1.25.12
 

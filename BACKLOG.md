@@ -1036,23 +1036,23 @@ Canonical copy: `var/verify_p1_p3.log` (regenerate with commands below).
 
 ```text
 === P1 controlplane ===
-ok  	github.com/bidshard/ad-event-processor/internal/controlplane	6.232s
+ok  	ad-event-processor/internal/controlplane	6.232s
 === P1 edge quarantine ===
-ok  	github.com/bidshard/ad-event-processor/internal/edge	0.041s
+ok  	ad-event-processor/internal/edge	0.041s
 === P1 fraud ===
-ok  	github.com/bidshard/ad-event-processor/internal/fraud	2.506s
+ok  	ad-event-processor/internal/fraud	2.506s
 === P2 ingestion ipv6 ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.042s
+ok  	ad-event-processor/internal/ingestion	0.042s
 === P3 ingestion residential ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.050s
+ok  	ad-event-processor/internal/ingestion	0.050s
 === P3 fraud residential intel ===
-ok  	github.com/bidshard/ad-event-processor/internal/fraud	0.034s
+ok  	ad-event-processor/internal/fraud	0.034s
 === gates ===
 check_ch_direct: ok (tier_a subset; staticcheck warnings only)
 === loadgen proxy vpn ===
 --- PASS: TestProxyVPNClientIP_rotates (0.00s)
 --- PASS: TestMix_carveProxyVPNAndFlowRoute (0.00s)
-PASS	ok  	github.com/bidshard/ad-event-processor/cmd/loadgen	0.002s
+PASS	ok  	ad-event-processor/cmd/loadgen	0.002s
 === BPF objects ===
 -rw-r--r-- 1 root root 53824 Aug 23 16:51 deploy/edge/xdp/bpf/edge_filter.o
 -rw-r--r-- 1 root root 75968 Aug 23 16:54 deploy/dev/bpf/loadtest_probe.o
@@ -1067,15 +1067,15 @@ Canonical copy: `var/verify_p0.log` (regenerate with commands below).
 ```text
 === Phase 0 verify 2026-08-23T18:08Z ===
 === P0-1 local quanta ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.065s
+ok  	ad-event-processor/internal/ingestion	0.065s
 BenchmarkAcceptLocalQuantaFullSkip-12     5572248    214.9 ns/op    1 B/op    0 allocs/op
 BenchmarkLocalQuanta_FullSkip-12          2122522    554.5 ns/op    0 B/op    0 allocs/op
 === P0-2 prometheus rules ===
-ok  	github.com/bidshard/ad-event-processor/deploy/monitoring	0.002s
+ok  	ad-event-processor/deploy/monitoring	0.002s
 prometheus_rules_check: promtool not installed — go test only
 prometheus_rules_check: ok
 === P0-3 GMA presets ===
-ok  	github.com/bidshard/ad-event-processor/internal/controlplane	0.040s
+ok  	ad-event-processor/internal/controlplane	0.040s
 === gates ===
 anti-slop: OK
 ```
@@ -1102,21 +1102,21 @@ Canonical copy: `var/verify_p4.log` (regenerate with commands below).
 ```text
 === Phase 4 verify 2026-08-23T18:02Z ===
 === P4 attestation/safe page ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.043s
+ok  	ad-event-processor/internal/ingestion	0.043s
 === P4 device/TLS ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.040s
+ok  	ad-event-processor/internal/ingestion	0.040s
 === P4 safe page advanced ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.032s
+ok  	ad-event-processor/internal/ingestion	0.032s
 === P4 GMA/fuzz ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.039s
+ok  	ad-event-processor/internal/ingestion	0.039s
 === P4 click/TTC ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.048s
+ok  	ad-event-processor/internal/ingestion	0.048s
 === gates ===
 anti-slop: OK
 COMPLIANCE CHECK SUCCESSFUL: All defensive perimeter rules are met!
 hot-path-static: OK (49 files)
 cold_path_json_gate: OK
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.062s  # alloc subset ZeroAlloc|Check_zeroAlloc
+ok  	ad-event-processor/internal/ingestion	0.062s  # alloc subset ZeroAlloc|Check_zeroAlloc
 escape-heap-gate: OK
 ```
 
@@ -1152,11 +1152,11 @@ Canonical copy: `var/verify_p6.log` (regenerate with commands below).
 ```text
 === Phase 6 verify 2026-08-23T18:00Z ===
 === P6 ingestion unit ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.089s
+ok  	ad-event-processor/internal/ingestion	0.089s
 === P6 edge sync ===
-ok  	github.com/bidshard/ad-event-processor/internal/edge	0.040s
+ok  	ad-event-processor/internal/edge	0.040s
 === alloc gate subset ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.064s
+ok  	ad-event-processor/internal/ingestion	0.064s
 === anti_slop ===
 anti-slop: OK
 === hot_path_static ===
@@ -1189,26 +1189,26 @@ bash scripts/ci/escape_heap_gate.sh
 === RUN   TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout
 --- PASS: TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout (0.00s)
 === P8-1 full-skip regression ===
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.112s
+ok  	ad-event-processor/internal/ingestion	0.112s
 === P8-2 ML blacklist fast lane holdout ===
 === RUN   TestFault_MLBlacklistFastLaneDuringBacklog_holdout
 --- PASS: TestFault_MLBlacklistFastLaneDuringBacklog_holdout (4.24s)
     fault_proof fault=ml_blacklist_fast_lane_backlog pacing_backlog=500 ml_processed=true quarantine_shards=3
 === P8-2 outbox backpressure ===
-ok  	github.com/bidshard/ad-event-processor/internal/fraud	26.719s
+ok  	ad-event-processor/internal/fraud	26.719s
 === P8-2 controlplane regression ===
-ok  	github.com/bidshard/ad-event-processor/internal/controlplane	19.757s
-ok  	github.com/bidshard/ad-event-processor/internal/edge	0.051s
+ok  	ad-event-processor/internal/controlplane	19.757s
+ok  	ad-event-processor/internal/edge	0.051s
 === P8-3 DC ASN holdout ===
 === RUN   TestFraudFilter_DCASN_holdout
 --- PASS: TestFraudFilter_DCASN_holdout (0.00s)
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.052s  # -run='DCASN|FraudFilter_DCASN'
+ok  	ad-event-processor/internal/ingestion	0.052s  # -run='DCASN|FraudFilter_DCASN'
 === P8-4 OS fingerprint holdout ===
 === RUN   TestOSFingerprint_holdout_windowsTTL64NotFlagged
 --- PASS: TestOSFingerprint_holdout_windowsTTL64NotFlagged (0.00s)
 === RUN   TestDeviceFilter_osFingerprintSkippedNoTCPHeaders
 --- PASS: TestDeviceFilter_osFingerprintSkippedNoTCPHeaders (0.00s)
-ok  	github.com/bidshard/ad-event-processor/internal/ingestion	0.056s  # -run='OSFingerprint|DeviceFilter_osFingerprint'
+ok  	ad-event-processor/internal/ingestion	0.056s  # -run='OSFingerprint|DeviceFilter_osFingerprint'
 === P8-5 cache-line padding ===
 --- PASS: TestResidentialProxyCell_cacheLinePadded_holdout
 --- PASS: TestIPv6RotationCell_cacheLinePadded_holdout
@@ -1218,8 +1218,8 @@ BenchmarkResidentialProxy_observe-12  252867   468.5 ns/op    0 B/op    0 allocs
 === RUN   TestBlocklistStore_hostHashMap_holdout
 --- PASS: TestBlocklistStore_hostHashMap_holdout (0.00s)
 === P8-6 blocklist sync regression ===
-ok  	github.com/bidshard/ad-event-processor/internal/edge	0.051s  # -run='SyncBlocklistIncremental|BlocklistStore|RecordAutoBan|hostHashMap'
-ok  	github.com/bidshard/ad-event-processor/internal/edge	9.742s  # full package
+ok  	ad-event-processor/internal/edge	0.051s  # -run='SyncBlocklistIncremental|BlocklistStore|RecordAutoBan|hostHashMap'
+ok  	ad-event-processor/internal/edge	9.742s  # full package
 BenchmarkSyncBlocklistIncremental_changelogDelta-12    1237    99710 ns/op
 === gates ===
 anti-slop: OK

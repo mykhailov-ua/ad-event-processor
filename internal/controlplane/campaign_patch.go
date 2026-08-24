@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

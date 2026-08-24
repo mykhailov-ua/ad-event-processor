@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing"
 )
 
 func (s *Service) enforceDeploymentLicenseCampaignCap(ctx context.Context) error {

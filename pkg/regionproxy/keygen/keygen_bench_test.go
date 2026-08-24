@@ -3,8 +3,8 @@ package keygen
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/wal"
+	"ad-event-processor/pkg/dedupkey"
+	"ad-event-processor/pkg/regionproxy/wal"
 )
 
 func BenchmarkFactorUDerive(b *testing.B) {

@@ -4,8 +4,8 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/ingestion/pb"
 )
 
 const ProtoMaxFields = 256

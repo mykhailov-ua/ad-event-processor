@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
+	"ad-event-processor/internal/edge"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

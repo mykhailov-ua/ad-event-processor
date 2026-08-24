@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/pkg/money"
 )
 
 type WebhookAdapter struct {

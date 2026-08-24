@@ -8,10 +8,10 @@ import (
 	"math"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

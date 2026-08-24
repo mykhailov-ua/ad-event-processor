@@ -47,13 +47,13 @@ linters:
         - pattern: 'panic\('
           msg: "avoid panics"
         - pattern: 'fmt\.Sprintf'
-          pkg: "^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          pkg: "^ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "fmt.Sprintf is forbidden on the hot path (allocates)"
         - pattern: 'context\.(WithTimeout|WithCancel|WithValue)'
-          pkg: "^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          pkg: "^ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "context manipulation is forbidden on the hot path"
         - pattern: 'defer\s'
-          pkg: "^github.com/bidshard/ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          pkg: "^ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "defer is forbidden on the hot path (allocates in old Go, discouraged in ad-event-processor)"
   exclusions:
     generated: lax

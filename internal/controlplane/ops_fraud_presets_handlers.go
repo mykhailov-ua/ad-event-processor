@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
 )
 
 func (ops *OpsHTTPHandlers) registerFraudPresetOpsRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, perm func(string, http.HandlerFunc) http.HandlerFunc) {

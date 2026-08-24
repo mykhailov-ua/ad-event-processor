@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/payment"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/payment"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
 )
 
 type CryptoBillingWebhookProcessor interface {

@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/supportbundle"
+	"ad-event-processor/pkg/supportbundle"
 )
 
 type stubBundler struct {

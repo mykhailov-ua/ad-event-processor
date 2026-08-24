@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"

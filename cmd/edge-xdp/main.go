@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
+	"ad-event-processor/internal/edge"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/netaddr"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/ebpf/rlimit"

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

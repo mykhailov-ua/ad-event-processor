@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/domainhealth"
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/domainhealth"
+	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"

@@ -1,8 +1,8 @@
 package payment
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 )

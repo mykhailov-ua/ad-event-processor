@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
-	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"ad-event-processor/pkg/broker/client"
+	"ad-event-processor/pkg/broker/log"
 )
 
 func skipFaultLab(t *testing.T) {

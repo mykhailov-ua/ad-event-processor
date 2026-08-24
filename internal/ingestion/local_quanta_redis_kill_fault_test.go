@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/faultproof"
 
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"

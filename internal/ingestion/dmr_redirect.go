@@ -3,7 +3,7 @@ package ingestion
 import (
 	"net/http"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )

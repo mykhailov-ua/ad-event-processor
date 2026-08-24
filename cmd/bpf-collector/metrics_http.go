@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/lifecycle"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

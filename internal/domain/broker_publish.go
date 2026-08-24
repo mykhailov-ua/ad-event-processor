@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"ad-event-processor/pkg/broker/client"
 )
 
 const (

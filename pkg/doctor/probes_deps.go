@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/naming"
 
 	"github.com/redis/go-redis/v9"
 )

@@ -3,7 +3,7 @@ package wal
 import (
 	"sync/atomic"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"ad-event-processor/pkg/broker/log"
 )
 
 type Partition struct {

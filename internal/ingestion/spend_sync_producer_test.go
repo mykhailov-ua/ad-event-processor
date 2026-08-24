@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
-	rpclient "github.com/bidshard/ad-event-processor/pkg/regionproxy/client"
-	rserver "github.com/bidshard/ad-event-processor/pkg/regionproxy/server"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/wal"
+	"ad-event-processor/pkg/dedupkey"
+	"ad-event-processor/pkg/iogate"
+	rpclient "ad-event-processor/pkg/regionproxy/client"
+	rserver "ad-event-processor/pkg/regionproxy/server"
+	"ad-event-processor/pkg/regionproxy/wal"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

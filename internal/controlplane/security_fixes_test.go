@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/pkg/coldpath"
 )
 
 func TestClientIPXFFNotTrustedWithoutProxy(t *testing.T) {

@@ -1498,7 +1498,7 @@ const file_outbox_proto_rawDesc = "" +
 	"\vcustomer_id\x18\x02 \x01(\tR\n" +
 	"customerId\x12!\n" +
 	"\famount_micro\x18\x03 \x01(\x03R\vamountMicro\x12.\n" +
-	"\x13provider_dispute_id\x18\x04 \x01(\tR\x11providerDisputeIdBPZNgithub.com/bidshard/ad-event-processor/internal/controlplane/outboxpb;outboxpbb\x06proto3"
+	"\x13provider_dispute_id\x18\x04 \x01(\tR\x11providerDisputeIdBPZNad-event-processor/internal/controlplane/outboxpb;outboxpbb\x06proto3"
 
 var (
 	file_outbox_proto_rawDescOnce sync.Once

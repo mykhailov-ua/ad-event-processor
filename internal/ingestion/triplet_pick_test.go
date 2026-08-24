@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/require"
 )

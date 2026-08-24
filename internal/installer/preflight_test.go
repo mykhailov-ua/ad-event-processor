@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 )
 
 func TestPreflightJSONSchema(t *testing.T) {

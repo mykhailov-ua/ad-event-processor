@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/broker/client"
+	"ad-event-processor/pkg/lifecycle"
 )
 
 func main() {

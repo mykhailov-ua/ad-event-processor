@@ -3,9 +3,9 @@ package ingestion
 import (
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 var ErrInvalidRtbBudgetAuthority = domain.ErrInvalidRtbBudgetAuthority

@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/lifecycle"
 )
 
 func TestRunHealthProbe_OK(t *testing.T) {

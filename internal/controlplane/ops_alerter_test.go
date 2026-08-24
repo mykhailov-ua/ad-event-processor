@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/notify"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/notify"
 )
 
 func TestResolveOpsAlertTarget_TelegramPreferred(t *testing.T) {

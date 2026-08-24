@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
+	"ad-event-processor/internal/database"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

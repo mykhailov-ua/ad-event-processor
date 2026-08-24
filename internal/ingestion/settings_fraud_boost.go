@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

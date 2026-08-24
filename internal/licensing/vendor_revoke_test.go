@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

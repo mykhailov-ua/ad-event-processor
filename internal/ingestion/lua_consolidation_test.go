@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"

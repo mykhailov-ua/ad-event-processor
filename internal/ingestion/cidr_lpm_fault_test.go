@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 func TestCIDR_RCUSwap_ConcurrentReaders(t *testing.T) {

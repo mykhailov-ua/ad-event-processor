@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/notify"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/notify"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

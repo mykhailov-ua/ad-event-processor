@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/rtb"
 
 	"github.com/redis/go-redis/v9"
 )

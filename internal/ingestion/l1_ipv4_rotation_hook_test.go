@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 )

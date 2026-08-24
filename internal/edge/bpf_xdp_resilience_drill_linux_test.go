@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/internal/edge"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/cilium/ebpf/link"
 	"github.com/redis/go-redis/v9"

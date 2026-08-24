@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"sync/atomic"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/branding"
 
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"

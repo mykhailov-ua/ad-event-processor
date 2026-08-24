@@ -1,6 +1,6 @@
 package payment
 
-import "github.com/bidshard/ad-event-processor/internal/payment/db"
+import "ad-event-processor/internal/payment/db"
 
 type FinancialFindingSeverity int
 

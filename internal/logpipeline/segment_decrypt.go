@@ -10,7 +10,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"ad-event-processor/pkg/logger"
 
 	"github.com/klauspost/compress/zstd"
 )

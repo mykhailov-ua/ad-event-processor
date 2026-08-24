@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
 )
 
 func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {

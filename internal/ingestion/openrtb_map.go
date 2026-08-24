@@ -3,9 +3,9 @@ package ingestion
 import (
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/openrtb"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/openrtb"
+	"ad-event-processor/internal/rtb"
 )
 
 type wireTargeting struct {

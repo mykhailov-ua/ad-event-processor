@@ -1,6 +1,6 @@
 package controlplane
 
-import "github.com/bidshard/ad-event-processor/pkg/naming"
+import "ad-event-processor/pkg/naming"
 
 func edgeMetricNames(canonical string) []string {
 	legacy := naming.DeprecatedEdgeMetricPrefix() + canonical[len("ad_event_processor_edge_"):]

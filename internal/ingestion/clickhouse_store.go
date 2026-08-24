@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )

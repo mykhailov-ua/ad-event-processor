@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/identity"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/identity"
+	"ad-event-processor/internal/metrics"
+	bserver "ad-event-processor/pkg/broker/server"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"

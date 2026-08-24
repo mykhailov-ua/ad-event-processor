@@ -3,7 +3,7 @@ package database
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 func TestShardUniversalOptions_direct(t *testing.T) {

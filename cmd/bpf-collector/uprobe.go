@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 	"github.com/cilium/ebpf/link"
 )
 
@@ -19,10 +19,10 @@ type uprobeSpec struct {
 }
 
 var trackerUprobeSpecs = []uprobeSpec{
-	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.ProcessTrackEnter", enter: true, cookie: 1},
-	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.ProcessTrackExit", enter: false, cookie: 2},
-	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.FilterCheckEnter", enter: true, cookie: 3},
-	{symbol: "github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe.FilterCheckExit", enter: false, cookie: 4},
+	{symbol: "ad-event-processor/internal/ingestion/traceprobe.ProcessTrackEnter", enter: true, cookie: 1},
+	{symbol: "ad-event-processor/internal/ingestion/traceprobe.ProcessTrackExit", enter: false, cookie: 2},
+	{symbol: "ad-event-processor/internal/ingestion/traceprobe.FilterCheckEnter", enter: true, cookie: 3},
+	{symbol: "ad-event-processor/internal/ingestion/traceprobe.FilterCheckExit", enter: false, cookie: 4},
 }
 
 func (r *probeRun) attachUprobes() {

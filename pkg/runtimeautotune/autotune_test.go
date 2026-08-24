@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/runtimeautotune"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/runtimeautotune"
 )
 
 func TestApplyMaxWorkersFromCPU(t *testing.T) {

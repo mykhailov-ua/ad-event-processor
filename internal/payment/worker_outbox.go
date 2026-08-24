@@ -8,10 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

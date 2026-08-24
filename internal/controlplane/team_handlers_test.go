@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	webstatic "github.com/bidshard/ad-event-processor/web"
+	webstatic "ad-event-processor/web"
 
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/httpresponse"
 )
 
 func AdminStaticFS() (http.FileSystem, error) {

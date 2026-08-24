@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/netaddr"
 )
 
 const HealthProbeTimeout = 5 * time.Second

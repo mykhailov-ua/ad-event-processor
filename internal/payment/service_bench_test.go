@@ -3,7 +3,7 @@ package payment
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/payment/db"
 )
 
 func BenchmarkIsValidTransition(b *testing.B) {

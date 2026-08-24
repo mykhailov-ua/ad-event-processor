@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"time"
 
-	billingdb "github.com/bidshard/ad-event-processor/internal/ledger/db"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/pkg/legal"
+	billingdb "ad-event-processor/internal/ledger/db"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/pkg/legal"
 
 	"github.com/jackc/pgx/v5"
 )

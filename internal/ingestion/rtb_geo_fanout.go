@@ -3,8 +3,8 @@ package ingestion
 import (
 	"sort"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/rtb"
 )
 
 func sortedTargetCountries(camp *domain.Campaign) []string {

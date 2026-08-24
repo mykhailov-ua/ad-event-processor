@@ -3,10 +3,10 @@ package ingestion
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/rtb"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

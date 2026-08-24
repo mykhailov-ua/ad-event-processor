@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	billingdb "github.com/bidshard/ad-event-processor/internal/ledger/db"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	billingdb "ad-event-processor/internal/ledger/db"
+	"ad-event-processor/pkg/coldpath"
 )
 
 func ledgerLineFromRow(row billingdb.ListCustomerLedgerInWindowRow) LedgerLineDTO {

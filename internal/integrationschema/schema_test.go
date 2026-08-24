@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/integrationschema"
-	"github.com/bidshard/ad-event-processor/internal/postback"
+	"ad-event-processor/internal/integrationschema"
+	"ad-event-processor/internal/postback"
 	"github.com/stretchr/testify/require"
 )
 

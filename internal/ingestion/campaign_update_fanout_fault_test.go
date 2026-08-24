@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/testutil"

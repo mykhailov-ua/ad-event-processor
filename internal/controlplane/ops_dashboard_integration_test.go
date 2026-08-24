@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"

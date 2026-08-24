@@ -3,9 +3,9 @@ package ingestion
 import (
 	"strconv"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/internal/telemetry"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/telemetry"
 
 	"github.com/google/uuid"
 )

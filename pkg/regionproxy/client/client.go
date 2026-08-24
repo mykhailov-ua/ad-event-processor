@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	bclient "github.com/bidshard/ad-event-processor/pkg/broker/client"
-	rserver "github.com/bidshard/ad-event-processor/pkg/regionproxy/server"
+	bclient "ad-event-processor/pkg/broker/client"
+	rserver "ad-event-processor/pkg/regionproxy/server"
 )
 
 type Config struct {

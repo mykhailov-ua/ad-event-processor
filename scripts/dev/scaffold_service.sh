@@ -33,7 +33,7 @@ package $PKG_NAME
 import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/bidshard/ad-event-processor/internal/$SERVICE_NAME/db"
+	"ad-event-processor/internal/$SERVICE_NAME/db"
 )
 
 type Service struct {
@@ -90,7 +90,7 @@ import (
 	"syscall"
 	"time"
 
-	"$PKG_NAME" "github.com/bidshard/ad-event-processor/internal/$SERVICE_NAME"
+	"$PKG_NAME" "ad-event-processor/internal/$SERVICE_NAME"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/payment/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 )

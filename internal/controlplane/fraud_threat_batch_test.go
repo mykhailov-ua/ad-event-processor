@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"

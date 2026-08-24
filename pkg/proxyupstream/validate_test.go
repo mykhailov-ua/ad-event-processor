@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/proxyupstream"
+	"ad-event-processor/pkg/proxyupstream"
 	"github.com/stretchr/testify/require"
 )
 

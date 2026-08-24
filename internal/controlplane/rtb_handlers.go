@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/openrtb"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/internal/openrtb"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/platformconfig"
 )
 
 type RtbDealDTO struct {

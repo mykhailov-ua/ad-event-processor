@@ -3,7 +3,7 @@ package fraud
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
+	"ad-event-processor/internal/edge"
 
 	"github.com/stretchr/testify/assert"
 )

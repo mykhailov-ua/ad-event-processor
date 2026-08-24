@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"

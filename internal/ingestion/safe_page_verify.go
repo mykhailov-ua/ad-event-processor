@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )

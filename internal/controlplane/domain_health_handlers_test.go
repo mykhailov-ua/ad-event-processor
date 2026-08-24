@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/controlplane"
 	"github.com/stretchr/testify/require"
 )
 

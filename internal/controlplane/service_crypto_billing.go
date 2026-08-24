@@ -3,7 +3,7 @@ package controlplane
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/payment"
+	"ad-event-processor/internal/payment"
 )
 
 func (s *Service) ProcessCryptoWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, txHash string, confirmations int) error {

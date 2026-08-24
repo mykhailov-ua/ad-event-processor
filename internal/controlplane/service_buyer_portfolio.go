@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

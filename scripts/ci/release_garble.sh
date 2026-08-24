@@ -22,7 +22,7 @@ export CGO_ENABLED="${CGO_ENABLED:-0}"
 
 LDFLAGS="-s -w -buildid="
 if [[ -n "${ASSET_SEAL_SALT:-}" ]]; then
-  LDFLAGS="${LDFLAGS} -X github.com/bidshard/ad-event-processor/internal/licensing.buildAssetSealSaltHex=${ASSET_SEAL_SALT}"
+  LDFLAGS="${LDFLAGS} -X ad-event-processor/internal/licensing.buildAssetSealSaltHex=${ASSET_SEAL_SALT}"
 fi
 TAGS="timetzdata"
 if [[ "$USE_GARBLE" == "1" && "${LICENSE_GUARD:-1}" == "1" ]]; then

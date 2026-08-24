@@ -1,7 +1,7 @@
 package ingestion
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

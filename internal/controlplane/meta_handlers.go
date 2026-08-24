@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/branding"
+	"ad-event-processor/pkg/httpresponse"
 )
 
 type MetaLicenseDTO struct {

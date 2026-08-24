@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/notify/db"
+	"ad-event-processor/internal/notify/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

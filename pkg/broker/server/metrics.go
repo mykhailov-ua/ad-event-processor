@@ -3,8 +3,8 @@ package server
 import (
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/broker/protocol"
 	"github.com/panjf2000/gnet/v2"
 )
 

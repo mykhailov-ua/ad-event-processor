@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/iogate"
 )
 
 func (w *WAL) KeyGenQueueDepth() int64 {

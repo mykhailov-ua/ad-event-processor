@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/rtb"
 )
 
 func TestRecordRtbDealOutcome_noWriter(t *testing.T) {

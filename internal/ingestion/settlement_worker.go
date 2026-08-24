@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/logger"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

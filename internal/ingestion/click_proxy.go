@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/proxyupstream"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/proxyupstream"
 
 	"github.com/panjf2000/gnet/v2"
 )

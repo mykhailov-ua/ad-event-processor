@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing"
 	"github.com/stretchr/testify/require"
 )
 

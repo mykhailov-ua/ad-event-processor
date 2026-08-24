@@ -3,7 +3,7 @@ package notify
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/notify/db"
+	"ad-event-processor/internal/notify/db"
 
 	"github.com/google/uuid"
 )

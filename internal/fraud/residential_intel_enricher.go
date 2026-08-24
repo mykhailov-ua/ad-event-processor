@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
+	"ad-event-processor/internal/edge"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/redis/go-redis/v9"

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/identity"
-	authdb "github.com/bidshard/ad-event-processor/internal/identity/db"
+	"ad-event-processor/internal/identity"
+	authdb "ad-event-processor/internal/identity/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

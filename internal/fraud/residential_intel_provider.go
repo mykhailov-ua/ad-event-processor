@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/coldpath"
 )
 
 // ResidentialIntelProvider looks up residential/proxy classification for one IP (cold path only).

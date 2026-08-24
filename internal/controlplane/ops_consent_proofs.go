@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 func (r *opsReader) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (ConsentProofListResult, error) {

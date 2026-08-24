@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/broker/protocol"
 	"github.com/stretchr/testify/require"
 )
 

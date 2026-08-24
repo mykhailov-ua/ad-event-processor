@@ -3,7 +3,7 @@ package controlplane
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

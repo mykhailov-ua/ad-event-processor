@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
-	rserver "github.com/bidshard/ad-event-processor/pkg/regionproxy/server"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/wal"
+	"ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/iogate"
+	rserver "ad-event-processor/pkg/regionproxy/server"
+	"ad-event-processor/pkg/regionproxy/wal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/cpuset"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/cpuset"
 )
 
 func Apply(cfg *config.Config) {

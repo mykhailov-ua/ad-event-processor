@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/httpresponse"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

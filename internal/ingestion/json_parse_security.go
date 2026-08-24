@@ -3,7 +3,7 @@ package ingestion
 import (
 	"sync/atomic"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 var jsonStrictUTF8Enabled atomic.Bool

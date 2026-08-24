@@ -199,7 +199,7 @@ scan_brand() {
     *.pb.go | *_grpc.pb.go | *_vtproto.pb.go | *_bpfel.go | *_bpfeb.go) return 0 ;;
   esac
   local hits
-  hits="$(rg -n "$pattern_brand" "$path" 2> /dev/null | rg -v 'github.com/bidshard/ad-event-processor' || true)"
+  hits="$(rg -n "$pattern_brand" "$path" 2> /dev/null | rg -v 'ad-event-processor' || true)"
   if [[ -n "$hits" ]]; then
     echo "check_brand_boundary: hardcoded brand in $path"
     echo "$hits"
@@ -211,7 +211,7 @@ while IFS= read -r -d '' file; do
   scan_brand "$file"
 done < <(find internal cmd -name '*.go' -print0 2> /dev/null || true)
 
-pkg_hits="$(rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' 2> /dev/null | rg -v 'github.com/bidshard/ad-event-processor' || true)"
+pkg_hits="$(rg -n "$pattern_brand" pkg --glob '*.go' --glob '!pkg/branding/*' 2> /dev/null | rg -v 'ad-event-processor' || true)"
 if [[ -n "$pkg_hits" ]]; then
   echo "check_brand_boundary: hardcoded brand outside pkg/branding:"
   echo "$pkg_hits"

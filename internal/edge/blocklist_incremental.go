@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/cilium/ebpf"
 	"github.com/redis/go-redis/v9"

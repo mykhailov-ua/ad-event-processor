@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/pkg/branding"
 )
 
 func RenderComposeEnv(cfg Config) []byte {

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 )
 
 var ErrNoBPFSummary = errors.New("loadreport: bpf/maps/summary.json not found")

@@ -3,7 +3,7 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 func TestAssignCohortVariant_Stable(t *testing.T) {

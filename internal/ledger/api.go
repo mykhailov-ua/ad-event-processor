@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/metadata"

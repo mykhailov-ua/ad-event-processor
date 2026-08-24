@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

@@ -1,6 +1,6 @@
 package fraud
 
-import "github.com/bidshard/ad-event-processor/internal/domain"
+import "ad-event-processor/internal/domain"
 
 type TierDecision struct {
 	Tier                FraudTier

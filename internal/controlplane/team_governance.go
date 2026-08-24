@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/identity"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/identity"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

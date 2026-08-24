@@ -3,8 +3,8 @@ package domain
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/dedup"
-	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
+	"ad-event-processor/internal/dedup"
+	"ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 )

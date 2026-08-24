@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/broker/client"
+	"ad-event-processor/pkg/broker/protocol"
 
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"
 )

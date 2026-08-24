@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/cilium/ebpf"
 )

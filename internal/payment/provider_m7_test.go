@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/payment"
+	"ad-event-processor/internal/payment"
 
 	"github.com/stretchr/testify/require"
 )

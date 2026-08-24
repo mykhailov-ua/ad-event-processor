@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/notify"
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/notify"
+	"ad-event-processor/pkg/branding"
 )
 
 func (service *Service) SetNotifier(api notify.NotifierAPI, provider, recipient, baseURL string) {

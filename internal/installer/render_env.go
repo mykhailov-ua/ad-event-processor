@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/pkg/branding"
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/pkg/branding"
+	"ad-event-processor/pkg/platformconfig"
 )
 
 const (

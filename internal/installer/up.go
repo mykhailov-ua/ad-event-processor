@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/pkg/platformconfig"
 )
 
 func RunUp() error {

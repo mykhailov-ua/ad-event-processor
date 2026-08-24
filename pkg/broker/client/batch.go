@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/broker/protocol"
 )
 
 func (c *Client) RegisterTopic(ctx context.Context, topic string) (uint16, error) {

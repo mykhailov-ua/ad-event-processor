@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
+	"ad-event-processor/pkg/dedupkey"
 )
 
 func TestOperation_RelayDeliveryOpIDDeterministic(t *testing.T) {

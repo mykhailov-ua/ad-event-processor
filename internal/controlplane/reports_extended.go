@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 )

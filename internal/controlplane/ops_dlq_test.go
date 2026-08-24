@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/ingestion/pb"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 var (

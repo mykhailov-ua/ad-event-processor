@@ -8,17 +8,17 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	_ "github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/broker/server"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/keygen"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/opkey"
-	rserver "github.com/bidshard/ad-event-processor/pkg/regionproxy/server"
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/uplink"
-	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
+	"ad-event-processor/internal/config"
+	_ "ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/broker/server"
+	"ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/regionproxy/keygen"
+	"ad-event-processor/pkg/regionproxy/opkey"
+	rserver "ad-event-processor/pkg/regionproxy/server"
+	"ad-event-processor/pkg/regionproxy/uplink"
+	"ad-event-processor/pkg/runtimepaths"
 )
 
 func main() {

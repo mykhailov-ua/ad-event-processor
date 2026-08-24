@@ -31,7 +31,7 @@ func TestTrackerDepGraphExcludesFraudScoringRuntime(t *testing.T) {
 	require.NoError(t, err, string(out))
 
 	deps := string(out)
-	assert.NotContains(t, deps, "github.com/bidshard/ad-event-processor/internal/fraud")
+	assert.NotContains(t, deps, "ad-event-processor/internal/fraud")
 	assert.NotContains(t, deps, "github.com/zhongdai/go-lgbm")
 	assert.NotContains(t, deps, "onnxruntime")
 }

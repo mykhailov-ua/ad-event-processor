@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/costsync"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/costsync"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

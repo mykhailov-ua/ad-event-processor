@@ -3,7 +3,7 @@ package rtb
 import (
 	"unsafe"
 
-	"github.com/bidshard/ad-event-processor/internal/rtb/pb"
+	"ad-event-processor/internal/rtb/pb"
 )
 
 func DecodeVASTWire(wire []byte, doc *pb.VastDocument) error {

@@ -7,9 +7,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
+	"ad-event-processor/internal/edge"
+	"ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/netaddr"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"

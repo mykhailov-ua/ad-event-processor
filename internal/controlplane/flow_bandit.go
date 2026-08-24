@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/bandit"
+	"ad-event-processor/pkg/bandit"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"ad-event-processor/pkg/broker/client"
 )
 
 type Handler func(payload []byte, offset uint64) error

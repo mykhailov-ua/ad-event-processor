@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/metrics"
 )
 
 type fileLicenseSnapshot struct {

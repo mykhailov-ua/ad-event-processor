@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

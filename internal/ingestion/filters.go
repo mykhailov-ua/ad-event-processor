@@ -8,9 +8,9 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/traceprobe"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion/traceprobe"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

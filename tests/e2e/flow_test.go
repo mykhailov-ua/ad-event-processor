@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

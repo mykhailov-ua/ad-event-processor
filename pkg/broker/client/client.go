@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/netaddr"
 	"github.com/redis/go-redis/v9"
 )
 

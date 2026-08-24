@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 
 	redis "github.com/redis/go-redis/v9"
 )

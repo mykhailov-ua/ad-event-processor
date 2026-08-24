@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/iogate"
 
 	"github.com/stretchr/testify/require"
 )

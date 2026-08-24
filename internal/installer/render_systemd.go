@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"text/template"
 
-	"github.com/bidshard/ad-event-processor/pkg/branding"
-	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
+	"ad-event-processor/pkg/branding"
+	"ad-event-processor/pkg/runtimepaths"
 )
 
 const trackerUnitTemplate = `[Unit]

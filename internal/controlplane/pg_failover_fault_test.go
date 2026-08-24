@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
-	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/config"
+	bserver "ad-event-processor/pkg/broker/server"
+	"ad-event-processor/pkg/pgfailover"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

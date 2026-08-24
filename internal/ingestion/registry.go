@@ -11,10 +11,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

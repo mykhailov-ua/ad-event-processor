@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

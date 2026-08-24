@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
-	"github.com/bidshard/ad-event-processor/pkg/runtimepaths"
+	"ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/runtimepaths"
 )
 
 func applyUnixTransportDefaults(cfg *Config) {

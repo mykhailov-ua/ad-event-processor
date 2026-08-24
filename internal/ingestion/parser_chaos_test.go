@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/openrtb"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/internal/openrtb"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

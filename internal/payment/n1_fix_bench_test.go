@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	paydb "github.com/bidshard/ad-event-processor/internal/payment/db"
-	"github.com/bidshard/ad-event-processor/internal/payment/dbtest"
+	"ad-event-processor/internal/database"
+	paydb "ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

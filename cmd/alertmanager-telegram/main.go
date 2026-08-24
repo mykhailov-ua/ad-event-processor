@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/lifecycle"
 )
 
 type Alert struct {

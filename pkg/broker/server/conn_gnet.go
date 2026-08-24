@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/gnetutil"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/gnetutil"
 
 	"github.com/panjf2000/gnet/v2"
 )

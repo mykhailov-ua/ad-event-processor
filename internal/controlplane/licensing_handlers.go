@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/ledger/db"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/ledger/db"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

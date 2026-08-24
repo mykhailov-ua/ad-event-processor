@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	ads_db "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
-	"github.com/bidshard/ad-event-processor/internal/payment/dbtest"
+	ads_db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/payment/dbtest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

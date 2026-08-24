@@ -3,9 +3,9 @@ package testutil
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/ingestion"
 
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	db "ad-event-processor/internal/domain/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

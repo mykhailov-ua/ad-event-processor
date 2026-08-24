@@ -3,7 +3,7 @@ package ledger
 import (
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/ledger/db"
+	"ad-event-processor/internal/ledger/db"
 )
 
 type TaxScheme string

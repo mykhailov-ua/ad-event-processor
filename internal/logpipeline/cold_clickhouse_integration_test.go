@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/pkg/faultproof"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

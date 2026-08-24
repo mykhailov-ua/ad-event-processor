@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/postback"
+	"ad-event-processor/internal/postback"
 	"gopkg.in/yaml.v3"
 )
 

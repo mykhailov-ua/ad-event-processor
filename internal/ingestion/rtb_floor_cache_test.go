@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/rtb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

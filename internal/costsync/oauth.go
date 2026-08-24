@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/coldpath"
 )
 
 func refreshMetaOAuth(ctx context.Context, client *http.Client, appID, appSecret string, cred Credential) (string, time.Time, error) {

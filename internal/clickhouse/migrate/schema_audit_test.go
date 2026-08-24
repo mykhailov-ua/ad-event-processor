@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/clickhouse/migrate"
+	"ad-event-processor/internal/clickhouse/migrate"
 
 	"github.com/stretchr/testify/require"
 )

@@ -5,7 +5,7 @@ import (
 	_ "embed"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 
 	redis "github.com/redis/go-redis/v9"
 )

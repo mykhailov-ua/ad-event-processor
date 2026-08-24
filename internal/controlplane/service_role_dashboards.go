@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ledger"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

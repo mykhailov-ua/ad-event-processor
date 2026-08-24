@@ -3,7 +3,7 @@ package notify
 import (
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 type ServiceOptions struct {

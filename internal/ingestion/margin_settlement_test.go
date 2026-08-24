@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/ledger"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

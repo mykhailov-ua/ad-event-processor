@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 )

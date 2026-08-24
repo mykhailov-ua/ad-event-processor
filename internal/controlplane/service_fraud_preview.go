@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/fraud"
+	"ad-event-processor/internal/fraud"
 
 	"github.com/google/uuid"
 )

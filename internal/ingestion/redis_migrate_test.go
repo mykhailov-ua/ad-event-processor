@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
+	"ad-event-processor/internal/database"
 )
 
 func TestCampaignKeyMigrator_MigrateAndDrain(t *testing.T) {

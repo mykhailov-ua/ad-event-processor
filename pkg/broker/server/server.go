@@ -17,12 +17,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/broker/log"
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
-	"github.com/bidshard/ad-event-processor/pkg/gnetutil"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
-	"github.com/bidshard/ad-event-processor/pkg/netaddr"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/broker/log"
+	"ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/gnetutil"
+	"ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/netaddr"
 
 	"github.com/panjf2000/gnet/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

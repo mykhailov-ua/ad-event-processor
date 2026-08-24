@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 )
 
 var legacyEnvWarned sync.Map

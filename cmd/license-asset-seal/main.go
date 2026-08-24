@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing"
 )
 
 func main() {

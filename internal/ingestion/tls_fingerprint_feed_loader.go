@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/metrics"
 )
 
 type tlsFingerprintFeedLoader struct {

@@ -8,9 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/control"
-	"github.com/bidshard/ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/control"
+	"ad-event-processor/internal/licensing"
 )
 
 func main() {

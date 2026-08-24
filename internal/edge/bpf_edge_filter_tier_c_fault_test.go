@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
+	"ad-event-processor/internal/database"
 
-	"github.com/bidshard/ad-event-processor/internal/testutil"
+	"ad-event-processor/internal/testutil"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/ringbuf"

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/pgfailover"
 
 	"github.com/stretchr/testify/require"
 )

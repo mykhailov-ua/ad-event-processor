@@ -3,7 +3,7 @@ package ingestion
 import (
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/panjf2000/gnet/v2"
 )

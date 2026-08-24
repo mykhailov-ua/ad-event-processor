@@ -3,7 +3,7 @@ package opkey
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/pkg/regionproxy/quorum"
+	"ad-event-processor/pkg/regionproxy/quorum"
 
 	"github.com/redis/go-redis/v9"
 )

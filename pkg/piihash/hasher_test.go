@@ -3,8 +3,8 @@ package piihash_test
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/piihash"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

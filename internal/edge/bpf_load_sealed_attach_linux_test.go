@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/licensing"
-	"github.com/bidshard/ad-event-processor/pkg/faultproof"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/pkg/faultproof"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"

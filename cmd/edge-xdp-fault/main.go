@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
+	"ad-event-processor/internal/edge"
 )
 
 func main() {

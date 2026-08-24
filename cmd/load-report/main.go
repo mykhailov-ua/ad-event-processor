@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/bidshard/ad-event-processor/internal/loadreport"
+	"ad-event-processor/internal/loadreport"
 )
 
 const defaultPromURL = "http://127.0.0.1:9190"

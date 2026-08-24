@@ -3,7 +3,7 @@ package ingestion
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 func eventTypeUsesBrandLanding(eventType string) bool {

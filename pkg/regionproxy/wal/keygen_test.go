@@ -3,8 +3,8 @@ package wal
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/dedupkey"
+	"ad-event-processor/pkg/iogate"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

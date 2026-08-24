@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/ingestion/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
+	"ad-event-processor/pkg/broker/protocol"
 )
 
 type ConsumerOffsetTracker struct {
@@ -18,7 +18,7 @@ type ConsumerOffsetTracker struct {
 
 func NewConsumerOffsetTracker(dataDir string) (*ConsumerOffsetTracker, error) {
 	if dataDir == "" {
-		dataDir = "var/lib/bidshard/broker/offsets"
+		dataDir = "var/lib/ad-event-processor/broker/offsets"
 	}
 	if err := os.MkdirAll(dataDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create consumer offset dir: %w", err)

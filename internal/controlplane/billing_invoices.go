@@ -1,8 +1,8 @@
 package controlplane
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	billingdb "github.com/bidshard/ad-event-processor/internal/ledger/db"
+	"ad-event-processor/internal/domain"
+	billingdb "ad-event-processor/internal/ledger/db"
 )
 
 func invoiceSummaryFromRow(inv billingdb.BillingInvoice) domain.InvoiceSummary {

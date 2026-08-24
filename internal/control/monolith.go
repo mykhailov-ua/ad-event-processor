@@ -3,12 +3,12 @@ package control
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/controlplane"
-	"github.com/bidshard/ad-event-processor/internal/identity"
-	"github.com/bidshard/ad-event-processor/internal/ledger"
-	"github.com/bidshard/ad-event-processor/internal/notify"
-	"github.com/bidshard/ad-event-processor/internal/payment"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/identity"
+	"ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/notify"
+	"ad-event-processor/internal/payment"
 )
 
 func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (controlplane.ServeOptions, []func(), error) {

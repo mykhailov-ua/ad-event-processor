@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/loadreport"
+	"ad-event-processor/internal/loadreport"
 )
 
 func TestWriteBPFReport_diskGateFixture(t *testing.T) {

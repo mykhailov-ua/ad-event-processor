@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
+	"ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
 )

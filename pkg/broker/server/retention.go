@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
-	"github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/pkg/broker/log"
 )
 
 const defaultRetentionCheckInterval = 5 * time.Minute

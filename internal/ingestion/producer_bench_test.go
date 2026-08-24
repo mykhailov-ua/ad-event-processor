@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )

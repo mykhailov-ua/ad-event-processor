@@ -3,7 +3,7 @@ package outbox
 import (
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 )
 
 // PollActiveInterval is the outbox worker repoll delay after work is found.

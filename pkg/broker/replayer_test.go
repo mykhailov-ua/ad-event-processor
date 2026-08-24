@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
-	blog "github.com/bidshard/ad-event-processor/pkg/broker/log"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion/pb"
+	blog "ad-event-processor/pkg/broker/log"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

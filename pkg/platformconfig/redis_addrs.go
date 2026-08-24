@@ -1,6 +1,6 @@
 package platformconfig
 
-import "github.com/bidshard/ad-event-processor/pkg/runtimepaths"
+import "ad-event-processor/pkg/runtimepaths"
 
 const (
 	RedisShardCountAppliance = 4

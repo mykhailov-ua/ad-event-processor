@@ -7,8 +7,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/ingestion/pb"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 )
 
 func sentinelFaultConfig(t *testing.T) *config.Config {

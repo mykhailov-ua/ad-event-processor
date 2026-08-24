@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/naming"
 )
 
 type ChecklistRow struct {

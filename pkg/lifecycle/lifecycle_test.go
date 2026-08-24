@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/lifecycle"
 )
 
 func TestShutdownHTTPServerNil(t *testing.T) {

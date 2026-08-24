@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bidshard/ad-event-processor/internal/edge"
+	"ad-event-processor/internal/edge"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"

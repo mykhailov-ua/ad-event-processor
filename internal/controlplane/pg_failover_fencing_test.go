@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	ingestdb "github.com/bidshard/ad-event-processor/internal/domain/db"
-	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	ingestdb "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/pgfailover"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

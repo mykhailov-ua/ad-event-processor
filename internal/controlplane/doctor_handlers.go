@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/pkg/doctor"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
-	"github.com/bidshard/ad-event-processor/pkg/platformconfig"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/pkg/doctor"
+	"ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/platformconfig"
 )
 
 type PlatformConfigReader func(ctx context.Context) (platformconfig.Config, error)

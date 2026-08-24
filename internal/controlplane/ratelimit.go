@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/pkg/clientip"
-	"github.com/bidshard/ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/pkg/clientip"
+	"ad-event-processor/pkg/httpresponse"
 
 	"golang.org/x/time/rate"
 )

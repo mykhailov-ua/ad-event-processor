@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/ledger/db"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/ledger/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

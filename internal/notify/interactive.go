@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/pkg/branding"
+	"ad-event-processor/pkg/branding"
 )
 
 var (

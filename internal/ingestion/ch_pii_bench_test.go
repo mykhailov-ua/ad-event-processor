@@ -3,8 +3,8 @@ package ingestion
 import (
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/pkg/piihash"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/piihash"
 )
 
 func BenchmarkCHPII_writePathOverhead(b *testing.B) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain"
 )
 
 func RenderInvoicePDF(inv *domain.Invoice) []byte {

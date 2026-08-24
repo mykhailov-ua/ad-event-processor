@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/logpipeline"
-	"github.com/bidshard/ad-event-processor/pkg/lifecycle"
-	"github.com/bidshard/ad-event-processor/pkg/logger"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/logpipeline"
+	"ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/logger"
 )
 
 func main() {

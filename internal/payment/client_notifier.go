@@ -3,8 +3,8 @@ package payment
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/notify"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/notify"
 )
 
 type NotifierClient struct {

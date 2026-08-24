@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
-	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/database"
+	bserver "ad-event-processor/pkg/broker/server"
+	"ad-event-processor/pkg/pgfailover"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )

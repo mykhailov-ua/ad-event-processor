@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/pkg/broker/client"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/broker/client"
 
 	"github.com/google/uuid"
 )

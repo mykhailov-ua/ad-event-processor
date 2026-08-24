@@ -3,7 +3,7 @@ package edge
 import (
 	"fmt"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
+	"ad-event-processor/internal/config"
 	"github.com/cilium/ebpf"
 )
 

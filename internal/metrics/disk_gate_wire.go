@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/iogate"
+	"ad-event-processor/pkg/iogate"
 
 	"github.com/prometheus/client_golang/prometheus"
 )

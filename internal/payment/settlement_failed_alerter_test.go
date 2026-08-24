@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
+	"ad-event-processor/internal/payment/db"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

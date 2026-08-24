@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/internal/dedup"
-	"github.com/bidshard/ad-event-processor/pkg/dedupkey"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/dedup"
+	"ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

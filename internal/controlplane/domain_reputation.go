@@ -1,7 +1,7 @@
 package controlplane
 
 import (
-	"github.com/bidshard/ad-event-processor/pkg/domainhealth"
+	"ad-event-processor/pkg/domainhealth"
 )
 
 func (s *Service) SetReputationChecker(c *domainhealth.ReputationChecker) {

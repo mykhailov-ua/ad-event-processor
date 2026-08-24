@@ -1,7 +1,7 @@
 package edge
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/cilium/ebpf"
 )

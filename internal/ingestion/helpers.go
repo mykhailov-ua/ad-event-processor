@@ -4,8 +4,8 @@ import (
 	"sync"
 	"unsafe"
 
-	"github.com/bidshard/ad-event-processor/internal/ingestion/pb"
-	"github.com/bidshard/ad-event-processor/pkg/money"
+	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/pkg/money"
 )
 
 const MicroUnitFactor = money.MicroUnit

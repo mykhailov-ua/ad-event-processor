@@ -6,8 +6,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/metrics"
 )
 
 type DeviceFilter struct {

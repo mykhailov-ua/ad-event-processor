@@ -3,8 +3,8 @@ package ledger
 import (
 	"context"
 
-	"github.com/bidshard/ad-event-processor/internal/config"
-	"github.com/bidshard/ad-event-processor/internal/notify"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/notify"
 )
 
 func NewNotifierAPI(ctx context.Context, cfg *config.Config) (notify.NotifierAPI, func(), error) {

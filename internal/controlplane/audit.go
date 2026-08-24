@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/controlplane/authz"
-	"github.com/bidshard/ad-event-processor/internal/domain"
-	"github.com/bidshard/ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/domain/db"
 
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

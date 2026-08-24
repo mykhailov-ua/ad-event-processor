@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	db "github.com/bidshard/ad-event-processor/internal/domain/db"
+	db "ad-event-processor/internal/domain/db"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )

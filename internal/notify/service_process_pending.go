@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/bidshard/ad-event-processor/internal/notify/db"
+	"ad-event-processor/internal/notify/db"
 )
 
 type notificationGroup struct {

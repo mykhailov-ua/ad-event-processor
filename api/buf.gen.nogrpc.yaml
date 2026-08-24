@@ -3,4 +3,4 @@ plugins:
   - plugin: buf.build/protocolbuffers/go
     out: gen
     opt:
-      - module=github.com/bidshard/ad-event-processor
+      - module=ad-event-processor

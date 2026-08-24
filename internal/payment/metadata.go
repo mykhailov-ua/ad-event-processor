@@ -1,8 +1,8 @@
 package payment
 
 import (
-	"github.com/bidshard/ad-event-processor/internal/payment/db"
-	"github.com/bidshard/ad-event-processor/pkg/coldpath"
+	"ad-event-processor/internal/payment/db"
+	"ad-event-processor/pkg/coldpath"
 )
 
 const metadataCheckoutURLKey = "checkout_url"

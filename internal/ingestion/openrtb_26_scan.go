@@ -3,7 +3,7 @@ package ingestion
 import (
 	"bytes"
 
-	"github.com/bidshard/ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/metrics"
 )
 
 type openrtb26Scan struct {

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/bidshard/ad-event-processor/internal/database"
-	"github.com/bidshard/ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/pgfailover"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"

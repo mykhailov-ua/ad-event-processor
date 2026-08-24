@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/bidshard/ad-event-processor/pkg/broker/log"
-	"github.com/bidshard/ad-event-processor/pkg/broker/protocol"
-	bserver "github.com/bidshard/ad-event-processor/pkg/broker/server"
+	"ad-event-processor/pkg/broker/log"
+	"ad-event-processor/pkg/broker/protocol"
+	bserver "ad-event-processor/pkg/broker/server"
 )
 
 const CoordTopic = "global-pg"

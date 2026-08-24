@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/bidshard/ad-event-processor/pkg/naming"
+	"ad-event-processor/pkg/naming"
 )
 
 func TestMVSSChecklistTelemetryDefault(t *testing.T) {
