@@ -10,6 +10,7 @@ required=(
   scripts/ci/deps.sh
   scripts/ci/management_domain_coverage.sh
   scripts/ci/validate_configs.sh
+  scripts/ci/check_repo_clutter.sh
   scripts/ci/pr_fast.sh
   scripts/ci/admin_web.sh
   scripts/ci/admin_release_gate.sh

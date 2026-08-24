@@ -6,7 +6,13 @@
 *.env
 !.env.example
 !.env.load-test
+install.compose.env
 deploy/compose/.env.load-test.runtime
+deploy/installer/install.env
+deploy/**/nic-tune.env
+
+# Root runtime scratch (reports belong in var/)
+/*.txt
 
 # Rendered load-test configs (sources are *.load-test.*.in)
 deploy/nginx/nginx.load-test.conf

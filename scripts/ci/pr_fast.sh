@@ -6,6 +6,7 @@ cd "$ROOT"
 
 bash "$SCRIPTS/ci/validate_configs.sh"
 bash "$SCRIPTS/ci/load_test_config_gate.sh"
+bash "$SCRIPTS/ci/check_repo_clutter.sh"
 bash "$SCRIPTS/ci/tier_a.sh"
 bash "$SCRIPTS/ci/check_scripts_layout.sh"
 bash "$SCRIPTS/ci/compliance.sh"
