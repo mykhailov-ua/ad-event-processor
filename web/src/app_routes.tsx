@@ -49,6 +49,11 @@ const FirstCampaignWizardPage = lazy(() =>
     default: mod.FirstCampaignWizardPage,
   }))
 );
+const CampaignsMigratePage = lazy(() =>
+  import('./pages/campaigns_migrate_page.js').then((mod) => ({
+    default: mod.CampaignsMigratePage,
+  }))
+);
 const CampaignDetailPage = lazy(() =>
   import('./pages/campaign_detail_page.js').then((mod) => ({
     default: mod.CampaignDetailPage,
@@ -87,6 +92,11 @@ const IntegrationsMarginGuardPage = lazy(() =>
 const IntegrationsSmartAlertsPage = lazy(() =>
   import('./pages/integrations_smart_alerts_page.js').then((mod) => ({
     default: mod.IntegrationsSmartAlertsPage,
+  }))
+);
+const IntegrationsAutomationPage = lazy(() =>
+  import('./pages/integrations_automation_page.js').then((mod) => ({
+    default: mod.IntegrationsAutomationPage,
   }))
 );
 const IntegrationsSupplyPage = lazy(() =>
@@ -189,9 +199,19 @@ const RtbGeoDeviceReportPage = lazy(() =>
     default: mod.RtbGeoDeviceReportPage,
   }))
 );
+const ClickLogReportPage = lazy(() =>
+  import('./pages/click_log_page.js').then((mod) => ({
+    default: mod.ClickLogReportPage,
+  }))
+);
 const PostbackReconReportPage = lazy(() =>
   import('./pages/report_route_pages.js').then((mod) => ({
     default: mod.PostbackReconReportPage,
+  }))
+);
+const ConversionTypePayoutReportPage = lazy(() =>
+  import('./pages/report_route_pages.js').then((mod) => ({
+    default: mod.ConversionTypePayoutReportPage,
   }))
 );
 const PacingDriftReportPage = lazy(() =>
@@ -385,15 +405,10 @@ export function AppRoutes() {
         <Route path="/customers/:id" element={lazyRoute(<CustomerDetailPage />)} />
         <Route path="/campaigns" element={lazyRoute(<CampaignsPage />)} />
         <Route path="/campaigns/wizard" element={lazyRoute(<FirstCampaignWizardPage />)} />
+        <Route path="/campaigns/migrate" element={lazyRoute(<CampaignsMigratePage />)} />
         <Route path="/campaigns/flows" element={lazyRoute(<CampaignFlowsPage />)} />
-        <Route
-          path="/campaigns/landers/:id/editor"
-          element={lazyRoute(<LanderEditorPage />)}
-        />
-        <Route
-          path="/campaigns/flows/:id/builder"
-          element={lazyRoute(<FlowBuilderPage />)}
-        />
+        <Route path="/campaigns/landers/:id/editor" element={lazyRoute(<LanderEditorPage />)} />
+        <Route path="/campaigns/flows/:id/builder" element={lazyRoute(<FlowBuilderPage />)} />
         <Route path="/campaigns/:id" element={lazyRoute(<CampaignDetailPage />)} />
         <Route path="/rtb/deals" element={lazyRoute(<RtbDealsPage />)} />
         <Route path="/billing/invoices/:id" element={lazyRoute(<InvoiceDetailPage />)} />
@@ -411,6 +426,10 @@ export function AppRoutes() {
           element={lazyRoute(<IntegrationsSmartAlertsPage />)}
         />
         <Route path="/smart-alerts" element={lazyRoute(<IntegrationsSmartAlertsPage />)} />
+        <Route
+          path="/integrations/automation"
+          element={lazyRoute(<IntegrationsAutomationPage />)}
+        />
         <Route path="/integrations/supply" element={lazyRoute(<IntegrationsSupplyPage />)} />
         <Route path="/integrations/postbacks" element={lazyRoute(<IntegrationsPostbacksPage />)} />
         <Route
@@ -456,6 +475,11 @@ export function AppRoutes() {
         <Route
           path="/reports/postback-reconciliation"
           element={lazyRoute(<PostbackReconReportPage />)}
+        />
+        <Route path="/reports/clicks" element={lazyRoute(<ClickLogReportPage />)} />
+        <Route
+          path="/reports/conversion-type-payout"
+          element={lazyRoute(<ConversionTypePayoutReportPage />)}
         />
         <Route path="/reports/pacing-drift" element={lazyRoute(<PacingDriftReportPage />)} />
         <Route path="/reports/spend-velocity" element={lazyRoute(<SpendVelocityReportPage />)} />

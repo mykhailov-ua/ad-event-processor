@@ -20,7 +20,11 @@ COPY --from=web /src/web/dist ./web/dist
 RUN if [ "$SKIP_CODEGEN" = "1" ]; then echo "skip codegen (pre-generated tree)"; else bash scripts/ci/gen.sh --proto; fi
 RUN TRACKER_TAGS="timetzdata"; \
   if [ "$TRACKER_BPF_TRACE" = "1" ]; then TRACKER_TAGS="${TRACKER_TAGS} ad_event_processor_bpf_trace"; fi; \
-  CGO_ENABLED=0 GOOS=linux go build -tags "$TRACKER_TAGS" -ldflags="-s -w" -o /bin/tracker ./cmd/tracker
+  if [ "$TRACKER_BPF_TRACE" = "1" ]; then \
+    CGO_ENABLED=0 GOOS=linux go build -tags "$TRACKER_TAGS" -ldflags="-w" -o /bin/tracker ./cmd/tracker; \
+  else \
+    CGO_ENABLED=0 GOOS=linux go build -tags "$TRACKER_TAGS" -ldflags="-s -w" -o /bin/tracker ./cmd/tracker; \
+  fi
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/processor ./cmd/processor
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/ivt-detector ./cmd/ivt-detector
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/fraud-scorer ./cmd/fraud-scorer

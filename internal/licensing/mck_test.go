@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/licensing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

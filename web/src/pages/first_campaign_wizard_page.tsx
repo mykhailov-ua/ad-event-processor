@@ -57,9 +57,7 @@ async function loadWizardPlatformContext(): Promise<{
   const doc = docRes[0]?.data;
   const trackingDomain = plat?.config?.tracking_domain ?? doc?.tracking_domain ?? '';
   const clickTemplate =
-    doc?.click_url_template ||
-    plat?.click_url_template ||
-    defaultClickTemplate(trackingDomain);
+    doc?.click_url_template || plat?.click_url_template || defaultClickTemplate(trackingDomain);
   return { clickTemplate, trackingDomain };
 }
 
@@ -212,6 +210,19 @@ export function FirstCampaignWizardPage() {
         message: bundled,
       });
     }
+    setBusy(true);
+    setStepError(null);
+    const [, presetErr] = await to(
+      patchCampaign(campaignId, {
+        traffic_template_id: trafficSourceId,
+        click_query_params: trafficMacroMap,
+      })
+    );
+    setBusy(false);
+    if (presetErr) {
+      setStepError(mapServiceError(presetErr).message);
+      return;
+    }
     setStep('lander');
   };
 
@@ -306,10 +317,7 @@ export function FirstCampaignWizardPage() {
   return (
     <section className="stack" data-testid="first-campaign-wizard">
       <Breadcrumbs
-        items={[
-          { label: 'Campaigns', href: '/campaigns' },
-          { label: 'First campaign wizard' },
-        ]}
+        items={[{ label: 'Campaigns', href: '/campaigns' }, { label: 'First campaign wizard' }]}
       />
       <div className="page-header">
         <h1 className="page-header__title">First campaign wizard</h1>
@@ -395,8 +403,8 @@ export function FirstCampaignWizardPage() {
         {step === 'traffic' ? (
           <>
             <p className="text-muted text-sm">
-              Pick the ad network you buy traffic from. Macros are filled into the click URL; bundled
-              integration schemas apply when available.
+              Pick the ad network you buy traffic from. Macros are filled into the click URL;
+              bundled integration schemas apply when available.
             </p>
             <label className="form-field" htmlFor="fcw-traffic-source">
               Traffic source template
@@ -418,7 +426,9 @@ export function FirstCampaignWizardPage() {
             {bundledTrafficTemplateForSource(trafficSourceId) ? (
               <p className="text-muted text-sm">
                 Bundled schema:{' '}
-                <span className="font-mono">{bundledTrafficTemplateForSource(trafficSourceId)}</span>{' '}
+                <span className="font-mono">
+                  {bundledTrafficTemplateForSource(trafficSourceId)}
+                </span>{' '}
                 (applied on Next)
               </p>
             ) : (
@@ -488,9 +498,8 @@ export function FirstCampaignWizardPage() {
             ) : null}
             {landerMode === 'hosted' ? (
               <p className="text-muted text-sm">
-                After the wizard, open{' '}
-                <Link to="/campaigns/flows">Campaign flows</Link> to upload a ZIP and attach the
-                lander to a flow for this campaign.
+                After the wizard, open <Link to="/campaigns/flows">Campaign flows</Link> to upload a
+                ZIP and attach the lander to a flow for this campaign.
               </p>
             ) : null}
           </>
@@ -540,8 +549,8 @@ export function FirstCampaignWizardPage() {
         {step === 'done' ? (
           <>
             <p className="text-muted text-sm">
-              Campaign <span className="font-mono">{campaignId}</span> is ready. Tune filters, flows,
-              and reporting on the detail page.
+              Campaign <span className="font-mono">{campaignId}</span> is ready. Tune filters,
+              flows, and reporting on the detail page.
             </p>
             <div className="button-row">
               <ButtonLink
@@ -566,12 +575,7 @@ export function FirstCampaignWizardPage() {
         {step !== 'done' ? (
           <div className="button-row">
             {prevFirstCampaignWizardStep(step) ? (
-              <Button
-                label="Back"
-                variant="secondary"
-                disabled={busy}
-                onClick={goBack}
-              />
+              <Button label="Back" variant="secondary" disabled={busy} onClick={goBack} />
             ) : (
               <Button
                 label="Cancel"
@@ -598,7 +602,11 @@ export function FirstCampaignWizardPage() {
             />
           </div>
         ) : (
-          <Button label="Back to campaigns" variant="secondary" onClick={() => navigate('/campaigns')} />
+          <Button
+            label="Back to campaigns"
+            variant="secondary"
+            onClick={() => navigate('/campaigns')}
+          />
         )}
       </div>
     </section>

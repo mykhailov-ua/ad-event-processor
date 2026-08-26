@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/licensing"
+
 	"github.com/stretchr/testify/require"
 )
 

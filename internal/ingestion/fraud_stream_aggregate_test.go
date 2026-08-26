@@ -105,10 +105,10 @@ func TestFraudStreamWriter_aggregateIncrementsWithoutRing(t *testing.T) {
 
 func TestFraudStreamWriter_L3NeverAggregated(t *testing.T) {
 	q := &FraudStreamWriter{
-		stream: "fraud-stream",
-		maxLen: 1000,
-		redisShards:   []redis.UniversalClient{&mockRedisClient{}},
-		stopCh: make(chan struct{}),
+		stream:      "fraud-stream",
+		maxLen:      1000,
+		redisShards: []redis.UniversalClient{&mockRedisClient{}},
+		stopCh:      make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
 
@@ -125,10 +125,10 @@ func TestFraudStreamWriter_L3NeverAggregated(t *testing.T) {
 
 func TestFault_FraudStreamL3NeverAggregated(t *testing.T) {
 	q := &FraudStreamWriter{
-		stream: "fraud-stream-fault",
-		maxLen: 1000,
-		redisShards:   []redis.UniversalClient{&mockRedisClient{}},
-		stopCh: make(chan struct{}),
+		stream:      "fraud-stream-fault",
+		maxLen:      1000,
+		redisShards: []redis.UniversalClient{&mockRedisClient{}},
+		stopCh:      make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
 
@@ -161,10 +161,10 @@ func TestFault_FraudStreamL3NeverAggregated(t *testing.T) {
 
 func TestFault_FraudStreamCriticalLaneAnalyticalFull(t *testing.T) {
 	q := &FraudStreamWriter{
-		stream: "fraud-crit",
-		maxLen: 1000,
-		redisShards:   []redis.UniversalClient{&mockRedisClient{}},
-		stopCh: make(chan struct{}),
+		stream:      "fraud-crit",
+		maxLen:      1000,
+		redisShards: []redis.UniversalClient{&mockRedisClient{}},
+		stopCh:      make(chan struct{}),
 	}
 	q.readCursor = 0
 	q.allocCursor = fraudAnalyticalUsable
@@ -204,10 +204,10 @@ func TestFraudStreamWriter_SetForceAggregate(t *testing.T) {
 func TestFraudStreamWriter_aggregateFlushToStream(t *testing.T) {
 	redisClient := &capturingRedisXAdd{}
 	q := &FraudStreamWriter{
-		stream: "fraud-stream",
-		maxLen: 1000,
-		redisShards:   []redis.UniversalClient{redisClient},
-		stopCh: make(chan struct{}),
+		stream:      "fraud-stream",
+		maxLen:      1000,
+		redisShards: []redis.UniversalClient{redisClient},
+		stopCh:      make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
 
@@ -229,10 +229,10 @@ func TestFraudStreamWriter_aggregateFlushToStream(t *testing.T) {
 func TestFraudStreamWriter_aggregateIPv6Flush(t *testing.T) {
 	redisClient := &capturingRedisXAdd{}
 	q := &FraudStreamWriter{
-		stream: "fraud-stream",
-		maxLen: 1000,
-		redisShards:   []redis.UniversalClient{redisClient},
-		stopCh: make(chan struct{}),
+		stream:      "fraud-stream",
+		maxLen:      1000,
+		redisShards: []redis.UniversalClient{redisClient},
+		stopCh:      make(chan struct{}),
 	}
 	primeFraudRingAggPressure(q)
 

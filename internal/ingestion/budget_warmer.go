@@ -26,8 +26,8 @@ func RemainingBudgetMicro(c *domain.Campaign) int64 {
 }
 
 type BudgetCacheWarmer struct {
-	redisShards    []redis.UniversalClient
-	sharder Sharder
+	redisShards []redis.UniversalClient
+	sharder     Sharder
 }
 
 func NewBudgetCacheWarmer(redisShards []redis.UniversalClient, sharder Sharder) *BudgetCacheWarmer {
@@ -123,24 +123,38 @@ func warmBudgetKeyNX(ctx context.Context, redisClient redis.UniversalClient, key
 	return err
 }
 
+func recoverBudgetKeySet(ctx context.Context, redisClient redis.UniversalClient, key string, remaining int64) error {
+	return redisClient.Set(ctx, key, remaining, budgetKeyTTL).Err()
+}
+
 func tryRecoverBudgetFromRegistry(
 	ctx context.Context,
 	redisClient redis.UniversalClient,
 	registry domain.CampaignRegistry,
 	campaignID uuid.UUID,
 	budgetKey string,
+	worker int,
 ) (bool, error) {
 	if registry == nil {
 		return false, nil
 	}
-	camp, ok := registry.GetCampaign(campaignID)
+	var camp *domain.Campaign
+	var ok bool
+	if worker >= 0 {
+		if reg, isReg := registry.(*Registry); isReg {
+			camp, ok = reg.GetCampaignWorker(worker, campaignID)
+		}
+	}
+	if !ok {
+		camp, ok = registry.GetCampaign(campaignID)
+	}
 	if !ok {
 		return false, nil
 	}
 	if camp.BudgetLimit == 0 && camp.CurrentSpend == 0 {
 		return false, nil
 	}
-	if err := warmBudgetKeyNX(ctx, redisClient, budgetKey, RemainingBudgetMicro(camp)); err != nil {
+	if err := recoverBudgetKeySet(ctx, redisClient, budgetKey, RemainingBudgetMicro(camp)); err != nil {
 		return false, err
 	}
 	metrics.BudgetCacheRegistryRecoverTotal.Inc()

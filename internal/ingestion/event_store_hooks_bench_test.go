@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
 

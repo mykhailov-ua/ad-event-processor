@@ -1,0 +1,251 @@
+paths:
+  /api/v1/telegram/validate:
+    post:
+      tags: [telegram]
+      operationId: telegramValidateInitData
+      summary: Validate Telegram Mini App initData
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/telegram_ops.yaml#/TelegramValidateRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/telegram_ops.yaml#/TelegramValidateResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/clicks:
+    post:
+      tags: [telegram]
+      operationId: telegramMintClick
+      summary: Mint click_id for Mini App session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/telegram_ops.yaml#/TelegramClickMintRequest'
+      responses:
+        '200':
+          description: Click minted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/telegram_ops.yaml#/TelegramClickMintResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/webhook/{bot_id}:
+    post:
+      tags: [telegram]
+      operationId: telegramWebhook
+      summary: Telegram bot webhook receiver
+      parameters:
+        - name: bot_id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: X-Telegram-Bot-Api-Secret-Token
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Update accepted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/deeplink-tokens:
+    post:
+      tags: [telegram]
+      operationId: telegramCreateDeeplink
+      summary: Create deeplink attribution token
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/telegram_ops.yaml#/TelegramDeeplink'
+      responses:
+        '200':
+          description: Deeplink created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/telegram_ops.yaml#/TelegramDeeplink'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/deeplink-tokens/{token}:
+    get:
+      tags: [telegram]
+      operationId: telegramGetDeeplink
+      summary: Resolve deeplink token
+      x-permissions: [campaigns:read]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deeplink
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/telegram_ops.yaml#/TelegramDeeplink'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/bots:
+    get:
+      tags: [telegram]
+      operationId: telegramListBots
+      summary: List configured Telegram bots
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Bots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/telegram_ops.yaml#/TelegramBot'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/bots/{id}:
+    get:
+      tags: [telegram]
+      operationId: telegramGetBot
+      summary: Get bot config for campaign
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Bot config
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/telegram_ops.yaml#/TelegramBot'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    put:
+      tags: [telegram]
+      operationId: telegramConfigureBot
+      summary: Upsert Telegram bot config
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/telegram_ops.yaml#/TelegramBot'
+      responses:
+        '200':
+          description: Bot saved
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/postbacks:
+    get:
+      tags: [telegram]
+      operationId: telegramListPostbacks
+      summary: List Telegram postback URLs for campaign
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CampaignIdQueryRequired'
+      responses:
+        '200':
+          description: Postbacks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/telegram_ops.yaml#/TelegramPostback'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [telegram]
+      operationId: telegramCreatePostback
+      summary: Create Telegram postback URL
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/telegram_ops.yaml#/TelegramPostback'
+      responses:
+        '200':
+          description: Postback created
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/postbacks/{id}:
+    put:
+      tags: [telegram]
+      operationId: telegramUpdatePostback
+      summary: Update Telegram postback URL
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/telegram_ops.yaml#/TelegramUpdatePostbackRequest'
+      responses:
+        '200':
+          description: Postback updated
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [telegram]
+      operationId: telegramDeletePostback
+      summary: Delete Telegram postback
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Postback deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/telegram/postbacks/{id}/test:
+    post:
+      tags: [telegram]
+      operationId: telegramTestPostback
+      summary: Dry-run Telegram postback dispatch
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Test dispatched
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

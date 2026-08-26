@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain/db"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

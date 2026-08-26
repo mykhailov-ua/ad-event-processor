@@ -60,12 +60,67 @@ func (h *AdsPacketHandler) http1MaxBufferedBytes() int64 {
 	return maxBody + http1MaxBufferedOverhead
 }
 
-func (h *AdsPacketHandler) http1EnsureConnContext(c gnet.Conn) *connContext {
-	ctx, ok := c.Context().(*connContext)
-	if ok && ctx != nil {
-		return ctx
+func http1ConnContext(c gnet.Conn) *connContext {
+	if c == nil {
+		return nil
 	}
-	ctx = h.allocConnContext(c)
+	ctx, ok := c.Context().(*connContext)
+	if !ok || ctx == nil {
+		return nil
+	}
+	if conn := ctx.http1ConnCtx; conn != nil {
+		return conn
+	}
+	return ctx
+}
+
+func http1ConnContextForWrite(ctx *connContext) *connContext {
+	if ctx == nil {
+		return nil
+	}
+	if conn := ctx.http1ConnCtx; conn != nil {
+		return conn
+	}
+	return ctx
+}
+
+type asyncWriteLease struct {
+	buf     []byte
+	poolPtr *[]byte
+}
+
+func cloneAsyncWriteBytes(src []byte) asyncWriteLease {
+	bufPtr := responseBytesPool.Get().(*[]byte)
+	buf := *bufPtr
+	if cap(buf) < len(src) {
+		buf = make([]byte, len(src))
+		*bufPtr = buf
+	}
+	buf = buf[:len(src)]
+	copy(buf, src)
+	return asyncWriteLease{buf: buf, poolPtr: bufPtr}
+}
+
+func putAsyncWriteLease(lease asyncWriteLease) {
+	if lease.poolPtr == nil {
+		return
+	}
+	responseBytesPool.Put(lease.poolPtr)
+}
+
+func (h *AdsPacketHandler) http1OffloadAsyncWriteDone(c gnet.Conn, offloadCtx, connCtx *connContext, lease asyncWriteLease) {
+	putAsyncWriteLease(lease)
+	if connCtx != nil && connCtx.http1PendingOffloadWrites.Add(-1) != 0 {
+		return
+	}
+	h.http1OffloadWriteDone(c, offloadCtx)
+}
+
+func (h *AdsPacketHandler) http1EnsureConnContext(c gnet.Conn) *connContext {
+	if connCtx := http1ConnContext(c); connCtx != nil {
+		return connCtx
+	}
+	ctx := h.allocConnContext(c)
 	c.SetContext(ctx)
 	return ctx
 }
@@ -116,6 +171,31 @@ func (h *AdsPacketHandler) http1CheckBodyIdle(c gnet.Conn, ctx *connContext) gne
 	metrics.HTTP1IncompleteCloseTotal.WithLabelValues("idle").Inc()
 	h.http1ResetIncompleteState(ctx, c)
 	return gnet.Close
+}
+
+func (h *AdsPacketHandler) http1OffloadWriteDone(c gnet.Conn, offloadCtx *connContext) {
+	if h == nil || h.workerPool == nil || c == nil {
+		return
+	}
+	var connCtx *connContext
+	if offloadCtx != nil {
+		connCtx = offloadCtx.http1ConnCtx
+	}
+	if connCtx == nil {
+		connCtx = http1ConnContext(c)
+	}
+	if connCtx != nil {
+		c.SetContext(connCtx)
+		connCtx.http1OffloadBusy.Store(false)
+	}
+	if offloadCtx != nil && offloadCtx.offloadCloseAfterWrite.Load() {
+		h.http1ResetIncompleteState(connCtx, c)
+		_ = c.Close()
+		return
+	}
+	if c.InboundBuffered() > 0 {
+		_ = c.Wake(nil)
+	}
 }
 
 func (h *AdsPacketHandler) http1HandleIncomplete(c gnet.Conn, ctx *connContext, buf []byte, consumed int) gnet.Action {

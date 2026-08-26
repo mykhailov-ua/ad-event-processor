@@ -5,6 +5,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/rtb"
+
 	"github.com/stretchr/testify/assert"
 )
 

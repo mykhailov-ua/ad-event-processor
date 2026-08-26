@@ -299,7 +299,7 @@ func TestPersistLines_batchEURRows(t *testing.T) {
 		{CustomerID: customerID, CampaignID: campaignID, Date: date, Network: "taboola", PlacementID: "p2", LineType: LineTypeSpend, AmountMicro: 2_000_000, Currency: "EUR"},
 		{CustomerID: customerID, CampaignID: campaignID, Date: date, Network: "taboola", PlacementID: "p3", LineType: LineTypeSpend, AmountMicro: 3_000_000, Currency: "EUR"},
 	}
-	imported, totalUSD, err := worker.persistLines(ctx, lines, date)
+	imported, totalUSD, _, err := worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
 	require.Equal(t, 3, imported)
 	require.Equal(t, int64(6_600_000), totalUSD)
@@ -329,9 +329,9 @@ func TestIdempotency_DuplicateImport(t *testing.T) {
 		AmountMicro: 5_000_000,
 		Currency:    "USD",
 	}}
-	_, _, err := worker.persistLines(ctx, lines, date)
+	_, _, _, err := worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
-	_, _, err = worker.persistLines(ctx, lines, date)
+	_, _, _, err = worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
 
 	var count int
@@ -366,9 +366,9 @@ func TestFault_DuplicateReportLedgerBalanced(t *testing.T) {
 	}}
 
 	worker := NewWorker(pool, []byte("postback-encryption-secret-key32"))
-	_, _, err = worker.persistLines(ctx, lines, date)
+	_, _, _, err = worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
-	_, _, err = worker.persistLines(ctx, lines, date)
+	_, _, _, err = worker.persistLines(ctx, lines, date)
 	require.NoError(t, err)
 
 	require.NoError(t, worker.reconcileCampaigns(ctx, lines, date))
@@ -501,6 +501,8 @@ func TestUpsertCredential_EncryptionRoundTrip(t *testing.T) {
 		RefreshTokenEncrypted: refresh,
 		ApiKeyEncrypted:       api,
 		ExtraConfig:           []byte(`{}`),
+		SyncIntervalMinutes:   1440,
+		TokenMapping:          []byte(`{}`),
 	})
 	require.NoError(t, err)
 

@@ -6,6 +6,11 @@ import type {
   IntegrationSchemaDTO,
   IntegrationTemplateCatalogEntry,
 } from '../types/integration.js';
+import type { components } from '../types/generated/openapi.js';
+
+export type ApplyIntegrationSchemaResponse =
+  components['schemas']['ApplyIntegrationSchemaResponse'];
+export type ApplyCampaignTemplatesRequest = components['schemas']['ApplyCampaignTemplatesRequest'];
 
 export const BUNDLED_TRAFFIC_TEMPLATES = [
   { value: 'traffic_propellerads', label: 'PropellerAds' },
@@ -264,24 +269,20 @@ export async function importBundledTemplates(names: string[]): Promise<Integrati
 export async function applyIntegrationSchema(
   schemaId: string,
   campaignId: string
-): Promise<Record<string, string>> {
-  const res = await apiConfirmed<Record<string, string>>(
+): Promise<ApplyIntegrationSchemaResponse> {
+  const res = await apiConfirmed<ApplyIntegrationSchemaResponse>(
     `/api/v1/integration/schemas/${encodeURIComponent(schemaId)}/apply`,
     {
       method: 'POST',
       body: JSON.stringify({ campaign_id: campaignId }),
     }
   );
-  return res.data ?? {};
+  return res.data ?? { status: 'ok', kind: '' };
 }
 
 export async function applyCampaignTemplates(
   campaignId: string,
-  body: {
-    traffic_source?: string;
-    affiliate_network?: string;
-    tracking_domain?: string;
-  }
+  body: ApplyCampaignTemplatesRequest
 ): Promise<ApplyCampaignTemplatesResult> {
   const res = await apiConfirmed<ApplyCampaignTemplatesResult>(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/apply-templates`,

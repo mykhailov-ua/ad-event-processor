@@ -7,27 +7,14 @@ import {
   fetchMarginGuardActivity,
   fetchMarginGuardPolicies,
   removeMarginGuardOverride,
+  type MarginGuardActivity,
+  type MarginGuardPolicy,
 } from '../helpers/margin_guard_api.js';
 import { mapServiceError } from '../helpers/service_error.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { Button } from './button.js';
 import { Checkbox } from './checkbox.js';
-
-type MarginGuardPolicy = {
-  name?: string;
-  min_clicks?: number;
-  roi_floor_pct?: number;
-  cost_over_revenue_threshold_bps?: number;
-  is_active?: boolean;
-};
-
-type MarginGuardActivity = {
-  created_at?: string;
-  placement_id?: string;
-  action?: string;
-  reason?: string;
-};
 
 type MarginSnapshot = {
   advertiser_spend_micro?: number;
@@ -87,8 +74,8 @@ export function CampaignMarginGuardSection({
       to(api(`/api/v1/campaigns/${campaignId}/margin`)),
     ]);
     setLoading(false);
-    setPolicies((polRes ?? []) as MarginGuardPolicy[]);
-    setActivity((actRes ?? []) as MarginGuardActivity[]);
+    setPolicies(polRes ?? []);
+    setActivity(actRes ?? []);
     setMargin((marginRes[0]?.data as MarginSnapshot | null | undefined) ?? null);
   }, [campaignId]);
 
@@ -100,7 +87,7 @@ export function CampaignMarginGuardSection({
     if (!canWrite || saving) return;
     setSaving(true);
     setError(null);
-    const body = {
+    const body: MarginGuardPolicy = {
       campaign_id: campaignId,
       name: form.name.trim() || 'Policy',
       min_clicks: Number.parseInt(form.min_clicks, 10) || 0,

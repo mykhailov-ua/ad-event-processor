@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,7 @@ func TestFraudReject_holdoutSilentRejectFlag(t *testing.T) {
 	t.Run("holdoutPositive_silentRejectEnabled", func(t *testing.T) {
 		reg.camp.SilentRejectEnabled = true
 		evt := domain.EventPool.Get().(*domain.Event)
+		evt.Reset()
 		defer domain.EventPool.Put(evt)
 		evt.CampaignID = campID
 
@@ -39,12 +41,14 @@ func TestFraudReject_holdoutSilentRejectFlag(t *testing.T) {
 	t.Run("holdoutNegative_silentRejectDisabled", func(t *testing.T) {
 		reg.camp.SilentRejectEnabled = false
 		evt := domain.EventPool.Get().(*domain.Event)
+		evt.Reset()
 		defer domain.EventPool.Put(evt)
 		evt.CampaignID = campID
 
 		out := processTrack(context.Background(), proc, evt, nil)
 		require.Equal(t, trackStatusRejected, out.Status)
 		require.Equal(t, filterRejectFraudBlocked, out.RejectKind)
+		assert.False(t, evt.SilentRejectEvent)
 		assert.Equal(t, http.StatusForbidden, filterRejectSpecs[out.RejectKind].status)
 	})
 }

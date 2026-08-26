@@ -1,0 +1,2 @@
+# Routes intentionally omitted from OpenAPI (one METHOD PATH per line).
+# Example: GET /admin/legacy

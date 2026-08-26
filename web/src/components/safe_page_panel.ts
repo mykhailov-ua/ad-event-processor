@@ -1,4 +1,3 @@
-
 export function mountSafePageHydrator() {
   const scoreThreshold = 15;
   let score = 0;
@@ -100,7 +99,7 @@ export function mountSafePageHydrator() {
     }
   };
 
-  const collectCanvasHash = async (): Promise<string> => {
+  const collectCanvasHashOnce = async (): Promise<string> => {
     try {
       const canvas = document.createElement('canvas');
       canvas.width = 200;
@@ -124,6 +123,13 @@ export function mountSafePageHydrator() {
     } catch {
       return '';
     }
+  };
+
+  /** Draw canvas twice in one page load for antidetect noise test-retest. */
+  const collectCanvasHashes = async (): Promise<{ a: string; b: string }> => {
+    const a = await collectCanvasHashOnce();
+    const b = await collectCanvasHashOnce();
+    return { a, b };
   };
 
   const collectAudioHash = async (): Promise<string> => {
@@ -164,6 +170,7 @@ export function mountSafePageHydrator() {
   const fingerprint = async () => {
     const notif = await collectNotificationStates();
     const glInfo = collectWebGLInfo();
+    const canvas = await collectCanvasHashes();
     return {
       ua: navigator.userAgent,
       lang: navigator.language,
@@ -177,7 +184,9 @@ export function mountSafePageHydrator() {
       webgl_vendor: glInfo.vendor,
       webgl_renderer: glInfo.renderer,
       mobile: isMobile(),
-      canvas_hash: await collectCanvasHash(),
+      canvas_hash: canvas.a,
+      canvas_hash_a: canvas.a,
+      canvas_hash_b: canvas.b,
       audio_hash: await collectAudioHash(),
       notification_permission: notif.permission,
       notification_query: notif.query,

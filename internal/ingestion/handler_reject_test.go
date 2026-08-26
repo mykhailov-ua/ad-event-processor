@@ -2,7 +2,6 @@ package ingestion
 
 import (
 	"bytes"
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -10,20 +9,12 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
-
-type mockRedisXAdd struct {
-	mockRedisClient
-}
-
-func (m *mockRedisXAdd) XAdd(ctx context.Context, args *redis.XAddArgs) *redis.StringCmd {
-	cmd := redis.NewStringCmd(ctx)
-	cmd.SetVal("1-0")
-	return cmd
-}
 
 func TestAdsPacketHandler_FilterErrors(t *testing.T) {
 	cfg := &config.Config{
@@ -63,22 +54,28 @@ func TestAdsPacketHandler_FilterErrors(t *testing.T) {
 		configureMockRegistryCampaign(func(c *domain.Campaign) {
 			c.SilentRejectEnabled = true
 		})
-		redisClient := &mockRedisXAdd{}
+		redisClient := &countingRedisXAdd{}
 		h := NewAdsPacketHandler(cfg, registry, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{redisClient}, sharder, "fraud-stream", nil)
 		status, written := PostTrackGnetJSON(h, makeBody())
 		assert.Equal(t, http.StatusAccepted, status)
 		assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 202")))
+		require.Eventually(t, func() bool {
+			return redisClient.xadds.Load() >= 1
+		}, time.Second, 2*time.Millisecond)
 	})
 
 	t.Run("ErrFraudDetected silent reject off -> 403 holdout", func(t *testing.T) {
 		configureMockRegistryCampaign(func(c *domain.Campaign) {
 			c.SilentRejectEnabled = false
 		})
-		redisClient := &mockRedisXAdd{}
+		redisClient := &countingRedisXAdd{}
 		h := NewAdsPacketHandler(cfg, registry, NewFilterEngine(0, &errFilter{err: ErrFraudDetected}), nil, []redis.UniversalClient{redisClient}, sharder, "fraud-stream", nil)
 		status, written := PostTrackGnetJSON(h, makeBody())
 		assert.Equal(t, http.StatusForbidden, status)
 		assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 403")))
+		require.Eventually(t, func() bool {
+			return redisClient.xadds.Load() >= 1
+		}, time.Second, 2*time.Millisecond)
 	})
 
 	t.Run("redis circuit open -> 503 Retry-After", func(t *testing.T) {

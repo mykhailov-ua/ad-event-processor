@@ -24,7 +24,6 @@ func DeprecatedBPFMetricPrefix() string {
 	return DeprecatedStackSlug() + "_bpf_"
 }
 
-
 func BPFProbeProgramPrefix() string {
 	return "probe_"
 }

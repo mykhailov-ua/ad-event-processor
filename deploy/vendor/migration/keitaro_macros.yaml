@@ -1,0 +1,30 @@
+version: 1
+macros:
+  - source: "{subid}"
+    target_key: sub1
+  - source: "{sub_id_1}"
+    target_key: sub1
+  - source: "{campaign_id}"
+    target_key: campaign_id
+    passthrough: true
+  - source: "{cost}"
+    target_key: cost
+    ingress_cost: true
+  - source: "{{campaign.id}}"
+    target_key: sub2
+  - source: "{{adset.id}}"
+    target_key: sub3
+  - source: "{{ad.id}}"
+    target_key: sub4
+  - source: "{{fbclid}}"
+    target_key: fbclid
+  - source: "{campaignid}"
+    target_key: ad_campaign_id
+  - source: "{adgroupid}"
+    target_key: sub3
+  - source: "{gclid}"
+    target_key: gclid
+  - source: "__CAMPAIGN_ID__"
+    target_key: sub2
+  - source: "__AID__"
+    target_key: sub3

@@ -16,12 +16,12 @@ func TestRPBaseline_inventorySymbolsExist(t *testing.T) {
 	ingestionDir := filepath.Dir(file)
 
 	symbols := map[string][]string{
-		"click_redirect.go":          {"reactClickRedirect"},
-		"click_proxy.go":             {"clickProxyDeliver"},
-		"safe_page.go":               {"resolveSafePageLanding", "writeSafePageStubResponse"},
-		"safe_page_verify.go":        {"reactTrackVerify"},
-		"attestation_token.go":       {"MintAttestationToken", "ConfigureAttestation"},
-		"cidr_lpm.go":                {"CIDRTable"},
+		"click_redirect.go":               {"reactClickRedirect"},
+		"click_proxy.go":                  {"clickProxyDeliver"},
+		"safe_page.go":                    {"resolveSafePageLanding", "writeSafePageStubResponse"},
+		"safe_page_verify.go":             {"reactTrackVerify"},
+		"attestation_token.go":            {"MintAttestationToken", "ConfigureAttestation"},
+		"cidr_lpm.go":                     {"CIDRTable"},
 		"landing_tls_fingerprint_hook.go": {"tlsFingerprintShouldSafeView"},
 	}
 	for rel, want := range symbols {

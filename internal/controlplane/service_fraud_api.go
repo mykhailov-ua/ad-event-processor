@@ -15,6 +15,9 @@ func toAdminCampaignFraudConfig(cfg CampaignFraudConfigDTO) CampaignFraudConfigD
 		FraudThresholdBlock:   cfg.FraudThresholdBlock,
 		SilentRejectEnabled:   cfg.SilentRejectEnabled,
 		BehaviorFlags:         cfg.BehaviorFlags,
+		CanvasRetestEnabled:   cfg.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:  cfg.CgnatIPPolicyEnabled,
+		ConversionRejectRules: cfg.ConversionRejectRules,
 	}
 }
 

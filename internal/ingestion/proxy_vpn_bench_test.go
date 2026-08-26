@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
 
@@ -60,7 +61,7 @@ func BenchmarkProxyVPN_MatchBranch_SafeView(b *testing.B) {
 			camp: &domain.Campaign{ProxyVPNBlockEnabled: true},
 			ok:   true,
 		},
-		proxyVPNTable:      table,
+		proxyVPNTable:        table,
 		proxyVPNBlockMetrics: newProxyVPNBlockMetrics(),
 	}
 	cid := uuid.MustParse("00000000-0000-4000-8000-000000000001")

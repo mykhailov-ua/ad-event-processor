@@ -1,6 +1,5 @@
 package fraud
 
-
 type FraudThreatEnqueueItem struct {
 	Action     string  `json:"action"`
 	IP         string  `json:"ip"`

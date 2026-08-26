@@ -5,6 +5,7 @@ import (
 	"net"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/panjf2000/gnet/v2"
@@ -15,12 +16,14 @@ var gnetHarnessRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 type GnetHarnessConn struct {
 	gnet.Conn
 	mu             sync.Mutex
+	closed         atomic.Bool
 	inbound        []byte
 	written        []byte
 	responses      [][]byte
 	ctx            any
 	addr           net.Addr
 	benchZeroAlloc bool
+	onWake         func(*GnetHarnessConn)
 }
 
 func NewGnetHarnessConn(inbound []byte) *GnetHarnessConn {
@@ -67,9 +70,25 @@ func (c *GnetHarnessConn) AsyncWrite(buf []byte, callback gnet.AsyncCallback) er
 	return err
 }
 
-func (c *GnetHarnessConn) InboundBuffered() int { return len(c.inbound) }
+func (c *GnetHarnessConn) Wake(callback gnet.AsyncCallback) error {
+	if c.onWake != nil {
+		c.onWake(c)
+	}
+	if callback != nil {
+		_ = callback(c, nil)
+	}
+	return nil
+}
+
+func (c *GnetHarnessConn) InboundBuffered() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.inbound)
+}
 
 func (c *GnetHarnessConn) Peek(n int) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if n > len(c.inbound) {
 		n = len(c.inbound)
 	}
@@ -77,6 +96,8 @@ func (c *GnetHarnessConn) Peek(n int) ([]byte, error) {
 }
 
 func (c *GnetHarnessConn) Discard(n int) (int, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if n > len(c.inbound) {
 		n = len(c.inbound)
 	}
@@ -92,6 +113,8 @@ func (c *GnetHarnessConn) RemoteAddr() net.Addr {
 }
 
 func (c *GnetHarnessConn) Append(b []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.inbound = append(c.inbound, b...)
 }
 
@@ -101,9 +124,15 @@ func (c *GnetHarnessConn) Written() []byte {
 	return append([]byte(nil), c.written...)
 }
 
-func (c *GnetHarnessConn) WriteCount() int { return len(c.responses) }
+func (c *GnetHarnessConn) WriteCount() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.responses)
+}
 
 func (c *GnetHarnessConn) AllResponses() [][]byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	out := make([][]byte, len(c.responses))
 	for i, r := range c.responses {
 		out[i] = append([]byte(nil), r...)
@@ -116,7 +145,14 @@ func (c *GnetHarnessConn) SetRemoteAddr(addr net.Addr) { c.addr = addr }
 func (c *GnetHarnessConn) SetReadDeadline(time.Time) error  { return nil }
 func (c *GnetHarnessConn) SetWriteDeadline(time.Time) error { return nil }
 func (c *GnetHarnessConn) SetDeadline(time.Time) error      { return nil }
-func (c *GnetHarnessConn) Close() error                     { return nil }
+func (c *GnetHarnessConn) Close() error {
+	c.closed.Store(true)
+	return nil
+}
+
+func (c *GnetHarnessConn) Closed() bool {
+	return c.closed.Load()
+}
 
 func BuildGnetHTTP(method, path string, headers map[string]string, body []byte) []byte {
 	var buf bytes.Buffer
@@ -165,6 +201,11 @@ func BuildGnetGetHealth() []byte {
 
 func ServeGnetHarness(h *AdsPacketHandler, inbound []byte) (gnet.Action, *GnetHarnessConn) {
 	c := NewGnetHarnessConn(inbound)
+	if h != nil {
+		ctx := h.allocConnContext(c)
+		ctx.workerID = 0
+		c.SetContext(ctx)
+	}
 	return h.OnTraffic(c), c
 }
 

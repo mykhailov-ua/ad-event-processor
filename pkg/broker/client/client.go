@@ -12,6 +12,7 @@ import (
 
 	"ad-event-processor/pkg/broker/protocol"
 	"ad-event-processor/pkg/netaddr"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,17 +43,17 @@ func (it *MessageIterator) Next() bool {
 }
 
 type Client struct {
-	addr      string
-	conn      net.Conn
-	mu        sync.Mutex
-	nextSeq   uint64
-	readBuf   []byte
-	writeBuf  []byte
-	lenBuf    []byte
-	timeout   time.Duration
-	redisURL  string
-	redisClient       redis.Cmdable
-	fetchIter MessageIterator
+	addr        string
+	conn        net.Conn
+	mu          sync.Mutex
+	nextSeq     uint64
+	readBuf     []byte
+	writeBuf    []byte
+	lenBuf      []byte
+	timeout     time.Duration
+	redisURL    string
+	redisClient redis.Cmdable
+	fetchIter   MessageIterator
 }
 
 func NewClient(addr string, timeout time.Duration) *Client {
@@ -409,7 +410,10 @@ func (c *Client) CommittedOffset(topic string, partition uint16, group string) (
 	if err != nil {
 		return 0, err
 	}
-	if status != 0 {
+	if status == protocol.OffsetStatusStoreUnavailable {
+		return 0, nil
+	}
+	if status != protocol.OffsetStatusOK {
 		return 0, fmt.Errorf("broker committed offset status: %d", status)
 	}
 	return offset, nil

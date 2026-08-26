@@ -130,7 +130,7 @@ type DBHealthChecker interface {
 }
 
 type UnifiedFilter struct {
-	redisShards                     []redis.UniversalClient
+	redisShards              []redis.UniversalClient
 	sharder                  Sharder
 	script                   *redis.Script
 	scriptHash               string
@@ -213,6 +213,9 @@ type UnifiedFilter struct {
 	placementBL                 *PlacementBlacklistFilter
 	fraudBL                     *FraudBlacklistFilter
 	ingressRPDHandledExternally bool
+	cgnatGlobalBypass           bool
+	mobileCarrierASN            *MobileCarrierASNTable
+	asnLookup                   ASNLookup
 }
 
 func (f *UnifiedFilter) SetPlacementBlacklistFilter(p *PlacementBlacklistFilter) {
@@ -344,7 +347,7 @@ func NewUnifiedFilter(
 	rollbackScript := redis.NewScript(budgetRollbackLua)
 	emptyGeoFloors := make(map[string]int64)
 	f := &UnifiedFilter{
-		redisShards:                         redisShards,
+		redisShards:                  redisShards,
 		sharder:                      sharder,
 		script:                       script,
 		scriptHash:                   script.Hash(),
@@ -602,15 +605,10 @@ func (f *UnifiedFilter) checkFreqLimitGo(evt *domain.Event, campInfo *domain.Cam
 }
 
 func (f *UnifiedFilter) getCampaign(evt *domain.Event) (*domain.Campaign, bool) {
-	if f == nil || f.registry == nil || evt == nil {
+	if f == nil || f.registry == nil {
 		return nil, false
 	}
-	if reg, ok := f.registry.(*Registry); ok {
-		if w := int(evt.FilterWorkerIdx); w >= 0 {
-			return reg.GetCampaignWorker(w, evt.CampaignID)
-		}
-	}
-	return f.registry.GetCampaign(evt.CampaignID)
+	return getCampaignFromEvent(f.registry, evt)
 }
 
 func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {

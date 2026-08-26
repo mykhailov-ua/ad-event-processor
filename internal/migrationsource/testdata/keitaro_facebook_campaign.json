@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "campaigns": [
+    {
+      "id": 42,
+      "name": "Facebook Camp",
+      "traffic_source": "Facebook",
+      "budget": 100,
+      "tracking_url": "https://trk.example.com/click?campaign_id={campaign_id}&sub1={subid}&sub2={{campaign.id}}&sub4={{ad.id}}&fbclid={{fbclid}}",
+      "lander_url": "https://lander.example/lp?cid={click_id}",
+      "postback_url": "https://aff.example/postback?cid={subid}"
+    }
+  ]
+}

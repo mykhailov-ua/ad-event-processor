@@ -47,57 +47,60 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
 
 	camp := &Campaign{
-		ID:                      id,
-		IDStr:                   idStr,
-		IDStrAny:                idStr,
-		CustomerID:              customerID,
-		CustomerIDStr:           customerIDStr,
-		CustomerIDStrAny:        customerIDStr,
-		BrandID:                 brandIDPtr,
-		BrandFcapKey:            row.BrandFcapKey,
-		Name:                    row.Name,
-		Status:                  CampaignStatus(row.Status),
-		PacingMode:              PacingMode(row.PacingMode),
-		BudgetLimit:             row.BudgetLimit,
-		CurrentSpend:            row.CurrentSpend,
-		DailyBudget:             row.DailyBudget,
-		DailyBudgetMicro:        dailyBudgetMicro,
-		DailyBudgetMicroAny:     dailyBudgetMicro,
-		Timezone:                row.Timezone,
-		Location:                loc,
-		FreqLimit:               row.FreqLimit.Int32,
-		FreqLimitAny:            row.FreqLimit.Int32,
-		FreqWindow:              row.FreqWindow.Int32,
-		FreqWindowAny:           row.FreqWindow.Int32,
-		TargetCountries:         SliceToMap(row.TargetCountries),
-		BudgetCampaignKey:       budgetCampaignKey(id),
-		CampaignSyncKey:         campaignSyncKey(id),
-		CustomerSyncKey:         customerSyncKey(id, customerID),
-		FcapKeyPrefix:           fcapPrefix,
-		DailySpendKeyPrefix:     dailySpendKeyPrefix(id),
-		FraudThresholdPass:      uint8(row.FraudThresholdPass),
-		FraudThresholdSuspect:   uint8(row.FraudThresholdSuspect),
-		FraudThresholdIVT:       uint8(row.FraudThresholdIvt),
-		FraudThresholdBlock:     uint8(row.FraudThresholdBlock),
-		SilentRejectEnabled:     row.SilentRejectEnabled,
-		BehaviorFlags:           BehaviorFlags(row.BehaviorFlags),
-		RequireConsentPurposes:  row.RequireConsentPurposes,
-		MigrationGen:            row.MigrationGen,
-		SafePageURL:             row.SafePageUrl,
-		SafePageEnabled:         row.SafePageEnabled,
-		DmrEnabled:              row.DmrEnabled,
-		CIDRBlockEnabled:      row.CidrBlockEnabled,
-		ProxyVPNBlockEnabled: row.ProxyVpnBlockEnabled,
-		ModeratorIntelEnabled:   row.ModeratorIntelEnabled,
-		ReviewTrafficAction:     ParseReviewTrafficAction(row.ReviewTrafficAction),
-		SocialInAppEnabled:      row.SocialInAppEnabled,
-		ClickDelivery:           row.ClickDelivery,
-		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
-		ProxyRewriteAssets:      row.ProxyRewriteAssets,
+		ID:                     id,
+		IDStr:                  idStr,
+		IDStrAny:               idStr,
+		CustomerID:             customerID,
+		CustomerIDStr:          customerIDStr,
+		CustomerIDStrAny:       customerIDStr,
+		BrandID:                brandIDPtr,
+		BrandFcapKey:           row.BrandFcapKey,
+		Name:                   row.Name,
+		Status:                 CampaignStatus(row.Status),
+		PacingMode:             PacingMode(row.PacingMode),
+		BudgetLimit:            row.BudgetLimit,
+		CurrentSpend:           row.CurrentSpend,
+		DailyBudget:            row.DailyBudget,
+		DailyBudgetMicro:       dailyBudgetMicro,
+		DailyBudgetMicroAny:    dailyBudgetMicro,
+		Timezone:               row.Timezone,
+		Location:               loc,
+		FreqLimit:              row.FreqLimit.Int32,
+		FreqLimitAny:           row.FreqLimit.Int32,
+		FreqWindow:             row.FreqWindow.Int32,
+		FreqWindowAny:          row.FreqWindow.Int32,
+		TargetCountries:        SliceToMap(row.TargetCountries),
+		BudgetCampaignKey:      budgetCampaignKey(id),
+		CampaignSyncKey:        campaignSyncKey(id),
+		CustomerSyncKey:        customerSyncKey(id, customerID),
+		FcapKeyPrefix:          fcapPrefix,
+		DailySpendKeyPrefix:    dailySpendKeyPrefix(id),
+		FraudThresholdPass:     uint8(row.FraudThresholdPass),
+		FraudThresholdSuspect:  uint8(row.FraudThresholdSuspect),
+		FraudThresholdIVT:      uint8(row.FraudThresholdIvt),
+		FraudThresholdBlock:    uint8(row.FraudThresholdBlock),
+		SilentRejectEnabled:    row.SilentRejectEnabled,
+		BehaviorFlags:          BehaviorFlags(row.BehaviorFlags),
+		RequireConsentPurposes: row.RequireConsentPurposes,
+		MigrationGen:           row.MigrationGen,
+		SafePageURL:            row.SafePageUrl,
+		SafePageEnabled:        row.SafePageEnabled,
+		CanvasRetestEnabled:    row.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:   row.CgnatIpPolicyEnabled,
+		DmrEnabled:             row.DmrEnabled,
+		CIDRBlockEnabled:       row.CidrBlockEnabled,
+		ProxyVPNBlockEnabled:   row.ProxyVpnBlockEnabled,
+		ModeratorIntelEnabled:  row.ModeratorIntelEnabled,
+		ReviewTrafficAction:    ParseReviewTrafficAction(row.ReviewTrafficAction),
+		SocialInAppEnabled:     row.SocialInAppEnabled,
+		ClickDelivery:          row.ClickDelivery,
+		ProxyUpstreamURL:       row.ProxyUpstreamUrl,
+		ProxyRewriteAssets:     row.ProxyRewriteAssets,
 	}
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 	return camp
 }
 
@@ -123,57 +126,60 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
 
 	camp := &Campaign{
-		ID:                      id,
-		IDStr:                   idStr,
-		IDStrAny:                idStr,
-		CustomerID:              customerID,
-		CustomerIDStr:           customerIDStr,
-		CustomerIDStrAny:        customerIDStr,
-		BrandID:                 brandIDPtr,
-		BrandFcapKey:            row.BrandFcapKey,
-		Name:                    row.Name,
-		Status:                  CampaignStatus(row.Status),
-		PacingMode:              PacingMode(row.PacingMode),
-		BudgetLimit:             row.BudgetLimit,
-		CurrentSpend:            row.CurrentSpend,
-		DailyBudget:             row.DailyBudget,
-		DailyBudgetMicro:        dailyBudgetMicro,
-		DailyBudgetMicroAny:     dailyBudgetMicro,
-		Timezone:                row.Timezone,
-		Location:                loc,
-		FreqLimit:               row.FreqLimit.Int32,
-		FreqLimitAny:            row.FreqLimit.Int32,
-		FreqWindow:              row.FreqWindow.Int32,
-		FreqWindowAny:           row.FreqWindow.Int32,
-		TargetCountries:         SliceToMap(row.TargetCountries),
-		BudgetCampaignKey:       budgetCampaignKey(id),
-		CampaignSyncKey:         campaignSyncKey(id),
-		CustomerSyncKey:         customerSyncKey(id, customerID),
-		FcapKeyPrefix:           fcapPrefix,
-		DailySpendKeyPrefix:     dailySpendKeyPrefix(id),
-		FraudThresholdPass:      uint8(row.FraudThresholdPass),
-		FraudThresholdSuspect:   uint8(row.FraudThresholdSuspect),
-		FraudThresholdIVT:       uint8(row.FraudThresholdIvt),
-		FraudThresholdBlock:     uint8(row.FraudThresholdBlock),
-		SilentRejectEnabled:     row.SilentRejectEnabled,
-		BehaviorFlags:           BehaviorFlags(row.BehaviorFlags),
-		RequireConsentPurposes:  row.RequireConsentPurposes,
-		MigrationGen:            row.MigrationGen,
-		SafePageURL:             row.SafePageUrl,
-		SafePageEnabled:         row.SafePageEnabled,
-		DmrEnabled:              row.DmrEnabled,
-		CIDRBlockEnabled:      row.CidrBlockEnabled,
-		ProxyVPNBlockEnabled: row.ProxyVpnBlockEnabled,
-		ModeratorIntelEnabled:   row.ModeratorIntelEnabled,
-		ReviewTrafficAction:     ParseReviewTrafficAction(row.ReviewTrafficAction),
-		SocialInAppEnabled:      row.SocialInAppEnabled,
-		ClickDelivery:           row.ClickDelivery,
-		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
-		ProxyRewriteAssets:      row.ProxyRewriteAssets,
+		ID:                     id,
+		IDStr:                  idStr,
+		IDStrAny:               idStr,
+		CustomerID:             customerID,
+		CustomerIDStr:          customerIDStr,
+		CustomerIDStrAny:       customerIDStr,
+		BrandID:                brandIDPtr,
+		BrandFcapKey:           row.BrandFcapKey,
+		Name:                   row.Name,
+		Status:                 CampaignStatus(row.Status),
+		PacingMode:             PacingMode(row.PacingMode),
+		BudgetLimit:            row.BudgetLimit,
+		CurrentSpend:           row.CurrentSpend,
+		DailyBudget:            row.DailyBudget,
+		DailyBudgetMicro:       dailyBudgetMicro,
+		DailyBudgetMicroAny:    dailyBudgetMicro,
+		Timezone:               row.Timezone,
+		Location:               loc,
+		FreqLimit:              row.FreqLimit.Int32,
+		FreqLimitAny:           row.FreqLimit.Int32,
+		FreqWindow:             row.FreqWindow.Int32,
+		FreqWindowAny:          row.FreqWindow.Int32,
+		TargetCountries:        SliceToMap(row.TargetCountries),
+		BudgetCampaignKey:      budgetCampaignKey(id),
+		CampaignSyncKey:        campaignSyncKey(id),
+		CustomerSyncKey:        customerSyncKey(id, customerID),
+		FcapKeyPrefix:          fcapPrefix,
+		DailySpendKeyPrefix:    dailySpendKeyPrefix(id),
+		FraudThresholdPass:     uint8(row.FraudThresholdPass),
+		FraudThresholdSuspect:  uint8(row.FraudThresholdSuspect),
+		FraudThresholdIVT:      uint8(row.FraudThresholdIvt),
+		FraudThresholdBlock:    uint8(row.FraudThresholdBlock),
+		SilentRejectEnabled:    row.SilentRejectEnabled,
+		BehaviorFlags:          BehaviorFlags(row.BehaviorFlags),
+		RequireConsentPurposes: row.RequireConsentPurposes,
+		MigrationGen:           row.MigrationGen,
+		SafePageURL:            row.SafePageUrl,
+		SafePageEnabled:        row.SafePageEnabled,
+		CanvasRetestEnabled:    row.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:   row.CgnatIpPolicyEnabled,
+		DmrEnabled:             row.DmrEnabled,
+		CIDRBlockEnabled:       row.CidrBlockEnabled,
+		ProxyVPNBlockEnabled:   row.ProxyVpnBlockEnabled,
+		ModeratorIntelEnabled:  row.ModeratorIntelEnabled,
+		ReviewTrafficAction:    ParseReviewTrafficAction(row.ReviewTrafficAction),
+		SocialInAppEnabled:     row.SocialInAppEnabled,
+		ClickDelivery:          row.ClickDelivery,
+		ProxyUpstreamURL:       row.ProxyUpstreamUrl,
+		ProxyRewriteAssets:     row.ProxyRewriteAssets,
 	}
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 
 	if row.PrimaryAShard.Valid {
 		camp.HasTriplet = true
@@ -212,58 +218,61 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
 
 	camp := &Campaign{
-		ID:                      id,
-		IDStr:                   idStr,
-		IDStrAny:                idStr,
-		CustomerID:              customerID,
-		CustomerIDStr:           customerIDStr,
-		CustomerIDStrAny:        customerIDStr,
-		BrandID:                 brandIDPtr,
-		BrandFcapKey:            row.BrandFcapKey,
-		Name:                    row.Name,
-		Status:                  CampaignStatus(row.Status),
-		PacingMode:              PacingMode(row.PacingMode),
-		BudgetLimit:             row.BudgetLimit,
-		CurrentSpend:            row.CurrentSpend,
-		DailyBudget:             row.DailyBudget,
-		DailyBudgetMicro:        dailyBudgetMicro,
-		DailyBudgetMicroAny:     dailyBudgetMicro,
-		ReserveMicro:            row.ReserveMicro,
-		Timezone:                row.Timezone,
-		Location:                loc,
-		FreqLimit:               row.FreqLimit.Int32,
-		FreqLimitAny:            row.FreqLimit.Int32,
-		FreqWindow:              row.FreqWindow.Int32,
-		FreqWindowAny:           row.FreqWindow.Int32,
-		TargetCountries:         SliceToMap(row.TargetCountries),
-		BudgetCampaignKey:       budgetCampaignKey(id),
-		CampaignSyncKey:         campaignSyncKey(id),
-		CustomerSyncKey:         customerSyncKey(id, customerID),
-		FcapKeyPrefix:           fcapPrefix,
-		DailySpendKeyPrefix:     dailySpendKeyPrefix(id),
-		FraudThresholdPass:      uint8(row.FraudThresholdPass),
-		FraudThresholdSuspect:   uint8(row.FraudThresholdSuspect),
-		FraudThresholdIVT:       uint8(row.FraudThresholdIvt),
-		FraudThresholdBlock:     uint8(row.FraudThresholdBlock),
-		SilentRejectEnabled:     row.SilentRejectEnabled,
-		BehaviorFlags:           BehaviorFlags(row.BehaviorFlags),
-		RequireConsentPurposes:  row.RequireConsentPurposes,
-		MigrationGen:            row.MigrationGen,
-		SafePageURL:             row.SafePageUrl,
-		SafePageEnabled:         row.SafePageEnabled,
-		DmrEnabled:              row.DmrEnabled,
-		CIDRBlockEnabled:      row.CidrBlockEnabled,
-		ProxyVPNBlockEnabled: row.ProxyVpnBlockEnabled,
-		ModeratorIntelEnabled:   row.ModeratorIntelEnabled,
-		ReviewTrafficAction:     ParseReviewTrafficAction(row.ReviewTrafficAction),
-		SocialInAppEnabled:      row.SocialInAppEnabled,
-		ClickDelivery:           row.ClickDelivery,
-		ProxyUpstreamURL:        row.ProxyUpstreamUrl,
-		ProxyRewriteAssets:      row.ProxyRewriteAssets,
+		ID:                     id,
+		IDStr:                  idStr,
+		IDStrAny:               idStr,
+		CustomerID:             customerID,
+		CustomerIDStr:          customerIDStr,
+		CustomerIDStrAny:       customerIDStr,
+		BrandID:                brandIDPtr,
+		BrandFcapKey:           row.BrandFcapKey,
+		Name:                   row.Name,
+		Status:                 CampaignStatus(row.Status),
+		PacingMode:             PacingMode(row.PacingMode),
+		BudgetLimit:            row.BudgetLimit,
+		CurrentSpend:           row.CurrentSpend,
+		DailyBudget:            row.DailyBudget,
+		DailyBudgetMicro:       dailyBudgetMicro,
+		DailyBudgetMicroAny:    dailyBudgetMicro,
+		ReserveMicro:           row.ReserveMicro,
+		Timezone:               row.Timezone,
+		Location:               loc,
+		FreqLimit:              row.FreqLimit.Int32,
+		FreqLimitAny:           row.FreqLimit.Int32,
+		FreqWindow:             row.FreqWindow.Int32,
+		FreqWindowAny:          row.FreqWindow.Int32,
+		TargetCountries:        SliceToMap(row.TargetCountries),
+		BudgetCampaignKey:      budgetCampaignKey(id),
+		CampaignSyncKey:        campaignSyncKey(id),
+		CustomerSyncKey:        customerSyncKey(id, customerID),
+		FcapKeyPrefix:          fcapPrefix,
+		DailySpendKeyPrefix:    dailySpendKeyPrefix(id),
+		FraudThresholdPass:     uint8(row.FraudThresholdPass),
+		FraudThresholdSuspect:  uint8(row.FraudThresholdSuspect),
+		FraudThresholdIVT:      uint8(row.FraudThresholdIvt),
+		FraudThresholdBlock:    uint8(row.FraudThresholdBlock),
+		SilentRejectEnabled:    row.SilentRejectEnabled,
+		BehaviorFlags:          BehaviorFlags(row.BehaviorFlags),
+		RequireConsentPurposes: row.RequireConsentPurposes,
+		MigrationGen:           row.MigrationGen,
+		SafePageURL:            row.SafePageUrl,
+		SafePageEnabled:        row.SafePageEnabled,
+		CanvasRetestEnabled:    row.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:   row.CgnatIpPolicyEnabled,
+		DmrEnabled:             row.DmrEnabled,
+		CIDRBlockEnabled:       row.CidrBlockEnabled,
+		ProxyVPNBlockEnabled:   row.ProxyVpnBlockEnabled,
+		ModeratorIntelEnabled:  row.ModeratorIntelEnabled,
+		ReviewTrafficAction:    ParseReviewTrafficAction(row.ReviewTrafficAction),
+		SocialInAppEnabled:     row.SocialInAppEnabled,
+		ClickDelivery:          row.ClickDelivery,
+		ProxyUpstreamURL:       row.ProxyUpstreamUrl,
+		ProxyRewriteAssets:     row.ProxyRewriteAssets,
 	}
 	applyCampaignAttestation(camp, row.AttestationMode, row.AttestationEnabled, row.AttestationTtlSec)
 	applyCampaignLandingProtectionFields(camp, row.TlsFingerprintBlockEnabled, row.ConnTypePolicy, row.LinkSigningEnabled, row.LinkSigningTtlSec)
 	applyCampaignSegmentFields(camp, row.RetargetSegmentID, row.SegmentInclude, row.SegmentExclude, row.SegmentTtlHours)
+	camp.IngressCost = ParseIngressCostConfigJSON(row.IngressCostConfig)
 
 	if row.PrimaryAShard.Valid {
 		camp.HasTriplet = true
@@ -326,6 +335,58 @@ func (r *CampaignRepo) GetByID(ctx context.Context, id uuid.UUID) (*Campaign, er
 		return nil, err
 	}
 	return CampaignFromGetCampaignFullRow(row), nil
+}
+
+func (r *CampaignRepo) ListSilentRejectByCampaignIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if r == nil || len(ids) == 0 {
+		return nil, nil
+	}
+	pgIDs := make([]pgtype.UUID, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil {
+			continue
+		}
+		pgIDs = append(pgIDs, pgtype.UUID{Bytes: id, Valid: true})
+	}
+	if len(pgIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.queries.ListCampaignsByIDs(ctx, pgIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]bool, len(rows))
+	for i := range rows {
+		id := uuid.UUID(rows[i].ID.Bytes)
+		out[id] = rows[i].SilentRejectEnabled
+	}
+	return out, nil
+}
+
+func (r *CampaignRepo) ListConversionRejectRulesByCampaignIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]ConversionRejectRules, error) {
+	if r == nil || len(ids) == 0 {
+		return nil, nil
+	}
+	pgIDs := make([]pgtype.UUID, 0, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil {
+			continue
+		}
+		pgIDs = append(pgIDs, pgtype.UUID{Bytes: id, Valid: true})
+	}
+	if len(pgIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.queries.ListCampaignsByIDs(ctx, pgIDs)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[uuid.UUID]ConversionRejectRules, len(rows))
+	for i := range rows {
+		id := uuid.UUID(rows[i].ID.Bytes)
+		out[id] = ParseConversionRejectRulesJSON(rows[i].ConversionRejectRules)
+	}
+	return out, nil
 }
 
 func (r *CampaignRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status CampaignStatus) error {

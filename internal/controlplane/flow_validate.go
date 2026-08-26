@@ -41,6 +41,15 @@ func validateFlowPathShape(paths []FlowPathDTO) error {
 			if offer.Weight <= 0 {
 				return fmt.Errorf("path %d offer %d weight must be positive", i+1, j+1)
 			}
+			if offer.CapDaily != nil && *offer.CapDaily <= 0 {
+				return fmt.Errorf("path %d offer %d cap_daily must be positive", i+1, j+1)
+			}
+			if offer.CapTotal != nil && *offer.CapTotal <= 0 {
+				return fmt.Errorf("path %d offer %d cap_total must be positive", i+1, j+1)
+			}
+		}
+		if err := validateFlowPathFilters(i, path.Filters); err != nil {
+			return err
 		}
 	}
 	return nil

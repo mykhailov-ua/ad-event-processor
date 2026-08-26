@@ -8,7 +8,7 @@ cd "$ROOT"
 fail=0
 checked=0
 
-infra_pattern='testutil\.(SetupPostgres|SetupAdsPostgres|SetupAdsPaymentPostgres|SetupRedis)|setupTestDB|setupTestRedis|setupAuthTestInfra|setupAdsFaultInfra|setupClickHouseIntegration|setupClickHouseTest|setupCHJanitorIntegration|database\.SetupTestDB|database\.SetupTestRedis|dbtest\.SetupTestDB|dbtest\.SetupTestRedis'
+infra_pattern='testutil\.(SetupPostgres|SetupAdsPostgres|SetupAdsPaymentPostgres|SetupRedis)|setupTestDB|setupTestRedis|setupAuthTestInfra|setupAdsFaultInfra|setupClickHouseIntegration|setupClickHouseTest|setupClickHouseCostSyncTest|setupCostSyncDB|setupCHJanitorIntegration|database\.SetupTestDB|database\.SetupTestRedis|dbtest\.SetupTestDB|dbtest\.SetupTestRedis'
 short_pattern='testing\.Short\(\)|setup[A-Za-z0-9_]*(Integration|Infra|TestDB|TestRedis|Test)\(t\)'
 assert_pattern='require\.(NoError|Error|ErrorIs|Equal|NotEqual|NotEmpty|Empty|Len|True|False|Nil|NotNil)|assert\.(Equal|NotEqual|True|False|Len|NotEmpty|Empty|Error|ErrorIs)'
 

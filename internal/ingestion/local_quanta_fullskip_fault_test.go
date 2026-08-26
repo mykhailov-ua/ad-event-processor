@@ -36,7 +36,7 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	idem := NewLocalClickIdemCache(time.Hour)
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		RedisShards:           []redis.UniversalClient{counter},
+		RedisShards:    []redis.UniversalClient{counter},
 		StreamName:     "ad:events:stream",
 		MaxLen:         100_000,
 		IdempotencyTTL: time.Hour,
@@ -136,7 +136,7 @@ func TestAcceptLocalQuantaFullSkip_ZeroAlloc(t *testing.T) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		redisShards:         []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
+		redisShards:  []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,

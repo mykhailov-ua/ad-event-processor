@@ -231,7 +231,7 @@ func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		RedisShards:           []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
+		RedisShards:    []redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})},
 		StreamName:     "events",
 		MaxLen:         1000,
 		IdempotencyTTL: time.Hour,

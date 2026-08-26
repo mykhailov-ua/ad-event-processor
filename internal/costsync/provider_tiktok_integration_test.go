@@ -100,6 +100,8 @@ func TestTikTokCostSync_integration(t *testing.T) {
 		RefreshTokenEncrypted: refreshEnc,
 		ExtraConfig:           []byte(`{}`),
 		TokenExpiresAt:        pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		SyncIntervalMinutes:   1440,
+		TokenMapping:          []byte(`{}`),
 	})
 	require.NoError(t, err)
 

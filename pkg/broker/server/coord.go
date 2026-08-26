@@ -18,6 +18,7 @@ import (
 	"ad-event-processor/pkg/broker/log"
 	"ad-event-processor/pkg/broker/protocol"
 	"ad-event-processor/pkg/netaddr"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -33,7 +34,7 @@ const claimQueueCapacity = 64
 type Coordinator struct {
 	nodeID        string
 	tcpAddr       string
-	redisClient           redis.UniversalClient
+	redisClient   redis.UniversalClient
 	host          CoordHost
 	cfg           CoordConfig
 	closeChan     chan struct{}
@@ -58,7 +59,7 @@ func NewCoordinatorWithConfig(nodeID string, tcpAddr string, redisURL string, ho
 	c := &Coordinator{
 		nodeID:        nodeID,
 		tcpAddr:       tcpAddr,
-		redisClient:           redisClient,
+		redisClient:   redisClient,
 		host:          host,
 		cfg:           cfg.normalized(),
 		closeChan:     make(chan struct{}),

@@ -1,14 +1,8 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
+import type { components } from '../types/generated/openapi.js';
 
-export type FraudPolicyPreset = {
-  name: string;
-  pass: number;
-  suspect: number;
-  ivt: number;
-  block: number;
-  updated_at?: string;
-};
+export type FraudPolicyPreset = components['schemas']['FraudPolicyPreset'] & { name: string };
 
 export type FraudSensitivityPreset =
   | 'conservative'
@@ -17,11 +11,20 @@ export type FraudSensitivityPreset =
   | 'enhanced_defense'
   | 'social_in_app';
 
-
 export function normalizeFraudPresetId(id: string): FraudSensitivityPreset | string {
   if (id === 'gray_market') return 'enhanced_defense';
   return id;
 }
+
+export type ConversionRejectRules = {
+  enabled?: boolean;
+  min_ttc_ms?: number;
+  reject_no_click?: boolean;
+  reject_low_ttc?: boolean;
+  reject_duplicate?: boolean;
+  reject_ip_drift?: boolean;
+  reject_datacenter_ip?: boolean;
+};
 
 export type CampaignFraudConfig = {
   campaign_id: string;
@@ -30,6 +33,9 @@ export type CampaignFraudConfig = {
   fraud_threshold_ivt: number;
   fraud_threshold_block: number;
   silent_reject_enabled: boolean;
+  canvas_retest_enabled?: boolean;
+  cgnat_ip_policy_enabled?: boolean;
+  conversion_reject_rules?: ConversionRejectRules;
   behavior_flags?: number;
 };
 
@@ -40,6 +46,9 @@ export type PatchCampaignFraudRequest = {
   fraud_threshold_ivt?: number;
   fraud_threshold_block?: number;
   silent_reject_enabled?: boolean;
+  canvas_retest_enabled?: boolean;
+  cgnat_ip_policy_enabled?: boolean;
+  conversion_reject_rules?: ConversionRejectRules;
 };
 
 export type CampaignFraudPreview = {

@@ -51,7 +51,7 @@ createServer((req, res) => {
     return;
   }
 
-  const rel = path.replace(/^\
+  const rel = path.replace(/^\//, '');
   serveFile(res, resolve(DIST, rel));
 }).listen(PORT, () => {
   console.log(`Admin preview: http://127.0.0.1:${PORT}`);

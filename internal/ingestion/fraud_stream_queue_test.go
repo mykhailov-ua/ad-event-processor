@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	redis "github.com/redis/go-redis/v9"
@@ -68,10 +69,10 @@ func TestFraudStreamWriter_enqueueAndFlush(t *testing.T) {
 func TestFraudStreamWriter_ringFullIncrementsDropMetric(t *testing.T) {
 	redisClient := &mockRedisClient{}
 	q := &FraudStreamWriter{
-		stream: "fraud-stream",
-		maxLen: 1000,
-		redisShards:   []redis.UniversalClient{redisClient},
-		stopCh: make(chan struct{}),
+		stream:      "fraud-stream",
+		maxLen:      1000,
+		redisShards: []redis.UniversalClient{redisClient},
+		stopCh:      make(chan struct{}),
 	}
 	q.allocCursor = fraudRingUsable
 	q.writeCursor = fraudRingUsable

@@ -1,8 +1,6 @@
-
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-
 
 export async function resolve(specifier, context, nextResolve) {
   if (specifier.endsWith('.js') && !specifier.includes('node_modules')) {

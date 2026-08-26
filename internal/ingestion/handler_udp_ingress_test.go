@@ -32,7 +32,7 @@ func TestAdsPacketHandler_UDPIngress_429(t *testing.T) {
 	status, _ := PostTrackGnetJSON(h, body)
 	require.Equal(t, http.StatusAccepted, status)
 
-	status, written := PostTrackGnetJSON(h, body)
+	status, written := PostTrackGnetJSON(h, bytes.Replace(body, []byte("c1"), []byte("c2"), 1))
 	assert.Equal(t, http.StatusTooManyRequests, status)
 	assert.True(t, bytes.HasPrefix(written, []byte("HTTP/1.1 429")))
 

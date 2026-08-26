@@ -118,14 +118,26 @@ func (f *FraudFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil {
 		return nil
 	}
-	isAnon, err := f.geo.IsAnonymous(evt.IP)
-	if err == nil && isAnon {
+	isAnon, anonKnown := ingestAnonymousResolved(evt)
+	if !anonKnown && f.geo != nil {
+		var err error
+		isAnon, err = f.geo.IsAnonymous(evt.IP)
+		anonKnown = err == nil
+	}
+	if anonKnown && isAnon {
 		addFraudSignal(evt, FraudReasonDatacenterIP)
 		return nil
 	}
 
-	f.checkDCASN(evt, err == nil && !isAnon)
+	f.checkDCASN(evt, anonKnown && !isAnon)
 	return nil
+}
+
+func ingestAnonymousResolved(evt *domain.Event) (isAnon bool, ok bool) {
+	if evt == nil || !evt.IngestGeoResolved {
+		return false, false
+	}
+	return evt.IngestAnonymous, true
 }
 
 const dcASNCheckSampleMask = 7
@@ -168,7 +180,7 @@ func (f *GeoFilter) Check(ctx context.Context, evt *domain.Event) error {
 }
 
 func (f *GeoFilter) checkGeo(evt *domain.Event) error {
-	camp, ok := f.registry.GetCampaign(evt.CampaignID)
+	camp, ok := getCampaignFromEvent(f.registry, evt)
 	if !ok {
 		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {
 			return ErrRegistryStale
@@ -278,7 +290,7 @@ func (e *FilterEngine) RollbackDebit(ctx context.Context, evt *domain.Event, reg
 	if e == nil || evt == nil || registry == nil {
 		return
 	}
-	campInfo, ok := registry.GetCampaign(evt.CampaignID)
+	campInfo, ok := getCampaignFromEvent(registry, evt)
 	if !ok {
 		return
 	}
@@ -338,7 +350,7 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 		if uf, ok := f.(*UnifiedFilter); ok && acc != nil && acc.count > 0 {
 			var camp *domain.Campaign
 			if e.registry != nil && evt != nil {
-				camp, _ = e.registry.GetCampaign(evt.CampaignID)
+				camp, _ = getCampaignFromEvent(e.registry, evt)
 			}
 			if acc.shouldShortCircuitFraudBudget() {
 				layer, err := applyFraudLayerDecision(evt, acc, camp, boost)
@@ -374,7 +386,7 @@ func (e *FilterEngine) checkInner(ctx context.Context, evt *domain.Event) error 
 	if retErr == nil {
 		var camp *domain.Campaign
 		if e.registry != nil && evt != nil {
-			camp, _ = e.registry.GetCampaign(evt.CampaignID)
+			camp, _ = getCampaignFromEvent(e.registry, evt)
 		}
 		layer, err := applyFraudLayerDecision(evt, acc, camp, boost)
 		if err != nil {
@@ -457,50 +469,82 @@ const placementBlacklistCacheTTL = 5 * time.Second
 
 const placementCacheMaxEntriesPerShard = 2048
 
-func placementCacheStore(shard *placementCacheShard, key placementCacheKey, item placementCacheItem, now int64) {
-	shard.mu.Lock()
-	if len(shard.m) >= placementCacheMaxEntriesPerShard {
-		placementCachePruneLocked(shard, now)
-	}
-	shard.m[key] = item
-	shard.mu.Unlock()
-}
-
-func placementCachePruneLocked(shard *placementCacheShard, now int64) {
-	for k, v := range shard.m {
-		if now >= v.expiry {
-			delete(shard.m, k)
-		}
-	}
-	for len(shard.m) >= placementCacheMaxEntriesPerShard {
-		for k := range shard.m {
-			delete(shard.m, k)
-			break
-		}
-	}
-}
-
 type placementCacheKey struct {
 	campaignID uuid.UUID
 	placement  string
 }
 
 type placementCacheShard struct {
-	mu sync.RWMutex
-	m  map[placementCacheKey]placementCacheItem
+	snap atomic.Pointer[placementShardSnapshot]
+}
+
+type placementShardSnapshot struct {
+	entries map[placementCacheKey]placementCacheItem
 }
 
 type PlacementBlacklistFilter struct {
 	redisShards []redis.UniversalClient
+	sharder     Sharder
 	shards      [placementCacheShards]placementCacheShard
 }
 
 func NewPlacementBlacklistFilter(redisShards []redis.UniversalClient) *PlacementBlacklistFilter {
 	f := &PlacementBlacklistFilter{redisShards: redisShards}
 	for i := range placementCacheShards {
-		f.shards[i].m = make(map[placementCacheKey]placementCacheItem, 64)
+		f.shards[i].snap.Store(&placementShardSnapshot{
+			entries: make(map[placementCacheKey]placementCacheItem, 64),
+		})
 	}
 	return f
+}
+
+func (f *PlacementBlacklistFilter) SetSharder(sharder Sharder) {
+	if f != nil {
+		f.sharder = sharder
+	}
+}
+
+func placementShardStore(shard *placementCacheShard, key placementCacheKey, item placementCacheItem, nowMs int64) {
+	for {
+		old := shard.snap.Load()
+		next := placementCloneEntries(old, nowMs, key, item)
+		newSnap := &placementShardSnapshot{entries: next}
+		if shard.snap.CompareAndSwap(old, newSnap) {
+			return
+		}
+	}
+}
+
+func placementCloneEntries(old *placementShardSnapshot, nowMs int64, key placementCacheKey, item placementCacheItem) map[placementCacheKey]placementCacheItem {
+	var oldMap map[placementCacheKey]placementCacheItem
+	if old != nil {
+		oldMap = old.entries
+	}
+	next := make(map[placementCacheKey]placementCacheItem, len(oldMap)+1)
+	for k, v := range oldMap {
+		if nowMs < v.expiry {
+			next[k] = v
+		}
+	}
+	if len(next) >= placementCacheMaxEntriesPerShard {
+		placementCachePruneMap(next, nowMs)
+	}
+	next[key] = item
+	return next
+}
+
+func placementCachePruneMap(entries map[placementCacheKey]placementCacheItem, now int64) {
+	for k, v := range entries {
+		if now >= v.expiry {
+			delete(entries, k)
+		}
+	}
+	for len(entries) >= placementCacheMaxEntriesPerShard {
+		for k := range entries {
+			delete(entries, k)
+			break
+		}
+	}
 }
 
 func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event) error {
@@ -517,19 +561,18 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 	shardIdx := h % placementCacheShards
 	shard := &f.shards[shardIdx]
 
-	now := time.Now().UnixNano()
-	shard.mu.RLock()
-	item, ok := shard.m[key]
-	shard.mu.RUnlock()
-
-	if ok && now < item.expiry {
-		if item.blacklisted {
-			return ErrPlacementBlocked
+	nowMs := cachedUnixMilliNow()
+	snap := shard.snap.Load()
+	if snap != nil {
+		if item, ok := snap.entries[key]; ok && nowMs < item.expiry {
+			if item.blacklisted {
+				return ErrPlacementBlocked
+			}
+			return nil
 		}
-		return nil
 	}
 
-	redisClient := pickLocalGlobalShard(f.redisShards)
+	redisClient := pickGlobalReadShardForCampaign(f.redisShards, f.sharder, evt.CampaignID)
 	if redisClient == nil {
 		return nil
 	}
@@ -546,10 +589,10 @@ func (f *PlacementBlacklistFilter) Check(ctx context.Context, evt *domain.Event)
 		return nil
 	}
 
-	placementCacheStore(shard, key, placementCacheItem{
+	placementShardStore(shard, key, placementCacheItem{
 		blacklisted: isBlacklisted,
-		expiry:      now + int64(placementBlacklistCacheTTL),
-	}, now)
+		expiry:      nowMs + placementBlacklistCacheTTL.Milliseconds(),
+	}, nowMs)
 
 	if isBlacklisted {
 		return ErrPlacementBlocked

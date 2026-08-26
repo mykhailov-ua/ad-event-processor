@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/testutil"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/google/uuid"

@@ -1,4 +1,11 @@
-export type PostbackProvider = 'webhook' | 'facebook' | 'google' | 'tiktok';
+export type PostbackProvider =
+  | 'webhook'
+  | 'facebook'
+  | 'google'
+  | 'tiktok'
+  | 'taboola'
+  | 'outbrain'
+  | 'microsoft_ads';
 
 export type PostbackProviderUi = {
   label: string;
@@ -81,6 +88,56 @@ export const POSTBACK_PROVIDER_UI: Record<PostbackProvider, PostbackProviderUi> 
     supportsTestEventCode: true,
     eventMappingHint:
       'ad-event-processor -> TikTok: conversion/purchase -> CompletePayment; lead -> Contact; install -> Download; click -> ClickButton.',
+  },
+  taboola: {
+    label: 'Taboola S2S',
+    blurb:
+      'Server-side conversion GET to Taboola trc endpoint. Requires tblci (or click_id) on the conversion payload.',
+    primaryLabel: 'Taboola event name',
+    primaryPlaceholder: 'registration',
+    primaryHelp:
+      'Exact Event Name from Taboola Realize conversion settings (not the conversion display label).',
+    tokenLabel: 'Bearer token (optional)',
+    tokenPlaceholder: 'Leave blank unless Taboola issued an API token',
+    tokenHelp: 'Most S2S setups use unsigned GET postbacks; token is optional.',
+    requiresToken: false,
+    showMacros: false,
+    supportsTestEventCode: false,
+    eventMappingHint:
+      'Taboola expects click-id query param from tblci on the landing URL. Map payout to revenue when set.',
+  },
+  outbrain: {
+    label: 'Outbrain S2S',
+    blurb:
+      'Server-side conversion GET to tr.outbrain.com/unifiedPixel. Requires ob_click_id on the conversion payload.',
+    primaryLabel: 'Outbrain conversion name',
+    primaryPlaceholder: 'Purchase',
+    primaryHelp:
+      'Exact event-based conversion name from Amplify (must match postback name= parameter).',
+    tokenLabel: 'Bearer token (optional)',
+    tokenPlaceholder: 'Leave blank for default S2S pixel',
+    tokenHelp: 'Standard Outbrain S2S uses unsigned GET requests.',
+    requiresToken: false,
+    showMacros: false,
+    supportsTestEventCode: false,
+    eventMappingHint:
+      'Capture ob_click_id (or obclid) from the click URL. Optional orderValue from payout_micro.',
+  },
+  microsoft_ads: {
+    label: 'Microsoft Ads offline conversions',
+    blurb: 'ApplyOfflineConversions REST upload. Requires msclkid on the conversion payload.',
+    primaryLabel: 'Account | customer | conversion goal',
+    primaryPlaceholder: '123456789|987654321|My Offline Goal',
+    primaryHelp:
+      'Pipe-separated advertising account id, customer id, and offline conversion goal name.',
+    tokenLabel: 'OAuth access token',
+    tokenPlaceholder: 'ya29... or JSON with access_token',
+    tokenHelp: 'OAuth 2.0 access token with https://ads.microsoft.com/msads.manage scope.',
+    requiresToken: true,
+    showMacros: false,
+    supportsTestEventCode: true,
+    eventMappingHint:
+      'Store Microsoft developer token in Test event code field. Conversion goal name must match OfflineConversionGoal in Ads UI.',
   },
 };
 

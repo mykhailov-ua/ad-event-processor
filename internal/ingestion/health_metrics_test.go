@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/metrics"
+
 	dto "github.com/prometheus/client_model/go"
 )
 

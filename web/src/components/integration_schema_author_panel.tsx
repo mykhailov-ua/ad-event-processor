@@ -8,7 +8,7 @@ import {
   INTEGRATION_SCHEMA_STARTERS,
   type IntegrationSchemaKind,
 } from '../helpers/integration_api.js';
-import type { IntegrationSchemaDTO } from '../types/integration.js';
+import type { IntegrationSchemaDTO, CreateIntegrationSchemaBody } from '../types/integration.js';
 import { SectionCard } from './section_card.js';
 import { Button } from './button.js';
 import { FormField } from './form_field.js';
@@ -85,7 +85,7 @@ export function IntegrationSchemaAuthorPanel({
       createIntegrationSchema({
         name: trimmedName,
         version: versionNum,
-        schema: schemaBody,
+        schema: schemaBody as CreateIntegrationSchemaBody['schema'],
       })
     );
     setBusy(false);

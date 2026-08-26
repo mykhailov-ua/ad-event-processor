@@ -20,8 +20,8 @@ const (
 var ErrStalePgFencingEpoch = errors.New("stale pg fencing epoch")
 
 type FencingGate struct {
-	redisClient   redis.UniversalClient
-	floor atomic.Uint64
+	redisClient redis.UniversalClient
+	floor       atomic.Uint64
 }
 
 func NewFencingGate(redisClient redis.UniversalClient) *FencingGate {

@@ -14,8 +14,8 @@ import (
 const invoiceRetryIdempotencyTTL = 24 * time.Hour
 
 type invoiceDeliveryRetryer struct {
-	ledger *ledger.Service
-	redisShards   []redis.UniversalClient
+	ledger      *ledger.Service
+	redisShards []redis.UniversalClient
 }
 
 func newInvoiceDeliveryRetryer(svc *ledger.Service, redisShards []redis.UniversalClient) *invoiceDeliveryRetryer {

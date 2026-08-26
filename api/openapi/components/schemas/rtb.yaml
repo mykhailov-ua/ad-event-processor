@@ -1,0 +1,205 @@
+RtbDeal:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    deal_id:
+      type: string
+    floor_micro:
+      type: integer
+      format: int64
+    geo_mask:
+      type: integer
+      format: int64
+    cat_mask:
+      type: integer
+      format: int64
+    pacing:
+      type: string
+    seats:
+      type: integer
+      format: int32
+    customer_id:
+      type: string
+      format: uuid
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+RtbDealCreateSpec:
+  type: object
+  required: [deal_id, customer_id]
+  properties:
+    deal_id:
+      type: string
+    floor_micro:
+      type: integer
+      format: int64
+    geo_mask:
+      type: integer
+      format: int64
+    cat_mask:
+      type: integer
+      format: int64
+    pacing:
+      type: string
+    seats:
+      type: integer
+      format: int32
+    customer_id:
+      type: string
+      format: uuid
+
+RtbDealUpdateSpec:
+  type: object
+  properties:
+    deal_id:
+      type: string
+    floor_micro:
+      type: integer
+      format: int64
+    geo_mask:
+      type: integer
+      format: int64
+    cat_mask:
+      type: integer
+      format: int64
+    pacing:
+      type: string
+    seats:
+      type: integer
+      format: int32
+    customer_id:
+      type: string
+      format: uuid
+
+RtbShadowDiffSnapshot:
+  type: object
+  properties:
+    window:
+      type: string
+    source:
+      type: string
+    shadow_evals:
+      type: integer
+      format: int64
+    shadow_winner_match:
+      type: integer
+      format: int64
+    shadow_winner_mismatch:
+      type: integer
+      format: int64
+    shadow_no_bid:
+      type: integer
+      format: int64
+    live_would_accept:
+      type: integer
+      format: int64
+    live_would_reject:
+      type: integer
+      format: int64
+    parity_match:
+      type: integer
+      format: int64
+    parity_rate:
+      type: number
+      format: double
+    mismatch_rate:
+      type: number
+      format: double
+
+RtbReconcileExport:
+  type: object
+  properties:
+    window:
+      type: string
+    request_id:
+      type: string
+    bids:
+      type: integer
+      format: int64
+    wins:
+      type: integer
+      format: int64
+    spend_micro:
+      type: integer
+      format: int64
+    ch_source:
+      type: string
+    shadow:
+      $ref: '#/RtbShadowDiffSnapshot'
+    live_gate_ready:
+      type: boolean
+    reasons:
+      type: array
+      items:
+        type: string
+
+RtbIntegrationProfile:
+  type: object
+  additionalProperties: true
+  description: openrtb.IntegrationProfile plus runtime and endpoint hints.
+
+RtbFloorsApplyRequest:
+  type: object
+  properties:
+    placement_ids:
+      type: array
+      items:
+        type: string
+
+RtbFloorSuggestion:
+  type: object
+  properties:
+    placement_id:
+      type: string
+    deal_id:
+      type: string
+    current_floor_micro:
+      type: integer
+      format: int64
+    suggested_floor_micro:
+      type: integer
+      format: int64
+    win_rate:
+      type: number
+      format: double
+    sample_n:
+      type: integer
+      format: int64
+    floor_bucket_micro:
+      type: integer
+      format: int64
+    computed_at:
+      type: string
+      format: date-time
+
+RtbFloorsApplyResult:
+  type: object
+  properties:
+    dry_run:
+      type: boolean
+    applied:
+      type: integer
+    suggestions:
+      type: array
+      items:
+        $ref: '#/RtbFloorSuggestion'
+    outbox_rows:
+      type: integer
+
+OpenRtbValidationResult:
+  type: object
+  properties:
+    valid:
+      type: boolean
+    version:
+      type: string
+    errors:
+      type: array
+      items:
+        type: string

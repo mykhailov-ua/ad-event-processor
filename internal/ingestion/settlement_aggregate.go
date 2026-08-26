@@ -54,6 +54,12 @@ func rollupCampaignStats(events []*domain.Event) map[uuid.UUID]campaignStatRollu
 		case "click":
 			row.clicks++
 		case "conversion":
+			if evt.FraudReason != "" {
+				continue
+			}
+			if conversionValidationPending(evt.Payload) {
+				continue
+			}
 			row.conversions++
 		default:
 			continue

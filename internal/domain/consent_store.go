@@ -12,8 +12,8 @@ import (
 )
 
 type ConsentStore struct {
-	redisClient   redis.UniversalClient
-	cache atomic.Value
+	redisClient redis.UniversalClient
+	cache       atomic.Value
 }
 
 type consentMapSnapshot struct {

@@ -23,7 +23,7 @@ func ResolveLandingURLBytes(ctx context.Context, registry domain.CampaignRegistr
 	if store == nil || registry == nil || !eventTypeUsesBrandLanding(evt.Type) {
 		return nil
 	}
-	camp, ok := registry.GetCampaign(evt.CampaignID)
+	camp, ok := getCampaignFromEvent(registry, evt)
 	if !ok || camp.BrandID == nil {
 		return nil
 	}

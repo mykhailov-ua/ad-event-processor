@@ -122,6 +122,8 @@ type auditCampaignFraudChange struct {
 	FraudThresholdBlock   uint8 `json:"fraud_threshold_block"`
 	SilentRejectEnabled   bool  `json:"silent_reject_enabled"`
 	BehaviorFlags         int32 `json:"behavior_flags"`
+	CanvasRetestEnabled   bool  `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled  bool  `json:"cgnat_ip_policy_enabled"`
 }
 
 type auditCreateCampaignChange struct {

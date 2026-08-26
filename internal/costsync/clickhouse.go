@@ -33,7 +33,12 @@ func (inserter *ClickHouseInserter) InsertSnapshots(ctx context.Context, lines [
 
 	for i := range lines {
 		line := &lines[i]
-		hour := time.Date(line.Date.Year(), line.Date.Month(), line.Date.Day(), 0, 0, 0, 0, time.UTC)
+		hour := line.SnapshotHour
+		if hour.IsZero() {
+			hour = time.Date(line.Date.Year(), line.Date.Month(), line.Date.Day(), 0, 0, 0, 0, time.UTC)
+		} else {
+			hour = hour.UTC().Truncate(time.Hour)
+		}
 		amount := line.AmountMicro
 		if i < len(usdMicro) {
 			amount = usdMicro[i]

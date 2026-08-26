@@ -5,11 +5,16 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
+
+func init() {
+	applyLoadTestRuntimeEnv()
+}
 
 func envDefault(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
@@ -181,16 +186,30 @@ func runConstant(run *runner, wg *sync.WaitGroup, stop <-chan struct{}, rps, wor
 	}
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
+		workerIdx := i
 		go func() {
 			defer wg.Done()
-			ticker := time.NewTicker(interval)
-			defer ticker.Stop()
+			next := time.Now()
 			for {
 				select {
 				case <-stop:
 					return
-				case <-ticker.C:
-					run.doOnce()
+				default:
+				}
+				now := time.Now()
+				if now.Before(next) {
+					timer := time.NewTimer(next.Sub(now))
+					select {
+					case <-stop:
+						timer.Stop()
+						return
+					case <-timer.C:
+					}
+				}
+				run.doOnceWorker(workerIdx)
+				next = next.Add(interval)
+				if next.Before(time.Now().Add(-interval)) {
+					next = time.Now()
 				}
 			}
 		}()
@@ -213,9 +232,9 @@ func runSpike(run *runner, workers int, wg *sync.WaitGroup, stop <-chan struct{}
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
 
-	for range workers {
+	for workerIdx := range workers {
 		wg.Add(1)
-		go func() {
+		go func(idx int) {
 			defer wg.Done()
 			var tokens float64
 			last := time.Now()
@@ -229,12 +248,12 @@ func runSpike(run *runner, workers int, wg *sync.WaitGroup, stop <-chan struct{}
 					rps := spikeRPS(s, now)
 					tokens += float64(rps) * elapsed / float64(workers)
 					for tokens >= 1 {
-						run.doOnce()
+						run.doOnceWorker(idx)
 						tokens--
 					}
 				}
 			}
-		}()
+		}(workerIdx)
 	}
 }
 
@@ -253,4 +272,66 @@ func spikeRPS(s spikeSchedule, now time.Time) int {
 	default:
 		return s.base
 	}
+}
+
+func applyLoadTestRuntimeEnv() {
+	root := loadgenRepoRoot()
+	paths := []string{
+		filepath.Join(root, "deploy/compose/.env.load-test.runtime"),
+		filepath.Join(root, ".env.load-test"),
+	}
+	for _, path := range paths {
+		if loadgenApplyEnvFile(path) {
+			return
+		}
+	}
+}
+
+func loadgenRepoRoot() string {
+	if v := os.Getenv("AD_EVENT_PROCESSOR_REPO_ROOT"); v != "" {
+		return v
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	dir := wd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return wd
+		}
+		dir = parent
+	}
+}
+
+func loadgenApplyEnvFile(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	applied := false
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		key = strings.TrimSpace(key)
+		val = strings.TrimSpace(val)
+		if key == "" || os.Getenv(key) != "" {
+			continue
+		}
+		if err := os.Setenv(key, val); err != nil {
+			continue
+		}
+		applied = true
+	}
+	return applied
 }

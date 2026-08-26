@@ -62,7 +62,7 @@ type localQuantaStreamLane struct {
 type LocalQuantaStreamPublisher struct {
 	stream       string
 	maxLen       int64
-	redisShards         []redis.UniversalClient
+	redisShards  []redis.UniversalClient
 	idemTTL      time.Duration
 	idem         *LocalClickIdemCache
 	writeTimeout time.Duration
@@ -75,7 +75,7 @@ type LocalQuantaStreamPublisher struct {
 }
 
 type LocalQuantaStreamPublisherConfig struct {
-	RedisShards           []redis.UniversalClient
+	RedisShards    []redis.UniversalClient
 	StreamName     string
 	MaxLen         int
 	IdempotencyTTL time.Duration
@@ -114,7 +114,7 @@ func NewLocalQuantaStreamPublisher(cfg LocalQuantaStreamPublisherConfig) *LocalQ
 	p := &LocalQuantaStreamPublisher{
 		stream:       cfg.StreamName,
 		maxLen:       int64(cfg.MaxLen),
-		redisShards:         cfg.RedisShards,
+		redisShards:  cfg.RedisShards,
 		idemTTL:      cfg.IdempotencyTTL,
 		idem:         cfg.IdemCache,
 		writeTimeout: cfg.WriteTimeout,

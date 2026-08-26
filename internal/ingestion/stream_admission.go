@@ -57,6 +57,7 @@ func (t streamProducerAdmissionTarget) shardLabel() string {
 
 type brokerAdmissionTarget struct {
 	broker *BrokerProducer
+	shard  string
 }
 
 func (t brokerAdmissionTarget) tryReserve(admissionPct int) bool {
@@ -72,17 +73,27 @@ func (t brokerAdmissionTarget) queueDepthForMetric() int {
 }
 
 func (t brokerAdmissionTarget) shardLabel() string {
-	return "broker"
+	if t.shard == "" {
+		return "broker"
+	}
+	return t.shard
 }
 
 func streamAdmissionTargetFor(
 	sharder Sharder,
 	producers []*StreamProducer,
-	broker *BrokerProducer,
+	brokers *BrokerProducerSet,
 	campaignID uuid.UUID,
 ) (streamAdmissionTarget, bool) {
-	if broker != nil {
-		return brokerAdmissionTarget{broker: broker}, true
+	if brokers != nil {
+		idx, bp := brokers.Pick(campaignID)
+		if bp != nil {
+			label := "broker"
+			if brokers.Len() > 1 {
+				label = "broker-" + strconv.Itoa(idx)
+			}
+			return brokerAdmissionTarget{broker: bp, shard: label}, true
+		}
 	}
 	if sharder == nil || len(producers) == 0 {
 		return nil, false
@@ -102,13 +113,13 @@ func tryAcquireStreamAdmission(
 	cfg *config.Config,
 	sharder Sharder,
 	producers []*StreamProducer,
-	broker *BrokerProducer,
+	brokers *BrokerProducerSet,
 	campaignID uuid.UUID,
 ) (streamAdmissionLease, filterRejectKind, bool) {
 	if cfg == nil || cfg.StreamProducerAdmissionPct <= 0 {
 		return streamAdmissionLease{}, 0, true
 	}
-	target, ok := streamAdmissionTargetFor(sharder, producers, broker, campaignID)
+	target, ok := streamAdmissionTargetFor(sharder, producers, brokers, campaignID)
 	if !ok {
 		return streamAdmissionLease{}, 0, true
 	}
@@ -128,20 +139,20 @@ func (h *AdsPacketHandler) tryAcquireStreamAdmission(campaignID uuid.UUID) (stre
 	if h == nil {
 		return streamAdmissionLease{}, 0, true
 	}
-	return tryAcquireStreamAdmission(h.cfg, h.sharder, h.streamProducers, h.brokerProducer, campaignID)
+	return tryAcquireStreamAdmission(h.cfg, h.sharder, h.streamProducers, h.brokerProducers, campaignID)
 }
 
 func rejectIfStreamProducerOverloaded(
 	cfg *config.Config,
 	sharder Sharder,
 	producers []*StreamProducer,
-	broker *BrokerProducer,
+	brokers *BrokerProducerSet,
 	campaignID uuid.UUID,
 ) (filterRejectKind, bool) {
 	if cfg == nil || cfg.StreamProducerAdmissionPct <= 0 {
 		return 0, false
 	}
-	target, ok := streamAdmissionTargetFor(sharder, producers, broker, campaignID)
+	target, ok := streamAdmissionTargetFor(sharder, producers, brokers, campaignID)
 	if !ok {
 		return 0, false
 	}

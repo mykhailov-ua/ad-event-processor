@@ -51,3 +51,31 @@ func (r *Registry) GetCampaignWorker(worker int, id uuid.UUID) (*domain.Campaign
 	}
 	return info.campaign, true
 }
+
+func getCampaignFromEvent(registry domain.CampaignRegistry, evt *domain.Event) (*domain.Campaign, bool) {
+	if registry == nil || evt == nil {
+		return nil, false
+	}
+	if evt.FilterCampResolved {
+		if evt.FilterCamp == nil {
+			return nil, false
+		}
+		return evt.FilterCamp, true
+	}
+	var camp *domain.Campaign
+	var ok bool
+	if reg, isReg := registry.(*Registry); isReg {
+		if w := int(evt.FilterWorkerIdx); w >= 0 {
+			camp, ok = reg.GetCampaignWorker(w, evt.CampaignID)
+		} else {
+			camp, ok = reg.GetCampaign(evt.CampaignID)
+		}
+	} else {
+		camp, ok = registry.GetCampaign(evt.CampaignID)
+	}
+	evt.FilterCampResolved = true
+	if ok {
+		evt.FilterCamp = camp
+	}
+	return camp, ok
+}

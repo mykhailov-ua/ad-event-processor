@@ -37,10 +37,14 @@ type Event struct {
 	Scratch            unsafe.Pointer
 	FilterDeadlineMono int64
 	FilterWorkerIdx    int8
+	FilterCampResolved bool
+	FilterCamp         *Campaign
 	IngestGeoResolved  bool
+	IngestAnonymous    bool
 	GeoHash            uint32
 	GeoCountry         string
 	ClearingPriceMicro int64
+	IngressCostMicro   int64
 	ClickIDBuf         [36]byte
 	UserPIIHash        [16]byte
 	HasUserPIIHash     bool
@@ -79,10 +83,14 @@ func (event *Event) Reset() {
 	event.Scratch = nil
 	event.FilterDeadlineMono = 0
 	event.FilterWorkerIdx = -1
+	event.FilterCampResolved = false
+	event.FilterCamp = nil
 	event.IngestGeoResolved = false
+	event.IngestAnonymous = false
 	event.GeoHash = 0
 	event.GeoCountry = ""
 	event.ClearingPriceMicro = 0
+	event.IngressCostMicro = 0
 	event.HasUserPIIHash = false
 	event.TCPMSS = 0
 	event.TCPMSSSet = 0

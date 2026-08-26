@@ -13,29 +13,28 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-
 type ResidentialIntelEnricher struct {
-	provider   ResidentialIntelProvider
-	cache      *ResidentialIntelCache
-	chWrite    driver.Conn
-	redisClient        redis.Cmdable
-	feedDir    string
-	providerID string
-	recentLim  int
-	batchLim   int
-	interval   time.Duration
+	provider    ResidentialIntelProvider
+	cache       *ResidentialIntelCache
+	chWrite     driver.Conn
+	redisClient redis.Cmdable
+	feedDir     string
+	providerID  string
+	recentLim   int
+	batchLim    int
+	interval    time.Duration
 }
 
 type ResidentialIntelEnricherConfig struct {
-	Provider   ResidentialIntelProvider
-	Cache      *ResidentialIntelCache
-	CHWrite    driver.Conn
-	RedisClient        redis.Cmdable
-	FeedDir    string
-	ProviderID string
-	RecentLim  int
-	BatchLim   int
-	Interval   time.Duration
+	Provider    ResidentialIntelProvider
+	Cache       *ResidentialIntelCache
+	CHWrite     driver.Conn
+	RedisClient redis.Cmdable
+	FeedDir     string
+	ProviderID  string
+	RecentLim   int
+	BatchLim    int
+	Interval    time.Duration
 }
 
 func NewResidentialIntelEnricher(cfg ResidentialIntelEnricherConfig) *ResidentialIntelEnricher {
@@ -59,15 +58,15 @@ func NewResidentialIntelEnricher(cfg ResidentialIntelEnricherConfig) *Residentia
 		providerID = "http"
 	}
 	return &ResidentialIntelEnricher{
-		provider:   cfg.Provider,
-		cache:      cfg.Cache,
-		chWrite:    cfg.CHWrite,
-		redisClient:        cfg.RedisClient,
-		feedDir:    cfg.FeedDir,
-		providerID: providerID,
-		recentLim:  recent,
-		batchLim:   batch,
-		interval:   interval,
+		provider:    cfg.Provider,
+		cache:       cfg.Cache,
+		chWrite:     cfg.CHWrite,
+		redisClient: cfg.RedisClient,
+		feedDir:     cfg.FeedDir,
+		providerID:  providerID,
+		recentLim:   recent,
+		batchLim:    batch,
+		interval:    interval,
 	}
 }
 

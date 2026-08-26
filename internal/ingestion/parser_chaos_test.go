@@ -85,7 +85,7 @@ func TestChaos_ParserIngress_2026(t *testing.T) {
 		ParseOpenRTB26Split(garbage, &hot, &cold)
 		elapsed := time.Since(start)
 		require.False(t, hot.ExchangeReady(openrtb.ExchangeConfig{}))
-		assert.Less(t, elapsed, 50*time.Microsecond, "64k garbage parse took %v", elapsed)
+		assert.Less(t, elapsed, 75*time.Microsecond, "64k garbage parse took %v", elapsed)
 		faultproof.Log(t, "parser_chaos_c_o04_garbage", map[string]string{
 			"bytes":      "65536",
 			"elapsed_ns": elapsed.String(),

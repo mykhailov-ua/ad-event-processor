@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	testCanvasHash64 = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
-	testAudioHash64  = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+	testCanvasHash64  = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+	testCanvasHashAlt = "1111111111111111111111111111111111111111111111111111111111111111"
+	testAudioHash64   = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
 )
 
 func validAdvancedFingerprint() safePageVerifyFingerprint {
@@ -74,6 +75,36 @@ func linearMouseEvents(n int) []safePageVerifyEvent {
 		}
 	}
 	return out
+}
+
+func TestSafePageAttestationAdvanced_canvasRetestMismatch(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.CanvasHashA = testCanvasHash64
+	fp.CanvasHashB = testCanvasHashAlt
+	fp.CanvasHash = testCanvasHash64
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		fingerprint:         fp,
+		events:              humanMouseEvents(10),
+		behaviorScore:       safePageVerifyMinEvents + 3,
+		canvasRetestEnabled: true,
+	})
+	require.True(t, fail)
+	require.Equal(t, safePageAttestCanvasRetestMismatch, code)
+}
+
+func TestSafePageAttestationAdvanced_canvasRetestMatching(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.CanvasHashA = testCanvasHash64
+	fp.CanvasHashB = testCanvasHash64
+	fp.CanvasHash = testCanvasHash64
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		fingerprint:         fp,
+		events:              humanMouseEvents(18),
+		behaviorScore:       safePageVerifyMinEvents + 3,
+		canvasRetestEnabled: true,
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
 }
 
 func TestSafePageAttestationAdvanced_permissionsMismatch(t *testing.T) {

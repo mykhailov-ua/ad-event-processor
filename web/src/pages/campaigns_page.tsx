@@ -16,6 +16,7 @@ import {
   touchCustomerContext,
 } from '../helpers/customer_context.js';
 import { pauseCampaign, resumeCampaign } from '../helpers/campaign_actions.js';
+import { cloneCampaign, importCampaign } from '../helpers/campaign_admin_api.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
 import { isParallelSlotError, parallelAll } from '../helpers/request_multiplex.js';
@@ -115,11 +116,13 @@ export function CampaignsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const [customerFilterError, setCustomerFilterError] = useState<string | null>(null);
   const bulkGateRef = useRef(createInFlightGuard());
 
   const skipFetch = sessionScoped && !tenantCustomerId;
   const bulkEnabled = !buyerView && canWrite && can(user?.permissions ?? [], 'campaigns:pause');
+  const showClone = canWrite;
 
   const effectiveCustomerId = sessionScoped ? tenantCustomerId : debouncedCustomerId;
 
@@ -274,6 +277,49 @@ export function CampaignsPage() {
     bulkGateRef.current.release();
   };
 
+  /** Clones a campaign with flow and postback bindings; navigates to the new campaign on success. */
+  const handleClone = async (campaignId: string) => {
+    setActionLoading(true);
+    setActionError(null);
+    const [result, err] = await to(cloneCampaign(campaignId));
+    setActionLoading(false);
+    if (err) {
+      setActionError(err instanceof Error ? err.message : 'Clone failed');
+      return;
+    }
+    reload();
+    if (result?.id) navigate(`/campaigns/${result.id}`);
+  };
+
+  /** Imports a campaign bundle JSON file for the active customer filter. */
+  const handleImportFile = async (file: File | null) => {
+    if (!file || !effectiveCustomerId || !isCustomerUuid(effectiveCustomerId)) return;
+    setActionLoading(true);
+    setActionError(null);
+    const [text, readErr] = await to(file.text());
+    if (readErr) {
+      setActionLoading(false);
+      setActionError(readErr instanceof Error ? readErr.message : 'Failed to read file');
+      return;
+    }
+    let bundle: Parameters<typeof importCampaign>[1];
+    try {
+      bundle = JSON.parse(text) as Parameters<typeof importCampaign>[1];
+    } catch {
+      setActionLoading(false);
+      setActionError('Invalid JSON bundle');
+      return;
+    }
+    const [result, err] = await to(importCampaign(effectiveCustomerId, bundle));
+    setActionLoading(false);
+    if (err) {
+      setActionError(err instanceof Error ? err.message : 'Import failed');
+      return;
+    }
+    reload();
+    if (result?.id) navigate(`/campaigns/${result.id}`);
+  };
+
   if (skipFetch) {
     const copy = buyerEmptyCopy('session_customer');
     return (
@@ -291,7 +337,7 @@ export function CampaignsPage() {
 
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
-  const colCount = bulkEnabled ? (buyerView ? 7 : 8) : buyerView ? 6 : 7;
+  const colCount = (bulkEnabled ? (buyerView ? 7 : 8) : buyerView ? 6 : 7) + (showClone ? 1 : 0);
 
   const onSort = (key: string) => {
     setSortState((prev) => {
@@ -370,15 +416,50 @@ export function CampaignsPage() {
             onClick={() => setShowDetailedBudget((v) => !v)}
           />
           {canWrite && effectiveCustomerId && isCustomerUuid(effectiveCustomerId) ? (
-            <Button
-              label="Create campaign"
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                const params = new URLSearchParams({ customer_id: effectiveCustomerId });
-                navigate(`/campaigns/wizard?${params.toString()}`);
-              }}
-            />
+            <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="sr-only"
+                data-testid="campaign-import-input"
+                onChange={(e) => {
+                  const picked = e.target.files?.[0] ?? null;
+                  void handleImportFile(picked);
+                  e.target.value = '';
+                }}
+              />
+              <Button
+                label="Migrate export"
+                variant="secondary"
+                size="sm"
+                icon="upload"
+                disabled={actionLoading}
+                data-testid="campaign-migrate-button"
+                onClick={() => {
+                  const params = new URLSearchParams({ customer_id: effectiveCustomerId });
+                  navigate(`/campaigns/migrate?${params.toString()}`);
+                }}
+              />
+              <Button
+                label="Import JSON"
+                variant="secondary"
+                size="sm"
+                icon="upload"
+                disabled={actionLoading}
+                data-testid="campaign-import-button"
+                onClick={() => importInputRef.current?.click()}
+              />
+              <Button
+                label="Create campaign"
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  const params = new URLSearchParams({ customer_id: effectiveCustomerId });
+                  navigate(`/campaigns/wizard?${params.toString()}`);
+                }}
+              />
+            </>
           ) : null}
           <span className="text-muted text-sm">{loading ? '' : `${total} total`}</span>
         </div>
@@ -488,6 +569,7 @@ export function CampaignsPage() {
               {sortHeader('Pacing', 'pacing_mode')}
               <th scope="col">Health</th>
               {!buyerView ? sortHeader('Customer', 'customer_id') : null}
+              {showClone ? <th scope="col">Actions</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -591,6 +673,18 @@ export function CampaignsPage() {
                     ) : (
                       '-'
                     )}
+                  </td>
+                ) : null}
+                {showClone ? (
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      label="Clone"
+                      variant="secondary"
+                      size="sm"
+                      disabled={actionLoading}
+                      data-testid={`campaign-clone-${c.id}`}
+                      onClick={() => void handleClone(c.id)}
+                    />
                   </td>
                 ) : null}
               </tr>

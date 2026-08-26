@@ -18,7 +18,6 @@ var (
 	}, []string{"report_key", "reason"})
 )
 
-
 func PrimeReportMetricLabels(reportKeys, errorReasons []string) {
 	for _, key := range reportKeys {
 		ReportQueryDurationSeconds.WithLabelValues(key)

@@ -169,6 +169,90 @@ func TestVerify_budgetMissRegistryBeforePG(t *testing.T) {
 	TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t)
 }
 
+func TestTryRecoverBudgetFromRegistry_setOverwritesExistingKey(t *testing.T) {
+	campID := uuid.New()
+	reg := NewRegistry(nil)
+	camp := &domain.Campaign{
+		ID:           campID,
+		CustomerID:   uuid.New(),
+		BudgetLimit:  1_000_000,
+		CurrentSpend: 200_000,
+	}
+	enrichMockCampaign(camp)
+	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
+		campID: {campaign: camp},
+	}})
+
+	redisMock := &budgetRecoverSetRedis{}
+	recovered, err := tryRecoverBudgetFromRegistry(context.Background(), redisMock, reg, campID, camp.BudgetCampaignKey, 0)
+	require.NoError(t, err)
+	require.True(t, recovered)
+	assert.Equal(t, int64(800_000), redisMock.setRemaining.Load())
+}
+
+type budgetRecoverSetRedis struct {
+	mockRedisClient
+	setRemaining atomic.Int64
+}
+
+func (m *budgetRecoverSetRedis) Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd {
+	cmd := redis.NewStatusCmd(ctx)
+	switch v := value.(type) {
+	case int64:
+		m.setRemaining.Store(v)
+	case int:
+		m.setRemaining.Store(int64(v))
+	}
+	cmd.SetVal("OK")
+	return cmd
+}
+
+func TestUnifiedFilter_budgetMiss_recoversViaWorkerCache(t *testing.T) {
+	campID := uuid.New()
+	custID := uuid.New()
+	reg := NewRegistry(nil)
+	camp := &domain.Campaign{
+		ID:           campID,
+		CustomerID:   custID,
+		BudgetLimit:  10_000_000,
+		CurrentSpend: 0,
+		PacingMode:   domain.PacingModeAsap,
+	}
+	enrichMockCampaign(camp)
+	reg.storeCampaignSnapshot(&campaignMapSnapshot{byID: map[uuid.UUID]campaignInfo{
+		campID: {campaign: camp},
+	}})
+
+	f := NewUnifiedFilter(
+		[]redis.UniversalClient{&budgetMissOnceRedis{}},
+		NewJumpHashSharder(1),
+		reg,
+		panicCampaignRepo{},
+		1000,
+		time.Minute,
+		time.Hour,
+		time.Hour,
+		1_000_000,
+		10_000,
+		"events-budget-warm",
+		10000,
+	)
+
+	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPGTotal)
+	beforeRecover := testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal)
+
+	err := f.Check(context.Background(), &domain.Event{
+		CampaignID:      campID,
+		FilterWorkerIdx: 3,
+		ClickID:         uuid.NewString(),
+		Type:            "click",
+		IP:              "1.1.1.1",
+	})
+	require.NoError(t, err)
+	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPGTotal))
+	assert.Equal(t, beforeRecover+1, testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal))
+}
+
 func TestBudgetCacheWarmer_WarmOne_Incremental(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

@@ -67,6 +67,16 @@ type PartialSourceError = { source?: string; code?: string };
 
 type OperatorDash = OperatorDashCharts & Record<string, unknown>;
 
+/**
+ * Map a failed ops sub-request into a partial-source error row for AlertBanner.
+ * @param source - Stable source id shown in the partial errors banner.
+ * @param err - API or network error from a parallel slot.
+ */
+function partialSourceFromError(source: string, err: unknown): PartialSourceError {
+  const view = mapServiceError(err);
+  return { source, code: view.code ?? (view.status != null ? String(view.status) : 'err') };
+}
+
 type MetricsSeriesResponse = {
   points?: ApiMetricRow[];
 };
@@ -182,42 +192,51 @@ export function OpsHomePage() {
     setNextRefreshAt(now + OPS_POLL_MS);
   }, []);
 
-  const loadMetricSeries = useCallback(async (rangeHours: number) => {
-    const ids = Object.keys(OPS_METRIC_API_NAMES);
-    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = ctrl ? window.setTimeout(() => ctrl.abort(), 8_000) : 0;
-    try {
-      const results = await Promise.all(
-        ids.map(async (id) => {
-          const name = OPS_METRIC_API_NAMES[id];
-          const [res] = await to(
-            api(
-              `/api/v1/ops/dashboard/metrics?range=${rangeHours}h&name=${encodeURIComponent(name)}`,
-              ctrl ? { signal: ctrl.signal } : {}
-            )
-          );
-          let points = parseApiPoints(
-            (res?.data as MetricsSeriesResponse | undefined)?.points ??
-              (res as MetricsSeriesResponse | null)?.points
-          );
-          if (id === 'rps-estimate') points = toRateSeries(points);
-          return { id, points };
-        })
-      );
+  const loadMetricSeries = useCallback(
+    async (rangeHours: number): Promise<PartialSourceError[]> => {
+      const metricErrors: PartialSourceError[] = [];
+      const ids = Object.keys(OPS_METRIC_API_NAMES);
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timer = ctrl ? window.setTimeout(() => ctrl.abort(), 8_000) : 0;
+      try {
+        const results = await Promise.all(
+          ids.map(async (id) => {
+            const name = OPS_METRIC_API_NAMES[id];
+            const [res, err] = await to(
+              api(
+                `/api/v1/ops/dashboard/metrics?range=${rangeHours}h&name=${encodeURIComponent(name)}`,
+                ctrl ? { signal: ctrl.signal } : {}
+              )
+            );
+            if (err) {
+              metricErrors.push(partialSourceFromError(`metrics:${id}`, err));
+              return { id, points: [] as MetricPoint[] };
+            }
+            let points = parseApiPoints(
+              (res?.data as MetricsSeriesResponse | undefined)?.points ??
+                (res as MetricsSeriesResponse | null)?.points
+            );
+            if (id === 'rps-estimate') points = toRateSeries(points);
+            return { id, points };
+          })
+        );
 
-      if (destroyedRef.current) return;
-      setMetricSeries((prev) => {
-        const next = { ...prev };
-        for (let i = 0; i < results.length; i++) {
-          const { id, points } = results[i];
-          if (points.length > 0) next[id] = points;
-        }
-        return next;
-      });
-    } finally {
-      if (timer) window.clearTimeout(timer);
-    }
-  }, []);
+        if (destroyedRef.current) return metricErrors;
+        setMetricSeries((prev) => {
+          const next = { ...prev };
+          for (let i = 0; i < results.length; i++) {
+            const { id, points } = results[i];
+            if (points.length > 0) next[id] = points;
+          }
+          return next;
+        });
+        return metricErrors;
+      } finally {
+        if (timer) window.clearTimeout(timer);
+      }
+    },
+    []
+  );
 
   const loadOpsData = useCallback(
     async (opts: { quiet?: boolean } = {}) => {
@@ -241,12 +260,12 @@ export function OpsHomePage() {
               })),
             () => api('/api/v1/ops/dashboard/summary', signal ? { signal } : {}),
             () =>
-              api('/api/v1/ops/rum', signal ? { signal } : {}).catch(() => ({
-                data: { events: [] },
+              api('/api/v1/ops/rum', signal ? { signal } : {}).catch((e: unknown) => ({
+                error: e,
               })),
             () =>
-              api('/api/v1/dashboards/operator', signal ? { signal } : {}).catch(() => ({
-                data: null,
+              api('/api/v1/dashboards/operator', signal ? { signal } : {}).catch((e: unknown) => ({
+                error: e,
               })),
           ],
           3
@@ -307,6 +326,16 @@ export function OpsHomePage() {
         const incData = incRes.data as IncidentSnapshot;
         if (incData.errors?.length) errors.push(...incData.errors);
       }
+      if (isParallelSlotError(rumRes) || ('error' in rumRes && rumRes.error)) {
+        errors.push(partialSourceFromError('ops-rum', (rumRes as { error: unknown }).error));
+      }
+      if (isParallelSlotError(opDashRes) || ('error' in opDashRes && opDashRes.error)) {
+        errors.push(
+          partialSourceFromError('ops-operator-dashboard', (opDashRes as { error: unknown }).error)
+        );
+      }
+      const metricErrors = await loadMetricSeries(chartsRangeHours);
+      errors.push(...metricErrors);
       setPartialErrors(errors);
 
       const nextSummary =
@@ -317,10 +346,6 @@ export function OpsHomePage() {
 
       if (!quiet) setLoading(false);
       markRefreshed();
-
-      try {
-        await loadMetricSeries(chartsRangeHours);
-      } catch {}
     },
     [chartsRangeHours, loadMetricSeries, markRefreshed]
   );
@@ -372,10 +397,16 @@ export function OpsHomePage() {
       dlqGuardRef.current.invalidate();
       bundleGateRef.current.release();
     };
-  }, []); 
+  }, []);
 
   useEffect(() => {
-    void loadMetricSeries(chartsRangeHours);
+    void loadMetricSeries(chartsRangeHours).then((metricErrors) => {
+      if (metricErrors.length === 0) return;
+      setPartialErrors((prev) => {
+        const kept = prev.filter((row) => !row.source?.startsWith('metrics:'));
+        return [...kept, ...metricErrors];
+      });
+    });
   }, [chartsRangeHours, loadMetricSeries]);
 
   const loadOutbox = useCallback(
@@ -489,7 +520,7 @@ export function OpsHomePage() {
   const retryDlqEntry = useCallback(
     async (row: DLQEntryDTO) => {
       setDlqLoading(true);
-      const [, err] = await to(retryOpsDlq(row.id));
+      const [, err] = await to(retryOpsDlq(row.id ?? ''));
       setDlqLoading(false);
       if (err) {
         if (err instanceof ConfirmCancelledError) return;
@@ -606,7 +637,7 @@ export function OpsHomePage() {
                 {incidents.affected_campaigns.slice(0, 12).map((c) => (
                   <li key={c.campaign_id}>
                     <a
-                      href={`/campaigns/${encodeURIComponent(c.campaign_id)}`}
+                      href={`/campaigns/${encodeURIComponent(c.campaign_id ?? '')}`}
                       className="font-mono"
                     >
                       {c.name ? `${c.name} (${c.campaign_id})` : c.campaign_id}

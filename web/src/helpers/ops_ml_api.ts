@@ -103,7 +103,6 @@ export type MLCHReportEnvelope = {
   rows?: MLCHReportRow[];
 };
 
-
 export async function fetchMLCHReport(
   endpoint: 'score-distribution' | 'shadow-delta' | 'feature-spikes',
   from: string,

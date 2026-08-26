@@ -11,6 +11,7 @@ import (
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/testutil"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"

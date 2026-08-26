@@ -19,7 +19,7 @@ var (
 )
 
 type IPRateLimiter struct {
-	redisClient           redis.UniversalClient
+	redisClient   redis.UniversalClient
 	limit         int
 	scriptHashAny any
 	scriptAny     any
@@ -30,7 +30,7 @@ type IPRateLimiter struct {
 func NewIPRateLimiter(redisClient redis.UniversalClient, limit int, window time.Duration) *IPRateLimiter {
 	ms := window.Milliseconds()
 	l := &IPRateLimiter{
-		redisClient:           redisClient,
+		redisClient:   redisClient,
 		limit:         limit,
 		scriptHashAny: ipRateLimitScript.Hash(),
 		scriptAny:     ipRateLimitLuaAny,

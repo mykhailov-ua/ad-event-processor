@@ -21,7 +21,7 @@ func (f *VPPFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil || f.registry == nil {
 		return nil
 	}
-	camp, ok := f.registry.GetCampaign(evt.CampaignID)
+	camp, ok := getCampaignFromEvent(f.registry, evt)
 	if !ok || camp.PacingMode != domain.PacingModeVpp {
 		return nil
 	}

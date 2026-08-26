@@ -102,6 +102,31 @@ var (
 		Help: "L1 IPv4 /24 rotation velocity shadow hits (L2 signal only)",
 	})
 
+	CGNATIPBypassTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_cgnat_ip_bypass_total",
+		Help: "CGNAT mobile carrier bypass for IP velocity signals only (fixed label set)",
+	}, []string{"signal"})
+
+	ConversionRejectStoreErrorsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_conversion_reject_store_errors_total",
+		Help: "Conversion smart reject store lookup failures (fail-open skips CH-dependent rules)",
+	}, []string{"operation"})
+
+	ConversionRejectDegradedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_conversion_reject_degraded_total",
+		Help: "Conversions deferred because click store was unavailable (pending reprocess)",
+	}, []string{"reason"})
+
+	ConversionRejectReprocessTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_conversion_reject_reprocess_total",
+		Help: "Conversion smart reject reprocess worker outcomes",
+	}, []string{"result"})
+
+	ConversionPostbackDeferredTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_conversion_postback_deferred_total",
+		Help: "Outbound conversion postbacks held until validation completes",
+	})
+
 	OSFingerprintMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_os_fingerprint_mismatch_total",
 		Help: "L2 os_fingerprint_mismatch signals (edge TCP TTL/window vs UA family)",

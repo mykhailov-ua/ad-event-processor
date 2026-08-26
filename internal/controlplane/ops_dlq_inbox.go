@@ -18,7 +18,7 @@ import (
 
 func dlqInboxSourceFromProvider(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
-	case "facebook", "google", "tiktok":
+	case "facebook", "google", "tiktok", "taboola", "outbrain", "microsoft_ads":
 		return "capi"
 	default:
 		return "postback"

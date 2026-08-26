@@ -478,6 +478,9 @@ SET fraud_threshold_pass = $2,
     fraud_threshold_block = $5,
     silent_reject_enabled = $6,
     behavior_flags = $7,
+    canvas_retest_enabled = $8,
+    cgnat_ip_policy_enabled = $9,
+    conversion_reject_rules = $10,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
@@ -732,4 +735,147 @@ SELECT rule_id
 FROM alert_rule_events
 WHERE rule_id = ANY($1::uuid[])
   AND window_start = $2;
+
+-- name: UpdateCampaignIngressCostConfig :one
+UPDATE campaigns
+SET ingress_cost_config = $2,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING *;
+
+-- name: CloneFlowFromSource :one
+INSERT INTO flows (id, name, paths)
+SELECT $1, f.name || $2, f.paths
+FROM flows f
+WHERE f.id = $3
+RETURNING id;
+
+-- name: InsertClonedCampaign :one
+INSERT INTO campaigns (
+    id,
+    name,
+    status,
+    budget_limit,
+    current_spend,
+    customer_id,
+    pacing_mode,
+    daily_budget,
+    timezone,
+    freq_limit,
+    freq_window,
+    target_countries,
+    brand_id,
+    brand_fcap_key,
+    start_at,
+    end_at,
+    daypart_hours,
+    template_id,
+    fraud_threshold_pass,
+    fraud_threshold_suspect,
+    fraud_threshold_ivt,
+    fraud_threshold_block,
+    silent_reject_enabled,
+    behavior_flags,
+    supply_chain_nodes,
+    require_consent_purposes,
+    reserve_micro,
+    target_url,
+    creative_payload,
+    referrer_filter,
+    retarget_segment_id,
+    segment_ttl_hours,
+    segment_include,
+    segment_exclude,
+    safe_page_url,
+    safe_page_enabled,
+    cidr_block_enabled,
+    click_delivery,
+    proxy_upstream_url,
+    proxy_rewrite_assets,
+    integration_schema_id,
+    owner_user_id,
+    proxy_vpn_block_enabled,
+    domain_pool_id,
+    flow_id,
+    status_integration_schema_id,
+    dmr_enabled,
+    tls_fingerprint_block_enabled,
+    conn_type_policy,
+    link_signing_enabled,
+    link_signing_ttl_sec,
+    attestation_enabled,
+    attestation_ttl_sec,
+    attestation_mode,
+    social_in_app_enabled,
+    moderator_intel_enabled,
+    review_traffic_action,
+    ingress_cost_config,
+    traffic_template_id,
+    click_query_params
+)
+SELECT
+    $1,
+    $2,
+    $3,
+    src.budget_limit,
+    0,
+    src.customer_id,
+    src.pacing_mode,
+    src.daily_budget,
+    src.timezone,
+    src.freq_limit,
+    src.freq_window,
+    src.target_countries,
+    src.brand_id,
+    $4,
+    src.start_at,
+    src.end_at,
+    src.daypart_hours,
+    src.template_id,
+    src.fraud_threshold_pass,
+    src.fraud_threshold_suspect,
+    src.fraud_threshold_ivt,
+    src.fraud_threshold_block,
+    src.silent_reject_enabled,
+    src.behavior_flags,
+    src.supply_chain_nodes,
+    src.require_consent_purposes,
+    src.reserve_micro,
+    src.target_url,
+    src.creative_payload,
+    src.referrer_filter,
+    src.retarget_segment_id,
+    src.segment_ttl_hours,
+    src.segment_include,
+    src.segment_exclude,
+    src.safe_page_url,
+    src.safe_page_enabled,
+    src.cidr_block_enabled,
+    src.click_delivery,
+    src.proxy_upstream_url,
+    src.proxy_rewrite_assets,
+    src.integration_schema_id,
+    src.owner_user_id,
+    src.proxy_vpn_block_enabled,
+    src.domain_pool_id,
+    $5,
+    src.status_integration_schema_id,
+    src.dmr_enabled,
+    src.tls_fingerprint_block_enabled,
+    src.conn_type_policy,
+    src.link_signing_enabled,
+    src.link_signing_ttl_sec,
+    src.attestation_enabled,
+    src.attestation_ttl_sec,
+    src.attestation_mode,
+    src.social_in_app_enabled,
+    src.moderator_intel_enabled,
+    src.review_traffic_action,
+    src.ingress_cost_config,
+    src.traffic_template_id,
+    src.click_query_params
+FROM campaigns src
+WHERE src.id = $6
+  AND src.deleted_at IS NULL
+RETURNING *;
 

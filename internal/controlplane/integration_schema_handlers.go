@@ -65,6 +65,7 @@ func (h *IntegrationSchemaHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/integration/schemas", limit(perm("campaigns:write", h.createSchema)))
 	mux.HandleFunc("GET /api/v1/integration/schemas/{id}", limit(perm("campaigns:read", h.getSchema)))
 	mux.HandleFunc("POST /api/v1/integration/schemas/{id}/apply", limit(perm("campaigns:write", h.applySchema)))
+	mux.HandleFunc("GET /api/v1/integration/affiliate-status-presets", limit(perm("campaigns:read", h.listAffiliateStatusPresets)))
 	h.RegisterTemplateRoutes(mux)
 }
 

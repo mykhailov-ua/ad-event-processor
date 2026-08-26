@@ -6,6 +6,13 @@ source "$SCRIPTS/lib/go.sh"
 source "$SCRIPTS/lib/bpf_collector.sh"
 cd "$ROOT"
 
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env" 2> /dev/null || printf 'bpf-probe-session: WARN: .env present but not sourced (parse error)\n'
+  set +a
+fi
+
 CMD="${1:?start|stop}"
 OUT_DIR="${2:?output directory required}"
 BPF_DIR="$OUT_DIR/bpf"
@@ -15,6 +22,16 @@ LOG_FILE="$BPF_DIR/collector.log"
 READY_FILE="$BPF_DIR/collector.ready"
 
 log() { printf 'bpf-probe-session: %s\n' "$*"; }
+
+bootstrap_load_test_env() {
+  if [[ ! -f "$ROOT/.env.load-test" ]]; then
+    return 0
+  fi
+  # shellcheck source=scripts/lib/load_test_env.sh
+  source "$SCRIPTS/lib/load_test_env.sh"
+  load_test_bootstrap "$ROOT" 2> /dev/null || true
+  export PROMETHEUS_URL="${PROMETHEUS_URL:-${LOAD_TEST_PROMETHEUS_URL:-}}"
+}
 
 build_collector() {
   if [[ -x "$ROOT/bin/bpf-collector" && "${BPF_FORCE_REBUILD:-0}" != "1" ]]; then
@@ -73,6 +90,7 @@ case "$CMD" in
   start)
     mkdir -p "$BPF_DIR"
     rm -f "$READY_FILE"
+    bootstrap_load_test_env
     if ! bash "$SCRIPTS/test/bpf_requirements.sh"; then
       log "preflight failed - set AD_EVENT_PROCESSOR_BPF_PROBE=0 to skip"
       exit 1
@@ -84,8 +102,11 @@ case "$CMD" in
     bash "$SCRIPTS/test/bpf_resolve_targets.sh" "$TARGETS_JSON" "${AD_EVENT_PROCESSOR_BPF_TARGETS:-tracker,nginx,redis,processor}"
 
     build_collector
-    if [[ -z "${AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY:-}" && -x "$ROOT/bin/tracker-bpf-trace" ]]; then
-      export AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY="$ROOT/bin/tracker-bpf-trace"
+    # Host tracker-bpf-trace uprobes apply to native tracker only; docker /tracker uses /proc/pid/exe.
+    if [[ "${AD_EVENT_PROCESSOR_BPF_NATIVE:-0}" == "1" ]]; then
+      if [[ -z "${AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY:-}" && -x "$ROOT/bin/tracker-bpf-trace" ]]; then
+        export AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY="$ROOT/bin/tracker-bpf-trace"
+      fi
     fi
     if [[ ! -x "$ROOT/bin/bpf-collector" ]]; then
       log "ERROR: missing $ROOT/bin/bpf-collector (run: make bpf-dev)"

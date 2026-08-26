@@ -38,7 +38,7 @@ func newLocalQuantaUnifiedFilter(t testing.TB, redisClient redis.UniversalClient
 	ledger := NewLocalQuantaLedger()
 	idem := NewLocalClickIdemCache(time.Hour)
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		RedisShards:           []redis.UniversalClient{redisClient},
+		RedisShards:    []redis.UniversalClient{redisClient},
 		StreamName:     "events",
 		MaxLen:         1000,
 		IdempotencyTTL: time.Hour,

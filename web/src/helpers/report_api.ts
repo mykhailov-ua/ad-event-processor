@@ -34,7 +34,37 @@ export type SavedViewInput = {
   spec: Record<string, unknown>;
 };
 
+/** Builds a server-validated saved view spec from report filter state. */
+export function buildReportViewSpec(input: {
+  from: string;
+  to: string;
+  compare?: boolean;
+  campaignId?: string;
+  limit?: number;
+  columns?: string[];
+}): Record<string, unknown> {
+  const spec: Record<string, unknown> = {
+    from: input.from,
+    to: input.to,
+  };
+  if (input.compare) {
+    spec.compare = 'previous';
+  }
+  if (input.campaignId) {
+    spec.campaign_id = input.campaignId;
+  }
+  if (input.limit != null) {
+    spec.limit = input.limit;
+  }
+  if (input.columns?.length) {
+    spec.columns = input.columns;
+  }
+  return spec;
+}
+
 export type SavedViewRow = {
+  id?: string;
+  name?: string;
   report_key?: string;
   customer_id?: string;
   spec?: Record<string, unknown> | string;
@@ -275,6 +305,8 @@ export function savedViewHref(view: SavedViewRow): string {
   if (view.customer_id) qs.set('customer_id', view.customer_id);
   if (spec.from) qs.set('from', String(spec.from));
   if (spec.to) qs.set('to', String(spec.to));
+  if (spec.compare === true || spec.compare === 'previous') qs.set('compare', 'previous');
+  if (spec.campaign_id) qs.set('campaign_id', String(spec.campaign_id));
   const q = qs.toString();
   return q ? `${base}?${q}` : base;
 }

@@ -18,6 +18,7 @@ type RouteRegistry struct {
 	PlatformCampaignHTTP  *PlatformCampaignHTTPHandlers
 	MarginGuardHTTP       *MarginGuardHTTPHandlers
 	SmartAlertsHTTP       *SmartAlertsHTTPHandlers
+	AutomationHTTP        *AutomationHTTPHandlers
 	DomainHealthHTTP      *DomainHealthHTTPHandlers
 	FlowHTTP              *FlowHTTPHandlers
 	IntegrationSchemaHTTP *IntegrationSchemaHTTPHandlers
@@ -71,7 +72,15 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/campaigns"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}"},
 	{Method: "PATCH", Path: "/api/v1/campaigns/{id}"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/clone"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/export"},
+	{Method: "POST", Path: "/api/v1/campaigns/import"},
+	{Method: "GET", Path: "/api/v1/campaigns/migrate/sources"},
+	{Method: "POST", Path: "/api/v1/campaigns/migrate/preview"},
+	{Method: "POST", Path: "/api/v1/campaigns/migrate/import"},
 	{Method: "POST", Path: "/api/v1/campaigns/{id}/placement-blocks"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/conversion-mappings"},
+	{Method: "PUT", Path: "/api/v1/campaigns/{id}/conversion-mappings"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/events"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/margin"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/fraud"},
@@ -81,6 +90,7 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/consent"},
 	{Method: "GET", Path: "/api/v1/ops/consent/proofs"},
 	{Method: "GET", Path: "/api/v1/cost-sync/credentials"},
+	{Method: "GET", Path: "/api/v1/cost-sync/networks"},
 	{Method: "PUT", Path: "/api/v1/cost-sync/credentials/{network}"},
 	{Method: "DELETE", Path: "/api/v1/cost-sync/credentials/{network}"},
 	{Method: "GET", Path: "/api/v1/cost-sync/history"},
@@ -174,9 +184,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
 	{Method: "PUT", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
 	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-publish"},
-	{Method: "GET", Path: "/lp/{lander_id}/"},
 	{Method: "GET", Path: "/lp/{lander_id}/{path...}"},
-	{Method: "GET", Path: "/lp-preview/{lander_id}/"},
 	{Method: "GET", Path: "/lp-preview/{lander_id}/{path...}"},
 	{Method: "GET", Path: "/api/v1/offers"},
 	{Method: "POST", Path: "/api/v1/offers"},
@@ -217,6 +225,7 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/integration/schemas"},
 	{Method: "GET", Path: "/api/v1/integration/schemas/{id}"},
 	{Method: "POST", Path: "/api/v1/integration/schemas/{id}/apply"},
+	{Method: "GET", Path: "/api/v1/integration/affiliate-status-presets"},
 	{Method: "GET", Path: "/api/v1/integration/templates"},
 	{Method: "POST", Path: "/api/v1/integration/templates/import"},
 	{Method: "POST", Path: "/api/v1/campaigns/{id}/apply-templates"},
@@ -251,6 +260,9 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/ml/shadow-delta"},
 	{Method: "GET", Path: "/api/v1/reports/pacing-drift"},
 	{Method: "GET", Path: "/api/v1/reports/postback-reconciliation"},
+	{Method: "GET", Path: "/api/v1/reports/conversion-type-payout"},
+	{Method: "GET", Path: "/api/v1/reports/click-log"},
+	{Method: "GET", Path: "/api/v1/reports/clicks"},
 	{Method: "GET", Path: "/api/v1/reports/rtb/geo-device"},
 	{Method: "GET", Path: "/api/v1/reports/rtb/no-bid-reasons"},
 	{Method: "GET", Path: "/api/v1/reports/rtb/overview"},
@@ -354,6 +366,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.SmartAlertsHTTP != nil {
 		routes.SmartAlertsHTTP.Register(mux)
+	}
+	if routes.AutomationHTTP != nil {
+		routes.AutomationHTTP.Register(mux)
 	}
 	if routes.DomainHealthHTTP != nil {
 		routes.DomainHealthHTTP.Register(mux)

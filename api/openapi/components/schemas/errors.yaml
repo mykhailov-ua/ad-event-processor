@@ -1,0 +1,13 @@
+ErrorBody:
+  type: object
+  required: [error]
+  properties:
+    error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: BAD_REQUEST
+        message:
+          type: string

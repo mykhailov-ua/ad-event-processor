@@ -20,7 +20,7 @@ DB_PORT="${DB_PORT:-5430}"
 DB_DSN="${DB_DSN:-postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}}"
 
 DATA_SERVICES=(
-  db redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse processor prometheus grafana
+  run-dir-init db redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse processor prometheus grafana
 )
 TRACKER_SERVICES=(tracker-0 tracker-1 nginx)
 
@@ -45,6 +45,7 @@ wait_control_health() {
 }
 
 log "bringing up data plane"
+"${COMPOSE[@]}" up --force-recreate --no-deps run-dir-init
 "${COMPOSE[@]}" up -d --remove-orphans "${DATA_SERVICES[@]}"
 
 "${COMPOSE[@]}" stop tracker-2 tracker-3 2> /dev/null || true
@@ -93,13 +94,14 @@ for i in 0 1 2 3 4 5; do
   "${COMPOSE[@]}" exec -T "redis-${i}" redis-cli -p 6379 -a "$REDIS_PASS" FLUSHALL > /dev/null 2>&1
 done
 
-log "restarting processor (clean stream consumer groups after flush)"
-"${COMPOSE[@]}" restart processor
+log "recreating processor (volume perms, health probe, clean consumer groups after flush)"
+"${COMPOSE[@]}" up -d --build --force-recreate --no-deps processor
 
 log "seeding campaigns (100 active, matches loadgen campaign IDs)"
 "${COMPOSE[@]}" exec -T db psql -h localhost -p "$DB_PORT" -U ad_event_processor_user -d ad_event_processor << 'EOF'
 TRUNCATE TABLE events CASCADE;
 TRUNCATE TABLE campaign_stats CASCADE;
+TRUNCATE TABLE campaigns CASCADE;
 
 INSERT INTO customers (id, name, balance, currency, allowed_overdraft)
 SELECT

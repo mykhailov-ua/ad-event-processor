@@ -101,7 +101,26 @@ const registry = new Map<string, ConfirmEntry>([
     'POST /integration/schemas/{id}/apply',
     { level: 'standard', label: 'Apply integration schema' },
   ],
-  ['POST /campaigns/{id}/apply-templates', { level: 'standard', label: 'Apply bundled integration templates' }],
+  [
+    'POST /campaigns/{id}/apply-templates',
+    { level: 'standard', label: 'Apply bundled integration templates' },
+  ],
+  [
+    'POST /platform-campaigns/{campaign_id}/pause',
+    { level: 'destructive', label: 'Pause campaign on ad platform' },
+  ],
+  [
+    'POST /platform-campaigns/{campaign_id}/resume',
+    { level: 'standard', label: 'Resume campaign on ad platform' },
+  ],
+  [
+    'POST /platform-campaigns/{campaign_id}/budget',
+    { level: 'financial', label: 'Set daily budget on ad platform' },
+  ],
+  [
+    'DELETE /platform-campaigns/links/{campaign_id}/{network}',
+    { level: 'destructive', label: 'Remove platform campaign link' },
+  ],
 ]);
 
 export function getConfirmLevel(method: string, path: string): ConfirmEntry {

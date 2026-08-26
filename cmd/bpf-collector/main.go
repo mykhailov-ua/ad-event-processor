@@ -285,6 +285,9 @@ func (r *probeRun) writeTimeline() error {
 	startedUnix := started.Unix()
 	promURL := os.Getenv("PROMETHEUS_URL")
 	if promURL == "" {
+		promURL = os.Getenv("LOAD_TEST_PROMETHEUS_URL")
+	}
+	if promURL == "" {
 		promURL = "http://127.0.0.1:9190"
 	}
 	row := map[string]any{

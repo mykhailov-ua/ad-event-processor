@@ -1,115 +1,32 @@
-export type LedgerEntryDTO = {
-  id?: string;
-  type?: string;
-  amount?: number | string;
-  campaign_id?: string;
-  created_at?: string;
-  currency?: string;
-  [key: string]: unknown;
-};
+import type { components } from './generated/openapi.js';
 
-export type LedgerListResponse = {
-  items?: LedgerEntryDTO[];
-  total?: number;
-};
+export type LedgerEntryDTO = components['schemas']['BalanceLedgerEntry'];
 
-export type InvoiceLineDTO = {
-  ledger_type?: string;
-  amount_micro?: number;
-  entry_count?: number;
-  description?: string;
-  quantity?: number;
-  unit_micro?: number;
-  total_micro?: number;
-  [key: string]: unknown;
-};
+export type LedgerListResponse = components['schemas']['CustomerLedgerListResponse'];
 
-export type InvoiceDTO = {
-  id?: string;
-  customer_id?: string;
-  billing_month?: string;
-  status?: string;
-  total_micro?: number;
-  tax_micro?: number;
-  currency?: string;
-  lines?: InvoiceLineDTO[];
-  [key: string]: unknown;
-};
+export type CustomerBalanceDTO = components['schemas']['CustomerBalance'];
 
-export type InvoiceListResponse = {
-  items?: InvoiceDTO[];
+export type InvoiceLineDTO = components['schemas']['BillingInvoiceLine'];
+
+export type InvoiceDTO = components['schemas']['Invoice'];
+
+export type InvoiceListResponse = components['schemas']['InvoiceListResponse'] & {
   invoices?: InvoiceDTO[];
-  total?: number;
 };
 
-export type WalletBalanceDTO = {
-  balance_micro?: number;
-  balance?: number | string;
-  currency?: string;
-  allowed_overdraft_micro?: number;
-  low_balance_threshold_micro?: number;
-  payment_provider?: string;
-  payment_provider_configured?: boolean;
-  [key: string]: unknown;
-};
+export type WalletBalanceDTO = components['schemas']['Wallet'];
 
-export type BillingInvariantDTO = {
-  ok: boolean;
-  customer_id?: string;
+export type BillingInvariantDTO = components['schemas']['BillingInvariant'];
 
-  balance_micro?: number;
+export type InvoiceDeliveryDTO = components['schemas']['InvoiceDelivery'];
 
-  ledger_sum_micro?: number;
-  diff_micro?: number;
+export type InvoiceDeliveryListResponse = components['schemas']['InvoiceDeliveryListResponse'];
 
-  fleet_scan_limit?: number;
-};
+export type BillingExportJobDTO = components['schemas']['BillingExportJob'];
 
-export type InvoiceDeliveryDTO = {
-  id: string;
-  status: string;
-  provider: string;
-  recipient: string;
-  template_id: string;
-  error_message?: string;
-  retry_count: number;
-  created_at: string;
-  updated_at: string;
-};
+export type BillingExportCreateSpec = components['schemas']['BillingExportJobSpec'];
 
-export type InvoiceDeliveryListResponse = {
-  items?: InvoiceDeliveryDTO[];
-};
-
-export type BillingExportJobDTO = {
-  id: string;
-  customer_id: string;
-  format: string;
-  status: string;
-  bytes?: number;
-  download_url?: string;
-  error?: string;
-  created_at: string;
-  completed_at?: string;
-};
-
-export type BillingExportCreateSpec = {
-  customer_id: string;
-  from: string;
-  to: string;
-  format: 'csv' | 'ndjson';
-};
-
-export type BillingForecastDTO = {
-  customer_id?: string;
-  month?: string;
-  ledger_mtd_micro?: number;
-  ledger_run_rate_micro_per_day?: number;
-  projected_month_end_micro?: number;
-  days_remaining?: number;
-  low_confidence?: boolean;
-  ch_unavailable?: boolean;
-};
+export type BillingForecastDTO = components['schemas']['BillingForecast'];
 
 export type DisputeRowDTO = {
   intent_id?: string;
@@ -126,106 +43,26 @@ export type DisputeListResponse = {
   total?: number;
 };
 
-export type InvoiceLedgerLineDTO = {
-  id?: number;
-  amount_micro?: number;
-  ledger_type?: string;
-  created_at?: string;
-};
+export type InvoiceLedgerLineDTO = components['schemas']['BillingLedgerLine'];
 
-export type InvoiceLedgerLinesResponse = {
-  items?: InvoiceLedgerLineDTO[];
-  total?: number;
-  next_cursor?: string;
-  limit?: number;
-};
+export type InvoiceLedgerLinesResponse = components['schemas']['InvoiceLedgerLinesResponse'];
 
-export type BillingSummaryDTO = {
-  invoiced_mtd_micro?: number;
-  invoice_count_mtd?: number;
-  undelivered_invoice_notifications?: number;
-  customers_with_spend_in_month?: number;
-};
+export type BillingSummaryDTO = components['schemas']['BillingSummary'];
 
-export type BillingPeriodBounds = {
-  from?: string;
-  to?: string;
-};
+export type BillingPeriodBounds = components['schemas']['PeriodBounds'];
 
-export type TaxBreakdownDTO = {
-  scheme?: string;
-  rate_bps?: number;
-  tax_micro?: number;
-};
+export type TaxBreakdownDTO = components['schemas']['TaxBreakdown'];
 
-export type ReconciliationDTO = {
-  invoice_total_micro?: number;
-  ledger_sum_micro?: number;
-  delta_micro?: number;
-};
+export type ReconciliationDTO = components['schemas']['Reconciliation'];
 
-export type InvoiceSummaryDTO = {
-  id?: string;
-  customer_id?: string;
-  billing_month?: string;
-  subtotal_micro?: number;
-  tax_micro?: number;
-  total_micro?: number;
-  status?: string;
-  currency?: string;
-};
+export type InvoiceSummaryDTO = components['schemas']['InvoiceSummary'];
 
-export type PaymentSummaryDTO = {
-  ledger_id?: number;
-  amount_micro?: number;
-  payment_intent_id?: string;
-  created_at?: string;
-};
+export type PaymentSummaryDTO = components['schemas']['PaymentSummary'];
 
-export type BillingStatementDTO = {
-  customer_id?: string;
-  period?: BillingPeriodBounds;
-  opening_balance_micro?: number;
-  closing_balance_micro?: number;
-  lines?: InvoiceLineDTO[];
-  invoices?: InvoiceSummaryDTO[];
-  payments?: PaymentSummaryDTO[];
-  tax_breakdown?: TaxBreakdownDTO;
-  reconciliation?: ReconciliationDTO;
-  currency?: string;
-};
+export type BillingStatementDTO = components['schemas']['BillingStatement'];
 
-export type InvoicePreviewDTO = {
-  customer_id?: string;
-  billing_month?: string;
-  currency?: string;
-  subtotal_micro?: number;
-  tax_micro?: number;
-  total_micro?: number;
-  tax_scheme?: string;
-  tax_rate_bps?: number;
-  lines?: InvoiceLineDTO[];
-  would_skip?: boolean;
-  ledger_sum_micro?: number;
-};
+export type InvoicePreviewDTO = components['schemas']['InvoicePreview'];
 
-export type PaymentHistoryRowDTO = {
-  intent_id?: string;
-  customer_id?: string;
-  amount_micro?: number;
-  currency?: string;
-  status?: string;
-  provider?: string;
-  provider_ref?: string;
-  idempotency_key?: string;
-  ledger_entry_id?: string;
-  created_at?: string;
-  updated_at?: string;
-};
+export type PaymentHistoryRowDTO = components['schemas']['PaymentHistoryRow'];
 
-export type PaymentHistoryListResponse = {
-  items?: PaymentHistoryRowDTO[];
-  total?: number;
-  limit?: number;
-  offset?: number;
-};
+export type PaymentHistoryListResponse = components['schemas']['PaymentHistoryListResponse'];

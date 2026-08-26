@@ -13,7 +13,6 @@ import (
 	"ad-event-processor/pkg/coldpath"
 )
 
-
 type ResidentialIntelProvider interface {
 	Lookup(ctx context.Context, ip string) (ResidentialIntelResult, error)
 }
@@ -91,7 +90,6 @@ func (p *HTTPResidentialIntelProvider) Lookup(ctx context.Context, ip string) (R
 	}
 	return decoded, nil
 }
-
 
 type StubResidentialIntelProvider struct {
 	Results map[string]ResidentialIntelResult

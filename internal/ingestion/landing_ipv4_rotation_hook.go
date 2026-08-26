@@ -225,6 +225,9 @@ func (h *AdsPacketHandler) l1IPv4RotationObserve(ip, userID string, campaignID u
 	if !ok {
 		return false
 	}
+	if cgnatBypassForCampaign(h.cfg.CGNATMobileIPBypassEnabled(), h.registry, campaignID, h.mobileCarrierASN, asnLookupFromGeo(h.trackProc.ingestGeo), ip, "ipv4_rotation") {
+		return false
+	}
 	campaignHash := crc32Castagnoli(&campaignID)
 	userHash := hashClickUserID(userID)
 	live, shadow := t.observe(campaignHash, userHash, subnet24, host, nowMono)

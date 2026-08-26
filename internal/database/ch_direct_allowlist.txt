@@ -8,6 +8,7 @@ internal/ingestion/rtb_deal_outcomes_writer.go
 internal/ingestion/rtb_exchange_log_writer.go
 internal/logcompactor/cold_clickhouse.go
 internal/costsync/clickhouse.go
+internal/costsync/attribute.go
 internal/controlplane/service_erasure.go
 internal/controlplane/tg_ch_writer.go
 internal/ivtdetector/fraud_scoring_rule.go

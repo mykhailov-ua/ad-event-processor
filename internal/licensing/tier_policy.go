@@ -3,14 +3,13 @@ package licensing
 import "strings"
 
 const (
-	SKUCodePilot       = "pilot"
-	SKUCodeStarter     = "starter"
-	SKUCodePro         = "pro"
-	SKUCodeScale       = "scale"
-	SKUCodeNetwork     = "network"
-	SKUCodeEnterprise  = "enterprise"
-	SKUCodeManagedSaas = "managed_saas"
-	SKUCodeLicense     = "license"
+	SKUCodePilot      = "pilot"
+	SKUCodeStarter    = "starter"
+	SKUCodePro        = "pro"
+	SKUCodeScale      = "scale"
+	SKUCodeNetwork    = "network"
+	SKUCodeEnterprise = "enterprise"
+	SKUCodeLicense    = "license"
 )
 
 func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
@@ -38,7 +37,7 @@ func SanitizeFeaturesForSKU(sku string, features FeatureSet) FeatureSet {
 		out.AdPlatformCampaignAPI = false
 	case SKUCodeScale:
 		out.EbpfXDPEdge = false
-	case SKUCodeNetwork, SKUCodeEnterprise, SKUCodeManagedSaas, SKUCodeLicense:
+	case SKUCodeNetwork, SKUCodeEnterprise, SKUCodeLicense:
 	}
 	return out
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
 

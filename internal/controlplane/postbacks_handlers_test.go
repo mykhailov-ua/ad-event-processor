@@ -12,6 +12,7 @@ import (
 	"ad-event-processor/internal/testutil"
 
 	"ad-event-processor/internal/postback"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"

@@ -42,12 +42,12 @@ type BillingHTTPHandlers struct {
 	RequireSelfServePermission func(string, http.HandlerFunc) http.HandlerFunc
 	ResolveSelfServeCustomerID func(*http.Request) (uuid.UUID, error)
 
-	CustomerBalance              CustomerBalanceReader
-	UsageExport                  UsageDailyExporter
+	CustomerBalance                  CustomerBalanceReader
+	UsageExport                      UsageDailyExporter
 	ResolveUsageExportCustomerFilter func(*http.Request, string, string) (string, string, error)
-	Disputes                     DisputeLister
-	LimitExportByCustomer        func(http.HandlerFunc) http.HandlerFunc
-	ResolveDisputeCustomerFilter func(*http.Request) (string, error)
+	Disputes                         DisputeLister
+	LimitExportByCustomer            func(http.HandlerFunc) http.HandlerFunc
+	ResolveDisputeCustomerFilter     func(*http.Request) (string, error)
 }
 
 type InvoiceListResponse = OffsetListResponse[domain.Invoice]

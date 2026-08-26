@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { to } from '../lib/to.js';
 import { api } from '../helpers/api_client.js';
 import { createGenerationGuard, shouldCommitAsyncResult } from '../lib/async_guard.js';
@@ -22,6 +23,8 @@ import { FormField } from '../components/form_field.js';
 import { Icon } from '../components/icon.js';
 import { FreshnessBadge } from '../components/freshness_badge.js';
 import { StubBanner } from '../components/stub_banner.js';
+import { ReportSavedViewsPanel } from '../components/report_saved_views_panel.js';
+import { buildReportViewSpec } from '../helpers/report_api.js';
 
 export type ReportQueryPageProps = {
   endpoint: 'placements' | 'keywords';
@@ -39,19 +42,22 @@ function defaultFrom() {
 }
 
 export function ReportQueryPage({ endpoint, title }: ReportQueryPageProps) {
+  const [searchParams] = useSearchParams();
   const user = auth.getUser();
   const sessionScoped = hasBoundCustomer(user?.role);
   const permissions = user?.permissions ?? [];
   const showFinancials = canShowReportFinancials(permissions);
   const savedRange = storage.getReportRange();
 
-  const [customerInput, setCustomerInput] = useState(sessionScoped ? boundCustomerId(user) : '');
-  const [from, setFrom] = useState(savedRange?.from ?? defaultFrom());
-  const [rangeTo, setRangeTo] = useState(savedRange?.to ?? defaultTo());
+  const [customerInput, setCustomerInput] = useState(
+    searchParams.get('customer_id') || (sessionScoped ? boundCustomerId(user) : '')
+  );
+  const [from, setFrom] = useState(searchParams.get('from') || savedRange?.from || defaultFrom());
+  const [rangeTo, setRangeTo] = useState(searchParams.get('to') || savedRange?.to || defaultTo());
   const [rangeError, setRangeError] = useState<string | null>(null);
   const [customerError, setCustomerError] = useState<string | null>(null);
   const [activePreset, setActivePreset] = useState('');
-  const [comparePeriod, setComparePeriod] = useState(false);
+  const [comparePeriod, setComparePeriod] = useState(searchParams.get('compare') === 'previous');
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [freshness, setFreshness] = useState<DataFreshness | null>(null);
   const [nextCursor, setNextCursor] = useState('');
@@ -141,6 +147,17 @@ export function ReportQueryPage({ endpoint, title }: ReportQueryPageProps) {
     []
   );
 
+  const applySavedSpec = (spec: Record<string, unknown>) => {
+    if (spec.from) setFrom(String(spec.from));
+    if (spec.to) setRangeTo(String(spec.to));
+    if (spec.compare === true || spec.compare === 'previous') {
+      setComparePeriod(true);
+    } else if (spec.compare === false) {
+      setComparePeriod(false);
+    }
+    setActivePreset('');
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setRows([]);
@@ -218,6 +235,13 @@ export function ReportQueryPage({ endpoint, title }: ReportQueryPageProps) {
             Customer: <span className="font-mono">{customerId()}</span>
           </p>
         ) : null}
+
+        <ReportSavedViewsPanel
+          reportKey={endpoint}
+          customerId={customerId()}
+          currentSpec={buildReportViewSpec({ from, to: rangeTo, compare: comparePeriod })}
+          onApply={applySavedSpec}
+        />
 
         <div className="date-presets">
           <span className="date-presets__label">Range</span>

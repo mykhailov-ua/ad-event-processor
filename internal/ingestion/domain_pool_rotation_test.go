@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

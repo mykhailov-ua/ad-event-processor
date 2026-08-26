@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"ad-event-processor/internal/postback"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,10 +22,10 @@ const (
 type Kind string
 
 const (
-	KindInboundTokens           Kind = "inbound_tokens"
-	KindOutboundPostback        Kind = "outbound_postback"
+	KindInboundTokens            Kind = "inbound_tokens"
+	KindOutboundPostback         Kind = "outbound_postback"
 	KindAffiliateReceivePostback Kind = "affiliate_receive_postback"
-	KindStatusMapping           Kind = "status_mapping"
+	KindStatusMapping            Kind = "status_mapping"
 )
 
 type InboundTokenDef struct {

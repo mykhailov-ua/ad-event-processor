@@ -32,6 +32,9 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.Broker.TimeoutMs = getEnvInt("BROKER_TIMEOUT_MS", 5000)
 	cfg.Broker.ReconcileIntervalMs = getEnvInt("BROKER_RECONCILE_INTERVAL_MS", 30000)
 	cfg.Broker.DivergenceThreshold = uint64(getEnvInt64("BROKER_DIVERGENCE_THRESHOLD", 1000))
+	cfg.Broker.ProducerCapacity = getEnvInt("BROKER_PRODUCER_CAPACITY", 32768)
+	cfg.Broker.ProducerBatchSize = getEnvInt("BROKER_PRODUCER_BATCH_SIZE", 512)
+	cfg.Broker.ProducerFlushMs = getEnvInt("BROKER_PRODUCER_FLUSH_MS", 2)
 	if cfg.Broker.Topic == "" {
 		cfg.Broker.Topic = "tracker-logs"
 	}
@@ -160,6 +163,9 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 		}
 	}
 	cfg.IPv4RotationThreshold = uint32(getEnvInt("IPV4_ROTATION_THRESHOLD", 6))
+
+	cfg.CGNATMobileIPBypass = getEnvBool("CGNAT_MOBILE_IP_BYPASS", false)
+	cfg.CGNATMobileCarrierASNs = os.Getenv("CGNAT_MOBILE_CARRIER_ASNS")
 
 	cfg.OSFingerprintMismatchEnabled = getEnvBool("OS_FINGERPRINT_MISMATCH_ENABLED", true)
 

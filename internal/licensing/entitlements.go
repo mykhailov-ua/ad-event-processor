@@ -28,10 +28,9 @@ type FeatureSet struct {
 }
 
 type Entitlements struct {
-	DeploymentMode string     `json:"deployment_mode,omitempty"`
-	VolumeBand     VolumeBand `json:"volume_band,omitempty"`
-	Limits         Limits     `json:"limits"`
-	Features       FeatureSet `json:"features"`
+	VolumeBand VolumeBand `json:"volume_band,omitempty"`
+	Limits     Limits     `json:"limits"`
+	Features   FeatureSet `json:"features"`
 }
 
 type LimitsDTO struct {

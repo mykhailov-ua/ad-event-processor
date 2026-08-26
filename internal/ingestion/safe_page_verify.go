@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/metrics"
+
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )
@@ -46,6 +47,8 @@ type safePageVerifyFingerprint struct {
 	InnerHeight            int      `json:"inner_height,omitempty"`
 	PluginsLength          int      `json:"plugins_length,omitempty"`
 	CanvasHash             string   `json:"canvas_hash,omitempty"`
+	CanvasHashA            string   `json:"canvas_hash_a,omitempty"`
+	CanvasHashB            string   `json:"canvas_hash_b,omitempty"`
 	AudioHash              string   `json:"audio_hash,omitempty"`
 	NotificationPermission string   `json:"notification_permission,omitempty"`
 	NotificationQuery      string   `json:"notification_query,omitempty"`
@@ -200,13 +203,18 @@ func (h *AdsPacketHandler) reactTrackVerify(req parsedHTTPRequest, c gnet.Conn, 
 	if h.trackProc.ingestGeo != nil {
 		country, _ = h.trackProc.ingestGeo.GetCountry(ip)
 	}
+	canvasRetestEnabled := false
+	if camp, ok := h.registry.GetCampaign(campaignID); ok && camp != nil {
+		canvasRetestEnabled = camp.CanvasRetestEnabled
+	}
 	if fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		remoteIP:      ip,
-		country:       country,
-		fingerprint:   verifyReq.Fingerprint,
-		events:        verifyReq.Events,
-		nowUnix:       time.Now().Unix(),
-		behaviorScore: scoreSafePageBehavior(verifyReq.Events),
+		remoteIP:            ip,
+		country:             country,
+		fingerprint:         verifyReq.Fingerprint,
+		events:              verifyReq.Events,
+		nowUnix:             time.Now().Unix(),
+		behaviorScore:       scoreSafePageBehavior(verifyReq.Events),
+		canvasRetestEnabled: canvasRetestEnabled,
 	}); fail {
 		landingURL, ok := resolveSafePageLanding(h.registry, campaignID)
 		if !ok {

@@ -277,7 +277,11 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 		return false, ErrFilterTimeout
 	}
 
-	recovered, recErr := tryRecoverBudgetFromRegistry(ctx, redisClient, f.registry, evt.CampaignID, budgetSourceKey)
+	worker := -1
+	if evt != nil {
+		worker = int(evt.FilterWorkerIdx)
+	}
+	recovered, recErr := tryRecoverBudgetFromRegistry(ctx, redisClient, f.registry, evt.CampaignID, budgetSourceKey, worker)
 	if recErr != nil {
 		return false, recErr
 	}

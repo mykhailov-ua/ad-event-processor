@@ -146,12 +146,13 @@ export function SettingsLicensePage() {
           <h2 className="section-card__title">Pilot and upgrade</h2>
           {data?.trial_self_serve_url ? (
             <p className="text-muted text-sm">
-              Request a {data.pilot_valid_days ?? 14}-day pilot ({rpsCap}) via Telegram. One pilot per
-              Telegram account and host (trial registry).
+              Request a {data.pilot_valid_days ?? 14}-day pilot ({rpsCap}) via Telegram. One pilot
+              per Telegram account and host (trial registry).
             </p>
           ) : (
             <p className="text-muted text-sm">
-              Contact your vendor for a {data?.pilot_valid_days ?? 14}-day pilot JWT ({rpsCap} on pilot SKU).
+              Contact your vendor for a {data?.pilot_valid_days ?? 14}-day pilot JWT ({rpsCap} on
+              pilot SKU).
             </p>
           )}
           {data?.trial_self_serve_url ? (
@@ -168,8 +169,8 @@ export function SettingsLicensePage() {
           {data?.upgrade_plan_code === 'starter' ? (
             <>
               <p className="text-muted text-sm">
-                Upgrade to Starter on-prem for higher RPS and production support. Paste a Starter JWT below
-                after purchase.
+                Upgrade to Starter on-prem for higher RPS and production support. Paste a Starter
+                JWT below after purchase.
               </p>
               <ButtonLink
                 label="Contact vendor to upgrade"

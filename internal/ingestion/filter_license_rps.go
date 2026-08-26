@@ -106,7 +106,7 @@ func (l *deploymentRPSLimiter) allow(maxRPS uint64) bool {
 	soft := licenseRPSSoftCeil(maxRPS)
 	l.ensureBurstPool(burstCap)
 
-	now := uint64(time.Now().Unix())
+	now := cachedUnixSec()
 	prev := l.epoch.Load()
 	if prev != now {
 		if l.epoch.CompareAndSwap(prev, now) {

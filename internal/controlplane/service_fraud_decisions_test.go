@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/fraud"
+
 	"github.com/stretchr/testify/require"
 )
 

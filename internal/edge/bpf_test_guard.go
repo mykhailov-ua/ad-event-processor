@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 var bpfTestMu sync.Mutex
 
 func withBPFTestLock(t *testing.T) {

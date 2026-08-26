@@ -17,8 +17,8 @@ import (
 func TestResolveDebitShard_highVolumeSpread(t *testing.T) {
 	sharder := NewStaticSlotSharder(4)
 	f := &UnifiedFilter{
-		sharder: sharder,
-		redisShards:    make([]redis.UniversalClient, 4),
+		sharder:     sharder,
+		redisShards: make([]redis.UniversalClient, 4),
 	}
 	campID := uuid.New()
 	camp := &domain.Campaign{
@@ -77,8 +77,8 @@ func TestDebitSubShard_plainCampaignSingleHashTag_holdout(t *testing.T) {
 
 	sharder := NewStaticSlotSharder(4)
 	f := &UnifiedFilter{
-		sharder: sharder,
-		redisShards:    make([]redis.UniversalClient, 4),
+		sharder:     sharder,
+		redisShards: make([]redis.UniversalClient, 4),
 	}
 	shardA, subA, err := f.resolveDebitShard(camp.ID, "user-1", "", camp)
 	require.NoError(t, err)

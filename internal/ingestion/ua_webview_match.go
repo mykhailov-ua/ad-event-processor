@@ -1,6 +1,5 @@
 package ingestion
 
-
 const uaWebViewScanMax = 256
 
 func uaMatchesInAppWebView(ua string) bool {

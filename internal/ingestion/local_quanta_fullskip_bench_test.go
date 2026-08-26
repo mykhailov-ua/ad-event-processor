@@ -22,7 +22,7 @@ func BenchmarkAcceptLocalQuantaFullSkip(b *testing.B) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		redisShards:         []redis.UniversalClient{&benchNoopRedis{}},
+		redisShards:  []redis.UniversalClient{&benchNoopRedis{}},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,
@@ -85,7 +85,7 @@ func BenchmarkLocalQuanta_FullSkip(b *testing.B) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		redisShards:         []redis.UniversalClient{&benchNoopRedis{}},
+		redisShards:  []redis.UniversalClient{&benchNoopRedis{}},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,
@@ -164,7 +164,7 @@ func TestUnifiedFilter_Check_zeroAlloc_localQuantaFullSkip(t *testing.T) {
 	stream := &LocalQuantaStreamPublisher{
 		stream:       "events",
 		maxLen:       1000,
-		redisShards:         []redis.UniversalClient{&benchNoopRedis{}},
+		redisShards:  []redis.UniversalClient{&benchNoopRedis{}},
 		idemTTL:      time.Hour,
 		idem:         idem,
 		writeTimeout: time.Millisecond,

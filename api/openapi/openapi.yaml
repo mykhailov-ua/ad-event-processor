@@ -1,0 +1,871 @@
+openapi: 3.0.3
+info:
+  title: ad-event-processor control plane API
+  version: 0.6.0
+  description: |
+    Operator and automation REST on `/api/v1` (`cmd/control`, default `:8188`).
+    Documented domains: cost-sync, integrations, campaigns, billing, reports, ops,
+    fraud admin, dashboards, and saved views. All `/api/v1` catalog routes are hand-documented or explicitly allowlisted.
+    New endpoints must land in OpenAPI before handler code (`deploy/vendor/openapi_backlog.md`).
+servers:
+  - url: http://localhost:8188
+    description: Local control plane
+tags:
+  - name: cost-sync
+    description: Ad network spend import credentials and manual runs
+  - name: postbacks
+    description: Outbound CAPI and webhook configs
+  - name: integration
+    description: Custom schemas and bundled templates
+  - name: supply
+    description: sellers.json and ads.txt export
+  - name: margin-guard
+    description: ROI margin policies and placement overrides
+  - name: smart-alerts
+    description: Metric threshold alerts to webhooks
+  - name: platform-campaigns
+    description: External ad platform link and mutation API (Enterprise SKU)
+  - name: campaigns
+    description: Campaign CRUD, fraud, stats, clone, and owner assignment
+  - name: flows
+    description: Flow builder paths, offers, and lander routing
+  - name: landers
+    description: Lander CRUD and hosted ZIP editor
+  - name: brands
+    description: Advertiser brands and weighted creatives
+  - name: domains
+    description: Tracking domain health and TLS setup
+  - name: billing
+    description: Invoices, ledger, exports, tax profile, and wallet
+  - name: selfserve
+    description: Bearer-authenticated buyer API for templates, campaigns, and top-ups
+  - name: reports
+    description: ClickHouse-backed analytics reports with freshness metadata
+  - name: ops
+    description: Operator health, DLQ, outbox, blacklist, and ML model status
+  - name: fraud-admin
+    description: Fraud labels, decisions, presets, and integration status
+  - name: dashboards
+    description: Role-specific KPI dashboards (buyer, CFO, fraud, operator)
+  - name: views
+    description: Saved report filter views per customer
+  - name: telegram
+    description: Telegram Mini App, bots, webhooks, and analytics reports
+  - name: audit
+    description: Admin audit log and CSV export
+  - name: customers
+    description: Customer directory (admin)
+  - name: disputes
+    description: Payment dispute and chargeback rows
+  - name: eula
+    description: End-user license acceptance
+  - name: license
+    description: JWT license status and apply
+  - name: meta
+    description: Product metadata and bootstrap flags
+  - name: consent
+    description: Signed consent records
+  - name: recon
+    description: Ledger reconciliation run history
+  - name: report-schedules
+    description: Scheduled report delivery cron jobs
+  - name: settings
+    description: Platform install configuration
+  - name: support
+    description: Operator feedback to vendor
+  - name: team
+    description: Team members and budget approvals
+  - name: publisher
+    description: Scoped publisher dashboard and statements
+  - name: rtb
+    description: OpenRTB deals, shadow diff, and floor optimizer
+paths:
+  /api/v1/campaigns:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns
+  /api/v1/campaigns/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}
+  /api/v1/campaigns/{id}/owner:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1owner
+  /api/v1/campaigns/{id}/clone:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone
+  /api/v1/campaigns/{id}/export:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1export
+  /api/v1/campaigns/import:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import
+  /api/v1/campaigns/migrate/sources:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1sources
+  /api/v1/campaigns/migrate/preview:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1preview
+  /api/v1/campaigns/migrate/import:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1import
+  /api/v1/campaigns/{id}/placement-blocks:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1placement-blocks
+  /api/v1/campaigns/{id}/events:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1events
+  /api/v1/campaigns/{id}/margin:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1margin
+  /api/v1/campaigns/{id}/fraud:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud
+  /api/v1/campaigns/{id}/fraud/preview:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud~1preview
+  /api/v1/campaigns/{id}/stats:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1stats
+  /api/v1/forecast/campaign:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1forecast~1campaign
+  /api/v1/flows:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows
+  /api/v1/flows/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1flows~1{id}
+  /api/v1/landers:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers
+  /api/v1/landers/{id}/hosted-upload:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-upload
+  /api/v1/landers/{id}/hosted-editor:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-editor
+  /api/v1/landers/{id}/hosted-files/{path...}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-files~1{path...}
+  /api/v1/landers/{id}/hosted-publish:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1landers~1{id}~1hosted-publish
+  /api/v1/offers:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1offers
+  /api/v1/brands:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands
+  /api/v1/brands/{id}/creatives:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brands~1{id}~1creatives
+  /api/v1/brand-creatives/{id}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1brand-creatives~1{id}
+  /api/v1/domains:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains
+  /api/v1/domains/park:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1park
+  /api/v1/domains/{hostname}:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}
+  /api/v1/domains/{hostname}/probe:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}~1probe
+  /api/v1/domains/{hostname}/ssl/setup:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1domains~1{hostname}~1ssl~1setup
+  /api/v1/cost-sync/networks:
+    $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1networks
+  /api/v1/cost-sync/credentials:
+    $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1credentials
+  /api/v1/cost-sync/credentials/{network}:
+    $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1credentials~1{network}
+  /api/v1/cost-sync/run:
+    $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1run
+  /api/v1/cost-sync/history:
+    $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1history
+  /api/v1/postbacks/config:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1config
+  /api/v1/postbacks/config/{campaign_id}:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1config~1{campaign_id}
+  /api/v1/postbacks/config/{campaign_id}/test:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1config~1{campaign_id}~1test
+  /api/v1/postbacks/dlq:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq
+  /api/v1/postbacks/dlq/{id}/retry:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq~1{id}~1retry
+  /api/v1/postbacks/campaign-status:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1campaign-status
+  /api/v1/integration/schemas:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas
+  /api/v1/integration/schemas/{id}:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas~1{id}
+  /api/v1/integration/schemas/{id}/apply:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas~1{id}~1apply
+  /api/v1/integration/templates:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates
+  /api/v1/integration/templates/import:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates~1import
+  /api/v1/campaigns/{id}/apply-templates:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates
+  /api/v1/supply/sellers:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1sellers
+  /api/v1/supply/sellers/{id}:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1sellers~1{id}
+  /api/v1/supply/ads-txt:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1ads-txt
+  /api/v1/supply/ads-txt/{id}:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1ads-txt~1{id}
+  /api/v1/supply/preview/sellers.json:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1preview~1sellers.json
+  /api/v1/supply/preview/ads.txt:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1preview~1ads.txt
+  /api/v1/supply/validation:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1validation
+  /api/v1/supply/export-path:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1supply~1export-path
+  /api/v1/margin-guard/policies:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1margin-guard~1policies
+  /api/v1/margin-guard/activity:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1margin-guard~1activity
+  /api/v1/margin-guard/overrides:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1margin-guard~1overrides
+  /api/v1/smart-alerts/rules:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1smart-alerts~1rules
+  /api/v1/smart-alerts/rules/{id}:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1smart-alerts~1rules~1{id}
+  /api/v1/smart-alerts/history:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1smart-alerts~1history
+  /api/v1/smart-alerts/events/{id}/ack:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1smart-alerts~1events~1{id}~1ack
+  /api/v1/platform-campaigns/links:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1links
+  /api/v1/platform-campaigns/links/{campaign_id}/{network}:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1links~1{campaign_id}~1{network}
+  /api/v1/platform-campaigns/links/{campaign_id}/{network}/refresh:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1links~1{campaign_id}~1{network}~1refresh
+  /api/v1/platform-campaigns/{campaign_id}/pause:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1{campaign_id}~1pause
+  /api/v1/platform-campaigns/{campaign_id}/resume:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1{campaign_id}~1resume
+  /api/v1/platform-campaigns/{campaign_id}/budget:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1{campaign_id}~1budget
+  /api/v1/platform-campaigns/sync-run:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1sync-run
+  /api/v1/billing/summary:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1summary
+  /api/v1/billing/invariant:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invariant
+  /api/v1/billing/invoices:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices
+  /api/v1/billing/invoices/preview:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1preview
+  /api/v1/billing/invoices/{id}:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1{id}
+  /api/v1/billing/invoices/{id}/pdf:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1{id}~1pdf
+  /api/v1/billing/invoices/{id}/ledger-lines:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1{id}~1ledger-lines
+  /api/v1/billing/invoices/{id}/deliveries:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1{id}~1deliveries
+  /api/v1/billing/invoices/{id}/deliveries/retry:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1{id}~1deliveries~1retry
+  /api/v1/billing/invoices/{id}/void:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1invoices~1{id}~1void
+  /api/v1/billing/exports:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1exports
+  /api/v1/billing/exports/{job_id}:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1exports~1{job_id}
+  /api/v1/billing/exports/{job_id}/download:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1exports~1{job_id}~1download
+  /api/v1/customers/{id}/balance:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1balance
+  /api/v1/customers/{id}/ledger:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1ledger
+  /api/v1/customers/{id}/balance/export:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1balance~1export
+  /api/v1/customers/{id}/billing/statement:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1billing~1statement
+  /api/v1/customers/{id}/billing/forecast:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1billing~1forecast
+  /api/v1/customers/{id}/payments:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1payments
+  /api/v1/customers/{id}/wallet:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1wallet
+  /api/v1/customers/{id}/tax-profile:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1customers~1{id}~1tax-profile
+  /api/v1/customers:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1customers
+  /api/v1/customers/{id}:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1customers~1{id}
+  /api/v1/selfserve/templates:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1templates
+  /api/v1/selfserve/campaigns:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1campaigns
+  /api/v1/selfserve/campaigns/{id}/pause:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1campaigns~1{id}~1pause
+  /api/v1/selfserve/campaigns/{id}/resume:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1campaigns~1{id}~1resume
+  /api/v1/selfserve/payment-intents:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1payment-intents
+  /api/v1/selfserve/invoices:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1invoices
+  /api/v1/selfserve/billing/statement:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1billing~1statement
+  /api/v1/selfserve/api-keys:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1api-keys
+  /api/v1/dashboards/accountant:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1accountant
+  /api/v1/dashboards/adops:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1adops
+  /api/v1/dashboards/buyer:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1buyer
+  /api/v1/dashboards/campaign/{id}:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1campaign~1{id}
+  /api/v1/dashboards/cfo:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1cfo
+  /api/v1/dashboards/fraud:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1fraud
+  /api/v1/dashboards/operator:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1dashboards~1operator
+  /api/v1/fraud/decisions:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1decisions
+  /api/v1/fraud/integrations:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1integrations
+  /api/v1/fraud/labels:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1labels
+  /api/v1/fraud/labels/bulk:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1labels~1bulk
+  /api/v1/fraud/overrides:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1overrides
+  /api/v1/fraud/presets:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1fraud~1presets
+  /api/v1/ops/blacklist:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1blacklist
+  /api/v1/ops/consent/proofs:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1consent~1proofs
+  /api/v1/ops/dashboard/metrics:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dashboard~1metrics
+  /api/v1/ops/dashboard/stream:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dashboard~1stream
+  /api/v1/ops/dashboard/summary:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dashboard~1summary
+  /api/v1/ops/dlq:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dlq
+  /api/v1/ops/dlq/inbox:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dlq~1inbox
+  /api/v1/ops/dlq/inbox/{id}/retry:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dlq~1inbox~1{id}~1retry
+  /api/v1/ops/dlq/{id}/retry:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dlq~1{id}~1retry
+  /api/v1/ops/doctor:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1doctor
+  /api/v1/ops/domains/rotation:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1rotation
+  /api/v1/ops/domains/tls-allowed:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1tls-allowed
+  /api/v1/ops/domains/{hostname}/tls-allowed:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1{hostname}~1tls-allowed
+  /api/v1/ops/fraud/presets/{name}:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1fraud~1presets~1{name}
+  /api/v1/ops/incidents:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1incidents
+  /api/v1/ops/ml-model:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1ml-model
+  /api/v1/ops/ml-model/eval:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1ml-model~1eval
+  /api/v1/ops/ml-model/labels:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1ml-model~1labels
+  /api/v1/ops/outbox:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1outbox
+  /api/v1/ops/roles/reload:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1roles~1reload
+  /api/v1/ops/rum:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1rum
+  /api/v1/ops/shards:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1shards
+  /api/v1/ops/shards/0/catchup:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1shards~10~1catchup
+  /api/v1/reports/campaign-geo-device:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1campaign-geo-device
+  /api/v1/reports/campaign-overview:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1campaign-overview
+  /api/v1/reports/click-log:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1click-log
+  /api/v1/reports/clicks:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1clicks
+  /api/v1/reports/cost-sync-coverage:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1cost-sync-coverage
+  /api/v1/reports/conversion-type-payout:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1conversion-type-payout
+  /api/v1/reports/customer-portfolio:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1customer-portfolio
+  /api/v1/reports/data-quality:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1data-quality
+  /api/v1/reports/daypart-heatmap:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1daypart-heatmap
+  /api/v1/reports/discrepancy-buy-sell:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1discrepancy-buy-sell
+  /api/v1/reports/edge-parity:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1edge-parity
+  /api/v1/reports/filter-rejects:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1filter-rejects
+  /api/v1/reports/fraud-breakdown:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1fraud-breakdown
+  /api/v1/reports/geo-roi:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1geo-roi
+  /api/v1/reports/ghost-impression-funnel:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ghost-impression-funnel
+  /api/v1/reports/ivt-by-source:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ivt-by-source
+  /api/v1/reports/jobs:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs
+  /api/v1/reports/jobs/{id}:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}
+  /api/v1/reports/jobs/{id}/download:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}~1download
+  /api/v1/reports/keywords:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1keywords
+  /api/v1/reports/ml/feature-spikes:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ml~1feature-spikes
+  /api/v1/reports/ml/score-distribution:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ml~1score-distribution
+  /api/v1/reports/ml/shadow-delta:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ml~1shadow-delta
+  /api/v1/reports/pacing-drift:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1pacing-drift
+  /api/v1/reports/placements:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1placements
+  /api/v1/reports/postback-reconciliation:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1postback-reconciliation
+  /api/v1/reports/rtb/geo-device:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtb~1geo-device
+  /api/v1/reports/rtb/no-bid-reasons:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtb~1no-bid-reasons
+  /api/v1/reports/rtb/overview:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtb~1overview
+  /api/v1/reports/silent-reject-impression-funnel:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1silent-reject-impression-funnel
+  /api/v1/reports/source-quality:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1source-quality
+  /api/v1/reports/spend-velocity:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1spend-velocity
+  /api/v1/reports/telegram:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram
+  /api/v1/reports/telegram/bots:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram~1bots
+  /api/v1/reports/telegram/export:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram~1export
+  /api/v1/reports/telegram/fraud:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram~1fraud
+  /api/v1/reports/telegram/funnel:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram~1funnel
+  /api/v1/reports/telegram/premium:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram~1premium
+  /api/v1/reports/telegram/summary:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1telegram~1summary
+  /api/v1/reports/traffic-sources:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1traffic-sources
+  /api/v1/reports/true-roi:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1true-roi
+  /api/v1/views:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views
+  /api/v1/views/{id}:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views~1{id}
+  /api/v1/audit:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1audit
+  /api/v1/audit/export:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1audit~1export
+  /api/v1/consent:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1consent
+  /api/v1/disputes:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1disputes
+  /api/v1/eula:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1eula
+  /api/v1/eula/accept:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1eula~1accept
+  /api/v1/license/status:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1license~1status
+  /api/v1/license/apply:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1license~1apply
+  /api/v1/meta:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1meta
+  /api/v1/publisher/dashboard:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1publisher~1dashboard
+  /api/v1/publisher/statements:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1publisher~1statements
+  /api/v1/recon/runs:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1recon~1runs
+  /api/v1/report-schedules:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules
+  /api/v1/report-schedules/{id}:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1report-schedules~1{id}
+  /api/v1/settings/platform:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1settings~1platform
+  /api/v1/settings/platform/apply:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1settings~1platform~1apply
+  /api/v1/settings/platform/bootstrap:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1settings~1platform~1bootstrap
+  /api/v1/support/feedback:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1support~1feedback
+  /api/v1/support/feedback/meta:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1support~1feedback~1meta
+  /api/v1/team/overview:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1overview
+  /api/v1/team/members:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1members
+  /api/v1/team/members/{id}:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1members~1{id}
+  /api/v1/team/budget-approvals:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals
+  /api/v1/team/budget-approvals/{id}/approve:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1{id}~1approve
+  /api/v1/team/budget-approvals/{id}/deny:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1team~1budget-approvals~1{id}~1deny
+  /api/v1/rtb/deals:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1deals
+  /api/v1/rtb/deals/{id}:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1deals~1{id}
+  /api/v1/rtb/integration-profile:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1integration-profile
+  /api/v1/rtb/shadow-diff:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1shadow-diff
+  /api/v1/rtb/reconcile/export:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1reconcile~1export
+  /api/v1/rtb/floors/apply:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1floors~1apply
+  /api/v1/rtb/validate-bid-request:
+    $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1validate-bid-request
+  /api/v1/telegram/validate:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1validate
+  /api/v1/telegram/clicks:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1clicks
+  /api/v1/telegram/webhook/{bot_id}:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1webhook~1{bot_id}
+  /api/v1/telegram/deeplink-tokens:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1deeplink-tokens
+  /api/v1/telegram/deeplink-tokens/{token}:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1deeplink-tokens~1{token}
+  /api/v1/telegram/bots:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1bots
+  /api/v1/telegram/bots/{id}:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1bots~1{id}
+  /api/v1/telegram/postbacks:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1postbacks
+  /api/v1/telegram/postbacks/{id}:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1postbacks~1{id}
+  /api/v1/telegram/postbacks/{id}/test:
+    $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1postbacks~1{id}~1test
+  /api/v1/campaigns/{id}/conversion-mappings:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1conversion-mappings
+  /lp/{lander_id}/{path...}:
+    $ref: paths/campaigns.yaml#/paths/~1lp~1{lander_id}~1{path...}
+  /lp-preview/{lander_id}/{path...}:
+    $ref: paths/campaigns.yaml#/paths/~1lp-preview~1{lander_id}~1{path...}
+  /api/v1/integration/affiliate-status-presets:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1affiliate-status-presets
+  /api/v1/billing/crypto/webhook:
+    $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1crypto~1webhook
+components:
+  schemas:
+    ErrorBody:
+      $ref: components/schemas/errors.yaml#/ErrorBody
+    StatusOKResponse:
+      $ref: components/schemas/integrations.yaml#/StatusOKResponse
+    CostSyncExtraField:
+      $ref: components/schemas/cost_sync.yaml#/CostSyncExtraField
+    CostSyncNetworkSchema:
+      $ref: components/schemas/cost_sync.yaml#/CostSyncNetworkSchema
+    CostSyncTokenMapping:
+      $ref: components/schemas/cost_sync.yaml#/CostSyncTokenMapping
+    CostSyncCredential:
+      $ref: components/schemas/cost_sync.yaml#/CostSyncCredential
+    UpsertCostSyncCredentialRequest:
+      $ref: components/schemas/cost_sync.yaml#/UpsertCostSyncCredentialRequest
+    RunCostSyncRequest:
+      $ref: components/schemas/cost_sync.yaml#/RunCostSyncRequest
+    RunCostSyncAcceptedResponse:
+      $ref: components/schemas/cost_sync.yaml#/RunCostSyncAcceptedResponse
+    CostSyncRun:
+      $ref: components/schemas/cost_sync.yaml#/CostSyncRun
+    PostbackConfig:
+      $ref: components/schemas/integrations.yaml#/PostbackConfig
+    UpdatePostbackConfigRequest:
+      $ref: components/schemas/integrations.yaml#/UpdatePostbackConfigRequest
+    PostbackDlqEntry:
+      $ref: components/schemas/integrations.yaml#/PostbackDlqEntry
+    PostbackCampaignStatus:
+      $ref: components/schemas/integrations.yaml#/PostbackCampaignStatus
+    PostbackDryRunResult:
+      $ref: components/schemas/integrations.yaml#/PostbackDryRunResult
+    IntegrationSchema:
+      $ref: components/schemas/integrations.yaml#/IntegrationSchema
+    CreateIntegrationSchemaRequest:
+      $ref: components/schemas/integrations.yaml#/CreateIntegrationSchemaRequest
+    ApplyIntegrationSchemaRequest:
+      $ref: components/schemas/integrations.yaml#/ApplyIntegrationSchemaRequest
+    ApplyIntegrationSchemaResponse:
+      $ref: components/schemas/integrations.yaml#/ApplyIntegrationSchemaResponse
+    IntegrationTemplateCatalogEntry:
+      $ref: components/schemas/integrations.yaml#/IntegrationTemplateCatalogEntry
+    ImportIntegrationTemplatesRequest:
+      $ref: components/schemas/integrations.yaml#/ImportIntegrationTemplatesRequest
+    ApplyCampaignTemplatesRequest:
+      $ref: components/schemas/integrations.yaml#/ApplyCampaignTemplatesRequest
+    ApplyCampaignTemplatesResult:
+      $ref: components/schemas/integrations.yaml#/ApplyCampaignTemplatesResult
+    Seller:
+      $ref: components/schemas/integrations.yaml#/Seller
+    SellerWriteRequest:
+      $ref: components/schemas/integrations.yaml#/SellerWriteRequest
+    AdsTxtEntry:
+      $ref: components/schemas/integrations.yaml#/AdsTxtEntry
+    AdsTxtWriteRequest:
+      $ref: components/schemas/integrations.yaml#/AdsTxtWriteRequest
+    SupplyExportPath:
+      $ref: components/schemas/integrations.yaml#/SupplyExportPath
+    SupplyValidation:
+      $ref: components/schemas/integrations.yaml#/SupplyValidation
+    MarginGuardPolicy:
+      $ref: components/schemas/integrations.yaml#/MarginGuardPolicy
+    MarginGuardActivity:
+      $ref: components/schemas/integrations.yaml#/MarginGuardActivity
+    MarginGuardOverrideRequest:
+      $ref: components/schemas/integrations.yaml#/MarginGuardOverrideRequest
+    SmartAlertRule:
+      $ref: components/schemas/integrations.yaml#/SmartAlertRule
+    UpsertSmartAlertRuleRequest:
+      $ref: components/schemas/integrations.yaml#/UpsertSmartAlertRuleRequest
+    SmartAlertEvent:
+      $ref: components/schemas/integrations.yaml#/SmartAlertEvent
+    PlatformCampaignLink:
+      $ref: components/schemas/integrations.yaml#/PlatformCampaignLink
+    UpsertPlatformCampaignLinkRequest:
+      $ref: components/schemas/integrations.yaml#/UpsertPlatformCampaignLinkRequest
+    PlatformCampaignMutationRequest:
+      $ref: components/schemas/integrations.yaml#/PlatformCampaignMutationRequest
+    PlatformCampaignMutation:
+      $ref: components/schemas/integrations.yaml#/PlatformCampaignMutation
+    PlatformCampaignSyncRunRequest:
+      $ref: components/schemas/integrations.yaml#/PlatformCampaignSyncRunRequest
+    IngressCostConfig:
+      $ref: components/schemas/campaign.yaml#/IngressCostConfig
+    Campaign:
+      $ref: components/schemas/campaign.yaml#/Campaign
+    CampaignListResponse:
+      $ref: components/schemas/campaign.yaml#/CampaignListResponse
+    PatchCampaignRequest:
+      $ref: components/schemas/campaign.yaml#/PatchCampaignRequest
+    CampaignMargin:
+      $ref: components/schemas/campaign.yaml#/CampaignMargin
+    CloneCampaignRequest:
+      $ref: components/schemas/campaign.yaml#/CloneCampaignRequest
+    CloneCampaignResult:
+      $ref: components/schemas/campaign.yaml#/CloneCampaignResult
+    CampaignEventListResponse:
+      $ref: components/schemas/campaign.yaml#/CampaignEventListResponse
+    CampaignFraudConfig:
+      $ref: components/schemas/campaign.yaml#/CampaignFraudConfig
+    PatchCampaignFraudRequest:
+      $ref: components/schemas/campaign.yaml#/PatchCampaignFraudRequest
+    CampaignFraudPreview:
+      $ref: components/schemas/campaign.yaml#/CampaignFraudPreview
+    CampaignStats:
+      $ref: components/schemas/campaign.yaml#/CampaignStats
+    CampaignForecastRequest:
+      $ref: components/schemas/campaign.yaml#/CampaignForecastRequest
+    CampaignForecast:
+      $ref: components/schemas/campaign.yaml#/CampaignForecast
+    Flow:
+      $ref: components/schemas/campaign.yaml#/Flow
+    Lander:
+      $ref: components/schemas/campaign.yaml#/Lander
+    Offer:
+      $ref: components/schemas/campaign.yaml#/Offer
+    HostedEditorState:
+      $ref: components/schemas/campaign.yaml#/HostedEditorState
+    Brand:
+      $ref: components/schemas/campaign.yaml#/Brand
+    BrandCreative:
+      $ref: components/schemas/campaign.yaml#/BrandCreative
+    DomainHealth:
+      $ref: components/schemas/campaign.yaml#/DomainHealth
+    ParkDomainResponse:
+      $ref: components/schemas/campaign.yaml#/ParkDomainResponse
+    Invoice:
+      $ref: components/schemas/billing.yaml#/Invoice
+    InvoiceListResponse:
+      $ref: components/schemas/billing.yaml#/InvoiceListResponse
+    BillingStatement:
+      $ref: components/schemas/billing.yaml#/BillingStatement
+    BillingForecast:
+      $ref: components/schemas/billing.yaml#/BillingForecast
+    Wallet:
+      $ref: components/schemas/billing.yaml#/Wallet
+    BillingInvariant:
+      $ref: components/schemas/billing.yaml#/BillingInvariant
+    BillingSummary:
+      $ref: components/schemas/billing.yaml#/BillingSummary
+    PaymentIntentCreatedResponse:
+      $ref: components/schemas/billing.yaml#/PaymentIntentCreatedResponse
+    DataFreshness:
+      $ref: components/schemas/ops_reports.yaml#/DataFreshness
+    ReportCompareDeltas:
+      $ref: components/schemas/ops_reports.yaml#/ReportCompareDeltas
+    ReportMapEnvelope:
+      $ref: components/schemas/ops_reports.yaml#/ReportMapEnvelope
+    PlacementReportRow:
+      $ref: components/schemas/ops_reports.yaml#/PlacementReportRow
+    PlacementReportResponse:
+      $ref: components/schemas/ops_reports.yaml#/PlacementReportResponse
+    KeywordReportRow:
+      $ref: components/schemas/ops_reports.yaml#/KeywordReportRow
+    KeywordReportResponse:
+      $ref: components/schemas/ops_reports.yaml#/KeywordReportResponse
+    TrueRoiReportRow:
+      $ref: components/schemas/ops_reports.yaml#/TrueRoiReportRow
+    ReportJobSpec:
+      $ref: components/schemas/ops_reports.yaml#/ReportJobSpec
+    ReportJobStatus:
+      $ref: components/schemas/ops_reports.yaml#/ReportJobStatus
+    SavedView:
+      $ref: components/schemas/ops_reports.yaml#/SavedView
+    DoctorSummary:
+      $ref: components/schemas/ops_reports.yaml#/DoctorSummary
+    DashboardSummary:
+      $ref: components/schemas/ops_reports.yaml#/DashboardSummary
+    IncidentSnapshot:
+      $ref: components/schemas/ops_reports.yaml#/IncidentSnapshot
+    DLQListResponse:
+      $ref: components/schemas/ops_reports.yaml#/DLQListResponse
+    FraudDecision:
+      $ref: components/schemas/ops_reports.yaml#/FraudDecision
+    FraudPolicyPreset:
+      $ref: components/schemas/ops_reports.yaml#/FraudPolicyPreset
+  parameters:
+    CustomerIdQuery:
+      name: customer_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    CustomerIdQueryRequired:
+      name: customer_id
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignIdQuery:
+      name: campaign_id
+      in: query
+      required: false
+      schema:
+        type: string
+        format: uuid
+    CampaignIdQueryRequired:
+      name: campaign_id
+      in: query
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignIdPath:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PlatformCampaignIdPath:
+      name: campaign_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PlatformNetworkPath:
+      name: network
+      in: path
+      required: true
+      schema:
+        type: string
+    NetworkPath:
+      name: network
+      in: path
+      required: true
+      schema:
+        type: string
+    Int64PathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    UuidPathId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LimitQuery:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+    OffsetQuery:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+    HostnamePath:
+      name: hostname
+      in: path
+      required: true
+      schema:
+        type: string
+    JobIdPath:
+      name: job_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MonthQuery:
+      name: month
+      in: query
+      required: false
+      schema:
+        type: string
+        description: YYYY-MM calendar month.
+
+    ReportFromQuery:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+      description: Range start (RFC3339). Default is now minus 7 days.
+    ReportToQuery:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+      description: Range end (RFC3339). Default is now UTC.
+    ReportCompareQuery:
+      name: compare
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [previous, '1', 'true']
+      description: When set, attaches prior-period deltas on each row (compare_period=true alias).
+    CursorQuery:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Error envelope from pkg/httpresponse
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorBody'
+  securitySchemes:
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Admin UI session cookie
+    BearerApiKey:
+      type: http
+      scheme: bearer
+      description: |
+        Self-serve API key for /api/v1/selfserve/* (Authorization Bearer header).
+        Mint keys via POST /api/v1/selfserve/api-keys with an admin session cookie.
+        raw_key is returned once at creation and is not echoed on list routes.
+security:
+  - SessionCookie: []

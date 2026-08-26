@@ -55,6 +55,9 @@ linters:
       - path: "(/|^)(.*/)?pb/"
         linters:
           - errcheck
+      - path: '\.pb\.go$'
+        linters:
+          - staticcheck
       - path: "(/|^)(.*/)?db/"
         linters:
           - errcheck

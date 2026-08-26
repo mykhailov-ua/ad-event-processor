@@ -53,6 +53,12 @@ func fetchNetworkCosts(ctx context.Context, client *http.Client, network, baseUR
 		return fetchRichAdsCosts(ctx, client, baseURL, cred, date)
 	case "galaksion":
 		return fetchGalaksionCosts(ctx, client, baseURL, cred, date)
+	case "mondiad":
+		return fetchMondiadCosts(ctx, client, baseURL, cred, date)
+	case "juicyads":
+		return fetchJuicyAdsCosts(ctx, client, baseURL, cred, date)
+	case "evadav":
+		return fetchEvadavCosts(ctx, client, baseURL, cred, date)
 	default:
 		return nil, fmt.Errorf("unsupported network: %s", network)
 	}

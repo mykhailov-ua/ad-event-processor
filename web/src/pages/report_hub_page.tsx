@@ -179,11 +179,7 @@ export function ReportsHubPage() {
                   return (
                     <tr key={card.key} data-report-key={card.key}>
                       <td>
-                        <a
-                          href={href}
-                          className="reports-hub__link"
-                          title={retiredAlt?.title}
-                        >
+                        <a href={href} className="reports-hub__link" title={retiredAlt?.title}>
                           <Icon
                             name={reportIcon(card.key)}
                             size={14}

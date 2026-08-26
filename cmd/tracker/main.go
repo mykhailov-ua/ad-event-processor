@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -126,6 +127,14 @@ func main() {
 		slog.Error("failed to connect to redis shards", "error", err)
 		os.Exit(1)
 	}
+	warmPings := cfg.RedisPoolSize
+	if warmPings <= 0 {
+		warmPings = 10 * runtime.GOMAXPROCS(0)
+	}
+	if cfg.MaxWorkers > 0 {
+		warmPings += cfg.MaxWorkers
+	}
+	database.WarmRedisShardPools(ctx, redisShards, warmPings)
 	database.StartRedisPoolStatsReporter(ctx, redisShards, 15*time.Second)
 	if redisShards[0] == nil {
 		slog.Warn("redis shard 0 not connected; running in degraded mode",
@@ -220,6 +229,12 @@ func main() {
 		slog.Info("geoip hot-reload watcher started", "country_path", cfg.GeoIP.DBPath, "asn_path", cfg.GeoIP.ASNDBPath, "interval", watcherInterval)
 	} else {
 		metrics.GeoProviderStatus.Set(0)
+	}
+
+	mobileCarrierASN := ingestion.NewMobileCarrierASNTable(ingestion.ParseMobileCarrierASNs(cfg.CGNATMobileCarrierASNs))
+	var asnLookup ingestion.ASNLookup
+	if lookup, ok := geoProvider.(ingestion.ASNLookup); ok {
+		asnLookup = lookup
 	}
 
 	geoFilter := ingestion.NewGeoFilter(geoProvider, registry)
@@ -407,6 +422,7 @@ func main() {
 
 	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(redisShards), cfg.FilterTimeoutMs)
 	placementBL := ingestion.NewPlacementBlacklistFilter(redisShards)
+	placementBL.SetSharder(sharder)
 	unifiedFilter.SetPlacementBlacklistFilter(placementBL)
 	fraudBL := ingestion.NewFraudBlacklistFilter(redisShards)
 	unifiedFilter.SetFraudBlacklistFilter(fraudBL)
@@ -418,6 +434,8 @@ func main() {
 	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
 	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, redisShards)
 	entitlementsFilter.SetRegionCode(uint8(cfg.RegionCode))
+	entitlementsFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
+	unifiedFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher for segment filter", "error", piiErr)
@@ -425,7 +443,7 @@ func main() {
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
 	segmentFilter := ingestion.NewSegmentFilter(redisShards, registry, piiHasher)
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, segmentFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, consentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	var rtbCatalog *ingestion.RtbCatalog
@@ -548,29 +566,50 @@ func main() {
 		}
 	}
 
-	var brokerProducer *ingestion.BrokerProducer
+	var brokerProducers *ingestion.BrokerProducerSet
 	var fraudBrokerSink *ingestion.FraudBrokerSink
 	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() && cfg.Broker.URL != "" {
-		producerCfg := ingestion.DefaultBrokerProducerConfig()
-		producerCfg.BrokerAddr = cfg.Broker.URL
-		producerCfg.Topic = cfg.Broker.Topic
-		if cfg.Broker.TimeoutMs > 0 {
-			producerCfg.Timeout = time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
+		partCount := cfg.Broker.PartitionCount
+		if partCount <= 0 {
+			partCount = 1
 		}
+		list := make([]*ingestion.BrokerProducer, partCount)
 		var bpErr error
-		brokerProducer, bpErr = ingestion.NewBrokerProducer(producerCfg)
-		if bpErr != nil {
-			slog.Error("broker producer init failed (CH_INGEST_SOURCE=broker)", "error", bpErr)
-			os.Exit(1)
+		for i := 0; i < partCount; i++ {
+			producerCfg := ingestion.DefaultBrokerProducerConfig()
+			producerCfg.BrokerAddr = cfg.Broker.URL
+			producerCfg.Topic = cfg.Broker.Topic
+			producerCfg.Partition = uint16(i)
+			if cfg.Broker.ProducerCapacity > 0 {
+				producerCfg.Capacity = cfg.Broker.ProducerCapacity
+			}
+			if cfg.Broker.ProducerBatchSize > 0 {
+				producerCfg.BatchSize = cfg.Broker.ProducerBatchSize
+			}
+			if cfg.Broker.ProducerFlushMs > 0 {
+				producerCfg.FlushInterval = time.Duration(cfg.Broker.ProducerFlushMs) * time.Millisecond
+			}
+			if cfg.Broker.TimeoutMs > 0 {
+				producerCfg.Timeout = time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
+			}
+			list[i], bpErr = ingestion.NewBrokerProducer(producerCfg)
+			if bpErr != nil {
+				slog.Error("broker producer init failed (CH_INGEST_SOURCE=broker)", "error", bpErr, "partition", i)
+				os.Exit(1)
+			}
 		}
-		gnetHandler.SetBrokerProducer(brokerProducer)
-		slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", producerCfg.Topic)
+		brokerProducers = ingestion.NewBrokerProducerSet(list)
+		gnetHandler.SetBrokerProducers(brokerProducers)
+		slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", cfg.Broker.Topic, "partitions", partCount)
 
 		brokerRedisURL := cfg.Broker.RedisURL
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
 			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
 		}
-		fraudTimeout := producerCfg.Timeout
+		fraudTimeout := time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
+		if fraudTimeout <= 0 {
+			fraudTimeout = ingestion.DefaultBrokerProducerConfig().Timeout
+		}
 		fraudBrokerSink, bpErr = ingestion.NewFraudBrokerSink(cfg.Broker.URL, brokerRedisURL, cfg.Broker.FraudTopic, fraudTimeout)
 		if bpErr != nil {
 			slog.Error("fraud broker sink init failed (CH_INGEST_SOURCE=broker)", "error", bpErr)
@@ -638,6 +677,7 @@ func main() {
 		slog.Info("tcp routing snapshot client enabled", "control_addr", cfg.TCPControlAddr)
 	}
 	gnetHandler.ConfigureIngestGeo(geoProvider)
+	gnetHandler.ConfigureMobileCarrierASN(mobileCarrierASN)
 	if cfg.CIDRBlockEnabled {
 		cidrTable := ingestion.NewCIDRTable()
 		gnetHandler.ConfigureCIDR(cidrTable)
@@ -844,8 +884,8 @@ func main() {
 	if localQuantaStream != nil {
 		localQuantaStream.Close()
 	}
-	if brokerProducer != nil {
-		if err := brokerProducer.Close(); err != nil {
+	if brokerProducers != nil {
+		if err := brokerProducers.Close(); err != nil {
 			slog.Warn("broker producer close error", "error", err)
 		}
 	}

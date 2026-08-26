@@ -28,6 +28,7 @@ export type {
 export type {
   LedgerEntryDTO,
   LedgerListResponse,
+  CustomerBalanceDTO,
   InvoiceDTO,
   InvoiceLineDTO,
   InvoiceListResponse,

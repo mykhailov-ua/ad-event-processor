@@ -106,7 +106,6 @@ func TestEnhancedDefenseBaseline_productScopeGates(t *testing.T) {
 		gateAdPlatformCampaignAPI     = "ad_platform_campaign_api"
 		gateExtendedTrialSelfserve    = "extended_trial_selfserve"
 		gateWorkspaceBillingSplit     = "workspace_billing_split"
-		gateManagedSaasTenantPlane    = "managed_saas_tenant_plane"
 		gateNoExternalIPIntel         = "local_in_memory_proxy_vpn_only"
 	)
 	assert.NotEmpty(t, gateHostedLanderEditor)
@@ -118,7 +117,6 @@ func TestEnhancedDefenseBaseline_productScopeGates(t *testing.T) {
 	assert.NotEmpty(t, gateAdPlatformCampaignAPI)
 	assert.NotEmpty(t, gateExtendedTrialSelfserve)
 	assert.NotEmpty(t, gateWorkspaceBillingSplit)
-	assert.NotEmpty(t, gateManagedSaasTenantPlane)
 	assert.NotEmpty(t, gateNoExternalIPIntel)
 }
 

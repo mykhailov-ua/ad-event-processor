@@ -103,6 +103,10 @@ func TestLoadTestComposeUsesEnvVars(t *testing.T) {
 		"--web.listen-address=:${LOAD_TEST_PROMETHEUS_PORT}",
 		"--web.listen-address=:${LOAD_TEST_ALERTMANAGER_PORT}",
 		"REDIS_PORT=${LOAD_TEST_REDIS_PORT}",
+		"'--health-probe', 'http://127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}/health'",
+		"'--health-probe', 'http://127.0.0.1:${LOAD_TEST_CONTROL_PORT}/healthz'",
+		"CONTROL_ENABLE_MARGIN_GUARD=0",
+		"CONTROL_ENABLE_COST_SYNC=0",
 	} {
 		if !strings.Contains(content, want) {
 			t.Fatalf("docker-compose.load-test.yaml missing %q", want)

@@ -9,17 +9,17 @@ import (
 )
 
 type BatchCommitter struct {
-	redisClient       redis.UniversalClient
-	nodeID    string
-	replicas  []string
-	committed uint64
+	redisClient redis.UniversalClient
+	nodeID      string
+	replicas    []string
+	committed   uint64
 }
 
 func NewBatchCommitter(redisClient redis.UniversalClient, nodeID string, replicas []string) *BatchCommitter {
 	return &BatchCommitter{
-		redisClient:      redisClient,
-		nodeID:   nodeID,
-		replicas: replicas,
+		redisClient: redisClient,
+		nodeID:      nodeID,
+		replicas:    replicas,
 	}
 }
 

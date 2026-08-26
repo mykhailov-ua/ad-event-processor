@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"

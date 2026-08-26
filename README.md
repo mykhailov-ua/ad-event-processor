@@ -107,7 +107,7 @@ Outbox: every config mutation + `outbox_events` in the same PG transaction; `Out
 
 ### Integrations
 
-Traffic ingest, Cost Sync (22 networks, daily campaign-level spend), outbound CAPI (Meta/Google/TikTok + webhook), 82 bundled traffic click schemas plus 77 affiliate templates, and Enterprise Meta/Google platform campaign sync. Full tables, credential fields, and explicit non-goals: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+Traffic ingest, Cost Sync (25 networks, daily campaign-level spend), outbound CAPI (Meta/Google/TikTok + webhook), 82 bundled traffic click schemas plus 77 affiliate templates, and Enterprise Meta/Google platform campaign sync. Full tables, credential fields, and explicit non-goals: [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
 
 ### Billing and analytics
 
@@ -141,7 +141,6 @@ Hot-path static gates (no `fmt.Sprintf`, no `interface{}` boxing on ingest), all
 | [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Cost Sync, CAPI, bundled schemas, platform sync |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Hot/cold boundary, topology, ports, Redis sharding |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local stack, codegen, tests, SLA gates |
-| [docs/MANAGED_SAAS.md](docs/MANAGED_SAAS.md) | Vendor-hosted isolated compose cells |
 | [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md) | Fraud signals, layers, edge/XDP, cold-path ML |
 | [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.md) | Open antifraud work items |
 | [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml) | License SKU limits and feature flags |

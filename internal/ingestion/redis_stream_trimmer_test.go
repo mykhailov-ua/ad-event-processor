@@ -45,7 +45,7 @@ func TestRedisStreamTrimmer_TrimOnceAndMetrics(t *testing.T) {
 	assert.Equal(t, int64(50), redisClient.XLen(ctx, stream).Val())
 
 	trimmer := NewRedisStreamTrimmer(RedisStreamTrimmerConfig{
-		RedisShards:         []redis.UniversalClient{redisClient},
+		RedisShards:  []redis.UniversalClient{redisClient},
 		Streams:      []string{stream},
 		MaxLen:       10,
 		TrimInterval: 50 * time.Millisecond,
@@ -102,9 +102,9 @@ func TestRedisStreamTrimmer_PELPendingNotInflated(t *testing.T) {
 	require.Greater(t, pendingBefore.Count, int64(0), "consumer must have pending entries before trim")
 
 	trimmer := NewRedisStreamTrimmer(RedisStreamTrimmerConfig{
-		RedisShards:    []redis.UniversalClient{redisClient},
-		Streams: []string{stream},
-		MaxLen:  10,
+		RedisShards: []redis.UniversalClient{redisClient},
+		Streams:     []string{stream},
+		MaxLen:      10,
 	})
 	trimmer.TrimOnce(ctx)
 

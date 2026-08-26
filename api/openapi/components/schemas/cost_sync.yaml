@@ -1,0 +1,170 @@
+CostSyncExtraField:
+  type: object
+  required: [key, label]
+  properties:
+    key:
+      type: string
+    label:
+      type: string
+    required:
+      type: boolean
+    secret:
+      type: boolean
+    placeholder:
+      type: string
+    hint:
+      type: string
+
+CostSyncNetworkSchema:
+  type: object
+  required: [network, label]
+  properties:
+    network:
+      type: string
+    label:
+      type: string
+    account_id_label:
+      type: string
+    extra_fields:
+      type: array
+      items:
+        $ref: '#/CostSyncExtraField'
+
+CostSyncTokenMapping:
+  type: object
+  properties:
+    placement_field:
+      type: string
+      description: Click token field (placement_id, sub1, sub2).
+    network_object:
+      type: string
+      description: Network row id field (ad_id, adset_id, placement_id).
+    attribution_mode:
+      type: string
+      enum: [token, spread]
+
+CostSyncCredential:
+  type: object
+  required: [customer_id, network, sync_interval_minutes, token_mapping, updated_at]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    network:
+      type: string
+    account_id:
+      type: string
+    extra_config:
+      type: object
+      additionalProperties:
+        type: string
+      description: Non-secret extra fields only; secrets omitted on GET.
+    extra_config_set:
+      type: object
+      additionalProperties:
+        type: boolean
+      description: True when a secret extra_config key is stored but not returned.
+    sync_interval_minutes:
+      type: integer
+      enum: [15, 30, 60, 1440]
+    token_mapping:
+      $ref: '#/CostSyncTokenMapping'
+    token_expires_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertCostSyncCredentialRequest:
+  type: object
+  required: [customer_id]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    account_id:
+      type: string
+    access_token:
+      type: string
+    refresh_token:
+      type: string
+    api_key:
+      type: string
+    extra_config:
+      type: object
+      additionalProperties:
+        type: string
+    sync_interval_minutes:
+      type: integer
+      enum: [15, 30, 60, 1440]
+    token_mapping:
+      $ref: '#/CostSyncTokenMapping'
+
+RunCostSyncRequest:
+  type: object
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    network:
+      type: string
+    from:
+      type: string
+      format: date
+      description: Inclusive UTC date (YYYY-MM-DD); defaults to yesterday.
+    to:
+      type: string
+      format: date
+      description: Inclusive UTC date (YYYY-MM-DD); defaults to from.
+
+RunCostSyncAcceptedResponse:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [accepted]
+
+CostSyncRun:
+  type: object
+  required:
+    - id
+    - customer_id
+    - network
+    - cost_date
+    - status
+    - rows_imported
+    - total_amount_usd_micro
+    - trigger_source
+    - started_at
+  properties:
+    id:
+      type: integer
+      format: int64
+    customer_id:
+      type: string
+      format: uuid
+    network:
+      type: string
+    cost_date:
+      type: string
+      format: date
+    status:
+      type: string
+    rows_imported:
+      type: integer
+      format: int32
+    total_amount_usd_micro:
+      type: integer
+      format: int64
+    error_message:
+      type: string
+    trigger_source:
+      type: string
+    started_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time

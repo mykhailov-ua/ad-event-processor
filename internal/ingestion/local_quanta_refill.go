@@ -37,7 +37,7 @@ type refillSignal struct {
 
 type QuotaRefillWorker struct {
 	ledger       *LocalQuantaLedger
-	redisShards         []redis.UniversalClient
+	redisShards  []redis.UniversalClient
 	sharder      Sharder
 	registry     domain.CampaignRegistry
 	baseChunk    int64
@@ -84,7 +84,7 @@ func NewQuotaRefillWorker(
 	}
 	w := &QuotaRefillWorker{
 		ledger:       ledger,
-		redisShards:         redisShards,
+		redisShards:  redisShards,
 		sharder:      sharder,
 		baseChunk:    chunk,
 		thresholdPct: cfg.ThresholdPct,

@@ -15,14 +15,17 @@ import (
 )
 
 type flowPathJSON struct {
-	Weight  int32 `json:"weight"`
+	Weight  int32                `json:"weight"`
+	Filters *flowPathFiltersJSON `json:"filters"`
 	Landers []struct {
 		LanderID uuid.UUID `json:"lander_id"`
 		Weight   int32     `json:"weight"`
 	} `json:"landers"`
 	Offers []struct {
-		OfferID uuid.UUID `json:"offer_id"`
-		Weight  int32     `json:"weight"`
+		OfferID  uuid.UUID `json:"offer_id"`
+		Weight   int32     `json:"weight"`
+		CapDaily *int32    `json:"cap_daily"`
+		CapTotal *int32    `json:"cap_total"`
 	} `json:"offers"`
 }
 
@@ -107,6 +110,11 @@ func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
 		slog.Warn("campaign flow sync offers", "error", err)
 		return
 	}
+	offerCounts, err := loadOfferConversionCounts(ctx, s.pool)
+	if err != nil {
+		slog.Warn("campaign flow sync offer caps", "error", err)
+		offerCounts = map[uuid.UUID]offerConversionCounts{}
+	}
 	rows, err := s.pool.Query(ctx, `
 		SELECT c.id, f.paths
 		FROM campaigns c
@@ -126,7 +134,7 @@ func (s *campaignFlowSync) reloadOnce(ctx context.Context) {
 			slog.Warn("campaign flow sync scan", "error", err)
 			return
 		}
-		snap, ok := buildFlowSnapshot(raw, landerURLs, offerURLs)
+		snap, ok := buildFlowSnapshot(raw, landerURLs, offerURLs, offerCounts)
 		if !ok {
 			continue
 		}
@@ -190,7 +198,7 @@ func (s *campaignFlowSync) loadURLMap(ctx context.Context, table string) (map[uu
 	return out, rows.Err()
 }
 
-func buildFlowSnapshot(raw []byte, landerURLs, offerURLs map[uuid.UUID][]byte) (FlowPathSnapshot, bool) {
+func buildFlowSnapshot(raw []byte, landerURLs, offerURLs map[uuid.UUID][]byte, offerCounts map[uuid.UUID]offerConversionCounts) (FlowPathSnapshot, bool) {
 	var paths []flowPathJSON
 	if err := json.Unmarshal(raw, &paths); err != nil || len(paths) == 0 {
 		return FlowPathSnapshot{}, false
@@ -200,7 +208,7 @@ func buildFlowSnapshot(raw []byte, landerURLs, offerURLs map[uuid.UUID][]byte) (
 		if p.Weight <= 0 || len(p.Landers) == 0 {
 			continue
 		}
-		fp := FlowPath{Weight: p.Weight, Landers: make([]FlowLanderEntry, 0, len(p.Landers)), Offers: make([]FlowOfferEntry, 0, len(p.Offers))}
+		fp := FlowPath{Weight: p.Weight, Filters: compileFlowPathFilters(p.Filters), Landers: make([]FlowLanderEntry, 0, len(p.Landers)), Offers: make([]FlowOfferEntry, 0, len(p.Offers))}
 		for _, l := range p.Landers {
 			url := landerURLs[l.LanderID]
 			if l.Weight <= 0 || len(url) == 0 {
@@ -213,7 +221,12 @@ func buildFlowSnapshot(raw []byte, landerURLs, offerURLs map[uuid.UUID][]byte) (
 			if o.Weight <= 0 {
 				continue
 			}
-			fp.Offers = append(fp.Offers, FlowOfferEntry{OfferID: o.OfferID, Weight: o.Weight, URL: url})
+			fp.Offers = append(fp.Offers, FlowOfferEntry{
+				OfferID: o.OfferID,
+				Weight:  o.Weight,
+				URL:     url,
+				Capped:  offerIsCapped(o.OfferID, o.CapDaily, o.CapTotal, offerCounts),
+			})
 		}
 		if len(fp.Landers) == 0 {
 			continue

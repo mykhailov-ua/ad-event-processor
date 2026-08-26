@@ -130,8 +130,8 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 
 	start, err := b.cli.CommittedOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group)
 	if err != nil {
-		slog.Error("broker consumer committed offset read failed", "group", b.cfg.Group, "error", err)
-		return
+		slog.Warn("broker consumer committed offset unavailable; starting from head", "group", b.cfg.Group, "error", err)
+		start = 0
 	}
 
 	batch := make([]*domain.Event, 0, b.cfg.BatchSize)

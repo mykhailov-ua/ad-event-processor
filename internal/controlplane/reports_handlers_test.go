@@ -267,6 +267,25 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 	require.Equal(t, http.StatusCreated, wOK.Code)
 }
 
+func TestViews_ValidationRejectsUnknownSpecKey(t *testing.T) {
+	t.Parallel()
+
+	h := &ViewsHTTPHandlers{Store: NewViewsStore(nil)}
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	body, _ := json.Marshal(CreateViewRequest{
+		CustomerID: uuid.New().String(),
+		Name:       "bad spec",
+		ReportKey:  "placements",
+		Spec:       json.RawMessage(`{"api_token":"secret"}`),
+	})
+	req := httptest.NewRequest("POST", "/api/v1/views", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
 func TestToPlacementReportRowDTO(t *testing.T) {
 	t.Parallel()
 

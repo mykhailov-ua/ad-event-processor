@@ -1,0 +1,23 @@
+openapi: 3.0.3
+info:
+  title: openapi-breaking-gate-fixture
+  version: 1.0.0
+paths:
+  /api/v1/fixture/widget:
+    get:
+      operationId: fixtureGetWidget
+      summary: Fixture widget read
+      responses:
+        '200':
+          description: Widget row
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Widget'
+components:
+  schemas:
+    Widget:
+      type: object
+      properties:
+        optional_field:
+          type: string

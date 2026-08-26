@@ -21,10 +21,12 @@ var ManagementDomains = []Domain{
 		"serve.go", "api_access.go", "meta_enricher.go",
 		"admin_ui_static.go", "static.go",
 		"register.go", "response_types.go", "handler_http_errors.go", "views_handlers.go",
+		"views_validate.go", "views_store_pg.go",
 	}, LogicFiles: []string{"rbac.go", "errors.go"}, TestPrefixes: []string{"service_test", "handler_test", "middleware_test", "workers_test", "rbac_test", "core_domain_test", "domains_test", "admin_gone", "static_routes"}},
 	{ID: "billing", Prefixes: []string{
 		"handler_billing", "handler_api_balance", "service_customer", "billing_", "invoice_delivery_",
 		"commercial_handlers", "service_crypto_billing", "margin_",
+		"workspace_billing", "service_workspace_billing",
 	}, Files: []string{"billing_money.go", "workers.go"}, LogicFiles: []string{"billing_money.go"}, TestPrefixes: []string{"api_balance", "handler_billing", "billing_domain_test", "service_customer", "ledger_invariant"}},
 	{ID: "campaign", Prefixes: []string{
 		"service_campaign", "handler_campaign", "pacing_", "schedule_", "brand_",
@@ -59,6 +61,7 @@ var ManagementDomains = []Domain{
 		"license_", "service_license", "service_eula", "service_role_dashboards", "rum_",
 		"cloudflare_", "domain_park", "domain_reputation", "eula_handlers", "licensing_handlers",
 		"customers_handlers", "meta_handlers", "support_feedback",
+		"freshness_", "tenant_idor_",
 	}, Files: []string{
 		"policy_init.go", "telemetry_pulse.go", "vendor_telemetry.go",
 		"control_fanout.go", "service_platform.go", "service_platform_config.go",
@@ -68,11 +71,12 @@ var ManagementDomains = []Domain{
 		"credit_", "consent_", "emergency_", "platform_", "pg_failover",
 		"support_feedback", "events_retention", "system_state",
 	}},
-	{ID: "api", Prefixes: []string{"api", "api_", "reports_", "report_"}, Files: []string{
+	{ID: "api", Prefixes: []string{"api", "api_", "reports_", "report_", "filter_reject_", "ch_campaign_"}, Files: []string{
 		"adminapi_wire.go",
 		"dry_run.go",
 		"stub_routes.go",
 		"export_handlers.go",
+		"export_limits.go",
 	}, TestPrefixes: []string{"api", "api_", "dry_run", "support_bundle", "support_feedback", "reports_", "report_"}},
 	{ID: "selfserve", Prefixes: []string{
 		"api_selfserve", "service_selfserve", "selfserve_",
@@ -82,6 +86,7 @@ var ManagementDomains = []Domain{
 	{ID: "telegram", Prefixes: []string{"tg_"}, TestPrefixes: []string{"tg_"}},
 	{ID: "integration", Prefixes: []string{
 		"integration_schema_", "postbacks_", "template_", "cost_sync_",
+		"automation_", "lander_hosted", "integration_status_",
 	}, Files: []string{
 		"client_integration.go", "notifier_routing.go", "alertmanager_webhook.go",
 	}, TestPrefixes: []string{"client_integration", "client_auth", "client_billing", "client_payment", "notifier_", "alertmanager_", "integration_schema_", "postbacks_", "template_"}},

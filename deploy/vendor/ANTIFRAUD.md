@@ -81,6 +81,8 @@ Registry: `fraudReasonRegistry` in `filter_errors.go`.
 | `moderator_ip` | 45 | L1-high | Signed `moderator_intel_v1` snapshot; per-campaign `moderator_intel_enabled` (default off) |
 | `attestation_missing` | 35 | L2-weak | Light attestation on `/click` |
 
+Safe page `/track/verify` only (not `/click` redirect): canvas test-retest when `canvas_retest_enabled` on campaign (`PATCH /api/v1/campaigns/{id}/fraud`). Client sends `canvas_hash_a` and `canvas_hash_b`; mismatch code `canvas_retest_mismatch` returns safe view. Fail-open when only one hash present. Default flag off (Firefox/WebKit privacy noise).
+
 Admin presets: `conservative`, `balanced`, `aggressive`, `enhanced_defense`, `social_in_app` (`service_fraud_presets.go`). Campaign fraud PATCH: `/api/v1/campaigns/{id}/fraud`.
 
 ### CDN and TLS fingerprint limits
@@ -181,6 +183,47 @@ Batch scoring (up to 1000 events). Writes `ml:score:boost:{campaign_id}` on Redi
 
 Admin ops: `/api/v1/ops/ml-model`, `/api/v1/fraud/labels`, `/api/v1/fraud/decisions`, `/api/v1/fraud/overrides`.
 
+### Conversion smart reject (processor settlement)
+
+Cold path only (`cmd/processor`). Runs before `ConversionPayoutApplier` and `ConversionPostbackEnqueuer.OnBatchStored`.
+
+| Env | Default | Role |
+| :--- | :--- | :--- |
+| `CONVERSION_SMART_REJECT_ENABLED` | `true` | Master switch |
+| `CONVERSION_REJECT_MIN_TTC_MS` | `3000` | Minimum click-to-conversion time |
+| `CONVERSION_REJECT_NO_CLICK` | `true` | Reject empty `click_id` or missing CH click row |
+| `CONVERSION_REJECT_LOW_TTC` | `true` | Reject faster than min TTC |
+| `CONVERSION_REJECT_DUPLICATE` | `true` | Reject duplicate `campaign_id + click_id + goal_name` |
+| `CONVERSION_REJECT_IP_DRIFT` | `true` | Reject when click country != conversion country |
+| `CONVERSION_REJECT_DATACENTER_IP` | `false` | Reject datacenter IP at conversion (optional ASN checker) |
+| `CONVERSION_REJECT_REPROCESS_ENABLED` | `true` | Replay deferred conversions after CH click lookup recovers |
+| `CONVERSION_REJECT_REPROCESS_INTERVAL_MIN` | `15` | Reprocess tick interval (5-60 min) |
+| `CONVERSION_REJECT_REPROCESS_LOOKBACK_HOURS` | `24` | CH window for pending conversions (1-168 h) |
+
+Reason codes: `conversion_no_click`, `conversion_low_ttc`, `conversion_duplicate`, `conversion_ip_drift`, `conversion_datacenter_ip`.
+
+On reject: set `FraudReason`; set `SilentRejectEvent` when campaign `silent_reject_enabled`; zero `revenue_micro` / `payout_micro` in payload. CH insert routes to `fraud_events` via `isFraudTelemetry`. Outbound CAPI/postback skipped when `FraudReason != ""`. PG settlement stats skip conversions with `FraudReason`.
+
+Click lookup: one batched CH query per settlement batch (`clicks` + existing `conversions` goals). No per-event CH loop. When ClickHouse click store is unavailable (CH disabled or lookup error), CH-dependent rules are skipped; conversions with non-empty `click_id` are recorded with payload `conversion_validation_pending=true` and `revenue_micro` / `payout_micro` zero until reprocess validates (`ConversionPayoutApplier` skips pending rows). Empty `click_id` is still rejected when `CONVERSION_REJECT_NO_CLICK` is on. Datacenter IP rule still runs when configured (no CH click row required). PG settlement stats skip pending conversions. `ConversionPostbackEnqueuer` skips outbound postback while `conversion_validation_pending` is set (`ad_conversion_postback_deferred_total`).
+
+Reprocess worker (`cmd/processor`): queries CH `conversions` with `conversion_validation_pending`, replays `ConversionRejectApplier`, deletes pending rows via `ALTER TABLE DELETE`, inserts rejects into `fraud_events`, inserts approved rows with payout resolved, then enqueues outbound postback. Per-campaign overrides: `conversion_reject_rules` on `PATCH /api/v1/campaigns/{id}/fraud` (unset fields inherit `CONVERSION_REJECT_*` env).
+
+`CONVERSION_REJECT_DATACENTER_IP` requires processor GeoIP country DB plus optional ASN DB and DC ASN feed (`DC_ASN_HOT_ENABLED`); otherwise the rule is inactive.
+
+---
+
+## CGNAT mobile IP policy
+
+When mobile carrier ASN is detected (GeoIP ASN on the request IP), skip **only** IP-frequency signals: `/click` `ipv4_rotation` safe-page redirect and ingress RPD `INCR`. Does not bypass `datacenter_ip`, TLS fingerprint blocklist, L3 blacklist, attestation, or UnifiedFilter Lua budget.
+
+| Knob | Surface |
+| :--- | :--- |
+| `cgnat_ip_policy_enabled` | Campaign fraud PATCH / GET (`PATCH /api/v1/campaigns/{id}/fraud`) |
+| `CGNAT_MOBILE_IP_BYPASS` | Tracker env global bypass (default `false`) |
+| `CGNAT_MOBILE_CARRIER_ASNS` | Optional extra MNO ASNs appended to builtin tier-1 set |
+
+Builtin carrier ASN snapshot: `internal/ingestion/mobile_carrier_asn_table.go` (excludes mobile proxy/reseller ASNs). Metric: `ad_cgnat_ip_bypass_total{signal="ipv4_rotation|ingress_rpd"}`.
+
 ---
 
 ## Verification
@@ -194,3 +237,5 @@ bash scripts/ci/antifraud_doc_gate.sh
 ```
 
 Holdout: `TestFraudReject_holdoutSilentRejectFlag`, `TestFilterEngine_shadowSkipsUnifiedBudgetDebit_holdout`.
+
+ROI ship backlog (conversion reject, automation IVT metrics, canvas retest, CGNAT policy): [antifraud_backlog.md](./antifraud_backlog.md).

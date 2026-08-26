@@ -28,6 +28,17 @@ func TestParseClickQuery(t *testing.T) {
 	require.Equal(t, "xyz", parsed.ttclid)
 }
 
+func TestParseClickQuery_ingressCostParam(t *testing.T) {
+	t.Parallel()
+	path := []byte("/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&type=click&cost=0.05&cpc=0.02&bid=0.01")
+	parsed := &clickQueryParsed{}
+	_ = parseClickQuery(path, nil, parsed)
+	require.True(t, parsed.ok)
+	require.Equal(t, []byte("0.05"), parsed.ingressCost)
+	require.Equal(t, []byte("0.02"), parsed.ingressCPC)
+	require.Equal(t, []byte("0.01"), parsed.ingressBid)
+}
+
 func TestParseClickQuery_sub30(t *testing.T) {
 	t.Parallel()
 	path := []byte("/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&type=click" +

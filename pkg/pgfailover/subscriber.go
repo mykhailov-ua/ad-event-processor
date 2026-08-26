@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -15,7 +16,7 @@ import (
 type ReconnectFunc func(pool *pgxpool.Pool)
 
 type Subscriber struct {
-	redisClient          redis.UniversalClient
+	redisClient  redis.UniversalClient
 	fencing      *FencingGate
 	reconnect    ReconnectFunc
 	maxConns     int
@@ -49,13 +50,13 @@ func NewSubscriber(redisClient redis.UniversalClient, fencing *FencingGate, reco
 		fencing = NewFencingGate(redisClient)
 	}
 	return &Subscriber{
-		redisClient:       redisClient,
-		fencing:   fencing,
-		reconnect: reconnect,
-		maxConns:  cfg.MaxConns,
-		minConns:  cfg.MinConns,
-		interval:  cfg.Interval,
-		closeCh:   make(chan struct{}),
+		redisClient: redisClient,
+		fencing:     fencing,
+		reconnect:   reconnect,
+		maxConns:    cfg.MaxConns,
+		minConns:    cfg.MinConns,
+		interval:    cfg.Interval,
+		closeCh:     make(chan struct{}),
 	}
 }
 

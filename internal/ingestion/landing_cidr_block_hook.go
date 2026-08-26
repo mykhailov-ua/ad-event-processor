@@ -46,7 +46,6 @@ func (m *cidrBlockMetrics) recordMatch(feed uint8) {
 	m.match[CIDRFeedOther].Inc()
 }
 
-
 func (h *AdsPacketHandler) cidrBlockShouldSafeView(ip string, campaignID uuid.UUID) (bool, uint8) {
 	t := h.cidrTable
 	if t == nil || !t.Ready() {

@@ -13,6 +13,10 @@ const (
 	CmdCommittedOffsetResp     uint16 = 106
 	CommitOffsetRespMetaLen           = 9
 	CommittedOffsetRespMetaLen        = 9
+
+	OffsetStatusOK               byte = 0
+	OffsetStatusBadRequest       byte = 1
+	OffsetStatusStoreUnavailable byte = 2
 )
 
 func DecodeOffsetKeyRequest(payload []byte) (topic string, partition uint16, group string, err error) {

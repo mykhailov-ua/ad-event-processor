@@ -1,5 +1,3 @@
-
-
 x-go-load-test-env: &go_load_test_env
   GOMAXPROCS: '2'
 
@@ -28,11 +26,18 @@ x-tracker-lab-env: &tracker_lab_env
   TRACKER_INGRESS_SCHEMA: ad_event_processor_native
   AD_EVENT_PROCESSOR_LICENSE_REQUIRED: '0'
   ENV: development
+  HTTP1_BODY_IDLE_MS: '60000'
   TRANSPORT_USE_UDS: '0'
   TRACKER_UNIX_SOCKET: ''
   REDIS_ADDRS: ${LOAD_TEST_REDIS_ADDRS}
   QUOTA_MODE: live
   LOCAL_QUOTA_MODE: live
+
+x-redis-load-test-deploy: &redis_load_test_deploy
+  resources:
+    limits:
+      cpus: '0.75'
+      memory: 384M
 
 x-tracker-lab-build: &tracker_lab_build
   context: ../..
@@ -103,9 +108,16 @@ services:
       - MAX_WORKERS=12
       - CH_MAX_WORKERS=2
       - CH_USE_UDS=0
+      - REDIS_ADDRS=${LOAD_TEST_REDIS_ADDRS}
       - PROCESSOR_PORT=${LOAD_TEST_PROCESSOR_PORT}
       - SERVER_PORT=${LOAD_TEST_PROCESSOR_PORT}
       - CH_DSN=clickhouse://default:${CH_PASSWORD:-secure_ch_pass}@127.0.0.1:9000/ad_event_processor
+    healthcheck:
+      test: ['CMD', '/processor', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}/health']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     deploy:
       resources:
         limits:
@@ -169,49 +181,143 @@ services:
 
   redis-0:
     ports: ['${LOAD_TEST_REDIS_0_PORT}:6379']
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-0.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'no',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     deploy:
-      resources:
-        limits:
-          cpus: '0.35'
-          memory: 384M
+      <<: *redis_load_test_deploy
   redis-1:
     ports: ['${LOAD_TEST_REDIS_1_PORT}:6379']
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-1.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'no',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     deploy:
-      resources:
-        limits:
-          cpus: '0.35'
-          memory: 384M
+      <<: *redis_load_test_deploy
   redis-2:
     ports: ['${LOAD_TEST_REDIS_2_PORT}:6379']
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-2.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'no',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     deploy:
-      resources:
-        limits:
-          cpus: '0.35'
-          memory: 384M
+      <<: *redis_load_test_deploy
   redis-3:
     ports: ['${LOAD_TEST_REDIS_3_PORT}:6379']
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-3.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'no',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     deploy:
-      resources:
-        limits:
-          cpus: '0.35'
-          memory: 384M
+      <<: *redis_load_test_deploy
   redis-4:
     ports: ['${LOAD_TEST_REDIS_4_PORT}:6379']
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-4.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'no',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     deploy:
-      resources:
-        limits:
-          cpus: '0.35'
-          memory: 384M
+      <<: *redis_load_test_deploy
   redis-5:
     ports: ['${LOAD_TEST_REDIS_5_PORT}:6379']
+    command:
+      [
+        'redis-server',
+        '--port',
+        '6379',
+        '--unixsocket',
+        '/run/ad-event-processor/redis/redis-5.sock',
+        '--unixsocketperm',
+        '777',
+        '--requirepass',
+        '${REDIS_PASSWORD}',
+        '--appendonly',
+        'no',
+        '--maxmemory-policy',
+        'noeviction',
+        '--tcp-backlog',
+        '2048',
+      ]
     deploy:
-      resources:
-        limits:
-          cpus: '0.35'
-          memory: 384M
+      <<: *redis_load_test_deploy
 
   prometheus:
-    command: ['--config.file=/etc/prometheus/prometheus.yaml', '--web.listen-address=:${LOAD_TEST_PROMETHEUS_PORT}']
+    command:
+      [
+        '--config.file=/etc/prometheus/prometheus.yaml',
+        '--web.listen-address=:${LOAD_TEST_PROMETHEUS_PORT}',
+      ]
     deploy:
       resources:
         limits:
@@ -231,7 +337,11 @@ services:
       - ../../deploy/monitoring/grafana-provisioning/datasources/datasource.load-test.yaml:/etc/grafana/provisioning/datasources/datasource.yaml:ro
 
   alertmanager:
-    command: ['--config.file=/etc/alertmanager/alertmanager.yaml', '--web.listen-address=:${LOAD_TEST_ALERTMANAGER_PORT}']
+    command:
+      [
+        '--config.file=/etc/alertmanager/alertmanager.yaml',
+        '--web.listen-address=:${LOAD_TEST_ALERTMANAGER_PORT}',
+      ]
     deploy:
       resources:
         limits:
@@ -245,6 +355,8 @@ services:
       - CONTROL_ENABLE_PAYMENT=0
       - CONTROL_ENABLE_BILLING=0
       - CONTROL_ENABLE_NOTIFIER=0
+      - CONTROL_ENABLE_MARGIN_GUARD=0
+      - CONTROL_ENABLE_COST_SYNC=0
       - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
       - REPORT_EXPORT_DIR=/run/ad-event-processor/report-exports
       - DB_TRACKER_MAX_CONNS=32
@@ -256,7 +368,7 @@ services:
       - DB_DSN=postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT:-5430}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}
       - REDIS_ADDRS=${LOAD_TEST_REDIS_ADDRS}
     healthcheck:
-      test: ['CMD', '/control', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_CONTROL_PORT}/health']
+      test: ['CMD', '/control', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_CONTROL_PORT}/healthz']
       interval: 10s
       timeout: 5s
       retries: 5

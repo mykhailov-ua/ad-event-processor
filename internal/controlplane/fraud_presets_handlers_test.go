@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"ad-event-processor/pkg/httpresponse"
+
 	"github.com/stretchr/testify/require"
 )
 

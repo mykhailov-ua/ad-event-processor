@@ -127,13 +127,22 @@ export function CampaignFraudSection({
     setError(null);
     try {
       const body = override?.preset
-        ? { preset: override.preset, silent_reject_enabled: draft.silent_reject_enabled }
+        ? {
+            preset: override.preset,
+            silent_reject_enabled: draft.silent_reject_enabled,
+            canvas_retest_enabled: draft.canvas_retest_enabled,
+            cgnat_ip_policy_enabled: draft.cgnat_ip_policy_enabled,
+            conversion_reject_rules: draft.conversion_reject_rules,
+          }
         : {
             fraud_threshold_pass: draft.fraud_threshold_pass,
             fraud_threshold_suspect: draft.fraud_threshold_suspect,
             fraud_threshold_ivt: draft.fraud_threshold_ivt,
             fraud_threshold_block: draft.fraud_threshold_block,
             silent_reject_enabled: draft.silent_reject_enabled,
+            canvas_retest_enabled: draft.canvas_retest_enabled,
+            cgnat_ip_policy_enabled: draft.cgnat_ip_policy_enabled,
+            conversion_reject_rules: draft.conversion_reject_rules,
           };
       const updated = await patchCampaignFraudConfig(campaignId, body);
       if (updated) {
@@ -143,10 +152,7 @@ export function CampaignFraudSection({
           title: 'Fraud settings saved',
           message: 'Thresholds updated for this campaign.',
         });
-        if (
-          override?.preset === 'enhanced_defense' ||
-          override?.preset === 'social_in_app'
-        ) {
+        if (override?.preset === 'enhanced_defense' || override?.preset === 'social_in_app') {
           onCampaignFlagsChanged?.();
         }
       }
@@ -327,9 +333,135 @@ export function CampaignFraudSection({
           onChange={(checked) => setDraft({ ...draft, silent_reject_enabled: checked })}
         />
         <p className="text-muted text-xs">
-          On L1 fraud: return success to the client but skip budget and postbacks. Off returns HTTP 403.
-          Enhanced defense preset turns this on and uses redirect decoys on clicks.
+          On L1 fraud: return success to the client but skip budget and postbacks. Off returns HTTP
+          403. Enhanced defense preset turns this on and uses redirect decoys on clicks.
         </p>
+        <Checkbox
+          checked={draft.canvas_retest_enabled ?? false}
+          disabled={!canWrite || saving}
+          label="Canvas test-retest (safe page)"
+          onChange={(checked) => setDraft({ ...draft, canvas_retest_enabled: checked })}
+        />
+        <p className="text-muted text-xs">
+          On /track/verify only: compare two canvas hashes; mismatch returns safe view. Default off
+          (browser privacy noise).
+        </p>
+        <Checkbox
+          checked={draft.cgnat_ip_policy_enabled ?? false}
+          disabled={!canWrite || saving}
+          label="CGNAT mobile IP bypass"
+          onChange={(checked) => setDraft({ ...draft, cgnat_ip_policy_enabled: checked })}
+        />
+        <p className="text-muted text-xs">
+          On tier-1 mobile carrier ASN: skip ipv4_rotation redirect and ingress RPD only. Does not
+          bypass datacenter or Lua budget.
+        </p>
+        <section className="stack">
+          <h3 className="text-sm font-semibold">Conversion smart reject (campaign overrides)</h3>
+          <p className="text-muted text-xs">
+            Unset fields inherit deployment env (CONVERSION_REJECT_*). Master switch off skips all
+            rules for this campaign.
+          </p>
+          <Checkbox
+            checked={draft.conversion_reject_rules?.enabled ?? true}
+            disabled={!canWrite || saving}
+            label="Smart reject enabled"
+            onChange={(checked) =>
+              setDraft({
+                ...draft,
+                conversion_reject_rules: { ...draft.conversion_reject_rules, enabled: checked },
+              })
+            }
+          />
+          <Checkbox
+            checked={draft.conversion_reject_rules?.reject_no_click ?? true}
+            disabled={!canWrite || saving}
+            label="Reject missing click"
+            onChange={(checked) =>
+              setDraft({
+                ...draft,
+                conversion_reject_rules: {
+                  ...draft.conversion_reject_rules,
+                  reject_no_click: checked,
+                },
+              })
+            }
+          />
+          <Checkbox
+            checked={draft.conversion_reject_rules?.reject_low_ttc ?? true}
+            disabled={!canWrite || saving}
+            label="Reject low TTC"
+            onChange={(checked) =>
+              setDraft({
+                ...draft,
+                conversion_reject_rules: {
+                  ...draft.conversion_reject_rules,
+                  reject_low_ttc: checked,
+                },
+              })
+            }
+          />
+          <Checkbox
+            checked={draft.conversion_reject_rules?.reject_duplicate ?? true}
+            disabled={!canWrite || saving}
+            label="Reject duplicate goal"
+            onChange={(checked) =>
+              setDraft({
+                ...draft,
+                conversion_reject_rules: {
+                  ...draft.conversion_reject_rules,
+                  reject_duplicate: checked,
+                },
+              })
+            }
+          />
+          <Checkbox
+            checked={draft.conversion_reject_rules?.reject_ip_drift ?? true}
+            disabled={!canWrite || saving}
+            label="Reject IP country drift"
+            onChange={(checked) =>
+              setDraft({
+                ...draft,
+                conversion_reject_rules: {
+                  ...draft.conversion_reject_rules,
+                  reject_ip_drift: checked,
+                },
+              })
+            }
+          />
+          <Checkbox
+            checked={draft.conversion_reject_rules?.reject_datacenter_ip ?? false}
+            disabled={!canWrite || saving}
+            label="Reject datacenter IP at conversion"
+            onChange={(checked) =>
+              setDraft({
+                ...draft,
+                conversion_reject_rules: {
+                  ...draft.conversion_reject_rules,
+                  reject_datacenter_ip: checked,
+                },
+              })
+            }
+          />
+          <label className="stack text-xs">
+            Min TTC (ms)
+            <input
+              type="number"
+              className="input"
+              disabled={!canWrite || saving}
+              value={draft.conversion_reject_rules?.min_ttc_ms ?? 3000}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  conversion_reject_rules: {
+                    ...draft.conversion_reject_rules,
+                    min_ttc_ms: Number.parseInt(e.target.value, 10) || 0,
+                  },
+                })
+              }
+            />
+          </label>
+        </section>
       </section>
 
       {canWrite ? (

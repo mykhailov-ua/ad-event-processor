@@ -20,18 +20,18 @@ type segmentCampaignLoader interface {
 }
 
 type SegmentConversionHandler struct {
-	repo    segmentCampaignLoader
-	queries db.Querier
-	redisShards    []redis.UniversalClient
-	hasher  *piihash.Hasher
+	repo        segmentCampaignLoader
+	queries     db.Querier
+	redisShards []redis.UniversalClient
+	hasher      *piihash.Hasher
 }
 
 func NewSegmentConversionHandler(repo segmentCampaignLoader, queries db.Querier, redisShards []redis.UniversalClient, hasher *piihash.Hasher) *SegmentConversionHandler {
 	return &SegmentConversionHandler{
-		repo:    repo,
-		queries: queries,
-		redisShards:    redisShards,
-		hasher:  hasher,
+		repo:        repo,
+		queries:     queries,
+		redisShards: redisShards,
+		hasher:      hasher,
 	}
 }
 

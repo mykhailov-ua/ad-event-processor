@@ -11,7 +11,6 @@ type FraudQuarantinePayload struct {
 	IPs []string `json:"ips"`
 }
 
-
 func MarshalFraudQuarantinePayload(ips []string) (string, error) {
 	if len(ips) == 0 {
 		return "", fmt.Errorf("fraud quarantine payload: empty ip list")
@@ -37,7 +36,6 @@ func MarshalFraudQuarantinePayload(ips []string) (string, error) {
 	}
 	return string(raw), nil
 }
-
 
 func ParseFraudQuarantinePayload(raw string) ([]string, error) {
 	if raw == "" {

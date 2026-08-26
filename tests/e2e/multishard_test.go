@@ -12,9 +12,11 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/ingestion"
+
 	"github.com/google/uuid"
 
 	"ad-event-processor/internal/testutil"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

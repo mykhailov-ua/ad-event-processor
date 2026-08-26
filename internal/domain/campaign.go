@@ -93,12 +93,14 @@ type Campaign struct {
 	SegmentIncludeID  uuid.UUID
 	SegmentExcludeID  uuid.UUID
 
-	SafePageURL        string
-	SafePageEnabled    bool
-	AttestationEnabled bool
-	AttestationMode    AttestationMode
-	AttestationTTLSec  int32
-	DmrEnabled         bool
+	SafePageURL          string
+	SafePageEnabled      bool
+	CanvasRetestEnabled  bool
+	CgnatIPPolicyEnabled bool
+	AttestationEnabled   bool
+	AttestationMode      AttestationMode
+	AttestationTTLSec    int32
+	DmrEnabled           bool
 
 	CIDRBlockEnabled bool
 
@@ -120,6 +122,8 @@ type Campaign struct {
 	ClickDelivery      string
 	ProxyUpstreamURL   string
 	ProxyRewriteAssets bool
+
+	IngressCost IngressCostConfig
 }
 
 func (c *Campaign) LuaRoutingEpoch() int64 {

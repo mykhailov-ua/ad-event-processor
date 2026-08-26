@@ -6,10 +6,9 @@ func liveReportExportKeys() []string {
 		"spend-velocity", "daypart-heatmap", "campaign-geo-device", "geo-roi", "source-quality",
 		"ivt-by-source", "rtb-overview", "rtb-no-bid-reasons", "rtb-geo-device", "traffic-sources",
 		"discrepancy-buy-sell", "true-roi", "customer-portfolio", "data-quality", "campaign-overview",
-		"postback-reconciliation", "telegram", "cost-sync-coverage",
+		"postback-reconciliation", "conversion-type-payout", "click-log", "telegram", "cost-sync-coverage",
 	}
 }
-
 
 func LiveReportMetricKeys() []string {
 	keys := append([]string(nil), liveReportExportKeys()...)

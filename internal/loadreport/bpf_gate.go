@@ -217,7 +217,7 @@ func checkBPFSummaryChecks(summary *bpfSummary) []BPFGateCheck {
 			Value:  strconv.FormatInt(connects, 10),
 			Limit:  "0",
 			OK:     connects == 0,
-			Detail: "tracker must not call connect() on hot path (T9)",
+			Detail: "tracker must not call connect() on hot path (T9); unix/redis infra excluded",
 		})
 	}
 
@@ -521,9 +521,13 @@ func loadgenOnCPUPct(stats []pidStat) (float64, bool) {
 func trackerOutboundConnects(network []networkStat) int64 {
 	var connects int64
 	for _, n := range network {
-		if n.Role == "tracker" {
-			connects += n.Connects
+		if n.Role != "tracker" {
+			continue
 		}
+		if n.Dport == 0 || n.Dport == 6379 {
+			continue
+		}
+		connects += n.Connects
 	}
 	return connects
 }

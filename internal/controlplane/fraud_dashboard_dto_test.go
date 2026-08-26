@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/controlplane"
+
 	"github.com/stretchr/testify/require"
 )
 

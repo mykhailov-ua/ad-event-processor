@@ -1,0 +1,628 @@
+StatusOKResponse:
+  type: object
+  required: [status]
+  properties:
+    status:
+      type: string
+      enum: [ok]
+
+PostbackConfig:
+  type: object
+  required: [campaign_id, provider, url_template, target_event, has_api_token]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    provider:
+      type: string
+      enum: [webhook, facebook, google, tiktok, taboola, outbrain, microsoft_ads]
+    url_template:
+      type: string
+    target_event:
+      type: string
+    test_event_code:
+      type: string
+    has_api_token:
+      type: boolean
+
+UpdatePostbackConfigRequest:
+  type: object
+  required: [provider, url_template]
+  properties:
+    provider:
+      type: string
+      enum: [webhook, facebook, google, tiktok, taboola, outbrain, microsoft_ads]
+    url_template:
+      type: string
+    api_token:
+      type: string
+    target_event:
+      type: string
+    test_event_code:
+      type: string
+
+PostbackDlqEntry:
+  type: object
+  required: [id, outbox_event_id, campaign_id, click_id, event_type, failures_count, status]
+  properties:
+    id:
+      type: integer
+      format: int64
+    outbox_event_id:
+      type: integer
+      format: int64
+    campaign_id:
+      type: string
+      format: uuid
+    click_id:
+      type: string
+    event_type:
+      type: string
+    payload:
+      type: object
+      additionalProperties: true
+    failures_count:
+      type: integer
+      format: int32
+    last_error:
+      type: string
+    status:
+      type: string
+
+PostbackCampaignStatus:
+  type: object
+  required: [campaign_id, provider, dlq_pending_count]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    provider:
+      type: string
+    last_success_at:
+      type: string
+      format: date-time
+    dlq_pending_count:
+      type: integer
+      format: int64
+
+PostbackDryRunResult:
+  type: object
+  required: [ok, provider, test_event]
+  properties:
+    ok:
+      type: boolean
+    provider:
+      type: string
+    http_status:
+      type: integer
+    error:
+      type: string
+    rendered_url:
+      type: string
+    target_event:
+      type: string
+    test_event:
+      type: boolean
+
+IntegrationSchema:
+  type: object
+  required: [id, name, version, kind, schema, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    version:
+      type: integer
+    kind:
+      type: string
+    schema:
+      type: object
+      additionalProperties: true
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateIntegrationSchemaRequest:
+  type: object
+  required: [name, version, schema]
+  properties:
+    name:
+      type: string
+    version:
+      type: integer
+    schema:
+      type: object
+      additionalProperties: true
+
+ApplyIntegrationSchemaRequest:
+  type: object
+  required: [campaign_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+
+ApplyIntegrationSchemaResponse:
+  type: object
+  required: [status, kind]
+  properties:
+    status:
+      type: string
+    kind:
+      type: string
+    url_template:
+      type: string
+    panel_postback_url:
+      type: string
+    offer_url_suffix:
+      type: string
+    target_url:
+      type: string
+
+IntegrationTemplateCatalogEntry:
+  type: object
+  required: [name, file, version, category, kind]
+  properties:
+    name:
+      type: string
+    file:
+      type: string
+    version:
+      type: integer
+    category:
+      type: string
+    kind:
+      type: string
+
+ImportIntegrationTemplatesRequest:
+  type: object
+  properties:
+    names:
+      type: array
+      items:
+        type: string
+
+ApplyCampaignTemplatesRequest:
+  type: object
+  properties:
+    traffic_source:
+      type: string
+    affiliate_network:
+      type: string
+    tracking_domain:
+      type: string
+
+ApplyCampaignTemplatesResult:
+  type: object
+  required: [campaign_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    traffic_source:
+      type: object
+      additionalProperties:
+        type: string
+    affiliate_postback:
+      type: object
+      additionalProperties:
+        type: string
+    affiliate_status:
+      type: object
+      additionalProperties:
+        type: string
+
+Seller:
+  type: object
+  required: [id, seller_id, domain, seller_type, name, is_confidential, created_at, updated_at]
+  properties:
+    id:
+      type: integer
+      format: int64
+    seller_id:
+      type: string
+    domain:
+      type: string
+    seller_type:
+      type: string
+    name:
+      type: string
+    is_confidential:
+      type: boolean
+    created_at:
+      type: string
+    updated_at:
+      type: string
+
+SellerWriteRequest:
+  type: object
+  required: [seller_id, domain, seller_type, name]
+  properties:
+    seller_id:
+      type: string
+    domain:
+      type: string
+    seller_type:
+      type: string
+    name:
+      type: string
+    is_confidential:
+      type: boolean
+
+AdsTxtEntry:
+  type: object
+  required: [id, domain, publisher_account_id, relationship, sort_order, created_at, updated_at]
+  properties:
+    id:
+      type: integer
+      format: int64
+    domain:
+      type: string
+    publisher_account_id:
+      type: string
+    relationship:
+      type: string
+    cert_authority_id:
+      type: string
+    sort_order:
+      type: integer
+      format: int32
+    created_at:
+      type: string
+    updated_at:
+      type: string
+
+AdsTxtWriteRequest:
+  type: object
+  required: [domain, publisher_account_id, relationship]
+  properties:
+    domain:
+      type: string
+    publisher_account_id:
+      type: string
+    relationship:
+      type: string
+    cert_authority_id:
+      type: string
+    sort_order:
+      type: integer
+      format: int32
+
+SupplyExportPath:
+  type: object
+  required: [path]
+  properties:
+    path:
+      type: string
+
+SupplyValidation:
+  type: object
+  required:
+    - sellers_json_valid
+    - sellers_checksum_sha256
+    - sellers_count
+    - ads_txt_valid
+    - ads_txt_checksum_sha256
+    - ads_txt_line_count
+  properties:
+    sellers_json_valid:
+      type: boolean
+    sellers_checksum_sha256:
+      type: string
+    sellers_count:
+      type: integer
+    ads_txt_valid:
+      type: boolean
+    ads_txt_checksum_sha256:
+      type: string
+    ads_txt_line_count:
+      type: integer
+    issues:
+      type: array
+      items:
+        type: string
+
+MarginGuardPolicy:
+  type: object
+  required:
+    - campaign_id
+    - name
+    - min_clicks
+    - roi_floor_pct
+    - zero_conv_streak
+    - cost_over_revenue_threshold_bps
+    - is_active
+  properties:
+    id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    min_clicks:
+      type: integer
+    roi_floor_pct:
+      type: number
+      format: double
+    zero_conv_streak:
+      type: integer
+    cost_over_revenue_threshold_bps:
+      type: integer
+    is_active:
+      type: boolean
+
+MarginGuardActivity:
+  type: object
+  required: [id, policy_id, campaign_id, placement_id, action, reason, metrics, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    policy_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    placement_id:
+      type: string
+    action:
+      type: string
+    reason:
+      type: string
+    metrics:
+      type: object
+      additionalProperties: true
+    created_at:
+      type: string
+      format: date-time
+
+MarginGuardOverrideRequest:
+  type: object
+  required: [campaign_id, placement_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    placement_id:
+      type: string
+
+SmartAlertRule:
+  type: object
+  required:
+    - id
+    - customer_id
+    - name
+    - metric
+    - operator
+    - threshold
+    - window_minutes
+    - webhook_url
+    - enabled
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    metric:
+      type: string
+    operator:
+      type: string
+    threshold:
+      type: number
+      format: double
+    window_minutes:
+      type: integer
+    webhook_url:
+      type: string
+    enabled:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertSmartAlertRuleRequest:
+  type: object
+  required: [customer_id, name, metric, operator, threshold, window_minutes, webhook_url, enabled]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    metric:
+      type: string
+    operator:
+      type: string
+    threshold:
+      type: number
+      format: double
+    window_minutes:
+      type: integer
+    webhook_url:
+      type: string
+    enabled:
+      type: boolean
+
+SmartAlertEvent:
+  type: object
+  required:
+    - id
+    - rule_id
+    - customer_id
+    - window_start
+    - window_end
+    - metric
+    - operator
+    - threshold
+    - observed_value
+    - webhook_status
+    - fired_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    rule_id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    window_start:
+      type: string
+      format: date-time
+    window_end:
+      type: string
+      format: date-time
+    metric:
+      type: string
+    operator:
+      type: string
+    threshold:
+      type: number
+      format: double
+    observed_value:
+      type: number
+      format: double
+    webhook_status:
+      type: string
+    webhook_error:
+      type: string
+    fired_at:
+      type: string
+      format: date-time
+    acked_at:
+      type: string
+      format: date-time
+    acked_by:
+      type: string
+      format: uuid
+
+PlatformCampaignLink:
+  type: object
+  required: [campaign_id, customer_id, network, external_campaign_id, updated_at]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    network:
+      type: string
+    external_campaign_id:
+      type: string
+    account_id:
+      type: string
+    external_status:
+      type: string
+    external_daily_budget_micro:
+      type: integer
+      format: int64
+    last_synced_at:
+      type: string
+      format: date-time
+    sync_error:
+      type: string
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertPlatformCampaignLinkRequest:
+  type: object
+  required: [customer_id, external_campaign_id]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    external_campaign_id:
+      type: string
+    account_id:
+      type: string
+
+PlatformCampaignMutationRequest:
+  type: object
+  required: [network, idempotency_key]
+  properties:
+    network:
+      type: string
+    idempotency_key:
+      type: string
+    daily_budget_micro:
+      type: integer
+      format: int64
+
+PlatformCampaignMutation:
+  type: object
+  required: [idempotency_key, status, action, network, campaign_id]
+  properties:
+    idempotency_key:
+      type: string
+    status:
+      type: string
+    action:
+      type: string
+    network:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    error_message:
+      type: string
+    preview:
+      type: object
+      additionalProperties: true
+    response:
+      type: object
+      additionalProperties: true
+
+PlatformCampaignSyncRunRequest:
+  type: object
+  required: [campaign_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+
+AffiliateStatusPresetEntry:
+  type: object
+  properties:
+    inbound_status:
+      type: string
+    goal_name:
+      type: string
+
+AffiliateStatusPreset:
+  type: object
+  properties:
+    name:
+      type: string
+    statuses:
+      type: array
+      items:
+        $ref: '#/AffiliateStatusPresetEntry'

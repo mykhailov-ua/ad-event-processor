@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/require"
@@ -19,7 +20,7 @@ func TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix(t *testing.T)
 
 	f := NewUnifiedFilter([]redis.UniversalClient{redisClient}, nil, nil, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		RedisShards:           []redis.UniversalClient{redisClient},
+		RedisShards:    []redis.UniversalClient{redisClient},
 		StreamName:     "events",
 		MaxLen:         1000,
 		IdempotencyTTL: time.Hour,

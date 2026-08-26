@@ -1,4 +1,3 @@
-
 //go:build 386 || amd64 || arm || arm64 || loong64 || mips64le || mipsle || ppc64le || riscv64 || wasm
 
 package edge
@@ -58,7 +57,6 @@ type EdgeSynState struct {
 	_             [4]byte
 }
 
-
 const (
 	EdgeMapAllowV4              = "allow_v4"
 	EdgeMapAllowV6              = "allow_v6"
@@ -80,7 +78,6 @@ const (
 	EdgeProgXdpSynCookie        = "xdp_syn_cookie"
 )
 
-
 func LoadEdge() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_EdgeBytes)
 	spec, err := ebpf.LoadCollectionSpecFromReader(reader)
@@ -91,7 +88,6 @@ func LoadEdge() (*ebpf.CollectionSpec, error) {
 	return spec, err
 }
 
-
 func LoadEdgeObjects(obj any, opts *ebpf.CollectionOptions) error {
 	spec, err := LoadEdge()
 	if err != nil {
@@ -101,19 +97,16 @@ func LoadEdgeObjects(obj any, opts *ebpf.CollectionOptions) error {
 	return spec.LoadAndAssign(obj, opts)
 }
 
-
 type EdgeSpecs struct {
 	EdgeProgramSpecs
 	EdgeMapSpecs
 	EdgeVariableSpecs
 }
 
-
 type EdgeProgramSpecs struct {
 	XdpEdgeFilter *ebpf.ProgramSpec `ebpf:"xdp_edge_filter"`
 	XdpSynCookie  *ebpf.ProgramSpec `ebpf:"xdp_syn_cookie"`
 }
-
 
 type EdgeMapSpecs struct {
 	AllowV4              *ebpf.MapSpec `ebpf:"allow_v4"`
@@ -134,10 +127,7 @@ type EdgeMapSpecs struct {
 	Violations           *ebpf.MapSpec `ebpf:"violations"`
 }
 
-
-type EdgeVariableSpecs struct {
-}
-
+type EdgeVariableSpecs struct{}
 
 type EdgeObjects struct {
 	EdgePrograms
@@ -151,7 +141,6 @@ func (o *EdgeObjects) Close() error {
 		&o.EdgeMaps,
 	)
 }
-
 
 type EdgeMaps struct {
 	AllowV4              *ebpf.Map `ebpf:"allow_v4"`
@@ -193,10 +182,7 @@ func (m *EdgeMaps) Close() error {
 	)
 }
 
-
-type EdgeVariables struct {
-}
-
+type EdgeVariables struct{}
 
 type EdgePrograms struct {
 	XdpEdgeFilter *ebpf.Program `ebpf:"xdp_edge_filter"`
@@ -218,7 +204,6 @@ func _EdgeClose(closers ...io.Closer) error {
 	}
 	return nil
 }
-
 
 //go:embed edge_bpfel.o
 var _EdgeBytes []byte

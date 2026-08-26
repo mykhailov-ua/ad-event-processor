@@ -6,6 +6,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/rtb"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

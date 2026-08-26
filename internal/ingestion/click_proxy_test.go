@@ -14,6 +14,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/pkg/proxyupstream"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

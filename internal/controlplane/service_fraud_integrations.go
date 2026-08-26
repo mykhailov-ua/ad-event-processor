@@ -23,8 +23,10 @@ func postbackConfigConfigured(provider, urlTemplate string, apiTokenLen int) boo
 		return true
 	}
 	switch provider {
-	case "facebook", "google", "tiktok":
+	case "facebook", "google", "tiktok", "microsoft_ads":
 		return apiTokenLen > 0
+	case "taboola", "outbrain", "webhook":
+		return true
 	default:
 		return false
 	}

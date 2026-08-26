@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -63,7 +64,7 @@ func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
 }
 
 type runner struct {
-	client        *http.Client
+	clients       sync.Map
 	trackers      []string
 	edgeURL       string
 	oversizeBytes int
@@ -75,21 +76,30 @@ type runner struct {
 
 func newRunner(trackers []string, edgeURL string, oversize int, mix mixConfig, hist *histogram) *runner {
 	return &runner{
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:        512,
-				MaxIdleConnsPerHost: 256,
-				IdleConnTimeout:     90 * time.Second,
-				DisableCompression:  true,
-			},
-		},
 		trackers:      trackers,
 		edgeURL:       edgeURL,
 		oversizeBytes: oversize,
 		mix:           mix,
 		hist:          hist,
 	}
+}
+
+func (r *runner) clientForWorker(workerIdx int, base string) *http.Client {
+	key := strconv.Itoa(workerIdx) + "\x00" + base
+	if c, ok := r.clients.Load(key); ok {
+		return c.(*http.Client)
+	}
+	c := &http.Client{
+		Timeout: 5 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        8,
+			MaxIdleConnsPerHost: 2,
+			IdleConnTimeout:     90 * time.Second,
+			DisableCompression:  true,
+		},
+	}
+	actual, _ := r.clients.LoadOrStore(key, c)
+	return actual.(*http.Client)
 }
 
 func campaignID(iter uint64) string {
@@ -104,10 +114,10 @@ func (r *runner) pickCampaign(iter uint64) string {
 	return campaignID(iter)
 }
 
-func (r *runner) doOnce() {
+func (r *runner) doOnceWorker(workerIdx int) {
 	iter := r.iter.Add(1)
 	roll := rand.Intn(100)
-	base := r.trackers[iter%uint64(len(r.trackers))]
+	base := r.trackers[workerIdx%len(r.trackers)]
 
 	openrtbEnd := r.mix.pctOpenRTB
 	telegramEnd := openrtbEnd + r.mix.pctTelegram
@@ -122,31 +132,31 @@ func (r *runner) doOnce() {
 
 	switch {
 	case roll < openrtbEnd:
-		r.postOpenRTBBid(base, iter)
+		r.postOpenRTBBid(workerIdx, base, iter)
 	case roll < telegramEnd:
-		r.telegramTraffic(base, iter)
+		r.telegramTraffic(workerIdx, base, iter)
 	case roll < clickProxyEnd:
-		r.clickProxyTraffic(base, iter)
+		r.clickProxyTraffic(workerIdx, base, iter)
 	case roll < proxyVPNEnd:
-		r.proxyVPNTraffic(base, iter)
+		r.proxyVPNTraffic(workerIdx, base, iter)
 	case roll < flowRouteEnd:
-		r.flowRouteTraffic(base, iter)
+		r.flowRouteTraffic(workerIdx, base, iter)
 	case roll < ja3BlockEnd:
-		r.ja3BlockTraffic(base, iter)
+		r.ja3BlockTraffic(workerIdx, base, iter)
 	case roll < validEnd:
 		body := r.validBody(iter)
-		r.post(base+"/track", "application/json", body, nil)
+		r.post(workerIdx, base+"/track", "application/json", body, nil)
 	case roll < fraudEnd:
 		body := r.fraudBody(iter)
-		r.post(base+"/track", "application/json", body, map[string]string{
+		r.post(workerIdx, base+"/track", "application/json", body, map[string]string{
 			"X-Forwarded-For": fraudIP(iter),
 		})
 	case roll < invalidEnd:
-		r.invalidTraffic(base, iter)
+		r.invalidTraffic(workerIdx, base, iter)
 	case roll < ddosEnd:
-		r.ddosTraffic(base, iter)
+		r.ddosTraffic(workerIdx, base, iter)
 	default:
-		r.edgeTraffic(base, iter)
+		r.edgeTraffic(workerIdx, base, iter)
 	}
 }
 
@@ -155,52 +165,52 @@ func openrtbBidBody(iter uint64) []byte {
 	return []byte(`{"id":"load-` + strconv.FormatUint(id, 10) + `","tmax":300,"imp":[{"id":"1","bidfloor":0.5,"banner":{"w":300,"h":250}}],"site":{"page":"https://example.com"},"device":{"ip":"8.8.8.8","ua":"Mozilla/5.0","devicetype":2,"geo":{"country":"US"}}}`)
 }
 
-func (r *runner) telegramTraffic(base string, iter uint64) {
+func (r *runner) telegramTraffic(workerIdx int, base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	token := "token_abc123_"
 	switch iter % 5 {
 	case 0:
-		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&bridge_token=%s", base, cid, clickID, token))
+		r.get(workerIdx, fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&bridge_token=%s", base, cid, clickID, token))
 	case 1:
-		r.get(fmt.Sprintf("%s/tg/impression?campaign_id=%s&click_id=%s", base, cid, clickID))
+		r.get(workerIdx, fmt.Sprintf("%s/tg/impression?campaign_id=%s&click_id=%s", base, cid, clickID))
 	case 2:
-		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&initData=evil", base, cid, clickID))
+		r.get(workerIdx, fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=%s&initData=evil", base, cid, clickID))
 	case 3:
 		body := []byte(`{"ip":"8.8.8.8","user_agent":"TelegramBot/1.0","publisher_id":"pub1","bid_floor":0.1,"premium":true}`)
-		r.post(base+"/tg/bid", "application/json", body, nil)
+		r.post(workerIdx, base+"/tg/bid", "application/json", body, nil)
 	default:
-		r.get(fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=not-a-uuid&bridge_token=%s", base, cid, token))
+		r.get(workerIdx, fmt.Sprintf("%s/tg/click?campaign_id=%s&click_id=not-a-uuid&bridge_token=%s", base, cid, token))
 	}
 }
 
-func (r *runner) clickProxyTraffic(base string, iter uint64) {
+func (r *runner) clickProxyTraffic(workerIdx int, base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
-	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen", base, cid, clickID))
+	r.get(workerIdx, fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen", base, cid, clickID))
 }
 
-func (r *runner) proxyVPNTraffic(base string, iter uint64) {
+func (r *runner) proxyVPNTraffic(workerIdx int, base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	body := r.validBody(iter)
-	r.post(base+"/track", "application/json", body, map[string]string{
+	r.post(workerIdx, base+"/track", "application/json", body, map[string]string{
 		"X-Forwarded-For": proxyVPNClientIP(iter),
 		"X-Campaign-ID":   cid,
 	})
 }
 
-func (r *runner) flowRouteTraffic(base string, iter uint64) {
+func (r *runner) flowRouteTraffic(workerIdx int, base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	flowID := fmt.Sprintf("flow-%d", iter%8)
-	r.get(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&flow_id=%s&sub1=loadgen-flow", base, cid, clickID, flowID))
+	r.get(workerIdx, fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&flow_id=%s&sub1=loadgen-flow", base, cid, clickID, flowID))
 }
 
-func (r *runner) ja3BlockTraffic(base string, iter uint64) {
+func (r *runner) ja3BlockTraffic(workerIdx int, base string, iter uint64) {
 	cid := r.pickCampaign(iter)
 	clickID := fmt.Sprintf("00000000-0000-4000-8000-%012x", iter)
 	ja3 := fmt.Sprintf("771,4865-%d", iter%5000)
-	r.getWithHeaders(fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen-ja3", base, cid, clickID), map[string]string{
+	r.getWithHeaders(workerIdx, fmt.Sprintf("%s/click?campaign_id=%s&click_id=%s&sub1=loadgen-ja3", base, cid, clickID), map[string]string{
 		"X-TLS-JA3":  ja3,
 		"User-Agent": "Mozilla/5.0 (loadgen)",
 	})
@@ -217,13 +227,12 @@ func proxyVPNClientIP(iter uint64) string {
 	return ips[iter%uint64(len(ips))]
 }
 
-func (r *runner) postOpenRTBBid(base string, iter uint64) {
+func (r *runner) postOpenRTBBid(workerIdx int, base string, iter uint64) {
 	body := openrtbBidBody(iter)
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/openrtb/bid", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-openrtb-version", "2.6")
-	req.Header.Set("Connection", "keep-alive")
-	r.exec(req)
+	r.exec(workerIdx, req, base)
 }
 
 func (r *runner) validBody(iter uint64) []byte {
@@ -252,12 +261,12 @@ func fraudIP(iter uint64) string {
 	return fmt.Sprintf("54.%d.%d.%d", (iter>>8)&255, iter&255, (iter>>16)&255)
 }
 
-func (r *runner) invalidTraffic(base string, iter uint64) {
+func (r *runner) invalidTraffic(workerIdx int, base string, iter uint64) {
 	switch iter % 4 {
 	case 0:
-		r.post(base+"/track", "application/json", []byte("{not-json"), nil)
+		r.post(workerIdx, base+"/track", "application/json", []byte("{not-json"), nil)
 	case 1:
-		r.post(base+"/track", "application/x-protobuf", []byte{0xff, 0xee, 0xdd, 0xcc, 0xbb}, nil)
+		r.post(workerIdx, base+"/track", "application/x-protobuf", []byte{0xff, 0xee, 0xdd, 0xcc, 0xbb}, nil)
 	case 2:
 		b, _ := json.Marshal(map[string]any{
 			"campaign_id": "ffffffff-ffff-ffff-ffff-ffffffffffff",
@@ -265,21 +274,21 @@ func (r *runner) invalidTraffic(base string, iter uint64) {
 			"type":        "impression",
 			"click_id":    fmt.Sprintf("bad-%d", iter),
 		})
-		r.post(base+"/track", "application/json", b, nil)
+		r.post(workerIdx, base+"/track", "application/json", b, nil)
 	default:
 		big := strings.Repeat("x", r.oversizeBytes)
-		r.post(base+"/track", "application/json", []byte(big), nil)
+		r.post(workerIdx, base+"/track", "application/json", []byte(big), nil)
 	}
 }
 
-func (r *runner) ddosTraffic(base string, iter uint64) {
+func (r *runner) ddosTraffic(workerIdx int, base string, iter uint64) {
 	switch iter % 5 {
 	case 0:
-		r.get(base + "/track")
+		r.get(workerIdx, base+"/track")
 	case 1:
-		r.get(base + "/health")
+		r.get(workerIdx, base+"/health")
 	case 2:
-		r.get(base + "/metrics")
+		r.get(workerIdx, base+"/metrics")
 	case 3:
 		dup, _ := json.Marshal(map[string]any{
 			"campaign_id": campaignID(1),
@@ -288,47 +297,61 @@ func (r *runner) ddosTraffic(base string, iter uint64) {
 			"click_id":    "dup-fixed-id",
 			"payload":     map[string]any{},
 		})
-		r.post(base+"/track", "application/json", dup, nil)
+		r.post(workerIdx, base+"/track", "application/json", dup, nil)
 	default:
-		r.post(base+"/admin/boom", "application/json", []byte("{}"), nil)
+		r.post(workerIdx, base+"/admin/boom", "application/json", []byte("{}"), nil)
 	}
 }
 
-func (r *runner) edgeTraffic(base string, iter uint64) {
+func (r *runner) edgeTraffic(workerIdx int, base string, iter uint64) {
 	if r.edgeURL != "" {
-		r.post(r.edgeURL+"/track", "application/json", r.validBody(iter), nil)
+		r.post(workerIdx, r.edgeURL+"/track", "application/json", r.validBody(iter), nil)
 		return
 	}
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, base+"/track", http.NoBody)
 	req.Header.Set("Content-Type", "application/json")
-	r.exec(req)
+	r.exec(workerIdx, req, base)
 }
 
-func (r *runner) get(url string) {
+func (r *runner) get(workerIdx int, url string) {
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
-	r.exec(req)
+	base := trackerBase(url)
+	r.exec(workerIdx, req, base)
 }
 
-func (r *runner) getWithHeaders(url string, extra map[string]string) {
+func (r *runner) getWithHeaders(workerIdx int, url string, extra map[string]string) {
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
 	for k, v := range extra {
 		req.Header.Set(k, v)
 	}
-	r.exec(req)
+	base := trackerBase(url)
+	r.exec(workerIdx, req, base)
 }
 
-func (r *runner) post(url, ctype string, body []byte, extra map[string]string) {
+func (r *runner) post(workerIdx int, url, ctype string, body []byte, extra map[string]string) {
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, url, bytes.NewReader(body))
 	req.Header.Set("Content-Type", ctype)
-	req.Header.Set("Connection", "keep-alive")
 	for k, v := range extra {
 		req.Header.Set(k, v)
 	}
-	r.exec(req)
+	base := trackerBase(url)
+	r.exec(workerIdx, req, base)
 }
 
-func (r *runner) exec(req *http.Request) {
-	resp, err := r.client.Do(req)
+func trackerBase(rawURL string) string {
+	schemeEnd := strings.Index(rawURL, "://")
+	if schemeEnd < 0 {
+		return rawURL
+	}
+	rest := rawURL[schemeEnd+3:]
+	if pathStart := strings.Index(rest, "/"); pathStart >= 0 {
+		return rawURL[:schemeEnd+3+pathStart]
+	}
+	return rawURL
+}
+
+func (r *runner) exec(workerIdx int, req *http.Request, base string) {
+	resp, err := r.clientForWorker(workerIdx, base).Do(req)
 	if err != nil {
 		r.hist.inc("0", classifyNetErr(err))
 		return

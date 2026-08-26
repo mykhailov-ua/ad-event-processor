@@ -124,7 +124,7 @@ func TestShard0Catchup_staleShard1DoesNotOverwriteFresherShard0(t *testing.T) {
 
 	svc := &Service{
 		redisShards: redisShards,
-		cfg:  &config.Config{CampaignUpdateChannel: "campaigns:update"},
+		cfg:         &config.Config{CampaignUpdateChannel: "campaigns:update"},
 	}
 	before := testutil.ToFloat64(metrics.Shard0CatchupLastSuccessTimestamp)
 	require.NoError(t, svc.RunShard0Catchup(ctx))
@@ -159,7 +159,7 @@ func TestShard0Nil_CatchupAfterRecovery(t *testing.T) {
 
 	svc := &Service{
 		redisShards: redisShards,
-		cfg:  &config.Config{CampaignUpdateChannel: "campaigns:update"},
+		cfg:         &config.Config{CampaignUpdateChannel: "campaigns:update"},
 	}
 	before := testutil.ToFloat64(metrics.Shard0CatchupLastSuccessTimestamp)
 
@@ -224,7 +224,7 @@ func TestShard0CatchupWorker_runsOnNilToHealthy(t *testing.T) {
 
 	svc := &Service{
 		redisShards: redisShards,
-		cfg:  &config.Config{CampaignUpdateChannel: "campaigns:update"},
+		cfg:         &config.Config{CampaignUpdateChannel: "campaigns:update"},
 	}
 	worker := NewShard0CatchupWorker(svc, database.RedisShardOptions{})
 	require.True(t, worker.shard0Seen)

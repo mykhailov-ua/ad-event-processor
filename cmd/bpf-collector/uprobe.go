@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"ad-event-processor/pkg/naming"
+
 	"github.com/cilium/ebpf/link"
 )
 
@@ -26,10 +27,7 @@ var trackerUprobeSpecs = []uprobeSpec{
 }
 
 func (r *probeRun) attachUprobes() {
-	bin := r.trackerBinary
-	if bin == "" {
-		bin = r.findTrackerBinary()
-	}
+	bin := r.resolveTrackerBinary()
 	if bin == "" {
 		slog.Info("uprobes skipped: tracker binary not found (build tracker with -tags " + naming.BPFTraceBuildTag() + ")")
 		return
@@ -70,6 +68,24 @@ func (r *probeRun) attachUprobes() {
 		return
 	}
 	slog.Info("uprobes attached", "binary", bin, "count", attached)
+}
+
+// resolveTrackerBinary prefers the running tracker exe (/proc/pid/exe) over a host
+// tracker-bpf-trace path so docker load-test uprobes attach to container /tracker.
+func (r *probeRun) resolveTrackerBinary() string {
+	running := r.findTrackerBinary()
+	bin := chooseTrackerBinary(running, r.trackerBinary)
+	if running != "" && r.trackerBinary != "" && r.trackerBinary != running {
+		slog.Info("uprobe binary from running tracker", "flag", r.trackerBinary, "exe", running)
+	}
+	return bin
+}
+
+func chooseTrackerBinary(running, flagged string) string {
+	if running != "" {
+		return running
+	}
+	return flagged
 }
 
 func (r *probeRun) findTrackerBinary() string {

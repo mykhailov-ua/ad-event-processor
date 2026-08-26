@@ -47,7 +47,7 @@ func globalSpendRedisMarkerKey(batchDedupKey string, campaignID uuid.UUID) strin
 
 type GlobalSpendReconciler struct {
 	pool           *pgxpool.Pool
-	redisShards           []redis.UniversalClient
+	redisShards    []redis.UniversalClient
 	sharder        domain.Sharder
 	campaignRepo   *domain.CampaignRepo
 	minBatchSize   int
@@ -80,7 +80,7 @@ func NewGlobalSpendReconciler(
 	}
 	return &GlobalSpendReconciler{
 		pool:           pool,
-		redisShards:           redisShards,
+		redisShards:    redisShards,
 		sharder:        sharder,
 		campaignRepo:   repo,
 		minBatchSize:   cfg.MinBatchSize,

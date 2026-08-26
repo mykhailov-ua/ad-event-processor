@@ -116,6 +116,10 @@ func (r *entitlementsTestRegistry) GetEntitlements(customerID uuid.UUID) (licens
 	}, true
 }
 
+func (r *entitlementsTestRegistry) GetCampaign(uuid.UUID) (*domain.Campaign, bool) {
+	return nil, false
+}
+
 func TestUnifiedFilter_NoIPRateLimitKeys(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

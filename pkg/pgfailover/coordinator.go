@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/pkg/broker/server"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -63,18 +64,18 @@ func (c Config) normalized() Config {
 }
 
 type Coordinator struct {
-	cfg       Config
-	host      *CoordHost
-	coord     *server.Coordinator
-	promoter  Promoter
-	health    HealthCheck
-	redisClient       redis.UniversalClient
-	failures  int
-	failMu    sync.Mutex
-	failover  atomic.Bool
-	closeCh   chan struct{}
-	closeOnce sync.Once
-	wg        sync.WaitGroup
+	cfg         Config
+	host        *CoordHost
+	coord       *server.Coordinator
+	promoter    Promoter
+	health      HealthCheck
+	redisClient redis.UniversalClient
+	failures    int
+	failMu      sync.Mutex
+	failover    atomic.Bool
+	closeCh     chan struct{}
+	closeOnce   sync.Once
+	wg          sync.WaitGroup
 }
 
 func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordinator, error) {
@@ -97,13 +98,13 @@ func NewCoordinator(cfg Config, promoter Promoter, health HealthCheck) (*Coordin
 		return nil, err
 	}
 	return &Coordinator{
-		cfg:      cfg,
-		host:     host,
-		coord:    coord,
-		promoter: promoter,
-		health:   health,
-		redisClient:      coord.Redis(),
-		closeCh:  make(chan struct{}),
+		cfg:         cfg,
+		host:        host,
+		coord:       coord,
+		promoter:    promoter,
+		health:      health,
+		redisClient: coord.Redis(),
+		closeCh:     make(chan struct{}),
 	}, nil
 }
 

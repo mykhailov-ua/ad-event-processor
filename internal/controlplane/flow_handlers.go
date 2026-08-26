@@ -58,14 +58,17 @@ type FlowPathLanderRef struct {
 }
 
 type FlowPathOfferRef struct {
-	OfferID uuid.UUID `json:"offer_id"`
-	Weight  int32     `json:"weight"`
+	OfferID  uuid.UUID `json:"offer_id"`
+	Weight   int32     `json:"weight"`
+	CapDaily *int32    `json:"cap_daily,omitempty"`
+	CapTotal *int32    `json:"cap_total,omitempty"`
 }
 
 type FlowPathDTO struct {
 	Weight  int32               `json:"weight"`
 	Landers []FlowPathLanderRef `json:"landers"`
 	Offers  []FlowPathOfferRef  `json:"offers"`
+	Filters *FlowPathFiltersDTO `json:"filters,omitempty"`
 }
 
 type FlowDTO struct {

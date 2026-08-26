@@ -73,7 +73,7 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 	writeFeedFile(t, dir, "aws.json", `{"prefixes":[{"ip_prefix":"54.0.0.0/8"}]}`)
 
 	cfg := &config.Config{
-		CIDRBlockEnabled:          true,
+		CIDRBlockEnabled:       true,
 		CIDRFeedDir:            dir,
 		CIDRFeedRefresh:        time.Hour,
 		CIDRFeedDownloadEnable: false,
@@ -105,9 +105,9 @@ func TestCIDR_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 func TestCIDR_FeedRefreshFailClosed_FirstBootFailOpen(t *testing.T) {
 	dir := t.TempDir()
 	cfg := &config.Config{
-		CIDRBlockEnabled:   true,
-		CIDRFeedDir:     dir,
-		CIDRFeedRefresh: time.Hour,
+		CIDRBlockEnabled: true,
+		CIDRFeedDir:      dir,
+		CIDRFeedRefresh:  time.Hour,
 	}
 	table := NewCIDRTable()
 	loader := NewCIDRFeedLoader(cfg, table)

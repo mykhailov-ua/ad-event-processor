@@ -48,6 +48,7 @@ type Worker struct {
 	networkBaseURL  map[string]string
 	oauth           OAuthConfig
 	insertSnapshots func(context.Context, []CostLine, []int64) error
+	clickAttributor ClickCostAttributor
 	onSyncComplete  func(network string, duration time.Duration)
 	cycleWG         sync.WaitGroup
 }
@@ -58,6 +59,14 @@ func WithClickHouse(inserter *ClickHouseInserter) WorkerOption {
 	return func(w *Worker) {
 		if inserter != nil {
 			w.insertSnapshots = inserter.InsertSnapshots
+		}
+	}
+}
+
+func WithClickAttributor(attr ClickCostAttributor) WorkerOption {
+	return func(w *Worker) {
+		if attr != nil {
+			w.clickAttributor = attr
 		}
 	}
 }
@@ -151,19 +160,63 @@ func normalizeKey(key []byte) []byte {
 }
 
 func (w *Worker) Start(ctx context.Context) {
-	slog.Info("cost-sync worker starting", "interval", "1h")
-	ticker := time.NewTicker(time.Hour)
-	defer ticker.Stop()
+	slog.Info("cost-sync worker starting", "daily_interval", "1h", "subdaily_interval", "15m")
+	hourly := time.NewTicker(time.Hour)
+	subdaily := time.NewTicker(15 * time.Minute)
+	defer hourly.Stop()
+	defer subdaily.Stop()
 
 	w.runHourlyGuarded(ctx, "cron")
+	w.runSubdailyGuarded(ctx, "cron")
 
 	for {
 		select {
 		case <-ctx.Done():
 			w.Wait()
 			return
-		case <-ticker.C:
+		case <-hourly.C:
 			w.runHourlyGuarded(ctx, "cron")
+		case <-subdaily.C:
+			w.runSubdailyGuarded(ctx, "cron")
+		}
+	}
+}
+
+func (w *Worker) runSubdailyGuarded(ctx context.Context, trigger string) {
+	w.cycleWG.Add(1)
+	go func() {
+		defer w.cycleWG.Done()
+		w.runSubdaily(ctx, trigger)
+	}()
+}
+
+func (w *Worker) runSubdaily(ctx context.Context, trigger string) {
+	opCtx, cancel := context.WithTimeout(ctx, 110*time.Second)
+	defer cancel()
+
+	acquired, err := w.tryAdvisoryLock(opCtx)
+	if err != nil {
+		slog.Error("cost-sync subdaily advisory lock failed", "error", err)
+		return
+	}
+	if !acquired {
+		slog.Debug("cost-sync subdaily skipped: another leader holds lock")
+		return
+	}
+	defer w.releaseAdvisoryLock(opCtx)
+
+	q := db.New(w.pool)
+	creds, err := q.ListCostSyncCredentialsDueSubdaily(opCtx)
+	if err != nil {
+		slog.Error("cost-sync subdaily list failed", "error", err)
+		return
+	}
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	for i := range creds {
+		credRow := creds[i]
+		if err := w.syncCredentialSubdaily(opCtx, credRow, today, trigger); err != nil {
+			slog.Warn("cost-sync subdaily network failed", "network", credRow.Network, "customer_id", credRow.CustomerID.Bytes, "error", err)
+			metrics.CostSyncRunsTotal.WithLabelValues("failed").Inc()
 		}
 	}
 }
@@ -238,6 +291,29 @@ func (w *Worker) syncDay(ctx context.Context, filterCustomer *uuid.UUID, filterN
 }
 
 func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredential, date time.Time, trigger string) error {
+	return w.syncCredentialRun(ctx, credRow, date, trigger, syncRunOpts{reconcile: true})
+}
+
+func (w *Worker) syncCredentialSubdaily(ctx context.Context, credRow db.CostSyncCredential, date time.Time, trigger string) error {
+	opts := syncRunOpts{
+		reconcile:    false,
+		attribute:    true,
+		snapshotHour: time.Now().UTC().Truncate(time.Hour),
+		tokenMapping: ParseTokenMapping(credRow.TokenMapping),
+	}
+	err := w.syncCredentialRun(ctx, credRow, date, trigger, opts)
+	w.bumpCredentialNextRun(ctx, credRow)
+	return err
+}
+
+type syncRunOpts struct {
+	reconcile    bool
+	attribute    bool
+	snapshotHour time.Time
+	tokenMapping TokenMapping
+}
+
+func (w *Worker) syncCredentialRun(ctx context.Context, credRow db.CostSyncCredential, date time.Time, trigger string, opts syncRunOpts) error {
 	start := time.Now()
 	network := credRow.Network
 
@@ -269,16 +345,32 @@ func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredenti
 		metrics.CostSyncRunsTotal.WithLabelValues("failed").Inc()
 		return err
 	}
+	if opts.attribute {
+		ApplyNetworkObjectToken(lines, opts.tokenMapping)
+	}
+	if !opts.snapshotHour.IsZero() {
+		for i := range lines {
+			lines[i].SnapshotHour = opts.snapshotHour
+		}
+	}
 
-	imported, totalUSD, err := w.persistLines(ctx, lines, date)
+	imported, totalUSD, usdAmounts, err := w.persistLines(ctx, lines, date)
 	if err != nil {
 		w.completeRun(ctx, run.ID, "FAILED", imported, totalUSD, err.Error())
 		metrics.CostSyncRunsTotal.WithLabelValues("failed").Inc()
 		return err
 	}
 
-	if err := w.reconcileCampaigns(ctx, lines, date); err != nil {
-		slog.Warn("cost-sync reconciliation partial failure", "error", err)
+	if opts.attribute && w.clickAttributor != nil {
+		if err := w.clickAttributor.AttributeLines(ctx, run.ID, uuid.New(), opts.tokenMapping, lines, usdAmounts, date); err != nil {
+			slog.Warn("cost-sync click attribution failed", "network", network, "error", err)
+		}
+	}
+
+	if opts.reconcile {
+		if err := w.reconcileCampaigns(ctx, lines, date); err != nil {
+			slog.Warn("cost-sync reconciliation partial failure", "error", err)
+		}
 	}
 
 	w.completeRun(ctx, run.ID, "COMPLETED", imported, totalUSD, "")
@@ -293,14 +385,14 @@ func (w *Worker) syncCredential(ctx context.Context, credRow db.CostSyncCredenti
 	return nil
 }
 
-func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.Time) (int, int64, error) {
+func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.Time) (int, int64, []int64, error) {
 	if len(lines) == 0 {
-		return 0, 0, nil
+		return 0, 0, nil, nil
 	}
 
 	fxCache, err := w.converter.PrepareFXCache(ctx, lines, date)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 
 	usdAmounts := make([]int64, len(lines))
@@ -308,7 +400,7 @@ func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.T
 	for i, line := range lines {
 		usdMicro, err := w.converter.ToUSDMicroCached(line.AmountMicro, line.Currency, fxCache)
 		if err != nil {
-			return 0, 0, err
+			return 0, 0, nil, err
 		}
 		usdAmounts[i] = usdMicro
 		totalUSD += usdMicro
@@ -316,17 +408,17 @@ func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.T
 
 	tx, err := w.pool.Begin(ctx)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	imported, err := insertCampaignCostsBatch(ctx, tx, lines, usdAmounts)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return imported, totalUSD, err
+		return imported, totalUSD, usdAmounts, err
 	}
 
 	if w.insertSnapshots != nil {
@@ -336,7 +428,23 @@ func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.T
 		}
 	}
 
-	return imported, totalUSD, nil
+	return imported, totalUSD, usdAmounts, nil
+}
+
+func (w *Worker) bumpCredentialNextRun(ctx context.Context, row db.CostSyncCredential) {
+	interval := int(row.SyncIntervalMinutes)
+	if interval <= 0 {
+		interval = 1440
+	}
+	if !ValidSyncIntervalMinutes(interval) {
+		return
+	}
+	next := time.Now().UTC().Add(time.Duration(interval) * time.Minute)
+	_ = db.New(w.pool).UpdateCostSyncCredentialNextRun(ctx, db.UpdateCostSyncCredentialNextRunParams{
+		CustomerID: row.CustomerID,
+		Network:    row.Network,
+		NextRunAt:  pgtype.Timestamptz{Time: next, Valid: true},
+	})
 }
 
 func (w *Worker) reconcileCampaigns(ctx context.Context, lines []CostLine, date time.Time) error {
@@ -464,6 +572,8 @@ func (w *Worker) DecryptCredential(row db.CostSyncCredential) (Credential, error
 	if row.TokenExpiresAt.Valid {
 		cred.ExpiresAt = row.TokenExpiresAt.Time
 	}
+	cred.SyncIntervalMinutes = int(row.SyncIntervalMinutes)
+	cred.TokenMapping = ParseTokenMapping(row.TokenMapping)
 	return cred, nil
 }
 
@@ -518,6 +628,8 @@ func (w *Worker) MaybeRefreshToken(ctx context.Context, network string, row db.C
 		token, newRefresh, expires, err = refreshPinterestOAuth(ctx, w.httpClient, w.oauth.PinterestTokenURL, w.oauth.PinterestClientID, w.oauth.PinterestClientSecret, *cred)
 	case "trafficstars":
 		token, expires, err = refreshTrafficStarsOAuth(ctx, w.httpClient, w.networkBaseURL["trafficstars"], *cred)
+	case "mondiad":
+		token, newRefresh, expires, err = refreshMondiadOAuth(ctx, w.httpClient, w.networkBaseURL["mondiad"], *cred)
 	default:
 		return nil
 	}
@@ -547,6 +659,8 @@ func (w *Worker) MaybeRefreshToken(ctx context.Context, network string, row db.C
 		ApiKeyEncrypted:       row.ApiKeyEncrypted,
 		ExtraConfig:           row.ExtraConfig,
 		TokenExpiresAt:        pgtype.Timestamptz{Time: expires, Valid: true},
+		SyncIntervalMinutes:   row.SyncIntervalMinutes,
+		TokenMapping:          row.TokenMapping,
 	})
 	return err
 }

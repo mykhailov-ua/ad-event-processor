@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/pkg/broker/protocol"
+
 	"github.com/redis/go-redis/v9"
 )
 

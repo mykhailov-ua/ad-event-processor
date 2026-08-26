@@ -52,9 +52,13 @@ func CheckTelegramBPF(outDir string) (TelegramGateResult, error) {
 
 	var trackerConnects int64
 	for _, n := range summary.Network {
-		if n.Role == "tracker" {
-			trackerConnects += n.Connects
+		if n.Role != "tracker" {
+			continue
 		}
+		if n.Dport == 0 || n.Dport == 6379 {
+			continue
+		}
+		trackerConnects += n.Connects
 	}
 	connectOK := trackerConnects == 0
 	checks := []TelegramGateCheck{{
@@ -62,7 +66,7 @@ func CheckTelegramBPF(outDir string) (TelegramGateResult, error) {
 		Value:  strconv.FormatInt(trackerConnects, 10),
 		Limit:  "0",
 		OK:     connectOK,
-		Detail: "T9: /tg/* handler must not call connect()",
+		Detail: "T9: no outbound TCP connect on /tg/* hot path (unix/redis infra excluded)",
 	}}
 	pass := connectOK
 	return TelegramGateResult{Checks: checks, Pass: pass}, nil

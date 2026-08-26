@@ -16,7 +16,6 @@ const { sortRows, createSortState } = await import(
   pathToFileURL(join(SRC, 'lib/table_sort.js')).href
 );
 
-
 function makeHourly(n) {
   const rows = new Array(n);
   const base = Date.UTC(2024, 0, 1) / 1000;
@@ -26,7 +25,6 @@ function makeHourly(n) {
   }
   return rows;
 }
-
 
 function makeReportRows(n) {
   const rows = new Array(n);
@@ -44,7 +42,6 @@ function makeReportRows(n) {
   return rows;
 }
 
-
 function makeCampaignRows(n) {
   const rows = new Array(n);
   for (let i = 0; i < n; i++) {
@@ -59,7 +56,6 @@ function makeCampaignRows(n) {
   }
   return rows;
 }
-
 
 function makeBuyerDashboardPayload(n) {
   const campaigns = new Array(n);
@@ -85,7 +81,6 @@ function makeBuyerDashboardPayload(n) {
   };
 }
 
-
 function seriesFromHourlyNaive(hourly) {
   const n = hourly.length;
   const x = new Float64Array(n);
@@ -97,18 +92,15 @@ function seriesFromHourlyNaive(hourly) {
   return { x, y, length: n };
 }
 
-
 function mergeReportRowsNaive(existing, batch) {
   return [...existing, ...batch];
 }
-
 
 function sortRowsNaive(rows, key) {
   const sorted = [...rows].sort((a, b) => String(a[key]).localeCompare(String(b[key])));
   sorted.reverse();
   return sorted;
 }
-
 
 function mapBuyerDashboardNaive(data) {
   const campaigns = data?.campaigns ?? [];
@@ -117,7 +109,6 @@ function mapBuyerDashboardNaive(data) {
     campaigns: [...campaigns],
   };
 }
-
 
 function bench(name, fn, opts = {}) {
   const iterations = opts.iterations ?? 200;

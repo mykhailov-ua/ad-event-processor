@@ -35,10 +35,10 @@ type RtbBudgetMirrorWriter struct {
 	_           [64]byte
 	slots       [rtbBudgetMirrorRingCapacity]rtbBudgetMirrorSlot
 
-	catalog  *RtbCatalog
-	registry *Registry
-	redisShards     []redis.UniversalClient
-	sharder  Sharder
+	catalog     *RtbCatalog
+	registry    *Registry
+	redisShards []redis.UniversalClient
+	sharder     Sharder
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -49,11 +49,11 @@ func NewRtbBudgetMirrorWriter(catalog *RtbCatalog, registry *Registry, redisShar
 		return nil
 	}
 	w := &RtbBudgetMirrorWriter{
-		catalog:  catalog,
-		registry: registry,
-		redisShards:     redisShards,
-		sharder:  sharder,
-		stopCh:   make(chan struct{}),
+		catalog:     catalog,
+		registry:    registry,
+		redisShards: redisShards,
+		sharder:     sharder,
+		stopCh:      make(chan struct{}),
 	}
 	w.wg.Add(1)
 	go w.worker()

@@ -13,7 +13,6 @@ func LicenseRequiredFromEnv() bool {
 	return ProfileFromEnv() == "production"
 }
 
-
 const DevLicenseRelPath = "var/license.jwt"
 
 func DefaultLicensePath() string {

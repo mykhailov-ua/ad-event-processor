@@ -150,11 +150,11 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 			shard := h.sharder.GetShard(evt.CampaignID)
 			enqueueFraudReject(h.fraudWriter, shard, evt)
 		}
-		h.write(c, spec.gnetResp, ctx)
+		h.writeFilterReject(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		return gnet.None
 	case trackStatusInternalError:
-		h.write(c, respInternalError, ctx)
+		h.writeFilterReject(c, respInternalError, ctx)
 		h.recordMetrics(startMono, http.StatusInternalServerError)
 		return gnet.None
 	case trackStatusAccepted:
@@ -167,7 +167,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 				}
 				spec := filterRejectSpecs[filterRejectProducerOverload]
 				h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
-				h.write(c, spec.gnetResp, ctx)
+				h.writeFilterReject(c, spec.gnetResp, ctx)
 				h.recordMetrics(startMono, spec.status)
 				return gnet.None
 			}
@@ -177,14 +177,14 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 			}
 			spec := filterRejectSpecs[filterRejectProducerOverload]
 			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
-			h.write(c, spec.gnetResp, ctx)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
 			return gnet.None
 		}
 		h.writeGnetTrackAccepted(ctx, accept, origin, c, startMono, wReqID, requestIDStr, outcome.LandingURL)
 		return gnet.None
 	default:
-		h.write(c, respInternalError, ctx)
+		h.writeFilterReject(c, respInternalError, ctx)
 		h.recordMetrics(startMono, http.StatusInternalServerError)
 		return gnet.None
 	}

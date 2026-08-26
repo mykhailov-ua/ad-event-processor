@@ -1,0 +1,589 @@
+AuditLog:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    admin_id:
+      type: string
+    action:
+      type: string
+    target_type:
+      type: string
+    target_id:
+      type: string
+    changes:
+      type: object
+      additionalProperties: true
+    metadata:
+      type: object
+      additionalProperties: true
+    is_masked:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+
+Customer:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    balance:
+      type: string
+    currency:
+      type: string
+    cost_center:
+      type: string
+    active_campaigns:
+      type: integer
+      format: int64
+    total_spend:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CustomerListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Customer'
+    total:
+      type: integer
+      format: int64
+
+DisputeRow:
+  type: object
+  properties:
+    intent_id:
+      type: string
+    customer_id:
+      type: string
+      format: uuid
+    amount_micro:
+      type: integer
+      format: int64
+    currency:
+      type: string
+    provider_dispute_id:
+      type: string
+    updated_at:
+      type: string
+      format: date-time
+    chargeback_ledger_entry_ids:
+      type: array
+      items:
+        type: integer
+        format: int64
+
+DisputeListResponse:
+  type: object
+  properties:
+    disputes:
+      type: array
+      items:
+        $ref: '#/DisputeRow'
+    total:
+      type: integer
+      format: int64
+
+EulaStatus:
+  type: object
+  properties:
+    version:
+      type: string
+    accepted:
+      type: boolean
+    required:
+      type: boolean
+    text:
+      type: string
+
+AcceptEulaRequest:
+  type: object
+  required: [version]
+  properties:
+    version:
+      type: string
+
+LicenseStatus:
+  type: object
+  properties:
+    deployment_id:
+      type: string
+    state:
+      type: string
+    valid_until:
+      type: string
+      format: date-time
+    host_fingerprint:
+      type: string
+    hwid_v2:
+      type: string
+    hwid_match:
+      type: boolean
+    days_to_expiry:
+      type: integer
+    plan_code:
+      type: string
+    max_rps:
+      type: integer
+      format: int64
+    upgrade_plan_code:
+      type: string
+    trial_self_serve_url:
+      type: string
+    pilot_valid_days:
+      type: integer
+    support_url:
+      type: string
+
+ApplyLicenseRequest:
+  type: object
+  required: [token]
+  properties:
+    token:
+      type: string
+
+MetaLicense:
+  type: object
+  properties:
+    state:
+      type: string
+    plan_code:
+      type: string
+    valid_until:
+      type: string
+      format: date-time
+    banner_severity:
+      type: string
+    renew_days:
+      type: integer
+    tier_warnings:
+      type: array
+      items:
+        type: string
+
+MetaResponse:
+  type: object
+  properties:
+    product_name:
+      type: string
+    vendor_name:
+      type: string
+    site_url:
+      type: string
+    support_url:
+      type: string
+    version:
+      type: string
+    ingress_schemas:
+      type: array
+      items:
+        type: string
+    deployment_id:
+      type: string
+    bootstrap_complete:
+      type: boolean
+    eula_version:
+      type: string
+    eula_accepted:
+      type: boolean
+    eula_required:
+      type: boolean
+    license:
+      $ref: '#/MetaLicense'
+
+ConsentRecord:
+  type: object
+  required: [user_id, purposes, source]
+  properties:
+    user_id:
+      type: string
+    purposes:
+      type: integer
+      format: int32
+    source:
+      type: string
+    timestamp:
+      type: string
+      format: date-time
+
+ReconRun:
+  type: object
+  properties:
+    service:
+      type: string
+    id:
+      type: integer
+      format: int64
+    period_start:
+      type: string
+      format: date-time
+    period_end:
+      type: string
+      format: date-time
+    status:
+      type: string
+    total_delta:
+      type: integer
+      format: int64
+    campaigns_checked:
+      type: integer
+      format: int32
+    discrepancies_found:
+      type: integer
+      format: int32
+    findings_count:
+      type: integer
+      format: int32
+    intents_checked:
+      type: integer
+      format: int32
+    error_message:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    completed_at:
+      type: string
+      format: date-time
+
+ReportSchedule:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    report_key:
+      type: string
+    format:
+      type: string
+    cron_expr:
+      type: string
+    spec:
+      type: object
+      additionalProperties: true
+    enabled:
+      type: boolean
+    next_run_at:
+      type: string
+      format: date-time
+    last_run_at:
+      type: string
+      format: date-time
+    last_job_id:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateReportScheduleRequest:
+  type: object
+  required: [customer_id, report_key, cron_expr]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    report_key:
+      type: string
+    format:
+      type: string
+    cron_expr:
+      type: string
+    spec:
+      type: object
+      additionalProperties: true
+    enabled:
+      type: boolean
+
+UpdateReportScheduleRequest:
+  type: object
+  properties:
+    report_key:
+      type: string
+    format:
+      type: string
+    cron_expr:
+      type: string
+    spec:
+      type: object
+      additionalProperties: true
+    enabled:
+      type: boolean
+
+PlatformSettingsView:
+  type: object
+  additionalProperties: true
+  description: platformconfig.PublicView (config, secrets metadata, restart_required, templates).
+
+PlatformSettingsPatch:
+  type: object
+  additionalProperties: true
+  description: platformconfig.Patch merge document.
+
+PlatformBootstrapRequest:
+  type: object
+  additionalProperties: true
+  description: platformconfig.BootstrapRequest for first-run install.
+
+PlatformApplyRequest:
+  type: object
+  properties:
+    install_root:
+      type: string
+
+PlatformApplyResponse:
+  type: object
+  required: [written_path]
+  properties:
+    written_path:
+      type: string
+
+SupportFeedbackMeta:
+  type: object
+  properties:
+    deployment_id:
+      type: string
+    binary_version:
+      type: string
+
+SupportFeedbackRequest:
+  type: object
+  required: [type, message]
+  properties:
+    type:
+      type: string
+    contact_email:
+      type: string
+    message:
+      type: string
+    attach_bundle:
+      type: boolean
+
+SupportFeedbackResponse:
+  type: object
+  required: [id]
+  properties:
+    id:
+      type: string
+      format: uuid
+
+TeamMember:
+  type: object
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    email:
+      type: string
+    role:
+      type: string
+    campaigns_owned:
+      type: integer
+      format: int64
+    created_at:
+      type: string
+      format: date-time
+    is_blocked:
+      type: boolean
+    spend_cap_micro:
+      type: integer
+      format: int64
+
+TeamBudgetApproval:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    requested_budget_micro:
+      type: integer
+      format: int64
+    previous_budget_micro:
+      type: integer
+      format: int64
+    status:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+TeamLicense:
+  type: object
+  properties:
+    state:
+      type: string
+    valid_until:
+      type: string
+      format: date-time
+    plan_code:
+      type: string
+
+TeamOverview:
+  type: object
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    customer_name:
+      type: string
+    cost_center:
+      type: string
+    balance_micro:
+      type: integer
+      format: int64
+    currency:
+      type: string
+    license:
+      $ref: '#/TeamLicense'
+    members:
+      type: array
+      items:
+        $ref: '#/TeamMember'
+
+InviteTeamMemberRequest:
+  type: object
+  required: [email, role]
+  properties:
+    email:
+      type: string
+    role:
+      type: string
+
+UpdateTeamMemberRequest:
+  type: object
+  properties:
+    role:
+      type: string
+    is_blocked:
+      type: boolean
+    spend_cap_micro:
+      type: integer
+      format: int64
+
+PublisherKPIs:
+  type: object
+  properties:
+    impressions:
+      type: integer
+      format: int64
+    fill_rate:
+      type: number
+      format: double
+    ecpm_micro:
+      type: integer
+      format: int64
+    ivt_rate:
+      type: number
+      format: double
+
+PublisherPlacement:
+  type: object
+  properties:
+    placement_id:
+      type: string
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    fill_rate:
+      type: number
+      format: double
+    revenue_micro:
+      type: integer
+      format: int64
+    ecpm_micro:
+      type: integer
+      format: int64
+
+PublisherDashboard:
+  type: object
+  properties:
+    seller_id:
+      type: string
+    publisher_account_id:
+      type: string
+    from:
+      type: string
+      format: date-time
+    to:
+      type: string
+      format: date-time
+    kpis:
+      $ref: '#/PublisherKPIs'
+    placements:
+      type: array
+      items:
+        $ref: '#/PublisherPlacement'
+
+PublisherStatement:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    amount_micro:
+      type: integer
+      format: int64
+    created_at:
+      type: string
+      format: date-time
+    campaign_id:
+      type: string
+      format: uuid
+    idempotency_hash:
+      type: string
+
+PublisherStatementListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/PublisherStatement'
+    total:
+      type: integer
+      format: int64
+
+CryptoBillingWebhookEvent:
+  type: object
+  properties:
+    id:
+      type: string
+    type:
+      type: string
+    tx_hash:
+      type: string
+    amount_micro:
+      type: integer
+      format: int64
+    currency:
+      type: string
+    confirmations:
+      type: integer
+    provider_ref:
+      type: string

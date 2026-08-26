@@ -2,7 +2,9 @@ package ingestion
 
 import (
 	"context"
+	"hash/fnv"
 	"log/slog"
+	"sync"
 	"time"
 
 	"ad-event-processor/internal/domain"
@@ -12,11 +14,54 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
+const entitlementsTimezoneCacheShards = 16
+
+type entitlementsTimezoneCache struct {
+	shards [entitlementsTimezoneCacheShards]struct {
+		mu sync.RWMutex
+		m  map[string]*time.Location
+	}
+}
+
+func (c *entitlementsTimezoneCache) location(timezone string) *time.Location {
+	if timezone == "" {
+		timezone = "UTC"
+	}
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(timezone))
+	shard := &c.shards[h.Sum32()%entitlementsTimezoneCacheShards]
+	shard.mu.RLock()
+	loc, ok := shard.m[timezone]
+	shard.mu.RUnlock()
+	if ok {
+		return loc
+	}
+	loaded, err := time.LoadLocation(timezone)
+	if err != nil {
+		loaded = time.UTC
+	}
+	shard.mu.Lock()
+	if shard.m == nil {
+		shard.m = make(map[string]*time.Location, 4)
+	}
+	if cached, exists := shard.m[timezone]; exists {
+		shard.mu.Unlock()
+		return cached
+	}
+	shard.m[timezone] = loaded
+	shard.mu.Unlock()
+	return loaded
+}
+
 type EntitlementsFilter struct {
-	registry    *Registry
-	sharder     Sharder
-	redisShards []redis.UniversalClient
-	regionCode  uint8
+	registry          *Registry
+	sharder           Sharder
+	redisShards       []redis.UniversalClient
+	regionCode        uint8
+	tzCache           entitlementsTimezoneCache
+	cgnatGlobalBypass bool
+	mobileCarrierASN  *MobileCarrierASNTable
+	asnLookup         ASNLookup
 }
 
 func NewEntitlementsFilter(registry *Registry, sharder Sharder, redisShards []redis.UniversalClient) *EntitlementsFilter {
@@ -33,13 +78,22 @@ func (f *EntitlementsFilter) SetRegionCode(code uint8) {
 	}
 }
 
+func (f *EntitlementsFilter) ConfigureCGNAT(globalBypass bool, table *MobileCarrierASNTable, lookup ASNLookup) {
+	if f == nil {
+		return
+	}
+	f.cgnatGlobalBypass = globalBypass
+	f.mobileCarrierASN = table
+	f.asnLookup = lookup
+}
+
 func (f *EntitlementsFilter) getRedisShardClient(id uuid.UUID) redis.UniversalClient {
 	shard := f.sharder.GetShard(id)
 	return f.redisShards[shard]
 }
 
 func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error {
-	campInfo, ok := f.registry.GetCampaign(evt.CampaignID)
+	campInfo, ok := getCampaignFromEvent(f.registry, evt)
 	if !ok {
 		return ErrCampaignNotFound
 	}
@@ -67,17 +121,18 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 		return nil
 	}
 
+	if cgnatBypassForCampaign(f.cgnatGlobalBypass, f.registry, evt.CampaignID, f.mobileCarrierASN, f.asnLookup, evt.IP, "ingress_rpd") {
+		return nil
+	}
+
 	timezone := ent.Limits.QuotaResetTimezone
 	if timezone == "" {
 		timezone = "UTC"
 	}
 
-	loc, err := time.LoadLocation(timezone)
-	if err != nil {
-		loc = time.UTC
-	}
+	loc := f.tzCache.location(timezone)
 
-	dateStr := time.Now().In(loc).Format("20060102")
+	dateStr := CachedTimeIn(loc).Format("20060102")
 
 	var keyBuf [128]byte
 	b := IngressDayKey(keyBuf[:0], f.regionCode, custID, dateStr)
@@ -91,9 +146,9 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 	pipe := redisClient.Pipeline()
 	incr := pipe.Incr(ctx, redisKey)
 	pipe.Expire(ctx, redisKey, 28*time.Hour)
-	_, err = pipe.Exec(ctx)
-	if err != nil {
-		slog.Warn("failed to increment daily quota counter in Redis", "customer_id", custID, "error", err)
+	_, execErr := pipe.Exec(ctx)
+	if execErr != nil {
+		slog.Warn("failed to increment daily quota counter in Redis", "customer_id", custID, "error", execErr)
 		return nil
 	}
 

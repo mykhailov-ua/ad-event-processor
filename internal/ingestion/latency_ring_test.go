@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/require"
 )

@@ -7,7 +7,6 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
-
 type TCPMSSFilter struct {
 	minMSS uint8
 }

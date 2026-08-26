@@ -6,6 +6,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/testutil"
+
 	"github.com/stretchr/testify/require"
 )
 

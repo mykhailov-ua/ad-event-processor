@@ -51,11 +51,11 @@ func newBareService(t *testing.T, pool *pgxpool.Pool, redisShards []redis.Univer
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	svc := &Service{
-		redisShards:    redisShards,
-		sharder: domain.NewStaticSlotSharder(shardCount),
-		cfg:     cfg,
-		ctx:     ctx,
-		cancel:  cancel,
+		redisShards: redisShards,
+		sharder:     domain.NewStaticSlotSharder(shardCount),
+		cfg:         cfg,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 	svc.SetPool(pool)
 	if cfg.MultiRegionEnabled {

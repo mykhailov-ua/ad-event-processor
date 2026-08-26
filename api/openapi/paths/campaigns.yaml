@@ -1,0 +1,1034 @@
+paths:
+  /api/v1/campaigns:
+    get:
+      tags: [campaigns]
+      operationId: campaignsList
+      summary: List campaigns
+      description: Paginated campaign list filtered by customer_id and optional status.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Campaign page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}:
+    get:
+      tags: [campaigns]
+      operationId: campaignsGet
+      summary: Get campaign by id
+      description: Returns full campaign DTO including optional ingress_cost_config.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Campaign
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Campaign'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [campaigns]
+      operationId: campaignsPatch
+      summary: Partial campaign update
+      description: Merge semantics documented on PatchCampaignRequest schema.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/PatchCampaignRequest'
+      responses:
+        '200':
+          description: Updated campaign
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Campaign'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/owner:
+    put:
+      tags: [campaigns]
+      operationId: campaignsAssignOwner
+      summary: Assign campaign owner user
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/AssignCampaignOwnerRequest'
+      responses:
+        '200':
+          description: Owner assigned
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/clone:
+    post:
+      tags: [campaigns]
+      operationId: campaignsClone
+      summary: Clone campaign with flow and postback config
+      description: Requires Idempotency-Key header; duplicates budget freeze via ledger.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CloneCampaignRequest'
+      responses:
+        '201':
+          description: Cloned campaign
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CloneCampaignResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/export:
+    get:
+      tags: [campaigns]
+      operationId: campaignsExport
+      summary: Export campaign bundle for import elsewhere
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Campaign export bundle
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignExportBundle'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/import:
+    post:
+      tags: [campaigns]
+      operationId: campaignsImport
+      summary: Import campaign from export bundle
+      description: Requires Idempotency-Key header; body embeds export bundle fields plus customer_id.
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ImportCampaignRequest'
+      responses:
+        '201':
+          description: Imported campaign
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ImportCampaignResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/migrate/sources:
+    get:
+      tags: [campaigns]
+      operationId: campaignsMigrateListSources
+      summary: List supported campaign migration source kinds
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Migration sources
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/MigrationSourcesResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/migrate/preview:
+    post:
+      tags: [campaigns]
+      operationId: campaignsMigratePreview
+      summary: Preview external tracker migration payload without importing
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/MigratePreviewRequest'
+      responses:
+        '200':
+          description: Mapped campaigns preview
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/MigrationPreviewResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/migrate/import:
+    post:
+      tags: [campaigns]
+      operationId: campaignsMigrateImport
+      summary: Import campaigns from external tracker migration payload
+      description: Requires Idempotency-Key header; batch idempotency key applies to the full migrate request.
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/MigrateImportRequest'
+      responses:
+        '201':
+          description: Migration import result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ImportMigrationResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/placement-blocks:
+    post:
+      tags: [campaigns]
+      operationId: campaignsBlockPlacement
+      summary: Block a placement for a campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/BlockCampaignPlacementRequest'
+      responses:
+        '202':
+          description: Block accepted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/events:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListEvents
+      summary: List campaign conversion events
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Event page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignEventListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/margin:
+    get:
+      tags: [campaigns]
+      operationId: campaignsGetMargin
+      summary: Campaign margin guard window snapshot
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Margin metrics
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignMargin'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/fraud:
+    get:
+      tags: [campaigns]
+      operationId: campaignsGetFraud
+      summary: Get campaign fraud thresholds
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Fraud config
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignFraudConfig'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [campaigns]
+      operationId: campaignsPatchFraud
+      summary: Update campaign fraud thresholds
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/PatchCampaignFraudRequest'
+      responses:
+        '200':
+          description: Updated fraud config
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignFraudConfig'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/fraud/preview:
+    post:
+      tags: [campaigns]
+      operationId: campaignsPreviewFraud
+      summary: Preview fraud threshold impact (7d shadow scores)
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/PreviewCampaignFraudRequest'
+      responses:
+        '200':
+          description: Preview estimate
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignFraudPreview'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/stats:
+    get:
+      tags: [campaigns]
+      operationId: campaignsGetStats
+      summary: Campaign stats time series
+      description: Defaults to last 7 days hourly buckets; day granularity requires ops shards read.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: granularity
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [hour, day]
+            default: hour
+      responses:
+        '200':
+          description: Stats report
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignStats'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/forecast/campaign:
+    post:
+      tags: [campaigns]
+      operationId: campaignsForecast
+      summary: Campaign spend/impression forecast (wizard)
+      description: ClickHouse-backed advisory for onboarding wizard; 503 when CH unavailable.
+      x-permissions: [campaigns:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CampaignForecastRequest'
+      responses:
+        '200':
+          description: Forecast result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignForecast'
+        '503':
+          description: Forecast unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ForecastUnavailableResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/flows:
+    get:
+      tags: [flows]
+      operationId: flowsList
+      summary: List flows
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Flow list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/Flow'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [flows]
+      operationId: flowsCreate
+      summary: Create flow
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CreateFlowRequest'
+      responses:
+        '201':
+          description: Flow created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Flow'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/flows/{id}:
+    get:
+      tags: [flows]
+      operationId: flowsGet
+      summary: Get flow by id
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Flow
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Flow'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    put:
+      tags: [flows]
+      operationId: flowsUpdate
+      summary: Replace flow paths
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpdateFlowRequest'
+      responses:
+        '200':
+          description: Updated flow
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Flow'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/landers:
+    get:
+      tags: [landers]
+      operationId: landersList
+      summary: List landers
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Lander list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [landers]
+      operationId: landersCreate
+      summary: Create lander
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CreateLanderRequest'
+      responses:
+        '201':
+          description: Lander created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/landers/{id}/hosted-upload:
+    post:
+      tags: [landers]
+      operationId: landersHostedUpload
+      summary: Upload hosted lander ZIP
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [zip]
+              properties:
+                zip:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Lander with hosted asset
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/landers/{id}/hosted-editor:
+    get:
+      tags: [landers]
+      operationId: landersHostedEditorState
+      summary: Hosted lander editor file tree
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Editor state
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/HostedEditorState'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/landers/{id}/hosted-files/{path...}:
+    get:
+      tags: [landers]
+      operationId: landersHostedFileGet
+      summary: Read hosted lander draft file
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: path...
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: File body
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/HostedEditorFileBody'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    put:
+      tags: [landers]
+      operationId: landersHostedFilePut
+      summary: Save hosted lander draft file
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: path...
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/HostedEditorFileBody'
+      responses:
+        '200':
+          description: Save result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/HostedEditorSaveResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/landers/{id}/hosted-publish:
+    post:
+      tags: [landers]
+      operationId: landersHostedPublish
+      summary: Publish hosted lander draft
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/HostedEditorPublishRequest'
+      responses:
+        '200':
+          description: Published lander
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Lander'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/offers:
+    get:
+      tags: [flows]
+      operationId: offersList
+      summary: List offers
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Offer list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/Offer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [flows]
+      operationId: offersCreate
+      summary: Create offer
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CreateOfferRequest'
+      responses:
+        '201':
+          description: Offer created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Offer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/brands:
+    get:
+      tags: [brands]
+      operationId: brandsList
+      summary: List brands for customer
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '200':
+          description: Brand list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/Brand'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [brands]
+      operationId: brandsCreate
+      summary: Create brand
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CreateBrandRequest'
+      responses:
+        '201':
+          description: Brand id
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/IDCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/brands/{id}/creatives:
+    get:
+      tags: [brands]
+      operationId: brandCreativesList
+      summary: List brand creatives
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Creative list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/BrandCreative'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [brands]
+      operationId: brandCreativesCreate
+      summary: Create brand creative
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpsertBrandCreativeRequest'
+      responses:
+        '201':
+          description: Creative id
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/IDCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/brand-creatives/{id}:
+    patch:
+      tags: [brands]
+      operationId: brandCreativesPatch
+      summary: Update brand creative
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/UpdateBrandCreativeRequest'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [brands]
+      operationId: brandCreativesDelete
+      summary: Delete brand creative
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/domains:
+    get:
+      tags: [domains]
+      operationId: domainsList
+      summary: List tracked domain health rows
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Domain health list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/DomainHealth'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [domains]
+      operationId: domainsAdd
+      summary: Register custom tracking domain
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/AddDomainRequest'
+      responses:
+        '201':
+          description: Domain row
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/DomainHealth'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/domains/park:
+    post:
+      tags: [domains]
+      operationId: domainsPark
+      summary: Park domain via Cloudflare DNS
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ParkDomainRequest'
+      responses:
+        '200':
+          description: Park result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ParkDomainResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/domains/{hostname}:
+    delete:
+      tags: [domains]
+      operationId: domainsDelete
+      summary: Remove custom domain
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/HostnamePath'
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/domains/{hostname}/probe:
+    post:
+      tags: [domains]
+      operationId: domainsProbe
+      summary: Run immediate domain health probe
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/HostnamePath'
+      responses:
+        '200':
+          description: Probe result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/DomainHealth'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/domains/{hostname}/ssl/setup:
+    post:
+      tags: [domains]
+      operationId: domainsSslSetup
+      summary: Trigger TLS certificate setup for hostname
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/HostnamePath'
+      responses:
+        '200':
+          description: Setup result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/DomainSSLSetupResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/conversion-mappings:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListConversionMappings
+      summary: List inbound status to payout mappings
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Mappings
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ConversionMappingListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    put:
+      tags: [campaigns]
+      operationId: campaignsReplaceConversionMappings
+      summary: Replace all conversion mappings for campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ReplaceConversionMappingsRequest'
+      responses:
+        '200':
+          description: Updated mappings
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ConversionMappingListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /lp/{lander_id}/{path...}:
+    get:
+      tags: [landers]
+      operationId: landersServePublished
+      summary: Serve published hosted lander static files
+      parameters:
+        - name: lander_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: path...
+          in: path
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Static asset bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /lp-preview/{lander_id}/{path...}:
+    get:
+      tags: [landers]
+      operationId: landersServePreview
+      summary: Serve draft hosted lander preview
+      parameters:
+        - name: lander_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: path...
+          in: path
+          required: false
+          schema:
+            type: string
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Preview asset bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

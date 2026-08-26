@@ -218,10 +218,13 @@ func main() {
 		pgStore.SetPIIHashAtInsert(piiHasher)
 		slog.Info("postgres events IP hash-at-insert enabled")
 	}
+	var conversionPayoutApplier *ingestion.ConversionPayoutApplier
 	if chEnabled && chConn != nil {
 		spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
 		chStore = ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
 		chStore.SetPIIHasher(piiHasher)
+		conversionPayoutApplier = ingestion.NewConversionPayoutApplier(settleQueries)
+		chStore.SetConversionPayoutApplier(conversionPayoutApplier)
 		if err := chStore.RecoverSpool(ctx); err != nil {
 			slog.Error("failed to recover clickhouse spool", "error", err)
 			os.Exit(1)
@@ -267,6 +270,69 @@ func main() {
 
 	campaignRepo := ingestion.NewCampaignRepoWithDB(pool, queries)
 	campaignRepo.ConfigureAuditLedgerFlush(cfg.AuditLedgerFlushSampleMask)
+
+	var conversionDCCheck postback.ConversionDatacenterChecker
+	var chQuery *database.CHQuery
+	if chConn != nil {
+		chQuery = database.NewCHQuery(chConn, database.CHQueryConfigFromApp(cfg))
+	}
+	if cfg.ConversionSmartRejectEnabled() && cfg.ConversionReject.RejectDatacenterIP {
+		geoProvider, geoErr := ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
+		if geoErr != nil {
+			slog.Warn("conversion datacenter reject disabled: geoip country db unavailable", "error", geoErr)
+		} else {
+			if asnPath := cfg.GeoIP.ASNDBPath; asnPath != "" {
+				if err := geoProvider.ReloadASN(asnPath); err != nil {
+					slog.Warn("conversion datacenter reject: asn db load failed", "path", asnPath, "error", err)
+				}
+			}
+			dcASNTable := ingestion.NewDCASNTable()
+			if loader := ingestion.NewDCASNFeedLoader(cfg, dcASNTable); loader != nil {
+				go loader.Start(ctx)
+			}
+			conversionDCCheck = ingestion.NewConversionDatacenterIPChecker(geoProvider, dcASNTable)
+		}
+	}
+
+	var conversionRejectApplier *postback.ConversionRejectApplier
+	if cfg.ConversionSmartRejectEnabled() {
+		var chClickStore postback.ConversionClickStore
+		if chQuery != nil {
+			chClickStore = postback.NewCHConversionClickStore(chQuery)
+		}
+		conversionRejectApplier = postback.NewConversionRejectApplier(
+			cfg.ConversionReject,
+			chClickStore,
+			campaignRepo,
+			conversionDCCheck,
+		)
+		if conversionRejectApplier != nil {
+			settleStore = ingestion.WrapEventStoreBeforeBatch(settleStore, conversionRejectApplier.ApplyBatch)
+			if chStore != nil {
+				chStore.SetConversionReject(conversionRejectApplier.ApplyBatch)
+			}
+			slog.Info("conversion smart reject enabled on processor settlement")
+		}
+	}
+	if conversionRejectApplier != nil && chQuery != nil && chStore != nil {
+		reprocessor := postback.NewConversionRejectReprocessor(
+			cfg.ConversionReject,
+			chQuery,
+			conversionRejectApplier,
+			chStore,
+			chStore,
+			conversionPayoutApplier,
+			postbackEnqueuer,
+		)
+		if reprocessor != nil {
+			go reprocessor.Start(ctx)
+			slog.Info("conversion smart reject reprocess worker started",
+				"interval_min", cfg.ConversionReject.ReprocessIntervalMin,
+				"lookback_hours", cfg.ConversionReject.ReprocessLookbackHours,
+			)
+		}
+	}
+
 	customerRepo := ingestion.NewCustomerRepoWithDB(pool, queries)
 	dedupAdapter := dedup.NewAdapter(pool, cfg.RegionCode, dedup.LoadRoutingEpoch(ctx, pool))
 
@@ -304,6 +370,9 @@ func main() {
 		pgStore.SetQuerier(settleQueries)
 		if postbackEnqueuer != nil {
 			postbackEnqueuer.SetStore(settleQueries)
+		}
+		if conversionPayoutApplier != nil {
+			conversionPayoutApplier.SetStore(settleQueries)
 		}
 		if oldSettle != nil && oldSettle != settleNew && oldSettle != oldRead {
 			oldSettle.Close()

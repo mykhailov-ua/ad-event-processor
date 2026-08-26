@@ -1,45 +1,23 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
+import type { components } from '../types/generated/openapi.js';
 
-export type DomainHealthRow = {
-  hostname: string;
-  role: 'tracking' | 'admin' | 'custom';
-  health_status: 'healthy' | 'degraded' | 'down' | 'unknown';
-  ssl_status: 'valid' | 'expiring' | 'expired' | 'missing' | 'unknown';
-  ssl_not_after?: string;
-  http_status?: number;
-  probe_latency_ms?: number;
-  probe_detail?: string;
-  last_probe_at?: string;
-  updated_at?: string;
-};
+export type DomainHealthRow = components['schemas']['DomainHealth'];
+export type DomainSSLSetupResult = components['schemas']['DomainSSLSetupResult'];
+export type ParkDomainRequest = components['schemas']['ParkDomainRequest'];
+export type ParkDomainResponse = components['schemas']['ParkDomainResponse'];
 
-export type DomainSSLSetupResult = {
-  hostname: string;
-  status: string;
-  message: string;
-  output?: string;
-};
-
-export type ParkDomainRequest = {
-  domain: string;
-  cloudflare_zone_id: string;
-  pool_id?: string;
-};
-
-export type ParkDomainResponse = {
-  success: boolean;
-  dns_record_id: string;
-  ssl_status: string;
-  hostname?: string;
-  pool_id?: string;
-};
-
+/**
+ * List domain health rows (tracking, admin, custom).
+ */
 export async function fetchDomains(): Promise<DomainHealthRow[]> {
   const res = await api<DomainHealthRow[]>('/api/v1/domains');
   return Array.isArray(res.data) ? res.data : [];
 }
 
+/**
+ * Register a custom tracking hostname.
+ */
 export async function addCustomDomain(hostname: string): Promise<DomainHealthRow> {
   const res = await apiConfirmed<DomainHealthRow>('/api/v1/domains', {
     method: 'POST',
@@ -48,12 +26,18 @@ export async function addCustomDomain(hostname: string): Promise<DomainHealthRow
   return res.data;
 }
 
+/**
+ * Remove a custom domain from health tracking.
+ */
 export async function deleteCustomDomain(hostname: string): Promise<void> {
   await apiConfirmed(`/api/v1/domains/${encodeURIComponent(hostname)}`, {
     method: 'DELETE',
   });
 }
 
+/**
+ * Run an immediate HTTP/TLS probe for one hostname.
+ */
 export async function probeDomain(hostname: string): Promise<DomainHealthRow> {
   const res = await apiConfirmed<DomainHealthRow>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/probe`,
@@ -62,6 +46,9 @@ export async function probeDomain(hostname: string): Promise<DomainHealthRow> {
   return res.data;
 }
 
+/**
+ * Trigger appliance TLS setup for a hostname.
+ */
 export async function setupDomainSSL(hostname: string): Promise<DomainSSLSetupResult> {
   const res = await apiConfirmed<DomainSSLSetupResult>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/ssl/setup`,
@@ -70,6 +57,9 @@ export async function setupDomainSSL(hostname: string): Promise<DomainSSLSetupRe
   return res.data;
 }
 
+/**
+ * Park a domain via Cloudflare DNS integration.
+ */
 export async function parkDomain(req: ParkDomainRequest): Promise<ParkDomainResponse> {
   const res = await apiConfirmed<ParkDomainResponse>('/api/v1/domains/park', {
     method: 'POST',
@@ -84,6 +74,7 @@ export async function parkDomain(req: ParkDomainRequest): Promise<ParkDomainResp
   );
 }
 
+/** Map health_status wire value to operator label. */
 export function healthStatusLabel(status: string): string {
   switch (status) {
     case 'healthy':
@@ -97,6 +88,7 @@ export function healthStatusLabel(status: string): string {
   }
 }
 
+/** Map ssl_status wire value to operator label. */
 export function sslStatusLabel(status: string): string {
   switch (status) {
     case 'valid':

@@ -28,8 +28,8 @@ type filterRejectSliceSample struct {
 }
 
 type filterRejectMetricsSnapshot struct {
-	Totals  map[string]float64
-	Slices  []filterRejectSliceSample
+	Totals map[string]float64
+	Slices []filterRejectSliceSample
 }
 
 func parseFilterRejectCounters(r io.Reader, contentType string) ([]filterRejectCounterSample, error) {

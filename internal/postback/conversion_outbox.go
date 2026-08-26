@@ -8,6 +8,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -51,6 +52,10 @@ func (e *ConversionPostbackEnqueuer) OnBatchStored(ctx context.Context, events [
 	campaignSet := make(map[uuid.UUID]struct{})
 	for _, evt := range events {
 		if evt == nil || evt.SilentRejectEvent || evt.ShadowEvent || evt.FraudReason != "" {
+			continue
+		}
+		if domain.ConversionValidationPending(evt.Payload) {
+			metrics.ConversionPostbackDeferredTotal.Inc()
 			continue
 		}
 		if evt.CampaignID == uuid.Nil || evt.ClickID == "" || evt.Type == "" {
@@ -193,6 +198,18 @@ func mergeEventPayloadInto(pb *PostbackPayload, raw []byte) {
 	}
 	if v := readString("ttclid"); v != "" {
 		pb.TTCLID = v
+	}
+	if v := readString("tblci"); v != "" {
+		pb.TBLCI = v
+	}
+	if v := readString("ob_click_id"); v != "" {
+		pb.OBClickID = v
+	}
+	if v := readString("obclid"); v != "" && pb.OBClickID == "" {
+		pb.OBClickID = v
+	}
+	if v := readString("msclkid"); v != "" {
+		pb.MSCLKID = v
 	}
 	if v := readString("event_source_url"); v != "" {
 		pb.EventSourceURL = v

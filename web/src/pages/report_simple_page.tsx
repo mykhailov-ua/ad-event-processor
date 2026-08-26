@@ -11,6 +11,8 @@ import { tenantReportQueryString } from '../helpers/tenant_url.js';
 import { formatMoney } from '../helpers/money.js';
 import { reportCompareLabel, formatSpendDelta } from '../helpers/report_compare.js';
 import { ReportRowActions } from '../components/report_row_actions.js';
+import { ReportSavedViewsPanel } from '../components/report_saved_views_panel.js';
+import { buildReportViewSpec } from '../helpers/report_api.js';
 import { AlertBanner } from '../components/alert_banner.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
@@ -55,9 +57,19 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
   const [freshness, setFreshness] = useState<DataFreshness | null>(null);
   const [error, setError] = useState<unknown>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [comparePeriod, setComparePeriod] = useState(false);
+  const [comparePeriod, setComparePeriod] = useState(searchParams.get('compare') === 'previous');
   const enableCompare = COMPARE_ENDPOINTS.has(endpoint);
   const enableActions = ACTION_ENDPOINTS.has(endpoint);
+
+  const applySavedSpec = (spec: Record<string, unknown>) => {
+    if (spec.from) setFrom(String(spec.from));
+    if (spec.to) setRangeTo(String(spec.to));
+    if (spec.compare === true || spec.compare === 'previous') {
+      setComparePeriod(true);
+    } else if (spec.compare === false) {
+      setComparePeriod(false);
+    }
+  };
 
   const load = useCallback(async () => {
     const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
@@ -98,7 +110,7 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
 
   useEffect(() => {
     void load();
-  }, []); 
+  }, []);
 
   if (error) return <ErrorBlock error={error} />;
 
@@ -132,6 +144,14 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
               onChange={(e) => setCustomerInput(e.target.value)}
             />
           </FormField>
+        ) : null}
+        {cid ? (
+          <ReportSavedViewsPanel
+            reportKey={endpoint}
+            customerId={cid}
+            currentSpec={buildReportViewSpec({ from, to: rangeTo, compare: comparePeriod })}
+            onApply={applySavedSpec}
+          />
         ) : null}
         <FormField label="From" htmlFor={`report-${endpoint}-from`}>
           <input
@@ -228,8 +248,8 @@ export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageP
             {endpoint === 'true-roi' ? (
               <>
                 {' '}
-                Missing ad spend? Check{' '}
-                <a href="/reports/cost-sync-coverage">Cost sync coverage</a>.
+                Missing ad spend? Check <a href="/reports/cost-sync-coverage">Cost sync coverage</a>
+                .
               </>
             ) : null}
           </div>

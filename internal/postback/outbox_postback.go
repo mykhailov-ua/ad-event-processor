@@ -22,6 +22,9 @@ type PostbackPayload struct {
 	FBCLID         string    `json:"fbclid"`
 	GCLID          string    `json:"gclid"`
 	TTCLID         string    `json:"ttclid"`
+	TBLCI          string    `json:"tblci,omitempty"`
+	OBClickID      string    `json:"ob_click_id,omitempty"`
+	MSCLKID        string    `json:"msclkid,omitempty"`
 	EventSourceURL string    `json:"event_source_url,omitempty"`
 	TestEventCode  string    `json:"test_event_code,omitempty"`
 	subSlots       [maxSubMacroSlots]string

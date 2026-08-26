@@ -13,6 +13,59 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDeviceFilter_settingsListenerReloadsBlocklist(t *testing.T) {
+	sw := NewSettingsWatcher(nil, &config.Config{})
+	sw.snapshot.Store(&DynamicConfig{TLSHashBlocklist: "blockedhash"})
+	f := NewDeviceFilter(sw)
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+
+	evt.TLSHash = "blockedhash"
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+
+	acc.reset()
+	evt.TLSHash = "freshhash"
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.False(t, acc.has(FraudReasonTLSBlocklist))
+
+	sw.applyConfig(2, map[string]string{"tls_hash_blocklist": "freshhash"})
+	acc.reset()
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+}
+
+func TestDeviceFilter_blocklistSnapshotReload(t *testing.T) {
+	sw := NewSettingsWatcher(nil, &config.Config{})
+	sw.snapshot.Store(&DynamicConfig{TLSHashBlocklist: "blockedhash"})
+	f := NewDeviceFilter(sw)
+
+	evt := domain.EventPool.Get().(*domain.Event)
+	defer domain.EventPool.Put(evt)
+	evt.Reset()
+	acc := attachFraudAccumulator(evt)
+	defer releaseFraudAccumulator(evt, acc)
+
+	evt.TLSHash = "blockedhash"
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+
+	acc.reset()
+	evt.TLSHash = "otherhash"
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.False(t, acc.has(FraudReasonTLSBlocklist))
+
+	sw.snapshot.Store(&DynamicConfig{TLSHashBlocklist: "otherhash"})
+	f.reloadBlocklist()
+	acc.reset()
+	require.NoError(t, f.Check(context.Background(), evt))
+	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+}
+
 func TestDeviceFilter_signals(t *testing.T) {
 	cfg := &config.Config{}
 	sw := NewSettingsWatcher([]redis.UniversalClient{redis.NewClient(&redis.Options{Addr: "127.0.0.1:9"})}, cfg)

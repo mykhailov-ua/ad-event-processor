@@ -77,10 +77,13 @@ func NewPostbackWorker(pool *pgxpool.Pool, encryptionKey []byte) *PostbackWorker
 		staleProcessingSec: 120,
 		batchSize:          50,
 		adapters: map[string]PostbackAdapter{
-			"facebook": &FacebookAdapter{},
-			"google":   &GoogleAdapter{},
-			"tiktok":   &TikTokAdapter{},
-			"webhook":  &WebhookAdapter{},
+			"facebook":      &FacebookAdapter{},
+			"google":        &GoogleAdapter{},
+			"tiktok":        &TikTokAdapter{},
+			"taboola":       &TaboolaAdapter{},
+			"outbrain":      &OutbrainAdapter{},
+			"microsoft_ads": &MicrosoftAdsAdapter{},
+			"webhook":       &WebhookAdapter{},
 		},
 	}
 }

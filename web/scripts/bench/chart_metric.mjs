@@ -9,7 +9,6 @@ import { Window } from 'happy-dom';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SRC = join(ROOT, 'src');
 
-
 function makeMetricPoints(n, rangeMs, seed = 0) {
   const now = Date.now();
   const points = new Array(n);
@@ -22,7 +21,6 @@ function makeMetricPoints(n, rangeMs, seed = 0) {
   }
   return points;
 }
-
 
 function setupBenchDom() {
   const win = new Window({ url: 'http://localhost/', width: 640, height: 480 });
@@ -102,14 +100,12 @@ function setupBenchDom() {
   return { win, doc };
 }
 
-
 function sizeElement(el, width, height) {
   el.style.width = `${width}px`;
   el.style.height = `${height}px`;
   Object.defineProperty(el, 'clientWidth', { configurable: true, value: width });
   Object.defineProperty(el, 'clientHeight', { configurable: true, value: height });
 }
-
 
 function bench(name, fn, opts = {}) {
   const iterations = opts.iterations ?? 200;
@@ -130,7 +126,6 @@ function bench(name, fn, opts = {}) {
     heapDeltaBytes: heapAfter - heapBefore,
   };
 }
-
 
 function benchCanvas(mod, container, points) {
   const handle = mod.mountMetricChart(container, {
@@ -155,7 +150,6 @@ function benchCanvas(mod, container, points) {
   handle.destroy();
   return updateBench;
 }
-
 
 function benchUplot(mod, container, points) {
   const handle = mod.mountMetricChart(container, {

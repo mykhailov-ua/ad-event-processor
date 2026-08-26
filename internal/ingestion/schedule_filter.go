@@ -44,7 +44,7 @@ func (s *BrandCreativeStore) brandCreativeSnapshot() *brandCreativeMapSnapshot {
 }
 
 type BrandCreativeStore struct {
-	redisClient              redis.UniversalClient
+	redisClient      redis.UniversalClient
 	redisLoadTimeout time.Duration
 	cache            atomic.Value
 }
@@ -130,7 +130,8 @@ func (s *BrandCreativeStore) selectCreative(ctx context.Context, brandID uuid.UU
 
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(userID))
-	_, _ = h.Write([]byte(brandID.String()))
+	var brandScratch [36]byte
+	_, _ = h.Write(appendUUID(brandScratch[:0], brandID))
 	bucket := int32(h.Sum32() % uint32(total))
 
 	var acc int32
@@ -179,14 +180,14 @@ func NewScheduleFilter(registry domain.CampaignRegistry) *ScheduleFilter {
 }
 
 func (f *ScheduleFilter) Check(ctx context.Context, evt *domain.Event) error {
-	camp, ok := f.registry.GetCampaign(evt.CampaignID)
+	camp, ok := getCampaignFromEvent(f.registry, evt)
 	if !ok {
 		if reg, ok := f.registry.(*Registry); ok && reg.IsStaleMode() {
 			return ErrRegistryStale
 		}
 		return ErrCampaignNotFound
 	}
-	now := time.Now()
+	now := CachedTimeUTC()
 	if camp.StartAt != nil && now.Before(*camp.StartAt) {
 		return ErrScheduleBlocked
 	}
@@ -197,7 +198,7 @@ func (f *ScheduleFilter) Check(ctx context.Context, evt *domain.Event) error {
 		if camp.Location == nil {
 			return ErrScheduleBlocked
 		}
-		hour := int16(now.In(camp.Location).Hour())
+		hour := int16(CachedTimeIn(camp.Location).Hour())
 		if _, allowed := camp.DaypartHours[hour]; !allowed {
 			return ErrScheduleBlocked
 		}

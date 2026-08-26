@@ -36,12 +36,4 @@ export type PublisherStatementList = {
   total: number;
 };
 
-export type SupplyValidation = {
-  sellers_json_valid: boolean;
-  sellers_checksum_sha256: string;
-  sellers_count: number;
-  ads_txt_valid: boolean;
-  ads_txt_checksum_sha256: string;
-  ads_txt_line_count: number;
-  issues?: string[];
-};
+export type SupplyValidation = import('../helpers/supply_api.js').SupplyValidation;

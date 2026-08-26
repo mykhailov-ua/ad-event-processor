@@ -25,7 +25,7 @@ func apiKeyPrincipalID(apiKey string) uuid.UUID {
 type AuthHandler struct {
 	authClient     *AuthClient
 	tokenMaker     identity.Maker
-	redisShards           []redis.UniversalClient
+	redisShards    []redis.UniversalClient
 	cfg            *config.Config
 	authMiddleware *AuthMiddleware
 }
@@ -34,7 +34,7 @@ func NewAuthHandler(authClient *AuthClient, tokenMaker identity.Maker, redisShar
 	return &AuthHandler{
 		authClient:     authClient,
 		tokenMaker:     tokenMaker,
-		redisShards:           redisShards,
+		redisShards:    redisShards,
 		cfg:            cfg,
 		authMiddleware: authMiddleware,
 	}

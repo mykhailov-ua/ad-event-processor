@@ -31,11 +31,11 @@ if ! ad_event_processor_go_build -o "$ROOT/bin/bpf-collector" ./cmd/bpf-collecto
   exit 1
 fi
 
-log "building tracker-bpf-trace (host uprobes for native tracker)"
+log "building tracker-bpf-trace (host uprobes for AD_EVENT_PROCESSOR_BPF_NATIVE=1)"
 if bash "$SCRIPTS/dev/build_tracker_bpf_trace.sh" "$ROOT/bin/tracker-bpf-trace"; then
-  log "native uprobes: export AD_EVENT_PROCESSOR_BPF_TRACKER_BINARY=$ROOT/bin/tracker-bpf-trace"
+  log "native uprobes: AD_EVENT_PROCESSOR_BPF_NATIVE=1 uses $ROOT/bin/tracker-bpf-trace"
 else
-  log "WARN: tracker-bpf-trace build failed (docker load-test trackers still carry bpf trace markers)"
+  log "WARN: tracker-bpf-trace build failed (docker load-test uses /proc/<tracker-pid>/exe for uprobes)"
 fi
 
 log "ready: deploy/dev/bpf/loadtest_probe.o bin/bpf-collector"

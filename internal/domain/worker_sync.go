@@ -25,7 +25,7 @@ type SpendSyncBroker interface {
 }
 
 type SyncWorker struct {
-	redisClient                  redis.Cmdable
+	redisClient          redis.Cmdable
 	campaignRepo         CampaignRepository
 	customerRepo         CustomerRepository
 	interval             time.Duration
@@ -57,7 +57,7 @@ func NewSyncWorker(
 		maxConcurrency = maxConcurrencyDefault
 	}
 	return &SyncWorker{
-		redisClient:                  redisClient,
+		redisClient:          redisClient,
 		campaignRepo:         campaignRepo,
 		customerRepo:         customerRepo,
 		interval:             interval,

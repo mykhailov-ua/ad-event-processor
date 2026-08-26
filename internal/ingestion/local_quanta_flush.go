@@ -79,11 +79,11 @@ func (l *LocalQuantaLedger) FlushOccupied(fn func(campaignID uuid.UUID, remainin
 }
 
 type LocalQuantaFlusher struct {
-	ledger    *LocalQuantaLedger
-	redisShards      []redis.UniversalClient
-	sharder   Sharder
-	registry  domain.CampaignRegistry
-	publisher *BudgetDeltaPublisher
+	ledger      *LocalQuantaLedger
+	redisShards []redis.UniversalClient
+	sharder     Sharder
+	registry    domain.CampaignRegistry
+	publisher   *BudgetDeltaPublisher
 }
 
 func NewLocalQuantaFlusher(
@@ -96,10 +96,10 @@ func NewLocalQuantaFlusher(
 		return nil
 	}
 	return &LocalQuantaFlusher{
-		ledger:    ledger,
-		redisShards:      redisShards,
-		sharder:   sharder,
-		publisher: publisher,
+		ledger:      ledger,
+		redisShards: redisShards,
+		sharder:     sharder,
+		publisher:   publisher,
 	}
 }
 

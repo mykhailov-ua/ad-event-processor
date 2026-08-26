@@ -1,0 +1,14 @@
+version: 1
+sources:
+  - keitaro_name: Facebook
+    bundled_slug: traffic_facebook
+    ui_template_id: meta-facebook
+  - keitaro_name: Google Ads
+    bundled_slug: traffic_google_ads
+    ui_template_id: google-ads
+  - keitaro_name: TikTok
+    bundled_slug: traffic_tiktok
+    ui_template_id: tiktok-ads
+  - keitaro_name: PropellerAds
+    bundled_slug: traffic_propellerads
+    ui_template_id: propellerads

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/pkg/proxyupstream"
+
 	"github.com/stretchr/testify/require"
 )
 

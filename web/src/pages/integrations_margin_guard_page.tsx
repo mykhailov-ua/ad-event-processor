@@ -68,7 +68,7 @@ export function IntegrationsMarginGuardPage() {
 
   useEffect(() => {
     if (isCustomerUuid(customerId)) void scan();
-  }, []); 
+  }, []);
 
   const emptyMsg = !isCustomerUuid(customerId)
     ? 'Enter customer UUID and scan.'

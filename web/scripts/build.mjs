@@ -10,7 +10,6 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
 const SRC = join(ROOT, 'src');
 
-
 const require = createRequire(import.meta.url);
 try {
   require.resolve('esbuild');
@@ -61,7 +60,6 @@ ${FONT_LINKS}    <link rel="stylesheet" href="/src/styles/main.css?v=${ts}" />
 
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'src'), { recursive: true });
-
 
 const workerEntries = [
   join(SRC, 'workers', 'parse_json.worker.ts'),

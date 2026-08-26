@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"ad-event-processor/internal/metrics"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 

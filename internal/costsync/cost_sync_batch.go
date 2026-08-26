@@ -178,7 +178,10 @@ func insertCampaignCostsBatch(ctx context.Context, tx pgx.Tx, lines []CostLine, 
 			customer_id, campaign_id, cost_date, network, placement_id,
 			adset_id, ad_id, line_type, amount_micro, currency, amount_usd_micro, ingest_key
 		)
-		ON CONFLICT (ingest_key) DO NOTHING
+		ON CONFLICT (ingest_key) DO UPDATE SET
+			amount_micro = EXCLUDED.amount_micro,
+			currency = EXCLUDED.currency,
+			amount_usd_micro = EXCLUDED.amount_usd_micro
 		RETURNING 1`,
 		customerIDs, campaignIDs, costDates, networks, placementIDs,
 		adsetIDs, adIDs, lineTypes, amountMicros, currencies, amountUsdMicros, ingestKeys,

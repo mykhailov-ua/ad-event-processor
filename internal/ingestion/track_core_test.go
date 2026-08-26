@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
 
@@ -58,6 +59,7 @@ func TestProcessTrack_fraudHardReject_holdoutSilentRejectFlag(t *testing.T) {
 	})
 	t.Cleanup(resetStaticCampaignBaseline)
 	evt := domain.EventPool.Get().(*domain.Event)
+	evt.Reset()
 	defer domain.EventPool.Put(evt)
 	evt.CampaignID = uuid.New()
 
@@ -67,6 +69,9 @@ func TestProcessTrack_fraudHardReject_holdoutSilentRejectFlag(t *testing.T) {
 	}
 	if filterRejectSpecs[out.RejectKind].status != http.StatusForbidden {
 		t.Fatal("expected 403 spec")
+	}
+	if evt.SilentRejectEvent {
+		t.Fatal("expected silent_reject_event unset on hard fraud reject")
 	}
 }
 

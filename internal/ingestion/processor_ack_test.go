@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func TestStreamConsumer_FlushBatch_XAckError(t *testing.T) {
 
 	p := &StreamConsumer{
 		store:        mockStore,
-		redisClient:          mockRdb,
+		redisClient:  mockRdb,
 		streamName:   "test-stream",
 		groupName:    "test-group",
 		writeTimeout: 10 * time.Second,

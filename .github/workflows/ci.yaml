@@ -62,7 +62,7 @@ jobs:
           cache: true
       - name: Lint Go (golangci-lint, full repository)
         env:
-          LINT_STRICT: "1"
+          LINT_STRICT: '1'
         run: bash scripts/ci/lint_go_gate.sh all
       - name: Vet Go packages
         run: go vet ./...
@@ -93,7 +93,7 @@ jobs:
           node-version: '22'
       - name: PR fast checks (alloc, unit -short, admin web; lint in merge-lint)
         env:
-          SKIP_LINT: "1"
+          SKIP_LINT: '1'
         run: bash scripts/ci/pr_fast.sh
 
   merge-race-short:

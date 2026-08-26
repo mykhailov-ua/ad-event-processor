@@ -119,7 +119,7 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 	}
 	provider := strings.ToLower(strings.TrimSpace(req.Provider))
 	switch provider {
-	case "webhook", "facebook", "google", "tiktok":
+	case "webhook", "facebook", "google", "tiktok", "taboola", "outbrain", "microsoft_ads":
 	default:
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported provider")
 		return
@@ -159,7 +159,7 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 	} else if existingErr == nil {
 		encryptedToken = existing.ApiTokenEncrypted
 	}
-	if provider != "webhook" && len(encryptedToken) == 0 {
+	if postback.ProviderRequiresToken(provider) && len(encryptedToken) == 0 {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "api_token is required for CAPI providers")
 		return
 	}

@@ -91,8 +91,8 @@ export function IntegrationsSmartAlertsPage() {
     setEditingId(rule.id);
     setRuleForm({
       name: rule.name,
-      metric: rule.metric,
-      operator: rule.operator,
+      metric: rule.metric as SmartAlertMetric,
+      operator: rule.operator as SmartAlertOperator,
       threshold: rule.threshold,
       window_minutes: rule.window_minutes,
       webhook_url: rule.webhook_url,

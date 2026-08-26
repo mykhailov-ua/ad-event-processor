@@ -37,7 +37,7 @@ func TestCheckBPFResourceGate_failTrackerConnect(t *testing.T) {
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
  "duration_sec": 60,
- "network": [{"role":"tracker","connects":2}]
+ "network": [{"role":"tracker","dport":443,"connects":2}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {
@@ -53,7 +53,7 @@ func TestCheckBPFResourceGate_labSkipsTrackerConnect(t *testing.T) {
 	dir := t.TempDir()
 	writeBPFGateSummary(t, dir, `{
  "duration_sec": 60,
- "network": [{"role":"tracker","connects":2}]
+ "network": [{"role":"tracker","dport":443,"connects":2}]
 }`)
 	res, err := CheckBPFResourceGate(dir, "http://127.0.0.1:1")
 	if err != nil {

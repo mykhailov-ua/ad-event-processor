@@ -29,9 +29,11 @@ func TestPlacementBlacklistFilter_cacheBounded_holdout(t *testing.T) {
 
 	h := uint32(campID[0]) | (uint32(campID[1]) << 8)
 	shardIdx := h % placementCacheShards
-	f.shards[shardIdx].mu.RLock()
-	count := len(f.shards[shardIdx].m)
-	f.shards[shardIdx].mu.RUnlock()
+	snap := f.shards[shardIdx].snap.Load()
+	count := 0
+	if snap != nil {
+		count = len(snap.entries)
+	}
 
 	require.LessOrEqual(t, count, placementCacheMaxEntriesPerShard)
 }

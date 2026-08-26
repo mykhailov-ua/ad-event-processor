@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -95,15 +96,18 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 	member, err = segmentMemberExists(ctx, redisShards, segmentID, userHash)
 	require.NoError(t, err)
 	require.False(t, member)
+	filter.invalidateMemberCache(segmentID, userHash)
 	require.NoError(t, filter.Check(ctx, evt))
 }
 
 type segmentGetMock struct {
 	mockRedisClient
-	hit bool
+	hit   bool
+	calls atomic.Int32
 }
 
 func (m *segmentGetMock) Get(ctx context.Context, key string) *redis.StringCmd {
+	m.calls.Add(1)
 	if m.hit {
 		staticStringCmd.SetVal("1")
 		staticStringCmd.SetErr(nil)
@@ -112,6 +116,50 @@ func (m *segmentGetMock) Get(ctx context.Context, key string) *redis.StringCmd {
 		staticStringCmd.SetErr(redis.Nil)
 	}
 	return staticStringCmd
+}
+
+func (f *SegmentFilter) invalidateMemberCache(segmentID uuid.UUID, userHash [16]byte) {
+	if f != nil && f.memberCache != nil {
+		f.memberCache.invalidate(segmentID, userHash)
+	}
+}
+
+func TestSegmentFilter_steadyStateNoGET(t *testing.T) {
+	mock := &segmentGetMock{hit: false}
+	campID := uuid.New()
+	segmentID := uuid.New()
+	reg := &segmentTestRegistry{
+		camps: map[uuid.UUID]*domain.Campaign{
+			campID: {
+				ID:               campID,
+				SegmentExcludeID: segmentID,
+			},
+		},
+	}
+	f := NewSegmentFilter([]redis.UniversalClient{mock}, reg, piihash.TestHasher())
+	evt := &domain.Event{
+		CampaignID:     campID,
+		UserID:         "steady-user",
+		HasUserPIIHash: true,
+		UserPIIHash:    piihash.TestHasher().HashUserID("steady-user"),
+	}
+	ctx := context.Background()
+
+	if err := f.Check(ctx, evt); err != nil {
+		t.Fatalf("first Check: %v", err)
+	}
+	if got := mock.calls.Load(); got != 1 {
+		t.Fatalf("first Check: GET calls = %d, want 1", got)
+	}
+
+	for range 100 {
+		if err := f.Check(ctx, evt); err != nil {
+			t.Fatalf("steady-state Check: %v", err)
+		}
+	}
+	if got := mock.calls.Load(); got != 1 {
+		t.Fatalf("steady-state: GET calls = %d, want 1 (cache hit)", got)
+	}
 }
 
 func setupSegmentFilterBench(t testing.TB, member bool) (*SegmentFilter, *domain.Event, context.Context) {

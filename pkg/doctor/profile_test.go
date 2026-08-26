@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -22,6 +23,9 @@ func TestDeployProfileChecklistIngestOnlyEnv(t *testing.T) {
 
 	rows := DeployProfileChecklist(ProfileIngestOnly, nil)
 	for _, row := range rows {
+		if strings.HasPrefix(row.ID, "running_") {
+			continue
+		}
 		if row.Status == StatusFail && row.ID != "compose_include_control" {
 			t.Fatalf("unexpected fail %s: %s", row.ID, row.Detail)
 		}

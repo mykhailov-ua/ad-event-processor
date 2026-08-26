@@ -10,11 +10,13 @@ func ensureIngestGeo(geo GeoProvider, evt *domain.Event) {
 	}
 	evt.IngestGeoResolved = true
 	country, err := geo.GetCountry(evt.IP)
-	if err != nil || country == "" {
-		return
+	if err == nil && country != "" {
+		evt.GeoCountry = country
+		evt.GeoHash = GeoHashFromCountry(country)
 	}
-	evt.GeoCountry = country
-	evt.GeoHash = GeoHashFromCountry(country)
+	if anon, anonErr := geo.IsAnonymous(evt.IP); anonErr == nil {
+		evt.IngestAnonymous = anon
+	}
 }
 
 func parseCategoryMask(payload []byte) uint64 {

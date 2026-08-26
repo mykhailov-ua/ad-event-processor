@@ -1,105 +1,28 @@
+import type { components } from './generated/openapi.js';
+
 export type ClickDeliveryMode = 'redirect' | 'proxy';
 
 export type ReviewTrafficAction = 'safe_page' | 'block' | 'passthrough';
 
-export type CampaignDTO = {
-  id: string;
-  name: string;
-  status: string;
-  budget_limit: string;
-  current_spend: string;
-  customer_id: string;
-  pacing_mode: string;
-  daily_budget: string;
-  timezone: string;
-  freq_limit: number;
-  freq_window: number;
-  target_countries: string[];
-  target_url?: string;
-  brand_id?: string;
-  safe_page_url?: string;
-  safe_page_enabled?: boolean;
-  attestation_enabled?: boolean;
-  attestation_ttl_sec?: number;
-  dmr_enabled?: boolean;
-  cidr_block_enabled?: boolean;
-  proxy_vpn_block_enabled?: boolean;
-  moderator_intel_enabled?: boolean;
-  review_traffic_action?: ReviewTrafficAction;
-  tls_fingerprint_block_enabled?: boolean;
-  conn_type_policy?: string;
-  link_signing_enabled?: boolean;
-  link_signing_ttl_sec?: number;
-  click_delivery?: ClickDeliveryMode | string;
-  proxy_upstream_url?: string;
-  proxy_rewrite_assets?: boolean;
-  creative_payload?: unknown;
-  referrer_filter?: string;
-  start_at?: string;
-  end_at?: string;
-  daypart_hours: number[];
-  flow_id?: string;
-  owner_user_id?: string;
-  created_at: string;
-  updated_at: string;
+export type IngressCostConfigDTO = components['schemas']['IngressCostConfig'];
 
-  margin_breach?: boolean;
-};
+export type CampaignDTO = components['schemas']['Campaign'];
 
-export type CampaignListResponse = {
-  items: CampaignDTO[];
-  total: number;
-};
+export type CampaignListResponse = components['schemas']['CampaignListResponse'];
 
-export type CampaignMarginDTO = {
-  campaign_id: string;
-  window_start: string;
-  window_hours: number;
-  advertiser_spend_micro: number;
-  rtb_cost_micro: number;
-  operator_margin_micro: number;
-  publisher_payout_micro: number;
-  cost_over_revenue_limit: number;
-  threshold_bps: number;
-  margin_breach: boolean;
-};
+export type CampaignMarginDTO = components['schemas']['CampaignMargin'];
 
-export type CampaignPatchBody = Partial<{
-  name: string;
-  status: string;
-  budget_limit: string;
-  budget_limit_micro: number;
-  daily_budget: string;
-  daily_budget_micro: number;
-  pacing_mode: string;
-  timezone: string;
-  freq_limit: number;
-  freq_window: number;
-  target_countries: string[];
-  target_url: string;
-  safe_page_url: string;
-  safe_page_enabled: boolean;
-  attestation_enabled: boolean;
-  attestation_ttl_sec: number;
-  dmr_enabled: boolean;
-  cidr_block_enabled: boolean;
-  proxy_vpn_block_enabled: boolean;
-  moderator_intel_enabled: boolean;
-  review_traffic_action: ReviewTrafficAction;
-  tls_fingerprint_block_enabled: boolean;
-  conn_type_policy: string;
-  link_signing_enabled: boolean;
-  link_signing_ttl_sec: number;
-  click_delivery: ClickDeliveryMode;
-  proxy_upstream_url: string;
-  proxy_rewrite_assets: boolean;
-  referrer_filter: string;
-  start_at: string;
-  end_at: string;
-  daypart_hours: number[];
-  flow_id?: string | null;
-  brand_id?: string | null;
-}>;
+export type CampaignPatchBody = components['schemas']['PatchCampaignRequest'];
+
+/** CPA route audit documents PatchCampaignRequest JSON fields mirrored in OpenAPI. */
+export const CAMPAIGN_PATCH_REQUEST_FIELDS = {
+  status: 'status',
+  budget_limit: 'budget_limit',
+  budget_limit_micro: 'budget_limit_micro',
+  start_at: 'start_at',
+  end_at: 'end_at',
+  daypart_hours: 'daypart_hours',
+} as const;
 
 export type BuyerCampaignPortfolioRow = {
   id: string;

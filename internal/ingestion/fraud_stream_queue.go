@@ -62,7 +62,7 @@ type fraudStreamSlot struct {
 	payload [fraudSlotPayloadMax]byte
 	reason  [fraudSlotReasonMax]byte
 
-	fraudScore uint32
+	fraudScore        uint32
 	silentRejectEvent bool
 }
 
@@ -96,9 +96,9 @@ type FraudStreamWriter struct {
 	aggSlots       [fraudAggTableSize]fraudAggCell
 	aggValScratch  [12]any
 
-	stream string
-	maxLen int64
-	redisShards   []redis.UniversalClient
+	stream      string
+	maxLen      int64
+	redisShards []redis.UniversalClient
 
 	brokerSink *FraudBrokerSink
 	useBroker  bool
@@ -113,10 +113,10 @@ func NewFraudStreamWriter(redisShards []redis.UniversalClient, stream string, ma
 		return nil
 	}
 	q := &FraudStreamWriter{
-		stream: stream,
-		maxLen: maxLen,
-		redisShards:   redisShards,
-		stopCh: make(chan struct{}),
+		stream:      stream,
+		maxLen:      maxLen,
+		redisShards: redisShards,
+		stopCh:      make(chan struct{}),
 	}
 	q.wg.Add(1)
 	go q.worker()

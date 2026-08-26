@@ -40,6 +40,20 @@ export const REPORT_CATALOG: ReportCardDTO[] = [
   { key: 'source-quality', title: 'Source quality', icon: 'star', buyer: true, live: true },
   { key: 'ivt-by-source', title: 'IVT by source', icon: 'shield-alert', live: true },
   {
+    key: 'click-log',
+    title: 'Click log',
+    icon: 'list-magnifying-glass',
+    live: true,
+    buyer: true,
+  },
+  {
+    key: 'conversion-type-payout',
+    title: 'Conversion type payout',
+    icon: 'receipt',
+    live: true,
+    buyer: true,
+  },
+  {
     key: 'postback-reconciliation',
     title: 'Postback reconciliation',
     icon: 'arrows-left-right',
@@ -51,7 +65,13 @@ export const REPORT_CATALOG: ReportCardDTO[] = [
   { key: 'traffic-sources', title: 'Traffic sources', icon: 'funnel', live: true, buyer: true },
   { key: 'discrepancy-buy-sell', title: 'Buy/sell discrepancy', icon: 'scales', live: true },
   { key: 'true-roi', title: 'True ROI', icon: 'currency-dollar', live: true, buyer: true },
-  { key: 'cost-sync-coverage', title: 'Cost sync coverage', icon: 'cloud-arrow-down', live: true, buyer: true },
+  {
+    key: 'cost-sync-coverage',
+    title: 'Cost sync coverage',
+    icon: 'cloud-arrow-down',
+    live: true,
+    buyer: true,
+  },
   { key: 'campaign-unit-economics', title: 'Unit economics', icon: 'calculator', retired: true },
   { key: 'source-margin', title: 'Source margin', icon: 'percent', retired: true },
   { key: 'customer-portfolio', title: 'Customer portfolio', icon: 'briefcase', live: true },
@@ -65,6 +85,7 @@ export const STUB_REPORT_PATHS: Record<string, string> = {
 };
 
 export const REPORT_PATH_OVERRIDES: Record<string, string> = {
+  'click-log': '/reports/clicks',
   'rtb-overview': '/reports/rtb/overview',
   'rtb-no-bid-reasons': '/reports/rtb/no-bid-reasons',
   'rtb-geo-device': '/reports/rtb/geo-device',
@@ -92,7 +113,9 @@ export function isRetiredReport(key: string): boolean {
   return key in RETIRED_REPORT_ALTS;
 }
 
-export function retiredReportAlt(key: string): { href: string; label: string; title: string } | null {
+export function retiredReportAlt(
+  key: string
+): { href: string; label: string; title: string } | null {
   return RETIRED_REPORT_ALTS[key] ?? null;
 }
 

@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/domain/db"
 
 	"ad-event-processor/internal/testutil"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"

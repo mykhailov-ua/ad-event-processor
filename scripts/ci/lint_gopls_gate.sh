@@ -24,7 +24,7 @@ ensure_gopls() {
 should_skip_dir() {
   local dir="$1"
   case "$dir" in
-    */pb|*/pb/*|*/db|*/db/*|*/api/gen/*) return 0 ;;
+    */pb | */pb/* | */db | */db/* | */api/gen/*) return 0 ;;
   esac
   return 1
 }

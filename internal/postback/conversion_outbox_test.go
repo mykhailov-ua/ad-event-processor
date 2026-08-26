@@ -1,12 +1,46 @@
 package postback
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
+
+func TestConversionPostbackEnqueuer_skipsValidationPending(t *testing.T) {
+	campID := uuid.New()
+	store := &benchPostbackQuerier{hasConfig: true}
+	enq := NewConversionPostbackEnqueuer(store)
+	evt := &domain.Event{
+		Type:       "conversion",
+		CampaignID: campID,
+		ClickID:    "clk-1",
+		Payload:    []byte(`{"goal_name":"lead","conversion_validation_pending":true}`),
+	}
+	enq.OnBatchStored(context.Background(), []*domain.Event{evt})
+	if store.outboxCalls != 0 {
+		t.Fatalf("outbox calls %d", store.outboxCalls)
+	}
+}
+
+func TestConversionPostbackEnqueuer_enqueuesWhenValidated(t *testing.T) {
+	campID := benchCampaignID
+	store := &benchPostbackQuerier{hasConfig: true}
+	enq := NewConversionPostbackEnqueuer(store)
+	evt := &domain.Event{
+		Type:       "conversion",
+		CampaignID: campID,
+		ClickID:    "clk-1",
+		Payload:    []byte(`{"goal_name":"lead"}`),
+	}
+	enq.OnBatchStored(context.Background(), []*domain.Event{evt})
+	if store.outboxCalls != 1 {
+		t.Fatalf("outbox calls %d", store.outboxCalls)
+	}
+}
 
 func TestEventTypeMatches(t *testing.T) {
 	if !eventTypeMatches("conversion", "conversion") {
@@ -31,6 +65,9 @@ func TestMergeEventPayloadInto(t *testing.T) {
 		"fbclid":"fb1",
 		"gclid":"gc1",
 		"ttclid":"tt1",
+		"tblci":"tb1",
+		"ob_click_id":"ob1",
+		"msclkid":"ms1",
 		"email":"a@b.c",
 		"payout_micro": 2500000
 	}`))
@@ -39,6 +76,9 @@ func TestMergeEventPayloadInto(t *testing.T) {
 	}
 	if pb.FBCLID != "fb1" || pb.GCLID != "gc1" || pb.TTCLID != "tt1" {
 		t.Fatalf("click ids")
+	}
+	if pb.TBLCI != "tb1" || pb.OBClickID != "ob1" || pb.MSCLKID != "ms1" {
+		t.Fatalf("native click ids %+v", pb)
 	}
 	if pb.Email != "a@b.c" {
 		t.Fatalf("email %q", pb.Email)

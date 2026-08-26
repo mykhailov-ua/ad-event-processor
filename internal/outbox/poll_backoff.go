@@ -6,25 +6,19 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
-
 const PollActiveInterval = 20 * time.Millisecond
-
 
 const PollIdleMax = 250 * time.Millisecond
 
-
 const WorkerTimeout = 30 * time.Second
-
 
 type PollBackoff struct {
 	idle time.Duration
 }
 
-
 func NewPollBackoff() *PollBackoff {
 	return &PollBackoff{idle: PollActiveInterval}
 }
-
 
 func (backoff *PollBackoff) Next(processed int) time.Duration {
 	if processed > 0 {

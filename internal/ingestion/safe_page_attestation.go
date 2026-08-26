@@ -16,12 +16,13 @@ const (
 )
 
 type safePageAttestationInput struct {
-	remoteIP      string
-	country       string
-	fingerprint   safePageVerifyFingerprint
-	events        []safePageVerifyEvent
-	nowUnix       int64
-	behaviorScore int
+	remoteIP            string
+	country             string
+	fingerprint         safePageVerifyFingerprint
+	events              []safePageVerifyEvent
+	nowUnix             int64
+	behaviorScore       int
+	canvasRetestEnabled bool
 }
 
 func evaluateSafePageAttestation(in safePageAttestationInput) (fail bool, code string) {
@@ -45,6 +46,11 @@ func evaluateSafePageAttestation(in safePageAttestationInput) (fail bool, code s
 	}
 	if code := checkCanvasFingerprint(in.fingerprint); code != "" {
 		return true, code
+	}
+	if in.canvasRetestEnabled {
+		if code := checkCanvasRetestMismatch(in.fingerprint); code != "" {
+			return true, code
+		}
 	}
 	if code := checkAudioFingerprint(in.fingerprint); code != "" {
 		return true, code

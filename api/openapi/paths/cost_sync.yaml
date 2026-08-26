@@ -1,0 +1,125 @@
+paths:
+  /api/v1/cost-sync/networks:
+    get:
+      tags: [cost-sync]
+      operationId: costSyncListNetworks
+      summary: List supported ad networks and credential field schemas
+      description: Returns static field metadata for each supported cost-sync network.
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Network schemas for guided credential forms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/cost_sync.yaml#/CostSyncNetworkSchema'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/cost-sync/credentials:
+    get:
+      tags: [cost-sync]
+      operationId: costSyncListCredentials
+      summary: List stored cost sync credentials
+      description: Lists credentials for one customer or all customers when customer_id is omitted.
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Credentials for one customer or all customers when customer_id omitted
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/cost_sync.yaml#/CostSyncCredential'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/cost-sync/credentials/{network}:
+    put:
+      tags: [cost-sync]
+      operationId: costSyncUpsertCredential
+      summary: Create or update network credentials
+      description: Encrypts tokens at rest; secret extra_config keys are not echoed on GET.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/NetworkPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/cost_sync.yaml#/UpsertCostSyncCredentialRequest'
+      responses:
+        '200':
+          description: Stored credential (secrets masked on response)
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/cost_sync.yaml#/CostSyncCredential'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [cost-sync]
+      operationId: costSyncDeleteCredential
+      summary: Delete stored credentials for a customer and network
+      description: Removes credential row for the customer_id query parameter.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/NetworkPath'
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '204':
+          description: Credential removed
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/cost-sync/run:
+    post:
+      tags: [cost-sync]
+      operationId: costSyncRunManual
+      summary: Trigger a manual cost sync run
+      description: Enqueues a worker run for the requested UTC date range.
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/cost_sync.yaml#/RunCostSyncRequest'
+      responses:
+        '202':
+          description: Run accepted by worker
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/cost_sync.yaml#/RunCostSyncAcceptedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/cost-sync/history:
+    get:
+      tags: [cost-sync]
+      operationId: costSyncListHistory
+      summary: List cost sync run history
+      description: Returns paginated sync runs ordered newest first.
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Paginated sync runs newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/cost_sync.yaml#/CostSyncRun'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

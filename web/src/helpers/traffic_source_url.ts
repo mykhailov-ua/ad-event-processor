@@ -25,11 +25,18 @@ export function clickBaseURL(templateOrHost: string): string {
   return `https://${host}/click`;
 }
 
+import type { IngressCostParamName } from './ingress_cost_url.js';
+import { ingressCostMacroPlaceholder } from './ingress_cost_url.js';
+
 export type ClickUrlOptions = {
   dmr?: boolean;
   utm?: Partial<
     Record<'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_term' | 'utm_content', string>
   >;
+  ingressCost?: {
+    param: IngressCostParamName;
+    value?: string;
+  };
 };
 
 export function buildTemplatedClickURL(
@@ -55,6 +62,11 @@ export function buildTemplatedClickURL(
       if (!val) continue;
       parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(val)}`);
     }
+  }
+  if (options?.ingressCost?.param) {
+    const param = options.ingressCost.param;
+    const val = options.ingressCost.value ?? ingressCostMacroPlaceholder(param);
+    parts.push(`${encodeURIComponent(param)}=${encodeClickParamValue(val)}`);
   }
   return `${base}?${parts.join('&')}`;
 }

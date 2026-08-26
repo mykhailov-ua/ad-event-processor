@@ -1,0 +1,644 @@
+paths:
+  /api/v1/audit:
+    get:
+      tags: [audit]
+      operationId: auditList
+      summary: List admin audit log entries
+      x-permissions: [audit:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+        - name: redact_pii
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Audit rows; total in X-Total-Count header
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/platform.yaml#/AuditLog'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/audit/export:
+    get:
+      tags: [audit]
+      operationId: auditExport
+      summary: Export audit log as CSV
+      x-permissions: [audit:read]
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv]
+        - name: cursor
+          in: query
+          schema:
+            type: string
+        - name: redact_pii
+          in: query
+          schema:
+            type: boolean
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: CSV stream
+          headers:
+            X-Export-Truncated:
+              schema:
+                type: boolean
+            X-Next-Cursor:
+              schema:
+                type: string
+          content:
+            text/csv:
+              schema:
+                type: string
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/consent:
+    post:
+      tags: [consent]
+      operationId: consentRecord
+      summary: Record signed user consent
+      description: Requires X-Consent-Signature header; returns 204 on success.
+      parameters:
+        - name: X-Consent-Signature
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/ConsentRecord'
+      responses:
+        '204':
+          description: Consent stored
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers:
+    get:
+      tags: [customers]
+      operationId: customersList
+      summary: List customers
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Customer page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/CustomerListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}:
+    get:
+      tags: [customers]
+      operationId: customersGet
+      summary: Get customer by id
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Customer
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/Customer'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/disputes:
+    get:
+      tags: [disputes]
+      operationId: disputesList
+      summary: List payment disputes
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Dispute page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/DisputeListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/eula:
+    get:
+      tags: [eula]
+      operationId: eulaStatus
+      summary: Current EULA acceptance status
+      responses:
+        '200':
+          description: EULA status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/EulaStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/eula/accept:
+    post:
+      tags: [eula]
+      operationId: eulaAccept
+      summary: Accept EULA version
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/AcceptEulaRequest'
+      responses:
+        '200':
+          description: Updated status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/EulaStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/license/status:
+    get:
+      tags: [license]
+      operationId: licenseStatus
+      summary: JWT license diagnostics
+      x-permissions: [customers:read]
+      responses:
+        '200':
+          description: License status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/LicenseStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/license/apply:
+    post:
+      tags: [license]
+      operationId: licenseApply
+      summary: Apply license JWT token
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/ApplyLicenseRequest'
+      responses:
+        '200':
+          description: Updated license status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/LicenseStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/meta:
+    get:
+      tags: [meta]
+      operationId: metaGet
+      summary: Product metadata for admin shell bootstrap
+      responses:
+        '200':
+          description: Meta payload
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/MetaResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/publisher/dashboard:
+    get:
+      tags: [publisher]
+      operationId: publisherDashboard
+      summary: Scoped publisher KPI dashboard
+      x-permissions: [supply:read:scoped]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/ReportFromQuery'
+        - $ref: '../openapi.yaml#/components/parameters/ReportToQuery'
+      responses:
+        '200':
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PublisherDashboard'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/publisher/statements:
+    get:
+      tags: [publisher]
+      operationId: publisherStatements
+      summary: Publisher revenue statements
+      x-permissions: [supply:read:scoped]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/ReportFromQuery'
+        - $ref: '../openapi.yaml#/components/parameters/ReportToQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv]
+      responses:
+        '200':
+          description: Statement list or CSV
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PublisherStatementListResponse'
+            text/csv:
+              schema:
+                type: string
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/recon/runs:
+    get:
+      tags: [recon]
+      operationId: reconListRuns
+      summary: List reconciliation batch runs
+      x-permissions: [audit:read]
+      parameters:
+        - name: service
+          in: query
+          schema:
+            type: string
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Runs; total in X-Total-Count header
+          headers:
+            X-Total-Count:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/platform.yaml#/ReconRun'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/report-schedules:
+    get:
+      tags: [report-schedules]
+      operationId: reportSchedulesList
+      summary: List report delivery schedules
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '200':
+          description: Schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/platform.yaml#/ReportSchedule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [report-schedules]
+      operationId: reportSchedulesCreate
+      summary: Create report schedule
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/CreateReportScheduleRequest'
+      responses:
+        '201':
+          description: Created schedule
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/ReportSchedule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/report-schedules/{id}:
+    get:
+      tags: [report-schedules]
+      operationId: reportSchedulesGet
+      summary: Get report schedule
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Schedule
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/ReportSchedule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    put:
+      tags: [report-schedules]
+      operationId: reportSchedulesUpdate
+      summary: Update report schedule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/UpdateReportScheduleRequest'
+      responses:
+        '200':
+          description: Updated schedule
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/ReportSchedule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [report-schedules]
+      operationId: reportSchedulesDelete
+      summary: Delete report schedule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/settings/platform:
+    get:
+      tags: [settings]
+      operationId: settingsPlatformGet
+      summary: Read platform install configuration
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Public config view
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PlatformSettingsView'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [settings]
+      operationId: settingsPlatformPatch
+      summary: Merge platform configuration patch
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/PlatformSettingsPatch'
+      responses:
+        '200':
+          description: Updated view
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PlatformSettingsView'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/settings/platform/bootstrap:
+    post:
+      tags: [settings]
+      operationId: settingsPlatformBootstrap
+      summary: First-run platform bootstrap
+      description: Requires X-Install-Token header.
+      parameters:
+        - name: X-Install-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/PlatformBootstrapRequest'
+      responses:
+        '200':
+          description: Bootstrap applied
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PlatformSettingsView'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/settings/platform/apply:
+    post:
+      tags: [settings]
+      operationId: settingsPlatformApply
+      summary: Write platform config to install root on disk
+      x-permissions: [settings:write]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/PlatformApplyRequest'
+      responses:
+        '200':
+          description: Config written
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PlatformApplyResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/support/feedback/meta:
+    get:
+      tags: [support]
+      operationId: supportFeedbackMeta
+      summary: Support feedback form metadata
+      responses:
+        '200':
+          description: Meta
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/SupportFeedbackMeta'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/support/feedback:
+    post:
+      tags: [support]
+      operationId: supportFeedbackCreate
+      summary: Submit operator feedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/SupportFeedbackRequest'
+      responses:
+        '201':
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/SupportFeedbackResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/overview:
+    get:
+      tags: [team]
+      operationId: teamOverview
+      summary: Team roster and license snapshot
+      x-permissions: [campaigns:read, billing:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Team overview
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/TeamOverview'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/members:
+    post:
+      tags: [team]
+      operationId: teamInviteMember
+      summary: Invite team member
+      description: Requires team lead or users:write.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/InviteTeamMemberRequest'
+      responses:
+        '201':
+          description: Member invited
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/TeamMember'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/members/{id}:
+    patch:
+      tags: [team]
+      operationId: teamUpdateMember
+      summary: Update team member role or caps
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/UpdateTeamMemberRequest'
+      responses:
+        '200':
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/TeamMember'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/budget-approvals:
+    get:
+      tags: [team]
+      operationId: teamBudgetApprovalsList
+      summary: Pending budget approval requests
+      x-permissions: [campaigns:read, billing:read]
+      responses:
+        '200':
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/platform.yaml#/TeamBudgetApproval'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/budget-approvals/{id}/approve:
+    post:
+      tags: [team]
+      operationId: teamBudgetApprovalApprove
+      summary: Approve budget increase request
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/team/budget-approvals/{id}/deny:
+    post:
+      tags: [team]
+      operationId: teamBudgetApprovalDeny
+      summary: Deny budget increase request
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Denied
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

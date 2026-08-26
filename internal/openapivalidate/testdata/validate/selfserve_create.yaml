@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: openapi-request-validation-fixture
+  version: 1.0.0
+paths:
+  /api/v1/selfserve/campaigns:
+    post:
+      operationId: selfserveCreateCampaign
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [template_id]
+              properties:
+                template_id:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: created

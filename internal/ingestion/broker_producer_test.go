@@ -256,3 +256,50 @@ func BenchmarkTrackerToBroker(b *testing.B) {
 		}
 	}
 }
+
+func TestBrokerProducerSet_notPinnedToPartition0(t *testing.T) {
+	const parts = 6
+	list := make([]*BrokerProducer, parts)
+	for i := 0; i < parts; i++ {
+		bp, err := NewBrokerProducer(BrokerProducerConfig{
+			Topic:         "test-fanout",
+			Partition:     uint16(i),
+			Capacity:      256,
+			BatchSize:     32,
+			FlushInterval: 2 * time.Millisecond,
+			Client:        &mockBrokerClient{},
+		})
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = bp.Close() })
+		list[i] = bp
+	}
+	set := NewBrokerProducerSet(list)
+	require.Equal(t, parts, set.Len())
+
+	hits := make([]int, parts)
+	for range 256 {
+		id := uuid.New()
+		idx, bp := set.Pick(id)
+		require.NotNil(t, bp)
+		require.GreaterOrEqual(t, idx, 0)
+		require.Less(t, idx, parts)
+		hits[idx]++
+		require.NoError(t, bp.Enqueue(&domain.Event{
+			CampaignID: id,
+			ClickID:    "c",
+			CreatedAt:  time.Now(),
+		}))
+	}
+	used := 0
+	for _, n := range hits {
+		if n > 0 {
+			used++
+		}
+	}
+	if used < 2 {
+		t.Fatalf("broker produce pinned to one partition, hits=%v", hits)
+	}
+	if hits[0] == 256 {
+		t.Fatal("all campaigns routed to partition 0")
+	}
+}

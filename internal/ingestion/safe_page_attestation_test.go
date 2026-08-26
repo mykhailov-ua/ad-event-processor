@@ -9,9 +9,24 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSafePageAttestation_canvasRetestIgnoredWhenDisabled(t *testing.T) {
+	fp := validAdvancedFingerprint()
+	fp.CanvasHashA = testCanvasHash64
+	fp.CanvasHashB = testCanvasHashAlt
+	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
+		fingerprint:         fp,
+		events:              humanMouseEvents(18),
+		behaviorScore:       safePageVerifyMinEvents + 3,
+		canvasRetestEnabled: false,
+	})
+	require.False(t, fail)
+	require.Equal(t, "", code)
+}
 
 func TestSafePageAttestation_webrtcLeakDesktop(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{

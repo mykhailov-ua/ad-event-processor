@@ -63,4 +63,5 @@ run_nginx_config() {
 
 run_compose_config
 run_nginx_config
+bash "$SCRIPTS/ci/openapi_gate.sh"
 echo "lint_configs_gate: OK"

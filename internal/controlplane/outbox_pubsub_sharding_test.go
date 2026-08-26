@@ -109,9 +109,9 @@ func TestOutboxScheduleUpdate_PubSubOnAllShards(t *testing.T) {
 
 	channel := "test:schedule:pubsub:fanout"
 	svc := &Service{
-		redisShards:    shards,
-		sharder: domain.NewStaticSlotSharder(testPubSubShards),
-		cfg:     &config.Config{CampaignUpdateChannel: channel},
+		redisShards: shards,
+		sharder:     domain.NewStaticSlotSharder(testPubSubShards),
+		cfg:         &config.Config{CampaignUpdateChannel: channel},
 	}
 
 	ctx := context.Background()

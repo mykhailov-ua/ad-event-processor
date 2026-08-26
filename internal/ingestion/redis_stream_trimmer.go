@@ -15,7 +15,7 @@ import (
 )
 
 type RedisStreamTrimmerConfig struct {
-	RedisShards         []redis.UniversalClient
+	RedisShards  []redis.UniversalClient
 	Streams      []string
 	MaxLen       int
 	TrimInterval time.Duration

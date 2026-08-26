@@ -133,8 +133,9 @@ func parseAdsterraStatRows(body []byte) ([]adsterraStatRow, error) {
 		row, ok := adsterraRowFromMap(item)
 		if !ok {
 			row.campaignID = strings.TrimSpace(key)
-			row.spendMicro, _ = adsterraSpendMicro(item)
-			ok = row.spendMicro > 0 && row.campaignID != ""
+			var spendErr error
+			row.spendMicro, spendErr = adsterraSpendMicro(item)
+			ok = spendErr == nil && row.spendMicro > 0 && row.campaignID != ""
 		}
 		if ok {
 			out = append(out, row)

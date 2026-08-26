@@ -22,7 +22,7 @@ func (f *ConsentFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if f == nil || f.store == nil || evt == nil {
 		return nil
 	}
-	camp, ok := f.registry.GetCampaign(evt.CampaignID)
+	camp, ok := getCampaignFromEvent(f.registry, evt)
 	if !ok || camp.RequireConsentPurposes == 0 {
 		return nil
 	}

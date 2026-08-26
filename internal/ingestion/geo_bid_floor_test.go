@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

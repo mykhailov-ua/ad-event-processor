@@ -37,6 +37,7 @@ func (costSync *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
 	}
 
 	mux.HandleFunc("GET /api/v1/cost-sync/credentials", limit(perm("campaigns:read", costSync.listCredentials)))
+	mux.HandleFunc("GET /api/v1/cost-sync/networks", limit(perm("campaigns:read", costSync.listNetworks)))
 	mux.HandleFunc("PUT /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", costSync.upsertCredential)))
 	mux.HandleFunc("DELETE /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", costSync.deleteCredential)))
 	mux.HandleFunc("POST /api/v1/cost-sync/run", limit(perm("campaigns:write", costSync.runSync)))
@@ -44,21 +45,26 @@ func (costSync *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
 }
 
 type CostSyncCredentialDTO struct {
-	CustomerID string            `json:"customer_id"`
-	Network    string            `json:"network"`
-	AccountID  string            `json:"account_id"`
-	Extra      map[string]string `json:"extra_config,omitempty"`
-	ExpiresAt  *time.Time        `json:"token_expires_at,omitempty"`
-	UpdatedAt  time.Time         `json:"updated_at"`
+	CustomerID          string                `json:"customer_id"`
+	Network             string                `json:"network"`
+	AccountID           string                `json:"account_id"`
+	Extra               map[string]string     `json:"extra_config,omitempty"`
+	ExtraSet            map[string]bool       `json:"extra_config_set,omitempty"`
+	SyncIntervalMinutes int                   `json:"sync_interval_minutes"`
+	TokenMapping        costsync.TokenMapping `json:"token_mapping"`
+	ExpiresAt           *time.Time            `json:"token_expires_at,omitempty"`
+	UpdatedAt           time.Time             `json:"updated_at"`
 }
 
 type UpsertCostSyncCredentialRequest struct {
-	CustomerID   string            `json:"customer_id"`
-	AccountID    string            `json:"account_id"`
-	AccessToken  string            `json:"access_token"`
-	RefreshToken string            `json:"refresh_token"`
-	APIKey       string            `json:"api_key"`
-	ExtraConfig  map[string]string `json:"extra_config"`
+	CustomerID          string                 `json:"customer_id"`
+	AccountID           string                 `json:"account_id"`
+	AccessToken         string                 `json:"access_token"`
+	RefreshToken        string                 `json:"refresh_token"`
+	APIKey              string                 `json:"api_key"`
+	ExtraConfig         map[string]string      `json:"extra_config"`
+	SyncIntervalMinutes *int                   `json:"sync_interval_minutes"`
+	TokenMapping        *costsync.TokenMapping `json:"token_mapping"`
 }
 
 type RunCostSyncRequest struct {
@@ -80,6 +86,43 @@ type CostSyncRunDTO struct {
 	TriggerSource       string     `json:"trigger_source"`
 	StartedAt           time.Time  `json:"started_at"`
 	CompletedAt         *time.Time `json:"completed_at,omitempty"`
+}
+
+func (costSync *CostSyncHTTPHandlers) listNetworks(w http.ResponseWriter, r *http.Request) {
+	httpresponse.JSON(w, http.StatusOK, costsync.ListNetworkCredentialSchemas())
+}
+
+func costSyncCredentialDTO(row db.CostSyncCredential) (CostSyncCredentialDTO, error) {
+	dto := CostSyncCredentialDTO{
+		CustomerID: ingestionUUIDToString(row.CustomerID),
+		Network:    row.Network,
+		AccountID:  row.AccountID,
+		UpdatedAt:  row.UpdatedAt.Time,
+	}
+	var extra map[string]string
+	if len(row.ExtraConfig) > 0 {
+		if err := json.Unmarshal(row.ExtraConfig, &extra); err != nil {
+			return CostSyncCredentialDTO{}, err
+		}
+	}
+	visible, set := costsync.MaskExtraConfigForResponse(row.Network, extra)
+	if len(visible) > 0 {
+		dto.Extra = visible
+	}
+	if len(set) > 0 {
+		dto.ExtraSet = set
+	}
+	if row.TokenExpiresAt.Valid {
+		t := row.TokenExpiresAt.Time
+		dto.ExpiresAt = &t
+	}
+	if row.SyncIntervalMinutes > 0 {
+		dto.SyncIntervalMinutes = int(row.SyncIntervalMinutes)
+	} else {
+		dto.SyncIntervalMinutes = 1440
+	}
+	dto.TokenMapping = costsync.ParseTokenMapping(row.TokenMapping)
+	return dto, nil
 }
 
 func (costSync *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Request) {
@@ -104,21 +147,10 @@ func (costSync *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *
 
 	dtos := make([]CostSyncCredentialDTO, 0, len(rows))
 	for _, row := range rows {
-		dto := CostSyncCredentialDTO{
-			CustomerID: ingestionUUIDToString(row.CustomerID),
-			Network:    row.Network,
-			AccountID:  row.AccountID,
-			UpdatedAt:  row.UpdatedAt.Time,
-		}
-		if len(row.ExtraConfig) > 0 {
-			if err := json.Unmarshal(row.ExtraConfig, &dto.Extra); err != nil {
-				httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid cost sync extra config")
-				return
-			}
-		}
-		if row.TokenExpiresAt.Valid {
-			t := row.TokenExpiresAt.Time
-			dto.ExpiresAt = &t
+		dto, err := costSyncCredentialDTO(row)
+		if err != nil {
+			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid cost sync extra config")
+			return
 		}
 		dtos = append(dtos, dto)
 	}
@@ -129,6 +161,11 @@ func (costSync *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r 
 	network := r.PathValue("network")
 	if network == "" {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "missing network")
+		return
+	}
+	schema, ok := costsync.CredentialSchemaForNetwork(network)
+	if !ok {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "unsupported network")
 		return
 	}
 
@@ -147,18 +184,64 @@ func (costSync *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r 
 		return
 	}
 
+	q := db.New(costSync.Pool)
+	var existingRow db.CostSyncCredential
+	hasExisting := false
+	if existing, err := q.GetCostSyncCredential(r.Context(), db.GetCostSyncCredentialParams{
+		CustomerID: pgtype.UUID{Bytes: custID, Valid: true},
+		Network:    network,
+	}); err == nil {
+		hasExisting = true
+		existingRow = existing
+	}
+
+	var existingExtra map[string]string
+	if hasExisting && len(existingRow.ExtraConfig) > 0 {
+		if err := json.Unmarshal(existingRow.ExtraConfig, &existingExtra); err != nil {
+			existingExtra = nil
+		}
+	}
+	mergedExtra := costsync.MergeExtraConfig(existingExtra, req.ExtraConfig, schema)
+	if err := costsync.ValidateExtraConfig(network, mergedExtra); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
 	accessEnc, refreshEnc, apiEnc, err := costsync.EncryptCredentialFields(costSync.EncryptionKey, req.AccessToken, req.RefreshToken, req.APIKey)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
-	extraRaw, err := json.Marshal(req.ExtraConfig)
+	extraRaw, err := json.Marshal(mergedExtra)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid extra_config")
 		return
 	}
-	row, err := db.New(costSync.Pool).UpsertCostSyncCredential(r.Context(), db.UpsertCostSyncCredentialParams{
+
+	syncInterval := int32(1440)
+	if req.SyncIntervalMinutes != nil {
+		if !costsync.ValidSyncIntervalMinutes(*req.SyncIntervalMinutes) {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "sync_interval_minutes must be 15, 30, 60, or 1440")
+			return
+		}
+		syncInterval = int32(*req.SyncIntervalMinutes)
+	} else if hasExisting && existingRow.SyncIntervalMinutes > 0 {
+		syncInterval = existingRow.SyncIntervalMinutes
+	}
+
+	tokenMappingRaw := []byte("{}")
+	if req.TokenMapping != nil {
+		tokenMappingRaw, err = json.Marshal(req.TokenMapping)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid token_mapping")
+			return
+		}
+	} else if hasExisting && len(existingRow.TokenMapping) > 0 {
+		tokenMappingRaw = existingRow.TokenMapping
+	}
+
+	row, err := q.UpsertCostSyncCredential(r.Context(), db.UpsertCostSyncCredentialParams{
 		CustomerID:            pgtype.UUID{Bytes: custID, Valid: true},
 		Network:               network,
 		AccountID:             req.AccountID,
@@ -166,18 +249,20 @@ func (costSync *CostSyncHTTPHandlers) upsertCredential(w http.ResponseWriter, r 
 		RefreshTokenEncrypted: refreshEnc,
 		ApiKeyEncrypted:       apiEnc,
 		ExtraConfig:           extraRaw,
+		SyncIntervalMinutes:   syncInterval,
+		TokenMapping:          tokenMappingRaw,
 	})
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
 
-	httpresponse.JSON(w, http.StatusOK, CostSyncCredentialDTO{
-		CustomerID: ingestionUUIDToString(row.CustomerID),
-		Network:    row.Network,
-		AccountID:  row.AccountID,
-		UpdatedAt:  row.UpdatedAt.Time,
-	})
+	dto, err := costSyncCredentialDTO(row)
+	if err != nil {
+		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid cost sync extra config")
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, dto)
 }
 
 func (costSync *CostSyncHTTPHandlers) deleteCredential(w http.ResponseWriter, r *http.Request) {

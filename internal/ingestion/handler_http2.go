@@ -102,6 +102,7 @@ func (h *AdsPacketHandler) allocConnContext(c gnet.Conn) *connContext {
 		wTime: bufWrapper{
 			buf: make([]byte, 0, 128),
 		},
+		workerID: -1,
 	}
 	if h.logger != nil {
 		ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))

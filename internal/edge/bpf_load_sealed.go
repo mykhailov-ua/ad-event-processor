@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
+
 	"github.com/cilium/ebpf"
 )
 

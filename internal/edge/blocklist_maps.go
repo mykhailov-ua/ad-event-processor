@@ -6,7 +6,6 @@ import (
 	"github.com/cilium/ebpf"
 )
 
-
 type BlocklistMaps struct {
 	V4Host   *ebpf.Map
 	V4Prefix *ebpf.Map

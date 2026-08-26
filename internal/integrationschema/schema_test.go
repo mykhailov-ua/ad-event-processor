@@ -8,6 +8,7 @@ import (
 
 	"ad-event-processor/internal/integrationschema"
 	"ad-event-processor/internal/postback"
+
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,4 +1,3 @@
-
 import { register } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';

@@ -459,7 +459,7 @@ func (h *AdsPacketHandler) applyTgTrackFilter(outcome trackOutcome, evt *domain.
 			shard := h.sharder.GetShard(evt.CampaignID)
 			enqueueFraudReject(h.fraudWriter, shard, evt)
 		}
-		h.write(c, spec.gnetResp, ctx)
+		h.writeFilterReject(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		return nil, true
 	case trackStatusInternalError:
@@ -509,7 +509,7 @@ func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx 
 		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
-			h.write(c, spec.gnetResp, ctx)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
@@ -563,7 +563,7 @@ func (h *AdsPacketHandler) reactTgImpression(req parsedHTTPRequest, c gnet.Conn,
 		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
-			h.write(c, spec.gnetResp, ctx)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None

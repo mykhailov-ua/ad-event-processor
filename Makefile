@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-config load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-preflight openrtb-fuzz-smoke license-red-team license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke clean-gitignored
+.PHONY: fmt fmt-check gen lint test test-fast test-unit test-integration test-fault test-int test-alloc-gate management-domain-coverage test-full test-resilience test-broker-fault-lab test-sentinel-resilience build build-bin release-build release-garble release-installer proto proto-grpc check-local pr-fast tier-a fraudtrain-check check-vuln bpf-dev bpf-session-start bpf-session-stop load-test-config load-test-bpf bpf-resource-gate bpf-nightly-gate cache-miss-gate escape-heap-gate cold-path-gates check-scripts-layout dev-preflight-smoke perf-gate-smoke edge-preflight openrtb-fuzz-smoke license-red-team license-pentest license-verify license-alloc-gate license-differential-gate license-red-team-garbled license-garbled-alloc-gate license-red-team-extended license-fuzz-nightly-gate release-qa-smoke license-gdb-guard-smoke release-strings-gate license-guard-test license-guard-off-smoke license-guard-fault-gate public-key-strings-gate asset-seal-salt-smoke hwid-strings-gate garble-literals-policy-gate garble-literals-p99-smoke bpf-edge-prereq-gate sealed-bpf-xdp-smoke clean-gitignored openapi-export openapi-types
 
 BIN_DIR := bin
 BIN_TAGS := timetzdata
@@ -18,6 +18,12 @@ fmt-check:
 
 gen:
 	bash scripts/ci/gen.sh --proto
+
+openapi-export:
+	go run ./cmd/openapi-export
+
+openapi-types: openapi-export
+	cd web && npm run openapi:types
 
 lint: gen fmt
 	bash scripts/ci/lint_gate.sh
@@ -134,6 +140,9 @@ license-red-team:
 	bash scripts/security/license_red_team.sh
 	bash scripts/test/license_red_team_extended.sh
 
+license-pentest:
+	bash scripts/security/license_pentest.sh
+
 license-verify:
 	bash scripts/ci/license_verify_tier.sh
 
@@ -210,7 +219,7 @@ load-test-config:
 	bash scripts/lib/render_load_test_config.sh
 
 load-test-bpf: bpf-dev load-test-config
-	sudo AD_EVENT_PROCESSOR_BPF_PROBE=1 AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE=$${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10} bash scripts/test/malformed.sh business
+	AD_EVENT_PROCESSOR_BPF_PROBE=1 AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE=$${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10} bash scripts/test/malformed.sh business
 
 bpf-resource-gate:
 	BPF_GATE_STRICT=true bash scripts/ci/bpf_resource_gate.sh

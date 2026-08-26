@@ -373,10 +373,9 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	}
 
 	entitlements := Entitlements{
-		DeploymentMode: NormalizeDeploymentMode(claims.DeploymentMode),
-		VolumeBand:     ParseVolumeBand(string(claims.VolumeBand)),
-		Limits:         claims.Limits,
-		Features:       SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
+		VolumeBand: ParseVolumeBand(string(claims.VolumeBand)),
+		Limits:     claims.Limits,
+		Features:   SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
 	}
 	entitlementsJSON, err := json.Marshal(entitlements)
 	if err != nil {
@@ -408,7 +407,6 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	fields := map[string]any{
 		"state":                      string(state),
 		"plan":                       claims.Plan,
-		"deployment_mode":            NormalizeDeploymentMode(claims.DeploymentMode),
 		"volume_band":                string(ParseVolumeBand(string(claims.VolumeBand))),
 		"valid_until":                claims.ValidUntil.Format(time.RFC3339),
 		"max_rps":                    claims.Limits.MaxRPS,

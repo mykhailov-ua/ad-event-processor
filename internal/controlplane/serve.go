@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"ad-event-processor/internal/clickhouse/migrate"
@@ -18,6 +19,7 @@ import (
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/notify"
+	"ad-event-processor/internal/openapivalidate"
 	"ad-event-processor/pkg/httpresponse"
 	"ad-event-processor/pkg/netaddr"
 
@@ -498,6 +500,9 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		interval := time.Duration(cfg.Management.SmartAlertsIntervalMin) * time.Minute
 		svc.StartSmartAlertsWorker(ctx, interval)
 	}
+	if cfg.Management.AutomationRulesEnabled {
+		svc.StartAutomationWorker(ctx, cfg.Management.AutomationRulesIntervalMin)
+	}
 	if cfg.Management.DomainHealthEnabled {
 		domainInterval := time.Duration(cfg.Management.DomainHealthIntervalMin) * time.Minute
 		svc.StartDomainHealthWorker(ctx, domainInterval)
@@ -506,9 +511,14 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	authHandler.RegisterRoutes(mux)
 	controlHandler.RegisterRoutes(mux)
 
+	validateMW, err := wireOpenAPIRequestValidation(ctx, cfg)
+	if err != nil {
+		return err
+	}
+
 	corsMdl := NewCORSMiddleware(cfg.AllowedOrigins)
 	csrfMdl := NewCSRFMiddleware(string(cfg.AdminAPIKey))
-	gatewayHandler := SecurityHeadersMiddleware(corsMdl(csrfMdl(mux)))
+	gatewayHandler := SecurityHeadersMiddleware(corsMdl(csrfMdl(validateMW(mux))))
 
 	slog.Info("starting management gateway server", "port", cfg.ManagementPort)
 
@@ -613,4 +623,22 @@ func registerAdminGoneRoutes(mux *http.ServeMux) {
 
 func registerRootRoute(mux *http.ServeMux, gate *AdminUIGate) {
 	RegisterAdminStaticRoutes(mux, gate)
+}
+
+func wireOpenAPIRequestValidation(ctx context.Context, cfg *config.Config) (func(http.Handler) http.Handler, error) {
+	if cfg == nil {
+		return openapivalidate.NewRequestValidationMiddleware(ctx, openapivalidate.RequestValidationOptions{Enabled: false})
+	}
+	bundlePath := strings.TrimSpace(os.Getenv("OPENAPI_BUNDLE_PATH"))
+	if bundlePath != "" {
+		return openapivalidate.NewRequestValidationMiddleware(ctx, openapivalidate.RequestValidationOptions{
+			Enabled:    cfg.Management.OpenAPIRequestValidation,
+			BundlePath: bundlePath,
+		})
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("openapi request validation: working directory: %w", err)
+	}
+	return openapivalidate.ResolveRequestValidationMiddleware(ctx, wd, cfg.Management.OpenAPIRequestValidation)
 }

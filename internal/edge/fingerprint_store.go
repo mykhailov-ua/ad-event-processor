@@ -25,7 +25,6 @@ type Entry struct {
 	SeenAt  time.Time
 }
 
-
 func Record(ctx context.Context, redisClient redis.Cmdable, e Entry) error {
 	if redisClient == nil || e.IP == "" {
 		return nil

@@ -97,6 +97,17 @@ func loadManagementModules(cfg *Config) {
 	cfg.FraudScoring.MicrobatchMaxLagSec = getEnvInt("FRAUD_MICROBATCH_MAX_LAG_SEC", 30)
 	cfg.FraudScoring.BoostFullResyncSec = getEnvInt("FRAUD_BOOST_FULL_RESYNC_SEC", 10)
 
+	cfg.ConversionReject.Enabled = getEnvBool("CONVERSION_SMART_REJECT_ENABLED", true)
+	cfg.ConversionReject.MinTTCDurationMs = getEnvInt("CONVERSION_REJECT_MIN_TTC_MS", 3000)
+	cfg.ConversionReject.RejectNoClick = getEnvBool("CONVERSION_REJECT_NO_CLICK", true)
+	cfg.ConversionReject.RejectLowTTC = getEnvBool("CONVERSION_REJECT_LOW_TTC", true)
+	cfg.ConversionReject.RejectDuplicate = getEnvBool("CONVERSION_REJECT_DUPLICATE", true)
+	cfg.ConversionReject.RejectIPDrift = getEnvBool("CONVERSION_REJECT_IP_DRIFT", true)
+	cfg.ConversionReject.RejectDatacenterIP = getEnvBool("CONVERSION_REJECT_DATACENTER_IP", false)
+	cfg.ConversionReject.ReprocessEnabled = getEnvBool("CONVERSION_REJECT_REPROCESS_ENABLED", true)
+	cfg.ConversionReject.ReprocessIntervalMin = getEnvInt("CONVERSION_REJECT_REPROCESS_INTERVAL_MIN", 15)
+	cfg.ConversionReject.ReprocessLookbackHours = getEnvInt("CONVERSION_REJECT_REPROCESS_LOOKBACK_HOURS", 24)
+
 	cfg.ExternalResidentialIntel.Enabled = getEnvBool("EXTERNAL_RESIDENTIAL_INTEL_ENABLED", false)
 	cfg.ExternalResidentialIntel.ProviderURL = strings.TrimSpace(os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_URL"))
 	cfg.ExternalResidentialIntel.APIKey = Secret(strings.TrimSpace(os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_API_KEY")))
@@ -167,6 +178,14 @@ func loadManagementModules(cfg *Config) {
 	if cfg.Management.SmartAlertsIntervalMin > 60 {
 		cfg.Management.SmartAlertsIntervalMin = 60
 	}
+	cfg.Management.AutomationRulesEnabled = getEnvBool("AUTOMATION_RULES_ENABLED", true)
+	cfg.Management.AutomationRulesIntervalMin = getEnvInt("AUTOMATION_RULES_INTERVAL_MIN", 15)
+	if cfg.Management.AutomationRulesIntervalMin < 5 {
+		cfg.Management.AutomationRulesIntervalMin = 5
+	}
+	if cfg.Management.AutomationRulesIntervalMin > 60 {
+		cfg.Management.AutomationRulesIntervalMin = 60
+	}
 	cfg.AdminDomain = strings.TrimSpace(os.Getenv("ADMIN_DOMAIN"))
 	cfg.Management.DomainHealthEnabled = getEnvBool("DOMAIN_HEALTH_ENABLED", true)
 	cfg.Management.DomainHealthIntervalMin = getEnvInt("DOMAIN_HEALTH_INTERVAL_MIN", 5)
@@ -188,6 +207,7 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.FacebookGraphAPIBase = strings.TrimSpace(os.Getenv("FACEBOOK_GRAPH_API_BASE"))
 	cfg.Management.CaddyTLSAskToken = Secret(strings.TrimSpace(os.Getenv("CADDY_TLS_ASK_TOKEN")))
 	cfg.Management.CaddyTLSAskAllowLocal = getEnvBool("CADDY_TLS_ASK_ALLOW_LOCAL", true)
+	cfg.Management.OpenAPIRequestValidation = getEnvBool("OPENAPI_REQUEST_VALIDATION", false)
 
 	cfg.Control.EnableAuth = getEnvBool("CONTROL_ENABLE_AUTH", true)
 	cfg.Control.EnableManagement = getEnvBool("CONTROL_ENABLE_MANAGEMENT", true)

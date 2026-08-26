@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingestion/pb"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )

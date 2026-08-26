@@ -26,8 +26,8 @@ func TestPipelineWriteVPPRatios_batchesPerShard(t *testing.T) {
 	t.Cleanup(func() { _ = redisClient.Close() })
 
 	svc := &Service{
-		redisShards:    []redis.UniversalClient{redisClient},
-		sharder: domain.NewStaticSlotSharder(1),
+		redisShards: []redis.UniversalClient{redisClient},
+		sharder:     domain.NewStaticSlotSharder(1),
 	}
 	c1, c2 := uuid.New(), uuid.New()
 	writes := map[int][]vppRatioWrite{

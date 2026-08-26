@@ -1,6 +1,7 @@
 package costsync
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -570,4 +571,113 @@ func refreshRevcontentOAuth(ctx context.Context, client *http.Client, baseURL st
 	}
 	expires := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	return parsed.AccessToken, expires, nil
+}
+
+func mondiadClientCredentials(cred Credential) (clientID, clientSecret string, err error) {
+	clientID = strings.TrimSpace(cred.AccountID)
+	if clientID == "" {
+		clientID = strings.TrimSpace(cred.ExtraConfig["client_id"])
+	}
+	clientSecret = strings.TrimSpace(cred.APIKey)
+	if clientSecret == "" {
+		clientSecret = strings.TrimSpace(cred.ExtraConfig["client_secret"])
+	}
+	if clientID == "" || clientSecret == "" {
+		return "", "", fmt.Errorf("mondiad oauth: missing client_id or client_secret")
+	}
+	return clientID, clientSecret, nil
+}
+
+func refreshMondiadOAuth(ctx context.Context, client *http.Client, baseURL string, cred Credential) (accessToken, refreshToken string, expires time.Time, err error) {
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	base := baseURL
+	if base == "" {
+		base = mondiadAPIBaseDefault
+	}
+	if strings.TrimSpace(cred.RefreshToken) != "" {
+		return mondiadRefreshToken(ctx, client, base, cred.RefreshToken)
+	}
+	return mondiadLogin(ctx, client, base, cred)
+}
+
+func mondiadLogin(ctx context.Context, client *http.Client, base string, cred Credential) (accessToken, refreshToken string, expires time.Time, err error) {
+	clientID, clientSecret, err := mondiadClientCredentials(cred)
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	payload, err := json.Marshal(map[string]string{
+		"clientId":     clientID,
+		"clientSecret": clientSecret,
+	})
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	endpoint := strings.TrimRight(base, "/") + "/api/1.0/auth/login"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return mondiadTokenFromRequest(ctx, client, req)
+}
+
+func mondiadRefreshToken(ctx context.Context, client *http.Client, base, refresh string) (accessToken, refreshToken string, expires time.Time, err error) {
+	payload, err := json.Marshal(map[string]string{"refreshToken": refresh})
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	endpoint := strings.TrimRight(base, "/") + "/api/1.0/auth/refreshToken"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return mondiadTokenFromRequest(ctx, client, req)
+}
+
+func mondiadTokenFromRequest(ctx context.Context, client *http.Client, req *http.Request) (accessToken, refreshToken string, expires time.Time, err error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", "", time.Time{}, fmt.Errorf("mondiad oauth: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", time.Time{}, fmt.Errorf("mondiad oauth: status %d: %s", resp.StatusCode, string(body))
+	}
+	var parsed struct {
+		Data struct {
+			Token           string `json:"token"`
+			RefreshToken    string `json:"refreshToken"`
+			DurationSeconds int32  `json:"durationSeconds"`
+			Expired         string `json:"expired"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", "", time.Time{}, err
+	}
+	if parsed.Data.Token == "" {
+		return "", "", time.Time{}, fmt.Errorf("mondiad oauth: empty token")
+	}
+	expiresAt := time.Now().Add(time.Duration(parsed.Data.DurationSeconds) * time.Second)
+	if parsed.Data.DurationSeconds <= 0 {
+		expiresAt = time.Now().Add(55 * time.Second)
+	}
+	if parsed.Data.Expired != "" {
+		if t, parseErr := time.Parse(time.RFC3339, parsed.Data.Expired); parseErr == nil {
+			expiresAt = t
+		}
+	}
+	return parsed.Data.Token, parsed.Data.RefreshToken, expiresAt, nil
 }

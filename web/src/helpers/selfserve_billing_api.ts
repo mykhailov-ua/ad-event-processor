@@ -1,27 +1,26 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
 import { getOrCreate } from './idempotency.js';
+import type { components } from '../types/generated/openapi.js';
 import type { BillingStatementDTO } from '../types/billing.js';
 
-export type PaymentIntentResult = {
-  intent_id: string;
-  status: string;
-  checkout_url: string;
-  provider_ref?: string;
-  deposit_address?: string;
-  deposit_network?: string;
-  deposit_qr_svg?: string;
-};
+export type PaymentIntentResult = components['schemas']['PaymentIntentCreatedResponse'];
 
 export type { BillingStatementDTO };
 
+/**
+ * Create a customer top-up payment intent.
+ */
 export async function createPaymentIntent(
   amountMicro: number,
   customerId?: string,
   currency = 'USD'
 ): Promise<PaymentIntentResult> {
   const scope = `payment-intent:${customerId ?? 'session'}:${amountMicro}`;
-  const body: Record<string, unknown> = { amount_micro: amountMicro, currency };
+  const body: components['schemas']['CreatePaymentIntentRequest'] = {
+    amount_micro: amountMicro,
+    currency,
+  };
   if (customerId) body.customer_id = customerId;
   const res = await apiConfirmed<PaymentIntentResult>('/api/v1/selfserve/payment-intents', {
     method: 'POST',
@@ -32,6 +31,9 @@ export async function createPaymentIntent(
   return res.data as PaymentIntentResult;
 }
 
+/**
+ * Fetch self-serve billing statement for the authenticated customer.
+ */
 export async function fetchSelfServeStatement(month = ''): Promise<BillingStatementDTO> {
   const params = new URLSearchParams();
   if (month) params.set('month', month);
@@ -43,7 +45,10 @@ export async function fetchSelfServeStatement(month = ''): Promise<BillingStatem
   return res.data ?? {};
 }
 
-function formatPaymentStatus(status: string): string {
+/**
+ * Map payment intent status wire value to operator label.
+ */
+export function formatPaymentStatus(status: string): string {
   switch (status) {
     case 'PAYMENT_INTENT_STATUS_PENDING_PROVIDER':
       return 'Awaiting payment';
@@ -60,5 +65,3 @@ function formatPaymentStatus(status: string): string {
         .toLowerCase();
   }
 }
-
-export { formatPaymentStatus };

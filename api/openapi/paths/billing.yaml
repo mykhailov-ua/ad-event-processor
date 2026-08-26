@@ -1,0 +1,686 @@
+paths:
+  /api/v1/billing/summary:
+    get:
+      tags: [billing]
+      operationId: billingSummary
+      summary: Fleet billing KPI snapshot
+      description: Requires shards:read; aggregates invoiced MTD and undelivered notifications.
+      x-permissions: [shards:read]
+      responses:
+        '200':
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingSummary'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invariant:
+    get:
+      tags: [billing]
+      operationId: billingInvariant
+      summary: Ledger balance invariant check
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Invariant result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingInvariant'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices:
+    get:
+      tags: [billing]
+      operationId: billingListInvoices
+      summary: List invoices for customer or admin fleet
+      description: customer_id required for scoped callers; admin may omit for fleet list (InvoiceSummary rows).
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/MonthQuery'
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: min_total
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Invoice page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/InvoiceListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/preview:
+    post:
+      tags: [billing]
+      operationId: billingPreviewInvoice
+      summary: Dry-run invoice generation for a billing month
+      x-permissions: [customers:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/PreviewInvoiceRequest'
+      responses:
+        '200':
+          description: Preview totals and lines
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/InvoicePreview'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/{id}:
+    get:
+      tags: [billing]
+      operationId: billingGetInvoice
+      summary: Get invoice by id
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Invoice
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/Invoice'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/{id}/pdf:
+    get:
+      tags: [billing]
+      operationId: billingGetInvoicePdf
+      summary: Download invoice PDF
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: PDF document
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/{id}/ledger-lines:
+    get:
+      tags: [billing]
+      operationId: billingInvoiceLedgerLines
+      summary: Cursor-paged ledger lines backing an invoice
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - $ref: '../openapi.yaml#/components/parameters/CursorQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Ledger line page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/InvoiceLedgerLinesResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/{id}/deliveries:
+    get:
+      tags: [billing]
+      operationId: billingListInvoiceDeliveries
+      summary: List invoice email/webhook delivery attempts
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Delivery rows
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/InvoiceDeliveryListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/{id}/deliveries/retry:
+    post:
+      tags: [billing]
+      operationId: billingRetryInvoiceDelivery
+      summary: Retry failed invoice delivery
+      x-permissions: [customers:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Retry accepted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/invoices/{id}/void:
+    post:
+      tags: [billing]
+      operationId: billingVoidInvoice
+      summary: Void a finalized invoice
+      x-permissions: [customers:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Invoice voided
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/exports:
+    post:
+      tags: [billing]
+      operationId: billingCreateExport
+      summary: Enqueue async customer ledger export job
+      x-permissions: [customers:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/BillingExportJobSpec'
+      responses:
+        '202':
+          description: Export job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingExportJobCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/exports/{job_id}:
+    get:
+      tags: [billing]
+      operationId: billingGetExportJob
+      summary: Poll export job status
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/JobIdPath'
+      responses:
+        '200':
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingExportJob'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/exports/{job_id}/download:
+    get:
+      tags: [billing]
+      operationId: billingDownloadExport
+      summary: Download completed export file
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/JobIdPath'
+      responses:
+        '200':
+          description: CSV or NDJSON export bytes
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+            application/x-ndjson:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/balance:
+    get:
+      tags: [billing]
+      operationId: billingCustomerBalance
+      summary: Customer wallet balance with recent ledger slice
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Balance report
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/CustomerBalance'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/ledger:
+    get:
+      tags: [billing]
+      operationId: billingCustomerLedger
+      summary: Paginated customer balance ledger
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Ledger page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/CustomerLedgerListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/balance/export:
+    get:
+      tags: [billing]
+      operationId: billingCustomerBalanceExport
+      summary: Stream customer ledger CSV export
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [csv]
+        - name: cursor
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: CSV ledger export
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/billing/statement:
+    get:
+      tags: [billing]
+      operationId: billingCustomerStatement
+      summary: Customer billing statement for calendar month
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - $ref: '../openapi.yaml#/components/parameters/MonthQuery'
+      responses:
+        '200':
+          description: Statement
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingStatement'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/billing/forecast:
+    get:
+      tags: [billing]
+      operationId: billingCustomerForecast
+      summary: Month-to-date spend forecast for customer
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Forecast advisory
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingForecast'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/payments:
+    get:
+      tags: [billing]
+      operationId: billingCustomerPayments
+      summary: Payment intent history for customer
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Payment history page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/PaymentHistoryListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/wallet:
+    get:
+      tags: [billing]
+      operationId: billingCustomerWallet
+      summary: Customer wallet and payment provider readiness
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Wallet snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/Wallet'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/customers/{id}/tax-profile:
+    get:
+      tags: [billing]
+      operationId: billingGetTaxProfile
+      summary: Get customer tax profile
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Tax profile
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/TaxProfile'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    put:
+      tags: [billing]
+      operationId: billingPutTaxProfile
+      summary: Replace customer tax profile
+      x-permissions: [customers:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/TaxProfile'
+      responses:
+        '200':
+          description: Updated tax profile
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/TaxProfile'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/templates:
+    get:
+      tags: [selfserve]
+      operationId: selfserveListTemplates
+      summary: List campaign templates for self-serve create
+      description: Authenticate with Bearer API key on self-serve routes.
+      security:
+        - BearerApiKey: []
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Template page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/SelfServeTemplateListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/campaigns:
+    post:
+      tags: [selfserve]
+      operationId: selfserveCreateCampaign
+      summary: Create campaign from template
+      security:
+        - BearerApiKey: []
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/SelfServeCreateCampaignRequest'
+      responses:
+        '201':
+          description: Campaign id
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/IDCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/campaigns/{id}/pause:
+    post:
+      tags: [selfserve]
+      operationId: selfservePauseCampaign
+      summary: Pause campaign via self-serve API
+      security:
+        - BearerApiKey: []
+      x-permissions: [campaigns:write, campaigns:pause]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/SelfServePauseCampaignRequest'
+      responses:
+        '202':
+          description: Pause accepted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/campaigns/{id}/resume:
+    post:
+      tags: [selfserve]
+      operationId: selfserveResumeCampaign
+      summary: Resume campaign via self-serve API
+      security:
+        - BearerApiKey: []
+      x-permissions: [campaigns:write, campaigns:pause]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/SelfServePauseCampaignRequest'
+      responses:
+        '202':
+          description: Resume accepted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/payment-intents:
+    post:
+      tags: [selfserve]
+      operationId: selfserveCreatePaymentIntent
+      summary: Create top-up payment intent
+      security:
+        - BearerApiKey: []
+      x-permissions: [customers:read]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/CreatePaymentIntentRequest'
+      responses:
+        '200':
+          description: Payment intent created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/PaymentIntentCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/invoices:
+    get:
+      tags: [selfserve]
+      operationId: selfserveListInvoices
+      summary: List invoices for authenticated self-serve customer
+      security:
+        - BearerApiKey: []
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/SelfServeInvoiceListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/billing/statement:
+    get:
+      tags: [selfserve]
+      operationId: selfserveBillingStatement
+      summary: Self-serve billing statement for current customer
+      security:
+        - BearerApiKey: []
+      x-permissions: [customers:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/MonthQuery'
+      responses:
+        '200':
+          description: Statement
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/BillingStatement'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/selfserve/api-keys:
+    post:
+      tags: [selfserve]
+      operationId: selfserveCreateApiKey
+      summary: Mint self-serve API key (session required)
+      description: Uses admin session cookie to create a Bearer key; raw_key is returned once.
+      security:
+        - SessionCookie: []
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/billing.yaml#/CreateAPIKeyRequest'
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/billing.yaml#/APIKeyCreatedResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/billing/crypto/webhook:
+    post:
+      tags: [billing]
+      operationId: billingCryptoWebhook
+      summary: Crypto payment provider webhook
+      description: HMAC verified via BTCPay-Sig, Crypto-Signature, or sign header; not session auth.
+      parameters:
+        - name: X-Crypto-Provider
+          in: header
+          schema:
+            type: string
+        - name: BTCPay-Sig
+          in: header
+          schema:
+            type: string
+        - name: Crypto-Signature
+          in: header
+          schema:
+            type: string
+        - name: sign
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/CryptoBillingWebhookEvent'
+      responses:
+        '200':
+          description: Event accepted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { to } from '../lib/to.js';
 import * as auth from '../helpers/auth.js';
@@ -10,23 +10,21 @@ import { pushToastMessage } from '../helpers/toast_ui.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { formatMicro } from '../helpers/money.js';
 import {
-  COST_SYNC_NETWORKS,
-  type CostSyncNetwork,
+  type CostSyncCredentialResponse,
+  type CostSyncExtraField,
+  type CostSyncNetworkSchema,
+  type CostSyncSyncInterval,
   deleteCostSyncCredential,
   fetchCostSyncCredentials,
   fetchCostSyncHistory,
+  fetchCostSyncNetworks,
   runCostSync,
+  type RunCostSyncRequest,
   upsertCostSyncCredential,
 } from '../helpers/cost_sync_api.js';
 import { Button } from '../components/button.js';
 import { ErrorBlock } from '../components/error_block.js';
 import { StatusBadge } from '../components/status_badge.js';
-
-type CostSyncCredential = {
-  network: string;
-  account_id?: string;
-  updated_at?: string;
-};
 
 type CostSyncHistoryRow = {
   cost_date?: string;
@@ -37,11 +35,37 @@ type CostSyncHistoryRow = {
   trigger_source?: string;
 };
 
-/** Revcontent Stats API uses client_credentials; worker fetches Bearer tokens. */
-function usesClientCredentialsAuth(network: string): boolean {
-  return network === 'revcontent';
-}
+type CredentialFormState = {
+  network: string;
+  account_id: string;
+  access_token: string;
+  refresh_token: string;
+  api_key: string;
+  extra_config: Record<string, string>;
+  sync_interval_minutes: CostSyncSyncInterval;
+  token_mapping: {
+    placement_field: string;
+    network_object: string;
+    attribution_mode: 'token' | 'spread';
+  };
+};
 
+const EMPTY_CRED_FORM: CredentialFormState = {
+  network: 'facebook',
+  account_id: '',
+  access_token: '',
+  refresh_token: '',
+  api_key: '',
+  extra_config: {},
+  sync_interval_minutes: 1440,
+  token_mapping: {
+    placement_field: 'placement_id',
+    network_object: 'ad_id',
+    attribution_mode: 'token',
+  },
+};
+
+/** Skeleton rows while credential or history tables load. */
 function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   return (
     <>
@@ -58,6 +82,98 @@ function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
   );
 }
 
+/** Revcontent uses client_credentials; access token is fetched by the worker. */
+function usesClientCredentialsAuth(network: string): boolean {
+  return network === 'revcontent';
+}
+
+/** Build initial extra_config map for a network schema. */
+function emptyExtraForSchema(schema: CostSyncNetworkSchema | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of schema?.extra_fields ?? []) {
+    out[field.key] = '';
+  }
+  return out;
+}
+
+/** Merge stored credential into the edit form (secrets stay blank). */
+function formFromCredential(
+  cred: CostSyncCredentialResponse,
+  schema: CostSyncNetworkSchema | null
+): CredentialFormState {
+  const extra = emptyExtraForSchema(schema);
+  for (const [key, value] of Object.entries(cred.extra_config ?? {})) {
+    extra[key] = value;
+  }
+  return {
+    network: cred.network,
+    account_id: cred.account_id ?? '',
+    access_token: '',
+    refresh_token: '',
+    api_key: '',
+    extra_config: extra,
+    sync_interval_minutes: cred.sync_interval_minutes ?? 1440,
+    token_mapping: {
+      placement_field: cred.token_mapping?.placement_field ?? 'placement_id',
+      network_object: cred.token_mapping?.network_object ?? 'ad_id',
+      attribution_mode: cred.token_mapping?.attribution_mode ?? 'token',
+    },
+  };
+}
+
+/** Validate required extra_config fields before PUT. */
+function validateExtraConfig(
+  schema: CostSyncNetworkSchema | null,
+  extra: Record<string, string>,
+  extraSet: Record<string, boolean> | undefined
+): string | null {
+  for (const field of schema?.extra_fields ?? []) {
+    if (!field.required) continue;
+    const value = (extra[field.key] ?? '').trim();
+    if (value !== '') continue;
+    if (field.secret && extraSet?.[field.key]) continue;
+    return `${field.label} is required`;
+  }
+  return null;
+}
+
+/** Render one network-specific extra_config field. */
+function ExtraConfigField({
+  field,
+  value,
+  configured,
+  disabled,
+  onChange,
+}: {
+  field: CostSyncExtraField;
+  value: string;
+  configured: boolean;
+  disabled: boolean;
+  onChange: (key: string, next: string) => void;
+}) {
+  const placeholder =
+    field.secret && configured ? 'Leave blank to keep existing value' : field.placeholder || '';
+  return (
+    <label className="form-field" key={field.key}>
+      {field.label}
+      {field.required ? ' *' : ''}
+      <input
+        className="form-input font-mono"
+        type={field.secret ? 'password' : 'text'}
+        autoComplete="off"
+        placeholder={placeholder}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(field.key, e.target.value)}
+      />
+      {field.secret && configured && !value ? (
+        <span className="text-muted text-sm">Configured (hidden)</span>
+      ) : null}
+      {field.hint ? <span className="text-muted text-sm">{field.hint}</span> : null}
+    </label>
+  );
+}
+
 export function IntegrationsCostSyncPage() {
   const [searchParams] = useSearchParams();
   const user = auth.getUser();
@@ -68,24 +184,41 @@ export function IntegrationsCostSyncPage() {
   const qsCustomer = searchParams.get('customer_id') || '';
   const drillCampaignId = searchParams.get('campaign_id') || '';
   const [customerId, setCustomerId] = useState(sessionScoped ? tenantCustomerId : qsCustomer);
-  const [credentials, setCredentials] = useState<CostSyncCredential[]>([]);
+  const [networkSchemas, setNetworkSchemas] = useState<CostSyncNetworkSchema[]>([]);
+  const [credentials, setCredentials] = useState<CostSyncCredentialResponse[]>([]);
   const [history, setHistory] = useState<CostSyncHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
 
-  const [credForm, setCredForm] = useState({
-    network: 'facebook',
-    account_id: '',
-    access_token: '',
-    refresh_token: '',
-    api_key: '',
-  });
+  const [credForm, setCredForm] = useState<CredentialFormState>(EMPTY_CRED_FORM);
   const [runForm, setRunForm] = useState({
     network: 'facebook',
     from: '',
     to: '',
   });
+
+  const schemaByNetwork = useMemo(() => {
+    const map = new Map<string, CostSyncNetworkSchema>();
+    for (const schema of networkSchemas) {
+      map.set(schema.network, schema);
+    }
+    return map;
+  }, [networkSchemas]);
+
+  const selectedSchema = schemaByNetwork.get(credForm.network) ?? null;
+  const selectedCredential = credentials.find((c) => c.network === credForm.network);
+
+  useEffect(() => {
+    void (async () => {
+      const [schemas, schemaErr] = await to(fetchCostSyncNetworks());
+      if (schemaErr) {
+        setError(schemaErr);
+        return;
+      }
+      setNetworkSchemas(schemas ?? []);
+    })();
+  }, []);
 
   const reload = useCallback(async () => {
     if (!isCustomerUuid(customerId)) {
@@ -105,7 +238,7 @@ export function IntegrationsCostSyncPage() {
       setError(creds[1]);
       return;
     }
-    setCredentials((creds[0] ?? []) as CostSyncCredential[]);
+    setCredentials((creds[0] ?? []) as CostSyncCredentialResponse[]);
     setHistory(hist[1] ? [] : ((hist[0] ?? []) as CostSyncHistoryRow[]));
   }, [customerId]);
 
@@ -113,9 +246,38 @@ export function IntegrationsCostSyncPage() {
     void reload();
   }, [reload]);
 
+  const selectNetworkForEdit = (network: string) => {
+    const schema = schemaByNetwork.get(network) ?? null;
+    const existing = credentials.find((c) => c.network === network);
+    if (existing) {
+      setCredForm(formFromCredential(existing, schema));
+      return;
+    }
+    setCredForm({
+      ...EMPTY_CRED_FORM,
+      network,
+      extra_config: emptyExtraForSchema(schema),
+    });
+  };
+
   const saveCredential = async () => {
     if (!canWrite || !isCustomerUuid(customerId)) return;
+    const validationErr = validateExtraConfig(
+      selectedSchema,
+      credForm.extra_config,
+      selectedCredential?.extra_config_set
+    );
+    if (validationErr) {
+      pushToastMessage({ title: 'Validation failed', message: validationErr });
+      return;
+    }
     setBusy(true);
+    const extraPayload: Record<string, string> = {};
+    for (const [key, value] of Object.entries(credForm.extra_config)) {
+      if (value.trim() !== '') {
+        extraPayload[key] = value.trim();
+      }
+    }
     const [, err] = await to(
       upsertCostSyncCredential(credForm.network, {
         customer_id: customerId,
@@ -123,6 +285,9 @@ export function IntegrationsCostSyncPage() {
         access_token: credForm.access_token,
         refresh_token: credForm.refresh_token,
         api_key: credForm.api_key,
+        extra_config: extraPayload,
+        sync_interval_minutes: credForm.sync_interval_minutes,
+        token_mapping: credForm.token_mapping,
       })
     );
     setBusy(false);
@@ -131,7 +296,20 @@ export function IntegrationsCostSyncPage() {
       pushToastMessage({ title: 'Credential save failed', message: mapServiceError(err).message });
       return;
     }
-    setCredForm((f) => ({ ...f, access_token: '', refresh_token: '', api_key: '' }));
+    setCredForm((f) => ({
+      ...f,
+      access_token: '',
+      refresh_token: '',
+      api_key: '',
+      extra_config: Object.fromEntries(
+        Object.entries(f.extra_config).map(([key, value]) => [
+          key,
+          selectedSchema?.extra_fields?.find((field) => field.key === key && field.secret)
+            ? ''
+            : value,
+        ])
+      ),
+    }));
     pushToastMessage({ title: 'Credential saved', message: credForm.network });
     void reload();
   };
@@ -151,12 +329,7 @@ export function IntegrationsCostSyncPage() {
   const triggerRun = async () => {
     if (!canWrite || !isCustomerUuid(customerId)) return;
     setBusy(true);
-    const body: {
-      customer_id: string;
-      network: string;
-      from?: string;
-      to?: string;
-    } = { customer_id: customerId, network: runForm.network };
+    const body: RunCostSyncRequest = { customer_id: customerId, network: runForm.network };
     if (runForm.from) body.from = runForm.from;
     if (runForm.to) body.to = runForm.to;
     const [, err] = await to(runCostSync(body));
@@ -169,6 +342,15 @@ export function IntegrationsCostSyncPage() {
     pushToastMessage({ title: 'Sync queued', message: 'Cost sync run accepted' });
     setTimeout(() => void reload(), 1500);
   };
+
+  const accountIdLabel =
+    selectedSchema?.account_id_label ||
+    (usesClientCredentialsAuth(credForm.network) ? 'Client ID' : 'Account ID');
+
+  const networkOptions =
+    networkSchemas.length > 0
+      ? networkSchemas
+      : [{ network: 'facebook', label: 'Facebook', extra_fields: [] }];
 
   if (error) {
     return <ErrorBlock error={error} fallbackTitle="Cost Sync unavailable" />;
@@ -222,15 +404,16 @@ export function IntegrationsCostSyncPage() {
                 <tr>
                   <th>Network</th>
                   <th>Account</th>
+                  <th>Extra config</th>
                   <th>Updated</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {loading ? <TableSkeleton cols={4} /> : null}
+                {loading ? <TableSkeleton cols={5} /> : null}
                 {!loading && credentials.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="data-table__empty">
+                    <td colSpan={5} className="data-table__empty">
                       <div className="empty-state">
                         <div className="empty-state__title">No credentials configured</div>
                         <div className="empty-state__desc text-muted text-sm">
@@ -240,23 +423,41 @@ export function IntegrationsCostSyncPage() {
                     </td>
                   </tr>
                 ) : null}
-                {credentials.map((c) => (
-                  <tr key={c.network}>
-                    <td>{c.network}</td>
-                    <td className="font-mono text-hint">{c.account_id || '-'}</td>
-                    <td>{c.updated_at ? new Date(c.updated_at).toLocaleString() : '-'}</td>
-                    <td>
-                      {canWrite ? (
-                        <Button
-                          label="Remove"
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => void removeCredential(c.network)}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
+                {credentials.map((c) => {
+                  const extraKeys = [
+                    ...Object.keys(c.extra_config ?? {}),
+                    ...Object.keys(c.extra_config_set ?? {}),
+                  ];
+                  const uniqueExtra = [...new Set(extraKeys)];
+                  return (
+                    <tr key={c.network}>
+                      <td>{c.network}</td>
+                      <td className="font-mono text-hint">{c.account_id || '-'}</td>
+                      <td className="text-hint text-sm">
+                        {uniqueExtra.length > 0 ? uniqueExtra.join(', ') : '-'}
+                      </td>
+                      <td>{c.updated_at ? new Date(c.updated_at).toLocaleString() : '-'}</td>
+                      <td>
+                        {canWrite ? (
+                          <Button
+                            label="Edit"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => selectNetworkForEdit(c.network)}
+                          />
+                        ) : null}
+                        {canWrite ? (
+                          <Button
+                            label="Remove"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => void removeCredential(c.network)}
+                          />
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -270,17 +471,17 @@ export function IntegrationsCostSyncPage() {
                   <select
                     className="form-select"
                     value={credForm.network}
-                    onChange={(e) => setCredForm((f) => ({ ...f, network: e.target.value }))}
+                    onChange={(e) => selectNetworkForEdit(e.target.value)}
                   >
-                    {COST_SYNC_NETWORKS.map((n: CostSyncNetwork) => (
-                      <option key={n.id} value={n.id}>
+                    {networkOptions.map((n) => (
+                      <option key={n.network} value={n.network}>
                         {n.label}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="form-field">
-                  {usesClientCredentialsAuth(credForm.network) ? 'Client ID' : 'Account ID'}
+                  {accountIdLabel}
                   <input
                     className="form-input"
                     value={credForm.account_id}
@@ -300,6 +501,7 @@ export function IntegrationsCostSyncPage() {
                       className="form-input font-mono"
                       type="password"
                       autoComplete="off"
+                      placeholder="Leave blank to keep existing value"
                       value={credForm.api_key}
                       onChange={(e) => setCredForm((f) => ({ ...f, api_key: e.target.value }))}
                     />
@@ -313,6 +515,7 @@ export function IntegrationsCostSyncPage() {
                       className="form-input font-mono"
                       type="password"
                       autoComplete="off"
+                      placeholder="Leave blank to keep existing value"
                       value={credForm.access_token}
                       onChange={(e) => setCredForm((f) => ({ ...f, access_token: e.target.value }))}
                     />
@@ -323,8 +526,11 @@ export function IntegrationsCostSyncPage() {
                       className="form-input font-mono"
                       type="password"
                       autoComplete="off"
+                      placeholder="Leave blank to keep existing value"
                       value={credForm.refresh_token}
-                      onChange={(e) => setCredForm((f) => ({ ...f, refresh_token: e.target.value }))}
+                      onChange={(e) =>
+                        setCredForm((f) => ({ ...f, refresh_token: e.target.value }))
+                      }
                     />
                   </label>
                   <label className="form-field">
@@ -333,12 +539,108 @@ export function IntegrationsCostSyncPage() {
                       className="form-input font-mono"
                       type="password"
                       autoComplete="off"
+                      placeholder="Leave blank to keep existing value"
                       value={credForm.api_key}
                       onChange={(e) => setCredForm((f) => ({ ...f, api_key: e.target.value }))}
                     />
                   </label>
                 </>
               )}
+              {(selectedSchema?.extra_fields?.length ?? 0) > 0 ? (
+                <div className="stack" data-testid="cost-sync-extra-fields">
+                  <h4 className="subsection-title">Network settings</h4>
+                  {selectedSchema?.extra_fields?.map((field) => (
+                    <ExtraConfigField
+                      key={field.key}
+                      field={field}
+                      value={credForm.extra_config[field.key] ?? ''}
+                      configured={Boolean(selectedCredential?.extra_config_set?.[field.key])}
+                      disabled={busy}
+                      onChange={(key, next) =>
+                        setCredForm((f) => ({
+                          ...f,
+                          extra_config: { ...f.extra_config, [key]: next },
+                        }))
+                      }
+                    />
+                  ))}
+                </div>
+              ) : null}
+              <div className="form-row">
+                <label className="form-field">
+                  Sync interval
+                  <select
+                    className="form-select"
+                    value={String(credForm.sync_interval_minutes)}
+                    onChange={(e) =>
+                      setCredForm((f) => ({
+                        ...f,
+                        sync_interval_minutes: Number(e.target.value) as CostSyncSyncInterval,
+                      }))
+                    }
+                  >
+                    <option value="1440">Daily (24h)</option>
+                    <option value="60">Hourly</option>
+                    <option value="30">Every 30 minutes</option>
+                    <option value="15">Every 15 minutes</option>
+                  </select>
+                </label>
+                <label className="form-field">
+                  Attribution mode
+                  <select
+                    className="form-select"
+                    value={credForm.token_mapping.attribution_mode}
+                    onChange={(e) =>
+                      setCredForm((f) => ({
+                        ...f,
+                        token_mapping: {
+                          ...f.token_mapping,
+                          attribution_mode: e.target.value as 'token' | 'spread',
+                        },
+                      }))
+                    }
+                  >
+                    <option value="token">Token match</option>
+                    <option value="spread">Spread across clicks</option>
+                  </select>
+                </label>
+              </div>
+              <div className="form-row">
+                <label className="form-field">
+                  Click field to match
+                  <select
+                    className="form-select"
+                    value={credForm.token_mapping.placement_field}
+                    onChange={(e) =>
+                      setCredForm((f) => ({
+                        ...f,
+                        token_mapping: { ...f.token_mapping, placement_field: e.target.value },
+                      }))
+                    }
+                  >
+                    <option value="placement_id">placement_id</option>
+                    <option value="sub1">sub1</option>
+                    <option value="sub2">sub2</option>
+                  </select>
+                </label>
+                <label className="form-field">
+                  Network object ID
+                  <select
+                    className="form-select"
+                    value={credForm.token_mapping.network_object}
+                    onChange={(e) =>
+                      setCredForm((f) => ({
+                        ...f,
+                        token_mapping: { ...f.token_mapping, network_object: e.target.value },
+                      }))
+                    }
+                  >
+                    <option value="ad_id">ad_id</option>
+                    <option value="adset_id">adset_id</option>
+                    <option value="placement_id">placement_id</option>
+                  </select>
+                </label>
+              </div>
               <Button
                 label={busy ? 'Saving...' : 'Save credential'}
                 variant="primary"
@@ -363,8 +665,8 @@ export function IntegrationsCostSyncPage() {
                 value={runForm.network}
                 onChange={(e) => setRunForm((f) => ({ ...f, network: e.target.value }))}
               >
-                {COST_SYNC_NETWORKS.map((n: CostSyncNetwork) => (
-                  <option key={n.id} value={n.id}>
+                {networkOptions.map((n) => (
+                  <option key={n.network} value={n.network}>
                     {n.label}
                   </option>
                 ))}

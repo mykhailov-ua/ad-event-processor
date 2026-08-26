@@ -9,6 +9,7 @@ import { can, maskLevel } from '../helpers/permissions.js';
 import { pauseCampaign, resumeCampaign, pollCampaignStatus } from '../helpers/campaign_actions.js';
 import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import { pushToastMessage } from '../helpers/toast_ui.js';
+import { mapServiceError } from '../helpers/service_error.js';
 import { formatUsdDecimal, ParseDecimal } from '../helpers/money.js';
 import { shortCustomerId, touchCustomerContext } from '../helpers/customer_context.js';
 import { PacingHealth } from '../components/pacing_health.js';
@@ -18,7 +19,7 @@ import { ForecastModal, useForecastModal } from '../components/forecast_modal.js
 import { isoDaysAgo, toIsoNow } from '../helpers/date_presets.js';
 import { createInFlightGuard } from '../lib/async_guard.js';
 import type { MetricsBlockDTO } from '../types/metrics.js';
-import { patchCampaign } from '../helpers/campaign_admin_api.js';
+import { patchCampaign, exportCampaign } from '../helpers/campaign_admin_api.js';
 import { fetchFlows, type FlowDTO } from '../helpers/flows_api.js';
 import { displayLabel } from '../helpers/display_labels.js';
 import type { HourlyMetricRow } from '../helpers/chart_pool.js';
@@ -29,6 +30,7 @@ import { CampaignFraudSection } from '../components/campaign_fraud_section.js';
 import { CampaignMarginGuardSection } from '../components/campaign_margin_guard_section.js';
 import { CampaignTelegramSection } from '../components/campaign_telegram_section.js';
 import { CampaignBrandCreativesSection } from '../components/campaign_brand_creatives_section.js';
+import { CampaignPlatformSyncSection } from '../components/campaign_platform_sync_section.js';
 import { CampaignOwnerSection } from '../components/campaign_owner_section.js';
 import { CommercialMetrics } from '../components/commercial_metrics.js';
 import { FreshnessBadge } from '../components/freshness_badge.js';
@@ -115,6 +117,7 @@ function allowedTabIds(masked: boolean): string[] {
       'fraud',
       'filters',
       'margin',
+      'platform',
       'events',
       'creative',
       'telegram'
@@ -141,6 +144,7 @@ function buildTabs(masked: boolean): TabBarTab[] {
       { id: 'fraud', label: 'Fraud' },
       { id: 'filters', label: 'Filters' },
       { id: 'margin', label: 'Margin guard' },
+      { id: 'platform', label: 'Platform sync' },
       { id: 'events', label: 'Event log' },
       { id: 'creative', label: 'Creative' },
       { id: 'telegram', label: 'Telegram' }
@@ -307,9 +311,20 @@ export function CampaignDetailPage() {
 
   useEffect(() => {
     if (!canWriteCampaign || masked || tab !== 'config') return;
-    void fetchFlows()
-      .then(setFlowOptions)
-      .catch(() => setFlowOptions([]));
+    void (async () => {
+      const [flows, err] = await to(fetchFlows());
+      if (err) {
+        setFlowOptions([]);
+        const view = mapServiceError(err);
+        pushToastMessage({
+          title: 'Flows unavailable',
+          message: view.message,
+          code: view.code,
+        });
+        return;
+      }
+      setFlowOptions(flows ?? []);
+    })();
   }, [canWriteCampaign, masked, tab]);
 
   useEffect(() => {
@@ -427,6 +442,26 @@ export function CampaignDetailPage() {
     }
     setActionLoading(false);
     gate.release();
+  };
+
+  /** Downloads a JSON bundle for migration or backup. */
+  const handleExport = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    setActionError(null);
+    const [bundle, err] = await to(exportCampaign(id));
+    setActionLoading(false);
+    if (err) {
+      setActionError(err instanceof Error ? err.message : 'Export failed');
+      return;
+    }
+    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `campaign-${id}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const saveConfig = async () => {
@@ -599,7 +634,46 @@ export function CampaignDetailPage() {
             <h1 className="page-header__title">{campaign.name}</h1>
           </div>
           <StatusBadge status={campaign.status} />
-          {canPause ? (
+          {canWriteCampaign && !masked ? (
+            <div className="cluster--actions ml-auto">
+              <Button
+                label="Export JSON"
+                variant="secondary"
+                size="sm"
+                icon="download"
+                loading={actionLoading}
+                disabled={actionLoading}
+                data-testid="campaign-export-button"
+                onClick={() => void handleExport()}
+              />
+              {canPause ? (
+                <>
+                  {isActive ? (
+                    <Button
+                      label="Pause"
+                      variant="danger"
+                      size="sm"
+                      icon="pause"
+                      loading={actionLoading}
+                      disabled={actionLoading}
+                      onClick={() => void handlePause()}
+                    />
+                  ) : null}
+                  {isPaused ? (
+                    <Button
+                      label="Resume"
+                      variant="primary"
+                      size="sm"
+                      icon="play"
+                      loading={actionLoading}
+                      disabled={actionLoading}
+                      onClick={() => void handleResume()}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          ) : canPause ? (
             <div className="cluster--actions ml-auto">
               {isActive ? (
                 <Button
@@ -1064,11 +1138,11 @@ export function CampaignDetailPage() {
               <div className="section-card stack" data-testid="campaign-defense-config">
                 <h4 className="subsection-title">Enhanced defense controls</h4>
                 <p className="text-muted text-sm">
-                  TLS fingerprint blocklist, connection-type policy, network-tier fallback gates, and
-                  signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be set
-                  for link signing. Apply preset <strong>Enhanced defense</strong> on the Fraud tab
-                  to enable compliance landing fallback, attestation, network blocks, TLS block, and
-                  link signing in one step (set <code>safe_page_url</code> separately). IPv6 /64
+                  TLS fingerprint blocklist, connection-type policy, network-tier fallback gates,
+                  and signed offer links. Tracker env <code>LINK_SIGNING_HMAC_SECRET</code> must be
+                  set for link signing. Apply preset <strong>Enhanced defense</strong> on the Fraud
+                  tab to enable compliance landing fallback, attestation, network blocks, TLS block,
+                  and link signing in one step (set <code>safe_page_url</code> separately). IPv6 /64
                   rotation velocity is separate from the DC CIDR feed - configure{' '}
                   <code>IPV6_ROTATION_MODE</code> on the tracker (shadow/live); IPv4 /24 sticky
                   rotation is planned (residential pools).
@@ -1272,7 +1346,13 @@ export function CampaignDetailPage() {
 
       {!masked && tab === 'tracking' ? (
         <div className="section-block">
-          <CampaignTrackingSection campaignId={id} canWrite={canWriteCampaign} />
+          <CampaignTrackingSection
+            campaignId={id}
+            canWrite={canWriteCampaign}
+            ingressCostConfig={campaign.ingress_cost_config}
+            trafficTemplateId={campaign.traffic_template_id}
+            clickQueryParams={campaign.click_query_params}
+          />
         </div>
       ) : null}
 
@@ -1306,6 +1386,16 @@ export function CampaignDetailPage() {
       {!masked && tab === 'margin' ? (
         <div className="section-block">
           <CampaignMarginGuardSection campaignId={id} canWrite={canWriteCampaign} />
+        </div>
+      ) : null}
+
+      {!masked && tab === 'platform' && campaign.customer_id ? (
+        <div className="section-block">
+          <CampaignPlatformSyncSection
+            campaignId={id}
+            customerId={campaign.customer_id}
+            canWrite={canWriteCampaign}
+          />
         </div>
       ) : null}
 

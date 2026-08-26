@@ -1,6 +1,6 @@
 # BPF resource gate (hot path)
 
-Generated: 2026-08-24T12:41:14Z
+Generated: 2026-08-25T18:45:24Z
 Session: `testdata/bpf_gate_pass`
 Prometheus: `http://127.0.0.1:1`
 Strict: `false`
@@ -14,7 +14,7 @@ Strict: `false`
 | tracker_involuntary_ctx_ratio | 0.20 | 5.00 | PASS | involuntary / voluntary context switches |
 | cgroup_cpu_throttle_pct_max | 1.5 | 15.0 | PASS | max cgroup CPU throttle across targets |
 | loadgen_oncpu_pct | 5.3 | 25.0 | PASS | load generator on-CPU share vs tracked processes |
-| tracker_outbound_connect | 0 | 0 | PASS | tracker must not call connect() on hot path (T9) |
+| tracker_outbound_connect | 0 | 0 | PASS | tracker must not call connect() on hot path (T9); unix/redis infra excluded |
 | tracker_handler_p99_ms | na | 80 | SKIP | skipped (Prometheus unavailable) |
 | redis_lua_p99_max_ms | na | 10 | SKIP | skipped (Prometheus unavailable) |
 | ch_spool_segments | 0 | 0 | PASS | ClickHouse spool segment backlog after settle (mmap WAL leak) |

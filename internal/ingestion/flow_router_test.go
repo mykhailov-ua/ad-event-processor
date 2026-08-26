@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -93,7 +94,7 @@ func TestFlowRouter_LanderWeightSplit(t *testing.T) {
 	}
 	counts := map[uuid.UUID]int{}
 	for i := 0; i < 10000; i++ {
-		sel, url, ok := SelectSnapshot(snap, []byte(fmt.Sprintf("user-%d", i)))
+		sel, url, ok := SelectSnapshot(snap, []byte(fmt.Sprintf("user-%d", i)), FlowSelectContext{})
 		require.True(t, ok)
 		require.NotEmpty(t, url)
 		counts[sel.LanderID]++

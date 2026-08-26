@@ -1,0 +1,917 @@
+DataSourceFreshness:
+  type: object
+  properties:
+    name:
+      type: string
+    consistency:
+      type: string
+    stale:
+      type: boolean
+    ch_lag_seconds:
+      type: integer
+      format: int32
+
+DataFreshness:
+  type: object
+  required: [as_of, consistency, stale]
+  properties:
+    as_of:
+      type: string
+      format: date-time
+    consistency:
+      type: string
+      description: eventual or strong
+    stale:
+      type: boolean
+      description: true when ClickHouse lag exceeds operator SLA window
+    ch_lag_seconds:
+      type: integer
+      format: int32
+    sources:
+      type: array
+      items:
+        $ref: '#/DataSourceFreshness'
+
+ReportCompareDeltas:
+  type: object
+  properties:
+    spend_micro_delta:
+      type: integer
+      format: int64
+    revenue_micro_delta:
+      type: integer
+      format: int64
+    impressions_delta:
+      type: integer
+      format: int64
+    clicks_delta:
+      type: integer
+      format: int64
+    conversions_delta:
+      type: integer
+      format: int64
+
+ReportMapRow:
+  type: object
+  additionalProperties: true
+
+ReportMapEnvelope:
+  type: object
+  required: [rows, freshness]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/ReportMapRow'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
+PlacementReportRow:
+  type: object
+  properties:
+    placement_id:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    spend_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    roi_pct:
+      type: number
+      format: double
+    cpa_micro:
+      type: integer
+      format: int64
+    ctr:
+      type: number
+      format: double
+    ivt_rate:
+      type: number
+      format: double
+    compare:
+      $ref: '#/ReportCompareDeltas'
+
+PlacementReportResponse:
+  type: object
+  required: [rows, freshness]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/PlacementReportRow'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
+KeywordReportRow:
+  type: object
+  properties:
+    keyword:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    spend_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    roi_pct:
+      type: number
+      format: double
+    cpa_micro:
+      type: integer
+      format: int64
+    ctr:
+      type: number
+      format: double
+    ivt_rate:
+      type: number
+      format: double
+    compare:
+      $ref: '#/ReportCompareDeltas'
+
+KeywordReportResponse:
+  type: object
+  required: [rows, freshness]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/KeywordReportRow'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
+TrueRoiReportRow:
+  type: object
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    ad_spend_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    true_profit_micro:
+      type: integer
+      format: int64
+    true_roi_pct:
+      type: number
+      format: double
+    true_cpa_micro:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+
+ReportJobSpec:
+  type: object
+  required: [customer_id, report_key, from, to]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    report_key:
+      type: string
+    from:
+      type: string
+      format: date-time
+    to:
+      type: string
+      format: date-time
+    format:
+      type: string
+      enum: [csv, json]
+
+ReportJobStatus:
+  type: object
+  properties:
+    id:
+      type: string
+    job_id:
+      type: string
+    customer_id:
+      type: string
+      format: uuid
+    report_key:
+      type: string
+    format:
+      type: string
+    status:
+      type: string
+    bytes:
+      type: integer
+      format: int64
+    error:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+SavedView:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    owner_id:
+      type: string
+    customer_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    report_key:
+      type: string
+    spec:
+      type: object
+      additionalProperties: true
+    is_shared:
+      type: boolean
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CreateSavedViewRequest:
+  type: object
+  required: [customer_id, name, report_key]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    report_key:
+      type: string
+    spec:
+      type: object
+      additionalProperties: true
+    is_shared:
+      type: boolean
+
+UpdateSavedViewRequest:
+  type: object
+  properties:
+    name:
+      type: string
+    report_key:
+      type: string
+    spec:
+      type: object
+      additionalProperties: true
+    is_shared:
+      type: boolean
+
+DoctorCheck:
+  type: object
+  properties:
+    id:
+      type: string
+    status:
+      type: string
+    message:
+      type: string
+    hint:
+      type: string
+    latency_ms:
+      type: integer
+      format: int64
+
+DoctorSummary:
+  type: object
+  properties:
+    overall:
+      type: string
+    checks:
+      type: array
+      items:
+        $ref: '#/DoctorCheck'
+    click_url_template:
+      type: string
+    tracking_domain:
+      type: string
+    rtb_mode:
+      type: string
+    rtb_enabled:
+      type: boolean
+
+DashboardSummary:
+  type: object
+  properties:
+    generated_at:
+      type: string
+      format: date-time
+    services:
+      type: array
+      items:
+        $ref: '#/DashboardServiceCard'
+    drift_micro_max:
+      type: number
+      format: double
+    drift_alert:
+      type: boolean
+    rps_estimate:
+      type: number
+      format: double
+    outbox_pending:
+      type: integer
+      format: int64
+    emergency_breaker:
+      type: string
+
+DashboardServiceCard:
+  type: object
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    status:
+      type: string
+    detail:
+      type: string
+
+DashboardMetrics:
+  type: object
+  properties:
+    range:
+      type: string
+    bucket_sec:
+      type: integer
+      format: int32
+    points:
+      type: array
+      items:
+        $ref: '#/DashboardMetricPoint'
+    generated_at:
+      type: string
+      format: date-time
+
+DashboardMetricPoint:
+  type: object
+  properties:
+    name:
+      type: string
+    labels_hash:
+      type: string
+    ts:
+      type: string
+      format: date-time
+    value:
+      type: number
+      format: double
+
+OutboxHealthSummary:
+  type: object
+  properties:
+    pending:
+      type: integer
+      format: int64
+    oldest_pending_seconds:
+      type: number
+      format: double
+    last_processed_event_id:
+      type: integer
+      format: int64
+
+ShardHealthStatus:
+  type: object
+  properties:
+    shard_id:
+      type: integer
+      format: int32
+    ping_ok:
+      type: boolean
+    ping_error:
+      type: string
+    ping_latency_ms:
+      type: number
+      format: double
+    config_version:
+      type: integer
+      format: int64
+      nullable: true
+    config_version_lag:
+      type: integer
+      format: int64
+    config_version_synced:
+      type: boolean
+
+IncidentSnapshot:
+  type: object
+  properties:
+    emergency_breaker:
+      type: string
+    shards:
+      type: array
+      items:
+        $ref: '#/ShardHealthStatus'
+    outbox:
+      $ref: '#/OutboxHealthSummary'
+    stream_lag:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    breaker_states:
+      type: object
+      additionalProperties:
+        type: string
+    partial:
+      type: boolean
+    errors:
+      type: array
+      items:
+        $ref: '#/FanOutSourceError'
+    stale_dashboard:
+      type: boolean
+    affected_campaigns:
+      type: array
+      items:
+        $ref: '#/AffectedCampaign'
+
+AffectedCampaign:
+  type: object
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+
+FanOutSourceError:
+  type: object
+  properties:
+    source:
+      type: string
+    code:
+      type: string
+
+OutboxEvent:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    event_type:
+      type: string
+    status:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+OutboxListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/OutboxEvent'
+    total:
+      type: integer
+      format: int64
+    next_cursor:
+      type: string
+
+DLQEntry:
+  type: object
+  required: [id, shard_id, stream_id, entry_id, failed_at, retry_count]
+  properties:
+    id:
+      type: string
+    shard_id:
+      type: integer
+      format: int32
+    stream_id:
+      type: string
+    entry_id:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    event_type:
+      type: string
+    error:
+      type: string
+    failed_at:
+      type: string
+      format: date-time
+    retry_count:
+      type: integer
+      format: int32
+    worker_id:
+      type: string
+
+DLQListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/DLQEntry'
+    next_cursor:
+      type: string
+    partial:
+      type: boolean
+    errors:
+      type: array
+      items:
+        $ref: '#/FanOutSourceError'
+
+DLQInboxEntry:
+  type: object
+  properties:
+    id:
+      type: string
+    source:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    event_type:
+      type: string
+    error:
+      type: string
+    failed_at:
+      type: string
+      format: date-time
+    status:
+      type: string
+    retry_count:
+      type: integer
+      format: int32
+    shard_id:
+      type: integer
+      format: int32
+    stream_id:
+      type: string
+    entry_id:
+      type: string
+    click_id:
+      type: string
+    provider:
+      type: string
+
+DLQInboxListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/DLQInboxEntry'
+    next_cursor:
+      type: string
+    partial:
+      type: boolean
+    errors:
+      type: array
+      items:
+        $ref: '#/FanOutSourceError'
+
+OpsBlacklistEntry:
+  type: object
+  properties:
+    id:
+      type: integer
+      format: int64
+    ip:
+      type: string
+    reason:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    expires_at:
+      type: string
+      format: date-time
+
+OpsBlacklistListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/OpsBlacklistEntry'
+    total:
+      type: integer
+      format: int64
+    next_cursor:
+      type: string
+
+OpsBlacklistWriteRequest:
+  type: object
+  required: [ip]
+  properties:
+    ip:
+      type: string
+    reason:
+      type: string
+    ttl_seconds:
+      type: integer
+      format: int64
+
+OpsBlacklistDeleteRequest:
+  type: object
+  required: [ip]
+  properties:
+    ip:
+      type: string
+    source:
+      type: string
+
+MLManualLabel:
+  type: object
+  properties:
+    ip_hash:
+      type: string
+    label:
+      type: integer
+      format: int32
+    reason:
+      type: string
+    source:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+FraudManualLabelRequest:
+  type: object
+  required: [ip_hash, label]
+  properties:
+    ip_hash:
+      type: string
+    label:
+      type: integer
+      format: int32
+    reason:
+      type: string
+
+FraudManualLabelBulkRequest:
+  type: object
+  required: [rows]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/FraudManualLabelRequest'
+
+FraudManualLabelBulkResponse:
+  type: object
+  properties:
+    upserted:
+      type: integer
+      format: int32
+
+FraudPolicyPreset:
+  type: object
+  properties:
+    name:
+      type: string
+    pass:
+      type: integer
+      format: int32
+    suspect:
+      type: integer
+      format: int32
+    ivt:
+      type: integer
+      format: int32
+    block:
+      type: integer
+      format: int32
+    updated_at:
+      type: string
+      format: date-time
+
+PatchFraudPolicyPresetRequest:
+  type: object
+  properties:
+    pass:
+      type: integer
+      format: int32
+    suspect:
+      type: integer
+      format: int32
+    ivt:
+      type: integer
+      format: int32
+    block:
+      type: integer
+      format: int32
+
+FraudTierThresholds:
+  type: object
+  properties:
+    pass:
+      type: integer
+      format: int32
+    suspect:
+      type: integer
+      format: int32
+    ivt:
+      type: integer
+      format: int32
+    block:
+      type: integer
+      format: int32
+
+FraudDecision:
+  type: object
+  properties:
+    ip_hash:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    window_start:
+      type: string
+      format: date-time
+    evaluated_at:
+      type: string
+      format: date-time
+    disclaimer:
+      type: string
+    tier:
+      type: string
+    score:
+      type: integer
+      format: int32
+    ml_probability:
+      type: number
+      format: double
+    adjusted_probability:
+      type: number
+      format: double
+    residential_proxy:
+      type: boolean
+    structural_fraud:
+      type: boolean
+    fp_guard_applied:
+      type: boolean
+    model_score:
+      type: number
+      format: double
+    model_name:
+      type: string
+    score_missing:
+      type: boolean
+    features:
+      type: object
+      additionalProperties:
+        type: number
+        format: double
+    campaign_thresholds:
+      $ref: '#/FraudTierThresholds'
+
+RoleDashboard:
+  type: object
+  additionalProperties: true
+  description: Role-specific dashboard payload (buyer, cfo, adops, accountant, fraud, operator, campaign).
+
+ClickLogEvent:
+  type: object
+  properties:
+    event_type:
+      type: string
+    click_id:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    placement_id:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    attributed_cost_micro:
+      type: integer
+      format: int64
+    cost_source:
+      type: string
+    revenue_micro:
+      type: integer
+      format: int64
+    inbound_status:
+      type: string
+    goal_name:
+      type: string
+    sub1:
+      type: string
+    country:
+      type: string
+
+ClickLogPostback:
+  type: object
+  properties:
+    status:
+      type: string
+    error_message:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+ClickLogReportResponse:
+  type: object
+  required: [events, freshness]
+  properties:
+    events:
+      type: array
+      items:
+        $ref: '#/ClickLogEvent'
+    postbacks:
+      type: array
+      items:
+        $ref: '#/ClickLogPostback'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
+ConversionTypePayoutRow:
+  type: object
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    goal_name:
+      type: string
+    conversions:
+      type: integer
+      format: int64
+    payout_micro:
+      type: integer
+      format: int64
+
+ConversionTypePayoutReportResponse:
+  type: object
+  required: [rows, freshness]
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/ConversionTypePayoutRow'
+    freshness:
+      $ref: '#/DataFreshness'
+    next_cursor:
+      type: string
+
+TelegramReportExportRequest:
+  type: object
+  properties:
+    from:
+      type: string
+      format: date-time
+    to:
+      type: string
+      format: date-time
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    format:
+      type: string

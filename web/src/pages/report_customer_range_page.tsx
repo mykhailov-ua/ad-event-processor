@@ -92,11 +92,21 @@ export function CustomerRangeReportPage({
       const qs = tenantReportQueryString({ customer_id: cid, from, to: rangeTo });
       window.history.replaceState(null, '', `${urlPath}?${qs}`);
     }
-  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, urlPath, comparePeriod, requireCustomer]);
+  }, [
+    sessionScoped,
+    user,
+    customerInput,
+    from,
+    rangeTo,
+    endpoint,
+    urlPath,
+    comparePeriod,
+    requireCustomer,
+  ]);
 
   useEffect(() => {
     void load();
-  }, []); 
+  }, []);
 
   if (error) return <ErrorBlock error={error} />;
 
@@ -268,8 +278,7 @@ export const DATA_QUALITY_REPORT_COLUMNS: CustomerRangeColumn[] = [
   { header: 'CH total', render: (row) => String(row.ch_total ?? 0) },
   {
     header: 'Diff %',
-    render: (row) =>
-      row.diff_pct != null ? `${(Number(row.diff_pct) * 100).toFixed(2)}%` : '-',
+    render: (row) => (row.diff_pct != null ? `${(Number(row.diff_pct) * 100).toFixed(2)}%` : '-'),
   },
   { header: 'Severity', render: (row) => String(row.severity ?? '-') },
 ];
@@ -311,7 +320,9 @@ export const FRAUD_BREAKDOWN_REPORT_COLUMNS: CustomerRangeColumn[] = [
   {
     header: 'Silent reject %',
     render: (row) =>
-      row.silent_reject_ratio != null ? `${(Number(row.silent_reject_ratio) * 100).toFixed(2)}%` : '-',
+      row.silent_reject_ratio != null
+        ? `${(Number(row.silent_reject_ratio) * 100).toFixed(2)}%`
+        : '-',
   },
 ];
 
@@ -331,12 +342,16 @@ export const SILENT_REJECT_IMPRESSION_FUNNEL_COLUMNS: CustomerRangeColumn[] = [
   {
     header: 'Silent reject %',
     render: (row) =>
-      row.silent_reject_rate != null ? `${(Number(row.silent_reject_rate) * 100).toFixed(2)}%` : '-',
+      row.silent_reject_rate != null
+        ? `${(Number(row.silent_reject_rate) * 100).toFixed(2)}%`
+        : '-',
   },
   {
     header: 'IVT %',
     render: (row) =>
-      row.ivt_impression_rate != null ? `${(Number(row.ivt_impression_rate) * 100).toFixed(2)}%` : '-',
+      row.ivt_impression_rate != null
+        ? `${(Number(row.ivt_impression_rate) * 100).toFixed(2)}%`
+        : '-',
   },
 ];
 
@@ -346,8 +361,7 @@ export const RTB_OVERVIEW_REPORT_COLUMNS: CustomerRangeColumn[] = [
   { header: 'Wins', render: (row) => String(row.wins ?? 0) },
   {
     header: 'Win rate',
-    render: (row) =>
-      row.win_rate != null ? `${(Number(row.win_rate) * 100).toFixed(2)}%` : '-',
+    render: (row) => (row.win_rate != null ? `${(Number(row.win_rate) * 100).toFixed(2)}%` : '-'),
   },
   { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
 ];
@@ -364,10 +378,23 @@ export const RTB_GEO_DEVICE_REPORT_COLUMNS: CustomerRangeColumn[] = [
   { header: 'Wins', render: (row) => String(row.wins ?? 0) },
   {
     header: 'Win rate',
-    render: (row) =>
-      row.win_rate != null ? `${(Number(row.win_rate) * 100).toFixed(2)}%` : '-',
+    render: (row) => (row.win_rate != null ? `${(Number(row.win_rate) * 100).toFixed(2)}%` : '-'),
   },
   { header: 'Spend', render: (row) => formatMoney(row.spend_micro as string | number) },
+];
+
+export const CONVERSION_TYPE_PAYOUT_REPORT_COLUMNS: CustomerRangeColumn[] = [
+  {
+    header: 'Campaign',
+    render: (row) => (
+      <Link to={`/campaigns/${String(row.campaign_id ?? '')}`}>
+        {String(row.campaign_id ?? '')}
+      </Link>
+    ),
+  },
+  { header: 'Goal / type', render: (row) => String(row.goal_name ?? '-') },
+  { header: 'Conversions', render: (row) => String(row.conversions ?? '-') },
+  { header: 'Payout', render: (row) => formatMoney(row.payout_micro as string | number) },
 ];
 
 export const POSTBACK_RECON_REPORT_COLUMNS: CustomerRangeColumn[] = [
@@ -379,7 +406,10 @@ export const POSTBACK_RECON_REPORT_COLUMNS: CustomerRangeColumn[] = [
       </Link>
     ),
   },
-  { header: 'Click ID', render: (row) => <span className="font-mono">{String(row.click_id ?? '-')}</span> },
+  {
+    header: 'Click ID',
+    render: (row) => <span className="font-mono">{String(row.click_id ?? '-')}</span>,
+  },
   { header: 'Conversion', render: (row) => String(row.conversion_at ?? '-') },
   { header: 'Value', render: (row) => formatMoney(row.conversion_value_micro as string | number) },
   { header: 'Day fee', render: (row) => formatMoney(row.ledger_day_fee_micro as string | number) },
@@ -401,8 +431,7 @@ export const PACING_DRIFT_REPORT_COLUMNS: CustomerRangeColumn[] = [
   { header: 'Actual', render: (row) => formatMoney(row.actual_spend_micro as string | number) },
   {
     header: 'Drift %',
-    render: (row) =>
-      row.drift_pct != null ? `${(Number(row.drift_pct) * 100).toFixed(2)}%` : '-',
+    render: (row) => (row.drift_pct != null ? `${(Number(row.drift_pct) * 100).toFixed(2)}%` : '-'),
   },
   { header: 'Pacing', render: (row) => String(row.pacing_mode ?? '-') },
 ];

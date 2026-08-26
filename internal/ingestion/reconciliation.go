@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+
 	"github.com/google/uuid"
 )
 

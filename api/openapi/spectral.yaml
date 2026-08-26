@@ -1,0 +1,11 @@
+extends: spectral:oas
+rules:
+  operation-operationId-unique: error
+  operation-operationId-valid-in-url: error
+  path-params: off
+  operation-tag-defined: warn
+  operation-description: warn
+  oas3-unused-component: off
+  info-contact: off
+  info-license: off
+  oas3-api-servers: off

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/pkg/lifecycle"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )

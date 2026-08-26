@@ -10,6 +10,7 @@ import {
   IVT_REPORT_COLUMNS,
   PACING_DRIFT_REPORT_COLUMNS,
   POSTBACK_RECON_REPORT_COLUMNS,
+  CONVERSION_TYPE_PAYOUT_REPORT_COLUMNS,
   RTB_NO_BID_REPORT_COLUMNS,
   RTB_OVERVIEW_REPORT_COLUMNS,
   RTB_GEO_DEVICE_REPORT_COLUMNS,
@@ -174,6 +175,19 @@ export function PostbackReconReportPage() {
       endpoint="postback-reconciliation"
       urlPath="/reports/postback-reconciliation"
       columns={POSTBACK_RECON_REPORT_COLUMNS}
+      enableCompare={false}
+      enableActions={false}
+    />
+  );
+}
+
+export function ConversionTypePayoutReportPage() {
+  return (
+    <CustomerRangeReportPage
+      title="Conversion type payout"
+      endpoint="conversion-type-payout"
+      urlPath="/reports/conversion-type-payout"
+      columns={CONVERSION_TYPE_PAYOUT_REPORT_COLUMNS}
       enableCompare={false}
       enableActions={false}
     />

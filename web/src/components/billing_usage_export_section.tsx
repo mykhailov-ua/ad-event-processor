@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { isoDaysAgo, toIsoNow } from '../helpers/date_presets.js';
 import { apiBlobResult } from '../helpers/api_blob.js';
 import { mapServiceError } from '../helpers/service_error.js';
-import { pushToastMessage } from '../helpers/service_error_toast.js';
+import { pushToastMessage } from '../helpers/toast_ui.js';
 import { to } from '../lib/to.js';
 import { Button } from './button.js';
 

@@ -115,11 +115,19 @@ func (f *UnifiedFilter) SetFraudBlacklistFilter(bl *FraudBlacklistFilter) {
 	}
 }
 
-
 func (f *UnifiedFilter) SetIngressRPDHandledExternally(v bool) {
 	if f != nil {
 		f.ingressRPDHandledExternally = v
 	}
+}
+
+func (f *UnifiedFilter) ConfigureCGNAT(globalBypass bool, table *MobileCarrierASNTable, lookup ASNLookup) {
+	if f == nil {
+		return
+	}
+	f.cgnatGlobalBypass = globalBypass
+	f.mobileCarrierASN = table
+	f.asnLookup = lookup
 }
 
 func (f *UnifiedFilter) applyLuaGoPrechecks(
@@ -144,6 +152,9 @@ func (f *UnifiedFilter) checkIngressRPDGo(
 ) error {
 	maxRPD := f.entitlementsMaxRPD(campInfo.CustomerID)
 	if maxRPD == 0 || redisClient == nil {
+		return nil
+	}
+	if cgnatBypassForCampaign(f.cgnatGlobalBypass, f.registry, evt.CampaignID, f.mobileCarrierASN, f.asnLookup, evt.IP, "ingress_rpd") {
 		return nil
 	}
 	var keyBuf []byte

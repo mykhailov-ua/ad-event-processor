@@ -19,6 +19,17 @@ func TestCompactSettlementBatch_dedupesClickType(t *testing.T) {
 	require.Equal(t, 1, dropped)
 }
 
+func TestRollupCampaignStats_skipsValidationPending(t *testing.T) {
+	camp := uuid.New()
+	events := []*domain.Event{
+		{Type: "conversion", CampaignID: camp, Payload: []byte(`{"conversion_validation_pending":true}`)},
+		{Type: "conversion", CampaignID: camp},
+	}
+	rollup := rollupCampaignStats(events)
+	row := rollup[camp]
+	require.Equal(t, int64(1), row.conversions)
+}
+
 func TestRollupCampaignStats_countsByType(t *testing.T) {
 	camp := uuid.New()
 	events := []*domain.Event{

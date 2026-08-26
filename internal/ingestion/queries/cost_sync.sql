@@ -11,9 +11,9 @@ SELECT * FROM cost_sync_credentials WHERE customer_id = $1 AND network = $2;
 INSERT INTO cost_sync_credentials (
     customer_id, network, account_id,
     access_token_encrypted, refresh_token_encrypted, api_key_encrypted,
-    extra_config, token_expires_at, updated_at
+    extra_config, token_expires_at, sync_interval_minutes, token_mapping, updated_at
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
 ON CONFLICT (customer_id, network) DO UPDATE
 SET account_id = EXCLUDED.account_id,
     access_token_encrypted = COALESCE(EXCLUDED.access_token_encrypted, cost_sync_credentials.access_token_encrypted),
@@ -21,8 +21,21 @@ SET account_id = EXCLUDED.account_id,
     api_key_encrypted = COALESCE(EXCLUDED.api_key_encrypted, cost_sync_credentials.api_key_encrypted),
     extra_config = EXCLUDED.extra_config,
     token_expires_at = EXCLUDED.token_expires_at,
+    sync_interval_minutes = EXCLUDED.sync_interval_minutes,
+    token_mapping = EXCLUDED.token_mapping,
     updated_at = NOW()
 RETURNING *;
+
+-- name: ListCostSyncCredentialsDueSubdaily :many
+SELECT * FROM cost_sync_credentials
+WHERE sync_interval_minutes < 1440
+  AND (next_run_at IS NULL OR next_run_at <= NOW())
+ORDER BY next_run_at NULLS FIRST, customer_id, network;
+
+-- name: UpdateCostSyncCredentialNextRun :exec
+UPDATE cost_sync_credentials
+SET next_run_at = $3, updated_at = NOW()
+WHERE customer_id = $1 AND network = $2;
 
 -- name: DeleteCostSyncCredential :exec
 DELETE FROM cost_sync_credentials WHERE customer_id = $1 AND network = $2;

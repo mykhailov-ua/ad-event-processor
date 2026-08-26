@@ -45,7 +45,8 @@ func (r *probeRun) discoverLoadgenPIDs() {
 			continue
 		}
 		name := strings.TrimSpace(string(comm))
-		if !loadgenCommMatch(name, comms) {
+		cmdline := procCmdline(pid)
+		if !loadgenProcessMatch(name, cmdline, comms) {
 			continue
 		}
 		label := fmt.Sprintf("loadgen:%s:%d", name, pid)
@@ -61,6 +62,30 @@ func loadgenCommMatch(comm string, allowed []string) bool {
 		if comm == a {
 			return true
 		}
+	}
+	return false
+}
+
+func procCmdline(pid uint32) string {
+	data, err := os.ReadFile(filepath.Join(string(filepath.Separator), "proc", strconv.FormatUint(uint64(pid), 10), "cmdline"))
+	if err != nil {
+		return ""
+	}
+	return strings.ReplaceAll(string(data), "\x00", " ")
+}
+
+func loadgenProcessMatch(comm, cmdline string, allowed []string) bool {
+	if loadgenCommMatch(comm, allowed) {
+		return true
+	}
+	if cmdline == "" {
+		return false
+	}
+	if strings.Contains(cmdline, "cmd/loadgen") {
+		return true
+	}
+	if strings.Contains(cmdline, "/loadgen ") || strings.HasSuffix(strings.TrimSpace(cmdline), "/loadgen") {
+		return true
 	}
 	return false
 }

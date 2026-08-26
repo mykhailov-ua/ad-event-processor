@@ -46,11 +46,11 @@ func formatOptionalUUID(u pgtype.UUID) string {
 	return uuid.UUID(u.Bytes).String()
 }
 
-func daypartOrEmpty(h []int16) []int16 {
-	if h == nil {
-		return []int16{}
+func formatOptionalText(t pgtype.Text) string {
+	if !t.Valid {
+		return ""
 	}
-	return h
+	return t.String
 }
 
 func (s *Service) ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error) {
@@ -117,6 +117,19 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 		}
 	}
 
+	if req.IngressCostConfig != nil {
+		if err := s.applyCampaignIngressCostPatch(ctx, campaignID, *req.IngressCostConfig); err != nil {
+			return CampaignDTO{}, err
+		}
+	}
+
+	clickPresetPatch := req.TrafficTemplateID != nil || req.ClickQueryParams != nil
+	if clickPresetPatch {
+		if err := s.applyCampaignClickPresetPatch(ctx, campaignID, req.TrafficTemplateID, req.ClickQueryParams); err != nil {
+			return CampaignDTO{}, err
+		}
+	}
+
 	if req.BrandID != nil {
 		if err := s.AssignCampaignBrand(ctx, campaignID, *req.BrandID); err != nil {
 			return CampaignDTO{}, err
@@ -148,7 +161,7 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 		req.TLSFingerprintBlockEnabled != nil || req.ConnTypePolicy != nil ||
 		req.LinkSigningEnabled != nil || req.LinkSigningTTLSec != nil ||
 		req.ClickDelivery != nil || req.ProxyUpstreamURL != nil || req.ProxyRewriteAssets != nil
-	if !adminPatch && budgetMicro == nil && !statusSet && !schedulePatch {
+	if !adminPatch && budgetMicro == nil && !statusSet && !schedulePatch && !clickPresetPatch {
 		return s.GetCampaign(ctx, campaignID)
 	}
 
@@ -365,8 +378,8 @@ func (s *Service) PatchCampaign(ctx context.Context, campaignID uuid.UUID, req P
 				ConnTypePolicy:             connTypePolicy,
 				LinkSigningEnabled:         linkSigningEnabled,
 				LinkSigningTtlSec:          linkSigningTTL,
-				CidrBlockEnabled:         cidrBlock,
-				ProxyVpnBlockEnabled:    proxyVPNBlock,
+				CidrBlockEnabled:           cidrBlock,
+				ProxyVpnBlockEnabled:       proxyVPNBlock,
 				ModeratorIntelEnabled:      moderatorIntel,
 				ReviewTrafficAction:        reviewTrafficAction,
 			})
@@ -598,8 +611,8 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		AttestationMode:            c.AttestationMode,
 		AttestationTTLSec:          c.AttestationTtlSec,
 		DmrEnabled:                 c.DmrEnabled,
-		CIDRBlockEnabled:         c.CidrBlockEnabled,
-		ProxyVPNBlockEnabled:    c.ProxyVpnBlockEnabled,
+		CIDRBlockEnabled:           c.CidrBlockEnabled,
+		ProxyVPNBlockEnabled:       c.ProxyVpnBlockEnabled,
 		ModeratorIntelEnabled:      c.ModeratorIntelEnabled,
 		ReviewTrafficAction:        string(domain.ParseReviewTrafficAction(c.ReviewTrafficAction)),
 		TLSFingerprintBlockEnabled: c.TlsFingerprintBlockEnabled,
@@ -616,8 +629,38 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		EndAt:                      formatOptionalTime(c.EndAt),
 		DaypartHours:               daypartOrEmpty(c.DaypartHours),
 		OwnerUserID:                formatOptionalUUID(c.OwnerUserID),
+		TrafficTemplateID:          formatOptionalText(c.TrafficTemplateID),
+		ClickQueryParams:           clickQueryParamsFromRaw(c.ClickQueryParams),
 		CreatedAt:                  c.CreatedAt.Time.Format(time.RFC3339),
 		UpdatedAt:                  c.UpdatedAt.Time.Format(time.RFC3339),
+	}
+	if len(c.IngressCostConfig) > 0 {
+		parsed := domain.ParseIngressCostConfigJSON(c.IngressCostConfig)
+		if parsed.Enabled() {
+			scale := "decimal"
+			if parsed.ScaleMicro {
+				scale = "micro"
+			}
+			policy := "ignore"
+			if parsed.Policy == domain.IngressCostPolicyReject {
+				policy = "reject"
+			}
+			param := ""
+			switch parsed.Param {
+			case domain.IngressCostParamCost:
+				param = "cost"
+			case domain.IngressCostParamCPC:
+				param = "cpc"
+			case domain.IngressCostParamBid:
+				param = "bid"
+			}
+			dto.IngressCostConfig = &IngressCostConfigDTO{
+				Param:    param,
+				Scale:    scale,
+				MaxMicro: parsed.MaxMicro,
+				Policy:   policy,
+			}
+		}
 	}
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
 		return scrubCampaignFields(dto, snap.Mask)

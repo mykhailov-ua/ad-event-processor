@@ -15,6 +15,7 @@ import (
 	"ad-event-processor/pkg/broker/client"
 	"ad-event-processor/pkg/iogate"
 
+	"github.com/google/uuid"
 	"golang.org/x/sys/cpu"
 )
 
@@ -29,16 +30,16 @@ type BrokerClient interface {
 }
 
 type brokerProducerSlot struct {
-	sequence      uint64
-	createdAtUnix int64
-	fraudScore    uint32
-	clickIDLen    uint8
-	typeLen       uint8
-	userIDLen     uint8
-	ipLen         uint8
-	uaLen         uint8
-	fraudResLen   uint8
-	silentRejectEvent    bool
+	sequence          uint64
+	createdAtUnix     int64
+	fraudScore        uint32
+	clickIDLen        uint8
+	typeLen           uint8
+	userIDLen         uint8
+	ipLen             uint8
+	uaLen             uint8
+	fraudResLen       uint8
+	silentRejectEvent bool
 
 	campaignID  [16]byte
 	clickID     [36]byte
@@ -65,9 +66,9 @@ func DefaultBrokerProducerConfig() BrokerProducerConfig {
 	return BrokerProducerConfig{
 		Topic:         "ad-events",
 		Partition:     0,
-		Capacity:      8192,
-		BatchSize:     128,
-		FlushInterval: 10 * time.Millisecond,
+		Capacity:      32768,
+		BatchSize:     512,
+		FlushInterval: 2 * time.Millisecond,
 		Timeout:       5 * time.Second,
 	}
 }
@@ -173,7 +174,7 @@ func (bp *BrokerProducer) Enqueue(evt *domain.Event) error {
 
 func (bp *BrokerProducer) PendingCount() int {
 	head := atomic.LoadUint64(&bp.head)
-	tail := bp.tail
+	tail := atomic.LoadUint64(&bp.tail)
 	return int(head - tail)
 }
 
@@ -210,7 +211,7 @@ func (bp *BrokerProducer) admissionLimit(admissionPct int) uint64 {
 
 func (bp *BrokerProducer) occupied() uint64 {
 	head := atomic.LoadUint64(&bp.head)
-	tail := bp.tail
+	tail := atomic.LoadUint64(&bp.tail)
 	pending := head - tail
 	return pending + bp.reserved.Load()
 }
@@ -353,7 +354,7 @@ func (bp *BrokerProducer) flushPending(batch []pb.AdStreamEvent, buf *[]byte) {
 	for {
 		count := 0
 		for count < len(batch) {
-			tail := bp.tail
+			tail := atomic.LoadUint64(&bp.tail)
 			idx := tail & mask
 			slot := &ring[idx]
 			seq := atomic.LoadUint64(&slot.sequence)
@@ -376,7 +377,7 @@ func (bp *BrokerProducer) flushPending(batch []pb.AdStreamEvent, buf *[]byte) {
 				evt.FraudReason = slot.fraudReason[:slot.fraudResLen]
 
 				atomic.StoreUint64(&slot.sequence, tail+mask+1)
-				bp.tail = tail + 1
+				atomic.StoreUint64(&bp.tail, tail+1)
 				count++
 			} else {
 				break
@@ -475,4 +476,68 @@ func (bp *BrokerProducer) Close() error {
 		return bp.client.Close()
 	}
 	return nil
+}
+
+type BrokerProducerSet struct {
+	producers []*BrokerProducer
+	sharder   Sharder
+}
+
+func NewBrokerProducerSet(producers []*BrokerProducer) *BrokerProducerSet {
+	n := 0
+	for _, p := range producers {
+		if p != nil {
+			n++
+		}
+	}
+	if n == 0 {
+		return nil
+	}
+	compact := make([]*BrokerProducer, 0, n)
+	for _, p := range producers {
+		if p != nil {
+			compact = append(compact, p)
+		}
+	}
+	return &BrokerProducerSet{
+		producers: compact,
+		sharder:   NewStaticSlotSharder(len(compact)),
+	}
+}
+
+func (s *BrokerProducerSet) Len() int {
+	if s == nil {
+		return 0
+	}
+	return len(s.producers)
+}
+
+func (s *BrokerProducerSet) Pick(campaignID uuid.UUID) (int, *BrokerProducer) {
+	if s == nil || len(s.producers) == 0 {
+		return 0, nil
+	}
+	if len(s.producers) == 1 {
+		return 0, s.producers[0]
+	}
+	idx := s.sharder.GetShard(campaignID)
+	if idx < 0 || idx >= len(s.producers) {
+		return 0, s.producers[0]
+	}
+	return idx, s.producers[idx]
+}
+
+func (s *BrokerProducerSet) Close() error {
+	if s == nil {
+		return nil
+	}
+	var first error
+	for _, p := range s.producers {
+		if p == nil {
+			continue
+		}
+		if err := p.Close(); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
 }

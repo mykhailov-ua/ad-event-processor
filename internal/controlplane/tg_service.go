@@ -37,18 +37,18 @@ type tgEventPayload struct {
 }
 
 type TelegramServiceImpl struct {
-	svc     *Service
-	pool    *pgxpool.Pool
-	redisShards    []redis.UniversalClient
-	limiter *TelegramRateLimiter
+	svc         *Service
+	pool        *pgxpool.Pool
+	redisShards []redis.UniversalClient
+	limiter     *TelegramRateLimiter
 }
 
 func NewTelegramService(svc *Service, pool *pgxpool.Pool, redisShards []redis.UniversalClient) *TelegramServiceImpl {
 	return &TelegramServiceImpl{
-		svc:     svc,
-		pool:    pool,
-		redisShards:    redisShards,
-		limiter: NewTelegramRateLimiter(),
+		svc:         svc,
+		pool:        pool,
+		redisShards: redisShards,
+		limiter:     NewTelegramRateLimiter(),
 	}
 }
 

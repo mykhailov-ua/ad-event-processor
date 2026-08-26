@@ -188,6 +188,8 @@ type Config struct {
 		LowBalanceAlertEnabled      bool
 		SmartAlertsEnabled          bool
 		SmartAlertsIntervalMin      int
+		AutomationRulesEnabled      bool
+		AutomationRulesIntervalMin  int
 		DomainHealthEnabled         bool
 		DomainHealthIntervalMin     int
 		DomainSSLSetupEnabled       bool
@@ -202,6 +204,7 @@ type Config struct {
 		SafeBrowsingAPIKey          Secret
 		FacebookGraphAccessToken    Secret
 		FacebookGraphAPIBase        string
+		OpenAPIRequestValidation    bool
 	}
 	Control struct {
 		EnableAuth                 bool
@@ -294,6 +297,9 @@ type Config struct {
 		TimeoutMs           int
 		ReconcileIntervalMs int
 		DivergenceThreshold uint64
+		ProducerCapacity    int
+		ProducerBatchSize   int
+		ProducerFlushMs     int
 	}
 
 	RtbMode                        string
@@ -346,7 +352,7 @@ type Config struct {
 	SlotMigrationDualWriteEnabled bool
 	SlotMigrationLagEpsilon       int64
 
-	CIDRBlockEnabled                bool
+	CIDRBlockEnabled             bool
 	CIDRFeedDir                  string
 	CIDRFeedRefresh              time.Duration
 	CIDRFeedURLAWS               string
@@ -354,14 +360,16 @@ type Config struct {
 	CIDRFeedURLAzure             string
 	CIDRFeedURLTor               string
 	CIDRFeedDownloadEnable       bool
-	IPv6RotationEnabled        bool
+	IPv6RotationEnabled          bool
 	IPv6RotationMode             string
 	IPv6RotationWindow           time.Duration
 	IPv6RotationThreshold        uint32
-	IPv4RotationEnabled        bool
+	IPv4RotationEnabled          bool
 	IPv4RotationMode             string
 	IPv4RotationWindow           time.Duration
 	IPv4RotationThreshold        uint32
+	CGNATMobileIPBypass          bool
+	CGNATMobileCarrierASNs       string
 	OSFingerprintMismatchEnabled bool
 	DCASNHotEnabled              bool
 	DCASNFeedDir                 string
@@ -371,7 +379,7 @@ type Config struct {
 	ResidentialProxyWindow       time.Duration
 	TCPMSSAnomalyEnabled         bool
 	TCPMSSAnomalyMinByte         uint8
-	ProxyVPNBlockEnabled           bool
+	ProxyVPNBlockEnabled         bool
 	ProxyVPNFeedDir              string
 	ProxyVPNFeedRefresh          time.Duration
 	ModeratorIntelEnabled        bool
@@ -381,7 +389,7 @@ type Config struct {
 	ModeratorIntelFeedSecret     string
 	ModeratorIntelFeedDownload   bool
 	ModeratorIntelAllowUnsigned  bool
-	TLSFingerprintEnabled      bool
+	TLSFingerprintEnabled        bool
 	TLSFingerprintFeedDir        string
 	TLSFingerprintFeedRefresh    time.Duration
 	LinkSigningHMACSecret        Secret
@@ -519,6 +527,8 @@ type Config struct {
 		MicrobatchMaxLagSec int
 		BoostFullResyncSec  int
 	}
+
+	ConversionReject ConversionReject
 
 	ExternalResidentialIntel struct {
 		Enabled       bool

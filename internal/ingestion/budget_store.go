@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -64,14 +65,14 @@ return 1
 `
 
 type RedisBudgetManager struct {
-	redisClient            redis.Cmdable
+	redisClient    redis.Cmdable
 	campaignRepo   domain.CampaignRepository
 	idempotencyTTL time.Duration
 }
 
 func NewRedisBudgetManager(redisClient redis.Cmdable, repo domain.CampaignRepository, idempotencyTTL time.Duration) *RedisBudgetManager {
 	return &RedisBudgetManager{
-		redisClient:            redisClient,
+		redisClient:    redisClient,
 		campaignRepo:   repo,
 		idempotencyTTL: idempotencyTTL,
 	}

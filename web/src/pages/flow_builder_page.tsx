@@ -37,6 +37,14 @@ function parsePositiveWeight(raw: string): number | null {
   return value;
 }
 
+function parseOptionalCap(raw: string): number | undefined {
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) return undefined;
+  return n;
+}
+
 export function FlowBuilderPage() {
   const { id = '' } = useParams();
   const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
@@ -197,9 +205,7 @@ export function FlowBuilderPage() {
                         variant="ghost"
                         size="sm"
                         disabled={pathIndex === 0}
-                        onClick={() =>
-                          setPaths((rows) => moveFlowBuilderItem(rows, pathIndex, -1))
-                        }
+                        onClick={() => setPaths((rows) => moveFlowBuilderItem(rows, pathIndex, -1))}
                       />
                       <Button
                         label="Down"
@@ -234,6 +240,90 @@ export function FlowBuilderPage() {
                     }}
                   />
                 </label>
+
+                <div className="stack">
+                  <h4 className="text-sm">Path filters (optional)</h4>
+                  <label className="form-field" htmlFor={`path-countries-${pathIndex}`}>
+                    Countries (ISO2, comma-separated)
+                    <input
+                      id={`path-countries-${pathIndex}`}
+                      className="form-input form-input--sm"
+                      placeholder="US,DE"
+                      value={(path.filters?.countries ?? []).join(',')}
+                      disabled={!canWrite}
+                      onChange={(e) => {
+                        const countries = e.target.value
+                          .split(',')
+                          .map((v) => v.trim().toUpperCase())
+                          .filter(Boolean);
+                        updatePath(pathIndex, {
+                          ...path,
+                          filters: { ...path.filters, countries },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label className="form-field" htmlFor={`path-devices-${pathIndex}`}>
+                    Devices (desktop, mobile, tablet)
+                    <input
+                      id={`path-devices-${pathIndex}`}
+                      className="form-input form-input--sm"
+                      placeholder="mobile,tablet"
+                      value={(path.filters?.devices ?? []).join(',')}
+                      disabled={!canWrite}
+                      onChange={(e) => {
+                        const devices = e.target.value
+                          .split(',')
+                          .map((v) => v.trim().toLowerCase())
+                          .filter(Boolean);
+                        updatePath(pathIndex, {
+                          ...path,
+                          filters: { ...path.filters, devices },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label className="form-field" htmlFor={`path-os-${pathIndex}`}>
+                    OS (android, ios, windows, macos, linux)
+                    <input
+                      id={`path-os-${pathIndex}`}
+                      className="form-input form-input--sm"
+                      placeholder="android,ios"
+                      value={(path.filters?.os ?? []).join(',')}
+                      disabled={!canWrite}
+                      onChange={(e) => {
+                        const os = e.target.value
+                          .split(',')
+                          .map((v) => v.trim().toLowerCase())
+                          .filter(Boolean);
+                        updatePath(pathIndex, {
+                          ...path,
+                          filters: { ...path.filters, os },
+                        });
+                      }}
+                    />
+                  </label>
+                  <label className="form-field" htmlFor={`path-lang-${pathIndex}`}>
+                    Languages (ISO2, comma-separated)
+                    <input
+                      id={`path-lang-${pathIndex}`}
+                      className="form-input form-input--sm"
+                      placeholder="en,de"
+                      value={(path.filters?.languages ?? []).join(',')}
+                      disabled={!canWrite}
+                      onChange={(e) => {
+                        const languages = e.target.value
+                          .split(',')
+                          .map((v) => v.trim().toLowerCase())
+                          .filter(Boolean);
+                        updatePath(pathIndex, {
+                          ...path,
+                          filters: { ...path.filters, languages },
+                        });
+                      }}
+                    />
+                  </label>
+                </div>
 
                 <div className="grid-2">
                   <div className="stack">
@@ -299,7 +389,9 @@ export function FlowBuilderPage() {
                         label="Add lander"
                         variant="secondary"
                         size="sm"
-                        onClick={() => updatePath(pathIndex, appendLanderRow(path, defaultLanderId))}
+                        onClick={() =>
+                          updatePath(pathIndex, appendLanderRow(path, defaultLanderId))
+                        }
                       />
                     ) : null}
                   </div>
@@ -341,6 +433,40 @@ export function FlowBuilderPage() {
                               if (weight == null) return;
                               const nextOffers = path.offers.map((row, i) =>
                                 i === offerIndex ? { ...row, weight } : row
+                              );
+                              updatePath(pathIndex, { ...path, offers: nextOffers });
+                            }}
+                          />
+                        </label>
+                        <label className="form-field">
+                          Cap daily (conversions)
+                          <input
+                            className="form-input form-input--sm"
+                            inputMode="numeric"
+                            placeholder="optional"
+                            value={offer.cap_daily != null ? String(offer.cap_daily) : ''}
+                            disabled={!canWrite}
+                            onChange={(e) => {
+                              const capDaily = parseOptionalCap(e.target.value);
+                              const nextOffers = path.offers.map((row, i) =>
+                                i === offerIndex ? { ...row, cap_daily: capDaily } : row
+                              );
+                              updatePath(pathIndex, { ...path, offers: nextOffers });
+                            }}
+                          />
+                        </label>
+                        <label className="form-field">
+                          Cap total (conversions)
+                          <input
+                            className="form-input form-input--sm"
+                            inputMode="numeric"
+                            placeholder="optional"
+                            value={offer.cap_total != null ? String(offer.cap_total) : ''}
+                            disabled={!canWrite}
+                            onChange={(e) => {
+                              const capTotal = parseOptionalCap(e.target.value);
+                              const nextOffers = path.offers.map((row, i) =>
+                                i === offerIndex ? { ...row, cap_total: capTotal } : row
                               );
                               updatePath(pathIndex, { ...path, offers: nextOffers });
                             }}

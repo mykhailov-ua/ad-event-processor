@@ -12,7 +12,6 @@ export type EdgeParityReport = {
   shard_mismatch_hint?: string;
 };
 
-
 export async function fetchEdgeParityReport(): Promise<EdgeParityReport | null> {
   const res = await api<EdgeParityReport>('/api/v1/reports/edge-parity');
   return res.data ?? null;

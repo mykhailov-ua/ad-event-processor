@@ -8,6 +8,7 @@ import (
 const (
 	safePageAttestCanvasMissing        = "canvas_missing"
 	safePageAttestCanvasReject         = "canvas_reject"
+	safePageAttestCanvasRetestMismatch = "canvas_retest_mismatch"
 	safePageAttestAudioMissing         = "audio_missing"
 	safePageAttestAudioReject          = "audio_reject"
 	safePageAttestPermissionsMismatch  = "permissions_mismatch"
@@ -23,12 +24,34 @@ type mousePoint struct {
 }
 
 func checkCanvasFingerprint(fp safePageVerifyFingerprint) string {
-	h := strings.TrimSpace(fp.CanvasHash)
+	h := canvasHashPrimary(fp)
 	if h == "" {
 		return safePageAttestCanvasMissing
 	}
 	if !isHexDigest64(h) {
 		return safePageAttestCanvasReject
+	}
+	return ""
+}
+
+func canvasHashPrimary(fp safePageVerifyFingerprint) string {
+	if h := strings.TrimSpace(fp.CanvasHashA); h != "" {
+		return h
+	}
+	return strings.TrimSpace(fp.CanvasHash)
+}
+
+func checkCanvasRetestMismatch(fp safePageVerifyFingerprint) string {
+	a := canvasHashPrimary(fp)
+	b := strings.TrimSpace(fp.CanvasHashB)
+	if a == "" || b == "" {
+		return ""
+	}
+	if !isHexDigest64(a) || !isHexDigest64(b) {
+		return ""
+	}
+	if a != b {
+		return safePageAttestCanvasRetestMismatch
 	}
 	return ""
 }

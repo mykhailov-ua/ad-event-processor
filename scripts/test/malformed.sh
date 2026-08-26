@@ -48,6 +48,14 @@ die() {
   exit 1
 }
 
+ensure_loadgen_binary() {
+  if [[ -x "$ROOT/bin/loadgen" && "${BPF_FORCE_REBUILD:-0}" != "1" ]]; then
+    return 0
+  fi
+  log "building bin/loadgen (stable /proc comm for bpf loadgen discovery)"
+  go build -o "$ROOT/bin/loadgen" ./cmd/loadgen
+}
+
 if [[ "$(id -u)" -eq 0 && "${AD_EVENT_PROCESSOR_LOAD_MALFORMED_ROOT_OK:-0}" != "1" ]]; then
   die "do not run as root/sudo - bpf_probe_session calls sudo internally; root breaks 'docker compose -f' (use: AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh smoke)"
 fi
@@ -122,6 +130,9 @@ SNAP_PID=$!
 
 BPF_PID=""
 if [[ "${AD_EVENT_PROCESSOR_BPF_PROBE:-0}" == "1" ]]; then
+  export AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL="${AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL:-30}"
+  export AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS="${AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS:-30}"
+  export PROMETHEUS_URL="${PROMETHEUS_URL:-${LOAD_TEST_PROMETHEUS_URL:-}}"
   bash "$SCRIPTS/test/bpf_probe_session.sh" start "$OUT" || log "WARN: BPF start failed"
   [[ -f "$OUT/bpf/collector.pid" ]] && BPF_PID="$(cat "$OUT/bpf/collector.pid")"
 fi
@@ -136,15 +147,16 @@ LG_ARGS=(-mode "$LG_MODE" -out "$OUT" -trackers "$TRACKER_BASES" -edge "${EDGE_U
 [[ -n "$PCT_FLOW_ROUTE" ]] && LG_ARGS+=(-pct-flow-route "$PCT_FLOW_ROUTE")
 
 log "starting loadgen (${LG_MODE})"
+ensure_loadgen_binary
 if [[ "$REPORT_EXPORT_SOAK" == "1" ]]; then
-  go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log" &
+  "$ROOT/bin/loadgen" "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log" &
   LG_PID=$!
   bash "$SCRIPTS/test/report_export_soak.sh" "$OUT" 2>&1 | tee "$OUT/report_export_soak.log" &
   SOAK_PID=$!
   wait "$LG_PID"
   wait "$SOAK_PID" || die "report export soak failed"
 else
-  go run ./cmd/loadgen "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
+  "$ROOT/bin/loadgen" "${LG_ARGS[@]}" 2>&1 | tee "$OUT/loadgen.log"
 fi
 
 [[ -n "$SNAP_PID" ]] && wait "$SNAP_PID" 2> /dev/null || true

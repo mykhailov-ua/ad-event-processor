@@ -80,12 +80,12 @@ if ! wait_control; then
   die "control ${CONTROL_URL}/health not ready (export soak requires live control)"
 fi
 
-FROM="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-7d +%Y-%m-%dT%H:%M:%SZ)"
+FROM="$(date -u -d '7 days ago' +%Y-%m-%dT%H:%M:%SZ 2> /dev/null || date -u -v-7d +%Y-%m-%dT%H:%M:%SZ)"
 TO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 CUSTOMER_JSON="$(curl -sf -H "X-Admin-API-Key: ${ADMIN_API_KEY}" \
   "${CONTROL_URL}/api/v1/customers?limit=1" || true)"
-CUSTOMER_ID="$(printf '%s' "$CUSTOMER_JSON" | jq -r '.items[0].id // empty' 2>/dev/null || true)"
+CUSTOMER_ID="$(printf '%s' "$CUSTOMER_JSON" | jq -r '.items[0].id // empty' 2> /dev/null || true)"
 if [[ -z "$CUSTOMER_ID" ]]; then
   log "WARN: no customer for export soak; skipping"
   exit 0
@@ -112,7 +112,7 @@ log "enqueue ${PARALLEL} parallel exports (placements + geo-roi) for customer ${
 job_ids=()
 for i in $(seq 1 "$PARALLEL"); do
   key="placements"
-  if (( i % 2 == 0 )); then
+  if ((i % 2 == 0)); then
     key="geo-roi"
   fi
   job_id="$(enqueue_job "$key" "$i")"
@@ -133,7 +133,10 @@ if [[ -n "$OUT_DIR" ]]; then
     echo "parallel=$PARALLEL"
     echo "from=$FROM"
     echo "to=$TO"
-    printf 'job_ids=%s\n' "$(IFS=,; echo "${job_ids[*]}")"
+    printf 'job_ids=%s\n' "$(
+      IFS=,
+      echo "${job_ids[*]}"
+    )"
   } >> "${OUT_DIR}/report_export_soak.txt"
 fi
 

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/stretchr/testify/require"
 )
 

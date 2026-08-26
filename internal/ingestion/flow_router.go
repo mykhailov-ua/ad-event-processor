@@ -16,10 +16,12 @@ type FlowOfferEntry struct {
 	OfferID uuid.UUID
 	Weight  int32
 	URL     []byte
+	Capped  bool
 }
 
 type FlowPath struct {
 	Weight  int32
+	Filters FlowPathFilters
 	Landers []FlowLanderEntry
 	Offers  []FlowOfferEntry
 }
@@ -54,24 +56,24 @@ type FlowSelection struct {
 
 func (r *FlowRouter) Select(userID []byte) (sel FlowSelection, ok bool) {
 	snap := r.active.Load()
-	sel, _, ok = SelectSnapshot(snap, userID)
+	sel, _, ok = SelectSnapshot(snap, userID, FlowSelectContext{})
 	return sel, ok
 }
 
 func BanditSelect(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
-	return SelectSnapshot(snap, userID)
+	return SelectSnapshot(snap, userID, FlowSelectContext{})
 }
 
 func (r *FlowRouter) BanditSelect(userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
 	return BanditSelect(r.active.Load(), userID)
 }
 
-func SelectSnapshot(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
+func SelectSnapshot(snap *FlowPathSnapshot, userID []byte, ctx FlowSelectContext) (sel FlowSelection, landerURL []byte, ok bool) {
 	if snap == nil || len(snap.Paths) == 0 {
 		return FlowSelection{}, nil, false
 	}
-	pathIdx, path := selectWeightedFlow(snap.Paths, fnv1a32(userID))
-	if pathIdx < 0 {
+	pathIdx, path, pathOK := selectWeightedFlowFiltered(snap.Paths, ctx, fnv1a32(userID))
+	if !pathOK {
 		return FlowSelection{}, nil, false
 	}
 	landerIdx, lander := selectWeightedLander(path.Landers, fnv1a32Salted(userID, 'l'))
@@ -89,6 +91,36 @@ func SelectSnapshot(snap *FlowPathSnapshot, userID []byte) (sel FlowSelection, l
 		LanderID:  lander.LanderID,
 		OfferID:   offer.OfferID,
 	}, lander.URL, true
+}
+
+func selectWeightedFlowFiltered(paths []FlowPath, ctx FlowSelectContext, bucket uint32) (int, FlowPath, bool) {
+	var total int32
+	for i := range paths {
+		if !flowPathFiltersMatch(paths[i].Filters, ctx) {
+			continue
+		}
+		total += paths[i].Weight
+	}
+	if total <= 0 {
+		return -1, FlowPath{}, false
+	}
+	target := int32(bucket % uint32(total))
+	var acc int32
+	for i := range paths {
+		if !flowPathFiltersMatch(paths[i].Filters, ctx) {
+			continue
+		}
+		acc += paths[i].Weight
+		if target < acc {
+			return i, paths[i], true
+		}
+	}
+	for i := len(paths) - 1; i >= 0; i-- {
+		if flowPathFiltersMatch(paths[i].Filters, ctx) && paths[i].Weight > 0 {
+			return i, paths[i], true
+		}
+	}
+	return -1, FlowPath{}, false
 }
 
 func selectWeightedFlow(paths []FlowPath, bucket uint32) (int, FlowPath) {
@@ -141,26 +173,49 @@ func selectWeightedOffer(offers []FlowOfferEntry, bucket uint32) (int, FlowOffer
 	if len(offers) == 0 {
 		return -1, FlowOfferEntry{}
 	}
-	if len(offers) == 1 {
-		return 0, offers[0]
-	}
 	var total int32
+	eligible := 0
 	for i := range offers {
+		if offers[i].Capped || offers[i].Weight <= 0 {
+			continue
+		}
 		total += offers[i].Weight
+		eligible++
+	}
+	if eligible == 0 {
+		return -1, FlowOfferEntry{}
+	}
+	if eligible == 1 {
+		for i := range offers {
+			if !offers[i].Capped && offers[i].Weight > 0 {
+				return i, offers[i]
+			}
+		}
 	}
 	if total <= 0 {
-		return 0, offers[0]
+		for i := range offers {
+			if !offers[i].Capped && offers[i].Weight > 0 {
+				return i, offers[i]
+			}
+		}
 	}
 	target := int32(bucket % uint32(total))
 	var acc int32
 	for i := range offers {
+		if offers[i].Capped || offers[i].Weight <= 0 {
+			continue
+		}
 		acc += offers[i].Weight
 		if target < acc {
 			return i, offers[i]
 		}
 	}
-	last := len(offers) - 1
-	return last, offers[last]
+	for i := len(offers) - 1; i >= 0; i-- {
+		if !offers[i].Capped && offers[i].Weight > 0 {
+			return i, offers[i]
+		}
+	}
+	return -1, FlowOfferEntry{}
 }
 
 func fnv1a32(b []byte) uint32 {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +20,7 @@ func TestTLSFingerprint_FeedRefreshFailClosed_RetainsSnapshot(t *testing.T) {
 
 	table := NewTLSFingerprintTable()
 	cfg := &config.Config{
-		TLSFingerprintEnabled:   true,
+		TLSFingerprintEnabled:     true,
 		TLSFingerprintFeedDir:     dir,
 		TLSFingerprintFeedRefresh: time.Hour,
 	}
@@ -56,7 +57,7 @@ func TestTLSFingerprint_FeedLoaderLoadsAllowlist(t *testing.T) {
 
 	table := NewTLSFingerprintTable()
 	cfg := &config.Config{
-		TLSFingerprintEnabled:   true,
+		TLSFingerprintEnabled:     true,
 		TLSFingerprintFeedDir:     dir,
 		TLSFingerprintFeedRefresh: time.Hour,
 	}

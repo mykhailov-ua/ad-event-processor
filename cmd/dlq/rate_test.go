@@ -11,6 +11,7 @@ import (
 
 	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/ingestion/pb"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	rediscontainer "github.com/testcontainers/testcontainers-go/modules/redis"

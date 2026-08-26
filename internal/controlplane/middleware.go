@@ -65,7 +65,7 @@ func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
 
 type AuthMiddleware struct {
 	tokenMaker    identity.Maker
-	redisClient           redis.UniversalClient
+	redisClient   redis.UniversalClient
 	controlRdbs   []redis.UniversalClient
 	cfg           *config.Config
 	authClient    *AuthClient
@@ -86,7 +86,7 @@ func NewAuthMiddleware(tokenMaker identity.Maker, redisClient redis.UniversalCli
 	}
 	return &AuthMiddleware{
 		tokenMaker:    tokenMaker,
-		redisClient:           redisClient,
+		redisClient:   redisClient,
 		cfg:           cfg,
 		authClient:    authClient,
 		apiKeyLimiter: newAPIKeyRateLimiter(rps, burst),

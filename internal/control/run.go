@@ -157,6 +157,7 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 		}
 		defer func() { _ = chConn.Close() }()
 		workerOpts = append(workerOpts, costsync.WithClickHouse(costsync.NewClickHouseInserter(chConn)))
+		workerOpts = append(workerOpts, costsync.WithClickAttributor(costsync.NewClickCostAttributor(pool, chConn)))
 	}
 
 	if os.Getenv("META_APP_ID") != "" && os.Getenv("META_APP_SECRET") != "" {

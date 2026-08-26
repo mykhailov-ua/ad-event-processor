@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/testutil"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"

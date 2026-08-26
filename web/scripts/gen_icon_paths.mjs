@@ -12,7 +12,6 @@ const outPath = path.join(webRoot, 'src/lib/icon_paths.ts');
 
 const map = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
 
-
 function parseSvgPrimitives(svg) {
   const inner = svg
     .trim()
@@ -30,7 +29,6 @@ function parseSvgPrimitives(svg) {
   }
   return tags;
 }
-
 
 const paths = {};
 const missing = [];

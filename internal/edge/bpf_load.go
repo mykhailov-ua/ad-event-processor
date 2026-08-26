@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/cilium/ebpf"
 )
 

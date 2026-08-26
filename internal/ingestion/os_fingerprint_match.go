@@ -1,6 +1,5 @@
 package ingestion
 
-
 const uaScanMax = 256
 
 const (
@@ -55,7 +54,6 @@ func scanUAFamily(ua string) uint8 {
 	return uaFamilyUnknown
 }
 
-
 func normalizeCapturedTTL(captured uint8) uint8 {
 	switch {
 	case captured == 0:
@@ -80,7 +78,7 @@ func osFingerprintMismatch(ua string, ttl uint8, windowSet uint8, window uint16)
 	if initial != 0 {
 		switch family {
 		case uaFamilyWindows:
-			
+
 		case uaFamilyMobile, uaFamilyLinux, uaFamilyMac:
 			if initial == 128 || initial == 255 {
 				return true

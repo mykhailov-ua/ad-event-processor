@@ -5,6 +5,13 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/bpf_collector.sh"
 cd "$ROOT"
 
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env" 2> /dev/null || printf 'bpf-session: WARN: .env present but not sourced (parse error)\n'
+  set +a
+fi
+
 CMD="${1:-status}"
 SESSION_ROOT="${AD_EVENT_PROCESSOR_BPF_SESSION_ROOT:-$ROOT/var/bpf-session}"
 CURRENT_LINK="$SESSION_ROOT/current"
@@ -32,8 +39,14 @@ case "$CMD" in
       OUT="$SESSION_ROOT/$OUT"
     fi
     mkdir -p "$OUT"
-    export AD_EVENT_PROCESSOR_BPF_NATIVE="${AD_EVENT_PROCESSOR_BPF_NATIVE:-1}"
-    export AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN="${AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN:-0}"
+    export AD_EVENT_PROCESSOR_BPF_NATIVE="${AD_EVENT_PROCESSOR_BPF_NATIVE:-0}"
+    export AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN="${AD_EVENT_PROCESSOR_BPF_TRACK_LOADGEN:-1}"
+    if [[ -f "$ROOT/.env.load-test" ]]; then
+      # shellcheck source=scripts/lib/load_test_env.sh
+      source "$SCRIPTS/lib/load_test_env.sh"
+      load_test_bootstrap "$ROOT" 2> /dev/null || true
+      export PROMETHEUS_URL="${PROMETHEUS_URL:-${LOAD_TEST_PROMETHEUS_URL:-}}"
+    fi
     export AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL="${AD_EVENT_PROCESSOR_BPF_DUMP_INTERVAL:-30}"
     export AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS="${AD_EVENT_PROCESSOR_BPF_REFRESH_TARGETS:-30}"
     export AD_EVENT_PROCESSOR_BPF_METRICS_ADDR="${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR:-:9464}"
@@ -47,6 +60,7 @@ case "$CMD" in
     printf '%s\n' "$OUT" > "$CURRENT_PATH_FILE"
     log "session started: $OUT"
     log "metrics: ${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR} (/metrics)"
+    log "load: PREPARE=1 AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business"
     log "stop: bash scripts/dev/bpf_session.sh stop"
     ;;
   stop)

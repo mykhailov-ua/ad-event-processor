@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/pkg/broker/protocol"
+
 	"github.com/panjf2000/gnet/v2"
 )
 

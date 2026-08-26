@@ -9,6 +9,7 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/rtb"
+
 	redis "github.com/redis/go-redis/v9"
 )
 
@@ -19,13 +20,13 @@ type RtbBudgetReconcileConfig struct {
 }
 
 type RtbBudgetReconcileWorker struct {
-	cfg      RtbBudgetReconcileConfig
-	registry *Registry
-	catalog  *RtbCatalog
-	redisShards     []redis.UniversalClient
-	sharder  Sharder
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	cfg         RtbBudgetReconcileConfig
+	registry    *Registry
+	catalog     *RtbCatalog
+	redisShards []redis.UniversalClient
+	sharder     Sharder
+	cancel      context.CancelFunc
+	wg          sync.WaitGroup
 }
 
 func NewRtbBudgetReconcileWorker(
@@ -45,11 +46,11 @@ func NewRtbBudgetReconcileWorker(
 		cfg.SampleSize = 32
 	}
 	return &RtbBudgetReconcileWorker{
-		cfg:      cfg,
-		registry: registry,
-		catalog:  catalog,
-		redisShards:     redisShards,
-		sharder:  sharder,
+		cfg:         cfg,
+		registry:    registry,
+		catalog:     catalog,
+		redisShards: redisShards,
+		sharder:     sharder,
 	}
 }
 

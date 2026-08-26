@@ -56,7 +56,7 @@ func TestFault_LocalQuantaRedisSIGKILL_BudgetInvariant(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	idem := NewLocalClickIdemCache(time.Hour)
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
-		RedisShards:           []redis.UniversalClient{redisWrap},
+		RedisShards:    []redis.UniversalClient{redisWrap},
 		StreamName:     "ad:events:stream",
 		MaxLen:         100_000,
 		IdempotencyTTL: time.Hour,

@@ -6,6 +6,7 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/rtb"
+
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"

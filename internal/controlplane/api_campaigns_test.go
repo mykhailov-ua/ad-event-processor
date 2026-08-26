@@ -131,6 +131,18 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		assert.Contains(t, resp.Body.String(), `"daily_budget"`)
 	})
 
+	t.Run("PatchCampaign_clickUrlPreset", func(t *testing.T) {
+		templateID := "meta-facebook"
+		params := map[string]string{"sub2": "{{campaign.id}}"}
+		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
+			TrafficTemplateID: &templateID,
+			ClickQueryParams:  &params,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, templateID, updated.TrafficTemplateID)
+		assert.Equal(t, "{{campaign.id}}", updated.ClickQueryParams["sub2"])
+	})
+
 	t.Run("PatchCampaign_budgetScheduleStatus", func(t *testing.T) {
 		budgetMicro := int64(150_000_000)
 		status := "paused"
@@ -165,8 +177,8 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		linkTTL := int32(1200)
 
 		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
-			CIDRBlockEnabled:         &cidrBlock,
-			ProxyVPNBlockEnabled:    &proxyVPNBlock,
+			CIDRBlockEnabled:           &cidrBlock,
+			ProxyVPNBlockEnabled:       &proxyVPNBlock,
 			TLSFingerprintBlockEnabled: &tlsBlock,
 			ConnTypePolicy:             &connPolicy,
 			LinkSigningEnabled:         &linkSign,

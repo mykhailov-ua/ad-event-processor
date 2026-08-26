@@ -20,7 +20,10 @@ export function formatLicenseRpsCap(maxRps?: number): string {
 /**
  * Resolve external upgrade contact URL: support link first, else license settings.
  */
-export function resolveLicenseUpgradeHref(supportUrl?: string): { href: string; external: boolean } {
+export function resolveLicenseUpgradeHref(supportUrl?: string): {
+  href: string;
+  external: boolean;
+} {
   const url = (supportUrl ?? '').trim();
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('tg://')) {
     return { href: url, external: true };

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )

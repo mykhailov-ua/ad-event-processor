@@ -1,0 +1,8 @@
+# oasdiff --err-ignore lines (method/path or components + change text).
+# Document intentional contract relaxations here; do not use to hide accidental drift.
+#
+# Beta operations: set x-unstable: true on the operation, then add a matching ignore
+# line when the first breaking change ships. Remove the ignore when the route stabilizes.
+#
+# Example:
+# POST /api/v1/selfserve/experimental/foo removed the request property 'legacy_alias'

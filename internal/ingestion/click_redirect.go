@@ -43,6 +43,9 @@ const (
 	clickKeyFBCLID
 	clickKeyGCLID
 	clickKeyTTCLID
+	clickKeyCost
+	clickKeyCPC
+	clickKeyBid
 	clickKeyDMR
 	clickKeyExpires
 	clickKeySig
@@ -85,6 +88,9 @@ type clickQueryParsed struct {
 	fbclid                  string
 	gclid                   string
 	ttclid                  string
+	ingressCost             []byte
+	ingressCPC              []byte
+	ingressBid              []byte
 	passthrough             []byte
 	dmr                     bool
 	linkExpires             int64
@@ -106,6 +112,9 @@ func (p *clickQueryParsed) reset() {
 	p.fbclid = ""
 	p.gclid = ""
 	p.ttclid = ""
+	p.ingressCost = nil
+	p.ingressCPC = nil
+	p.ingressBid = nil
 	p.passthrough = nil
 	p.dmr = false
 	p.linkExpires = 0
@@ -123,7 +132,16 @@ func matchClickQueryKey(key []byte) clickQueryKeyID {
 		if key[0] == 'd' && key[1] == 'm' && key[2] == 'r' {
 			return clickKeyDMR
 		}
+		if key[0] == 'c' && key[1] == 'p' && key[2] == 'c' {
+			return clickKeyCPC
+		}
+		if key[0] == 'b' && key[1] == 'i' && key[2] == 'd' {
+			return clickKeyBid
+		}
 	case 4:
+		if loadU32(key) == 0x74736f63 {
+			return clickKeyCost
+		}
 		if key[0] == '_' && key[1] == 's' && key[2] == 'i' && key[3] == 'g' {
 			return clickKeySig
 		}
@@ -334,6 +352,12 @@ func parseClickQuery(path []byte, scratch []byte, out *clickQueryParsed) []byte 
 			out.gclid = unsafeString(decoded)
 		case clickKeyTTCLID:
 			out.ttclid = unsafeString(decoded)
+		case clickKeyCost:
+			out.ingressCost = decoded
+		case clickKeyCPC:
+			out.ingressCPC = decoded
+		case clickKeyBid:
+			out.ingressBid = decoded
 		case clickKeyDMR:
 			out.dmr = parseDmrQueryFlag(decoded)
 		case clickKeyExpires:
@@ -565,7 +589,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	}
 
 	mode := h.campaignAttestationMode(parsed.campaignID)
-	missingAttestation := mode.RequiresProbe() && !h.verifyAttestationCookie(req.Cookie, parsed.campaignID, ip, time.Now().Unix())
+	missingAttestation := mode.RequiresProbe() && !h.verifyAttestationCookie(req.Cookie, parsed.campaignID, ip, int64(cachedUnixSec()))
 	if missingAttestation {
 		if mode == domain.AttestationModeStrict {
 			writeSafePageStubResponse(h, c, ctx, parsed.campaignID)
@@ -578,7 +602,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	if parsed.linkSig != "" {
 		clickIDBytes := UnsafeBytes(parsed.clickID)
 		sigBytes := UnsafeBytes(parsed.linkSig)
-		if !h.verifyLinkSignature(clickIDBytes, sigBytes, parsed.linkExpires, time.Now().Unix()) {
+		if !h.verifyLinkSignature(clickIDBytes, sigBytes, parsed.linkExpires, int64(cachedUnixSec())) {
 			h.write(c, respLinkSigForbidden, ctx)
 			h.recordMetrics(startMono, http.StatusForbidden)
 			return gnet.None
@@ -604,6 +628,9 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	evt.UserID = parsed.userID
 	evt.Type = parsed.eventType
 	evt.PlacementID = parsed.placementID
+	if camp, ok := h.registry.GetCampaign(parsed.campaignID); ok {
+		attachIngressCost(evt, camp, parsed)
+	}
 	evt.IP = ip
 	evt.UA = ua
 	evt.TLSHash = unsafeString(req.TLSHash)
@@ -638,7 +665,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
-			h.write(c, spec.gnetResp, ctx)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
@@ -673,7 +700,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 					shard := h.sharder.GetShard(evt.CampaignID)
 					enqueueFraudReject(h.fraudWriter, shard, evt)
 				}
-				h.write(c, spec.gnetResp, ctx)
+				h.writeFilterReject(c, spec.gnetResp, ctx)
 				h.recordMetrics(startMono, spec.status)
 				return gnet.None
 			case trackStatusInternalError:
@@ -695,7 +722,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	}
 
 	var flowSel FlowSelection
-	if flowLanding, sel, flowOK := h.selectFlowLanding(evt.CampaignID, parsed.userID); flowOK {
+	if flowLanding, sel, flowOK := h.selectFlowLanding(evt); flowOK {
 		landing = flowLanding
 		flowSel = sel
 	}

@@ -14,12 +14,12 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
-	"ad-event-processor/pkg/landerhost"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/fraud"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/domainhealth"
+	"ad-event-processor/pkg/landerhost"
 	"ad-event-processor/pkg/money"
 	"ad-event-processor/pkg/pgfailover"
 
@@ -34,7 +34,7 @@ import (
 type Service struct {
 	pool              *pgxpool.Pool
 	settlePoolField   *pgxpool.Pool
-	redisShards              []redis.UniversalClient
+	redisShards       []redis.UniversalClient
 	sharder           domain.Sharder
 	cfg               *config.Config
 	pgGate            *PostgresGate
@@ -109,12 +109,12 @@ func (s *Service) startWorker(fn func()) {
 func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.UniversalClient, sharder domain.Sharder, cfg *config.Config) *Service {
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Service{
-		pool:    pool,
-		redisShards:    redisShards,
-		sharder: sharder,
-		cfg:     cfg,
-		ctx:     ctx,
-		cancel:  cancel,
+		pool:        pool,
+		redisShards: redisShards,
+		sharder:     sharder,
+		cfg:         cfg,
+		ctx:         ctx,
+		cancel:      cancel,
 	}
 	if cfg != nil {
 		s.pgGate = NewPostgresGate(cfg.DBTrackerMaxConns)

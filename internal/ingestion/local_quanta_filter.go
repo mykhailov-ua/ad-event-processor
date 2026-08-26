@@ -69,7 +69,6 @@ func (f *UnifiedFilter) localQuantaFullSkipEligible(evt *domain.Event, campInfo 
 	return true
 }
 
-
 func (f *UnifiedFilter) checkLocalQuanta(
 	ctx context.Context,
 	evt *domain.Event,

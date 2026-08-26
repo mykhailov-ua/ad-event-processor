@@ -12,6 +12,7 @@ import (
 
 	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/ingestion/pb"
+
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"
 )

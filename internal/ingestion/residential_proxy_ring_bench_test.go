@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 	"testing"
-
 	"unsafe"
 
 	"github.com/google/uuid"

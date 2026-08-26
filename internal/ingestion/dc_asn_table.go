@@ -4,17 +4,15 @@ import (
 	"sync/atomic"
 )
 
-
 var mobileASNDenylist = map[uint32]struct{}{
-	3215:  {}, 
-	12322: {}, 
+	3215:  {},
+	12322: {},
 }
 
 type dcASNSnapshot struct {
 	gen uint64
 	asn map[uint32]struct{}
 }
-
 
 type DCASNTable struct {
 	active atomic.Pointer[dcASNSnapshot]

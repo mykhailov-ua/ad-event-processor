@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"runtime"
+	"sync"
 	"time"
 
 	"ad-event-processor/internal/config"
@@ -55,6 +56,26 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 	}
 	setShard0ClientNilMetric(clients)
 	return clients, breakers, nil
+}
+
+func WarmRedisShardPools(ctx context.Context, clients []redis.UniversalClient, pingsPerShard int) {
+	if pingsPerShard <= 0 {
+		pingsPerShard = 4
+	}
+	var wg sync.WaitGroup
+	for _, client := range clients {
+		if client == nil {
+			continue
+		}
+		for range pingsPerShard {
+			wg.Add(1)
+			go func(c redis.UniversalClient) {
+				defer wg.Done()
+				_ = c.Ping(ctx).Err()
+			}(client)
+		}
+	}
+	wg.Wait()
 }
 
 func StartRedisPoolStatsReporter(ctx context.Context, clients []redis.UniversalClient, interval time.Duration) {
@@ -159,6 +180,7 @@ func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []strin
 	uopts := &redis.UniversalOptions{
 		Password:       string(cfg.RedisPassword),
 		PoolSize:       poolSize,
+		MinIdleConns:   poolSize,
 		MaxActiveConns: maxActiveConns,
 	}
 	if opts.FilterTimeoutMs > 0 {

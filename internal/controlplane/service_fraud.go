@@ -18,13 +18,16 @@ import (
 )
 
 type CampaignFraudConfigUpdate struct {
-	Preset                *string `json:"preset,omitempty"`
-	FraudThresholdPass    *uint8  `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT     *uint8  `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock   *uint8  `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled   *bool   `json:"silent_reject_enabled,omitempty"`
-	BehaviorFlags         *uint32 `json:"behavior_flags,omitempty"`
+	Preset                *string                       `json:"preset,omitempty"`
+	FraudThresholdPass    *uint8                        `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect *uint8                        `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT     *uint8                        `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock   *uint8                        `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled   *bool                         `json:"silent_reject_enabled,omitempty"`
+	BehaviorFlags         *uint32                       `json:"behavior_flags,omitempty"`
+	CanvasRetestEnabled   *bool                         `json:"canvas_retest_enabled,omitempty"`
+	CgnatIPPolicyEnabled  *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
+	ConversionRejectRules *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
 }
 
 func validateFraudThresholds(pass, suspect, ivt, block uint8) error {
@@ -50,6 +53,9 @@ func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UU
 		FraudThresholdBlock:   uint8(row.FraudThresholdBlock),
 		SilentRejectEnabled:   row.SilentRejectEnabled,
 		BehaviorFlags:         uint32(row.BehaviorFlags),
+		CanvasRetestEnabled:   row.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:  row.CgnatIpPolicyEnabled,
+		ConversionRejectRules: domain.ParseConversionRejectRulesJSON(row.ConversionRejectRules),
 	}, nil
 }
 
@@ -69,6 +75,9 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		block := uint8(locked.FraudThresholdBlock)
 		silentReject := locked.SilentRejectEnabled
 		flags := locked.BehaviorFlags
+		canvasRetest := locked.CanvasRetestEnabled
+		cgnatPolicy := locked.CgnatIpPolicyEnabled
+		conversionRejectRules := domain.ParseConversionRejectRulesJSON(locked.ConversionRejectRules)
 
 		if upd.Preset != nil {
 			presetPass, presetSuspect, presetIVT, presetBlock, err := s.resolveFraudPresetThresholds(ctx, *upd.Preset)
@@ -99,6 +108,15 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		if upd.BehaviorFlags != nil {
 			flags = int32(*upd.BehaviorFlags)
 		}
+		if upd.CanvasRetestEnabled != nil {
+			canvasRetest = *upd.CanvasRetestEnabled
+		}
+		if upd.CgnatIPPolicyEnabled != nil {
+			cgnatPolicy = *upd.CgnatIPPolicyEnabled
+		}
+		if upd.ConversionRejectRules != nil {
+			conversionRejectRules = domain.MergeConversionRejectRulesPatch(conversionRejectRules, *upd.ConversionRejectRules)
+		}
 
 		if err := validateFraudThresholds(pass, suspect, ivt, block); err != nil {
 			return err
@@ -118,6 +136,11 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			}
 		}
 
+		rulesBytes, err := domain.MarshalConversionRejectRules(conversionRejectRules)
+		if err != nil {
+			return err
+		}
+
 		updated, err := q.UpdateCampaignFraudConfig(ctx, db.UpdateCampaignFraudConfigParams{
 			ID:                    domain.ToUUID(campaignID),
 			FraudThresholdPass:    int16(pass),
@@ -126,6 +149,9 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			FraudThresholdBlock:   int16(block),
 			SilentRejectEnabled:   silentReject,
 			BehaviorFlags:         flags,
+			CanvasRetestEnabled:   canvasRetest,
+			CgnatIpPolicyEnabled:  cgnatPolicy,
+			ConversionRejectRules: rulesBytes,
 		})
 		if err != nil {
 			return err
@@ -142,6 +168,8 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			FraudThresholdBlock:   block,
 			SilentRejectEnabled:   silentReject,
 			BehaviorFlags:         flags,
+			CanvasRetestEnabled:   canvasRetest,
+			CgnatIPPolicyEnabled:  cgnatPolicy,
 		}, nil)
 
 		payload, err := coldpath.MarshalOutbox(campaignIDPayload{CampaignID: campaignID.String()})
@@ -164,6 +192,9 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			FraudThresholdBlock:   uint8(updated.FraudThresholdBlock),
 			SilentRejectEnabled:   updated.SilentRejectEnabled,
 			BehaviorFlags:         uint32(updated.BehaviorFlags),
+			CanvasRetestEnabled:   updated.CanvasRetestEnabled,
+			CgnatIPPolicyEnabled:  updated.CgnatIpPolicyEnabled,
+			ConversionRejectRules: domain.ParseConversionRejectRulesJSON(updated.ConversionRejectRules),
 		}
 		return nil
 	})

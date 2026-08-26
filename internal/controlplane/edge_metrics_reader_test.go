@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/pkg/naming"
+
 	"github.com/stretchr/testify/assert"
 )
 

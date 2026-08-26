@@ -4,6 +4,8 @@ services:
     command: ['/bin/sh', '/scripts/init-run-volume.sh']
     volumes:
       - ad_event_processor_run:/run/ad-event-processor
+      - ad_event_processor_logs:/var/log/ad-event-processor
+      - ad_event_processor_ch_spool:/var/spool/ad-event-processor/ch
       - type: bind
         source: ./scripts/init-run-volume.sh
         target: /scripts/init-run-volume.sh
@@ -394,6 +396,8 @@ services:
           memory: 2G
     restart: always
     depends_on:
+      run-dir-init:
+        condition: service_completed_successfully
       db:
         condition: service_healthy
       broker:

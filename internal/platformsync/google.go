@@ -44,7 +44,11 @@ func fetchGoogleCampaignStatus(ctx context.Context, client *http.Client, baseURL
 		return RemoteCampaignStatus{}, fmt.Errorf("google ads: invalid external campaign id")
 	}
 
-	query := "SELECT campaign.id, campaign.status, campaign_budget.resource_name, campaign_budget.amount_micros FROM campaign WHERE campaign.id = " + externalCampaignID
+	query := strings.Join([]string{
+		"SELECT campaign.id, campaign.status, campaign_budget.resource_name, campaign_budget.amount_micros",
+		"FROM campaign WHERE campaign.id =",
+		externalCampaignID,
+	}, " ")
 	payload, err := json.Marshal(map[string]string{"query": query})
 	if err != nil {
 		return RemoteCampaignStatus{}, err

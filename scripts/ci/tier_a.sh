@@ -30,6 +30,7 @@ done
 allowed_docs=(
   ARCHITECTURE.md
   DEVELOPMENT.md
+  INTEGRATIONS.md
 )
 
 for path in docs/*.md; do

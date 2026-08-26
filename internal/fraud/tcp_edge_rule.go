@@ -24,9 +24,9 @@ WHERE created_at >= now() - toIntervalSecond(?)
 GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {
-	q   *database.CHQuery
+	q           *database.CHQuery
 	redisClient redis.Cmdable
-	cfg AnalyzerConfig
+	cfg         AnalyzerConfig
 }
 
 func (r *tcpEdgeCorrelationRule) Name() string { return "tcp_edge_correlation" }

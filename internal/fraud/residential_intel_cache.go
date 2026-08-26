@@ -15,7 +15,7 @@ const residentialIntelRedisPrefix = "intel:residential:"
 
 type ResidentialIntelCache struct {
 	redisClient redis.Cmdable
-	ttl time.Duration
+	ttl         time.Duration
 }
 
 func NewResidentialIntelCache(redisClient redis.Cmdable, ttl time.Duration) *ResidentialIntelCache {

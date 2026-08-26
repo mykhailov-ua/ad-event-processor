@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

@@ -1,0 +1,1315 @@
+IngressCostConfig:
+  type: object
+  required: [param]
+  description: |
+    Ingress macro cost parsing for /click query params. Stored on campaign row;
+    attributed to ClickHouse clicks.attributed_cost_micro with cost_source=ingress_macro.
+    See docs/INTEGRATIONS.md ingress macro section.
+  properties:
+    param:
+      type: string
+      description: Query param name (cost, cpc, bid, or custom).
+    scale:
+      type: string
+      description: decimal (USD float) or micro (integer micro-units).
+    max_micro:
+      type: integer
+      format: int64
+      description: Reject or cap parsed cost above this micro amount when policy requires.
+    policy:
+      type: string
+      description: Invalid or over-cap handling (ignore, etc.).
+
+Campaign:
+  type: object
+  required:
+    - id
+    - name
+    - status
+    - budget_limit
+    - current_spend
+    - customer_id
+    - pacing_mode
+    - daily_budget
+    - timezone
+    - freq_limit
+    - freq_window
+    - target_countries
+    - daypart_hours
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    status:
+      type: string
+    budget_limit:
+      type: string
+      description: Decimal USD string (legacy wire format).
+    current_spend:
+      type: string
+    customer_id:
+      type: string
+      format: uuid
+    pacing_mode:
+      type: string
+    daily_budget:
+      type: string
+    timezone:
+      type: string
+    freq_limit:
+      type: integer
+      format: int32
+    freq_window:
+      type: integer
+      format: int32
+    target_countries:
+      type: array
+      items:
+        type: string
+    target_url:
+      type: string
+    safe_page_url:
+      type: string
+    safe_page_enabled:
+      type: boolean
+    attestation_enabled:
+      type: boolean
+    attestation_mode:
+      type: string
+    attestation_ttl_sec:
+      type: integer
+      format: int32
+    dmr_enabled:
+      type: boolean
+    cidr_block_enabled:
+      type: boolean
+    proxy_vpn_block_enabled:
+      type: boolean
+    moderator_intel_enabled:
+      type: boolean
+    review_traffic_action:
+      type: string
+    tls_fingerprint_block_enabled:
+      type: boolean
+    conn_type_policy:
+      type: string
+    link_signing_enabled:
+      type: boolean
+    link_signing_ttl_sec:
+      type: integer
+      format: int32
+    click_delivery:
+      type: string
+    proxy_upstream_url:
+      type: string
+    proxy_rewrite_assets:
+      type: boolean
+    brand_id:
+      type: string
+      format: uuid
+    creative_payload:
+      type: object
+      additionalProperties: true
+    referrer_filter:
+      type: string
+    start_at:
+      type: string
+      format: date-time
+    end_at:
+      type: string
+      format: date-time
+    daypart_hours:
+      type: array
+      items:
+        type: integer
+        format: int32
+    flow_id:
+      type: string
+      format: uuid
+    owner_user_id:
+      type: string
+      format: uuid
+    ingress_cost_config:
+      $ref: '#/IngressCostConfig'
+    traffic_template_id:
+      type: string
+      description: UI traffic source template id for Integration click URL builder.
+    click_query_params:
+      type: object
+      additionalProperties:
+        type: string
+      description: Query param macros (sub1..sub30, ad_campaign_id, click ids) for click URL preset.
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    margin_breach:
+      type: boolean
+
+CampaignListResponse:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/Campaign'
+    total:
+      type: integer
+      format: int64
+
+PatchCampaignRequest:
+  type: object
+  description: |
+    Partial update (PATCH /api/v1/campaigns/{id}). Only keys present in the JSON body are applied;
+    omitted keys leave stored values unchanged. Empty string arrays replace target_countries or
+    daypart_hours when those keys are sent. Budget accepts budget_limit (decimal string) or
+    budget_limit_micro (integer). flow_id, brand_id, ingress_cost_config, traffic_template_id,
+    and click_query_params run dedicated assign/patch handlers when present.
+  properties:
+    name:
+      type: string
+    status:
+      type: string
+    budget_limit:
+      type: string
+    budget_limit_micro:
+      type: integer
+      format: int64
+    pacing_mode:
+      type: string
+    daily_budget_micro:
+      type: integer
+      format: int64
+    timezone:
+      type: string
+    freq_limit:
+      type: integer
+      format: int32
+    freq_window:
+      type: integer
+      format: int32
+    target_countries:
+      type: array
+      items:
+        type: string
+    target_url:
+      type: string
+    safe_page_url:
+      type: string
+    safe_page_enabled:
+      type: boolean
+    dmr_enabled:
+      type: boolean
+    cidr_block_enabled:
+      type: boolean
+    proxy_vpn_block_enabled:
+      type: boolean
+    moderator_intel_enabled:
+      type: boolean
+    review_traffic_action:
+      type: string
+    tls_fingerprint_block_enabled:
+      type: boolean
+    conn_type_policy:
+      type: string
+    link_signing_enabled:
+      type: boolean
+    link_signing_ttl_sec:
+      type: integer
+      format: int32
+    attestation_enabled:
+      type: boolean
+    attestation_mode:
+      type: string
+    attestation_ttl_sec:
+      type: integer
+      format: int32
+    referrer_filter:
+      type: string
+    click_delivery:
+      type: string
+    proxy_upstream_url:
+      type: string
+    proxy_rewrite_assets:
+      type: boolean
+    start_at:
+      type: string
+      format: date-time
+    end_at:
+      type: string
+      format: date-time
+    daypart_hours:
+      type: array
+      items:
+        type: integer
+        format: int32
+    flow_id:
+      type: string
+      format: uuid
+    brand_id:
+      type: string
+      format: uuid
+    ingress_cost_config:
+      $ref: '#/IngressCostConfig'
+    traffic_template_id:
+      type: string
+    click_query_params:
+      type: object
+      additionalProperties:
+        type: string
+
+CampaignMargin:
+  type: object
+  required:
+    - campaign_id
+    - window_start
+    - window_hours
+    - advertiser_spend_micro
+    - rtb_cost_micro
+    - operator_margin_micro
+    - publisher_payout_micro
+    - cost_over_revenue_limit
+    - threshold_bps
+    - margin_breach
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    window_start:
+      type: string
+      format: date-time
+    window_hours:
+      type: integer
+    advertiser_spend_micro:
+      type: integer
+      format: int64
+    rtb_cost_micro:
+      type: integer
+      format: int64
+    operator_margin_micro:
+      type: integer
+      format: int64
+    publisher_payout_micro:
+      type: integer
+      format: int64
+    cost_over_revenue_limit:
+      type: integer
+      format: int64
+    threshold_bps:
+      type: integer
+    margin_breach:
+      type: boolean
+
+CloneCampaignRequest:
+  type: object
+  properties:
+    name_prefix:
+      type: string
+    name_suffix:
+      type: string
+
+CloneCampaignResult:
+  type: object
+  required: [id, source_id, name]
+  properties:
+    id:
+      type: string
+      format: uuid
+    source_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+
+BlockCampaignPlacementRequest:
+  type: object
+  required: [placement_id]
+  properties:
+    placement_id:
+      type: string
+
+AssignCampaignOwnerRequest:
+  type: object
+  required: [user_id]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+
+CampaignEvent:
+  type: object
+  required: [click_id, event_type, created_at]
+  properties:
+    click_id:
+      type: string
+    event_type:
+      type: string
+    user_id:
+      type: string
+    ip_address:
+      type: string
+    user_agent:
+      type: string
+    payload:
+      type: object
+      additionalProperties: true
+    created_at:
+      type: string
+      format: date-time
+
+CampaignEventListResponse:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CampaignEvent'
+    total:
+      type: integer
+      format: int64
+
+ConversionRejectRules:
+  type: object
+  properties:
+    enabled:
+      type: boolean
+    min_ttc_ms:
+      type: integer
+      format: int32
+    reject_no_click:
+      type: boolean
+    reject_low_ttc:
+      type: boolean
+    reject_duplicate:
+      type: boolean
+    reject_ip_drift:
+      type: boolean
+    reject_datacenter_ip:
+      type: boolean
+
+CampaignFraudConfig:
+  type: object
+  required:
+    - campaign_id
+    - fraud_threshold_pass
+    - fraud_threshold_suspect
+    - fraud_threshold_ivt
+    - fraud_threshold_block
+    - silent_reject_enabled
+    - behavior_flags
+    - canvas_retest_enabled
+    - cgnat_ip_policy_enabled
+    - conversion_reject_rules
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    fraud_threshold_pass:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 255
+    fraud_threshold_suspect:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 255
+    fraud_threshold_ivt:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 255
+    fraud_threshold_block:
+      type: integer
+      format: int32
+      minimum: 0
+      maximum: 255
+    silent_reject_enabled:
+      type: boolean
+    behavior_flags:
+      type: integer
+      format: int32
+    canvas_retest_enabled:
+      type: boolean
+    cgnat_ip_policy_enabled:
+      type: boolean
+    conversion_reject_rules:
+      $ref: '#/ConversionRejectRules'
+
+PatchCampaignFraudRequest:
+  type: object
+  properties:
+    preset:
+      type: string
+    fraud_threshold_pass:
+      type: integer
+      format: int32
+    fraud_threshold_suspect:
+      type: integer
+      format: int32
+    fraud_threshold_ivt:
+      type: integer
+      format: int32
+    fraud_threshold_block:
+      type: integer
+      format: int32
+    silent_reject_enabled:
+      type: boolean
+    behavior_flags:
+      type: integer
+      format: int32
+    canvas_retest_enabled:
+      type: boolean
+    cgnat_ip_policy_enabled:
+      type: boolean
+    conversion_reject_rules:
+      $ref: '#/ConversionRejectRules'
+
+PreviewCampaignFraudRequest:
+  type: object
+  properties:
+    preset:
+      type: string
+    fraud_threshold_pass:
+      type: integer
+      format: int32
+    fraud_threshold_suspect:
+      type: integer
+      format: int32
+    fraud_threshold_ivt:
+      type: integer
+      format: int32
+    fraud_threshold_block:
+      type: integer
+      format: int32
+
+FraudPreviewTierCounts:
+  type: object
+  properties:
+    suspect:
+      type: integer
+      format: int64
+    ivt:
+      type: integer
+      format: int64
+    block:
+      type: integer
+      format: int64
+
+CampaignFraudPreview:
+  type: object
+  required: [campaign_id, affected_ips_7d, sample_size, by_tier, disclaimer]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    affected_ips_7d:
+      type: integer
+      format: int64
+    sample_size:
+      type: integer
+      format: int64
+    by_tier:
+      $ref: '#/FraudPreviewTierCounts'
+    disclaimer:
+      type: string
+
+CampaignMetrics:
+  type: object
+  properties:
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+
+CampaignHourlyBucket:
+  type: object
+  properties:
+    hour:
+      type: string
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+
+CampaignDailyBucket:
+  type: object
+  properties:
+    day:
+      type: string
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+
+CampaignStats:
+  type: object
+  required:
+    - campaign_id
+    - current_spend
+    - metrics
+    - hourly
+    - granularity
+    - from
+    - to
+    - stale
+    - source
+    - consistency
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    current_spend:
+      type: string
+    metrics:
+      $ref: '#/CampaignMetrics'
+    hourly:
+      type: array
+      items:
+        $ref: '#/CampaignHourlyBucket'
+    daily:
+      type: array
+      items:
+        $ref: '#/CampaignDailyBucket'
+    granularity:
+      type: string
+      enum: [hour, day]
+    from:
+      type: string
+      format: date-time
+    to:
+      type: string
+      format: date-time
+    stale:
+      type: boolean
+    source:
+      type: string
+    consistency:
+      type: string
+
+CampaignForecastRequest:
+  type: object
+  required: [start_at, end_at]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    budget_limit_micro:
+      type: integer
+      format: int64
+    budget_limit:
+      type: number
+      format: double
+    target_countries:
+      type: array
+      items:
+        type: string
+    daypart_hours:
+      type: array
+      items:
+        type: integer
+        format: int32
+    start_at:
+      type: string
+      format: date-time
+    end_at:
+      type: string
+      format: date-time
+    pacing_mode:
+      type: string
+    timezone:
+      type: string
+
+SpendCurvePoint:
+  type: object
+  properties:
+    hour:
+      type: string
+    spend_micro:
+      type: integer
+      format: int64
+    impressions:
+      type: integer
+      format: int64
+
+ForecastAdvisory:
+  type: object
+  properties:
+    code:
+      type: string
+    message:
+      type: string
+    suggested_pacing:
+      type: string
+
+CampaignForecast:
+  type: object
+  required: [impressions_p50, impressions_p90, spend_curve, low_confidence]
+  properties:
+    impressions_p50:
+      type: integer
+      format: int64
+    impressions_p90:
+      type: integer
+      format: int64
+    spend_curve:
+      type: array
+      items:
+        $ref: '#/SpendCurvePoint'
+    low_confidence:
+      type: boolean
+    advisory:
+      $ref: '#/ForecastAdvisory'
+
+ForecastUnavailableResponse:
+  type: object
+  required: [error, retry_after]
+  properties:
+    error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    retry_after:
+      type: integer
+
+Lander:
+  type: object
+  required: [id, name, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    url:
+      type: string
+    hosted_asset_id:
+      type: string
+      format: uuid
+      nullable: true
+    hosted_url:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+CreateLanderRequest:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+    url:
+      type: string
+
+Offer:
+  type: object
+  required: [id, name, url, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    url:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+
+CreateOfferRequest:
+  type: object
+  required: [name, url]
+  properties:
+    name:
+      type: string
+    url:
+      type: string
+
+FlowPathLanderRef:
+  type: object
+  required: [lander_id, weight]
+  properties:
+    lander_id:
+      type: string
+      format: uuid
+    weight:
+      type: integer
+      format: int32
+
+FlowPathOfferRef:
+  type: object
+  required: [offer_id, weight]
+  properties:
+    offer_id:
+      type: string
+      format: uuid
+    weight:
+      type: integer
+      format: int32
+
+FlowPath:
+  type: object
+  required: [weight, landers, offers]
+  properties:
+    weight:
+      type: integer
+      format: int32
+    landers:
+      type: array
+      items:
+        $ref: '#/FlowPathLanderRef'
+    offers:
+      type: array
+      items:
+        $ref: '#/FlowPathOfferRef'
+
+Flow:
+  type: object
+  required: [id, name, paths, created_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    paths:
+      oneOf:
+        - type: array
+          items:
+            $ref: '#/FlowPath'
+        - type: string
+    created_at:
+      type: string
+      format: date-time
+
+CreateFlowRequest:
+  type: object
+  required: [name, paths]
+  properties:
+    name:
+      type: string
+    paths:
+      type: array
+      items:
+        $ref: '#/FlowPath'
+
+UpdateFlowRequest:
+  type: object
+  required: [name, paths]
+  properties:
+    name:
+      type: string
+    paths:
+      type: array
+      items:
+        $ref: '#/FlowPath'
+
+HostedEditorFile:
+  type: object
+  required: [path, size, editable]
+  properties:
+    path:
+      type: string
+    size:
+      type: integer
+      format: int64
+    editable:
+      type: boolean
+
+HostedEditorState:
+  type: object
+  required:
+    - lander_id
+    - name
+    - draft_version
+    - published_version
+    - has_unpublished_draft
+    - files
+  properties:
+    lander_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    draft_version:
+      type: integer
+    published_version:
+      type: integer
+    has_unpublished_draft:
+      type: boolean
+    files:
+      type: array
+      items:
+        $ref: '#/HostedEditorFile'
+    preview_url:
+      type: string
+
+HostedEditorFileBody:
+  type: object
+  required: [content]
+  properties:
+    content:
+      type: string
+
+HostedEditorSaveResult:
+  type: object
+  required: [draft_version, has_unpublished_draft]
+  properties:
+    draft_version:
+      type: integer
+    has_unpublished_draft:
+      type: boolean
+
+HostedEditorPublishRequest:
+  type: object
+  properties:
+    version:
+      type: integer
+
+Brand:
+  type: object
+  required: [id, customer_id, name, created_at, updated_at, freq_limit, freq_window]
+  properties:
+    id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+    freq_limit:
+      type: integer
+      format: int32
+    freq_window:
+      type: integer
+      format: int32
+
+CreateBrandRequest:
+  type: object
+  required: [customer_id, name]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+
+BrandCreative:
+  type: object
+  required: [id, brand_id, name, landing_url, weight, status, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+    brand_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    landing_url:
+      type: string
+      description: Empty when caller lacks unmasked read permission.
+    weight:
+      type: integer
+      format: int32
+    status:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertBrandCreativeRequest:
+  type: object
+  required: [name, landing_url, weight, status]
+  properties:
+    name:
+      type: string
+    landing_url:
+      type: string
+    weight:
+      type: integer
+      format: int32
+    status:
+      type: string
+
+UpdateBrandCreativeRequest:
+  type: object
+  required: [name, landing_url, weight, status]
+  properties:
+    name:
+      type: string
+    landing_url:
+      type: string
+    weight:
+      type: integer
+      format: int32
+    status:
+      type: string
+
+IDCreatedResponse:
+  type: object
+  required: [id]
+  properties:
+    id:
+      type: string
+      format: uuid
+
+DomainHealth:
+  type: object
+  required: [hostname, role, health_status, ssl_status, updated_at]
+  properties:
+    hostname:
+      type: string
+    role:
+      type: string
+      enum: [tracking, admin, custom]
+    health_status:
+      type: string
+      enum: [healthy, degraded, down, unknown]
+    ssl_status:
+      type: string
+      enum: [valid, expiring, expired, missing, unknown]
+    ssl_not_after:
+      type: string
+      format: date-time
+    http_status:
+      type: integer
+    probe_latency_ms:
+      type: integer
+    probe_detail:
+      type: string
+    last_probe_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+AddDomainRequest:
+  type: object
+  required: [hostname]
+  properties:
+    hostname:
+      type: string
+
+DomainSSLSetupResult:
+  type: object
+  required: [hostname, status, message]
+  properties:
+    hostname:
+      type: string
+    status:
+      type: string
+    message:
+      type: string
+    output:
+      type: string
+
+ParkDomainRequest:
+  type: object
+  required: [domain, cloudflare_zone_id]
+  properties:
+    domain:
+      type: string
+    cloudflare_zone_id:
+      type: string
+    pool_id:
+      type: string
+      format: uuid
+
+ParkDomainResponse:
+  type: object
+  required: [success, dns_record_id, ssl_status]
+  properties:
+    success:
+      type: boolean
+    dns_record_id:
+      type: string
+    ssl_status:
+      type: string
+    hostname:
+      type: string
+    pool_id:
+      type: string
+      format: uuid
+
+CampaignExportBundle:
+  type: object
+  required: [export_version, exported_at, campaign]
+  properties:
+    export_version:
+      type: integer
+      format: int32
+    exported_at:
+      type: string
+      format: date-time
+    campaign:
+      type: object
+      additionalProperties: true
+    flow:
+      type: object
+      additionalProperties: true
+    landers:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    offers:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    postback_config:
+      type: object
+      additionalProperties: true
+    conversion_mappings:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+    integration_schema_name:
+      type: string
+    status_integration_schema_name:
+      type: string
+
+ImportCampaignRequest:
+  allOf:
+    - $ref: '#/CampaignExportBundle'
+    - type: object
+      required: [customer_id]
+      properties:
+        customer_id:
+          type: string
+          format: uuid
+        name_override:
+          type: string
+        budget_limit_micro:
+          type: integer
+          format: int64
+
+ImportCampaignResult:
+  type: object
+  required: [id, name]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+
+ConversionMapping:
+  type: object
+  required: [inbound_status, goal_name]
+  properties:
+    inbound_status:
+      type: string
+    goal_name:
+      type: string
+    payout_micro:
+      type: integer
+      format: int64
+
+ConversionMappingListResponse:
+  type: object
+  required: [mappings]
+  properties:
+    mappings:
+      type: array
+      items:
+        $ref: '#/ConversionMapping'
+
+ReplaceConversionMappingsRequest:
+  type: object
+  required: [mappings]
+  properties:
+    mappings:
+      type: array
+      items:
+        $ref: '#/ConversionMapping'
+
+MigrationSourceKindMeta:
+  type: object
+  required: [kind, label]
+  properties:
+    kind:
+      type: string
+      enum: [keitaro_json, binom_json, native_v1]
+    label:
+      type: string
+
+MigrationSourcesResponse:
+  type: object
+  required: [sources, max_payload_bytes]
+  properties:
+    sources:
+      type: array
+      items:
+        $ref: '#/MigrationSourceKindMeta'
+    max_payload_bytes:
+      type: integer
+      format: int32
+
+MigrationWarning:
+  type: object
+  required: [slug, message]
+  properties:
+    slug:
+      type: string
+    message:
+      type: string
+    campaign_ref:
+      type: string
+
+MigrationMappedCampaign:
+  type: object
+  required: [ref, name]
+  properties:
+    ref:
+      type: string
+    name:
+      type: string
+    traffic_source_name:
+      type: string
+    bundled_slug:
+      type: string
+    ui_template_id:
+      type: string
+    integration_schema_name:
+      type: string
+    click_query_params:
+      type: object
+      additionalProperties:
+        type: string
+    target_url:
+      type: string
+    budget_limit_micro:
+      type: integer
+      format: int64
+    ingress_cost_param:
+      type: string
+    postback_url_template:
+      type: string
+
+MigrationPreviewResult:
+  type: object
+  required: [source_kind, mapped_campaigns, secrets_stripped]
+  properties:
+    source_kind:
+      type: string
+      enum: [keitaro_json, binom_json, native_v1]
+    mapped_campaigns:
+      type: array
+      items:
+        $ref: '#/MigrationMappedCampaign'
+    warnings:
+      type: array
+      items:
+        $ref: '#/MigrationWarning'
+    secrets_stripped:
+      type: integer
+
+MigratePreviewRequest:
+  type: object
+  required: [source_kind, payload]
+  properties:
+    source_kind:
+      type: string
+      enum: [keitaro_json, binom_json, native_v1]
+    payload:
+      description: Raw JSON payload from external tracker export.
+      oneOf:
+        - type: object
+          additionalProperties: true
+        - type: array
+          items: {}
+
+MigrateImportRequest:
+  type: object
+  required: [customer_id, source_kind, payload]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    source_kind:
+      type: string
+      enum: [keitaro_json, binom_json, native_v1]
+    payload:
+      description: Raw JSON payload from external tracker export.
+      oneOf:
+        - type: object
+          additionalProperties: true
+        - type: array
+          items: {}
+    name_prefix:
+      type: string
+    budget_limit_micro:
+      type: integer
+      format: int64
+
+ImportMigrationFailure:
+  type: object
+  required: [ref, message]
+  properties:
+    ref:
+      type: string
+    name:
+      type: string
+    message:
+      type: string
+
+ImportMigrationResult:
+  type: object
+  required: [import_batch_id, imported]
+  properties:
+    import_batch_id:
+      type: string
+    imported:
+      type: array
+      items:
+        $ref: '#/ImportCampaignResult'
+    warnings:
+      type: array
+      items:
+        $ref: '#/MigrationWarning'
+    failed:
+      type: array
+      items:
+        $ref: '#/ImportMigrationFailure'

@@ -54,7 +54,7 @@ func TestCommittedOffsetWireRoundtrip(t *testing.T) {
 		t.Fatalf("cmd=%d seq=%d", cmd, seq)
 	}
 	status, offset, err := DecodeCommittedOffsetResponse(respPayload)
-	if err != nil || status != 0 || offset != 55 {
+	if err != nil || status != OffsetStatusOK || offset != 55 {
 		t.Fatalf("status=%d offset=%d err=%v", status, offset, err)
 	}
 }

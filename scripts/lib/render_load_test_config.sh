@@ -16,12 +16,30 @@ fi
 render_assert_no_unexpanded_env() {
   local file=$1
   local label=$2
-  if rg -q '\$\{[A-Z][A-Z0-9_]*\}' "$file"; then
+  if render_has_unexpanded_env "$file"; then
     printf 'render-load-test: unexpanded env vars in %s\n' "$label" >&2
-    rg -n '\$\{[A-Z][A-Z0-9_]*\}' "$file" >&2 || true
+    render_print_unexpanded_env "$file"
     return 1
   fi
   return 0
+}
+
+render_has_unexpanded_env() {
+  local file=$1
+  if command -v rg > /dev/null 2>&1; then
+    rg -q '\$\{[A-Z][A-Z0-9_]*\}' "$file"
+    return $?
+  fi
+  grep -qE '\$\{[A-Z][A-Z0-9_]*\}' "$file"
+}
+
+render_print_unexpanded_env() {
+  local file=$1
+  if command -v rg > /dev/null 2>&1; then
+    rg -n '\$\{[A-Z][A-Z0-9_]*\}' "$file" >&2 || true
+    return 0
+  fi
+  grep -nE '\$\{[A-Z][A-Z0-9_]*\}' "$file" >&2 || true
 }
 
 render_one() {

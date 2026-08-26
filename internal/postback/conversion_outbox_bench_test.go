@@ -65,7 +65,8 @@ func BenchmarkEventTypeMatches(b *testing.B) {
 }
 
 type benchPostbackQuerier struct {
-	hasConfig bool
+	hasConfig   bool
+	outboxCalls int
 }
 
 func (q *benchPostbackQuerier) ListPostbackConfigsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.PostbackConfig, error) {
@@ -96,6 +97,7 @@ func (q *benchPostbackQuerier) ListCampaignsByIDs(ctx context.Context, ids []pgt
 }
 
 func (q *benchPostbackQuerier) CreateOutboxEventsBatch(ctx context.Context, arg db.CreateOutboxEventsBatchParams) error {
+	q.outboxCalls++
 	return nil
 }
 

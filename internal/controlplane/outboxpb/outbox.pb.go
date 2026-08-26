@@ -1,19 +1,17 @@
-
-
 package outboxpb
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
-	
 	_ = protoimpl.EnforceVersion(20 - protoimpl.MinVersion)
-	
+
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
@@ -49,7 +47,6 @@ func (x *CampaignPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*CampaignPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{0}
@@ -101,7 +98,6 @@ func (x *CampaignIdPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*CampaignIdPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{1}
 }
@@ -144,7 +140,6 @@ func (x *BrandIdPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*BrandIdPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{2}
@@ -190,7 +185,6 @@ func (x *BrandFcapPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*BrandFcapPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{3}
@@ -251,7 +245,6 @@ func (x *CampaignSchedulePayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*CampaignSchedulePayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{4}
@@ -318,7 +311,6 @@ func (x *CampaignPacingPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*CampaignPacingPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{5}
 }
@@ -369,7 +361,6 @@ func (x *SettingsPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*SettingsPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{6}
 }
@@ -414,7 +405,6 @@ func (x *BlacklistPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*BlacklistPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{7}
@@ -477,7 +467,6 @@ func (x *FraudThreatPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*FraudThreatPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{8}
@@ -559,7 +548,6 @@ func (x *FraudModelVersionPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*FraudModelVersionPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{9}
 }
@@ -618,7 +606,6 @@ func (x *UserConsentPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*UserConsentPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{10}
 }
@@ -670,7 +657,6 @@ func (x *PurgeUserDataPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*PurgeUserDataPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{11}
@@ -730,7 +716,6 @@ func (x *PausePlacementPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*PausePlacementPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{12}
@@ -796,7 +781,6 @@ func (x *QuotaRepairPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*QuotaRepairPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{13}
@@ -903,7 +887,6 @@ func (x *ReconciliationAdjustPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*ReconciliationAdjustPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{14}
 }
@@ -989,7 +972,6 @@ func (x *SupplyFilesPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*SupplyFilesPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{15}
 }
@@ -1033,7 +1015,6 @@ func (x *RtbCatalogReloadPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*RtbCatalogReloadPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{16}
 }
@@ -1076,7 +1057,6 @@ func (x *CohortSnapshotPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*CohortSnapshotPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{17}
@@ -1123,7 +1103,6 @@ func (x *CtvGtaxSettlementPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*CtvGtaxSettlementPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{18}
@@ -1191,7 +1170,6 @@ func (x *TelegramEventPayload) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-
 func (*TelegramEventPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{19}
 }
@@ -1253,7 +1231,6 @@ func (x *SettleBalancePayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*SettleBalancePayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{20}
@@ -1335,7 +1312,6 @@ func (x *ChargebackPayload) ProtoReflect() protoreflect.Message {
 	}
 	return mi.MessageOf(x)
 }
-
 
 func (*ChargebackPayload) Descriptor() ([]byte, []int) {
 	return file_outbox_proto_rawDescGZIP(), []int{21}
@@ -1507,39 +1483,42 @@ func file_outbox_proto_rawDescGZIP() []byte {
 	return file_outbox_proto_rawDescData
 }
 
-var file_outbox_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
-var file_outbox_proto_goTypes = []any{
-	(*CampaignPayload)(nil),             
-	(*CampaignIdPayload)(nil),           
-	(*BrandIdPayload)(nil),              
-	(*BrandFcapPayload)(nil),            
-	(*CampaignSchedulePayload)(nil),     
-	(*CampaignPacingPayload)(nil),       
-	(*SettingsPayload)(nil),             
-	(*BlacklistPayload)(nil),            
-	(*FraudThreatPayload)(nil),          
-	(*FraudModelVersionPayload)(nil),    
-	(*UserConsentPayload)(nil),          
-	(*PurgeUserDataPayload)(nil),        
-	(*PausePlacementPayload)(nil),       
-	(*QuotaRepairPayload)(nil),          
-	(*ReconciliationAdjustPayload)(nil), 
-	(*SupplyFilesPayload)(nil),          
-	(*RtbCatalogReloadPayload)(nil),     
-	(*CohortSnapshotPayload)(nil),       
-	(*CtvGtaxSettlementPayload)(nil),    
-	(*TelegramEventPayload)(nil),        
-	(*SettleBalancePayload)(nil),        
-	(*ChargebackPayload)(nil),           
-	nil,                                 
-}
+var (
+	file_outbox_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+	file_outbox_proto_goTypes  = []any{
+		(*CampaignPayload)(nil),
+		(*CampaignIdPayload)(nil),
+		(*BrandIdPayload)(nil),
+		(*BrandFcapPayload)(nil),
+		(*CampaignSchedulePayload)(nil),
+		(*CampaignPacingPayload)(nil),
+		(*SettingsPayload)(nil),
+		(*BlacklistPayload)(nil),
+		(*FraudThreatPayload)(nil),
+		(*FraudModelVersionPayload)(nil),
+		(*UserConsentPayload)(nil),
+		(*PurgeUserDataPayload)(nil),
+		(*PausePlacementPayload)(nil),
+		(*QuotaRepairPayload)(nil),
+		(*ReconciliationAdjustPayload)(nil),
+		(*SupplyFilesPayload)(nil),
+		(*RtbCatalogReloadPayload)(nil),
+		(*CohortSnapshotPayload)(nil),
+		(*CtvGtaxSettlementPayload)(nil),
+		(*TelegramEventPayload)(nil),
+		(*SettleBalancePayload)(nil),
+		(*ChargebackPayload)(nil),
+		nil,
+	}
+)
+
 var file_outbox_proto_depIdxs = []int32{
-	22, 
-	1,  
-	1,  
-	1,  
-	1,  
-	0,  
+	22,
+	1,
+	1,
+	1,
+	1,
+	0,
 }
 
 func init() { file_outbox_proto_init() }

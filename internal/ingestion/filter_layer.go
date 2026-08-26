@@ -2,7 +2,7 @@ package ingestion
 
 import (
 	"context"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"ad-event-processor/internal/domain"
@@ -86,8 +86,11 @@ const fraudBlacklistCacheShards = 128
 const fraudBlacklistCacheMaxEntriesPerShard = 2048
 
 type fraudBlacklistCacheShard struct {
-	mu sync.RWMutex
-	m  map[string]fraudBlacklistCacheItem
+	snap atomic.Pointer[fraudBlacklistShardSnapshot]
+}
+
+type fraudBlacklistShardSnapshot struct {
+	entries map[string]fraudBlacklistCacheItem
 }
 
 type FraudBlacklistFilter struct {
@@ -101,7 +104,9 @@ func NewFraudBlacklistFilter(redisShards []redis.UniversalClient) *FraudBlacklis
 	}
 	f := &FraudBlacklistFilter{redisShards: redisShards}
 	for i := range fraudBlacklistCacheShards {
-		f.shards[i].m = make(map[string]fraudBlacklistCacheItem, 64)
+		f.shards[i].snap.Store(&fraudBlacklistShardSnapshot{
+			entries: make(map[string]fraudBlacklistCacheItem, 64),
+		})
 	}
 	return f
 }
@@ -126,19 +131,18 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 	shardIdx := fraudBlacklistShardIndex(ip)
 	shard := &f.shards[shardIdx]
 
-	now := time.Now().UnixNano()
-	shard.mu.RLock()
-	item, ok := shard.m[ip]
-	shard.mu.RUnlock()
-
-	if ok && now < item.expiry {
-		if item.blacklisted {
-			addFraudSignal(evt, FraudReasonL3Blocklist)
+	nowMs := cachedUnixMilliNow()
+	snap := shard.snap.Load()
+	if snap != nil {
+		if item, ok := snap.entries[ip]; ok && nowMs < item.expiry {
+			if item.blacklisted {
+				addFraudSignal(evt, FraudReasonL3Blocklist)
+			}
+			return nil
 		}
-		return nil
 	}
 
-	redisClient := pickLocalGlobalShard(f.redisShards)
+	redisClient := pickGlobalReadShardForIP(f.redisShards, ip)
 	if redisClient == nil {
 		return nil
 	}
@@ -148,15 +152,10 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 		return nil
 	}
 
-	shard.mu.Lock()
-	if len(shard.m) >= fraudBlacklistCacheMaxEntriesPerShard {
-		fraudBlacklistCachePruneLocked(shard, now)
-	}
-	shard.m[ip] = fraudBlacklistCacheItem{
+	fraudBlacklistShardStore(shard, ip, fraudBlacklistCacheItem{
 		blacklisted: onList,
-		expiry:      now + int64(fraudBlacklistCacheTTL),
-	}
-	shard.mu.Unlock()
+		expiry:      nowMs + fraudBlacklistCacheTTL.Milliseconds(),
+	}, nowMs)
 
 	if onList {
 		addFraudSignal(evt, FraudReasonL3Blocklist)
@@ -164,27 +163,66 @@ func (f *FraudBlacklistFilter) Check(ctx context.Context, evt *domain.Event) err
 	return nil
 }
 
-func pickLocalGlobalShard(redisShards []redis.UniversalClient) redis.UniversalClient {
-	if len(redisShards) == 0 {
-		return nil
-	}
-	for i := 1; i < len(redisShards); i++ {
-		if redisShards[i] != nil {
-			return redisShards[i]
+func fraudBlacklistShardStore(shard *fraudBlacklistCacheShard, ip string, item fraudBlacklistCacheItem, nowMs int64) {
+	for {
+		old := shard.snap.Load()
+		next := fraudBlacklistCloneEntries(old, nowMs, ip, item)
+		newSnap := &fraudBlacklistShardSnapshot{entries: next}
+		if shard.snap.CompareAndSwap(old, newSnap) {
+			return
 		}
 	}
-	return redisShards[0]
 }
 
-func fraudBlacklistCachePruneLocked(shard *fraudBlacklistCacheShard, now int64) {
-	for k, v := range shard.m {
-		if now >= v.expiry {
-			delete(shard.m, k)
+func fraudBlacklistShardDeleteIP(shard *fraudBlacklistCacheShard, ip string) {
+	for {
+		old := shard.snap.Load()
+		if old == nil {
+			return
+		}
+		if _, ok := old.entries[ip]; !ok {
+			return
+		}
+		next := make(map[string]fraudBlacklistCacheItem, len(old.entries)-1)
+		for k, v := range old.entries {
+			if k != ip {
+				next[k] = v
+			}
+		}
+		newSnap := &fraudBlacklistShardSnapshot{entries: next}
+		if shard.snap.CompareAndSwap(old, newSnap) {
+			return
 		}
 	}
-	for len(shard.m) >= fraudBlacklistCacheMaxEntriesPerShard {
-		for k := range shard.m {
-			delete(shard.m, k)
+}
+
+func fraudBlacklistCloneEntries(old *fraudBlacklistShardSnapshot, nowMs int64, ip string, item fraudBlacklistCacheItem) map[string]fraudBlacklistCacheItem {
+	var oldMap map[string]fraudBlacklistCacheItem
+	if old != nil {
+		oldMap = old.entries
+	}
+	next := make(map[string]fraudBlacklistCacheItem, len(oldMap)+1)
+	for k, v := range oldMap {
+		if nowMs < v.expiry {
+			next[k] = v
+		}
+	}
+	if len(next) >= fraudBlacklistCacheMaxEntriesPerShard {
+		fraudBlacklistCachePruneMap(next, nowMs)
+	}
+	next[ip] = item
+	return next
+}
+
+func fraudBlacklistCachePruneMap(entries map[string]fraudBlacklistCacheItem, now int64) {
+	for k, v := range entries {
+		if now >= v.expiry {
+			delete(entries, k)
+		}
+	}
+	for len(entries) >= fraudBlacklistCacheMaxEntriesPerShard {
+		for k := range entries {
+			delete(entries, k)
 			break
 		}
 	}

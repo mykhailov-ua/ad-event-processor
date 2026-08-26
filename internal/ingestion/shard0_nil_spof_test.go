@@ -92,7 +92,7 @@ func TestProof_Shard0Nil_PickLocalGlobalShardSkipsNil(t *testing.T) {
 	redisClient := pickLocalGlobalShard(redisShards)
 	require.NotNil(t, redisClient)
 	require.NoError(t, redisClient.Ping(context.Background()).Err())
-	t.Log("pickLocalGlobalShard skips nil shard 0")
+	t.Log("pickLocalGlobalShard skips nil shard 0 (pub/sub only)")
 }
 
 func TestProof_Shard0Nil_RegistryStartWatchShardsNoPanic(t *testing.T) {

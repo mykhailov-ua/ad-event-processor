@@ -15,6 +15,12 @@ SET provider = EXCLUDED.provider,
     test_event_code = EXCLUDED.test_event_code,
     updated_at = NOW();
 
+-- name: ClonePostbackConfig :execrows
+INSERT INTO postback_configs (campaign_id, provider, url_template, api_token_encrypted, target_event, test_event_code, updated_at)
+SELECT $1, src.provider, src.url_template, src.api_token_encrypted, src.target_event, src.test_event_code, NOW()
+FROM postback_configs src
+WHERE src.campaign_id = $2;
+
 -- name: ListPostbackConfigs :many
 SELECT * FROM postback_configs ORDER BY campaign_id;
 

@@ -24,10 +24,13 @@ type DryRunResult struct {
 
 func postbackAdapters() map[string]PostbackAdapter {
 	return map[string]PostbackAdapter{
-		"facebook": &FacebookAdapter{},
-		"google":   &GoogleAdapter{},
-		"tiktok":   &TikTokAdapter{},
-		"webhook":  &WebhookAdapter{},
+		"facebook":      &FacebookAdapter{},
+		"google":        &GoogleAdapter{},
+		"tiktok":        &TikTokAdapter{},
+		"taboola":       &TaboolaAdapter{},
+		"outbrain":      &OutbrainAdapter{},
+		"microsoft_ads": &MicrosoftAdsAdapter{},
+		"webhook":       &WebhookAdapter{},
 	}
 }
 
@@ -44,7 +47,7 @@ func DryRunConfig(
 	if strings.TrimSpace(urlTemplate) == "" {
 		return DryRunResult{OK: false, Provider: provider, Error: "url_template required"}
 	}
-	if provider != "webhook" && strings.TrimSpace(apiToken) == "" {
+	if ProviderRequiresToken(provider) && strings.TrimSpace(apiToken) == "" {
 		return DryRunResult{OK: false, Provider: provider, Error: "api_token required for CAPI providers"}
 	}
 	if targetEvent == "" {
@@ -60,6 +63,9 @@ func DryRunConfig(
 		FBCLID:         "dry-run-fbclid",
 		GCLID:          "dry-run-gclid",
 		TTCLID:         "dry-run-ttclid",
+		TBLCI:          "dry-run-tblci",
+		OBClickID:      "dry-run-ob-click",
+		MSCLKID:        "dry-run-msclkid",
 		EventSourceURL: "https://example.com/lp",
 		TestEventCode:  strings.TrimSpace(testEventCode),
 	}

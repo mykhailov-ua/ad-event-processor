@@ -75,13 +75,14 @@ export function CampaignFlowsPage() {
       to(fetchFlows()),
     ]);
     setLoading(false);
-    if (lRes[1]) {
-      setError(lRes[1]);
+    const loadErr = lRes[1] ?? oRes[1] ?? fRes[1];
+    if (loadErr) {
+      setError(loadErr);
       return;
     }
     setLanders(lRes[0] ?? []);
-    setOffers(oRes[1] ? [] : (oRes[0] ?? []));
-    setFlows(fRes[1] ? [] : (fRes[0] ?? []));
+    setOffers(oRes[0] ?? []);
+    setFlows(fRes[0] ?? []);
   }, []);
 
   useEffect(() => {

@@ -1,0 +1,124 @@
+TelegramValidateRequest:
+  type: object
+  required: [init_data, campaign_id]
+  properties:
+    init_data:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+
+TelegramValidateResult:
+  type: object
+  properties:
+    valid:
+      type: boolean
+    click_id:
+      type: string
+    expires_at:
+      type: integer
+      format: int64
+    is_premium:
+      type: boolean
+
+TelegramClickMintRequest:
+  type: object
+  required: [campaign_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+
+TelegramClickMintResult:
+  type: object
+  properties:
+    click_id:
+      type: string
+    expires_at:
+      type: integer
+      format: int64
+
+TelegramBot:
+  type: object
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    bot_id:
+      type: integer
+      format: int64
+    bot_token:
+      type: string
+    webhook_url:
+      type: string
+    mini_app_url:
+      type: string
+    secret_token:
+      type: string
+    auth_date_ttl:
+      type: integer
+      format: int32
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+TelegramDeeplink:
+  type: object
+  required: [token, campaign_id, expires_at]
+  properties:
+    token:
+      type: string
+    campaign_id:
+      type: string
+      format: uuid
+    fbclid:
+      type: string
+    ttclid:
+      type: string
+    utm_source:
+      type: string
+    utm_medium:
+      type: string
+    utm_campaign:
+      type: string
+    utm_term:
+      type: string
+    utm_content:
+      type: string
+    landing_ts:
+      type: string
+      format: date-time
+    expires_at:
+      type: string
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+
+TelegramPostback:
+  type: object
+  properties:
+    id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    postback_url:
+      type: string
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+TelegramUpdatePostbackRequest:
+  type: object
+  required: [postback_url]
+  properties:
+    postback_url:
+      type: string

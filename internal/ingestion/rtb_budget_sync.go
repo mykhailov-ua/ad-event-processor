@@ -6,6 +6,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/rtb"
+
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )

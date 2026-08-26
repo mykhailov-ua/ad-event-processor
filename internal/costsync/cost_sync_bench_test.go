@@ -45,7 +45,7 @@ func BenchmarkPersistLines(b *testing.B) {
 	benchN := 0
 	for b.Loop() {
 		lines[0].PlacementID = "ad-bench-" + string(rune('a'+benchN%26))
-		_, _, _ = worker.persistLines(ctx, lines, lines[0].Date)
+		_, _, _, _ = worker.persistLines(ctx, lines, lines[0].Date)
 		benchN++
 	}
 }

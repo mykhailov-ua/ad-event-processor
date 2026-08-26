@@ -41,30 +41,32 @@ func (r *Registry) campaignMapSnapshot() *campaignMapSnapshot {
 }
 
 type campaignReplicaDTO struct {
-	ID                 uuid.UUID             `json:"id"`
-	CustomerID         uuid.UUID             `json:"customer_id"`
-	BrandID            *uuid.UUID            `json:"brand_id,omitempty"`
-	BrandFcapKey       string                `json:"brand_fcap_key,omitempty"`
-	Name               string                `json:"name"`
-	BudgetLimit        int64                 `json:"budget_limit"`
-	CurrentSpend       int64                 `json:"current_spend"`
-	Status             domain.CampaignStatus `json:"status"`
-	PacingMode         domain.PacingMode     `json:"pacing_mode"`
-	DailyBudget        int64                 `json:"daily_budget"`
-	DailyBudgetMicro   int64                 `json:"daily_budget_micro"`
-	Timezone           string                `json:"timezone"`
-	FreqLimit          int32                 `json:"freq_limit"`
-	FreqWindow         int32                 `json:"freq_window"`
-	TargetCountries    []string              `json:"target_countries,omitempty"`
-	SafePageURL        string                `json:"safe_page_url,omitempty"`
-	SafePageEnabled    bool                  `json:"safe_page_enabled"`
-	AttestationEnabled bool                  `json:"attestation_enabled"`
-	AttestationMode    string                `json:"attestation_mode,omitempty"`
-	AttestationTTLSec  int32                 `json:"attestation_ttl_sec"`
-	DmrEnabled         bool                  `json:"dmr_enabled"`
+	ID                   uuid.UUID             `json:"id"`
+	CustomerID           uuid.UUID             `json:"customer_id"`
+	BrandID              *uuid.UUID            `json:"brand_id,omitempty"`
+	BrandFcapKey         string                `json:"brand_fcap_key,omitempty"`
+	Name                 string                `json:"name"`
+	BudgetLimit          int64                 `json:"budget_limit"`
+	CurrentSpend         int64                 `json:"current_spend"`
+	Status               domain.CampaignStatus `json:"status"`
+	PacingMode           domain.PacingMode     `json:"pacing_mode"`
+	DailyBudget          int64                 `json:"daily_budget"`
+	DailyBudgetMicro     int64                 `json:"daily_budget_micro"`
+	Timezone             string                `json:"timezone"`
+	FreqLimit            int32                 `json:"freq_limit"`
+	FreqWindow           int32                 `json:"freq_window"`
+	TargetCountries      []string              `json:"target_countries,omitempty"`
+	SafePageURL          string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled      bool                  `json:"safe_page_enabled"`
+	CanvasRetestEnabled  bool                  `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled bool                  `json:"cgnat_ip_policy_enabled"`
+	AttestationEnabled   bool                  `json:"attestation_enabled"`
+	AttestationMode      string                `json:"attestation_mode,omitempty"`
+	AttestationTTLSec    int32                 `json:"attestation_ttl_sec"`
+	DmrEnabled           bool                  `json:"dmr_enabled"`
 
-	CIDRBlockEnabled         bool   `json:"cidr_block_enabled"`
-	ProxyVPNBlockEnabled    bool   `json:"proxy_vpn_block_enabled"`
+	CIDRBlockEnabled           bool   `json:"cidr_block_enabled"`
+	ProxyVPNBlockEnabled       bool   `json:"proxy_vpn_block_enabled"`
 	ModeratorIntelEnabled      bool   `json:"moderator_intel_enabled"`
 	ReviewTrafficAction        string `json:"review_traffic_action,omitempty"`
 	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`
@@ -390,12 +392,14 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			TargetCountries:            targetCountries,
 			SafePageURL:                info.campaign.SafePageURL,
 			SafePageEnabled:            info.campaign.SafePageEnabled,
+			CanvasRetestEnabled:        info.campaign.CanvasRetestEnabled,
+			CgnatIPPolicyEnabled:       info.campaign.CgnatIPPolicyEnabled,
 			AttestationEnabled:         info.campaign.AttestationEnabled,
 			AttestationMode:            string(info.campaign.AttestationMode),
 			AttestationTTLSec:          info.campaign.AttestationTTLSec,
 			DmrEnabled:                 info.campaign.DmrEnabled,
-			CIDRBlockEnabled:         info.campaign.CIDRBlockEnabled,
-			ProxyVPNBlockEnabled:    info.campaign.ProxyVPNBlockEnabled,
+			CIDRBlockEnabled:           info.campaign.CIDRBlockEnabled,
+			ProxyVPNBlockEnabled:       info.campaign.ProxyVPNBlockEnabled,
 			ModeratorIntelEnabled:      info.campaign.ModeratorIntelEnabled,
 			ReviewTrafficAction:        string(info.campaign.ReviewTrafficAction),
 			TLSFingerprintBlockEnabled: info.campaign.TLSFingerprintBlockEnabled,
@@ -513,12 +517,14 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				DailySpendKeyPrefix:        dailySpendKeyPrefix(dto.ID),
 				SafePageURL:                dto.SafePageURL,
 				SafePageEnabled:            dto.SafePageEnabled,
+				CanvasRetestEnabled:        dto.CanvasRetestEnabled,
+				CgnatIPPolicyEnabled:       dto.CgnatIPPolicyEnabled,
 				AttestationEnabled:         dto.AttestationEnabled,
 				AttestationMode:            domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
 				AttestationTTLSec:          dto.AttestationTTLSec,
 				DmrEnabled:                 dto.DmrEnabled,
-				CIDRBlockEnabled:         dto.CIDRBlockEnabled,
-				ProxyVPNBlockEnabled:    dto.ProxyVPNBlockEnabled,
+				CIDRBlockEnabled:           dto.CIDRBlockEnabled,
+				ProxyVPNBlockEnabled:       dto.ProxyVPNBlockEnabled,
 				ModeratorIntelEnabled:      dto.ModeratorIntelEnabled,
 				ReviewTrafficAction:        domain.ParseReviewTrafficAction(dto.ReviewTrafficAction),
 				TLSFingerprintBlockEnabled: dto.TLSFingerprintBlockEnabled,
@@ -633,6 +639,18 @@ func (r *Registry) Wait(ctx context.Context) error {
 	}
 }
 
+func parseLicenseEntitlementsJSON(raw []byte) (licensing.Entitlements, error) {
+	if len(raw) == 0 {
+		return licensing.Entitlements{}, nil
+	}
+	var licEnt licensing.Entitlements
+	if err := json.Unmarshal(raw, &licEnt); err != nil {
+		return licensing.Entitlements{}, err
+	}
+	licEnt.Features = licEnt.Features.Normalized()
+	return licEnt, nil
+}
+
 func (r *Registry) SyncEntitlements(ctx context.Context) error {
 	if r.pool == nil {
 		return nil
@@ -657,10 +675,10 @@ func (r *Registry) SyncEntitlements(ctx context.Context) error {
 		return err
 	}
 	licState = licensing.LicenseState(stateStr)
-	if len(entitlementsBytes) > 0 {
-		_ = json.Unmarshal(entitlementsBytes, &licEnt)
+	licEnt, parseErr := parseLicenseEntitlementsJSON(entitlementsBytes)
+	if parseErr != nil {
+		slog.Warn("billing license_status entitlements_json corrupt; empty entitlements limits", "error", parseErr)
 	}
-	licEnt.Features = licEnt.Features.Normalized()
 	r.storeEntitlementsSnapshot(licState, licEnt)
 	return nil
 }

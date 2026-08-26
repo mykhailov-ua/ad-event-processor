@@ -20,6 +20,7 @@ import (
 	"ad-event-processor/pkg/piihash"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/google/uuid"
 )
 
 type tgEventPayload struct {
@@ -101,15 +102,17 @@ var slicePool = sync.Pool{
 }
 
 type ClickHouseStore struct {
-	conn          driver.Conn
-	writeTimeout  time.Duration
-	spool         *CHSpool
-	chGate        *ProcessorChGate
-	piiHasher     *piihash.Hasher
-	ctx           context.Context
-	cancel        context.CancelFunc
-	replayWg      sync.WaitGroup
-	replayRunning atomic.Bool
+	conn             driver.Conn
+	writeTimeout     time.Duration
+	spool            *CHSpool
+	chGate           *ProcessorChGate
+	piiHasher        *piihash.Hasher
+	conversionPayout *ConversionPayoutApplier
+	conversionReject conversionRejectFunc
+	ctx              context.Context
+	cancel           context.CancelFunc
+	replayWg         sync.WaitGroup
+	replayRunning    atomic.Bool
 }
 
 func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir string, spoolCfg CHSpoolConfig, chGate *ProcessorChGate) *ClickHouseStore {
@@ -137,6 +140,13 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
+	}
+
+	if chStore.conversionReject != nil {
+		chStore.conversionReject(ctx, events)
+	}
+	if chStore.conversionPayout != nil {
+		chStore.conversionPayout.ApplyBatch(ctx, events)
 	}
 
 	if chStore.chGate != nil {
@@ -357,6 +367,8 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				reviewRoutedFlag(e),
 				unsafeString(payload),
 				e.CreatedAt,
+				e.IngressCostMicro,
+				clickAttributedCostSource(e),
 			)
 		case table == "tg_events_raw":
 			var p tgEventPayload
@@ -572,6 +584,94 @@ func (chStore *ClickHouseStore) SetPIIHasher(h *piihash.Hasher) {
 	if chStore != nil {
 		chStore.piiHasher = h
 	}
+}
+
+func (chStore *ClickHouseStore) SetConversionPayoutApplier(a *ConversionPayoutApplier) {
+	if chStore != nil {
+		chStore.conversionPayout = a
+	}
+}
+
+type conversionRejectFunc func(ctx context.Context, events []*domain.Event)
+
+func (chStore *ClickHouseStore) SetConversionReject(fn conversionRejectFunc) {
+	if chStore != nil {
+		chStore.conversionReject = fn
+	}
+}
+
+// WriteFraudTelemetry inserts rejected conversions into fraud_events (reprocess path; no settlement hooks).
+func (chStore *ClickHouseStore) WriteFraudTelemetry(ctx context.Context, events []*domain.Event) error {
+	if chStore == nil || len(events) == 0 {
+		return nil
+	}
+	if chStore.chGate != nil {
+		if err := chStore.chGate.Acquire(ctx); err != nil {
+			return err
+		}
+		defer chStore.chGate.Release()
+	}
+	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+	defer cancel()
+	return chStore.insertTable(dbCtx, "fraud_events", events, true)
+}
+
+// WriteConversions re-inserts validated conversion rows (clears pending flag in payload).
+func (chStore *ClickHouseStore) WriteConversions(ctx context.Context, events []*domain.Event) error {
+	if chStore == nil || len(events) == 0 {
+		return nil
+	}
+	if chStore.chGate != nil {
+		if err := chStore.chGate.Acquire(ctx); err != nil {
+			return err
+		}
+		defer chStore.chGate.Release()
+	}
+	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+	defer cancel()
+	return chStore.insertTable(dbCtx, "conversions", events, false)
+}
+
+// DeleteValidationPendingConversions removes deferred rows before validated re-insert.
+func (chStore *ClickHouseStore) DeleteValidationPendingConversions(ctx context.Context, events []*domain.Event) error {
+	if chStore == nil || len(events) == 0 {
+		return nil
+	}
+	if chStore.chGate != nil {
+		if err := chStore.chGate.Acquire(ctx); err != nil {
+			return err
+		}
+		defer chStore.chGate.Release()
+	}
+	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+	defer cancel()
+	for _, evt := range events {
+		if evt == nil || evt.ClickID == "" || evt.CampaignID == uuid.Nil {
+			continue
+		}
+		err := chStore.conn.Exec(dbCtx, `
+ALTER TABLE conversions DELETE WHERE
+ campaign_id = ?
+ AND click_id = ?
+ AND created_at = ?
+ AND JSONExtractBool(payload, 'conversion_validation_pending') = 1`,
+			evt.CampaignID, evt.ClickID, evt.CreatedAt)
+		if err != nil {
+			return fmt.Errorf("delete pending conversion click_id=%s: %w", evt.ClickID, err)
+		}
+	}
+	return nil
+}
+
+// ReplaceValidatedConversions deletes pending rows then inserts validated conversion payloads.
+func (chStore *ClickHouseStore) ReplaceValidatedConversions(ctx context.Context, events []*domain.Event) error {
+	if chStore == nil || len(events) == 0 {
+		return nil
+	}
+	if err := chStore.DeleteValidationPendingConversions(ctx, events); err != nil {
+		return err
+	}
+	return chStore.WriteConversions(ctx, events)
 }
 
 func (chStore *ClickHouseStore) PIIHasher() *piihash.Hasher {

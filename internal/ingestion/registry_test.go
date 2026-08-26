@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"

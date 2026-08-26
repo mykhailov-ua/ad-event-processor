@@ -1,6 +1,5 @@
 package ingestion
 
-
 type residentialProxyPolicy struct {
 	ProxyMinEvents             float64
 	ProxyMaxCTR                float64

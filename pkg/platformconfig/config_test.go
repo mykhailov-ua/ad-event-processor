@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"ad-event-processor/pkg/coldpath"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

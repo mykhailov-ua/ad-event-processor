@@ -289,6 +289,8 @@ func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
 	reports.registerSilentRejectImpressionFunnelReport(mux)
 	reports.registerRtbReports(mux)
 	reports.registerPostbackReconReport(mux)
+	reports.registerConversionTypePayoutReport(mux)
+	reports.registerClickLogReport(mux)
 	reports.registerPacingDriftReport(mux)
 	reports.registerCostCoverageReport(mux)
 	reports.registerMLReports(mux)

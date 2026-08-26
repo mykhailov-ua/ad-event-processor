@@ -36,9 +36,7 @@ function RuntimeRowsTable({
   testId: string;
 }) {
   const keys =
-    rows.length > 0
-      ? Object.keys(rows[0] ?? {}).slice(0, 6)
-      : ['score_bucket', 'row_count'];
+    rows.length > 0 ? Object.keys(rows[0] ?? {}).slice(0, 6) : ['score_bucket', 'row_count'];
   return (
     <section className="section-card stack" data-testid={testId}>
       <h2 className="subsection-title">{title}</h2>
@@ -484,10 +482,20 @@ export function OpsMlModelPage() {
         </section>
       ) : tab === 'runtime' ? (
         <div className="stack stack--lg" data-testid="ops-ml-runtime-panel">
-          {runtimeLoading ? <p className="text-muted text-sm">Loading ClickHouse ML reports...</p> : null}
-          <RuntimeRowsTable title="Score distribution" rows={scoreRows} testId="ops-ml-score-distribution" />
+          {runtimeLoading ? (
+            <p className="text-muted text-sm">Loading ClickHouse ML reports...</p>
+          ) : null}
+          <RuntimeRowsTable
+            title="Score distribution"
+            rows={scoreRows}
+            testId="ops-ml-score-distribution"
+          />
           <RuntimeRowsTable title="Shadow delta" rows={shadowRows} testId="ops-ml-shadow-delta" />
-          <RuntimeRowsTable title="Feature spikes" rows={spikeRows} testId="ops-ml-feature-spikes" />
+          <RuntimeRowsTable
+            title="Feature spikes"
+            rows={spikeRows}
+            testId="ops-ml-feature-spikes"
+          />
         </div>
       ) : (
         <section className="section-card stack" data-testid="ops-ml-labels-panel">

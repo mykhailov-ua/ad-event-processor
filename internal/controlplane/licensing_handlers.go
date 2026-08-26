@@ -33,7 +33,6 @@ type LicenseStatusResponse struct {
 	UpgradePlanCode   string `json:"upgrade_plan_code,omitempty"`
 	TrialSelfServeURL string `json:"trial_self_serve_url,omitempty"`
 	PilotValidDays    int    `json:"pilot_valid_days,omitempty"`
-	DeploymentMode    string `json:"deployment_mode,omitempty"`
 	SupportURL        string `json:"support_url,omitempty"`
 }
 
@@ -187,7 +186,6 @@ func enrichLicenseStatusFromRow(resp LicenseStatusResponse, row db.BillingLicens
 		var ent licensing.Entitlements
 		if err := json.Unmarshal(row.EntitlementsJson, &ent); err == nil {
 			resp.MaxRPS = ent.Limits.MaxRPS
-			resp.DeploymentMode = licensing.NormalizeDeploymentMode(ent.DeploymentMode)
 		}
 	}
 	return enrichLicenseStatusTrialSurface(resp)

@@ -219,6 +219,10 @@ func (viewHandlers *ViewsHTTPHandlers) createView(w http.ResponseWriter, r *http
 	if !viewHandlers.authorizeViewCustomer(w, r, req.CustomerID) {
 		return
 	}
+	if err := validateSavedViewInput(req.Name, req.ReportKey, req.Spec); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
 
 	if viewHandlers.Store == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "views service not configured")
@@ -317,6 +321,10 @@ func (viewHandlers *ViewsHTTPHandlers) updateView(w http.ResponseWriter, r *http
 		return
 	}
 	if !viewHandlers.authorizeViewCustomer(w, r, existing.CustomerID) {
+		return
+	}
+	if err := validateSavedViewInput(req.Name, req.ReportKey, req.Spec); err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 

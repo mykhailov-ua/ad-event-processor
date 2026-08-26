@@ -1,0 +1,217 @@
+paths:
+  /api/v1/rtb/deals:
+    get:
+      tags: [rtb]
+      operationId: rtbListDeals
+      summary: List RTB deals
+      x-permissions: [rtb:read]
+      responses:
+        '200':
+          description: Deals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/rtb.yaml#/RtbDeal'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [rtb]
+      operationId: rtbCreateDeal
+      summary: Create RTB deal
+      x-permissions: [rtb:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/rtb.yaml#/RtbDealCreateSpec'
+      responses:
+        '201':
+          description: Created deal
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbDeal'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/rtb/deals/{id}:
+    get:
+      tags: [rtb]
+      operationId: rtbGetDeal
+      summary: Get RTB deal by id
+      x-permissions: [rtb:read]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Deal
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbDeal'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    patch:
+      tags: [rtb]
+      operationId: rtbPatchDeal
+      summary: Update RTB deal
+      x-permissions: [rtb:write]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/rtb.yaml#/RtbDealUpdateSpec'
+      responses:
+        '200':
+          description: Updated deal
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbDeal'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [rtb]
+      operationId: rtbDeleteDeal
+      summary: Delete RTB deal
+      x-permissions: [rtb:write]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/rtb/integration-profile:
+    get:
+      tags: [rtb]
+      operationId: rtbIntegrationProfile
+      summary: OpenRTB integration profile and endpoint hints
+      x-permissions: [rtb:read]
+      responses:
+        '200':
+          description: Integration profile
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbIntegrationProfile'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/rtb/shadow-diff:
+    get:
+      tags: [rtb]
+      operationId: rtbShadowDiff
+      summary: Shadow vs live auction parity snapshot
+      x-permissions: [rtb:read]
+      parameters:
+        - name: window
+          in: query
+          schema:
+            type: string
+          description: Go duration string; default 1h.
+      responses:
+        '200':
+          description: Shadow diff metrics
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbShadowDiffSnapshot'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/rtb/reconcile/export:
+    get:
+      tags: [rtb]
+      operationId: rtbReconcileExport
+      summary: RTB reconcile export with live gate
+      x-permissions: [rtb:read]
+      parameters:
+        - name: window
+          in: query
+          schema:
+            type: string
+        - name: request_id
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reconcile export
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbReconcileExport'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/rtb/floors/apply:
+    post:
+      tags: [rtb]
+      operationId: rtbFloorsApply
+      summary: Apply floor optimizer suggestions
+      x-permissions: [settings:write]
+      parameters:
+        - name: dry_run
+          in: query
+          schema:
+            type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/rtb.yaml#/RtbFloorsApplyRequest'
+      responses:
+        '200':
+          description: Apply result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/RtbFloorsApplyResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/rtb/validate-bid-request:
+    post:
+      tags: [rtb]
+      operationId: rtbValidateBidRequest
+      summary: Validate raw OpenRTB bid request JSON
+      x-permissions: [rtb:read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/rtb.yaml#/OpenRtbValidationResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

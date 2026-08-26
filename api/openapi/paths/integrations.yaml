@@ -1,0 +1,866 @@
+paths:
+  /api/v1/postbacks/config:
+    get:
+      tags: [postbacks]
+      operationId: postbacksListConfig
+      summary: List outbound postback configs
+      description: Returns all campaign postback/CAPI configs; api_token is never returned.
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Postback configs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/PostbackConfig'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/postbacks/config/{campaign_id}:
+    put:
+      tags: [postbacks]
+      operationId: postbacksUpdateConfig
+      summary: Upsert campaign postback config
+      description: Encrypts api_token at rest; empty api_token preserves existing token.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CampaignIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpdatePostbackConfigRequest'
+      responses:
+        '200':
+          description: Config saved
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/postbacks/config/{campaign_id}/test:
+    post:
+      tags: [postbacks]
+      operationId: postbacksTestConfig
+      summary: Dry-run postback dispatch for a campaign
+      description: Returns 422 when provider dispatch fails.
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CampaignIdPath'
+      responses:
+        '200':
+          description: Dry-run succeeded
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbackDryRunResult'
+        '422':
+          description: Dry-run failed
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbackDryRunResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/postbacks/dlq:
+    get:
+      tags: [postbacks]
+      operationId: postbacksListDlq
+      summary: List postback dead-letter queue entries
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: DLQ rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/PostbackDlqEntry'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/postbacks/dlq/{id}/retry:
+    post:
+      tags: [postbacks]
+      operationId: postbacksRetryDlq
+      summary: Re-enqueue a DLQ postback
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/Int64PathId'
+      responses:
+        '200':
+          description: Retry queued
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/StatusOKResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/postbacks/campaign-status:
+    get:
+      tags: [postbacks]
+      operationId: postbacksListCampaignStatus
+      summary: List per-campaign postback health
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Campaign postback status rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/PostbackCampaignStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/schemas:
+    get:
+      tags: [integration]
+      operationId: integrationListSchemas
+      summary: List custom integration schemas
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Integration schemas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/IntegrationSchema'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [integration]
+      operationId: integrationCreateSchema
+      summary: Create integration schema document
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/CreateIntegrationSchemaRequest'
+      responses:
+        '201':
+          description: Schema created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/IntegrationSchema'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/schemas/{id}:
+    get:
+      tags: [integration]
+      operationId: integrationGetSchema
+      summary: Get integration schema by id
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Schema row
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/IntegrationSchema'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/schemas/{id}/apply:
+    post:
+      tags: [integration]
+      operationId: integrationApplySchema
+      summary: Apply schema to a campaign
+      description: Side effects depend on schema kind (tracking URL, postback template, status mapping).
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/ApplyIntegrationSchemaRequest'
+      responses:
+        '200':
+          description: Apply result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/ApplyIntegrationSchemaResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/templates:
+    get:
+      tags: [integration]
+      operationId: integrationListTemplates
+      summary: List bundled integration templates
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Template catalog entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/IntegrationTemplateCatalogEntry'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/templates/import:
+    post:
+      tags: [integration]
+      operationId: integrationImportTemplates
+      summary: Import bundled templates into integration_schemas
+      x-permissions: [campaigns:write]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/ImportIntegrationTemplatesRequest'
+      responses:
+        '200':
+          description: Imported schemas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/IntegrationSchema'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/apply-templates:
+    post:
+      tags: [integration]
+      operationId: integrationApplyCampaignTemplates
+      summary: Apply bundled traffic/affiliate templates to a campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/ApplyCampaignTemplatesRequest'
+      responses:
+        '200':
+          description: Applied template artifacts
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/ApplyCampaignTemplatesResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/sellers:
+    get:
+      tags: [supply]
+      operationId: supplyListSellers
+      summary: List sellers.json rows
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Seller rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/Seller'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [supply]
+      operationId: supplyCreateSeller
+      summary: Create sellers.json row
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/SellerWriteRequest'
+      responses:
+        '201':
+          description: Seller created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/Seller'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/sellers/{id}:
+    put:
+      tags: [supply]
+      operationId: supplyUpdateSeller
+      summary: Update sellers.json row
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/Int64PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/SellerWriteRequest'
+      responses:
+        '200':
+          description: Seller updated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/Seller'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [supply]
+      operationId: supplyDeleteSeller
+      summary: Delete sellers.json row
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/Int64PathId'
+      responses:
+        '204':
+          description: Seller deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/ads-txt:
+    get:
+      tags: [supply]
+      operationId: supplyListAdsTxt
+      summary: List ads.txt rows
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: ads.txt rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/AdsTxtEntry'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [supply]
+      operationId: supplyCreateAdsTxt
+      summary: Create ads.txt row
+      x-permissions: [settings:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/AdsTxtWriteRequest'
+      responses:
+        '201':
+          description: Row created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/AdsTxtEntry'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/ads-txt/{id}:
+    put:
+      tags: [supply]
+      operationId: supplyUpdateAdsTxt
+      summary: Update ads.txt row
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/Int64PathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/AdsTxtWriteRequest'
+      responses:
+        '200':
+          description: Row updated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/AdsTxtEntry'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [supply]
+      operationId: supplyDeleteAdsTxt
+      summary: Delete ads.txt row
+      x-permissions: [settings:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/Int64PathId'
+      responses:
+        '204':
+          description: Row deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/preview/sellers.json:
+    get:
+      tags: [supply]
+      operationId: supplyPreviewSellersJSON
+      summary: Preview rendered sellers.json
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Rendered sellers.json bytes
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+            text/plain:
+              schema:
+                type: string
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/preview/ads.txt:
+    get:
+      tags: [supply]
+      operationId: supplyPreviewAdsTxt
+      summary: Preview rendered ads.txt
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Rendered ads.txt body
+          content:
+            text/plain:
+              schema:
+                type: string
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/validation:
+    get:
+      tags: [supply]
+      operationId: supplyGetValidation
+      summary: Validate sellers.json and ads.txt exports
+      description: Requires settings:read or supply:read:scoped permission.
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Validation report
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/SupplyValidation'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/supply/export-path:
+    get:
+      tags: [supply]
+      operationId: supplyGetExportPath
+      summary: Return nginx export path for supply files
+      x-permissions: [settings:read]
+      responses:
+        '200':
+          description: Export path
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/SupplyExportPath'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/margin-guard/policies:
+    get:
+      tags: [margin-guard]
+      operationId: marginGuardListPolicies
+      summary: List margin guard policies for a campaign
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CampaignIdQueryRequired'
+      responses:
+        '200':
+          description: Policies
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/MarginGuardPolicy'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [margin-guard]
+      operationId: marginGuardCreatePolicy
+      summary: Create margin guard policy
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/MarginGuardPolicy'
+      responses:
+        '201':
+          description: Policy created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/MarginGuardPolicy'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/margin-guard/activity:
+    get:
+      tags: [margin-guard]
+      operationId: marginGuardListActivity
+      summary: List margin guard activity for a campaign
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CampaignIdQueryRequired'
+      responses:
+        '200':
+          description: Activity rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/MarginGuardActivity'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/margin-guard/overrides:
+    post:
+      tags: [margin-guard]
+      operationId: marginGuardRemoveOverride
+      summary: Clear placement override for a campaign
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/MarginGuardOverrideRequest'
+      responses:
+        '204':
+          description: Override removed
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/smart-alerts/rules:
+    get:
+      tags: [smart-alerts]
+      operationId: smartAlertsListRules
+      summary: List smart alert rules for a customer
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '200':
+          description: Alert rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/SmartAlertRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [smart-alerts]
+      operationId: smartAlertsCreateRule
+      summary: Create smart alert rule
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertSmartAlertRuleRequest'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/SmartAlertRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/smart-alerts/rules/{id}:
+    patch:
+      tags: [smart-alerts]
+      operationId: smartAlertsUpdateRule
+      summary: Update smart alert rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertSmartAlertRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/SmartAlertRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [smart-alerts]
+      operationId: smartAlertsDeleteRule
+      summary: Delete smart alert rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Rule deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/smart-alerts/history:
+    get:
+      tags: [smart-alerts]
+      operationId: smartAlertsListHistory
+      summary: List smart alert firing history
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Alert events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/SmartAlertEvent'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/smart-alerts/events/{id}/ack:
+    post:
+      tags: [smart-alerts]
+      operationId: smartAlertsAckEvent
+      summary: Acknowledge a smart alert event
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Event acknowledged
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/links:
+    get:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsListLinks
+      summary: List external ad platform campaign links
+      description: Requires Enterprise SKU ad platform campaign API license.
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CampaignIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Platform links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/PlatformCampaignLink'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/links/{campaign_id}/{network}:
+    put:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsUpsertLink
+      summary: Upsert platform campaign link
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/PlatformCampaignIdPath'
+        - $ref: '../openapi.yaml#/components/parameters/PlatformNetworkPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertPlatformCampaignLinkRequest'
+      responses:
+        '200':
+          description: Link saved
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PlatformCampaignLink'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsDeleteLink
+      summary: Delete platform campaign link
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/PlatformCampaignIdPath'
+        - $ref: '../openapi.yaml#/components/parameters/PlatformNetworkPath'
+      responses:
+        '204':
+          description: Link deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/links/{campaign_id}/{network}/refresh:
+    post:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsRefreshLink
+      summary: Refresh external status for a platform link
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/PlatformCampaignIdPath'
+        - $ref: '../openapi.yaml#/components/parameters/PlatformNetworkPath'
+      responses:
+        '200':
+          description: Refreshed link
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PlatformCampaignLink'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/{campaign_id}/pause:
+    post:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsPause
+      summary: Pause external ad platform campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/PlatformCampaignIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/PlatformCampaignMutationRequest'
+      responses:
+        '200':
+          description: Mutation result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PlatformCampaignMutation'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/{campaign_id}/resume:
+    post:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsResume
+      summary: Resume external ad platform campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/PlatformCampaignIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/PlatformCampaignMutationRequest'
+      responses:
+        '200':
+          description: Mutation result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PlatformCampaignMutation'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/{campaign_id}/budget:
+    post:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsSetBudget
+      summary: Set external daily budget cap
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/PlatformCampaignIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/PlatformCampaignMutationRequest'
+      responses:
+        '200':
+          description: Mutation result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PlatformCampaignMutation'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/platform-campaigns/sync-run:
+    post:
+      tags: [platform-campaigns]
+      operationId: platformCampaignsSyncRun
+      summary: Trigger manual platform status sync for a campaign
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/PlatformCampaignSyncRunRequest'
+      responses:
+        '204':
+          description: Sync accepted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/affiliate-status-presets:
+    get:
+      tags: [integration]
+      operationId: integrationAffiliateStatusPresets
+      summary: Bundled affiliate status mapping presets
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Preset catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/AffiliateStatusPreset'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

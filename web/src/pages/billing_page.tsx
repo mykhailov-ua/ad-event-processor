@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import type {
   InvoiceDTO,
   InvoiceListResponse,
+  CustomerBalanceDTO,
   LedgerEntryDTO,
   LedgerListResponse,
   WalletBalanceDTO,
@@ -157,7 +158,7 @@ export function BillingPage() {
   const wallet = useResource<WalletBalanceDTO>(walletUrl, {
     skip: tab !== 'wallet' || !customerId,
   });
-  const balance = useResource<WalletBalanceDTO>(balanceUrl, {
+  const balance = useResource<CustomerBalanceDTO>(balanceUrl, {
     skip: tab !== 'ledger' || !customerId,
   });
   const ledger = useResource<LedgerListResponse>(ledgerUrl, {
@@ -465,7 +466,7 @@ export function BillingPage() {
                     {ledgerRows.map((row) => (
                       <tr key={row.id}>
                         <td>
-                          <CopyableUuid uuid={row.id ?? ''} />
+                          <CopyableUuid uuid={String(row.id ?? '')} />
                         </td>
                         <td>{displayLabel(row.type)}</td>
                         <td className="font-mono">
@@ -581,10 +582,7 @@ export function BillingPage() {
       {tab === 'exports' ? (
         <div className="section-block stack">
           <BillingExportsSection customerId={customerId} tenant={sessionScoped} />
-          <BillingUsageExportSection
-            customerId={customerId}
-            tenant={sessionScoped}
-          />
+          <BillingUsageExportSection customerId={customerId} tenant={sessionScoped} />
         </div>
       ) : null}
 

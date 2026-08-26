@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"
 )
@@ -35,7 +36,7 @@ type SnapshotReplicator struct {
 	mu          sync.RWMutex
 	pgConn      PostgresConn
 	chConn      ClickHouseConn
-	redisShards        []redis.UniversalClient
+	redisShards []redis.UniversalClient
 	sharder     Sharder
 	clickCharge int64
 	impCharge   int64

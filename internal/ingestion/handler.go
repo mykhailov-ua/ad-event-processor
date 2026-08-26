@@ -98,20 +98,24 @@ type connContext struct {
 	offloadArenaSlot   int
 	offloadRelease     func()
 
-	offloadOnEnter    func()
-	offloadBlock      <-chan struct{}
-	offloadWG         *sync.WaitGroup
-	offloadAsyncWrite atomic.Bool
-	offloadRetired    atomic.Bool
+	offloadOnEnter         func()
+	offloadBlock           <-chan struct{}
+	offloadWG              *sync.WaitGroup
+	offloadAsyncWrite      atomic.Bool
+	offloadCloseAfterWrite atomic.Bool
+	offloadRetired         atomic.Bool
+	http1ConnCtx           *connContext
 
 	protoH2    bool
 	h2         h2ConnState
 	h2StreamID uint32
 
-	http1IncompleteSpin   uint8
-	http1BodyIdleArmed    bool
-	http1BodyIdleDeadline int64
-	http1ConnOpenedMono   int64
+	http1IncompleteSpin       uint8
+	http1BodyIdleArmed        bool
+	http1BodyIdleDeadline     int64
+	http1ConnOpenedMono       int64
+	http1OffloadBusy          atomic.Bool
+	http1PendingOffloadWrites atomic.Int32
 
 	chunkScratch []byte
 }
@@ -200,7 +204,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducer *BrokerProducer) http.Handler {
+func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngine *FilterEngine, pool Pinger, redisShards []redis.UniversalClient, sharder Sharder, fraudStream string, creativeStore *BrandCreativeStore, streamProducers []*StreamProducer, brokerProducers *BrokerProducerSet) http.Handler {
 	mux := http.NewServeMux()
 	trackCORS := newTrackCORS(cfg.TrackCORSOrigins)
 
@@ -401,7 +405,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		var landing string
 		if filterEngine != nil {
-			lease, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, streamProducers, brokerProducer, campaignID)
+			lease, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, streamProducers, brokerProducers, campaignID)
 			if !acquired {
 				spec := filterRejectSpecs[kind]
 				recordHTTPFilterReject(kind, evt)
@@ -560,7 +564,7 @@ var (
 	respProducerOverload     = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 18\r\nConnection: keep-alive\r\n\r\nproducer overloaded")
 	respInfraUnavailable     = []byte("HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nRetry-After: 1\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\nservice unavailable")
 	respRateLimit            = []byte("HTTP/1.1 429 Too Many Requests\r\nContent-Type: text/plain\r\nRetry-After: 60\r\nContent-Length: 19\r\nConnection: keep-alive\r\n\r\nrate limit exceeded")
-	respDuplicate            = []byte("HTTP/1.1 409 Conflict\r\nContent-Type: text/plain\r\nContent-Length: 15\r\nConnection: keep-alive\r\n\r\nduplicate event")
+	respDuplicate            = []byte("HTTP/1.1 409 Conflict\r\nContent-Type: text/plain\r\nContent-Length: 15\r\nConnection: close\r\n\r\nduplicate event")
 	respBudget               = []byte("HTTP/1.1 402 Payment Required\r\nContent-Type: text/plain\r\nContent-Length: 16\r\nConnection: keep-alive\r\n\r\nbudget exhausted")
 	respPacing               = []byte("HTTP/1.1 429 Too Many Requests\r\nContent-Type: text/plain\r\nRetry-After: 60\r\nContent-Length: 20\r\nConnection: keep-alive\r\n\r\npacing limit reached")
 	respFreq                 = []byte("HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\nContent-Length: 23\r\nConnection: keep-alive\r\n\r\nfrequency limit reached")
@@ -622,7 +626,7 @@ type AdsPacketHandler struct {
 	contextPool             sync.Pool
 	workerPool              *PinnedWorkerPool
 	udpControl              *UDPControl
-	brokerProducer          *BrokerProducer
+	brokerProducers         *BrokerProducerSet
 	streamProducers         []*StreamProducer
 	trackCORS               trackCORS
 	cidrTable               *CIDRTable
@@ -631,10 +635,11 @@ type AdsPacketHandler struct {
 	ipv6RotationMetrics     l1IPv6RotationMetrics
 	ipv4RotationTable       *IPv4RotationTable
 	ipv4RotationMetrics     l1IPv4RotationMetrics
+	mobileCarrierASN        *MobileCarrierASNTable
 	tlsFingerprintTable     *TLSFingerprintTable
 	tlsFingerprintMetrics   tlsFingerprintMetrics
 	proxyVPNTable           *ProxyVPNTable
-	proxyVPNBlockMetrics      proxyVPNBlockMetrics
+	proxyVPNBlockMetrics    proxyVPNBlockMetrics
 	moderatorIPTable        *ModeratorIPTable
 	moderatorMetrics        moderatorIntelMetrics
 	attestationKeys         []attestationHMACKey
@@ -646,6 +651,7 @@ type AdsPacketHandler struct {
 	domainPoolTable         *DomainPoolTable
 	campaignFlowTable       *CampaignFlowTable
 	clickProxyClient        *http.Client
+	connWorkerAssign        atomic.Uint64
 }
 
 func (h *AdsPacketHandler) ConfigureCIDR(table *CIDRTable) {
@@ -670,6 +676,12 @@ func (h *AdsPacketHandler) ConfigureIPv4Rotation(table *IPv4RotationTable) {
 	}
 	h.ipv4RotationTable = table
 	h.ipv4RotationMetrics = newL1IPv4RotationMetrics()
+}
+
+func (h *AdsPacketHandler) ConfigureMobileCarrierASN(table *MobileCarrierASNTable) {
+	if h != nil {
+		h.mobileCarrierASN = table
+	}
 }
 
 func (h *AdsPacketHandler) ConfigureTLSFingerprint(table *TLSFingerprintTable) {
@@ -731,8 +743,19 @@ func (h *AdsPacketHandler) SetBrokerProducer(bp *BrokerProducer) {
 	if h == nil {
 		return
 	}
-	h.brokerProducer = bp
-	if bp != nil && h.filterEngine != nil {
+	if bp == nil {
+		h.SetBrokerProducers(nil)
+		return
+	}
+	h.SetBrokerProducers(NewBrokerProducerSet([]*BrokerProducer{bp}))
+}
+
+func (h *AdsPacketHandler) SetBrokerProducers(set *BrokerProducerSet) {
+	if h == nil {
+		return
+	}
+	h.brokerProducers = set
+	if set != nil && set.Len() > 0 && h.filterEngine != nil {
 		h.filterEngine.SetDeferStreamToProducer(true)
 	}
 }
@@ -752,21 +775,24 @@ func (h *AdsPacketHandler) publishAcceptedTrack(evt *domain.Event, lease *stream
 		return true
 	}
 	hasLease := lease != nil && lease.release != nil
-	if h.brokerProducer != nil {
-		var err error
-		if hasLease {
-			err = h.brokerProducer.EnqueueReserved(evt)
-		} else {
-			err = h.brokerProducer.Enqueue(evt)
+	if h.brokerProducers != nil {
+		_, bp := h.brokerProducers.Pick(evt.CampaignID)
+		if bp != nil {
+			var err error
+			if hasLease {
+				err = bp.EnqueueReserved(evt)
+			} else {
+				err = bp.Enqueue(evt)
+			}
+			if err != nil {
+				metrics.StreamProducerPostDebitRejectedTotal.Inc()
+				return false
+			}
+			if lease != nil {
+				lease.Clear()
+			}
+			return true
 		}
-		if err != nil {
-			metrics.StreamProducerPostDebitRejectedTotal.Inc()
-			return false
-		}
-		if lease != nil {
-			lease.Clear()
-		}
-		return true
 	}
 	if h.sharder == nil || len(h.streamProducers) == 0 {
 		return true
@@ -813,6 +839,26 @@ func (h *AdsPacketHandler) SetWorkerPool(wp *PinnedWorkerPool) {
 }
 
 func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
+	h.writeMaybeClose(c, data, ctx, false)
+}
+
+func (h *AdsPacketHandler) writeClose(c gnet.Conn, data []byte, ctx *connContext) {
+	h.writeMaybeClose(c, data, ctx, true)
+}
+
+func (h *AdsPacketHandler) writeFilterReject(c gnet.Conn, data []byte, ctx *connContext) {
+	// Offloaded duplicate 409 desyncs HTTP/1.1 keep-alive; other rejects stay pooled.
+	if h != nil && h.workerPool != nil && bytes.Equal(data, respDuplicate) {
+		h.writeClose(c, data, ctx)
+		return
+	}
+	h.write(c, data, ctx)
+}
+
+func (h *AdsPacketHandler) writeMaybeClose(c gnet.Conn, data []byte, ctx *connContext, closeAfter bool) {
+	if closeAfter && ctx != nil {
+		ctx.offloadCloseAfterWrite.Store(true)
+	}
 	if ctx != nil && ctx.protoH2 && ctx.h2StreamID != 0 {
 		buf := ctx.bufSlice
 		if cap(buf) < len(data)+512 {
@@ -824,14 +870,23 @@ func (h *AdsPacketHandler) write(c gnet.Conn, data []byte, ctx *connContext) {
 		}
 	}
 	if h.workerPool != nil && ctx != nil {
+		connCtx := http1ConnContextForWrite(ctx)
+		writeLease := cloneAsyncWriteBytes(data)
 		h.releaseOffloadBuffers(ctx)
 		ctx.offloadAsyncWrite.Store(true)
-		_ = c.AsyncWrite(data, func(c gnet.Conn, err error) error {
+		if connCtx != nil {
+			connCtx.http1PendingOffloadWrites.Add(1)
+		}
+		_ = c.AsyncWrite(writeLease.buf, func(c gnet.Conn, err error) error {
 			h.retireOffloadContext(ctx)
+			h.http1OffloadAsyncWriteDone(c, ctx, connCtx, writeLease)
 			return nil
 		})
 	} else {
 		_, _ = c.Write(data)
+		if closeAfter {
+			_ = c.Close()
+		}
 	}
 }
 
@@ -898,6 +953,7 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 				wTime: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
+				workerID: -1,
 			}
 		},
 	}
@@ -1200,8 +1256,10 @@ func (h *AdsPacketHandler) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) 
 
 func (h *AdsPacketHandler) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	metrics.GnetActiveConnections.Dec()
-	if ctx, ok := c.Context().(*connContext); ok && ctx != nil {
-		resetChunkScratch(&ctx.chunkScratch)
+	if connCtx := http1ConnContext(c); connCtx != nil {
+		connCtx.http1OffloadBusy.Store(false)
+		connCtx.http1PendingOffloadWrites.Store(0)
+		resetChunkScratch(&connCtx.chunkScratch)
 	}
 	return gnet.None
 }
@@ -1246,16 +1304,19 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 		}
 
 		var scratchPtr *[]byte
-		ctx := h.http1EnsureConnContext(c)
-		if act := h.http1CheckBodyIdle(c, ctx); act != gnet.None {
+		connCtx := h.http1EnsureConnContext(c)
+		if connCtx.http1OffloadBusy.Load() {
+			break
+		}
+		if act := h.http1CheckBodyIdle(c, connCtx); act != gnet.None {
 			return act
 		}
-		scratchPtr = &ctx.chunkScratch
+		scratchPtr = &connCtx.chunkScratch
 
 		reqLen, req, err := h.parseHTTP(buf, scratchPtr)
 		if err != nil {
 			if errors.Is(err, errIncompleteRequest) {
-				if act := h.http1HandleIncomplete(c, ctx, buf, reqLen); act != gnet.None {
+				if act := h.http1HandleIncomplete(c, connCtx, buf, reqLen); act != gnet.None {
 					return act
 				}
 				break
@@ -1271,37 +1332,48 @@ func (h *AdsPacketHandler) OnTraffic(c gnet.Conn) (action gnet.Action) {
 			return gnet.Close
 		}
 
-		h.http1ResetIncompleteState(ctx, c)
+		h.http1ResetIncompleteState(connCtx, c)
 
 		if h.workerPool != nil {
+			offloadCtx := h.contextPool.Get().(*connContext)
+			offloadCtx.offloadAsyncWrite.Store(false)
+			offloadCtx.offloadCloseAfterWrite.Store(false)
+			offloadCtx.offloadRetired.Store(false)
+			if connCtx.workerID < 0 {
+				connCtx.workerID = int(h.connWorkerAssign.Add(1) % uint64(len(h.workerPool.workers)))
+			}
+			if h.logger != nil {
+				offloadCtx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
+			}
+			offloadCtx.offloadConn = c
+			offloadCtx.http1ConnCtx = connCtx
+			offloadCtx.offloadReqBuf = nil
+			offloadCtx.offloadReqSlice = nil
+			offloadCtx.offloadRelease = nil
+			offloadCtx.offloadReqLen = reqLen
+			offloadCtx.offloadReq = pinParsedHTTPRequest(offloadCtx, req)
+			offloadCtx.offloadReqPin = true
+			offloadCtx.offloadOnEnter = nil
+			offloadCtx.offloadBlock = nil
+			offloadCtx.offloadWG = nil
+
+			connCtx.http1OffloadBusy.Store(true)
+			submitted := h.workerPool.SubmitOffloadToWorker(connCtx.workerID, offloadCtx, buf[:reqLen])
 			if _, err := c.Discard(reqLen); err != nil {
+				if !submitted {
+					connCtx.http1OffloadBusy.Store(false)
+					h.retireOffloadContext(offloadCtx)
+				}
 				return gnet.Close
 			}
-
-			ctx := h.contextPool.Get().(*connContext)
-			ctx.offloadAsyncWrite.Store(false)
-			ctx.offloadRetired.Store(false)
-			if h.logger != nil {
-				ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
-			}
-			ctx.offloadConn = c
-			ctx.offloadReqBuf = nil
-			ctx.offloadReqSlice = nil
-			ctx.offloadRelease = nil
-			ctx.offloadReqLen = reqLen
-			ctx.offloadReq = pinParsedHTTPRequest(ctx, req)
-			ctx.offloadReqPin = true
-			ctx.offloadOnEnter = nil
-			ctx.offloadBlock = nil
-			ctx.offloadWG = nil
-
-			submitted := h.workerPool.SubmitOffload(ctx, buf[:reqLen])
 			if !submitted {
-				h.retireOffloadContext(ctx)
+				connCtx.http1OffloadBusy.Store(false)
+				h.retireOffloadContext(offloadCtx)
 				metrics.WorkerPoolRejectTotal.Inc()
 				h.write(c, respWorkerPoolOverload, nil)
 				h.recordTrackStatus(http.StatusServiceUnavailable)
 			}
+			break
 		} else {
 			act := h.React(req, c)
 			if _, err := c.Discard(reqLen); err != nil {
@@ -1320,7 +1392,7 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 	if ctx == nil {
 		return
 	}
-	if ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
+	if ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil && !ctx.offloadReqPin {
 		finishOffloadCtx(ctx)
 		h.retireOffloadContext(ctx)
 		return
@@ -1328,6 +1400,7 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 	defer func() {
 		if !ctx.offloadAsyncWrite.Load() {
 			h.releaseOffloadBuffers(ctx)
+			h.http1OffloadWriteDone(ctx.offloadConn, ctx)
 			h.retireOffloadContext(ctx)
 		}
 	}()
@@ -1352,11 +1425,17 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 		var err error
 		_, reqParsed, err = h.parseHTTP(reqBytes, &ctx.chunkScratch)
 		if err != nil {
-			h.write(c, respBadRequestClose, ctx)
+			h.writeClose(c, respBadRequestClose, ctx)
 			return
 		}
 	}
-	_ = h.React(reqParsed, c)
+	act := h.React(reqParsed, c)
+	if act == gnet.Close && !ctx.offloadCloseAfterWrite.Load() {
+		ctx.offloadCloseAfterWrite.Store(true)
+		if !ctx.offloadAsyncWrite.Load() {
+			_ = c.Close()
+		}
+	}
 }
 
 type parsedHTTPRequest struct {
@@ -1488,21 +1567,21 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	if !bytes.Equal(req.Path, []byte("/track")) {
 		if bytes.Equal(req.Path, []byte(safePageVerifyPath)) {
 			if !req.HasContentLength {
-				h.write(c, respBadRequestClose, ctx)
+				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
 			}
 			return h.reactTrackVerify(req, c, ctx)
 		}
 		if bytes.Equal(req.Path, []byte("/openrtb/bid")) {
 			if !req.HasContentLength {
-				h.write(c, respBadRequestClose, ctx)
+				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
 			}
 			return h.reactOpenRTBBid(req, c, ctx)
 		}
 		if bytes.Equal(req.Path, []byte("/tg/bid")) {
 			if !req.HasContentLength {
-				h.write(c, respBadRequestClose, ctx)
+				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
 			}
 			return h.reactTgBid(req, c, ctx)
@@ -1512,7 +1591,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	if !req.HasContentLength {
-		h.write(c, respBadRequestClose, ctx)
+		h.writeClose(c, respBadRequestClose, ctx)
 		return gnet.Close
 	}
 
@@ -1580,7 +1659,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		shard := h.sharder.GetShard(evt.CampaignID)
 		workerID := ctx.workerID
 		if !h.udpControl.TryIngress(shard, workerID) {
-			h.write(c, respRateLimit, ctx)
+			h.writeFilterReject(c, respRateLimit, ctx)
 			h.recordMetrics(startMono, http.StatusTooManyRequests)
 			h.recordTrackReject(ctx, evt, filterRejectRateLimit)
 			return gnet.None
@@ -1591,22 +1670,15 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
-			h.write(c, spec.gnetResp, ctx)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
 
-		acceptStr := string(req.Accept)
-		originStr := string(req.Origin)
-
-		go func(l streamAdmissionLease) {
-			defer l.Release()
-			outcome := processTrack(context.Background(), h.trackProc, evt, fields.deviceType)
-			_ = h.deliverGnetTrack(ctx, acceptStr, originStr, c, evt, startMono, wReqID, requestIDStr, outcome, &l)
-		}(lease)
-
-		lease.Clear()
+		defer lease.Release()
+		outcome := processTrack(context.Background(), h.trackProc, evt, fields.deviceType)
+		_ = h.deliverGnetTrack(ctx, string(req.Accept), string(req.Origin), c, evt, startMono, wReqID, requestIDStr, outcome, &lease)
 		return gnet.None
 	}
 
@@ -1614,7 +1686,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 	if !acquired {
 		spec := filterRejectSpecs[kind]
-		h.write(c, spec.gnetResp, ctx)
+		h.writeFilterReject(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		h.trackMetrics.recordFilterReject(kind)
 		return gnet.None
@@ -1624,7 +1696,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
 	if !h.publishAcceptedTrack(evt, &lease) {
 		spec := filterRejectSpecs[filterRejectProducerOverload]
-		h.write(c, spec.gnetResp, ctx)
+		h.writeFilterReject(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 		return gnet.None

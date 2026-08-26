@@ -27,7 +27,6 @@ type autoBanReader interface {
 	ZRangeByScoreWithScores(ctx context.Context, key string, opt *redis.ZRangeBy) *redis.ZSliceCmd
 }
 
-
 func SyncBlocklistFromRedis(ctx context.Context, redisClient denySetReader, maps BlocklistMaps, store *BlocklistStore) (added, removed int, err error) {
 	manual, err := redisClient.SMembers(ctx, redisKeyBlacklistManual).Result()
 	if err != nil {

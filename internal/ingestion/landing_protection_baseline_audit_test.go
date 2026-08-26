@@ -18,11 +18,11 @@ func TestLandingProtectionBaseline_inventorySymbolsExist(t *testing.T) {
 	ingestionDir := filepath.Dir(file)
 
 	symbols := map[string][]string{
-		"tls_fingerprint_table.go":   {"TLSFingerprintTable", "MatchJA3"},
+		"tls_fingerprint_table.go":        {"TLSFingerprintTable", "MatchJA3"},
 		"landing_tls_fingerprint_hook.go": {"tlsFingerprintShouldSafeView"},
-		"link_signer.go":             {"AppendLinkSignature", "VerifyLinkSignature"},
-		"proxy_vpn_lpm.go":           {"ProxyVPNTable", "parseProxyVPNConnFlags"},
-		"click_redirect.go":          {"reactClickRedirect"},
+		"link_signer.go":                  {"AppendLinkSignature", "VerifyLinkSignature"},
+		"proxy_vpn_lpm.go":                {"ProxyVPNTable", "parseProxyVPNConnFlags"},
+		"click_redirect.go":               {"reactClickRedirect"},
 	}
 	for rel, want := range symbols {
 		found := parseExportedOrTypeNames(t, filepath.Join(ingestionDir, rel))

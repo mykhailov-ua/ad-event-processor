@@ -178,8 +178,8 @@ export function IntegrationsSchemasPage() {
       <div className="page-header">
         <h1 className="page-header__title">Integration schemas</h1>
         <p className="text-muted text-sm">
-          Bundled YAML presets for traffic sources and affiliate postbacks. Import templates
-          or author JSON.
+          Bundled YAML presets for traffic sources and affiliate postbacks. Import templates or
+          author JSON.
         </p>
       </div>
 

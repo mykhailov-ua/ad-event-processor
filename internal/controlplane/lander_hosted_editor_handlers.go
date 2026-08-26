@@ -27,7 +27,6 @@ func (h *FlowHTTPHandlers) registerHostedEditorRoutes(mux *http.ServeMux, limit 
 	mux.HandleFunc("GET /api/v1/landers/{id}/hosted-files/{path...}", limit(perm("campaigns:read", h.readHostedEditorFile)))
 	mux.HandleFunc("PUT /api/v1/landers/{id}/hosted-files/{path...}", limit(perm("campaigns:write", h.saveHostedEditorFile)))
 	mux.HandleFunc("POST /api/v1/landers/{id}/hosted-publish", limit(perm("campaigns:write", h.publishHostedDraft)))
-	mux.HandleFunc("GET /lp-preview/{lander_id}/", h.serveHostedPreviewIndex)
 	mux.HandleFunc("GET /lp-preview/{lander_id}/{path...}", h.serveHostedPreviewPath)
 }
 
@@ -115,10 +114,6 @@ func (h *FlowHTTPHandlers) publishHostedDraft(w http.ResponseWriter, r *http.Req
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, dto)
-}
-
-func (h *FlowHTTPHandlers) serveHostedPreviewIndex(w http.ResponseWriter, r *http.Request) {
-	h.serveHostedPreview(w, r, "")
 }
 
 func (h *FlowHTTPHandlers) serveHostedPreviewPath(w http.ResponseWriter, r *http.Request) {

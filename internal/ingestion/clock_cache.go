@@ -43,6 +43,14 @@ func CachedTimeIn(loc *time.Location) time.Time {
 	return CachedTimeUTC().In(loc)
 }
 
+func cachedUnixMilliNow() int64 {
+	return cachedUnixMilli.Load()
+}
+
+func cachedUnixSec() uint64 {
+	return uint64(cachedUnixMilli.Load() / 1000)
+}
+
 func init() {
 	hostname, _ := os.Hostname()
 	h := uint32(os.Getpid())

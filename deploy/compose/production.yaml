@@ -1,6 +1,5 @@
 services:
   db:
-
     command:
       - postgres
       - -p

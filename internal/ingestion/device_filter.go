@@ -4,52 +4,63 @@ import (
 	"context"
 	"hash/crc32"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
 )
 
+type tlsBlocklistSnapshot struct {
+	blocked map[uint32]struct{}
+}
+
 type DeviceFilter struct {
 	settings             *SettingsWatcher
-	blockedTLS           map[uint32]struct{}
-	osFingerprintEnabled bool
-	mu                   sync.RWMutex
+	blockedTLS           atomic.Pointer[tlsBlocklistSnapshot]
+	osFingerprintEnabled atomic.Bool
 }
 
 func NewDeviceFilter(settings *SettingsWatcher) *DeviceFilter {
-	f := &DeviceFilter{settings: settings, osFingerprintEnabled: true}
+	f := &DeviceFilter{settings: settings}
+	f.osFingerprintEnabled.Store(true)
 	f.reloadBlocklist()
+	if settings != nil {
+		settings.AddChangeListener(func(_ *DynamicConfig) {
+			f.reloadBlocklist()
+		})
+	}
 	return f
 }
 
 func (f *DeviceFilter) SetOSFingerprintEnabled(enabled bool) {
-	f.osFingerprintEnabled = enabled
+	f.osFingerprintEnabled.Store(enabled)
 }
 
 func (f *DeviceFilter) reloadBlocklist() {
-	if f.settings == nil {
+	if f == nil {
 		return
 	}
-	cfg := f.settings.Get()
-	m := make(map[uint32]struct{})
-	for _, h := range parseCommaList(cfg.TLSHashBlocklist) {
+	var hashes []string
+	if f.settings != nil {
+		hashes = parseCommaList(f.settings.Get().TLSHashBlocklist)
+	}
+	m := make(map[uint32]struct{}, len(hashes))
+	for _, h := range hashes {
 		m[crc32.ChecksumIEEE([]byte(h))] = struct{}{}
 	}
-	f.mu.Lock()
-	f.blockedTLS = m
-	f.mu.Unlock()
+	f.blockedTLS.Store(&tlsBlocklistSnapshot{blocked: m})
 }
 
 func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if evt == nil {
 		return nil
 	}
-	f.mu.RLock()
-	blocked := f.blockedTLS
-	f.mu.RUnlock()
+	var blocked map[uint32]struct{}
+	if snap := f.blockedTLS.Load(); snap != nil {
+		blocked = snap.blocked
+	}
 
-	if evt.TLSHash != "" {
+	if evt.TLSHash != "" && len(blocked) > 0 {
 		h := crc32.ChecksumIEEE([]byte(evt.TLSHash))
 		if _, onList := blocked[h]; onList {
 			addFraudSignal(evt, FraudReasonTLSBlocklist)
@@ -61,7 +72,7 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if tlsFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
 		addFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
-	if f.osFingerprintEnabled && evt.UA != "" {
+	if f.osFingerprintEnabled.Load() && evt.UA != "" {
 		if evt.TCPTTLSet == 0 {
 			metrics.OSFingerprintSkippedTotal.WithLabelValues("no_tcp_headers").Inc()
 		} else if osFingerprintMismatch(evt.UA, evt.TCPTTL, evt.TCPWindowSet, evt.TCPWindow) {

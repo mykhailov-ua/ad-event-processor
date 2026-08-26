@@ -13,8 +13,8 @@ import (
 )
 
 type DealFloorCache struct {
-	redisClient  redis.UniversalClient
-	snap atomic.Pointer[map[string]int64]
+	redisClient redis.UniversalClient
+	snap        atomic.Pointer[map[string]int64]
 }
 
 func NewDealFloorCache(redisClient redis.UniversalClient) *DealFloorCache {

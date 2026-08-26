@@ -50,9 +50,7 @@ export function FraudKpiTiles({ loading = false, fraud, customerId }: FraudKpiTi
     ? fraud.geo_hints.filter((h) => Number(h.ivt_rate ?? 0) >= 0.1).length
     : null;
 
-  const silentReject = loading
-    ? '...'
-    : String(fraud?.silent_reject_campaigns ?? '-');
+  const silentReject = loading ? '...' : String(fraud?.silent_reject_campaigns ?? '-');
   const blocked = loading ? '...' : String(fraud?.edge_blocked_fraud ?? '-');
   const geo = loading ? '...' : highIvt != null ? String(highIvt) : '-';
 

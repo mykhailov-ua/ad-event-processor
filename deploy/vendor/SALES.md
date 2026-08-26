@@ -2,23 +2,9 @@
 
 Internal. Not shipped in customer packages. Runtime limits: [sku.yaml](./sku.yaml). JWT issue: `go run ./cmd/license-issue --sku <code> ...`.
 
-Self-hosted only for on-prem SKUs: buyer runs the appliance; license is an Ed25519 JWT applied locally (Admin Settings -> License or `license-apply`). No outbound license ping.
+Self-hosted only: buyer runs the appliance on their VPS; license is an Ed25519 JWT applied locally (Admin Settings -> License or `license-apply`). No outbound license ping.
 
-Optional **managed SaaS** (vendor-hosted isolated cells) uses SKU `managed_saas` and JWT `deployment_mode: managed_saas`. See `docs/MANAGED_SAAS.md`. Not the same as workspace `customers` inside one deployment.
-
----
-
-## Managed SaaS vs on-prem (vendor quote)
-
-| Dimension | On-prem SKUs (`starter`…`enterprise`) | Managed SaaS (`managed_saas`) |
-| :--- | :--- | :--- |
-| Who runs infra | Buyer VPS / metal | Vendor per-buyer compose cell |
-| JWT `deployment_mode` | `on_prem` (default) | `managed_saas` |
-| Data location | Buyer disk | Vendor cell volumes; export on offboarding |
-| Pricing | `sku.yaml` USDT/mo table below | Custom vendor contract (SKU `price_usd_monthly: 0`) |
-| HWID bind | `hard` on paid tiers | `soft` (vendor reissues cell JWT) |
-
-Do not list on-prem SKUs as "cloud hosted". Do not quote managed SaaS RPS without a cell-specific JWT.
+**No vendor hosting.** We do not operate managed cells or shared cloud stacks. Every paid SKU assumes the buyer supplies compute (see deploy profiles below). Workspace `customers` are teams inside one buyer deployment, not vendor-hosted tenants.
 
 ---
 

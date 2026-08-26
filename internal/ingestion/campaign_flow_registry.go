@@ -3,6 +3,8 @@ package ingestion
 import (
 	"sync/atomic"
 
+	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 )
 
@@ -29,7 +31,7 @@ func (t *CampaignFlowTable) Ready() bool {
 	return t != nil && t.active.Load() != nil
 }
 
-func (t *CampaignFlowTable) Select(campaignID uuid.UUID, userID []byte) (sel FlowSelection, landerURL []byte, ok bool) {
+func (t *CampaignFlowTable) Select(campaignID uuid.UUID, userID []byte, ctx FlowSelectContext) (sel FlowSelection, landerURL []byte, ok bool) {
 	if t == nil || campaignID == uuid.Nil || len(userID) == 0 {
 		return FlowSelection{}, nil, false
 	}
@@ -41,5 +43,9 @@ func (t *CampaignFlowTable) Select(campaignID uuid.UUID, userID []byte) (sel Flo
 	if !ok {
 		return FlowSelection{}, nil, false
 	}
-	return SelectSnapshot(&flow, userID)
+	return SelectSnapshot(&flow, userID, ctx)
+}
+
+func (t *CampaignFlowTable) SelectForEvent(campaignID uuid.UUID, userID []byte, evt *domain.Event) (sel FlowSelection, landerURL []byte, ok bool) {
+	return t.Select(campaignID, userID, flowSelectContextFromEvent(evt))
 }

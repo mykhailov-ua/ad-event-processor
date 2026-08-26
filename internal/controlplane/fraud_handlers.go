@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -13,34 +14,43 @@ import (
 )
 
 type CampaignFraudConfigDTO struct {
-	CampaignID            string `json:"campaign_id"`
-	FraudThresholdPass    uint8  `json:"fraud_threshold_pass"`
-	FraudThresholdSuspect uint8  `json:"fraud_threshold_suspect"`
-	FraudThresholdIVT     uint8  `json:"fraud_threshold_ivt"`
-	FraudThresholdBlock   uint8  `json:"fraud_threshold_block"`
-	SilentRejectEnabled   bool   `json:"silent_reject_enabled"`
-	BehaviorFlags         uint32 `json:"behavior_flags"`
+	CampaignID            string                       `json:"campaign_id"`
+	FraudThresholdPass    uint8                        `json:"fraud_threshold_pass"`
+	FraudThresholdSuspect uint8                        `json:"fraud_threshold_suspect"`
+	FraudThresholdIVT     uint8                        `json:"fraud_threshold_ivt"`
+	FraudThresholdBlock   uint8                        `json:"fraud_threshold_block"`
+	SilentRejectEnabled   bool                         `json:"silent_reject_enabled"`
+	BehaviorFlags         uint32                       `json:"behavior_flags"`
+	CanvasRetestEnabled   bool                         `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled  bool                         `json:"cgnat_ip_policy_enabled"`
+	ConversionRejectRules domain.ConversionRejectRules `json:"conversion_reject_rules"`
 }
 
 type PatchCampaignFraudRequest struct {
-	Preset                *string `json:"preset,omitempty"`
-	FraudThresholdPass    *uint8  `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT     *uint8  `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock   *uint8  `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled   *bool   `json:"silent_reject_enabled,omitempty"`
-	BehaviorFlags         *uint32 `json:"behavior_flags,omitempty"`
+	Preset                *string                       `json:"preset,omitempty"`
+	FraudThresholdPass    *uint8                        `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect *uint8                        `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT     *uint8                        `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock   *uint8                        `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled   *bool                         `json:"silent_reject_enabled,omitempty"`
+	BehaviorFlags         *uint32                       `json:"behavior_flags,omitempty"`
+	CanvasRetestEnabled   *bool                         `json:"canvas_retest_enabled,omitempty"`
+	CgnatIPPolicyEnabled  *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
+	ConversionRejectRules *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
 }
 
 type patchCampaignFraudRequestRaw struct {
-	Preset                  *string `json:"preset,omitempty"`
-	FraudThresholdPass      *uint8  `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect   *uint8  `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT       *uint8  `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock     *uint8  `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled     *bool   `json:"silent_reject_enabled,omitempty"`
-	SilentRejectPatchLegacy *bool   `json:"ghost_ivt_enabled,omitempty"`
-	BehaviorFlags           *uint32 `json:"behavior_flags,omitempty"`
+	Preset                  *string                       `json:"preset,omitempty"`
+	FraudThresholdPass      *uint8                        `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect   *uint8                        `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT       *uint8                        `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock     *uint8                        `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled     *bool                         `json:"silent_reject_enabled,omitempty"`
+	SilentRejectPatchLegacy *bool                         `json:"ghost_ivt_enabled,omitempty"`
+	BehaviorFlags           *uint32                       `json:"behavior_flags,omitempty"`
+	CanvasRetestEnabled     *bool                         `json:"canvas_retest_enabled,omitempty"`
+	CgnatIPPolicyEnabled    *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
+	ConversionRejectRules   *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
 }
 
 func decodePatchCampaignFraudRequest(body []byte) (PatchCampaignFraudRequest, error) {
@@ -55,6 +65,15 @@ func decodePatchCampaignFraudRequest(body []byte) (PatchCampaignFraudRequest, er
 		FraudThresholdIVT:     raw.FraudThresholdIVT,
 		FraudThresholdBlock:   raw.FraudThresholdBlock,
 		BehaviorFlags:         raw.BehaviorFlags,
+	}
+	if raw.CanvasRetestEnabled != nil {
+		req.CanvasRetestEnabled = raw.CanvasRetestEnabled
+	}
+	if raw.CgnatIPPolicyEnabled != nil {
+		req.CgnatIPPolicyEnabled = raw.CgnatIPPolicyEnabled
+	}
+	if raw.ConversionRejectRules != nil {
+		req.ConversionRejectRules = raw.ConversionRejectRules
 	}
 	if raw.SilentRejectEnabled != nil {
 		req.SilentRejectEnabled = raw.SilentRejectEnabled

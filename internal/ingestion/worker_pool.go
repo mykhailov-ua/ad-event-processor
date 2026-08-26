@@ -173,32 +173,45 @@ func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext, src []byte) bool {
 	if atomic.LoadInt32(&p.closed) == 1 || ctx == nil {
 		return false
 	}
-	p.wg.Add(1)
-
 	idx := atomic.AddUint64(&p.round, 1) % uint64(len(p.workers))
-	for i := 0; i < len(p.workers); i++ {
-		widx := (idx + uint64(i)) % uint64(len(p.workers))
-		w := p.workers[widx]
-		if len(src) > 0 && ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
-			if slot, buf, release, ok := w.arena.acquire(len(src)); ok {
-				copy(buf, src)
-				ctx.offloadReqSlice = buf
-				ctx.offloadReqLen = len(src)
-				ctx.offloadArenaWorker = int(widx)
-				ctx.offloadArenaSlot = slot
-				ctx.offloadRelease = release
-			}
+	return p.submitOffloadToWorkerIdx(int(idx), ctx, src)
+}
+
+func (p *PinnedWorkerPool) SubmitOffloadToWorker(workerID int, ctx *connContext, src []byte) bool {
+	if atomic.LoadInt32(&p.closed) == 1 || ctx == nil {
+		return false
+	}
+	if workerID < 0 || workerID >= len(p.workers) {
+		return p.SubmitOffload(ctx, src)
+	}
+	if p.submitOffloadToWorkerIdx(workerID, ctx, src) {
+		return true
+	}
+	return p.SubmitOffload(ctx, src)
+}
+
+func (p *PinnedWorkerPool) submitOffloadToWorkerIdx(idx int, ctx *connContext, src []byte) bool {
+	p.wg.Add(1)
+	w := p.workers[idx]
+	if len(src) > 0 && ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
+		if slot, buf, release, ok := w.arena.acquire(len(src)); ok {
+			copy(buf, src)
+			ctx.offloadReqSlice = buf
+			ctx.offloadReqLen = len(src)
+			ctx.offloadArenaWorker = idx
+			ctx.offloadArenaSlot = slot
+			ctx.offloadRelease = release
 		}
-		if w.queue.PushCtx(ctx) {
-			return true
-		}
-		if ctx.offloadRelease != nil {
-			ctx.offloadRelease()
-			ctx.offloadRelease = nil
-			ctx.offloadReqSlice = nil
-			ctx.offloadArenaWorker = 0
-			ctx.offloadArenaSlot = 0
-		}
+	}
+	if w.queue.PushCtx(ctx) {
+		return true
+	}
+	if ctx.offloadRelease != nil {
+		ctx.offloadRelease()
+		ctx.offloadRelease = nil
+		ctx.offloadReqSlice = nil
+		ctx.offloadArenaWorker = 0
+		ctx.offloadArenaSlot = 0
 	}
 
 	if len(src) > 0 && ctx.offloadReqSlice == nil && ctx.offloadReqBuf == nil {
@@ -220,11 +233,8 @@ func (p *PinnedWorkerPool) SubmitOffload(ctx *connContext, src []byte) bool {
 			ctx.offloadReqBuf = reqBufPtr
 			ctx.offloadReqLen = len(src)
 		}
-		for i := 0; i < len(p.workers); i++ {
-			widx := (idx + uint64(i)) % uint64(len(p.workers))
-			if p.workers[widx].queue.PushCtx(ctx) {
-				return true
-			}
+		if w.queue.PushCtx(ctx) {
+			return true
 		}
 		if ctx.offloadReqBuf != nil {
 			putRequestBuffer(ctx.offloadReqBuf)

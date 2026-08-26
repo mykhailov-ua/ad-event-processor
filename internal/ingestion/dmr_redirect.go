@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"ad-event-processor/internal/domain"
+
 	"github.com/google/uuid"
 	"github.com/panjf2000/gnet/v2"
 )

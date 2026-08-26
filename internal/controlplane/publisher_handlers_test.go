@@ -118,6 +118,22 @@ func (campaignListStub) BlockCampaignPlacement(context.Context, uuid.UUID, strin
 	return nil
 }
 
+func (campaignListStub) CloneCampaign(context.Context, controlplane.CloneCampaignSpec) (controlplane.CloneCampaignResult, error) {
+	return controlplane.CloneCampaignResult{}, nil
+}
+
+func (campaignListStub) ExportCampaign(context.Context, uuid.UUID) (controlplane.CampaignExportBundle, error) {
+	return controlplane.CampaignExportBundle{}, nil
+}
+
+func (campaignListStub) ImportCampaign(context.Context, controlplane.ImportCampaignSpec) (controlplane.ImportCampaignResult, error) {
+	return controlplane.ImportCampaignResult{}, nil
+}
+
+func (campaignListStub) ImportMigrationCampaigns(context.Context, controlplane.ImportMigrationSpec) (controlplane.ImportMigrationResult, error) {
+	return controlplane.ImportMigrationResult{}, nil
+}
+
 func mapPublisherTestError(err error) (status int, code string, message string) {
 	if errors.Is(err, controlplane.ErrPublisherScopeRequired) {
 		return http.StatusForbidden, "FORBIDDEN", err.Error()

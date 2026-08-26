@@ -32,7 +32,6 @@ type issueOptions struct {
 	TelegramID       string
 	USDTTx           string
 	TrialRegistry    string
-	DeploymentMode   string
 	RecordHWID       bool
 	TrialMarkExpired bool
 	MarkConverted    bool
@@ -178,14 +177,6 @@ func runIssue(opts *issueOptions, stderr io.Writer) (res issueResult, code int) 
 		claims.ValidUntil = time.Now().UTC().Add(-time.Hour)
 		claims.ValidFrom = claims.ValidUntil.Add(-24 * time.Hour)
 	}
-	if dm := strings.TrimSpace(opts.DeploymentMode); dm != "" {
-		if err := licensing.ValidateDeploymentMode(dm); err != nil {
-			_, _ = fmt.Fprintf(stderr, "license-issue: %v\n", err)
-			return issueResult{}, exitUsage
-		}
-		claims.DeploymentMode = licensing.NormalizeDeploymentMode(dm)
-	}
-
 	token, err := licensing.SignJWT(claims, priv, keyID)
 	if err != nil {
 		_, _ = fmt.Fprintf(stderr, "license-issue: sign: %v\n", err)
@@ -314,7 +305,6 @@ func parseFlags(args []string) (issueOptions, error) {
 	fs.StringVar(&opts.SKUCode, "sku", "pilot", "SKU code")
 	fs.StringVar(&opts.Customer, "customer", "", "customer display name (required for JWT issue)")
 	fs.StringVar(&opts.DeploymentID, "deployment-id", "", "deployment UUID (generated if empty)")
-	fs.StringVar(&opts.DeploymentMode, "deployment-mode", "", "override deployment_mode claim (on_prem|managed_saas)")
 	fs.StringVar(&opts.Fingerprint, "fingerprint", "", "host fingerprint for hard bind (from customer support bundle)")
 	fs.StringVar(&opts.HWIDV2, "hwid-v2", "", "host HWID v2 (Argon2id) for hard bind; preferred over --fingerprint")
 	fs.StringVar(&opts.KID, "kid", licensing.DefaultLicenseKeyID, "JWT key id (kid); uses deploy/vendor/keys/<kid>/ when set")

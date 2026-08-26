@@ -1,0 +1,2021 @@
+paths:
+  /api/v1/dashboards/accountant:
+    get:
+      operationId: dashboardAccountant
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Dashboard payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Accountant role dashboard
+      tags:
+      - dashboards
+  /api/v1/dashboards/adops:
+    get:
+      operationId: dashboardAdops
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Dashboard payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Ad ops role dashboard
+      tags:
+      - dashboards
+  /api/v1/dashboards/buyer:
+    get:
+      operationId: dashboardBuyer
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Dashboard payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Buyer role dashboard
+      tags:
+      - dashboards
+  /api/v1/dashboards/campaign/{id}:
+    get:
+      operationId: dashboardCampaign
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CampaignIdPath
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Campaign dashboard
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Single-campaign dashboard
+      tags:
+      - dashboards
+  /api/v1/dashboards/cfo:
+    get:
+      operationId: dashboardCfo
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Dashboard payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: CFO role dashboard
+      tags:
+      - dashboards
+  /api/v1/dashboards/fraud:
+    get:
+      operationId: dashboardFraud
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Dashboard payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Fraud analyst dashboard
+      tags:
+      - dashboards
+  /api/v1/dashboards/operator:
+    get:
+      operationId: dashboardOperator
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/RoleDashboard
+          description: Dashboard payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Operator incident dashboard
+      tags:
+      - dashboards
+  /api/v1/fraud/decisions:
+    get:
+      operationId: getFraudDecision
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - in: query
+        name: ip_hash
+        required: true
+        schema:
+          type: string
+      - $ref: ../openapi.yaml#/components/parameters/CampaignIdQuery
+      - in: query
+        name: hours
+        schema:
+          default: 24
+          format: int32
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/FraudDecision
+          description: Decision explanation
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Explain fraud tier decision for IP hash
+      tags:
+      - fraud-admin
+      x-permissions:
+      - audit:read
+  /api/v1/fraud/integrations:
+    get:
+      operationId: listFraudIntegrations
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Integration rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List third-party fraud integration status
+      tags:
+      - fraud-admin
+      x-permissions:
+      - audit:read
+  /api/v1/fraud/labels:
+    get:
+      operationId: listFraudLabels
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: ../components/schemas/ops_reports.yaml#/MLManualLabel
+                type: array
+          description: Manual labels
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List ML manual labels for customer
+      tags:
+      - fraud-admin
+      x-permissions:
+      - audit:read
+    post:
+      operationId: upsertFraudLabel
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/FraudManualLabelRequest
+        required: true
+      responses:
+        '200':
+          description: Upserted
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Upsert ML manual label
+      tags:
+      - fraud-admin
+      x-permissions:
+      - campaigns:write
+      - shards:write
+  /api/v1/fraud/labels/bulk:
+    post:
+      operationId: bulkUpsertFraudLabels
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/FraudManualLabelBulkRequest
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/FraudManualLabelBulkResponse
+          description: Bulk result
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Bulk upsert ML manual labels
+      tags:
+      - fraud-admin
+      x-permissions:
+      - campaigns:write
+      - shards:write
+  /api/v1/fraud/overrides:
+    post:
+      operationId: createFraudOverride
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+        required: true
+      responses:
+        '200':
+          description: Override applied
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Create per-campaign fraud override
+      tags:
+      - fraud-admin
+      x-permissions:
+      - campaigns:write
+      - shards:write
+  /api/v1/fraud/presets:
+    get:
+      operationId: listFraudPresets
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: ../components/schemas/ops_reports.yaml#/FraudPolicyPreset
+                type: array
+          description: Preset catalog
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List global fraud sensitivity presets
+      tags:
+      - fraud-admin
+      x-permissions:
+      - campaigns:read
+      - shards:read
+  /api/v1/ops/blacklist:
+    delete:
+      operationId: opsRemoveBlacklist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/OpsBlacklistDeleteRequest
+        required: true
+      responses:
+        '200':
+          description: Removed
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Remove IP from fraud blacklist
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+    get:
+      operationId: opsListBlacklist
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - $ref: ../openapi.yaml#/components/parameters/OffsetQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/OpsBlacklistListResponse
+          description: Blacklist page
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List fraud blacklist entries
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+    post:
+      operationId: opsAddBlacklist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/OpsBlacklistWriteRequest
+        required: true
+      responses:
+        '200':
+          description: Blocked
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Block IP on fraud blacklist
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+  /api/v1/ops/consent/proofs:
+    get:
+      operationId: opsConsentProofs
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: GDPR consent proof audit log
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/dashboard/metrics:
+    get:
+      operationId: opsDashboardMetrics
+      parameters:
+      - in: query
+        name: range
+        schema:
+          default: 1h
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/DashboardMetrics
+          description: Metric points
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Prometheus metric time series for ops dashboard
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/dashboard/stream:
+    get:
+      operationId: opsDashboardStream
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: text/event-stream
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: SSE stream of ops dashboard events
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/dashboard/summary:
+    get:
+      operationId: opsDashboardSummary
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/DashboardSummary
+          description: Summary
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Ops dashboard KPI summary
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/dlq:
+    get:
+      operationId: opsListDlq
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - $ref: ../openapi.yaml#/components/parameters/CursorQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/DLQListResponse
+          description: DLQ page
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Fan-out DLQ entries across shards
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/dlq/inbox:
+    get:
+      operationId: opsListDlqInbox
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - $ref: ../openapi.yaml#/components/parameters/CursorQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/DLQInboxListResponse
+          description: Inbox page
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Unified DLQ inbox across sources
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/dlq/inbox/{id}/retry:
+    post:
+      operationId: opsRetryDlqInbox
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '202':
+          description: Retry enqueued
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Retry DLQ inbox entry
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+  /api/v1/ops/dlq/{id}/retry:
+    post:
+      operationId: opsRetryDlq
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '202':
+          description: Retry enqueued
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Retry DLQ entry by id
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+  /api/v1/ops/doctor:
+    get:
+      operationId: opsDoctor
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/DoctorSummary
+          description: Doctor summary
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Platform health doctor checks
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/domains/rotation:
+    get:
+      operationId: opsDomainRotation
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Tracking domain rotation state
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/domains/tls-allowed:
+    get:
+      operationId: opsTlsAllowedList
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Hostnames allowed for TLS setup
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/domains/{hostname}/tls-allowed:
+    get:
+      operationId: opsTlsAllowedHost
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/HostnamePath
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Allow flag
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Check whether hostname is TLS-allowed
+      tags:
+      - ops
+  /api/v1/ops/fraud/presets/{name}:
+    patch:
+      operationId: opsPatchFraudPreset
+      parameters:
+      - in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/PatchFraudPolicyPresetRequest
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/FraudPolicyPreset
+          description: Updated preset
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Update global fraud preset thresholds
+      tags:
+      - ops
+      - fraud-admin
+      x-permissions:
+      - shards:write
+  /api/v1/ops/incidents:
+    get:
+      operationId: opsIncidents
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/IncidentSnapshot
+          description: Incident snapshot
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Shard and outbox incident snapshot
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/ml-model:
+    get:
+      operationId: opsMlModelStatus
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Model status
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: ML model deployment status
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/ml-model/eval:
+    get:
+      operationId: opsMlModelEval
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Eval block
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: ML model offline eval metrics
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/ml-model/labels:
+    get:
+      operationId: opsListMlLabels
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: ../components/schemas/ops_reports.yaml#/MLManualLabel
+                type: array
+          description: Labels
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Fleet ML manual labels (operator scope)
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+    post:
+      operationId: opsAddMlLabel
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/FraudManualLabelRequest
+        required: true
+      responses:
+        '200':
+          description: Label stored
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Add fleet-scoped ML manual label
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+  /api/v1/ops/outbox:
+    get:
+      operationId: opsListOutbox
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - $ref: ../openapi.yaml#/components/parameters/CursorQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/OutboxListResponse
+          description: Outbox page
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Paginated outbox event tail
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/roles/reload:
+    post:
+      operationId: opsRolesReload
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Reload result
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Reload RBAC role map from Postgres
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+  /api/v1/ops/rum:
+    get:
+      operationId: opsRum
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: RUM samples
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Real user monitoring samples
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+    post:
+      operationId: opsRumIngest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: true
+              type: object
+        required: true
+      responses:
+        '202':
+          description: Accepted
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Ingest RUM beacon batch
+      tags:
+      - ops
+  /api/v1/ops/shards:
+    get:
+      operationId: opsListShards
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                properties:
+                  emergency_breaker:
+                    type: string
+                  shards:
+                    items:
+                      $ref: ../components/schemas/ops_reports.yaml#/ShardHealthStatus
+                    type: array
+                type: object
+          description: Shard health
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Redis shard health matrix
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/shards/0/catchup:
+    post:
+      operationId: opsShard0Catchup
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                properties:
+                  status:
+                    type: string
+                type: object
+          description: Catch-up started
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Run shard-0 config catch-up worker
+      tags:
+      - ops
+      x-permissions:
+      - shards:write
+  /api/v1/reports/campaign-geo-device:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportCampaignGeoDevice
+      parameters:
+      - &id001
+        $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - &id002
+        $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - &id003
+        $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      - &id004
+        $ref: ../openapi.yaml#/components/parameters/ReportCompareQuery
+      - &id005
+        $ref: ../openapi.yaml#/components/parameters/CampaignIdQuery
+      - &id006
+        $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - &id007
+        $ref: ../openapi.yaml#/components/parameters/OffsetQuery
+      - &id008
+        $ref: ../openapi.yaml#/components/parameters/CursorQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Geo and device breakdown
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/campaign-overview:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportCampaignOverview
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Campaign overview rollup
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/click-log:
+    get:
+      description: Click timeline by click_id or campaign browse mode with cursor pagination.
+      operationId: reportClickLog
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id005
+      - *id008
+      - name: click_id
+        in: query
+        schema:
+          type: string
+        description: Timeline mode; required when campaign_id is omitted.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ClickLogReportResponse
+          description: Click log events and optional postbacks
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Click log timeline
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/clicks:
+    get:
+      description: Alias for click-log; same handler and response schema.
+      operationId: reportClicks
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id005
+      - *id008
+      - name: click_id
+        in: query
+        schema:
+          type: string
+        description: Timeline mode; required when campaign_id is omitted.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ClickLogReportResponse
+          description: Click log events and optional postbacks
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Click log browse alias
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/cost-sync-coverage:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportCostSyncCoverage
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Cost sync attribution coverage
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/conversion-type-payout:
+    get:
+      description: Returns payout grouped by goal_name from conversion status mappings.
+      operationId: reportConversionTypePayout
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ConversionTypePayoutReportResponse
+          description: Conversion type payout rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Conversion type payout rollup
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/customer-portfolio:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportCustomerPortfolio
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Customer portfolio KPIs
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/data-quality:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportDataQuality
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Ingest data quality signals
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/daypart-heatmap:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportDaypartHeatmap
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Hour-of-day performance heatmap
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/discrepancy-buy-sell:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportDiscrepancyBuySell
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Buy vs sell discrepancy
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/edge-parity:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportEdgeParity
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Edge vs tracker parity drift
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/filter-rejects:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportFilterRejects
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Unified filter reject counts
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/fraud-breakdown:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportFraudBreakdown
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Fraud tier breakdown
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/geo-roi:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportGeoRoi
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: ROI by country
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/ghost-impression-funnel:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportGhostImpressionFunnel
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Legacy alias for silent-reject-impression-funnel
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/ivt-by-source:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportIvtBySource
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: IVT rate by traffic source
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/jobs:
+    post:
+      operationId: reportCreateJob
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/ReportJobSpec
+        required: true
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportJobStatus
+          description: Job accepted
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Enqueue async report export job
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+  /api/v1/reports/jobs/{id}:
+    get:
+      operationId: reportGetJob
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportJobStatus
+          description: Job status
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Poll report export job status
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+  /api/v1/reports/jobs/{id}/download:
+    get:
+      operationId: reportDownloadJob
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+            text/csv:
+              schema:
+                format: binary
+                type: string
+          description: Export file
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Download completed report export
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+  /api/v1/reports/keywords:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportKeywords
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/KeywordReportResponse
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Keyword performance
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/ml/feature-spikes:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportMlFeatureSpikes
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: ML feature spike detection
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/ml/score-distribution:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportMlScoreDistribution
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: ML score distribution
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/ml/shadow-delta:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportMlShadowDelta
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Shadow vs live ML delta
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/pacing-drift:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportPacingDrift
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Budget pacing drift vs plan
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/placements:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportPlacements
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/PlacementReportResponse
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Placement performance by zone
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/postback-reconciliation:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportPostbackReconciliation
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Postback vs ledger reconciliation
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/rtb/geo-device:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportRtbGeoDevice
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: RTB geo and device stats
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/rtb/no-bid-reasons:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportRtbNoBidReasons
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: RTB no-bid reason breakdown
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/rtb/overview:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportRtbOverview
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: RTB auction overview
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/silent-reject-impression-funnel:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportSilentRejectFunnel
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Silent reject impression funnel
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/source-quality:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportSourceQuality
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Sub-source quality scores
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/spend-velocity:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportSpendVelocity
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Spend velocity time series
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/telegram:
+    get:
+      operationId: reportTelegram
+      parameters:
+      - &id009
+        $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
+      - &id010
+        $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      - &id011
+        $ref: ../openapi.yaml#/components/parameters/CustomerIdQuery
+      - &id012
+        $ref: ../openapi.yaml#/components/parameters/CampaignIdQuery
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Telegram report payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Telegram Mini App rollup
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/telegram/bots:
+    get:
+      operationId: reportTelegramBots
+      parameters:
+      - *id009
+      - *id010
+      - *id011
+      - *id012
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Telegram report payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Telegram bot performance
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/telegram/export:
+    post:
+      operationId: reportTelegramExport
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/TelegramReportExportRequest
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                additionalProperties: true
+                type: object
+          description: Export payload or download URL
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Export Telegram report bundle
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+  /api/v1/reports/telegram/fraud:
+    get:
+      operationId: reportTelegramFraud
+      parameters:
+      - *id009
+      - *id010
+      - *id011
+      - *id012
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Telegram report payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Telegram fraud signals
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/telegram/funnel:
+    get:
+      operationId: reportTelegramFunnel
+      parameters:
+      - *id009
+      - *id010
+      - *id011
+      - *id012
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Telegram report payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Telegram conversion funnel
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/telegram/premium:
+    get:
+      operationId: reportTelegramPremium
+      parameters:
+      - *id009
+      - *id010
+      - *id011
+      - *id012
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Telegram report payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Telegram premium users
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/telegram/summary:
+    get:
+      operationId: reportTelegramSummary
+      parameters:
+      - *id009
+      - *id010
+      - *id011
+      - *id012
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Telegram report payload
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Telegram summary KPIs
+      tags:
+      - reports
+      - telegram
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/traffic-sources:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportTrafficSources
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Traffic channel rollup
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/true-roi:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportTrueRoi
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: True ROI after cost sync
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/views:
+    get:
+      operationId: listSavedViews
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: ../components/schemas/ops_reports.yaml#/SavedView
+                type: array
+          description: Saved views
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: List saved report views for customer
+      tags:
+      - views
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+    post:
+      operationId: createSavedView
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/CreateSavedViewRequest
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/SavedView
+          description: Created view
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Create saved report view
+      tags:
+      - views
+      x-permissions:
+      - campaigns:write
+  /api/v1/views/{id}:
+    delete:
+      operationId: deleteSavedView
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '204':
+          description: Deleted
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Delete saved report view
+      tags:
+      - views
+      x-permissions:
+      - campaigns:write
+    get:
+      operationId: getSavedView
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/SavedView
+          description: Saved view
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Get saved report view
+      tags:
+      - views
+    put:
+      operationId: updateSavedView
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/ops_reports.yaml#/UpdateSavedViewRequest
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/SavedView
+          description: Updated view
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Update saved report view
+      tags:
+      - views
+      x-permissions:
+      - campaigns:write

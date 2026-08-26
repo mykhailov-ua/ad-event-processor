@@ -21,9 +21,7 @@ func (f *FraudBlacklistFilter) InvalidateIP(ip string) {
 		return
 	}
 	shard := &f.shards[fraudBlacklistShardIndex(ip)]
-	shard.mu.Lock()
-	delete(shard.m, ip)
-	shard.mu.Unlock()
+	fraudBlacklistShardDeleteIP(shard, ip)
 }
 
 func (f *FraudBlacklistFilter) RunInvalidationSubscriber(ctx context.Context, channel string) {
