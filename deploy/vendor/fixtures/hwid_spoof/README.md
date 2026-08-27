@@ -14,6 +14,10 @@ Argon2id hash covers these fields (`internal/licensing/hwid.go`):
 | CPU model | `/proc/cpuinfo` `model name` |
 | CPU cores | `runtime.NumCPU()` |
 
+When `AD_EVENT_PROCESSOR_LICENSE_HWID_V3=1`, Argon2 input also includes systemd `machine-id` (`/etc/machine-id` or dbus path). Re-issue donor JWT after enabling v3.
+
+`GET /api/v1/license/status` field `hwid_inputs` lists the same telemetry (machine id redacted when v3 is off).
+
 Legacy `HostFingerprint()` (separate from v2) also uses `/etc/machine-id` and install paths.
 
 ## QEMU / libvirt recipe
@@ -49,11 +53,15 @@ docker run --rm -it \
 
 3. **Pass (defense holds):** ingest blocked or license recheck sets `EXPIRED` when any telemetry field differs from donor.
 
-4. **Fail (residual risk):** donor JWT works on target with only partial spoof (identify missing field and add to bind inputs in backlog slug `argon2_hwid_telemetry_expand`).
+4. **Fail (residual risk):** donor JWT works on target with only partial spoof (identify missing field from `hwid_inputs` on status API and extend bind-mount coverage).
 
 ## Collect hash for issue CLI
 
-From admin: `GET /api/v1/license/status` field `hwid_v2` (`licensing.mdc`).
+```bash
+bash scripts/lab/hwid_collect.sh
+```
+
+Or from admin: `GET /api/v1/license/status` field `hwid_v2` (`licensing.mdc`).
 
 Unit test determinism only (fixed telemetry, not live host):
 

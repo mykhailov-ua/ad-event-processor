@@ -1,0 +1,2551 @@
+[
+  {
+    "ID": "active-revenue",
+    "BundledSlug": "traffic_active_revenue",
+    "Name": "Active Revenue",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "active_revenue_camp_id",
+        "Value": "{active_revenue_campaign_id}",
+        "Label": "Active revenue campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adcash",
+    "BundledSlug": "traffic_adcash",
+    "Name": "Adcash",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adcash_camp",
+        "Value": "{adcash_camp}",
+        "Label": "Adcash camp"
+      },
+      {
+        "Key": "country",
+        "Value": "{country}",
+        "Label": "Country"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adkernel",
+    "BundledSlug": "traffic_adkernel",
+    "Name": "Adkernel",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adkernel_camp_id",
+        "Value": "{adkernel_campaign_id}",
+        "Label": "Adkernel campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "admaven",
+    "BundledSlug": "traffic_admaven",
+    "Name": "Admaven",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "admaven_camp_id",
+        "Value": "{admaven_camp_id}",
+        "Label": "Admaven camp id"
+      },
+      {
+        "Key": "source_id",
+        "Value": "{source_id}",
+        "Label": "Source id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub_source_id",
+        "Value": "{sub_source_id}",
+        "Label": "Sub source id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "admeking",
+    "BundledSlug": "traffic_admeking",
+    "Name": "Admeking",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "admeking_camp_id",
+        "Value": "{admeking_campaign_id}",
+        "Label": "Admeking campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "admixer",
+    "BundledSlug": "traffic_admixer",
+    "Name": "Admixer",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "admixer_camp_id",
+        "Value": "{admixer_campaign_id}",
+        "Label": "Admixer campaign id"
+      },
+      {
+        "Key": "banner_id",
+        "Value": "{banner_id}",
+        "Label": "Banner id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adnium",
+    "BundledSlug": "traffic_adnium",
+    "Name": "Adnium",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adnium_camp_id",
+        "Value": "{adnium_campaign_id}",
+        "Label": "Adnium campaign id"
+      },
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adoperator",
+    "BundledSlug": "traffic_adoperator",
+    "Name": "Adoperator",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "ao_camp_id",
+        "Value": "{ao_camp_id}",
+        "Label": "Ao camp id"
+      },
+      {
+        "Key": "publisher_subid",
+        "Value": "{publisher_subid}",
+        "Label": "Publisher subid"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adskeeper",
+    "BundledSlug": "traffic_adskeeper",
+    "Name": "Adskeeper",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adskeeper_camp_id",
+        "Value": "{adskeeper_campaign_id}",
+        "Label": "Adskeeper campaign id"
+      },
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "teaser_id",
+        "Value": "{teaser_id}",
+        "Label": "Teaser id"
+      },
+      {
+        "Key": "widget_id",
+        "Value": "{widget_id}",
+        "Label": "Widget id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adsterra",
+    "BundledSlug": "traffic_adsterra",
+    "Name": "Adsterra",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "##PLACEMENT_ID##",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "##CAMPAIGN_ID##",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "##BANNER_ID##",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "adstyle",
+    "BundledSlug": "traffic_adstyle",
+    "Name": "Adstyle",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adstyle_camp_id",
+        "Value": "{adstyle_campaign_id}",
+        "Label": "Adstyle campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adsupply",
+    "BundledSlug": "traffic_adsupply",
+    "Name": "Adsupply",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adsupply_camp_id",
+        "Value": "{adsupply_campaign_id}",
+        "Label": "Adsupply campaign id"
+      },
+      {
+        "Key": "country",
+        "Value": "{country}",
+        "Label": "Country"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "advedro",
+    "BundledSlug": "traffic_advedro",
+    "Name": "Advedro",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "advedro_camp_id",
+        "Value": "{advedro_campaign_id}",
+        "Label": "Advedro campaign id"
+      },
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "adxad",
+    "BundledSlug": "traffic_adxad",
+    "Name": "Adxad",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "adxad_camp_id",
+        "Value": "{adxad_campaign_id}",
+        "Label": "Adxad campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "bidvertiser",
+    "BundledSlug": "traffic_bidvertiser",
+    "Name": "BidVertiser",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "[SUBID]",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "[CAMPAIGNID]",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "bitmedia",
+    "BundledSlug": "traffic_bitmedia",
+    "Name": "Bitmedia",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "bitmedia_camp_id",
+        "Value": "{bitmedia_campaign_id}",
+        "Label": "Bitmedia campaign id"
+      },
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "clickadilla",
+    "BundledSlug": "traffic_clickadilla",
+    "Name": "Clickadilla",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "clickadilla_camp_id",
+        "Value": "{clickadilla_camp_id}",
+        "Label": "Clickadilla camp id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "clickadu",
+    "BundledSlug": "traffic_clickadu",
+    "Name": "Clickadu",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{zoneid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{bannerid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "clickaine",
+    "BundledSlug": "traffic_clickaine",
+    "Name": "Clickaine",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "clickaine_camp_id",
+        "Value": "{clickaine_campaign_id}",
+        "Label": "Clickaine campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "clickflow",
+    "BundledSlug": "traffic_clickflow",
+    "Name": "Clickflow",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "clickflow_camp_id",
+        "Value": "{clickflow_campaign_id}",
+        "Label": "Clickflow campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "clickstar",
+    "BundledSlug": "traffic_clickstar",
+    "Name": "Clickstar",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "clickstar_camp_id",
+        "Value": "{clickstar_campaign_id}",
+        "Label": "Clickstar campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "dao-ad",
+    "BundledSlug": "traffic_dao_ad",
+    "Name": "Dao Ad",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "dao_ad_camp_id",
+        "Value": "{dao_ad_campaign_id}",
+        "Label": "Dao ad campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "epom",
+    "BundledSlug": "traffic_epom",
+    "Name": "Epom",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "epom_camp_id",
+        "Value": "{epom_campaign_id}",
+        "Label": "Epom campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "evadav",
+    "BundledSlug": "traffic_evadav",
+    "Name": "Evadav",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{banner_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "exoclick",
+    "BundledSlug": "traffic_exoclick",
+    "Name": "ExoClick",
+    "Category": "adult",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{variation_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{zone_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "ezmob",
+    "BundledSlug": "traffic_ezmob",
+    "Name": "Ezmob",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "banner_id",
+        "Value": "{banner_id}",
+        "Label": "Banner id"
+      },
+      {
+        "Key": "ezmob_camp_id",
+        "Value": "{ezmob_camp_id}",
+        "Label": "Ezmob camp id"
+      },
+      {
+        "Key": "pubzone",
+        "Value": "{pubzone}",
+        "Label": "Pubzone"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "meta-facebook",
+    "BundledSlug": "traffic_facebook",
+    "Name": "Facebook Ads",
+    "Category": "social",
+    "CostSync": "meta",
+    "Notes": "Cost Sync join: sub2 / ad_campaign_id = {{campaign.id}}",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{{site_source_name}}",
+        "Label": "Placement"
+      },
+      {
+        "Key": "sub2",
+        "Value": "{{campaign.id}}",
+        "Label": "Campaign"
+      },
+      {
+        "Key": "ad_campaign_id",
+        "Value": "{{campaign.id}}",
+        "Label": "Cost Sync"
+      },
+      {
+        "Key": "sub3",
+        "Value": "{{adset.id}}",
+        "Label": "Ad set"
+      },
+      {
+        "Key": "sub4",
+        "Value": "{{ad.id}}",
+        "Label": "Ad"
+      },
+      {
+        "Key": "fbclid",
+        "Value": "{{fbclid}}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "galaksion",
+    "BundledSlug": "traffic_galaksion",
+    "Name": "Galaksion",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "creative_id",
+        "Value": "{creative_id}",
+        "Label": "Creative id"
+      },
+      {
+        "Key": "device",
+        "Value": "{device}",
+        "Label": "Device"
+      },
+      {
+        "Key": "galaksion_camp_id",
+        "Value": "{galaksion_campaign_id}",
+        "Label": "Galaksion campaign id"
+      },
+      {
+        "Key": "os",
+        "Value": "{os}",
+        "Label": "Os"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "geospot-media",
+    "BundledSlug": "traffic_geospot_media",
+    "Name": "Geospot Media",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "geospot_camp_id",
+        "Value": "{geospot_campaign_id}",
+        "Label": "Geospot campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "google-ads",
+    "BundledSlug": "traffic_google_ads",
+    "Name": "Google Ads",
+    "Category": "search",
+    "CostSync": "google",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{network}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "ad_campaign_id",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{adgroupid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{creative}",
+        "Label": ""
+      },
+      {
+        "Key": "sub5",
+        "Value": "{keyword}",
+        "Label": ""
+      },
+      {
+        "Key": "gclid",
+        "Value": "{gclid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "google-display",
+    "BundledSlug": "traffic_google_ads",
+    "Name": "Google Display",
+    "Category": "native",
+    "CostSync": "google",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "gdn",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "ad_campaign_id",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{placement}",
+        "Label": ""
+      },
+      {
+        "Key": "gclid",
+        "Value": "{gclid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "hilltopads",
+    "BundledSlug": "traffic_hilltopads",
+    "Name": "HilltopAds",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{zoneid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{bannerid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "meta-instagram",
+    "BundledSlug": "traffic_instagram",
+    "Name": "Instagram Ads",
+    "Category": "social",
+    "CostSync": "meta",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "instagram",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{{campaign.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "ad_campaign_id",
+        "Value": "{{campaign.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{{adset.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{{ad.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "fbclid",
+        "Value": "{{fbclid}}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "juicyads",
+    "BundledSlug": "traffic_juicyads",
+    "Name": "JuicyAds",
+    "Category": "adult",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{spot_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "kadam",
+    "BundledSlug": "traffic_kadam",
+    "Name": "Kadam",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "banner_id",
+        "Value": "{banner_id}",
+        "Label": "Banner id"
+      },
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "kadam_camp_id",
+        "Value": "{kadam_campaign_id}",
+        "Label": "Kadam campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "linkedin-ads",
+    "BundledSlug": "traffic_linkedin",
+    "Name": "LinkedIn Ads",
+    "Category": "social",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "linkedin",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{{CAMPAIGN_ID}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{{CREATIVE_ID}}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "mediago",
+    "BundledSlug": "traffic_mediago",
+    "Name": "Mediago",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "mediago_camp_id",
+        "Value": "{mediago_campaign_id}",
+        "Label": "Mediago campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "teaser_id",
+        "Value": "{teaser_id}",
+        "Label": "Teaser id"
+      },
+      {
+        "Key": "widget_id",
+        "Value": "{widget_id}",
+        "Label": "Widget id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "mgid",
+    "BundledSlug": "traffic_mgid",
+    "Name": "MGID",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{widget_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{teaser_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{category_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "microsoft-ads",
+    "BundledSlug": "traffic_microsoft_ads",
+    "Name": "Microsoft Ads",
+    "Category": "search",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{Network}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{CampaignId}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{AdGroupId}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{Keyword}",
+        "Label": ""
+      },
+      {
+        "Key": "gclid",
+        "Value": "{msclkid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "mondiad",
+    "BundledSlug": "traffic_mondiad",
+    "Name": "Mondiad",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "country",
+        "Value": "{country}",
+        "Label": "Country"
+      },
+      {
+        "Key": "mondiad_camp_id",
+        "Value": "{mondiad_camp_id}",
+        "Label": "Mondiad camp id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "subid",
+        "Value": "{sub_id}",
+        "Label": "Sub id"
+      },
+      {
+        "Key": "zoneid",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "mybid",
+    "BundledSlug": "traffic_mybid",
+    "Name": "Mybid",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "mybid_camp_id",
+        "Value": "{mybid_campaign_id}",
+        "Label": "Mybid campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "noviclick",
+    "BundledSlug": "traffic_noviclick",
+    "Name": "Noviclick",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "banner_id",
+        "Value": "{banner_id}",
+        "Label": "Banner id"
+      },
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "noviclick_camp_id",
+        "Value": "{noviclick_camp_id}",
+        "Label": "Noviclick camp id"
+      },
+      {
+        "Key": "site_id",
+        "Value": "{site_id}",
+        "Label": "Site id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "onclicka",
+    "BundledSlug": "traffic_onclicka",
+    "Name": "Onclicka",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "onclicka_camp_id",
+        "Value": "{onclicka_campaign_id}",
+        "Label": "Onclicka campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "outbrain",
+    "BundledSlug": "traffic_outbrain",
+    "Name": "Outbrain",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{{publisher_name}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{{campaign_id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{{section_name}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{{ad_id}}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "pinterest-ads",
+    "BundledSlug": "traffic_pinterest",
+    "Name": "Pinterest Ads",
+    "Category": "social",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "pinterest",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{adgroupid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{adid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "plugrush",
+    "BundledSlug": "traffic_plugrush",
+    "Name": "Plugrush",
+    "Category": "adult",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "plugrush_camp_id",
+        "Value": "{plugrush_campaign_id}",
+        "Label": "Plugrush campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "userdata",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "popads",
+    "BundledSlug": "traffic_popads",
+    "Name": "PopAds",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "[SITEID]",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "[CAMPAIGNID]",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "[FORMFACTOR]",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "popcash",
+    "BundledSlug": "traffic_popcash",
+    "Name": "PopCash",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "[siteid]",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "[campaignid]",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "[category]",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "propellerads",
+    "BundledSlug": "traffic_propellerads",
+    "Name": "PropellerAds",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{zoneid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{bannerid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{os}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "push-house",
+    "BundledSlug": "traffic_pushhouse",
+    "Name": "Push.house",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{creative_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "pushame",
+    "BundledSlug": "traffic_pushame",
+    "Name": "Pushame",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "pushame_camp_id",
+        "Value": "{pushame_campaign_id}",
+        "Label": "Pushame campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "pushground",
+    "BundledSlug": "traffic_pushground",
+    "Name": "Pushground",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "bid",
+        "Value": "{bid}",
+        "Label": "Bid"
+      },
+      {
+        "Key": "country",
+        "Value": "{country}",
+        "Label": "Country"
+      },
+      {
+        "Key": "pushground_camp_id",
+        "Value": "{pushground_campaign_id}",
+        "Label": "Pushground campaign id"
+      },
+      {
+        "Key": "source",
+        "Value": "{source}",
+        "Label": "Source"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "supply_id",
+        "Value": "{supply_id}",
+        "Label": "Supply id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "reacheffect",
+    "BundledSlug": "traffic_reacheffect",
+    "Name": "Reacheffect",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "re_camp_id",
+        "Value": "{reacheffect_campaign_id}",
+        "Label": "Reacheffect campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "reddit",
+    "BundledSlug": "traffic_reddit",
+    "Name": "Reddit",
+    "Category": "social",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "rdt_cid",
+        "Value": "{rdt_cid}",
+        "Label": "Rdt cid"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "utm_campaign",
+        "Value": "{utm_campaign}",
+        "Label": "Utm campaign"
+      },
+      {
+        "Key": "utm_source",
+        "Value": "{utm_source}",
+        "Label": "Utm source"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "reporo",
+    "BundledSlug": "traffic_reporo",
+    "Name": "Reporo",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "reporo_camp_id",
+        "Value": "{reporo_campaign_id}",
+        "Label": "Reporo campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "revcontent",
+    "BundledSlug": "traffic_revcontent",
+    "Name": "Revcontent",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{widget_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{adv_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{content_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "richads",
+    "BundledSlug": "traffic_richads",
+    "Name": "RichAds",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{banner_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "richads-pop",
+    "BundledSlug": "traffic_richads",
+    "Name": "RichAds Popunder",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "pop",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "rollerads",
+    "BundledSlug": "traffic_rollerads",
+    "Name": "RollerAds",
+    "Category": "push",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{zone_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{banner_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "rtb-panda",
+    "BundledSlug": "traffic_rtb_panda",
+    "Name": "Rtb Panda",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "rtb_panda_camp_id",
+        "Value": "{rtb_panda_campaign_id}",
+        "Label": "Rtb panda campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "rtx-platform",
+    "BundledSlug": "traffic_rtx_platform",
+    "Name": "Rtx Platform",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "pub_id",
+        "Value": "{publisher_id}",
+        "Label": "Publisher id"
+      },
+      {
+        "Key": "rtx_camp_id",
+        "Value": "{rtx_campaign_id}",
+        "Label": "Rtx campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "runative",
+    "BundledSlug": "traffic_runative",
+    "Name": "Runative",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "country",
+        "Value": "{country}",
+        "Label": "Country"
+      },
+      {
+        "Key": "runative_camp_id",
+        "Value": "{runative_campaign_id}",
+        "Label": "Runative campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "selfadvertiser",
+    "BundledSlug": "traffic_selfadvertiser",
+    "Name": "Selfadvertiser",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "selfadvertiser_camp_id",
+        "Value": "{selfadvertiser_campaign_id}",
+        "Label": "Selfadvertiser campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "smartyads",
+    "BundledSlug": "traffic_smartyads",
+    "Name": "Smartyads",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "smartyads_camp_id",
+        "Value": "{smartyads_campaign_id}",
+        "Label": "Smartyads campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "snapchat-ads",
+    "BundledSlug": "traffic_snapchat",
+    "Name": "Snapchat Ads",
+    "Category": "social",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{{site_source_name}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{{campaign.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{{adSet.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{{ad.id}}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "sourceknowledge",
+    "BundledSlug": "traffic_sourceknowledge",
+    "Name": "Sourceknowledge",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sk_camp_id",
+        "Value": "{sourceknowledge_campaign_id}",
+        "Label": "Sourceknowledge campaign id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "taboola",
+    "BundledSlug": "traffic_taboola",
+    "Name": "Taboola",
+    "Category": "native",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{campaign_item_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{platform}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "targeleon",
+    "BundledSlug": "traffic_targeleon",
+    "Name": "Targeleon",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "targeleon_camp_id",
+        "Value": "{targeleon_campaign_id}",
+        "Label": "Targeleon campaign id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "threads",
+    "BundledSlug": "traffic_threads",
+    "Name": "Threads",
+    "Category": "social",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "fbclid",
+        "Value": "{fbclid}",
+        "Label": "Fbclid"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "utm_campaign",
+        "Value": "{utm_campaign}",
+        "Label": "Utm campaign"
+      },
+      {
+        "Key": "utm_content",
+        "Value": "{utm_content}",
+        "Label": "Utm content"
+      },
+      {
+        "Key": "utm_medium",
+        "Value": "{utm_medium}",
+        "Label": "Utm medium"
+      },
+      {
+        "Key": "utm_source",
+        "Value": "{utm_source}",
+        "Label": "Utm source"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "tiktok-ads",
+    "BundledSlug": "traffic_tiktok",
+    "Name": "TikTok Ads",
+    "Category": "social",
+    "CostSync": "tiktok",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "__PLACEMENT__",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "__CAMPAIGN_ID__",
+        "Label": ""
+      },
+      {
+        "Key": "ad_campaign_id",
+        "Value": "__CAMPAIGN_ID__",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "__AID__",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "__CID__",
+        "Label": ""
+      },
+      {
+        "Key": "ttclid",
+        "Value": "__CLICKID__",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "traffic-force",
+    "BundledSlug": "traffic_traffic_force",
+    "Name": "Traffic Force",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "traffic_force_camp_id",
+        "Value": "{traffic_force_campaign_id}",
+        "Label": "Traffic force campaign id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "traffic-nomads",
+    "BundledSlug": "traffic_traffic_nomads",
+    "Name": "Traffic Nomads",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "pubid",
+        "Value": "{publisher_id}",
+        "Label": "Publisher id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "tn_campaign_id",
+        "Value": "{tn_campaign_id}",
+        "Label": "Tn campaign id"
+      },
+      {
+        "Key": "zone",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "traffic-shark",
+    "BundledSlug": "traffic_traffic_shark",
+    "Name": "Traffic Shark",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "traffic_shark_camp_id",
+        "Value": "{traffic_shark_campaign_id}",
+        "Label": "Traffic shark campaign id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "trafficfactory",
+    "BundledSlug": "traffic_trafficfactory",
+    "Name": "Trafficfactory",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "tf_campaign_id",
+        "Value": "{tf_campaign_id}",
+        "Label": "Tf campaign id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "trafficjunky",
+    "BundledSlug": "traffic_trafficjunky",
+    "Name": "TrafficJunky",
+    "Category": "adult",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{siteid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{bannerid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "trafficstars",
+    "BundledSlug": "traffic_trafficstars",
+    "Name": "TrafficStars",
+    "Category": "adult",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{site_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{creative_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "twinred",
+    "BundledSlug": "traffic_twinred",
+    "Name": "Twinred",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "site_id",
+        "Value": "{site_id}",
+        "Label": "Site id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "twinred_camp_id",
+        "Value": "{twinred_camp_id}",
+        "Label": "Twinred camp id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "vimmy",
+    "BundledSlug": "traffic_vimmy",
+    "Name": "Vimmy",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "vimmy_camp_id",
+        "Value": "{vimmy_campaign_id}",
+        "Label": "Vimmy campaign id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "widget-media",
+    "BundledSlug": "traffic_widget_media",
+    "Name": "Widget Media",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "widget_id",
+        "Value": "{widget_id}",
+        "Label": "Widget id"
+      },
+      {
+        "Key": "widget_media_camp_id",
+        "Value": "{widget_media_campaign_id}",
+        "Label": "Widget media campaign id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "x-ads",
+    "BundledSlug": "traffic_x_ads",
+    "Name": "X (Twitter) Ads",
+    "Category": "social",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "x",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{{campaign.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{{line_item.id}}",
+        "Label": ""
+      },
+      {
+        "Key": "sub4",
+        "Value": "{{tweet.id}}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "yandex-direct",
+    "BundledSlug": "traffic_yandex_direct",
+    "Name": "Yandex Direct",
+    "Category": "search",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "utm_campaign",
+        "Value": "{utm_campaign}",
+        "Label": "Utm campaign"
+      },
+      {
+        "Key": "utm_source",
+        "Value": "{utm_source}",
+        "Label": "Utm source"
+      },
+      {
+        "Key": "yclid",
+        "Value": "{yclid}",
+        "Label": "Yclid"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "yeesshh",
+    "BundledSlug": "traffic_yeesshh",
+    "Name": "Yeesshh",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "click_id",
+        "Value": "{click_id}",
+        "Label": "Click id"
+      },
+      {
+        "Key": "sub1",
+        "Value": "{sub1}",
+        "Label": ""
+      },
+      {
+        "Key": "yeesshh_camp_id",
+        "Value": "{yeesshh_campaign_id}",
+        "Label": "Yeesshh campaign id"
+      },
+      {
+        "Key": "zone_id",
+        "Value": "{zone_id}",
+        "Label": "Zone id"
+      }
+    ],
+    "Generated": true
+  },
+  {
+    "ID": "youtube-ads",
+    "BundledSlug": "traffic_youtube",
+    "Name": "YouTube Ads",
+    "Category": "social",
+    "CostSync": "google",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "youtube",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "ad_campaign_id",
+        "Value": "{campaignid}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{adgroupid}",
+        "Label": ""
+      },
+      {
+        "Key": "gclid",
+        "Value": "{gclid}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "zeropark",
+    "BundledSlug": "traffic_zeropark",
+    "Name": "Zeropark",
+    "Category": "dsp",
+    "CostSync": "",
+    "Notes": "",
+    "Params": [
+      {
+        "Key": "sub1",
+        "Value": "{target}",
+        "Label": ""
+      },
+      {
+        "Key": "sub2",
+        "Value": "{campaign_id}",
+        "Label": ""
+      },
+      {
+        "Key": "sub3",
+        "Value": "{visit_id}",
+        "Label": ""
+      }
+    ],
+    "Generated": false
+  },
+  {
+    "ID": "direct-custom",
+    "BundledSlug": "",
+    "Name": "Direct / Custom",
+    "Category": "direct",
+    "CostSync": "",
+    "Notes": "Manual sub_ids - fill values or leave empty.",
+    "Params": null,
+    "Generated": false
+  }
+]

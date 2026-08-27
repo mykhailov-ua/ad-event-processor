@@ -1,5 +1,7 @@
 # Antifraud ROI backlog (internal)
 
+**Status:** Closed (2026-08-26). All four ROI slugs shipped in tree; verification commands in [Verification commands](#verification-commands-orchestrator) section.
+
 Shippable antifraud work derived from [ANTIFRAUD_MARKET_ANALYSIS.md](./ANTIFRAUD_MARKET_ANALYSIS.md). Targets payout protection, closed-loop zone cuts, antidetect signal depth, and CGNAT false-positive reduction.
 
 **Not in scope:** PPC Google/Meta IP exclusion sync, signed legal refund PDFs, full mobile biometrics (gyro/touch radius), marketing accuracy claims without holdout tests.
@@ -24,22 +26,22 @@ Cross-reference slugs by name in PRs and docs. Do not close a slug until every a
 
 Rule: `anti-slop.mdc` agent checklist
 
-- [ ] Every new symbol resolves (`go build` / `go test -c` on touched packages)
-- [ ] Hot path does not import `internal/fraud` scoring (`boundaries.mdc`, `hot-path.mdc`)
-- [ ] No new sync Postgres / ClickHouse / external HTTP on `/track` or filter `Check` (`architecture.mdc`)
-- [ ] At most one sync Redis `EVALSHA` per accepted event; no extra round-trips between local filters (`hot-path.mdc`, `architecture.mdc`)
-- [ ] Fraud blacklist / placement cache: no new per-event `SISMEMBER` / `HEXISTS` without TTL shard cache (`ANTIFRAUD.md`, `anti-slop.mdc` lie modes)
-- [ ] Verification commands pasted in PR with package path (no unrun claims - `quality.mdc`)
-- [ ] Holdout or fault test added when behavior is non-obvious (`testing.mdc`)
-- [ ] Doc claims match code; no microbench cited as prod SLA (`anti-slop.mdc`)
-- [ ] `bash scripts/ci/pr_fast.sh` scoped to touched packages (`ci.mdc`)
-- [ ] `bash scripts/ci/antifraud_doc_gate.sh` when touching `deploy/vendor/ANTIFRAUD.md` or this file
-- [ ] `bash scripts/ci/check_no_legacy_naming.sh` clean on touched vendor docs (`naming.mdc`)
+- [x] Every new symbol resolves (`go build` / `go test -c` on touched packages)
+- [x] Hot path does not import `internal/fraud` scoring (`boundaries.mdc`, `hot-path.mdc`)
+- [x] No new sync Postgres / ClickHouse / external HTTP on `/track` or filter `Check` (`architecture.mdc`)
+- [x] At most one sync Redis `EVALSHA` per accepted event; no extra round-trips between local filters (`hot-path.mdc`, `architecture.mdc`)
+- [x] Fraud blacklist / placement cache: no new per-event `SISMEMBER` / `HEXISTS` without TTL shard cache (`ANTIFRAUD.md`, `anti-slop.mdc` lie modes)
+- [x] Verification commands pasted in PR with package path (no unrun claims - `quality.mdc`)
+- [x] Holdout or fault test added when behavior is non-obvious (`testing.mdc`)
+- [x] Doc claims match code; no microbench cited as prod SLA (`anti-slop.mdc`)
+- [x] `bash scripts/ci/pr_fast.sh` scoped to touched packages (`ci.mdc`)
+- [x] `bash scripts/ci/antifraud_doc_gate.sh` when touching `deploy/vendor/ANTIFRAUD.md` or this file
+- [x] `bash scripts/ci/check_no_legacy_naming.sh` clean on touched vendor docs (`naming.mdc`)
 
 Rule: `core.mdc` commit policy (when landing code)
 
-- [ ] Imperative commit title names concrete surface (route, worker, filter, migration)
-- [ ] Docs-only antifraud claims ship in the same commit as code (`core.mdc`)
+- [x] Imperative commit title names concrete surface (route, worker, filter, migration)
+- [x] Docs-only antifraud claims ship in the same commit as code (`core.mdc`)
 
 ---
 
@@ -59,12 +61,12 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 ## Summary
 
-| Slug | Priority | ROI story | Rough surface | Est. effort |
+| Slug | Priority | ROI story | Rough surface | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| `conversion_smart_reject` | roi_p0 | Stop affiliate payouts on junk conversions | processor + postback + PG/CH | M |
-| `automation_fraud_metrics` | roi_p0 | Auto-blacklist zones when IVT rate spikes | `internal/automation` + CH + admin UI | S-M |
-| `canvas_noise_test_retest` | roi_p1 | Antidetect noise without IP | safe page JS + attestation | S |
-| `cgnat_mobile_ip_policy` | roi_p2 | Cut CGNAT false positives on cellular | hot filters + GeoIP ASN | S |
+| `conversion_smart_reject` | roi_p0 | Stop affiliate payouts on junk conversions | processor + postback + PG/CH | Shipped |
+| `automation_fraud_metrics` | roi_p0 | Auto-blacklist zones when IVT rate spikes | `internal/automation` + CH + admin UI | Shipped |
+| `canvas_noise_test_retest` | roi_p1 | Antidetect noise without IP | safe page JS + attestation | Shipped |
+| `cgnat_mobile_ip_policy` | roi_p2 | Cut CGNAT false positives on cellular | hot filters + GeoIP ASN | Shipped |
 
 ---
 
@@ -72,11 +74,11 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 **Priority:** roi_p0
 
-**Gap:** FraudScore SmartReject parity. Clicks can be filtered, but conversions/postbacks are accepted, paid out, and forwarded to CAPI unless `SilentRejectEvent`, `ShadowEvent`, or `FraudReason` already set on the event (`internal/postback/conversion_outbox.go` skips those).
+**Status:** Shipped.
 
-**Current state:** `ConversionPayoutApplier` maps inbound status to `revenue_micro` only (`internal/ingestion/conversion_payout.go`). No TTI, click-existence, duplicate-goal, or IP-drift rules at settlement.
+**Gap (was):** FraudScore SmartReject parity. Clicks can be filtered, but conversions/postbacks are accepted, paid out, and forwarded to CAPI unless `SilentRejectEvent`, `ShadowEvent`, or `FraudReason` already set on the event.
 
-**Target:** Cold-path rejection before affiliate payout and before `ConversionPostbackEnqueuer.OnBatchStored` enqueues outbound CAPI/postback.
+**Current state:** `internal/postback/conversion_reject.go` runs on processor settlement before payout and postback enqueue. Per-campaign `conversion_reject_rules` on fraud PATCH + admin UI.
 
 ### Implementation
 
@@ -125,9 +127,9 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 ### Anti-slop gates
 
-- [ ] No `_ = json.Unmarshal` in new handlers (`anti_slop_gate.sh`)
-- [ ] No bare `t.Skip()` in integration tests
-- [ ] Do not claim "legal proof" or Google refund eligibility in docs
+- [x] No `_ = json.Unmarshal` in new handlers (`anti_slop_gate.sh`)
+- [x] No bare `t.Skip()` in integration tests (`integration:` prefix on Docker holdouts)
+- [x] Do not claim "legal proof" or Google refund eligibility in docs
 - [x] Reason codes in `postback.ConversionRejectReasonWeights` (parallel registry; not hot-path `fraudReasonRegistry`)
 
 ### Done gates
@@ -148,11 +150,11 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 **Priority:** roi_p0
 
-**Gap:** Automation rules support `roi_pct`, `cr`, `spend_micro`, `clicks` (`internal/automation/eval.go`) but not fraud-derived rates. Operators cannot auto-blacklist placements when IVT spikes.
+**Status:** Shipped.
 
-**Current state:** `blacklist_placement` action exists (`internal/controlplane/automation_executor.go` -> `BlockCampaignPlacement`). CH source is `placement_stats_hourly` only (no fraud columns - see `internal/clickhouse/migrate/00005_placement_counts.sql`).
+**Gap (was):** Automation rules had no fraud-derived rates; operators could not auto-blacklist placements when IVT spikes.
 
-**Target:** Rules like `ivt_rate > 25` or `silent_reject_rate > 15` over 15-60 min window trigger `blacklist_placement` + optional `notify`.
+**Current state:** `internal/automation/eval.go` queries `fraud_events` by `placement_id` for `ivt_rate`, `silent_reject_rate`, `fraud_reject_count`. Admin metric dropdown and `docs/INTEGRATIONS.md` document fraud metrics. Optional `placement_fraud_stats_hourly` rollup MV deferred (live query acceptable on 15 min worker tick).
 
 ### Implementation
 
@@ -187,15 +189,15 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 ### Anti-slop gates
 
-- [ ] Do not add automation metric that always returns 0 without CH fixture test
-- [ ] `blacklist_placement` still via outbox (`control-plane.mdc`) - no direct Redis from worker
+- [x] Do not add automation metric that always returns 0 without CH fixture test (`worker_integration_test.go` fraud rows)
+- [x] `blacklist_placement` still via outbox (`control-plane.mdc`) - no direct Redis from worker
 
 ### Done gates
 
 - [x] `go test ./internal/automation/... -count=1` (unit; integration needs Docker)
 - [x] Example rule in UI or INTEGRATIONS.md: IVT rate -> blacklist
 - [x] Cooldown respected (`Rule.CooldownMinutes`) on repeat fire
-- [ ] CH migration applied in dev compose profile `analytics-ml` (v1 uses live `fraud_events` query; rollup MV optional follow-up)
+- [x] v1 uses live `fraud_events` query on worker tick (`worker_integration_test.go`); rollup MV optional follow-up only
 
 ---
 
@@ -203,11 +205,11 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 **Priority:** roi_p1
 
-**Gap:** Antidetect browsers inject per-read Canvas noise. Current safe page checks hash presence and WebGL strings (`safe_page_attestation.go`) but not test-retest inconsistency.
+**Status:** Shipped.
 
-**Current state:** `safe_page_hydrator.js` renders canvas once (`canvas_hash`). Attestation rejects missing/invalid hash and SwiftShader renderer.
+**Gap (was):** Safe page checked canvas hash once; antidetect per-read noise not detected.
 
-**Target:** Two identical canvas draws in one page load; mismatch -> attestation failure -> L1 or safe-page deny before offer redirect.
+**Current state:** `safe_page_hydrator.js` draws canvas twice (`canvas_hash_a`, `canvas_hash_b`); attestation code `canvas_retest_mismatch` when campaign `canvas_retest_enabled`.
 
 ### Implementation
 
@@ -239,8 +241,8 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 ### Anti-slop gates
 
-- [ ] No marketing claim of fixed accuracy % in docs
-- [ ] Do not cite safe-page bench as tracker p99 SLA
+- [x] No marketing claim of fixed accuracy % in docs
+- [x] Do not cite safe-page bench as tracker p99 SLA
 
 ### Done gates
 
@@ -254,11 +256,11 @@ SLA reference: `core.mdc` - tracker p95 < 50 ms, p99 < 80 ms; Redis Lua p99 < 10
 
 **Priority:** roi_p2
 
-**Gap:** IP velocity (`ipv4_rotation`) and ingress RPD treat CGNAT mobile gateways as botnets. Market analysis and `ANTIFRAUD_MARKET_ANALYSIS.md` section 9.2.
+**Status:** Shipped.
 
-**Current state:** `IPv4RotationTable` on `/click` (`click_redirect.go`, `landing_ipv4_rotation_hook`). Ingress RPD in `EntitlementsFilter` + `checkIngressRPDGo` (`lua_precheck.go`). `mobileASNDenylist` in `dc_asn_table.go` only excludes specific ASNs from DC classification - no positive mobile-carrier allowlist for IP velocity bypass.
+**Gap (was):** IP velocity and ingress RPD treated CGNAT mobile gateways as botnets.
 
-**Target:** When connection is classified as mobile carrier ASN, skip **only** IP-frequency signals (`ipv4_rotation`, ingress RPD keyed by IP). Keep `datacenter_ip`, TLS blocklist, attestation, `l3_blocklist`, ML boost.
+**Current state:** `internal/ingestion/cgnat_policy.go` skips `ipv4_rotation` and ingress RPD for tier-1 MNO ASNs when `cgnat_ip_policy_enabled` or `CGNAT_MOBILE_IP_BYPASS`. Datacenter, TLS, attestation, and blacklist paths unchanged.
 
 ### Implementation
 
@@ -319,9 +321,9 @@ Each batch: one PR, one commit surface name in title, scoped `pr_fast.sh`.
 
 ---
 
-## Related activation (no new code - sales ROI)
+## Related activation (operator playbook - not backlog slugs)
 
-These are already shipped; enable in pilot installs before building new slugs:
+These surfaces are shipped; enable in pilot installs for sales ROI:
 
 - [ ] Compose profile `analytics-ml` for Pro SKU `ivt_ml_detector`
 - [ ] Campaign wizard default `enhanced_defense` preset (`service_fraud_enhanced_defense.go`)

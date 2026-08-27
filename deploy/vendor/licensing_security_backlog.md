@@ -16,7 +16,7 @@ Cross-reference slugs in PR descriptions. Do not close a slug until every applic
 | :--- | :--- | :--- |
 | Root on appliance | Run without paying; clone license | HWID bind, trial registry at issue time, host activation limits |
 | Root on appliance | Patch binary or hook memory | `license_guard` (Linux release), text hash, ptrace watchdog, maps scan |
-| Root on appliance | Replace pubkey / JWT without patch | **Gap:** `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` and `deploy/vendor/license_public.key` |
+| Root on appliance | Replace pubkey / JWT without patch | Embedded pubkey only in production profile (`pubkey_production_fail_closed`) |
 | Binary-only reverser | Find branch after `ed25519.Verify` | garble, release strings gates, seed coupling, MCK |
 | Operator mistake | Leave guard off in prod | Env kill switches documented; production profile should fail closed |
 
@@ -56,7 +56,7 @@ Rule: licensing security
 
 Rule: misdirection (decoy surfaces)
 
-- [ ] Decoy functions are **not** reachable from production call graph (holdout test or `go test` call-graph audit)
+- [x] Decoy functions are **not** reachable from production call graph (holdout test or `go test` call-graph audit)
 - [ ] No fake `ACTIVE` in admin API or metrics when ingest is blocked (`anti-slop.mdc` lie modes)
 - [ ] No honeypot env vars documented in operator install paths
 - [ ] Hot path still has zero `ed25519.Verify` and no new heap allocs (`hot-path.mdc`)
@@ -65,8 +65,8 @@ Rule: misdirection (decoy surfaces)
 Rule: cost amplification (memory-hard / multi-binary)
 
 - [ ] Argon2id and other memory-hard KDF run only on boot, recheck goroutine, or tamper probe - never in `LicenseFilter.Check` or `/track`
-- [ ] New MCK consumers fail closed when `FeatureSeedValid()` false; no partial appliance crack (tracker-only) without explicit dev profile
-- [ ] `mck_derivation.json` / HKDF golden vectors updated when `mckInfoLabel` or IKM layout changes
+- [x] New MCK consumers fail closed when `FeatureSeedValid()` false; no partial appliance crack (tracker-only) without explicit dev profile
+- [x] `mck_derivation.json` / HKDF golden vectors updated when `mckInfoLabel` or IKM layout changes
 - [ ] Benchmark recheck stretch: document ms and RSS on reference SKU in PR when touching Argon2 on recheck
 
 ---
@@ -86,8 +86,8 @@ Rule: cost amplification (memory-hard / multi-binary)
 | Runtime guard | `license_guard` tag: text SHA256, TracerPid, maps needles, ptrace child | `LICENSE_GUARD=1` in `release_garble.sh` |
 | garble | `mvdan.cc/garble@v0.15.0`; literals default on control/processor only | `RELEASE_GARBLE=1` |
 | CI red team | `make license-red-team`, `license_verify_tier.sh`, extended steps 7-10 | Linux gates |
-| License recheck | `StartLicenseRecheck` in **tracker only** (`cmd/tracker/main.go`) | control/processor: guard only |
-| MCK consumers | unified-filter sealed lua, edge BPF sealed | processor/control sealed assets: **gap** |
+| License recheck | `StartFileLicenseRecheck` in tracker (registry), processor, control | guard only |
+| MCK consumers | unified-filter sealed lua, edge BPF sealed, processor CH policy, control runtime policy | processor/control sealed assets: **shipped** |
 
 ---
 
@@ -95,38 +95,38 @@ Rule: cost amplification (memory-hard / multi-binary)
 
 | Slug | Priority | Gap | Est. effort |
 | :--- | :--- | :--- | :--- |
-| `licensing_pentest_playbook` | sec_p0 | No single operator pentest runbook | S |
-| `ed25519_alg_pin_and_claims` | sec_p0 | Header `alg` not pinned to EdDSA | S |
-| `pubkey_production_fail_closed` | sec_p0 | Env/file pubkey override on prod profile | M |
-| `license_guard_release_matrix` | sec_p0 | Garbled red-team build sets `LICENSE_GUARD=0` | S |
-| `argon2_hwid_params_rfc9106` | sec_p1 | Params not documented vs RFC 9106 / OWASP | S |
-| `argon2_hwid_telemetry_expand` | sec_p2 | No disk serial fallback chain doc; no machine-id in v2 | M |
-| `garble_seed_and_literals_policy` | sec_p1 | Tracker literals p99 lab optional; seed discipline | S-M |
-| `garble_strings_surface_audit` | sec_p1 | XOR masks recoverable; expand forbidden patterns | S |
-| `license_guard_ptrace_fail_closed` | sec_p1 | Yama `skip` continues with warn only | M |
-| `license_guard_frida_needles` | sec_p2 | Maps scan list is short | S |
-| `mck_seed_coupling_mandatory_release` | sec_p1 | Seed off in dev/unsealed mode only by design | S |
-| `asset_seal_salt_release_gate` | sec_p1 | `ASSET_SEAL_SALT` optional in CI | S |
-| `hwid_spoof_lab_fixture` | sec_p1 | No documented KVM/sysfs spoof drill | M |
-| `binary_patch_lab_procedure` | sec_p2 | Manual CFG patch not in CI catalog | S (doc only) |
-| `license_decoy_verify_unreachable` | misdirect_p1 | Single obvious Verify branch is the real gate | M |
-| `license_decoy_pubkey_candidate` | misdirect_p1 | One recoverable XOR pubkey block in binary | S |
-| `license_state_derivatives_only` | misdirect_p1 | `state==ACTIVE` patchable without MCK/seed path | M |
-| `license_sealed_decoy_embed` | misdirect_p1 | Obvious plaintext Lua/BPF looks like the asset gate | M |
-| `license_hot_path_no_crypto_anchor` | misdirect_p1 | Reverser can anchor on Verify near ingest | S (audit gate) |
-| `license_guard_decoupled_trip` | misdirect_p2 | Guard trip correlates visibly with patched branch | S |
-| `license_cold_near_gates_catalog` | misdirect_p2 | Too few decoy cold functions that look like enforcement | S |
-| `mck_argon2_recheck_stretch` | cost_p1 | MCK derivation cheap; brute-force JWT/HWID combos low RAM cost | M |
-| `license_recheck_processor_control` | cost_p1 | Crack tracker-only sufficient for partial appliance | M |
-| `entitlements_mck_bitwise_coupling` | cost_p1 | JWT feature flags patchable without MCK byte agreement | M |
-| `license_file_hmac_sidecar` | cost_p1 | Replace `license.jwt` on disk without second check | S |
-| `mck_hkdf_kid_in_ikm` | cost_p1 | `kid` rotation does not invalidate derived MCK | S |
-| `sealed_assets_processor_control` | cost_p1 | Only tracker consumes sealed blobs today | M |
-| `processor_settlement_seed_gate` | cost_p1 | Processor cold path ignores `FeatureSeedValid` | M |
-| `mck_info_label_release_version` | cost_p1 | No per-release break of old cracks via HKDF info bump | S |
-| `guard_tamper_argon2_before_trip` | cost_p2 | Automated patch fuzz cheap vs guard | S |
-| `license_recheck_jitter` | cost_p2 | Fixed 5m recheck window easy to race in lab | S |
-| `license_epoch_pubsub_sync` | cost_p2 | Tracker/control/processor epoch drift after partial crack | M |
+| `licensing_pentest_playbook` | sec_p0 | No single operator pentest runbook | S | **Shipped** |
+| `ed25519_alg_pin_and_claims` | sec_p0 | Header `alg` not pinned to EdDSA | S | **Shipped** |
+| `pubkey_production_fail_closed` | sec_p0 | Env/file pubkey override on prod profile | M | **Shipped** |
+| `license_guard_release_matrix` | sec_p0 | Garbled red-team build sets `LICENSE_GUARD=0` | S | **Shipped** |
+| `argon2_hwid_params_rfc9106` | sec_p1 | Params not documented vs RFC 9106 / OWASP | S | **Shipped** |
+| `argon2_hwid_telemetry_expand` | sec_p2 | No disk serial fallback chain doc; no machine-id in v2 | M | **Shipped** |
+| `garble_seed_and_literals_policy` | sec_p1 | Params not documented vs RFC 9106 / OWASP | S | **Shipped** |
+| `garble_strings_surface_audit` | sec_p1 | XOR masks recoverable; expand forbidden patterns | S | **Shipped** |
+| `license_guard_ptrace_fail_closed` | sec_p1 | Yama `skip` continues with warn only | M | **Shipped** |
+| `license_guard_frida_needles` | sec_p2 | Maps scan list is short | S | **Shipped** |
+| `mck_seed_coupling_mandatory_release` | sec_p1 | Seed off in dev/unsealed mode only by design | S | **Shipped** |
+| `asset_seal_salt_release_gate` | sec_p1 | `ASSET_SEAL_SALT` optional in CI | S | **Shipped** |
+| `hwid_spoof_lab_fixture` | sec_p1 | No documented KVM/sysfs spoof drill | M | **Shipped** |
+| `binary_patch_lab_procedure` | sec_p2 | Manual CFG patch not in CI catalog | S (doc only) | **Shipped** |
+| `license_decoy_verify_unreachable` | misdirect_p1 | Single obvious Verify branch is the real gate | M | **Shipped** |
+| `license_decoy_pubkey_candidate` | misdirect_p1 | One recoverable XOR pubkey block in binary | S | **Shipped** |
+| `license_state_derivatives_only` | misdirect_p1 | `state==ACTIVE` patchable without MCK/seed path | M | **Shipped** |
+| `license_sealed_decoy_embed` | misdirect_p1 | Obvious plaintext Lua/BPF looks like the asset gate | M | **Shipped** |
+| `license_hot_path_no_crypto_anchor` | misdirect_p1 | Reverser can anchor on Verify near ingest | S (audit gate) | **Shipped** |
+| `license_guard_decoupled_trip` | misdirect_p2 | Guard trip correlates visibly with patched branch | S | **Shipped** |
+| `license_cold_near_gates_catalog` | misdirect_p2 | Too few decoy cold functions that look like enforcement | S | **Shipped** |
+| `mck_argon2_recheck_stretch` | cost_p1 | MCK derivation cheap; brute-force JWT/HWID combos low RAM cost | M | **Shipped** |
+| `license_recheck_processor_control` | cost_p1 | Crack tracker-only sufficient for partial appliance | M | **Shipped** |
+| `entitlements_mck_bitwise_coupling` | cost_p1 | JWT feature flags patchable without MCK byte agreement | M | **Shipped** |
+| `license_file_hmac_sidecar` | cost_p1 | Replace `license.jwt` on disk without second check | S | **Shipped** |
+| `mck_hkdf_kid_in_ikm` | cost_p1 | `kid` rotation does not invalidate derived MCK | S | **Shipped** |
+| `sealed_assets_processor_control` | cost_p1 | Only tracker consumes sealed blobs today | M | **Shipped** |
+| `processor_settlement_seed_gate` | cost_p1 | Processor cold path ignores `FeatureSeedValid` | M | **Shipped** |
+| `mck_info_label_release_version` | cost_p1 | No per-release break of old cracks via HKDF info bump | S | **Shipped** |
+| `guard_tamper_argon2_before_trip` | cost_p2 | Automated patch fuzz cheap vs guard | S | **Shipped** |
+| `license_recheck_jitter` | cost_p2 | Fixed 5m recheck window easy to race in lab | S | **Shipped** |
+| `license_epoch_pubsub_sync` | cost_p2 | Tracker/control/processor epoch drift after partial crack | M | **Shipped** |
 
 ---
 
@@ -232,7 +232,7 @@ bash scripts/ci/release_strings_gate.sh bin/garbled-release/tracker
 | PT-B02 | garble literals policy | `garble_literals_policy_gate.sh` exit 0 |
 | PT-B03 | Red team on garbled tree | `license_red_team.sh` exit 0 |
 
-**Known gap (track under `license_guard_release_matrix`):** `license_red_team_garbled.sh` currently sets `LICENSE_GUARD=0`. Tier B does **not** prove guard on release binary until fixed.
+**Known gap:** none for Tier B guard (`license_guard_release_matrix` shipped 2026-08-26).
 
 #### Tier C - Runtime guard lab (Linux + gdb)
 
@@ -253,13 +253,13 @@ go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
 
 | ID | Procedure | Pass criteria (defense holds) |
 | :--- | :--- | :--- |
-| PT-D01 | Config pubkey injection | Set `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` to attacker key, place attacker-signed `var/license.jwt` | **Until `pubkey_production_fail_closed`:** ingest works (document as residual risk). After fix: tracker refuses start or ingest EXPIRED |
+| PT-D01 | Config pubkey injection | Set `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` to attacker key, place attacker-signed `var/license.jwt` | Ingest EXPIRED: production profile ignores env/file pubkey (`pubkey_production_fail_closed`) |
 | PT-D02 | Guard kill switch | `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` on release build | Process starts; gdb attach succeeds; document as lab-only |
 | PT-D03 | HWID sysfs spoof | KVM guest with bind-mounted fake `product_uuid`, disk serial, MAC | Valid license on donor HWID works only when telemetry matches; mismatch -> EXPIRED |
-| PT-D04 | Patch `LicenseFilter` only | Binary patch or runtime return 0 from filter | Ingest may pass state check but RPS/OpenRTB blocked when seed coupling on (`PT-A04`) |
+| PT-D04 | Patch `LicenseFilter` only | Binary patch or runtime return 0 from filter | Ingest may pass state check but RPS/OpenRTB blocked when seed coupling on (`PT-A04`); `bash scripts/lab/binary_patch_lab.sh` |
 | PT-D05 | Pubkey XOR recovery | Recover embed from `masked^mask` in binary | Attacker can derive vendor pubkey offline; must still forge JWT private key or patch verify |
 | PT-D06 | Frida gadget maps | Inject `frida-agent.so`, check `/proc/self/maps` | Guard trips within one probe interval (3-8 s) -> ingest EXPIRED |
-| PT-D07 | `.text` in-memory patch | `gdb` write byte in executable segment (if attach allowed) | `text_tamper` trip when guard on |
+| PT-D07 | `.text` in-memory patch | `gdb` write byte in executable segment (if attach allowed) | `text_tamper` trip when guard on; manual steps in `deploy/vendor/fixtures/binary_patch/README.md` |
 | PT-D08 | Replace `license_public.key` on disk | Drop attacker pubkey at `deploy/vendor/license_public.key` | Same residual risk as PT-D01 |
 
 #### Tier E - Misdirection (automated + manual)
@@ -306,7 +306,7 @@ go test ./internal/controlplane/ -run 'License|FeatureSeed' -count=1
 - [x] `scripts/security/license_pentest.sh` runs tiers A-C
 - [x] `make license-pentest` entrypoint
 - [x] `docs/DEVELOPMENT.md` links to this slug
-- [ ] Tier D steps PASS/FAIL table updated after hardening slugs land
+- [x] Tier D steps PASS/FAIL table updated after hardening slugs land
 
 ---
 
@@ -314,7 +314,9 @@ go test ./internal/controlplane/ -run 'License|FeatureSeed' -count=1
 
 **Priority:** sec_p0
 
-**Gap:** `VerifyJWT` verifies signature with provided key but does not require JWS header `alg:"EdDSA"` (or `Ed25519`). An implementation that ever accepted multiple algs would be vulnerable to confusion; pin explicitly.
+**Status:** Shipped.
+
+**Gap (was):** `VerifyJWT` verified signature with provided key but did not require JWS header `alg:"EdDSA"`.
 
 ### Implementation
 
@@ -328,7 +330,12 @@ go test ./internal/controlplane/ -run 'License|FeatureSeed' -count=1
 go test ./internal/licensing/ -run 'WrongAlg|AlgPin' -count=1
 ```
 
-Craft token with header `{"alg":"HS256","kid":"2026-01"}` and Ed25519 sig; expect `ErrInvalidSignature` or dedicated alg error.
+Craft token with header `{"alg":"HS256","kid":"2026-01"}` and Ed25519 sig; expect `ErrInvalidAlgorithm`.
+
+### Done gates
+
+- [x] `validateJWTHeaderAlg` rejects `none`, empty, and non-EdDSA before verify
+- [x] `go test ./internal/licensing/ -run 'WrongAlg|none alg|empty alg' -count=1`
 
 ---
 
@@ -336,7 +343,9 @@ Craft token with header `{"alg":"HS256","kid":"2026-01"}` and Ed25519 sig; expec
 
 **Priority:** sec_p0
 
-**Gap:** `ResolvePublicKey()` honors `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` and filesystem paths before embed. Root on buyer VPS can sign unlimited licenses without touching the binary.
+**Status:** Shipped.
+
+**Gap (was):** `ResolvePublicKey()` honored `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY` and filesystem paths before embed on production profile.
 
 ### Implementation
 
@@ -350,8 +359,14 @@ Craft token with header `{"alg":"HS256","kid":"2026-01"}` and Ed25519 sig; expec
 ```bash
 # After implementation
 AD_EVENT_PROCESSOR_PROFILE=production AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY="$(cat attacker.pub)" \
-  go test ./tests/integration/ -run LicenseProtection -count=1
+  go test ./tests/integration/ -run LicenseProtection_productionProfileIgnoresAttackerPubKeyEnv -count=1
 ```
+
+### Done gates
+
+- [x] Production profile uses embedded pubkey unless `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY_OVERRIDE=1`
+- [x] Override logs one startup warning
+- [x] Unit + integration holdout tests
 
 ---
 
@@ -359,7 +374,9 @@ AD_EVENT_PROCESSOR_PROFILE=production AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY="$(c
 
 **Priority:** sec_p0
 
-**Gap:** `scripts/ci/license_red_team_garbled.sh` exports `LICENSE_GUARD=0`, so garbled release artifact is not guard-tested in CI.
+**Status:** Shipped.
+
+**Gap (was):** `scripts/ci/license_red_team_garbled.sh` exported `LICENSE_GUARD=0`, so garbled release artifact was not guard-tested in CI.
 
 ### Implementation
 
@@ -375,19 +392,27 @@ LICENSE_GDB_SMOKE=1 go test -tags=license_guard ./internal/licensing/ -run GDBAt
 bash scripts/ci/release_strings_gate.sh /tmp/guarded/tracker
 ```
 
+### Done gates
+
+- [x] `license_red_team_garbled.sh` defaults `LICENSE_GUARD=1`
+- [x] Guard unit tests run after garbled build
+- [x] `LICENSE_GUARD=0` remains available for lab smoke (`license_guard_off_smoke.sh`)
+
 ---
 
 ## `argon2_hwid_params_rfc9106`
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** Parameters work but are not justified in operator docs; risk of arbitrary tuning without measurement.
 
 ### Implementation
 
-1. Add table to `deploy/vendor/KEYS.md` or `licensing.mdc` citing RFC 9106 type=id, m=64MiB, t=3, p=4.
-2. Add `TestHWID_ArgonParamsDocumented` or comment constant block in `hwid.go` with RFC reference (one line).
-3. Benchmark: `go test ./internal/licensing/ -bench=BenchmarkHostHWID -benchmem` on reference VPS SKU; record ms in backlog PR.
+1. Table in `deploy/vendor/KEYS.md` citing RFC 9106 Argon2id m=64 MiB, t=3, p=4.
+2. `TestHWID_ArgonParamsDocumented` + RFC comment in `hwid.go`.
+3. `BenchmarkHostHWID` in `hwid_bench_test.go`.
 
 ### Pentest
 
@@ -401,6 +426,8 @@ bash scripts/ci/release_strings_gate.sh /tmp/guarded/tracker
 ## `argon2_hwid_telemetry_expand`
 
 **Priority:** sec_p2
+
+**Status:** **Shipped** (2026-08-26)
 
 **Gap:** `machine-id` is in legacy fingerprint only, not Argon2 v2; no PCIe/NIC ring claims (do not add fake signals). Optional: stable `systemd-id128` when DMI absent on cloud.
 
@@ -425,13 +452,16 @@ Pass: mismatch vs donor license -> `ErrFingerprintMismatch` on recheck.
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** `GARBLE_SEED` optional locally; tracker `-literals` impact measured only when `GARBLE_LITERALS_P99_SMOKE=1`.
 
 ### Implementation
 
-1. CI release: fail if `GARBLE_SEED` unset (`release_garble.sh` already warns; promote to error in release workflow).
+1. CI release: fail if `GARBLE_SEED` unset (`release_garble.sh` via `release_garble_seed_ok`; `RELEASE_GARBLE_SKIP_SEED=1` local only).
 2. Record decision: tracker stays `GARBLE_LITERALS=0` unless `garble_literals_p99_smoke.sh` passes with <12% p99 regression.
 3. Document `GARBLE_LITERALS_TRACKER=1` as experimental in `docs/DEVELOPMENT.md`.
+4. `garble_literals_policy_gate.sh` asserts seed policy; `garble_literals_eval.sh` exports default eval seed.
 
 ### Pentest
 
@@ -446,13 +476,15 @@ GARBLE_LITERALS_P99_SMOKE=1 bash scripts/test/garble_literals_p99_smoke.sh
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** XOR pubkey masks are recoverable; gates block obvious hex but not reconstructed key.
 
 ### Implementation
 
-1. Extend `release_strings_gate.sh` with patterns from pentest findings (e.g. consecutive mask bytes if garble misses).
-2. Run `strings` + `rg` on garbled tracker/processor/control in CI.
-3. Consider splitting masks across compile-time constants in different packages (not one function).
+1. `scripts/lib/release_strings_patterns.sh`: core symbol anchors on all garbled binaries; extended patterns (`license_public`, `embeddedPubKey`, `EdDSA`) and raw embedkey byte needles on processor/control only (`-literals=1`; tracker literals off keeps path strings).
+2. `release_strings_gate.sh` scans garbled tracker/processor/control in `license_red_team_garbled.sh` and tier B pentest.
+3. Split embedkey material into `internal/licensing/embedkey/` (`material.go`, `xor_mask.go`).
 
 ### Pentest
 
@@ -474,13 +506,15 @@ Pass: no `VerifyJWT`, `internal/licensing`, or raw vendor pubkey hex.
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** When ptrace watchdog returns `skip` (Yama `ptrace_scope`), process continues with warn only.
 
 ### Implementation
 
-1. Add `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE_REQUIRED=1` for production profile: trip or refuse start on `skip`.
-2. Default remain lenient for dev laptops.
-3. Document `/proc/sys/kernel/yama/ptrace_scope` for install guide.
+1. `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE_REQUIRED=1` trips guard on `skip`; default on production profile when license required.
+2. Dev laptops: set `GUARD_PTRACE_REQUIRED=0` or use `LICENSE_MODE=dev`.
+3. `docs/DEVELOPMENT.md` documents `ptrace_scope`.
 
 ### Pentest
 
@@ -496,6 +530,8 @@ bash scripts/test/license_gdb_guard_smoke.sh
 ## `license_guard_frida_needles`
 
 **Priority:** sec_p2
+
+**Status:** **Shipped** (2026-08-26)
 
 **Gap:** `guardSuspiciousMapNeedles` is a fixed XOR list (frida, gdb, vmm).
 
@@ -515,12 +551,14 @@ PT-D06: load Frida with renamed `.so` -> expect bypass (document residual risk).
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** `LicenseSeedCouplingEnabled()` false in dev/unsealed mode by design; release must always enable for sealed SKUs.
 
 ### Implementation
 
-1. `release_strings_gate` or install preflight: assert `AD_EVENT_PROCESSOR_LICENSE_MODE` in `file,enterprise` for production compose template.
-2. Assert `LicenseAssetsUnsealed()` false in `deploy/compose/docker-compose.prod.yaml` (or equivalent).
+1. `scripts/ci/mck_seed_coupling_release_gate.sh` asserts install templates default `LICENSE_MODE=file` (not dev).
+2. Wired in `license_red_team.sh`.
 
 ### Pentest
 
@@ -536,12 +574,15 @@ Patch-only license bypass without valid MCK: RPS filter returns `ErrRateLimitExc
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** `ASSET_SEAL_SALT` injected via `-ldflags` only when set; release without salt weakens HKDF salt for asset AEAD.
 
 ### Implementation
 
-1. Require `ASSET_SEAL_SALT` in GitHub release workflow (`release-images.yaml`).
-2. `asset_seal_salt_smoke.sh` already gated when env set; promote to release tier.
+1. `release_garble.sh` requires `ASSET_SEAL_SALT` (same local skip as `GARBLE_SEED`).
+2. `asset_seal_salt_smoke.sh` fails when `RELEASE_GARBLE=1` without salt.
+3. `license_red_team_garbled.sh` exports default eval salt; GitHub `release-images.yaml` already computes per-tag salt.
 
 ### Pentest
 
@@ -559,12 +600,14 @@ Tamper sealed blob one byte -> `ErrSealTampered`.
 
 **Priority:** sec_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** No reproducible HWID spoof environment for QA.
 
 ### Implementation
 
-1. Add `deploy/vendor/fixtures/hwid_spoof/README.md` with bind-mount recipes for QEMU/libvirt.
-2. Optional `scripts/lab/hwid_collect.sh` printing canonical fields and Argon2 hash using same code path as `HostHWID()`.
+1. `deploy/vendor/fixtures/hwid_spoof/README.md` with bind-mount recipes for QEMU/libvirt.
+2. `scripts/lab/hwid_collect.sh` + `TestHWID_LabCollectPrint` / `LabCollectHWID()`.
 
 ### Pentest
 
@@ -576,7 +619,15 @@ Manual PT-D03 with fixture; record hash match/mismatch in test report template.
 
 **Priority:** sec_p2
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** CFG patching narrative untested; document expected behavior vs guard.
+
+### Implementation
+
+1. Manual procedure: `deploy/vendor/fixtures/binary_patch/README.md`.
+2. CI catalog: `bash scripts/lab/binary_patch_lab.sh` (PT-D04/D07/E08 automated proxies).
+3. Wired in `license_red_team_extended.sh` step 11 and `license_pentest.sh` tier D.
 
 ### Procedure (lab only)
 
@@ -639,17 +690,15 @@ Pass for defense: combined layers block realistic crack path per PT-D04 + PT-A04
 
 **Priority:** misdirect_p1
 
-**Gap:** Reverser searching for `ed25519.Verify` or a post-verify branch finds one CFG that appears to gate runtime. Today the real gate is snapshot + derivatives; there is no deliberate decoy chain.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** A full duplicate-looking verify path (call -> test -> branch) that is never invoked from `VerifyLicenseFile`, `recheckLicenseFile`, or `cmd/*/main` production wiring.
+**Gap:** Reverser searching for `ed25519.Verify` or a post-verify branch finds one CFG that appears to gate runtime. Today the real gate is snapshot + derivatives; there is no deliberate decoy chain.
 
 ### Implementation
 
-1. Add `internal/licensing/decoy_verify.go` (or `internal/licensing/decoy/` package) built always but called only from `init` registration that production linker strips, or from functions referenced solely by decoy tables.
-2. Decoy chain: resolve pubkey (use **decoy** XOR block) -> `ed25519.Verify` -> set package-level `decoyLicensed` bool -> log at debug level neutral message (`deployment credential refresh skipped`).
-3. **Do not** wire `decoyLicensed` into `ingestion.Registry`.
-4. garble release build; ensure decoy sits near real verify in binary layout (same package neighbor file optional).
-5. Holdout: `TestDecoyVerify_UnreachableFromRecheck` walks call graph or uses `//go:linkname` forbidden list - `recheckLicenseFile` must not transitively call decoy entry.
+1. `internal/licensing/decoy_verify.go` + `decoy_public_key.go`: decoy verify chain with separate XOR pubkey.
+2. `decoyLicensed` not wired to `ingestion.Registry`.
+3. `TestDecoyVerify_UnreachableFromRecheck` scans production wiring files.
 
 ### Pentest
 
@@ -665,15 +714,15 @@ go test ./internal/licensing/ -run DecoyUnreachable -count=1
 
 **Priority:** misdirect_p1
 
-**Gap:** XOR recovery yields exactly one 32-byte candidate tied to real verify.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** Second `[32]byte` mask pair in a different compilation unit, used **only** by decoy verify. Real path unchanged.
+**Gap:** XOR recovery yields exactly one 32-byte candidate tied to real verify.
 
 ### Implementation
 
-1. `decoy_public_key.go`: `decoyPubKeyMasked` / `decoyPubKeyMask` (random bytes, not vendor key).
-2. `public_key_strings_gate` / `release_strings_gate`: still forbid **vendor** pubkey hex; decoy masks are allowed.
-3. Document in this slug: reverser with two candidates must prove which participates in MCK path (only real key + valid JWT).
+1. `decoy_public_key.go`: `decoyPubKeyMasked` / `decoyPubKeyMask` (not vendor key).
+2. `release_strings_gate` still forbids vendor pubkey hex; decoy masks allowed.
+3. `TestDecoyEmbeddedPublicKey_distinctFromProduction`.
 
 ### Pentest
 
@@ -685,16 +734,14 @@ PT-E04. Patch embed to decoy XOR result; valid vendor-signed JWT must fail verif
 
 **Priority:** misdirect_p1
 
-**Gap:** Patching snapshot `state` to `ACTIVE` may suffice when seed coupling off (dev). Release must require derivatives.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** No exported helper that collapses license health to one bool for ingest. Document internal-only accessors.
+**Gap:** Patching snapshot `state` to `ACTIVE` may suffice when seed coupling off (dev). Release must require derivatives.
 
 ### Implementation
 
-1. Audit: grep `IsLicensed`, `IngestAllowed` on hot path - keep `IngestAllowed` test-only/catalog; ingest uses filter + seed gates only.
-2. `recheckLicenseFile`: always call `PublishFeatureSeed` from MCK when seed coupling on; on verify error set `seedValid=false` even if stale state read races.
-3. Holdout: `TestLicenseStatePatchInsufficient` - mock snapshot ACTIVE with `seedValid=false` -> RPS filter rejects.
-4. Optional: derive a secondary `epoch_nonce` from JWT sig bytes mixed into snapshot (not a bool).
+1. Ingest uses filter + `SeedGateRPS` / `SeedGateOpenRTB`; `IngestAllowed` test/catalog only.
+2. `TestLicenseStatePatchInsufficient`: ACTIVE snapshot + invalid seed -> RPS filter rejects.
 
 ### Pentest
 
@@ -710,16 +757,15 @@ go test ./internal/ingestion/ -run 'seedCoupling|OpenRTBLicenseAllowed_seed' -co
 
 **Priority:** misdirect_p1
 
-**Gap:** Sealed assets are the hidden gate; only one blob label exists in tree. Reverser finding any plaintext Lua assumes it is the Redis script.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** Embed a **decoy** `//go:embed` Lua fragment (syntax-valid, plausible opcode names) not passed to `OpenAsset` with `AssetLabelUnifiedFilter` / `AssetLabelEdge`.
+**Gap:** Sealed assets are the hidden gate; only one blob label exists in tree. Reverser finding any plaintext Lua assumes it is the Redis script.
 
 ### Implementation
 
-1. `internal/ingestion/decoy_unified_filter.lua` embedded in `decoy_assets.go`; never referenced by `ResolveUnifiedFilterLua`.
-2. `internal/edge/decoy_bpf.o` or minimal ELF header blob; not loaded by `loadEdgeObjectsFromSealed`.
-3. Production path unchanged: only `OpenAsset(label, sealed, mck)` with MCK from license file.
-4. Holdout: `TestResolveUnifiedFilterLua_ignoresDecoyEmbed`.
+1. `internal/ingestion/decoy_unified_filter.lua` + `decoy_assets.go` (not used by `resolveUnifiedFilterLuaSource`).
+2. `internal/edge/decoy_assets.go` ELF-shaped stub (not used by `loadEdgeObjectsFromSealed`).
+3. Holdout tests in `decoy_assets_test.go` (ingestion + edge).
 
 ### Pentest
 
@@ -736,15 +782,14 @@ go test ./internal/edge/ -run 'Sealed|Decoy' -count=1
 
 **Priority:** misdirect_p1
 
-**Gap:** No CI assertion that tracker hot packages do not import `crypto/ed25519` for license.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** Static gate: `internal/ingestion` filter/handler files must not call `ed25519.Verify` or `licensing.VerifyJWT`.
+**Gap:** No CI assertion that tracker hot packages do not import `crypto/ed25519` for license.
 
 ### Implementation
 
-1. Add `scripts/ci/license_hot_path_anchor_gate.sh`: rg forbidden patterns in `handler*.go`, `filter_license*.go`, `registry_license.go`.
-2. Include in `license_red_team.sh` Linux block.
-3. `release_strings_gate` remains secondary check.
+1. `scripts/ci/license_hot_path_anchor_gate.sh`: forbids `ed25519.Verify` / `VerifyJWT` in `handler*.go`, `filter_license*.go`; registry recheck may call `VerifyLicenseFile` only.
+2. Wired in `license_red_team.sh` Linux block.
 
 ### Pentest
 
@@ -761,15 +806,14 @@ bash scripts/ci/release_strings_gate.sh bin/garbled-release/tracker
 
 **Priority:** misdirect_p2
 
-**Gap:** Guard and verify live in same package; reverser may assume one patch disables both.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** Document and test that `tripGuard` does not require passing through verify; text hash failure invalidates epoch independently.
+**Gap:** Guard and verify live in same package; reverser may assume one patch disables both.
 
 ### Implementation
 
-1. Keep guard in `guard_linux.go`; no shared `if licensed` wrapper with verify.
-2. Holdout: `TestGuard_TextTamper` already trips without JWT calls; add `TestGuard_TripWithoutVerifyCall` with verify mocked to always succeed.
-3. Optional: move decoy verify to separate package from guard to widen disasm distance.
+1. Guard trips via `runGuardProbe` without calling verify (`TestGuard_TripWithoutVerifyCall`, `TestGuard_TextTamper`).
+2. Decoy verify in separate files from `guard_linux.go`.
 
 ### Pentest
 
@@ -785,16 +829,14 @@ go test -tags=license_guard ./internal/licensing/ -run 'Guard_TextTamper|Guard_T
 
 **Priority:** misdirect_p2
 
-**Gap:** Few cold functions **look** like enforcement (`CheckHostActivation`, skew watch, `IngestAllowed` in tests). Reverser short list is small.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** Add 2-3 decoy cold functions with neutral names (`deploymentCredentialRefresh`, `runtimeEntitlementSnapshot`) that perform no-op or metrics-only work, called from harmless startup paths (not ingest).
+**Gap:** Few cold functions **look** like enforcement (`CheckHostActivation`, skew watch, `IngestAllowed` in tests). Reverser short list is small.
 
 ### Implementation
 
-1. `internal/licensing/decoy_cold.go`: functions that read license file path, hash path string, return nil - **no effect** on snapshot.
-2. Call from `cmd/control/main.go` behind `if false` eliminated by compiler, or from decoy init only - prefer **reachable but harmless** once at startup so symbols exist: e.g. compute unused checksum logged at `slog.Debug` only when `LICENSE_MODE=dev`.
-3. **Do not** call from tracker hot startup in production profile.
-4. Document real vs decoy catalog in this section table.
+1. `decoy_cold.go`: `DeploymentCredentialRefresh`, `RuntimeEntitlementSnapshot` (no snapshot effect).
+2. `cmd/control/main.go` calls decoy cold paths once at startup when `LICENSE_MODE=dev` (debug log only).
 
 ### Real vs decoy catalog (maintain when adding slugs)
 
@@ -807,9 +849,9 @@ go test -tags=license_guard ./internal/licensing/ -run 'Guard_TextTamper|Guard_T
 | `StartLicenseGuard` / `runGuardProbe` | **Real** tamper response |
 | `CheckHostActivation` | **Real** multi-host bind (cold) |
 | `IngestAllowed` | Catalog/tests; not hot path |
-| `decoyVerify*` (planned) | **Decoy** only |
-| `decoyPubKey*` (planned) | **Decoy** only |
-| `deploymentCredentialRefresh` (planned) | **Decoy** cold |
+| `decoyVerify*` | **Decoy** only (`decoy_verify.go`) |
+| `decoyPubKey*` | **Decoy** only (`decoy_public_key.go`) |
+| `DeploymentCredentialRefresh` / `RuntimeEntitlementSnapshot` | **Decoy** cold (`decoy_cold.go`) |
 
 ### Pentest
 
@@ -828,7 +870,7 @@ Manual: enumerate exported licensing symbols in garbled binary; confirm multiple
 ```text
 license.jwt (disk)
   -> Ed25519 verify + HWID bind (recheck, tracker)
-  -> MCK = HKDF(ikm=sig|payload|hwid, salt=deployment_id, info=license-mck-v1)
+  -> MCK = HKDF(ikm=sig|payload|hwid|kid, salt=deployment_id, info=license-mck-v2)
   -> feature_seed = f(MCK) -> SeedGateRPS / SeedGateOpenRTB
   -> OpenAsset(MCK, label) -> unified-filter.lua, edge BPF
   -> guard epoch / skew watch -> seed_valid=false
@@ -841,7 +883,7 @@ license.jwt (disk)
 | Surface | Allowed | Forbidden |
 | :--- | :--- | :--- |
 | `HostHWID()` boot (`sync.Once`) | Argon2id m=64MiB t=3 p=4 | - |
-| `recheckLicenseFile` goroutine | Argon2id stretch of MCK (proposed) | - |
+| `recheckLicenseFile` goroutine | Argon2id stretch of MCK (`StretchMCKForRecheck`) | - |
 | `runGuardProbe` on tamper signal | optional Argon2 before trip (proposed) | - |
 | `LicenseFilter.Check`, `/track` | atomic load only | Argon2, Ed25519, HKDF |
 
@@ -876,16 +918,18 @@ Full appliance crack (tracker + processor + control + sealed assets): **~80-150 
 
 **Priority:** cost_p1
 
+**Status:** **Shipped** (2026-08-26)
+
 **Gap:** `DeriveMCK` is HKDF-only (fast). Attacker scripts can try many JWT/HWID combinations at negligible RAM cost between rechecks.
 
 **Target:** After successful HKDF MCK, derive `MCK_work = Argon2id(MCK, salt=deployment_id, m=64MiB, t=3, p=4)` on **recheck only**. `FeatureSeedFromMCK` reads `MCK_work`.
 
 ### Implementation
 
-1. Add `stretchMCKForRecheck([32]byte, deploymentID string) ([32]byte, error)` in `derive.go`; reuse `hwidArgon*` constants or document separate `mckArgon*` if tuned differently.
-2. Call only from `registry_license.recheckLicenseFile`, not from `DeriveMCK` unit tests without stretch flag, or gate with build tag for golden vectors.
-3. Update `testdata/mck_derivation.json` with `mck_stretch_v1` fixtures.
-4. Bench on reference SKU: log `recheck_mck_stretch_ms` and max RSS in PR.
+1. `StretchMCKForRecheck` in `mck_stretch.go` (reuses `hwidArgon*` constants).
+2. `registry_license.recheckLicenseFile` calls `DeriveMCKWorkForRecheckFromLicenseFile` for seed coupling.
+3. `testdata/mck_derivation.json` `mck_stretch_v1` fixtures; `BenchmarkStretchMCKForRecheck`.
+4. `DeriveMCK` / `OpenAsset` paths unchanged (unstretched HKDF MCK).
 
 ### Pentest
 
@@ -901,16 +945,16 @@ go test ./internal/licensing/ -run 'DeriveMCK|ArgonRecheck|FeatureSeed' -count=1
 
 **Priority:** cost_p1
 
-**Gap:** `StartLicenseRecheck` only in `cmd/tracker/main.go`. Partial crack: patch tracker snapshot, leave control API and processor settlement.
+**Status:** **Shipped** (2026-08-26)
 
-**Target:** Same `RegistryLicenseConfig` recheck in `cmd/control/main.go` and `cmd/processor/main.go` (or shared `licensing.StartFileLicenseWatcher` helper).
+**Gap:** `StartLicenseRecheck` only in `cmd/tracker/main.go`. Partial crack: patch tracker snapshot, leave control API and processor settlement.
 
 ### Implementation
 
-1. Extract watcher from `ingestion.Registry` into `internal/licensing/file_watcher.go` publishing epoch + seed to atomics shared interface.
-2. control: gate enterprise-only routes on `FeatureSeedValid()` when seed coupling on.
-3. processor: see `processor_settlement_seed_gate`.
-4. Holdout integration: tracker EXPIRED + processor still running is **not** allowed in production profile when license required globally.
+1. `internal/licensing/file_watcher.go`: shared `RecheckLicenseFile` + `StartFileLicenseRecheck` (MCK stretch + `PublishFeatureSeed`).
+2. `registry_license.go` delegates recheck to licensing package.
+3. `cmd/processor/main.go` and `cmd/control/main.go` start file recheck when license required.
+4. `licenseIngestReady` requires `FeatureSeedValid()` when seed coupling on; `LicenseWatcher` publishes seed on verify.
 
 ### Pentest
 
@@ -926,6 +970,8 @@ go test ./tests/integration/ -run LicenseProtection -count=1
 ## `entitlements_mck_bitwise_coupling`
 
 **Priority:** cost_p1
+
+**Status:** Shipped.
 
 **Gap:** `ent.Features` from JWT JSON alone gates OpenRTB after `SeedGateOpenRTB`. Patching claims in memory may suffice without MCK.
 
@@ -952,6 +998,8 @@ go test ./internal/ingestion/ -run 'OpenRTBLicenseAllowed|seedCoupling' -count=1
 
 **Priority:** cost_p1
 
+**Status:** Shipped.
+
 **Gap:** Root can replace `var/license.jwt` with another file; recheck re-verifies signature but file swap is a single obvious target.
 
 **Target:** Sidecar `var/license.jwt.mac` = HMAC-SHA256(`MCK_work`, file_bytes). Recheck rejects mismatch before Ed25519 (or after verify, before snapshot publish).
@@ -977,6 +1025,8 @@ go test ./internal/licensing/ -run 'LicenseMAC|FileMAC' -count=1
 
 **Priority:** cost_p1
 
+**Status:** Shipped.
+
 **Gap:** `DeriveMCK` IKM is `sig|payload|hwid` only. `kid` rotation changes verify key but not MCK for same JWT body if attacker re-signs.
 
 **Target:** Append `kid` bytes to IKM (or separate HKDF info segment). `license-issue` and golden vectors must include `kid` from header.
@@ -1000,6 +1050,8 @@ go test ./internal/licensing/ -run 'DeriveMCK|JWTKeyID' -count=1
 ## `sealed_assets_processor_control`
 
 **Priority:** cost_p1
+
+**Status:** Shipped.
 
 **Gap:** Sealed consumers: tracker unified-filter, edge BPF only. Reverser can ignore processor/control binaries for ingest-only crack.
 
@@ -1027,6 +1079,8 @@ go test ./internal/edge/ -run Sealed -count=1
 
 **Priority:** cost_p1
 
+**Status:** Shipped.
+
 **Gap:** Processor runs conversion settlement without `FeatureSeedValid` check. Tracker crack may leave settlement/cold analytics working.
 
 **Target:** Processor settlement hook: skip or mark conversions when `!licensing.FeatureSeedValid()` under production license profile (align with `license_recheck_processor_control`).
@@ -1052,6 +1106,8 @@ go test ./cmd/processor/... -run SeedGate -count=1
 
 **Priority:** cost_p1
 
+**Status:** Shipped.
+
 **Gap:** `mckInfoLabel = "license-mck-v1"` static. Old cracks survive across releases if binary patch is stable.
 
 **Target:** Per major release bump `license-mck-v2` (or embed minor in `ASSET_SEAL_SALT` rotation policy). Vendor re-issues JWT not required; buyer replaces binary + license file recheck refreshes MCK from same JWT **only if** IKM layout unchanged - when label bumps, old patched binaries compute wrong seed.
@@ -1075,6 +1131,8 @@ go test ./internal/licensing/ -run 'MCK_Golden|mck_derivation' -count=1
 ## `guard_tamper_argon2_before_trip`
 
 **Priority:** cost_p2
+
+**Status:** Shipped.
 
 **Gap:** Guard trip is cheap; automated patch fuzz can hammer probes.
 
@@ -1100,6 +1158,8 @@ go test -tags=license_guard ./internal/licensing/ -run 'Guard_.*Stretch|Guard_Te
 
 **Priority:** cost_p2
 
+**Status:** Shipped.
+
 **Gap:** Fixed `5m` recheck (`LicenseFileRecheckInterval`) lets lab scripts race immediately after patch.
 
 **Target:** Interval = base + jitter in `[0, deployment_hash % 120s]` per process start.
@@ -1119,6 +1179,8 @@ PT-F07 (manual or test with injected clock).
 ## `license_epoch_pubsub_sync`
 
 **Priority:** cost_p2
+
+**Status:** Shipped.
 
 **Gap:** Tracker, control, processor each hold local epoch/seed atomics. Partial hook of one process leaves others inconsistent in complex cracks.
 
@@ -1163,11 +1225,12 @@ go test ./internal/licensing/ -run 'EpochPubsub|LicenseEpoch' -count=1
 | :--- | :--- |
 | `make license-red-team` | PT-A*, partial PT-C |
 | `make license-verify` | Tier A + optional garble |
-| `license_red_team_extended.sh` | PT-A04-A06, PT-C01 |
+| `license_red_team_extended.sh` | PT-A04-A06, PT-C01, PT-D04/D07/E08 proxies |
 | `license_red_team_garbled.sh` | PT-B* (fix guard gap) |
 | `hwid_strings_gate.sh` | PT-A07 |
 | `public_key_strings_gate.sh` | PT-A08 |
-| `license_pentest.sh` | Tiers A-C orchestration (`make license-pentest`) |
+| `license_pentest.sh` | Tiers A-C orchestration (`make license-pentest`); tier D proxies |
+| `scripts/lab/binary_patch_lab.sh` | PT-D04, PT-D07, PT-E08 (automated proxies) |
 | `license_hot_path_anchor_gate.sh` (planned) | PT-E06 misdirection |
 | `license_verify_tier.sh` entangle-* | MCK, seal, HKDF differential |
 

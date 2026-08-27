@@ -1,6 +1,7 @@
 package netaddr
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,4 +29,17 @@ func TestParseRedisURL_unix(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, redisClient)
 	_ = redisClient.Close()
+}
+
+func TestEnsureUnixSocketWritable(t *testing.T) {
+	dir := t.TempDir()
+	path := dir + "/probe.sock"
+	ln, err := ListenUnix(path)
+	require.NoError(t, err)
+	defer ln.Close()
+	require.NoError(t, os.Chmod(path, 0o755))
+	require.NoError(t, EnsureUnixSocketWritable(path))
+	info, err := os.Stat(path)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o777), info.Mode().Perm())
 }

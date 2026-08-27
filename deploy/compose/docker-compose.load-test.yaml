@@ -113,7 +113,13 @@ services:
       - SERVER_PORT=${LOAD_TEST_PROCESSOR_PORT}
       - CH_DSN=clickhouse://default:${CH_PASSWORD:-secure_ch_pass}@127.0.0.1:9000/ad_event_processor
     healthcheck:
-      test: ['CMD', '/processor', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}/health']
+      test:
+        [
+          'CMD',
+          '/processor',
+          '--health-probe',
+          'http://127.0.0.1:${LOAD_TEST_PROCESSOR_PORT}/health',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -368,7 +374,8 @@ services:
       - DB_DSN=postgres://${DB_USER:-ad_event_processor_user}:${DB_PASSWORD:-secure_pass_123}@127.0.0.1:${DB_PORT:-5430}/${DB_NAME:-ad_event_processor}?sslmode=${DB_SSLMODE:-disable}
       - REDIS_ADDRS=${LOAD_TEST_REDIS_ADDRS}
     healthcheck:
-      test: ['CMD', '/control', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_CONTROL_PORT}/healthz']
+      test:
+        ['CMD', '/control', '--health-probe', 'http://127.0.0.1:${LOAD_TEST_CONTROL_PORT}/healthz']
       interval: 10s
       timeout: 5s
       retries: 5

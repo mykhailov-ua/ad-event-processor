@@ -10,18 +10,20 @@ import (
 )
 
 const (
+	// Argon2id per RFC 9106 (type=id): m=64 MiB, t=3, p=4, dkLen=32.
 	hwidArgonTime    uint32 = 3
-	hwidArgonMemory  uint32 = 65536
+	hwidArgonMemory  uint32 = 65536 // KiB per Argon2 (64 MiB)
 	hwidArgonThreads uint8  = 4
 	hwidArgonKeyLen  uint32 = 32
 )
 
 type HWIDTelemetry struct {
-	DMIUUID  string
-	DiskID   string
-	MAC      string
-	CPUModel string
-	CPUCores int
+	DMIUUID   string
+	DiskID    string
+	MAC       string
+	CPUModel  string
+	CPUCores  int
+	MachineID string
 }
 
 var (
@@ -61,6 +63,17 @@ func HashHWIDFromTelemetry(t HWIDTelemetry) string {
 	return hex.EncodeToString(sum)
 }
 
+func HWIDArgonTime() uint32      { return hwidArgonTime }
+func HWIDArgonMemoryKiB() uint32 { return hwidArgonMemory }
+func HWIDArgonThreads() uint8    { return hwidArgonThreads }
+func HWIDArgonKeyLen() uint32    { return hwidArgonKeyLen }
+
+// LabCollectHWID returns live telemetry and the Argon2id v2 hash for pentest issue CLI.
+func LabCollectHWID() (HWIDTelemetry, string) {
+	tel := hwidCollectFn()
+	return tel, HashHWIDFromTelemetry(tel)
+}
+
 func canonicalHWIDInput(t HWIDTelemetry) []byte {
 	fields := []string{
 		strings.TrimSpace(t.DMIUUID),
@@ -68,6 +81,9 @@ func canonicalHWIDInput(t HWIDTelemetry) []byte {
 		strings.TrimSpace(t.MAC),
 		strings.TrimSpace(t.CPUModel),
 		strconv.Itoa(t.CPUCores),
+	}
+	if HWIDV3Enabled() {
+		fields = append(fields, strings.TrimSpace(t.MachineID))
 	}
 	return []byte(strings.Join(fields, "\x00"))
 }

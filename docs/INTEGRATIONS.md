@@ -1,6 +1,6 @@
 # Integrations
 
-Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. All configuration surfaces are on the control plane (`:8188`, `/api/v1/*`) and the React admin UI under `/integrations/*`. REST shapes are documented in `api/openapi/`; new routes follow the workflow in `docs/DEVELOPMENT.md` (cost-sync pilot). Tracker: `deploy/vendor/openapi_backlog.md`.
+Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. All configuration surfaces are on the control plane (`:8188`, `/api/v1/*`) and the React admin UI under `/integrations/*`. REST shapes are documented in `api/openapi/`; new routes follow the workflow in `docs/DEVELOPMENT.md` (cost-sync pilot). OpenAPI transition backlog closed 2026-08-26 (`deploy/vendor/openapi_backlog.md`).
 
 This document states what the code ships today. It does not claim parity with cloud trackers (Voluum Automizer sub-hourly cost sync, creative upload, and so on).
 
@@ -36,7 +36,9 @@ Hot-path endpoints on `cmd/tracker` (`:8181-8184`):
 
 **Universal ingest:** any network can send traffic via `GET /click` and `POST /track` when destination URLs carry the right query macros (`{campaign_id}`, `{click_id}`, `{sub1}`...`{sub30}`, UTMs).
 
-**Zero-redirect client:** `web/src/static/track.js` (`trackEvent`) POSTs to `/track` with CORS.
+**Zero-redirect client:** `GET /static/track.js` on the tracker serves `trackEvent`; lander HTML POSTs to `/track` with CORS (`TRACK_CORS_ORIGINS`). Campaign **Integration** tab copies the snippet; optional Meta/Google/TikTok browser tags share `conversionEventId` with outbound CAPI when configured on **CAPI & Postbacks**.
+
+See [Browser pixel and CAPI setup](#browser-pixel-and-capi-setup) below.
 
 **Bundled click-token schemas:** 82 YAML files under `deploy/schemas/traffic_*.v1.yaml`, registered in `internal/integrationschema/catalog.go` (100 catalog entries total, including affiliate templates). Import via admin **Integration templates** or `POST /api/v1/integration/templates/import`; apply per campaign with `POST /api/v1/campaigns/{id}/apply-templates`.
 
@@ -139,6 +141,52 @@ Worker: `cmd/postback-sender` or in-process in control.
 | `webhook` | Generic HTTP POST |
 
 DLQ and test dispatch: `/api/v1/postbacks/dlq`, `/api/v1/postbacks/config/{campaign_id}/test`. Fraud integration health: `/api/v1/fraud/integrations`.
+
+---
+
+## Browser pixel and CAPI setup
+
+Tracker lander pixel (required for browser conversions) and ad-network browser tags (optional) are separate from outbound CAPI. Server CAPI fires after processor settlement via `internal/postback` worker; browser tags run on the landing page.
+
+### 1. Tracker lander pixel
+
+| Step | Action |
+| :--- | :--- |
+| Click URL | Campaign **Integration** tab: traffic template with `{{fbclid}}` / `gclid` / `ttclid` as needed |
+| CORS | Set `TRACK_CORS_ORIGINS` on tracker to include LP origin (comma-separated) |
+| Snippet | Copy **Zero-redirect (browser pixel)** or hosted lander editor embed; loads `https://{track_host}/static/track.js` |
+| Verify | Browser DevTools: `POST /track` returns **202**; body includes `event_id`, `click_id`, network click ids |
+
+`event_id` is generated in the browser (`crypto.randomUUID()`). Outbound Meta/TikTok CAPI and Google offline conversions can reuse it for browser/server dedup when both paths fire; verify in Events Manager (Meta `test_event_code`) or Google/TikTok debug tools before relying on reporting.
+
+### 2. Outbound CAPI (server)
+
+| Provider | Postback tab field | Required on conversion payload |
+| :--- | :--- | :--- |
+| `facebook` | Pixel ID + CAPI token | `fbclid` (click URL or `/track` JSON) |
+| `google` | Conversion action resource + OAuth token | `gclid` |
+| `tiktok` | Pixel code + access token | `ttclid` |
+| `taboola` | Event name | `tblci` |
+| `outbrain` | Conversion name | `ob_click_id` |
+| `microsoft_ads` | Conversion name + developer token | `msclkid` |
+
+Dry-run: `POST /api/v1/postbacks/config/{campaign_id}/test` returns `warnings` when live traffic would miss required click ids.
+
+### 3. Optional browser tags (Meta / Google / TikTok / Microsoft)
+
+Integration tab **Optional ad network browser tags** generates copy-paste HTML when a CAPI postback is configured. Use the same `conversionEventId` variable as the tracker snippet. Taboola and Outbrain are S2S-only (no browser pixel in v1).
+
+For **Microsoft Ads**, add the UET tag id as the fourth pipe-separated postback field (`account|customer|goal|UET_TAG_ID`). Browser tag pairs with offline conversions via `msclkid` on the click URL and in `track.js` POST body.
+
+Meta verification: Events Manager test events (`test_event_code` on postback config) plus matching `event_id` between browser `fbq` and CAPI payload in production traffic. Dedup is not automatic without that verification pass.
+
+### 4. PageView / impression on LP load
+
+Optional snippet fires `type: "impression"` on `DOMContentLoaded` (Integration tab). Does not replace conversion postback; use for funnel diagnostics only.
+
+### 5. Hosted lander editor
+
+Route `/campaigns/landers/{id}/editor?campaign_id={uuid}` pre-fills campaign id. **Insert before `</body>`** adds tracker (+ optional browser tag) to the open HTML draft.
 
 ---
 

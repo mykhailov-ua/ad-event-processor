@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/control"
+	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/licensing"
 )
 
@@ -47,7 +48,31 @@ func main() {
 	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
 		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
 		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+		PtraceRequired: licensing.GuardCompiledIn() && config.LicenseGuardPtraceRequired(),
 	})
+
+	mode := config.LicenseMode()
+	if mode == "dev" || mode == "development" {
+		path := config.LicensePathFromEnv()
+		if sig := licensing.RuntimeEntitlementSnapshot(path); sig != 0 {
+			slog.Debug("runtime entitlement snapshot", "checksum", sig)
+		}
+		_ = licensing.DeploymentCredentialRefresh(path)
+	}
+
+	if config.LicenseRequiredFromEnv() {
+		licensing.StartFileLicenseRecheck(ctx, licensing.FileLicenseRecheckConfig{
+			Path: config.LicensePathFromEnv(),
+		})
+		slog.Info("license file recheck enabled", "path", config.LicensePathFromEnv())
+	}
+
+	if err := controlplane.InitControlRuntimePolicy(); err != nil {
+		slog.Error("failed to load control runtime policy", "error", err)
+		if !config.LicenseAssetsUnsealed() {
+			os.Exit(1)
+		}
+	}
 
 	if err := control.Run(ctx, cfg, opts); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("control plane stopped", "error", err)

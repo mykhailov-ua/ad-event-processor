@@ -38,7 +38,7 @@ func testFraudModelPath(t *testing.T) string {
 
 func TestFraudScoringRule_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	conn, cleanup := setupClickHouseTest(t)
@@ -94,7 +94,7 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 
 func TestFraudScoringRule_FraudScoresHigherThanControl(t *testing.T) {
 	if testing.Short() {
-		t.Skip("clickhouse integration test")
+		t.Skip("integration: clickhouse testcontainers (run make test-full)")
 	}
 
 	conn, cleanup := setupClickHouseTest(t)
@@ -148,7 +148,7 @@ func (m *mockScorer) Dims() int {
 
 func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 	if testing.Short() {
-		t.Skip("clickhouse integration test")
+		t.Skip("integration: clickhouse testcontainers (run make test-full)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)

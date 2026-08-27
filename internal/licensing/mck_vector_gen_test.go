@@ -47,14 +47,23 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 	require.NoError(t, err)
 	seedU32 := FeatureSeedFromMCK(mck)
 	out := struct {
-		Fixtures []struct {
+		MCKInfoLabel string `json:"mck_info_label"`
+		Fixtures     []struct {
 			Name           string `json:"name"`
 			Token          string `json:"token"`
 			HWID           string `json:"hwid"`
 			MCKHex         string `json:"mck_hex"`
 			FeatureSeedHex string `json:"feature_seed_hex"`
 		} `json:"fixtures"`
+		MCKStretchV1 []struct {
+			Name           string `json:"name"`
+			MCKHex         string `json:"mck_hex"`
+			DeploymentID   string `json:"deployment_id"`
+			MCKWorkHex     string `json:"mck_work_hex"`
+			FeatureSeedHex string `json:"feature_seed_hex"`
+		} `json:"mck_stretch_v1"`
 	}{
+		MCKInfoLabel: MCKInfoLabel(),
 		Fixtures: []struct {
 			Name           string `json:"name"`
 			Token          string `json:"token"`
@@ -69,6 +78,21 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 			FeatureSeedHex: fmt.Sprintf("%08x", seedU32),
 		}},
 	}
+	mckWork, err := StretchMCKForRecheck(mck, claims.DeploymentID)
+	require.NoError(t, err)
+	out.MCKStretchV1 = []struct {
+		Name           string `json:"name"`
+		MCKHex         string `json:"mck_hex"`
+		DeploymentID   string `json:"deployment_id"`
+		MCKWorkHex     string `json:"mck_work_hex"`
+		FeatureSeedHex string `json:"feature_seed_hex"`
+	}{{
+		Name:           "deterministic_fixture",
+		MCKHex:         hex.EncodeToString(mck[:]),
+		DeploymentID:   claims.DeploymentID,
+		MCKWorkHex:     hex.EncodeToString(mckWork[:]),
+		FeatureSeedHex: fmt.Sprintf("%08x", FeatureSeedFromMCK(mckWork)),
+	}}
 	raw, err := json.MarshalIndent(out, "", " ")
 	require.NoError(t, err)
 	path := filepath.Join("testdata", "mck_derivation.json")

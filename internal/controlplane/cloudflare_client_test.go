@@ -13,6 +13,7 @@ import (
 
 func TestCloudflareClient_ListZones(t *testing.T) {
 	t.Parallel()
+	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodGet, r.Method)
 		require.Equal(t, "/zones", r.URL.Path)
@@ -36,6 +37,7 @@ func TestCloudflareClient_ListZones(t *testing.T) {
 
 func TestCloudflareClient_CreateDNSRecord(t *testing.T) {
 	t.Parallel()
+	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/zones/zone-abc/dns_records", r.URL.Path)
@@ -59,6 +61,7 @@ func TestCloudflareClient_CreateDNSRecord(t *testing.T) {
 
 func TestCloudflareClient_ZoneSSLStatus(t *testing.T) {
 	t.Parallel()
+	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/zones/zone-abc/settings/ssl", r.URL.Path)
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -83,6 +86,7 @@ func TestCloudflareRecordTypeForTarget(t *testing.T) {
 
 func TestCloudflareClient_RejectsOversizedBody(t *testing.T) {
 	t.Parallel()
+	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		payload := strings.Repeat("x", cloudflareMaxJSONBytes+1)
 		_, _ = w.Write([]byte(`{"success":true,"result":[` + payload))

@@ -21,7 +21,7 @@ import (
 
 func TestFault_XDPFingerprintRingbufCongestion(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint ringbuf congestion fault test")
+		t.Skip("integration: fingerprint ringbuf congestion fault test (run make test-integration)")
 	}
 
 	objs := loadTestObjects(t)
@@ -70,7 +70,7 @@ func TestFault_XDPFingerprintRingbufCongestion(t *testing.T) {
 
 func TestFault_XDPFingerprintNoExtraDrops(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint drop parity fault test")
+		t.Skip("integration: fingerprint drop parity fault test (run make test-integration)")
 	}
 
 	runFlood := func(disableFP bool) (pass, drop uint64) {
@@ -112,7 +112,7 @@ func TestFault_XDPFingerprintNoExtraDrops(t *testing.T) {
 
 func TestFault_XDPFingerprintRedisPipeline(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint redis pipeline fault test")
+		t.Skip("integration: fingerprint redis pipeline fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -163,7 +163,7 @@ func TestFault_XDPFingerprintRedisPipeline(t *testing.T) {
 
 func TestFault_XDPFingerprintConcurrentHosts(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint concurrent hosts fault test")
+		t.Skip("integration: fingerprint concurrent hosts fault test (run make test-integration)")
 	}
 
 	objs := loadTestObjects(t)
@@ -225,7 +225,7 @@ func TestFault_XDPFingerprintConcurrentHosts(t *testing.T) {
 
 func TestFault_XDPFingerprintExtremeTCPFields(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint extreme fields fault test")
+		t.Skip("integration: fingerprint extreme fields fault test (run make test-integration)")
 	}
 
 	objs := loadTestObjects(t)
@@ -250,7 +250,7 @@ func TestFault_XDPFingerprintExtremeTCPFields(t *testing.T) {
 
 func TestFault_XDPFingerprintUnderSYNFlood(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint under syn flood fault test")
+		t.Skip("integration: fingerprint under syn flood fault test (run make test-integration)")
 	}
 
 	objs := loadTestObjects(t)

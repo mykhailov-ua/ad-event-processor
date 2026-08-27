@@ -56,7 +56,7 @@ func (m *mockFraudManagement) EnqueueFraudThreatBatch(_ context.Context, items [
 
 func TestDetector_FraudBoostEnforcement(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)

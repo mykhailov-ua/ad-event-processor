@@ -292,6 +292,24 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/campaigns/{id}/integration-health:
+    get:
+      tags: [campaigns]
+      operationId: campaignsGetIntegrationHealth
+      summary: Integration readiness checklist for a campaign
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Integration health rows
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignIntegrationHealth'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/campaigns/{id}/fraud:
     get:
       tags: [campaigns]

@@ -7,6 +7,7 @@ cd "$ROOT"
 
 OUT="${1:-/tmp/garble_literals_eval}"
 mkdir -p "$OUT"
+export GARBLE_SEED="${GARBLE_SEED:-garble-literals-eval-seed}"
 
 echo "garble_literals_eval: building baseline tracker (GARBLE_LITERALS=0)..."
 RELEASE_GARBLE=1 GARBLE_LITERALS=0 bash scripts/ci/release_garble.sh "$OUT/baseline" tracker

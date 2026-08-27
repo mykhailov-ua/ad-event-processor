@@ -97,4 +97,44 @@ func TestVerifyJWT(t *testing.T) {
 		_, err := VerifyJWT(token, wrongPub)
 		assert.Error(t, err)
 	})
+
+	t.Run("Rejects wrong alg", func(t *testing.T) {
+		token := generateTestJWTWithAlg(t, priv, "2026-01", claims, "HS256")
+		_, err := VerifyJWT(token, pub)
+		assert.ErrorIs(t, err, ErrInvalidAlgorithm)
+	})
+
+	t.Run("Rejects none alg", func(t *testing.T) {
+		token := generateTestJWTWithAlg(t, priv, "2026-01", claims, "none")
+		_, err := VerifyJWT(token, pub)
+		assert.ErrorIs(t, err, ErrInvalidAlgorithm)
+	})
+
+	t.Run("Rejects empty alg", func(t *testing.T) {
+		token := generateTestJWTWithAlg(t, priv, "2026-01", claims, "")
+		_, err := VerifyJWT(token, pub)
+		assert.ErrorIs(t, err, ErrInvalidAlgorithm)
+	})
+}
+
+func generateTestJWTWithAlg(t *testing.T, privKey ed25519.PrivateKey, kid string, claims LicenseClaims, alg string) string {
+	header := map[string]string{
+		"alg": alg,
+		"typ": "JWT",
+		"kid": kid,
+	}
+	headerBytes, err := json.Marshal(header)
+	assert.NoError(t, err)
+
+	claimsBytes, err := json.Marshal(claims)
+	assert.NoError(t, err)
+
+	headerB64 := base64.RawURLEncoding.EncodeToString(headerBytes)
+	claimsB64 := base64.RawURLEncoding.EncodeToString(claimsBytes)
+
+	signingInput := headerB64 + "." + claimsB64
+	sig := ed25519.Sign(privKey, []byte(signingInput))
+	sigB64 := base64.RawURLEncoding.EncodeToString(sig)
+
+	return signingInput + "." + sigB64
 }

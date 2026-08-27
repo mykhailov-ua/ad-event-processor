@@ -15,8 +15,9 @@ fi
 
 export RELEASE_GARBLE=1
 export GARBLE_SEED="${GARBLE_SEED:-cafebabecafebabecafebabecafebabe}"
+export ASSET_SEAL_SALT="${ASSET_SEAL_SALT:-deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef}"
 export GARBLE_VERSION="${GARBLE_VERSION:-v0.15.0}"
-export LICENSE_GUARD="${LICENSE_GUARD:-0}"
+export LICENSE_GUARD="${LICENSE_GUARD:-1}"
 export PATH="$(go env GOPATH)/bin:${PATH}"
 
 echo "license_red_team_garbled: policy gate"
@@ -28,7 +29,12 @@ if ! bash scripts/ci/release_garble.sh "$OUT" tracker processor control; then
   exit 1
 fi
 
-bash scripts/ci/release_strings_gate.sh "$OUT/tracker"
+bash scripts/ci/release_strings_gate.sh "$OUT/tracker" "$OUT/processor" "$OUT/control"
+
+if [[ "${LICENSE_GUARD:-1}" == "1" ]]; then
+  echo "license_red_team_garbled: guard unit tests"
+  go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
+fi
 
 echo "license_red_team_garbled: running license-red-team unit gates"
 bash scripts/security/license_red_team.sh

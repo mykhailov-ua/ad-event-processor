@@ -35,9 +35,17 @@ local function listen_loop()
 end
 
 function _M.start()
-    local ok, err = ngx.thread.spawn(listen_loop)
+    local ok, err = ngx.timer.at(0, function(premature)
+        if premature then
+            return
+        end
+        local spawn_ok, spawn_err = ngx.thread.spawn(listen_loop)
+        if not spawn_ok then
+            ngx.log(ngx.ERR, "edge_quarantine_sub: failed to spawn listener: ", spawn_err)
+        end
+    end)
     if not ok then
-        ngx.log(ngx.ERR, "edge_quarantine_sub: failed to spawn listener: ", err)
+        ngx.log(ngx.ERR, "edge_quarantine_sub: failed to schedule listener: ", err)
     end
 end
 

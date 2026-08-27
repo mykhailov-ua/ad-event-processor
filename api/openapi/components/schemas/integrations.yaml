@@ -103,6 +103,10 @@ PostbackDryRunResult:
       type: string
     test_event:
       type: boolean
+    warnings:
+      type: array
+      items:
+        type: string
 
 IntegrationSchema:
   type: object

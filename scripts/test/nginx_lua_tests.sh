@@ -116,7 +116,7 @@ case "$MODE" in
     ;;
   unit)
     skipped=0
-    for lua_test in tarpit_test.lua blacklist_sync_test.lua node_weights_test.lua; do
+    for lua_test in tarpit_test.lua blacklist_sync_test.lua node_weights_test.lua edge_net_test.lua; do
       if ! run_lua_test "$lua_test"; then
         rc=$?
         if [[ "$rc" -eq 2 ]]; then
@@ -135,6 +135,7 @@ case "$MODE" in
     run_lua_test tarpit_test.lua
     run_lua_test blacklist_sync_test.lua
     run_lua_test node_weights_test.lua
+    run_lua_test edge_net_test.lua
     run_tarpit_live_smoke
     ;;
   *)

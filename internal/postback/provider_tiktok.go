@@ -74,7 +74,7 @@ func (a *TikTokAdapter) Send(ctx context.Context, client *http.Client, payload *
 
 	ttEvent := TikTokEvent{
 		Event:     event,
-		EventID:   payload.ClickID,
+		EventID:   ResolveEventID(payload),
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Context: TikTokUserContext{
 			Ttclid: payload.TTCLID,

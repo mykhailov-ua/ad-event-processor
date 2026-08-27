@@ -4,13 +4,11 @@ import (
 	"net/http"
 	"strings"
 
-	webstatic "ad-event-processor/web"
-
 	"ad-event-processor/pkg/httpresponse"
 )
 
 func AdminStaticFS() (http.FileSystem, error) {
-	sub, err := webstatic.FS()
+	sub, err := adminStaticFS()
 	if err != nil {
 		return nil, err
 	}

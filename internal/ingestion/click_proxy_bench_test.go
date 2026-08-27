@@ -10,6 +10,7 @@ import (
 
 func benchClickProxyHandler(b *testing.B) (*AdsPacketHandler, *httptest.Server, *streamCaptureConn) {
 	b.Helper()
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		_, _ = w.Write([]byte("ok"))

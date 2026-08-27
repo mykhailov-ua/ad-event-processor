@@ -68,7 +68,7 @@ func BenchmarkLGBMScorer_ScoreBatch10k(b *testing.B) {
 
 func TestLGBMScorer_ScoreBatch10k_under2s(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipped in -short; manual gate: go test -run TestLGBMScorer_ScoreBatch10k_under2s ./internal/fraud")
+		t.Skip("integration: manual gate go test -run TestLGBMScorer_ScoreBatch10k_under2s ./internal/fraud")
 	}
 
 	scorer, err := NewLGBMScorer(testModelPath(t))

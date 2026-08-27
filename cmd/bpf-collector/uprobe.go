@@ -10,20 +10,13 @@ import (
 
 	"ad-event-processor/pkg/naming"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/link"
 )
 
-type uprobeSpec struct {
+type uprobeAttach struct {
 	symbol string
-	enter  bool
-	cookie uint64
-}
-
-var trackerUprobeSpecs = []uprobeSpec{
-	{symbol: "ad-event-processor/internal/ingestion/traceprobe.ProcessTrackEnter", enter: true, cookie: 1},
-	{symbol: "ad-event-processor/internal/ingestion/traceprobe.ProcessTrackExit", enter: false, cookie: 2},
-	{symbol: "ad-event-processor/internal/ingestion/traceprobe.FilterCheckEnter", enter: true, cookie: 3},
-	{symbol: "ad-event-processor/internal/ingestion/traceprobe.FilterCheckExit", enter: false, cookie: 4},
+	prog   *ebpf.Program
 }
 
 func (r *probeRun) attachUprobes() {
@@ -36,18 +29,21 @@ func (r *probeRun) attachUprobes() {
 		return
 	}
 
+	progs := []uprobeAttach{
+		{"ad-event-processor/internal/ingestion/traceprobe.ProcessTrackEnter", r.coll.Progs.MarkProcessTrackEnter},
+		{"ad-event-processor/internal/ingestion/traceprobe.ProcessTrackExit", r.coll.Progs.MarkProcessTrackExit},
+		{"ad-event-processor/internal/ingestion/traceprobe.FilterCheckEnter", r.coll.Progs.MarkFilterCheckEnter},
+		{"ad-event-processor/internal/ingestion/traceprobe.FilterCheckExit", r.coll.Progs.MarkFilterCheckExit},
+	}
+
 	attached := 0
 	ex, err := link.OpenExecutable(bin)
 	if err != nil {
 		slog.Warn("uprobe open executable", "binary", bin, "error", err)
 		return
 	}
-	for _, spec := range trackerUprobeSpecs {
-		prog := r.coll.Progs.TraceEnter
-		if !spec.enter {
-			prog = r.coll.Progs.TraceExit
-		}
-		if prog == nil {
+	for _, spec := range progs {
+		if spec.prog == nil {
 			continue
 		}
 		sym := resolveGoSymbol(bin, spec.symbol)
@@ -55,7 +51,7 @@ func (r *probeRun) attachUprobes() {
 			slog.Debug("uprobe symbol missing", "want", spec.symbol)
 			continue
 		}
-		l, err := ex.Uprobe(sym, prog, &link.UprobeOptions{Cookie: spec.cookie})
+		l, err := ex.Uprobe(sym, spec.prog, nil)
 		if err != nil {
 			slog.Warn("uprobe attach skipped", "symbol", sym, "error", err)
 			continue
@@ -70,36 +66,50 @@ func (r *probeRun) attachUprobes() {
 	slog.Info("uprobes attached", "binary", bin, "count", attached)
 }
 
-// resolveTrackerBinary prefers the running tracker exe (/proc/pid/exe) over a host
-// tracker-bpf-trace path so docker load-test uprobes attach to container /tracker.
+// chooseTrackerBinary picks the path link.OpenExecutable should use for uprobes.
+func chooseTrackerBinary(procExePath, flagBinary string) string {
+	if procExePath != "" {
+		return procExePath
+	}
+	return flagBinary
+}
+
+// resolveTrackerBinary prefers the host-built tracker path (bind-mounted in docker) over /proc/pid/exe.
 func (r *probeRun) resolveTrackerBinary() string {
-	running := r.findTrackerBinary()
-	bin := chooseTrackerBinary(running, r.trackerBinary)
-	if running != "" && r.trackerBinary != "" && r.trackerBinary != running {
-		slog.Info("uprobe binary from running tracker", "flag", r.trackerBinary, "exe", running)
+	if r.trackerBinary != "" {
+		if _, statErr := os.Stat(r.trackerBinary); statErr == nil {
+			return r.trackerBinary
+		} else {
+			slog.Warn("uprobe flagged binary missing", "binary", r.trackerBinary, "error", statErr)
+		}
 	}
-	return bin
+	chosen := chooseTrackerBinary(r.findTrackerProcExe(), "")
+	if chosen == "" {
+		return ""
+	}
+	if _, err := os.Stat(chosen); err != nil {
+		slog.Warn("uprobe binary missing", "binary", chosen, "error", err)
+		return ""
+	}
+	return chosen
 }
 
-func chooseTrackerBinary(running, flagged string) string {
-	if running != "" {
-		return running
-	}
-	return flagged
-}
-
-func (r *probeRun) findTrackerBinary() string {
+func (r *probeRun) findTrackerProcExe() string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, t := range r.tracked {
 		if t.Role != roleTracker || t.PID == 0 {
 			continue
 		}
-		exe, err := os.Readlink(filepath.Join(string(filepath.Separator), "proc", strconv.FormatUint(uint64(t.PID), 10), "exe"))
-		if err != nil {
-			continue
+		pid := strconv.FormatUint(uint64(t.PID), 10)
+		procExe := filepath.Join("/proc", pid, "exe")
+		if _, err := os.Stat(procExe); err == nil {
+			return procExe
 		}
-		return exe
+		procRoot := filepath.Join("/proc", pid, "root", "tracker")
+		if _, err := os.Stat(procRoot); err == nil {
+			return procRoot
+		}
 	}
 	return ""
 }

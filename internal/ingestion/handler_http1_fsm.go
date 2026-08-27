@@ -250,6 +250,7 @@ func http1IngressValid(method, path []byte) bool {
 			bytesEqual(path, "/ready") ||
 			bytesEqual(path, "/readyz") ||
 			bytesEqual(path, "/metrics") ||
+			bytesEqual(path, trackPixelPath) ||
 			httpPathHasPrefix(path, safePageStubPathPrefix) ||
 			httpPathHasPrefix(path, "/click") ||
 			httpPathHasPrefix(path, tgPathClick) ||

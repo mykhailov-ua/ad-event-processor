@@ -27,6 +27,7 @@ type PostbackPayload struct {
 	MSCLKID        string    `json:"msclkid,omitempty"`
 	EventSourceURL string    `json:"event_source_url,omitempty"`
 	TestEventCode  string    `json:"test_event_code,omitempty"`
+	EventID        string    `json:"event_id,omitempty"`
 	subSlots       [maxSubMacroSlots]string
 }
 

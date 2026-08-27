@@ -106,12 +106,35 @@ TRUNCATE TABLE campaigns CASCADE;
 INSERT INTO customers (id, name, balance, currency, allowed_overdraft)
 SELECT
     ('00000000-0000-0000-0000-' || LPAD(to_hex(i), 12, '0'))::uuid,
-    'Test Customer ' || i,
-    100000000000000,
+    (ARRAY[
+      'Horizon Media Group',
+      'Pacific Ads Studio',
+      'Nordic Performance Co',
+      'Atlas Buying Desk',
+      'Summit Traffiq',
+      'Bluewave Partners',
+      'Velocity Affiliates',
+      'Prime Reach Agency',
+      'Lumen Digital',
+      'Crestline Media',
+      'Meridian Performance',
+      'Vantage Growth Labs',
+      'Redwood Acquisition',
+      'Kite & Compass Media',
+      'Northgate Buying',
+      'Silverline Performance',
+      'Harborfront Ads',
+      'Quartzlane Partners',
+      'Everpeak Media',
+      'Bridgeport Digital'
+    ])[(i - 1) % 20 + 1],
+    (2400000000 + ((i * 2817431) % 281600000000) + ((i % 7) * 97000000))::bigint,
     'USD',
     0
 FROM generate_series(1, 100) s(i)
-ON CONFLICT (id) DO UPDATE SET balance = 100000000000000;
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  balance = EXCLUDED.balance;
 
 INSERT INTO campaigns (id, name, budget_limit, status, customer_id, pacing_mode, daily_budget, timezone, freq_limit, freq_window)
 SELECT
@@ -138,16 +161,22 @@ SELECT
       'US Performance Push',
       'Global Brand Lift'
     ])[(i - 1) % 20 + 1],
-    100000000000000,
+    (4200000000 + ((i % 17) * 650000000))::bigint,
     'ACTIVE',
     ('00000000-0000-0000-0000-' || LPAD(to_hex(i), 12, '0'))::uuid,
     'ASAP',
-    100000000000000,
+    (380000000 + ((i % 11) * 95000000))::bigint,
     'UTC',
     100000000,
     3600
 FROM generate_series(1, 100) s(i)
-ON CONFLICT (id) DO UPDATE SET current_spend = 0, status = 'ACTIVE', budget_limit = 100000000000000, daily_budget = 100000000000000, freq_limit = 100000000;
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  current_spend = 0,
+  status = 'ACTIVE',
+  budget_limit = EXCLUDED.budget_limit,
+  daily_budget = EXCLUDED.daily_budget,
+  freq_limit = 100000000;
 EOF
 
 log "seeding active license_status (load-test ingest gate)"

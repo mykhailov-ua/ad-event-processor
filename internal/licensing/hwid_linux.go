@@ -10,13 +10,17 @@ import (
 )
 
 func collectHWIDTelemetry() HWIDTelemetry {
-	return HWIDTelemetry{
+	tel := HWIDTelemetry{
 		DMIUUID:  readDMIUUID(),
 		DiskID:   readRootDiskID(),
 		MAC:      readFirstNICMAC(),
 		CPUModel: readCPUModel(),
 		CPUCores: runtime.NumCPU(),
 	}
+	if HWIDV3Enabled() {
+		tel.MachineID = readMachineID()
+	}
+	return tel
 }
 
 func readDMIUUID() string {

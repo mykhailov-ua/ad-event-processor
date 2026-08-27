@@ -26,6 +26,9 @@ done
 echo "gen: sqlc..."
 go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
 
+echo "gen: traffic source templates..."
+go run ./cmd/codegen-traffic-templates
+
 if [[ "$RUN_TEMPL" -eq 1 ]]; then
   if command -v templ > /dev/null 2>&1; then
     echo "gen: templ..."

@@ -121,8 +121,9 @@ parse_extra_targets() {
 }
 
 if [[ "$WANT" == *tracker* ]]; then
-  for pat in 'ad-event-processor-tracker-0' 'ad-event-processor-tracker-1' 'tracker-0' 'tracker-1'; do
-    resolve_container "$pat" "$role_tracker" || true
+  for i in 0 1 2 3; do
+    resolve_container "ad-event-processor-tracker-${i}" "$role_tracker" || true
+    resolve_container "tracker-${i}" "$role_tracker" || true
   done
 fi
 if [[ "$WANT" == *nginx* ]]; then

@@ -124,16 +124,6 @@ func newHostHashMapV6(t *testing.T) *ebpf.Map {
 	return m
 }
 
-func newTestBlocklistMaps(t *testing.T) BlocklistMaps {
-	t.Helper()
-	return BlocklistMaps{
-		V4Host:   newHostHashMapV4(t),
-		V4Prefix: newLPMMap(t),
-		V6Host:   newHostHashMapV6(t),
-		V6Prefix: newLPMMapV6(t),
-	}
-}
-
 func newTestBlocklistMapsV4Only(t *testing.T) BlocklistMaps {
 	t.Helper()
 	return BlocklistMaps{

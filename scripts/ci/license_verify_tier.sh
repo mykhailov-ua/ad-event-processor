@@ -57,14 +57,20 @@ fi
 
 log "Tier entanglement"
 run_gate entangle-1 go test ./internal/licensing/ -run 'MCK|DeriveMCK' -count=1
+run_gate entangle-1a bash scripts/ci/mck_info_label_gate.sh
+run_gate entangle-1b go test ./internal/licensing/ -run 'LicenseEpochPubsub|LicenseFileRecheckIntervalJittered' -count=1
 run_gate entangle-2 go test ./internal/licensing/ -run 'MCK_Sensitivity' -count=1
 run_gate entangle-3 go test ./internal/licensing/ -run Seal -count=1
 if on_linux; then
   run_gate entangle-4 go test ./internal/edge/ -run 'TestEdgeSealed_' -count=1
   run_gate entangle-4b go test ./internal/ingestion/ -run ResolveUnifiedFilterLua -count=1
+  run_gate entangle-4c go test ./internal/ingestion/ -run ProcessorCHIngestPolicy -count=1
+  run_gate entangle-4d go test ./internal/controlplane/ -run ControlRuntimePolicy -count=1
 else
   skip_gate entangle-4 "linux only"
   skip_gate entangle-4b "linux only"
+  skip_gate entangle-4c "linux only"
+  skip_gate entangle-4d "linux only"
 fi
 run_gate entangle-5 go test ./internal/licensing/ -run FeatureSeed -count=1
 if command -v openssl > /dev/null 2>&1 && openssl kdf -help > /dev/null 2>&1; then

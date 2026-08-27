@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
@@ -28,7 +29,7 @@ func signLicenseToken(t *testing.T, priv ed25519.PrivateKey, claims licensing.Li
 
 func TestIntegration_LicenseProtection_emptyPGRowBlocksIngest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping license protection integration test")
+		t.Skip("integration: license protection (run make test-integration)")
 	}
 	ctx := context.Background()
 	cfgPostgres := testutil.DefaultPostgresConfig()
@@ -50,7 +51,7 @@ func TestIntegration_LicenseProtection_emptyPGRowBlocksIngest(t *testing.T) {
 
 func TestIntegration_LicenseProtection_hwidMismatchBlocksIngest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping license protection integration test")
+		t.Skip("integration: license protection (run make test-integration)")
 	}
 	ctx := context.Background()
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -90,7 +91,7 @@ func TestIntegration_LicenseProtection_hwidMismatchBlocksIngest(t *testing.T) {
 
 func TestIntegration_LicenseProtection_hwidMatchAllowsIngest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping license protection integration test")
+		t.Skip("integration: license protection (run make test-integration)")
 	}
 	ctx := context.Background()
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -139,7 +140,7 @@ func TestIntegration_LicenseProtection_hwidMatchAllowsIngest(t *testing.T) {
 
 func TestIntegration_LicenseProtection_validJWTAllowsIngest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping license protection integration test")
+		t.Skip("integration: license protection (run make test-integration)")
 	}
 	ctx := context.Background()
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -176,7 +177,7 @@ func TestIntegration_LicenseProtection_validJWTAllowsIngest(t *testing.T) {
 
 func TestIntegration_LicenseProtection_fakePGRowWithoutJWTBlocked(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping license protection integration test")
+		t.Skip("integration: license protection (run make test-integration)")
 	}
 	ctx := context.Background()
 	cfgPostgres := testutil.DefaultPostgresConfig()
@@ -206,12 +207,61 @@ func TestIntegration_LicenseProtection_fakePGRowWithoutJWTBlocked(t *testing.T) 
 	`, uuid.New(), uuid.New(), time.Now().Add(365*24*time.Hour), entitlementsJSON)
 	require.NoError(t, err)
 
-	registry := ingestion.NewRegistry(db.New(pool))
-	registry.SetPool(pool)
+	registry := ingestion.NewRegistry(nil)
 	registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
 		Required: true,
 		Path:     path,
 		PubKey:   pub,
+		Interval: time.Hour,
+	})
+
+	filter := ingestion.NewLicenseFilter(registry)
+	err = filter.Check(ctx, &domain.Event{})
+	require.ErrorIs(t, err, ingestion.ErrLicenseExpired)
+}
+
+func TestIntegration_LicenseProtection_productionProfileIgnoresAttackerPubKeyEnv(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: license production pubkey fail-closed")
+	}
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "production")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY_OVERRIDE", "")
+
+	attackerPub, attackerPriv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY", hex.EncodeToString(attackerPub))
+
+	embeddedPub, err := licensing.ResolvePublicKey()
+	require.NoError(t, err)
+	require.NotEqual(t, attackerPub, embeddedPub)
+
+	ctx := context.Background()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "license.jwt")
+	claims := licensing.LicenseClaims{
+		Issuer:       "ad-event-processor-license",
+		Subject:      uuid.NewString(),
+		DeploymentID: uuid.NewString(),
+		ValidFrom:    time.Now().Add(-time.Hour),
+		ValidUntil:   time.Now().Add(24 * time.Hour),
+		GraceDays:    7,
+		Limits: licensing.Limits{
+			MaxRPS:             1000,
+			MaxRequestsPerDay:  100000,
+			MaxActiveCampaigns: 10,
+		},
+	}
+	token := signLicenseToken(t, attackerPriv, claims)
+	require.NoError(t, os.WriteFile(path, []byte(token), 0o600))
+
+	_, err = licensing.VerifyJWT(token, embeddedPub)
+	require.Error(t, err)
+
+	registry := ingestion.NewRegistry(nil)
+	registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
+		Required: true,
+		Path:     path,
+		PubKey:   embeddedPub,
 		Interval: time.Hour,
 	})
 

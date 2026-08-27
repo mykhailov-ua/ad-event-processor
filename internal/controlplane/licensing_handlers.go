@@ -21,19 +21,20 @@ import (
 const licenseStateUnconfigured = "UNCONFIGURED"
 
 type LicenseStatusResponse struct {
-	DeploymentID      string `json:"deployment_id"`
-	State             string `json:"state"`
-	ValidUntil        string `json:"valid_until,omitempty"`
-	HostFingerprint   string `json:"host_fingerprint,omitempty"`
-	HWIDv2            string `json:"hwid_v2,omitempty"`
-	HWIDMatch         *bool  `json:"hwid_match,omitempty"`
-	DaysToExpiry      int    `json:"days_to_expiry,omitempty"`
-	PlanCode          string `json:"plan_code,omitempty"`
-	MaxRPS            uint64 `json:"max_rps,omitempty"`
-	UpgradePlanCode   string `json:"upgrade_plan_code,omitempty"`
-	TrialSelfServeURL string `json:"trial_self_serve_url,omitempty"`
-	PilotValidDays    int    `json:"pilot_valid_days,omitempty"`
-	SupportURL        string `json:"support_url,omitempty"`
+	DeploymentID      string                      `json:"deployment_id"`
+	State             string                      `json:"state"`
+	ValidUntil        string                      `json:"valid_until,omitempty"`
+	HostFingerprint   string                      `json:"host_fingerprint,omitempty"`
+	HWIDv2            string                      `json:"hwid_v2,omitempty"`
+	HWIDInputs        licensing.HWIDTelemetryView `json:"hwid_inputs,omitempty"`
+	HWIDMatch         *bool                       `json:"hwid_match,omitempty"`
+	DaysToExpiry      int                         `json:"days_to_expiry,omitempty"`
+	PlanCode          string                      `json:"plan_code,omitempty"`
+	MaxRPS            uint64                      `json:"max_rps,omitempty"`
+	UpgradePlanCode   string                      `json:"upgrade_plan_code,omitempty"`
+	TrialSelfServeURL string                      `json:"trial_self_serve_url,omitempty"`
+	PilotValidDays    int                         `json:"pilot_valid_days,omitempty"`
+	SupportURL        string                      `json:"support_url,omitempty"`
 }
 
 type ApplyLicenseRequest struct {
@@ -165,6 +166,7 @@ func toLicenseStatusResponse(deploymentID, state string, validUntil time.Time, v
 		}
 		resp.HostFingerprint = diag.HostFingerprint
 		resp.HWIDv2 = diag.HostHWID
+		resp.HWIDInputs = diag.HWIDInputs
 		if diag.DaysToExpiry > 0 {
 			resp.DaysToExpiry = diag.DaysToExpiry
 		}
@@ -177,6 +179,7 @@ func toLicenseStatusResponse(deploymentID, state string, validUntil time.Time, v
 
 	resp.HostFingerprint = licensing.HostFingerprint()
 	resp.HWIDv2 = licensing.HostHWID()
+	resp.HWIDInputs = licensing.SnapshotHWIDTelemetry()
 	return resp
 }
 

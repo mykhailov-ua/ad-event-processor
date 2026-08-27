@@ -15,6 +15,11 @@ type TrackRequest struct {
 	fbclid      string
 	gclid       string
 	ttclid      string
+	msclkid     string
+	tblci       string
+	obClickID   string
+	eventID     string
+	txID        string
 	ortbSlot    *openRTBScratchSlot
 }
 
@@ -37,6 +42,11 @@ func (v *TrackRequest) resetForParse() {
 	v.fbclid = ""
 	v.gclid = ""
 	v.ttclid = ""
+	v.msclkid = ""
+	v.tblci = ""
+	v.obClickID = ""
+	v.eventID = ""
+	v.txID = ""
 }
 
 func (v *TrackRequest) UnmarshalJSON(data []byte) error {

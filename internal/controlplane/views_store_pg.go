@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -64,7 +65,7 @@ WHERE id = $1`, parsed).Scan(
 		&parsed, &view.OwnerID, &customerID, &view.Name, &view.ReportKey, &specJSON, &view.IsShared, &createdAt, &updatedAt,
 	)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return SavedViewDTO{}, ErrViewNotFound
 		}
 		return SavedViewDTO{}, err

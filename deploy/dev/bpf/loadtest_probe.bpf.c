@@ -478,25 +478,17 @@ int probe_sched_process_exit(struct trace_event_raw_sched_process_exit *ctx)
 	return 0;
 }
 
-SEC("uprobe/probe_trace_enter")
-int probe_trace_enter(struct pt_regs *ctx)
+static __always_inline int probe_trace_enter_marker(struct pt_regs *ctx, __u32 marker_id)
 {
 	struct probe_config *cfg;
 	struct probe_marker_ts_key tkey;
-	__u64 cookie;
-	__u32 marker_id;
 	__u32 slot;
 	__u64 pid_tgid;
 	__u32 pid;
 	__u64 ts;
 
 	cfg = probe_config();
-	if (!cfg || !cfg->enabled)
-		return 0;
-
-	cookie = bpf_get_attach_cookie(ctx);
-	marker_id = (__u32)cookie;
-	if (!marker_id)
+	if (!cfg || !cfg->enabled || !marker_id)
 		return 0;
 
 	pid_tgid = bpf_get_current_pid_tgid();
@@ -513,8 +505,7 @@ int probe_trace_enter(struct pt_regs *ctx)
 	return 0;
 }
 
-SEC("uprobe/probe_trace_exit")
-int probe_trace_exit(struct pt_regs *ctx)
+static __always_inline int probe_trace_exit_marker(struct pt_regs *ctx, __u32 exit_id)
 {
 	struct probe_config *cfg;
 	struct probe_marker_ts_key tkey;
@@ -523,8 +514,6 @@ int probe_trace_exit(struct pt_regs *ctx)
 	struct probe_hist fresh = {};
 	struct probe_slow_event ev;
 	__u64 *enter_ts;
-	__u64 cookie;
-	__u32 exit_id;
 	__u32 enter_id;
 	__u32 slot;
 	__u64 pid_tgid;
@@ -537,8 +526,6 @@ int probe_trace_exit(struct pt_regs *ctx)
 	if (!cfg || !cfg->enabled)
 		return 0;
 
-	cookie = bpf_get_attach_cookie(ctx);
-	exit_id = (__u32)cookie;
 	if (exit_id < 2 || (exit_id & 1) == 0)
 		return 0;
 	enter_id = exit_id - 1;
@@ -582,4 +569,28 @@ int probe_trace_exit(struct pt_regs *ctx)
 		bpf_ringbuf_output(&slow_events, &ev, sizeof(ev), 0);
 	}
 	return 0;
+}
+
+SEC("uprobe/probe_mark_process_track_enter")
+int probe_mark_process_track_enter(struct pt_regs *ctx)
+{
+	return probe_trace_enter_marker(ctx, 1);
+}
+
+SEC("uprobe/probe_mark_process_track_exit")
+int probe_mark_process_track_exit(struct pt_regs *ctx)
+{
+	return probe_trace_exit_marker(ctx, 2);
+}
+
+SEC("uprobe/probe_mark_filter_check_enter")
+int probe_mark_filter_check_enter(struct pt_regs *ctx)
+{
+	return probe_trace_enter_marker(ctx, 3);
+}
+
+SEC("uprobe/probe_mark_filter_check_exit")
+int probe_mark_filter_check_exit(struct pt_regs *ctx)
+{
+	return probe_trace_exit_marker(ctx, 4);
 }

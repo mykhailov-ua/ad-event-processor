@@ -1,0 +1,26 @@
+# Mount locally built tracker binary (CGO_ENABLED=0) for pixel/CAPI live smoke.
+# Usage: CGO_ENABLED=0 go build -o bin/tracker ./cmd/tracker
+#        docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.tracker-local.yaml up -d tracker-0 tracker-1 tracker-2 tracker-3
+x-tracker-local: &tracker_local
+  volumes:
+    - type: bind
+      source: ./bin/tracker
+      target: /tracker
+      read_only: true
+  environment:
+    - TRACKER_INGRESS_SCHEMA=ad_event_processor_native
+    - TRACK_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+    - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+    - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
+    - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+    - TRACKER_PPROF_ENABLED=1
+
+services:
+  tracker-0:
+    <<: *tracker_local
+  tracker-1:
+    <<: *tracker_local
+  tracker-2:
+    <<: *tracker_local
+  tracker-3:
+    <<: *tracker_local

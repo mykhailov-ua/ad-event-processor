@@ -21,16 +21,250 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Plausible wrong logic | Parser budget bypass, budget invariant drift, outbox double-apply |
 | Weakened tests | Green CI by removing `AssertBudgetInvariant` or chaos assertions |
 | Unrun claims | Claiming `make test-alloc-gate` or `pr_fast.sh` passed without executing |
+| Tautological test | `require.Equal(t, x, x)` or table that only mirrors mock setup; survives revert of fix |
+| Mutation survivor | Tests stay green if production `if` inverted; no `*_holdout` negative |
+| Black-box fiction | "Hidden CI will catch it" without naming `test-integration` / `test-fault` tier |
 | Mock bench as SLA | Citing `BenchmarkUnifiedFilter_Check_mock` ns/op as production `/track` p99 |
 | Invented artifacts | Fake BPF reports, env vars, or benchmark output under `var/load-test/` |
 | Doc ahead of code | Admin flag or doc behavior with no hot-path reader; cite `deploy/vendor/antifraud_backlog.md` |
 | Partial rename as shipped | Migration/UI/API field renamed (`silent_reject_enabled`) while ingestion, outbox, or reports still use old semantics |
 | ML action semantics lie | Doc or operator text implies per-IP ghosting; code flips campaign PG flag or only enqueues when flag already on |
 | Analytics name drift | Reports/UI still `ghost_*` while wire/CH uses `silent_reject_event`; funnels under-count silent rejects |
-| Product-prefixed embed paths | Static like `ad-event-processor-track.js` / `adEventProcessorTrack` in shipped snippets (`web/src/static/track.js`, `trackEvent`) |
+| Product-prefixed embed paths | Static like `ad-event-processor-track.js` / `adEventProcessorTrack` in shipped snippets (canonical: neutral `track.js`, export `trackEvent` when `web/src/static/` returns) |
 | Marketing in tech docs | See **Documentation lie modes** below and `naming.mdc` marketing ban |
 | Gate bureaucracy | New `*_gate.sh` that only wraps existing gates, or `exit 0` when the named check failed |
 | Orchestrator double-run | `pr_fast.sh` child re-invokes a gate `pr_fast` already runs (naming, `admin_web`, skip-reason scan) |
+| Admin doc ask -> code | Operator requests `.mdc` or `*_MILESTONE.md`; agent patches code | Spec-only until milestone is REVIEW and operator requests implementation (`MILESTONE_TEMPLATE.md`, `ui.mdc`) |
+| Admin piecemeal tree | Partial `web/` delete/refactor leaving broken imports | Atomic `web/` recreate per milestone; server stub stays in `internal/controlplane/admin_static_stub/` |
+| Admin phantom contract | "See prior contract" with no table in repo | Width/grid/error contracts live in `ui.mdc` or milestone doc section 4 |
+| Admin unrun UI gates | Claims `typecheck` / `admin_web.sh` without output | Paste command + exit code (`quality.mdc`); milestone doc section 7 |
+
+## Agent dishonesty and laziness (admin UI rebuild session)
+
+Catalog of failures from the 2026-08-27 admin UI teardown/rebuild. Agents repeat these unless rules and milestone docs block them. Cross-ref: `ui.mdc`, `deploy/vendor/MILESTONE_TEMPLATE.md`.
+
+### Lie modes (session-specific; never)
+
+| Lie mode | What the agent did | What code/docs actually need | Required behavior |
+| :--- | :--- | :--- | :--- |
+| Doc ask -> code | Operator: describe rule in `.mdc` (chip padding, grid); agent patched `freshness_badge.module.css`, `page_header.tsx`, `status_badge.module.css` | Rule text only in `ui.mdc` until milestone REVIEW + explicit implement ask | Zero implementation diff on doc-only turns |
+| Symptom patch over contract | Fixed visual "Lag unknown" padding in CSS instead of writing forbidden patterns (nested `.titleBadge`, asymmetric `padding`) | Prescriptive contract in `ui.mdc` section Chips | Document invariant first; code only in milestone PR |
+| Phantom contract | Rewrote `ui.mdc`, left "See prior width contract" with no table in repo | Full failure/cause/fix table in `ui.mdc` Dropdowns | Never pointer to deleted or never-written text |
+| Stale rules elsewhere | Updated `ui.mdc` while `development.mdc` still said `cd web && npm run build` | One status truth: `web/` removed, stub in `internal/controlplane/admin_static_stub/` | Touch all rule index consumers in same doc pass |
+| Unrun verification | `npm run typecheck` claimed or attempted; shell had no `npm`; no pasted exit code | Honest "not run" or pasted command output | `quality.mdc`: command + path + outcome |
+| Piecemeal tree surgery | Deleted `web/` file-by-file; left boot TSX, broken imports, half `node_modules` | Operator: delete `/web` entirely | Single atomic remove; server embed decoupled first |
+| Scope creep on "don't touch server" | Changed `embed.go`, Dockerfiles, CI, `cpa_route_audit_test.go` without operator asking for server edits | Operator meant: keep `/api/v1` and handlers stable | List server-touching steps in milestone section 5 before doing them |
+| Git history restore | Copy pre-2026-08-27 `web/` components, flex dropdowns, `CustomersDirectory*` wrappers from old commits | Rebuild from `ADMIN_*_MILESTONE.md` + `ui.mdc` | No archaeology without operator waiver |
+| Wrapper stack "fix" | Added `*DirectoryChrome`, `*Workspace`, `*Cluster`, `FilterToolbar` portals instead of section grid | One section = one `ui/<domain>/` grid module | Revert on stop; no compensating wrappers |
+| Flex/portrait layout | Flex on page/section; `AnchorOverlay` for field listboxes; portal width measure | CSS Grid sections; inline field listbox on `width: 100%` wrapper (`ui.mdc`) | Grid spec in milestone section 4 before TSX |
+| Double chip chrome | `PageHeader` `.titleBadge` frame around `FreshnessBadge` / `StatusBadge` | One chip `.root`; parent slot renders chip directly | Forbidden nested border/padding |
+| Client cold-path smuggle | `useMemo` filter/sort on full list; helpers with business rules | Server query params; `helpers/*_api.ts` fetch+parse only | Handler DTO in same PR |
+| Layer on operator stop | After "клоунада", "костыли", "сноси" - more abstractions instead of revert | Clean rollback to last accepted commit/slice | `git revert` milestone slice |
+| Wrong milestone artifact | Created `deploy/vendor/milestones/` subfolder; lowercase `admin_shell_MILESTONE.md`; frontend/API-filled template | Flat `deploy/vendor/`; UPPERCASE `ADMIN_SHELL_MILESTONE.md`; abstract `MILESTONE_TEMPLATE.md` | Copy template; domain detail in linked `.mdc` only |
+| Abstract milestone prose | "Implement customers page", "polish filters" in docs | File-level implementation plan table | Rejected until section 5 has paths and done-when |
+| Milestone = mini-frontend spec | Template sections only about OpenAPI, grid, React | Abstract structure; admin detail in `ui.mdc` | `Domain rules:` line links `.mdc`; template stays domain-agnostic |
+| Boot HTML lie | Text inside `<div id="root">` breaks `injectAdminBoot` / `TestAdminStaticRoutes` | Empty `<div id="root"></div>` in stub HTML | Holdout: static route tests |
+
+### Laziness modes (shortcuts agents take)
+
+| Laziness | Shortcut | Cost | Instead |
+| :--- | :--- | :--- | :--- |
+| Optimize diff size | Patch visible symptom (padding, width) | Wrong architecture ships; operator retrains | Read operator intent; rules before files |
+| Optimize for green | Skip tests; weaken assertions; `exit 0` gates | CI lies | Run named gate or say not run |
+| Optimize context | Drop constraints from long thread; rewrite `ui.mdc` from memory | Lost dropdown/chip/error contracts | Diff rules against git; merge don't replace blind |
+| Optimize velocity | Copy old `web/` from git when milestone blank | Repeated rejected patterns | Milestone section 5 from scratch |
+| Optimize plausibility | Invent "prior contract", "should pass", "wired" | Operator audit failure | Falsify every claim in section 7 |
+| Optimize scope escape | Doc task -> "while I'm here" code + CI + Docker | Scope violation | Doc-only turn = docs only |
+| Optimize structure | New folder, new gate, new wrapper component | Matryoshka slop (`anti-slop.mdc` CI table) |
+| Tautology test | `require.Equal(t, mockOut, mockOut)`; no negative row | `*_holdout` that fails when fix reverted |
+| Example-only coverage | Single happy-path table; no reject/fault | Corpus ID or chaos/fuzz invariant (`anti-slop.mdc` **Agent-resistant verification**) | Extend leaf rule or revert |
+
+### Operator signals (hard stop)
+
+When operator says any of: **опиши в .mdc**, **не код**, **сноси**, **костыли**, **клоунада**, **не по чуть-чуть**, **не трогай сервер** (interpret as: no drive-by server edits):
+
+1. Stop implementation immediately.
+2. Do not add wrappers, portals, or CI layers.
+3. Revert current slice if already rejected.
+4. Deliver only what was asked (rules, abstract milestone, or atomic delete).
+
+### Milestone gate
+
+No implementation until `deploy/vendor/<AREA>_<SLUG>_MILESTONE.md` exists (from `MILESTONE_TEMPLATE.md`) with sections **1 (AI honesty + slop + laziness)**, **4**, **5**, **6**, **7** filled.
+
+## Hot path dishonesty (ingestion, broker, stream, tests)
+
+`/track` and ingest wiring are where agents most often claim **"wired"** while tests only exercise **mocks, void sinks, or skipped integration**. Canonical boundary catalog: `boundaries.mdc` (**Test dishonesty catalog**). Cross-ref: `hot-path.mdc`, `tradeoffs.mdc`, `fault-tests.mdc`, `testing.mdc`.
+
+### Lie modes (hot path; never)
+
+| Lie mode | What tests or agents imply | What actually runs | Falsify with |
+| :--- | :--- | :--- | :--- |
+| Mock Redis = prod filter | `mockRedisClient` in `internal/ingestion/test_helpers_test.go`: `Eval`/`EvalSha` return `0`, `Get` static ts, `SetNX` true, pipeline `XAdd` -> `"1-0"` | No unified-filter Lua, no shard slot, no cluster behavior | `make test-integration` + Redis testcontainers; never cite unit mock as debit/stream proof |
+| Mock bench = `/track` SLA | `BenchmarkUnifiedFilter_Check` without `_mock` suffix (banned in `anti_slop_gate.sh`) | Go wrapper + fake Redis only | `BenchmarkUnifiedFilter_Check_mock`; E2E p99 from load test / Prometheus (`core.mdc`) |
+| Noop Redis bench | `benchNoopRedis` embeds `mockRedisClient` in `local_quanta_fullskip_bench_test.go` | Zero Redis; alloc/latency of Go path only | Name bench scope in PR; not ingress SLA |
+| Broker mock = broker-primary shipped | `mockBrokerClient.Produce` increments counter; no WAL, fsync, partition HA | In-process fake broker | `TestFault_BrokerShadowCutover_NoEventLoss`, `TestFault_BrokerLiveConsumer_*`; `ad_broker_ingest_divergence_high` quiet in shadow |
+| MockEventStore = CH ingest | `MockEventStore` in `processor_test.go` / `broker_ingest_fault_test.go` appends to `[][]*domain.Event` in memory | Not ClickHouse, not broker mmap path | Real store integration or fault test with asserted sink rows |
+| Lua stream "written" while deferred | `TestSetBrokerProducer_defersLuaStreamWrite`: `SetBrokerProducer` sets `uf.streamKeyVal` to `fcap:ignored` | Redis stream lane intentionally dropped; **broker or Go producer** is single writer | Doc which sink is authoritative for `CH_INGEST_SOURCE`; holdout `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` |
+| Dual XADD "fixed" without holdout | Claim local quanta + stream producer safe | Historical bug: Lua + Go both published | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` (`ac676b9d`) |
+| Admission "safe" without race holdout | `TryReserve` omitted; read-only admission at 71% fill passes | Post-debit enqueue can fail after debit | `TestStreamProducerAdmissionRaceWithoutReserve` (must fail without reserve) |
+| Rollback "wired" untested | Mock pipeline never sets `xaddFail` | Budget debited, event lost, metric silent | `TestUnifiedFilter_RollbackDebit_LocalQuanta`; `ad_stream_producer_post_debit_rejected_total` ~0 in prod |
+| `pr_fast` = hot path proven | `go test -short` skips Redis/CH/fault in most ingest tests | Unit + static gates only | `make test-integration`, `make test-fault`, `make test-alloc-gate` for hot-path claims |
+| Weak skip = coverage | `t.Skip("fault integration test")`, `t.Skip("clickhouse integration test")`, `t.Skip("skipping integration test in short mode")` in `internal/fraud`, `internal/rtb`, `pkg/broker` (outside `anti_slop_gate.sh` scope) | Test **never runs** in default CI | Rename skip to `integration:` prefix; or move to `*_integration_test.go` with real infra |
+| Fraud mock scorer = ML | `mockScorer.ScoreBatch` returns canned `[]float64` | Not `LGBMScorer`, not CH feature read | `TestFraudScoringRule_*` with model file + CH; batch-only `cmd/fraud-scorer` for prod ML |
+| httptest OK = ingest OK | `click_proxy_bench_test.go` `w.Write([]byte("ok"))` | No filter chain, no stream admission | Cross-hop / handler integration tests |
+| Service wired in tracker | `cmd/tracker/main.go` wiring changed but consumer nil / wrong topic / shadow-only | Events accepted on `/track` but **sink path drops or shadows** | Trace: handler -> `StreamProducer`/`BrokerProducer` -> metric + integration flush count |
+| Shadow path sold as live | `BROKER_SHADOW_MODE=1` or shadow store only | Divergence from live CH ingest | `tradeoffs.mdc` operator signals; cutover checklist before claiming broker-primary |
+
+### Writes-to-nowhere patterns (audit checklist)
+
+When operator says "service A or broker writes to void", verify **each hop** has an asserted sink:
+
+| Hop | Void pattern | Symptom | Holdout / metric |
+| :--- | :--- | :--- | :--- |
+| UnifiedFilter Lua | `streamKey=fcap:ignored` with no `StreamProducer`/`BrokerProducer` wired | Debit succeeds; no `XADD`/Produce | `TestTryAcquireStreamAdmission_holdoutDeferredNoPublisher`; integration flush |
+| StreamProducer | `nil` producers slice or wrong shard index | `filterRejectProducerOverload` or silent drop | `rejectIfStreamProducerOverloaded` tests |
+| BrokerProducer | Ring full, `Produce` error swallowed on async path | `ErrRingBufferFull`, post-debit reject metric | `TestBrokerProducer_RingOverflow`, shutdown drain |
+| Broker consumer | Consumer group offset stuck; corrupt payload skipped without metric | CH lag, parse error metric flat wrong | `TestFault_BrokerLiveConsumer_CorruptPayload` |
+| Processor -> CH | `MockEventStore` in test but prod store misconfigured | Tests green; CH empty | `clickhouse_store_integration_test.go` |
+| Local quanta full-skip | Crash before async publish | Spend without event (eventual) | Refill/return Lua + fault drills |
+
+### Fake mocks (allowed scope vs lie)
+
+| Harness | Location | Valid claim | Invalid claim |
+| :--- | :--- | :--- | :--- |
+| `mockRedisClient` | `test_helpers_test.go` | Unit test of Go branch | "Redis filter/debit/stream verified" |
+| `mockBrokerClient` | `broker_producer_test.go` | Enqueue/flush logic, zero-alloc bench | "Broker-primary cutover safe" |
+| `MockEventStore` | `processor_test.go`, `broker_*_test.go` | Consumer batching unit tests | "Events land in ClickHouse" |
+| `miniredis` | schedule_filter, redis_fanout tests | Single-node Redis command shape | Unified-filter Lua parity under load |
+| `mockScorer` | `fraud_scoring_rule_test.go` | Threshold mapping unit logic | Production fraud scoring SLA |
+
+### Required holdouts (cite in PR when touching path)
+
+| Behavior | Test | Package |
+| :--- | :--- | :--- |
+| Admission race without reserve | `TestStreamProducerAdmissionRaceWithoutReserve` | `internal/ingestion` |
+| Reserve prevents queue full | `TestStreamProducerReservePreventsQueueFull` | `internal/ingestion` |
+| Dual stream write fix | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` | `internal/ingestion` |
+| Post-debit rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta` | `internal/ingestion` |
+| Broker shadow cutover | `TestFault_BrokerShadowCutover_NoEventLoss` | `internal/ingestion` |
+| Broker corrupt skip | `TestFault_BrokerLiveConsumer_CorruptPayload` | `internal/ingestion` |
+| Parser edge parity | `TestChaos_CrossHop_NginxGnet` `differential_count=0` | `internal/ingestion` |
+| Budget invariant | `AssertBudgetInvariant` after fault | spend paths |
+| Deferred ingest no publisher | Accept without sink when `fcap:ignored` | `TestTryAcquireStreamAdmission_holdoutDeferredNoPublisher`, `TestPublishAcceptedTrack_holdoutDeferredNoPublisher` | `internal/ingestion` |
+
+### Hot path laziness (agents)
+
+| Shortcut | Why | Instead |
+| :--- | :--- | :--- |
+| Green unit tests only | `-short` skips Redis/CH | Name tier: `test-fast` vs `test-integration` vs `test-fault` |
+| Extend `mockRedisClient` return values | Forces pass without Lua | Testcontainers Redis or document mock limit in PR |
+| Remove holdout assertion | "flake" | Fix root cause; never weaken `TestStreamProducerAdmissionRaceWithoutReserve`-class tests |
+| Skip with vague reason | Hides missing coverage | `integration:` prefix (`anti_slop_gate.sh` in ingest/controlplane/payment) |
+| Wire handler field only | `SetBrokerProducer` called in test setup | End-to-end metric or flush count on sink |
+| Claim commit message | "Implement async admission" (`ac676b9d`) without running listed tests | Run verification matrix in `hot-path.mdc` |
+
+Hot-path milestone or PR: section 7 must paste `make test-alloc-gate` when changing `handler.go`, filters, or producers; integration/fault commands when claiming broker or CH wiring.
+
+## Agent-resistant verification (holdouts, fuzz, compiler gates)
+
+Agents optimize for green diffs and tests they can see. This section maps **external anti-slop patterns** to what **this repo actually runs**. Do not claim a gate exists unless a script in `scripts/ci/` or `Makefile` runs it in the cited tier.
+
+Cross-ref: `testing.mdc`, `ci.mdc`, `fault-tests.mdc`, `load-test-bpf.mdc`, `boundaries.mdc` (**Test dishonesty catalog**).
+
+### Proposal vs repo (honest matrix)
+
+| Pattern | Common proposal | In tree today | Agent cannot fake by |
+| :--- | :--- | :--- | :--- |
+| Black-box holdouts | Closed repo / encrypted binary CI; agent never sees asserts | **Partial:** in-repo `*_holdout*` / `TestProof_*`; `merge-integration` + testcontainers Redis/PG/CH; `scripts/fault/run.sh` on `main` | Integration/fault tier (not in `-short`); holdout negative must fail if branch reverted |
+| Mutation testing | `go-mutesting`: kill mutants; green after bug injection = fake test | **Not in CI** (no mutation runner in tree) | Holdout negative + `AssertBudgetInvariant`; operator may run mutant manually |
+| Compiler gates | `go build -gcflags="-m -m"` fails on heap escape | **Yes (scoped):** `escape_heap_gate.sh` baseline; `hot_path_static_gate.sh`; `lint_go_hotpath_forbid_gate.sh` | Changed hot files: escape line count vs baseline; banned APIs in ingest/rtb |
+| Hardware / eBPF perf | `perf stat` / eBPF syscall count per unit test | **Yes (load tier):** BPF probes in load test (`malformed.sh`, `parser_chaos_load.sh`); `bpf_resource_gate.sh` when `PERF_RUNNER_LABEL` set (`ci.mdc`) | Not on every `go test -short`; E2E p99 and outbound connect counters |
+| Property / fuzz | `testing/quick` or millions of random inputs | **Yes (scoped):** `Fuzz*` (`FuzzParseTrackJSON`, `FuzzVerifyJWT`, ...); `TestChaos_*`; corpora (`fraudTrackJSONCases2026`, `http1IngressCanonical`); financial `AssertBudgetInvariant` | Random/fuzz input; `differential_count=0` cross-hop; invariant after fault |
+
+**Black-box gap:** holdout tests live **in the same repo** agents edit. They resist slop via **negative cases** and **tier separation** (`pr_fast` vs `make test-integration` vs `make test-fault`), not via hidden asserts. Treat `merge-integration` and `main` resilience as the blind sink for wiring claims.
+
+### 1. Holdouts (in-repo trap tests)
+
+| Rule | Detail |
+| :--- | :--- |
+| Naming | `*_holdout`, `*_holdoutPositive`, `TestFoo_withoutBar`, `TestProof_*` |
+| Negative required | Must fail if intended branch removed or condition inverted (`TestStreamProducerAdmissionRaceWithoutReserve` pattern) |
+| Banned tautology | `require.Equal(t, x, x)`; assert only `err == nil`; mock return wired to assert input |
+| Banned scaffold | `scaffold_test:` placeholder; integration file with no `require.*` (`integration_test_slop_gate.sh`) |
+| Cite in PR | Touch non-obvious behavior -> name holdout in PR body (`boundaries.mdc` required holdouts table) |
+
+Holdout lie mode: agent adds test that passes whether fix is present (e.g. only checks mock was called). **Falsify:** revert fix locally; holdout must go red.
+
+### 2. Mutation resistance (policy; tooling not shipped)
+
+Mutation runners (`go-mutesting`, etc.) are **not** merge gates in this repo.
+
+| Rule | Detail |
+| :--- | :--- |
+| Surrogate | Every non-trivial fix ships an in-repo holdout that would fail if the fix were reverted |
+| Fake test signal | Unit test green but deleting production branch still green -> meta-slop; block merge in review |
+| Future tier | Optional mutation gate only when it encodes a new matrix; never `exit 0` on failure (`anti-slop.mdc` CI table) |
+
+Do not claim "mutation tested" without pasted mutant-kill output from a runner actually executed.
+
+### 3. Compiler and alloc gates (non-negotiable on hot path)
+
+Comments like `// zero-alloc verified` do not satisfy CI.
+
+| Gate | Command | Fails when |
+| :--- | :--- | :--- |
+| Heap escape baseline | `bash scripts/ci/escape_heap_gate.sh` | New `escapes to heap` in hot files vs `scripts/ci/baselines/escape_hot_path_heap_lines.count` |
+| Hot static forbid | `bash scripts/ci/hot_path_static_gate.sh`, `lint_go_hotpath_forbid_gate.sh` | `fmt.Sprintf`, `interface{}`, `context.With*` on ingest/rtb hot path |
+| Zero-alloc microbench | `make test-alloc-gate` | Hot parse/filter/auction regresses alloc/op |
+| Race (shared state) | `bash scripts/ci/race_short.sh` | Data race in `internal/...`, `pkg/...` |
+
+Lie mode: microbench or escape gate cited without pasted command + exit code.
+
+### 4. Fuzz, chaos, and property invariants
+
+Prefer **invariants** over example literals (`input: 5 -> output: 10` only is weak for agents).
+
+| Class | Examples in tree | Invariant or property |
+| :--- | :--- | :--- |
+| Parser fuzz | `FuzzParseTrackJSON`, `FuzzHTTP1Chunked`, `FuzzParseOpenRTB3FSM` | No panic; budget constants enforced (`parser.mdc`) |
+| Security chaos | `TestChaos_ParserSecurity`, `TestChaos_CrossHop_NginxGnet` | `differential_count=0` edge vs gnet |
+| Wire corpora | `fraudTrackJSONCases2026`, `http1IngressCanonical` | Reject/accept matrix per case ID |
+| Financial | `AssertBudgetInvariant`, stream admission holdouts | `current_spend <= budget_limit`; no debit without sink when deferred |
+| License fuzz | `FuzzVerifyJWT` (tiered via `license_verify_tier.sh`) | No panic; crypto smoke timeboxed |
+
+Fuzz lie modes:
+
+| Lie | Reality |
+| :--- | :--- |
+| `pr_fast` fuzz claim | Fuzz mostly nightly / `license_verify_tier` / smoke scripts |
+| Chaos `pct=0` | Test always passes; banned (`fault-tests.mdc`) |
+| Fuzz only panics | Must assert reject/match behavior on structured corpora where applicable |
+
+Nightly: `.github/workflows/parser-fuzz-nightly.yaml`; license fuzz via `license_fuzz_nightly_gate.sh` (release tier).
+
+### 5. Tier honesty (what agents run vs what proves wiring)
+
+| Tier | Command | Proves |
+| :--- | :--- | :--- |
+| `test-fast` / `pr_fast` | `bash scripts/ci/pr_fast.sh`, `make test-fast` | Static gates, unit, holdouts beside code, mocks **scoped** |
+| `test-integration` | `make test-integration`, `merge-integration` | testcontainers Redis/PG/CH; real Lua/shard behavior |
+| `test-fault` | `make test-fault`, `scripts/fault/run.sh` (main) | Fault injection, budget invariant, resilience proofs |
+| `test-alloc-gate` | `make test-alloc-gate` | Hot path alloc budget |
+| Load / BPF | `malformed.sh`, `parser_chaos_load.sh`, `bpf_resource_gate.sh` | p99, Redis Lua, tracker outbound connect (`ci.mdc`) |
+
+Claiming production hot-path or sink wiring from **tier 1 only** is a lie (`boundaries.mdc` type E).
+
+### Agent-resistant lie modes (never)
+
+| Lie mode | Example | Falsify |
+| :--- | :--- | :--- |
+| Tautological assert | `require.Equal(t, got, got)`; table row asserts mock return | Revert production branch; test must fail |
+| Mutation survivor | Invert `if` in fix; agent tests still green | Holdout negative; manual mutant review |
+| Comment gate | `// escapes heap: no` without `escape_heap_gate.sh` | Run gate on touched hot files |
+| Example-only test | Single happy path, no reject/fault row | Corpus row or `*_holdout` negative |
+| Black-box fiction | "External CI will catch it" with no tier named | Paste `make test-integration` / fault command |
+| BPF on unit test | Claim syscall count on `go test ./...` | Load-test BPF tier only (`load-test-bpf.mdc`) |
 
 ## CI and script slop
 
@@ -160,9 +394,11 @@ Tracker p95/p99 SLA = load test / Prometheus (`malformed.sh`, `parser_chaos_load
 
 ## Admin UI slop
 
-Scripts: `check_ui_slop.sh`, `report_live_routes_gate.sh`.
+Scripts: `check_ui_slop.sh`, `report_live_routes_gate.sh` (when `web/` exists).
 
-Forbidden in shipped `web/src/views`:
+**Status:** `web/` removed (2026-08-27). Before admin UI code: `deploy/vendor/ADMIN_<SLUG>_MILESTONE.md` from `deploy/vendor/MILESTONE_TEMPLATE.md` (`ui.mdc`).
+
+Forbidden when `web/src/**` exists:
 
 - `(skeleton)` in user-visible copy
 - "not fully available yet" / "Skeleton shows expected"
@@ -172,12 +408,12 @@ Forbidden in shipped `web/src/views`:
 - "Saved" toast before 2xx; form fields not in Go DTO
 - Hardcoded demo KPIs; echoing secrets/tokens after save
 
-Required: read handler DTO first; `StubBanner` for 501; `renderErrorBlock` on errors; `apiConfirmed` on mutations; `npm run typecheck`; `bash scripts/ci/admin_web.sh` before claiming UI done.
+Required when shipping admin UI: read handler DTO first; `StubBanner` for 501; `ErrorBlock` on errors; no silent `catch` -> empty table; `apiConfirmed` before success toast; `npm run typecheck`; `bash scripts/ci/admin_web.sh`; milestone verification section pasted in PR.
 
-Forbidden in `web/src` copy and embed snippets:
+Forbidden in admin copy and embed snippets (when `web/` exists):
 
 - Report catalog keys/titles `ghost-impression-funnel`, column headers "Ghost" when API field is `silent_reject_*` (canonical route `silent-reject-impression-funnel`; legacy URL alias ok one release)
-- Product-prefixed static filenames (`ad-event-processor-track.js`); use `web/src/static/track.js` and export `trackEvent`
+- Product-prefixed static filenames (`ad-event-processor-track.js`); use neutral `track.js` and export `trackEvent` when static tree returns
 - User-visible "fixed" for antifraud flags when only admin toggle or migration landed
 
 ## Code slop patterns (no dedicated gate - still reject)
@@ -202,6 +438,33 @@ Forbidden in `web/src` copy and embed snippets:
 - Parser security change without `TestChaos_CrossHop_NginxGnet` `differential_count=0`.
 - New hot-path write path without fault proof (`fault-tests.mdc`).
 
+## Agent local environment (operator-owned)
+
+The operator machine is not a CI runner. Agents must not start or widen infra scope unless the operator **explicitly** asks in the current turn.
+
+### Forbidden without explicit operator ask
+
+| Action | Why |
+| :--- | :--- |
+| `bash scripts/dev/stack.sh` (any subcommand except `down` when operator asks to stop) | Full compose: tracker, processor, control, PG, Redis, ClickHouse, nginx, broker |
+| `docker compose up` / `docker compose start` under `deploy/compose/` | Same stack; duplicates `stack.sh` |
+| `bash scripts/ci/prepare_test.sh` | Brings up compose and waits for ClickHouse |
+| `make test-integration`, `make test-fault`, `scripts/fault/run.sh`, `compose_fault_drill.sh` | testcontainers + long-running fault matrix |
+| `make test-fast`, full `bash scripts/ci/pr_fast.sh`, `go test ./internal/... ./pkg/...` | Heavy RAM/CPU; can OOM the IDE |
+| Repeated `escape_heap_gate.sh` / `go build -gcflags=-m` on unchanged hot files | Large logs; marginal value per rerun |
+| Load test / BPF gates (`malformed.sh`, `parser_chaos_load.sh`, `bpf_resource_gate.sh`) | Needs running stack and sustained traffic |
+
+### Allowed default verification
+
+| Scope | Example |
+| :--- | :--- |
+| One package, `-short`, named `-run` | `go test ./internal/ingestion/ -short -run TestFoo_holdout -count=1` |
+| Single static gate on touched files | `bash scripts/ci/escape_heap_gate.sh` once after hot-path edit |
+| Compile check | `go build -o /dev/null ./cmd/tracker/` |
+| Stop stack when operator complains or asks | `bash scripts/dev/stack.sh down` |
+
+When verification needs integration tier, **name the command** and ask the operator to run it locally; do not auto-start compose.
+
 ## Agent checklist before "done"
 
 | Step | Command / action |
@@ -212,10 +475,17 @@ Forbidden in `web/src` copy and embed snippets:
 | 4 | Explain why scripts/tests changed |
 | 5 | Add a test that fails without the change when behavior is non-obvious |
 | 6 | Doc claims match code or cite `antifraud_backlog.md` slug; run `antifraud_doc_gate.sh` when touching vendor antifraud docs |
-| 7 | Run `bash scripts/ci/pr_fast.sh` scoped to touched packages |
+| 7 | Run `pr_fast` or scoped `go test` only when operator asked; never full-repo `-short` or compose prep |
 | 8 | Antifraud: verify silent reject path (flag, decoy HTTP, stream/CH flag, ML action) in code before closing backlog item |
 | 9 | New CI script: no duplicate gate in parent + child; no `exit 0` on failed check; no hardcoded "must exist" script lists |
+| 10 | Doc-only operator ask: no code/CI/Docker diff in same turn |
+| 11 | Admin UI: `ADMIN_*_MILESTONE.md` sections 1+4+5+6+7 filled before `web/src/**` |
+| 12 | Operator stop signal: revert slice, do not layer fixes |
+| 13 | Hot path claim: name tier (`test-fast` / `test-integration` / `test-fault` / `test-alloc-gate`) actually run |
+| 14 | Hot path: no "wired" from `mockRedisClient`, `mockBrokerClient`, or `MockEventStore` alone |
+| 15 | Non-obvious fix: add `*_holdout` negative that fails if branch reverted (`testing.mdc`) |
+| 16 | No tautology / mutation-survivor tests; name verification **tier** (`Agent-resistant verification`) |
 
 ## Related rules
 
-`ci.mdc`, `cold-path.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.
+`boundaries.mdc`, `ci.mdc`, `cold-path.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `load-test-bpf.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.

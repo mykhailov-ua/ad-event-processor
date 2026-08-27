@@ -129,6 +129,23 @@ LicenseStatus:
       type: string
     hwid_v2:
       type: string
+    hwid_inputs:
+      type: object
+      properties:
+        dmi_uuid:
+          type: string
+        disk_id:
+          type: string
+        mac:
+          type: string
+        cpu_model:
+          type: string
+        cpu_cores:
+          type: integer
+        machine_id:
+          type: string
+        v3_enabled:
+          type: boolean
     hwid_match:
       type: boolean
     days_to_expiry:

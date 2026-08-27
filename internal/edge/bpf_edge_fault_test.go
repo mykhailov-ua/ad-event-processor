@@ -50,7 +50,7 @@ func TestFault_XDPMalformedPacketFuzzing(t *testing.T) {
 
 func TestFault_XDPSyncRedisOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("redis outage fault test")
+		t.Skip("integration: redis outage fault test (run make test-integration)")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

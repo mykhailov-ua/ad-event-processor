@@ -57,8 +57,7 @@ func luaBranchLabel(res int64) string {
 }
 
 var (
-	luaPrecheckIngressTTLAny any = luaPrecheckIngressTTLSec
-	luaDegradeThresholdAny   any = luaDegradeThresholdNs
+	luaDegradeThresholdAny any = luaDegradeThresholdNs
 )
 
 var (
@@ -66,24 +65,8 @@ var (
 	ingressIgnoredKeyVal   = StringVal{s: "fcap:ignored"}
 )
 
-var maxRPDAnyCache [8192]any
-
-func maxRPDAsAny(v uint64) any {
-	if v == 0 {
-		return zeroAny
-	}
-	if int(v) < len(maxRPDAnyCache) {
-		return maxRPDAnyCache[v]
-	}
-	return v
-}
-
 type entitlementsLookup interface {
 	GetEntitlements(customerID uuid.UUID) (licensing.Entitlements, bool)
-}
-
-type luaPrecheckScratch struct {
-	wIngress, wPlacement bufWrapper
 }
 
 func (f *UnifiedFilter) entitlementsMaxRPD(custID uuid.UUID) uint64 {

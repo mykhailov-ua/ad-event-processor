@@ -109,13 +109,13 @@ jobs:
           go-version: '1.25.12'
           cache: true
       - name: Race detector (go test -race -short)
-        run: bash scripts/ci/race_short.sh 2>&1 | tee race_short.log
+        run: bash scripts/lib/tee_ci_log.sh race_short.log bash scripts/ci/race_short.sh
       - name: Upload race-short log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: merge-race-short-log
-          path: race_short.log
+          path: var/ci/race_short.log
           retention-days: 7
 
   merge-integration:
@@ -131,13 +131,13 @@ jobs:
           go-version: '1.25.12'
           cache: true
       - name: Integration tests (testcontainers)
-        run: bash scripts/ci/integration_test.sh 2>&1 | tee integration_test.log
+        run: bash scripts/lib/tee_ci_log.sh integration_test.log bash scripts/ci/integration_test.sh
       - name: Upload integration log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: merge-integration-log
-          path: integration_test.log
+          path: var/ci/integration_test.log
           retention-days: 7
 
   merge-govulncheck:
@@ -173,13 +173,13 @@ jobs:
           go-version: '1.25.12'
           cache: true
       - name: Perf smoke (zero-alloc; benchstat skipped on github-hosted)
-        run: bash scripts/ci/perf_smoke.sh 2>&1 | tee perf_smoke.log
+        run: bash scripts/lib/tee_ci_log.sh perf_smoke.log bash scripts/ci/perf_smoke.sh
       - name: Upload perf smoke log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: merge-perf-smoke-log
-          path: perf_smoke.log
+          path: var/ci/perf_smoke.log
           retention-days: 7
 
   merge-openrtb-fuzz:
@@ -245,13 +245,13 @@ jobs:
           go-version: '1.25.12'
           cache: true
       - name: Full test suite (integration + fault, no -short)
-        run: bash scripts/ci/full_test.sh 2>&1 | tee full_test.log
+        run: bash scripts/lib/tee_ci_log.sh full_test.log bash scripts/ci/full_test.sh
       - name: Upload full-test log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: main-full-test-log
-          path: full_test.log
+          path: var/ci/full_test.log
           retention-days: 7
 
   main-resilience:

@@ -18,7 +18,7 @@ import (
 
 func TestE2E_RegionProxyIngress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping region-proxy e2e")
+		t.Skip("integration: region-proxy e2e (run make test-integration)")
 	}
 
 	dataDir := t.TempDir()

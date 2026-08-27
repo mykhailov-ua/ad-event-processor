@@ -27,7 +27,7 @@ func logEntitlementFaultProof(t *testing.T, fault string, fields map[string]stri
 
 func TestFault_EntitlementBufferOOMProtection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -65,7 +65,7 @@ func TestFault_EntitlementBufferOOMProtection(t *testing.T) {
 
 func TestFault_EntitlementBufferRecover(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

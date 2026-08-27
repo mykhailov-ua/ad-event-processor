@@ -27,7 +27,7 @@ jobs:
     env:
       GOMAXPROCS: '1'
       BASELINE_REF: main
-      OUTDIR: ${{ github.workspace }}
+      OUTDIR: ${{ github.workspace }}/var/ci/perf-gate
       PERF_GATE_STRICT: ${{ vars.PERF_RUNNER_LABEL != '' && 'true' || 'false' }}
     steps:
       - name: Checkout Repository
@@ -54,7 +54,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run performance gate
-        run: bash scripts/test/gate_run.sh 2>&1 | tee gate_run.log
+        run: bash scripts/lib/tee_ci_log.sh gate_run.log bash scripts/test/gate_run.sh
 
       - name: Upload Benchmark Artifacts
         if: always() && env.PERF_GATE_STRICT == 'true'
@@ -62,10 +62,10 @@ jobs:
         with:
           name: benchmark-results
           path: |
-            pr_bench.txt
-            baseline_bench.txt
-            gate_report.txt
-            gate_run.log
+            var/ci/perf-gate/pr_bench.txt
+            var/ci/perf-gate/baseline_bench.txt
+            var/ci/perf-gate/gate_report.txt
+            var/ci/gate_run.log
           retention-days: 14
 
       - name: Upload smoke bench artifact
@@ -74,8 +74,8 @@ jobs:
         with:
           name: perf-gate-smoke
           path: |
-            pr_bench.txt
-            gate_run.log
+            var/ci/perf-gate/pr_bench.txt
+            var/ci/gate_run.log
           retention-days: 7
 
       - name: Upload gate report on failure
@@ -84,7 +84,7 @@ jobs:
         with:
           name: perf-gate-failure
           path: |
-            gate_run.log
-            gate_report.txt
+            var/ci/gate_run.log
+            var/ci/perf-gate/gate_report.txt
           retention-days: 7
           if-no-files-found: ignore

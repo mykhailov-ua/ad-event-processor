@@ -59,7 +59,6 @@ type unifiedCheckScratch struct {
 	wDup, wIdem, wDate, wDS, wFcap, wImpTS, wQuota, wRefillLock, wFence, wFrozen bufWrapper
 	wDeadlineMono, wNowMono                                                      bufWrapper
 	deadlineMonoStr, nowMonoStr                                                  StringVal
-	precheck                                                                     luaPrecheckScratch
 	args                                                                         []any
 	wrappers                                                                     UnifiedStringWrappers
 	keyVals                                                                      [unifiedFilterKeyCount]StringVal
@@ -119,9 +118,6 @@ func init() {
 	budgetFastLuaAny = budgetFastLua
 	for i := 0; i <= 24; i++ {
 		hourAnyCache[i] = i
-	}
-	for i := range maxRPDAnyCache {
-		maxRPDAnyCache[i] = uint64(i)
 	}
 }
 
@@ -395,6 +391,13 @@ func NewUnifiedFilter(
 	}
 	f.geoFloors.Store(&emptyGeoFloors)
 	return f
+}
+
+func (f *UnifiedFilter) StreamDeferredToProducer() bool {
+	if f == nil {
+		return false
+	}
+	return f.streamKeyVal.s == fcapIgnoredKeyVal.s
 }
 
 func (f *UnifiedFilter) SetDeferStreamToProducer(deferWrite bool) {

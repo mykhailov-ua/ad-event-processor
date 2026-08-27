@@ -25,7 +25,7 @@ const multishardCount = 4
 
 func TestE2E_Multishard(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

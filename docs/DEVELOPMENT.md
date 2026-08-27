@@ -116,7 +116,7 @@ bash scripts/ci/openapi_gate.sh
 cd web && npm run typecheck
 ```
 
-Backlog tracker: `deploy/vendor/openapi_backlog.md`.
+Backlog tracker (closed 2026-08-26): `deploy/vendor/openapi_backlog.md`.
 
 #### Breaking change guard (OpenAPI diff)
 
@@ -222,6 +222,15 @@ npm ci
 npm run dev
 ```
 
+Detached daemon (survives IDE terminal teardown; auto-restarts on crash):
+```bash
+cd web
+npm run dev:daemon
+npm run dev:status
+npm run dev:stop
+```
+Log: `var/admin_dev.log`. PID: `var/admin_dev.pid`.
+
 ### 2. Admin UI Bootstrap & Production Build
 To seed a local developer account and embed the UI assets directly into the Go `control` binary:
 ```bash
@@ -313,6 +322,12 @@ These suites verify automatic recovery during common disaster scenarios: Redis s
 
 ---
 
+## CI and gate artifact output
+
+Local gates and GitHub Actions tee logs write under `var/ci/` (gitignored). Override with `CI_ARTIFACT_DIR`. Perf bench outputs from `scripts/test/gate_run.sh` land in `var/ci/perf-gate/`. Workflows capture transcripts via `bash scripts/lib/tee_ci_log.sh <filename> <command...>`.
+
+---
+
 ## Manual Verification & Smoke Test Index
 
 Before submitting a Pull Request, run the quick verification suite:
@@ -360,9 +375,26 @@ make license-red-team
 | `LICENSE_PENTEST_GARBLED` | `1` runs tier B (`license_red_team_garbled.sh`) |
 | `LICENSE_GDB_SMOKE` | `1` enables gdb attach smoke in extended red team / tier C |
 | `AD_EVENT_PROCESSOR_LICENSE_GUARD=0` | Lab only: disable ptrace watchdog and guard probes |
-| `ASSET_SEAL_SALT` | Required for `asset_seal_salt_smoke` in red team |
+| `AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY_OVERRIDE=1` | Lab only: allow env/file pubkey override when `AD_EVENT_PROCESSOR_PROFILE=production` (default: embedded pubkey only) |
+| `ASSET_SEAL_SALT` | Required for garbled release builds and `asset_seal_salt_smoke` in red team |
+| `AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE_REQUIRED` | `1` trips license guard when ptrace watchdog cannot attach (Yama `ptrace_scope`). Defaults to on when `PROFILE=production` and `LICENSE_REQUIRED=1`. Set `0` on dev laptops. |
+| `ptrace_scope` | Kernel Yama setting at `/proc/sys/kernel/yama/ptrace_scope`. Value `1` restricts ptrace attach to parent processes; guard watchdog may reply `skip` unless ptrace required. |
 
-Manual tier D (config pubkey injection, HWID sysfs spoof, binary patch lab): see slug `licensing_pentest_playbook` in the security backlog. HWID spoof fixture: `deploy/vendor/fixtures/hwid_spoof/README.md`.
+### Garble release builds
+
+`bash scripts/ci/release_garble.sh` garbles `tracker`, `processor`, and `control` for Linux release images.
+
+| Env | Effect |
+| :--- | :--- |
+| `GARBLE_SEED` | **Required** for garbled release builds (`RELEASE_GARBLE=1`). CI and `license_red_team_garbled.sh` always set it. |
+| `RELEASE_GARBLE_SKIP_SEED=1` | Local dev only: allow garble build without `GARBLE_SEED` (non-reproducible). |
+| `GARBLE_LITERALS` | Global override for `-literals` on all commands (default: tracker `0`, control/processor `1`). |
+| `GARBLE_LITERALS_TRACKER=1` | Experimental: enable `-literals` on tracker only. Run `GARBLE_LITERALS_P99_SMOKE=1 bash scripts/test/garble_literals_p99_smoke.sh` before enabling in release policy. |
+| `GARBLE_LITERALS_P99_SMOKE` | `1` runs load-test p99 comparison (tracker literals must stay within budget; default policy keeps tracker literals off). |
+
+`bash scripts/ci/release_strings_gate.sh` scans garbled binaries for licensing symbol anchors, vendor pubkey hex, and raw embedkey byte needles.
+
+Manual tier D (config pubkey injection, HWID sysfs spoof, binary patch lab): see slug `licensing_pentest_playbook` in the security backlog. HWID spoof fixture: `deploy/vendor/fixtures/hwid_spoof/README.md`. Binary patch lab: `deploy/vendor/fixtures/binary_patch/README.md` (`bash scripts/lab/binary_patch_lab.sh`).
 
 ---
 

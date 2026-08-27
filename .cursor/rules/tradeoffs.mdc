@@ -51,6 +51,7 @@ Cite these tests when claiming behavior:
 | Reserve prevents queue full | `TestStreamProducerReservePreventsQueueFull` |
 | Dual stream write fix | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` |
 | Post-debit rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta` |
+| Deferred ingest no publisher | `TestTryAcquireStreamAdmission_holdoutDeferredNoPublisher`, `TestPublishAcceptedTrack_holdoutDeferredNoPublisher` |
 | Static slot parity | `sharding_test.go`, `edge-slot-map.lua` |
 | Budget invariant | `AssertBudgetInvariant` |
 | UDS dial | `redis_uds_benchmark.sh` |

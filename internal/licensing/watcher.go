@@ -202,6 +202,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 			w.currentState = StateExpired
 			w.mu.Unlock()
 			SetLicenseMetrics(StateExpired, 0)
+			publishFeatureSeedAfterVerify(w.path, w.pubKey, err)
 			return fmt.Errorf("failed to read local license file: %w", err)
 		}
 	}
@@ -213,6 +214,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		w.currentState = StateExpired
 		w.mu.Unlock()
 		SetLicenseMetrics(StateExpired, 0)
+		publishFeatureSeedAfterVerify(w.path, w.pubKey, err)
 		return fmt.Errorf("license signature verification failed: %w", err)
 	}
 
@@ -222,6 +224,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		w.currentState = StateExpired
 		w.mu.Unlock()
 		SetLicenseMetrics(StateExpired, 0)
+		publishFeatureSeedAfterVerify(w.path, w.pubKey, err)
 		return fmt.Errorf("license bind verification failed: %w", err)
 	}
 
@@ -256,6 +259,7 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 
 	SetLicenseMetrics(state, offlineDays)
 	UpdateLogWatermark(claims)
+	publishFeatureSeedAfterVerify(w.path, w.pubKey, nil)
 
 	if w.pool == nil && w.redisClient == nil {
 		return nil

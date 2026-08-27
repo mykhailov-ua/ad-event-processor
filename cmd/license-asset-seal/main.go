@@ -12,7 +12,7 @@ import (
 func main() {
 	in := flag.String("in", "", "input asset bytes (BPF ELF, unified-filter.lua, ...)")
 	out := flag.String("out", "internal/edge/edge_sealed.bin", "output sealed blob path")
-	label := flag.String("label", licensing.AssetLabelEdge, "asset label (edge-bpf, unified-filter)")
+	label := flag.String("label", licensing.AssetLabelEdge, "asset label (edge-bpf, unified-filter, processor-ch-ingest, control-runtime)")
 	licenseFile := flag.String("license", "", "license JWT file used to derive MCK")
 	token := flag.String("token", "", "license JWT inline (alternative to --license)")
 	hwid := flag.String("hwid", "", "host HWID v2 used for MCK (default: HostHWID())")

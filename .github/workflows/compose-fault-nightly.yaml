@@ -26,7 +26,7 @@ jobs:
         run: sudo bash scripts/test/host_tune.sh
 
       - name: Compose fault drill (all)
-        run: bash scripts/fault/compose_fault_drill.sh all 2>&1 | tee compose-fault.log
+        run: bash scripts/lib/tee_ci_log.sh compose-fault.log bash scripts/fault/compose_fault_drill.sh all
 
       - name: Upload drill log
         if: always()
@@ -34,7 +34,7 @@ jobs:
         with:
           name: compose-fault-log
           path: |
-            compose-fault.log
+            var/ci/compose-fault.log
             var/fault-drill/
             var/ram-proof/
           retention-days: 14

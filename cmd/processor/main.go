@@ -77,7 +77,22 @@ func main() {
 	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
 		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
 		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+		PtraceRequired: licensing.GuardCompiledIn() && config.LicenseGuardPtraceRequired(),
 	})
+
+	if config.LicenseRequiredFromEnv() {
+		licensing.StartFileLicenseRecheck(ctx, licensing.FileLicenseRecheckConfig{
+			Path: config.LicensePathFromEnv(),
+		})
+		slog.Info("license file recheck enabled", "path", config.LicensePathFromEnv())
+	}
+
+	if err := ingestion.InitProcessorCHIngestPolicy(); err != nil {
+		slog.Error("failed to load processor ch ingest policy", "error", err)
+		if !config.LicenseAssetsUnsealed() {
+			os.Exit(1)
+		}
+	}
 
 	consumerCtx, consumerCancel := context.WithCancel(context.Background())
 	defer consumerCancel()
@@ -200,6 +215,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(redisShards) > 0 && redisShards[0] != nil {
+		licensing.StartLicenseEpochSync(ctx, redisShards[0])
+	}
+
 	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
 		RedisShards:  redisShards,
 		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
@@ -221,6 +240,7 @@ func main() {
 	var conversionPayoutApplier *ingestion.ConversionPayoutApplier
 	if chEnabled && chConn != nil {
 		spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
+		spoolCfg = ingestion.ApplyCHIngestPolicy(spoolCfg)
 		chStore = ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
 		chStore.SetPIIHasher(piiHasher)
 		conversionPayoutApplier = ingestion.NewConversionPayoutApplier(settleQueries)

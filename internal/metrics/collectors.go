@@ -42,6 +42,16 @@ var (
 		Help: "Sealed unified-filter.lua decrypt failures",
 	})
 
+	ProcessorCHIngestSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "processor_ch_ingest_seal_fail_total",
+		Help: "Sealed processor ClickHouse ingest policy decrypt failures",
+	})
+
+	ControlRuntimeSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "control_runtime_seal_fail_total",
+		Help: "Sealed control runtime policy decrypt failures",
+	})
+
 	LicenseClockSkewTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "license_clock_skew_total",
 		Help: "License state forced expired due to wall clock vs monotonic skew",
@@ -1216,6 +1226,10 @@ var (
 	SettlementBatchCompactDropped = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_settlement_batch_compact_dropped_total",
 		Help: "Duplicate events removed from a settlement flush batch before PG write",
+	})
+	SettlementSeedGateBlockedTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_settlement_seed_gate_blocked_total",
+		Help: "Settlement events dropped without PG flush when feature seed coupling is invalid",
 	})
 	SettlementStatsCampaignsFlushed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_settlement_stats_campaigns_flushed_total",

@@ -49,27 +49,6 @@ func loadTestInt(t *testing.T, env map[string]string, key string) int {
 	return n
 }
 
-func loadTestTrackerIngestPort(t *testing.T, env map[string]string, idx int) int {
-	t.Helper()
-	base := loadTestInt(t, env, "LOAD_TEST_TRACKER_INGEST_BASE")
-	step := loadTestInt(t, env, "LOAD_TEST_TRACKER_INGEST_STEP")
-	return base + idx*step
-}
-
-func loadTestTrackerMetricsPort(t *testing.T, env map[string]string, idx int) int {
-	t.Helper()
-	base := loadTestInt(t, env, "LOAD_TEST_TRACKER_METRICS_BASE")
-	step := loadTestInt(t, env, "LOAD_TEST_TRACKER_METRICS_STEP")
-	return base + idx*step
-}
-
-func loadTestRedisPort(t *testing.T, env map[string]string, shard int) int {
-	t.Helper()
-	base := loadTestInt(t, env, "LOAD_TEST_REDIS_BASE")
-	step := loadTestInt(t, env, "LOAD_TEST_REDIS_STEP")
-	return base + shard*step
-}
-
 func TestLoadTestOverlayEnablesLocalQuantaLive(t *testing.T) {
 	data, err := os.ReadFile("docker-compose.load-test.yaml")
 	if err != nil {

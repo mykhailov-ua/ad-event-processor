@@ -525,7 +525,7 @@ func (dashboards *DashboardsHTTPHandlers) getAccountantDashboard(w http.Response
 		return
 	}
 	if dashboards.ReportJobs != nil {
-		jobs := dashboards.ReportJobs.ListJobsByCustomer(customerID.String(), 8)
+		jobs := dashboards.ReportJobs.ListJobsByCustomer(r.Context(), customerID.String(), 8)
 		resp.ExportJobs = make([]ExportJobStatusDTO, 0, len(jobs))
 		for _, job := range jobs {
 			resp.ExportJobs = append(resp.ExportJobs, ExportJobStatusDTO{

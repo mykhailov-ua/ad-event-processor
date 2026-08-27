@@ -5,8 +5,11 @@ import "sync/atomic"
 var licenseEpochInvalid atomic.Uint32
 
 func InvalidateLicenseEpoch() {
+	wasInvalid := licenseEpochInvalid.Swap(1) == 1
 	PublishFeatureSeed(0, false)
-	licenseEpochInvalid.Store(1)
+	if !wasInvalid {
+		publishLicenseEpochNotice("invalidate")
+	}
 }
 
 func LicenseEpochInvalid() bool {
@@ -15,4 +18,5 @@ func LicenseEpochInvalid() bool {
 
 func resetLicenseEpochForTest() {
 	licenseEpochInvalid.Store(0)
+	resetLicenseEpochPubSubForTest()
 }

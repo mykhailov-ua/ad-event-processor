@@ -145,7 +145,7 @@ func (h *FlowHTTPHandlers) serveHostedPreview(w http.ResponseWriter, r *http.Req
 		http.NotFound(w, r)
 		return
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	w.Header().Set("Content-Type", ctype)
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.WriteHeader(http.StatusOK)

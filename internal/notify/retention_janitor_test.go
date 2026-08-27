@@ -13,7 +13,7 @@ import (
 
 func TestRetentionJanitor_DeletesOldRows(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)

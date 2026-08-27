@@ -16,7 +16,7 @@ import (
 
 func TestStartIngestSubscribers_reconnectOnPublish(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

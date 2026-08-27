@@ -44,6 +44,27 @@ func TestMigrationHandlers_previewKeitaro(t *testing.T) {
 	assert.Equal(t, "{{campaign.id}}", result.MappedCampaigns[0].ClickQueryParams["sub2"])
 }
 
+func TestMigrationHandlers_previewBinom(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "migrationsource", "testdata", "binom_facebook_campaign.json"))
+	require.NoError(t, err)
+	mux := migrationTestMux()
+
+	body, err := json.Marshal(map[string]any{
+		"source_kind": migrationsource.SourceKindBinomJSON,
+		"payload":     json.RawMessage(raw),
+	})
+	require.NoError(t, err)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/migrate/preview", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+
+	var result migrationsource.PreviewResult
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &result))
+	require.Len(t, result.MappedCampaigns, 1)
+	assert.Equal(t, "meta-facebook", result.MappedCampaigns[0].UITemplateID)
+}
+
 func TestMigrationHandlers_previewOversizeBody(t *testing.T) {
 	mux := migrationTestMux()
 

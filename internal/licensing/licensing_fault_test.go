@@ -115,7 +115,7 @@ func TestDecodeJSONStrict_MalformedAndOversized(t *testing.T) {
 
 func TestFault_LicenseSpoolConcurrentAppend(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	dir := t.TempDir()
 	spool, err := OpenLicenseSpool(dir)

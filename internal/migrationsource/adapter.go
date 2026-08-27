@@ -14,7 +14,7 @@ func Parse(kind SourceKind, payload []byte) (NormalizedBundle, error) {
 	case SourceKindKeitaroJSON:
 		return ParseKeitaroJSON(payload)
 	case SourceKindBinomJSON:
-		return NormalizedBundle{}, fmt.Errorf("binom_json adapter not implemented")
+		return ParseBinomJSON(payload)
 	case SourceKindNativeV1:
 		return NormalizedBundle{}, fmt.Errorf("native_v1 uses campaign export import path")
 	default:

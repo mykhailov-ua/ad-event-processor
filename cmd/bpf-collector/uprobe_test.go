@@ -2,10 +2,10 @@ package main
 
 import "testing"
 
-func TestChooseTrackerBinary_prefersRunningExe(t *testing.T) {
+func TestChooseTrackerBinary_prefersProcExe(t *testing.T) {
 	t.Parallel()
-	got := chooseTrackerBinary("/var/lib/docker/overlay2/merged/tracker", "/host/bin/tracker-bpf-trace")
-	want := "/var/lib/docker/overlay2/merged/tracker"
+	got := chooseTrackerBinary("/proc/1234/exe", "/host/bin/tracker-bpf-trace")
+	want := "/proc/1234/exe"
 	if got != want {
 		t.Fatalf("chooseTrackerBinary() = %q, want %q", got, want)
 	}

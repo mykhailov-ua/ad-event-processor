@@ -1,97 +1,250 @@
 ---
-description: Admin React design system, page templates, product honesty gates
-globs: web/**, scripts/ci/admin_web.sh, scripts/ci/check_ui*.sh, scripts/ci/report_live_routes_gate.sh
+description: Admin UI rebuild contract - cold path, OpenAPI, grid, milestones, AI honesty
+globs: api/openapi/**, internal/controlplane/*_handlers.go, deploy/vendor/*_MILESTONE.md, scripts/ci/openapi_gate.sh, scripts/ci/admin_web.sh
 alwaysApply: false
 ---
 
-# Admin UI
+# Admin UI (rebuild)
 
-## Purpose
+## Status
 
-React 19 + TypeScript admin surface. CSS tokens only - sources: `web/src/styles/tokens.css`, `main.css`, `components.css`, `a11y.css`. Visual: Geist zinc dark; Grafana Saga UX principles (not `@grafana/ui`).
+**`web/` removed.** Admin surface rebuilds from zero. Shippable contracts today:
 
-JSDoc: every function, module constant, block-scoped arrow callback (`quality.mdc`).
-
-## Design tokens
-
-| Token | Usage |
+| Artifact | Path |
 | :--- | :--- |
-| `--bg-canvas` | Page shell, inputs |
-| `--bg-surface`, `--bg-surface-hover` | Panels, hover |
-| `--border-color`, `--border-strong` | Dividers, controls |
-| `--text-main`, `--text-secondary`, `--text-muted` | Body, labels, hints |
-| `--accent` | Primary CTA, links, focus |
-| `--radius-sm` (6px) | Buttons, inputs |
-| `--radius-lg`, `--radius-modal` (12px) | Modals, menus |
-| `--spacing-4` ... `--spacing-48` | 4px grid; default gaps 16/24 |
-| `--success`, `--warning`, `--danger`, `--info` | Status only |
+| HTTP API | `api/openapi/openapi.yaml`, `openapi.bundle.yaml` |
+| Handlers | `internal/controlplane/*_handlers.go` |
+| Static placeholder | `internal/controlplane/admin_static_stub/` (`go:embed` until real UI) |
+| Traffic templates (server) | `internal/traffictemplates/generated_templates.json` (`make gen`) |
 
-Rules: border over shadow (shadows on modal/toast/menu only); dark default; **no hard-coded hex** in components.
+New UI lands under `web/` only when milestone `admin_shell` opens. Until then: no React, no helpers, no copied legacy components from pre-2026-08-27 history.
 
-## Typography
+Reference: `boundaries.mdc` (layer coupling, test lie types F), `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc` (after `admin_shell`), `anti-slop.mdc`, `quality.mdc`.
 
-| Class | Use |
+## Milestone documents (mandatory before code)
+
+Structure: `deploy/vendor/MILESTONE_TEMPLATE.md` (abstract; any domain). Admin slugs use the same sections with **Domain rules:** `ui.mdc`.
+
+| Rule | Detail |
 | :--- | :--- |
-| `.text-heading-24` | Page titles |
-| `.text-heading-20` | Section titles |
-| `.text-label-14` / `.text-copy-14` | Nav, buttons, body |
-| `.font-mono` | IDs, money, KPI values |
+| Path | `deploy/vendor/` (no subfolder) |
+| Filename | UPPERCASE `<AREA>_<SLUG>_MILESTONE.md` (example: `ADMIN_SHELL_MILESTONE.md`, `ADMIN_DIRECTORY_MILESTONE_CUSTOMERS.md`) |
+| Template | Copy `deploy/vendor/MILESTONE_TEMPLATE.md` |
+| Gate | No `web/src/**` until milestone sections **1.1-1.4**, 4, 5, 6, 7 filled (`MILESTONE_TEMPLATE.md`) |
 
-One `h1` per view; continuous heading ranks; color = status, not emphasis.
+Abstract "implement page X" is invalid. Backlog: `deploy/vendor/admin_ui_redesign_backlog.md`.
 
-## Page templates
+## AI laziness and dishonesty (admin UI)
 
-Reuse before inventing:
+Agents optimize for plausible diffs, not operator intent. Treat these as **lie modes** (`anti-slop.mdc`).
 
-| Template | Structure |
+| Failure mode | What agents do | Required behavior |
+| :--- | :--- | :--- |
+| Doc ask -> code | Operator asks for `.mdc` or milestone spec; agent edits components | Write rules/spec only unless milestone is `review` and operator asked to implement |
+| Piecemeal teardown | Delete or refactor `web/` file-by-file; half tree + broken CI | Remove or recreate `web/` atomically per operator direction; server embed stays in `internal/controlplane/admin_static_stub/` |
+| History restore | Copy pre-reset `web/` from git without milestone | Forbidden; use milestone spec + cold path |
+| Wrapper stack | `*DirectoryChrome`, `*Workspace`, `*Cluster` over grid | One section = one `ui/<domain>/` folder; page composes sections |
+| Flex/portrait layout | Flex on page/section; portal listbox for filter fields | CSS Grid sections only; field listboxes inline (`Dropdowns` below) |
+| Phantom contract | "See prior width contract" with no table in repo | Contract must live in this file or milestone doc |
+| Unrun verification | "typecheck passed", "admin_web green" | Paste command + package path + outcome (`quality.mdc`) |
+| Client logic smuggle | `useMemo` filter/sort over full API payload | Server query params; browser renders page |
+| Double chip chrome | `PageHeader` wrapper + `FreshnessBadge` border | Parent slot renders chip directly (`Chips` below) |
+| Boot HTML drift | Text inside `<div id="root">` | Empty `<div id="root"></div>` only; boot inject in `admin_ui_static.go` |
+
+Operator stop words ("костыли", "клоунада", "сноси", "не код"): **revert** the slice; do not add compensating wrappers.
+
+## Cold path first (non-negotiable)
+
+Browser **renders** server output. Logic stays in Go.
+
+| Concern | Server | Browser |
+| :--- | :--- | :--- |
+| Filter / search | Query params; SQL/CH in handler | Send params; show `items`, `total` |
+| Sort | `sort`, `order` on API | Refetch |
+| Pagination | `limit`, `offset` or cursor | Controls only |
+| KPIs / aggregates | Handler or report row fields | Display |
+| Freshness | `stale`, `ch_lag_seconds`, prefer `freshness_label` | Chip text from API; no client lag math |
+| Money | Micros + currency or `*_display` from API | Format display fields only |
+| Status | `status`, `status_label`, `status_tone` | Map tone enum to chip |
+| Export | Server export endpoint or async job | Download link |
+| Validation | 400 + field errors from handler | Show API errors |
+
+Forbidden in new `web/src/helpers/`: client-side filter/sort/reduce over full datasets; duplicated report keys; business rules that belong in handlers.
+
+**Rule:** need a derived field -> add to handler DTO in the same PR as the UI milestone.
+
+## API contract workflow
+
+1. Change `api/openapi/` and Go handler together.
+2. `bash scripts/ci/openapi_gate.sh` (export, catalog test, spectral via `npx` when available; no `web/package.json` required while `web/` absent).
+3. After `admin_contract_gate`: regenerate TS from OpenAPI into `web/src/types/generated/`.
+
+`live: true` on a route requires `/api/v1` backend (`report_live_routes_gate.sh` runs when `web/` exists).
+
+## Milestones (ship in order)
+
+| Slug | Delivers | Spec file (UPPERCASE, create first) | Close when |
+| :--- | :--- | :--- | :--- |
+| `admin_contract_gate` | OpenAPI matches handlers | `ADMIN_CONTRACT_MILESTONE_GATE.md` | `openapi_gate.sh` green |
+| `admin_tokens` | Design tokens only | `ADMIN_TOKENS_MILESTONE.md` | `rem` spacing only |
+| `admin_shell` | Login, shell, nav, boot | `ADMIN_SHELL_MILESTONE.md` | Replace `admin_static_stub`; `TestAdminStaticRoutes` |
+| `admin_page_chrome` | PageChrome grid section | `ADMIN_PAGE_CHROME_MILESTONE.md` | Badge slot without wrapper chrome |
+| `admin_directory_pattern` | One server-paginated list | `ADMIN_DIRECTORY_MILESTONE_<PAGE>.md` | No client full-list sort |
+| `admin_detail_pattern` | One detail + PATCH | `ADMIN_DETAIL_MILESTONE_<PAGE>.md` | Fields subset of Go DTO |
+| `admin_report_pattern` | One report page | `ADMIN_REPORT_MILESTONE_<REPORT>.md` | Keys from OpenAPI/handler |
+| `admin_integrations_hub` | Integrations landing | `ADMIN_INTEGRATIONS_MILESTONE_HUB.md` | `StubBanner` on 501 |
+
+## Layout (CSS Grid only)
+
+From `admin_shell` onward. Page = grid of sections. Section owns `grid-template-columns`. Controls are leaves.
+
+| Rule | Detail |
 | :--- | :--- |
-| Overview | `PageHeader` -> alerts -> `KpiGrid` -> sections |
-| List | header + filters + `data-table` + `EmptyState` |
-| Detail | header + tabs/panels + header actions |
-| Settings | header + `SectionCard` stack + action bar |
-| Wizard | stepper + one column + single primary CTA |
+| Section owns template | `grid-template-columns` / `rows` only on section root |
+| Controls are leaves | No `margin-left: auto` escaping the cell |
+| One chrome per region | One `PageChrome`, one filter section, one data section, one footer |
+| Rhythm | `row-gap` / `column-gap` on section grid; not margin stacks between sections |
+| Z-index | Open dropdown: cell z-index; section `position: relative` when `[data-dropdown-open]` |
+| Subgrid | Data grid: one column template; body rows `grid-column: 1 / -1; subgrid` |
 
-Required chrome: `PageHeader` on every authenticated page; `PageStack`; `PageSkeleton` loading; `EmptyState` for empty (title + one sentence + optional CTA).
+Forbidden for page layout:
 
-Confirm friction: `confirm_catalog` - low for renames; confirm for pause, revoke key, budget overwrite.
+- `display: flex` on page, section, toolbar, footer
+- `display: table*` / `<table>` for data
+- `position: fixed` filter panels blocking content (inline accordion in flow only)
+- Parallel layout systems (flex page + grid table + portal toolbar)
+- Extra wrapper components that only add chrome (`*Chrome` around `*Chrome`)
 
-## API wiring workflow
+### Section stack
 
-Before shipping a page:
+`ContextBar` -> `PageChrome` -> `Toolbar` -> `[FilterPanel]` -> `Content` -> `Footer`.
 
-1. Read Go handler DTO first (`internal/controlplane/*_handlers.go`, `*_dto.go`).
-2. Match `json` field names in `web/src/types/` and `helpers/*_api.ts`.
-3. Gate live routes: `bash scripts/ci/report_live_routes_gate.sh` - `live: true` requires real `/api/v1` backend.
-4. Use `FreshnessBadge` when endpoint returns `stale` or freshness metadata.
+## Data grid (no `<table>`)
 
-## Product honesty (extends anti-slop)
+| Rule | Detail |
+| :--- | :--- |
+| Root | `role="grid"`; `role="row"` / `columnheader` / `gridcell` |
+| Columns | One `grid-template-columns` on `.dataGrid`; header + rows share via subgrid |
+| Widths | Define once as `--<profile>-cols`; name `minmax(8rem, 1.4fr)`; fixed cols in `rem` |
+| Empty / loading | Single cell `grid-column: 1 / -1`; skeleton uses same column template |
 
-Forbidden:
+Column alignment:
 
-- `live: true` on stub routes
-- Fetch then always empty table
-- Silent `catch` without `renderErrorBlock`
-- "Saved" toast before 2xx
-- Form fields not in Go DTO
-- Hardcoded demo KPIs
-- Echo secrets after save
+| Kind | `justify-items` |
+| :--- | :--- |
+| name, money, numeric, cost_center | `start` |
+| status, chargeback, created, campaigns, actions | `center` |
 
-Required:
+Status chips: fixed `rem` width in column so labels align.
 
-- `StubBanner` for 501
-- `renderErrorBlock` on errors
-- `apiConfirmed` on mutations
-- Money via `formatUsdDecimal` / `formatAmountMicro`
+## Chips and badges (strict)
+
+Defect class: pills like **Lag unknown** with **unequal inset** or **nested frames** (gray outer box around colored inner pill). Example failure: `.titleBadge` wrapping `FreshnessBadge`.
+
+| Rule | Detail |
+| :--- | :--- |
+| One chrome layer | Chip owns border, fill, padding; parent renders chip directly |
+| Symmetric inset | Same token all sides (`padding: var(--space-1)`); forbidden `padding: var(--space-1) var(--space-2)`, `0.125rem var(--space-2)`, `0 var(--space-2)` |
+| Vertical center | `inline-grid`, `align-items: center`, `line-height: var(--text-caption-leading)`; not ad-hoc `line-height: 1.2` |
+| No nested frames | One `.root`; no wrapper border around semantic chip |
+| Labels from API | Prefer `freshness_label`, `status_label` from handler |
+
+## Dropdowns
+
+| Kind | Mount | Width |
+| :--- | :--- | :--- |
+| Field listbox | Inline `.drop` on `.wrap` / `.anchor` with `width: 100%` | Wrapper box in grid cell |
+| Popover (hint, inbox, row overflow) | `AnchorOverlay` portal | `max(anchor, content)` with care |
+
+### Field listbox width contract
+
+| Failure | Cause | Fix |
+| :--- | :--- | :--- |
+| Menu **narrower** than field | Width on `<button>`; button shrinks to label in grid cell | Wrapper `width: 100%`; `.drop { left: 0; right: 0; width: 100% }` |
+| Menu **wider** than pagination trigger | Portal + `Math.max(anchor, content)`; measure inflated (~192px) | Field listboxes: no portal, no content measure |
+| Menu **clipped** | Filter section `overflow: hidden` | `overflow: visible` when `[data-dropdown-open]` |
+
+Popover width rules do **not** apply to toolbar/filter `Select` / `FilterDropdown`.
+
+## Fetch and error UI
+
+| State | Condition | UI |
+| :--- | :--- | :--- |
+| Initial load | `fetching && !data && !error` | `PageSkeleton` / grid skeleton |
+| Blocking error | `error && !data` | `ErrorBlock` / `ErrorView`; no empty table |
+| Stale revalidate | `data` present + error | Keep rows; toast or `AlertBanner` |
+| Timeout | 15 s (`RESOURCE_FETCH_TIMEOUT_MS`) | Clear `fetching` in `finally` |
+| Mutation | PATCH/POST | `apiConfirmed`; toast only after 2xx |
+| Empty | `items.length === 0`, filters inactive | `EmptyState` + one sentence |
+
+No silent `catch` -> empty table. No `live: true` without `/api/v1`.
+
+## CSS module surface
+
+| Rule | Detail |
+| :--- | :--- |
+| Ownership | `*.module.css` under `web/src/ui/<domain>/` only |
+| Pages | Never import `*.module.css` (`check_ui_surface_gate.sh`) |
+| Class names | No BEM `__` under `web/src/ui`; use CSS Modules + CVA |
+| Variants | `*.variants.ts` + `cn()` from `web/src/lib/cn.ts` |
+
+## Server static embed (while `web/` absent)
+
+| Rule | Detail |
+| :--- | :--- |
+| Embed path | `internal/controlplane/admin_static_stub/` via `admin_static_embed.go` |
+| Boot marker | `index.html` / `login.html` must contain empty `<div id="root"></div>` |
+| Replace | Milestone `admin_shell` ships `web/dist`; embed target switches in same PR as dist build |
+| Docker | No node/web build stage until `web/` returns; control binary embeds stub |
+
+## Target `web/` map (when milestone opens)
+
+| Path | Role |
+| :--- | :--- |
+| `web/src/pages/` | Compose sections only; <= ~120 lines |
+| `web/src/ui/<domain>/` | Section grids + CSS modules |
+| `web/src/types/` | OpenAPI + hand DTO mirrors |
+| `web/src/helpers/*_api.ts` | Fetch + parse JSON only |
+
+Banned: `dto/`, `usecase/`, `providers/`.
+
+## Product honesty
+
+`StubBanner` on 501; toast after 2xx; form fields match PATCH DTO; no demo KPIs; no `(skeleton)` user copy.
 
 ## Verification
 
+While `web/` absent:
+
+```bash
+bash scripts/ci/openapi_gate.sh
+bash scripts/ci/admin_web.sh
+go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
+```
+
+After `admin_shell`:
+
 ```bash
 cd web && npm run typecheck
+bash scripts/ci/check_ui_surface_gate.sh
 bash scripts/ci/admin_web.sh
 ```
 
-Release: `admin_ui_release_gate.sh`, `admin_release_gate.sh`, `TestAdminStaticRoutes`.
+Milestone PR must paste commands from its `*_MILESTONE.md` section 7.
+
+## Agent checklist
+
+| Step | Action |
+| :--- | :--- |
+| 1 | Create `deploy/vendor/ADMIN_<SLUG>_MILESTONE.md` from `MILESTONE_TEMPLATE.md` |
+| 2 | Fill AI honesty + implementation plan before code |
+| 3 | Handler/DTO before UI field |
+| 4 | No client list business logic |
+| 5 | Chip: symmetric padding, one layer |
+| 6 | Field listbox: inline drop, wrapper width |
+| 7 | Paste verification commands actually run |
+| 8 | Operator stop -> revert; no wrapper stacks |
 
 ## Related rules
 
-`anti-slop.mdc`, `cold-path.mdc`, `control-plane.mdc`, `development.mdc`, `quality.mdc`.
+`anti-slop.mdc`, `cold-path.mdc`, `control-plane.mdc`, `development.mdc`, `quality.mdc`, `react.mdc`, `structure.mdc`.

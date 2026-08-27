@@ -34,7 +34,7 @@ func TestCHQuery_NoConnection(t *testing.T) {
 
 func TestCHQuery_HeavyGroupByKilled(t *testing.T) {
 	if testing.Short() {
-		t.Skip("CHG-ERR requires ClickHouse integration")
+		t.Skip("integration: CHG-ERR requires ClickHouse (run make test-full)")
 	}
 	t.Skip("requires live ClickHouse with memory governor; run in integration CI")
 }

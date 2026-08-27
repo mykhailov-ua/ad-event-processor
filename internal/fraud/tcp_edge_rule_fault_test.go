@@ -19,7 +19,7 @@ import (
 
 func TestFault_IVTCorrelationSilentRejectOnly(t *testing.T) {
 	if testing.Short() {
-		t.Skip("ivt tcp edge correlation fault test")
+		t.Skip("integration: ivt tcp edge correlation fault test (run make test-integration)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)
@@ -66,7 +66,7 @@ func TestFault_IVTCorrelationSilentRejectOnly(t *testing.T) {
 
 func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	if testing.Short() {
-		t.Skip("ivt tcp edge concurrent fault test")
+		t.Skip("integration: ivt tcp edge concurrent fault test (run make test-integration)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)
@@ -135,7 +135,7 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 
 func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 	if testing.Short() {
-		t.Skip("ivt tcp edge corrupt redis fault test")
+		t.Skip("integration: ivt tcp edge corrupt redis fault test (run make test-integration)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)
@@ -184,7 +184,7 @@ func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 
 func TestFault_IVTCorrelationMissingClickHouse(t *testing.T) {
 	if testing.Short() {
-		t.Skip("ivt tcp edge missing ch fault test")
+		t.Skip("integration: ivt tcp edge missing ch fault test (run make test-integration)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)
@@ -218,7 +218,7 @@ func TestFault_IVTCorrelationMissingClickHouse(t *testing.T) {
 
 func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	if testing.Short() {
-		t.Skip("ivt tcp edge broken tls fault test")
+		t.Skip("integration: ivt tcp edge broken tls fault test (run make test-integration)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)
@@ -268,7 +268,7 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 
 func TestFault_IVTCorrelationRedisEmpty(t *testing.T) {
 	if testing.Short() {
-		t.Skip("ivt tcp edge empty redis fault test")
+		t.Skip("integration: ivt tcp edge empty redis fault test (run make test-integration)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)

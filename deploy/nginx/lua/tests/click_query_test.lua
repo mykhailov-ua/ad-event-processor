@@ -1,5 +1,3 @@
-
-
 package.path = arg[1] .. "/?.lua;;"
 
 local args_store = {}

@@ -182,8 +182,37 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: reports.reportFreshness(r.Context())})
 		return
 	}
+	groupBy := parseSourceQualityGroupBy(r)
 	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
 	defer cancel()
+
+	if sourceQualityNeedsDetailRows(groupBy) {
+		out, total, err := querySourceQualityDetailRows(chCtx, reports.CHQuery, campaignIDs, from, to, limit, offset)
+		if err != nil {
+			reports.writeServiceError(w, err)
+			return
+		}
+		if parseComparePrevious(r) {
+			prevFrom, prevTo := previousReportRange(from, to)
+			prevOut, _, perr := querySourceQualityDetailRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+			if perr != nil {
+				reports.writeServiceError(w, perr)
+				return
+			}
+			attachSourceQualityDetailCompareDeltas(out, prevOut)
+		}
+		var nextCursor string
+		if int64(offset)+int64(len(out)) < total {
+			nextCursor = coldpath.EncodeCursor(offset + limit)
+		}
+		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
+			Rows:       out,
+			Freshness:  reports.reportFreshness(r.Context()),
+			NextCursor: nextCursor,
+		})
+		return
+	}
+
 	chRows, total, err := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		reports.writeServiceError(w, err)

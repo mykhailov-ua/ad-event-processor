@@ -16,7 +16,7 @@ import (
 
 func TestFraudScenarios_X06_HighVolumeSubnetBurstDrops(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires CAP_BPF")
+		t.Skip("integration: requires CAP_BPF (run make test-integration)")
 	}
 	objs := loadTestObjects(t)
 
@@ -48,7 +48,7 @@ func TestFraudScenarios_X06_HighVolumeSubnetBurstDrops(t *testing.T) {
 
 func TestFraudScenarios_X06_LowVolumeRotationAcceptedGap(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires CAP_BPF")
+		t.Skip("integration: requires CAP_BPF (run make test-integration)")
 	}
 	objs := loadTestObjects(t)
 
@@ -74,7 +74,7 @@ func TestFraudScenarios_X06_LowVolumeRotationAcceptedGap(t *testing.T) {
 
 func TestFraudScenarios_X07_FingerprintEnabledEmits(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires CAP_BPF")
+		t.Skip("integration: requires CAP_BPF (run make test-integration)")
 	}
 	objs := loadTestObjects(t)
 	if objs.Fingerprints == nil {
@@ -108,7 +108,7 @@ func TestFraudScenarios_X07_FingerprintEnabledEmits(t *testing.T) {
 
 func TestFraudScenarios_X07_FingerprintDisabledAcceptedGap(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires CAP_BPF")
+		t.Skip("integration: requires CAP_BPF (run make test-integration)")
 	}
 	objs := loadTestObjects(t)
 	if objs.Fingerprints == nil {
@@ -142,7 +142,7 @@ func TestFraudScenarios_X07_FingerprintDisabledAcceptedGap(t *testing.T) {
 
 func TestFraudScenarios_X04_SpoofedSYNStillHandled(t *testing.T) {
 	if testing.Short() {
-		t.Skip("requires CAP_BPF")
+		t.Skip("integration: requires CAP_BPF (run make test-integration)")
 	}
 	objs := loadTestObjects(t)
 	spoofed := net.IPv4(1, 2, 3, 4)

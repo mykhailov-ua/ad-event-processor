@@ -11,7 +11,7 @@ import (
 
 func TestIntegration_RefreshTokenReuseBlocked(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -43,7 +43,7 @@ func TestIntegration_RefreshTokenReuseBlocked(t *testing.T) {
 
 func TestIntegration_BlockUserRevokesInFlightAccessTokens(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)

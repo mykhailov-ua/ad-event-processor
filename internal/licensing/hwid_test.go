@@ -12,6 +12,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestHWID_ArgonParamsDocumented(t *testing.T) {
+	require.Equal(t, uint32(3), licensing.HWIDArgonTime())
+	require.Equal(t, uint32(65536), licensing.HWIDArgonMemoryKiB())
+	require.Equal(t, uint8(4), licensing.HWIDArgonThreads())
+	require.Equal(t, uint32(32), licensing.HWIDArgonKeyLen())
+}
+
+func TestHWID_LabCollectPrint(t *testing.T) {
+	if os.Getenv("HWID_LAB_COLLECT") == "" {
+		t.Skip("set HWID_LAB_COLLECT=1 for lab collection")
+	}
+	tel, hash := licensing.LabCollectHWID()
+	t.Logf("dmi_uuid=%q disk_id=%q mac=%q cpu_model=%q cpu_cores=%d hwid_v2=%s",
+		tel.DMIUUID, tel.DiskID, tel.MAC, tel.CPUModel, tel.CPUCores, hash)
+	require.Len(t, hash, 64)
+}
+
 func TestHWID_Deterministic(t *testing.T) {
 	tel := licensing.HWIDTelemetry{
 		DMIUUID:  "11111111-2222-3333-4444-555555555555",

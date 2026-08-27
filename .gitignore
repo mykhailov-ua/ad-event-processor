@@ -124,8 +124,9 @@ venv/
 # Generated ML artifacts (make fraudtrain-check)
 var/fraudscore/
 
-# Perf gate, benchmark & nightly regression scratch (local / CI)
+# Perf gate, benchmark & nightly regression scratch (canonical: var/ci/; root patterns kept for legacy local runs)
 .ci-baselines/
+var/ci/
 pr_bench.txt
 baseline_bench.txt
 gate_report.txt

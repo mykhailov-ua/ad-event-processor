@@ -27,7 +27,7 @@ type settlementSnapshot struct {
 
 func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping broker pg settlement parity e2e")
+		t.Skip("integration: broker pg settlement parity e2e (run make test-integration)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

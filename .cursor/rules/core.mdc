@@ -44,7 +44,7 @@ A fresh clone is not runnable out of the box. Required bootstrap:
 
 **Never commit:** generated code, `bin/*`, `.cache/`, `var/`, secrets, or runtime JWT files. Canonical ignore: root `.gitignore`. Local dev license path: `var/license.jwt` (not repo-root `license.jwt`).
 
-**Root clutter ban:** no `*.txt` or `*.log` in repo root (except README, LICENSE). Use `var/` or `data/` for temporary artifacts. Compiled binaries go in `bin/`, not root.
+**Root clutter ban:** no `*.txt` or `*.log` in repo root (except README, LICENSE). Gate and test transcripts go in `var/ci/` (`CI_ARTIFACT_DIR`); load-test and fault drill output in other `var/` subtrees. Compiled binaries go in `bin/`, not root.
 
 ## Commit policy
 
@@ -67,7 +67,7 @@ Always applied on every agent turn (no glob filter):
 | `core.mdc` | SLA, repo policy, commit style, rule index |
 | `naming.mdc` | Naming, trash tokens, legacy ban, marketing ban, comments |
 | `quality.mdc` | Go receivers, web JSDoc, verification honesty |
-| `anti-slop.mdc` | CI honesty, doc lie modes, slop gates, agent checklist |
+| `anti-slop.mdc` | CI honesty, doc lie modes, slop gates, agent-resistant verification, agent checklist |
 
 | Rule file | Topic |
 | :--- | :--- |
@@ -81,18 +81,21 @@ Always applied on every agent turn (no glob filter):
 | `traffic.mdc` | `/click`, `/track`, macros, CAPI |
 | `cold-path.mdc` | Admin, payment, ledger, notify |
 | `data-layer.mdc` | Redis, Lua, PG, CH, sharding |
-| `boundaries.mdc` | `cmd/*` ownership and imports |
+| `boundaries.mdc` | Import matrix, layer coupling, agent scope, test dishonesty catalog |
 | `control-plane.mdc` | Outbox, workers, admin API |
 | `rtb.mdc` | OpenRTB auction, shadow to live |
 | `edge.mdc` | Nginx Lua, XDP, tracker parity |
 | `compliance.mdc` | Defensive perimeter |
 | `licensing.mdc` | JWT, trial registry, USDT tiers |
 | `regions.mdc` | Enterprise multi-region |
-| `ui.mdc` | Admin React design system |
+| `ui.mdc` | Admin layout, grid, cold path, milestones, AI honesty |
+| `react.mdc` | React render path, V8 GC, state shape, list perf |
 | `tradeoffs.mdc` | Rejected alternatives, evidence matrix |
 | `fault-tests.mdc` | Chaos/outbox/parser proofs |
 | `testing.mdc` | Test taxonomy, holdouts |
 | `load-test-bpf.mdc` | Load test + BPF probes |
+
+Vendor doc (not `.mdc`): `deploy/vendor/MILESTONE_TEMPLATE.md` - abstract `<AREA>_<SLUG>_MILESTONE.md` structure (UPPERCASE, flat under `deploy/vendor/`).
 
 ## Precedence
 

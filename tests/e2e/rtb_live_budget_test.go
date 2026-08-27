@@ -29,7 +29,7 @@ func (g staticGeoCountry) Close() error                      { return nil }
 
 func TestE2E_RtbLiveBudgetAuthority(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

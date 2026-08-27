@@ -14,6 +14,7 @@ import (
 
 func TestClickProxy_SlowUpstream_GatewayTimeout(t *testing.T) {
 	block := make(chan struct{})
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		<-block
 		w.WriteHeader(http.StatusOK)
@@ -38,6 +39,7 @@ func TestClickProxy_SlowUpstream_GatewayTimeout(t *testing.T) {
 }
 
 func TestClickProxy_UpstreamReset_BadGateway(t *testing.T) {
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hj, ok := w.(http.Hijacker)
 		if !ok {

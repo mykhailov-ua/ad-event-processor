@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 BASELINE_FILE="${ESCAPE_HEAP_BASELINE:-$SCRIPTS/ci/baselines/escape_hot_path_heap_lines.count}"
-REPORT="${ESCAPE_HEAP_REPORT:-escape_heap_gate.txt}"
+REPORT="${ESCAPE_HEAP_REPORT:-$CI_ARTIFACT_DIR/escape_heap_gate.txt}"
 
 mapfile -t HOT_FILES < <(
   find internal/ingestion internal/rtb \

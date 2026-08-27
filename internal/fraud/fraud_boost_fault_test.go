@@ -29,7 +29,7 @@ func fraudBoostCandidate(ip string) SuspiciousIP {
 
 func TestFault_FraudOutboxBackpressure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -66,7 +66,7 @@ func TestFault_FraudOutboxBackpressure(t *testing.T) {
 
 func TestFault_FraudExactlyOnce(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -115,7 +115,7 @@ func TestFault_FraudExactlyOnce(t *testing.T) {
 
 func TestFault_FraudManagementRetry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)

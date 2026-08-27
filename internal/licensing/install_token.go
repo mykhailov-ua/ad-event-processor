@@ -3,6 +3,8 @@ package licensing
 import (
 	"crypto/ed25519"
 	"strings"
+
+	"ad-event-processor/internal/config"
 )
 
 func InstallToken(path, token string, pubKey ed25519.PublicKey) error {
@@ -17,5 +19,11 @@ func InstallToken(path, token string, pubKey ed25519.PublicKey) error {
 	} else if _, err := VerifyJWTResolved(token); err != nil {
 		return err
 	}
-	return WriteFileAtomic(path, []byte(token), 0o600)
+	if err := WriteFileAtomic(path, []byte(token), 0o600); err != nil {
+		return err
+	}
+	if config.LicenseSeedCouplingEnabled() {
+		return WriteLicenseMACForToken(path, token, HostFingerprint())
+	}
+	return nil
 }

@@ -33,6 +33,7 @@ var (
 	guardTripRecorder      = func(string) {}
 	guardTextBaseline      [32]byte
 	guardTextBaselineValid bool
+	guardPtraceRequired    bool
 )
 
 func GuardCompiledIn() bool { return true }
@@ -48,6 +49,7 @@ func StartLicenseGuard(ctx context.Context, cfg GuardConfig) {
 	if err := unix.Prctl(unix.PR_SET_DUMPABLE, 0, 0, 0, 0); err != nil {
 		slog.Warn("license guard: prctl dumpable", "error", err)
 	}
+	guardPtraceRequired = cfg.PtraceRequired
 	if cfg.PtraceWatchdog {
 		guardPtraceLauncher(ctx)
 	}
@@ -81,11 +83,19 @@ func runGuardProbe() bool {
 		return true
 	}
 	if guardMapsScanner() {
+		hash := guardTextBaseline
+		if !guardTextBaselineValid {
+			if cur, err := guardTextHasher(); err == nil {
+				hash = cur
+			}
+		}
+		runTamperStretch("suspicious_map", hash)
 		tripGuard("suspicious_map")
 		return true
 	}
 	if guardTextBaselineValid {
 		if cur, err := guardTextHasher(); err == nil && !bytes.Equal(cur[:], guardTextBaseline[:]) {
+			runTamperStretch("text_tamper", cur)
 			tripGuard("text_tamper")
 			return true
 		}
@@ -131,25 +141,6 @@ func scanSuspiciousMaps() bool {
 		}
 	}
 	return false
-}
-
-func guardSuspiciousMapNeedles() [][]byte {
-	enc := [][]byte{
-		{0x55, 0x41, 0x5a, 0x5a, 0x52},
-		{0x54, 0x57, 0x56},
-		{0x5f, 0x5f, 0x56, 0x57},
-		{0x5a, 0x41, 0x5a, 0x5a, 0x52},
-		{0x5a, 0x41, 0x5a, 0x5a, 0x5a, 0x5c, 0x5e},
-	}
-	out := make([][]byte, len(enc))
-	for i, row := range enc {
-		dec := make([]byte, len(row))
-		for j, b := range row {
-			dec[j] = b ^ 0x33
-		}
-		out[i] = dec
-	}
-	return out
 }
 
 func hashExecutableText() ([32]byte, error) {
@@ -221,6 +212,8 @@ func resetGuardHooksForTest() {
 	guardPtraceLauncher = launchPtraceWatchdog
 	guardTextBaselineValid = false
 	guardTextBaseline = [32]byte{}
+	guardPtraceRequired = false
+	guardTamperStretchHook = nil
 }
 
 func SetGuardTracerPidReaderForTest(fn func() (int, error)) func() {

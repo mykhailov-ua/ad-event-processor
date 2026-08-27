@@ -145,7 +145,7 @@ blacklist_sync.set_env_for_test(function(name)
     end
     return nil
 end)
-for k, v in pairs(blacklist_store) do
+for k in pairs(blacklist_store) do
     if k:sub(1, 3) == "b:" or k == "_bl_pending" then
         blacklist_store[k] = nil
     end

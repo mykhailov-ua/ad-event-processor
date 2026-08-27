@@ -26,6 +26,7 @@ type CampaignReader interface {
 	ExportCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignExportBundle, error)
 	ImportCampaign(ctx context.Context, spec ImportCampaignSpec) (ImportCampaignResult, error)
 	ImportMigrationCampaigns(ctx context.Context, spec ImportMigrationSpec) (ImportMigrationResult, error)
+	GetCampaignIntegrationHealth(ctx context.Context, campaignID uuid.UUID) (IntegrationHealthDTO, error)
 }
 
 type CampaignsHTTPHandlers struct {
@@ -63,6 +64,7 @@ func (campaigns *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/export", limit(perm([]string{"campaigns:read"}, campaigns.exportCampaign)))
 	mux.HandleFunc("POST /api/v1/campaigns/import", limit(perm([]string{"campaigns:write"}, campaigns.importCampaign)))
 	campaigns.registerMigrationRoutes(mux, limit, perm)
+	campaigns.registerIntegrationHealthRoutes(mux, limit, perm)
 	campaigns.registerConversionMappingRoutes(mux, limit, perm)
 	campaigns.registerCampaignFraudRoutes(mux, limit, perm)
 }

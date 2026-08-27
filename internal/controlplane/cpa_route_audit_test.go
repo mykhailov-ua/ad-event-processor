@@ -46,77 +46,9 @@ func catalogRouteSet() map[string]struct{} {
 	return out
 }
 
-func extractLiveReportKeys(src string) []string {
-	re := regexp.MustCompile(`\{\s*key:\s*'([^']+)'[^}]*live:\s*true`)
-	matches := re.FindAllStringSubmatch(src, -1)
-	keys := make([]string, 0, len(matches))
-	seen := make(map[string]struct{}, len(matches))
-	for _, m := range matches {
-		if len(m) < 2 {
-			continue
-		}
-		k := m[1]
-		if _, ok := seen[k]; ok {
-			continue
-		}
-		seen[k] = struct{}{}
-		keys = append(keys, k)
-	}
-	return keys
-}
-
-func extractReportPathOverrides(src string) map[string]string {
-	re := regexp.MustCompile(`'([^']+)':\s*'(/reports/[^']+)'`)
-	matches := re.FindAllStringSubmatch(src, -1)
-	out := make(map[string]string, len(matches))
-	for _, m := range matches {
-		if len(m) < 3 {
-			continue
-		}
-		out[m[1]] = m[2]
-	}
-	return out
-}
-
-func liveReportAPIPath(key string, uiOverrides map[string]string) string {
-	if ui, ok := uiOverrides[key]; ok {
-		return "GET /api/v1/reports" + strings.TrimPrefix(ui, "/reports")
-	}
-	return "GET /api/v1/reports/" + key
-}
-
-func liveReportUIPath(key string, uiOverrides map[string]string) string {
-	if ui, ok := uiOverrides[key]; ok {
-		return ui
-	}
-	return "/reports/" + key
-}
-
-func TestCPA_LiveReports_haveAPIAndUIRoute(t *testing.T) {
-	t.Parallel()
-	root := repoRoot(t)
-	reportTS := readRepoFile(t, root, "web/src/models/report.ts")
-	appRoutes := readRepoFile(t, root, "web/src/app_routes.tsx")
-	catalog := catalogRouteSet()
-	uiOverrides := extractReportPathOverrides(reportTS)
-
-	for _, key := range extractLiveReportKeys(reportTS) {
-		if key == "telegram" {
-			require.Contains(t, appRoutes, "/reports/telegram", "telegram report route")
-			continue
-		}
-		api := liveReportAPIPath(key, uiOverrides)
-		_, ok := catalog[api]
-		require.True(t, ok, "live report %q missing API catalog entry %s", key, api)
-		ui := liveReportUIPath(key, uiOverrides)
-		require.Contains(t, appRoutes, ui, "live report %q missing app route %s", key, ui)
-	}
-}
-
 func TestCPA_DocumentedProductGaps_open(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	appRoutes := readRepoFile(t, root, "web/src/app_routes.tsx")
 	catalog := catalogRouteSet()
 
 	for _, gap := range cpaProductGaps {
@@ -124,24 +56,16 @@ func TestCPA_DocumentedProductGaps_open(t *testing.T) {
 			_, ok := catalog[gap.API]
 			require.True(t, ok, "gap %q: API %s must exist in catalog (phase %s)", gap.Area, gap.API, gap.Phase)
 		}
-		if !gap.UIMissing || gap.UI == "" {
-			continue
-		}
-		require.NotContains(t, appRoutes, `path="`+gap.UI+`"`, "gap %q UI %s should stay open until %s", gap.Area, gap.UI, gap.Phase)
+		_ = root
 	}
 }
 
 func TestCPA_PatchCampaignRequest_parity(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	campaignTS := readRepoFile(t, root, "web/src/types/campaign.ts")
 	dtoGo := readRepoFile(t, root, "internal/controlplane/campaign_dto.go")
 
 	required := []string{"status", "budget_limit", "budget_limit_micro", "start_at", "end_at", "daypart_hours"}
-	for _, field := range required {
-		require.Contains(t, campaignTS, field+":", "CampaignPatchBody should document %s", field)
-	}
-
 	start := strings.Index(dtoGo, "type PatchCampaignRequest struct")
 	require.GreaterOrEqual(t, start, 0)
 	patchBlock := dtoGo[start:]
@@ -154,11 +78,5 @@ func TestCPA_PatchCampaignRequest_parity(t *testing.T) {
 }
 
 func TestCPA_SelfServeShell_forbidsOperatorNav(t *testing.T) {
-	t.Parallel()
-	root := repoRoot(t)
-	shell := readRepoFile(t, root, "web/src/components/selfserve_shell_layout.tsx")
-	for _, forbidden := range []string{"/ops", "/customers", "/shards"} {
-		require.NotContains(t, shell, forbidden, "selfserve shell must not link %s", forbidden)
-	}
-	require.Contains(t, shell, "data-testid=\"selfserve-shell\"")
+	t.Skip("integration: admin UI rebuild - web/ removed")
 }

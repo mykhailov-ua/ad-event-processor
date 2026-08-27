@@ -81,7 +81,7 @@ func (s *campaignFlowSync) Start(ctx context.Context) {
 
 func (s *campaignFlowSync) runReloadSubscriber(ctx context.Context) {
 	pubsub := s.redisShard.Subscribe(ctx, s.reloadChannel)
-	defer pubsub.Close()
+	defer func() { _ = pubsub.Close() }()
 	ch := pubsub.Channel()
 	for {
 		select {

@@ -395,6 +395,35 @@ ConversionRejectRules:
     reject_datacenter_ip:
       type: boolean
 
+IntegrationHealthRow:
+  type: object
+  required: [slug, status, message]
+  properties:
+    slug:
+      type: string
+    status:
+      type: string
+      enum: [ok, warn, fail]
+    message:
+      type: string
+    fix_route:
+      type: string
+
+CampaignIntegrationHealth:
+  type: object
+  required: [campaign_id, summary, rows]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    summary:
+      type: string
+      enum: [ok, warn, fail]
+    rows:
+      type: array
+      items:
+        $ref: '#/IntegrationHealthRow'
+
 CampaignFraudConfig:
   type: object
   required:

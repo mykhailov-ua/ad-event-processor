@@ -57,9 +57,9 @@ local function drain_blacklist_changelog(premature)
     if n > 0 then
         ngx.log(ngx.INFO, "edge_blacklist_sync: drained ", n, " pending changelog IPs")
     end
-    local ok, timer_err = ngx.timer.at(BLACKLIST_CHANGELOG_DRAIN_INTERVAL, drain_blacklist_changelog)
+    local ok, schedule_err = ngx.timer.at(BLACKLIST_CHANGELOG_DRAIN_INTERVAL, drain_blacklist_changelog)
     if not ok then
-        ngx.log(ngx.ERR, "failed to reschedule blacklist changelog drain: ", timer_err)
+        ngx.log(ngx.ERR, "failed to reschedule blacklist changelog drain: ", schedule_err)
     end
 end
 

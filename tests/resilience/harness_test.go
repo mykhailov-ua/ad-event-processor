@@ -45,7 +45,7 @@ type multiShardTrackOpts struct {
 func setupMultiShardTrackHarness(t *testing.T, opts multiShardTrackOpts) *multiShardTrackHarness {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 	if opts.NumShards <= 0 {
 		opts.NumShards = defaultTrackShards

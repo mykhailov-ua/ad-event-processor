@@ -708,6 +708,16 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 				h.recordMetrics(startMono, http.StatusInternalServerError)
 				return gnet.None
 			case trackStatusAccepted:
+				if !h.publishAcceptedTrack(evt, &lease) {
+					if h.filterEngine != nil {
+						h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
+					}
+					spec := filterRejectSpecs[filterRejectProducerOverload]
+					h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
+					h.writeFilterReject(c, spec.gnetResp, ctx)
+					h.recordMetrics(startMono, spec.status)
+					return gnet.None
+				}
 				if outcome.LandingURL != "" {
 					landing = UnsafeBytes(outcome.LandingURL)
 				}
@@ -727,7 +737,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		flowSel = sel
 	}
 
-	evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.subs, parsed.fbclid, parsed.gclid, parsed.ttclid)
+	evt.Payload = appendAttributionPayload(evt.Payload[:0], nil, parsed.subs, parsed.fbclid, parsed.gclid, parsed.ttclid, "", "", "", "", "")
 	if flowSel.LanderID != uuid.Nil || flowSel.OfferID != uuid.Nil {
 		evt.Payload = appendFlowAttribution(evt.Payload, flowSel.LanderID, flowSel.OfferID)
 	}

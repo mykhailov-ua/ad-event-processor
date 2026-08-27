@@ -20,7 +20,7 @@ import (
 
 func TestE2E_OpenRTB26LiveBudget(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

@@ -1,0 +1,419 @@
+version: 1
+templates:
+- id: meta-facebook
+  name: Facebook Ads
+  category: social
+  params:
+  - key: sub1
+    value: '{{site_source_name}}'
+    label: Placement
+  - key: sub2
+    value: '{{campaign.id}}'
+    label: Campaign
+  - key: ad_campaign_id
+    value: '{{campaign.id}}'
+    label: Cost Sync
+  - key: sub3
+    value: '{{adset.id}}'
+    label: Ad set
+  - key: sub4
+    value: '{{ad.id}}'
+    label: Ad
+  - key: fbclid
+    value: '{{fbclid}}'
+  bundled_slug: traffic_facebook
+  cost_sync: meta
+  notes: 'Cost Sync join: sub2 / ad_campaign_id = {{campaign.id}}'
+- id: meta-instagram
+  name: Instagram Ads
+  category: social
+  params:
+  - key: sub1
+    value: instagram
+  - key: sub2
+    value: '{{campaign.id}}'
+  - key: ad_campaign_id
+    value: '{{campaign.id}}'
+  - key: sub3
+    value: '{{adset.id}}'
+  - key: sub4
+    value: '{{ad.id}}'
+  - key: fbclid
+    value: '{{fbclid}}'
+  bundled_slug: traffic_instagram
+  cost_sync: meta
+- id: google-ads
+  name: Google Ads
+  category: search
+  params:
+  - key: sub1
+    value: '{network}'
+  - key: sub2
+    value: '{campaignid}'
+  - key: ad_campaign_id
+    value: '{campaignid}'
+  - key: sub3
+    value: '{adgroupid}'
+  - key: sub4
+    value: '{creative}'
+  - key: sub5
+    value: '{keyword}'
+  - key: gclid
+    value: '{gclid}'
+  bundled_slug: traffic_google_ads
+  cost_sync: google
+- id: google-display
+  name: Google Display
+  category: native
+  params:
+  - key: sub1
+    value: gdn
+  - key: sub2
+    value: '{campaignid}'
+  - key: ad_campaign_id
+    value: '{campaignid}'
+  - key: sub3
+    value: '{placement}'
+  - key: gclid
+    value: '{gclid}'
+  bundled_slug: traffic_google_ads
+  cost_sync: google
+- id: youtube-ads
+  name: YouTube Ads
+  category: social
+  params:
+  - key: sub1
+    value: youtube
+  - key: sub2
+    value: '{campaignid}'
+  - key: ad_campaign_id
+    value: '{campaignid}'
+  - key: sub3
+    value: '{adgroupid}'
+  - key: gclid
+    value: '{gclid}'
+  bundled_slug: traffic_youtube
+  cost_sync: google
+- id: tiktok-ads
+  name: TikTok Ads
+  category: social
+  params:
+  - key: sub1
+    value: __PLACEMENT__
+  - key: sub2
+    value: __CAMPAIGN_ID__
+  - key: ad_campaign_id
+    value: __CAMPAIGN_ID__
+  - key: sub3
+    value: __AID__
+  - key: sub4
+    value: __CID__
+  - key: ttclid
+    value: __CLICKID__
+  bundled_slug: traffic_tiktok
+  cost_sync: tiktok
+- id: snapchat-ads
+  name: Snapchat Ads
+  category: social
+  params:
+  - key: sub1
+    value: '{{site_source_name}}'
+  - key: sub2
+    value: '{{campaign.id}}'
+  - key: sub3
+    value: '{{adSet.id}}'
+  - key: sub4
+    value: '{{ad.id}}'
+  bundled_slug: traffic_snapchat
+- id: x-ads
+  name: X (Twitter) Ads
+  category: social
+  params:
+  - key: sub1
+    value: x
+  - key: sub2
+    value: '{{campaign.id}}'
+  - key: sub3
+    value: '{{line_item.id}}'
+  - key: sub4
+    value: '{{tweet.id}}'
+  bundled_slug: traffic_x_ads
+- id: pinterest-ads
+  name: Pinterest Ads
+  category: social
+  params:
+  - key: sub1
+    value: pinterest
+  - key: sub2
+    value: '{campaignid}'
+  - key: sub3
+    value: '{adgroupid}'
+  - key: sub4
+    value: '{adid}'
+  bundled_slug: traffic_pinterest
+- id: linkedin-ads
+  name: LinkedIn Ads
+  category: social
+  params:
+  - key: sub1
+    value: linkedin
+  - key: sub2
+    value: '{{CAMPAIGN_ID}}'
+  - key: sub3
+    value: '{{CREATIVE_ID}}'
+  bundled_slug: traffic_linkedin
+- id: microsoft-ads
+  name: Microsoft Ads
+  category: search
+  params:
+  - key: sub1
+    value: '{Network}'
+  - key: sub2
+    value: '{CampaignId}'
+  - key: sub3
+    value: '{AdGroupId}'
+  - key: sub4
+    value: '{Keyword}'
+  - key: gclid
+    value: '{msclkid}'
+  bundled_slug: traffic_microsoft_ads
+- id: taboola
+  name: Taboola
+  category: native
+  params:
+  - key: sub1
+    value: '{site}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{campaign_item_id}'
+  - key: sub4
+    value: '{platform}'
+  bundled_slug: traffic_taboola
+- id: outbrain
+  name: Outbrain
+  category: native
+  params:
+  - key: sub1
+    value: '{{publisher_name}}'
+  - key: sub2
+    value: '{{campaign_id}}'
+  - key: sub3
+    value: '{{section_name}}'
+  - key: sub4
+    value: '{{ad_id}}'
+  bundled_slug: traffic_outbrain
+- id: mgid
+  name: MGID
+  category: native
+  params:
+  - key: sub1
+    value: '{widget_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{teaser_id}'
+  - key: sub4
+    value: '{category_id}'
+  bundled_slug: traffic_mgid
+- id: revcontent
+  name: Revcontent
+  category: native
+  params:
+  - key: sub1
+    value: '{widget_id}'
+  - key: sub2
+    value: '{adv_id}'
+  - key: sub3
+    value: '{content_id}'
+  bundled_slug: traffic_revcontent
+- id: propellerads
+  name: PropellerAds
+  category: push
+  params:
+  - key: sub1
+    value: '{zoneid}'
+  - key: sub2
+    value: '{campaignid}'
+  - key: sub3
+    value: '{bannerid}'
+  - key: sub4
+    value: '{os}'
+  bundled_slug: traffic_propellerads
+- id: push-house
+  name: Push.house
+  category: push
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{creative_id}'
+  bundled_slug: traffic_pushhouse
+- id: richads
+  name: RichAds
+  category: push
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{banner_id}'
+  bundled_slug: traffic_richads
+- id: adsterra
+  name: Adsterra
+  category: push
+  params:
+  - key: sub1
+    value: '##PLACEMENT_ID##'
+  - key: sub2
+    value: '##CAMPAIGN_ID##'
+  - key: sub3
+    value: '##BANNER_ID##'
+  bundled_slug: traffic_adsterra
+- id: exoclick
+  name: ExoClick
+  category: adult
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{variation_id}'
+  - key: sub4
+    value: '{zone_id}'
+  bundled_slug: traffic_exoclick
+- id: trafficjunky
+  name: TrafficJunky
+  category: adult
+  params:
+  - key: sub1
+    value: '{siteid}'
+  - key: sub2
+    value: '{campaignid}'
+  - key: sub3
+    value: '{bannerid}'
+  bundled_slug: traffic_trafficjunky
+- id: juicyads
+  name: JuicyAds
+  category: adult
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{spot_id}'
+  bundled_slug: traffic_juicyads
+- id: trafficstars
+  name: TrafficStars
+  category: adult
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{creative_id}'
+  bundled_slug: traffic_trafficstars
+- id: hilltopads
+  name: HilltopAds
+  category: push
+  params:
+  - key: sub1
+    value: '{zoneid}'
+  - key: sub2
+    value: '{campaignid}'
+  - key: sub3
+    value: '{bannerid}'
+  bundled_slug: traffic_hilltopads
+- id: zeropark
+  name: Zeropark
+  category: dsp
+  params:
+  - key: sub1
+    value: '{target}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{visit_id}'
+  bundled_slug: traffic_zeropark
+- id: rollerads
+  name: RollerAds
+  category: push
+  params:
+  - key: sub1
+    value: '{zone_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{banner_id}'
+  bundled_slug: traffic_rollerads
+- id: bidvertiser
+  name: BidVertiser
+  category: native
+  params:
+  - key: sub1
+    value: '[SUBID]'
+  - key: sub2
+    value: '[CAMPAIGNID]'
+  bundled_slug: traffic_bidvertiser
+- id: popcash
+  name: PopCash
+  category: push
+  params:
+  - key: sub1
+    value: '[siteid]'
+  - key: sub2
+    value: '[campaignid]'
+  - key: sub3
+    value: '[category]'
+  bundled_slug: traffic_popcash
+- id: popads
+  name: PopAds
+  category: push
+  params:
+  - key: sub1
+    value: '[SITEID]'
+  - key: sub2
+    value: '[CAMPAIGNID]'
+  - key: sub3
+    value: '[FORMFACTOR]'
+  bundled_slug: traffic_popads
+- id: clickadu
+  name: Clickadu
+  category: push
+  params:
+  - key: sub1
+    value: '{zoneid}'
+  - key: sub2
+    value: '{campaignid}'
+  - key: sub3
+    value: '{bannerid}'
+  bundled_slug: traffic_clickadu
+- id: evadav
+  name: Evadav
+  category: push
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: '{banner_id}'
+  bundled_slug: traffic_evadav
+- id: richads-pop
+  name: RichAds Popunder
+  category: push
+  params:
+  - key: sub1
+    value: '{site_id}'
+  - key: sub2
+    value: '{campaign_id}'
+  - key: sub3
+    value: pop
+  bundled_slug: traffic_richads
+

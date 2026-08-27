@@ -35,6 +35,9 @@ func ResolvePublicKeyForKID(kid string) (ed25519.PublicKey, error) {
 	if kid == "" || kid == DefaultLicenseKeyID {
 		return ResolvePublicKey()
 	}
+	if config.LicensePublicKeyProductionEmbeddedOnly() {
+		return nil, errors.New("license public key not found for kid " + kid)
+	}
 	for _, path := range cohortPublicKeyPaths(kid) {
 		data, err := os.ReadFile(path)
 		if err != nil {

@@ -115,7 +115,11 @@ func tryAcquireStreamAdmission(
 	producers []*StreamProducer,
 	brokers *BrokerProducerSet,
 	campaignID uuid.UUID,
+	requirePublisher bool,
 ) (streamAdmissionLease, filterRejectKind, bool) {
+	if requirePublisher && !trackIngestPublisherReady(sharder, producers, brokers, campaignID) {
+		return streamAdmissionLease{}, filterRejectInfra, false
+	}
 	if cfg == nil || cfg.StreamProducerAdmissionPct <= 0 {
 		return streamAdmissionLease{}, 0, true
 	}
@@ -135,11 +139,22 @@ func tryAcquireStreamAdmission(
 	return lease, 0, true
 }
 
+func tryAcquireStreamAdmissionForFilter(
+	cfg *config.Config,
+	sharder Sharder,
+	streamProducers []*StreamProducer,
+	brokerProducers *BrokerProducerSet,
+	campaignID uuid.UUID,
+	filterEngine *FilterEngine,
+) (streamAdmissionLease, filterRejectKind, bool) {
+	return tryAcquireStreamAdmission(cfg, sharder, streamProducers, brokerProducers, campaignID, trackIngestRequiresPublisher(filterEngine))
+}
+
 func (h *AdsPacketHandler) tryAcquireStreamAdmission(campaignID uuid.UUID) (streamAdmissionLease, filterRejectKind, bool) {
 	if h == nil {
 		return streamAdmissionLease{}, 0, true
 	}
-	return tryAcquireStreamAdmission(h.cfg, h.sharder, h.streamProducers, h.brokerProducers, campaignID)
+	return tryAcquireStreamAdmissionForFilter(h.cfg, h.sharder, h.streamProducers, h.brokerProducers, campaignID, h.filterEngine)
 }
 
 func rejectIfStreamProducerOverloaded(

@@ -21,14 +21,14 @@ jobs:
           cache: true
 
       - name: Multi-region resilience drill
-        run: bash scripts/test/multi_region_resilience_drill.sh 2>&1 | tee mr-resilience.log
+        run: bash scripts/lib/tee_ci_log.sh mr-resilience.log bash scripts/test/multi_region_resilience_drill.sh
 
       - name: Upload drill log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: mr-resilience-log
-          path: mr-resilience.log
+          path: var/ci/mr-resilience.log
           retention-days: 7
 
   xdp-drill:
@@ -49,12 +49,12 @@ jobs:
           sudo apt-get install -y -qq clang llvm libbpf-dev linux-libc-dev
 
       - name: XDP resilience drill
-        run: bash scripts/test/xdp_resilience_drill.sh 2>&1 | tee xdp-resilience.log
+        run: bash scripts/lib/tee_ci_log.sh xdp-resilience.log bash scripts/test/xdp_resilience_drill.sh
 
       - name: Upload drill log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: xdp-resilience-log
-          path: xdp-resilience.log
+          path: var/ci/xdp-resilience.log
           retention-days: 7

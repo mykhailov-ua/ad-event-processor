@@ -1,0 +1,200 @@
+---
+description: React render hot path, V8 GC, heap, state shape, list performance
+globs: web/src/pages/**, web/src/ui/**, deploy/vendor/*_MILESTONE.md, scripts/ci/admin_web.sh, scripts/ci/check_ui*.sh
+alwaysApply: false
+---
+
+# React Runtime - Browser Hot Path
+
+## Status
+
+Admin UI tree is reset (`ui.mdc`). This file applies **after** milestone `admin_shell` when `web/src/pages` and `web/src/ui` exist again.
+
+## Purpose
+
+Apply when changing admin UI render loops: data grids, filters, charts, tickers, context providers, or fetch-driven list pages.
+
+Maps tracker hot-path discipline (`hot-path.mdc`) to **V8 + React 19** in the browser. Layout and composition: `ui.mdc`.
+
+## Runtime model (V8)
+
+V8 uses a **generational garbage collector** (Orinoco): most objects die in the young generation (nursery). A **minor GC** (Scavenge) copies survivors to old space. **Major GC** (mark-compact, mostly concurrent) reclaims old space when heuristics fire.
+
+| Fact | Implication for UI code |
+| :--- | :--- |
+| Allocation rate drives GC pauses | Fewer short-lived objects per frame = fewer jank spikes |
+| No manual free | Reuse references, precompute, isolate churn - you cannot `free()` |
+| Objects have **hidden classes** (maps) | Stable property order on repeated object shapes; avoid `delete obj.k`, avoid mixing arbitrary keys on hot DTOs |
+| Strings are immutable (ECMA-262) | Each concat / template / `slice` may allocate; format once in `useMemo` |
+| `Array.prototype.map/filter/flatMap` allocate new arrays (ECMA-262) | One pass in `useMemo`, not per-row chains in render |
+
+There is no `GOGC` knob in the browser. The lever is **allocation rate** and **retained graph size** (closures, listeners, detached DOM).
+
+## Interaction budgets (admin UI)
+
+| Surface | Target | Knob |
+| :--- | :--- | :--- |
+| Keystroke filter | Input to visible row update | < 50 ms perceived; debounce 150-300 ms for server refetch |
+| Data grid scroll | Frame time during scroll | < 16 ms/frame (60 Hz); window rows, no layout read in scroll handler |
+| Sort / page change | Full re-render of visible window | Pre-sorted array in `useMemo`; stable row keys |
+| 1 Hz ticker (refresh countdown) | Must not re-render whole page | Isolated leaf component + `memo`; state colocated in ticker only |
+| Chart resize/update | Avoid full React tree | Imperative uPlot/ECharts mount; React owns container only |
+
+Cold admin path tolerates more allocation than tracker ingest, but **list pages with 500+ rows** follow hot rules below.
+
+## Hot render path (forbidden)
+
+Applies inside `rows.map`, scroll handlers, filter input handlers, and chart animation ticks.
+
+| Category | Forbidden |
+| :--- | :--- |
+| Alloc per row | `rows.map(r => ({ ...r, label: format(r) }))` - format in precomputed parallel array or `Map` |
+| O(n^2) | `.find` / `.filter` / `.some` inside row/cell render; nested `map` over full dataset per visible row |
+| Fresh objects | Inline `style={{}}`, `className={cn(a, cond && b)}` with new object args every row unless `cn` is string-only |
+| Fresh functions | Inline `onClick={() => ...}` on every row when child is `memo` - use row id + stable handler + lookup |
+| JSON | `JSON.parse` / `JSON.stringify` in render |
+| Sort/filter | `sortRows` / `applyFilters` in render body without `useMemo` |
+| Context broadcast | Putting 1 Hz `now` or scroll offset in page-level context |
+| Intervals | `setInterval` on page root updating shared parent state |
+| DOM retention | Listeners on `document` without cleanup; closures over full `items[]` in listener |
+| Spread chains | `[...a, ...b]`, `{...prev, ...patch}` in reducer every keystroke on large state |
+
+## Allowed patterns
+
+| Pattern | Usage |
+| :--- | :--- |
+| Snapshot state | Fetch result stored once; derive view in `useMemo` (sort, filter, page slice) |
+| `Map` / `Set` indexes | `disputeIds`, `selectedIds`, `rowById` built in `useMemo` when parent data changes |
+| Colocated state | Ticker, dropdown open, hover: state in leaf component; parent gets callbacks only |
+| `useRef` | Mutable latest value (generation id, abort controller, previous width) without re-render |
+| `memo` + stable props | Row cell components when row count > ~50 visible |
+| `useCallback` | Only when passed to `memo` children or listed in effect deps on hot paths |
+| `useMemo` | Sort/filter/slice/format lists; column defs; option lists for `Select` |
+| Debounce / `requestAnimationFrame` | Search -> filter: debounce; scroll sync: rAF coalesce |
+| Abort + generation | `useResource`: generation counter; ignore stale responses; `finally` clears `fetching` |
+| Imperative charts | `echarts_mount.ts` / uPlot: update series in place; React does not re-render series arrays each tick |
+| `WeakMap` | Cache keyed by row object identity when same row instances preserved across updates |
+
+## State shape (how to store)
+
+Follow **cold snapshot + derived view**, same spirit as `atomic.Pointer` catalog swap in Go.
+
+```
+Server snapshot (useState / useResource data)
+    -> useMemo: filteredRows
+    -> useMemo: sortedRows
+    -> useMemo: pageRows = slice(sortedRows, page * size, ...)
+    -> render: pageRows.map(Row)
+```
+
+| Rule | Detail |
+| :--- | :--- |
+| One source of truth | API DTO in `data`; UI toggles (sort key, page, filters) in separate primitive state |
+| Draft vs applied | Filter panel: draft in local state; apply copies to applied filters (one object write) |
+| Minimal lift | Lift only what siblings must share; dropdown open state stays in dropdown |
+| Reducer size | Reducer state: plain fields; avoid deep clone of 500-row arrays on each keypress |
+| URL sync | Serialize filter/page to search params in effect or on Apply - not on every keystroke |
+| Error | `error` string or `ServiceError` object stored once; render branches explicit (`ui.mdc`) |
+
+Forbidden state shapes:
+
+- Single giant `useState({ rows, sort, filter, ui, ... })` updated with spread each keystroke
+- Duplicated row arrays (`items` + `displayItems` + `sortedItems` all copies in state)
+- Storing formatted strings in state when format can run in `useMemo` from primitives
+
+## Data-oriented lists (SoA in JS)
+
+For directories (customers, campaigns, audit):
+
+| AoS (avoid hot) | SoA / index (prefer) |
+| :--- | :--- |
+| Row component reads 12 fields from object and formats inline | `useMemo` builds `balanceDisplay[i]` parallel to `rows` or `Map<id, display>` |
+| Filter scans all rows per render | `useMemo` filtered list; optional inverted index for text search if needed |
+| Selection: `selectedIds.includes(id)` per row O(n) | `Set` in `useMemo` |
+
+Row component receives **primitives or preformatted strings**, not whole DTO plus formatters.
+
+## Closures and retention (heap leaks)
+
+V8 keeps objects reachable from roots: global, closures, DOM wrappers, compile caches.
+
+| Leak pattern | Fix |
+| :--- | :--- |
+| `useEffect(() => { const t = setInterval(...); }, [])` without cleanup | `return () => clearInterval(t)` |
+| `document.addEventListener` in effect | Remove in cleanup; use `{ capture, passive }` intentionally |
+| Async `fetch` after unmount | `AbortController`; generation id check before `setState` |
+| Closure over `items` in interval | Store `itemsRef.current = items`; interval reads ref |
+| Detached DOM | Portal menus: unmount on close; do not `display:none` huge subtrees with listeners |
+| Global module cache unbounded | Cap LRU or `WeakMap`; never `Map` all rows forever in module scope |
+
+ECMAScript `WeakRef` / `FinalizationRegistry`: use only for optional caches; do not rely on them for correctness.
+
+## Effects and subscriptions
+
+| Rule | Detail |
+| :--- | :--- |
+| Effect scope | One concern per effect (fetch, subscribe, sync URL) |
+| Deps | Minimal deps; refs for values that must not retrigger effect |
+| Strict Mode | Effects mount twice in dev; cleanup must be idempotent |
+| Fetch | `useResource` or explicit effect with abort; no fetch in render |
+| Subscriptions | Websocket/poll: single effect; push into snapshot state, not per-event spread of full list |
+
+## React reconciliation (minimize work)
+
+React re-renders when state or context changes on that subtree.
+
+| Rule | Detail |
+| :--- | :--- |
+| Split trees | Page sections as siblings; ticker state does not live in page parent |
+| Context split | Separate contexts for auth vs theme vs data; narrow consumers |
+| `key` | Stable `row.id`; never index-only for reorderable/sorted lists |
+| `memo` | Row/cell when parent re-renders often (ticker, layout) but row props unchanged |
+| Children as props | Avoid `children={<Heavy />}` recreated inline when parent is hot |
+
+React Compiler (if enabled later): still follow allocation rules; compiler does not remove GC pressure from new arrays.
+
+## V8-friendly object habits
+
+| Habit | Detail |
+| :--- | :--- |
+| Stable option lists | `const STATUS_OPTIONS = [...]` module scope; not recreated in component body |
+| `as const` tuples | Column defs and label maps at module scope |
+| Avoid `delete` | Omit keys when building new object; do not mutate shape of cached DTO |
+| Number / string keys | Record maps: `Record<string, T>` built once; not `switch` with closure per case in loop |
+| `cn()` | String class names only in row loop; no object form in hot list |
+
+## Charts and canvas
+
+| Rule | Detail |
+| :--- | :--- |
+| Ownership | React: container `div` + resize observer; chart lib owns series buffers |
+| Update | `setOption` / `setData` in place; do not pass new React element tree per point |
+| Unmount | `dispose()` chart instance in effect cleanup |
+| Resize | rAF-debounced resize; read `getBoundingClientRect` once per frame max |
+
+## Verification
+
+| Step | Command / tool |
+| :--- | :--- |
+| Types | `cd web && npm run typecheck` |
+| UI gates | `bash scripts/ci/check_ui_surface_gate.sh` && `bash scripts/ci/admin_web.sh` |
+| React Profiler | Record filter typing + sort on 500-row fixture; commit count should not include full page for 1 Hz ticker |
+| Performance panel | Chrome: 6x slowdown; watch **Scripting** and **GC** during scroll |
+| Memory | Heap snapshot before/after 10 navigate cycles; detached nodes and listener count stable |
+| Allocation instrumentation | DevTools > Memory > Allocation sampling on `customers_page` filter: spike only on apply, not per key |
+
+Before claiming list perf: paste Profiler screenshot or note visible row window size and row count.
+
+## Agent checklist
+
+| Step | Action |
+| :--- | :--- |
+| 1 | Snapshot + `useMemo` derived rows; no O(n^2) in cell |
+| 2 | Ticker/poll state isolated in leaf `memo` component |
+| 3 | Effects clean up intervals, listeners, abort |
+| 4 | Stable keys and handlers for `memo` rows |
+| 5 | `typecheck` + manual Profiler on changed list page |
+
+## Related rules
+
+`ui.mdc`, `anti-slop.mdc`, `quality.mdc`, `hot-path.mdc`, `cold-path.mdc`.

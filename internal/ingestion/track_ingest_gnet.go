@@ -22,6 +22,11 @@ type trackIngestFields struct {
 	fbclid      string
 	gclid       string
 	ttclid      string
+	msclkid     string
+	tblci       string
+	obClickID   string
+	eventID     string
+	txID        string
 	ortbSlot    *openRTBScratchSlot
 }
 
@@ -98,6 +103,11 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	fields.fbclid = trackReq.fbclid
 	fields.gclid = trackReq.gclid
 	fields.ttclid = trackReq.ttclid
+	fields.msclkid = trackReq.msclkid
+	fields.tblci = trackReq.tblci
+	fields.obClickID = trackReq.obClickID
+	fields.eventID = trackReq.eventID
+	fields.txID = trackReq.txID
 	if trackReq.ClickID != "" {
 		fields.clickID = trackReq.ClickID
 	}
@@ -113,7 +123,7 @@ func fillTrackEvent(evt *domain.Event, fields trackIngestFields, ip, ua string) 
 	evt.UserID = fields.userID
 	evt.Type = fields.eventType
 	evt.PlacementID = fields.placementID
-	evt.Payload = appendAttributionPayload(evt.Payload[:0], fields.payload, fields.subs, fields.fbclid, fields.gclid, fields.ttclid)
+	evt.Payload = appendAttributionPayload(evt.Payload[:0], fields.payload, fields.subs, fields.fbclid, fields.gclid, fields.ttclid, fields.msclkid, fields.tblci, fields.obClickID, fields.eventID, fields.txID)
 	if evt.Payload == nil {
 		evt.Payload = evt.Payload[:0]
 	}

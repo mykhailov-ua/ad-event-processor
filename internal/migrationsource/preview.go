@@ -41,7 +41,14 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 			BudgetLimitMicro:    budgetUSDToMicro(camp.BudgetUSD),
 		}
 		if camp.TrafficSourceName != "" {
-			if row, ok := resolver.ResolveKeitaro(camp.TrafficSourceName); ok {
+			var row SourceEntry
+			var ok bool
+			if kind == SourceKindBinomJSON {
+				row, ok = resolver.ResolveBinom(camp.TrafficSourceName)
+			} else {
+				row, ok = resolver.ResolveKeitaro(camp.TrafficSourceName)
+			}
+			if ok {
 				mapped.BundledSlug = strings.TrimSpace(row.BundledSlug)
 				mapped.UITemplateID = strings.TrimSpace(row.UITemplateID)
 				mapped.IntegrationSchemaName = mapped.BundledSlug
@@ -88,7 +95,7 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 func ListSources() []SourceKindMeta {
 	return []SourceKindMeta{
 		{Kind: SourceKindKeitaroJSON, Label: "Keitaro JSON export"},
-		{Kind: SourceKindBinomJSON, Label: "Binom JSON export (planned)"},
+		{Kind: SourceKindBinomJSON, Label: "Binom JSON export"},
 		{Kind: SourceKindNativeV1, Label: "Native campaign export v1"},
 	}
 }

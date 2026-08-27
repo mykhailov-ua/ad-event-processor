@@ -121,6 +121,7 @@ func TestPostbackConfig_DryRunWebhook(t *testing.T) {
 	_, err = pool.Exec(ctx, `INSERT INTO campaigns (id, name, status, customer_id) VALUES ($1, 'Camp', 'ACTIVE', $2)`, campaignID, customerID)
 	require.NoError(t, err)
 
+	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

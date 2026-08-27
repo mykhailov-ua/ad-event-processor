@@ -79,7 +79,7 @@ func (st *Store) ReadVersionFile(landerID uuid.UUID, version int, relPath string
 	if err != nil {
 		return nil, err
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	if info.Size() > DefaultMaxEditorFileBytes {
 		return nil, fmt.Errorf("file exceeds editor size limit")
 	}
@@ -192,7 +192,7 @@ func copyDir(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer in.Close()
+		defer func() { _ = in.Close() }()
 		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
 			return err
 		}
@@ -200,7 +200,7 @@ func copyDir(src, dst string) error {
 		if err != nil {
 			return err
 		}
-		defer out.Close()
+		defer func() { _ = out.Close() }()
 		_, err = io.Copy(out, io.LimitReader(in, DefaultMaxZipBytes))
 		return err
 	})

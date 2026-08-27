@@ -28,7 +28,6 @@ const (
 
 type budgetFastScratch struct {
 	wIdem, wQuota, wFence, wFrozen bufWrapper
-	precheck                       luaPrecheckScratch
 	args                           []any
 	wrappers                       UnifiedStringWrappers
 	keyVals                        [budgetFastKeyCount]StringVal

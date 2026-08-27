@@ -16,7 +16,7 @@ import (
 
 func TestFault_XDPSynFloodSynthetic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("synthetic SYN flood fault test")
+		t.Skip("integration: synthetic SYN flood fault test (run make test-integration)")
 	}
 
 	objs := loadTestObjects(t)
@@ -96,7 +96,7 @@ func TestFault_XDPSynFloodSynthetic(t *testing.T) {
 
 func TestFault_XDPAutobanPipelineSynthetic(t *testing.T) {
 	if testing.Short() {
-		t.Skip("autoban pipeline fault test")
+		t.Skip("integration: autoban pipeline fault test (run make test-integration)")
 	}
 
 	objs := loadTestObjects(t)

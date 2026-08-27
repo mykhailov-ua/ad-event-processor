@@ -25,7 +25,7 @@ const e2eClickAmountMicro = 100_000
 
 func TestE2E_Idempotency(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

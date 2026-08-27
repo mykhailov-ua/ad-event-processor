@@ -5,6 +5,7 @@ import "sync/atomic"
 type GuardConfig struct {
 	Enabled        bool
 	PtraceWatchdog bool
+	PtraceRequired bool
 }
 
 var guardTripped atomic.Uint32

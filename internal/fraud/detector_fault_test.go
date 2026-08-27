@@ -83,7 +83,7 @@ func (mgmt *countingManagement) count(ip string) int {
 
 func TestIdempotencyStore_TryClaim(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -109,7 +109,7 @@ func TestIdempotencyStore_TryClaim(t *testing.T) {
 
 func TestFault_ivtDetectorExactlyOnce(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -161,7 +161,7 @@ func TestFault_ivtDetectorExactlyOnce(t *testing.T) {
 
 func TestFault_ivtDetectorOutboxBackpressure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -198,7 +198,7 @@ func TestFault_ivtDetectorOutboxBackpressure(t *testing.T) {
 
 func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := database.SetupTestDB(t)
@@ -239,7 +239,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 
 func TestAnalyzer_FindSuspiciousIPs_clickRatio(t *testing.T) {
 	if testing.Short() {
-		t.Skip("clickhouse integration test")
+		t.Skip("integration: clickhouse testcontainers (run make test-full)")
 	}
 
 	conn, cleanup := setupClickHouseTest(t)

@@ -10,7 +10,7 @@ import (
 
 func TestCoordElectionDebounceSkipsEpochBump(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping redis integration test in short mode")
+		t.Skip("integration: redis testcontainers (run make test-integration)")
 	}
 
 	ctx := context.Background()

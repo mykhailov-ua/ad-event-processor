@@ -24,7 +24,7 @@ import (
 
 func TestIntegration_Licensing(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping licensing integration test")
+		t.Skip("integration: licensing subscription (run make test-integration)")
 	}
 
 	ctx := context.Background()

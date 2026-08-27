@@ -20,7 +20,7 @@ const scheduledSyncInterval = 5 * time.Second
 
 func TestFault_XDPEarlySyncAheadOfSchedule(t *testing.T) {
 	if testing.Short() {
-		t.Skip("xdp early sync fault test")
+		t.Skip("integration: xdp early sync fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

@@ -1,2 +1,11 @@
 version: 1
-sources: []
+sources:
+  - binom_name: Facebook
+    bundled_slug: traffic_facebook
+    ui_template_id: meta-facebook
+  - binom_name: Google Ads
+    bundled_slug: traffic_google_ads
+    ui_template_id: google-ads
+  - binom_name: TikTok
+    bundled_slug: traffic_tiktok
+    ui_template_id: tiktok-ads

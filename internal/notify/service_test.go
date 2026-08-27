@@ -98,7 +98,7 @@ func applyMigrations(t testing.TB, pool *pgxpool.Pool, dir string) {
 
 func TestService_enqueueAndGet(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -133,7 +133,7 @@ func TestService_enqueueAndGet(t *testing.T) {
 
 func TestService_processPending_success(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -163,7 +163,7 @@ func TestService_processPending_success(t *testing.T) {
 
 func TestService_processPending_failureAndRetry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -194,7 +194,7 @@ func TestService_processPending_failureAndRetry(t *testing.T) {
 
 func TestService_processPending_permanentFailure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -230,7 +230,7 @@ func TestService_processPending_permanentFailure(t *testing.T) {
 
 func TestService_processPending_circuitBreaker(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -275,7 +275,7 @@ func TestService_processPending_circuitBreaker(t *testing.T) {
 
 func TestService_processPending_exponentialBackoff(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -313,7 +313,7 @@ func TestService_processPending_exponentialBackoff(t *testing.T) {
 
 func TestService_processPending_deduplication(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -348,7 +348,7 @@ func TestService_processPending_deduplication(t *testing.T) {
 
 func TestService_processPending_fallback(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -387,7 +387,7 @@ func TestService_processPending_fallback(t *testing.T) {
 
 func TestService_processPending_broadcast(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := setupTestDB(t)

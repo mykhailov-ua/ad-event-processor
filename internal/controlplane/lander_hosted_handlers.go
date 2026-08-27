@@ -57,7 +57,7 @@ func (h *FlowHTTPHandlers) uploadHostedLander(w http.ResponseWriter, r *http.Req
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "zip file is required")
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	if header.Size > landerhost.DefaultMaxZipBytes {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "zip exceeds size limit")
 		return
@@ -117,7 +117,7 @@ func (h *FlowHTTPHandlers) serveHostedLander(w http.ResponseWriter, r *http.Requ
 		http.NotFound(w, r)
 		return
 	}
-	defer rc.Close()
+	defer func() { _ = rc.Close() }()
 	w.Header().Set("Content-Type", ctype)
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	w.WriteHeader(http.StatusOK)

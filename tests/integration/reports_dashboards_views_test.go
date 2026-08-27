@@ -18,7 +18,7 @@ import (
 
 func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping reports dashboards views integration test")
+		t.Skip("integration: reports dashboards views (run make test-integration)")
 	}
 
 	ctx := context.Background()

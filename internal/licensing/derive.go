@@ -12,8 +12,6 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-const mckInfoLabel = "license-mck-v1"
-
 var ErrMCKDerivation = errors.New("mck derivation failed")
 
 func DeriveMCK(token, hwid string) ([32]byte, error) {
@@ -24,6 +22,10 @@ func DeriveMCK(token, hwid string) ([32]byte, error) {
 	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
+		return zero, ErrMCKDerivation
+	}
+	kid, err := JWTKeyID(token)
+	if err != nil || kid == "" {
 		return zero, ErrMCKDerivation
 	}
 	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
@@ -42,10 +44,11 @@ func DeriveMCK(token, hwid string) ([32]byte, error) {
 	if deploymentID == "" {
 		return zero, ErrMCKDerivation
 	}
-	ikm := make([]byte, 0, len(sig)+len(payload)+len(hwid))
+	ikm := make([]byte, 0, len(sig)+len(payload)+len(hwid)+len(kid))
 	ikm = append(ikm, sig...)
 	ikm = append(ikm, payload...)
 	ikm = append(ikm, []byte(hwid)...)
+	ikm = append(ikm, []byte(kid)...)
 	return deriveMCKBytes(ikm, deploymentID)
 }
 
@@ -88,7 +91,7 @@ func DeriveMCKFromLicenseFile(path string, pubKey ed25519.PublicKey, hostFingerp
 
 func deriveMCKBytes(ikm []byte, deploymentID string) ([32]byte, error) {
 	var out [32]byte
-	reader := hkdf.New(sha256.New, ikm, []byte(deploymentID), []byte(mckInfoLabel))
+	reader := hkdf.New(sha256.New, ikm, []byte(deploymentID), []byte(MCKInfoLabel()))
 	if _, err := io.ReadFull(reader, out[:]); err != nil {
 		return out, ErrMCKDerivation
 	}

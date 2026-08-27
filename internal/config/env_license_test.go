@@ -94,6 +94,19 @@ func TestLicenseGuardPtrace_killSwitch(t *testing.T) {
 	assert.False(t, config.LicenseGuardPtraceWatchdogEnabled())
 }
 
+func TestLicensePublicKeyProductionEmbeddedOnly(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "production")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY_OVERRIDE", "")
+	assert.True(t, config.LicensePublicKeyProductionEmbeddedOnly())
+
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY_OVERRIDE", "1")
+	assert.False(t, config.LicensePublicKeyProductionEmbeddedOnly())
+
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "")
+	assert.False(t, config.LicensePublicKeyProductionEmbeddedOnly())
+}
+
 func TestLicenseSkewWatch_defaults(t *testing.T) {
 	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_MODE", "file")
 	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "")
@@ -105,4 +118,33 @@ func TestLicenseSkewWatch_defaults(t *testing.T) {
 	assert.True(t, config.LicenseSkewWatchEnabled())
 	assert.Equal(t, time.Hour, config.LicenseSkewWatchInterval())
 	assert.Equal(t, 5*time.Minute, config.LicenseSkewWatchThreshold())
+}
+
+func TestLicenseGuardPtraceRequired_productionProfile(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "production")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "1")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE_REQUIRED", "")
+	assert.True(t, config.LicenseGuardPtraceRequired())
+}
+
+func TestLicenseGuardPtraceRequired_devOverride(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_PROFILE", "production")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_REQUIRED", "1")
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE_REQUIRED", "0")
+	assert.False(t, config.LicenseGuardPtraceRequired())
+}
+
+func TestLicenseGuardPtraceRequired_explicitOn(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_GUARD_PTRACE_REQUIRED", "1")
+	assert.True(t, config.LicenseGuardPtraceRequired())
+}
+
+func TestHWIDV3Enabled_defaultOff(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_HWID_V3", "")
+	assert.False(t, config.HWIDV3Enabled())
+}
+
+func TestHWIDV3Enabled_explicitOn(t *testing.T) {
+	t.Setenv("AD_EVENT_PROCESSOR_LICENSE_HWID_V3", "1")
+	assert.True(t, config.HWIDV3Enabled())
 }

@@ -43,6 +43,6 @@ func BenchmarkStreamProducer_AdmissionCheck(b *testing.B) {
 
 	b.ReportAllocs()
 	for b.Loop() {
-		_, _, _ = tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID)
+		_, _, _ = tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID, false)
 	}
 }

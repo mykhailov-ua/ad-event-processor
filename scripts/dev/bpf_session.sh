@@ -56,8 +56,10 @@ case "$CMD" in
       exit 1
     fi
     mkdir -p "$SESSION_ROOT"
-    ln -sfn "$(basename "$OUT")" "$CURRENT_LINK"
-    printf '%s\n' "$OUT" > "$CURRENT_PATH_FILE"
+    if ! ln -sfn "$(basename "$OUT")" "$CURRENT_LINK" 2> /dev/null; then
+      log "WARN: could not update $CURRENT_LINK (permission); session path: $OUT"
+    fi
+    printf '%s\n' "$OUT" > "$CURRENT_PATH_FILE" 2> /dev/null || log "WARN: could not write $CURRENT_PATH_FILE"
     log "session started: $OUT"
     log "metrics: ${AD_EVENT_PROCESSOR_BPF_METRICS_ADDR} (/metrics)"
     log "load: PREPARE=1 AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/malformed.sh business"

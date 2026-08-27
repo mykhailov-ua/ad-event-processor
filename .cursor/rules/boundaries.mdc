@@ -1,14 +1,20 @@
 ---
-description: cmd ownership, forbidden imports, when to split binaries
-globs: cmd/**, internal/**
+description: Binary import boundaries, layer coupling limits, agent scope, test dishonesty catalog
+globs: cmd/**, internal/**, pkg/**, api/openapi/**, web/**, deploy/vendor/*_MILESTONE.md
 alwaysApply: false
 ---
 
-# Binary and Import Boundaries
+# Binary, Layer, and Test Boundaries
 
 ## Purpose
 
-Apply when adding services, imports, or cross-package dependencies. Defines which binaries exist, what tracker must never import, and when to split vs stay in `cmd/control`.
+Apply when adding services, imports, cross-package dependencies, admin UI, or tests. Defines:
+
+1. Which binaries exist and what tracker must never import.
+2. **Coupling limits** so agents do not scatter across FE/BE/hot/cold in one task.
+3. **Test dishonesty catalog** - mock/skip/void-sink patterns that must not be sold as production proof.
+
+Full hot-path lie tables: `anti-slop.mdc` (**Hot path dishonesty**). Holdout taxonomy: `testing.mdc`. Admin cold path: `ui.mdc`.
 
 ## Default deployment model
 
@@ -33,18 +39,80 @@ Sidecars (optional): `cmd/ivt-detector`, `cmd/fraud-scorer`, `cmd/log-evacuator`
 
 Tracker must not import `internal/fraud` scoring (`cmd/fraud-scorer` / processor only).
 
-## New domain workflow
+## Import matrix (hard)
+
+```
+cmd/* -> internal/control | internal/<svc> | pkg/*
+internal/ingestion -> internal/domain, pkg/*, internal/rtb (auction glue)
+ NOT internal/controlplane admin, NOT internal/fraud scoring
+pkg/* -> stdlib and other pkg/* only
+internal/controlplane -> internal/<svc>/db, pkg/*, NOT internal/ingestion hot handlers
+web/src/helpers/*_api.ts -> fetch + JSON parse only; NO business rules
+web/src/pages/* -> compose ui/<domain>/ sections; NO *.module.css import
+```
+
+Banned import/ceremony patterns:
+
+| Pattern | Why |
+| :--- | :--- |
+| `internal/ingestion` -> `internal/controlplane` | Hot path must not see admin handlers |
+| `pkg/*` -> `internal/*` | Shared util must not depend on domain |
+| `web/src` `dto/`, `usecase/`, `providers/` | Ceremony trees hide contracts from agents |
+| Handler imports ingest hot handler types | Split DTO at OpenAPI boundary |
+| Test production package imports test-only fake as prod dep | Mocks stay in `*_test.go` only |
+
+## Coupling limits (agent scope)
+
+One agent task = **one owning layer**. Crossing layers in the same PR without milestone `Depends on` is a boundary violation.
+
+### Layer owners
+
+| Layer | Owns | Must not own in same change set |
+| :--- | :--- | :--- |
+| `api/openapi/` + `*_handlers.go` | Wire contract, query params, handler DTO, validation, SQL/CH in handler | `web/src` pages (unless milestone closes both in section 7) |
+| `internal/ingestion/` | Accept/reject, filter, stream/broker enqueue | Admin PATCH semantics, outbox workers |
+| `web/src/pages/` | Compose sections, URL -> fetch params | Filter/sort/aggregate logic, OpenAPI edits |
+| `web/src/ui/<domain>/` | Grid, chips, local open state | API field invention, cross-page Context |
+| `web/src/helpers/*_api.ts` | HTTP + parse to typed snapshot | `useMemo` filter over full `items[]` |
+| Milestone doc | Scope, invariants, verification tier | Implementation before sections 1.1-1.4, 4-7 filled |
+
+### Admin FE/BE boundary (hard)
+
+| Concern | Server only | Browser only |
+| :--- | :--- | :--- |
+| Filter, search, sort | Query params + handler | Read URL, pass params, render `items` |
+| Pagination, totals | `limit`, `offset`, `total` | Controls |
+| Labels (`freshness_label`, `status_label`) | Handler DTO | Chip tone mapping |
+| Money display | Micros or `*_display` | Format API display fields |
+| Long work / export | Async job + poll endpoint | Job id + poll; cancel = server DELETE |
+| Validation errors | 400 + field map | Show API errors |
+
+Forbidden cross-layer coupling:
+
+| Forbidden | Replacement |
+| :--- | :--- |
+| React Context for list filter/sort state | URL query string as source of truth |
+| Root `FilterProvider` + reducer over full dataset | Server refetch on param change |
+| Client-derived `lag` / KPI math | Handler fields |
+| `AbortController` shared via Context for whole app | Abort inside list `*_api.ts` / `useResource` only |
+| Hand-written TS types diverging from OpenAPI | `web/src/types/generated/` after `admin_contract_gate` |
+| PATCH body fields not in Go struct | Add handler field first (`ui.mdc`) |
+| One PR: OpenAPI + 3 pages + embed + Docker | Milestone DAG: contract gate, then shell, then one directory pattern |
+
+### Binary and package split rules
+
+New domain workflow:
 
 1. `CREATE SCHEMA`, migrations under `internal/<svc>/migrations/`, wire into `cmd/control` via `OpenModule`.
 2. Standalone `cmd/<svc>` only with external webhooks/credentials and score >= 11 on internal criteria - else package + worker in control/processor.
 3. Node-local I/O (log evacuator, mmap broker): utility binary near data, no network API.
 
-## When not to split
+When not to split:
 
 - Do not split for folder layout when DB is already shared.
 - Do not create microservices without active callers.
 
-## New standalone binary requirements
+New standalone binary requirements:
 
 | Requirement | Detail |
 | :--- | :--- |
@@ -55,16 +123,119 @@ Tracker must not import `internal/fraud` scoring (`cmd/fraud-scorer` / processor
 | Deploy | Compose entry in `deploy/compose/` |
 | Client | At least one real caller in tree |
 
-## Import matrix
+File scope for agents (keep context narrow):
 
-```
-cmd/* -> internal/control | internal/<svc> | pkg/*
-internal/ingestion -> internal/domain, pkg/*, internal/rtb (auction glue)
- NOT internal/controlplane admin, NOT internal/fraud scoring
-pkg/* -> stdlib and other pkg/* only
-internal/controlplane -> internal/<svc>/db, pkg/*, NOT internal/ingestion hot handlers
-```
+| Surface | Max scope per task |
+| :--- | :--- |
+| Go handler | One `*_handlers.go` + matching `api/openapi/paths/*.yaml` fragment |
+| Ingest change | One concern: filter OR producer OR handler wiring |
+| Admin UI page | One `pages/*` + one `ui/<domain>/` + one `helpers/*_api.ts` |
+| Tests | Package under test + holdout named in PR |
+
+## Test dishonesty catalog (hard)
+
+A green test is **not** proof of production behavior. Agents must name the **tier** (`test-fast`, `test-integration`, `test-fault`, `test-alloc-gate`) and the **sink** under test.
+
+Gates: `bash scripts/ci/anti_slop_gate.sh`, `bash scripts/ci/integration_test_slop_gate.sh`.
+
+### Lie type A - mock sold as infrastructure
+
+| Lie | Harness | File(s) | Implies (false) | Valid unit scope | Falsify |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Mock Redis = prod filter | `mockRedisClient` | `internal/ingestion/test_helpers_test.go` | Lua debit, shard tag, cluster | Go branch after `Eval` returns | `make test-integration` + Redis testcontainers |
+| Noop Redis bench = ingress | `benchNoopRedis` | `local_quanta_fullskip_bench_test.go` | `/track` p99 | Alloc/latency of Go-only path | Load test / Prometheus (`core.mdc`) |
+| Unqualified mock bench | `BenchmarkUnifiedFilter_Check` | ingest benches | Filter SLA | Banned; use `_mock` suffix | `BenchmarkUnifiedFilter_Check_mock` only |
+| Broker mock = WAL/HA | `mockBrokerClient` | `broker_producer_test.go` | Broker-primary cutover | Enqueue/flush logic | `TestFault_BrokerShadowCutover_NoEventLoss` |
+| In-memory store = CH | `MockEventStore` | `processor_test.go`, `broker_*_test.go` | Rows in ClickHouse | Consumer batching unit | `clickhouse_store_integration_test.go` |
+| Fraud mock = ML | `mockScorer` | `fraud_scoring_rule_test.go` | LGBM on hot path | Threshold mapping | `cmd/fraud-scorer` batch + model file tests |
+| miniredis = cluster Lua | `miniredis` | schedule_filter, fanout tests | Unified-filter under load | Command shape single-node | Testcontainers + Lua integration |
+| httptest OK = ingest | `httptest` stub body | `click_proxy_bench_test.go` | Full filter + admission | Proxy parse only | Handler + filter integration |
+
+### Lie type B - skip sold as coverage
+
+| Lie | Pattern | Symptom | Fix |
+| :--- | :--- | :--- | :--- |
+| Bare `t.Skip()` | No reason | Gate cannot classify | Forbidden in `anti_slop_gate.sh` scope |
+| Vague integration skip | `t.Skip("fault integration test")`, `clickhouse integration test`, `skipping integration test in short mode` | Never runs in CI | Prefix `integration:` or move to `*_integration_test.go` |
+| `testing.Short()` hide | Skip without `integration:` in reason | `pr_fast` green, path untested | Same prefix rule |
+| Scaffold placeholder | `scaffold_test: add assertion` only | `integration_test_slop_gate.sh` fail | Real assertion or delete file |
+| `t.Parallel()` on globals | Race flake then skip | Weakened suite | Isolate env/metrics or drop parallel |
+
+Weak `t.Skip` without `integration:` prefix is enforced repo-wide by `anti_slop_gate.sh` (`internal/fraud`, `internal/rtb`, `pkg/broker`, `tests/`, etc.).
+
+### Lie type C - void sink (writes nowhere)
+
+Debit/accept succeeds; **no row** on authoritative sink. Trace every hop before claiming "wired".
+
+| Hop | Void pattern | Symptom | Holdout / metric |
+| :--- | :--- | :--- | :--- |
+| UnifiedFilter Lua | `streamKey=fcap:ignored`, no `StreamProducer`/`BrokerProducer` | No `XADD`/Produce after debit | `TestTryAcquireStreamAdmission_holdoutDeferredNoPublisher`; integration flush count |
+| Deferred stream | `SetBrokerProducer` drops Lua stream | Dual writer or zero writer | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` |
+| StreamProducer | `nil` producers or wrong shard index | Silent drop / overload reject | `rejectIfStreamProducerOverloaded` tests |
+| BrokerProducer | Ring full; error swallowed async | Spend without event | `TestBrokerProducer_RingOverflow`; `ad_stream_producer_post_debit_rejected_total` |
+| Broker consumer | Corrupt payload skip, no metric | CH lag, flat wrong metric | `TestFault_BrokerLiveConsumer_CorruptPayload` |
+| Processor -> CH | Mock in test; prod misconfig | CI green, CH empty | CH integration test |
+| Tracker wiring | Consumer nil / wrong topic / shadow-only | 202 on `/track`, empty sink | `cmd/tracker/main.go` trace to metric + flush |
+| Shadow sold as live | `BROKER_SHADOW_MODE=1` only | Divergence from live ingest | Cutover checklist (`tradeoffs.mdc`) |
+| Local quanta crash | Full-skip before async publish | Spend without event | Refill/return Lua fault drills |
+
+### Lie type D - missing holdout (logic "passes" without invariant)
+
+| Behavior | Must fail without fix | Test |
+| :--- | :--- | :--- |
+| Admission after debit | Reserve omitted | `TestStreamProducerAdmissionRaceWithoutReserve` |
+| Queue full after debit | No reserve | `TestStreamProducerReservePreventsQueueFull` |
+| Dual XADD | Lua + Go both publish | `TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix` |
+| Post-debit enqueue fail | No rollback | `TestUnifiedFilter_RollbackDebit_LocalQuanta` |
+| Budget drift | Spend path fault | `AssertBudgetInvariant` |
+| Parser edge drift | Nginx vs gnet | `TestChaos_CrossHop_NginxGnet` `differential_count=0` |
+| Broker cutover loss | Shadow only | `TestFault_BrokerShadowCutover_NoEventLoss` |
+
+Weakening or deleting these holdouts to green CI is a boundary violation.
+
+### Lie type E - tier confusion
+
+| Claim | Actually ran | Required when claiming |
+| :--- | :--- | :--- |
+| "Hot path wired" | `go test -short` | `make test-integration`, `make test-fault` for broker/CH |
+| "0 allocs" | Mock Redis bench | `make test-alloc-gate` on changed hot files |
+| "Filter SLA" | `BenchmarkUnifiedFilter_Check_mock` | Load test p99 (`core.mdc`) |
+| "Admin API matches UI" | Go unit only | `openapi_gate.sh` + handler parity test |
+| "E2E admin" | Stub static only | Milestone section 7 with `typecheck` when `web/` exists |
+
+### Lie type F - admin / contract tests
+
+| Lie | Pattern | Falsify |
+| :--- | :--- | :--- |
+| UI field without API | TS-only form field | Field on Go PATCH struct + OpenAPI |
+| OpenAPI without handler | YAML only | `openapi_gate.sh` catalog test |
+| Handler without OpenAPI | Go-only DTO | Same gate |
+| `live: true` no backend | Route registry lie | `report_live_routes_gate.sh` |
+| Client filter test = server filter | `useMemo` over fixture | Handler test with query params |
+| Cancel = server abort | Stop polling only | Job cancel endpoint or document best-effort GET abort |
+
+### Allowed mock scope (not lies when labeled)
+
+| Harness | Say in PR | Do not say |
+| :--- | :--- | :--- |
+| `mockRedisClient` | "Go branch unit" | "Redis verified" |
+| `mockBrokerClient` | "Producer enqueue unit" | "Broker cutover safe" |
+| `MockEventStore` | "Batch consumer unit" | "CH ingest verified" |
+| `mockScorer` | "Rule mapping unit" | "ML enforcement verified" |
+| `httptest.NewServer` | "HTTP parse/handler contract" | "Full ingest chain" |
+
+## Agent task checklist (boundaries)
+
+| Step | Rule |
+| :--- | :--- |
+| 1 | Name single layer owner (handler, ingest, one page, one milestone) |
+| 2 | List forbidden paths for this task ("no web", "no embed", "no openapi") |
+| 3 | State test tier and sink before "wired" / "verified" |
+| 4 | Cross-layer field -> handler DTO in API PR or same milestone section 7 |
+| 5 | Mock in PR description -> valid scope row from table above |
+| 6 | Touch hot producer/filter -> cite holdout tests by name |
+| 7 | Operator stop ("не код", "сноси") -> revert; no compensating layer |
 
 ## Related rules
 
-`architecture.mdc`, `cold-path.mdc`, `core.mdc`, `hot-path.mdc`, `structure.mdc`.
+`architecture.mdc`, `anti-slop.mdc`, `cold-path.mdc`, `core.mdc`, `hot-path.mdc`, `structure.mdc`, `testing.mdc`, `ui.mdc`.

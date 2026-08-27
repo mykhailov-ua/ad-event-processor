@@ -19,7 +19,7 @@ import (
 
 func TestIntegration_CampaignQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := testutil.SetupAdsPostgres(t)
@@ -61,7 +61,7 @@ func TestIntegration_CampaignQueries(t *testing.T) {
 
 func TestIntegration_StatsBatching(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := testutil.SetupAdsPostgres(t)
@@ -103,7 +103,7 @@ func TestIntegration_StatsBatching(t *testing.T) {
 
 func TestIntegration_InvalidEventType(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := testutil.SetupAdsPostgres(t)
@@ -124,7 +124,7 @@ func TestIntegration_InvalidEventType(t *testing.T) {
 
 func TestIntegration_ExplainQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := testutil.SetupAdsPostgres(t)
@@ -182,7 +182,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 
 func TestIntegration_StatsDeadlockStress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanup := testutil.SetupAdsPostgres(t)

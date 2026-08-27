@@ -19,7 +19,7 @@ const clickHouseTestImage = "clickhouse/clickhouse-server:24.3-alpine"
 func setupClickHouseIntegration(t *testing.T) (conn driver.Conn, cleanup func()) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("clickhouse integration test (run in make test-full / CI full-test)")
+		t.Skip("integration: clickhouse (run make test-full)")
 	}
 
 	ctx := context.Background()

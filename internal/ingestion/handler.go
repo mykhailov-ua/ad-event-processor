@@ -252,6 +252,8 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		serveHTTPTrackCORSPreflight(w, r, trackCORS)
 	})
 
+	registerHTTPTrackPixel(mux)
+
 	mux.HandleFunc("POST /track", func(w http.ResponseWriter, r *http.Request) {
 		telemetry.RecordTrack()
 		startMono := monotonicNano()
@@ -372,7 +374,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			campaignID = req.CampaignID
 			userID = req.UserID
 			eventType = req.Type
-			payload = req.Payload
+			payload = appendAttributionPayload(nil, req.Payload, req.subs, req.fbclid, req.gclid, req.ttclid, req.msclkid, req.tblci, req.obClickID, req.eventID, req.txID)
 			if req.ClickID != "" {
 				clickID = req.ClickID
 			}
@@ -405,7 +407,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		var landing string
 		if filterEngine != nil {
-			lease, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, streamProducers, brokerProducers, campaignID)
+			lease, kind, acquired := tryAcquireStreamAdmissionForFilter(cfg, sharder, streamProducers, brokerProducers, campaignID, filterEngine)
 			if !acquired {
 				spec := filterRejectSpecs[kind]
 				recordHTTPFilterReject(kind, evt)
@@ -455,6 +457,10 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				return
 			case trackStatusAccepted:
 				landing = outcome.LandingURL
+				if !publishAcceptedTrackIngress(sharder, streamProducers, brokerProducers, filterEngine, evt, &lease) {
+					status = httpTrackRejectProducerOverload(r.Context(), w, filterEngine, evt, registry)
+					return
+				}
 			}
 		} else {
 			releaseOpenRTB3Scratch(evt)
@@ -774,51 +780,7 @@ func (h *AdsPacketHandler) publishAcceptedTrack(evt *domain.Event, lease *stream
 	if h == nil || evt == nil {
 		return true
 	}
-	hasLease := lease != nil && lease.release != nil
-	if h.brokerProducers != nil {
-		_, bp := h.brokerProducers.Pick(evt.CampaignID)
-		if bp != nil {
-			var err error
-			if hasLease {
-				err = bp.EnqueueReserved(evt)
-			} else {
-				err = bp.Enqueue(evt)
-			}
-			if err != nil {
-				metrics.StreamProducerPostDebitRejectedTotal.Inc()
-				return false
-			}
-			if lease != nil {
-				lease.Clear()
-			}
-			return true
-		}
-	}
-	if h.sharder == nil || len(h.streamProducers) == 0 {
-		return true
-	}
-	shard := h.sharder.GetShard(evt.CampaignID)
-	if shard < 0 || shard >= len(h.streamProducers) {
-		return true
-	}
-	p := h.streamProducers[shard]
-	if p == nil {
-		return true
-	}
-	var err error
-	if hasLease {
-		err = p.ProcessReserved(evt)
-	} else {
-		err = p.Process(evt)
-	}
-	if err != nil {
-		metrics.StreamProducerPostDebitRejectedTotal.Inc()
-		return false
-	}
-	if lease != nil {
-		lease.Clear()
-	}
-	return true
+	return publishAcceptedTrackIngress(h.sharder, h.streamProducers, h.brokerProducers, h.filterEngine, evt, lease)
 }
 
 func (h *AdsPacketHandler) SetUDPControl(ctrl *UDPControl) {
@@ -1054,12 +1016,13 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, accept strin
 		resp.Status = "accepted"
 
 		respSize := resp.SizeVT()
+		headerBudget := gnetTrackAcceptedHeaderBudget(origin, h.trackCORS, respSize, true)
 		bufSlice := ctx.bufSlice
-		if cap(bufSlice) < 200+respSize {
-			bufSlice = make([]byte, 200+respSize)
+		if cap(bufSlice) < headerBudget+respSize {
+			bufSlice = make([]byte, headerBudget+respSize)
 			ctx.bufSlice = bufSlice
 		} else {
-			bufSlice = bufSlice[:200+respSize]
+			bufSlice = bufSlice[:headerBudget+respSize]
 		}
 
 		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
@@ -1093,11 +1056,12 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, accept strin
 		}
 
 		bufSlice := ctx.bufSlice
-		if cap(bufSlice) < 200+respSize {
-			bufSlice = make([]byte, 200+respSize)
+		headerBudget := gnetTrackAcceptedHeaderBudget(origin, h.trackCORS, respSize, false)
+		if cap(bufSlice) < headerBudget+respSize {
+			bufSlice = make([]byte, headerBudget+respSize)
 			ctx.bufSlice = bufSlice
 		} else {
-			bufSlice = bufSlice[:200+respSize]
+			bufSlice = bufSlice[:headerBudget+respSize]
 		}
 
 		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
@@ -1545,6 +1509,10 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		if httpPathHasPrefix(req.Path, safePageStubPathPrefix) {
 			return h.reactSafePageStub(req, c, ctx)
 		}
+		if isTrackPixelPath(req.Path) {
+			h.write(c, trackPixelGnetResponse, ctx)
+			return gnet.None
+		}
 		if httpPathHasPrefix(req.Path, "/click") {
 			return h.reactClickRedirect(req, c, ctx)
 		}
@@ -1742,46 +1710,4 @@ func extractClientIPGnet(ctx *connContext, req *parsedHTTPRequest, c gnet.Conn, 
 	}
 
 	return remoteIP
-}
-
-func trimSpaceBytes(b []byte) []byte {
-	start := 0
-	for start < len(b) && (b[start] == ' ' || b[start] == '\t') {
-		start++
-	}
-	end := len(b)
-	for end > start && (b[end-1] == ' ' || b[end-1] == '\t' || b[end-1] == '\r') {
-		end--
-	}
-	return b[start:end]
-}
-
-func equalFoldBytes(a, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		c1 := a[i]
-		c2 := b[i]
-		if c1 >= 'A' && c1 <= 'Z' {
-			c1 += 'a' - 'A'
-		}
-		if c2 >= 'A' && c2 <= 'Z' {
-			c2 += 'a' - 'A'
-		}
-		if c1 != c2 {
-			return false
-		}
-	}
-	return true
-}
-
-func parseDecimal(b []byte) int {
-	val := 0
-	for _, c := range b {
-		if c >= '0' && c <= '9' {
-			val = val*10 + int(c-'0')
-		}
-	}
-	return val
 }

@@ -148,10 +148,9 @@ func BenchmarkSyncBlocklistFromRedis_fullSMEMBERS(b *testing.B) {
 	require.NoError(b, redisClient.SAdd(ctx, redisKeyBlacklistFraud, members...).Err())
 
 	maps := newTestBlocklistMapsV4OnlyBench(b)
-	store := NewBlocklistStore()
 	b.ReportMetric(float64(n), "ips")
 	for b.Loop() {
-		store = NewBlocklistStore()
+		store := NewBlocklistStore()
 		_, _, err := SyncBlocklistFromRedis(ctx, redisClient, maps, store)
 		if err != nil {
 			b.Fatal(err)

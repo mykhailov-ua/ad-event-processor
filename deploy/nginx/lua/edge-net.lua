@@ -38,14 +38,14 @@ end
 
 function _M.redis_connect(red, target)
     if target.unix_socket then
-        return red:connect("unix:", 0, { pool = "_", server = target.unix_socket })
+        return red:connect("unix:" .. target.unix_socket, { pool = "_" })
     end
     return red:connect(target.host, target.port)
 end
 
 function _M.socket_connect(sock, target)
     if target.unix_socket then
-        return sock:connect("unix:", 0, { pool = "_", server = target.unix_socket })
+        return sock:connect("unix:" .. target.unix_socket)
     end
     return sock:connect(target.host, target.port)
 end
@@ -93,7 +93,9 @@ function _M.http_get_json(url)
         return nil, err
     end
     local host_header = parsed.host or "localhost"
-    local req = "GET " .. (parsed.path or "/") .. " HTTP/1.1\r\nHost: " .. host_header .. "\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
+    local req = "GET " ..
+    (parsed.path or "/") ..
+    " HTTP/1.1\r\nHost: " .. host_header .. "\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
     local sent, send_err = sock:send(req)
     if not sent then
         sock:close()

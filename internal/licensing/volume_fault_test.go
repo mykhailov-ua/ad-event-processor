@@ -20,7 +20,7 @@ import (
 
 func TestFault_LicenseServerUnreachableUsesLastKnownGood(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	dir := t.TempDir()
 	tokenPath := filepath.Join(dir, "license.jwt")

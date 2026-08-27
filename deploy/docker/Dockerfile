@@ -4,11 +4,6 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
-FROM node:22-alpine AS web
-WORKDIR /src
-COPY web/ ./web/
-RUN node web/scripts/build.mjs
-
 FROM golang:1.25.12-alpine AS builder
 ARG SKIP_CODEGEN=0
 ARG TRACKER_BPF_TRACE=0
@@ -16,7 +11,6 @@ RUN apk add --no-cache bash
 COPY --from=modules /go/pkg/mod /go/pkg/mod
 WORKDIR /src
 COPY . .
-COPY --from=web /src/web/dist ./web/dist
 RUN if [ "$SKIP_CODEGEN" = "1" ]; then echo "skip codegen (pre-generated tree)"; else bash scripts/ci/gen.sh --proto; fi
 RUN TRACKER_TAGS="timetzdata"; \
   if [ "$TRACKER_BPF_TRACE" = "1" ]; then TRACKER_TAGS="${TRACKER_TAGS} ad_event_processor_bpf_trace"; fi; \

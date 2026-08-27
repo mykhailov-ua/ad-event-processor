@@ -33,7 +33,7 @@ export LOAD_BPF_GATE=1
 export PROMETHEUS_URL="${PROMETHEUS_URL:-${LOAD_TEST_PROMETHEUS_URL:-http://127.0.0.1:9190}}"
 
 MODE="${BPF_GATE_MODE:-smoke}"
-GATE_LOG="${GATE_LOG:-$ROOT/bpf_resource_gate.log}"
+GATE_LOG="${GATE_LOG:-$CI_ARTIFACT_DIR/bpf_resource_gate.log}"
 
 if [[ -n "${BPF_GATE_DURATION:-}" ]]; then
   export DURATION="$BPF_GATE_DURATION"

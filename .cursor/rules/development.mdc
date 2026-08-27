@@ -1,6 +1,6 @@
 ---
 description: Codegen, local stack, benchmarks, fault runbooks, admin release
-globs: Makefile, Taskfile.yaml, scripts/dev/**, scripts/fault/**, web/**, model/**
+globs: Makefile, Taskfile.yaml, scripts/dev/**, scripts/fault/**, deploy/vendor/*_MILESTONE.md, model/**
 alwaysApply: false
 ---
 
@@ -32,6 +32,8 @@ ClickHouse canonical DDL: `internal/clickhouse/migrate/00000_bootstrap_tables.sq
 
 ## Local stack
 
+Operator-owned. **Agents:** do not run `stack.sh up`, `docker compose up`, or `prepare_test.sh` unless the operator explicitly requests it in the current turn (`anti-slop.mdc` **Agent local environment**). Stopping: `bash scripts/dev/stack.sh down`.
+
 ```bash
 cp .env.example .env
 bash scripts/dev/stack.sh build
@@ -46,13 +48,20 @@ bash scripts/dev/preflight.sh
 | `ingest-only` | tracker, processor, control; no CH |
 | `analytics-ml` | + fraud-scorer, ivt-detector |
 
-Admin web before control embed:
+Admin static (UI rebuild; `web/` absent):
+
+```bash
+go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
+bash scripts/ci/admin_web.sh
+```
+
+After milestone `admin_shell` (`web/dist` exists):
 
 ```bash
 cd web && npm ci && npm run build
 ```
 
-Bootstrap admin: `scripts/dev/seed_admin.sh`. E2E: `scripts/test/admin_stack_e2e.sh`.
+Bootstrap admin: `scripts/dev/seed_admin.sh`. E2E: `scripts/test/admin_stack_e2e.sh` (requires `web/` + e2e tree).
 
 ## Fault injection
 
@@ -71,6 +80,16 @@ Success logs `fault_proof fault=<name>`.
 Dual-path shadow (`BROKER_SHADOW_MODE=1`), drain PEL, then flip. Default appliance: broker-primary for CH ingest; Redis streams remain for budget Lua and `ad:fraud:stream`.
 
 ## Admin release (pre-tag)
+
+While `web/` absent:
+
+```bash
+go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
+bash scripts/ci/admin_web.sh
+bash scripts/ci/openapi_gate.sh
+```
+
+After `admin_shell`:
 
 ```bash
 cd web && npm ci && npm run build && cd ..

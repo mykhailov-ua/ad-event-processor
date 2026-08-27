@@ -46,9 +46,15 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     go test ./internal/edge/ -run 'Sealed' -count=1
   run_case "redteam8_sealed_lua_resolve" \
     go test ./internal/ingestion/ -run 'ResolveUnifiedFilterLua' -count=1
+  run_case "redteam8_sealed_processor_ch_policy" \
+    go test ./internal/ingestion/ -run 'ProcessorCHIngestPolicy' -count=1
+  run_case "redteam8_sealed_control_runtime_policy" \
+    go test ./internal/controlplane/ -run 'ControlRuntimePolicy' -count=1
 else
   skip_case "redteam8_sealed_bpf_invalid_mck" "linux only"
   skip_case "redteam8_sealed_lua_resolve" "linux only"
+  skip_case "redteam8_sealed_processor_ch_policy" "linux only"
+  skip_case "redteam8_sealed_control_runtime_policy" "linux only"
 fi
 
 log "Step 9: gdb attach with guard on"
@@ -64,6 +70,10 @@ run_case "redteam10_skew_watch_unit" \
   go test ./internal/licensing/ -run SkewWatch -count=1
 run_case "redteam10_registry_skew_ingest" \
   go test ./internal/ingestion/ -run 'Registry_licenseRecheck_clockSkew' -count=1
+
+log "Step 11: Binary patch lab catalog (PT-D04, PT-D07, PT-E08 proxies)"
+run_case "redteam11_binary_patch_lab" \
+  bash scripts/lab/binary_patch_lab.sh
 
 echo ""
 log "summary: pass=$PASS fail=$FAIL skip=$SKIP"

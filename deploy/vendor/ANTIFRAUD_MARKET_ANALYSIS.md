@@ -231,7 +231,7 @@ Vendor reps participate in forums and subreddits emphasizing click fraud scale. 
 
 Based on system architecture review and competitor weak points (FraudScore, Anura, FingerprintJS, ClickCease, Keitaro), four features were proposed to close arbitrage and CPA-network gaps and sharpen sales positioning.
 
-**Status in tree (internal):** partial ship on four ROI backlog slugs (`antifraud_backlog.md`): conversion smart reject, automation fraud metrics, canvas test-retest, CGNAT IP velocity bypass. Still not shipped: full mobile biometrics pipeline, signed evidence-pack export. CGNAT v1 skips `ipv4_rotation` and ingress RPD only for tier-1 MNO ASNs when `cgnat_ip_policy_enabled` or `CGNAT_MOBILE_IP_BYPASS` (`ANTIFRAUD.md`); does not disable IP reputation globally or add gyro/touch scoring.
+**Status in tree (internal):** four ROI backlog slugs shipped and closed (`antifraud_backlog.md`, 2026-08-26): conversion smart reject, automation fraud metrics, canvas test-retest, CGNAT IP velocity bypass. Still not shipped: full mobile biometrics pipeline, signed evidence-pack export. CGNAT v1 skips `ipv4_rotation` and ingress RPD only for tier-1 MNO ASNs when `cgnat_ip_policy_enabled` or `CGNAT_MOBILE_IP_BYPASS` (`ANTIFRAUD.md`); does not disable IP reputation globally or add gyro/touch scoring.
 
 ### 9.1 Antidetect noise injection probing
 

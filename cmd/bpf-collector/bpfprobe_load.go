@@ -79,16 +79,18 @@ type MarkerHistKey struct {
 }
 
 type Programs struct {
-	SysEnter         *ebpf.Program
-	SysExit          *ebpf.Program
-	SchedWakeup      *ebpf.Program
-	SchedSwitch      *ebpf.Program
-	PageFaultUser    *ebpf.Program
-	TCPRetransmit    *ebpf.Program
-	SchedProcessFork *ebpf.Program
-	SchedProcessExit *ebpf.Program
-	TraceEnter       *ebpf.Program
-	TraceExit        *ebpf.Program
+	SysEnter              *ebpf.Program
+	SysExit               *ebpf.Program
+	SchedWakeup           *ebpf.Program
+	SchedSwitch           *ebpf.Program
+	PageFaultUser         *ebpf.Program
+	TCPRetransmit         *ebpf.Program
+	SchedProcessFork      *ebpf.Program
+	SchedProcessExit      *ebpf.Program
+	MarkProcessTrackEnter *ebpf.Program
+	MarkProcessTrackExit  *ebpf.Program
+	MarkFilterCheckEnter  *ebpf.Program
+	MarkFilterCheckExit   *ebpf.Program
 }
 
 type Maps struct {
@@ -128,16 +130,18 @@ func Load(objectPath string) (*Collection, error) {
 	out := &Collection{
 		raw: coll,
 		Progs: Programs{
-			SysEnter:         coll.Programs[bpfProgramName("sys_enter")],
-			SysExit:          coll.Programs[bpfProgramName("sys_exit")],
-			SchedWakeup:      coll.Programs[bpfProgramName("sched_wakeup")],
-			SchedSwitch:      coll.Programs[bpfProgramName("sched_switch")],
-			PageFaultUser:    coll.Programs[bpfProgramName("page_fault_user")],
-			TCPRetransmit:    coll.Programs[bpfProgramName("tcp_retransmit")],
-			SchedProcessFork: coll.Programs[bpfProgramName("sched_process_fork")],
-			SchedProcessExit: coll.Programs[bpfProgramName("sched_process_exit")],
-			TraceEnter:       coll.Programs[bpfProgramName("trace_enter")],
-			TraceExit:        coll.Programs[bpfProgramName("trace_exit")],
+			SysEnter:              coll.Programs[bpfProgramName("sys_enter")],
+			SysExit:               coll.Programs[bpfProgramName("sys_exit")],
+			SchedWakeup:           coll.Programs[bpfProgramName("sched_wakeup")],
+			SchedSwitch:           coll.Programs[bpfProgramName("sched_switch")],
+			PageFaultUser:         coll.Programs[bpfProgramName("page_fault_user")],
+			TCPRetransmit:         coll.Programs[bpfProgramName("tcp_retransmit")],
+			SchedProcessFork:      coll.Programs[bpfProgramName("sched_process_fork")],
+			SchedProcessExit:      coll.Programs[bpfProgramName("sched_process_exit")],
+			MarkProcessTrackEnter: coll.Programs[bpfProgramName("mark_process_track_enter")],
+			MarkProcessTrackExit:  coll.Programs[bpfProgramName("mark_process_track_exit")],
+			MarkFilterCheckEnter:  coll.Programs[bpfProgramName("mark_filter_check_enter")],
+			MarkFilterCheckExit:   coll.Programs[bpfProgramName("mark_filter_check_exit")],
 		},
 		Maps: Maps{
 			TargetPids:    coll.Maps["target_pids"],

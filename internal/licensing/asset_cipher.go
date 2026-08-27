@@ -16,6 +16,10 @@ const (
 	AssetLabelEdge = "edge-bpf"
 
 	AssetLabelUnifiedFilter = "unified-filter"
+
+	AssetLabelProcessorCHIngest = "processor-ch-ingest"
+
+	AssetLabelControlRuntime = "control-runtime"
 )
 
 var (

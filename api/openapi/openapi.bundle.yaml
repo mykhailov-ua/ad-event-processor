@@ -180,6 +180,8 @@ components:
             $ref: components/schemas/campaign.yaml#/CampaignFraudConfig
         CampaignFraudPreview:
             $ref: components/schemas/campaign.yaml#/CampaignFraudPreview
+        CampaignIntegrationHealth:
+            $ref: components/schemas/campaign.yaml#/CampaignIntegrationHealth
         CampaignListResponse:
             $ref: components/schemas/campaign.yaml#/CampaignListResponse
         CampaignMargin:
@@ -228,6 +230,8 @@ components:
             $ref: components/schemas/ops_reports.yaml#/IncidentSnapshot
         IngressCostConfig:
             $ref: components/schemas/campaign.yaml#/IngressCostConfig
+        IntegrationHealthRow:
+            $ref: components/schemas/campaign.yaml#/IntegrationHealthRow
         IntegrationSchema:
             $ref: components/schemas/integrations.yaml#/IntegrationSchema
         IntegrationTemplateCatalogEntry:
@@ -397,6 +401,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud
     /api/v1/campaigns/{id}/fraud/preview:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud~1preview
+    /api/v1/campaigns/{id}/integration-health:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-health
     /api/v1/campaigns/{id}/margin:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1margin
     /api/v1/campaigns/{id}/owner:

@@ -61,12 +61,12 @@ var seedCmd = &cobra.Command{
 		fmt.Println("Seeding 100 customers...")
 		customerIDs := make([]uuid.UUID, 100)
 		for i := 1; i <= 100; i++ {
-			cID := uuid.New()
+			cID := seedEntityUUID(i)
 			customerIDs[i-1] = cID
 			_, err = adsQueries.CreateCustomer(ctx, ingestdb.CreateCustomerParams{
 				ID:       pgtype.UUID{Bytes: cID, Valid: true},
-				Name:     fmt.Sprintf("Advertiser Customer %d", i),
-				Balance:  100_000_000_000,
+				Name:     seedCustomerName(i),
+				Balance:  seedCustomerBalanceMicro(i),
 				Currency: "USD",
 			})
 			if err != nil {
@@ -76,7 +76,7 @@ var seedCmd = &cobra.Command{
 
 		for i := range 20 {
 			_, err = adsQueries.UpdateCustomerOverdraft(ctx, ingestdb.UpdateCustomerOverdraftParams{
-				AllowedOverdraft: 5_000_000_000,
+				AllowedOverdraft: 2_500_000_000 + int64(i%5)*500_000_000,
 				ID:               pgtype.UUID{Bytes: customerIDs[i], Valid: true},
 			})
 			if err != nil {
@@ -91,7 +91,7 @@ var seedCmd = &cobra.Command{
 				role = "admin"
 			}
 			_, err = authQueries.CreateUser(ctx, authdb.CreateUserParams{
-				Email:        fmt.Sprintf("user%d@test.com", i),
+				Email:        seedUserEmail(i),
 				PasswordHash: precomputedHash,
 				Role:         role,
 				CustomerID:   pgtype.UUID{Bytes: customerIDs[i-1], Valid: true},
@@ -109,7 +109,7 @@ var seedCmd = &cobra.Command{
 			_, err = adsQueries.CreateBrand(ctx, ingestdb.CreateBrandParams{
 				ID:         pgtype.UUID{Bytes: bID, Valid: true},
 				CustomerID: pgtype.UUID{Bytes: customerIDs[i-1], Valid: true},
-				Name:       fmt.Sprintf("Global Elite Brand %d", i),
+				Name:       seedBrandName(i),
 			})
 			if err != nil {
 				return fmt.Errorf("failed to seed brand %d: %w", i, err)
@@ -135,12 +135,12 @@ var seedCmd = &cobra.Command{
 			targetCountries := countries[0 : 1+(i%len(countries))]
 
 			pacing := pacingModes[i%len(pacingModes)]
-			budgetLimit := int64(10_000_000_000 + (i%5)*5_000_000_000)
-			dailyBudget := int64(1_000_000_000 + (i%3)*1_000_000_000)
+			budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000))
+			dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000))
 
 			_, err = adsQueries.CreateCampaign(ctx, ingestdb.CreateCampaignParams{
 				ID:              pgtype.UUID{Bytes: campID, Valid: true},
-				Name:            fmt.Sprintf("Campaign Performance Campaign %d", i),
+				Name:            seedCampaignName(i),
 				BudgetLimit:     budgetLimit,
 				Status:          ingestdb.CampaignStatusTypeACTIVE,
 				CustomerID:      pgtype.UUID{Bytes: cID, Valid: true},

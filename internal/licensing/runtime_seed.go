@@ -5,6 +5,7 @@ import "sync/atomic"
 var (
 	featureSeed       atomic.Uint32
 	featureSeedValid  atomic.Uint32
+	mckFeatureBits    atomic.Uint32
 	seedCouplingForce atomic.Uint32
 )
 
@@ -14,7 +15,24 @@ func PublishFeatureSeed(seed uint32, valid bool) {
 		featureSeedValid.Store(1)
 	} else {
 		featureSeedValid.Store(0)
+		mckFeatureBits.Store(0)
 	}
+}
+
+func PublishMCKFeatureBits(bits uint8) {
+	mckFeatureBits.Store(uint32(bits))
+}
+
+func MCKFeatureBits() uint8 {
+	return uint8(mckFeatureBits.Load())
+}
+
+// SettlementSeedGateAllowed reports whether processor settlement may flush batches.
+func SettlementSeedGateAllowed() bool {
+	if !SeedCouplingRequired() {
+		return true
+	}
+	return FeatureSeedValid()
 }
 
 func FeatureSeed() uint32 {
@@ -47,6 +65,9 @@ func SeedGateOpenRTB(ent Entitlements) bool {
 	if !ent.Features.OpenRTBEnabled() {
 		return false
 	}
+	if !mckFeatureBitOpenRTBSet(MCKFeatureBits()) {
+		return false
+	}
 	seed := FeatureSeed()
 	return openRTBSeedCheck(seed)
 }
@@ -74,5 +95,10 @@ func rpsSeedCheck(seed uint32, maxRPS uint64) bool {
 func ResetFeatureSeedForTest() {
 	featureSeed.Store(0)
 	featureSeedValid.Store(0)
+	mckFeatureBits.Store(0)
 	seedCouplingForce.Store(0)
+}
+
+func SetMCKFeatureBitsForTest(bits uint8) {
+	mckFeatureBits.Store(uint32(bits))
 }

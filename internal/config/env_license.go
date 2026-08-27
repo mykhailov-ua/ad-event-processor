@@ -99,6 +99,20 @@ func LicenseSkewWatchThreshold() time.Duration {
 	return 5 * time.Minute
 }
 
+func LicensePublicKeyOverrideAllowed() bool {
+	if v := LicenseEnv("PUBLIC_KEY_OVERRIDE"); v != "" {
+		return parseBoolEnv(v)
+	}
+	return false
+}
+
+func LicensePublicKeyProductionEmbeddedOnly() bool {
+	if LicensePublicKeyOverrideAllowed() {
+		return false
+	}
+	return ProfileFromEnv() == "production" && LicenseRequiredFromEnv()
+}
+
 func LicenseGuardEnvEnabled() bool {
 	if v := LicenseEnv("GUARD"); v != "" {
 		return parseBoolEnv(v)
@@ -114,4 +128,28 @@ func LicenseGuardPtraceWatchdogEnabled() bool {
 		return parseBoolEnv(v)
 	}
 	return true
+}
+
+func LicenseGuardPtraceRequired() bool {
+	if !LicenseGuardPtraceWatchdogEnabled() {
+		return false
+	}
+	if v := LicenseEnv("GUARD_PTRACE_REQUIRED"); v != "" {
+		return parseBoolEnv(v)
+	}
+	return ProfileFromEnv() == "production" && LicenseRequiredFromEnv()
+}
+
+func LicenseGuardStretchEnabled() bool {
+	if v := LicenseEnv("GUARD_STRETCH"); v != "" {
+		return parseBoolEnv(v)
+	}
+	return true
+}
+
+func HWIDV3Enabled() bool {
+	if v := LicenseEnv("HWID_V3"); v != "" {
+		return parseBoolEnv(v)
+	}
+	return false
 }

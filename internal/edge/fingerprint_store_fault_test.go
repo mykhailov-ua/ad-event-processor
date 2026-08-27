@@ -18,7 +18,7 @@ import (
 
 func TestFault_FingerprintConcurrentRecord(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint concurrent fault test")
+		t.Skip("integration: fingerprint concurrent fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -72,7 +72,7 @@ func TestFault_FingerprintConcurrentRecord(t *testing.T) {
 
 func TestFault_FingerprintZSETOverflow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint zset overflow fault test")
+		t.Skip("integration: fingerprint zset overflow fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -102,7 +102,7 @@ func TestFault_FingerprintZSETOverflow(t *testing.T) {
 
 func TestFault_FingerprintCorruptRedisMembers(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint corrupt redis fault test")
+		t.Skip("integration: fingerprint corrupt redis fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -155,7 +155,7 @@ func TestFault_FingerprintCorruptRedisMembers(t *testing.T) {
 
 func TestFault_FingerprintRedisOutageMidDrain(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint redis outage fault test")
+		t.Skip("integration: fingerprint redis outage fault test (run make test-integration)")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
@@ -188,7 +188,7 @@ func TestFault_FingerprintRedisOutageMidDrain(t *testing.T) {
 
 func TestFault_FingerprintMaxFieldValues(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fingerprint boundary fault test")
+		t.Skip("integration: fingerprint boundary fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()

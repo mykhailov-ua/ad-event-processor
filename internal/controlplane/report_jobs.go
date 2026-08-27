@@ -120,9 +120,9 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 	return jobID, nil
 }
 
-func (r *ReportJobRunner) GetJob(jobID string) (ReportJobStatusDTO, bool) {
+func (r *ReportJobRunner) GetJob(ctx context.Context, jobID string) (ReportJobStatusDTO, bool) {
 	if r.pgEnabled() {
-		dto, ok, err := r.getJobPG(context.Background(), jobID)
+		dto, ok, err := r.getJobPG(ctx, jobID)
 		if err != nil {
 			return ReportJobStatusDTO{}, false
 		}
@@ -137,12 +137,12 @@ func (r *ReportJobRunner) GetJob(jobID string) (ReportJobStatusDTO, bool) {
 	return r.toDTO(jobID, rec), true
 }
 
-func (r *ReportJobRunner) ListJobsByCustomer(customerID string, limit int) []ReportJobStatusDTO {
+func (r *ReportJobRunner) ListJobsByCustomer(ctx context.Context, customerID string, limit int) []ReportJobStatusDTO {
 	if limit <= 0 {
 		limit = 10
 	}
 	if r.pgEnabled() {
-		out, err := r.listJobsByCustomerPG(context.Background(), customerID, limit)
+		out, err := r.listJobsByCustomerPG(ctx, customerID, limit)
 		if err != nil {
 			return nil
 		}
@@ -173,9 +173,9 @@ func (r *ReportJobRunner) ListJobsByCustomer(customerID string, limit int) []Rep
 	return out
 }
 
-func (r *ReportJobRunner) OpenDownload(jobID string) (*os.File, ReportJobStatusDTO, error) {
+func (r *ReportJobRunner) OpenDownload(ctx context.Context, jobID string) (*os.File, ReportJobStatusDTO, error) {
 	if r.pgEnabled() {
-		path, dto, err := r.openDownloadPG(context.Background(), jobID)
+		path, dto, err := r.openDownloadPG(ctx, jobID)
 		if err != nil {
 			return nil, dto, err
 		}
@@ -231,8 +231,8 @@ func (r *ReportJobRunner) evictLocked(now time.Time) {
 	}
 }
 
-func (r *ReportJobRunner) runJob(_ context.Context, jobID string, spec ReportJobSpec) {
-	jobCtx, cancel := context.WithTimeout(context.Background(), reportJobRunTimeout)
+func (r *ReportJobRunner) runJob(parent context.Context, jobID string, spec ReportJobSpec) {
+	jobCtx, cancel := context.WithTimeout(parent, reportJobRunTimeout)
 	defer cancel()
 
 	if !r.pgEnabled() {
@@ -353,13 +353,13 @@ func (reports *ReportsHTTPHandlers) postReportJob(w http.ResponseWriter, r *http
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	status, _ := reports.ReportJobs.GetJob(jobID)
+	status, _ := reports.ReportJobs.GetJob(r.Context(), jobID)
 	httpresponse.JSON(w, http.StatusCreated, status)
 }
 
 func (reports *ReportsHTTPHandlers) getReportJob(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("id")
-	status, ok := reports.ReportJobs.GetJob(jobID)
+	status, ok := reports.ReportJobs.GetJob(r.Context(), jobID)
 	if !ok {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")
 		return
@@ -375,7 +375,7 @@ func (reports *ReportsHTTPHandlers) getReportJob(w http.ResponseWriter, r *http.
 
 func (reports *ReportsHTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("id")
-	f, status, err := reports.ReportJobs.OpenDownload(jobID)
+	f, status, err := reports.ReportJobs.OpenDownload(r.Context(), jobID)
 	if err != nil {
 		if status.ID == "" {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")

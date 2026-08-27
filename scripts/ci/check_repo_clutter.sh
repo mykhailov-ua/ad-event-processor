@@ -34,7 +34,7 @@ while IFS= read -r -d '' path; do
   if [[ "$path" != *.txt ]]; then
     continue
   fi
-  echo "check_repo_clutter: tracked repo-root $path (scratch reports belong in var/)" >&2
+  echo "check_repo_clutter: tracked repo-root $path (scratch reports belong in var/ci/)" >&2
   fail=1
 done < <(git ls-files -z)
 

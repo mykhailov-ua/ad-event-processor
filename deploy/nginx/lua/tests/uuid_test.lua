@@ -1,5 +1,3 @@
-
-
 package.path = arg[1] .. "/?.lua;;"
 
 local edge_uuid = require "edge-uuid"

@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "wal_segment_mb_max": 512,
+  "compress": true
+}

@@ -134,6 +134,10 @@ func (campaignListStub) ImportMigrationCampaigns(context.Context, controlplane.I
 	return controlplane.ImportMigrationResult{}, nil
 }
 
+func (campaignListStub) GetCampaignIntegrationHealth(context.Context, uuid.UUID) (controlplane.IntegrationHealthDTO, error) {
+	return controlplane.IntegrationHealthDTO{}, nil
+}
+
 func mapPublisherTestError(err error) (status int, code string, message string) {
 	if errors.Is(err, controlplane.ErrPublisherScopeRequired) {
 		return http.StatusForbidden, "FORBIDDEN", err.Error()

@@ -32,6 +32,7 @@ func TestProcessorWeight_EffectiveReadCount(t *testing.T) {
 }
 
 func TestProcessorWeight_HTTPPoll(t *testing.T) {
+	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/ops/processor-weights", r.URL.Path)
 		_ = json.NewEncoder(w).Encode(map[string]any{

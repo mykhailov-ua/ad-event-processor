@@ -32,7 +32,7 @@ MODE="${BPF_GATE_MODE:-business}"
 DURATION="${BPF_COLD_SOAK_DURATION:-${BPF_GATE_DURATION:-30m}}"
 export DURATION
 BASELINE_DIR="${BPF_BASELINE_DIR:-$ROOT/.ci-baselines/bpf/cold}"
-GATE_LOG="${GATE_LOG:-$ROOT/bpf_cold_soak.log}"
+GATE_LOG="${GATE_LOG:-$CI_ARTIFACT_DIR/bpf_cold_soak.log}"
 
 log "cold soak (mode=$MODE duration=$DURATION baseline=$BASELINE_DIR)"
 

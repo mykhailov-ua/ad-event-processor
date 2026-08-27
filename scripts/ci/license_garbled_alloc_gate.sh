@@ -21,8 +21,8 @@ export PATH="$(go env GOPATH)/bin:${PATH}"
 
 echo "license_garbled_alloc_gate: building garbled tracker -> $OUT"
 if ! bash scripts/ci/release_garble.sh "$OUT" tracker; then
-  echo "license_garbled_alloc_gate: skip (garble build failed)"
-  exit 0
+  echo "license_garbled_alloc_gate: garble build failed (set GARBLE_VERSION=v0.15.0 for Go 1.25)" >&2
+  exit 1
 fi
 
 test -x "$OUT/tracker" || {

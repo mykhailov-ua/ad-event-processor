@@ -17,7 +17,7 @@ import (
 
 func TestFault_notifierConcurrentDelivery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("notifier fault integration test")
+		t.Skip("integration: notifier fault test (run make test-integration)")
 	}
 
 	pool, cleanup := setupTestDB(t)

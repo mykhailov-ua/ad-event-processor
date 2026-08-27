@@ -22,7 +22,7 @@ import (
 
 func TestMicroBatch_AggregationAndScoring(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	redisClient, cleanupRedis := database.SetupTestRedis(t)

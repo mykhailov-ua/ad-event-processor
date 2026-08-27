@@ -123,26 +123,6 @@ func selectWeightedFlowFiltered(paths []FlowPath, ctx FlowSelectContext, bucket 
 	return -1, FlowPath{}, false
 }
 
-func selectWeightedFlow(paths []FlowPath, bucket uint32) (int, FlowPath) {
-	var total int32
-	for i := range paths {
-		total += paths[i].Weight
-	}
-	if total <= 0 {
-		return 0, paths[0]
-	}
-	target := int32(bucket % uint32(total))
-	var acc int32
-	for i := range paths {
-		acc += paths[i].Weight
-		if target < acc {
-			return i, paths[i]
-		}
-	}
-	last := len(paths) - 1
-	return last, paths[last]
-}
-
 func selectWeightedLander(landers []FlowLanderEntry, bucket uint32) (int, FlowLanderEntry) {
 	if len(landers) == 0 {
 		return -1, FlowLanderEntry{}

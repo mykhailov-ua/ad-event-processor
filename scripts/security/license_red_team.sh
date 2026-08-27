@@ -40,6 +40,12 @@ fi
 run_case "licensing_unit_revoked_claim" \
   go test ./internal/licensing/ -run 'Revoked|DetermineState' -count=1
 
+run_case "licensing_alg_pin" \
+  go test ./internal/licensing/ -run 'WrongAlg|none alg|empty alg' -count=1
+
+run_case "licensing_pubkey_production" \
+  go test ./internal/licensing/ -run 'ProductionIgnores|ProductionOverride' -count=1
+
 run_case "license_rps_filter" \
   go test ./internal/ingestion/ -run 'LicenseRPSFilter' -count=1
 
@@ -48,6 +54,9 @@ run_case "sync_entitlements_expired_default" \
 
 run_case "license_seed_coupling_rps" \
   go test ./internal/ingestion/ -run 'LicenseRPSFilter_seedCoupling' -count=1
+
+run_case "mck_seed_coupling_release_gate" \
+  bash scripts/ci/mck_seed_coupling_release_gate.sh
 
 run_case "sealed_unified_filter_lua" \
   go test ./internal/ingestion/ -run 'ResolveUnifiedFilterLua' -count=1
@@ -58,7 +67,7 @@ run_case "licensing_mck_seal" \
 run_case "licensing_skew_watch" \
   go test ./internal/licensing/ -run SkewWatch -count=1
 
-if [[ -n "${ASSET_SEAL_SALT:-}" ]]; then
+if [[ -n "${ASSET_SEAL_SALT:-}" || -n "${AD_EVENT_PROCESSOR_ASSET_SEAL_SALT:-}" ]]; then
   run_case "asset_seal_salt_smoke" \
     bash scripts/ci/asset_seal_salt_smoke.sh
 else
@@ -72,6 +81,8 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     bash scripts/ci/hwid_strings_gate.sh
   run_case "public_key_strings_gate" \
     bash scripts/ci/public_key_strings_gate.sh
+  run_case "license_hot_path_anchor_gate" \
+    bash scripts/ci/license_hot_path_anchor_gate.sh
   run_case "licensing_guard" \
     go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
   run_case "license_guard_off_smoke" \

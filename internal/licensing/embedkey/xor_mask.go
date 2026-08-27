@@ -1,0 +1,23 @@
+package embedkey
+
+import "crypto/ed25519"
+
+var maskLo = [16]byte{
+	0xa7, 0x3c, 0x91, 0x5e, 0x22, 0xfb, 0x14, 0x88,
+	0x6d, 0x01, 0xce, 0x47, 0xb9, 0x72, 0x30, 0xdd,
+}
+
+var maskHi = [16]byte{
+	0x4f, 0x8a, 0x63, 0x19, 0xe5, 0x56, 0x7b, 0xc4,
+	0x02, 0xad, 0x38, 0x71, 0x9e, 0x25, 0x50, 0x86,
+}
+
+// EmbeddedProductionPublicKey returns the vendor production Ed25519 public key bytes.
+func EmbeddedProductionPublicKey() ed25519.PublicKey {
+	var raw [ed25519.PublicKeySize]byte
+	for i := range 16 {
+		raw[i] = maskedLo[i] ^ maskLo[i]
+		raw[i+16] = maskedHi[i] ^ maskHi[i]
+	}
+	return ed25519.PublicKey(raw[:])
+}

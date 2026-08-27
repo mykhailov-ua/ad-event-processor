@@ -50,7 +50,7 @@ func countLoginBlocked(ctx context.Context, svc *Service, email, password string
 
 func TestFault_AuthRedisTerminateFailClosedVerify(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -86,7 +86,7 @@ func TestFault_AuthRedisTerminateFailClosedVerify(t *testing.T) {
 
 func TestFault_AuthPGTerminateBlocksLogin(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -120,7 +120,7 @@ func TestFault_AuthPGTerminateBlocksLogin(t *testing.T) {
 
 func TestFault_AuthPGDownVerifyTokenFailClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -156,7 +156,7 @@ func TestFault_AuthPGDownVerifyTokenFailClosed(t *testing.T) {
 
 func TestFault_AuthRedisDownLockoutFailClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -198,7 +198,7 @@ func TestFault_AuthRedisDownLockoutFailClosed(t *testing.T) {
 
 func TestFault_AuthRedisStopStartRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -240,7 +240,7 @@ func TestFault_AuthRedisStopStartRecovery(t *testing.T) {
 
 func TestFault_AuthPGStopStartRecovery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -281,7 +281,7 @@ func TestFault_AuthPGStopStartRecovery(t *testing.T) {
 
 func TestFault_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)
@@ -331,7 +331,7 @@ func TestFault_AuthConcurrentVerifyDuringRedisOutage(t *testing.T) {
 
 func TestFault_AuthPGDownRefreshTokenFailClosed(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)

@@ -103,17 +103,12 @@ func fetchMicrosoftAdsCosts(ctx context.Context, client *http.Client, baseURL st
 	microsoftAdsSetHeaders(submitReq, token, customerID, accountID, developerToken)
 	submitReq.Header.Set("Content-Type", "application/json")
 
-	submitResp, err := client.Do(submitReq)
-	if err != nil {
-		coldpath.CloseHTTPResponse(submitResp)
-		return nil, err
-	}
-	submitBodyBytes, err := readLimitedHTTPBody(submitResp, 1<<20)
+	submitBodyBytes, submitStatus, err := doReadLimitedHTTPBody(client, submitReq, 1<<20)
 	if err != nil {
 		return nil, fmt.Errorf("microsoft_ads submit: %w", err)
 	}
-	if submitResp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("microsoft_ads submit: status %d: %s", submitResp.StatusCode, string(submitBodyBytes))
+	if submitStatus != http.StatusOK {
+		return nil, fmt.Errorf("microsoft_ads submit: status %d: %s", submitStatus, string(submitBodyBytes))
 	}
 
 	var submitted microsoftAdsSubmitResponse
@@ -195,17 +190,12 @@ func microsoftAdsPollReport(ctx context.Context, client *http.Client, base, repo
 		microsoftAdsSetHeaders(pollReq, token, customerID, accountID, developerToken)
 		pollReq.Header.Set("Content-Type", "application/json")
 
-		pollResp, err := client.Do(pollReq)
-		if err != nil {
-			coldpath.CloseHTTPResponse(pollResp)
-			return "", err
-		}
-		body, err := readLimitedHTTPBody(pollResp, 1<<20)
+		body, pollStatus, err := doReadLimitedHTTPBody(client, pollReq, 1<<20)
 		if err != nil {
 			return "", fmt.Errorf("microsoft_ads poll: %w", err)
 		}
-		if pollResp.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("microsoft_ads poll: status %d: %s", pollResp.StatusCode, string(body))
+		if pollStatus != http.StatusOK {
+			return "", fmt.Errorf("microsoft_ads poll: status %d: %s", pollStatus, string(body))
 		}
 
 		var polled microsoftAdsPollResponse
@@ -334,16 +324,4 @@ func parseMicrosoftAdsCampaignCSV(cred Credential, date time.Time, raw []byte) (
 		})
 	}
 	return lines, nil
-}
-
-func readLimitedHTTPBody(resp *http.Response, limit int64) ([]byte, error) {
-	defer func() {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		_ = resp.Body.Close()
-	}()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, limit))
-	if err != nil {
-		return nil, err
-	}
-	return body, nil
 }

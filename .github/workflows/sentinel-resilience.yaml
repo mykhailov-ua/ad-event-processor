@@ -26,12 +26,12 @@ jobs:
         run: bash scripts/fault/sentinel_failover_env.sh
 
       - name: Sentinel failover resilience test
-        run: bash scripts/test/sentinel.sh 2>&1 | tee sentinel.log
+        run: bash scripts/lib/tee_ci_log.sh sentinel.log bash scripts/test/sentinel.sh
 
       - name: Upload sentinel log
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: sentinel-log
-          path: sentinel.log
+          path: var/ci/sentinel.log
           retention-days: 7

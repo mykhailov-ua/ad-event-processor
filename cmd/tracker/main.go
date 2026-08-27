@@ -74,6 +74,7 @@ func main() {
 	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
 		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
 		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+		PtraceRequired: licensing.GuardCompiledIn() && config.LicenseGuardPtraceRequired(),
 	})
 
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
@@ -103,17 +104,12 @@ func main() {
 	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
 
 	if config.LicenseRequiredFromEnv() {
-		recheckInterval := 5 * time.Minute
-		if d, parseErr := time.ParseDuration(config.LicenseFileRecheckInterval()); parseErr == nil && d > 0 {
-			recheckInterval = d
-		}
 		licensePath := config.LicensePathFromEnv()
 		registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
 			Required: true,
 			Path:     licensePath,
-			Interval: recheckInterval,
 		})
-		slog.Info("license file recheck enabled", "path", licensePath, "interval", recheckInterval.String())
+		slog.Info("license file recheck enabled", "path", licensePath)
 	}
 
 	var redisShards []redis.UniversalClient
@@ -136,6 +132,9 @@ func main() {
 	}
 	database.WarmRedisShardPools(ctx, redisShards, warmPings)
 	database.StartRedisPoolStatsReporter(ctx, redisShards, 15*time.Second)
+	if len(redisShards) > 0 && redisShards[0] != nil {
+		licensing.StartLicenseEpochSync(ctx, redisShards[0])
+	}
 	if redisShards[0] == nil {
 		slog.Warn("redis shard 0 not connected; running in degraded mode",
 			"replica", cfg.CampaignReplicaPath,
@@ -797,6 +796,17 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+	if cfg.TrackerUnixSocket != "" {
+		go func(sockPath string) {
+			for range 50 {
+				if err := netaddr.EnsureUnixSocketWritable(sockPath); err == nil {
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+			slog.Warn("tracker unix socket chmod failed", "path", sockPath)
+		}(cfg.TrackerUnixSocket)
+	}
 
 	metricsMux := http.NewServeMux()
 	live := &lifecycle.Liveness{}
@@ -820,12 +830,13 @@ func main() {
 		gnetHandler.FlushLatency()
 		promhttp.Handler().ServeHTTP(w, r)
 	}))
+	registerMetricsPprof(metricsMux)
 	metricsSrv := &http.Server{
 		Addr:              ":" + cfg.MetricsPort,
 		Handler:           metricsMux,
 		ReadHeaderTimeout: 2 * time.Second,
 		ReadTimeout:       5 * time.Second,
-		WriteTimeout:      10 * time.Second,
+		WriteTimeout:      time.Duration(metricsServerWriteTimeout()) * time.Second,
 		IdleTimeout:       30 * time.Second,
 	}
 	go func() {

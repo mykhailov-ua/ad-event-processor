@@ -119,7 +119,8 @@ Layered strategy (`tradeoffs.mdc`):
 1. `tryAcquireStreamAdmission` / `TryReserve` at `STREAM_PRODUCER_ADMISSION_PCT` (default 85%) **before** Lua debit.
 2. `SetDeferStreamToProducer(true)` -> Lua stream key `fcap:ignored`; single Go writer (`StreamProducer` / `BrokerProducer`).
 3. Post-debit enqueue fail -> `budget-rollback.lua` + local quanta ledger refund (200 ms rollback timeout).
-4. Local quanta full-skip (`LOCAL_QUOTA_MODE=live`): zero sync `EVALSHA` when eligible; coordinate stream keys to prevent dual `XADD`.
+4. Deferred mode (`fcap:ignored`) without `StreamProducer`/`BrokerProducer` -> 503 `filterRejectInfra` before debit; `publishAcceptedTrack` returns false if miswired after debit.
+5. Local quanta full-skip (`LOCAL_QUOTA_MODE=live`): zero sync `EVALSHA` when eligible; coordinate stream keys to prevent dual `XADD`.
 
 Monitor: `ad_stream_producer_post_debit_rejected_total` should stay ~0; spike = tune admission or capacity.
 
@@ -159,6 +160,18 @@ Monitor: `ad_stream_producer_post_debit_rejected_total` should stay ~0; spike = 
 
 PR: no new `interface{}` on `/track`; new write paths need fault proof (`fault-tests.mdc`).
 
+## Test and bench honesty
+
+Agents must not claim production hot-path behavior from unit mocks alone. Full lie catalog: `anti-slop.mdc` **Hot path dishonesty**.
+
+| Claim | Requires |
+| :--- | :--- |
+| Filter/debit/stream | Redis testcontainers or fault test; not `mockRedisClient` only |
+| Broker-primary | `TestFault_BrokerShadowCutover_*` + divergence metrics |
+| `/track` p99 | Load test / Prometheus; not `BenchmarkUnifiedFilter_Check_mock` |
+| Admission/rollback | Named holdout tests in `anti-slop.mdc` table |
+| CI green | State tier: `test-fast` vs `test-integration` vs `test-fault` vs `test-alloc-gate` |
+
 ## Related rules
 
-`architecture.mdc`, `core.mdc`, `data-layer.mdc`, `edge.mdc`, `load-test-bpf.mdc`, `parser.mdc`, `rtb.mdc`.
+`anti-slop.mdc`, `architecture.mdc`, `core.mdc`, `data-layer.mdc`, `edge.mdc`, `load-test-bpf.mdc`, `parser.mdc`, `rtb.mdc`.

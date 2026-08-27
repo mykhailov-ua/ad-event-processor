@@ -9,6 +9,7 @@ type LicenseDiagnostics struct {
 	DaysToExpiry     int
 	HostFingerprint  string
 	HostHWID         string
+	HWIDInputs       HWIDTelemetryView
 	BindFingerprint  string
 	BindHWIDHash     string
 	BindMode         string
@@ -22,6 +23,7 @@ func BuildLicenseDiagnostics(claims *LicenseClaims, state LicenseState, now time
 	d.State = state
 	d.HostFingerprint = HostFingerprint()
 	d.HostHWID = HostHWID()
+	d.HWIDInputs = SnapshotHWIDTelemetry()
 	if claims != nil {
 		d.DeploymentID = claims.DeploymentID
 		d.ValidUntil = claims.ValidUntil

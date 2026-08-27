@@ -26,9 +26,27 @@ SCOPE=(
   internal/payment
 )
 
-if rg -q 't\.Skip\(\)\s*$' "${SCOPE[@]}" pkg/ --glob '*_test.go' 2> /dev/null; then
+SKIP_SCOPE=(
+  internal/controlplane
+  internal/ingestion
+  internal/payment
+  internal/fraud
+  internal/rtb
+  internal/licensing
+  internal/identity
+  internal/notify
+  internal/costsync
+  internal/edge
+  internal/database
+  internal/logpipeline
+  pkg/
+  cmd/
+  tests/
+)
+
+if rg -q 't\.Skip\(\)\s*$' "${SKIP_SCOPE[@]}" --glob '*_test.go' 2> /dev/null; then
   fail "bare t.Skip() without reason"
-  rg 't\.Skip\(\)\s*$' "${SCOPE[@]}" pkg/ --glob '*_test.go' || true
+  rg 't\.Skip\(\)\s*$' "${SKIP_SCOPE[@]}" --glob '*_test.go' || true
 fi
 
 bad_skip_patterns=(
@@ -37,11 +55,13 @@ bad_skip_patterns=(
   't\.Skip\("skipping [^"]*in short mode"\)'
   't\.Skip\("requires postgres"\)'
   't\.Skip\("redis integration"\)'
+  't\.Skip\("fault integration test"\)'
+  't\.Skip\("clickhouse integration test"\)'
 )
 for pat in "${bad_skip_patterns[@]}"; do
-  if rg -q "$pat" "${SCOPE[@]}" --glob '*_test.go' 2> /dev/null; then
+  if rg -q "$pat" "${SKIP_SCOPE[@]}" --glob '*_test.go' 2> /dev/null; then
     fail "weak skip reason (use integration: prefix) - pattern $pat"
-    rg -n "$pat" "${SCOPE[@]}" --glob '*_test.go' || true
+    rg -n "$pat" "${SKIP_SCOPE[@]}" --glob '*_test.go' || true
   fi
 done
 
@@ -63,7 +83,7 @@ while IFS= read -r file; do
   ' "$file"; then
     short_bad=1
   fi
-done < <(rg -l 'if testing\.Short\(\)' "${SCOPE[@]}" --glob '*_test.go' 2> /dev/null || true)
+done < <(rg -l 'if testing\.Short\(\)' "${SKIP_SCOPE[@]}" --glob '*_test.go' 2> /dev/null || true)
 
 if [[ "$short_bad" -ne 0 ]]; then
   fail "testing.Short() skip must use integration: prefix (scoped packages)"
@@ -100,18 +120,51 @@ while IFS= read -r -d '' file; do
   scan_err "$file"
 done < <(find internal/controlplane -name 'outbox_*.go' ! -name '*_test.go' -print0 2> /dev/null || true)
 
+httptest_testcontainers_slop() {
+  local file="$1"
+  awk '
+    /httptest\.New(Server|UnstartedServer)/ {
+      if ($0 ~ /integration:|mock HTTP upstream|not a database/) { prev = $0; next }
+      if (prev ~ /mock HTTP upstream/) { prev = $0; next }
+      print FILENAME ":" NR ":" $0
+      bad = 1
+    }
+    { prev = $0 }
+    END { exit bad + 0 }
+  ' "$file"
+}
+
 while IFS= read -r dir; do
   [[ -z "$dir" ]] && continue
   if rg -q 'testcontainers' "$dir" --glob '*_test.go' 2> /dev/null \
     && rg -l 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2> /dev/null \
     | rg -q .; then
-    if rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2> /dev/null \
-      | rg -v 'integration:|// mock HTTP upstream|// not a database' > /dev/null; then
-      fail "httptest server in package with testcontainers ($dir) - use real PG/Redis for transaction tests"
-      rg -n 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' || true
-    fi
+    while IFS= read -r file; do
+      [[ -z "$file" ]] && continue
+      if ! httptest_testcontainers_slop "$file"; then
+        fail "httptest server in package with testcontainers ($dir) - annotate mock HTTP upstream on prior line or use testcontainers"
+      fi
+    done < <(rg -l 'httptest\.New(Server|UnstartedServer)' "$dir" --glob '*_test.go' 2> /dev/null || true)
   fi
 done < <(find internal/controlplane internal/payment internal/ingestion -mindepth 1 -maxdepth 1 -type d 2> /dev/null)
+
+httptest_pkg_roots=(
+  internal/controlplane
+  internal/ingestion
+  internal/payment
+)
+for pkgdir in "${httptest_pkg_roots[@]}"; do
+  if rg -q 'testcontainers' "$pkgdir" --glob '*_test.go' 2> /dev/null \
+    && rg -l 'httptest\.New(Server|UnstartedServer)' "$pkgdir" --glob '*_test.go' --max-depth 1 2> /dev/null \
+    | rg -q .; then
+    while IFS= read -r file; do
+      [[ -z "$file" ]] && continue
+      if ! httptest_testcontainers_slop "$file"; then
+        fail "httptest server in package root with testcontainers ($pkgdir) - annotate mock HTTP upstream on prior line or use testcontainers"
+      fi
+    done < <(rg -l 'httptest\.New(Server|UnstartedServer)' "$pkgdir" --glob '*_test.go' --max-depth 1 2> /dev/null || true)
+  fi
+done
 
 if rg -n 'nolint:errcheck' internal/controlplane internal/ingestion internal/payment pkg/ \
   --glob '*.go' --glob '!*_test.go' 2> /dev/null \
@@ -168,4 +221,4 @@ if [[ "$failed" -ne 0 ]]; then
   exit 1
 fi
 
-log_ok "anti-slop checks (scope: controlplane ingestion payment)"
+log_ok "anti-slop checks (scope: controlplane ingestion payment fraud rtb pkg tests)"

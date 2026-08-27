@@ -36,7 +36,7 @@ func seedClickWithTLS(t *testing.T, conn driver.Conn, ip, ua, tlsHash string) uu
 
 func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)
@@ -76,7 +76,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 
 func TestTCPEdgeCorrelationRule_SkipsMatchingUAJA3(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	conn, cleanupCH := setupClickHouseTest(t)

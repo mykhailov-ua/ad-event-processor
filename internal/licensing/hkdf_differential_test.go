@@ -94,6 +94,6 @@ func TestDeriveMCK_DifferentialOpenSSL(t *testing.T) {
 	deploymentID := "deployment-openssl-diff"
 	goOut, err := deriveMCKBytes(ikm, deploymentID)
 	require.NoError(t, err)
-	sslOut := opensslHKDF(t, ikm, []byte(deploymentID), []byte(mckInfoLabel), 32)
+	sslOut := opensslHKDF(t, ikm, []byte(deploymentID), []byte(MCKInfoLabel()), 32)
 	require.Equal(t, goOut[:], sslOut)
 }

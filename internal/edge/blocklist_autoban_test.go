@@ -70,14 +70,14 @@ func (s *autoBanStub) ZRangeByScore(_ context.Context, key string, opt *redis.ZR
 		return cmd
 	}
 	out := make([]string, 0, len(z))
-	min, exclusive := parseZMin(opt)
+	minScore, exclusive := parseZMin(opt)
 	for member, score := range z {
 		if opt != nil && opt.Min != "" {
 			if exclusive {
-				if score <= min {
+				if score <= minScore {
 					continue
 				}
-			} else if score < min {
+			} else if score < minScore {
 				continue
 			}
 		}
@@ -94,15 +94,15 @@ func (s *autoBanStub) ZRangeByScoreWithScores(_ context.Context, key string, opt
 		cmd.SetVal(nil)
 		return cmd
 	}
-	min, exclusive := parseZMin(opt)
+	minScore, exclusive := parseZMin(opt)
 	out := make([]redis.Z, 0, len(z))
 	for member, score := range z {
 		if opt != nil && opt.Min != "" {
 			if exclusive {
-				if score <= min {
+				if score <= minScore {
 					continue
 				}
-			} else if score < min {
+			} else if score < minScore {
 				continue
 			}
 		}

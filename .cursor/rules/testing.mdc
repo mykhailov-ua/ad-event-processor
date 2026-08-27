@@ -10,7 +10,7 @@ alwaysApply: false
 
 Apply when adding or changing tests, fuzz targets, fault proofs, or CI test gates.
 
-Cross-refs: `anti-slop.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `parser.mdc`, `cold-path.mdc`, `development.mdc`.
+Cross-refs: `boundaries.mdc` (**Test dishonesty catalog**), `anti-slop.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `parser.mdc`, `cold-path.mdc`, `development.mdc`.
 
 ## Test taxonomy
 
@@ -38,6 +38,20 @@ A holdout test proves the **intended branch**, not just "no error":
 | Policy parity | `model/testdata/policy_parity.json` plus hand-picked threshold row (`TestResidentialProxySignal_holdoutPositive`) |
 
 Banned: scaffold that only logs "integration scaffold must exercise Postgres" with no assertion (`integration_test_slop_gate.sh`).
+
+## Agent-resistant proofs (vs meta-slop)
+
+Full matrix and lie modes: `anti-slop.mdc` (**Agent-resistant verification**).
+
+| External pattern | Repo substitute (honest) |
+| :--- | :--- |
+| Black-box holdouts | In-repo `*_holdout*` + `merge-integration` / `test-fault` tiers agents often skip |
+| Mutation testing | **Not in CI**; holdout negative must fail when fix reverted |
+| Compiler `-m` gate | `escape_heap_gate.sh` + `hot_path_static_gate.sh` on hot files |
+| eBPF / perf per test | Load-test BPF tier only (`malformed.sh`, `bpf_resource_gate.sh`) |
+| Property / quick | `Fuzz*`, `TestChaos_*`, `AssertBudgetInvariant`, wire corpora |
+
+PR touching parsers: extend fuzz corpus or chaos row. PR touching spend/sink: holdout + invariant helper.
 
 ## Financial and ordering invariants
 

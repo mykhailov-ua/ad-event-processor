@@ -25,7 +25,7 @@ import (
 func skipFaultIntegration(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("skipping fault integration test in short mode")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 }
 

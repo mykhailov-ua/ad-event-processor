@@ -11,6 +11,7 @@ import (
 var (
 	ErrInvalidTokenFormat = errors.New("invalid token format")
 	ErrInvalidSignature   = errors.New("invalid signature")
+	ErrInvalidAlgorithm   = errors.New("invalid jwt algorithm")
 	ErrTokenExpired       = errors.New("token is expired")
 	ErrTokenNotYetValid   = errors.New("token is not yet valid")
 	ErrWrongKeyID         = errors.New("wrong key ID")
@@ -44,6 +45,10 @@ func VerifyJWT(tokenStr string, pubKey ed25519.PublicKey) (*LicenseClaims, error
 		return nil, ErrInvalidTokenFormat
 	}
 
+	if err := validateJWTHeaderAlg(parts[0]); err != nil {
+		return nil, err
+	}
+
 	signingInput := parts[0] + "." + parts[1]
 	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
 	if err != nil {
@@ -65,6 +70,27 @@ func VerifyJWT(tokenStr string, pubKey ed25519.PublicKey) (*LicenseClaims, error
 	}
 
 	return &claims, nil
+}
+
+func validateJWTHeaderAlg(headerB64 string) error {
+	headerBytes, err := base64.RawURLEncoding.DecodeString(headerB64)
+	if err != nil {
+		return ErrInvalidTokenFormat
+	}
+	var header struct {
+		Alg string `json:"alg"`
+	}
+	if err := json.Unmarshal(headerBytes, &header); err != nil {
+		return ErrInvalidTokenFormat
+	}
+	alg := strings.TrimSpace(header.Alg)
+	if alg == "" || strings.EqualFold(alg, "none") {
+		return ErrInvalidAlgorithm
+	}
+	if alg != "EdDSA" {
+		return ErrInvalidAlgorithm
+	}
+	return nil
 }
 
 func ParsePublicKey(keyBytes []byte) (ed25519.PublicKey, error) {

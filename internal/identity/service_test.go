@@ -369,7 +369,7 @@ func TestSessionCleanupWorker(t *testing.T) {
 
 func TestLoginFlood(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	rdb, cleanup := database.SetupTestRedis(t)

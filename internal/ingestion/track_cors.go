@@ -1,6 +1,7 @@
 package ingestion
 
 import (
+	"strconv"
 	"strings"
 )
 
@@ -76,4 +77,21 @@ func buildTrackCORSPreflight(origin string, cors trackCORS) []byte {
 	dst = append(dst, trackCORSVary...)
 	dst = append(dst, "Content-Length: 0\r\nConnection: keep-alive\r\n\r\n"...)
 	return dst
+}
+
+// gnetTrackAcceptedHeaderBudget is wire header bytes before JSON/protobuf body.
+func gnetTrackAcceptedHeaderBudget(origin string, cors trackCORS, bodyLen int, protobuf bool) int {
+	n := len("HTTP/1.1 202 Accepted\r\n")
+	if cors.match(origin) {
+		n += len(trackCORSHeaderBlock) + len(origin) + 2
+		n += len(trackCORSMethods) + len(trackCORSHeaders) + len(trackCORSVary)
+	}
+	if protobuf {
+		n += len("Content-Type: application/x-protobuf\r\nContent-Length: ")
+	} else {
+		n += len("Content-Type: application/json\r\nContent-Length: ")
+	}
+	n += len(strconv.Itoa(bodyLen))
+	n += len("\r\nConnection: keep-alive\r\n\r\n")
+	return n
 }

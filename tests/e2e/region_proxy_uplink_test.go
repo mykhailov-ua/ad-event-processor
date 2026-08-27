@@ -24,7 +24,7 @@ import (
 
 func TestE2E_RegionProxyUplink(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping region-proxy uplink e2e")
+		t.Skip("integration: region-proxy uplink e2e (run make test-integration)")
 	}
 
 	ctx := context.Background()

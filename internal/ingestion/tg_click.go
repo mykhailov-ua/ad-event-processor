@@ -520,6 +520,16 @@ func (h *AdsPacketHandler) reactTgClick(req parsedHTTPRequest, c gnet.Conn, ctx 
 		if done {
 			return gnet.None
 		}
+		if !h.publishAcceptedTrack(evt, &lease) {
+			if h.filterEngine != nil {
+				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
+			}
+			spec := filterRejectSpecs[filterRejectProducerOverload]
+			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
+			return gnet.None
+		}
 	}
 	landing := h.resolveTgLanding(evt, filtered)
 
@@ -570,6 +580,16 @@ func (h *AdsPacketHandler) reactTgImpression(req parsedHTTPRequest, c gnet.Conn,
 		}
 		defer lease.Release()
 		if _, done := h.applyTgTrackFilter(processTrack(context.Background(), h.trackProc, evt, nil), evt, c, ctx, startMono); done {
+			return gnet.None
+		}
+		if !h.publishAcceptedTrack(evt, &lease) {
+			if h.filterEngine != nil {
+				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
+			}
+			spec := filterRejectSpecs[filterRejectProducerOverload]
+			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
+			h.writeFilterReject(c, spec.gnetResp, ctx)
+			h.recordMetrics(startMono, spec.status)
 			return gnet.None
 		}
 	}

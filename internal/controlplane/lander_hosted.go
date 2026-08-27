@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -69,12 +70,12 @@ func (s *Service) UploadHostedLanderZip(ctx context.Context, landerID uuid.UUID,
 	if err != nil {
 		return LanderDTO{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var exists int
 	err = tx.QueryRow(ctx, `SELECT 1 FROM landers WHERE id = $1`, landerID).Scan(&exists)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return LanderDTO{}, fmt.Errorf("lander not found")
 		}
 		return LanderDTO{}, err
@@ -99,7 +100,7 @@ func (s *Service) UploadHostedLanderZip(ctx context.Context, landerID uuid.UUID,
 		_ = os.RemoveAll(st.VersionDir(landerID, nextVersion))
 		return LanderDTO{}, err
 	}
-	defer tx2.Rollback(ctx)
+	defer func() { _ = tx2.Rollback(ctx) }()
 
 	var assetID uuid.UUID
 	err = tx2.QueryRow(ctx, `
@@ -159,7 +160,7 @@ func (s *Service) ServeHostedLanderFile(ctx context.Context, landerID uuid.UUID,
 		var assetID *uuid.UUID
 		err := s.pool.QueryRow(ctx, `SELECT hosted_asset_id FROM landers WHERE id = $1`, landerID).Scan(&assetID)
 		if err != nil {
-			if err == pgx.ErrNoRows {
+			if errors.Is(err, pgx.ErrNoRows) {
 				return nil, "", fmt.Errorf("lander not found")
 			}
 			return nil, "", err

@@ -13,13 +13,14 @@ import (
 )
 
 type DryRunResult struct {
-	OK          bool   `json:"ok"`
-	Provider    string `json:"provider"`
-	HTTPStatus  int    `json:"http_status,omitempty"`
-	Error       string `json:"error,omitempty"`
-	RenderedURL string `json:"rendered_url,omitempty"`
-	TargetEvent string `json:"target_event,omitempty"`
-	TestEvent   bool   `json:"test_event"`
+	OK          bool     `json:"ok"`
+	Provider    string   `json:"provider"`
+	HTTPStatus  int      `json:"http_status,omitempty"`
+	Error       string   `json:"error,omitempty"`
+	RenderedURL string   `json:"rendered_url,omitempty"`
+	TargetEvent string   `json:"target_event,omitempty"`
+	TestEvent   bool     `json:"test_event"`
+	Warnings    []string `json:"warnings,omitempty"`
 }
 
 func postbackAdapters() map[string]PostbackAdapter {
@@ -59,6 +60,7 @@ func DryRunConfig(
 		EventType:      targetEvent,
 		PayoutMicro:    1_000_000,
 		TxID:           "dry-run-tx",
+		EventID:        "dry-run-event-id",
 		SubID1:         "dry-run-sub",
 		FBCLID:         "dry-run-fbclid",
 		GCLID:          "dry-run-gclid",
@@ -69,6 +71,7 @@ func DryRunConfig(
 		EventSourceURL: "https://example.com/lp",
 		TestEventCode:  strings.TrimSpace(testEventCode),
 	}
+	warnings := PostbackClickIDWarnings(provider, payload)
 	client := &http.Client{Timeout: 8 * time.Second}
 	err := adapter.Send(ctx, client, payload, urlTemplate, apiToken)
 	if err == nil {
@@ -92,6 +95,7 @@ func DryRunConfig(
 			RenderedURL: rendered,
 			TargetEvent: targetEvent,
 			TestEvent:   payload.TestEventCode != "",
+			Warnings:    warnings,
 		}
 	}
 	res := DryRunResult{
@@ -100,6 +104,7 @@ func DryRunConfig(
 		Error:       err.Error(),
 		TargetEvent: targetEvent,
 		TestEvent:   payload.TestEventCode != "",
+		Warnings:    warnings,
 	}
 	var httpErr *DispatchHTTPError
 	if errors.As(err, &httpErr) {

@@ -15,7 +15,7 @@ import (
 
 func TestDedupClaimConfirm_GoMatchesPGFormat(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()
@@ -47,7 +47,7 @@ func TestDedupClaimConfirm_GoMatchesPGFormat(t *testing.T) {
 
 func TestDedupFormatKey_SQLGoldenVector(t *testing.T) {
 	if testing.Short() {
-		t.Skip("integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	ctx := context.Background()

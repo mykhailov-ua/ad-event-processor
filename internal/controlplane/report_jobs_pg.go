@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -55,7 +56,7 @@ func (r *ReportJobRunner) lookupReportJobByIdempotency(ctx context.Context, idem
 	err := r.deps.Pool.QueryRow(ctx, `
 SELECT id FROM report_jobs WHERE idempotency_key = $1`, idempotencyKey).Scan(&jobID)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return "", false, nil
 		}
 		return "", false, err
@@ -80,7 +81,7 @@ WHERE id = $1`, parsed).Scan(
 		&parsed, &customerID, &dto.ReportKey, &specJSON, &dto.Status, &dto.Bytes, &errMsg, &createdAt,
 	)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return ReportJobStatusDTO{}, false, nil
 		}
 		return ReportJobStatusDTO{}, false, err

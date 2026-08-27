@@ -13,7 +13,7 @@ import (
 
 func TestRecordAndListRecent(t *testing.T) {
 	if testing.Short() {
-		t.Skip("redis integration")
+		t.Skip("integration: redis testcontainers (run make test-integration)")
 	}
 	redisClient, cleanup := database.SetupTestRedis(t)
 	defer cleanup()

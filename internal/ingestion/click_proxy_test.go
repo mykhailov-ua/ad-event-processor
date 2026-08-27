@@ -49,6 +49,7 @@ func TestBuildProxyResponseHeader_stripsHopByHop(t *testing.T) {
 
 func TestClickProxyDeliver_streamsBodyAndHeaders(t *testing.T) {
 	var sawXFF atomic.Value
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		sawXFF.Store(r.Header.Get("X-Forwarded-For"))
 		require.Equal(t, "test-ua", r.Header.Get("User-Agent"))
@@ -80,6 +81,7 @@ func TestClickProxyDeliver_streamsBodyAndHeaders(t *testing.T) {
 func TestClickProxyDeliver_largeBodyStreams(t *testing.T) {
 	const bodySize = 1 << 20
 	payload := strings.Repeat("x", bodySize)
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/octet-stream")
 		_, _ = io.WriteString(w, payload)
@@ -104,6 +106,7 @@ func TestClickProxyDeliver_largeBodyStreams(t *testing.T) {
 func TestClickProxy_StreamRSSBounded(t *testing.T) {
 	measure := func(bodySize int) uint64 {
 		payload := strings.Repeat("z", bodySize)
+		// mock HTTP upstream
 		up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			_, _ = io.WriteString(w, payload)
 		}))
@@ -154,6 +157,7 @@ func TestClickProxy_AttributionPassthrough_AC4(t *testing.T) {
 	})
 
 	var gotURL atomic.Value
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotURL.Store(r.URL.String())
 		_, _ = w.Write([]byte("ok"))
@@ -219,6 +223,7 @@ func TestClickRedirect_ProxyMode_E2E(t *testing.T) {
 	})
 
 	var upstreamURL string
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte("<html><body>proxy ok</body></html>"))
@@ -251,6 +256,7 @@ func TestClickRedirect_ProxyMode_E2E(t *testing.T) {
 }
 
 func TestClickRedirect_ProxySkippedWhenDMR(t *testing.T) {
+	// mock HTTP upstream
 	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		_, _ = w.Write([]byte("<html><body>proxy ok</body></html>"))

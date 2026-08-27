@@ -4,6 +4,7 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$ROOT/scripts/lib/garble_literals_policy.sh"
+source "$ROOT/scripts/lib/release_garble_policy.sh"
 cd "$ROOT"
 
 OUT_DIR="${1:-bin}"
@@ -21,6 +22,8 @@ GOARCH="${GOARCH:-amd64}"
 export CGO_ENABLED="${CGO_ENABLED:-0}"
 
 LDFLAGS="-s -w -buildid="
+MCK_INFO_LABEL="${MCK_INFO_LABEL:-license-mck-v2}"
+LDFLAGS="${LDFLAGS} -X ad-event-processor/internal/licensing.buildMCKInfoLabel=${MCK_INFO_LABEL}"
 if [[ -n "${ASSET_SEAL_SALT:-}" ]]; then
   LDFLAGS="${LDFLAGS} -X ad-event-processor/internal/licensing.buildAssetSealSaltHex=${ASSET_SEAL_SALT}"
 fi
@@ -31,6 +34,16 @@ fi
 BUILD_FLAGS=(-trimpath -tags "$TAGS" -ldflags "$LDFLAGS")
 
 mkdir -p "$OUT_DIR"
+
+if ! release_garble_seed_ok; then
+  echo "release_garble: GARBLE_SEED required for garbled release builds (set RELEASE_GARBLE_SKIP_SEED=1 for local dev only)" >&2
+  exit 1
+fi
+
+if ! release_asset_seal_salt_ok; then
+  echo "release_garble: ASSET_SEAL_SALT required for garbled release builds (set RELEASE_GARBLE_SKIP_SEED=1 for local dev only)" >&2
+  exit 1
+fi
 
 build_one() {
   local cmd="$1"
@@ -45,10 +58,7 @@ build_one() {
       go install "mvdan.cc/garble@${GARBLE_VERSION}"
       export PATH="$(go env GOPATH)/bin:${PATH}"
     fi
-    if [[ -z "${GARBLE_SEED:-}" ]]; then
-      echo "release_garble: GARBLE_SEED unset - build is non-reproducible (set for CI/release)" >&2
-    fi
-    garble_args=(-seed="${GARBLE_SEED:-}")
+    garble_args=(-seed="${GARBLE_SEED}")
     if [[ "$literals" == "1" ]]; then
       garble_args+=(-literals)
     fi

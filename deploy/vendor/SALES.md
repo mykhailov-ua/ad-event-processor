@@ -97,7 +97,9 @@ Trial registry and repeat-pilot rules: `.cursor/rules/licensing.mdc`.
 | [KEYS.md](./KEYS.md) | Ed25519 public keys |
 | [INVOICE.md](./INVOICE.md) | USDT invoice template |
 | [ANTIFRAUD.md](./ANTIFRAUD.md) | Fraud behavior reference |
-| [antifraud_backlog.md](./antifraud_backlog.md) | Open antifraud work items |
+| [antifraud_backlog.md](./antifraud_backlog.md) | Closed ROI antifraud slugs (2026-08-26) |
+| [openapi_backlog.md](./openapi_backlog.md) | Closed OpenAPI transition (2026-08-26) |
+| [admin_ui_redesign_backlog.md](./admin_ui_redesign_backlog.md) | Closed admin UI redesign (2026-08-26) |
 | [competitive_backlog.md](./competitive_backlog.md) | Parity gaps vs Keitaro/Binom/BeMob |
 
 ---

@@ -2,6 +2,9 @@ package licensing
 
 import "time"
 
+// Stretched MCK work byte 16 gates JWT feature flags when seed coupling is on:
+// bit 0 (MCKFeatureBitOpenRTB): OpenRTB engine and rtb_live require mck_work[16]&0x01 != 0.
+
 type LicenseClaims struct {
 	Issuer       string     `json:"iss"`
 	Subject      string     `json:"sub"`

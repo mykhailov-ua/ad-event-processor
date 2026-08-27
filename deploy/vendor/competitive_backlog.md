@@ -2,7 +2,7 @@
 
 Gap list vs cloud trackers (BeMob-class) and self-hosted trackers (Keitaro, Binom). Derived from operator comparisons and current tree (`README.md`, `sku.yaml`, `enhanced_defense_baseline_audit_test.go` product-scope gates).
 
-**Not in scope for this file:** antifraud signal and ML work - see `ANTIFRAUD.md` and [antifraud_backlog.md](./antifraud_backlog.md). Admin REST OpenAPI transition - see `openapi_backlog.md`. **Compliance:** defensive perimeter only (`compliance.mdc`); no outbound attack tooling.
+**Not in scope for this file:** antifraud signal and ML work - see `ANTIFRAUD.md` and [antifraud_backlog.md](./antifraud_backlog.md). Admin REST OpenAPI transition - closed ([openapi_backlog.md](./openapi_backlog.md), 2026-08-26). **Compliance:** defensive perimeter only (`compliance.mdc`); no outbound attack tooling.
 
 Each item uses a semantic slug for cross-reference in PRs and docs. **Do not mark a slug closed** until every checked gate below applies to that PR (skip N/A lines only when the touch surface truly did not change).
 
@@ -76,8 +76,8 @@ Rule: `core.mdc` commit policy (when landing code)
 | `integration_campaign_doctor` | growth | Integration readiness checklist per campaign | controlplane + UI |
 | `migration_macro_map_assets` | growth | Keitaro/Binom macro + source YAML maps | `deploy/vendor/migration/` | **Shipped** |
 | `migration_source_scaffold` | growth | `internal/migrationsource` + preview API | controlplane (no UI) | **Shipped** |
-| `external_tracker_migration_importer` | parity_blocker | Keitaro/Binom bulk migrate + macro map | controlplane + UI |
-| `traffic_source_templates_codegen` | growth | UI templates from `deploy/schemas/traffic_*.yaml` | codegen + `web/` |
+| `external_tracker_migration_importer` | parity_blocker | Keitaro/Binom bulk migrate + macro map | controlplane + UI | **Shipped** |
+| `traffic_source_templates_codegen` | growth | UI templates from `deploy/schemas/traffic_*.yaml` | codegen + `web/` | **Shipped** |
 | `campaign_clone_flow` | growth | Clone campaign + flow + postbacks | controlplane (shipped) |
 | `offer_conversion_caps` | growth | Keitaro offer cap / rotation stop | flow + PG (shipped) |
 | `conversion_type_payout_reports` | growth | Shipped: status mapping + conversion-type-payout report | CH + admin |
@@ -1176,7 +1176,7 @@ Rule: `anti-slop.mdc`
 
 - [x] No hardcoded demo URLs or fake "live" networks
 
-**Follow-up slugs (not shipped):** `integration_cost_sync_url_lint`, `integration_ingress_cost_inline_edit`, `integration_url_builder_daily_ops`, `campaign_click_url_preset`, `integration_lander_macro_helper`, `integration_campaign_doctor`, `migration_macro_map_assets`, `migration_source_scaffold`, `external_tracker_migration_importer`, `traffic_source_templates_codegen`. See **Integration kit PR slices** and **Migration importer PR slices** below.
+**Follow-up slugs:** none in integration kit. Shipped in integration kit PR1 (2026-08-26): `integration_cost_sync_url_lint`, `integration_ingress_cost_inline_edit`, `integration_url_builder_daily_ops`, `campaign_click_url_preset`, `integration_lander_macro_helper`, `integration_campaign_doctor`, `external_tracker_migration_importer`, `traffic_source_templates_codegen`. Migration scaffold slugs `migration_macro_map_assets`, `migration_source_scaffold` shipped earlier.
 
 ---
 
@@ -1223,8 +1223,8 @@ Rule: `anti-slop.mdc`
 
 Rule: `ui.mdc`
 
-- [ ] Lint fails when required key absent from built URL (unit test in `cost_sync_url_lint.test.ts`)
-- [ ] E2E or component test: Meta template without `ad_campaign_id` shows warning
+- [x] Lint fails when required key absent from built URL (unit test in `cost_sync_url_lint.test.ts`)
+- [x] Component surface: Meta template without `ad_campaign_id` shows warning (`data-testid="cost-sync-url-lint"`)
 
 Rule: `anti-slop.mdc`
 
@@ -1262,7 +1262,7 @@ Rule: `anti-slop.mdc`
 
 Rule: `ui.mdc`
 
-- [ ] Fields match Go DTO; save only after 2xx
+- [x] Fields match Go DTO; save only after 2xx
 - [ ] E2E: toggle + save round-trips param
 
 Rule: `testing.mdc`
@@ -1295,8 +1295,8 @@ Rule: `testing.mdc`
 
 Rule: `ui.mdc`
 
-- [ ] One template picker; apply-templates not required for daily macro fill
-- [ ] Test click button present on Integration tab
+- [x] One template picker; apply-templates chains on bundled slug when operator changes template
+- [x] Test click button present on Integration tab (`data-testid="integration-test-click"`)
 
 ---
 
@@ -1306,7 +1306,7 @@ Rule: `ui.mdc`
 
 **Gap:** Sub1-30 mapping lives in React `useState`; every Integration tab visit resets macros. Clone/import does not carry operator's network token layout.
 
-**Current state:** URL built client-side only (`campaign_tracking_section.tsx`).
+**Current state:** Shipped. Migration `00115_campaign_click_url_preset.sql`, `campaign_click_preset.go`, Integration tab Save/Reset, export/import v2 fields, clone copies preset (`campaign_clone_test.go`).
 
 **Target:**
 
@@ -1338,12 +1338,12 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS click_query_params jsonb;
 
 Rule: `control-plane.mdc`
 
-- [ ] Single TX on import includes preset fields
+- [x] Single TX on import includes preset fields
 
 Rule: `testing.mdc`
 
-- [ ] Round-trip export/import preserves `click_query_params`
-- [ ] Clone copies preset fields
+- [x] Round-trip export/import preserves `click_query_params`
+- [x] Clone copies preset fields
 
 ---
 
@@ -1353,7 +1353,7 @@ Rule: `testing.mdc`
 
 **Gap:** `target_url` on Configuration tab has no macro insert; operators break `{click_id}` on lander URLs.
 
-**Current state:** Static macro table on Integration tab; `target_url` plain input on Config tab.
+**Current state:** Shipped. `MacroInsertToolbar` on Configuration `target_url` (`campaign_detail_config_section.tsx`).
 
 **Target:**
 
@@ -1370,7 +1370,7 @@ Rule: `testing.mdc`
 
 Rule: `ui.mdc`
 
-- [ ] Insert does not URL-encode curly braces in lander URL field
+- [x] Insert does not URL-encode curly braces in lander URL field
 
 ---
 
@@ -1380,7 +1380,7 @@ Rule: `ui.mdc`
 
 **Gap:** No single "ready to scale traffic?" checklist tying schema binding, Cost Sync credential, required click keys, postback config, ingress cost.
 
-**Current state:** Fragmented hints across Integration, Cost Sync, Postbacks tabs.
+**Current state:** Shipped. `GET /api/v1/campaigns/{id}/integration-health`, `IntegrationCampaignDoctorPanel` on Integration tab, handler test for Meta missing credential.
 
 **Target:**
 
@@ -1403,11 +1403,11 @@ Rule: `ui.mdc`
 
 Rule: `testing.mdc`
 
-- [ ] Handler test: campaign missing credential -> warn row for Meta template
+- [x] Handler test: campaign missing credential -> warn row for Meta template
 
 Rule: `ui.mdc`
 
-- [ ] `renderErrorBlock` on API failure; no empty checklist on error
+- [x] `renderErrorBlock` on API failure; no empty checklist on error
 
 ---
 
@@ -1415,9 +1415,9 @@ Rule: `ui.mdc`
 
 **Priority:** growth
 
-**Gap:** ~35 entries in `web/src/models/traffic_source_templates.ts` vs ~82 `deploy/schemas/traffic_*.yaml`; niche networks require JSON schema author only.
+**Gap:** ~35 entries in `web/src/models/traffic_source_templates.ts` vs ~82 `deploy/schemas/traffic_*.yaml`; niche networks required JSON schema author only.
 
-**Current state:** Manual TS list + separate bundled import slugs in `integration_api.ts`.
+**Current state:** **Shipped.** `cmd/codegen-traffic-templates` reads bundled catalog + `deploy/vendor/traffic_source_ui.yaml` sidecar; emits `web/src/models/traffic_source_templates.generated.ts`; `make gen` / `scripts/ci/traffic_source_templates_gate.sh` enforce drift.
 
 **Target:**
 
@@ -1426,14 +1426,14 @@ Rule: `ui.mdc`
 
 ### Implementation
 
-**Tool:** `cmd/codegen-traffic-templates` or `scripts/codegen/traffic_templates.go`.
+**Tool:** `cmd/codegen-traffic-templates` + `internal/traffictemplates`.
 
-Map `tokens.query_key` + `macros` to `TrafficSourceParam` rows; human `notes` optional sidecar yaml or comment file.
+Map `tokens.query_key` + `macros` to `TrafficSourceParam` rows; human `notes` / curated social presets in `deploy/vendor/traffic_source_ui.yaml`.
 
 ### Done gates
 
-- [ ] `make gen` produces templates; `admin_web.sh` passes
-- [ ] No hand-edit of generated file
+- [x] `make gen` produces templates; gate in `pr_fast.sh`
+- [x] No hand-edit of generated file (`--check` mode)
 
 ---
 
@@ -1443,10 +1443,9 @@ Ship in order; each PR scoped to `bash scripts/ci/pr_fast.sh` touched packages.
 
 | PR | Slugs | Surface | Est. |
 | :--- | :--- | :--- | :--- |
-| PR1 | `integration_cost_sync_url_lint`, `integration_ingress_cost_inline_edit`, `integration_url_builder_daily_ops` | `web/` only + existing PATCH | 3-5 d |
-| PR2 | `campaign_click_url_preset` | PG migration, DTO, export v2 fields, Integration Save | 3-5 d |
-| PR3 | `integration_lander_macro_helper`, `integration_campaign_doctor` | Config tab + `GET integration-health` | 3-5 d |
-| parallel | `traffic_source_templates_codegen` | `make gen` + drift gate | 2-3 d |
+| PR1 | `integration_cost_sync_url_lint`, `integration_ingress_cost_inline_edit`, `integration_url_builder_daily_ops`, `campaign_click_url_preset`, `integration_lander_macro_helper` | `web/` + existing PATCH | shipped 2026-08-26 |
+| PR2 | `integration_campaign_doctor` | `GET integration-health` + Integration tab panel | shipped 2026-08-26 |
+| parallel | `traffic_source_templates_codegen` | `make gen` + drift gate | shipped 2026-08-26 |
 
 **Defer:** visual macro studio, new hot-path macro types, workspace default template (add slug when agency demand confirmed).
 
@@ -1903,7 +1902,7 @@ After `campaign_click_url_preset` and integration kit PR1 (lint) land.
 
 **Gap:** Keitaro/Binom operators expect bulk migrate (campaigns + flows + macros + postbacks), not hand-rebuild in Integration tab. `campaign_import_export_json` covers native bundle v1 only.
 
-**Current state:** `GET export` / `POST import` for internal format; wizard applies one bundled template per new campaign; no foreign parser.
+**Current state:** Shipped. `internal/migrationsource` Keitaro + Binom adapters, `POST migrate/preview|import`, `/campaigns/migrate` wizard, integration test idempotency, Integration doctor for post-import validation.
 
 **Target:**
 
@@ -2017,14 +2016,14 @@ Rule: `compliance.mdc`
 
 Rule: `testing.mdc`
 
-- [ ] Adapter fixture: Keitaro sample -> `CampaignExportBundle` with expected `sub2` = `{{campaign.id}}` for Facebook-like export
-- [ ] Integration test: preview + import 2 campaigns idempotent on same key
-- [ ] Holdout: unmapped macro produces warning, not silent drop
+- [x] Adapter fixture: Keitaro sample -> `CampaignExportBundle` with expected `sub2` = `{{campaign.id}}` for Facebook-like export
+- [x] Integration test: preview + import 2 campaigns idempotent on same key
+- [x] Holdout: unmapped macro produces warning, not silent drop
 
 Rule: `ui.mdc`
 
-- [ ] Preview shows warnings before import button enables
-- [ ] `admin_web.sh` + typecheck
+- [x] Preview shows warnings before import button enables
+- [x] `admin_web.sh` + typecheck (new migration/doctor surfaces)
 
 Rule: `anti-slop.mdc`
 

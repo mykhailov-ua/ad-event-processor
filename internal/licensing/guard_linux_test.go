@@ -35,6 +35,26 @@ func TestGuard_SuspiciousMap(t *testing.T) {
 	require.True(t, licensing.GuardTripped())
 }
 
+func TestGuard_PtraceWatchdogHandshakeSkipFailsWhenRequired(t *testing.T) {
+	licensing.ResetGuardForTest()
+	t.Cleanup(licensing.ResetGuardForTest)
+	licensing.SetGuardPtraceRequiredForTest(true)
+	t.Cleanup(func() { licensing.SetGuardPtraceRequiredForTest(false) })
+
+	require.False(t, licensing.GuardTripped())
+	licensing.ProcessGuardWatchdogHandshakeForTest("skip\n", nil)
+	require.True(t, licensing.GuardTripped())
+	require.True(t, licensing.LicenseEpochInvalid())
+}
+
+func TestGuard_PtraceWatchdogHandshakeSkipIgnoredWhenOptional(t *testing.T) {
+	licensing.ResetGuardForTest()
+	t.Cleanup(licensing.ResetGuardForTest)
+
+	licensing.ProcessGuardWatchdogHandshakeForTest("skip\n", nil)
+	require.False(t, licensing.GuardTripped())
+}
+
 func TestGuard_PtraceWatchdogHandshakeBusy(t *testing.T) {
 	licensing.ResetGuardForTest()
 	t.Cleanup(licensing.ResetGuardForTest)
@@ -73,6 +93,19 @@ func TestGuard_DisabledSkipsPtraceLauncher(t *testing.T) {
 	require.Equal(t, int32(0), launched)
 }
 
+func TestGuard_TripWithoutVerifyCall(t *testing.T) {
+	licensing.ResetGuardForTest()
+	t.Cleanup(licensing.ResetGuardForTest)
+	restorePID := licensing.SetGuardTracerPidReaderForTest(func() (int, error) { return 99, nil })
+	t.Cleanup(restorePID)
+	restoreMaps := licensing.SetGuardMapsScannerForTest(func() bool { return false })
+	t.Cleanup(restoreMaps)
+
+	require.True(t, licensing.RunGuardProbeForTest())
+	require.True(t, licensing.GuardTripped())
+	require.True(t, licensing.LicenseEpochInvalid())
+}
+
 func TestGuard_TextTamper(t *testing.T) {
 	licensing.ResetGuardForTest()
 	t.Cleanup(licensing.ResetGuardForTest)
@@ -90,5 +123,32 @@ func TestGuard_TextTamper(t *testing.T) {
 	t.Cleanup(restoreHash)
 
 	require.True(t, licensing.RunGuardProbeForTest())
+	require.True(t, licensing.GuardTripped())
+}
+
+func TestGuard_TamperStretchBeforeTrip(t *testing.T) {
+	licensing.ResetGuardForTest()
+	t.Cleanup(licensing.ResetGuardForTest)
+	restorePID := licensing.SetGuardTracerPidReaderForTest(func() (int, error) { return 0, nil })
+	t.Cleanup(restorePID)
+	restoreMaps := licensing.SetGuardMapsScannerForTest(func() bool { return false })
+	t.Cleanup(restoreMaps)
+
+	base := [32]byte{1, 2, 3, 4}
+	tampered := [32]byte{9, 9, 9, 9}
+	licensing.SetGuardTextBaselineForTest(base)
+	restoreHash := licensing.SetGuardTextHasherForTest(func() ([32]byte, error) {
+		return tampered, nil
+	})
+	t.Cleanup(restoreHash)
+
+	var stretchedReason string
+	restoreStretch := licensing.SetGuardTamperStretchHookForTest(func(reason string, _ [32]byte) {
+		stretchedReason = reason
+	})
+	t.Cleanup(restoreStretch)
+
+	require.True(t, licensing.RunGuardProbeForTest())
+	require.Equal(t, "text_tamper", stretchedReason)
 	require.True(t, licensing.GuardTripped())
 }

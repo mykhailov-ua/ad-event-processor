@@ -50,10 +50,19 @@ func licenseIngestReady() bool {
 	}
 	w := activeLicenseWatcher.Load()
 	if w == nil {
-		return false
+		if licensing.SeedCouplingRequired() {
+			return licensing.FeatureSeedValid()
+		}
+		return true
 	}
 	state, _ := w.GetState()
-	return state != licensing.StateExpired && state != licensing.StateRevoked
+	if state == licensing.StateExpired || state == licensing.StateRevoked {
+		return false
+	}
+	if licensing.SeedCouplingRequired() && !licensing.FeatureSeedValid() {
+		return false
+	}
+	return true
 }
 
 func reloadLicense(ctx context.Context) error {

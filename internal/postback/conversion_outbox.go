@@ -223,6 +223,9 @@ func mergeEventPayloadInto(pb *PostbackPayload, raw []byte) {
 	if v := readString("tx_id"); v != "" {
 		pb.TxID = v
 	}
+	if v := readString("event_id"); v != "" {
+		pb.EventID = v
+	}
 	if v := readString("subid1"); v != "" {
 		pb.SubID1 = v
 		pb.subSlots[0] = v

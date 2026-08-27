@@ -17,6 +17,7 @@ type FacebookAdapter struct{}
 type FacebookEvent struct {
 	EventName      string             `json:"event_name"`
 	EventTime      int64              `json:"event_time"`
+	EventID        string             `json:"event_id,omitempty"`
 	EventSourceURL string             `json:"event_source_url,omitempty"`
 	UserData       FacebookUserData   `json:"user_data"`
 	CustomData     FacebookCustomData `json:"custom_data,omitempty"`
@@ -91,6 +92,7 @@ func (a *FacebookAdapter) Send(ctx context.Context, client *http.Client, payload
 	fbEvent := FacebookEvent{
 		EventName:      eventName,
 		EventTime:      time.Now().Unix(),
+		EventID:        ResolveEventID(payload),
 		EventSourceURL: strings.TrimSpace(payload.EventSourceURL),
 		UserData: FacebookUserData{
 			Em:  ems,

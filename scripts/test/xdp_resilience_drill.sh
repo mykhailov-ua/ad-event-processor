@@ -5,7 +5,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-LOG="${XDP_RESILIENCE_LOG:-xdp-resilience.log}"
+LOG="${XDP_RESILIENCE_LOG:-$CI_ARTIFACT_DIR/xdp-resilience.log}"
 IFACE="${XDP_RESILIENCE_IFACE:-lo}"
 
 log() { printf 'xdp_resilience_drill: %s\n' "$*"; }

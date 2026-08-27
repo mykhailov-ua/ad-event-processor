@@ -63,7 +63,7 @@ func TestHKDF_RFC5869Vectors(t *testing.T) {
 func TestDeriveMCK_usesHKDFPrimitive(t *testing.T) {
 	ikm := []byte("sig-bytes-payload-bytes-hwid")
 	salt := []byte("deployment-abc")
-	info := []byte(mckInfoLabel)
+	info := []byte(MCKInfoLabel())
 	got, err := hkdfSHA256(ikm, salt, info, 32)
 	require.NoError(t, err)
 	want, err := deriveMCKBytes(ikm, "deployment-abc")

@@ -60,6 +60,7 @@ func TestFacebookCAPI_Payload(t *testing.T) {
 	err := a.Send(context.Background(), srv.Client(), &PostbackPayload{
 		CampaignID:    uuid.New(),
 		ClickID:       "clk-1",
+		EventID:       "evt-dedup-1",
 		EventType:     "conversion",
 		Email:         "User@Example.Com",
 		Phone:         "1234567890",
@@ -79,6 +80,9 @@ func TestFacebookCAPI_Payload(t *testing.T) {
 	ev := body.Data[0]
 	if ev.EventName != "Purchase" {
 		t.Fatalf("event_name=%q", ev.EventName)
+	}
+	if ev.EventID != "evt-dedup-1" {
+		t.Fatalf("event_id=%q", ev.EventID)
 	}
 	if len(ev.UserData.Em) != 1 || ev.UserData.Em[0] != hashSHA256("user@example.com") {
 		t.Fatalf("em=%v", ev.UserData.Em)

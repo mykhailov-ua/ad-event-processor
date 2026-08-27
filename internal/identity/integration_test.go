@@ -15,7 +15,7 @@ import (
 
 func TestAuthService_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("Skipping testcontainers-based integration test in short mode")
+		t.Skip("integration: testcontainers (run make test-integration)")
 	}
 
 	infra, cleanup := setupAuthTestInfra(t)

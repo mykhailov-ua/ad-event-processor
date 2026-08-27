@@ -342,7 +342,7 @@ func TestIdempotency_DuplicateImport(t *testing.T) {
 
 func TestFault_DuplicateReportLedgerBalanced(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 	pool := setupCostSyncDB(t)
 	ctx := context.Background()

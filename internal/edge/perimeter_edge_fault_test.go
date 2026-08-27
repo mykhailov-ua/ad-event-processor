@@ -18,7 +18,7 @@ const edgeBlacklistSyncInterval = 5 * time.Second
 
 func TestFault_EdgePhase1BlocksBlacklistedIP(t *testing.T) {
 	if testing.Short() {
-		t.Skip("edge fault integration test")
+		t.Skip("integration: edge fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -54,7 +54,7 @@ func TestFault_EdgePhase1BlocksBlacklistedIP(t *testing.T) {
 
 func TestFault_EdgeBlacklistPropagation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("edge fault integration test")
+		t.Skip("integration: edge fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -105,7 +105,7 @@ func TestFault_EdgeBlacklistPropagation(t *testing.T) {
 
 func TestFault_EdgeFraudBlacklistPropagation(t *testing.T) {
 	if testing.Short() {
-		t.Skip("edge fault integration test")
+		t.Skip("integration: edge fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -148,7 +148,7 @@ func TestFault_EdgeFraudBlacklistPropagation(t *testing.T) {
 
 func TestFault_ASNWhitelistBypass(t *testing.T) {
 	if testing.Short() {
-		t.Skip("edge fault integration test")
+		t.Skip("integration: edge fault test (run make test-integration)")
 	}
 
 	ctx := context.Background()
@@ -181,7 +181,7 @@ func TestFault_ASNWhitelistBypass(t *testing.T) {
 
 func TestFault_EdgeBlacklistStale503(t *testing.T) {
 	if testing.Short() {
-		t.Skip("edge fault integration test")
+		t.Skip("integration: edge fault test (run make test-integration)")
 	}
 
 	cache := NewBlacklistCache(defaultStaleSec)

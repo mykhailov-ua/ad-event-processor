@@ -586,6 +586,7 @@ services:
       - ad_event_processor_run:/run/ad-event-processor:rw
     environment:
       - MANAGEMENT_PORT=8188
+      - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
       - CONTROL_UNIX_SOCKET=/run/ad-event-processor/control/http.sock
       - PAYMENT_WEBHOOK_PORT=8187
       - DB_DSN=${DB_DSN}

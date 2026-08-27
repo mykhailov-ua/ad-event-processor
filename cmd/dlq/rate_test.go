@@ -44,7 +44,7 @@ func setupRateTestRedis(t *testing.T) (redisClient *redis.Client, cleanup func()
 
 func TestRequeueDLQ_RateLimiting(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	redisClient, cleanup := setupRateTestRedis(t)
@@ -146,7 +146,7 @@ func TestRequeueDLQ_RateLimiting(t *testing.T) {
 
 func TestRestoreDLQ_RateLimiting(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	redisClient, cleanup := setupRateTestRedis(t)

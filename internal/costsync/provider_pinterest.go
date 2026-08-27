@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 
 	"ad-event-processor/internal/database"
-	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/money"
 )
 
@@ -93,17 +92,12 @@ func pinterestListCampaignIDs(ctx context.Context, client *http.Client, base, ad
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := client.Do(req)
-		if err != nil {
-			coldpath.CloseHTTPResponse(resp)
-			return nil, err
-		}
-		body, err := readLimitedHTTPBody(resp, 4<<20)
+		body, statusCode, err := doReadLimitedHTTPBody(client, req, 4<<20)
 		if err != nil {
 			return nil, fmt.Errorf("pinterest campaigns: %w", err)
 		}
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("pinterest campaigns: status %d: %s", resp.StatusCode, string(body))
+		if statusCode != http.StatusOK {
+			return nil, fmt.Errorf("pinterest campaigns: status %d: %s", statusCode, string(body))
 		}
 
 		var parsed pinterestCampaignsListResponse
@@ -139,17 +133,12 @@ func pinterestFetchCampaignAnalytics(ctx context.Context, client *http.Client, b
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
-	resp, err := client.Do(req)
-	if err != nil {
-		coldpath.CloseHTTPResponse(resp)
-		return nil, err
-	}
-	body, err := readLimitedHTTPBody(resp, 4<<20)
+	body, statusCode, err := doReadLimitedHTTPBody(client, req, 4<<20)
 	if err != nil {
 		return nil, fmt.Errorf("pinterest analytics: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("pinterest analytics: status %d: %s", resp.StatusCode, string(body))
+	if statusCode != http.StatusOK {
+		return nil, fmt.Errorf("pinterest analytics: status %d: %s", statusCode, string(body))
 	}
 
 	var rows []map[string]json.RawMessage

@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -72,7 +73,7 @@ func (s *Service) loadLanderVersionRow(ctx context.Context, landerID uuid.UUID) 
 		LEFT JOIN lander_assets pub ON pub.id = l.hosted_asset_id
 		WHERE l.id = $1`, landerID).Scan(&row.draftVersion, &row.publishedVersion)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return row, fmt.Errorf("lander not found")
 		}
 		return row, err
@@ -176,7 +177,7 @@ func (s *Service) SaveHostedEditorFile(ctx context.Context, landerID uuid.UUID, 
 		_ = os.RemoveAll(st.VersionDir(landerID, nextVersion))
 		return HostedEditorSaveResultDTO{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	files, err := st.ListVersionFiles(landerID, nextVersion)
 	if err != nil {
@@ -233,7 +234,7 @@ func (s *Service) PublishHostedDraft(ctx context.Context, landerID uuid.UUID, ve
 	if err != nil {
 		return LanderDTO{}, err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var assetID uuid.UUID
 	err = tx.QueryRow(ctx, `

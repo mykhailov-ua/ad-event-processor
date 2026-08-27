@@ -15,7 +15,7 @@ import (
 
 func TestExplainAudit_AllApplicationQueries(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping full EXPLAIN audit in short mode")
+		t.Skip("integration: full EXPLAIN audit (run make test-integration)")
 	}
 	if os.Getenv("EXPLAIN_AUDIT") == "" {
 		t.Skip("set EXPLAIN_AUDIT=1 to run full query plan audit (slow, needs Docker)")

@@ -59,7 +59,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run BPF resource gate
-        run: bash scripts/ci/bpf_resource_gate.sh 2>&1 | tee bpf_resource_gate.log
+        run: bash scripts/lib/tee_ci_log.sh bpf_resource_gate.log bash scripts/ci/bpf_resource_gate.sh
 
       - name: Upload BPF gate artifacts
         if: always()
@@ -67,7 +67,7 @@ jobs:
         with:
           name: bpf-resource-gate
           path: |
-            bpf_resource_gate.log
+            var/ci/bpf_resource_gate.log
             var/bpf-gate/**/*
             var/load-test/**/bpf-gate.md
             var/load-test/**/bpf/maps/summary.json
@@ -102,7 +102,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run report export BPF soak
-        run: bash scripts/test/bpf_nightly_job.sh export 2>&1 | tee bpf_export_soak_gate.log
+        run: bash scripts/lib/tee_ci_log.sh bpf_export_soak_gate.log bash scripts/test/bpf_nightly_job.sh export
 
       - name: Upload BPF export soak artifacts
         if: always()
@@ -110,7 +110,7 @@ jobs:
         with:
           name: bpf-export-soak-gate
           path: |
-            bpf_export_soak_gate.log
+            var/ci/bpf_export_soak_gate.log
             var/bpf-gate/**/*
           retention-days: 14
           if-no-files-found: ignore

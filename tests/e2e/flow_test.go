@@ -24,7 +24,7 @@ import (
 
 func TestE2E_Flow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)
@@ -115,7 +115,7 @@ func TestE2E_Flow(t *testing.T) {
 
 func TestE2E_Flow_Protobuf(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test")
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

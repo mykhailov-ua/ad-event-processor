@@ -16,7 +16,7 @@ func sentinelFaultConfig(t *testing.T) *config.Config {
 		t.Skip("set SENTINEL_FAULT_TEST=1 (run scripts/test/sentinel.sh or CI sentinel job)")
 	}
 	if testing.Short() {
-		t.Skip("sentinel fault skipped in -short")
+		t.Skip("integration: sentinel fault (run make test-integration)")
 	}
 
 	password := os.Getenv("REDIS_PASSWORD")

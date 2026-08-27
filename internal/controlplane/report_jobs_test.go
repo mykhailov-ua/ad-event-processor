@@ -99,7 +99,7 @@ func TestReportJob_ProcessOnce_marksFailedWithoutCH(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
 
-	status, ok := runner.GetJob(jobID)
+	status, ok := runner.GetJob(ctx, jobID)
 	require.True(t, ok)
 	require.Equal(t, JobStatusFailed, status.Status)
 	require.NotEmpty(t, status.Error)

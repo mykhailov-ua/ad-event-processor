@@ -12,10 +12,6 @@ func ParseTrackRequestJSON(v *TrackRequest, data []byte) error {
 	return parseTrackRequestJSON(v, data)
 }
 
-func skipJSONValue(data []byte, start int) (int, error) {
-	return skipJSONValueBudget(data, start, nil)
-}
-
 func skipJSONValueBudget(data []byte, start int, bud *jsonScanBudget) (int, error) {
 	return skipJSONValueBudgetDepth(data, start, bud, MaxJSONDepth)
 }

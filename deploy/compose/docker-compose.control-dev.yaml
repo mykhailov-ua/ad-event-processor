@@ -1,0 +1,37 @@
+# Dev ingest-only override: single redis shard, skip payment/CH, relax license for local .env drift.
+services:
+  control:
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+    environment:
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock
+      - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+      - AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY=
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+      - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
+      - CH_ENABLED=0
+      - CONTROL_ENABLE_PAYMENT=0
+      - CONTROL_ENABLE_BILLING=0
+      - CONTROL_ENABLE_NOTIFIER=0
+      - CONTROL_ENABLE_MARGIN_GUARD=0
+      - CONTROL_ENABLE_COST_SYNC=0
+  processor:
+    environment:
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock
+      - CH_ENABLED=0
+  tracker-0:
+    depends_on: !reset
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+    environment:
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock
+      - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+      - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0

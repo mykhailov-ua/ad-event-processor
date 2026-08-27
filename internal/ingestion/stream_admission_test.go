@@ -72,7 +72,7 @@ func TestStreamProducerReservePreventsQueueFull(t *testing.T) {
 	const workers = 16
 	var leases []streamAdmissionLease
 	for range workers {
-		lease, _, ok := tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID)
+		lease, _, ok := tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID, false)
 		if ok {
 			leases = append(leases, lease)
 		}
@@ -111,7 +111,7 @@ func TestStreamProducerAdmissionReject(t *testing.T) {
 	producers := []*StreamProducer{p}
 	campaignID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 
-	_, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID)
+	_, kind, acquired := tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID, false)
 	require.False(t, acquired)
 	require.Equal(t, filterRejectProducerOverload, kind)
 	require.Equal(t, 100, p.QueuePressurePct())
@@ -134,6 +134,6 @@ func TestStreamProducerAdmissionAllowsHeadroom(t *testing.T) {
 	producers := []*StreamProducer{p}
 	campaignID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 
-	_, _, acquired := tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID)
+	_, _, acquired := tryAcquireStreamAdmission(cfg, sharder, producers, nil, campaignID, false)
 	require.True(t, acquired)
 }

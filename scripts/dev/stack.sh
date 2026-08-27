@@ -74,6 +74,13 @@ ad_event_processor_compose() {
   if [[ -f "$ROOT/install.compose.env" ]]; then
     env_args+=(--env-file "$ROOT/install.compose.env")
   fi
+  if [[ -n "${AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES:-}" ]]; then
+    local -a extra_files=()
+    IFS=',' read -r -a extra_files <<< "$AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES"
+    for extra in "${extra_files[@]}"; do
+      file_args+=(-f "$ROOT/$extra")
+    done
+  fi
   docker compose --project-directory "$ROOT" "${file_args[@]}" "${profile_args[@]}" "${env_args[@]}" "$@"
   local rc=$?
   dev_finalize_compose_mounts
@@ -84,7 +91,29 @@ CMD="${1:-status}"
 
 INFRA=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse)
 SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse broker processor tracker-0 control)
-INGEST_ONLY=(db redis-0 redis-1 redis-2 redis-3 broker processor tracker-0 control)
+INGEST_ONLY=(db redis-0 broker processor tracker-0 control)
+INGEST_DEV_COMPOSE=deploy/compose/docker-compose.control-dev.yaml
+VPS_EXTRA_SERVICES=(
+  db-payment clickhouse nginx tracker-1 tracker-2 tracker-3 redis-1 redis-2 redis-3 redis-4 redis-5
+  prometheus grafana loki promtail
+)
+
+ad_event_processor_stop_vps_extras() {
+  if ! command -v docker > /dev/null 2>&1; then
+    return 0
+  fi
+  local -a file_args=(-f "$ROOT/docker-compose.yaml")
+  local -a env_args=()
+  if [[ -f "$ROOT/.env" ]]; then
+    env_args+=(--env-file "$ROOT/.env")
+  fi
+  if [[ -f "$ROOT/install.compose.env" ]]; then
+    env_args+=(--env-file "$ROOT/install.compose.env")
+  fi
+  docker compose --project-directory "$ROOT" "${file_args[@]}" "${env_args[@]}" stop "${VPS_EXTRA_SERVICES[@]}" 2> /dev/null \
+    || true
+}
+
 NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse broker processor tracker-0 control)
 SENTINEL=(redis-0 redis-0-replica sentinel-0 sentinel-1 sentinel-2)
 
@@ -98,7 +127,7 @@ case "$CMD" in
     ad_event_processor_stack_hardening
     ;;
   single-vps | up-single-vps)
-    local -a prof=(--profile single_vps)
+    prof=(--profile single_vps)
     if ad_event_processor_ingress_enabled; then
       prof+=(--profile ingress)
       bash "$SCRIPTS/install/render_ingress.sh"
@@ -112,9 +141,12 @@ case "$CMD" in
     ad_event_processor_stack_hardening
     ;;
   ingest-only | up-ingest-only)
+    ad_event_processor_stop_vps_extras
     CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
       CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
+      AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="$INGEST_DEV_COMPOSE" \
       ad_event_processor_compose --profile ingest_only up -d "${INGEST_ONLY[@]}"
+    ad_event_processor_stop_vps_extras
     ad_event_processor_stack_hardening
     ;;
   network-operator | up-network-operator)

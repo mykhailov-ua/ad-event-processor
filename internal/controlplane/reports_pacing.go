@@ -2,7 +2,6 @@ package controlplane
 
 import (
 	"context"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -243,10 +242,6 @@ func measuredPacingDriftPct(plannedMicro, actualMicro int64) float64 {
 		return 0
 	}
 	return (float64(actualMicro) - float64(plannedMicro)) / float64(plannedMicro)
-}
-
-func measuredPacingDriftPctAbs(plannedMicro, actualMicro int64) float64 {
-	return math.Abs(measuredPacingDriftPct(plannedMicro, actualMicro))
 }
 
 func queryPacingDriftExportRows(

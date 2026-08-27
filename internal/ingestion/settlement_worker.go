@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/pkg/logger"
 
@@ -246,6 +247,17 @@ func (w *SettlementWorker) runLane(ctx context.Context, laneIdx int) {
 
 	flush := func() {
 		if len(batch) == 0 {
+			return
+		}
+		if !licensing.SettlementSeedGateAllowed() {
+			metrics.SettlementSeedGateBlockedTotal.Add(float64(len(batch)))
+			for _, e := range batch {
+				domain.EventPool.Put(e)
+			}
+			batch = batch[:0]
+			msgIDs = msgIDs[:0]
+			lastFlush = time.Now()
+			metrics.SettlementLaneDepth.WithLabelValues(laneLabel).Set(float64(len(w.laneCh[laneIdx])))
 			return
 		}
 		if len(batch) > 0 && !batch[0].CreatedAt.IsZero() {

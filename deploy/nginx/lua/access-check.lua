@@ -82,6 +82,9 @@ edge_ingress.record_and_forward()
 
 local edge_route_gate = require "edge-route-gate"
 local uri = ngx.var.uri
+if ngx.req.get_method() == "OPTIONS" and uri == "/track" then
+    return
+end
 if uri == "/click" then
     edge_route_gate.require_click()
     edge_phase2.run_click()

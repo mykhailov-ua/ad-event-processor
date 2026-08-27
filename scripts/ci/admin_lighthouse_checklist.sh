@@ -6,7 +6,7 @@ cd "$ROOT"
 
 bash "$SCRIPTS/ci/admin_bundle_gate.sh"
 
-ARTIFACT_DIR="${ADMIN_LIGHTHOUSE_ARTIFACT_DIR:-$ROOT/var/ci}"
+ARTIFACT_DIR="${ADMIN_LIGHTHOUSE_ARTIFACT_DIR:-$CI_ARTIFACT_DIR}"
 mkdir -p "$ARTIFACT_DIR"
 CHECKLIST="$ARTIFACT_DIR/lighthouse-inp-checklist.txt"
 

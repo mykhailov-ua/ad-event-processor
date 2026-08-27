@@ -18,7 +18,7 @@ import (
 
 func TestFault_notifierBroadcastPartialFailure(t *testing.T) {
 	if testing.Short() {
-		t.Skip("notifier fault integration test")
+		t.Skip("integration: notifier fault test (run make test-integration)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -56,7 +56,7 @@ func TestFault_notifierBroadcastPartialFailure(t *testing.T) {
 
 func TestFault_notifierBroadcastConcurrentDelivery(t *testing.T) {
 	if testing.Short() {
-		t.Skip("notifier fault integration test")
+		t.Skip("integration: notifier fault test (run make test-integration)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -116,7 +116,7 @@ func TestFault_notifierBroadcastConcurrentDelivery(t *testing.T) {
 
 func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	if testing.Short() {
-		t.Skip("notifier fault integration test")
+		t.Skip("integration: notifier fault test (run make test-integration)")
 	}
 
 	pool, cleanup := setupTestDB(t)
@@ -179,7 +179,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 
 func TestFault_notifierBroadcastCircuitOpen(t *testing.T) {
 	if testing.Short() {
-		t.Skip("notifier fault integration test")
+		t.Skip("integration: notifier fault test (run make test-integration)")
 	}
 
 	pool, cleanup := setupTestDB(t)

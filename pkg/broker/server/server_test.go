@@ -26,7 +26,7 @@ import (
 func skipBrokerHeavyTest(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
-		t.Skip("skipping heavy broker test under -short")
+		t.Skip("integration: heavy broker test (run make test-integration)")
 	}
 }
 

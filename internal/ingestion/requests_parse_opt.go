@@ -17,6 +17,11 @@ const (
 	keyFBCLID
 	keyGCLID
 	keyTTCLID
+	keyMSCLKID
+	keyTBLCI
+	keyOBClickID
+	keyEventID
+	keyTxID
 )
 
 const (
@@ -24,8 +29,11 @@ const (
 	u32Payl      uint32 = 0x6c796170
 	u32User      uint32 = 0x72657375
 	u64ClickID   uint64 = 0x64695f6b63696c63
+	u64EventID   uint64 = 0x64695f746e657665
 	u64Campaign  uint64 = 0x6e676961706d6163
 	u64Placement uint64 = 0x6e65636d65636170
+	u64OBClick   uint64 = 0x6b63696c635f626f
+	u32TxID      uint32 = 0x695f7874
 )
 
 var jsonWhitespace [256]byte
@@ -61,12 +69,22 @@ func matchTrackKey(key []byte) keyID {
 			if key[4] == '_' && key[5] == 'i' && key[6] == 'd' {
 				return keyUserID
 			}
+		case 0x6c63736d:
+			if key[4] == 'k' && key[5] == 'i' && key[6] == 'd' {
+				return keyMSCLKID
+			}
 		}
 	case 8:
-		if loadU64(key) == u64ClickID {
+		switch loadU64(key) {
+		case u64ClickID:
 			return keyClickID
+		case u64EventID:
+			return keyEventID
 		}
 	case 11:
+		if loadU64(key) == u64OBClick && key[8] == '_' && key[9] == 'i' && key[10] == 'd' {
+			return keyOBClickID
+		}
 		if loadU64(key) == u64Campaign && key[8] == '_' && key[9] == 'i' && key[10] == 'd' {
 			return keyCampaignID
 		}
@@ -75,8 +93,14 @@ func matchTrackKey(key []byte) keyID {
 			return keyPlacementID
 		}
 	case 5:
+		if loadU32(key) == u32TxID && key[4] == 'd' {
+			return keyTxID
+		}
 		if loadU32(key) == 0x696c6367 && key[4] == 'd' {
 			return keyGCLID
+		}
+		if loadU32(key) == 0x636c6274 && key[4] == 'i' {
+			return keyTBLCI
 		}
 	case 6:
 		switch loadU32(key) {
@@ -109,6 +133,16 @@ func assignTrackStringField(v *TrackRequest, kid keyID, valBytes []byte) {
 		v.gclid = unsafeString(valBytes)
 	case keyTTCLID:
 		v.ttclid = unsafeString(valBytes)
+	case keyMSCLKID:
+		v.msclkid = unsafeString(valBytes)
+	case keyTBLCI:
+		v.tblci = unsafeString(valBytes)
+	case keyOBClickID:
+		v.obClickID = unsafeString(valBytes)
+	case keyEventID:
+		v.eventID = unsafeString(valBytes)
+	case keyTxID:
+		v.txID = unsafeString(valBytes)
 	}
 }
 
@@ -174,7 +208,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 		kid := matchTrackKey(data[keyStart:keyEnd])
 		keyBytes := data[keyStart:keyEnd]
 		switch kid {
-		case keyType, keyUserID, keyClickID, keyPlacementID, keyFBCLID, keyGCLID, keyTTCLID:
+		case keyType, keyUserID, keyClickID, keyPlacementID, keyFBCLID, keyGCLID, keyTTCLID, keyMSCLKID, keyTBLCI, keyOBClickID, keyEventID, keyTxID:
 			if data[i] != '"' {
 				return errMalformedJSON
 			}

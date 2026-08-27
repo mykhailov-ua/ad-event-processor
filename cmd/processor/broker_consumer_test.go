@@ -236,7 +236,7 @@ func TestBrokerConsumerGroup_SpoolAndCatchupOnOutage(t *testing.T) {
 
 func TestBrokerConsumerGroup_Batch50k(t *testing.T) {
 	if testing.Short() {
-		t.Skip("50k broker batch integration test")
+		t.Skip("integration: 50k broker batch (run make test-integration)")
 	}
 
 	tmpDir := t.TempDir()

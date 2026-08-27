@@ -21,7 +21,8 @@ func TestDeriveMCK_GoldenVector(t *testing.T) {
 	raw, err := os.ReadFile(path)
 	require.NoError(t, err)
 	var doc struct {
-		Fixtures []struct {
+		MCKInfoLabel string `json:"mck_info_label"`
+		Fixtures     []struct {
 			Name           string `json:"name"`
 			Token          string `json:"token"`
 			HWID           string `json:"hwid"`
@@ -30,6 +31,8 @@ func TestDeriveMCK_GoldenVector(t *testing.T) {
 		} `json:"fixtures"`
 	}
 	require.NoError(t, json.Unmarshal(raw, &doc))
+	require.Equal(t, licensing.DefaultMCKInfoLabel, doc.MCKInfoLabel)
+	require.Equal(t, licensing.MCKInfoLabel(), doc.MCKInfoLabel)
 	require.NotEmpty(t, doc.Fixtures)
 	for _, fx := range doc.Fixtures {
 		t.Run(fx.Name, func(t *testing.T) {
@@ -62,6 +65,29 @@ func TestDeriveMCK_Sensitivity(t *testing.T) {
 	other, err := licensing.DeriveMCK(token, "hwid-b")
 	require.NoError(t, err)
 	require.NotEqual(t, base, other)
+}
+
+func TestDeriveMCK_JWTKeyID(t *testing.T) {
+	_, priv, err := ed25519.GenerateKey(nil)
+	require.NoError(t, err)
+	claims := licensing.LicenseClaims{
+		Issuer:       "ad-event-processor-license",
+		Subject:      uuid.NewString(),
+		DeploymentID: uuid.NewString(),
+		ValidFrom:    time.Now().Add(-time.Hour),
+		ValidUntil:   time.Now().Add(24 * time.Hour),
+	}
+	tokenA, err := licensing.SignJWT(claims, priv, licensing.DefaultLicenseKeyID)
+	require.NoError(t, err)
+	tokenB, err := licensing.SignJWT(claims, priv, "2026-02")
+	require.NoError(t, err)
+
+	hwid := "hwid-kid-coupling"
+	mckA, err := licensing.DeriveMCK(tokenA, hwid)
+	require.NoError(t, err)
+	mckB, err := licensing.DeriveMCK(tokenB, hwid)
+	require.NoError(t, err)
+	require.NotEqual(t, mckA, mckB)
 }
 
 func TestDeriveMCK_Sensitivity100Pairs(t *testing.T) {
@@ -107,6 +133,7 @@ func TestFeatureSeed_couplingGates(t *testing.T) {
 	require.False(t, licensing.SeedGateRPS(1000))
 
 	licensing.PublishFeatureSeed(0x1234_5678, true)
+	licensing.SetMCKFeatureBitsForTest(licensing.MCKFeatureBitOpenRTB)
 	require.True(t, licensing.SeedGateOpenRTB(ent))
 	require.True(t, licensing.SeedGateRPS(1000))
 }

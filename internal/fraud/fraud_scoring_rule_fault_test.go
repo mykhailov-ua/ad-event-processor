@@ -29,7 +29,7 @@ func (conn *failingCHConn) Exec(context.Context, string, ...any) error {
 
 func TestFraudScoringRule_EmptyWindow(t *testing.T) {
 	if testing.Short() {
-		t.Skip("clickhouse integration test")
+		t.Skip("integration: clickhouse testcontainers (run make test-full)")
 	}
 
 	conn, cleanup := setupClickHouseTest(t)
@@ -48,7 +48,7 @@ func TestFraudScoringRule_EmptyWindow(t *testing.T) {
 
 func TestFault_FraudClickHouseDown(t *testing.T) {
 	if testing.Short() {
-		t.Skip("fault integration test")
+		t.Skip("integration: fault test (run make test-integration)")
 	}
 
 	scorer, err := NewLGBMScorer(testFraudModelPath(t))

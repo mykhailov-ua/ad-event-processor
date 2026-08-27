@@ -99,6 +99,10 @@ func processGuardWatchdogHandshake(msg string, readErr error) {
 	case "busy":
 		tripGuard("ptrace_busy")
 	case "skip":
+		if guardPtraceRequired {
+			tripGuard("ptrace_skip")
+			return
+		}
 		slog.Warn("license guard: ptrace watchdog unavailable (yama/ptrace_scope or permissions)")
 	default:
 		if readErr != nil {
@@ -187,4 +191,8 @@ func SetGuardPtraceWatchdogLauncherForTest(fn func(context.Context)) func() {
 
 func ProcessGuardWatchdogHandshakeForTest(msg string, readErr error) {
 	processGuardWatchdogHandshake(msg, readErr)
+}
+
+func SetGuardPtraceRequiredForTest(required bool) {
+	guardPtraceRequired = required
 }

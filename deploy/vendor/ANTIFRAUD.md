@@ -238,4 +238,4 @@ bash scripts/ci/antifraud_doc_gate.sh
 
 Holdout: `TestFraudReject_holdoutSilentRejectFlag`, `TestFilterEngine_shadowSkipsUnifiedBudgetDebit_holdout`.
 
-ROI ship backlog (conversion reject, automation IVT metrics, canvas retest, CGNAT policy): [antifraud_backlog.md](./antifraud_backlog.md).
+ROI backlog closed 2026-08-26 (conversion reject, automation IVT metrics, canvas retest, CGNAT policy): [antifraud_backlog.md](./antifraud_backlog.md).

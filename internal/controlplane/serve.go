@@ -91,6 +91,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Error("failed to connect to redis shards", "error", err)
 		return err
 	}
+	licensing.StartLicenseEpochSync(ctx, PickHealthyControlShard(redisShards))
 
 	sharder := domain.NewStaticSlotSharder(len(redisShards))
 

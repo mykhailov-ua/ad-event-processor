@@ -43,6 +43,15 @@ func (r *SchemaResolver) ResolveKeitaro(name string) (SourceEntry, bool) {
 	return row, ok
 }
 
+// ResolveBinom returns bundled slug and UI template id for a Binom source label.
+func (r *SchemaResolver) ResolveBinom(name string) (SourceEntry, bool) {
+	if r == nil {
+		return SourceEntry{}, false
+	}
+	row, ok := r.binom[normalizeSourceName(name)]
+	return row, ok
+}
+
 func normalizeSourceName(name string) string {
 	return strings.ToLower(strings.TrimSpace(name))
 }

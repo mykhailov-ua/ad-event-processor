@@ -6,7 +6,8 @@ cd "$ROOT"
 
 BASELINE_REF="${BASELINE_REF:-main}"
 BASELINE_WORKTREE="${BASELINE_WORKTREE:-$ROOT/.cache/perf-baseline-worktree}"
-OUTDIR="${OUTDIR:-$ROOT}"
+OUTDIR="${OUTDIR:-$CI_ARTIFACT_DIR/perf-gate}"
+mkdir -p "$OUTDIR"
 STRICT="${PERF_GATE_STRICT:-true}"
 
 if [[ "$BASELINE_WORKTREE" != /* ]]; then

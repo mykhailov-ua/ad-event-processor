@@ -22,8 +22,9 @@ gen:
 openapi-export:
 	go run ./cmd/openapi-export
 
-openapi-types: openapi-export
-	cd web && npm run openapi:types
+.PHONY: openapi-types
+openapi-types:
+	@echo "openapi-types: skipped (web/ removed; regenerate TS types when admin UI milestone admin_contract_gate starts)"
 
 lint: gen fmt
 	bash scripts/ci/lint_gate.sh
@@ -189,7 +190,10 @@ license-gdb-guard-smoke:
 	bash scripts/test/license_gdb_guard_smoke.sh
 
 release-strings-gate:
-	bash scripts/ci/release_strings_gate.sh $(BIN_DIR)/tracker
+	bash scripts/ci/release_strings_gate.sh \
+		$(BIN_DIR)/garbled-release/tracker \
+		$(BIN_DIR)/garbled-release/processor \
+		$(BIN_DIR)/garbled-release/control
 
 garble-literals-eval:
 	bash scripts/ci/garble_literals_eval.sh

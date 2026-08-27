@@ -18,6 +18,7 @@ type GoogleOfflineConversion struct {
 	CurrencyCode     string  `json:"currency_code"`
 	ConversionTime   string  `json:"conversion_time"`
 	ConversionAction string  `json:"conversion_action"`
+	TransactionID    string  `json:"transaction_id,omitempty"`
 }
 
 type GoogleCAPIPayload struct {
@@ -49,6 +50,7 @@ func (a *GoogleAdapter) Send(ctx context.Context, client *http.Client, payload *
 		CurrencyCode:     "USD",
 		ConversionTime:   time.Now().UTC().Format("2006-01-02 15:04:05-07:00"),
 		ConversionAction: action,
+		TransactionID:    ResolveEventID(payload),
 	}
 
 	googlePayload := GoogleCAPIPayload{

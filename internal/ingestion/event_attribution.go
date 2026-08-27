@@ -2,7 +2,7 @@ package ingestion
 
 import "github.com/google/uuid"
 
-func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid string) []byte {
+func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid, msclkid, tblci, obClickID, eventID, txID string) []byte {
 	dst = dst[:0]
 	switch {
 	case len(payload) > 0 && payload[0] == '{':
@@ -49,6 +49,41 @@ func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gcli
 		}
 		dst = append(dst, `"ttclid":`...)
 		dst = appendJSONString(dst, UnsafeBytes(ttclid))
+	}
+	if msclkid != "" {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"msclkid":`...)
+		dst = appendJSONString(dst, UnsafeBytes(msclkid))
+	}
+	if tblci != "" {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"tblci":`...)
+		dst = appendJSONString(dst, UnsafeBytes(tblci))
+	}
+	if obClickID != "" {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"ob_click_id":`...)
+		dst = appendJSONString(dst, UnsafeBytes(obClickID))
+	}
+	if eventID != "" {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"event_id":`...)
+		dst = appendJSONString(dst, UnsafeBytes(eventID))
+	}
+	if txID != "" {
+		if len(dst) > 1 {
+			dst = append(dst, ',')
+		}
+		dst = append(dst, `"tx_id":`...)
+		dst = appendJSONString(dst, UnsafeBytes(txID))
 	}
 	if len(dst) == 1 {
 		return nil

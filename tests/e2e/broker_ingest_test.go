@@ -20,7 +20,7 @@ import (
 
 func TestE2E_BrokerIngest(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping broker e2e")
+		t.Skip("integration: broker e2e (run make test-integration)")
 	}
 
 	pool, cleanupDB := testutil.SetupAdsPostgres(t)

@@ -96,6 +96,14 @@ Self-hosted perf runner: Linux amd64, BTF, `PERF_RUNNER_LABEL`, Go 1.25.12, Dock
 
 Baselines: `.ci-baselines/`.
 
+Gate reports and workflow tee logs: `var/ci/` (`CI_ARTIFACT_DIR`, override with env). Scripts source `scripts/lib/ci_artifacts.sh` via `paths.sh`; workflows use `bash scripts/lib/tee_ci_log.sh <name> <command...>`.
+
+| Path | Contents |
+| :--- | :--- |
+| `var/ci/escape_heap_gate.txt` | `escape_heap_gate.sh` compiler `-m` report |
+| `var/ci/perf-gate/` | `pr_bench.txt`, `baseline_bench.txt`, `gate_report.txt` from `gate_run.sh` |
+| `var/ci/*.log` | CI job transcripts (`race_short.log`, `integration_test.log`, …) |
+
 ## Local commands
 
 ```bash
