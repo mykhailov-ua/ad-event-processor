@@ -79,7 +79,6 @@ func buildTrackCORSPreflight(origin string, cors trackCORS) []byte {
 	return dst
 }
 
-// gnetTrackAcceptedHeaderBudget is wire header bytes before JSON/protobuf body.
 func gnetTrackAcceptedHeaderBudget(origin string, cors trackCORS, bodyLen int, protobuf bool) int {
 	n := len("HTTP/1.1 202 Accepted\r\n")
 	if cors.match(origin) {

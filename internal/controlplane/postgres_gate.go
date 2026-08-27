@@ -105,23 +105,23 @@ func (g *PostgresGate) InFlight() int {
 }
 
 func (s *Service) withPgHigh(ctx context.Context, fn func(context.Context) error) error {
-	if s == nil || s.pgGate == nil {
+	if s == nil || s.postgresGate == nil {
 		return fn(ctx)
 	}
-	if err := s.pgGate.AcquireHigh(ctx); err != nil {
+	if err := s.postgresGate.AcquireHigh(ctx); err != nil {
 		return err
 	}
-	defer s.pgGate.ReleaseHigh()
+	defer s.postgresGate.ReleaseHigh()
 	return fn(ctx)
 }
 
 func (s *Service) withPgLow(ctx context.Context, fn func(context.Context) error) error {
-	if s == nil || s.pgGate == nil {
+	if s == nil || s.postgresGate == nil {
 		return fn(ctx)
 	}
-	if err := s.pgGate.AcquireLow(ctx); err != nil {
+	if err := s.postgresGate.AcquireLow(ctx); err != nil {
 		return err
 	}
-	defer s.pgGate.ReleaseLow()
+	defer s.postgresGate.ReleaseLow()
 	return fn(ctx)
 }

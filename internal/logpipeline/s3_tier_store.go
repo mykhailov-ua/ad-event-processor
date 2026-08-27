@@ -69,17 +69,17 @@ func NewS3TierStore(ctx context.Context, cfg S3Config) (*S3TierStore, error) {
 	}, nil
 }
 
-func (store *S3TierStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
-	if err := store.syncHotFromS3(ctx, olderThan); err != nil {
+func (st *S3TierStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
+	if err := st.syncHotFromS3(ctx, olderThan); err != nil {
 		return nil, err
 	}
-	return store.local.ListHot(ctx, olderThan)
+	return st.local.ListHot(ctx, olderThan)
 }
 
-func (store *S3TierStore) syncHotFromS3(ctx context.Context, olderThan time.Time) error {
-	prefix := store.hotObjectPrefix()
-	paginator := s3.NewListObjectsV2Paginator(store.client, &s3.ListObjectsV2Input{
-		Bucket: aws.String(store.cfg.Bucket),
+func (st *S3TierStore) syncHotFromS3(ctx context.Context, olderThan time.Time) error {
+	prefix := st.hotObjectPrefix()
+	paginator := s3.NewListObjectsV2Paginator(st.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(st.cfg.Bucket),
 		Prefix: aws.String(prefix),
 	})
 
@@ -99,11 +99,11 @@ func (store *S3TierStore) syncHotFromS3(ctx context.Context, olderThan time.Time
 			if !object.LastModified.Before(olderThan) {
 				continue
 			}
-			localPath := filepath.Join(store.local.SourceDir, filepath.Base(key))
+			localPath := filepath.Join(st.local.SourceDir, filepath.Base(key))
 			if _, err := os.Stat(localPath); err == nil {
 				continue
 			}
-			if err := store.downloadObject(ctx, *object.Key, localPath); err != nil {
+			if err := st.downloadObject(ctx, *object.Key, localPath); err != nil {
 				return err
 			}
 			if err := os.Chtimes(localPath, object.LastModified.UTC(), object.LastModified.UTC()); err != nil {
@@ -114,9 +114,9 @@ func (store *S3TierStore) syncHotFromS3(ctx context.Context, olderThan time.Time
 	return nil
 }
 
-func (store *S3TierStore) downloadObject(ctx context.Context, objectKey, destPath string) error {
-	output, err := store.client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(store.cfg.Bucket),
+func (st *S3TierStore) downloadObject(ctx context.Context, objectKey, destPath string) error {
+	output, err := st.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(st.cfg.Bucket),
 		Key:    aws.String(objectKey),
 	})
 	if err != nil {
@@ -149,7 +149,7 @@ func (store *S3TierStore) downloadObject(ctx context.Context, objectKey, destPat
 	return os.Rename(tmpPath, destPath)
 }
 
-func (store *S3TierStore) uploadFile(ctx context.Context, key, srcPath, sha256 string) error {
+func (st *S3TierStore) uploadFile(ctx context.Context, key, srcPath, sha256 string) error {
 	file, err := os.Open(srcPath)
 	if err != nil {
 		return err
@@ -161,8 +161,8 @@ func (store *S3TierStore) uploadFile(ctx context.Context, key, srcPath, sha256 s
 		return err
 	}
 
-	_, err = store.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(store.cfg.Bucket),
+	_, err = st.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(st.cfg.Bucket),
 		Key:    aws.String(key),
 		Body:   file,
 		Metadata: map[string]string{
@@ -176,9 +176,9 @@ func (store *S3TierStore) uploadFile(ctx context.Context, key, srcPath, sha256 s
 	return nil
 }
 
-func (store *S3TierStore) deleteObject(ctx context.Context, key string) error {
-	_, err := store.client.DeleteObject(ctx, &s3.DeleteObjectInput{
-		Bucket: aws.String(store.cfg.Bucket),
+func (st *S3TierStore) deleteObject(ctx context.Context, key string) error {
+	_, err := st.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+		Bucket: aws.String(st.cfg.Bucket),
 		Key:    aws.String(key),
 	})
 	if err != nil {
@@ -187,52 +187,52 @@ func (store *S3TierStore) deleteObject(ctx context.Context, key string) error {
 	return nil
 }
 
-func (store *S3TierStore) hotObjectPrefix() string {
-	prefix := strings.Trim(store.cfg.HotPrefix, "/")
+func (st *S3TierStore) hotObjectPrefix() string {
+	prefix := strings.Trim(st.cfg.HotPrefix, "/")
 	if prefix == "" {
 		return ""
 	}
 	return prefix + "/"
 }
 
-func (store *S3TierStore) warmObjectPrefix() string {
-	prefix := strings.Trim(store.cfg.WarmPrefix, "/")
+func (st *S3TierStore) warmObjectPrefix() string {
+	prefix := strings.Trim(st.cfg.WarmPrefix, "/")
 	if prefix == "" {
 		return ""
 	}
 	return prefix + "/"
 }
 
-func (store *S3TierStore) hotObjectKey(name string) string {
-	return store.hotObjectPrefix() + name
+func (st *S3TierStore) hotObjectKey(name string) string {
+	return st.hotObjectPrefix() + name
 }
 
-func (store *S3TierStore) warmObjectKey(name string) string {
-	return store.warmObjectPrefix() + name
+func (st *S3TierStore) warmObjectKey(name string) string {
+	return st.warmObjectPrefix() + name
 }
 
-func (store *S3TierStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
-	if err := store.local.WriteWarm(ctx, destKey, plaintext, meta); err != nil {
+func (st *S3TierStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
+	if err := st.local.WriteWarm(ctx, destKey, plaintext, meta); err != nil {
 		return err
 	}
-	return store.uploadWarmArtifacts(ctx, destKey, meta.DestSHA256)
+	return st.uploadWarmArtifacts(ctx, destKey, meta.DestSHA256)
 }
 
-func (store *S3TierStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
-	destSHA, err := store.local.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
+func (st *S3TierStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
+	destSHA, err := st.local.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
 	if err != nil {
 		return "", err
 	}
-	if err := store.uploadWarmArtifacts(ctx, destKey, destSHA); err != nil {
-		store.local.RemoveWarmArtifacts(destKey)
+	if err := st.uploadWarmArtifacts(ctx, destKey, destSHA); err != nil {
+		st.local.RemoveWarmArtifacts(destKey)
 		return "", err
 	}
 	return destSHA, nil
 }
 
-func (store *S3TierStore) uploadWarmArtifacts(ctx context.Context, destKey, sha256 string) error {
-	warmPath := filepath.Join(store.local.WarmDir, destKey)
-	if err := store.uploadFile(ctx, store.warmObjectKey(destKey), warmPath, sha256); err != nil {
+func (st *S3TierStore) uploadWarmArtifacts(ctx context.Context, destKey, sha256 string) error {
+	warmPath := filepath.Join(st.local.WarmDir, destKey)
+	if err := st.uploadFile(ctx, st.warmObjectKey(destKey), warmPath, sha256); err != nil {
 		return err
 	}
 	metaPath := strings.TrimSuffix(warmPath, ".zst") + ".meta.json"
@@ -240,50 +240,50 @@ func (store *S3TierStore) uploadWarmArtifacts(ctx context.Context, destKey, sha2
 	if err != nil {
 		return err
 	}
-	metaKey := store.warmObjectKey(strings.TrimSuffix(destKey, ".zst") + ".meta.json")
-	return store.uploadFile(ctx, metaKey, metaPath, metaDigest.SHA256)
+	metaKey := st.warmObjectKey(strings.TrimSuffix(destKey, ".zst") + ".meta.json")
+	return st.uploadFile(ctx, metaKey, metaPath, metaDigest.SHA256)
 }
 
-func (store *S3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
-	if err := store.local.RemoveHot(ctx, obj); err != nil {
+func (st *S3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
+	if err := st.local.RemoveHot(ctx, obj); err != nil {
 		return err
 	}
 	hotKey := hotKeyFromCompacting(obj.Key)
-	return store.deleteObject(ctx, store.hotObjectKey(hotKey))
+	return st.deleteObject(ctx, st.hotObjectKey(hotKey))
 }
 
-func (store *S3TierStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
-	return store.local.ClaimHot(ctx, obj)
+func (st *S3TierStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
+	return st.local.ClaimHot(ctx, obj)
 }
 
-func (store *S3TierStore) RollbackHot(ctx context.Context, obj TierObject) error {
-	return store.local.RollbackHot(ctx, obj)
+func (st *S3TierStore) RollbackHot(ctx context.Context, obj TierObject) error {
+	return st.local.RollbackHot(ctx, obj)
 }
 
-func (store *S3TierStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
-	return store.local.ListStuckCompacting(ctx)
+func (st *S3TierStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
+	return st.local.ListStuckCompacting(ctx)
 }
 
-func (store *S3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
+func (st *S3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
 	hotKey := hotKeyFromCompacting(obj.Key)
-	if err := store.local.RemoveCompacting(ctx, obj); err != nil {
+	if err := st.local.RemoveCompacting(ctx, obj); err != nil {
 		return err
 	}
-	return store.deleteObject(ctx, store.hotObjectKey(hotKey))
+	return st.deleteObject(ctx, st.hotObjectKey(hotKey))
 }
 
-func (store *S3TierStore) RemoveWarmArtifacts(destKey string) {
-	store.local.RemoveWarmArtifacts(destKey)
+func (st *S3TierStore) RemoveWarmArtifacts(destKey string) {
+	st.local.RemoveWarmArtifacts(destKey)
 }
 
-func (store *S3TierStore) LocalScratch() *LocalTierStore {
-	return store.local
+func (st *S3TierStore) LocalScratch() *LocalTierStore {
+	return st.local
 }
 
-func (store *S3TierStore) WarmMetaFromS3(ctx context.Context, destKey string) (CompactionMeta, error) {
-	metaKey := store.warmObjectKey(strings.TrimSuffix(destKey, ".zst") + ".meta.json")
-	output, err := store.client.GetObject(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(store.cfg.Bucket),
+func (st *S3TierStore) WarmMetaFromS3(ctx context.Context, destKey string) (CompactionMeta, error) {
+	metaKey := st.warmObjectKey(strings.TrimSuffix(destKey, ".zst") + ".meta.json")
+	output, err := st.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(st.cfg.Bucket),
 		Key:    aws.String(metaKey),
 	})
 	if err != nil {

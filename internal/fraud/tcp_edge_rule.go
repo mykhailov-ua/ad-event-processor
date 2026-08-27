@@ -24,7 +24,7 @@ WHERE created_at >= now() - toIntervalSecond(?)
 GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {
-	q           *database.CHQuery
+	clickhouseQuery *database.CHQuery
 	redisClient redis.Cmdable
 	cfg         AnalyzerConfig
 }
@@ -32,7 +32,7 @@ type tcpEdgeCorrelationRule struct {
 func (r *tcpEdgeCorrelationRule) Name() string { return "tcp_edge_correlation" }
 
 func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
-	if r == nil || r.q == nil || r.redisClient == nil {
+	if r == nil || r.clickhouseQuery == nil || r.redisClient == nil {
 		return nil, nil
 	}
 	entries, err := edge.ListRecent(ctx, r.redisClient, 128)
@@ -63,7 +63,7 @@ func (r *tcpEdgeCorrelationRule) Find(ctx context.Context) ([]SuspiciousIP, erro
 
 	windowSec := database.ClampCHWindowSeconds(int64(r.cfg.Window / time.Second))
 
-	rows, err := r.q.Query(ctx, tcpEdgeCorrelationQuery, windowSec, hashArgs)
+	rows, err := r.clickhouseQuery.Query(ctx, tcpEdgeCorrelationQuery, windowSec, hashArgs)
 	if err != nil {
 		return nil, fmt.Errorf("tcp edge correlation query: %w", err)
 	}

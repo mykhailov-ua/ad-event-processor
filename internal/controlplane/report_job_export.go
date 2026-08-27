@@ -15,9 +15,9 @@ import (
 const reportExportPageSize = 1000
 
 type ReportExportDeps struct {
-	Pool           *pgxpool.Pool
-	CHQuery        *database.CHQuery
-	BuyerPortfolio BuyerPortfolioReader
+	Pool            *pgxpool.Pool
+	ClickHouseQuery *database.CHQuery
+	BuyerPortfolio  BuyerPortfolioReader
 }
 
 func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec ReportJobSpec) error {
@@ -29,7 +29,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		return fmt.Errorf("report export dependencies not configured")
 	}
 	portfolioExport := spec.ReportKey == "campaign-overview" || spec.ReportKey == "customer-portfolio"
-	if !portfolioExport && r.deps.CHQuery == nil {
+	if !portfolioExport && r.deps.ClickHouseQuery == nil {
 		return fmt.Errorf("report export dependencies not configured")
 	}
 	campaignIDs, err := listCustomerCampaignIDs(ctx, r.deps.Pool, uuid.MustParse(spec.CustomerID))
@@ -49,7 +49,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 
 	switch spec.ReportKey {
 	case "placements":
-		ivtRates, ierr := queryPlacementIVTRates(ctx, r.deps.CHQuery, campaignIDs, from, to)
+		ivtRates, ierr := queryPlacementIVTRates(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to)
 		if ierr != nil {
 			return ierr
 		}
@@ -58,7 +58,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]reportMetricsCHRow, int64, error) {
-				return queryPlacementReportRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryPlacementReportRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row reportMetricsCHRow) error {
 				dto := toPlacementReportRowDTO(row, ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)])
@@ -71,7 +71,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			},
 		)
 	case "keywords":
-		ivtRates, ierr := queryKeywordIVTRates(ctx, r.deps.CHQuery, campaignIDs, from, to)
+		ivtRates, ierr := queryKeywordIVTRates(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to)
 		if ierr != nil {
 			return ierr
 		}
@@ -80,7 +80,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]reportMetricsCHRow, int64, error) {
-				return queryKeywordReportRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryKeywordReportRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row reportMetricsCHRow) error {
 				dto := toKeywordReportRowDTO(row, ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)])
@@ -98,7 +98,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]ivtBySourceCHRow, int64, error) {
-				return queryIVTBySourceRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryIVTBySourceRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row ivtBySourceCHRow) error {
 				return w.Write([]string{
@@ -114,7 +114,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]TrafficSourceRowDTO, int64, error) {
-				return queryTrafficSourceRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryTrafficSourceRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row TrafficSourceRowDTO) error {
 				return w.Write([]string{
@@ -131,7 +131,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]GeoROIRowDTO, int64, error) {
-				return queryGeoROIRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryGeoROIRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row GeoROIRowDTO) error {
 				return w.Write([]string{
@@ -149,7 +149,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]telegramExportCHRow, int64, error) {
-				return queryTelegramExportRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryTelegramExportRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row telegramExportCHRow) error {
 				return w.Write([]string{
@@ -168,7 +168,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]FilterRejectRowDTO, int64, error) {
-				return queryFilterRejectRows(ctx, r.deps.CHQuery, from, to, limit, offset)
+				return queryFilterRejectRows(ctx, r.deps.ClickHouseQuery, from, to, limit, offset)
 			},
 			func(row FilterRejectRowDTO) error {
 				return w.Write([]string{row.RejectKind, fmt.Sprintf("%d", row.RejectCount)})
@@ -180,7 +180,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]FraudBreakdownRowDTO, int64, error) {
-				return queryFraudBreakdownRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryFraudBreakdownRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row FraudBreakdownRowDTO) error {
 				return w.Write([]string{
@@ -199,7 +199,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]SilentRejectImpressionFunnelRowDTO, int64, error) {
-				return querySilentRejectImpressionFunnelRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return querySilentRejectImpressionFunnelRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row SilentRejectImpressionFunnelRowDTO) error {
 				return w.Write([]string{
@@ -216,7 +216,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]RtbOverviewRowDTO, int64, error) {
-				return queryRtbOverviewRows(ctx, r.deps.CHQuery, from, to, limit, offset)
+				return queryRtbOverviewRows(ctx, r.deps.ClickHouseQuery, from, to, limit, offset)
 			},
 			func(row RtbOverviewRowDTO) error {
 				return w.Write([]string{
@@ -232,7 +232,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]RtbNoBidReasonRowDTO, int64, error) {
-				return queryRtbNoBidReasonRows(ctx, r.deps.CHQuery, from, to, limit, offset)
+				return queryRtbNoBidReasonRows(ctx, r.deps.ClickHouseQuery, from, to, limit, offset)
 			},
 			func(row RtbNoBidReasonRowDTO) error {
 				return w.Write([]string{row.NoBidReason, fmt.Sprintf("%d", row.BidCount)})
@@ -271,22 +271,22 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			},
 		)
 	case "spend-velocity":
-		err = exportCHMapReport(ctx, w, r.deps.CHQuery, campaignIDs, from, to, querySpendVelocityRows,
+		err = exportCHMapReport(ctx, w, r.deps.ClickHouseQuery, campaignIDs, from, to, querySpendVelocityRows,
 			[]string{"bucket", "spend_micro", "clicks"},
 			"bucket", "spend_micro", "clicks",
 		)
 	case "daypart-heatmap":
-		err = exportCHMapReport(ctx, w, r.deps.CHQuery, campaignIDs, from, to, queryDaypartHeatmapRows,
+		err = exportCHMapReport(ctx, w, r.deps.ClickHouseQuery, campaignIDs, from, to, queryDaypartHeatmapRows,
 			[]string{"hour", "clicks"},
 			"hour", "clicks",
 		)
 	case "campaign-geo-device":
-		err = exportCHMapReport(ctx, w, r.deps.CHQuery, campaignIDs, from, to, queryGeoDeviceRows,
+		err = exportCHMapReport(ctx, w, r.deps.ClickHouseQuery, campaignIDs, from, to, queryGeoDeviceRows,
 			[]string{"country", "device", "clicks"},
 			"country", "device", "clicks",
 		)
 	case "source-quality":
-		ivtRates, ierr := queryPlacementIVTRates(ctx, r.deps.CHQuery, campaignIDs, from, to)
+		ivtRates, ierr := queryPlacementIVTRates(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to)
 		if ierr != nil {
 			return ierr
 		}
@@ -295,7 +295,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]reportMetricsCHRow, int64, error) {
-				return queryPlacementReportRows(ctx, r.deps.CHQuery, campaignIDs, from, to, limit, offset)
+				return queryPlacementReportRows(ctx, r.deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 			},
 			func(row reportMetricsCHRow) error {
 				dto := toPlacementReportRowDTO(row, ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)])
@@ -307,12 +307,12 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			},
 		)
 	case "discrepancy-buy-sell":
-		err = exportCHMapReport(ctx, w, r.deps.CHQuery, campaignIDs, from, to, queryDiscrepancyRows,
+		err = exportCHMapReport(ctx, w, r.deps.ClickHouseQuery, campaignIDs, from, to, queryDiscrepancyRows,
 			[]string{"campaign_id", "buy_spend_micro", "sell_rev_micro", "delta_micro", "delta_pct"},
 			"campaign_id", "buy_spend_micro", "sell_rev_micro", "delta_micro", "delta_pct",
 		)
 	case "true-roi":
-		err = exportCHMapReport(ctx, w, r.deps.CHQuery, campaignIDs, from, to, queryTrueROIRows,
+		err = exportCHMapReport(ctx, w, r.deps.ClickHouseQuery, campaignIDs, from, to, queryTrueROIRows,
 			[]string{"campaign_id", "ad_spend_micro", "revenue_micro", "true_profit_micro", "true_roi_pct", "true_cpa_micro", "conversions"},
 			"campaign_id", "ad_spend_micro", "revenue_micro", "true_profit_micro", "true_roi_pct", "true_cpa_micro", "conversions",
 		)
@@ -322,7 +322,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 		}
 		err = paginateCHExport(reportExportPageSize,
 			func(offset, limit int) ([]RtbGeoDeviceRowDTO, int64, error) {
-				return queryRtbGeoDeviceRows(ctx, r.deps.CHQuery, from, to, limit, offset)
+				return queryRtbGeoDeviceRows(ctx, r.deps.ClickHouseQuery, from, to, limit, offset)
 			},
 			func(row RtbGeoDeviceRowDTO) error {
 				return w.Write([]string{

@@ -127,29 +127,29 @@ SELECT count() FROM (
  HAVING sum(billable_impressions) > 0 OR sum(silent_reject_impressions) > 0 OR sum(ivt_impressions) > 0
 )`
 
-func (reports *ReportsHTTPHandlers) registerSilentRejectImpressionFunnelReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerSilentRejectImpressionFunnelReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	perms := []string{"audit:read", "campaigns:read"}
-	mux.HandleFunc("GET /api/v1/reports/silent-reject-impression-funnel", limit(permAny(perms, reports.wrapReport("silent-reject-impression-funnel", reports.getSilentRejectImpressionFunnelReport))))
-	mux.HandleFunc("GET /api/v1/reports/ghost-impression-funnel", limit(permAny(perms, reports.wrapReport("silent-reject-impression-funnel", reports.getSilentRejectImpressionFunnelReport))))
+	mux.HandleFunc("GET /api/v1/reports/silent-reject-impression-funnel", limit(permAny(perms, h.wrapReport("silent-reject-impression-funnel", h.getSilentRejectImpressionFunnelReport))))
+	mux.HandleFunc("GET /api/v1/reports/ghost-impression-funnel", limit(permAny(perms, h.wrapReport("silent-reject-impression-funnel", h.getSilentRejectImpressionFunnelReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getSilentRejectImpressionFunnelReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getSilentRejectImpressionFunnelReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -157,24 +157,24 @@ func (reports *ReportsHTTPHandlers) getSilentRejectImpressionFunnelReport(w http
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, SilentRejectImpressionFunnelReportResponse{
 			Rows:      []SilentRejectImpressionFunnelRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := querySilentRejectImpressionFunnelRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	rows, total, err := querySilentRejectImpressionFunnelRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	var nextCursor string
@@ -183,30 +183,30 @@ func (reports *ReportsHTTPHandlers) getSilentRejectImpressionFunnelReport(w http
 	}
 	httpresponse.JSON(w, http.StatusOK, SilentRejectImpressionFunnelReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func querySilentRejectImpressionFunnelRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]SilentRejectImpressionFunnelRowDTO, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, silentRejectImpressionFunnelCountQuery,
+	if err := clickhouseQuery.QueryRow(ctx, silentRejectImpressionFunnelCountQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 	).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, silentRejectImpressionFunnelQuery,
+	clickhouseRows, err := clickhouseQuery.Query(ctx, silentRejectImpressionFunnelQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
@@ -215,12 +215,12 @@ func querySilentRejectImpressionFunnelRows(
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]SilentRejectImpressionFunnelRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row SilentRejectImpressionFunnelRowDTO
-		if err := chRows.Scan(
+		if err := clickhouseRows.Scan(
 			&row.CampaignID,
 			&row.PlacementID,
 			&row.BillableImpressions,
@@ -233,7 +233,7 @@ func querySilentRejectImpressionFunnelRows(
 		row.IVTImpressionRate = calcIVTRate(row.IVTImpressions, row.BillableImpressions)
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func calcSilentRejectImpressionRate(silentRejectCount, billableImpressions int64) float64 {

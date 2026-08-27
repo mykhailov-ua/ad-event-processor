@@ -51,8 +51,8 @@ func NewLocalTierStore(sourceDir, warmDir string) *LocalTierStore {
 	}
 }
 
-func (store *LocalTierStore) ListHot(_ context.Context, olderThan time.Time) ([]TierObject, error) {
-	entries, err := os.ReadDir(store.SourceDir)
+func (st *LocalTierStore) ListHot(_ context.Context, olderThan time.Time) ([]TierObject, error) {
+	entries, err := os.ReadDir(st.SourceDir)
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (store *LocalTierStore) ListHot(_ context.Context, olderThan time.Time) ([]
 
 		objects = append(objects, TierObject{
 			Key:     name,
-			Path:    filepath.Join(store.SourceDir, name),
+			Path:    filepath.Join(st.SourceDir, name),
 			ModTime: info.ModTime(),
 			Size:    info.Size(),
 		})
@@ -102,26 +102,26 @@ func isHotSegmentName(name string) bool {
 	return strings.HasPrefix(name, "segment_") && strings.HasSuffix(name, ".log")
 }
 
-func (store *LocalTierStore) WriteWarm(_ context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
-	_, err := store.writeWarmFromPath(destKey, bytes.NewReader(plaintext), meta)
+func (st *LocalTierStore) WriteWarm(_ context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
+	_, err := st.writeWarmFromPath(destKey, bytes.NewReader(plaintext), meta)
 	return err
 }
 
-func (store *LocalTierStore) WriteWarmFromFile(_ context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
+func (st *LocalTierStore) WriteWarmFromFile(_ context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
 	file, err := os.Open(filteredPath)
 	if err != nil {
 		return "", err
 	}
 	defer func() { _ = file.Close() }()
-	return store.writeWarmFromPath(destKey, file, meta)
+	return st.writeWarmFromPath(destKey, file, meta)
 }
 
-func (store *LocalTierStore) writeWarmFromPath(destKey string, plaintext io.Reader, meta CompactionMeta) (string, error) {
-	if err := os.MkdirAll(store.WarmDir, 0o755); err != nil {
+func (st *LocalTierStore) writeWarmFromPath(destKey string, plaintext io.Reader, meta CompactionMeta) (string, error) {
+	if err := os.MkdirAll(st.WarmDir, 0o755); err != nil {
 		return "", err
 	}
 
-	destPath := filepath.Join(store.WarmDir, destKey)
+	destPath := filepath.Join(st.WarmDir, destKey)
 	tmpPath := destPath + warmTmpSuffix
 	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -184,15 +184,15 @@ func (store *LocalTierStore) writeWarmFromPath(destKey string, plaintext io.Read
 	return digest.SHA256, nil
 }
 
-func (store *LocalTierStore) RemoveWarmArtifacts(destKey string) {
-	destPath := filepath.Join(store.WarmDir, destKey)
+func (st *LocalTierStore) RemoveWarmArtifacts(destKey string) {
+	destPath := filepath.Join(st.WarmDir, destKey)
 	_ = os.Remove(destPath + warmTmpSuffix)
 	_ = os.Remove(strings.TrimSuffix(destPath, ".zst") + ".meta.json" + warmTmpSuffix)
 	_ = os.Remove(destPath)
 	_ = os.Remove(strings.TrimSuffix(destPath, ".zst") + ".meta.json")
 }
 
-func (store *LocalTierStore) RemoveHot(_ context.Context, obj TierObject) error {
+func (st *LocalTierStore) RemoveHot(_ context.Context, obj TierObject) error {
 	if obj.Path == "" {
 		return fmt.Errorf("empty hot object path")
 	}

@@ -1,7 +1,5 @@
 redis = {}
 
-
 KEYS = {}
-
 
 ARGV = {}

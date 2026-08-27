@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const conversionRejectCHTimeout = 15 * time.Second
+const conversionRejectClickHouseTimeout = 15 * time.Second
 
 type clickSnapshot struct {
 	clickID    string
@@ -24,29 +24,29 @@ type conversionGoalKey struct {
 	goalName   string
 }
 
-type chConversionClickStore struct {
-	ch *database.CHQuery
+type clickhouseConversionClickStore struct {
+	clickhouseQuery *database.CHQuery
 }
 
-func NewCHConversionClickStore(ch *database.CHQuery) *chConversionClickStore {
-	return newCHConversionClickStore(ch)
+func NewClickHouseConversionClickStore(clickhouseQuery *database.CHQuery) *clickhouseConversionClickStore {
+	return newClickHouseConversionClickStore(clickhouseQuery)
 }
 
-func newCHConversionClickStore(ch *database.CHQuery) *chConversionClickStore {
-	if ch == nil {
+func newClickHouseConversionClickStore(clickhouseQuery *database.CHQuery) *clickhouseConversionClickStore {
+	if clickhouseQuery == nil {
 		return nil
 	}
-	return &chConversionClickStore{ch: ch}
+	return &clickhouseConversionClickStore{clickhouseQuery: clickhouseQuery}
 }
 
-func (s *chConversionClickStore) LoadClicks(ctx context.Context, clickIDs []string) (map[string]clickSnapshot, error) {
-	if s == nil || s.ch == nil || len(clickIDs) == 0 {
+func (s *clickhouseConversionClickStore) LoadClicks(ctx context.Context, clickIDs []string) (map[string]clickSnapshot, error) {
+	if s == nil || s.clickhouseQuery == nil || len(clickIDs) == 0 {
 		return nil, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, conversionRejectCHTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, conversionRejectClickHouseTimeout)
 	defer cancel()
 
-	rows, err := s.ch.Query(chCtx, `
+	rows, err := s.clickhouseQuery.Query(clickhouseCtx, `
 SELECT click_id, campaign_id, created_at, country
 FROM clicks
 WHERE click_id IN (?)
@@ -69,8 +69,8 @@ WHERE click_id IN (?)
 	return out, rows.Err()
 }
 
-func (s *chConversionClickStore) LoadExistingGoals(ctx context.Context, keys []conversionGoalKey) (map[conversionGoalKey]struct{}, error) {
-	if s == nil || s.ch == nil || len(keys) == 0 {
+func (s *clickhouseConversionClickStore) LoadExistingGoals(ctx context.Context, keys []conversionGoalKey) (map[conversionGoalKey]struct{}, error) {
+	if s == nil || s.clickhouseQuery == nil || len(keys) == 0 {
 		return nil, nil
 	}
 	clickIDs := make([]string, 0, len(keys))
@@ -94,10 +94,10 @@ func (s *chConversionClickStore) LoadExistingGoals(ctx context.Context, keys []c
 		return nil, nil
 	}
 
-	chCtx, cancel := context.WithTimeout(ctx, conversionRejectCHTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, conversionRejectClickHouseTimeout)
 	defer cancel()
 
-	rows, err := s.ch.Query(chCtx, `
+	rows, err := s.clickhouseQuery.Query(clickhouseCtx, `
 SELECT click_id, campaign_id, JSONExtractString(payload, 'goal_name') AS goal_name
 FROM conversions
 WHERE click_id IN (?)

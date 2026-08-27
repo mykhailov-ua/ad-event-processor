@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Seed operator-friendly demo workspaces for client presentations.
-# Names match web/src/helpers/presentation_labels.ts seed UUID catalog.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"

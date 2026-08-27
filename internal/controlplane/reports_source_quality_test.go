@@ -24,10 +24,10 @@ func TestSourceQualityNeedsDetailRows_holdout(t *testing.T) {
 
 func TestSourceQualityDetailEventQuery_usesDimensionExprs_holdout(t *testing.T) {
 	require.Contains(t, sourceQualityDetailEventQuery, "placement_id")
-	require.Contains(t, sourceQualityDetailEventQuery, chDimCountryExpr)
-	require.Contains(t, sourceQualityDetailEventQuery, chDimCityExpr)
-	require.Contains(t, sourceQualityDetailEventQuery, chDimDeviceExpr)
-	require.Contains(t, sourceQualityDetailEventQuery, chDimSub1Expr)
+	require.Contains(t, sourceQualityDetailEventQuery, clickhouseDimCountryExpr)
+	require.Contains(t, sourceQualityDetailEventQuery, clickhouseDimCityExpr)
+	require.Contains(t, sourceQualityDetailEventQuery, clickhouseDimDeviceExpr)
+	require.Contains(t, sourceQualityDetailEventQuery, clickhouseDimSub1Expr)
 }
 
 func TestAllocatePlacementCampaignShare_prefersClicks(t *testing.T) {

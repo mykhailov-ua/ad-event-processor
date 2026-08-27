@@ -51,6 +51,11 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	ingestion.SetStoreRetryPolicy(
+		cfg.MaxRetries,
+		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+	)
 	runtimeautotune.Apply(cfg)
 
 	loggerCfg := logger.Config{
@@ -515,26 +520,26 @@ func main() {
 			"targeting_index", cfg.RtbTargetingIndexEnabled(),
 		)
 		if cfg.ClickHouseEnabled() {
-			chCtx, chCancel := context.WithTimeout(ctx, 15*time.Second)
-			chConn, chErr := database.ConnectClickHouse(chCtx, string(cfg.CHDSN))
+			clickhouseCtx, chCancel := context.WithTimeout(ctx, 15*time.Second)
+			clickhouseConn, chErr := database.ConnectClickHouse(clickhouseCtx, string(cfg.CHDSN))
 			chCancel()
 			if chErr != nil {
 				slog.Warn("rtb clickhouse writers disabled", "error", chErr)
 			} else {
 				migCtx, migCancel := context.WithTimeout(ctx, 30*time.Second)
-				if migErr := migrate.ApplyClickHouseMigrations(migCtx, chConn); migErr != nil {
+				if migErr := migrate.ApplyClickHouseMigrations(migCtx, clickhouseConn); migErr != nil {
 					slog.Warn("rtb clickhouse migrate failed", "error", migErr)
 				}
 				migCancel()
 				flush := time.Duration(cfg.RtbDealOutcomeFlushMs) * time.Millisecond
-				dealWriter := ingestion.NewRtbDealOutcomeWriter(chConn, flush)
-				exchangeWriter := ingestion.NewRtbExchangeLogWriter(chConn, flush)
+				dealWriter := ingestion.NewRtbDealOutcomeWriter(clickhouseConn, flush)
+				exchangeWriter := ingestion.NewRtbExchangeLogWriter(clickhouseConn, flush)
 				ingestion.SetRtbDealOutcomeWriter(dealWriter)
 				ingestion.SetRtbExchangeLogWriter(exchangeWriter)
 				defer func() {
 					dealWriter.Close()
 					exchangeWriter.Close()
-					_ = chConn.Close()
+					_ = clickhouseConn.Close()
 				}()
 				slog.Info("rtb clickhouse writers enabled", "flush_ms", cfg.RtbDealOutcomeFlushMs)
 			}
@@ -628,7 +633,16 @@ func main() {
 			if redisClient == nil {
 				continue
 			}
-			streamProducers[i] = ingestion.NewStreamProducer(redisClient, cfg.RedisStreamName, cfg.StreamMaxLen, writeTimeout)
+			streamProducers[i] = ingestion.NewStreamProducer(
+				redisClient,
+				cfg.RedisStreamName,
+				cfg.StreamMaxLen,
+				writeTimeout,
+				ingestion.StreamProducerConfig{
+					MaxBatchSize: cfg.EventBatchSize,
+					FlushWait:    time.Duration(cfg.EventFlushMs) * time.Millisecond,
+				},
+			)
 		}
 		gnetHandler.SetStreamProducers(streamProducers)
 		slog.Info("redis stream producers enabled", "stream", cfg.RedisStreamName, "shards", len(redisShards))

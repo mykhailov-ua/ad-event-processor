@@ -2,8 +2,6 @@ package domain
 
 import "encoding/json"
 
-// ConversionRejectRules overrides processor settlement smart-reject per campaign.
-// Null fields inherit deployment env defaults (CONVERSION_REJECT_*).
 type ConversionRejectRules struct {
 	Enabled            *bool `json:"enabled,omitempty"`
 	MinTTCDurationMs   *int  `json:"min_ttc_ms,omitempty"`

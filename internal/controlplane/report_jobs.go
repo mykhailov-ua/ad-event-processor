@@ -319,18 +319,18 @@ func parseReportRangeFromStrings(fromStr, toStr string) (time.Time, time.Time, e
 	return from, to, nil
 }
 
-func (reports *ReportsHTTPHandlers) registerReportJobs(mux *http.ServeMux) {
-	if reports.ReportJobs == nil {
+func (h *ReportsHTTPHandlers) registerReportJobs(mux *http.ServeMux) {
+	if h.ReportJobs == nil {
 		return
 	}
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("POST /api/v1/reports/jobs", limit(perm("customers:read", reports.postReportJob)))
-	mux.HandleFunc("GET /api/v1/reports/jobs/{id}", limit(perm("customers:read", reports.getReportJob)))
-	mux.HandleFunc("GET /api/v1/reports/jobs/{id}/download", limit(perm("customers:read", reports.downloadReportJob)))
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("POST /api/v1/reports/jobs", limit(perm("customers:read", h.postReportJob)))
+	mux.HandleFunc("GET /api/v1/reports/jobs/{id}", limit(perm("customers:read", h.getReportJob)))
+	mux.HandleFunc("GET /api/v1/reports/jobs/{id}/download", limit(perm("customers:read", h.downloadReportJob)))
 }
 
-func (reports *ReportsHTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {
+func (h *ReportsHTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read body")
@@ -341,41 +341,41 @@ func (reports *ReportsHTTPHandlers) postReportJob(w http.ResponseWriter, r *http
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
 		return
 	}
-	if reports.AuthorizeCustomerAccess != nil {
-		if err := reports.AuthorizeCustomerAccess(r, spec.CustomerID); err != nil {
-			reports.writeServiceError(w, err)
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, spec.CustomerID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
 	idemKey := r.Header.Get("Idempotency-Key")
-	jobID, err := reports.ReportJobs.CreateJob(r.Context(), spec, idemKey)
+	jobID, err := h.ReportJobs.CreateJob(r.Context(), spec, idemKey)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	status, _ := reports.ReportJobs.GetJob(r.Context(), jobID)
+	status, _ := h.ReportJobs.GetJob(r.Context(), jobID)
 	httpresponse.JSON(w, http.StatusCreated, status)
 }
 
-func (reports *ReportsHTTPHandlers) getReportJob(w http.ResponseWriter, r *http.Request) {
+func (h *ReportsHTTPHandlers) getReportJob(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("id")
-	status, ok := reports.ReportJobs.GetJob(r.Context(), jobID)
+	status, ok := h.ReportJobs.GetJob(r.Context(), jobID)
 	if !ok {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")
 		return
 	}
-	if reports.AuthorizeCustomerAccess != nil {
-		if err := reports.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
-			reports.writeServiceError(w, err)
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
 	httpresponse.JSON(w, http.StatusOK, status)
 }
 
-func (reports *ReportsHTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request) {
+func (h *ReportsHTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("id")
-	f, status, err := reports.ReportJobs.OpenDownload(r.Context(), jobID)
+	f, status, err := h.ReportJobs.OpenDownload(r.Context(), jobID)
 	if err != nil {
 		if status.ID == "" {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "job not found")
@@ -385,9 +385,9 @@ func (reports *ReportsHTTPHandlers) downloadReportJob(w http.ResponseWriter, r *
 		return
 	}
 	defer func() { _ = f.Close() }()
-	if reports.AuthorizeCustomerAccess != nil {
-		if err := reports.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
-			reports.writeServiceError(w, err)
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}

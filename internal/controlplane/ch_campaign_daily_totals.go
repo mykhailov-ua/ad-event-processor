@@ -40,13 +40,13 @@ func campaignDailyTotalKey(campaignID uuid.UUID, day time.Time) string {
 	return campaignID.String() + "|" + day.UTC().Format("2006-01-02")
 }
 
-func queryCHCampaignDailyEventTotals(
+func queryClickHouseCampaignDailyEventTotals(
 	ctx context.Context,
-	ch *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 ) (map[string]uint64, error) {
-	if ch == nil {
+	if clickhouseQuery == nil {
 		return nil, fmt.Errorf("clickhouse not configured")
 	}
 	if len(campaignIDs) == 0 {
@@ -54,7 +54,7 @@ func queryCHCampaignDailyEventTotals(
 	}
 	fromUTC := from.UTC()
 	toUTC := to.UTC()
-	rows, err := ch.Query(ctx, campaignDailyCHTotalsQuery,
+	rows, err := clickhouseQuery.Query(ctx, campaignDailyCHTotalsQuery,
 		campaignIDs, fromUTC, toUTC,
 		campaignIDs, fromUTC, toUTC,
 		campaignIDs, fromUTC, toUTC,

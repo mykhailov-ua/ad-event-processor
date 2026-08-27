@@ -1,3 +1,5 @@
+-- +goose Up
+-- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS report_saved_views (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_id TEXT NOT NULL DEFAULT 'system',
@@ -35,3 +37,10 @@ CREATE INDEX IF NOT EXISTS report_schedules_next_run_idx
 
 CREATE INDEX IF NOT EXISTS report_schedules_customer_idx
     ON report_schedules (customer_id, created_at DESC);
+-- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+DROP TABLE IF EXISTS report_schedules;
+DROP TABLE IF EXISTS report_saved_views;
+-- +goose StatementEnd

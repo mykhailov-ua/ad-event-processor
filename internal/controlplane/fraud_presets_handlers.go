@@ -12,8 +12,8 @@ type FraudPresetsService interface {
 	UpdateFraudPolicyPreset(ctx context.Context, name string, req PatchFraudPolicyPresetRequest) (FraudPolicyPresetDTO, error)
 }
 
-func (fraud *FraudHTTPHandlers) registerFraudPresetRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, permAny func([]string, http.HandlerFunc) http.HandlerFunc) {
-	if fraud == nil || fraud.Presets == nil {
+func (h *FraudHTTPHandlers) registerFraudPresetRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, permAny func([]string, http.HandlerFunc) http.HandlerFunc) {
+	if h == nil || h.Presets == nil {
 		return
 	}
 	mux.HandleFunc("GET /api/v1/fraud/presets", limit(permAny([]string{
@@ -21,13 +21,13 @@ func (fraud *FraudHTTPHandlers) registerFraudPresetRoutes(mux *http.ServeMux, li
 		"campaigns:read:masked",
 		"audit:read",
 		"shards:read",
-	}, fraud.listFraudPresets)))
+	}, h.listFraudPresets)))
 }
 
-func (fraud *FraudHTTPHandlers) listFraudPresets(w http.ResponseWriter, r *http.Request) {
-	presets, err := fraud.Presets.ListFraudPolicyPresets(r.Context())
+func (h *FraudHTTPHandlers) listFraudPresets(w http.ResponseWriter, r *http.Request) {
+	presets, err := h.Presets.ListFraudPolicyPresets(r.Context())
 	if err != nil {
-		fraud.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if presets == nil {

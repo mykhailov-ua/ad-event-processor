@@ -15,8 +15,8 @@ type InvoiceWorker struct {
 	service *Service
 }
 
-func NewInvoiceWorker(service *Service) *InvoiceWorker {
-	return &InvoiceWorker{service: service}
+func NewInvoiceWorker(s *Service) *InvoiceWorker {
+	return &InvoiceWorker{service: s}
 }
 
 func (w *InvoiceWorker) Start(ctx context.Context) {
@@ -98,19 +98,19 @@ func (w *InvoiceWorker) RunInvoiceMonthForTest(ctx context.Context, month time.T
 
 const invoiceCronLockKey = int64(0x657370785f696e76)
 
-func (service *Service) tryInvoiceCronLock(ctx context.Context) (bool, error) {
+func (s *Service) tryInvoiceCronLock(ctx context.Context) (bool, error) {
 	var ok bool
-	err := service.pool.QueryRow(ctx, `SELECT pg_try_advisory_lock($1)`, invoiceCronLockKey).Scan(&ok)
+	err := s.pool.QueryRow(ctx, `SELECT pg_try_advisory_lock($1)`, invoiceCronLockKey).Scan(&ok)
 	return ok, err
 }
 
-func (service *Service) releaseInvoiceCronLock(ctx context.Context) {
-	if service == nil || service.pool == nil {
+func (s *Service) releaseInvoiceCronLock(ctx context.Context) {
+	if s == nil || s.pool == nil {
 		return
 	}
 	ctx, cancel := context.WithTimeout(ctx, advisoryUnlockTimeout)
 	defer cancel()
-	_, err := service.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, invoiceCronLockKey)
+	_, err := s.pool.Exec(ctx, `SELECT pg_advisory_unlock($1)`, invoiceCronLockKey)
 	if err == nil {
 		return
 	}
@@ -121,11 +121,11 @@ func (service *Service) releaseInvoiceCronLock(ctx context.Context) {
 	slog.Warn("invoice cron advisory unlock failed", "error", err)
 }
 
-func (service *Service) GenerateInvoiceForCustomers(ctx context.Context, customerIDs []uuid.UUID, month time.Time) {
+func (s *Service) GenerateInvoiceForCustomers(ctx context.Context, customerIDs []uuid.UUID, month time.Time) {
 	for _, id := range customerIDs {
-		inv, err := service.GenerateInvoice(ctx, id, month)
+		inv, err := s.GenerateInvoice(ctx, id, month)
 		if err == nil {
-			_ = service.DeliverInvoice(ctx, inv)
+			_ = s.DeliverInvoice(ctx, inv)
 		}
 	}
 }

@@ -17,7 +17,7 @@ func deliveryModeFromInput(input NotificationInput) db.NotifierDeliveryMode {
 	return db.NotifierDeliveryModeFALLBACK
 }
 
-func (service *Service) resolveNotificationBodyFromInput(ctx context.Context, input NotificationInput) (string, error) {
+func (s *Service) resolveNotificationBodyFromInput(ctx context.Context, input NotificationInput) (string, error) {
 	if input.TemplateID == "" {
 		if input.Body == "" {
 			return "", ErrBodyRequired
@@ -25,7 +25,7 @@ func (service *Service) resolveNotificationBodyFromInput(ctx context.Context, in
 		return input.Body, nil
 	}
 
-	tmpl, err := service.queries.GetTemplate(ctx, input.TemplateID)
+	tmpl, err := s.queries.GetTemplate(ctx, input.TemplateID)
 	if err != nil {
 		return "", fmt.Errorf("load template %s: %w", input.TemplateID, err)
 	}
@@ -47,7 +47,7 @@ func (service *Service) resolveNotificationBodyFromInput(ctx context.Context, in
 	return body, nil
 }
 
-func (service *Service) createNotificationFromInput(ctx context.Context, input NotificationInput, body string) (db.NotifierNotification, error) {
+func (s *Service) createNotificationFromInput(ctx context.Context, input NotificationInput, body string) (db.NotifierNotification, error) {
 	provider, err := ParseProviderName(input.Provider)
 	if err != nil {
 		return db.NotifierNotification{}, err
@@ -67,7 +67,7 @@ func (service *Service) createNotificationFromInput(ctx context.Context, input N
 		return db.NotifierNotification{}, fmt.Errorf("generate notification id: %w", err)
 	}
 
-	notification, err := service.queries.CreateNotification(ctx, db.CreateNotificationParams{
+	notification, err := s.queries.CreateNotification(ctx, db.CreateNotificationParams{
 		ID:                 pgtype.UUID{Bytes: id, Valid: true},
 		Provider:           provider,
 		Recipient:          input.Recipient,
@@ -86,20 +86,20 @@ func (service *Service) createNotificationFromInput(ctx context.Context, input N
 	return notification, nil
 }
 
-func (service *Service) SendNotificationInput(ctx context.Context, input NotificationInput) (SendNotificationResult, error) {
+func (s *Service) SendNotificationInput(ctx context.Context, input NotificationInput) (SendNotificationResult, error) {
 	if input.Recipient == "" {
 		return SendNotificationResult{}, ErrRecipientRequired
 	}
-	body, err := service.resolveNotificationBodyFromInput(ctx, input)
+	body, err := s.resolveNotificationBodyFromInput(ctx, input)
 	if err != nil {
 		return SendNotificationResult{}, err
 	}
-	if service.rateLimiter != nil && !service.rateLimiter.allow(input.Recipient) {
+	if s.rateLimiter != nil && !s.rateLimiter.allow(input.Recipient) {
 		return SendNotificationResult{}, ErrRateLimited
 	}
 
 	if input.DedupKey != "" {
-		if existing, ok, err := service.findActiveByDedupKey(ctx, input.DedupKey); err != nil {
+		if existing, ok, err := s.findActiveByDedupKey(ctx, input.DedupKey); err != nil {
 			return SendNotificationResult{}, err
 		} else if ok {
 			return SendNotificationResult{
@@ -110,7 +110,7 @@ func (service *Service) SendNotificationInput(ctx context.Context, input Notific
 		}
 	}
 
-	notification, err := service.createNotificationFromInput(ctx, input, body)
+	notification, err := s.createNotificationFromInput(ctx, input, body)
 	if err != nil {
 		return SendNotificationResult{}, err
 	}

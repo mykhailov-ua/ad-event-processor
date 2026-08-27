@@ -8,7 +8,6 @@ const (
 	ConversionRejectDatacenterIP = "conversion_datacenter_ip"
 )
 
-// ConversionRejectReasonWeights documents cold-path conversion reject severity (not hot-path FraudReasonID).
 var ConversionRejectReasonWeights = map[string]uint8{
 	ConversionRejectNoClick:      50,
 	ConversionRejectLowTTC:       45,

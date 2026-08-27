@@ -14,12 +14,12 @@ import (
 )
 
 type ReconciliationWorker struct {
-	pgConn     PostgresConn
-	chConn     ClickHouseConn
-	repo       domain.CampaignRepository
-	driftLimit float64
-	lag        time.Duration
-	interval   time.Duration
+	pgConn         PostgresConn
+	clickhouseConn ClickHouseConn
+	repo           domain.CampaignRepository
+	driftLimit     float64
+	lag            time.Duration
+	interval       time.Duration
 }
 
 func NewReconciliationWorker(
@@ -31,12 +31,12 @@ func NewReconciliationWorker(
 	interval time.Duration,
 ) *ReconciliationWorker {
 	return &ReconciliationWorker{
-		pgConn:     postgresConn,
-		chConn:     clickhouseConn,
-		repo:       repo,
-		driftLimit: driftLimit,
-		lag:        lag,
-		interval:   interval,
+		pgConn:         postgresConn,
+		clickhouseConn: clickhouseConn,
+		repo:           repo,
+		driftLimit:     driftLimit,
+		lag:            lag,
+		interval:       interval,
 	}
 }
 
@@ -51,7 +51,7 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 	}
 
 	until := time.Now().Add(-rw.lag)
-	chSpends, err := rw.chConn.QueryAggregatedSpend(ctx, until)
+	clickhouseSpends, err := rw.clickhouseConn.QueryAggregatedSpend(ctx, until)
 	if err != nil {
 		return fmt.Errorf("reconciliation failed to query ClickHouse aggregates: %w", err)
 	}
@@ -68,12 +68,12 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 	for _, c := range campaigns {
 		pgSpend := pgSpends[c.ID]
 
-		chSpend := chSpends[c.ID]
+		clickhouseSpend := clickhouseSpends[c.ID]
 
 		var drift float64
 		if pgSpend > 0 {
-			drift = math.Abs(float64(pgSpend-chSpend)) / float64(pgSpend)
-		} else if chSpend > 0 {
+			drift = math.Abs(float64(pgSpend-clickhouseSpend)) / float64(pgSpend)
+		} else if clickhouseSpend > 0 {
 			drift = 1.0
 		}
 
@@ -83,7 +83,7 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 			slog.Warn("Reconciliation: CRITICAL DATA DRIFT DETECTED",
 				"campaign_id", c.ID,
 				"pg_spend", pgSpend,
-				"ch_spend", chSpend,
+				"clickhouse_spend", clickhouseSpend,
 				"drift_ratio", drift,
 				"limit", rw.driftLimit,
 			)
@@ -91,7 +91,7 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 			slog.Info("Reconciliation: campaign balances within normal drift limits",
 				"campaign_id", c.ID,
 				"pg_spend", pgSpend,
-				"ch_spend", chSpend,
+				"clickhouse_spend", clickhouseSpend,
 				"drift_ratio", drift,
 			)
 		}

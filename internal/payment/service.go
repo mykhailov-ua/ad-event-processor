@@ -36,32 +36,32 @@ type CreateIntentResult struct {
 	DepositQRSVG   string
 }
 
-func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
-	providerName := DefaultCheckoutProvider(service.cfg)
+func (s *Service) CreatePaymentIntent(ctx context.Context, customerID uuid.UUID, amountMicro int64, currency, idempotencyKey string, metadata map[string]string) (CreateIntentResult, error) {
+	providerName := DefaultCheckoutProvider(s.cfg)
 	if metadata != nil {
 		if pName := metadata["provider"]; pName != "" {
 			providerName = pName
 		}
 	}
 
-	intent, claimed, err := service.claimPaymentIntent(ctx, customerID, amountMicro, currency, idempotencyKey, metadata, providerName)
+	intent, claimed, err := s.claimPaymentIntent(ctx, customerID, amountMicro, currency, idempotencyKey, metadata, providerName)
 	if err != nil {
 		return CreateIntentResult{}, err
 	}
 	if !claimed {
-		return service.awaitFinalizedIntent(ctx, intent, customerID, amountMicro, currency)
+		return s.awaitFinalizedIntent(ctx, intent, customerID, amountMicro, currency)
 	}
 
-	provRef, checkoutURL, err := CreateCheckout(ctx, service.cfg, providerName, amountMicro, currency, metadata, idempotencyKey)
+	provRef, checkoutURL, err := CreateCheckout(ctx, s.cfg, providerName, amountMicro, currency, metadata, idempotencyKey)
 	if err != nil {
-		_ = service.markIntentFailed(ctx, intent.ID)
+		_ = s.markIntentFailed(ctx, intent.ID)
 		if errors.Is(err, ErrProviderNotConfigured) {
 			return CreateIntentResult{}, err
 		}
 		return CreateIntentResult{}, fmt.Errorf("%w: %w", ErrCheckoutUnavailable, err)
 	}
 
-	finalized, err := service.finalizePaymentIntent(ctx, intent.ID, provRef, checkoutURL, metadata)
+	finalized, err := s.finalizePaymentIntent(ctx, intent.ID, provRef, checkoutURL, metadata)
 	if err != nil {
 		return CreateIntentResult{}, err
 	}
@@ -76,7 +76,7 @@ func (service *Service) CreatePaymentIntent(ctx context.Context, customerID uuid
 	}, nil
 }
 
-func (service *Service) claimPaymentIntent(
+func (s *Service) claimPaymentIntent(
 	ctx context.Context,
 	customerID uuid.UUID,
 	amountMicro int64,
@@ -84,7 +84,7 @@ func (service *Service) claimPaymentIntent(
 	metadata map[string]string,
 	providerName string,
 ) (db.PaymentPaymentIntent, bool, error) {
-	conn, err := service.pool.Acquire(ctx)
+	conn, err := s.pool.Acquire(ctx)
 	if err != nil {
 		return db.PaymentPaymentIntent{}, false, fmt.Errorf("acquire conn for idempotency lock: %w", err)
 	}
@@ -146,7 +146,7 @@ func (service *Service) claimPaymentIntent(
 	return intent, true, nil
 }
 
-func (service *Service) finalizePaymentIntent(
+func (s *Service) finalizePaymentIntent(
 	ctx context.Context,
 	intentID pgtype.UUID,
 	provRef, checkoutURL string,
@@ -163,7 +163,7 @@ func (service *Service) finalizePaymentIntent(
 	}
 
 	var intent db.PaymentPaymentIntent
-	err = pgx.BeginFunc(ctx, service.pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		row := tx.QueryRow(ctx, `
 			UPDATE payment.payment_intents
 			SET status = $2,
@@ -185,7 +185,7 @@ func (service *Service) finalizePaymentIntent(
 	return intent, nil
 }
 
-func (service *Service) awaitFinalizedIntent(
+func (s *Service) awaitFinalizedIntent(
 	ctx context.Context,
 	existing db.PaymentPaymentIntent,
 	customerID uuid.UUID,
@@ -202,7 +202,7 @@ func (service *Service) awaitFinalizedIntent(
 			return CreateIntentResult{}, fmt.Errorf("timeout waiting for payment intent checkout")
 		}
 		time.Sleep(10 * time.Millisecond)
-		refreshed, err := db.New(service.pool).GetPaymentIntentByIdempotencyKey(ctx, existing.IdempotencyKey)
+		refreshed, err := db.New(s.pool).GetPaymentIntentByIdempotencyKey(ctx, existing.IdempotencyKey)
 		if err != nil {
 			return CreateIntentResult{}, err
 		}
@@ -210,8 +210,8 @@ func (service *Service) awaitFinalizedIntent(
 	}
 }
 
-func (service *Service) markIntentFailed(ctx context.Context, intentID pgtype.UUID) error {
-	_, err := db.New(service.pool).UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
+func (s *Service) markIntentFailed(ctx context.Context, intentID pgtype.UUID) error {
+	_, err := db.New(s.pool).UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
 		ID:     intentID,
 		Status: db.PaymentPaymentIntentStatusFAILED,
 	})
@@ -232,16 +232,16 @@ func reconcileIdempotentIntent(existing db.PaymentPaymentIntent, customerID uuid
 	}, nil
 }
 
-func (service *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (domain.PaymentIntent, error) {
-	intent, err := db.New(service.pool).GetPaymentIntent(ctx, pgtype.UUID{Bytes: intentID, Valid: true})
+func (s *Service) GetPaymentIntent(ctx context.Context, intentID uuid.UUID) (domain.PaymentIntent, error) {
+	intent, err := db.New(s.pool).GetPaymentIntent(ctx, pgtype.UUID{Bytes: intentID, Valid: true})
 	if err != nil {
 		return domain.PaymentIntent{}, mapNotFound(err, ErrPaymentIntentNotFound)
 	}
 	return paymentIntentFromDB(intent), nil
 }
 
-func (service *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.PaymentIntent, int64, error) {
-	q := db.New(service.pool)
+func (s *Service) ListPaymentIntents(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.PaymentIntent, int64, error) {
+	q := db.New(s.pool)
 	custUUID := pgtype.UUID{Bytes: customerID, Valid: true}
 	listParams := db.ListPaymentIntentsParams{
 		CustomerID: custUUID,
@@ -287,7 +287,7 @@ func ledgerIdempotencyKey(intentID uuid.UUID) string {
 	return "payment:" + intentID.String()
 }
 
-func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, rawEvent string) error {
+func (s *Service) ProcessStripeWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, rawEvent string) error {
 	h := sha256.New()
 	h.Write(payload)
 	payloadHash := h.Sum(nil)
@@ -297,7 +297,7 @@ func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID, event
 		return fmt.Errorf("redact stripe webhook payload: %w", err)
 	}
 
-	err = pgx.BeginFunc(ctx, service.pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		txQueries := db.New(tx)
 
 		_, err := txQueries.GetWebhookEvent(ctx, db.GetWebhookEventParams{
@@ -408,12 +408,12 @@ func (service *Service) ProcessStripeWebhook(ctx context.Context, eventID, event
 	return err
 }
 
-func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, txHash string, confirmations int) error {
+func (s *Service) ProcessCryptoWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, txHash string, confirmations int) error {
 	h := sha256.New()
 	h.Write(payload)
 	payloadHash := h.Sum(nil)
 
-	err := pgx.BeginFunc(ctx, service.pool, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		txQueries := db.New(tx)
 
 		_, err := txQueries.GetWebhookEvent(ctx, db.GetWebhookEventParams{
@@ -479,8 +479,8 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID, event
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusIGNORED, "underpay")
 		}
 
-		if amountMicro < service.cfg.CryptoMinPaymentMicro {
-			slog.Warn("crypto webhook amount below minimum", "intent_id", uuid.UUID(intent.ID.Bytes), "min_amount", service.cfg.CryptoMinPaymentMicro, "webhook_amount", amountMicro)
+		if amountMicro < s.cfg.CryptoMinPaymentMicro {
+			slog.Warn("crypto webhook amount below minimum", "intent_id", uuid.UUID(intent.ID.Bytes), "min_amount", s.cfg.CryptoMinPaymentMicro, "webhook_amount", amountMicro)
 			if _, err := txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
 				ID:          intent.ID,
 				Status:      db.PaymentPaymentIntentStatusFAILED,
@@ -491,8 +491,8 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID, event
 			return updateCryptoWebhookStatus(ctx, txQueries, eventID, db.PaymentWebhookEventStatusIGNORED, "below minimum payment limit")
 		}
 
-		if confirmations < service.cfg.CryptoConfirmationDepth {
-			slog.Info("crypto webhook pending confirmations", "intent_id", uuid.UUID(intent.ID.Bytes), "confirmations", confirmations, "required", service.cfg.CryptoConfirmationDepth)
+		if confirmations < s.cfg.CryptoConfirmationDepth {
+			slog.Info("crypto webhook pending confirmations", "intent_id", uuid.UUID(intent.ID.Bytes), "confirmations", confirmations, "required", s.cfg.CryptoConfirmationDepth)
 			_, err = txQueries.UpdatePaymentIntentStatus(ctx, db.UpdatePaymentIntentStatusParams{
 				ID:          intent.ID,
 				Status:      db.PaymentPaymentIntentStatusPROCESSING,
@@ -551,7 +551,7 @@ func (service *Service) ProcessCryptoWebhook(ctx context.Context, eventID, event
 	return err
 }
 
-func (service *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRefundID, paymentIntentRef string, refundAmountMicro int64, refundStatus string) error {
+func (s *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRefundID, paymentIntentRef string, refundAmountMicro int64, refundStatus string) error {
 	h := sha256.New()
 	h.Write(payload)
 	payloadHash := h.Sum(nil)
@@ -561,7 +561,7 @@ func (service *Service) ProcessStripeRefundWebhook(ctx context.Context, eventID,
 		return fmt.Errorf("redact stripe webhook payload: %w", err)
 	}
 
-	err = pgx.BeginFunc(ctx, service.pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		txQueries := db.New(tx)
 
 		_, err := txQueries.GetWebhookEvent(ctx, db.GetWebhookEventParams{

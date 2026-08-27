@@ -32,7 +32,6 @@ func TestProcessorWeight_EffectiveReadCount(t *testing.T) {
 }
 
 func TestProcessorWeight_HTTPPoll(t *testing.T) {
-	// mock HTTP upstream
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/ops/processor-weights", r.URL.Path)
 		_ = json.NewEncoder(w).Encode(map[string]any{
@@ -58,7 +57,7 @@ func TestProcessorWeight_HTTPPoll(t *testing.T) {
 }
 
 func TestProcessorWeight_PgGateDrain(t *testing.T) {
-	gate := NewProcessorPgGate(1, 2)
+	gate := NewProcessorPostgresGate(1, 2)
 	ctrl := NewProcessorWeightController(ProcessorWeightConfig{
 		NodeID:        "processor",
 		InstanceLabel: "processor",

@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Load-test port helpers: read .env.load-test, derive instance ports (no literals here).
-
 load_test_env_file() {
   local root="${1:-${ROOT:-}}"
   if [[ -z "$root" ]]; then

@@ -53,13 +53,13 @@ type FraudHTTPHandlers struct {
 	WriteServiceError       func(http.ResponseWriter, error)
 }
 
-func (fraud *FraudHTTPHandlers) Register(mux *http.ServeMux) {
-	if fraud == nil {
+func (h *FraudHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil {
 		return
 	}
-	limit := fraud.ApplyRateLimit
-	perm := fraud.RequirePermission
-	permAny := fraud.RequireAnyPermission
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	permAny := h.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -70,19 +70,19 @@ func (fraud *FraudHTTPHandlers) Register(mux *http.ServeMux) {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	if fraud.Labels != nil {
-		mux.HandleFunc("GET /api/v1/fraud/labels", limit(perm("audit:read", fraud.listFraudLabels)))
-		mux.HandleFunc("POST /api/v1/fraud/labels", limit(permAny([]string{"campaigns:write", "shards:write"}, fraud.postFraudLabel)))
-		mux.HandleFunc("POST /api/v1/fraud/labels/bulk", limit(permAny([]string{"campaigns:write", "shards:write"}, fraud.postFraudLabelsBulk)))
+	if h.Labels != nil {
+		mux.HandleFunc("GET /api/v1/fraud/labels", limit(perm("audit:read", h.listFraudLabels)))
+		mux.HandleFunc("POST /api/v1/fraud/labels", limit(permAny([]string{"campaigns:write", "shards:write"}, h.postFraudLabel)))
+		mux.HandleFunc("POST /api/v1/fraud/labels/bulk", limit(permAny([]string{"campaigns:write", "shards:write"}, h.postFraudLabelsBulk)))
 	}
-	fraud.registerFraudDecisionRoutes(mux, limit, perm)
-	fraud.registerFraudIntegrationRoutes(mux, limit, perm)
-	fraud.registerFraudOverrideRoutes(mux, limit, permAny)
-	fraud.registerFraudPresetRoutes(mux, limit, permAny)
+	h.registerFraudDecisionRoutes(mux, limit, perm)
+	h.registerFraudIntegrationRoutes(mux, limit, perm)
+	h.registerFraudOverrideRoutes(mux, limit, permAny)
+	h.registerFraudPresetRoutes(mux, limit, permAny)
 }
 
-func (fraud *FraudHTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := fraud.resolveCustomerID(w, r)
+func (h *FraudHTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveCustomerID(w, r)
 	if !ok {
 		return
 	}
@@ -99,9 +99,9 @@ func (fraud *FraudHTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.R
 		limit = fraudManualLabelsMaxLimit
 	}
 
-	labels, err := fraud.Labels.ListMLManualLabelsForCustomer(r.Context(), customerID, limit)
+	labels, err := h.Labels.ListMLManualLabelsForCustomer(r.Context(), customerID, limit)
 	if err != nil {
-		fraud.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if labels == nil {
@@ -110,8 +110,8 @@ func (fraud *FraudHTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.R
 	httpresponse.JSON(w, http.StatusOK, labels)
 }
 
-func (fraud *FraudHTTPHandlers) postFraudLabel(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := fraud.resolveCustomerID(w, r)
+func (h *FraudHTTPHandlers) postFraudLabel(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveCustomerID(w, r)
 	if !ok {
 		return
 	}
@@ -132,15 +132,15 @@ func (fraud *FraudHTTPHandlers) postFraudLabel(w http.ResponseWriter, r *http.Re
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "label must be 0 or 1")
 		return
 	}
-	if err := fraud.Labels.UpsertMLManualLabelForCustomer(r.Context(), customerID, strings.ToLower(req.IPHash), req.Label, req.Reason); err != nil {
-		fraud.writeServiceError(w, err)
+	if err := h.Labels.UpsertMLManualLabelForCustomer(r.Context(), customerID, strings.ToLower(req.IPHash), req.Label, req.Reason); err != nil {
+		h.writeServiceError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (fraud *FraudHTTPHandlers) postFraudLabelsBulk(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := fraud.resolveCustomerID(w, r)
+func (h *FraudHTTPHandlers) postFraudLabelsBulk(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveCustomerID(w, r)
 	if !ok {
 		return
 	}
@@ -177,15 +177,15 @@ func (fraud *FraudHTTPHandlers) postFraudLabelsBulk(w http.ResponseWriter, r *ht
 			Reason: row.Reason,
 		}
 	}
-	upserted, err := fraud.Labels.BulkUpsertMLManualLabelsForCustomer(r.Context(), customerID, rows)
+	upserted, err := h.Labels.BulkUpsertMLManualLabelsForCustomer(r.Context(), customerID, rows)
 	if err != nil {
-		fraud.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, FraudManualLabelBulkResponse{Upserted: upserted})
 }
 
-func (fraud *FraudHTTPHandlers) resolveCustomerID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+func (h *FraudHTTPHandlers) resolveCustomerID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	var customerID uuid.UUID
 	if custStr := r.URL.Query().Get("customer_id"); custStr != "" {
 		id, err := uuid.Parse(custStr)
@@ -195,10 +195,10 @@ func (fraud *FraudHTTPHandlers) resolveCustomerID(w http.ResponseWriter, r *http
 		}
 		customerID = id
 	}
-	if fraud.ResolveCustomerID != nil {
-		resolved, err := fraud.ResolveCustomerID(r, nonNilUUID(customerID))
+	if h.ResolveCustomerID != nil {
+		resolved, err := h.ResolveCustomerID(r, nonNilUUID(customerID))
 		if err != nil {
-			fraud.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return uuid.Nil, false
 		}
 		customerID = resolved
@@ -210,9 +210,9 @@ func (fraud *FraudHTTPHandlers) resolveCustomerID(w http.ResponseWriter, r *http
 	return customerID, true
 }
 
-func (fraud *FraudHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
-	if fraud.WriteServiceError != nil {
-		fraud.WriteServiceError(w, err)
+func (h *FraudHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+	if h.WriteServiceError != nil {
+		h.WriteServiceError(w, err)
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "internal error")

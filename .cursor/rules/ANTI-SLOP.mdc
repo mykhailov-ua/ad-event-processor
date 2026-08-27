@@ -31,7 +31,7 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | ML action semantics lie | Doc or operator text implies per-IP ghosting; code flips campaign PG flag or only enqueues when flag already on |
 | Analytics name drift | Reports/UI still `ghost_*` while wire/CH uses `silent_reject_event`; funnels under-count silent rejects |
 | Product-prefixed embed paths | Static like `ad-event-processor-track.js` / `adEventProcessorTrack` in shipped snippets (canonical: neutral `track.js`, export `trackEvent` when `web/src/static/` returns) |
-| Marketing in tech docs | See **Documentation lie modes** below and `naming.mdc` marketing ban |
+| Marketing in tech docs | `naming.mdc` Forbidden marketing prose; doc lie rows below |
 | Gate bureaucracy | New `*_gate.sh` that only wraps existing gates, or `exit 0` when the named check failed |
 | Orchestrator double-run | `pr_fast.sh` child re-invokes a gate `pr_fast` already runs (naming, `admin_web`, skip-reason scan) |
 | Admin doc ask -> code | Operator requests `.mdc` or `*_MILESTONE.md`; agent patches code | Spec-only until milestone is REVIEW and operator requests implementation (`MILESTONE_TEMPLATE.md`, `ui.mdc`) |
@@ -320,12 +320,7 @@ Applies to `README.md`, `docs/`, `deploy/vendor/`, admin user-visible copy, Graf
 
 Open implementation gaps: `deploy/vendor/antifraud_backlog.md` (semantic slugs, not ticket IDs). Do not close backlog items in docs alone.
 
-CI: `bash scripts/ci/antifraud_doc_gate.sh` (in `pr_fast.sh`; stale hot-path text, false eliminated claims, legacy naming in vendor docs).
-
-## Forbidden marketing prose (`naming.mdc`)
-
-Banned words and sections in technical docs (not in `deploy/vendor/SALES.md` SKU tables): `enterprise-grade`, `premium`, `ultra-low`, `guarantee`, `hundreds of thousands`, `Why * choose`, competitor comparison tables, "crush" / "eliminates fees" pitch. Price tiers: cite `sku.yaml` only without competitor anchors.
-
+CI: `bash scripts/ci/antifraud_doc_gate.sh` (in `pr_fast.sh`; stale hot-path text, false eliminated claims, legacy naming in vendor docs). Marketing prose: `naming.mdc`.
 
 Script: `bash scripts/ci/anti_slop_gate.sh` (included in `pr_fast.sh`).
 

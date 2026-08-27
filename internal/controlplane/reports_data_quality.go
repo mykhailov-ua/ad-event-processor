@@ -44,32 +44,32 @@ func dataQualitySeverity(pgTotal int64, diffPct float64) string {
 	}
 }
 
-func (reports *ReportsHTTPHandlers) registerDataQualityReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerDataQualityReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	perms := []string{"audit:read", "customers:read"}
-	mux.HandleFunc("GET /api/v1/reports/data-quality", limit(permAny(perms, reports.wrapReport("data-quality", reports.getDataQualityReport))))
+	mux.HandleFunc("GET /api/v1/reports/data-quality", limit(permAny(perms, h.wrapReport("data-quality", h.getDataQualityReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.Pool == nil {
+	if h.Pool == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "postgres not configured")
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -78,41 +78,41 @@ func (reports *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, 
 		return
 	}
 
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, DataQualityReportResponse{
 			Rows:      []DataQualityRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
 
-	pgRows, err := queryPGCampaignDailyTotals(r.Context(), reports.Pool, customerID, from, to)
+	pgRows, err := queryPGCampaignDailyTotals(r.Context(), h.Pool, customerID, from, to)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(pgRows) == 0 {
 		httpresponse.JSON(w, http.StatusOK, DataQualityReportResponse{
 			Rows:      []DataQualityRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	chTotals, err := queryCHCampaignDailyEventTotals(chCtx, reports.CHQuery, campaignIDs, from, to)
+	clickhouseTotals, err := queryClickHouseCampaignDailyEventTotals(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	out := buildDataQualityRows(pgRows, chTotals)
+	out := buildDataQualityRows(pgRows, clickhouseTotals)
 
 	total := int64(len(out))
 	if page.Offset >= len(out) {
@@ -130,7 +130,7 @@ func (reports *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, 
 	}
 	httpresponse.JSON(w, http.StatusOK, DataQualityReportResponse{
 		Rows:       out,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
@@ -180,11 +180,11 @@ func queryPGCampaignDailyTotals(
 
 func buildDataQualityRows(
 	pgRows []pgCampaignDailyTotal,
-	chTotals map[string]uint64,
+	clickhouseTotals map[string]uint64,
 ) []DataQualityRowDTO {
 	out := make([]DataQualityRowDTO, 0, len(pgRows))
 	for _, row := range pgRows {
-		chTotal := int64(chTotals[campaignDailyTotalKey(row.campaignID, row.day)])
+		chTotal := int64(clickhouseTotals[campaignDailyTotalKey(row.campaignID, row.day)])
 		var diffPct float64
 		if row.pgTotal > 0 {
 			diffPct = math.Abs(float64(chTotal-row.pgTotal)) / float64(row.pgTotal)
@@ -222,13 +222,13 @@ func queryDataQualityExportRows(
 	if len(pgRows) == 0 {
 		return nil, 0, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
 	defer cancel()
-	chTotals, err := queryCHCampaignDailyEventTotals(chCtx, deps.CHQuery, campaignIDs, from, to)
+	clickhouseTotals, err := queryClickHouseCampaignDailyEventTotals(clickhouseCtx, deps.ClickHouseQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, 0, err
 	}
-	all := buildDataQualityRows(pgRows, chTotals)
+	all := buildDataQualityRows(pgRows, clickhouseTotals)
 	total := int64(len(all))
 	if offset >= len(all) {
 		return nil, total, nil

@@ -23,7 +23,7 @@ Before claiming done, see `anti-slop.mdc` (lie modes, CI gates, agent checklist)
 
 ## Web JSDoc (`web/**`)
 
-JSDoc on every function, module constant, and block-scoped arrow callback. Naming, ASCII-only comments, no decorative banners: `naming.mdc`.
+JSDoc on every function, module constant, and block-scoped arrow callback. Comments: `naming.mdc`.
 
 ## Method receivers
 

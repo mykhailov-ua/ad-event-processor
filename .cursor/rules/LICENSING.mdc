@@ -1,6 +1,13 @@
 ---
 description: Offline JWT license, trial registry, vendor billing, HWID, garble
-globs: internal/licensing/**, internal/trialregistry/**, cmd/license-issue/**, cmd/license-asset-seal/**, cmd/trial-registry/**, deploy/vendor/**, pkg/legal/**
+globs:
+  - internal/licensing/**
+  - internal/trialregistry/**
+  - cmd/license-issue/**
+  - cmd/license-asset-seal/**
+  - cmd/trial-registry/**
+  - deploy/vendor/**
+  - pkg/legal/**
 alwaysApply: false
 ---
 

@@ -809,7 +809,6 @@ func (h *AdsPacketHandler) writeClose(c gnet.Conn, data []byte, ctx *connContext
 }
 
 func (h *AdsPacketHandler) writeFilterReject(c gnet.Conn, data []byte, ctx *connContext) {
-	// Offloaded duplicate 409 desyncs HTTP/1.1 keep-alive; other rejects stay pooled.
 	if h != nil && h.workerPool != nil && bytes.Equal(data, respDuplicate) {
 		h.writeClose(c, data, ctx)
 		return

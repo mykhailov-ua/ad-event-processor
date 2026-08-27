@@ -1,6 +1,9 @@
 ---
 description: /click, /track, OpenRTB, macros, CAPI, Cost Sync, shard routing
-globs: internal/ingestion/**, web/src/**, deploy/nginx/**
+globs:
+  - internal/ingestion/**
+  - web/src/**
+  - deploy/nginx/**
 alwaysApply: false
 ---
 

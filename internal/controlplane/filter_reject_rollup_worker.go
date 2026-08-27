@@ -20,27 +20,27 @@ const (
 )
 
 type FilterRejectRollupWorker struct {
-	pool      *pgxpool.Pool
-	chQuery   *database.CHQuery
-	url       string
-	interval  time.Duration
-	client    *http.Client
-	fetch     func(ctx context.Context, url string) ([]byte, string, error)
-	fetchEdge func(ctx context.Context) (map[string]uint64, error)
+	pool            *pgxpool.Pool
+	clickhouseQuery *database.CHQuery
+	url             string
+	interval        time.Duration
+	client          *http.Client
+	fetch           func(ctx context.Context, url string) ([]byte, string, error)
+	fetchEdge       func(ctx context.Context) (map[string]uint64, error)
 }
 
-func NewFilterRejectRollupWorker(pool *pgxpool.Pool, chQuery *database.CHQuery, scrapeURL string) *FilterRejectRollupWorker {
+func NewFilterRejectRollupWorker(pool *pgxpool.Pool, clickhouseQuery *database.CHQuery, scrapeURL string) *FilterRejectRollupWorker {
 	return &FilterRejectRollupWorker{
-		pool:     pool,
-		chQuery:  chQuery,
-		url:      scrapeURL,
-		interval: filterRejectRollupInterval,
-		client:   &http.Client{Timeout: 15 * time.Second},
+		pool:            pool,
+		clickhouseQuery: clickhouseQuery,
+		url:             scrapeURL,
+		interval:        filterRejectRollupInterval,
+		client:          &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
 func (s *Service) StartFilterRejectRollupWorker(ctx context.Context, scrapeURL string) {
-	if s == nil || s.GetPool() == nil || s.chQuery == nil {
+	if s == nil || s.GetPool() == nil || s.clickhouseQuery == nil {
 		slog.Warn("filter reject rollup worker not started: postgres or clickhouse unavailable")
 		return
 	}
@@ -48,14 +48,14 @@ func (s *Service) StartFilterRejectRollupWorker(ctx context.Context, scrapeURL s
 	if url == "" {
 		return
 	}
-	w := NewFilterRejectRollupWorker(s.GetPool(), s.chQuery, url)
+	w := NewFilterRejectRollupWorker(s.GetPool(), s.clickhouseQuery, url)
 	s.StartBackgroundWorker(func() {
 		w.Start(ctx)
 	})
 }
 
 func (w *FilterRejectRollupWorker) Start(ctx context.Context) {
-	if w == nil || w.pool == nil || w.chQuery == nil || w.url == "" {
+	if w == nil || w.pool == nil || w.clickhouseQuery == nil || w.url == "" {
 		return
 	}
 	slog.Info("filter reject rollup worker starting", "url", w.url, "interval", w.interval)
@@ -202,7 +202,7 @@ func (w *FilterRejectRollupWorker) insertSliceRollups(
 			continue
 		}
 		kind, country := splitFilterRejectSliceKey(key)
-		if err := w.chQuery.Exec(ctx, `
+		if err := w.clickhouseQuery.Exec(ctx, `
 INSERT INTO filter_reject_slices (rollup_hour, reject_kind, placement_id, country, reject_count)
 VALUES (?, ?, '', ?, ?)`, rollupHour, kind, country, delta); err != nil {
 			return fmt.Errorf("insert filter reject slice key=%s: %w", key, err)
@@ -263,7 +263,7 @@ func (w *FilterRejectRollupWorker) insertRollups(
 	previous, current map[string]float64,
 ) error {
 	for kind, delta := range filterRejectRollupDeltas(previous, current) {
-		if err := w.chQuery.Exec(ctx, `
+		if err := w.clickhouseQuery.Exec(ctx, `
 INSERT INTO filter_reject_rollups (rollup_hour, reject_kind, reject_count)
 VALUES (?, ?, ?)`, rollupHour, kind, delta); err != nil {
 			return fmt.Errorf("insert filter reject rollup kind=%s: %w", kind, err)

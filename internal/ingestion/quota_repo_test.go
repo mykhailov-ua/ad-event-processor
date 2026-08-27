@@ -50,10 +50,10 @@ func TestQuotaRepo_ReserveChunk(t *testing.T) {
 	require.Equal(t, int64(10_000_000), res.ReservedAmount)
 	require.Equal(t, int64(10_000_000), res.ChunkSize)
 
-	res2, err := repo.ReserveChunk(ctx, sharder, campaignID, 10_000_000, "refill-2")
+	secondReserve, err := repo.ReserveChunk(ctx, sharder, campaignID, 10_000_000, "refill-2")
 	require.NoError(t, err)
-	require.False(t, res2.AlreadyApplied)
-	require.Equal(t, int64(20_000_000), res2.ReservedAmount)
+	require.False(t, secondReserve.AlreadyApplied)
+	require.Equal(t, int64(20_000_000), secondReserve.ReservedAmount)
 
 	_, err = repo.ReserveChunk(ctx, sharder, campaignID, 35_000_000, "refill-3")
 	require.ErrorIs(t, err, ErrQuotaBudgetExceeded)

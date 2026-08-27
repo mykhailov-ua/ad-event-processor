@@ -228,16 +228,16 @@ func publishFlowReload(ctx context.Context, redisShards []redis.UniversalClient,
 	return redisShards[0].Publish(ctx, channel, "1").Err()
 }
 
-func (worker *OutboxWorker) handleLanderPublished(ctx context.Context, payload []byte) error {
-	if worker == nil || worker.svc == nil {
+func (w *OutboxWorker) handleLanderPublished(ctx context.Context, payload []byte) error {
+	if w == nil || w.svc == nil {
 		return fmt.Errorf("outbox worker unavailable")
 	}
 	if _, err := coldpath.UnmarshalStrict[landerPublishedPayload](payload); err != nil {
 		return err
 	}
 	channel := flowReloadChannel
-	if worker.svc.cfg != nil && strings.TrimSpace(worker.svc.cfg.FlowReloadChannel) != "" {
-		channel = strings.TrimSpace(worker.svc.cfg.FlowReloadChannel)
+	if w.svc.cfg != nil && strings.TrimSpace(w.svc.cfg.FlowReloadChannel) != "" {
+		channel = strings.TrimSpace(w.svc.cfg.FlowReloadChannel)
 	}
-	return publishFlowReload(ctx, worker.svc.redisShards, channel)
+	return publishFlowReload(ctx, w.svc.redisShards, channel)
 }

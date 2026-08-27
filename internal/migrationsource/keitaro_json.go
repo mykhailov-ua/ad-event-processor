@@ -21,7 +21,6 @@ type keitaroCampaign struct {
 	PostbackURL   string  `json:"postback_url"`
 }
 
-// ParseKeitaroJSON parses a Keitaro-style JSON export into a normalized bundle.
 func ParseKeitaroJSON(payload []byte) (NormalizedBundle, error) {
 	payload = bytesTrimSpace(payload)
 	if len(payload) == 0 {

@@ -10,7 +10,6 @@ dev_prune_parent_bind_artifacts
 echo "clean-gitignored: git clean -fdX..."
 git clean -fdX 2>&1 || true
 
-# Docker bind mounts and load-test runs often leave root-owned / nobody-owned trees.
 if command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
   echo "clean-gitignored: removing permission-blocked ignored paths via docker..."
   MONOREPO_ROOT="$(dirname "$ROOT")"

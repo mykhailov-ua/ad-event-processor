@@ -53,7 +53,6 @@ func PrepareUnixSocket(path string) error {
 	return nil
 }
 
-// EnsureUnixSocketWritable chmods a listening unix socket so edge nginx (non-owner) can connect.
 func EnsureUnixSocketWritable(path string) error {
 	info, err := os.Stat(path)
 	if err != nil {

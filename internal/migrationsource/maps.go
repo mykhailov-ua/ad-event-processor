@@ -11,7 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// MacroEntry maps a foreign tracker token to an internal click query key.
 type MacroEntry struct {
 	Source      string `yaml:"source"`
 	TargetKey   string `yaml:"target_key"`
@@ -19,7 +18,6 @@ type MacroEntry struct {
 	IngressCost bool   `yaml:"ingress_cost,omitempty"`
 }
 
-// SourceEntry maps a foreign traffic source label to bundled integration slug.
 type SourceEntry struct {
 	KeitaroName  string `yaml:"keitaro_name"`
 	BinomName    string `yaml:"binom_name"`
@@ -37,7 +35,6 @@ type sourcesFile struct {
 	Sources []SourceEntry `yaml:"sources"`
 }
 
-// Maps holds loaded macro and traffic-source mapping tables.
 type Maps struct {
 	KeitaroMacros  []MacroEntry
 	KeitaroSources []SourceEntry
@@ -45,7 +42,6 @@ type Maps struct {
 	BinomSources   []SourceEntry
 }
 
-// MapsRootDir resolves deploy/vendor/migration for dev and install roots.
 func MapsRootDir() string {
 	if root := config.InstallRootFromEnv(); root != "" {
 		p := filepath.Join(root, "deploy", "vendor", "migration")
@@ -66,7 +62,6 @@ func MapsRootDir() string {
 	return candidates[0]
 }
 
-// LoadMaps reads YAML tables from dir.
 func LoadMaps(dir string) (*Maps, error) {
 	if strings.TrimSpace(dir) == "" {
 		dir = MapsRootDir()

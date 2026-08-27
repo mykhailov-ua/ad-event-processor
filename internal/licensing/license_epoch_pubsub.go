@@ -26,7 +26,6 @@ var (
 	licenseEpochSyncActive atomic.Bool
 )
 
-// StartLicenseEpochSync publishes and subscribes license epoch invalidations on Redis.
 func StartLicenseEpochSync(ctx context.Context, rdb redis.UniversalClient) {
 	if rdb == nil || licenseEpochSyncActive.Swap(true) {
 		return
@@ -103,7 +102,6 @@ func invalidateLicenseEpochFromRemote() {
 	PublishFeatureSeed(0, false)
 }
 
-// WaitLicenseEpochSyncForTest blocks until the epoch subscriber goroutine exits.
 func WaitLicenseEpochSyncForTest() {
 	licenseEpochSyncWG.Wait()
 }

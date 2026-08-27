@@ -1,6 +1,11 @@
 ---
 description: Nginx/OpenResty edge, Lua DFA, tracker alignment, XDP BPF sync
-globs: deploy/nginx/**, deploy/edge/**, internal/edge/**, cmd/edge-xdp/**, cmd/edge-bpf-sync/**
+globs:
+  - deploy/nginx/**
+  - deploy/edge/**
+  - internal/edge/**
+  - cmd/edge-xdp/**
+  - cmd/edge-bpf-sync/**
 alwaysApply: false
 ---
 

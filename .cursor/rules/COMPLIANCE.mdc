@@ -1,6 +1,10 @@
 ---
 description: Defensive perimeter, edge maps, no hack-back tooling
-globs: internal/edge/**, deploy/nginx/**, internal/controlplane/**, cmd/edge-bpf-sync/**
+globs:
+  - internal/edge/**
+  - deploy/nginx/**
+  - internal/controlplane/**
+  - cmd/edge-bpf-sync/**
 alwaysApply: false
 ---
 

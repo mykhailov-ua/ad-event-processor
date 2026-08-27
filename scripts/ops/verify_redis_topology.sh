@@ -1,8 +1,15 @@
 #!/bin/sh
 set -eu
 
-EXPECTED="${REDIS_SHARD_COUNT:-4}"
 ENV_FILE="${1:-.env}"
+
+EXPECTED="${REDIS_SHARD_COUNT:-}"
+if [ -z "$EXPECTED" ]; then
+  EXPECTED="$(grep -E '^REDIS_SHARD_COUNT=' "$ENV_FILE" 2> /dev/null | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d ' ')"
+fi
+if [ -z "$EXPECTED" ]; then
+  EXPECTED=2
+fi
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "verify_redis_topology: missing env file: $ENV_FILE" >&2

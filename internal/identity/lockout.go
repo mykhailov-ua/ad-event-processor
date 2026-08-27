@@ -127,10 +127,10 @@ end
 return attempts
 `
 
-func (limiter *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, limit int, window time.Duration) (bool, error) {
+func (l *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, limit int, window time.Duration) (bool, error) {
 	key := "ratelimit:ip:" + clientIP
 	allowed := true
-	for _, redisClient := range limiter.redisShards {
+	for _, redisClient := range l.redisShards {
 		pipe := redisClient.Pipeline()
 		incr := pipe.Incr(ctx, key)
 		pipe.ExpireNX(ctx, key, window)
@@ -145,12 +145,12 @@ func (limiter *LockoutLimiter) AllowIP(ctx context.Context, clientIP string, lim
 	return allowed, nil
 }
 
-func (limiter *LockoutLimiter) Allow(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
+func (l *LockoutLimiter) Allow(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
 	failKey := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	inflightKey := "lockout:inflight:" + clientIP + ":{" + email + "}"
 	globalFailKey := "lockout:global_email:{" + email + "}"
 	var worst int64 = 1
-	for _, redisClient := range limiter.redisShards {
+	for _, redisClient := range l.redisShards {
 		res, err := redisClient.Eval(ctx, lockoutScript, []string{failKey, inflightKey, globalFailKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts).Result()
 		if err != nil {
 			return 0, err
@@ -163,10 +163,10 @@ func (limiter *LockoutLimiter) Allow(ctx context.Context, clientIP, email string
 	return worst, nil
 }
 
-func (limiter *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, email string) error {
+func (l *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, email string) error {
 	key := "lockout:inflight:" + clientIP + ":{" + email + "}"
 	var firstErr error
-	for _, redisClient := range limiter.redisShards {
+	for _, redisClient := range l.redisShards {
 		if _, err := redisClient.Eval(ctx, decrInflightScript, []string{key}).Result(); err != nil && firstErr == nil {
 			firstErr = err
 		}
@@ -174,11 +174,11 @@ func (limiter *LockoutLimiter) DecrementInflight(ctx context.Context, clientIP, 
 	return firstErr
 }
 
-func (limiter *LockoutLimiter) Increment(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
+func (l *LockoutLimiter) Increment(ctx context.Context, clientIP, email string, maxAttempts int, lockoutDuration, attemptWindow time.Duration) (int64, error) {
 	key := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	globalKey := "lockout:global_email:{" + email + "}"
 	var maxResult int64
-	for _, redisClient := range limiter.redisShards {
+	for _, redisClient := range l.redisShards {
 		res, err := redisClient.Eval(ctx, incrementScript, []string{key, globalKey}, maxAttempts, int(lockoutDuration.Seconds()), int(attemptWindow.Seconds()), MaxGlobalAttempts, GlobalLockoutDuration).Result()
 		if err != nil {
 			return 0, err
@@ -191,10 +191,10 @@ func (limiter *LockoutLimiter) Increment(ctx context.Context, clientIP, email st
 	return maxResult, nil
 }
 
-func (limiter *LockoutLimiter) Reset(ctx context.Context, clientIP, email string) error {
+func (l *LockoutLimiter) Reset(ctx context.Context, clientIP, email string) error {
 	key := "lockout:ip_email:" + clientIP + ":{" + email + "}"
 	var firstErr error
-	for _, redisClient := range limiter.redisShards {
+	for _, redisClient := range l.redisShards {
 		if err := redisClient.Del(ctx, key).Err(); err != nil && firstErr == nil {
 			firstErr = err
 		}

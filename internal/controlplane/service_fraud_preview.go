@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	fraudPreviewCHQueryTimeout = 10 * time.Second
-	fraudPreviewLookbackDays   = 7
-	fraudPreviewSampleLimit    = 10000
+	fraudPreviewClickHouseQueryTimeout = 10 * time.Second
+	fraudPreviewLookbackDays           = 7
+	fraudPreviewSampleLimit            = 10000
 )
 
 const fraudPreviewDisclaimer = "Estimate based on last 7d shadow scores; proxy-label tiers only (no policy replay)."
@@ -95,7 +95,7 @@ func countFraudPreviewTiers(scores []float64, thresholds campaignFraudThresholds
 }
 
 func (s *Service) queryCampaignShadowScores(ctx context.Context, campaignID uuid.UUID) ([]float64, error) {
-	if s == nil || s.chQuery == nil {
+	if s == nil || s.clickhouseQuery == nil {
 		return nil, fmt.Errorf("clickhouse not configured")
 	}
 
@@ -115,7 +115,7 @@ WHERE s.created_at >= subtractDays(now(), ?)
 GROUP BY s.ip_hash
 LIMIT ?`
 
-	rows, err := s.chQuery.Query(
+	rows, err := s.clickhouseQuery.Query(
 		ctx,
 		query,
 		campaignID,
@@ -154,10 +154,10 @@ func (s *Service) PreviewCampaignFraudImpact(ctx context.Context, campaignID uui
 		return CampaignFraudPreviewDTO{}, err
 	}
 
-	chCtx, cancel := context.WithTimeout(ctx, fraudPreviewCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, fraudPreviewClickHouseQueryTimeout)
 	defer cancel()
 
-	scores, err := s.queryCampaignShadowScores(chCtx, campaignID)
+	scores, err := s.queryCampaignShadowScores(clickhouseCtx, campaignID)
 	if err != nil {
 		return CampaignFraudPreviewDTO{}, err
 	}

@@ -1,6 +1,10 @@
 ---
 description: Rejected alternatives, hot-path strategy, verification evidence matrix
-globs: internal/ingestion/**, internal/domain/**, pkg/broker/**, internal/rtb/**
+globs:
+  - internal/ingestion/**
+  - internal/domain/**
+  - pkg/broker/**
+  - internal/rtb/**
 alwaysApply: false
 ---
 

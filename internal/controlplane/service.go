@@ -32,39 +32,39 @@ import (
 )
 
 type Service struct {
-	pool              *pgxpool.Pool
-	settlePoolField   *pgxpool.Pool
-	redisShards       []redis.UniversalClient
-	sharder           domain.Sharder
-	cfg               *config.Config
-	pgGate            *PostgresGate
-	alerter           *OpsAlerter
-	chWrite           driver.Conn
-	chQuery           *database.CHQuery
-	paymentPool       *pgxpool.Pool
-	payment           domain.PaymentAPI
-	ctx               context.Context
-	cancel            context.CancelFunc
-	wg                sync.WaitGroup
-	workerMu          sync.Mutex
-	closed            atomic.Bool
-	locCache          sync.Map
-	brokerDeltas      BrokerPendingDeltaReader
-	explainScorerInst fraud.Scorer
-	explainScorerErr  error
-	explainScorerMu   sync.Mutex
-	tcpControl        *TCPControlServer
-	nodeMetrics       *NodeMetricsWorker
-	scoringWeights    *ScoringWeightsStore
-	leaseWorker       *OperationLeaseWorker
-	pgFencing         *pgfailover.FencingGate
-	globalSpend       *GlobalSpendReconciler
-	rtbBidShadeSim    RtbBidShadeSimulator
-	cloudflare        CloudflareAPI
-	reputation        *domainhealth.ReputationChecker
-	shard0Mu          sync.Mutex
-	reportJobRunner   *ReportJobRunner
-	landerStore       *landerhost.Store
+	pool                     *pgxpool.Pool
+	settlementPostgresPool   *pgxpool.Pool
+	redisShards              []redis.UniversalClient
+	sharder                  domain.Sharder
+	cfg                      *config.Config
+	postgresGate             *PostgresGate
+	alerter                  *OpsAlerter
+	clickhouseWriteConn      driver.Conn
+	clickhouseQuery          *database.CHQuery
+	paymentPool              *pgxpool.Pool
+	payment                  domain.PaymentAPI
+	ctx                      context.Context
+	cancel                   context.CancelFunc
+	wg                       sync.WaitGroup
+	workerMutex              sync.Mutex
+	closed                   atomic.Bool
+	timezoneLocationCache    sync.Map
+	brokerDeltas             BrokerPendingDeltaReader
+	cachedFraudExplainScorer fraud.Scorer
+	fraudExplainScorerErr    error
+	fraudExplainScorerMutex  sync.Mutex
+	tcpControl               *TCPControlServer
+	nodeMetrics              *NodeMetricsWorker
+	scoringWeights           *ScoringWeightsStore
+	leaseWorker              *OperationLeaseWorker
+	pgFencing                *pgfailover.FencingGate
+	globalSpend              *GlobalSpendReconciler
+	rtbBidShadeSim           RtbBidShadeSimulator
+	cloudflare               CloudflareAPI
+	reputation               *domainhealth.ReputationChecker
+	shard0Mu                 sync.Mutex
+	reportJobRunner          *ReportJobRunner
+	landerStore              *landerhost.Store
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {
@@ -77,28 +77,28 @@ func (s *Service) StartBackgroundWorker(fn func()) {
 	s.startWorker(fn)
 }
 
-func (s *Service) CHQuery() *database.CHQuery {
+func (s *Service) ClickHouseQuery() *database.CHQuery {
 	if s == nil {
 		return nil
 	}
-	return s.chQuery
+	return s.clickhouseQuery
 }
 
-func (s *Service) CHWrite() driver.Conn {
+func (s *Service) ClickHouseWrite() driver.Conn {
 	if s == nil {
 		return nil
 	}
-	return s.chWrite
+	return s.clickhouseWriteConn
 }
 
 func (s *Service) startWorker(fn func()) {
-	s.workerMu.Lock()
+	s.workerMutex.Lock()
 	if s.closed.Load() {
-		s.workerMu.Unlock()
+		s.workerMutex.Unlock()
 		return
 	}
 	s.wg.Add(1)
-	s.workerMu.Unlock()
+	s.workerMutex.Unlock()
 
 	go func() {
 		defer s.wg.Done()
@@ -117,7 +117,7 @@ func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.Uni
 		cancel:      cancel,
 	}
 	if cfg != nil {
-		s.pgGate = NewPostgresGate(cfg.DBTrackerMaxConns)
+		s.postgresGate = NewPostgresGate(cfg.DBTrackerMaxConns)
 		s.cloudflare = NewCloudflareClient(string(cfg.Management.CloudflareAPIToken), cfg.Management.CloudflareAPIBase)
 		s.initLanderStore()
 	}
@@ -257,11 +257,11 @@ func (s *Service) GetPool() *pgxpool.Pool {
 	return s.pool
 }
 
-func (s *Service) PgGate() *PostgresGate {
+func (s *Service) PostgresGate() *PostgresGate {
 	if s == nil {
 		return nil
 	}
-	return s.pgGate
+	return s.postgresGate
 }
 
 func (s *Service) SetPool(pool *pgxpool.Pool) {
@@ -827,7 +827,7 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 	return pubErr
 }
 
-func (s *Service) getRDB(campaignID uuid.UUID) redis.UniversalClient {
+func (s *Service) redisClientForCampaign(campaignID uuid.UUID) redis.UniversalClient {
 	if len(s.redisShards) == 0 {
 		return nil
 	}

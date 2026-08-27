@@ -59,22 +59,21 @@ func mergeBuiltinMobileCarrierASNs(extra map[uint32]struct{}) map[uint32]struct{
 	return out
 }
 
-// Tier-1 mobile network operator ASNs. Excludes reseller/proxy ASNs used by bot farms.
 var builtinMobileCarrierASNs = map[uint32]struct{}{
-	21928:  {}, // T-Mobile US
-	310410: {}, // AT&T Mobility
-	20057:  {}, // AT&T Services
-	6167:   {}, // Verizon Business
-	3215:   {}, // Orange
-	12479:  {}, // Orange France
-	3209:   {}, // Vodafone
-	12956:  {}, // Telefonica
-	3320:   {}, // Deutsche Telekom
-	9808:   {}, // China Mobile
-	58453:  {}, // China Mobile Hong Kong
-	45400:  {}, // Telstra
-	26615:  {}, // TIM Brasil
-	2856:   {}, // BT Group
+	21928:  {},
+	310410: {},
+	20057:  {},
+	6167:   {},
+	3215:   {},
+	12479:  {},
+	3209:   {},
+	12956:  {},
+	3320:   {},
+	9808:   {},
+	58453:  {},
+	45400:  {},
+	26615:  {},
+	2856:   {},
 }
 
 func ParseMobileCarrierASNs(raw string) map[uint32]struct{} {

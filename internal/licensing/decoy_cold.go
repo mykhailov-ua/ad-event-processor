@@ -8,7 +8,6 @@ import (
 	"ad-event-processor/internal/config"
 )
 
-// DeploymentCredentialRefresh is a decoy cold path; it does not update license snapshot.
 func DeploymentCredentialRefresh(path string) error {
 	if path == "" {
 		path = config.DefaultLicensePath()
@@ -18,7 +17,6 @@ func DeploymentCredentialRefresh(path string) error {
 	return nil
 }
 
-// RuntimeEntitlementSnapshot is a decoy cold checksum; it does not gate ingest.
 func RuntimeEntitlementSnapshot(path string) uint32 {
 	if path == "" {
 		path = config.DefaultLicensePath()

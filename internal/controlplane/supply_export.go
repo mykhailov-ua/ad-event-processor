@@ -35,7 +35,7 @@ func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 	return nil
 }
 
-func (worker *OutboxWorker) handleUpdateSupplyFiles(ctx context.Context, payload []byte) error {
+func (w *OutboxWorker) handleUpdateSupplyFiles(ctx context.Context, payload []byte) error {
 	_ = payload
-	return worker.svc.ExportSupplyFiles(ctx)
+	return w.svc.ExportSupplyFiles(ctx)
 }

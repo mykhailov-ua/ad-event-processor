@@ -38,7 +38,7 @@ type flowEntityStat struct {
 }
 
 func (s *Service) optimizeFlowBanditTx(ctx context.Context, tx pgx.Tx) ([]uuid.UUID, error) {
-	if s == nil || s.chQuery == nil {
+	if s == nil || s.clickhouseQuery == nil {
 		return nil, nil
 	}
 	lookbackDays := s.cfg.MABLookbackDays
@@ -48,9 +48,9 @@ func (s *Service) optimizeFlowBanditTx(ctx context.Context, tx pgx.Tx) ([]uuid.U
 	lookbackEnd := time.Now().UTC()
 	lookbackStart := lookbackEnd.Add(-time.Duration(lookbackDays) * 24 * time.Hour)
 
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
-	landerStats, offerStats, err := s.queryFlowBanditStats(chCtx, lookbackStart, lookbackEnd)
+	landerStats, offerStats, err := s.queryFlowBanditStats(clickhouseCtx, lookbackStart, lookbackEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +343,7 @@ GROUP BY campaign_id, entity_id`
 }
 
 func (s *Service) scanFlowBanditRows(ctx context.Context, query string, from, to time.Time) (map[uuid.UUID]map[uuid.UUID]flowEntityStat, error) {
-	rows, err := s.chQuery.Query(ctx, query, from, to, from, to)
+	rows, err := s.clickhouseQuery.Query(ctx, query, from, to, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("flow bandit ch query: %w", err)
 	}

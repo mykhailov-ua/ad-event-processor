@@ -464,7 +464,6 @@ type placementCacheItem struct {
 
 const placementCacheShards = 128
 
-// placementBlacklistCacheTTL bounds stale blacklist visibility without per-event HEXISTS.
 const placementBlacklistCacheTTL = 5 * time.Second
 
 const placementCacheMaxEntriesPerShard = 2048

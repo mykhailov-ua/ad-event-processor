@@ -12,13 +12,13 @@ type claimedThreat struct {
 	action string
 }
 
-func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
+func (d *Detector) Run(ctx context.Context) (RunResult, error) {
 	var result RunResult
-	if detector == nil {
+	if d == nil {
 		return result, fmt.Errorf("detector: nil receiver")
 	}
 
-	backlogged, err := detector.outboxBacklogged(ctx)
+	backlogged, err := d.outboxBacklogged(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -28,7 +28,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 		return result, ErrOutboxBackpressure
 	}
 
-	candidates, err := detector.analyzer.FindSuspiciousIPs(ctx)
+	candidates, err := d.analyzer.FindSuspiciousIPs(ctx)
 	if err != nil {
 		return result, err
 	}
@@ -42,10 +42,10 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 		if len(batchItems) == 0 {
 			return nil
 		}
-		_, err := detector.management.EnqueueFraudThreatBatch(ctx, batchItems)
+		_, err := d.management.EnqueueFraudThreatBatch(ctx, batchItems)
 		if err != nil {
 			for _, claim := range batchClaimed {
-				detector.releaseThreatClaim(ctx, claim)
+				d.releaseThreatClaim(ctx, claim)
 			}
 			batchItems = nil
 			batchClaimed = nil
@@ -62,7 +62,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 	for _, candidate := range candidates {
 		switch candidate.Action {
 		case "boost":
-			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "boost")
+			claimed, claimErr := d.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "boost")
 			if claimErr != nil {
 				return result, claimErr
 			}
@@ -93,7 +93,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 				"boost", candidate.Boost,
 			)
 		case "silent_reject", "ghost":
-			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "silent_reject")
+			claimed, claimErr := d.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "silent_reject")
 			if claimErr != nil {
 				return result, claimErr
 			}
@@ -123,7 +123,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 				"score", candidate.Score,
 			)
 		case "blacklist":
-			claimed, claimErr := detector.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "blacklist")
+			claimed, claimErr := d.idem.TryClaimFraudEnforcement(ctx, candidate.IP, candidate.Reason, "blacklist")
 			if claimErr != nil {
 				return result, claimErr
 			}
@@ -153,7 +153,7 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 				"score", candidate.Score,
 			)
 		default:
-			claimed, claimErr := detector.idem.TryClaim(ctx, candidate.IP)
+			claimed, claimErr := d.idem.TryClaim(ctx, candidate.IP)
 			if claimErr != nil {
 				return result, claimErr
 			}
@@ -162,9 +162,9 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 				continue
 			}
 
-			blockErr := detector.management.BlockIP(ctx, candidate.IP)
+			blockErr := d.management.BlockIP(ctx, candidate.IP)
 			if blockErr != nil {
-				if releaseErr := detector.idem.Release(ctx, candidate.IP); releaseErr != nil {
+				if releaseErr := d.idem.Release(ctx, candidate.IP); releaseErr != nil {
 					slog.Error("failed to release idempotency claim after management error",
 						"ip", candidate.IP,
 						"block_error", blockErr,
@@ -191,10 +191,10 @@ func (detector *Detector) Run(ctx context.Context) (RunResult, error) {
 	return result, nil
 }
 
-func (detector *Detector) releaseThreatClaim(ctx context.Context, claim claimedThreat) {
+func (d *Detector) releaseThreatClaim(ctx context.Context, claim claimedThreat) {
 	switch claim.action {
 	case "boost", "silent_reject", "ghost", "blacklist":
-		if releaseErr := detector.idem.ReleaseFraudEnforcement(ctx, claim.ip, claim.reason, claim.action); releaseErr != nil {
+		if releaseErr := d.idem.ReleaseFraudEnforcement(ctx, claim.ip, claim.reason, claim.action); releaseErr != nil {
 			slog.Error("failed to release fraud enforcement claim after batch error",
 				"ip", claim.ip,
 				"action", claim.action,
@@ -202,7 +202,7 @@ func (detector *Detector) releaseThreatClaim(ctx context.Context, claim claimedT
 			)
 		}
 	default:
-		if releaseErr := detector.idem.Release(ctx, claim.ip); releaseErr != nil {
+		if releaseErr := d.idem.Release(ctx, claim.ip); releaseErr != nil {
 			slog.Error("failed to release idempotency claim after batch error",
 				"ip", claim.ip,
 				"release_error", releaseErr,

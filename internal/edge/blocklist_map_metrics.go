@@ -34,7 +34,6 @@ func setMapFillRatio(m *ebpf.Map, mapLabel string, occupied int) {
 	metrics.EdgeBlocklistMapFillRatio.WithLabelValues(mapLabel).Set(float64(occupied) / float64(info.MaxEntries))
 }
 
-// RecordBlocklistMapMetrics publishes BPF map occupancy for edge-bpf-sync /metrics.
 func RecordBlocklistMapMetrics(maps BlocklistMaps, store *BlocklistStore) {
 	if store == nil {
 		return
@@ -46,7 +45,6 @@ func RecordBlocklistMapMetrics(maps BlocklistMaps, store *BlocklistStore) {
 	setMapFillRatio(maps.V6Prefix, "blocklist_v6", v6Prefixes)
 }
 
-// RecordBlocklistChangelogLagSeconds sets lag from the last consumed changelog score to now.
 func RecordBlocklistChangelogLagSeconds(ctx context.Context, redisClient redis.Cmdable, state *BlocklistSyncState) {
 	if redisClient == nil || state == nil {
 		return

@@ -7,8 +7,6 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-// StretchMCKForRecheck derives MCK_work = Argon2id(MCK, salt=deployment_id) on the recheck path only.
-// Uses the same Argon2id parameters as HWID v2 (RFC 9106).
 func StretchMCKForRecheck(mck [32]byte, deploymentID string) ([32]byte, error) {
 	var zero [32]byte
 	deploymentID = strings.TrimSpace(deploymentID)
@@ -21,7 +19,6 @@ func StretchMCKForRecheck(mck [32]byte, deploymentID string) ([32]byte, error) {
 	return out, nil
 }
 
-// DeriveMCKWorkForRecheck returns stretched MCK for license file recheck seed coupling.
 func DeriveMCKWorkForRecheck(token, hwid string) ([32]byte, error) {
 	mck, err := DeriveMCK(token, hwid)
 	if err != nil {
@@ -35,7 +32,6 @@ func DeriveMCKWorkForRecheck(token, hwid string) ([32]byte, error) {
 	return StretchMCKForRecheck(mck, claims.DeploymentID)
 }
 
-// DeriveMCKWorkForRecheckFromLicenseFile verifies the license file then returns stretched MCK.
 func DeriveMCKWorkForRecheckFromLicenseFile(path string, pubKey ed25519.PublicKey, hostFingerprint string) ([32]byte, error) {
 	var zero [32]byte
 	mck, err := DeriveMCKFromLicenseFile(path, pubKey, hostFingerprint)
@@ -53,7 +49,6 @@ func DeriveMCKWorkForRecheckFromLicenseFile(path string, pubKey ed25519.PublicKe
 	return StretchMCKForRecheck(mck, claims.DeploymentID)
 }
 
-// FeatureSeedFromLicenseFileRecheck derives the stretched feature seed used on recheck.
 func FeatureSeedFromLicenseFileRecheck(path string, pubKey ed25519.PublicKey, hostFingerprint string) (uint32, error) {
 	mckWork, err := DeriveMCKWorkForRecheckFromLicenseFile(path, pubKey, hostFingerprint)
 	if err != nil {

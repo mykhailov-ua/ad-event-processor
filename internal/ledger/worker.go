@@ -26,21 +26,21 @@ type CampaignEntitlementRegistry interface {
 }
 
 type Worker struct {
-	pool     *pgxpool.Pool
-	ch       *database.CHQuery
-	cfg      *config.Config
-	registry CampaignEntitlementRegistry
-	notifier notify.NotifierAPI
-	cycleWG  sync.WaitGroup
+	pool            *pgxpool.Pool
+	clickhouseQuery *database.CHQuery
+	cfg             *config.Config
+	registry        CampaignEntitlementRegistry
+	notifier        notify.NotifierAPI
+	cycleWG         sync.WaitGroup
 }
 
-func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, cfg *config.Config, registry CampaignEntitlementRegistry, notifier notify.NotifierAPI) *Worker {
+func NewWorker(pool *pgxpool.Pool, clickhouseQuery *database.CHQuery, cfg *config.Config, registry CampaignEntitlementRegistry, notifier notify.NotifierAPI) *Worker {
 	return &Worker{
-		pool:     pool,
-		ch:       ch,
-		cfg:      cfg,
-		registry: registry,
-		notifier: notifier,
+		pool:            pool,
+		clickhouseQuery: clickhouseQuery,
+		cfg:             cfg,
+		registry:        registry,
+		notifier:        notifier,
 	}
 }
 
@@ -101,16 +101,16 @@ func (w *Worker) RunCycle(ctx context.Context) error {
 	if err := w.runLedgerMarginCycle(ctx); err != nil {
 		return err
 	}
-	if w.ch == nil {
+	if w.clickhouseQuery == nil {
 		return nil
 	}
 
 	var lag int64
-	chCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	err := w.ch.QueryRow(chCtx, "SELECT dateDiff('second', max(hour), now()) FROM placement_stats_hourly").Scan(&lag)
+	err := w.clickhouseQuery.QueryRow(clickhouseCtx, "SELECT dateDiff('second', max(hour), now()) FROM placement_stats_hourly").Scan(&lag)
 	if err != nil {
-		_ = w.ch.QueryRow(chCtx, "SELECT dateDiff('second', max(snapshot_hour), now()) FROM cost_snapshots").Scan(&lag)
+		_ = w.clickhouseQuery.QueryRow(clickhouseCtx, "SELECT dateDiff('second', max(snapshot_hour), now()) FROM cost_snapshots").Scan(&lag)
 	}
 
 	if lag > 300 {
@@ -200,9 +200,9 @@ func (w *Worker) queryPlacementStatsBatch(ctx context.Context, campaignIDs []uui
 	if len(campaignIDs) == 0 {
 		return out, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	rows, err := w.ch.Query(chCtx, marginGuardPlacementStatsQuery, campaignIDs)
+	rows, err := w.clickhouseQuery.Query(clickhouseCtx, marginGuardPlacementStatsQuery, campaignIDs)
 	if err != nil {
 		return nil, err
 	}

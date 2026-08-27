@@ -23,8 +23,8 @@ func NewEvacuatorCheckpointStore(path string) *EvacuatorCheckpointStore {
 	return &EvacuatorCheckpointStore{path: path}
 }
 
-func (store *EvacuatorCheckpointStore) Load() (EvacuatorCheckpointRecord, error) {
-	data, err := os.ReadFile(store.path)
+func (st *EvacuatorCheckpointStore) Load() (EvacuatorCheckpointRecord, error) {
+	data, err := os.ReadFile(st.path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return EvacuatorCheckpointRecord{}, nil
@@ -48,12 +48,12 @@ func (store *EvacuatorCheckpointStore) Load() (EvacuatorCheckpointRecord, error)
 	}, nil
 }
 
-func (store *EvacuatorCheckpointStore) Save(record EvacuatorCheckpointRecord) error {
-	if err := os.MkdirAll(filepath.Dir(store.path), 0o755); err != nil {
+func (st *EvacuatorCheckpointStore) Save(record EvacuatorCheckpointRecord) error {
+	if err := os.MkdirAll(filepath.Dir(st.path), 0o755); err != nil {
 		return err
 	}
 
-	tmpPath := store.path + ".tmp"
+	tmpPath := st.path + ".tmp"
 	file, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
@@ -80,5 +80,5 @@ func (store *EvacuatorCheckpointStore) Save(record EvacuatorCheckpointRecord) er
 		return err
 	}
 
-	return os.Rename(tmpPath, store.path)
+	return os.Rename(tmpPath, st.path)
 }

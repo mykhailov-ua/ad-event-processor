@@ -21,7 +21,6 @@ type binomCampaign struct {
 	PostbackURL       string  `json:"postback_url"`
 }
 
-// ParseBinomJSON parses a Binom-style JSON export into a normalized bundle.
 func ParseBinomJSON(payload []byte) (NormalizedBundle, error) {
 	payload = bytesTrimSpace(payload)
 	if len(payload) == 0 {

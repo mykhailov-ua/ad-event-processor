@@ -125,7 +125,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	svc := h.svc
 	composite := NewCompositeReadService(pool, h.cfg)
 	if composite != nil {
-		composite.SetCHQuery(svc.CHQuery())
+		composite.SetClickHouseQuery(svc.ClickHouseQuery())
 	}
 
 	exportDir := os.Getenv("BILLING_EXPORT_PATH")
@@ -265,7 +265,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			CampaignForecaster:        svc,
 			ReportJobs:                reportJobs,
 			Pool:                      pool,
-			CHQuery:                   svc.CHQuery(),
+			ClickHouseQuery:           svc.ClickHouseQuery(),
 			BuyerPortfolio:            svc,
 			EdgeMetricsReader:         FetchEdgeMetrics,
 			ApplyRateLimit:            limit,

@@ -29,7 +29,7 @@ type alertCampaignMetrics struct {
 	spendMicro  int64
 }
 
-func (w *SmartAlertsWorker) evaluateRulesBatch(ctx context.Context, ch *database.CHQuery, rules []smartAlertRuleRow, now time.Time) error {
+func (w *SmartAlertsWorker) evaluateRulesBatch(ctx context.Context, clickhouseQuery *database.CHQuery, rules []smartAlertRuleRow, now time.Time) error {
 	if len(rules) == 0 {
 		return nil
 	}
@@ -62,7 +62,7 @@ func (w *SmartAlertsWorker) evaluateRulesBatch(ctx context.Context, ch *database
 		}
 	}
 
-	metricsByKey, err := w.loadAlertMetricsBatch(ctx, ch, metricKeys)
+	metricsByKey, err := w.loadAlertMetricsBatch(ctx, clickhouseQuery, metricKeys)
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func resolveRuleCampaignIDs(rule smartAlertRuleRow, campaignsByCustomer map[uuid
 
 func (w *SmartAlertsWorker) loadAlertMetricsBatch(
 	ctx context.Context,
-	ch *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	metricKeys map[alertMetricWindowKey]map[uuid.UUID]struct{},
 ) (map[alertMetricWindowKey]map[uuid.UUID]alertCampaignMetrics, error) {
 	out := make(map[alertMetricWindowKey]map[uuid.UUID]alertCampaignMetrics, len(metricKeys))
@@ -162,7 +162,7 @@ func (w *SmartAlertsWorker) loadAlertMetricsBatch(
 		if len(campaignIDs) == 0 {
 			continue
 		}
-		perCampaign, err := querySmartAlertMetricBatch(ctx, ch, key.metric, campaignIDs, key.start, key.end)
+		perCampaign, err := querySmartAlertMetricBatch(ctx, clickhouseQuery, key.metric, campaignIDs, key.start, key.end)
 		if err != nil {
 			return nil, err
 		}
@@ -302,18 +302,18 @@ GROUP BY campaign_id`
 
 func querySmartAlertMetricBatch(
 	ctx context.Context,
-	ch *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	metric string,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 ) (map[uuid.UUID]alertCampaignMetrics, error) {
-	chCtx, cancel := context.WithTimeout(ctx, smartAlertCHTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, smartAlertCHTimeout)
 	defer cancel()
 
 	out := make(map[uuid.UUID]alertCampaignMetrics, len(campaignIDs))
 	switch metric {
 	case "clicks":
-		rows, err := ch.Query(chCtx, smartAlertClicksByCampaignQuery, campaignIDs, from, to)
+		rows, err := clickhouseQuery.Query(clickhouseCtx, smartAlertClicksByCampaignQuery, campaignIDs, from, to)
 		if err != nil {
 			return nil, err
 		}
@@ -330,7 +330,7 @@ func querySmartAlertMetricBatch(
 		}
 		return out, rows.Err()
 	case "bot_clicks":
-		rows, err := ch.Query(chCtx, smartAlertBotClicksByCampaignQuery, campaignIDs, from, to)
+		rows, err := clickhouseQuery.Query(clickhouseCtx, smartAlertBotClicksByCampaignQuery, campaignIDs, from, to)
 		if err != nil {
 			return nil, err
 		}
@@ -347,12 +347,12 @@ func querySmartAlertMetricBatch(
 		}
 		return out, rows.Err()
 	case "cr":
-		if err := mergeClickCounts(chCtx, ch, smartAlertClicksByCampaignQuery, campaignIDs, from, to, out, false); err != nil {
+		if err := mergeClickCounts(clickhouseCtx, clickhouseQuery, smartAlertClicksByCampaignQuery, campaignIDs, from, to, out, false); err != nil {
 			return nil, err
 		}
-		return out, mergeClickCounts(chCtx, ch, smartAlertConversionsByCampaignQuery, campaignIDs, from, to, out, true)
+		return out, mergeClickCounts(clickhouseCtx, clickhouseQuery, smartAlertConversionsByCampaignQuery, campaignIDs, from, to, out, true)
 	case "roi_pct":
-		rows, err := ch.Query(chCtx, smartAlertROIByCampaignQuery, campaignIDs, from, to)
+		rows, err := clickhouseQuery.Query(clickhouseCtx, smartAlertROIByCampaignQuery, campaignIDs, from, to)
 		if err != nil {
 			return nil, err
 		}
@@ -376,14 +376,14 @@ func querySmartAlertMetricBatch(
 
 func mergeClickCounts(
 	ctx context.Context,
-	ch *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	query string,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	out map[uuid.UUID]alertCampaignMetrics,
 	conversions bool,
 ) error {
-	rows, err := ch.Query(ctx, query, campaignIDs, from, to)
+	rows, err := clickhouseQuery.Query(ctx, query, campaignIDs, from, to)
 	if err != nil {
 		return err
 	}

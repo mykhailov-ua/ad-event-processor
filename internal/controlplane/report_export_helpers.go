@@ -56,10 +56,10 @@ func csvMapField(row map[string]any, key string) string {
 func exportCHMapReport(
 	ctx context.Context,
 	w *csv.Writer,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
-	queryFn chReportRowsFunc,
+	queryFn clickhouseReportRowsFunc,
 	headers []string,
 	cols ...string,
 ) error {
@@ -68,7 +68,7 @@ func exportCHMapReport(
 	}
 	return paginateCHExport(reportExportPageSize,
 		func(offset, limit int) ([]map[string]any, int64, error) {
-			return queryFn(ctx, chQuery, campaignIDs, from, to, limit, offset)
+			return queryFn(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
 		},
 		func(row map[string]any) error {
 			return writeCSVMapRow(w, row, cols...)

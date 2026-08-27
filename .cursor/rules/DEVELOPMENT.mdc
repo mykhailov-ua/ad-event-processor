@@ -1,6 +1,12 @@
 ---
 description: Codegen, local stack, benchmarks, fault runbooks, admin release
-globs: Makefile, Taskfile.yaml, scripts/dev/**, scripts/fault/**, deploy/vendor/*_MILESTONE.md, model/**
+globs:
+  - Makefile
+  - Taskfile.yaml
+  - scripts/dev/**
+  - scripts/fault/**
+  - deploy/vendor/*_MILESTONE.md
+  - model/**
 alwaysApply: false
 ---
 
@@ -37,16 +43,51 @@ Operator-owned. **Agents:** do not run `stack.sh up`, `docker compose up`, or `p
 ```bash
 cp .env.example .env
 bash scripts/dev/stack.sh build
-bash scripts/dev/stack.sh full # or ingest-only, single-vps
+bash scripts/dev/stack.sh ingest-only
 bash scripts/dev/preflight.sh
 ```
 
 | Profile | Services |
 | :--- | :--- |
-| `single-vps` / `full` | tracker, processor, control, PG, Redis x4, CH |
-| `infra` | PG, Redis x6 + Sentinel, CH |
-| `ingest-only` | tracker, processor, control; no CH |
-| `analytics-ml` | + fraud-scorer, ivt-detector |
+| `ingest-only` (default dev) | tracker, processor, control, PG, Redis; **no CH** |
+| `single-vps` / `full` | `REDIS_SHARD_COUNT` redis shards (local default 2); **CH not started** |
+| `stack.sh clickhouse` | ClickHouse only; explicit opt-in |
+| `infra` | PG, Redis x`REDIS_SHARD_COUNT` (max 6); **no CH** |
+| `analytics-ml` | + fraud-scorer, ivt-detector, **CH required** |
+
+### Redis shard count (dev)
+
+`REDIS_SHARD_COUNT` in `.env` controls which `redis-0..redis-5` services `stack.sh` starts (max 6). `REDIS_ADDRS` must list one address per shard (`bash scripts/ops/verify_redis_topology.sh .env`).
+
+| Variable | Default (local) | Role |
+| :--- | :--- | :--- |
+| `REDIS_SHARD_COUNT` | 2 | Compose shard count |
+| `INGEST_REDIS_SHARD_COUNT` | 2 | `ingest-only` starts `redis-0` and `redis-1` |
+| `COMPOSE_MEMORY_PROFILE` | `dev` | Applies `docker-compose.memory-dev.yaml` cgroup limits |
+
+Local default: 2 shards in `.env.example`. Production (`ENV=production`) still requires exactly `ExpectedRedisShardCount` (4) entries in `REDIS_ADDRS`.
+
+### Docker memory (laptop)
+
+`COMPOSE_MEMORY_PROFILE=dev` (default when unset in `stack.sh`) adds reduced cgroup limits. Set `COMPOSE_MEMORY_PROFILE=` in `.env` to use compose file defaults. ClickHouse overlay when started: ~1.5G limit in memory-dev profile.
+
+### ClickHouse on dev laptops (critical)
+
+Do **not** start ClickHouse for routine work. CH pulls ~4G compose limit, heavy disk I/O, and triggers OOM on 16GB hosts.
+
+| Allowed | Command |
+| :--- | :--- |
+| Hotfix proving CH ingest / reports | `CH_ENABLED=1 bash scripts/dev/stack.sh clickhouse` then reproduce |
+| P0 e2e needing analytics tables | same + targeted test; tear down after |
+| IOPS / load-test BPF tier | `deploy/compose/docker-compose.load-test.yaml` on dedicated runner |
+
+Forbidden without operator ask: `stack.sh full`, `infra`, `single-vps` with CH; `make test-integration` that needs CH while CH container runs for unrelated work; leaving `clickhouse` up overnight.
+
+Default: `CH_ENABLED=0` in `.env.example` and compose. Processor/control skip CH when disabled (`pkg/doctor` skips CH probe).
+
+```bash
+bash scripts/dev/stack.sh ingest-only   # canonical laptop path
+```
 
 Admin static (UI rebuild; `web/` absent):
 

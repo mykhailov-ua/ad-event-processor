@@ -30,7 +30,7 @@ type PostbackReconReportResponse struct {
 	NextCursor string                `json:"next_cursor,omitempty"`
 }
 
-const postbackReconCHQuery = `
+const postbackReconClickHouseQuery = `
 SELECT
  campaign_id,
  click_id,
@@ -54,32 +54,32 @@ SELECT count() FROM (
  GROUP BY campaign_id, click_id
 )`
 
-func (reports *ReportsHTTPHandlers) registerPostbackReconReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerPostbackReconReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	perms := []string{"audit:read", "campaigns:read"}
-	mux.HandleFunc("GET /api/v1/reports/postback-reconciliation", limit(permAny(perms, reports.wrapReport("postback-reconciliation", reports.getPostbackReconReport))))
+	mux.HandleFunc("GET /api/v1/reports/postback-reconciliation", limit(permAny(perms, h.wrapReport("postback-reconciliation", h.getPostbackReconReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getPostbackReconReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getPostbackReconReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.Pool == nil {
+	if h.Pool == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "postgres not configured")
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -87,44 +87,44 @@ func (reports *ReportsHTTPHandlers) getPostbackReconReport(w http.ResponseWriter
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, PostbackReconReportResponse{
 			Rows:      []PostbackReconRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	convRows, total, err := queryPostbackReconCHRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	convRows, total, err := queryPostbackReconCHRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(convRows) == 0 {
 		httpresponse.JSON(w, http.StatusOK, PostbackReconReportResponse{
 			Rows:      []PostbackReconRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
 
-	pgCtx, pgCancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	pgCtx, pgCancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer pgCancel()
-	dispatchByClick, err := queryPostbackDispatchByClickIDs(pgCtx, reports.Pool, convRows)
+	dispatchByClick, err := queryPostbackDispatchByClickIDs(pgCtx, h.Pool, convRows)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
-	ledgerDayFees, err := queryCampaignDayLedgerFees(pgCtx, reports.Pool, convRows, from, to)
+	ledgerDayFees, err := queryCampaignDayLedgerFees(pgCtx, h.Pool, convRows, from, to)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (reports *ReportsHTTPHandlers) getPostbackReconReport(w http.ResponseWriter
 	}
 	httpresponse.JSON(w, http.StatusOK, PostbackReconReportResponse{
 		Rows:       out,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
@@ -162,33 +162,33 @@ func postbackDispatchKey(campaignID uuid.UUID, clickID string) string {
 
 func queryPostbackReconCHRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]postbackReconCHRow, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, postbackReconCHCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, postbackReconCHCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, postbackReconCHQuery, campaignIDs, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, postbackReconClickHouseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]postbackReconCHRow, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row postbackReconCHRow
-		if err := chRows.Scan(&row.campaignID, &row.clickID, &row.at, &row.conversionValueMicro); err != nil {
+		if err := clickhouseRows.Scan(&row.campaignID, &row.clickID, &row.at, &row.conversionValueMicro); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func queryPostbackDispatchByClickIDs(
@@ -311,10 +311,10 @@ func queryPostbackReconExportRows(
 	from, to time.Time,
 	limit, offset int,
 ) ([]PostbackReconRowDTO, int64, error) {
-	if deps.Pool == nil || deps.CHQuery == nil || len(campaignIDs) == 0 {
+	if deps.Pool == nil || deps.ClickHouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
-	convRows, total, err := queryPostbackReconCHRows(ctx, deps.CHQuery, campaignIDs, from, to, limit, offset)
+	convRows, total, err := queryPostbackReconCHRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

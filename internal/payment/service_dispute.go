@@ -32,7 +32,7 @@ func intentStatusAllowsDispute(status db.PaymentPaymentIntentStatus) bool {
 		status == db.PaymentPaymentIntentStatusDISPUTED
 }
 
-func (service *Service) ProcessStripeDisputeWebhook(
+func (s *Service) ProcessStripeDisputeWebhook(
 	ctx context.Context,
 	eventID string,
 	eventType string,
@@ -51,7 +51,7 @@ func (service *Service) ProcessStripeDisputeWebhook(
 		return fmt.Errorf("redact stripe webhook payload: %w", err)
 	}
 
-	err = pgx.BeginFunc(ctx, service.pool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.pool, func(tx pgx.Tx) error {
 		txQueries := db.New(tx)
 
 		_, err := txQueries.GetWebhookEvent(ctx, db.GetWebhookEventParams{
@@ -155,7 +155,7 @@ func (service *Service) ProcessStripeDisputeWebhook(
 
 		case "charge.dispute.funds_withdrawn":
 			if !hasDispute {
-				if err := service.ensureDisputeRow(ctx, txQueries, intent, providerDisputeID, disputeAmountMicro); err != nil {
+				if err := s.ensureDisputeRow(ctx, txQueries, intent, providerDisputeID, disputeAmountMicro); err != nil {
 					return err
 				}
 				dispute, err = txQueries.GetPaymentDisputeByProviderDisputeID(ctx, db.GetPaymentDisputeByProviderDisputeIDParams{
@@ -282,7 +282,7 @@ func lockIntentByProviderRef(ctx context.Context, tx pgx.Tx, paymentIntentRef st
 	return intent, err
 }
 
-func (service *Service) ensureDisputeRow(ctx context.Context, q db.Querier, intent db.PaymentPaymentIntent, providerDisputeID string, amountMicro int64) error {
+func (s *Service) ensureDisputeRow(ctx context.Context, q db.Querier, intent db.PaymentPaymentIntent, providerDisputeID string, amountMicro int64) error {
 	disputeID, err := uuid.NewV7()
 	if err != nil {
 		return fmt.Errorf("generate dispute id: %w", err)

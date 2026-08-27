@@ -7,12 +7,10 @@ import (
 
 const defaultMigrateBudgetMicro = 100_000_000
 
-// DefaultMigrateBudgetMicro returns the default campaign budget when a source export omits spend.
 func DefaultMigrateBudgetMicro() int64 {
 	return defaultMigrateBudgetMicro
 }
 
-// ExportCampaignShape mirrors controlplane campaign export fields for migration import.
 type ExportCampaignShape struct {
 	Name                string
 	BudgetLimitMicro    int64
@@ -24,7 +22,6 @@ type ExportCampaignShape struct {
 	PostbackURLTemplate string
 }
 
-// MappedToExportShape converts a preview row into an import-ready campaign shape.
 func MappedToExportShape(m MappedCampaign, namePrefix string, budgetDefaultMicro int64) ExportCampaignShape {
 	name := strings.TrimSpace(m.Name)
 	if prefix := strings.TrimSpace(namePrefix); prefix != "" {
@@ -60,7 +57,6 @@ func cloneStringMap(in map[string]string) map[string]string {
 	return out
 }
 
-// ImportIdempotencyKey builds a per-campaign idempotency key from the batch key and index.
 func ImportIdempotencyKey(batchKey string, index int) string {
 	base := strings.TrimSpace(batchKey)
 	if base == "" {

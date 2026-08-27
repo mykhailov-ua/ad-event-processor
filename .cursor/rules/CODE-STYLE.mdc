@@ -1,6 +1,9 @@
 ---
 description: Repo layout, naming, structs, sqlc, proto, errors, PR gates
-globs: **/*.go, **/*.lua, internal/**/queries/*.sql
+globs:
+  - **/*.go
+  - **/*.lua
+  - internal/**/queries/*.sql
 alwaysApply: false
 ---
 

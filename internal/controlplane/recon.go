@@ -44,7 +44,7 @@ func reconciliationRedisAppliedKey(outboxEventID int64) string {
 	return fmt.Sprintf("recon:redis_applied:%d", outboxEventID)
 }
 
-func (worker *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID int64, payload []byte) error {
+func (w *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseReconciliationAdjustPayload(payload)
 	if err != nil {
 		return err
@@ -58,23 +58,23 @@ func (worker *OutboxWorker) ApplyReconciliationAdjust(ctx context.Context, event
 		return fmt.Errorf("invalid customer id: %w", err)
 	}
 
-	if err := worker.applyReconciliationAdjustPG(ctx, eventID, p, campID, customerID); err != nil {
+	if err := w.applyReconciliationAdjustPostgres(ctx, eventID, p, campID, customerID); err != nil {
 		return err
 	}
-	if err := worker.applyReconciliationAdjustRedis(ctx, eventID, p, campID); err != nil {
+	if err := w.applyReconciliationAdjustRedis(ctx, eventID, p, campID); err != nil {
 		return err
 	}
 	metrics.ReconCorrectionsAppliedTotal.Inc()
 	return nil
 }
 
-func (worker *OutboxWorker) applyReconciliationAdjustPG(
+func (w *OutboxWorker) applyReconciliationAdjustPostgres(
 	ctx context.Context,
 	eventID int64,
 	p ReconciliationAdjustPayload,
 	campID, customerID uuid.UUID,
 ) error {
-	tx, err := worker.svc.GetPool().Begin(ctx)
+	tx, err := w.svc.GetPool().Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -113,13 +113,13 @@ func (worker *OutboxWorker) applyReconciliationAdjustPG(
 	}
 
 	adminID := uuid.MustParse(quotaRepairSystemAdmin)
-	worker.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
+	w.svc.AuditLog(ctx, q, adminID, "RECONCILIATION_ADJUST", "campaign",
 		&campID, p, auditOutboxEventMeta{OutboxEventID: eventID})
 
 	return tx.Commit(ctx)
 }
 
-func (worker *OutboxWorker) applyReconciliationAdjustRedis(
+func (w *OutboxWorker) applyReconciliationAdjustRedis(
 	ctx context.Context,
 	eventID int64,
 	p ReconciliationAdjustPayload,
@@ -128,11 +128,11 @@ func (worker *OutboxWorker) applyReconciliationAdjustRedis(
 	if p.RedisDelta == 0 {
 		return nil
 	}
-	if int(p.ShardID) >= len(worker.svc.redisShards) {
+	if int(p.ShardID) >= len(w.svc.redisShards) {
 		return fmt.Errorf("invalid shard_id %d", p.ShardID)
 	}
-	redisClient := worker.svc.redisShards[p.ShardID]
-	recon := NewReconService(worker.svc)
+	redisClient := w.svc.redisShards[p.ShardID]
+	recon := NewReconService(w.svc)
 
 	applied, err := recon.reconciliationRedisAdjustApplied(ctx, redisClient, eventID, p, campID)
 	if err != nil {
@@ -253,7 +253,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 	for campID, entry := range ledgerMap {
 		ledgerSpent := entry.spent
 		syncKey := domain.CampaignSyncKey(campID)
-		redisClient := reconService.svc.getRDB(campID)
+		redisClient := reconService.svc.redisClientForCampaign(campID)
 		if redisClient == nil {
 			slog.Error("no redis shard for campaign in recon", "campaign_id", campID)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -456,7 +456,7 @@ func (w *ReconWorker) runHYG30Audits(ctx context.Context) {
 		return
 	}
 	start := time.Now()
-	pool := w.svc.settlePool()
+	pool := w.svc.settlementPool()
 	if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
 		w.auditRedisPGLedger(runCtx, pool)
 		w.auditPGCHStats(runCtx)
@@ -557,8 +557,8 @@ func (w *ReconWorker) processHYG30AuditDrift(ctx context.Context, campID uuid.UU
 }
 
 func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
-	ch := w.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := w.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return
 	}
 	rows, err := w.svc.GetPool().Query(ctx, `
@@ -611,10 +611,10 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 		return
 	}
 
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
 
-	chTotals, err := queryCHCampaignDailyEventTotals(chCtx, ch, campaignIDs, minDay, maxDay.Add(24*time.Hour))
+	clickhouseTotals, err := queryClickHouseCampaignDailyEventTotals(clickhouseCtx, clickhouseQuery, campaignIDs, minDay, maxDay.Add(24*time.Hour))
 	if err != nil {
 		slog.Error("hyg30 audit B ch batch query failed", "error", err)
 		return
@@ -622,7 +622,7 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 
 	for _, s := range pgStats {
 		key := campaignDailyTotalKey(s.campID, s.day)
-		chTotal := chTotals[key]
+		chTotal := clickhouseTotals[key]
 		if chTotal == 0 {
 			continue
 		}
@@ -735,7 +735,7 @@ func (s *Service) forceRefillCampaignFromPG(ctx context.Context, campaignID uuid
 	if remaining < 0 {
 		remaining = 0
 	}
-	redisClient := s.getRDB(campaignID)
+	redisClient := s.redisClientForCampaign(campaignID)
 	if redisClient == nil {
 		return errors.New("no redis shard")
 	}
@@ -743,12 +743,12 @@ func (s *Service) forceRefillCampaignFromPG(ctx context.Context, campaignID uuid
 	return redisClient.Set(ctx, key, remaining, 24*time.Hour).Err()
 }
 
-func (s *Service) settlePool() *pgxpool.Pool {
+func (s *Service) settlementPool() *pgxpool.Pool {
 	if s == nil {
 		return nil
 	}
-	if s.settlePoolField != nil {
-		return s.settlePoolField
+	if s.settlementPostgresPool != nil {
+		return s.settlementPostgresPool
 	}
 	return s.pool
 }
@@ -757,7 +757,7 @@ func (s *Service) SetSettlePool(pool *pgxpool.Pool) {
 	if s == nil {
 		return
 	}
-	s.settlePoolField = pool
+	s.settlementPostgresPool = pool
 }
 
 const reconciliationAdjustEventType = "RECONCILIATION_ADJUST"

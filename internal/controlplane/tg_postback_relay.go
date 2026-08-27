@@ -65,14 +65,14 @@ func (s *TelegramServiceImpl) recordWebhookStartEvent(
 	chatType string,
 	isPremium bool,
 ) error {
-	conn := s.svc.CHWrite()
+	conn := s.svc.ClickHouseWrite()
 	if conn == nil {
 		return nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	userStr := fmt.Sprintf("%d", tgUserID)
-	return insertTgEventRaw(chCtx, conn, tgCHInsertRow{
+	return insertTgEventRaw(clickhouseCtx, conn, tgCHInsertRow{
 		ClickID:    token,
 		CampaignID: campaignID,
 		EventType:  "tg_start",

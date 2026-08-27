@@ -1,6 +1,10 @@
 ---
 description: Current flat repo layout, cmd map, future split map
-globs: internal/**, cmd/**, pkg/**, api/**
+globs:
+  - internal/**
+  - cmd/**
+  - pkg/**
+  - api/**
 alwaysApply: false
 ---
 
@@ -32,7 +36,7 @@ Module: `ad-event-processor`. `cmd/<binary>/main.go` wires config only - no busi
 | `db/`, `queries/`, `migrations/`, `pb/` | `dto/`, `usecase/`, `providers/`, `repositories/` |
 | `controlplane/authz/`, `controlplane/outboxpb/` | Generic `services/` subtrees |
 
-Root clutter ban: no `*.log`, compiled binaries, ad-hoc `.env.*` in repo root - use `var/`, `config/env/`, `bin/`.
+Root clutter: `core.mdc` Sources-only repository.
 
 ## cmd map
 

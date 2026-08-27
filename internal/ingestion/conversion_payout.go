@@ -23,7 +23,6 @@ type conversionMappingStore interface {
 	ListConversionMappingsByCampaignIDs(ctx context.Context, ids []pgtype.UUID) ([]db.CampaignConversionMapping, error)
 }
 
-// ConversionPayoutApplier resolves affiliate inbound status to goal_name and revenue_micro on conversion events.
 type ConversionPayoutApplier struct {
 	queries conversionMappingStore
 }

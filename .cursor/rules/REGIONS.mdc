@@ -1,6 +1,10 @@
 ---
 description: Enterprise multi-region, region-proxy WAL, import boundaries
-globs: pkg/regionproxy/**, cmd/region-proxy/**, internal/controlplane/*region*, internal/controlplane/operation_lease*
+globs:
+  - pkg/regionproxy/**
+  - cmd/region-proxy/**
+  - internal/controlplane/*region*
+  - internal/controlplane/operation_lease*
 alwaysApply: false
 ---
 

@@ -23,28 +23,28 @@ type faultCheckpointStore struct {
 	failSave atomic.Uint32
 }
 
-func (store *faultCheckpointStore) Load() error {
-	return store.inner.Load()
+func (st *faultCheckpointStore) Load() error {
+	return st.inner.Load()
 }
 
-func (store *faultCheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
-	return store.inner.IsCompacted(sourceKey, sourceSHA256)
+func (st *faultCheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
+	return st.inner.IsCompacted(sourceKey, sourceSHA256)
 }
 
-func (store *faultCheckpointStore) Get(sourceKey string) (CheckpointRecord, bool) {
-	return store.inner.Get(sourceKey)
+func (st *faultCheckpointStore) Get(sourceKey string) (CheckpointRecord, bool) {
+	return st.inner.Get(sourceKey)
 }
 
-func (store *faultCheckpointStore) Has(sourceKey string) bool {
-	return store.inner.Has(sourceKey)
+func (st *faultCheckpointStore) Has(sourceKey string) bool {
+	return st.inner.Has(sourceKey)
 }
 
-func (store *faultCheckpointStore) Save(record CheckpointRecord) error {
-	if store.failSave.Load() > 0 {
-		store.failSave.Add(^uint32(0))
+func (st *faultCheckpointStore) Save(record CheckpointRecord) error {
+	if st.failSave.Load() > 0 {
+		st.failSave.Add(^uint32(0))
 		return errors.New("injected checkpoint save failure")
 	}
-	return store.inner.Save(record)
+	return st.inner.Save(record)
 }
 
 func TestFault_logCompactorCheckpointCrashRecovery(t *testing.T) {
@@ -198,43 +198,43 @@ type faultInjectedLocalStore struct {
 	failWarmWrite bool
 }
 
-func (store *faultInjectedLocalStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
-	return store.inner.ListHot(ctx, olderThan)
+func (st *faultInjectedLocalStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
+	return st.inner.ListHot(ctx, olderThan)
 }
 
-func (store *faultInjectedLocalStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
-	return store.inner.WriteWarm(ctx, destKey, plaintext, meta)
+func (st *faultInjectedLocalStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
+	return st.inner.WriteWarm(ctx, destKey, plaintext, meta)
 }
 
-func (store *faultInjectedLocalStore) RemoveHot(ctx context.Context, obj TierObject) error {
-	return store.inner.RemoveHot(ctx, obj)
+func (st *faultInjectedLocalStore) RemoveHot(ctx context.Context, obj TierObject) error {
+	return st.inner.RemoveHot(ctx, obj)
 }
 
-func (store *faultInjectedLocalStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
-	return store.inner.ClaimHot(ctx, obj)
+func (st *faultInjectedLocalStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
+	return st.inner.ClaimHot(ctx, obj)
 }
 
-func (store *faultInjectedLocalStore) RollbackHot(ctx context.Context, obj TierObject) error {
-	return store.inner.RollbackHot(ctx, obj)
+func (st *faultInjectedLocalStore) RollbackHot(ctx context.Context, obj TierObject) error {
+	return st.inner.RollbackHot(ctx, obj)
 }
 
-func (store *faultInjectedLocalStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
-	return store.inner.ListStuckCompacting(ctx)
+func (st *faultInjectedLocalStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
+	return st.inner.ListStuckCompacting(ctx)
 }
 
-func (store *faultInjectedLocalStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
-	return store.inner.RemoveCompacting(ctx, obj)
+func (st *faultInjectedLocalStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
+	return st.inner.RemoveCompacting(ctx, obj)
 }
 
-func (store *faultInjectedLocalStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
-	if store.failWarmWrite {
+func (st *faultInjectedLocalStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
+	if st.failWarmWrite {
 		return "", errors.New("injected warm write failure")
 	}
-	return store.inner.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
+	return st.inner.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
 }
 
-func (store *faultInjectedLocalStore) RemoveWarmArtifacts(destKey string) {
-	store.inner.RemoveWarmArtifacts(destKey)
+func (st *faultInjectedLocalStore) RemoveWarmArtifacts(destKey string) {
+	st.inner.RemoveWarmArtifacts(destKey)
 }
 
 func writeHotSegment(t *testing.T, dir, name string, payload []byte) string {

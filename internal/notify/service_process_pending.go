@@ -46,12 +46,12 @@ func groupClaimedNotifications(notifications []db.NotifierNotification) (groups 
 	return groups, len(notifications)
 }
 
-func (service *Service) processGroupsParallel(ctx context.Context, groups []notificationGroup) (int, error) {
+func (s *Service) processGroupsParallel(ctx context.Context, groups []notificationGroup) (int, error) {
 	if len(groups) == 0 {
 		return 0, nil
 	}
 
-	parallelism := service.options.groupParallelism()
+	parallelism := s.options.groupParallelism()
 	if parallelism > len(groups) {
 		parallelism = len(groups)
 	}
@@ -72,7 +72,7 @@ func (service *Service) processGroupsParallel(ctx context.Context, groups []noti
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			count, err := service.finalizeGroup(ctx, group)
+			count, err := s.finalizeGroup(ctx, group)
 			processedMu.Lock()
 			processed += count
 			processedMu.Unlock()
@@ -86,7 +86,7 @@ func (service *Service) processGroupsParallel(ctx context.Context, groups []noti
 	return processed, firstErr
 }
 
-func (service *Service) finalizeGroup(ctx context.Context, group notificationGroup) (int, error) {
+func (s *Service) finalizeGroup(ctx context.Context, group notificationGroup) (int, error) {
 	items := group.items
 	lead := items[0]
 	leadID := uuidString(lead.ID)
@@ -108,22 +108,22 @@ func (service *Service) finalizeGroup(ctx context.Context, group notificationGro
 				targets = append(targets, db.NotifierProvider(provider))
 			}
 		}
-		targets = service.resolveBroadcastTargets(targets)
-		result := service.deliverBroadcast(ctx, leadID, lead.Provider, lead.Recipient, targets, lead.Title.String, finalBody)
+		targets = s.resolveBroadcastTargets(targets)
+		result := s.deliverBroadcast(ctx, leadID, lead.Provider, lead.Recipient, targets, lead.Title.String, finalBody)
 		sendErr = result.err
 		sentProvider = result.sentProvider
 		deliveryNote = result.partialNote
 	} else {
-		sentProvider, sendErr = service.deliverFallback(ctx, leadID, lead.Provider, lead.Recipient, lead.Title.String, finalBody)
+		sentProvider, sendErr = s.deliverFallback(ctx, leadID, lead.Provider, lead.Recipient, lead.Title.String, finalBody)
 	}
 
 	if sendErr == nil {
-		return service.markGroupSent(ctx, lead, items, leadID, sentProvider, deliveryNote, isAggregated)
+		return s.markGroupSent(ctx, lead, items, leadID, sentProvider, deliveryNote, isAggregated)
 	}
-	return service.markGroupFailed(ctx, lead, sendErr)
+	return s.markGroupFailed(ctx, lead, sendErr)
 }
 
-func (service *Service) markGroupSent(
+func (s *Service) markGroupSent(
 	ctx context.Context,
 	lead db.NotifierNotification,
 	items []db.NotifierNotification,
@@ -135,7 +135,7 @@ func (service *Service) markGroupSent(
 	dbSentProvider := db.NullNotifierProvider{NotifierProvider: sentProvider, Valid: true}
 	errorMessage := pgtypeTextOptional(deliveryNote)
 
-	if _, err := service.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
+	if _, err := s.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
 		ID:           lead.ID,
 		Status:       db.NotifierNotificationStatusSENT,
 		Provider:     dbSentProvider,
@@ -148,7 +148,7 @@ func (service *Service) markGroupSent(
 	if isAggregated {
 		for i := 1; i < len(items); i++ {
 			subItem := items[i]
-			if _, err := service.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
+			if _, err := s.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
 				ID:           subItem.ID,
 				Status:       db.NotifierNotificationStatusSENT,
 				Provider:     dbSentProvider,
@@ -162,7 +162,7 @@ func (service *Service) markGroupSent(
 	return len(items), nil
 }
 
-func (service *Service) markGroupFailed(ctx context.Context, lead db.NotifierNotification, sendErr error) (int, error) {
+func (s *Service) markGroupFailed(ctx context.Context, lead db.NotifierNotification, sendErr error) (int, error) {
 	nextRetryCount := lead.RetryCount + 1
 	nextStatus := db.NotifierNotificationStatusPENDING
 	if nextRetryCount >= maxDeliveryAttempts {
@@ -173,7 +173,7 @@ func (service *Service) markGroupFailed(ctx context.Context, lead db.NotifierNot
 		slog.Warn("notification delivery failed, will retry", "error", sendErr, "notification_id", uuidString(lead.ID), "retries", nextRetryCount)
 	}
 
-	if _, err := service.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
+	if _, err := s.queries.UpdateNotificationStatus(ctx, db.UpdateNotificationStatusParams{
 		ID:           lead.ID,
 		Status:       nextStatus,
 		RetryCount:   pgtypeInt4(nextRetryCount),
@@ -184,12 +184,12 @@ func (service *Service) markGroupFailed(ctx context.Context, lead db.NotifierNot
 	return 1, nil
 }
 
-func (service *Service) ProcessPending(ctx context.Context, batchSize int32) (int, error) {
-	if _, err := service.queries.ReclaimStaleProcessing(ctx, int64(service.options.claimStale().Seconds())); err != nil {
+func (s *Service) ProcessPending(ctx context.Context, batchSize int32) (int, error) {
+	if _, err := s.queries.ReclaimStaleProcessing(ctx, int64(s.options.claimStale().Seconds())); err != nil {
 		return 0, fmt.Errorf("reclaim stale processing notifications: %w", err)
 	}
 
-	notifications, err := service.queries.ClaimPendingNotifications(ctx, batchSize)
+	notifications, err := s.queries.ClaimPendingNotifications(ctx, batchSize)
 	if err != nil {
 		return 0, fmt.Errorf("claim pending notifications: %w", err)
 	}
@@ -198,12 +198,12 @@ func (service *Service) ProcessPending(ctx context.Context, batchSize int32) (in
 	}
 
 	groups, _ := groupClaimedNotifications(notifications)
-	return service.processGroupsParallel(ctx, groups)
+	return s.processGroupsParallel(ctx, groups)
 }
 
-func (service *Service) ProcessPendingSequential(ctx context.Context, batchSize int32) (int, error) {
-	old := service.options.GroupParallelism
-	service.options.GroupParallelism = 1
-	defer func() { service.options.GroupParallelism = old }()
-	return service.ProcessPending(ctx, batchSize)
+func (s *Service) ProcessPendingSequential(ctx context.Context, batchSize int32) (int, error) {
+	old := s.options.GroupParallelism
+	s.options.GroupParallelism = 1
+	defer func() { s.options.GroupParallelism = old }()
+	return s.ProcessPending(ctx, batchSize)
 }

@@ -15,12 +15,12 @@ func RenderTemplate(body string, vars map[string]string) string {
 	return out
 }
 
-func (service *Service) RetryNotification(ctx context.Context, notificationID string) (Notification, error) {
+func (s *Service) RetryNotification(ctx context.Context, notificationID string) (Notification, error) {
 	id, err := pgUUIDFromString(notificationID)
 	if err != nil {
 		return Notification{}, err
 	}
-	row, err := service.queries.RetryNotification(ctx, id)
+	row, err := s.queries.RetryNotification(ctx, id)
 	if err != nil {
 		return Notification{}, fmt.Errorf("retry notification: %w", err)
 	}

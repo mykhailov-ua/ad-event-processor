@@ -36,7 +36,7 @@ func TestFault_ProcessorWeightDrain(t *testing.T) {
 	lagRatio := float64(fastReads) / float64(slowReads)
 	assert.Greater(t, lagRatio, 3.0)
 
-	slowGate := NewProcessorPgGate(1, 2)
+	slowGate := NewProcessorPostgresGate(1, 2)
 	slowDrain := NewProcessorWeightController(ProcessorWeightConfig{
 		NodeID: "processor-1", InstanceLabel: "processor-1",
 		Floor: 0.05, Ceil: 0.95, EpochInterval: time.Second,

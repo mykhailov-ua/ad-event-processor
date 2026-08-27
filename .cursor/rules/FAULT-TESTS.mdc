@@ -1,6 +1,10 @@
 ---
 description: Fault injection, parser chaos proofs, outbox idempotency, resilience
-globs: **/*_fault_test.go, **/fault_*.go, scripts/fault/**, scripts/test/**
+globs:
+  - **/*_fault_test.go
+  - **/fault_*.go
+  - scripts/fault/**
+  - scripts/test/**
 alwaysApply: false
 ---
 

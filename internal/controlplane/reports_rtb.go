@@ -120,22 +120,22 @@ SELECT count() FROM (
  GROUP BY geo_country, device_os
 )`
 
-func (reports *ReportsHTTPHandlers) registerRtbReports(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/rtb/overview", limit(perm("rtb:read", reports.wrapReport("rtb-overview", reports.getRtbOverviewReport))))
-	mux.HandleFunc("GET /api/v1/reports/rtb/no-bid-reasons", limit(perm("rtb:read", reports.wrapReport("rtb-no-bid-reasons", reports.getRtbNoBidReasonsReport))))
-	mux.HandleFunc("GET /api/v1/reports/rtb/geo-device", limit(perm("rtb:read", reports.wrapReport("rtb-geo-device", reports.getRtbGeoDeviceReport))))
+func (h *ReportsHTTPHandlers) registerRtbReports(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/reports/rtb/overview", limit(perm("rtb:read", h.wrapReport("rtb-overview", h.getRtbOverviewReport))))
+	mux.HandleFunc("GET /api/v1/reports/rtb/no-bid-reasons", limit(perm("rtb:read", h.wrapReport("rtb-no-bid-reasons", h.getRtbNoBidReasonsReport))))
+	mux.HandleFunc("GET /api/v1/reports/rtb/geo-device", limit(perm("rtb:read", h.wrapReport("rtb-geo-device", h.getRtbGeoDeviceReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getRtbOverviewReport(w http.ResponseWriter, r *http.Request) {
-	if reports.CHQuery == nil {
+func (h *ReportsHTTPHandlers) getRtbOverviewReport(w http.ResponseWriter, r *http.Request) {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 500)
@@ -143,11 +143,11 @@ func (reports *ReportsHTTPHandlers) getRtbOverviewReport(w http.ResponseWriter, 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryRtbOverviewRows(chCtx, reports.CHQuery, from, to, page.Limit, page.Offset)
+	rows, total, err := queryRtbOverviewRows(clickhouseCtx, h.ClickHouseQuery, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	var nextCursor string
@@ -156,19 +156,19 @@ func (reports *ReportsHTTPHandlers) getRtbOverviewReport(w http.ResponseWriter, 
 	}
 	httpresponse.JSON(w, http.StatusOK, RtbOverviewReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
-func (reports *ReportsHTTPHandlers) getRtbNoBidReasonsReport(w http.ResponseWriter, r *http.Request) {
-	if reports.CHQuery == nil {
+func (h *ReportsHTTPHandlers) getRtbNoBidReasonsReport(w http.ResponseWriter, r *http.Request) {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 500)
@@ -176,11 +176,11 @@ func (reports *ReportsHTTPHandlers) getRtbNoBidReasonsReport(w http.ResponseWrit
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryRtbNoBidReasonRows(chCtx, reports.CHQuery, from, to, page.Limit, page.Offset)
+	rows, total, err := queryRtbNoBidReasonRows(clickhouseCtx, h.ClickHouseQuery, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	var nextCursor string
@@ -189,19 +189,19 @@ func (reports *ReportsHTTPHandlers) getRtbNoBidReasonsReport(w http.ResponseWrit
 	}
 	httpresponse.JSON(w, http.StatusOK, RtbNoBidReasonsReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
-func (reports *ReportsHTTPHandlers) getRtbGeoDeviceReport(w http.ResponseWriter, r *http.Request) {
-	if reports.CHQuery == nil {
+func (h *ReportsHTTPHandlers) getRtbGeoDeviceReport(w http.ResponseWriter, r *http.Request) {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 500)
@@ -209,11 +209,11 @@ func (reports *ReportsHTTPHandlers) getRtbGeoDeviceReport(w http.ResponseWriter,
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryRtbGeoDeviceRows(chCtx, reports.CHQuery, from, to, page.Limit, page.Offset)
+	rows, total, err := queryRtbGeoDeviceRows(clickhouseCtx, h.ClickHouseQuery, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	var nextCursor string
@@ -222,34 +222,34 @@ func (reports *ReportsHTTPHandlers) getRtbGeoDeviceReport(w http.ResponseWriter,
 	}
 	httpresponse.JSON(w, http.StatusOK, RtbGeoDeviceReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryRtbOverviewRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]RtbOverviewRowDTO, int64, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, rtbOverviewCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, rtbOverviewCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, rtbOverviewQuery, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, rtbOverviewQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]RtbOverviewRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row RtbOverviewRowDTO
-		if err := chRows.Scan(&row.DealID, &row.Bids, &row.Wins, &row.SpendMicro); err != nil {
+		if err := clickhouseRows.Scan(&row.DealID, &row.Bids, &row.Wins, &row.SpendMicro); err != nil {
 			return nil, 0, err
 		}
 		if row.Bids > 0 {
@@ -257,32 +257,32 @@ func queryRtbOverviewRows(
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func queryRtbGeoDeviceRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]RtbGeoDeviceRowDTO, int64, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, rtbGeoDeviceCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, rtbGeoDeviceCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, rtbGeoDeviceQuery, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, rtbGeoDeviceQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]RtbGeoDeviceRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row RtbGeoDeviceRowDTO
-		if err := chRows.Scan(&row.Country, &row.DeviceOS, &row.Bids, &row.Wins, &row.SpendMicro); err != nil {
+		if err := clickhouseRows.Scan(&row.Country, &row.DeviceOS, &row.Bids, &row.Wins, &row.SpendMicro); err != nil {
 			return nil, 0, err
 		}
 		if row.Bids > 0 {
@@ -290,39 +290,39 @@ func queryRtbGeoDeviceRows(
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func queryRtbNoBidReasonRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]RtbNoBidReasonRowDTO, int64, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, rtbNoBidReasonsCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, rtbNoBidReasonsCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, rtbNoBidReasonsQuery, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, rtbNoBidReasonsQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]RtbNoBidReasonRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var reasonCode uint16
 		var row RtbNoBidReasonRowDTO
-		if err := chRows.Scan(&reasonCode, &row.BidCount); err != nil {
+		if err := clickhouseRows.Scan(&reasonCode, &row.BidCount); err != nil {
 			return nil, 0, err
 		}
 		row.NoBidReason = rtb.NoBidReason(reasonCode).String()
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func calcRtbWinRate(wins, bids int64) float64 {

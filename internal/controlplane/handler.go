@@ -65,15 +65,15 @@ func (h *Handler) limit(next http.HandlerFunc) http.HandlerFunc {
 
 func (h *Handler) pgHigh(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if h.svc == nil || h.svc.pgGate == nil {
+		if h.svc == nil || h.svc.postgresGate == nil {
 			next(w, r)
 			return
 		}
-		if err := h.svc.pgGate.AcquireHigh(r.Context()); err != nil {
+		if err := h.svc.postgresGate.AcquireHigh(r.Context()); err != nil {
 			httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "database busy")
 			return
 		}
-		defer h.svc.pgGate.ReleaseHigh()
+		defer h.svc.postgresGate.ReleaseHigh()
 		next(w, r)
 	}
 }

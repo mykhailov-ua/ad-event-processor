@@ -14,10 +14,10 @@ const (
 )
 
 func (s *Service) queryVPPCampaignSamplesBatch(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) (map[uuid.UUID][]forecastHourlySample, error) {
-	if s.chQuery == nil || len(campaignIDs) == 0 {
+	if s.clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return map[uuid.UUID][]forecastHourlySample{}, nil
 	}
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
 
 	out := make(map[uuid.UUID][]forecastHourlySample, len(campaignIDs))
@@ -26,7 +26,7 @@ func (s *Service) queryVPPCampaignSamplesBatch(ctx context.Context, from, to tim
 		if end > len(campaignIDs) {
 			end = len(campaignIDs)
 		}
-		chunk, err := s.queryVPPCampaignSamplesChunk(chCtx, from, to, campaignIDs[start:end])
+		chunk, err := s.queryVPPCampaignSamplesChunk(clickhouseCtx, from, to, campaignIDs[start:end])
 		if err != nil {
 			return nil, err
 		}
@@ -44,7 +44,7 @@ FROM mv_campaign_hourly_impressions
 WHERE hour >= ? AND hour < ? AND campaign_id IN (?)
 GROUP BY campaign_id, hr
 ORDER BY campaign_id, hr`
-	rows, err := s.chQuery.Query(ctx, query, from, to, campaignIDs)
+	rows, err := s.clickhouseQuery.Query(ctx, query, from, to, campaignIDs)
 	if err != nil {
 		return nil, err
 	}

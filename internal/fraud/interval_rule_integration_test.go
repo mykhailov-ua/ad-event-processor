@@ -25,7 +25,7 @@ func TestIntervalBotnetRule_Find_flagsTimerBot(t *testing.T) {
 	seedIntervalBotClicks(t, conn, "203.0.113.50", "timer-bot-ua", 35, time.Second)
 
 	rule := &intervalBotnetRule{
-		q: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
 		cfg: AnalyzerConfig{
 			Window:               time.Hour,
 			IntervalMinIntervals: 30,
@@ -72,7 +72,7 @@ func TestIntervalBotnetRule_Find_skipsJitteredTraffic(t *testing.T) {
 	seedJitteredClicks(t, conn, "198.51.100.77", "human-ua", deltas)
 
 	rule := &intervalBotnetRule{
-		q: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
 		cfg: AnalyzerConfig{
 			Window:               2 * time.Hour,
 			IntervalMinIntervals: 30,

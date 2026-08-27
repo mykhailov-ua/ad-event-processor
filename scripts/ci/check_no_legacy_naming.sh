@@ -5,7 +5,6 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-# Reject legacy product and stack naming tokens.
 PATTERN='(\bespx\b|\bESPX_[A-Z0-9_]*\b|BidShard|\bbidshard\b|X-BidShard)'
 
 ALLOWED_PREFIXES=(
@@ -79,7 +78,7 @@ milestone_check() {
 
 strict_check "docs/ARCHITECTURE.md" "$ROOT/docs/ARCHITECTURE.md"
 strict_check "docs/DEVELOPMENT.md" "$ROOT/docs/DEVELOPMENT.md"
-strict_check ".cursor/rules/licensing.mdc" "$ROOT/.cursor/rules/licensing.mdc"
+strict_check ".cursor/rules/LICENSING.mdc" "$ROOT/.cursor/rules/LICENSING.mdc"
 if [[ -d "$ROOT/web/src" ]]; then
   strict_check "web/src" "$ROOT/web/src"
 fi
@@ -142,5 +141,14 @@ if ((${#violations[@]} > 0)); then
   printf '  %s\n' "${violations[@]}"
   exit 1
 fi
+
+for rule in "$ROOT/.cursor/rules"/*.mdc; do
+  base="$(basename "$rule" .mdc)"
+  upper="$(printf '%s' "$base" | tr '[:lower:]' '[:upper:]')"
+  if [[ "$base" != "$upper" ]]; then
+    echo "check_no_legacy_naming: .cursor/rules basename must be UPPERCASE: $rule" >&2
+    exit 1
+  fi
+done
 
 echo "check_no_legacy_naming: ok"

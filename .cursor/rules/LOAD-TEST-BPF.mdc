@@ -1,6 +1,11 @@
 ---
 description: BPF + Prometheus load-test validation before perf claims
-globs: scripts/test/**, scripts/dev/bpf*, cmd/bpf-collector/**, cmd/loadgen/**, deploy/dev/bpf/**
+globs:
+  - scripts/test/**
+  - scripts/dev/bpf*
+  - cmd/bpf-collector/**
+  - cmd/loadgen/**
+  - deploy/dev/bpf/**
 alwaysApply: false
 ---
 

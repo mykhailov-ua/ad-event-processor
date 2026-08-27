@@ -1711,33 +1711,33 @@ const (
 	meterBillableEvents = "events"
 	meterAcceptedEvents = "accepted_events"
 	volumeMeterSourcePG = "pg"
-	volumeMeterSourceCH = "ch"
+	volumeMeterSourceCH = "clickhouseQuery"
 )
 
 type VolumeMeterWorker struct {
-	pool     *pgxpool.Pool
-	ch       *database.CHQuery
-	source   string
-	interval time.Duration
-	pgGate   *PostgresGate
+	pool            *pgxpool.Pool
+	clickhouseQuery *database.CHQuery
+	source          string
+	interval        time.Duration
+	postgresGate    *PostgresGate
 }
 
-func NewVolumeMeterWorker(pool *pgxpool.Pool, ch *database.CHQuery, source string, interval time.Duration, pgGate *PostgresGate) *VolumeMeterWorker {
+func NewVolumeMeterWorker(pool *pgxpool.Pool, clickhouseQuery *database.CHQuery, source string, interval time.Duration, postgresGate *PostgresGate) *VolumeMeterWorker {
 	if interval <= 0 {
 		interval = time.Hour
 	}
 	if source == "" {
 		source = volumeMeterSourcePG
 	}
-	return &VolumeMeterWorker{pool: pool, ch: ch, source: source, interval: interval, pgGate: pgGate}
+	return &VolumeMeterWorker{pool: pool, clickhouseQuery: clickhouseQuery, source: source, interval: interval, postgresGate: postgresGate}
 }
 
 func (w *VolumeMeterWorker) Start(ctx context.Context) {
 	if w == nil || w.pool == nil {
 		return
 	}
-	if w.source == volumeMeterSourceCH && w.ch == nil {
-		slog.Warn("volume meter source=ch but clickhouse query is nil, worker not started")
+	if w.source == volumeMeterSourceCH && w.clickhouseQuery == nil {
+		slog.Warn("volume meter source=clickhouseQuery but clickhouse query is nil, worker not started")
 		return
 	}
 	slog.Info("volume meter worker starting", "interval", w.interval, "source", w.source)
@@ -1768,11 +1768,11 @@ type pgMeterRow struct {
 }
 
 func (w *VolumeMeterWorker) RunHour(ctx context.Context, now time.Time) error {
-	if w.pgGate != nil {
-		if err := w.pgGate.AcquireLow(ctx); err != nil {
+	if w.postgresGate != nil {
+		if err := w.postgresGate.AcquireLow(ctx); err != nil {
 			return err
 		}
-		defer w.pgGate.ReleaseLow()
+		defer w.postgresGate.ReleaseLow()
 	}
 	return w.runHour(ctx, now)
 }
@@ -1871,7 +1871,7 @@ func (w *VolumeMeterWorker) queryPGRollups(ctx context.Context, from, to time.Ti
 }
 
 func (w *VolumeMeterWorker) runCHHour(ctx context.Context, hourStart, hourEnd, period time.Time) error {
-	rows, err := w.queryCHRollups(ctx, hourStart, hourEnd)
+	rows, err := w.queryClickHouseRollups(ctx, hourStart, hourEnd)
 	if err != nil {
 		return err
 	}
@@ -1889,14 +1889,14 @@ func (w *VolumeMeterWorker) runCHHour(ctx context.Context, hourStart, hourEnd, p
 		return err
 	}
 	metrics.VolumeMeterRowsTotal.Add(float64(len(customerUnits)))
-	slog.Info("volume meter ch rollup complete",
+	slog.Info("volume meter clickhouseQuery rollup complete",
 		"hour", hourStart.Format(time.RFC3339),
 		"customers", len(customerUnits),
 	)
 	return nil
 }
 
-func (w *VolumeMeterWorker) queryCHRollups(ctx context.Context, from, to time.Time) ([]rollupRow, error) {
+func (w *VolumeMeterWorker) queryClickHouseRollups(ctx context.Context, from, to time.Time) ([]rollupRow, error) {
 	const q = `
 		SELECT
 			campaign_id,
@@ -1906,21 +1906,21 @@ func (w *VolumeMeterWorker) queryCHRollups(ctx context.Context, from, to time.Ti
 		WHERE rollup_hour >= ? AND rollup_hour < ?
 		GROUP BY campaign_id, event_type`
 
-	chRows, err := w.ch.Query(ctx, q, from, to)
+	clickhouseRows, err := w.clickhouseQuery.Query(ctx, q, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse rollup query: %w", err)
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	var out []rollupRow
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row rollupRow
-		if err := chRows.Scan(&row.CampaignID, &row.EventType, &row.Count); err != nil {
+		if err := clickhouseRows.Scan(&row.CampaignID, &row.EventType, &row.Count); err != nil {
 			return nil, err
 		}
 		out = append(out, row)
 	}
-	return out, chRows.Err()
+	return out, clickhouseRows.Err()
 }
 
 func (w *VolumeMeterWorker) loadCampaignCustomers(ctx context.Context) (map[uuid.UUID]uuid.UUID, error) {
@@ -2169,11 +2169,11 @@ func (o *FraudModelSyncOrchestrator) rollbackShard(ctx context.Context, shardID 
 }
 
 func (o *FraudModelSyncOrchestrator) runCanaryCheck(ctx context.Context, shardID int, versionID string) (bool, error) {
-	if o.svc.chQuery == nil {
+	if o.svc.clickhouseQuery == nil {
 		return true, nil
 	}
 
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
 
 	query := `
@@ -2182,7 +2182,7 @@ func (o *FraudModelSyncOrchestrator) runCanaryCheck(ctx context.Context, shardID
 		WHERE window_start >= subtractHours(now(), 1)
 		LIMIT 1000`
 
-	rows, err := o.svc.chQuery.Query(chCtx, query)
+	rows, err := o.svc.clickhouseQuery.Query(clickhouseCtx, query)
 	if err != nil {
 		return false, fmt.Errorf("clickhouse query failed: %w", err)
 	}
@@ -2259,8 +2259,8 @@ func normalizeBlacklistReason(reason string) string {
 	return reason
 }
 
-func (worker *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
-	if err := worker.ProcessOutbox(ctx); err != nil {
+func (w *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
+	if err := w.ProcessOutbox(ctx); err != nil {
 		slog.Error("outbox startup cold sync failed", "err", err)
 	}
 
@@ -2278,21 +2278,21 @@ func (worker *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
 		case <-ctx.Done():
 			return
 		case <-recoveryTicker.C:
-			worker.reclaimStaleProcessing(ctx)
-			worker.recordOutboxLagMetrics(ctx)
+			w.reclaimStaleProcessing(ctx)
+			w.recordOutboxLagMetrics(ctx)
 		case <-pollTimer.C:
 			var processed int
 			var err error
-			if worker.svc != nil {
-				err = worker.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+			if w.svc != nil {
+				err = w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
 					var innerErr error
-					processed, innerErr = worker.ProcessOutboxWithCount(runCtx, 1000)
+					processed, innerErr = w.ProcessOutboxWithCount(runCtx, 1000)
 					return innerErr
 				})
 			} else {
-				processed, err = worker.ProcessOutboxWithCount(ctx, 1000)
+				processed, err = w.ProcessOutboxWithCount(ctx, 1000)
 			}
-			worker.recordOutboxLagMetrics(ctx)
+			w.recordOutboxLagMetrics(ctx)
 			if err != nil {
 				if ctx.Err() != nil {
 					return
@@ -2310,8 +2310,8 @@ func (worker *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
 	}
 }
 
-func (worker *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
-	_, err := worker.svc.GetPool().Exec(ctx, `
+func (w *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
+	_, err := w.svc.GetPool().Exec(ctx, `
 		UPDATE outbox_events
 		SET status = 'PENDING', processing_started_at = NULL
 		WHERE status = 'PROCESSING'
@@ -2322,18 +2322,18 @@ func (worker *OutboxWorker) reclaimStaleProcessing(ctx context.Context) {
 	}
 }
 
-func (worker *OutboxWorker) ProcessOutbox(ctx context.Context) error {
-	_, err := worker.ProcessOutboxWithCount(ctx, 1000)
+func (w *OutboxWorker) ProcessOutbox(ctx context.Context) error {
+	_, err := w.ProcessOutboxWithCount(ctx, 1000)
 	return err
 }
 
-func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit int32) (int, error) {
+func (w *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit int32) (int, error) {
 	opCtx, cancel := workerContext(ctx, workerOutboxTimeout)
 	defer cancel()
 
 	var events []db.OutboxEvent
 
-	err := pgx.BeginFunc(opCtx, worker.svc.GetPool(), func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(opCtx, w.svc.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		var err error
 		events, err = q.GetPendingOutboxEventsForUpdate(opCtx, limit)
@@ -2376,7 +2376,7 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	}
 
 	if len(blacklistEvents) > 0 {
-		if err := worker.applyBlacklistOutboxBatch(opCtx, blacklistEvents); err != nil {
+		if err := w.applyBlacklistOutboxBatch(opCtx, blacklistEvents); err != nil {
 			for _, ev := range blacklistEvents {
 				revertIDs = append(revertIDs, ev.ID)
 				batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", ev.ID, err))
@@ -2389,7 +2389,7 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	}
 
 	for i, ev := range otherEvents {
-		if err := worker.handleOutboxEvent(opCtx, ctx, ev); err != nil {
+		if err := w.handleOutboxEvent(opCtx, ctx, ev); err != nil {
 			slog.Warn("redis outbox processing failed for event, halting batch lane", "id", ev.ID, "err", err)
 			revertIDs = append(revertIDs, ev.ID)
 			batchErrs = append(batchErrs, fmt.Errorf("outbox event %d: %w", ev.ID, err))
@@ -2402,7 +2402,7 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	}
 
 	if len(processedIDs) > 0 {
-		_, err = worker.svc.GetPool().Exec(opCtx, "UPDATE outbox_events SET status = 'PROCESSED' WHERE id = ANY($1)", processedIDs)
+		_, err = w.svc.GetPool().Exec(opCtx, "UPDATE outbox_events SET status = 'PROCESSED' WHERE id = ANY($1)", processedIDs)
 		if err != nil {
 			slog.Error("failed to mark outbox events as processed", "err", err)
 			batchErrs = append(batchErrs, fmt.Errorf("mark outbox processed: %w", err))
@@ -2410,7 +2410,7 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	}
 
 	if len(revertIDs) > 0 {
-		_, err = worker.svc.GetPool().Exec(opCtx, `
+		_, err = w.svc.GetPool().Exec(opCtx, `
 			UPDATE outbox_events
 			SET status = 'PENDING', processing_started_at = NULL
 			WHERE id = ANY($1)`, revertIDs)
@@ -2427,9 +2427,9 @@ func (worker *OutboxWorker) ProcessOutboxWithCount(ctx context.Context, limit in
 	return len(processedIDs), nil
 }
 
-func (worker *OutboxWorker) campaignRemainingBudget(ctx context.Context, campaignID uuid.UUID) (int64, error) {
+func (w *OutboxWorker) campaignRemainingBudget(ctx context.Context, campaignID uuid.UUID) (int64, error) {
 	var limit, spend int64
-	err := worker.svc.GetPool().QueryRow(ctx, `
+	err := w.svc.GetPool().QueryRow(ctx, `
 		SELECT budget_limit, current_spend
 		FROM campaigns
 		WHERE id = $1`, domain.ToUUID(campaignID)).Scan(&limit, &spend)
@@ -2443,8 +2443,8 @@ func (worker *OutboxWorker) campaignRemainingBudget(ctx context.Context, campaig
 	return remaining, nil
 }
 
-func (worker *OutboxWorker) setCampaignBudgetRemaining(ctx context.Context, pipe redis.Pipeliner, campaignIDStr string, campaignID uuid.UUID, payloadLimit int64) error {
-	remaining, err := worker.campaignRemainingBudget(ctx, campaignID)
+func (w *OutboxWorker) setCampaignBudgetRemaining(ctx context.Context, pipe redis.Pipeliner, campaignIDStr string, campaignID uuid.UUID, payloadLimit int64) error {
+	remaining, err := w.campaignRemainingBudget(ctx, campaignID)
 	if err != nil {
 		if payloadLimit <= 0 {
 			return err
@@ -2464,7 +2464,7 @@ func ToUUID(u uuid.UUID) pgtype.UUID {
 
 const blacklistUpdateChannel = domain.BlacklistUpdateChannel
 
-func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, events []db.OutboxEvent) error {
+func (w *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, events []db.OutboxEvent) error {
 	type reasonBatch struct {
 		adds    []string
 		removes []string
@@ -2496,13 +2496,13 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 		}
 	}
 
-	if len(worker.svc.redisShards) == 0 {
+	if len(w.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
 	for reason, batch := range byReason {
 		key := "blacklist:" + reason
-		for i, redisClient := range worker.svc.redisShards {
+		for i, redisClient := range w.svc.redisShards {
 			if redisClient == nil {
 				return fmt.Errorf("redis shard %d is nil", i)
 			}
@@ -2524,10 +2524,10 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 			}
 		}
 		if reason == "fraud" && len(batch.adds) > 0 {
-			_ = publishFraudQuarantineBatch(ctx, worker.svc.redisShards, batch.adds)
+			_ = publishFraudQuarantineBatch(ctx, w.svc.redisShards, batch.adds)
 		}
 		for _, ip := range append(batch.adds, batch.removes...) {
-			_ = publishControlChannelToAllShards(ctx, worker.svc.redisShards, blacklistUpdateChannel, ip+":"+reason)
+			_ = publishControlChannelToAllShards(ctx, w.svc.redisShards, blacklistUpdateChannel, ip+":"+reason)
 		}
 	}
 
@@ -2540,8 +2540,8 @@ func (worker *OutboxWorker) applyBlacklistPayloadsBatch(ctx context.Context, eve
 	return nil
 }
 
-func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPayload, queuedAt time.Time) error {
-	if len(worker.svc.redisShards) == 0 {
+func (w *OutboxWorker) applyBlacklistPayload(ctx context.Context, p BlacklistPayload, queuedAt time.Time) error {
+	if len(w.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 	reason := normalizeBlacklistReason(p.Reason)
@@ -2550,13 +2550,13 @@ func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p Blackli
 	if p.Action != "add" && p.Action != "remove" {
 		return fmt.Errorf("unknown blacklist action: %s", p.Action)
 	}
-	if err := syncGlobalSetMemberToAllShards(ctx, worker.svc.redisShards, key, p.IP, add); err != nil {
+	if err := syncGlobalSetMemberToAllShards(ctx, w.svc.redisShards, key, p.IP, add); err != nil {
 		return fmt.Errorf("blacklist sync failed: %w", err)
 	}
 	if reason == "fraud" && p.Action == "add" {
-		_ = publishFraudQuarantineBatch(ctx, worker.svc.redisShards, []string{p.IP})
+		_ = publishFraudQuarantineBatch(ctx, w.svc.redisShards, []string{p.IP})
 	}
-	_ = publishControlChannelToAllShards(ctx, worker.svc.redisShards, blacklistUpdateChannel, p.IP+":"+reason)
+	_ = publishControlChannelToAllShards(ctx, w.svc.redisShards, blacklistUpdateChannel, p.IP+":"+reason)
 	if !queuedAt.IsZero() {
 		lag := time.Since(queuedAt).Seconds()
 		if lag >= 0 {
@@ -2566,12 +2566,12 @@ func (worker *OutboxWorker) applyBlacklistPayload(ctx context.Context, p Blackli
 	return nil
 }
 
-func (worker *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brandIDStr string) error {
+func (w *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brandIDStr string) error {
 	brandID, err := coldpath.ParseUUID(brandIDStr)
 	if err != nil {
 		return err
 	}
-	rows, err := db.New(worker.svc.GetPool()).ListActiveBrandCreatives(ctx, ToUUID(brandID))
+	rows, err := db.New(w.svc.GetPool()).ListActiveBrandCreatives(ctx, ToUUID(brandID))
 	if err != nil {
 		return err
 	}
@@ -2592,11 +2592,11 @@ func (worker *OutboxWorker) syncBrandCreativesToRedis(ctx context.Context, brand
 	if err != nil {
 		return err
 	}
-	if len(worker.svc.redisShards) == 0 {
+	if len(w.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client")
 	}
 	key := "brand:creatives:" + brandIDStr
-	return syncKeyToAllShards(ctx, worker.svc.redisShards, key, payload, 0)
+	return syncKeyToAllShards(ctx, w.svc.redisShards, key, payload, 0)
 }
 
 const (

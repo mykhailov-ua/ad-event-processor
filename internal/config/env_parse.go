@@ -28,6 +28,20 @@ func trimCommaList(raw string) []string {
 	return out
 }
 
+func defaultRedisShardCount(addrs []string) int {
+	raw := strings.TrimSpace(os.Getenv("REDIS_SHARD_COUNT"))
+	if raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err == nil && n > 0 {
+			return n
+		}
+	}
+	if len(addrs) > 0 {
+		return len(addrs)
+	}
+	return ExpectedRedisShardCount
+}
+
 func envOrDefault(key, fallback string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

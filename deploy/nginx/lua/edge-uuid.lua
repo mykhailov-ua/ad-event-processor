@@ -1,6 +1,5 @@
 local _M = {}
 
-
 local UUID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"
 
 function _M.normalize(s)

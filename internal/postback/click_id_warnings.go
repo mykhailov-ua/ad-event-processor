@@ -2,7 +2,6 @@ package postback
 
 import "strings"
 
-// PostbackClickIDWarnings reports missing network click ids required for live CAPI/S2S dispatch.
 func PostbackClickIDWarnings(provider string, pb *PostbackPayload) []string {
 	if pb == nil {
 		pb = &PostbackPayload{}

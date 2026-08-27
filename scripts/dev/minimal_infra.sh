@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Stop full compose stack except Postgres + redis-0 (integration tests / sqlc).
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

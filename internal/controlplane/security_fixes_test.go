@@ -174,8 +174,8 @@ func TestCHLagCacheHit(t *testing.T) {
 		return 5 * time.Second, nil
 	}
 
-	lag1, _ := controlplane.ExportedCHLagWithCache(probe)
-	lag2, _ := controlplane.ExportedCHLagWithCache(probe)
+	lag1, _ := controlplane.ExportedClickHouseLagWithCache(probe)
+	lag2, _ := controlplane.ExportedClickHouseLagWithCache(probe)
 
 	if calls != 1 {
 		t.Fatalf("expected exactly 1 CH probe within TTL, got %d", calls)

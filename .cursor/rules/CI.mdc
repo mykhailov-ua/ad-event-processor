@@ -1,6 +1,10 @@
 ---
 description: GitHub Actions merge gates, local CI commands, BPF thresholds
-globs: scripts/ci/**, .github/workflows/**, Makefile, .ci-baselines/**
+globs:
+  - scripts/ci/**
+  - .github/workflows/**
+  - Makefile
+  - .ci-baselines/**
 alwaysApply: false
 ---
 

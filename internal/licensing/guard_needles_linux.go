@@ -2,7 +2,6 @@
 
 package licensing
 
-// guardSuspiciousMapNeedles returns XOR-obfuscated /proc/self/maps substrings (not stored plaintext).
 func guardSuspiciousMapNeedles() [][]byte {
 	enc := [][]byte{
 		{0x55, 0x41, 0x5a, 0x5a, 0x52},

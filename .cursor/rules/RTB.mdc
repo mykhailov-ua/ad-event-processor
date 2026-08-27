@@ -1,6 +1,10 @@
 ---
 description: In-process RTB auction, SoA catalog, OpenRTB 2.6, budget CAS
-globs: internal/rtb/**, internal/openrtb/**, internal/ingestion/rtb*.go, internal/ingestion/openrtb*.go
+globs:
+  - internal/rtb/**
+  - internal/openrtb/**
+  - internal/ingestion/rtb*.go
+  - internal/ingestion/openrtb*.go
 alwaysApply: false
 ---
 

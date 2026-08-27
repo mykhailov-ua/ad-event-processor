@@ -1,6 +1,11 @@
 ---
 description: Admin UI rebuild contract - cold path, OpenAPI, grid, milestones, AI honesty
-globs: api/openapi/**, internal/controlplane/*_handlers.go, deploy/vendor/*_MILESTONE.md, scripts/ci/openapi_gate.sh, scripts/ci/admin_web.sh
+globs:
+  - api/openapi/**
+  - internal/controlplane/*_handlers.go
+  - deploy/vendor/*_MILESTONE.md
+  - scripts/ci/openapi_gate.sh
+  - scripts/ci/admin_web.sh
 alwaysApply: false
 ---
 

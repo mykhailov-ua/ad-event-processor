@@ -12,7 +12,7 @@ type RtbReconcileCHStats struct {
 }
 
 func (s *Service) RtbReconcileCHStats(ctx context.Context, requestID string, window time.Duration) (RtbReconcileCHStats, bool) {
-	if s == nil || s.chQuery == nil || window <= 0 {
+	if s == nil || s.clickhouseQuery == nil || window <= 0 {
 		return RtbReconcileCHStats{}, false
 	}
 	since := time.Now().UTC().Add(-window)
@@ -29,7 +29,7 @@ WHERE created_at >= ?
 		query += ` AND request_id = ?`
 		args = append(args, requestID)
 	}
-	row := s.chQuery.QueryRow(ctx, query, args...)
+	row := s.clickhouseQuery.QueryRow(ctx, query, args...)
 	var stats RtbReconcileCHStats
 	if err := row.Scan(&stats.Bids, &stats.Wins, &stats.SpendMicro); err != nil {
 		return RtbReconcileCHStats{}, false

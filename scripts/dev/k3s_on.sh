@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Re-enable k3s after scripts/dev/k3s_off.sh (does not start the cluster).
 set -euo pipefail
 
 if [[ "$(id -u)" -ne 0 ]]; then

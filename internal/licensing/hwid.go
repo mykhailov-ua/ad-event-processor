@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	// Argon2id per RFC 9106 (type=id): m=64 MiB, t=3, p=4, dkLen=32.
 	hwidArgonTime    uint32 = 3
 	hwidArgonMemory  uint32 = 65536 // KiB per Argon2 (64 MiB)
 	hwidArgonThreads uint8  = 4
@@ -68,7 +67,6 @@ func HWIDArgonMemoryKiB() uint32 { return hwidArgonMemory }
 func HWIDArgonThreads() uint8    { return hwidArgonThreads }
 func HWIDArgonKeyLen() uint32    { return hwidArgonKeyLen }
 
-// LabCollectHWID returns live telemetry and the Argon2id v2 hash for pentest issue CLI.
 func LabCollectHWID() (HWIDTelemetry, string) {
 	tel := hwidCollectFn()
 	return tel, HashHWIDFromTelemetry(tel)

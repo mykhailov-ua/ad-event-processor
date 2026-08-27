@@ -349,9 +349,9 @@ func (s *Service) enqueueErasureRedisPurge(ctx context.Context, row db.PrivacyEr
 
 func (s *Service) advanceErasureCH(ctx context.Context, row db.PrivacyErasureRequest) error {
 	userID := row.SubjectUserID
-	if s.chWrite != nil && userID != "" {
+	if s.clickhouseWriteConn != nil && userID != "" {
 		query := `ALTER TABLE fraud_events DELETE WHERE user_id = ?`
-		if err := s.chWrite.Exec(ctx, query, userID); err != nil {
+		if err := s.clickhouseWriteConn.Exec(ctx, query, userID); err != nil {
 			return s.failErasure(ctx, row.ID, err)
 		}
 	}
@@ -481,7 +481,7 @@ func (s *Service) RetryNotification(ctx context.Context, notificationID string) 
 }
 
 func (s *Service) WarmCampaignBudget(ctx context.Context, campaignID uuid.UUID) (int64, error) {
-	redisClient := s.getRDB(campaignID)
+	redisClient := s.redisClientForCampaign(campaignID)
 	if redisClient == nil {
 		return 0, fmt.Errorf("no redis client available")
 	}
@@ -773,7 +773,7 @@ type mabCreativeStat struct {
 }
 
 func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]uuid.UUID, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return nil, nil
 	}
 	minImps := s.cfg.MABMinImpressions
@@ -809,9 +809,9 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 
 	lookbackEnd := time.Now().UTC()
 	lookbackStart := lookbackEnd.Add(-time.Duration(lookbackDays) * 24 * time.Hour)
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
-	chStats, err := s.queryMABCreativeStats(chCtx, lookbackStart, lookbackEnd)
+	clickhouseStats, err := s.queryMABCreativeStats(clickhouseCtx, lookbackStart, lookbackEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -823,7 +823,7 @@ func (s *Service) optimizeBrandCreativeMABTx(ctx context.Context, tx pgx.Tx) ([]
 			continue
 		}
 
-		attributed := attributeMABStats(creatives, campaignsByBrand[brandID], chStats, minImps)
+		attributed := attributeMABStats(creatives, campaignsByBrand[brandID], clickhouseStats, minImps)
 		if !attributed.anyEligible {
 			continue
 		}
@@ -867,12 +867,12 @@ type mabAttribution struct {
 func attributeMABStats(
 	creatives []db.BrandCreative,
 	campaignRows []pgtype.UUID,
-	chStats map[uuid.UUID]mabCreativeStat,
+	clickhouseStats map[uuid.UUID]mabCreativeStat,
 	minImps int64,
 ) mabAttribution {
 	out := mabAttribution{perCreative: make(map[uuid.UUID]mabCreativeStat, len(creatives))}
 
-	for creativeID, stat := range chStats {
+	for creativeID, stat := range clickhouseStats {
 		if stat.impressions >= minImps {
 			out.perCreative[creativeID] = stat
 			out.anyEligible = true
@@ -888,7 +888,7 @@ func attributeMABStats(
 
 	var totalImps, totalClicks int64
 	for _, camp := range campaignRows {
-		if stat, ok := chStats[uuid.UUID(camp.Bytes)]; ok {
+		if stat, ok := clickhouseStats[uuid.UUID(camp.Bytes)]; ok {
 			totalImps += stat.impressions
 			totalClicks += stat.clicks
 		}
@@ -964,7 +964,7 @@ FROM (
 )
 GROUP BY campaign_id, creative_id`
 
-	rows, err := s.chQuery.Query(ctx, query, from, to, from, to)
+	rows, err := s.clickhouseQuery.Query(ctx, query, from, to, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("mab creative stats query: %w", err)
 	}

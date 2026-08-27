@@ -234,12 +234,6 @@ EOF
 fi
 
 {
-  if [[ "$HOT_PATH" -eq 1 ]]; then
-    cat << 'EOF'
-// Hot-path package: integration tests prove wiring only; cite make test-alloc-gate for SLA evidence.
-EOF
-  fi
-
   cat << EOF
 package $PKG_NAME
 
@@ -323,11 +317,7 @@ EOF
   fi
 
   if [[ "$USES_BUDGET_INVARIANT" -eq 1 ]]; then
-    cat << 'EOF'
-
-	// Replace campaignID with a seeded campaign before enabling budget invariant checks.
-	// domain.AssertBudgetInvariant(t, ctx, pool, rdb, campaignID)
-EOF
+    :
   fi
 
   cat << EOF

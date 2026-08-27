@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	defaultReportLookback = 7 * 24 * time.Hour
-	reportCHQueryTimeout  = 10 * time.Second
+	defaultReportLookback        = 7 * 24 * time.Hour
+	reportClickHouseQueryTimeout = 10 * time.Second
 )
 
-func ReportCHQueryTimeout() time.Duration {
-	return reportCHQueryTimeout
+func ReportClickHouseQueryTimeout() time.Duration {
+	return reportClickHouseQueryTimeout
 }
 
 const placementReportQuery = `
@@ -95,7 +95,7 @@ SELECT
  sum(revenue_micro) AS revenue_micro
 FROM (
  SELECT
- nullIf(` + chDimKeywordExpr + `, '') AS keyword,
+ nullIf(` + clickhouseDimKeywordExpr + `, '') AS keyword,
  campaign_id,
  count() AS impressions,
  toUInt64(0) AS clicks,
@@ -109,7 +109,7 @@ FROM (
  GROUP BY keyword, campaign_id
  UNION ALL
  SELECT
- nullIf(` + chDimKeywordExpr + `, ''),
+ nullIf(` + clickhouseDimKeywordExpr + `, ''),
  campaign_id,
  toUInt64(0),
  count(),
@@ -131,14 +131,14 @@ const keywordReportCountQuery = `
 SELECT count() FROM (
  SELECT keyword, campaign_id
  FROM (
- SELECT nullIf(` + chDimKeywordExpr + `, '') AS keyword, campaign_id
+ SELECT nullIf(` + clickhouseDimKeywordExpr + `, '') AS keyword, campaign_id
  FROM impressions
  WHERE campaign_id IN (?)
  AND created_at >= ?
  AND created_at < ?
  GROUP BY keyword, campaign_id
  UNION ALL
- SELECT nullIf(` + chDimKeywordExpr + `, ''), campaign_id
+ SELECT nullIf(` + clickhouseDimKeywordExpr + `, ''), campaign_id
  FROM clicks
  WHERE campaign_id IN (?)
  AND created_at >= ?
@@ -199,19 +199,19 @@ func ListCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID
 
 func queryPlacementReportRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]reportMetricsCHRow, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 
-	chCtx, cancel := context.WithTimeout(ctx, reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
 	defer cancel()
 
-	rows, err := chQuery.Query(chCtx, placementReportQuery,
+	rows, err := clickhouseQuery.Query(clickhouseCtx, placementReportQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		limit, offset,
@@ -240,7 +240,7 @@ func queryPlacementReportRows(
 	}
 
 	var total uint64
-	if err := chQuery.QueryRow(chCtx, placementReportCountQuery,
+	if err := clickhouseQuery.QueryRow(clickhouseCtx, placementReportCountQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 	).Scan(&total); err != nil {
@@ -252,19 +252,19 @@ func queryPlacementReportRows(
 
 func queryKeywordReportRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]reportMetricsCHRow, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 
-	chCtx, cancel := context.WithTimeout(ctx, reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
 	defer cancel()
 
-	rows, err := chQuery.Query(chCtx, keywordReportQuery,
+	rows, err := clickhouseQuery.Query(clickhouseCtx, keywordReportQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		limit, offset,
@@ -293,7 +293,7 @@ func queryKeywordReportRows(
 	}
 
 	var total uint64
-	if err := chQuery.QueryRow(chCtx, keywordReportCountQuery,
+	if err := clickhouseQuery.QueryRow(clickhouseCtx, keywordReportCountQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 	).Scan(&total); err != nil {
@@ -319,7 +319,7 @@ GROUP BY c.placement_id, c.campaign_id`
 
 const keywordIVTQuery = `
 SELECT
- nullIf(` + chDimKeywordExpr + `, '') AS keyword,
+ nullIf(` + clickhouseDimKeywordExpr + `, '') AS keyword,
  c.campaign_id,
  count() AS clicks,
  uniqIf(c.click_id, f.click_id != '') AS ivt_events
@@ -366,14 +366,14 @@ type CampaignEconomicsCH struct {
 
 func queryPlacementIVTRates(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 ) (map[string]float64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return map[string]float64{}, nil
 	}
-	rows, err := chQuery.Query(ctx, placementIVTQuery, campaignIDs, from, to)
+	rows, err := clickhouseQuery.Query(ctx, placementIVTQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("placement ivt query: %w", err)
 	}
@@ -393,14 +393,14 @@ func queryPlacementIVTRates(
 
 func queryKeywordIVTRates(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 ) (map[string]float64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return map[string]float64{}, nil
 	}
-	rows, err := chQuery.Query(ctx, keywordIVTQuery, campaignIDs, from, to)
+	rows, err := clickhouseQuery.Query(ctx, keywordIVTQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("keyword ivt query: %w", err)
 	}
@@ -420,15 +420,15 @@ func queryKeywordIVTRates(
 
 func QueryCampaignEconomicsCH(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignID uuid.UUID,
 	from, to time.Time,
 ) (CampaignEconomicsCH, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return CampaignEconomicsCH{}, nil
 	}
 	var out CampaignEconomicsCH
-	err := chQuery.QueryRow(ctx, campaignEconomicsQuery, campaignID, from, to).Scan(
+	err := clickhouseQuery.QueryRow(ctx, campaignEconomicsQuery, campaignID, from, to).Scan(
 		&out.SpendMicro, &out.RevenueMicro, &out.Clicks, &out.Conversions,
 	)
 	if err != nil {
@@ -471,19 +471,19 @@ type telegramExportCHRow struct {
 
 func queryTelegramExportRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]telegramExportCHRow, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 
-	chCtx, cancel := context.WithTimeout(ctx, reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
 	defer cancel()
 
-	rows, err := chQuery.Query(chCtx, telegramExportQuery,
+	rows, err := clickhouseQuery.Query(clickhouseCtx, telegramExportQuery,
 		campaignIDs, from, to,
 		limit, offset,
 	)
@@ -509,7 +509,7 @@ func queryTelegramExportRows(
 	}
 
 	var total uint64
-	if err := chQuery.QueryRow(chCtx, telegramExportCountQuery,
+	if err := clickhouseQuery.QueryRow(clickhouseCtx, telegramExportCountQuery,
 		campaignIDs, from, to,
 	).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("telegram export count query: %w", err)

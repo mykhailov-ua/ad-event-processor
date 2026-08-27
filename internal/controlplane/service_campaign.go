@@ -670,12 +670,12 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 
 func (s *Service) SetClickHouse(conn driver.Conn, cfg database.CHQueryConfig) {
 	if conn != nil {
-		s.chQuery = database.NewCHQuery(conn, cfg)
+		s.clickhouseQuery = database.NewCHQuery(conn, cfg)
 	}
 }
 
 func (s *Service) SetClickHouseWrite(conn driver.Conn) {
-	s.chWrite = conn
+	s.clickhouseWriteConn = conn
 }
 
 func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, from, to time.Time, granularity string) (CampaignStatsDTO, error) {
@@ -719,24 +719,24 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 		Consistency: "strong",
 	}
 
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return report, nil
 	}
 
-	const chStatsTimeout = 10 * time.Second
-	chCtx, cancel := context.WithTimeout(ctx, chStatsTimeout)
+	const clickhouseStatsTimeout = 10 * time.Second
+	clickhouseCtx, cancel := context.WithTimeout(ctx, clickhouseStatsTimeout)
 	defer cancel()
 
 	var lag time.Duration
 	if granularity == "hour" {
-		hourly, lagVal, err := s.queryClickHouseHourly(chCtx, campaignID, from, to)
+		hourly, lagVal, err := s.queryClickHouseHourly(clickhouseCtx, campaignID, from, to)
 		if err != nil {
 			return CampaignStatsDTO{}, err
 		}
 		report.Hourly = hourly
 		lag = lagVal
 	} else {
-		daily, lagVal, err := s.queryClickHouseDaily(chCtx, campaignID, from, to)
+		daily, lagVal, err := s.queryClickHouseDaily(clickhouseCtx, campaignID, from, to)
 		if err != nil {
 			return CampaignStatsDTO{}, err
 		}
@@ -750,7 +750,7 @@ func (s *Service) GetCampaignStats(ctx context.Context, campaignID uuid.UUID, fr
 }
 
 func (s *Service) queryClickHouseHourly(ctx context.Context, campaignID uuid.UUID, from, to time.Time) ([]CampaignHourlyBucketDTO, time.Duration, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	type row struct {
@@ -782,7 +782,7 @@ FROM (
 GROUP BY hour
 ORDER BY hour`
 
-	rows, err := s.chQuery.Query(ctx, query,
+	rows, err := s.clickhouseQuery.Query(ctx, query,
 		campaignID, from.UTC(), to.UTC(),
 		campaignID, from.UTC(), to.UTC(),
 		campaignID, from.UTC(), to.UTC(),
@@ -817,7 +817,7 @@ ORDER BY hour`
 }
 
 func (s *Service) queryClickHouseDaily(ctx context.Context, campaignID uuid.UUID, from, to time.Time) ([]CampaignDailyBucketDTO, time.Duration, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	type row struct {
@@ -847,7 +847,7 @@ FROM (
  WHERE campaign_id = ? AND day >= toDate(?) AND day < toDate(?)
 ) GROUP BY day ORDER BY day`
 
-	rows, err := s.chQuery.Query(ctx, query,
+	rows, err := s.clickhouseQuery.Query(ctx, query,
 		campaignID, from.UTC(), to.UTC(),
 		campaignID, from.UTC(), to.UTC(),
 		campaignID, from.UTC(), to.UTC(),
@@ -881,31 +881,31 @@ FROM (
 	return buckets, lag, nil
 }
 
-type chLagCache struct {
+type clickhouseLagCache struct {
 	mu      sync.Mutex
 	lag     time.Duration
 	updated time.Time
 }
 
-const chLagCacheTTL = 30 * time.Second
+const clickhouseLagCacheTTL = 30 * time.Second
 
-var globalCHLagCache chLagCache
+var globalClickHouseLagCache clickhouseLagCache
 
 func (s *Service) clickHouseIngestionLag(ctx context.Context) (time.Duration, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return 0, nil
 	}
 
-	globalCHLagCache.mu.Lock()
-	if time.Since(globalCHLagCache.updated) < chLagCacheTTL {
-		lag := globalCHLagCache.lag
-		globalCHLagCache.mu.Unlock()
+	globalClickHouseLagCache.mu.Lock()
+	if time.Since(globalClickHouseLagCache.updated) < clickhouseLagCacheTTL {
+		lag := globalClickHouseLagCache.lag
+		globalClickHouseLagCache.mu.Unlock()
 		return lag, nil
 	}
-	globalCHLagCache.mu.Unlock()
+	globalClickHouseLagCache.mu.Unlock()
 
 	var latest time.Time
-	err := s.chQuery.QueryRow(ctx, `
+	err := s.clickhouseQuery.QueryRow(ctx, `
 SELECT max(latest) FROM (
  SELECT max(created_at) AS latest FROM impressions
  UNION ALL
@@ -923,10 +923,10 @@ SELECT max(latest) FROM (
 		lag = time.Since(latest.UTC())
 	}
 
-	globalCHLagCache.mu.Lock()
-	globalCHLagCache.lag = lag
-	globalCHLagCache.updated = time.Now()
-	globalCHLagCache.mu.Unlock()
+	globalClickHouseLagCache.mu.Lock()
+	globalClickHouseLagCache.lag = lag
+	globalClickHouseLagCache.updated = time.Now()
+	globalClickHouseLagCache.mu.Unlock()
 
 	return lag, nil
 }
@@ -2645,19 +2645,19 @@ func (s *Service) closedLoopPacingControllerTx(ctx context.Context, tx pgx.Tx, m
 }
 
 func (s *Service) campaignLocation(timezone string) *time.Location {
-	if cached, found := s.locCache.Load(timezone); found {
+	if cached, found := s.timezoneLocationCache.Load(timezone); found {
 		return cached.(*time.Location)
 	}
 	loc, err := time.LoadLocation(timezone)
 	if err != nil {
 		loc = time.UTC
 	}
-	s.locCache.Store(timezone, loc)
+	s.timezoneLocationCache.Store(timezone, loc)
 	return loc
 }
 
 func (s *Service) fetchPacingHourWeights(ctx context.Context) [24]float64 {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return uniformHourWeights()
 	}
 	lookbackEnd := time.Now().UTC().Truncate(time.Hour)

@@ -59,7 +59,7 @@ func main() {
 	}
 	defer func() { _ = chRead.Close() }()
 
-	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
+	clickhouseQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 
 	analyzerCfg := fraud.AnalyzerConfig{
 		Window:               time.Duration(cfg.IVT.WindowSec) * time.Second,
@@ -102,15 +102,15 @@ func main() {
 		slog.Info("FRAUD_SCORER_STANDALONE enabled; skipping embedded scorer in ivt-detector")
 	}
 
-	var chWrite driver.Conn
+	var clickhouseWriteConn driver.Conn
 	needCHWrite := scorer != nil || cfg.ExternalResidentialIntelRuntimeEnabled()
 	if needCHWrite && string(cfg.CHDSN) != "" {
-		chWrite, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+		clickhouseWriteConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 		if err != nil {
 			slog.Error("failed to connect to clickhouse write path", "error", err)
 			os.Exit(1)
 		}
-		defer func() { _ = chWrite.Close() }()
+		defer func() { _ = clickhouseWriteConn.Close() }()
 	}
 
 	snap, licErr := licensing.LoadDeploymentSnapshot(ctx, pool)
@@ -128,7 +128,7 @@ func main() {
 		if licErr == nil && !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.ExternalResidentialIntelEnabled() }) {
 			slog.Warn("external residential intel env enabled but SKU gate blocks provider; enricher disabled")
 		} else if redisClient != nil {
-			residentialEnricher, err = fraud.NewResidentialIntelEnricherFromConfig(cfg, redisClient, chWrite)
+			residentialEnricher, err = fraud.NewResidentialIntelEnricherFromConfig(cfg, redisClient, clickhouseWriteConn)
 			if err != nil {
 				slog.Error("failed to configure residential intel enricher", "error", err)
 				os.Exit(1)
@@ -142,7 +142,7 @@ func main() {
 		}
 	}
 
-	registry := fraud.NewAnalyzerRegistry(chQuery, chWrite, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, redisClient)
+	registry := fraud.NewAnalyzerRegistry(clickhouseQuery, clickhouseWriteConn, pool, analyzerCfg, asn, scorer, cfg.FraudScoring.BatchSize, redisClient)
 
 	detector := fraud.NewDetector(
 		registry,

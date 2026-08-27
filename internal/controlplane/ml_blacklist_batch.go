@@ -23,7 +23,7 @@ type mlBlacklistPersistRow struct {
 	ttl       pgtype.Int4
 }
 
-func (worker *OutboxWorker) applyBlacklistOutboxBatch(ctx context.Context, events []db.OutboxEvent) error {
+func (w *OutboxWorker) applyBlacklistOutboxBatch(ctx context.Context, events []db.OutboxEvent) error {
 	var redisEvents []db.OutboxEvent
 	var mlEvents []db.OutboxEvent
 	for _, ev := range events {
@@ -35,7 +35,7 @@ func (worker *OutboxWorker) applyBlacklistOutboxBatch(ctx context.Context, event
 	}
 
 	if len(mlEvents) > 0 {
-		if err := worker.persistMLBlacklistAdds(ctx, mlEvents); err != nil {
+		if err := w.persistMLBlacklistAdds(ctx, mlEvents); err != nil {
 			return err
 		}
 	}
@@ -43,11 +43,11 @@ func (worker *OutboxWorker) applyBlacklistOutboxBatch(ctx context.Context, event
 	if len(redisEvents) == 0 {
 		return nil
 	}
-	return worker.applyBlacklistPayloadsBatch(ctx, redisEvents)
+	return w.applyBlacklistPayloadsBatch(ctx, redisEvents)
 }
 
-func (worker *OutboxWorker) persistMLBlacklistAdds(ctx context.Context, events []db.OutboxEvent) error {
-	rows, maxQueued, err := worker.parseMLBlacklistRows(events)
+func (w *OutboxWorker) persistMLBlacklistAdds(ctx context.Context, events []db.OutboxEvent) error {
+	rows, maxQueued, err := w.parseMLBlacklistRows(events)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (worker *OutboxWorker) persistMLBlacklistAdds(ctx context.Context, events [
 		return nil
 	}
 
-	err = pgx.BeginFunc(ctx, worker.svc.GetPool(), func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, w.svc.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
 		for _, row := range rows {
 			if _, err := q.CreateBlacklistIP(ctx, db.CreateBlacklistIPParams{
@@ -79,7 +79,7 @@ func (worker *OutboxWorker) persistMLBlacklistAdds(ctx context.Context, events [
 		if u, ok := GetUser(ctx); ok {
 			uid = u.UserID
 		}
-		worker.svc.AuditLog(ctx, q, uid, "ML_BLACKLIST_ADD", "system", nil, map[string]any{
+		w.svc.AuditLog(ctx, q, uid, "ML_BLACKLIST_ADD", "system", nil, map[string]any{
 			"count":  len(rows),
 			"source": "fraud",
 		}, nil)
@@ -89,14 +89,14 @@ func (worker *OutboxWorker) persistMLBlacklistAdds(ctx context.Context, events [
 		return err
 	}
 
-	return worker.applyMLBlacklistRedisFastLane(ctx, rows, maxQueued)
+	return w.applyMLBlacklistRedisFastLane(ctx, rows, maxQueued)
 }
 
-func (worker *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, rows []mlBlacklistPersistRow, maxQueued time.Time) error {
+func (w *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, rows []mlBlacklistPersistRow, maxQueued time.Time) error {
 	if len(rows) == 0 {
 		return nil
 	}
-	if len(worker.svc.redisShards) == 0 {
+	if len(w.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
@@ -111,7 +111,7 @@ func (worker *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, r
 		addMembers[i] = ip
 	}
 
-	for i, redisClient := range worker.svc.redisShards {
+	for i, redisClient := range w.svc.redisShards {
 		if redisClient == nil {
 			return fmt.Errorf("redis shard %d is nil", i)
 		}
@@ -120,11 +120,11 @@ func (worker *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, r
 		}
 	}
 
-	if err := publishFraudQuarantineBatch(ctx, worker.svc.redisShards, ips); err != nil {
+	if err := publishFraudQuarantineBatch(ctx, w.svc.redisShards, ips); err != nil {
 		return fmt.Errorf("ml blacklist quarantine fast lane: %w", err)
 	}
 	for _, ip := range ips {
-		_ = publishControlChannelToAllShards(ctx, worker.svc.redisShards, blacklistUpdateChannel, ip+":fraud")
+		_ = publishControlChannelToAllShards(ctx, w.svc.redisShards, blacklistUpdateChannel, ip+":fraud")
 	}
 
 	if !maxQueued.IsZero() {
@@ -136,8 +136,8 @@ func (worker *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, r
 	return nil
 }
 
-func (worker *OutboxWorker) parseMLBlacklistRows(events []db.OutboxEvent) ([]mlBlacklistPersistRow, time.Time, error) {
-	cfg := blacklistTTLFromConfig(worker.svc.cfg)
+func (w *OutboxWorker) parseMLBlacklistRows(events []db.OutboxEvent) ([]mlBlacklistPersistRow, time.Time, error) {
+	cfg := blacklistTTLFromConfig(w.svc.cfg)
 	rows := make([]mlBlacklistPersistRow, 0, len(events))
 	var maxQueued time.Time
 
@@ -181,8 +181,8 @@ func (worker *OutboxWorker) parseMLBlacklistRows(events []db.OutboxEvent) ([]mlB
 	return rows, maxQueued, nil
 }
 
-func (worker *OutboxWorker) applyMLBlacklistSingle(ctx context.Context, payload []byte) error {
-	return worker.persistMLBlacklistAdds(ctx, []db.OutboxEvent{{
+func (w *OutboxWorker) applyMLBlacklistSingle(ctx context.Context, payload []byte) error {
+	return w.persistMLBlacklistAdds(ctx, []db.OutboxEvent{{
 		EventType: "ML_BLACKLIST_ADD",
 		Payload:   payload,
 	}})

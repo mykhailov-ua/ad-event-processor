@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Dev-only compose helpers: avoid Docker auto-creating host paths (especially monorepo parent junk).
-
 ad_event_processor_compose_dev_overlay() {
   if installer_use_release_images; then
     return 1
@@ -34,7 +32,6 @@ dev_remove_path() {
   fi
 }
 
-# Stale Docker bind-mount trees at <monorepo>/deploy|var|license.jwt (sibling of this repo).
 dev_prune_parent_bind_artifacts() {
   local parent name path
   parent="$(dev_monorepo_root)"

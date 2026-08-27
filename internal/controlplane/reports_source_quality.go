@@ -30,10 +30,10 @@ FROM (
  SELECT
  placement_id,
  campaign_id,
- ` + chDimCountryExpr + ` AS country,
- coalesce(` + chDimCityExpr + `, '') AS city,
- ` + chDimDeviceExpr + ` AS device,
- coalesce(` + chDimSub1Expr + `, '') AS sub1,
+ ` + clickhouseDimCountryExpr + ` AS country,
+ coalesce(` + clickhouseDimCityExpr + `, '') AS city,
+ ` + clickhouseDimDeviceExpr + ` AS device,
+ coalesce(` + clickhouseDimSub1Expr + `, '') AS sub1,
  count() AS impressions,
  toUInt64(0) AS clicks,
  toUInt64(0) AS conversions,
@@ -47,10 +47,10 @@ FROM (
  SELECT
  c.placement_id,
  c.campaign_id,
- coalesce(` + chDimCountryExpr + `, 'ZZ') AS country,
- coalesce(` + chDimCityExpr + `, '') AS city,
- coalesce(` + chDimDeviceExpr + `) AS device,
- coalesce(` + chDimSub1Expr + `, '') AS sub1,
+ coalesce(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
+ coalesce(` + clickhouseDimCityExpr + `, '') AS city,
+ coalesce(` + clickhouseDimDeviceExpr + `) AS device,
+ coalesce(` + clickhouseDimSub1Expr + `, '') AS sub1,
  toUInt64(0) AS impressions,
  count() AS clicks,
  toUInt64(0) AS conversions,
@@ -66,10 +66,10 @@ FROM (
  SELECT
  placement_id,
  campaign_id,
- ` + chDimCountryExpr + ` AS country,
- coalesce(` + chDimCityExpr + `, '') AS city,
- ` + chDimDeviceExpr + ` AS device,
- coalesce(` + chDimSub1Expr + `, '') AS sub1,
+ ` + clickhouseDimCountryExpr + ` AS country,
+ coalesce(` + clickhouseDimCityExpr + `, '') AS city,
+ ` + clickhouseDimDeviceExpr + ` AS device,
+ coalesce(` + clickhouseDimSub1Expr + `, '') AS sub1,
  toUInt64(0) AS impressions,
  toUInt64(0) AS clicks,
  count() AS conversions,
@@ -91,10 +91,10 @@ SELECT count() FROM (
  SELECT
  placement_id,
  campaign_id,
- ` + chDimCountryExpr + ` AS country,
- coalesce(` + chDimCityExpr + `, '') AS city,
- ` + chDimDeviceExpr + ` AS device,
- coalesce(` + chDimSub1Expr + `, '') AS sub1
+ ` + clickhouseDimCountryExpr + ` AS country,
+ coalesce(` + clickhouseDimCityExpr + `, '') AS city,
+ ` + clickhouseDimDeviceExpr + ` AS device,
+ coalesce(` + clickhouseDimSub1Expr + `, '') AS sub1
  FROM impressions
  WHERE campaign_id IN (?)
  AND created_at >= ?
@@ -104,10 +104,10 @@ SELECT count() FROM (
  SELECT
  c.placement_id,
  c.campaign_id,
- coalesce(` + chDimCountryExpr + `, 'ZZ') AS country,
- coalesce(` + chDimCityExpr + `, '') AS city,
- coalesce(` + chDimDeviceExpr + `) AS device,
- coalesce(` + chDimSub1Expr + `, '') AS sub1
+ coalesce(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
+ coalesce(` + clickhouseDimCityExpr + `, '') AS city,
+ coalesce(` + clickhouseDimDeviceExpr + `) AS device,
+ coalesce(` + clickhouseDimSub1Expr + `, '') AS sub1
  FROM clicks AS c
  WHERE c.campaign_id IN (?)
  AND c.created_at >= ?
@@ -117,10 +117,10 @@ SELECT count() FROM (
  SELECT
  placement_id,
  campaign_id,
- ` + chDimCountryExpr + ` AS country,
- coalesce(` + chDimCityExpr + `, '') AS city,
- ` + chDimDeviceExpr + ` AS device,
- coalesce(` + chDimSub1Expr + `, '') AS sub1
+ ` + clickhouseDimCountryExpr + ` AS country,
+ coalesce(` + clickhouseDimCityExpr + `, '') AS city,
+ ` + clickhouseDimDeviceExpr + ` AS device,
+ coalesce(` + clickhouseDimSub1Expr + `, '') AS sub1
  FROM conversions
  WHERE campaign_id IN (?)
  AND created_at >= ?
@@ -169,7 +169,6 @@ var sourceQualityGroupByAllowed = map[string]struct{}{
 	"sub_id":    {},
 }
 
-// parseSourceQualityGroupBy reads group_by query values (comma-separated or repeated).
 func parseSourceQualityGroupBy(r *http.Request) []string {
 	raw := r.URL.Query()["group_by"]
 	if len(raw) == 0 {
@@ -208,16 +207,16 @@ func sourceQualityNeedsDetailRows(groupBy []string) bool {
 
 func querySourceQualityDetailRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 
-	rows, err := chQuery.Query(ctx, sourceQualityDetailEventQuery,
+	rows, err := clickhouseQuery.Query(ctx, sourceQualityDetailEventQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
@@ -249,7 +248,7 @@ func querySourceQualityDetailRows(
 	}
 
 	spendByPlacementCampaign := make(map[string]placementCampaignSpend)
-	spendRows, err := chQuery.Query(ctx, sourceQualityPlacementSpendQuery, campaignIDs, from, to)
+	spendRows, err := clickhouseQuery.Query(ctx, sourceQualityPlacementSpendQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, 0, fmt.Errorf("source quality placement spend query: %w", err)
 	}
@@ -306,7 +305,7 @@ func querySourceQualityDetailRows(
 	}
 
 	var total uint64
-	if err := chQuery.QueryRow(ctx, sourceQualityDetailCountQuery,
+	if err := clickhouseQuery.QueryRow(ctx, sourceQualityDetailCountQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,

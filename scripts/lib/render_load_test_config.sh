@@ -5,7 +5,6 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/load_test_env.sh"
 
 ROOT="${ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# Preserve nginx variables ($host, $remote_addr, etc.) during envsubst.
 export DOLLAR='$'
 
 CHECK_ONLY=0

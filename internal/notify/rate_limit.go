@@ -26,26 +26,26 @@ func newRecipientRateLimiter(limitPerMinute int) *recipientRateLimiter {
 	}
 }
 
-func (limiter *recipientRateLimiter) allow(recipient string) bool {
-	if limiter == nil || recipient == "" {
+func (l *recipientRateLimiter) allow(recipient string) bool {
+	if l == nil || recipient == "" {
 		return true
 	}
 
 	now := time.Now()
-	limiter.mu.Lock()
-	bucket, ok := limiter.buckets[recipient]
+	l.mu.Lock()
+	bucket, ok := l.buckets[recipient]
 	if !ok {
-		if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
-			evictNotifyBuckets(limiter.buckets, now)
-			if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
-				limiter.mu.Unlock()
+		if len(l.buckets) >= notifyRateLimiterMaxEntries {
+			evictNotifyBuckets(l.buckets, now)
+			if len(l.buckets) >= notifyRateLimiterMaxEntries {
+				l.mu.Unlock()
 				return false
 			}
 		}
-		bucket = newTokenBucket(limiter.limit)
-		limiter.buckets[recipient] = bucket
+		bucket = newTokenBucket(l.limit)
+		l.buckets[recipient] = bucket
 	}
-	limiter.mu.Unlock()
+	l.mu.Unlock()
 	return bucket.allow(now)
 }
 
@@ -81,11 +81,11 @@ func providerRecipientKey(provider, recipient string) string {
 	return provider + ":" + recipient
 }
 
-func (limiter *providerRateLimiter) Allow(provider, recipient string) bool {
-	if limiter == nil {
+func (l *providerRateLimiter) Allow(provider, recipient string) bool {
+	if l == nil {
 		return true
 	}
-	limit, ok := limiter.limits[provider]
+	limit, ok := l.limits[provider]
 	if !ok || limit <= 0 {
 		return true
 	}
@@ -93,42 +93,42 @@ func (limiter *providerRateLimiter) Allow(provider, recipient string) bool {
 	key := providerRecipientKey(provider, recipient)
 	now := time.Now()
 
-	limiter.mu.Lock()
-	bucket, ok := limiter.buckets[key]
+	l.mu.Lock()
+	bucket, ok := l.buckets[key]
 	if !ok {
-		if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
-			evictNotifyBuckets(limiter.buckets, now)
-			if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
-				limiter.mu.Unlock()
+		if len(l.buckets) >= notifyRateLimiterMaxEntries {
+			evictNotifyBuckets(l.buckets, now)
+			if len(l.buckets) >= notifyRateLimiterMaxEntries {
+				l.mu.Unlock()
 				return false
 			}
 		}
 		bucket = newTokenBucket(limit)
-		limiter.buckets[key] = bucket
+		l.buckets[key] = bucket
 	}
-	limiter.mu.Unlock()
+	l.mu.Unlock()
 	return bucket.allow(now)
 }
 
-func (limiter *providerRateLimiter) Backoff(provider, recipient string, d time.Duration) {
-	if limiter == nil || d <= 0 {
+func (l *providerRateLimiter) Backoff(provider, recipient string, d time.Duration) {
+	if l == nil || d <= 0 {
 		return
 	}
-	if _, ok := limiter.limits[provider]; !ok {
+	if _, ok := l.limits[provider]; !ok {
 		return
 	}
 
 	key := providerRecipientKey(provider, recipient)
-	limiter.mu.Lock()
-	bucket, ok := limiter.buckets[key]
+	l.mu.Lock()
+	bucket, ok := l.buckets[key]
 	if !ok {
-		if len(limiter.buckets) >= notifyRateLimiterMaxEntries {
-			evictNotifyBuckets(limiter.buckets, time.Now())
+		if len(l.buckets) >= notifyRateLimiterMaxEntries {
+			evictNotifyBuckets(l.buckets, time.Now())
 		}
-		bucket = newTokenBucket(limiter.limits[provider])
-		limiter.buckets[key] = bucket
+		bucket = newTokenBucket(l.limits[provider])
+		l.buckets[key] = bucket
 	}
-	limiter.mu.Unlock()
+	l.mu.Unlock()
 	bucket.backoff(d)
 }
 

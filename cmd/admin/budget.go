@@ -61,23 +61,23 @@ var budgetResetCmd = &cobra.Command{
 		budgetKey := fmt.Sprintf("budget:campaign:%s", campaignID)
 		syncKey := fmt.Sprintf("budget:sync:campaign:%s", campaignID)
 
-		res1, err := redisClient.Del(ctx, budgetKey).Result()
+		budgetDelCount, err := redisClient.Del(ctx, budgetKey).Result()
 		if err != nil {
 			return fmt.Errorf("failed to delete remaining budget cache: %w", err)
 		}
 
-		res2, err := redisClient.Del(ctx, syncKey).Result()
+		syncDelCount, err := redisClient.Del(ctx, syncKey).Result()
 		if err != nil {
 			return fmt.Errorf("failed to delete campaign sync accumulator: %w", err)
 		}
 
-		res3, err := redisClient.SRem(ctx, "budget:dirty_campaigns", campaignID.String()).Result()
+		dirtyRemoveCount, err := redisClient.SRem(ctx, "budget:dirty_campaigns", campaignID.String()).Result()
 		if err != nil {
 			return fmt.Errorf("failed to remove campaign from dirty set: %w", err)
 		}
 
 		fmt.Printf("Cleared Redis cache:\n DEL %s (%d)\n DEL %s (%d)\n SREM budget:dirty_campaigns %s (%d)\n",
-			budgetKey, res1, syncKey, res2, campaignID, res3)
+			budgetKey, budgetDelCount, syncKey, syncDelCount, campaignID, dirtyRemoveCount)
 
 		if resetSpend {
 			fmt.Println("Resetting database current_spend to 0...")

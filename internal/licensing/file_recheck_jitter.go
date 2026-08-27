@@ -9,7 +9,6 @@ import (
 
 const licenseFileRecheckMaxJitter = 120 * time.Second
 
-// LicenseFileRecheckIntervalJittered returns base plus deterministic jitter from deployment_id.
 func LicenseFileRecheckIntervalJittered(base time.Duration, deploymentID string) time.Duration {
 	if base <= 0 {
 		base = fileLicenseRecheckInterval()

@@ -59,7 +59,7 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 	seedIntervalBotClicks(t, conn, botIP, "timer-bot-open", 35, time.Second)
 
 	rule := &intervalBotnetRule{
-		q: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
 		cfg: AnalyzerConfig{
 			Window:               time.Hour,
 			IntervalMinIntervals: 30,

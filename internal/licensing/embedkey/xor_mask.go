@@ -12,7 +12,6 @@ var maskHi = [16]byte{
 	0x02, 0xad, 0x38, 0x71, 0x9e, 0x25, 0x50, 0x86,
 }
 
-// EmbeddedProductionPublicKey returns the vendor production Ed25519 public key bytes.
 func EmbeddedProductionPublicKey() ed25519.PublicKey {
 	var raw [ed25519.PublicKeySize]byte
 	for i := range 16 {

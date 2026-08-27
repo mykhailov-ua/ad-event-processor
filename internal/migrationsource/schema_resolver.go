@@ -4,13 +4,11 @@ import (
 	"strings"
 )
 
-// SchemaResolver maps foreign traffic source labels to bundled integration slugs.
 type SchemaResolver struct {
 	keitaro map[string]SourceEntry
 	binom   map[string]SourceEntry
 }
 
-// NewSchemaResolver builds resolvers from loaded maps.
 func NewSchemaResolver(m *Maps) *SchemaResolver {
 	if m == nil {
 		return &SchemaResolver{}
@@ -34,7 +32,6 @@ func NewSchemaResolver(m *Maps) *SchemaResolver {
 	return &SchemaResolver{keitaro: k, binom: b}
 }
 
-// ResolveKeitaro returns bundled slug and UI template id for a Keitaro source label.
 func (r *SchemaResolver) ResolveKeitaro(name string) (SourceEntry, bool) {
 	if r == nil {
 		return SourceEntry{}, false
@@ -43,7 +40,6 @@ func (r *SchemaResolver) ResolveKeitaro(name string) (SourceEntry, bool) {
 	return row, ok
 }
 
-// ResolveBinom returns bundled slug and UI template id for a Binom source label.
 func (r *SchemaResolver) ResolveBinom(name string) (SourceEntry, bool) {
 	if r == nil {
 		return SourceEntry{}, false

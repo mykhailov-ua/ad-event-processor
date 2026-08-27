@@ -1,6 +1,8 @@
 ---
 description: Control plane outbox, workers, admin API, settlement
-globs: internal/controlplane/**, cmd/control/**
+globs:
+  - internal/controlplane/**
+  - cmd/control/**
 alwaysApply: false
 ---
 

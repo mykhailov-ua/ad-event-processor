@@ -20,44 +20,44 @@ type faultMemoryWarmStore struct {
 	failWarmWrite atomic.Uint32
 }
 
-func (store *faultMemoryWarmStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
-	return store.inner.ListHot(ctx, olderThan)
+func (st *faultMemoryWarmStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
+	return st.inner.ListHot(ctx, olderThan)
 }
 
-func (store *faultMemoryWarmStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
-	return store.inner.WriteWarm(ctx, destKey, plaintext, meta)
+func (st *faultMemoryWarmStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
+	return st.inner.WriteWarm(ctx, destKey, plaintext, meta)
 }
 
-func (store *faultMemoryWarmStore) RemoveHot(ctx context.Context, obj TierObject) error {
-	return store.inner.RemoveHot(ctx, obj)
+func (st *faultMemoryWarmStore) RemoveHot(ctx context.Context, obj TierObject) error {
+	return st.inner.RemoveHot(ctx, obj)
 }
 
-func (store *faultMemoryWarmStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
-	return store.inner.ClaimHot(ctx, obj)
+func (st *faultMemoryWarmStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
+	return st.inner.ClaimHot(ctx, obj)
 }
 
-func (store *faultMemoryWarmStore) RollbackHot(ctx context.Context, obj TierObject) error {
-	return store.inner.RollbackHot(ctx, obj)
+func (st *faultMemoryWarmStore) RollbackHot(ctx context.Context, obj TierObject) error {
+	return st.inner.RollbackHot(ctx, obj)
 }
 
-func (store *faultMemoryWarmStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
-	return store.inner.ListStuckCompacting(ctx)
+func (st *faultMemoryWarmStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
+	return st.inner.ListStuckCompacting(ctx)
 }
 
-func (store *faultMemoryWarmStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
-	return store.inner.RemoveCompacting(ctx, obj)
+func (st *faultMemoryWarmStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
+	return st.inner.RemoveCompacting(ctx, obj)
 }
 
-func (store *faultMemoryWarmStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
-	if store.failWarmWrite.Load() > 0 {
-		store.failWarmWrite.Add(^uint32(0))
+func (st *faultMemoryWarmStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
+	if st.failWarmWrite.Load() > 0 {
+		st.failWarmWrite.Add(^uint32(0))
 		return "", errors.New("injected warm upload failure")
 	}
-	return store.inner.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
+	return st.inner.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
 }
 
-func (store *faultMemoryWarmStore) RemoveWarmArtifacts(destKey string) {
-	store.inner.RemoveWarmArtifacts(destKey)
+func (st *faultMemoryWarmStore) RemoveWarmArtifacts(destKey string) {
+	st.inner.RemoveWarmArtifacts(destKey)
 }
 
 func TestFault_logCompactorS3TierExactlyOnce(t *testing.T) {

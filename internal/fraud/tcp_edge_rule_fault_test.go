@@ -41,9 +41,9 @@ func TestFault_IVTCorrelationSilentRejectOnly(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
-		redisClient: redisClient,
-		cfg:         AnalyzerConfig{Window: time.Hour},
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient:     redisClient,
+		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
@@ -88,9 +88,9 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
-		redisClient: redisClient,
-		cfg:         AnalyzerConfig{Window: time.Hour},
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient:     redisClient,
+		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
 	const goroutines = 24
@@ -165,9 +165,9 @@ func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
-		redisClient: redisClient,
-		cfg:         AnalyzerConfig{Window: time.Hour},
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient:     redisClient,
+		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
@@ -201,9 +201,9 @@ func TestFault_IVTCorrelationMissingClickHouse(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
-		redisClient: redisClient,
-		cfg:         AnalyzerConfig{Window: time.Hour},
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient:     redisClient,
+		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
@@ -242,9 +242,9 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	}
 
 	rule := &tcpEdgeCorrelationRule{
-		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
-		redisClient: redisClient,
-		cfg:         AnalyzerConfig{Window: time.Hour},
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient:     redisClient,
+		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(ctx)
@@ -278,9 +278,9 @@ func TestFault_IVTCorrelationRedisEmpty(t *testing.T) {
 	defer cleanupRedis()
 
 	rule := &tcpEdgeCorrelationRule{
-		q:           database.NewCHQuery(conn, database.CHQueryConfig{}),
-		redisClient: redisClient,
-		cfg:         AnalyzerConfig{Window: time.Hour},
+		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		redisClient:     redisClient,
+		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
 
 	candidates, err := rule.Find(context.Background())

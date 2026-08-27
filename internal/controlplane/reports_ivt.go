@@ -42,9 +42,9 @@ SELECT
 FROM (
  SELECT
  i.campaign_id,
- ` + chDimSub1Expr + ` AS sub1,
- ` + chDimSub2Expr + ` AS sub2,
- nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ ` + clickhouseDimSub1Expr + ` AS sub1,
+ ` + clickhouseDimSub2Expr + ` AS sub2,
+ nullIf(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
  count() AS impressions,
  toUInt64(0) AS clicks,
  uniqIf(i.click_id, f.click_id != '') AS ivt_events
@@ -58,9 +58,9 @@ FROM (
  UNION ALL
  SELECT
  c.campaign_id,
- ` + chDimSub1Expr + ` AS sub1,
- ` + chDimSub2Expr + ` AS sub2,
- nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ ` + clickhouseDimSub1Expr + ` AS sub1,
+ ` + clickhouseDimSub2Expr + ` AS sub2,
+ nullIf(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
  toUInt64(0) AS impressions,
  count() AS clicks,
  uniqIf(c.click_id, f.click_id != '') AS ivt_events
@@ -82,9 +82,9 @@ SELECT count() FROM (
  FROM (
  SELECT
  i.campaign_id,
- ` + chDimSub1Expr + ` AS sub1,
- ` + chDimSub2Expr + ` AS sub2,
- nullIf(` + chDimCountryExpr + `, 'ZZ') AS country
+ ` + clickhouseDimSub1Expr + ` AS sub1,
+ ` + clickhouseDimSub2Expr + ` AS sub2,
+ nullIf(` + clickhouseDimCountryExpr + `, 'ZZ') AS country
  FROM impressions AS i
  WHERE i.campaign_id IN (?)
  AND i.created_at >= ?
@@ -93,9 +93,9 @@ SELECT count() FROM (
  UNION ALL
  SELECT
  c.campaign_id,
- ` + chDimSub1Expr + ` AS sub1,
- ` + chDimSub2Expr + ` AS sub2,
- nullIf(` + chDimCountryExpr + `, 'ZZ') AS country
+ ` + clickhouseDimSub1Expr + ` AS sub1,
+ ` + clickhouseDimSub2Expr + ` AS sub2,
+ nullIf(` + clickhouseDimCountryExpr + `, 'ZZ') AS country
  FROM clicks AS c
  WHERE c.campaign_id IN (?)
  AND c.created_at >= ?
@@ -115,24 +115,24 @@ type ivtBySourceCHRow struct {
 	IVTEvents   int64
 }
 
-func (reports *ReportsHTTPHandlers) registerIVTBySource(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/ivt-by-source", limit(perm("audit:read", reports.wrapReport("ivt-by-source", reports.getIVTBySourceReport))))
+func (h *ReportsHTTPHandlers) registerIVTBySource(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/reports/ivt-by-source", limit(perm("audit:read", h.wrapReport("ivt-by-source", h.getIVTBySourceReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -140,27 +140,27 @@ func (reports *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, IVTBySourceReportResponse{
 			Rows:      []IVTBySourceRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	chRows, total, err := queryIVTBySourceRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	clickhouseRows, total, err := queryIVTBySourceRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
-	rows := make([]IVTBySourceRowDTO, 0, len(chRows))
-	for _, row := range chRows {
+	rows := make([]IVTBySourceRowDTO, 0, len(clickhouseRows))
+	for _, row := range clickhouseRows {
 		rows = append(rows, IVTBySourceRowDTO{
 			CampaignID:  row.CampaignID,
 			Sub1:        row.Sub1,
@@ -178,22 +178,22 @@ func (reports *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, 
 	}
 	httpresponse.JSON(w, http.StatusOK, IVTBySourceReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryIVTBySourceRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]ivtBySourceCHRow, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
-	rows, err := chQuery.Query(ctx, ivtBySourceQuery,
+	rows, err := clickhouseQuery.Query(ctx, ivtBySourceQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		limit, offset,
@@ -219,7 +219,7 @@ func queryIVTBySourceRows(
 		return nil, 0, err
 	}
 	var total uint64
-	if err := chQuery.QueryRow(ctx, ivtBySourceCountQuery,
+	if err := clickhouseQuery.QueryRow(ctx, ivtBySourceCountQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 	).Scan(&total); err != nil {
@@ -238,7 +238,7 @@ SELECT
 FROM (
  SELECT
  i.campaign_id,
- nullIf(` + chDimSub1Expr + `, '') AS sub1,
+ nullIf(` + clickhouseDimSub1Expr + `, '') AS sub1,
  count() AS impressions,
  toUInt64(0) AS clicks,
  toUInt64(0) AS ivt_events
@@ -250,7 +250,7 @@ FROM (
  UNION ALL
  SELECT
  c.campaign_id,
- nullIf(` + chDimSub1Expr + `, '') AS sub1,
+ nullIf(` + clickhouseDimSub1Expr + `, '') AS sub1,
  toUInt64(0) AS impressions,
  count() AS clicks,
  uniqIf(c.click_id, f.click_id != '') AS ivt_events
@@ -268,18 +268,18 @@ LIMIT ?`
 
 func QueryWorstIVTSources(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit int,
 ) ([]SourceRowDTO, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, nil
 	}
 	if limit <= 0 {
 		limit = 5
 	}
-	rows, err := chQuery.Query(ctx, worstIVTSourcesQuery,
+	rows, err := clickhouseQuery.Query(ctx, worstIVTSourcesQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		limit,
@@ -318,7 +318,7 @@ SELECT
  sum(ivt_events) AS ivt_events
 FROM (
  SELECT
- nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ nullIf(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
  count() AS impressions,
  toUInt64(0) AS clicks,
  toUInt64(0) AS ivt_events
@@ -329,7 +329,7 @@ FROM (
  GROUP BY country
  UNION ALL
  SELECT
- nullIf(` + chDimCountryExpr + `, 'ZZ') AS country,
+ nullIf(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
  toUInt64(0) AS impressions,
  count() AS clicks,
  uniqIf(c.click_id, f.click_id != '') AS ivt_events
@@ -348,18 +348,18 @@ LIMIT ?`
 
 func QueryWorstIVTCountries(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit int,
 ) ([]FraudGeoHintDTO, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, nil
 	}
 	if limit <= 0 {
 		limit = 5
 	}
-	rows, err := chQuery.Query(ctx, worstIVTCountriesQuery,
+	rows, err := clickhouseQuery.Query(ctx, worstIVTCountriesQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		limit,

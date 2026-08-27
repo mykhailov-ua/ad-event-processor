@@ -27,13 +27,13 @@ func (s *Service) InitReportJobRunner(exportDir string) *ReportJobRunner {
 	if exportDir == "" {
 		exportDir = defaultReportExportDirPath()
 	}
-	s.workerMu.Lock()
-	defer s.workerMu.Unlock()
+	s.workerMutex.Lock()
+	defer s.workerMutex.Unlock()
 	if s.reportJobRunner == nil {
 		s.reportJobRunner = NewReportJobRunner(exportDir, ReportExportDeps{
-			Pool:           s.pool,
-			CHQuery:        s.chQuery,
-			BuyerPortfolio: s,
+			Pool:            s.pool,
+			ClickHouseQuery: s.clickhouseQuery,
+			BuyerPortfolio:  s,
 		})
 	}
 	return s.reportJobRunner
@@ -43,8 +43,8 @@ func (s *Service) ReportJobRunner() *ReportJobRunner {
 	if s == nil {
 		return nil
 	}
-	s.workerMu.Lock()
-	defer s.workerMu.Unlock()
+	s.workerMutex.Lock()
+	defer s.workerMutex.Unlock()
 	return s.reportJobRunner
 }
 

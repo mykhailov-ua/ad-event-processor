@@ -27,7 +27,6 @@ func MCKFeatureBits() uint8 {
 	return uint8(mckFeatureBits.Load())
 }
 
-// SettlementSeedGateAllowed reports whether processor settlement may flush batches.
 func SettlementSeedGateAllowed() bool {
 	if !SeedCouplingRequired() {
 		return true

@@ -102,9 +102,9 @@ func TestDetector_FraudBoostEnforcement(t *testing.T) {
 	assert.Equal(t, int32(45), mgmt.enqueued[0].boost)
 	assert.Equal(t, int64(300), mgmt.enqueued[0].ttlSeconds)
 
-	res2, err := detector.Run(ctx)
+	secondRun, err := detector.Run(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, 2, res2.Candidates)
-	assert.Equal(t, 0, res2.Enqueued)
-	assert.Equal(t, 2, res2.Skipped)
+	assert.Equal(t, 2, secondRun.Candidates)
+	assert.Equal(t, 0, secondRun.Enqueued)
+	assert.Equal(t, 2, secondRun.Skipped)
 }

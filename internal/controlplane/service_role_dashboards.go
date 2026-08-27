@@ -16,8 +16,8 @@ import (
 
 func (s *Service) compositeReads() *CompositeReadService {
 	cr := NewCompositeReadService(s.GetPool(), s.cfg)
-	if s.chQuery != nil {
-		cr.SetCHQuery(s.chQuery)
+	if s.clickhouseQuery != nil {
+		cr.SetClickHouseQuery(s.clickhouseQuery)
 	}
 	return cr
 }
@@ -100,7 +100,7 @@ func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (
 }
 
 func (s *Service) worstIVTSources(ctx context.Context, customerID uuid.UUID, period PeriodDTO) []SourceRowDTO {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return []SourceRowDTO{}
 	}
 	from, err := time.Parse(time.RFC3339, period.From)
@@ -115,9 +115,9 @@ func (s *Service) worstIVTSources(ctx context.Context, customerID uuid.UUID, per
 	if err != nil || len(campaignIDs) == 0 {
 		return nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
+	clickhouseCtx, cancel := context.WithTimeout(ctx, ReportClickHouseQueryTimeout())
 	defer cancel()
-	sources, err := QueryWorstIVTSources(chCtx, s.chQuery, campaignIDs, from, to, 5)
+	sources, err := QueryWorstIVTSources(clickhouseCtx, s.clickhouseQuery, campaignIDs, from, to, 5)
 	if err != nil || len(sources) == 0 {
 		return nil
 	}
@@ -201,7 +201,7 @@ func (s *Service) GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CF
 			Freshness: DataFreshnessDTO{
 				AsOf:        now.Format(time.RFC3339),
 				Consistency: "strong",
-				Stale:       s.chQuery == nil,
+				Stale:       s.clickhouseQuery == nil,
 			},
 		},
 	}, nil
@@ -326,16 +326,16 @@ func (s *Service) listRecentMLLabelsForCustomer(ctx context.Context, customerID 
 }
 
 func (s *Service) fraudGeoHints(ctx context.Context, customerID uuid.UUID, from, to time.Time) []FraudGeoHintDTO {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return nil
 	}
 	campaignIDs, err := ListCustomerCampaignIDs(ctx, s.GetPool(), customerID)
 	if err != nil || len(campaignIDs) == 0 {
 		return nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
+	clickhouseCtx, cancel := context.WithTimeout(ctx, ReportClickHouseQueryTimeout())
 	defer cancel()
-	hints, err := QueryWorstIVTCountries(chCtx, s.chQuery, campaignIDs, from, to, 5)
+	hints, err := QueryWorstIVTCountries(clickhouseCtx, s.clickhouseQuery, campaignIDs, from, to, 5)
 	if err != nil {
 		return nil
 	}

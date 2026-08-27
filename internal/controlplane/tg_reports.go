@@ -69,12 +69,12 @@ type TelegramFraudReport struct {
 
 func (s *TelegramServiceImpl) reportFreshness(ctx context.Context) TelegramReportFreshness {
 	fresh := TelegramReportFreshness{}
-	ch := s.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		fresh.Stale = true
 		return fresh
 	}
-	lag, err := ch.IngestionLag(ctx)
+	lag, err := clickhouseQuery.IngestionLag(ctx)
 	if err != nil {
 		fresh.Stale = true
 		return fresh
@@ -115,8 +115,8 @@ func (s *TelegramServiceImpl) queryTelegramCounts(
 	if campaignIDs != nil && len(campaignIDs) == 0 {
 		return 0, 0, 0, 0, 0, nil
 	}
-	ch := s.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return 0, 0, 0, 0, 0, errors.New("clickhouse connection not available")
 	}
 	query := `
@@ -134,7 +134,7 @@ func (s *TelegramServiceImpl) queryTelegramCounts(
 	if !ok {
 		return 0, 0, 0, 0, 0, nil
 	}
-	err = ch.QueryRow(ctx, query, args...).Scan(&clicks, &impressions, &premium, &motivated, &conversions)
+	err = clickhouseQuery.QueryRow(ctx, query, args...).Scan(&clicks, &impressions, &premium, &motivated, &conversions)
 	return clicks, impressions, premium, motivated, conversions, err
 }
 
@@ -178,8 +178,8 @@ func (s *TelegramServiceImpl) GetTelegramFunnelReport(
 	if campaignIDs != nil && len(campaignIDs) == 0 {
 		return json.Marshal(TelegramFunnelReport{Freshness: s.reportFreshness(ctx)})
 	}
-	ch := s.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return nil, errors.New("clickhouse connection not available")
 	}
 	query := `
@@ -198,7 +198,7 @@ func (s *TelegramServiceImpl) GetTelegramFunnelReport(
 	}
 	query += ` GROUP BY start_param ORDER BY clicks DESC LIMIT 100`
 
-	rows, err := ch.Query(ctx, query, args...)
+	rows, err := clickhouseQuery.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse funnel query failed: %w", err)
 	}
@@ -230,8 +230,8 @@ func (s *TelegramServiceImpl) GetTelegramBotsReport(
 	if campaignIDs != nil && len(campaignIDs) == 0 {
 		return json.Marshal(TelegramBotsReport{Freshness: s.reportFreshness(ctx)})
 	}
-	ch := s.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return nil, errors.New("clickhouse connection not available")
 	}
 	query := `
@@ -250,7 +250,7 @@ func (s *TelegramServiceImpl) GetTelegramBotsReport(
 	}
 	query += ` GROUP BY bot_id ORDER BY clicks DESC LIMIT 50`
 
-	rows, err := ch.Query(ctx, query, args...)
+	rows, err := clickhouseQuery.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse bots query failed: %w", err)
 	}
@@ -282,8 +282,8 @@ func (s *TelegramServiceImpl) GetTelegramPremiumReport(
 	if campaignIDs != nil && len(campaignIDs) == 0 {
 		return json.Marshal(TelegramPremiumReport{Freshness: s.reportFreshness(ctx)})
 	}
-	ch := s.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return nil, errors.New("clickhouse connection not available")
 	}
 	query := `
@@ -299,7 +299,7 @@ func (s *TelegramServiceImpl) GetTelegramPremiumReport(
 		return json.Marshal(TelegramPremiumReport{Freshness: s.reportFreshness(ctx)})
 	}
 	var premium, nonPremium int64
-	if err := ch.QueryRow(ctx, query, args...).Scan(&premium, &nonPremium); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, query, args...).Scan(&premium, &nonPremium); err != nil {
 		return nil, fmt.Errorf("clickhouse premium query failed: %w", err)
 	}
 	total := premium + nonPremium
@@ -328,8 +328,8 @@ func (s *TelegramServiceImpl) GetTelegramFraudReport(
 	if campaignIDs != nil && len(campaignIDs) == 0 {
 		return json.Marshal(TelegramFraudReport{Freshness: s.reportFreshness(ctx)})
 	}
-	ch := s.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return nil, errors.New("clickhouse connection not available")
 	}
 	query := `
@@ -345,7 +345,7 @@ func (s *TelegramServiceImpl) GetTelegramFraudReport(
 		return json.Marshal(TelegramFraudReport{Freshness: s.reportFreshness(ctx)})
 	}
 	var shadow, blocked int64
-	if err := ch.QueryRow(ctx, query, args...).Scan(&shadow, &blocked); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, query, args...).Scan(&shadow, &blocked); err != nil {
 		return nil, fmt.Errorf("clickhouse fraud query failed: %w", err)
 	}
 	report := TelegramFraudReport{

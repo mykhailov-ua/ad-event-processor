@@ -7,8 +7,6 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
-// pickGlobalReadShard spreads replicated global reads across shards 1..N.
-// Shard 0 is reserved for pub/sub and may be nil at startup.
 func pickGlobalReadShard(redisShards []redis.UniversalClient, seed uint32) redis.UniversalClient {
 	n := len(redisShards)
 	if n == 0 {
@@ -54,8 +52,6 @@ func pickGlobalReadShardForCampaign(redisShards []redis.UniversalClient, sharder
 	return pickGlobalReadShard(redisShards, domain.CRC32Castagnoli(&campaignID))
 }
 
-// pickLocalGlobalShard returns the first connected shard after index 0.
-// Use only for long-lived single-shard clients (pub/sub); hot-path reads must use pickGlobalReadShard*.
 func pickLocalGlobalShard(redisShards []redis.UniversalClient) redis.UniversalClient {
 	if len(redisShards) == 0 {
 		return nil

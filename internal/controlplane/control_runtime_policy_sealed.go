@@ -20,14 +20,12 @@ const sealedControlRuntimeAssetLabel = licensing.AssetLabelControlRuntime
 
 var controlRuntimePolicyActive atomic.Pointer[ControlRuntimePolicy]
 
-// ControlRuntimePolicy is the cold-path control plane policy opened from a sealed blob.
 type ControlRuntimePolicy struct {
 	Version                int  `json:"version"`
 	LicenseRecheckRequired bool `json:"license_recheck_required"`
 	MaxLicenseApplyPerHour int  `json:"max_license_apply_per_hour"`
 }
 
-// InitControlRuntimePolicy loads the control runtime policy (sealed or dev embed).
 func InitControlRuntimePolicy() error {
 	raw, err := resolveControlRuntimePolicyBytes()
 	if err != nil {
@@ -44,7 +42,6 @@ func InitControlRuntimePolicy() error {
 	return nil
 }
 
-// ControlRuntimePolicyLoaded returns the active policy when InitControlRuntimePolicy succeeded.
 func ControlRuntimePolicyLoaded() (ControlRuntimePolicy, bool) {
 	p := controlRuntimePolicyActive.Load()
 	if p == nil {
@@ -53,7 +50,6 @@ func ControlRuntimePolicyLoaded() (ControlRuntimePolicy, bool) {
 	return *p, true
 }
 
-// ControlLicenseRecheckRequired reports whether sealed control policy requires license recheck.
 func ControlLicenseRecheckRequired() bool {
 	policy, ok := ControlRuntimePolicyLoaded()
 	if !ok {

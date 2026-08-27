@@ -1,6 +1,11 @@
 ---
 description: Redis StaticSlot, Lua tiers, Postgres ledger, ClickHouse, streams, broker
-globs: internal/database/**, internal/clickhouse/**, internal/**/queries/**, internal/ingestion/migrations/**, pkg/broker/**
+globs:
+  - internal/database/**
+  - internal/clickhouse/**
+  - internal/**/queries/**
+  - internal/ingestion/migrations/**
+  - pkg/broker/**
 alwaysApply: false
 ---
 

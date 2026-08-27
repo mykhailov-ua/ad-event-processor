@@ -105,7 +105,7 @@ type ClickHouseStore struct {
 	conn             driver.Conn
 	writeTimeout     time.Duration
 	spool            *CHSpool
-	chGate           *ProcessorChGate
+	clickhouseGate   *ProcessorChGate
 	piiHasher        *piihash.Hasher
 	conversionPayout *ConversionPayoutApplier
 	conversionReject conversionRejectFunc
@@ -115,14 +115,14 @@ type ClickHouseStore struct {
 	replayRunning    atomic.Bool
 }
 
-func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir string, spoolCfg CHSpoolConfig, chGate *ProcessorChGate) *ClickHouseStore {
+func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir string, spoolCfg CHSpoolConfig, clickhouseGate *ProcessorChGate) *ClickHouseStore {
 	ctx, cancel := context.WithCancel(context.Background())
 	chStore := &ClickHouseStore{
-		conn:         conn,
-		writeTimeout: writeTimeout,
-		chGate:       chGate,
-		ctx:          ctx,
-		cancel:       cancel,
+		conn:           conn,
+		writeTimeout:   writeTimeout,
+		clickhouseGate: clickhouseGate,
+		ctx:            ctx,
+		cancel:         cancel,
 	}
 	if spoolDir != "" {
 		spool, err := OpenCHSpoolWithConfig(spoolDir, spoolCfg)
@@ -149,11 +149,11 @@ func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain
 		chStore.conversionPayout.ApplyBatch(ctx, events)
 	}
 
-	if chStore.chGate != nil {
-		if err := chStore.chGate.Acquire(ctx); err != nil {
+	if chStore.clickhouseGate != nil {
+		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.chGate.Release()
+		defer chStore.clickhouseGate.Release()
 	}
 
 	token := chStore.getDeduplicationToken(ctx, events)
@@ -600,48 +600,45 @@ func (chStore *ClickHouseStore) SetConversionReject(fn conversionRejectFunc) {
 	}
 }
 
-// WriteFraudTelemetry inserts rejected conversions into fraud_events (reprocess path; no settlement hooks).
 func (chStore *ClickHouseStore) WriteFraudTelemetry(ctx context.Context, events []*domain.Event) error {
 	if chStore == nil || len(events) == 0 {
 		return nil
 	}
-	if chStore.chGate != nil {
-		if err := chStore.chGate.Acquire(ctx); err != nil {
+	if chStore.clickhouseGate != nil {
+		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.chGate.Release()
+		defer chStore.clickhouseGate.Release()
 	}
 	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
 	defer cancel()
 	return chStore.insertTable(dbCtx, "fraud_events", events, true)
 }
 
-// WriteConversions re-inserts validated conversion rows (clears pending flag in payload).
 func (chStore *ClickHouseStore) WriteConversions(ctx context.Context, events []*domain.Event) error {
 	if chStore == nil || len(events) == 0 {
 		return nil
 	}
-	if chStore.chGate != nil {
-		if err := chStore.chGate.Acquire(ctx); err != nil {
+	if chStore.clickhouseGate != nil {
+		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.chGate.Release()
+		defer chStore.clickhouseGate.Release()
 	}
 	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
 	defer cancel()
 	return chStore.insertTable(dbCtx, "conversions", events, false)
 }
 
-// DeleteValidationPendingConversions removes deferred rows before validated re-insert.
 func (chStore *ClickHouseStore) DeleteValidationPendingConversions(ctx context.Context, events []*domain.Event) error {
 	if chStore == nil || len(events) == 0 {
 		return nil
 	}
-	if chStore.chGate != nil {
-		if err := chStore.chGate.Acquire(ctx); err != nil {
+	if chStore.clickhouseGate != nil {
+		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.chGate.Release()
+		defer chStore.clickhouseGate.Release()
 	}
 	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
 	defer cancel()
@@ -663,7 +660,6 @@ ALTER TABLE conversions DELETE WHERE
 	return nil
 }
 
-// ReplaceValidatedConversions deletes pending rows then inserts validated conversion payloads.
 func (chStore *ClickHouseStore) ReplaceValidatedConversions(ctx context.Context, events []*domain.Event) error {
 	if chStore == nil || len(events) == 0 {
 		return nil
@@ -682,7 +678,7 @@ func (chStore *ClickHouseStore) PIIHasher() *piihash.Hasher {
 }
 
 func (chStore *ClickHouseStore) SetChGate(gate *ProcessorChGate) {
-	chStore.chGate = gate
+	chStore.clickhouseGate = gate
 }
 
 func (chStore *ClickHouseStore) SetSpool(spool *CHSpool) {

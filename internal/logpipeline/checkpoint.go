@@ -34,11 +34,11 @@ func NewCheckpointStore(path string) *CheckpointStore {
 	}
 }
 
-func (store *CheckpointStore) Load() error {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+func (st *CheckpointStore) Load() error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 
-	data, err := os.ReadFile(store.path)
+	data, err := os.ReadFile(st.path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
@@ -46,7 +46,7 @@ func (store *CheckpointStore) Load() error {
 		return err
 	}
 
-	store.bySource = make(map[string]CheckpointRecord)
+	st.bySource = make(map[string]CheckpointRecord)
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	lineNo := 0
 	for scanner.Scan() {
@@ -62,15 +62,15 @@ func (store *CheckpointStore) Load() error {
 		if record.SourceKey == "" {
 			continue
 		}
-		store.bySource[record.SourceKey] = record
+		st.bySource[record.SourceKey] = record
 	}
 	return scanner.Err()
 }
 
-func (store *CheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	record, ok := store.bySource[sourceKey]
+func (st *CheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	record, ok := st.bySource[sourceKey]
 	if !ok {
 		return false
 	}
@@ -80,31 +80,31 @@ func (store *CheckpointStore) IsCompacted(sourceKey, sourceSHA256 string) bool {
 	return record.SourceSHA256 == sourceSHA256
 }
 
-func (store *CheckpointStore) Has(sourceKey string) bool {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	_, ok := store.bySource[sourceKey]
+func (st *CheckpointStore) Has(sourceKey string) bool {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	_, ok := st.bySource[sourceKey]
 	return ok
 }
 
-func (store *CheckpointStore) Count() int {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	return len(store.bySource)
+func (st *CheckpointStore) Count() int {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	return len(st.bySource)
 }
 
-func (store *CheckpointStore) Get(sourceKey string) (CheckpointRecord, bool) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	record, ok := store.bySource[sourceKey]
+func (st *CheckpointStore) Get(sourceKey string) (CheckpointRecord, bool) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	record, ok := st.bySource[sourceKey]
 	return record, ok
 }
 
-func (store *CheckpointStore) Save(record CheckpointRecord) error {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+func (st *CheckpointStore) Save(record CheckpointRecord) error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 
-	if err := os.MkdirAll(filepath.Dir(store.path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(st.path), 0o755); err != nil {
 		return err
 	}
 
@@ -113,7 +113,7 @@ func (store *CheckpointStore) Save(record CheckpointRecord) error {
 		return err
 	}
 
-	file, err := os.OpenFile(store.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	file, err := os.OpenFile(st.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
@@ -126,6 +126,6 @@ func (store *CheckpointStore) Save(record CheckpointRecord) error {
 		return err
 	}
 
-	store.bySource[record.SourceKey] = record
+	st.bySource[record.SourceKey] = record
 	return nil
 }

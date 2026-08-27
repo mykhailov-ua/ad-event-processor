@@ -11,15 +11,15 @@ import (
 	"github.com/google/uuid"
 )
 
-func (fraud *FraudHTTPHandlers) registerFraudOverrideRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, permAny func([]string, http.HandlerFunc) http.HandlerFunc) {
-	if fraud == nil || fraud.Overrides == nil {
+func (h *FraudHTTPHandlers) registerFraudOverrideRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, permAny func([]string, http.HandlerFunc) http.HandlerFunc) {
+	if h == nil || h.Overrides == nil {
 		return
 	}
-	mux.HandleFunc("POST /api/v1/fraud/overrides", limit(permAny([]string{"audit:write", "campaigns:write", "shards:write"}, fraud.postFraudOverride)))
+	mux.HandleFunc("POST /api/v1/fraud/overrides", limit(permAny([]string{"audit:write", "campaigns:write", "shards:write"}, h.postFraudOverride)))
 }
 
-func (fraud *FraudHTTPHandlers) postFraudOverride(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := fraud.resolveCustomerID(w, r)
+func (h *FraudHTTPHandlers) postFraudOverride(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveCustomerID(w, r)
 	if !ok {
 		return
 	}
@@ -48,17 +48,17 @@ func (fraud *FraudHTTPHandlers) postFraudOverride(w http.ResponseWriter, r *http
 				httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 				return
 			}
-			if fraud.AuthorizeCampaignAccess != nil {
-				if err := fraud.AuthorizeCampaignAccess(r, campID); err != nil {
-					fraud.writeServiceError(w, err)
+			if h.AuthorizeCampaignAccess != nil {
+				if err := h.AuthorizeCampaignAccess(r, campID); err != nil {
+					h.writeServiceError(w, err)
 					return
 				}
 			}
 			req.CampaignID = &raw
 		}
 	}
-	if err := fraud.Overrides.ApplyFraudScoringOverrideForCustomer(r.Context(), customerID, req); err != nil {
-		fraud.writeServiceError(w, err)
+	if err := h.Overrides.ApplyFraudScoringOverrideForCustomer(r.Context(), customerID, req); err != nil {
+		h.writeServiceError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)

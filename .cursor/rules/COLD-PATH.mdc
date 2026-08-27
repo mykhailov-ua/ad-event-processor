@@ -1,6 +1,17 @@
 ---
 description: Cold path flat handlers, outbox, pkg/coldpath, no Provider layers, idempotency
-globs: internal/notify/**, internal/payment/**, internal/ledger/**, internal/costsync/**, internal/controlplane/**, internal/identity/**, internal/fraud/**, pkg/coldpath/**, cmd/control/**, cmd/ivt-detector/**, cmd/fraud-scorer/**
+globs:
+  - internal/notify/**
+  - internal/payment/**
+  - internal/ledger/**
+  - internal/costsync/**
+  - internal/controlplane/**
+  - internal/identity/**
+  - internal/fraud/**
+  - pkg/coldpath/**
+  - cmd/control/**
+  - cmd/ivt-detector/**
+  - cmd/fraud-scorer/**
 alwaysApply: false
 ---
 

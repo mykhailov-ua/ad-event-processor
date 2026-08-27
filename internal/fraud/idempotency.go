@@ -17,15 +17,15 @@ func NewIdempotencyStore(pool *pgxpool.Pool) *IdempotencyStore {
 	return &IdempotencyStore{pool: pool}
 }
 
-func (store *IdempotencyStore) TryClaim(ctx context.Context, ip string) (bool, error) {
-	if store == nil || store.pool == nil {
+func (st *IdempotencyStore) TryClaim(ctx context.Context, ip string) (bool, error) {
+	if st == nil || st.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")
 	}
 	if ip == "" {
 		return false, ErrInvalidIP
 	}
 
-	tag, err := store.pool.Exec(ctx,
+	tag, err := st.pool.Exec(ctx,
 		"INSERT INTO sync_idempotency (id) VALUES ($1) ON CONFLICT DO NOTHING",
 		idempotencyPrefix+ip,
 	)
@@ -35,29 +35,29 @@ func (store *IdempotencyStore) TryClaim(ctx context.Context, ip string) (bool, e
 	return tag.RowsAffected() > 0, nil
 }
 
-func (store *IdempotencyStore) Release(ctx context.Context, ip string) error {
-	if store == nil || store.pool == nil {
+func (st *IdempotencyStore) Release(ctx context.Context, ip string) error {
+	if st == nil || st.pool == nil {
 		return fmt.Errorf("idempotency store: nil pool")
 	}
 	if ip == "" {
 		return ErrInvalidIP
 	}
-	_, err := store.pool.Exec(ctx, "DELETE FROM sync_idempotency WHERE id = $1", idempotencyPrefix+ip)
+	_, err := st.pool.Exec(ctx, "DELETE FROM sync_idempotency WHERE id = $1", idempotencyPrefix+ip)
 	if err != nil {
 		return fmt.Errorf("release idempotency key: %w", err)
 	}
 	return nil
 }
 
-func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip, modelVersion, reason string) (bool, error) {
-	if store == nil || store.pool == nil {
+func (st *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip, modelVersion, reason string) (bool, error) {
+	if st == nil || st.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")
 	}
 	if ip == "" {
 		return false, ErrInvalidIP
 	}
 
-	tag, err := store.pool.Exec(ctx,
+	tag, err := st.pool.Exec(ctx,
 		"INSERT INTO ml_enforcement_idempotency (ip, model_version, reason) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING",
 		ip, modelVersion, reason,
 	)
@@ -67,14 +67,14 @@ func (store *IdempotencyStore) TryClaimFraudEnforcement(ctx context.Context, ip,
 	return tag.RowsAffected() > 0, nil
 }
 
-func (store *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip, modelVersion, reason string) error {
-	if store == nil || store.pool == nil {
+func (st *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip, modelVersion, reason string) error {
+	if st == nil || st.pool == nil {
 		return fmt.Errorf("idempotency store: nil pool")
 	}
 	if ip == "" {
 		return ErrInvalidIP
 	}
-	_, err := store.pool.Exec(ctx,
+	_, err := st.pool.Exec(ctx,
 		"DELETE FROM ml_enforcement_idempotency WHERE ip = $1 AND model_version = $2 AND reason = $3",
 		ip, modelVersion, reason,
 	)
@@ -84,12 +84,12 @@ func (store *IdempotencyStore) ReleaseFraudEnforcement(ctx context.Context, ip, 
 	return nil
 }
 
-func (store *IdempotencyStore) HasClaim(ctx context.Context, ip string) (bool, error) {
-	if store == nil || store.pool == nil {
+func (st *IdempotencyStore) HasClaim(ctx context.Context, ip string) (bool, error) {
+	if st == nil || st.pool == nil {
 		return false, fmt.Errorf("idempotency store: nil pool")
 	}
 	var exists bool
-	err := store.pool.QueryRow(ctx,
+	err := st.pool.QueryRow(ctx,
 		"SELECT EXISTS(SELECT 1 FROM sync_idempotency WHERE id = $1)",
 		idempotencyPrefix+ip,
 	).Scan(&exists)

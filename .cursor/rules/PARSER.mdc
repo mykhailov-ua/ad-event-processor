@@ -1,6 +1,9 @@
 ---
 description: Ingress wire policy, parser budgets, edge parity, chaos verification
-globs: internal/ingestion/**, deploy/nginx/lua/**, scripts/fault/parser*
+globs:
+  - internal/ingestion/**
+  - deploy/nginx/lua/**
+  - scripts/fault/parser*
 alwaysApply: false
 ---
 

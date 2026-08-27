@@ -33,7 +33,7 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 	clients := make([]redis.UniversalClient, 0, len(cfg.RedisAddrs))
 	breakers := make([]*RedisBreaker, 0, len(cfg.RedisAddrs))
 	for i := range cfg.RedisAddrs {
-		rdb, br, err := connectRedisShard(ctx, cfg, i, names, opts)
+		redisClient, br, err := connectRedisShard(ctx, cfg, i, names, opts)
 		if err != nil {
 			if i == 0 && cfg.RedisShard0OptionalStartup {
 				slog.Warn("redis shard 0 unavailable at startup; continuing degraded",
@@ -51,7 +51,7 @@ func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShard
 			}
 			return nil, nil, err
 		}
-		clients = append(clients, rdb)
+		clients = append(clients, redisClient)
 		breakers = append(breakers, br)
 	}
 	setShard0ClientNilMetric(clients)
@@ -119,13 +119,13 @@ func ConnectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, op
 	if shardIdx < 0 || shardIdx >= len(cfg.RedisAddrs) {
 		return nil, fmt.Errorf("redis shard index %d out of range [0,%d)", shardIdx, len(cfg.RedisAddrs))
 	}
-	rdb, _, err := connectRedisShard(ctx, cfg, shardIdx, cfg.ResolveRedisMasterNames(), opts)
-	return rdb, err
+	redisClient, _, err := connectRedisShard(ctx, cfg, shardIdx, cfg.ResolveRedisMasterNames(), opts)
+	return redisClient, err
 }
 
 func connectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, masterNames []string, opts RedisShardOptions) (redis.UniversalClient, *RedisBreaker, error) {
 	uopts := shardUniversalOptions(cfg, shardIdx, masterNames, opts)
-	rdb := redis.NewUniversalClient(uopts)
+	redisClient := redis.NewUniversalClient(uopts)
 
 	dialLabel := cfg.RedisAddrs[shardIdx]
 	if cfg.RedisSentinelEnabled() {
@@ -136,23 +136,23 @@ func connectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, ma
 	for range redisConnectRetries {
 		select {
 		case <-ctx.Done():
-			_ = rdb.Close()
+			_ = redisClient.Close()
 			return nil, nil, fmt.Errorf("redis shard %d (%s): %w", shardIdx, dialLabel, ctx.Err())
 		default:
 		}
-		if pingErr = rdb.Ping(ctx).Err(); pingErr == nil {
+		if pingErr = redisClient.Ping(ctx).Err(); pingErr == nil {
 			break
 		}
 		slog.Warn("waiting for redis...", "shard", shardIdx, "target", dialLabel, "error", pingErr)
 		select {
 		case <-ctx.Done():
-			_ = rdb.Close()
+			_ = redisClient.Close()
 			return nil, nil, fmt.Errorf("redis shard %d (%s): %w", shardIdx, dialLabel, ctx.Err())
 		case <-time.After(time.Second):
 		}
 	}
 	if pingErr != nil {
-		_ = rdb.Close()
+		_ = redisClient.Close()
 		return nil, nil, fmt.Errorf("redis shard %d (%s): %w", shardIdx, dialLabel, pingErr)
 	}
 
@@ -161,8 +161,8 @@ func connectRedisShard(ctx context.Context, cfg *config.Config, shardIdx int, ma
 		int64(cfg.RedisBreakerHalfOpen),
 		time.Duration(cfg.RedisBreakerOpenTimeoutMs)*time.Millisecond,
 	)
-	rdb.AddHook(NewRedisCircuitBreakerHook(breaker))
-	return rdb, breaker, nil
+	redisClient.AddHook(NewRedisCircuitBreakerHook(breaker))
+	return redisClient, breaker, nil
 }
 
 func shardUniversalOptions(cfg *config.Config, shardIdx int, masterNames []string, opts RedisShardOptions) *redis.UniversalOptions {

@@ -746,7 +746,7 @@ func buildDashboardTopology(ctx context.Context, svc *Service, snap IncidentSnap
 	chStatus := "disabled"
 	if svc != nil && svc.cfg != nil && svc.cfg.ClickHouseEnabled() {
 		chStatus = "ok"
-		if svc.CHQuery() == nil {
+		if svc.ClickHouseQuery() == nil {
 			chStatus = "down"
 		}
 	}

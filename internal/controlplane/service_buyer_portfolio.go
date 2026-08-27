@@ -41,7 +41,7 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 	}
 
 	var chLag time.Duration
-	if s.chQuery != nil {
+	if s.clickhouseQuery != nil {
 		chLag, _ = s.clickHouseIngestionLag(ctx)
 	}
 	resp := BuyerPortfolioDTO{
@@ -53,7 +53,7 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		Attention: make([]BuyerAttentionDTO, 0, 4),
 		Campaigns: make([]BuyerCampaignPortfolioRowDTO, 0, len(campaigns)),
 		KPIs: &MetricsBlockDTO{
-			Freshness: portfolioFreshness(to, s.chQuery != nil, chLag),
+			Freshness: portfolioFreshness(to, s.clickhouseQuery != nil, chLag),
 		},
 	}
 

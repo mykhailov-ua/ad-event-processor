@@ -146,7 +146,7 @@ func (s *Service) DryRunAutomationRule(ctx context.Context, ruleID uuid.UUID) (A
 	if err != nil {
 		return AutomationDryRunResponse{}, err
 	}
-	ch := s.CHQuery()
+	ch := s.ClickHouseQuery()
 	w := automation.NewWorker(s.pool, ch, nil, time.Minute)
 	would, err := w.DryRun(ctx, rule, campaignIDs)
 	if err != nil {

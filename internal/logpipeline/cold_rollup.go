@@ -160,8 +160,8 @@ func campaignUUIDFromBytes(raw []byte) (uuid.UUID, error) {
 	return id, nil
 }
 
-func (store *LocalTierStore) ListWarm(_ context.Context, olderThan time.Time) ([]TierObject, error) {
-	entries, err := os.ReadDir(store.WarmDir)
+func (st *LocalTierStore) ListWarm(_ context.Context, olderThan time.Time) ([]TierObject, error) {
+	entries, err := os.ReadDir(st.WarmDir)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (store *LocalTierStore) ListWarm(_ context.Context, olderThan time.Time) ([
 		}
 		objects = append(objects, TierObject{
 			Key:     name,
-			Path:    filepath.Join(store.WarmDir, name),
+			Path:    filepath.Join(st.WarmDir, name),
 			ModTime: info.ModTime(),
 			Size:    info.Size(),
 		})

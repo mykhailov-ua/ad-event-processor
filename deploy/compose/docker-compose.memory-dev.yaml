@@ -1,0 +1,186 @@
+# Laptop / dev compose overlay: cgroup memory caps below production defaults.
+# Enabled when COMPOSE_MEMORY_PROFILE=dev (default in scripts/dev/stack.sh).
+services:
+  db:
+    command:
+      [
+        'postgres',
+        '-p',
+        '${DB_PORT}',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql',
+        '-c',
+        'max_connections=200',
+        '-c',
+        'shared_buffers=128MB',
+        '-c',
+        'work_mem=8MB',
+        '-c',
+        'maintenance_work_mem=64MB',
+        '-c',
+        'effective_cache_size=256MB',
+      ]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  db-payment:
+    command:
+      [
+        'postgres',
+        '-p',
+        '${PAYMENT_DB_PORT}',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql',
+        '-c',
+        'max_connections=50',
+        '-c',
+        'shared_buffers=64MB',
+        '-c',
+        'work_mem=8MB',
+        '-c',
+        'maintenance_work_mem=32MB',
+        '-c',
+        'effective_cache_size=128MB',
+      ]
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  broker:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  processor:
+    environment:
+      - GOMEMLIMIT=512MiB
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  control:
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  tracker-0:
+    environment:
+      - GOMEMLIMIT=384MiB
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  tracker-1:
+    environment:
+      - GOMEMLIMIT=384MiB
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  tracker-2:
+    environment:
+      - GOMEMLIMIT=384MiB
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  tracker-3:
+    environment:
+      - GOMEMLIMIT=384MiB
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis-0:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-1:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-2:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-3:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-4:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  redis-5:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  clickhouse:
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+
+  ivt-detector:
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+
+  fraud-scorer:
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  nginx:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  prometheus:
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  grafana:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  loki:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  promtail:
+    deploy:
+      resources:
+        limits:
+          memory: 128M

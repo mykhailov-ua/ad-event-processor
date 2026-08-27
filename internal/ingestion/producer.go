@@ -130,6 +130,18 @@ func (rb *IDRingBuffer) refillWorker() {
 
 var globalIDRingBuffer = NewIDRingBuffer(16384)
 
+const defaultStreamProducerQueueCap = 50000
+
+const defaultStreamProducerMaxBatch = 500
+
+const defaultStreamProducerFlushWait = 20 * time.Millisecond
+
+type StreamProducerConfig struct {
+	QueueCap     int
+	MaxBatchSize int
+	FlushWait    time.Duration
+}
+
 type StreamProducer struct {
 	redisClient   redis.UniversalClient
 	streamName    string
@@ -139,6 +151,8 @@ type StreamProducer struct {
 	queueCap      uint32
 	queueDepth    atomic.Uint32
 	queueReserved atomic.Uint32
+	maxBatchSize  int
+	flushWait     time.Duration
 	flushChan     chan chan struct{}
 	closeCh       chan struct{}
 	wg            sync.WaitGroup
@@ -149,14 +163,31 @@ func NewStreamProducer(
 	streamName string,
 	maxStreamLen int,
 	writeTimeout time.Duration,
+	tuning ...StreamProducerConfig,
 ) *StreamProducer {
+	queueCap := defaultStreamProducerQueueCap
+	maxBatchSize := defaultStreamProducerMaxBatch
+	flushWait := defaultStreamProducerFlushWait
+	if len(tuning) > 0 {
+		if tuning[0].QueueCap > 0 {
+			queueCap = tuning[0].QueueCap
+		}
+		if tuning[0].MaxBatchSize > 0 {
+			maxBatchSize = tuning[0].MaxBatchSize
+		}
+		if tuning[0].FlushWait > 0 {
+			flushWait = tuning[0].FlushWait
+		}
+	}
 	p := &StreamProducer{
 		redisClient:  redisClient,
 		streamName:   streamName,
 		maxStreamLen: int64(maxStreamLen),
 		writeTimeout: writeTimeout,
-		queue:        make(chan *[]byte, 50000),
-		queueCap:     50000,
+		queue:        make(chan *[]byte, queueCap),
+		queueCap:     uint32(queueCap),
+		maxBatchSize: maxBatchSize,
+		flushWait:    flushWait,
 		flushChan:    make(chan chan struct{}),
 		closeCh:      make(chan struct{}),
 	}
@@ -317,8 +348,14 @@ func (p *StreamProducer) Flush() {
 func (p *StreamProducer) worker() {
 	defer p.wg.Done()
 
-	maxBatchSize := 500
-	maxFlushWait := 20 * time.Millisecond
+	maxBatchSize := p.maxBatchSize
+	if maxBatchSize <= 0 {
+		maxBatchSize = defaultStreamProducerMaxBatch
+	}
+	maxFlushWait := p.flushWait
+	if maxFlushWait <= 0 {
+		maxFlushWait = defaultStreamProducerFlushWait
+	}
 
 	batch := make([]*[]byte, 0, maxBatchSize)
 	ticker := time.NewTicker(maxFlushWait)
@@ -386,24 +423,26 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 
 	pipe := p.redisClient.Pipeline()
 
-	var wraps [500]*ByteSliceValue
-	var valuesPtrs [500]*[]any
-
 	n := len(batch)
-	if n > 500 {
-		n = 500
+	if n > p.maxBatchSize {
+		n = p.maxBatchSize
+	}
+	if n <= 0 {
+		return
 	}
 
+	wrapSlots := make([]*ByteSliceValue, n)
+	valueSlots := make([]*[]any, n)
 	for i := 0; i < n; i++ {
 		bufPtr := batch[i]
 		wrap := byteSliceValuePool.Get().(*ByteSliceValue)
 		wrap.b = *bufPtr
-		wraps[i] = wrap
+		wrapSlots[i] = wrap
 
 		valuesPtr := producerValuesPool.Get().(*[]any)
 		values := *valuesPtr
 		values[1] = wrap
-		valuesPtrs[i] = valuesPtr
+		valueSlots[i] = valuesPtr
 
 		pipe.XAdd(ctx, &redis.XAddArgs{
 			Stream: p.streamName,
@@ -419,8 +458,8 @@ func (p *StreamProducer) flushBatch(batch []*[]byte) {
 		bufPtr := batch[i]
 		*bufPtr = (*bufPtr)[:cap(*bufPtr)]
 		byteBufPool.Put(bufPtr)
-		byteSliceValuePool.Put(wraps[i])
-		producerValuesPool.Put(valuesPtrs[i])
+		byteSliceValuePool.Put(wrapSlots[i])
+		producerValuesPool.Put(valueSlots[i])
 	}
 
 	if err != nil {

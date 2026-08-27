@@ -65,20 +65,20 @@ SELECT count() FROM (
  GROUP BY reject_kind
 )`
 
-func (reports *ReportsHTTPHandlers) registerFilterRejectsReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/filter-rejects", limit(perm("audit:read", reports.wrapReport("filter-rejects", reports.getFilterRejectsReport))))
+func (h *ReportsHTTPHandlers) registerFilterRejectsReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/reports/filter-rejects", limit(perm("audit:read", h.wrapReport("filter-rejects", h.getFilterRejectsReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getFilterRejectsReport(w http.ResponseWriter, r *http.Request) {
-	if reports.CHQuery == nil {
+func (h *ReportsHTTPHandlers) getFilterRejectsReport(w http.ResponseWriter, r *http.Request) {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 500)
@@ -87,19 +87,19 @@ func (reports *ReportsHTTPHandlers) getFilterRejectsReport(w http.ResponseWriter
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
 	sliceMode := r.URL.Query().Get("slice") == "1" || r.URL.Query().Get("group_by") == "placement_geo"
 	var rows []FilterRejectRowDTO
 	var total int64
 	var errQuery error
 	if sliceMode {
-		rows, total, errQuery = queryFilterRejectSliceRows(chCtx, reports.CHQuery, from, to, page.Limit, page.Offset)
+		rows, total, errQuery = queryFilterRejectSliceRows(clickhouseCtx, h.ClickHouseQuery, from, to, page.Limit, page.Offset)
 	} else {
-		rows, total, errQuery = queryFilterRejectRows(chCtx, reports.CHQuery, from, to, page.Limit, page.Offset)
+		rows, total, errQuery = queryFilterRejectRows(clickhouseCtx, h.ClickHouseQuery, from, to, page.Limit, page.Offset)
 	}
 	if errQuery != nil {
-		reports.writeServiceError(w, errQuery)
+		h.writeServiceError(w, errQuery)
 		return
 	}
 
@@ -109,67 +109,67 @@ func (reports *ReportsHTTPHandlers) getFilterRejectsReport(w http.ResponseWriter
 	}
 	httpresponse.JSON(w, http.StatusOK, FilterRejectReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryFilterRejectRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]FilterRejectRowDTO, int64, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, filterRejectCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, filterRejectCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, filterRejectQuery, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, filterRejectQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]FilterRejectRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row FilterRejectRowDTO
-		if err := chRows.Scan(&row.RejectKind, &row.RejectCount); err != nil {
+		if err := clickhouseRows.Scan(&row.RejectKind, &row.RejectCount); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func queryFilterRejectSliceRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]FilterRejectRowDTO, int64, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, filterRejectSliceCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, filterRejectSliceCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, filterRejectSliceQuery, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, filterRejectSliceQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]FilterRejectRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row FilterRejectRowDTO
-		if err := chRows.Scan(&row.RejectKind, &row.Country, &row.PlacementID, &row.RejectCount); err != nil {
+		if err := clickhouseRows.Scan(&row.RejectKind, &row.Country, &row.PlacementID, &row.RejectCount); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }

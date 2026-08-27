@@ -1,6 +1,12 @@
 ---
 description: Tracker ingest zero-alloc, parsers, gnet, FilterEngine, SoA, asm, chaos proofs
-globs: internal/ingestion/**, internal/campaignmodel/**, internal/domain/sharding*, cmd/tracker/**, pkg/broker/**, deploy/nginx/lua/**
+globs:
+  - internal/ingestion/**
+  - internal/campaignmodel/**
+  - internal/domain/sharding*
+  - cmd/tracker/**
+  - pkg/broker/**
+  - deploy/nginx/lua/**
 alwaysApply: false
 ---
 

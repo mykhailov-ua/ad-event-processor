@@ -653,13 +653,13 @@ func quotaRepairAuditAction(action QuotaRepairAction) string {
 	}
 }
 
-func (worker *OutboxWorker) quotaRepairPgAlreadyApplied(ctx context.Context, eventID int64, action QuotaRepairAction, campID uuid.UUID) (bool, error) {
+func (w *OutboxWorker) quotaRepairPostgresAlreadyApplied(ctx context.Context, eventID int64, action QuotaRepairAction, campID uuid.UUID) (bool, error) {
 	auditAction := quotaRepairAuditAction(action)
 	if auditAction == "" {
 		return false, fmt.Errorf("unknown quota repair action: %s", action)
 	}
 	var exists bool
-	err := worker.svc.GetPool().QueryRow(ctx, `
+	err := w.svc.GetPool().QueryRow(ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM admin_audit_log
 			WHERE action = $1 AND target_id = $2
@@ -668,7 +668,7 @@ func (worker *OutboxWorker) quotaRepairPgAlreadyApplied(ctx context.Context, eve
 	return exists, err
 }
 
-func (worker *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payload []byte) error {
+func (w *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64, payload []byte) error {
 	p, err := parseQuotaRepairPayload(payload)
 	if err != nil {
 		return err
@@ -679,11 +679,11 @@ func (worker *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64,
 	}
 
 	action := QuotaRepairAction(p.Action)
-	if err := worker.applyQuotaRepairPG(ctx, eventID, p, campID, action); err != nil {
+	if err := w.applyQuotaRepairPostgres(ctx, eventID, p, campID, action); err != nil {
 		return err
 	}
 	if action == QuotaRepairTopUpRedis {
-		if err := worker.applyQuotaRepairRedisTopUp(ctx, eventID, p); err != nil {
+		if err := w.applyQuotaRepairRedisTopUp(ctx, eventID, p); err != nil {
 			return err
 		}
 	}
@@ -691,14 +691,14 @@ func (worker *OutboxWorker) ApplyQuotaRepair(ctx context.Context, eventID int64,
 	return nil
 }
 
-func (worker *OutboxWorker) applyQuotaRepairPG(
+func (w *OutboxWorker) applyQuotaRepairPostgres(
 	ctx context.Context,
 	eventID int64,
 	p QuotaRepairPayload,
 	campID uuid.UUID,
 	action QuotaRepairAction,
 ) error {
-	applied, err := worker.quotaRepairPgAlreadyApplied(ctx, eventID, action, campID)
+	applied, err := w.quotaRepairPostgresAlreadyApplied(ctx, eventID, action, campID)
 	if err != nil {
 		return err
 	}
@@ -706,7 +706,7 @@ func (worker *OutboxWorker) applyQuotaRepairPG(
 		return nil
 	}
 
-	tx, err := worker.svc.GetPool().Begin(ctx)
+	tx, err := w.svc.GetPool().Begin(ctx)
 	if err != nil {
 		return err
 	}
@@ -729,10 +729,10 @@ func (worker *OutboxWorker) applyQuotaRepairPG(
 		}); err != nil {
 			return err
 		}
-		worker.svc.AuditLog(ctx, q, adminID, "QUOTA_REPAIR_RELEASE", quotaRepairTargetType,
+		w.svc.AuditLog(ctx, q, adminID, "QUOTA_REPAIR_RELEASE", quotaRepairTargetType,
 			&campID, p, auditMeta)
 	case QuotaRepairTopUpRedis:
-		worker.svc.AuditLog(ctx, q, adminID, "QUOTA_REPAIR_TOPUP", quotaRepairTargetType,
+		w.svc.AuditLog(ctx, q, adminID, "QUOTA_REPAIR_TOPUP", quotaRepairTargetType,
 			&campID, p, auditMeta)
 	default:
 		return fmt.Errorf("unknown quota repair action: %s", p.Action)
@@ -741,11 +741,11 @@ func (worker *OutboxWorker) applyQuotaRepairPG(
 	return tx.Commit(ctx)
 }
 
-func (worker *OutboxWorker) applyQuotaRepairRedisTopUp(ctx context.Context, eventID int64, p QuotaRepairPayload) error {
-	if int(p.ShardID) >= len(worker.svc.redisShards) {
+func (w *OutboxWorker) applyQuotaRepairRedisTopUp(ctx context.Context, eventID int64, p QuotaRepairPayload) error {
+	if int(p.ShardID) >= len(w.svc.redisShards) {
 		return fmt.Errorf("invalid shard_id %d", p.ShardID)
 	}
-	redisClient := worker.svc.redisShards[p.ShardID]
+	redisClient := w.svc.redisShards[p.ShardID]
 	appliedKey := quotaRepairRedisAppliedKey(eventID)
 
 	n, err := redisClient.Exists(ctx, appliedKey).Result()

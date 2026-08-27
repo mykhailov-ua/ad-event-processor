@@ -1,6 +1,10 @@
 ---
 description: Architectural invariants - hot/cold boundary, I/O round-trips, financial fail-closed
-globs: internal/**, cmd/**, deploy/**, pkg/**
+globs:
+  - internal/**
+  - cmd/**
+  - deploy/**
+  - pkg/**
 alwaysApply: false
 ---
 

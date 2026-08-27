@@ -1,6 +1,5 @@
 package migrationsource
 
-// SourceKind identifies an external migration payload format.
 type SourceKind string
 
 const (
@@ -9,17 +8,14 @@ const (
 	SourceKindNativeV1    SourceKind = "native_v1"
 )
 
-// MaxPayloadBytes is the upper bound for migrate preview/import request bodies.
 const MaxPayloadBytes = 1 << 20
 
-// Warning describes a non-fatal mapping issue during preview.
 type Warning struct {
 	Slug        string `json:"slug"`
 	Message     string `json:"message"`
 	CampaignRef string `json:"campaign_ref,omitempty"`
 }
 
-// MappedCampaign is a preview row for one imported campaign.
 type MappedCampaign struct {
 	Ref                   string            `json:"ref"`
 	Name                  string            `json:"name"`
@@ -34,7 +30,6 @@ type MappedCampaign struct {
 	PostbackURLTemplate   string            `json:"postback_url_template,omitempty"`
 }
 
-// PreviewResult is the parse-only output for migrate preview.
 type PreviewResult struct {
 	SourceKind      SourceKind       `json:"source_kind"`
 	MappedCampaigns []MappedCampaign `json:"mapped_campaigns"`
@@ -42,7 +37,6 @@ type PreviewResult struct {
 	SecretsStripped int              `json:"secrets_stripped"`
 }
 
-// NormalizedCampaign is the internal intermediate after adapter parse.
 type NormalizedCampaign struct {
 	Ref               string
 	Name              string
@@ -53,7 +47,6 @@ type NormalizedCampaign struct {
 	BudgetUSD         float64
 }
 
-// NormalizedBundle aggregates parsed campaigns before macro mapping.
 type NormalizedBundle struct {
 	SourceKind SourceKind
 	Campaigns  []NormalizedCampaign

@@ -12,20 +12,20 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func ForEachConnectedShard(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
-	if len(rdbs) == 0 {
+func ForEachConnectedShard(ctx context.Context, redisClients []redis.UniversalClient, op string, fn func(shard int, redisClient redis.UniversalClient) error) error {
+	if len(redisClients) == 0 {
 		return fmt.Errorf("%s: no redis client available", op)
 	}
 	var wrote int
 	var skipped int
 	var lastErr error
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisClients {
+		if redisClient == nil {
 			skipped++
 			recordShardFanoutSkip(i, "nil_client", op)
 			continue
 		}
-		if err := fn(i, rdb); err != nil {
+		if err := fn(i, redisClient); err != nil {
 			skipped++
 			lastErr = err
 			recordShardFanoutSkip(i, "error", op)
@@ -45,17 +45,17 @@ func ForEachConnectedShard(ctx context.Context, rdbs []redis.UniversalClient, op
 	return nil
 }
 
-func ForEachConnectedShardStrict(ctx context.Context, rdbs []redis.UniversalClient, op string, fn func(shard int, rdb redis.UniversalClient) error) error {
-	if len(rdbs) == 0 {
+func ForEachConnectedShardStrict(ctx context.Context, redisClients []redis.UniversalClient, op string, fn func(shard int, redisClient redis.UniversalClient) error) error {
+	if len(redisClients) == 0 {
 		return fmt.Errorf("%s: no redis client available", op)
 	}
-	for i, rdb := range rdbs {
-		if rdb == nil {
+	for i, redisClient := range redisClients {
+		if redisClient == nil {
 			recordShardFanoutSkip(i, "nil_client", op)
 			metrics.ControlFanoutPartialTotal.WithLabelValues(op).Inc()
 			return fmt.Errorf("%s: shard %d unavailable", op, i)
 		}
-		if err := fn(i, rdb); err != nil {
+		if err := fn(i, redisClient); err != nil {
 			recordShardFanoutSkip(i, "error", op)
 			metrics.ControlFanoutPartialTotal.WithLabelValues(op).Inc()
 			return fmt.Errorf("%s: shard %d failed: %w", op, i, err)
@@ -64,15 +64,15 @@ func ForEachConnectedShardStrict(ctx context.Context, rdbs []redis.UniversalClie
 	return nil
 }
 
-func SyncGlobalStringToAllShards(ctx context.Context, rdbs []redis.UniversalClient, key, value string, ttl time.Duration) error {
-	return ForEachConnectedShard(ctx, rdbs, "sync_global_string", func(_ int, rdb redis.UniversalClient) error {
-		return rdb.Set(ctx, key, value, ttl).Err()
+func SyncGlobalStringToAllShards(ctx context.Context, redisClients []redis.UniversalClient, key, value string, ttl time.Duration) error {
+	return ForEachConnectedShard(ctx, redisClients, "sync_global_string", func(_ int, redisClient redis.UniversalClient) error {
+		return redisClient.Set(ctx, key, value, ttl).Err()
 	})
 }
 
-func DeleteGlobalKeyFromAllShards(ctx context.Context, rdbs []redis.UniversalClient, key string) error {
-	return ForEachConnectedShard(ctx, rdbs, "delete_global_key", func(_ int, rdb redis.UniversalClient) error {
-		return rdb.Del(ctx, key).Err()
+func DeleteGlobalKeyFromAllShards(ctx context.Context, redisClients []redis.UniversalClient, key string) error {
+	return ForEachConnectedShard(ctx, redisClients, "delete_global_key", func(_ int, redisClient redis.UniversalClient) error {
+		return redisClient.Del(ctx, key).Err()
 	})
 }
 

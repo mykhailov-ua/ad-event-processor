@@ -14,12 +14,10 @@ var ErrLicenseMACMismatch = errors.New("license file mac mismatch")
 
 const licenseMACSize = sha256.Size
 
-// LicenseMACPath returns the sidecar path for a license JWT file.
 func LicenseMACPath(licensePath string) string {
 	return licensePath + ".mac"
 }
 
-// ComputeLicenseMAC returns HMAC-SHA256(MCK_work, file_bytes).
 func ComputeLicenseMAC(mckWork [32]byte, fileBytes []byte) [licenseMACSize]byte {
 	mac := hmac.New(sha256.New, mckWork[:])
 	_, _ = mac.Write(fileBytes)
@@ -28,7 +26,6 @@ func ComputeLicenseMAC(mckWork [32]byte, fileBytes []byte) [licenseMACSize]byte 
 	return out
 }
 
-// VerifyLicenseMAC reports whether mac matches HMAC-SHA256(MCK_work, file_bytes).
 func VerifyLicenseMAC(mckWork [32]byte, fileBytes, mac []byte) bool {
 	want := ComputeLicenseMAC(mckWork, fileBytes)
 	if len(mac) != licenseMACSize {
@@ -37,13 +34,11 @@ func VerifyLicenseMAC(mckWork [32]byte, fileBytes, mac []byte) bool {
 	return subtle.ConstantTimeCompare(mac, want[:]) == 1
 }
 
-// WriteLicenseMAC writes the sidecar MAC for license file bytes at licensePath.
 func WriteLicenseMAC(licensePath string, mckWork [32]byte, fileBytes []byte) error {
 	mac := ComputeLicenseMAC(mckWork, fileBytes)
 	return WriteFileAtomic(LicenseMACPath(licensePath), mac[:], 0o600)
 }
 
-// WriteLicenseMACForToken derives stretched MCK and writes the sidecar for token bytes.
 func WriteLicenseMACForToken(licensePath, token string, hostFingerprint string) error {
 	token = strings.TrimSpace(token)
 	if token == "" {

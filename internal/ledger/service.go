@@ -36,11 +36,11 @@ func NewService(pool *pgxpool.Pool) *Service {
 	}
 }
 
-func (service *Service) ListCustomerIDs(ctx context.Context, limit, offset int32) ([]uuid.UUID, error) {
+func (s *Service) ListCustomerIDs(ctx context.Context, limit, offset int32) ([]uuid.UUID, error) {
 	if limit <= 0 {
 		limit = 200
 	}
-	rows, err := service.queries.ListCustomerIDs(ctx, db.ListCustomerIDsParams{Limit: limit, Offset: offset})
+	rows, err := s.queries.ListCustomerIDs(ctx, db.ListCustomerIDsParams{Limit: limit, Offset: offset})
 	if err != nil {
 		return nil, err
 	}
@@ -51,16 +51,16 @@ func (service *Service) ListCustomerIDs(ctx context.Context, limit, offset int32
 	return out, nil
 }
 
-func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (domain.Invoice, error) {
+func (s *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (domain.Invoice, error) {
 	if err := validateBillingMonth(billingMonth); err != nil {
 		return domain.Invoice{}, err
 	}
-	if err := CheckLedgerBalanceInvariant(ctx, service.pool, customerID); err != nil {
+	if err := CheckLedgerBalanceInvariant(ctx, s.pool, customerID); err != nil {
 		LedgerDriftTotal.Inc()
 		LedgerInvariantFailuresTotal.Inc()
 		InvoiceErrorsTotal.WithLabelValues("ledger_drift").Inc()
-		if service.notifier != nil {
-			service.alertLedgerDrift(ctx, customerID.String(), err)
+		if s.notifier != nil {
+			s.alertLedgerDrift(ctx, customerID.String(), err)
 		}
 		return domain.Invoice{}, err
 	}
@@ -68,24 +68,24 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 	monthStart := truncateMonthUTC(billingMonth)
 	monthEnd := monthStart.AddDate(0, 1, 0)
 
-	existing, err := service.queries.GetInvoiceByCustomerMonth(ctx, db.GetInvoiceByCustomerMonthParams{
+	existing, err := s.queries.GetInvoiceByCustomerMonth(ctx, db.GetInvoiceByCustomerMonthParams{
 		CustomerID:   pgtype.UUID{Bytes: customerID, Valid: true},
 		BillingMonth: pgtype.Date{Time: monthStart, Valid: true},
 	})
 	if err == nil {
-		return service.invoiceFromDB(ctx, existing)
+		return s.invoiceFromDB(ctx, existing)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return domain.Invoice{}, fmt.Errorf("lookup invoice: %w", err)
 	}
 
-	tx, err := service.pool.Begin(ctx)
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return domain.Invoice{}, fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	qtx := service.queries.WithTx(tx)
+	qtx := s.queries.WithTx(tx)
 
 	cust, err := qtx.GetCustomerBalance(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
@@ -121,8 +121,8 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		return domain.Invoice{}, fmt.Errorf("aggregate ledger lines: %w", err)
 	}
 
-	profile := service.resolveTaxProfile(ctx, qtx, customerID, cust.Currency)
-	taxMicro, rateBPS := service.tax.Compute(spendMicro, profile)
+	profile := s.resolveTaxProfile(ctx, qtx, customerID, cust.Currency)
+	taxMicro, rateBPS := s.tax.Compute(spendMicro, profile)
 	totalMicro := spendMicro + taxMicro
 
 	if spendMicro == 0 {
@@ -151,12 +151,12 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			_ = tx.Rollback(ctx)
-			existing, lookupErr := service.queries.GetInvoiceByCustomerMonth(ctx, db.GetInvoiceByCustomerMonthParams{
+			existing, lookupErr := s.queries.GetInvoiceByCustomerMonth(ctx, db.GetInvoiceByCustomerMonthParams{
 				CustomerID:   pgtype.UUID{Bytes: customerID, Valid: true},
 				BillingMonth: pgtype.Date{Time: monthStart, Valid: true},
 			})
 			if lookupErr == nil {
-				return service.invoiceFromDB(ctx, existing)
+				return s.invoiceFromDB(ctx, existing)
 			}
 		}
 		return domain.Invoice{}, fmt.Errorf("insert invoice: %w", err)
@@ -178,32 +178,32 @@ func (service *Service) GenerateInvoice(ctx context.Context, customerID uuid.UUI
 	}
 
 	InvoicesGeneratedTotal.Inc()
-	return service.invoiceFromDB(ctx, invoice)
+	return s.invoiceFromDB(ctx, invoice)
 }
 
-func (service *Service) resolveTaxProfile(ctx context.Context, q *db.Queries, customerID uuid.UUID, currency string) TaxProfile {
+func (s *Service) resolveTaxProfile(ctx context.Context, q *db.Queries, customerID uuid.UUID, currency string) TaxProfile {
 	row, err := q.GetCustomerTaxProfile(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err == nil {
 		return ProfileFromDB(row)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
-		return service.tax.DefaultProfile("US", currency)
+		return s.tax.DefaultProfile("US", currency)
 	}
-	return service.tax.DefaultProfile("US", currency)
+	return s.tax.DefaultProfile("US", currency)
 }
 
-func (service *Service) GetInvoice(ctx context.Context, invoiceID uuid.UUID) (domain.Invoice, error) {
-	invoice, err := service.queries.GetInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
+func (s *Service) GetInvoice(ctx context.Context, invoiceID uuid.UUID) (domain.Invoice, error) {
+	invoice, err := s.queries.GetInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Invoice{}, ErrInvoiceNotFound
 		}
 		return domain.Invoice{}, fmt.Errorf("get invoice: %w", err)
 	}
-	return service.invoiceFromDB(ctx, invoice)
+	return s.invoiceFromDB(ctx, invoice)
 }
 
-func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.Invoice, int64, error) {
+func (s *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, limit, offset int32) ([]domain.Invoice, int64, error) {
 	if limit <= 0 {
 		limit = 20
 	}
@@ -218,14 +218,14 @@ func (service *Service) ListInvoices(ctx context.Context, customerID uuid.UUID, 
 		Offset:     offset,
 	}
 	rows, total, err := coldpath.PaginatedQuery(
-		func() (int64, error) { return service.queries.CountCustomerInvoices(ctx, custUUID) },
-		func() ([]db.BillingInvoice, error) { return service.queries.ListCustomerInvoices(ctx, listParams) },
+		func() (int64, error) { return s.queries.CountCustomerInvoices(ctx, custUUID) },
+		func() ([]db.BillingInvoice, error) { return s.queries.ListCustomerInvoices(ctx, listParams) },
 	)
 	if err != nil {
 		return nil, 0, fmt.Errorf("list invoices: %w", err)
 	}
 
-	invoices, err := service.invoicesFromDB(ctx, rows)
+	invoices, err := s.invoicesFromDB(ctx, rows)
 	if err != nil {
 		return nil, 0, err
 	}

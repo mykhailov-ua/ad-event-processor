@@ -46,7 +46,7 @@ var postgresBatchArraysPool = sync.Pool{
 type PostgresStore struct {
 	queries        db.Querier
 	writeTimeout   time.Duration
-	pgGate         *ProcessorPgGate
+	postgresGate   *ProcessorPostgresGate
 	hashIPAtInsert bool
 	piiHasher      *piihash.Hasher
 }
@@ -58,11 +58,11 @@ func NewPostgresStore(queries db.Querier, writeTimeout time.Duration) *PostgresS
 	}
 }
 
-func NewPostgresStoreWithGate(queries db.Querier, writeTimeout time.Duration, gate *ProcessorPgGate) *PostgresStore {
+func NewPostgresStoreWithGate(queries db.Querier, writeTimeout time.Duration, gate *ProcessorPostgresGate) *PostgresStore {
 	return &PostgresStore{
 		queries:      queries,
 		writeTimeout: writeTimeout,
-		pgGate:       gate,
+		postgresGate: gate,
 	}
 }
 
@@ -77,11 +77,11 @@ func (s *PostgresStore) StoreBatch(ctx context.Context, events []*domain.Event) 
 		return nil
 	}
 
-	if s.pgGate != nil {
-		if err := s.pgGate.Acquire(ctx); err != nil {
+	if s.postgresGate != nil {
+		if err := s.postgresGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer s.pgGate.Release()
+		defer s.postgresGate.Release()
 	}
 
 	arrs := postgresBatchArraysPool.Get().(*postgresBatchArrays)
@@ -238,11 +238,11 @@ func (s *PostgresStore) StoreStatsBatch(ctx context.Context, events []*domain.Ev
 		return nil
 	}
 
-	if s.pgGate != nil {
-		if err := s.pgGate.Acquire(ctx); err != nil {
+	if s.postgresGate != nil {
+		if err := s.postgresGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer s.pgGate.Release()
+		defer s.postgresGate.Release()
 	}
 
 	campaignIDs, impressions, clicks, conversions := campaignStatRollupArrays(rollup)

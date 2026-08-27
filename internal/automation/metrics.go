@@ -98,7 +98,6 @@ func CalcFraudRejectRatePct(clicks, fraudRejectCount uint64) float64 {
 	return float64(fraudRejectCount) / float64(clicks) * 100
 }
 
-// CalcIVTRatePct is a legacy name for fraud stream hard-reject rate (not fraud tier IVT).
 func CalcIVTRatePct(clicks, fraudRejectCount uint64) float64 {
 	return CalcFraudRejectRatePct(clicks, fraudRejectCount)
 }

@@ -1,4 +1,3 @@
--- decoy unified filter (not loaded by ResolveUnifiedFilterLua)
 local redis = redis
 local ARGV = ARGV
 local KEYS = KEYS

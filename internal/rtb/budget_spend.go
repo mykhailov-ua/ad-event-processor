@@ -7,31 +7,31 @@ import (
 
 const invalidCustomerBudgetIdx uint32 = ^uint32(0)
 
-func (store *BudgetStore) CheckAndSpendAll(campaignIdx, customerIdx uint32, price, dailyLimit int64) bool {
+func (st *BudgetStore) CheckAndSpendAll(campaignIdx, customerIdx uint32, price, dailyLimit int64) bool {
 	if dailyLimit > 0 {
-		store.maybeRollDaily()
-		if store.loadDailyHeadroom(campaignIdx, dailyLimit) < price {
+		st.maybeRollDaily()
+		if st.loadDailyHeadroom(campaignIdx, dailyLimit) < price {
 			return false
 		}
 	}
 
-	if !store.checkAndSpendOn(&store.budgets, campaignIdx, price) {
+	if !st.checkAndSpendOn(&st.budgets, campaignIdx, price) {
 		return false
 	}
 
 	if customerIdx != invalidCustomerBudgetIdx {
-		if !store.checkAndSpendOn(&store.customerBudgets, customerIdx, price) {
-			store.creditOn(&store.budgets, campaignIdx, price)
+		if !st.checkAndSpendOn(&st.customerBudgets, customerIdx, price) {
+			st.creditOn(&st.budgets, campaignIdx, price)
 			return false
 		}
 	}
 
 	if dailyLimit > 0 {
-		if !store.checkAndAddDailySpend(campaignIdx, price, dailyLimit) {
+		if !st.checkAndAddDailySpend(campaignIdx, price, dailyLimit) {
 			if customerIdx != invalidCustomerBudgetIdx {
-				store.creditOn(&store.customerBudgets, customerIdx, price)
+				st.creditOn(&st.customerBudgets, customerIdx, price)
 			}
-			store.creditOn(&store.budgets, campaignIdx, price)
+			st.creditOn(&st.budgets, campaignIdx, price)
 			return false
 		}
 	}
@@ -39,22 +39,22 @@ func (store *BudgetStore) CheckAndSpendAll(campaignIdx, customerIdx uint32, pric
 	return true
 }
 
-func (store *BudgetStore) loadDailyHeadroom(campaignIdx uint32, dailyLimit int64) int64 {
+func (st *BudgetStore) loadDailyHeadroom(campaignIdx uint32, dailyLimit int64) int64 {
 	if dailyLimit <= 0 {
 		return dailyLimit
 	}
-	spent := store.loadOn(&store.dailySpent, campaignIdx)
+	spent := st.loadOn(&st.dailySpent, campaignIdx)
 	return dailyLimit - spent
 }
 
-func (store *BudgetStore) LoadCustomerBudget(customerIdx uint32) int64 {
+func (st *BudgetStore) LoadCustomerBudget(customerIdx uint32) int64 {
 	if customerIdx == invalidCustomerBudgetIdx {
 		return 0
 	}
-	return store.loadOn(&store.customerBudgets, customerIdx)
+	return st.loadOn(&st.customerBudgets, customerIdx)
 }
 
-func (store *BudgetStore) checkAndSpendOn(holder *atomic.Pointer[budgetSlice], idx uint32, price int64) bool {
+func (st *BudgetStore) checkAndSpendOn(holder *atomic.Pointer[budgetSlice], idx uint32, price int64) bool {
 	slice := holder.Load()
 	if idx >= uint32(len(slice.data)) {
 		return false
@@ -71,7 +71,7 @@ func (store *BudgetStore) checkAndSpendOn(holder *atomic.Pointer[budgetSlice], i
 	}
 }
 
-func (store *BudgetStore) creditOn(holder *atomic.Pointer[budgetSlice], idx uint32, price int64) {
+func (st *BudgetStore) creditOn(holder *atomic.Pointer[budgetSlice], idx uint32, price int64) {
 	slice := holder.Load()
 	if idx >= uint32(len(slice.data)) {
 		return
@@ -85,8 +85,8 @@ func (store *BudgetStore) creditOn(holder *atomic.Pointer[budgetSlice], idx uint
 	}
 }
 
-func (store *BudgetStore) checkAndAddDailySpend(idx uint32, price, dailyLimit int64) bool {
-	slice := store.dailySpent.Load()
+func (st *BudgetStore) checkAndAddDailySpend(idx uint32, price, dailyLimit int64) bool {
+	slice := st.dailySpent.Load()
 	if idx >= uint32(len(slice.data)) {
 		return false
 	}
@@ -102,15 +102,15 @@ func (store *BudgetStore) checkAndAddDailySpend(idx uint32, price, dailyLimit in
 	}
 }
 
-func (store *BudgetStore) addDailySpendLocked(idx uint32, spent int64) {
-	slice := store.dailySpent.Load()
+func (st *BudgetStore) addDailySpendLocked(idx uint32, spent int64) {
+	slice := st.dailySpent.Load()
 	if idx >= uint32(len(slice.data)) {
 		return
 	}
 	atomic.StoreInt64(&slice.data[idx].Value, spent)
 }
 
-func (store *BudgetStore) loadOn(holder *atomic.Pointer[budgetSlice], idx uint32) int64 {
+func (st *BudgetStore) loadOn(holder *atomic.Pointer[budgetSlice], idx uint32) int64 {
 	slice := holder.Load()
 	if idx >= uint32(len(slice.data)) {
 		return 0
@@ -118,22 +118,22 @@ func (store *BudgetStore) loadOn(holder *atomic.Pointer[budgetSlice], idx uint32
 	return atomic.LoadInt64(&slice.data[idx].Value)
 }
 
-func (store *BudgetStore) maybeRollDaily() {
+func (st *BudgetStore) maybeRollDaily() {
 	day := currentDayEpochUTC()
-	if store.dailyEpoch.Load() == day {
+	if st.dailyEpoch.Load() == day {
 		return
 	}
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	if store.dailyEpoch.Load() == day {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.dailyEpoch.Load() == day {
 		return
 	}
-	curr := store.dailySpent.Load()
+	curr := st.dailySpent.Load()
 	if len(curr.data) > 0 {
 		cleared := make([]AlignedBudget, len(curr.data))
-		store.dailySpent.Store(&budgetSlice{data: cleared})
+		st.dailySpent.Store(&budgetSlice{data: cleared})
 	}
-	store.dailyEpoch.Store(day)
+	st.dailyEpoch.Store(day)
 }
 
 func currentDayEpochUTC() uint32 {

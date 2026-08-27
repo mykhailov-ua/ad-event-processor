@@ -56,9 +56,7 @@ func luaBranchLabel(res int64) string {
 	}
 }
 
-var (
-	luaDegradeThresholdAny any = luaDegradeThresholdNs
-)
+var luaDegradeThresholdAny any = luaDegradeThresholdNs
 
 var (
 	placementIgnoredKeyVal = StringVal{s: "fcap:ignored"}

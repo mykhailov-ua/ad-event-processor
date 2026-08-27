@@ -1,6 +1,11 @@
 ---
 description: Test taxonomy, holdout proofs, edge-case matrix, race/alloc/compiler gates
-globs: **/*_test.go, **/*_fault_test.go, **/*_bench_test.go, scripts/ci/*test*, scripts/fault/**
+globs:
+  - **/*_test.go
+  - **/*_fault_test.go
+  - **/*_bench_test.go
+  - scripts/ci/*test*
+  - scripts/fault/**
 alwaysApply: false
 ---
 

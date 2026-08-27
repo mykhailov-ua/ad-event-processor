@@ -347,8 +347,8 @@ func (w *SmartAlertsWorker) tick(ctx context.Context) {
 	if w == nil || w.svc == nil || w.svc.pool == nil {
 		return
 	}
-	ch := w.svc.CHQuery()
-	if ch == nil {
+	clickhouseQuery := w.svc.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		slog.Debug("smart alerts: clickhouse not configured, skip tick")
 		return
 	}
@@ -358,7 +358,7 @@ func (w *SmartAlertsWorker) tick(ctx context.Context) {
 		return
 	}
 	now := time.Now().UTC()
-	if err := w.evaluateRulesBatch(ctx, ch, rules, now); err != nil {
+	if err := w.evaluateRulesBatch(ctx, clickhouseQuery, rules, now); err != nil {
 		slog.Error("smart alerts: evaluate rules", "err", err)
 	}
 }

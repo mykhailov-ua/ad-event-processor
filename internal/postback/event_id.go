@@ -2,7 +2,6 @@ package postback
 
 import "strings"
 
-// ResolveEventID picks the deduplication id for outbound CAPI (browser + server).
 func ResolveEventID(pb *PostbackPayload) string {
 	if pb == nil {
 		return ""

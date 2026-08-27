@@ -127,12 +127,12 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 	}
 	defer func() { _ = chRead.Close() }()
 
-	chQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
+	clickhouseQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
 	var notifierAPI notify.NotifierAPI
 	if notifierClient != nil {
 		notifierAPI = notifierClient.API()
 	}
-	worker := ledger.NewWorker(pool, chQuery, cfg, registry, notifierAPI)
+	worker := ledger.NewWorker(pool, clickhouseQuery, cfg, registry, notifierAPI)
 	worker.Start(ctx, ledger.WorkerInterval(cfg))
 	return ctx.Err()
 }
@@ -151,13 +151,13 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 
 	workerOpts := []costsync.WorkerOption{}
 	if cfg.ClickHouseEnabled() {
-		chConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+		clickhouseConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 		if err != nil {
 			return err
 		}
-		defer func() { _ = chConn.Close() }()
-		workerOpts = append(workerOpts, costsync.WithClickHouse(costsync.NewClickHouseInserter(chConn)))
-		workerOpts = append(workerOpts, costsync.WithClickAttributor(costsync.NewClickCostAttributor(pool, chConn)))
+		defer func() { _ = clickhouseConn.Close() }()
+		workerOpts = append(workerOpts, costsync.WithClickHouse(costsync.NewClickHouseInserter(clickhouseConn)))
+		workerOpts = append(workerOpts, costsync.WithClickAttributor(costsync.NewClickCostAttributor(pool, clickhouseConn)))
 	}
 
 	if os.Getenv("META_APP_ID") != "" && os.Getenv("META_APP_SECRET") != "" {

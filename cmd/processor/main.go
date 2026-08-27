@@ -55,6 +55,11 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	ingestion.SetStoreRetryPolicy(
+		cfg.MaxRetries,
+		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+	)
 
 	loggerCfg := logger.Config{
 		LogDir:                cfg.Logger.Dir,
@@ -107,18 +112,18 @@ func main() {
 	}
 	defer pool.Close()
 
-	settlePool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PgPoolSettleConns(cfg.SettlementLaneCount()), 1)
+	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PgPoolSettleConns(cfg.SettlementLaneCount()), 1)
 	if err != nil {
 		slog.Error("failed to connect settlement pool", "error", err)
 		os.Exit(1)
 	}
-	defer settlePool.Close()
+	defer settlementPool.Close()
 
-	procPgGate := ingestion.NewProcessorPgGate(cfg.ProcessorPGGateSlots, cfg.PgPoolSettleConns(cfg.SettlementLaneCount()))
+	processorPostgresGate := ingestion.NewProcessorPostgresGate(cfg.ProcessorPGGateSlots, cfg.PgPoolSettleConns(cfg.SettlementLaneCount()))
 	procChGate := ingestion.NewProcessorChGate(cfg.ProcessorCHGateSlots, cfg.CHMaxConns)
 
 	queries := db.New(pool)
-	settleQueries := db.New(settlePool)
+	settleQueries := db.New(settlementPool)
 	partManager := database.NewPartitionManager(pool, cfg.LogRetentionDays, cfg.PartitionPreCreateDays)
 	partManager.StartBackground(ctx)
 
@@ -138,19 +143,19 @@ func main() {
 	}
 
 	chEnabled := cfg.ClickHouseEnabled()
-	var chConn driver.Conn
+	var clickhouseConn driver.Conn
 	var chStore *ingestion.ClickHouseStore
 	var chJanitor *database.CHPartitionJanitor
 	if chEnabled {
 		var err error
-		chConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+		clickhouseConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 		if err != nil {
 			slog.Error("failed to connect to clickhouse", "error", err)
 			os.Exit(1)
 		}
-		defer func() { _ = chConn.Close() }()
+		defer func() { _ = clickhouseConn.Close() }()
 
-		if err := migrate.ApplyClickHouseMigrations(ctx, chConn); err != nil {
+		if err := migrate.ApplyClickHouseMigrations(ctx, clickhouseConn); err != nil {
 			slog.Error("failed to apply clickhouse migrations", "error", err)
 			os.Exit(1)
 		}
@@ -178,7 +183,7 @@ func main() {
 			opsAlerter.AlertCHEmergencyDrop(ctx, table, partition, diskPct, threshold)
 		}
 	}
-	if chEnabled && chConn != nil && cfg.CHJanitorEnabled {
+	if chEnabled && clickhouseConn != nil && cfg.CHJanitorEnabled {
 		intervalH := cfg.CHJanitorIntervalH
 		if intervalH <= 0 {
 			intervalH = 24
@@ -191,7 +196,7 @@ func main() {
 		if exchangeDays <= 0 {
 			exchangeDays = 30
 		}
-		chJanitor = database.NewCHPartitionJanitor(chConn, &database.CHJanitorOptions{
+		chJanitor = database.NewCHPartitionJanitor(clickhouseConn, &database.CHJanitorOptions{
 			RetentionDays: cfg.CHRawRetentionDays,
 			ExtraTables: []database.CHTableRetention{
 				{Table: "rtb_deal_outcomes", Days: dealDays},
@@ -227,7 +232,7 @@ func main() {
 	})
 	streamTrimmer.Start(consumerCtx)
 
-	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, procPgGate)
+	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, processorPostgresGate)
 	piiHasher, piiErr := piihash.NewFromConfig(cfg)
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher", "error", piiErr)
@@ -238,10 +243,10 @@ func main() {
 		slog.Info("postgres events IP hash-at-insert enabled")
 	}
 	var conversionPayoutApplier *ingestion.ConversionPayoutApplier
-	if chEnabled && chConn != nil {
+	if chEnabled && clickhouseConn != nil {
 		spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
 		spoolCfg = ingestion.ApplyCHIngestPolicy(spoolCfg)
-		chStore = ingestion.NewClickHouseStore(chConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
+		chStore = ingestion.NewClickHouseStore(clickhouseConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
 		chStore.SetPIIHasher(piiHasher)
 		conversionPayoutApplier = ingestion.NewConversionPayoutApplier(settleQueries)
 		chStore.SetConversionPayoutApplier(conversionPayoutApplier)
@@ -292,9 +297,9 @@ func main() {
 	campaignRepo.ConfigureAuditLedgerFlush(cfg.AuditLedgerFlushSampleMask)
 
 	var conversionDCCheck postback.ConversionDatacenterChecker
-	var chQuery *database.CHQuery
-	if chConn != nil {
-		chQuery = database.NewCHQuery(chConn, database.CHQueryConfigFromApp(cfg))
+	var clickhouseQuery *database.CHQuery
+	if clickhouseConn != nil {
+		clickhouseQuery = database.NewCHQuery(clickhouseConn, database.CHQueryConfigFromApp(cfg))
 	}
 	if cfg.ConversionSmartRejectEnabled() && cfg.ConversionReject.RejectDatacenterIP {
 		geoProvider, geoErr := ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
@@ -317,8 +322,8 @@ func main() {
 	var conversionRejectApplier *postback.ConversionRejectApplier
 	if cfg.ConversionSmartRejectEnabled() {
 		var chClickStore postback.ConversionClickStore
-		if chQuery != nil {
-			chClickStore = postback.NewCHConversionClickStore(chQuery)
+		if clickhouseQuery != nil {
+			chClickStore = postback.NewClickHouseConversionClickStore(clickhouseQuery)
 		}
 		conversionRejectApplier = postback.NewConversionRejectApplier(
 			cfg.ConversionReject,
@@ -334,10 +339,10 @@ func main() {
 			slog.Info("conversion smart reject enabled on processor settlement")
 		}
 	}
-	if conversionRejectApplier != nil && chQuery != nil && chStore != nil {
+	if conversionRejectApplier != nil && clickhouseQuery != nil && chStore != nil {
 		reprocessor := postback.NewConversionRejectReprocessor(
 			cfg.ConversionReject,
-			chQuery,
+			clickhouseQuery,
 			conversionRejectApplier,
 			chStore,
 			chStore,
@@ -384,8 +389,8 @@ func main() {
 			slog.Warn("processor pg failover settle pool reconnect failed", "error", connectErr)
 			return
 		}
-		oldSettle := settlePool
-		settlePool = settleNew
+		oldSettle := settlementPool
+		settlementPool = settleNew
 		settleQueries = db.New(settleNew)
 		pgStore.SetQuerier(settleQueries)
 		if postbackEnqueuer != nil {
@@ -405,7 +410,7 @@ func main() {
 
 	var weightCtrl *ingestion.ProcessorWeightController
 	if cfg.ProcessorWeightEnabled {
-		weightCtrl = ingestion.NewProcessorWeightController(ingestion.ProcessorWeightConfigFromApp(cfg), procPgGate, nil)
+		weightCtrl = ingestion.NewProcessorWeightController(ingestion.ProcessorWeightConfigFromApp(cfg), processorPostgresGate, nil)
 		weightCtrl.Start(ctx)
 		slog.Info("processor weight scheduling enabled", "node_id", cfg.NodeID)
 	}
@@ -450,7 +455,7 @@ func main() {
 	for i, redisClient := range redisShards {
 		shardID := fmt.Sprintf("shard_%d", i)
 
-		sw := ingestion.NewSyncWorker(redisClient, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, procPgGate, 0)
+		sw := ingestion.NewSyncWorker(redisClient, campaignRepo, customerRepo, time.Duration(cfg.BudgetSyncIntervalMs)*time.Millisecond, time.Duration(cfg.LedgerBatchFlushMs)*time.Millisecond, processorPostgresGate, 0)
 		sw.SetDedupAdapter(dedupAdapter)
 		sw.ConfigureBudgetContention(
 			ingestion.BudgetLockTTLSeconds(cfg.LedgerBatchFlushMs, cfg.BudgetSyncIntervalMs),
@@ -725,8 +730,8 @@ func main() {
 		if err := pool.Ping(probeCtx); err != nil {
 			return false
 		}
-		if chConn != nil {
-			if err := chConn.Ping(probeCtx); err != nil {
+		if clickhouseConn != nil {
+			if err := clickhouseConn.Ping(probeCtx); err != nil {
 				return false
 			}
 		}

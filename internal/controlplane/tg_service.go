@@ -118,7 +118,7 @@ func (s *TelegramServiceImpl) ValidateInitData(ctx context.Context, campaignID u
 		return ValidateResult{Valid: false}, fmt.Errorf("marshal telegram event meta: %w", err)
 	}
 
-	redisClient := s.svc.getRDB(campaignID)
+	redisClient := s.svc.redisClientForCampaign(campaignID)
 	if redisClient == nil {
 		return ValidateResult{Valid: false}, errors.New("no redis client for campaign")
 	}
@@ -153,7 +153,7 @@ func (s *TelegramServiceImpl) MintClick(ctx context.Context, campaignID uuid.UUI
 		return ClickMintResult{}, fmt.Errorf("marshal telegram event meta: %w", err)
 	}
 
-	redisClient := s.svc.getRDB(campaignID)
+	redisClient := s.svc.redisClientForCampaign(campaignID)
 	if redisClient == nil {
 		return ClickMintResult{}, errors.New("no redis client for campaign")
 	}
@@ -248,7 +248,7 @@ func (s *TelegramServiceImpl) CreateDeeplink(ctx context.Context, d DeeplinkDTO)
 		return DeeplinkDTO{}, err
 	}
 
-	redisClient := s.svc.getRDB(d.CampaignID)
+	redisClient := s.svc.redisClientForCampaign(d.CampaignID)
 	if redisClient != nil {
 		redisCtx, cancelR := context.WithTimeout(ctx, 2*time.Second)
 		defer cancelR()

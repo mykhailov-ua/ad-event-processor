@@ -20,14 +20,12 @@ const sealedProcessorCHIngestAssetLabel = licensing.AssetLabelProcessorCHIngest
 
 var processorCHIngestPolicyActive atomic.Pointer[ProcessorCHIngestPolicy]
 
-// ProcessorCHIngestPolicy is the cold-path ClickHouse ingest policy opened from a sealed blob.
 type ProcessorCHIngestPolicy struct {
 	Version         int  `json:"version"`
 	WALSegmentMBMax int  `json:"wal_segment_mb_max"`
 	Compress        bool `json:"compress"`
 }
 
-// InitProcessorCHIngestPolicy loads the processor CH ingest policy (sealed or dev embed).
 func InitProcessorCHIngestPolicy() error {
 	raw, err := resolveProcessorCHIngestPolicyBytes()
 	if err != nil {
@@ -44,7 +42,6 @@ func InitProcessorCHIngestPolicy() error {
 	return nil
 }
 
-// ProcessorCHIngestPolicyLoaded returns the active policy when InitProcessorCHIngestPolicy succeeded.
 func ProcessorCHIngestPolicyLoaded() (ProcessorCHIngestPolicy, bool) {
 	p := processorCHIngestPolicyActive.Load()
 	if p == nil {
@@ -53,7 +50,6 @@ func ProcessorCHIngestPolicyLoaded() (ProcessorCHIngestPolicy, bool) {
 	return *p, true
 }
 
-// ApplyCHIngestPolicy clamps spool config using the sealed processor policy when loaded.
 func ApplyCHIngestPolicy(cfg CHSpoolConfig) CHSpoolConfig {
 	policy, ok := ProcessorCHIngestPolicyLoaded()
 	if !ok || policy.WALSegmentMBMax <= 0 {

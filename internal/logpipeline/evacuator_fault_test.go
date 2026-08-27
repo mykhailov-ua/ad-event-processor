@@ -20,17 +20,17 @@ type faultInjectedStore struct {
 	uploadCalls atomic.Uint32
 }
 
-func (store *faultInjectedStore) HeadObject(ctx context.Context, key string) (ObjectHead, error) {
-	return store.inner.HeadObject(ctx, key)
+func (st *faultInjectedStore) HeadObject(ctx context.Context, key string) (ObjectHead, error) {
+	return st.inner.HeadObject(ctx, key)
 }
 
-func (store *faultInjectedStore) PutObject(ctx context.Context, key, filePath string, digests fileDigests) error {
-	store.uploadCalls.Add(1)
-	if store.failUpload.Load() > 0 {
-		store.failUpload.Add(^uint32(0))
+func (st *faultInjectedStore) PutObject(ctx context.Context, key, filePath string, digests fileDigests) error {
+	st.uploadCalls.Add(1)
+	if st.failUpload.Load() > 0 {
+		st.failUpload.Add(^uint32(0))
 		return errors.New("injected upload failure")
 	}
-	return store.inner.PutObject(ctx, key, filePath, digests)
+	return st.inner.PutObject(ctx, key, filePath, digests)
 }
 
 func TestFault_logEvacuatorCheckpointCrashRecovery(t *testing.T) {

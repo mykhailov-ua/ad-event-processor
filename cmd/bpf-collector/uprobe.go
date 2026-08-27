@@ -66,7 +66,6 @@ func (r *probeRun) attachUprobes() {
 	slog.Info("uprobes attached", "binary", bin, "count", attached)
 }
 
-// chooseTrackerBinary picks the path link.OpenExecutable should use for uprobes.
 func chooseTrackerBinary(procExePath, flagBinary string) string {
 	if procExePath != "" {
 		return procExePath
@@ -74,7 +73,6 @@ func chooseTrackerBinary(procExePath, flagBinary string) string {
 	return flagBinary
 }
 
-// resolveTrackerBinary prefers the host-built tracker path (bind-mounted in docker) over /proc/pid/exe.
 func (r *probeRun) resolveTrackerBinary() string {
 	if r.trackerBinary != "" {
 		if _, statErr := os.Stat(r.trackerBinary); statErr == nil {

@@ -2,8 +2,6 @@ package licensing
 
 import "strings"
 
-// DefaultMCKInfoLabel is the HKDF info string for DeriveMCK in dev/test builds.
-// Release builds override via -X licensing.buildMCKInfoLabel in release_garble.sh.
 const DefaultMCKInfoLabel = "license-mck-v2"
 
 var (
@@ -12,7 +10,6 @@ var (
 	mckInfoLabelOverrideOn bool
 )
 
-// MCKInfoLabel returns the active HKDF info label for MCK derivation.
 func MCKInfoLabel() string {
 	if mckInfoLabelOverrideOn && strings.TrimSpace(mckInfoLabelOverride) != "" {
 		return strings.TrimSpace(mckInfoLabelOverride)
@@ -23,7 +20,6 @@ func MCKInfoLabel() string {
 	return DefaultMCKInfoLabel
 }
 
-// SetMCKInfoLabelForTest overrides MCKInfoLabel for the duration of a test.
 func SetMCKInfoLabelForTest(label string) func() {
 	prevOn := mckInfoLabelOverrideOn
 	prev := mckInfoLabelOverride

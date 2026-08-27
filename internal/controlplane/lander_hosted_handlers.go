@@ -37,7 +37,7 @@ func (h *FlowHTTPHandlers) RegisterHostedLanderRoutes(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("POST /api/v1/landers/{id}/hosted-upload", limit(perm("campaigns:write", h.uploadHostedLander)))
-	// Single catch-all route: index (empty path) and assets share one pattern (Go 1.22 mux conflict otherwise).
+
 	mux.HandleFunc("GET /lp/{lander_id}/{path...}", h.serveHostedLanderPath)
 	h.registerHostedEditorRoutes(mux, limit, perm)
 }

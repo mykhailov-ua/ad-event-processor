@@ -14,56 +14,52 @@ import (
 )
 
 const (
-	conversionReprocessCHTimeout = 30 * time.Second
-	conversionReprocessBatchMax  = 500
+	conversionReprocessClickHouseTimeout = 30 * time.Second
+	conversionReprocessBatchMax          = 500
 )
 
-// ConversionFraudTelemetryWriter inserts rejected conversions into ClickHouse fraud_events.
 type ConversionFraudTelemetryWriter interface {
 	WriteFraudTelemetry(ctx context.Context, events []*domain.Event) error
 }
 
-// ConversionRowWriter replaces pending conversion rows with validated inserts.
 type ConversionRowWriter interface {
 	ReplaceValidatedConversions(ctx context.Context, events []*domain.Event) error
 }
 
-// ConversionPayoutBatchApplier resolves payout on validated conversion batches (reprocess path).
 type ConversionPayoutBatchApplier interface {
 	ApplyBatch(ctx context.Context, events []*domain.Event)
 }
 
-// ConversionRejectReprocessor replays smart reject on conversions deferred during store outages.
 type ConversionRejectReprocessor struct {
-	cfg      config.ConversionReject
-	ch       *database.CHQuery
-	applier  *ConversionRejectApplier
-	fraud    ConversionFraudTelemetryWriter
-	rows     ConversionRowWriter
-	payout   ConversionPayoutBatchApplier
-	postback *ConversionPostbackEnqueuer
+	cfg             config.ConversionReject
+	clickhouseQuery *database.CHQuery
+	applier         *ConversionRejectApplier
+	fraud           ConversionFraudTelemetryWriter
+	rows            ConversionRowWriter
+	payout          ConversionPayoutBatchApplier
+	postback        *ConversionPostbackEnqueuer
 }
 
 func NewConversionRejectReprocessor(
 	cfg config.ConversionReject,
-	ch *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	applier *ConversionRejectApplier,
 	fraud ConversionFraudTelemetryWriter,
 	rows ConversionRowWriter,
 	payout ConversionPayoutBatchApplier,
 	postback *ConversionPostbackEnqueuer,
 ) *ConversionRejectReprocessor {
-	if applier == nil || ch == nil || !cfg.Enabled || !cfg.ReprocessEnabled {
+	if applier == nil || clickhouseQuery == nil || !cfg.Enabled || !cfg.ReprocessEnabled {
 		return nil
 	}
 	return &ConversionRejectReprocessor{
-		cfg:      cfg,
-		ch:       ch,
-		applier:  applier,
-		fraud:    fraud,
-		rows:     rows,
-		payout:   payout,
-		postback: postback,
+		cfg:             cfg,
+		clickhouseQuery: clickhouseQuery,
+		applier:         applier,
+		fraud:           fraud,
+		rows:            rows,
+		payout:          payout,
+		postback:        postback,
 	}
 }
 
@@ -92,7 +88,7 @@ func (r *ConversionRejectReprocessor) Start(ctx context.Context) {
 }
 
 func (r *ConversionRejectReprocessor) tick(ctx context.Context) {
-	if r == nil || r.ch == nil || r.applier == nil {
+	if r == nil || r.clickhouseQuery == nil || r.applier == nil {
 		return
 	}
 	lookback := time.Duration(r.cfg.ReprocessLookbackHours) * time.Hour
@@ -160,9 +156,9 @@ func (r *ConversionRejectReprocessor) tick(ctx context.Context) {
 }
 
 func (r *ConversionRejectReprocessor) loadPendingConversions(ctx context.Context, start, end time.Time) ([]*domain.Event, error) {
-	chCtx, cancel := context.WithTimeout(ctx, conversionReprocessCHTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, conversionReprocessClickHouseTimeout)
 	defer cancel()
-	rows, err := r.ch.Query(chCtx, `
+	rows, err := r.clickhouseQuery.Query(clickhouseCtx, `
 SELECT click_id, campaign_id, payload, created_at, country
 FROM conversions
 WHERE created_at >= ?

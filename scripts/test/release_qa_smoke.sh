@@ -3,7 +3,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-# Fuzz smoke and garbled alloc only; license_verify_tier runs fuzz_nightly + extended separately.
 echo "release_qa_smoke: fuzz smoke (VerifyJWT 10s, DecodeUnverified/JSONClaims 5s each)"
 go test ./internal/licensing/ -fuzz=FuzzVerifyJWT -fuzztime=10s -count=1
 go test ./internal/licensing/ -fuzz=FuzzDecodeUnverified -fuzztime=5s -count=1

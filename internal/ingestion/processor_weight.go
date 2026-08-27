@@ -55,9 +55,9 @@ func ProcessorWeightConfigFromApp(cfg *config.Config) ProcessorWeightConfig {
 }
 
 type ProcessorWeightController struct {
-	cfg    ProcessorWeightConfig
-	pgGate *ProcessorPgGate
-	udp    *UDPControl
+	cfg          ProcessorWeightConfig
+	postgresGate *ProcessorPostgresGate
+	udp          *UDPControl
 
 	localWeight atomic.Uint64
 	httpClient  *http.Client
@@ -74,7 +74,7 @@ type processorWeightHTTPEntry struct {
 	Weight float64 `json:"weight"`
 }
 
-func NewProcessorWeightController(cfg ProcessorWeightConfig, pgGate *ProcessorPgGate, udp *UDPControl) *ProcessorWeightController {
+func NewProcessorWeightController(cfg ProcessorWeightConfig, postgresGate *ProcessorPostgresGate, udp *UDPControl) *ProcessorWeightController {
 	if cfg.Floor <= 0 {
 		cfg.Floor = defaultProcessorWeightFloor
 	}
@@ -91,10 +91,10 @@ func NewProcessorWeightController(cfg ProcessorWeightConfig, pgGate *ProcessorPg
 		cfg.InstanceLabel = cfg.NodeID
 	}
 	c := &ProcessorWeightController{
-		cfg:        cfg,
-		pgGate:     pgGate,
-		udp:        udp,
-		httpClient: &http.Client{Timeout: 3 * time.Second},
+		cfg:          cfg,
+		postgresGate: postgresGate,
+		udp:          udp,
+		httpClient:   &http.Client{Timeout: 3 * time.Second},
 	}
 	c.localWeight.Store(math.Float64bits(1.0))
 	return c
@@ -186,10 +186,10 @@ func lookupProcessorWeight(weights []UDPNodeWeight, nodeID string) float64 {
 }
 
 func (c *ProcessorWeightController) pgDrainActive() bool {
-	if c == nil || c.pgGate == nil {
+	if c == nil || c.postgresGate == nil {
 		return false
 	}
-	return c.pgGate.WaitEMA() >= c.cfg.DrainPgWait
+	return c.postgresGate.WaitEMA() >= c.cfg.DrainPgWait
 }
 
 func (c *ProcessorWeightController) LocalWeight() float64 {

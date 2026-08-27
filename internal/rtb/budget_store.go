@@ -38,122 +38,122 @@ func NewBudgetStore() *BudgetStore {
 	return store
 }
 
-func (store *BudgetStore) GetOrAllocateSlot(id CampaignID, initialBudget int64) uint32 {
-	store.mu.Lock()
-	if idx, exists := store.slots[id]; exists {
-		store.mu.Unlock()
+func (st *BudgetStore) GetOrAllocateSlot(id CampaignID, initialBudget int64) uint32 {
+	st.mu.Lock()
+	if idx, exists := st.slots[id]; exists {
+		st.mu.Unlock()
 		return idx
 	}
-	idx := store.appendSlotLocked(normalizeBudget(initialBudget))
-	store.slots[id] = idx
-	store.mu.Unlock()
+	idx := st.appendSlotLocked(normalizeBudget(initialBudget))
+	st.slots[id] = idx
+	st.mu.Unlock()
 	return idx
 }
 
-func (store *BudgetStore) GetOrAllocateCustomerSlot(id CustomerID, initialBudget int64) uint32 {
+func (st *BudgetStore) GetOrAllocateCustomerSlot(id CustomerID, initialBudget int64) uint32 {
 	if id == 0 {
 		return invalidCustomerBudgetIdx
 	}
-	store.mu.Lock()
-	if idx, exists := store.customerSlots[id]; exists {
-		store.mu.Unlock()
+	st.mu.Lock()
+	if idx, exists := st.customerSlots[id]; exists {
+		st.mu.Unlock()
 		return idx
 	}
-	idx := store.appendCustomerSlotLocked(normalizeBudget(initialBudget))
-	store.customerSlots[id] = idx
-	store.mu.Unlock()
+	idx := st.appendCustomerSlotLocked(normalizeBudget(initialBudget))
+	st.customerSlots[id] = idx
+	st.mu.Unlock()
 	return idx
 }
 
-func (store *BudgetStore) LoadBudget(idx uint32) int64 {
-	return store.loadOn(&store.budgets, idx)
+func (st *BudgetStore) LoadBudget(idx uint32) int64 {
+	return st.loadOn(&st.budgets, idx)
 }
 
-func (store *BudgetStore) budgetSlotExists(idx uint32) bool {
-	slice := store.budgets.Load()
+func (st *BudgetStore) budgetSlotExists(idx uint32) bool {
+	slice := st.budgets.Load()
 	return idx < uint32(len(slice.data))
 }
 
-func (store *BudgetStore) CheckAndSpend(idx uint32, limit int64) bool {
-	return store.checkAndSpendOn(&store.budgets, idx, limit)
+func (st *BudgetStore) CheckAndSpend(idx uint32, limit int64) bool {
+	return st.checkAndSpendOn(&st.budgets, idx, limit)
 }
 
-func (store *BudgetStore) GetBudget(id CampaignID) int64 {
-	store.mu.Lock()
-	idx, exists := store.slots[id]
+func (st *BudgetStore) GetBudget(id CampaignID) int64 {
+	st.mu.Lock()
+	idx, exists := st.slots[id]
 	if !exists {
-		store.mu.Unlock()
+		st.mu.Unlock()
 		return 0
 	}
-	val := store.loadOn(&store.budgets, idx)
-	store.mu.Unlock()
+	val := st.loadOn(&st.budgets, idx)
+	st.mu.Unlock()
 	return val
 }
 
-func (store *BudgetStore) CampaignSlot(id CampaignID) (uint32, bool) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	idx, ok := store.slots[id]
+func (st *BudgetStore) CampaignSlot(id CampaignID) (uint32, bool) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	idx, ok := st.slots[id]
 	return idx, ok
 }
 
-func (store *BudgetStore) SetDailySpend(campaignIdx uint32, spent int64) {
+func (st *BudgetStore) SetDailySpend(campaignIdx uint32, spent int64) {
 	if spent < 0 {
 		spent = 0
 	}
-	store.maybeRollDaily()
-	store.addDailySpendLocked(campaignIdx, spent)
+	st.maybeRollDaily()
+	st.addDailySpendLocked(campaignIdx, spent)
 }
 
-func (store *BudgetStore) SetBudget(id CampaignID, val int64) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+func (st *BudgetStore) SetBudget(id CampaignID, val int64) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 
-	idx, exists := store.slots[id]
+	idx, exists := st.slots[id]
 	if !exists {
-		idx = store.appendSlotLocked(normalizeBudget(val))
-		store.slots[id] = idx
+		idx = st.appendSlotLocked(normalizeBudget(val))
+		st.slots[id] = idx
 		return
 	}
-	slice := store.budgets.Load()
+	slice := st.budgets.Load()
 	if int(idx) >= len(slice.data) {
 		return
 	}
 	atomic.StoreInt64(&slice.data[idx].Value, normalizeBudget(val))
 }
 
-func (store *BudgetStore) CustomerSlot(id CustomerID) (uint32, bool) {
+func (st *BudgetStore) CustomerSlot(id CustomerID) (uint32, bool) {
 	if id == 0 {
 		return invalidCustomerBudgetIdx, false
 	}
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	idx, ok := store.customerSlots[id]
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	idx, ok := st.customerSlots[id]
 	return idx, ok
 }
 
-func (store *BudgetStore) SetCustomerBudget(id CustomerID, val int64) {
+func (st *BudgetStore) SetCustomerBudget(id CustomerID, val int64) {
 	if id == 0 {
 		return
 	}
-	store.mu.Lock()
-	defer store.mu.Unlock()
+	st.mu.Lock()
+	defer st.mu.Unlock()
 
-	idx, exists := store.customerSlots[id]
+	idx, exists := st.customerSlots[id]
 	if !exists {
-		idx = store.appendCustomerSlotLocked(normalizeBudget(val))
-		store.customerSlots[id] = idx
+		idx = st.appendCustomerSlotLocked(normalizeBudget(val))
+		st.customerSlots[id] = idx
 		return
 	}
-	slice := store.customerBudgets.Load()
+	slice := st.customerBudgets.Load()
 	if int(idx) >= len(slice.data) {
 		return
 	}
 	atomic.StoreInt64(&slice.data[idx].Value, normalizeBudget(val))
 }
 
-func (store *BudgetStore) appendSlotLocked(val int64) uint32 {
-	currSlice := store.budgets.Load()
+func (st *BudgetStore) appendSlotLocked(val int64) uint32 {
+	currSlice := st.budgets.Load()
 	idx := uint32(len(currSlice.data))
 
 	newCap := cap(currSlice.data)
@@ -169,13 +169,13 @@ func (store *BudgetStore) appendSlotLocked(val int64) uint32 {
 	copy(newData, currSlice.data)
 	newData[idx] = AlignedBudget{Value: val}
 
-	store.budgets.Store(&budgetSlice{data: newData})
-	store.growDailyLocked(len(newData))
+	st.budgets.Store(&budgetSlice{data: newData})
+	st.growDailyLocked(len(newData))
 	return idx
 }
 
-func (store *BudgetStore) appendCustomerSlotLocked(val int64) uint32 {
-	currSlice := store.customerBudgets.Load()
+func (st *BudgetStore) appendCustomerSlotLocked(val int64) uint32 {
+	currSlice := st.customerBudgets.Load()
 	idx := uint32(len(currSlice.data))
 
 	newCap := cap(currSlice.data)
@@ -190,18 +190,18 @@ func (store *BudgetStore) appendCustomerSlotLocked(val int64) uint32 {
 	newData := make([]AlignedBudget, len(currSlice.data)+1, newCap)
 	copy(newData, currSlice.data)
 	newData[idx] = AlignedBudget{Value: val}
-	store.customerBudgets.Store(&budgetSlice{data: newData})
+	st.customerBudgets.Store(&budgetSlice{data: newData})
 	return idx
 }
 
-func (store *BudgetStore) growDailyLocked(n int) {
-	curr := store.dailySpent.Load()
+func (st *BudgetStore) growDailyLocked(n int) {
+	curr := st.dailySpent.Load()
 	if len(curr.data) >= n {
 		return
 	}
 	newData := make([]AlignedBudget, n, n*2)
 	copy(newData, curr.data)
-	store.dailySpent.Store(&budgetSlice{data: newData})
+	st.dailySpent.Store(&budgetSlice{data: newData})
 }
 
 func normalizeBudget(val int64) int64 {

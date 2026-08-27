@@ -245,7 +245,7 @@ type ReportsHTTPHandlers struct {
 	CampaignForecaster        CampaignForecaster
 	ReportJobs                *ReportJobRunner
 	Pool                      *pgxpool.Pool
-	CHQuery                   *database.CHQuery
+	ClickHouseQuery           *database.CHQuery
 	BuyerPortfolio            BuyerPortfolioReader
 	EdgeMetricsReader         func(context.Context) (EdgeMetricsPanelDTO, error)
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
@@ -257,49 +257,49 @@ type ReportsHTTPHandlers struct {
 	WriteServiceError         func(http.ResponseWriter, error)
 }
 
-func (reports *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
-	if reports == nil {
+func (h *ReportsHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil {
 		return
 	}
-	if reports.ApplyRateLimit == nil {
-		reports.ApplyRateLimit = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	if h.ApplyRateLimit == nil {
+		h.ApplyRateLimit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	if reports.RequirePermission == nil {
-		reports.RequirePermission = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	if h.RequirePermission == nil {
+		h.RequirePermission = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	reports.registerCampaignStats(mux)
-	reports.registerCampaignForecast(mux)
+	h.registerCampaignStats(mux)
+	h.registerCampaignForecast(mux)
 
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	readCampaigns := []string{"campaigns:read", "campaigns:read:masked"}
-	mux.HandleFunc("GET /api/v1/reports/placements", limit(permAny(readCampaigns, reports.wrapReport("placements", reports.getPlacementsReport))))
-	mux.HandleFunc("GET /api/v1/reports/keywords", limit(permAny(readCampaigns, reports.wrapReport("keywords", reports.getKeywordsReport))))
-	reports.registerIVTBySource(mux)
-	reports.registerTrafficSources(mux)
-	reports.registerGeoROI(mux)
-	reports.registerExtendedReports(mux)
-	reports.registerDataQualityReport(mux)
-	reports.registerFilterRejectsReport(mux)
-	reports.registerFraudBreakdownReport(mux)
-	reports.registerSilentRejectImpressionFunnelReport(mux)
-	reports.registerRtbReports(mux)
-	reports.registerPostbackReconReport(mux)
-	reports.registerConversionTypePayoutReport(mux)
-	reports.registerClickLogReport(mux)
-	reports.registerPacingDriftReport(mux)
-	reports.registerCostCoverageReport(mux)
-	reports.registerMLReports(mux)
-	reports.registerEdgeParityReport(mux)
-	reports.registerReportSchedules(mux)
-	reports.registerReportJobs(mux)
+	mux.HandleFunc("GET /api/v1/reports/placements", limit(permAny(readCampaigns, h.wrapReport("placements", h.getPlacementsReport))))
+	mux.HandleFunc("GET /api/v1/reports/keywords", limit(permAny(readCampaigns, h.wrapReport("keywords", h.getKeywordsReport))))
+	h.registerIVTBySource(mux)
+	h.registerTrafficSources(mux)
+	h.registerGeoROI(mux)
+	h.registerExtendedReports(mux)
+	h.registerDataQualityReport(mux)
+	h.registerFilterRejectsReport(mux)
+	h.registerFraudBreakdownReport(mux)
+	h.registerSilentRejectImpressionFunnelReport(mux)
+	h.registerRtbReports(mux)
+	h.registerPostbackReconReport(mux)
+	h.registerConversionTypePayoutReport(mux)
+	h.registerClickLogReport(mux)
+	h.registerPacingDriftReport(mux)
+	h.registerCostCoverageReport(mux)
+	h.registerMLReports(mux)
+	h.registerEdgeParityReport(mux)
+	h.registerReportSchedules(mux)
+	h.registerReportJobs(mux)
 }
 
-func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+func (h *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 	var q invalidQueryError
 	if errors.As(err, &q) {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", string(q))
@@ -309,23 +309,23 @@ func (reports *ReportsHTTPHandlers) writeServiceError(w http.ResponseWriter, err
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
 		return
 	}
-	if reports.WriteServiceError != nil {
-		reports.WriteServiceError(w, err)
+	if h.WriteServiceError != nil {
+		h.WriteServiceError(w, err)
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "internal error")
 }
 
-func (reports *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshnessDTO {
+func (h *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFreshnessDTO {
 	dto := DataFreshnessDTO{
 		AsOf:        time.Now().UTC().Format(time.RFC3339),
 		Consistency: "eventual",
 	}
-	if reports == nil || reports.CHQuery == nil {
+	if h == nil || h.ClickHouseQuery == nil {
 		dto.Stale = true
 		return dto
 	}
-	lag, err := reports.CHQuery.IngestionLag(ctx)
+	lag, err := h.ClickHouseQuery.IngestionLag(ctx)
 	if err != nil {
 		dto.Stale = true
 		return dto
@@ -334,20 +334,20 @@ func (reports *ReportsHTTPHandlers) reportFreshness(ctx context.Context) DataFre
 	return dto
 }
 
-func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
 
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
@@ -367,51 +367,51 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 			return
 		}
-		if !reports.authorizeReportCampaign(w, r, campaignID) {
+		if !h.authorizeReportCampaign(w, r, campaignID) {
 			return
 		}
 		campaignIDs = []uuid.UUID{campaignID}
-	} else if reports.Pool != nil {
-		campaignIDs, err = listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	} else if h.Pool != nil {
+		campaignIDs, err = listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 		if err != nil {
-			reports.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return
 		}
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, PlacementReportResponse{
 			Rows:       []PlacementReportRowDTO{},
-			Freshness:  reports.reportFreshness(r.Context()),
+			Freshness:  h.reportFreshness(r.Context()),
 			NextCursor: "",
 		})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
 
-	chRows, total, err := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, from, to, int(limit), offset)
+	clickhouseRows, total, err := queryPlacementReportRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, int(limit), offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	ivtRates, err := queryPlacementIVTRates(chCtx, reports.CHQuery, campaignIDs, from, to)
+	ivtRates, err := queryPlacementIVTRates(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	rows := coldpath.MapSlice(chRows, func(row reportMetricsCHRow) PlacementReportRowDTO {
+	rows := coldpath.MapSlice(clickhouseRows, func(row reportMetricsCHRow) PlacementReportRowDTO {
 		ivt := ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)]
 		return toPlacementReportRowDTO(row, ivt)
 	})
 
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, int(limit), offset)
+		prevRows, _, perr := queryPlacementReportRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, int(limit), offset)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
 		attachPlacementCompareDeltas(rows, prevRows)
@@ -424,26 +424,26 @@ func (reports *ReportsHTTPHandlers) getPlacementsReport(w http.ResponseWriter, r
 
 	resp := PlacementReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
 
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
@@ -463,51 +463,51 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 			return
 		}
-		if !reports.authorizeReportCampaign(w, r, campaignID) {
+		if !h.authorizeReportCampaign(w, r, campaignID) {
 			return
 		}
 		campaignIDs = []uuid.UUID{campaignID}
-	} else if reports.Pool != nil {
-		campaignIDs, err = listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	} else if h.Pool != nil {
+		campaignIDs, err = listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 		if err != nil {
-			reports.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return
 		}
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, KeywordReportResponse{
 			Rows:       []KeywordReportRowDTO{},
-			Freshness:  reports.reportFreshness(r.Context()),
+			Freshness:  h.reportFreshness(r.Context()),
 			NextCursor: "",
 		})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
 
-	chRows, total, err := queryKeywordReportRows(chCtx, reports.CHQuery, campaignIDs, from, to, int(limit), offset)
+	clickhouseRows, total, err := queryKeywordReportRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, int(limit), offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	ivtRates, err := queryKeywordIVTRates(chCtx, reports.CHQuery, campaignIDs, from, to)
+	ivtRates, err := queryKeywordIVTRates(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	rows := coldpath.MapSlice(chRows, func(row reportMetricsCHRow) KeywordReportRowDTO {
+	rows := coldpath.MapSlice(clickhouseRows, func(row reportMetricsCHRow) KeywordReportRowDTO {
 		ivt := ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)]
 		return toKeywordReportRowDTO(row, ivt)
 	})
 
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryKeywordReportRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, int(limit), offset)
+		prevRows, _, perr := queryKeywordReportRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, int(limit), offset)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
 		attachKeywordCompareDeltas(rows, prevRows)
@@ -520,7 +520,7 @@ func (reports *ReportsHTTPHandlers) getKeywordsReport(w http.ResponseWriter, r *
 
 	resp := KeywordReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
@@ -530,14 +530,14 @@ const (
 	forecastHandlerTimeout = 2 * time.Second
 )
 
-func (reports *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
-	if reports.CampaignStats == nil {
+func (h *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
+	if h.CampaignStats == nil {
 		return
 	}
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
-		perm := reports.RequirePermission
+		perm := h.RequirePermission
 		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
 			if len(perms) == 0 {
 				return next
@@ -545,10 +545,10 @@ func (reports *ReportsHTTPHandlers) registerCampaignStats(mux *http.ServeMux) {
 			return perm(perms[0], next)
 		}
 	}
-	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, reports.wrapReport("campaign-stats", reports.getCampaignStats))))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/stats", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.wrapReport("campaign-stats", h.getCampaignStats))))
 }
 
-func (reports *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Request) {
+func (h *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(idStr)
 	if err != nil {
@@ -556,38 +556,38 @@ func (reports *ReportsHTTPHandlers) getCampaignStats(w http.ResponseWriter, r *h
 		return
 	}
 
-	if reports.AuthorizeCampaignAccess != nil {
-		if err := reports.AuthorizeCampaignAccess(r, campaignID); err != nil {
-			reports.writeServiceError(w, err)
+	if h.AuthorizeCampaignAccess != nil {
+		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
 
 	from, to, granularity, err := parseStatsQuery(r, requestHasShardsRead(r))
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	report, err := reports.CampaignStats.GetCampaignStats(r.Context(), campaignID, from, to, granularity)
+	report, err := h.CampaignStats.GetCampaignStats(r.Context(), campaignID, from, to, granularity)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
 	httpresponse.JSON(w, http.StatusOK, report)
 }
 
-func (reports *ReportsHTTPHandlers) registerCampaignForecast(mux *http.ServeMux) {
-	if reports.CampaignForecaster == nil {
+func (h *ReportsHTTPHandlers) registerCampaignForecast(mux *http.ServeMux) {
+	if h.CampaignForecaster == nil {
 		return
 	}
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("POST /api/v1/forecast/campaign", limit(perm("campaigns:read", reports.forecastCampaign)))
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("POST /api/v1/forecast/campaign", limit(perm("campaigns:read", h.forecastCampaign)))
 }
 
-func (reports *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Request) {
+func (h *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read request body")
@@ -610,9 +610,9 @@ func (reports *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *h
 		return
 	}
 
-	customerID, err := reports.resolveForecastCustomerID(r, req.CustomerID)
+	customerID, err := h.resolveForecastCustomerID(r, req.CustomerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
@@ -623,7 +623,7 @@ func (reports *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *h
 	}
 	budgetMicro, err := forecastParseBudgetMicro(req.BudgetLimitMicro, budgetLegacy, hasLegacy)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
@@ -640,7 +640,7 @@ func (reports *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *h
 	ctx, cancel := context.WithTimeout(r.Context(), forecastHandlerTimeout)
 	defer cancel()
 
-	out, err := reports.CampaignForecaster.ForecastCampaign(ctx, CampaignForecastInput{
+	out, err := h.CampaignForecaster.ForecastCampaign(ctx, CampaignForecastInput{
 		CustomerID:       customerID,
 		BudgetLimitMicro: budgetMicro,
 		TargetCountries:  req.TargetCountries,
@@ -658,11 +658,11 @@ func (reports *ReportsHTTPHandlers) forecastCampaign(w http.ResponseWriter, r *h
 	httpresponse.JSON(w, http.StatusOK, out)
 }
 
-func (reports *ReportsHTTPHandlers) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
-	if reports.ResolveForecastCustomerID == nil {
+func (h *ReportsHTTPHandlers) resolveForecastCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (*uuid.UUID, error) {
+	if h.ResolveForecastCustomerID == nil {
 		return bodyCustomerID, nil
 	}
-	return reports.ResolveForecastCustomerID(r, bodyCustomerID)
+	return h.ResolveForecastCustomerID(r, bodyCustomerID)
 }
 
 func forecastParseBudgetMicro(micro *int64, legacy float64, hasLegacy bool) (int64, error) {

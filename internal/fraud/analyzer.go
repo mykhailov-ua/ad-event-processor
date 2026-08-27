@@ -44,20 +44,20 @@ func DefaultAnalyzerConfig() AnalyzerConfig {
 }
 
 type Analyzer struct {
-	q   *database.CHQuery
+	clickhouseQuery *database.CHQuery
 	cfg AnalyzerConfig
 }
 
-func NewAnalyzer(q *database.CHQuery, cfg AnalyzerConfig) *Analyzer {
-	return &Analyzer{q: q, cfg: cfg}
+func NewAnalyzer(clickhouseQuery *database.CHQuery, cfg AnalyzerConfig) *Analyzer {
+	return &Analyzer{clickhouseQuery: clickhouseQuery, cfg: cfg}
 }
 
-func (analyzer *Analyzer) FindSuspiciousIPs(ctx context.Context) ([]SuspiciousIP, error) {
-	reg := NewAnalyzerRegistry(analyzer.q, nil, nil, analyzer.cfg, nil, nil, 0, nil)
+func (a *Analyzer) FindSuspiciousIPs(ctx context.Context) ([]SuspiciousIP, error) {
+	reg := NewAnalyzerRegistry(a.clickhouseQuery, nil, nil, a.cfg, nil, nil, 0, nil)
 	return reg.FindSuspiciousIPs(ctx)
 }
 
-func (analyzer *Analyzer) findHighClickToImpRatio(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
+func (a *Analyzer) findHighClickToImpRatio(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
 	query := `
 SELECT
  c.ip_hash,
@@ -84,15 +84,15 @@ WHERE c.click_count >= ?
  OR (toFloat64(c.click_count) / greatest(toFloat64(imp_count), 1.0)) >= ?
  )`
 
-	rows, err := analyzer.q.Query(
+	rows, err := a.clickhouseQuery.Query(
 		ctx,
 		query,
 		windowSec,
-		analyzer.cfg.MinClicks,
+		a.cfg.MinClicks,
 		windowSec,
-		analyzer.cfg.MinClicks,
-		analyzer.cfg.MinImpressions,
-		analyzer.cfg.ClickToImpRatio,
+		a.cfg.MinClicks,
+		a.cfg.MinImpressions,
+		a.cfg.ClickToImpRatio,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("high click-to-imp query: %w", err)
@@ -126,7 +126,7 @@ WHERE c.click_count >= ?
 	return out, nil
 }
 
-func (analyzer *Analyzer) findSharedFingerprintClusters(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
+func (a *Analyzer) findSharedFingerprintClusters(ctx context.Context, windowSec int64) ([]SuspiciousIP, error) {
 	query := `
 SELECT ip_hash
 FROM (
@@ -154,12 +154,12 @@ ARRAY JOIN ips AS ip_hash
 GROUP BY ip_hash
 HAVING count() >= 1`
 
-	rows, err := analyzer.q.Query(
+	rows, err := a.clickhouseQuery.Query(
 		ctx,
 		query,
 		windowSec,
 		windowSec,
-		analyzer.cfg.MinIPsPerUA,
+		a.cfg.MinIPsPerUA,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("shared fingerprint query: %w", err)
@@ -178,7 +178,7 @@ HAVING count() >= 1`
 		out = append(out, SuspiciousIP{
 			IP:     hex.EncodeToString(ipHash),
 			Reason: "ivt_shared_fingerprint_cluster",
-			Score:  float64(analyzer.cfg.MinIPsPerUA),
+			Score:  float64(a.cfg.MinIPsPerUA),
 		})
 	}
 	if err := rows.Err(); err != nil {

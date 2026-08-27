@@ -25,21 +25,21 @@ var defaultBroadcastOrder = []db.NotifierProvider{
 	db.NotifierProviderSMTP,
 }
 
-func (service *Service) resolveBroadcastTargets(stored []db.NotifierProvider) []db.NotifierProvider {
+func (s *Service) resolveBroadcastTargets(stored []db.NotifierProvider) []db.NotifierProvider {
 	if len(stored) > 0 {
 		return stored
 	}
 
 	targets := make([]db.NotifierProvider, 0, len(defaultBroadcastOrder))
 	for _, provider := range defaultBroadcastOrder {
-		if service.cfg.providerConfigured(provider) {
+		if s.cfg.providerConfigured(provider) {
 			targets = append(targets, provider)
 		}
 	}
 	return targets
 }
 
-func (service *Service) deliverBroadcast(
+func (s *Service) deliverBroadcast(
 	ctx context.Context,
 	leadID string,
 	primary db.NotifierProvider,
@@ -66,7 +66,7 @@ func (service *Service) deliverBroadcast(
 			defer wg.Done()
 			results[idx] = channelResult{
 				provider: prov,
-				err:      service.sendViaProvider(sendCtx, prov, primary, primaryRecipient, title, body),
+				err:      s.sendViaProvider(sendCtx, prov, primary, primaryRecipient, title, body),
 			}
 		}(i, target)
 	}
@@ -113,12 +113,12 @@ func (service *Service) deliverBroadcast(
 	return broadcastResult{sentProvider: sentProvider, partialNote: partialNote}
 }
 
-func (service *Service) sendViaProvider(
+func (s *Service) sendViaProvider(
 	ctx context.Context,
 	target, primary db.NotifierProvider,
 	primaryRecipient, title, body string,
 ) error {
-	if !service.cfg.providerConfigured(target) {
+	if !s.cfg.providerConfigured(target) {
 		return fmt.Errorf("provider %s not configured", target)
 	}
 
@@ -128,24 +128,24 @@ func (service *Service) sendViaProvider(
 	}
 
 	providerName := string(target)
-	if service.deliveryRateLimiter != nil && !service.deliveryRateLimiter.Allow(providerName, recipient) {
+	if s.deliveryRateLimiter != nil && !s.deliveryRateLimiter.Allow(providerName, recipient) {
 		recordDelivery(providerName, false, 0)
 		return ErrRateLimited
 	}
 
 	start := time.Now()
-	err := sendProvider(ctx, service.cfg, service.breakers, target, recipient, title, body)
+	err := sendProvider(ctx, s.cfg, s.breakers, target, recipient, title, body)
 	if err != nil {
 		var rateErr *ProviderRateLimitedError
 		if errors.As(err, &rateErr) {
-			service.deliveryRateLimiter.Backoff(rateErr.Provider, recipient, rateErr.RetryAfter)
+			s.deliveryRateLimiter.Backoff(rateErr.Provider, recipient, rateErr.RetryAfter)
 		}
 	}
 	recordDelivery(providerName, err == nil, time.Since(start).Seconds())
 	return err
 }
 
-func (service *Service) deliverFallback(
+func (s *Service) deliverFallback(
 	ctx context.Context,
 	leadID string,
 	startProvider db.NotifierProvider,
@@ -155,9 +155,9 @@ func (service *Service) deliverFallback(
 	currentRecipient := startRecipient
 
 	for {
-		if !service.cfg.providerConfigured(currentProvider) {
+		if !s.cfg.providerConfigured(currentProvider) {
 			sendErr := fmt.Errorf("provider %s not configured", currentProvider)
-			nextProvider, fallbackFound := nextConfiguredFallback(service.cfg, currentProvider)
+			nextProvider, fallbackFound := nextConfiguredFallback(s.cfg, currentProvider)
 			if !fallbackFound {
 				return currentProvider, sendErr
 			}
@@ -173,12 +173,12 @@ func (service *Service) deliverFallback(
 		}
 
 		pCtx := context.WithValue(ctx, NotificationIDContextKey, leadID)
-		sendErr := service.sendViaProvider(pCtx, currentProvider, currentProvider, currentRecipient, title, body)
+		sendErr := s.sendViaProvider(pCtx, currentProvider, currentProvider, currentRecipient, title, body)
 		if sendErr == nil {
 			return currentProvider, nil
 		}
 
-		nextProvider, fallbackFound := nextConfiguredFallback(service.cfg, currentProvider)
+		nextProvider, fallbackFound := nextConfiguredFallback(s.cfg, currentProvider)
 		if !fallbackFound {
 			return currentProvider, sendErr
 		}

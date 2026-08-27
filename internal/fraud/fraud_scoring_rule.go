@@ -25,7 +25,7 @@ type campaignFraudConfig struct {
 }
 
 type fraudScoringRule struct {
-	q         *database.CHQuery
+	clickhouseQuery *database.CHQuery
 	writeConn driver.Conn
 	pool      *pgxpool.Pool
 	scorer    Scorer
@@ -36,9 +36,9 @@ type fraudScoringRule struct {
 	campaignExpiry  time.Time
 }
 
-func NewFraudScoringRule(q *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer Scorer, batchSize int) Rule {
+func NewFraudScoringRule(clickhouseQuery *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer Scorer, batchSize int) Rule {
 	return &fraudScoringRule{
-		q:         q,
+		clickhouseQuery: clickhouseQuery,
 		writeConn: writeConn,
 		pool:      pool,
 		scorer:    scorer,
@@ -98,7 +98,7 @@ func (r *fraudScoringRule) Name() string {
 }
 
 func (r *fraudScoringRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
-	if r.q == nil || r.scorer == nil {
+	if r.clickhouseQuery == nil || r.scorer == nil {
 		return nil, nil
 	}
 
@@ -123,7 +123,7 @@ WHERE window_start >= subtractMinutes(now(), ?)
 ORDER BY window_start DESC
 LIMIT ?`
 
-	rows, err := r.q.Query(ctx, query, 5, r.batchSize)
+	rows, err := r.clickhouseQuery.Query(ctx, query, 5, r.batchSize)
 	if err != nil {
 		fraudScoringErrorsTotal.Inc()
 		slog.Warn("fraud shadow scoring skipped: clickhouse query failed", "error", err)

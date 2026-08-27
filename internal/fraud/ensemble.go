@@ -66,32 +66,32 @@ func NewEnsemble(scorers ...Scorer) *Ensemble {
 	return &Ensemble{scorers: scorers}
 }
 
-func (ensemble *Ensemble) Name() string {
+func (e *Ensemble) Name() string {
 	return "ensemble"
 }
 
-func (ensemble *Ensemble) Dims() int {
-	if len(ensemble.scorers) == 0 {
+func (e *Ensemble) Dims() int {
+	if len(e.scorers) == 0 {
 		return 0
 	}
-	return ensemble.scorers[0].Dims()
+	return e.scorers[0].Dims()
 }
 
-func (ensemble *Ensemble) ScoreBatch(ctx context.Context, rows []FeatureRow) ([]float64, error) {
-	if len(ensemble.scorers) == 0 {
+func (e *Ensemble) ScoreBatch(ctx context.Context, rows []FeatureRow) ([]float64, error) {
+	if len(e.scorers) == 0 {
 		return make([]float64, len(rows)), nil
 	}
 
-	scores, err := ensemble.scorers[0].ScoreBatch(ctx, rows)
+	scores, err := e.scorers[0].ScoreBatch(ctx, rows)
 	if err != nil {
-		slog.Error("ensemble scorer failed", "scorer", ensemble.scorers[0].Name(), "error", err)
+		slog.Error("ensemble scorer failed", "scorer", e.scorers[0].Name(), "error", err)
 		return nil, err
 	}
 
-	for i := 1; i < len(ensemble.scorers); i++ {
-		scorerScores, err := ensemble.scorers[i].ScoreBatch(ctx, rows)
+	for i := 1; i < len(e.scorers); i++ {
+		scorerScores, err := e.scorers[i].ScoreBatch(ctx, rows)
 		if err != nil {
-			slog.Error("ensemble scorer failed", "scorer", ensemble.scorers[i].Name(), "error", err)
+			slog.Error("ensemble scorer failed", "scorer", e.scorers[i].Name(), "error", err)
 			return nil, err
 		}
 		for j := range scores {
@@ -99,7 +99,7 @@ func (ensemble *Ensemble) ScoreBatch(ctx context.Context, rows []FeatureRow) ([]
 		}
 	}
 
-	n := float64(len(ensemble.scorers))
+	n := float64(len(e.scorers))
 	for j := range scores {
 		scores[j] /= n
 	}

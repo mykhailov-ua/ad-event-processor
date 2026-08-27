@@ -7,6 +7,14 @@ TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
 
 cat > "$TMP" << 'EOF'
+REDIS_SHARD_COUNT=2
+REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock
+EOF
+
+bash "$ROOT/scripts/ops/verify_redis_topology.sh" "$TMP"
+
+cat > "$TMP" << 'EOF'
+REDIS_SHARD_COUNT=4
 REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock,/run/ad-event-processor/redis/redis-2.sock,/run/ad-event-processor/redis/redis-3.sock
 EOF
 

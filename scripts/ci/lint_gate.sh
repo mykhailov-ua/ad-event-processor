@@ -4,7 +4,6 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-# CI must lint the full tree; use LINT_INCREMENTAL=1 locally for diff-only runs.
 if [[ "${CI:-}" == "true" && "${LINT_INCREMENTAL:-}" != "1" ]]; then
   export LINT_STRICT=1
 fi

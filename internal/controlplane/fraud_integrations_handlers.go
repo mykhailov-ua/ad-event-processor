@@ -24,21 +24,21 @@ type FraudIntegrationsService interface {
 	ListFraudIntegrationsForCustomer(ctx context.Context, customerID uuid.UUID) ([]FraudIntegrationDTO, error)
 }
 
-func (fraud *FraudHTTPHandlers) registerFraudIntegrationRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, perm func(string, http.HandlerFunc) http.HandlerFunc) {
-	if fraud == nil || fraud.Integrations == nil {
+func (h *FraudHTTPHandlers) registerFraudIntegrationRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, perm func(string, http.HandlerFunc) http.HandlerFunc) {
+	if h == nil || h.Integrations == nil {
 		return
 	}
-	mux.HandleFunc("GET /api/v1/fraud/integrations", limit(perm("audit:read", fraud.listFraudIntegrations)))
+	mux.HandleFunc("GET /api/v1/fraud/integrations", limit(perm("audit:read", h.listFraudIntegrations)))
 }
 
-func (fraud *FraudHTTPHandlers) listFraudIntegrations(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := fraud.resolveCustomerID(w, r)
+func (h *FraudHTTPHandlers) listFraudIntegrations(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveCustomerID(w, r)
 	if !ok {
 		return
 	}
-	rows, err := fraud.Integrations.ListFraudIntegrationsForCustomer(r.Context(), customerID)
+	rows, err := h.Integrations.ListFraudIntegrationsForCustomer(r.Context(), customerID)
 	if err != nil {
-		fraud.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if rows == nil {

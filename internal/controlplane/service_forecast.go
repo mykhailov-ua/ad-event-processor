@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	forecastLookbackDays         = 90
-	forecastUnderfillAdvisoryPct = 0.20
-	forecastMaxSpendCurvePoints  = 2160
-	forecastCHQueryTimeout       = 1500 * time.Millisecond
-	forecastMinSampleImpressions = int64(1000)
+	forecastLookbackDays           = 90
+	forecastUnderfillAdvisoryPct   = 0.20
+	forecastMaxSpendCurvePoints    = 2160
+	forecastClickHouseQueryTimeout = 1500 * time.Millisecond
+	forecastMinSampleImpressions   = int64(1000)
 )
 
 type forecastHourlySample struct {
@@ -213,7 +213,7 @@ func evenPacingAdvisory(pacing string, budgetMicro, impressionsP50, cpmMicro int
 }
 
 func (s *Service) ForecastCampaign(ctx context.Context, in CampaignForecastInput) (CampaignForecastDTO, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return CampaignForecastDTO{}, ErrClickHouseNotConfigured
 	}
 	if in.BudgetLimitMicro <= 0 {
@@ -224,20 +224,20 @@ func (s *Service) ForecastCampaign(ctx context.Context, in CampaignForecastInput
 	}
 	pacing := normalizeForecastPacing(in.PacingMode)
 
-	chCtx, cancel := context.WithTimeout(ctx, forecastCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, forecastClickHouseQueryTimeout)
 	defer cancel()
 
 	lookbackEnd := time.Now().UTC().Truncate(time.Hour)
 	lookbackStart := lookbackEnd.Add(-forecastLookbackDays * 24 * time.Hour)
 
-	campaignIDs, err := s.forecastCampaignIDs(chCtx, in.CustomerID)
+	campaignIDs, err := s.forecastCampaignIDs(clickhouseCtx, in.CustomerID)
 	if err != nil {
 		return CampaignForecastDTO{}, err
 	}
 
-	totalSample, hourlySamples, err := s.queryForecastHourlySamples(chCtx, lookbackStart, lookbackEnd, campaignIDs)
+	totalSample, hourlySamples, err := s.queryForecastHourlySamples(clickhouseCtx, lookbackStart, lookbackEnd, campaignIDs)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(chCtx.Err(), context.DeadlineExceeded) {
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(clickhouseCtx.Err(), context.DeadlineExceeded) {
 			return CampaignForecastDTO{}, ErrForecastClickHouseTimeout
 		}
 		return CampaignForecastDTO{}, fmt.Errorf("%w: %w", ErrForecastUnavailable, err)
@@ -309,7 +309,7 @@ ORDER BY hr`
 		args = []any{from, to, campaignIDs}
 	}
 
-	rows, err := s.chQuery.Query(ctx, query, args...)
+	rows, err := s.clickhouseQuery.Query(ctx, query, args...)
 	if err != nil {
 		return 0, nil, err
 	}

@@ -308,7 +308,7 @@ func TestShard0Nil_FanoutPartialIncrementsMetric(t *testing.T) {
 
 func TestShard0Nil_GetRDBSingleNilShard(t *testing.T) {
 	svc := &Service{redisShards: []redis.UniversalClient{nil}}
-	redisClient := svc.getRDB(uuid.New())
+	redisClient := svc.redisClientForCampaign(uuid.New())
 	assert.Nil(t, redisClient)
-	t.Log("getRDB with single nil client returns nil (campaign mutations may fail later)")
+	t.Log("redisClientForCampaign with single nil client returns nil (campaign mutations may fail later)")
 }

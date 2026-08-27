@@ -14,15 +14,15 @@ import (
 )
 
 type ResidentialIntelEnricher struct {
-	provider    ResidentialIntelProvider
-	cache       *ResidentialIntelCache
-	chWrite     driver.Conn
-	redisClient redis.Cmdable
-	feedDir     string
-	providerID  string
-	recentLim   int
-	batchLim    int
-	interval    time.Duration
+	provider            ResidentialIntelProvider
+	cache               *ResidentialIntelCache
+	clickhouseWriteConn driver.Conn
+	redisClient         redis.Cmdable
+	feedDir             string
+	providerID          string
+	recentLim           int
+	batchLim            int
+	interval            time.Duration
 }
 
 type ResidentialIntelEnricherConfig struct {
@@ -58,15 +58,15 @@ func NewResidentialIntelEnricher(cfg ResidentialIntelEnricherConfig) *Residentia
 		providerID = "http"
 	}
 	return &ResidentialIntelEnricher{
-		provider:    cfg.Provider,
-		cache:       cfg.Cache,
-		chWrite:     cfg.CHWrite,
-		redisClient: cfg.RedisClient,
-		feedDir:     cfg.FeedDir,
-		providerID:  providerID,
-		recentLim:   recent,
-		batchLim:    batch,
-		interval:    interval,
+		provider:            cfg.Provider,
+		cache:               cfg.Cache,
+		clickhouseWriteConn: cfg.CHWrite,
+		redisClient:         cfg.RedisClient,
+		feedDir:             cfg.FeedDir,
+		providerID:          providerID,
+		recentLim:           recent,
+		batchLim:            batch,
+		interval:            interval,
 	}
 }
 
@@ -160,7 +160,7 @@ func (e *ResidentialIntelEnricher) Run(ctx context.Context) (ResidentialIntelRun
 			stats.LookedUp++
 			residentialIntelLookupsTotal.Inc()
 			now := time.Now().UTC()
-			if chErr := insertResidentialIntelCH(ctx, e.chWrite, ip, result, e.providerID, now); chErr != nil {
+			if chErr := insertResidentialIntelCH(ctx, e.clickhouseWriteConn, ip, result, e.providerID, now); chErr != nil {
 				residentialIntelErrorsTotal.Inc()
 				slog.Warn("residential intel clickhouse insert failed", "ip", ip, "error", chErr)
 			}

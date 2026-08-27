@@ -4,7 +4,6 @@ import (
 	"strings"
 )
 
-// ApplyNetworkObjectToken sets PlacementID from the configured network object for attribution.
 func ApplyNetworkObjectToken(lines []CostLine, mapping TokenMapping) {
 	obj := strings.ToLower(strings.TrimSpace(mapping.NetworkObject))
 	if obj == "" || obj == "placement_id" {

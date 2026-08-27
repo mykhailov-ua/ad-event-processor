@@ -11,10 +11,8 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
-// HostActivationFunc optionally enforces multi-host bind during file recheck (tracker registry).
 type HostActivationFunc func(ctx context.Context, claims *LicenseClaims, hostFingerprint string) error
 
-// FileLicenseRecheckConfig configures offline JWT file recheck on control/processor/tracker.
 type FileLicenseRecheckConfig struct {
 	Path           string
 	PubKey         ed25519.PublicKey
@@ -22,7 +20,6 @@ type FileLicenseRecheckConfig struct {
 	HostActivation HostActivationFunc
 }
 
-// FileLicenseRecheckSnapshot is the registry-local license view after recheck.
 type FileLicenseRecheckSnapshot struct {
 	State          LicenseState
 	Entitlements   Entitlements
@@ -33,7 +30,6 @@ type FileLicenseRecheckSnapshot struct {
 
 var fileLicenseRecheckWG sync.WaitGroup
 
-// StartFileLicenseRecheck runs periodic license file verification and publishes feature seed atomics.
 func StartFileLicenseRecheck(ctx context.Context, cfg FileLicenseRecheckConfig) {
 	if cfg.Path == "" {
 		cfg.Path = config.LicensePathFromEnv()
@@ -81,7 +77,6 @@ func fileLicenseRecheckInterval() time.Duration {
 	return 5 * time.Minute
 }
 
-// RecheckLicenseFile verifies the on-disk JWT, stretches MCK on success, and publishes feature seed.
 func RecheckLicenseFile(ctx context.Context, cfg FileLicenseRecheckConfig) (FileLicenseRecheckSnapshot, error) {
 	var snap FileLicenseRecheckSnapshot
 	snap.State = StateExpired
@@ -152,7 +147,6 @@ func featureSeedFromRecheck(path string, pubKey ed25519.PublicKey, hostFP string
 	return FeatureSeedFromMCK(mckWork), MCKFeatureBitsFromWork(mckWork), true
 }
 
-// WaitFileLicenseRecheckForTest blocks until background recheck goroutines exit.
 func WaitFileLicenseRecheckForTest() {
 	fileLicenseRecheckWG.Wait()
 }

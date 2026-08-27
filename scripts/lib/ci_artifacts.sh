@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Gitignored scratch for CI gate reports and workflow tee logs (var/ci/).
-
 if [[ -z "${CI_ARTIFACT_DIR:-}" ]]; then
   if [[ -n "${ROOT:-}" ]]; then
     CI_ARTIFACT_DIR="$ROOT/var/ci"

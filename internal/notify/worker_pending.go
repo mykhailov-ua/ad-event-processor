@@ -28,14 +28,14 @@ func NewWorker(service *Service, interval time.Duration, batchSize int32) *Worke
 	}
 }
 
-func (worker *Worker) Start(ctx context.Context) {
-	worker.wg.Add(1)
+func (w *Worker) Start(ctx context.Context) {
+	w.wg.Add(1)
 	go func() {
-		defer worker.wg.Done()
+		defer w.wg.Done()
 
-		slog.Info("notification worker starting polling loop", "interval", worker.interval, "batch_size", worker.batchSize)
+		slog.Info("notification worker starting polling loop", "interval", w.interval, "batch_size", w.batchSize)
 
-		timer := time.NewTimer(worker.interval)
+		timer := time.NewTimer(w.interval)
 		defer timer.Stop()
 
 		for {
@@ -44,7 +44,7 @@ func (worker *Worker) Start(ctx context.Context) {
 				slog.Info("notification worker stopping polling loop")
 				return
 			case <-timer.C:
-				processed, err := worker.service.ProcessPending(ctx, worker.batchSize)
+				processed, err := w.service.ProcessPending(ctx, w.batchSize)
 				if err != nil {
 					if ctx.Err() != nil {
 						return
@@ -59,23 +59,23 @@ func (worker *Worker) Start(ctx context.Context) {
 					workerBatchProcessed.Observe(float64(processed))
 					timer.Reset(0)
 				} else {
-					timer.Reset(worker.interval)
+					timer.Reset(w.interval)
 				}
 			}
 		}
 	}()
 }
 
-func (worker *Worker) Wait() {
-	worker.wg.Wait()
+func (w *Worker) Wait() {
+	w.wg.Wait()
 }
 
-func (worker *Worker) StartPool(ctx context.Context, concurrency int) {
+func (w *Worker) StartPool(ctx context.Context, concurrency int) {
 	if concurrency <= 1 {
-		worker.Start(ctx)
+		w.Start(ctx)
 		return
 	}
 	for range concurrency {
-		worker.Start(ctx)
+		w.Start(ctx)
 	}
 }

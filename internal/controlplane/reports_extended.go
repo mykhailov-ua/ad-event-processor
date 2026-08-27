@@ -72,9 +72,9 @@ ORDER BY hour_of_day`
 
 const geoDeviceQuery = `
 SELECT
- coalesce(` + chDimCountryExpr + `, 'ZZ') AS country,
+ coalesce(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
  coalesce(
- ` + chDimDeviceExpr + `
+ ` + clickhouseDimDeviceExpr + `
  ) AS device,
  count() AS clicks
 FROM clicks
@@ -114,10 +114,10 @@ HAVING ad_spend_micro > 0 OR revenue_micro > 0 OR conversions > 0
 ORDER BY ad_spend_micro DESC
 LIMIT ? OFFSET ?`
 
-func (reports *ReportsHTTPHandlers) registerExtendedReports(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerExtendedReports(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(perms []string, next http.HandlerFunc) http.HandlerFunc {
 			if len(perms) == 0 {
@@ -127,44 +127,44 @@ func (reports *ReportsHTTPHandlers) registerExtendedReports(mux *http.ServeMux) 
 		}
 	}
 	readCampaigns := []string{"campaigns:read", "campaigns:read:masked"}
-	mux.HandleFunc("GET /api/v1/reports/spend-velocity", limit(permAny(readCampaigns, reports.wrapReport("spend-velocity", reports.getSpendVelocityReport))))
-	mux.HandleFunc("GET /api/v1/reports/daypart-heatmap", limit(permAny(readCampaigns, reports.wrapReport("daypart-heatmap", reports.getDaypartHeatmapReport))))
-	mux.HandleFunc("GET /api/v1/reports/campaign-geo-device", limit(permAny(readCampaigns, reports.wrapReport("campaign-geo-device", reports.getCampaignGeoDeviceReport))))
-	mux.HandleFunc("GET /api/v1/reports/source-quality", limit(permAny(readCampaigns, reports.wrapReport("source-quality", reports.getSourceQualityReport))))
-	mux.HandleFunc("GET /api/v1/reports/discrepancy-buy-sell", limit(perm("customers:read", reports.wrapReport("discrepancy-buy-sell", reports.getDiscrepancyBuySellReport))))
-	mux.HandleFunc("GET /api/v1/reports/true-roi", limit(permAny(readCampaigns, reports.wrapReport("true-roi", reports.getTrueROIReport))))
-	mux.HandleFunc("GET /api/v1/reports/campaign-overview", limit(permAny(readCampaigns, reports.wrapReport("campaign-overview", reports.getCampaignOverviewReport))))
-	mux.HandleFunc("GET /api/v1/reports/customer-portfolio", limit(perm("customers:read", reports.wrapReport("customer-portfolio", reports.getCustomerPortfolioReport))))
+	mux.HandleFunc("GET /api/v1/reports/spend-velocity", limit(permAny(readCampaigns, h.wrapReport("spend-velocity", h.getSpendVelocityReport))))
+	mux.HandleFunc("GET /api/v1/reports/daypart-heatmap", limit(permAny(readCampaigns, h.wrapReport("daypart-heatmap", h.getDaypartHeatmapReport))))
+	mux.HandleFunc("GET /api/v1/reports/campaign-geo-device", limit(permAny(readCampaigns, h.wrapReport("campaign-geo-device", h.getCampaignGeoDeviceReport))))
+	mux.HandleFunc("GET /api/v1/reports/source-quality", limit(permAny(readCampaigns, h.wrapReport("source-quality", h.getSourceQualityReport))))
+	mux.HandleFunc("GET /api/v1/reports/discrepancy-buy-sell", limit(perm("customers:read", h.wrapReport("discrepancy-buy-sell", h.getDiscrepancyBuySellReport))))
+	mux.HandleFunc("GET /api/v1/reports/true-roi", limit(permAny(readCampaigns, h.wrapReport("true-roi", h.getTrueROIReport))))
+	mux.HandleFunc("GET /api/v1/reports/campaign-overview", limit(permAny(readCampaigns, h.wrapReport("campaign-overview", h.getCampaignOverviewReport))))
+	mux.HandleFunc("GET /api/v1/reports/customer-portfolio", limit(perm("customers:read", h.wrapReport("customer-portfolio", h.getCustomerPortfolioReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getSpendVelocityReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, querySpendVelocityRows, nil)
+func (h *ReportsHTTPHandlers) getSpendVelocityReport(w http.ResponseWriter, r *http.Request) {
+	h.writeClickHouseReportRows(w, r, querySpendVelocityRows, nil)
 }
 
-func (reports *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryTrueROIRows, []string{"campaign_id"})
+func (h *ReportsHTTPHandlers) getTrueROIReport(w http.ResponseWriter, r *http.Request) {
+	h.writeClickHouseReportRows(w, r, queryTrueROIRows, []string{"campaign_id"})
 }
 
-func (reports *ReportsHTTPHandlers) getDaypartHeatmapReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryDaypartHeatmapRows, []string{"hour"})
+func (h *ReportsHTTPHandlers) getDaypartHeatmapReport(w http.ResponseWriter, r *http.Request) {
+	h.writeClickHouseReportRows(w, r, queryDaypartHeatmapRows, []string{"hour"})
 }
 
-func (reports *ReportsHTTPHandlers) getCampaignGeoDeviceReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryGeoDeviceRows, nil)
+func (h *ReportsHTTPHandlers) getCampaignGeoDeviceReport(w http.ResponseWriter, r *http.Request) {
+	h.writeClickHouseReportRows(w, r, queryGeoDeviceRows, nil)
 }
 
-func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -173,30 +173,30 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 		return
 	}
 	limit, offset := page.Limit, page.Offset
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: reports.reportFreshness(r.Context())})
+		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: h.reportFreshness(r.Context())})
 		return
 	}
 	groupBy := parseSourceQualityGroupBy(r)
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
 
 	if sourceQualityNeedsDetailRows(groupBy) {
-		out, total, err := querySourceQualityDetailRows(chCtx, reports.CHQuery, campaignIDs, from, to, limit, offset)
+		out, total, err := querySourceQualityDetailRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 		if err != nil {
-			reports.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return
 		}
 		if parseComparePrevious(r) {
 			prevFrom, prevTo := previousReportRange(from, to)
-			prevOut, _, perr := querySourceQualityDetailRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+			prevOut, _, perr := querySourceQualityDetailRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, limit, offset)
 			if perr != nil {
-				reports.writeServiceError(w, perr)
+				h.writeServiceError(w, perr)
 				return
 			}
 			attachSourceQualityDetailCompareDeltas(out, prevOut)
@@ -207,24 +207,24 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 		}
 		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 			Rows:       out,
-			Freshness:  reports.reportFreshness(r.Context()),
+			Freshness:  h.reportFreshness(r.Context()),
 			NextCursor: nextCursor,
 		})
 		return
 	}
 
-	chRows, total, err := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, from, to, limit, offset)
+	clickhouseRows, total, err := queryPlacementReportRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
-	ivtRates, err := queryPlacementIVTRates(chCtx, reports.CHQuery, campaignIDs, from, to)
+	ivtRates, err := queryPlacementIVTRates(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
-	out := make([]map[string]any, 0, len(chRows))
-	for _, row := range chRows {
+	out := make([]map[string]any, 0, len(clickhouseRows))
+	for _, row := range clickhouseRows {
 		ivt := ivtRates[reportMetricsKey(row.Dimension, row.CampaignID)]
 		dto := toPlacementReportRowDTO(row, ivt)
 		out = append(out, map[string]any{
@@ -242,14 +242,14 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 	}
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryPlacementReportRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+		prevRows, _, perr := queryPlacementReportRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, limit, offset)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
-		prevIVT, perr := queryPlacementIVTRates(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo)
+		prevIVT, perr := queryPlacementIVTRates(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
 		prevOut := make([]map[string]any, 0, len(prevRows))
@@ -277,27 +277,27 @@ func (reports *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter
 	}
 	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 		Rows:       out,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
-func (reports *ReportsHTTPHandlers) getDiscrepancyBuySellReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeCHReportRows(w, r, queryDiscrepancyRows, nil)
+func (h *ReportsHTTPHandlers) getDiscrepancyBuySellReport(w http.ResponseWriter, r *http.Request) {
+	h.writeClickHouseReportRows(w, r, queryDiscrepancyRows, nil)
 }
 
-func (reports *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.BuyerPortfolio == nil {
+	if h.BuyerPortfolio == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "portfolio reader not configured")
 		return
 	}
-	portfolio, err := reports.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
+	portfolio, err := h.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	rows := make([]map[string]any, 0, len(portfolio.Campaigns))
@@ -315,22 +315,22 @@ func (reports *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWri
 	}
 	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 		Rows:      rows,
-		Freshness: reports.reportFreshness(r.Context()),
+		Freshness: h.reportFreshness(r.Context()),
 	})
 }
 
-func (reports *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.BuyerPortfolio == nil {
+	if h.BuyerPortfolio == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "portfolio reader not configured")
 		return
 	}
-	portfolio, err := reports.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
+	portfolio, err := h.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	rows := []map[string]any{
@@ -360,29 +360,29 @@ func (reports *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWr
 	}
 	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 		Rows:      rows,
-		Freshness: reports.reportFreshness(r.Context()),
+		Freshness: h.reportFreshness(r.Context()),
 	})
 }
 
-type chReportRowsFunc func(ctx context.Context, chQuery *database.CHQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
+type clickhouseReportRowsFunc func(ctx context.Context, clickhouseQuery *database.CHQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
-func (reports *ReportsHTTPHandlers) writeCHReportRows(
+func (h *ReportsHTTPHandlers) writeClickHouseReportRows(
 	w http.ResponseWriter,
 	r *http.Request,
-	queryFn chReportRowsFunc,
+	queryFn clickhouseReportRowsFunc,
 	compareKeyFields []string,
 ) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -391,27 +391,27 @@ func (reports *ReportsHTTPHandlers) writeCHReportRows(
 		return
 	}
 	limit, offset := page.Limit, page.Offset
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: reports.reportFreshness(r.Context())})
+		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: h.reportFreshness(r.Context())})
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryFn(chCtx, reports.CHQuery, campaignIDs, from, to, limit, offset)
+	rows, total, err := queryFn(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if parseComparePrevious(r) && len(compareKeyFields) > 0 {
 		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryFn(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, limit, offset)
+		prevRows, _, perr := queryFn(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, limit, offset)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
 		attachMapCompareDeltas(rows, prevRows, compareKeyFields...)
@@ -422,19 +422,19 @@ func (reports *ReportsHTTPHandlers) writeCHReportRows(
 	}
 	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func querySpendVelocityRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
-	rows, err := chQuery.Query(ctx, spendVelocityQuery, campaignIDs, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, spendVelocityQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("spend velocity: %w", err)
 	}
@@ -458,12 +458,12 @@ func querySpendVelocityRows(
 
 func queryDaypartHeatmapRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	_, _ int,
 ) ([]map[string]any, int64, error) {
-	rows, err := chQuery.Query(ctx, daypartHeatmapQuery, campaignIDs, from, to)
+	rows, err := clickhouseQuery.Query(ctx, daypartHeatmapQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, 0, fmt.Errorf("daypart heatmap: %w", err)
 	}
@@ -485,12 +485,12 @@ func queryDaypartHeatmapRows(
 
 func queryGeoDeviceRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
-	rows, err := chQuery.Query(ctx, geoDeviceQuery, campaignIDs, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, geoDeviceQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("geo device: %w", err)
 	}
@@ -513,12 +513,12 @@ func queryGeoDeviceRows(
 
 func queryDiscrepancyRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
-	rows, err := chQuery.Query(ctx, discrepancyQuery, campaignIDs, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, discrepancyQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("discrepancy: %w", err)
 	}
@@ -548,12 +548,12 @@ func queryDiscrepancyRows(
 
 func queryTrueROIRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
-	rows, err := chQuery.Query(ctx, trueRoiQuery, campaignIDs, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, trueRoiQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("true roi: %w", err)
 	}

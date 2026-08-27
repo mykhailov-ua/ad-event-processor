@@ -24,12 +24,10 @@ type conversionCampaignReader interface {
 	ListConversionRejectRulesByCampaignIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]domain.ConversionRejectRules, error)
 }
 
-// ConversionDatacenterChecker classifies conversion IP for optional datacenter rejection.
 type ConversionDatacenterChecker interface {
 	IsDatacenterIP(ip string) bool
 }
 
-// ConversionRejectApplier marks invalid conversions on the processor cold path before payout and outbound postback.
 type ConversionRejectApplier struct {
 	cfg       config.ConversionReject
 	clicks    ConversionClickStore

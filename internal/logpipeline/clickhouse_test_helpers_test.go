@@ -64,7 +64,7 @@ func openClickHouseTestConn(t *testing.T, dsn string) driver.Conn {
 	return conn
 }
 
-func queryCHExplainPlan(t *testing.T, conn driver.Conn, query string) string {
+func queryClickHouseExplainPlan(t *testing.T, conn driver.Conn, query string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()

@@ -33,13 +33,13 @@ type PostgresConn interface {
 }
 
 type SnapshotReplicator struct {
-	mu          sync.RWMutex
-	pgConn      PostgresConn
-	chConn      ClickHouseConn
-	redisShards []redis.UniversalClient
-	sharder     Sharder
-	clickCharge int64
-	impCharge   int64
+	mu             sync.RWMutex
+	pgConn         PostgresConn
+	clickhouseConn ClickHouseConn
+	redisShards    []redis.UniversalClient
+	sharder        Sharder
+	clickCharge    int64
+	impCharge      int64
 }
 
 func NewSnapshotReplicator(
@@ -50,12 +50,12 @@ func NewSnapshotReplicator(
 	clickCharge, impCharge int64,
 ) *SnapshotReplicator {
 	return &SnapshotReplicator{
-		pgConn:      postgresConn,
-		chConn:      clickhouseConn,
-		redisShards: redisShards,
-		sharder:     sharder,
-		clickCharge: clickCharge,
-		impCharge:   impCharge,
+		pgConn:         postgresConn,
+		clickhouseConn: clickhouseConn,
+		redisShards:    redisShards,
+		sharder:        sharder,
+		clickCharge:    clickCharge,
+		impCharge:      impCharge,
 	}
 }
 
@@ -63,7 +63,7 @@ func (sr *SnapshotReplicator) CreateSnapshot(ctx context.Context, until time.Tim
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
 
-	spends, err := sr.chConn.QueryAggregatedSpend(ctx, until)
+	spends, err := sr.clickhouseConn.QueryAggregatedSpend(ctx, until)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch aggregates from ClickHouse: %w", err)
 	}
@@ -122,7 +122,7 @@ func (sr *SnapshotReplicator) ReplayTelemetrySince(ctx context.Context, since ti
 	sr.mu.Lock()
 	defer sr.mu.Unlock()
 
-	events, err := sr.chConn.QueryEventsSince(ctx, since)
+	events, err := sr.clickhouseConn.QueryEventsSince(ctx, since)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query raw telemetry since %s: %w", since, err)
 	}

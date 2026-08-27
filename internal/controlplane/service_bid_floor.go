@@ -54,7 +54,7 @@ ON CONFLICT (placement_id) DO UPDATE SET
  floor_bucket_micro = EXCLUDED.floor_bucket_micro,
  computed_at = EXCLUDED.computed_at`
 
-const chDealWinRatesQuery = `
+const clickhouseDealWinRatesQuery = `
 SELECT
  deal_id,
  countIf(outcome = 1) AS wins,
@@ -63,7 +63,7 @@ FROM rtb_deal_outcomes
 WHERE created_at >= subtractHours(now(), ?)
 GROUP BY deal_id`
 
-const chPlacementFloorBucketsQuery = `
+const clickhousePlacementFloorBucketsQuery = `
 SELECT
  deal_id,
  intDiv(floor_micro, ?) * ? AS floor_bucket_micro,
@@ -104,14 +104,14 @@ func computeRecommendedFloor(base int64, rate float64, sampleN uint64, cfg *conf
 }
 
 func (s *Service) queryClickHouseDealWinRates(ctx context.Context, lookbackHours int) (map[string]DealWinLossRate, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return nil, nil
 	}
 	lookbackHours = database.ClampCHLookbackHours(lookbackHours)
 
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
-	rows, err := s.chQuery.Query(chCtx, chDealWinRatesQuery, lookbackHours)
+	rows, err := s.clickhouseQuery.Query(clickhouseCtx, clickhouseDealWinRatesQuery, lookbackHours)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse deal win rates: %w", err)
 	}
@@ -141,15 +141,15 @@ func (s *Service) queryClickHouseDealWinRates(ctx context.Context, lookbackHours
 }
 
 func (s *Service) queryClickHousePlacementFloorBuckets(ctx context.Context, lookbackHours int, bucketMicro int64) ([]PlacementFloorBucket, error) {
-	if s.chQuery == nil {
+	if s.clickhouseQuery == nil {
 		return nil, nil
 	}
 	lookbackHours = database.ClampCHLookbackHours(lookbackHours)
 	bucketMicro = database.ClampCHBucketMicro(bucketMicro)
 
-	chCtx, cancel := chQueryContext(ctx)
+	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
-	rows, err := s.chQuery.Query(chCtx, chPlacementFloorBucketsQuery, bucketMicro, bucketMicro, lookbackHours)
+	rows, err := s.clickhouseQuery.Query(clickhouseCtx, clickhousePlacementFloorBucketsQuery, bucketMicro, bucketMicro, lookbackHours)
 	if err != nil {
 		return nil, fmt.Errorf("clickhouse placement floor buckets: %w", err)
 	}

@@ -52,32 +52,32 @@ SELECT count() FROM (
  GROUP BY campaign_id, day
 )`
 
-func (reports *ReportsHTTPHandlers) registerPacingDriftReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerPacingDriftReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	readCampaigns := []string{"campaigns:read", "campaigns:read:masked"}
-	mux.HandleFunc("GET /api/v1/reports/pacing-drift", limit(permAny(readCampaigns, reports.wrapReport("pacing-drift", reports.getPacingDriftReport))))
+	mux.HandleFunc("GET /api/v1/reports/pacing-drift", limit(permAny(readCampaigns, h.wrapReport("pacing-drift", h.getPacingDriftReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getPacingDriftReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getPacingDriftReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.Pool == nil {
+	if h.Pool == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "postgres not configured")
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -85,32 +85,32 @@ func (reports *ReportsHTTPHandlers) getPacingDriftReport(w http.ResponseWriter, 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, PacingDriftReportResponse{
 			Rows:      []PacingDriftRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	spendRows, total, err := queryPacingDriftSpendRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	spendRows, total, err := queryPacingDriftSpendRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
-	pgCtx, pgCancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	pgCtx, pgCancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer pgCancel()
-	plans, err := queryCampaignPacingPlans(pgCtx, reports.Pool, campaignIDs)
+	plans, err := queryCampaignPacingPlans(pgCtx, h.Pool, campaignIDs)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (reports *ReportsHTTPHandlers) getPacingDriftReport(w http.ResponseWriter, 
 	}
 	httpresponse.JSON(w, http.StatusOK, PacingDriftReportResponse{
 		Rows:       out,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
@@ -153,33 +153,33 @@ type campaignPacingPlan struct {
 
 func queryPacingDriftSpendRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]pacingDriftSpendRow, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, pacingDriftSpendCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, pacingDriftSpendCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, pacingDriftSpendQuery, campaignIDs, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, pacingDriftSpendQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	out := make([]pacingDriftSpendRow, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var row pacingDriftSpendRow
-		if err := chRows.Scan(&row.campaignID, &row.day, &row.actualSpendMicro); err != nil {
+		if err := clickhouseRows.Scan(&row.campaignID, &row.day, &row.actualSpendMicro); err != nil {
 			return nil, 0, err
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func queryCampaignPacingPlans(
@@ -251,10 +251,10 @@ func queryPacingDriftExportRows(
 	from, to time.Time,
 	limit, offset int,
 ) ([]PacingDriftRowDTO, int64, error) {
-	if deps.Pool == nil || deps.CHQuery == nil || len(campaignIDs) == 0 {
+	if deps.Pool == nil || deps.ClickHouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
-	spendRows, total, err := queryPacingDriftSpendRows(ctx, deps.CHQuery, campaignIDs, from, to, limit, offset)
+	spendRows, total, err := queryPacingDriftSpendRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

@@ -12,15 +12,15 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func (service *Service) invoiceFromDB(ctx context.Context, invoice db.BillingInvoice) (domain.Invoice, error) {
-	lineRows, err := service.queries.ListInvoiceLines(ctx, invoice.ID)
+func (s *Service) invoiceFromDB(ctx context.Context, invoice db.BillingInvoice) (domain.Invoice, error) {
+	lineRows, err := s.queries.ListInvoiceLines(ctx, invoice.ID)
 	if err != nil {
 		return domain.Invoice{}, fmt.Errorf("list invoice lines: %w", err)
 	}
 	return invoiceFromDBRow(invoice, lineRows), nil
 }
 
-func (service *Service) invoicesFromDB(ctx context.Context, invoiceRows []db.BillingInvoice) ([]domain.Invoice, error) {
+func (s *Service) invoicesFromDB(ctx context.Context, invoiceRows []db.BillingInvoice) ([]domain.Invoice, error) {
 	if len(invoiceRows) == 0 {
 		return nil, nil
 	}
@@ -28,7 +28,7 @@ func (service *Service) invoicesFromDB(ctx context.Context, invoiceRows []db.Bil
 	for i := range invoiceRows {
 		ids[i] = invoiceRows[i].ID
 	}
-	lineRows, err := service.queries.ListInvoiceLinesByInvoiceIDs(ctx, ids)
+	lineRows, err := s.queries.ListInvoiceLinesByInvoiceIDs(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("list invoice lines: %w", err)
 	}

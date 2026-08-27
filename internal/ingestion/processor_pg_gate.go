@@ -20,11 +20,11 @@ type ProcessorWriteGate struct {
 	backend  string
 }
 
-type ProcessorPgGate = ProcessorWriteGate
+type ProcessorPostgresGate = ProcessorWriteGate
 
 type ProcessorChGate = ProcessorWriteGate
 
-func NewProcessorPgGate(slots, maxConns int) *ProcessorPgGate {
+func NewProcessorPostgresGate(slots, maxConns int) *ProcessorPostgresGate {
 	return newProcessorWriteGate("postgres", slots, maxConns, ProcessorPgReserve)
 }
 

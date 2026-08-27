@@ -116,14 +116,14 @@ func runReplay(args []string) {
 			slog.Error("clickhouse DSN is required via --ch-dsn or CH_DSN env")
 			os.Exit(1)
 		}
-		chConn, err := database.ConnectClickHouse(ctx, dsn)
+		clickhouseConn, err := database.ConnectClickHouse(ctx, dsn)
 		if err != nil {
 			slog.Error("failed to connect to clickhouse", "error", err)
 			os.Exit(1)
 		}
-		defer func() { _ = chConn.Close() }()
+		defer func() { _ = clickhouseConn.Close() }()
 
-		chStore := ingestion.NewClickHouseStore(chConn, 30*time.Second, "", ingestion.CHSpoolConfig{}, nil)
+		chStore := ingestion.NewClickHouseStore(clickhouseConn, 30*time.Second, "", ingestion.CHSpoolConfig{}, nil)
 		defer func() { _ = chStore.Close() }()
 		store = chStore
 	}

@@ -75,12 +75,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	chConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+	clickhouseConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 	if err != nil {
 		slog.Error("failed to connect to clickhouse", "error", err)
 		os.Exit(1)
 	}
-	defer func() { _ = chConn.Close() }()
+	defer func() { _ = clickhouseConn.Close() }()
 
 	go watchAndRegisterModels(ctx, pool, artifactDir)
 
@@ -115,8 +115,8 @@ func main() {
 	slog.Info("fraud-scorer using management HTTP API")
 
 	registry := fraud.NewRuleRegistry()
-	chQuery := database.NewCHQuery(chConn, database.CHQueryConfigFromApp(cfg))
-	registry.Register(fraud.NewFraudScoringRule(chQuery, chConn, pool, scorer, cfg.FraudScoring.BatchSize))
+	clickhouseQuery := database.NewCHQuery(clickhouseConn, database.CHQueryConfigFromApp(cfg))
+	registry.Register(fraud.NewFraudScoringRule(clickhouseQuery, clickhouseConn, pool, scorer, cfg.FraudScoring.BatchSize))
 
 	detector := fraud.NewDetector(
 		registry,

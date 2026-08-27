@@ -58,16 +58,16 @@ func (s *Service) GetPublisherDashboard(ctx context.Context, bind PublisherBind,
 		KPIs:               PublisherKPIsDTO{},
 		Placements:         []PublisherPlacementDTO{},
 	}
-	chQuery := s.chQuery
-	if chQuery == nil {
+	clickhouseQuery := s.clickhouseQuery
+	if clickhouseQuery == nil {
 		return out, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
+	clickhouseCtx, cancel := context.WithTimeout(ctx, ReportClickHouseQueryTimeout())
 	defer cancel()
 
 	needleSeller := bind.SellerID
 	needlePub := bind.PublisherAccountID
-	rows, err := chQuery.Query(chCtx, publisherPlacementStatsQuery, from, to, needleSeller, needlePub, needleSeller, needlePub, from, to, needleSeller, needlePub, needleSeller, needlePub)
+	rows, err := clickhouseQuery.Query(clickhouseCtx, publisherPlacementStatsQuery, from, to, needleSeller, needlePub, needleSeller, needlePub, from, to, needleSeller, needlePub, needleSeller, needlePub)
 	if err != nil {
 		return PublisherDashboardDTO{}, fmt.Errorf("publisher dashboard query: %w", err)
 	}

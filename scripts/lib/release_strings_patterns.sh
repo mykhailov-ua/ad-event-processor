@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Core licensing symbol anchors garble must strip on every release binary.
 release_strings_forbidden_core() {
   printf '%s\n' \
     'IngestAllowed' \
@@ -13,8 +12,6 @@ release_strings_forbidden_core() {
     'ede21d8e759af2ba'
 }
 
-# Extra patterns for processor/control (-literals=1). Tracker keeps literals off so path
-# strings like deploy/vendor/license_public.key remain; byte needles are obfuscated there too.
 release_strings_forbidden_literals_on() {
   printf '%s\n' \
     'embeddedPubKey' \
@@ -39,7 +36,6 @@ release_strings_scan_patterns() {
   esac
 }
 
-# Raw byte needles that must not survive garble when -literals=1 (processor/control).
 release_strings_scan_binary_bytes() {
   local bin="$1"
   local cmd

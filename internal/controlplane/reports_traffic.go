@@ -98,24 +98,24 @@ type trafficCampaignChannelRow struct {
 	Conversions int64
 }
 
-func (reports *ReportsHTTPHandlers) registerTrafficSources(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/traffic-sources", limit(perm("campaigns:read", reports.wrapReport("traffic-sources", reports.getTrafficSourcesReport))))
+func (h *ReportsHTTPHandlers) registerTrafficSources(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/reports/traffic-sources", limit(perm("campaigns:read", h.wrapReport("traffic-sources", h.getTrafficSourcesReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -123,30 +123,30 @@ func (reports *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWrite
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, TrafficSourcesReportResponse{
 			Rows:      []TrafficSourceRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryTrafficSourceRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	rows, total, err := queryTrafficSourceRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryTrafficSourceRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, page.Limit, page.Offset)
+		prevRows, _, perr := queryTrafficSourceRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, page.Limit, page.Offset)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
 		attachTrafficCompareDeltas(rows, prevRows)
@@ -157,22 +157,22 @@ func (reports *ReportsHTTPHandlers) getTrafficSourcesReport(w http.ResponseWrite
 	}
 	httpresponse.JSON(w, http.StatusOK, TrafficSourcesReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryTrafficSourceRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]TrafficSourceRowDTO, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
-	rows, err := chQuery.Query(ctx, trafficEventQuery,
+	rows, err := clickhouseQuery.Query(ctx, trafficEventQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
@@ -201,7 +201,7 @@ func queryTrafficSourceRows(
 	}
 
 	spendByCampaign := make(map[string]campaignSpendTotals, len(campaignIDs))
-	spendRows, err := chQuery.Query(ctx, geoROICampaignSpendQuery, campaignIDs, from, to)
+	spendRows, err := clickhouseQuery.Query(ctx, geoROICampaignSpendQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, 0, fmt.Errorf("traffic spend query: %w", err)
 	}

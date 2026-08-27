@@ -21,7 +21,7 @@ func (w *reportStatusWriter) WriteHeader(code int) {
 	w.ResponseWriter.WriteHeader(code)
 }
 
-func (reports *ReportsHTTPHandlers) wrapReport(reportKey string, next http.HandlerFunc) http.HandlerFunc {
+func (h *ReportsHTTPHandlers) wrapReport(reportKey string, next http.HandlerFunc) http.HandlerFunc {
 	if next == nil {
 		return nil
 	}

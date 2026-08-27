@@ -41,19 +41,19 @@ type FraudDecisionsService interface {
 	ExplainFraudDecision(ctx context.Context, customerID uuid.UUID, ipHash string, campaignID *uuid.UUID, hours int) (FraudDecisionDTO, error)
 }
 
-func (fraud *FraudHTTPHandlers) registerFraudDecisionRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, perm func(string, http.HandlerFunc) http.HandlerFunc) {
-	if fraud == nil || fraud.Decisions == nil {
+func (h *FraudHTTPHandlers) registerFraudDecisionRoutes(mux *http.ServeMux, limit func(http.HandlerFunc) http.HandlerFunc, perm func(string, http.HandlerFunc) http.HandlerFunc) {
+	if h == nil || h.Decisions == nil {
 		return
 	}
-	mux.HandleFunc("GET /api/v1/fraud/decisions", limit(perm("audit:read", fraud.getFraudDecision)))
+	mux.HandleFunc("GET /api/v1/fraud/decisions", limit(perm("audit:read", h.getFraudDecision)))
 }
 
-func (fraud *FraudHTTPHandlers) getFraudDecision(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := fraud.resolveCustomerID(w, r)
+func (h *FraudHTTPHandlers) getFraudDecision(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if fraud.AllowFraudDecision != nil && !fraud.AllowFraudDecision(customerID.String()) {
+	if h.AllowFraudDecision != nil && !h.AllowFraudDecision(customerID.String()) {
 		httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "fraud decision lookup rate limit exceeded")
 		return
 	}
@@ -84,18 +84,18 @@ func (fraud *FraudHTTPHandlers) getFraudDecision(w http.ResponseWriter, r *http.
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 			return
 		}
-		if fraud.AuthorizeCampaignAccess != nil {
-			if err := fraud.AuthorizeCampaignAccess(r, id); err != nil {
-				fraud.writeServiceError(w, err)
+		if h.AuthorizeCampaignAccess != nil {
+			if err := h.AuthorizeCampaignAccess(r, id); err != nil {
+				h.writeServiceError(w, err)
 				return
 			}
 		}
 		campaignID = &id
 	}
 
-	out, err := fraud.Decisions.ExplainFraudDecision(r.Context(), customerID, ipHash, campaignID, hours)
+	out, err := h.Decisions.ExplainFraudDecision(r.Context(), customerID, ipHash, campaignID, hours)
 	if err != nil {
-		fraud.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, out)

@@ -10,10 +10,10 @@ import (
 )
 
 func (r *opsReader) incidentDashboardStale(ctx context.Context) (bool, int) {
-	if r == nil || r.svc == nil || r.svc.CHQuery() == nil {
+	if r == nil || r.svc == nil || r.svc.ClickHouseQuery() == nil {
 		return true, 0
 	}
-	lag, err := r.svc.CHQuery().IngestionLag(ctx)
+	lag, err := r.svc.ClickHouseQuery().IngestionLag(ctx)
 	if err != nil {
 		return true, 0
 	}

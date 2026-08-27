@@ -99,7 +99,6 @@ func seedBrandName(seq int) string {
 	return seedBrandNames[(seq-1)%len(seedBrandNames)]
 }
 
-// Wallet balances between roughly $2.4k and $284k (micro-units).
 func seedCustomerBalanceMicro(seq int) int64 {
 	base := int64(2_400_000_000)
 	step := int64(2_817_431)

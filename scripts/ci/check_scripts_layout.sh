@@ -26,5 +26,6 @@ if [[ "$fail" -ne 0 ]]; then
 fi
 
 bash "$SCRIPTS/test/verify_redis_topology_test.sh"
+bash "$SCRIPTS/test/redis_topology_lib_test.sh"
 
 echo "scripts-layout: OK (${#workflow_refs[@]} CI refs, redis topology test)"

@@ -59,12 +59,12 @@ func NewDetector(
 	}
 }
 
-func (detector *Detector) RunLoop(ctx context.Context) error {
-	if detector == nil {
+func (d *Detector) RunLoop(ctx context.Context) error {
+	if d == nil {
 		return fmt.Errorf("detector: nil receiver")
 	}
 
-	interval := detector.cfg.ScanInterval
+	interval := d.cfg.ScanInterval
 	if interval <= 0 {
 		interval = 5 * time.Minute
 	}
@@ -72,7 +72,7 @@ func (detector *Detector) RunLoop(ctx context.Context) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	if _, err := detector.Run(ctx); err != nil && !errors.Is(err, ErrOutboxBackpressure) && ctx.Err() == nil {
+	if _, err := d.Run(ctx); err != nil && !errors.Is(err, ErrOutboxBackpressure) && ctx.Err() == nil {
 		slog.Error("ivt detector initial cycle failed", "error", err)
 	}
 
@@ -81,11 +81,11 @@ func (detector *Detector) RunLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			result, err := detector.Run(ctx)
+			result, err := d.Run(ctx)
 			if errors.Is(err, ErrOutboxBackpressure) {
 				slog.Warn("ivt detector paused for outbox backpressure",
 					"candidates", result.Candidates,
-					"pending_limit", detector.cfg.OutboxPendingLimit,
+					"pending_limit", d.cfg.OutboxPendingLimit,
 				)
 				continue
 			}
@@ -104,12 +104,12 @@ func (detector *Detector) RunLoop(ctx context.Context) error {
 	}
 }
 
-func (detector *Detector) outboxBacklogged(ctx context.Context) (bool, error) {
-	pending, err := detector.countOutboxBackpressurePending(ctx)
+func (d *Detector) outboxBacklogged(ctx context.Context) (bool, error) {
+	pending, err := d.countOutboxBackpressurePending(ctx)
 	if err != nil {
 		return false, err
 	}
-	limit := detector.cfg.OutboxPendingLimit
+	limit := d.cfg.OutboxPendingLimit
 	recordOutboxBackpressureState(pending >= limit && limit > 0, pending, limit)
 	if limit <= 0 {
 		return false, nil
@@ -117,12 +117,12 @@ func (detector *Detector) outboxBacklogged(ctx context.Context) (bool, error) {
 	return pending >= limit, nil
 }
 
-func (detector *Detector) countOutboxBackpressurePending(ctx context.Context) (int64, error) {
-	if detector.pool == nil {
+func (d *Detector) countOutboxBackpressurePending(ctx context.Context) (int64, error) {
+	if d.pool == nil {
 		return 0, nil
 	}
 	var pending int64
-	err := detector.pool.QueryRow(ctx, outboxBackpressurePendingSQL, OutboxEnforcementEventTypes).Scan(&pending)
+	err := d.pool.QueryRow(ctx, outboxBackpressurePendingSQL, OutboxEnforcementEventTypes).Scan(&pending)
 	if err != nil {
 		return 0, fmt.Errorf("count pending outbox events: %w", err)
 	}
@@ -139,12 +139,12 @@ func recordOutboxBackpressureState(active bool, pending, limit int64) {
 	ivtOutboxBackpressureLimit.Set(float64(limit))
 }
 
-func (detector *Detector) PendingOutboxCount(ctx context.Context) (int64, error) {
-	if detector.pool == nil {
+func (d *Detector) PendingOutboxCount(ctx context.Context) (int64, error) {
+	if d.pool == nil {
 		return 0, fmt.Errorf("detector: nil pool")
 	}
 	var pending int64
-	err := detector.pool.QueryRow(ctx,
+	err := d.pool.QueryRow(ctx,
 		"SELECT COUNT(*) FROM outbox_events WHERE status = 'PENDING'",
 	).Scan(&pending)
 	if err != nil {

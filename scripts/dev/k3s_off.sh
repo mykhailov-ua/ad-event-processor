@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Stop k3s and block auto-start until scripts/dev/k3s_on.sh is run.
 set -euo pipefail
 
 if [[ "$(id -u)" -ne 0 ]]; then

@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/installer_env.sh"
 source "$SCRIPTS/lib/dev_bind_mounts.sh"
+source "$SCRIPTS/lib/redis_topology.sh"
 cd "$ROOT"
 
 ad_event_processor_read_env() {
@@ -52,8 +53,23 @@ ad_event_processor_stack_hardening() {
   fi
 }
 
+ad_event_processor_append_compose_extra_file() {
+  local file="$1"
+  if [[ -z "${AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES:-}" ]]; then
+    export AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="$file"
+    return 0
+  fi
+  if [[ ",${AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES}," == *",$file,"* ]]; then
+    return 0
+  fi
+  export AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="${AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES},${file}"
+}
+
 ad_event_processor_compose() {
   dev_prepare_compose_mounts
+  if [[ "${COMPOSE_MEMORY_PROFILE:-dev}" == "dev" ]]; then
+    ad_event_processor_append_compose_extra_file "deploy/compose/docker-compose.memory-dev.yaml"
+  fi
   local -a env_args=()
   local -a file_args=(-f "$ROOT/docker-compose.yaml")
   local -a profile_args=()
@@ -89,14 +105,29 @@ ad_event_processor_compose() {
 
 CMD="${1:-status}"
 
-INFRA=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse)
-SINGLE_VPS=(db redis-0 redis-1 redis-2 redis-3 clickhouse broker processor tracker-0 control)
-INGEST_ONLY=(db redis-0 broker processor tracker-0 control)
+REDIS_SHARD_COUNT="$(redis_topology_count)"
+read -ra REDIS_SHARDS <<< "$(redis_topology_services "$REDIS_SHARD_COUNT")"
+
+INGEST_REDIS_SHARD_COUNT="${INGEST_REDIS_SHARD_COUNT:-2}"
+if [[ "$INGEST_REDIS_SHARD_COUNT" -gt "$REDIS_SHARD_COUNT" ]]; then
+  INGEST_REDIS_SHARD_COUNT="$REDIS_SHARD_COUNT"
+fi
+read -ra INGEST_REDIS_SHARDS <<< "$(redis_topology_services "$INGEST_REDIS_SHARD_COUNT")"
+
+INFRA=(db db-payment "${REDIS_SHARDS[@]}")
+SINGLE_VPS=(db "${REDIS_SHARDS[@]}" broker processor tracker-0 control)
+INGEST_ONLY=(db "${INGEST_REDIS_SHARDS[@]}" broker processor tracker-0 control)
 INGEST_DEV_COMPOSE=deploy/compose/docker-compose.control-dev.yaml
 VPS_EXTRA_SERVICES=(
-  db-payment clickhouse nginx tracker-1 tracker-2 tracker-3 redis-1 redis-2 redis-3 redis-4 redis-5
+  db-payment clickhouse nginx tracker-1 tracker-2 tracker-3
   prometheus grafana loki promtail
 )
+max_shards="$(redis_topology_max_shards)"
+i="$INGEST_REDIS_SHARD_COUNT"
+while [[ "$i" -lt "$max_shards" ]]; do
+  VPS_EXTRA_SERVICES+=("redis-$i")
+  i=$((i + 1))
+done
 
 ad_event_processor_stop_vps_extras() {
   if ! command -v docker > /dev/null 2>&1; then
@@ -114,16 +145,20 @@ ad_event_processor_stop_vps_extras() {
     || true
 }
 
-NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 clickhouse broker processor tracker-0 control)
+NETWORK_OPERATOR=(db db-payment redis-0 redis-1 redis-2 redis-3 broker processor tracker-0 control)
 SENTINEL=(redis-0 redis-0-replica sentinel-0 sentinel-1 sentinel-2)
 
 case "$CMD" in
   infra | up-infra)
-    ad_event_processor_compose --profile infra up -d db db-payment redis-0 redis-1 redis-2 redis-3 redis-4 redis-5 clickhouse
+    ad_event_processor_compose --profile infra up -d "${INFRA[@]}"
+    ;;
+  clickhouse | up-clickhouse)
+    echo "stack.sh: ClickHouse is heavy (RAM/IO). Use only for hotfix, P0 e2e, or IOPS drills." >&2
+    CH_ENABLED=1 ad_event_processor_compose --profile single_vps up -d clickhouse
     ;;
   full | up-full)
-    echo "stack.sh: full runs single-vps monolith" >&2
-    ad_event_processor_compose --profile single_vps up -d "${SINGLE_VPS[@]}"
+    echo "stack.sh: full runs single-vps monolith (no ClickHouse; use: stack.sh clickhouse)" >&2
+    CH_ENABLED=0 ad_event_processor_compose --profile single_vps up -d "${SINGLE_VPS[@]}"
     ad_event_processor_stack_hardening
     ;;
   single-vps | up-single-vps)
@@ -134,9 +169,9 @@ case "$CMD" in
     fi
     if ad_event_processor_use_release_images; then
       ad_event_processor_compose "${prof[@]}" pull tracker-0 processor control
-      ad_event_processor_compose "${prof[@]}" up -d --no-build "${SINGLE_VPS[@]}"
+      CH_ENABLED=0 ad_event_processor_compose "${prof[@]}" up -d --no-build "${SINGLE_VPS[@]}"
     else
-      ad_event_processor_compose "${prof[@]}" up -d "${SINGLE_VPS[@]}"
+      CH_ENABLED=0 ad_event_processor_compose "${prof[@]}" up -d "${SINGLE_VPS[@]}"
     fi
     ad_event_processor_stack_hardening
     ;;
@@ -150,7 +185,7 @@ case "$CMD" in
     ad_event_processor_stack_hardening
     ;;
   network-operator | up-network-operator)
-    ad_event_processor_compose --profile network_operator up -d "${NETWORK_OPERATOR[@]}"
+    CH_ENABLED=0 ad_event_processor_compose --profile network_operator up -d "${NETWORK_OPERATOR[@]}"
     ad_event_processor_stack_hardening
     ;;
   analytics-ml | up-analytics-ml)
@@ -232,7 +267,7 @@ case "$CMD" in
     esac
     ;;
   *)
-    echo "usage: $0 {infra|full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
+    echo "usage: $0 {infra|clickhouse|full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
     exit 2
     ;;
 esac

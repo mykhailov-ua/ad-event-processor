@@ -20,13 +20,13 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 	from := now.Add(-30 * 24 * time.Hour)
 
 	var spendMicro, revenueMicro, conversions int64
-	chAvailable := s.chQuery != nil
+	chAvailable := s.clickhouseQuery != nil
 	usedCHMoney := false
 
 	if chAvailable {
-		chCtx, cancel := context.WithTimeout(ctx, ReportCHQueryTimeout())
+		clickhouseCtx, cancel := context.WithTimeout(ctx, ReportClickHouseQueryTimeout())
 		defer cancel()
-		econ, err := QueryCampaignEconomicsCH(chCtx, s.chQuery, campaignID, from, now)
+		econ, err := QueryCampaignEconomicsCH(clickhouseCtx, s.clickhouseQuery, campaignID, from, now)
 		if err != nil {
 			return CampaignDashboardDTO{}, err
 		}

@@ -82,10 +82,10 @@ func NewS3Store(ctx context.Context, cfg EvacuatorS3Config) (*S3Store, error) {
 	}, nil
 }
 
-func (store *S3Store) HeadObject(ctx context.Context, key string) (ObjectHead, error) {
-	output, err := store.client.HeadObject(ctx, &s3.HeadObjectInput{
-		Bucket: aws.String(store.bucket),
-		Key:    aws.String(store.objectKey(key)),
+func (st *S3Store) HeadObject(ctx context.Context, key string) (ObjectHead, error) {
+	output, err := st.client.HeadObject(ctx, &s3.HeadObjectInput{
+		Bucket: aws.String(st.bucket),
+		Key:    aws.String(st.objectKey(key)),
 	})
 	if err != nil {
 		if isS3NotFound(err) {
@@ -108,23 +108,23 @@ func (store *S3Store) HeadObject(ctx context.Context, key string) (ObjectHead, e
 	return head, nil
 }
 
-func (store *S3Store) PutObject(ctx context.Context, key, filePath string, digests fileDigests) error {
-	if digests.Size < store.multipartThreshold {
-		return store.putSinglePart(ctx, key, filePath, digests)
+func (st *S3Store) PutObject(ctx context.Context, key, filePath string, digests fileDigests) error {
+	if digests.Size < st.multipartThreshold {
+		return st.putSinglePart(ctx, key, filePath, digests)
 	}
-	return store.putMultipart(ctx, key, filePath, digests)
+	return st.putMultipart(ctx, key, filePath, digests)
 }
 
-func (store *S3Store) putSinglePart(ctx context.Context, key, filePath string, digests fileDigests) error {
+func (st *S3Store) putSinglePart(ctx context.Context, key, filePath string, digests fileDigests) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = file.Close() }()
 
-	output, err := store.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(store.bucket),
-		Key:           aws.String(store.objectKey(key)),
+	output, err := st.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(st.bucket),
+		Key:           aws.String(st.objectKey(key)),
 		Body:          file,
 		ContentLength: aws.Int64(digests.Size),
 		Metadata: map[string]string{
@@ -146,10 +146,10 @@ func (store *S3Store) putSinglePart(ctx context.Context, key, filePath string, d
 	return nil
 }
 
-func (store *S3Store) putMultipart(ctx context.Context, key, filePath string, digests fileDigests) error {
-	createOutput, err := store.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
-		Bucket: aws.String(store.bucket),
-		Key:    aws.String(store.objectKey(key)),
+func (st *S3Store) putMultipart(ctx context.Context, key, filePath string, digests fileDigests) error {
+	createOutput, err := st.client.CreateMultipartUpload(ctx, &s3.CreateMultipartUploadInput{
+		Bucket: aws.String(st.bucket),
+		Key:    aws.String(st.objectKey(key)),
 		Metadata: map[string]string{
 			metadataSHA256Key: digests.SHA256,
 		},
@@ -160,9 +160,9 @@ func (store *S3Store) putMultipart(ctx context.Context, key, filePath string, di
 
 	uploadID := createOutput.UploadId
 	abort := func() {
-		_, _ = store.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
-			Bucket:   aws.String(store.bucket),
-			Key:      aws.String(store.objectKey(key)),
+		_, _ = st.client.AbortMultipartUpload(ctx, &s3.AbortMultipartUploadInput{
+			Bucket:   aws.String(st.bucket),
+			Key:      aws.String(st.objectKey(key)),
 			UploadId: uploadID,
 		})
 	}
@@ -189,9 +189,9 @@ func (store *S3Store) putMultipart(ctx context.Context, key, filePath string, di
 		}
 
 		partBody := buffer[:n]
-		uploadOutput, uploadErr := store.client.UploadPart(ctx, &s3.UploadPartInput{
-			Bucket:     aws.String(store.bucket),
-			Key:        aws.String(store.objectKey(key)),
+		uploadOutput, uploadErr := st.client.UploadPart(ctx, &s3.UploadPartInput{
+			Bucket:     aws.String(st.bucket),
+			Key:        aws.String(st.objectKey(key)),
 			UploadId:   uploadID,
 			PartNumber: aws.Int32(partNumber),
 			Body:       bytes.NewReader(partBody),
@@ -212,9 +212,9 @@ func (store *S3Store) putMultipart(ctx context.Context, key, filePath string, di
 		}
 	}
 
-	completeOutput, err := store.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
-		Bucket:   aws.String(store.bucket),
-		Key:      aws.String(store.objectKey(key)),
+	completeOutput, err := st.client.CompleteMultipartUpload(ctx, &s3.CompleteMultipartUploadInput{
+		Bucket:   aws.String(st.bucket),
+		Key:      aws.String(st.objectKey(key)),
 		UploadId: uploadID,
 		MultipartUpload: &types.CompletedMultipartUpload{
 			Parts: completedParts,
@@ -232,11 +232,11 @@ func (store *S3Store) putMultipart(ctx context.Context, key, filePath string, di
 	return nil
 }
 
-func (store *S3Store) objectKey(key string) string {
-	if store.prefix == "" {
+func (st *S3Store) objectKey(key string) string {
+	if st.prefix == "" {
 		return key
 	}
-	return store.prefix + "/" + key
+	return st.prefix + "/" + key
 }
 
 func isS3NotFound(err error) bool {
@@ -261,8 +261,8 @@ func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{objects: make(map[string]evacuatorMemoryObject)}
 }
 
-func (store *MemoryStore) HeadObject(_ context.Context, key string) (ObjectHead, error) {
-	object, ok := store.objects[key]
+func (st *MemoryStore) HeadObject(_ context.Context, key string) (ObjectHead, error) {
+	object, ok := st.objects[key]
 	if !ok {
 		return ObjectHead{}, nil
 	}
@@ -274,7 +274,7 @@ func (store *MemoryStore) HeadObject(_ context.Context, key string) (ObjectHead,
 	}, nil
 }
 
-func (store *MemoryStore) PutObject(_ context.Context, key, filePath string, digests fileDigests) error {
+func (st *MemoryStore) PutObject(_ context.Context, key, filePath string, digests fileDigests) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -286,7 +286,7 @@ func (store *MemoryStore) PutObject(_ context.Context, key, filePath string, dig
 		return ErrDigestMismatch
 	}
 
-	store.objects[key] = evacuatorMemoryObject{
+	st.objects[key] = evacuatorMemoryObject{
 		SHA256: digests.SHA256,
 		ETag:   etag,
 		Size:   digests.Size,
@@ -295,10 +295,10 @@ func (store *MemoryStore) PutObject(_ context.Context, key, filePath string, dig
 	return nil
 }
 
-func (store *MemoryStore) ObjectCount() int {
-	return len(store.objects)
+func (st *MemoryStore) ObjectCount() int {
+	return len(st.objects)
 }
 
-func (store *MemoryStore) ObjectData(key string) []byte {
-	return store.objects[key].Data
+func (st *MemoryStore) ObjectData(key string) []byte {
+	return st.objects[key].Data
 }

@@ -44,7 +44,7 @@ func countLinuxFDs(t *testing.T) int {
 	return len(entries)
 }
 
-func TestFault_ProcessorPgGate_Overflow(t *testing.T) {
+func TestFault_ProcessorPostgresGate_Overflow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: fault test (run make test-integration)")
 	}
@@ -57,7 +57,7 @@ func TestFault_ProcessorPgGate_Overflow(t *testing.T) {
 	require.NoError(t, pm.Run(ctx))
 
 	const poolMax = 4
-	gate := NewProcessorPgGate(0, poolMax)
+	gate := NewProcessorPostgresGate(0, poolMax)
 	require.Equal(t, poolMax-ProcessorPgReserve, gate.Capacity())
 
 	store := NewPostgresStoreWithGate(infra.Queries, 2*time.Second, gate)
@@ -122,7 +122,7 @@ func TestFault_SyncWorker_PgGateOverflow(t *testing.T) {
 	campaignID := seedFaultCampaign(t, infra, registry)
 	campaignRepo := NewCampaignRepo(infra.Queries)
 
-	gate := NewProcessorPgGate(3, 4)
+	gate := NewProcessorPostgresGate(3, 4)
 	worker := NewSyncWorker(infra.Redis, campaignRepo, nil, time.Hour, 0, gate, 0)
 
 	syncKey := "budget:sync:campaign:" + campaignID.String()

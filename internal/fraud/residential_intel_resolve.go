@@ -9,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func NewResidentialIntelEnricherFromConfig(cfg *config.Config, redisClient redis.Cmdable, chWrite driver.Conn) (*ResidentialIntelEnricher, error) {
+func NewResidentialIntelEnricherFromConfig(cfg *config.Config, redisClient redis.Cmdable, clickhouseWriteConn driver.Conn) (*ResidentialIntelEnricher, error) {
 	if cfg == nil || !cfg.ExternalResidentialIntelRuntimeEnabled() {
 		return nil, nil
 	}
@@ -28,7 +28,7 @@ func NewResidentialIntelEnricherFromConfig(cfg *config.Config, redisClient redis
 	return NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
 		Provider:    provider,
 		Cache:       cache,
-		CHWrite:     chWrite,
+		CHWrite:     clickhouseWriteConn,
 		RedisClient: redisClient,
 		FeedDir:     cfg.ExternalResidentialIntel.FeedDir,
 		ProviderID:  cfg.ExternalResidentialIntel.ProviderLabel,

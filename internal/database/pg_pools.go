@@ -28,12 +28,12 @@ func ConnectPgPools(ctx context.Context, cfg *config.Config) (*PgPools, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read pool: %w", err)
 	}
-	settlePool, err := Connect(ctx, string(cfg.DBDSN), settleMax, 1)
+	settlementPool, err := Connect(ctx, string(cfg.DBDSN), settleMax, 1)
 	if err != nil {
 		readPool.Close()
 		return nil, fmt.Errorf("settle pool: %w", err)
 	}
-	return &PgPools{Read: readPool, Settle: settlePool}, nil
+	return &PgPools{Read: readPool, Settle: settlementPool}, nil
 }
 
 func (p *PgPools) Close() {

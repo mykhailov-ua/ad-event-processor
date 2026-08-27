@@ -5,7 +5,6 @@ import (
 	"strings"
 )
 
-// Preview parses a foreign payload and applies macro/source maps without database writes.
 func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error) {
 	if len(payload) > MaxPayloadBytes {
 		return PreviewResult{}, fmt.Errorf("payload exceeds %d bytes", MaxPayloadBytes)
@@ -91,7 +90,6 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 	return out, nil
 }
 
-// ListSources returns supported migration source kinds for GET /migrate/sources.
 func ListSources() []SourceKindMeta {
 	return []SourceKindMeta{
 		{Kind: SourceKindKeitaroJSON, Label: "Keitaro JSON export"},
@@ -100,13 +98,11 @@ func ListSources() []SourceKindMeta {
 	}
 }
 
-// SourceKindMeta describes a supported migration source.
 type SourceKindMeta struct {
 	Kind  SourceKind `json:"kind"`
 	Label string     `json:"label"`
 }
 
-// SourcesResponse is returned by GET /api/v1/campaigns/migrate/sources.
 type SourcesResponse struct {
 	Sources         []SourceKindMeta `json:"sources"`
 	MaxPayloadBytes int              `json:"max_payload_bytes"`

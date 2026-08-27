@@ -161,19 +161,19 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	if cfg.ClickHouseEnabled() {
-		var chWrite driver.Conn
+		var clickhouseWriteConn driver.Conn
 		if string(cfg.CHDSN) != "" {
 			var err error
-			chWrite, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+			clickhouseWriteConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
 			if err != nil {
 				slog.Error("failed to connect to clickhouse for migrations", "error", err)
 				return err
 			}
-			if err := migrate.ApplyClickHouseMigrations(ctx, chWrite); err != nil {
+			if err := migrate.ApplyClickHouseMigrations(ctx, clickhouseWriteConn); err != nil {
 				slog.Error("failed to apply clickhouse migrations", "error", err)
 				return err
 			}
-			svc.SetClickHouseWrite(chWrite)
+			svc.SetClickHouseWrite(clickhouseWriteConn)
 		}
 
 		chRead, err := database.ConnectCHReadonly(ctx, string(cfg.CHReadonlyDSN))
@@ -182,8 +182,8 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			return err
 		}
 		defer func() { _ = chRead.Close() }()
-		if chWrite != nil {
-			defer func() { _ = chWrite.Close() }()
+		if clickhouseWriteConn != nil {
+			defer func() { _ = clickhouseWriteConn.Close() }()
 		}
 		svc.SetClickHouse(chRead, database.CHQueryConfigFromApp(cfg))
 		slog.Info("clickhouse reporting enabled", "readonly_dsn", "CH_READONLY_DSN")
@@ -278,12 +278,12 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 	if os.Getenv("VOLUME_METER_ENABLED") != "0" {
 		meterSource := cfg.VolumeMeterSource
-		var chQ *database.CHQuery
+		var clickhouseQuery *database.CHQuery
 		if meterSource == "ch" {
-			chQ = svc.CHQuery()
+			clickhouseQuery = svc.ClickHouseQuery()
 		}
 		svc.StartBackgroundWorker(func() {
-			NewVolumeMeterWorker(pgPools.Settle, chQ, meterSource, volumeInterval, svc.PgGate()).Start(ctx)
+			NewVolumeMeterWorker(pgPools.Settle, clickhouseQuery, meterSource, volumeInterval, svc.PostgresGate()).Start(ctx)
 		})
 		slog.Info("started volume meter worker", "interval", volumeInterval, "source", meterSource)
 	}

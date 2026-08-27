@@ -85,39 +85,39 @@ FROM ml_features_1m
 WHERE window_start >= ? AND window_start < ?`
 )
 
-func (reports *ReportsHTTPHandlers) registerMLReports(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
+func (h *ReportsHTTPHandlers) registerMLReports(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("GET /api/v1/reports/ml/score-distribution", limit(perm("shards:read", reports.wrapReport("ml/score-distribution", reports.getMLScoreDistributionReport))))
-	mux.HandleFunc("GET /api/v1/reports/ml/shadow-delta", limit(perm("shards:read", reports.wrapReport("ml/shadow-delta", reports.getMLShadowDeltaReport))))
-	mux.HandleFunc("GET /api/v1/reports/ml/feature-spikes", limit(perm("shards:read", reports.wrapReport("ml/feature-spikes", reports.getMLFeatureSpikesReport))))
+	mux.HandleFunc("GET /api/v1/reports/ml/score-distribution", limit(perm("shards:read", h.wrapReport("ml/score-distribution", h.getMLScoreDistributionReport))))
+	mux.HandleFunc("GET /api/v1/reports/ml/shadow-delta", limit(perm("shards:read", h.wrapReport("ml/shadow-delta", h.getMLShadowDeltaReport))))
+	mux.HandleFunc("GET /api/v1/reports/ml/feature-spikes", limit(perm("shards:read", h.wrapReport("ml/feature-spikes", h.getMLFeatureSpikesReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getMLScoreDistributionReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeMLReport(w, r, queryMLScoreDistributionRows)
+func (h *ReportsHTTPHandlers) getMLScoreDistributionReport(w http.ResponseWriter, r *http.Request) {
+	h.writeMLReport(w, r, queryMLScoreDistributionRows)
 }
 
-func (reports *ReportsHTTPHandlers) getMLShadowDeltaReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeMLReport(w, r, queryMLShadowDeltaRows)
+func (h *ReportsHTTPHandlers) getMLShadowDeltaReport(w http.ResponseWriter, r *http.Request) {
+	h.writeMLReport(w, r, queryMLShadowDeltaRows)
 }
 
-func (reports *ReportsHTTPHandlers) getMLFeatureSpikesReport(w http.ResponseWriter, r *http.Request) {
-	reports.writeMLReport(w, r, queryMLFeatureSpikeRows)
+func (h *ReportsHTTPHandlers) getMLFeatureSpikesReport(w http.ResponseWriter, r *http.Request) {
+	h.writeMLReport(w, r, queryMLFeatureSpikeRows)
 }
 
-type mlReportQueryFunc func(ctx context.Context, chQuery *database.CHQuery, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
+type mlReportQueryFunc func(ctx context.Context, clickhouseQuery *database.CHQuery, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
-func (reports *ReportsHTTPHandlers) writeMLReport(w http.ResponseWriter, r *http.Request, queryFn mlReportQueryFunc) {
-	if reports.CHQuery == nil {
+func (h *ReportsHTTPHandlers) writeMLReport(w http.ResponseWriter, r *http.Request, queryFn mlReportQueryFunc) {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -125,11 +125,11 @@ func (reports *ReportsHTTPHandlers) writeMLReport(w http.ResponseWriter, r *http
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryFn(chCtx, reports.CHQuery, from, to, page.Limit, page.Offset)
+	rows, total, err := queryFn(clickhouseCtx, h.ClickHouseQuery, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	var nextCursor string
@@ -138,22 +138,22 @@ func (reports *ReportsHTTPHandlers) writeMLReport(w http.ResponseWriter, r *http
 	}
 	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryMLScoreDistributionRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
 	var total int64
-	if err := chQuery.QueryRow(ctx, mlScoreDistributionCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, mlScoreDistributionCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := chQuery.Query(ctx, mlScoreDistributionQuery, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, mlScoreDistributionQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -175,15 +175,15 @@ func queryMLScoreDistributionRows(
 
 func queryMLShadowDeltaRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
 	var total int64
-	if err := chQuery.QueryRow(ctx, mlShadowDeltaCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, mlShadowDeltaCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := chQuery.Query(ctx, mlShadowDeltaQuery, from, to, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, mlShadowDeltaQuery, from, to, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -208,15 +208,15 @@ func queryMLShadowDeltaRows(
 
 func queryMLFeatureSpikeRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
 	var total int64
-	if err := chQuery.QueryRow(ctx, mlFeatureSpikesCountQuery, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, mlFeatureSpikesCountQuery, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := chQuery.Query(ctx, mlFeatureSpikesQuery, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, mlFeatureSpikesQuery, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}

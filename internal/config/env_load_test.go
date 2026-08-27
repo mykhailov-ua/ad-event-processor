@@ -75,6 +75,34 @@ func TestLoad_productionRequiresExpectedShardCount(t *testing.T) {
 	}
 }
 
+func TestLoad_brokerPartitionCount_defaultsFromRedisAddrs(t *testing.T) {
+	t.Setenv("ENV", "development")
+	t.Setenv("SERVER_PORT", "8181")
+	t.Setenv("DB_DSN", "postgres://u:p@localhost/db?sslmode=disable")
+	t.Setenv("TOKEN_SYMMETRIC_KEY", "01234567890123456789012345678901")
+	t.Setenv("REDIS_ADDRS", "/run/a.sock,/run/b.sock")
+	t.Setenv("REDIS_SHARD_COUNT", "")
+	t.Setenv("BROKER_PARTITION_COUNT", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Broker.PartitionCount != 2 {
+		t.Fatalf("Broker.PartitionCount=%d want 2 from REDIS_ADDRS len", cfg.Broker.PartitionCount)
+	}
+
+	t.Setenv("REDIS_SHARD_COUNT", "3")
+	t.Setenv("REDIS_ADDRS", "/run/a.sock")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.Broker.PartitionCount != 3 {
+		t.Fatalf("Broker.PartitionCount=%d want 3 from REDIS_SHARD_COUNT", cfg.Broker.PartitionCount)
+	}
+}
+
 func TestLoad_productionFilterTimeoutCeiling(t *testing.T) {
 	t.Setenv("ENV", "production")
 	t.Setenv("SERVER_PORT", "8181")

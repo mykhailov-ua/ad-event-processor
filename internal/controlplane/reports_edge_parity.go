@@ -32,16 +32,16 @@ SELECT
  (SELECT count() FROM impressions WHERE created_at >= ? AND created_at < ?) +
  (SELECT count() FROM clicks WHERE created_at >= ? AND created_at < ?) AS tracker_events`
 
-func (reports *ReportsHTTPHandlers) registerEdgeParityReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
+func (h *ReportsHTTPHandlers) registerEdgeParityReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("GET /api/v1/reports/edge-parity", limit(perm("shards:read", reports.wrapReport("edge-parity", reports.getEdgeParityReport))))
+	mux.HandleFunc("GET /api/v1/reports/edge-parity", limit(perm("shards:read", h.wrapReport("edge-parity", h.getEdgeParityReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getEdgeParityReport(w http.ResponseWriter, r *http.Request) {
+func (h *ReportsHTTPHandlers) getEdgeParityReport(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().UTC()
 	from := now.Add(-edgeParityDefaultLookback)
 	to := now
@@ -71,19 +71,19 @@ func (reports *ReportsHTTPHandlers) getEdgeParityReport(w http.ResponseWriter, r
 	}
 
 	var edge EdgeMetricsPanelDTO
-	if reports.EdgeMetricsReader != nil {
-		panel, err := reports.EdgeMetricsReader(r.Context())
+	if h.EdgeMetricsReader != nil {
+		panel, err := h.EdgeMetricsReader(r.Context())
 		if err == nil {
 			edge = panel
 		}
 	}
 
 	var trackerEvents uint64
-	if reports.CHQuery != nil {
-		chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	if h.ClickHouseQuery != nil {
+		clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 		defer cancel()
-		if err := reports.CHQuery.QueryRow(chCtx, edgeParityTrackerEventsQuery, from, to, from, to).Scan(&trackerEvents); err != nil {
-			reports.writeServiceError(w, err)
+		if err := h.ClickHouseQuery.QueryRow(clickhouseCtx, edgeParityTrackerEventsQuery, from, to, from, to).Scan(&trackerEvents); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
@@ -106,7 +106,7 @@ func (reports *ReportsHTTPHandlers) getEdgeParityReport(w http.ResponseWriter, r
 		BlacklistStale:    edge.BlacklistStale,
 		EdgeBlockedTotal:  blockedTotal,
 		ShardMismatchHint: shardMismatchHint(blockedTotal, edge.BlacklistStale),
-		Freshness:         reports.reportFreshness(r.Context()),
+		Freshness:         h.reportFreshness(r.Context()),
 	})
 }
 

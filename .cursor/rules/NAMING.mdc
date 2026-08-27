@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Purpose
 
-Always applied on every agent turn and every file edit. Forbid cryptic identifiers ("trash naming") and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Comment discipline: explain **why**, not what the name already says.
+Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Comment discipline: explain **why**, not what the name already says.
 
-Guard script: `bash scripts/ci/check_no_legacy_naming.sh`. Receivers and JSDoc: `quality.mdc` (also always applied).
+Guard script: `bash scripts/ci/check_no_legacy_naming.sh`. Go receivers and web JSDoc: `quality.mdc`. Package layout and banned subtrees: `structure.mdc`. Root clutter: `core.mdc` Sources-only repository.
 
 ## Forbidden trash naming
 
@@ -23,7 +23,7 @@ Do not use cryptic suffixes, meaningless numbers, or lazy abbreviations.
 | `f1`, `f2` | Lazy filter/field abbreviations | `license_filter`, `geo_filter` |
 | `ch`, `pg`, `rd`, `rdb`, `rdbs` | Driver/client abbreviations | `clickhouseConn`, `postgresConn`, `redisClient`, `redisShards` |
 | `res`, `res2` | Generic result variables | `auction_result`, `auth_response` |
-| `GAP_prefix_001` style codes, `WI-123` | Bureaucratic ticket/milestone IDs in docs, backlogs, UI copy | Semantic slug: `wire_silent_reject_hot_path` |
+| `GAP_prefix_001` style codes, `WI-123` | Bureaucratic ticket/milestone IDs | Semantic slug: `wire_silent_reject_hot_path` |
 | `M-8`, `M8` milestone tokens in titles | Milestone tokens in commits and headings | Concrete surface name: `silent_reject_hot_path` |
 
 ## Forbidden bureaucratic naming
@@ -42,7 +42,7 @@ CI: `bash scripts/ci/check_no_legacy_naming.sh` rejects `GAP-<TEAM>-<digits>` in
 
 Exception: `fault_proof gap=open` in fault tests is telemetry, not a backlog ID (`fault-tests.mdc`).
 
-## Legacy token ban (critical)
+## Legacy token ban
 
 Strictly forbidden in new code, documentation, and variable names. Remove existing occurrences when touched.
 
@@ -63,7 +63,7 @@ Strictly forbidden in new code, documentation, and variable names. Remove existi
 
 ## Forbidden marketing prose
 
-Technical docs (`README.md`, `docs/`, `deploy/vendor/ANTIFRAUD.md`, `docs/ARCHITECTURE.md`, Grafana descriptions) must not read like sales copy. Lie catalog: `anti-slop.mdc` Documentation lie modes.
+Technical docs (`README.md`, `docs/`, `deploy/vendor/ANTIFRAUD.md`, `docs/ARCHITECTURE.md`, Grafana descriptions) must not read like sales copy. Doc lie catalog: `anti-slop.mdc` Documentation lie modes.
 
 | Banned in tech docs | Use instead |
 | :--- | :--- |
@@ -76,12 +76,13 @@ Technical docs (`README.md`, `docs/`, `deploy/vendor/ANTIFRAUD.md`, `docs/ARCHIT
 | `unlimited` as hype | License field `max_active_campaigns: 0` = no cap in JWT schema |
 | `intelligent`, `AI-powered` (unqualified) | `cmd/fraud-scorer`, `cmd/ivt-detector`, SKU flag |
 | `complete data privacy`, `spy-tool` | Omit; not verifiable in code |
+| `crush`, `eliminates fees` pitch | Omit |
 
 `deploy/vendor/SALES.md`: SKU table and license workflow only; no competitor anchors or positioning essays.
 
 User-visible admin UI (`web/src`): no `(skeleton)`, demo KPIs, or "coming soon" without `StubBanner` (`ui.mdc`, `anti-slop.mdc`).
 
-## Semantic clarity (lead-intent style)
+## Semantic clarity
 
 Match naming quality and structure of `lead-intent-processor`.
 
@@ -94,8 +95,6 @@ Match naming quality and structure of `lead-intent-processor`.
 ### Handler and interface names
 
 Banned as interface or field names on HTTP handlers: `API`, `Backend`, `Provider`, `Service` (when the name only means "implementation"). Name the **route or domain role** (`MiniAppRoutes`, `CampaignReader`). File matches type: `mini_app_routes.go`, not `backend.go`.
-
-Banned ceremony subtrees: `dto/`, `usecase/`, `providers/`, `repositories/`. Allowed: `db/`, `queries/`, `migrations/`, `pb/`.
 
 ### File and path naming
 
@@ -111,18 +110,7 @@ internal/controlplane/service_campaign_m8.go
 internal/campaign/load_test_worker.go
 ```
 
-## Root clutter ban
-
-The repository root is not a junk drawer.
-
-| Banned in root | Allowed location |
-| :--- | :--- |
-| `*.log`, `*.txt` (except README/LICENSE) | `var/`, gitignored paths |
-| Ad-hoc `.env.*` | `config/env/` |
-| Temporary artifacts | `var/` or gitignored |
-| Compiled binaries | `bin/` |
-
-## Variable and struct examples
+## Examples
 
 ```go
 // BAD
@@ -156,7 +144,7 @@ type ClickHouseStore struct {
 | Config fields | Document units, SLA ceilings, security boundaries |
 | Financial / SLA | Call out invariants at I/O boundaries (budget, debit, outbox, webhook ACK) |
 
-## Comments - forbidden decoration (never)
+## Comments - forbidden decoration
 
 Banned in code comments, doc comments, commit messages, and `.cursor/rules` prose:
 
@@ -182,7 +170,7 @@ YAML frontmatter `---` in `.mdc` files is required metadata, not a comment banne
 - Interface or type doc that duplicates the type name without contract.
 - Change logs, author names, or ticket URLs in code (use git).
 
-## Comments - comment (one per decision)
+## Comments - when required
 
 Add a single imperative line only where code cannot express **why** or **constraint**:
 
@@ -210,4 +198,4 @@ Best-effort error handling: either return the error, or one comment why propagat
 
 ## Related rules
 
-`anti-slop.mdc`, `code-style.mdc`, `quality.mdc`, `structure.mdc`.
+`anti-slop.mdc`, `code-style.mdc`, `core.mdc`, `quality.mdc`, `structure.mdc`.

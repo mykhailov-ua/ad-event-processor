@@ -1,6 +1,12 @@
 ---
 description: Binary import boundaries, layer coupling limits, agent scope, test dishonesty catalog
-globs: cmd/**, internal/**, pkg/**, api/openapi/**, web/**, deploy/vendor/*_MILESTONE.md
+globs:
+  - cmd/**
+  - internal/**
+  - pkg/**
+  - api/openapi/**
+  - web/**
+  - deploy/vendor/*_MILESTONE.md
 alwaysApply: false
 ---
 

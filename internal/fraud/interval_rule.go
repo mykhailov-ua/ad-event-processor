@@ -16,14 +16,14 @@ const (
 )
 
 type intervalBotnetRule struct {
-	q   *database.CHQuery
+	clickhouseQuery *database.CHQuery
 	cfg AnalyzerConfig
 }
 
 func (r *intervalBotnetRule) Name() string { return "interval_bot" }
 
 func (r *intervalBotnetRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
-	if r.q == nil {
+	if r.clickhouseQuery == nil {
 		return nil, fmt.Errorf("interval bot rule: nil chquery")
 	}
 
@@ -69,7 +69,7 @@ FROM (
 )
 WHERE length(sample_ip_hash) > 0`
 
-	rows, err := r.q.Query(ctx, query, windowSec, minIntervals, maxVariance)
+	rows, err := r.clickhouseQuery.Query(ctx, query, windowSec, minIntervals, maxVariance)
 	if err != nil {
 		return nil, fmt.Errorf("interval bot query: %w", err)
 	}

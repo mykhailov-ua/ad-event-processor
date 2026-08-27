@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-const coldPathCHQueryTimeout = 10 * time.Second
+const coldPathClickHouseQueryTimeout = 10 * time.Second
 
-func chQueryContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx, coldPathCHQueryTimeout)
+func clickhouseQueryContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(ctx, coldPathClickHouseQueryTimeout)
 }

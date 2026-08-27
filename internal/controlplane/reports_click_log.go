@@ -116,29 +116,29 @@ SELECT * FROM (
 ORDER BY created_at ASC
 LIMIT ?`
 
-func (reports *ReportsHTTPHandlers) registerClickLogReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerClickLogReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	perms := []string{"audit:read", "campaigns:read"}
-	mux.HandleFunc("GET /api/v1/reports/click-log", limit(permAny(perms, reports.wrapReport("click-log", reports.getClickLogReport))))
-	mux.HandleFunc("GET /api/v1/reports/clicks", limit(permAny(perms, reports.wrapReport("click-log", reports.getClickLogReport))))
+	mux.HandleFunc("GET /api/v1/reports/click-log", limit(permAny(perms, h.wrapReport("click-log", h.getClickLogReport))))
+	mux.HandleFunc("GET /api/v1/reports/clicks", limit(permAny(perms, h.wrapReport("click-log", h.getClickLogReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	clickID := strings.TrimSpace(r.URL.Query().Get("click_id"))
@@ -151,13 +151,13 @@ func (reports *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "click_id or campaign_id required")
 		return
 	}
-	if campaignFilterSet && !reports.authorizeReportCampaign(w, r, campaignFilter) {
+	if campaignFilterSet && !h.authorizeReportCampaign(w, r, campaignFilter) {
 		return
 	}
 
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	campaignIDs = narrowCampaignIDs(campaignIDs, campaignFilter, campaignFilterSet)
@@ -165,7 +165,7 @@ func (reports *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *
 		httpresponse.JSON(w, http.StatusOK, ClickLogReportResponse{
 			Events:    []ClickLogEventDTO{},
 			Postbacks: []ClickLogPostbackDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
@@ -180,29 +180,29 @@ func (reports *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *
 		page.Offset = 0
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
 
 	var events []ClickLogEventDTO
 	var total int64
 	if clickID != "" {
-		events, err = queryClickLogTimelineCH(chCtx, reports.CHQuery, campaignIDs, clickID, from, to, page.Limit)
+		events, err = queryClickLogTimelineCH(clickhouseCtx, h.ClickHouseQuery, campaignIDs, clickID, from, to, page.Limit)
 		total = int64(len(events))
 	} else {
-		events, total, err = queryClickLogBrowseCH(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+		events, total, err = queryClickLogBrowseCH(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	}
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 
 	var postbacks []ClickLogPostbackDTO
-	if clickID != "" && reports.Pool != nil {
-		pgCtx, pgCancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
-		postbacks, err = queryClickLogPostbacks(pgCtx, reports.Pool, campaignIDs, clickID)
+	if clickID != "" && h.Pool != nil {
+		pgCtx, pgCancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
+		postbacks, err = queryClickLogPostbacks(pgCtx, h.Pool, campaignIDs, clickID)
 		pgCancel()
 		if err != nil {
-			reports.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return
 		}
 	}
@@ -220,7 +220,7 @@ func (reports *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *
 	httpresponse.JSON(w, http.StatusOK, ClickLogReportResponse{
 		Events:     events,
 		Postbacks:  postbacks,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
@@ -262,19 +262,19 @@ type clickLogEventRow struct {
 
 func queryClickLogBrowseCH(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]ClickLogEventDTO, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, clickLogBrowseCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, clickLogBrowseCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	rows, err := chQuery.Query(ctx, clickLogBrowseQuery, campaignIDs, from, to, limit, offset)
+	rows, err := clickhouseQuery.Query(ctx, clickLogBrowseQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -294,16 +294,16 @@ func queryClickLogBrowseCH(
 
 func queryClickLogTimelineCH(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	clickID string,
 	from, to time.Time,
 	limit int,
 ) ([]ClickLogEventDTO, error) {
-	if chQuery == nil || len(campaignIDs) == 0 || clickID == "" {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 || clickID == "" {
 		return nil, nil
 	}
-	rows, err := chQuery.Query(
+	rows, err := clickhouseQuery.Query(
 		ctx,
 		clickLogTimelineQuery,
 		clickID, campaignIDs, from, to,

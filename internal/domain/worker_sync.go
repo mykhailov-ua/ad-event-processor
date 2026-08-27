@@ -30,7 +30,7 @@ type SyncWorker struct {
 	customerRepo         CustomerRepository
 	interval             time.Duration
 	ledgerFlushInterval  time.Duration
-	pgGate               PGWriteGate
+	postgresGate         PGWriteGate
 	maxConcurrency       int
 	lockTTLSec           int
 	strictThresholdMicro int64
@@ -50,10 +50,10 @@ func NewSyncWorker(
 	customerRepo CustomerRepository,
 	interval time.Duration,
 	ledgerFlushInterval time.Duration,
-	pgGate PGWriteGate,
+	postgresGate PGWriteGate,
 	maxConcurrency int,
 ) *SyncWorker {
-	if maxConcurrency <= 0 && pgGate == nil {
+	if maxConcurrency <= 0 && postgresGate == nil {
 		maxConcurrency = maxConcurrencyDefault
 	}
 	return &SyncWorker{
@@ -62,7 +62,7 @@ func NewSyncWorker(
 		customerRepo:         customerRepo,
 		interval:             interval,
 		ledgerFlushInterval:  ledgerFlushInterval,
-		pgGate:               pgGate,
+		postgresGate:         postgresGate,
 		maxConcurrency:       maxConcurrency,
 		lockTTLSec:           60,
 		strictThresholdMicro: 5_000_000,
@@ -218,7 +218,7 @@ return remaining
 
 func (w *SyncWorker) collectCampaignRollup(ctx context.Context) {
 	sem := make(chan struct{}, w.maxConcurrency)
-	if w.pgGate != nil {
+	if w.postgresGate != nil {
 		sem = nil
 	}
 	var wg sync.WaitGroup
@@ -296,8 +296,8 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 	}
 
 	for id, entry := range batch {
-		if w.pgGate != nil {
-			if err := w.pgGate.Acquire(ctx); err != nil {
+		if w.postgresGate != nil {
+			if err := w.postgresGate.Acquire(ctx); err != nil {
 				w.retainCampaignRollup(id, entry)
 				continue
 			}
@@ -311,23 +311,23 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 		}
 		apply, dedupErr := w.resolveSpendDedup(ctx, &item, w.shardForCampaign(id))
 		if dedupErr != nil {
-			if w.pgGate != nil {
-				w.pgGate.Release()
+			if w.postgresGate != nil {
+				w.postgresGate.Release()
 			}
 			w.handleCampaignFlushError(ctx, id, entry, dedupErr)
 			continue
 		}
 		if !apply {
-			if w.pgGate != nil {
-				w.pgGate.Release()
+			if w.postgresGate != nil {
+				w.postgresGate.Release()
 			}
 			w.CommitRollupRedis(ctx, entry)
 			continue
 		}
 
 		err := w.campaignRepo.UpdateSpend(ctx, id, item.AmountMicro, item.TxID)
-		if w.pgGate != nil {
-			w.pgGate.Release()
+		if w.postgresGate != nil {
+			w.postgresGate.Release()
 		}
 		if err != nil {
 			w.handleCampaignFlushError(ctx, id, entry, err)
@@ -384,8 +384,8 @@ func (w *SyncWorker) flushCampaignRollupBatched(ctx context.Context, batch map[u
 			continue
 		}
 
-		if w.pgGate != nil {
-			if err := w.pgGate.Acquire(ctx); err != nil {
+		if w.postgresGate != nil {
+			if err := w.postgresGate.Acquire(ctx); err != nil {
 				for i, item := range items {
 					w.retainCampaignRollup(item.CampaignID, entries[i])
 				}
@@ -394,8 +394,8 @@ func (w *SyncWorker) flushCampaignRollupBatched(ctx context.Context, batch map[u
 		}
 
 		outcomes, err := batcher.UpdateSpendBatch(ctx, items)
-		if w.pgGate != nil {
-			w.pgGate.Release()
+		if w.postgresGate != nil {
+			w.postgresGate.Release()
 		}
 		if err != nil {
 			for i, item := range items {
@@ -537,11 +537,11 @@ func (w *SyncWorker) syncEntity(ctx context.Context, prefix string, idStr string
 		return
 	}
 
-	if w.pgGate != nil {
-		if err := w.pgGate.Acquire(ctx); err != nil {
+	if w.postgresGate != nil {
+		if err := w.postgresGate.Acquire(ctx); err != nil {
 			return
 		}
-		defer w.pgGate.Release()
+		defer w.postgresGate.Release()
 	}
 
 	if err := updateFn(ctx, id, amountMicro, txID); err == nil {
@@ -557,7 +557,7 @@ func (w *SyncWorker) syncCustomers(ctx context.Context) {
 	}
 	var cursor uint64
 	sem := make(chan struct{}, w.maxConcurrency)
-	if w.pgGate != nil {
+	if w.postgresGate != nil {
 		sem = nil
 	}
 	var wg sync.WaitGroup

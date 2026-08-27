@@ -42,10 +42,10 @@ func queryPlacementMetrics(
 	if ch == nil || len(campaignIDs) == 0 {
 		return nil, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, chQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, chQueryTimeout)
 	defer cancel()
 
-	rows, err := ch.Query(chCtx, `
+	rows, err := ch.Query(clickhouseCtx, `
 SELECT
  campaign_id,
  placement_id,
@@ -86,10 +86,10 @@ func queryPlacementFraudMetrics(
 	if ch == nil || len(campaignIDs) == 0 {
 		return nil, nil
 	}
-	chCtx, cancel := context.WithTimeout(ctx, chQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, chQueryTimeout)
 	defer cancel()
 
-	rows, err := ch.Query(chCtx, `
+	rows, err := ch.Query(clickhouseCtx, `
 SELECT
  campaign_id,
  coalesce(JSONExtractString(payload, 'placement_id'), '') AS placement_id,

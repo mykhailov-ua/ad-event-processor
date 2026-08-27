@@ -127,16 +127,16 @@ func TestWorker_firesPauseOncePerCooldown(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	chQuery := database.NewCHQuery(conn, database.CHQueryConfig{})
+	clickhouseQuery := database.NewCHQuery(conn, database.CHQueryConfig{})
 	exec := &mockAutomationExec{}
-	w := NewWorker(pool, chQuery, exec, time.Minute)
+	w := NewWorker(pool, clickhouseQuery, exec, time.Minute)
 
 	rules, err := db.New(pool).ListEnabledAutomationRules(ctx)
 	require.NoError(t, err)
 	require.Len(t, rules, 1)
 	rule, err := RuleFromRow(rules[0])
 	require.NoError(t, err)
-	matches, err := EvaluateRule(ctx, chQuery, rule, []uuid.UUID{campaignID}, hour.Add(30*time.Minute))
+	matches, err := EvaluateRule(ctx, clickhouseQuery, rule, []uuid.UUID{campaignID}, hour.Add(30*time.Minute))
 	require.NoError(t, err)
 	require.Len(t, matches, 1)
 
@@ -204,16 +204,16 @@ func TestWorker_firesBlacklistOnIVTRate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	chQuery := database.NewCHQuery(conn, database.CHQueryConfig{})
+	clickhouseQuery := database.NewCHQuery(conn, database.CHQueryConfig{})
 	exec := &mockAutomationExec{}
-	w := NewWorker(pool, chQuery, exec, time.Minute)
+	w := NewWorker(pool, clickhouseQuery, exec, time.Minute)
 
 	rules, err := db.New(pool).ListEnabledAutomationRules(ctx)
 	require.NoError(t, err)
 	require.Len(t, rules, 1)
 	rule, err := RuleFromRow(rules[0])
 	require.NoError(t, err)
-	matches, err := EvaluateRule(ctx, chQuery, rule, []uuid.UUID{campaignID}, hour.Add(30*time.Minute))
+	matches, err := EvaluateRule(ctx, clickhouseQuery, rule, []uuid.UUID{campaignID}, hour.Add(30*time.Minute))
 	require.NoError(t, err)
 	require.Len(t, matches, 1)
 	require.Equal(t, placementID, matches[0].PlacementID)

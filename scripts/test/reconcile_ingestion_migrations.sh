@@ -58,18 +58,33 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS user_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 SQL
 
-log "repairing campaigns.fraud columns (00026 drift)"
+log "repairing campaigns.fraud columns (00026 drift) and silent_reject rename (00101)"
 psql_exec -v ON_ERROR_STOP=1 << 'SQL'
 ALTER TABLE campaigns
     ADD COLUMN IF NOT EXISTS fraud_threshold_pass SMALLINT NOT NULL DEFAULT 30,
     ADD COLUMN IF NOT EXISTS fraud_threshold_suspect SMALLINT NOT NULL DEFAULT 60,
     ADD COLUMN IF NOT EXISTS fraud_threshold_ivt SMALLINT NOT NULL DEFAULT 80,
     ADD COLUMN IF NOT EXISTS fraud_threshold_block SMALLINT NOT NULL DEFAULT 100,
-    ADD COLUMN IF NOT EXISTS ghost_ivt_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS behavior_flags INTEGER NOT NULL DEFAULT 0;
 
 DO $$
 BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'campaigns' AND column_name = 'ghost_ivt_enabled'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'campaigns' AND column_name = 'silent_reject_enabled'
+    ) THEN
+        ALTER TABLE campaigns RENAME COLUMN ghost_ivt_enabled TO silent_reject_enabled;
+    ELSIF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'campaigns' AND column_name = 'silent_reject_enabled'
+    ) THEN
+        ALTER TABLE campaigns
+            ADD COLUMN silent_reject_enabled BOOLEAN NOT NULL DEFAULT FALSE;
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint WHERE conname = 'campaigns_fraud_thresholds_ordered'
     ) THEN
@@ -80,6 +95,45 @@ BEGIN
                 AND fraud_threshold_ivt <= fraud_threshold_block
             );
     END IF;
+END $$;
+SQL
+
+log "aliasing renumbered ingestion migrations (duplicate version cleanup)"
+psql_exec -v ON_ERROR_STOP=1 << 'SQL'
+DO $$
+DECLARE
+    pair TEXT[][];
+BEGIN
+    pair := ARRAY[
+        ARRAY['00042_ml_manual_labels.sql', '00090_ml_manual_labels_customer.sql'],
+        ARRAY['00073_telegram_mini_app_url.sql', '00117_telegram_mini_app_url.sql'],
+        ARRAY['00090_recon_disc_customer_created_idx.sql', '00118_recon_disc_customer_created_idx.sql'],
+        ARRAY['00099_report_views_schedules.sql', '00119_report_views_schedules.sql'],
+        ARRAY['00106_platform_campaign_api.sql', '00120_platform_campaign_api.sql']
+    ];
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_name = 'tracked_migrations'
+    ) THEN
+        RETURN;
+    END IF;
+    FOR i IN 1 .. array_length(pair, 1) LOOP
+        INSERT INTO public.tracked_migrations (filename)
+        SELECT pair[i][2]
+        WHERE EXISTS (
+            SELECT 1 FROM public.tracked_migrations WHERE filename = pair[i][1]
+        )
+        AND NOT EXISTS (
+            SELECT 1 FROM public.tracked_migrations WHERE filename = pair[i][2]
+        );
+        DELETE FROM public.tracked_migrations
+        WHERE filename = pair[i][1]
+          AND EXISTS (
+              SELECT 1 FROM public.tracked_migrations WHERE filename = pair[i][2]
+          );
+    END LOOP;
 END $$;
 SQL
 

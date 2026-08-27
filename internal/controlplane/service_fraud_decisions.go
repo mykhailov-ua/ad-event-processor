@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const fraudExplainCHQueryTimeout = 5 * time.Second
+const fraudExplainClickHouseQueryTimeout = 5 * time.Second
 
 const fraudExplainDefaultHours = 24
 
@@ -84,7 +84,7 @@ func (s *Service) getCampaignFraudForCustomer(ctx context.Context, customerID, c
 
 func (s *Service) queryFraudExplainCH(ctx context.Context, ipHash string, hours int, campaignID uuid.UUID) (fraudExplainCHRow, bool, error) {
 	var out fraudExplainCHRow
-	if s == nil || s.chQuery == nil {
+	if s == nil || s.clickhouseQuery == nil {
 		return out, false, fmt.Errorf("clickhouse not configured")
 	}
 
@@ -133,7 +133,7 @@ WHERE f.ip_hash = ?
 ORDER BY f.window_start DESC
 LIMIT 1`
 
-	rows, err := s.chQuery.Query(ctx, query, args...)
+	rows, err := s.clickhouseQuery.Query(ctx, query, args...)
 	if err != nil {
 		return out, false, fmt.Errorf("fraud explain clickhouse query: %w", err)
 	}
@@ -163,7 +163,7 @@ LIMIT 1`
 }
 
 func (s *Service) explainLiveScore(ctx context.Context, row fraud.FeatureRow) (float64, error) {
-	scorer, err := s.explainScorer()
+	scorer, err := s.fraudExplainScorer()
 	if err != nil {
 		return 0, err
 	}
@@ -177,29 +177,29 @@ func (s *Service) explainLiveScore(ctx context.Context, row fraud.FeatureRow) (f
 	return scores[0], nil
 }
 
-func (s *Service) explainScorer() (fraud.Scorer, error) {
+func (s *Service) fraudExplainScorer() (fraud.Scorer, error) {
 	if s == nil || s.cfg == nil || !s.cfg.FraudScoring.ExplainLiveScore {
 		return nil, errors.New("live fraud explain scoring disabled")
 	}
-	s.explainScorerMu.Lock()
-	defer s.explainScorerMu.Unlock()
-	if s.explainScorerInst != nil {
-		return s.explainScorerInst, nil
+	s.fraudExplainScorerMutex.Lock()
+	defer s.fraudExplainScorerMutex.Unlock()
+	if s.cachedFraudExplainScorer != nil {
+		return s.cachedFraudExplainScorer, nil
 	}
-	if s.explainScorerErr != nil {
-		return nil, s.explainScorerErr
+	if s.fraudExplainScorerErr != nil {
+		return nil, s.fraudExplainScorerErr
 	}
 	modelPath := strings.TrimSpace(s.cfg.FraudScoring.ModelPath)
 	if modelPath == "" {
-		s.explainScorerErr = errors.New("fraud model path not configured")
-		return nil, s.explainScorerErr
+		s.fraudExplainScorerErr = errors.New("fraud model path not configured")
+		return nil, s.fraudExplainScorerErr
 	}
 	scorer, err := fraud.NewLGBMScorer(modelPath)
 	if err != nil {
-		s.explainScorerErr = err
+		s.fraudExplainScorerErr = err
 		return nil, err
 	}
-	s.explainScorerInst = scorer
+	s.cachedFraudExplainScorer = scorer
 	return scorer, nil
 }
 
@@ -224,10 +224,10 @@ func (s *Service) ExplainFraudDecision(ctx context.Context, customerID uuid.UUID
 		}
 	}
 
-	chCtx, cancel := context.WithTimeout(ctx, fraudExplainCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(ctx, fraudExplainClickHouseQueryTimeout)
 	defer cancel()
 
-	chRow, found, err := s.queryFraudExplainCH(chCtx, ipHash, hours, filterCampaign)
+	chRow, found, err := s.queryFraudExplainCH(clickhouseCtx, ipHash, hours, filterCampaign)
 	if err != nil {
 		return FraudDecisionDTO{}, err
 	}
@@ -270,7 +270,7 @@ func (s *Service) ExplainFraudDecision(ctx context.Context, customerID uuid.UUID
 		score := chRow.modelScore
 		modelScorePtr = &score
 	} else if s.cfg != nil && s.cfg.FraudScoring.ExplainLiveScore {
-		liveScore, liveErr := s.explainLiveScore(chCtx, featureRow)
+		liveScore, liveErr := s.explainLiveScore(clickhouseCtx, featureRow)
 		if liveErr == nil {
 			mlProbability = liveScore
 			score := liveScore

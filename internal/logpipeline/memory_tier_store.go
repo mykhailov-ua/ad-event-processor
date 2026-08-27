@@ -26,41 +26,41 @@ func NewMemoryObjectStore() *MemoryObjectStore {
 	return &MemoryObjectStore{objects: make(map[string]memoryObject)}
 }
 
-func (store *MemoryObjectStore) Put(key string, data []byte, modTime time.Time, metadata map[string]string) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
+func (st *MemoryObjectStore) Put(key string, data []byte, modTime time.Time, metadata map[string]string) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
 	metaCopy := make(map[string]string, len(metadata))
 	for k, v := range metadata {
 		metaCopy[k] = v
 	}
-	store.objects[key] = memoryObject{
+	st.objects[key] = memoryObject{
 		data:     append([]byte(nil), data...),
 		modTime:  modTime,
 		metadata: metaCopy,
 	}
 }
 
-func (store *MemoryObjectStore) Get(key string) ([]byte, bool) {
-	store.mu.RLock()
-	defer store.mu.RUnlock()
-	object, ok := store.objects[key]
+func (st *MemoryObjectStore) Get(key string) ([]byte, bool) {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	object, ok := st.objects[key]
 	if !ok {
 		return nil, false
 	}
 	return append([]byte(nil), object.data...), true
 }
 
-func (store *MemoryObjectStore) Delete(key string) {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	delete(store.objects, key)
+func (st *MemoryObjectStore) Delete(key string) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	delete(st.objects, key)
 }
 
-func (store *MemoryObjectStore) List(prefix string) []memoryListedObject {
-	store.mu.RLock()
-	defer store.mu.RUnlock()
+func (st *MemoryObjectStore) List(prefix string) []memoryListedObject {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
 	var objects []memoryListedObject
-	for key, object := range store.objects {
+	for key, object := range st.objects {
 		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
@@ -111,20 +111,20 @@ func NewMemoryS3TierStore(scratchDir, hotPrefix, warmPrefix string, mem *MemoryO
 	}
 }
 
-func (store *MemoryS3TierStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
-	for _, object := range store.mem.List(store.hotPrefix) {
-		name := strings.TrimPrefix(object.key, store.hotPrefix)
+func (st *MemoryS3TierStore) ListHot(ctx context.Context, olderThan time.Time) ([]TierObject, error) {
+	for _, object := range st.mem.List(st.hotPrefix) {
+		name := strings.TrimPrefix(object.key, st.hotPrefix)
 		if name == "" || !isHotSegmentName(filepath.Base(name)) {
 			continue
 		}
 		if !object.modTime.Before(olderThan) {
 			continue
 		}
-		localPath := filepath.Join(store.local.SourceDir, filepath.Base(name))
+		localPath := filepath.Join(st.local.SourceDir, filepath.Base(name))
 		if _, err := os.Stat(localPath); err == nil {
 			continue
 		}
-		data, ok := store.mem.Get(object.key)
+		data, ok := st.mem.Get(object.key)
 		if !ok {
 			continue
 		}
@@ -135,16 +135,16 @@ func (store *MemoryS3TierStore) ListHot(ctx context.Context, olderThan time.Time
 			return nil, err
 		}
 	}
-	return store.local.ListHot(ctx, olderThan)
+	return st.local.ListHot(ctx, olderThan)
 }
 
-func (store *MemoryS3TierStore) uploadWarmArtifacts(destKey, sha256 string) error {
-	warmPath := filepath.Join(store.local.WarmDir, destKey)
+func (st *MemoryS3TierStore) uploadWarmArtifacts(destKey, sha256 string) error {
+	warmPath := filepath.Join(st.local.WarmDir, destKey)
 	data, err := os.ReadFile(warmPath)
 	if err != nil {
 		return err
 	}
-	store.mem.Put(store.warmPrefix+destKey, data, time.Now().UTC(), map[string]string{
+	st.mem.Put(st.warmPrefix+destKey, data, time.Now().UTC(), map[string]string{
 		s3MetadataSHA256Key: sha256,
 	})
 	metaPath := strings.TrimSuffix(warmPath, ".zst") + ".meta.json"
@@ -156,72 +156,72 @@ func (store *MemoryS3TierStore) uploadWarmArtifacts(destKey, sha256 string) erro
 	if err != nil {
 		return err
 	}
-	metaKey := store.warmPrefix + strings.TrimSuffix(destKey, ".zst") + ".meta.json"
-	store.mem.Put(metaKey, metaBytes, time.Now().UTC(), map[string]string{
+	metaKey := st.warmPrefix + strings.TrimSuffix(destKey, ".zst") + ".meta.json"
+	st.mem.Put(metaKey, metaBytes, time.Now().UTC(), map[string]string{
 		s3MetadataSHA256Key: metaDigest.SHA256,
 	})
 	return nil
 }
 
-func (store *MemoryS3TierStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
-	if err := store.local.WriteWarm(ctx, destKey, plaintext, meta); err != nil {
+func (st *MemoryS3TierStore) WriteWarm(ctx context.Context, destKey string, plaintext []byte, meta CompactionMeta) error {
+	if err := st.local.WriteWarm(ctx, destKey, plaintext, meta); err != nil {
 		return err
 	}
-	return store.uploadWarmArtifacts(destKey, meta.DestSHA256)
+	return st.uploadWarmArtifacts(destKey, meta.DestSHA256)
 }
 
-func (store *MemoryS3TierStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
-	destSHA, err := store.local.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
+func (st *MemoryS3TierStore) WriteWarmFromFile(ctx context.Context, destKey, filteredPath string, meta CompactionMeta) (string, error) {
+	destSHA, err := st.local.WriteWarmFromFile(ctx, destKey, filteredPath, meta)
 	if err != nil {
 		return "", err
 	}
-	if err := store.uploadWarmArtifacts(destKey, destSHA); err != nil {
-		store.local.RemoveWarmArtifacts(destKey)
+	if err := st.uploadWarmArtifacts(destKey, destSHA); err != nil {
+		st.local.RemoveWarmArtifacts(destKey)
 		return "", err
 	}
 	return destSHA, nil
 }
 
-func (store *MemoryS3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
-	if err := store.local.RemoveHot(ctx, obj); err != nil {
+func (st *MemoryS3TierStore) RemoveHot(ctx context.Context, obj TierObject) error {
+	if err := st.local.RemoveHot(ctx, obj); err != nil {
 		return err
 	}
-	store.mem.Delete(store.hotPrefix + hotKeyFromCompacting(obj.Key))
+	st.mem.Delete(st.hotPrefix + hotKeyFromCompacting(obj.Key))
 	return nil
 }
 
-func (store *MemoryS3TierStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
-	return store.local.ClaimHot(ctx, obj)
+func (st *MemoryS3TierStore) ClaimHot(ctx context.Context, obj TierObject) (TierObject, error) {
+	return st.local.ClaimHot(ctx, obj)
 }
 
-func (store *MemoryS3TierStore) RollbackHot(ctx context.Context, obj TierObject) error {
-	return store.local.RollbackHot(ctx, obj)
+func (st *MemoryS3TierStore) RollbackHot(ctx context.Context, obj TierObject) error {
+	return st.local.RollbackHot(ctx, obj)
 }
 
-func (store *MemoryS3TierStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
-	return store.local.ListStuckCompacting(ctx)
+func (st *MemoryS3TierStore) ListStuckCompacting(ctx context.Context) ([]TierObject, error) {
+	return st.local.ListStuckCompacting(ctx)
 }
 
-func (store *MemoryS3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
+func (st *MemoryS3TierStore) RemoveCompacting(ctx context.Context, obj TierObject) error {
 	hotKey := hotKeyFromCompacting(obj.Key)
-	if err := store.local.RemoveCompacting(ctx, obj); err != nil {
+	if err := st.local.RemoveCompacting(ctx, obj); err != nil {
 		return err
 	}
-	store.mem.Delete(store.hotPrefix + hotKey)
+	st.mem.Delete(st.hotPrefix + hotKey)
 	return nil
 }
 
-func (store *MemoryS3TierStore) RemoveWarmArtifacts(destKey string) {
-	store.local.RemoveWarmArtifacts(destKey)
+func (st *MemoryS3TierStore) RemoveWarmArtifacts(destKey string) {
+	st.local.RemoveWarmArtifacts(destKey)
 }
 
-func (store *MemoryS3TierStore) SeedHot(name string, data []byte, modTime time.Time) {
-	store.mem.Put(store.hotPrefix+name, data, modTime, nil)
+func (st *MemoryS3TierStore) SeedHot(name string, data []byte, modTime time.Time) {
+	st.mem.Put(st.hotPrefix+name, data, modTime, nil)
 }
 
-func (store *MemoryS3TierStore) WarmObjectCount() int {
+func (st *MemoryS3TierStore) WarmObjectCount() int {
 	count := 0
-	for _, object := range store.mem.List(store.warmPrefix) {
+	for _, object := range st.mem.List(st.warmPrefix) {
 		if strings.HasSuffix(object.key, ".compact.zst") {
 			count++
 		}
@@ -229,14 +229,14 @@ func (store *MemoryS3TierStore) WarmObjectCount() int {
 	return count
 }
 
-func (store *MemoryS3TierStore) WarmObject(destKey string) ([]byte, bool) {
-	return store.mem.Get(store.warmPrefix + destKey)
+func (st *MemoryS3TierStore) WarmObject(destKey string) ([]byte, bool) {
+	return st.mem.Get(st.warmPrefix + destKey)
 }
 
-func (store *MemoryS3TierStore) HotObjectCount() int {
-	return len(store.mem.List(store.hotPrefix))
+func (st *MemoryS3TierStore) HotObjectCount() int {
+	return len(st.mem.List(st.hotPrefix))
 }
 
-func (store *MemoryS3TierStore) String() string {
-	return fmt.Sprintf("memory-s3 hot=%d warm=%d", store.HotObjectCount(), store.WarmObjectCount())
+func (st *MemoryS3TierStore) String() string {
+	return fmt.Sprintf("memory-s3 hot=%d warm=%d", st.HotObjectCount(), st.WarmObjectCount())
 }

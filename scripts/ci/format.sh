@@ -81,15 +81,17 @@ format_shell() {
 }
 
 prettier_files() {
-  find web/src web/scripts web/e2e .github deploy \
-    -type f \( \
-    -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \
-    -o -name '*.css' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' \
-    \) \
-    ! -path '*/node_modules/*' \
-    ! -path '*/dist/*' \
-    ! -path '*/vendor/*' \
-    2> /dev/null | sort -u
+  {
+    find web/src web/scripts web/e2e internal .github deploy \
+      -type f \( \
+      -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \
+      -o -name '*.css' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' \
+      \) \
+      ! -path '*/node_modules/*' \
+      ! -path '*/dist/*' \
+      ! -path '*/vendor/*' \
+      2> /dev/null
+  } | sort -u
 }
 
 format_prettier() {
@@ -141,9 +143,54 @@ format_clang() {
   fi
 }
 
+collapse_excess_blank_lines() {
+  echo "format: collapse excess blank lines..."
+  python3 - "$ROOT" << 'PY'
+import os
+import re
+import sys
+
+root = sys.argv[1]
+skip_dirs = {".git", "vendor", "node_modules", "var", ".cache", "bin"}
+skip_suffixes = (".pb.go", ".sql.go", ".min.js")
+extensions = {
+    ".go", ".sh", ".lua", ".js", ".ts", ".tsx", ".mjs",
+    ".yaml", ".yml", ".md", ".mdc", ".css", ".json",
+}
+pattern = re.compile(r"\n(?:[ \t]*\n){2,}")
+changed = 0
+
+for dirpath, dirnames, filenames in os.walk(root):
+    dirnames[:] = [d for d in dirnames if d not in skip_dirs]
+    for name in filenames:
+        if name.endswith(skip_suffixes):
+            continue
+        ext = os.path.splitext(name)[1]
+        if ext not in extensions:
+            continue
+        path = os.path.join(dirpath, name)
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                text = handle.read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        updated = pattern.sub("\n\n", text)
+        if not text.endswith("\n") and updated.endswith("\n"):
+            updated = updated.rstrip("\n")
+        if updated == text:
+            continue
+        with open(path, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(updated)
+        changed += 1
+
+print(f"format: collapsed blank runs in {changed} files")
+PY
+}
+
 format_go
 format_shell
 format_prettier
+collapse_excess_blank_lines
 format_clang
 
 if [[ "$CHECK" -eq 1 ]]; then

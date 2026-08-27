@@ -1,6 +1,5 @@
 package ingestion
 
-// ConversionDatacenterIPChecker classifies IPs for processor conversion smart reject.
 type ConversionDatacenterIPChecker struct {
 	geo GeoProvider
 	dc  *DCASNTable

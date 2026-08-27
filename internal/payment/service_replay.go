@@ -16,8 +16,8 @@ type DisputeListItem struct {
 	ProviderDisputeID string
 }
 
-func (service *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]DisputeListItem, int64, error) {
-	q := db.New(service.pool)
+func (s *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]DisputeListItem, int64, error) {
+	q := db.New(s.pool)
 	var cust pgtype.UUID
 	if customerID != nil && *customerID != uuid.Nil {
 		cust = pgtype.UUID{Bytes: *customerID, Valid: true}
@@ -61,7 +61,7 @@ func (service *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID,
 	return items, total, nil
 }
 
-func (service *Service) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {
+func (s *Service) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {
 	if provider != "stripe" {
 		return "", fmt.Errorf("%w: unsupported provider %q", ErrInvalidRequestBody, provider)
 	}
@@ -69,7 +69,7 @@ func (service *Service) ReplayWebhook(ctx context.Context, provider, providerEve
 		return "", ErrInvalidRequestBody
 	}
 
-	q := db.New(service.pool)
+	q := db.New(s.pool)
 	ev, err := q.GetWebhookEvent(ctx, db.GetWebhookEventParams{
 		Provider:        provider,
 		ProviderEventID: providerEventID,
@@ -98,13 +98,13 @@ func (service *Service) ReplayWebhook(ctx context.Context, provider, providerEve
 		event.Type = ev.EventType
 	}
 
-	if err := service.dispatchStripeWebhook(ctx, event, body); err != nil {
+	if err := s.dispatchStripeWebhook(ctx, event, body); err != nil {
 		return "", err
 	}
 	return "processed", nil
 }
 
-func (service *Service) dispatchStripeWebhook(ctx context.Context, event stripeEvent, body []byte) error {
+func (s *Service) dispatchStripeWebhook(ctx context.Context, event stripeEvent, body []byte) error {
 	switch event.Type {
 	case "refund.created", "refund.updated", "refund.failed":
 		providerRefundID := event.Data.Object.ID
@@ -113,13 +113,13 @@ func (service *Service) dispatchStripeWebhook(ctx context.Context, event stripeE
 		if event.Type == "refund.failed" {
 			refundStatus = "failed"
 		}
-		return service.ProcessStripeRefundWebhook(
+		return s.ProcessStripeRefundWebhook(
 			ctx, event.ID, event.Type, body, providerRefundID, paymentIntentRef,
 			StripeAmountToMicro(event.Data.Object.Amount), refundStatus,
 		)
 	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed",
 		"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated":
-		return service.ProcessStripeDisputeWebhook(
+		return s.ProcessStripeDisputeWebhook(
 			ctx, event.ID, event.Type, body, event.Data.Object.ID, event.Data.Object.PaymentIntent,
 			StripeAmountToMicro(event.Data.Object.Amount), event.Data.Object.Status,
 		)
@@ -128,7 +128,7 @@ func (service *Service) dispatchStripeWebhook(ctx context.Context, event stripeE
 		if providerRef == "" {
 			return fmt.Errorf("%w: stripe event missing provider ref", ErrInvalidRequestBody)
 		}
-		return service.ProcessStripeWebhook(
+		return s.ProcessStripeWebhook(
 			ctx, event.ID, event.Type, body, providerRef,
 			StripeAmountToMicro(event.Data.Object.Amount), string(body),
 		)

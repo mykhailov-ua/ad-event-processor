@@ -51,28 +51,28 @@ HAVING clicks > 0 AND spend_micro = 0
 ORDER BY clicks DESC
 LIMIT ? OFFSET ?`
 
-func (reports *ReportsHTTPHandlers) registerCostCoverageReport(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	permAny := reports.RequireAnyPermission
+func (h *ReportsHTTPHandlers) registerCostCoverageReport(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	permAny := h.RequireAnyPermission
 	if permAny == nil {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	perms := []string{"campaigns:read", "campaigns:read:masked"}
-	mux.HandleFunc("GET /api/v1/reports/cost-sync-coverage", limit(permAny(perms, reports.wrapReport("cost-sync-coverage", reports.getCostSyncCoverageReport))))
+	mux.HandleFunc("GET /api/v1/reports/cost-sync-coverage", limit(permAny(perms, h.wrapReport("cost-sync-coverage", h.getCostSyncCoverageReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -80,21 +80,21 @@ func (reports *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWri
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: reports.reportFreshness(r.Context())})
+		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: h.reportFreshness(r.Context())})
 		return
 	}
 
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryCostCoverageRows(chCtx, reports.CHQuery, reports.Pool, customerID, campaignIDs, from, to, page.Limit, page.Offset)
+	rows, total, err := queryCostCoverageRows(clickhouseCtx, h.ClickHouseQuery, h.Pool, customerID, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	out := make([]map[string]any, 0, len(rows))
@@ -114,32 +114,32 @@ func (reports *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWri
 	}
 	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
 		Rows:       out,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryCostCoverageRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	pool *pgxpool.Pool,
 	customerID uuid.UUID,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]CostCoverageRowDTO, int64, error) {
-	if chQuery == nil {
+	if clickhouseQuery == nil {
 		return nil, 0, fmt.Errorf("clickhouse not configured")
 	}
 	var total int64
-	if err := chQuery.QueryRow(ctx, costCoverageCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
+	if err := clickhouseQuery.QueryRow(ctx, costCoverageCountQuery, campaignIDs, from, to).Scan(&total); err != nil {
 		return nil, 0, err
 	}
-	chRows, err := chQuery.Query(ctx, costCoverageQuery, campaignIDs, from, to, limit, offset)
+	clickhouseRows, err := clickhouseQuery.Query(ctx, costCoverageQuery, campaignIDs, from, to, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	defer func() { _ = chRows.Close() }()
+	defer func() { _ = clickhouseRows.Close() }()
 
 	syncStatusByNetwork := map[string]string{}
 	if pool != nil {
@@ -147,10 +147,10 @@ func queryCostCoverageRows(
 	}
 
 	out := make([]CostCoverageRowDTO, 0, limit)
-	for chRows.Next() {
+	for clickhouseRows.Next() {
 		var campaignID uuid.UUID
 		var clicks, spendMicro int64
-		if err := chRows.Scan(&campaignID, &clicks, &spendMicro); err != nil {
+		if err := clickhouseRows.Scan(&campaignID, &clicks, &spendMicro); err != nil {
 			return nil, 0, err
 		}
 		row := CostCoverageRowDTO{
@@ -166,7 +166,7 @@ func queryCostCoverageRows(
 		}
 		out = append(out, row)
 	}
-	return out, total, chRows.Err()
+	return out, total, clickhouseRows.Err()
 }
 
 func latestCostSyncStatusByNetwork(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) map[string]string {
@@ -197,5 +197,5 @@ func queryCostCoverageExportRows(
 	from, to time.Time,
 	limit, offset int,
 ) ([]CostCoverageRowDTO, int64, error) {
-	return queryCostCoverageRows(ctx, deps.CHQuery, deps.Pool, customerID, campaignIDs, from, to, limit, offset)
+	return queryCostCoverageRows(ctx, deps.ClickHouseQuery, deps.Pool, customerID, campaignIDs, from, to, limit, offset)
 }

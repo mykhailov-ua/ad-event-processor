@@ -104,12 +104,12 @@ func (s *Service) StartAutomationWorker(ctx context.Context, intervalMinutes int
 	if s == nil || s.cfg == nil || !s.cfg.Management.AutomationRulesEnabled {
 		return
 	}
-	ch := s.CHQuery()
-	if ch == nil {
+	clickhouseQuery := s.ClickHouseQuery()
+	if clickhouseQuery == nil {
 		return
 	}
 	interval := time.Duration(intervalMinutes) * time.Minute
-	w := automation.NewWorker(s.pool, ch, s.newAutomationExecutor(), interval)
+	w := automation.NewWorker(s.pool, clickhouseQuery, s.newAutomationExecutor(), interval)
 	s.StartBackgroundWorker(func() {
 		w.Start(ctx)
 	})

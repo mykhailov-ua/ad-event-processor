@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# Return 0 when garble release build may proceed; 1 when GARBLE_SEED is required but missing.
 release_garble_seed_ok() {
   if [[ "${RELEASE_GARBLE:-1}" != "1" ]]; then
     return 0
@@ -15,7 +14,6 @@ release_garble_seed_ok() {
   return 1
 }
 
-# Return 0 when release asset seal salt is present; 1 when required but missing.
 release_asset_seal_salt_ok() {
   if [[ "${RELEASE_GARBLE:-1}" != "1" && "${RELEASE_ASSET_SEAL_REQUIRED:-}" != "1" ]]; then
     return 0

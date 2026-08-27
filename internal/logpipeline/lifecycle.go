@@ -26,7 +26,7 @@ func compactingPathFor(hotPath string) string {
 	return hotPath + compactingSuffix
 }
 
-func (store *LocalTierStore) ClaimHot(_ context.Context, obj TierObject) (TierObject, error) {
+func (st *LocalTierStore) ClaimHot(_ context.Context, obj TierObject) (TierObject, error) {
 	dstPath := compactingPathFor(obj.Path)
 	if err := os.Rename(obj.Path, dstPath); err != nil {
 		if os.IsNotExist(err) {
@@ -46,20 +46,20 @@ func (store *LocalTierStore) ClaimHot(_ context.Context, obj TierObject) (TierOb
 	}, nil
 }
 
-func (store *LocalTierStore) RollbackHot(_ context.Context, obj TierObject) error {
+func (st *LocalTierStore) RollbackHot(_ context.Context, obj TierObject) error {
 	if !strings.HasSuffix(obj.Path, compactingSuffix) {
 		return nil
 	}
 	hotName := hotKeyFromCompacting(filepath.Base(obj.Path))
-	hotPath := filepath.Join(store.SourceDir, hotName)
+	hotPath := filepath.Join(st.SourceDir, hotName)
 	if err := os.Rename(obj.Path, hotPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return nil
 }
 
-func (store *LocalTierStore) ListStuckCompacting(_ context.Context) ([]TierObject, error) {
-	entries, err := os.ReadDir(store.SourceDir)
+func (st *LocalTierStore) ListStuckCompacting(_ context.Context) ([]TierObject, error) {
+	entries, err := os.ReadDir(st.SourceDir)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (store *LocalTierStore) ListStuckCompacting(_ context.Context) ([]TierObjec
 		}
 		objects = append(objects, TierObject{
 			Key:     name,
-			Path:    filepath.Join(store.SourceDir, name),
+			Path:    filepath.Join(st.SourceDir, name),
 			ModTime: info.ModTime(),
 			Size:    info.Size(),
 		})
@@ -86,7 +86,7 @@ func (store *LocalTierStore) ListStuckCompacting(_ context.Context) ([]TierObjec
 	return objects, nil
 }
 
-func (store *LocalTierStore) RemoveCompacting(_ context.Context, obj TierObject) error {
+func (st *LocalTierStore) RemoveCompacting(_ context.Context, obj TierObject) error {
 	if obj.Path == "" {
 		return fmt.Errorf("empty compacting path")
 	}

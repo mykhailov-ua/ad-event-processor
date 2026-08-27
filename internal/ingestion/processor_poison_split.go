@@ -8,17 +8,17 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
-func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {
+func (c *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {
 	if len(batch) == 0 {
 		return nil, nil
 	}
 
-	storeCtx, cancel := context.WithTimeout(ctx, consumer.writeTimeout)
+	storeCtx, cancel := context.WithTimeout(ctx, c.writeTimeout)
 	if len(msgIDs) > 0 {
 		token := fmt.Sprintf("%s_%s_%d", msgIDs[0], msgIDs[len(msgIDs)-1], len(msgIDs))
 		storeCtx = context.WithValue(storeCtx, domain.DeduplicationTokenKey, token)
 	}
-	err := consumer.store.StoreBatch(storeCtx, batch)
+	err := c.store.StoreBatch(storeCtx, batch)
 	cancel()
 
 	if err == nil {
@@ -42,7 +42,7 @@ func (consumer *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*do
 	}
 
 	mid := len(batch) / 2
-	leftOK, leftFail := consumer.splitStoreBatch(ctx, batch[:mid], msgIDs[:mid], baseIdx)
-	rightOK, rightFail := consumer.splitStoreBatch(ctx, batch[mid:], msgIDs[mid:], baseIdx+mid)
+	leftOK, leftFail := c.splitStoreBatch(ctx, batch[:mid], msgIDs[:mid], baseIdx)
+	rightOK, rightFail := c.splitStoreBatch(ctx, batch[mid:], msgIDs[mid:], baseIdx+mid)
 	return append(leftOK, rightOK...), append(leftFail, rightFail...)
 }

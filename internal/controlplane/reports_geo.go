@@ -35,7 +35,7 @@ type GeoROIReportResponse struct {
 	NextCursor string           `json:"next_cursor,omitempty"`
 }
 
-const geoCountryExpr = chDimCountryExpr
+const geoCountryExpr = clickhouseDimCountryExpr
 
 const geoROIEventQuery = `
 SELECT
@@ -61,7 +61,7 @@ FROM (
  UNION ALL
  SELECT
  c.campaign_id,
- coalesce(` + chDimCountryExpr + `, 'ZZ') AS country,
+ coalesce(` + clickhouseDimCountryExpr + `, 'ZZ') AS country,
  toUInt64(0) AS impressions,
  count() AS clicks,
  toUInt64(0) AS conversions,
@@ -114,24 +114,24 @@ type campaignSpendTotals struct {
 	RevenueMicro int64
 }
 
-func (reports *ReportsHTTPHandlers) registerGeoROI(mux *http.ServeMux) {
-	limit := reports.ApplyRateLimit
-	perm := reports.RequirePermission
-	mux.HandleFunc("GET /api/v1/reports/geo-roi", limit(perm("campaigns:read", reports.wrapReport("geo-roi", reports.getGeoROIReport))))
+func (h *ReportsHTTPHandlers) registerGeoROI(mux *http.ServeMux) {
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	mux.HandleFunc("GET /api/v1/reports/geo-roi", limit(perm("campaigns:read", h.wrapReport("geo-roi", h.getGeoROIReport))))
 }
 
-func (reports *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *http.Request) {
-	customerID, ok := reports.resolveReportCustomerID(w, r)
+func (h *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *http.Request) {
+	customerID, ok := h.resolveReportCustomerID(w, r)
 	if !ok {
 		return
 	}
-	if reports.CHQuery == nil {
+	if h.ClickHouseQuery == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "CLICKHOUSE_UNAVAILABLE", "clickhouse not configured")
 		return
 	}
 	from, to, err := parseReportRange(r)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	page, err := coldpath.ParseCursorPagination(r, 50, 1000)
@@ -139,30 +139,30 @@ func (reports *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *ht
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid cursor")
 		return
 	}
-	campaignIDs, err := listCustomerCampaignIDs(r.Context(), reports.Pool, customerID)
+	campaignIDs, err := listCustomerCampaignIDs(r.Context(), h.Pool, customerID)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if len(campaignIDs) == 0 {
 		httpresponse.JSON(w, http.StatusOK, GeoROIReportResponse{
 			Rows:      []GeoROIRowDTO{},
-			Freshness: reports.reportFreshness(r.Context()),
+			Freshness: h.reportFreshness(r.Context()),
 		})
 		return
 	}
-	chCtx, cancel := context.WithTimeout(r.Context(), reportCHQueryTimeout)
+	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
 	defer cancel()
-	rows, total, err := queryGeoROIRows(chCtx, reports.CHQuery, campaignIDs, from, to, page.Limit, page.Offset)
+	rows, total, err := queryGeoROIRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, from, to, page.Limit, page.Offset)
 	if err != nil {
-		reports.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	if parseComparePrevious(r) {
 		prevFrom, prevTo := previousReportRange(from, to)
-		prevRows, _, perr := queryGeoROIRows(chCtx, reports.CHQuery, campaignIDs, prevFrom, prevTo, page.Limit, page.Offset)
+		prevRows, _, perr := queryGeoROIRows(clickhouseCtx, h.ClickHouseQuery, campaignIDs, prevFrom, prevTo, page.Limit, page.Offset)
 		if perr != nil {
-			reports.writeServiceError(w, perr)
+			h.writeServiceError(w, perr)
 			return
 		}
 		attachGeoCompareDeltas(rows, prevRows)
@@ -173,22 +173,22 @@ func (reports *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *ht
 	}
 	httpresponse.JSON(w, http.StatusOK, GeoROIReportResponse{
 		Rows:       rows,
-		Freshness:  reports.reportFreshness(r.Context()),
+		Freshness:  h.reportFreshness(r.Context()),
 		NextCursor: nextCursor,
 	})
 }
 
 func queryGeoROIRows(
 	ctx context.Context,
-	chQuery *database.CHQuery,
+	clickhouseQuery *database.CHQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
 ) ([]GeoROIRowDTO, int64, error) {
-	if chQuery == nil || len(campaignIDs) == 0 {
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}
-	rows, err := chQuery.Query(ctx, geoROIEventQuery,
+	rows, err := clickhouseQuery.Query(ctx, geoROIEventQuery,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
 		campaignIDs, from, to,
@@ -220,7 +220,7 @@ func queryGeoROIRows(
 	}
 
 	spendByCampaign := make(map[string]campaignSpendTotals, len(campaignIDs))
-	spendRows, err := chQuery.Query(ctx, geoROICampaignSpendQuery, campaignIDs, from, to)
+	spendRows, err := clickhouseQuery.Query(ctx, geoROICampaignSpendQuery, campaignIDs, from, to)
 	if err != nil {
 		return nil, 0, fmt.Errorf("geo roi spend query: %w", err)
 	}

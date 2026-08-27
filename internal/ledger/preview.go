@@ -33,18 +33,18 @@ type InvoiceLineDTO struct {
 	EntryCount  int32  `json:"entry_count"`
 }
 
-func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*InvoicePreview, error) {
+func (s *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID, billingMonth time.Time) (*InvoicePreview, error) {
 	if err := validateBillingMonth(billingMonth); err != nil {
 		return nil, err
 	}
-	if err := CheckLedgerBalanceInvariant(ctx, service.pool, customerID); err != nil {
+	if err := CheckLedgerBalanceInvariant(ctx, s.pool, customerID); err != nil {
 		return nil, err
 	}
 
 	monthStart := truncateMonthUTC(billingMonth)
 	monthEnd := monthStart.AddDate(0, 1, 0)
 
-	cust, err := service.queries.GetCustomerBalance(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
+	cust, err := s.queries.GetCustomerBalance(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrCustomerNotFound
@@ -52,12 +52,12 @@ func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID
 		return nil, err
 	}
 
-	ledgerSum, err := service.queries.SumCustomerLedgerTotal(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
+	ledgerSum, err := s.queries.SumCustomerLedgerTotal(ctx, pgtype.UUID{Bytes: customerID, Valid: true})
 	if err != nil {
 		return nil, err
 	}
 
-	spendMicro, err := service.queries.SumCustomerSpendInWindow(ctx, db.SumCustomerSpendInWindowParams{
+	spendMicro, err := s.queries.SumCustomerSpendInWindow(ctx, db.SumCustomerSpendInWindowParams{
 		CustomerID:  pgtype.UUID{Bytes: customerID, Valid: true},
 		CreatedAt:   pgTimestamp(monthStart),
 		CreatedAt_2: pgTimestamp(monthEnd),
@@ -66,7 +66,7 @@ func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID
 		return nil, err
 	}
 
-	lines, err := service.queries.SumCustomerLedgerByTypeInWindow(ctx, db.SumCustomerLedgerByTypeInWindowParams{
+	lines, err := s.queries.SumCustomerLedgerByTypeInWindow(ctx, db.SumCustomerLedgerByTypeInWindowParams{
 		CustomerID:  pgtype.UUID{Bytes: customerID, Valid: true},
 		CreatedAt:   pgTimestamp(monthStart),
 		CreatedAt_2: pgTimestamp(monthEnd),
@@ -75,8 +75,8 @@ func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID
 		return nil, err
 	}
 
-	profile := service.resolveTaxProfile(ctx, service.queries, customerID, cust.Currency)
-	taxMicro, rateBPS := service.tax.Compute(spendMicro, profile)
+	profile := s.resolveTaxProfile(ctx, s.queries, customerID, cust.Currency)
+	taxMicro, rateBPS := s.tax.Compute(spendMicro, profile)
 	totalMicro := spendMicro + taxMicro
 
 	out := &InvoicePreview{
@@ -101,13 +101,13 @@ func (service *Service) PreviewInvoice(ctx context.Context, customerID uuid.UUID
 	return out, nil
 }
 
-func (service *Service) VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error {
-	tag, err := service.queries.VoidInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
+func (s *Service) VoidInvoice(ctx context.Context, invoiceID uuid.UUID) error {
+	tag, err := s.queries.VoidInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
 	if err != nil {
 		return err
 	}
 	if tag == 0 {
-		inv, lookupErr := service.queries.GetInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
+		inv, lookupErr := s.queries.GetInvoice(ctx, pgtype.UUID{Bytes: invoiceID, Valid: true})
 		if lookupErr != nil {
 			if errors.Is(lookupErr, pgx.ErrNoRows) {
 				return ErrInvoiceNotFound

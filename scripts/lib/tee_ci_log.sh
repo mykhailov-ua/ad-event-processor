@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Tee a command transcript under CI_ARTIFACT_DIR (default var/ci/).
-
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

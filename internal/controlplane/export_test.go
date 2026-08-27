@@ -41,28 +41,28 @@ func ExportedEvictStale(entries map[string]*ExportedRateLimiterEntry, now time.T
 	}
 }
 
-var chLagCacheOnce struct {
+var clickhouseLagCacheOnce struct {
 	mu      sync.Mutex
 	lag     time.Duration
 	updated time.Time
 }
 
-func ExportedCHLagWithCache(probe func() (time.Duration, error)) (time.Duration, error) {
-	chLagCacheOnce.mu.Lock()
-	if time.Since(chLagCacheOnce.updated) < chLagCacheTTL {
-		lag := chLagCacheOnce.lag
-		chLagCacheOnce.mu.Unlock()
+func ExportedClickHouseLagWithCache(probe func() (time.Duration, error)) (time.Duration, error) {
+	clickhouseLagCacheOnce.mu.Lock()
+	if time.Since(clickhouseLagCacheOnce.updated) < clickhouseLagCacheTTL {
+		lag := clickhouseLagCacheOnce.lag
+		clickhouseLagCacheOnce.mu.Unlock()
 		return lag, nil
 	}
-	chLagCacheOnce.mu.Unlock()
+	clickhouseLagCacheOnce.mu.Unlock()
 
 	lag, err := probe()
 	if err != nil {
 		return 0, err
 	}
-	chLagCacheOnce.mu.Lock()
-	chLagCacheOnce.lag = lag
-	chLagCacheOnce.updated = time.Now()
-	chLagCacheOnce.mu.Unlock()
+	clickhouseLagCacheOnce.mu.Lock()
+	clickhouseLagCacheOnce.lag = lag
+	clickhouseLagCacheOnce.updated = time.Now()
+	clickhouseLagCacheOnce.mu.Unlock()
 	return lag, nil
 }

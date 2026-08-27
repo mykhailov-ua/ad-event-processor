@@ -5,12 +5,10 @@ import (
 	"unicode"
 )
 
-// MacroMapper applies static token maps to click URL query params.
 type MacroMapper struct {
 	bySource map[string]MacroEntry
 }
 
-// NewMacroMapper builds a mapper from macro entries.
 func NewMacroMapper(entries []MacroEntry) *MacroMapper {
 	by := make(map[string]MacroEntry, len(entries))
 	for _, e := range entries {
@@ -19,7 +17,6 @@ func NewMacroMapper(entries []MacroEntry) *MacroMapper {
 	return &MacroMapper{bySource: by}
 }
 
-// ApplyQueryParams rewrites query keys from mapped token values and records unmapped macros.
 func (m *MacroMapper) ApplyQueryParams(raw map[string]string) (map[string]string, []Warning, string) {
 	if m == nil {
 		return raw, nil, ""

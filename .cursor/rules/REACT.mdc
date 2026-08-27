@@ -1,6 +1,11 @@
 ---
 description: React render hot path, V8 GC, heap, state shape, list performance
-globs: web/src/pages/**, web/src/ui/**, deploy/vendor/*_MILESTONE.md, scripts/ci/admin_web.sh, scripts/ci/check_ui*.sh
+globs:
+  - web/src/pages/**
+  - web/src/ui/**
+  - deploy/vendor/*_MILESTONE.md
+  - scripts/ci/admin_web.sh
+  - scripts/ci/check_ui*.sh
 alwaysApply: false
 ---
 

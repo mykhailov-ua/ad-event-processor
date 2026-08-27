@@ -39,13 +39,13 @@ func NewServiceWithOptions(pool *pgxpool.Pool, cfg Config, breakers Breakers, op
 	}
 }
 
-func (service *Service) GetNotification(ctx context.Context, notificationID string) (Notification, error) {
+func (s *Service) GetNotification(ctx context.Context, notificationID string) (Notification, error) {
 	id, err := pgUUIDFromString(notificationID)
 	if err != nil {
 		return Notification{}, err
 	}
 
-	row, err := service.queries.GetNotification(ctx, id)
+	row, err := s.queries.GetNotification(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Notification{}, ErrNotificationNotFound
@@ -56,10 +56,10 @@ func (service *Service) GetNotification(ctx context.Context, notificationID stri
 	return notificationFromDB(row), nil
 }
 
-func (service *Service) findActiveByDedupKey(ctx context.Context, dedupKey string) (db.NotifierNotification, bool, error) {
-	existing, err := service.queries.FindActiveNotificationByDedupKey(ctx, db.FindActiveNotificationByDedupKeyParams{
+func (s *Service) findActiveByDedupKey(ctx context.Context, dedupKey string) (db.NotifierNotification, bool, error) {
+	existing, err := s.queries.FindActiveNotificationByDedupKey(ctx, db.FindActiveNotificationByDedupKeyParams{
 		DedupKey: pgtype.Text{String: dedupKey, Valid: true},
-		Column2:  int64(service.options.dedupCooldown().Seconds()),
+		Column2:  int64(s.options.dedupCooldown().Seconds()),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

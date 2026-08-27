@@ -302,13 +302,13 @@ type DashboardsHTTPHandlers struct {
 	EdgeMetricsReader    func(context.Context) (EdgeMetricsPanelDTO, error)
 }
 
-func (dashboards *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
-	if dashboards == nil {
+func (h *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil {
 		return
 	}
-	limit := dashboards.ApplyRateLimit
-	perm := dashboards.RequirePermission
-	permAny := dashboards.RequireAnyPermission
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
+	permAny := h.RequireAnyPermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -319,25 +319,25 @@ func (dashboards *DashboardsHTTPHandlers) Register(mux *http.ServeMux) {
 		permAny = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/dashboards/operator", limit(perm("shards:read", dashboards.getOperatorDashboard)))
-	if dashboards.CampaignDashboard != nil {
-		mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, dashboards.getCampaignDashboard)))
+	mux.HandleFunc("GET /api/v1/dashboards/operator", limit(perm("shards:read", h.getOperatorDashboard)))
+	if h.CampaignDashboard != nil {
+		mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaignDashboard)))
 	} else {
-		mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(perm("campaigns:read", dashboards.getCampaignDashboard)))
+		mux.HandleFunc("GET /api/v1/dashboards/campaign/{id}", limit(perm("campaigns:read", h.getCampaignDashboard)))
 	}
-	if dashboards.BuyerPortfolio != nil {
-		mux.HandleFunc("GET /api/v1/dashboards/buyer", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, dashboards.getBuyerDashboard)))
+	if h.BuyerPortfolio != nil {
+		mux.HandleFunc("GET /api/v1/dashboards/buyer", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.getBuyerDashboard)))
 	}
-	if dashboards.RoleDashboards != nil {
-		mux.HandleFunc("GET /api/v1/dashboards/adops", limit(perm("campaigns:read", dashboards.getAdOpsDashboard)))
-		mux.HandleFunc("GET /api/v1/dashboards/cfo", limit(perm("customers:read", dashboards.getCFODashboard)))
-		mux.HandleFunc("GET /api/v1/dashboards/accountant", limit(perm("customers:read", dashboards.getAccountantDashboard)))
-		mux.HandleFunc("GET /api/v1/dashboards/fraud", limit(perm("audit:read", dashboards.getFraudDashboard)))
+	if h.RoleDashboards != nil {
+		mux.HandleFunc("GET /api/v1/dashboards/adops", limit(perm("campaigns:read", h.getAdOpsDashboard)))
+		mux.HandleFunc("GET /api/v1/dashboards/cfo", limit(perm("customers:read", h.getCFODashboard)))
+		mux.HandleFunc("GET /api/v1/dashboards/accountant", limit(perm("customers:read", h.getAccountantDashboard)))
+		mux.HandleFunc("GET /api/v1/dashboards/fraud", limit(perm("audit:read", h.getFraudDashboard)))
 	}
 }
 
-func (dashboards *DashboardsHTTPHandlers) getBuyerDashboard(w http.ResponseWriter, r *http.Request) {
-	if dashboards.BuyerPortfolio == nil {
+func (h *DashboardsHTTPHandlers) getBuyerDashboard(w http.ResponseWriter, r *http.Request) {
+	if h.BuyerPortfolio == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "buyer dashboard unavailable")
 		return
 	}
@@ -351,10 +351,10 @@ func (dashboards *DashboardsHTTPHandlers) getBuyerDashboard(w http.ResponseWrite
 		}
 		customerID = id
 	}
-	if dashboards.ResolveCustomerID != nil {
-		resolved, err := dashboards.ResolveCustomerID(r, nonNilUUID(customerID))
+	if h.ResolveCustomerID != nil {
+		resolved, err := h.ResolveCustomerID(r, nonNilUUID(customerID))
 		if err != nil {
-			dashboards.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return
 		}
 		customerID = resolved
@@ -364,23 +364,23 @@ func (dashboards *DashboardsHTTPHandlers) getBuyerDashboard(w http.ResponseWrite
 		return
 	}
 
-	resp, err := dashboards.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
+	resp, err := h.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
 	if err != nil {
-		dashboards.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
-	if dashboards.WriteServiceError != nil {
-		dashboards.WriteServiceError(w, err)
+func (h *DashboardsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+	if h.WriteServiceError != nil {
+		h.WriteServiceError(w, err)
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", err.Error())
 }
 
-func (dashboards *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Request) {
+func (h *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Request) {
 	campaignIDStr := r.PathValue("id")
 	campaignID, err := uuid.Parse(campaignIDStr)
 	if err != nil {
@@ -388,10 +388,10 @@ func (dashboards *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWr
 		return
 	}
 
-	if dashboards.CampaignDashboard != nil {
-		resp, err := dashboards.CampaignDashboard.GetCampaignDashboard(r.Context(), campaignID)
+	if h.CampaignDashboard != nil {
+		resp, err := h.CampaignDashboard.GetCampaignDashboard(r.Context(), campaignID)
 		if err != nil {
-			dashboards.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return
 		}
 		httpresponse.JSON(w, http.StatusOK, resp)
@@ -425,15 +425,15 @@ func (dashboards *DashboardsHTTPHandlers) getCampaignDashboard(w http.ResponseWr
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *http.Request) {
+func (h *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *http.Request) {
 	resp := OperatorDashboardDTO{
 		Period: PeriodDTO{
 			From: time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339),
 			To:   time.Now().UTC().Format(time.RFC3339),
 		},
 	}
-	if dashboards != nil && dashboards.XDPStatsReader != nil {
-		if snap, err := dashboards.XDPStatsReader(r.Context()); err == nil {
+	if h != nil && h.XDPStatsReader != nil {
+		if snap, err := h.XDPStatsReader(r.Context()); err == nil {
 			resp.XDP = XDPPanelDTO{
 				UpdatedAt:     snap.UpdatedAt.UTC().Format(time.RFC3339),
 				Pass:          snap.Pass,
@@ -443,15 +443,15 @@ func (dashboards *DashboardsHTTPHandlers) getOperatorDashboard(w http.ResponseWr
 			}
 		}
 	}
-	if dashboards != nil && dashboards.EdgeMetricsReader != nil {
-		if edge, err := dashboards.EdgeMetricsReader(r.Context()); err == nil {
+	if h != nil && h.EdgeMetricsReader != nil {
+		if edge, err := h.EdgeMetricsReader(r.Context()); err == nil {
 			resp.Edge = edge
 		}
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) resolveRoleCustomerID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+func (h *DashboardsHTTPHandlers) resolveRoleCustomerID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	var customerID uuid.UUID
 	if custStr := r.URL.Query().Get("customer_id"); custStr != "" {
 		id, err := uuid.Parse(custStr)
@@ -461,10 +461,10 @@ func (dashboards *DashboardsHTTPHandlers) resolveRoleCustomerID(w http.ResponseW
 		}
 		customerID = id
 	}
-	if dashboards.ResolveCustomerID != nil {
-		resolved, err := dashboards.ResolveCustomerID(r, nonNilUUID(customerID))
+	if h.ResolveCustomerID != nil {
+		resolved, err := h.ResolveCustomerID(r, nonNilUUID(customerID))
 		if err != nil {
-			dashboards.writeServiceError(w, err)
+			h.writeServiceError(w, err)
 			return uuid.Nil, false
 		}
 		customerID = resolved
@@ -476,56 +476,56 @@ func (dashboards *DashboardsHTTPHandlers) resolveRoleCustomerID(w http.ResponseW
 	return customerID, true
 }
 
-func (dashboards *DashboardsHTTPHandlers) getAdOpsDashboard(w http.ResponseWriter, r *http.Request) {
-	if dashboards.RoleDashboards == nil {
+func (h *DashboardsHTTPHandlers) getAdOpsDashboard(w http.ResponseWriter, r *http.Request) {
+	if h.RoleDashboards == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "adops dashboard unavailable")
 		return
 	}
-	customerID, ok := dashboards.resolveRoleCustomerID(w, r)
+	customerID, ok := h.resolveRoleCustomerID(w, r)
 	if !ok {
 		return
 	}
-	resp, err := dashboards.RoleDashboards.GetAdOpsDashboard(r.Context(), customerID)
+	resp, err := h.RoleDashboards.GetAdOpsDashboard(r.Context(), customerID)
 	if err != nil {
-		dashboards.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) getCFODashboard(w http.ResponseWriter, r *http.Request) {
-	if dashboards.RoleDashboards == nil {
+func (h *DashboardsHTTPHandlers) getCFODashboard(w http.ResponseWriter, r *http.Request) {
+	if h.RoleDashboards == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "cfo dashboard unavailable")
 		return
 	}
-	customerID, ok := dashboards.resolveRoleCustomerID(w, r)
+	customerID, ok := h.resolveRoleCustomerID(w, r)
 	if !ok {
 		return
 	}
-	resp, err := dashboards.RoleDashboards.GetCFODashboard(r.Context(), customerID)
+	resp, err := h.RoleDashboards.GetCFODashboard(r.Context(), customerID)
 	if err != nil {
-		dashboards.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) getAccountantDashboard(w http.ResponseWriter, r *http.Request) {
-	if dashboards.RoleDashboards == nil {
+func (h *DashboardsHTTPHandlers) getAccountantDashboard(w http.ResponseWriter, r *http.Request) {
+	if h.RoleDashboards == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "accountant dashboard unavailable")
 		return
 	}
-	customerID, ok := dashboards.resolveRoleCustomerID(w, r)
+	customerID, ok := h.resolveRoleCustomerID(w, r)
 	if !ok {
 		return
 	}
-	resp, err := dashboards.RoleDashboards.GetAccountantDashboard(r.Context(), customerID)
+	resp, err := h.RoleDashboards.GetAccountantDashboard(r.Context(), customerID)
 	if err != nil {
-		dashboards.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
-	if dashboards.ReportJobs != nil {
-		jobs := dashboards.ReportJobs.ListJobsByCustomer(r.Context(), customerID.String(), 8)
+	if h.ReportJobs != nil {
+		jobs := h.ReportJobs.ListJobsByCustomer(r.Context(), customerID.String(), 8)
 		resp.ExportJobs = make([]ExportJobStatusDTO, 0, len(jobs))
 		for _, job := range jobs {
 			resp.ExportJobs = append(resp.ExportJobs, ExportJobStatusDTO{
@@ -538,18 +538,18 @@ func (dashboards *DashboardsHTTPHandlers) getAccountantDashboard(w http.Response
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func (dashboards *DashboardsHTTPHandlers) getFraudDashboard(w http.ResponseWriter, r *http.Request) {
-	if dashboards.RoleDashboards == nil {
+func (h *DashboardsHTTPHandlers) getFraudDashboard(w http.ResponseWriter, r *http.Request) {
+	if h.RoleDashboards == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "fraud dashboard unavailable")
 		return
 	}
-	customerID, ok := dashboards.resolveRoleCustomerID(w, r)
+	customerID, ok := h.resolveRoleCustomerID(w, r)
 	if !ok {
 		return
 	}
-	resp, err := dashboards.RoleDashboards.GetFraudDashboard(r.Context(), customerID)
+	resp, err := h.RoleDashboards.GetFraudDashboard(r.Context(), customerID)
 	if err != nil {
-		dashboards.writeServiceError(w, err)
+		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)

@@ -2,13 +2,11 @@ package migrationsource
 
 import "fmt"
 
-// Adapter parses a foreign export payload into a NormalizedBundle.
 type Adapter interface {
 	Kind() SourceKind
 	Parse(payload []byte) (NormalizedBundle, error)
 }
 
-// Parse dispatches payload parsing by source kind.
 func Parse(kind SourceKind, payload []byte) (NormalizedBundle, error) {
 	switch kind {
 	case SourceKindKeitaroJSON:
