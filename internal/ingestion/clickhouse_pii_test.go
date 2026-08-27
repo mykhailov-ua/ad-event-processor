@@ -31,7 +31,7 @@ func TestClickHouseStore_StoreBatch_hashesPII(t *testing.T) {
 		},
 	}
 
-	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetPIIHasher(hasher)
 
 	rawIP := "203.0.113.10"
@@ -82,7 +82,7 @@ func TestClickHouseStore_StoreBatch_fraudEventUserIDHash(t *testing.T) {
 		},
 	}
 
-	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetPIIHasher(hasher)
 
 	evt := &domain.Event{

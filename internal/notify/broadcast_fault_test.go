@@ -156,7 +156,7 @@ func TestFault_notifierBroadcastAllFailThenRetry(t *testing.T) {
 	svc.cfg.FailSMS = false
 	svc.cfg.FailSlack = false
 
-	id, err := pgUUIDFromString(result.NotificationID)
+	id, err := postgresUUIDFromString(result.NotificationID)
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, "UPDATE notify.notifications SET updated_at = now() - interval '10 seconds' WHERE id = $1", id)
 	require.NoError(t, err)

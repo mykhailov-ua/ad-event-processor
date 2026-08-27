@@ -87,12 +87,12 @@ func (p ClickHouseProbe) Run(ctx context.Context) Result {
 	if os.Getenv("CH_ENABLED") == "0" {
 		return Result{Name: "clickhouse", Status: StatusSkip, Detail: "CH_ENABLED=0", Latency: time.Since(start).Milliseconds()}
 	}
-	if p.Deps.Config == nil || !p.Deps.Config.ClickHouseEnabled() {
+	if p.Deps.Config == nil || !p.Deps.Config.IsClickHouseEnabled() {
 		return Result{Name: "clickhouse", Status: StatusSkip, Detail: "clickhouse not configured", Latency: time.Since(start).Milliseconds()}
 	}
 	ping := p.Deps.CHPing
 	if ping == nil {
-		ping = defaultCHPing(p.Deps.Config)
+		ping = defaultClickHousePing(p.Deps.Config)
 	}
 	if err := ping(ctx); err != nil {
 		return Result{Name: "clickhouse", Status: StatusFail, Detail: err.Error(), Latency: time.Since(start).Milliseconds()}
@@ -105,9 +105,9 @@ func (p ClickHouseProbe) Run(ctx context.Context) Result {
 	return Result{Name: "clickhouse", Status: status, Detail: latency.String(), Latency: latency.Milliseconds()}
 }
 
-func defaultCHPing(cfg *config.Config) func(context.Context) error {
+func defaultClickHousePing(cfg *config.Config) func(context.Context) error {
 	return func(ctx context.Context) error {
-		conn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+		conn, err := database.ConnectClickHouse(ctx, string(cfg.ClickHouseDSN))
 		if err != nil {
 			return err
 		}

@@ -13,13 +13,13 @@ func checkBPFExtraGatesPrometheus(prom *promClient, rateWindow string) []BPFGate
 
 	var checks []BPFGateCheck
 
-	pgAcquire := prom.scalar(`histogram_quantile(0.99, sum(rate(ad_processor_pg_acquire_wait_seconds_bucket[${window}])) by (le)) * 1000`)
-	pgVal, pgOk := parseFloatOrNa(pgAcquire)
+	postgresAcquire := prom.scalar(`histogram_quantile(0.99, sum(rate(ad_processor_pg_acquire_wait_seconds_bucket[${window}])) by (le)) * 1000`)
+	postgresVal, postgresOk := parseFloatOrNa(postgresAcquire)
 	checks = append(checks, BPFGateCheck{
 		Name:   "processor_pg_acquire_wait_p99_ms",
-		Value:  pgAcquire,
+		Value:  postgresAcquire,
 		Limit:  "100",
-		OK:     !pgOk || pgVal < 100,
+		OK:     !postgresOk || postgresVal < 100,
 		Detail: "processor PG connection pool acquisition wait p99",
 	})
 

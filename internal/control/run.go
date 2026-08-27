@@ -115,19 +115,19 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *contro
 
 	notifierClient := inProcess
 
-	if !cfg.ClickHouseEnabled() {
+	if !cfg.IsClickHouseEnabled() {
 		slog.Warn("margin guard disabled: clickhouse not configured")
 		<-ctx.Done()
 		return ctx.Err()
 	}
 
-	chRead, err := database.ConnectCHReadonly(ctx, string(cfg.CHReadonlyDSN))
+	clickhouseReadConn, err := database.ConnectClickHouseReadonly(ctx, string(cfg.ClickHouseReadonlyDSN))
 	if err != nil {
 		return err
 	}
-	defer func() { _ = chRead.Close() }()
+	defer func() { _ = clickhouseReadConn.Close() }()
 
-	clickhouseQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
+	clickhouseQuery := database.NewClickHouseQuery(clickhouseReadConn, database.ClickHouseQueryConfigFromApp(cfg))
 	var notifierAPI notify.NotifierAPI
 	if notifierClient != nil {
 		notifierAPI = notifierClient.API()
@@ -150,8 +150,8 @@ func serveCostSync(ctx context.Context, cfg *config.Config) error {
 	}
 
 	workerOpts := []costsync.WorkerOption{}
-	if cfg.ClickHouseEnabled() {
-		clickhouseConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+	if cfg.IsClickHouseEnabled() {
+		clickhouseConn, err := database.ConnectClickHouse(ctx, string(cfg.ClickHouseDSN))
 		if err != nil {
 			return err
 		}

@@ -15,8 +15,8 @@ import (
 func TestDataQualitySeverity_holdoutAboveTolerance(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, "medium", dataQualitySeverity(1000, hyg30CHStatsTolerancePct+0.001))
-	assert.Equal(t, "ok", dataQualitySeverity(1000, hyg30CHStatsTolerancePct))
+	assert.Equal(t, "medium", dataQualitySeverity(1000, hyg30ClickHouseStatsTolerancePct+0.001))
+	assert.Equal(t, "ok", dataQualitySeverity(1000, hyg30ClickHouseStatsTolerancePct))
 	assert.Equal(t, "high", dataQualitySeverity(100, 0.10))
 	assert.Equal(t, "info", dataQualitySeverity(0, 1.0))
 }
@@ -32,11 +32,11 @@ func TestCampaignDailyTotalKey_format(t *testing.T) {
 func TestDataQualityDiffPct_holdoutDetectsDrift(t *testing.T) {
 	t.Parallel()
 
-	pgTotal := int64(100)
+	postgresTotal := int64(100)
 	chTotal := int64(50)
-	diffPct := math.Abs(float64(chTotal-pgTotal)) / float64(pgTotal)
+	diffPct := math.Abs(float64(chTotal-postgresTotal)) / float64(postgresTotal)
 	assert.InDelta(t, 0.5, diffPct, 0.0001)
-	assert.Equal(t, "high", dataQualitySeverity(pgTotal, diffPct))
+	assert.Equal(t, "high", dataQualitySeverity(postgresTotal, diffPct))
 }
 
 func TestReports_DataQualityRouteRegistered(t *testing.T) {

@@ -26,7 +26,7 @@ type ReplayConfig struct {
 	From      time.Time
 	To        time.Time
 	Target    string
-	CHDSN     string
+	ClickHouseDSN     string
 	BatchSize int
 }
 

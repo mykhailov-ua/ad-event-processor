@@ -186,7 +186,7 @@ type UnifiedFilter struct {
 	roughPacing                  *RoughPacingGate
 	settingsWatcher              *SettingsWatcher
 	dbLookupTimeout              time.Duration
-	pgFallbackAllowed            bool
+	postgresFallbackAllowed            bool
 	luaMetricsSeq                atomic.Uint64
 	fastScript                   *redis.Script
 	fastScriptHashAny            any
@@ -229,7 +229,7 @@ func (f *UnifiedFilter) SetFilterSlowMs(ms int) {
 }
 
 func (f *UnifiedFilter) SetPGFallbackAllowed(allowed bool) {
-	f.pgFallbackAllowed = allowed
+	f.postgresFallbackAllowed = allowed
 }
 
 func (f *UnifiedFilter) SetSettingsWatcher(sw *SettingsWatcher) {
@@ -386,7 +386,7 @@ func NewUnifiedFilter(
 		luaNoScriptCounters:          newRedisLuaNoScriptCounters(len(redisShards)),
 		redisObservability:           newRedisShardObservability(len(redisShards), luaMetricsSampleMask),
 		dbLookupTimeout:              2 * time.Second,
-		pgFallbackAllowed:            true,
+		postgresFallbackAllowed:            true,
 		evalFallbackGate:             make(chan struct{}, 32),
 	}
 	f.geoFloors.Store(&emptyGeoFloors)

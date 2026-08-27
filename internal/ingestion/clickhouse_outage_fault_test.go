@@ -15,12 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type failingCHConn struct {
+type failingClickHouseConn struct {
 	mockConn
 }
 
-func newFailingCHConn(fail bool) *failingCHConn {
-	c := &failingCHConn{}
+func newFailingCHConn(fail bool) *failingClickHouseConn {
+	c := &failingClickHouseConn{}
 	c.prepareBatchFn = func(ctx context.Context, query string) (driver.Batch, error) {
 		if fail {
 			return nil, errors.New("clickhouse unavailable")
@@ -33,11 +33,11 @@ func newFailingCHConn(fail bool) *failingCHConn {
 
 func TestFault_ClickHouseOutage_SpoolsBeforeAck(t *testing.T) {
 	dir := t.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	require.NoError(t, err)
 
 	conn := newFailingCHConn(true)
-	store := NewClickHouseStore(conn, time.Second, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(conn, time.Second, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetSpool(spool)
 
 	evt := &domain.Event{
@@ -60,11 +60,11 @@ func TestFault_ClickHouseOutage_SpoolsBeforeAck(t *testing.T) {
 
 func TestFault_ClickHouseOutage_PELBehavior(t *testing.T) {
 	dir := t.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	require.NoError(t, err)
 
 	failConn := newFailingCHConn(true)
-	store := NewClickHouseStore(failConn, 50*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(failConn, 50*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetSpool(spool)
 
 	evt := &domain.Event{
@@ -77,7 +77,7 @@ func TestFault_ClickHouseOutage_PELBehavior(t *testing.T) {
 	err = store.StoreBatch(context.Background(), []*domain.Event{evt})
 	require.NoError(t, err, "spool must make StoreBatch durable for XAck")
 
-	storeNoSpool := NewClickHouseStore(failConn, 50*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	storeNoSpool := NewClickHouseStore(failConn, 50*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 	err = storeNoSpool.StoreBatch(context.Background(), []*domain.Event{evt})
 	require.Error(t, err)
 	assert.True(t, strings.Contains(err.Error(), "clickhouse unavailable"))
@@ -85,11 +85,11 @@ func TestFault_ClickHouseOutage_PELBehavior(t *testing.T) {
 
 func TestClickHouseStore_RecoveryAfterOutage(t *testing.T) {
 	dir := t.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	require.NoError(t, err)
 
 	conn := newFailingCHConn(true)
-	store := NewClickHouseStore(conn, time.Second, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(conn, time.Second, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetSpool(spool)
 
 	evt := &domain.Event{

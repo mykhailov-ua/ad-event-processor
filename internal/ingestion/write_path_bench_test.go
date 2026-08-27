@@ -33,7 +33,7 @@ func benchWritePathEvent() *domain.Event {
 
 func BenchmarkCHSpoolAppendDurably(b *testing.B) {
 	dir := b.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -77,14 +77,14 @@ func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
 
 func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
 	dir := b.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	if err != nil {
 		b.Fatal(err)
 	}
 	defer func() { _ = spool.Close() }()
 
 	conn := newFailingCHConn(true)
-	store := NewClickHouseStore(conn, time.Second, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(conn, time.Second, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetSpool(spool)
 
 	evt := benchWritePathEvent()
@@ -169,7 +169,7 @@ func BenchmarkCHSpoolOpenFdDelta(b *testing.B) {
 	b.Logf("fd_before=%d", len(before))
 
 	dir := b.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	if err != nil {
 		b.Fatal(err)
 	}

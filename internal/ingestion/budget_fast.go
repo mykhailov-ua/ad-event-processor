@@ -288,7 +288,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 		return true, nil
 	}
 
-	if !f.pgFallbackAllowed {
+	if !f.postgresFallbackAllowed {
 		return false, ErrBudgetExhausted
 	}
 
@@ -302,7 +302,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 		}
 	}
 
-	metrics.BudgetCacheMissPGTotal.Inc()
+	metrics.BudgetCacheMissPostgresTotal.Inc()
 	if f.repo == nil {
 		return false, ErrBudgetExhausted
 	}

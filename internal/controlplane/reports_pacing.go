@@ -153,7 +153,7 @@ type campaignPacingPlan struct {
 
 func queryPacingDriftSpendRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,

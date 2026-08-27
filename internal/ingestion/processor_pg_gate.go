@@ -22,13 +22,13 @@ type ProcessorWriteGate struct {
 
 type ProcessorPostgresGate = ProcessorWriteGate
 
-type ProcessorChGate = ProcessorWriteGate
+type ProcessorClickHouseGate = ProcessorWriteGate
 
 func NewProcessorPostgresGate(slots, maxConns int) *ProcessorPostgresGate {
 	return newProcessorWriteGate("postgres", slots, maxConns, ProcessorPgReserve)
 }
 
-func NewProcessorChGate(slots, maxConns int) *ProcessorChGate {
+func NewProcessorClickHouseGate(slots, maxConns int) *ProcessorClickHouseGate {
 	return newProcessorWriteGate("clickhouse", slots, maxConns, ProcessorChReserve)
 }
 

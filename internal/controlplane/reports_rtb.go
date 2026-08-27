@@ -229,7 +229,7 @@ func (h *ReportsHTTPHandlers) getRtbGeoDeviceReport(w http.ResponseWriter, r *ht
 
 func queryRtbOverviewRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]RtbOverviewRowDTO, int64, error) {
@@ -262,7 +262,7 @@ func queryRtbOverviewRows(
 
 func queryRtbGeoDeviceRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]RtbGeoDeviceRowDTO, int64, error) {
@@ -295,7 +295,7 @@ func queryRtbGeoDeviceRows(
 
 func queryRtbNoBidReasonRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]RtbNoBidReasonRowDTO, int64, error) {

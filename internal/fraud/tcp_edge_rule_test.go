@@ -59,7 +59,7 @@ func TestTCPEdgeCorrelationRule_GhostOnImpersonation(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
@@ -98,7 +98,7 @@ func TestTCPEdgeCorrelationRule_SkipsMatchingUAJA3(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}

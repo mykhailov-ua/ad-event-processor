@@ -180,7 +180,7 @@ func (h *ReportsHTTPHandlers) getGeoROIReport(w http.ResponseWriter, r *http.Req
 
 func queryGeoROIRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,

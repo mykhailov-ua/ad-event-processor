@@ -1,0 +1,18 @@
+[
+  {
+    "id": 42,
+    "name": "Facebook Camp",
+    "alias": "fb-camp",
+    "state": "active",
+    "type": "position",
+    "cost_type": "CPC",
+    "cost_value": "100",
+    "cost_currency": "USD",
+    "traffic_source_id": 5,
+    "parameters": "sub1={subid}&sub2={{campaign.id}}&sub4={{ad.id}}",
+    "domain": "https://trk.example.com",
+    "traffic_source": "Facebook",
+    "lander_url": "https://lander.example/lp",
+    "postback_url": "https://aff.example/postback?cid={subid}"
+  }
+]

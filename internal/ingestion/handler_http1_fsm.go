@@ -253,8 +253,8 @@ func http1IngressValid(method, path []byte) bool {
 			bytesEqual(path, trackPixelPath) ||
 			httpPathHasPrefix(path, safePageStubPathPrefix) ||
 			httpPathHasPrefix(path, "/click") ||
-			httpPathHasPrefix(path, tgPathClick) ||
-			httpPathHasPrefix(path, tgPathImpression)
+			httpPathHasPrefix(path, telegramPathClick) ||
+			httpPathHasPrefix(path, telegramPathImpression)
 	}
 	return false
 }

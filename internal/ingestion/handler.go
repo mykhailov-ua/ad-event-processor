@@ -68,23 +68,23 @@ var (
 )
 
 type connContext struct {
-	pbReq           pb.AdEvent
-	trackReq        TrackRequest
-	evt             domain.Event
-	valSlice        []any
-	resp            pb.TrackResponse
-	bufSlice        []byte
-	extraBuf        []byte
-	openrtbMultiADM [openrtb26ImpMax][512]byte
-	openrtbParsed   OpenRTB26Parsed
-	clickParsed     clickQueryParsed
-	tgClickParsed   tgQueryParsed
-	wReqID          bufWrapper
-	wCamp           bufWrapper
-	wTime           bufWrapper
-	remoteIP        string
-	shardID         int
-	workerID        int
+	pbReq               pb.AdEvent
+	trackReq            TrackRequest
+	evt                 domain.Event
+	valSlice            []any
+	resp                pb.TrackResponse
+	bufSlice            []byte
+	extraBuf            []byte
+	openrtbMultiADM     [openrtb26ImpMax][512]byte
+	openrtbParsed       OpenRTB26Parsed
+	clickParsed         clickQueryParsed
+	telegramClickParsed telegramQueryParsed
+	wReqID              bufWrapper
+	wCamp               bufWrapper
+	wTime               bufWrapper
+	remoteIP            string
+	shardID             int
+	workerID            int
 
 	offloadConn     gnet.Conn
 	offloadReqBuf   *[]byte
@@ -1515,11 +1515,11 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		if httpPathHasPrefix(req.Path, "/click") {
 			return h.reactClickRedirect(req, c, ctx)
 		}
-		if httpPathHasPrefix(req.Path, tgPathClick) {
-			return h.reactTgClick(req, c, ctx)
+		if httpPathHasPrefix(req.Path, telegramPathClick) {
+			return h.reactTelegramClick(req, c, ctx)
 		}
-		if httpPathHasPrefix(req.Path, tgPathImpression) {
-			return h.reactTgImpression(req, c, ctx)
+		if httpPathHasPrefix(req.Path, telegramPathImpression) {
+			return h.reactTelegramImpression(req, c, ctx)
 		}
 		h.write(c, respMethodNotAllowed, ctx)
 		return gnet.None
@@ -1551,7 +1551,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
 			}
-			return h.reactTgBid(req, c, ctx)
+			return h.reactTelegramBid(req, c, ctx)
 		}
 		h.write(c, respNotFound, ctx)
 		return gnet.None

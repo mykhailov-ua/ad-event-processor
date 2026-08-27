@@ -113,11 +113,11 @@ type ForecastDTO struct {
 	Month                    string                  `json:"month"`
 	LedgerMTDMicro           int64                   `json:"ledger_mtd_micro"`
 	LedgerRunRateMicroPerDay int64                   `json:"ledger_run_rate_micro_per_day"`
-	CHHourlyImpressions      []ClickHouseHourlyPoint `json:"ch_hourly_impressions,omitempty"`
+	ClickHouseHourlyImpressions      []ClickHouseHourlyPoint `json:"ch_hourly_impressions,omitempty"`
 	ProjectedMonthEndMicro   int64                   `json:"projected_month_end_micro"`
 	DaysRemaining            int                     `json:"days_remaining"`
 	LowConfidence            bool                    `json:"low_confidence"`
-	CHUnavailable            bool                    `json:"ch_unavailable,omitempty"`
+	ClickHouseUnavailable            bool                    `json:"ch_unavailable,omitempty"`
 }
 
 type ClickHouseHourlyPoint struct {
@@ -709,7 +709,7 @@ type CompositeReadService struct {
 	cfg                 *config.Config
 	paymentProviderName string
 	queries             *billingdb.Queries
-	clickhouseQuery     *database.CHQuery
+	clickhouseQuery     *database.ClickHouseQuery
 }
 
 func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters AdminInvoiceFilters, limit, offset int32) (AdminInvoiceListResult, error) {
@@ -763,7 +763,7 @@ func (s *CompositeReadService) ListInvoicesAdmin(ctx context.Context, filters Ad
 	}, nil
 }
 
-func (s *CompositeReadService) WithClickHouseQuery(q *database.CHQuery) *CompositeReadService {
+func (s *CompositeReadService) WithClickHouseQuery(q *database.ClickHouseQuery) *CompositeReadService {
 	if s == nil {
 		return nil
 	}
@@ -814,7 +814,7 @@ func (s *CompositeReadService) BuildForecast(ctx context.Context, customerID uui
 
 	if s.clickhouseQuery == nil {
 		out.LowConfidence = true
-		out.CHUnavailable = true
+		out.ClickHouseUnavailable = true
 		return out, nil
 	}
 
@@ -834,10 +834,10 @@ func (s *CompositeReadService) BuildForecast(ctx context.Context, customerID uui
 	points, clickhouseErr := s.queryClickHouseHourlyImpressions(clickhouseCtx, lookback, now, campaignIDs)
 	if clickhouseErr != nil {
 		out.LowConfidence = true
-		out.CHUnavailable = true
+		out.ClickHouseUnavailable = true
 		return out, nil
 	}
-	out.CHHourlyImpressions = points
+	out.ClickHouseHourlyImpressions = points
 	if len(points) == 0 {
 		out.LowConfidence = true
 	}
@@ -1083,7 +1083,7 @@ func NewCompositeReadService(pool *pgxpool.Pool, cfg *config.Config) *CompositeR
 	}
 }
 
-func (s *CompositeReadService) SetClickHouseQuery(q *database.CHQuery) {
+func (s *CompositeReadService) SetClickHouseQuery(q *database.ClickHouseQuery) {
 	if s != nil {
 		s.clickhouseQuery = q
 	}

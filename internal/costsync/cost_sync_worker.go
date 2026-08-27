@@ -424,7 +424,7 @@ func (w *Worker) persistLines(ctx context.Context, lines []CostLine, date time.T
 	if w.insertSnapshots != nil {
 		if err := w.insertSnapshots(ctx, lines, usdAmounts); err != nil {
 			slog.Warn("cost-sync clickhouse insert failed", "error", err)
-			metrics.CostSyncCHErrors.Inc()
+			metrics.CostSyncClickHouseErrors.Inc()
 		}
 	}
 

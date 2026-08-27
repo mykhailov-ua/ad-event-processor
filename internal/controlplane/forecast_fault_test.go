@@ -41,7 +41,7 @@ func TestFault_ForecastDeterministic(t *testing.T) {
 	}
 	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
 	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
-	svc.SetClickHouse(conn, database.CHQueryConfig{})
+	svc.SetClickHouse(conn, database.ClickHouseQueryConfig{})
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

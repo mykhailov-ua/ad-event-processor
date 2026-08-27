@@ -35,7 +35,7 @@ func windowBounds(now time.Time, windowMinutes int) (time.Time, time.Time) {
 
 func queryPlacementMetrics(
 	ctx context.Context,
-	ch *database.CHQuery,
+	ch *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 ) ([]placementMetricRow, error) {
@@ -79,7 +79,7 @@ GROUP BY campaign_id, placement_id`, campaignIDs, from, to)
 
 func queryPlacementFraudMetrics(
 	ctx context.Context,
-	ch *database.CHQuery,
+	ch *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 ) (map[placementKey]placementMetricRow, error) {
@@ -187,7 +187,7 @@ func aggregateCampaignMetrics(rows []placementMetricRow) map[uuid.UUID]placement
 
 func EvaluateRule(
 	ctx context.Context,
-	ch *database.CHQuery,
+	ch *database.ClickHouseQuery,
 	rule Rule,
 	campaignIDs []uuid.UUID,
 	now time.Time,

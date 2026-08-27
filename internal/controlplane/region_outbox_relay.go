@@ -60,7 +60,7 @@ func (r *RegionOutboxRelay) Start(ctx context.Context, interval time.Duration) {
 			var processed int
 			var err error
 			if r.svc != nil {
-				err = r.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+				err = r.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 					var innerErr error
 					processed, innerErr = r.ProcessPendingWithCount(runCtx, 500)
 					return innerErr

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/migrationsource"
 
 	"github.com/google/uuid"
@@ -78,4 +79,12 @@ func TestImportMigrationCampaigns_keitaro_holdout(t *testing.T) {
 		WHERE action = 'MIGRATE_IMPORT' AND metadata::text LIKE '%migrate-import-idem-1%'`).Scan(&auditCount)
 	require.NoError(t, err)
 	assert.Equal(t, 1, auditCount)
+
+	var tokenLen int
+	err = pool.QueryRow(ctx, `
+		SELECT COALESCE(length(api_token_encrypted), 0)
+		FROM postback_configs
+		WHERE campaign_id = $1`, domain.ToUUID(importedID)).Scan(&tokenLen)
+	require.NoError(t, err)
+	assert.Equal(t, 0, tokenLen, "migrate import must not copy foreign postback secrets")
 }

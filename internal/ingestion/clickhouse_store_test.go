@@ -78,7 +78,7 @@ func TestClickHouseStore_StoreBatch_DeduplicationTokenFromContext(t *testing.T) 
 		},
 	}
 
-	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 
 	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "0123456789abcdef0123456789abcdef")
 	err := store.StoreBatch(ctx, []*domain.Event{evt})
@@ -117,7 +117,7 @@ func TestClickHouseStore_StoreBatch_DeterministicTokenGeneration(t *testing.T) {
 		},
 	}
 
-	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 
 	err := store.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.NoError(t, err)
@@ -177,16 +177,16 @@ func TestClickHouseStore_StoreBatch_PartialFailureRetry(t *testing.T) {
 		},
 	}
 
-	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 
 	err := store.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "clickhouse connection refused on clicks")
 
 	dir := t.TempDir()
-	spool, spoolErr := OpenCHSpool(dir)
+	spool, spoolErr := OpenClickHouseSpool(dir)
 	require.NoError(t, spoolErr)
-	storeWithSpool := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	storeWithSpool := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 	storeWithSpool.SetSpool(spool)
 
 	err = storeWithSpool.StoreBatch(context.Background(), []*domain.Event{evt1, evt2})
@@ -214,7 +214,7 @@ func TestClickHouseStore_StoreBatch_ContextCancellationDuringBackoff(t *testing.
 		},
 	}
 
-	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(connMock, 100*time.Millisecond, "", DefaultClickHouseSpoolConfig(), nil)
 
 	err := store.StoreBatch(ctx, []*domain.Event{evt})
 	assert.Error(t, err)

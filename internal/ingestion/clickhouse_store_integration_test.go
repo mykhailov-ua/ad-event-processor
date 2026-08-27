@@ -84,7 +84,7 @@ func TestClickHouseStore_InsertDeduplicate_RealCH(t *testing.T) {
 	conn, cleanup := setupClickHouseIntegration(t)
 	defer cleanup()
 
-	store := NewClickHouseStore(conn, 5*time.Second, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(conn, 5*time.Second, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetPIIHasher(piihash.TestHasher())
 	defer func() { _ = store.Close() }()
 
@@ -115,7 +115,7 @@ func TestClickHouseStore_InsertDeduplicate_DeterministicToken_RealCH(t *testing.
 	conn, cleanup := setupClickHouseIntegration(t)
 	defer cleanup()
 
-	store := NewClickHouseStore(conn, 5*time.Second, "", DefaultCHSpoolConfig(), nil)
+	store := NewClickHouseStore(conn, 5*time.Second, "", DefaultClickHouseSpoolConfig(), nil)
 	store.SetPIIHasher(piihash.TestHasher())
 	defer func() { _ = store.Close() }()
 

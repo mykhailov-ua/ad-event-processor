@@ -1,13 +1,13 @@
 ---
-description: Go receivers, JSDoc, verification honesty - always applied on every edit
+description: Go receivers and verification honesty - always applied on every edit
 alwaysApply: true
 ---
 
-# Code Quality - Receivers and JSDoc
+# Code Quality - Receivers
 
 ## Purpose
 
-Always applied on every agent turn. Go method receivers, web JSDoc, and verification honesty. **Naming and comments:** `naming.mdc` (always applied). File layout: `code-style.mdc`.
+Always applied on every agent turn. Go method receivers and verification honesty. **Comments:** `naming.mdc` (no source comments except allowed categories). File layout: `code-style.mdc`.
 
 Agents must not invent environment, generated artifacts, or benchmark runs.
 
@@ -20,10 +20,6 @@ Before claiming done, see `anti-slop.mdc` (lie modes, CI gates, agent checklist)
 3. Explain why scripts/tests changed.
 4. Paste command + package path for verification runs actually executed.
 5. Add a holdout test that fails without the change when behavior is non-obvious (`testing.mdc`).
-
-## Web JSDoc (`web/**`)
-
-JSDoc on every function, module constant, and block-scoped arrow callback. Comments: `naming.mdc`.
 
 ## Method receivers
 
@@ -55,7 +51,7 @@ Never use the **full type name** as receiver: `func (service *Service)` is banne
 
 - **Pointer receiver** when methods mutate state, call mutating deps, or struct is non-trivial size.
 - **Value receiver** only for small immutable types or intentional copy semantics.
-- Do not mix pointer and value receivers on the same exported type without one documented reason comment on the type (`naming.mdc`).
+- Do not mix pointer and value receivers on the same exported type without a named type split or explicit design note in `.mdc` / milestone doc (`naming.mdc`).
 
 ### Unused receiver parameter
 

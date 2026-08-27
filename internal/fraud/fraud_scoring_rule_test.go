@@ -65,7 +65,7 @@ func TestFraudScoringRule_Integration(t *testing.T) {
 	scorer, err := NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
-	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100)
+	rule := NewFraudScoringRule(database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}), conn, nil, scorer, 100)
 	assert.Equal(t, "fraud_scoring_shadow", rule.Name())
 
 	candidates, err := rule.Find(ctx)
@@ -120,7 +120,7 @@ func TestFraudScoringRule_FraudScoresHigherThanControl(t *testing.T) {
 	scorer, err := NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
-	_, err = NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100).Find(ctx)
+	_, err = NewFraudScoringRule(database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}), conn, nil, scorer, 100).Find(ctx)
 	require.NoError(t, err)
 
 	var controlScore, fraudScore float64
@@ -183,7 +183,7 @@ func TestFraudScoringRule_WithCampaignThresholds(t *testing.T) {
 		scores: []float64{0.1, 0.4, 0.75, 0.95},
 	}
 
-	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, pool, scorer, 100)
+	rule := NewFraudScoringRule(database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}), conn, pool, scorer, 100)
 
 	candidates, err := rule.Find(ctx)
 	require.NoError(t, err)

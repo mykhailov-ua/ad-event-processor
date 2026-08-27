@@ -122,7 +122,7 @@ func checkBaseDeployEnv(cfg *config.Config) ChecklistRow {
 }
 
 func clickHouseConfigured(cfg *config.Config) bool {
-	if cfg != nil && cfg.ClickHouseEnabled() {
+	if cfg != nil && cfg.IsClickHouseEnabled() {
 		return true
 	}
 	enabled, unset := envBool("CH_ENABLED")

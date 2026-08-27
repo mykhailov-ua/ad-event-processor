@@ -37,7 +37,7 @@ func (c *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*domain.Ev
 	}
 
 	if len(batch) == 1 {
-		metrics.CHSingleRowInsertsTotal.Inc()
+		metrics.ClickHouseSingleRowInsertsTotal.Inc()
 		return nil, []int{baseIdx}
 	}
 

@@ -27,14 +27,14 @@ type CampaignEntitlementRegistry interface {
 
 type Worker struct {
 	pool            *pgxpool.Pool
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	cfg             *config.Config
 	registry        CampaignEntitlementRegistry
 	notifier        notify.NotifierAPI
 	cycleWG         sync.WaitGroup
 }
 
-func NewWorker(pool *pgxpool.Pool, clickhouseQuery *database.CHQuery, cfg *config.Config, registry CampaignEntitlementRegistry, notifier notify.NotifierAPI) *Worker {
+func NewWorker(pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, cfg *config.Config, registry CampaignEntitlementRegistry, notifier notify.NotifierAPI) *Worker {
 	return &Worker{
 		pool:            pool,
 		clickhouseQuery: clickhouseQuery,

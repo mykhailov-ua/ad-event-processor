@@ -21,7 +21,7 @@ type LogCompactor struct {
 	ColdWarmMinAgeDays       int
 	ColdWorkIntervalHours    int
 	DeleteWarmAfterCold      bool
-	CHDSN                    string
+	ClickHouseDSN                    string
 	LeaderElection           bool
 	LeaderLockPath           string
 	S3Region                 string
@@ -48,7 +48,7 @@ func LoadLogCompactor() (LogCompactor, error) {
 		ColdWarmMinAgeDays:       getEnvInt("LOG_COMPACTOR_COLD_WARM_MIN_AGE_D", 7),
 		ColdWorkIntervalHours:    getEnvInt("LOG_COMPACTOR_COLD_WORK_INTERVAL_H", 24),
 		DeleteWarmAfterCold:      getEnvBool("LOG_COMPACTOR_DELETE_WARM_AFTER_COLD", false),
-		CHDSN:                    os.Getenv("CH_DSN"),
+		ClickHouseDSN:                    os.Getenv("CH_DSN"),
 		LeaderLockPath:           envOrDefault("LOG_COMPACTOR_LEADER_LOCK_PATH", "/var/lib/ad-event-processor/log-compactor.leader.lock"),
 		S3Region:                 envOrDefault("LOG_COMPACTOR_S3_REGION", os.Getenv("AWS_REGION")),
 		S3Bucket:                 os.Getenv("LOG_COMPACTOR_S3_BUCKET"),
@@ -58,7 +58,7 @@ func LoadLogCompactor() (LogCompactor, error) {
 		S3Endpoint:               os.Getenv("LOG_COMPACTOR_S3_ENDPOINT"),
 		S3ForcePathStyle:         getEnvBool("LOG_COMPACTOR_S3_FORCE_PATH_STYLE", false),
 	}
-	cfg.ColdEnabled = getEnvBool("LOG_COMPACTOR_COLD_ENABLED", cfg.CHDSN != "")
+	cfg.ColdEnabled = getEnvBool("LOG_COMPACTOR_COLD_ENABLED", cfg.ClickHouseDSN != "")
 	cfg.LeaderElection = getEnvBool("LOG_COMPACTOR_LEADER_ELECTION", false)
 
 	if cfg.SourceDir == "" {
@@ -70,7 +70,7 @@ func LoadLogCompactor() (LogCompactor, error) {
 	if cfg.Backend != "local" && cfg.Backend != "s3" {
 		return LogCompactor{}, errors.New("LOG_COMPACTOR_BACKEND must be local or s3")
 	}
-	if cfg.ColdEnabled && cfg.CHDSN == "" {
+	if cfg.ColdEnabled && cfg.ClickHouseDSN == "" {
 		return LogCompactor{}, errors.New("LOG_COMPACTOR_COLD_ENABLED requires CH_DSN")
 	}
 	if cfg.Backend == "s3" && (cfg.S3Bucket == "" || cfg.S3Region == "") {

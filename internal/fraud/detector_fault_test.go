@@ -250,7 +250,7 @@ func TestAnalyzer_FindSuspiciousIPs_clickRatio(t *testing.T) {
 
 	seedClickHouseEvents(t, conn, "ratio-ip", "bot-ua-shared", 2, 20)
 
-	analyzer := NewAnalyzer(database.NewCHQuery(conn, database.CHQueryConfig{}), AnalyzerConfig{
+	analyzer := NewAnalyzer(database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}), AnalyzerConfig{
 		Window:          time.Hour,
 		MinClicks:       5,
 		MinImpressions:  1,

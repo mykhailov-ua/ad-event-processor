@@ -16,12 +16,12 @@ import (
 )
 
 type DataQualityRowDTO struct {
-	CampaignID string  `json:"campaign_id"`
-	Date       string  `json:"date"`
-	PGTotal    int64   `json:"pg_total"`
-	CHTotal    int64   `json:"ch_total"`
-	DiffPct    float64 `json:"diff_pct"`
-	Severity   string  `json:"severity"`
+	CampaignID      string  `json:"campaign_id"`
+	Date            string  `json:"date"`
+	PostgresTotal   int64   `json:"postgres_total"`
+	ClickHouseTotal int64   `json:"clickhouse_total"`
+	DiffPct         float64 `json:"diff_pct"`
+	Severity        string  `json:"severity"`
 }
 
 type DataQualityReportResponse struct {
@@ -30,14 +30,14 @@ type DataQualityReportResponse struct {
 	NextCursor string              `json:"next_cursor,omitempty"`
 }
 
-func dataQualitySeverity(pgTotal int64, diffPct float64) string {
-	if pgTotal == 0 {
+func dataQualitySeverity(postgresTotal int64, diffPct float64) string {
+	if postgresTotal == 0 {
 		return "info"
 	}
 	switch {
 	case diffPct > 0.05:
 		return "high"
-	case diffPct > hyg30CHStatsTolerancePct:
+	case diffPct > hyg30ClickHouseStatsTolerancePct:
 		return "medium"
 	default:
 		return "ok"
@@ -91,12 +91,12 @@ func (h *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, r *htt
 		return
 	}
 
-	pgRows, err := queryPGCampaignDailyTotals(r.Context(), h.Pool, customerID, from, to)
+	postgresRows, err := queryPGCampaignDailyTotals(r.Context(), h.Pool, customerID, from, to)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
-	if len(pgRows) == 0 {
+	if len(postgresRows) == 0 {
 		httpresponse.JSON(w, http.StatusOK, DataQualityReportResponse{
 			Rows:      []DataQualityRowDTO{},
 			Freshness: h.reportFreshness(r.Context()),
@@ -112,7 +112,7 @@ func (h *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, r *htt
 		return
 	}
 
-	out := buildDataQualityRows(pgRows, clickhouseTotals)
+	out := buildDataQualityRows(postgresRows, clickhouseTotals)
 
 	total := int64(len(out))
 	if page.Offset >= len(out) {
@@ -135,10 +135,10 @@ func (h *ReportsHTTPHandlers) getDataQualityReport(w http.ResponseWriter, r *htt
 	})
 }
 
-type pgCampaignDailyTotal struct {
-	campaignID uuid.UUID
-	day        time.Time
-	pgTotal    int64
+type postgresCampaignDailyTotal struct {
+	campaignID    uuid.UUID
+	day           time.Time
+	postgresTotal int64
 }
 
 func queryPGCampaignDailyTotals(
@@ -146,7 +146,7 @@ func queryPGCampaignDailyTotals(
 	pool *pgxpool.Pool,
 	customerID uuid.UUID,
 	from, to time.Time,
-) ([]pgCampaignDailyTotal, error) {
+) ([]postgresCampaignDailyTotal, error) {
 	rows, err := pool.Query(ctx, `
 		SELECT cs.campaign_id, cs.date,
 		 cs.impressions_count + cs.clicks_count + cs.conversions_count AS pg_total
@@ -167,10 +167,10 @@ func queryPGCampaignDailyTotals(
 	}
 	defer rows.Close()
 
-	var out []pgCampaignDailyTotal
+	var out []postgresCampaignDailyTotal
 	for rows.Next() {
-		var row pgCampaignDailyTotal
-		if err := rows.Scan(&row.campaignID, &row.day, &row.pgTotal); err != nil {
+		var row postgresCampaignDailyTotal
+		if err := rows.Scan(&row.campaignID, &row.day, &row.postgresTotal); err != nil {
 			return nil, err
 		}
 		out = append(out, row)
@@ -179,23 +179,23 @@ func queryPGCampaignDailyTotals(
 }
 
 func buildDataQualityRows(
-	pgRows []pgCampaignDailyTotal,
+	postgresRows []postgresCampaignDailyTotal,
 	clickhouseTotals map[string]uint64,
 ) []DataQualityRowDTO {
-	out := make([]DataQualityRowDTO, 0, len(pgRows))
-	for _, row := range pgRows {
-		chTotal := int64(clickhouseTotals[campaignDailyTotalKey(row.campaignID, row.day)])
+	out := make([]DataQualityRowDTO, 0, len(postgresRows))
+	for _, row := range postgresRows {
+		clickhouseTotal := int64(clickhouseTotals[campaignDailyTotalKey(row.campaignID, row.day)])
 		var diffPct float64
-		if row.pgTotal > 0 {
-			diffPct = math.Abs(float64(chTotal-row.pgTotal)) / float64(row.pgTotal)
+		if row.postgresTotal > 0 {
+			diffPct = math.Abs(float64(clickhouseTotal-row.postgresTotal)) / float64(row.postgresTotal)
 		}
 		out = append(out, DataQualityRowDTO{
-			CampaignID: row.campaignID.String(),
-			Date:       row.day.UTC().Format("2006-01-02"),
-			PGTotal:    row.pgTotal,
-			CHTotal:    chTotal,
-			DiffPct:    diffPct,
-			Severity:   dataQualitySeverity(row.pgTotal, diffPct),
+			CampaignID:      row.campaignID.String(),
+			Date:            row.day.UTC().Format("2006-01-02"),
+			PostgresTotal:   row.postgresTotal,
+			ClickHouseTotal: clickhouseTotal,
+			DiffPct:         diffPct,
+			Severity:        dataQualitySeverity(row.postgresTotal, diffPct),
 		})
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -215,11 +215,11 @@ func queryDataQualityExportRows(
 	from, to time.Time,
 	limit, offset int,
 ) ([]DataQualityRowDTO, int64, error) {
-	pgRows, err := queryPGCampaignDailyTotals(ctx, deps.Pool, customerID, from, to)
+	postgresRows, err := queryPGCampaignDailyTotals(ctx, deps.Pool, customerID, from, to)
 	if err != nil {
 		return nil, 0, err
 	}
-	if len(pgRows) == 0 {
+	if len(postgresRows) == 0 {
 		return nil, 0, nil
 	}
 	clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
@@ -228,7 +228,7 @@ func queryDataQualityExportRows(
 	if err != nil {
 		return nil, 0, err
 	}
-	all := buildDataQualityRows(pgRows, clickhouseTotals)
+	all := buildDataQualityRows(postgresRows, clickhouseTotals)
 	total := int64(len(all))
 	if offset >= len(all) {
 		return nil, total, nil

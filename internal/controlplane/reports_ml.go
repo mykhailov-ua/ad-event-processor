@@ -108,7 +108,7 @@ func (h *ReportsHTTPHandlers) getMLFeatureSpikesReport(w http.ResponseWriter, r 
 	h.writeMLReport(w, r, queryMLFeatureSpikeRows)
 }
 
-type mlReportQueryFunc func(ctx context.Context, clickhouseQuery *database.CHQuery, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
+type mlReportQueryFunc func(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
 func (h *ReportsHTTPHandlers) writeMLReport(w http.ResponseWriter, r *http.Request, queryFn mlReportQueryFunc) {
 	if h.ClickHouseQuery == nil {
@@ -145,7 +145,7 @@ func (h *ReportsHTTPHandlers) writeMLReport(w http.ResponseWriter, r *http.Reque
 
 func queryMLScoreDistributionRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
@@ -175,7 +175,7 @@ func queryMLScoreDistributionRows(
 
 func queryMLShadowDeltaRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {
@@ -208,7 +208,7 @@ func queryMLShadowDeltaRows(
 
 func queryMLFeatureSpikeRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]map[string]any, int64, error) {

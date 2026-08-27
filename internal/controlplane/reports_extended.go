@@ -364,7 +364,7 @@ func (h *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, 
 	})
 }
 
-type clickhouseReportRowsFunc func(ctx context.Context, clickhouseQuery *database.CHQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
+type clickhouseReportRowsFunc func(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
 
 func (h *ReportsHTTPHandlers) writeClickHouseReportRows(
 	w http.ResponseWriter,
@@ -429,7 +429,7 @@ func (h *ReportsHTTPHandlers) writeClickHouseReportRows(
 
 func querySpendVelocityRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
@@ -458,7 +458,7 @@ func querySpendVelocityRows(
 
 func queryDaypartHeatmapRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	_, _ int,
@@ -485,7 +485,7 @@ func queryDaypartHeatmapRows(
 
 func queryGeoDeviceRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
@@ -513,7 +513,7 @@ func queryGeoDeviceRows(
 
 func queryDiscrepancyRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
@@ -548,7 +548,7 @@ func queryDiscrepancyRows(
 
 func queryTrueROIRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,

@@ -3,9 +3,11 @@ package migrationsource
 type SourceKind string
 
 const (
-	SourceKindKeitaroJSON SourceKind = "keitaro_json"
-	SourceKindBinomJSON   SourceKind = "binom_json"
-	SourceKindNativeV1    SourceKind = "native_v1"
+	SourceKindKeitaroJSON     SourceKind = "keitaro_json"
+	SourceKindKeitaroAdminAPI SourceKind = "keitaro_admin_api"
+	SourceKindBinomJSON       SourceKind = "binom_json"
+	SourceKindBinomReportAPI  SourceKind = "binom_report_api"
+	SourceKindNativeV1        SourceKind = "native_v1"
 )
 
 const MaxPayloadBytes = 1 << 20

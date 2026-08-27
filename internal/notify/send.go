@@ -468,7 +468,7 @@ func ProviderDisplayName(provider db.NotifierProvider) string {
 	}
 }
 
-func pgUUIDFromString(id string) (pgtype.UUID, error) {
+func postgresUUIDFromString(id string) (pgtype.UUID, error) {
 	parsed, err := uuid.Parse(id)
 	if err != nil {
 		return pgtype.UUID{}, ErrInvalidNotificationID

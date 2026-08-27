@@ -123,19 +123,19 @@ func runReplay(args []string) {
 		}
 		defer func() { _ = clickhouseConn.Close() }()
 
-		chStore := ingestion.NewClickHouseStore(clickhouseConn, 30*time.Second, "", ingestion.CHSpoolConfig{}, nil)
-		defer func() { _ = chStore.Close() }()
-		store = chStore
+		st := ingestion.NewClickHouseStore(clickhouseConn, 30*time.Second, "", ingestion.ClickHouseSpoolConfig{}, nil)
+		defer func() { _ = st.Close() }()
+		store = st
 	}
 
 	replayer := broker.NewReplayer(broker.ReplayConfig{
-		DataDir:   *dataDir,
-		Topic:     *topic,
-		From:      fromTime,
-		To:        toTime,
-		Target:    *target,
-		CHDSN:     dsn,
-		BatchSize: *batchSize,
+		DataDir:       *dataDir,
+		Topic:         *topic,
+		From:          fromTime,
+		To:            toTime,
+		Target:        *target,
+		ClickHouseDSN: dsn,
+		BatchSize:     *batchSize,
 	}, store)
 
 	slog.Info("starting broker replay",

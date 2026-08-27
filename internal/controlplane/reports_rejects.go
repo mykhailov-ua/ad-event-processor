@@ -116,7 +116,7 @@ func (h *ReportsHTTPHandlers) getFilterRejectsReport(w http.ResponseWriter, r *h
 
 func queryFilterRejectRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]FilterRejectRowDTO, int64, error) {
@@ -146,7 +146,7 @@ func queryFilterRejectRows(
 
 func queryFilterRejectSliceRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	from, to time.Time,
 	limit, offset int,
 ) ([]FilterRejectRowDTO, int64, error) {

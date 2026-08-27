@@ -28,7 +28,7 @@ type ResidentialIntelEnricher struct {
 type ResidentialIntelEnricherConfig struct {
 	Provider    ResidentialIntelProvider
 	Cache       *ResidentialIntelCache
-	CHWrite     driver.Conn
+	ClickHouseWrite     driver.Conn
 	RedisClient redis.Cmdable
 	FeedDir     string
 	ProviderID  string
@@ -60,7 +60,7 @@ func NewResidentialIntelEnricher(cfg ResidentialIntelEnricherConfig) *Residentia
 	return &ResidentialIntelEnricher{
 		provider:            cfg.Provider,
 		cache:               cfg.Cache,
-		clickhouseWriteConn: cfg.CHWrite,
+		clickhouseWriteConn: cfg.ClickHouseWrite,
 		redisClient:         cfg.RedisClient,
 		feedDir:             cfg.FeedDir,
 		providerID:          providerID,
@@ -160,9 +160,9 @@ func (e *ResidentialIntelEnricher) Run(ctx context.Context) (ResidentialIntelRun
 			stats.LookedUp++
 			residentialIntelLookupsTotal.Inc()
 			now := time.Now().UTC()
-			if chErr := insertResidentialIntelCH(ctx, e.clickhouseWriteConn, ip, result, e.providerID, now); chErr != nil {
+			if clickhouseErr := insertResidentialIntelClickHouse(ctx, e.clickhouseWriteConn, ip, result, e.providerID, now); clickhouseErr != nil {
 				residentialIntelErrorsTotal.Inc()
-				slog.Warn("residential intel clickhouse insert failed", "ip", ip, "error", chErr)
+				slog.Warn("residential intel clickhouse insert failed", "ip", ip, "error", clickhouseErr)
 			}
 		}
 

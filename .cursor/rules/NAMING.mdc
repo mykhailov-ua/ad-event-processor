@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Purpose
 
-Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Comment discipline: explain **why**, not what the name already says.
+Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. **No source comments** except the allowed categories below.
 
-Guard script: `bash scripts/ci/check_no_legacy_naming.sh`. Go receivers and web JSDoc: `quality.mdc`. Package layout and banned subtrees: `structure.mdc`. Root clutter: `core.mdc` Sources-only repository.
+Guard script: `bash scripts/ci/check_no_legacy_naming.sh`. Go receivers: `quality.mdc`. Package layout and banned subtrees: `structure.mdc`. Root clutter: `core.mdc` Sources-only repository.
 
 ## Forbidden trash naming
 
@@ -134,67 +134,40 @@ type ClickHouseStore struct {
 }
 ```
 
-## Comments - tone and format
+## Comments - allowed only
 
-| Rule | Detail |
-| :--- | :--- |
-| Quantity | One comment per constraint or decision, not per statement |
-| Tone | Imperative ("Return...", "Mount..."). Dry, factual prose |
-| Charset | ASCII only (0x20-0x7E) |
-| Config fields | Document units, SLA ceilings, security boundaries |
-| Financial / SLA | Call out invariants at I/O boundaries (budget, debit, outbox, webhook ACK) |
+Any comment in production or test source outside this table is **forbidden**. Constraints and rationale live in `.mdc` / `docs/`, not in code.
 
-## Comments - forbidden decoration
-
-Banned in code comments, doc comments, commit messages, and `.cursor/rules` prose:
-
-| Pattern | Examples | Use instead |
+| Category | Examples | Scope |
 | :--- | :--- | :--- |
-| Line banners | `// ====`, `// ----`, `// ****`, `/* ===== */` | Blank line or one imperative sentence |
-| Section labels in comments | `// --- Helpers ---`, `// ### Section` | Name the function or drop the banner |
-| Unicode dashes | em dash, en dash, figure dash | ASCII `-` or rewrite with `:`, `;`, comma |
-| Ellipsis character | single-char ellipsis | `...` (three ASCII dots) if needed |
-| Emojis and symbols | checkmarks, warning icons, decorative bullets | Plain words: `FAIL`, `WARN`, `NOTE` |
-| Box drawing | `+---+`, pipe tables inside `//` blocks | Markdown in docs only; not in Go comments |
-| Script/log banners | `echo "== step =="`, `log "--- section ---"`, `=== title ===` in `scripts/` | Plain `echo "gate_name: step"` or `log "step"` |
+| Compiler / toolchain | `//go:build`, `//go:generate`, `//go:embed`, `//go:linkname`, `//go:inline`, `//go:noescape`, `//go:noinline`, `//garble:ignore`, `//nolint:...` | Go source |
+| bash shebang | `#!/usr/bin/env bash`, `#!/bin/bash` | First line of `scripts/**/*.sh` and other executable shell entrypoints only |
+| shellcheck directive | `# shellcheck disable=...`, `# shellcheck source=...` | Shell scripts; linter directives only, not prose |
+| Placeholder files | env var names, path hints, keep-file notes | `.gitkeep`, empty stubs, `config/env/**`, `.env.example`, `*.env*` templates |
+| Disabled logic | Commented-out statements (valid code if uncommented) | Any source file; **no prose** - explanations are banned |
 
-YAML frontmatter `---` in `.mdc` files is required metadata, not a comment banner.
+Disabled logic must remain syntactically valid Go/JS/Lua if uncommented. Do not comment out code and add a prose line above it.
 
-`.cursor/rules` tables use markdown `| :--- |` row syntax only; not repeated `---` or `===` separator lines in body text.
+## Comments - forbidden
 
-## Comments - do not comment
+Everything not in **allowed only**:
 
-- What the name already says (`// List bots`, `// return error`).
-- Every struct field, every import group, every branch.
-- Package doc that only repeats the directory name.
-- Interface or type doc that duplicates the type name without contract.
-- Change logs, author names, or ticket URLs in code (use git).
-
-## Comments - when required
-
-Add a single imperative line only where code cannot express **why** or **constraint**:
-
-| Topic | Example |
+| Banned | Includes |
 | :--- | :--- |
-| Wire/schema | External pubkey, protobuf field semantics, Redis hash tag for cluster slot |
-| Best-effort path | Error intentionally not returned; downstream must still run |
-| SLA / budget | Webhook ACK ceiling, rate limit matching vendor API |
-| Security | Trust anchor, fail-closed boundary, idempotency key scope |
-| Invariant | Financial balance, ordering, at-least-once vs exactly-once |
-| Exported API | Concurrency, error semantics, nil infra behavior when non-obvious |
+| Doc comments | `// ParseFoo`, `/** ... */`, package docs, JSDoc |
+| Narrative | `// why`, `// NOTE`, `// TODO`, `// FIXME`, section banners (`// ====`, `// --- Helpers ---`), inline `# ...` in shell scripts |
+| Test prose | Row labels explained in comments; use descriptive `t.Run` names |
+| Charset slop in comments | Emojis, Unicode dashes, ellipsis char, box drawing in `//` blocks |
 
-Best-effort error handling: either return the error, or one comment why propagation would break a stronger invariant (never silent `_ =` without one of these - see `anti-slop.mdc`).
+YAML frontmatter `---` in `.mdc` files is required metadata, not a source comment.
 
-### Exported symbols
+Script/log banners in `scripts/`: plain `echo "gate_name: step"` or `log "step"` - no `=== title ===` (`anti-slop.mdc`).
 
-- Exported func/type: doc comment when errors, nil inputs, or concurrency are not obvious from the signature.
-- Exported cold-path handlers: document body limits and auth expectations only when not enforced in code at call site.
-- Hot path (`hot-path.mdc`): at most one comment per non-obvious branch; no narrative.
+## Comments - self-documenting code
 
-### Tests
-
-- No comments on table-driven row labels unless the case name is insufficient for a failing holdout.
-- Fault tests may log `fault_proof ...`; that is telemetry, not a substitute for assertions.
+- Names and types carry meaning; rename instead of commenting.
+- Best-effort error handling: return the error or prove the invariant in a holdout test (`anti-slop.mdc`) - never silent `_ =` with a comment excuse.
+- Fault tests may log `fault_proof ...`; that is telemetry in log output, not a `//` comment substitute for assertions.
 
 ## Related rules
 

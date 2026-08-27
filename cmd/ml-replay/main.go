@@ -232,14 +232,14 @@ func runReplay(ctx context.Context, opts replayOptions) error {
 		if err != nil {
 			return fmt.Errorf("load config: %w", err)
 		}
-		dsn := string(cfg.CHReadonlyDSN)
+		dsn := string(cfg.ClickHouseReadonlyDSN)
 		if dsn == "" {
-			dsn = string(cfg.CHDSN)
+			dsn = string(cfg.ClickHouseDSN)
 		}
 		if dsn == "" {
 			return fmt.Errorf("CH_READONLY_DSN or CH_DSN required for -clickhouse")
 		}
-		conn, err := database.ConnectCHReadonly(ctx, dsn)
+		conn, err := database.ConnectClickHouseReadonly(ctx, dsn)
 		if err != nil {
 			return fmt.Errorf("connect clickhouse: %w", err)
 		}

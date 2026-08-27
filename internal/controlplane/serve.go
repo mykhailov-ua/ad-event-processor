@@ -66,13 +66,13 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return fmt.Errorf("config is nil")
 	}
 
-	pgPools, err := database.ConnectPgPools(ctx, cfg)
+	postgresPools, err := database.ConnectPostgresPools(ctx, cfg)
 	if err != nil {
 		slog.Error("failed to connect pg pools", "error", err)
 		return err
 	}
-	defer pgPools.Close()
-	pool := pgPools.Read
+	defer postgresPools.Close()
+	pool := postgresPools.Read
 
 	if cfg.MultiRegionEnabled {
 		snap, snapErr := licensing.LoadDeploymentSnapshot(ctx, pool)
@@ -145,11 +145,11 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if opts.RtbBidShadeSim != nil {
 		svc.SetRtbBidShadeSimulator(opts.RtbBidShadeSim)
 	}
-	svc.SetSettlePool(pgPools.Settle)
-	if cfg.PgFailoverEnabled {
-		pgFailoverRT := svc.StartPgFailover(ctx)
-		if pgFailoverRT != nil {
-			defer pgFailoverRT.ClosePgFailover()
+	svc.SetSettlePool(postgresPools.Settle)
+	if cfg.PostgresFailoverEnabled {
+		postgresFailoverRT := svc.StartPostgresFailover(ctx)
+		if postgresFailoverRT != nil {
+			defer postgresFailoverRT.ClosePostgresFailover()
 		}
 	}
 	if svc == nil {
@@ -160,11 +160,11 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		svc.SetTCPControlServer(tcpSrv)
 	}
 
-	if cfg.ClickHouseEnabled() {
+	if cfg.IsClickHouseEnabled() {
 		var clickhouseWriteConn driver.Conn
-		if string(cfg.CHDSN) != "" {
+		if string(cfg.ClickHouseDSN) != "" {
 			var err error
-			clickhouseWriteConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+			clickhouseWriteConn, err = database.ConnectClickHouse(ctx, string(cfg.ClickHouseDSN))
 			if err != nil {
 				slog.Error("failed to connect to clickhouse for migrations", "error", err)
 				return err
@@ -176,16 +176,16 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			svc.SetClickHouseWrite(clickhouseWriteConn)
 		}
 
-		chRead, err := database.ConnectCHReadonly(ctx, string(cfg.CHReadonlyDSN))
+		clickhouseReadConn, err := database.ConnectClickHouseReadonly(ctx, string(cfg.ClickHouseReadonlyDSN))
 		if err != nil {
 			slog.Error("failed to connect to clickhouse for reporting", "error", err)
 			return err
 		}
-		defer func() { _ = chRead.Close() }()
+		defer func() { _ = clickhouseReadConn.Close() }()
 		if clickhouseWriteConn != nil {
 			defer func() { _ = clickhouseWriteConn.Close() }()
 		}
-		svc.SetClickHouse(chRead, database.CHQueryConfigFromApp(cfg))
+		svc.SetClickHouse(clickhouseReadConn, database.ClickHouseQueryConfigFromApp(cfg))
 		slog.Info("clickhouse reporting enabled", "readonly_dsn", "CH_READONLY_DSN")
 
 		if os.Getenv("USAGE_DAILY_FLUSH_ENABLED") == "1" {
@@ -250,7 +250,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	if cfg.MultiRegionGlobal() {
-		globalSpend := NewGlobalSpendReconciler(pgPools.Settle, redisShards, sharder, GlobalSpendReconcilerConfig{
+		globalSpend := NewGlobalSpendReconciler(postgresPools.Settle, redisShards, sharder, GlobalSpendReconcilerConfig{
 			MinBatchSize:   cfg.GlobalSpendBatchMin,
 			MaxConcurrency: cfg.GlobalSpendMaxConcurrency,
 		})
@@ -278,18 +278,18 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 	if os.Getenv("VOLUME_METER_ENABLED") != "0" {
 		meterSource := cfg.VolumeMeterSource
-		var clickhouseQuery *database.CHQuery
+		var clickhouseQuery *database.ClickHouseQuery
 		if meterSource == "ch" {
 			clickhouseQuery = svc.ClickHouseQuery()
 		}
 		svc.StartBackgroundWorker(func() {
-			NewVolumeMeterWorker(pgPools.Settle, clickhouseQuery, meterSource, volumeInterval, svc.PostgresGate()).Start(ctx)
+			NewVolumeMeterWorker(postgresPools.Settle, clickhouseQuery, meterSource, volumeInterval, svc.PostgresGate()).Start(ctx)
 		})
 		slog.Info("started volume meter worker", "interval", volumeInterval, "source", meterSource)
 	}
 
 	svc.StartBackgroundWorker(func() {
-		NewLedgerInvariantWorker(pgPools.Settle, cfg, nil).Start(ctx)
+		NewLedgerInvariantWorker(postgresPools.Settle, cfg, nil).Start(ctx)
 	})
 	slog.Info("started ledger invariant worker", "interval_hours", cfg.LedgerInvariantIntervalHours)
 

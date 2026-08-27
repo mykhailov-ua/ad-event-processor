@@ -93,7 +93,7 @@ Daily campaign-level spend pull for ROI reports. Worker runs in `cmd/control` wh
 
 **Not implemented:** PopCash and other networks that only expose reporting via account manager (no stable public API in tree). RichAds public docs describe SSP `api.admachine.co` (`publisher_profit`); the advertiser path above is what RedTrack-style integrations use and is covered by httptest fixtures only until validated against a live account.
 
-**Pop wave blocked (no public advertiser stats API as of 2026-08):** `zeropark` (campaign mgmt API only; spend via panel/export), `rollerads` (dashboard/CSV only), `pushground` and `clickadilla` (tracker integrations exist; endpoint docs are private/support), `ezmob` (reporting API docs are account-gated in the advertiser UI).
+**Pop wave closed blocked (no public advertiser stats API as of 2026-08-27):** `zeropark` (campaign mgmt API only; spend via panel/export), `rollerads` (dashboard/CSV only), `pushground` and `clickadilla` (tracker integrations exist; endpoint docs are private/support), `ezmob` (reporting API docs are account-gated in the advertiser UI). Operators on these networks use ingress cost macros (`ingress_cost_config`) or manual CSV until a public advertiser API exists.
 
 **Operator API:** `GET /api/v1/cost-sync/networks` (per-network `extra_config` field schema), `PUT /api/v1/cost-sync/credentials/{network}` (`sync_interval_minutes`, `token_mapping`), `POST /api/v1/cost-sync/run`, `GET /api/v1/cost-sync/history`. Secret `extra_config` keys are not returned on GET; response includes `extra_config_set` booleans instead.
 

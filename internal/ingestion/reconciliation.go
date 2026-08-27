@@ -14,7 +14,7 @@ import (
 )
 
 type ReconciliationWorker struct {
-	pgConn         PostgresConn
+	postgresConn         PostgresConn
 	clickhouseConn ClickHouseConn
 	repo           domain.CampaignRepository
 	driftLimit     float64
@@ -31,7 +31,7 @@ func NewReconciliationWorker(
 	interval time.Duration,
 ) *ReconciliationWorker {
 	return &ReconciliationWorker{
-		pgConn:         postgresConn,
+		postgresConn:         postgresConn,
 		clickhouseConn: clickhouseConn,
 		repo:           repo,
 		driftLimit:     driftLimit,
@@ -60,19 +60,19 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 	for i, c := range campaigns {
 		campaignIDs[i] = c.ID
 	}
-	pgSpends, err := rw.pgConn.GetCampaignSpends(ctx, campaignIDs)
+	postgresSpends, err := rw.postgresConn.GetCampaignSpends(ctx, campaignIDs)
 	if err != nil {
 		return fmt.Errorf("reconciliation failed to batch load Postgres spends: %w", err)
 	}
 
 	for _, c := range campaigns {
-		pgSpend := pgSpends[c.ID]
+		postgresSpend := postgresSpends[c.ID]
 
 		clickhouseSpend := clickhouseSpends[c.ID]
 
 		var drift float64
-		if pgSpend > 0 {
-			drift = math.Abs(float64(pgSpend-clickhouseSpend)) / float64(pgSpend)
+		if postgresSpend > 0 {
+			drift = math.Abs(float64(postgresSpend-clickhouseSpend)) / float64(postgresSpend)
 		} else if clickhouseSpend > 0 {
 			drift = 1.0
 		}
@@ -82,7 +82,7 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 		if drift > rw.driftLimit {
 			slog.Warn("Reconciliation: CRITICAL DATA DRIFT DETECTED",
 				"campaign_id", c.ID,
-				"pg_spend", pgSpend,
+				"postgres_spend", postgresSpend,
 				"clickhouse_spend", clickhouseSpend,
 				"drift_ratio", drift,
 				"limit", rw.driftLimit,
@@ -90,7 +90,7 @@ func (rw *ReconciliationWorker) Reconcile(ctx context.Context) error {
 		} else {
 			slog.Info("Reconciliation: campaign balances within normal drift limits",
 				"campaign_id", c.ID,
-				"pg_spend", pgSpend,
+				"postgres_spend", postgresSpend,
 				"clickhouse_spend", clickhouseSpend,
 				"drift_ratio", drift,
 			)

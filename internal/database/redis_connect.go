@@ -16,18 +16,18 @@ func ConnectRedis(ctx context.Context, addr, password string) (redis.UniversalCl
 func ConnectRedisWithBreaker(ctx context.Context, addr, password string, breaker *RedisBreaker) (redis.UniversalClient, error) {
 	uopts := netaddr.RedisUniversalOptions(addr, password)
 
-	rdb := redis.NewUniversalClient(uopts)
+	redisClient := redis.NewUniversalClient(uopts)
 
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		_ = rdb.Close()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		_ = redisClient.Close()
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
 	if breaker != nil {
-		rdb.AddHook(NewRedisCircuitBreakerHook(breaker))
+		redisClient.AddHook(NewRedisCircuitBreakerHook(breaker))
 	}
 
-	return rdb, nil
+	return redisClient, nil
 }
 
 func BrokerRedisURL(addrs []string, password string) string {

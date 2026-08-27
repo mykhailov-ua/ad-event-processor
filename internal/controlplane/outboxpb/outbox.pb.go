@@ -747,7 +747,7 @@ type QuotaRepairPayload struct {
 	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	ShardId       int32                  `protobuf:"varint,2,opt,name=shard_id,json=shardId,proto3" json:"shard_id,omitempty"`
 	Action        string                 `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
-	PgReserved    int64                  `protobuf:"varint,4,opt,name=pg_reserved,json=pgReserved,proto3" json:"pg_reserved,omitempty"`
+	PostgresReserved    int64                  `protobuf:"varint,4,opt,name=pg_reserved,json=pgReserved,proto3" json:"pg_reserved,omitempty"`
 	RedisExpected int64                  `protobuf:"varint,5,opt,name=redis_expected,json=redisExpected,proto3" json:"redis_expected,omitempty"`
 	ChunkSize     int64                  `protobuf:"varint,6,opt,name=chunk_size,json=chunkSize,proto3" json:"chunk_size,omitempty"`
 	DriftMicro    int64                  `protobuf:"varint,7,opt,name=drift_micro,json=driftMicro,proto3" json:"drift_micro,omitempty"`
@@ -809,7 +809,7 @@ func (x *QuotaRepairPayload) GetAction() string {
 
 func (x *QuotaRepairPayload) GetPgReserved() int64 {
 	if x != nil {
-		return x.PgReserved
+		return x.PostgresReserved
 	}
 	return 0
 }

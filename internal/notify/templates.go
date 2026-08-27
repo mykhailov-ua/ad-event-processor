@@ -16,7 +16,7 @@ func RenderTemplate(body string, vars map[string]string) string {
 }
 
 func (s *Service) RetryNotification(ctx context.Context, notificationID string) (Notification, error) {
-	id, err := pgUUIDFromString(notificationID)
+	id, err := postgresUUIDFromString(notificationID)
 	if err != nil {
 		return Notification{}, err
 	}

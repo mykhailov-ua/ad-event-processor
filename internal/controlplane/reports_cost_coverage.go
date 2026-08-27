@@ -121,7 +121,7 @@ func (h *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r
 
 func queryCostCoverageRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	pool *pgxpool.Pool,
 	customerID uuid.UUID,
 	campaignIDs []uuid.UUID,

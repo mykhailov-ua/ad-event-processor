@@ -80,8 +80,8 @@ var createTokenCmd = &cobra.Command{
 			return err
 		}
 
-		userID := pgUUIDToGoogleUUID(user.ID)
-		custID := pgUUIDToGoogleUUID(user.CustomerID)
+		userID := postgresUUIDToGoogleUUID(user.ID)
+		custID := postgresUUIDToGoogleUUID(user.CustomerID)
 		sessionID := uuid.New()
 		duration := time.Duration(cfg.DefaultTokenDurationHrs) * time.Hour
 
@@ -125,10 +125,10 @@ var listUsersCmd = &cobra.Command{
 			}
 			cIDStr := "NULL"
 			if customerID.Valid {
-				cIDStr = pgUUIDToGoogleUUID(customerID).String()
+				cIDStr = postgresUUIDToGoogleUUID(customerID).String()
 			}
 			fmt.Printf("%-36s | %-25s | %-10s | %-36s | %-7t | %-8t\n",
-				pgUUIDToGoogleUUID(id).String(), email, role, cIDStr, isBlocked, emailVerified)
+				postgresUUIDToGoogleUUID(id).String(), email, role, cIDStr, isBlocked, emailVerified)
 		}
 		return nil
 	},
@@ -155,11 +155,11 @@ var getUserCmd = &cobra.Command{
 
 		cIDStr := "NULL"
 		if user.CustomerID.Valid {
-			cIDStr = pgUUIDToGoogleUUID(user.CustomerID).String()
+			cIDStr = postgresUUIDToGoogleUUID(user.CustomerID).String()
 		}
 
 		fmt.Printf("User Details:\n")
-		fmt.Printf(" ID: %s\n", pgUUIDToGoogleUUID(user.ID).String())
+		fmt.Printf(" ID: %s\n", postgresUUIDToGoogleUUID(user.ID).String())
 		fmt.Printf(" Email: %s\n", user.Email)
 		fmt.Printf(" Role: %s\n", user.Role)
 		fmt.Printf(" Customer ID: %s\n", cIDStr)
@@ -222,7 +222,7 @@ var createUserCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Successfully created user:\n ID: %s\n Email: %s\n Role: %s\n",
-			pgUUIDToGoogleUUID(res.ID).String(), res.Email, res.Role)
+			postgresUUIDToGoogleUUID(res.ID).String(), res.Email, res.Role)
 		return nil
 	},
 }
@@ -321,7 +321,7 @@ var deleteUserCmd = &cobra.Command{
 	},
 }
 
-func pgUUIDToGoogleUUID(p pgtype.UUID) uuid.UUID {
+func postgresUUIDToGoogleUUID(p pgtype.UUID) uuid.UUID {
 	if !p.Valid {
 		return uuid.Nil
 	}

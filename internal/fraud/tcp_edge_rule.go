@@ -24,7 +24,7 @@ WHERE created_at >= now() - toIntervalSecond(?)
 GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	redisClient redis.Cmdable
 	cfg         AnalyzerConfig
 }

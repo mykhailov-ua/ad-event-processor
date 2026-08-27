@@ -32,7 +32,7 @@ type ConversionPayoutBatchApplier interface {
 
 type ConversionRejectReprocessor struct {
 	cfg             config.ConversionReject
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	applier         *ConversionRejectApplier
 	fraud           ConversionFraudTelemetryWriter
 	rows            ConversionRowWriter
@@ -42,7 +42,7 @@ type ConversionRejectReprocessor struct {
 
 func NewConversionRejectReprocessor(
 	cfg config.ConversionReject,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	applier *ConversionRejectApplier,
 	fraud ConversionFraudTelemetryWriter,
 	rows ConversionRowWriter,

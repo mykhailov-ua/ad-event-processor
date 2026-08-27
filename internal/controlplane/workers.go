@@ -721,7 +721,7 @@ func (w *CampaignDrainWorker) Start(ctx context.Context, interval time.Duration)
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+			if err := w.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 				return w.ProcessDraining(runCtx)
 			}); err != nil {
 				if database.IsShutdownError(err) {
@@ -1019,7 +1019,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 		case <-hyg30Ticker.C:
 			w.runHYG30Audits(ctx)
 		case <-snapshotTicker.C:
-			if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
+			if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
 				w.ReconcileBudgetSnapshot(runCtx)
 				return nil
 			}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
@@ -1028,14 +1028,14 @@ func (w *ReconWorker) Start(ctx context.Context) {
 		case <-ticker.C:
 			end := time.Now().Truncate(time.Hour).Add(-2 * time.Hour)
 			start := end.Add(-time.Hour)
-			if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
+			if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
 				return reconSvc.ReconcileWindow(runCtx, start, end)
 			}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
 				slog.Error("recon worker iteration failed", "err", err, "window", start)
 			}
 		case <-quotaTicker.C:
 			if w.svc.cfg != nil && (w.svc.cfg.QuotaMode == "shadow" || w.svc.cfg.QuotaMode == "live") {
-				if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
+				if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
 					w.ReconcileQuotas(runCtx)
 					return nil
 				}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
@@ -1257,7 +1257,7 @@ func (w *NodeMetricsSnapshotWorker) RunOnce(ctx context.Context, day time.Time) 
 		return w.snapshotDay(runCtx, day)
 	}
 	if w.svc != nil {
-		return w.svc.withPgLow(ctx, run)
+		return w.svc.withPostgresLow(ctx, run)
 	}
 	return run(ctx)
 }
@@ -1627,7 +1627,7 @@ func (w *NodeMetricsWorker) Flush(ctx context.Context, now time.Time) error {
 		return w.expireBuckets(runCtx, now)
 	}
 	if w.svc != nil {
-		return w.svc.withPgLow(ctx, run)
+		return w.svc.withPostgresLow(ctx, run)
 	}
 	return run(ctx)
 }
@@ -1716,13 +1716,13 @@ const (
 
 type VolumeMeterWorker struct {
 	pool            *pgxpool.Pool
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	source          string
 	interval        time.Duration
 	postgresGate    *PostgresGate
 }
 
-func NewVolumeMeterWorker(pool *pgxpool.Pool, clickhouseQuery *database.CHQuery, source string, interval time.Duration, postgresGate *PostgresGate) *VolumeMeterWorker {
+func NewVolumeMeterWorker(pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, source string, interval time.Duration, postgresGate *PostgresGate) *VolumeMeterWorker {
 	if interval <= 0 {
 		interval = time.Hour
 	}
@@ -1762,7 +1762,7 @@ type rollupRow struct {
 	Count      uint64
 }
 
-type pgMeterRow struct {
+type postgresMeterRow struct {
 	CustomerID uuid.UUID
 	Count      int64
 }
@@ -1785,11 +1785,11 @@ func (w *VolumeMeterWorker) runHour(ctx context.Context, now time.Time) error {
 	if w.source == volumeMeterSourcePG {
 		return w.runPGHour(ctx, hourStart, hourEnd, period)
 	}
-	return w.runCHHour(ctx, hourStart, hourEnd, period)
+	return w.runClickHouseHour(ctx, hourStart, hourEnd, period)
 }
 
 func (w *VolumeMeterWorker) runPGHour(ctx context.Context, hourStart, hourEnd, period time.Time) error {
-	rows, err := w.queryPGRollups(ctx, hourStart, hourEnd)
+	rows, err := w.queryPostgresRollups(ctx, hourStart, hourEnd)
 	if err != nil {
 		return err
 	}
@@ -1810,7 +1810,7 @@ func (w *VolumeMeterWorker) runPGHour(ctx context.Context, hourStart, hourEnd, p
 	return nil
 }
 
-func mapFromPGMeterRows(rows []pgMeterRow) map[uuid.UUID]int64 {
+func mapFromPGMeterRows(rows []postgresMeterRow) map[uuid.UUID]int64 {
 	out := make(map[uuid.UUID]int64, len(rows))
 	for _, row := range rows {
 		if row.Count > 0 {
@@ -1824,13 +1824,13 @@ func batchIncrementUsageMeters(ctx context.Context, pool *pgxpool.Pool, meter st
 	if len(units) == 0 {
 		return nil
 	}
-	pgPeriod := pgtype.Date{Time: period, Valid: true}
+	postgresPeriod := pgtype.Date{Time: period, Valid: true}
 	batch := &pgx.Batch{}
 	for custID, value := range units {
 		if value <= 0 {
 			continue
 		}
-		batch.Queue(incrementUsageMeterSQL, pgtype.UUID{Bytes: custID, Valid: true}, meter, pgPeriod, value)
+		batch.Queue(incrementUsageMeterSQL, pgtype.UUID{Bytes: custID, Valid: true}, meter, postgresPeriod, value)
 	}
 	if batch.Len() == 0 {
 		return nil
@@ -1845,7 +1845,7 @@ func batchIncrementUsageMeters(ctx context.Context, pool *pgxpool.Pool, meter st
 	return nil
 }
 
-func (w *VolumeMeterWorker) queryPGRollups(ctx context.Context, from, to time.Time) ([]pgMeterRow, error) {
+func (w *VolumeMeterWorker) queryPostgresRollups(ctx context.Context, from, to time.Time) ([]postgresMeterRow, error) {
 	const q = `
 		SELECT c.customer_id, COUNT(*)::bigint AS cnt
 		FROM events e
@@ -1853,24 +1853,24 @@ func (w *VolumeMeterWorker) queryPGRollups(ctx context.Context, from, to time.Ti
 		WHERE e.created_at >= $1 AND e.created_at < $2 AND e.status = 'accepted'
 		GROUP BY c.customer_id`
 
-	pgRows, err := w.pool.Query(ctx, q, from, to)
+	postgresRows, err := w.pool.Query(ctx, q, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("pg volume meter query: %w", err)
 	}
-	defer pgRows.Close()
+	defer postgresRows.Close()
 
-	var out []pgMeterRow
-	for pgRows.Next() {
-		var row pgMeterRow
-		if err := pgRows.Scan(&row.CustomerID, &row.Count); err != nil {
+	var out []postgresMeterRow
+	for postgresRows.Next() {
+		var row postgresMeterRow
+		if err := postgresRows.Scan(&row.CustomerID, &row.Count); err != nil {
 			return nil, err
 		}
 		out = append(out, row)
 	}
-	return out, pgRows.Err()
+	return out, postgresRows.Err()
 }
 
-func (w *VolumeMeterWorker) runCHHour(ctx context.Context, hourStart, hourEnd, period time.Time) error {
+func (w *VolumeMeterWorker) runClickHouseHour(ctx context.Context, hourStart, hourEnd, period time.Time) error {
 	rows, err := w.queryClickHouseRollups(ctx, hourStart, hourEnd)
 	if err != nil {
 		return err
@@ -1924,21 +1924,21 @@ func (w *VolumeMeterWorker) queryClickHouseRollups(ctx context.Context, from, to
 }
 
 func (w *VolumeMeterWorker) loadCampaignCustomers(ctx context.Context) (map[uuid.UUID]uuid.UUID, error) {
-	pgRows, err := w.pool.Query(ctx, `SELECT id, customer_id FROM campaigns`)
+	postgresRows, err := w.pool.Query(ctx, `SELECT id, customer_id FROM campaigns`)
 	if err != nil {
 		return nil, err
 	}
-	defer pgRows.Close()
+	defer postgresRows.Close()
 
 	out := make(map[uuid.UUID]uuid.UUID)
-	for pgRows.Next() {
+	for postgresRows.Next() {
 		var campID, custID uuid.UUID
-		if err := pgRows.Scan(&campID, &custID); err != nil {
+		if err := postgresRows.Scan(&campID, &custID); err != nil {
 			return nil, err
 		}
 		out[campID] = custID
 	}
-	return out, pgRows.Err()
+	return out, postgresRows.Err()
 }
 
 func ComputeWeightedUnitsFromRows(rows []rollupRow, campaignCustomers map[uuid.UUID]uuid.UUID) map[uuid.UUID]int64 {
@@ -2284,7 +2284,7 @@ func (w *OutboxWorker) Start(ctx context.Context, interval time.Duration) {
 			var processed int
 			var err error
 			if w.svc != nil {
-				err = w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+				err = w.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 					var innerErr error
 					processed, innerErr = w.ProcessOutboxWithCount(runCtx, 1000)
 					return innerErr
@@ -2730,12 +2730,12 @@ func (w *OperationLeaseWorker) Book(ctx context.Context, req OperationLeaseBookR
 		return empty, fmt.Errorf("operation lease book op_id=%s: %w", req.OpID, err)
 	}
 
-	if !w.pgAvailable(ctx) {
+	if !w.postgresAvailable(ctx) {
 		return w.bookRedis(ctx, req)
 	}
 
 	var lease db.OperationLease
-	err = w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+	err = w.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 		q := db.New(w.svc.pool)
 		booked, err := q.BookOperationLease(runCtx, db.BookOperationLeaseParams{
 			OpID:         domain.ToUUID(req.OpID),
@@ -2770,7 +2770,7 @@ func (w *OperationLeaseWorker) Book(ctx context.Context, req OperationLeaseBookR
 		return nil
 	})
 	if err != nil {
-		if !w.pgAvailable(ctx) || isPgUnavailable(err) {
+		if !w.postgresAvailable(ctx) || isPostgresUnavailable(err) {
 			return w.bookRedis(ctx, req)
 		}
 		return empty, fmt.Errorf("operation lease book op_id=%s: %w", req.OpID, err)
@@ -2796,17 +2796,17 @@ func (w *OperationLeaseWorker) AckBook(ctx context.Context, opID uuid.UUID, node
 	if nodeID == "" {
 		nodeID = w.nodeID
 	}
-	if !w.pgAvailable(ctx) {
+	if !w.postgresAvailable(ctx) {
 		return w.ackBookRedis(ctx, opID, nodeID, 3)
 	}
-	err := w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+	err := w.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 		return db.New(w.svc.pool).UpsertOperationLeaseReplicaBookAck(runCtx, db.UpsertOperationLeaseReplicaBookAckParams{
 			OpID:   domain.ToUUID(opID),
 			NodeID: nodeID,
 		})
 	})
 	if err != nil {
-		if !w.pgAvailable(ctx) || isPgUnavailable(err) {
+		if !w.postgresAvailable(ctx) || isPostgresUnavailable(err) {
 			return w.ackBookRedis(ctx, opID, nodeID, 3)
 		}
 		return empty, fmt.Errorf("operation lease ack book op_id=%s: %w", opID, err)
@@ -2822,21 +2822,21 @@ func (w *OperationLeaseWorker) AckBook(ctx context.Context, opID uuid.UUID, node
 }
 
 func (w *OperationLeaseWorker) quorumStatus(ctx context.Context, opID uuid.UUID) (OperationLeaseBookResult, error) {
-	if !w.pgAvailable(ctx) {
+	if !w.postgresAvailable(ctx) {
 		return w.quorumStatusRedis(ctx, opID, 3)
 	}
 	q := db.New(w.svc.pool)
 	opUUID := domain.ToUUID(opID)
 	replicaCount, err := q.CountOperationLeaseReplicas(ctx, opUUID)
 	if err != nil {
-		if isPgUnavailable(err) {
+		if isPostgresUnavailable(err) {
 			return w.quorumStatusRedis(ctx, opID, 3)
 		}
 		return OperationLeaseBookResult{}, err
 	}
 	ackCount, err := q.CountOperationLeaseBookAcks(ctx, opUUID)
 	if err != nil {
-		if isPgUnavailable(err) {
+		if isPostgresUnavailable(err) {
 			return w.quorumStatusRedis(ctx, opID, int(replicaCount))
 		}
 		return OperationLeaseBookResult{}, err
@@ -2878,7 +2878,7 @@ func (w *OperationLeaseWorker) ExecuteOp(ctx context.Context, opID uuid.UUID, ex
 	}
 
 	var won bool
-	err = w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+	err = w.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 		q := db.New(w.svc.pool)
 		rows, err := q.OperationLeaseClaimExecuting(runCtx, db.OperationLeaseClaimExecutingParams{
 			OpID:         opUUID,
@@ -2974,7 +2974,7 @@ func (w *OperationLeaseWorker) RenewLease(ctx context.Context, opID uuid.UUID) (
 		return db.OperationLease{}, fmt.Errorf("operation lease renew op_id=%s: worker unavailable", opID)
 	}
 	var renewed db.OperationLease
-	err := w.svc.withPgHigh(ctx, func(runCtx context.Context) error {
+	err := w.svc.withPostgresHigh(ctx, func(runCtx context.Context) error {
 		row, err := db.New(w.svc.pool).RenewOperationLease(runCtx, db.RenewOperationLeaseParams{
 			OpID:           domain.ToUUID(opID),
 			TimeoutSec:     int32(w.timeoutSec),
@@ -3021,7 +3021,7 @@ func (w *OperationLeaseWorker) RunJanitor(ctx context.Context) (int32, error) {
 	defer w.releaseJanitorLock(ctx)
 
 	var expired int32
-	err = w.svc.withPgLow(ctx, func(runCtx context.Context) error {
+	err = w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
 		n, err := db.New(w.svc.pool).OperationLeaseExpireStale(runCtx, defaultOpLeaseExpireBatch)
 		if err != nil {
 			return err

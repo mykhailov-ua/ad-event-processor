@@ -56,3 +56,34 @@ func TestAttachIngressCost_disabledConfig(t *testing.T) {
 	attachIngressCost(evt, camp, parsed)
 	require.Equal(t, int64(0), evt.IngressCostMicro)
 }
+
+func TestAttachIngressCost_patchJSONShape_holdout(t *testing.T) {
+	camp := &domain.Campaign{
+		ID: uuid.New(),
+		IngressCost: domain.ParseIngressCostConfigJSON(
+			[]byte(`{"param":"cost","scale":"decimal","max_micro":5000000,"policy":"ignore"}`),
+		),
+	}
+	parsed := &clickQueryParsed{}
+	path := []byte("/click?campaign_id=" + camp.ID.String() + "&type=click&cost=0.12")
+	parseClickQuery(path, nil, parsed)
+	require.True(t, parsed.ok)
+
+	evt := &domain.Event{CampaignID: camp.ID}
+	attachIngressCost(evt, camp, parsed)
+	require.Equal(t, int64(120_000), evt.IngressCostMicro)
+	require.Equal(t, ingressCostSourceMacro, clickAttributedCostSource(evt))
+}
+
+func TestAttachIngressCost_withoutPatchConfig_holdout(t *testing.T) {
+	camp := &domain.Campaign{ID: uuid.New()}
+	parsed := &clickQueryParsed{}
+	path := []byte("/click?campaign_id=" + camp.ID.String() + "&type=click&cost=0.12")
+	parseClickQuery(path, nil, parsed)
+	require.True(t, parsed.ok)
+
+	evt := &domain.Event{CampaignID: camp.ID}
+	attachIngressCost(evt, camp, parsed)
+	require.Equal(t, int64(0), evt.IngressCostMicro)
+	require.Empty(t, clickAttributedCostSource(evt))
+}

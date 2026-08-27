@@ -78,7 +78,7 @@ func (s *NodeCapacityScorer) Tick(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	if s.svc != nil {
-		return s.svc.withPgLow(ctx, run)
+		return s.svc.withPostgresLow(ctx, run)
 	}
 	return run(ctx)
 }
@@ -449,7 +449,7 @@ func (g *GlobalRegionTrafficScorer) Tick(ctx context.Context, now time.Time) err
 		return g.tick(runCtx, now, g.epoch.Add(1))
 	}
 	if g.svc != nil {
-		return g.svc.withPgLow(ctx, run)
+		return g.svc.withPostgresLow(ctx, run)
 	}
 	return run(ctx)
 }

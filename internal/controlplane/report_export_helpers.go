@@ -56,7 +56,7 @@ func csvMapField(row map[string]any, key string) string {
 func exportCHMapReport(
 	ctx context.Context,
 	w *csv.Writer,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	queryFn clickhouseReportRowsFunc,

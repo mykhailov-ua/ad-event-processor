@@ -207,7 +207,7 @@ func sourceQualityNeedsDetailRows(groupBy []string) bool {
 
 func querySourceQualityDetailRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,

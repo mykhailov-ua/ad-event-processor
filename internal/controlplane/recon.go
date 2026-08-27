@@ -91,7 +91,7 @@ func (w *OutboxWorker) applyReconciliationAdjustPostgres(
 	}
 
 	_, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
-		CustomerID:      pgUUID(customerID),
+		CustomerID:      postgresUUID(customerID),
 		CampaignID:      domain.ToUUID(campID),
 		Amount:          p.LedgerAmt,
 		Type:            db.LedgerTypeRECONCILIATIONADJUST,
@@ -196,7 +196,7 @@ func (reconService *ReconService) markReconciliationRedisAdjusted(
 	return redisClient.Set(ctx, reconciliationRedisAppliedKey(eventID), "1", 7*24*time.Hour).Err()
 }
 
-func pgUUID(id uuid.UUID) pgtype.UUID {
+func postgresUUID(id uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: id, Valid: true}
 }
 
@@ -446,9 +446,9 @@ func abs(x int64) int64 {
 }
 
 const (
-	hyg30ReconDriftThresholdMicro = 1000
-	hyg30CHStatsTolerancePct      = 0.0001
-	hyg30LedgerSampleSize         = 100
+	hyg30ReconDriftThresholdMicro    = 1000
+	hyg30ClickHouseStatsTolerancePct = 0.0001
+	hyg30LedgerSampleSize            = 100
 )
 
 func (w *ReconWorker) runHYG30Audits(ctx context.Context) {
@@ -457,9 +457,9 @@ func (w *ReconWorker) runHYG30Audits(ctx context.Context) {
 	}
 	start := time.Now()
 	pool := w.svc.settlementPool()
-	if err := w.svc.withPgLow(ctx, func(runCtx context.Context) error {
+	if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
 		w.auditRedisPGLedger(runCtx, pool)
-		w.auditPGCHStats(runCtx)
+		w.auditPostgresClickHouseStats(runCtx)
 		w.auditLedgerInvariantSample(runCtx, pool)
 		return nil
 	}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
@@ -486,13 +486,13 @@ func (w *ReconWorker) auditRedisPGLedger(ctx context.Context, pool *pgxpool.Pool
 	defer rows.Close()
 
 	type hyg30AuditRow struct {
-		campID, customerID   uuid.UUID
-		pgSpend, ledgerSpend int64
+		campID, customerID         uuid.UUID
+		postgresSpend, ledgerSpend int64
 	}
 	var auditRows []hyg30AuditRow
 	for rows.Next() {
 		var row hyg30AuditRow
-		if err := rows.Scan(&row.campID, &row.customerID, &row.pgSpend, &row.ledgerSpend); err != nil {
+		if err := rows.Scan(&row.campID, &row.customerID, &row.postgresSpend, &row.ledgerSpend); err != nil {
 			continue
 		}
 		auditRows = append(auditRows, row)
@@ -528,12 +528,12 @@ func (w *ReconWorker) auditRedisPGLedger(ctx context.Context, pool *pgxpool.Pool
 			if err != nil && !errors.Is(err, redis.Nil) {
 				continue
 			}
-			w.processHYG30AuditDrift(ctx, row.campID, row.pgSpend, row.ledgerSpend, redisSpend)
+			w.processHYG30AuditDrift(ctx, row.campID, row.postgresSpend, row.ledgerSpend, redisSpend)
 		}
 	}
 }
 
-func (w *ReconWorker) processHYG30AuditDrift(ctx context.Context, campID uuid.UUID, pgSpend, ledgerSpend, redisSpend int64) {
+func (w *ReconWorker) processHYG30AuditDrift(ctx context.Context, campID uuid.UUID, postgresSpend, ledgerSpend, redisSpend int64) {
 	drift := redisSpend - ledgerSpend
 	if drift == 0 {
 		metrics.ReconDriftMicro.DeleteLabelValues(campID.String())
@@ -548,15 +548,15 @@ func (w *ReconWorker) processHYG30AuditDrift(ctx context.Context, campID uuid.UU
 		return
 	}
 	if w.svc.cfg != nil && w.svc.cfg.ReconForceRefillEnabled() {
-		if err := w.svc.forceRefillCampaignFromPG(ctx, campID, pgSpend); err != nil {
+		if err := w.svc.forceRefillCampaignFromPG(ctx, campID, postgresSpend); err != nil {
 			slog.Error("force refill from pg failed", "campaign_id", campID, "error", err)
 		} else {
-			slog.Info("force refill from pg applied", "campaign_id", campID, "pg_spend", pgSpend)
+			slog.Info("force refill from pg applied", "campaign_id", campID, "postgres_spend", postgresSpend)
 		}
 	}
 }
 
-func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
+func (w *ReconWorker) auditPostgresClickHouseStats(ctx context.Context) {
 	clickhouseQuery := w.svc.ClickHouseQuery()
 	if clickhouseQuery == nil {
 		return
@@ -573,25 +573,25 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 	}
 	defer rows.Close()
 
-	type pgStat struct {
-		campID  uuid.UUID
-		day     time.Time
-		pgTotal int64
+	type postgresStat struct {
+		campID        uuid.UUID
+		day           time.Time
+		postgresTotal int64
 	}
-	var pgStats []pgStat
+	var postgresStats []postgresStat
 	var campaignIDs []uuid.UUID
 	seenCamp := make(map[uuid.UUID]struct{})
 	var minDay, maxDay time.Time
 
 	for rows.Next() {
-		var s pgStat
-		if err := rows.Scan(&s.campID, &s.day, &s.pgTotal); err != nil {
+		var s postgresStat
+		if err := rows.Scan(&s.campID, &s.day, &s.postgresTotal); err != nil {
 			continue
 		}
-		if s.pgTotal == 0 {
+		if s.postgresTotal == 0 {
 			continue
 		}
-		pgStats = append(pgStats, s)
+		postgresStats = append(postgresStats, s)
 		if _, ok := seenCamp[s.campID]; !ok {
 			seenCamp[s.campID] = struct{}{}
 			campaignIDs = append(campaignIDs, s.campID)
@@ -607,7 +607,7 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 		slog.Error("hyg30 audit B pg scan failed", "error", err)
 		return
 	}
-	if len(pgStats) == 0 || len(campaignIDs) == 0 {
+	if len(postgresStats) == 0 || len(campaignIDs) == 0 {
 		return
 	}
 
@@ -620,19 +620,19 @@ func (w *ReconWorker) auditPGCHStats(ctx context.Context) {
 		return
 	}
 
-	for _, s := range pgStats {
+	for _, s := range postgresStats {
 		key := campaignDailyTotalKey(s.campID, s.day)
-		chTotal := clickhouseTotals[key]
-		if chTotal == 0 {
+		clickhouseTotal := clickhouseTotals[key]
+		if clickhouseTotal == 0 {
 			continue
 		}
-		diff := math.Abs(float64(int64(chTotal)-s.pgTotal)) / float64(s.pgTotal)
-		if diff > hyg30CHStatsTolerancePct {
+		diff := math.Abs(float64(int64(clickhouseTotal)-s.postgresTotal)) / float64(s.postgresTotal)
+		if diff > hyg30ClickHouseStatsTolerancePct {
 			slog.Warn("campaign stats stale vs clickhouse",
 				"campaign_id", s.campID,
 				"date", s.day.Format("2006-01-02"),
-				"pg_total", s.pgTotal,
-				"ch_total", chTotal,
+				"postgres_total", s.postgresTotal,
+				"clickhouse_total", clickhouseTotal,
 				"diff_pct", diff,
 			)
 		}
@@ -798,7 +798,7 @@ func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 		return
 	}
 
-	pgByID, err := w.loadCampaignBudgetPGBatch(ctx, campaignIDs)
+	postgresByID, err := w.loadCampaignBudgetPGBatch(ctx, campaignIDs)
 	if err != nil {
 		slog.Error("budget snapshot recon: batch pg load failed", "error", err)
 		return
@@ -830,9 +830,9 @@ func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 
 	var checked, skipped, discrepancies int
 	for _, campID := range campaignIDs {
-		pg, pgOk := pgByID[campID]
+		pg, postgresOk := postgresByID[campID]
 		snap, snapOk := snapByID[campID]
-		ok, disc, skip := w.reconcileCampaignSnapshot(ctx, reconSvc, campID, pg, snap, pgOk, snapOk)
+		ok, disc, skip := w.reconcileCampaignSnapshot(ctx, reconSvc, campID, pg, snap, postgresOk, snapOk)
 		if skip {
 			skipped++
 			continue
@@ -893,7 +893,7 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 	campID uuid.UUID,
 	pg campaignBudgetPG,
 	snap domain.BudgetReconSnapshot,
-	pgOk, snapOk bool,
+	postgresOk, snapOk bool,
 ) (checked, discrepancy, skipped bool) {
 	shardIdx := w.svc.sharder.GetShard(campID)
 	if w.quorum != nil && w.quorum.DeadShardConfirmed(shardIdx) {
@@ -902,7 +902,7 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 	if shardIdx >= len(w.svc.redisShards) {
 		return false, false, true
 	}
-	if !pgOk {
+	if !postgresOk {
 		return false, false, true
 	}
 	if !snapOk {
@@ -930,9 +930,9 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 		}
 	}
 
-	pgRemaining := pg.budgetLimit - pg.currentSpend
+	postgresRemaining := pg.budgetLimit - pg.currentSpend
 	redisTotal := snap.RedisBudgetRemainingTotal(brokerPending)
-	drift := pgRemaining - redisTotal
+	drift := postgresRemaining - redisTotal
 	tolerance := reconToleranceMicro(pg.budgetLimit)
 	if abs(drift) <= tolerance {
 		return true, false, false
@@ -950,7 +950,7 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 		INSERT INTO recon_discrepancies (run_id, campaign_id, customer_id, expected_spend, actual_spend, delta, redis_adjusted)
 		VALUES ($1, $2, $3, $4, $5, $6, false)`,
 		runID, domain.ToUUID(campID), pgtype.UUID{Bytes: pg.customerID, Valid: true},
-		redisTotal, pgRemaining, drift,
+		redisTotal, postgresRemaining, drift,
 	)
 	if err != nil {
 		slog.Error("budget snapshot recon: record discrepancy failed", "campaign_id", campID, "error", err)

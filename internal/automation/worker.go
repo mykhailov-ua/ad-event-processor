@@ -31,13 +31,13 @@ type Executor interface {
 
 type Worker struct {
 	pool     *pgxpool.Pool
-	ch       *database.CHQuery
+	ch       *database.ClickHouseQuery
 	exec     Executor
 	interval time.Duration
 	client   *http.Client
 }
 
-func NewWorker(pool *pgxpool.Pool, ch *database.CHQuery, exec Executor, interval time.Duration) *Worker {
+func NewWorker(pool *pgxpool.Pool, ch *database.ClickHouseQuery, exec Executor, interval time.Duration) *Worker {
 	if interval < 5*time.Minute {
 		interval = 15 * time.Minute
 	}

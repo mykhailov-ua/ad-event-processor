@@ -203,7 +203,7 @@ var listCampaignsCmd = &cobra.Command{
 				return err
 			}
 			fmt.Printf("%-36s | %-35.35s | %-9s | %-12d | %-12d | %-36s\n",
-				pgUUIDToGoogleUUID(id).String(), name, status, budgetLimit, currentSpend, pgUUIDToGoogleUUID(customerID).String())
+				postgresUUIDToGoogleUUID(id).String(), name, status, budgetLimit, currentSpend, postgresUUIDToGoogleUUID(customerID).String())
 		}
 		return nil
 	},
@@ -233,17 +233,17 @@ var getCampaignCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Campaign Details:\n")
-		fmt.Printf(" ID: %s\n", pgUUIDToGoogleUUID(camp.ID).String())
+		fmt.Printf(" ID: %s\n", postgresUUIDToGoogleUUID(camp.ID).String())
 		fmt.Printf(" Name: %s\n", camp.Name)
 		fmt.Printf(" Status: %s\n", camp.Status)
 		fmt.Printf(" Budget Limit: %d\n", camp.BudgetLimit)
 		fmt.Printf(" Current Spend: %d\n", camp.CurrentSpend)
 		fmt.Printf(" Pacing Mode: %s\n", camp.PacingMode)
 		fmt.Printf(" Daily Budget: %d\n", camp.DailyBudget)
-		fmt.Printf(" Customer ID: %s\n", pgUUIDToGoogleUUID(camp.CustomerID).String())
+		fmt.Printf(" Customer ID: %s\n", postgresUUIDToGoogleUUID(camp.CustomerID).String())
 		fmt.Printf(" Target Nations: %s\n", strings.Join(camp.TargetCountries, ", "))
 		if camp.BrandID.Valid {
-			fmt.Printf(" Brand ID: %s\n", pgUUIDToGoogleUUID(camp.BrandID).String())
+			fmt.Printf(" Brand ID: %s\n", postgresUUIDToGoogleUUID(camp.BrandID).String())
 			fmt.Printf(" Brand FCAP Key: %s\n", camp.BrandFcapKey)
 		}
 		return nil
@@ -288,7 +288,7 @@ var createCampaignCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Successfully created campaign:\n ID: %s\n Name: %s\n Cust: %s\n",
-			pgUUIDToGoogleUUID(camp.ID).String(), camp.Name, pgUUIDToGoogleUUID(camp.CustomerID).String())
+			postgresUUIDToGoogleUUID(camp.ID).String(), camp.Name, postgresUUIDToGoogleUUID(camp.CustomerID).String())
 		return nil
 	},
 }
@@ -346,7 +346,7 @@ var listCustomersCmd = &cobra.Command{
 		fmt.Printf("%-36s | %-25s | %-12s | %-12s | %-8s\n", "Customer ID", "Name", "Balance", "Overdraft", "Currency")
 		for _, cust := range customers {
 			fmt.Printf("%-36s | %-25.25s | %-12d | %-12d | %-8s\n",
-				pgUUIDToGoogleUUID(cust.ID).String(), cust.Name, cust.Balance, cust.AllowedOverdraft, cust.Currency)
+				postgresUUIDToGoogleUUID(cust.ID).String(), cust.Name, cust.Balance, cust.AllowedOverdraft, cust.Currency)
 		}
 		return nil
 	},
@@ -376,7 +376,7 @@ var getCustomerCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Customer Details:\n")
-		fmt.Printf(" ID: %s\n", pgUUIDToGoogleUUID(cust.ID).String())
+		fmt.Printf(" ID: %s\n", postgresUUIDToGoogleUUID(cust.ID).String())
 		fmt.Printf(" Name: %s\n", cust.Name)
 		fmt.Printf(" Balance: %d\n", cust.Balance)
 		fmt.Printf(" Allowed Overdraft: %d\n", cust.AllowedOverdraft)
@@ -440,7 +440,7 @@ var createCustomerCmd = &cobra.Command{
 		}
 
 		fmt.Printf("Successfully created customer:\n ID: %s\n Name: %s\n Bal: %d\n",
-			pgUUIDToGoogleUUID(cust.ID).String(), cust.Name, cust.Balance)
+			postgresUUIDToGoogleUUID(cust.ID).String(), cust.Name, cust.Balance)
 		return nil
 	},
 }

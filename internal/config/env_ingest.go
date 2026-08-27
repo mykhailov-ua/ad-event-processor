@@ -27,7 +27,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.Broker.FraudTopic = os.Getenv("BROKER_FRAUD_TOPIC")
 	cfg.Broker.PartitionCount = getEnvInt("BROKER_PARTITION_COUNT", defaultRedisShardCount(cfg.RedisAddrs))
 	cfg.Broker.ShadowMode = getEnvBool("BROKER_SHADOW_MODE", false)
-	cfg.Broker.CHIngestSource = os.Getenv("CH_INGEST_SOURCE")
+	cfg.Broker.ClickHouseIngestSource = os.Getenv("CH_INGEST_SOURCE")
 	cfg.Broker.MaxBytes = getEnvInt("BROKER_FETCH_MAX_BYTES", 1024*1024)
 	cfg.Broker.TimeoutMs = getEnvInt("BROKER_TIMEOUT_MS", 5000)
 	cfg.Broker.ReconcileIntervalMs = getEnvInt("BROKER_RECONCILE_INTERVAL_MS", 30000)
@@ -65,9 +65,9 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 		cfg.RtbExchangeDelivery = "adm"
 	}
 	cfg.RtbExchangeNURLTemplate = os.Getenv("RTB_EXCHANGE_NURL_TEMPLATE")
-	cfg.TrackerTgClickBaseURL = os.Getenv("TRACKER_TG_CLICK_BASE_URL")
-	if cfg.TrackerTgClickBaseURL == "" {
-		cfg.TrackerTgClickBaseURL = "http://track.local/tg/click"
+	cfg.TrackerTelegramClickBaseURL = os.Getenv("TRACKER_TG_CLICK_BASE_URL")
+	if cfg.TrackerTelegramClickBaseURL == "" {
+		cfg.TrackerTelegramClickBaseURL = "http://track.local/tg/click"
 	}
 	cfg.RtbExchangeSeatID = os.Getenv("RTB_EXCHANGE_SEAT_ID")
 	if cfg.RtbExchangeSeatID == "" {

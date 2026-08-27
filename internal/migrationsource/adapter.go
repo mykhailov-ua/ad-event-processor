@@ -11,8 +11,12 @@ func Parse(kind SourceKind, payload []byte) (NormalizedBundle, error) {
 	switch kind {
 	case SourceKindKeitaroJSON:
 		return ParseKeitaroJSON(payload)
+	case SourceKindKeitaroAdminAPI:
+		return ParseKeitaroAdminAPI(payload)
 	case SourceKindBinomJSON:
 		return ParseBinomJSON(payload)
+	case SourceKindBinomReportAPI:
+		return ParseBinomReportAPI(payload)
 	case SourceKindNativeV1:
 		return NormalizedBundle{}, fmt.Errorf("native_v1 uses campaign export import path")
 	default:

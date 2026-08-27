@@ -110,7 +110,7 @@ func (h *ReportsHTTPHandlers) getConversionTypePayoutReport(w http.ResponseWrite
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 
-func queryConversionTypePayoutCHRows(ctx context.Context, clickhouseQuery *database.CHQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]ConversionTypePayoutRowDTO, int64, error) {
+func queryConversionTypePayoutCHRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]ConversionTypePayoutRowDTO, int64, error) {
 	if clickhouseQuery == nil || len(campaignIDs) == 0 {
 		return nil, 0, nil
 	}

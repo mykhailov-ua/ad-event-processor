@@ -34,7 +34,7 @@ type PostgresConn interface {
 
 type SnapshotReplicator struct {
 	mu             sync.RWMutex
-	pgConn         PostgresConn
+	postgresConn         PostgresConn
 	clickhouseConn ClickHouseConn
 	redisShards    []redis.UniversalClient
 	sharder        Sharder
@@ -50,7 +50,7 @@ func NewSnapshotReplicator(
 	clickCharge, impCharge int64,
 ) *SnapshotReplicator {
 	return &SnapshotReplicator{
-		pgConn:         postgresConn,
+		postgresConn:         postgresConn,
 		clickhouseConn: clickhouseConn,
 		redisShards:    redisShards,
 		sharder:        sharder,
@@ -92,11 +92,11 @@ func (sr *SnapshotReplicator) RestoreSnapshot(ctx context.Context, snapshotData 
 
 	for campID, spend := range snap.CampaignSpends {
 
-		if err := sr.pgConn.UpdateCampaignSpend(ctx, campID, spend); err != nil {
+		if err := sr.postgresConn.UpdateCampaignSpend(ctx, campID, spend); err != nil {
 			return nil, fmt.Errorf("failed to update postgres campaign spend for %s: %w", campID, err)
 		}
 
-		limit, err := sr.pgConn.GetCampaignBudgetLimit(ctx, campID)
+		limit, err := sr.postgresConn.GetCampaignBudgetLimit(ctx, campID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get campaign limit for %s: %w", campID, err)
 		}
@@ -130,7 +130,7 @@ func (sr *SnapshotReplicator) ReplayTelemetrySince(ctx context.Context, since ti
 	replayedCount := 0
 	for _, e := range events {
 
-		isNew, err := sr.pgConn.MarkEventIdempotent(ctx, e.ClickID)
+		isNew, err := sr.postgresConn.MarkEventIdempotent(ctx, e.ClickID)
 		if err != nil {
 			return replayedCount, fmt.Errorf("failed to execute idempotency check for %s: %w", e.ClickID, err)
 		}
@@ -151,9 +151,9 @@ func (sr *SnapshotReplicator) ReplayTelemetrySince(ctx context.Context, since ti
 		if e.Type == "impression" {
 			charge = sr.impCharge
 		}
-		currentSpend, err := sr.pgConn.GetCampaignSpend(ctx, e.CampaignID)
+		currentSpend, err := sr.postgresConn.GetCampaignSpend(ctx, e.CampaignID)
 		if err == nil {
-			_ = sr.pgConn.UpdateCampaignSpend(ctx, e.CampaignID, currentSpend+charge)
+			_ = sr.postgresConn.UpdateCampaignSpend(ctx, e.CampaignID, currentSpend+charge)
 		}
 
 		replayedCount++

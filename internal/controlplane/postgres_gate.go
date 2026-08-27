@@ -104,7 +104,7 @@ func (g *PostgresGate) InFlight() int {
 	return int(g.inFlight.Load())
 }
 
-func (s *Service) withPgHigh(ctx context.Context, fn func(context.Context) error) error {
+func (s *Service) withPostgresHigh(ctx context.Context, fn func(context.Context) error) error {
 	if s == nil || s.postgresGate == nil {
 		return fn(ctx)
 	}
@@ -115,7 +115,7 @@ func (s *Service) withPgHigh(ctx context.Context, fn func(context.Context) error
 	return fn(ctx)
 }
 
-func (s *Service) withPgLow(ctx context.Context, fn func(context.Context) error) error {
+func (s *Service) withPostgresLow(ctx context.Context, fn func(context.Context) error) error {
 	if s == nil || s.postgresGate == nil {
 		return fn(ctx)
 	}

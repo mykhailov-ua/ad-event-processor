@@ -245,7 +245,7 @@ type ReportsHTTPHandlers struct {
 	CampaignForecaster        CampaignForecaster
 	ReportJobs                *ReportJobRunner
 	Pool                      *pgxpool.Pool
-	ClickHouseQuery           *database.CHQuery
+	ClickHouseQuery           *database.ClickHouseQuery
 	BuyerPortfolio            BuyerPortfolioReader
 	EdgeMetricsReader         func(context.Context) (EdgeMetricsPanelDTO, error)
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc

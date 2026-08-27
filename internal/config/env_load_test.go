@@ -229,11 +229,11 @@ func TestLoad_ttcFailClosedDefaultTrue(t *testing.T) {
 
 func TestBrokerPrimaryCH(t *testing.T) {
 	cfg := &Config{}
-	cfg.Broker.CHIngestSource = "broker"
+	cfg.Broker.ClickHouseIngestSource = "broker"
 	if !cfg.BrokerPrimaryCH() {
 		t.Fatal("broker CH ingest source must be primary")
 	}
-	cfg.Broker.CHIngestSource = ""
+	cfg.Broker.ClickHouseIngestSource = ""
 	if cfg.BrokerPrimaryCH() {
 		t.Fatal("empty CH ingest source must not be broker-primary")
 	}
@@ -278,7 +278,7 @@ func TestValidateBrokerPrimaryRequiresBrokerURL(t *testing.T) {
 		TokenSymmetricKey: "test-key",
 		RedisAddrs:        []string{"127.0.0.1:6379"},
 	}
-	cfg.Broker.CHIngestSource = "broker"
+	cfg.Broker.ClickHouseIngestSource = "broker"
 	if err := validateAndApplyDefaults(cfg); err == nil {
 		t.Fatal("CH_INGEST_SOURCE=broker without BROKER_URL must fail validation")
 	}

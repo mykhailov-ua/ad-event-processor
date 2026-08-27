@@ -21,7 +21,7 @@ const (
 
 type FilterRejectRollupWorker struct {
 	pool            *pgxpool.Pool
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	url             string
 	interval        time.Duration
 	client          *http.Client
@@ -29,7 +29,7 @@ type FilterRejectRollupWorker struct {
 	fetchEdge       func(ctx context.Context) (map[string]uint64, error)
 }
 
-func NewFilterRejectRollupWorker(pool *pgxpool.Pool, clickhouseQuery *database.CHQuery, scrapeURL string) *FilterRejectRollupWorker {
+func NewFilterRejectRollupWorker(pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, scrapeURL string) *FilterRejectRollupWorker {
 	return &FilterRejectRollupWorker{
 		pool:            pool,
 		clickhouseQuery: clickhouseQuery,

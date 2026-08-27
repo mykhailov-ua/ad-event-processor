@@ -117,7 +117,7 @@ func TestFault_NOSCRIPTStorm(t *testing.T) {
 
 func TestFault_CHSpoolDiskBlock(t *testing.T) {
 	dir := t.TempDir()
-	spool, err := OpenCHSpool(dir)
+	spool, err := OpenClickHouseSpool(dir)
 	require.NoError(t, err)
 	spool.StartAsyncFlusher(10 * time.Millisecond)
 	defer func() { _ = spool.Close() }()

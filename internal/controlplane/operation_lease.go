@@ -322,7 +322,7 @@ func AuthoritativeLeaseView(lease db.OperationLease, executorNodeID string, now 
 	return nil
 }
 
-func (w *OperationLeaseWorker) pgAvailable(ctx context.Context) bool {
+func (w *OperationLeaseWorker) postgresAvailable(ctx context.Context) bool {
 	if w == nil || w.svc == nil || w.svc.pool == nil {
 		return false
 	}
@@ -406,7 +406,7 @@ func opIDBytes(id uuid.UUID) [16]byte {
 	return out
 }
 
-func isPgUnavailable(err error) bool {
+func isPostgresUnavailable(err error) bool {
 	if err == nil {
 		return false
 	}

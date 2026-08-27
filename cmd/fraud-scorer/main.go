@@ -75,7 +75,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	clickhouseConn, err := database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+	clickhouseConn, err := database.ConnectClickHouse(ctx, string(cfg.ClickHouseDSN))
 	if err != nil {
 		slog.Error("failed to connect to clickhouse", "error", err)
 		os.Exit(1)
@@ -115,7 +115,7 @@ func main() {
 	slog.Info("fraud-scorer using management HTTP API")
 
 	registry := fraud.NewRuleRegistry()
-	clickhouseQuery := database.NewCHQuery(clickhouseConn, database.CHQueryConfigFromApp(cfg))
+	clickhouseQuery := database.NewClickHouseQuery(clickhouseConn, database.ClickHouseQueryConfigFromApp(cfg))
 	registry.Register(fraud.NewFraudScoringRule(clickhouseQuery, clickhouseConn, pool, scorer, cfg.FraudScoring.BatchSize))
 
 	detector := fraud.NewDetector(

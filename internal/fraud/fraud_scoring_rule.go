@@ -25,7 +25,7 @@ type campaignFraudConfig struct {
 }
 
 type fraudScoringRule struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	writeConn driver.Conn
 	pool      *pgxpool.Pool
 	scorer    Scorer
@@ -36,7 +36,7 @@ type fraudScoringRule struct {
 	campaignExpiry  time.Time
 }
 
-func NewFraudScoringRule(clickhouseQuery *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer Scorer, batchSize int) Rule {
+func NewFraudScoringRule(clickhouseQuery *database.ClickHouseQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer Scorer, batchSize int) Rule {
 	return &fraudScoringRule{
 		clickhouseQuery: clickhouseQuery,
 		writeConn: writeConn,

@@ -20,10 +20,10 @@ var (
 var bceHotSymbols = []string{
 	"ad-event-processor/internal/ingestion.foldKeyU32",
 	"ad-event-processor/internal/ingestion.foldKeyU64",
-	"ad-event-processor/internal/ingestion.matchTgQueryKey",
-	"ad-event-processor/internal/ingestion.dispatchTgRedirectMacro",
-	"ad-event-processor/internal/ingestion.expandTgRedirectMacros",
-	"ad-event-processor/internal/ingestion.parseTgQuery",
+	"ad-event-processor/internal/ingestion.matchTelegramQueryKey",
+	"ad-event-processor/internal/ingestion.dispatchTelegramRedirectMacro",
+	"ad-event-processor/internal/ingestion.expandTelegramRedirectMacros",
+	"ad-event-processor/internal/ingestion.parseTelegramQuery",
 	"ad-event-processor/internal/ingestion.unsafeString",
 }
 
@@ -43,16 +43,16 @@ func TestBCEAudit_hotSymbolsNoPanicIndexInMainBody(t *testing.T) {
 	}
 }
 
-func TestBCEAudit_dispatchTgRedirectMacro_boundsChecks(t *testing.T) {
+func TestBCEAudit_dispatchTelegramRedirectMacro_boundsChecks(t *testing.T) {
 	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
 		t.Skip("CMP budget calibrated on amd64")
 	}
 	bin := testBinaryPath(t)
-	asm := asmMainBody(objdumpSymbol(t, bin, "ad-event-processor/internal/ingestion.dispatchTgRedirectMacro"))
+	asm := asmMainBody(objdumpSymbol(t, bin, "ad-event-processor/internal/ingestion.dispatchTelegramRedirectMacro"))
 
 	cmpLen := strings.Count(asm, "CMPQ BX,")
 	if cmpLen > 12 {
-		t.Fatalf("dispatchTgRedirectMacro len CMPQ BX count = %d, want <= 12; tighten window BCE", cmpLen)
+		t.Fatalf("dispatchTelegramRedirectMacro len CMPQ BX count = %d, want <= 12; tighten window BCE", cmpLen)
 	}
 }
 
@@ -128,8 +128,8 @@ func excerptPanicLines(main string) string {
 func TestUnsafeAudit_tgClickScratchLifetime(t *testing.T) {
 	path := []byte("/tg/click?campaign_id=00000000-0000-0000-0000-000000000001&click_id=00000000-0000-0000-0000-000000000002&bridge_token=abc123")
 	scratch := make([]byte, 0, 256)
-	var parsed tgQueryParsed
-	scratch = parseTgQuery(path, scratch, &parsed)
+	var parsed telegramQueryParsed
+	scratch = parseTelegramQuery(path, scratch, &parsed)
 	if !parsed.ok {
 		t.Fatal("expected ok")
 	}
@@ -147,9 +147,9 @@ func TestUnsafeAudit_tgClickScratchLifetime(t *testing.T) {
 	}
 	bridgePtr[0] = orig
 
-	loc, ok := buildTgRedirectLocation(scratch[:0], []byte("https://example.com/{bridge_token}"), parsed.clickIDStr, parsed.bridgeToken, parsed.subs, nil)
+	loc, ok := buildTelegramRedirectLocation(scratch[:0], []byte("https://example.com/{bridge_token}"), parsed.clickIDStr, parsed.bridgeToken, parsed.subs, nil)
 	if !ok {
-		t.Fatal("buildTgRedirectLocation failed")
+		t.Fatal("buildTelegramRedirectLocation failed")
 	}
 	if !bytes.Contains(loc, []byte("abc123")) {
 		t.Fatalf("location %q missing bridge token", loc)

@@ -1200,7 +1200,7 @@ MigrationSourceKindMeta:
   properties:
     kind:
       type: string
-      enum: [keitaro_json, binom_json, native_v1]
+      enum: [keitaro_json, keitaro_admin_api, binom_json, binom_report_api, native_v1]
     label:
       type: string
 
@@ -1263,7 +1263,7 @@ MigrationPreviewResult:
   properties:
     source_kind:
       type: string
-      enum: [keitaro_json, binom_json, native_v1]
+      enum: [keitaro_json, keitaro_admin_api, binom_json, binom_report_api, native_v1]
     mapped_campaigns:
       type: array
       items:
@@ -1281,7 +1281,7 @@ MigratePreviewRequest:
   properties:
     source_kind:
       type: string
-      enum: [keitaro_json, binom_json, native_v1]
+      enum: [keitaro_json, keitaro_admin_api, binom_json, binom_report_api, native_v1]
     payload:
       description: Raw JSON payload from external tracker export.
       oneOf:
@@ -1299,7 +1299,7 @@ MigrateImportRequest:
       format: uuid
     source_kind:
       type: string
-      enum: [keitaro_json, binom_json, native_v1]
+      enum: [keitaro_json, keitaro_admin_api, binom_json, binom_report_api, native_v1]
     payload:
       description: Raw JSON payload from external tracker export.
       oneOf:

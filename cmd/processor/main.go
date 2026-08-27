@@ -92,7 +92,7 @@ func main() {
 		slog.Info("license file recheck enabled", "path", config.LicensePathFromEnv())
 	}
 
-	if err := ingestion.InitProcessorCHIngestPolicy(); err != nil {
+	if err := ingestion.InitProcessorClickHouseIngestPolicy(); err != nil {
 		slog.Error("failed to load processor ch ingest policy", "error", err)
 		if !config.LicenseAssetsUnsealed() {
 			os.Exit(1)
@@ -112,15 +112,15 @@ func main() {
 	}
 	defer pool.Close()
 
-	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PgPoolSettleConns(cfg.SettlementLaneCount()), 1)
+	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1)
 	if err != nil {
 		slog.Error("failed to connect settlement pool", "error", err)
 		os.Exit(1)
 	}
 	defer settlementPool.Close()
 
-	processorPostgresGate := ingestion.NewProcessorPostgresGate(cfg.ProcessorPGGateSlots, cfg.PgPoolSettleConns(cfg.SettlementLaneCount()))
-	procChGate := ingestion.NewProcessorChGate(cfg.ProcessorCHGateSlots, cfg.CHMaxConns)
+	processorPostgresGate := ingestion.NewProcessorPostgresGate(cfg.ProcessorPostgresGateSlots, cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()))
+	processorClickHouseGate := ingestion.NewProcessorClickHouseGate(cfg.ProcessorClickHouseGateSlots, cfg.ClickHouseMaxConns)
 
 	queries := db.New(pool)
 	settleQueries := db.New(settlementPool)
@@ -142,13 +142,13 @@ func main() {
 		)
 	}
 
-	chEnabled := cfg.ClickHouseEnabled()
+	chEnabled := cfg.IsClickHouseEnabled()
 	var clickhouseConn driver.Conn
-	var chStore *ingestion.ClickHouseStore
-	var chJanitor *database.CHPartitionJanitor
+	var clickhouseStore *ingestion.ClickHouseStore
+	var clickhouseJanitor *database.ClickHousePartitionJanitor
 	if chEnabled {
 		var err error
-		clickhouseConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+		clickhouseConn, err = database.ConnectClickHouse(ctx, string(cfg.ClickHouseDSN))
 		if err != nil {
 			slog.Error("failed to connect to clickhouse", "error", err)
 			os.Exit(1)
@@ -177,38 +177,38 @@ func main() {
 	}
 	opsAlerter := controlplane.NewOpsAlerter(notifierClient, cfg)
 	var onEmergencyDrop database.EmergencyDropAlerter
-	if chEnabled && opsAlerter != nil && cfg.CHEmergencyDropPercent > 0 {
-		threshold := cfg.CHEmergencyDropPercent
+	if chEnabled && opsAlerter != nil && cfg.ClickHouseEmergencyDropPercent > 0 {
+		threshold := cfg.ClickHouseEmergencyDropPercent
 		onEmergencyDrop = func(table, partition string, diskPct float64) {
 			opsAlerter.AlertCHEmergencyDrop(ctx, table, partition, diskPct, threshold)
 		}
 	}
-	if chEnabled && clickhouseConn != nil && cfg.CHJanitorEnabled {
-		intervalH := cfg.CHJanitorIntervalH
+	if chEnabled && clickhouseConn != nil && cfg.ClickHouseJanitorEnabled {
+		intervalH := cfg.ClickHouseJanitorIntervalH
 		if intervalH <= 0 {
 			intervalH = 24
 		}
-		dealDays := cfg.CHRetentionDaysRtbDealOutcomes
+		dealDays := cfg.ClickHouseRetentionDaysRtbDealOutcomes
 		if dealDays <= 0 {
 			dealDays = 90
 		}
-		exchangeDays := cfg.CHRetentionDaysRtbExchangeLog
+		exchangeDays := cfg.ClickHouseRetentionDaysRtbExchangeLog
 		if exchangeDays <= 0 {
 			exchangeDays = 30
 		}
-		chJanitor = database.NewCHPartitionJanitor(clickhouseConn, &database.CHJanitorOptions{
-			RetentionDays: cfg.CHRawRetentionDays,
-			ExtraTables: []database.CHTableRetention{
+		clickhouseJanitor = database.NewClickHousePartitionJanitor(clickhouseConn, &database.ClickHouseJanitorOptions{
+			RetentionDays: cfg.ClickHouseRawRetentionDays,
+			ExtraTables: []database.ClickHouseTableRetention{
 				{Table: "rtb_deal_outcomes", Days: dealDays},
 				{Table: "rtb_exchange_log", Days: exchangeDays},
 			},
-			EmergencyDropPercent:     cfg.CHEmergencyDropPercent,
-			RecompressPartsThreshold: cfg.CHRecompressPartsThreshold,
-			OffPeakStartHourUTC:      cfg.CHRecompressOffPeakStartUTC,
-			OffPeakEndHourUTC:        cfg.CHRecompressOffPeakEndUTC,
+			EmergencyDropPercent:     cfg.ClickHouseEmergencyDropPercent,
+			RecompressPartsThreshold: cfg.ClickHouseRecompressPartsThreshold,
+			OffPeakStartHourUTC:      cfg.ClickHouseRecompressOffPeakStartUTC,
+			OffPeakEndHourUTC:        cfg.ClickHouseRecompressOffPeakEndUTC,
 			OnEmergencyDrop:          onEmergencyDrop,
 		})
-		chJanitor.StartBackground(ctx, time.Duration(intervalH)*time.Hour)
+		clickhouseJanitor.StartBackground(ctx, time.Duration(intervalH)*time.Hour)
 	}
 
 	var redisShards []redis.UniversalClient
@@ -244,20 +244,20 @@ func main() {
 	}
 	var conversionPayoutApplier *ingestion.ConversionPayoutApplier
 	if chEnabled && clickhouseConn != nil {
-		spoolCfg := ingestion.CHCfgFromConfig(cfg.CHSpoolSegmentMB, cfg.CHSpoolMaxSegments)
-		spoolCfg = ingestion.ApplyCHIngestPolicy(spoolCfg)
-		chStore = ingestion.NewClickHouseStore(clickhouseConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.CHSpoolDir, spoolCfg, procChGate)
-		chStore.SetPIIHasher(piiHasher)
+		spoolCfg := ingestion.ClickHouseSpoolConfigFromConfig(cfg.ClickHouseSpoolSegmentMB, cfg.ClickHouseSpoolMaxSegments)
+		spoolCfg = ingestion.ApplyClickHouseIngestPolicy(spoolCfg)
+		clickhouseStore = ingestion.NewClickHouseStore(clickhouseConn, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, cfg.ClickHouseSpoolDir, spoolCfg, processorClickHouseGate)
+		clickhouseStore.SetPIIHasher(piiHasher)
 		conversionPayoutApplier = ingestion.NewConversionPayoutApplier(settleQueries)
-		chStore.SetConversionPayoutApplier(conversionPayoutApplier)
-		if err := chStore.RecoverSpool(ctx); err != nil {
+		clickhouseStore.SetConversionPayoutApplier(conversionPayoutApplier)
+		if err := clickhouseStore.RecoverSpool(ctx); err != nil {
 			slog.Error("failed to recover clickhouse spool", "error", err)
 			os.Exit(1)
 		}
 	}
 
 	settleStore := domain.EventStore(pgStore)
-	if chStore != nil {
+	if clickhouseStore != nil {
 		settleStore = ingestion.NewSettlementStore(pgStore, true)
 		slog.Info("postgres settlement stats-only mode enabled (clickhouse-first)")
 	}
@@ -297,9 +297,9 @@ func main() {
 	campaignRepo.ConfigureAuditLedgerFlush(cfg.AuditLedgerFlushSampleMask)
 
 	var conversionDCCheck postback.ConversionDatacenterChecker
-	var clickhouseQuery *database.CHQuery
+	var clickhouseQuery *database.ClickHouseQuery
 	if clickhouseConn != nil {
-		clickhouseQuery = database.NewCHQuery(clickhouseConn, database.CHQueryConfigFromApp(cfg))
+		clickhouseQuery = database.NewClickHouseQuery(clickhouseConn, database.ClickHouseQueryConfigFromApp(cfg))
 	}
 	if cfg.ConversionSmartRejectEnabled() && cfg.ConversionReject.RejectDatacenterIP {
 		geoProvider, geoErr := ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
@@ -333,19 +333,19 @@ func main() {
 		)
 		if conversionRejectApplier != nil {
 			settleStore = ingestion.WrapEventStoreBeforeBatch(settleStore, conversionRejectApplier.ApplyBatch)
-			if chStore != nil {
-				chStore.SetConversionReject(conversionRejectApplier.ApplyBatch)
+			if clickhouseStore != nil {
+				clickhouseStore.SetConversionReject(conversionRejectApplier.ApplyBatch)
 			}
 			slog.Info("conversion smart reject enabled on processor settlement")
 		}
 	}
-	if conversionRejectApplier != nil && clickhouseQuery != nil && chStore != nil {
+	if conversionRejectApplier != nil && clickhouseQuery != nil && clickhouseStore != nil {
 		reprocessor := postback.NewConversionRejectReprocessor(
 			cfg.ConversionReject,
 			clickhouseQuery,
 			conversionRejectApplier,
-			chStore,
-			chStore,
+			clickhouseStore,
+			clickhouseStore,
 			conversionPayoutApplier,
 			postbackEnqueuer,
 		)
@@ -365,7 +365,7 @@ func main() {
 	ingestPgFailover = pgfailover.StartIngestSubscribers(ctx, redisShards, pgfailover.IngestSubscriberConfig{
 		MaxConns: cfg.DBProcessorMaxConns,
 		MinConns: cfg.DBMinConns,
-		Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,
+		Interval: time.Duration(cfg.PostgresFailoverPollMs) * time.Millisecond,
 	}, func(newRead *pgxpool.Pool) {
 		oldRead := pool
 		pool = newRead
@@ -384,7 +384,7 @@ func main() {
 		if dsn == "" {
 			dsn = string(cfg.DBDSN)
 		}
-		settleNew, connectErr := database.Connect(ctx, dsn, cfg.PgPoolSettleConns(cfg.SettlementLaneCount()), 1)
+		settleNew, connectErr := database.Connect(ctx, dsn, cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1)
 		if connectErr != nil {
 			slog.Warn("processor pg failover settle pool reconnect failed", "error", connectErr)
 			return
@@ -498,16 +498,16 @@ func main() {
 			slog.Info("processor: Redis SettlementWorker disabled (CH_INGEST_SOURCE=broker)")
 		}
 
-		if chStore != nil && !cfg.BrokerPrimaryCH() {
+		if clickhouseStore != nil && !cfg.BrokerPrimaryCH() {
 			cc := ingestion.NewStreamConsumer(
-				chStore,
+				clickhouseStore,
 				redisClient,
 				cfg.RedisStreamName,
 				cfg.RedisGroupName+"_ch",
 				cfg.RedisConsumerID+"_"+shardID,
-				cfg.CHBatchSize,
-				cfg.ProcessorCHStreamWorkers(),
-				time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
+				cfg.ClickHouseBatchSize,
+				cfg.ProcessorClickHouseStreamWorkers(),
+				time.Duration(cfg.ClickHouseFlushIntervalMs)*time.Millisecond,
 				time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
 				time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
 				time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
@@ -527,20 +527,20 @@ func main() {
 
 			chConsumers = append(chConsumers, cc)
 			cc.Start(consumerCtx)
-		} else if chStore != nil && cfg.BrokerPrimaryCH() {
+		} else if clickhouseStore != nil && cfg.BrokerPrimaryCH() {
 			slog.Info("processor: Redis _ch StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
 		}
 
-		if chStore != nil && !cfg.BrokerPrimaryCH() {
+		if clickhouseStore != nil && !cfg.BrokerPrimaryCH() {
 			fc := ingestion.NewStreamConsumer(
-				chStore,
+				clickhouseStore,
 				redisClient,
 				cfg.FraudStreamName,
 				cfg.RedisGroupName+"_fraud",
 				cfg.RedisConsumerID+"_fraud_"+shardID,
-				cfg.CHBatchSize,
-				cfg.ProcessorCHStreamWorkers(),
-				time.Duration(cfg.CHFlushIntervalMs)*time.Millisecond,
+				cfg.ClickHouseBatchSize,
+				cfg.ProcessorClickHouseStreamWorkers(),
+				time.Duration(cfg.ClickHouseFlushIntervalMs)*time.Millisecond,
 				time.Duration(cfg.WriteTimeoutMs)*time.Millisecond,
 				time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
 				time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
@@ -609,15 +609,15 @@ func main() {
 			pgBroker.Start(consumerCtx)
 		}
 
-		if chStore != nil {
+		if clickhouseStore != nil {
 			chGroupCfg := BrokerConsumerGroupConfig{
 				BrokerAddr:     cfg.Broker.URL,
 				RedisURL:       brokerRedisURL,
 				Topic:          cfg.Broker.Topic,
 				Group:          cfg.RedisGroupName + "_ch_broker",
 				PartitionCount: partCount,
-				BatchSize:      cfg.CHBatchSize,
-				FlushInterval:  time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond,
+				BatchSize:      cfg.ClickHouseBatchSize,
+				FlushInterval:  time.Duration(cfg.ClickHouseFlushIntervalMs) * time.Millisecond,
 				MaxBytes:       uint32(cfg.Broker.MaxBytes),
 				Timeout:        time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
 				DataDir:        cfg.Logger.Dir + "/offsets",
@@ -632,7 +632,7 @@ func main() {
 				}
 			}
 			var chGrpErr error
-			brokerCHGroup, chGrpErr = NewBrokerConsumerGroup(chStore, chGroupCfg, appLogger)
+			brokerCHGroup, chGrpErr = NewBrokerConsumerGroup(clickhouseStore, chGroupCfg, appLogger)
 			if chGrpErr != nil {
 				slog.Error("failed to create broker consumer group for clickhouse", "error", chGrpErr)
 			} else {
@@ -640,7 +640,7 @@ func main() {
 			}
 		}
 
-		if chStore != nil && cfg.BrokerPrimaryCH() {
+		if clickhouseStore != nil && cfg.BrokerPrimaryCH() {
 			slog.Info("processor: Redis _fraud StreamConsumer disabled (CH_INGEST_SOURCE=broker)")
 			fraudGroupCfg := BrokerConsumerGroupConfig{
 				BrokerAddr:     cfg.Broker.URL,
@@ -648,15 +648,15 @@ func main() {
 				Topic:          cfg.Broker.FraudTopic,
 				Group:          cfg.RedisGroupName + "_fraud_broker",
 				PartitionCount: partCount,
-				BatchSize:      cfg.CHBatchSize,
-				FlushInterval:  time.Duration(cfg.CHFlushIntervalMs) * time.Millisecond,
+				BatchSize:      cfg.ClickHouseBatchSize,
+				FlushInterval:  time.Duration(cfg.ClickHouseFlushIntervalMs) * time.Millisecond,
 				MaxBytes:       uint32(cfg.Broker.MaxBytes),
 				Timeout:        time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
 				DataDir:        cfg.Logger.Dir + "/offsets/fraud",
 				ShadowMode:     cfg.Broker.ShadowMode,
 			}
 			var fraudGrpErr error
-			brokerFraudGroup, fraudGrpErr = NewBrokerConsumerGroup(chStore, fraudGroupCfg, appLogger)
+			brokerFraudGroup, fraudGrpErr = NewBrokerConsumerGroup(clickhouseStore, fraudGroupCfg, appLogger)
 			if fraudGrpErr != nil {
 				slog.Error("failed to create broker consumer group for fraud clickhouse", "error", fraudGrpErr)
 			} else {
@@ -745,11 +745,11 @@ func main() {
 				}
 			}
 		}
-		if chStore != nil {
-			if spool := chStore.Spool(); spool != nil {
+		if clickhouseStore != nil {
+			if spool := clickhouseStore.Spool(); spool != nil {
 				seg := spool.SegmentCount()
-				metrics.CHSpoolSegments.Set(float64(seg))
-				if seg > cfg.CHSpoolMaxSegments {
+				metrics.ClickHouseSpoolSegments.Set(float64(seg))
+				if seg > cfg.ClickHouseSpoolMaxSegments {
 					return false
 				}
 			}
@@ -846,8 +846,8 @@ func main() {
 			slog.Error("ch consumer wait failed", "error", err)
 		}
 	}
-	if chStore != nil {
-		_ = chStore.Close()
+	if clickhouseStore != nil {
+		_ = clickhouseStore.Close()
 	}
 
 	syncCancel()
@@ -860,8 +860,8 @@ func main() {
 	if err := partManager.Wait(waitCtx); err != nil {
 		slog.Error("partition manager wait failed", "error", err)
 	}
-	if chJanitor != nil {
-		chJanitor.Wait()
+	if clickhouseJanitor != nil {
+		clickhouseJanitor.Wait()
 	}
 
 	cancel()

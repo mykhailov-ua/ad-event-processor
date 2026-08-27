@@ -262,7 +262,7 @@ type clickLogEventRow struct {
 
 func queryClickLogBrowseCH(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
@@ -294,7 +294,7 @@ func queryClickLogBrowseCH(
 
 func queryClickLogTimelineCH(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	clickID string,
 	from, to time.Time,

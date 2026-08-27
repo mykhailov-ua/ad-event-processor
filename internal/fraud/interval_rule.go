@@ -16,7 +16,7 @@ const (
 )
 
 type intervalBotnetRule struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	cfg AnalyzerConfig
 }
 

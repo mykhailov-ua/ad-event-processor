@@ -17,7 +17,7 @@ const (
 
 	AssetLabelUnifiedFilter = "unified-filter"
 
-	AssetLabelProcessorCHIngest = "processor-ch-ingest"
+	AssetLabelProcessorClickHouseIngest = "processor-ch-ingest"
 
 	AssetLabelControlRuntime = "control-runtime"
 )

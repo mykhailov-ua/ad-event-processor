@@ -94,7 +94,7 @@ func main() {
 			slog.Error("cold tier requires local or s3 scratch backend")
 			os.Exit(1)
 		}
-		conn, err := database.ConnectClickHouse(ctx, cfg.CHDSN)
+		conn, err := database.ConnectClickHouse(ctx, cfg.ClickHouseDSN)
 		if err != nil {
 			slog.Error("failed to connect to clickhouse for cold tier", "error", err)
 			os.Exit(1)

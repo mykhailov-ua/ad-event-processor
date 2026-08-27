@@ -16,7 +16,7 @@ const reportExportPageSize = 1000
 
 type ReportExportDeps struct {
 	Pool            *pgxpool.Pool
-	ClickHouseQuery *database.CHQuery
+	ClickHouseQuery *database.ClickHouseQuery
 	BuyerPortfolio  BuyerPortfolioReader
 }
 
@@ -333,7 +333,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			},
 		)
 	case "data-quality":
-		if err := w.Write([]string{"campaign_id", "date", "pg_total", "ch_total", "diff_pct", "severity"}); err != nil {
+		if err := w.Write([]string{"campaign_id", "date", "postgres_total", "clickhouse_total", "diff_pct", "severity"}); err != nil {
 			return err
 		}
 		customerUUID := uuid.MustParse(spec.CustomerID)
@@ -344,7 +344,7 @@ func (r *ReportJobRunner) writeReportCSV(ctx context.Context, path string, spec 
 			func(row DataQualityRowDTO) error {
 				return w.Write([]string{
 					row.CampaignID, row.Date,
-					fmt.Sprintf("%d", row.PGTotal), fmt.Sprintf("%d", row.CHTotal),
+					fmt.Sprintf("%d", row.PostgresTotal), fmt.Sprintf("%d", row.ClickHouseTotal),
 					fmt.Sprintf("%.6f", row.DiffPct), row.Severity,
 				})
 			},

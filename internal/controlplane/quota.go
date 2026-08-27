@@ -286,7 +286,7 @@ type QuotaRepairPayload struct {
 	CampaignID    string `json:"campaign_id"`
 	ShardID       int16  `json:"shard_id"`
 	Action        string `json:"action"`
-	PgReserved    int64  `json:"pg_reserved"`
+	PostgresReserved    int64  `json:"pg_reserved"`
 	RedisExpected int64  `json:"redis_expected"`
 	ChunkSize     int64  `json:"chunk_size"`
 	DriftMicro    int64  `json:"drift_micro"`
@@ -501,7 +501,7 @@ func (w *ReconWorker) enqueueQuotaRepair(
 		CampaignID:    r.campaignID.String(),
 		ShardID:       r.shardID,
 		Action:        string(action),
-		PgReserved:    r.reservedAmount,
+		PostgresReserved:    r.reservedAmount,
 		RedisExpected: redisExpected,
 		ChunkSize:     r.chunkSize,
 		DriftMicro:    r.reservedAmount - redisExpected,

@@ -40,7 +40,7 @@ func NewServiceWithOptions(pool *pgxpool.Pool, cfg Config, breakers Breakers, op
 }
 
 func (s *Service) GetNotification(ctx context.Context, notificationID string) (Notification, error) {
-	id, err := pgUUIDFromString(notificationID)
+	id, err := postgresUUIDFromString(notificationID)
 	if err != nil {
 		return Notification{}, err
 	}

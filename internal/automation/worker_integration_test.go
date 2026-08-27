@@ -127,7 +127,7 @@ func TestWorker_firesPauseOncePerCooldown(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	clickhouseQuery := database.NewCHQuery(conn, database.CHQueryConfig{})
+	clickhouseQuery := database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{})
 	exec := &mockAutomationExec{}
 	w := NewWorker(pool, clickhouseQuery, exec, time.Minute)
 
@@ -204,7 +204,7 @@ func TestWorker_firesBlacklistOnIVTRate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	clickhouseQuery := database.NewCHQuery(conn, database.CHQueryConfig{})
+	clickhouseQuery := database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{})
 	exec := &mockAutomationExec{}
 	w := NewWorker(pool, clickhouseQuery, exec, time.Minute)
 

@@ -48,4 +48,11 @@ func TestApplyCampaignIngressCostPatch_roundTrip(t *testing.T) {
 
 	parsed := domain.ParseIngressCostConfigJSON([]byte(`{"param":"cost","scale":"decimal","max_micro":5000000,"policy":"ignore"}`))
 	require.True(t, parsed.Enabled())
+
+	var raw []byte
+	err = pool.QueryRow(ctx, `SELECT ingress_cost_config FROM campaigns WHERE id = $1`, campID).Scan(&raw)
+	require.NoError(t, err)
+	registryCfg := domain.ParseIngressCostConfigJSON(raw)
+	require.Equal(t, parsed.Param, registryCfg.Param)
+	require.Equal(t, parsed.MaxMicro, registryCfg.MaxMicro)
 }

@@ -42,7 +42,7 @@ func (r *fingerprintRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 }
 
 type campaignCTRSpikeRule struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	cfg AnalyzerConfig
 }
 
@@ -115,7 +115,7 @@ GROUP BY ip_hash`
 }
 
 type datacenterASNRule struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	cfg AnalyzerConfig
 	asn ASNClassifier
 }
@@ -202,7 +202,7 @@ func hasIPPrefix(ip, prefix string) bool {
 	return false
 }
 
-func NewAnalyzerRegistry(clickhouseQuery *database.CHQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer Scorer, fraudScoringBatchSize int, redisClient redis.Cmdable) *RuleRegistry {
+func NewAnalyzerRegistry(clickhouseQuery *database.ClickHouseQuery, writeConn driver.Conn, pool *pgxpool.Pool, cfg AnalyzerConfig, asn ASNClassifier, scorer Scorer, fraudScoringBatchSize int, redisClient redis.Cmdable) *RuleRegistry {
 	analyzer := NewAnalyzer(clickhouseQuery, cfg)
 	reg := NewRuleRegistry()
 	reg.Register(&highCTRRule{analyzer: analyzer})

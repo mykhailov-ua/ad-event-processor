@@ -19,7 +19,7 @@ type vppRatioWrite struct {
 }
 
 func (s *Service) RunVPPPacingController(ctx context.Context) error {
-	return s.withPgLow(ctx, func(runCtx context.Context) error {
+	return s.withPostgresLow(ctx, func(runCtx context.Context) error {
 		opCtx, cancel := workerContext(runCtx, workerBatchTimeout)
 		defer cancel()
 

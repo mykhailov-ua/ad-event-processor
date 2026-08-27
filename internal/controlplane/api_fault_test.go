@@ -140,7 +140,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 	cfg.Management.RateLimitBurst = 10_000
 	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
 	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
-	svc.SetClickHouse(conn, database.CHQueryConfig{})
+	svc.SetClickHouse(conn, database.ClickHouseQueryConfig{})
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)

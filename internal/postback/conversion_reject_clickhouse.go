@@ -25,14 +25,14 @@ type conversionGoalKey struct {
 }
 
 type clickhouseConversionClickStore struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 }
 
-func NewClickHouseConversionClickStore(clickhouseQuery *database.CHQuery) *clickhouseConversionClickStore {
+func NewClickHouseConversionClickStore(clickhouseQuery *database.ClickHouseQuery) *clickhouseConversionClickStore {
 	return newClickHouseConversionClickStore(clickhouseQuery)
 }
 
-func newClickHouseConversionClickStore(clickhouseQuery *database.CHQuery) *clickhouseConversionClickStore {
+func newClickHouseConversionClickStore(clickhouseQuery *database.ClickHouseQuery) *clickhouseConversionClickStore {
 	if clickhouseQuery == nil {
 		return nil
 	}

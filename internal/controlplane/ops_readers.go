@@ -597,7 +597,7 @@ func (w *OpsMetricScraper) tick(ctx context.Context, now time.Time) {
 		return w.expireSamples(runCtx, now)
 	}
 	if w.svc != nil {
-		if err := w.svc.withPgLow(ctx, run); err != nil {
+		if err := w.svc.withPostgresLow(ctx, run); err != nil {
 			slog.Error("ops metric scraper tick failed", "error", err)
 		}
 		return
@@ -739,18 +739,18 @@ func buildDashboardTopology(ctx context.Context, svc *Service, snap IncidentSnap
 			status = "down"
 			detail = err.Error()
 		}
-		cards = append(cards, DashboardServiceCard{ID: "pg", Name: "Postgres", Status: status, Detail: detail})
+		cards = append(cards, DashboardServiceCard{ID: "postgres", Name: "Postgres", Status: status, Detail: detail})
 	} else {
-		cards = append(cards, DashboardServiceCard{ID: "pg", Name: "Postgres", Status: "down"})
+		cards = append(cards, DashboardServiceCard{ID: "postgres", Name: "Postgres", Status: "down"})
 	}
-	chStatus := "disabled"
-	if svc != nil && svc.cfg != nil && svc.cfg.ClickHouseEnabled() {
-		chStatus = "ok"
+	clickhouseStatus := "disabled"
+	if svc != nil && svc.cfg != nil && svc.cfg.IsClickHouseEnabled() {
+		clickhouseStatus = "ok"
 		if svc.ClickHouseQuery() == nil {
-			chStatus = "down"
+			clickhouseStatus = "down"
 		}
 	}
-	cards = append(cards, DashboardServiceCard{ID: "ch", Name: "ClickHouse", Status: chStatus})
+	cards = append(cards, DashboardServiceCard{ID: "clickhouse", Name: "ClickHouse", Status: clickhouseStatus})
 	for _, shard := range snap.Shards {
 		status := "ok"
 		if !shard.PingOK {

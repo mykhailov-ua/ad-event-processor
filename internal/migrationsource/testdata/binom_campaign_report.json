@@ -1,0 +1,10 @@
+[
+  {
+    "id": "7",
+    "name": "Binom Facebook Camp",
+    "ts_name": "Facebook",
+    "url": "https://trk.example.com/click?campaign_id={campaign_id}&sub1={subid}&sub2={{campaign.id}}&sub4={{ad.id}}",
+    "cost": "50.25",
+    "clicks": "100"
+  }
+]

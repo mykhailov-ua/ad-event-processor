@@ -20,5 +20,6 @@
 | `admin_detail_pattern` | `ADMIN_DETAIL_MILESTONE_<PAGE>.md` |
 | `admin_report_pattern` | `ADMIN_REPORT_MILESTONE_<REPORT>.md` |
 | `admin_integrations_hub` | `ADMIN_INTEGRATIONS_MILESTONE_HUB.md` |
+| `admin_campaigns_migrate` | `ADMIN_CAMPAIGNS_MIGRATE_MILESTONE.md` |
 
 Pre-reset waves are not carried forward.

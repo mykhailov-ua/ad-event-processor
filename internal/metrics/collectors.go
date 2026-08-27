@@ -42,7 +42,7 @@ var (
 		Help: "Sealed unified-filter.lua decrypt failures",
 	})
 
-	ProcessorCHIngestSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ProcessorClickHouseIngestSealFailTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "processor_ch_ingest_seal_fail_total",
 		Help: "Sealed processor ClickHouse ingest policy decrypt failures",
 	})
@@ -555,7 +555,7 @@ var (
 		Name: "ad_ttc_bypass_total",
 		Help: "Clicks accepted without impression timestamp (TTC fail-open bypass)",
 	})
-	TgDeadlineExceededTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+	TelegramDeadlineExceededTotal = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ad_tg_deadline_exceeded_total",
 		Help: "Telegram hot-path handler stages that exceeded the filter deadline budget",
 	}, []string{"stage"})
@@ -615,7 +615,7 @@ var (
 		Name: "ad_budget_cache_miss_total",
 		Help: "Unified filter Lua budget key misses (return -1)",
 	})
-	BudgetCacheMissPGTotal = promauto.NewCounter(prometheus.CounterOpts{
+	BudgetCacheMissPostgresTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_budget_cache_miss_pg_total",
 		Help: "Budget cache misses resolved via PostgreSQL GetByID on hot path",
 	})
@@ -1259,23 +1259,23 @@ var (
 		Name: "ad_micro_batch_boosts_written_total",
 		Help: "Total number of score boosts written to Redis from the micro-batcher",
 	})
-	CHSpoolAppendTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseSpoolAppendTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_spool_append_total",
 		Help: "ClickHouse batches durably spooled to mmap WAL during outages",
 	})
-	CHSpoolReplayTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseSpoolReplayTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_spool_replay_total",
 		Help: "ClickHouse spool WAL batches replayed after recovery",
 	})
-	CHSpoolRotateTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseSpoolRotateTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_spool_rotate_total",
 		Help: "ClickHouse spool segment rotations during long outages",
 	})
-	CHSpoolSegments = promauto.NewGauge(prometheus.GaugeOpts{
+	ClickHouseSpoolSegments = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_ch_spool_segments",
 		Help: "Current ClickHouse spool segment count (active + sealed)",
 	})
-	CHSpoolAppendDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+	ClickHouseSpoolAppendDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_ch_spool_append_duration_seconds",
 		Help:    "Duration of mmap spool append (excludes async fsync in flusher loop)",
 		Buckets: []float64{0.00001, 0.00005, 0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1},
@@ -1284,7 +1284,7 @@ var (
 		Name: "ad_processor_stream_xlen",
 		Help: "Redis stream length (XLEN) per shard",
 	}, []string{"shard"})
-	ProcessorPgAcquireWaitSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+	ProcessorPostgresAcquireWaitSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_processor_pg_acquire_wait_seconds",
 		Help:    "Wait time to acquire a processor-global Postgres write slot (alias of ad_processor_write_acquire_wait_seconds{backend=\"postgres\"})",
 		Buckets: prometheus.ExponentialBuckets(0.001, 2, 16),
@@ -1353,7 +1353,7 @@ var (
 		Name: "ad_cost_sync_reconciliation_delta_micro_total",
 		Help: "Absolute micro-unit delta applied via RECONCILIATION_ADJUST entries",
 	})
-	CostSyncCHErrors = promauto.NewCounter(prometheus.CounterOpts{
+	CostSyncClickHouseErrors = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_cost_sync_ch_errors_total",
 		Help: "ClickHouse cost_snapshots insert failures",
 	})
@@ -1394,37 +1394,37 @@ var (
 		Buckets: prometheus.DefBuckets,
 	}, []string{"tier"})
 
-	CHDiskUsedPercent = promauto.NewGauge(prometheus.GaugeOpts{
+	ClickHouseDiskUsedPercent = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_ch_disk_used_percent",
 		Help: "ClickHouse data volume used percent from system.disks",
 	})
-	CHJanitorRetentionDropTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseJanitorRetentionDropTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_janitor_retention_drop_total",
-		Help: "Partitions dropped by CHPartitionJanitor retention policy",
+		Help: "Partitions dropped by ClickHousePartitionJanitor retention policy",
 	})
-	CHJanitorEmergencyDropTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseJanitorEmergencyDropTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_janitor_emergency_drop_total",
-		Help: "Partitions dropped by CHPartitionJanitor emergency disk policy",
+		Help: "Partitions dropped by ClickHousePartitionJanitor emergency disk policy",
 	})
-	CHJanitorRecompressTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseJanitorRecompressTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_janitor_recompress_total",
-		Help: "Partitions recompressed (OPTIMIZE FINAL) by CHPartitionJanitor off-peak pass",
+		Help: "Partitions recompressed (OPTIMIZE FINAL) by ClickHousePartitionJanitor off-peak pass",
 	})
 
-	CHQueryDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
+	ClickHouseQueryDurationSeconds = promauto.NewHistogram(prometheus.HistogramOpts{
 		Name:    "ad_ch_query_duration_seconds",
 		Help:    "Duration of governed ClickHouse read queries",
 		Buckets: prometheus.ExponentialBuckets(0.001, 2, 16),
 	})
-	CHQueryRejectedTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseQueryRejectedTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_query_rejected_total",
 		Help: "Governed ClickHouse queries rejected because the concurrency gate was full",
 	})
-	CHActivePartsMax = promauto.NewGauge(prometheus.GaugeOpts{
+	ClickHouseActivePartsMax = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "ad_ch_active_parts_max",
 		Help: "Max active part count across table/partition (from system.parts); alert > 100",
 	})
-	CHSingleRowInsertsTotal = promauto.NewCounter(prometheus.CounterOpts{
+	ClickHouseSingleRowInsertsTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_ch_single_row_inserts_total",
 		Help: "ClickHouse store attempts narrowed to a single event during poison-pill binary split",
 	})

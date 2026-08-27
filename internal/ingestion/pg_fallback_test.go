@@ -55,7 +55,7 @@ func TestUnifiedFilter_PGFallbackDisabled_NoGetByIDOnCacheMiss(t *testing.T) {
 	)
 	f.SetPGFallbackAllowed(false)
 
-	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPGTotal)
+	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPostgresTotal)
 	err := f.Check(context.Background(), &domain.Event{
 		CampaignID: campID,
 		ClickID:    uuid.NewString(),
@@ -65,5 +65,5 @@ func TestUnifiedFilter_PGFallbackDisabled_NoGetByIDOnCacheMiss(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, ErrBudgetExhausted)
 	assert.Equal(t, 0, repo.getByIDCalls)
-	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPGTotal))
+	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPostgresTotal))
 }

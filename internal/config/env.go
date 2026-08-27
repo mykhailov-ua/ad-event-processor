@@ -19,7 +19,7 @@ type Config struct {
 	ManagementPort                  string
 	TrackerUnixSocket               string
 	ControlUnixSocket               string
-	CHUnixSocket                    string
+	ClickHouseUnixSocket                    string
 	AdminDomain                     string
 	MetricsPort                     string
 	DBDSN                           Secret
@@ -41,8 +41,8 @@ type Config struct {
 	JSONStrictUTF8                  bool
 	RedisGroupName                  string
 	RedisConsumerID                 string
-	CHDSN                           Secret
-	CHEnabled                       bool
+	ClickHouseDSN                           Secret
+	ClickHouseEnabled                       bool
 	Env                             string
 	TrustedProxies                  []string
 	TokenSymmetricKey               Secret
@@ -53,11 +53,11 @@ type Config struct {
 	EventFlushMs                    int
 	StatsFlushMs                    int
 	MaxWorkers                      int
-	CHMaxWorkers                    int
-	ProcessorPGStreamMaxWorkers     int
-	ProcessorCHStreamMaxWorkers     int
-	ProcessorPGGateSlots            int
-	ProcessorCHGateSlots            int
+	ClickHouseMaxWorkers                    int
+	ProcessorPostgresStreamMaxWorkers     int
+	ProcessorClickHouseStreamMaxWorkers     int
+	ProcessorPostgresGateSlots            int
+	ProcessorClickHouseGateSlots            int
 	ProcessorWeightEnabled          bool
 	ProcessorWeightFloor            float64
 	ProcessorWeightCeil             float64
@@ -74,28 +74,28 @@ type Config struct {
 	DBTrackerMaxConns               int
 	DBProcessorMaxConns             int
 	DBMinConns                      int
-	PgPoolSettleMaxConns            int
+	PostgresPoolSettleMaxConns            int
 	VolumeMeterSource               string
 	SettlementLanes                 int
 	SettlementFlushMs               int
 	ReconHYG30IntervalMs            int
 	LedgerInvariantIntervalHours    int
 	ReconForceRefill                bool
-	CHMaxConns                      int
-	CHQueryMaxConcurrency           int
-	CHQueryTimeoutSec               int
-	CHQuerySlowLogMS                int
-	CHQueryMaxMemoryBytes           uint64
-	CHQueryMaxExecSec               int
-	CHSpoolDir                      string
-	CHSpoolSegmentMB                int
-	CHSpoolMaxSegments              int
-	CHReadonlyDSN                   Secret
-	CHRawRetentionDays              int
-	CHEmergencyDropPercent          int
-	CHRecompressPartsThreshold      int
-	CHRecompressOffPeakStartUTC     int
-	CHRecompressOffPeakEndUTC       int
+	ClickHouseMaxConns                      int
+	ClickHouseQueryMaxConcurrency           int
+	ClickHouseQueryTimeoutSec               int
+	ClickHouseQuerySlowLogMS                int
+	ClickHouseQueryMaxMemoryBytes           uint64
+	ClickHouseQueryMaxExecSec               int
+	ClickHouseSpoolDir                      string
+	ClickHouseSpoolSegmentMB                int
+	ClickHouseSpoolMaxSegments              int
+	ClickHouseReadonlyDSN                   Secret
+	ClickHouseRawRetentionDays              int
+	ClickHouseEmergencyDropPercent          int
+	ClickHouseRecompressPartsThreshold      int
+	ClickHouseRecompressOffPeakStartUTC     int
+	ClickHouseRecompressOffPeakEndUTC       int
 	ProcessorStreamLagMaxSec        int
 	TrackerPGFallback               bool
 	WriteTimeoutMs                  int
@@ -110,8 +110,8 @@ type Config struct {
 	DuplicateTTLSec                 int
 	TTCMinMs                        int
 	TTCFailClosed                   bool
-	CHBatchSize                     int
-	CHFlushIntervalMs               int
+	ClickHouseBatchSize                     int
+	ClickHouseFlushIntervalMs               int
 	PIISaltVersion                  uint8
 	PIISaltHex                      Secret
 	PartitionPreCreateDays          int
@@ -292,7 +292,7 @@ type Config struct {
 		FraudTopic          string
 		PartitionCount      int
 		ShadowMode          bool
-		CHIngestSource      string
+		ClickHouseIngestSource      string
 		MaxBytes            int
 		TimeoutMs           int
 		ReconcileIntervalMs int
@@ -319,17 +319,17 @@ type Config struct {
 	RtbExchangeGzip                bool
 	RtbExchangeDelivery            string
 	RtbExchangeNURLTemplate        string
-	TrackerTgClickBaseURL          string
+	TrackerTelegramClickBaseURL          string
 	RtbExchangeSeatID              string
 	RtbRegsPolicy                  string
 	RtbCoppaPolicy                 string
 	RtbBlocklistEnforce            bool
 	RtbCatalogReloadSLOMs          int
 	RtbDealOutcomeFlushMs          int
-	CHJanitorEnabled               bool
-	CHJanitorIntervalH             int
-	CHRetentionDaysRtbDealOutcomes int
-	CHRetentionDaysRtbExchangeLog  int
+	ClickHouseJanitorEnabled               bool
+	ClickHouseJanitorIntervalH             int
+	ClickHouseRetentionDaysRtbDealOutcomes int
+	ClickHouseRetentionDaysRtbExchangeLog  int
 
 	IngressSchema string
 
@@ -447,20 +447,20 @@ type Config struct {
 	RegionProxyAddr     string
 	RegionProxyRedisURL string
 
-	PgFailoverEnabled        bool
-	PgFailoverCoordinator    bool
-	PgPrimaryDSN             Secret
-	PgStandbyDSN             Secret
-	PgFailoverRedisURL       string
-	PgFailoverHealthMs       int
-	PgFailoverPollMs         int
-	PgFailoverCoordMs        int
-	PgFailoverLeaseSec       int
-	PgFailoverFailThreshold  int
-	PgPromoteCommand         string
-	PgFailoverSnapshotSync   bool
-	PgFailoverSyncPageSize   int
-	PgFailoverAuditWindowSec int
+	PostgresFailoverEnabled        bool
+	PostgresFailoverCoordinator    bool
+	PostgresPrimaryDSN             Secret
+	PostgresStandbyDSN             Secret
+	PostgresFailoverRedisURL       string
+	PostgresFailoverHealthMs       int
+	PostgresFailoverPollMs         int
+	PostgresFailoverCoordMs        int
+	PostgresFailoverLeaseSec       int
+	PostgresFailoverFailThreshold  int
+	PostgresPromoteCommand         string
+	PostgresFailoverSnapshotSync   bool
+	PostgresFailoverSyncPageSize   int
+	PostgresFailoverAuditWindowSec int
 
 	QuotaAutoRepair bool
 
@@ -577,7 +577,7 @@ func (c *Config) BrokerEnabled() bool {
 }
 
 func (c *Config) BrokerPrimaryCH() bool {
-	return c != nil && c.Broker.CHIngestSource == "broker"
+	return c != nil && c.Broker.ClickHouseIngestSource == "broker"
 }
 
 func (c *Config) RedisSentinelEnabled() bool {
@@ -632,11 +632,11 @@ func Load() (*Config, error) {
 		EventFlushMs:                    getEnvInt("EVENT_FLUSH_MS", 20),
 		StatsFlushMs:                    getEnvInt("STATS_FLUSH_MS", 5000),
 		MaxWorkers:                      getEnvInt("MAX_WORKERS", 16),
-		CHMaxWorkers:                    getEnvInt("CH_MAX_WORKERS", 1),
-		ProcessorPGStreamMaxWorkers:     getEnvInt("PROCESSOR_PG_STREAM_MAX_WORKERS", 0),
-		ProcessorCHStreamMaxWorkers:     getEnvInt("PROCESSOR_CH_STREAM_MAX_WORKERS", 0),
-		ProcessorPGGateSlots:            getEnvInt("PROCESSOR_PG_GATE_SLOTS", 0),
-		ProcessorCHGateSlots:            getEnvInt("PROCESSOR_CH_GATE_SLOTS", 0),
+		ClickHouseMaxWorkers:                    getEnvInt("CH_MAX_WORKERS", 1),
+		ProcessorPostgresStreamMaxWorkers:     getEnvInt("PROCESSOR_PG_STREAM_MAX_WORKERS", 0),
+		ProcessorClickHouseStreamMaxWorkers:     getEnvInt("PROCESSOR_CH_STREAM_MAX_WORKERS", 0),
+		ProcessorPostgresGateSlots:            getEnvInt("PROCESSOR_PG_GATE_SLOTS", 0),
+		ProcessorClickHouseGateSlots:            getEnvInt("PROCESSOR_CH_GATE_SLOTS", 0),
 		ProcessorWeightEnabled:          getEnvBool("PROCESSOR_WEIGHT_ENABLED", false),
 		ProcessorWeightFloor:            getEnvFloat("PROCESSOR_WEIGHT_FLOOR", 0.05),
 		ProcessorWeightCeil:             getEnvFloat("PROCESSOR_WEIGHT_CEIL", 0.95),
@@ -654,32 +654,32 @@ func Load() (*Config, error) {
 		DBProcessorMaxConns:             getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
 		RedisMaxActiveConns:             getEnvIntDual("REDIS_MAX_ACTIVE_CONNS", "REDIS_MAX_ACTIVE", 2048),
 		DBMinConns:                      getEnvInt("DB_MIN_CONNS", 2),
-		PgPoolSettleMaxConns:            getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
+		PostgresPoolSettleMaxConns:            getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
 		VolumeMeterSource:               envOrDefault("VOLUME_METER_SOURCE", "pg"),
 		SettlementLanes:                 getEnvInt("SETTLEMENT_LANES", 0),
 		SettlementFlushMs:               getEnvInt("SETTLEMENT_FLUSH_MS", 100),
 		ReconHYG30IntervalMs:            getEnvInt("RECON_HYG30_INTERVAL_MS", 300_000),
 		LedgerInvariantIntervalHours:    getEnvInt("LEDGER_INVARIANT_INTERVAL_HOURS", 24),
 		ReconForceRefill:                getEnvBool("RECON_FORCE_REFILL", true),
-		CHMaxConns:                      getEnvInt("CH_MAX_CONNS", 8),
-		CHQueryMaxConcurrency:           getEnvInt("CH_QUERY_MAX_CONCURRENCY", 8),
-		CHQueryTimeoutSec:               getEnvInt("CH_QUERY_TIMEOUT_SEC", 30),
-		CHQuerySlowLogMS:                getEnvInt("CH_QUERY_SLOW_LOG_MS", 2000),
-		CHQueryMaxMemoryBytes:           uint64(getEnvInt("CH_QUERY_MAX_MEMORY_BYTES", 0)),
-		CHQueryMaxExecSec:               getEnvInt("CH_QUERY_MAX_EXEC_SEC", 0),
-		CHSpoolDir:                      envOrDefault("CH_SPOOL_DIR", "/var/spool/ad-event-processor/ch"),
-		CHSpoolSegmentMB:                getEnvInt("CH_SPOOL_SEGMENT_MB", 512),
-		CHSpoolMaxSegments:              getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
-		CHReadonlyDSN:                   Secret(envOrDefault("CH_READONLY_DSN", os.Getenv("CH_DSN"))),
-		CHRawRetentionDays:              getEnvInt("CH_RAW_RETENTION_DAYS", 180),
-		CHJanitorEnabled:                getEnvBool("CH_JANITOR_ENABLED", true),
-		CHJanitorIntervalH:              getEnvInt("CH_JANITOR_INTERVAL_H", 24),
-		CHRetentionDaysRtbDealOutcomes:  getEnvInt("CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES", 90),
-		CHRetentionDaysRtbExchangeLog:   getEnvInt("CH_RETENTION_DAYS_RTB_EXCHANGE_LOG", 30),
-		CHEmergencyDropPercent:          getEnvInt("CH_EMERGENCY_DROP_PERCENT", 0),
-		CHRecompressPartsThreshold:      getEnvInt("CH_RECOMPRESS_PARTS_THRESHOLD", 8),
-		CHRecompressOffPeakStartUTC:     getEnvInt("CH_RECOMPRESS_OFFPEAK_START_UTC", 2),
-		CHRecompressOffPeakEndUTC:       getEnvInt("CH_RECOMPRESS_OFFPEAK_END_UTC", 6),
+		ClickHouseMaxConns:                      getEnvInt("CH_MAX_CONNS", 8),
+		ClickHouseQueryMaxConcurrency:           getEnvInt("CH_QUERY_MAX_CONCURRENCY", 8),
+		ClickHouseQueryTimeoutSec:               getEnvInt("CH_QUERY_TIMEOUT_SEC", 30),
+		ClickHouseQuerySlowLogMS:                getEnvInt("CH_QUERY_SLOW_LOG_MS", 2000),
+		ClickHouseQueryMaxMemoryBytes:           uint64(getEnvInt("CH_QUERY_MAX_MEMORY_BYTES", 0)),
+		ClickHouseQueryMaxExecSec:               getEnvInt("CH_QUERY_MAX_EXEC_SEC", 0),
+		ClickHouseSpoolDir:                      envOrDefault("CH_SPOOL_DIR", "/var/spool/ad-event-processor/ch"),
+		ClickHouseSpoolSegmentMB:                getEnvInt("CH_SPOOL_SEGMENT_MB", 512),
+		ClickHouseSpoolMaxSegments:              getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
+		ClickHouseReadonlyDSN:                   Secret(envOrDefault("CH_READONLY_DSN", os.Getenv("CH_DSN"))),
+		ClickHouseRawRetentionDays:              getEnvInt("CH_RAW_RETENTION_DAYS", 180),
+		ClickHouseJanitorEnabled:                getEnvBool("CH_JANITOR_ENABLED", true),
+		ClickHouseJanitorIntervalH:              getEnvInt("CH_JANITOR_INTERVAL_H", 24),
+		ClickHouseRetentionDaysRtbDealOutcomes:  getEnvInt("CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES", 90),
+		ClickHouseRetentionDaysRtbExchangeLog:   getEnvInt("CH_RETENTION_DAYS_RTB_EXCHANGE_LOG", 30),
+		ClickHouseEmergencyDropPercent:          getEnvInt("CH_EMERGENCY_DROP_PERCENT", 0),
+		ClickHouseRecompressPartsThreshold:      getEnvInt("CH_RECOMPRESS_PARTS_THRESHOLD", 8),
+		ClickHouseRecompressOffPeakStartUTC:     getEnvInt("CH_RECOMPRESS_OFFPEAK_START_UTC", 2),
+		ClickHouseRecompressOffPeakEndUTC:       getEnvInt("CH_RECOMPRESS_OFFPEAK_END_UTC", 6),
 		ProcessorStreamLagMaxSec:        getEnvInt("PROCESSOR_STREAM_LAG_MAX_SEC", 120),
 		TrackerPGFallback:               getEnvBool("TRACKER_PG_FALLBACK", appEnv != "production"),
 		WriteTimeoutMs:                  getEnvInt("WRITE_TIMEOUT_MS", 5000),
@@ -695,10 +695,10 @@ func Load() (*Config, error) {
 		DuplicateTTLSec:                 getEnvInt("DUPLICATE_TTL_SEC", 10),
 		TTCMinMs:                        getEnvInt("TTC_MIN_MS", 300),
 		TTCFailClosed:                   getEnvBool("TTC_FAIL_CLOSED", true),
-		CHDSN:                           Secret(os.Getenv("CH_DSN")),
-		CHEnabled:                       clickHouseEnabledFromEnv(),
-		CHBatchSize:                     getEnvInt("CH_BATCH_SIZE", 50000),
-		CHFlushIntervalMs:               getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
+		ClickHouseDSN:                           Secret(os.Getenv("CH_DSN")),
+		ClickHouseEnabled:                       clickHouseEnabledFromEnv(),
+		ClickHouseBatchSize:                     getEnvInt("CH_BATCH_SIZE", 50000),
+		ClickHouseFlushIntervalMs:               getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
 		PIISaltVersion:                  uint8(getEnvInt("PII_SALT_VERSION", 1)),
 		PIISaltHex:                      Secret(os.Getenv("PII_SALT_HEX")),
 		TokenSymmetricKey:               Secret(os.Getenv("TOKEN_SYMMETRIC_KEY")),
@@ -872,7 +872,7 @@ func (c *Config) IVTDetectorEnabled() bool {
 	if c == nil || !c.IVT.Enabled {
 		return false
 	}
-	return c.ClickHouseEnabled()
+	return c.IsClickHouseEnabled()
 }
 
 func (c *Config) FraudScoringEnabled() bool {
@@ -887,12 +887,12 @@ func (c *Config) ExternalResidentialIntelRuntimeEnabled() bool {
 	return c != nil && c.ExternalResidentialIntel.Enabled && c.ExternalResidentialIntel.ProviderURL != ""
 }
 
-func (c *Config) ProcessorPGStreamWorkers() int {
+func (c *Config) ProcessorPostgresStreamWorkers() int {
 	if c == nil {
 		return 16
 	}
-	if c.ProcessorPGStreamMaxWorkers > 0 {
-		return c.ProcessorPGStreamMaxWorkers
+	if c.ProcessorPostgresStreamMaxWorkers > 0 {
+		return c.ProcessorPostgresStreamMaxWorkers
 	}
 	if c.MaxWorkers > 0 {
 		return c.MaxWorkers
@@ -900,15 +900,15 @@ func (c *Config) ProcessorPGStreamWorkers() int {
 	return 16
 }
 
-func (c *Config) ProcessorCHStreamWorkers() int {
+func (c *Config) ProcessorClickHouseStreamWorkers() int {
 	if c == nil {
 		return 1
 	}
-	if c.ProcessorCHStreamMaxWorkers > 0 {
-		return c.ProcessorCHStreamMaxWorkers
+	if c.ProcessorClickHouseStreamMaxWorkers > 0 {
+		return c.ProcessorClickHouseStreamMaxWorkers
 	}
-	if c.CHMaxWorkers > 0 {
-		return c.CHMaxWorkers
+	if c.ClickHouseMaxWorkers > 0 {
+		return c.ClickHouseMaxWorkers
 	}
 	return 1
 }
@@ -917,8 +917,8 @@ func (c *Config) FraudScorerStandalone() bool {
 	return c != nil && c.FraudScoring.Standalone
 }
 
-func (c *Config) ClickHouseEnabled() bool {
-	return c != nil && c.CHEnabled && strings.TrimSpace(string(c.CHDSN)) != ""
+func (c *Config) IsClickHouseEnabled() bool {
+	return c != nil && c.ClickHouseEnabled && strings.TrimSpace(string(c.ClickHouseDSN)) != ""
 }
 
 func clickHouseEnabledFromEnv() bool {
@@ -973,12 +973,12 @@ func (c *Config) ReconForceRefillEnabled() bool {
 	return c != nil && c.ReconForceRefill
 }
 
-func (c *Config) PgPoolSettleConns(lanes int) int {
+func (c *Config) PostgresPoolSettleConns(lanes int) int {
 	if c == nil {
 		return lanes + 2
 	}
-	if c.PgPoolSettleMaxConns > 0 {
-		return c.PgPoolSettleMaxConns
+	if c.PostgresPoolSettleMaxConns > 0 {
+		return c.PostgresPoolSettleMaxConns
 	}
 	return lanes + 2
 }

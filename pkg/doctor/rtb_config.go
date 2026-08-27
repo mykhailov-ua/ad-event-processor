@@ -31,14 +31,14 @@ func (p RtbConfigProbe) Run(ctx context.Context) Result {
 	if cfg.RtbDealOutcomeFlushMs <= 0 {
 		issues = append(issues, "RTB_DEAL_OUTCOME_FLUSH_MS unset")
 	}
-	if cfg.ClickHouseEnabled() {
-		if !cfg.CHJanitorEnabled {
+	if cfg.IsClickHouseEnabled() {
+		if !cfg.ClickHouseJanitorEnabled {
 			issues = append(issues, "CH_JANITOR_ENABLED=false")
 		}
-		if cfg.CHRetentionDaysRtbDealOutcomes <= 0 {
+		if cfg.ClickHouseRetentionDaysRtbDealOutcomes <= 0 {
 			issues = append(issues, "CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES unset")
 		}
-		if cfg.CHRetentionDaysRtbExchangeLog <= 0 {
+		if cfg.ClickHouseRetentionDaysRtbExchangeLog <= 0 {
 			issues = append(issues, "CH_RETENTION_DAYS_RTB_EXCHANGE_LOG unset")
 		}
 	} else if cfg.RtbMode != "off" {
@@ -48,7 +48,7 @@ func (p RtbConfigProbe) Run(ctx context.Context) Result {
 		return Result{
 			Name:    "rtb_config",
 			Status:  StatusPass,
-			Detail:  fmt.Sprintf("mode=%s janitor=%v flush_ms=%d", cfg.RtbMode, cfg.CHJanitorEnabled, cfg.RtbDealOutcomeFlushMs),
+			Detail:  fmt.Sprintf("mode=%s janitor=%v flush_ms=%d", cfg.RtbMode, cfg.ClickHouseJanitorEnabled, cfg.RtbDealOutcomeFlushMs),
 			Latency: latency(),
 		}
 	}

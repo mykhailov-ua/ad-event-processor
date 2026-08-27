@@ -151,7 +151,7 @@ func TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t *testing.T) {
 		10000,
 	)
 
-	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPGTotal)
+	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPostgresTotal)
 	beforeRecover := testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal)
 
 	err := f.Check(context.Background(), &domain.Event{
@@ -161,7 +161,7 @@ func TestUnifiedFilter_budgetMiss_recoversFromRegistryWithoutPG(t *testing.T) {
 		IP:         "1.1.1.1",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPGTotal))
+	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPostgresTotal))
 	assert.Equal(t, beforeRecover+1, testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal))
 }
 
@@ -238,7 +238,7 @@ func TestUnifiedFilter_budgetMiss_recoversViaWorkerCache(t *testing.T) {
 		10000,
 	)
 
-	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPGTotal)
+	beforePG := testutil.ToFloat64(metrics.BudgetCacheMissPostgresTotal)
 	beforeRecover := testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal)
 
 	err := f.Check(context.Background(), &domain.Event{
@@ -249,7 +249,7 @@ func TestUnifiedFilter_budgetMiss_recoversViaWorkerCache(t *testing.T) {
 		IP:              "1.1.1.1",
 	})
 	require.NoError(t, err)
-	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPGTotal))
+	assert.Equal(t, beforePG, testutil.ToFloat64(metrics.BudgetCacheMissPostgresTotal))
 	assert.Equal(t, beforeRecover+1, testutil.ToFloat64(metrics.BudgetCacheRegistryRecoverTotal))
 }
 

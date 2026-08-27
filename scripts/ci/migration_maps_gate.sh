@@ -21,7 +21,7 @@ for path in "${required[@]}"; do
   fi
 done
 
-if go test ./internal/migrationsource/ -run 'TestMigrationMaps|TestPreviewKeitaro' -count=1; then
+if go test ./internal/migrationsource/ -run 'TestMigrationMaps|TestPreviewKeitaro|TestPreviewBinom|TestParseKeitaro|TestParseBinom|holdout' -count=1; then
   echo "migration_maps_gate: OK maps load and preview"
 else
   echo "migration_maps_gate: FAIL migrationsource tests" >&2

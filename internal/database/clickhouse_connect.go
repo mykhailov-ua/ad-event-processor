@@ -36,7 +36,7 @@ func ConnectClickHouse(ctx context.Context, dsn string) (driver.Conn, error) {
 	return conn, nil
 }
 
-func ConnectCHReadonly(ctx context.Context, dsn string) (driver.Conn, error) {
+func ConnectClickHouseReadonly(ctx context.Context, dsn string) (driver.Conn, error) {
 	if dsn == "" {
 		return nil, fmt.Errorf("clickhouse readonly dsn is empty")
 	}

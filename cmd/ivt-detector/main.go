@@ -52,14 +52,14 @@ func main() {
 	}
 	defer pool.Close()
 
-	chRead, err := database.ConnectCHReadonly(ctx, string(cfg.CHReadonlyDSN))
+	clickhouseReadConn, err := database.ConnectClickHouseReadonly(ctx, string(cfg.ClickHouseReadonlyDSN))
 	if err != nil {
 		slog.Error("failed to connect to clickhouse readonly", "error", err)
 		os.Exit(1)
 	}
-	defer func() { _ = chRead.Close() }()
+	defer func() { _ = clickhouseReadConn.Close() }()
 
-	clickhouseQuery := database.NewCHQuery(chRead, database.CHQueryConfigFromApp(cfg))
+	clickhouseQuery := database.NewClickHouseQuery(clickhouseReadConn, database.ClickHouseQueryConfigFromApp(cfg))
 
 	analyzerCfg := fraud.AnalyzerConfig{
 		Window:               time.Duration(cfg.IVT.WindowSec) * time.Second,
@@ -103,9 +103,9 @@ func main() {
 	}
 
 	var clickhouseWriteConn driver.Conn
-	needCHWrite := scorer != nil || cfg.ExternalResidentialIntelRuntimeEnabled()
-	if needCHWrite && string(cfg.CHDSN) != "" {
-		clickhouseWriteConn, err = database.ConnectClickHouse(ctx, string(cfg.CHDSN))
+	needClickHouseWrite := scorer != nil || cfg.ExternalResidentialIntelRuntimeEnabled()
+	if needClickHouseWrite && string(cfg.ClickHouseDSN) != "" {
+		clickhouseWriteConn, err = database.ConnectClickHouse(ctx, string(cfg.ClickHouseDSN))
 		if err != nil {
 			slog.Error("failed to connect to clickhouse write path", "error", err)
 			os.Exit(1)

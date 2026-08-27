@@ -51,11 +51,15 @@ func ParseKeitaroJSON(payload []byte) (NormalizedBundle, error) {
 		if row.ID == 0 {
 			ref = fmt.Sprintf("keitaro:%d", i+1)
 		}
+		trackingURL := strings.TrimSpace(row.TrackingURL)
+		if trackingURL == "" {
+			return NormalizedBundle{}, fmt.Errorf("campaign index %d missing tracking_url (use source_kind keitaro_admin_api for Admin API wire)", i)
+		}
 		out.Campaigns = append(out.Campaigns, NormalizedCampaign{
 			Ref:               ref,
 			Name:              name,
 			TrafficSourceName: strings.TrimSpace(row.TrafficSource),
-			TrackingURL:       strings.TrimSpace(row.TrackingURL),
+			TrackingURL:       trackingURL,
 			LanderURL:         strings.TrimSpace(row.LanderURL),
 			PostbackURL:       strings.TrimSpace(row.PostbackURL),
 			BudgetUSD:         row.Budget,

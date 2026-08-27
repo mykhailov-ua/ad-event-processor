@@ -185,7 +185,7 @@ func (h *ReportsHTTPHandlers) getIVTBySourceReport(w http.ResponseWriter, r *htt
 
 func queryIVTBySourceRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,
@@ -268,7 +268,7 @@ LIMIT ?`
 
 func QueryWorstIVTSources(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit int,
@@ -348,7 +348,7 @@ LIMIT ?`
 
 func QueryWorstIVTCountries(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit int,

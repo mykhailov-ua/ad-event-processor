@@ -21,7 +21,7 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 		return PreviewResult{}, err
 	}
 	macroMapper := NewMacroMapper(maps.KeitaroMacros)
-	if kind == SourceKindBinomJSON {
+	if usesBinomMacroMaps(kind) {
 		macroMapper = NewMacroMapper(maps.BinomMacros)
 	}
 	resolver := NewSchemaResolver(maps)
@@ -42,7 +42,7 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 		if camp.TrafficSourceName != "" {
 			var row SourceEntry
 			var ok bool
-			if kind == SourceKindBinomJSON {
+			if usesBinomMacroMaps(kind) {
 				row, ok = resolver.ResolveBinom(camp.TrafficSourceName)
 			} else {
 				row, ok = resolver.ResolveKeitaro(camp.TrafficSourceName)
@@ -90,10 +90,21 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 	return out, nil
 }
 
+func usesBinomMacroMaps(kind SourceKind) bool {
+	switch kind {
+	case SourceKindBinomJSON, SourceKindBinomReportAPI:
+		return true
+	default:
+		return false
+	}
+}
+
 func ListSources() []SourceKindMeta {
 	return []SourceKindMeta{
-		{Kind: SourceKindKeitaroJSON, Label: "Keitaro JSON export"},
-		{Kind: SourceKindBinomJSON, Label: "Binom JSON export"},
+		{Kind: SourceKindKeitaroJSON, Label: "Keitaro interchange JSON (normalized)"},
+		{Kind: SourceKindKeitaroAdminAPI, Label: "Keitaro Admin API campaigns wire"},
+		{Kind: SourceKindBinomJSON, Label: "Binom interchange JSON (normalized)"},
+		{Kind: SourceKindBinomReportAPI, Label: "Binom campaign report API wire"},
 		{Kind: SourceKindNativeV1, Label: "Native campaign export v1"},
 	}
 }

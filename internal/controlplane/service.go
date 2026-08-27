@@ -40,7 +40,7 @@ type Service struct {
 	postgresGate             *PostgresGate
 	alerter                  *OpsAlerter
 	clickhouseWriteConn      driver.Conn
-	clickhouseQuery          *database.CHQuery
+	clickhouseQuery          *database.ClickHouseQuery
 	paymentPool              *pgxpool.Pool
 	payment                  domain.PaymentAPI
 	ctx                      context.Context
@@ -77,7 +77,7 @@ func (s *Service) StartBackgroundWorker(fn func()) {
 	s.startWorker(fn)
 }
 
-func (s *Service) ClickHouseQuery() *database.CHQuery {
+func (s *Service) ClickHouseQuery() *database.ClickHouseQuery {
 	if s == nil {
 		return nil
 	}

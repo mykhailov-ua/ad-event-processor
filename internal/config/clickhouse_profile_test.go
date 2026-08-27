@@ -6,19 +6,19 @@ import (
 )
 
 func TestClickHouseEnabled(t *testing.T) {
-	cfg := &Config{CHEnabled: true, CHDSN: "clickhouse://127.0.0.1/db"}
-	if !cfg.ClickHouseEnabled() {
-		t.Fatal("expected enabled with DSN and CHEnabled")
+	cfg := &Config{ClickHouseEnabled: true, ClickHouseDSN: "clickhouse://127.0.0.1/db"}
+	if !cfg.IsClickHouseEnabled() {
+		t.Fatal("expected enabled with DSN and ClickHouseEnabled")
 	}
 
-	cfg.CHEnabled = false
-	if cfg.ClickHouseEnabled() {
-		t.Fatal("expected disabled when CHEnabled=false")
+	cfg.ClickHouseEnabled = false
+	if cfg.IsClickHouseEnabled() {
+		t.Fatal("expected disabled when ClickHouseEnabled=false")
 	}
 
-	cfg.CHEnabled = true
-	cfg.CHDSN = ""
-	if cfg.ClickHouseEnabled() {
+	cfg.ClickHouseEnabled = true
+	cfg.ClickHouseDSN = ""
+	if cfg.IsClickHouseEnabled() {
 		t.Fatal("expected disabled without DSN")
 	}
 }

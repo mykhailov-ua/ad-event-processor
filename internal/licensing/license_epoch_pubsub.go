@@ -26,8 +26,8 @@ var (
 	licenseEpochSyncActive atomic.Bool
 )
 
-func StartLicenseEpochSync(ctx context.Context, rdb redis.UniversalClient) {
-	if rdb == nil || licenseEpochSyncActive.Swap(true) {
+func StartLicenseEpochSync(ctx context.Context, redisClient redis.UniversalClient) {
+	if redisClient == nil || licenseEpochSyncActive.Swap(true) {
 		return
 	}
 	licenseEpochPublisher = func(ctx context.Context, notice licenseEpochNotice) error {
@@ -35,17 +35,17 @@ func StartLicenseEpochSync(ctx context.Context, rdb redis.UniversalClient) {
 		if err != nil {
 			return err
 		}
-		return rdb.Publish(ctx, LicenseEpochPubSubChannel, payload).Err()
+		return redisClient.Publish(ctx, LicenseEpochPubSubChannel, payload).Err()
 	}
 	licenseEpochSyncWG.Add(1)
 	go func() {
 		defer licenseEpochSyncWG.Done()
-		runLicenseEpochSubscriber(ctx, rdb)
+		runLicenseEpochSubscriber(ctx, redisClient)
 	}()
 }
 
-func runLicenseEpochSubscriber(ctx context.Context, rdb redis.UniversalClient) {
-	pubsub := rdb.Subscribe(ctx, LicenseEpochPubSubChannel)
+func runLicenseEpochSubscriber(ctx context.Context, redisClient redis.UniversalClient) {
+	pubsub := redisClient.Subscribe(ctx, LicenseEpochPubSubChannel)
 	defer func() { _ = pubsub.Close() }()
 
 	ch := pubsub.Channel()

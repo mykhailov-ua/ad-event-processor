@@ -41,7 +41,7 @@ var budgetResetCmd = &cobra.Command{
 			return fmt.Errorf("campaign not found in database: %w", err)
 		}
 
-		_ = pgUUIDToGoogleUUID(camp.CustomerID)
+		_ = postgresUUIDToGoogleUUID(camp.CustomerID)
 
 		redisClients, sharder, err := getRedisShards(ctx)
 		if err != nil {

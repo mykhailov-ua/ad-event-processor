@@ -9,6 +9,6 @@ import (
 
 func TestConnectCHReadonly_RejectsEmptyDSN(t *testing.T) {
 	t.Parallel()
-	_, err := ConnectCHReadonly(context.Background(), "")
+	_, err := ConnectClickHouseReadonly(context.Background(), "")
 	require.Error(t, err)
 }

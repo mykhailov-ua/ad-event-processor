@@ -14,16 +14,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type failingCHConn struct {
+type failingClickHouseConn struct {
 	driver.Conn
 	queryErr error
 }
 
-func (conn *failingCHConn) Query(context.Context, string, ...any) (driver.Rows, error) {
+func (conn *failingClickHouseConn) Query(context.Context, string, ...any) (driver.Rows, error) {
 	return nil, conn.queryErr
 }
 
-func (conn *failingCHConn) Exec(context.Context, string, ...any) error {
+func (conn *failingClickHouseConn) Exec(context.Context, string, ...any) error {
 	return conn.queryErr
 }
 
@@ -40,7 +40,7 @@ func TestFraudScoringRule_EmptyWindow(t *testing.T) {
 	scorer, err := NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
-	rule := NewFraudScoringRule(database.NewCHQuery(conn, database.CHQueryConfig{}), conn, nil, scorer, 100)
+	rule := NewFraudScoringRule(database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}), conn, nil, scorer, 100)
 	candidates, err := rule.Find(context.Background())
 	require.NoError(t, err)
 	assert.Nil(t, candidates)
@@ -54,7 +54,7 @@ func TestFault_FraudClickHouseDown(t *testing.T) {
 	scorer, err := NewLGBMScorer(testFraudModelPath(t))
 	require.NoError(t, err)
 
-	rule := NewFraudScoringRule(database.NewCHQuery(&failingCHConn{queryErr: errors.New("clickhouse unavailable")}, database.CHQueryConfig{}), nil, nil, scorer, 100)
+	rule := NewFraudScoringRule(database.NewClickHouseQuery(&failingClickHouseConn{queryErr: errors.New("clickhouse unavailable")}, database.ClickHouseQueryConfig{}), nil, nil, scorer, 100)
 
 	require.NotPanics(t, func() {
 		candidates, findErr := rule.Find(context.Background())

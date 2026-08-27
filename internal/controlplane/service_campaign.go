@@ -668,9 +668,9 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 	return dto
 }
 
-func (s *Service) SetClickHouse(conn driver.Conn, cfg database.CHQueryConfig) {
+func (s *Service) SetClickHouse(conn driver.Conn, cfg database.ClickHouseQueryConfig) {
 	if conn != nil {
-		s.clickhouseQuery = database.NewCHQuery(conn, cfg)
+		s.clickhouseQuery = database.NewClickHouseQuery(conn, cfg)
 	}
 }
 
@@ -2469,7 +2469,7 @@ func (m deliveryOutboxMerge) flush(ctx context.Context, pool pgx.Tx) error {
 }
 
 func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*domain.SyncWorker, runMAB bool) error {
-	return s.withPgLow(ctx, func(runCtx context.Context) error {
+	return s.withPostgresLow(ctx, func(runCtx context.Context) error {
 		opCtx, cancel := workerContext(runCtx, workerBatchTimeout)
 		defer cancel()
 
@@ -2525,7 +2525,7 @@ func (s *Service) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*d
 const pacingLookbackDays = 90
 
 func (s *Service) ClosedLoopPacingController(ctx context.Context, syncWorkers []*domain.SyncWorker) error {
-	return s.withPgLow(ctx, func(runCtx context.Context) error {
+	return s.withPostgresLow(ctx, func(runCtx context.Context) error {
 		opCtx, cancel := workerContext(runCtx, workerBatchTimeout)
 		defer cancel()
 

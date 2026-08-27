@@ -44,11 +44,11 @@ func DefaultAnalyzerConfig() AnalyzerConfig {
 }
 
 type Analyzer struct {
-	clickhouseQuery *database.CHQuery
+	clickhouseQuery *database.ClickHouseQuery
 	cfg AnalyzerConfig
 }
 
-func NewAnalyzer(clickhouseQuery *database.CHQuery, cfg AnalyzerConfig) *Analyzer {
+func NewAnalyzer(clickhouseQuery *database.ClickHouseQuery, cfg AnalyzerConfig) *Analyzer {
 	return &Analyzer{clickhouseQuery: clickhouseQuery, cfg: cfg}
 }
 

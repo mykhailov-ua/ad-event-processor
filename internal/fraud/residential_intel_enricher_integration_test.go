@@ -37,7 +37,7 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 			},
 		},
 		Cache:       NewResidentialIntelCache(redisClient, time.Hour),
-		CHWrite:     conn,
+		ClickHouseWrite:     conn,
 		RedisClient: redisClient,
 		FeedDir:     t.TempDir(),
 		RecentLim:   16,

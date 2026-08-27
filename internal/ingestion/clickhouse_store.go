@@ -23,14 +23,14 @@ import (
 	"github.com/google/uuid"
 )
 
-type tgEventPayload struct {
-	TgUserID   string `json:"tg_user_id"`
-	StartParam string `json:"start_param"`
-	ChatType   string `json:"chat_type"`
-	IsPremium  bool   `json:"is_premium"`
-	Motivated  bool   `json:"motivated"`
-	WidgetID   string `json:"widget_id"`
-	BotID      uint64 `json:"bot_id"`
+type telegramEventPayload struct {
+	TelegramUserID string `json:"tg_user_id"`
+	StartParam     string `json:"start_param"`
+	ChatType       string `json:"chat_type"`
+	IsPremium      bool   `json:"is_premium"`
+	Motivated      bool   `json:"motivated"`
+	WidgetID       string `json:"widget_id"`
+	BotID          uint64 `json:"bot_id"`
 }
 
 func isTelegramEvent(e *domain.Event) bool {
@@ -104,8 +104,8 @@ var slicePool = sync.Pool{
 type ClickHouseStore struct {
 	conn             driver.Conn
 	writeTimeout     time.Duration
-	spool            *CHSpool
-	clickhouseGate   *ProcessorChGate
+	spool            *ClickHouseSpool
+	clickhouseGate   *ProcessorClickHouseGate
 	piiHasher        *piihash.Hasher
 	conversionPayout *ConversionPayoutApplier
 	conversionReject conversionRejectFunc
@@ -115,9 +115,9 @@ type ClickHouseStore struct {
 	replayRunning    atomic.Bool
 }
 
-func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir string, spoolCfg CHSpoolConfig, clickhouseGate *ProcessorChGate) *ClickHouseStore {
+func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir string, spoolCfg ClickHouseSpoolConfig, clickhouseGate *ProcessorClickHouseGate) *ClickHouseStore {
 	ctx, cancel := context.WithCancel(context.Background())
-	chStore := &ClickHouseStore{
+	st := &ClickHouseStore{
 		conn:           conn,
 		writeTimeout:   writeTimeout,
 		clickhouseGate: clickhouseGate,
@@ -125,44 +125,44 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 		cancel:         cancel,
 	}
 	if spoolDir != "" {
-		spool, err := OpenCHSpoolWithConfig(spoolDir, spoolCfg)
+		spool, err := OpenClickHouseSpoolWithConfig(spoolDir, spoolCfg)
 		if err != nil {
 			slog.Error("failed to open clickhouse spool", "error", err, "dir", spoolDir)
 		} else {
-			chStore.spool = spool
+			st.spool = spool
 			spool.StartAsyncFlusher(20 * time.Millisecond)
-			chStore.startSpoolReplayer()
+			st.startSpoolReplayer()
 		}
 	}
-	return chStore
+	return st
 }
 
-func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
+func (st *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
 
-	if chStore.conversionReject != nil {
-		chStore.conversionReject(ctx, events)
+	if st.conversionReject != nil {
+		st.conversionReject(ctx, events)
 	}
-	if chStore.conversionPayout != nil {
-		chStore.conversionPayout.ApplyBatch(ctx, events)
+	if st.conversionPayout != nil {
+		st.conversionPayout.ApplyBatch(ctx, events)
 	}
 
-	if chStore.clickhouseGate != nil {
-		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
+	if st.clickhouseGate != nil {
+		if err := st.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.clickhouseGate.Release()
+		defer st.clickhouseGate.Release()
 	}
 
-	token := chStore.getDeduplicationToken(ctx, events)
+	token := st.getDeduplicationToken(ctx, events)
 	var err error
 	waitTime := InitialWait
 
 	for i := 0; i <= MaxRetries; i++ {
-		dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
-		err = chStore.insertToClickHouse(dbCtx, events)
+		dbCtx, cancel := context.WithTimeout(ctx, st.writeTimeout)
+		err = st.insertToClickHouse(dbCtx, events)
 		cancel()
 
 		if err == nil {
@@ -184,55 +184,55 @@ func (chStore *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain
 		}
 	}
 
-	if chStore.spool == nil {
+	if st.spool == nil {
 		metrics.DBWriteErrors.WithLabelValues("clickhouse").Inc()
 		return err
 	}
 
-	if spoolErr := chStore.spool.AppendDurably(token, events); spoolErr != nil {
+	if spoolErr := st.spool.AppendDurably(token, events); spoolErr != nil {
 		metrics.DBWriteErrors.WithLabelValues("clickhouse_spool").Inc()
 		return fmt.Errorf("clickhouse write failed and spool append failed: ch=%w spool=%w", err, spoolErr)
 	}
 
-	metrics.CHSpoolAppendTotal.Inc()
+	metrics.ClickHouseSpoolAppendTotal.Inc()
 	slog.Warn("clickhouse unavailable, batch spooled to mmap WAL", "events", len(events), "token", token)
 	return nil
 }
 
-func (chStore *ClickHouseStore) startSpoolReplayer() {
-	if chStore.spool == nil || chStore.replayRunning.Swap(true) {
+func (st *ClickHouseStore) startSpoolReplayer() {
+	if st.spool == nil || st.replayRunning.Swap(true) {
 		return
 	}
-	chStore.replayWg.Add(1)
+	st.replayWg.Add(1)
 	go func() {
-		defer chStore.replayWg.Done()
+		defer st.replayWg.Done()
 		ticker := time.NewTicker(2 * time.Second)
 		defer ticker.Stop()
 
 		for {
 			select {
-			case <-chStore.ctx.Done():
+			case <-st.ctx.Done():
 				return
 			case <-ticker.C:
-				chStore.replaySpoolOnce()
+				st.replaySpoolOnce()
 			}
 		}
 	}()
 }
 
-func (chStore *ClickHouseStore) replaySpoolOnce() {
-	if chStore.spool == nil {
+func (st *ClickHouseStore) replaySpoolOnce() {
+	if st.spool == nil {
 		return
 	}
-	records, err := chStore.spool.Scan()
+	records, err := st.spool.Scan()
 	if err != nil || len(records) == 0 {
 		return
 	}
 
 	rec := records[0]
-	ctx, cancel := context.WithTimeout(chStore.ctx, chStore.writeTimeout)
+	ctx, cancel := context.WithTimeout(st.ctx, st.writeTimeout)
 	ctx = context.WithValue(ctx, domain.DeduplicationTokenKey, rec.DedupToken)
-	insertErr := chStore.insertToClickHouse(ctx, rec.Events)
+	insertErr := st.insertToClickHouse(ctx, rec.Events)
 	cancel()
 	if insertErr != nil {
 		for _, e := range rec.Events {
@@ -243,19 +243,19 @@ func (chStore *ClickHouseStore) replaySpoolOnce() {
 	for _, e := range rec.Events {
 		domain.EventPool.Put(e)
 	}
-	if err := chStore.spool.ReleaseRecord(rec); err != nil {
+	if err := st.spool.ReleaseRecord(rec); err != nil {
 		slog.Error("failed to release ch spool record", "error", err, "offset", rec.EndOffset)
 		return
 	}
-	metrics.CHSpoolReplayTotal.Inc()
+	metrics.ClickHouseSpoolReplayTotal.Inc()
 }
 
-func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
-	if chStore.spool == nil {
+func (st *ClickHouseStore) RecoverSpool(ctx context.Context) error {
+	if st.spool == nil {
 		return nil
 	}
 	for {
-		records, err := chStore.spool.Scan()
+		records, err := st.spool.Scan()
 		if err != nil {
 			return err
 		}
@@ -263,9 +263,9 @@ func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 			return nil
 		}
 		rec := records[0]
-		replayCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+		replayCtx, cancel := context.WithTimeout(ctx, st.writeTimeout)
 		replayCtx = context.WithValue(replayCtx, domain.DeduplicationTokenKey, rec.DedupToken)
-		insertErr := chStore.insertToClickHouse(replayCtx, rec.Events)
+		insertErr := st.insertToClickHouse(replayCtx, rec.Events)
 		cancel()
 		if insertErr != nil {
 			for _, e := range rec.Events {
@@ -276,14 +276,14 @@ func (chStore *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 		for _, e := range rec.Events {
 			domain.EventPool.Put(e)
 		}
-		if err := chStore.spool.ReleaseRecord(rec); err != nil {
+		if err := st.spool.ReleaseRecord(rec); err != nil {
 			return err
 		}
-		metrics.CHSpoolReplayTotal.Inc()
+		metrics.ClickHouseSpoolReplayTotal.Inc()
 	}
 }
 
-func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, events []*domain.Event) string {
+func (st *ClickHouseStore) getDeduplicationToken(ctx context.Context, events []*domain.Event) string {
 	if token, ok := ctx.Value(domain.DeduplicationTokenKey).(string); ok && token != "" {
 		return token
 	}
@@ -300,13 +300,13 @@ func (chStore *ClickHouseStore) getDeduplicationToken(ctx context.Context, event
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, evts []*domain.Event, isFraud bool) error {
+func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts []*domain.Event, isFraud bool) error {
 	if !database.ValidClickHouseIdentifier(table) {
 		return fmt.Errorf("invalid clickhouse table name: %q", table)
 	}
 	start := time.Now()
 
-	token := chStore.getDeduplicationToken(ctx, evts)
+	token := st.getDeduplicationToken(ctx, evts)
 	query := "INSERT INTO " + table
 	if token != "" {
 		if !database.ValidCHHexToken(token) {
@@ -315,13 +315,13 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 		query = query + " SETTINGS insert_deduplicate=1, insert_deduplication_token='" + token + "'"
 	}
 
-	batch, err := chStore.conn.PrepareBatch(ctx, query)
+	batch, err := st.conn.PrepareBatch(ctx, query)
 	if err != nil {
 		return fmt.Errorf("prepare batch %s: %w", table, err)
 	}
 
 	for _, e := range evts {
-		pii := hashEventPII(chStore.piiHasher, e)
+		pii := hashEventPII(st.piiHasher, e)
 		switch {
 		case table == "fraud_aggregate_spikes":
 			count, windowMs := fraudAggregateFields(e)
@@ -371,7 +371,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 				clickAttributedCostSource(e),
 			)
 		case table == "tg_events_raw":
-			var p tgEventPayload
+			var p telegramEventPayload
 			if len(e.Payload) > 0 {
 				_ = json.Unmarshal(e.Payload, &p)
 			}
@@ -386,7 +386,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 			err = batch.Append(
 				e.ClickID,
 				e.CampaignID,
-				p.TgUserID,
+				p.TelegramUserID,
 				p.StartParam,
 				p.ChatType,
 				premium,
@@ -431,7 +431,7 @@ func (chStore *ClickHouseStore) insertTable(ctx context.Context, table string, e
 	return nil
 }
 
-func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*domain.Event) error {
+func (st *ClickHouseStore) insertToClickHouse(ctx context.Context, events []*domain.Event) error {
 	start := time.Now()
 
 	pImps := slicePool.Get().(*[]*domain.Event)
@@ -439,7 +439,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	pConvs := slicePool.Get().(*[]*domain.Event)
 	pFraud := slicePool.Get().(*[]*domain.Event)
 	pAgg := slicePool.Get().(*[]*domain.Event)
-	pTgEvents := slicePool.Get().(*[]*domain.Event)
+	pTelegramEvents := slicePool.Get().(*[]*domain.Event)
 
 	defer func() {
 		for i := range *pImps {
@@ -467,10 +467,10 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		}
 		*pAgg = (*pAgg)[:0]
 
-		for i := range *pTgEvents {
-			(*pTgEvents)[i] = nil
+		for i := range *pTelegramEvents {
+			(*pTelegramEvents)[i] = nil
 		}
-		*pTgEvents = (*pTgEvents)[:0]
+		*pTelegramEvents = (*pTelegramEvents)[:0]
 
 		if cap(*pImps) <= 100000 {
 			slicePool.Put(pImps)
@@ -487,8 +487,8 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		if cap(*pAgg) <= 100000 {
 			slicePool.Put(pAgg)
 		}
-		if cap(*pTgEvents) <= 100000 {
-			slicePool.Put(pTgEvents)
+		if cap(*pTelegramEvents) <= 100000 {
+			slicePool.Put(pTelegramEvents)
 		}
 	}()
 
@@ -497,12 +497,12 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	convs := *pConvs
 	fraud := *pFraud
 	agg := *pAgg
-	tgEvents := *pTgEvents
+	telegramEvents := *pTelegramEvents
 
 	for i := range events {
 		e := events[i]
 		if isTelegramEvent(e) {
-			tgEvents = append(tgEvents, e)
+			telegramEvents = append(telegramEvents, e)
 			continue
 		}
 		if isFraudAggregateSpike(e) {
@@ -524,7 +524,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		}
 	}
 
-	*pImps, *pClicks, *pConvs, *pFraud, *pAgg, *pTgEvents = imps, clicks, convs, fraud, agg, tgEvents
+	*pImps, *pClicks, *pConvs, *pFraud, *pAgg, *pTelegramEvents = imps, clicks, convs, fraud, agg, telegramEvents
 
 	var wg sync.WaitGroup
 	var firstErr error
@@ -548,7 +548,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := chStore.insertTable(ctx, table, evts, isFraud)
+			err := st.insertTable(ctx, table, evts, isFraud)
 			setErr(err)
 		}()
 	}
@@ -558,7 +558,7 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	runInsert("conversions", convs, false)
 	runInsert("fraud_events", fraud, true)
 	runInsert("fraud_aggregate_spikes", agg, false)
-	runInsert("tg_events_raw", tgEvents, false)
+	runInsert("tg_events_raw", telegramEvents, false)
 
 	wg.Wait()
 	if firstErr != nil {
@@ -571,82 +571,82 @@ func (chStore *ClickHouseStore) insertToClickHouse(ctx context.Context, events [
 	return nil
 }
 
-func (chStore *ClickHouseStore) Close() error {
-	chStore.cancel()
-	chStore.replayWg.Wait()
-	if chStore.spool != nil {
-		_ = chStore.spool.Close()
+func (st *ClickHouseStore) Close() error {
+	st.cancel()
+	st.replayWg.Wait()
+	if st.spool != nil {
+		_ = st.spool.Close()
 	}
-	return chStore.conn.Close()
+	return st.conn.Close()
 }
 
-func (chStore *ClickHouseStore) SetPIIHasher(h *piihash.Hasher) {
-	if chStore != nil {
-		chStore.piiHasher = h
+func (st *ClickHouseStore) SetPIIHasher(h *piihash.Hasher) {
+	if st != nil {
+		st.piiHasher = h
 	}
 }
 
-func (chStore *ClickHouseStore) SetConversionPayoutApplier(a *ConversionPayoutApplier) {
-	if chStore != nil {
-		chStore.conversionPayout = a
+func (st *ClickHouseStore) SetConversionPayoutApplier(a *ConversionPayoutApplier) {
+	if st != nil {
+		st.conversionPayout = a
 	}
 }
 
 type conversionRejectFunc func(ctx context.Context, events []*domain.Event)
 
-func (chStore *ClickHouseStore) SetConversionReject(fn conversionRejectFunc) {
-	if chStore != nil {
-		chStore.conversionReject = fn
+func (st *ClickHouseStore) SetConversionReject(fn conversionRejectFunc) {
+	if st != nil {
+		st.conversionReject = fn
 	}
 }
 
-func (chStore *ClickHouseStore) WriteFraudTelemetry(ctx context.Context, events []*domain.Event) error {
-	if chStore == nil || len(events) == 0 {
+func (st *ClickHouseStore) WriteFraudTelemetry(ctx context.Context, events []*domain.Event) error {
+	if st == nil || len(events) == 0 {
 		return nil
 	}
-	if chStore.clickhouseGate != nil {
-		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
+	if st.clickhouseGate != nil {
+		if err := st.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.clickhouseGate.Release()
+		defer st.clickhouseGate.Release()
 	}
-	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, st.writeTimeout)
 	defer cancel()
-	return chStore.insertTable(dbCtx, "fraud_events", events, true)
+	return st.insertTable(dbCtx, "fraud_events", events, true)
 }
 
-func (chStore *ClickHouseStore) WriteConversions(ctx context.Context, events []*domain.Event) error {
-	if chStore == nil || len(events) == 0 {
+func (st *ClickHouseStore) WriteConversions(ctx context.Context, events []*domain.Event) error {
+	if st == nil || len(events) == 0 {
 		return nil
 	}
-	if chStore.clickhouseGate != nil {
-		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
+	if st.clickhouseGate != nil {
+		if err := st.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.clickhouseGate.Release()
+		defer st.clickhouseGate.Release()
 	}
-	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, st.writeTimeout)
 	defer cancel()
-	return chStore.insertTable(dbCtx, "conversions", events, false)
+	return st.insertTable(dbCtx, "conversions", events, false)
 }
 
-func (chStore *ClickHouseStore) DeleteValidationPendingConversions(ctx context.Context, events []*domain.Event) error {
-	if chStore == nil || len(events) == 0 {
+func (st *ClickHouseStore) DeleteValidationPendingConversions(ctx context.Context, events []*domain.Event) error {
+	if st == nil || len(events) == 0 {
 		return nil
 	}
-	if chStore.clickhouseGate != nil {
-		if err := chStore.clickhouseGate.Acquire(ctx); err != nil {
+	if st.clickhouseGate != nil {
+		if err := st.clickhouseGate.Acquire(ctx); err != nil {
 			return err
 		}
-		defer chStore.clickhouseGate.Release()
+		defer st.clickhouseGate.Release()
 	}
-	dbCtx, cancel := context.WithTimeout(ctx, chStore.writeTimeout)
+	dbCtx, cancel := context.WithTimeout(ctx, st.writeTimeout)
 	defer cancel()
 	for _, evt := range events {
 		if evt == nil || evt.ClickID == "" || evt.CampaignID == uuid.Nil {
 			continue
 		}
-		err := chStore.conn.Exec(dbCtx, `
+		err := st.conn.Exec(dbCtx, `
 ALTER TABLE conversions DELETE WHERE
  campaign_id = ?
  AND click_id = ?
@@ -660,31 +660,31 @@ ALTER TABLE conversions DELETE WHERE
 	return nil
 }
 
-func (chStore *ClickHouseStore) ReplaceValidatedConversions(ctx context.Context, events []*domain.Event) error {
-	if chStore == nil || len(events) == 0 {
+func (st *ClickHouseStore) ReplaceValidatedConversions(ctx context.Context, events []*domain.Event) error {
+	if st == nil || len(events) == 0 {
 		return nil
 	}
-	if err := chStore.DeleteValidationPendingConversions(ctx, events); err != nil {
+	if err := st.DeleteValidationPendingConversions(ctx, events); err != nil {
 		return err
 	}
-	return chStore.WriteConversions(ctx, events)
+	return st.WriteConversions(ctx, events)
 }
 
-func (chStore *ClickHouseStore) PIIHasher() *piihash.Hasher {
-	if chStore == nil {
+func (st *ClickHouseStore) PIIHasher() *piihash.Hasher {
+	if st == nil {
 		return nil
 	}
-	return chStore.piiHasher
+	return st.piiHasher
 }
 
-func (chStore *ClickHouseStore) SetChGate(gate *ProcessorChGate) {
-	chStore.clickhouseGate = gate
+func (st *ClickHouseStore) SetClickHouseGate(gate *ProcessorClickHouseGate) {
+	st.clickhouseGate = gate
 }
 
-func (chStore *ClickHouseStore) SetSpool(spool *CHSpool) {
-	chStore.spool = spool
+func (st *ClickHouseStore) SetSpool(spool *ClickHouseSpool) {
+	st.spool = spool
 }
 
-func (chStore *ClickHouseStore) Spool() *CHSpool {
-	return chStore.spool
+func (st *ClickHouseStore) Spool() *ClickHouseSpool {
+	return st.spool
 }

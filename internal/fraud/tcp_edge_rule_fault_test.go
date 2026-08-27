@@ -41,7 +41,7 @@ func TestFault_IVTCorrelationSilentRejectOnly(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
@@ -88,7 +88,7 @@ func TestFault_IVTCorrelationConcurrentFind(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
@@ -165,7 +165,7 @@ func TestFault_IVTCorrelationCorruptRedis(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
@@ -201,7 +201,7 @@ func TestFault_IVTCorrelationMissingClickHouse(t *testing.T) {
 	}))
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
@@ -242,7 +242,7 @@ func TestFault_IVTCorrelationBrokenTLSData(t *testing.T) {
 	}
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}
@@ -278,7 +278,7 @@ func TestFault_IVTCorrelationRedisEmpty(t *testing.T) {
 	defer cleanupRedis()
 
 	rule := &tcpEdgeCorrelationRule{
-		clickhouseQuery: database.NewCHQuery(conn, database.CHQueryConfig{}),
+		clickhouseQuery: database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{}),
 		redisClient:     redisClient,
 		cfg:             AnalyzerConfig{Window: time.Hour},
 	}

@@ -162,7 +162,7 @@ func postbackDispatchKey(campaignID uuid.UUID, clickID string) string {
 
 func queryPostbackReconCHRows(
 	ctx context.Context,
-	clickhouseQuery *database.CHQuery,
+	clickhouseQuery *database.ClickHouseQuery,
 	campaignIDs []uuid.UUID,
 	from, to time.Time,
 	limit, offset int,

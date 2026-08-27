@@ -55,11 +55,15 @@ func ParseBinomJSON(payload []byte) (NormalizedBundle, error) {
 		if sourceName == "" {
 			sourceName = strings.TrimSpace(row.TrafficSource)
 		}
+		trackingURL := strings.TrimSpace(row.TrackingURL)
+		if trackingURL == "" {
+			return NormalizedBundle{}, fmt.Errorf("campaign index %d missing tracking_url (use source_kind binom_report_api for report API wire)", i)
+		}
 		out.Campaigns = append(out.Campaigns, NormalizedCampaign{
 			Ref:               ref,
 			Name:              name,
 			TrafficSourceName: sourceName,
-			TrackingURL:       strings.TrimSpace(row.TrackingURL),
+			TrackingURL:       trackingURL,
 			LanderURL:         strings.TrimSpace(row.LanderURL),
 			PostbackURL:       strings.TrimSpace(row.PostbackURL),
 			BudgetUSD:         row.Budget,

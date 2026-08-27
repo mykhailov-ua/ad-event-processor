@@ -28,7 +28,7 @@ func NewResidentialIntelEnricherFromConfig(cfg *config.Config, redisClient redis
 	return NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
 		Provider:    provider,
 		Cache:       cache,
-		CHWrite:     clickhouseWriteConn,
+		ClickHouseWrite:     clickhouseWriteConn,
 		RedisClient: redisClient,
 		FeedDir:     cfg.ExternalResidentialIntel.FeedDir,
 		ProviderID:  cfg.ExternalResidentialIntel.ProviderLabel,

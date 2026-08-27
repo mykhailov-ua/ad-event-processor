@@ -175,8 +175,8 @@ func TestFault_CHSpool_Rotation(t *testing.T) {
 	defer chCleanup()
 
 	dir := t.TempDir()
-	spoolCfg := CHSpoolConfig{SegmentSizeBytes: 16 * 1024, MaxSegments: 4}
-	spool, err := OpenCHSpoolWithConfig(dir, spoolCfg)
+	spoolCfg := ClickHouseSpoolConfig{SegmentSizeBytes: 16 * 1024, MaxSegments: 4}
+	spool, err := OpenClickHouseSpoolWithConfig(dir, spoolCfg)
 	require.NoError(t, err)
 	defer func() { _ = spool.Close() }()
 
@@ -220,8 +220,8 @@ func TestFault_CHSpool_MaxSegments(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	spoolCfg := CHSpoolConfig{SegmentSizeBytes: 4096, MaxSegments: 2}
-	spool, err := OpenCHSpoolWithConfig(dir, spoolCfg)
+	spoolCfg := ClickHouseSpoolConfig{SegmentSizeBytes: 4096, MaxSegments: 2}
+	spool, err := OpenClickHouseSpoolWithConfig(dir, spoolCfg)
 	require.NoError(t, err)
 	defer func() { _ = spool.Close() }()
 
@@ -264,8 +264,8 @@ func TestFault_CHSpool_FdRelease(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	spoolCfg := CHSpoolConfig{SegmentSizeBytes: 8192, MaxSegments: 4}
-	spool, err := OpenCHSpoolWithConfig(dir, spoolCfg)
+	spoolCfg := ClickHouseSpoolConfig{SegmentSizeBytes: 8192, MaxSegments: 4}
+	spool, err := OpenClickHouseSpoolWithConfig(dir, spoolCfg)
 	require.NoError(t, err)
 	defer func() { _ = spool.Close() }()
 

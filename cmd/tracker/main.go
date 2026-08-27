@@ -519,12 +519,12 @@ func main() {
 			"budget_authority", cfg.RtbBudgetAuthority,
 			"targeting_index", cfg.RtbTargetingIndexEnabled(),
 		)
-		if cfg.ClickHouseEnabled() {
+		if cfg.IsClickHouseEnabled() {
 			clickhouseCtx, chCancel := context.WithTimeout(ctx, 15*time.Second)
-			clickhouseConn, chErr := database.ConnectClickHouse(clickhouseCtx, string(cfg.CHDSN))
+			clickhouseConn, clickhouseErr := database.ConnectClickHouse(clickhouseCtx, string(cfg.ClickHouseDSN))
 			chCancel()
-			if chErr != nil {
-				slog.Warn("rtb clickhouse writers disabled", "error", chErr)
+			if clickhouseErr != nil {
+				slog.Warn("rtb clickhouse writers disabled", "error", clickhouseErr)
 			} else {
 				migCtx, migCancel := context.WithTimeout(ctx, 30*time.Second)
 				if migErr := migrate.ApplyClickHouseMigrations(migCtx, clickhouseConn); migErr != nil {
@@ -548,11 +548,11 @@ func main() {
 
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
 
-	if cfg.PgFailoverEnabled {
+	if cfg.PostgresFailoverEnabled {
 		ingestPgFailover := pgfailover.StartIngestSubscribers(ctx, redisShards, pgfailover.IngestSubscriberConfig{
 			MaxConns: cfg.DBTrackerMaxConns,
 			MinConns: cfg.DBMinConns,
-			Interval: time.Duration(cfg.PgFailoverPollMs) * time.Millisecond,
+			Interval: time.Duration(cfg.PostgresFailoverPollMs) * time.Millisecond,
 		}, func(newPool *pgxpool.Pool) {
 			old := pool
 			pool = newPool
@@ -623,7 +623,7 @@ func main() {
 			fw.SetBrokerSink(fraudBrokerSink)
 		}
 		slog.Info("fraud broker sink enabled", "addr", cfg.Broker.URL, "topic", cfg.Broker.FraudTopic)
-	} else if cfg.Broker.CHIngestSource != "broker" && cfg.RedisStreamName != "" {
+	} else if cfg.Broker.ClickHouseIngestSource != "broker" && cfg.RedisStreamName != "" {
 		streamProducers := make([]*ingestion.StreamProducer, len(redisShards))
 		writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
 		if writeTimeout <= 0 {

@@ -1004,7 +1004,7 @@ func (s *Service) AutoscaleBudgets(ctx context.Context, syncWorkers []*domain.Sy
 		return nil
 	}
 
-	return s.withPgLow(ctx, func(runCtx context.Context) error {
+	return s.withPostgresLow(ctx, func(runCtx context.Context) error {
 		opCtx, cancel := workerContext(runCtx, workerBatchTimeout)
 		defer cancel()
 
