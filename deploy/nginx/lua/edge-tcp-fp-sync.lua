@@ -37,7 +37,7 @@ function _M.sync()
 
     red:init_pipeline()
     for _, ip in ipairs(ips) do
-        red:hmget(IP_KEY_PREFIX .. ip, "ttl", "window", "mss")
+        red:hmget(IP_KEY_PREFIX .. ip, "ttl", "window", "mss", "tcp_hash")
     end
     local results, perr = red:commit_pipeline()
     red:set_keepalive(10000, 100)
@@ -48,11 +48,11 @@ function _M.sync()
     local stamped = 0
     for i, ip in ipairs(ips) do
         local res = results[i]
-        local ttl, win, mss
+        local ttl, win, mss, tcp_hash
         if type(res) == "table" then
-            ttl, win, mss = res[1], res[2], res[3]
+            ttl, win, mss, tcp_hash = res[1], res[2], res[3], res[4]
         else
-            ttl, win, mss = res, nil, nil
+            ttl, win, mss, tcp_hash = res, nil, nil, nil
         end
         if mss and mss ~= ngx.null then
             local n = tonumber(mss)
@@ -72,6 +72,9 @@ function _M.sync()
             if w and w >= 0 and w <= 65535 then
                 cache:set("w:" .. ip, w, 3600)
             end
+        end
+        if tcp_hash and tcp_hash ~= ngx.null and type(tcp_hash) == "string" and #tcp_hash == 8 then
+            cache:set("h:" .. ip, tcp_hash, 3600)
         end
     end
 

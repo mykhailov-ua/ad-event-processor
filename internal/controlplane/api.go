@@ -327,6 +327,10 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusConflict, "APPROVAL_REQUIRED", err.Error()
 	}
 
+	if errors.Is(err, ErrBudgetApprovalAutoDenied) {
+		return http.StatusConflict, "APPROVAL_AUTO_DENIED", err.Error()
+	}
+
 	if errors.Is(err, ErrPublisherScopeRequired) {
 		return http.StatusForbidden, "FORBIDDEN", err.Error()
 	}
@@ -337,6 +341,10 @@ func mapServiceError(err error) (status int, code, message string) {
 
 	if isConflictError(err) {
 		return http.StatusConflict, "CONFLICT", conflictMessage(err)
+	}
+
+	if errors.Is(err, ErrCampaignRevisionConflict) {
+		return http.StatusConflict, "CONFLICT", ErrCampaignRevisionConflict.Error()
 	}
 
 	if errors.Is(err, ErrSellersJSONInvalid) {
@@ -371,7 +379,8 @@ func isNotFoundError(err error) bool {
 func isConflictError(err error) bool {
 	return errors.Is(err, ErrSlotMigrationNotReady) ||
 		errors.Is(err, domain.ErrSlotMapAlreadyActive) ||
-		errors.Is(err, ErrPlatformConfigBootstrapped)
+		errors.Is(err, ErrPlatformConfigBootstrapped) ||
+		errors.Is(err, ErrCampaignRevisionConflict)
 }
 
 func conflictMessage(err error) string {

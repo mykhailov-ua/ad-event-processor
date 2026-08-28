@@ -19,6 +19,13 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 	now := time.Now().UTC()
 	from := now.Add(-30 * 24 * time.Hour)
 
+	q := db.New(s.GetPool())
+	camp, err := q.GetCampaign(ctx, domain.ToUUID(campaignID))
+	if err != nil {
+		return CampaignDashboardDTO{}, mapNotFound(err, ErrCampaignNotFound)
+	}
+	customerID := uuid.UUID(camp.CustomerID.Bytes)
+
 	var spendMicro, revenueMicro, conversions int64
 	chAvailable := s.clickhouseQuery != nil
 	usedCHMoney := false
@@ -37,11 +44,6 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 	}
 
 	if spendMicro == 0 && revenueMicro == 0 {
-		q := db.New(s.GetPool())
-		camp, err := q.GetCampaign(ctx, domain.ToUUID(campaignID))
-		if err != nil {
-			return CampaignDashboardDTO{}, mapNotFound(err, ErrCampaignNotFound)
-		}
 		spendMicro = camp.CurrentSpend
 		stats, err := q.SumCampaignStatsInRange(ctx, db.SumCampaignStatsInRangeParams{
 			CampaignID: domain.ToUUID(campaignID),
@@ -68,8 +70,16 @@ func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID
 	}
 	freshness := campaignDashboardFreshness(now, usedCHMoney, chLag, chAvailable)
 
+	var series []DashboardSeriesPointDTO
+	if s.clickhouseQuery != nil {
+		clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
+		series, _ = queryCustomerDashboardSeries(clickhouseCtx, s.GetPool(), s.clickhouseQuery, customerID, []uuid.UUID{campaignID}, from, now)
+		cancel()
+	}
+
 	return CampaignDashboardDTO{
 		CampaignID: campaignID.String(),
+		Series:     series,
 		KPIs: MetricsBlockDTO{
 			SpendMicro:   spendMicro,
 			RevenueMicro: revenueMicro,

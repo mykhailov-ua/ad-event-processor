@@ -36,13 +36,13 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 				ip: {ResidentialProxy: true, VPN: true, Proxy: true},
 			},
 		},
-		Cache:       NewResidentialIntelCache(redisClient, time.Hour),
-		ClickHouseWrite:     conn,
-		RedisClient: redisClient,
-		FeedDir:     t.TempDir(),
-		RecentLim:   16,
-		BatchLim:    16,
-		ProviderID:  "stub",
+		Cache:           NewResidentialIntelCache(redisClient, time.Hour),
+		ClickHouseWrite: conn,
+		RedisClient:     redisClient,
+		FeedDir:         t.TempDir(),
+		RecentLim:       16,
+		BatchLim:        16,
+		ProviderID:      "stub",
 	})
 
 	stats, err := enricher.Run(ctx)

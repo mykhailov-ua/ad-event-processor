@@ -124,15 +124,31 @@ func (h *RtbHTTPHandlers) Register(mux *http.ServeMux) {
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("POST /api/v1/rtb/validate-bid-request", limit(perm("rtb:read", h.validateBidRequest)))
-	mux.HandleFunc("GET /api/v1/rtb/integration-profile", limit(perm("rtb:read", h.integrationProfile)))
-	mux.HandleFunc("GET /api/v1/rtb/shadow-diff", limit(perm("rtb:read", h.shadowDiff)))
-	mux.HandleFunc("GET /api/v1/rtb/reconcile/export", limit(perm("rtb:read", h.reconcileExport)))
-	mux.HandleFunc("GET /api/v1/rtb/deals", limit(perm("rtb:read", h.listDeals)))
-	mux.HandleFunc("GET /api/v1/rtb/deals/{id}", limit(perm("rtb:read", h.getDeal)))
-	mux.HandleFunc("POST /api/v1/rtb/deals", limit(perm("rtb:write", h.createDeal)))
-	mux.HandleFunc("PATCH /api/v1/rtb/deals/{id}", limit(perm("rtb:write", h.patchDeal)))
-	mux.HandleFunc("DELETE /api/v1/rtb/deals/{id}", limit(perm("rtb:write", h.deleteDeal)))
+	gate := func(next http.HandlerFunc) http.HandlerFunc {
+		return limit(perm("rtb:read", func(w http.ResponseWriter, r *http.Request) {
+			if !requireLicenseFeature(w, "openrtb") {
+				return
+			}
+			next(w, r)
+		}))
+	}
+	gateWrite := func(next http.HandlerFunc) http.HandlerFunc {
+		return limit(perm("rtb:write", func(w http.ResponseWriter, r *http.Request) {
+			if !requireLicenseFeature(w, "openrtb") {
+				return
+			}
+			next(w, r)
+		}))
+	}
+	mux.HandleFunc("POST /api/v1/rtb/validate-bid-request", gate(h.validateBidRequest))
+	mux.HandleFunc("GET /api/v1/rtb/integration-profile", gate(h.integrationProfile))
+	mux.HandleFunc("GET /api/v1/rtb/shadow-diff", gate(h.shadowDiff))
+	mux.HandleFunc("GET /api/v1/rtb/reconcile/export", gate(h.reconcileExport))
+	mux.HandleFunc("GET /api/v1/rtb/deals", gate(h.listDeals))
+	mux.HandleFunc("GET /api/v1/rtb/deals/{id}", gate(h.getDeal))
+	mux.HandleFunc("POST /api/v1/rtb/deals", gateWrite(h.createDeal))
+	mux.HandleFunc("PATCH /api/v1/rtb/deals/{id}", gateWrite(h.patchDeal))
+	mux.HandleFunc("DELETE /api/v1/rtb/deals/{id}", gateWrite(h.deleteDeal))
 }
 
 func (h *RtbHTTPHandlers) validateBidRequest(w http.ResponseWriter, r *http.Request) {

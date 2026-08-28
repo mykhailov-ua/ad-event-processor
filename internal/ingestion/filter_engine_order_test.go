@@ -51,6 +51,7 @@ func TestFilterEngine_TrackerSegmentAfterLocalFilters(t *testing.T) {
 		&traceFilter{name: "residential", trace: &order},
 		&traceFilter{name: "tcp_mss", trace: &order},
 		&traceFilter{name: "device", trace: &order},
+		&traceFilter{name: "l7_wire", trace: &order},
 		&traceFilter{name: "consent", trace: &order},
 		&traceFilter{name: "segment", trace: &order},
 		&traceFilter{name: "entitlements", trace: &order},
@@ -60,7 +61,7 @@ func TestFilterEngine_TrackerSegmentAfterLocalFilters(t *testing.T) {
 	require.NoError(t, engine.Check(context.Background(), evt))
 	assert.Equal(t, []string{
 		"license", "license_rps", "emergency", "geo", "schedule", "vpp", "fraud",
-		"residential", "tcp_mss", "device", "consent", "segment", "entitlements", "unified",
+		"residential", "tcp_mss", "device", "l7_wire", "consent", "segment", "entitlements", "unified",
 	}, order)
 }
 

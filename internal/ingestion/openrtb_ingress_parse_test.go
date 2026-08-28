@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"ad-event-processor/internal/domain"
 )
 
 func TestParseOpenRTB3Payload_ReorderedNested(t *testing.T) {
@@ -78,6 +80,29 @@ func TestParseOpenRTB3Ingress(t *testing.T) {
 	allocs := testing.AllocsPerRun(500, func() {
 		req.Reset()
 		_ = ParseOpenRTB3Ingress(&req, payload)
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
+func TestFillTrackEvent_holdoutOpenRTB3PayloadRef(t *testing.T) {
+	camp := "550e8400-e29b-41d4-a716-446655440000"
+	payload := []byte(`{"openrtb":{"request":{"id":"req-abc","item":[{"id":"` + camp + `","flr":1.5}]}}}`)
+	var req TrackRequest
+	require.NoError(t, ParseOpenRTB3Ingress(&req, payload))
+	fields := trackIngestFields{
+		campaignID: req.CampaignID,
+		eventType:  req.Type,
+		clickID:    req.ClickID,
+		payload:    req.Payload,
+	}
+	var evt domain.Event
+	evt.Payload = make([]byte, 0, 1024)
+	fillTrackEvent(&evt, fields, "1.1.1.1", "Mozilla/5.0")
+	assert.Equal(t, payload, evt.Payload)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		evt.Payload = evt.Payload[:0]
+		fillTrackEvent(&evt, fields, "1.1.1.1", "Mozilla/5.0")
 	})
 	assert.Equal(t, float64(0), allocs)
 }

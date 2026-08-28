@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/licensing"
@@ -20,21 +21,6 @@ import (
 
 const usageExportBatchLimit = 500
 
-type UsageExportSpec struct {
-	CustomerID *uuid.UUID
-	CostCenter string
-	FromDate   time.Time
-	ToDate     time.Time
-	Cursor     UsageExportCursor
-}
-
-type UsageExportCursor struct {
-	CustomerID uuid.UUID
-	UsageDate  time.Time
-	Meter      string
-	Valid      bool
-}
-
 type usageDailyExportRow struct {
 	CustomerID   uuid.UUID
 	CustomerName string
@@ -44,52 +30,8 @@ type usageDailyExportRow struct {
 	Value        int64
 }
 
-func ParseUsageExportCursor(raw string) (UsageExportCursor, error) {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return UsageExportCursor{}, nil
-	}
-	parts := strings.SplitN(raw, "|", 3)
-	if len(parts) != 3 {
-		return UsageExportCursor{}, errInvalidExportCursor("invalid cursor")
-	}
-	customerID, err := uuid.Parse(parts[0])
-	if err != nil {
-		return UsageExportCursor{}, errInvalidExportCursor("invalid cursor customer_id")
-	}
-	usageDate, err := time.Parse("2006-01-02", parts[1])
-	if err != nil {
-		return UsageExportCursor{}, errInvalidExportCursor("invalid cursor usage_date")
-	}
-	meter := strings.TrimSpace(parts[2])
-	if meter == "" {
-		return UsageExportCursor{}, errInvalidExportCursor("invalid cursor meter")
-	}
-	return UsageExportCursor{
-		CustomerID: customerID,
-		UsageDate:  usageDate,
-		Meter:      meter,
-		Valid:      true,
-	}, nil
-}
-
-func (c UsageExportCursor) Encode() string {
-	if !c.Valid {
-		return ""
-	}
-	return c.CustomerID.String() + "|" + c.UsageDate.Format("2006-01-02") + "|" + c.Meter
-}
-
-func normalizeCostCenter(raw string) (string, error) {
-	trimmed := strings.TrimSpace(raw)
-	if len(trimmed) > 64 {
-		return "", errValidation("cost_center must be at most 64 characters")
-	}
-	return trimmed, nil
-}
-
 func (s *Service) UpdateCustomerCostCenter(ctx context.Context, customerID uuid.UUID, costCenter string) (CustomerDTO, error) {
-	normalized, err := normalizeCostCenter(costCenter)
+	normalized, err := billingadmin.NormalizeCostCenter(costCenter)
 	if err != nil {
 		return CustomerDTO{}, err
 	}

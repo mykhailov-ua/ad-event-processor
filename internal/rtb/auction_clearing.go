@@ -7,7 +7,7 @@ const (
 	ClearingFirstPrice
 )
 
-func (registry *Registry) clearingPrice(mode ClearingMode, floor int64, winnerBid int64, secondBid int64) int64 {
+func (r *Registry) clearingPrice(mode ClearingMode, floor int64, winnerBid int64, secondBid int64) int64 {
 	if mode == ClearingFirstPrice {
 		return winnerBid
 	}

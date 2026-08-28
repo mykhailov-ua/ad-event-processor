@@ -281,15 +281,15 @@ func decodePausePlacementPayload(b []byte) (PausePlacementPayload, error) {
 
 func encodeQuotaRepairPayload(p QuotaRepairPayload) ([]byte, error) {
 	return proto.Marshal(&outboxpb.QuotaRepairPayload{
-		CampaignId:    p.CampaignID,
-		ShardId:       int32(p.ShardID),
-		Action:        p.Action,
-		PostgresReserved:    p.PostgresReserved,
-		RedisExpected: p.RedisExpected,
-		ChunkSize:     p.ChunkSize,
-		DriftMicro:    p.DriftMicro,
-		RepairMicro:   p.RepairMicro,
-		Reason:        p.Reason,
+		CampaignId:       p.CampaignID,
+		ShardId:          int32(p.ShardID),
+		Action:           p.Action,
+		PostgresReserved: p.PostgresReserved,
+		RedisExpected:    p.RedisExpected,
+		ChunkSize:        p.ChunkSize,
+		DriftMicro:       p.DriftMicro,
+		RepairMicro:      p.RepairMicro,
+		Reason:           p.Reason,
 	})
 }
 
@@ -299,15 +299,15 @@ func decodeQuotaRepairPayload(b []byte) (QuotaRepairPayload, error) {
 		return QuotaRepairPayload{}, err
 	}
 	return QuotaRepairPayload{
-		CampaignID:    pb.CampaignId,
-		ShardID:       int16(pb.ShardId),
-		Action:        pb.Action,
-		PostgresReserved:    pb.PostgresReserved,
-		RedisExpected: pb.RedisExpected,
-		ChunkSize:     pb.ChunkSize,
-		DriftMicro:    pb.DriftMicro,
-		RepairMicro:   pb.RepairMicro,
-		Reason:        pb.Reason,
+		CampaignID:       pb.CampaignId,
+		ShardID:          int16(pb.ShardId),
+		Action:           pb.Action,
+		PostgresReserved: pb.PostgresReserved,
+		RedisExpected:    pb.RedisExpected,
+		ChunkSize:        pb.ChunkSize,
+		DriftMicro:       pb.DriftMicro,
+		RepairMicro:      pb.RepairMicro,
+		Reason:           pb.Reason,
 	}, nil
 }
 

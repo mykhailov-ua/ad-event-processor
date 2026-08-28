@@ -18,6 +18,7 @@ import (
 	"ad-event-processor/internal/openrtb"
 	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/platformsync"
+	"ad-event-processor/internal/reports"
 	"ad-event-processor/pkg/doctor"
 	"ad-event-processor/pkg/platformconfig"
 	"ad-event-processor/pkg/supportbundle"
@@ -261,13 +262,22 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError:     writeErr,
 		},
 		ReportsHTTP: &ReportsHTTPHandlers{
-			CampaignStats:             svc,
-			CampaignForecaster:        svc,
-			ReportJobs:                reportJobs,
-			Pool:                      pool,
-			ClickHouseQuery:           svc.ClickHouseQuery(),
-			BuyerPortfolio:            svc,
-			EdgeMetricsReader:         FetchEdgeMetrics,
+			CampaignStats:      campaignStatsAdapter{svc: svc},
+			CampaignForecaster: campaignForecasterAdapter{svc: svc},
+			Pool:               pool,
+			ClickHouseQuery:    svc.ClickHouseQuery(),
+			BuyerPortfolio:     buyerPortfolioAdapter{svc: svc},
+			EdgeMetricsReader: func(ctx context.Context) (reports.EdgeMetricsPanelDTO, error) {
+				dto, err := FetchEdgeMetrics(ctx)
+				if err != nil {
+					return reports.EdgeMetricsPanelDTO{}, err
+				}
+				return reports.EdgeMetricsPanelDTO{
+					UpdatedAt: dto.UpdatedAt, IngressH1: dto.IngressH1, IngressH2: dto.IngressH2, IngressH3: dto.IngressH3,
+					BodyStream: dto.BodyStream, BodyPeek: dto.BodyPeek, BodyRead: dto.BodyRead,
+					Blocked: dto.Blocked, TarpitTotal: dto.TarpitTotal, BlacklistStale: dto.BlacklistStale,
+				}, nil
+			},
 			ApplyRateLimit:            limit,
 			RequirePermission:         perm,
 			RequireAnyPermission:      permAny,
@@ -275,6 +285,19 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			AuthorizeCustomerAccess:   authCustomer,
 			ResolveForecastCustomerID: h.resolveForecastCustomerID,
 			WriteServiceError:         writeErr,
+			RequestHasShardsRead:      requestHasShardsRead,
+			RequireLicenseFeature:     requireLicenseFeature,
+			DenyScopedAPIKeyReport:    denyScopedAPIKeyOperatorReport,
+		},
+		ReportJobHTTP: &ReportJobHTTPHandlers{
+			Runner:                  reportJobs,
+			Pool:                    pool,
+			ApplyRateLimit:          limit,
+			RequirePermission:       perm,
+			RequireAnyPermission:    permAny,
+			AuthorizeCustomerAccess: authCustomer,
+			ValidateReportSchedule:  validateReportScheduleForActor,
+			WriteServiceError:       writeErr,
 		},
 		DashboardsHTTP: &DashboardsHTTPHandlers{
 			BuyerPortfolio:       svc,
@@ -344,7 +367,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			},
 		},
 		MarginGuardHTTP: &MarginGuardHTTPHandlers{
-			Service:           svc,
+			Service:           marginGuardServiceAdapter{svc: svc},
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
@@ -417,13 +440,19 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			},
 			WriteServiceError: writeErr,
 		},
-		CommercialHTTP: &CommercialHTTPHandlers{
-			Commercial:              commercialAdminAdapter{svc: svc},
+		BrandHTTP: &BrandHTTPHandlers{
+			Admin:                   brandAdminAdapter{svc: svc},
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
-			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
+		},
+		SupplyHTTP: &SupplyHTTPHandlers{
+			Admin:                supplyAdminAdapter{svc: svc},
+			ApplyRateLimit:       limit,
+			RequirePermission:    perm,
+			RequireAnyPermission: permAny,
+			WriteServiceError:    writeErr,
 		},
 		RtbFloorsHTTP: &RtbFloorsHTTPHandlers{
 			Service:           svc,
@@ -456,15 +485,21 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			},
 		},
 		CampaignsHTTP: &CampaignsHTTPHandlers{
-			Campaigns:               svc,
-			CampaignFraud:           campaignFraudAPIAdapter{svc: svc},
-			ConversionMappings:      svc,
-			ApplyRateLimit:          limit,
-			RequireAnyPermission:    permAny,
-			AuthorizeCampaignAccess: authCampaign,
-			ResolveCustomerID:       h.resolveCampaignsCustomerID,
-			AllowFraudPreview:       h.allowFraudPreview,
-			WriteServiceError:       writeErr,
+			Campaigns:                 svc.CampaignRuntime(),
+			CampaignFraud:             campaignFraudAPIAdapter{svc: svc},
+			ConversionMappings:        svc,
+			GetCampaignFlow:           svc.GetFlow,
+			ValidateCampaignFlowPaths: svc.ValidateCampaignFlowPaths,
+			RecordRevisionConflict:    svc.AuditCampaignRevisionConflict,
+			ClickHouseQuery:           svc.ClickHouseQuery(),
+			ApplyRateLimit:            limit,
+			RequireAnyPermission:      permAny,
+			AuthorizeCampaignAccess:   authCampaign,
+			ResolveCustomerID:         h.resolveCampaignsCustomerID,
+			AllowFraudPreview:         h.allowFraudPreview,
+			LicenseFeatureAllowed:     licenseFeatureAllowed,
+			ReportJobs:                reportJobs,
+			WriteServiceError:         writeErr,
 		},
 		FraudHTTP: &FraudHTTPHandlers{
 			Labels:                  fraudLabelsAPIAdapter{svc: svc},
@@ -502,6 +537,16 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ApplyRateLimit: limit,
 			Enrich:         h.metaEnricher(),
 			WriteError:     writeErr,
+		},
+		SessionHTTP: &SessionHTTPHandlers{
+			ApplyRateLimit: limit,
+			Freshness: func(ctx context.Context) DataFreshnessDTO {
+				if h.svc != nil && h.svc.clickhouseQuery != nil {
+					lag, _ := h.svc.clickHouseIngestionLag(ctx)
+					return portfolioFreshness(time.Now().UTC(), true, lag)
+				}
+				return DataFreshnessDTO{Consistency: "eventual"}
+			},
 		},
 		EulaHTTP: &EulaHTTPHandlers{
 			Service:           svc,

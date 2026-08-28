@@ -25,8 +25,8 @@ GROUP BY ip_hash`
 
 type tcpEdgeCorrelationRule struct {
 	clickhouseQuery *database.ClickHouseQuery
-	redisClient redis.Cmdable
-	cfg         AnalyzerConfig
+	redisClient     redis.Cmdable
+	cfg             AnalyzerConfig
 }
 
 func (r *tcpEdgeCorrelationRule) Name() string { return "tcp_edge_correlation" }

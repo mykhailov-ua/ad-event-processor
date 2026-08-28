@@ -15,12 +15,12 @@ func NewFileLeaderLock(path string) *FileLeaderLock {
 	return &FileLeaderLock{path: path}
 }
 
-func (lock *FileLeaderLock) TryAcquire() (bool, error) {
-	if lock.file != nil {
+func (fl *FileLeaderLock) TryAcquire() (bool, error) {
+	if fl.file != nil {
 		return true, nil
 	}
 
-	file, err := os.OpenFile(lock.path, os.O_CREATE|os.O_RDWR, 0o644)
+	file, err := os.OpenFile(fl.path, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return false, err
 	}
@@ -31,22 +31,22 @@ func (lock *FileLeaderLock) TryAcquire() (bool, error) {
 			leaderHeld.Set(0)
 			return false, nil
 		}
-		return false, fmt.Errorf("flock %s: %w", lock.path, err)
+		return false, fmt.Errorf("flock %s: %w", fl.path, err)
 	}
 
-	lock.file = file
+	fl.file = file
 	leaderHeld.Set(1)
 	return true, nil
 }
 
-func (lock *FileLeaderLock) Release() error {
-	if lock.file == nil {
+func (fl *FileLeaderLock) Release() error {
+	if fl.file == nil {
 		leaderHeld.Set(0)
 		return nil
 	}
-	err := syscall.Flock(int(lock.file.Fd()), syscall.LOCK_UN)
-	closeErr := lock.file.Close()
-	lock.file = nil
+	err := syscall.Flock(int(fl.file.Fd()), syscall.LOCK_UN)
+	closeErr := fl.file.Close()
+	fl.file = nil
 	leaderHeld.Set(0)
 	if err != nil {
 		return err
@@ -54,6 +54,6 @@ func (lock *FileLeaderLock) Release() error {
 	return closeErr
 }
 
-func (lock *FileLeaderLock) Path() string {
-	return lock.path
+func (fl *FileLeaderLock) Path() string {
+	return fl.path
 }

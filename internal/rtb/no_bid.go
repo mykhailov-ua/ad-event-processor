@@ -21,12 +21,12 @@ const (
 	NoBidFreqCapExceeded
 )
 
-func (reason NoBidReason) OK() bool {
-	return reason == NoBidNone
+func (n NoBidReason) OK() bool {
+	return n == NoBidNone
 }
 
-func (reason NoBidReason) String() string {
-	switch reason {
+func (n NoBidReason) String() string {
+	switch n {
 	case NoBidNone:
 		return "ok"
 	case NoBidInvalidRequest:

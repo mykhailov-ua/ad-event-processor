@@ -39,6 +39,11 @@ function _M.record_and_forward()
         ngx.req.set_header("X-TLS-JA4", tls_ja4)
     end
 
+    local tls_alpn = ngx.ctx.tls_alpn
+    if tls_alpn and tls_alpn ~= "" then
+        ngx.req.set_header("X-TLS-ALPN", tls_alpn)
+    end
+
     local tcp_fp_cache = ngx.shared.tcp_fp_cache
     local remote = ngx.var.remote_addr
 
@@ -64,6 +69,30 @@ function _M.record_and_forward()
     end
     if win then
         ngx.req.set_header("X-TCP-WINDOW", tostring(win))
+    end
+
+    local sig = ngx.ctx.tcp_sig
+    if not sig and tcp_fp_cache then
+        sig = tcp_fp_cache:get("h:" .. remote)
+    end
+    if sig and sig ~= "" then
+        ngx.req.set_header("X-TCP-SIG", sig)
+    end
+
+    local conn_time = tonumber(ngx.var.connection_time)
+    if conn_time and conn_time > 0 then
+        local ttfb_ms = math.floor(conn_time * 1000 + 0.5)
+        if ttfb_ms > 0 and ttfb_ms <= 65535 then
+            ngx.req.set_header("X-TTFB-APP-MS", tostring(ttfb_ms))
+        end
+    end
+
+    local rtt_us = tonumber(ngx.var.tcpinfo_rtt)
+    if rtt_us and rtt_us > 0 then
+        local rtt_ms = math.floor((rtt_us + 500) / 1000)
+        if rtt_ms > 0 and rtt_ms <= 65535 then
+            ngx.req.set_header("X-RTT-SYN-MS", tostring(rtt_ms))
+        end
     end
 end
 

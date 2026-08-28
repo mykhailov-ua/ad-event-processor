@@ -3,27 +3,17 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"strings"
 
+	"ad-event-processor/internal/campaign"
 	db "ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type ConversionMappingDTO struct {
-	InboundStatus string `json:"inbound_status"`
-	GoalName      string `json:"goal_name"`
-	PayoutMicro   int64  `json:"payout_micro"`
-}
+type ConversionMappingListResponse = campaign.ConversionMappingListResponse
 
-type ConversionMappingListResponse struct {
-	Mappings []ConversionMappingDTO `json:"mappings"`
-}
-
-type ReplaceConversionMappingsRequest struct {
-	Mappings []ConversionMappingDTO `json:"mappings"`
-}
+type ReplaceConversionMappingsRequest = campaign.ReplaceConversionMappingsRequest
 
 func (s *Service) ListCampaignConversionMappings(ctx context.Context, campaignID uuid.UUID) ([]ConversionMappingDTO, error) {
 	if s == nil || s.pool == nil {
@@ -75,46 +65,11 @@ func (s *Service) ReplaceCampaignConversionMappings(ctx context.Context, campaig
 }
 
 func normalizeConversionMappings(mappings []ConversionMappingDTO) ([]ConversionMappingDTO, error) {
-	if len(mappings) == 0 {
-		return []ConversionMappingDTO{}, nil
-	}
-	seen := make(map[string]struct{}, len(mappings))
-	out := make([]ConversionMappingDTO, 0, len(mappings))
-	for i := range mappings {
-		row := mappings[i]
-		status := strings.ToLower(strings.TrimSpace(row.InboundStatus))
-		if status == "" {
-			return nil, fmt.Errorf("inbound_status is required")
-		}
-		goal := strings.TrimSpace(row.GoalName)
-		if goal == "" {
-			goal = status
-		}
-		if row.PayoutMicro < 0 {
-			return nil, fmt.Errorf("payout_micro must be non-negative")
-		}
-		if _, dup := seen[status]; dup {
-			return nil, fmt.Errorf("duplicate inbound_status %q", status)
-		}
-		seen[status] = struct{}{}
-		out = append(out, ConversionMappingDTO{
-			InboundStatus: status,
-			GoalName:      goal,
-			PayoutMicro:   row.PayoutMicro,
-		})
-	}
-	return out, nil
+	return campaign.NormalizeConversionMappings(mappings)
 }
 
 func conversionMappingToDTO(row *db.CampaignConversionMapping) ConversionMappingDTO {
-	if row == nil {
-		return ConversionMappingDTO{}
-	}
-	return ConversionMappingDTO{
-		InboundStatus: row.InboundStatus,
-		GoalName:      row.GoalName,
-		PayoutMicro:   row.PayoutMicro,
-	}
+	return campaign.ConversionMappingToDTO(row)
 }
 
 func domainToPgUUID(id uuid.UUID) pgtype.UUID {

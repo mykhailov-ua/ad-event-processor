@@ -109,7 +109,11 @@ func (s *Service) StartAutomationWorker(ctx context.Context, intervalMinutes int
 		return
 	}
 	interval := time.Duration(intervalMinutes) * time.Minute
-	w := automation.NewWorker(s.pool, clickhouseQuery, s.newAutomationExecutor(), interval)
+	maxEvals := 50
+	if s.cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick > 0 {
+		maxEvals = s.cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick
+	}
+	w := automation.NewWorker(s.pool, clickhouseQuery, s.newAutomationExecutor(), interval, maxEvals)
 	s.StartBackgroundWorker(func() {
 		w.Start(ctx)
 	})

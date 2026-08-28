@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"ad-event-processor/internal/campaign"
+
 	"github.com/google/uuid"
 )
 
@@ -81,7 +83,7 @@ func computeVPPRatio(weights [24]float64, daypart []int16, localNow time.Time, a
 	if dailyBudgetMicro <= 0 {
 		return 1.0
 	}
-	expectedFrac := smartPacingExpectedRatio(weights, daypart, localNow)
+	expectedFrac := campaign.SmartPacingExpectedRatio(weights, daypart, localNow)
 	expectedSpend := int64(float64(dailyBudgetMicro) * expectedFrac)
 	if expectedSpend <= 0 {
 		return 1.0

@@ -50,26 +50,26 @@ func newCGOLGBMScorer(modelPath string) (*LGBMScorer, error) {
 	}, nil
 }
 
-func (lgbmScorer *LGBMScorer) Name() string {
+func (lg *LGBMScorer) Name() string {
 	return "lightgbm"
 }
 
-func (lgbmScorer *LGBMScorer) Dims() int {
-	return lgbmScorer.dims
+func (lg *LGBMScorer) Dims() int {
+	return lg.dims
 }
 
-func (lgbmScorer *LGBMScorer) ScoreBatch(ctx context.Context, rows []FeatureRow) ([]float64, error) {
+func (lg *LGBMScorer) ScoreBatch(ctx context.Context, rows []FeatureRow) ([]float64, error) {
 	if len(rows) == 0 {
 		return nil, nil
 	}
 
 	nRows := len(rows)
-	nCols := lgbmScorer.dims
+	nCols := lg.dims
 
-	pBuf := lgbmScorer.pool.Get().(*[]float64)
+	pBuf := lg.pool.Get().(*[]float64)
 	defer func() {
 		*pBuf = (*pBuf)[:0]
-		lgbmScorer.pool.Put(pBuf)
+		lg.pool.Put(pBuf)
 	}()
 
 	neededCap := nRows * nCols
@@ -95,7 +95,7 @@ func (lgbmScorer *LGBMScorer) ScoreBatch(ctx context.Context, rows []FeatureRow)
 	}
 
 	out := make([]float64, nRows)
-	err := lgbmScorer.model.PredictDense(flat, nRows, nCols, 0, 0, out)
+	err := lg.model.PredictDense(flat, nRows, nCols, 0, 0, out)
 	if err != nil {
 		slog.Error("lgbm PredictDense failed", "error", err)
 		return nil, err

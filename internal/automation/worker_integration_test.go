@@ -129,7 +129,7 @@ func TestWorker_firesPauseOncePerCooldown(t *testing.T) {
 
 	clickhouseQuery := database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{})
 	exec := &mockAutomationExec{}
-	w := NewWorker(pool, clickhouseQuery, exec, time.Minute)
+	w := NewWorker(pool, clickhouseQuery, exec, time.Minute, 50)
 
 	rules, err := db.New(pool).ListEnabledAutomationRules(ctx)
 	require.NoError(t, err)
@@ -206,7 +206,7 @@ func TestWorker_firesBlacklistOnIVTRate(t *testing.T) {
 
 	clickhouseQuery := database.NewClickHouseQuery(conn, database.ClickHouseQueryConfig{})
 	exec := &mockAutomationExec{}
-	w := NewWorker(pool, clickhouseQuery, exec, time.Minute)
+	w := NewWorker(pool, clickhouseQuery, exec, time.Minute, 50)
 
 	rules, err := db.New(pool).ListEnabledAutomationRules(ctx)
 	require.NoError(t, err)

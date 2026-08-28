@@ -20,6 +20,22 @@ type ExportCampaignShape struct {
 	IntegrationSchema   string
 	IngressCostParam    string
 	PostbackURLTemplate string
+	Flow                *ExportFlowShape
+}
+
+type ExportFlowPathShape struct {
+	Weight     int32
+	LanderRef  string
+	LanderName string
+	LanderURL  string
+	OfferRef   string
+	OfferName  string
+	OfferURL   string
+}
+
+type ExportFlowShape struct {
+	Name  string
+	Paths []ExportFlowPathShape
 }
 
 func MappedToExportShape(m MappedCampaign, namePrefix string, budgetDefaultMicro int64) ExportCampaignShape {
@@ -43,7 +59,30 @@ func MappedToExportShape(m MappedCampaign, namePrefix string, budgetDefaultMicro
 		IntegrationSchema:   strings.TrimSpace(m.IntegrationSchemaName),
 		IngressCostParam:    strings.TrimSpace(m.IngressCostParam),
 		PostbackURLTemplate: strings.TrimSpace(m.PostbackURLTemplate),
+		Flow:                mappedFlowToExportShape(m.Flow),
 	}
+}
+
+func mappedFlowToExportShape(flow *MappedFlow) *ExportFlowShape {
+	if flow == nil || len(flow.Paths) == 0 {
+		return nil
+	}
+	out := &ExportFlowShape{Name: strings.TrimSpace(flow.Name)}
+	if out.Name == "" {
+		out.Name = "imported-flow"
+	}
+	for _, path := range flow.Paths {
+		out.Paths = append(out.Paths, ExportFlowPathShape{
+			Weight:     path.Weight,
+			LanderRef:  path.LanderRef,
+			LanderName: path.LanderName,
+			LanderURL:  path.LanderURL,
+			OfferRef:   path.OfferRef,
+			OfferName:  path.OfferName,
+			OfferURL:   path.OfferURL,
+		})
+	}
+	return out
 }
 
 func cloneStringMap(in map[string]string) map[string]string {

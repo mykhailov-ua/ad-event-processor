@@ -1,10 +1,7 @@
 package controlplane
 
 import (
-	"encoding/json"
-	"time"
-
-	"github.com/google/uuid"
+	"ad-event-processor/internal/opsadmin"
 )
 
 type ListResponse[T any] struct {
@@ -30,29 +27,7 @@ type ItemsResponse[T any] struct {
 	Items []T `json:"items"`
 }
 
-type CampaignMarginDTO struct {
-	CampaignID           string `json:"campaign_id"`
-	WindowStart          string `json:"window_start"`
-	WindowHours          int    `json:"window_hours"`
-	AdvertiserSpendMicro int64  `json:"advertiser_spend_micro"`
-	RtbCostMicro         int64  `json:"rtb_cost_micro"`
-	OperatorMarginMicro  int64  `json:"operator_margin_micro"`
-	PublisherPayoutMicro int64  `json:"publisher_payout_micro"`
-	CostOverRevenueLimit int64  `json:"cost_over_revenue_limit"`
-	ThresholdBps         int    `json:"threshold_bps"`
-	MarginBreach         bool   `json:"margin_breach"`
-}
-
-type MarginGuardActivityRow struct {
-	ID          uuid.UUID       `json:"id"`
-	PolicyID    uuid.UUID       `json:"policy_id"`
-	CampaignID  uuid.UUID       `json:"campaign_id"`
-	PlacementID string          `json:"placement_id"`
-	Action      string          `json:"action"`
-	Reason      string          `json:"reason"`
-	Metrics     json.RawMessage `json:"metrics"`
-	CreatedAt   time.Time       `json:"created_at"`
-}
+type PaymentHistoryRow = opsadmin.PaymentHistoryRow
 
 type PaymentIntentListResponse = OffsetListResponse[PaymentHistoryRow]
 
@@ -75,10 +50,11 @@ type IDCreatedResponse struct {
 }
 
 type APIKeyCreatedResponse struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	RawKey    string `json:"raw_key"`
-	ExpiresAt string `json:"expires_at,omitempty"`
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	RawKey    string   `json:"raw_key"`
+	Scopes    []string `json:"scopes,omitempty"`
+	ExpiresAt string   `json:"expires_at,omitempty"`
 }
 
 type DeliveryListResponse = ItemsResponse[DeliveryDTO]

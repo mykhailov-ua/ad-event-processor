@@ -24,8 +24,8 @@ func TestBuildPgFailoverPromoter_simplePathRequiresWritable(t *testing.T) {
 	svc := &Service{
 		cfg: &config.Config{
 			PostgresStandbyDSN:           config.Secret(dsn),
-			DBTrackerMaxConns:      4,
-			DBMinConns:             1,
+			DBTrackerMaxConns:            4,
+			DBMinConns:                   1,
 			PostgresPromoteCommand:       "",
 			PostgresFailoverSnapshotSync: false,
 		},

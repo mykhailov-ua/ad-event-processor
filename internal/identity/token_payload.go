@@ -40,12 +40,12 @@ func NewPayload(userID, sessionID uuid.UUID, role string, customerID uuid.UUID, 
 	return payload, nil
 }
 
-func (payload *Payload) Valid() error {
+func (p *Payload) Valid() error {
 	now := time.Now()
-	if now.After(payload.ExpiredAt) {
+	if now.After(p.ExpiredAt) {
 		return ErrExpiredToken
 	}
-	if payload.IssuedAt.After(now.Add(5 * time.Second)) {
+	if p.IssuedAt.After(now.Add(5 * time.Second)) {
 		return ErrInvalidToken
 	}
 	return nil

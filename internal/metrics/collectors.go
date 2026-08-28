@@ -147,6 +147,31 @@ var (
 		Help: "OS fingerprint checks skipped (CDN ingress without edge TCP hints)",
 	}, []string{"reason"})
 
+	TCPSynSigMismatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_tcp_syn_sig_mismatch_total",
+		Help: "L2 tcp_syn_os_mismatch signals (XDP SYN hash vs UA family corpus)",
+	})
+
+	TCPSynSigSkippedTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_tcp_syn_sig_skipped_total",
+		Help: "TCP SYN signature checks skipped (missing header or unknown hash)",
+	}, []string{"reason"})
+
+	JSONSerializationBotTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_json_serialization_bot_total",
+		Help: "L2 json_serialization_bot signals on native JSON /track",
+	})
+
+	BehaviorTelemetryMissingTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_behavior_telemetry_missing_total",
+		Help: "L2 behavior_telemetry_missing on conversion POST without telemetry.events",
+	})
+
+	BehaviorBezierBotTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_behavior_bezier_bot_total",
+		Help: "L2 behavior_bezier_bot on native JSON /track telemetry.events",
+	})
+
 	DCASNCheckTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_dc_asn_check_total",
 		Help: "Sampled hot-path DC ASN lookups",
@@ -180,6 +205,41 @@ var (
 	ResidentialProxySignalTotal = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "ad_residential_proxy_signal_total",
 		Help: "L2 residential_proxy farm heuristic signals on hot path",
+	})
+
+	ResidentialIntelHotMatchTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_residential_intel_hot_match_total",
+		Help: "L2 residential_proxy signals from intel snapshot match (no ring velocity)",
+	})
+
+	ResidentialIntelFeedRefreshTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_residential_intel_feed_refresh_total",
+		Help: "Residential intel hot-path snapshot refresh cycles",
+	})
+
+	ResidentialIntelFeedRefreshErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_residential_intel_feed_refresh_errors_total",
+		Help: "Residential intel hot-path snapshot refresh failures",
+	})
+
+	ResidentialIntelCacheStaleTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_residential_intel_cache_stale_total",
+		Help: "Residential intel hot-path refresh with empty snapshot while table uninitialized",
+	})
+
+	ResidentialIntelLPMPrefixes = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_residential_intel_lpm_prefixes",
+		Help: "Residential intel prefixes in hot-path LPM snapshot",
+	})
+
+	ResidentialIntelLPMUninitialized = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_residential_intel_lpm_uninitialized",
+		Help: "1 when residential intel hot-path LPM has no published snapshot",
+	})
+
+	ResidentialIntelFeedLastSuccess = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "ad_residential_intel_feed_last_success_timestamp",
+		Help: "Unix timestamp of last residential intel hot-path snapshot publish",
 	})
 
 	IPv6RotationMatchTotal = promauto.NewCounter(prometheus.CounterOpts{
@@ -501,6 +561,10 @@ var (
 		Name: "ad_fraud_stream_pel_age_seconds",
 		Help: "Oldest pending entry idle age for ad:events:stream (or fraud stream) per shard",
 	}, []string{"stream", "shard"})
+	FraudStreamLayerDesyncTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ad_fraud_stream_layer_desync_total",
+		Help: "Fraud stream events observed by cross-layer desync count (0-5 wire layers)",
+	}, []string{"layer_desync_count"})
 	FraudMLShadowPrecision = promauto.NewGauge(prometheus.GaugeOpts{
 		Name: "fraud_ml_shadow_precision",
 		Help: "Latest shadow eval precision from proxy labels",

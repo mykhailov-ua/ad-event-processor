@@ -69,12 +69,12 @@ func (t *ProxyVPNTable) Lookup6(ip [16]byte) (match bool, connType uint8, asn ui
 	return snap.lookup(snap.root6, &ip)
 }
 
-func (t *ProxyVPNTable) MatchIP(s string) (match bool, connType uint8, asn uint32) {
+func (t *ProxyVPNTable) MatchIP(ipStr string) (match bool, connType uint8, asn uint32) {
 	snap := t.active.Load()
 	if snap == nil {
 		return false, 0, 0
 	}
-	a, err := netip.ParseAddr(s)
+	a, err := netip.ParseAddr(ipStr)
 	if err != nil {
 		return false, 0, 0
 	}
@@ -94,9 +94,9 @@ func (t *ProxyVPNTable) MatchIP(s string) (match bool, connType uint8, asn uint3
 	return snap.lookup(snap.root6, &key)
 }
 
-func (snap *proxyVPNSnapshot) lookup(root int32, key *[16]byte) (bool, uint8, uint32) {
-	nodes := snap.nodes
-	prefs := snap.prefs
+func (vp *proxyVPNSnapshot) lookup(root int32, key *[16]byte) (bool, uint8, uint32) {
+	nodes := vp.nodes
+	prefs := vp.prefs
 	_ = nodes[len(nodes)-1]
 	cur := root
 	var bestConn uint8

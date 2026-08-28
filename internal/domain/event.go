@@ -13,95 +13,178 @@ type contextKey string
 
 const DeduplicationTokenKey contextKey = "dedup_token"
 
-type Event struct {
-	ClickID            string
-	CampaignID         uuid.UUID
-	UserID             string
-	Type               string
-	PlacementID        string
-	Payload            []byte
-	IP                 string
-	UA                 string
-	TLSHash            string
-	TLSJA3             string
-	TLSJA4             string
-	SecCHUA            string
-	AcceptLang         string
-	FraudReason        string
-	FraudScore         uint32
-	SilentRejectEvent  bool
-	ReviewRoutedEvent  bool
-	ShadowEvent        bool
-	CreatedAt          time.Time
-	StringBuffer       []byte
-	Scratch            unsafe.Pointer
-	FilterDeadlineMono int64
-	FilterWorkerIdx    int8
-	FilterCampResolved bool
-	FilterCamp         *Campaign
-	IngestGeoResolved  bool
-	IngestAnonymous    bool
-	GeoHash            uint32
-	GeoCountry         string
-	ClearingPriceMicro int64
-	IngressCostMicro   int64
-	ClickIDBuf         [36]byte
-	UserPIIHash        [16]byte
-	HasUserPIIHash     bool
-	TCPMSS             uint8
-	TCPMSSSet          uint8
-	TCPTTL             uint8
-	TCPTTLSet          uint8
-	TCPWindow          uint16
-	TCPWindowSet       uint8
+type BehaviorTelemetryEvent struct {
+	T  string
+	TS int64
+	X  int
+	Y  int
+	Z  int
 }
 
-func (event *Event) Reset() {
-	event.ClickID = ""
-	event.CampaignID = uuid.Nil
-	event.UserID = ""
-	event.Type = ""
-	event.PlacementID = ""
-	if cap(event.Payload) > 4096 {
-		event.Payload = make([]byte, 0, 1024)
+type Event struct {
+	ClickID                string
+	CampaignID             uuid.UUID
+	UserID                 string
+	Type                   string
+	PlacementID            string
+	Payload                []byte
+	IP                     string
+	UA                     string
+	TLSHash                string
+	TLSJA3                 string
+	TLSJA4                 string
+	SecCHUA                string
+	SecCHUAPlatform        string
+	TLSALPN                string
+	AcceptLang             string
+	SecFetchPresent        uint8
+	SecFetchSite           uint8
+	SecFetchMode           uint8
+	SecFetchDest           uint8
+	SecCHUAMobile          uint8
+	IngressH2              uint8
+	HTTP1HeaderOrder       [16]uint8
+	HTTP1HeaderOrderCount  uint8
+	AcceptEncodingFlags    uint8
+	AcceptEncodingSet      uint8
+	H2WireFlags            uint8
+	H2SettingsCRC          uint32
+	H2EnablePush           uint8
+	H2InitialWindow        uint32
+	H2WindowUpdateInc      uint32
+	H2PseudoOrder          uint16
+	H2PseudoOrderCount     uint8
+	FraudReason            string
+	FraudScore             uint32
+	LayerDesyncCount       uint8
+	SilentRejectEvent      bool
+	ReviewRoutedEvent      bool
+	ShadowEvent            bool
+	SmokeEvent             bool
+	CreatedAt              time.Time
+	StringBuffer           []byte
+	Scratch                unsafe.Pointer
+	FilterDeadlineMono     int64
+	FilterWorkerIdx        int8
+	FilterCampResolved     bool
+	FilterCamp             *Campaign
+	IngestGeoResolved      bool
+	IngestAnonymous        bool
+	GeoHash                uint32
+	GeoCountry             string
+	ClearingPriceMicro     int64
+	IngressCostMicro       int64
+	ClickIDBuf             [36]byte
+	UserPIIHash            [16]byte
+	HasUserPIIHash         bool
+	TCPMSS                 uint16
+	TCPMSSSet              uint8
+	TCPTTL                 uint8
+	TCPTTLSet              uint8
+	TCPWindow              uint16
+	TCPWindowSet           uint8
+	TCPSig                 uint32
+	TCPSigSet              uint8
+	RTTSynMS               uint16
+	TTFBAppMS              uint16
+	RTTSplitDeltaMS        uint16
+	ConnTimingSet          uint8
+	JSONSerializationFlags uint8
+	TelemetrySet           uint8
+	TelemetryEvents        []BehaviorTelemetryEvent
+	MobileTouchCount       uint8
+	MobileGyroSamples      uint8
+	MobileGyroVariance     uint16
+	MobileGyroFlat         uint8
+	MobileBiometricSet     uint8
+	MobileBiometricMobile  uint8
+}
+
+func (e *Event) Reset() {
+	e.ClickID = ""
+	e.CampaignID = uuid.Nil
+	e.UserID = ""
+	e.Type = ""
+	e.PlacementID = ""
+	if cap(e.Payload) > 4096 {
+		e.Payload = make([]byte, 0, 1024)
 	} else {
-		event.Payload = event.Payload[:0]
+		e.Payload = e.Payload[:0]
 	}
-	event.IP = ""
-	event.UA = ""
-	event.TLSHash = ""
-	event.TLSJA3 = ""
-	event.TLSJA4 = ""
-	event.SecCHUA = ""
-	event.AcceptLang = ""
-	event.FraudReason = ""
-	event.FraudScore = 0
-	event.SilentRejectEvent = false
-	event.ReviewRoutedEvent = false
-	event.ShadowEvent = false
-	event.CreatedAt = time.Time{}
-	event.Scratch = nil
-	event.FilterDeadlineMono = 0
-	event.FilterWorkerIdx = -1
-	event.FilterCampResolved = false
-	event.FilterCamp = nil
-	event.IngestGeoResolved = false
-	event.IngestAnonymous = false
-	event.GeoHash = 0
-	event.GeoCountry = ""
-	event.ClearingPriceMicro = 0
-	event.IngressCostMicro = 0
-	event.HasUserPIIHash = false
-	event.TCPMSS = 0
-	event.TCPMSSSet = 0
-	event.TCPTTL = 0
-	event.TCPTTLSet = 0
-	event.TCPWindow = 0
-	event.TCPWindowSet = 0
-	if cap(event.StringBuffer) > 2048 {
-		event.StringBuffer = make([]byte, 0, 256)
+	e.IP = ""
+	e.UA = ""
+	e.TLSHash = ""
+	e.TLSJA3 = ""
+	e.TLSJA4 = ""
+	e.SecCHUA = ""
+	e.SecCHUAPlatform = ""
+	e.TLSALPN = ""
+	e.AcceptLang = ""
+	e.SecFetchPresent = 0
+	e.SecFetchSite = 0
+	e.SecFetchMode = 0
+	e.SecFetchDest = 0
+	e.SecCHUAMobile = 0
+	e.IngressH2 = 0
+	e.HTTP1HeaderOrderCount = 0
+	e.AcceptEncodingFlags = 0
+	e.AcceptEncodingSet = 0
+	e.H2WireFlags = 0
+	e.H2SettingsCRC = 0
+	e.H2EnablePush = 0
+	e.H2InitialWindow = 0
+	e.H2WindowUpdateInc = 0
+	e.H2PseudoOrder = 0
+	e.H2PseudoOrderCount = 0
+	e.FraudReason = ""
+	e.FraudScore = 0
+	e.LayerDesyncCount = 0
+	e.SilentRejectEvent = false
+	e.ReviewRoutedEvent = false
+	e.ShadowEvent = false
+	e.SmokeEvent = false
+	e.CreatedAt = time.Time{}
+	e.Scratch = nil
+	e.FilterDeadlineMono = 0
+	e.FilterWorkerIdx = -1
+	e.FilterCampResolved = false
+	e.FilterCamp = nil
+	e.IngestGeoResolved = false
+	e.IngestAnonymous = false
+	e.GeoHash = 0
+	e.GeoCountry = ""
+	e.ClearingPriceMicro = 0
+	e.IngressCostMicro = 0
+	e.HasUserPIIHash = false
+	e.TCPMSS = 0
+	e.TCPMSSSet = 0
+	e.TCPTTL = 0
+	e.TCPTTLSet = 0
+	e.TCPWindow = 0
+	e.TCPWindowSet = 0
+	e.TCPSig = 0
+	e.TCPSigSet = 0
+	e.RTTSynMS = 0
+	e.TTFBAppMS = 0
+	e.RTTSplitDeltaMS = 0
+	e.ConnTimingSet = 0
+	e.JSONSerializationFlags = 0
+	e.TelemetrySet = 0
+	if cap(e.TelemetryEvents) > 64 {
+		e.TelemetryEvents = make([]BehaviorTelemetryEvent, 0, 8)
 	} else {
-		event.StringBuffer = event.StringBuffer[:0]
+		e.TelemetryEvents = e.TelemetryEvents[:0]
+	}
+	e.MobileTouchCount = 0
+	e.MobileGyroSamples = 0
+	e.MobileGyroVariance = 0
+	e.MobileGyroFlat = 0
+	e.MobileBiometricSet = 0
+	e.MobileBiometricMobile = 0
+	if cap(e.StringBuffer) > 2048 {
+		e.StringBuffer = make([]byte, 0, 256)
+	} else {
+		e.StringBuffer = e.StringBuffer[:0]
 	}
 }
 

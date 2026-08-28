@@ -106,7 +106,27 @@ Control never writes kernel maps directly. Requires BTF, modern kernel. Not a su
 
 ### OS fingerprint
 
-Edge forwards `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS` from `edge-tcp-fp-sync` / XDP fingerprints map. CDN/L4 LB: set `OS_FINGERPRINT_MISMATCH_ENABLED=false` or accept skip metrics.
+Edge forwards `X-TCP-TTL`, `X-TCP-WINDOW`, `X-TCP-MSS`, `X-TCP-SIG` from `edge-tcp-fp-sync` / XDP fingerprints map. CDN/L4 LB: set `OS_FINGERPRINT_MISMATCH_ENABLED=false` and `TCP_SYN_SIG_ENABLED=false` or accept skip metrics.
+
+Redis staging per client IP (`edge:tcp_fp:ip:{ip}` HASH, TTL 1h):
+
+| Field | Source | Edge cache key | Tracker header |
+| :--- | :--- | :--- | :--- |
+| `tcp_hash` | XDP `hash_tcp_syn_fields` | `h:{ip}` | `X-TCP-SIG` (8-char hex) |
+| `ttl` | SYN IP TTL | `t:{ip}` | `X-TCP-TTL` |
+| `window` | SYN window | `w:{ip}` | `X-TCP-WINDOW` |
+| `mss` | SYN MSS high byte | `{ip}` | `X-TCP-MSS` |
+| `seen_at` | Unix timestamp | not cached on nginx | n/a |
+
+Connection timing (cold `rtt_split_tunnel`; no hot signal):
+
+| Field | Source | Tracker header | CH column |
+| :--- | :--- | :--- | :--- |
+| SYN RTT | nginx `$tcpinfo_rtt` (µs → ms) | `X-RTT-SYN-MS` | `rtt_syn_ms` |
+| TTFB app | nginx `$connection_time` (s → ms) | `X-TTFB-APP-MS` | `ttfb_app_ms` |
+| split delta | `ttfb_app_ms - rtt_syn_ms` on tracker | n/a | `rtt_split_delta_ms` |
+
+Recent index: `edge:tcp_fp:recent` ZSET; member `{ip}:{tcp_hash_hex}`.
 
 ### Rollback
 

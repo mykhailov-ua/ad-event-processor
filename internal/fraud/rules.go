@@ -43,7 +43,7 @@ func (r *fingerprintRule) Find(ctx context.Context) ([]SuspiciousIP, error) {
 
 type campaignCTRSpikeRule struct {
 	clickhouseQuery *database.ClickHouseQuery
-	cfg AnalyzerConfig
+	cfg             AnalyzerConfig
 }
 
 func (r *campaignCTRSpikeRule) Name() string { return "campaign_ctr_spike" }
@@ -116,8 +116,8 @@ GROUP BY ip_hash`
 
 type datacenterASNRule struct {
 	clickhouseQuery *database.ClickHouseQuery
-	cfg AnalyzerConfig
-	asn ASNClassifier
+	cfg             AnalyzerConfig
+	asn             ASNClassifier
 }
 
 func (r *datacenterASNRule) Name() string { return "datacenter_asn" }
@@ -209,6 +209,8 @@ func NewAnalyzerRegistry(clickhouseQuery *database.ClickHouseQuery, writeConn dr
 	reg.Register(&fingerprintRule{analyzer: analyzer})
 	reg.Register(&campaignCTRSpikeRule{clickhouseQuery: clickhouseQuery, cfg: cfg})
 	reg.Register(&intervalBotnetRule{clickhouseQuery: clickhouseQuery, cfg: cfg})
+	reg.Register(&rttSplitTunnelRule{clickhouseQuery: clickhouseQuery, cfg: cfg})
+	reg.Register(&mobileBiometricsRule{clickhouseQuery: clickhouseQuery, cfg: cfg})
 	if redisClient != nil {
 		reg.Register(&tcpEdgeCorrelationRule{clickhouseQuery: clickhouseQuery, redisClient: redisClient, cfg: cfg})
 	}

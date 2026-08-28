@@ -15,7 +15,7 @@ Examples: `ADMIN_SHELL_MILESTONE.md`, `INGEST_PARSER_MILESTONE.md`, `LICENSE_GUA
 
 ## 1. AI honesty, slop, and laziness (mandatory)
 
-Fill first. Empty tables = milestone not startable. Catalogs: `anti-slop.mdc` (**Agent dishonesty and laziness**, **Hot path dishonesty**), `boundaries.mdc` (**Test dishonesty catalog**, **Coupling limits**).
+Fill first. Empty tables = milestone not startable. Catalogs: `anti-slop.mdc` (**LLM dishonesty patterns**, **Hot path dishonesty**), `boundaries.mdc` (**Test dishonesty catalog**, **Coupling limits**).
 
 ### 1.1 Known hallucination risks (possible lies)
 
@@ -89,7 +89,7 @@ Operator asked for spec or rules only: **no implementation diff** unless this do
 
 ### Stop triggers (revert slice; do not compensate)
 
-- Operator rejects approach ("костыли", "сноси", "не код", "опиши в .mdc", "не трогай сервер" without listed server steps)
+- Operator rejects approach (doc-only ask, scope stop, or "do not touch server" without listed server steps in section 5)
 - Fix adds parallel system instead of correcting root cause in section 4
 
 ---

@@ -29,3 +29,30 @@ func TestExportBundleFromMigrationShape_facebookMacros(t *testing.T) {
 	assert.Equal(t, "cost", bundle.Campaign.IngressCostConfig.Param)
 	require.NotNil(t, bundle.PostbackConfig)
 }
+
+func TestExportBundleFromMigrationShape_flowPaths(t *testing.T) {
+	shape := migrationsource.ExportCampaignShape{
+		Name:             "Flow Camp",
+		BudgetLimitMicro: 50_000_000,
+		Flow: &migrationsource.ExportFlowShape{
+			Name: "rotation-main",
+			Paths: []migrationsource.ExportFlowPathShape{
+				{
+					Weight:     60,
+					LanderRef:  "lander-1",
+					LanderName: "Lander A",
+					LanderURL:  "https://lander.example/a",
+					OfferRef:   "offer-1",
+					OfferName:  "Offer A",
+					OfferURL:   "https://offer.example/a",
+				},
+			},
+		},
+	}
+	bundle := exportBundleFromMigrationShape(shape)
+	require.NotNil(t, bundle.Flow)
+	require.Len(t, bundle.Flow.Paths, 1)
+	assert.Equal(t, int32(60), bundle.Flow.Paths[0].Weight)
+	require.Len(t, bundle.Landers, 1)
+	require.Len(t, bundle.Offers, 1)
+}

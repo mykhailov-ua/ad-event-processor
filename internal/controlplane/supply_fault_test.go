@@ -14,6 +14,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/supply"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -54,7 +55,7 @@ func TestFault_SellersJSONInvalid(t *testing.T) {
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `UPDATE sellers SET seller_type = 'INVALID' WHERE seller_id = 'valid-1'`)
 	require.NoError(t, err)
-	invalidateSellersJSONCache()
+	supply.InvalidateSellersJSONCache()
 
 	_, err = svc.GetSellersJSON(ctx)
 	require.Error(t, err)

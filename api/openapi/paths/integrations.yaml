@@ -678,6 +678,119 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/automation/presets:
+    get:
+      tags: [automation]
+      operationId: automationListPresets
+      summary: List bundled automation rule presets
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Preset catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/AutomationPreset'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/automation/rules:
+    get:
+      tags: [automation]
+      operationId: automationListRules
+      summary: List automation rules for a customer
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '200':
+          description: Automation rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/AutomationRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [automation]
+      operationId: automationCreateRule
+      summary: Create automation rule
+      description: Accepts raw rule fields or preset_key with preset_parameters overrides.
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertAutomationRuleRequest'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/AutomationRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/automation/rules/{id}:
+    put:
+      tags: [automation]
+      operationId: automationUpdateRule
+      summary: Update automation rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertAutomationRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/AutomationRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [automation]
+      operationId: automationDeleteRule
+      summary: Delete automation rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Rule deleted
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/automation/rules/{id}/dry-run:
+    post:
+      tags: [automation]
+      operationId: automationDryRunRule
+      summary: Dry-run automation rule against current ClickHouse metrics
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Dry-run matches
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/AutomationDryRunResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/platform-campaigns/links:
     get:
       tags: [platform-campaigns]

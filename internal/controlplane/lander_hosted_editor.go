@@ -16,35 +16,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type HostedEditorFileDTO struct {
-	Path     string `json:"path"`
-	Size     int64  `json:"size"`
-	Editable bool   `json:"editable"`
-}
-
-type HostedEditorStateDTO struct {
-	LanderID            uuid.UUID             `json:"lander_id"`
-	Name                string                `json:"name"`
-	DraftVersion        int                   `json:"draft_version"`
-	PublishedVersion    int                   `json:"published_version"`
-	HasUnpublishedDraft bool                  `json:"has_unpublished_draft"`
-	Files               []HostedEditorFileDTO `json:"files"`
-	PreviewURL          string                `json:"preview_url,omitempty"`
-}
-
-type HostedEditorFileBodyDTO struct {
-	Content string `json:"content"`
-}
-
-type HostedEditorSaveResultDTO struct {
-	DraftVersion        int  `json:"draft_version"`
-	HasUnpublishedDraft bool `json:"has_unpublished_draft"`
-}
-
-type HostedEditorPublishRequest struct {
-	Version int `json:"version"`
-}
-
 type landerVersionRow struct {
 	draftVersion     int
 	publishedVersion int

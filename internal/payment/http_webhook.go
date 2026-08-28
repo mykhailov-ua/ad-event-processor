@@ -33,14 +33,14 @@ func NewWebhookHandler(service *Service, cfg *config.Config) *WebhookHandler {
 	}
 }
 
-func (webhookHandler *WebhookHandler) RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/webhooks/stripe", webhookHandler.handleStripeWebhook)
-	mux.HandleFunc("/webhooks/crypto", webhookHandler.handleCryptoWebhook)
-	mux.HandleFunc("/health", webhookHandler.handleHealth)
+func (wh *WebhookHandler) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("/webhooks/stripe", wh.handleStripeWebhook)
+	mux.HandleFunc("/webhooks/crypto", wh.handleCryptoWebhook)
+	mux.HandleFunc("/health", wh.handleHealth)
 	mux.Handle("/metrics", promhttp.Handler())
 }
 
-func (webhookHandler *WebhookHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
+func (wh *WebhookHandler) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
@@ -62,13 +62,13 @@ type stripeEvent struct {
 	} `json:"data"`
 }
 
-func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
+func (wh *WebhookHandler) handleStripeWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	secret := string(webhookHandler.cfg.StripeWebhookSecret)
+	secret := string(wh.cfg.StripeWebhookSecret)
 	if secret == "" {
 		slog.Error("stripe webhook secret not configured")
 		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
@@ -83,7 +83,7 @@ func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter,
 	}
 
 	sigHeader := r.Header.Get("Stripe-Signature")
-	if !verifyStripeSignature(body, sigHeader, secret, webhookHandler.now()) {
+	if !verifyStripeSignature(body, sigHeader, secret, wh.now()) {
 		slog.Warn("invalid stripe webhook signature")
 		WebhookSignatureFailuresTotal.Inc()
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -105,11 +105,11 @@ func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter,
 
 	switch event.Type {
 	case "refund.created", "refund.updated", "refund.failed":
-		webhookHandler.handleStripeRefundEvent(w, r, event, body)
+		wh.handleStripeRefundEvent(w, r, event, body)
 		return
 	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed",
 		"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated":
-		webhookHandler.handleStripeDisputeEvent(w, r, event, body)
+		wh.handleStripeDisputeEvent(w, r, event, body)
 		return
 	}
 
@@ -122,7 +122,7 @@ func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter,
 
 	amountMicro := StripeAmountToMicro(event.Data.Object.Amount)
 
-	err = webhookHandler.service.ProcessStripeWebhook(r.Context(), event.ID, event.Type, body, providerRef, amountMicro, string(body))
+	err = wh.service.ProcessStripeWebhook(r.Context(), event.ID, event.Type, body, providerRef, amountMicro, string(body))
 	if err != nil {
 		slog.Error("failed to process stripe webhook", "event_id", event.ID, "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -133,7 +133,7 @@ func (webhookHandler *WebhookHandler) handleStripeWebhook(w http.ResponseWriter,
 	_, _ = w.Write([]byte("OK"))
 }
 
-func (webhookHandler *WebhookHandler) handleStripeRefundEvent(w http.ResponseWriter, r *http.Request, event stripeEvent, body []byte) {
+func (wh *WebhookHandler) handleStripeRefundEvent(w http.ResponseWriter, r *http.Request, event stripeEvent, body []byte) {
 	providerRefundID := event.Data.Object.ID
 	if providerRefundID == "" {
 		slog.Warn("stripe refund event missing refund id")
@@ -154,7 +154,7 @@ func (webhookHandler *WebhookHandler) handleStripeRefundEvent(w http.ResponseWri
 		refundStatus = "failed"
 	}
 
-	err := webhookHandler.service.ProcessStripeRefundWebhook(
+	err := wh.service.ProcessStripeRefundWebhook(
 		r.Context(), event.ID, event.Type, body, providerRefundID, paymentIntentRef, refundAmountMicro, refundStatus,
 	)
 	if err != nil {
@@ -167,7 +167,7 @@ func (webhookHandler *WebhookHandler) handleStripeRefundEvent(w http.ResponseWri
 	_, _ = w.Write([]byte("OK"))
 }
 
-func (webhookHandler *WebhookHandler) handleStripeDisputeEvent(w http.ResponseWriter, r *http.Request, event stripeEvent, body []byte) {
+func (wh *WebhookHandler) handleStripeDisputeEvent(w http.ResponseWriter, r *http.Request, event stripeEvent, body []byte) {
 	providerDisputeID := event.Data.Object.ID
 	if providerDisputeID == "" {
 		slog.Warn("stripe dispute event missing dispute id")
@@ -178,7 +178,7 @@ func (webhookHandler *WebhookHandler) handleStripeDisputeEvent(w http.ResponseWr
 	paymentIntentRef := event.Data.Object.PaymentIntent
 	disputeAmountMicro := StripeAmountToMicro(event.Data.Object.Amount)
 
-	err := webhookHandler.service.ProcessStripeDisputeWebhook(
+	err := wh.service.ProcessStripeDisputeWebhook(
 		r.Context(), event.ID, event.Type, body, providerDisputeID, paymentIntentRef, disputeAmountMicro, event.Data.Object.Status,
 	)
 	if err != nil {
@@ -245,13 +245,13 @@ type cryptoEvent struct {
 	ProviderRef   string `json:"provider_ref"`
 }
 
-func (webhookHandler *WebhookHandler) handleCryptoWebhook(w http.ResponseWriter, r *http.Request) {
+func (wh *WebhookHandler) handleCryptoWebhook(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	secret := string(webhookHandler.cfg.CryptoWebhookSecret)
+	secret := string(wh.cfg.CryptoWebhookSecret)
 	if secret == "" {
 		slog.Error("crypto webhook secret not configured")
 		http.Error(w, "Service Unavailable", http.StatusServiceUnavailable)
@@ -266,7 +266,7 @@ func (webhookHandler *WebhookHandler) handleCryptoWebhook(w http.ResponseWriter,
 	}
 
 	sigHeader := r.Header.Get("Crypto-Signature")
-	if !verifyStripeSignature(body, sigHeader, secret, webhookHandler.now()) {
+	if !verifyStripeSignature(body, sigHeader, secret, wh.now()) {
 		slog.Warn("invalid crypto webhook signature")
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -285,7 +285,7 @@ func (webhookHandler *WebhookHandler) handleCryptoWebhook(w http.ResponseWriter,
 		return
 	}
 
-	err = webhookHandler.service.ProcessCryptoWebhook(
+	err = wh.service.ProcessCryptoWebhook(
 		r.Context(),
 		event.ID,
 		event.Type,

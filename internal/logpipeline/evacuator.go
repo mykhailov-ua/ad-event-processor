@@ -55,55 +55,55 @@ func NewEvacuator(cfg EvacuatorConfig, store ObjectStore) (*Evacuator, error) {
 	}, nil
 }
 
-func (evac *Evacuator) Run(ctx context.Context) error {
-	if err := os.MkdirAll(evac.cfg.LogDir, 0o755); err != nil {
+func (e *Evacuator) Run(ctx context.Context) error {
+	if err := os.MkdirAll(e.cfg.LogDir, 0o755); err != nil {
 		return err
 	}
-	if err := evac.watcher.Add(evac.cfg.LogDir); err != nil {
+	if err := e.watcher.Add(e.cfg.LogDir); err != nil {
 		return err
 	}
-	defer func() { _ = evac.watcher.Close() }()
+	defer func() { _ = e.watcher.Close() }()
 
-	if err := evac.recoverStuckSegments(ctx); err != nil {
+	if err := e.recoverStuckSegments(ctx); err != nil {
 		slog.Warn("recover stuck segments", "error", err)
 	}
-	if err := evac.scanReadySegments(ctx); err != nil {
+	if err := e.scanReadySegments(ctx); err != nil {
 		slog.Warn("initial ready scan failed", "error", err)
 	}
 
-	scanTicker := time.NewTicker(evac.cfg.ScanInterval)
+	scanTicker := time.NewTicker(e.cfg.ScanInterval)
 	defer scanTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case event, ok := <-evac.watcher.Events:
+		case event, ok := <-e.watcher.Events:
 			if !ok {
 				return nil
 			}
 			if event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) || event.Has(fsnotify.Write) {
 				if strings.HasSuffix(event.Name, readySuffix) {
-					if err := evac.processReadyFile(ctx, event.Name); err != nil {
+					if err := e.processReadyFile(ctx, event.Name); err != nil {
 						slog.Warn("process ready segment failed", "path", event.Name, "error", err)
 					}
 				}
 			}
-		case err, ok := <-evac.watcher.Errors:
+		case err, ok := <-e.watcher.Errors:
 			if !ok {
 				return nil
 			}
 			slog.Warn("fsnotify error", "error", err)
 		case <-scanTicker.C:
-			if err := evac.scanReadySegments(ctx); err != nil {
+			if err := e.scanReadySegments(ctx); err != nil {
 				slog.Warn("ready segment scan failed", "error", err)
 			}
 		}
 	}
 }
 
-func (evac *Evacuator) recoverStuckSegments(ctx context.Context) error {
-	entries, err := os.ReadDir(evac.cfg.LogDir)
+func (e *Evacuator) recoverStuckSegments(ctx context.Context) error {
+	entries, err := os.ReadDir(e.cfg.LogDir)
 	if err != nil {
 		return err
 	}
@@ -114,8 +114,8 @@ func (evac *Evacuator) recoverStuckSegments(ctx context.Context) error {
 		}
 		name := entry.Name()
 		if strings.HasSuffix(name, evacuatingSuffix) {
-			path := filepath.Join(evac.cfg.LogDir, name)
-			if err := evac.processEvacuatingFile(ctx, path); err != nil {
+			path := filepath.Join(e.cfg.LogDir, name)
+			if err := e.processEvacuatingFile(ctx, path); err != nil {
 				slog.Warn("recover evacuating segment failed", "path", path, "error", err)
 			}
 		}
@@ -124,8 +124,8 @@ func (evac *Evacuator) recoverStuckSegments(ctx context.Context) error {
 	return nil
 }
 
-func (evac *Evacuator) scanReadySegments(ctx context.Context) error {
-	entries, err := os.ReadDir(evac.cfg.LogDir)
+func (e *Evacuator) scanReadySegments(ctx context.Context) error {
+	entries, err := os.ReadDir(e.cfg.LogDir)
 	if err != nil {
 		return err
 	}
@@ -137,13 +137,13 @@ func (evac *Evacuator) scanReadySegments(ctx context.Context) error {
 		}
 		name := entry.Name()
 		if strings.HasSuffix(name, readySuffix) {
-			readyPaths = append(readyPaths, filepath.Join(evac.cfg.LogDir, name))
+			readyPaths = append(readyPaths, filepath.Join(e.cfg.LogDir, name))
 		}
 	}
 
 	sort.Strings(readyPaths)
 	for _, path := range readyPaths {
-		if err := evac.processReadyFile(ctx, path); err != nil {
+		if err := e.processReadyFile(ctx, path); err != nil {
 			slog.Warn("process ready segment failed", "path", path, "error", err)
 		}
 	}
@@ -151,12 +151,12 @@ func (evac *Evacuator) scanReadySegments(ctx context.Context) error {
 	return nil
 }
 
-func (evac *Evacuator) processReadyFile(ctx context.Context, readyPath string) error {
-	if evac.cfg.RequireCompactorMarker && !CompactMarkerReady(readyPath) {
+func (e *Evacuator) processReadyFile(ctx context.Context, readyPath string) error {
+	if e.cfg.RequireCompactorMarker && !CompactMarkerReady(readyPath) {
 		return nil
 	}
 
-	evacPath, err := evac.claimReadyFile(readyPath)
+	evacPath, err := e.claimReadyFile(readyPath)
 	if err != nil {
 		return err
 	}
@@ -164,32 +164,32 @@ func (evac *Evacuator) processReadyFile(ctx context.Context, readyPath string) e
 		return nil
 	}
 
-	return evac.uploadSegment(ctx, evacPath)
+	return e.uploadSegment(ctx, evacPath)
 }
 
-func (evac *Evacuator) processEvacuatingFile(ctx context.Context, evacPath string) error {
-	evac.mu.Lock()
-	if _, exists := evac.inflight[evacPath]; exists {
-		evac.mu.Unlock()
+func (e *Evacuator) processEvacuatingFile(ctx context.Context, evacPath string) error {
+	e.mu.Lock()
+	if _, exists := e.inflight[evacPath]; exists {
+		e.mu.Unlock()
 		return ErrEvacuatingInUse
 	}
-	evac.inflight[evacPath] = struct{}{}
-	evac.mu.Unlock()
+	e.inflight[evacPath] = struct{}{}
+	e.mu.Unlock()
 
 	defer func() {
-		evac.mu.Lock()
-		delete(evac.inflight, evacPath)
-		evac.mu.Unlock()
+		e.mu.Lock()
+		delete(e.inflight, evacPath)
+		e.mu.Unlock()
 	}()
 
-	return evac.uploadSegment(ctx, evacPath)
+	return e.uploadSegment(ctx, evacPath)
 }
 
-func (evac *Evacuator) claimReadyFile(readyPath string) (string, error) {
-	evac.mu.Lock()
-	defer evac.mu.Unlock()
+func (e *Evacuator) claimReadyFile(readyPath string) (string, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 
-	if _, exists := evac.inflight[readyPath]; exists {
+	if _, exists := e.inflight[readyPath]; exists {
 		return "", nil
 	}
 
@@ -205,61 +205,61 @@ func (evac *Evacuator) claimReadyFile(readyPath string) (string, error) {
 		return "", err
 	}
 
-	evac.inflight[evacuatingPath] = struct{}{}
+	e.inflight[evacuatingPath] = struct{}{}
 	return evacuatingPath, nil
 }
 
-func (evac *Evacuator) uploadSegment(ctx context.Context, evacPath string) error {
+func (e *Evacuator) uploadSegment(ctx context.Context, evacPath string) error {
 	defer func() {
-		evac.mu.Lock()
-		delete(evac.inflight, evacPath)
-		evac.mu.Unlock()
+		e.mu.Lock()
+		delete(e.inflight, evacPath)
+		e.mu.Unlock()
 	}()
 
 	digests, err := computeFileDigests(evacPath)
 	if err != nil {
-		return evac.rollback(evacPath, err)
+		return e.rollback(evacPath, err)
 	}
 
 	objectKey := segmentObjectKey(evacPath)
-	head, err := evac.store.HeadObject(ctx, objectKey)
+	head, err := e.store.HeadObject(ctx, objectKey)
 	if err != nil {
-		return evac.rollback(evacPath, err)
+		return e.rollback(evacPath, err)
 	}
 	if head.Exists && head.SHA256 == digests.SHA256 {
-		if err := evac.finalize(evacPath, objectKey, digests); err != nil {
-			return evac.rollback(evacPath, err)
+		if err := e.finalize(evacPath, objectKey, digests); err != nil {
+			return e.rollback(evacPath, err)
 		}
 		return nil
 	}
 
-	if err := evac.store.PutObject(ctx, objectKey, evacPath, digests); err != nil {
-		return evac.rollback(evacPath, err)
+	if err := e.store.PutObject(ctx, objectKey, evacPath, digests); err != nil {
+		return e.rollback(evacPath, err)
 	}
 
-	verifyHead, err := evac.store.HeadObject(ctx, objectKey)
+	verifyHead, err := e.store.HeadObject(ctx, objectKey)
 	if err != nil {
-		return evac.rollback(evacPath, err)
+		return e.rollback(evacPath, err)
 	}
 	if !verifyHead.Exists || verifyHead.SHA256 != digests.SHA256 {
-		return evac.rollback(evacPath, ErrDigestMismatch)
+		return e.rollback(evacPath, ErrDigestMismatch)
 	}
 
-	return evac.finalize(evacPath, objectKey, digests)
+	return e.finalize(evacPath, objectKey, digests)
 }
 
-func (evac *Evacuator) finalize(evacPath, objectKey string, digests fileDigests) error {
+func (e *Evacuator) finalize(evacPath, objectKey string, digests fileDigests) error {
 	record := EvacuatorCheckpointRecord{
 		FileName: filepath.Base(objectKey),
 		SHA256:   digests.SHA256,
 	}
-	if err := evac.checkpoint.Save(record); err != nil {
+	if err := e.checkpoint.Save(record); err != nil {
 		return err
 	}
 	return os.Remove(evacPath)
 }
 
-func (evac *Evacuator) rollback(evacPath string, cause error) error {
+func (e *Evacuator) rollback(evacPath string, cause error) error {
 	readyPath := strings.TrimSuffix(evacPath, evacuatingSuffix) + readySuffix
 	if renameErr := os.Rename(evacPath, readyPath); renameErr != nil && !os.IsNotExist(renameErr) {
 		slog.Error("rollback evacuating segment failed", "path", evacPath, "error", renameErr)

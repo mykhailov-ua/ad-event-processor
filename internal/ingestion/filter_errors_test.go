@@ -26,6 +26,11 @@ func TestClassifyFilterErr_timeoutVsInfra(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, filterRejectInfra, kind)
 	assert.NotEqual(t, http.StatusGatewayTimeout, filterRejectSpecs[kind].status)
+
+	kind, ok = classifyFilterErr(ErrInfraNetwork)
+	require.True(t, ok)
+	assert.Equal(t, filterRejectInfra, kind)
+	assert.Equal(t, http.StatusServiceUnavailable, filterRejectSpecs[kind].status)
 }
 
 func TestClassifyFilterErr_noAccidental504(t *testing.T) {

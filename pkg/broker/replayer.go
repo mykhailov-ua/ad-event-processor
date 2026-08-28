@@ -21,13 +21,13 @@ import (
 )
 
 type ReplayConfig struct {
-	DataDir   string
-	Topic     string
-	From      time.Time
-	To        time.Time
-	Target    string
-	ClickHouseDSN     string
-	BatchSize int
+	DataDir       string
+	Topic         string
+	From          time.Time
+	To            time.Time
+	Target        string
+	ClickHouseDSN string
+	BatchSize     int
 }
 
 type ReplayResult struct {

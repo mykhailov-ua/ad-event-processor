@@ -20,20 +20,20 @@ func NewPollBackoff() *PollBackoff {
 	return &PollBackoff{idle: PollActiveInterval}
 }
 
-func (backoff *PollBackoff) Next(processed int) time.Duration {
+func (pb *PollBackoff) Next(processed int) time.Duration {
 	if processed > 0 {
-		backoff.idle = PollActiveInterval
+		pb.idle = PollActiveInterval
 		metrics.OutboxPollIntervalMs.Observe(float64(PollActiveInterval) / float64(time.Millisecond))
 		return 0
 	}
-	if backoff.idle < PollActiveInterval {
-		backoff.idle = PollActiveInterval
+	if pb.idle < PollActiveInterval {
+		pb.idle = PollActiveInterval
 	}
-	next := backoff.idle * 2
+	next := pb.idle * 2
 	if next > PollIdleMax {
 		next = PollIdleMax
 	}
-	backoff.idle = next
+	pb.idle = next
 	metrics.OutboxPollIntervalMs.Observe(float64(next) / float64(time.Millisecond))
 	return next
 }

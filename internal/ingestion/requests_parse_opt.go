@@ -254,6 +254,14 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 				}
 				v.subs[idx-1] = unsafeString(data[valStart : end-1])
 				i = end
+			} else if matchTelemetryKey(keyBytes) {
+				end, events, ok := parseTrackTelemetryValue(data, i, n, &bud, v.TelemetryEvents)
+				if !ok {
+					return errMalformedJSON
+				}
+				v.TelemetryEvents = events
+				v.TelemetrySet = 1
+				i = end
 			} else {
 				valEnd, err := skipJSONValueBudget(data, i, &bud)
 				if err != nil {

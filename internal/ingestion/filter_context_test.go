@@ -66,3 +66,11 @@ func TestEventHasFraudL3_holdout(t *testing.T) {
 	assert.True(t, eventHasFraudL3(evt))
 	releaseFraudAccumulator(evt, acc)
 }
+
+func TestEventHasFraudL3_openRTBScratch_holdout(t *testing.T) {
+	evt := &domain.Event{}
+	slot := acquireOpenRTBScratchSlot()
+	attachOpenRTB3Scratch(evt, slot)
+	assert.False(t, eventHasFraudL3(evt))
+	releaseOpenRTB3Scratch(evt)
+}

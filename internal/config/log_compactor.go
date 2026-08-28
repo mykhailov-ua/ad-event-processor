@@ -21,7 +21,7 @@ type LogCompactor struct {
 	ColdWarmMinAgeDays       int
 	ColdWorkIntervalHours    int
 	DeleteWarmAfterCold      bool
-	ClickHouseDSN                    string
+	ClickHouseDSN            string
 	LeaderElection           bool
 	LeaderLockPath           string
 	S3Region                 string
@@ -48,7 +48,7 @@ func LoadLogCompactor() (LogCompactor, error) {
 		ColdWarmMinAgeDays:       getEnvInt("LOG_COMPACTOR_COLD_WARM_MIN_AGE_D", 7),
 		ColdWorkIntervalHours:    getEnvInt("LOG_COMPACTOR_COLD_WORK_INTERVAL_H", 24),
 		DeleteWarmAfterCold:      getEnvBool("LOG_COMPACTOR_DELETE_WARM_AFTER_COLD", false),
-		ClickHouseDSN:                    os.Getenv("CH_DSN"),
+		ClickHouseDSN:            os.Getenv("CH_DSN"),
 		LeaderLockPath:           envOrDefault("LOG_COMPACTOR_LEADER_LOCK_PATH", "/var/lib/ad-event-processor/log-compactor.leader.lock"),
 		S3Region:                 envOrDefault("LOG_COMPACTOR_S3_REGION", os.Getenv("AWS_REGION")),
 		S3Bucket:                 os.Getenv("LOG_COMPACTOR_S3_BUCKET"),

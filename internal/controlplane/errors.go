@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/campaign"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -14,25 +15,26 @@ var (
 	ErrChargebackExceedsTopup             = errors.New("chargeback exceeds settled topup")
 	ErrChargebackReversalExceedsWithdrawn = errors.New("chargeback reversal exceeds withdrawn amount")
 
-	ErrCampaignNotFound      = errors.New("campaign not found")
-	ErrFraudDecisionNotFound = errors.New("fraud decision not found")
-	ErrBrandNotFound         = errors.New("brand not found")
-	ErrCreativeNotFound      = errors.New("creative not found")
-	ErrTemplateNotFound      = errors.New("template not found")
-	ErrTeamMemberNotFound    = errors.New("team member not found")
+	ErrCampaignNotFound              = campaign.ErrCampaignNotFound
+	ErrFraudDecisionNotFound         = errors.New("fraud decision not found")
+	ErrBrandNotFound                 = campaign.ErrBrandNotFound
+	ErrBrandBelongsToAnotherCustomer = campaign.ErrBrandBelongsToAnotherCustomer
+	ErrCreativeNotFound              = errors.New("creative not found")
+	ErrTemplateNotFound              = campaign.ErrTemplateNotFound
+	ErrTeamMemberNotFound            = errors.New("team member not found")
 
-	ErrInsufficientBalance              = errors.New("insufficient balance")
-	ErrBrandBelongsToAnotherCustomer    = errors.New("brand belongs to another customer")
-	ErrTemplateBelongsToAnotherCustomer = errors.New("template belongs to another customer")
-	ErrCampaignCannotBePaused           = errors.New("campaign cannot be paused")
-	ErrCampaignNotPaused                = errors.New("campaign is not paused")
-	ErrCampaignOutsideSchedule          = errors.New("campaign is outside scheduled delivery window")
-	ErrInvalidPacingMode                = errors.New("invalid pacing mode")
+	ErrInsufficientBalance              = campaign.ErrInsufficientBalance
+	ErrTemplateBelongsToAnotherCustomer = campaign.ErrTemplateBelongsToAnotherCustomer
+	ErrCampaignCannotBePaused           = campaign.ErrCampaignCannotBePaused
+	ErrCampaignNotPaused                = campaign.ErrCampaignNotPaused
+	ErrCampaignOutsideSchedule          = campaign.ErrCampaignOutsideSchedule
+	ErrCampaignRevisionConflict         = campaign.ErrCampaignRevisionConflict
+	ErrInvalidPacingMode                = campaign.ErrInvalidPacingMode
 	ErrWeightMustBePositive             = errors.New("weight must be positive")
 	ErrCreativeStatusInvalid            = errors.New("status must be ACTIVE or PAUSED")
-	ErrIncompleteIdempotency            = errors.New("incomplete idempotency")
-	ErrUnsupportedGranularity           = errors.New("unsupported granularity")
-	ErrInvalidTimeRange                 = errors.New("invalid time range")
+	ErrIncompleteIdempotency            = campaign.ErrIncompleteIdempotency
+	ErrUnsupportedGranularity           = campaign.ErrUnsupportedGranularity
+	ErrInvalidTimeRange                 = campaign.ErrInvalidTimeRange
 	ErrInvalidServiceFilter             = errors.New("invalid service filter")
 
 	ErrSelfServeActiveCampaignLimit = errors.New("self-serve active campaign limit reached")

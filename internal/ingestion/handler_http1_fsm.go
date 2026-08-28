@@ -163,6 +163,7 @@ func parseHTTP1Headers(data []byte, i, n int, req *parsedHTTPRequest, hFlags *ui
 	}
 	flags := *hFlags
 	cl := *clValue
+	recordHeaderOrder := http1PathRecordsHeaderOrder(req.Method, req.Path)
 
 	for {
 		if i >= n {
@@ -220,6 +221,11 @@ func parseHTTP1Headers(data []byte, i, n int, req *parsedHTTPRequest, hFlags *ui
 		if len(val) > http1MaxHeaderValLen || !httpHeaderValValid(val) {
 			return 0, flags, cl, errInvalidRequest
 		}
+		if recordHeaderOrder {
+			if token := classifyHTTP1HeaderOrderToken(key); token != http1HdrNone {
+				recordHTTP1HeaderOrder(req, token)
+			}
+		}
 		if err := http1AssignHeader(req, key, val, &flags, &cl); err != nil {
 			return 0, flags, cl, err
 		}
@@ -250,7 +256,7 @@ func http1IngressValid(method, path []byte) bool {
 			bytesEqual(path, "/ready") ||
 			bytesEqual(path, "/readyz") ||
 			bytesEqual(path, "/metrics") ||
-			bytesEqual(path, trackPixelPath) ||
+			isTrackPixelPath(path) ||
 			httpPathHasPrefix(path, safePageStubPathPrefix) ||
 			httpPathHasPrefix(path, "/click") ||
 			httpPathHasPrefix(path, telegramPathClick) ||
@@ -260,8 +266,7 @@ func http1IngressValid(method, path []byte) bool {
 }
 
 func httpPathHasPrefix(path []byte, prefix string) bool {
-	p := []byte(prefix)
-	pl := len(p)
+	pl := len(prefix)
 	pn := len(path)
 	if pn < pl {
 		return false
@@ -350,7 +355,15 @@ func parseContentLengthStrict(b []byte) (int, bool) {
 	return val, true
 }
 
-func parseTCPMSSHeader(b []byte) (uint8, bool) {
+func parseTCPMSSHeader(b []byte) (uint16, bool) {
+	n, ok := parseContentLengthStrict(b)
+	if !ok || n < 0 || n > 65535 {
+		return 0, false
+	}
+	return uint16(n), true
+}
+
+func parseTCPTTLHeader(b []byte) (uint8, bool) {
 	n, ok := parseContentLengthStrict(b)
 	if !ok || n < 0 || n > 255 {
 		return 0, false
@@ -461,9 +474,14 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 					req.TCPMSSSet = 1
 				}
 			} else if foldKeyU32(key, 4) == 0x74742d70 && httpFold[key[8]] == 'l' {
-				if ttl, ok := parseTCPMSSHeader(val); ok {
+				if ttl, ok := parseTCPTTLHeader(val); ok {
 					req.TCPTTL = ttl
 					req.TCPTTLSet = 1
+				}
+			} else if foldKeyU32(key, 4) == 0x69732d70 && httpFold[key[8]] == 'g' {
+				if sig, ok := parseTCPSigHeader(val); ok {
+					req.TCPSig = sig
+					req.TCPSigSet = 1
 				}
 			}
 		}
@@ -526,6 +544,7 @@ func http1AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, c
 			req.ForceSafe = true
 		}
 	}
+	http1AssignWireMetadataHeaders(req, key, val)
 	return nil
 }
 

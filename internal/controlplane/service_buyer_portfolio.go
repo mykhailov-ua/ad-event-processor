@@ -14,12 +14,24 @@ import (
 )
 
 func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error) {
+	now := time.Now().UTC()
+	return s.GetBuyerPortfolioRange(ctx, customerID, now.Add(-7*24*time.Hour), now)
+}
+
+func (s *Service) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error) {
 	if customerID == uuid.Nil {
 		return BuyerPortfolioDTO{}, errValidation("customer_id is required")
 	}
 	now := time.Now().UTC()
-	from := now.Add(-7 * 24 * time.Hour)
-	to := now
+	if from.IsZero() {
+		from = now.Add(-7 * 24 * time.Hour)
+	}
+	if to.IsZero() {
+		to = now
+	}
+	if err := validateChartRange(from, to); err != nil {
+		return BuyerPortfolioDTO{}, err
+	}
 
 	campaigns, err := s.listAllCampaigns(ctx, customerID, "")
 	if err != nil {
@@ -151,6 +163,22 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 		resp.Attention = resp.Attention[:8]
 	}
 	enrichBuyerPortfolioCommercial(&resp)
+	if s.clickhouseQuery != nil && len(activeCampaignIDs) > 0 {
+		clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
+		defer cancel()
+		totalEvents, blocked, silent, err := queryCustomerFraudOverview(clickhouseCtx, s.clickhouseQuery, activeCampaignIDs, from, to)
+		if err == nil {
+			overview := buildCustomerFraudOverview(totalEvents, blocked, silent, portfolioFreshness(to, true, chLag))
+			attachInvalidSpendKPI(&overview, blocked, silent, totalEvents, 0, computeAttributionCoverage(totalEvents, totalEvents))
+			if series, seriesErr := queryCustomerFraudDailySeries(clickhouseCtx, s.clickhouseQuery, activeCampaignIDs, from, to); seriesErr == nil {
+				overview.Series = series
+			}
+			resp.Fraud = &overview
+		}
+	}
+	if series, seriesErr := queryCustomerDashboardSeries(ctx, s.GetPool(), s.clickhouseQuery, customerID, activeCampaignIDs, from, to); seriesErr == nil {
+		resp.Series = series
+	}
 	return resp, nil
 }
 

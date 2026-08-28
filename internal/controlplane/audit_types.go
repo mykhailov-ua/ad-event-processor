@@ -116,14 +116,16 @@ type auditPacingLoopAdjustment struct {
 }
 
 type auditCampaignFraudChange struct {
-	FraudThresholdPass    uint8 `json:"fraud_threshold_pass"`
-	FraudThresholdSuspect uint8 `json:"fraud_threshold_suspect"`
-	FraudThresholdIVT     uint8 `json:"fraud_threshold_ivt"`
-	FraudThresholdBlock   uint8 `json:"fraud_threshold_block"`
-	SilentRejectEnabled   bool  `json:"silent_reject_enabled"`
-	BehaviorFlags         int32 `json:"behavior_flags"`
-	CanvasRetestEnabled   bool  `json:"canvas_retest_enabled"`
-	CgnatIPPolicyEnabled  bool  `json:"cgnat_ip_policy_enabled"`
+	FraudThresholdPass       uint8 `json:"fraud_threshold_pass"`
+	FraudThresholdSuspect    uint8 `json:"fraud_threshold_suspect"`
+	FraudThresholdIVT        uint8 `json:"fraud_threshold_ivt"`
+	FraudThresholdBlock      uint8 `json:"fraud_threshold_block"`
+	SilentRejectEnabled      bool  `json:"silent_reject_enabled"`
+	BehaviorFlags            int32 `json:"behavior_flags"`
+	CanvasRetestEnabled      bool  `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled     bool  `json:"cgnat_ip_policy_enabled"`
+	AcceptLangGeoEnabled     bool  `json:"accept_lang_geo_enabled"`
+	JSONSerializationEnabled bool  `json:"json_serialization_enabled"`
 }
 
 type auditCreateCampaignChange struct {

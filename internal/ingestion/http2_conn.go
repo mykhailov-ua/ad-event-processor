@@ -16,6 +16,7 @@ type h2ConnState struct {
 	incompleteSpin         uint8
 	incompleteIdleArmed    bool
 	incompleteIdleDeadline int64
+	fp                     h2ConnFingerprint
 }
 
 func newH2ConnState() h2ConnState {
@@ -31,6 +32,7 @@ func (s *h2ConnState) resetConn() {
 	s.incompleteSpin = 0
 	s.incompleteIdleArmed = false
 	s.incompleteIdleDeadline = 0
+	s.fp = h2ConnFingerprint{}
 	s.resetStream()
 }
 
@@ -85,6 +87,9 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 
 		switch fr.Type {
 		case h2FrameSettings:
+			if fr.Flags&0x1 == 0 && len(fr.Payload) > 0 {
+				st.fp.captureSettings(fr.Payload)
+			}
 			if fr.Flags&0x1 == 0 {
 				settingsOut = st.appendSettingsOut(h2SettingsACK)
 			}
@@ -103,6 +108,7 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 				if err := h2DecodeHeadersBlock(st.headerBlock, &req); err != nil {
 					return off + frameLen, req, 0, settingsOut, err
 				}
+				st.fp.copyTo(&req)
 				st.headerBlock = st.headerBlock[:0]
 				if fr.Flags&h2FlagEndStream != 0 {
 					return off + frameLen, req, fr.StreamID, settingsOut, nil
@@ -121,6 +127,7 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 				if err := h2DecodeHeadersBlock(st.headerBlock, &req); err != nil {
 					return off + frameLen, req, 0, settingsOut, err
 				}
+				st.fp.copyTo(&req)
 				st.headerBlock = st.headerBlock[:0]
 				if fr.Flags&h2FlagEndStream != 0 {
 					return off + frameLen, req, fr.StreamID, settingsOut, nil
@@ -142,6 +149,9 @@ func parseH2Ingress(buf []byte, st *h2ConnState, maxBody int64) (consumed int, r
 			st.resetStream()
 			return off + frameLen, req, fr.StreamID, settingsOut, nil
 		case h2FramePing, h2FrameWindowUpdate:
+			if fr.Type == h2FrameWindowUpdate {
+				st.fp.captureWindowUpdate(fr.StreamID, fr.Payload)
+			}
 		case h2FramePriority, h2FrameRSTStream, h2FrameGoAway, h2FramePushPromise:
 			return off + frameLen, req, 0, settingsOut, errInvalidRequest
 		default:

@@ -55,26 +55,26 @@ func SetupRedisShardsFault(t testing.TB, n int) *RedisShardFaultInfra {
 	return infra
 }
 
-func (infra *RedisShardFaultInfra) UniversalClients() []redis.UniversalClient {
-	out := make([]redis.UniversalClient, len(infra.Clients))
-	for i, c := range infra.Clients {
+func (rs *RedisShardFaultInfra) UniversalClients() []redis.UniversalClient {
+	out := make([]redis.UniversalClient, len(rs.Clients))
+	for i, c := range rs.Clients {
 		out[i] = c
 	}
 	return out
 }
 
-func (infra *RedisShardFaultInfra) cleanup() {
-	for _, fn := range infra.cleanups {
+func (rs *RedisShardFaultInfra) cleanup() {
+	for _, fn := range rs.cleanups {
 		fn()
 	}
 }
 
-func (infra *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, redisShards []redis.UniversalClient) {
+func (rs *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, redisShards []redis.UniversalClient) {
 	t.Helper()
 	ctx := context.Background()
-	endpoint, err := infra.Containers[idx].Endpoint(ctx, "")
+	endpoint, err := rs.Containers[idx].Endpoint(ctx, "")
 	require.NoError(t, err)
-	_ = infra.Clients[idx].Close()
+	_ = rs.Clients[idx].Close()
 
 	client := redis.NewClient(&redis.Options{
 		Addr:         endpoint,
@@ -84,8 +84,8 @@ func (infra *RedisShardFaultInfra) ReplaceShardClient(t testing.TB, idx int, red
 	breaker := database.NewRedisBreaker(3, 2, 300*time.Millisecond)
 	client.AddHook(database.NewRedisCircuitBreakerHook(breaker))
 
-	infra.Clients[idx] = client
-	infra.Breakers[idx] = breaker
+	rs.Clients[idx] = client
+	rs.Breakers[idx] = breaker
 	if redisShards != nil && idx < len(redisShards) {
 		redisShards[idx] = client
 	}

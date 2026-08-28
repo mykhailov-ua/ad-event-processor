@@ -7,5 +7,6 @@ globals = {
     "ARGV",
     "bit",
     "arg",
+    "wrk",
 }
 max_line_length = false

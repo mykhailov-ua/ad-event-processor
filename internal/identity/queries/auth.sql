@@ -29,24 +29,24 @@ SET is_blocked = TRUE, updated_at = NOW()
 WHERE email = $1;
 
 -- name: GetAPIKeyByHash :one
-SELECT ak.id, ak.user_id, ak.name, ak.expires_at, u.role, u.customer_id
+SELECT ak.id, ak.user_id, ak.name, ak.expires_at, ak.scopes, u.role, u.customer_id
 FROM api_keys ak
 JOIN users u ON ak.user_id = u.id
 WHERE ak.key_hash = $1 AND (ak.expires_at IS NULL OR ak.expires_at > NOW());
 
 -- name: GetAPIKeyByLookup :one
-SELECT ak.id, ak.user_id, ak.name, ak.key_hash, ak.expires_at, u.role, u.customer_id
+SELECT ak.id, ak.user_id, ak.name, ak.key_hash, ak.expires_at, ak.scopes, u.role, u.customer_id
 FROM api_keys ak
 JOIN users u ON ak.user_id = u.id
 WHERE ak.key_lookup = $1 AND (ak.expires_at IS NULL OR ak.expires_at > NOW());
 
 -- name: CreateAPIKey :one
-INSERT INTO api_keys (key_hash, key_lookup, user_id, name, expires_at)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, name, expires_at, created_at;
+INSERT INTO api_keys (key_hash, key_lookup, user_id, name, expires_at, scopes)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, expires_at, created_at, scopes;
 
 -- name: ListUserAPIKeys :many
-SELECT id, name, expires_at, created_at
+SELECT id, name, expires_at, created_at, scopes
 FROM api_keys
 WHERE user_id = $1;
 

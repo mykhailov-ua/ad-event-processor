@@ -34,7 +34,7 @@ type PostgresConn interface {
 
 type SnapshotReplicator struct {
 	mu             sync.RWMutex
-	postgresConn         PostgresConn
+	postgresConn   PostgresConn
 	clickhouseConn ClickHouseConn
 	redisShards    []redis.UniversalClient
 	sharder        Sharder
@@ -50,7 +50,7 @@ func NewSnapshotReplicator(
 	clickCharge, impCharge int64,
 ) *SnapshotReplicator {
 	return &SnapshotReplicator{
-		postgresConn:         postgresConn,
+		postgresConn:   postgresConn,
 		clickhouseConn: clickhouseConn,
 		redisShards:    redisShards,
 		sharder:        sharder,

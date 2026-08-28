@@ -25,6 +25,7 @@ const (
 	JobStatusRunning   = "RUNNING"
 	JobStatusCompleted = "COMPLETED"
 	JobStatusFailed    = "FAILED"
+	JobStatusCancelled = "CANCELLED"
 
 	defaultExportFetchRows  = 1000
 	defaultExportJobTimeout = 15 * time.Minute
@@ -337,24 +338,24 @@ type ExportHTTPHandlers struct {
 	WriteServiceError       func(http.ResponseWriter, error)
 }
 
-func (exportHandlers *ExportHTTPHandlers) Register(mux *http.ServeMux) {
-	if exportHandlers == nil || exportHandlers.JobRunner == nil {
+func (h *ExportHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil || h.JobRunner == nil {
 		return
 	}
-	limit := exportHandlers.ApplyRateLimit
-	perm := exportHandlers.RequirePermission
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("POST /api/v1/billing/exports", limit(perm("customers:read", exportHandlers.createExport)))
-	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}", limit(perm("customers:read", exportHandlers.getExport)))
-	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}/download", limit(perm("customers:read", exportHandlers.downloadExport)))
+	mux.HandleFunc("POST /api/v1/billing/exports", limit(perm("customers:read", h.createExport)))
+	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}", limit(perm("customers:read", h.getExport)))
+	mux.HandleFunc("GET /api/v1/billing/exports/{job_id}/download", limit(perm("customers:read", h.downloadExport)))
 }
 
-func (exportHandlers *ExportHTTPHandlers) createExport(w http.ResponseWriter, r *http.Request) {
+func (h *ExportHTTPHandlers) createExport(w http.ResponseWriter, r *http.Request) {
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
@@ -368,13 +369,13 @@ func (exportHandlers *ExportHTTPHandlers) createExport(w http.ResponseWriter, r 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id is required")
 		return
 	}
-	if exportHandlers.AuthorizeCustomerAccess != nil {
-		if err := exportHandlers.AuthorizeCustomerAccess(r, spec.CustomerID); err != nil {
-			exportHandlers.writeServiceError(w, err)
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, spec.CustomerID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
-	jobID, err := exportHandlers.JobRunner.CreateJob(r.Context(), spec)
+	jobID, err := h.JobRunner.CreateJob(r.Context(), spec)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
@@ -383,30 +384,30 @@ func (exportHandlers *ExportHTTPHandlers) createExport(w http.ResponseWriter, r 
 	httpresponse.JSON(w, http.StatusAccepted, ExportJobCreatedResponse{JobID: jobID})
 }
 
-func (exportHandlers *ExportHTTPHandlers) getExport(w http.ResponseWriter, r *http.Request) {
+func (h *ExportHTTPHandlers) getExport(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("job_id")
-	status, ok := exportHandlers.JobRunner.GetJob(jobID)
+	status, ok := h.JobRunner.GetJob(jobID)
 	if !ok {
 		httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "export job not found")
 		return
 	}
-	if exportHandlers.AuthorizeCustomerAccess != nil {
-		if err := exportHandlers.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
-			exportHandlers.writeServiceError(w, err)
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
 	httpresponse.JSON(w, http.StatusOK, status)
 }
 
-func (exportHandlers *ExportHTTPHandlers) downloadExport(w http.ResponseWriter, r *http.Request) {
+func (h *ExportHTTPHandlers) downloadExport(w http.ResponseWriter, r *http.Request) {
 	jobID := r.PathValue("job_id")
-	f, status, err := exportHandlers.JobRunner.OpenDownload(jobID)
+	f, status, err := h.JobRunner.OpenDownload(jobID)
 	if err != nil {
 		if status.ID != "" {
-			if exportHandlers.AuthorizeCustomerAccess != nil {
-				if aerr := exportHandlers.AuthorizeCustomerAccess(r, status.CustomerID); aerr != nil {
-					exportHandlers.writeServiceError(w, aerr)
+			if h.AuthorizeCustomerAccess != nil {
+				if aerr := h.AuthorizeCustomerAccess(r, status.CustomerID); aerr != nil {
+					h.writeServiceError(w, aerr)
 					return
 				}
 			}
@@ -417,9 +418,9 @@ func (exportHandlers *ExportHTTPHandlers) downloadExport(w http.ResponseWriter, 
 		return
 	}
 	defer func() { _ = f.Close() }()
-	if exportHandlers.AuthorizeCustomerAccess != nil {
-		if err := exportHandlers.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
-			exportHandlers.writeServiceError(w, err)
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, status.CustomerID); err != nil {
+			h.writeServiceError(w, err)
 			return
 		}
 	}
@@ -438,13 +439,13 @@ func (exportHandlers *ExportHTTPHandlers) downloadExport(w http.ResponseWriter, 
 	}
 }
 
-func (exportHandlers *ExportHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+func (h *ExportHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
 	if errors.Is(err, ErrForbidden) {
 		httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden")
 		return
 	}
-	if exportHandlers.WriteServiceError != nil {
-		exportHandlers.WriteServiceError(w, err)
+	if h.WriteServiceError != nil {
+		h.WriteServiceError(w, err)
 		return
 	}
 	httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "request failed")

@@ -1,0 +1,53 @@
+TrackBehaviorTelemetryEvent:
+  type: object
+  required: [t, ts, x, y]
+  properties:
+    t:
+      type: string
+      description: Event kind (mousemove, touchstart, scroll, ...)
+    ts:
+      type: integer
+      format: int64
+      description: Client monotonic or wall timestamp in milliseconds
+    x:
+      type: integer
+      format: int32
+    y:
+      type: integer
+      format: int32
+    z:
+      type: integer
+      format: int32
+      description: Optional third axis (touch force, device motion z)
+
+TrackBehaviorTelemetry:
+  type: object
+  properties:
+    events:
+      type: array
+      maxItems: 64
+      items:
+        $ref: '#/TrackBehaviorTelemetryEvent'
+
+TrackIngestRequest:
+  type: object
+  required: [type, campaign_id]
+  description: Native JSON body for tracker POST /track (gnet ingress).
+  properties:
+    type:
+      type: string
+      description: Event type (click, conversion, impression, ...)
+    campaign_id:
+      type: string
+      format: uuid
+    user_id:
+      type: string
+    click_id:
+      type: string
+    placement_id:
+      type: string
+    payload:
+      type: object
+      additionalProperties: true
+    telemetry:
+      $ref: '#/TrackBehaviorTelemetry'

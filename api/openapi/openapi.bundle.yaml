@@ -310,6 +310,12 @@ components:
             $ref: components/schemas/integrations.yaml#/SupplyExportPath
         SupplyValidation:
             $ref: components/schemas/integrations.yaml#/SupplyValidation
+        TrackBehaviorTelemetry:
+            $ref: components/schemas/track_ingest.yaml#/TrackBehaviorTelemetry
+        TrackBehaviorTelemetryEvent:
+            $ref: components/schemas/track_ingest.yaml#/TrackBehaviorTelemetryEvent
+        TrackIngestRequest:
+            $ref: components/schemas/track_ingest.yaml#/TrackIngestRequest
         TrueRoiReportRow:
             $ref: components/schemas/ops_reports.yaml#/TrueRoiReportRow
         UpdatePostbackConfigRequest:
@@ -340,7 +346,7 @@ info:
         Operator and automation REST on `/api/v1` (`cmd/control`, default `:8188`).
         Documented domains: cost-sync, integrations, campaigns, billing, reports, ops,
         fraud admin, dashboards, and saved views. All `/api/v1` catalog routes are hand-documented or explicitly allowlisted.
-        New endpoints must land in OpenAPI before handler code (`deploy/vendor/openapi_backlog.md`).
+        New endpoints must land in OpenAPI before handler code (`docs/DEVELOPMENT.md` OpenAPI workflow).
     title: ad-event-processor control plane API
     version: 0.6.0
 openapi: 3.0.3
@@ -349,6 +355,14 @@ paths:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1audit
     /api/v1/audit/export:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1audit~1export
+    /api/v1/automation/presets:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1presets
+    /api/v1/automation/rules:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules
+    /api/v1/automation/rules/{id}:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}
+    /api/v1/automation/rules/{id}/dry-run:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}~1dry-run
     /api/v1/billing/crypto/webhook:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1crypto~1webhook
     /api/v1/billing/exports:
@@ -391,34 +405,72 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates
     /api/v1/campaigns/{id}/clone:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone
+    /api/v1/campaigns/{id}/clone/preview:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone~1preview
     /api/v1/campaigns/{id}/conversion-mappings:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1conversion-mappings
+    /api/v1/campaigns/{id}/diff:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1diff
+    /api/v1/campaigns/{id}/editor-shell:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1editor-shell
     /api/v1/campaigns/{id}/events:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1events
     /api/v1/campaigns/{id}/export:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1export
+    /api/v1/campaigns/{id}/flow/validate:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1flow~1validate
     /api/v1/campaigns/{id}/fraud:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud
     /api/v1/campaigns/{id}/fraud/preview:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1fraud~1preview
     /api/v1/campaigns/{id}/integration-health:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-health
+    /api/v1/campaigns/{id}/integration-panel:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-panel
+    /api/v1/campaigns/{id}/macro-preview:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1macro-preview
     /api/v1/campaigns/{id}/margin:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1margin
     /api/v1/campaigns/{id}/owner:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1owner
+    /api/v1/campaigns/{id}/placement-block-suggestions:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1placement-block-suggestions
     /api/v1/campaigns/{id}/placement-blocks:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1placement-blocks
+    /api/v1/campaigns/{id}/publish:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1publish
+    /api/v1/campaigns/{id}/publish-check:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1publish-check
+    /api/v1/campaigns/{id}/smoke:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1smoke
     /api/v1/campaigns/{id}/stats:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1stats
+    /api/v1/campaigns/{id}/validate:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1validate
+    /api/v1/campaigns/bulk:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1bulk
     /api/v1/campaigns/import:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import
+    /api/v1/campaigns/import/validate:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate
+    /api/v1/campaigns/import/validate/jobs:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs
+    /api/v1/campaigns/import/validate/jobs/{id}:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs~1{id}
     /api/v1/campaigns/migrate/import:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1import
     /api/v1/campaigns/migrate/preview:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1preview
+    /api/v1/campaigns/migrate/pull/import:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1pull~1import
+    /api/v1/campaigns/migrate/pull/preview:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1pull~1preview
     /api/v1/campaigns/migrate/sources:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1sources
+    /api/v1/campaigns/onboarding-templates:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1onboarding-templates
+    /api/v1/campaigns/wizard/session:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1wizard~1session
     /api/v1/consent:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1consent
     /api/v1/cost-sync/credentials:
@@ -563,6 +615,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1tls-allowed
     /api/v1/ops/fraud/presets/{name}:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1fraud~1presets~1{name}
+    /api/v1/ops/health/snapshot:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1health~1snapshot
     /api/v1/ops/incidents:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1incidents
     /api/v1/ops/ml-model:
@@ -621,6 +675,10 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1campaign-geo-device
     /api/v1/reports/campaign-overview:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1campaign-overview
+    /api/v1/reports/campaign-toggle-cohort:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1campaign-toggle-cohort
+    /api/v1/reports/catalog:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1catalog
     /api/v1/reports/click-log:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1click-log
     /api/v1/reports/clicks:
@@ -629,6 +687,12 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1conversion-type-payout
     /api/v1/reports/cost-sync-coverage:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1cost-sync-coverage
+    /api/v1/reports/customer-fraud-by-dimension:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1customer-fraud-by-dimension
+    /api/v1/reports/customer-fraud-by-type:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1customer-fraud-by-type
+    /api/v1/reports/customer-fraud-evidence:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1customer-fraud-evidence
     /api/v1/reports/customer-portfolio:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1customer-portfolio
     /api/v1/reports/data-quality:
@@ -643,6 +707,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1filter-rejects
     /api/v1/reports/fraud-breakdown:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1fraud-breakdown
+    /api/v1/reports/fraud-evidence-pack:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1fraud-evidence-pack
     /api/v1/reports/geo-roi:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1geo-roi
     /api/v1/reports/ghost-impression-funnel:
@@ -657,6 +723,10 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1jobs~1{id}~1download
     /api/v1/reports/keywords:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1keywords
+    /api/v1/reports/layer-desync-drilldown:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1layer-desync-drilldown
+    /api/v1/reports/layer-desync-summary:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1layer-desync-summary
     /api/v1/reports/ml/feature-spikes:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1ml~1feature-spikes
     /api/v1/reports/ml/score-distribution:
@@ -675,6 +745,10 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtb~1no-bid-reasons
     /api/v1/reports/rtb/overview:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtb~1overview
+    /api/v1/reports/rtt-split-tunnel:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1rtt-split-tunnel
+    /api/v1/reports/signal-effectiveness:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1signal-effectiveness
     /api/v1/reports/silent-reject-impression-funnel:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1silent-reject-impression-funnel
     /api/v1/reports/source-quality:
@@ -699,6 +773,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1traffic-sources
     /api/v1/reports/true-roi:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1true-roi
+    /api/v1/reports/wire-signal-breakdown:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1reports~1wire-signal-breakdown
     /api/v1/rtb/deals:
         $ref: paths/rtb.yaml#/paths/~1api~1v1~1rtb~1deals
     /api/v1/rtb/deals/{id}:
@@ -729,6 +805,8 @@ paths:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1payment-intents
     /api/v1/selfserve/templates:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1templates
+    /api/v1/session:
+        $ref: paths/platform.yaml#/paths/~1api~1v1~1session
     /api/v1/settings/platform:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1settings~1platform
     /api/v1/settings/platform/apply:
@@ -821,6 +899,8 @@ tags:
       name: margin-guard
     - description: Metric threshold alerts to webhooks
       name: smart-alerts
+    - description: Campaign automation rules with presets and eval intervals
+      name: automation
     - description: External ad platform link and mutation API (Enterprise SKU)
       name: platform-campaigns
     - description: Campaign CRUD, fraud, stats, clone, and owner assignment

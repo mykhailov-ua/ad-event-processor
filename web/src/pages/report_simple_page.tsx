@@ -1,0 +1,260 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import type { DataFreshness, ReportEnvelope, ReportRow } from '../types/report.js';
+import { to } from '../lib/to.js';
+import { api } from '../helpers/api_client.js';
+import * as auth from '../helpers/auth.js';
+import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
+import { validateReportRange } from '../helpers/validators.js';
+import { REPORT_DATE_PRESETS } from '../helpers/date_presets.js';
+import { tenantReportQueryString } from '../helpers/tenant_url.js';
+import { formatMoney } from '../helpers/money.js';
+import { reportCompareLabel, formatSpendDelta } from '../helpers/report_compare.js';
+import { ReportRowActions } from '../components/report_row_actions.js';
+import { ReportSavedViewsPanel } from '../components/report_saved_views_panel.js';
+import { buildReportViewSpec } from '../helpers/report_api.js';
+import { AlertBanner } from '../components/alert_banner.js';
+import { Button } from '../components/button.js';
+import { ErrorBlock } from '../components/error_block.js';
+import { FormField } from '../components/form_field.js';
+import { FreshnessBadge } from '../components/freshness_badge.js';
+import type { SimpleReportColumn } from './report_configs.js';
+
+const COMPARE_ENDPOINTS = new Set(['daypart-heatmap', 'source-quality', 'true-roi']);
+
+const ACTION_ENDPOINTS = new Set(['source-quality', 'true-roi', 'discrepancy-buy-sell']);
+
+function formatCell(row: ReportRow, col: SimpleReportColumn) {
+  const v = row[col.key];
+  if (v == null || v === '') return '-';
+  if (col.format === 'money') return formatMoney(v as string | number);
+  if (col.format === 'rate') return `${(Number(v) * 100).toFixed(2)}%`;
+  if (col.format === 'pct') return `${Number(v).toFixed(2)}%`;
+  if (col.format === 'number') return String(v);
+  if (typeof v === 'boolean') return v ? 'Yes' : 'No';
+  return String(v);
+}
+
+export type SimpleReportPageProps = {
+  title: string;
+  endpoint: string;
+  columns: SimpleReportColumn[];
+};
+
+export function SimpleReportPage({ title, endpoint, columns }: SimpleReportPageProps) {
+  const [searchParams] = useSearchParams();
+  const user = auth.getUser();
+  const sessionScoped = hasBoundCustomer(user?.role);
+  const preset = REPORT_DATE_PRESETS[1] ?? REPORT_DATE_PRESETS[0];
+
+  const [customerInput, setCustomerInput] = useState(
+    searchParams.get('customer_id') || (sessionScoped ? boundCustomerId(user) : '')
+  );
+  const [from, setFrom] = useState(searchParams.get('from') || preset.from());
+  const [rangeTo, setRangeTo] = useState(searchParams.get('to') || preset.to());
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<ReportRow[]>([]);
+  const [freshness, setFreshness] = useState<DataFreshness | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [comparePeriod, setComparePeriod] = useState(searchParams.get('compare') === 'previous');
+  const enableCompare = COMPARE_ENDPOINTS.has(endpoint);
+  const enableActions = ACTION_ENDPOINTS.has(endpoint);
+
+  const applySavedSpec = (spec: Record<string, unknown>) => {
+    if (spec.from) setFrom(String(spec.from));
+    if (spec.to) setRangeTo(String(spec.to));
+    if (spec.compare === true || spec.compare === 'previous') {
+      setComparePeriod(true);
+    } else if (spec.compare === false) {
+      setComparePeriod(false);
+    }
+  };
+
+  const load = useCallback(async () => {
+    const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
+    const rangeErr = validateReportRange(from, rangeTo);
+    if (!cid) {
+      setValidationError(null);
+      setRows([]);
+      setError(null);
+      return;
+    }
+    if (rangeErr) {
+      setValidationError(rangeErr);
+      setRows([]);
+      setError(null);
+      return;
+    }
+    setValidationError(null);
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams({ customer_id: cid, from, to: rangeTo, limit: '100' });
+    if (comparePeriod && enableCompare) params.set('compare', 'previous');
+    const [res, err] = await to(
+      api<ReportEnvelope>(`/api/v1/reports/${endpoint}?${params.toString()}`)
+    );
+    setLoading(false);
+    if (err) {
+      setError(err);
+      return;
+    }
+    const data = res?.data ?? null;
+    setRows(Array.isArray(data?.rows) ? data.rows : []);
+    setFreshness(data?.freshness ?? null);
+    if (!sessionScoped && cid) {
+      const qs = tenantReportQueryString({ customer_id: cid, from, to: rangeTo });
+      window.history.replaceState(null, '', `/reports/${endpoint}?${qs}`);
+    }
+  }, [sessionScoped, user, customerInput, from, rangeTo, endpoint, comparePeriod, enableCompare]);
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  if (error) return <ErrorBlock error={error} />;
+
+  const cid = sessionScoped ? boundCustomerId(user) : customerInput.trim();
+
+  return (
+    <>
+      <div className="page-header">
+        <h1 className="page-header__title">{title}</h1>
+        <p className="text-muted text-sm">
+          <a href="/reports">{'<-'} Reports hub</a>
+        </p>
+        {freshness ? (
+          <FreshnessBadge stale={freshness.stale} lagSeconds={freshness.ch_lag_seconds} />
+        ) : null}
+      </div>
+
+      <form
+        className="mb-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void load();
+        }}
+      >
+        {!sessionScoped ? (
+          <FormField label="Customer ID" htmlFor={`report-${endpoint}-customer`}>
+            <input
+              id={`report-${endpoint}-customer`}
+              className="form-input"
+              value={customerInput}
+              onChange={(e) => setCustomerInput(e.target.value)}
+            />
+          </FormField>
+        ) : null}
+        {cid ? (
+          <ReportSavedViewsPanel
+            reportKey={endpoint}
+            customerId={cid}
+            currentSpec={buildReportViewSpec({ from, to: rangeTo, compare: comparePeriod })}
+            onApply={applySavedSpec}
+          />
+        ) : null}
+        <FormField label="From" htmlFor={`report-${endpoint}-from`}>
+          <input
+            id={`report-${endpoint}-from`}
+            className="form-input"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </FormField>
+        <FormField label="To" htmlFor={`report-${endpoint}-to`}>
+          <input
+            id={`report-${endpoint}-to`}
+            className="form-input"
+            value={rangeTo}
+            onChange={(e) => setRangeTo(e.target.value)}
+          />
+        </FormField>
+        {enableCompare ? (
+          <label className="form-checkbox form-checkbox--block">
+            <input
+              type="checkbox"
+              checked={comparePeriod}
+              onChange={(e) => setComparePeriod(e.target.checked)}
+            />
+            <span>{reportCompareLabel()}</span>
+          </label>
+        ) : null}
+        <Button label="Load" variant="primary" type="submit" loading={loading} disabled={loading} />
+      </form>
+
+      {validationError ? <AlertBanner variant="error" message={validationError} /> : null}
+      {!cid && !sessionScoped ? (
+        <AlertBanner variant="info" message="Enter a customer UUID to load report data." />
+      ) : null}
+
+      {loading ? (
+        <div className="table-wrapper">
+          <table className="data-table">
+            <tbody>
+              {Array.from({ length: 5 }, (_, i) => (
+                <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
+                  {columns.map((col) => (
+                    <td key={col.key}>
+                      <span className="skeleton-bar" />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {!loading && rows.length > 0 ? (
+        <div className="table-wrapper elevation-raised mt-4">
+          <table className="data-table">
+            <thead>
+              <tr>
+                {columns.map((c) => (
+                  <th key={c.key} scope="col">
+                    {c.label}
+                  </th>
+                ))}
+                {comparePeriod && enableCompare ? <th scope="col">delta spend</th> : null}
+                {enableActions ? <th scope="col">Actions</th> : null}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr key={`row-${index}`}>
+                  {columns.map((c) => (
+                    <td key={c.key}>{formatCell(row, c)}</td>
+                  ))}
+                  {comparePeriod && enableCompare ? (
+                    <td className="font-mono">{formatSpendDelta(row)}</td>
+                  ) : null}
+                  {enableActions ? (
+                    <td>
+                      <ReportRowActions row={row} customerId={cid} reportEndpoint={endpoint} />
+                    </td>
+                  ) : null}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {!loading && cid && rows.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state__title">No rows</div>
+          <div className="empty-state__desc text-muted text-sm">
+            Try a different date range or filters.
+            {endpoint === 'true-roi' ? (
+              <>
+                {' '}
+                Missing ad spend? Check <a href="/reports/cost-sync-coverage">Cost sync coverage</a>
+                .
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}

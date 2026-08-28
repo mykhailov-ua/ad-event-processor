@@ -9,7 +9,7 @@ func GeoBitFromHash(geoHash uint32) uint64 {
 	return uint64(1) << (geoHash & 63)
 }
 
-func (registry *Registry) catalogSlicesValid(reg *CampaignAuctionRegistry) bool {
+func (r *Registry) catalogSlicesValid(reg *CampaignAuctionRegistry) bool {
 	count := reg.Count
 	if count > len(reg.CampaignIDs) || count > len(reg.Bids) ||
 		count > len(reg.CTRPPM) || count > len(reg.Reserves) ||
@@ -35,11 +35,11 @@ func bidsAt(reg *CampaignAuctionRegistry, idx int) int64 {
 	return reg.Bids[idx]
 }
 
-func (registry *Registry) candidateRange(
+func (r *Registry) candidateRange(
 	reg *CampaignAuctionRegistry,
 	req *BidRequest,
 ) (soa *candidateBucketSoA, start int, end int, ok bool) {
-	if registry.targetingIndexEnabled.Load() {
+	if r.targetingIndexEnabled.Load() {
 		if start, end, ok = reg.targetingRange(req.GeoHash, req.DeviceType, req.CategoryMask); ok {
 			return &reg.TargetBucketSoA, start, end, true
 		}
@@ -48,7 +48,7 @@ func (registry *Registry) candidateRange(
 	return &reg.GeoBucketSoA, start, end, ok
 }
 
-func (registry *Registry) rankCandidates(
+func (r *Registry) rankCandidates(
 	reg *CampaignAuctionRegistry,
 	req *BidRequest,
 	soa *candidateBucketSoA,
@@ -99,14 +99,14 @@ func (registry *Registry) rankCandidates(
 	mediaMask := req.MediaTypeMask
 	maxDuration := req.MaxDurationSec
 	minBid := req.MinBid
-	store := registry.store
+	store := r.store
 	winnerBid := int64(-1)
 	winnerWeight := uint32(0)
 	deadline := req.DeadlineMono
 	hasDeadline := deadline > 0
 	nowUnix := req.NowUnix
 	fcapUserHash := req.FcapUserHash
-	fcapSnap := registry.LoadFcapSnapshot()
+	fcapSnap := r.LoadFcapSnapshot()
 
 	n := len(catalogIdx)
 	if n > 0 {

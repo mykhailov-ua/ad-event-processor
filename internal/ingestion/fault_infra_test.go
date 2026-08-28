@@ -95,10 +95,10 @@ func setupAdsFaultInfra(t *testing.T) (*adsFaultInfra, func()) {
 		PGContainer:    pgContainer,
 		RedisContainer: redisContainer,
 	}
-	infra.Redis = infra.dialRedisClient(t, endpoint)
+	fi.Redis = fi.dialRedisClient(t, endpoint)
 
 	cleanup := func() {
-		_ = infra.Redis.Close()
+		_ = fi.Redis.Close()
 		pool.Close()
 		_ = redisContainer.Terminate(ctx)
 		_ = pgContainer.Terminate(ctx)
@@ -159,10 +159,10 @@ func waitAdsRedisReady(t *testing.T, redisClient redis.UniversalClient) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func (infra *adsFaultInfra) dialRedisClient(t *testing.T, endpoint string) redis.UniversalClient {
+func (fi *adsFaultInfra) dialRedisClient(t *testing.T, endpoint string) redis.UniversalClient {
 	t.Helper()
-	if infra.RedisBreaker == nil {
-		infra.RedisBreaker = database.NewRedisBreaker(
+	if fi.RedisBreaker == nil {
+		fi.RedisBreaker = database.NewRedisBreaker(
 			adsFaultRedisBreakerFail,
 			adsFaultRedisBreakerHalf,
 			adsFaultRedisBreakerOpen,
@@ -173,37 +173,37 @@ func (infra *adsFaultInfra) dialRedisClient(t *testing.T, endpoint string) redis
 		ReadTimeout:  adsFaultRedisFastTimeout,
 		WriteTimeout: adsFaultRedisFastTimeout,
 	})
-	client.AddHook(database.NewRedisCircuitBreakerHook(infra.RedisBreaker))
+	client.AddHook(database.NewRedisCircuitBreakerHook(fi.RedisBreaker))
 	require.NoError(t, client.Ping(context.Background()).Err())
 	return client
 }
 
-func (infra *adsFaultInfra) refreshRedisClient(t *testing.T) {
+func (fi *adsFaultInfra) refreshRedisClient(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	_ = infra.Redis.Close()
-	infra.RedisBreaker = database.NewRedisBreaker(
+	_ = fi.Redis.Close()
+	fi.RedisBreaker = database.NewRedisBreaker(
 		adsFaultRedisBreakerFail,
 		adsFaultRedisBreakerHalf,
 		adsFaultRedisBreakerOpen,
 	)
-	endpoint, err := infra.RedisContainer.Endpoint(ctx, "")
+	endpoint, err := fi.RedisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
-	infra.Redis = infra.dialRedisClient(t, endpoint)
-	waitAdsRedisReady(t, infra.Redis)
+	fi.Redis = fi.dialRedisClient(t, endpoint)
+	waitAdsRedisReady(t, fi.Redis)
 }
 
-func (infra *adsFaultInfra) refreshPGPool(t *testing.T) {
+func (fi *adsFaultInfra) refreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	infra.Pool.Close()
-	connStr, err := infra.PGContainer.ConnectionString(ctx, "sslmode=disable")
+	fi.Pool.Close()
+	connStr, err := fi.PGContainer.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
-	infra.Pool = pool
-	infra.Queries = db.New(pool)
-	waitAdsPGReady(t, infra.Pool)
+	fi.Pool = pool
+	fi.Queries = db.New(pool)
+	waitAdsPGReady(t, fi.Pool)
 }
 
 func requireAdsFaultActive(t *testing.T, faultActive func() bool, msg string) {
@@ -221,17 +221,17 @@ func newFaultRegistry(t *testing.T, queries db.Querier) *Registry {
 func seedFaultCampaign(t *testing.T, infra *adsFaultInfra, registry *Registry) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
-	pm := database.NewPartitionManager(infra.Pool, 7, 1)
+	pm := database.NewPartitionManager(fi.Pool, 7, 1)
 	require.NoError(t, pm.Run(ctx))
 
 	customerID := uuid.New()
-	_, err := infra.Pool.Exec(ctx,
+	_, err := fi.Pool.Exec(ctx,
 		"INSERT INTO customers (id, name, balance) VALUES ($1, $2, $3)",
 		customerID, "Test Customer", 1_000_000_000)
 	require.NoError(t, err)
 
 	campaignID := uuid.New()
-	_, err = infra.Pool.Exec(ctx,
+	_, err = fi.Pool.Exec(ctx,
 		"INSERT INTO campaigns (id, name, status, customer_id, budget_limit) VALUES ($1, $2, $3, $4, $5)",
 		campaignID, "Test Campaign", "ACTIVE", customerID, 100_000_000)
 	require.NoError(t, err)
@@ -363,7 +363,7 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 		StreamMaxLen:       100000,
 	}
 
-	registry := newFaultRegistry(t, infra.Queries)
+	registry := newFaultRegistry(t, fi.Queries)
 	var sharder Sharder
 	if opts.useStaticSlot {
 		sharder = NewStaticSlotSharder(1)
@@ -371,11 +371,11 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 		sharder = NewJumpHashSharder(1)
 	}
 	if opts.redisDelay > 0 {
-		if c, ok := infra.Redis.(*redis.Client); ok {
+		if c, ok := fi.Redis.(*redis.Client); ok {
 			c.AddHook(&redisLatencyHook{delay: opts.redisDelay})
 		}
 	}
-	registry.SetBudgetWarmer(NewBudgetCacheWarmer([]redis.UniversalClient{infra.Redis}, sharder))
+	registry.SetBudgetWarmer(NewBudgetCacheWarmer([]redis.UniversalClient{fi.Redis}, sharder))
 	campaignID := seedFaultCampaign(t, infra, registry)
 	if opts.productionFilters {
 		if camp, ok := registry.GetCampaign(campaignID); ok {
@@ -383,8 +383,8 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 		}
 	}
 
-	store := NewPostgresStore(infra.Queries, 1*time.Second)
-	campaignRepo := NewCampaignRepo(infra.Queries)
+	store := NewPostgresStore(fi.Queries, 1*time.Second)
+	campaignRepo := NewCampaignRepo(fi.Queries)
 	rateLimit := opts.rateLimitOrDefault()
 
 	var (
@@ -396,7 +396,7 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 		filterEngine, unifiedFilter, settingsWatcher = buildFaultProductionFilterEngine(
 			time.Duration(cfg.FilterTimeoutMs)*time.Millisecond,
 			registry,
-			[]redis.UniversalClient{infra.Redis},
+			[]redis.UniversalClient{fi.Redis},
 			sharder,
 			campaignRepo,
 			rateLimit,
@@ -406,7 +406,7 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 		require.NoError(t, unifiedFilter.PreloadScripts(ctx))
 	} else {
 		unifiedFilter = NewUnifiedFilter(
-			[]redis.UniversalClient{infra.Redis},
+			[]redis.UniversalClient{fi.Redis},
 			sharder,
 			registry,
 			campaignRepo,
@@ -421,20 +421,20 @@ func startAdsIngestStackOpts(t *testing.T, infra *adsFaultInfra, stream string, 
 		)
 		filterEngine = NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, unifiedFilter)
 	}
-	consumer := NewStreamConsumer(store, infra.Redis, stream, stream+"-group", stream+"-c1",
+	consumer := NewStreamConsumer(store, fi.Redis, stream, stream+"-group", stream+"-c1",
 		cfg.EventBatchSize, cfg.MaxWorkers,
 		100*time.Millisecond, 1*time.Second,
 		100*time.Millisecond, 5*time.Second,
 		3, 5*time.Minute, 1*time.Second)
 	consumer.Start(ctx)
 
-	handler := NewAdsPacketHandler(cfg, registry, filterEngine, infra.Pool, []redis.UniversalClient{infra.Redis}, sharder, cfg.FraudStreamName, nil)
+	handler := NewAdsPacketHandler(cfg, registry, filterEngine, fi.Pool, []redis.UniversalClient{fi.Redis}, sharder, cfg.FraudStreamName, nil)
 
 	writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
 	if writeTimeout <= 0 {
 		writeTimeout = 2 * time.Second
 	}
-	producers := []*StreamProducer{NewStreamProducer(infra.Redis, stream, cfg.StreamMaxLen, writeTimeout)}
+	producers := []*StreamProducer{NewStreamProducer(fi.Redis, stream, cfg.StreamMaxLen, writeTimeout)}
 	handler.SetStreamProducers(producers)
 
 	stack := &adsIngestStack{
@@ -490,8 +490,8 @@ func (s *adsIngestStack) restartConsumer(t *testing.T, infra *adsFaultInfra) {
 	s.Consumer.Close()
 	_ = s.Consumer.Wait(context.Background())
 
-	store := NewPostgresStore(infra.Queries, 1*time.Second)
-	s.Consumer = NewStreamConsumer(store, infra.Redis, s.Stream, s.Stream+"-group", s.Stream+"-c1",
+	store := NewPostgresStore(fi.Queries, 1*time.Second)
+	s.Consumer = NewStreamConsumer(store, fi.Redis, s.Stream, s.Stream+"-group", s.Stream+"-c1",
 		s.cfg.EventBatchSize, s.cfg.MaxWorkers,
 		100*time.Millisecond, 1*time.Second,
 		100*time.Millisecond, 5*time.Second,

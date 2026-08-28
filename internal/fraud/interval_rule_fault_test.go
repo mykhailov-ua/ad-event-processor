@@ -19,11 +19,11 @@ type poolBlacklistBlocker struct {
 	pool *pgxpool.Pool
 }
 
-func (blocker *poolBlacklistBlocker) BlockIP(ctx context.Context, ip string) error {
+func (bb *poolBlacklistBlocker) BlockIP(ctx context.Context, ip string) error {
 	if edge.IsProtected(ip) {
 		return fmt.Errorf("IP %s is protected by allowlist", ip)
 	}
-	_, err := blocker.pool.Exec(ctx, `
+	_, err := bb.pool.Exec(ctx, `
 		INSERT INTO ip_blacklist (ip, reason)
 		VALUES ($1, 'fraud')
 		ON CONFLICT (ip) DO NOTHING
@@ -31,11 +31,11 @@ func (blocker *poolBlacklistBlocker) BlockIP(ctx context.Context, ip string) err
 	return err
 }
 
-func (blocker *poolBlacklistBlocker) EnqueueFraudThreat(context.Context, string, string, string, float64, int32, int64) error {
+func (bb *poolBlacklistBlocker) EnqueueFraudThreat(context.Context, string, string, string, float64, int32, int64) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (blocker *poolBlacklistBlocker) EnqueueFraudThreatBatch(context.Context, []FraudThreatEnqueueItem) (int, error) {
+func (bb *poolBlacklistBlocker) EnqueueFraudThreatBatch(context.Context, []FraudThreatEnqueueItem) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }
 
@@ -84,7 +84,7 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 
 	blocker := &poolBlacklistBlocker{pool: pool}
 
-	err = blocker.BlockIP(ctx, protectedIP)
+	err = bb.BlockIP(ctx, protectedIP)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "protected by allowlist")
 

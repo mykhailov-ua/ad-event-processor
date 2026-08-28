@@ -3,17 +3,13 @@ package controlplane
 import (
 	"encoding/json"
 	"net/http"
+
+	"ad-event-processor/internal/settingsadmin"
 )
 
 type MutationPreview = MutationPreviewDTO
 
-type BlockIPWouldChange struct {
-	IP          string `json:"ip"`
-	Reason      string `json:"reason"`
-	OutboxEvent string `json:"outbox_event"`
-	Action      string `json:"action"`
-	ExpiresAt   string `json:"expires_at,omitempty"`
-}
+type BlockIPWouldChange = settingsadmin.BlockIPPreviewChange
 
 type PauseCampaignWouldChange struct {
 	CampaignID  string `json:"campaign_id"`

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -108,4 +109,95 @@ func TestCloneCampaign_holdout(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, result.ID, dup.ID)
+}
+
+func TestCloneCampaign_excludeFraud_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: campaign clone resets fraud settings when include_fraud is false")
+	}
+	pool, cleanupDB := database.SetupTestDB(t)
+	defer cleanupDB()
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
+	defer svc.Close()
+
+	ctx := context.Background()
+	custID := uuid.New()
+	require.NoError(t, svc.CreateCustomer(ctx, custID, "Clone Fraud Customer", 500_000_000, "USD"))
+
+	srcID, err := svc.CreateCampaign(ctx, testCampaignSpec(custID, "Fraud Source", 50_000_000, "clone-fraud-src"))
+	require.NoError(t, err)
+	_, err = pool.Exec(ctx, `
+		UPDATE campaigns
+		SET fraud_threshold_pass = 5,
+		    fraud_threshold_suspect = 10,
+		    fraud_threshold_ivt = 15,
+		    fraud_threshold_block = 20,
+		    silent_reject_enabled = true
+		WHERE id = $1`, srcID)
+	require.NoError(t, err)
+
+	result, err := svc.CloneCampaign(ctx, CloneCampaignSpec{
+		SourceID:       srcID,
+		IdempotencyKey: "clone-fraud-exclude",
+		Options: CloneCampaignOptions{
+			IncludeFlow:      true,
+			IncludePostbacks: true,
+			IncludeFraud:     false,
+		},
+	})
+	require.NoError(t, err)
+
+	cloneID, err := uuid.Parse(result.ID)
+	require.NoError(t, err)
+	cloneRow, err := svc.GetCampaignRow(ctx, cloneID)
+	require.NoError(t, err)
+	assert.Equal(t, int64(0), cloneRow.CurrentSpend)
+	assert.Equal(t, int16(domain.DefaultFraudThresholdPass), cloneRow.FraudThresholdPass)
+	assert.Equal(t, int16(domain.DefaultFraudThresholdSuspect), cloneRow.FraudThresholdSuspect)
+	assert.Equal(t, int16(domain.DefaultFraudThresholdIVT), cloneRow.FraudThresholdIvt)
+	assert.Equal(t, int16(domain.DefaultFraudThresholdBlock), cloneRow.FraudThresholdBlock)
+	assert.False(t, cloneRow.SilentRejectEnabled)
+}
+
+func TestCloneCampaign_placementBlocks_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: campaign clone copies placement blocks when requested")
+	}
+	pool, cleanupDB := database.SetupTestDB(t)
+	defer cleanupDB()
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
+	defer svc.Close()
+
+	ctx := context.Background()
+	custID := uuid.New()
+	require.NoError(t, svc.CreateCustomer(ctx, custID, "Clone Placement Customer", 500_000_000, "USD"))
+
+	srcID, err := svc.CreateCampaign(ctx, testCampaignSpec(custID, "Placement Source", 50_000_000, "clone-placement-src"))
+	require.NoError(t, err)
+	srcKey := domain.PlacementBlacklistKey(srcID)
+	require.NoError(t, redisClient.HSet(ctx, srcKey, "zone-high-ivt", "1").Err())
+
+	result, err := svc.CloneCampaign(ctx, CloneCampaignSpec{
+		SourceID:       srcID,
+		IdempotencyKey: "clone-placement-blocks",
+		Options: CloneCampaignOptions{
+			IncludeFlow:            true,
+			IncludePostbacks:       true,
+			IncludePlacementBlocks: true,
+		},
+	})
+	require.NoError(t, err)
+
+	cloneID, err := uuid.Parse(result.ID)
+	require.NoError(t, err)
+	cloneKey := domain.PlacementBlacklistKey(cloneID)
+	val, err := redisClient.HGet(ctx, cloneKey, "zone-high-ivt").Result()
+	require.NoError(t, err)
+	assert.Equal(t, "1", val)
 }

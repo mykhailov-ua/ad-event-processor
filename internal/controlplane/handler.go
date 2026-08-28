@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/pkg/httpresponse"
 )
 
@@ -97,7 +98,7 @@ func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 			Role:       RoleAdmin,
 			AuthSource: "api_key",
 		}
-		ctx := context.WithValue(r.Context(), UserContextKey, user)
+		ctx := authz.WithAuthenticatedUser(context.WithValue(r.Context(), UserContextKey, user), user)
 		next(w, r.WithContext(ctx))
 	}
 }

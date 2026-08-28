@@ -13,6 +13,8 @@ type filterDeadlineKey struct{}
 
 const maxFraudSignals = 4
 
+const fraudAccumulatorMagic = 0x46524155445f01
+
 type FraudTier uint8
 
 const (
@@ -23,6 +25,7 @@ const (
 )
 
 type fraudAccumulator struct {
+	magic        uintptr
 	score        uint32
 	signals      [maxFraudSignals]FraudReasonID
 	count        uint8
@@ -36,6 +39,7 @@ var fraudAccPool = sync.Pool{
 }
 
 func (a *fraudAccumulator) reset() {
+	a.magic = fraudAccumulatorMagic
 	a.score = 0
 	a.count = 0
 	a.boostApplied = false
@@ -98,10 +102,10 @@ func (a *fraudAccumulator) shouldShortCircuitFraudBudget() bool {
 }
 
 func eventHasFraudL3(evt *domain.Event) bool {
-	if evt == nil || evt.Scratch == nil {
+	acc, ok := fraudAccFromEvent(evt)
+	if !ok {
 		return false
 	}
-	acc := (*fraudAccumulator)(evt.Scratch)
 	return acc.hasFlags(fraudSignalL3)
 }
 
@@ -121,7 +125,11 @@ func setFilterDeadlineOnEvent(evt *domain.Event, timeout time.Duration) {
 
 func attachFraudAccumulator(evt *domain.Event) *fraudAccumulator {
 	if evt != nil && evt.Scratch != nil {
-		return (*fraudAccumulator)(evt.Scratch)
+		if slot := (*openRTBScratchSlot)(evt.Scratch); slot.magic == openRTBScratchMagic {
+			releaseOpenRTB3Scratch(evt)
+		} else if acc, ok := fraudAccFromEvent(evt); ok {
+			return acc
+		}
 	}
 	acc := fraudAccPool.Get().(*fraudAccumulator)
 	acc.reset()
@@ -146,7 +154,14 @@ func fraudAccFromEvent(evt *domain.Event) (*fraudAccumulator, bool) {
 	if evt == nil || evt.Scratch == nil {
 		return nil, false
 	}
-	return (*fraudAccumulator)(evt.Scratch), true
+	if slot := (*openRTBScratchSlot)(evt.Scratch); slot.magic == openRTBScratchMagic {
+		return nil, false
+	}
+	acc := (*fraudAccumulator)(evt.Scratch)
+	if acc.magic != fraudAccumulatorMagic {
+		return nil, false
+	}
+	return acc, true
 }
 
 func addFraudSignal(evt *domain.Event, id FraudReasonID) {
@@ -197,11 +212,13 @@ func applyFraudAccumulatorForCampaign(evt *domain.Event, acc *fraudAccumulator, 
 		if evt != nil {
 			evt.FraudScore = 0
 			evt.FraudReason = ""
+			evt.LayerDesyncCount = 0
 		}
 		return FraudTierPass
 	}
 
 	evt.FraudScore = acc.score
+	evt.LayerDesyncCount = acc.layerDesyncCount()
 
 	totalLen := 0
 	for i := uint8(0); i < acc.count; i++ {

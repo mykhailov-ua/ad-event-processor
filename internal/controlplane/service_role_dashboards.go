@@ -121,7 +121,7 @@ func (s *Service) worstIVTSources(ctx context.Context, customerID uuid.UUID, per
 	if err != nil || len(sources) == 0 {
 		return nil
 	}
-	return sources
+	return sourceRowsFromReports(sources)
 }
 
 func worstSourcesFromCampaigns(campaigns []BuyerCampaignRowDTO) []SourceRowDTO {
@@ -251,11 +251,18 @@ func (s *Service) GetAccountantDashboard(ctx context.Context, customerID uuid.UU
 const fraudTierThresholdScopePlatformDefault = "platform_default"
 
 func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (FraudDashboardDTO, error) {
+	now := time.Now().UTC()
+	return s.GetFraudDashboardRange(ctx, customerID, now.Add(-7*24*time.Hour), now)
+}
+
+func (s *Service) GetFraudDashboardRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (FraudDashboardDTO, error) {
 	if customerID == uuid.Nil {
 		return FraudDashboardDTO{}, errValidation("customer_id is required")
 	}
+	if err := validateChartRange(from, to); err != nil {
+		return FraudDashboardDTO{}, err
+	}
 	now := time.Now().UTC()
-	from := now.Add(-7 * 24 * time.Hour)
 	var silentRejectCount int
 	err := s.GetPool().QueryRow(ctx, `
 		SELECT count(*)::int FROM campaigns
@@ -289,12 +296,20 @@ func (s *Service) GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (
 	if err != nil {
 		return FraudDashboardDTO{}, fmt.Errorf("fetch edge metrics: %w", err)
 	}
+	campaignIDs, _ := listCustomerCampaignIDs(ctx, s.GetPool(), customerID)
+	var series []DashboardSeriesPointDTO
+	if s.clickhouseQuery != nil {
+		clickhouseCtx, cancel := context.WithTimeout(ctx, reportClickHouseQueryTimeout)
+		series, _ = queryCustomerDashboardSeries(clickhouseCtx, s.GetPool(), s.clickhouseQuery, customerID, campaignIDs, from, to)
+		cancel()
+	}
 	return FraudDashboardDTO{
 		CustomerID: customerID.String(),
 		Period: PeriodDTO{
 			From: from.Format(time.RFC3339),
-			To:   now.Format(time.RFC3339),
+			To:   to.Format(time.RFC3339),
 		},
+		Series:                series,
 		SilentRejectCampaigns: silentRejectCount,
 		LabelsPending:         labelsPending,
 		EdgeBlockedFraud:      edge.Blocked["fraud_tier"],
@@ -339,5 +354,5 @@ func (s *Service) fraudGeoHints(ctx context.Context, customerID uuid.UUID, from,
 	if err != nil {
 		return nil
 	}
-	return hints
+	return fraudGeoHintsFromReports(hints)
 }

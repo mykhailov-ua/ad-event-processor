@@ -1,0 +1,84 @@
+services:
+  db:
+    environment:
+      - PGHOST=/run/ad-event-processor/postgresql
+      - PGPORT=5430
+    command:
+      [
+        'postgres',
+        '-p',
+        '5430',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql,/var/run/postgresql',
+        '-c',
+        'max_connections=300',
+        '-c',
+        'shared_buffers=256MB',
+        '-c',
+        'work_mem=16MB',
+        '-c',
+        'maintenance_work_mem=64MB',
+        '-c',
+        'effective_cache_size=512MB',
+      ]
+  control:
+    depends_on:
+      db:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    environment:
+      - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+      - AD_EVENT_PROCESSOR_LICENSE_PUBLIC_KEY=
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+      - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
+      - CH_ENABLED=1
+      - CONTROL_ENABLE_PAYMENT=0
+      - CONTROL_ENABLE_BILLING=0
+      - CONTROL_ENABLE_NOTIFIER=0
+      - CONTROL_ENABLE_MARGIN_GUARD=0
+      - CONTROL_ENABLE_COST_SYNC=0
+      - CONTROL_ENABLE_PLATFORM_CAMPAIGN_SYNC=0
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock
+      - REDIS_SHARD_COUNT=1
+      - FRAUD_SCORING_ENABLED=false
+  processor:
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    environment:
+      - CH_ENABLED=1
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock
+      - REDIS_SHARD_COUNT=1
+      - FRAUD_SCORING_ENABLED=false
+      - FRAUD_MICROBATCH_ENABLED=false
+  tracker-0:
+    depends_on: !reset
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+    environment:
+      - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+      - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock
+      - REDIS_SHARD_COUNT=1
+      - TRANSPORT_USE_UDS=0
+      - TRACKER_UNIX_SOCKET=
+      - SERVER_PORT=8181
+      - GOMAXPROCS=4
+      - GNET_NUM_EVENT_LOOPS=4
+      - MAX_WORKERS=4
+      - FILTER_TIMEOUT_MS=5000
+    healthcheck:
+      test: ['CMD', '/tracker', '--health-probe', 'http://127.0.0.1:8181/health']
+  clickhouse:
+    deploy:
+      resources:
+        limits:
+          memory: 1536M

@@ -64,12 +64,26 @@ func (h *CustomersHTTPHandlers) Register(mux *http.ServeMux) {
 
 func (h *CustomersHTTPHandlers) listCustomers(w http.ResponseWriter, r *http.Request) {
 	limit, offset := coldpath.ParseAPIPagination(r)
+	sortField, order, sortErr := parseListSort(r, map[string]struct{}{
+		"name":       {},
+		"created_at": {},
+	}, "created_at")
+	if sortErr != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", sortErr.Error())
+		return
+	}
 	items, total, err := h.Customers.ListCustomers(r.Context(), limit, offset)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, CustomerListResponse{Items: items, Total: total})
+	httpresponse.JSON(w, http.StatusOK, ListEnvelope[CustomerDTO]{
+		Items:  items,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+		Sort:   &ListSortDTO{Field: sortField, Order: order},
+	})
 }
 
 func (h *CustomersHTTPHandlers) getCustomer(w http.ResponseWriter, r *http.Request) {

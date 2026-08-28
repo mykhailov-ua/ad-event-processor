@@ -17,7 +17,8 @@
     "KEYS",
     "ARGV",
     "bit",
-    "arg"
+    "arg",
+    "wrk"
   ],
   "diagnostics.disable": [
     "need-check-nil",

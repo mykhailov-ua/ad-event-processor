@@ -2,6 +2,23 @@ package ingestion
 
 import "github.com/google/uuid"
 
+func (s SubIDSlots) hasAny() bool {
+	for i := range s {
+		if s[i] != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func trackAttributionExtrasPresent(fields trackIngestFields) bool {
+	if fields.fbclid != "" || fields.gclid != "" || fields.ttclid != "" || fields.msclkid != "" ||
+		fields.tblci != "" || fields.obClickID != "" || fields.eventID != "" || fields.txID != "" {
+		return true
+	}
+	return fields.subs.hasAny()
+}
+
 func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gclid, ttclid, msclkid, tblci, obClickID, eventID, txID string) []byte {
 	dst = dst[:0]
 	switch {
@@ -86,7 +103,7 @@ func appendAttributionPayload(dst, payload []byte, subs SubIDSlots, fbclid, gcli
 		dst = appendJSONString(dst, UnsafeBytes(txID))
 	}
 	if len(dst) == 1 {
-		return nil
+		return dst[:0]
 	}
 	dst = append(dst, '}')
 	return dst
@@ -156,7 +173,7 @@ func appendFlowAttribution(dst []byte, landerID, offerID uuid.UUID) []byte {
 		dst = append(dst, '"')
 	}
 	if len(dst) == 1 {
-		return nil
+		return dst[:0]
 	}
 	dst = append(dst, '}')
 	return dst

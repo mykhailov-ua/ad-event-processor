@@ -30,26 +30,31 @@ type Executor interface {
 }
 
 type Worker struct {
-	pool     *pgxpool.Pool
-	ch       *database.ClickHouseQuery
-	exec     Executor
-	interval time.Duration
-	client   *http.Client
+	pool                    *pgxpool.Pool
+	ch                      *database.ClickHouseQuery
+	exec                    Executor
+	interval                time.Duration
+	maxEvalsPerCustomerTick int
+	client                  *http.Client
 }
 
-func NewWorker(pool *pgxpool.Pool, ch *database.ClickHouseQuery, exec Executor, interval time.Duration) *Worker {
+func NewWorker(pool *pgxpool.Pool, ch *database.ClickHouseQuery, exec Executor, interval time.Duration, maxEvalsPerCustomerTick int) *Worker {
 	if interval < 5*time.Minute {
-		interval = 15 * time.Minute
+		interval = 5 * time.Minute
 	}
 	if interval > 60*time.Minute {
 		interval = 60 * time.Minute
 	}
+	if maxEvalsPerCustomerTick <= 0 {
+		maxEvalsPerCustomerTick = 50
+	}
 	return &Worker{
-		pool:     pool,
-		ch:       ch,
-		exec:     exec,
-		interval: interval,
-		client:   &http.Client{Timeout: webhookTimeout},
+		pool:                    pool,
+		ch:                      ch,
+		exec:                    exec,
+		interval:                interval,
+		maxEvalsPerCustomerTick: maxEvalsPerCustomerTick,
+		client:                  &http.Client{Timeout: webhookTimeout},
 	}
 }
 
@@ -71,6 +76,7 @@ func (w *Worker) tick(ctx context.Context) {
 	if w == nil || w.pool == nil || w.ch == nil {
 		return
 	}
+	recordWorkerTick(time.Now().UTC())
 	rules, err := db.New(w.pool).ListEnabledAutomationRules(ctx)
 	if err != nil {
 		slog.Error("automation: list rules", "error", err)
@@ -85,12 +91,24 @@ func (w *Worker) tick(ctx context.Context) {
 		slog.Error("automation: list campaigns", "error", err)
 		return
 	}
+	evalsByCustomer := make(map[uuid.UUID]int)
 	for _, row := range rules {
 		rule, err := ruleFromRow(row)
 		if err != nil {
 			slog.Warn("automation: skip rule", "rule_id", row.ID, "error", err)
 			continue
 		}
+		if !RuleDueForEval(now, rule.LastEvaluatedAt, rule.HasLastEvaluated, rule.EvalIntervalMinutes) {
+			continue
+		}
+		if w.maxEvalsPerCustomerTick > 0 && evalsByCustomer[rule.CustomerID] >= w.maxEvalsPerCustomerTick {
+			continue
+		}
+		evalsByCustomer[rule.CustomerID]++
+		_ = db.New(w.pool).UpdateAutomationRuleLastEvaluated(ctx, db.UpdateAutomationRuleLastEvaluatedParams{
+			ID:              pgtype.UUID{Bytes: rule.ID, Valid: true},
+			LastEvaluatedAt: pgtype.Timestamptz{Time: now, Valid: true},
+		})
 		if rule.HasLastFired && now.Sub(rule.LastFiredAt) < time.Duration(rule.CooldownMinutes)*time.Minute {
 			continue
 		}
@@ -275,6 +293,11 @@ func ruleFromRow(row db.AutomationRule) (Rule, error) {
 		CooldownMinutes: int(row.CooldownMinutes),
 		Enabled:         row.Enabled,
 	}
+	if row.EvalIntervalMinutes <= 0 {
+		rule.EvalIntervalMinutes = 15
+	} else {
+		rule.EvalIntervalMinutes = int(row.EvalIntervalMinutes)
+	}
 	if row.CampaignID.Valid {
 		rule.CampaignID = uuid.UUID(row.CampaignID.Bytes)
 		rule.HasCampaign = true
@@ -282,6 +305,10 @@ func ruleFromRow(row db.AutomationRule) (Rule, error) {
 	if row.LastFiredAt.Valid {
 		rule.LastFiredAt = row.LastFiredAt.Time
 		rule.HasLastFired = true
+	}
+	if row.LastEvaluatedAt.Valid {
+		rule.LastEvaluatedAt = row.LastEvaluatedAt.Time
+		rule.HasLastEvaluated = true
 	}
 	return rule, nil
 }

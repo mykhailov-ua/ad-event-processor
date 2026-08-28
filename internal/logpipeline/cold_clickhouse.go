@@ -23,12 +23,12 @@ func NewClickHouseRollupInserter(conn driver.Conn) *ClickHouseRollupInserter {
 	return &ClickHouseRollupInserter{conn: conn}
 }
 
-func (inserter *ClickHouseRollupInserter) InsertRollups(ctx context.Context, rows []RollupRow) error {
+func (mr *ClickHouseRollupInserter) InsertRollups(ctx context.Context, rows []RollupRow) error {
 	if len(rows) == 0 {
 		return nil
 	}
 
-	batch, err := inserter.conn.PrepareBatch(ctx, `
+	batch, err := mr.conn.PrepareBatch(ctx, `
 		INSERT INTO ad_event_processor.audit_log_rollups (
 			rollup_hour, campaign_id, event_type,
 			event_count, fraud_event_count, billable_event_count,
@@ -62,11 +62,11 @@ func (inserter *ClickHouseRollupInserter) InsertRollups(ctx context.Context, row
 	return nil
 }
 
-func (inserter *ClickHouseRollupInserter) InsertFilterRejectSlices(ctx context.Context, rows []FilterRejectSliceRow) error {
+func (mr *ClickHouseRollupInserter) InsertFilterRejectSlices(ctx context.Context, rows []FilterRejectSliceRow) error {
 	if len(rows) == 0 {
 		return nil
 	}
-	batch, err := inserter.conn.PrepareBatch(ctx, `
+	batch, err := mr.conn.PrepareBatch(ctx, `
 		INSERT INTO ad_event_processor.filter_reject_slices (
 			rollup_hour, reject_kind, placement_id, country, reject_count
 		)
@@ -91,12 +91,12 @@ type MemoryRollupInserter struct {
 	SliceRows []FilterRejectSliceRow
 }
 
-func (inserter *MemoryRollupInserter) InsertRollups(_ context.Context, rows []RollupRow) error {
-	inserter.Rows = append(inserter.Rows, rows...)
+func (mr *MemoryRollupInserter) InsertRollups(_ context.Context, rows []RollupRow) error {
+	mr.Rows = append(mr.Rows, rows...)
 	return nil
 }
 
-func (inserter *MemoryRollupInserter) InsertFilterRejectSlices(_ context.Context, rows []FilterRejectSliceRow) error {
-	inserter.SliceRows = append(inserter.SliceRows, rows...)
+func (mr *MemoryRollupInserter) InsertFilterRejectSlices(_ context.Context, rows []FilterRejectSliceRow) error {
+	mr.SliceRows = append(mr.SliceRows, rows...)
 	return nil
 }

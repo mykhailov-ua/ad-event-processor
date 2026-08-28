@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 
@@ -17,27 +18,61 @@ import (
 
 const defaultCloneNameSuffix = " (copy)"
 
-type CloneCampaignSpec struct {
-	SourceID       uuid.UUID
-	NamePrefix     string
-	NameSuffix     string
-	IdempotencyKey string
-}
-
-type CloneCampaignResult struct {
-	ID       string `json:"id"`
-	SourceID string `json:"source_id"`
-	Name     string `json:"name"`
-}
-
 func cloneCampaignName(sourceName, prefix, suffix string) string {
-	if prefix != "" {
-		return prefix + sourceName
+	return campaign.CloneCampaignName(sourceName, prefix, suffix)
+}
+
+func normalizedCloneOptions(opts CloneCampaignOptions) CloneCampaignOptions {
+	return campaign.NormalizedCloneOptions(opts)
+}
+
+func resetClonedCampaignFraud(ctx context.Context, tx pgx.Tx, campaignID uuid.UUID) error {
+	_, err := tx.Exec(ctx, `
+UPDATE campaigns SET
+	fraud_threshold_pass = $2,
+	fraud_threshold_suspect = $3,
+	fraud_threshold_ivt = $4,
+	fraud_threshold_block = $5,
+	silent_reject_enabled = false,
+	behavior_flags = '{}'::jsonb,
+	updated_at = CURRENT_TIMESTAMP
+WHERE id = $1`,
+		campaignID,
+		domain.DefaultFraudThresholdPass,
+		domain.DefaultFraudThresholdSuspect,
+		domain.DefaultFraudThresholdIVT,
+		domain.DefaultFraudThresholdBlock,
+	)
+	return err
+}
+
+func (s *Service) cloneCampaignPlacementBlocks(ctx context.Context, sourceID, destID uuid.UUID) error {
+	if s == nil || len(s.redisShards) == 0 {
+		return nil
 	}
-	if suffix != "" {
-		return sourceName + suffix
+	redisClient := s.redisClientForCampaign(sourceID)
+	if redisClient == nil {
+		return nil
 	}
-	return sourceName + defaultCloneNameSuffix
+	key := domain.PlacementBlacklistKey(sourceID)
+	placements, err := redisClient.HKeys(ctx, key).Result()
+	if err != nil {
+		return err
+	}
+	if len(placements) == 0 {
+		return nil
+	}
+	destKey := domain.PlacementBlacklistKey(destID)
+	for _, placementID := range placements {
+		placementID = strings.TrimSpace(placementID)
+		if placementID == "" {
+			continue
+		}
+		if err := syncGlobalHashFieldToAllShards(ctx, s.redisShards, destKey, placementID, "1", false); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func cloneBrandFcapKey(campaignID uuid.UUID, brandID pgtype.UUID) string {
@@ -62,6 +97,7 @@ func (s *Service) CloneCampaign(ctx context.Context, spec CloneCampaignSpec) (Cl
 	)
 	err := pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
 		q := db.New(tx)
+		opts := normalizedCloneOptions(spec.Options)
 		existing, err := q.GetLedgerByHashForUpdate(ctx, pgtype.Text{String: spec.IdempotencyKey, Valid: true})
 		if err == nil {
 			if existing.CampaignID.Valid {
@@ -105,7 +141,7 @@ func (s *Service) CloneCampaign(ctx context.Context, spec CloneCampaignSpec) (Cl
 		clonedName = cloneCampaignName(src.Name, spec.NamePrefix, spec.NameSuffix)
 
 		var clonedFlowID pgtype.UUID
-		if src.FlowID.Valid {
+		if opts.IncludeFlow && src.FlowID.Valid {
 			flowID, err := uuid.NewV7()
 			if err != nil {
 				return fmt.Errorf("generate flow id: %w", err)
@@ -144,11 +180,19 @@ func (s *Service) CloneCampaign(ctx context.Context, spec CloneCampaignSpec) (Cl
 			return fmt.Errorf("insert cloned campaign: %w", err)
 		}
 
-		if _, err := q.ClonePostbackConfig(ctx, db.ClonePostbackConfigParams{
-			CampaignID:   domain.ToUUID(newCampaignID),
-			CampaignID_2: src.ID,
-		}); err != nil {
-			return fmt.Errorf("clone postback config: %w", err)
+		if !opts.IncludeFraud {
+			if err := resetClonedCampaignFraud(ctx, tx, newCampaignID); err != nil {
+				return fmt.Errorf("reset cloned campaign fraud settings: %w", err)
+			}
+		}
+
+		if opts.IncludePostbacks {
+			if _, err := q.ClonePostbackConfig(ctx, db.ClonePostbackConfigParams{
+				CampaignID:   domain.ToUUID(newCampaignID),
+				CampaignID_2: src.ID,
+			}); err != nil {
+				return fmt.Errorf("clone postback config: %w", err)
+			}
 		}
 
 		_, err = q.CreateLedgerEntry(ctx, db.CreateLedgerEntryParams{
@@ -184,7 +228,10 @@ func (s *Service) CloneCampaign(ctx context.Context, spec CloneCampaignSpec) (Cl
 
 	_ = s.publishCampaignUpdate(ctx, newCampaignID.String())
 	if flowCloned {
-		_ = s.publishFlowReload(ctx)
+		_ = s.PublishFlowReload(ctx)
+	}
+	if normalizedCloneOptions(spec.Options).IncludePlacementBlocks {
+		_ = s.cloneCampaignPlacementBlocks(ctx, spec.SourceID, newCampaignID)
 	}
 
 	return CloneCampaignResult{

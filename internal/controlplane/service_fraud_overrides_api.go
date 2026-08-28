@@ -8,22 +8,13 @@ import (
 	"strings"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
 )
 
-type FraudOverrideRequest struct {
-	CampaignID *string `json:"campaign_id,omitempty"`
-	IP         *string `json:"ip,omitempty"`
-	IPHash     *string `json:"ip_hash,omitempty"`
-}
-
-type FraudOverridesService interface {
-	ApplyFraudScoringOverrideForCustomer(ctx context.Context, customerID uuid.UUID, req FraudOverrideRequest) error
-}
-
-func (s *Service) ApplyFraudScoringOverrideForCustomer(ctx context.Context, customerID uuid.UUID, req FraudOverrideRequest) error {
+func (s *Service) ApplyFraudScoringOverrideForCustomer(ctx context.Context, customerID uuid.UUID, req fraudadmin.FraudOverrideRequest) error {
 	if customerID == uuid.Nil {
 		return errValidation("customer_id is required")
 	}

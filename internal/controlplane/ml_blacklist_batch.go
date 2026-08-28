@@ -9,6 +9,7 @@ import (
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/edge"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/settingsadmin"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -137,7 +138,13 @@ func (w *OutboxWorker) applyMLBlacklistRedisFastLane(ctx context.Context, rows [
 }
 
 func (w *OutboxWorker) parseMLBlacklistRows(events []db.OutboxEvent) ([]mlBlacklistPersistRow, time.Time, error) {
-	cfg := blacklistTTLFromConfig(w.svc.cfg)
+	cfg := settingsadmin.BlacklistTTLFromConfig(0, 0)
+	if w.svc.cfg != nil {
+		cfg = settingsadmin.BlacklistTTLFromConfig(
+			w.svc.cfg.Management.BlacklistAutoTTLHours,
+			w.svc.cfg.Management.BlacklistFraudTTLHours,
+		)
+	}
 	rows := make([]mlBlacklistPersistRow, 0, len(events))
 	var maxQueued time.Time
 
@@ -154,9 +161,9 @@ func (w *OutboxWorker) parseMLBlacklistRows(events []db.OutboxEvent) ([]mlBlackl
 			continue
 		}
 
-		reason := normalizeBlacklistReason("fraud")
+		reason := settingsadmin.NormalizeBlacklistReason("fraud")
 		ttlSec := p.TTLSeconds
-		expiresAt := resolveBlacklistExpiry(reason, &ttlSec, cfg)
+		expiresAt := settingsadmin.ResolveBlacklistExpiry(reason, &ttlSec, cfg)
 
 		var ttlVal pgtype.Int4
 		if expiresAt.Valid {

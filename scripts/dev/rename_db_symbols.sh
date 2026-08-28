@@ -6,7 +6,7 @@ mapfile -t files < <(find "$ROOT" -name '*.go' -not -path '*/vendor/*')
 apply() {
   local from="$1" to="$2"
   for f in "${files[@]}"; do
-    perl -pi -e "s/\\b${from}\\b/${to}/g" "$f"
+    perl -pi -e 's/\b'"$from"'\b/'"$to"'/g' "$f"
   done
 }
 

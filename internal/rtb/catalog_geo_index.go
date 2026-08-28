@@ -4,19 +4,19 @@ import (
 	"sort"
 )
 
-func (reg *CampaignAuctionRegistry) geoRange(geoHash uint32) (start int, end int, ok bool) {
-	if reg == nil || reg.GeoBucketCount == 0 {
+func (r *CampaignAuctionRegistry) geoRange(geoHash uint32) (start int, end int, ok bool) {
+	if r == nil || r.GeoBucketCount == 0 {
 		return 0, 0, false
 	}
-	hashes := reg.GeoBucketHash
-	idx := sort.Search(reg.GeoBucketCount, func(i int) bool {
+	hashes := r.GeoBucketHash
+	idx := sort.Search(r.GeoBucketCount, func(i int) bool {
 		return hashes[i] >= geoHash
 	})
-	if idx >= reg.GeoBucketCount || hashes[idx] != geoHash {
+	if idx >= r.GeoBucketCount || hashes[idx] != geoHash {
 		return 0, 0, false
 	}
-	start = int(reg.GeoBucketStart[idx])
-	end = int(reg.GeoBucketStart[idx+1])
+	start = int(r.GeoBucketStart[idx])
+	end = int(r.GeoBucketStart[idx+1])
 	return start, end, true
 }
 

@@ -14,7 +14,7 @@ import (
 )
 
 type ReconciliationWorker struct {
-	postgresConn         PostgresConn
+	postgresConn   PostgresConn
 	clickhouseConn ClickHouseConn
 	repo           domain.CampaignRepository
 	driftLimit     float64
@@ -31,7 +31,7 @@ func NewReconciliationWorker(
 	interval time.Duration,
 ) *ReconciliationWorker {
 	return &ReconciliationWorker{
-		postgresConn:         postgresConn,
+		postgresConn:   postgresConn,
 		clickhouseConn: clickhouseConn,
 		repo:           repo,
 		driftLimit:     driftLimit,

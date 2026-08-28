@@ -23,6 +23,7 @@ func applyEnhancedDefensePreset(ctx context.Context, tx pgx.Tx, campaignID uuid.
 		 tls_fingerprint_block_enabled = true,
 		 cidr_block_enabled = true,
 		 link_signing_enabled = true,
+		 accept_lang_geo_enabled = true,
 		 updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1`, domain.ToUUID(campaignID))
 	if err != nil {

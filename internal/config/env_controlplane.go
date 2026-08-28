@@ -82,6 +82,15 @@ func loadManagementModules(cfg *Config) {
 	cfg.IVT.MinIPsPerUA = uint64(getEnvInt64("IVT_DETECTOR_MIN_IPS_PER_UA", 8))
 	cfg.IVT.IntervalMinIntervals = uint64(getEnvInt64("IVT_DETECTOR_INTERVAL_MIN_INTERVALS", 30))
 	cfg.IVT.IntervalMaxVariance = getEnvFloat("IVT_DETECTOR_INTERVAL_MAX_VARIANCE", 0.005)
+	cfg.IVT.RTTSplitTunnelEnabled = getEnvBool("IVT_RTT_SPLIT_TUNNEL_ENABLED", true)
+	cfg.IVT.RTTSplitMinDeltaMS = uint16(getEnvInt("IVT_RTT_SPLIT_MIN_DELTA_MS", 150))
+	cfg.IVT.RTTSplitMaxVariance = getEnvFloat("IVT_RTT_SPLIT_MAX_VARIANCE", 2500)
+	cfg.IVT.RTTSplitMinSamples = uint64(getEnvInt64("IVT_RTT_SPLIT_MIN_SAMPLES", 5))
+	cfg.IVT.MobileBiometricsEnabled = getEnvBool("IVT_MOBILE_BIOMETRICS_ENABLED", true)
+	cfg.IVT.MobileBiometricsMinSamples = uint64(getEnvInt64("IVT_MOBILE_BIOMETRICS_MIN_SAMPLES", 5))
+	cfg.IVT.MobileBiometricsMinFlatHits = uint64(getEnvInt64("IVT_MOBILE_BIOMETRICS_MIN_FLAT_HITS", 4))
+	cfg.IVT.MobileBiometricsMinMotionless = uint64(getEnvInt64("IVT_MOBILE_BIOMETRICS_MIN_MOTIONLESS", 5))
+	cfg.IVT.MobileBiometricsMinGyroSamples = uint64(getEnvInt64("IVT_MOBILE_BIOMETRICS_MIN_GYRO_SAMPLES", 3))
 
 	cfg.FraudScoring.Enabled = getEnvBool("FRAUD_SCORING_ENABLED", false)
 	cfg.FraudScoring.ScanIntervalMs = getEnvInt("FRAUD_SCORING_SCAN_INTERVAL_MS", 60000)
@@ -185,6 +194,13 @@ func loadManagementModules(cfg *Config) {
 	}
 	if cfg.Management.AutomationRulesIntervalMin > 60 {
 		cfg.Management.AutomationRulesIntervalMin = 60
+	}
+	cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick = getEnvInt("AUTOMATION_RULES_MAX_EVALS_PER_CUSTOMER_PER_TICK", 50)
+	if cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick < 1 {
+		cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick = 1
+	}
+	if cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick > 500 {
+		cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick = 500
 	}
 	cfg.AdminDomain = strings.TrimSpace(os.Getenv("ADMIN_DOMAIN"))
 	cfg.Management.DomainHealthEnabled = getEnvBool("DOMAIN_HEALTH_ENABLED", true)

@@ -26,10 +26,10 @@ type campaignFraudConfig struct {
 
 type fraudScoringRule struct {
 	clickhouseQuery *database.ClickHouseQuery
-	writeConn driver.Conn
-	pool      *pgxpool.Pool
-	scorer    Scorer
-	batchSize int
+	writeConn       driver.Conn
+	pool            *pgxpool.Pool
+	scorer          Scorer
+	batchSize       int
 
 	campaignMu      sync.Mutex
 	campaignConfigs map[string]campaignFraudConfig
@@ -39,10 +39,10 @@ type fraudScoringRule struct {
 func NewFraudScoringRule(clickhouseQuery *database.ClickHouseQuery, writeConn driver.Conn, pool *pgxpool.Pool, scorer Scorer, batchSize int) Rule {
 	return &fraudScoringRule{
 		clickhouseQuery: clickhouseQuery,
-		writeConn: writeConn,
-		pool:      pool,
-		scorer:    scorer,
-		batchSize: batchSize,
+		writeConn:       writeConn,
+		pool:            pool,
+		scorer:          scorer,
+		batchSize:       batchSize,
 	}
 }
 

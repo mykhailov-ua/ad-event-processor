@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -24,6 +25,10 @@ func (s *stubBuyerPortfolio) GetBuyerPortfolio(_ context.Context, customerID uui
 		return BuyerPortfolioDTO{}, s.err
 	}
 	return s.portfolio, nil
+}
+
+func (s *stubBuyerPortfolio) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, _, _ time.Time) (BuyerPortfolioDTO, error) {
+	return s.GetBuyerPortfolio(ctx, customerID)
 }
 
 func TestGetBuyerDashboard_OK(t *testing.T) {
@@ -62,6 +67,35 @@ func TestGetBuyerDashboard_OK(t *testing.T) {
 	assert.Equal(t, 2, resp.Active)
 	assert.Equal(t, int64(1200), resp.Impressions7d)
 	require.Len(t, resp.Campaigns, 1)
+}
+
+func TestGetBuyerDashboard_includesFraudOverview(t *testing.T) {
+	t.Parallel()
+	custID := uuid.New()
+	stub := &stubBuyerPortfolio{
+		portfolio: BuyerPortfolioDTO{
+			CustomerID: custID.String(),
+			Fraud: &CustomerFraudOverviewDTO{
+				TotalEvents:      100,
+				BlockRateDisplay: "25.0%",
+				Freshness:        DataFreshnessDTO{Stale: false},
+			},
+		},
+	}
+	h := &DashboardsHTTPHandlers{
+		BuyerPortfolio: stub,
+		ResolveCustomerID: func(_ *http.Request, body *uuid.UUID) (uuid.UUID, error) {
+			return custID, nil
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer", http.NoBody)
+	rec := httptest.NewRecorder()
+	h.getBuyerDashboard(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	var resp BuyerPortfolioDTO
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.NotNil(t, resp.Fraud)
+	assert.Equal(t, "25.0%", resp.Fraud.BlockRateDisplay)
 }
 
 func TestGetBuyerDashboard_requiresCustomerID(t *testing.T) {

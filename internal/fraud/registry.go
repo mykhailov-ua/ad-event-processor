@@ -17,37 +17,37 @@ func NewModelRegistry() *ModelRegistry {
 	}
 }
 
-func (modelRegistry *ModelRegistry) Register(scorer Scorer) {
+func (r *ModelRegistry) Register(scorer Scorer) {
 	if scorer == nil {
 		return
 	}
-	modelRegistry.mu.Lock()
-	defer modelRegistry.mu.Unlock()
-	modelRegistry.scorers[scorer.Name()] = scorer
-	if modelRegistry.active == "" {
-		modelRegistry.active = scorer.Name()
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.scorers[scorer.Name()] = scorer
+	if r.active == "" {
+		r.active = scorer.Name()
 	}
 }
 
-func (modelRegistry *ModelRegistry) SetActive(name string) error {
-	modelRegistry.mu.Lock()
-	defer modelRegistry.mu.Unlock()
-	if _, ok := modelRegistry.scorers[name]; !ok {
+func (r *ModelRegistry) SetActive(name string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.scorers[name]; !ok {
 		slog.Error("scorer not registered", "name", name)
 		return ErrScorerNotRegistered
 	}
-	modelRegistry.active = name
+	r.active = name
 	return nil
 }
 
-func (modelRegistry *ModelRegistry) GetActive() Scorer {
-	modelRegistry.mu.RLock()
-	defer modelRegistry.mu.RUnlock()
-	return modelRegistry.scorers[modelRegistry.active]
+func (r *ModelRegistry) GetActive() Scorer {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.scorers[r.active]
 }
 
-func (modelRegistry *ModelRegistry) Get(name string) Scorer {
-	modelRegistry.mu.RLock()
-	defer modelRegistry.mu.RUnlock()
-	return modelRegistry.scorers[name]
+func (r *ModelRegistry) Get(name string) Scorer {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.scorers[name]
 }

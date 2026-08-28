@@ -20,32 +20,50 @@ type SuspiciousIP struct {
 }
 
 type AnalyzerConfig struct {
-	Window               time.Duration
-	MinClicks            uint64
-	MinImpressions       uint64
-	ClickToImpRatio      float64
-	MinIPsPerUA          uint64
-	MinEventsPerIP       uint64
-	IntervalMinIntervals uint64
-	IntervalMaxVariance  float64
+	Window                         time.Duration
+	MinClicks                      uint64
+	MinImpressions                 uint64
+	ClickToImpRatio                float64
+	MinIPsPerUA                    uint64
+	MinEventsPerIP                 uint64
+	IntervalMinIntervals           uint64
+	IntervalMaxVariance            float64
+	RTTSplitTunnelEnabled          bool
+	RTTSplitMinDeltaMS             uint16
+	RTTSplitMaxVariance            float64
+	RTTSplitMinSamples             uint64
+	MobileBiometricsEnabled        bool
+	MobileBiometricsMinSamples     uint64
+	MobileBiometricsMinFlatHits    uint64
+	MobileBiometricsMinMotionless  uint64
+	MobileBiometricsMinGyroSamples uint64
 }
 
 func DefaultAnalyzerConfig() AnalyzerConfig {
 	return AnalyzerConfig{
-		Window:               time.Hour,
-		MinClicks:            10,
-		MinImpressions:       1,
-		ClickToImpRatio:      5.0,
-		MinIPsPerUA:          8,
-		MinEventsPerIP:       5,
-		IntervalMinIntervals: defaultIntervalMinIntervals,
-		IntervalMaxVariance:  defaultIntervalMaxVariance,
+		Window:                         time.Hour,
+		MinClicks:                      10,
+		MinImpressions:                 1,
+		ClickToImpRatio:                5.0,
+		MinIPsPerUA:                    8,
+		MinEventsPerIP:                 5,
+		IntervalMinIntervals:           defaultIntervalMinIntervals,
+		IntervalMaxVariance:            defaultIntervalMaxVariance,
+		RTTSplitTunnelEnabled:          true,
+		RTTSplitMinDeltaMS:             150,
+		RTTSplitMaxVariance:            defaultRTTSplitMaxVariance,
+		RTTSplitMinSamples:             5,
+		MobileBiometricsEnabled:        true,
+		MobileBiometricsMinSamples:     defaultMobileBiometricsMinSamples,
+		MobileBiometricsMinFlatHits:    defaultMobileBiometricsMinFlatHits,
+		MobileBiometricsMinMotionless:  defaultMobileBiometricsMinMotionless,
+		MobileBiometricsMinGyroSamples: defaultMobileBiometricsMinGyroSamples,
 	}
 }
 
 type Analyzer struct {
 	clickhouseQuery *database.ClickHouseQuery
-	cfg AnalyzerConfig
+	cfg             AnalyzerConfig
 }
 
 func NewAnalyzer(clickhouseQuery *database.ClickHouseQuery, cfg AnalyzerConfig) *Analyzer {

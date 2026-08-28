@@ -23,8 +23,8 @@ openapi-export:
 	go run ./cmd/openapi-export
 
 .PHONY: openapi-types
-openapi-types:
-	@echo "openapi-types: skipped (web/ removed; regenerate TS types when admin UI milestone admin_contract_gate starts)"
+openapi-types: openapi-export
+	cd web && npm run openapi:types
 
 lint: gen fmt
 	bash scripts/ci/lint_gate.sh

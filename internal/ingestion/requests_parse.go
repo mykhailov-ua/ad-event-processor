@@ -34,6 +34,9 @@ func skipJSONValueBudgetDepth(data []byte, start int, bud *jsonScanBudget, maxDe
 		return end, nil
 	case '{', '[':
 		depth := 1
+		if !bud.consumeStrByte() {
+			return i, errMalformedJSON
+		}
 		i++
 		for i < n && depth > 0 {
 			switch data[i] {
@@ -44,15 +47,24 @@ func skipJSONValueBudgetDepth(data []byte, start int, bud *jsonScanBudget, maxDe
 				}
 				i = end
 			case '{', '[':
+				if !bud.consumeStrByte() {
+					return i, errMalformedJSON
+				}
 				depth++
 				if depth > maxDepth {
 					return i, errMalformedJSON
 				}
 				i++
 			case '}', ']':
+				if !bud.consumeStrByte() {
+					return i, errMalformedJSON
+				}
 				depth--
 				i++
 			default:
+				if !bud.consumeStrByte() {
+					return i, errMalformedJSON
+				}
 				i++
 			}
 		}
@@ -62,11 +74,17 @@ func skipJSONValueBudgetDepth(data []byte, start int, bud *jsonScanBudget, maxDe
 		return i, nil
 	case 't', 'f', 'n':
 		for i < n && !isDelimiter(data[i]) {
+			if !bud.consumeStrByte() {
+				return i, errMalformedJSON
+			}
 			i++
 		}
 		return i, nil
 	default:
 		for i < n && !isDelimiter(data[i]) {
+			if !bud.consumeStrByte() {
+				return i, errMalformedJSON
+			}
 			i++
 		}
 		return i, nil

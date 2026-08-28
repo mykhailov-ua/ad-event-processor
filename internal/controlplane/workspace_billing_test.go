@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -120,6 +121,6 @@ func TestParseUsageExportCursor_roundTrip(t *testing.T) {
 
 func TestNormalizeCostCenter_rejectsLongValue(t *testing.T) {
 	t.Parallel()
-	_, err := normalizeCostCenter(strings.Repeat("x", 65))
+	_, err := billingadmin.NormalizeCostCenter(strings.Repeat("x", 65))
 	require.Error(t, err)
 }

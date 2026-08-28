@@ -24,37 +24,37 @@ type candidateBucketSoA struct {
 	FcapPrefixHash        []uint64
 }
 
-func (soa *candidateBucketSoA) len() int {
-	if soa == nil {
+func (bs *candidateBucketSoA) len() int {
+	if bs == nil {
 		return 0
 	}
-	return len(soa.CatalogIdx)
+	return len(bs.CatalogIdx)
 }
 
-func (soa *candidateBucketSoA) slicesValid(end int) bool {
-	if soa == nil || end < 0 || end > len(soa.CatalogIdx) {
+func (bs *candidateBucketSoA) slicesValid(end int) bool {
+	if bs == nil || end < 0 || end > len(bs.CatalogIdx) {
 		return false
 	}
-	return end <= len(soa.CreativeIDs) &&
-		end <= len(soa.Bids) &&
-		end <= len(soa.CTRPPM) &&
-		end <= len(soa.Reserves) &&
-		end <= len(soa.DailyBudgets) &&
-		end <= len(soa.PacingOpen) &&
-		end <= len(soa.DeviceMasks) &&
-		end <= len(soa.CategoryMasks) &&
-		end <= len(soa.Weights) &&
-		end <= len(soa.BoostPPM) &&
-		end <= len(soa.MediaTypes) &&
-		end <= len(soa.DurationSec) &&
-		end <= len(soa.BudgetIndices) &&
-		end <= len(soa.CustomerBudgetIndices) &&
-		end <= len(soa.DaypartMasks) &&
-		end <= len(soa.TZOffsetSec) &&
-		end <= len(soa.ScheduleStart) &&
-		end <= len(soa.ScheduleEnd) &&
-		end <= len(soa.FreqLimits) &&
-		end <= len(soa.FcapPrefixHash)
+	return end <= len(bs.CreativeIDs) &&
+		end <= len(bs.Bids) &&
+		end <= len(bs.CTRPPM) &&
+		end <= len(bs.Reserves) &&
+		end <= len(bs.DailyBudgets) &&
+		end <= len(bs.PacingOpen) &&
+		end <= len(bs.DeviceMasks) &&
+		end <= len(bs.CategoryMasks) &&
+		end <= len(bs.Weights) &&
+		end <= len(bs.BoostPPM) &&
+		end <= len(bs.MediaTypes) &&
+		end <= len(bs.DurationSec) &&
+		end <= len(bs.BudgetIndices) &&
+		end <= len(bs.CustomerBudgetIndices) &&
+		end <= len(bs.DaypartMasks) &&
+		end <= len(bs.TZOffsetSec) &&
+		end <= len(bs.ScheduleStart) &&
+		end <= len(bs.ScheduleEnd) &&
+		end <= len(bs.FreqLimits) &&
+		end <= len(bs.FcapPrefixHash)
 }
 
 func resetBucketSoA(soa *candidateBucketSoA) {

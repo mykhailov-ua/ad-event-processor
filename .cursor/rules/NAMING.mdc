@@ -1,15 +1,13 @@
 ---
-description: Naming, comments, forbidden legacy tokens - always applied on every edit
+description: Naming, forbidden legacy tokens - always applied on every edit
 alwaysApply: true
 ---
 
-# Naming and Comments
+# Naming
 
 ## Purpose
 
-Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. **No source comments** except the allowed categories below.
-
-Guard script: `bash scripts/ci/check_no_legacy_naming.sh`. Go receivers: `quality.mdc`. Package layout and banned subtrees: `structure.mdc`. Root clutter: `core.mdc` Sources-only repository.
+Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Go receivers: `quality.mdc`. Package layout: `structure.mdc`. Root clutter: `core.mdc`.
 
 ## Forbidden trash naming
 
@@ -33,7 +31,7 @@ Do not use ticket prefixes, gap codes, or milestone IDs in file names, backlog h
 | Banned | Use instead |
 | :--- | :--- |
 | Ticket-style gap codes (`GAP` + team + number) | Describe the work: `antifraud_doc_code_parity` |
-| `P0 item #4`, `Action item 7` | Same semantic slug in `deploy/vendor/antifraud_backlog.md` |
+| `P0 item #4`, `Action item 7` | Same semantic slug in `deploy/vendor/competitive_backlog.md` |
 | `WI-4521`, `JIRA-123` | Link to tracker URL in PR description only; not in repo prose |
 
 Backlog files: one `### semantic_slug` per item; cross-reference by slug (`after silent_reject_rename_end_to_end`), not numeric codes.
@@ -88,7 +86,8 @@ Match naming quality and structure of `lead-intent-processor`.
 
 ### Structs and fields
 
-- **No god structs:** avoid `Service` structs with 50+ unrelated fields. Split by domain role or worker.
+- **No god structs:** `Service` or equivalent with 50+ fields or unrelated domains — split by role (`Store`, `Runtime`, `Worker`) per domain package (`modular-monolith.mdc`).
+- **No god ports:** `Host`, `Effects`, `DeliveryHost` and similar **<= 12 methods**; split before adding (`modular-monolith.mdc`).
 - **Explicit roles:** `PostgresGate` is too vague. Use `PostgresWriteGate` or `PostgresCampaignStore`.
 - **Field names:** `settlePoolField` is trash. Use `SettlementPool`.
 
@@ -98,15 +97,21 @@ Banned as interface or field names on HTTP handlers: `API`, `Backend`, `Provider
 
 ### File and path naming
 
-- Production Go: snake_case `<domain>_<rest>.go` - `track_core.go`, `service_campaigns.go`.
+- Production Go: snake_case `<role>_<rest>.go` — `track_core.go`, `runtime_patch.go`, `service_campaign.go` (package `controlplane`).
+- **Inside `internal/<domain>/`:** do not repeat the package directory name as a filename prefix. The path already scopes the domain.
+  - BAD: `internal/campaign/campaign_dto.go`, `internal/flow/flow_validate.go`, `internal/fraudadmin/fraudadmin_handlers.go`
+  - GOOD: `internal/campaign/dto.go`, `internal/flow/validate.go`, `internal/fraudadmin/handlers.go`
+- Cross-package or composition-root files keep the domain token when the package name differs: `internal/controlplane/campaign_runtime_bridge.go`.
 - Split near 500 lines or when transport mixes with core logic.
 - Tests beside code: `*_test.go`, `*_bench_test.go`, `*_fault_test.go`.
 
 ```go
 // BAD path
+internal/campaign/campaign_editor_handlers.go
 internal/controlplane/service_campaign_m8.go
 
 // GOOD path
+internal/campaign/editor_handlers.go
 internal/campaign/load_test_worker.go
 ```
 
@@ -134,40 +139,18 @@ type ClickHouseStore struct {
 }
 ```
 
-## Comments - allowed only
+## Comments
 
-Any comment in production or test source outside this table is **forbidden**. Constraints and rationale live in `.mdc` / `docs/`, not in code.
+Prefer self-documenting names. No narrative `//` or block docs in production `.go` except:
 
-| Category | Examples | Scope |
-| :--- | :--- | :--- |
-| Compiler / toolchain | `//go:build`, `//go:generate`, `//go:embed`, `//go:linkname`, `//go:inline`, `//go:noescape`, `//go:noinline`, `//garble:ignore`, `//nolint:...` | Go source |
-| bash shebang | `#!/usr/bin/env bash`, `#!/bin/bash` | First line of `scripts/**/*.sh` and other executable shell entrypoints only |
-| shellcheck directive | `# shellcheck disable=...`, `# shellcheck source=...` | Shell scripts; linter directives only, not prose |
-| Placeholder files | env var names, path hints, keep-file notes | `.gitkeep`, empty stubs, `config/env/**`, `.env.example`, `*.env*` templates |
-| Disabled logic | Commented-out statements (valid code if uncommented) | Any source file; **no prose** - explanations are banned |
-
-Disabled logic must remain syntactically valid Go/JS/Lua if uncommented. Do not comment out code and add a prose line above it.
-
-## Comments - forbidden
-
-Everything not in **allowed only**:
-
-| Banned | Includes |
+| Keep | Where |
 | :--- | :--- |
-| Doc comments | `// ParseFoo`, `/** ... */`, package docs, JSDoc |
-| Narrative | `// why`, `// NOTE`, `// TODO`, `// FIXME`, section banners (`// ====`, `// --- Helpers ---`), inline `# ...` in shell scripts |
-| Test prose | Row labels explained in comments; use descriptive `t.Run` names |
-| Charset slop in comments | Emojis, Unicode dashes, ellipsis char, box drawing in `//` blocks |
+| Toolchain / linter | `//go:build`, `//go:generate`, `//go:embed`, `//go:noinline`, `//go:noescape`, `//garble:ignore`, `//nolint:...` |
+| Shell | `#!/usr/bin/env bash`, `# shellcheck disable=...` in `scripts/**/*.sh` |
+| Disabled logic | Valid code commented out; no prose above it |
+| Package boundary | `doc.go` = `package <name>` only (`modular-monolith.mdc`) |
 
-YAML frontmatter `---` in `.mdc` files is required metadata, not a source comment.
-
-Script/log banners in `scripts/`: plain `echo "gate_name: step"` or `log "step"` - no `=== title ===` (`anti-slop.mdc`).
-
-## Comments - self-documenting code
-
-- Names and types carry meaning; rename instead of commenting.
-- Best-effort error handling: return the error or prove the invariant in a holdout test (`anti-slop.mdc`) - never silent `_ =` with a comment excuse.
-- Fault tests may log `fault_proof ...`; that is telemetry in log output, not a `//` comment substitute for assertions.
+Strip other comments when editing a file. Do not put routes or verify prose in `doc.go` (paths with `/*` break block parsers).
 
 ## Related rules
 

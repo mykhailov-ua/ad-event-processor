@@ -72,6 +72,7 @@ func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, db.CampaignStatusTypePAUSED, camp.Status)
 
+	attachPublishableFlowFixture(t, context.Background(), pool, svc, campID)
 	require.NoError(t, svc.ResumeCampaign(context.Background(), campID, "manual"))
 	camp, err = svc.GetCampaignRow(context.Background(), campID)
 	require.NoError(t, err)

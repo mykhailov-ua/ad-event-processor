@@ -154,7 +154,7 @@ Campaign:
 
 CampaignListResponse:
   type: object
-  required: [items, total]
+  required: [items, total, limit, offset]
   properties:
     items:
       type: array
@@ -163,6 +163,18 @@ CampaignListResponse:
     total:
       type: integer
       format: int64
+    limit:
+      type: integer
+      format: int32
+    offset:
+      type: integer
+      format: int32
+    filters_applied:
+      type: object
+      additionalProperties:
+        type: string
+    sort:
+      $ref: '#/ListSort'
 
 PatchCampaignRequest:
   type: object
@@ -436,6 +448,7 @@ CampaignFraudConfig:
     - behavior_flags
     - canvas_retest_enabled
     - cgnat_ip_policy_enabled
+    - accept_lang_geo_enabled
     - conversion_reject_rules
   properties:
     campaign_id:
@@ -470,6 +483,10 @@ CampaignFraudConfig:
       type: boolean
     cgnat_ip_policy_enabled:
       type: boolean
+    accept_lang_geo_enabled:
+      type: boolean
+    json_serialization_enabled:
+      type: boolean
     conversion_reject_rules:
       $ref: '#/ConversionRejectRules'
 
@@ -498,6 +515,10 @@ PatchCampaignFraudRequest:
     canvas_retest_enabled:
       type: boolean
     cgnat_ip_policy_enabled:
+      type: boolean
+    accept_lang_geo_enabled:
+      type: boolean
+    json_serialization_enabled:
       type: boolean
     conversion_reject_rules:
       $ref: '#/ConversionRejectRules'
@@ -1256,6 +1277,38 @@ MigrationMappedCampaign:
       type: string
     postback_url_template:
       type: string
+    flow:
+      $ref: '#/MigrationMappedFlow'
+
+MigrationMappedFlowPath:
+  type: object
+  required: [weight, lander_ref, lander_name, lander_url, offer_ref, offer_name, offer_url]
+  properties:
+    weight:
+      type: integer
+      format: int32
+    lander_ref:
+      type: string
+    lander_name:
+      type: string
+    lander_url:
+      type: string
+    offer_ref:
+      type: string
+    offer_name:
+      type: string
+    offer_url:
+      type: string
+
+MigrationMappedFlow:
+  type: object
+  properties:
+    name:
+      type: string
+    paths:
+      type: array
+      items:
+        $ref: '#/MigrationMappedFlowPath'
 
 MigrationPreviewResult:
   type: object
@@ -1290,6 +1343,24 @@ MigratePreviewRequest:
         - type: array
           items: {}
 
+ImportValidateJobRequest:
+  type: object
+  required: [customer_id, source_kind, payload]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    source_kind:
+      type: string
+      enum: [keitaro_json, keitaro_admin_api, binom_json, binom_report_api, native_v1]
+    payload:
+      description: Raw JSON payload from external tracker export.
+      oneOf:
+        - type: object
+          additionalProperties: true
+        - type: array
+          items: {}
+
 MigrateImportRequest:
   type: object
   required: [customer_id, source_kind, payload]
@@ -1307,6 +1378,32 @@ MigrateImportRequest:
           additionalProperties: true
         - type: array
           items: {}
+    name_prefix:
+      type: string
+    budget_limit_micro:
+      type: integer
+      format: int64
+
+MigratePullRequest:
+  type: object
+  required: [source_kind, base_url, api_token]
+  properties:
+    source_kind:
+      type: string
+      enum: [keitaro_admin_api, binom_report_api]
+    base_url:
+      type: string
+      description: Tracker admin API base URL (https).
+    api_token:
+      type: string
+      description: Keitaro Api-Key or Binom api_key query value. Never logged or echoed in responses.
+    pull_path:
+      type: string
+      description: Optional override for default pull path.
+    customer_id:
+      type: string
+      format: uuid
+      description: Required for pull import.
     name_prefix:
       type: string
     budget_limit_micro:
@@ -1342,3 +1439,352 @@ ImportMigrationResult:
       type: array
       items:
         $ref: '#/ImportMigrationFailure'
+
+ListSort:
+  type: object
+  properties:
+    field:
+      type: string
+    order:
+      type: string
+      enum: [asc, desc]
+
+CampaignEditorShell:
+  type: object
+  required: [campaign_id, sections, completion_pct]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    sections:
+      type: array
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+          title:
+            type: string
+          order:
+            type: integer
+          visible:
+            type: boolean
+          complete:
+            type: boolean
+          issue_count:
+            type: integer
+          issue_tone:
+            type: string
+    completion_pct:
+      type: integer
+    allowed_actions:
+      type: array
+      items:
+        type: string
+
+CampaignValidateResponse:
+  type: object
+  required: [valid]
+  properties:
+    valid:
+      type: boolean
+    field_errors:
+      type: object
+      additionalProperties:
+        type: string
+    warnings:
+      type: array
+      items:
+        type: string
+    estimated_outbox_events:
+      type: array
+      items:
+        type: string
+
+CampaignPublishBlockedError:
+  type: object
+  required: [field_errors]
+  properties:
+    field_errors:
+      type: object
+      additionalProperties:
+        type: string
+    warning_slugs:
+      type: array
+      items:
+        type: string
+
+CampaignPublishCheck:
+  type: object
+  required: [valid]
+  properties:
+    valid:
+      type: boolean
+    field_errors:
+      type: object
+      additionalProperties:
+        type: string
+    warning_slugs:
+      type: array
+      items:
+        type: string
+
+CampaignSmokeRedirectHop:
+  type: object
+  required: [url, status_code]
+  properties:
+    url:
+      type: string
+    status_code:
+      type: integer
+
+CampaignSmokeResult:
+  type: object
+  required: [passed, redirect_chain, checked_at]
+  properties:
+    passed:
+      type: boolean
+    redirect_chain:
+      type: array
+      items:
+        $ref: '#/CampaignSmokeRedirectHop'
+    failure_reason:
+      type: string
+    checked_at:
+      type: string
+      format: date-time
+    final_host:
+      type: string
+
+CampaignOnboardingTemplate:
+  type: object
+  required: [key, title, description, traffic_family, default_flow, integration_schema_refs, sample_macros]
+  properties:
+    key:
+      type: string
+      enum: [meta_social_funnel, popunder_propeller, push_house_funnel, native_mgid_funnel]
+    title:
+      type: string
+    description:
+      type: string
+    traffic_family:
+      type: string
+    default_flow:
+      type: object
+      required: [flow_name, lander, offer]
+      properties:
+        flow_name:
+          type: string
+        lander:
+          type: object
+          required: [name, url]
+          properties:
+            name:
+              type: string
+            url:
+              type: string
+        offer:
+          type: object
+          required: [name, url]
+          properties:
+            name:
+              type: string
+            url:
+              type: string
+    integration_schema_refs:
+      type: array
+      items:
+        type: string
+    sample_macros:
+      type: object
+      additionalProperties:
+        type: string
+
+CampaignWizardSessionRequest:
+  type: object
+  required: [action]
+  properties:
+    action:
+      type: string
+      enum: [create, update, commit]
+    session_id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    template_key:
+      type: string
+      enum: [meta_social_funnel, popunder_propeller, push_house_funnel, native_mgid_funnel]
+    step:
+      type: string
+      enum: [traffic_source, integration_template, flow_skeleton, budget]
+    payload:
+      type: object
+      additionalProperties: true
+    idempotency_key:
+      type: string
+    publish:
+      type: boolean
+
+CampaignWizardTrafficSourceStep:
+  type: object
+  required: [name]
+  properties:
+    name:
+      type: string
+    traffic_template_id:
+      type: string
+    click_query_params:
+      type: object
+      additionalProperties:
+        type: string
+
+CampaignWizardIntegrationTemplateStep:
+  type: object
+  required: [integration_schema]
+  properties:
+    integration_schema:
+      type: string
+    affiliate_network:
+      type: string
+    tracking_domain:
+      type: string
+
+CampaignWizardFlowSkeletonStep:
+  type: object
+  required: [flow_name, lander, offer]
+  properties:
+    flow_name:
+      type: string
+    lander:
+      type: object
+      required: [name, url]
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+    offer:
+      type: object
+      required: [name, url]
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+
+CampaignWizardBudgetStep:
+  type: object
+  required: [budget_limit_micro]
+  properties:
+    budget_limit_micro:
+      type: integer
+      format: int64
+    timezone:
+      type: string
+    target_countries:
+      type: array
+      items:
+        type: string
+
+CampaignWizardPreview:
+  type: object
+  properties:
+    campaign_name:
+      type: string
+    traffic_template_id:
+      type: string
+    integration_schema:
+      type: string
+    flow_name:
+      type: string
+    budget_limit_micro:
+      type: integer
+      format: int64
+    target_url:
+      type: string
+
+CampaignWizardReview:
+  type: object
+  required: [preview]
+  properties:
+    preview:
+      $ref: '#/CampaignWizardPreview'
+    warning_slugs:
+      type: array
+      items:
+        type: string
+
+CampaignWizardSession:
+  type: object
+  required: [session_id, customer_id, current_step, completed_steps, steps, ready_to_commit, expires_at, updated_at]
+  properties:
+    session_id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    current_step:
+      type: string
+    completed_steps:
+      type: array
+      items:
+        type: string
+    steps:
+      type: object
+      properties:
+        traffic_source:
+          $ref: '#/CampaignWizardTrafficSourceStep'
+        integration_template:
+          $ref: '#/CampaignWizardIntegrationTemplateStep'
+        flow_skeleton:
+          $ref: '#/CampaignWizardFlowSkeletonStep'
+        budget:
+          $ref: '#/CampaignWizardBudgetStep'
+    ready_to_commit:
+      type: boolean
+    review:
+      $ref: '#/CampaignWizardReview'
+    expires_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+CampaignWizardCommitResult:
+  type: object
+  required: [campaign]
+  properties:
+    campaign:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    published:
+      type: boolean
+    publish_check:
+      $ref: '#/CampaignPublishCheck'
+
+CampaignIntegrationPanel:
+  type: object
+  required: [overall_status, overall_status_label, overall_status_tone, rows]
+  properties:
+    overall_status:
+      type: string
+    overall_status_label:
+      type: string
+    overall_status_tone:
+      type: string
+    rows:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+

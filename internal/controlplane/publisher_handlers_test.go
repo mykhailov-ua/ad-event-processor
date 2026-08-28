@@ -2,6 +2,7 @@ package controlplane_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -106,6 +107,34 @@ func (campaignListStub) PatchCampaign(context.Context, uuid.UUID, controlplane.P
 	return controlplane.CampaignDTO{}, nil
 }
 
+func (campaignListStub) PublishCampaign(context.Context, uuid.UUID, bool) (controlplane.CampaignDTO, error) {
+	return controlplane.CampaignDTO{}, nil
+}
+
+func (campaignListStub) EvaluateCampaignPublish(context.Context, uuid.UUID) (controlplane.CampaignPublishCheckDTO, error) {
+	return controlplane.CampaignPublishCheckDTO{Valid: true}, nil
+}
+
+func (campaignListStub) RunCampaignSmoke(context.Context, uuid.UUID) (controlplane.CampaignSmokeResultDTO, error) {
+	return controlplane.CampaignSmokeResultDTO{Passed: true}, nil
+}
+
+func (campaignListStub) CreateCampaignWizardSession(context.Context, uuid.UUID, string) (controlplane.CampaignWizardSessionDTO, error) {
+	return controlplane.CampaignWizardSessionDTO{}, nil
+}
+
+func (campaignListStub) GetCampaignWizardSession(context.Context, uuid.UUID) (controlplane.CampaignWizardSessionDTO, error) {
+	return controlplane.CampaignWizardSessionDTO{}, nil
+}
+
+func (campaignListStub) UpdateCampaignWizardSessionStep(context.Context, uuid.UUID, string, json.RawMessage) (controlplane.CampaignWizardSessionDTO, error) {
+	return controlplane.CampaignWizardSessionDTO{}, nil
+}
+
+func (campaignListStub) CommitCampaignWizardSession(context.Context, uuid.UUID, string, bool) (controlplane.CampaignWizardCommitResult, error) {
+	return controlplane.CampaignWizardCommitResult{}, nil
+}
+
 func (campaignListStub) AssignCampaignOwner(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }
@@ -136,6 +165,14 @@ func (campaignListStub) ImportMigrationCampaigns(context.Context, controlplane.I
 
 func (campaignListStub) GetCampaignIntegrationHealth(context.Context, uuid.UUID) (controlplane.IntegrationHealthDTO, error) {
 	return controlplane.IntegrationHealthDTO{}, nil
+}
+
+func (campaignListStub) PauseCampaign(context.Context, uuid.UUID, string) error {
+	return nil
+}
+
+func (campaignListStub) ResumeCampaign(context.Context, uuid.UUID, string) error {
+	return nil
 }
 
 func mapPublisherTestError(err error) (status int, code string, message string) {

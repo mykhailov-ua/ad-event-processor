@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -18,24 +19,23 @@ import (
 )
 
 type CampaignFraudConfigUpdate struct {
-	Preset                *string                       `json:"preset,omitempty"`
-	FraudThresholdPass    *uint8                        `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect *uint8                        `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT     *uint8                        `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock   *uint8                        `json:"fraud_threshold_block,omitempty"`
-	SilentRejectEnabled   *bool                         `json:"silent_reject_enabled,omitempty"`
-	BehaviorFlags         *uint32                       `json:"behavior_flags,omitempty"`
-	CanvasRetestEnabled   *bool                         `json:"canvas_retest_enabled,omitempty"`
-	CgnatIPPolicyEnabled  *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
-	ConversionRejectRules *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
+	Preset                   *string                       `json:"preset,omitempty"`
+	FraudThresholdPass       *uint8                        `json:"fraud_threshold_pass,omitempty"`
+	FraudThresholdSuspect    *uint8                        `json:"fraud_threshold_suspect,omitempty"`
+	FraudThresholdIVT        *uint8                        `json:"fraud_threshold_ivt,omitempty"`
+	FraudThresholdBlock      *uint8                        `json:"fraud_threshold_block,omitempty"`
+	SilentRejectEnabled      *bool                         `json:"silent_reject_enabled,omitempty"`
+	BehaviorFlags            *uint32                       `json:"behavior_flags,omitempty"`
+	CanvasRetestEnabled      *bool                         `json:"canvas_retest_enabled,omitempty"`
+	CgnatIPPolicyEnabled     *bool                         `json:"cgnat_ip_policy_enabled,omitempty"`
+	AcceptLangGeoEnabled     *bool                         `json:"accept_lang_geo_enabled,omitempty"`
+	JSONSerializationEnabled *bool                         `json:"json_serialization_enabled,omitempty"`
+	ConversionRejectRules    *domain.ConversionRejectRules `json:"conversion_reject_rules,omitempty"`
 }
 
 func validateFraudThresholds(pass, suspect, ivt, block uint8) error {
-	if pass > 100 || suspect > 100 || ivt > 100 || block > 100 {
-		return errValidation("fraud thresholds must be between 0 and 100")
-	}
-	if pass > suspect || suspect > ivt || ivt > block {
-		return errValidation("fraud thresholds must be ordered: pass <= suspect <= ivt <= block")
+	if err := fraudadmin.ValidateThresholds(pass, suspect, ivt, block); err != nil {
+		return errValidation(err.Error())
 	}
 	return nil
 }
@@ -46,16 +46,18 @@ func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UU
 		return CampaignFraudConfigDTO{}, mapNotFound(err, ErrCampaignNotFound)
 	}
 	return CampaignFraudConfigDTO{
-		CampaignID:            campaignID.String(),
-		FraudThresholdPass:    uint8(row.FraudThresholdPass),
-		FraudThresholdSuspect: uint8(row.FraudThresholdSuspect),
-		FraudThresholdIVT:     uint8(row.FraudThresholdIvt),
-		FraudThresholdBlock:   uint8(row.FraudThresholdBlock),
-		SilentRejectEnabled:   row.SilentRejectEnabled,
-		BehaviorFlags:         uint32(row.BehaviorFlags),
-		CanvasRetestEnabled:   row.CanvasRetestEnabled,
-		CgnatIPPolicyEnabled:  row.CgnatIpPolicyEnabled,
-		ConversionRejectRules: domain.ParseConversionRejectRulesJSON(row.ConversionRejectRules),
+		CampaignID:               campaignID.String(),
+		FraudThresholdPass:       uint8(row.FraudThresholdPass),
+		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
+		FraudThresholdIVT:        uint8(row.FraudThresholdIvt),
+		FraudThresholdBlock:      uint8(row.FraudThresholdBlock),
+		SilentRejectEnabled:      row.SilentRejectEnabled,
+		BehaviorFlags:            uint32(row.BehaviorFlags),
+		CanvasRetestEnabled:      row.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:     row.CgnatIpPolicyEnabled,
+		AcceptLangGeoEnabled:     row.AcceptLangGeoEnabled,
+		JSONSerializationEnabled: row.JsonSerializationEnabled,
+		ConversionRejectRules:    domain.ParseConversionRejectRulesJSON(row.ConversionRejectRules),
 	}, nil
 }
 
@@ -77,6 +79,8 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		flags := locked.BehaviorFlags
 		canvasRetest := locked.CanvasRetestEnabled
 		cgnatPolicy := locked.CgnatIpPolicyEnabled
+		acceptLangGeo := locked.AcceptLangGeoEnabled
+		jsonSerialization := locked.JsonSerializationEnabled
 		conversionRejectRules := domain.ParseConversionRejectRulesJSON(locked.ConversionRejectRules)
 
 		if upd.Preset != nil {
@@ -114,6 +118,12 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		if upd.CgnatIPPolicyEnabled != nil {
 			cgnatPolicy = *upd.CgnatIPPolicyEnabled
 		}
+		if upd.AcceptLangGeoEnabled != nil {
+			acceptLangGeo = *upd.AcceptLangGeoEnabled
+		}
+		if upd.JSONSerializationEnabled != nil {
+			jsonSerialization = *upd.JSONSerializationEnabled
+		}
 		if upd.ConversionRejectRules != nil {
 			conversionRejectRules = domain.MergeConversionRejectRulesPatch(conversionRejectRules, *upd.ConversionRejectRules)
 		}
@@ -128,6 +138,7 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 				return err
 			}
 			silentReject = true
+			acceptLangGeo = true
 		}
 		socialInAppPreset := upd.Preset != nil && domain.IsSocialInAppFraudPreset(*upd.Preset)
 		if socialInAppPreset {
@@ -142,16 +153,18 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		}
 
 		updated, err := q.UpdateCampaignFraudConfig(ctx, db.UpdateCampaignFraudConfigParams{
-			ID:                    domain.ToUUID(campaignID),
-			FraudThresholdPass:    int16(pass),
-			FraudThresholdSuspect: int16(suspect),
-			FraudThresholdIvt:     int16(ivt),
-			FraudThresholdBlock:   int16(block),
-			SilentRejectEnabled:   silentReject,
-			BehaviorFlags:         flags,
-			CanvasRetestEnabled:   canvasRetest,
-			CgnatIpPolicyEnabled:  cgnatPolicy,
-			ConversionRejectRules: rulesBytes,
+			ID:                       domain.ToUUID(campaignID),
+			FraudThresholdPass:       int16(pass),
+			FraudThresholdSuspect:    int16(suspect),
+			FraudThresholdIvt:        int16(ivt),
+			FraudThresholdBlock:      int16(block),
+			SilentRejectEnabled:      silentReject,
+			BehaviorFlags:            flags,
+			CanvasRetestEnabled:      canvasRetest,
+			CgnatIpPolicyEnabled:     cgnatPolicy,
+			AcceptLangGeoEnabled:     acceptLangGeo,
+			JsonSerializationEnabled: jsonSerialization,
+			ConversionRejectRules:    rulesBytes,
 		})
 		if err != nil {
 			return err
@@ -162,14 +175,16 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 			uid = u.UserID
 		}
 		s.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_FRAUD", "campaign", &campaignID, auditCampaignFraudChange{
-			FraudThresholdPass:    pass,
-			FraudThresholdSuspect: suspect,
-			FraudThresholdIVT:     ivt,
-			FraudThresholdBlock:   block,
-			SilentRejectEnabled:   silentReject,
-			BehaviorFlags:         flags,
-			CanvasRetestEnabled:   canvasRetest,
-			CgnatIPPolicyEnabled:  cgnatPolicy,
+			FraudThresholdPass:       pass,
+			FraudThresholdSuspect:    suspect,
+			FraudThresholdIVT:        ivt,
+			FraudThresholdBlock:      block,
+			SilentRejectEnabled:      silentReject,
+			BehaviorFlags:            flags,
+			CanvasRetestEnabled:      canvasRetest,
+			CgnatIPPolicyEnabled:     cgnatPolicy,
+			AcceptLangGeoEnabled:     acceptLangGeo,
+			JSONSerializationEnabled: jsonSerialization,
 		}, nil)
 
 		payload, err := coldpath.MarshalOutbox(campaignIDPayload{CampaignID: campaignID.String()})
@@ -185,16 +200,18 @@ func (s *Service) UpdateCampaignFraudConfig(ctx context.Context, campaignID uuid
 		}
 
 		out = CampaignFraudConfigDTO{
-			CampaignID:            campaignID.String(),
-			FraudThresholdPass:    uint8(updated.FraudThresholdPass),
-			FraudThresholdSuspect: uint8(updated.FraudThresholdSuspect),
-			FraudThresholdIVT:     uint8(updated.FraudThresholdIvt),
-			FraudThresholdBlock:   uint8(updated.FraudThresholdBlock),
-			SilentRejectEnabled:   updated.SilentRejectEnabled,
-			BehaviorFlags:         uint32(updated.BehaviorFlags),
-			CanvasRetestEnabled:   updated.CanvasRetestEnabled,
-			CgnatIPPolicyEnabled:  updated.CgnatIpPolicyEnabled,
-			ConversionRejectRules: domain.ParseConversionRejectRulesJSON(updated.ConversionRejectRules),
+			CampaignID:               campaignID.String(),
+			FraudThresholdPass:       uint8(updated.FraudThresholdPass),
+			FraudThresholdSuspect:    uint8(updated.FraudThresholdSuspect),
+			FraudThresholdIVT:        uint8(updated.FraudThresholdIvt),
+			FraudThresholdBlock:      uint8(updated.FraudThresholdBlock),
+			SilentRejectEnabled:      updated.SilentRejectEnabled,
+			BehaviorFlags:            uint32(updated.BehaviorFlags),
+			CanvasRetestEnabled:      updated.CanvasRetestEnabled,
+			CgnatIPPolicyEnabled:     updated.CgnatIpPolicyEnabled,
+			AcceptLangGeoEnabled:     updated.AcceptLangGeoEnabled,
+			JSONSerializationEnabled: updated.JsonSerializationEnabled,
+			ConversionRejectRules:    domain.ParseConversionRejectRulesJSON(updated.ConversionRejectRules),
 		}
 		return nil
 	})
@@ -219,10 +236,10 @@ type FraudScoringOverrideRequest struct {
 
 func normalizeFraudLabelLimit(limit int) int {
 	if limit <= 0 {
-		return fraudManualLabelsDefaultLimit
+		return fraudadmin.ManualLabelsDefaultLimit
 	}
-	if limit > fraudManualLabelsMaxLimit {
-		return fraudManualLabelsMaxLimit
+	if limit > fraudadmin.ManualLabelsMaxLimit {
+		return fraudadmin.ManualLabelsMaxLimit
 	}
 	return limit
 }
@@ -314,8 +331,8 @@ func (s *Service) BulkUpsertMLManualLabelsForCustomer(ctx context.Context, custo
 	if len(rows) == 0 {
 		return 0, errValidation("rows required")
 	}
-	if len(rows) > fraudManualLabelsBulkMax {
-		return 0, errValidation(fmt.Sprintf("max %d rows per bulk request", fraudManualLabelsBulkMax))
+	if len(rows) > fraudadmin.ManualLabelsBulkMax {
+		return 0, errValidation(fmt.Sprintf("max %d rows per bulk request", fraudadmin.ManualLabelsBulkMax))
 	}
 	if s == nil || s.GetPool() == nil {
 		return 0, fmt.Errorf("postgres pool not configured")

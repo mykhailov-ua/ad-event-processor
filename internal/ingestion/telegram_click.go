@@ -441,6 +441,8 @@ func fillTelegramEventFromParsed(evt *domain.Event, eventType string, parsed *te
 	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
+	fillIngressH2(evt, false)
+	fillWireMetadataFromRequest(evt, &req)
 	evt.Payload = marshalTelegramBridgePayload(evt.Payload, parsed.bridgeToken)
 }
 
@@ -505,8 +507,18 @@ func (h *AdsPacketHandler) reactTelegramClick(req parsedHTTPRequest, c gnet.Conn
 	fillTelegramEventFromParsed(evt, "tg_click", parsed, req)
 
 	var filtered []byte
+	var admissionLease streamAdmissionLease
+	admissionHeld := false
+	releaseAdmission := func() {
+		if admissionHeld {
+			admissionLease.Release()
+			admissionHeld = false
+		}
+	}
 	if h.filterEngine != nil {
-		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		var kind filterRejectKind
+		var acquired bool
+		admissionLease, kind, acquired = h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
 			h.writeFilterReject(c, spec.gnetResp, ctx)
@@ -514,13 +526,14 @@ func (h *AdsPacketHandler) reactTelegramClick(req parsedHTTPRequest, c gnet.Conn
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
-		defer lease.Release()
+		admissionHeld = true
 		var done bool
 		filtered, done = h.applyTelegramTrackFilter(processTrack(context.Background(), h.trackProc, evt, nil), evt, c, ctx, startMono)
 		if done {
+			releaseAdmission()
 			return gnet.None
 		}
-		if !h.publishAcceptedTrack(evt, &lease) {
+		if !h.publishAcceptedTrack(evt, &admissionLease) {
 			if h.filterEngine != nil {
 				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 			}
@@ -528,8 +541,10 @@ func (h *AdsPacketHandler) reactTelegramClick(req parsedHTTPRequest, c gnet.Conn
 			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
+			releaseAdmission()
 			return gnet.None
 		}
+		releaseAdmission()
 	}
 	landing := h.resolveTelegramLanding(evt, filtered)
 
@@ -569,8 +584,18 @@ func (h *AdsPacketHandler) reactTelegramImpression(req parsedHTTPRequest, c gnet
 	evt := &ctx.evt
 	fillTelegramEventFromParsed(evt, "tg_impression", parsed, req)
 
+	var admissionLease streamAdmissionLease
+	admissionHeld := false
+	releaseAdmission := func() {
+		if admissionHeld {
+			admissionLease.Release()
+			admissionHeld = false
+		}
+	}
 	if h.filterEngine != nil {
-		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		var kind filterRejectKind
+		var acquired bool
+		admissionLease, kind, acquired = h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
 			h.writeFilterReject(c, spec.gnetResp, ctx)
@@ -578,11 +603,12 @@ func (h *AdsPacketHandler) reactTelegramImpression(req parsedHTTPRequest, c gnet
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
-		defer lease.Release()
+		admissionHeld = true
 		if _, done := h.applyTelegramTrackFilter(processTrack(context.Background(), h.trackProc, evt, nil), evt, c, ctx, startMono); done {
+			releaseAdmission()
 			return gnet.None
 		}
-		if !h.publishAcceptedTrack(evt, &lease) {
+		if !h.publishAcceptedTrack(evt, &admissionLease) {
 			if h.filterEngine != nil {
 				h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 			}
@@ -590,8 +616,10 @@ func (h *AdsPacketHandler) reactTelegramImpression(req parsedHTTPRequest, c gnet
 			h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 			h.writeFilterReject(c, spec.gnetResp, ctx)
 			h.recordMetrics(startMono, spec.status)
+			releaseAdmission()
 			return gnet.None
 		}
+		releaseAdmission()
 	}
 
 	h.trackMetrics.decisionAccepted.Inc()

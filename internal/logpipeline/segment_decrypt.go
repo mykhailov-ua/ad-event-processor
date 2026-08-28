@@ -67,39 +67,39 @@ func openDecryptedSegment(path string, key []byte) (*decryptedSegmentReader, err
 	}, nil
 }
 
-func (reader *decryptedSegmentReader) Read(p []byte) (int, error) {
+func (sr *decryptedSegmentReader) Read(p []byte) (int, error) {
 	for {
-		if reader.off < len(reader.buf) {
-			n := copy(p, reader.buf[reader.off:])
-			reader.off += n
+		if sr.off < len(sr.buf) {
+			n := copy(p, sr.buf[sr.off:])
+			sr.off += n
 			return n, nil
 		}
-		if reader.done {
+		if sr.done {
 			return 0, io.EOF
 		}
-		if err := reader.readNextBlock(); err != nil {
+		if err := sr.readNextBlock(); err != nil {
 			if errors.Is(err, io.EOF) {
-				reader.done = true
+				sr.done = true
 				return 0, io.EOF
 			}
 			return 0, err
 		}
-		reader.off = 0
+		sr.off = 0
 	}
 }
 
-func (reader *decryptedSegmentReader) Close() error {
-	if reader.decoder != nil {
-		reader.decoder.Close()
+func (sr *decryptedSegmentReader) Close() error {
+	if sr.decoder != nil {
+		sr.decoder.Close()
 	}
-	if reader.file != nil {
-		return reader.file.Close()
+	if sr.file != nil {
+		return sr.file.Close()
 	}
 	return nil
 }
 
-func (reader *decryptedSegmentReader) readNextBlock() error {
-	_, err := io.ReadFull(reader.file, reader.header[:])
+func (sr *decryptedSegmentReader) readNextBlock() error {
+	_, err := io.ReadFull(sr.file, sr.header[:])
 	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 		return io.EOF
 	}
@@ -107,30 +107,30 @@ func (reader *decryptedSegmentReader) readNextBlock() error {
 		return err
 	}
 
-	length := binary.BigEndian.Uint32(reader.header[:])
+	length := binary.BigEndian.Uint32(sr.header[:])
 	if length < 12+16 {
 		return fmt.Errorf("invalid encrypted block length: %d", length)
 	}
 
-	if _, err := io.ReadFull(reader.file, reader.nonce[:]); err != nil {
+	if _, err := io.ReadFull(sr.file, sr.nonce[:]); err != nil {
 		return err
 	}
 
 	ciphertextLen := length - 12
 	ciphertext := make([]byte, ciphertextLen)
-	if _, err := io.ReadFull(reader.file, ciphertext); err != nil {
+	if _, err := io.ReadFull(sr.file, ciphertext); err != nil {
 		return err
 	}
 
-	plaintext, err := reader.aesgcm.Open(nil, reader.nonce[:], ciphertext, nil)
+	plaintext, err := sr.aesgcm.Open(nil, sr.nonce[:], ciphertext, nil)
 	if err != nil {
 		return err
 	}
 
-	decompressed, err := reader.decoder.DecodeAll(plaintext, reader.buf[:0])
+	decompressed, err := sr.decoder.DecodeAll(plaintext, sr.buf[:0])
 	if err != nil {
 		return fmt.Errorf("decompress encrypted block: %w", err)
 	}
-	reader.buf = decompressed
+	sr.buf = decompressed
 	return nil
 }

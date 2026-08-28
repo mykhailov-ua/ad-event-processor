@@ -8,16 +8,18 @@ import (
 
 func toAdminCampaignFraudConfig(cfg CampaignFraudConfigDTO) CampaignFraudConfigDTO {
 	return CampaignFraudConfigDTO{
-		CampaignID:            cfg.CampaignID,
-		FraudThresholdPass:    cfg.FraudThresholdPass,
-		FraudThresholdSuspect: cfg.FraudThresholdSuspect,
-		FraudThresholdIVT:     cfg.FraudThresholdIVT,
-		FraudThresholdBlock:   cfg.FraudThresholdBlock,
-		SilentRejectEnabled:   cfg.SilentRejectEnabled,
-		BehaviorFlags:         cfg.BehaviorFlags,
-		CanvasRetestEnabled:   cfg.CanvasRetestEnabled,
-		CgnatIPPolicyEnabled:  cfg.CgnatIPPolicyEnabled,
-		ConversionRejectRules: cfg.ConversionRejectRules,
+		CampaignID:               cfg.CampaignID,
+		FraudThresholdPass:       cfg.FraudThresholdPass,
+		FraudThresholdSuspect:    cfg.FraudThresholdSuspect,
+		FraudThresholdIVT:        cfg.FraudThresholdIVT,
+		FraudThresholdBlock:      cfg.FraudThresholdBlock,
+		SilentRejectEnabled:      cfg.SilentRejectEnabled,
+		BehaviorFlags:            cfg.BehaviorFlags,
+		CanvasRetestEnabled:      cfg.CanvasRetestEnabled,
+		CgnatIPPolicyEnabled:     cfg.CgnatIPPolicyEnabled,
+		AcceptLangGeoEnabled:     cfg.AcceptLangGeoEnabled,
+		JSONSerializationEnabled: cfg.JSONSerializationEnabled,
+		ConversionRejectRules:    cfg.ConversionRejectRules,
 	}
 }
 

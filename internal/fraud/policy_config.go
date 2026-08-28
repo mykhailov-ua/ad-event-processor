@@ -78,18 +78,18 @@ func GetPolicyConfig() PolicyConfig {
 	return activePolicyConfig
 }
 
-func (cfg PolicyConfig) BlockProbability() float64 {
-	if cfg.TierBlock > 0 && cfg.TierBlock < 100 {
-		return float64(cfg.TierBlock) / 100.0
+func (c PolicyConfig) BlockProbability() float64 {
+	if c.TierBlock > 0 && c.TierBlock < 100 {
+		return float64(c.TierBlock) / 100.0
 	}
-	if cfg.TierIVT > 0 {
-		return float64(cfg.TierIVT) / 100.0
+	if c.TierIVT > 0 {
+		return float64(c.TierIVT) / 100.0
 	}
 	return 0.80
 }
 
-func (cfg PolicyConfig) WithCampaignThresholds(pass, suspect, ivt, block uint8) PolicyConfig {
-	out := cfg
+func (c PolicyConfig) WithCampaignThresholds(pass, suspect, ivt, block uint8) PolicyConfig {
+	out := c
 	if pass > 0 {
 		out.TierPass = pass
 	}

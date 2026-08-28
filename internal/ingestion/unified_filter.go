@@ -186,7 +186,7 @@ type UnifiedFilter struct {
 	roughPacing                  *RoughPacingGate
 	settingsWatcher              *SettingsWatcher
 	dbLookupTimeout              time.Duration
-	postgresFallbackAllowed            bool
+	postgresFallbackAllowed      bool
 	luaMetricsSeq                atomic.Uint64
 	fastScript                   *redis.Script
 	fastScriptHashAny            any
@@ -386,7 +386,7 @@ func NewUnifiedFilter(
 		luaNoScriptCounters:          newRedisLuaNoScriptCounters(len(redisShards)),
 		redisObservability:           newRedisShardObservability(len(redisShards), luaMetricsSampleMask),
 		dbLookupTimeout:              2 * time.Second,
-		postgresFallbackAllowed:            true,
+		postgresFallbackAllowed:      true,
 		evalFallbackGate:             make(chan struct{}, 32),
 	}
 	f.geoFloors.Store(&emptyGeoFloors)
@@ -615,6 +615,20 @@ func (f *UnifiedFilter) getCampaign(evt *domain.Event) (*domain.Campaign, bool) 
 }
 
 func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
+	if evt != nil && evt.SmokeEvent {
+		prevSkip := f.skipBudgetDebitAny
+		prevStream := f.streamKeyVal
+		f.skipBudgetDebitAny = oneAny
+		f.streamKeyVal = fcapIgnoredKeyVal
+		err := f.checkPass(ctx, evt)
+		f.skipBudgetDebitAny = prevSkip
+		f.streamKeyVal = prevStream
+		return err
+	}
+	return f.checkPass(ctx, evt)
+}
+
+func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error {
 	nowNano := monotonicNano()
 	if f.quotaMode == "live" && f.localQuotaCache.IsBlocked(evt.CampaignID, nowNano) {
 		metrics.TrackerLocalQuotaBlockTotal.Inc()

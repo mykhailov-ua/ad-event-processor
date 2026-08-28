@@ -346,6 +346,7 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				e.FraudReason,
 				e.FraudScore,
 				fraudSilentRejectFlag(e),
+				e.LayerDesyncCount,
 				e.CreatedAt,
 			)
 		case table == "clicks":
@@ -366,6 +367,9 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				dims.keyword,
 				reviewRoutedFlag(e),
 				unsafeString(payload),
+				e.RTTSynMS,
+				e.TTFBAppMS,
+				e.RTTSplitDeltaMS,
 				e.CreatedAt,
 				e.IngressCostMicro,
 				clickAttributedCostSource(e),
@@ -397,6 +401,33 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				e.CreatedAt,
 				e.Type,
 			)
+		case table == "conversions":
+			dims := extractAnalyticsDimensions(e)
+			payload := analyticsPayloadBytes(dims, e.Payload)
+			err = batch.Append(
+				e.ClickID,
+				e.CampaignID,
+				e.PlacementID,
+				piihash.FixedString16(pii.ipHash),
+				piihash.FixedString16(pii.uaHash),
+				pii.saltVersion,
+				dims.sub1,
+				dims.sub2,
+				analyticsCountryCode(dims.country),
+				dims.deviceType,
+				dims.keyword,
+				unsafeString(payload),
+				e.RTTSynMS,
+				e.TTFBAppMS,
+				e.RTTSplitDeltaMS,
+				e.MobileTouchCount,
+				e.MobileGyroSamples,
+				e.MobileGyroVariance,
+				e.MobileGyroFlat,
+				e.MobileBiometricSet,
+				e.MobileBiometricMobile,
+				e.CreatedAt,
+			)
 		default:
 			dims := extractAnalyticsDimensions(e)
 			payload := analyticsPayloadBytes(dims, e.Payload)
@@ -413,6 +444,9 @@ func (st *ClickHouseStore) insertTable(ctx context.Context, table string, evts [
 				dims.deviceType,
 				dims.keyword,
 				unsafeString(payload),
+				e.RTTSynMS,
+				e.TTFBAppMS,
+				e.RTTSplitDeltaMS,
 				e.CreatedAt,
 			)
 		}

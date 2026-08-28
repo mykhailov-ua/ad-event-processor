@@ -48,7 +48,7 @@ func TestColdPathJSON_ConsentRejectsOversizeBody(t *testing.T) {
 		ConsentVerifier: stubConsentVerifier{},
 	}
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/consent", h.postConsent)
+	mux.HandleFunc("POST /api/v1/consent", h.PostConsent)
 
 	body := strings.Repeat("x", coldpath.DefaultMaxBody+1)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/consent", strings.NewReader(body))

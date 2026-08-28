@@ -41,22 +41,22 @@ type RtbFloorsHTTPHandlers struct {
 	WriteServiceError func(http.ResponseWriter, error)
 }
 
-func (rtbFloors *RtbFloorsHTTPHandlers) Register(mux *http.ServeMux) {
-	if rtbFloors == nil || rtbFloors.Service == nil {
+func (h *RtbFloorsHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil || h.Service == nil {
 		return
 	}
-	limit := rtbFloors.ApplyRateLimit
-	perm := rtbFloors.RequirePermission
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("POST /api/v1/rtb/floors/apply", limit(perm("settings:write", rtbFloors.applyFloors)))
+	mux.HandleFunc("POST /api/v1/rtb/floors/apply", limit(perm("settings:write", h.applyFloors)))
 }
 
-func (rtbFloors *RtbFloorsHTTPHandlers) applyFloors(w http.ResponseWriter, r *http.Request) {
+func (h *RtbFloorsHTTPHandlers) applyFloors(w http.ResponseWriter, r *http.Request) {
 	dryRun := r.URL.Query().Get("dry_run") == "1" || r.URL.Query().Get("dry_run") == "true"
 	var req RtbFloorsApplyRequest
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
@@ -71,10 +71,10 @@ func (rtbFloors *RtbFloorsHTTPHandlers) applyFloors(w http.ResponseWriter, r *ht
 		}
 		req = decoded
 	}
-	result, err := rtbFloors.Service.ApplyRtbFloorSuggestions(r.Context(), dryRun, req.PlacementIDs)
+	result, err := h.Service.ApplyRtbFloorSuggestions(r.Context(), dryRun, req.PlacementIDs)
 	if err != nil {
-		if rtbFloors.WriteServiceError != nil {
-			rtbFloors.WriteServiceError(w, err)
+		if h.WriteServiceError != nil {
+			h.WriteServiceError(w, err)
 			return
 		}
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "request failed")

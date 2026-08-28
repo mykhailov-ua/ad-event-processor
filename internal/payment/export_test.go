@@ -13,14 +13,14 @@ func SetPostSettlementMarkHookForTest(hook func(context.Context, db.PaymentPayme
 	PostSettlementMarkHook = hook
 }
 
-func (outboxWorker *OutboxWorker) ReplacePoolForTest(pool *pgxpool.Pool) {
-	outboxWorker.pool = pool
+func (w *OutboxWorker) ReplacePoolForTest(pool *pgxpool.Pool) {
+	w.pool = pool
 }
 
-func (outboxWorker *OutboxWorker) ReclaimStaleProcessingForTest(ctx context.Context) {
-	outboxWorker.reclaimStaleProcessing(ctx)
+func (w *OutboxWorker) ReclaimStaleProcessingForTest(ctx context.Context) {
+	w.reclaimStaleProcessing(ctx)
 }
 
-func (webhookHandler *WebhookHandler) HandleCryptoWebhookForTest(w http.ResponseWriter, r *http.Request) {
-	webhookHandler.handleCryptoWebhook(w, r)
+func (wh *WebhookHandler) HandleCryptoWebhookForTest(w http.ResponseWriter, r *http.Request) {
+	wh.handleCryptoWebhook(w, r)
 }

@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +20,7 @@ func TestHourlySharesFromSamples_sumsToOne(t *testing.T) {
 }
 
 func TestComputeVPPRatio_flatDistributionNearOne(t *testing.T) {
-	weights := uniformHourWeights()
+	weights := campaign.UniformHourWeights()
 	now := time.Date(2026, 3, 15, 12, 0, 0, 0, time.UTC)
 	ratio := computeVPPRatio(weights, nil, now, 50_000_000, 100_000_000, 0.05)
 	require.Equal(t, float32(1.0), ratio)

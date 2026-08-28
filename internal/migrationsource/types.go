@@ -30,6 +30,7 @@ type MappedCampaign struct {
 	BudgetLimitMicro      int64             `json:"budget_limit_micro,omitempty"`
 	IngressCostParam      string            `json:"ingress_cost_param,omitempty"`
 	PostbackURLTemplate   string            `json:"postback_url_template,omitempty"`
+	Flow                  *MappedFlow       `json:"flow,omitempty"`
 }
 
 type PreviewResult struct {
@@ -37,6 +38,21 @@ type PreviewResult struct {
 	MappedCampaigns []MappedCampaign `json:"mapped_campaigns"`
 	Warnings        []Warning        `json:"warnings,omitempty"`
 	SecretsStripped int              `json:"secrets_stripped"`
+}
+
+type MappedFlowPath struct {
+	Weight     int32  `json:"weight"`
+	LanderRef  string `json:"lander_ref"`
+	LanderName string `json:"lander_name"`
+	LanderURL  string `json:"lander_url"`
+	OfferRef   string `json:"offer_ref"`
+	OfferName  string `json:"offer_name"`
+	OfferURL   string `json:"offer_url"`
+}
+
+type MappedFlow struct {
+	Name  string           `json:"name,omitempty"`
+	Paths []MappedFlowPath `json:"paths,omitempty"`
 }
 
 type NormalizedCampaign struct {
@@ -47,9 +63,29 @@ type NormalizedCampaign struct {
 	LanderURL         string
 	PostbackURL       string
 	BudgetUSD         float64
+	Flow              *NormalizedFlow
+}
+
+type NormalizedFlowPath struct {
+	Weight int32
+	Lander NormalizedFlowAsset
+	Offer  NormalizedFlowAsset
+}
+
+type NormalizedFlowAsset struct {
+	Ref  string
+	Name string
+	URL  string
+}
+
+type NormalizedFlow struct {
+	Name          string
+	Paths         []NormalizedFlowPath
+	UnmappedNodes []string
 }
 
 type NormalizedBundle struct {
 	SourceKind SourceKind
 	Campaigns  []NormalizedCampaign
+	Warnings   []Warning
 }

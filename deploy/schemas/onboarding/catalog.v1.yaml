@@ -1,0 +1,114 @@
+version: 1
+templates:
+  - key: meta_social_funnel
+    title: Meta social funnel
+    description: Facebook Ads click schema with default lander-to-offer flow.
+    traffic_family: social
+    integration_schema_refs:
+      - traffic_facebook
+    sample_macros:
+      sub2: "{{campaign.id}}"
+      ad_campaign_id: "{{campaign.id}}"
+      sub3: "{{adset.id}}"
+      sub4: "{{ad.id}}"
+    wizard:
+      traffic_template_id: meta-facebook
+      integration_schema: traffic_facebook
+      click_query_params:
+        sub2: "{{campaign.id}}"
+        ad_campaign_id: "{{campaign.id}}"
+        sub3: "{{adset.id}}"
+        sub4: "{{ad.id}}"
+      campaign_name: Meta Social Campaign
+      flow_name: social-main
+      lander_name: Social prelander
+      lander_url: https://example.com/lander
+      offer_name: Main offer
+      offer_url: https://example.com/offer
+      budget_limit_micro: 50000000
+      timezone: UTC
+      target_countries:
+        - US
+  - key: popunder_propeller
+    title: PropellerAds popunder
+    description: Pop traffic with PropellerAds zone and banner macros.
+    traffic_family: pop
+    integration_schema_refs:
+      - traffic_propellerads
+    sample_macros:
+      sub1: "{zoneid}"
+      sub2: "{campaignid}"
+      sub3: "{bannerid}"
+    wizard:
+      traffic_template_id: propellerads
+      integration_schema: traffic_propellerads
+      click_query_params:
+        sub1: "{zoneid}"
+        sub2: "{campaignid}"
+        sub3: "{bannerid}"
+      campaign_name: Propeller Pop Campaign
+      flow_name: pop-main
+      lander_name: Pop prelander
+      lander_url: https://example.com/pop-lander
+      offer_name: Pop offer
+      offer_url: https://example.com/pop-offer
+      budget_limit_micro: 25000000
+      timezone: UTC
+      target_countries:
+        - US
+        - CA
+  - key: push_house_funnel
+    title: Push.house push funnel
+    description: Push notification traffic with Push.house site and creative macros.
+    traffic_family: push
+    integration_schema_refs:
+      - traffic_pushhouse
+    sample_macros:
+      sub1: "{site_id}"
+      sub2: "{campaign_id}"
+      sub3: "{creative_id}"
+    wizard:
+      traffic_template_id: push-house
+      integration_schema: traffic_pushhouse
+      click_query_params:
+        sub1: "{site_id}"
+        sub2: "{campaign_id}"
+        sub3: "{creative_id}"
+      campaign_name: Push House Campaign
+      flow_name: push-main
+      lander_name: Push prelander
+      lander_url: https://example.com/push-lander
+      offer_name: Push offer
+      offer_url: https://example.com/push-offer
+      budget_limit_micro: 30000000
+      timezone: UTC
+      target_countries:
+        - US
+  - key: native_mgid_funnel
+    title: MGID native funnel
+    description: Native widget traffic with MGID teaser macros.
+    traffic_family: native
+    integration_schema_refs:
+      - traffic_mgid
+    sample_macros:
+      sub1: "{widget_id}"
+      sub2: "{campaign_id}"
+      sub3: "{teaser_id}"
+    wizard:
+      traffic_template_id: mgid
+      integration_schema: traffic_mgid
+      click_query_params:
+        sub1: "{widget_id}"
+        sub2: "{campaign_id}"
+        sub3: "{teaser_id}"
+      campaign_name: MGID Native Campaign
+      flow_name: native-main
+      lander_name: Native prelander
+      lander_url: https://example.com/native-lander
+      offer_name: Native offer
+      offer_url: https://example.com/native-offer
+      budget_limit_micro: 40000000
+      timezone: UTC
+      target_countries:
+        - US
+        - GB

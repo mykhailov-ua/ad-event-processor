@@ -47,7 +47,7 @@ task test-gen -- internal/my-service
 
 ### Control plane OpenAPI (API-first for new routes)
 
-Contract files live under `api/openapi/`. Hand-documented domains: cost-sync (pilot), integrations, campaigns, billing, reports, ops, fraud admin, dashboards, saved views. Every other `routeCatalog` row still appears as a generated stub in `paths/_generated_routes.yaml` until its domain slug is migrated (`deploy/vendor/openapi_backlog.md`).
+Contract files live under `api/openapi/`. Hand-documented domains: cost-sync (pilot), integrations, campaigns, billing, reports, ops, fraud admin, dashboards, saved views. Every other `routeCatalog` row still appears as a generated stub in `paths/_generated_routes.yaml` until its domain slug is migrated (workflow below).
 
 ```bash
 make openapi-export   # refresh stubs + openapi.bundle.yaml from routeCatalog
@@ -116,7 +116,7 @@ bash scripts/ci/openapi_gate.sh
 cd web && npm run typecheck
 ```
 
-Backlog tracker (closed 2026-08-26): `deploy/vendor/openapi_backlog.md`.
+OpenAPI transition closed 2026-08-26; gate: `bash scripts/ci/openapi_gate.sh`.
 
 #### Breaking change guard (OpenAPI diff)
 
@@ -173,6 +173,7 @@ bash scripts/dev/stack.sh full    # Launches PostgreSQL, Redis Shards, and Click
 | Profile Name | Active Microservices | Best For |
 | :--- | :--- | :--- |
 | `single-vps` / `full` | Tracker, Processor, Control API, Postgres, Redis x4, ClickHouse | Complete local development mimicking production environments. |
+| `minimal` | Tracker, Processor, Control API, Postgres, Redis x1, ClickHouse, Broker | Buyer eval / low-RAM stack with CH reports but reduced cold-path workers (~6 GB RAM). |
 | `infra` | PostgreSQL, Redis x6 (with Sentinel), ClickHouse | Running core datastores while executing Go microservices locally. |
 | `ingest-only` | Tracker, Processor, Control API, PostgreSQL, Redis x4 (No ClickHouse) | Low-memory execution. Focuses on redirects and Meta CAPI syncs. **Min RAM ~4 GB.** |
 | `analytics-ml` | Core Stack + `fraud-scorer` + `ivt-detector` | Training and testing machine learning models and IVT filters. |
@@ -200,10 +201,39 @@ Minimum RAM (comfortable dev):
 | Profile | RAM | Compose command |
 | :--- | ---: | :--- |
 | `ingest-only` | 4 GB | `bash scripts/dev/stack.sh ingest-only` |
+| `minimal` | 6 GB | `bash scripts/dev/stack.sh minimal` |
 | `full` / `single-vps` | 8 GB | `bash scripts/dev/stack.sh full` |
 | `analytics-ml` | 12 GB+ | `bash scripts/dev/stack.sh analytics-ml` |
 
+### Minimal buyer stack
+
+Same binaries as `full`; compose overlay `deploy/compose/docker-compose.minimal.yaml` plus env defaults in `deploy/compose/minimal.stack.env.example`.
+
+```bash
+cp .env.example .env
+cat deploy/compose/minimal.stack.env.example >> .env
+bash scripts/dev/stack.sh build
+bash scripts/dev/stack.sh minimal
+```
+
+Services started: `db`, `redis-0`, `broker`, `processor`, `tracker-0`, `control`, `clickhouse`.
+
+| Capability | `minimal` | `full` |
+| :--- | :---: | :---: |
+| `/click`, `/track`, budget debit, broker → CH ingest | yes | yes |
+| ClickHouse reports and automation CH rollups | yes | yes |
+| Redis unified-filter Lua (single shard) | yes | yes (4 shards) |
+| Batch ML fraud scoring (`fraud-scorer`, `FRAUD_SCORING_ENABLED`) | no | optional (`analytics-ml`) |
+| Cost Sync, platform campaign sync, margin guard workers | no | yes |
+| Payment, billing, notifier cold-path workers | no | yes |
+| eBPF XDP edge (`edge-xdp`), nginx ingress, CPU isolation | no | optional |
+| Multi-tracker horizontal scale (`tracker-1`…`3`) | no | yes |
+| Redis Sentinel / multi-shard HA | no | yes (`infra` + sentinel) |
+
+ClickHouse memory limit is 1536M in minimal overlay vs 4G in default compose. Tracker uses HTTP health on `:8181` instead of UDS in the overlay.
+
 To verify that all local systems are operating cleanly, run:
+
 ```bash
 bash scripts/dev/preflight.sh
 ```

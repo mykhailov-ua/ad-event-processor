@@ -70,8 +70,8 @@ func buildTargetingIndex(reg *CampaignAuctionRegistry) {
 	reg.TargetBucketStart[reg.TargetBucketCount] = uint32(reg.TargetBucketSoA.len())
 }
 
-func (reg *CampaignAuctionRegistry) targetingRange(geo uint32, deviceType uint8, categoryMask uint64) (start int, end int, ok bool) {
-	if reg == nil || reg.TargetBucketCount == 0 {
+func (r *CampaignAuctionRegistry) targetingRange(geo uint32, deviceType uint8, categoryMask uint64) (start int, end int, ok bool) {
+	if r == nil || r.TargetBucketCount == 0 {
 		return 0, 0, false
 	}
 	if deviceType == 0 {
@@ -81,14 +81,14 @@ func (reg *CampaignAuctionRegistry) targetingRange(geo uint32, deviceType uint8,
 		categoryMask = 1
 	}
 	key := targetingBucketKey(geo, deviceType, categoryMask)
-	keys := reg.TargetBucketKey
-	idx := sort.Search(reg.TargetBucketCount, func(i int) bool {
+	keys := r.TargetBucketKey
+	idx := sort.Search(r.TargetBucketCount, func(i int) bool {
 		return keys[i] >= key
 	})
-	if idx >= reg.TargetBucketCount || keys[idx] != key {
+	if idx >= r.TargetBucketCount || keys[idx] != key {
 		return 0, 0, false
 	}
-	start = int(reg.TargetBucketStart[idx])
-	end = int(reg.TargetBucketStart[idx+1])
+	start = int(r.TargetBucketStart[idx])
+	end = int(r.TargetBucketStart[idx+1])
 	return start, end, true
 }

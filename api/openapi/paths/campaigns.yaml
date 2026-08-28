@@ -13,6 +13,28 @@ paths:
           required: false
           schema:
             type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, updated_at, spend]
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+        - name: pacing_mode
+          in: query
+          required: false
+          schema:
+            type: string
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
         - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:
@@ -51,6 +73,12 @@ paths:
       x-permissions: [campaigns:write]
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - in: query
+          name: force
+          schema:
+            type: boolean
+            default: false
+          description: Admin-only bypass when setting status to ACTIVE
       requestBody:
         required: true
         content:
@@ -64,6 +92,12 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/Campaign'
+        '422':
+          description: Publish validation failed when activating campaign
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignPublishBlockedError'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -202,6 +236,128 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/MigrationPreviewResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/import/validate:
+    post:
+      tags: [campaigns]
+      operationId: campaignsImportValidate
+      summary: Synchronous migration validation without committing campaigns
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/MigratePreviewRequest'
+      responses:
+        '200':
+          description: Validation preview
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/MigrationPreviewResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/import/validate/jobs:
+    post:
+      tags: [campaigns]
+      operationId: campaignsImportValidateJobCreate
+      summary: Enqueue async migration validation job
+      x-permissions: [campaigns:write]
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/ImportValidateJobRequest'
+      responses:
+        '201':
+          description: Validation job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/ops_reports.yaml#/ReportJobStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/import/validate/jobs/{id}:
+    get:
+      tags: [campaigns]
+      operationId: campaignsImportValidateJobGet
+      summary: Read async migration validation job status
+      x-permissions: [campaigns:write]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Validation job status
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/ops_reports.yaml#/ReportJobStatus'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/migrate/pull/preview:
+    post:
+      tags: [campaigns]
+      operationId: campaignsMigratePullPreview
+      summary: Pull migration payload from external tracker and preview
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/MigratePullRequest'
+      responses:
+        '200':
+          description: Mapped campaigns preview
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/MigrationPreviewResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/migrate/pull/import:
+    post:
+      tags: [campaigns]
+      operationId: campaignsMigratePullImport
+      summary: Pull migration payload from external tracker and import
+      x-permissions: [campaigns:write]
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/MigratePullRequest'
+      responses:
+        '201':
+          description: Migration import result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/ImportMigrationResult'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -370,6 +526,362 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/CampaignFraudPreview'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/editor-shell:
+    get:
+      tags: [campaigns]
+      operationId: campaignsEditorShell
+      summary: Campaign editor section shell
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Editor shell
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignEditorShell'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/validate:
+    post:
+      tags: [campaigns]
+      operationId: campaignsValidatePatch
+      summary: Dry-run campaign patch validation
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/PatchCampaignRequest'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignValidateResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/publish:
+    post:
+      tags: [campaigns]
+      operationId: campaignsPublish
+      summary: Validate and activate a paused campaign
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - in: query
+          name: force
+          schema:
+            type: boolean
+            default: false
+          description: Admin-only bypass of publish validation gate
+      responses:
+        '200':
+          description: Campaign published
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Campaign'
+        '422':
+          description: Publish validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignPublishBlockedError'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/publish-check:
+    get:
+      tags: [campaigns]
+      operationId: campaignsPublishCheck
+      summary: Evaluate publish gate without changing status
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Publish gate evaluation
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignPublishCheck'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/smoke:
+    post:
+      tags: [campaigns]
+      operationId: campaignsSmoke
+      summary: Synthetic click smoke test for campaign redirect chain
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Smoke check result
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignSmokeResult'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/onboarding-templates:
+    get:
+      tags: [campaigns]
+      operationId: campaignsOnboardingTemplates
+      summary: List bundled campaign onboarding templates
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      responses:
+        '200':
+          description: Onboarding templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/campaign.yaml#/CampaignOnboardingTemplate'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/wizard/session:
+    get:
+      tags: [campaigns]
+      operationId: campaignsWizardSessionGet
+      summary: Read onboarding wizard session state
+      x-permissions: [campaigns:write]
+      parameters:
+        - in: query
+          name: session_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Wizard session
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignWizardSession'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [campaigns]
+      operationId: campaignsWizardSessionPost
+      summary: Create, update, or commit onboarding wizard session
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/campaign.yaml#/CampaignWizardSessionRequest'
+      responses:
+        '200':
+          description: Updated session or commit result
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '../components/schemas/campaign.yaml#/CampaignWizardSession'
+                  - $ref: '../components/schemas/campaign.yaml#/CampaignWizardCommitResult'
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignWizardSession'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/integration-panel:
+    get:
+      tags: [campaigns]
+      operationId: campaignsIntegrationPanel
+      summary: Campaign integration health panel
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Integration panel
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignIntegrationPanel'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/flow/validate:
+    post:
+      tags: [campaigns]
+      operationId: campaignsFlowValidate
+      summary: Validate campaign flow paths
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paths:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: Flow validation result
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/macro-preview:
+    post:
+      tags: [campaigns]
+      operationId: campaignsMacroPreview
+      summary: Preview resolved click URL macros
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Macro preview
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/diff:
+    get:
+      tags: [campaigns]
+      operationId: campaignsDiff
+      summary: Compare campaign against another campaign
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: against
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Diff rows
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/clone/preview:
+    post:
+      tags: [campaigns]
+      operationId: campaignsClonePreview
+      summary: Preview campaign clone options
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Clone preview
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/{id}/placement-block-suggestions:
+    get:
+      tags: [campaigns]
+      operationId: campaignsPlacementBlockSuggestions
+      summary: Suggest placements to block based on IVT
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Placement suggestions
+          content:
+            application/json:
+              schema:
+                type: object
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/bulk:
+    post:
+      tags: [campaigns]
+      operationId: campaignsBulkMutate
+      summary: Bulk pause or resume campaigns
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action, campaign_ids]
+              properties:
+                action:
+                  type: string
+                  enum: [pause, resume]
+                campaign_ids:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+      responses:
+        '200':
+          description: Bulk results
+          content:
+            application/json:
+              schema:
+                type: object
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

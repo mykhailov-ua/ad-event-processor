@@ -12,13 +12,14 @@ type keitaroExport struct {
 }
 
 type keitaroCampaign struct {
-	ID            int     `json:"id"`
-	Name          string  `json:"name"`
-	TrafficSource string  `json:"traffic_source"`
-	Budget        float64 `json:"budget"`
-	TrackingURL   string  `json:"tracking_url"`
-	LanderURL     string  `json:"lander_url"`
-	PostbackURL   string  `json:"postback_url"`
+	ID            int                 `json:"id"`
+	Name          string              `json:"name"`
+	TrafficSource string              `json:"traffic_source"`
+	Budget        float64             `json:"budget"`
+	TrackingURL   string              `json:"tracking_url"`
+	LanderURL     string              `json:"lander_url"`
+	PostbackURL   string              `json:"postback_url"`
+	Streams       []keitaroStreamJSON `json:"streams"`
 }
 
 func ParseKeitaroJSON(payload []byte) (NormalizedBundle, error) {
@@ -55,6 +56,8 @@ func ParseKeitaroJSON(payload []byte) (NormalizedBundle, error) {
 		if trackingURL == "" {
 			return NormalizedBundle{}, fmt.Errorf("campaign index %d missing tracking_url (use source_kind keitaro_admin_api for Admin API wire)", i)
 		}
+		flow, streamWarnings := parseKeitaroCampaignFlow(row, i)
+		out.Warnings = append(out.Warnings, streamWarnings...)
 		out.Campaigns = append(out.Campaigns, NormalizedCampaign{
 			Ref:               ref,
 			Name:              name,
@@ -63,6 +66,7 @@ func ParseKeitaroJSON(payload []byte) (NormalizedBundle, error) {
 			LanderURL:         strings.TrimSpace(row.LanderURL),
 			PostbackURL:       strings.TrimSpace(row.PostbackURL),
 			BudgetUSD:         row.Budget,
+			Flow:              flow,
 		})
 	}
 	return out, nil

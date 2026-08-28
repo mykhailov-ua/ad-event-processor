@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS fraud_events (
     fraud_reason String,
     fraud_score UInt32 DEFAULT 0,
     silent_reject_event UInt8 DEFAULT 0,
+    layer_desync_count UInt8 DEFAULT 0,
     created_at DateTime64(3, 'UTC')
 ) ENGINE = ReplacingMergeTree(created_at)
 PARTITION BY toYYYYMM(created_at)
@@ -119,5 +120,25 @@ CREATE TABLE IF NOT EXISTS filter_reject_slices (
     reject_count UInt64
 ) ENGINE = SummingMergeTree()
 PARTITION BY toYYYYMM(rollup_hour)
-ORDER BY (rollup_hour, reject_kind, country, placement_id)
+    ORDER BY (rollup_hour, reject_kind, country, placement_id)
 TTL rollup_hour + INTERVAL 90 DAY;
+
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS rtt_syn_ms UInt16 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS ttfb_app_ms UInt16 DEFAULT 0;
+ALTER TABLE clicks ADD COLUMN IF NOT EXISTS rtt_split_delta_ms UInt16 DEFAULT 0;
+
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS rtt_syn_ms UInt16 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS ttfb_app_ms UInt16 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS rtt_split_delta_ms UInt16 DEFAULT 0;
+
+ALTER TABLE impressions ADD COLUMN IF NOT EXISTS rtt_syn_ms UInt16 DEFAULT 0;
+ALTER TABLE impressions ADD COLUMN IF NOT EXISTS ttfb_app_ms UInt16 DEFAULT 0;
+ALTER TABLE impressions ADD COLUMN IF NOT EXISTS rtt_split_delta_ms UInt16 DEFAULT 0;
+
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS mobile_touch_count UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS mobile_gyro_samples UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS mobile_gyro_variance UInt16 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS mobile_gyro_flat UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS mobile_biometric_set UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS mobile_biometric_mobile UInt8 DEFAULT 0;
+ALTER TABLE conversions ADD COLUMN IF NOT EXISTS device_type LowCardinality(String) DEFAULT '';

@@ -56,6 +56,13 @@ func EbpfEdgeAllowed(state LicenseState, ent Entitlements) bool {
 	return ent.Features.EbpfEdgeEnabled()
 }
 
+func FraudDisputeEvidenceAllowed(state LicenseState, ent Entitlements) bool {
+	if state == StateExpired || state == StateRevoked {
+		return false
+	}
+	return ent.Features.FraudDisputeEvidenceEnabled()
+}
+
 func NormalizeMaxActivationsLimit(limits Limits) int32 {
 	if limits.MaxActivations == 0 {
 		return 1

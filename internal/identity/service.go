@@ -684,7 +684,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassw
 	return nil
 }
 
-func (s *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
+func (s *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name string, scopes []string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
 	raw := make([]byte, 32)
 	if _, err := rand.Read(raw); err != nil {
 		return CreateAPIKeyResult{}, err
@@ -701,12 +701,17 @@ func (s *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name strin
 		exp = pgtype.Timestamptz{Time: *expiresAt, Valid: true}
 	}
 
+	if scopes == nil {
+		scopes = []string{}
+	}
+
 	row, err := s.repo.CreateAPIKey(ctx, db.CreateAPIKeyParams{
 		KeyHash:   keyHash,
 		KeyLookup: pgtype.Text{String: apiKeyLookup(rawKey), Valid: true},
 		UserID:    pgtype.UUID{Bytes: userID, Valid: true},
 		Name:      name,
 		ExpiresAt: exp,
+		Scopes:    scopes,
 	})
 	if err != nil {
 		return CreateAPIKeyResult{}, err
@@ -717,13 +722,14 @@ func (s *Service) CreateAPIKey(ctx context.Context, userID uuid.UUID, name strin
 		ID:     id.String(),
 		Name:   row.Name,
 		RawKey: rawKey,
+		Scopes: row.Scopes,
 	}
 	if row.ExpiresAt.Valid {
 		t := row.ExpiresAt.Time
 		result.ExpiresAt = &t
 	}
 	s.AuditLog(ctx, userID, "API_KEY_CREATED", "api_key", id.String(), "", "",
-		map[string]any{"name": name, "expires_at": expiresAt}, nil)
+		map[string]any{"name": name, "expires_at": expiresAt, "scopes": scopes}, nil)
 	return result, nil
 }
 
@@ -738,6 +744,7 @@ func (s *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) ([]APIK
 			ID:        uuidFromPg(row.ID).String(),
 			Name:      row.Name,
 			CreatedAt: row.CreatedAt.Time,
+			Scopes:    row.Scopes,
 		}
 		if row.ExpiresAt.Valid {
 			t := row.ExpiresAt.Time
@@ -748,45 +755,50 @@ func (s *Service) ListUserAPIKeys(ctx context.Context, userID uuid.UUID) ([]APIK
 	return out, nil
 }
 
-func (s *Service) VerifyAPIKey(ctx context.Context, rawKey string) (db.User, error) {
+type VerifiedAPIKey struct {
+	User   db.User
+	Scopes []string
+}
+
+func (s *Service) VerifyAPIKey(ctx context.Context, rawKey string) (VerifiedAPIKey, error) {
 	rawKey = strings.TrimSpace(rawKey)
 	if rawKey == "" {
-		return db.User{}, ErrInvalidAPIKey
+		return VerifiedAPIKey{}, ErrInvalidAPIKey
 	}
 
 	row, err := s.repo.GetAPIKeyByLookup(ctx, pgtype.Text{String: apiKeyLookup(rawKey), Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return db.User{}, ErrInvalidAPIKey
+			return VerifiedAPIKey{}, ErrInvalidAPIKey
 		}
-		return db.User{}, err
+		return VerifiedAPIKey{}, err
 	}
 
 	select {
 	case s.cryptoSem <- struct{}{}:
 	case <-ctx.Done():
-		return db.User{}, ctx.Err()
+		return VerifiedAPIKey{}, ctx.Err()
 	default:
-		return db.User{}, ErrRateLimitExceeded
+		return VerifiedAPIKey{}, ErrRateLimitExceeded
 	}
 	defer func() { <-s.cryptoSem }()
 
 	match, err := VerifyPassword(rawKey, row.KeyHash)
 	if err != nil || !match {
-		return db.User{}, ErrInvalidAPIKey
+		return VerifiedAPIKey{}, ErrInvalidAPIKey
 	}
 
 	user, err := s.repo.GetUserByID(ctx, row.UserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return db.User{}, ErrInvalidAPIKey
+			return VerifiedAPIKey{}, ErrInvalidAPIKey
 		}
-		return db.User{}, err
+		return VerifiedAPIKey{}, err
 	}
 	if user.IsBlocked {
-		return db.User{}, ErrAccountLocked
+		return VerifiedAPIKey{}, ErrAccountLocked
 	}
-	return user, nil
+	return VerifiedAPIKey{User: user, Scopes: row.Scopes}, nil
 }
 
 func (s *Service) RequestEmailVerification(ctx context.Context, userID uuid.UUID) (string, error) {

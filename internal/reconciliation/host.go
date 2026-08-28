@@ -1,0 +1,48 @@
+package reconciliation
+
+import (
+	"context"
+	"time"
+
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+)
+
+type BrokerPendingDeltaReader interface {
+	PendingDeltaMicro(ctx context.Context, campaignID uuid.UUID) (int64, error)
+}
+
+type PaymentQueryer interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+}
+
+type Alerter interface {
+	AlertReconDiscrepancy(ctx context.Context, runID int64, discrepancies int, totalDelta int64, period string)
+	AlertReconDiscrepancyUnresolved(ctx context.Context, runID int64, unresolved int, totalDelta int64, period string, oldest time.Time)
+}
+
+type Host interface {
+	Pool() *pgxpool.Pool
+	SettlementPool() *pgxpool.Pool
+	PaymentQueryPool() PaymentQueryer
+	RedisShards() []redis.UniversalClient
+	Sharder() domain.Sharder
+	Config() *config.Config
+	WithPostgresLow(ctx context.Context, fn func(context.Context) error) error
+	ClickHouseQuery() *database.ClickHouseQuery
+	RedisClientForCampaign(campaignID uuid.UUID) redis.UniversalClient
+	AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any)
+	Alerter() Alerter
+	ForceRefillCampaignFromPG(ctx context.Context, campaignID uuid.UUID, currentSpend int64) error
+	BrokerDeltas() BrokerPendingDeltaReader
+	InvalidServiceFilterErr() error
+	RunStuckDrainCheck(ctx context.Context)
+}

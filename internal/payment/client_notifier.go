@@ -34,11 +34,11 @@ func ResolveNotifierClient(ctx context.Context, cfg *config.Config) (*NotifierCl
 	return client, func() { _ = client.Close() }, nil
 }
 
-func (client *NotifierClient) Close() error {
-	if client == nil || client.closeFn == nil {
+func (c *NotifierClient) Close() error {
+	if c == nil || c.closeFn == nil {
 		return nil
 	}
-	client.closeFn()
-	client.closeFn = nil
+	c.closeFn()
+	c.closeFn = nil
 	return nil
 }

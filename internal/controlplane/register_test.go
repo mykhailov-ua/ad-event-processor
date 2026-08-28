@@ -60,7 +60,8 @@ func TestCatalog_reportRoutesRegistered(t *testing.T) {
 	t.Parallel()
 
 	mux := http.NewServeMux()
-	(&ReportsHTTPHandlers{ReportJobs: &ReportJobRunner{}}).Register(mux)
+	(&ReportsHTTPHandlers{}).Register(mux)
+	(&ReportJobHTTPHandlers{Runner: &ReportJobRunner{}}).Register(mux)
 	(&StubHTTPHandlers{}).Register(mux)
 	(&TelegramHTTPHandlers{Telegram: telegramServiceStub{}}).Register(mux)
 

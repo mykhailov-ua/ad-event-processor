@@ -34,7 +34,7 @@ func TestOpsDashboard_insertSample_queryAPI(t *testing.T) {
 		Value:      42,
 	}))
 
-	reader := &opsReader{svc: &Service{pool: pool}}
+	reader := newOpsReader(&Service{pool: pool})
 	metrics, err := reader.GetDashboardMetrics(ctx, 24, "ad_recon_drift_micro_max")
 	require.NoError(t, err)
 	require.NotEmpty(t, metrics.Points)
@@ -45,7 +45,7 @@ func TestOpsDashboard_insertSample_queryAPI(t *testing.T) {
 	sharder := domain.NewStaticSlotSharder(1)
 	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, sharder, &config.Config{})
 	defer svc.Close()
-	reader = &opsReader{svc: svc}
+	reader = newOpsReader(svc)
 	summary, err := reader.GetDashboardSummary(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 42.0, summary.DriftMicroMax)
@@ -73,7 +73,7 @@ func TestOpsDashboard_metricsQuery_10kSamples_under200ms(t *testing.T) {
 		}))
 	}
 
-	reader := &opsReader{svc: &Service{pool: pool}}
+	reader := newOpsReader(&Service{pool: pool})
 	begin := time.Now()
 	_, err := reader.GetDashboardMetrics(ctx, 24, "ad_http_requests_total")
 	require.NoError(t, err)

@@ -3,8 +3,10 @@ package platformsync
 import "strings"
 
 const (
-	NetworkFacebook = "facebook"
-	NetworkGoogle   = "google"
+	NetworkFacebook     = "facebook"
+	NetworkGoogle       = "google"
+	NetworkTikTok       = "tiktok"
+	NetworkMicrosoftAds = "microsoft_ads"
 )
 
 const (
@@ -20,8 +22,10 @@ const (
 )
 
 var supportedNetworks = map[string]struct{}{
-	NetworkFacebook: {},
-	NetworkGoogle:   {},
+	NetworkFacebook:     {},
+	NetworkGoogle:       {},
+	NetworkTikTok:       {},
+	NetworkMicrosoftAds: {},
 }
 
 func NormalizeNetwork(network string) string {

@@ -242,10 +242,14 @@ func main() {
 	}
 
 	geoFilter := ingestion.NewGeoFilter(geoProvider, registry)
+	geoFilter.SetAcceptLangGeoEnabled(cfg.AcceptLangGeoEnabled)
 	scheduleFilter := ingestion.NewScheduleFilter(registry)
 	fraudFilter := ingestion.NewFraudFilter(geoProvider)
+	var dcASNTable *ingestion.DCASNTable
+	if cfg.DCASNHotEnabled || cfg.TCPMSSTunnelEnabled {
+		dcASNTable = ingestion.NewDCASNTable()
+	}
 	if cfg.DCASNHotEnabled {
-		dcASNTable := ingestion.NewDCASNTable()
 		if loader := ingestion.NewDCASNFeedLoader(cfg, dcASNTable); loader != nil {
 			go loader.Start(ctx)
 			slog.Info("dc asn hot loader started", "dir", cfg.DCASNFeedDir, "refresh", cfg.DCASNFeedRefresh)
@@ -255,22 +259,81 @@ func main() {
 		}
 	}
 	var tcpMSSFilter ingestion.EventFilter
-	if cfg.TCPMSSAnomalyEnabled {
-		tcpMSSFilter = ingestion.NewTCPMSSFilter(cfg.TCPMSSAnomalyMinByte)
+	if cfg.TCPMSSAnomalyEnabled || cfg.TCPMSSTunnelEnabled {
+		mssFilter := ingestion.NewTCPMSSFilter(cfg.TCPMSSAnomalyMinByte)
+		if cfg.TCPMSSTunnelEnabled {
+			mssFilter.ConfigureTunnel(true, cfg.TCPMSSTunnelThreshold, mobileCarrierASN, dcASNTable, asnLookup)
+		}
+		tcpMSSFilter = mssFilter
 	}
 	var residentialProxyFilter ingestion.EventFilter
+	var proxyRing *ingestion.ResidentialProxyRing
+	if config.LicenseFilePresent() {
+		if verified, licErr := licensing.VerifyLicenseFile(config.LicensePathFromEnv(), nil, "", time.Now().UTC()); licErr == nil &&
+			verified.State != licensing.StateExpired && verified.State != licensing.StateRevoked {
+			config.ApplyResidentialIntelHotReadWhenEntitled(cfg, verified.Entitlements.Features.ExternalResidentialIntelEnabled())
+		}
+	}
 	if cfg.ResidentialProxyHotEnabled {
-		proxyRing := ingestion.NewResidentialProxyRing()
+		proxyRing = ingestion.NewResidentialProxyRing()
 		proxyRing.SetPolicy(ingestion.ResidentialProxyPolicyFromEnv())
 		proxyRing.SetWindow(cfg.ResidentialProxyWindow)
-		residentialProxyFilter = ingestion.NewResidentialProxyFilter(proxyRing)
 		slog.Info("residential proxy hot signal enabled", "window", cfg.ResidentialProxyWindow)
+	}
+	var intelTable *ingestion.ResidentialIntelTable
+	if cfg.ResidentialIntelHotReadEnabled {
+		intelTable = ingestion.NewResidentialIntelTable()
+		if intelLoader := ingestion.NewResidentialIntelFeedLoader(cfg, intelTable, firstConnectedRedis(redisShards)); intelLoader != nil {
+			go intelLoader.Start(ctx)
+			slog.Info("residential intel hot read loader started",
+				"dir", cfg.ResidentialIntelFeedDir,
+				"refresh", cfg.ResidentialIntelFeedRefresh)
+		}
+	}
+	if cfg.ResidentialProxyHotEnabled || cfg.ResidentialIntelHotReadEnabled {
+		residentialProxyFilter = ingestion.NewResidentialProxyFilter(proxyRing)
+		if intelTable != nil {
+			if f, ok := residentialProxyFilter.(*ingestion.ResidentialProxyFilter); ok {
+				f.SetIntelTable(intelTable, true)
+			}
+		}
 	}
 
 	settingsWatcher := ingestion.NewSettingsWatcher(redisShards, cfg)
 	settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(pool), registry.IsStaleMode)
 	deviceFilter := ingestion.NewDeviceFilter(settingsWatcher)
 	deviceFilter.SetOSFingerprintEnabled(cfg.OSFingerprintMismatchEnabled)
+	deviceFilter.SetJA4BrowserCorpusEnabled(cfg.TLSJA4BrowserCorpusEnabled)
+	deviceFilter.SetTCPSynSigEnabled(cfg.TCPSynSigEnabled)
+	jsonSerializationFilter := ingestion.NewJSONSerializationFilter(registry)
+	jsonSerializationFilter.SetEnabled(cfg.JSONSerializationFingerprintEnabled)
+	behaviorTelemetryFilter := ingestion.NewBehaviorTelemetryFilter(registry)
+	behaviorTelemetryFilter.SetEnabled(cfg.BehaviorTelemetryEnabled)
+	var l7WireFilter ingestion.EventFilter
+	if cfg.SecFetchValidateEnabled || cfg.ClientHintsPlatformEnabled || cfg.TLSALPNMismatchEnabled ||
+		cfg.H2SettingsFingerprintEnabled || cfg.H2PseudoOrderEnabled || cfg.H2DowngradeArtifactEnabled ||
+		cfg.HTTP1HeaderOrderEnabled || cfg.AcceptEncodingBrowserEnabled {
+		wireFilter := ingestion.NewL7WireFilter()
+		wireFilter.SetSecFetchEnabled(cfg.SecFetchValidateEnabled)
+		wireFilter.SetClientHintsPlatformEnabled(cfg.ClientHintsPlatformEnabled)
+		wireFilter.SetTLSALPNMismatchEnabled(cfg.TLSALPNMismatchEnabled)
+		wireFilter.SetH2SettingsEnabled(cfg.H2SettingsFingerprintEnabled)
+		wireFilter.SetH2PseudoOrderEnabled(cfg.H2PseudoOrderEnabled)
+		wireFilter.SetH2DowngradeEnabled(cfg.H2DowngradeArtifactEnabled)
+		wireFilter.SetHTTP1HeaderOrderEnabled(cfg.HTTP1HeaderOrderEnabled)
+		wireFilter.SetAcceptEncodingEnabled(cfg.AcceptEncodingBrowserEnabled)
+		l7WireFilter = wireFilter
+		slog.Info("l7 wire metadata fraud signals enabled",
+			"sec_fetch", cfg.SecFetchValidateEnabled,
+			"client_hints_platform", cfg.ClientHintsPlatformEnabled,
+			"tls_alpn", cfg.TLSALPNMismatchEnabled,
+			"h2_settings", cfg.H2SettingsFingerprintEnabled,
+			"h2_pseudo_order", cfg.H2PseudoOrderEnabled,
+			"h2_downgrade", cfg.H2DowngradeArtifactEnabled,
+			"http1_header_order", cfg.HTTP1HeaderOrderEnabled,
+			"accept_encoding", cfg.AcceptEncodingBrowserEnabled,
+		)
+	}
 	go settingsWatcher.Start(ctx, time.Second)
 
 	breakerFilter := ingestion.NewEmergencyBreakerFilter(settingsWatcher)
@@ -447,7 +510,7 @@ func main() {
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
 	segmentFilter := ingestion.NewSegmentFilter(redisShards, registry, piiHasher)
-	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
 	var rtbCatalog *ingestion.RtbCatalog
@@ -725,6 +788,7 @@ func main() {
 		if verified, licErr := licensing.VerifyLicenseFile(config.LicensePathFromEnv(), nil, "", time.Now().UTC()); licErr == nil &&
 			verified.State != licensing.StateExpired && verified.State != licensing.StateRevoked {
 			config.ApplyModeratorIntelWhenEntitled(cfg, verified.Entitlements.Features.ModeratorIntelFeedEnabled())
+			config.ApplyResidentialIntelHotReadWhenEntitled(cfg, verified.Entitlements.Features.ExternalResidentialIntelEnabled())
 		}
 	}
 	if cfg.ModeratorIntelEnabled {
@@ -786,7 +850,7 @@ func main() {
 	workerPool := ingestion.NewPinnedWorkerPool(cfg.MaxWorkers, 8192)
 	gnetHandler.SetWorkerPool(workerPool)
 
-	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort, "unix_socket", cfg.TrackerUnixSocket)
+	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort, "unix_socket", cfg.TrackerUnixSocket, "gnet_event_loops", cfg.GnetEventLoopCount(), "max_workers", cfg.MaxWorkers)
 
 	listenURI := "tcp://:" + cfg.ServerPort
 	if cfg.TrackerUnixSocket != "" {
@@ -802,7 +866,7 @@ func main() {
 			gnet.WithMulticore(true),
 			gnet.WithReusePort(true),
 			gnet.WithTCPNoDelay(gnet.TCPNoDelay),
-			gnet.WithNumEventLoop(2),
+			gnet.WithNumEventLoop(cfg.GnetEventLoopCount()),
 			gnet.WithLockOSThread(false),
 		)
 		if err != nil {

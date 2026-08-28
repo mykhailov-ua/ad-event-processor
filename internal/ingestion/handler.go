@@ -160,6 +160,7 @@ func (h *AdsPacketHandler) retireOffloadContext(ctx *connContext) {
 	if ctx == nil || !ctx.offloadRetired.CompareAndSwap(false, true) {
 		return
 	}
+	h.resetConnContextForReuse(ctx)
 	h.contextPool.Put(ctx)
 }
 
@@ -253,6 +254,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 	})
 
 	registerHTTPTrackPixel(mux)
+	registerHTTPTrackClientStatic(mux)
 
 	mux.HandleFunc("POST /track", func(w http.ResponseWriter, r *http.Request) {
 		telemetry.RecordTrack()
@@ -294,6 +296,9 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 		var clickID string
 		var requestIDStr string
 		var ortbSlot *openRTBScratchSlot
+		var jsonSerFlags uint8
+		var telemetrySet uint8
+		var telemetryEvents []domain.BehaviorTelemetryEvent
 
 		contentType := ""
 		if ctSlice := r.Header["Content-Type"]; len(ctSlice) > 0 {
@@ -364,6 +369,9 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				err = ParseOpenRTB3Ingress(req, buf.Bytes())
 			} else {
 				err = ParseTrackRequestJSONOpt(req, buf.Bytes())
+				if err == nil {
+					jsonSerFlags = scanTrackJSONSerialization(buf.Bytes())
+				}
 			}
 			if err != nil {
 				metrics.HTTPParseErrors.WithLabelValues("invalid_json").Inc()
@@ -379,6 +387,10 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				clickID = req.ClickID
 			}
 			ortbSlot = req.ortbSlot
+			telemetrySet = req.TelemetrySet
+			if len(req.TelemetryEvents) > 0 {
+				telemetryEvents = append(telemetryEvents[:0], req.TelemetryEvents...)
+			}
 			req.ortbSlot = nil
 		}
 
@@ -400,6 +412,16 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 			ua = uaSlice[0]
 		}
 		evt.UA = ua
+		evt.JSONSerializationFlags = jsonSerFlags
+		if telemetrySet != 0 {
+			evt.TelemetrySet = 1
+			if len(telemetryEvents) > 0 {
+				evt.TelemetryEvents = append(evt.TelemetryEvents[:0], telemetryEvents...)
+			}
+		}
+		if cfg != nil && cfg.MobileBiometricsEnabled {
+			applyMobileBiometricSummary(evt)
+		}
 
 		if ortbSlot != nil {
 			attachOpenRTB3Scratch(evt, ortbSlot)
@@ -416,7 +438,13 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				status = spec.status
 				return
 			}
-			defer lease.Release()
+			leaseHeld := true
+			releaseLease := func() {
+				if leaseHeld {
+					lease.Release()
+					leaseHeld = false
+				}
+			}
 
 			outcome := processTrack(r.Context(), trackProc, evt, nil)
 			switch outcome.Status {
@@ -430,6 +458,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 					accept = accSlice[0]
 				}
 				writeHTTPTrackAccepted(w, wReqID, requestIDStr, accept, "")
+				releaseLease()
 				return
 			case trackStatusRejected:
 				spec := filterRejectSpecs[outcome.RejectKind]
@@ -441,6 +470,7 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 				domain.EventPool.Put(evt)
 				if outcome.RejectKind == filterRejectConsent {
 					w.WriteHeader(http.StatusNoContent)
+					releaseLease()
 					return
 				}
 				if outcome.RejectKind == filterRejectInfra {
@@ -450,17 +480,21 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 					w.Header().Set("Retry-After", "60")
 				}
 				http.Error(w, spec.body, spec.status)
+				releaseLease()
 				return
 			case trackStatusInternalError:
 				domain.EventPool.Put(evt)
 				http.Error(w, "internal error", http.StatusInternalServerError)
+				releaseLease()
 				return
 			case trackStatusAccepted:
 				landing = outcome.LandingURL
 				if !publishAcceptedTrackIngress(sharder, streamProducers, brokerProducers, filterEngine, evt, &lease) {
 					status = httpTrackRejectProducerOverload(r.Context(), w, filterEngine, evt, registry)
+					releaseLease()
 					return
 				}
+				releaseLease()
 			}
 		} else {
 			releaseOpenRTB3Scratch(evt)
@@ -899,18 +933,19 @@ func NewAdsPacketHandler(cfg *config.Config, registry domain.CampaignRegistry, f
 				evt: domain.Event{
 					Payload: make([]byte, 0, 1024),
 				},
-				valSlice: make([]any, 18),
-				resp:     pb.TrackResponse{},
-				bufSlice: make([]byte, 4096),
-				extraBuf: make([]byte, 0, clickQueryScratchCap),
+				valSlice:       make([]any, 18),
+				resp:           pb.TrackResponse{},
+				bufSlice:       make([]byte, 4096),
+				extraBuf:       make([]byte, 0, clickQueryScratchCap),
+				offloadHTTPPin: make([]byte, 0, 2048),
+				chunkScratch:   make([]byte, 0, 4096),
+				h2:             newH2ConnState(),
 				wReqID: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
 				wCamp: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
-				offloadHTTPPin: make([]byte, 0, 2048),
-				chunkScratch:   make([]byte, 0, 4096),
 				wTime: bufWrapper{
 					buf: make([]byte, 0, 128),
 				},
@@ -1027,7 +1062,9 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, accept strin
 		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
 		offset = len(appendTrackCORSHeaders(bufSlice[:offset], origin, h.trackCORS))
 		offset += copy(bufSlice[offset:], "Content-Type: application/x-protobuf\r\nContent-Length: ")
-		offset += copy(bufSlice[offset:], strconv.Itoa(respSize))
+		var contentLenScratch [20]byte
+		clen := appendInt(contentLenScratch[:], int64(respSize))
+		offset += copy(bufSlice[offset:], contentLenScratch[:clen])
 		offset += copy(bufSlice[offset:], "\r\nConnection: keep-alive\r\n\r\n")
 
 		n, err := resp.MarshalToVT(bufSlice[offset : offset+respSize])
@@ -1066,7 +1103,9 @@ func (h *AdsPacketHandler) writeGnetTrackAccepted(ctx *connContext, accept strin
 		offset := copy(bufSlice, "HTTP/1.1 202 Accepted\r\n")
 		offset = len(appendTrackCORSHeaders(bufSlice[:offset], origin, h.trackCORS))
 		offset += copy(bufSlice[offset:], "Content-Type: application/json\r\nContent-Length: ")
-		offset += copy(bufSlice[offset:], strconv.Itoa(respSize))
+		var contentLenScratch [20]byte
+		clen := appendInt(contentLenScratch[:], int64(respSize))
+		offset += copy(bufSlice[offset:], contentLenScratch[:clen])
 		offset += copy(bufSlice[offset:], "\r\nConnection: keep-alive\r\n\r\n")
 		offset += copy(bufSlice[offset:], jsonPrefix)
 		offset += copy(bufSlice[offset:], reqID)
@@ -1219,10 +1258,15 @@ func (h *AdsPacketHandler) OnOpen(c gnet.Conn) (out []byte, action gnet.Action) 
 
 func (h *AdsPacketHandler) OnClose(c gnet.Conn, err error) (action gnet.Action) {
 	metrics.GnetActiveConnections.Dec()
+	if rawCtx, ok := c.Context().(*connContext); ok && rawCtx != nil && rawCtx.http1ConnCtx != nil {
+		h.releaseOffloadBuffers(rawCtx)
+		h.retireOffloadContext(rawCtx)
+	}
 	if connCtx := http1ConnContext(c); connCtx != nil {
 		connCtx.http1OffloadBusy.Store(false)
 		connCtx.http1PendingOffloadWrites.Store(0)
 		resetChunkScratch(&connCtx.chunkScratch)
+		h.retireConnContext(connCtx)
 	}
 	return gnet.None
 }
@@ -1402,31 +1446,52 @@ func (h *AdsPacketHandler) runOffloadedRequest(workerID int, ctx *connContext) {
 }
 
 type parsedHTTPRequest struct {
-	Method           []byte
-	Path             []byte
-	ContentType      []byte
-	ClientIP         []byte
-	UserAgent        []byte
-	Accept           []byte
-	AcceptEncoding   []byte
-	TLSHash          []byte
-	TLSJA3           []byte
-	TLSJA4           []byte
-	SecCHUA          []byte
-	AcceptLang       []byte
-	Body             []byte
-	Origin           []byte
-	Host             []byte
-	ContentLength    int
-	HasContentLength bool
-	ForceSafe        bool
-	Cookie           []byte
-	TCPMSS           uint8
-	TCPMSSSet        uint8
-	TCPTTL           uint8
-	TCPTTLSet        uint8
-	TCPWindow        uint16
-	TCPWindowSet     uint8
+	Method                []byte
+	Path                  []byte
+	ContentType           []byte
+	ClientIP              []byte
+	UserAgent             []byte
+	Accept                []byte
+	AcceptEncoding        []byte
+	TLSHash               []byte
+	TLSJA3                []byte
+	TLSJA4                []byte
+	SecCHUA               []byte
+	SecCHUAPlatform       []byte
+	SecCHUAMobile         []byte
+	SecFetchSite          []byte
+	SecFetchMode          []byte
+	SecFetchDest          []byte
+	TLSALPN               []byte
+	SecFetchPresent       uint8
+	H2WireFlags           uint8
+	H2SettingsCRC         uint32
+	H2EnablePush          uint8
+	H2InitialWindow       uint32
+	H2WindowUpdateInc     uint32
+	H2PseudoOrder         uint16
+	H2PseudoOrderCount    uint8
+	HTTP1HeaderOrder      [http1HeaderOrderMax]uint8
+	HTTP1HeaderOrderCount uint8
+	AcceptLang            []byte
+	Body                  []byte
+	Origin                []byte
+	Host                  []byte
+	ContentLength         int
+	HasContentLength      bool
+	ForceSafe             bool
+	Cookie                []byte
+	TCPMSS                uint16
+	TCPMSSSet             uint8
+	TCPTTL                uint8
+	TCPTTLSet             uint8
+	TCPWindow             uint16
+	TCPWindowSet          uint8
+	TCPSig                uint32
+	TCPSigSet             uint8
+	RTTSynMS              uint16
+	TTFBAppMS             uint16
+	ConnTimingSet         uint8
 }
 
 var (
@@ -1446,41 +1511,13 @@ func (h *AdsPacketHandler) parseHTTP(data []byte, scratchPtr *[]byte) (int, pars
 func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action {
 	ctx, ok := c.Context().(*connContext)
 	if !ok {
-		ctx = &connContext{
-			pbReq: pb.AdEvent{
-				Metadata: &pb.EventMetadata{},
-			},
-			trackReq: TrackRequest{
-				Payload: make([]byte, 0, 512),
-			},
-			evt: domain.Event{
-				Payload: make([]byte, 0, 1024),
-			},
-			valSlice: make([]any, 18),
-			resp:     pb.TrackResponse{},
-			bufSlice: make([]byte, 0, 4096),
-			extraBuf: make([]byte, 0, clickQueryScratchCap),
-			wReqID: bufWrapper{
-				buf: make([]byte, 0, 128),
-			},
-			wCamp: bufWrapper{
-				buf: make([]byte, 0, clickQueryScratchCap),
-			},
-			offloadHTTPPin: make([]byte, 0, 2048),
-			chunkScratch:   make([]byte, 0, 4096),
-			wTime: bufWrapper{
-				buf: make([]byte, 0, 128),
-			},
-		}
-		if h.logger != nil {
-			ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
-		}
+		ctx = h.allocConnContext(c)
 		c.SetContext(ctx)
 	}
 
 	if len(req.Method) == 7 && req.Method[0] == 'O' && req.Method[1] == 'P' && req.Method[2] == 'T' &&
 		req.Method[3] == 'I' && req.Method[4] == 'O' && req.Method[5] == 'N' && req.Method[6] == 'S' {
-		if bytes.Equal(req.Path, []byte("/track")) {
+		if bytesEqual(req.Path, "/track") {
 			return h.reactTrackOPTIONS(req, c, ctx)
 		}
 		h.write(c, respMethodNotAllowed, ctx)
@@ -1488,12 +1525,12 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	if len(req.Method) == 3 && req.Method[0] == 'G' && req.Method[1] == 'E' && req.Method[2] == 'T' {
-		if bytes.Equal(req.Path, []byte("/healthz")) || bytes.Equal(req.Path, []byte("/health")) {
+		if bytesEqual(req.Path, "/healthz") || bytesEqual(req.Path, "/health") {
 			h.healthzHits.Add(1)
 			h.write(c, respHealthzOK, ctx)
 			return gnet.None
 		}
-		if bytes.Equal(req.Path, []byte("/readyz")) || bytes.Equal(req.Path, []byte("/ready")) {
+		if bytesEqual(req.Path, "/readyz") || bytesEqual(req.Path, "/ready") {
 			if h.WarmReady() {
 				h.write(c, respReadyzOK, ctx)
 			} else {
@@ -1501,15 +1538,15 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			}
 			return gnet.None
 		}
-		if bytes.Equal(req.Path, []byte("/metrics")) {
+		if bytesEqual(req.Path, "/metrics") {
 			h.write(c, respNotFound, ctx)
 			return gnet.None
 		}
 		if httpPathHasPrefix(req.Path, safePageStubPathPrefix) {
 			return h.reactSafePageStub(req, c, ctx)
 		}
-		if isTrackPixelPath(req.Path) {
-			h.write(c, trackPixelGnetResponse, ctx)
+		if resp, ok := trackClientStaticGnetResponse(req.Path); ok {
+			h.write(c, resp, ctx)
 			return gnet.None
 		}
 		if httpPathHasPrefix(req.Path, "/click") {
@@ -1531,22 +1568,22 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		return gnet.None
 	}
 
-	if !bytes.Equal(req.Path, []byte("/track")) {
-		if bytes.Equal(req.Path, []byte(safePageVerifyPath)) {
+	if !bytesEqual(req.Path, "/track") {
+		if bytesEqual(req.Path, safePageVerifyPath) {
 			if !req.HasContentLength {
 				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
 			}
 			return h.reactTrackVerify(req, c, ctx)
 		}
-		if bytes.Equal(req.Path, []byte("/openrtb/bid")) {
+		if bytesEqual(req.Path, "/openrtb/bid") {
 			if !req.HasContentLength {
 				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
 			}
 			return h.reactOpenRTBBid(req, c, ctx)
 		}
-		if bytes.Equal(req.Path, []byte("/tg/bid")) {
+		if bytesEqual(req.Path, "/tg/bid") {
 			if !req.HasContentLength {
 				h.writeClose(c, respBadRequestClose, ctx)
 				return gnet.Close
@@ -1598,7 +1635,7 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	}
 
 	evt := &ctx.evt
-	fillTrackEvent(evt, fields, ip, ua)
+	fillTrackEventWithMobileBiometrics(evt, fields, ip, ua, h.cfg != nil && h.cfg.MobileBiometricsEnabled)
 	if h.workerPool != nil {
 		if w := ctx.workerID; w >= 0 && w <= 127 {
 			evt.FilterWorkerIdx = int8(w)
@@ -1609,6 +1646,8 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
+	fillIngressH2(evt, ctx != nil && ctx.protoH2)
+	fillWireMetadataFromRequest(evt, &req)
 	if req.TCPMSSSet != 0 {
 		evt.TCPMSS = req.TCPMSS
 		evt.TCPMSSSet = 1
@@ -1621,6 +1660,11 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		evt.TCPWindow = req.TCPWindow
 		evt.TCPWindowSet = 1
 	}
+	if req.TCPSigSet != 0 {
+		evt.TCPSig = req.TCPSig
+		evt.TCPSigSet = 1
+	}
+	fillConnTimingFromRequest(evt, &req)
 
 	if h.udpControl != nil {
 		shard := h.sharder.GetShard(evt.CampaignID)
@@ -1643,10 +1687,10 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 			return gnet.None
 		}
 
-		defer lease.Release()
 		outcome := processTrack(context.Background(), h.trackProc, evt, fields.deviceType)
-		_ = h.deliverGnetTrack(ctx, string(req.Accept), string(req.Origin), c, evt, startMono, wReqID, requestIDStr, outcome, &lease)
-		return gnet.None
+		act := h.deliverGnetTrack(ctx, string(req.Accept), string(req.Origin), c, evt, startMono, wReqID, requestIDStr, outcome, &lease)
+		lease.Release()
+		return act
 	}
 
 	releaseOpenRTB3Scratch(evt)
@@ -1658,7 +1702,6 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		h.trackMetrics.recordFilterReject(kind)
 		return gnet.None
 	}
-	defer lease.Release()
 	h.trackMetrics.decisionAccepted.Inc()
 	writeAuditLog(h.logger, &h.auditLogSeq, h.auditLogSampleMask, ctx.shardID, evt)
 	if !h.publishAcceptedTrack(evt, &lease) {
@@ -1666,10 +1709,12 @@ func (h *AdsPacketHandler) React(req parsedHTTPRequest, c gnet.Conn) gnet.Action
 		h.writeFilterReject(c, spec.gnetResp, ctx)
 		h.recordMetrics(startMono, spec.status)
 		h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
+		lease.Release()
 		return gnet.None
 	}
 	landing := ResolveLandingURL(context.Background(), h.registry, h.creativeStore, &ctx.evt)
 	h.writeGnetTrackAccepted(ctx, string(req.Accept), string(req.Origin), c, startMono, wReqID, requestIDStr, landing)
+	lease.Release()
 	return gnet.None
 }
 

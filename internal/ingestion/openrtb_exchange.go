@@ -31,25 +31,25 @@ func configureOpenRTBExchangeLimiter(cfg *config.Config) {
 	globalOpenRTBLimiter.maxQPS.Store(int64(cfg.RtbExchangeMaxQPS))
 }
 
-func (lim *openrtbExchangeLimiter) allow() bool {
-	maxQPS := lim.maxQPS.Load()
+func (el *openrtbExchangeLimiter) allow() bool {
+	maxQPS := el.maxQPS.Load()
 	if maxQPS <= 0 {
 		return true
 	}
 	now := time.Now().UnixNano()
-	last := lim.lastTick.Load()
+	last := el.lastTick.Load()
 	if now-last >= int64(time.Second) {
-		if lim.lastTick.CompareAndSwap(last, now) {
-			lim.tokens.Store(maxQPS)
+		if el.lastTick.CompareAndSwap(last, now) {
+			el.tokens.Store(maxQPS)
 		}
 	}
 	for {
-		cur := lim.tokens.Load()
+		cur := el.tokens.Load()
 		if cur <= 0 {
 			metrics.RtbExchangeThrottleTotal.Inc()
 			return false
 		}
-		if lim.tokens.CompareAndSwap(cur, cur-1) {
+		if el.tokens.CompareAndSwap(cur, cur-1) {
 			return true
 		}
 	}
@@ -93,7 +93,7 @@ func (h *AdsPacketHandler) reactOpenRTBBidCore(req parsedHTTPRequest, c gnet.Con
 	}
 
 	parsed := &ctx.openrtbParsed
-	ParseOpenRTB26Split(req.Body, &parsed.OpenRTB26Hot, &parsed.OpenRTB26Cold)
+	ParseOpenRTB26Parsed(req.Body, parsed)
 	if !parsed.OpenRTB26Hot.ExchangeReady(exCfg) {
 		metrics.RtbExchangeValidateErrors.Inc()
 		return h.writeOpenRTBNoBid(req, c, ctx, parsedRequestIDBytes(&parsed.OpenRTB26Hot), rtb.NoBidInvalidRequest, 0)

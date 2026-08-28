@@ -170,11 +170,11 @@ func TestFault_PostgresMasterFailover(t *testing.T) {
 
 	regionCfg := func(code uint8) *config.Config {
 		return &config.Config{
-			MultiRegionEnabled:    true,
-			RegionCode:            code,
-			NodeID:                fmt.Sprintf("mgmt-region-%d", code),
-			DBTrackerMaxConns:     4,
-			DBMinConns:            1,
+			MultiRegionEnabled:          true,
+			RegionCode:                  code,
+			NodeID:                      fmt.Sprintf("mgmt-region-%d", code),
+			DBTrackerMaxConns:           4,
+			DBMinConns:                  1,
 			PostgresFailoverEnabled:     true,
 			PostgresFailoverCoordinator: false,
 			PostgresPrimaryDSN:          config.Secret(infra.PrimaryDSN),

@@ -1,10 +1,13 @@
 package controlplane
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
+
+	"ad-event-processor/internal/controlplane/authz"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +31,93 @@ func allowedSavedViewReportKeys() map[string]struct{} {
 		keys[key] = struct{}{}
 	}
 	return keys
+}
+
+var opsOnlySavedViewReportKeys = map[string]struct{}{
+	"filter-rejects":       {},
+	"fraud-evidence-pack":  {},
+	"layer-desync-summary": {},
+}
+
+const savedViewMaxRangeDaysBuyer = 7
+
+func validateSavedViewInputForActor(ctx context.Context, name, reportKey string, spec json.RawMessage) error {
+	if err := validateSavedViewInput(name, reportKey, spec); err != nil {
+		return err
+	}
+	return validateSavedViewActorPolicy(ctx, reportKey, spec)
+}
+
+func validateSavedViewActorPolicy(ctx context.Context, reportKey string, spec json.RawMessage) error {
+	snap, ok := authz.SnapshotFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	if snap.Mask == authz.MaskMasked {
+		if _, blocked := opsOnlySavedViewReportKeys[reportKey]; blocked {
+			return errValidation(fmt.Sprintf("report_key %q not allowed for role", reportKey))
+		}
+	}
+	if err := validateSavedViewCustomerScope(ctx, spec); err != nil {
+		return err
+	}
+	if snap.Mask == authz.MaskMasked {
+		return validateSavedViewRangeCap(spec, savedViewMaxRangeDaysBuyer)
+	}
+	return nil
+}
+
+func validateSavedViewCustomerScope(ctx context.Context, spec json.RawMessage) error {
+	u, ok := GetUser(ctx)
+	if !ok || !u.HasBoundCustomer() {
+		return nil
+	}
+	if len(spec) == 0 {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(spec, &raw); err != nil {
+		return errValidation("spec must be a JSON object")
+	}
+	campaignRaw, ok := raw["campaign_id"]
+	if !ok {
+		return nil
+	}
+	var campaignID string
+	if err := json.Unmarshal(campaignRaw, &campaignID); err != nil {
+		return errValidation("invalid spec.campaign_id")
+	}
+	return nil
+}
+
+func validateSavedViewRangeCap(spec json.RawMessage, maxDays int) error {
+	if len(spec) == 0 {
+		return nil
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(spec, &raw); err != nil {
+		return errValidation("spec must be a JSON object")
+	}
+	fromRaw, okFrom := raw["from"]
+	toRaw, okTo := raw["to"]
+	if !okFrom || !okTo {
+		return nil
+	}
+	var fromStr, toStr string
+	if err := json.Unmarshal(fromRaw, &fromStr); err != nil {
+		return errValidation("invalid spec.from")
+	}
+	if err := json.Unmarshal(toRaw, &toStr); err != nil {
+		return errValidation("invalid spec.to")
+	}
+	from, to, err := parseReportRangeFromStrings(fromStr, toStr)
+	if err != nil {
+		return errValidation(err.Error())
+	}
+	if to.Sub(from) > time.Duration(maxDays)*24*time.Hour {
+		return errValidation(fmt.Sprintf("date range exceeds %d days for role", maxDays))
+	}
+	return nil
 }
 
 func validateSavedViewInput(name, reportKey string, spec json.RawMessage) error {
@@ -80,6 +170,68 @@ func validateSavedViewSpec(spec json.RawMessage) error {
 				return errValidation(err.Error())
 			}
 		}
+	}
+	return nil
+}
+
+func savedViewMaskFromContext(ctx context.Context) authz.MaskLevel {
+	snap, ok := authz.SnapshotFromContext(ctx)
+	if !ok {
+		return authz.MaskMasked
+	}
+	if snap.Mask == "" {
+		return authz.MaskMasked
+	}
+	return snap.Mask
+}
+
+func effectiveSharedViewMask(ownerMask, actorMask authz.MaskLevel) authz.MaskLevel {
+	if ownerMask == "" {
+		ownerMask = authz.MaskMasked
+	}
+	if actorMask == authz.MaskMasked || ownerMask == authz.MaskMasked {
+		return authz.MaskMasked
+	}
+	return authz.MaskFull
+}
+
+func validateSharedSavedViewForActor(ctx context.Context, view SavedViewDTO) error {
+	if !view.IsShared {
+		return nil
+	}
+	snap, ok := authz.SnapshotFromContext(ctx)
+	if !ok {
+		return nil
+	}
+	ownerMask := authz.MaskLevel(view.OwnerMaskLevel)
+	effective := effectiveSharedViewMask(ownerMask, snap.Mask)
+	policyCtx := authz.WithSnapshot(ctx, authz.Snapshot{
+		Permissions: snap.Permissions,
+		Mask:        effective,
+	})
+	if err := validateSavedViewActorPolicy(policyCtx, view.ReportKey, view.Spec); err != nil {
+		return errForbidden
+	}
+	return nil
+}
+
+func validateReportScheduleForActor(ctx context.Context, customerID, reportKey string, spec json.RawMessage) error {
+	if err := validateSavedViewInput("schedule", reportKey, spec); err != nil {
+		return err
+	}
+	if err := validateSavedViewActorPolicy(ctx, reportKey, spec); err != nil {
+		return err
+	}
+	u, ok := GetUser(ctx)
+	if !ok || !u.HasBoundCustomer() {
+		return nil
+	}
+	customerID = strings.TrimSpace(customerID)
+	if customerID == "" {
+		return errValidation("customer_id is required")
+	}
+	if customerID != u.CustomerID.String() {
+		return errForbidden
 	}
 	return nil
 }

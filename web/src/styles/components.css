@@ -1,0 +1,253 @@
+.settings-panel,
+.settings-panel__body,
+.settings-panel__header,
+.settings-grid > *,
+.form-field,
+.table-wrapper,
+.modal__body,
+.page-header__row {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settings-grid {
+  overflow: hidden;
+}
+
+.form-field > .form-input,
+.form-field > .form-select,
+.form-field > textarea,
+.form-field > .code-block,
+.form-field .select {
+  max-width: 100%;
+}
+
+.settings-secrets__row span,
+.table-cell--mono,
+.font-mono.truncate-safe {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.btn:focus-visible,
+.form-input:focus-visible,
+.form-select:focus-visible,
+.select__trigger:focus-visible {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.sidebar__search-input:focus,
+.sidebar__search-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
+.btn:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+
+.btn {
+  min-height: var(--control-height-md);
+  height: var(--control-height-md);
+  padding: 0 var(--control-padding-x-md);
+  gap: var(--control-gap);
+}
+
+.btn svg,
+.btn .ui-icon {
+  flex-shrink: 0;
+}
+
+.btn-sm,
+.btn--sm {
+  min-height: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0 var(--control-padding-x-sm);
+  gap: var(--space-2xs);
+  line-height: 1;
+}
+
+.btn-lg,
+.btn--lg {
+  min-height: var(--control-height-lg);
+  height: var(--control-height-lg);
+  padding: 0 var(--space-lg);
+  font-size: var(--text-md);
+}
+
+.btn-icon,
+.btn--icon {
+  width: var(--control-height-md);
+  min-width: var(--control-height-md);
+  padding: 0;
+}
+
+.btn--sm.btn--icon,
+.btn-sm.btn--icon {
+  width: var(--control-height-sm);
+  min-width: var(--control-height-sm);
+}
+
+.btn--primary {
+  background-color: var(--btn-bg-primary);
+  border-color: var(--btn-bg-primary);
+  color: var(--btn-fg-on-accent);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background-color: var(--btn-bg-primary-hover);
+  border-color: var(--btn-bg-primary-hover);
+}
+
+.btn--danger {
+  background-color: var(--btn-bg-danger);
+  border-color: var(--btn-bg-danger);
+  color: var(--btn-fg-on-accent);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background-color: var(--btn-bg-danger-hover);
+  border-color: var(--btn-bg-danger-hover);
+  opacity: 1;
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn--secondary:disabled,
+.btn--ghost:disabled {
+  border-color: var(--border-color);
+  background-color: transparent;
+}
+
+.btn--loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn--loading .ui-icon,
+.btn--loading svg {
+  visibility: hidden;
+}
+
+.btn--loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  margin: -0.5rem 0 0 -0.5rem;
+  border: 2px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: ui-spin 0.65s linear infinite;
+  color: var(--text-main);
+}
+
+.btn--primary.btn--loading::after,
+.btn--danger.btn--loading::after {
+  color: var(--btn-fg-on-accent);
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cluster--actions,
+.settings-actions__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.cluster--actions > .btn,
+.settings-actions__buttons > .btn {
+  flex-shrink: 0;
+}
+
+.form-input,
+.form-select,
+.select__trigger {
+  min-height: var(--control-height-md);
+  height: var(--control-height-md);
+  background-color: var(--input-bg);
+  border-color: var(--input-border);
+}
+
+.form-input--sm,
+.form-select--sm,
+.select--sm .select__trigger {
+  min-height: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0 var(--control-padding-x-sm);
+  line-height: 1;
+}
+
+.filter-toolbar :is(.form-input, .form-select, .select__trigger, .chip, .btn),
+.filter-toolbar__leading :is(.form-input, .form-select, .btn),
+.filter-toolbar__actions :is(.btn),
+.chip-row :is(.chip, .btn),
+.filter-row :is(.form-input, .form-select, .chip, .btn),
+.toolbar-row :is(.form-input--sm, .form-select--sm, .chip, .btn--sm, .btn) {
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  box-sizing: border-box;
+}
+
+textarea.form-input {
+  min-height: calc(var(--control-height-md) * 2);
+}
+
+.form-input[aria-invalid='true'],
+.form-field--error .form-input,
+.form-field--error .form-select,
+.form-field--error .select__trigger {
+  border-color: var(--input-border-error);
+}
+
+.form-field--error .form-input:focus-visible,
+.form-field--error .form-select:focus-visible {
+  box-shadow: 0 0 0 0.125rem color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.form-field__feedback {
+  display: block;
+  min-height: calc(var(--text-xs) * var(--line-height-tight));
+  margin: 0;
+}
+
+.form-field__feedback:empty {
+  min-height: 0;
+}
+
+.form-field--reserve-feedback .form-field__feedback {
+  min-height: calc(var(--text-xs) * var(--line-height-tight));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .sidebar,
+  .form-input,
+  .form-select {
+    transition-duration: 0.01ms !important;
+  }
+
+  .btn--loading::after {
+    animation: none;
+    opacity: 0.6;
+  }
+}

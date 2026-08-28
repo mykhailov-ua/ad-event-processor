@@ -32,23 +32,23 @@ type snapshotCapture struct {
 	snap        *catalogSnapshot
 }
 
-func (registry *Registry) SaveSnapshot(path string) error {
+func (r *Registry) SaveSnapshot(path string) error {
 	for range maxSnapshotRetries {
-		captured := registry.captureSnapshot()
-		if captured.stale(registry) {
+		captured := r.captureSnapshot()
+		if captured.stale(r) {
 			continue
 		}
 		if err := writeSnapshotFile(path, captured); err != nil {
 			return err
 		}
-		if !captured.stale(registry) {
+		if !captured.stale(r) {
 			return nil
 		}
 	}
 	return fmt.Errorf("%w after %d retries", ErrSnapshotUnstable, maxSnapshotRetries)
 }
 
-func (registry *Registry) LoadSnapshot(path string) error {
+func (r *Registry) LoadSnapshot(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -217,22 +217,22 @@ func (registry *Registry) LoadSnapshot(path string) error {
 		shards[i] = &CampaignAuctionRegistry{}
 	}
 
-	registry.store.mu.Lock()
-	registry.store.slots = slots
-	registry.store.budgets.Store(&budgetSlice{data: budgetsData})
-	registry.store.mu.Unlock()
+	r.store.mu.Lock()
+	r.store.slots = slots
+	r.store.budgets.Store(&budgetSlice{data: budgetsData})
+	r.store.mu.Unlock()
 
-	registry.publishCatalog(shards)
+	r.publishCatalog(shards)
 
 	return nil
 }
 
-func (registry *Registry) StartPersistence(ctx context.Context, path string, interval time.Duration) error {
+func (r *Registry) StartPersistence(ctx context.Context, path string, interval time.Duration) error {
 	if path == "" {
 		return nil
 	}
 
-	if err := registry.LoadSnapshot(path); err != nil {
+	if err := r.LoadSnapshot(path); err != nil {
 		if os.IsNotExist(err) {
 			slog.Info("no registry snapshot found on startup, starting fresh", "path", path)
 		} else {
@@ -250,14 +250,14 @@ func (registry *Registry) StartPersistence(ctx context.Context, path string, int
 			select {
 			case <-ctx.Done():
 				slog.Info("shutting down registry persistence: saving final snapshot", "path", path)
-				if err := registry.SaveSnapshot(path); err != nil {
+				if err := r.SaveSnapshot(path); err != nil {
 					slog.Error("failed to save final registry snapshot", "path", path, "error", err)
 				} else {
 					slog.Info("final registry snapshot saved successfully")
 				}
 				return
 			case <-ticker.C:
-				if err := registry.SaveSnapshot(path); err != nil {
+				if err := r.SaveSnapshot(path); err != nil {
 					slog.Error("failed to save periodic registry snapshot", "path", path, "error", err)
 				}
 			}
@@ -267,22 +267,22 @@ func (registry *Registry) StartPersistence(ctx context.Context, path string, int
 	return nil
 }
 
-func (registry *Registry) captureSnapshot() snapshotCapture {
-	registry.store.mu.Lock()
-	defer registry.store.mu.Unlock()
+func (r *Registry) captureSnapshot() snapshotCapture {
+	r.store.mu.Lock()
+	defer r.store.mu.Unlock()
 
 	captured := snapshotCapture{
-		gen:        registry.snapGen.Load(),
-		slotsCount: len(registry.store.slots),
-		keys:       make([]CampaignID, 0, len(registry.store.slots)),
-		vals:       make([]uint32, 0, len(registry.store.slots)),
-		snap:       registry.catalog.Load(),
+		gen:        r.snapGen.Load(),
+		slotsCount: len(r.store.slots),
+		keys:       make([]CampaignID, 0, len(r.store.slots)),
+		vals:       make([]uint32, 0, len(r.store.slots)),
+		snap:       r.catalog.Load(),
 	}
-	for k, v := range registry.store.slots {
+	for k, v := range r.store.slots {
 		captured.keys = append(captured.keys, k)
 		captured.vals = append(captured.vals, v)
 	}
-	currSlice := registry.store.budgets.Load()
+	currSlice := r.store.budgets.Load()
 	captured.budgetsCopy = make([]AlignedBudget, len(currSlice.data))
 	for i := range currSlice.data {
 		captured.budgetsCopy[i].Value = atomic.LoadInt64(&currSlice.data[i].Value)

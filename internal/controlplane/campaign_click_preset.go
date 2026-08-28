@@ -2,9 +2,10 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
+
+	"ad-event-processor/internal/campaign"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -73,28 +74,6 @@ func normalizeClickQueryParams(params map[string]string) map[string]string {
 	return out
 }
 
-func applyCampaignClickPresetTx(ctx context.Context, tx pgx.Tx, campaignID uuid.UUID, templateID string, params map[string]string) error {
-	templateID = strings.TrimSpace(templateID)
-	params = normalizeClickQueryParams(params)
-	if templateID == "" && len(params) == 0 {
-		return nil
-	}
-	raw, err := json.Marshal(params)
-	if err != nil {
-		return err
-	}
-	if len(params) == 0 {
-		raw = []byte("{}")
-	}
-	_, err = tx.Exec(ctx, `
-UPDATE campaigns
-SET traffic_template_id = $2,
-    click_query_params = $3::jsonb,
-    updated_at = NOW()
-WHERE id = $1`, campaignID, nullString(templateID), raw)
-	return err
-}
-
 func (s *Service) applyCampaignClickPresetPatch(
 	ctx context.Context,
 	campaignID uuid.UUID,
@@ -115,14 +94,14 @@ func (s *Service) applyCampaignClickPresetPatch(
 		return err
 	}
 
-	nextTemplate := formatOptionalText(camp.TrafficTemplateID)
+	nextTemplate := campaign.FormatOptionalText(camp.TrafficTemplateID)
 	if templateID != nil {
 		nextTemplate = strings.TrimSpace(*templateID)
 		if err := validateTrafficTemplateID(nextTemplate); err != nil {
 			return err
 		}
 	}
-	nextParams := clickQueryParamsFromRaw(camp.ClickQueryParams)
+	nextParams := campaign.ClickQueryParamsFromRaw(camp.ClickQueryParams)
 	if params != nil {
 		nextParams = normalizeClickQueryParams(*params)
 		if err := validateClickQueryParams(*params); err != nil {
@@ -131,29 +110,11 @@ func (s *Service) applyCampaignClickPresetPatch(
 	}
 
 	err = pgx.BeginFunc(ctx, s.GetPool(), func(tx pgx.Tx) error {
-		return applyCampaignClickPresetTx(ctx, tx, campaignID, nextTemplate, nextParams)
+		return campaign.ApplyCampaignClickPresetTx(ctx, tx, campaignID, nextTemplate, nextParams)
 	})
 	if err != nil {
 		return err
 	}
 	_ = s.publishCampaignUpdate(ctx, campaignID.String())
 	return nil
-}
-
-func nullString(s string) interface{} {
-	if strings.TrimSpace(s) == "" {
-		return nil
-	}
-	return s
-}
-
-func clickQueryParamsFromRaw(raw []byte) map[string]string {
-	if len(raw) == 0 {
-		return nil
-	}
-	var out map[string]string
-	if err := json.Unmarshal(raw, &out); err != nil || len(out) == 0 {
-		return nil
-	}
-	return normalizeClickQueryParams(out)
 }

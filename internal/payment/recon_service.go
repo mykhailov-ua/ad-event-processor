@@ -27,9 +27,9 @@ func NewReconService(paymentPool *pgxpool.Pool, ledger *SettlementLedgerClient, 
 	return &ReconService{paymentPool: paymentPool, ledger: ledger, alerter: alerter}
 }
 
-func (recon *ReconService) StartWorker(ctx context.Context, interval time.Duration) {
-	recon.wg.Add(1)
-	defer recon.wg.Done()
+func (s *ReconService) StartWorker(ctx context.Context, interval time.Duration) {
+	s.wg.Add(1)
+	defer s.wg.Done()
 
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -41,24 +41,24 @@ func (recon *ReconService) StartWorker(ctx context.Context, interval time.Durati
 		case <-ticker.C:
 			end := time.Now().UTC()
 			start := end.Add(-interval)
-			if _, err := recon.Run(ctx, start, end); err != nil {
+			if _, err := s.Run(ctx, start, end); err != nil {
 				slog.Error("payment financial recon failed", "error", err)
 			}
 		}
 	}
 }
 
-func (recon *ReconService) Wait() {
-	recon.wg.Wait()
+func (s *ReconService) Wait() {
+	s.wg.Wait()
 }
 
-func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.Time) (FinancialReconSummary, error) {
+func (s *ReconService) Run(ctx context.Context, periodStart, periodEnd time.Time) (FinancialReconSummary, error) {
 	var summary FinancialReconSummary
 	summary.PeriodStart = periodStart
 	summary.PeriodEnd = periodEnd
 	summary.FindingsByKind = make(map[string]int)
 
-	run, err := db.New(recon.paymentPool).CreateFinancialReconRun(ctx, db.CreateFinancialReconRunParams{
+	run, err := db.New(s.paymentPool).CreateFinancialReconRun(ctx, db.CreateFinancialReconRunParams{
 		PeriodStart: pgtype.Timestamptz{Time: periodStart, Valid: true},
 		PeriodEnd:   pgtype.Timestamptz{Time: periodEnd, Valid: true},
 	})
@@ -67,9 +67,9 @@ func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.
 	}
 	summary.RunID = run.ID
 
-	findings, intentsChecked, err := recon.collectFindings(ctx)
+	findings, intentsChecked, err := s.collectFindings(ctx)
 	if err != nil {
-		_ = db.New(recon.paymentPool).FailFinancialReconRun(ctx, db.FailFinancialReconRunParams{
+		_ = db.New(s.paymentPool).FailFinancialReconRun(ctx, db.FailFinancialReconRunParams{
 			ID:           run.ID,
 			ErrorMessage: pgtype.Text{String: err.Error(), Valid: true},
 		})
@@ -77,7 +77,7 @@ func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.
 	}
 	summary.IntentsChecked = intentsChecked
 
-	err = pgx.BeginFunc(ctx, recon.paymentPool, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, s.paymentPool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		for _, f := range findings {
 			detailBytes := f.Detail
@@ -120,7 +120,7 @@ func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.
 		})
 	})
 	if err != nil {
-		_ = db.New(recon.paymentPool).FailFinancialReconRun(ctx, db.FailFinancialReconRunParams{
+		_ = db.New(s.paymentPool).FailFinancialReconRun(ctx, db.FailFinancialReconRunParams{
 			ID:           run.ID,
 			ErrorMessage: pgtype.Text{String: err.Error(), Valid: true},
 		})
@@ -144,14 +144,14 @@ func (recon *ReconService) Run(ctx context.Context, periodStart, periodEnd time.
 		"findings", len(findings),
 		"intents_checked", intentsChecked,
 	)
-	if recon.alerter != nil {
-		recon.alerter.AlertFindings(ctx, summary, findings)
+	if s.alerter != nil {
+		s.alerter.AlertFindings(ctx, summary, findings)
 	}
 	return summary, nil
 }
 
-func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReconFinding, int, error) {
-	q := db.New(recon.paymentPool)
+func (s *ReconService) collectFindings(ctx context.Context) ([]FinancialReconFinding, int, error) {
+	q := db.New(s.paymentPool)
 	intents, err := q.ListIntentsForFinancialRecon(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -192,9 +192,9 @@ func (recon *ReconService) collectFindings(ctx context.Context) ([]FinancialReco
 	}
 
 	ledgerByIntent := make(map[uuid.UUID]PaymentIntentLedger)
-	if recon.ledger != nil && len(intentIDs) > 0 {
+	if s.ledger != nil && len(intentIDs) > 0 {
 		var ledgerErr error
-		ledgerByIntent, ledgerErr = recon.ledger.GetPaymentIntentLedgers(ctx, intentIDs)
+		ledgerByIntent, ledgerErr = s.ledger.GetPaymentIntentLedgers(ctx, intentIDs)
 		if ledgerErr != nil {
 			return nil, 0, ledgerErr
 		}

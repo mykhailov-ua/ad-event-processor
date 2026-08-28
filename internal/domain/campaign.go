@@ -93,14 +93,16 @@ type Campaign struct {
 	SegmentIncludeID  uuid.UUID
 	SegmentExcludeID  uuid.UUID
 
-	SafePageURL          string
-	SafePageEnabled      bool
-	CanvasRetestEnabled  bool
-	CgnatIPPolicyEnabled bool
-	AttestationEnabled   bool
-	AttestationMode      AttestationMode
-	AttestationTTLSec    int32
-	DmrEnabled           bool
+	SafePageURL              string
+	SafePageEnabled          bool
+	CanvasRetestEnabled      bool
+	CgnatIPPolicyEnabled     bool
+	AcceptLangGeoEnabled     bool
+	JSONSerializationEnabled bool
+	AttestationEnabled       bool
+	AttestationMode          AttestationMode
+	AttestationTTLSec        int32
+	DmrEnabled               bool
 
 	CIDRBlockEnabled bool
 

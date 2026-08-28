@@ -17,7 +17,7 @@ const (
 
 type intervalBotnetRule struct {
 	clickhouseQuery *database.ClickHouseQuery
-	cfg AnalyzerConfig
+	cfg             AnalyzerConfig
 }
 
 func (r *intervalBotnetRule) Name() string { return "interval_bot" }

@@ -1,27 +1,27 @@
 package rtb
 
-func (registry *Registry) RunAuction(req *BidRequest) (AuctionResult, NoBidReason) {
-	return registry.runAuction(req, true)
+func (r *Registry) RunAuction(req *BidRequest) (AuctionResult, NoBidReason) {
+	return r.runAuction(req, true)
 }
 
-func (registry *Registry) RunAuctionEval(req *BidRequest) (AuctionResult, NoBidReason) {
-	return registry.runAuction(req, false)
+func (r *Registry) RunAuctionEval(req *BidRequest) (AuctionResult, NoBidReason) {
+	return r.runAuction(req, false)
 }
 
-func (registry *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult, NoBidReason) {
+func (r *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult, NoBidReason) {
 	start := auctionStartMono()
 
 	if req == nil || req.MinBid < 0 {
 		recordAuctionOutcome(start, NoBidInvalidRequest, 0)
 		return AuctionResult{}, NoBidInvalidRequest
 	}
-	reg := registry.LoadShard(req.GeoHash)
+	reg := r.LoadShard(req.GeoHash)
 	if reg == nil || reg.Count == 0 {
 		recordAuctionOutcome(start, NoBidEmptyShard, 0)
 		return AuctionResult{}, NoBidEmptyShard
 	}
 
-	if !registry.catalogSlicesValid(reg) {
+	if !r.catalogSlicesValid(reg) {
 		recordAuctionOutcome(start, NoBidCorruptCatalog, reg.Count)
 		return AuctionResult{}, NoBidCorruptCatalog
 	}
@@ -31,20 +31,20 @@ func (registry *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult
 		return AuctionResult{}, req.DealBlock
 	}
 
-	bucket, bucketStart, bucketEnd, ok := registry.candidateRange(reg, req)
+	bucket, bucketStart, bucketEnd, ok := r.candidateRange(reg, req)
 	if !ok {
 		recordAuctionOutcome(start, NoBidNoCandidates, 0)
 		return AuctionResult{}, NoBidNoCandidates
 	}
 
-	clearing := registry.ClearingMode()
-	winnerIdx, winnerCreative, secondBid, scanned, noBid := registry.rankCandidates(reg, req, bucket, bucketStart, bucketEnd)
+	clearing := r.ClearingMode()
+	winnerIdx, winnerCreative, secondBid, scanned, noBid := r.rankCandidates(reg, req, bucket, bucketStart, bucketEnd)
 	if noBid != NoBidNone {
 		recordAuctionOutcome(start, noBid, scanned)
 		return AuctionResult{}, noBid
 	}
 
-	price := registry.clearingPrice(clearing, req.MinBid, bidsAt(reg, winnerIdx), secondBid)
+	price := r.clearingPrice(clearing, req.MinBid, bidsAt(reg, winnerIdx), secondBid)
 	price = applyReserve(price, reg.Reserves[winnerIdx], bidsAt(reg, winnerIdx))
 
 	if winnerIdx >= len(reg.BudgetIndices) || winnerIdx >= len(reg.CampaignIDs) {
@@ -56,7 +56,7 @@ func (registry *Registry) runAuction(req *BidRequest, spend bool) (AuctionResult
 		winnerBudgetIdx := reg.BudgetIndices[winnerIdx]
 		customerIdx := reg.CustomerBudgetIndices[winnerIdx]
 		dailyLimit := reg.DailyBudgets[winnerIdx]
-		if !registry.store.CheckAndSpendAll(winnerBudgetIdx, customerIdx, price, dailyLimit) {
+		if !r.store.CheckAndSpendAll(winnerBudgetIdx, customerIdx, price, dailyLimit) {
 			recordAuctionOutcome(start, NoBidSpendFailed, scanned)
 			return AuctionResult{}, NoBidSpendFailed
 		}

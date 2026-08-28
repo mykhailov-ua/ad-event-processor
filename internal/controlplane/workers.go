@@ -24,6 +24,7 @@ import (
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/reconciliation"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/dedupkey"
 
@@ -957,122 +958,14 @@ func (s *Service) AuditSupplyCompliance(ctx context.Context) (SupplyAuditReport,
 	return out, nil
 }
 
-type ReconWorker struct {
-	svc      *Service
-	interval time.Duration
-	quorum   *ShardQuorumTracker
-}
+type ReconWorker = reconciliation.ReconWorker
 
 func NewReconWorker(svc *Service, interval time.Duration) *ReconWorker {
-	numShards := 1
-	if svc != nil {
-		numShards = len(svc.redisShards)
-	}
-	return &ReconWorker{
-		svc:      svc,
-		interval: interval,
-		quorum:   NewShardQuorumTracker(numShards, defaultDeadShardQuorum),
-	}
+	return reconciliation.NewReconWorker(svc, interval)
 }
 
 func NewReconWorkerWithQuorum(svc *Service, interval, quorum time.Duration) *ReconWorker {
-	w := NewReconWorker(svc, interval)
-	if w.quorum != nil {
-		w.quorum = NewShardQuorumTracker(len(svc.redisShards), quorum)
-	}
-	return w
-}
-
-func (w *ReconWorker) Quorum() *ShardQuorumTracker {
-	if w == nil {
-		return nil
-	}
-	return w.quorum
-}
-
-func (w *ReconWorker) Start(ctx context.Context) {
-	ticker := time.NewTicker(w.interval)
-	defer ticker.Stop()
-
-	quotaTicker := time.NewTicker(10 * time.Second)
-	defer quotaTicker.Stop()
-
-	drainCheckTicker := time.NewTicker(time.Minute)
-	defer drainCheckTicker.Stop()
-
-	snapshotTicker := time.NewTicker(reconSnapshotInterval(w.svc.cfg))
-	defer snapshotTicker.Stop()
-
-	hyg30Interval := 5 * time.Minute
-	if w.svc.cfg != nil && w.svc.cfg.ReconHYG30IntervalMs > 0 {
-		hyg30Interval = time.Duration(w.svc.cfg.ReconHYG30IntervalMs) * time.Millisecond
-	}
-	hyg30Ticker := time.NewTicker(hyg30Interval)
-	defer hyg30Ticker.Stop()
-
-	reconSvc := NewReconService(w.svc)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-hyg30Ticker.C:
-			w.runHYG30Audits(ctx)
-		case <-snapshotTicker.C:
-			if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
-				w.ReconcileBudgetSnapshot(runCtx)
-				return nil
-			}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
-				slog.Error("budget snapshot recon failed", "err", err)
-			}
-		case <-ticker.C:
-			end := time.Now().Truncate(time.Hour).Add(-2 * time.Hour)
-			start := end.Add(-time.Hour)
-			if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
-				return reconSvc.ReconcileWindow(runCtx, start, end)
-			}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
-				slog.Error("recon worker iteration failed", "err", err, "window", start)
-			}
-		case <-quotaTicker.C:
-			if w.svc.cfg != nil && (w.svc.cfg.QuotaMode == "shadow" || w.svc.cfg.QuotaMode == "live") {
-				if err := w.svc.withPostgresLow(ctx, func(runCtx context.Context) error {
-					w.ReconcileQuotas(runCtx)
-					return nil
-				}); err != nil && !errors.Is(err, ErrPostgresGateRejected) {
-					slog.Error("quota recon failed", "err", err)
-				}
-			}
-		case <-drainCheckTicker.C:
-			w.svc.CheckStuckDrainJobs(ctx)
-			reconSvc.AlertStaleUnresolvedDiscrepancies(ctx)
-		}
-	}
-}
-
-func (w *ReconWorker) ReconcileQuotas(ctx context.Context) {
-	if w.svc == nil {
-		return
-	}
-	w.observeShardQuorum(ctx)
-	if w.svc.cfg != nil && w.svc.cfg.QuotaAutoRepair {
-		w.RepairQuotaDrift(ctx)
-	} else {
-		w.MonitorQuotaDrift(ctx)
-	}
-}
-
-func reconSnapshotInterval(cfg *config.Config) time.Duration {
-	if cfg == nil {
-		return 30 * time.Second
-	}
-	if cfg.Management.ReconSnapshotIntervalMs > 0 {
-		return time.Duration(cfg.Management.ReconSnapshotIntervalMs) * time.Millisecond
-	}
-	ms := cfg.BudgetSyncIntervalMs
-	if ms <= 0 {
-		ms = 5000
-	}
-	return time.Duration(ms) * time.Millisecond
+	return reconciliation.NewReconWorkerWithQuorum(svc, interval, quorum)
 }
 
 type NginxConfigWorker struct {
@@ -1087,7 +980,7 @@ func NewNginxConfigWorker(svc *Service, exportPath string) *NginxConfigWorker {
 	}
 }
 
-func (nginxWorker *NginxConfigWorker) Start(ctx context.Context, interval time.Duration) {
+func (nc *NginxConfigWorker) Start(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
@@ -1096,19 +989,19 @@ func (nginxWorker *NginxConfigWorker) Start(ctx context.Context, interval time.D
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := nginxWorker.ExportAndReload(ctx); err != nil {
+			if err := nc.ExportAndReload(ctx); err != nil {
 				slog.Error("nginx export failed", "err", err)
 			}
 		}
 	}
 }
 
-func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error {
-	if len(nginxWorker.svc.redisShards) == 0 {
+func (nc *NginxConfigWorker) ExportAndReload(ctx context.Context) error {
+	if len(nc.svc.redisShards) == 0 {
 		return fmt.Errorf("no redis client available")
 	}
 
-	redisClient := PickHealthyControlShard(nginxWorker.svc.redisShards)
+	redisClient := PickHealthyControlShard(nc.svc.redisShards)
 	if redisClient == nil {
 		return fmt.Errorf("no healthy redis shard")
 	}
@@ -1117,7 +1010,7 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 	if err != nil {
 		return fmt.Errorf("failed to fetch manual blacklist: %w", err)
 	}
-	if err := nginxWorker.writeDenyFile("manual.conf", manual); err != nil {
+	if err := nc.writeDenyFile("manual.conf", manual); err != nil {
 		return err
 	}
 
@@ -1125,11 +1018,11 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 	if err != nil {
 		return fmt.Errorf("failed to fetch auto blacklist: %w", err)
 	}
-	if err := nginxWorker.writeDenyFile("auto.conf", auto); err != nil {
+	if err := nc.writeDenyFile("auto.conf", auto); err != nil {
 		return err
 	}
 
-	flagPath := filepath.Join(nginxWorker.exportPath, "reload_required.flg")
+	flagPath := filepath.Join(nc.exportPath, "reload_required.flg")
 	if err := os.WriteFile(flagPath, []byte("1\n"), 0o644); err != nil {
 		return fmt.Errorf("failed to write reload flag: %w", err)
 	}
@@ -1138,12 +1031,12 @@ func (nginxWorker *NginxConfigWorker) ExportAndReload(ctx context.Context) error
 	return nil
 }
 
-func (nginxWorker *NginxConfigWorker) writeDenyFile(filename string, ips []string) (err error) {
-	if err := os.MkdirAll(nginxWorker.exportPath, 0o755); err != nil {
+func (nc *NginxConfigWorker) writeDenyFile(filename string, ips []string) (err error) {
+	if err := os.MkdirAll(nc.exportPath, 0o755); err != nil {
 		return err
 	}
 
-	path := filepath.Join(nginxWorker.exportPath, filename)
+	path := filepath.Join(nc.exportPath, filename)
 	tmpPath := path + ".tmp"
 
 	tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)

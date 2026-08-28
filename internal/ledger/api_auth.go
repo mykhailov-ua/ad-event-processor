@@ -9,12 +9,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (handler *Handler) requireInternalToken(ctx context.Context) error {
+func (h *Handler) requireInternalToken(ctx context.Context) error {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return status.Error(codes.Unauthenticated, "missing metadata")
 	}
-	expectedToken := string(handler.cfg.BillingInternalToken)
+	expectedToken := string(h.cfg.BillingInternalToken)
 	if expectedToken == "" {
 		return status.Error(codes.FailedPrecondition, "billing internal token not configured")
 	}

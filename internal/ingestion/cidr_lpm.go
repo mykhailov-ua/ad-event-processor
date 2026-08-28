@@ -81,12 +81,12 @@ func (t *CIDRTable) Match6(ip [16]byte) (bool, uint8) {
 	return snap.lookup(snap.root6, &ip)
 }
 
-func (t *CIDRTable) MatchIP(s string) (bool, uint8) {
+func (t *CIDRTable) MatchIP(ipStr string) (bool, uint8) {
 	snap := t.active.Load()
 	if snap == nil {
 		return false, 0
 	}
-	a, err := netip.ParseAddr(s)
+	a, err := netip.ParseAddr(ipStr)
 	if err != nil {
 		return false, 0
 	}
@@ -106,9 +106,9 @@ func (t *CIDRTable) MatchIP(s string) (bool, uint8) {
 	return snap.lookup(snap.root6, &key)
 }
 
-func (snap *cidrSnapshot) lookup(root int32, key *[16]byte) (bool, uint8) {
-	nodes := snap.nodes
-	prefs := snap.prefs
+func (s *cidrSnapshot) lookup(root int32, key *[16]byte) (bool, uint8) {
+	nodes := s.nodes
+	prefs := s.prefs
 	_ = nodes[len(nodes)-1]
 	cur := root
 	for cur >= 0 {

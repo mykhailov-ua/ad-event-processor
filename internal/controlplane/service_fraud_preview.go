@@ -18,28 +18,6 @@ const (
 
 const fraudPreviewDisclaimer = "Estimate based on last 7d shadow scores; proxy-label tiers only (no policy replay)."
 
-type CampaignFraudPreviewDTO struct {
-	CampaignID    string                    `json:"campaign_id"`
-	AffectedIPs7d int64                     `json:"affected_ips_7d"`
-	SampleSize    int64                     `json:"sample_size"`
-	ByTier        FraudPreviewTierCountsDTO `json:"by_tier"`
-	Disclaimer    string                    `json:"disclaimer"`
-}
-
-type FraudPreviewTierCountsDTO struct {
-	Suspect int64 `json:"suspect"`
-	IVT     int64 `json:"ivt"`
-	Block   int64 `json:"block"`
-}
-
-type PreviewCampaignFraudRequest struct {
-	Preset                *string `json:"preset,omitempty"`
-	FraudThresholdPass    *uint8  `json:"fraud_threshold_pass,omitempty"`
-	FraudThresholdSuspect *uint8  `json:"fraud_threshold_suspect,omitempty"`
-	FraudThresholdIVT     *uint8  `json:"fraud_threshold_ivt,omitempty"`
-	FraudThresholdBlock   *uint8  `json:"fraud_threshold_block,omitempty"`
-}
-
 func (s *Service) resolveProposedFraudThresholds(ctx context.Context, current campaignFraudThresholds, req PreviewCampaignFraudRequest) (campaignFraudThresholds, error) {
 	pass := current.pass
 	suspect := current.suspect

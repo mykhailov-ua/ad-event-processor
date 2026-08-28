@@ -10,6 +10,7 @@ type RouteRegistry struct {
 	ExportHTTP            *ExportHTTPHandlers
 	LicensingHTTP         *LicensingHTTPHandlers
 	ReportsHTTP           *ReportsHTTPHandlers
+	ReportJobHTTP         *ReportJobHTTPHandlers
 	DashboardsHTTP        *DashboardsHTTPHandlers
 	ViewsHTTP             *ViewsHTTPHandlers
 	SelfServeHTTP         *SelfServeHTTPHandlers
@@ -31,9 +32,11 @@ type RouteRegistry struct {
 	CustomersHTTP         *CustomersHTTPHandlers
 	SupportHTTP           *SupportHTTPHandlers
 	MetaHTTP              *MetaHTTPHandlers
+	SessionHTTP           *SessionHTTPHandlers
 	EulaHTTP              *EulaHTTPHandlers
 	PlatformHTTP          *PlatformHTTPHandlers
-	CommercialHTTP        *CommercialHTTPHandlers
+	BrandHTTP             *BrandHTTPHandlers
+	SupplyHTTP            *SupplyHTTPHandlers
 	StubHTTP              *StubHTTPHandlers
 	TelegramHTTP          *TelegramHTTPHandlers
 }
@@ -77,7 +80,12 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/campaigns/import"},
 	{Method: "GET", Path: "/api/v1/campaigns/migrate/sources"},
 	{Method: "POST", Path: "/api/v1/campaigns/migrate/preview"},
+	{Method: "POST", Path: "/api/v1/campaigns/import/validate"},
+	{Method: "POST", Path: "/api/v1/campaigns/import/validate/jobs"},
+	{Method: "GET", Path: "/api/v1/campaigns/import/validate/jobs/{id}"},
 	{Method: "POST", Path: "/api/v1/campaigns/migrate/import"},
+	{Method: "POST", Path: "/api/v1/campaigns/migrate/pull/preview"},
+	{Method: "POST", Path: "/api/v1/campaigns/migrate/pull/import"},
 	{Method: "POST", Path: "/api/v1/campaigns/{id}/placement-blocks"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/conversion-mappings"},
 	{Method: "PUT", Path: "/api/v1/campaigns/{id}/conversion-mappings"},
@@ -86,6 +94,21 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/fraud"},
 	{Method: "PATCH", Path: "/api/v1/campaigns/{id}/fraud"},
 	{Method: "POST", Path: "/api/v1/campaigns/{id}/fraud/preview"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/editor-shell"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/validate"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/publish"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/publish-check"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/smoke"},
+	{Method: "GET", Path: "/api/v1/campaigns/onboarding-templates"},
+	{Method: "GET", Path: "/api/v1/campaigns/wizard/session"},
+	{Method: "POST", Path: "/api/v1/campaigns/wizard/session"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/integration-panel"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/flow/validate"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/macro-preview"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/diff"},
+	{Method: "POST", Path: "/api/v1/campaigns/{id}/clone/preview"},
+	{Method: "GET", Path: "/api/v1/campaigns/{id}/placement-block-suggestions"},
+	{Method: "POST", Path: "/api/v1/campaigns/bulk"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}/stats"},
 	{Method: "POST", Path: "/api/v1/consent"},
 	{Method: "GET", Path: "/api/v1/ops/consent/proofs"},
@@ -153,6 +176,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/eula"},
 	{Method: "POST", Path: "/api/v1/eula/accept"},
 	{Method: "GET", Path: "/api/v1/meta"},
+	{Method: "GET", Path: "/api/v1/session"},
 	{Method: "GET", Path: "/api/v1/settings/platform"},
 	{Method: "PATCH", Path: "/api/v1/settings/platform"},
 	{Method: "POST", Path: "/api/v1/settings/platform/bootstrap"},
@@ -167,6 +191,12 @@ var routeCatalog = []Route{
 	{Method: "DELETE", Path: "/api/v1/smart-alerts/rules/{id}"},
 	{Method: "GET", Path: "/api/v1/smart-alerts/history"},
 	{Method: "POST", Path: "/api/v1/smart-alerts/events/{id}/ack"},
+	{Method: "GET", Path: "/api/v1/automation/presets"},
+	{Method: "GET", Path: "/api/v1/automation/rules"},
+	{Method: "POST", Path: "/api/v1/automation/rules"},
+	{Method: "PUT", Path: "/api/v1/automation/rules/{id}"},
+	{Method: "DELETE", Path: "/api/v1/automation/rules/{id}"},
+	{Method: "POST", Path: "/api/v1/automation/rules/{id}/dry-run"},
 	{Method: "GET", Path: "/api/v1/domains"},
 	{Method: "POST", Path: "/api/v1/domains"},
 	{Method: "DELETE", Path: "/api/v1/domains/{hostname}"},
@@ -207,6 +237,7 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/ops/rum"},
 	{Method: "GET", Path: "/api/v1/ops/rum"},
 	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
+	{Method: "GET", Path: "/api/v1/ops/health/snapshot"},
 	{Method: "GET", Path: "/api/v1/ops/shards"},
 	{Method: "POST", Path: "/api/v1/ops/shards/0/catchup"},
 	{Method: "PATCH", Path: "/api/v1/ops/fraud/presets/{name}"},
@@ -252,7 +283,17 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/data-quality"},
 	{Method: "GET", Path: "/api/v1/reports/edge-parity"},
 	{Method: "GET", Path: "/api/v1/reports/filter-rejects"},
+	{Method: "GET", Path: "/api/v1/reports/catalog"},
+	{Method: "GET", Path: "/api/v1/reports/customer-fraud-by-type"},
+	{Method: "GET", Path: "/api/v1/reports/customer-fraud-by-dimension"},
+	{Method: "GET", Path: "/api/v1/reports/customer-fraud-evidence"},
+	{Method: "GET", Path: "/api/v1/reports/signal-effectiveness"},
+	{Method: "GET", Path: "/api/v1/reports/campaign-toggle-cohort"},
+	{Method: "GET", Path: "/api/v1/reports/layer-desync-drilldown"},
+	{Method: "GET", Path: "/api/v1/reports/wire-signal-breakdown"},
 	{Method: "GET", Path: "/api/v1/reports/fraud-breakdown"},
+	{Method: "GET", Path: "/api/v1/reports/fraud-evidence-pack"},
+	{Method: "GET", Path: "/api/v1/reports/layer-desync-summary"},
 	{Method: "GET", Path: "/api/v1/reports/silent-reject-impression-funnel"},
 	{Method: "GET", Path: "/api/v1/reports/ghost-impression-funnel"},
 	{Method: "GET", Path: "/api/v1/reports/ml/feature-spikes"},
@@ -274,6 +315,7 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/reports/placements"},
 	{Method: "POST", Path: "/api/v1/reports/jobs"},
 	{Method: "GET", Path: "/api/v1/reports/jobs/{id}"},
+	{Method: "DELETE", Path: "/api/v1/reports/jobs/{id}"},
 	{Method: "GET", Path: "/api/v1/reports/jobs/{id}/download"},
 	{Method: "GET", Path: "/api/v1/reports/source-quality"},
 	{Method: "GET", Path: "/api/v1/reports/spend-velocity"},
@@ -343,6 +385,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	if routes.ReportsHTTP != nil {
 		routes.ReportsHTTP.Register(mux)
 	}
+	if routes.ReportJobHTTP != nil {
+		routes.ReportJobHTTP.Register(mux)
+	}
 	if routes.DashboardsHTTP != nil {
 		routes.DashboardsHTTP.Register(mux)
 	}
@@ -406,14 +451,20 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	if routes.MetaHTTP != nil {
 		routes.MetaHTTP.Register(mux)
 	}
+	if routes.SessionHTTP != nil {
+		routes.SessionHTTP.Register(mux)
+	}
 	if routes.EulaHTTP != nil {
 		routes.EulaHTTP.Register(mux)
 	}
 	if routes.PlatformHTTP != nil {
 		routes.PlatformHTTP.Register(mux)
 	}
-	if routes.CommercialHTTP != nil {
-		routes.CommercialHTTP.Register(mux)
+	if routes.BrandHTTP != nil {
+		routes.BrandHTTP.Register(mux)
+	}
+	if routes.SupplyHTTP != nil {
+		routes.SupplyHTTP.Register(mux)
 	}
 	if routes.StubHTTP != nil {
 		routes.StubHTTP.Register(mux)

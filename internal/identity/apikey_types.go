@@ -7,4 +7,5 @@ type APIKey struct {
 	Name      string
 	CreatedAt time.Time
 	ExpiresAt *time.Time
+	Scopes    []string
 }

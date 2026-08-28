@@ -65,14 +65,14 @@ Always applied on every agent turn (no glob filter):
 | File | Scope |
 | :--- | :--- |
 | `core.mdc` | SLA, repo policy, commit style, rule index |
-| `naming.mdc` | Identifiers, legacy tokens, marketing ban, comments |
+| `naming.mdc` | Identifiers, legacy tokens, marketing ban |
 | `quality.mdc` | Go receivers, verification honesty |
 | `anti-slop.mdc` | CI honesty, doc lie modes, slop gates, agent-resistant verification, agent checklist |
 
 | Rule file | Topic |
 | :--- | :--- |
 | `architecture.mdc` | Hot/cold invariants, I/O round-trip limits, fail-closed |
-| `structure.mdc` | Current flat layout, cmd map, future split map |
+| `structure.mdc` | Current flat layout, cmd map, package split policy |
 | `development.mdc` | Codegen, compose, benchmarks, fault runbooks |
 | `ci.mdc` | Merge gates, BPF thresholds, test tiers |
 | `code-style.mdc` | Layout, types, sqlc, proto, PR gates |
@@ -83,6 +83,7 @@ Always applied on every agent turn (no glob filter):
 | `data-layer.mdc` | Redis, Lua, PG, CH, sharding |
 | `boundaries.mdc` | Import matrix, layer coupling, agent scope, test dishonesty catalog |
 | `control-plane.mdc` | Outbox, workers, admin API |
+| `modular-monolith.mdc` | Modular monolith, bridges, god- and micro-package policy |
 | `rtb.mdc` | OpenRTB auction, shadow to live |
 | `edge.mdc` | Nginx Lua, XDP, tracker parity |
 | `compliance.mdc` | Defensive perimeter |

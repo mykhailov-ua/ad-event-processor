@@ -34,6 +34,22 @@ Schemas: `payment`, `billing`, `notifier` plus shared `public` (campaigns, event
 
 Sidecars (optional): `cmd/ivt-detector`, `cmd/fraud-scorer`, `cmd/log-evacuator` (tools profile). Settlement runs in-process in control - no standalone settlement binary.
 
+Domain packages (`campaign`, `brand`, `flow`, …) are **compile-time modules** inside this monolith — not separate deployables. `*_bridge.go` in `controlplane` is in-process wiring only (`modular-monolith.mdc`).
+
+## God-package boundary (hard)
+
+| Violation | Fix |
+| :--- | :--- |
+| New handler body in `controlplane` for a domain that has `internal/<domain>/` | Move to domain `handlers.go`; bridge wires only |
+| `Effects` / `Host` port > 12 methods | Split port before adding methods |
+| Package > 40 prod `.go` files or ~8k LOC | Split package in same PR |
+| Bridge file > 200 lines or pass-through shim only | Move logic to domain; delete shim |
+| `controlplane.Service` accumulates domain SQL/rules | `Store` / `Runtime` in domain package |
+| New `internal/<domain>/` with only `host.go` + `types.go` | Complete handlers/store + wire in same PR (`modular-monolith.mdc`) |
+| `internal/common` / `util` with domain rules | Owning domain or `pkg/coldpath` |
+
+Agents: one task = one domain package owner when possible (`Coupling limits` below). Do not grow god `controlplane` while extracting siblings. Do not open stub packages "for later".
+
 ## Tracker hot path - never inject
 
 | Forbidden in tracker | Reason |
@@ -240,7 +256,7 @@ Weakening or deleting these holdouts to green CI is a boundary violation.
 | 4 | Cross-layer field -> handler DTO in API PR or same milestone section 7 |
 | 5 | Mock in PR description -> valid scope row from table above |
 | 6 | Touch hot producer/filter -> cite holdout tests by name |
-| 7 | Operator stop ("не код", "сноси") -> revert; no compensating layer |
+| 7 | Operator rejects slice -> revert; no compensating layer |
 
 ## Related rules
 

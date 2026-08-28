@@ -33,6 +33,7 @@ var (
 	ErrDailyQuotaExceeded     = errors.New("daily quota exceeded")
 	ErrRegistryStale          = errors.New("registry stale: campaign unknown while control plane unreachable")
 	ErrShardUnavailable       = errors.New("shard unavailable")
+	ErrInfraNetwork           = errors.New("infrastructure network error")
 	ErrFilterTimeout          = errors.New("filter timeout")
 )
 
@@ -161,22 +162,49 @@ func (f *FraudFilter) checkDCASN(evt *domain.Event, force bool) {
 }
 
 type GeoFilter struct {
-	geo      GeoProvider
-	registry domain.CampaignRegistry
+	geo                  GeoProvider
+	registry             domain.CampaignRegistry
+	acceptLangGeoEnabled atomic.Bool
 }
 
 func NewGeoFilter(geo GeoProvider, registry domain.CampaignRegistry) *GeoFilter {
-	return &GeoFilter{
+	f := &GeoFilter{
 		geo:      geo,
 		registry: registry,
 	}
+	return f
+}
+
+func (f *GeoFilter) SetAcceptLangGeoEnabled(enabled bool) {
+	f.acceptLangGeoEnabled.Store(enabled)
 }
 
 func (f *GeoFilter) Check(ctx context.Context, evt *domain.Event) error {
 	start := monotonicNano()
 	err := f.checkGeo(evt)
 	observeHistogramSampled(&geoMetricsSeq, luaMetricsSampleMask, filterGeoDuration, start)
-	return err
+	if err != nil {
+		return err
+	}
+	f.checkAcceptLangGeo(evt)
+	return nil
+}
+
+func (f *GeoFilter) checkAcceptLangGeo(evt *domain.Event) {
+	if f == nil || evt == nil || !f.acceptLangGeoEnabled.Load() {
+		return
+	}
+	camp, ok := getCampaignFromEvent(f.registry, evt)
+	if !ok || !camp.AcceptLangGeoEnabled {
+		return
+	}
+	ensureIngestGeo(f.geo, evt)
+	if evt.AcceptLang == "" || evt.GeoCountry == "" {
+		return
+	}
+	if acceptLangGeoMismatch(evt.AcceptLang, evt.GeoCountry) {
+		addFraudSignal(evt, FraudReasonAcceptLangGeoMismatch)
+	}
 }
 
 func (f *GeoFilter) checkGeo(evt *domain.Event) error {

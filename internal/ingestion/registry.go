@@ -41,29 +41,31 @@ func (r *Registry) campaignMapSnapshot() *campaignMapSnapshot {
 }
 
 type campaignReplicaDTO struct {
-	ID                   uuid.UUID             `json:"id"`
-	CustomerID           uuid.UUID             `json:"customer_id"`
-	BrandID              *uuid.UUID            `json:"brand_id,omitempty"`
-	BrandFcapKey         string                `json:"brand_fcap_key,omitempty"`
-	Name                 string                `json:"name"`
-	BudgetLimit          int64                 `json:"budget_limit"`
-	CurrentSpend         int64                 `json:"current_spend"`
-	Status               domain.CampaignStatus `json:"status"`
-	PacingMode           domain.PacingMode     `json:"pacing_mode"`
-	DailyBudget          int64                 `json:"daily_budget"`
-	DailyBudgetMicro     int64                 `json:"daily_budget_micro"`
-	Timezone             string                `json:"timezone"`
-	FreqLimit            int32                 `json:"freq_limit"`
-	FreqWindow           int32                 `json:"freq_window"`
-	TargetCountries      []string              `json:"target_countries,omitempty"`
-	SafePageURL          string                `json:"safe_page_url,omitempty"`
-	SafePageEnabled      bool                  `json:"safe_page_enabled"`
-	CanvasRetestEnabled  bool                  `json:"canvas_retest_enabled"`
-	CgnatIPPolicyEnabled bool                  `json:"cgnat_ip_policy_enabled"`
-	AttestationEnabled   bool                  `json:"attestation_enabled"`
-	AttestationMode      string                `json:"attestation_mode,omitempty"`
-	AttestationTTLSec    int32                 `json:"attestation_ttl_sec"`
-	DmrEnabled           bool                  `json:"dmr_enabled"`
+	ID                       uuid.UUID             `json:"id"`
+	CustomerID               uuid.UUID             `json:"customer_id"`
+	BrandID                  *uuid.UUID            `json:"brand_id,omitempty"`
+	BrandFcapKey             string                `json:"brand_fcap_key,omitempty"`
+	Name                     string                `json:"name"`
+	BudgetLimit              int64                 `json:"budget_limit"`
+	CurrentSpend             int64                 `json:"current_spend"`
+	Status                   domain.CampaignStatus `json:"status"`
+	PacingMode               domain.PacingMode     `json:"pacing_mode"`
+	DailyBudget              int64                 `json:"daily_budget"`
+	DailyBudgetMicro         int64                 `json:"daily_budget_micro"`
+	Timezone                 string                `json:"timezone"`
+	FreqLimit                int32                 `json:"freq_limit"`
+	FreqWindow               int32                 `json:"freq_window"`
+	TargetCountries          []string              `json:"target_countries,omitempty"`
+	SafePageURL              string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled          bool                  `json:"safe_page_enabled"`
+	CanvasRetestEnabled      bool                  `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled     bool                  `json:"cgnat_ip_policy_enabled"`
+	AcceptLangGeoEnabled     bool                  `json:"accept_lang_geo_enabled"`
+	JSONSerializationEnabled bool                  `json:"json_serialization_enabled"`
+	AttestationEnabled       bool                  `json:"attestation_enabled"`
+	AttestationMode          string                `json:"attestation_mode,omitempty"`
+	AttestationTTLSec        int32                 `json:"attestation_ttl_sec"`
+	DmrEnabled               bool                  `json:"dmr_enabled"`
 
 	CIDRBlockEnabled           bool   `json:"cidr_block_enabled"`
 	ProxyVPNBlockEnabled       bool   `json:"proxy_vpn_block_enabled"`
@@ -394,6 +396,8 @@ func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
 			SafePageEnabled:            info.campaign.SafePageEnabled,
 			CanvasRetestEnabled:        info.campaign.CanvasRetestEnabled,
 			CgnatIPPolicyEnabled:       info.campaign.CgnatIPPolicyEnabled,
+			AcceptLangGeoEnabled:       info.campaign.AcceptLangGeoEnabled,
+			JSONSerializationEnabled:   info.campaign.JSONSerializationEnabled,
 			AttestationEnabled:         info.campaign.AttestationEnabled,
 			AttestationMode:            string(info.campaign.AttestationMode),
 			AttestationTTLSec:          info.campaign.AttestationTTLSec,
@@ -519,6 +523,8 @@ func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
 				SafePageEnabled:            dto.SafePageEnabled,
 				CanvasRetestEnabled:        dto.CanvasRetestEnabled,
 				CgnatIPPolicyEnabled:       dto.CgnatIPPolicyEnabled,
+				AcceptLangGeoEnabled:       dto.AcceptLangGeoEnabled,
+				JSONSerializationEnabled:   dto.JSONSerializationEnabled,
 				AttestationEnabled:         dto.AttestationEnabled,
 				AttestationMode:            domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
 				AttestationTTLSec:          dto.AttestationTTLSec,

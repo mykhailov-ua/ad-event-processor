@@ -17,9 +17,9 @@ func newPostgresFailoverShardReader(redisShards []redis.UniversalClient) *postgr
 	return &postgresFailoverShardReader{redisShards: redisShards}
 }
 
-func (reader *postgresFailoverShardReader) activeDSN(ctx context.Context) (string, uint64, error) {
+func (fs *postgresFailoverShardReader) activeDSN(ctx context.Context) (string, uint64, error) {
 	var lastErr error
-	for i, redisClient := range reader.redisShards {
+	for i, redisClient := range fs.redisShards {
 		if redisClient == nil {
 			continue
 		}

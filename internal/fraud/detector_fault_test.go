@@ -30,55 +30,55 @@ type countingManagement struct {
 	fail       atomic.Uint32
 }
 
-func (mgmt *countingManagement) BlockIP(_ context.Context, ip string) error {
-	mgmt.mu.Lock()
-	defer mgmt.mu.Unlock()
-	if mgmt.calls == nil {
-		mgmt.calls = make(map[string]int)
+func (m *countingManagement) BlockIP(_ context.Context, ip string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.calls == nil {
+		m.calls = make(map[string]int)
 	}
-	if mgmt.fail.Load() > 0 {
-		mgmt.fail.Add(^uint32(0))
+	if m.fail.Load() > 0 {
+		m.fail.Add(^uint32(0))
 		return ErrManagementUnavailable
 	}
-	mgmt.calls[ip]++
+	m.calls[ip]++
 	return nil
 }
 
-func (mgmt *countingManagement) EnqueueFraudThreat(_ context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
-	mgmt.mu.Lock()
-	defer mgmt.mu.Unlock()
-	if mgmt.calls == nil {
-		mgmt.calls = make(map[string]int)
+func (m *countingManagement) EnqueueFraudThreat(_ context.Context, action, ip, campaignID string, score float64, boost int32, ttlSeconds int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.calls == nil {
+		m.calls = make(map[string]int)
 	}
-	if mgmt.fail.Load() > 0 {
-		mgmt.fail.Add(^uint32(0))
+	if m.fail.Load() > 0 {
+		m.fail.Add(^uint32(0))
 		return ErrManagementUnavailable
 	}
-	mgmt.calls[ip]++
+	m.calls[ip]++
 	return nil
 }
 
-func (mgmt *countingManagement) EnqueueFraudThreatBatch(_ context.Context, items []FraudThreatEnqueueItem) (int, error) {
-	mgmt.mu.Lock()
-	defer mgmt.mu.Unlock()
-	if mgmt.calls == nil {
-		mgmt.calls = make(map[string]int)
+func (m *countingManagement) EnqueueFraudThreatBatch(_ context.Context, items []FraudThreatEnqueueItem) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.calls == nil {
+		m.calls = make(map[string]int)
 	}
-	if mgmt.fail.Load() > 0 {
-		mgmt.fail.Add(^uint32(0))
+	if m.fail.Load() > 0 {
+		m.fail.Add(^uint32(0))
 		return 0, ErrManagementUnavailable
 	}
-	mgmt.batchCalls++
+	m.batchCalls++
 	for _, item := range items {
-		mgmt.calls[item.IP]++
+		m.calls[item.IP]++
 	}
 	return len(items), nil
 }
 
-func (mgmt *countingManagement) count(ip string) int {
-	mgmt.mu.Lock()
-	defer mgmt.mu.Unlock()
-	return mgmt.calls[ip]
+func (m *countingManagement) count(ip string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.calls[ip]
 }
 
 func TestIdempotencyStore_TryClaim(t *testing.T) {
@@ -144,7 +144,7 @@ func TestFault_ivtDetectorExactlyOnce(t *testing.T) {
 	close(start)
 	wg.Wait()
 
-	assert.Equal(t, 1, mgmt.count("198.51.100.10"))
+	assert.Equal(t, 1, m.count("198.51.100.10"))
 	assert.Equal(t, int32(1), success.Load())
 
 	hasClaim, err := detector.idem.HasClaim(ctx, "198.51.100.10")
@@ -187,7 +187,7 @@ func TestFault_ivtDetectorOutboxBackpressure(t *testing.T) {
 	result, err := detector.Run(ctx)
 	require.ErrorIs(t, err, ErrOutboxBackpressure)
 	assert.True(t, result.Backlogged)
-	assert.Equal(t, 0, mgmt.count("198.51.100.20"))
+	assert.Equal(t, 0, m.count("198.51.100.20"))
 
 	faultproof.Log(t, "ivt_detector_outbox_backpressure", map[string]string{
 		"subsystem":           "ivt_detector",
@@ -206,7 +206,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 
 	ctx := context.Background()
 	mgmt := &countingManagement{}
-	mgmt.fail.Store(1)
+	m.fail.Store(1)
 
 	detector := NewDetector(
 		stubFinder{ips: []SuspiciousIP{{IP: "198.51.100.30", Reason: "ivt_detected", Score: 7}}},
@@ -218,7 +218,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 
 	_, err := detector.Run(ctx)
 	require.Error(t, err)
-	assert.Equal(t, 0, mgmt.count("198.51.100.30"))
+	assert.Equal(t, 0, m.count("198.51.100.30"))
 
 	hasClaim, err := detector.idem.HasClaim(ctx, "198.51.100.30")
 	require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 	result, err := detector.Run(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.Enqueued)
-	assert.Equal(t, 1, mgmt.count("198.51.100.30"))
+	assert.Equal(t, 1, m.count("198.51.100.30"))
 
 	faultproof.Log(t, "ivt_detector_management_retry", map[string]string{
 		"subsystem":    "ivt_detector",

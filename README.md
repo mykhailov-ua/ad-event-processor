@@ -84,7 +84,7 @@ Limits (see [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md)):
 - Behind CDN/ALB without edge TCP fingerprint sync, TCP MSS / TTL signals fail-open or must be disabled.
 - Cold-path ML `silent_reject` action adds IP to `blacklist:fraud`; it does not flip `silent_reject_enabled` on campaigns.
 
-Open work: [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.md).
+Open parity gaps: [deploy/vendor/competitive_backlog.md](deploy/vendor/competitive_backlog.md). Admin UI rebuild: [deploy/vendor/admin_ui_redesign_backlog.md](deploy/vendor/admin_ui_redesign_backlog.md).
 
 ### OpenRTB / in-process RTB
 
@@ -142,7 +142,8 @@ Hot-path static gates (no `fmt.Sprintf`, no `interface{}` boxing on ingest), all
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Hot/cold boundary, topology, ports, Redis sharding |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local stack, codegen, tests, SLA gates |
 | [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md) | Fraud signals, layers, edge/XDP, cold-path ML |
-| [deploy/vendor/antifraud_backlog.md](deploy/vendor/antifraud_backlog.md) | Open antifraud work items |
+| [deploy/vendor/competitive_backlog.md](deploy/vendor/competitive_backlog.md) | Open parity gaps vs Keitaro/Binom |
+| [deploy/vendor/admin_ui_redesign_backlog.md](deploy/vendor/admin_ui_redesign_backlog.md) | Admin UI rebuild milestones |
 | [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml) | License SKU limits and feature flags |
 | `.cursor/rules/` | Engineering constraints (SLA, hot path, CI) |
 
@@ -210,6 +211,7 @@ License file default path: `var/license.jwt`. Issue JWT: `go run ./cmd/license-i
 | Profile | Services |
 | :--- | :--- |
 | `single-vps` / `full` | Tracker, processor, control, Postgres, Redis x4, ClickHouse |
+| `minimal` | Tracker, processor, control, Postgres, Redis x1, ClickHouse, broker (~6 GB RAM) |
 | `ingest-only` | Same without ClickHouse (lower RAM) |
 | `infra` | Datastores only for local Go binaries |
 | `analytics-ml` | Adds `fraud-scorer`, `ivt-detector` |

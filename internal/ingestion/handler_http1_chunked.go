@@ -79,6 +79,8 @@ func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 	totalLen := 0
 	firstStart := -1
 	contiguousEnd := -1
+	fragmented := false
+	scratchLen := 0
 
 	for {
 		if pos >= n {
@@ -98,26 +100,11 @@ func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 			if totalLen == 0 {
 				return pos, nil, 0, nil
 			}
-			if firstStart >= 0 && contiguousEnd == firstStart+totalLen {
+			if !fragmented && firstStart >= 0 && contiguousEnd == firstStart+totalLen {
 				return pos, data[firstStart:contiguousEnd], totalLen, nil
 			}
-			copyScratch := growChunkScratch(scratchPtr, totalLen)
-			rpos := off
-			acc := 0
-			for {
-				chunkSize, next, perr := parseChunkSizeLine(data, rpos, n)
-				if perr != nil {
-					return 0, nil, 0, perr
-				}
-				if chunkSize == 0 {
-					break
-				}
-				chunkData := data[next : next+chunkSize]
-				copy(copyScratch[acc:], chunkData)
-				acc += chunkSize
-				rpos = next + chunkSize + 2
-			}
-			return pos, copyScratch, totalLen, nil
+			scratch := growChunkScratch(scratchPtr, scratchLen)
+			return pos, scratch[:scratchLen], totalLen, nil
 		}
 
 		if int64(totalLen+size) > maxBody {
@@ -130,16 +117,22 @@ func parseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 			return 0, nil, 0, errInvalidRequest
 		}
 
-		if firstStart < 0 {
+		if fragmented {
+			scratch := growChunkScratch(scratchPtr, scratchLen+size)
+			copy(scratch[scratchLen:], data[pos:pos+size])
+			scratchLen += size
+		} else if firstStart >= 0 && pos != contiguousEnd {
+			fragmented = true
+			prefixLen := contiguousEnd - firstStart
+			scratch := growChunkScratch(scratchPtr, prefixLen+size)
+			copy(scratch, data[firstStart:contiguousEnd])
+			copy(scratch[prefixLen:], data[pos:pos+size])
+			scratchLen = prefixLen + size
+		} else if firstStart < 0 {
 			firstStart = pos
 			contiguousEnd = pos + size
 		} else {
-			switch pos == contiguousEnd {
-			case true:
-				contiguousEnd = pos + size
-			case false:
-				contiguousEnd = -1
-			}
+			contiguousEnd = pos + size
 		}
 		totalLen += size
 		pos += size + 2

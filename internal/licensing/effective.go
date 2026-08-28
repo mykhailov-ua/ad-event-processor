@@ -37,6 +37,7 @@ func Effective(dep, cust Entitlements) Entitlements {
 	eff.Features.ExternalResidentialIntel = depFeat.ExternalResidentialIntel && custFeat.ExternalResidentialIntel
 	eff.Features.ModeratorIntelFeed = depFeat.ModeratorIntelFeed && custFeat.ModeratorIntelFeed
 	eff.Features.AdPlatformCampaignAPI = depFeat.AdPlatformCampaignAPI && custFeat.AdPlatformCampaignAPI
+	eff.Features.FraudDisputeEvidence = depFeat.FraudDisputeEvidence && custFeat.FraudDisputeEvidence
 
 	return eff
 }

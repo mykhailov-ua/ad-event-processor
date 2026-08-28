@@ -45,28 +45,28 @@ func FcapLookupKey(prefixHash, userHash uint64) uint64 {
 }
 
 //go:inline
-func (snap *FcapSnapshot) FcapCount(prefixHash, userHash uint64) (uint32, bool) {
-	if snap == nil || userHash == 0 || prefixHash == 0 {
+func (fa *FcapSnapshot) FcapCount(prefixHash, userHash uint64) (uint32, bool) {
+	if fa == nil || userHash == 0 || prefixHash == 0 {
 		return 0, false
 	}
-	keys := snap.Keys
+	keys := fa.Keys
 	if len(keys) == 0 {
 		return 0, false
 	}
 	lookup := FcapLookupKey(prefixHash, userHash)
-	pos := lookup & snap.Mask
+	pos := lookup & fa.Mask
 
-	_ = keys[snap.Mask]
+	_ = keys[fa.Mask]
 
 	for {
 		k := keys[pos]
 		if k == lookup {
-			return snap.Values[pos], true
+			return fa.Values[pos], true
 		}
 		if k == 0 {
 			return 0, false
 		}
-		pos = (pos + 1) & snap.Mask
+		pos = (pos + 1) & fa.Mask
 	}
 }
 

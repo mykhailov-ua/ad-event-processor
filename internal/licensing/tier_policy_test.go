@@ -75,6 +75,17 @@ func TestSanitizeFeaturesForSKU_scaleAllowsExternalResidentialIntel(t *testing.T
 	require.False(t, outPro.ExternalResidentialIntelEnabled())
 }
 
+func TestLoadSKUFile_fraudDisputeEvidenceTierMatrix_holdout(t *testing.T) {
+	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
+	require.NoError(t, err)
+	scale, err := doc.GetSKU(SKUCodeScale)
+	require.NoError(t, err)
+	require.True(t, scale.Features.FraudDisputeEvidence)
+	pro, err := doc.GetSKU(SKUCodePro)
+	require.NoError(t, err)
+	require.False(t, pro.Features.FraudDisputeEvidence)
+}
+
 func TestLoadSKUFile_pilotSmokeLimits(t *testing.T) {
 	doc, err := LoadSKUFile(filepath.Join("..", "..", "deploy", "vendor", "sku.yaml"))
 	require.NoError(t, err)

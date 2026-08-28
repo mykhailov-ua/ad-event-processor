@@ -29,6 +29,7 @@ func TestVerifyAPIKey_validSecret(t *testing.T) {
 			KeyHash:    keyHash,
 			Role:       "U",
 			CustomerID: pgtype.UUID{Bytes: customerID, Valid: true},
+			Scopes:     []string{"campaigns:read"},
 		},
 		user: db.User{
 			ID:         pgtype.UUID{Bytes: userID, Valid: true},
@@ -38,10 +39,23 @@ func TestVerifyAPIKey_validSecret(t *testing.T) {
 	}
 
 	service := NewService(repo, nil, hasher, nil, nil)
-	user, err := service.VerifyAPIKey(context.Background(), rawKey)
+	verified, err := service.VerifyAPIKey(context.Background(), rawKey)
 	require.NoError(t, err)
-	assert.Equal(t, userID, uuid.UUID(user.ID.Bytes))
-	assert.False(t, user.IsBlocked)
+	assert.Equal(t, userID, uuid.UUID(verified.User.ID.Bytes))
+	assert.False(t, verified.User.IsBlocked)
+	assert.Equal(t, []string{"campaigns:read"}, verified.Scopes)
+}
+
+func TestCreateAPIKey_persistsScopes(t *testing.T) {
+	repo := &mockRepo{}
+	hasher, err := NewPasswordHasher(32768, 2, 2)
+	require.NoError(t, err)
+	service := NewService(repo, nil, hasher, nil, nil)
+
+	scopes := []string{"campaigns:read", "campaigns:pause"}
+	result, err := service.CreateAPIKey(context.Background(), uuid.New(), "scoped", scopes, nil)
+	require.NoError(t, err)
+	assert.Equal(t, scopes, result.Scopes)
 }
 
 func TestVerifyAPIKey_rejectsWrongSecret(t *testing.T) {

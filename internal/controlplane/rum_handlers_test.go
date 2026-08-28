@@ -31,12 +31,11 @@ func TestPostClientRUM_Accepted(t *testing.T) {
 	t.Parallel()
 	store := &stubRUMStore{}
 	h := &OpsHTTPHandlers{RUMStore: store}
-	h.registerRUMRoutes(http.NewServeMux())
 
 	body := `{"path":"/campaigns","api":{"slowPaths":[]}}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/rum", strings.NewReader(body))
 	rec := httptest.NewRecorder()
-	h.postClientRUM(rec, req)
+	h.PostClientRUM(rec, req)
 	require.Equal(t, http.StatusAccepted, rec.Code)
 	require.Len(t, store.events, 1)
 	assert.Equal(t, "/campaigns", store.events[0].Path)
@@ -54,7 +53,7 @@ func TestGetClientRUM_OK(t *testing.T) {
 	}
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/rum", http.NoBody)
 	rec := httptest.NewRecorder()
-	h.getClientRUM(rec, req)
+	h.GetClientRUM(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
 	var resp struct {

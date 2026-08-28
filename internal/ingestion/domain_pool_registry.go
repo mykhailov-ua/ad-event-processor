@@ -84,21 +84,21 @@ func (t *DomainPoolTable) fallbackHost(host []byte) (fallback []byte, rotated bo
 	return nil, false
 }
 
-func (snap *domainPoolSnapshot) lookupHost(host []byte) (hostPoolEntry, bool) {
-	if snap == nil || len(host) == 0 || len(snap.hosts) == 0 {
+func (ps *domainPoolSnapshot) lookupHost(host []byte) (hostPoolEntry, bool) {
+	if ps == nil || len(host) == 0 || len(ps.hosts) == 0 {
 		return hostPoolEntry{}, false
 	}
-	lo, hi := 0, len(snap.hosts)
+	lo, hi := 0, len(ps.hosts)
 	for lo < hi {
 		mid := (lo + hi) / 2
-		cmp := compareRequestHost(host, snap.hosts[mid].host)
+		cmp := compareRequestHost(host, ps.hosts[mid].host)
 		switch {
 		case cmp < 0:
 			hi = mid
 		case cmp > 0:
 			lo = mid + 1
 		default:
-			return snap.hosts[mid], true
+			return ps.hosts[mid], true
 		}
 	}
 	return hostPoolEntry{}, false

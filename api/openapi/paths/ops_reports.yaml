@@ -758,6 +758,23 @@ paths:
       summary: Ingest RUM beacon batch
       tags:
       - ops
+  /api/v1/ops/health/snapshot:
+    get:
+      operationId: opsStackHealthSnapshot
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/StackHealthSnapshot
+          description: Stack health snapshot
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Cold-path stack health snapshot
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
   /api/v1/ops/shards:
     get:
       operationId: opsListShards
@@ -1177,6 +1194,344 @@ paths:
       x-permissions:
       - campaigns:read
       - campaigns:read:masked
+  /api/v1/reports/catalog:
+    get:
+      operationId: reportCatalog
+      summary: Report catalog for current auth snapshot
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportCatalogResponse
+          description: Catalog rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/customer-fraud-by-type:
+    get:
+      operationId: reportCustomerFraudByType
+      summary: Customer fraud categories aggregated by campaign
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      - name: fraud_category
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/CustomerFraudByTypeReportResponse
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/customer-fraud-evidence:
+    get:
+      operationId: reportCustomerFraudEvidence
+      summary: Signed redacted fraud evidence for customer disputes
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      - name: click_id
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/FraudEvidencePack
+          description: Signed evidence pack
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - campaigns:read
+  /api/v1/reports/wire-signal-breakdown:
+    get:
+      operationId: reportWireSignalBreakdown
+      summary: Wire signal fraud breakdown
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/WireSignalBreakdownReportResponse
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/layer-desync-summary:
+    get:
+      description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
+      operationId: reportLayerDesyncSummary
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Cross-layer desync fraud counts
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+  /api/v1/reports/layer-desync-drilldown:
+    get:
+      operationId: reportLayerDesyncDrilldown
+      summary: Layer desync fraud reason drilldown with hourly series
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+  /api/v1/reports/customer-fraud-by-dimension:
+    get:
+      operationId: reportCustomerFraudByDimension
+      summary: Customer fraud concentration by dimension
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      - name: dimension
+        in: query
+        schema:
+          type: string
+          enum: [placement, sub1, sub2, country, campaign]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/signal-effectiveness:
+    get:
+      operationId: reportSignalEffectiveness
+      summary: Wire signal block and silent-reject rates
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+      - campaigns:read:masked
+  /api/v1/reports/rtt-split-tunnel:
+    get:
+      operationId: reportRTTSplitTunnel
+      summary: RTT split-tunnel distribution
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+  /api/v1/reports/campaign-toggle-cohort:
+    get:
+      operationId: reportCampaignToggleCohort
+      summary: Before and after metrics for campaign fraud toggle changes
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      - name: campaign_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: toggle_field
+        in: query
+        required: true
+        schema:
+          type: string
+          enum: [silent_reject_enabled, accept_lang_geo_enabled, json_serialization_enabled]
+      - name: toggle_at
+        in: query
+        schema:
+          type: string
+          format: date-time
+      - name: window_hours
+        in: query
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 168
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportMapEnvelope
+          description: Report rows
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
+  /api/v1/reports/fraud-evidence-pack:
+    get:
+      description: Signed CPA dispute evidence bundle for a click_id (timeline + fraud_events + signal summary).
+      operationId: reportFraudEvidencePack
+      parameters:
+      - *id001
+      - *id002
+      - *id003
+      - *id004
+      - *id005
+      - *id006
+      - *id007
+      - *id008
+      - name: click_id
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/FraudEvidencePack
+          description: Signed fraud evidence pack
+        '404':
+          $ref: ../openapi.yaml#/components/responses/Error
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Signed fraud evidence pack for CPA disputes
+      tags:
+      - reports
+      x-permissions:
+      - audit:read
+      - campaigns:read
   /api/v1/reports/geo-roi:
     get:
       description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.
@@ -1283,7 +1638,7 @@ paths:
       tags:
       - reports
       x-permissions:
-      - campaigns:read
+      - customers:read
   /api/v1/reports/jobs/{id}:
     get:
       operationId: reportGetJob
@@ -1302,7 +1657,27 @@ paths:
       tags:
       - reports
       x-permissions:
-      - campaigns:read
+      - customers:read
+    delete:
+      operationId: reportCancelJob
+      parameters:
+      - $ref: ../openapi.yaml#/components/parameters/UuidPathId
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/ReportJobStatus
+          description: Cancelled job status
+        '409':
+          description: Job cannot be cancelled
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Cancel pending report export job
+      tags:
+      - reports
+      x-permissions:
+      - customers:read
   /api/v1/reports/jobs/{id}/download:
     get:
       operationId: reportDownloadJob
@@ -1326,7 +1701,7 @@ paths:
       tags:
       - reports
       x-permissions:
-      - campaigns:read
+      - customers:read
   /api/v1/reports/keywords:
     get:
       description: Returns rows plus freshness metadata; stale=true when ClickHouse lag exceeds SLA.

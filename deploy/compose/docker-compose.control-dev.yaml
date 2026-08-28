@@ -1,5 +1,27 @@
 # Dev ingest-only override: two redis shards, skip payment/CH, relax license for local .env drift.
 services:
+  db:
+    environment:
+      - PGHOST=/run/ad-event-processor/postgresql
+      - PGPORT=5430
+    command:
+      [
+        'postgres',
+        '-p',
+        '5430',
+        '-c',
+        'unix_socket_directories=/run/ad-event-processor/postgresql,/var/run/postgresql',
+        '-c',
+        'max_connections=600',
+        '-c',
+        'shared_buffers=256MB',
+        '-c',
+        'work_mem=32MB',
+        '-c',
+        'maintenance_work_mem=64MB',
+        '-c',
+        'effective_cache_size=512MB',
+      ]
   control:
     depends_on:
       db:
@@ -19,9 +41,13 @@ services:
       - CONTROL_ENABLE_NOTIFIER=0
       - CONTROL_ENABLE_MARGIN_GUARD=0
       - CONTROL_ENABLE_COST_SYNC=0
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock
+      - REDIS_SHARD_COUNT=2
   processor:
     environment:
       - CH_ENABLED=0
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock
+      - REDIS_SHARD_COUNT=2
   tracker-0:
     depends_on: !reset
       db:
@@ -36,3 +62,40 @@ services:
       - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
       - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
       - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock
+      - REDIS_SHARD_COUNT=2
+      - TRANSPORT_USE_UDS=0
+      - TRACKER_UNIX_SOCKET=
+      - SERVER_PORT=8181
+      - GOMAXPROCS=12
+      - GNET_NUM_EVENT_LOOPS=12
+      - MAX_WORKERS=12
+      - FILTER_TIMEOUT_MS=5000
+    healthcheck:
+      test: ['CMD', '/tracker', '--health-probe', 'http://127.0.0.1:8181/health']
+  tracker-1:
+    depends_on: !reset
+      db:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+      redis-0:
+        condition: service_healthy
+      redis-1:
+        condition: service_healthy
+    environment:
+      - AD_EVENT_PROCESSOR_LICENSE_PATH=/etc/ad-event-processor/license.jwt
+      - AD_EVENT_PROCESSOR_LICENSE_MODE=dev
+      - AD_EVENT_PROCESSOR_LICENSE_REQUIRED=0
+      - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock
+      - REDIS_SHARD_COUNT=2
+      - TRANSPORT_USE_UDS=0
+      - TRACKER_UNIX_SOCKET=
+      - SERVER_PORT=8182
+      - METRICS_PORT=9102
+      - GOMAXPROCS=12
+      - GNET_NUM_EVENT_LOOPS=12
+      - MAX_WORKERS=12
+      - FILTER_TIMEOUT_MS=5000
+    healthcheck:
+      test: ['CMD', '/tracker', '--health-probe', 'http://127.0.0.1:8182/health']

@@ -100,6 +100,18 @@ paths:
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
         - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [name, created_at]
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
       responses:
         '200':
           description: Customer page
@@ -235,6 +247,21 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/platform.yaml#/MetaResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/session:
+    get:
+      tags: [meta]
+      operationId: sessionGet
+      summary: Permission-filtered nav and session hints for admin shell
+      responses:
+        '200':
+          description: Session payload
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/SessionResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

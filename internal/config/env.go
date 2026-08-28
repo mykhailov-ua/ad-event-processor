@@ -14,147 +14,148 @@ import (
 const ExpectedRedisShardCount = 4
 
 type Config struct {
-	ServerPort                      string
-	ProcessorPort                   string
-	ManagementPort                  string
-	TrackerUnixSocket               string
-	ControlUnixSocket               string
-	ClickHouseUnixSocket                    string
-	AdminDomain                     string
-	MetricsPort                     string
-	DBDSN                           Secret
-	PaymentDBDSN                    Secret
-	RedisAddrs                      []string
-	RedisSentinelAddrs              []string
-	RedisMasterNames                []string
-	RedisPassword                   Secret
-	RedisStreamName                 string
-	FraudStreamName                 string
-	FraudConsumerLagSec             int
-	H2IncompleteMax                 int
-	HTTP1IncompleteMax              int
-	HTTP1BodyIdleMs                 int
-	HTTP1MaxConnLifetimeMs          int
-	OrtbScanMaxBytes                int
-	OrtbMaxQuoteChecks              int
-	ProtoMaxFields                  int
-	JSONStrictUTF8                  bool
-	RedisGroupName                  string
-	RedisConsumerID                 string
-	ClickHouseDSN                           Secret
-	ClickHouseEnabled                       bool
-	Env                             string
-	TrustedProxies                  []string
-	TokenSymmetricKey               Secret
-	MaxRequestBodySize              int64
-	ClickAmount                     int64
-	ImpressionAmount                int64
-	EventBatchSize                  int
-	EventFlushMs                    int
-	StatsFlushMs                    int
-	MaxWorkers                      int
-	ClickHouseMaxWorkers                    int
-	ProcessorPostgresStreamMaxWorkers     int
-	ProcessorClickHouseStreamMaxWorkers     int
-	ProcessorPostgresGateSlots            int
-	ProcessorClickHouseGateSlots            int
-	ProcessorWeightEnabled          bool
-	ProcessorWeightFloor            float64
-	ProcessorWeightCeil             float64
-	ProcessorWeightDrainPgWaitMs    int
-	VendorTelemetryEnabled          bool
-	VendorTelemetryIntervalSec      int
-	VendorTelemetryTimeoutSec       int
-	TelemetryOptIn                  bool
-	TelemetryURL                    Secret
-	TelemetryIntervalSec            int
-	TelemetryHTTPTimeoutSec         int
-	SyncWorkerMaxConcurrency        int
-	LogRetentionDays                int
-	DBTrackerMaxConns               int
-	DBProcessorMaxConns             int
-	DBMinConns                      int
-	PostgresPoolSettleMaxConns            int
-	VolumeMeterSource               string
-	SettlementLanes                 int
-	SettlementFlushMs               int
-	ReconHYG30IntervalMs            int
-	LedgerInvariantIntervalHours    int
-	ReconForceRefill                bool
-	ClickHouseMaxConns                      int
-	ClickHouseQueryMaxConcurrency           int
-	ClickHouseQueryTimeoutSec               int
-	ClickHouseQuerySlowLogMS                int
-	ClickHouseQueryMaxMemoryBytes           uint64
-	ClickHouseQueryMaxExecSec               int
-	ClickHouseSpoolDir                      string
-	ClickHouseSpoolSegmentMB                int
-	ClickHouseSpoolMaxSegments              int
-	ClickHouseReadonlyDSN                   Secret
-	ClickHouseRawRetentionDays              int
-	ClickHouseEmergencyDropPercent          int
-	ClickHouseRecompressPartsThreshold      int
-	ClickHouseRecompressOffPeakStartUTC     int
-	ClickHouseRecompressOffPeakEndUTC       int
-	ProcessorStreamLagMaxSec        int
-	TrackerPGFallback               bool
-	WriteTimeoutMs                  int
-	FilterTimeoutMs                 int
-	FilterSlowMs                    int
-	MetricsHistogramSampleMask      int
-	AuditLogSampleMask              int
-	AuditLedgerFlushSampleMask      int
-	IdempotencyTTLHrs               int
-	RateLimitPerMin                 int
-	RateLimitWindowMs               int
-	DuplicateTTLSec                 int
-	TTCMinMs                        int
-	TTCFailClosed                   bool
-	ClickHouseBatchSize                     int
-	ClickHouseFlushIntervalMs               int
-	PIISaltVersion                  uint8
-	PIISaltHex                      Secret
-	PartitionPreCreateDays          int
-	RegistrySyncIntervalMs          int
-	BudgetSyncIntervalMs            int
-	LedgerBatchFlushMs              int
-	HTTPReadHeaderTimeoutMs         int
-	HTTPReadTimeoutMs               int
-	HTTPWriteTimeoutMs              int
-	HTTPIdleTimeoutMs               int
-	DefaultTokenDurationHrs         int
-	StreamMaxLen                    int
-	StreamProducerAdmissionPct      int
-	RedisStreamTrimIntervalMs       int
-	RedisMaxActiveConns             int
-	RetryInitialWaitMs              int
-	RetryMaxWaitMs                  int
-	MaxRetries                      int
-	StreamMinIdleMs                 int
-	Argon2Memory                    int
-	Argon2Iterations                int
-	Argon2Parallelism               int
-	RedisPoolSize                   int
-	RedisBreakerFailThreshold       int
-	RedisBreakerHalfOpen            int
-	RedisBreakerOpenTimeoutMs       int
-	AdminAPIKey                     Secret
-	InstallBootstrapToken           Secret
-	AllowedOrigins                  []string
-	TrackCORSOrigins                []string
-	PaymentWebhookPort              string
-	PaymentInternalToken            Secret
-	SettlementInternalToken         Secret
-	StripeSecretKey                 Secret
-	StripeWebhookSecret             Secret
-	StripeCheckoutSuccessURL        string
-	StripeCheckoutCancelURL         string
-	CryptoWebhookSecret             Secret
-	CryptoMinPaymentMicro           int64
-	CryptoConfirmationDepth         int
-	BTCPayWebhookSecret             Secret
-	CryptomusAPIKey                 Secret
-	PaymentFinancialReconIntervalMs int
+	ServerPort                          string
+	ProcessorPort                       string
+	ManagementPort                      string
+	TrackerUnixSocket                   string
+	ControlUnixSocket                   string
+	ClickHouseUnixSocket                string
+	AdminDomain                         string
+	MetricsPort                         string
+	DBDSN                               Secret
+	PaymentDBDSN                        Secret
+	RedisAddrs                          []string
+	RedisSentinelAddrs                  []string
+	RedisMasterNames                    []string
+	RedisPassword                       Secret
+	RedisStreamName                     string
+	FraudStreamName                     string
+	FraudConsumerLagSec                 int
+	H2IncompleteMax                     int
+	HTTP1IncompleteMax                  int
+	HTTP1BodyIdleMs                     int
+	HTTP1MaxConnLifetimeMs              int
+	OrtbScanMaxBytes                    int
+	OrtbMaxQuoteChecks                  int
+	ProtoMaxFields                      int
+	JSONStrictUTF8                      bool
+	RedisGroupName                      string
+	RedisConsumerID                     string
+	ClickHouseDSN                       Secret
+	ClickHouseEnabled                   bool
+	Env                                 string
+	TrustedProxies                      []string
+	TokenSymmetricKey                   Secret
+	MaxRequestBodySize                  int64
+	ClickAmount                         int64
+	ImpressionAmount                    int64
+	EventBatchSize                      int
+	EventFlushMs                        int
+	StatsFlushMs                        int
+	MaxWorkers                          int
+	GnetNumEventLoops                   int
+	ClickHouseMaxWorkers                int
+	ProcessorPostgresStreamMaxWorkers   int
+	ProcessorClickHouseStreamMaxWorkers int
+	ProcessorPostgresGateSlots          int
+	ProcessorClickHouseGateSlots        int
+	ProcessorWeightEnabled              bool
+	ProcessorWeightFloor                float64
+	ProcessorWeightCeil                 float64
+	ProcessorWeightDrainPgWaitMs        int
+	VendorTelemetryEnabled              bool
+	VendorTelemetryIntervalSec          int
+	VendorTelemetryTimeoutSec           int
+	TelemetryOptIn                      bool
+	TelemetryURL                        Secret
+	TelemetryIntervalSec                int
+	TelemetryHTTPTimeoutSec             int
+	SyncWorkerMaxConcurrency            int
+	LogRetentionDays                    int
+	DBTrackerMaxConns                   int
+	DBProcessorMaxConns                 int
+	DBMinConns                          int
+	PostgresPoolSettleMaxConns          int
+	VolumeMeterSource                   string
+	SettlementLanes                     int
+	SettlementFlushMs                   int
+	ReconHYG30IntervalMs                int
+	LedgerInvariantIntervalHours        int
+	ReconForceRefill                    bool
+	ClickHouseMaxConns                  int
+	ClickHouseQueryMaxConcurrency       int
+	ClickHouseQueryTimeoutSec           int
+	ClickHouseQuerySlowLogMS            int
+	ClickHouseQueryMaxMemoryBytes       uint64
+	ClickHouseQueryMaxExecSec           int
+	ClickHouseSpoolDir                  string
+	ClickHouseSpoolSegmentMB            int
+	ClickHouseSpoolMaxSegments          int
+	ClickHouseReadonlyDSN               Secret
+	ClickHouseRawRetentionDays          int
+	ClickHouseEmergencyDropPercent      int
+	ClickHouseRecompressPartsThreshold  int
+	ClickHouseRecompressOffPeakStartUTC int
+	ClickHouseRecompressOffPeakEndUTC   int
+	ProcessorStreamLagMaxSec            int
+	TrackerPGFallback                   bool
+	WriteTimeoutMs                      int
+	FilterTimeoutMs                     int
+	FilterSlowMs                        int
+	MetricsHistogramSampleMask          int
+	AuditLogSampleMask                  int
+	AuditLedgerFlushSampleMask          int
+	IdempotencyTTLHrs                   int
+	RateLimitPerMin                     int
+	RateLimitWindowMs                   int
+	DuplicateTTLSec                     int
+	TTCMinMs                            int
+	TTCFailClosed                       bool
+	ClickHouseBatchSize                 int
+	ClickHouseFlushIntervalMs           int
+	PIISaltVersion                      uint8
+	PIISaltHex                          Secret
+	PartitionPreCreateDays              int
+	RegistrySyncIntervalMs              int
+	BudgetSyncIntervalMs                int
+	LedgerBatchFlushMs                  int
+	HTTPReadHeaderTimeoutMs             int
+	HTTPReadTimeoutMs                   int
+	HTTPWriteTimeoutMs                  int
+	HTTPIdleTimeoutMs                   int
+	DefaultTokenDurationHrs             int
+	StreamMaxLen                        int
+	StreamProducerAdmissionPct          int
+	RedisStreamTrimIntervalMs           int
+	RedisMaxActiveConns                 int
+	RetryInitialWaitMs                  int
+	RetryMaxWaitMs                      int
+	MaxRetries                          int
+	StreamMinIdleMs                     int
+	Argon2Memory                        int
+	Argon2Iterations                    int
+	Argon2Parallelism                   int
+	RedisPoolSize                       int
+	RedisBreakerFailThreshold           int
+	RedisBreakerHalfOpen                int
+	RedisBreakerOpenTimeoutMs           int
+	AdminAPIKey                         Secret
+	InstallBootstrapToken               Secret
+	AllowedOrigins                      []string
+	TrackCORSOrigins                    []string
+	PaymentWebhookPort                  string
+	PaymentInternalToken                Secret
+	SettlementInternalToken             Secret
+	StripeSecretKey                     Secret
+	StripeWebhookSecret                 Secret
+	StripeCheckoutSuccessURL            string
+	StripeCheckoutCancelURL             string
+	CryptoWebhookSecret                 Secret
+	CryptoMinPaymentMicro               int64
+	CryptoConfirmationDepth             int
+	BTCPayWebhookSecret                 Secret
+	CryptomusAPIKey                     Secret
+	PaymentFinancialReconIntervalMs     int
 
 	SelfServeMaxActiveCampaigns int
 	SelfServeMaxCreatesPerDay   int
@@ -188,8 +189,9 @@ type Config struct {
 		LowBalanceAlertEnabled      bool
 		SmartAlertsEnabled          bool
 		SmartAlertsIntervalMin      int
-		AutomationRulesEnabled      bool
-		AutomationRulesIntervalMin  int
+		AutomationRulesEnabled                   bool
+		AutomationRulesIntervalMin               int
+		AutomationRulesMaxEvalsPerCustomerPerTick int
 		DomainHealthEnabled         bool
 		DomainHealthIntervalMin     int
 		DomainSSLSetupEnabled       bool
@@ -261,12 +263,13 @@ type Config struct {
 	MABMinImpressions int64
 	MABLookbackDays   int
 
-	ConsentHMACSecret       Secret
-	ConsentRetentionMonths  int
-	ConsentUpdateChannel    string
-	ErasureWorkerIntervalMs int
-	EventsRetentionDays     int
-	EventsHashIPAtInsert    bool
+	ConsentHMACSecret           Secret
+	FraudEvidencePackHMACSecret Secret
+	ConsentRetentionMonths      int
+	ConsentUpdateChannel        string
+	ErasureWorkerIntervalMs     int
+	EventsRetentionDays         int
+	EventsHashIPAtInsert        bool
 
 	Lifecycle struct {
 		ShutdownTimeoutMs int
@@ -286,46 +289,46 @@ type Config struct {
 	}
 
 	Broker struct {
-		URL                 string
-		RedisURL            string
-		Topic               string
-		FraudTopic          string
-		PartitionCount      int
-		ShadowMode          bool
-		ClickHouseIngestSource      string
-		MaxBytes            int
-		TimeoutMs           int
-		ReconcileIntervalMs int
-		DivergenceThreshold uint64
-		ProducerCapacity    int
-		ProducerBatchSize   int
-		ProducerFlushMs     int
+		URL                    string
+		RedisURL               string
+		Topic                  string
+		FraudTopic             string
+		PartitionCount         int
+		ShadowMode             bool
+		ClickHouseIngestSource string
+		MaxBytes               int
+		TimeoutMs              int
+		ReconcileIntervalMs    int
+		DivergenceThreshold    uint64
+		ProducerCapacity       int
+		ProducerBatchSize      int
+		ProducerFlushMs        int
 	}
 
-	RtbMode                        string
-	RtbBudgetAuthority             string
-	RtbClearingMode                string
-	RtbSnapshotPath                string
-	RtbHybridMaxRpsPerNode         int
-	RtbReconcileIntervalMs         int
-	RtbBudgetDivergenceMicro       int64
-	RtbReconcileSampleSize         int
-	RtbTargetingIndex              bool
-	RtbPrebidIVT                   bool
-	RtbExchangeMaxQPS              int
-	RtbExchangeMaxBodyBytes        int64
-	RtbExchangeNoBidMode           string
-	RtbExchangeMultiImpMax         int
-	RtbExchangeGzip                bool
-	RtbExchangeDelivery            string
-	RtbExchangeNURLTemplate        string
-	TrackerTelegramClickBaseURL          string
-	RtbExchangeSeatID              string
-	RtbRegsPolicy                  string
-	RtbCoppaPolicy                 string
-	RtbBlocklistEnforce            bool
-	RtbCatalogReloadSLOMs          int
-	RtbDealOutcomeFlushMs          int
+	RtbMode                                string
+	RtbBudgetAuthority                     string
+	RtbClearingMode                        string
+	RtbSnapshotPath                        string
+	RtbHybridMaxRpsPerNode                 int
+	RtbReconcileIntervalMs                 int
+	RtbBudgetDivergenceMicro               int64
+	RtbReconcileSampleSize                 int
+	RtbTargetingIndex                      bool
+	RtbPrebidIVT                           bool
+	RtbExchangeMaxQPS                      int
+	RtbExchangeMaxBodyBytes                int64
+	RtbExchangeNoBidMode                   string
+	RtbExchangeMultiImpMax                 int
+	RtbExchangeGzip                        bool
+	RtbExchangeDelivery                    string
+	RtbExchangeNURLTemplate                string
+	TrackerTelegramClickBaseURL            string
+	RtbExchangeSeatID                      string
+	RtbRegsPolicy                          string
+	RtbCoppaPolicy                         string
+	RtbBlocklistEnforce                    bool
+	RtbCatalogReloadSLOMs                  int
+	RtbDealOutcomeFlushMs                  int
 	ClickHouseJanitorEnabled               bool
 	ClickHouseJanitorIntervalH             int
 	ClickHouseRetentionDaysRtbDealOutcomes int
@@ -352,69 +355,88 @@ type Config struct {
 	SlotMigrationDualWriteEnabled bool
 	SlotMigrationLagEpsilon       int64
 
-	CIDRBlockEnabled             bool
-	CIDRFeedDir                  string
-	CIDRFeedRefresh              time.Duration
-	CIDRFeedURLAWS               string
-	CIDRFeedURLGCP               string
-	CIDRFeedURLAzure             string
-	CIDRFeedURLTor               string
-	CIDRFeedDownloadEnable       bool
-	IPv6RotationEnabled          bool
-	IPv6RotationMode             string
-	IPv6RotationWindow           time.Duration
-	IPv6RotationThreshold        uint32
-	IPv4RotationEnabled          bool
-	IPv4RotationMode             string
-	IPv4RotationWindow           time.Duration
-	IPv4RotationThreshold        uint32
-	CGNATMobileIPBypass          bool
-	CGNATMobileCarrierASNs       string
-	OSFingerprintMismatchEnabled bool
-	DCASNHotEnabled              bool
-	DCASNFeedDir                 string
-	DCASNFeedRefresh             time.Duration
-	DCASNSampleMask              int
-	ResidentialProxyHotEnabled   bool
-	ResidentialProxyWindow       time.Duration
-	TCPMSSAnomalyEnabled         bool
-	TCPMSSAnomalyMinByte         uint8
-	ProxyVPNBlockEnabled         bool
-	ProxyVPNFeedDir              string
-	ProxyVPNFeedRefresh          time.Duration
-	ModeratorIntelEnabled        bool
-	ModeratorIntelFeedDir        string
-	ModeratorIntelFeedRefresh    time.Duration
-	ModeratorIntelFeedURL        string
-	ModeratorIntelFeedSecret     string
-	ModeratorIntelFeedDownload   bool
-	ModeratorIntelAllowUnsigned  bool
-	TLSFingerprintEnabled        bool
-	TLSFingerprintFeedDir        string
-	TLSFingerprintFeedRefresh    time.Duration
-	LinkSigningHMACSecret        Secret
-	AttestationHMACSecret        Secret
-	AttestationHMACSecretPrev    Secret
-	DomainPoolEnabled            bool
-	DomainPoolSyncInterval       time.Duration
-	FlowRoutingEnabled           bool
-	FlowSyncInterval             time.Duration
-	LanderStoreRoot              string
-	LanderPublicBaseURL          string
-	LanderMaxZipBytes            int64
-	FlowReloadChannel            string
-	LanderPreviewSecret          string
-	ProxyAllowHTTPInsecure       bool
-	SlotMigrationLagThreshold    int64
-	ElasticShardingEnabled       bool
-	ShardOrchestratorEnabled     bool
-	ShardOrchestratorIntervalMs  int
-	TCPControlEnabled            bool
-	TCPControlHMACSecret         Secret
-	TCPControlBindAddr           string
-	TCPControlAddr               string
-	TCPTrackerAddrs              []string
-	ManagementURL                string
+	CIDRBlockEnabled                    bool
+	CIDRFeedDir                         string
+	CIDRFeedRefresh                     time.Duration
+	CIDRFeedURLAWS                      string
+	CIDRFeedURLGCP                      string
+	CIDRFeedURLAzure                    string
+	CIDRFeedURLTor                      string
+	CIDRFeedDownloadEnable              bool
+	IPv6RotationEnabled                 bool
+	IPv6RotationMode                    string
+	IPv6RotationWindow                  time.Duration
+	IPv6RotationThreshold               uint32
+	IPv4RotationEnabled                 bool
+	IPv4RotationMode                    string
+	IPv4RotationWindow                  time.Duration
+	IPv4RotationThreshold               uint32
+	CGNATMobileIPBypass                 bool
+	CGNATMobileCarrierASNs              string
+	OSFingerprintMismatchEnabled        bool
+	DCASNHotEnabled                     bool
+	DCASNFeedDir                        string
+	DCASNFeedRefresh                    time.Duration
+	DCASNSampleMask                     int
+	ResidentialProxyHotEnabled          bool
+	ResidentialProxyWindow              time.Duration
+	ResidentialIntelHotReadEnabled      bool
+	ResidentialIntelFeedDir             string
+	ResidentialIntelFeedRefresh         time.Duration
+	TCPMSSAnomalyEnabled                bool
+	TCPMSSAnomalyMinByte                uint8
+	TCPMSSTunnelEnabled                 bool
+	TCPMSSTunnelThreshold               uint16
+	TCPSynSigEnabled                    bool
+	SecFetchValidateEnabled             bool
+	ClientHintsPlatformEnabled          bool
+	TLSALPNMismatchEnabled              bool
+	H2SettingsFingerprintEnabled        bool
+	H2PseudoOrderEnabled                bool
+	H2DowngradeArtifactEnabled          bool
+	HTTP1HeaderOrderEnabled             bool
+	AcceptEncodingBrowserEnabled        bool
+	AcceptLangGeoEnabled                bool
+	JSONSerializationFingerprintEnabled bool
+	BehaviorTelemetryEnabled            bool
+	MobileBiometricsEnabled             bool
+	ProxyVPNBlockEnabled                bool
+	ProxyVPNFeedDir                     string
+	ProxyVPNFeedRefresh                 time.Duration
+	ModeratorIntelEnabled               bool
+	ModeratorIntelFeedDir               string
+	ModeratorIntelFeedRefresh           time.Duration
+	ModeratorIntelFeedURL               string
+	ModeratorIntelFeedSecret            string
+	ModeratorIntelFeedDownload          bool
+	ModeratorIntelAllowUnsigned         bool
+	TLSFingerprintEnabled               bool
+	TLSJA4BrowserCorpusEnabled          bool
+	TLSFingerprintFeedDir               string
+	TLSFingerprintFeedRefresh           time.Duration
+	LinkSigningHMACSecret               Secret
+	AttestationHMACSecret               Secret
+	AttestationHMACSecretPrev           Secret
+	DomainPoolEnabled                   bool
+	DomainPoolSyncInterval              time.Duration
+	FlowRoutingEnabled                  bool
+	FlowSyncInterval                    time.Duration
+	LanderStoreRoot                     string
+	LanderPublicBaseURL                 string
+	LanderMaxZipBytes                   int64
+	FlowReloadChannel                   string
+	LanderPreviewSecret                 string
+	ProxyAllowHTTPInsecure              bool
+	SlotMigrationLagThreshold           int64
+	ElasticShardingEnabled              bool
+	ShardOrchestratorEnabled            bool
+	ShardOrchestratorIntervalMs         int
+	TCPControlEnabled                   bool
+	TCPControlHMACSecret                Secret
+	TCPControlBindAddr                  string
+	TCPControlAddr                      string
+	TCPTrackerAddrs                     []string
+	ManagementURL                       string
 
 	LuaFastPathEnabled bool
 
@@ -503,16 +525,25 @@ type Config struct {
 	}
 
 	IVT struct {
-		Enabled              bool
-		ScanIntervalMs       int
-		OutboxPendingLimit   int64
-		WindowSec            int
-		MinClicks            uint64
-		MinImpressions       uint64
-		ClickToImpRatio      float64
-		MinIPsPerUA          uint64
-		IntervalMinIntervals uint64
-		IntervalMaxVariance  float64
+		Enabled                        bool
+		ScanIntervalMs                 int
+		OutboxPendingLimit             int64
+		WindowSec                      int
+		MinClicks                      uint64
+		MinImpressions                 uint64
+		ClickToImpRatio                float64
+		MinIPsPerUA                    uint64
+		IntervalMinIntervals           uint64
+		IntervalMaxVariance            float64
+		RTTSplitTunnelEnabled          bool
+		RTTSplitMinDeltaMS             uint16
+		RTTSplitMaxVariance            float64
+		RTTSplitMinSamples             uint64
+		MobileBiometricsEnabled        bool
+		MobileBiometricsMinSamples     uint64
+		MobileBiometricsMinFlatHits    uint64
+		MobileBiometricsMinMotionless  uint64
+		MobileBiometricsMinGyroSamples uint64
 	}
 
 	FraudScoring struct {
@@ -602,198 +633,207 @@ func resolveControlPort() string {
 	return strings.TrimSpace(os.Getenv("MANAGEMENT_PORT"))
 }
 
+func fraudEvidencePackHMACSecret() Secret {
+	if v := strings.TrimSpace(os.Getenv("FRAUD_EVIDENCE_PACK_HMAC_SECRET")); v != "" {
+		return Secret(v)
+	}
+	return Secret(os.Getenv("CONSENT_HMAC_SECRET"))
+}
+
 func Load() (*Config, error) {
 	appEnv := os.Getenv("ENV")
 	cfg := &Config{
-		ServerPort:                      os.Getenv("SERVER_PORT"),
-		ProcessorPort:                   os.Getenv("PROCESSOR_PORT"),
-		ManagementPort:                  resolveControlPort(),
-		MetricsPort:                     os.Getenv("METRICS_PORT"),
-		DBDSN:                           Secret(os.Getenv("DB_DSN")),
-		PaymentDBDSN:                    Secret(os.Getenv("PAYMENT_DB_DSN")),
-		RedisAddrs:                      trimCommaList(os.Getenv("REDIS_ADDRS")),
-		RedisSentinelAddrs:              trimCommaList(os.Getenv("REDIS_SENTINEL_ADDRS")),
-		RedisMasterNames:                trimCommaList(os.Getenv("REDIS_MASTER_NAMES")),
-		RedisPassword:                   Secret(os.Getenv("REDIS_PASSWORD")),
-		RedisStreamName:                 os.Getenv("REDIS_STREAM_NAME"),
-		FraudStreamName:                 os.Getenv("FRAUD_STREAM_NAME"),
-		FraudConsumerLagSec:             getEnvInt("FRAUD_CONSUMER_LAG_SEC", 60),
-		H2IncompleteMax:                 getEnvInt("H2_INCOMPLETE_MAX", 3),
-		HTTP1IncompleteMax:              getEnvInt("HTTP1_INCOMPLETE_MAX", 3),
-		HTTP1BodyIdleMs:                 getEnvIntDefaultHTTP1BodyIdle(appEnv),
-		HTTP1MaxConnLifetimeMs:          getEnvInt("HTTP1_MAX_CONN_LIFETIME_MS", 0),
-		OrtbScanMaxBytes:                getEnvInt("ORTB_SCAN_MAX_BYTES", 262144),
-		OrtbMaxQuoteChecks:              getEnvInt("ORTB_MAX_QUOTE_CHECKS", 65536),
-		ProtoMaxFields:                  getEnvInt("PROTO_MAX_FIELDS", 256),
-		JSONStrictUTF8:                  getEnvBool("JSON_STRICT_UTF8", true),
-		RedisGroupName:                  os.Getenv("REDIS_GROUP_NAME"),
-		RedisConsumerID:                 os.Getenv("REDIS_CONSUMER_ID"),
-		EventBatchSize:                  getEnvInt("EVENT_BATCH_SIZE", 500),
-		EventFlushMs:                    getEnvInt("EVENT_FLUSH_MS", 20),
-		StatsFlushMs:                    getEnvInt("STATS_FLUSH_MS", 5000),
-		MaxWorkers:                      getEnvInt("MAX_WORKERS", 16),
-		ClickHouseMaxWorkers:                    getEnvInt("CH_MAX_WORKERS", 1),
-		ProcessorPostgresStreamMaxWorkers:     getEnvInt("PROCESSOR_PG_STREAM_MAX_WORKERS", 0),
-		ProcessorClickHouseStreamMaxWorkers:     getEnvInt("PROCESSOR_CH_STREAM_MAX_WORKERS", 0),
-		ProcessorPostgresGateSlots:            getEnvInt("PROCESSOR_PG_GATE_SLOTS", 0),
-		ProcessorClickHouseGateSlots:            getEnvInt("PROCESSOR_CH_GATE_SLOTS", 0),
-		ProcessorWeightEnabled:          getEnvBool("PROCESSOR_WEIGHT_ENABLED", false),
-		ProcessorWeightFloor:            getEnvFloat("PROCESSOR_WEIGHT_FLOOR", 0.05),
-		ProcessorWeightCeil:             getEnvFloat("PROCESSOR_WEIGHT_CEIL", 0.95),
-		ProcessorWeightDrainPgWaitMs:    getEnvInt("PROCESSOR_WEIGHT_DRAIN_PG_WAIT_MS", 50),
-		VendorTelemetryEnabled:          vendorTelemetryEnabled(appEnv),
-		VendorTelemetryIntervalSec:      getEnvInt("VENDOR_TELEMETRY_INTERVAL_SEC", 60),
-		VendorTelemetryTimeoutSec:       getEnvInt("VENDOR_TELEMETRY_TIMEOUT_SEC", 5),
-		TelemetryOptIn:                  TelemetryOptInFromEnvDual(),
-		TelemetryURL:                    Secret(strings.TrimSpace(TelemetryURLFromEnv())),
-		TelemetryIntervalSec:            TelemetryIntervalSecFromEnv(),
-		TelemetryHTTPTimeoutSec:         TelemetryHTTPTimeoutSecFromEnv(),
-		SyncWorkerMaxConcurrency:        getEnvInt("SYNC_WORKER_MAX_CONCURRENCY", 32),
-		LogRetentionDays:                getEnvInt("LOG_RETENTION_DAYS", 7),
-		DBTrackerMaxConns:               getEnvInt("DB_TRACKER_MAX_CONNS", 4),
-		DBProcessorMaxConns:             getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
-		RedisMaxActiveConns:             getEnvIntDual("REDIS_MAX_ACTIVE_CONNS", "REDIS_MAX_ACTIVE", 2048),
-		DBMinConns:                      getEnvInt("DB_MIN_CONNS", 2),
-		PostgresPoolSettleMaxConns:            getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
-		VolumeMeterSource:               envOrDefault("VOLUME_METER_SOURCE", "pg"),
-		SettlementLanes:                 getEnvInt("SETTLEMENT_LANES", 0),
-		SettlementFlushMs:               getEnvInt("SETTLEMENT_FLUSH_MS", 100),
-		ReconHYG30IntervalMs:            getEnvInt("RECON_HYG30_INTERVAL_MS", 300_000),
-		LedgerInvariantIntervalHours:    getEnvInt("LEDGER_INVARIANT_INTERVAL_HOURS", 24),
-		ReconForceRefill:                getEnvBool("RECON_FORCE_REFILL", true),
-		ClickHouseMaxConns:                      getEnvInt("CH_MAX_CONNS", 8),
-		ClickHouseQueryMaxConcurrency:           getEnvInt("CH_QUERY_MAX_CONCURRENCY", 8),
-		ClickHouseQueryTimeoutSec:               getEnvInt("CH_QUERY_TIMEOUT_SEC", 30),
-		ClickHouseQuerySlowLogMS:                getEnvInt("CH_QUERY_SLOW_LOG_MS", 2000),
-		ClickHouseQueryMaxMemoryBytes:           uint64(getEnvInt("CH_QUERY_MAX_MEMORY_BYTES", 0)),
-		ClickHouseQueryMaxExecSec:               getEnvInt("CH_QUERY_MAX_EXEC_SEC", 0),
-		ClickHouseSpoolDir:                      envOrDefault("CH_SPOOL_DIR", "/var/spool/ad-event-processor/ch"),
-		ClickHouseSpoolSegmentMB:                getEnvInt("CH_SPOOL_SEGMENT_MB", 512),
-		ClickHouseSpoolMaxSegments:              getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
-		ClickHouseReadonlyDSN:                   Secret(envOrDefault("CH_READONLY_DSN", os.Getenv("CH_DSN"))),
-		ClickHouseRawRetentionDays:              getEnvInt("CH_RAW_RETENTION_DAYS", 180),
-		ClickHouseJanitorEnabled:                getEnvBool("CH_JANITOR_ENABLED", true),
-		ClickHouseJanitorIntervalH:              getEnvInt("CH_JANITOR_INTERVAL_H", 24),
-		ClickHouseRetentionDaysRtbDealOutcomes:  getEnvInt("CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES", 90),
-		ClickHouseRetentionDaysRtbExchangeLog:   getEnvInt("CH_RETENTION_DAYS_RTB_EXCHANGE_LOG", 30),
-		ClickHouseEmergencyDropPercent:          getEnvInt("CH_EMERGENCY_DROP_PERCENT", 0),
-		ClickHouseRecompressPartsThreshold:      getEnvInt("CH_RECOMPRESS_PARTS_THRESHOLD", 8),
-		ClickHouseRecompressOffPeakStartUTC:     getEnvInt("CH_RECOMPRESS_OFFPEAK_START_UTC", 2),
-		ClickHouseRecompressOffPeakEndUTC:       getEnvInt("CH_RECOMPRESS_OFFPEAK_END_UTC", 6),
-		ProcessorStreamLagMaxSec:        getEnvInt("PROCESSOR_STREAM_LAG_MAX_SEC", 120),
-		TrackerPGFallback:               getEnvBool("TRACKER_PG_FALLBACK", appEnv != "production"),
-		WriteTimeoutMs:                  getEnvInt("WRITE_TIMEOUT_MS", 5000),
-		FilterTimeoutMs:                 getEnvInt("FILTER_TIMEOUT_MS", 0),
-		FilterSlowMs:                    getEnvInt("FILTER_SLOW_MS", 5),
-		MetricsHistogramSampleMask:      getEnvInt("METRICS_HISTOGRAM_SAMPLE_MASK", 127),
-		AuditLogSampleMask:              getEnvInt("AUDIT_LOG_SAMPLE_RATE", 127),
-		AuditLedgerFlushSampleMask:      getEnvInt("AUDIT_LEDGER_FLUSH_SAMPLE_MASK", -1),
-		IdempotencyTTLHrs:               getEnvInt("IDEMPOTENCY_TTL_HRS", 24),
-		RateLimitPerMin:                 getEnvInt("RATE_LIMIT_PER_MIN", 100),
-		RateLimitWindowMs:               getEnvInt("RATE_LIMIT_WINDOW_MS", 60000),
-		MaxRequestBodySize:              getEnvInt64("MAX_REQUEST_BODY_SIZE", 1048576),
-		DuplicateTTLSec:                 getEnvInt("DUPLICATE_TTL_SEC", 10),
-		TTCMinMs:                        getEnvInt("TTC_MIN_MS", 300),
-		TTCFailClosed:                   getEnvBool("TTC_FAIL_CLOSED", true),
-		ClickHouseDSN:                           Secret(os.Getenv("CH_DSN")),
-		ClickHouseEnabled:                       clickHouseEnabledFromEnv(),
-		ClickHouseBatchSize:                     getEnvInt("CH_BATCH_SIZE", 50000),
-		ClickHouseFlushIntervalMs:               getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
-		PIISaltVersion:                  uint8(getEnvInt("PII_SALT_VERSION", 1)),
-		PIISaltHex:                      Secret(os.Getenv("PII_SALT_HEX")),
-		TokenSymmetricKey:               Secret(os.Getenv("TOKEN_SYMMETRIC_KEY")),
-		PartitionPreCreateDays:          getEnvInt("PARTITION_PRECREATE_DAYS", 2),
-		RegistrySyncIntervalMs:          getEnvInt("REGISTRY_SYNC_INTERVAL_MS", 60000),
-		BudgetSyncIntervalMs:            getEnvInt("BUDGET_SYNC_INTERVAL_MS", 5000),
-		LedgerBatchFlushMs:              getEnvInt("LEDGER_BATCH_FLUSH_MS", 10000),
-		HTTPReadHeaderTimeoutMs:         getEnvInt("HTTP_READ_HEADER_TIMEOUT_MS", 2000),
-		HTTPReadTimeoutMs:               getEnvInt("HTTP_READ_TIMEOUT_MS", 5000),
-		HTTPWriteTimeoutMs:              getEnvInt("HTTP_WRITE_TIMEOUT_MS", 10000),
-		HTTPIdleTimeoutMs:               getEnvInt("HTTP_IDLE_TIMEOUT_MS", 30000),
-		DefaultTokenDurationHrs:         getEnvInt("DEFAULT_TOKEN_DURATION_HRS", 24),
-		ClickAmount:                     getEnvMicro("CLICK_AMOUNT", 100_000),
-		ImpressionAmount:                getEnvMicro("IMPRESSION_AMOUNT", 10_000),
-		StreamMaxLen:                    getEnvIntDual("REDIS_STREAM_MAXLEN", "STREAM_MAX_LEN", 10000),
-		StreamProducerAdmissionPct:      getEnvInt("STREAM_PRODUCER_ADMISSION_PCT", 85),
-		RedisStreamTrimIntervalMs:       getEnvIntDual("REDIS_STREAM_TRIM_INTERVAL", "REDIS_STREAM_TRIM_INTERVAL_MS", 10000),
-		RetryInitialWaitMs:              getEnvInt("RETRY_INITIAL_WAIT_MS", 100),
-		RetryMaxWaitMs:                  getEnvInt("RETRY_MAX_WAIT_MS", 5000),
-		MaxRetries:                      getEnvInt("MAX_RETRIES", 5),
-		StreamMinIdleMs:                 getEnvInt("STREAM_MIN_IDLE_MS", 300000),
-		Argon2Memory:                    getEnvInt("ARGON2_MEMORY", 65536),
-		Argon2Iterations:                getEnvInt("ARGON2_ITERATIONS", 3),
-		Argon2Parallelism:               getEnvInt("ARGON2_PARALLELISM", 4),
-		RedisPoolSize:                   getEnvInt("REDIS_POOL_SIZE", 0),
-		RedisBreakerFailThreshold:       getEnvInt("REDIS_BREAKER_FAIL_THRESHOLD", 150),
-		RedisBreakerHalfOpen:            getEnvInt("REDIS_BREAKER_HALF_OPEN", 10),
-		RedisBreakerOpenTimeoutMs:       getEnvInt("REDIS_BREAKER_OPEN_TIMEOUT_MS", 5000),
-		AdminAPIKey:                     Secret(os.Getenv("ADMIN_API_KEY")),
-		InstallBootstrapToken:           Secret(os.Getenv("INSTALL_BOOTSTRAP_TOKEN")),
-		AllowedOrigins:                  strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
-		TrackCORSOrigins:                strings.Split(os.Getenv("TRACK_CORS_ORIGINS"), ","),
-		TrustedProxies:                  strings.Split(os.Getenv("TRUSTED_PROXIES"), ","),
-		Env:                             appEnv,
-		CampaignUpdateChannel:           os.Getenv("CAMPAIGN_UPDATE_CHANNEL"),
-		RtbCatalogReloadChannel:         os.Getenv("RTB_CATALOG_RELOAD_CHANNEL"),
-		RegistryStaleTTLSec:             getEnvInt("REGISTRY_STALE_TTL", 30),
-		RegistryPollMs:                  getEnvInt("REGISTRY_POLL_MS", 5000),
-		CampaignUpdateBrokerFallback:    getEnvBool("CAMPAIGN_UPDATE_BROKER_FALLBACK", appEnv == "production" || appEnv == "prod"),
-		CampaignUpdateBrokerTopic:       envOrDefault("CAMPAIGN_UPDATE_BROKER_TOPIC", "campaigns:update"),
-		RedisShard0OptionalStartup:      getEnvBool("REDIS_SHARD0_OPTIONAL_STARTUP", appEnv == "production" || appEnv == "prod"),
-		CampaignReplicaPath:             envOrDefault("CAMPAIGN_REPLICA_PATH", "campaigns_replica.json"),
-		AutoscaleHighCTRThreshold:       getEnvFloat("AUTOSCALE_HIGH_CTR_THRESHOLD", 0.015),
-		AutoscaleMinImpressions:         getEnvInt64("AUTOSCALE_MIN_IMPRESSIONS", 100),
-		AutoscaleLowCTRThreshold:        getEnvFloat("AUTOSCALE_LOW_CTR_THRESHOLD", 0.005),
-		AutoscaleMinRemainingBudget:     getEnvMicro("AUTOSCALE_MIN_REMAINING_BUDGET", 20.0),
-		AutoscaleShiftAmount:            getEnvMicro("AUTOSCALE_SHIFT_AMOUNT", 10.0),
-		AutoscaleIntervalMs:             getEnvInt("AUTOSCALE_INTERVAL_MS", 0),
-		DeliveryOptimizerIntervalMs:     getEnvInt("DELIVERY_OPTIMIZER_INTERVAL_MS", 0),
-		BidFloorLookbackHours:           getEnvInt("BID_FLOOR_LOOKBACK_HOURS", 24),
-		BidFloorOptimizerLookbackHours:  getEnvInt("BID_FLOOR_OPTIMIZER_LOOKBACK_HOURS", 168),
-		BidFloorOptimizerIntervalHours:  getEnvInt("BID_FLOOR_OPTIMIZER_INTERVAL_HOURS", 168),
-		BidFloorBucketMicro:             getEnvMicro("BID_FLOOR_BUCKET_MICRO", 10_000),
-		BidFloorWinRateLow:              getEnvFloat("BID_FLOOR_WIN_RATE_LOW", 0.05),
-		BidFloorWinRateHigh:             getEnvFloat("BID_FLOOR_WIN_RATE_HIGH", 0.25),
-		BidFloorAdjustPct:               getEnvInt("BID_FLOOR_ADJUST_PCT", 10),
-		BidFloorMinMicro:                getEnvMicro("BID_FLOOR_MIN_MICRO", 1000),
-		DealFloorRefreshIntervalMs:      getEnvInt("DEAL_FLOOR_REFRESH_INTERVAL_MS", 60_000),
-		PacingToleranceMargin:           getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
-		MarginGuardIntervalSec:          getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 300),
-		MarginGuardDefaultThresholdBps:  getEnvInt("MARGIN_GUARD_DEFAULT_THRESHOLD_BPS", 500),
-		CreditScoringMinAgeDays:         getEnvFloat("CREDIT_SCORING_MIN_AGE_DAYS", 7.0),
-		CreditScoringMatureAgeDays:      getEnvFloat("CREDIT_SCORING_MATURE_AGE_DAYS", 30.0),
-		CreditScoringMidTierPercent:     getEnvInt64("CREDIT_SCORING_MID_TIER_PERCENT", 15),
-		CreditScoringMaturePercent:      getEnvInt64("CREDIT_SCORING_MATURE_PERCENT", 30),
-		CreditScoringMaxCap:             getEnvMicro("CREDIT_SCORING_MAX_CAP", 10000.0),
-		CreditScoringReconLagThreshold:  getEnvMicro("CREDIT_SCORING_RECON_LAG_THRESHOLD_MICRO", 100.0),
-		CreditScoringReconLagPenaltyPct: getEnvInt64("CREDIT_SCORING_RECON_LAG_PENALTY_PCT", 50),
-		MABIntervalMs:                   getEnvInt("MAB_INTERVAL_MS", 900_000),
-		MABMinImpressions:               getEnvInt64("MAB_MIN_IMPRESSIONS", 1000),
-		MABLookbackDays:                 getEnvInt("MAB_LOOKBACK_DAYS", 90),
-		ConsentHMACSecret:               Secret(os.Getenv("CONSENT_HMAC_SECRET")),
-		ConsentRetentionMonths:          getEnvInt("CONSENT_RETENTION_MONTHS", 13),
-		ConsentUpdateChannel:            envOrDefault("CONSENT_UPDATE_CHANNEL", "consent:update"),
-		ErasureWorkerIntervalMs:         getEnvInt("ERASURE_WORKER_INTERVAL_MS", 60_000),
-		EventsRetentionDays:             getEnvInt("EVENTS_RETENTION_DAYS", 90),
-		EventsHashIPAtInsert:            getEnvBool("EVENTS_HASH_IP_AT_INSERT", false),
-		PaymentWebhookPort:              os.Getenv("PAYMENT_WEBHOOK_PORT"),
-		PaymentInternalToken:            Secret(os.Getenv("PAYMENT_INTERNAL_TOKEN")),
-		SettlementInternalToken:         Secret(os.Getenv("SETTLEMENT_INTERNAL_TOKEN")),
-		StripeSecretKey:                 Secret(os.Getenv("STRIPE_SECRET_KEY")),
-		StripeWebhookSecret:             Secret(os.Getenv("STRIPE_WEBHOOK_SECRET")),
-		StripeCheckoutSuccessURL:        os.Getenv("STRIPE_CHECKOUT_SUCCESS_URL"),
-		StripeCheckoutCancelURL:         os.Getenv("STRIPE_CHECKOUT_CANCEL_URL"),
-		CryptoWebhookSecret:             Secret(envOrDefault("CRYPTO_WEBHOOK_SECRET", "cryptosecret")),
-		CryptoMinPaymentMicro:           getEnvMicro("CRYPTO_MIN_PAYMENT_MICRO", 10.0),
-		CryptoConfirmationDepth:         getEnvInt("CRYPTO_CONFIRMATION_DEPTH", 12),
-		BTCPayWebhookSecret:             Secret(os.Getenv("BTCPAY_WEBHOOK_SECRET")),
-		CryptomusAPIKey:                 Secret(os.Getenv("CRYPTOMUS_API_KEY")),
-		PaymentFinancialReconIntervalMs: getEnvInt("PAYMENT_FINANCIAL_RECON_INTERVAL_MS", 0),
-		SelfServeMaxActiveCampaigns:     getEnvInt("SELF_SERVE_MAX_ACTIVE_CAMPAIGNS", 500),
-		SelfServeMaxCreatesPerDay:       getEnvInt("SELF_SERVE_MAX_CREATES_PER_DAY", 50),
-		SelfServeBudgetMinMicro:         getEnvMicro("SELF_SERVE_BUDGET_MIN_MICRO", 1.0),
-		SelfServeBudgetMaxMicro:         getEnvMicro("SELF_SERVE_BUDGET_MAX_MICRO", 1_000_000.0),
-		SelfServeAPIKeyRPS:              getEnvFloat("SELF_SERVE_API_KEY_RPS", 30),
+		ServerPort:                             os.Getenv("SERVER_PORT"),
+		ProcessorPort:                          os.Getenv("PROCESSOR_PORT"),
+		ManagementPort:                         resolveControlPort(),
+		MetricsPort:                            os.Getenv("METRICS_PORT"),
+		DBDSN:                                  Secret(os.Getenv("DB_DSN")),
+		PaymentDBDSN:                           Secret(os.Getenv("PAYMENT_DB_DSN")),
+		RedisAddrs:                             trimCommaList(os.Getenv("REDIS_ADDRS")),
+		RedisSentinelAddrs:                     trimCommaList(os.Getenv("REDIS_SENTINEL_ADDRS")),
+		RedisMasterNames:                       trimCommaList(os.Getenv("REDIS_MASTER_NAMES")),
+		RedisPassword:                          Secret(os.Getenv("REDIS_PASSWORD")),
+		RedisStreamName:                        os.Getenv("REDIS_STREAM_NAME"),
+		FraudStreamName:                        os.Getenv("FRAUD_STREAM_NAME"),
+		FraudConsumerLagSec:                    getEnvInt("FRAUD_CONSUMER_LAG_SEC", 60),
+		H2IncompleteMax:                        getEnvInt("H2_INCOMPLETE_MAX", 3),
+		HTTP1IncompleteMax:                     getEnvInt("HTTP1_INCOMPLETE_MAX", 3),
+		HTTP1BodyIdleMs:                        getEnvIntDefaultHTTP1BodyIdle(appEnv),
+		HTTP1MaxConnLifetimeMs:                 getEnvInt("HTTP1_MAX_CONN_LIFETIME_MS", 0),
+		OrtbScanMaxBytes:                       getEnvInt("ORTB_SCAN_MAX_BYTES", 262144),
+		OrtbMaxQuoteChecks:                     getEnvInt("ORTB_MAX_QUOTE_CHECKS", 65536),
+		ProtoMaxFields:                         getEnvInt("PROTO_MAX_FIELDS", 256),
+		JSONStrictUTF8:                         getEnvBool("JSON_STRICT_UTF8", true),
+		RedisGroupName:                         os.Getenv("REDIS_GROUP_NAME"),
+		RedisConsumerID:                        os.Getenv("REDIS_CONSUMER_ID"),
+		EventBatchSize:                         getEnvInt("EVENT_BATCH_SIZE", 500),
+		EventFlushMs:                           getEnvInt("EVENT_FLUSH_MS", 20),
+		StatsFlushMs:                           getEnvInt("STATS_FLUSH_MS", 5000),
+		MaxWorkers:                             getEnvInt("MAX_WORKERS", 16),
+		GnetNumEventLoops:                      getEnvInt("GNET_NUM_EVENT_LOOPS", 0),
+		ClickHouseMaxWorkers:                   getEnvInt("CH_MAX_WORKERS", 1),
+		ProcessorPostgresStreamMaxWorkers:      getEnvInt("PROCESSOR_PG_STREAM_MAX_WORKERS", 0),
+		ProcessorClickHouseStreamMaxWorkers:    getEnvInt("PROCESSOR_CH_STREAM_MAX_WORKERS", 0),
+		ProcessorPostgresGateSlots:             getEnvInt("PROCESSOR_PG_GATE_SLOTS", 0),
+		ProcessorClickHouseGateSlots:           getEnvInt("PROCESSOR_CH_GATE_SLOTS", 0),
+		ProcessorWeightEnabled:                 getEnvBool("PROCESSOR_WEIGHT_ENABLED", false),
+		ProcessorWeightFloor:                   getEnvFloat("PROCESSOR_WEIGHT_FLOOR", 0.05),
+		ProcessorWeightCeil:                    getEnvFloat("PROCESSOR_WEIGHT_CEIL", 0.95),
+		ProcessorWeightDrainPgWaitMs:           getEnvInt("PROCESSOR_WEIGHT_DRAIN_PG_WAIT_MS", 50),
+		VendorTelemetryEnabled:                 vendorTelemetryEnabled(appEnv),
+		VendorTelemetryIntervalSec:             getEnvInt("VENDOR_TELEMETRY_INTERVAL_SEC", 60),
+		VendorTelemetryTimeoutSec:              getEnvInt("VENDOR_TELEMETRY_TIMEOUT_SEC", 5),
+		TelemetryOptIn:                         TelemetryOptInFromEnvDual(),
+		TelemetryURL:                           Secret(strings.TrimSpace(TelemetryURLFromEnv())),
+		TelemetryIntervalSec:                   TelemetryIntervalSecFromEnv(),
+		TelemetryHTTPTimeoutSec:                TelemetryHTTPTimeoutSecFromEnv(),
+		SyncWorkerMaxConcurrency:               getEnvInt("SYNC_WORKER_MAX_CONCURRENCY", 32),
+		LogRetentionDays:                       getEnvInt("LOG_RETENTION_DAYS", 7),
+		DBTrackerMaxConns:                      getEnvInt("DB_TRACKER_MAX_CONNS", 4),
+		DBProcessorMaxConns:                    getEnvInt("DB_PROCESSOR_MAX_CONNS", 16),
+		RedisMaxActiveConns:                    getEnvIntDual("REDIS_MAX_ACTIVE_CONNS", "REDIS_MAX_ACTIVE", 2048),
+		DBMinConns:                             getEnvInt("DB_MIN_CONNS", 2),
+		PostgresPoolSettleMaxConns:             getEnvInt("PG_POOL_SETTLE_MAX_CONNS", 0),
+		VolumeMeterSource:                      envOrDefault("VOLUME_METER_SOURCE", "pg"),
+		SettlementLanes:                        getEnvInt("SETTLEMENT_LANES", 0),
+		SettlementFlushMs:                      getEnvInt("SETTLEMENT_FLUSH_MS", 100),
+		ReconHYG30IntervalMs:                   getEnvInt("RECON_HYG30_INTERVAL_MS", 300_000),
+		LedgerInvariantIntervalHours:           getEnvInt("LEDGER_INVARIANT_INTERVAL_HOURS", 24),
+		ReconForceRefill:                       getEnvBool("RECON_FORCE_REFILL", true),
+		ClickHouseMaxConns:                     getEnvInt("CH_MAX_CONNS", 8),
+		ClickHouseQueryMaxConcurrency:          getEnvInt("CH_QUERY_MAX_CONCURRENCY", 8),
+		ClickHouseQueryTimeoutSec:              getEnvInt("CH_QUERY_TIMEOUT_SEC", 30),
+		ClickHouseQuerySlowLogMS:               getEnvInt("CH_QUERY_SLOW_LOG_MS", 2000),
+		ClickHouseQueryMaxMemoryBytes:          uint64(getEnvInt("CH_QUERY_MAX_MEMORY_BYTES", 0)),
+		ClickHouseQueryMaxExecSec:              getEnvInt("CH_QUERY_MAX_EXEC_SEC", 0),
+		ClickHouseSpoolDir:                     envOrDefault("CH_SPOOL_DIR", "/var/spool/ad-event-processor/ch"),
+		ClickHouseSpoolSegmentMB:               getEnvInt("CH_SPOOL_SEGMENT_MB", 512),
+		ClickHouseSpoolMaxSegments:             getEnvInt("CH_SPOOL_MAX_SEGMENTS", 8),
+		ClickHouseReadonlyDSN:                  Secret(envOrDefault("CH_READONLY_DSN", os.Getenv("CH_DSN"))),
+		ClickHouseRawRetentionDays:             getEnvInt("CH_RAW_RETENTION_DAYS", 180),
+		ClickHouseJanitorEnabled:               getEnvBool("CH_JANITOR_ENABLED", true),
+		ClickHouseJanitorIntervalH:             getEnvInt("CH_JANITOR_INTERVAL_H", 24),
+		ClickHouseRetentionDaysRtbDealOutcomes: getEnvInt("CH_RETENTION_DAYS_RTB_DEAL_OUTCOMES", 90),
+		ClickHouseRetentionDaysRtbExchangeLog:  getEnvInt("CH_RETENTION_DAYS_RTB_EXCHANGE_LOG", 30),
+		ClickHouseEmergencyDropPercent:         getEnvInt("CH_EMERGENCY_DROP_PERCENT", 0),
+		ClickHouseRecompressPartsThreshold:     getEnvInt("CH_RECOMPRESS_PARTS_THRESHOLD", 8),
+		ClickHouseRecompressOffPeakStartUTC:    getEnvInt("CH_RECOMPRESS_OFFPEAK_START_UTC", 2),
+		ClickHouseRecompressOffPeakEndUTC:      getEnvInt("CH_RECOMPRESS_OFFPEAK_END_UTC", 6),
+		ProcessorStreamLagMaxSec:               getEnvInt("PROCESSOR_STREAM_LAG_MAX_SEC", 120),
+		TrackerPGFallback:                      getEnvBool("TRACKER_PG_FALLBACK", appEnv != "production"),
+		WriteTimeoutMs:                         getEnvInt("WRITE_TIMEOUT_MS", 5000),
+		FilterTimeoutMs:                        getEnvInt("FILTER_TIMEOUT_MS", 0),
+		FilterSlowMs:                           getEnvInt("FILTER_SLOW_MS", 5),
+		MetricsHistogramSampleMask:             getEnvInt("METRICS_HISTOGRAM_SAMPLE_MASK", 127),
+		AuditLogSampleMask:                     getEnvInt("AUDIT_LOG_SAMPLE_RATE", 127),
+		AuditLedgerFlushSampleMask:             getEnvInt("AUDIT_LEDGER_FLUSH_SAMPLE_MASK", -1),
+		IdempotencyTTLHrs:                      getEnvInt("IDEMPOTENCY_TTL_HRS", 24),
+		RateLimitPerMin:                        getEnvInt("RATE_LIMIT_PER_MIN", 100),
+		RateLimitWindowMs:                      getEnvInt("RATE_LIMIT_WINDOW_MS", 60000),
+		MaxRequestBodySize:                     getEnvInt64("MAX_REQUEST_BODY_SIZE", 1048576),
+		DuplicateTTLSec:                        getEnvInt("DUPLICATE_TTL_SEC", 10),
+		TTCMinMs:                               getEnvInt("TTC_MIN_MS", 300),
+		TTCFailClosed:                          getEnvBool("TTC_FAIL_CLOSED", true),
+		ClickHouseDSN:                          Secret(os.Getenv("CH_DSN")),
+		ClickHouseEnabled:                      clickHouseEnabledFromEnv(),
+		ClickHouseBatchSize:                    getEnvInt("CH_BATCH_SIZE", 50000),
+		ClickHouseFlushIntervalMs:              getEnvInt("CH_FLUSH_INTERVAL_MS", 10000),
+		PIISaltVersion:                         uint8(getEnvInt("PII_SALT_VERSION", 1)),
+		PIISaltHex:                             Secret(os.Getenv("PII_SALT_HEX")),
+		TokenSymmetricKey:                      Secret(os.Getenv("TOKEN_SYMMETRIC_KEY")),
+		PartitionPreCreateDays:                 getEnvInt("PARTITION_PRECREATE_DAYS", 2),
+		RegistrySyncIntervalMs:                 getEnvInt("REGISTRY_SYNC_INTERVAL_MS", 60000),
+		BudgetSyncIntervalMs:                   getEnvInt("BUDGET_SYNC_INTERVAL_MS", 5000),
+		LedgerBatchFlushMs:                     getEnvInt("LEDGER_BATCH_FLUSH_MS", 10000),
+		HTTPReadHeaderTimeoutMs:                getEnvInt("HTTP_READ_HEADER_TIMEOUT_MS", 2000),
+		HTTPReadTimeoutMs:                      getEnvInt("HTTP_READ_TIMEOUT_MS", 5000),
+		HTTPWriteTimeoutMs:                     getEnvInt("HTTP_WRITE_TIMEOUT_MS", 10000),
+		HTTPIdleTimeoutMs:                      getEnvInt("HTTP_IDLE_TIMEOUT_MS", 30000),
+		DefaultTokenDurationHrs:                getEnvInt("DEFAULT_TOKEN_DURATION_HRS", 24),
+		ClickAmount:                            getEnvMicro("CLICK_AMOUNT", 100_000),
+		ImpressionAmount:                       getEnvMicro("IMPRESSION_AMOUNT", 10_000),
+		StreamMaxLen:                           getEnvIntDual("REDIS_STREAM_MAXLEN", "STREAM_MAX_LEN", 10000),
+		StreamProducerAdmissionPct:             getEnvInt("STREAM_PRODUCER_ADMISSION_PCT", 85),
+		RedisStreamTrimIntervalMs:              getEnvIntDual("REDIS_STREAM_TRIM_INTERVAL", "REDIS_STREAM_TRIM_INTERVAL_MS", 10000),
+		RetryInitialWaitMs:                     getEnvInt("RETRY_INITIAL_WAIT_MS", 100),
+		RetryMaxWaitMs:                         getEnvInt("RETRY_MAX_WAIT_MS", 5000),
+		MaxRetries:                             getEnvInt("MAX_RETRIES", 5),
+		StreamMinIdleMs:                        getEnvInt("STREAM_MIN_IDLE_MS", 300000),
+		Argon2Memory:                           getEnvInt("ARGON2_MEMORY", 65536),
+		Argon2Iterations:                       getEnvInt("ARGON2_ITERATIONS", 3),
+		Argon2Parallelism:                      getEnvInt("ARGON2_PARALLELISM", 4),
+		RedisPoolSize:                          getEnvInt("REDIS_POOL_SIZE", 0),
+		RedisBreakerFailThreshold:              getEnvInt("REDIS_BREAKER_FAIL_THRESHOLD", 150),
+		RedisBreakerHalfOpen:                   getEnvInt("REDIS_BREAKER_HALF_OPEN", 10),
+		RedisBreakerOpenTimeoutMs:              getEnvInt("REDIS_BREAKER_OPEN_TIMEOUT_MS", 5000),
+		AdminAPIKey:                            Secret(os.Getenv("ADMIN_API_KEY")),
+		InstallBootstrapToken:                  Secret(os.Getenv("INSTALL_BOOTSTRAP_TOKEN")),
+		AllowedOrigins:                         strings.Split(os.Getenv("ALLOWED_ORIGINS"), ","),
+		TrackCORSOrigins:                       strings.Split(os.Getenv("TRACK_CORS_ORIGINS"), ","),
+		TrustedProxies:                         strings.Split(os.Getenv("TRUSTED_PROXIES"), ","),
+		Env:                                    appEnv,
+		CampaignUpdateChannel:                  os.Getenv("CAMPAIGN_UPDATE_CHANNEL"),
+		RtbCatalogReloadChannel:                os.Getenv("RTB_CATALOG_RELOAD_CHANNEL"),
+		RegistryStaleTTLSec:                    getEnvInt("REGISTRY_STALE_TTL", 30),
+		RegistryPollMs:                         getEnvInt("REGISTRY_POLL_MS", 5000),
+		CampaignUpdateBrokerFallback:           getEnvBool("CAMPAIGN_UPDATE_BROKER_FALLBACK", appEnv == "production" || appEnv == "prod"),
+		CampaignUpdateBrokerTopic:              envOrDefault("CAMPAIGN_UPDATE_BROKER_TOPIC", "campaigns:update"),
+		RedisShard0OptionalStartup:             getEnvBool("REDIS_SHARD0_OPTIONAL_STARTUP", appEnv == "production" || appEnv == "prod"),
+		CampaignReplicaPath:                    envOrDefault("CAMPAIGN_REPLICA_PATH", "campaigns_replica.json"),
+		AutoscaleHighCTRThreshold:              getEnvFloat("AUTOSCALE_HIGH_CTR_THRESHOLD", 0.015),
+		AutoscaleMinImpressions:                getEnvInt64("AUTOSCALE_MIN_IMPRESSIONS", 100),
+		AutoscaleLowCTRThreshold:               getEnvFloat("AUTOSCALE_LOW_CTR_THRESHOLD", 0.005),
+		AutoscaleMinRemainingBudget:            getEnvMicro("AUTOSCALE_MIN_REMAINING_BUDGET", 20.0),
+		AutoscaleShiftAmount:                   getEnvMicro("AUTOSCALE_SHIFT_AMOUNT", 10.0),
+		AutoscaleIntervalMs:                    getEnvInt("AUTOSCALE_INTERVAL_MS", 0),
+		DeliveryOptimizerIntervalMs:            getEnvInt("DELIVERY_OPTIMIZER_INTERVAL_MS", 0),
+		BidFloorLookbackHours:                  getEnvInt("BID_FLOOR_LOOKBACK_HOURS", 24),
+		BidFloorOptimizerLookbackHours:         getEnvInt("BID_FLOOR_OPTIMIZER_LOOKBACK_HOURS", 168),
+		BidFloorOptimizerIntervalHours:         getEnvInt("BID_FLOOR_OPTIMIZER_INTERVAL_HOURS", 168),
+		BidFloorBucketMicro:                    getEnvMicro("BID_FLOOR_BUCKET_MICRO", 10_000),
+		BidFloorWinRateLow:                     getEnvFloat("BID_FLOOR_WIN_RATE_LOW", 0.05),
+		BidFloorWinRateHigh:                    getEnvFloat("BID_FLOOR_WIN_RATE_HIGH", 0.25),
+		BidFloorAdjustPct:                      getEnvInt("BID_FLOOR_ADJUST_PCT", 10),
+		BidFloorMinMicro:                       getEnvMicro("BID_FLOOR_MIN_MICRO", 1000),
+		DealFloorRefreshIntervalMs:             getEnvInt("DEAL_FLOOR_REFRESH_INTERVAL_MS", 60_000),
+		PacingToleranceMargin:                  getEnvFloat("PACING_TOLERANCE_MARGIN", 0.15),
+		MarginGuardIntervalSec:                 getEnvInt("MARGIN_GUARD_INTERVAL_SEC", 300),
+		MarginGuardDefaultThresholdBps:         getEnvInt("MARGIN_GUARD_DEFAULT_THRESHOLD_BPS", 500),
+		CreditScoringMinAgeDays:                getEnvFloat("CREDIT_SCORING_MIN_AGE_DAYS", 7.0),
+		CreditScoringMatureAgeDays:             getEnvFloat("CREDIT_SCORING_MATURE_AGE_DAYS", 30.0),
+		CreditScoringMidTierPercent:            getEnvInt64("CREDIT_SCORING_MID_TIER_PERCENT", 15),
+		CreditScoringMaturePercent:             getEnvInt64("CREDIT_SCORING_MATURE_PERCENT", 30),
+		CreditScoringMaxCap:                    getEnvMicro("CREDIT_SCORING_MAX_CAP", 10000.0),
+		CreditScoringReconLagThreshold:         getEnvMicro("CREDIT_SCORING_RECON_LAG_THRESHOLD_MICRO", 100.0),
+		CreditScoringReconLagPenaltyPct:        getEnvInt64("CREDIT_SCORING_RECON_LAG_PENALTY_PCT", 50),
+		MABIntervalMs:                          getEnvInt("MAB_INTERVAL_MS", 900_000),
+		MABMinImpressions:                      getEnvInt64("MAB_MIN_IMPRESSIONS", 1000),
+		MABLookbackDays:                        getEnvInt("MAB_LOOKBACK_DAYS", 90),
+		ConsentHMACSecret:                      Secret(os.Getenv("CONSENT_HMAC_SECRET")),
+		FraudEvidencePackHMACSecret:            fraudEvidencePackHMACSecret(),
+		ConsentRetentionMonths:                 getEnvInt("CONSENT_RETENTION_MONTHS", 13),
+		ConsentUpdateChannel:                   envOrDefault("CONSENT_UPDATE_CHANNEL", "consent:update"),
+		ErasureWorkerIntervalMs:                getEnvInt("ERASURE_WORKER_INTERVAL_MS", 60_000),
+		EventsRetentionDays:                    getEnvInt("EVENTS_RETENTION_DAYS", 90),
+		EventsHashIPAtInsert:                   getEnvBool("EVENTS_HASH_IP_AT_INSERT", false),
+		PaymentWebhookPort:                     os.Getenv("PAYMENT_WEBHOOK_PORT"),
+		PaymentInternalToken:                   Secret(os.Getenv("PAYMENT_INTERNAL_TOKEN")),
+		SettlementInternalToken:                Secret(os.Getenv("SETTLEMENT_INTERNAL_TOKEN")),
+		StripeSecretKey:                        Secret(os.Getenv("STRIPE_SECRET_KEY")),
+		StripeWebhookSecret:                    Secret(os.Getenv("STRIPE_WEBHOOK_SECRET")),
+		StripeCheckoutSuccessURL:               os.Getenv("STRIPE_CHECKOUT_SUCCESS_URL"),
+		StripeCheckoutCancelURL:                os.Getenv("STRIPE_CHECKOUT_CANCEL_URL"),
+		CryptoWebhookSecret:                    Secret(envOrDefault("CRYPTO_WEBHOOK_SECRET", "cryptosecret")),
+		CryptoMinPaymentMicro:                  getEnvMicro("CRYPTO_MIN_PAYMENT_MICRO", 10.0),
+		CryptoConfirmationDepth:                getEnvInt("CRYPTO_CONFIRMATION_DEPTH", 12),
+		BTCPayWebhookSecret:                    Secret(os.Getenv("BTCPAY_WEBHOOK_SECRET")),
+		CryptomusAPIKey:                        Secret(os.Getenv("CRYPTOMUS_API_KEY")),
+		PaymentFinancialReconIntervalMs:        getEnvInt("PAYMENT_FINANCIAL_RECON_INTERVAL_MS", 0),
+		SelfServeMaxActiveCampaigns:            getEnvInt("SELF_SERVE_MAX_ACTIVE_CAMPAIGNS", 500),
+		SelfServeMaxCreatesPerDay:              getEnvInt("SELF_SERVE_MAX_CREATES_PER_DAY", 50),
+		SelfServeBudgetMinMicro:                getEnvMicro("SELF_SERVE_BUDGET_MIN_MICRO", 1.0),
+		SelfServeBudgetMaxMicro:                getEnvMicro("SELF_SERVE_BUDGET_MAX_MICRO", 1_000_000.0),
+		SelfServeAPIKeyRPS:                     getEnvFloat("SELF_SERVE_API_KEY_RPS", 30),
 	}
 
 	if err := loadIngestModules(cfg, appEnv); err != nil {
@@ -898,6 +938,17 @@ func (c *Config) ProcessorPostgresStreamWorkers() int {
 		return c.MaxWorkers
 	}
 	return 16
+}
+
+func (c *Config) GnetEventLoopCount() int {
+	if c != nil && c.GnetNumEventLoops > 0 {
+		return c.GnetNumEventLoops
+	}
+	n := runtime.GOMAXPROCS(0)
+	if n < 1 {
+		return 1
+	}
+	return n
 }
 
 func (c *Config) ProcessorClickHouseStreamWorkers() int {

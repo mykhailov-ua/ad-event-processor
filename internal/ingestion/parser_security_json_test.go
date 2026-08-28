@@ -86,6 +86,18 @@ func TestChaos_ParserSecurity_PS_G13_NestedPayloadEscapeBomb(t *testing.T) {
 	})
 }
 
+func TestChaos_ParserSecurity_PS_G14_ValueLiteralBomb(t *testing.T) {
+	digits := strings.Repeat("1", MaxJSONStringScanBytes+1)
+	body := []byte(fmt.Sprintf(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","noise":%s}`, digits))
+	var req TrackRequest
+	err := ParseTrackRequestJSON(&req, body)
+	require.Error(t, err, "oversized numeric literal in skipped value must be rejected")
+	faultproof.Log(t, "parser_security_ps_g14", map[string]string{
+		"gap_id": "json_value_literal_bomb",
+		"gap":    "closed",
+	})
+}
+
 func TestSkipJSONValueBudget_nestedRawControlRejected(t *testing.T) {
 	body := []byte("{\"payload\":{\"a\":\"" + "\n" + "\"}}")
 	bud := newJSONScanBudget()

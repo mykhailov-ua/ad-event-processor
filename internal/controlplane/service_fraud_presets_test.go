@@ -2,32 +2,12 @@ package controlplane
 
 import (
 	"testing"
-	"time"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/fraudadmin"
 
 	"github.com/stretchr/testify/require"
 )
-
-func TestDefaultFraudPolicyPresetDTOs_matchesDomain(t *testing.T) {
-	out := defaultFraudPolicyPresetDTOs()
-	require.Len(t, out, 5)
-	byName := map[string]FraudPolicyPresetDTO{}
-	for _, preset := range out {
-		byName[preset.Name] = preset
-	}
-	pass, suspect, ivt, block, ok := domain.ResolveFraudPreset(domain.FraudPresetAggressive)
-	require.True(t, ok)
-	require.Equal(t, pass, byName[domain.FraudPresetAggressive].Pass)
-	require.Equal(t, block, byName[domain.FraudPresetAggressive].Block)
-	require.Equal(t, suspect, byName[domain.FraudPresetAggressive].Suspect)
-	require.Equal(t, ivt, byName[domain.FraudPresetAggressive].IVT)
-	legacy := byName[domain.FraudPresetEnhancedDefenseLegacy]
-	require.Equal(t, uint8(20), legacy.Pass)
-	require.Equal(t, uint8(85), legacy.Block)
-	require.Equal(t, uint8(45), legacy.Suspect)
-	require.Equal(t, uint8(65), legacy.IVT)
-}
 
 func TestResolveFraudPresetThresholds_fallbackWithoutPool(t *testing.T) {
 	svc := &Service{}
@@ -49,16 +29,22 @@ func TestResolveProposedFraudThresholds_preset(t *testing.T) {
 	require.Equal(t, uint8(85), out.block)
 }
 
-func TestInvalidateFraudPolicyPresetCache(t *testing.T) {
-	fraudPolicyPresetCache.mu.Lock()
-	fraudPolicyPresetCache.loadedAt = time.Now()
-	fraudPolicyPresetCache.rows = []fraudPolicyPresetRow{{name: "balanced"}}
-	fraudPolicyPresetCache.mu.Unlock()
-
-	invalidateFraudPolicyPresetCache()
-
-	fraudPolicyPresetCache.mu.RLock()
-	defer fraudPolicyPresetCache.mu.RUnlock()
-	require.True(t, fraudPolicyPresetCache.loadedAt.IsZero())
-	require.Nil(t, fraudPolicyPresetCache.rows)
+func TestDefaultFraudPolicyPresetDTOs_matchesDomain(t *testing.T) {
+	out := fraudadmin.DefaultPolicyPresetDTOs()
+	require.Len(t, out, 5)
+	byName := map[string]fraudadmin.FraudPolicyPresetDTO{}
+	for _, preset := range out {
+		byName[preset.Name] = preset
+	}
+	pass, suspect, ivt, block, ok := domain.ResolveFraudPreset(domain.FraudPresetAggressive)
+	require.True(t, ok)
+	require.Equal(t, pass, byName[domain.FraudPresetAggressive].Pass)
+	require.Equal(t, block, byName[domain.FraudPresetAggressive].Block)
+	require.Equal(t, suspect, byName[domain.FraudPresetAggressive].Suspect)
+	require.Equal(t, ivt, byName[domain.FraudPresetAggressive].IVT)
+	legacy := byName[domain.FraudPresetEnhancedDefenseLegacy]
+	require.Equal(t, uint8(20), legacy.Pass)
+	require.Equal(t, uint8(85), legacy.Block)
+	require.Equal(t, uint8(45), legacy.Suspect)
+	require.Equal(t, uint8(65), legacy.IVT)
 }

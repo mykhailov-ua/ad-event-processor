@@ -73,7 +73,7 @@ func TestOpsReader_GetMLModelStatus(t *testing.T) {
 	require.NoError(t, os.WriteFile(reportPath, reportBytes, 0o644))
 	t.Setenv("FRAUD_EVAL_REPORT_PATH", reportPath)
 
-	reader := &opsReader{svc: svc}
+	reader := newOpsReader(svc)
 	status, err := reader.GetMLModelStatus(ctx)
 	require.NoError(t, err)
 
@@ -123,7 +123,7 @@ func TestOpsReader_AddMLManualLabel_Validation(t *testing.T) {
 	svc := NewService(context.Background(), pool, nil, sharder, nil)
 	defer svc.Close()
 
-	reader := &opsReader{svc: svc}
+	reader := newOpsReader(svc)
 	ctx := context.Background()
 
 	err := reader.AddMLManualLabel(ctx, "short", 1, "bad hash")

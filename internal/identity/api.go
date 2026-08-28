@@ -38,6 +38,7 @@ type AuthUser struct {
 	Email      string
 	Role       string
 	CustomerID uuid.UUID
+	Scopes     []string
 }
 
 type LoginResult struct {
@@ -60,12 +61,13 @@ type CreateAPIKeyResult struct {
 	Name      string
 	RawKey    string
 	ExpiresAt *time.Time
+	Scopes    []string
 }
 
 type AuthAPI interface {
 	VerifyAPIKey(ctx context.Context, apiKey string) (AuthUser, error)
 	VerifyToken(ctx context.Context, accessToken string) (AuthUser, error)
-	CreateAPIKey(ctx context.Context, bearerToken, name string) (CreateAPIKeyResult, error)
+	CreateAPIKey(ctx context.Context, bearerToken, name string, scopes []string) (CreateAPIKeyResult, error)
 	Login(ctx context.Context, email, password string, durationHours int32) (LoginResult, error)
 	Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) (RegisterResult, error)
 	RefreshToken(ctx context.Context, refreshToken string) (RefreshResult, error)
@@ -108,7 +110,7 @@ func (a *authAPI) VerifyToken(ctx context.Context, accessToken string) (AuthUser
 	return user, nil
 }
 
-func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (CreateAPIKeyResult, error) {
+func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string, scopes []string) (CreateAPIKeyResult, error) {
 	accessToken, ok := parseBearerToken("Bearer " + bearerToken)
 	if !ok {
 		accessToken, ok = parseBearerToken(bearerToken)
@@ -117,7 +119,7 @@ func (a *authAPI) CreateAPIKey(ctx context.Context, bearerToken, name string) (C
 		return CreateAPIKeyResult{}, ErrInvalidToken
 	}
 	ctx = metadata.NewIncomingContext(ctx, metadata.Pairs(authorizationHeaderKey, authorizationTypeBearer+" "+accessToken))
-	result, err := a.h.createAPIKey(ctx, name, nil)
+	result, err := a.h.createAPIKey(ctx, name, scopes, nil)
 	if err != nil {
 		return CreateAPIKeyResult{}, grpcStatusToError(err)
 	}
@@ -273,19 +275,21 @@ func (h *Handler) verifyTokenUser(ctx context.Context, accessToken string) (Auth
 }
 
 func (h *Handler) verifyAPIKeyUser(ctx context.Context, apiKey string) (AuthUser, error) {
-	user, err := h.service.VerifyAPIKey(ctx, apiKey)
+	verified, err := h.service.VerifyAPIKey(ctx, apiKey)
 	if err != nil {
 		return AuthUser{}, mapError(err)
 	}
-	return authUserFromDB(user), nil
+	user := authUserFromDB(verified.User)
+	user.Scopes = verified.Scopes
+	return user, nil
 }
 
-func (h *Handler) createAPIKey(ctx context.Context, name string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
+func (h *Handler) createAPIKey(ctx context.Context, name string, scopes []string, expiresAt *time.Time) (CreateAPIKeyResult, error) {
 	user, err := h.requireAuthUser(ctx)
 	if err != nil {
 		return CreateAPIKeyResult{}, err
 	}
-	result, err := h.service.CreateAPIKey(ctx, uuidFromPg(user.ID), name, expiresAt)
+	result, err := h.service.CreateAPIKey(ctx, uuidFromPg(user.ID), name, scopes, expiresAt)
 	if err != nil {
 		return CreateAPIKeyResult{}, mapError(err)
 	}

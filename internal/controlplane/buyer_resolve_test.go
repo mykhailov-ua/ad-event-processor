@@ -1,10 +1,11 @@
 package controlplane
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"ad-event-processor/internal/controlplane/authz"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -15,9 +16,9 @@ func TestResolveCampaignsCustomerID_BuyerUsesSessionCustomer(t *testing.T) {
 	h := &Handler{}
 	custID := uuid.New()
 	req := httptest.NewRequest("GET", "/api/v1/campaigns", http.NoBody)
-	ctx := context.WithValue(req.Context(), UserContextKey, AuthenticatedUser{
+	ctx := authz.WithAuthenticatedUser(req.Context(), authz.AuthenticatedUser{
 		UserID:     uuid.New(),
-		Role:       RoleBuyer,
+		Role:       authz.RoleBuyer,
 		CustomerID: custID,
 	})
 	req = req.WithContext(ctx)

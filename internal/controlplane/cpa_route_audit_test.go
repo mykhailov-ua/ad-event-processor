@@ -63,7 +63,7 @@ func TestCPA_DocumentedProductGaps_open(t *testing.T) {
 func TestCPA_PatchCampaignRequest_parity(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
-	dtoGo := readRepoFile(t, root, "internal/controlplane/campaign_dto.go")
+	dtoGo := readRepoFile(t, root, "internal/campaign/dto.go")
 
 	required := []string{"status", "budget_limit", "budget_limit_micro", "start_at", "end_at", "daypart_hours"}
 	start := strings.Index(dtoGo, "type PatchCampaignRequest struct")

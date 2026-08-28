@@ -79,34 +79,109 @@ func (h *AdsPacketHandler) onTrafficH2(c gnet.Conn, buf []byte) gnet.Action {
 }
 
 func (h *AdsPacketHandler) allocConnContext(c gnet.Conn) *connContext {
-	ctx := &connContext{
-		pbReq: pb.AdEvent{
-			Metadata: &pb.EventMetadata{},
-		},
-		trackReq: TrackRequest{
-			Payload: make([]byte, 0, 512),
-		},
-		evt: domain.Event{
-			Payload: make([]byte, 0, 1024),
-		},
-		valSlice: make([]any, 18),
-		resp:     pb.TrackResponse{},
-		bufSlice: make([]byte, 4096),
-		h2:       newH2ConnState(),
-		wReqID: bufWrapper{
-			buf: make([]byte, 0, 128),
-		},
-		wCamp: bufWrapper{
-			buf: make([]byte, 0, 128),
-		},
-		wTime: bufWrapper{
-			buf: make([]byte, 0, 128),
-		},
-		workerID: -1,
-	}
+	ctx := h.contextPool.Get().(*connContext)
 	if h.logger != nil {
 		ctx.shardID = int(h.loggerShardCounter.Add(1) % uint64(len(h.logger.Shards())))
 	}
 	ctx.http1ConnOpenedMono = monotonicNano()
+	ctx.workerID = -1
 	return ctx
+}
+
+func (h *AdsPacketHandler) retireConnContext(ctx *connContext) {
+	if h == nil || ctx == nil || ctx.http1ConnCtx != nil {
+		return
+	}
+	h.resetConnContextForReuse(ctx)
+	h.contextPool.Put(ctx)
+}
+
+func (h *AdsPacketHandler) resetConnContextForReuse(ctx *connContext) {
+	if ctx == nil {
+		return
+	}
+	evt := &ctx.pbReq
+	evt.CampaignId = evt.CampaignId[:0]
+	evt.EventType = evt.EventType[:0]
+	if evt.Metadata != nil {
+		evt.Metadata.ClickId = evt.Metadata.ClickId[:0]
+		evt.Metadata.UserId = evt.Metadata.UserId[:0]
+		evt.Metadata.DeviceType = evt.Metadata.DeviceType[:0]
+		evt.Metadata.Os = evt.Metadata.Os[:0]
+		for i := range evt.Metadata.ExtraKeys {
+			evt.Metadata.ExtraKeys[i] = evt.Metadata.ExtraKeys[i][:0]
+		}
+		evt.Metadata.ExtraKeys = evt.Metadata.ExtraKeys[:0]
+		for i := range evt.Metadata.ExtraValues {
+			evt.Metadata.ExtraValues[i] = evt.Metadata.ExtraValues[i][:0]
+		}
+		evt.Metadata.ExtraValues = evt.Metadata.ExtraValues[:0]
+		evt.Metadata.ExtraBytes = evt.Metadata.ExtraBytes[:0]
+	}
+	trackPayload := ctx.trackReq.Payload[:0]
+	ctx.trackReq.resetForParse()
+	ctx.trackReq.Payload = trackPayload
+	if cap(ctx.trackReq.Payload) < 512 {
+		ctx.trackReq.Payload = make([]byte, 0, 512)
+	}
+	domainPayload := ctx.evt.Payload[:0]
+	ctx.evt = domain.Event{Payload: domainPayload}
+	if cap(ctx.evt.Payload) < 1024 {
+		ctx.evt.Payload = make([]byte, 0, 1024)
+	}
+	ctx.resp = pb.TrackResponse{}
+	if cap(ctx.bufSlice) < 4096 {
+		ctx.bufSlice = make([]byte, 4096)
+	} else {
+		ctx.bufSlice = ctx.bufSlice[:cap(ctx.bufSlice)]
+	}
+	ctx.extraBuf = ctx.extraBuf[:0]
+	ctx.offloadHTTPPin = ctx.offloadHTTPPin[:0]
+	resetChunkScratch(&ctx.chunkScratch)
+	ctx.wReqID.buf = ctx.wReqID.buf[:0]
+	ctx.wCamp.buf = ctx.wCamp.buf[:0]
+	ctx.wTime.buf = ctx.wTime.buf[:0]
+	if cap(ctx.valSlice) < 18 {
+		ctx.valSlice = make([]any, 18)
+	} else {
+		ctx.valSlice = ctx.valSlice[:18]
+		for i := range ctx.valSlice {
+			ctx.valSlice[i] = nil
+		}
+	}
+	ctx.openrtbParsed = OpenRTB26Parsed{}
+	ctx.clickParsed = clickQueryParsed{}
+	ctx.telegramClickParsed = telegramQueryParsed{}
+	ctx.remoteIP = ""
+	ctx.protoH2 = false
+	ctx.h2StreamID = 0
+	ctx.h2.resetConn()
+	if cap(ctx.h2.headerBlock) == 0 {
+		ctx.h2.headerBlock = make([]byte, 0, 256)
+	}
+	ctx.http1IncompleteSpin = 0
+	ctx.http1BodyIdleArmed = false
+	ctx.http1BodyIdleDeadline = 0
+	ctx.http1ConnOpenedMono = 0
+	ctx.http1OffloadBusy.Store(false)
+	ctx.http1PendingOffloadWrites.Store(0)
+	ctx.offloadRetired.Store(false)
+	ctx.offloadConn = nil
+	ctx.http1ConnCtx = nil
+	ctx.offloadReqBuf = nil
+	ctx.offloadReqSlice = nil
+	ctx.offloadReqLen = 0
+	ctx.offloadReq = parsedHTTPRequest{}
+	ctx.offloadReqPin = false
+	ctx.offloadArenaWorker = 0
+	ctx.offloadArenaSlot = 0
+	ctx.offloadRelease = nil
+	ctx.offloadOnEnter = nil
+	ctx.offloadBlock = nil
+	ctx.offloadWG = nil
+	ctx.offloadAsyncWrite.Store(false)
+	ctx.offloadCloseAfterWrite.Store(false)
+	if h != nil {
+		h.releaseOffloadBuffers(ctx)
+	}
 }

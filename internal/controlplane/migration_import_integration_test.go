@@ -2,6 +2,7 @@ package controlplane
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -87,4 +88,67 @@ func TestImportMigrationCampaigns_keitaro_holdout(t *testing.T) {
 		WHERE campaign_id = $1`, domain.ToUUID(importedID)).Scan(&tokenLen)
 	require.NoError(t, err)
 	assert.Equal(t, 0, tokenLen, "migrate import must not copy foreign postback secrets")
+}
+
+func TestImportMigrationCampaigns_keitaroStreams_holdout(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: keitaro streams migration import round-trip")
+	}
+	pool, cleanupDB := database.SetupTestDB(t)
+	defer cleanupDB()
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, nil)
+	defer svc.Close()
+
+	ctx := context.Background()
+	custID := uuid.New()
+	require.NoError(t, svc.CreateCustomer(ctx, custID, "Streams Customer", 500_000_000, "USD"))
+
+	schemaID := uuid.New()
+	_, err := pool.Exec(ctx, `
+		INSERT INTO integration_schemas (id, name, version, kind, body)
+		VALUES ($1, 'traffic_facebook', 1, 'inbound_tokens', '{}')`, schemaID)
+	require.NoError(t, err)
+
+	raw, err := os.ReadFile(filepath.Join("..", "migrationsource", "testdata", "keitaro_facebook_streams.json"))
+	require.NoError(t, err)
+
+	result, err := svc.ImportMigrationCampaigns(ctx, ImportMigrationSpec{
+		CustomerID:     custID,
+		IdempotencyKey: "migrate-streams-idem-1",
+		SourceKind:     migrationsource.SourceKindKeitaroJSON,
+		Payload:        raw,
+	})
+	require.NoError(t, err)
+	require.Len(t, result.Imported, 1)
+
+	var warnFound bool
+	for _, w := range result.Warnings {
+		if w.Slug == "stream_node_unmapped" {
+			warnFound = true
+		}
+	}
+	assert.True(t, warnFound)
+
+	importedID, err := uuid.Parse(result.Imported[0].ID)
+	require.NoError(t, err)
+
+	got, err := svc.GetCampaign(ctx, importedID)
+	require.NoError(t, err)
+	assert.Equal(t, "meta-facebook", got.TrafficTemplateID)
+
+	importRow, err := svc.GetCampaignRow(ctx, importedID)
+	require.NoError(t, err)
+	require.True(t, importRow.FlowID.Valid)
+
+	var importPaths json.RawMessage
+	err = pool.QueryRow(ctx, `SELECT paths FROM flows WHERE id = $1`, uuid.UUID(importRow.FlowID.Bytes)).Scan(&importPaths)
+	require.NoError(t, err)
+	var parsedPaths []FlowPathDTO
+	require.NoError(t, json.Unmarshal(importPaths, &parsedPaths))
+	require.Len(t, parsedPaths, 2)
+	assert.Equal(t, int32(60), parsedPaths[0].Weight)
+	assert.Equal(t, int32(40), parsedPaths[1].Weight)
 }

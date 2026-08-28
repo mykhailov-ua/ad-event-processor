@@ -30,11 +30,11 @@ type stubNotifierAPITest struct {
 	fail   bool
 }
 
-func (stub *stubNotifierAPITest) SendNotification(
+func (na *stubNotifierAPITest) SendNotification(
 	ctx context.Context,
 	provider, recipient, title, body string,
 ) (notify.SendNotificationResult, error) {
-	return stub.SendNotificationInput(ctx, notify.NotificationInput{
+	return na.SendNotificationInput(ctx, notify.NotificationInput{
 		Provider:  provider,
 		Recipient: recipient,
 		Title:     title,
@@ -42,29 +42,29 @@ func (stub *stubNotifierAPITest) SendNotification(
 	})
 }
 
-func (stub *stubNotifierAPITest) SendNotificationInput(
+func (na *stubNotifierAPITest) SendNotificationInput(
 	ctx context.Context,
 	input notify.NotificationInput,
 ) (notify.SendNotificationResult, error) {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	if stub.fail {
+	na.mu.Lock()
+	defer na.mu.Unlock()
+	if na.fail {
 		return notify.SendNotificationResult{}, fmt.Errorf("stub notifier unavailable")
 	}
-	stub.inputs = append(stub.inputs, input)
+	na.inputs = append(na.inputs, input)
 	return notify.SendNotificationResult{NotificationID: "stub-id"}, nil
 }
 
-func (stub *stubNotifierAPITest) SendNotificationBatch(
+func (na *stubNotifierAPITest) SendNotificationBatch(
 	ctx context.Context,
 	inputs []notify.NotificationInput,
 ) ([]notify.SendNotificationResult, error) {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	if stub.fail {
+	na.mu.Lock()
+	defer na.mu.Unlock()
+	if na.fail {
 		return nil, fmt.Errorf("stub notifier unavailable")
 	}
-	stub.inputs = append(stub.inputs, inputs...)
+	na.inputs = append(na.inputs, inputs...)
 	out := make([]notify.SendNotificationResult, len(inputs))
 	for i := range inputs {
 		out[i] = notify.SendNotificationResult{NotificationID: "stub-id"}
@@ -72,11 +72,11 @@ func (stub *stubNotifierAPITest) SendNotificationBatch(
 	return out, nil
 }
 
-func (stub *stubNotifierAPITest) snapshot() []notify.NotificationInput {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	out := make([]notify.NotificationInput, len(stub.inputs))
-	copy(out, stub.inputs)
+func (na *stubNotifierAPITest) snapshot() []notify.NotificationInput {
+	na.mu.Lock()
+	defer na.mu.Unlock()
+	out := make([]notify.NotificationInput, len(na.inputs))
+	copy(out, na.inputs)
 	return out
 }
 

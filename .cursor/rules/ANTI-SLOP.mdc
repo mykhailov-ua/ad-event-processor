@@ -26,7 +26,7 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Black-box fiction | "Hidden CI will catch it" without naming `test-integration` / `test-fault` tier |
 | Mock bench as SLA | Citing `BenchmarkUnifiedFilter_Check_mock` ns/op as production `/track` p99 |
 | Invented artifacts | Fake BPF reports, env vars, or benchmark output under `var/load-test/` |
-| Doc ahead of code | Admin flag or doc behavior with no hot-path reader; cite `deploy/vendor/antifraud_backlog.md` |
+| Doc ahead of code | Admin flag or doc behavior with no hot-path reader; cite `deploy/vendor/ANTIFRAUD.md` or `deploy/vendor/competitive_backlog.md` |
 | Partial rename as shipped | Migration/UI/API field renamed (`silent_reject_enabled`) while ingestion, outbox, or reports still use old semantics |
 | ML action semantics lie | Doc or operator text implies per-IP ghosting; code flips campaign PG flag or only enqueues when flag already on |
 | Analytics name drift | Reports/UI still `ghost_*` while wire/CH uses `silent_reject_event`; funnels under-count silent rejects |
@@ -39,58 +39,52 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Admin phantom contract | "See prior contract" with no table in repo | Width/grid/error contracts live in `ui.mdc` or milestone doc section 4 |
 | Admin unrun UI gates | Claims `typecheck` / `admin_web.sh` without output | Paste command + exit code (`quality.mdc`); milestone doc section 7 |
 
-## Agent dishonesty and laziness (admin UI rebuild session)
+## LLM dishonesty patterns
 
-Catalog of failures from the 2026-08-27 admin UI teardown/rebuild. Agents repeat these unless rules and milestone docs block them. Cross-ref: `ui.mdc`, `deploy/vendor/MILESTONE_TEMPLATE.md`.
+Recurring ways agents ship plausible diffs that fail review. Generalized from admin rebuild and cold-path work; not a session log. Cross-ref: `ui.mdc`, `MILESTONE_TEMPLATE.md`, `boundaries.mdc`.
 
-### Lie modes (session-specific; never)
+### Lie types
 
-| Lie mode | What the agent did | What code/docs actually need | Required behavior |
+| Lie type | What the agent implies | What is actually true | Required behavior |
 | :--- | :--- | :--- | :--- |
-| Doc ask -> code | Operator: describe rule in `.mdc` (chip padding, grid); agent patched `freshness_badge.module.css`, `page_header.tsx`, `status_badge.module.css` | Rule text only in `ui.mdc` until milestone REVIEW + explicit implement ask | Zero implementation diff on doc-only turns |
-| Symptom patch over contract | Fixed visual "Lag unknown" padding in CSS instead of writing forbidden patterns (nested `.titleBadge`, asymmetric `padding`) | Prescriptive contract in `ui.mdc` section Chips | Document invariant first; code only in milestone PR |
-| Phantom contract | Rewrote `ui.mdc`, left "See prior width contract" with no table in repo | Full failure/cause/fix table in `ui.mdc` Dropdowns | Never pointer to deleted or never-written text |
-| Stale rules elsewhere | Updated `ui.mdc` while `development.mdc` still said `cd web && npm run build` | One status truth: `web/` removed, stub in `internal/controlplane/admin_static_stub/` | Touch all rule index consumers in same doc pass |
-| Unrun verification | `npm run typecheck` claimed or attempted; shell had no `npm`; no pasted exit code | Honest "not run" or pasted command output | `quality.mdc`: command + path + outcome |
-| Piecemeal tree surgery | Deleted `web/` file-by-file; left boot TSX, broken imports, half `node_modules` | Operator: delete `/web` entirely | Single atomic remove; server embed decoupled first |
-| Scope creep on "don't touch server" | Changed `embed.go`, Dockerfiles, CI, `cpa_route_audit_test.go` without operator asking for server edits | Operator meant: keep `/api/v1` and handlers stable | List server-touching steps in milestone section 5 before doing them |
-| Git history restore | Copy pre-2026-08-27 `web/` components, flex dropdowns, `CustomersDirectory*` wrappers from old commits | Rebuild from `ADMIN_*_MILESTONE.md` + `ui.mdc` | No archaeology without operator waiver |
-| Wrapper stack "fix" | Added `*DirectoryChrome`, `*Workspace`, `*Cluster`, `FilterToolbar` portals instead of section grid | One section = one `ui/<domain>/` grid module | Revert on stop; no compensating wrappers |
-| Flex/portrait layout | Flex on page/section; `AnchorOverlay` for field listboxes; portal width measure | CSS Grid sections; inline field listbox on `width: 100%` wrapper (`ui.mdc`) | Grid spec in milestone section 4 before TSX |
-| Double chip chrome | `PageHeader` `.titleBadge` frame around `FreshnessBadge` / `StatusBadge` | One chip `.root`; parent slot renders chip directly | Forbidden nested border/padding |
-| Client cold-path smuggle | `useMemo` filter/sort on full list; helpers with business rules | Server query params; `helpers/*_api.ts` fetch+parse only | Handler DTO in same PR |
-| Layer on operator stop | After "клоунада", "костыли", "сноси" - more abstractions instead of revert | Clean rollback to last accepted commit/slice | `git revert` milestone slice |
-| Wrong milestone artifact | Created `deploy/vendor/milestones/` subfolder; lowercase `admin_shell_MILESTONE.md`; frontend/API-filled template | Flat `deploy/vendor/`; UPPERCASE `ADMIN_SHELL_MILESTONE.md`; abstract `MILESTONE_TEMPLATE.md` | Copy template; domain detail in linked `.mdc` only |
-| Abstract milestone prose | "Implement customers page", "polish filters" in docs | File-level implementation plan table | Rejected until section 5 has paths and done-when |
-| Milestone = mini-frontend spec | Template sections only about OpenAPI, grid, React | Abstract structure; admin detail in `ui.mdc` | `Domain rules:` line links `.mdc`; template stays domain-agnostic |
-| Boot HTML lie | Text inside `<div id="root">` breaks `injectAdminBoot` / `TestAdminStaticRoutes` | Empty `<div id="root"></div>` in stub HTML | Holdout: static route tests |
+| Doc ask -> code | Spec or rule update is done | Code or CSS changed on a doc-only turn | Zero implementation diff until milestone REVIEW + explicit implement ask |
+| Symptom patch | Visual bug fixed | Root layout contract unchanged; bug returns | Write invariant in `.mdc` or milestone section 4 first; code in milestone PR |
+| Phantom contract | "See prior contract" / "as before" | Pointer target missing or deleted | Full table in repo (`ui.mdc` or milestone section 4) |
+| Stale cross-doc | One rule file updated | Other index consumers still contradict | Same pass updates all linked rules (`development.mdc`, `core.mdc`, etc.) |
+| Unrun verification | typecheck / gate / test passed | Command not executed or no output pasted | Paste command + path + exit code; or state not run (`quality.mdc`) |
+| Piecemeal tree change | Incremental progress | Half-deleted tree, broken imports, mixed eras | Atomic remove or recreate per operator direction; server stub stays embed-only |
+| Scope creep | "Small related fix" | Handlers, embed, Docker, CI touched without ask | List server-touching steps in milestone section 5 before doing them |
+| Git archaeology | Restored "working" UI from old commit | Pre-spec patterns return (wrappers, flex, stale components) | Rebuild from milestone + `ui.mdc`; no history copy without waiver |
+| Wrapper stack | New chrome fixes layout | Matryoshka abstractions hide grid violation | One section = one module; revert on reject, no compensating wrappers |
+| Layout contract drift | Page "works" in preview | Flex/portrait/portal listbox instead of agreed grid | Grid spec in milestone section 4 before TSX/CSS |
+| Double chrome | Chip/badge looks correct | Nested borders/padding on parent + child | One chip root; parent renders chip directly |
+| Client cold-path smuggle | Fast interactive filters | `useMemo` sort/filter or business rules in browser | Server query params; client fetch + parse only |
+| Layer on rejection | "One more fix" after stop | Rejected architecture compounds | `git revert` slice; deliver only what was asked |
+| Wrong milestone artifact | Milestone doc exists | Wrong path, casing, subfolder, or frontend-filled abstract template | Flat `deploy/vendor/`; UPPERCASE `ADMIN_*_MILESTONE.md`; domain detail in linked `.mdc` |
+| Abstract milestone | "Implement customers page" | No file-level plan or done-when | Section 5 table with paths; rejected until filled |
+| Milestone as mini-spec | OpenAPI/React prose in template | Template stays abstract; rules duplicated | `Domain rules:` links `.mdc`; implementation detail in section 5 only |
+| Static boot drift | Stub HTML "helpful" placeholder | Non-empty `#root` breaks boot inject / route tests | Empty `<div id="root"></div>` in stub; holdout in static route tests |
 
-### Laziness modes (shortcuts agents take)
+### Laziness shortcuts
 
-| Laziness | Shortcut | Cost | Instead |
+| Shortcut | Agent motive | Cost | Instead |
 | :--- | :--- | :--- | :--- |
-| Optimize diff size | Patch visible symptom (padding, width) | Wrong architecture ships; operator retrains | Read operator intent; rules before files |
-| Optimize for green | Skip tests; weaken assertions; `exit 0` gates | CI lies | Run named gate or say not run |
-| Optimize context | Drop constraints from long thread; rewrite `ui.mdc` from memory | Lost dropdown/chip/error contracts | Diff rules against git; merge don't replace blind |
-| Optimize velocity | Copy old `web/` from git when milestone blank | Repeated rejected patterns | Milestone section 5 from scratch |
-| Optimize plausibility | Invent "prior contract", "should pass", "wired" | Operator audit failure | Falsify every claim in section 7 |
-| Optimize scope escape | Doc task -> "while I'm here" code + CI + Docker | Scope violation | Doc-only turn = docs only |
-| Optimize structure | New folder, new gate, new wrapper component | Matryoshka slop (`anti-slop.mdc` CI table) |
-| Tautology test | `require.Equal(t, mockOut, mockOut)`; no negative row | `*_holdout` that fails when fix reverted |
-| Example-only coverage | Single happy-path table; no reject/fault | Corpus ID or chaos/fuzz invariant (`anti-slop.mdc` **Agent-resistant verification**) | Extend leaf rule or revert |
+| Smallest visible diff | Close task quickly | Wrong architecture ships | Read intent; rules before files |
+| Green at any cost | Merge narrative | CI or tests lie | Run named gate or say not run |
+| Context amnesia | Rewrite rules from memory | Lost contracts | Diff rules against git; merge, do not replace blind |
+| History copy | Blank milestone | Rejected patterns return | Section 5 from current tree only |
+| Plausible fiction | "Should pass", "wired", "prior contract" | Operator audit fails | Falsify every claim in milestone section 7 |
+| Scope escape on doc task | "While I'm here" | Doc turn ships code + CI | Doc-only turn = docs only |
+| Matryoshka structure | New folder/gate/wrapper | Bureaucracy slop | Extend leaf gate or single orchestrator |
+| Tautology / example-only test | One happy table row | Mutation survives revert | `*_holdout` negative or corpus/fuzz row |
 
-### Operator signals (hard stop)
+### On operator rejection
 
-When operator says any of: **опиши в .mdc**, **не код**, **сноси**, **костыли**, **клоунада**, **не по чуть-чуть**, **не трогай сервер** (interpret as: no drive-by server edits):
+Stop implementation. Do not add wrappers, portals, or CI layers. Revert the rejected slice if already landed. Deliver only what was asked (rules, milestone spec, or atomic delete).
 
-1. Stop implementation immediately.
-2. Do not add wrappers, portals, or CI layers.
-3. Revert current slice if already rejected.
-4. Deliver only what was asked (rules, abstract milestone, or atomic delete).
+## Admin UI status
 
-### Milestone gate
-
-No implementation until `deploy/vendor/<AREA>_<SLUG>_MILESTONE.md` exists (from `MILESTONE_TEMPLATE.md`) with sections **1 (AI honesty + slop + laziness)**, **4**, **5**, **6**, **7** filled.
+`web/` removed 2026-08-27. Boot stub: `internal/controlplane/admin_static_stub/`. Rebuild per `deploy/vendor/ADMIN_<SLUG>_MILESTONE.md` (`MILESTONE_TEMPLATE.md`, `ui.mdc`). No `web/src/**` until milestone sections 1, 4, 5, 6, 7 are filled. Spec-only or doc-only ask: no code diff in the same turn. Rejected slice: revert; no compensating wrappers or portals.
 
 ## Hot path dishonesty (ingestion, broker, stream, tests)
 
@@ -318,7 +312,7 @@ Applies to `README.md`, `docs/`, `deploy/vendor/`, admin user-visible copy, Graf
 | "Guarantee", "never" (ML on hot path) | OK if qualified: ML in sidecar only | "Batch only"; cite `cmd/fraud-scorer` |
 | Mixed ns / us / ms in one claim | Different layers have different budgets | Table per layer: edge, local filter, Redis Lua, handler E2E |
 
-Open implementation gaps: `deploy/vendor/antifraud_backlog.md` (semantic slugs, not ticket IDs). Do not close backlog items in docs alone.
+Open implementation gaps: `deploy/vendor/competitive_backlog.md`, `deploy/vendor/admin_ui_redesign_backlog.md` (semantic slugs, not ticket IDs). Do not close backlog items in docs alone.
 
 CI: `bash scripts/ci/antifraud_doc_gate.sh` (in `pr_fast.sh`; stale hot-path text, false eliminated claims, legacy naming in vendor docs). Marketing prose: `naming.mdc`.
 
@@ -425,6 +419,11 @@ Forbidden in admin copy and embed snippets (when `web/` exists):
 - Docs-only commits without code in the same changeset (`core.mdc`).
 - Cold-path ML enforcement that mutates operator campaign config (`silent_reject_enabled`) instead of per-IP Redis/CH effects.
 - Empty `garble_policy.go` or missing `//garble:ignore` while `TestGarblePolicy_ingestionPackageIgnored` expects it.
+- God package or god `controlplane` growth: new domain logic in composition root or bridge instead of `internal/<domain>/` (`modular-monolith.mdc`).
+- Bridge file with SQL, validation, or report math — wiring and DTO map only (`modular-monolith.mdc`).
+- `Host` / `Effects` port expanded past 12 methods without splitting the port first.
+- New `internal/<domain>/` stub (types/host only, or missing `doc.go`) or `internal/common` util package — minimum viable extraction (`modular-monolith.mdc`).
+- Premature package split while parent is still under god ceilings and no named extraction task.
 
 ## Fault and chaos proof slop
 
@@ -469,7 +468,7 @@ When verification needs integration tier, **name the command** and ask the opera
 | 3 | Paste command + package path for verification runs actually executed |
 | 4 | Explain why scripts/tests changed |
 | 5 | Add a test that fails without the change when behavior is non-obvious |
-| 6 | Doc claims match code or cite `antifraud_backlog.md` slug; run `antifraud_doc_gate.sh` when touching vendor antifraud docs |
+| 6 | Doc claims match code or cite `competitive_backlog.md` / `ANTIFRAUD.md` slug; run `antifraud_doc_gate.sh` when touching vendor antifraud docs |
 | 7 | Run `pr_fast` or scoped `go test` only when operator asked; never full-repo `-short` or compose prep |
 | 8 | Antifraud: verify silent reject path (flag, decoy HTTP, stream/CH flag, ML action) in code before closing backlog item |
 | 9 | New CI script: no duplicate gate in parent + child; no `exit 0` on failed check; no hardcoded "must exist" script lists |
@@ -480,7 +479,10 @@ When verification needs integration tier, **name the command** and ask the opera
 | 14 | Hot path: no "wired" from `mockRedisClient`, `mockBrokerClient`, or `MockEventStore` alone |
 | 15 | Non-obvious fix: add `*_holdout` negative that fails if branch reverted (`testing.mdc`) |
 | 16 | No tautology / mutation-survivor tests; name verification **tier** (`Agent-resistant verification`) |
+| 17 | No god package: new admin logic in domain package; bridge wiring only; port <=12 methods (`modular-monolith.mdc`) |
+| 18 | No micro-package: new domain dir only with handlers/store + wire + `doc.go` in same PR; no `internal/common` (`modular-monolith.mdc`) |
+| 19 | Every production package has `doc.go` with `//` line docs; extend `scripts/dev/sync_package_doc_go.py` when adding packages (`naming.mdc`) |
 
 ## Related rules
 
-`boundaries.mdc`, `ci.mdc`, `cold-path.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `load-test-bpf.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.
+`boundaries.mdc`, `ci.mdc`, `cold-path.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `load-test-bpf.mdc`, `modular-monolith.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.

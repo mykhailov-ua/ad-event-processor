@@ -29,56 +29,56 @@ func newTokenBucket(perMinute int) *tokenBucket {
 	}
 }
 
-func (bucket *tokenBucket) lastSeen() time.Time {
-	if bucket == nil {
+func (b *tokenBucket) lastSeen() time.Time {
+	if b == nil {
 		return time.Time{}
 	}
-	bucket.mu.Lock()
-	defer bucket.mu.Unlock()
-	return bucket.lastSeenAt
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.lastSeenAt
 }
 
-func (bucket *tokenBucket) allow(now time.Time) bool {
-	if bucket == nil {
+func (b *tokenBucket) allow(now time.Time) bool {
+	if b == nil {
 		return true
 	}
 
-	bucket.mu.Lock()
-	defer bucket.mu.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
-	bucket.lastSeenAt = now
+	b.lastSeenAt = now
 
-	if now.Before(bucket.blockedUntil) {
+	if now.Before(b.blockedUntil) {
 		return false
 	}
 
-	elapsed := now.Sub(bucket.lastRefill).Seconds()
+	elapsed := now.Sub(b.lastRefill).Seconds()
 	if elapsed > 0 {
-		bucket.tokens += elapsed * bucket.refillPerSec
-		if bucket.tokens > bucket.maxTokens {
-			bucket.tokens = bucket.maxTokens
+		b.tokens += elapsed * b.refillPerSec
+		if b.tokens > b.maxTokens {
+			b.tokens = b.maxTokens
 		}
-		bucket.lastRefill = now
+		b.lastRefill = now
 	}
 
-	if bucket.tokens < 1 {
+	if b.tokens < 1 {
 		return false
 	}
-	bucket.tokens--
+	b.tokens--
 	return true
 }
 
-func (bucket *tokenBucket) backoff(d time.Duration) {
-	if bucket == nil || d <= 0 {
+func (b *tokenBucket) backoff(d time.Duration) {
+	if b == nil || d <= 0 {
 		return
 	}
 
-	bucket.mu.Lock()
-	defer bucket.mu.Unlock()
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	until := time.Now().Add(d)
-	if until.After(bucket.blockedUntil) {
-		bucket.blockedUntil = until
+	if until.After(b.blockedUntil) {
+		b.blockedUntil = until
 	}
-	bucket.tokens = 0
+	b.tokens = 0
 }

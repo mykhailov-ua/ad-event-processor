@@ -104,18 +104,7 @@ func openCoordRedis(redisURL string) (redis.UniversalClient, error) {
 	if pwd == "" {
 		pwd = os.Getenv("REDIS_PASSWORD")
 	}
-	opts, err := redis.ParseURL(redisURL)
-	if err != nil {
-		if strings.HasPrefix(redisURL, "unix://") || netaddr.IsUnixSocketPath(redisURL) {
-			redisClient, parseErr := netaddr.ParseRedisURL(redisURL, pwd)
-			if parseErr != nil {
-				return nil, parseErr
-			}
-			return redisClient, nil
-		}
-		return nil, err
-	}
-	return redis.NewClient(opts), nil
+	return netaddr.ParseRedisURL(redisURL, pwd)
 }
 
 func (c *Coordinator) Start(ctx context.Context) {

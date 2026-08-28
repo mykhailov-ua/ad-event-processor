@@ -38,7 +38,7 @@ func NewDealIndex() *DealIndex {
 	return idx
 }
 
-func (idx *DealIndex) UpdateDeals(deals []DealData) {
+func (d *DealIndex) UpdateDeals(deals []DealData) {
 	if deals == nil {
 		deals = []DealData{}
 	}
@@ -64,24 +64,24 @@ func (idx *DealIndex) UpdateDeals(deals []DealData) {
 		e.data = d
 		snap.entries = append(snap.entries, e)
 	}
-	idx.snap.Store(snap)
+	d.snap.Store(snap)
 }
 
-func (idx *DealIndex) Lookup(dealID string) (DealData, bool) {
-	snap := idx.snap.Load()
+func (d *DealIndex) Lookup(dealID string) (DealData, bool) {
+	snap := d.snap.Load()
 	if snap == nil || dealID == "" {
 		return DealData{}, false
 	}
-	d, ok := snap.byDealID[dealID]
-	return d, ok
+	deal, ok := snap.byDealID[dealID]
+	return deal, ok
 }
 
-func (idx *DealIndex) LookupBytes(dealID []byte) (DealData, bool) {
+func (d *DealIndex) LookupBytes(dealID []byte) (DealData, bool) {
 	ln := len(dealID)
 	if ln == 0 || ln > dealIDMaxLen {
 		return DealData{}, false
 	}
-	snap := idx.snap.Load()
+	snap := d.snap.Load()
 	if snap == nil {
 		return DealData{}, false
 	}
@@ -106,8 +106,8 @@ func bytesEqual(a, b []byte) bool {
 	return true
 }
 
-func (idx *DealIndex) All() []DealData {
-	snap := idx.snap.Load()
+func (d *DealIndex) All() []DealData {
+	snap := d.snap.Load()
 	if snap == nil || len(snap.all) == 0 {
 		return nil
 	}
@@ -116,8 +116,8 @@ func (idx *DealIndex) All() []DealData {
 	return out
 }
 
-func (idx *DealIndex) Len() int {
-	snap := idx.snap.Load()
+func (d *DealIndex) Len() int {
+	snap := d.snap.Load()
 	if snap == nil {
 		return 0
 	}

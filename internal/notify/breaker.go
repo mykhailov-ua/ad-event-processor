@@ -32,22 +32,22 @@ func NewCircuitBreaker(failThreshold, successThreshold int64, openTimeout time.D
 	}
 }
 
-func (breaker *CircuitBreaker) State() CircuitState {
-	return CircuitState(atomic.LoadInt32(&breaker.state))
+func (b *CircuitBreaker) State() CircuitState {
+	return CircuitState(atomic.LoadInt32(&b.state))
 }
 
-func (breaker *CircuitBreaker) Allow() bool {
-	state := atomic.LoadInt32(&breaker.state)
+func (b *CircuitBreaker) Allow() bool {
+	state := atomic.LoadInt32(&b.state)
 	if state == int32(CircuitClosed) || state == int32(CircuitHalfOpen) {
 		return true
 	}
 
 	if state == int32(CircuitOpen) {
-		lastOpened := atomic.LoadInt64(&breaker.lastOpenedUnix)
-		if time.Since(time.Unix(0, lastOpened)) >= breaker.openTimeout {
-			if atomic.CompareAndSwapInt32(&breaker.state, int32(CircuitOpen), int32(CircuitHalfOpen)) {
-				atomic.StoreInt64(&breaker.successes, 0)
-				atomic.StoreInt64(&breaker.failures, 0)
+		lastOpened := atomic.LoadInt64(&b.lastOpenedUnix)
+		if time.Since(time.Unix(0, lastOpened)) >= b.openTimeout {
+			if atomic.CompareAndSwapInt32(&b.state, int32(CircuitOpen), int32(CircuitHalfOpen)) {
+				atomic.StoreInt64(&b.successes, 0)
+				atomic.StoreInt64(&b.failures, 0)
 				return true
 			}
 		}
@@ -57,40 +57,40 @@ func (breaker *CircuitBreaker) Allow() bool {
 	return false
 }
 
-func (breaker *CircuitBreaker) RecordSuccess() {
-	state := atomic.LoadInt32(&breaker.state)
+func (b *CircuitBreaker) RecordSuccess() {
+	state := atomic.LoadInt32(&b.state)
 	if state == int32(CircuitHalfOpen) {
-		successes := atomic.AddInt64(&breaker.successes, 1)
-		if successes >= breaker.successThreshold {
-			if atomic.CompareAndSwapInt32(&breaker.state, int32(CircuitHalfOpen), int32(CircuitClosed)) {
-				atomic.StoreInt64(&breaker.failures, 0)
+		successes := atomic.AddInt64(&b.successes, 1)
+		if successes >= b.successThreshold {
+			if atomic.CompareAndSwapInt32(&b.state, int32(CircuitHalfOpen), int32(CircuitClosed)) {
+				atomic.StoreInt64(&b.failures, 0)
 			}
 		}
 	} else if state == int32(CircuitClosed) {
-		atomic.StoreInt64(&breaker.failures, 0)
+		atomic.StoreInt64(&b.failures, 0)
 	}
 }
 
-func (breaker *CircuitBreaker) RecordFailure() {
-	state := atomic.LoadInt32(&breaker.state)
+func (b *CircuitBreaker) RecordFailure() {
+	state := atomic.LoadInt32(&b.state)
 	if state == int32(CircuitHalfOpen) {
-		breaker.trip()
+		b.trip()
 	} else if state == int32(CircuitClosed) {
-		failures := atomic.AddInt64(&breaker.failures, 1)
-		if failures >= breaker.failThreshold {
-			breaker.trip()
+		failures := atomic.AddInt64(&b.failures, 1)
+		if failures >= b.failThreshold {
+			b.trip()
 		}
 	}
 }
 
-func (breaker *CircuitBreaker) trip() {
+func (b *CircuitBreaker) trip() {
 	for {
-		state := atomic.LoadInt32(&breaker.state)
+		state := atomic.LoadInt32(&b.state)
 		if state == int32(CircuitOpen) {
 			return
 		}
-		if atomic.CompareAndSwapInt32(&breaker.state, state, int32(CircuitOpen)) {
-			atomic.StoreInt64(&breaker.lastOpenedUnix, time.Now().UnixNano())
+		if atomic.CompareAndSwapInt32(&b.state, state, int32(CircuitOpen)) {
+			atomic.StoreInt64(&b.lastOpenedUnix, time.Now().UnixNano())
 			return
 		}
 	}

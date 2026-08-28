@@ -117,7 +117,9 @@ read -ra INGEST_REDIS_SHARDS <<< "$(redis_topology_services "$INGEST_REDIS_SHARD
 INFRA=(db db-payment "${REDIS_SHARDS[@]}")
 SINGLE_VPS=(db "${REDIS_SHARDS[@]}" broker processor tracker-0 control)
 INGEST_ONLY=(db "${INGEST_REDIS_SHARDS[@]}" broker processor tracker-0 control)
+MINIMAL=(db redis-0 broker processor tracker-0 control clickhouse)
 INGEST_DEV_COMPOSE=deploy/compose/docker-compose.control-dev.yaml
+MINIMAL_COMPOSE=deploy/compose/docker-compose.minimal.yaml
 VPS_EXTRA_SERVICES=(
   db-payment clickhouse nginx tracker-1 tracker-2 tracker-3
   prometheus grafana loki promtail
@@ -181,6 +183,22 @@ case "$CMD" in
       CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
       AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="$INGEST_DEV_COMPOSE" \
       ad_event_processor_compose --profile ingest_only up -d "${INGEST_ONLY[@]}"
+    ad_event_processor_stop_vps_extras
+    ad_event_processor_stack_hardening
+    ;;
+  minimal | up-minimal)
+    echo "stack.sh: minimal profile runs tracker+control+PG+single Redis+CH; antifraud ML disabled." >&2
+    ad_event_processor_stop_vps_extras
+    if [[ -f "$ROOT/deploy/compose/minimal.stack.env.example" ]]; then
+      echo "stack.sh: merge deploy/compose/minimal.stack.env.example into .env for stable defaults." >&2
+    fi
+    CH_ENABLED=1 REDIS_SHARD_COUNT=1 INGEST_REDIS_SHARD_COUNT=1 \
+      FRAUD_SCORING_ENABLED=false FRAUD_MICROBATCH_ENABLED=false \
+      CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
+      CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
+      CONTROL_ENABLE_PLATFORM_CAMPAIGN_SYNC=0 \
+      AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="$MINIMAL_COMPOSE" \
+      ad_event_processor_compose --profile minimal up -d "${MINIMAL[@]}"
     ad_event_processor_stop_vps_extras
     ad_event_processor_stack_hardening
     ;;
@@ -267,7 +285,7 @@ case "$CMD" in
     esac
     ;;
   *)
-    echo "usage: $0 {infra|clickhouse|full|single-vps|ingest-only|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
+    echo "usage: $0 {infra|clickhouse|full|single-vps|ingest-only|minimal|network-operator|analytics-ml|sentinel|multi-region|crypto|down|status|build|bpf|probe}" >&2
     exit 2
     ;;
 esac

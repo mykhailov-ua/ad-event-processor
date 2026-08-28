@@ -420,6 +420,6 @@ func ApplyOpenRTB3ToEvent(evt *domain.Event, data []byte, parsed *OpenRTB3Parsed
 	if evt.Type == "" {
 		evt.Type = "impression"
 	}
-	evt.Payload = append(evt.Payload[:0], data...)
+	evt.Payload = data
 	return true
 }

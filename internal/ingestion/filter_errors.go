@@ -74,18 +74,33 @@ var filterRejectSpecs = [...]filterRejectSpec{
 type FraudReasonID uint8
 
 const (
-	FraudReasonCodeDatacenterIP       = "datacenter_ip"
-	FraudReasonCodeLowTTC             = "low_ttc"
-	FraudReasonCodeMissingImpTS       = "missing_imp_ts"
-	FraudReasonCodeL3Blocklist        = "l3_blocklist"
-	FraudReasonCodeTLSBlocklist       = "tls_blocklist"
-	FraudReasonCodeDeviceMismatch     = "device_mismatch"
-	FraudReasonCodeTCPMSSAnomaly      = "tcp_mss_anomaly"
-	FraudReasonCodeOSFingerprint      = "os_fingerprint_mismatch"
-	FraudReasonCodeIPv4Rotation       = "ipv4_rotation"
-	FraudReasonCodeResidentialProxy   = "residential_proxy"
-	FraudReasonCodeAttestationMissing = "attestation_missing"
-	FraudReasonCodeModeratorIP        = "moderator_ip"
+	FraudReasonCodeDatacenterIP             = "datacenter_ip"
+	FraudReasonCodeLowTTC                   = "low_ttc"
+	FraudReasonCodeMissingImpTS             = "missing_imp_ts"
+	FraudReasonCodeL3Blocklist              = "l3_blocklist"
+	FraudReasonCodeTLSBlocklist             = "tls_blocklist"
+	FraudReasonCodeDeviceMismatch           = "device_mismatch"
+	FraudReasonCodeTCPMSSAnomaly            = "tcp_mss_anomaly"
+	FraudReasonCodeTCPTunnelMSS             = "tcp_tunnel_mss"
+	FraudReasonCodeTCPSynOSMismatch         = "tcp_syn_os_mismatch"
+	FraudReasonCodeJSONSerializationBot     = "json_serialization_bot"
+	FraudReasonCodeOSFingerprint            = "os_fingerprint_mismatch"
+	FraudReasonCodeIPv4Rotation             = "ipv4_rotation"
+	FraudReasonCodeResidentialProxy         = "residential_proxy"
+	FraudReasonCodeAttestationMissing       = "attestation_missing"
+	FraudReasonCodeModeratorIP              = "moderator_ip"
+	FraudReasonCodeSecFetchAnomaly          = "sec_fetch_anomaly"
+	FraudReasonCodeClientHintsMismatch      = "client_hints_mismatch"
+	FraudReasonCodeTLSALPNMismatch          = "tls_alpn_mismatch"
+	FraudReasonCodeH2SettingsMismatch       = "h2_settings_mismatch"
+	FraudReasonCodeH2PseudoOrder            = "h2_pseudo_order_mismatch"
+	FraudReasonCodeH2DowngradeArtifact      = "h2_downgrade_artifact"
+	FraudReasonCodeHeaderOrderMismatch      = "header_order_mismatch"
+	FraudReasonCodeAcceptEncodingMismatch   = "accept_encoding_mismatch"
+	FraudReasonCodeAcceptLangGeoMismatch    = "accept_lang_geo_mismatch"
+	FraudReasonCodeTLSJA4Mismatch           = "tls_ja4_mismatch"
+	FraudReasonCodeBehaviorTelemetryMissing = "behavior_telemetry_missing"
+	FraudReasonCodeBehaviorBezierBot        = "behavior_bezier_bot"
 )
 
 const (
@@ -97,11 +112,26 @@ const (
 	FraudReasonTLSBlocklist
 	FraudReasonDeviceMismatch
 	FraudReasonTCPMSSAnomaly
+	FraudReasonTCPTunnelMSS
+	FraudReasonTCPSynOSMismatch
+	FraudReasonJSONSerializationBot
 	FraudReasonOSFingerprint
 	FraudReasonIPv4Rotation
 	FraudReasonResidentialProxy
 	FraudReasonAttestationMissing
 	FraudReasonModeratorIP
+	FraudReasonSecFetchAnomaly
+	FraudReasonClientHintsMismatch
+	FraudReasonTLSALPNMismatch
+	FraudReasonH2SettingsMismatch
+	FraudReasonH2PseudoOrder
+	FraudReasonH2DowngradeArtifact
+	FraudReasonHeaderOrderMismatch
+	FraudReasonAcceptEncodingMismatch
+	FraudReasonAcceptLangGeoMismatch
+	FraudReasonTLSJA4Mismatch
+	FraudReasonBehaviorTelemetryMissing
+	FraudReasonBehaviorBezierBot
 	fraudReasonCount
 )
 
@@ -118,19 +148,34 @@ type fraudReasonEntry struct {
 }
 
 var fraudReasonRegistry = [fraudReasonCount]fraudReasonEntry{
-	FraudReasonNone:               {},
-	FraudReasonDatacenterIP:       {code: FraudReasonCodeDatacenterIP, weight: 45, flags: fraudSignalL1High},
-	FraudReasonLowTTC:             {code: FraudReasonCodeLowTTC, weight: 45, flags: fraudSignalL1High},
-	FraudReasonMissingImpTS:       {code: FraudReasonCodeMissingImpTS, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonL3Blocklist:        {code: FraudReasonCodeL3Blocklist, weight: 100, flags: fraudSignalL3},
-	FraudReasonTLSBlocklist:       {code: FraudReasonCodeTLSBlocklist, weight: 45, flags: fraudSignalL1High},
-	FraudReasonDeviceMismatch:     {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonTCPMSSAnomaly:      {code: FraudReasonCodeTCPMSSAnomaly, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonOSFingerprint:      {code: FraudReasonCodeOSFingerprint, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonIPv4Rotation:       {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonResidentialProxy:   {code: FraudReasonCodeResidentialProxy, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonAttestationMissing: {code: FraudReasonCodeAttestationMissing, weight: 35, flags: fraudSignalL2Weak},
-	FraudReasonModeratorIP:        {code: FraudReasonCodeModeratorIP, weight: 45, flags: fraudSignalL1High},
+	FraudReasonNone:                     {},
+	FraudReasonDatacenterIP:             {code: FraudReasonCodeDatacenterIP, weight: 45, flags: fraudSignalL1High},
+	FraudReasonLowTTC:                   {code: FraudReasonCodeLowTTC, weight: 45, flags: fraudSignalL1High},
+	FraudReasonMissingImpTS:             {code: FraudReasonCodeMissingImpTS, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonL3Blocklist:              {code: FraudReasonCodeL3Blocklist, weight: 100, flags: fraudSignalL3},
+	FraudReasonTLSBlocklist:             {code: FraudReasonCodeTLSBlocklist, weight: 45, flags: fraudSignalL1High},
+	FraudReasonDeviceMismatch:           {code: FraudReasonCodeDeviceMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonTCPMSSAnomaly:            {code: FraudReasonCodeTCPMSSAnomaly, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonTCPTunnelMSS:             {code: FraudReasonCodeTCPTunnelMSS, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonTCPSynOSMismatch:         {code: FraudReasonCodeTCPSynOSMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonJSONSerializationBot:     {code: FraudReasonCodeJSONSerializationBot, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonOSFingerprint:            {code: FraudReasonCodeOSFingerprint, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonIPv4Rotation:             {code: FraudReasonCodeIPv4Rotation, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonResidentialProxy:         {code: FraudReasonCodeResidentialProxy, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonAttestationMissing:       {code: FraudReasonCodeAttestationMissing, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonModeratorIP:              {code: FraudReasonCodeModeratorIP, weight: 45, flags: fraudSignalL1High},
+	FraudReasonSecFetchAnomaly:          {code: FraudReasonCodeSecFetchAnomaly, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonClientHintsMismatch:      {code: FraudReasonCodeClientHintsMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonTLSALPNMismatch:          {code: FraudReasonCodeTLSALPNMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonH2SettingsMismatch:       {code: FraudReasonCodeH2SettingsMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonH2PseudoOrder:            {code: FraudReasonCodeH2PseudoOrder, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonH2DowngradeArtifact:      {code: FraudReasonCodeH2DowngradeArtifact, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonHeaderOrderMismatch:      {code: FraudReasonCodeHeaderOrderMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonAcceptEncodingMismatch:   {code: FraudReasonCodeAcceptEncodingMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonAcceptLangGeoMismatch:    {code: FraudReasonCodeAcceptLangGeoMismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonTLSJA4Mismatch:           {code: FraudReasonCodeTLSJA4Mismatch, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonBehaviorTelemetryMissing: {code: FraudReasonCodeBehaviorTelemetryMissing, weight: 35, flags: fraudSignalL2Weak},
+	FraudReasonBehaviorBezierBot:        {code: FraudReasonCodeBehaviorBezierBot, weight: 35, flags: fraudSignalL2Weak},
 }
 
 func FraudReasonCode(id FraudReasonID) string {
@@ -160,8 +205,6 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 		return filterRejectEmergencyBreaker, true
 	case errors.Is(err, ErrFilterTimeout):
 		return filterRejectTimeout, true
-	case isInfraFilterErr(err):
-		return filterRejectInfra, true
 	case errors.Is(err, ErrRateLimitExceeded):
 		return filterRejectRateLimit, true
 	case errors.Is(err, ErrDuplicateEvent):
@@ -200,13 +243,15 @@ func classifyFilterErr(err error) (filterRejectKind, bool) {
 		return filterRejectSegmentExcluded, true
 	case errors.Is(err, ErrSegmentNotIncluded):
 		return filterRejectSegmentNotIncluded, true
+	case isInfraFilterErr(err):
+		return filterRejectInfra, true
 	default:
 		return 0, false
 	}
 }
 
 func isInfraFilterErr(err error) bool {
-	if errors.Is(err, database.ErrRedisCircuitOpen) {
+	if errors.Is(err, database.ErrRedisCircuitOpen) || errors.Is(err, ErrInfraNetwork) {
 		return true
 	}
 	return database.IsNetworkOrSystemError(err)

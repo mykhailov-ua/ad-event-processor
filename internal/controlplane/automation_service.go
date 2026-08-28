@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/licensing"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -26,10 +27,11 @@ type AutomationRuleDTO struct {
 	Threshold       float64             `json:"threshold"`
 	WindowMinutes   int                 `json:"window_minutes"`
 	GroupBy         string              `json:"group_by"`
-	Actions         []automation.Action `json:"actions"`
-	CooldownMinutes int                 `json:"cooldown_minutes"`
-	Enabled         bool                `json:"enabled"`
-	LastFiredAt     *time.Time          `json:"last_fired_at,omitempty"`
+	Actions             []automation.Action `json:"actions"`
+	CooldownMinutes     int                 `json:"cooldown_minutes"`
+	EvalIntervalMinutes int                 `json:"eval_interval_minutes"`
+	Enabled             bool                `json:"enabled"`
+	LastFiredAt         *time.Time          `json:"last_fired_at,omitempty"`
 	CreatedAt       time.Time           `json:"created_at"`
 	UpdatedAt       time.Time           `json:"updated_at"`
 }
@@ -44,8 +46,11 @@ type UpsertAutomationRuleRequest struct {
 	WindowMinutes   int                 `json:"window_minutes"`
 	GroupBy         string              `json:"group_by"`
 	Actions         []automation.Action `json:"actions"`
-	CooldownMinutes int                 `json:"cooldown_minutes"`
-	Enabled         bool                `json:"enabled"`
+	CooldownMinutes     int                 `json:"cooldown_minutes"`
+	EvalIntervalMinutes int                 `json:"eval_interval_minutes"`
+	Enabled             bool                `json:"enabled"`
+	PresetKey           string              `json:"preset_key,omitempty"`
+	PresetParameters    map[string]float64  `json:"preset_parameters,omitempty"`
 }
 
 type AutomationDryRunResponse struct {
@@ -75,7 +80,11 @@ func (s *Service) CreateAutomationRule(ctx context.Context, req UpsertAutomation
 	if s == nil || s.pool == nil {
 		return AutomationRuleDTO{}, fmt.Errorf("service unavailable")
 	}
-	params, err := buildAutomationRuleParams(req)
+	req, err := applyAutomationPreset(req)
+	if err != nil {
+		return AutomationRuleDTO{}, err
+	}
+	params, err := s.buildAutomationRuleParams(ctx, req)
 	if err != nil {
 		return AutomationRuleDTO{}, err
 	}
@@ -90,22 +99,27 @@ func (s *Service) UpdateAutomationRule(ctx context.Context, ruleID uuid.UUID, re
 	if s == nil || s.pool == nil {
 		return AutomationRuleDTO{}, fmt.Errorf("service unavailable")
 	}
-	params, err := buildAutomationRuleParams(req)
+	req, err := applyAutomationPreset(req)
+	if err != nil {
+		return AutomationRuleDTO{}, err
+	}
+	params, err := s.buildAutomationRuleParams(ctx, req)
 	if err != nil {
 		return AutomationRuleDTO{}, err
 	}
 	row, err := db.New(s.pool).UpdateAutomationRule(ctx, db.UpdateAutomationRuleParams{
-		ID:              domain.ToUUID(ruleID),
-		Name:            params.Name,
-		CampaignID:      params.CampaignID,
-		Metric:          params.Metric,
-		Operator:        params.Operator,
-		Threshold:       params.Threshold,
-		WindowMinutes:   params.WindowMinutes,
-		GroupBy:         params.GroupBy,
-		Actions:         params.Actions,
-		CooldownMinutes: params.CooldownMinutes,
-		Enabled:         params.Enabled,
+		ID:                  domain.ToUUID(ruleID),
+		Name:                params.Name,
+		CampaignID:          params.CampaignID,
+		Metric:              params.Metric,
+		Operator:            params.Operator,
+		Threshold:           params.Threshold,
+		WindowMinutes:       params.WindowMinutes,
+		GroupBy:             params.GroupBy,
+		Actions:             params.Actions,
+		CooldownMinutes:     params.CooldownMinutes,
+		EvalIntervalMinutes: params.EvalIntervalMinutes,
+		Enabled:             params.Enabled,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -147,7 +161,7 @@ func (s *Service) DryRunAutomationRule(ctx context.Context, ruleID uuid.UUID) (A
 		return AutomationDryRunResponse{}, err
 	}
 	ch := s.ClickHouseQuery()
-	w := automation.NewWorker(s.pool, ch, nil, time.Minute)
+	w := automation.NewWorker(s.pool, ch, nil, time.Minute, 50)
 	would, err := w.DryRun(ctx, rule, campaignIDs)
 	if err != nil {
 		return AutomationDryRunResponse{}, err
@@ -170,7 +184,73 @@ func (s *Service) resolveAutomationCampaignIDs(ctx context.Context, rule automat
 	return out, nil
 }
 
-func buildAutomationRuleParams(req UpsertAutomationRuleRequest) (db.InsertAutomationRuleParams, error) {
+func applyAutomationPreset(req UpsertAutomationRuleRequest) (UpsertAutomationRuleRequest, error) {
+	key := strings.TrimSpace(req.PresetKey)
+	if key == "" {
+		return req, nil
+	}
+	expanded, err := automation.ExpandPreset(key, req.PresetParameters)
+	if err != nil {
+		return req, err
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		req.Name = expanded.Name
+	}
+	if strings.TrimSpace(req.Metric) == "" {
+		req.Metric = expanded.Metric
+	}
+	if strings.TrimSpace(req.Operator) == "" {
+		req.Operator = expanded.Operator
+	}
+	if req.Threshold == 0 {
+		req.Threshold = expanded.Threshold
+	}
+	if req.WindowMinutes == 0 {
+		req.WindowMinutes = expanded.WindowMinutes
+	}
+	if strings.TrimSpace(req.GroupBy) == "" {
+		req.GroupBy = expanded.GroupBy
+	}
+	if len(req.Actions) == 0 {
+		req.Actions = expanded.Actions
+	}
+	if req.CooldownMinutes == 0 {
+		req.CooldownMinutes = expanded.CooldownMinutes
+	}
+	if req.EvalIntervalMinutes == 0 {
+		req.EvalIntervalMinutes = expanded.EvalIntervalMinutes
+	}
+	return req, nil
+}
+
+func (s *Service) automationEvalFloorMinutes() int {
+	if s == nil || s.cfg == nil {
+		return 15
+	}
+	floor := s.cfg.Management.AutomationRulesIntervalMin
+	if floor < 5 {
+		return 5
+	}
+	if floor > 60 {
+		return 60
+	}
+	return floor
+}
+
+func (s *Service) validateAutomationLicense(ctx context.Context, actions []automation.Action) error {
+	for _, action := range actions {
+		if action.Type != automation.ActionPlatformPause {
+			continue
+		}
+		snap, err := licensing.LoadDeploymentSnapshot(ctx, s.pool)
+		if err != nil || !snap.ModuleAllowed(func(f licensing.FeatureSet) bool { return f.AdPlatformCampaignAPIEnabled() }) {
+			return fmt.Errorf("platform_pause requires ad_platform_campaign_api license")
+		}
+	}
+	return nil
+}
+
+func (s *Service) buildAutomationRuleParams(ctx context.Context, req UpsertAutomationRuleRequest) (db.InsertAutomationRuleParams, error) {
 	customerID, err := uuid.Parse(req.CustomerID)
 	if err != nil {
 		return db.InsertAutomationRuleParams{}, fmt.Errorf("invalid customer_id")
@@ -197,6 +277,9 @@ func buildAutomationRuleParams(req UpsertAutomationRuleRequest) (db.InsertAutoma
 	if err := validateAutomationActions(req.Actions, groupBy); err != nil {
 		return db.InsertAutomationRuleParams{}, err
 	}
+	if err := s.validateAutomationLicense(ctx, req.Actions); err != nil {
+		return db.InsertAutomationRuleParams{}, err
+	}
 	actionsRaw, err := automation.MarshalActions(req.Actions)
 	if err != nil {
 		return db.InsertAutomationRuleParams{}, err
@@ -209,6 +292,10 @@ func buildAutomationRuleParams(req UpsertAutomationRuleRequest) (db.InsertAutoma
 	if req.CooldownMinutes == 0 {
 		cooldown = 60
 	}
+	evalInterval, err := automation.NormalizeEvalIntervalMinutes(req.EvalIntervalMinutes, s.automationEvalFloorMinutes())
+	if err != nil {
+		return db.InsertAutomationRuleParams{}, err
+	}
 	var campParam pgtype.UUID
 	if strings.TrimSpace(req.CampaignID) != "" {
 		campID, err := uuid.Parse(req.CampaignID)
@@ -218,17 +305,18 @@ func buildAutomationRuleParams(req UpsertAutomationRuleRequest) (db.InsertAutoma
 		campParam = domain.ToUUID(campID)
 	}
 	return db.InsertAutomationRuleParams{
-		CustomerID:      domain.ToUUID(customerID),
-		CampaignID:      campParam,
-		Name:            name,
-		Metric:          metric,
-		Operator:        operator,
-		Threshold:       req.Threshold,
-		WindowMinutes:   int32(window),
-		GroupBy:         groupBy,
-		Actions:         actionsRaw,
-		CooldownMinutes: int32(cooldown),
-		Enabled:         req.Enabled,
+		CustomerID:          domain.ToUUID(customerID),
+		CampaignID:          campParam,
+		Name:                name,
+		Metric:              metric,
+		Operator:            operator,
+		Threshold:           req.Threshold,
+		WindowMinutes:       int32(window),
+		GroupBy:             groupBy,
+		Actions:             actionsRaw,
+		CooldownMinutes:     int32(cooldown),
+		EvalIntervalMinutes: int32(evalInterval),
+		Enabled:             req.Enabled,
 	}, nil
 }
 
@@ -268,10 +356,14 @@ func automationRuleToDTO(row db.AutomationRule) (AutomationRuleDTO, error) {
 		WindowMinutes:   int(row.WindowMinutes),
 		GroupBy:         row.GroupBy,
 		Actions:         actions,
-		CooldownMinutes: int(row.CooldownMinutes),
-		Enabled:         row.Enabled,
-		CreatedAt:       row.CreatedAt.Time,
-		UpdatedAt:       row.UpdatedAt.Time,
+		CooldownMinutes:     int(row.CooldownMinutes),
+		EvalIntervalMinutes: int(row.EvalIntervalMinutes),
+		Enabled:             row.Enabled,
+		CreatedAt:           row.CreatedAt.Time,
+		UpdatedAt:           row.UpdatedAt.Time,
+	}
+	if dto.EvalIntervalMinutes <= 0 {
+		dto.EvalIntervalMinutes = 15
 	}
 	if row.CampaignID.Valid {
 		dto.CampaignID = uuid.UUID(row.CampaignID.Bytes).String()

@@ -630,3 +630,168 @@ AffiliateStatusPreset:
       type: array
       items:
         $ref: '#/AffiliateStatusPresetEntry'
+
+AutomationPresetParameter:
+  type: object
+  required: [key, type]
+  properties:
+    key:
+      type: string
+    type:
+      type: string
+    description:
+      type: string
+    default:
+      type: number
+      format: double
+    min:
+      type: number
+      format: double
+    max:
+      type: number
+      format: double
+
+AutomationPreset:
+  type: object
+  required: [key, title, description, parameters_schema]
+  properties:
+    key:
+      type: string
+    title:
+      type: string
+    description:
+      type: string
+    parameters_schema:
+      type: array
+      items:
+        $ref: '#/AutomationPresetParameter'
+    required_license_features:
+      type: array
+      items:
+        type: string
+
+AutomationAction:
+  type: object
+  required: [type]
+  properties:
+    type:
+      type: string
+      enum: [notify, pause_campaign, blacklist_placement, platform_pause]
+    webhook_url:
+      type: string
+    network:
+      type: string
+
+AutomationRule:
+  type: object
+  required:
+    - id
+    - customer_id
+    - name
+    - metric
+    - operator
+    - threshold
+    - window_minutes
+    - group_by
+    - actions
+    - cooldown_minutes
+    - eval_interval_minutes
+    - enabled
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    metric:
+      type: string
+    operator:
+      type: string
+    threshold:
+      type: number
+      format: double
+    window_minutes:
+      type: integer
+    group_by:
+      type: string
+    actions:
+      type: array
+      items:
+        $ref: '#/AutomationAction'
+    cooldown_minutes:
+      type: integer
+    eval_interval_minutes:
+      type: integer
+      enum: [5, 10, 15, 30, 60]
+    enabled:
+      type: boolean
+    last_fired_at:
+      type: string
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertAutomationRuleRequest:
+  type: object
+  required: [customer_id, enabled]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    metric:
+      type: string
+    operator:
+      type: string
+    threshold:
+      type: number
+      format: double
+    window_minutes:
+      type: integer
+    group_by:
+      type: string
+    actions:
+      type: array
+      items:
+        $ref: '#/AutomationAction'
+    cooldown_minutes:
+      type: integer
+    eval_interval_minutes:
+      type: integer
+      enum: [5, 10, 15, 30, 60]
+    enabled:
+      type: boolean
+    preset_key:
+      type: string
+      enum: [placement_roi_guard, fraud_rate_guard, spend_cap_guard, silent_reject_spike]
+    preset_parameters:
+      type: object
+      additionalProperties:
+        type: number
+        format: double
+
+AutomationDryRunResult:
+  type: object
+  required: [would_fire]
+  properties:
+    would_fire:
+      type: array
+      items:
+        type: object
+        additionalProperties: true

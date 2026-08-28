@@ -3,6 +3,7 @@ package controlplane
 import (
 	"net/http"
 
+	"ad-event-processor/internal/automation"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -27,6 +28,7 @@ func (h *AutomationHTTPHandlers) Register(mux *http.ServeMux) {
 	if perm == nil {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
+	mux.HandleFunc("GET /api/v1/automation/presets", limit(perm("campaigns:read", h.listPresets)))
 	mux.HandleFunc("GET /api/v1/automation/rules", limit(perm("campaigns:read", h.listRules)))
 	mux.HandleFunc("POST /api/v1/automation/rules", limit(perm("campaigns:write", h.createRule)))
 	mux.HandleFunc("PUT /api/v1/automation/rules/{id}", limit(perm("campaigns:write", h.updateRule)))
@@ -50,6 +52,10 @@ func (h *AutomationHTTPHandlers) listRules(w http.ResponseWriter, r *http.Reques
 		rules = []AutomationRuleDTO{}
 	}
 	httpresponse.JSON(w, http.StatusOK, rules)
+}
+
+func (h *AutomationHTTPHandlers) listPresets(w http.ResponseWriter, r *http.Request) {
+	httpresponse.JSON(w, http.StatusOK, automation.ListPresets())
 }
 
 func (h *AutomationHTTPHandlers) createRule(w http.ResponseWriter, r *http.Request) {

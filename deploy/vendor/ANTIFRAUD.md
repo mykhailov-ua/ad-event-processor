@@ -74,10 +74,25 @@ Registry: `fraudReasonRegistry` in `filter_errors.go`.
 | `l3_blocklist` | 100 | L3 | `FraudBlacklistFilter`; 128-shard in-memory TTL cache (5 s, max 2048 entries/shard); `SISMEMBER` on miss; Redis error fail-open |
 | `missing_imp_ts` | 35 | L2-weak | |
 | `device_mismatch` | 35 | L2-weak | UA vs `Sec-CH-UA` |
-| `tcp_mss_anomaly` | 35 | L2-weak | `evt.TCPMSS` / `X-TCP-MSS` from edge |
+| `sec_fetch_anomaly` | 35 | L2-weak | `Sec-Fetch-*` missing or navigate+document on JSON POST |
+| `client_hints_mismatch` | 35 | L2-weak | `Sec-CH-UA-Platform` / `-Mobile` vs UA family |
+| `tls_alpn_mismatch` | 35 | L2-weak | Chrome UA with ALPN `http/1.1` only (no `h2`) |
+| `h2_settings_mismatch` | 35 | L2-weak | Client SETTINGS / WINDOW_UPDATE vs Chrome UA |
+| `h2_pseudo_order_mismatch` | 35 | L2-weak | HPACK pseudo-header order vs Chrome UA |
+| `h2_downgrade_artifact` | 35 | L2-weak | Forbidden H1 headers or mixed case on HTTP/2 wire |
+| `header_order_mismatch` | 35 | L2-weak | HTTP/1.1 header order vs Chrome template (requires `Sec-Fetch-*`) |
+| `accept_encoding_mismatch` | 35 | L2-weak | Chrome UA `Accept-Encoding` missing `br` or `zstd` (version-gated) |
+| `accept_lang_geo_mismatch` | 35 | L2-weak | `Accept-Language` vs GeoIP country (campaign `accept_lang_geo_enabled`) |
+| `tls_ja4_mismatch` | 35 | L2-weak | JA4 a-section prefix vs UA browser family corpus |
+| `tcp_mss_anomaly` | 35 | L2-weak | `evt.TCPMSS` / `X-TCP-MSS` high-byte below `TCP_MSS_ANOMALY_MIN_BYTE` |
+| `tcp_tunnel_mss` | 35 | L2-weak | MSS below `TCP_MSS_TUNNEL_THRESHOLD` on residential ASN (not mobile/DC) |
+| `tcp_syn_os_mismatch` | 35 | L2-weak | XDP SYN hash (`X-TCP-SIG`) vs UA family corpus |
+| `json_serialization_bot` | 35 | L2-weak | Native JSON `/track` allocator fingerprint (campaign opt-in) |
+| `behavior_telemetry_missing` | 35 | L2-weak | Conversion POST without `telemetry.events` when `safe_page_enabled` and `attestation_enabled` (`BEHAVIOR_TELEMETRY_ENABLED`) |
+| `behavior_bezier_bot` | 35 | L2-weak | Linear uniform mousemove stream in `telemetry.events` (`checkBezierBot`) |
 | `os_fingerprint_mismatch` | 35 | L2-weak | TTL vs UA family; disable behind CDN (`edge.mdc`) |
 | `ipv4_rotation` | 35 | L2-weak | Subnet velocity tables |
-| `residential_proxy` | 35 | L2-weak | Hot cache / intel enricher; SKU `external_residential_intel` |
+| `residential_proxy` | 35 | L2-weak | Ring velocity heuristic (`RESIDENTIAL_PROXY_HOT_ENABLED`) or intel LPM snapshot (`RESIDENTIAL_INTEL_HOT_READ_ENABLED`, SKU `external_residential_intel`, `intel:residential:` + `external_residential.txt`) |
 | `moderator_ip` | 45 | L1-high | Signed `moderator_intel_v1` snapshot; per-campaign `moderator_intel_enabled` (default off) |
 | `attestation_missing` | 35 | L2-weak | Light attestation on `/click` |
 
@@ -92,11 +107,16 @@ TCP MSS, TTL, and JA3/JA4 at the tracker reflect edge-terminated connections whe
 | Signal | Direct edge (nginx terminates TLS, TCP FP sync) | CDN / ALB without edge TCP FP |
 | :--- | :--- | :--- |
 | `tcp_mss_anomaly` | Active when `TCP_MSS_ANOMALY_ENABLED` and `X-TCP-MSS` set | Fail-open: no header, no signal (`tcp_mss_filter.go`) |
+| `tcp_tunnel_mss` | Active when `TCP_MSS_TUNNEL_ENABLED`, `X-TCP-MSS` set, and GeoIP ASN resolves | Fail-open: no header or ASN lookup miss |
+| `tcp_syn_os_mismatch` | Active when `TCP_SYN_SIG_ENABLED` and `X-TCP-SIG` set | Fail-open: no header or unknown hash in corpus |
+| `rtt_split_tunnel` (cold) | `X-RTT-SYN-MS` + `X-TTFB-APP-MS` on edge; columns `clicks.rtt_split_delta_ms` | Fail-open: no headers; `ivt-detector` rule `rtt_split_tunnel` only (no hot `/track` signal) |
 | `os_fingerprint_mismatch` | Active when `OS_FINGERPRINT_MISMATCH_ENABLED` and `X-TCP-TTL` set | Fail-open: `ad_os_fingerprint_skipped_total{reason="no_tcp_headers"}`; or set `OS_FINGERPRINT_MISMATCH_ENABLED=false` |
 | TLS JA3/JA4 L1 block | Edge TLS fingerprint on `/click` | CDN JA3 only; use allowlists, not standalone block |
 | `device_mismatch` (UA vs TLS) | Meaningful when edge forwards client TLS hints | Not reliable as client JA3 proof behind CDN |
+| `tls_alpn_mismatch` | Active when `TLS_ALPN_MISMATCH_ENABLED` and `X-TLS-ALPN` set | Fail-open without header |
+| `sec_fetch_anomaly` / `client_hints_mismatch` | Browser headers on direct edge | CDN may strip Client Hints or Sec-Fetch; fail-open when absent |
 
-JA3/JA4 spoofing and ECH reduce standalone TLS block efficacy.
+JA3/JA4 spoofing and ECH reduce standalone TLS block efficacy. JA4 browser corpus (`tls_ja4_mismatch`) matches only the JA4 a-section prefix (before first `_`) against bundled `deploy/vendor/fixtures/tls_ja4_browser_corpus.txt`; unknown prefixes fail-open. CDN-terminated TLS forwards edge JA4 via `X-TLS-JA4`; corpus is ineffective when header absent.
 
 ---
 
@@ -131,6 +151,25 @@ Placement and fraud blacklist run inside `UnifiedFilter.Check` before `EVALSHA`.
 Local quanta (`LOCAL_QUOTA_MODE=live`) can eliminate sync `EVALSHA` for eligible traffic.
 
 Fraud stream aggregation (`fraud_stream_queue.go`): L3 and dual-L1 events are never aggregated (`fraudAggregateExempt`); weak L2 signals may batch into `fraud_aggregate` events.
+
+Cross-layer desync (`layer_desync_count` on fraud-stream `AdStreamEvent`): count of distinct wire layers among `{tcp_os, tls_ja4, client_hints, sec_fetch, h2}` that fired on the same reject. Derived in `layer_desync.go` from `fraudAccumulator` signals at `applyFraudAccumulatorForCampaign`. Multiple H2 reasons (`h2_settings_mismatch`, `h2_pseudo_order`, `h2_downgrade_artifact`) count as one `h2` layer. Non-wire signals (datacenter IP, TTC, blacklist) do not increment the count.
+
+**Admin report:** `GET /api/v1/reports/layer-desync-summary` aggregates `fraud_events.layer_desync_count` by campaign (`reports_layer_desync_summary.go`). Requires CH migration `00028_fraud_events_layer_desync.sql`.
+
+**Grafana panel (fraud-stream consumer):** after the processor unmarshals `AdStreamEvent`, expose `layer_desync_count` as a Prometheus histogram or heatmap bucketed 0–5. Example PromQL on a custom counter labeled by `layer_desync_count` (emit from fraud-stream consumer metric hook): `sum by (layer_desync_count) (rate(ad_fraud_stream_layer_desync_total[5m]))`. Alert when share with `layer_desync_count >= 3` exceeds baseline (multi-layer bot / proxy toolchain).
+
+### Fraud evidence pack (CPA dispute export)
+
+`GET /api/v1/reports/fraud-evidence-pack?click_id={id}` returns a signed JSON bundle for network CPA disputes: CH timeline (impression/click/conversion), `fraud_events` rows (reason, score, `layer_desync_count`, silent reject), and deduplicated signal summary. HMAC-SHA256 over canonical JSON (`digest_sha256` + `signature` fields).
+
+| Env | Default | Role |
+| :--- | :--- | :--- |
+| `FRAUD_EVIDENCE_PACK_HMAC_SECRET` | falls back to `CONSENT_HMAC_SECRET` | Signing key for dispute bundle |
+| Permissions | `audit:read` + `campaigns:read` | Same as fraud-breakdown |
+
+No raw IP/UA in bundle (PII hashed at ingest). Empty timeline and fraud rows → `404 NOT_FOUND`. Signing secret unset → `503 EVIDENCE_SIGNING_UNAVAILABLE`.
+
+Buyer-facing dispute surfaces: `customer_fraud_dispute_evidence` (cold path API); operator signed export remains `fraud-evidence-pack` above. Cross-check `layer_desync_count` with `GET /api/v1/reports/layer-desync-drilldown` aggregates.
 
 ---
 
@@ -167,7 +206,29 @@ Compose profile `analytics-ml` adds `ivt-detector` and `fraud-scorer`. SKU flags
 
 ### `cmd/ivt-detector`
 
-Poll interval ~5 minutes on ClickHouse `ml_features_1m`. Rules: CTR spikes, fingerprint clusters, interval bots. Pauses when outbox `PENDING` > 500.
+Poll interval ~5 minutes on ClickHouse `ml_features_1m`. Rules: CTR spikes, fingerprint clusters, interval bots, `rtt_split_tunnel` (reads `clicks.rtt_split_delta_ms`; no hot-path signal). Pauses when outbox `PENDING` > 500.
+
+| Env | Default | Role |
+| :--- | :--- | :--- |
+| `IVT_RTT_SPLIT_TUNNEL_ENABLED` | `true` | Cold `rtt_split_tunnel` rule in `ivt-detector` |
+| `IVT_RTT_SPLIT_MIN_DELTA_MS` | `150` | Minimum `ttfb_app_ms - rtt_syn_ms` average per IP |
+| `IVT_RTT_SPLIT_MAX_VARIANCE` | `2500` | Maximum `varPop(rtt_split_delta_ms)` per IP (low jitter tunnel) |
+| `IVT_RTT_SPLIT_MIN_SAMPLES` | `5` | Minimum click rows with timing per IP in window |
+
+Edge forwards `X-RTT-SYN-MS` (`$tcpinfo_rtt`) and `X-TTFB-APP-MS` (`$connection_time`). Tracker persists async to `clicks` / `conversions` / `impressions` (`00026_rtt_split_tunnel.sql`); no sync CH read on `/track`. Admin report: `GET /api/v1/reports/rtt-split-tunnel`. CDN-terminated TCP does not expose RTT headers to origin; treat `signals_degraded` / stale freshness as expected without edge timing (`edge.mdc`).
+
+### Mobile biometrics (cold path)
+
+Client snippet `internal/ingestion/track_biometrics.js`: arms `touchstart`/`touchmove`/`deviceorientation`, exposes `trackBiometricsSnapshot()` for `telemetry.events` on conversion `POST /track`. Hot path (`MOBILE_BIOMETRICS_ENABLED`, default `false`) summarizes touch count, gyro sample count, variance, and flat-orientation flag into `conversions` columns (`00027_mobile_biometrics.sql`). No ML on `/track`.
+
+| Env | Default | Role |
+| :--- | :--- | :--- |
+| `MOBILE_BIOMETRICS_ENABLED` | `false` | Ingest summary on `/track` when `telemetry` present |
+| `IVT_MOBILE_BIOMETRICS_ENABLED` | `true` | Cold `mobile_biometrics` rule in `ivt-detector` |
+| `IVT_MOBILE_BIOMETRICS_MIN_SAMPLES` | `5` | Minimum mobile conversion rows per IP in window |
+| `IVT_MOBILE_BIOMETRICS_MIN_FLAT_HITS` | `4` | Flat gyro emulator threshold (orientation range <= 2 deg) |
+| `IVT_MOBILE_BIOMETRICS_MIN_MOTIONLESS` | `5` | Mobile rows with zero touch and zero gyro samples |
+| `IVT_MOBILE_BIOMETRICS_MIN_GYRO_SAMPLES` | `3` | Minimum gyro samples for flat-orientation match |
 
 ML enforcement actions (`EnqueueFraudThreatBatch`):
 
@@ -238,4 +299,4 @@ bash scripts/ci/antifraud_doc_gate.sh
 
 Holdout: `TestFraudReject_holdoutSilentRejectFlag`, `TestFilterEngine_shadowSkipsUnifiedBudgetDebit_holdout`.
 
-ROI backlog closed 2026-08-26 (conversion reject, automation IVT metrics, canvas retest, CGNAT policy): [antifraud_backlog.md](./antifraud_backlog.md).
+ROI slugs shipped 2026-08-26 (conversion reject, automation IVT metrics, canvas retest, CGNAT policy). L4/TLS/L7 desync: [residential_proxy_detection_backlog.md](./residential_proxy_detection_backlog.md) (**CLOSED**).

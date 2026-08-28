@@ -26,14 +26,14 @@ func NewResidentialIntelEnricherFromConfig(cfg *config.Config, redisClient redis
 	}
 	cache := NewResidentialIntelCache(redisClient, cfg.ExternalResidentialIntel.CacheTTL)
 	return NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
-		Provider:    provider,
-		Cache:       cache,
-		ClickHouseWrite:     clickhouseWriteConn,
-		RedisClient: redisClient,
-		FeedDir:     cfg.ExternalResidentialIntel.FeedDir,
-		ProviderID:  cfg.ExternalResidentialIntel.ProviderLabel,
-		RecentLim:   cfg.ExternalResidentialIntel.RecentLimit,
-		BatchLim:    cfg.ExternalResidentialIntel.BatchSize,
-		Interval:    cfg.ExternalResidentialIntel.ScanInterval,
+		Provider:        provider,
+		Cache:           cache,
+		ClickHouseWrite: clickhouseWriteConn,
+		RedisClient:     redisClient,
+		FeedDir:         cfg.ExternalResidentialIntel.FeedDir,
+		ProviderID:      cfg.ExternalResidentialIntel.ProviderLabel,
+		RecentLim:       cfg.ExternalResidentialIntel.RecentLimit,
+		BatchLim:        cfg.ExternalResidentialIntel.BatchSize,
+		Interval:        cfg.ExternalResidentialIntel.ScanInterval,
 	}), nil
 }

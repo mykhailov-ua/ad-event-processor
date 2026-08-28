@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/fraud"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
@@ -45,8 +46,8 @@ func normalizeFraudExplainHours(hours int) int {
 	if hours <= 0 {
 		return fraudExplainDefaultHours
 	}
-	if hours > fraudExplainMaxHours {
-		return fraudExplainMaxHours
+	if hours > fraudadmin.ExplainMaxHours {
+		return fraudadmin.ExplainMaxHours
 	}
 	return hours
 }

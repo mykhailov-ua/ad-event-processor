@@ -89,12 +89,28 @@ func ParseOpenRTB26(payload []byte) OpenRTB26Parsed {
 }
 
 func ParseOpenRTB26Into(payload []byte, out *OpenRTB26Parsed) {
-	ParseOpenRTB26Split(payload, &out.OpenRTB26Hot, &out.OpenRTB26Cold)
+	ParseOpenRTB26Parsed(payload, out)
+}
+
+func ParseOpenRTB26Parsed(payload []byte, out *OpenRTB26Parsed) {
+	if out == nil {
+		return
+	}
+	resetOpenRTB26Parsed(out)
+	parseOpenRTB26Fields(payload, &out.OpenRTB26Hot, &out.OpenRTB26Cold)
 }
 
 func ParseOpenRTB26Split(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
-	resetOpenRTB26Hot(hot)
-	resetOpenRTB26Cold(cold)
+	if p, ok := openRTB26ParsedFromSplit(hot, cold); ok {
+		resetOpenRTB26Parsed(p)
+	} else {
+		resetOpenRTB26Hot(hot)
+		resetOpenRTB26Cold(cold)
+	}
+	parseOpenRTB26Fields(payload, hot, cold)
+}
+
+func parseOpenRTB26Fields(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
 	n := len(payload)
 	if n < 12 {
 		return

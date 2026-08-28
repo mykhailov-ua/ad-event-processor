@@ -11,12 +11,21 @@ import (
 	"sync/atomic"
 	"time"
 
+	"ad-event-processor/internal/brand"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/fraud"
+	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/internal/privacyadmin"
+	"ad-event-processor/internal/reportjob"
+	"ad-event-processor/internal/settingsadmin"
+	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/domainhealth"
 	"ad-event-processor/pkg/landerhost"
@@ -63,8 +72,18 @@ type Service struct {
 	cloudflare               CloudflareAPI
 	reputation               *domainhealth.ReputationChecker
 	shard0Mu                 sync.Mutex
-	reportJobRunner          *ReportJobRunner
+	reportJobRunner          *reportjob.ReportJobRunner
 	landerStore              *landerhost.Store
+	campaignRuntime          *campaign.Runtime
+	campaignWorker           *campaign.Worker
+	wizardStore              *campaign.WizardStore
+	brandStore               *brand.Store
+	supplyStore              *supply.Store
+	flowStore                *flow.Store
+	platformStore            *platformadmin.Store
+	marginGuardStore         *marginguard.Store
+	settingsStore            *settingsadmin.Store
+	privacyStore             *privacyadmin.Store
 }
 
 func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {

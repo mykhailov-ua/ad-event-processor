@@ -43,7 +43,7 @@ func TestCollectFanOut_partialFailure(t *testing.T) {
 
 func TestCollectFanOut_respectsConcurrencyCap(t *testing.T) {
 	t.Parallel()
-	collector := &FanOutCollector{maxConcurrency: 2, perSourceTO: time.Second, route: "cap"}
+	collector := &FanOutCollector{MaxConcurrency: 2, PerSourceTO: time.Second, Route: "cap"}
 	var peak atomic.Int32
 	var current atomic.Int32
 	sources := make([]FanOutSource[int], 0, 6)

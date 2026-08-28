@@ -13,7 +13,7 @@ Static maps for `internal/migrationsource` when importing campaigns from Keitaro
 
 ## Source kinds (honest contract)
 
-File upload only. No live HTTP pull to Keitaro or Binom in v1.
+File upload remains the default. Live HTTP pull is available for `keitaro_admin_api` and `binom_report_api` via `POST /api/v1/campaigns/migrate/pull/preview` and `POST /api/v1/campaigns/migrate/pull/import` (POST body only; token never logged or echoed).
 
 | `source_kind` | Wire format | Required fields per campaign |
 | :--- | :--- | :--- |
@@ -47,11 +47,24 @@ Core API returns `traffic_source_id`, not the label. Operators merge `traffic_so
 
 Report rows have `url` but no `lander_url` or `postback_url`. Preview emits `lander_external_only`; operators set lander and re-enter postback secrets manually.
 
+### Keitaro interchange streams
+
+`keitaro_json` campaigns may include `streams[]` with `paths[]` (rotation weights, lander/offer refs). Import maps the first stream into the campaign flow snapshot; additional streams emit `multiple_streams_truncated`. Unsupported filter nodes in `unmapped_nodes` emit `stream_node_unmapped` warnings.
+
+### Live pull
+
+| `source_kind` | Default path | Auth |
+| :--- | :--- | :--- |
+| `keitaro_admin_api` | `GET /admin_api/v1/campaigns` | `Api-Key` header |
+| `binom_report_api` | `GET /public/api/v1/campaign/list` | `api_key` query param |
+
+Pull uses `ReadLimitedBody` (1 MiB cap) and a 30 s HTTP timeout. Pull failure returns an error before any import TX runs.
+
 ## v1 scope
 
 - Landers remain external URLs; hosted ZIP must be re-uploaded manually after import.
 - Postback secrets are never imported; operators re-enter tokens in CAPI and Postbacks.
-- No streams/flows/offers import; flat campaign + click URL macros only.
+- Streams import path weights and external lander/offer URLs; hosted lander ZIP and complex filter nodes are not imported.
 
 Loader: `internal/migrationsource/maps.go` (`MapsRootDir` mirrors `integrationschema.SchemaRootDir`).
 

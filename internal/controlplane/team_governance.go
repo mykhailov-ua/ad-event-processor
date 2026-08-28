@@ -16,6 +16,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type auditBudgetApprovalDeny struct {
+	CampaignID           string `json:"campaign_id"`
+	RequestedBudgetMicro int64  `json:"requested_budget_micro"`
+	PreviousBudgetMicro  int64  `json:"previous_budget_micro"`
+}
+
 func normalizeTeamMemberRole(role string) (string, error) {
 	switch NormalizeRole(role) {
 	case RoleTeamLead, RoleMediaBuyer:
@@ -243,6 +249,11 @@ func (s *Service) ResolveTeamBudgetApproval(ctx context.Context, customerID, app
 		return err
 	}
 	if !approve {
+		s.AuditLog(ctx, nil, resolverID, "DENY_BUDGET_APPROVAL", "team_budget_approval", &approvalID, auditBudgetApprovalDeny{
+			CampaignID:           campaignID.String(),
+			RequestedBudgetMicro: requested,
+			PreviousBudgetMicro:  previous,
+		}, nil)
 		return nil
 	}
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {

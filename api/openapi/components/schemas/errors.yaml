@@ -11,3 +11,21 @@ ErrorBody:
           example: BAD_REQUEST
         message:
           type: string
+
+LicenseFeatureRequiredBody:
+  type: object
+  required: [error, feature_key, feature_required]
+  properties:
+    error:
+      type: string
+      enum: [feature_required]
+    feature_key:
+      type: string
+      example: openrtb
+    feature_required:
+      type: string
+      description: Duplicate of feature_key for legacy clients
+      example: openrtb
+    plan_code:
+      type: string
+      example: pilot

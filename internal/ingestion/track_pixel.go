@@ -47,5 +47,5 @@ func serveHTTPTrackPixelRoute(w http.ResponseWriter, r *http.Request) {
 }
 
 func isTrackPixelPath(path []byte) bool {
-	return bytesEqual(path, trackPixelPath)
+	return isTrackClientStaticPath(path)
 }

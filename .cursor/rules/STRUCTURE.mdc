@@ -12,7 +12,7 @@ alwaysApply: false
 
 ## Purpose
 
-Documents the **current canonical** flat layout. Do not refactor toward a staged migration tree without an explicit task.
+Documents the **current canonical** layout. Do not refactor toward a staged migration tree without an explicit task.
 
 ## Current canonical layout
 
@@ -20,14 +20,61 @@ Production code uses **flat domain packages**, not layered ceremony subtrees.
 
 | Package | Role |
 | :--- | :--- |
-| `internal/controlplane/` | Admin API, outbox workers, billing, fraud admin, reports (~500 files, one package) |
+| `internal/controlplane/` | Admin API composition root: `Service`, outbox workers, billing, fraud admin, wiring (~shrinking) |
+| `internal/reports/` | Report catalog, ClickHouse query handlers, export hooks, fraud scrub |
+| `internal/reportjob/` | Async report jobs, schedules, PG runner, validation-job HTTP |
+| `internal/fraudadmin/` | Fraud admin HTTP routes, DTOs, validators, integrations reader, policy presets (`/api/v1/fraud/*`). Files omit package-name prefix (`handlers.go`, `integrations.go`, `presets.go`) — `naming.mdc` |
+| `internal/billingadmin/` | Billing HTTP routes, composite reads, workspace export (`/api/v1/billing/*`). Files omit package-name prefix (`handlers.go`) — `naming.mdc` |
+| `internal/opsadmin/` | Ops HTTP routes, `Reader` (`ManagementOpsReader`), stack health DTOs, fan-out helpers (`/api/v1/ops/*`, audit export, RUM). Files omit package-name prefix (`handlers.go`, `reader_*.go`) — `naming.mdc` |
+| `internal/campaign/` | Campaign DTOs, HTTP handlers, `Runtime`, `WizardStore`, editor/migration routes, integration health builder, pure validators. Files omit `campaign_` prefix (`dto.go`, `editor_handlers.go`) — `naming.mdc` |
+| `internal/flow/` | Flow/lander/offer DTOs, path validation, HTTP handlers (`/api/v1/flows`, hosted lander routes). Files omit `flow_` prefix (`handlers.go`, `validate.go`) — `naming.mdc` |
+| `internal/brand/` | Brand/creative DTOs, HTTP handlers (`/api/v1/brands`, `/api/v1/brand-creatives/*`). Files omit `brand_` prefix (`handlers.go`, `store.go`) — `naming.mdc` |
+| `internal/supply/` | Sellers/ads.txt DTOs, chain validation, HTTP handlers (`/api/v1/supply/*`). Files omit package-name prefix (`handlers.go`, `store.go`) — `naming.mdc` |
+| `internal/smartalerts/` | Smart alert rules CRUD, worker tick, drain-stuck check (`/api/v1/smart-alerts/*`). Files omit package-name prefix (`store.go`, `handlers.go`, `worker_batch.go`) — `naming.mdc` |
+| `internal/governance/` | Quota manager, quota repair outbox applier, media-buyer spend-cap checks. Team RBAC/budget approval stays in `controlplane/team_*.go` |
+| `internal/reconciliation/` | Recon window, budget snapshot, global spend sync, adjust applier, runs list, RTB CH stats. Depends on `governance` for quota repair tick |
 | `internal/ingestion/` | Hot path: gnet, filters, stream, track, registry glue |
 | `internal/control/` | Monolith runner for `cmd/control` |
-| `internal/fraud/` | ML scoring (cold); admin fraud handlers stay in controlplane |
+| `internal/fraud/` | ML scoring (cold path only) |
 | `internal/domain/` | Shared hot-path types, sharding, budget invariants |
 | `internal/<svc>/` | Side domains: `payment/`, `ledger/`, `notify/`, `identity/`, `edge/`, `rtb/`, `openrtb/` |
 
 Module: `ad-event-processor`. `cmd/<binary>/main.go` wires config only - no business logic in `main`.
+
+## Modular monolith and bridges
+
+Deployment: **one** `cmd/control` process; domain folders are compile-time modules, not separate services (`modular-monolith.mdc`, `boundaries.mdc`).
+
+| Concept | Meaning |
+| :--- | :--- |
+| Composition root | `internal/controlplane/` — wires routes, workers, outbox; **shrinking** |
+| Bridge | `*_bridge.go` in controlplane only — `Service` implements domain `Host` / `Effects`; **no business logic** |
+| Adapter | `*_admin_adapter.go` — registration and error mapping |
+| God package | **Forbidden** — see ceilings below |
+
+Bridges are **in-process DI** inside the modular monolith, not network adapters between deployables.
+
+### controlplane vs sibling domains
+
+| Surface | Lives in | Notes |
+| :--- | :--- | :--- |
+| `*Service` methods (`PatchCampaign`, `PublishCampaign`, …) | `controlplane` | Postgres/Redis side effects |
+| `CampaignsHTTPHandlers`, report HTTP | `campaign`, `reports`, `reportjob` | Injected callbacks; registered from `adminapi_wire.go` |
+| `FraudHTTPHandlers`, billing HTTP, ops HTTP, flow/brand/supply HTTP | `fraudadmin`, `billingadmin`, `opsadmin`, `flow`, `brand`, `supply` | Service adapters in `*_bridge.go` / `*_admin_adapter.go` |
+| Type aliases at boundary | `controlplane/campaign_aliases.go`, `flow_aliases.go`, `brand_aliases.go`, `supply_aliases.go`, `reports_aliases.go`, `reconciliation_aliases.go`, … | Backward compat for flat package call sites |
+| Scope/auth bridges | `controlplane/campaign_bridge.go`, `campaign_runtime_bridge.go` | Re-exports campaign helpers; `Service` implements `campaign.Effects` |
+| Campaign runtime | `campaign.Runtime` | CRUD, create, templates, patch, publish gate, pause/resume, stats (PG+CH), pacing, schedule, status history, events, import/export via `ImportExportHost`, clone/migration via `Effects` |
+| Campaign worker | `campaign.Worker` + `DeliveryHost` | `ProcessScheduleTick`, `RunDeliveryOptimizerTick`, `RunAutoscaleBudgetTick`, `ClosedLoopPacingController`; autoscale/MAB in `campaign/*_tx.go`; flow bandit in `flow/bandit_tx.go`; `Service` implements `DeliveryHost` in `campaign_delivery_bridge.go` |
+| Campaign wizard | `campaign.WizardStore` + `WizardHost` | Session PG in `wizard_store.go`; `Service` implements host in `campaign_wizard_bridge.go` |
+| Flow admin | `flow.HTTPHandlers` + `flow.Service` | PG CRUD on `*Service`; path shape in `flow/validate.go` |
+| Brand/supply admin | `brand.HTTPHandlers`, `supply.HTTPHandlers` | PG on `*Service`; adapters in `brand_admin_adapter.go`, `supply_admin_adapter.go` |
+| Smart alerts | `smartalerts.Store`, `smartalerts.HTTPHandlers`, worker | `smartalerts_bridge.go`; `Service` implements `smartalerts.Host` |
+| Governance / quota | `governance.QuotaManager`, `QuotaRepairRunner`, spend-cap | `governance_bridge.go`; team approval in `team_budget_approval.go` |
+| Reconciliation | `reconciliation.ReconWorker`, `ReconService`, `GlobalSpendReconciler` | `governance_bridge.go` + `reconciliation_aliases.go`; `Service` implements `reconciliation.Host` |
+
+`service_campaign.go` remains in controlplane for brand PG hooks, campaign supply chain, and experiment cohorts.
+
+| Ops reader | `opsadmin.Reader` + `ReaderDeps` | `NewManagementOpsReader(svc)` in `ops_reader_bridge.go`; `OpsAlerter`/metric scraper stay in controlplane |
 
 ## Allowed vs banned subtrees
 
@@ -55,19 +102,39 @@ Root clutter: `core.mdc` Sources-only repository.
 cmd -> internal/control | cmd/*/main
 ingest hot path must NOT import controlplane admin or internal/fraud scoring
 pkg/* must NOT import internal/*
+
+reportjob -> reports (one-way; reports does not import reportjob)
+campaign -> reports, reportjob, flow, controlplane/authz (not controlplane root)
+campaign -X-> controlplane (no import cycle)
+flow -X-> controlplane (no import cycle)
+fraudadmin -X-> controlplane (no import cycle)
+billingadmin -> campaign (balance DTO aliases); -X-> controlplane
+opsadmin -> campaign, fraudadmin; -X-> controlplane
+reconciliation -> governance (quota repair tick); -X-> controlplane
+governance -X-> controlplane (no import cycle)
+smartalerts -X-> controlplane (no import cycle)
+controlplane -> campaign, flow, reports, reportjob, fraudadmin, billingadmin, opsadmin, smartalerts, governance, reconciliation (composition root)
 ```
 
 Tracker (`internal/ingestion`) must not import `internal/controlplane` admin handlers or `internal/fraud` scoring. `pkg/*` is shared utilities only - no `internal/*` imports.
 
 ## Future target (do not implement opportunistically)
 
-Planned split map (not current):
+Remaining split candidates (not done):
 
-- `controlplane` -> `campaign/`, `billing/`, `fraud/admin/`, ...
 - `ingestion` -> `ingest/`, `filter/`, `stream/`, `track/`
+- Move remaining `service_campaign.go` experiment cohort helpers onto `campaign` or keep in controlplane
 
-Package cap when splitting: ~40 files or ~8k LOC per package; one domain per package; each domain gets `doc.go` with invariants.
+Package cap when splitting: ~40 files or ~8k LOC per package; one domain per package.
+
+**Mandatory:** `doc.go` at the root of every production package (`package <name>` only). Sync via `scripts/dev/sync_package_doc_go.py`.
+
+Excluded: generated subtrees only (`db/`, `pb/`, `queries/` under a domain package — they do not get their own `doc.go`).
+
+**Hard ban:** god packages and unbounded `controlplane` growth (`modular-monolith.mdc`). New admin code lands in the domain package first; bridges only wire.
+
+**Hard ban:** micro-packages and premature splits — new `internal/<domain>/` only when minimum viable extraction ships in the same change set (`modular-monolith.mdc`).
 
 ## Related rules
 
-`boundaries.mdc`, `code-style.mdc`, `naming.mdc`, `architecture.mdc`.
+`boundaries.mdc`, `code-style.mdc`, `naming.mdc`, `architecture.mdc`, `modular-monolith.mdc`.

@@ -1,6 +1,6 @@
 # Integrations
 
-Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. All configuration surfaces are on the control plane (`:8188`, `/api/v1/*`) and the React admin UI under `/integrations/*`. REST shapes are documented in `api/openapi/`; new routes follow the workflow in `docs/DEVELOPMENT.md` (cost-sync pilot). OpenAPI transition backlog closed 2026-08-26 (`deploy/vendor/openapi_backlog.md`).
+Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. All configuration surfaces are on the control plane (`:8188`, `/api/v1/*`) and the React admin UI under `/integrations/*`. REST shapes are documented in `api/openapi/`; new routes follow the workflow in `docs/DEVELOPMENT.md` (cost-sync pilot). OpenAPI gate: `bash scripts/ci/openapi_gate.sh`.
 
 This document states what the code ships today. It does not claim parity with cloud trackers (Voluum Automizer sub-hourly cost sync, creative upload, and so on).
 
@@ -18,8 +18,28 @@ This document states what the code ships today. It does not claim parity with cl
 | `/integrations/smart-alerts` | `/api/v1/smart-alerts/*` | Alert rules (Slack/Telegram via notifier) |
 | `/integrations/margin-guard` | `/api/v1/margin-guard/*` | Margin policies |
 | `/campaigns/:id/telegram` | `/api/v1/telegram/*` | Bot webhooks, deeplinks, Telegram postbacks |
-| `/campaigns/wizard` | `/api/v1/campaigns/*` | First-campaign onboarding wizard |
-| `/api/v1/platform-campaigns/*` | same | Meta/Google link CRUD and dry-run mutations (Enterprise SKU) |
+| `/campaigns/wizard` | `/api/v1/campaigns/*` | First-campaign onboarding wizard + bundled templates |
+
+Bundled onboarding templates: `GET /api/v1/campaigns/onboarding-templates` (`deploy/schemas/onboarding/catalog.v1.yaml`). `POST /api/v1/campaigns/wizard/session` with `action=create` accepts `template_key` (`meta_social_funnel`, `popunder_propeller`, `push_house_funnel`, `native_mgid_funnel`) to prefill wizard steps before `commit`.
+
+| `/platform-campaigns` | `/api/v1/platform-campaigns/*` | Meta/Google link CRUD and dry-run mutations (Enterprise SKU) |
+
+---
+
+## Campaign migration and import validation
+
+External tracker payloads (Keitaro JSON, Binom JSON, native v1) map through `internal/migrationsource` adapters. Preview and import are separate calls; validation never writes campaigns to Postgres.
+
+| Endpoint | Role |
+| :--- | :--- |
+| `GET /api/v1/campaigns/migrate/sources` | Supported `source_kind` values |
+| `POST /api/v1/campaigns/migrate/preview` | Synchronous map-only preview (`MigratePreviewRequest`) |
+| `POST /api/v1/campaigns/import/validate` | Same as preview; alias for large payloads validated before commit |
+| `POST /api/v1/campaigns/import/validate/jobs` | Async validation job (`ImportValidateJobRequest` + optional `Idempotency-Key`) |
+| `GET /api/v1/campaigns/import/validate/jobs/{id}` | Poll job status; download JSON via report job path when `status=completed` |
+| `POST /api/v1/campaigns/migrate/import` | Commit mapped campaigns (separate idempotent import call) |
+
+Async jobs use report key `campaign-import-validation` and return `MigrationPreviewResult` JSON (mapped campaigns, warnings, errors) without a Postgres TX. Failed validation leaves `campaigns` unchanged. Pull adapters (`keitaro_admin_api`, `binom_report_api`) use cold-path HTTP timeouts from `migration_handlers.go`.
 
 ---
 
@@ -103,11 +123,23 @@ Daily campaign-level spend pull for ROI reports. Worker runs in `cmd/control` wh
 
 ## Campaign automation rules (`internal/automation`)
 
-Cold-path worker (15 min default, `AUTOMATION_RULES_ENABLED`, `AUTOMATION_RULES_INTERVAL_MIN`) evaluates ClickHouse `placement_stats_hourly` rollups per rule. Metrics: `roi_pct`, `spend_micro`, `clicks`, `cr`, `fraud_reject_rate` (canonical; legacy alias `ivt_rate`), `silent_reject_rate`, `fraud_reject_count` (fraud metrics query `fraud_events` by `placement_id` in payload; `fraud_reject_rate` = hard fraud-stream rejects / clicks, not fraud tier IVT). Actions: `pause_campaign` (PG + outbox), `blacklist_placement` (Redis via `PAUSE_PLACEMENT` outbox), `platform_pause` (pending `platform_campaign_mutations`), `notify` (webhook). Idempotency via `automation_rule_fires.action_hash`.
+Cold-path worker (`AUTOMATION_RULES_ENABLED`, tick interval `AUTOMATION_RULES_INTERVAL_MIN`, default 15) evaluates ClickHouse `placement_stats_hourly` rollups per rule. Per-rule `eval_interval_minutes` may be `5`, `10`, `15`, `30`, or `60` but not below the global floor (`AUTOMATION_RULES_INTERVAL_MIN`). Worker skips a rule until its eval interval elapses since `last_evaluated_at`. `AUTOMATION_RULES_MAX_EVALS_PER_CUSTOMER_PER_TICK` (default 50) caps ClickHouse load per customer per tick.
+
+| Setting | Default | Allowed range |
+| :--- | :--- | :--- |
+| `AUTOMATION_RULES_INTERVAL_MIN` | 15 | 5–60 (worker tick + eval floor) |
+| `eval_interval_minutes` (per rule) | 15 | floor, 5, 10, 15, 30, 60 |
+| `AUTOMATION_RULES_MAX_EVALS_PER_CUSTOMER_PER_TICK` | 50 | 1–500 |
+
+ROI rules on `spend_micro` include partial-day Cost Sync API spend when the credential `sync_interval_minutes` is 15–60 and the network adapter returns same-day rows.
+
+Metrics: `roi_pct`, `spend_micro`, `clicks`, `cr`, `fraud_reject_rate` (canonical; legacy alias `ivt_rate`), `silent_reject_rate`, `fraud_reject_count` (fraud metrics query `fraud_events` by `placement_id` in payload; `fraud_reject_rate` = hard fraud-stream rejects / clicks, not fraud tier IVT). Actions: `pause_campaign` (PG + outbox), `blacklist_placement` (Redis via `PAUSE_PLACEMENT` outbox), `platform_pause` (pending `platform_campaign_mutations`, requires `ad_platform_campaign_api` license), `notify` (webhook). Idempotency via `automation_rule_fires.action_hash`.
+
+Bundled presets (`GET /api/v1/automation/presets`): `placement_roi_guard`, `fraud_rate_guard`, `spend_cap_guard`, `silent_reject_spike`. `POST /api/v1/automation/rules` accepts `preset_key` and `preset_parameters` instead of raw rule JSON.
 
 Example: `fraud_reject_rate` > 25 with `blacklist_placement` blacklists zones when hard fraud-stream events exceed 25% of rolled-up clicks in the window.
 
-API: `GET/POST /api/v1/automation/rules`, `PUT/DELETE /api/v1/automation/rules/{id}`, `POST .../dry-run`. Admin UI: `/integrations/automation`.
+API: `GET /api/v1/automation/presets`, `GET/POST /api/v1/automation/rules`, `PUT/DELETE /api/v1/automation/rules/{id}`, `POST .../dry-run`. Admin UI: `/integrations/automation`.
 
 ---
 
@@ -117,8 +149,9 @@ Enterprise SKU flag `ad_platform_campaign_api` (`deploy/vendor/sku.yaml`). Cold-
 
 | Capability | Networks | Notes |
 | :--- | :--- | :--- |
-| Read-only status sync | Meta, Google Ads | Reuses Cost Sync OAuth tokens |
-| Idempotent pause / resume / daily budget cap | Meta, Google Ads | Dry-run + idempotency keys on `/api/v1/platform-campaigns/*` |
+| Read-only status sync | Meta, Google Ads, TikTok, Microsoft Ads | Reuses Cost Sync OAuth tokens |
+| Idempotent pause / resume | Meta, Google Ads, TikTok, Microsoft Ads | Dry-run + idempotency keys on `/api/v1/platform-campaigns/*` |
+| Daily budget cap (vendor write) | Meta, Google Ads only | TikTok and Microsoft Ads return 400 on `set_daily_budget` |
 
 No creative upload, audience editing, or bid floor changes on the platform side.
 
@@ -217,6 +250,23 @@ Receive templates expose a tracker URL for the affiliate network panel; they do 
 | Prometheus | metrics ports | Scrape tracker/processor/control |
 
 Workspace-scoped usage export: `GET /api/v1/billing/usage/export`. Ledger export jobs: `POST /api/v1/billing/exports`.
+
+---
+
+## Ops stack health (`GET /api/v1/ops/health/snapshot`)
+
+RBAC: `shards:read`. Cold-path JSON for operators and external uptime checks (Grafana remains canonical for time series).
+
+| Field | Source |
+| :--- | :--- |
+| `clickhouse_lag_seconds` | Cached max(`impressions`/`clicks`/`conversions` `created_at`) lag |
+| `outbox_oldest_pending_seconds` | Oldest `PENDING` outbox row age |
+| `redis_shard_reachable` | Any configured shard answers `PING` |
+| `cost_sync_last_success_seconds` | Age of latest `cost_sync_runs.status=success` |
+| `automation_worker_last_tick_seconds` | Age of last automation worker eval tick |
+| `license_state` | Active license watcher state (no JWT or secrets) |
+
+`status`: `ok` | `degraded` | `critical`. Thresholds (seconds unless noted): outbox degraded 30 / critical 300; ClickHouse lag degraded 300 / critical 900; cost sync degraded 86400 / critical 172800; automation tick degraded 600 / critical 3600; license `EXPIRED`/`REVOKED` → critical; `GRACE`/`OFFLINE_*` → degraded.
 
 ---
 

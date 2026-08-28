@@ -23,15 +23,15 @@ func safeRatio(numerator, denominator float64) float64 {
 	return numerator / denominator
 }
 
-func (featureRow *FeatureRow) ToVectorInto(buf []float64) {
-	events := float64(featureRow.Events)
-	clicks := float64(featureRow.Clicks)
-	uniqueUsers := float64(featureRow.UniqueUsers)
-	uniqueUAs := float64(featureRow.UniqueUAs)
-	spendNorm := float64(featureRow.SpendMicro) / 1e6
+func (fr *FeatureRow) ToVectorInto(buf []float64) {
+	events := float64(fr.Events)
+	clicks := float64(fr.Clicks)
+	uniqueUsers := float64(fr.UniqueUsers)
+	uniqueUAs := float64(fr.UniqueUAs)
+	spendNorm := float64(fr.SpendMicro) / 1e6
 
 	ctr := safeRatio(clicks, events)
-	spendRatio := safeRatio(float64(featureRow.SpendMicro), float64(featureRow.BudgetLimitMicro))
+	spendRatio := safeRatio(float64(fr.SpendMicro), float64(fr.BudgetLimitMicro))
 
 	buf[0] = events
 	buf[1] = clicks
@@ -51,8 +51,8 @@ func (featureRow *FeatureRow) ToVectorInto(buf []float64) {
 	buf[15] = safeRatio(uniqueUsers, clicks+1)
 }
 
-func (featureRow *FeatureRow) ToVector() []float64 {
+func (fr *FeatureRow) ToVector() []float64 {
 	buf := make([]float64, featureVectorDims)
-	featureRow.ToVectorInto(buf)
+	fr.ToVectorInto(buf)
 	return buf
 }

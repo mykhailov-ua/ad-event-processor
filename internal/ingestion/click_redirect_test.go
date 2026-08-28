@@ -52,6 +52,15 @@ func TestParseClickQuery_sub30(t *testing.T) {
 	require.Equal(t, "end", parsed.subs[29])
 }
 
+func TestParseClickQuery_smokeFlag(t *testing.T) {
+	t.Parallel()
+	path := []byte("/click?campaign_id=550e8400-e29b-41d4-a716-446655440000&type=click&smoke=1")
+	parsed := &clickQueryParsed{}
+	_ = parseClickQuery(path, nil, parsed)
+	require.True(t, parsed.ok)
+	require.True(t, parsed.smoke)
+}
+
 func TestBuildRedirectLocation_sub30Macro(t *testing.T) {
 	t.Parallel()
 	var subs SubIDSlots

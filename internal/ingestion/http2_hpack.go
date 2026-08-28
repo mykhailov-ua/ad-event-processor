@@ -217,11 +217,13 @@ func h2AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, clVa
 		case 7:
 			if bytesEqual(key, ":method") {
 				req.Method = val
+				recordH2PseudoHeader(req, h2PseudoMethod)
 				return nil
 			}
 		case 5:
 			if bytesEqual(key, ":path") {
 				req.Path = val
+				recordH2PseudoHeader(req, h2PseudoPath)
 				if len(req.Method) > 0 && !http1IngressValid(req.Method, req.Path) {
 					return errInvalidRequest
 				}
@@ -230,12 +232,17 @@ func h2AssignHeader(req *parsedHTTPRequest, key, val []byte, hFlags *uint8, clVa
 		}
 		if bytesEqual(key, ":authority") {
 			req.Host = val
+			recordH2PseudoHeader(req, h2PseudoAuthority)
 			return nil
 		}
 		if bytesEqual(key, ":scheme") {
+			recordH2PseudoHeader(req, h2PseudoScheme)
 			return nil
 		}
 		return errInvalidRequest
+	}
+	if h2KeyHasUppercase(key) || h2ForbiddenH1HeaderName(key) {
+		markH2DowngradeArtifact(req)
 	}
 	var folded [http1MaxHeaderNameLen]byte
 	if len(key) > len(folded) {

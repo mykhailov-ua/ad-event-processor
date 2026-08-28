@@ -128,26 +128,26 @@ func waitFaultRedisReady(t *testing.T, redisClient redis.UniversalClient) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func (infra *controlFaultInfra) refreshRedisClient(t *testing.T) {
+func (fi *controlFaultInfra) refreshRedisClient(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	_ = infra.Redis.Close()
-	endpoint, err := infra.RedisContainer.Endpoint(ctx, "")
+	_ = fi.Redis.Close()
+	endpoint, err := fi.RedisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
-	infra.Redis = redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
-	waitFaultRedisReady(t, infra.Redis)
+	fi.Redis = redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
+	waitFaultRedisReady(t, fi.Redis)
 }
 
-func (infra *controlFaultInfra) refreshPGPool(t *testing.T) {
+func (fi *controlFaultInfra) refreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	infra.Pool.Close()
-	connStr, err := infra.PGContainer.ConnectionString(ctx, "sslmode=disable")
+	fi.Pool.Close()
+	connStr, err := fi.PGContainer.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
-	infra.Pool = pool
-	waitFaultPGReady(t, infra.Pool)
+	fi.Pool = pool
+	waitFaultPGReady(t, fi.Pool)
 }
 
 func requireFaultActive(t *testing.T, faultActive func() bool, msg string) {

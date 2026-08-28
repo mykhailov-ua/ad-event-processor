@@ -24,21 +24,24 @@ type Action struct {
 }
 
 type Rule struct {
-	ID              uuid.UUID
-	CustomerID      uuid.UUID
-	CampaignID      uuid.UUID
-	HasCampaign     bool
-	Name            string
-	Metric          string
-	Operator        string
-	Threshold       float64
-	WindowMinutes   int
-	GroupBy         string
-	Actions         []Action
-	CooldownMinutes int
-	Enabled         bool
-	LastFiredAt     time.Time
-	HasLastFired    bool
+	ID                  uuid.UUID
+	CustomerID          uuid.UUID
+	CampaignID          uuid.UUID
+	HasCampaign         bool
+	Name                string
+	Metric              string
+	Operator            string
+	Threshold           float64
+	WindowMinutes       int
+	GroupBy             string
+	Actions             []Action
+	CooldownMinutes     int
+	EvalIntervalMinutes int
+	Enabled             bool
+	LastFiredAt         time.Time
+	HasLastFired        bool
+	LastEvaluatedAt     time.Time
+	HasLastEvaluated    bool
 }
 
 func ParseActions(raw []byte) ([]Action, error) {

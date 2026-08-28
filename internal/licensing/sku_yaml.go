@@ -93,7 +93,7 @@ type IssueLicenseInput struct {
 	ValidFrom    time.Time
 }
 
-func (sku SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
+func (s SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 	validFrom := in.ValidFrom
 	if validFrom.IsZero() {
 		validFrom = time.Now().UTC()
@@ -103,17 +103,17 @@ func (sku SKUDefinition) BuildClaims(in IssueLicenseInput) LicenseClaims {
 		Subject:      in.LicenseID,
 		DeploymentID: in.DeploymentID,
 		CustomerName: in.CustomerName,
-		Plan:         sku.Code,
-		SKU:          sku.Code,
-		VolumeBand:   sku.VolumeBand,
+		Plan:         s.Code,
+		SKU:          s.Code,
+		VolumeBand:   s.VolumeBand,
 		ValidFrom:    validFrom,
-		ValidUntil:   validFrom.Add(time.Duration(sku.ValidDays) * 24 * time.Hour),
-		GraceDays:    sku.GraceDays,
-		Limits:       sku.Limits,
-		Features:     SanitizeFeaturesForSKU(sku.Code, sku.Features).Normalized(),
-		SupportTier:  sku.SupportTier,
+		ValidUntil:   validFrom.Add(time.Duration(s.ValidDays) * 24 * time.Hour),
+		GraceDays:    s.GraceDays,
+		Limits:       s.Limits,
+		Features:     SanitizeFeaturesForSKU(s.Code, s.Features).Normalized(),
+		SupportTier:  s.SupportTier,
 	}
-	claims.Bind.Mode = sku.Bind.Mode
+	claims.Bind.Mode = s.Bind.Mode
 	if claims.Bind.Mode == "" {
 		claims.Bind.Mode = "soft"
 	}

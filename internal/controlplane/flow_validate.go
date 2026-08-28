@@ -4,83 +4,25 @@ import (
 	"context"
 	"fmt"
 
+	"ad-event-processor/internal/flow"
+
 	"github.com/google/uuid"
 )
 
-const maxFlowPaths = 32
-
-func validateFlowPathShape(paths []FlowPathDTO) error {
-	if len(paths) == 0 {
-		return fmt.Errorf("paths are required")
-	}
-	if len(paths) > maxFlowPaths {
-		return fmt.Errorf("too many paths (max %d)", maxFlowPaths)
-	}
-	for i, path := range paths {
-		if path.Weight <= 0 {
-			return fmt.Errorf("path %d weight must be positive", i+1)
-		}
-		if len(path.Landers) == 0 {
-			return fmt.Errorf("path %d requires at least one lander", i+1)
-		}
-		if len(path.Offers) == 0 {
-			return fmt.Errorf("path %d requires at least one offer", i+1)
-		}
-		for j, lander := range path.Landers {
-			if lander.LanderID == uuid.Nil {
-				return fmt.Errorf("path %d lander %d id is required", i+1, j+1)
-			}
-			if lander.Weight <= 0 {
-				return fmt.Errorf("path %d lander %d weight must be positive", i+1, j+1)
-			}
-		}
-		for j, offer := range path.Offers {
-			if offer.OfferID == uuid.Nil {
-				return fmt.Errorf("path %d offer %d id is required", i+1, j+1)
-			}
-			if offer.Weight <= 0 {
-				return fmt.Errorf("path %d offer %d weight must be positive", i+1, j+1)
-			}
-			if offer.CapDaily != nil && *offer.CapDaily <= 0 {
-				return fmt.Errorf("path %d offer %d cap_daily must be positive", i+1, j+1)
-			}
-			if offer.CapTotal != nil && *offer.CapTotal <= 0 {
-				return fmt.Errorf("path %d offer %d cap_total must be positive", i+1, j+1)
-			}
-		}
-		if err := validateFlowPathFilters(i, path.Filters); err != nil {
-			return err
-		}
-	}
-	return nil
+func (s *Service) ValidateCampaignFlowPaths(ctx context.Context, paths []FlowPathDTO) error {
+	return s.validateFlowPaths(ctx, paths)
 }
 
 func (s *Service) validateFlowPaths(ctx context.Context, paths []FlowPathDTO) error {
-	if err := validateFlowPathShape(paths); err != nil {
-		return err
-	}
-	landerIDs := make([]uuid.UUID, 0)
-	offerIDs := make([]uuid.UUID, 0)
-	landerSet := make(map[uuid.UUID]struct{})
-	offerSet := make(map[uuid.UUID]struct{})
-	for _, path := range paths {
-		for _, lander := range path.Landers {
-			if _, ok := landerSet[lander.LanderID]; !ok {
-				landerSet[lander.LanderID] = struct{}{}
-				landerIDs = append(landerIDs, lander.LanderID)
-			}
-		}
-		for _, offer := range path.Offers {
-			if _, ok := offerSet[offer.OfferID]; !ok {
-				offerSet[offer.OfferID] = struct{}{}
-				offerIDs = append(offerIDs, offer.OfferID)
-			}
-		}
-	}
-	if err := s.validateFlowLanderIDs(ctx, landerIDs); err != nil {
-		return err
-	}
-	return s.validateFlowOfferIDs(ctx, offerIDs)
+	return flow.ValidatePathRefs(ctx, s, paths)
+}
+
+func (s *Service) ValidateLanderIDs(ctx context.Context, ids []uuid.UUID) error {
+	return s.validateFlowLanderIDs(ctx, ids)
+}
+
+func (s *Service) ValidateOfferIDs(ctx context.Context, ids []uuid.UUID) error {
+	return s.validateFlowOfferIDs(ctx, ids)
 }
 
 func (s *Service) validateFlowLanderIDs(ctx context.Context, ids []uuid.UUID) error {
@@ -145,3 +87,5 @@ func (s *Service) validateFlowOfferIDs(ctx context.Context, ids []uuid.UUID) err
 	}
 	return nil
 }
+
+var _ flow.PathRefChecker = (*Service)(nil)

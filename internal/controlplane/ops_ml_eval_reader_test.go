@@ -69,7 +69,7 @@ func TestParseMLEvalReportJSON_roundTrip(t *testing.T) {
 			LabeledRows: 10,
 			Precision:   0.9,
 		},
-		AuditedMetrics: defaultEmptyAuditedMetrics(),
+		AuditedMetrics: DefaultEmptyAuditedMetrics(),
 	}
 	data, err := json.Marshal(in)
 	require.NoError(t, err)

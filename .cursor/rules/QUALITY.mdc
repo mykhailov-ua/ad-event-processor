@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Purpose
 
-Always applied on every agent turn. Go method receivers and verification honesty. **Comments:** `naming.mdc` (no source comments except allowed categories). File layout: `code-style.mdc`.
+Always applied on every agent turn. Go method receivers and verification honesty. Comments: `naming.mdc`. File layout: `code-style.mdc`.
 
 Agents must not invent environment, generated artifacts, or benchmark runs.
 
@@ -23,44 +23,42 @@ Before claiming done, see `anti-slop.mdc` (lie modes, CI gates, agent checklist)
 
 ## Method receivers
 
-### Default: shorten
+### Default: 1-2 letters
 
-Receiver name is **1-2 lowercase letters** from the type name. Use the **same** receiver on every method of that type.
+Receiver is **1-2 lowercase letters** derived from the type name. Use the **same** receiver on every method of that type.
 
-| Type | Receiver | Not |
+| Type | Receiver | Banned |
 | :--- | :--- | :--- |
 | `Service` | `s` | `service`, `svc`, `self` |
-| `Handlers` | `h` | `handlers`, `HTTPHandlers` |
-| `Store` | `st` | `store` (when file has multiple `Store` types, see below) |
-| `Limiter` | `l` | `limiter` |
-| `Receiver` | `r` | `receiver` |
+| `HTTPHandlers`, `*Handlers` | `h` | `handlers`, `ops`, `billHandlers` |
+| `Store` | `st` | `store` |
+| `Worker` | `w` | `worker`, `outboxWorker` |
+| `Client` | `c` | `client` |
+| `Registry` | `r` | `registry`, `modelRegistry` |
 
-Derivation: first letter of exported type; add second letter when compound (`HTTPHandlers` -> `h`). Raw event row builders use package-level functions, not a receiver.
+Derivation: first letter of the type; add a second when the type is compound (`HTTPHandlers` -> `h`, `LGBMScorer` -> `lg`). Never use the **full type name** or a **word-long** receiver (`campaigns`, `reconService`, `webhookHandler`).
 
-### When to keep a longer receiver
+### Collision in one file
 
-Use a **short word** (not the full type name) only when:
-
-1. **Collision in same file:** two method sets would share `s` (e.g. `bot.Store` and `postback.Store`) -> `bst` / `pst` or split files.
-2. **Type name is domain word** and 1-letter is ambiguous: prefer package `bot` + receiver `b` for `bot.Client`.
-3. **Embedding wrapper:** receiver matches embedded field role (`func (a *adminHandlers)` only if type is unexported and file-local).
-
-Never use the **full type name** as receiver: `func (service *Service)` is banned.
+Two method sets would share the same letter (e.g. two `Store` types) -> `bst` / `pst` or split files.
 
 ### Pointer vs value
 
 - **Pointer receiver** when methods mutate state, call mutating deps, or struct is non-trivial size.
 - **Value receiver** only for small immutable types or intentional copy semantics.
-- Do not mix pointer and value receivers on the same exported type without a named type split or explicit design note in `.mdc` / milestone doc (`naming.mdc`).
 
-### Unused receiver parameter
+### Unused receiver
 
-- Test/bench helpers must not take `*testing.B` unless they call `b` (`ReportAllocs`, `Loop`, `ResetTimer`). Build fixtures in `func fixture() T` helpers.
-- If a method does not need the receiver, prefer a package function. Do not add fake `_ = s` to silence unused receiver.
+- Test/bench helpers must not take `*testing.B` unless they call `b`.
+- If a method does not need the receiver, use a package function. No `_ = s` to silence unused receiver.
 
 ### Benchmark loops
 
-Use `for b.Loop() { ... }` (Go 1.24+), not `for i := 0; i < b.N; i++`. Drop redundant `ResetTimer()` before `Loop()`; setup stays outside the loop.
+Use `for b.Loop() { ... }` (Go 1.24+), not `for i := 0; i < b.N; i++`.
+
+### CI gate
+
+`bash scripts/ci/check_no_legacy_naming.sh` rejects production method receivers with **3+ letter** names (`func \([a-z]{3,} `, excludes `*_test.go`).
 
 ## Related rules
 

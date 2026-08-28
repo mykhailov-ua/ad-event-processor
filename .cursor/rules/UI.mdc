@@ -56,7 +56,7 @@ Agents optimize for plausible diffs, not operator intent. Treat these as **lie m
 | Double chip chrome | `PageHeader` wrapper + `FreshnessBadge` border | Parent slot renders chip directly (`Chips` below) |
 | Boot HTML drift | Text inside `<div id="root">` | Empty `<div id="root"></div>` only; boot inject in `admin_ui_static.go` |
 
-Operator stop words ("костыли", "клоунада", "сноси", "не код"): **revert** the slice; do not add compensating wrappers.
+Rejected slice: revert; do not add compensating wrappers.
 
 ## Cold path first (non-negotiable)
 
@@ -67,6 +67,7 @@ Browser **renders** server output. Logic stays in Go.
 | Filter / search | Query params; SQL/CH in handler | Send params; show `items`, `total` |
 | Sort | `sort`, `order` on API | Refetch |
 | Pagination | `limit`, `offset` or cursor | Controls only |
+| List envelope | `items`, `total`, `limit`, `offset`, `freshness`, `filters_applied`, `sort` on directory handlers (`ListEnvelope` OpenAPI) | Refetch on param change; no client envelope math |
 | KPIs / aggregates | Handler or report row fields | Display |
 | Freshness | `stale`, `ch_lag_seconds`, prefer `freshness_label` | Chip text from API; no client lag math |
 | Money | Micros + currency or `*_display` from API | Format display fields only |

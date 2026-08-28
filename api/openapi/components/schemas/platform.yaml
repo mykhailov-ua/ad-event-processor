@@ -52,6 +52,7 @@ Customer:
 
 CustomerListResponse:
   type: object
+  required: [items, total, limit, offset]
   properties:
     items:
       type: array
@@ -60,6 +61,27 @@ CustomerListResponse:
     total:
       type: integer
       format: int64
+    limit:
+      type: integer
+      format: int32
+    offset:
+      type: integer
+      format: int32
+    filters_applied:
+      type: object
+      additionalProperties:
+        type: string
+    sort:
+      $ref: '#/ListSort'
+
+ListSort:
+  type: object
+  properties:
+    field:
+      type: string
+    order:
+      type: string
+      enum: [asc, desc]
 
 DisputeRow:
   type: object
@@ -219,6 +241,34 @@ MetaResponse:
       type: boolean
     license:
       $ref: '#/MetaLicense'
+
+SessionNavItem:
+  type: object
+  properties:
+    href:
+      type: string
+    label:
+      type: string
+    icon_key:
+      type: string
+
+SessionResponse:
+  type: object
+  properties:
+    role:
+      type: string
+    mask_level:
+      type: string
+    default_customer_id:
+      type: string
+    timezone:
+      type: string
+    stale_banner:
+      type: string
+    nav_items:
+      type: array
+      items:
+        $ref: '#/SessionNavItem'
 
 ConsentRecord:
   type: object

@@ -22,6 +22,6 @@ type ProviderRateLimitedError struct {
 	RetryAfter time.Duration
 }
 
-func (err *ProviderRateLimitedError) Error() string {
-	return fmt.Sprintf("%s rate limited, retry after %s", err.Provider, err.RetryAfter)
+func (pr *ProviderRateLimitedError) Error() string {
+	return fmt.Sprintf("%s rate limited, retry after %s", pr.Provider, pr.RetryAfter)
 }

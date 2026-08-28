@@ -17,16 +17,26 @@
       i && (t[c] = i);
     }
     let r = n.get('ob_click_id') || n.get('obclid');
-    return (
-      r && (t.ob_click_id = r),
-      fetch(e.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(t),
-        keepalive: !0,
-        credentials: 'omit',
-      })
-    );
+    r && (t.ob_click_id = r);
+    let events = [];
+    let s = globalThis.trackTelemetrySnapshot;
+    if (typeof s === 'function') {
+      let m = s();
+      m && m.events && m.events.length && (events = events.concat(m.events));
+    }
+    let b = globalThis.trackBiometricsSnapshot;
+    if (typeof b === 'function') {
+      let bm = b();
+      bm && bm.events && bm.events.length && (events = events.concat(bm.events));
+    }
+    events.length && (t.telemetry = { events: events });
+    return fetch(e.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(t),
+      keepalive: !0,
+      credentials: 'omit',
+    });
   }
   globalThis.trackEvent = a;
 })();

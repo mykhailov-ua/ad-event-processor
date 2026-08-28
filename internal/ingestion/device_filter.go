@@ -18,6 +18,8 @@ type DeviceFilter struct {
 	settings             *SettingsWatcher
 	blockedTLS           atomic.Pointer[tlsBlocklistSnapshot]
 	osFingerprintEnabled atomic.Bool
+	ja4CorpusEnabled     atomic.Bool
+	tcpSynSigEnabled     atomic.Bool
 }
 
 func NewDeviceFilter(settings *SettingsWatcher) *DeviceFilter {
@@ -34,6 +36,14 @@ func NewDeviceFilter(settings *SettingsWatcher) *DeviceFilter {
 
 func (f *DeviceFilter) SetOSFingerprintEnabled(enabled bool) {
 	f.osFingerprintEnabled.Store(enabled)
+}
+
+func (f *DeviceFilter) SetJA4BrowserCorpusEnabled(enabled bool) {
+	f.ja4CorpusEnabled.Store(enabled)
+}
+
+func (f *DeviceFilter) SetTCPSynSigEnabled(enabled bool) {
+	f.tcpSynSigEnabled.Store(enabled)
 }
 
 func (f *DeviceFilter) reloadBlocklist() {
@@ -72,12 +82,23 @@ func (f *DeviceFilter) Check(ctx context.Context, evt *domain.Event) error {
 	if tlsFingerprintImpersonating(evt.UA, []byte(evt.TLSJA3), []byte(evt.TLSJA4), []byte(evt.TLSHash)) {
 		addFraudSignal(evt, FraudReasonDeviceMismatch)
 	}
+	if f.ja4CorpusEnabled.Load() && ja4BrowserCorpusMismatch(evt.UA, []byte(evt.TLSJA4)) {
+		addFraudSignal(evt, FraudReasonTLSJA4Mismatch)
+	}
 	if f.osFingerprintEnabled.Load() && evt.UA != "" {
 		if evt.TCPTTLSet == 0 {
 			metrics.OSFingerprintSkippedTotal.WithLabelValues("no_tcp_headers").Inc()
 		} else if osFingerprintMismatch(evt.UA, evt.TCPTTL, evt.TCPWindowSet, evt.TCPWindow) {
 			metrics.OSFingerprintMismatchTotal.Inc()
 			addFraudSignal(evt, FraudReasonOSFingerprint)
+		}
+	}
+	if f.tcpSynSigEnabled.Load() && evt.UA != "" {
+		if evt.TCPSigSet == 0 {
+			metrics.TCPSynSigSkippedTotal.WithLabelValues("no_tcp_sig").Inc()
+		} else if tcpSynSigMismatch(evt.UA, evt.TCPSig) {
+			metrics.TCPSynSigMismatchTotal.Inc()
+			addFraudSignal(evt, FraudReasonTCPSynOSMismatch)
 		}
 	}
 	return nil

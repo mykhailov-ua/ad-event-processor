@@ -32,11 +32,11 @@ func (c *AuthClient) VerifyAPIKey(ctx context.Context, apiKey string) (identity.
 	return c.api.VerifyAPIKey(ctx, apiKey)
 }
 
-func (c *AuthClient) CreateAPIKey(ctx context.Context, bearerToken, name string) (identity.CreateAPIKeyResult, error) {
+func (c *AuthClient) CreateAPIKey(ctx context.Context, bearerToken, name string, scopes []string) (identity.CreateAPIKeyResult, error) {
 	if c == nil || c.api == nil {
 		return identity.CreateAPIKeyResult{}, errAuthUnavailable
 	}
-	return c.api.CreateAPIKey(ctx, bearerToken, name)
+	return c.api.CreateAPIKey(ctx, bearerToken, name, scopes)
 }
 
 func (c *AuthClient) Login(ctx context.Context, email, password string, durationHours int32) (identity.LoginResult, error) {
@@ -92,29 +92,29 @@ func openBillingClient(_ context.Context, _ *config.Config, opts ServeOptions) (
 	return nil, func() {}, nil
 }
 
-func (client *BillingClient) Close() error {
+func (nc *BillingClient) Close() error {
 	return nil
 }
 
-func (client *BillingClient) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*domain.Invoice, error) {
-	if client == nil || client.api == nil {
+func (nc *BillingClient) GenerateInvoice(ctx context.Context, customerID string, billingMonth time.Time) (*domain.Invoice, error) {
+	if nc == nil || nc.api == nil {
 		return nil, fmt.Errorf("billing client not configured")
 	}
-	return client.api.GenerateInvoice(ctx, customerID, billingMonth)
+	return nc.api.GenerateInvoice(ctx, customerID, billingMonth)
 }
 
-func (client *BillingClient) GetInvoice(ctx context.Context, invoiceID string) (*domain.Invoice, error) {
-	if client == nil || client.api == nil {
+func (nc *BillingClient) GetInvoice(ctx context.Context, invoiceID string) (*domain.Invoice, error) {
+	if nc == nil || nc.api == nil {
 		return nil, fmt.Errorf("billing client not configured")
 	}
-	return client.api.GetInvoice(ctx, invoiceID)
+	return nc.api.GetInvoice(ctx, invoiceID)
 }
 
-func (client *BillingClient) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (domain.ListInvoicesResult, error) {
-	if client == nil || client.api == nil {
+func (nc *BillingClient) ListInvoices(ctx context.Context, customerID string, limit, offset int32) (domain.ListInvoicesResult, error) {
+	if nc == nil || nc.api == nil {
 		return domain.ListInvoicesResult{}, fmt.Errorf("billing client not configured")
 	}
-	return client.api.ListInvoices(ctx, customerID, limit, offset)
+	return nc.api.ListInvoices(ctx, customerID, limit, offset)
 }
 
 var _ domain.PaymentAPI = (*PaymentClient)(nil)
@@ -197,18 +197,18 @@ func openNotifierClient(_ context.Context, _ *config.Config, opts ServeOptions) 
 	return nil, func() {}, nil
 }
 
-func (client *NotifierClient) API() notify.NotifierAPI {
-	if client == nil {
+func (nc *NotifierClient) API() notify.NotifierAPI {
+	if nc == nil {
 		return nil
 	}
-	return client.api
+	return nc.api
 }
 
-func (client *NotifierClient) Close() error {
-	if client == nil || client.closeFn == nil {
+func (nc *NotifierClient) Close() error {
+	if nc == nil || nc.closeFn == nil {
 		return nil
 	}
-	client.closeFn()
-	client.closeFn = nil
+	nc.closeFn()
+	nc.closeFn = nil
 	return nil
 }

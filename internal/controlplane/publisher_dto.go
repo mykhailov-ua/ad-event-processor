@@ -45,13 +45,3 @@ type PublisherStatementListResponse struct {
 	Items []PublisherStatementDTO `json:"items"`
 	Total int64                   `json:"total"`
 }
-
-type SupplyValidationDTO struct {
-	SellersJSONValid      bool     `json:"sellers_json_valid"`
-	SellersChecksumSHA256 string   `json:"sellers_checksum_sha256"`
-	SellersCount          int      `json:"sellers_count"`
-	AdsTxtValid           bool     `json:"ads_txt_valid"`
-	AdsTxtChecksumSHA256  string   `json:"ads_txt_checksum_sha256"`
-	AdsTxtLineCount       int      `json:"ads_txt_line_count"`
-	Issues                []string `json:"issues,omitempty"`
-}

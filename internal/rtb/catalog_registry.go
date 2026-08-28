@@ -25,55 +25,55 @@ func NewRegistry(store *BudgetStore) *Registry {
 	return registry
 }
 
-func (registry *Registry) SetClearingMode(mode ClearingMode) {
-	registry.clearingMode.Store(uint32(mode))
+func (r *Registry) SetClearingMode(mode ClearingMode) {
+	r.clearingMode.Store(uint32(mode))
 }
 
-func (registry *Registry) ClearingMode() ClearingMode {
-	return ClearingMode(registry.clearingMode.Load())
+func (r *Registry) ClearingMode() ClearingMode {
+	return ClearingMode(r.clearingMode.Load())
 }
 
-func (registry *Registry) SetTargetingIndexEnabled(enabled bool) {
-	registry.targetingIndexEnabled.Store(enabled)
+func (r *Registry) SetTargetingIndexEnabled(enabled bool) {
+	r.targetingIndexEnabled.Store(enabled)
 }
 
-func (registry *Registry) TargetingIndexEnabled() bool {
-	return registry.targetingIndexEnabled.Load()
+func (r *Registry) TargetingIndexEnabled() bool {
+	return r.targetingIndexEnabled.Load()
 }
 
-func (registry *Registry) LoadShard(idx uint32) *CampaignAuctionRegistry {
-	snap := registry.catalog.Load()
+func (r *Registry) LoadShard(idx uint32) *CampaignAuctionRegistry {
+	snap := r.catalog.Load()
 	if snap == nil {
 		return nil
 	}
 	return snap.shards[idx&geoShardMask]
 }
 
-func (registry *Registry) loadCatalog() *catalogSnapshot {
-	return registry.catalog.Load()
+func (r *Registry) loadCatalog() *catalogSnapshot {
+	return r.catalog.Load()
 }
 
-func (registry *Registry) Store() *BudgetStore {
-	return registry.store
+func (r *Registry) Store() *BudgetStore {
+	return r.store
 }
 
-func (registry *Registry) SetFcapSnapshot(snap *FcapSnapshot) {
-	registry.fcap.store(snap)
+func (r *Registry) SetFcapSnapshot(snap *FcapSnapshot) {
+	r.fcap.store(snap)
 }
 
-func (registry *Registry) LoadFcapSnapshot() *FcapSnapshot {
-	return registry.fcap.load()
+func (r *Registry) LoadFcapSnapshot() *FcapSnapshot {
+	return r.fcap.load()
 }
 
-func (registry *Registry) UpdateCreatives(creatives []CreativeData) {
+func (r *Registry) UpdateCreatives(creatives []CreativeData) {
 	if len(creatives) == 0 {
-		registry.pendingCreatives = nil
+		r.pendingCreatives = nil
 		return
 	}
-	registry.pendingCreatives = append(registry.pendingCreatives[:0], creatives...)
+	r.pendingCreatives = append(r.pendingCreatives[:0], creatives...)
 }
 
-func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
+func (r *Registry) UpdateCampaigns(campaigns []CampaignData) {
 	var counts [geoShardCount]int
 	for i := range campaigns {
 		shardIdx := campaigns[i].GeoHashVal & geoShardMask
@@ -125,8 +125,8 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 		reg.GeoHashes[wIdx] = c.GeoHashVal
 		reg.Weights[wIdx] = c.Weight
 		reg.BoostPPM[wIdx] = normalizeCTRPPM(c.BoostPPM)
-		reg.BudgetIndices[wIdx] = registry.store.GetOrAllocateSlot(c.ID, c.Budget)
-		reg.CustomerBudgetIndices[wIdx] = registry.store.GetOrAllocateCustomerSlot(c.CustomerID, c.CustomerBudget)
+		reg.BudgetIndices[wIdx] = r.store.GetOrAllocateSlot(c.ID, c.Budget)
+		reg.CustomerBudgetIndices[wIdx] = r.store.GetOrAllocateCustomerSlot(c.CustomerID, c.CustomerBudget)
 		reg.DaypartMasks[wIdx] = c.DaypartMask
 		reg.TZOffsetSec[wIdx] = c.TZOffsetSec
 		reg.ScheduleStart[wIdx] = c.ScheduleStart
@@ -137,8 +137,8 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 		writeIndices[shardIdx]++
 	}
 
-	targetingEnabled := registry.targetingIndexEnabled.Load()
-	shardCreatives := partitionCreativesByShard(campaigns, registry.pendingCreatives)
+	targetingEnabled := r.targetingIndexEnabled.Load()
+	shardCreatives := partitionCreativesByShard(campaigns, r.pendingCreatives)
 	for shardIdx := range geoShardCount {
 		buildCreativeCache(registries[shardIdx], shardCreatives[shardIdx])
 		buildGeoIndex(registries[shardIdx])
@@ -148,7 +148,7 @@ func (registry *Registry) UpdateCampaigns(campaigns []CampaignData) {
 		sortRegistryBuckets(registries[shardIdx])
 	}
 
-	registry.publishCatalog(registries)
+	r.publishCatalog(registries)
 }
 
 func partitionCreativesByShard(campaigns []CampaignData, creatives []CreativeData) [geoShardCount][]CreativeData {
@@ -170,7 +170,7 @@ func partitionCreativesByShard(campaigns []CampaignData, creatives []CreativeDat
 	return out
 }
 
-func (registry *Registry) publishCatalog(shards [geoShardCount]*CampaignAuctionRegistry) {
-	registry.catalog.Store(&catalogSnapshot{shards: shards})
-	registry.snapGen.Add(1)
+func (r *Registry) publishCatalog(shards [geoShardCount]*CampaignAuctionRegistry) {
+	r.catalog.Store(&catalogSnapshot{shards: shards})
+	r.snapGen.Add(1)
 }

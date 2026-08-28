@@ -24,25 +24,25 @@ func defaultServiceOptions() ServiceOptions {
 	}
 }
 
-func (opts ServiceOptions) dedupCooldown() time.Duration {
-	if opts.DedupCooldownSec <= 0 {
+func (o ServiceOptions) dedupCooldown() time.Duration {
+	if o.DedupCooldownSec <= 0 {
 		return 5 * time.Minute
 	}
-	return time.Duration(opts.DedupCooldownSec) * time.Second
+	return time.Duration(o.DedupCooldownSec) * time.Second
 }
 
-func (opts ServiceOptions) claimStale() time.Duration {
-	if opts.ClaimStaleSec <= 0 {
+func (o ServiceOptions) claimStale() time.Duration {
+	if o.ClaimStaleSec <= 0 {
 		return 5 * time.Minute
 	}
-	return time.Duration(opts.ClaimStaleSec) * time.Second
+	return time.Duration(o.ClaimStaleSec) * time.Second
 }
 
-func (opts ServiceOptions) groupParallelism() int {
-	if opts.GroupParallelism <= 0 {
+func (o ServiceOptions) groupParallelism() int {
+	if o.GroupParallelism <= 0 {
 		return 1
 	}
-	return opts.GroupParallelism
+	return o.GroupParallelism
 }
 
 func ServiceOptionsFromConfig(cfg *config.Config) ServiceOptions {

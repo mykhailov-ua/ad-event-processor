@@ -9,9 +9,9 @@ SELECT * FROM automation_rules WHERE id = $1;
 -- name: InsertAutomationRule :one
 INSERT INTO automation_rules (
     customer_id, campaign_id, name, metric, operator, threshold,
-    window_minutes, group_by, actions, cooldown_minutes, enabled
+    window_minutes, group_by, actions, cooldown_minutes, eval_interval_minutes, enabled
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: UpdateAutomationRule :one
@@ -25,7 +25,8 @@ SET name = $2,
     group_by = $8,
     actions = $9,
     cooldown_minutes = $10,
-    enabled = $11,
+    eval_interval_minutes = $11,
+    enabled = $12,
     updated_at = NOW()
 WHERE id = $1
 RETURNING *;
@@ -46,4 +47,9 @@ ON CONFLICT DO NOTHING;
 -- name: UpdateAutomationRuleLastFired :exec
 UPDATE automation_rules
 SET last_fired_at = $2, updated_at = NOW()
+WHERE id = $1;
+
+-- name: UpdateAutomationRuleLastEvaluated :exec
+UPDATE automation_rules
+SET last_evaluated_at = $2, updated_at = NOW()
 WHERE id = $1;

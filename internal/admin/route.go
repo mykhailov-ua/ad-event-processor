@@ -6,7 +6,7 @@ type Route struct {
 	Stub   bool
 }
 
-func (route Route) Key() string { return route.Method + " " + route.Path }
+func (rt Route) Key() string { return rt.Method + " " + rt.Path }
 
 func Catalog() []Route {
 	return append([]Route(nil), routeCatalog...)

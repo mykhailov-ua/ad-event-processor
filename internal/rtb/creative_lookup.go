@@ -1,7 +1,7 @@
 package rtb
 
-func (registry *Registry) LookupCreativeWire(geoHash uint32, campaignID CampaignID, creativeID CreativeID) ([]byte, uint8, bool) {
-	reg := registry.LoadShard(geoHash)
+func (r *Registry) LookupCreativeWire(geoHash uint32, campaignID CampaignID, creativeID CreativeID) ([]byte, uint8, bool) {
+	reg := r.LoadShard(geoHash)
 	if reg == nil || reg.Count == 0 {
 		return nil, 0, false
 	}

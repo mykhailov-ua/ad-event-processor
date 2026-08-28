@@ -27,7 +27,7 @@ func TestBundleRedaction_handler(t *testing.T) {
 		SupportBundle: stubBundler{logDir: t.TempDir()},
 	}
 	mux := http.NewServeMux()
-	h.registerSupportBundleRoutes(mux)
+	h.RegisterSupportBundleRoutes(mux)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/support/bundle", http.NoBody)
 	rec := httptest.NewRecorder()

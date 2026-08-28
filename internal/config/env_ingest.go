@@ -183,6 +183,19 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	cfg.DCASNSampleMask = getEnvInt("DC_ASN_SAMPLE_MASK", -1)
 
 	cfg.ResidentialProxyHotEnabled = getEnvBool("RESIDENTIAL_PROXY_HOT_ENABLED", true)
+	cfg.ResidentialIntelHotReadEnabled = getEnvBool("RESIDENTIAL_INTEL_HOT_READ_ENABLED", false)
+	cfg.ResidentialIntelFeedDir = os.Getenv("RESIDENTIAL_INTEL_FEED_DIR")
+	if cfg.ResidentialIntelFeedDir == "" {
+		cfg.ResidentialIntelFeedDir = os.Getenv("EXTERNAL_RESIDENTIAL_INTEL_FEED_DIR")
+	}
+	cfg.ResidentialIntelFeedRefresh = 24 * time.Hour
+	if raw := os.Getenv("RESIDENTIAL_INTEL_FEED_REFRESH_INTERVAL"); raw != "" {
+		if d, err := time.ParseDuration(raw); err == nil {
+			cfg.ResidentialIntelFeedRefresh = d
+		} else if n, err := strconv.Atoi(raw); err == nil {
+			cfg.ResidentialIntelFeedRefresh = time.Duration(n) * time.Second
+		}
+	}
 	cfg.ResidentialProxyWindow = 5 * time.Minute
 	if raw := os.Getenv("RESIDENTIAL_PROXY_WINDOW"); raw != "" {
 		if d, err := time.ParseDuration(raw); err == nil && d > 0 {
@@ -192,6 +205,23 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 
 	cfg.TCPMSSAnomalyEnabled = getEnvBool("TCP_MSS_ANOMALY_ENABLED", true)
 	cfg.TCPMSSAnomalyMinByte = uint8(getEnvInt("TCP_MSS_ANOMALY_MIN_BYTE", 2))
+	cfg.TCPMSSTunnelEnabled = getEnvBool("TCP_MSS_TUNNEL_ENABLED", true)
+	cfg.TCPMSSTunnelThreshold = uint16(getEnvInt("TCP_MSS_TUNNEL_THRESHOLD", 1400))
+	cfg.TCPSynSigEnabled = getEnvBool("TCP_SYN_SIG_ENABLED", true)
+
+	cfg.SecFetchValidateEnabled = getEnvBool("SEC_FETCH_VALIDATE_ENABLED", true)
+	cfg.ClientHintsPlatformEnabled = getEnvBool("CLIENT_HINTS_PLATFORM_ENABLED", true)
+	cfg.TLSALPNMismatchEnabled = getEnvBool("TLS_ALPN_MISMATCH_ENABLED", true)
+
+	cfg.H2SettingsFingerprintEnabled = getEnvBool("H2_SETTINGS_FINGERPRINT_ENABLED", true)
+	cfg.H2PseudoOrderEnabled = getEnvBool("H2_PSEUDO_ORDER_ENABLED", true)
+	cfg.H2DowngradeArtifactEnabled = getEnvBool("H2_DOWNGRADE_ARTIFACT_ENABLED", true)
+	cfg.HTTP1HeaderOrderEnabled = getEnvBool("HTTP1_HEADER_ORDER_ENABLED", true)
+	cfg.AcceptEncodingBrowserEnabled = getEnvBool("ACCEPT_ENCODING_BROWSER_ENABLED", true)
+	cfg.AcceptLangGeoEnabled = getEnvBool("ACCEPT_LANG_GEO_ENABLED", false)
+	cfg.JSONSerializationFingerprintEnabled = getEnvBool("JSON_SERIALIZATION_FINGERPRINT_ENABLED", false)
+	cfg.BehaviorTelemetryEnabled = getEnvBool("BEHAVIOR_TELEMETRY_ENABLED", false)
+	cfg.MobileBiometricsEnabled = getEnvBool("MOBILE_BIOMETRICS_ENABLED", false)
 
 	cfg.ProxyVPNBlockEnabled = getEnvBool("PROXY_VPN_BLOCK_ENABLED", true)
 	cfg.ProxyVPNFeedDir = os.Getenv("PROXY_VPN_FEED_DIR")
@@ -200,6 +230,7 @@ func loadIngestModules(cfg *Config, appEnv string) error {
 	}
 	cfg.ProxyVPNFeedRefresh = 24 * time.Hour
 	cfg.TLSFingerprintEnabled = getEnvBool("TLS_FINGERPRINT_ENABLED", true)
+	cfg.TLSJA4BrowserCorpusEnabled = getEnvBool("TLS_JA4_BROWSER_CORPUS_ENABLED", true)
 	cfg.TLSFingerprintFeedDir = os.Getenv("TLS_FINGERPRINT_FEED_DIR")
 	if cfg.TLSFingerprintFeedDir == "" {
 		cfg.TLSFingerprintFeedDir = "/var/lib/ad-event-processor/tls-fingerprint"
@@ -286,4 +317,16 @@ func ApplyModeratorIntelWhenEntitled(cfg *Config, entitled bool) {
 		return
 	}
 	cfg.ModeratorIntelEnabled = true
+}
+
+func ResidentialIntelHotReadEnvExplicitlySet() bool {
+	_, ok := os.LookupEnv("RESIDENTIAL_INTEL_HOT_READ_ENABLED")
+	return ok
+}
+
+func ApplyResidentialIntelHotReadWhenEntitled(cfg *Config, entitled bool) {
+	if cfg == nil || !entitled || ResidentialIntelHotReadEnvExplicitlySet() {
+		return
+	}
+	cfg.ResidentialIntelHotReadEnabled = true
 }

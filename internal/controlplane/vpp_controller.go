@@ -59,7 +59,7 @@ func (s *Service) RunVPPPacingController(ctx context.Context) error {
 			samples := sampleByCampaign[campID]
 			weights := hourlySharesFromSamples(samples)
 
-			loc := s.campaignLocation(row.Timezone)
+			loc := s.CampaignLocation(row.Timezone)
 			localNow := time.Now().In(loc)
 			daypart := row.DaypartHours
 

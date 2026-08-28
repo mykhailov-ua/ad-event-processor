@@ -27,10 +27,10 @@ type Invoice struct {
 	PDFURL        string        `json:"pdf_url,omitempty"`
 }
 
-func (inv Invoice) MarshalJSON() ([]byte, error) {
+func (i Invoice) MarshalJSON() ([]byte, error) {
 	month := ""
-	if !inv.BillingMonth.IsZero() {
-		month = inv.BillingMonth.UTC().Format("2006-01")
+	if !i.BillingMonth.IsZero() {
+		month = i.BillingMonth.UTC().Format("2006-01")
 	}
 	return json.Marshal(struct {
 		ID            string        `json:"id"`
@@ -45,17 +45,17 @@ func (inv Invoice) MarshalJSON() ([]byte, error) {
 		Lines         []InvoiceLine `json:"lines"`
 		PDFURL        string        `json:"pdf_url,omitempty"`
 	}{
-		ID:            inv.ID,
-		CustomerID:    inv.CustomerID,
+		ID:            i.ID,
+		CustomerID:    i.CustomerID,
 		BillingMonth:  month,
-		SubtotalMicro: inv.SubtotalMicro,
-		TaxMicro:      inv.TaxMicro,
-		TotalMicro:    inv.TotalMicro,
-		Currency:      inv.Currency,
-		TaxScheme:     inv.TaxScheme,
-		TaxRateBps:    inv.TaxRateBps,
-		Lines:         inv.Lines,
-		PDFURL:        inv.PDFURL,
+		SubtotalMicro: i.SubtotalMicro,
+		TaxMicro:      i.TaxMicro,
+		TotalMicro:    i.TotalMicro,
+		Currency:      i.Currency,
+		TaxScheme:     i.TaxScheme,
+		TaxRateBps:    i.TaxRateBps,
+		Lines:         i.Lines,
+		PDFURL:        i.PDFURL,
 	})
 }
 

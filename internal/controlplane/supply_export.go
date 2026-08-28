@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"ad-event-processor/internal/supply"
 )
 
 func (s *Service) ExportSupplyFiles(ctx context.Context) error {
@@ -31,7 +33,7 @@ func (s *Service) ExportSupplyFiles(ctx context.Context) error {
 		return fmt.Errorf("write ads.txt: %w", err)
 	}
 
-	invalidateSellersJSONCache()
+	supply.InvalidateSellersJSONCache()
 	return nil
 }
 

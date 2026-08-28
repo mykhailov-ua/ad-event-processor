@@ -154,6 +154,9 @@ Flat under `internal/<name>/`:
 - Allowed subdirs: `db/`, `queries/`, `migrations/`, `pb/` (generated).
 - Exceptions: `controlplane/authz/`, `controlplane/outboxpb/`.
 - Banned new subtrees: `providers/`, `services/`, `usecase/`, `dto/`.
+- God packages forbidden: ceilings and bridge rules in `modular-monolith.mdc`. `controlplane` is composition root only — domain logic in `internal/<domain>/`.
+- Micro-packages forbidden: no stub domain dirs, no `internal/common` — minimum viable extraction + `doc.go` in same PR (`modular-monolith.mdc`).
+- `doc.go` mandatory: `//` line comments only at package root (`naming.mdc`). Sync: `python3 scripts/dev/sync_package_doc_go.py`.
 
 ## Tests - keep vs delete
 

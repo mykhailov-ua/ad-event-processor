@@ -81,17 +81,17 @@ func setupAuthTestInfra(t *testing.T) (infra *authTestInfra, cleanup func()) {
 	return
 }
 
-func (infra *authTestInfra) newService(t *testing.T) *Service {
+func (ti *authTestInfra) newService(t *testing.T) *Service {
 	t.Helper()
 	tokenMaker, err := NewPasetoMaker(testPasetoKey)
 	require.NoError(t, err)
 	hasher, err := NewPasswordHasher(4096, 1, 1)
 	require.NoError(t, err)
-	lockout := NewLockoutLimiter(infra.Redis)
-	return NewService(infra.Store, tokenMaker, hasher, lockout, infra.Redis)
+	lockout := NewLockoutLimiter(ti.Redis)
+	return NewService(ti.Store, tokenMaker, hasher, lockout, ti.Redis)
 }
 
-func (infra *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, password string) (userID uuid.UUID, accessToken, refreshToken string) {
+func (ti *authTestInfra) registerAndLogin(t *testing.T, svc *Service, email, password string) (userID uuid.UUID, accessToken, refreshToken string) {
 	t.Helper()
 	ctx := context.Background()
 	userID, err := svc.Register(ctx, RegisterDTO{Email: email, Password: password, Role: RoleUser})
@@ -131,27 +131,27 @@ func waitAuthRedisReady(t *testing.T, rdb redis.UniversalClient) {
 	}, 30*time.Second, 200*time.Millisecond)
 }
 
-func (infra *authTestInfra) refreshRedisClient(t *testing.T) {
+func (ti *authTestInfra) refreshRedisClient(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	_ = infra.Redis.Close()
-	endpoint, err := infra.RedisContainer.Endpoint(ctx, "")
+	_ = ti.Redis.Close()
+	endpoint, err := ti.RedisContainer.Endpoint(ctx, "")
 	require.NoError(t, err)
-	infra.Redis = redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
-	waitAuthRedisReady(t, infra.Redis)
+	ti.Redis = redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{endpoint}})
+	waitAuthRedisReady(t, ti.Redis)
 }
 
-func (infra *authTestInfra) refreshPGPool(t *testing.T) {
+func (ti *authTestInfra) refreshPGPool(t *testing.T) {
 	t.Helper()
 	ctx := context.Background()
-	infra.Pool.Close()
-	connStr, err := infra.PGContainer.ConnectionString(ctx, "sslmode=disable")
+	ti.Pool.Close()
+	connStr, err := ti.PGContainer.ConnectionString(ctx, "sslmode=disable")
 	require.NoError(t, err)
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
-	infra.Pool = pool
-	infra.Store = db.NewStore(pool)
-	waitAuthPGReady(t, infra.Pool)
+	ti.Pool = pool
+	ti.Store = db.NewStore(pool)
+	waitAuthPGReady(t, ti.Pool)
 }
 
 func countActiveSessions(t *testing.T, pool *pgxpool.Pool, userID uuid.UUID) int {

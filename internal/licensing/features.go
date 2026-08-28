@@ -44,3 +44,7 @@ func (f FeatureSet) ModeratorIntelFeedEnabled() bool {
 func (f FeatureSet) AdPlatformCampaignAPIEnabled() bool {
 	return f.Normalized().AdPlatformCampaignAPI
 }
+
+func (f FeatureSet) FraudDisputeEvidenceEnabled() bool {
+	return f.Normalized().FraudDisputeEvidence
+}

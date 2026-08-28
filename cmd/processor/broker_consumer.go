@@ -87,28 +87,28 @@ func NewBrokerConsumerGroup(
 	return bcg, nil
 }
 
-func (bcg *BrokerConsumerGroup) Start(ctx context.Context) {
+func (bc *BrokerConsumerGroup) Start(ctx context.Context) {
 	runCtx, cancel := context.WithCancel(ctx)
-	bcg.cancel = cancel
+	bc.cancel = cancel
 
-	for p := 0; p < bcg.cfg.PartitionCount; p++ {
+	for p := 0; p < bc.cfg.PartitionCount; p++ {
 		w := &brokerWorker{
-			parent:    bcg,
+			parent:    bc,
 			partition: uint16(p),
-			cli:       client.NewClient(bcg.cfg.BrokerAddr, bcg.cfg.Timeout),
+			cli:       client.NewClient(bc.cfg.BrokerAddr, bc.cfg.Timeout),
 		}
-		if bcg.cfg.RedisURL != "" {
-			w.cli.SetRedisURL(bcg.cfg.RedisURL)
+		if bc.cfg.RedisURL != "" {
+			w.cli.SetRedisURL(bc.cfg.RedisURL)
 		}
-		bcg.workers = append(bcg.workers, w)
-		bcg.wg.Add(1)
+		bc.workers = append(bc.workers, w)
+		bc.wg.Add(1)
 		go w.run(runCtx)
 	}
 	slog.Info("broker consumer group started",
-		"topic", bcg.cfg.Topic,
-		"group", bcg.cfg.Group,
-		"partitions", bcg.cfg.PartitionCount,
-		"batch_size", bcg.cfg.BatchSize,
+		"topic", bc.cfg.Topic,
+		"group", bc.cfg.Group,
+		"partitions", bc.cfg.PartitionCount,
+		"batch_size", bc.cfg.BatchSize,
 	)
 }
 
@@ -256,16 +256,16 @@ func (w *brokerWorker) drain(ctx context.Context, start uint64, batch []*domain.
 	_, _ = w.flushBatch(ctx, batch, start+uint64(len(batch)))
 }
 
-func (bcg *BrokerConsumerGroup) Close() {
-	if bcg.cancel != nil {
-		bcg.cancel()
+func (bc *BrokerConsumerGroup) Close() {
+	if bc.cancel != nil {
+		bc.cancel()
 	}
 }
 
-func (bcg *BrokerConsumerGroup) Wait(ctx context.Context) error {
+func (bc *BrokerConsumerGroup) Wait(ctx context.Context) error {
 	done := make(chan struct{})
 	go func() {
-		bcg.wg.Wait()
+		bc.wg.Wait()
 		close(done)
 	}()
 	select {
@@ -276,6 +276,6 @@ func (bcg *BrokerConsumerGroup) Wait(ctx context.Context) error {
 	}
 }
 
-func (bcg *BrokerConsumerGroup) OffsetTracker() *broker.ConsumerOffsetTracker {
-	return bcg.offsetTracker
+func (bc *BrokerConsumerGroup) OffsetTracker() *broker.ConsumerOffsetTracker {
+	return bc.offsetTracker
 }

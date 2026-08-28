@@ -1,7 +1,6 @@
 package ingestion
 
 import (
-	"bytes"
 	"context"
 	"net/http"
 	"strings"
@@ -49,6 +48,7 @@ const (
 	clickKeyDMR
 	clickKeyExpires
 	clickKeySig
+	clickKeySmoke
 )
 
 const (
@@ -99,6 +99,7 @@ type clickQueryParsed struct {
 	ipv4RotationShadow      bool
 	attestationLightMissing bool
 	reviewTrafficMatched    bool
+	smoke                   bool
 	ok                      bool
 }
 
@@ -123,6 +124,7 @@ func (p *clickQueryParsed) reset() {
 	p.ipv4RotationShadow = false
 	p.attestationLightMissing = false
 	p.reviewTrafficMatched = false
+	p.smoke = false
 	p.ok = false
 }
 
@@ -163,6 +165,9 @@ func matchClickQueryKey(key []byte) clickQueryKeyID {
 			return clickKeySubGeneric
 		}
 	case 5:
+		if key[0] == 's' && key[1] == 'm' && key[2] == 'o' && key[3] == 'k' && key[4] == 'e' {
+			return clickKeySmoke
+		}
 		if loadU32(key) == 0x696c6367 && key[4] == 'd' {
 			return clickKeyGCLID
 		}
@@ -225,7 +230,13 @@ func splitClickPathQuery(path []byte) (base, query []byte, ok bool) {
 }
 
 func queryNeedsPctDecode(src []byte) bool {
-	return bytes.IndexByte(src, '%') >= 0 || bytes.IndexByte(src, '+') >= 0
+	for i := 0; i < len(src); i++ {
+		switch src[i] {
+		case '%', '+':
+			return true
+		}
+	}
+	return false
 }
 
 func appendPctDecoded(dst, src []byte) []byte {
@@ -366,6 +377,8 @@ func parseClickQuery(path []byte, scratch []byte, out *clickQueryParsed) []byte 
 			}
 		case clickKeySig:
 			out.linkSig = unsafeString(decoded)
+		case clickKeySmoke:
+			out.smoke = parseSmokeQueryFlag(decoded)
 		}
 	}
 
@@ -378,6 +391,10 @@ func parseClickQuery(path []byte, scratch []byte, out *clickQueryParsed) []byte 
 	out.passthrough = scratch
 	out.ok = true
 	return scratch
+}
+
+func parseSmokeQueryFlag(decoded []byte) bool {
+	return parseDmrQueryFlag(decoded)
 }
 
 func redirectBaseValid(base []byte) bool {
@@ -623,6 +640,9 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 
 	evt := &ctx.evt
 	evt.Reset()
+	if parsed.smoke {
+		evt.SmokeEvent = true
+	}
 	evt.ClickID = clickID
 	evt.CampaignID = parsed.campaignID
 	evt.UserID = parsed.userID
@@ -638,6 +658,8 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
+	fillIngressH2(evt, ctx != nil && ctx.protoH2)
+	fillWireMetadataFromRequest(evt, &req)
 	attachFraudAccumulator(evt)
 	if parsed.attestationLightMissing {
 		addFraudSignal(evt, FraudReasonAttestationMissing)
@@ -661,8 +683,18 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	}
 
 	var landing []byte
+	var admissionLease streamAdmissionLease
+	admissionHeld := false
+	releaseAdmission := func() {
+		if admissionHeld {
+			admissionLease.Release()
+			admissionHeld = false
+		}
+	}
 	if h.filterEngine != nil {
-		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
+		var kind filterRejectKind
+		var acquired bool
+		admissionLease, kind, acquired = h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
 			h.writeFilterReject(c, spec.gnetResp, ctx)
@@ -670,7 +702,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			h.recordTrackReject(ctx, evt, kind)
 			return gnet.None
 		}
-		defer lease.Release()
+		admissionHeld = true
 		outcome := processTrack(context.Background(), h.trackProc, evt, nil)
 		forceSafe := req.ForceSafe || parsed.attestationLightMissing
 		if mode.RequiresProbe() && clickHasTTCFraudSignal(evt) {
@@ -685,6 +717,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 		case safePageActionInPlace:
 			h.write(c, respClickSafePage, ctx)
 			h.recordMetrics(startMono, http.StatusOK)
+			releaseAdmission()
 			return gnet.None
 		case safePageActionRedirect:
 			landing = UnsafeBytes(safeURL)
@@ -692,6 +725,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			switch outcome.Status {
 			case trackStatusFraudAccepted:
 				h.writeClickFraudSilentReject(ctx, c, evt, outcome, forceSafe, startMono)
+				releaseAdmission()
 				return gnet.None
 			case trackStatusRejected:
 				spec := filterRejectSpecs[outcome.RejectKind]
@@ -702,13 +736,21 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 				}
 				h.writeFilterReject(c, spec.gnetResp, ctx)
 				h.recordMetrics(startMono, spec.status)
+				releaseAdmission()
 				return gnet.None
 			case trackStatusInternalError:
 				h.write(c, respInternalError, ctx)
 				h.recordMetrics(startMono, http.StatusInternalServerError)
+				releaseAdmission()
 				return gnet.None
 			case trackStatusAccepted:
-				if !h.publishAcceptedTrack(evt, &lease) {
+				if parsed.smoke {
+					if outcome.LandingURL != "" {
+						landing = UnsafeBytes(outcome.LandingURL)
+					}
+					break
+				}
+				if !h.publishAcceptedTrack(evt, &admissionLease) {
 					if h.filterEngine != nil {
 						h.filterEngine.RollbackDebit(context.Background(), evt, h.registry)
 					}
@@ -716,6 +758,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 					h.recordTrackReject(ctx, evt, filterRejectProducerOverload)
 					h.writeFilterReject(c, spec.gnetResp, ctx)
 					h.recordMetrics(startMono, spec.status)
+					releaseAdmission()
 					return gnet.None
 				}
 				if outcome.LandingURL != "" {
@@ -724,9 +767,11 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 			default:
 				h.write(c, respInternalError, ctx)
 				h.recordMetrics(startMono, http.StatusInternalServerError)
+				releaseAdmission()
 				return gnet.None
 			}
 		}
+		releaseAdmission()
 	} else {
 		landing = ResolveLandingURLBytes(context.Background(), h.registry, h.creativeStore, evt)
 	}

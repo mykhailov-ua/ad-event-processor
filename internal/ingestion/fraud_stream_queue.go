@@ -63,6 +63,7 @@ type fraudStreamSlot struct {
 	reason  [fraudSlotReasonMax]byte
 
 	fraudScore        uint32
+	layerDesyncCount  uint8
 	silentRejectEvent bool
 }
 
@@ -168,6 +169,7 @@ func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *domain.Event) {
 	slot.payloadLen = uint16(copyFraudField(slot.payload[:], unsafeString(evt.Payload)))
 	slot.reasonLen = uint16(copyFraudField(slot.reason[:], evt.FraudReason))
 	slot.fraudScore = evt.FraudScore
+	slot.layerDesyncCount = evt.LayerDesyncCount
 	slot.silentRejectEvent = evt.SilentRejectEvent
 	slot.ready.Store(1)
 }
@@ -501,6 +503,7 @@ func marshalFraudStreamSlot(slot *fraudStreamSlot) ([]byte, *ByteSliceValue, *[]
 		pbEvt.CreatedAtUnix = slot.createdAt / int64(time.Second)
 	}
 	pbEvt.FraudScore = slot.fraudScore
+	pbEvt.LayerDesyncCount = uint32(slot.layerDesyncCount)
 	pbEvt.FraudReason = slot.reason[:slot.reasonLen]
 	pbEvt.SilentRejectEvent = slot.silentRejectEvent
 

@@ -26,41 +26,15 @@ type contextKey string
 
 const UserContextKey contextKey = "authenticated_user"
 
-type AuthenticatedUser struct {
-	UserID     uuid.UUID
-	Role       string
-	CustomerID uuid.UUID
-	AuthSource string
-	Scope      authz.Scope
-}
-
-func (u AuthenticatedUser) IsUser() bool {
-	return u.Role == RoleUser
-}
-
-func (u AuthenticatedUser) IsBuyer() bool {
-	return u.Role == RoleBuyer
-}
-
-func (u AuthenticatedUser) IsTeamLead() bool {
-	return NormalizeRole(u.Role) == RoleTeamLead
-}
-
-func (u AuthenticatedUser) IsMediaBuyer() bool {
-	return NormalizeRole(u.Role) == RoleMediaBuyer
-}
-
-func (u AuthenticatedUser) IsPublisher() bool {
-	return NormalizeRole(u.Role) == RolePublisher
-}
-
-func (u AuthenticatedUser) HasBoundCustomer() bool {
-	return u.IsUser() || u.IsBuyer() || u.IsTeamLead() || u.IsMediaBuyer() || u.IsPublisher()
-}
+type AuthenticatedUser = authz.AuthenticatedUser
 
 func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
-	u, ok := ctx.Value(UserContextKey).(AuthenticatedUser)
-	return u, ok
+	return authz.GetUser(ctx)
+}
+
+func withAuthenticatedUser(ctx context.Context, user AuthenticatedUser) context.Context {
+	ctx = context.WithValue(ctx, UserContextKey, user)
+	return authz.WithAuthenticatedUser(ctx, user)
 }
 
 type AuthMiddleware struct {
@@ -117,9 +91,13 @@ func (m *AuthMiddleware) SetPool(pool *pgxpool.Pool) {
 
 func (m *AuthMiddleware) attachAuthz(ctx context.Context, user AuthenticatedUser) context.Context {
 	if m.policy == nil {
+		ctx = authz.WithAuthenticatedUser(ctx, user)
 		return context.WithValue(ctx, UserContextKey, user)
 	}
 	snap := m.policy.EffectivePermissionsDB(ctx, m.pool, user.UserID, user.Role)
+	if len(user.APIKeyScopes) > 0 {
+		snap = restrictSnapshotForAPIKeyScopes(snap, user.APIKeyScopes)
+	}
 	if user.Scope == "" {
 		user.Scope = snap.Scope
 	}
@@ -127,6 +105,7 @@ func (m *AuthMiddleware) attachAuthz(ctx context.Context, user AuthenticatedUser
 		user.Scope = authz.ScopeCustomer
 	}
 	ctx = authz.WithSnapshot(ctx, snap)
+	ctx = authz.WithAuthenticatedUser(ctx, user)
 	return context.WithValue(ctx, UserContextKey, user)
 }
 
@@ -278,10 +257,11 @@ func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Reque
 	}
 
 	return AuthenticatedUser{
-		UserID:     user.ID,
-		Role:       NormalizeRole(user.Role),
-		CustomerID: user.CustomerID,
-		AuthSource: "api_key",
+		UserID:       user.ID,
+		Role:         NormalizeRole(user.Role),
+		CustomerID:   user.CustomerID,
+		AuthSource:   "api_key",
+		APIKeyScopes: user.Scopes,
 	}, true
 }
 

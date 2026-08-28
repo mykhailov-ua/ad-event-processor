@@ -1,6 +1,6 @@
 # Admin UI rebuild backlog
 
-**Status:** `web/` deleted (2026-08-27). API: `api/openapi/`. Static stub: `internal/controlplane/admin_static_stub/`.
+**Status:** `web/` restored (2026-08-28). API: `api/openapi/`. Production embed: `web/dist` via `web/embed.go`.
 
 **Contract:** `.cursor/rules/ui.mdc`  
 **Milestone structure:** `deploy/vendor/MILESTONE_TEMPLATE.md` (abstract)  

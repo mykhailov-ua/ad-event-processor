@@ -11,23 +11,26 @@ import (
 )
 
 type trackIngestFields struct {
-	campaignID  uuid.UUID
-	eventType   string
-	userID      string
-	payload     []byte
-	clickID     string
-	placementID string
-	deviceType  []byte
-	subs        SubIDSlots
-	fbclid      string
-	gclid       string
-	ttclid      string
-	msclkid     string
-	tblci       string
-	obClickID   string
-	eventID     string
-	txID        string
-	ortbSlot    *openRTBScratchSlot
+	campaignID             uuid.UUID
+	eventType              string
+	userID                 string
+	payload                []byte
+	clickID                string
+	placementID            string
+	deviceType             []byte
+	subs                   SubIDSlots
+	fbclid                 string
+	gclid                  string
+	ttclid                 string
+	msclkid                string
+	tblci                  string
+	obClickID              string
+	eventID                string
+	txID                   string
+	ortbSlot               *openRTBScratchSlot
+	jsonSerializationFlags uint8
+	telemetrySet           uint8
+	telemetryEvents        []domain.BehaviorTelemetryEvent
 }
 
 func (h *AdsPacketHandler) parseTrackIngest(
@@ -94,6 +97,7 @@ func (h *AdsPacketHandler) parseTrackIngest(
 	} else if err := ParseTrackRequestJSONOpt(trackReq, req.Body); err != nil {
 		return fields, respInvalidJSON, http.StatusBadRequest, false
 	}
+	fields.jsonSerializationFlags = scanTrackJSONSerialization(req.Body)
 	fields.campaignID = trackReq.CampaignID
 	fields.userID = trackReq.UserID
 	fields.eventType = trackReq.Type
@@ -112,6 +116,10 @@ func (h *AdsPacketHandler) parseTrackIngest(
 		fields.clickID = trackReq.ClickID
 	}
 	fields.ortbSlot = trackReq.ortbSlot
+	fields.telemetrySet = trackReq.TelemetrySet
+	if len(trackReq.TelemetryEvents) > 0 {
+		fields.telemetryEvents = append(fields.telemetryEvents[:0], trackReq.TelemetryEvents...)
+	}
 	trackReq.ortbSlot = nil
 	return fields, nil, 0, true
 }
@@ -123,14 +131,32 @@ func fillTrackEvent(evt *domain.Event, fields trackIngestFields, ip, ua string) 
 	evt.UserID = fields.userID
 	evt.Type = fields.eventType
 	evt.PlacementID = fields.placementID
-	evt.Payload = appendAttributionPayload(evt.Payload[:0], fields.payload, fields.subs, fields.fbclid, fields.gclid, fields.ttclid, fields.msclkid, fields.tblci, fields.obClickID, fields.eventID, fields.txID)
-	if evt.Payload == nil {
-		evt.Payload = evt.Payload[:0]
+	if len(fields.payload) > 0 && !trackAttributionExtrasPresent(fields) {
+		evt.Payload = fields.payload
+	} else {
+		evt.Payload = appendAttributionPayload(evt.Payload[:0], fields.payload, fields.subs, fields.fbclid, fields.gclid, fields.ttclid, fields.msclkid, fields.tblci, fields.obClickID, fields.eventID, fields.txID)
+		if evt.Payload == nil {
+			evt.Payload = evt.Payload[:0]
+		}
 	}
 	evt.IP = ip
 	evt.UA = ua
 	if fields.ortbSlot != nil {
 		attachOpenRTB3Scratch(evt, fields.ortbSlot)
+	}
+	evt.JSONSerializationFlags = fields.jsonSerializationFlags
+	if fields.telemetrySet != 0 {
+		evt.TelemetrySet = 1
+		if len(fields.telemetryEvents) > 0 {
+			evt.TelemetryEvents = append(evt.TelemetryEvents[:0], fields.telemetryEvents...)
+		}
+	}
+}
+
+func fillTrackEventWithMobileBiometrics(evt *domain.Event, fields trackIngestFields, ip, ua string, mobileBiometrics bool) {
+	fillTrackEvent(evt, fields, ip, ua)
+	if mobileBiometrics {
+		applyMobileBiometricSummary(evt)
 	}
 }
 

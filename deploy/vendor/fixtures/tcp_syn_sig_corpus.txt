@@ -1,0 +1,7 @@
+# XDP hash_tcp_syn_fields corpus; same format as internal/ingestion/tcp_syn_sig_corpus_embed.txt
+00eaf023=windows
+00eaf022=windows
+00300022=windows
+007a1022=linux
+00310822=linux
+00f7ff22=linux,mac,mobile

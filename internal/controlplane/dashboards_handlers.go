@@ -3,6 +3,7 @@ package controlplane
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"ad-event-processor/internal/edge"
@@ -15,14 +16,6 @@ type PeriodDTO struct {
 	From     string `json:"from"`
 	To       string `json:"to"`
 	Timezone string `json:"timezone,omitempty"`
-}
-
-type DataFreshnessDTO struct {
-	AsOf         string                   `json:"as_of"`
-	Consistency  string                   `json:"consistency"`
-	Stale        bool                     `json:"stale"`
-	CHLagSeconds int                      `json:"ch_lag_seconds,omitempty"`
-	Sources      []DataSourceFreshnessDTO `json:"sources,omitempty"`
 }
 
 type MetricsBlockDTO struct {
@@ -93,14 +86,17 @@ type BuyerPortfolioDTO struct {
 	Clicks7d        int64                          `json:"clicks_7d"`
 	OverspendCount  int                            `json:"overspend_count,omitempty"`
 	KPIs            *MetricsBlockDTO               `json:"kpis,omitempty"`
+	Series          []DashboardSeriesPointDTO      `json:"series,omitempty"`
 	Recommendations []RecommendationCardDTO        `json:"recommendations,omitempty"`
 	Alerts          []AlertCardDTO                 `json:"alerts,omitempty"`
 	Attention       []BuyerAttentionDTO            `json:"attention"`
 	Campaigns       []BuyerCampaignPortfolioRowDTO `json:"campaigns"`
+	Fraud           *CustomerFraudOverviewDTO      `json:"fraud,omitempty"`
 }
 
 type BuyerPortfolioReader interface {
 	GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error)
+	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
 }
 
 type CampaignDashboardReader interface {
@@ -112,6 +108,7 @@ type RoleDashboardReader interface {
 	GetCFODashboard(ctx context.Context, customerID uuid.UUID) (CFODashboardDTO, error)
 	GetAccountantDashboard(ctx context.Context, customerID uuid.UUID) (AccountantDashboardDTO, error)
 	GetFraudDashboard(ctx context.Context, customerID uuid.UUID) (FraudDashboardDTO, error)
+	GetFraudDashboardRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (FraudDashboardDTO, error)
 }
 
 type BuyerCampaignRowDTO struct {
@@ -218,33 +215,26 @@ type FraudOverviewDTO struct {
 }
 
 type FraudDashboardDTO struct {
-	CustomerID            string                 `json:"customer_id"`
-	Period                PeriodDTO              `json:"period"`
-	SilentRejectCampaigns int                    `json:"silent_reject_campaigns"`
-	LabelsPending         int                    `json:"labels_pending"`
-	EdgeBlockedFraud      uint64                 `json:"edge_blocked_fraud"`
-	MLActiveVersionID     string                 `json:"ml_active_version_id,omitempty"`
-	MLArtifactHash        string                 `json:"ml_artifact_hash,omitempty"`
-	MLPrecision           float64                `json:"ml_precision,omitempty"`
-	MLRecall              float64                `json:"ml_recall,omitempty"`
-	MLDriftDetected       bool                   `json:"ml_drift_detected,omitempty"`
-	MLDriftSummary        string                 `json:"ml_drift_summary,omitempty"`
-	MLEvalGeneratedAt     string                 `json:"ml_eval_generated_at,omitempty"`
-	MLEvalStatus          string                 `json:"ml_eval_status,omitempty"`
-	MLEvalStale           bool                   `json:"ml_eval_stale,omitempty"`
-	MLLabelMethod         string                 `json:"ml_label_method,omitempty"`
-	MLShardsConsistent    *bool                  `json:"ml_shards_consistent,omitempty"`
-	FraudTierThresholds   FraudTierThresholdsDTO `json:"fraud_tier_thresholds"`
-	GeoHints              []FraudGeoHintDTO      `json:"geo_hints,omitempty"`
-	RecentLabels          []MLManualLabelDTO     `json:"recent_labels,omitempty"`
-}
-
-type FraudTierThresholdsDTO struct {
-	Scope      string `json:"scope,omitempty"`
-	PassMax    int    `json:"pass_max"`
-	SuspectMax int    `json:"suspect_max"`
-	IVTMax     int    `json:"ivt_max"`
-	BlockAbove int    `json:"block_above"`
+	CustomerID            string                    `json:"customer_id"`
+	Period                PeriodDTO                 `json:"period"`
+	Series                []DashboardSeriesPointDTO `json:"series,omitempty"`
+	SilentRejectCampaigns int                       `json:"silent_reject_campaigns"`
+	LabelsPending         int                       `json:"labels_pending"`
+	EdgeBlockedFraud      uint64                    `json:"edge_blocked_fraud"`
+	MLActiveVersionID     string                    `json:"ml_active_version_id,omitempty"`
+	MLArtifactHash        string                    `json:"ml_artifact_hash,omitempty"`
+	MLPrecision           float64                   `json:"ml_precision,omitempty"`
+	MLRecall              float64                   `json:"ml_recall,omitempty"`
+	MLDriftDetected       bool                      `json:"ml_drift_detected,omitempty"`
+	MLDriftSummary        string                    `json:"ml_drift_summary,omitempty"`
+	MLEvalGeneratedAt     string                    `json:"ml_eval_generated_at,omitempty"`
+	MLEvalStatus          string                    `json:"ml_eval_status,omitempty"`
+	MLEvalStale           bool                      `json:"ml_eval_stale,omitempty"`
+	MLLabelMethod         string                    `json:"ml_label_method,omitempty"`
+	MLShardsConsistent    *bool                     `json:"ml_shards_consistent,omitempty"`
+	FraudTierThresholds   FraudTierThresholdsDTO    `json:"fraud_tier_thresholds"`
+	GeoHints              []FraudGeoHintDTO         `json:"geo_hints,omitempty"`
+	RecentLabels          []MLManualLabelDTO        `json:"recent_labels,omitempty"`
 }
 
 type FraudGeoHintDTO struct {
@@ -283,9 +273,10 @@ type XDPPanelDTO struct {
 }
 
 type CampaignDashboardDTO struct {
-	CampaignID string           `json:"campaign_id"`
-	KPIs       MetricsBlockDTO  `json:"kpis"`
-	Freshness  DataFreshnessDTO `json:"freshness"`
+	CampaignID string                    `json:"campaign_id"`
+	KPIs       MetricsBlockDTO           `json:"kpis"`
+	Series     []DashboardSeriesPointDTO `json:"series,omitempty"`
+	Freshness  DataFreshnessDTO          `json:"freshness"`
 }
 
 type DashboardsHTTPHandlers struct {
@@ -363,8 +354,13 @@ func (h *DashboardsHTTPHandlers) getBuyerDashboard(w http.ResponseWriter, r *htt
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id is required")
 		return
 	}
+	from, to, err := parseDashboardRange(r)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
 
-	resp, err := h.BuyerPortfolio.GetBuyerPortfolio(r.Context(), customerID)
+	resp, err := h.BuyerPortfolio.GetBuyerPortfolioRange(r.Context(), customerID, from, to)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -547,10 +543,39 @@ func (h *DashboardsHTTPHandlers) getFraudDashboard(w http.ResponseWriter, r *htt
 	if !ok {
 		return
 	}
-	resp, err := h.RoleDashboards.GetFraudDashboard(r.Context(), customerID)
+	from, to, err := parseDashboardRange(r)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	resp, err := h.RoleDashboards.GetFraudDashboardRange(r.Context(), customerID, from, to)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, resp)
+}
+
+func parseDashboardRange(r *http.Request) (time.Time, time.Time, error) {
+	now := time.Now().UTC()
+	from := now.Add(-7 * 24 * time.Hour)
+	to := now
+	if fromStr := strings.TrimSpace(r.URL.Query().Get("from")); fromStr != "" {
+		parsed, err := time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, invalidQueryError("invalid from")
+		}
+		from = parsed.UTC()
+	}
+	if toStr := strings.TrimSpace(r.URL.Query().Get("to")); toStr != "" {
+		parsed, err := time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			return time.Time{}, time.Time{}, invalidQueryError("invalid to")
+		}
+		to = parsed.UTC()
+	}
+	if err := validateChartRange(from, to); err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+	return from, to, nil
 }

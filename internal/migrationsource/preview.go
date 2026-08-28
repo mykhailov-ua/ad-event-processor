@@ -29,6 +29,7 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 	out := PreviewResult{
 		SourceKind:      kind,
 		SecretsStripped: 0,
+		Warnings:        append([]Warning(nil), bundle.Warnings...),
 	}
 	for _, camp := range bundle.Campaigns {
 		mapped := MappedCampaign{
@@ -84,6 +85,9 @@ func Preview(kind SourceKind, payload []byte, maps *Maps) (PreviewResult, error)
 		}
 		if camp.PostbackURL != "" {
 			out.SecretsStripped++
+		}
+		if camp.Flow != nil {
+			mapped.Flow = mapNormalizedFlow(camp.Flow)
 		}
 		out.MappedCampaigns = append(out.MappedCampaigns, mapped)
 	}

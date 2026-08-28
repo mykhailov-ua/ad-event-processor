@@ -1,6 +1,6 @@
 # Binary patch lab fixture
 
-Manual pentest **PT-D04**, **PT-D07** (`deploy/vendor/licensing_security_backlog.md` slug `binary_patch_lab_procedure`): verify that a single CFG patch or `.text` byte flip does not yield a full crack when guard and seed coupling are on.
+Manual pentest **PT-D04**, **PT-D07** (`deploy/vendor/licensing_security_backlog.md` Tier D): verify that a single CFG patch or `.text` byte flip does not yield a full crack when guard and seed coupling are on.
 
 Automated CI proxies (no live binary patch):
 

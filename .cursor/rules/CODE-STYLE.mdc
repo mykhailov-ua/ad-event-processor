@@ -22,14 +22,20 @@ Apply when editing Go, Lua, or sqlc SQL. Layout follows `structure.mdc`. Naming 
 | Banned ceremony | `dto/`, `usecase/`, `providers/`, `repositories/` subtrees |
 | `cmd/` | `main.go` wires config and modules only; no business logic in `main` |
 | `pkg/` | No `internal/` imports |
+| `doc.go` | **Mandatory** at package root — `package <name>` only (`naming.mdc`, `modular-monolith.mdc`) |
 | `internal/domain` | Shared hot-path vocabulary only (no json/db tags) |
 
 ## File naming
 
 | Pattern | Example |
 | :--- | :--- |
-| Production | snake_case `<domain>_<rest>.go` - `track_core.go`, `service_campaigns.go` |
+| Production | snake_case `<role>_<rest>.go` — `track_core.go`, `runtime_patch.go` |
+| Package-local | Inside `internal/<domain>/`, omit the package name from the filename (`dto.go`, not `campaign_dto.go` in `internal/campaign/`) — `naming.mdc` |
+| Composition root | Cross-domain files in `controlplane` keep domain token: `campaign_runtime_bridge.go`, `service_campaign.go` |
 | Split threshold | Near 500 lines or when transport mixes with core logic |
+| God package | >40 prod `.go` files or ~8k LOC — split (`modular-monolith.mdc`) |
+| Micro-package | New domain dir without handlers/store + wire in same PR — forbidden (`modular-monolith.mdc`) |
+| Bridge file | <=200 lines; wiring only — no domain rules (`modular-monolith.mdc`) |
 | Tests | `*_test.go`, `*_bench_test.go`, `*_fault_test.go` beside code |
 
 ## Types and tags

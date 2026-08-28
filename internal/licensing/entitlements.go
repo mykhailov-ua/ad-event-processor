@@ -25,6 +25,7 @@ type FeatureSet struct {
 	ExternalResidentialIntel bool `json:"external_residential_intel" yaml:"external_residential_intel"`
 	ModeratorIntelFeed       bool `json:"moderator_intel_feed" yaml:"moderator_intel_feed"`
 	AdPlatformCampaignAPI    bool `json:"ad_platform_campaign_api" yaml:"ad_platform_campaign_api"`
+	FraudDisputeEvidence     bool `json:"fraud_dispute_evidence" yaml:"fraud_dispute_evidence"`
 }
 
 type Entitlements struct {
@@ -58,6 +59,7 @@ type FeatureSetDTO struct {
 	ExternalResidentialIntel bool `json:"external_residential_intel"`
 	ModeratorIntelFeed       bool `json:"moderator_intel_feed"`
 	AdPlatformCampaignAPI    bool `json:"ad_platform_campaign_api"`
+	FraudDisputeEvidence     bool `json:"fraud_dispute_evidence"`
 }
 
 type LicenseStatusDTO struct {

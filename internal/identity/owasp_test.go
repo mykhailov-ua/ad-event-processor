@@ -166,6 +166,7 @@ func (m *owaspMockRepo) CreateAPIKey(ctx context.Context, arg db.CreateAPIKeyPar
 		Name:      arg.Name,
 		ExpiresAt: arg.ExpiresAt,
 		CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+		Scopes:    arg.Scopes,
 	}, nil
 }
 

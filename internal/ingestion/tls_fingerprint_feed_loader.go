@@ -65,6 +65,12 @@ func (l *tlsFingerprintFeedLoader) refreshOnce() {
 	gen := l.gen.Add(1)
 	snap := buildTLSFingerprintSnapshot(ja3Block, ja4Block, ja3Allow, ja4Allow, gen)
 	l.table.Publish(snap)
+	if corpus := loadJA4BrowserCorpusFromDir(l.dir); corpus != nil {
+		PublishJA4BrowserCorpus(corpus)
+	}
+	if corpus := loadTCPSynSigCorpusFromDir(l.dir); corpus != nil {
+		PublishTCPSynSigCorpus(corpus)
+	}
 	metrics.TLSFingerprintFeedRefreshTotal.Inc()
 	metrics.TLSFingerprintBlocklistJA3.Set(float64(len(ja3Block)))
 	metrics.TLSFingerprintBlocklistJA4.Set(float64(len(ja4Block)))

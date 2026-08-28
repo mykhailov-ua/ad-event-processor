@@ -151,4 +151,23 @@ for rule in "$ROOT/.cursor/rules"/*.mdc; do
   fi
 done
 
+receiver_check() {
+  local hits=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && hits+=("$line")
+  done < <(rg -n '^func \([a-z]{3,} ' \
+    internal/ pkg/ cmd/ \
+    --glob '*.go' \
+    --glob '!*_test.go' \
+    2> /dev/null || true)
+
+  if ((${#hits[@]} > 0)); then
+    echo "check_no_legacy_naming: method receiver must be 1-2 letters (quality.mdc):"
+    printf '  %s\n' "${hits[@]}"
+    exit 1
+  fi
+}
+
+receiver_check
+
 echo "check_no_legacy_naming: ok"

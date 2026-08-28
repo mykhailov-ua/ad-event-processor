@@ -13,11 +13,11 @@ type StubNotifierAPI struct {
 	inputs []notify.NotificationInput
 }
 
-func (stub *StubNotifierAPI) SendNotification(
+func (sn *StubNotifierAPI) SendNotification(
 	_ context.Context,
 	provider, recipient, title, body string,
 ) (notify.SendNotificationResult, error) {
-	return stub.SendNotificationInput(context.Background(), notify.NotificationInput{
+	return sn.SendNotificationInput(context.Background(), notify.NotificationInput{
 		Provider:  provider,
 		Recipient: recipient,
 		Title:     title,
@@ -25,23 +25,23 @@ func (stub *StubNotifierAPI) SendNotification(
 	})
 }
 
-func (stub *StubNotifierAPI) SendNotificationInput(
+func (sn *StubNotifierAPI) SendNotificationInput(
 	_ context.Context,
 	input notify.NotificationInput,
 ) (notify.SendNotificationResult, error) {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	stub.inputs = append(stub.inputs, input)
+	sn.mu.Lock()
+	defer sn.mu.Unlock()
+	sn.inputs = append(sn.inputs, input)
 	return notify.SendNotificationResult{NotificationID: "stub-id"}, nil
 }
 
-func (stub *StubNotifierAPI) SendNotificationBatch(
+func (sn *StubNotifierAPI) SendNotificationBatch(
 	_ context.Context,
 	inputs []notify.NotificationInput,
 ) ([]notify.SendNotificationResult, error) {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	stub.inputs = append(stub.inputs, inputs...)
+	sn.mu.Lock()
+	defer sn.mu.Unlock()
+	sn.inputs = append(sn.inputs, inputs...)
 	out := make([]notify.SendNotificationResult, len(inputs))
 	for i := range inputs {
 		out[i] = notify.SendNotificationResult{NotificationID: "stub-id"}
@@ -49,11 +49,11 @@ func (stub *StubNotifierAPI) SendNotificationBatch(
 	return out, nil
 }
 
-func (stub *StubNotifierAPI) Snapshot() []notify.NotificationInput {
-	stub.mu.Lock()
-	defer stub.mu.Unlock()
-	out := make([]notify.NotificationInput, len(stub.inputs))
-	copy(out, stub.inputs)
+func (sn *StubNotifierAPI) Snapshot() []notify.NotificationInput {
+	sn.mu.Lock()
+	defer sn.mu.Unlock()
+	out := make([]notify.NotificationInput, len(sn.inputs))
+	copy(out, sn.inputs)
 	return out
 }
 

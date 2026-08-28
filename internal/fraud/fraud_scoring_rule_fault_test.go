@@ -19,12 +19,12 @@ type failingClickHouseConn struct {
 	queryErr error
 }
 
-func (conn *failingClickHouseConn) Query(context.Context, string, ...any) (driver.Rows, error) {
-	return nil, conn.queryErr
+func (ch *failingClickHouseConn) Query(context.Context, string, ...any) (driver.Rows, error) {
+	return nil, ch.queryErr
 }
 
-func (conn *failingClickHouseConn) Exec(context.Context, string, ...any) error {
-	return conn.queryErr
+func (ch *failingClickHouseConn) Exec(context.Context, string, ...any) error {
+	return ch.queryErr
 }
 
 func TestFraudScoringRule_EmptyWindow(t *testing.T) {
@@ -96,6 +96,6 @@ func ensureFraudScoringShadowTables(t *testing.T, conn driver.Conn) {
 		ORDER BY (model_name, created_at, ip_hash)`,
 	}
 	for _, stmt := range ddl {
-		require.NoError(t, conn.Exec(ctx, stmt))
+		require.NoError(t, ch.Exec(ctx, stmt))
 	}
 }

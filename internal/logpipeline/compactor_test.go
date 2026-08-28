@@ -87,9 +87,9 @@ type bytesSegment struct {
 	bytes []byte
 }
 
-func (seg *bytesSegment) appendRecord(t *testing.T, evt *pb.AdStreamEvent) {
+func (s *bytesSegment) appendRecord(t *testing.T, evt *pb.AdStreamEvent) {
 	t.Helper()
-	seg.bytes = append(seg.bytes, encodeRecord(t, evt)...)
+	s.bytes = append(s.bytes, encodeRecord(t, evt)...)
 }
 
 func itoa(v int) string {

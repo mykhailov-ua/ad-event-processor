@@ -27,9 +27,9 @@ require "src/main.js"
 require "src/login.js"
 require "src/workers/parse_json.worker.js"
 require "src/workers/report_aggregate.worker.js"
-require "src/styles/app.css"
 require "src/styles/tokens.css"
-require "src/ui.bundle.css"
+require "src/styles/system.css"
+require "src/styles/main.css"
 require "src/static/track.js"
 
 if ! grep -q '/src/main.js' "$DIST/index.html"; then

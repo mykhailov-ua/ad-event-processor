@@ -120,6 +120,7 @@ func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *domain.Event) {
 		evt.FraudReason = unsafeString(evt.StringBuffer[len(evt.StringBuffer)-len(pbEvt.FraudReason):])
 	}
 	evt.FraudScore = pbEvt.FraudScore
+	evt.LayerDesyncCount = uint8(pbEvt.LayerDesyncCount)
 	evt.SilentRejectEvent = pbEvt.SilentRejectEvent
 	if pbEvt.CreatedAtUnix > 0 {
 		evt.CreatedAt = time.Unix(pbEvt.CreatedAtUnix, 0)

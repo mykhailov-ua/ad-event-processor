@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"net"
-	"syscall"
 	"testing"
 	"time"
 
@@ -22,14 +20,8 @@ import (
 
 type infraErrFilter struct{}
 
-var infraFilterNetErr = &net.OpError{
-	Op:  "dial",
-	Net: "tcp",
-	Err: syscall.ECONNREFUSED,
-}
-
 func (infraErrFilter) Check(ctx context.Context, evt *domain.Event) error {
-	return infraFilterNetErr
+	return ErrInfraNetwork
 }
 
 type mockRedisXAddFail struct {

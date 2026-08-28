@@ -68,6 +68,10 @@ func (s stubOpsReaderInbox) GetDashboardSummary(ctx context.Context) (DashboardS
 	return DashboardSummaryDTO{}, nil
 }
 
+func (s stubOpsReaderInbox) GetStackHealthSnapshot(ctx context.Context) (StackHealthSnapshot, error) {
+	return StackHealthSnapshot{Status: "ok", LicenseState: "ACTIVE"}, nil
+}
+
 func (s stubOpsReaderInbox) GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (DashboardMetricsDTO, error) {
 	return DashboardMetricsDTO{}, nil
 }
@@ -80,7 +84,7 @@ func (s stubOpsReaderInbox) GetMLEvalReport(ctx context.Context) (MLEvalReportDT
 	return MLEvalReportDTO{
 		Status:         "empty",
 		ProxyMetrics:   MLEvalMetricsBlockDTO{Status: "empty", LabelMethod: "proxy", LabeledRows: 0},
-		AuditedMetrics: defaultEmptyAuditedMetrics(),
+		AuditedMetrics: DefaultEmptyAuditedMetrics(),
 	}, nil
 }
 
@@ -101,7 +105,7 @@ func TestOpsHTTPHandlers_listDLQInbox_ok(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/dlq/inbox?source=postback", http.NoBody)
 	rec := httptest.NewRecorder()
-	h.listDLQInbox(rec, req)
+	h.ListDLQInbox(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), `"source":"postback"`)
 }
@@ -124,7 +128,7 @@ func TestOpsHTTPHandlers_retryDLQInbox_requiresSource(t *testing.T) {
 	req.Header.Set("Idempotency-Key", "k1")
 	req.SetPathValue("id", "7")
 	rec := httptest.NewRecorder()
-	h.retryDLQInbox(rec, req)
+	h.RetryDLQInbox(rec, req)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }
 
@@ -137,7 +141,7 @@ func TestOpsHTTPHandlers_retryDLQInbox_delegatesBySource(t *testing.T) {
 	req.Header.Set("Idempotency-Key", "k2")
 	req.SetPathValue("id", "42")
 	rec := httptest.NewRecorder()
-	h.retryDLQInbox(rec, req)
+	h.RetryDLQInbox(rec, req)
 	require.Equal(t, http.StatusAccepted, rec.Code)
 	require.Equal(t, "capi", reader.retrySource)
 	require.Equal(t, "42", reader.retryID)
@@ -156,7 +160,7 @@ func TestOpsHTTPHandlers_listConsentProofs_ok(t *testing.T) {
 	h.OpsReader = consentStub
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/ops/consent/proofs?limit=10", http.NoBody)
 	rec := httptest.NewRecorder()
-	h.listConsentProofs(rec, req)
+	h.ListConsentProofs(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Contains(t, rec.Body.String(), `"source":"cmp"`)
 }

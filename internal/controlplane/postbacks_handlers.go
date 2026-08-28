@@ -27,12 +27,12 @@ type PostbackHTTPHandlers struct {
 	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
 }
 
-func (postbacks *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
-	if postbacks == nil {
+func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
+	if h == nil {
 		return
 	}
-	limit := postbacks.ApplyRateLimit
-	perm := postbacks.RequirePermission
+	limit := h.ApplyRateLimit
+	perm := h.RequirePermission
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
@@ -40,12 +40,12 @@ func (postbacks *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 
-	mux.HandleFunc("GET /api/v1/postbacks/config", limit(perm("campaigns:read", postbacks.getPostbacksConfig)))
-	mux.HandleFunc("PUT /api/v1/postbacks/config/{campaign_id}", limit(perm("campaigns:write", postbacks.updatePostbackConfig)))
-	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(perm("campaigns:read", postbacks.getDLQ)))
-	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", postbacks.retryDLQ)))
-	mux.HandleFunc("GET /api/v1/postbacks/campaign-status", limit(perm("campaigns:read", postbacks.getCampaignStatus)))
-	mux.HandleFunc("POST /api/v1/postbacks/config/{campaign_id}/test", limit(perm("campaigns:write", postbacks.testPostbackConfig)))
+	mux.HandleFunc("GET /api/v1/postbacks/config", limit(perm("campaigns:read", h.getPostbacksConfig)))
+	mux.HandleFunc("PUT /api/v1/postbacks/config/{campaign_id}", limit(perm("campaigns:write", h.updatePostbackConfig)))
+	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(perm("campaigns:read", h.getDLQ)))
+	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", h.retryDLQ)))
+	mux.HandleFunc("GET /api/v1/postbacks/campaign-status", limit(perm("campaigns:read", h.getCampaignStatus)))
+	mux.HandleFunc("POST /api/v1/postbacks/config/{campaign_id}/test", limit(perm("campaigns:write", h.testPostbackConfig)))
 }
 
 type PostbackConfigDTO struct {
@@ -57,8 +57,8 @@ type PostbackConfigDTO struct {
 	HasAPIToken   bool   `json:"has_api_token"`
 }
 
-func (postbacks *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
-	q := db.New(postbacks.Pool)
+func (h *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
+	q := db.New(h.Pool)
 	configs, err := q.ListPostbackConfigs(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -92,7 +92,7 @@ type UpdatePostbackConfigRequest struct {
 	TestEventCode string `json:"test_event_code"`
 }
 
-func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *http.Request) {
+func (h *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWriter, r *http.Request) {
 	campaignIDStr := r.PathValue("campaign_id")
 	if campaignIDStr == "" {
 		campaignIDStr = r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:]
@@ -129,7 +129,7 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 		return
 	}
 
-	q := db.New(postbacks.Pool)
+	q := db.New(h.Pool)
 	_, err = q.GetCampaign(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -147,7 +147,7 @@ func (postbacks *PostbackHTTPHandlers) updatePostbackConfig(w http.ResponseWrite
 		return
 	}
 	if req.APIToken != "" {
-		key := postbacks.EncryptionKey
+		key := h.EncryptionKey
 		if len(key) == 0 {
 			key = []byte("postback-encryption-secret-key32")
 		}
@@ -200,8 +200,8 @@ type PostbackDlqDTO struct {
 	Status        string          `json:"status"`
 }
 
-func (postbacks *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
-	q := db.New(postbacks.Pool)
+func (h *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
+	q := db.New(h.Pool)
 	dlqs, err := q.ListPostbackDLQ(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
@@ -226,7 +226,7 @@ func (postbacks *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Req
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
-func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) {
+func (h *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idStr := r.PathValue("id")
 	if idStr == "" {
@@ -244,7 +244,7 @@ func (postbacks *PostbackHTTPHandlers) retryDLQ(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tx, err := postbacks.Pool.Begin(ctx)
+	tx, err := h.Pool.Begin(ctx)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -302,8 +302,8 @@ type PostbackCampaignStatusDTO struct {
 	DLQPendingCount int64      `json:"dlq_pending_count"`
 }
 
-func (postbacks *PostbackHTTPHandlers) getCampaignStatus(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.New(postbacks.Pool).ListPostbackCampaignStatus(r.Context())
+func (h *PostbackHTTPHandlers) getCampaignStatus(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.New(h.Pool).ListPostbackCampaignStatus(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
@@ -325,7 +325,7 @@ func (postbacks *PostbackHTTPHandlers) getCampaignStatus(w http.ResponseWriter, 
 	httpresponse.JSON(w, http.StatusOK, out)
 }
 
-func (postbacks *PostbackHTTPHandlers) testPostbackConfig(w http.ResponseWriter, r *http.Request) {
+func (h *PostbackHTTPHandlers) testPostbackConfig(w http.ResponseWriter, r *http.Request) {
 	campaignIDStr := r.PathValue("campaign_id")
 	if campaignIDStr == "" {
 		campaignIDStr = strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/api/v1/postbacks/config/"), "/test")
@@ -336,7 +336,7 @@ func (postbacks *PostbackHTTPHandlers) testPostbackConfig(w http.ResponseWriter,
 		return
 	}
 
-	q := db.New(postbacks.Pool)
+	q := db.New(h.Pool)
 	cfg, err := q.GetPostbackConfig(r.Context(), pgtype.UUID{Bytes: campaignID, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -347,7 +347,7 @@ func (postbacks *PostbackHTTPHandlers) testPostbackConfig(w http.ResponseWriter,
 		return
 	}
 
-	key := postbacks.EncryptionKey
+	key := h.EncryptionKey
 	if len(key) == 0 {
 		key = []byte("postback-encryption-secret-key32")
 	}

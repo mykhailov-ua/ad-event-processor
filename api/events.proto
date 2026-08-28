@@ -39,6 +39,7 @@ message AdStreamEvent {
   bool silent_reject_event = 10;
   bytes user_id = 11;
   bool review_routed_event = 12;
+  uint32 layer_desync_count = 13;
 }
 
 message AdDLQEvent {

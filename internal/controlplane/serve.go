@@ -493,8 +493,10 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	svc.StartOpsMetricScraper(ctx, scrapeURL)
 	slog.Info("ops metric scraper enabled", "url", scrapeURL)
 	svc.StartFilterRejectRollupWorker(ctx, scrapeURL)
+	wireReportExportHooks()
 	svc.InitReportJobRunner(reportExportDirFromWire())
 	svc.StartReportJobWorker(ctx)
+	svc.StartMLShadowDeltaSnapshotWorker(ctx)
 	svc.StartReportScheduleWorker(ctx)
 
 	if cfg.Management.SmartAlertsEnabled {

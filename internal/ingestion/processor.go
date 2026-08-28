@@ -720,6 +720,7 @@ func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 				event.FraudReason = unsafeString(event.StringBuffer[len(event.StringBuffer)-len(pbEvt.FraudReason):])
 			}
 			event.FraudScore = pbEvt.FraudScore
+			event.LayerDesyncCount = uint8(pbEvt.LayerDesyncCount)
 			event.SilentRejectEvent = pbEvt.SilentRejectEvent
 			event.ReviewRoutedEvent = pbEvt.ReviewRoutedEvent
 			if len(pbEvt.UserId) > 0 {
@@ -728,6 +729,9 @@ func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) 
 			}
 			if pbEvt.CreatedAtUnix > 0 {
 				event.CreatedAt = time.Unix(pbEvt.CreatedAtUnix, 0)
+			}
+			if isFraudStreamLayerDesyncTelemetry(event) {
+				observeFraudStreamLayerDesync(event.LayerDesyncCount)
 			}
 		} else {
 			slog.Error("failed to unmarshal stream event protobuf", "error", err)

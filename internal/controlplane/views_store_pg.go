@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"ad-event-processor/internal/controlplane/authz"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -15,18 +17,22 @@ func (s *ViewsStore) pgEnabled() bool {
 	return s != nil && s.pool != nil
 }
 
-func (s *ViewsStore) createViewPG(ctx context.Context, req CreateViewRequest, ownerID string) (SavedViewDTO, error) {
+func (s *ViewsStore) createViewPG(ctx context.Context, req CreateViewRequest, ownerID string, ownerMask authz.MaskLevel) (SavedViewDTO, error) {
 	spec := req.Spec
 	if len(spec) == 0 {
 		spec = json.RawMessage(`{}`)
 	}
+	if ownerMask == "" {
+		ownerMask = authz.MaskMasked
+	}
 	var id uuid.UUID
 	var createdAt, updatedAt time.Time
 	err := s.pool.QueryRow(ctx, `
-INSERT INTO report_saved_views (owner_id, customer_id, name, report_key, spec, is_shared)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO report_saved_views (owner_id, owner_mask_level, customer_id, name, report_key, spec, is_shared)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, created_at, updated_at`,
 		ownerID,
+		string(ownerMask),
 		uuid.MustParse(req.CustomerID),
 		req.Name,
 		req.ReportKey,
@@ -37,15 +43,16 @@ RETURNING id, created_at, updated_at`,
 		return SavedViewDTO{}, fmt.Errorf("insert saved view: %w", err)
 	}
 	return SavedViewDTO{
-		ID:         id.String(),
-		OwnerID:    ownerID,
-		CustomerID: req.CustomerID,
-		Name:       req.Name,
-		ReportKey:  req.ReportKey,
-		Spec:       spec,
-		IsShared:   req.IsShared,
-		CreatedAt:  createdAt.UTC().Format(time.RFC3339),
-		UpdatedAt:  updatedAt.UTC().Format(time.RFC3339),
+		ID:             id.String(),
+		OwnerID:        ownerID,
+		OwnerMaskLevel: string(ownerMask),
+		CustomerID:     req.CustomerID,
+		Name:           req.Name,
+		ReportKey:      req.ReportKey,
+		Spec:           spec,
+		IsShared:       req.IsShared,
+		CreatedAt:      createdAt.UTC().Format(time.RFC3339),
+		UpdatedAt:      updatedAt.UTC().Format(time.RFC3339),
 	}, nil
 }
 
@@ -59,10 +66,10 @@ func (s *ViewsStore) getViewPG(ctx context.Context, id string) (SavedViewDTO, er
 	var specJSON []byte
 	var createdAt, updatedAt time.Time
 	err = s.pool.QueryRow(ctx, `
-SELECT id, owner_id, customer_id, name, report_key, spec, is_shared, created_at, updated_at
+SELECT id, owner_id, owner_mask_level, customer_id, name, report_key, spec, is_shared, created_at, updated_at
 FROM report_saved_views
 WHERE id = $1`, parsed).Scan(
-		&parsed, &view.OwnerID, &customerID, &view.Name, &view.ReportKey, &specJSON, &view.IsShared, &createdAt, &updatedAt,
+		&parsed, &view.OwnerID, &view.OwnerMaskLevel, &customerID, &view.Name, &view.ReportKey, &specJSON, &view.IsShared, &createdAt, &updatedAt,
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -84,7 +91,7 @@ func (s *ViewsStore) listViewsPG(ctx context.Context, customerID string) ([]Save
 		return nil, fmt.Errorf("invalid customer_id")
 	}
 	rows, err := s.pool.Query(ctx, `
-SELECT id, owner_id, customer_id, name, report_key, spec, is_shared, created_at, updated_at
+SELECT id, owner_id, owner_mask_level, customer_id, name, report_key, spec, is_shared, created_at, updated_at
 FROM report_saved_views
 WHERE customer_id = $1
 ORDER BY updated_at DESC`, cid)
@@ -99,7 +106,7 @@ ORDER BY updated_at DESC`, cid)
 		var id, rowCustomerID uuid.UUID
 		var specJSON []byte
 		var createdAt, updatedAt time.Time
-		if err := rows.Scan(&id, &view.OwnerID, &rowCustomerID, &view.Name, &view.ReportKey, &specJSON, &view.IsShared, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&id, &view.OwnerID, &view.OwnerMaskLevel, &rowCustomerID, &view.Name, &view.ReportKey, &specJSON, &view.IsShared, &createdAt, &updatedAt); err != nil {
 			return nil, err
 		}
 		view.ID = id.String()
@@ -112,7 +119,7 @@ ORDER BY updated_at DESC`, cid)
 	return out, rows.Err()
 }
 
-func (s *ViewsStore) updateViewPG(ctx context.Context, id string, req UpdateViewRequest) (SavedViewDTO, error) {
+func (s *ViewsStore) updateViewPG(ctx context.Context, id string, req UpdateViewRequest, ownerMask authz.MaskLevel) (SavedViewDTO, error) {
 	parsed, err := uuid.Parse(id)
 	if err != nil {
 		return SavedViewDTO{}, ErrViewNotFound
@@ -121,11 +128,14 @@ func (s *ViewsStore) updateViewPG(ctx context.Context, id string, req UpdateView
 	if len(spec) == 0 {
 		spec = json.RawMessage(`{}`)
 	}
+	if ownerMask == "" {
+		ownerMask = authz.MaskMasked
+	}
 	tag, err := s.pool.Exec(ctx, `
 UPDATE report_saved_views
-SET name = $2, report_key = $3, spec = $4, is_shared = $5, updated_at = NOW()
+SET name = $2, report_key = $3, spec = $4, is_shared = $5, owner_mask_level = $6, updated_at = NOW()
 WHERE id = $1`,
-		parsed, req.Name, req.ReportKey, spec, req.IsShared,
+		parsed, req.Name, req.ReportKey, spec, req.IsShared, string(ownerMask),
 	)
 	if err != nil {
 		return SavedViewDTO{}, err

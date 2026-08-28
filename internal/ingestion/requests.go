@@ -2,25 +2,30 @@ package ingestion
 
 import (
 	"github.com/google/uuid"
+
+	"ad-event-processor/internal/domain"
 )
 
 type TrackRequest struct {
-	CampaignID  uuid.UUID
-	UserID      string
-	Type        string
-	ClickID     string
-	PlacementID string
-	Payload     []byte
-	subs        SubIDSlots
-	fbclid      string
-	gclid       string
-	ttclid      string
-	msclkid     string
-	tblci       string
-	obClickID   string
-	eventID     string
-	txID        string
-	ortbSlot    *openRTBScratchSlot
+	CampaignID             uuid.UUID
+	UserID                 string
+	Type                   string
+	ClickID                string
+	PlacementID            string
+	Payload                []byte
+	subs                   SubIDSlots
+	fbclid                 string
+	gclid                  string
+	ttclid                 string
+	msclkid                string
+	tblci                  string
+	obClickID              string
+	eventID                string
+	txID                   string
+	ortbSlot               *openRTBScratchSlot
+	JSONSerializationFlags uint8
+	TelemetrySet           uint8
+	TelemetryEvents        []domain.BehaviorTelemetryEvent
 }
 
 func (v *TrackRequest) Reset() {
@@ -47,6 +52,9 @@ func (v *TrackRequest) resetForParse() {
 	v.obClickID = ""
 	v.eventID = ""
 	v.txID = ""
+	v.JSONSerializationFlags = 0
+	v.TelemetrySet = 0
+	v.TelemetryEvents = v.TelemetryEvents[:0]
 }
 
 func (v *TrackRequest) UnmarshalJSON(data []byte) error {

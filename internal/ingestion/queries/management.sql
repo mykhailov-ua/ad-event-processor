@@ -480,7 +480,9 @@ SET fraud_threshold_pass = $2,
     behavior_flags = $7,
     canvas_retest_enabled = $8,
     cgnat_ip_policy_enabled = $9,
-    conversion_reject_rules = $10,
+    accept_lang_geo_enabled = $10,
+    json_serialization_enabled = $11,
+    conversion_reject_rules = $12,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

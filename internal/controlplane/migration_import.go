@@ -10,28 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type ImportMigrationSpec struct {
-	CustomerID       uuid.UUID
-	IdempotencyKey   string
-	SourceKind       migrationsource.SourceKind
-	Payload          []byte
-	NamePrefix       string
-	BudgetLimitMicro *int64
-}
-
-type ImportMigrationFailure struct {
-	Ref     string `json:"ref"`
-	Name    string `json:"name,omitempty"`
-	Message string `json:"message"`
-}
-
-type ImportMigrationResult struct {
-	ImportBatchID string                    `json:"import_batch_id"`
-	Imported      []ImportCampaignResult    `json:"imported"`
-	Warnings      []migrationsource.Warning `json:"warnings,omitempty"`
-	Failed        []ImportMigrationFailure  `json:"failed,omitempty"`
-}
-
 func (s *Service) ImportMigrationCampaigns(ctx context.Context, spec ImportMigrationSpec) (ImportMigrationResult, error) {
 	if s == nil || s.pool == nil {
 		return ImportMigrationResult{}, fmt.Errorf("service unavailable")
@@ -116,6 +94,40 @@ func exportBundleFromMigrationShape(shape migrationsource.ExportCampaignShape) C
 			Provider:    "custom",
 			URLTemplate: shape.PostbackURLTemplate,
 			TargetEvent: "conversion",
+		}
+	}
+	if shape.Flow != nil && len(shape.Flow.Paths) > 0 {
+		bundle.Flow = &CampaignExportFlow{Name: shape.Flow.Name}
+		landerByRef := make(map[string]CampaignExportLander, len(shape.Flow.Paths))
+		offerByRef := make(map[string]CampaignExportOffer, len(shape.Flow.Paths))
+		for _, path := range shape.Flow.Paths {
+			bundle.Flow.Paths = append(bundle.Flow.Paths, CampaignExportFlowPath{
+				Weight: path.Weight,
+				Landers: []CampaignExportFlowLanderRef{{
+					Ref:    path.LanderRef,
+					Weight: 100,
+				}},
+				Offers: []CampaignExportFlowOfferRef{{
+					Ref:    path.OfferRef,
+					Weight: 100,
+				}},
+			})
+			landerByRef[path.LanderRef] = CampaignExportLander{
+				Ref:  path.LanderRef,
+				Name: path.LanderName,
+				URL:  path.LanderURL,
+			}
+			offerByRef[path.OfferRef] = CampaignExportOffer{
+				Ref:  path.OfferRef,
+				Name: path.OfferName,
+				URL:  path.OfferURL,
+			}
+		}
+		for _, lander := range landerByRef {
+			bundle.Landers = append(bundle.Landers, lander)
+		}
+		for _, offer := range offerByRef {
+			bundle.Offers = append(bundle.Offers, offer)
 		}
 	}
 	return bundle

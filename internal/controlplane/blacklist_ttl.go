@@ -41,8 +41,7 @@ func resolveBlacklistExpiry(reason string, ttlSeconds *int64, cfg blacklistTTLCo
 		}
 	}
 
-	reason = normalizeBlacklistReason(reason)
-	switch reason {
+	switch normalizeBlacklistReason(reason) {
 	case "manual":
 		return pgtype.Timestamptz{}
 	case "auto":

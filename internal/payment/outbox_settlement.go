@@ -33,8 +33,8 @@ func decodeOutboxPayload[T any](outboxEvent db.PaymentPaymentOutbox, label strin
 	return payload, nil
 }
 
-func (outboxWorker *OutboxWorker) requireSettlementAPI() (domain.PaymentSettlement, error) {
-	api := outboxWorker.getSettlementAPI()
+func (w *OutboxWorker) requireSettlementAPI() (domain.PaymentSettlement, error) {
+	api := w.getSettlementAPI()
 	if api == nil {
 		return nil, fmt.Errorf("settlement client not connected")
 	}

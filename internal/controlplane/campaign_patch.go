@@ -2,106 +2,44 @@ package controlplane
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/pkg/coldpath"
-	"ad-event-processor/pkg/money"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func parsePatchAttestationTTLSec(raw *int32) (int32, bool, error) {
-	if raw == nil {
-		return 0, false, nil
-	}
-	v := *raw
-	if v < 60 || v > 900 {
-		return 0, false, errValidation("attestation_ttl_sec must be between 60 and 900")
-	}
-	return v, true, nil
+	return campaign.ParsePatchAttestationTTLSec(raw)
 }
 
 func parsePatchAttestationMode(raw *string) (domain.AttestationMode, bool, error) {
-	if raw == nil {
-		return domain.AttestationModeOff, false, nil
-	}
-	mode := domain.ParseAttestationMode(*raw)
-	switch mode {
-	case domain.AttestationModeOff, domain.AttestationModeLight, domain.AttestationModeStrict:
-		return mode, true, nil
-	default:
-		return domain.AttestationModeOff, false, errValidation("attestation_mode must be off, light, or strict")
-	}
+	return campaign.ParsePatchAttestationMode(raw)
 }
 
 func parsePatchConnTypePolicy(raw *string) (string, bool, error) {
-	if raw == nil {
-		return "", false, nil
-	}
-	s := strings.TrimSpace(*raw)
-	switch s {
-	case string(domain.ConnTypeBlockVPNHosting), string(domain.ConnTypeMobileOnly), string(domain.ConnTypeResidentialOnly):
-		return s, true, nil
-	default:
-		return "", false, errValidation(fmt.Sprintf("invalid conn_type_policy %q", s))
-	}
+	return campaign.ParsePatchConnTypePolicy(raw)
 }
 
 func parsePatchLinkSigningTTLSec(raw *int32) (int32, bool, error) {
-	if raw == nil {
-		return 0, false, nil
-	}
-	v := *raw
-	if v < 60 || v > 3600 {
-		return 0, false, errValidation("link_signing_ttl_sec must be between 60 and 3600")
-	}
-	return v, true, nil
+	return campaign.ParsePatchLinkSigningTTLSec(raw)
 }
 
 func resolvePatchBudgetLimitMicro(req PatchCampaignRequest) (*int64, error) {
-	if req.BudgetLimitMicro != nil {
-		if *req.BudgetLimitMicro <= 0 {
-			return nil, errValidation("budget must be positive")
-		}
-		v := *req.BudgetLimitMicro
-		return &v, nil
-	}
-	if req.BudgetLimit != nil {
-		v, err := money.ParseDecimal(strings.TrimSpace(*req.BudgetLimit))
-		if err != nil || v <= 0 {
-			return nil, errValidation("budget must be positive")
-		}
-		return &v, nil
-	}
-	return nil, nil
+	return campaign.ResolvePatchBudgetLimitMicro(req)
 }
 
 func parsePatchStatus(raw *string) (db.CampaignStatusType, bool, error) {
-	if raw == nil {
-		return "", false, nil
-	}
-	switch strings.ToUpper(strings.TrimSpace(*raw)) {
-	case string(db.CampaignStatusTypeACTIVE):
-		return db.CampaignStatusTypeACTIVE, true, nil
-	case string(db.CampaignStatusTypePAUSED):
-		return db.CampaignStatusTypePAUSED, true, nil
-	default:
-		return "", false, errValidation(fmt.Sprintf("invalid status %q", *raw))
-	}
+	return campaign.ParsePatchStatus(raw)
 }
 
 func timestamptzPtr(t pgtype.Timestamptz) *time.Time {
-	if !t.Valid {
-		return nil
-	}
-	v := t.Time.UTC()
-	return &v
+	return campaign.TimestamptzPtr(t)
 }
 
 func (s *Service) applyCampaignBudgetPatch(ctx context.Context, q db.Querier, locked db.Campaign, newLimit int64) error {
@@ -111,13 +49,7 @@ func (s *Service) applyCampaignBudgetPatch(ctx context.Context, q db.Querier, lo
 	campaignID := uuid.UUID(locked.ID.Bytes)
 	if newLimit > locked.BudgetLimit {
 		if u, ok := GetUser(ctx); ok && u.IsMediaBuyer() {
-			if err := s.checkMediaBuyerBudgetCap(ctx, u.UserID, campaignID, newLimit); err != nil {
-				if errors.Is(err, ErrBudgetApprovalRequired) {
-					customerID := uuid.UUID(locked.CustomerID.Bytes)
-					if _, createErr := s.createBudgetApprovalPending(ctx, customerID, u.UserID, campaignID, locked.BudgetLimit, newLimit); createErr != nil {
-						return fmt.Errorf("create budget approval pending: %w", createErr)
-					}
-				}
+			if err := s.handleMediaBuyerBudgetIncrease(ctx, locked, u.UserID, newLimit); err != nil {
 				return err
 			}
 		}
@@ -202,7 +134,7 @@ func (s *Service) applyCampaignBudgetPatch(ctx context.Context, q db.Querier, lo
 	return nil
 }
 
-func (s *Service) applyCampaignStatusPatch(ctx context.Context, q db.Querier, locked db.Campaign, want db.CampaignStatusType, reason string) error {
+func (s *Service) applyCampaignStatusPatch(ctx context.Context, q db.Querier, locked db.Campaign, want db.CampaignStatusType, reason string, opts campaignStatusPatchOpts) error {
 	if want == locked.Status {
 		return nil
 	}
@@ -244,6 +176,9 @@ func (s *Service) applyCampaignStatusPatch(ctx context.Context, q db.Querier, lo
 		endAt := timestamptzPtr(locked.EndAt)
 		if resolveScheduleStatus(time.Now(), startAt, endAt) != db.CampaignStatusTypeACTIVE {
 			return ErrCampaignOutsideSchedule
+		}
+		if err := s.enforceCampaignPublishGate(ctx, campaignID, locked, opts.publishForce); err != nil {
+			return err
 		}
 		if _, err := q.ResumeCampaign(ctx, locked.ID); err != nil {
 			return err
@@ -325,6 +260,9 @@ func (s *Service) applyCampaignSchedulePatch(
 		return s.transitionCampaignStatus(ctx, q, campaignID, locked.Status, db.CampaignStatusTypePAUSED, "schedule_window", locked.BudgetLimit)
 	}
 	if desired == db.CampaignStatusTypeACTIVE && locked.Status == db.CampaignStatusTypePAUSED {
+		if err := s.enforceCampaignPublishGate(ctx, campaignID, locked, false); err != nil {
+			return err
+		}
 		return s.transitionCampaignStatus(ctx, q, campaignID, locked.Status, db.CampaignStatusTypeACTIVE, "schedule_window", locked.BudgetLimit)
 	}
 	return nil

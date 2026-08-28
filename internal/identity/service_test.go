@@ -110,6 +110,7 @@ func (m *mockRepo) CreateAPIKey(ctx context.Context, arg db.CreateAPIKeyParams) 
 		Name:      arg.Name,
 		ExpiresAt: arg.ExpiresAt,
 		CreatedAt: pgtype.Timestamptz{Time: time.Now().UTC(), Valid: true},
+		Scopes:    arg.Scopes,
 	}, nil
 }
 

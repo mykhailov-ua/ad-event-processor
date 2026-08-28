@@ -17,12 +17,12 @@ func NewClickHouseInserter(conn driver.Conn) *ClickHouseInserter {
 	return &ClickHouseInserter{conn: conn}
 }
 
-func (inserter *ClickHouseInserter) InsertSnapshots(ctx context.Context, lines []CostLine, usdMicro []int64) error {
-	if inserter == nil || inserter.conn == nil || len(lines) == 0 {
+func (ch *ClickHouseInserter) InsertSnapshots(ctx context.Context, lines []CostLine, usdMicro []int64) error {
+	if ch == nil || ch.conn == nil || len(lines) == 0 {
 		return nil
 	}
 
-	batch, err := inserter.conn.PrepareBatch(ctx, `
+	batch, err := ch.conn.PrepareBatch(ctx, `
 		INSERT INTO ad_event_processor.cost_snapshots (
 			snapshot_hour, customer_id, campaign_id, network, placement_id, line_type, amount_usd_micro
 		)

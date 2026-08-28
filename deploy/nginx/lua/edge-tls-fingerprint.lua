@@ -2,6 +2,7 @@ local _M = {}
 
 local EXT_SUPPORTED_GROUPS = 10
 local EXT_EC_POINT_FORMATS = 11
+local EXT_ALPN = 16
 
 local VERSION_MAP = {
     ["TLSv1.3"] = 772,
@@ -49,6 +50,26 @@ local function parse_u8_list(ext_bytes)
         end
     end
     return out
+end
+
+local function parse_alpn_list(ext_bytes)
+    if not ext_bytes or #ext_bytes < 2 then
+        return ""
+    end
+    local list_len = ext_bytes:byte(1) * 256 + ext_bytes:byte(2)
+    local off = 3
+    local protos = {}
+    local consumed = 0
+    while consumed < list_len and off <= #ext_bytes do
+        local plen = ext_bytes:byte(off)
+        if not plen or plen == 0 or off + plen > #ext_bytes then
+            break
+        end
+        protos[#protos + 1] = ext_bytes:sub(off + 1, off + plen)
+        off = off + 1 + plen
+        consumed = consumed + 1 + plen
+    end
+    return table.concat(protos, ",")
 end
 
 local function ja3_version(ssl_clt)
@@ -119,6 +140,13 @@ function _M.compute(ctx)
 
     local sni = ssl_clt.get_client_hello_server_name()
     ctx.tls_ja4 = _M.build_ja4_from_parts(version, sni and sni ~= "", ciphers, extensions)
+
+    local alpn_ext = ssl_clt.get_client_hello_ext(EXT_ALPN)
+    if alpn_ext and alpn_ext ~= "" then
+        ctx.tls_alpn = parse_alpn_list(alpn_ext)
+    end
 end
+
+_M.parse_alpn_list = parse_alpn_list
 
 return _M

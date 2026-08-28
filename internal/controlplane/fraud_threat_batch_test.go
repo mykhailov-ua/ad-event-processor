@@ -12,6 +12,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -71,7 +72,7 @@ func TestFraudThreatHTTP_batchBody(t *testing.T) {
 	stub := &stubFraudThreatEnqueuer{}
 	ops := &OpsHTTPHandlers{FraudThreat: stub}
 	mux := http.NewServeMux()
-	ops.registerFraudThreatRoutes(mux)
+	ops.RegisterFraudThreatRoutes(mux)
 
 	body := `{"items":[{"action":"boost","ip":"1.2.3.4","campaign_id":"` + uuid.New().String() + `","score":40,"boost":40,"ttl_seconds":300}]}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/fraud-threat", strings.NewReader(body))
@@ -88,7 +89,7 @@ func TestFraudThreatHTTP_rejectsOversizeBody(t *testing.T) {
 
 	ops := &OpsHTTPHandlers{FraudThreat: &stubFraudThreatEnqueuer{}}
 	mux := http.NewServeMux()
-	ops.registerFraudThreatRoutes(mux)
+	ops.RegisterFraudThreatRoutes(mux)
 
 	body := strings.Repeat("x", coldpath.DefaultMaxBody+1)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/fraud-threat", strings.NewReader(body))
@@ -109,7 +110,7 @@ func TestEnqueueFraudThreatBatch_rejectsOverLimit(t *testing.T) {
 
 	svc := newBareService(t, pool, nil, &config.Config{})
 	campaignID := uuid.New().String()
-	items := make([]FraudThreatEnqueueItem, fraudThreatBatchMax+1)
+	items := make([]FraudThreatEnqueueItem, fraudadmin.ThreatBatchMax+1)
 	for i := range items {
 		items[i] = FraudThreatEnqueueItem{
 			Action:     "boost",
@@ -140,7 +141,7 @@ func TestFraudThreatHTTP_batchJSONRoundTrip(t *testing.T) {
 	stub := &stubFraudThreatEnqueuer{}
 	ops := &OpsHTTPHandlers{FraudThreat: stub}
 	mux := http.NewServeMux()
-	ops.registerFraudThreatRoutes(mux)
+	ops.RegisterFraudThreatRoutes(mux)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/fraud-threat", bytes.NewReader(raw))
 	req.Header.Set("Content-Type", "application/json")

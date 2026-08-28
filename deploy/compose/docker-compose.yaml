@@ -571,6 +571,7 @@ services:
     profiles:
       - single_vps
       - ingest_only
+      - minimal
       - network_operator
       - resilience
       - crypto
@@ -1218,6 +1219,7 @@ services:
       - fraud-scorer
       - multi-region
       - tools
+      - minimal
     env_file:
       - ../../.env
     ports:

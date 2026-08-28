@@ -7,12 +7,15 @@ import (
 func FuzzJA3Parse(f *testing.F) {
 	f.Add("ja3:771,4865-4866")
 	f.Add("ja4:abc,def")
+	f.Add("t13d1516h2=chrome,firefox")
 	f.Fuzz(func(t *testing.T, line string) {
 		ja3, ja4 := parseTLSFingerprintFeed([]byte(line))
 		table := NewTLSFingerprintTable()
 		table.Publish(buildTLSFingerprintSnapshot(ja3, ja4, nil, nil, 1))
 		table.MatchJA3([]byte(line))
 		table.MatchJA4([]byte(line))
+		parseJA4BrowserCorpus([]byte(line))
+		ja4BrowserCorpusMismatch("Mozilla/5.0 Chrome/120.0.0.0", []byte("t13d1516h2_aaaaaaaaaaaa_bbbbbbbbbbbb"))
 	})
 }
 

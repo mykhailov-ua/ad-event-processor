@@ -35,11 +35,11 @@ type Report struct {
 	Results []Result
 }
 
-func (rep Report) ExitCode() int {
+func (r Report) ExitCode() int {
 	hasFail := false
 	hasWarn := false
-	for _, r := range rep.Results {
-		switch r.Status {
+	for _, res := range r.Results {
+		switch res.Status {
 		case StatusFail:
 			hasFail = true
 		case StatusWarn:

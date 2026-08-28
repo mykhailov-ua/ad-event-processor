@@ -166,6 +166,10 @@ func (w *Worker) fetchRemoteStatus(ctx context.Context, network string, cred cos
 		return fetchFacebookCampaignStatus(ctx, w.httpClient, w.networkBase[NetworkFacebook], cred, externalCampaignID)
 	case NetworkGoogle:
 		return fetchGoogleCampaignStatus(ctx, w.httpClient, w.networkBase[NetworkGoogle], cred, externalCampaignID)
+	case NetworkTikTok:
+		return fetchTikTokCampaignStatus(ctx, w.httpClient, w.networkBase[NetworkTikTok], cred, externalCampaignID)
+	case NetworkMicrosoftAds:
+		return fetchMicrosoftAdsCampaignStatus(ctx, w.httpClient, w.networkBase[NetworkMicrosoftAds], cred, externalCampaignID)
 	default:
 		return RemoteCampaignStatus{}, fmt.Errorf("unsupported network %q", network)
 	}
@@ -275,6 +279,10 @@ func (w *Worker) mutateRemote(ctx context.Context, network string, cred costsync
 		return mutateFacebookCampaign(ctx, w.httpClient, w.networkBase[NetworkFacebook], cred, link.ExternalCampaignID, action, req)
 	case NetworkGoogle:
 		return mutateGoogleCampaign(ctx, w.httpClient, w.networkBase[NetworkGoogle], cred, link, action, req)
+	case NetworkTikTok:
+		return mutateTikTokCampaign(ctx, w.httpClient, w.networkBase[NetworkTikTok], cred, link.ExternalCampaignID, action, req)
+	case NetworkMicrosoftAds:
+		return mutateMicrosoftAdsCampaign(ctx, w.httpClient, w.networkBase[NetworkMicrosoftAds], cred, link.ExternalCampaignID, action, req)
 	default:
 		return nil, fmt.Errorf("unsupported network %q", network)
 	}

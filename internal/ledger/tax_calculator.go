@@ -36,7 +36,7 @@ func ProfileFromDB(row db.BillingCustomerTaxProfile) TaxProfile {
 	}
 }
 
-func (calc *TaxCalculator) DefaultProfile(countryCode, currency string) TaxProfile {
+func (tc *TaxCalculator) DefaultProfile(countryCode, currency string) TaxProfile {
 	code := strings.ToUpper(strings.TrimSpace(countryCode))
 	if code == "" {
 		code = "US"
@@ -56,7 +56,7 @@ func (calc *TaxCalculator) DefaultProfile(countryCode, currency string) TaxProfi
 	return profile
 }
 
-func (calc *TaxCalculator) Compute(subtotalMicro int64, profile TaxProfile) (taxMicro int64, rateBPS int32) {
+func (tc *TaxCalculator) Compute(subtotalMicro int64, profile TaxProfile) (taxMicro int64, rateBPS int32) {
 	if subtotalMicro <= 0 || profile.Scheme == TaxSchemeNone {
 		return 0, 0
 	}

@@ -62,14 +62,23 @@ func main() {
 	clickhouseQuery := database.NewClickHouseQuery(clickhouseReadConn, database.ClickHouseQueryConfigFromApp(cfg))
 
 	analyzerCfg := fraud.AnalyzerConfig{
-		Window:               time.Duration(cfg.IVT.WindowSec) * time.Second,
-		MinClicks:            cfg.IVT.MinClicks,
-		MinImpressions:       cfg.IVT.MinImpressions,
-		ClickToImpRatio:      cfg.IVT.ClickToImpRatio,
-		MinIPsPerUA:          cfg.IVT.MinIPsPerUA,
-		MinEventsPerIP:       cfg.IVT.MinClicks,
-		IntervalMinIntervals: cfg.IVT.IntervalMinIntervals,
-		IntervalMaxVariance:  cfg.IVT.IntervalMaxVariance,
+		Window:                         time.Duration(cfg.IVT.WindowSec) * time.Second,
+		MinClicks:                      cfg.IVT.MinClicks,
+		MinImpressions:                 cfg.IVT.MinImpressions,
+		ClickToImpRatio:                cfg.IVT.ClickToImpRatio,
+		MinIPsPerUA:                    cfg.IVT.MinIPsPerUA,
+		MinEventsPerIP:                 cfg.IVT.MinClicks,
+		IntervalMinIntervals:           cfg.IVT.IntervalMinIntervals,
+		IntervalMaxVariance:            cfg.IVT.IntervalMaxVariance,
+		RTTSplitTunnelEnabled:          cfg.IVT.RTTSplitTunnelEnabled,
+		RTTSplitMinDeltaMS:             cfg.IVT.RTTSplitMinDeltaMS,
+		RTTSplitMaxVariance:            cfg.IVT.RTTSplitMaxVariance,
+		RTTSplitMinSamples:             cfg.IVT.RTTSplitMinSamples,
+		MobileBiometricsEnabled:        cfg.IVT.MobileBiometricsEnabled,
+		MobileBiometricsMinSamples:     cfg.IVT.MobileBiometricsMinSamples,
+		MobileBiometricsMinFlatHits:    cfg.IVT.MobileBiometricsMinFlatHits,
+		MobileBiometricsMinMotionless:  cfg.IVT.MobileBiometricsMinMotionless,
+		MobileBiometricsMinGyroSamples: cfg.IVT.MobileBiometricsMinGyroSamples,
 	}
 	detectorCfg := fraud.DetectorConfig{
 		ScanInterval:       time.Duration(cfg.IVT.ScanIntervalMs) * time.Millisecond,

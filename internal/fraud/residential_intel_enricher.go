@@ -26,15 +26,15 @@ type ResidentialIntelEnricher struct {
 }
 
 type ResidentialIntelEnricherConfig struct {
-	Provider    ResidentialIntelProvider
-	Cache       *ResidentialIntelCache
-	ClickHouseWrite     driver.Conn
-	RedisClient redis.Cmdable
-	FeedDir     string
-	ProviderID  string
-	RecentLim   int
-	BatchLim    int
-	Interval    time.Duration
+	Provider        ResidentialIntelProvider
+	Cache           *ResidentialIntelCache
+	ClickHouseWrite driver.Conn
+	RedisClient     redis.Cmdable
+	FeedDir         string
+	ProviderID      string
+	RecentLim       int
+	BatchLim        int
+	Interval        time.Duration
 }
 
 func NewResidentialIntelEnricher(cfg ResidentialIntelEnricherConfig) *ResidentialIntelEnricher {

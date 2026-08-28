@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "campaigns": [
+    {
+      "id": 99,
+      "name": "Streams Camp",
+      "traffic_source": "Facebook",
+      "budget": 200,
+      "tracking_url": "https://trk.example.com/click?campaign_id={campaign_id}&sub1={subid}&sub2={{campaign.id}}",
+      "lander_url": "https://lander.example/fallback",
+      "streams": [
+        {
+          "name": "rotation-main",
+          "unmapped_nodes": ["filter:country"],
+          "paths": [
+            {
+              "weight": 60,
+              "lander": {
+                "name": "Lander A",
+                "url": "https://lander.example/a"
+              },
+              "offer": {
+                "name": "Offer A",
+                "url": "https://offer.example/a"
+              }
+            },
+            {
+              "weight": 40,
+              "lander": {
+                "name": "Lander B",
+                "url": "https://lander.example/b"
+              },
+              "offer": {
+                "name": "Offer B",
+                "url": "https://offer.example/b"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

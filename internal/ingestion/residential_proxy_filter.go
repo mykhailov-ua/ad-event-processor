@@ -8,18 +8,37 @@ import (
 )
 
 type ResidentialProxyFilter struct {
-	ring *ResidentialProxyRing
+	ring         *ResidentialProxyRing
+	intelTable   *ResidentialIntelTable
+	intelEnabled bool
 }
 
 func NewResidentialProxyFilter(ring *ResidentialProxyRing) *ResidentialProxyFilter {
 	if ring == nil {
-		return nil
+		return &ResidentialProxyFilter{}
 	}
 	return &ResidentialProxyFilter{ring: ring}
 }
 
+func (f *ResidentialProxyFilter) SetIntelTable(table *ResidentialIntelTable, enabled bool) {
+	if f == nil {
+		return
+	}
+	f.intelTable = table
+	f.intelEnabled = enabled && table != nil
+}
+
 func (f *ResidentialProxyFilter) Check(ctx context.Context, evt *domain.Event) error {
-	if f == nil || f.ring == nil || evt == nil {
+	if f == nil || evt == nil {
+		return nil
+	}
+	if f.intelEnabled && f.intelTable.Ready() && f.intelTable.MatchIP(evt.IP) {
+		metrics.ResidentialIntelHotMatchTotal.Inc()
+		metrics.ResidentialProxySignalTotal.Inc()
+		addFraudSignal(evt, FraudReasonResidentialProxy)
+		return nil
+	}
+	if f.ring == nil {
 		return nil
 	}
 	isClick := evt.Type == "click"
