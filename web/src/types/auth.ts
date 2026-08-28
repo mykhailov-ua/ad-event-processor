@@ -5,9 +5,3 @@ export type AuthUser = {
   customer_id: string;
   permissions?: string[];
 };
-
-export type LoginResponse = {
-  user: AuthUser;
-};
-
-export type MeResponse = AuthUser;

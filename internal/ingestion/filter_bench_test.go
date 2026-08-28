@@ -17,11 +17,11 @@ type errGeoProvider struct{}
 
 var errGeoLookupFailed = errors.New("geo lookup failed")
 
-func (errGeoProvider) GetCountry(ip string) (string, error) {
+func (p errGeoProvider) GetCountry(ip string) (string, error) {
 	return "", errGeoLookupFailed
 }
-func (errGeoProvider) IsAnonymous(ip string) (bool, error) { return false, nil }
-func (errGeoProvider) Close() error                        { return nil }
+func (p errGeoProvider) IsAnonymous(ip string) (bool, error) { return false, nil }
+func (p errGeoProvider) Close() error                        { return nil }
 
 func benchGeoFilterWithCountries(b *testing.B, geo GeoProvider) {
 	campID := uuid.New()

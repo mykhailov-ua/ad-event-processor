@@ -12,12 +12,10 @@ test.describe('admin stack e2e', () => {
     test.skip(!email || !password, 'Set ADMIN_STACK_E2E_EMAIL and ADMIN_STACK_E2E_PASSWORD');
 
     await page.goto(`${baseURL}/login`);
-    await page.fill('input[type=email]', email);
-    await page.fill('input[type=password]', password);
-    await page.click('button[type=submit]');
-    await page.waitForURL(`${baseURL}/`);
-
-    await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+    await page.fill('#login-email', email);
+    await page.fill('#login-password', password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL(new RegExp(`${baseURL}/customers`));
 
     await page.goto(`${baseURL}/settings`);
     await expect(page.getByRole('heading', { name: 'Platform settings' })).toBeVisible();
@@ -27,24 +25,24 @@ test.describe('admin stack e2e', () => {
     test.skip(!email || !password, 'Set ADMIN_STACK_E2E_EMAIL and ADMIN_STACK_E2E_PASSWORD');
 
     await page.goto(`${baseURL}/login`);
-    await page.fill('input[type=email]', email);
-    await page.fill('input[type=password]', password);
-    await page.click('button[type=submit]');
-    await page.waitForURL(`${baseURL}/`);
+    await page.fill('#login-email', email);
+    await page.fill('#login-password', password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL(new RegExp(`${baseURL}/customers`));
 
     await page.goto(`${baseURL}/customers`);
     await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
-    await expect(page.locator('.data-table')).toBeVisible();
+    await expect(page.getByRole('grid')).toBeVisible();
   });
 
   test('campaign detail loads from real API', async ({ page }) => {
     test.skip(!email || !password, 'Set ADMIN_STACK_E2E_EMAIL and ADMIN_STACK_E2E_PASSWORD');
 
     await page.goto(`${baseURL}/login`);
-    await page.fill('input[type=email]', email);
-    await page.fill('input[type=password]', password);
-    await page.click('button[type=submit]');
-    await page.waitForURL(`${baseURL}/`);
+    await page.fill('#login-email', email);
+    await page.fill('#login-password', password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.waitForURL(new RegExp(`${baseURL}/customers`));
 
     const listRes = await page.request.get(`${baseURL}/api/v1/campaigns?limit=1&offset=0`);
     test.skip(!listRes.ok(), 'campaigns list unavailable');
@@ -54,6 +52,6 @@ test.describe('admin stack e2e', () => {
 
     await page.goto(`${baseURL}/campaigns/${campaignId}`);
     await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible();
-    await expect(page.locator('.page-header__title')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   });
 });

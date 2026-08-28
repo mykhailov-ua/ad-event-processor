@@ -1,0 +1,22 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-md);
+  row-gap: var(--space-xs);
+  width: 100%;
+  max-width: var(--page-max-width);
+}
+
+.title {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--line-height-tight);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.badge {
+  justify-self: end;
+}

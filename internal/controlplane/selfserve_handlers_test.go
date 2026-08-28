@@ -17,11 +17,11 @@ import (
 
 type selfServeTemplatesStub struct{}
 
-func (selfServeTemplatesStub) ListCampaignTemplates(_ context.Context, _ uuid.UUID, _, _ int32) ([]controlplane.CampaignTemplateDTO, int64, error) {
+func (s selfServeTemplatesStub) ListCampaignTemplates(_ context.Context, _ uuid.UUID, _, _ int32) ([]controlplane.CampaignTemplateDTO, int64, error) {
 	return nil, 0, nil
 }
 
-func (selfServeTemplatesStub) CreateCampaignFromTemplate(_ context.Context, _, _ uuid.UUID, _ string, _ *int64, _ string) (uuid.UUID, error) {
+func (s selfServeTemplatesStub) CreateCampaignFromTemplate(_ context.Context, _, _ uuid.UUID, _ string, _ *int64, _ string) (uuid.UUID, error) {
 	return uuid.Nil, nil
 }
 

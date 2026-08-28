@@ -15,11 +15,11 @@ import (
 
 type fraudPresetsGovernanceStub struct{}
 
-func (fraudPresetsGovernanceStub) ListFraudPolicyPresets(context.Context) ([]fraudadmin.FraudPolicyPresetDTO, error) {
+func (s fraudPresetsGovernanceStub) ListFraudPolicyPresets(context.Context) ([]fraudadmin.FraudPolicyPresetDTO, error) {
 	return nil, nil
 }
 
-func (fraudPresetsGovernanceStub) UpdateFraudPolicyPreset(context.Context, string, fraudadmin.PatchFraudPolicyPresetRequest) (fraudadmin.FraudPolicyPresetDTO, error) {
+func (s fraudPresetsGovernanceStub) UpdateFraudPolicyPreset(context.Context, string, fraudadmin.PatchFraudPolicyPresetRequest) (fraudadmin.FraudPolicyPresetDTO, error) {
 	return fraudadmin.FraudPolicyPresetDTO{}, nil
 }
 

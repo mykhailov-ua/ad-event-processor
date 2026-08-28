@@ -118,7 +118,7 @@ func TestClickRedirect_AttestationLightMissing_L2AndSafeView(t *testing.T) {
 
 type missingImpSignalFilter struct{}
 
-func (missingImpSignalFilter) Check(_ context.Context, evt *domain.Event) error {
+func (f missingImpSignalFilter) Check(_ context.Context, evt *domain.Event) error {
 	addFraudSignal(evt, FraudReasonMissingImpTS)
 	return nil
 }

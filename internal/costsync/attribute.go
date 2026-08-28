@@ -22,7 +22,7 @@ type ClickCostAttributor interface {
 
 type noopAttributor struct{}
 
-func (noopAttributor) AttributeLines(context.Context, int64, uuid.UUID, TokenMapping, []CostLine, []int64, time.Time) error {
+func (a noopAttributor) AttributeLines(context.Context, int64, uuid.UUID, TokenMapping, []CostLine, []int64, time.Time) error {
 	return nil
 }
 

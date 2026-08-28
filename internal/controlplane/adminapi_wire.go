@@ -10,16 +10,22 @@ import (
 	"path/filepath"
 	"time"
 
+	"ad-event-processor/internal/brand"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/costsync"
+	"ad-event-processor/internal/dashboardadmin"
+	"ad-event-processor/internal/doctor"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/edge"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/openrtb"
+	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/payment"
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/platformsync"
 	"ad-event-processor/internal/reports"
-	"ad-event-processor/pkg/doctor"
+	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/platformconfig"
 	"ad-event-processor/pkg/supportbundle"
 
@@ -76,7 +82,7 @@ func (w supportBundleWriter) WriteSupportBundle(ctx context.Context, out io.Writ
 		LogDir:   w.logDir,
 		MaxBytes: supportbundle.DefaultMaxBytes,
 		ExtraJSON: map[string]any{
-			"client_rum.json": snapshotRUMEvents(),
+			"client_rum.json": opsadmin.SnapshotRUMEvents(),
 		},
 	})
 }
@@ -91,18 +97,6 @@ func (r rolesReloader) ReloadRoles() error {
 }
 
 func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
-
-type platformAuthAdapter struct {
-	client *AuthClient
-}
-
-func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, password, role, customerID string) error {
-	if a.client == nil {
-		return errAuthUnavailable
-	}
-	_, err := a.client.Register(ctx, adminAPIKey, email, password, role, customerID)
-	return err
-}
 
 func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.UniversalClient) RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
@@ -248,7 +242,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 				pool:   pool,
 				logDir: h.cfg.Logger.Dir,
 			},
-			RUMStore:     rumStoreAdapter{},
+			RUMStore:     opsadmin.NewRUMStoreAdapter(),
 			FraudPresets: fraudPresets,
 		},
 		ExportHTTP: exportHTTP,
@@ -268,7 +262,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ClickHouseQuery:    svc.ClickHouseQuery(),
 			BuyerPortfolio:     buyerPortfolioAdapter{svc: svc},
 			EdgeMetricsReader: func(ctx context.Context) (reports.EdgeMetricsPanelDTO, error) {
-				dto, err := FetchEdgeMetrics(ctx)
+				dto, err := opsadmin.FetchEdgeMetrics(ctx)
 				if err != nil {
 					return reports.EdgeMetricsPanelDTO{}, err
 				}
@@ -287,7 +281,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError:         writeErr,
 			RequestHasShardsRead:      requestHasShardsRead,
 			RequireLicenseFeature:     requireLicenseFeature,
-			DenyScopedAPIKeyReport:    denyScopedAPIKeyOperatorReport,
+			DenyScopedAPIKeyReport:    DenyScopedAPIKeyOperatorReport,
 		},
 		ReportJobHTTP: &ReportJobHTTPHandlers{
 			Runner:                  reportJobs,
@@ -296,7 +290,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequirePermission:       perm,
 			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
-			ValidateReportSchedule:  validateReportScheduleForActor,
+			ValidateReportSchedule:  ValidateReportScheduleForActor,
 			WriteServiceError:       writeErr,
 		},
 		DashboardsHTTP: &DashboardsHTTPHandlers{
@@ -309,7 +303,17 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequireAnyPermission: permAny,
 			ResolveCustomerID:    h.resolveCampaignsCustomerID,
 			WriteServiceError:    writeErr,
-			EdgeMetricsReader:    FetchEdgeMetrics,
+			EdgeMetricsReader: func(ctx context.Context) (dashboardadmin.EdgeMetricsPanelDTO, error) {
+				panel, err := opsadmin.FetchEdgeMetrics(ctx)
+				if err != nil {
+					return dashboardadmin.EdgeMetricsPanelDTO{}, err
+				}
+				return dashboardadmin.EdgeMetricsPanelDTO{
+					UpdatedAt: panel.UpdatedAt, IngressH1: panel.IngressH1, IngressH2: panel.IngressH2, IngressH3: panel.IngressH3,
+					BodyStream: panel.BodyStream, BodyPeek: panel.BodyPeek, BodyRead: panel.BodyRead,
+					Blocked: panel.Blocked, TarpitTotal: panel.TarpitTotal, BlacklistStale: panel.BlacklistStale,
+				}, nil
+			},
 			XDPStatsReader: func(ctx context.Context) (edge.Snapshot, error) {
 				return edge.ReadRedisAny(ctx, svc.RedisShards())
 			},
@@ -324,7 +328,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		},
 		SelfServeHTTP: &SelfServeHTTPHandlers{
 			Campaigns:                  svc,
-			Templates:                  selfServeTemplatesAdapter{svc: svc},
+			Templates:                  campaign.NewSelfServeTemplatesAdapter(svc),
 			PaymentIntents:             h.payment,
 			Invoices:                   h.billing,
 			APIKeys:                    h.authClient,
@@ -334,6 +338,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ResolveSelfServeCustomerID: h.resolveSelfServeCustomerIDForSelfServe,
 			AuthorizeCampaignAccess:    authCampaign,
 			WriteServiceError:          writeErr,
+			WriteBillingError:          WriteBillingError,
 			DefaultPaymentProvider:     selfServePaymentProvider,
 			CryptoSubProvider:          selfServeCryptoSubProvider,
 		},
@@ -384,7 +389,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			},
 		},
 		AutomationHTTP: &AutomationHTTPHandlers{
-			Service:           svc,
+			Rules:             svc.AutomationRules(),
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
@@ -403,7 +408,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		IntegrationSchemaHTTP: &IntegrationSchemaHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
-			TemplateCatalog:   svc,
+			TemplateCatalog:   svc.TemplateCatalog(pool),
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			ResolveTrackingDomain: func(ctx context.Context) string {
@@ -431,7 +436,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError: writeErr,
 		},
 		PublisherHTTP: &PublisherHTTPHandlers{
-			Publisher:            publisherAdminAdapter{svc: svc},
+			Publisher:            svc,
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
 			ActorUserID: func(r *http.Request) (uuid.UUID, bool) {
@@ -441,14 +446,14 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError: writeErr,
 		},
 		BrandHTTP: &BrandHTTPHandlers{
-			Admin:                   brandAdminAdapter{svc: svc},
+			Admin:                   brand.NewAdminAdapter(svc),
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
 		SupplyHTTP: &SupplyHTTPHandlers{
-			Admin:                supplyAdminAdapter{svc: svc},
+			Admin:                supply.NewAdminAdapter(supplyAdminHost{svc: svc}),
 			ApplyRateLimit:       limit,
 			RequirePermission:    perm,
 			RequireAnyPermission: permAny,
@@ -461,7 +466,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError: writeErr,
 		},
 		RtbHTTP: &RtbHTTPHandlers{
-			Service:           &rtbAdminService{svc: svc},
+			Service:           svc.RtbAdminService(),
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
@@ -535,19 +540,20 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		},
 		MetaHTTP: &MetaHTTPHandlers{
 			ApplyRateLimit: limit,
-			Enrich:         h.metaEnricher(),
+			Enrich:         platformadmin.NewMetaEnricher(h.svc),
 			WriteError:     writeErr,
 		},
-		SessionHTTP: &SessionHTTPHandlers{
-			ApplyRateLimit: limit,
-			Freshness: func(ctx context.Context) DataFreshnessDTO {
+		SessionHTTP: func() *SessionHTTPHandlers {
+			sh := wireSessionHTTPHandlers(func(ctx context.Context) DataFreshnessDTO {
 				if h.svc != nil && h.svc.clickhouseQuery != nil {
 					lag, _ := h.svc.clickHouseIngestionLag(ctx)
 					return portfolioFreshness(time.Now().UTC(), true, lag)
 				}
 				return DataFreshnessDTO{Consistency: "eventual"}
-			},
-		},
+			})
+			sh.ApplyRateLimit = limit
+			return sh
+		}(),
 		EulaHTTP: &EulaHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
@@ -567,7 +573,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequirePermission: perm,
 		},
 		TelegramHTTP: &TelegramHTTPHandlers{
-			Telegram:             NewTelegramService(svc, pool, redisShards),
+			Telegram:             NewTelegramService(svc),
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
 			WriteServiceError:    writeErr,

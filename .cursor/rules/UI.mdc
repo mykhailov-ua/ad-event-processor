@@ -13,18 +13,18 @@ alwaysApply: false
 
 ## Status
 
-**`web/` removed.** Admin surface rebuilds from zero. Shippable contracts today:
+**`web/` restored (2026-08-28).** Legacy tree (`components/`, `models/`, global `styles/`) coexists with target layout — **new work** follows `frontend-modular.mdc` + sections below; do not extend legacy patterns.
 
 | Artifact | Path |
 | :--- | :--- |
 | HTTP API | `api/openapi/openapi.yaml`, `openapi.bundle.yaml` |
-| Handlers | `internal/controlplane/*_handlers.go` |
-| Static placeholder | `internal/controlplane/admin_static_stub/` (`go:embed` until real UI) |
+| Domain handlers | `internal/<domain>/handlers.go`, `internal/controlplane/*_bridge.go` |
+| Admin SPA build | `web/dist` via `web/embed.go` |
 | Traffic templates (server) | `internal/traffictemplates/generated_templates.json` (`make gen`) |
 
-New UI lands under `web/` only when milestone `admin_shell` opens. Until then: no React, no helpers, no copied legacy components from pre-2026-08-27 history.
+Target modules: `web/src/pages/`, `web/src/ui/<domain>/`, `web/src/helpers/*_api.ts` — see `frontend-modular.mdc` (isolation levels, migration).
 
-Reference: `boundaries.mdc` (layer coupling, test lie types F), `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc` (after `admin_shell`), `anti-slop.mdc`, `quality.mdc`.
+Reference: `frontend-modular.mdc`, `boundaries.mdc` (coupling limits), `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
 
 ## Milestone documents (mandatory before code)
 
@@ -35,9 +35,9 @@ Structure: `deploy/vendor/MILESTONE_TEMPLATE.md` (abstract; any domain). Admin s
 | Path | `deploy/vendor/` (no subfolder) |
 | Filename | UPPERCASE `<AREA>_<SLUG>_MILESTONE.md` (example: `ADMIN_SHELL_MILESTONE.md`, `ADMIN_DIRECTORY_MILESTONE_CUSTOMERS.md`) |
 | Template | Copy `deploy/vendor/MILESTONE_TEMPLATE.md` |
-| Gate | No `web/src/**` until milestone sections **1.1-1.4**, 4, 5, 6, 7 filled (`MILESTONE_TEMPLATE.md`) |
+| Gate | No `web/src/**` until milestone sections **1.1-1.4**, **4** (UI subsections per `ui-backlog.mdc`), 5, 6, 7 filled |
 
-Abstract "implement page X" is invalid. Backlog: `deploy/vendor/admin_ui_redesign_backlog.md`.
+Abstract "implement page X" is invalid. Backlog index: `deploy/vendor/admin_ui_redesign_backlog.md`. **Per-page spec requirements:** `ui-backlog.mdc` (sections 4.1–4.7 mandatory).
 
 ## AI laziness and dishonesty (admin UI)
 
@@ -174,6 +174,8 @@ Popover width rules do **not** apply to toolbar/filter `Select` / `FilterDropdow
 
 ## Fetch and error UI
 
+List/grid allocation and scroll budgets: `react.mdc` (DoD, prefetch, GC).
+
 | State | Condition | UI |
 | :--- | :--- | :--- |
 | Initial load | `fetching && !data && !error` | `PageSkeleton` / grid skeleton |
@@ -253,4 +255,4 @@ Milestone PR must paste commands from its `*_MILESTONE.md` section 7.
 
 ## Related rules
 
-`anti-slop.mdc`, `cold-path.mdc`, `control-plane.mdc`, `development.mdc`, `quality.mdc`, `react.mdc`, `structure.mdc`.
+`frontend-modular.mdc`, `ui-backlog.mdc`, `anti-slop.mdc`, `cold-path.mdc`, `control-plane.mdc`, `development.mdc`, `quality.mdc`, `react.mdc`, `structure.mdc`.

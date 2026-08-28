@@ -3,6 +3,8 @@ package campaign
 import (
 	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 var (
@@ -20,6 +22,7 @@ var (
 	ErrInvalidPacingMode                = errors.New("invalid pacing mode")
 	ErrUnsupportedGranularity           = errors.New("unsupported granularity")
 	ErrInvalidTimeRange                 = errors.New("invalid time range")
+	ErrPostgresGateRejected             = errors.New("postgres gate rejected")
 	ErrBrandNotFound                    = errors.New("brand not found")
 	ErrBrandBelongsToAnotherCustomer    = errors.New("brand belongs to another customer")
 	ErrTemplateNotFound                 = errors.New("template not found")
@@ -28,4 +31,9 @@ var (
 
 func errValidation(msg string) error {
 	return fmt.Errorf("%w: %s", ErrValidation, msg)
+}
+
+func isPgUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

@@ -1,70 +1,83 @@
-import { useEffect, useState } from 'react';
-import * as auth from '../helpers/auth.js';
-import { boundCustomerId } from '../helpers/buyer_session.js';
-import { BillingSelfServeSection } from '../components/billing_selfserve_section.js';
-import { fetchSelfServeInvoices } from '../helpers/selfserve_api.js';
-import { to } from '../lib/to.js';
-import { ErrorBlock } from '../components/error_block.js';
+import { useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { currentStatementMonth } from '../helpers/customers_api.js';
+import {
+  buildSelfServeInvoicesUrl,
+  buildSelfServeStatementUrl,
+} from '../helpers/selfserve_api.js';
+import type { BillingStatement } from '../helpers/customers_api.js';
+import type { SelfServeInvoiceListResponse } from '../helpers/selfserve_api.js';
+import { useResource } from '../helpers/use_resource.js';
+import { BillingPanel } from '../ui/selfserve/billing_panel.js';
+import { SelfServeShell } from '../ui/selfserve/selfserve_shell.js';
+
+const INVOICE_LIMIT = 25;
+
+function parseOffset(raw: string | null): number {
+  const value = Number.parseInt(raw ?? '', 10);
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return value;
+}
 
 export function SelfServeBillingPage() {
-  const customerId = boundCustomerId(auth.getUser());
-  const [invoices, setInvoices] = useState<
-    Array<{ id: string; status?: string; created_at?: string }>
-  >([]);
-  const [error, setError] = useState<unknown>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const month = searchParams.get('month') ?? currentStatementMonth();
+  const offset = parseOffset(searchParams.get('offset'));
 
-  useEffect(() => {
-    void (async () => {
-      const [data, err] = await to(fetchSelfServeInvoices());
-      if (err) {
-        setError(err);
-        return;
-      }
-      setInvoices(data ?? []);
-    })();
-  }, []);
+  const statementUrl = useMemo(() => buildSelfServeStatementUrl(month), [month]);
+  const invoicesUrl = useMemo(
+    () => buildSelfServeInvoicesUrl(INVOICE_LIMIT, offset),
+    [offset]
+  );
 
-  if (error) {
-    return <ErrorBlock error={error} fallbackTitle="Billing unavailable" />;
-  }
+  const {
+    data: statement,
+    loading: statementLoading,
+    error: statementError,
+  } = useResource<BillingStatement>(statementUrl);
+  const {
+    data: invoicesData,
+    loading: invoicesLoading,
+    error: invoicesError,
+  } = useResource<SelfServeInvoiceListResponse>(invoicesUrl);
+
+  const onMonthChange = useCallback(
+    (nextMonth: string) => {
+      const next = new URLSearchParams(searchParams);
+      if (nextMonth) next.set('month', nextMonth);
+      else next.delete('month');
+      next.delete('offset');
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const onOffsetChange = useCallback(
+    (nextOffset: number) => {
+      const next = new URLSearchParams(searchParams);
+      if (nextOffset <= 0) next.delete('offset');
+      else next.set('offset', String(nextOffset));
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   return (
-    <section className="stack" data-testid="selfserve-billing-page">
-      <div className="page-header">
-        <h1 className="page-header__title">Billing</h1>
-        <p className="page-header__desc">Wallet top-up, monthly statement, and invoices.</p>
-      </div>
-      <BillingSelfServeSection customerId={customerId} buyerMode />
-      <div className="section-card">
-        <h2 className="subsection-title">Invoices</h2>
-        <div className="table-wrapper">
-          <table className="data-table" data-testid="selfserve-invoices-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Status</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoices.map((inv) => (
-                <tr key={inv.id}>
-                  <td className="font-mono text-sm">{inv.id}</td>
-                  <td>{inv.status ?? '-'}</td>
-                  <td>{inv.created_at ?? '-'}</td>
-                </tr>
-              ))}
-              {invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="text-muted">
-                    No invoices yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
+    <SelfServeShell>
+      <BillingPanel
+        month={month}
+        statement={statement}
+        statementLoading={statementLoading}
+        statementError={statementError}
+        invoices={invoicesData?.invoices ?? []}
+        invoiceTotal={invoicesData?.total ?? 0}
+        limit={INVOICE_LIMIT}
+        offset={offset}
+        invoicesLoading={invoicesLoading}
+        invoicesError={invoicesError}
+        onMonthChange={onMonthChange}
+        onOffsetChange={onOffsetChange}
+      />
+    </SelfServeShell>
   );
 }

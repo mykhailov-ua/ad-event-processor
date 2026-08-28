@@ -81,7 +81,7 @@ func TestFault_CTVGtaxSettlementReplay(t *testing.T) {
 
 	var first domain.CTVSettlementResult
 	for i := range 3 {
-		resp, callErr := handler.applyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
+		resp, callErr := handler.ApplyCTVSettlement(ctx, settlementID, customerID, campaignID, spendMicro)
 		require.NoError(t, callErr)
 		if i == 0 {
 			first = resp

@@ -73,6 +73,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	if opts.Management {
 		slog.Info("control: in-process module wiring enabled")
 		serveOpts.RtbBidShadeSim = ingestion.RunRtbBidShadeSim
+		serveOpts.StartControlServers = StartControlServers
 		err := controlplane.ServeWithOptions(ctx, cfg, serveOpts)
 		wg.Wait()
 		if err != nil {
@@ -98,7 +99,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 	}
 }
 
-func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *controlplane.NotifierClient) error {
+func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *notify.Client) error {
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), 10, 2)
 	if err != nil {
 		return err

@@ -3,18 +3,57 @@ package controlplane
 import (
 	"context"
 	"net/http"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/identity"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/require"
 )
+
+func repoRoot(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	return filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
+}
+
+const leaseFaultContainerStopTimeout = 10 * time.Second
+
+func stopLeasePGContainer(t *testing.T, infra *database.TestDBInfra) {
+	t.Helper()
+	timeout := leaseFaultContainerStopTimeout
+	require.NoError(t, infra.PGContainer.Stop(context.Background(), &timeout))
+}
+
+func startLeasePGContainer(t *testing.T, infra *database.TestDBInfra) {
+	t.Helper()
+	require.NoError(t, infra.PGContainer.Start(context.Background()))
+}
+
+func refreshLeasePGPool(t *testing.T, infra *database.TestDBInfra) {
+	t.Helper()
+	ctx := context.Background()
+	infra.Pool.Close()
+	connStr, err := infra.PGContainer.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+	pool, err := pgxpool.New(ctx, connStr)
+	require.NoError(t, err)
+	infra.Pool = pool
+	require.Eventually(t, func() bool {
+		return pool.Ping(ctx) == nil
+	}, 30*time.Second, 200*time.Millisecond)
+}
 
 func integrationTestAuth(t *testing.T, redisClient redis.UniversalClient, cfg *config.Config) (*AuthMiddleware, identity.Maker) {
 	t.Helper()
@@ -41,31 +80,7 @@ func withAdminAPIKey(req *http.Request, cfg *config.Config) {
 }
 
 func newBareService(t *testing.T, pool *pgxpool.Pool, redisShards []redis.UniversalClient, cfg *config.Config) *Service {
-	t.Helper()
-	if cfg == nil {
-		cfg = &config.Config{}
-	}
-	shardCount := len(redisShards)
-	if shardCount == 0 {
-		shardCount = 1
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	svc := &Service{
-		redisShards: redisShards,
-		sharder:     domain.NewStaticSlotSharder(shardCount),
-		cfg:         cfg,
-		ctx:         ctx,
-		cancel:      cancel,
-	}
-	svc.SetPool(pool)
-	if cfg.MultiRegionEnabled {
-		svc.leaseWorker = NewOperationLeaseWorker(svc)
-	}
-	t.Cleanup(func() {
-		cancel()
-		svc.Close()
-	})
-	return svc
+	return NewBareServiceForTest(t, pool, redisShards, cfg)
 }
 
 func isDeadlock(err error) bool {

@@ -35,7 +35,7 @@ func TestFeatureSpecDims(t *testing.T) {
 
 func TestFeatureSpecGoldenFixtures(t *testing.T) {
 	fixturesDir := fraudMLFixtureDir(t)
-	require.DirExists(t, fixturesDir, "run model/fixture_generator.py to refresh tracked fixtures")
+	require.DirExists(t, fixturesDir, "run python3 -m train.fixture_generator to refresh tracked fixtures")
 
 	entries, err := os.ReadDir(fixturesDir)
 	require.NoError(t, err)

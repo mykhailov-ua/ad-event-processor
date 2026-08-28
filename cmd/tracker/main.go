@@ -17,13 +17,12 @@ import (
 	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/pgfailover"
 	"ad-event-processor/internal/rtb"
 	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/logger"
 	"ad-event-processor/pkg/netaddr"
-	"ad-event-processor/pkg/pgfailover"
 	"ad-event-processor/pkg/piihash"
-	"ad-event-processor/pkg/runtimeautotune"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -56,7 +55,10 @@ func main() {
 		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
 		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
 	)
-	runtimeautotune.Apply(cfg)
+	ingestion.ApplyRuntimeAutotune()
+	if n := ingestion.DefaultMaxWorkers(); n > 0 {
+		cfg.MaxWorkers = n
+	}
 
 	loggerCfg := logger.Config{
 		LogDir:                cfg.Logger.Dir,
@@ -503,7 +505,7 @@ func main() {
 	entitlementsFilter.SetRegionCode(uint8(cfg.RegionCode))
 	entitlementsFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
 	unifiedFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
-	piiHasher, piiErr := piihash.NewFromConfig(cfg)
+	piiHasher, piiErr := piihash.NewFromSalt(cfg.PIISaltVersion, string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher for segment filter", "error", piiErr)
 		os.Exit(1)

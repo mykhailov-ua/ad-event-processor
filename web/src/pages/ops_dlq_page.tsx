@@ -1,195 +1,137 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Button } from '../components/button.js';
-import { ErrorBlock } from '../components/error_block.js';
-import { FilterToolbar } from '../components/filter_toolbar.js';
-import { can } from '../helpers/permissions.js';
-import * as auth from '../helpers/auth.js';
-import { mapServiceError } from '../helpers/service_error.js';
-import { pushToastMessage } from '../helpers/toast_ui.js';
-import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
-import { displayLabel } from '../helpers/display_labels.js';
+import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  fetchDlqInboxPage,
-  isDlqInboxEntryRetryable,
-  retryDlqInboxEntry,
-  type DLQInboxEntryDTO,
-  type DLQInboxSource,
-} from '../helpers/ops_dlq_inbox_api.js';
+  buildDlqInboxUrl,
+  buildDlqListUrl,
+  retryDlq,
+  retryDlqInbox,
+  type DLQInbox,
+  type DLQList,
+} from '../helpers/ops_api.js';
+import { ConfirmCancelledError } from '../helpers/confirmed_api.js';
+import { pushToastMessage } from '../helpers/toast_ui.js';
+import { useResource } from '../helpers/use_resource.js';
+import { OpsDlqPanel } from '../ui/ops/ops_dlq_panel.js';
 
-const SOURCE_OPTIONS: Array<{ value: DLQInboxSource; label: string }> = [
-  { value: '', label: 'All sources' },
-  { value: 'stream', label: 'Stream (Redis)' },
-  { value: 'postback', label: 'Postback webhook' },
-  { value: 'capi', label: 'CAPI' },
-];
+const PAGE_LIMIT = 50;
 
 export function OpsDlqPage() {
-  const user = auth.getUser();
-  const canRetry = can(user?.permissions ?? [], 'shards:write');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const sourceFilter = searchParams.get('source') ?? '';
+  const cursor = searchParams.get('cursor') ?? '';
+  const [draftSource, setDraftSource] = useState(sourceFilter);
+  const [retryBusyId, setRetryBusyId] = useState<string | null>(null);
 
-  const [source, setSource] = useState<DLQInboxSource>('');
-  const [items, setItems] = useState<DLQInboxEntryDTO[]>([]);
-  const [cursor, setCursor] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<unknown>(null);
-  const [partialErrors, setPartialErrors] = useState<Array<{ source?: string; code?: string }>>([]);
+  const dlqUrl = useMemo(
+    () => buildDlqListUrl({ limit: PAGE_LIMIT, cursor: cursor || undefined }),
+    [cursor]
+  );
+  const inboxUrl = useMemo(
+    () =>
+      buildDlqInboxUrl({
+        limit: PAGE_LIMIT,
+        cursor: cursor || undefined,
+        source: sourceFilter || undefined,
+      }),
+    [cursor, sourceFilter]
+  );
 
-  const load = useCallback(async (nextSource: DLQInboxSource, reset = true) => {
-    setLoading(true);
-    setError(null);
-    const page = await fetchDlqInboxPage(nextSource);
-    if (page.error) {
-      setError(page.error);
-      setItems([]);
-      setCursor('');
-      setPartialErrors([]);
-    } else {
-      setItems(page.items);
-      setCursor(page.nextCursor);
-      setPartialErrors(page.partialErrors);
-    }
-    setLoading(false);
-    if (!reset) return;
-  }, []);
+  const { data: dlq, loading: dlqLoading, error: dlqError, reload: reloadDlq } =
+    useResource<DLQList>(dlqUrl);
+  const {
+    data: inbox,
+    loading: inboxLoading,
+    error: inboxError,
+    reload: reloadInbox,
+  } = useResource<DLQInbox>(inboxUrl);
 
-  useEffect(() => {
-    void load(source);
-  }, [source, load]);
+  const patchParams = useCallback(
+    (patch: Record<string, string | null>) => {
+      const next = new URLSearchParams(searchParams);
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null || value === '') next.delete(key);
+        else next.set(key, value);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
-  const loadMore = async () => {
-    if (!cursor || loading) return;
-    setLoading(true);
-    const page = await fetchDlqInboxPage(source, cursor);
-    setLoading(false);
-    if (page.error) {
-      pushToastMessage({ title: 'Load failed', message: mapServiceError(page.error).message });
-      return;
-    }
-    setItems((prev) => [...prev, ...page.items]);
-    setCursor(page.nextCursor);
-    if (page.partialErrors.length > 0) {
-      setPartialErrors((prev) => [...prev, ...page.partialErrors]);
-    }
-  };
+  const onApplySource = useCallback(() => {
+    patchParams({ source: draftSource.trim() || null, cursor: null });
+  }, [draftSource, patchParams]);
 
-  const retry = async (row: DLQInboxEntryDTO) => {
-    setLoading(true);
-    try {
-      await retryDlqInboxEntry(row);
-      pushToastMessage({ title: 'Retry queued', message: `${row.source}:${row.id}` });
-      await load(source);
-    } catch (e) {
-      if (e instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'Retry failed', message: mapServiceError(e).message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const onPrevCursor = useCallback(() => {
+    patchParams({ cursor: null });
+  }, [patchParams]);
+
+  const onNextCursor = useCallback(() => {
+    const next = inbox?.next_cursor ?? dlq?.next_cursor;
+    if (!next) return;
+    patchParams({ cursor: next });
+  }, [dlq?.next_cursor, inbox?.next_cursor, patchParams]);
+
+  const onRetryDlq = useCallback(
+    (id: string) => {
+      setRetryBusyId(id);
+      void (async () => {
+        try {
+          await retryDlq(id);
+          pushToastMessage({ title: 'DLQ retry enqueued', message: id });
+          reloadDlq();
+          reloadInbox();
+        } catch (err) {
+          if (err instanceof ConfirmCancelledError) return;
+          pushToastMessage({
+            title: 'DLQ retry failed',
+            message: err instanceof Error ? err.message : 'Retry failed',
+          });
+        } finally {
+          setRetryBusyId(null);
+        }
+      })();
+    },
+    [reloadDlq, reloadInbox]
+  );
+
+  const onRetryInbox = useCallback(
+    (id: string, source: string) => {
+      setRetryBusyId(id);
+      void (async () => {
+        try {
+          await retryDlqInbox(id, source);
+          pushToastMessage({ title: 'Inbox retry enqueued', message: id });
+          reloadInbox();
+        } catch (err) {
+          if (err instanceof ConfirmCancelledError) return;
+          pushToastMessage({
+            title: 'Inbox retry failed',
+            message: err instanceof Error ? err.message : 'Retry failed',
+          });
+        } finally {
+          setRetryBusyId(null);
+        }
+      })();
+    },
+    [reloadInbox]
+  );
 
   return (
-    <>
-      <header className="page-header">
-        <h1 className="h2">Unified DLQ inbox</h1>
-        <p className="text-muted">
-          Stream shard DLQ merged with postback and CAPI dead letters. Retry routes to the correct
-          backend per source.
-        </p>
-      </header>
-
-      {error ? <ErrorBlock error={error} /> : null}
-
-      <section className="section-block" data-testid="ops-dlq-inbox">
-        <FilterToolbar
-          leading={
-            <div className="cluster cluster--sm items-center">
-              <span className="text-muted text-sm">Source</span>
-              <select
-                className="form-input form-input--sm min-w-44"
-                aria-label="DLQ source filter"
-                data-testid="dlq-inbox-source"
-                value={source}
-                disabled={loading}
-                onChange={(e) => setSource(e.target.value as DLQInboxSource)}
-              >
-                {SOURCE_OPTIONS.map((opt) => (
-                  <option key={opt.value || 'all'} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          }
-          pagination={
-            cursor ? (
-              <Button
-                label="Load more"
-                variant="secondary"
-                size="sm"
-                loading={loading}
-                disabled={loading}
-                onClick={() => void loadMore()}
-              />
-            ) : undefined
-          }
-        />
-
-        {partialErrors.length > 0 ? (
-          <div className="stub-banner mb-4">
-            {`Partial source errors: ${partialErrors.map((e) => `${e.source ?? '?'} (${e.code ?? 'err'})`).join('; ')}`}
-          </div>
-        ) : null}
-
-        {loading && items.length === 0 ? <p className="text-muted">Loading...</p> : null}
-
-        <div className="table-wrapper elevation-raised">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Source</th>
-                <th scope="col">ID</th>
-                <th scope="col">Campaign</th>
-                <th scope="col">Type</th>
-                <th scope="col">Error</th>
-                <th scope="col">Failed</th>
-                <th scope="col">Status</th>
-                {canRetry ? <th scope="col">Action</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((row) => (
-                <tr key={`${row.source}-${row.id}`}>
-                  <td>{displayLabel(row.source)}</td>
-                  <td className="font-mono text-sm">{row.id}</td>
-                  <td className="font-mono text-sm">{row.campaign_id ?? '-'}</td>
-                  <td>{row.event_type ?? '-'}</td>
-                  <td>{row.error ?? '-'}</td>
-                  <td className="text-muted text-sm">
-                    {row.failed_at ? new Date(row.failed_at).toLocaleString() : '-'}
-                  </td>
-                  <td>{row.status ?? '-'}</td>
-                  {canRetry ? (
-                    <td>
-                      {isDlqInboxEntryRetryable(row) ? (
-                        <Button
-                          label="Retry"
-                          variant="ghost"
-                          size="sm"
-                          data-testid={`dlq-inbox-retry-${row.source}-${row.id}`}
-                          disabled={loading}
-                          onClick={() => void retry(row)}
-                        />
-                      ) : null}
-                    </td>
-                  ) : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {!loading && items.length === 0 ? (
-          <p className="text-muted text-sm mt-3">No DLQ entries for this filter.</p>
-        ) : null}
-      </section>
-    </>
+    <OpsDlqPanel
+      dlq={dlq}
+      inbox={inbox}
+      loading={dlqLoading || inboxLoading}
+      error={dlqError ?? inboxError}
+      sourceFilter={draftSource}
+      onSourceFilterChange={setDraftSource}
+      onApplySource={onApplySource}
+      cursor={cursor}
+      nextCursor={inbox?.next_cursor ?? dlq?.next_cursor ?? null}
+      onPrevCursor={onPrevCursor}
+      onNextCursor={onNextCursor}
+      onRetryDlq={onRetryDlq}
+      onRetryInbox={onRetryInbox}
+      retryBusyId={retryBusyId}
+    />
   );
 }

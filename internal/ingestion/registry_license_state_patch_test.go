@@ -12,7 +12,7 @@ import (
 
 type activeLicenseStaleSeedRegistry struct{}
 
-func (activeLicenseStaleSeedRegistry) GetLicenseState() (licensing.LicenseState, licensing.Entitlements) {
+func (r activeLicenseStaleSeedRegistry) GetLicenseState() (licensing.LicenseState, licensing.Entitlements) {
 	return licensing.StateActive, licensing.Entitlements{
 		Limits: licensing.Limits{MaxRPS: 1000},
 	}

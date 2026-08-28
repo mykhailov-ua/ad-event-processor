@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	db "ad-event-processor/internal/domain/db"
-	"ad-event-processor/pkg/gtax"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -66,7 +65,7 @@ func ApplyCTVSettlement(
 		}
 		taxMicro := int64(0)
 		if ctvEnabled {
-			taxMicro = gtax.ComputeMicro(spendMicro, ctvRateBPS)
+			taxMicro = computeCTVGTaxMicro(spendMicro, ctvRateBPS)
 		}
 
 		var budget db.GetCampaignBudgetRow
@@ -150,4 +149,11 @@ func ApplyCTVSettlement(
 		return nil
 	})
 	return out, err
+}
+
+func computeCTVGTaxMicro(spendMicro int64, rateBPS int32) int64 {
+	if spendMicro <= 0 || rateBPS <= 0 {
+		return 0
+	}
+	return (spendMicro*int64(rateBPS) + 5000) / 10000
 }

@@ -1,40 +1,43 @@
-import { Link, useParams } from 'react-router-dom';
+import { useCallback } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
 import * as auth from '../helpers/auth.js';
-import { can, maskLevel } from '../helpers/permissions.js';
-import { CampaignTelegramSection } from '../components/campaign_telegram_section.js';
+import { parseTelegramDetailTab, type TelegramDetailTab } from '../helpers/telegram_api.js';
+import { can } from '../helpers/permissions.js';
+import { TelegramDetailView } from '../ui/telegram/telegram_detail.js';
+import { ErrorBlock } from '../ui/system/error_block.js';
 
 export function CampaignTelegramPage() {
-  const { id = '' } = useParams();
+  const { id } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = auth.getUser();
   const permissions = user?.permissions ?? [];
-  const masked = maskLevel(permissions) === 'masked';
-  const canWrite = can(permissions, 'campaigns:write');
+  const campaignId = id ?? '';
+  const maskedOnly = can(permissions, 'campaigns:read:masked') && !can(permissions, 'campaigns:read');
+  const tab = parseTelegramDetailTab(searchParams.get('tab'));
 
-  if (masked) {
-    return (
-      <>
-        <div className="page-header">
-          <h1 className="page-header__title">Telegram</h1>
-        </div>
-        <p>Telegram configuration is not available for masked accounts.</p>
-        <Link to={`/campaigns/${encodeURIComponent(id)}`}>Back to campaign</Link>
-      </>
-    );
+  const onTabChange = useCallback(
+    (next: TelegramDetailTab) => {
+      const params = new URLSearchParams(searchParams);
+      if (next === 'bots') {
+        params.delete('tab');
+      } else {
+        params.set('tab', next);
+      }
+      setSearchParams(params, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  if (!campaignId) {
+    return <ErrorBlock error={new Error('missing campaign id')} fallbackTitle="Invalid route" />;
   }
 
   return (
-    <>
-      <div className="page-header">
-        <h1 className="page-header__title">Telegram Mini App</h1>
-        <p className="text-muted">
-          <Link to={`/campaigns/${encodeURIComponent(id)}`}>{'<-'} Campaign</Link>
-          {' , '}
-          <Link to={`/reports/telegram?campaign_id=${encodeURIComponent(id)}`}>
-            Open full analytics
-          </Link>
-        </p>
-      </div>
-      <CampaignTelegramSection campaignId={id} canWrite={canWrite} />
-    </>
+    <TelegramDetailView
+      campaignId={campaignId}
+      tab={tab}
+      maskedOnly={maskedOnly}
+      onTabChange={onTabChange}
+    />
   );
 }

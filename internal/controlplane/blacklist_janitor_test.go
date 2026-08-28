@@ -10,7 +10,7 @@ func TestBlacklistJanitor_DefaultInterval(t *testing.T) {
 	if j == nil {
 		t.Fatal("expected janitor")
 	}
-	if j.interval != time.Minute {
-		t.Fatalf("interval: got %v want 1m", j.interval)
+	if j.Interval() != time.Minute {
+		t.Fatalf("interval: got %v want 1m", j.Interval())
 	}
 }

@@ -1,0 +1,222 @@
+.root {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: var(--page-max-width);
+}
+
+.intro {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-md);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  text-decoration: none;
+  color: inherit;
+}
+
+.card:hover {
+  border-color: var(--color-accent, var(--border-color));
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.content {
+  display: grid;
+  min-height: 0;
+  gap: var(--space-md);
+}
+
+.hint {
+  margin: 0;
+  padding: var(--space-sm) 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.sectionTitle {
+  margin: 0 0 var(--space-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.formStack {
+  display: grid;
+  gap: var(--space-sm);
+  max-width: 36rem;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.textInput {
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.textarea {
+  min-height: 8rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.select {
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+}
+
+.checkboxRow {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.toolbar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-xs);
+}
+
+.gridTable {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  overflow: hidden;
+}
+
+.gridHeader {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  background: var(--bg-muted, var(--bg-surface));
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.gridRow {
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--border-color);
+  font-size: var(--text-sm);
+}
+
+.gridCell {
+  padding: var(--space-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpiRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-sm);
+}
+
+.kpiTile {
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.kpiLabel {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.kpiValue {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.bannerLink {
+  color: var(--color-accent);
+}
+
+.restartBanner {
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  font-size: var(--text-sm);
+  background: var(--bg-muted, var(--bg-surface));
+}
+
+.secretHint {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.colsDomains {
+  grid-template-columns: 1.5fr 0.75fr 0.75fr 0.75fr 1fr 2fr 6rem;
+}
+
+.colsDisputes {
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+}
+
+.colsSchedules {
+  grid-template-columns: 1fr 1fr 1fr 0.75fr 0.5fr 6rem;
+}
+
+.colsMembers {
+  grid-template-columns: 1.25fr 0.75fr 0.5fr 0.75fr 0.5fr 6rem;
+}
+
+.colsApprovals {
+  grid-template-columns: 1fr 1fr 1fr 1fr 0.75fr 8rem;
+}

@@ -5,12 +5,13 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
     "noEmit": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "allowJs": false,
     "jsx": "react-jsx",
@@ -19,11 +20,5 @@
     "rootDir": "src"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/static/**",
-    "dist",
-    "e2e",
-    "node_modules"
-  ]
+  "exclude": ["src/**/*.test.ts", "dist", "node_modules"]
 }

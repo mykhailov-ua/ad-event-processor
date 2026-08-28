@@ -2,11 +2,10 @@ package reconciliation
 
 import (
 	"context"
-	"time"
+
+	"ad-event-processor/internal/reports"
 )
 
-const coldPathClickHouseQueryTimeout = 10 * time.Second
-
 func clickhouseQueryContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	return context.WithTimeout(ctx, coldPathClickHouseQueryTimeout)
+	return reports.ClickHouseQueryContext(ctx)
 }

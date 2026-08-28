@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/rtb"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -22,7 +23,7 @@ func ReloadRtbCatalog(
 	budgetSync RtbBudgetSync,
 	watcher *SettingsWatcher,
 ) error {
-	if err := domain.ReloadRtbDeals(ctx, q, catalog); err != nil {
+	if err := rtb.ReloadDeals(ctx, q, catalog); err != nil {
 		return err
 	}
 	if registry != nil && catalog != nil && cfg != nil && cfg.RtbEnabled() {

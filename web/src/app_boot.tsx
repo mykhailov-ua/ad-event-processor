@@ -7,12 +7,12 @@ import { syncDevModeAttribute } from './helpers/dev_mode.js';
 import { to } from './lib/to.js';
 
 const AppProviders = lazy(() =>
-  import('./components/app_providers.js').then((mod) => ({
+  import('./ui/shell/app_providers.js').then((mod) => ({
     default: mod.AppProviders,
   }))
 );
 const EulaGate = lazy(() =>
-  import('./components/eula_gate.js').then((mod) => ({
+  import('./ui/shell/eula_gate.js').then((mod) => ({
     default: mod.EulaGate,
   }))
 );
@@ -90,7 +90,7 @@ export function AppBoot() {
 
   if (phase === 'loading') {
     return (
-      <div className="main" style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <div className="login-root">
         <span className="text-muted">Loading...</span>
       </div>
     );
@@ -109,7 +109,7 @@ export function AppBoot() {
   return (
     <Suspense
       fallback={
-        <div className="main" style={{ alignItems: 'center', justifyContent: 'center' }}>
+        <div className="login-root">
           <span className="text-muted">Loading...</span>
         </div>
       }

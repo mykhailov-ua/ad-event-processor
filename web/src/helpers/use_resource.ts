@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../helpers/api_client.js';
 import { to } from '../lib/to.js';
-import type { ResourceState } from '../lib/fetch_resource.js';
+
+export type ResourceState<T> = {
+  data: T | null;
+  loading: boolean;
+  error: unknown;
+};
 
 export function useResource<T>(
   url: string | null,
@@ -27,14 +32,14 @@ export function useResource<T>(
 
     const ctrl = new AbortController();
     let cancelled = false;
-    setState({ data: null, loading: true, error: null });
+    setState((prev) => ({ data: prev.data, loading: true, error: null }));
 
     void (async () => {
       const [result, err] = await to(api<T>(url, { signal: ctrl.signal }));
       if (cancelled) return;
       if (err) {
         if (err.name === 'AbortError') return;
-        setState({ data: null, loading: false, error: err });
+        setState((prev) => ({ data: prev.data, loading: false, error: err }));
         return;
       }
       setState({ data: result?.data ?? null, loading: false, error: null });

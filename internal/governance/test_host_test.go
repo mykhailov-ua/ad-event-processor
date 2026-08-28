@@ -75,6 +75,6 @@ func payloadFromOutbox(t *testing.T, ctx context.Context, pool *pgxpool.Pool, id
 
 type stubQuorum struct{}
 
-func (stubQuorum) ObserveShard(context.Context, int, redis.UniversalClient) {}
+func (q stubQuorum) ObserveShard(context.Context, int, redis.UniversalClient) {}
 
-func (stubQuorum) DeadShardConfirmed(int) bool { return false }
+func (q stubQuorum) DeadShardConfirmed(int) bool { return false }

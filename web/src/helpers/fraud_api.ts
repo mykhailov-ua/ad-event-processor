@@ -1,204 +1,212 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
-import type { components } from '../types/generated/openapi.js';
+import { can } from './permissions.js';
 
-export type FraudPolicyPreset = components['schemas']['FraudPolicyPreset'] & { name: string };
-
-export type FraudSensitivityPreset =
-  | 'conservative'
-  | 'balanced'
-  | 'aggressive'
-  | 'enhanced_defense'
-  | 'social_in_app';
-
-export function normalizeFraudPresetId(id: string): FraudSensitivityPreset | string {
-  if (id === 'gray_market') return 'enhanced_defense';
-  return id;
-}
-
-export type ConversionRejectRules = {
-  enabled?: boolean;
-  min_ttc_ms?: number;
-  reject_no_click?: boolean;
-  reject_low_ttc?: boolean;
-  reject_duplicate?: boolean;
-  reject_ip_drift?: boolean;
-  reject_datacenter_ip?: boolean;
-};
-
-export type CampaignFraudConfig = {
-  campaign_id: string;
-  fraud_threshold_pass: number;
-  fraud_threshold_suspect: number;
-  fraud_threshold_ivt: number;
-  fraud_threshold_block: number;
-  silent_reject_enabled: boolean;
-  canvas_retest_enabled?: boolean;
-  cgnat_ip_policy_enabled?: boolean;
-  conversion_reject_rules?: ConversionRejectRules;
-  behavior_flags?: number;
-};
-
-export type PatchCampaignFraudRequest = {
-  preset?: FraudSensitivityPreset;
-  fraud_threshold_pass?: number;
-  fraud_threshold_suspect?: number;
-  fraud_threshold_ivt?: number;
-  fraud_threshold_block?: number;
-  silent_reject_enabled?: boolean;
-  canvas_retest_enabled?: boolean;
-  cgnat_ip_policy_enabled?: boolean;
-  conversion_reject_rules?: ConversionRejectRules;
-};
-
-export type CampaignFraudPreview = {
-  campaign_id: string;
-  affected_ips_7d: number;
-  sample_size: number;
-  by_tier: {
-    suspect: number;
-    ivt: number;
-    block: number;
-  };
-  disclaimer: string;
-};
-
-export type PreviewCampaignFraudRequest = {
-  preset?: FraudSensitivityPreset;
-  fraud_threshold_pass?: number;
-  fraud_threshold_suspect?: number;
-  fraud_threshold_ivt?: number;
-  fraud_threshold_block?: number;
-};
-
-export async function fetchCampaignFraudConfig(
-  campaignId: string
-): Promise<CampaignFraudConfig | null> {
-  const res = await api<CampaignFraudConfig>(
-    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/fraud`
-  );
-  return res.data ?? null;
-}
-
-export async function patchCampaignFraudConfig(
-  campaignId: string,
-  body: PatchCampaignFraudRequest
-): Promise<CampaignFraudConfig | null> {
-  const res = await apiConfirmed<CampaignFraudConfig>(
-    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/fraud`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    }
-  );
-  return res.data ?? null;
-}
-
-export async function previewCampaignFraudImpact(
-  campaignId: string,
-  body: PreviewCampaignFraudRequest
-): Promise<CampaignFraudPreview | null> {
-  const res = await api<CampaignFraudPreview>(
-    `/api/v1/campaigns/${encodeURIComponent(campaignId)}/fraud/preview`,
-    {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }
-  );
-  return res.data ?? null;
-}
-
-export const FRAUD_PRESET_OPTIONS: Array<{
-  id: FraudSensitivityPreset;
-  label: string;
-  description: string;
-}> = [
-  {
-    id: 'conservative',
-    label: 'Conservative',
-    description: 'Fewer blocks; higher score bands before action.',
-  },
-  {
-    id: 'balanced',
-    label: 'Balanced',
-    description: 'Platform defaults for pass / suspect / ivt / block.',
-  },
-  {
-    id: 'aggressive',
-    label: 'Aggressive',
-    description: 'More blocks; lower score bands before action.',
-  },
-  {
-    id: 'enhanced_defense',
-    label: 'Enhanced defense',
-    description:
-      'Tight tiers, silent reject, safe-page redirect on fraud, attestation, VPN/TLS blocks, signed links.',
-  },
-  {
-    id: 'social_in_app',
-    label: 'Social in-app',
-    description:
-      'Balanced tiers, mobile-only conn policy, proxy/VPN and TLS blocks; TLS safe-view skipped for FB/TikTok/Instagram WebView UA.',
-  },
-];
-
-export async function fetchFraudPresets(): Promise<FraudPolicyPreset[]> {
-  const res = await api<FraudPolicyPreset[]>('/api/v1/fraud/presets');
-  if (Array.isArray(res.data) && res.data.length > 0) {
-    return res.data;
-  }
-  return FRAUD_PRESET_OPTIONS.map((opt) => {
-    const aggressive = opt.id === 'aggressive' || opt.id === 'enhanced_defense';
-    const conservative = opt.id === 'conservative';
-    return {
-      name: opt.id,
-      pass: conservative ? 40 : aggressive ? 20 : 30,
-      suspect: conservative ? 70 : aggressive ? 45 : 60,
-      ivt: conservative ? 90 : aggressive ? 65 : 80,
-      block: conservative ? 100 : aggressive ? 85 : 100,
-    };
-  });
-}
-
-export type FraudManualLabel = {
+export type MLManualLabelDTO = {
   ip_hash: string;
   label: number;
-  reason?: string;
-  source?: string;
-  created_at?: string;
+  reason: string;
+  source: string;
+  created_at: string;
+};
+
+export type FraudManualLabelRow = {
+  ip_hash: string;
+  label: number;
+  reason: string;
 };
 
 export type FraudManualLabelRequest = {
   ip_hash: string;
   label: number;
-  reason?: string;
+  reason: string;
 };
 
-const IP_HASH_RE = /^[0-9a-fA-F]{32}$/;
+export type FraudManualLabelBulkRequest = {
+  rows: FraudManualLabelRow[];
+};
+
+export type FraudManualLabelBulkResponse = {
+  upserted: number;
+};
+
+export type FraudTierThresholdsDTO = {
+  scope?: string;
+  pass_max: number;
+  suspect_max: number;
+  ivt_max: number;
+  block_above: number;
+};
+
+export type FraudDecisionDTO = {
+  ip_hash: string;
+  campaign_id: string;
+  window_start: string;
+  evaluated_at: string;
+  disclaimer: string;
+  tier: string;
+  score: number;
+  ml_probability: number;
+  adjusted_probability: number;
+  residential_proxy: boolean;
+  structural_fraud: boolean;
+  fp_guard_applied: boolean;
+  model_score?: number;
+  model_name?: string;
+  score_missing: boolean;
+  features: Record<string, number>;
+  campaign_thresholds: FraudTierThresholdsDTO;
+};
+
+export type FraudIntegrationDTO = {
+  campaign_id: string;
+  name: string;
+  provider?: string;
+  configured: boolean;
+  health_status: string;
+  last_success_at?: string;
+  dlq_count: number;
+  last_error?: string;
+};
+
+export type FraudOverrideRequest = {
+  campaign_id?: string;
+  ip?: string;
+  ip_hash?: string;
+};
+
+export type FraudPolicyPresetDTO = {
+  name: string;
+  pass: number;
+  suspect: number;
+  ivt: number;
+  block: number;
+  updated_at: string;
+};
+
+const IP_HASH_RE = /^[0-9a-f]{32}$/;
 
 export function isValidFraudIPHash(value: string): boolean {
-  return IP_HASH_RE.test(value.trim());
+  return IP_HASH_RE.test(value.trim().toLowerCase());
+}
+
+export function canWriteFraudLabels(permissions: string[]): boolean {
+  return can(permissions, 'campaigns:write') || can(permissions, 'shards:write');
+}
+
+export function canApplyFraudOverride(permissions: string[]): boolean {
+  return (
+    can(permissions, 'audit:write') ||
+    can(permissions, 'campaigns:write') ||
+    can(permissions, 'shards:write')
+  );
+}
+
+function withCustomerQuery(customerId: string, extra?: Record<string, string>): string {
+  const qs = new URLSearchParams({ customer_id: customerId });
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) qs.set(key, value);
+    }
+  }
+  return qs.toString();
+}
+
+export function buildFraudDecisionUrl(params: {
+  customerId: string;
+  ipHash: string;
+  hours?: number;
+  campaignId?: string;
+}): string {
+  const qs = new URLSearchParams({
+    customer_id: params.customerId,
+    ip_hash: params.ipHash.trim().toLowerCase(),
+  });
+  if (params.hours != null && params.hours > 0) qs.set('hours', String(params.hours));
+  if (params.campaignId?.trim()) qs.set('campaign_id', params.campaignId.trim());
+  return `/api/v1/fraud/decisions?${qs.toString()}`;
+}
+
+export async function fetchFraudDecision(
+  params: {
+    customerId: string;
+    ipHash: string;
+    hours?: number;
+    campaignId?: string;
+  },
+  signal?: AbortSignal
+): Promise<FraudDecisionDTO> {
+  const result = await api<FraudDecisionDTO>(buildFraudDecisionUrl(params), { signal });
+  return result.data;
+}
+
+export function buildFraudLabelsUrl(params: { customerId: string; limit?: number }): string {
+  const qs = new URLSearchParams({ customer_id: params.customerId });
+  if (params.limit != null && params.limit > 0) qs.set('limit', String(params.limit));
+  return `/api/v1/fraud/labels?${qs.toString()}`;
 }
 
 export async function fetchFraudLabels(
-  customerId: string,
-  limit = 50
-): Promise<FraudManualLabel[]> {
-  const qs = new URLSearchParams({
-    customer_id: customerId,
-    limit: String(limit),
-  });
-  const res = await api<FraudManualLabel[]>(`/api/v1/fraud/labels?${qs.toString()}`);
-  return Array.isArray(res.data) ? res.data : [];
+  params: { customerId: string; limit?: number },
+  signal?: AbortSignal
+): Promise<MLManualLabelDTO[]> {
+  const result = await api<MLManualLabelDTO[]>(buildFraudLabelsUrl(params), { signal });
+  return Array.isArray(result.data) ? result.data : [];
 }
 
 export async function postFraudLabel(
   customerId: string,
   body: FraudManualLabelRequest
 ): Promise<void> {
-  const qs = new URLSearchParams({ customer_id: customerId });
-  await apiConfirmed(`/api/v1/fraud/labels?${qs.toString()}`, {
+  await apiConfirmed(`/api/v1/fraud/labels?${withCustomerQuery(customerId)}`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ip_hash: body.ip_hash.trim().toLowerCase(),
+      label: body.label,
+      reason: body.reason,
+    }),
+  });
+}
+
+export async function postFraudLabelsBulk(
+  customerId: string,
+  rows: FraudManualLabelRow[]
+): Promise<FraudManualLabelBulkResponse> {
+  const result = await apiConfirmed<FraudManualLabelBulkResponse>(
+    `/api/v1/fraud/labels/bulk?${withCustomerQuery(customerId)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rows }),
+    }
+  );
+  return result.data;
+}
+
+export async function postFraudOverride(
+  customerId: string,
+  body: FraudOverrideRequest
+): Promise<void> {
+  await apiConfirmed(`/api/v1/fraud/overrides?${withCustomerQuery(customerId)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
+}
+
+export async function fetchFraudPresets(signal?: AbortSignal): Promise<FraudPolicyPresetDTO[]> {
+  const result = await api<FraudPolicyPresetDTO[]>('/api/v1/fraud/presets', { signal });
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function fetchFraudIntegrations(
+  customerId: string,
+  signal?: AbortSignal
+): Promise<FraudIntegrationDTO[]> {
+  const result = await api<FraudIntegrationDTO[]>(
+    `/api/v1/fraud/integrations?${withCustomerQuery(customerId)}`,
+    { signal }
+  );
+  return Array.isArray(result.data) ? result.data : [];
 }

@@ -9,7 +9,7 @@ import (
 
 	"ad-event-processor/pkg/broker/protocol"
 	"ad-event-processor/pkg/iogate"
-	rserver "ad-event-processor/pkg/regionproxy/server"
+	rserver "ad-event-processor/internal/regionproxy"
 	"ad-event-processor/pkg/regionproxy/wal"
 
 	"github.com/stretchr/testify/assert"

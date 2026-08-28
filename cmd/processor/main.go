@@ -13,7 +13,6 @@ import (
 
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
@@ -23,10 +22,12 @@ import (
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/notify"
+	"ad-event-processor/internal/opsadmin"
+	"ad-event-processor/internal/pgfailover"
 	"ad-event-processor/internal/postback"
+	"ad-event-processor/internal/rtb"
 	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/logger"
-	"ad-event-processor/pkg/pgfailover"
 	"ad-event-processor/pkg/piihash"
 	rpclient "ad-event-processor/pkg/regionproxy/client"
 
@@ -163,19 +164,23 @@ func main() {
 		slog.Info("clickhouse consumer disabled", "ch_consumer", "disabled")
 	}
 
-	var notifierClient *controlplane.NotifierClient
+	var notifierClient *notify.Client
 	if cfg.NotifierAPIEnabled() {
 		api, closeNotifier, notifierErr := notify.OpenAPI(ctx, cfg)
 		if notifierErr != nil {
 			slog.Warn("notifier module unavailable for ops alerts", "error", notifierErr)
 		} else if api != nil {
-			notifierClient = controlplane.NewNotifierClientFromAPI(api)
+			notifierClient = notify.NewClientFromAPI(api)
 			if closeNotifier != nil {
 				defer closeNotifier()
 			}
 		}
 	}
-	opsAlerter := controlplane.NewOpsAlerter(notifierClient, cfg)
+	var notifierAPI notify.NotifierAPI
+	if notifierClient != nil {
+		notifierAPI = notifierClient.API()
+	}
+	opsAlerter := opsadmin.NewOpsAlerter(notifierAPI, cfg)
 	var onEmergencyDrop database.EmergencyDropAlerter
 	if chEnabled && opsAlerter != nil && cfg.ClickHouseEmergencyDropPercent > 0 {
 		threshold := cfg.ClickHouseEmergencyDropPercent
@@ -233,7 +238,7 @@ func main() {
 	streamTrimmer.Start(consumerCtx)
 
 	pgStore := ingestion.NewPostgresStoreWithGate(settleQueries, time.Duration(cfg.WriteTimeoutMs)*time.Millisecond, processorPostgresGate)
-	piiHasher, piiErr := piihash.NewFromConfig(cfg)
+	piiHasher, piiErr := piihash.NewFromSalt(cfg.PIISaltVersion, string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher", "error", piiErr)
 		os.Exit(1)
@@ -421,7 +426,7 @@ func main() {
 	var brokerCHGroup *BrokerConsumerGroup
 	var brokerFraudGroup *BrokerConsumerGroup
 	var brokerReconcile *ingestion.BrokerReconcileWorker
-	var budgetDeltaConsumer *controlplane.BudgetDeltaConsumer
+	var budgetDeltaConsumer *rtb.BudgetDeltaConsumer
 	var syncWorkers []*ingestion.SyncWorker
 	var fraudMicrobatcher *fraud.MicroBatcher
 	if fraudScorer != nil && len(redisShards) > 0 {
@@ -697,9 +702,9 @@ func main() {
 		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
 			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
 		}
-		budgetDeltaConsumer = controlplane.NewBudgetDeltaConsumer(
+		budgetDeltaConsumer = rtb.NewBudgetDeltaConsumer(
 			domain.NewBudgetDeltaAggregator(),
-			domain.BrokerConsumerConfig{
+			rtb.BudgetDeltaConsumerConfig{
 				BrokerAddr: cfg.Broker.URL,
 				RedisURL:   brokerRedisURL,
 				Topic:      cfg.BudgetDeltaTopic,

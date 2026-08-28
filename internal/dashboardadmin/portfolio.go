@@ -1,0 +1,209 @@
+package dashboardadmin
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/reports"
+	"ad-event-processor/pkg/money"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+const portfolioCampaignPageSize int32 = 100
+
+func (p *Portfolio) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error) {
+	now := time.Now().UTC()
+	return p.GetBuyerPortfolioRange(ctx, customerID, now.Add(-7*24*time.Hour), now)
+}
+
+func (p *Portfolio) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error) {
+	if p == nil || p.host == nil {
+		return BuyerPortfolioDTO{}, fmt.Errorf("portfolio service unavailable")
+	}
+	if customerID == uuid.Nil {
+		return BuyerPortfolioDTO{}, p.host.ErrValidation("customer_id is required")
+	}
+	now := time.Now().UTC()
+	if from.IsZero() {
+		from = now.Add(-7 * 24 * time.Hour)
+	}
+	if to.IsZero() {
+		to = now
+	}
+	if err := reports.ValidateChartRange(from, to); err != nil {
+		return BuyerPortfolioDTO{}, err
+	}
+
+	campaigns, err := p.listAllCampaigns(ctx, customerID, "")
+	if err != nil {
+		return BuyerPortfolioDTO{}, err
+	}
+
+	q := db.New(p.host.Pool())
+	statRows, err := q.SumCustomerCampaignStatsInRange(ctx, db.SumCustomerCampaignStatsInRangeParams{
+		CustomerID: domain.ToUUID(customerID),
+		FromDate:   pgtype.Date{Time: from, Valid: true},
+		ToDate:     pgtype.Date{Time: to, Valid: true},
+	})
+	if err != nil {
+		return BuyerPortfolioDTO{}, err
+	}
+	statsByCampaign := make(map[string]db.SumCustomerCampaignStatsInRangeRow, len(statRows))
+	for _, row := range statRows {
+		statsByCampaign[uuid.UUID(row.CampaignID.Bytes).String()] = row
+	}
+
+	chQuery := p.host.ClickHouseQuery()
+	var chLag time.Duration
+	if chQuery != nil {
+		chLag, _ = p.host.ClickHouseIngestionLag(ctx)
+	}
+	resp := BuyerPortfolioDTO{
+		CustomerID: customerID.String(),
+		Period: PeriodDTO{
+			From: from.Format(time.RFC3339),
+			To:   to.Format(time.RFC3339),
+		},
+		Attention: make([]BuyerAttentionDTO, 0, 4),
+		Campaigns: make([]BuyerCampaignPortfolioRowDTO, 0, len(campaigns)),
+		KPIs: &MetricsBlockDTO{
+			Freshness: reports.PortfolioFreshness(to, chQuery != nil, chLag),
+		},
+	}
+
+	var totalSpendMicro int64
+	var totalConversions int64
+
+	activeCampaignIDs := make([]uuid.UUID, 0, len(campaigns))
+	for _, c := range campaigns {
+		if c.Status == "ACTIVE" {
+			if campID, parseErr := uuid.Parse(c.ID); parseErr == nil {
+				activeCampaignIDs = append(activeCampaignIDs, campID)
+			}
+		}
+	}
+	marginBreaches, err := p.host.BatchCampaignMarginBreach(ctx, activeCampaignIDs)
+	if err != nil {
+		return BuyerPortfolioDTO{}, fmt.Errorf("batch campaign margin breach: %w", err)
+	}
+	marginBreachByID := make(map[string]bool, len(activeCampaignIDs))
+	for _, id := range activeCampaignIDs {
+		marginBreachByID[id.String()] = marginBreaches[id]
+	}
+
+	for _, c := range campaigns {
+		switch c.Status {
+		case "ACTIVE":
+			resp.Active++
+		case "PAUSED":
+			resp.Paused++
+			resp.Attention = append(resp.Attention, BuyerAttentionDTO{
+				ID: c.ID, Name: c.Name, Reason: "Campaign is paused",
+			})
+		case "ARCHIVED":
+			resp.Archived++
+		}
+		if c.Status == "ACTIVE" && c.PacingMode != "" && c.PacingMode != "even" {
+			resp.Attention = append(resp.Attention, BuyerAttentionDTO{
+				ID: c.ID, Name: c.Name, Reason: "Pacing mode: " + c.PacingMode,
+			})
+		}
+		st := statsByCampaign[c.ID]
+		resp.Impressions7d += st.Impressions
+		resp.Clicks7d += st.Clicks
+		totalConversions += st.Conversions
+
+		spendMicro, err := money.ParseDecimal(c.CurrentSpend)
+		if err != nil {
+			return BuyerPortfolioDTO{}, fmt.Errorf("campaign %s current_spend: %w", c.ID, err)
+		}
+		budgetMicro, err := money.ParseDecimal(c.BudgetLimit)
+		if err != nil {
+			return BuyerPortfolioDTO{}, fmt.Errorf("campaign %s budget_limit: %w", c.ID, err)
+		}
+		totalSpendMicro += spendMicro
+		util := campaignUtilizationPct(spendMicro, budgetMicro)
+		estimatedDrift := pacingDriftPct(st.Impressions, c.Status)
+		drift := estimatedDrift
+		risk := overspendRisk(util, c.PacingMode, c.Status)
+		if risk {
+			resp.OverspendCount++
+			resp.Attention = append(resp.Attention, BuyerAttentionDTO{
+				ID: c.ID, Name: c.Name, Reason: "Overspend risk",
+			})
+		}
+
+		marginBreach := false
+		if c.Status == "ACTIVE" {
+			marginBreach = marginBreachByID[c.ID]
+		}
+
+		resp.Campaigns = append(resp.Campaigns, BuyerCampaignPortfolioRowDTO{
+			ID:                      c.ID,
+			Name:                    c.Name,
+			Status:                  c.Status,
+			PacingMode:              c.PacingMode,
+			Impressions7d:           st.Impressions,
+			Clicks7d:                st.Clicks,
+			SpendMicro:              spendMicro,
+			BudgetMicro:             budgetMicro,
+			UtilizationPct:          util,
+			PacingDriftPct:          drift,
+			EstimatedPacingDriftPct: estimatedDrift,
+			OverspendRisk:           risk,
+			MarginBreach:            marginBreach,
+		})
+	}
+	if resp.KPIs != nil {
+		resp.KPIs.SpendMicro = totalSpendMicro
+		resp.KPIs.Conversions = totalConversions
+		if totalConversions > 0 && totalSpendMicro > 0 {
+			resp.KPIs.CPAMicro = totalSpendMicro / totalConversions
+		}
+	}
+	if len(resp.Attention) > 8 {
+		resp.Attention = resp.Attention[:8]
+	}
+	enrichBuyerPortfolioCommercial(&resp)
+	if chQuery != nil && len(activeCampaignIDs) > 0 {
+		clickhouseCtx, cancel := context.WithTimeout(ctx, p.host.ReportCHTimeout())
+		defer cancel()
+		totalEvents, blocked, silent, err := reports.QueryCustomerFraudOverview(clickhouseCtx, chQuery, activeCampaignIDs, from, to)
+		if err == nil {
+			freshness := reports.PortfolioFreshness(to, true, chLag)
+			overview := reports.BuildCustomerFraudOverview(totalEvents, blocked, silent, freshness)
+			reports.AttachInvalidSpendKPI(&overview, blocked, silent, totalEvents, 0, reports.ComputeAttributionCoverage(totalEvents, totalEvents))
+			if series, seriesErr := reports.QueryCustomerFraudDailySeries(clickhouseCtx, chQuery, activeCampaignIDs, from, to); seriesErr == nil {
+				overview.Series = series
+			}
+			resp.Fraud = &overview
+		}
+	}
+	if series, seriesErr := reports.QueryCustomerDashboardSeries(ctx, p.host.Pool(), chQuery, customerID, activeCampaignIDs, from, to); seriesErr == nil {
+		resp.Series = series
+	}
+	return resp, nil
+}
+
+func (p *Portfolio) listAllCampaigns(ctx context.Context, customerID uuid.UUID, status string) ([]campaign.CampaignDTO, error) {
+	var all []campaign.CampaignDTO
+	var offset int32
+	for {
+		batch, total, err := p.host.ListCampaigns(ctx, customerID, status, portfolioCampaignPageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, batch...)
+		offset += int32(len(batch))
+		if len(batch) == 0 || int64(offset) >= total {
+			break
+		}
+	}
+	return all, nil
+}

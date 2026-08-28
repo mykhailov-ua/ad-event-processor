@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
+	"ad-event-processor/internal/brokerreplay"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/pkg/broker"
 	"ad-event-processor/pkg/lifecycle"
 )
 
@@ -128,7 +128,7 @@ func runReplay(args []string) {
 		store = st
 	}
 
-	replayer := broker.NewReplayer(broker.ReplayConfig{
+	replayer := brokerreplay.NewReplayer(brokerreplay.ReplayConfig{
 		DataDir:       *dataDir,
 		Topic:         *topic,
 		From:          fromTime,

@@ -1,0 +1,4 @@
+.schemas.module.css
+.colsList {
+  grid-template-columns: 1fr 6rem 8rem 10rem 8rem;
+}

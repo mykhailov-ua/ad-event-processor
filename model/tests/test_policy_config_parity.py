@@ -10,13 +10,12 @@ from typing import Any
 
 import pytest
 
-from policy_config import (
+from contract.policy_config import (
     load_policy_config_from_env,
     load_policy_from_metadata,
     resolve_policy_config,
 )
-from policy_config_parity_fixtures import load_policy_config_parity_cases
-
+from contract.policy_config_parity_fixtures import load_policy_config_parity_cases
 
 @pytest.mark.parametrize("case", load_policy_config_parity_cases(), ids=lambda case: str(case["id"]))
 def test_policy_config_parity_fixtures(case: dict[str, Any], tmp_path: Path) -> None:

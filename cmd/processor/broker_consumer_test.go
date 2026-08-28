@@ -9,7 +9,7 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/ingestion/pb"
-	bserver "ad-event-processor/pkg/broker/server"
+	bserver "ad-event-processor/internal/broker"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

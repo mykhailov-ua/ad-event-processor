@@ -19,8 +19,8 @@ type stubFinder struct {
 	ips []SuspiciousIP
 }
 
-func (finder stubFinder) FindSuspiciousIPs(context.Context) ([]SuspiciousIP, error) {
-	return finder.ips, nil
+func (f stubFinder) FindSuspiciousIPs(context.Context) ([]SuspiciousIP, error) {
+	return f.ips, nil
 }
 
 type countingManagement struct {

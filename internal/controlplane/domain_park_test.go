@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +16,7 @@ type mockCloudflareAPI struct {
 	sslStatus string
 }
 
-func (m *mockCloudflareAPI) ListZones(ctx context.Context) ([]CloudflareZone, error) {
+func (m *mockCloudflareAPI) ListZones(ctx context.Context) ([]platformadmin.CloudflareZone, error) {
 	return nil, nil
 }
 
@@ -31,6 +32,9 @@ func (m *mockCloudflareAPI) ZoneSSLStatus(ctx context.Context, zoneID string) (s
 }
 
 func TestDomainPark_createsPoolDomainAndHealthRow(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: postgres testcontainers required")
+	}
 	cfg := testutil.DefaultPostgresConfig()
 	cfg.MigrationDirs = []string{testutil.AdsMigrationsDir(), testutil.BillingMigrationsDir()}
 	pool, cleanup := testutil.SetupPostgres(t, cfg)

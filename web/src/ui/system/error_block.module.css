@@ -1,0 +1,38 @@
+.root {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  max-width: var(--page-max-width);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--text-md-leading);
+  font-weight: 600;
+}
+
+.message {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text-muted);
+}
+
+.code {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.actions {
+  display: grid;
+  gap: var(--space-xs);
+  justify-content: start;
+}

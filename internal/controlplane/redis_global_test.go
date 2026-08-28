@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"ad-event-processor/internal/shardadmin"
+
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,14 +29,14 @@ func TestSyncGlobalConfigToAllShards(t *testing.T) {
 		"emergency_breaker":  "true",
 		"rate_limit_per_min": "42",
 	}
-	require.NoError(t, syncGlobalConfigToAllShards(ctx, []redis.UniversalClient{rdb1, rdb2}, settings, 99))
+	require.NoError(t, shardadmin.SyncGlobalConfigToAllShards(ctx, []redis.UniversalClient{rdb1, rdb2}, settings, 99))
 
 	for i, redisClient := range []redis.UniversalClient{rdb1, rdb2} {
-		val, err := redisClient.HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
+		val, err := redisClient.HGet(ctx, shardadmin.RedisConfigValuesKey, "emergency_breaker").Result()
 		require.NoError(t, err, "shard %d", i)
 		assert.Equal(t, "true", val)
 
-		version, err := redisClient.Get(ctx, redisConfigVersionKey).Int64()
+		version, err := redisClient.Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 		require.NoError(t, err, "shard %d", i)
 		assert.Equal(t, int64(99), version)
 	}
@@ -54,10 +56,10 @@ func TestReplicateConfigVersionFromPrimary(t *testing.T) {
 		_ = rdb2.Close()
 	})
 
-	require.NoError(t, rdb1.Set(ctx, redisConfigVersionKey, 7, 0).Err())
-	require.NoError(t, replicateConfigVersionFromPrimary(ctx, []redis.UniversalClient{rdb1, rdb2}))
+	require.NoError(t, rdb1.Set(ctx, shardadmin.RedisConfigVersionKey, 7, 0).Err())
+	require.NoError(t, shardadmin.ReplicateConfigVersionFromPrimary(ctx, []redis.UniversalClient{rdb1, rdb2}))
 
-	version, err := rdb2.Get(ctx, redisConfigVersionKey).Int64()
+	version, err := rdb2.Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(7), version)
 }

@@ -21,7 +21,7 @@ func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (c
 			return out, cleanups, err
 		}
 		if mod != nil {
-			out.Auth = controlplane.NewAuthClientFromAPI(mod.API())
+			out.Auth = identity.NewAuthClientFromAPI(mod.API())
 			cleanups = append(cleanups, mod.Close)
 		}
 	}
@@ -32,7 +32,7 @@ func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (c
 		}
 		if mod != nil {
 			out.BillingModule = mod
-			out.Billing = controlplane.NewBillingClientFromAPI(mod.API(string(cfg.BillingInternalToken)), string(cfg.BillingInternalToken))
+			out.Billing = ledger.NewBillingClientFromAPI(mod.API(string(cfg.BillingInternalToken)), string(cfg.BillingInternalToken))
 			cleanups = append(cleanups, mod.Close)
 		}
 	}
@@ -43,7 +43,7 @@ func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (c
 		}
 		if mod != nil {
 			out.PaymentModule = mod
-			out.Payment = controlplane.NewPaymentClientFromAPI(mod.API(string(cfg.PaymentInternalToken)), string(cfg.PaymentInternalToken))
+			out.Payment = payment.NewAPIClientFromAPI(mod.API(string(cfg.PaymentInternalToken)), string(cfg.PaymentInternalToken))
 			cleanups = append(cleanups, mod.Close)
 		}
 	}
@@ -54,7 +54,7 @@ func buildServeOptions(ctx context.Context, cfg *config.Config, opts Options) (c
 		}
 		if mod != nil {
 			out.NotifierModule = mod
-			out.Notifier = controlplane.NewNotifierClientFromAPI(mod.API())
+			out.Notifier = notify.NewClientFromAPI(mod.API())
 			cleanups = append(cleanups, mod.Close)
 		}
 	}

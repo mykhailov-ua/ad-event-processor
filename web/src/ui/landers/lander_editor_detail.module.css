@@ -1,0 +1,82 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(0, 2fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: var(--space-md);
+  width: 100%;
+  max-width: var(--page-max-width);
+  min-height: 0;
+}
+
+.header {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-md);
+  min-height: 0;
+  overflow: auto;
+}
+
+.fileTree {
+  display: grid;
+  gap: var(--space-1);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  padding: var(--space-sm);
+  overflow: auto;
+  max-height: 24rem;
+}
+
+.fileItem {
+  text-align: left;
+  padding: var(--space-1) var(--space-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.fileItemActive {
+  background: var(--bg-surface-muted);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.editor {
+  display: grid;
+  gap: var(--space-sm);
+  min-height: 0;
+}
+
+.textarea {
+  min-height: 20rem;
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+  resize: vertical;
+}
+
+.actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-sm);
+}
+
+.mono {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--text-sm);
+}
+
+.label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}

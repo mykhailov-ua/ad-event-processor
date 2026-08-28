@@ -9,10 +9,10 @@
 // PG transaction as the domain change.
 //
 // Verify:
-//
-//	go test ./internal/controlplane/ -short -count=1
-//	bash scripts/ci/cold_path_static_gate.sh
-//	bash scripts/ci/anti_slop_gate.sh
+//   go test ./internal/controlplane/ -short -count=1
+//   bash scripts/ci/cold_path_static_gate.sh
+//   bash scripts/ci/anti_slop_gate.sh
 //
 // Must NOT be imported by internal/ingestion.
+//
 package controlplane

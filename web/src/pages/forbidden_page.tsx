@@ -1,20 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import { buyerEmptyCopy } from '../models/empty_state.js';
-import { Button } from '../components/button.js';
+import { Button } from '../ui/system/button.js';
 
 export function ForbiddenPage() {
   const navigate = useNavigate();
-  const copy = buyerEmptyCopy('forbidden');
 
   return (
-    <main>
-      <h1>{copy.title}</h1>
-      <p>{copy.description}</p>
-      <Button
-        label={copy.actionLabel ?? 'Continue'}
-        variant="secondary"
-        onClick={() => navigate(copy.actionHref ?? '/campaigns')}
-      />
+    <main className="error-page">
+      <h1>Access denied</h1>
+      <p className="text-muted">You do not have permission for this page.</p>
+      <Button variant="secondary" onClick={() => navigate('/customers')}>
+        Back to customers
+      </Button>
     </main>
   );
 }

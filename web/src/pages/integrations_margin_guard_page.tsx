@@ -1,175 +1,141 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import * as auth from '../helpers/auth.js';
-import { can } from '../helpers/permissions.js';
-import { isCustomerUuid } from '../helpers/customer_context.js';
-import { hasBoundCustomer, boundCustomerId } from '../helpers/buyer_session.js';
-import { scanMarginBreaches, type MarginBreachRow } from '../helpers/margin_guard_api.js';
-import { formatMicro } from '../helpers/money.js';
-import { Button, ButtonLink } from '../components/button.js';
-import { ErrorBlock } from '../components/error_block.js';
-import { StatusBadge } from '../components/status_badge.js';
-
-function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
-  return (
-    <>
-      {Array.from({ length: rows }, (_, i) => (
-        <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
-          {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}>
-              <span className="skeleton-bar" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
+import { useSearchParams } from 'react-router-dom';
+import { ConfirmCancelledError } from '../helpers/confirmed_api.js';
+import {
+  createMarginGuardPolicy,
+  fetchMarginGuardActivity,
+  fetchMarginGuardPolicies,
+  removeMarginGuardOverride,
+  type MarginGuardActivity,
+  type MarginGuardPolicy,
+} from '../helpers/integrations_api.js';
+import { pushToastMessage } from '../helpers/toast_ui.js';
+import { to } from '../lib/to.js';
+import { MarginGuardPanel } from '../ui/margin_guard/margin_guard_panel.js';
 
 export function IntegrationsMarginGuardPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const user = auth.getUser();
-  const canWrite = can(user?.permissions ?? [], 'campaigns:write');
-  const sessionScoped = hasBoundCustomer(user?.role);
-  const tenantCustomerId = boundCustomerId(user);
+  const campaignId = searchParams.get('campaign_id') ?? '';
 
-  const [customerId, setCustomerId] = useState(
-    sessionScoped ? tenantCustomerId : (searchParams.get('customer_id')?.trim() ?? '')
-  );
-  const [rows, setRows] = useState<MarginBreachRow[]>([]);
+  const [policies, setPolicies] = useState<MarginGuardPolicy[]>([]);
+  const [activity, setActivity] = useState<MarginGuardActivity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [scanned, setScanned] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const scan = useCallback(async () => {
-    if (!isCustomerUuid(customerId)) {
-      setRows([]);
-      setScanned(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const result = await scanMarginBreaches(customerId);
-    setLoading(false);
-    setScanned(true);
-    if (result.error) {
-      setError(result.error);
-      setRows([]);
-      return;
-    }
-    setRows(result.rows);
-    if (!sessionScoped && isCustomerUuid(customerId)) {
-      const next = new URLSearchParams(searchParams);
-      next.set('customer_id', customerId);
-      setSearchParams(next, { replace: true });
-    }
-  }, [customerId, sessionScoped, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (isCustomerUuid(customerId)) void scan();
+  const reload = useCallback(() => {
+    setReloadToken((token) => token + 1);
   }, []);
 
-  const emptyMsg = !isCustomerUuid(customerId)
-    ? 'Enter customer UUID and scan.'
-    : scanned
-      ? 'No margin breaches in active campaigns.'
-      : 'Click Scan to load breaches.';
+  useEffect(() => {
+    if (!campaignId) {
+      setPolicies([]);
+      setActivity([]);
+      setLoading(false);
+      setError(null);
+      return undefined;
+    }
+    const ctrl = new AbortController();
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    void (async () => {
+      const [policiesResult, policiesErr] = await to(
+        fetchMarginGuardPolicies(campaignId, ctrl.signal)
+      );
+      if (cancelled) return;
+      if (policiesErr && policiesErr.name !== 'AbortError') {
+        setError(policiesErr);
+        setLoading(false);
+        return;
+      }
+      setPolicies(policiesResult ?? []);
 
-  if (error) {
-    return <ErrorBlock error={error} fallbackTitle="Margin scan failed" />;
-  }
+      const [activityResult, activityErr] = await to(
+        fetchMarginGuardActivity(campaignId, ctrl.signal)
+      );
+      if (cancelled) return;
+      if (activityErr && activityErr.name !== 'AbortError') {
+        setError(activityErr);
+        setLoading(false);
+        return;
+      }
+      setActivity(activityResult ?? []);
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [campaignId, reloadToken]);
+
+  const onCampaignApply = useCallback(
+    (nextCampaignId: string) => {
+      const next = new URLSearchParams(searchParams);
+      if (nextCampaignId) next.set('campaign_id', nextCampaignId);
+      else next.delete('campaign_id');
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const onCreatePolicy = useCallback(
+    async (body: MarginGuardPolicy) => {
+      setBusy(true);
+      try {
+        await createMarginGuardPolicy(body);
+        pushToastMessage({ title: 'Policy saved', message: body.name ?? '' });
+        reload();
+      } catch (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        pushToastMessage({
+          title: 'Save failed',
+          message: err instanceof Error ? err.message : 'Save failed',
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [reload]
+  );
+
+  const onRemoveOverride = useCallback(
+    async (placementId: string) => {
+      if (!campaignId) return;
+      setBusy(true);
+      try {
+        await removeMarginGuardOverride({ campaign_id: campaignId, placement_id: placementId });
+        pushToastMessage({ title: 'Override removed', message: placementId });
+        reload();
+      } catch (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        pushToastMessage({
+          title: 'Override failed',
+          message: err instanceof Error ? err.message : 'Override failed',
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [campaignId, reload]
+  );
 
   return (
-    <section className="stack" data-testid="margin-guard-portfolio">
-      <div className="page-header">
-        <h1 className="page-header__title">Margin Guard</h1>
-        <p className="page-header__desc">
-          Active campaigns where RTB cost exceeds the revenue threshold (1h window). Open a row to
-          edit policy.
-        </p>
-      </div>
-
-      {!sessionScoped ? (
-        <label className="form-field" htmlFor="mg-portfolio-customer">
-          Customer UUID
-          <input
-            id="mg-portfolio-customer"
-            className="form-input form-input--sm font-mono"
-            value={customerId}
-            data-testid="margin-guard-customer"
-            onChange={(e) => setCustomerId(e.target.value.trim())}
-          />
-        </label>
-      ) : (
-        <p className="text-muted text-sm">
-          Customer: <span className="font-mono">{customerId || '-'}</span>
-        </p>
-      )}
-
-      <div className="flex gap-2 items-center">
-        <Button
-          label={loading ? 'Scanning...' : 'Scan campaigns'}
-          variant="secondary"
-          size="sm"
-          loading={loading}
-          disabled={loading || !isCustomerUuid(customerId)}
-          data-testid="margin-guard-scan"
-          onClick={() => void scan()}
-        />
-        {rows.length > 0 ? (
-          <span className="text-muted text-sm" data-testid="margin-guard-count">
-            {rows.length} breach{rows.length === 1 ? '' : 'es'}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="table-wrapper elevation-raised">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Campaign</th>
-              <th>Status</th>
-              <th>Spend (1h)</th>
-              <th>RTB cost</th>
-              <th>Threshold (bps)</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? <TableSkeleton cols={6} /> : null}
-            {!loading && rows.length === 0 ? (
-              <tr>
-                <td colSpan={6}>{emptyMsg}</td>
-              </tr>
-            ) : null}
-            {rows.map(({ campaign: c, margin: m }) => (
-              <tr key={c.id}>
-                <td>{c.name ?? c.id}</td>
-                <td>
-                  <StatusBadge status={c.status} />
-                </td>
-                <td className="font-mono">${formatMicro(m.advertiser_spend_micro ?? 0)}</td>
-                <td className="font-mono">${formatMicro(m.rtb_cost_micro ?? 0)}</td>
-                <td>{String(m.threshold_bps ?? '-')}</td>
-                <td>
-                  <ButtonLink
-                    label={canWrite ? 'Edit policy' : 'View'}
-                    href={`/campaigns/${c.id}?tab=margin`}
-                    variant="secondary"
-                    size="sm"
-                    data-testid="margin-guard-edit-policy"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate(`/campaigns/${c.id}?tab=margin`);
-                    }}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <MarginGuardPanel
+      campaignId={campaignId}
+      policies={policies}
+      activity={activity}
+      loading={loading}
+      error={error}
+      busy={busy}
+      onCampaignApply={onCampaignApply}
+      onCreatePolicy={(body) => {
+        void onCreatePolicy(body);
+      }}
+      onRemoveOverride={(placementId) => {
+        void onRemoveOverride(placementId);
+      }}
+    />
   );
 }

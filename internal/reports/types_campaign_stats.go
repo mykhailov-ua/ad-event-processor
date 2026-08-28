@@ -11,6 +11,7 @@ var (
 	ErrForecastClickHouseTimeout = errors.New("forecast clickhouse query timed out")
 	ErrForecastUnavailable       = errors.New("forecast service unavailable")
 	ErrClickHouseNotConfigured   = errors.New("clickhouse not configured")
+	ErrInvalidTimeRange          = errors.New("invalid time range")
 )
 
 const forecastDefaultRetryAfterSec = 30

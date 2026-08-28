@@ -2,6 +2,7 @@ package ingestion
 
 import (
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/rtb"
 )
 
 type (
@@ -92,7 +93,7 @@ var (
 	MigrationFenceRedisKey              = domain.MigrationFenceRedisKey
 	BudgetFrozenRedisKey                = domain.BudgetFrozenRedisKey
 	NewBudgetDeltaAggregator            = domain.NewBudgetDeltaAggregator
-	ReloadRtbDeals                      = domain.ReloadRtbDeals
+	ReloadRtbDeals                      = rtb.ReloadDeals
 	RtbCatalogReloadChannel             = domain.RtbCatalogReloadChannel
 )
 

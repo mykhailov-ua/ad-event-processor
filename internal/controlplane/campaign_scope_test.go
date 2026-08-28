@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 
@@ -35,7 +36,7 @@ func TestCampaignList_MediaBuyerScope(t *testing.T) {
 	}
 
 	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
-	authMW.SetPolicyStore(InitPolicyStore())
+	authMW.SetPolicyStore(ctrlhttp.InitPolicyStore())
 	authMW.SetPool(pool)
 
 	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)

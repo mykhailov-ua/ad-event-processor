@@ -1,0 +1,10 @@
+{
+  "reportUnusedFunction": false,
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": [".."],
+      "pythonVersion": "3.12"
+    }
+  ]
+}

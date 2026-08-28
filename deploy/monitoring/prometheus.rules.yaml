@@ -274,7 +274,7 @@ groups:
           severity: warning
         annotations:
           summary: 'Fraud ML shadow eval stale'
-          description: 'Latest shadow eval report is older than 12 hours. Check fraud-shadow-eval cron and model/evaluate.py logs.'
+          description: 'Latest shadow eval report is older than 12 hours. Check fraud-shadow-eval cron and model/eval/evaluate.py logs.'
 
       - alert: HTTP500RateHigh
         expr: sum(rate(ad_http_requests_total{status="500"}[5m])) > 0.001

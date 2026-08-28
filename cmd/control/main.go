@@ -10,7 +10,6 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/control"
-	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/licensing"
 )
 
@@ -67,7 +66,7 @@ func main() {
 		slog.Info("license file recheck enabled", "path", config.LicensePathFromEnv())
 	}
 
-	if err := controlplane.InitControlRuntimePolicy(); err != nil {
+	if err := control.InitRuntimePolicy(); err != nil {
 		slog.Error("failed to load control runtime policy", "error", err)
 		if !config.LicenseAssetsUnsealed() {
 			os.Exit(1)

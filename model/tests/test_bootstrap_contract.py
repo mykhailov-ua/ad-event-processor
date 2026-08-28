@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-
 def test_bootstrap_synthetic_rejects_single_class_dataset() -> None:
     pytest.importorskip("lightgbm")
     import numpy as np
 
-    import artifact_bootstrap as bootstrap_mod
+    import train.artifact_bootstrap as bootstrap_mod
 
     def _single_class(_count: int, seed: int = 42):
         rows = [

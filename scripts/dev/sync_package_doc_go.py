@@ -527,11 +527,12 @@ add(
 add(
     "pkg/broker/doc.go",
     """
-    Package broker: mmap WAL broker protocol root. Subpackages: client, server, consumer,
-    protocol, log.
+    Package broker: mmap WAL broker wire protocol root. Subpackages: client, consumer,
+    protocol, log. Daemon server lives in internal/broker (cmd/broker).
 
-    Fault tier:
-      make test-fault   # pkg/broker fault tests
+    Verify:
+      bash scripts/ci/pkg_boundary_gate.sh
+      go build -o /dev/null ./cmd/broker/
     """,
 )
 
@@ -543,9 +544,9 @@ add(
 )
 
 add(
-    "pkg/broker/server/doc.go",
+    "internal/broker/doc.go",
     """
-    Package server: broker daemon socket server (cmd/broker).
+    Package broker: gnet broker daemon (cmd/broker). Wire client/protocol in pkg/broker.
     """,
 )
 
@@ -578,18 +579,8 @@ add(
 )
 
 add(
-    "pkg/bandit/doc.go",
-    "Package bandit: Thompson sampling / bandit math shared by flow and campaign MAB.",
-)
-
-add(
     "pkg/branding/doc.go",
     "Package branding: white-label host and asset path helpers for admin and track.",
-)
-
-add(
-    "pkg/campaignmacro/doc.go",
-    "Package campaignmacro: click URL macro expansion for delivery and track responses.",
 )
 
 add(
@@ -598,18 +589,15 @@ add(
 )
 
 add(
-    "pkg/cpuset/doc.go",
-    "Package cpuset: CPU affinity helpers for tracker and broker processes.",
-)
-
-add(
     "pkg/dedupkey/doc.go",
     "Package dedupkey: canonical deduplication key hashing for admin idempotency.",
 )
 
 add(
-    "pkg/doctor/doc.go",
-    "Package doctor: preflight health checks for dev stack scripts.",
+    "internal/doctor/doc.go",
+    """
+    Package doctor: host and dependency health probes for cmd/operator and /api/v1/ops/doctor.
+    """,
 )
 
 add(
@@ -620,11 +608,6 @@ add(
 add(
     "pkg/gnetutil/doc.go",
     "Package gnetutil: gnet listener and buffer tuning shared by tracker.",
-)
-
-add(
-    "pkg/gtax/doc.go",
-    "Package gtax: geo/taxonomy bitmask helpers for targeting.",
 )
 
 add(
@@ -678,8 +661,10 @@ add(
 )
 
 add(
-    "pkg/pgfailover/doc.go",
-    "Package pgfailover: Postgres primary/replica failover wrapper for tracker.",
+    "internal/pgfailover/doc.go",
+    """
+    Package pgfailover: Postgres primary/replica failover for tracker and controlplane shards.
+    """,
 )
 
 add(
@@ -698,11 +683,6 @@ add(
 )
 
 add(
-    "pkg/runtimeautotune/doc.go",
-    "Package runtimeautotune: GOMAXPROCS/GOMEMLIMIT hints from cgroup.",
-)
-
-add(
     "pkg/runtimepaths/doc.go",
     "Package runtimepaths: var/ and config path resolution for local dev.",
 )
@@ -713,18 +693,15 @@ add(
 )
 
 add(
-    "pkg/vendorprobe/doc.go",
-    "Package vendorprobe: outbound vendor API reachability checks.",
-)
-
-add(
     "pkg/regionproxy/client/doc.go",
     "Package client: region-proxy uplink client for multi-region enterprise.",
 )
 
 add(
-    "pkg/regionproxy/server/doc.go",
-    "Package server: region-proxy server accepting cross-region admin sync.",
+    "internal/regionproxy/doc.go",
+    """
+    Package regionproxy: gnet region-proxy daemon (cmd/region-proxy). Client/wal/keygen in pkg/regionproxy.
+    """,
 )
 
 add(
@@ -772,7 +749,7 @@ CMD_DOCS = {
         Binary control: modular monolith admin :8188, payment webhooks :8187, workers.
         Entry: internal/control module runner.
     """,
-    "broker": "Binary broker: mmap WAL ingest broker (pkg/broker/server).",
+    "broker": "Binary broker: mmap WAL ingest broker (internal/broker).",
     "fraud-scorer": "Binary fraud-scorer: batch ML scoring sidecar (cold path only).",
     "ivt-detector": "Binary ivt-detector: IVT batch detector; pauses when outbox backlog high.",
     "campaign-shard": "Binary campaign-shard: Redis campaign config shard service for tracker.",

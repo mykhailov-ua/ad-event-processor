@@ -1,0 +1,6 @@
+.root {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-sm);
+}

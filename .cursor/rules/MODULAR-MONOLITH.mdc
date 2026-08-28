@@ -61,6 +61,32 @@ Bridges exist **only inside the modular monolith composition root** (`internal/c
 
 **Lifecycle:** When a domain moves out of `controlplane`, shrink the matching bridge in the **same** change set. A bridge file that only grows for three PRs without domain growth is a god-service smell — stop and split.
 
+## Migration cruft ban (no prefix/suffix hacks)
+
+**Reference:** `lead-intent-processor` wires domains via **direct imports** (`internal/app/deps.go` → `internal/crm/admin`, `internal/ingest`, …). No type-alias files, no filename-prefix inventories.
+
+These patterns were transitional during `controlplane` drain. **Forbidden in new code**; delete when touching a call site.
+
+| Banned pattern | Example | Do instead |
+| :--- | :--- | :--- |
+| `*_aliases.go` | `controlplane/fraudadmin_aliases.go`, `internal/nodeadmin_aliases.go` | Import `fraudadmin.FooDTO` at call site; fix tests to use domain package |
+| Pass-through funcs in alias files | `func ScoreNode(...) { return nodeadmin.ScoreNode(...) }` | Call `nodeadmin.ScoreNode` directly |
+| New `service_<domain>_*.go` in controlplane | `service_fraud_api.go` | `internal/fraudadmin/handlers.go` + bridge only |
+| Filename repeats package dir | `fraudadmin_handlers.go` in `internal/fraudadmin/` | `handlers.go` (`naming.mdc`) |
+| `domains.go` `Prefixes: []string{...}` for new domains | Classify files by `node_`, `service_rtb` token | `composition_drain_inventory.go` row: package path + bridge file |
+| Redundant subdir | `internal/broker/server/` | `internal/broker/` (`modular_structure_backlog.md`) |
+| `pkg/*/server/` duplicating `internal/*` | Dead `pkg/broker/server` | Delete; `pkg/` = wire protocol only |
+
+**Allowed (not a hack):**
+
+| Pattern | When |
+| :--- | :--- |
+| `*_bridge.go` in `controlplane/` | Implements domain `Host` / `Effects`; <= 200 lines |
+| `*admin` package name | Real domain boundary (`fraudadmin`, `billingadmin`) — not a filename prefix |
+| `composition_drain_inventory.go` | Explicit source file → target package map |
+
+**Sunset slug:** `remove_controlplane_aliases` in `deploy/vendor/modular_structure_backlog.md` — delete all `*_aliases.go` and prefix-based `domains.go` rows as call sites migrate.
+
 ## God package ban (hard ceilings)
 
 Violations block merge unless an explicit waiver names the split PR that follows within one release.
@@ -108,7 +134,7 @@ Create a **new** domain package only when extracting from `controlplane` or spli
 | Split parent only to fix import cycle with 1–2 funcs | Accidental architecture | Narrow port or move func to correct owner |
 | Premature hot-path split (`ingest/`, `filter/` under `ingestion/`) without explicit task | `structure.mdc` future target | Stay in `ingestion/` until milestone |
 | New package with no routes/store in tree | Placeholder package | Finish extraction in same PR or do not create |
-| Pass-through package that only re-exports another | Duplicate boundary | `controlplane/*_aliases.go` or direct import |
+| Pass-through package that only re-exports another | Duplicate boundary | Direct import from owning domain package |
 
 ### When **not** to create a package (keep in parent)
 
@@ -133,7 +159,7 @@ Violations block merge unless the PR completes the minimum viable table in the s
 2. **Postgres + outbox** -> domain `store` method; bridge only calls `store` and maps errors.
 3. **Cross-domain orchestration** (publish gate + flow validate) -> domain `Runtime` with injected narrow port, not 20 new `Service` methods.
 4. **Shared helper** -> `pkg/coldpath` or domain package function; never `controlplane/util.go` for one domain.
-5. **Type re-export** -> `*_aliases.go` only; do not wrap with pass-through funcs in `*_bridge.go`.
+5. **Type at call site** -> import domain package (`fraudadmin.FooDTO`); never add `*_aliases.go`
 6. **Hot path** -> stays in `ingestion/`; never "bridge" admin into tracker.
 
 ## Agent checklist (before adding code)

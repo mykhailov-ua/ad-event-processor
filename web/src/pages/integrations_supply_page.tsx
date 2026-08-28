@@ -1,430 +1,208 @@
 import { useCallback, useEffect, useState } from 'react';
-import { to } from '../lib/to.js';
-import * as auth from '../helpers/auth.js';
-import { can } from '../helpers/permissions.js';
-import { mapServiceError } from '../helpers/service_error.js';
-import { pushToastMessage } from '../helpers/toast_ui.js';
-import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
+import { ConfirmCancelledError } from '../helpers/confirmed_api.js';
 import {
-  createAdsTxtEntry,
-  createSeller,
-  deleteAdsTxtEntry,
-  deleteSeller,
-  fetchAdsTxtEntries,
-  fetchAdsTxtPreview,
-  fetchSellers,
-  fetchSellersJSONPreview,
+  createSupplyAdsTxt,
+  createSupplySeller,
+  deleteSupplyAdsTxt,
+  deleteSupplySeller,
+  fetchSupplyAdsTxt,
+  fetchSupplyAdsTxtPreview,
   fetchSupplyExportPath,
+  fetchSupplySellers,
+  fetchSupplySellersPreview,
   fetchSupplyValidation,
-} from '../helpers/supply_api.js';
-import { Button } from '../components/button.js';
-import { ErrorBlock } from '../components/error_block.js';
-
-type SellerRow = {
-  id: number;
-  seller_id: string;
-  domain: string;
-  seller_type: string;
-  name?: string;
-};
-
-type AdsTxtRow = {
-  id: number;
-  domain: string;
-  publisher_account_id: string;
-  relationship: string;
-};
-
-type SupplyTab = 'sellers' | 'ads' | 'preview' | 'validation';
-
-function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
-  return (
-    <>
-      {Array.from({ length: rows }, (_, i) => (
-        <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
-          {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}>
-              <span className="skeleton-bar" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
+  type SupplyAdsTxtEntry,
+  type SupplyExportPath,
+  type SupplySeller,
+  type SupplyValidation,
+} from '../helpers/integrations_api.js';
+import { pushToastMessage } from '../helpers/toast_ui.js';
+import { to } from '../lib/to.js';
+import { SupplyPanel } from '../ui/supply/supply_panel.js';
 
 export function IntegrationsSupplyPage() {
-  const canWrite = can(auth.getUser()?.permissions ?? [], 'settings:write');
-
-  const [tab, setTab] = useState<SupplyTab>('sellers');
-  const [sellers, setSellers] = useState<SellerRow[]>([]);
-  const [adsRows, setAdsRows] = useState<AdsTxtRow[]>([]);
-  const [exportPath, setExportPath] = useState('');
+  const [sellers, setSellers] = useState<SupplySeller[]>([]);
+  const [adsTxt, setAdsTxt] = useState<SupplyAdsTxtEntry[]>([]);
+  const [validation, setValidation] = useState<SupplyValidation | null>(null);
+  const [exportPath, setExportPath] = useState<SupplyExportPath | null>(null);
   const [sellersPreview, setSellersPreview] = useState('');
-  const [adsPreview, setAdsPreview] = useState('');
-  const [validation, setValidation] = useState<{
-    sellers_json_valid: boolean;
-    sellers_checksum_sha256: string;
-    sellers_count: number;
-    ads_txt_valid: boolean;
-    ads_txt_checksum_sha256: string;
-    ads_txt_line_count: number;
-    issues?: string[];
-  } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [adsTxtPreview, setAdsTxtPreview] = useState('');
+  const [previewTab, setPreviewTab] = useState<'sellers' | 'ads_txt'>('sellers');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const [sellerForm, setSellerForm] = useState({
-    seller_id: '',
-    domain: '',
-    seller_type: 'PUBLISHER',
-    name: '',
-    is_confidential: false,
-  });
-  const [adsForm, setAdsForm] = useState({
-    domain: '',
-    publisher_account_id: '',
-    relationship: 'DIRECT',
-    cert_authority_id: '',
-    sort_order: '0',
-  });
+  const reload = useCallback(() => {
+    setReloadToken((token) => token + 1);
+  }, []);
 
-  const reload = useCallback(async () => {
+  useEffect(() => {
+    const ctrl = new AbortController();
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    const [sRes, aRes, pRes] = await Promise.all([
-      to(fetchSellers()),
-      to(fetchAdsTxtEntries()),
-      to(fetchSupplyExportPath()),
-    ]);
-    setLoading(false);
-    if (sRes[1]) {
-      setError(sRes[1]);
-      return;
-    }
-    setSellers((sRes[0] ?? []) as SellerRow[]);
-    setAdsRows(aRes[1] ? [] : ((aRes[0] ?? []) as AdsTxtRow[]));
-    setExportPath(pRes[1] ? '' : (pRes[0] ?? ''));
-  }, []);
+    void (async () => {
+      const [sellersResult, sellersErr] = await to(fetchSupplySellers(ctrl.signal));
+      if (cancelled) return;
+      if (sellersErr && sellersErr.name !== 'AbortError') {
+        setError(sellersErr);
+        setLoading(false);
+        return;
+      }
+      setSellers(sellersResult ?? []);
 
-  const loadPreviews = useCallback(async () => {
-    const [s, a] = await Promise.all([to(fetchSellersJSONPreview()), to(fetchAdsTxtPreview())]);
-    setSellersPreview(s[1] ? `Error: ${s[1].message}` : (s[0] ?? ''));
-    setAdsPreview(a[1] ? `Error: ${a[1].message}` : (a[0] ?? ''));
-  }, []);
+      const [adsResult, adsErr] = await to(fetchSupplyAdsTxt(ctrl.signal));
+      if (cancelled) return;
+      if (adsErr && adsErr.name !== 'AbortError') {
+        setError(adsErr);
+        setLoading(false);
+        return;
+      }
+      setAdsTxt(adsResult ?? []);
 
-  const loadValidation = useCallback(async () => {
-    const [res, err] = await to(fetchSupplyValidation());
-    setValidation(err ? null : (res ?? null));
-  }, []);
+      const [validationResult] = await to(fetchSupplyValidation(ctrl.signal));
+      if (!cancelled) setValidation(validationResult ?? null);
 
-  useEffect(() => {
-    void reload();
+      const [exportResult] = await to(fetchSupplyExportPath(ctrl.signal));
+      if (!cancelled) setExportPath(exportResult ?? null);
+
+      const [sellersPreviewResult] = await to(fetchSupplySellersPreview(ctrl.signal));
+      if (!cancelled) setSellersPreview(sellersPreviewResult ?? '');
+
+      const [adsPreviewResult] = await to(fetchSupplyAdsTxtPreview(ctrl.signal));
+      if (!cancelled) setAdsTxtPreview(adsPreviewResult ?? '');
+
+      setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [reloadToken]);
+
+  const onReloadValidation = useCallback(() => {
+    reload();
   }, [reload]);
 
-  useEffect(() => {
-    if (tab === 'preview') void loadPreviews();
-    if (tab === 'validation') void loadValidation();
-  }, [tab, loadPreviews, loadValidation]);
+  const onCreateSeller = useCallback(
+    async (body: {
+      seller_id: string;
+      domain: string;
+      seller_type: string;
+      name: string;
+      is_confidential: boolean;
+    }) => {
+      setBusy(true);
+      try {
+        await createSupplySeller(body);
+        pushToastMessage({ title: 'Seller created', message: body.seller_id });
+        reload();
+      } catch (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        pushToastMessage({
+          title: 'Create failed',
+          message: err instanceof Error ? err.message : 'Create failed',
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [reload]
+  );
 
-  const addSeller = async () => {
-    if (!canWrite) return;
-    setBusy(true);
-    const [, err] = await to(createSeller(sellerForm));
-    setBusy(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'Seller create failed', message: mapServiceError(err).message });
-      return;
-    }
-    setSellerForm((f) => ({ ...f, seller_id: '', domain: '', name: '' }));
-    void reload();
-  };
+  const onDeleteSeller = useCallback(
+    async (id: number) => {
+      setBusy(true);
+      try {
+        await deleteSupplySeller(id);
+        pushToastMessage({ title: 'Seller deleted', message: String(id) });
+        reload();
+      } catch (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        pushToastMessage({
+          title: 'Delete failed',
+          message: err instanceof Error ? err.message : 'Delete failed',
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [reload]
+  );
 
-  const addAdsRow = async () => {
-    if (!canWrite) return;
-    setBusy(true);
-    const [, err] = await to(
-      createAdsTxtEntry({
-        domain: adsForm.domain.trim(),
-        publisher_account_id: adsForm.publisher_account_id.trim(),
-        relationship: adsForm.relationship.trim(),
-        cert_authority_id: adsForm.cert_authority_id.trim(),
-        sort_order: Number.parseInt(adsForm.sort_order, 10) || 0,
-      })
-    );
-    setBusy(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'ads.txt row failed', message: mapServiceError(err).message });
-      return;
-    }
-    setAdsForm((f) => ({ ...f, domain: '', publisher_account_id: '' }));
-    void reload();
-  };
+  const onCreateAdsTxt = useCallback(
+    async (body: {
+      domain: string;
+      publisher_account_id: string;
+      relationship: string;
+      cert_authority_id?: string;
+      sort_order?: number;
+    }) => {
+      setBusy(true);
+      try {
+        await createSupplyAdsTxt(body);
+        pushToastMessage({ title: 'ads.txt line added', message: body.domain });
+        reload();
+      } catch (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        pushToastMessage({
+          title: 'Create failed',
+          message: err instanceof Error ? err.message : 'Create failed',
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [reload]
+  );
 
-  if (error) {
-    return <ErrorBlock error={error} fallbackTitle="Supply admin unavailable" />;
-  }
+  const onDeleteAdsTxt = useCallback(
+    async (id: number) => {
+      setBusy(true);
+      try {
+        await deleteSupplyAdsTxt(id);
+        pushToastMessage({ title: 'ads.txt line deleted', message: String(id) });
+        reload();
+      } catch (err) {
+        if (err instanceof ConfirmCancelledError) return;
+        pushToastMessage({
+          title: 'Delete failed',
+          message: err instanceof Error ? err.message : 'Delete failed',
+        });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [reload]
+  );
 
   return (
-    <section className="stack" data-testid="supply-admin-view">
-      <div className="page-header">
-        <h1 className="page-header__title">Supply files</h1>
-        <p className="page-header__desc">
-          Manage sellers.json and ads.txt. Export path:{' '}
-          <code className="code-inline">{exportPath || '-'}</code>
-        </p>
-      </div>
-
-      <div className="filter-row cluster--actions">
-        <Button
-          label="Sellers"
-          variant={tab === 'sellers' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setTab('sellers')}
-        />
-        <Button
-          label="ads.txt"
-          variant={tab === 'ads' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setTab('ads')}
-        />
-        <Button
-          label="Preview"
-          variant={tab === 'preview' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setTab('preview')}
-        />
-        <Button
-          label="Validation"
-          variant={tab === 'validation' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setTab('validation')}
-        />
-      </div>
-
-      {tab === 'sellers' ? (
-        <div className="section-card stack">
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Seller ID</th>
-                  <th>Domain</th>
-                  <th>Type</th>
-                  <th>Name</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? <TableSkeleton cols={5} /> : null}
-                {sellers.map((s) => (
-                  <tr key={s.id}>
-                    <td className="font-mono">{s.seller_id}</td>
-                    <td>{s.domain}</td>
-                    <td>{s.seller_type}</td>
-                    <td>{s.name || '-'}</td>
-                    <td>
-                      {canWrite ? (
-                        <Button
-                          label="Delete"
-                          variant="secondary"
-                          size="sm"
-                          onClick={async () => {
-                            const [, err] = await to(deleteSeller(s.id));
-                            if (!err) void reload();
-                          }}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {canWrite ? (
-            <div className="stack mt-4">
-              <h3 className="subsection-title">Add seller</h3>
-              <div className="form-row">
-                <label className="form-field">
-                  Seller ID
-                  <input
-                    className="form-input"
-                    value={sellerForm.seller_id}
-                    onChange={(e) => setSellerForm((f) => ({ ...f, seller_id: e.target.value }))}
-                  />
-                </label>
-                <label className="form-field">
-                  Domain
-                  <input
-                    className="form-input"
-                    value={sellerForm.domain}
-                    onChange={(e) => setSellerForm((f) => ({ ...f, domain: e.target.value }))}
-                  />
-                </label>
-              </div>
-              <div className="form-row">
-                <label className="form-field">
-                  Type
-                  <select
-                    className="form-select"
-                    value={sellerForm.seller_type}
-                    onChange={(e) => setSellerForm((f) => ({ ...f, seller_type: e.target.value }))}
-                  >
-                    <option value="PUBLISHER">PUBLISHER</option>
-                    <option value="INTERMEDIARY">INTERMEDIARY</option>
-                    <option value="BOTH">BOTH</option>
-                  </select>
-                </label>
-                <label className="form-field">
-                  Name
-                  <input
-                    className="form-input"
-                    value={sellerForm.name}
-                    onChange={(e) => setSellerForm((f) => ({ ...f, name: e.target.value }))}
-                  />
-                </label>
-              </div>
-              <Button
-                label="Add seller"
-                variant="primary"
-                size="sm"
-                loading={busy}
-                disabled={busy}
-                onClick={() => void addSeller()}
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {tab === 'ads' ? (
-        <div className="section-card stack">
-          <div className="table-wrapper">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Domain</th>
-                  <th>Account ID</th>
-                  <th>Relationship</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? <TableSkeleton cols={4} /> : null}
-                {adsRows.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.domain}</td>
-                    <td className="font-mono">{r.publisher_account_id}</td>
-                    <td>{r.relationship}</td>
-                    <td>
-                      {canWrite ? (
-                        <Button
-                          label="Delete"
-                          variant="secondary"
-                          size="sm"
-                          onClick={async () => {
-                            const [, err] = await to(deleteAdsTxtEntry(r.id));
-                            if (!err) void reload();
-                          }}
-                        />
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {canWrite ? (
-            <div className="stack mt-4">
-              <h3 className="subsection-title">Add ads.txt row</h3>
-              <div className="form-row">
-                <label className="form-field">
-                  Domain
-                  <input
-                    className="form-input"
-                    value={adsForm.domain}
-                    onChange={(e) => setAdsForm((f) => ({ ...f, domain: e.target.value }))}
-                  />
-                </label>
-                <label className="form-field">
-                  Publisher account ID
-                  <input
-                    className="form-input"
-                    value={adsForm.publisher_account_id}
-                    onChange={(e) =>
-                      setAdsForm((f) => ({ ...f, publisher_account_id: e.target.value }))
-                    }
-                  />
-                </label>
-                <label className="form-field">
-                  Relationship
-                  <select
-                    className="form-select"
-                    value={adsForm.relationship}
-                    onChange={(e) => setAdsForm((f) => ({ ...f, relationship: e.target.value }))}
-                  >
-                    <option value="DIRECT">DIRECT</option>
-                    <option value="RESELLER">RESELLER</option>
-                  </select>
-                </label>
-              </div>
-              <Button
-                label="Add row"
-                variant="primary"
-                size="sm"
-                loading={busy}
-                disabled={busy}
-                onClick={() => void addAdsRow()}
-              />
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {tab === 'preview' ? (
-        <div className="section-card stack">
-          <h3 className="subsection-title">sellers.json</h3>
-          <pre className="code-block text-sm">{sellersPreview || 'Loading...'}</pre>
-          <h3 className="subsection-title">ads.txt</h3>
-          <pre className="code-block text-sm">{adsPreview || 'Loading...'}</pre>
-        </div>
-      ) : null}
-
-      {tab === 'validation' ? (
-        <div className="section-card stack" data-testid="supply-validation-panel">
-          <h3 className="subsection-title">Export validation</h3>
-          {validation ? (
-            <dl className="definition-list">
-              <dt>sellers.json</dt>
-              <dd>
-                {validation.sellers_json_valid ? 'valid' : 'invalid'}
-                {' , '}
-                {validation.sellers_count}
-                {' sellers , SHA-256 '}
-                <code className="code-inline">{validation.sellers_checksum_sha256}</code>
-              </dd>
-              <dt>ads.txt</dt>
-              <dd>
-                {validation.ads_txt_valid ? 'valid' : 'invalid'}
-                {' , '}
-                {validation.ads_txt_line_count}
-                {' lines , SHA-256 '}
-                <code className="code-inline">{validation.ads_txt_checksum_sha256}</code>
-              </dd>
-              {(validation.issues ?? []).map((issue) => (
-                <dd key={issue} className="text-muted">
-                  {issue}
-                </dd>
-              ))}
-            </dl>
-          ) : (
-            <p className="text-muted">Loading validation...</p>
-          )}
-        </div>
-      ) : null}
-    </section>
+    <SupplyPanel
+      sellers={sellers}
+      adsTxt={adsTxt}
+      validation={validation}
+      exportPath={exportPath}
+      sellersPreview={sellersPreview}
+      adsTxtPreview={adsTxtPreview}
+      previewTab={previewTab}
+      loading={loading}
+      error={error}
+      busy={busy}
+      onPreviewTabChange={setPreviewTab}
+      onReloadValidation={onReloadValidation}
+      onCreateSeller={(body) => {
+        void onCreateSeller(body);
+      }}
+      onDeleteSeller={(id) => {
+        void onDeleteSeller(id);
+      }}
+      onCreateAdsTxt={(body) => {
+        void onCreateAdsTxt(body);
+      }}
+      onDeleteAdsTxt={(id) => {
+        void onDeleteAdsTxt(id);
+      }}
+    />
   );
 }

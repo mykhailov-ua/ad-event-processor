@@ -1,34 +1,22 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthedSession, ADMIN_USER } from './helpers.js';
+import { ADMIN_USER, installDialogAutoAccept, mockAuthedSession, mockPlatformSettings } from './helpers.js';
 
-const PLATFORM_VIEW = {
-  config: {
-    tracking_domain: 'track.example',
-    default_currency: 'USD',
-    timezone: 'UTC',
-    ingress_schema: 'ad_event_processor_native',
-    telemetry_enabled: true,
-    profile: 'single_vps',
-    edge_xdp: false,
-    network_interface: 'eth0',
-    stripe: { enabled: false },
-  },
-  bootstrap_complete: true,
-  restart_required: [],
-};
-
-test('settings PATCH sends X-CSRF-Token header', async ({ page }) => {
+test('settings PATCH includes CSRF header', async ({ page }) => {
+  installDialogAutoAccept(page);
   await mockAuthedSession(page, ADMIN_USER);
 
   let patchHeaders = null;
-
-  await page.route('**/api/v1/settings/platform', async (route) => {
+  await page.route('**/api/v1/settings/platform**', async (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(PLATFORM_VIEW),
+        body: JSON.stringify({
+          config: { tracking_domain: 'track.example', default_currency: 'USD', timezone: 'UTC' },
+          bootstrap_complete: true,
+          restart_required: [],
+        }),
       });
       return;
     }
@@ -37,7 +25,11 @@ test('settings PATCH sends X-CSRF-Token header', async ({ page }) => {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(PLATFORM_VIEW),
+        body: JSON.stringify({
+          config: { tracking_domain: 'track.example', default_currency: 'USD', timezone: 'UTC' },
+          bootstrap_complete: true,
+          restart_required: [],
+        }),
       });
       return;
     }
@@ -46,7 +38,5 @@ test('settings PATCH sends X-CSRF-Token header', async ({ page }) => {
 
   await page.goto('/settings');
   await page.getByRole('button', { name: 'Save' }).click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
-
   expect(patchHeaders?.['x-csrf-token']).toBe('e2e-csrf-token');
 });

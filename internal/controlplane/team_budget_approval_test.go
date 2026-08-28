@@ -44,13 +44,3 @@ func TestHandleMediaBuyerBudgetIncrease_autoDenyExceedsCap_holdout(t *testing.T)
 	require.NoError(t, err)
 	require.Equal(t, "DENIED", status)
 }
-
-func TestWriteCampaignImportValidationJSON_invalidPayloadFails(t *testing.T) {
-	t.Parallel()
-	err := writeCampaignImportValidationJSON(context.Background(), t.TempDir()+"/out.json", ReportJobSpec{
-		ReportKey:        campaignImportValidationReportKey,
-		ImportSourceKind: "unknown-source",
-		ImportPayload:    []byte(`{}`),
-	})
-	require.Error(t, err)
-}

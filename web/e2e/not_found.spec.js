@@ -1,11 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthedSession, ADMIN_USER } from './helpers.js';
+import { ADMIN_USER, mockAuthedSession } from './helpers.js';
 
 test('unknown route shows React 404 page', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
 
-  await page.goto('/definitely-not-a-real-admin-route');
-  await expect(page.getByText('404')).toBeVisible();
+  await page.goto('/does-not-exist-route');
   await expect(page.getByText('Page not found')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Home' })).toBeVisible();
+  await expect(page.locator('.error-page').getByRole('link', { name: 'Customers' })).toBeVisible();
 });

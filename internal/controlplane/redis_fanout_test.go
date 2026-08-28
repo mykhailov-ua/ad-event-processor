@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -31,7 +32,7 @@ func TestFanout_SetNXOnAllShards_failsOnShardError(t *testing.T) {
 	require.NoError(t, redisShards[1].Close())
 
 	before := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
-	_, err := setNXOnAllShards(context.Background(), redisShards, "fanout:strict:nx", "1", time.Minute)
+	_, err := shardadmin.SetNXOnAllShards(context.Background(), redisShards, "fanout:strict:nx", "1", time.Minute)
 	require.Error(t, err)
 	after := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
 	assert.Equal(t, before+1, after)
@@ -42,7 +43,7 @@ func TestShard0Nil_SetNXOnAllShardsIncrementsPartialMetric(t *testing.T) {
 	ctx := context.Background()
 	before := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
 
-	_, err := setNXOnAllShards(ctx, redisShards, "metric:nx", "1", time.Minute)
+	_, err := shardadmin.SetNXOnAllShards(ctx, redisShards, "metric:nx", "1", time.Minute)
 	require.Error(t, err)
 	after := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("setnx"))
 	assert.Equal(t, before+1, after)

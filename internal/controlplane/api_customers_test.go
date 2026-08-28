@@ -47,7 +47,7 @@ func TestManagementAPI_Customers(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("ListCustomers", func(t *testing.T) {
-		customers, total, err := svc.ListCustomers(ctx, 10, 0)
+		customers, total, err := svc.ListCustomers(ctx, 10, 0, "created_at", "desc")
 		require.NoError(t, err)
 		assert.Greater(t, total, int64(0))
 		require.NotEmpty(t, customers)

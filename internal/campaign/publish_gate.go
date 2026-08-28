@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"ad-event-processor/pkg/campaignmacro"
 	"ad-event-processor/pkg/proxyupstream"
 
 	"github.com/google/uuid"
@@ -55,17 +54,17 @@ func EvaluatePublishBlocked(input PublishGateEvalInput) *CampaignPublishBlockedE
 	if targetURL == "" {
 		warningSlugs = append(warningSlugs, "target_url_empty")
 	} else {
-		macroCtx := campaignmacro.PreviewContext(input.CampaignID.String(), campaignmacro.PreviewRequest{
+		macroCtx := PreviewContext(input.CampaignID.String(), PreviewRequest{
 			Sub1:    "preview",
 			Country: "US",
 		})
-		_, unresolved := campaignmacro.Expand(targetURL, macroCtx)
+		_, unresolved := Expand(targetURL, macroCtx)
 		if len(unresolved) > 0 {
 			fieldErrors["target_url"] = fmt.Sprintf("unresolved macros: %s", strings.Join(unresolved, ", "))
 		}
 		if params := input.ClickQueryParams; len(params) > 0 {
 			for key, value := range params {
-				_, paramUnresolved := campaignmacro.Expand(value, macroCtx)
+				_, paramUnresolved := Expand(value, macroCtx)
 				if len(paramUnresolved) > 0 {
 					fieldErrors["click_query_params."+key] = fmt.Sprintf("unresolved macros: %s", strings.Join(paramUnresolved, ", "))
 				}

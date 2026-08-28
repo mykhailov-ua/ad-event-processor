@@ -1,0 +1,172 @@
+.root {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: var(--page-max-width);
+}
+
+.toolbar {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.content {
+  display: grid;
+  min-height: 0;
+  overflow: auto;
+}
+
+.footer {
+  display: grid;
+}
+
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: var(--space-sm);
+}
+
+.filterField {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.filterLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.textInput {
+  width: 100%;
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.dataGrid {
+  display: grid;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  overflow: auto;
+}
+
+.gridHeader {
+  display: grid;
+  grid-template-columns: var(--report-cols, repeat(4, minmax(8rem, 1fr)));
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-muted, var(--bg-surface));
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.gridRow {
+  display: grid;
+  grid-template-columns: var(--report-cols, repeat(4, minmax(8rem, 1fr)));
+  border-top: 1px solid var(--border-color);
+  font-size: var(--text-sm);
+}
+
+.gridCell {
+  padding: var(--space-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gridEmpty {
+  grid-column: 1 / -1;
+  padding: var(--space-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: var(--space-md);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  text-decoration: none;
+  color: inherit;
+}
+
+.card:hover {
+  border-color: var(--color-accent, var(--border-color));
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.cardMeta {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.retiredCard {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.savedViews {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.savedList {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.savedItem {
+  display: grid;
+  grid-template-columns: 1fr max-content;
+  gap: var(--space-sm);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.savedLink {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.savedLink:hover {
+  text-decoration: underline;
+}

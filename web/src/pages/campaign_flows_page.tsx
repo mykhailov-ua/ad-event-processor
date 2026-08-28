@@ -1,546 +1,119 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { to } from '../lib/to.js';
+import { useSearchParams } from 'react-router-dom';
 import * as auth from '../helpers/auth.js';
-import { can } from '../helpers/permissions.js';
-import { mapServiceError } from '../helpers/service_error.js';
-import { pushToastMessage } from '../helpers/toast_ui.js';
-import { ConfirmCancelledError } from '../helpers/confirm_ui.js';
 import {
-  createFlow,
-  createLander,
-  createOffer,
   fetchFlows,
   fetchLanders,
   fetchOffers,
-  parseFlowPaths,
-  summarizeFlowPaths,
-  uploadHostedLanderZip,
-  type FlowDTO,
-  type LanderDTO,
-  type OfferDTO,
+  type Flow,
+  type Lander,
+  type Offer,
 } from '../helpers/flows_api.js';
-import { Breadcrumbs } from '../components/breadcrumbs.js';
-import { Button } from '../components/button.js';
-import { CopyableUuid } from '../components/copyable_uuid.js';
-import { ErrorBlock } from '../components/error_block.js';
-import { TabBar } from '../components/tab_bar.js';
+import { can, canReadCampaigns } from '../helpers/permissions.js';
+import { to } from '../lib/to.js';
+import { ErrorBlock } from '../ui/system/error_block.js';
+import { FlowsHub, type FlowsTab } from '../ui/flows/flows_hub.js';
+import { FlowsPanel } from '../ui/flows/flows_panel.js';
+import { LandersPanel } from '../ui/flows/landers_panel.js';
+import { OffersPanel } from '../ui/flows/offers_panel.js';
 
-type FlowTab = 'landers' | 'offers' | 'flows';
+const DEFAULT_TAB: FlowsTab = 'landers';
 
-function TableSkeleton({ cols, rows = 4 }: { cols: number; rows?: number }) {
-  return (
-    <>
-      {Array.from({ length: rows }, (_, i) => (
-        <tr key={`sk-${i}`} className="data-table__row--skeleton" aria-hidden="true">
-          {Array.from({ length: cols }, (__, j) => (
-            <td key={`sk-${i}-${j}`}>
-              <span className="skeleton-bar" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
+function parseTab(raw: string | null): FlowsTab {
+  if (raw === 'offers' || raw === 'flows') return raw;
+  return DEFAULT_TAB;
 }
 
+type FlowsData = {
+  landers: Lander[];
+  offers: Offer[];
+  flows: Flow[];
+};
+
 export function CampaignFlowsPage() {
-  const navigate = useNavigate();
-  const canWrite = can(auth.getUser()?.permissions ?? [], 'campaigns:write');
-  const [tab, setTab] = useState<FlowTab>('landers');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parseTab(searchParams.get('tab'));
+  const permissions = auth.getUser()?.permissions ?? [];
+  const canWrite = can(permissions, 'campaigns:write');
+
+  const [data, setData] = useState<FlowsData>({ landers: [], offers: [], flows: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
-  const [busy, setBusy] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
-  const [landers, setLanders] = useState<LanderDTO[]>([]);
-  const [offers, setOffers] = useState<OfferDTO[]>([]);
-  const [flows, setFlows] = useState<FlowDTO[]>([]);
-
-  const [landerForm, setLanderForm] = useState({ name: '', url: '' });
-  const [offerForm, setOfferForm] = useState({ name: '', url: '' });
-  const [flowForm, setFlowForm] = useState({
-    name: '',
-    landerId: '',
-    landerWeight: '100',
-    offerId: '',
-    offerWeight: '100',
-  });
-
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const [lRes, oRes, fRes] = await Promise.all([
-      to(fetchLanders()),
-      to(fetchOffers()),
-      to(fetchFlows()),
-    ]);
-    setLoading(false);
-    const loadErr = lRes[1] ?? oRes[1] ?? fRes[1];
-    if (loadErr) {
-      setError(loadErr);
-      return;
-    }
-    setLanders(lRes[0] ?? []);
-    setOffers(oRes[0] ?? []);
-    setFlows(fRes[0] ?? []);
+  const reload = useCallback(() => {
+    setReloadToken((token) => token + 1);
   }, []);
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    if (!canReadCampaigns(permissions)) return undefined;
+    const ctrl = new AbortController();
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
 
-  const submitLander = async () => {
-    if (!canWrite || busy) return;
-    const name = landerForm.name.trim();
-    const url = landerForm.url.trim();
-    if (!name) {
-      pushToastMessage({ title: 'Missing fields', message: 'Name is required' });
-      return;
-    }
-    if (url && !/^https?:\/\//i.test(url)) {
-      pushToastMessage({
-        title: 'Invalid URL',
-        message: 'URL must start with http:// or https://',
+    void (async () => {
+      const [landersResult, offersResult, flowsResult] = await Promise.all([
+        to(fetchLanders(ctrl.signal)),
+        to(fetchOffers(ctrl.signal)),
+        to(fetchFlows(ctrl.signal)),
+      ]);
+      if (cancelled) return;
+
+      const failures = [landersResult[1], offersResult[1], flowsResult[1]].filter(Boolean);
+      if (failures.length > 0) {
+        setError(failures[0]);
+        setLoading(false);
+        return;
+      }
+
+      setData({
+        landers: landersResult[0] ?? [],
+        offers: offersResult[0] ?? [],
+        flows: flowsResult[0] ?? [],
       });
-      return;
-    }
-    setBusy(true);
-    const [, err] = await to(createLander(name, url || undefined));
-    setBusy(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'Create failed', message: mapServiceError(err).message });
-      return;
-    }
-    setLanderForm({ name: '', url: '' });
-    pushToastMessage({ title: 'Lander created', message: name });
-    await reload();
-  };
+      setLoading(false);
+    })();
 
-  /**
-   * Upload a ZIP archive for an existing lander and publish hosted files.
-   * @param landerId - Lander UUID.
-   * @param file - ZIP file selected in the browser.
-   */
-  const submitHostedLanderZip = async (landerId: string, file: File) => {
-    if (!canWrite || busy) return;
-    if (!file.name.toLowerCase().endsWith('.zip')) {
-      pushToastMessage({ title: 'Invalid file', message: 'Select a .zip archive' });
-      return;
-    }
-    setBusy(true);
-    const [, err] = await to(uploadHostedLanderZip(landerId, file));
-    setBusy(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'Upload failed', message: mapServiceError(err).message });
-      return;
-    }
-    pushToastMessage({ title: 'Hosted lander published', message: file.name });
-    await reload();
-  };
+    return () => {
+      cancelled = true;
+      ctrl.abort();
+    };
+  }, [permissions, reloadToken]);
 
-  const submitOffer = async () => {
-    if (!canWrite || busy) return;
-    const name = offerForm.name.trim();
-    const url = offerForm.url.trim();
-    if (!name || !url) {
-      pushToastMessage({ title: 'Missing fields', message: 'Name and URL are required' });
-      return;
-    }
-    if (!/^https?:\/\//i.test(url)) {
-      pushToastMessage({
-        title: 'Invalid URL',
-        message: 'URL must start with http:// or https://',
-      });
-      return;
-    }
-    setBusy(true);
-    const [, err] = await to(createOffer(name, url));
-    setBusy(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'Create failed', message: mapServiceError(err).message });
-      return;
-    }
-    setOfferForm({ name: '', url: '' });
-    pushToastMessage({ title: 'Offer created', message: name });
-    await reload();
-  };
-
-  const submitFlow = async () => {
-    if (!canWrite || busy) return;
-    const name = flowForm.name.trim();
-    const landerWeight = Number.parseInt(flowForm.landerWeight, 10);
-    const offerWeight = Number.parseInt(flowForm.offerWeight, 10);
-    if (!name || !flowForm.landerId || !flowForm.offerId) {
-      pushToastMessage({
-        title: 'Missing fields',
-        message: 'Name, lander, and offer are required',
-      });
-      return;
-    }
-    if (
-      !Number.isFinite(landerWeight) ||
-      landerWeight <= 0 ||
-      !Number.isFinite(offerWeight) ||
-      offerWeight <= 0
-    ) {
-      pushToastMessage({ title: 'Invalid weights', message: 'Weights must be positive integers' });
-      return;
-    }
-    setBusy(true);
-    const [created, err] = await to(
-      createFlow(name, [
-        {
-          weight: 100,
-          landers: [{ lander_id: flowForm.landerId, weight: landerWeight }],
-          offers: [{ offer_id: flowForm.offerId, weight: offerWeight }],
-        },
-      ])
-    );
-    setBusy(false);
-    if (err) {
-      if (err instanceof ConfirmCancelledError) return;
-      pushToastMessage({ title: 'Create failed', message: mapServiceError(err).message });
-      return;
-    }
-    setFlowForm({ name: '', landerId: '', landerWeight: '100', offerId: '', offerWeight: '100' });
-    pushToastMessage({ title: 'Flow created', message: name });
-    if (created?.id) {
-      navigate(`/campaigns/flows/${created.id}/builder`);
-      return;
-    }
-    await reload();
-  };
+  const onTabChange = useCallback(
+    (tab: FlowsTab) => {
+      const next = new URLSearchParams(searchParams);
+      if (tab === DEFAULT_TAB) {
+        next.delete('tab');
+      } else {
+        next.set('tab', tab);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
 
   if (error) {
-    return <ErrorBlock error={error} />;
+    return <ErrorBlock error={error} fallbackTitle="Failed to load campaign flows" />;
   }
 
   return (
-    <>
-      <div className="page-header">
-        <Breadcrumbs items={[{ label: 'Campaigns', href: '/campaigns' }, { label: 'Flows' }]} />
-        <h1 className="page-header__title">Landers, offers &amp; flows</h1>
-        <p className="text-muted text-sm">
-          Declarative flow routing for /click - weighted lander and offer selection per path.
-        </p>
-      </div>
-
-      <TabBar
-        tabs={[
-          { id: 'landers', label: 'Landers' },
-          { id: 'offers', label: 'Offers' },
-          { id: 'flows', label: 'Flows' },
-        ]}
-        active={tab}
-        onChange={(id) => setTab(id as FlowTab)}
-      />
-
-      {tab === 'landers' ? (
-        <div className="section-block stack">
-          {canWrite ? (
-            <section className="section-card stack" data-testid="flow-lander-form">
-              <h3 className="subsection-title">Add lander</h3>
-              <label className="form-field" htmlFor="lander-name">
-                Name
-                <input
-                  id="lander-name"
-                  className="form-input form-input--sm"
-                  value={landerForm.name}
-                  onChange={(e) => setLanderForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </label>
-              <label className="form-field" htmlFor="lander-url">
-                Landing URL (optional if hosting ZIP below)
-                <input
-                  id="lander-url"
-                  className="form-input form-input--sm"
-                  value={landerForm.url}
-                  placeholder="https://... or leave empty for hosted ZIP"
-                  onChange={(e) => setLanderForm((f) => ({ ...f, url: e.target.value }))}
-                />
-              </label>
-              <Button
-                label={busy ? 'Saving...' : 'Create lander'}
-                variant="primary"
-                size="sm"
-                loading={busy}
-                disabled={busy}
-                data-testid="flow-lander-submit"
-                onClick={() => void submitLander()}
-              />
-            </section>
-          ) : null}
-          <section className="section-card">
-            <table className="data-table" data-testid="flow-landers-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>URL / hosted</th>
-                  <th>ID</th>
-                  {canWrite ? <th>Hosted</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? <TableSkeleton cols={canWrite ? 4 : 3} /> : null}
-                {!loading && landers.length === 0 ? (
-                  <tr>
-                    <td colSpan={canWrite ? 4 : 3} className="text-muted">
-                      No landers yet
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading
-                  ? landers.map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.name}</td>
-                        <td className="font-mono text-sm">
-                          {row.hosted_url || row.url || (
-                            <span className="text-muted">no URL yet</span>
-                          )}
-                        </td>
-                        <td>
-                          <CopyableUuid uuid={row.id} />
-                        </td>
-                        {canWrite ? (
-                          <td>
-                            <div className="stack">
-                              <input
-                                type="file"
-                                accept=".zip,application/zip"
-                                data-testid={`lander-zip-${row.id}`}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    void submitHostedLanderZip(row.id, file);
-                                    e.target.value = '';
-                                  }
-                                }}
-                              />
-                              {row.hosted_asset_id || row.hosted_url ? (
-                                <Link
-                                  className="text-sm"
-                                  to={`/campaigns/landers/${row.id}/editor`}
-                                  data-testid={`lander-editor-${row.id}`}
-                                >
-                                  Edit files
-                                </Link>
-                              ) : null}
-                            </div>
-                          </td>
-                        ) : null}
-                      </tr>
-                    ))
-                  : null}
-              </tbody>
-            </table>
-          </section>
-        </div>
+    <FlowsHub activeTab={activeTab} onTabChange={onTabChange}>
+      {activeTab === 'landers' ? (
+        <LandersPanel
+          items={data.landers}
+          loading={loading}
+          canWrite={canWrite}
+          onReload={reload}
+        />
       ) : null}
-
-      {tab === 'offers' ? (
-        <div className="section-block stack">
-          {canWrite ? (
-            <section className="section-card stack" data-testid="flow-offer-form">
-              <h3 className="subsection-title">Add offer</h3>
-              <label className="form-field" htmlFor="offer-name">
-                Name
-                <input
-                  id="offer-name"
-                  className="form-input form-input--sm"
-                  value={offerForm.name}
-                  onChange={(e) => setOfferForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </label>
-              <label className="form-field" htmlFor="offer-url">
-                Offer URL
-                <input
-                  id="offer-url"
-                  className="form-input form-input--sm"
-                  value={offerForm.url}
-                  placeholder="https://..."
-                  onChange={(e) => setOfferForm((f) => ({ ...f, url: e.target.value }))}
-                />
-              </label>
-              <Button
-                label={busy ? 'Saving...' : 'Create offer'}
-                variant="primary"
-                size="sm"
-                loading={busy}
-                disabled={busy}
-                data-testid="flow-offer-submit"
-                onClick={() => void submitOffer()}
-              />
-            </section>
-          ) : null}
-          <section className="section-card">
-            <table className="data-table" data-testid="flow-offers-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>URL</th>
-                  <th>ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? <TableSkeleton cols={3} /> : null}
-                {!loading && offers.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="text-muted">
-                      No offers yet
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading
-                  ? offers.map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.name}</td>
-                        <td className="font-mono text-sm">{row.url}</td>
-                        <td>
-                          <CopyableUuid uuid={row.id} />
-                        </td>
-                      </tr>
-                    ))
-                  : null}
-              </tbody>
-            </table>
-          </section>
-        </div>
+      {activeTab === 'offers' ? (
+        <OffersPanel items={data.offers} loading={loading} canWrite={canWrite} onReload={reload} />
       ) : null}
-
-      {tab === 'flows' ? (
-        <div className="section-block stack">
-          {canWrite ? (
-            <section className="section-card stack" data-testid="flow-create-form">
-              <h3 className="subsection-title">Create flow</h3>
-              <p className="text-muted text-sm">
-                Single-path flow with one lander and one offer. Add more landers/offers first, then
-                combine here.
-              </p>
-              <label className="form-field" htmlFor="flow-name">
-                Flow name
-                <input
-                  id="flow-name"
-                  className="form-input form-input--sm"
-                  value={flowForm.name}
-                  onChange={(e) => setFlowForm((f) => ({ ...f, name: e.target.value }))}
-                />
-              </label>
-              <div className="grid-2">
-                <label className="form-field" htmlFor="flow-lander">
-                  Lander
-                  <select
-                    id="flow-lander"
-                    className="form-input form-input--sm"
-                    value={flowForm.landerId}
-                    onChange={(e) => setFlowForm((f) => ({ ...f, landerId: e.target.value }))}
-                  >
-                    <option value="">Select...</option>
-                    {landers.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="form-field" htmlFor="flow-lander-weight">
-                  Lander weight
-                  <input
-                    id="flow-lander-weight"
-                    className="form-input form-input--sm"
-                    inputMode="numeric"
-                    value={flowForm.landerWeight}
-                    onChange={(e) => setFlowForm((f) => ({ ...f, landerWeight: e.target.value }))}
-                  />
-                </label>
-              </div>
-              <div className="grid-2">
-                <label className="form-field" htmlFor="flow-offer">
-                  Offer
-                  <select
-                    id="flow-offer"
-                    className="form-input form-input--sm"
-                    value={flowForm.offerId}
-                    onChange={(e) => setFlowForm((f) => ({ ...f, offerId: e.target.value }))}
-                  >
-                    <option value="">Select...</option>
-                    {offers.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="form-field" htmlFor="flow-offer-weight">
-                  Offer weight
-                  <input
-                    id="flow-offer-weight"
-                    className="form-input form-input--sm"
-                    inputMode="numeric"
-                    value={flowForm.offerWeight}
-                    onChange={(e) => setFlowForm((f) => ({ ...f, offerWeight: e.target.value }))}
-                  />
-                </label>
-              </div>
-              <Button
-                label={busy ? 'Saving...' : 'Create flow'}
-                variant="primary"
-                size="sm"
-                loading={busy}
-                disabled={busy || landers.length === 0 || offers.length === 0}
-                data-testid="flow-create-submit"
-                onClick={() => void submitFlow()}
-              />
-            </section>
-          ) : null}
-          <section className="section-card">
-            <table className="data-table" data-testid="flow-flows-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Paths</th>
-                  <th>ID</th>
-                  {canWrite ? <th>Builder</th> : null}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? <TableSkeleton cols={canWrite ? 4 : 3} /> : null}
-                {!loading && flows.length === 0 ? (
-                  <tr>
-                    <td colSpan={canWrite ? 4 : 3} className="text-muted">
-                      No flows yet
-                    </td>
-                  </tr>
-                ) : null}
-                {!loading
-                  ? flows.map((row) => (
-                      <tr key={row.id}>
-                        <td>{row.name}</td>
-                        <td className="text-sm">{summarizeFlowPaths(parseFlowPaths(row.paths))}</td>
-                        <td>
-                          <CopyableUuid uuid={row.id} />
-                        </td>
-                        {canWrite ? (
-                          <td>
-                            <Link
-                              className="text-sm"
-                              to={`/campaigns/flows/${row.id}/builder`}
-                              data-testid={`flow-builder-${row.id}`}
-                            >
-                              Edit flow
-                            </Link>
-                          </td>
-                        ) : null}
-                      </tr>
-                    ))
-                  : null}
-              </tbody>
-            </table>
-          </section>
-        </div>
+      {activeTab === 'flows' ? (
+        <FlowsPanel items={data.flows} loading={loading} canWrite={canWrite} onReload={reload} />
       ) : null}
-    </>
+    </FlowsHub>
   );
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,7 @@ func TestAuditLog(t *testing.T) {
 			oldAdminID, "OLD_ACTION", "system", time.Now().AddDate(0, 0, -100))
 		require.NoError(t, err)
 
-		svc.cleanOldLogs(ctx, 90)
+		platformadmin.CleanOldLogs(ctx, svc, platformadmin.Days(90))
 
 		var count int
 		err = pool.QueryRow(ctx, "SELECT count(*) FROM admin_audit_log WHERE admin_id = $1", oldAdminID).Scan(&count)

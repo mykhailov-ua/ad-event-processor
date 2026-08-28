@@ -47,7 +47,7 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 	require.NoError(t, err)
 
 	catalog := rtb.NewDealIndex()
-	require.NoError(t, domain.ReloadRtbDeals(ctx, db.New(pool), catalog))
+	require.NoError(t, rtb.ReloadDeals(ctx, db.New(pool), catalog))
 	deal, ok := catalog.Lookup("fault-reload-deal")
 	require.True(t, ok)
 	require.Equal(t, int64(100_000), deal.FloorMicro)
@@ -103,7 +103,7 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "reload", m.Payload)
 
-	require.NoError(t, domain.ReloadRtbDeals(ctx, db.New(pool), catalog))
+	require.NoError(t, rtb.ReloadDeals(ctx, db.New(pool), catalog))
 	close(stop)
 	wg.Wait()
 

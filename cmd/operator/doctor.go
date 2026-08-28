@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"ad-event-processor/pkg/doctor"
+	"ad-event-processor/internal/doctor"
 
 	"github.com/spf13/cobra"
 )

@@ -18,11 +18,11 @@ type FilterChecker interface {
 
 type mgmtTestRegistry struct{}
 
-func (mgmtTestRegistry) Exists(uuid.UUID) bool { return true }
-func (mgmtTestRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
+func (r mgmtTestRegistry) Exists(uuid.UUID) bool { return true }
+func (r mgmtTestRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
 }
-func (mgmtTestRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
-func (mgmtTestRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
+func (r mgmtTestRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
+func (r mgmtTestRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	cp := &domain.Campaign{ID: id, CustomerID: uuid.New(), Location: time.UTC}
 	cp.IDStr = id.String()
 	cp.BudgetCampaignKey = domain.BudgetCampaignKey(id)
@@ -30,9 +30,9 @@ func (mgmtTestRegistry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
 	cp.CustomerSyncKey = "budget:sync:customer:" + cp.CustomerID.String()
 	return cp, true
 }
-func (mgmtTestRegistry) Sync(context.Context) (int, error)        { return 0, nil }
-func (mgmtTestRegistry) StartSync(context.Context, time.Duration) {}
-func (mgmtTestRegistry) Wait(context.Context) error               { return nil }
+func (r mgmtTestRegistry) Sync(context.Context) (int, error)        { return 0, nil }
+func (r mgmtTestRegistry) StartSync(context.Context, time.Duration) {}
+func (r mgmtTestRegistry) Wait(context.Context) error               { return nil }
 
 func MgmtTestRegistry() domain.CampaignRegistry {
 	return mgmtTestRegistry{}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shadow_precision import (
+from eval.shadow_precision import (
     AUDITED_LABEL_DEFINITION,
     AUDITED_LABEL_METHOD,
     PROXY_LABEL_DEFINITION,
@@ -11,7 +11,6 @@ from shadow_precision import (
     run_audited_precision,
     run_shadow_precision,
 )
-
 
 def test_run_shadow_precision_empty_includes_proxy_label_metadata() -> None:
     class _EmptyResult:
@@ -26,7 +25,6 @@ def test_run_shadow_precision_empty_includes_proxy_label_metadata() -> None:
     report = run_shadow_precision(_Client(), hours=24, threshold=0.6)
     assert report["label_method"] == PROXY_LABEL_METHOD
     assert report["label_definition"] == PROXY_LABEL_DEFINITION
-
 
 def test_format_markdown_discloses_proxy_labels() -> None:
     markdown = format_markdown(
@@ -43,7 +41,6 @@ def test_format_markdown_discloses_proxy_labels() -> None:
     assert "not human-audited" in markdown.lower()
     assert PROXY_LABEL_DEFINITION in markdown
 
-
 def test_run_audited_precision_empty_labels() -> None:
     class _Client:
         def query(self, *_args, **_kwargs):
@@ -54,7 +51,6 @@ def test_run_audited_precision_empty_labels() -> None:
     assert report["label_method"] == AUDITED_LABEL_METHOD
     assert report["confidence"] == "low"
     assert report["status"] == "empty"
-
 
 def test_run_audited_precision_with_fixture_labels() -> None:
     class _Result:
@@ -79,7 +75,6 @@ def test_run_audited_precision_with_fixture_labels() -> None:
     assert report["label_method"] == AUDITED_LABEL_METHOD
     assert report["label_definition"] == AUDITED_LABEL_DEFINITION
     assert report["confidence"] == "low"
-
 
 def test_format_markdown_mixed_never_calls_proxy_accuracy() -> None:
     markdown = format_markdown(

@@ -1,0 +1,16 @@
+.root {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-sm);
+  width: 100%;
+}
+
+.range {
+  margin: 0;
+  justify-self: center;
+  font-size: var(--text-xs);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text-muted);
+  text-align: center;
+}

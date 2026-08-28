@@ -7,7 +7,7 @@ import (
 	"time"
 
 	bclient "ad-event-processor/pkg/broker/client"
-	rserver "ad-event-processor/pkg/regionproxy/server"
+	"ad-event-processor/pkg/regionproxy/ingress"
 )
 
 type Config struct {
@@ -47,7 +47,7 @@ func (c *Client) ensureTopic() error {
 		return fmt.Errorf("region-proxy client: unavailable")
 	}
 	c.register.Do(func() {
-		c.topicID, c.regErr = c.inner.RegisterTopic(context.Background(), rserver.DefaultIngressTopic)
+		c.topicID, c.regErr = c.inner.RegisterTopic(context.Background(), ingress.DefaultTopic)
 	})
 	return c.regErr
 }
@@ -56,7 +56,7 @@ func (c *Client) ProduceSpendSyncPayload(payload []byte) (bclient.ProduceBatchRe
 	if err := c.ensureTopic(); err != nil {
 		return bclient.ProduceBatchResult{}, fmt.Errorf("region-proxy produce: %w", err)
 	}
-	result, err := c.inner.ProduceBatch(context.Background(), rserver.DefaultIngressTopic, c.topicID, [][]byte{payload})
+	result, err := c.inner.ProduceBatch(context.Background(), ingress.DefaultTopic, c.topicID, [][]byte{payload})
 	if err != nil {
 		return bclient.ProduceBatchResult{}, fmt.Errorf("region-proxy produce: %w", err)
 	}

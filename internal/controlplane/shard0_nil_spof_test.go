@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	bserver "ad-event-processor/internal/broker"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/internal/metrics"
-	bserver "ad-event-processor/pkg/broker/server"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"
@@ -49,14 +50,14 @@ func TestShard0Nil_SyncWorkerSyncAllNoOpWithoutPanic(t *testing.T) {
 
 func TestShard0Nil_ReadinessProbeSkipsNilShard0(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
-	ok := pingConnectedRedisShards(context.Background(), redisShards)
+	ok := shardadmin.PingConnectedRedisShards(context.Background(), redisShards)
 	assert.True(t, ok, "shards 1..3 must answer PING while shard 0 slot is nil")
 }
 
 func TestShard0Nil_GracefulShutdownSkipsNilShard0(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	require.NotPanics(t, func() {
-		closeConnectedRedisShards(redisShards)
+		shardadmin.CloseConnectedRedisShards(redisShards)
 	})
 }
 
@@ -101,7 +102,7 @@ func TestShard0Nil_SyncKeyToAllShardsHealthyShards(t *testing.T) {
 	ctx := context.Background()
 	const key = "brand:creatives:test"
 
-	require.NoError(t, syncKeyToAllShards(ctx, redisShards, key, `["u"]`, 0))
+	require.NoError(t, shardadmin.SyncKeyToAllShards(ctx, redisShards, key, `["u"]`, 0))
 	for i := 1; i < len(redisShards); i++ {
 		v, err := redisShards[i].Get(ctx, key).Result()
 		require.NoError(t, err, "shard %d", i)
@@ -114,7 +115,7 @@ func TestShard0Nil_PublishCampaignControlHealthyShards(t *testing.T) {
 	ctx := context.Background()
 	const channel = "campaigns:update"
 
-	require.NoError(t, publishCampaignControlToAllShards(ctx, redisShards, channel, "full-sync", time.Time{}))
+	require.NoError(t, shardadmin.PublishCampaignControlToAllShards(ctx, redisShards, channel, "full-sync", time.Time{}))
 	for i := 1; i < len(redisShards); i++ {
 		epoch, err := redisShards[i].Get(ctx, domain.CampaignEpochKey).Int64()
 		require.NoError(t, err, "shard %d", i)
@@ -130,7 +131,7 @@ func TestShard0Nil_PublishControlChannelHealthyShards(t *testing.T) {
 	pubsub := redisShards[2].Subscribe(ctx, channel)
 	defer func() { _ = pubsub.Close() }()
 
-	require.NoError(t, publishControlChannelToAllShards(ctx, redisShards, channel, "deadbeef"))
+	require.NoError(t, shardadmin.PublishControlChannelToAllShards(ctx, redisShards, channel, "deadbeef"))
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
@@ -150,40 +151,24 @@ func TestShard0Nil_SyncGlobalConfigHealthyShards(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 
-	require.NoError(t, syncGlobalConfigToAllShards(ctx, redisShards, map[string]string{"k": "v"}, 99))
+	require.NoError(t, shardadmin.SyncGlobalConfigToAllShards(ctx, redisShards, map[string]string{"k": "v"}, 99))
 	for i := 1; i < len(redisShards); i++ {
-		v, err := redisShards[i].HGet(ctx, redisConfigValuesKey, "k").Result()
+		v, err := redisShards[i].HGet(ctx, shardadmin.RedisConfigValuesKey, "k").Result()
 		require.NoError(t, err, "shard %d", i)
 		assert.Equal(t, "v", v)
-		ver, err := redisShards[i].Get(ctx, redisConfigVersionKey).Int64()
+		ver, err := redisShards[i].Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 		require.NoError(t, err, "shard %d", i)
 		assert.Equal(t, int64(99), ver)
 	}
 }
 
-func TestShard0Nil_OutboxHandleUpdateSettings(t *testing.T) {
-	redisShards := rdbsWithNilShard0(t, 4)
-	ctx := context.Background()
-	worker := &OutboxWorker{svc: &Service{redisShards: redisShards}}
-	payload := []byte(`{"settings":{"emergency_breaker":"true"}}`)
-
-	require.NoError(t, worker.handleUpdateSettings(ctx, 42, payload))
-	for i := 1; i < len(redisShards); i++ {
-		v, err := redisShards[i].HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
-		require.NoError(t, err, "shard %d", i)
-		assert.Equal(t, "true", v)
-		ver, err := redisShards[i].Get(ctx, redisConfigVersionKey).Int64()
-		require.NoError(t, err, "shard %d", i)
-		assert.Equal(t, int64(42), ver)
-	}
-}
 
 func TestShard0Nil_SetNXOnAllShardsRequiresAllShards(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 	const key = "proof:nx"
 
-	_, err := setNXOnAllShards(ctx, redisShards, key, "1", time.Minute)
+	_, err := shardadmin.SetNXOnAllShards(ctx, redisShards, key, "1", time.Minute)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "shard 0 unavailable")
 }
@@ -192,7 +177,7 @@ func TestShard0Nil_SyncGlobalSetMemberHealthyShards(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 
-	require.NoError(t, syncGlobalSetMemberToAllShards(ctx, redisShards, "blacklist:manual", "10.0.0.1", true))
+	require.NoError(t, shardadmin.SyncGlobalSetMemberToAllShards(ctx, redisShards, "blacklist:manual", "10.0.0.1", true))
 	ok, err := redisShards[1].SIsMember(ctx, "blacklist:manual", "10.0.0.1").Result()
 	require.NoError(t, err)
 	assert.True(t, ok)
@@ -202,7 +187,7 @@ func TestShard0Nil_SyncGlobalSetReplaceHealthyShards(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 
-	require.NoError(t, syncGlobalSetReplaceToAllShards(ctx, redisShards, "blacklist:manual", []interface{}{"10.0.0.2"}))
+	require.NoError(t, shardadmin.SyncGlobalSetReplaceToAllShards(ctx, redisShards, "blacklist:manual", []interface{}{"10.0.0.2"}))
 	members, err := redisShards[3].SMembers(ctx, "blacklist:manual").Result()
 	require.NoError(t, err)
 	assert.Equal(t, []string{"10.0.0.2"}, members)
@@ -210,7 +195,7 @@ func TestShard0Nil_SyncGlobalSetReplaceHealthyShards(t *testing.T) {
 
 func TestShard0Nil_FanoutAllNilShardsFails(t *testing.T) {
 	ctx := context.Background()
-	err := syncKeyToAllShards(ctx, []redis.UniversalClient{nil, nil}, "k", "v", 0)
+	err := shardadmin.SyncKeyToAllShards(ctx, []redis.UniversalClient{nil, nil}, "k", "v", 0)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no connected redis shard")
 }
@@ -243,37 +228,37 @@ func TestShard0Nil_DeleteGlobalKeySkipsNil(t *testing.T) {
 	require.NoError(t, redisShards[1].Set(ctx, "proof:del", "1", 0).Err())
 	require.NoError(t, redisShards[2].Set(ctx, "proof:del", "1", 0).Err())
 
-	err := deleteGlobalKeyFromAllShards(ctx, redisShards, "proof:del")
+	err := shardadmin.DeleteGlobalKeyFromAllShards(ctx, redisShards, "proof:del")
 	require.NoError(t, err)
 	n, err := redisShards[1].Exists(ctx, "proof:del").Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), n)
-	t.Log("deleteGlobalKeyFromAllShards skips nil shard 0 (partial fan-out)")
+	t.Log("shardadmin.DeleteGlobalKeyFromAllShards skips nil shard 0 (partial fan-out)")
 }
 
 func TestShard0Nil_SyncGlobalHashFieldSkipsNil(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
 
-	err := syncGlobalHashFieldToAllShards(ctx, redisShards, "proof:hash", "f1", "v1", false)
+	err := shardadmin.SyncGlobalHashFieldToAllShards(ctx, redisShards, "proof:hash", "f1", "v1", false)
 	require.NoError(t, err)
 	v, err := redisShards[1].HGet(ctx, "proof:hash", "f1").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "v1", v)
-	t.Log("syncGlobalHashFieldToAllShards skips nil shard 0")
+	t.Log("shardadmin.SyncGlobalHashFieldToAllShards skips nil shard 0")
 }
 
 func TestShard0Nil_ReplicateConfigVersionSkipsNilShard0(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()
-	require.NoError(t, redisShards[1].Set(ctx, redisConfigVersionKey, 42, 0).Err())
+	require.NoError(t, redisShards[1].Set(ctx, shardadmin.RedisConfigVersionKey, 42, 0).Err())
 
-	err := replicateConfigVersionFromPrimary(ctx, redisShards)
+	err := shardadmin.ReplicateConfigVersionFromPrimary(ctx, redisShards)
 	require.NoError(t, err)
-	v, err := redisShards[2].Get(ctx, redisConfigVersionKey).Int64()
+	v, err := redisShards[2].Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), v)
-	t.Log("replicateConfigVersionFromPrimary uses PickHealthyControlShard (shard 1)")
+	t.Log("replicateConfigVersionFromPrimary uses shardadmin.PickHealthyControlShard (shard 1)")
 }
 
 func TestShard0Nil_PublishCampaignUpdateBrokerFallback(t *testing.T) {
@@ -301,7 +286,7 @@ func TestShard0Nil_FanoutPartialIncrementsMetric(t *testing.T) {
 	ctx := context.Background()
 	before := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("sync_key"))
 
-	require.NoError(t, syncKeyToAllShards(ctx, redisShards, "metric:proof", "v", 0))
+	require.NoError(t, shardadmin.SyncKeyToAllShards(ctx, redisShards, "metric:proof", "v", 0))
 	after := testutil.ToFloat64(metrics.ControlFanoutPartialTotal.WithLabelValues("sync_key"))
 	assert.Equal(t, before+1, after)
 }

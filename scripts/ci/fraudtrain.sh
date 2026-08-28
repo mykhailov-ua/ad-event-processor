@@ -5,6 +5,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 MODEL_DIR="${ROOT}/model"
+export PYTHONPATH="${MODEL_DIR}"
 ARTIFACT_DIR="${FRAUD_ARTIFACT_DIR:-var/fraudscore/artifacts}"
 MODEL_PATH="${ARTIFACT_DIR}/model.txt"
 FIXTURES_DIR="${FRAUD_FIXTURES_DIR:-var/fraudscore/fixtures}"
@@ -12,10 +13,10 @@ FIXTURES_DIR="${FRAUD_FIXTURES_DIR:-var/fraudscore/fixtures}"
 mkdir -p "${ARTIFACT_DIR}" "${FIXTURES_DIR}"
 
 echo "fraudtrain: bootstrap artifacts (ephemeral)"
-python3 "${MODEL_DIR}/artifact_bootstrap.py" bootstrap
+python3 -m train.artifact_bootstrap bootstrap
 
 echo "fraudtrain: sync ML fixtures (tracked + ephemeral)"
-python3 "${MODEL_DIR}/fixture_generator.py"
+python3 -m train.fixture_generator
 
 if [[ ! -f "${MODEL_PATH}" ]]; then
   echo "fraudtrain: missing ${MODEL_PATH} after bootstrap" >&2
@@ -49,37 +50,34 @@ go run ./cmd/ml-replay -model "${MODEL_PATH}" -fixtures "${FIXTURES_DIR}" > /dev
 
 if python3 -c "import lightgbm" 2> /dev/null; then
   echo "fraudtrain: Python artifact validate"
-  python3 "${MODEL_DIR}/artifact_bootstrap.py" validate --model "${MODEL_PATH}"
+  python3 -m train.artifact_bootstrap validate --model "${MODEL_PATH}"
   echo "fraudtrain: fit smoke"
   python3 -c "
 from pathlib import Path
-import sys
-sys.path.insert(0, '${MODEL_DIR}')
-from labeled_dataset import write_synthetic_dataset
+from train.labeled_dataset import write_synthetic_dataset
 write_synthetic_dataset(Path('var/fraudscore/training/fit_smoke.csv'), count=1500)
 "
-  python3 "${MODEL_DIR}/manual_labels_export.py"
+  python3 -m data.manual_labels_export
 
   FRAUD_TRAIN_DATASET=var/fraudscore/training/fit_smoke.csv \
     FRAUD_FIT_MIN_ROWS=500 \
     FRAUD_FIT_BOOST_ROUNDS=30 \
-    python3 "${MODEL_DIR}/artifact_bootstrap.py" fit-validate
+    python3 -m train.artifact_bootstrap fit-validate
 else
   echo "fraudtrain: skip Python validate (pip install -r model/requirements.txt)"
 fi
 
 if python3 -c "import clickhouse_connect" 2> /dev/null; then
   if python3 -c "
-import sys
-sys.path.insert(0, '${MODEL_DIR}')
-from ch_client import connect_client, ping_client
+from data.clickhouse_client import connect_client, ping_client
 client = connect_client()
+import sys
 sys.exit(0 if ping_client(client) else 1)
 " 2> /dev/null; then
     echo "fraudtrain: features_export smoke"
-    python3 "${MODEL_DIR}/features_export.py" --smoke
+    python3 -m data.features_export --smoke
     echo "fraudtrain: evaluate smoke"
-    python3 "${MODEL_DIR}/evaluate.py" --format json --hours 1
+    python3 -m eval.evaluate --format json --hours 1
   else
     echo "fraudtrain: skip CH smokes (ClickHouse unreachable)"
   fi

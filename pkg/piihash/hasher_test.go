@@ -3,7 +3,6 @@ package piihash_test
 import (
 	"testing"
 
-	"ad-event-processor/internal/config"
 	"ad-event-processor/pkg/piihash"
 
 	"github.com/stretchr/testify/assert"
@@ -31,23 +30,15 @@ func TestHasher_emptyInputZero(t *testing.T) {
 	assert.Equal(t, [16]byte{}, h.HashUA(""))
 }
 
-func TestNewFromConfig_derivesFromToken(t *testing.T) {
-	cfg := &config.Config{
-		TokenSymmetricKey: "test-secret",
-		PIISaltVersion:    2,
-	}
-	h, err := piihash.NewFromConfig(cfg)
+func TestNewFromSalt_derivesFromToken(t *testing.T) {
+	h, err := piihash.NewFromSalt(2, "", "test-secret")
 	require.NoError(t, err)
 	assert.Equal(t, uint8(2), h.Version())
 	assert.NotEqual(t, [16]byte{}, h.HashIP("1.2.3.4"))
 }
 
-func TestNewFromConfig_explicitSaltHex(t *testing.T) {
-	cfg := &config.Config{
-		PIISaltVersion: 3,
-		PIISaltHex:     "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
-	}
-	h, err := piihash.NewFromConfig(cfg)
+func TestNewFromSalt_explicitSaltHex(t *testing.T) {
+	h, err := piihash.NewFromSalt(3, "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20", "")
 	require.NoError(t, err)
 	assert.Equal(t, uint8(3), h.Version())
 }

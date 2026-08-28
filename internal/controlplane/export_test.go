@@ -6,11 +6,13 @@ import (
 	"sync"
 	"time"
 
+	ctrlhttp "ad-event-processor/internal/control/http"
+
 	"golang.org/x/time/rate"
 )
 
 func ExportedClientIP(r *http.Request) string {
-	return clientIP(r)
+	return ctrlhttp.ClientIP(r)
 }
 
 func SetTrustedProxyRanges(cidrs []*net.IPNet) {
@@ -29,11 +31,11 @@ type ExportedRateLimiterEntry struct {
 }
 
 func ExportedEvictStale(entries map[string]*ExportedRateLimiterEntry, now time.Time) {
-	internal := make(map[string]*rateLimiterEntry, len(entries))
+	internal := make(map[string]*ctrlhttp.RateLimiterEntry, len(entries))
 	for k, e := range entries {
-		internal[k] = &rateLimiterEntry{lastSeen: e.LastSeen}
+		internal[k] = &ctrlhttp.RateLimiterEntry{Lim: e.Lim, LastSeen: e.LastSeen}
 	}
-	evictStaleLocked(internal, now)
+	ctrlhttp.EvictStaleRateLimiterEntries(internal, now)
 	for k := range entries {
 		if _, ok := internal[k]; !ok {
 			delete(entries, k)
@@ -47,9 +49,11 @@ var clickhouseLagCacheOnce struct {
 	updated time.Time
 }
 
+const exportedClickhouseLagCacheTTL = 30 * time.Second
+
 func ExportedClickHouseLagWithCache(probe func() (time.Duration, error)) (time.Duration, error) {
 	clickhouseLagCacheOnce.mu.Lock()
-	if time.Since(clickhouseLagCacheOnce.updated) < clickhouseLagCacheTTL {
+	if time.Since(clickhouseLagCacheOnce.updated) < exportedClickhouseLagCacheTTL {
 		lag := clickhouseLagCacheOnce.lag
 		clickhouseLagCacheOnce.mu.Unlock()
 		return lag, nil

@@ -28,7 +28,7 @@ go test -count=1 -v -run 'Fault' -timeout 20m \
   ./internal/notify/... \
   ./internal/ivtdetector/... \
   ./internal/fraud/... \
-  ./pkg/broker/server/... \
+  ./internal/broker/... \
   ./internal/controlplane/... \
   ./internal/edge/... \
   ./internal/rtb/... \

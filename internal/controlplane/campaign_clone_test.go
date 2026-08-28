@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 
@@ -16,9 +17,9 @@ import (
 
 func TestCloneCampaignName_holdout(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "Spring (copy)", cloneCampaignName("Spring", "", ""))
-	assert.Equal(t, "Copy of Spring", cloneCampaignName("Spring", "Copy of ", ""))
-	assert.Equal(t, "Spring - test", cloneCampaignName("Spring", "", " - test"))
+	assert.Equal(t, "Spring (copy)", campaign.CloneCampaignName("Spring", "", ""))
+	assert.Equal(t, "Copy of Spring", campaign.CloneCampaignName("Spring", "Copy of ", ""))
+	assert.Equal(t, "Spring - test", campaign.CloneCampaignName("Spring", "", " - test"))
 }
 
 func TestCloneCampaign_holdout(t *testing.T) {

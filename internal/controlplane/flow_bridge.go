@@ -4,16 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"ad-event-processor/internal/flow"
+	"ad-event-processor/internal/outbox"
+	"ad-event-processor/pkg/landerhost"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 var _ flow.Host = (*Service)(nil)
+var _ flow.HostedLanderHost = (*Service)(nil)
+var _ flow.PathRefChecker = (*Service)(nil)
 
 func (s *Service) FlowStore() *flow.Store {
 	if s == nil {
@@ -33,11 +39,11 @@ func (s *Service) PublishFlowReload(ctx context.Context) error {
 	if s == nil {
 		return nil
 	}
-	channel := flowReloadChannel
+	channel := ""
 	if s.cfg != nil && strings.TrimSpace(s.cfg.FlowReloadChannel) != "" {
 		channel = strings.TrimSpace(s.cfg.FlowReloadChannel)
 	}
-	return publishFlowReload(ctx, s.redisShards, channel)
+	return outbox.PublishFlowReload(ctx, s.redisShards, channel)
 }
 
 func (s *Service) CreateLander(ctx context.Context, req CreateLanderRequest) (LanderDTO, error) {
@@ -120,4 +126,118 @@ func (s *Service) campaignFlowID(ctx context.Context, campaignID uuid.UUID) (str
 		return "", nil
 	}
 	return uuid.UUID(flowID.Bytes).String(), nil
+}
+
+func (s *Service) ValidateCampaignFlowPaths(ctx context.Context, paths []FlowPathDTO) error {
+	return flow.ValidatePathRefs(ctx, s, paths)
+}
+
+func (s *Service) ValidateLanderIDs(ctx context.Context, ids []uuid.UUID) error {
+	return flow.ValidateLanderIDsPG(ctx, s.pool, ids)
+}
+
+func (s *Service) ValidateOfferIDs(ctx context.Context, ids []uuid.UUID) error {
+	return flow.ValidateOfferIDsPG(ctx, s.pool, ids)
+}
+
+func (s *Service) HostedLanderPool() *pgxpool.Pool {
+	if s == nil {
+		return nil
+	}
+	return s.pool
+}
+
+func (s *Service) HostedLanderStore() *landerhost.Store {
+	if s == nil {
+		return nil
+	}
+	if s.landerStore == nil {
+		return s.initLanderStore()
+	}
+	return s.landerStore
+}
+
+func (s *Service) LanderPreviewSecret() []byte {
+	if s == nil || s.cfg == nil {
+		return nil
+	}
+	if raw := strings.TrimSpace(s.cfg.LanderPreviewSecret); raw != "" {
+		return []byte(raw)
+	}
+	if len(s.cfg.ConsentHMACSecret) > 0 {
+		return []byte(s.cfg.ConsentHMACSecret)
+	}
+	return nil
+}
+
+func (s *Service) LanderManagementURL() string {
+	if s == nil || s.cfg == nil {
+		return ""
+	}
+	return s.cfg.ManagementURL
+}
+
+func (s *Service) LanderMaxZipBytes() int64 {
+	if s == nil || s.cfg == nil {
+		return 0
+	}
+	return s.cfg.LanderMaxZipBytes
+}
+
+func (s *Service) landerPublicBase(ctx context.Context) string {
+	if s == nil {
+		return ""
+	}
+	if base := strings.TrimSpace(s.cfg.LanderPublicBaseURL); base != "" {
+		return strings.TrimRight(base, "/")
+	}
+	cfg, _, err := s.GetPlatformConfig(ctx)
+	if err == nil && strings.TrimSpace(cfg.TrackingDomain) != "" {
+		return "https://" + strings.TrimSpace(cfg.TrackingDomain)
+	}
+	return ""
+}
+
+func (s *Service) initLanderStore() *landerhost.Store {
+	if s == nil || s.landerStore != nil || s.cfg == nil {
+		return s.landerStore
+	}
+	root := strings.TrimSpace(s.cfg.LanderStoreRoot)
+	if root == "" {
+		return nil
+	}
+	st, err := landerhost.NewStore(root)
+	if err != nil {
+		return nil
+	}
+	s.landerStore = st
+	return st
+}
+
+func (s *Service) UploadHostedLanderZip(ctx context.Context, landerID uuid.UUID, zipReader io.ReaderAt, zipSize int64) (LanderDTO, error) {
+	return flow.UploadHostedLanderZip(ctx, s, landerID, zipReader, zipSize)
+}
+
+func (s *Service) ServeHostedLanderFile(ctx context.Context, landerID uuid.UUID, relPath string) (io.ReadCloser, string, error) {
+	return flow.ServeHostedLanderFile(ctx, s, landerID, relPath)
+}
+
+func (s *Service) GetHostedEditorState(ctx context.Context, landerID uuid.UUID) (HostedEditorStateDTO, error) {
+	return flow.GetHostedEditorState(ctx, s, landerID)
+}
+
+func (s *Service) ReadHostedEditorFile(ctx context.Context, landerID uuid.UUID, relPath string) (HostedEditorFileBodyDTO, error) {
+	return flow.ReadHostedEditorFile(ctx, s, landerID, relPath)
+}
+
+func (s *Service) SaveHostedEditorFile(ctx context.Context, landerID uuid.UUID, relPath, content string) (HostedEditorSaveResultDTO, error) {
+	return flow.SaveHostedEditorFile(ctx, s, landerID, relPath, content)
+}
+
+func (s *Service) PublishHostedDraft(ctx context.Context, landerID uuid.UUID, version int) (LanderDTO, error) {
+	return flow.PublishHostedDraft(ctx, s, landerID, version)
+}
+
+func (s *Service) ServeHostedPreviewFile(ctx context.Context, landerID uuid.UUID, version int, relPath, token string) (io.ReadCloser, string, error) {
+	return flow.ServeHostedPreviewFile(ctx, s, landerID, version, relPath, token)
 }

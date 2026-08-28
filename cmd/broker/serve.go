@@ -9,9 +9,9 @@ import (
 	"strings"
 	"syscall"
 
+	broker "ad-event-processor/internal/broker"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/pkg/broker/log"
-	"ad-event-processor/pkg/broker/server"
 	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/netaddr"
 	"ad-event-processor/pkg/runtimepaths"
@@ -52,11 +52,11 @@ func runServe(args []string) {
 	maxSeg := int64(*maxSegMB) * 1024 * 1024
 	indexInterval := int64(*indexKB) * 1024
 
-	srv := server.NewServer(*addr, *dataDir, maxSeg, indexInterval)
+	srv := broker.NewServer(*addr, *dataDir, maxSeg, indexInterval)
 	srv.SetHealthAddr(*healthAddr)
 	srv.SetShutdownTimeout(config.LifecycleShutdownTimeout())
 
-	coord, err := server.NewCoordinator(*nodeID, *addr, *redisURL, srv)
+	coord, err := broker.NewCoordinator(*nodeID, *addr, *redisURL, srv)
 	if err != nil {
 		slog.Error("broker coordinator init failed", "error", err)
 		os.Exit(1)

@@ -11,10 +11,9 @@ export type ConfirmRequest = {
 type ConfirmHandler = (req: ConfirmRequest) => Promise<boolean>;
 
 let handler: ConfirmHandler | null = null;
-
 let confirmQueue: Promise<void> = Promise.resolve();
 
-export function setConfirmHandler(fn: ConfirmHandler): void {
+export function setConfirmHandler(fn: ConfirmHandler | null): void {
   handler = fn;
 }
 

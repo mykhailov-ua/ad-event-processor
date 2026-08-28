@@ -241,6 +241,10 @@ FROM (
 	return buckets, lag, nil
 }
 
+func ClickHouseIngestionLag(ctx context.Context, clickhouseQuery *database.ClickHouseQuery) (time.Duration, error) {
+	return cachedClickHouseIngestionLag(ctx, clickhouseQuery)
+}
+
 func cachedClickHouseIngestionLag(ctx context.Context, clickhouseQuery *database.ClickHouseQuery) (time.Duration, error) {
 	if clickhouseQuery == nil {
 		return 0, nil

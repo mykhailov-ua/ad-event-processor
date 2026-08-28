@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
@@ -35,14 +36,14 @@ func TestVolumeMeterWorker_PGRunHour(t *testing.T) {
 		"meter-click-1", campaignID, hourStart.Add(10*time.Minute), hourStart.Format("2006-01-02"))
 	require.NoError(t, err)
 
-	w := NewVolumeMeterWorker(pool, nil, volumeMeterSourcePG, time.Hour, nil)
+	w := NewVolumeMeterWorker(pool, nil, VolumeMeterSourcePG, time.Hour, nil)
 	require.NoError(t, w.RunHour(ctx, hourStart.Add(time.Hour)))
 
 	var value int64
 	err = pool.QueryRow(ctx, `
 		SELECT value FROM billing.usage_meters
 		WHERE customer_id = $1 AND meter = $2 AND period = date_trunc('month', $3::timestamptz)::date`,
-		customerID, meterAcceptedEvents, hourStart).Scan(&value)
+		customerID, billingadmin.MeterAcceptedEvents, hourStart).Scan(&value)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), value)
 }

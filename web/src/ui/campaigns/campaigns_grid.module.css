@@ -1,0 +1,108 @@
+.grid {
+  display: grid;
+  gap: 0;
+  --campaigns-cols: 2rem minmax(14rem, 2fr) 9rem 9rem 7rem 9rem;
+}
+
+.headerRow,
+.dataRow {
+  display: grid;
+  grid-template-columns: var(--campaigns-cols);
+  gap: var(--space-sm);
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.headerRow {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background: var(--bg-surface-muted);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.dataRowClickable {
+  cursor: pointer;
+}
+
+.dataRowClickable:hover {
+  background: var(--bg-surface-hover);
+}
+
+.sortButton {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-1);
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.sortButtonActive {
+  color: var(--text-primary);
+}
+
+.headerStatic {
+  font-size: var(--text-sm);
+}
+
+.sortIcon {
+  opacity: 0.7;
+  font-size: var(--text-xs);
+}
+
+.nameCell {
+  font-weight: 500;
+}
+
+.mutedCell {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.statusChip {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-sm, 4px);
+  border: 1px solid var(--border-color);
+  font-size: var(--text-xs);
+  text-transform: capitalize;
+}
+
+.statusActive {
+  border-color: var(--green-1000);
+  color: var(--green-1000);
+}
+
+.statusPaused {
+  color: var(--text-muted);
+}
+
+.skeletonRow {
+  opacity: 0.5;
+}
+
+.bar {
+  display: block;
+  height: 0.75rem;
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface-hover);
+}
+
+.emptyWrap {
+  grid-column: 1 / -1;
+  padding: var(--space-lg);
+}
+
+.checkCell {
+  display: grid;
+  place-items: center;
+}

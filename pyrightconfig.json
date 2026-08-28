@@ -11,12 +11,15 @@
   "pythonVersion": "3.12",
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": "none",
+  "venvPath": "model",
+  "venv": ".venv",
   "executionEnvironments": [
     {
       "root": "model",
       "extraPaths": [
-        "model"
-      ]
+        "."
+      ],
+      "pythonVersion": "3.12"
     }
   ]
 }

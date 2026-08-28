@@ -3,6 +3,7 @@ package controlplane
 import (
 	"testing"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/config"
 
 	"github.com/stretchr/testify/assert"
@@ -11,9 +12,16 @@ import (
 func TestCalculateOverdraft_reconLagPenalty(t *testing.T) {
 	t.Parallel()
 	cfg := configWithReconPenalty()
-	worker := &CreditScoringWorker{svc: &Service{cfg: cfg}}
-	base := worker.calculateOverdraft(40, 1_000_000_000, 0)
-	penalized := worker.calculateOverdraft(40, 1_000_000_000, 500_000_000)
+	scoringCfg := billingadmin.CreditScoringConfig{
+		MinAgeDays:         cfg.CreditScoringMinAgeDays,
+		MatureAgeDays:      cfg.CreditScoringMatureAgeDays,
+		MaturePercent:      cfg.CreditScoringMaturePercent,
+		MaxCap:             cfg.CreditScoringMaxCap,
+		ReconLagThreshold:  cfg.CreditScoringReconLagThreshold,
+		ReconLagPenaltyPct: cfg.CreditScoringReconLagPenaltyPct,
+	}
+	base := billingadmin.CalculateOverdraft(scoringCfg, 40, 1_000_000_000, 0)
+	penalized := billingadmin.CalculateOverdraft(scoringCfg, 40, 1_000_000_000, 500_000_000)
 	assert.Equal(t, base/2, penalized)
 }
 

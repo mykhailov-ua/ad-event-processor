@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/pkg/faultproof"
 
@@ -34,7 +35,7 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 	}
 
 	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
-	authMW.SetPolicyStore(InitPolicyStore())
+	authMW.SetPolicyStore(ctrlhttp.InitPolicyStore())
 	authMW.SetPool(pool)
 
 	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)
@@ -92,7 +93,7 @@ func TestAPI_GetCampaign_BuyerMasking(t *testing.T) {
 		TokenSymmetricKey: "01234567890123456789012345678901",
 	}
 	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
-	authMW.SetPolicyStore(InitPolicyStore())
+	authMW.SetPolicyStore(ctrlhttp.InitPolicyStore())
 	authMW.SetPool(pool)
 
 	svc := NewService(context.Background(), pool, []redis.UniversalClient{redisClient}, nil, cfg)

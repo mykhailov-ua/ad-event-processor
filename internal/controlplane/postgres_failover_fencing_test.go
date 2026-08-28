@@ -8,7 +8,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	ingestdb "ad-event-processor/internal/domain/db"
-	"ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/pgfailover"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

@@ -179,7 +179,7 @@ setupBenchDom();
 const { doc } = { doc: globalThis.document };
 
 const canvasMod = await import(
-  pathToFileURL(join(ROOT, 'scripts/bench/metric_chart_canvas.js')).href
+  pathToFileURL(join(ROOT, 'scripts/bench/metric_chart_canvas.ts')).href
 );
 const uplotMod = await import(pathToFileURL(join(SRC, 'charts/metric_chart_uplot.js')).href);
 

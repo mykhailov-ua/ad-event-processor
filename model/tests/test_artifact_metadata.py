@@ -6,9 +6,8 @@ import json
 import tempfile
 from pathlib import Path
 
-import artifact_bootstrap as artifact_bootstrap_mod
-from artifact_bootstrap import write_metadata
-
+import train.artifact_bootstrap as artifact_bootstrap_mod
+from train.artifact_bootstrap import write_metadata
 
 def test_write_metadata_omits_metrics_when_not_provided() -> None:
     with tempfile.TemporaryDirectory() as tmp:
@@ -25,7 +24,6 @@ def test_write_metadata_omits_metrics_when_not_provided() -> None:
         assert "metrics" not in stored
         assert "accuracy" not in stored
         assert "auc" not in stored
-
 
 def test_write_metadata_placeholder_note_only() -> None:
     with tempfile.TemporaryDirectory() as tmp:

@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/opsadmin"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -113,5 +115,5 @@ func TestGetStackHealthSnapshot_handlerReturnsDegraded(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&body))
 	require.Equal(t, "degraded", body.Status)
 	require.Equal(t, 45.0, body.OutboxOldestPendingSeconds)
-	require.False(t, stackHealthSnapshotHasSecretMaterial(rec.Body.String()))
+	require.False(t, opsadmin.StackHealthSnapshotHasSecretMaterial(rec.Body.String()))
 }

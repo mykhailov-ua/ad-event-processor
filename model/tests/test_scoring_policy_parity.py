@@ -7,19 +7,11 @@ from typing import Any
 
 import pytest
 
-from policy_config import default_policy_config, set_policy_config
-from policy_parity_fixtures import load_policy_parity_cases
-from scoring_policy import adjust_probability, decide, residential_proxy_signal
-
-
-@pytest.fixture(autouse=True)
-def _reset_policy_config() -> None:
-    set_policy_config(default_policy_config())
-
+from contract.policy_parity_fixtures import load_policy_parity_cases
+from contract.scoring_policy import adjust_probability, decide, residential_proxy_signal
 
 def _row(raw: dict[str, Any]) -> dict[str, int]:
     return {key: int(raw[key]) for key in raw}
-
 
 @pytest.mark.parametrize("case", load_policy_parity_cases(), ids=lambda case: str(case["id"]))
 def test_scoring_policy_parity_fixtures(case: dict[str, Any]) -> None:

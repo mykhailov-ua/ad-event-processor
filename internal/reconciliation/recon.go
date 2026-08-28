@@ -54,24 +54,24 @@ func NewReconService(host Host) *ReconService {
 	return &ReconService{host: host}
 }
 
-func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
+func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
 
-	run, err := reconService.createRun(opCtx, start, end)
+	run, err := s.createRun(opCtx, start, end)
 	if err != nil {
 		slog.Error("failed to create recon run record", "error", err, "start", start, "end", end)
 		metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
 		return err
 	}
 
-	q := db.New(reconService.host.Pool())
+	q := db.New(s.host.Pool())
 	ledgerRows, err := q.SumLedgerSpendByCampaignWindowWithCustomer(ctx, db.SumLedgerSpendByCampaignWindowWithCustomerParams{
 		CreatedAt:   pgtype.Timestamp{Time: start, Valid: true},
 		CreatedAt_2: pgtype.Timestamp{Time: end, Valid: true},
 	})
 	if err != nil {
-		reconService.failRun(opCtx, run.ID, err)
+		s.failRun(opCtx, run.ID, err)
 		metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
 		return err
 	}
@@ -99,7 +99,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 	for campID, entry := range ledgerMap {
 		ledgerSpent := entry.spent
 		syncKey := domain.CampaignSyncKey(campID)
-		redisClient := reconService.host.RedisClientForCampaign(campID)
+		redisClient := s.host.RedisClientForCampaign(campID)
 		if redisClient == nil {
 			slog.Error("no redis shard for campaign in recon", "campaign_id", campID)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -110,7 +110,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		if err != nil && !errors.Is(err, redis.Nil) {
 			slog.Error("failed to fetch campaign sync budget from Redis in recon", "campaign_id", campID, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
-			reconService.failRun(opCtx, run.ID, err)
+			s.failRun(opCtx, run.ID, err)
 			metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
 			return err
 		}
@@ -124,19 +124,19 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 
 		discrepancies++
 
-		_, err = reconService.host.Pool().Exec(opCtx, `
+		_, err = s.host.Pool().Exec(opCtx, `
 			INSERT INTO recon_discrepancies (run_id, campaign_id, customer_id, expected_spend, actual_spend, delta, redis_adjusted)
 			VALUES ($1, $2, $3, $4, $5, $6, false)
 		`, run.ID, domain.ToUUID(campID), customerID, syncVal, ledgerSpent, delta)
 		if err != nil {
 			slog.Error("failed to record recon discrepancy to postgres", "run_id", run.ID, "campaign_id", campID, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
-			reconService.failRun(opCtx, run.ID, err)
+			s.failRun(opCtx, run.ID, err)
 			metrics.ReconRunsTotal.WithLabelValues("failed").Inc()
 			return err
 		}
 
-		chunkMicro := reconService.autoAdjustChunkMicro()
+		chunkMicro := s.autoAdjustChunkMicro()
 		if abs(delta) > chunkMicro {
 			slog.Warn("recon discrepancy exceeds auto-adjust chunk, leaving unresolved",
 				"run_id", run.ID,
@@ -148,9 +148,9 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 			continue
 		}
 
-		shardID := int16(reconService.host.Sharder().GetShard(campID))
+		shardID := int16(s.host.Sharder().GetShard(campID))
 		custUUID, _ := uuid.FromBytes(customerID.Bytes[:])
-		if err := reconService.enqueueReconciliationAdjust(opCtx, run.ID, campID, custUUID, shardID, -delta, delta, "hourly_window_recon"); err != nil {
+		if err := s.enqueueReconciliationAdjust(opCtx, run.ID, campID, custUUID, shardID, -delta, delta, "hourly_window_recon"); err != nil {
 			slog.Error("failed to enqueue recon adjustment", "campaign_id", campID, "delta", delta, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
 			continue
@@ -159,7 +159,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		totalDelta += delta
 	}
 
-	_, err = reconService.host.Pool().Exec(opCtx, `
+	_, err = s.host.Pool().Exec(opCtx, `
 		UPDATE recon_runs 
 		SET status = 'COMPLETED', total_delta = $1, campaigns_checked = $2, discrepancies_found = $3, completed_at = NOW()
 		WHERE id = $4
@@ -182,7 +182,7 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 		"discrepancies", discrepancies,
 	)
 	if discrepancies > 0 {
-		if alerter := reconService.host.Alerter(); alerter != nil {
+		if alerter := s.host.Alerter(); alerter != nil {
 			alerter.AlertReconDiscrepancy(ctx,
 				run.ID,
 				discrepancies,
@@ -194,20 +194,20 @@ func (reconService *ReconService) ReconcileWindow(ctx context.Context, start, en
 	return nil
 }
 
-func (reconService *ReconService) autoAdjustChunkMicro() int64 {
-	cfg := reconService.host.Config()
+func (s *ReconService) autoAdjustChunkMicro() int64 {
+	cfg := s.host.Config()
 	if cfg != nil && cfg.QuotaChunkSize > 0 {
 		return cfg.QuotaChunkSize
 	}
 	return 5_000_000
 }
 
-func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
-	alerter := reconService.host.Alerter()
+func (s *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
+	alerter := s.host.Alerter()
 	if alerter == nil {
 		return
 	}
-	pool := reconService.host.Pool()
+	pool := s.host.Pool()
 	if pool == nil {
 		return
 	}
@@ -245,7 +245,7 @@ func (reconService *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.
 	}
 }
 
-func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID, delta int64) error {
+func (s *ReconService) adjustRedisBudgetAtomically(ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID, delta int64) error {
 	script := `
 		local key = KEYS[1]
 		local delta = tonumber(ARGV[1])
@@ -260,15 +260,15 @@ func (reconService *ReconService) adjustRedisBudgetAtomically(ctx context.Contex
 	return err
 }
 
-func (reconService *ReconService) createRun(ctx context.Context, start, end time.Time) (struct{ ID int64 }, error) {
+func (s *ReconService) createRun(ctx context.Context, start, end time.Time) (struct{ ID int64 }, error) {
 	var run struct{ ID int64 }
-	err := reconService.host.Pool().QueryRow(ctx, `
+	err := s.host.Pool().QueryRow(ctx, `
 		INSERT INTO recon_runs (period_start, period_end, status) VALUES ($1, $2, 'PENDING') RETURNING id
 	`, start, end).Scan(&run.ID)
 	return run, err
 }
 
-func (reconService *ReconService) enqueueReconciliationAdjust(
+func (s *ReconService) enqueueReconciliationAdjust(
 	ctx context.Context,
 	runID int64,
 	campID, customerID uuid.UUID,
@@ -276,19 +276,19 @@ func (reconService *ReconService) enqueueReconciliationAdjust(
 	ledgerAmt, redisDelta int64,
 	reason string,
 ) error {
-	worker := &ReconWorker{host: reconService.host}
+	worker := &ReconWorker{host: s.host}
 	return worker.enqueueReconciliationAdjust(ctx, runID, campID, customerID, shardID, ledgerAmt, redisDelta, reason)
 }
 
-func (reconService *ReconService) failRun(ctx context.Context, id int64, err error) {
-	_, execErr := reconService.host.Pool().Exec(ctx, `UPDATE recon_runs SET status = 'FAILED' WHERE id = $1`, id)
+func (s *ReconService) failRun(ctx context.Context, id int64, err error) {
+	_, execErr := s.host.Pool().Exec(ctx, `UPDATE recon_runs SET status = 'FAILED' WHERE id = $1`, id)
 	if execErr != nil {
 		slog.Error("failed to mark recon run status as failed in postgres", "run_id", id, "error", execErr)
 	}
 	slog.Error("reconciliation run failed", "run_id", id, "error", err)
 }
 
-func (reconService *ReconService) reconciliationRedisAdjustApplied(
+func (s *ReconService) reconciliationRedisAdjustApplied(
 	ctx context.Context,
 	redisClient redis.UniversalClient,
 	eventID int64,
@@ -297,7 +297,7 @@ func (reconService *ReconService) reconciliationRedisAdjustApplied(
 ) (bool, error) {
 	if p.RunID > 0 {
 		var adjusted bool
-		err := reconService.host.Pool().QueryRow(ctx, `
+		err := s.host.Pool().QueryRow(ctx, `
 			SELECT redis_adjusted FROM recon_discrepancies
 			WHERE run_id = $1 AND campaign_id = $2`,
 			p.RunID, domain.ToUUID(campID),
@@ -317,7 +317,7 @@ func (reconService *ReconService) reconciliationRedisAdjustApplied(
 	return n > 0, nil
 }
 
-func (reconService *ReconService) markReconciliationRedisAdjusted(
+func (s *ReconService) markReconciliationRedisAdjusted(
 	ctx context.Context,
 	redisClient redis.UniversalClient,
 	eventID int64,
@@ -325,7 +325,7 @@ func (reconService *ReconService) markReconciliationRedisAdjusted(
 	campID uuid.UUID,
 ) error {
 	if p.RunID > 0 {
-		_, err := reconService.host.Pool().Exec(ctx, `
+		_, err := s.host.Pool().Exec(ctx, `
 			UPDATE recon_discrepancies
 			SET redis_adjusted = true
 			WHERE run_id = $1 AND campaign_id = $2`,
@@ -336,10 +336,10 @@ func (reconService *ReconService) markReconciliationRedisAdjusted(
 	return redisClient.Set(ctx, reconciliationRedisAppliedKey(eventID), "1", 7*24*time.Hour).Err()
 }
 
-func (reconService *ReconService) createSnapshotRun(ctx context.Context) (int64, error) {
+func (s *ReconService) createSnapshotRun(ctx context.Context) (int64, error) {
 	now := time.Now().UTC()
 	var id int64
-	err := reconService.host.Pool().QueryRow(ctx, `
+	err := s.host.Pool().QueryRow(ctx, `
 		INSERT INTO recon_runs (period_start, period_end, status) VALUES ($1, $2, 'SNAPSHOT') RETURNING id`,
 		now, now,
 	).Scan(&id)

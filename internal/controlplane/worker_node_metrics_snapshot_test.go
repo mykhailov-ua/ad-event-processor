@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/nodeadmin"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -17,13 +18,13 @@ import (
 func TestNodeMetricDailyP99(t *testing.T) {
 	t.Parallel()
 
-	p99 := nodeMetricDailyP99(float64(30))
+	p99 := nodeadmin.NodeMetricDailyP99(float64(30))
 	assert.Equal(t, pgtype.Float8{Float64: 30, Valid: true}, p99)
 
-	pg := nodeMetricDailyP99(pgtype.Float8{Float64: 42, Valid: true})
+	pg := nodeadmin.NodeMetricDailyP99(pgtype.Float8{Float64: 42, Valid: true})
 	assert.Equal(t, pgtype.Float8{Float64: 42, Valid: true}, pg)
 
-	assert.False(t, nodeMetricDailyP99("bad").Valid)
+	assert.False(t, nodeadmin.NodeMetricDailyP99("bad").Valid)
 }
 
 func TestNodeMetricsSnapshotWorker_RunOnce(t *testing.T) {
@@ -146,12 +147,12 @@ func TestNextSnapshotRunUTC(t *testing.T) {
 	before := time.Date(2026, 7, 27, 0, 10, 0, 0, time.UTC)
 	assert.Equal(t,
 		time.Date(2026, 7, 27, 0, 15, 0, 0, time.UTC),
-		nextSnapshotRunUTC(before),
+		nodeadmin.NextSnapshotRunUTC(before),
 	)
 
 	after := time.Date(2026, 7, 27, 1, 0, 0, 0, time.UTC)
 	assert.Equal(t,
 		time.Date(2026, 7, 28, 0, 15, 0, 0, time.UTC),
-		nextSnapshotRunUTC(after),
+		nodeadmin.NextSnapshotRunUTC(after),
 	)
 }

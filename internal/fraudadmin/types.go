@@ -81,6 +81,11 @@ type FraudOverrideRequest struct {
 	IPHash     *string `json:"ip_hash,omitempty"`
 }
 
+type FraudScoringOverrideRequest struct {
+	CampaignID *string `json:"campaign_id,omitempty"`
+	IP         *string `json:"ip,omitempty"`
+}
+
 type FraudPolicyPresetDTO struct {
 	Name      string `json:"name"`
 	Pass      uint8  `json:"pass"`

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"testing"
 
+	"ad-event-processor/internal/billingadmin"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,12 +41,12 @@ func TestMapServiceError(t *testing.T) {
 
 func TestParseMoneyMicro(t *testing.T) {
 	micro := int64(1_500_000)
-	v, err := parseMoneyMicro(&micro, 0, false, "amount")
+	v, err := billingadmin.ParseMoneyMicro(&micro, 0, false, "amount")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1_500_000), v)
 
 	legacy := 2.5
-	v, err = parseMoneyMicro(nil, legacy, true, "amount")
+	v, err = billingadmin.ParseMoneyMicro(nil, legacy, true, "amount")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2_500_000), v)
 }

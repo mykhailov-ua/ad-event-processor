@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"ad-event-processor/internal/config"
-
 	"github.com/minio/highwayhash"
 )
 
@@ -29,15 +27,11 @@ func New(version uint8, key [keySize]byte) *Hasher {
 	return &Hasher{version: version, key: key}
 }
 
-func NewFromConfig(cfg *config.Config) (*Hasher, error) {
-	if cfg == nil {
-		return nil, errors.New("piihash: nil config")
-	}
-	key, err := decodeSaltKey(string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
+func NewFromSalt(version uint8, saltHex, fallbackSecret string) (*Hasher, error) {
+	key, err := decodeSaltKey(saltHex, fallbackSecret)
 	if err != nil {
 		return nil, err
 	}
-	version := cfg.PIISaltVersion
 	if version == 0 {
 		version = 1
 	}

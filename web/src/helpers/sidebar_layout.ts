@@ -1,13 +1,8 @@
 export const SIDEBAR_WIDTH_MIN = 200;
-
 export const SIDEBAR_WIDTH_MAX = 360;
-
 export const SIDEBAR_WIDTH_DEFAULT = 220;
-
 export const SIDEBAR_COLLAPSED_WIDTH = 72;
-
 export const SIDEBAR_MIN_MAIN_WIDTH = 640;
-
 export const SIDEBAR_MAX_VIEWPORT_RATIO = 0.45;
 
 export type SidebarWidthBounds = {

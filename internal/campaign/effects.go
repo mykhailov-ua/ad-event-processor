@@ -38,6 +38,9 @@ type Effects interface {
 	AssignCampaignOwner(ctx context.Context, campaignID, ownerUserID uuid.UUID) error
 	BlockCampaignPlacement(ctx context.Context, campaignID uuid.UUID, placementID string) error
 	CloneCampaign(ctx context.Context, spec CloneCampaignSpec) (CloneCampaignResult, error)
+	CloneCampaignPlacementBlocks(ctx context.Context, sourceID, destID uuid.UUID) error
+	HandleMediaBuyerBudgetIncrease(ctx context.Context, locked db.Campaign, userID uuid.UUID, newLimit int64) error
+	PublishFlowReload(ctx context.Context) error
 	ImportMigrationCampaigns(ctx context.Context, spec ImportMigrationSpec) (ImportMigrationResult, error)
 	EnqueueCampaignOutbox(ctx context.Context, q db.Querier, eventType string, campaignID uuid.UUID, budgetLimit int64) error
 	EnforceDeploymentLicenseCampaignCap(ctx context.Context) error

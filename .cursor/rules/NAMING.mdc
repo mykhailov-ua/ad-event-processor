@@ -97,22 +97,25 @@ Banned as interface or field names on HTTP handlers: `API`, `Backend`, `Provider
 
 ### File and path naming
 
-- Production Go: snake_case `<role>_<rest>.go` — `track_core.go`, `runtime_patch.go`, `service_campaign.go` (package `controlplane`).
+- Production Go: snake_case `<role>_<rest>.go` — `track_core.go`, `runtime_patch.go`, `handlers.go` (package `fraudadmin`).
 - **Inside `internal/<domain>/`:** do not repeat the package directory name as a filename prefix. The path already scopes the domain.
   - BAD: `internal/campaign/campaign_dto.go`, `internal/flow/flow_validate.go`, `internal/fraudadmin/fraudadmin_handlers.go`
   - GOOD: `internal/campaign/dto.go`, `internal/flow/validate.go`, `internal/fraudadmin/handlers.go`
 - Cross-package or composition-root files keep the domain token when the package name differs: `internal/controlplane/campaign_runtime_bridge.go`.
+- **Banned (new):** `controlplane/*_aliases.go`, new `service_<domain>_*.go` in controlplane, `domains.go` prefix tokens — `modular-monolith.mdc` (**Migration cruft ban**).
 - Split near 500 lines or when transport mixes with core logic.
 - Tests beside code: `*_test.go`, `*_bench_test.go`, `*_fault_test.go`.
 
 ```go
 // BAD path
 internal/campaign/campaign_editor_handlers.go
-internal/controlplane/service_campaign_m8.go
+internal/controlplane/fraudadmin_aliases.go
+internal/controlplane/service_fraud_api.go
 
 // GOOD path
 internal/campaign/editor_handlers.go
-internal/campaign/load_test_worker.go
+internal/fraudadmin/handlers.go
+internal/controlplane/fraudadmin_bridge.go
 ```
 
 ## Examples

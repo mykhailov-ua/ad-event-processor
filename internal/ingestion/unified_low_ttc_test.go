@@ -209,18 +209,18 @@ type lowTTCRedis struct {
 	mockRedisClient
 }
 
-func (lowTTCRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
+func (c lowTTCRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
 	cmd := redis.NewCmd(ctx)
 	cmd.SetVal(int64(6))
 	return cmd
 }
 
-func (lowTTCRedis) Process(ctx context.Context, cmd redis.Cmder) error {
+func (c lowTTCRedis) Process(ctx context.Context, cmd redis.Cmder) error {
 	setProcessLuaInt64(cmd, 6)
 	return nil
 }
 
-func (lowTTCRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
+func (c lowTTCRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
 	cmd := redis.NewCmd(ctx)
 	cmd.SetVal(int64(6))
 	return cmd
@@ -230,18 +230,18 @@ type missingImpTSRedis struct {
 	mockRedisClient
 }
 
-func (missingImpTSRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
+func (c missingImpTSRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
 	cmd := redis.NewCmd(ctx)
 	cmd.SetVal(int64(7))
 	return cmd
 }
 
-func (missingImpTSRedis) Process(ctx context.Context, cmd redis.Cmder) error {
+func (c missingImpTSRedis) Process(ctx context.Context, cmd redis.Cmder) error {
 	setProcessLuaInt64(cmd, 7)
 	return nil
 }
 
-func (missingImpTSRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
+func (c missingImpTSRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
 	cmd := redis.NewCmd(ctx)
 	cmd.SetVal(int64(7))
 	return cmd
@@ -251,18 +251,18 @@ type ttcBypassRedis struct {
 	mockRedisClient
 }
 
-func (ttcBypassRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
+func (c ttcBypassRedis) EvalSha(ctx context.Context, sha1 string, keys []string, args ...any) *redis.Cmd {
 	cmd := redis.NewCmd(ctx)
 	cmd.SetVal(int64(10))
 	return cmd
 }
 
-func (ttcBypassRedis) Process(ctx context.Context, cmd redis.Cmder) error {
+func (c ttcBypassRedis) Process(ctx context.Context, cmd redis.Cmder) error {
 	setProcessLuaInt64(cmd, 10)
 	return nil
 }
 
-func (ttcBypassRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
+func (c ttcBypassRedis) Eval(ctx context.Context, script string, keys []string, args ...any) *redis.Cmd {
 	cmd := redis.NewCmd(ctx)
 	cmd.SetVal(int64(10))
 	return cmd

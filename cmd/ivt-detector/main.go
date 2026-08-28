@@ -35,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	piiHasher, piiErr := piihash.NewFromConfig(cfg)
+	piiHasher, piiErr := piihash.NewFromSalt(cfg.PIISaltVersion, string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
 	if piiErr != nil {
 		slog.Error("failed to initialize PII hasher", "error", piiErr)
 		os.Exit(1)

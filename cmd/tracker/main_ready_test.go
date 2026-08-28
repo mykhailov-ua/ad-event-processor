@@ -16,16 +16,16 @@ import (
 
 type stubCampaignRegistry struct{}
 
-func (stubCampaignRegistry) Exists(uuid.UUID) bool { return true }
-func (stubCampaignRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
+func (r stubCampaignRegistry) Exists(uuid.UUID) bool { return true }
+func (r stubCampaignRegistry) Add(uuid.UUID, uuid.UUID, *uuid.UUID, string, domain.PacingMode, int64, string, int32, int32, []string) {
 }
-func (stubCampaignRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
-func (stubCampaignRegistry) GetCampaign(uuid.UUID) (*domain.Campaign, bool) {
+func (r stubCampaignRegistry) GetCustomerID(uuid.UUID) (uuid.UUID, bool) { return uuid.Nil, true }
+func (r stubCampaignRegistry) GetCampaign(uuid.UUID) (*domain.Campaign, bool) {
 	return nil, false
 }
-func (stubCampaignRegistry) Sync(context.Context) (int, error)        { return 0, nil }
-func (stubCampaignRegistry) StartSync(context.Context, time.Duration) {}
-func (stubCampaignRegistry) Wait(context.Context) error               { return nil }
+func (r stubCampaignRegistry) Sync(context.Context) (int, error)        { return 0, nil }
+func (r stubCampaignRegistry) StartSync(context.Context, time.Duration) {}
+func (r stubCampaignRegistry) Wait(context.Context) error               { return nil }
 
 func newReadyTestHandler(t *testing.T, warmupSec int) *ingestion.AdsPacketHandler {
 	t.Helper()

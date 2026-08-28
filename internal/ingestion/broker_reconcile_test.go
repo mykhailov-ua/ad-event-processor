@@ -7,7 +7,7 @@ import (
 
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/pkg/broker/client"
-	bserver "ad-event-processor/pkg/broker/server"
+	bserver "ad-event-processor/internal/broker"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/prometheus/client_golang/prometheus/testutil"

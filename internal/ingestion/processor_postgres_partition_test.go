@@ -41,7 +41,7 @@ func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 	infra, cleanup := setupAdsProcessorPartitionInfra(t)
 	defer cleanup()
 
-	stack := startAdsIngestStack(t, pp.adsFaultInfra, "ads-fault-processor-pg-partition")
+	stack := startAdsIngestStack(t, infra.adsFaultInfra, "ads-fault-processor-pg-partition")
 	defer stack.Close(t)
 
 	ctx := context.Background()
@@ -49,18 +49,18 @@ func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 	for range baselineTracks {
 		require.Equal(t, http.StatusAccepted, postFaultClick(t, stack.Handler, stack.CampaignID))
 	}
-	waitFaultStreamDrained(t, pp.Redis, stack.Stream, stack.Stream+"-group", stack.CampaignID, pp.Pool, baselineTracks)
+	waitFaultStreamDrained(t, infra.Redis, stack.Stream, stack.Stream+"-group", stack.CampaignID, infra.Pool, baselineTracks)
 
-	rowsBaseline := countFaultCampaignEvents(t, pp.Pool, stack.CampaignID)
-	streamBeforePartition, err := pp.Redis.XLen(ctx, stack.Stream).Result()
+	rowsBaseline := countFaultCampaignEvents(t, infra.Pool, stack.CampaignID)
+	streamBeforePartition, err := infra.Redis.XLen(ctx, stack.Stream).Result()
 	require.NoError(t, err)
 
-	blockProcessorPGPartition(t, pp.ProcessorContainer)
-	t.Cleanup(func() { unblockProcessorPGPartition(t, pp.ProcessorContainer) })
+	blockProcessorPGPartition(t, infra.ProcessorContainer)
+	t.Cleanup(func() { unblockProcessorPGPartition(t, infra.ProcessorContainer) })
 
-	requirePGContainerAlive(t, pp.PGContainer)
+	requirePGContainerAlive(t, infra.PGContainer)
 	require.Eventually(t, func() bool {
-		return verifyProcessorPGPartitionActive(ctx, pp.pgProxyConnStr)
+		return verifyProcessorPGPartitionActive(ctx, infra.pgProxyConnStr)
 	}, 20*time.Second, 500*time.Millisecond, "processor path to postgres must fail after iptables DROP")
 
 	const bufferedTracks = 8
@@ -76,34 +76,34 @@ func TestFault_AdsProcessorPGNetworkPartition(t *testing.T) {
 		return stack.Consumer.CircuitBreakerState() == CircuitOpen
 	}, 25*time.Second, 200*time.Millisecond, "consumer circuit must open when processor cannot reach PG")
 
-	streamDuringPartition, err := pp.Redis.XLen(ctx, stack.Stream).Result()
+	streamDuringPartition, err := infra.Redis.XLen(ctx, stack.Stream).Result()
 	require.NoError(t, err)
 	assert.Greater(t, streamDuringPartition, streamBeforePartition,
 		"stream must grow while processor is partitioned from PG")
 	backpressureActive := stack.Consumer.CircuitBreakerState() == CircuitOpen &&
 		streamDuringPartition > streamBeforePartition
 
-	unblockProcessorPGPartition(t, pp.ProcessorContainer)
+	unblockProcessorPGPartition(t, infra.ProcessorContainer)
 	stack.Consumer.Close()
 	_ = stack.Consumer.Wait(ctx)
-	pp.refreshPGPoolViaProxy(t)
-	stack.replaceConsumer(t, pp.adsFaultInfra)
+	infra.refreshPGPoolViaProxy(t)
+	stack.replaceConsumer(t, infra.adsFaultInfra)
 
 	expectedRows := rowsBaseline + int64(acceptedDuringPartition)
 	recovered := false
 	require.Eventually(t, func() bool {
-		recovered = countFaultCampaignEvents(t, pp.Pool, stack.CampaignID) >= expectedRows
+		recovered = countFaultCampaignEvents(t, infra.Pool, stack.CampaignID) >= expectedRows
 		return recovered
 	}, 45*time.Second, 200*time.Millisecond, "consumer must drain backlog after partition lift")
 
-	finalRows := countFaultCampaignEvents(t, pp.Pool, stack.CampaignID)
-	distinctClickIDs := countDistinctFaultClickIDs(t, pp.Pool, stack.CampaignID)
+	finalRows := countFaultCampaignEvents(t, infra.Pool, stack.CampaignID)
+	distinctClickIDs := countDistinctFaultClickIDs(t, infra.Pool, stack.CampaignID)
 	idempotencyOK := finalRows == expectedRows && distinctClickIDs == expectedRows
 	require.True(t, idempotencyOK,
 		"exactly-once in PG: rows=%d distinct_click_ids=%d expected=%d",
 		finalRows, distinctClickIDs, expectedRows)
 
-	AssertBudgetInvariant(t, ctx, pp.Pool, pp.Redis, stack.CampaignID)
+	AssertBudgetInvariant(t, ctx, infra.Pool, infra.Redis, stack.CampaignID)
 
 	faultproof.Log(t, "processor_pg_partition", map[string]string{
 		"subsystem":            "ads_processor",
@@ -274,8 +274,8 @@ func countDistinctFaultClickIDs(t *testing.T, pool *pgxpool.Pool, campaignID uui
 
 func (s *adsIngestStack) replaceConsumer(t *testing.T, infra *adsFaultInfra) {
 	t.Helper()
-	store := NewPostgresStore(pp.Queries, 1*time.Second)
-	s.Consumer = NewStreamConsumer(store, pp.Redis, s.Stream, s.Stream+"-group", s.Stream+"-c1",
+	store := NewPostgresStore(infra.Queries, 1*time.Second)
+	s.Consumer = NewStreamConsumer(store, infra.Redis, s.Stream, s.Stream+"-group", s.Stream+"-c1",
 		s.cfg.EventBatchSize, s.cfg.MaxWorkers,
 		100*time.Millisecond, 1*time.Second,
 		100*time.Millisecond, 5*time.Second,

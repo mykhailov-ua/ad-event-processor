@@ -83,14 +83,16 @@ Always applied on every agent turn (no glob filter):
 | `data-layer.mdc` | Redis, Lua, PG, CH, sharding |
 | `boundaries.mdc` | Import matrix, layer coupling, agent scope, test dishonesty catalog |
 | `control-plane.mdc` | Outbox, workers, admin API |
-| `modular-monolith.mdc` | Modular monolith, bridges, god- and micro-package policy |
+| `modular-monolith.mdc` | Modular monolith, bridges, god- and micro-package policy, migration cruft ban |
+| `frontend-modular.mdc` | Admin SPA modular monolith, layer isolation, `web/` package map |
 | `rtb.mdc` | OpenRTB auction, shadow to live |
 | `edge.mdc` | Nginx Lua, XDP, tracker parity |
 | `compliance.mdc` | Defensive perimeter |
 | `licensing.mdc` | JWT, trial registry, USDT tiers |
 | `regions.mdc` | Enterprise multi-region |
 | `ui.mdc` | Admin layout, grid, cold path, milestones, AI honesty |
-| `react.mdc` | React render path, V8 GC, state shape, list perf |
+| `ui-backlog.mdc` | Admin backlog + milestone spec: page inventory, layout, ship order, pitfalls |
+| `react.mdc` | React render path, DoD/SoA lists, prefetch, V8 GC, allocation budgets |
 | `tradeoffs.mdc` | Rejected alternatives, evidence matrix |
 | `fault-tests.mdc` | Chaos/outbox/parser proofs |
 | `testing.mdc` | Test taxonomy, holdouts |

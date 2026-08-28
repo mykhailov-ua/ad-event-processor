@@ -5,7 +5,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-VIEWS="web/src/views"
+VIEWS="web/src/views web/src/ui"
 failed=0
 
 check_rg() {

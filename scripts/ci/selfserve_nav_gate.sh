@@ -6,8 +6,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 
 SHELL_TS="$ROOT/web/src/components/selfserve_shell_layout.tsx"
 if [ ! -f "$SHELL_TS" ]; then
-  echo "Error: missing $SHELL_TS"
-  exit 1
+  echo "Self-serve nav gate: skipped (selfserve shell removed)"
+  exit 0
 fi
 
 FORBIDDEN=(

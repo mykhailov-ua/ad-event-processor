@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"strings"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/pkg/httpresponse"
@@ -42,20 +44,20 @@ type AuthMiddleware struct {
 	redisClient   redis.UniversalClient
 	controlRdbs   []redis.UniversalClient
 	cfg           *config.Config
-	authClient    *AuthClient
-	apiKeyLimiter *apiKeyRateLimiter
+	authClient    *identity.AuthClient
+	apiKeyLimiter *ctrlhttp.APIKeyRateLimiter
 	policy        *authz.Store
 	pool          *pgxpool.Pool
 }
 
-func NewAuthMiddleware(tokenMaker identity.Maker, redisClient redis.UniversalClient, cfg *config.Config, authClient *AuthClient) *AuthMiddleware {
-	rps := defaultAPIKeyRPS
-	burst := defaultAPIKeyBurst
+func NewAuthMiddleware(tokenMaker identity.Maker, redisClient redis.UniversalClient, cfg *config.Config, authClient *identity.AuthClient) *AuthMiddleware {
+	rps := ctrlhttp.DefaultAPIKeyRPS
+	burst := ctrlhttp.DefaultAPIKeyBurst
 	if cfg != nil && cfg.SelfServeAPIKeyRPS > 0 {
 		rps = cfg.SelfServeAPIKeyRPS
 		burst = int(rps * 2)
 		if burst < 1 {
-			burst = defaultAPIKeyBurst
+			burst = ctrlhttp.DefaultAPIKeyBurst
 		}
 	}
 	return &AuthMiddleware{
@@ -63,7 +65,13 @@ func NewAuthMiddleware(tokenMaker identity.Maker, redisClient redis.UniversalCli
 		redisClient:   redisClient,
 		cfg:           cfg,
 		authClient:    authClient,
-		apiKeyLimiter: newAPIKeyRateLimiter(rps, burst),
+		apiKeyLimiter: ctrlhttp.NewAPIKeyRateLimiter(rps, burst),
+	}
+}
+
+func (m *AuthMiddleware) RefreshUserPolicy(userID uuid.UUID, role string) {
+	if m != nil && m.policy != nil {
+		m.policy.RefreshUser(userID, role)
 	}
 }
 
@@ -96,7 +104,7 @@ func (m *AuthMiddleware) attachAuthz(ctx context.Context, user AuthenticatedUser
 	}
 	snap := m.policy.EffectivePermissionsDB(ctx, m.pool, user.UserID, user.Role)
 	if len(user.APIKeyScopes) > 0 {
-		snap = restrictSnapshotForAPIKeyScopes(snap, user.APIKeyScopes)
+		snap = campaign.RestrictSnapshotForAPIKeyScopes(snap, user.APIKeyScopes)
 	}
 	if user.Scope == "" {
 		user.Scope = snap.Scope
@@ -222,7 +230,7 @@ func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Reque
 		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
 		return AuthenticatedUser{}, false
 	}
-	if m.apiKeyLimiter != nil && !m.apiKeyLimiter.allow(apiKeyDigest(rawKey)) {
+	if m.apiKeyLimiter != nil && !m.apiKeyLimiter.Allow(apiKeyDigest(rawKey)) {
 		httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "api key rate limit exceeded")
 		return AuthenticatedUser{}, false
 	}

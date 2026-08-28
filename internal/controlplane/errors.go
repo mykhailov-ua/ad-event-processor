@@ -1,7 +1,9 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/platformadmin"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
@@ -37,11 +39,16 @@ var (
 	ErrInvalidTimeRange                 = campaign.ErrInvalidTimeRange
 	ErrInvalidServiceFilter             = errors.New("invalid service filter")
 
-	ErrSelfServeActiveCampaignLimit = errors.New("self-serve active campaign limit reached")
-	ErrSelfServeDailyCreateLimit    = errors.New("self-serve daily campaign create limit reached")
-	ErrSelfServeBudgetOutOfRange    = errors.New("self-serve budget out of allowed range")
+	ErrSelfServeActiveCampaignLimit = platformadmin.ErrSelfServeActiveCampaignLimit
+	ErrSelfServeDailyCreateLimit    = platformadmin.ErrSelfServeDailyCreateLimit
+	ErrSelfServeBudgetOutOfRange    = platformadmin.ErrSelfServeBudgetOutOfRange
 	ErrDeploymentCampaignLimit      = errors.New("deployment active campaign limit reached for license tier")
-	ErrDeploymentTenantLimit        = errors.New("deployment tenant limit reached for license tier")
+	ErrDeploymentTenantLimit        = billingadmin.ErrDeploymentTenantLimit
+	ErrForbidden                    = billingadmin.ErrForbidden
+
+	ErrFeedbackInvalidType  = platformadmin.ErrFeedbackInvalidType
+	ErrFeedbackInvalidEmail = platformadmin.ErrFeedbackInvalidEmail
+	ErrFeedbackEmptyMessage = platformadmin.ErrFeedbackEmptyMessage
 )
 
 func mapNotFound(err, notFound error) error {

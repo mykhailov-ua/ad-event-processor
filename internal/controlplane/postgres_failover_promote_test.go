@@ -6,6 +6,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestBuildPgFailoverPromoter_simplePathRequiresWritable(t *testing.T) {
 	}
 
 	var reconnected bool
-	promoter := buildPgFailoverPromoter(svc, func(newPool *pgxpool.Pool) {
+	promoter := shardadmin.BuildPgFailoverPromoter(svc.cfg, func(newPool *pgxpool.Pool) {
 		reconnected = true
 		if newPool != nil {
 			newPool.Close()

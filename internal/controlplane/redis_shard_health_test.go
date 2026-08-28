@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"ad-event-processor/internal/shardadmin"
+
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -18,9 +20,9 @@ func TestPingConnectedRedisShards_nilSlotSkipped(t *testing.T) {
 	redisShards := []redis.UniversalClient{nil, redis.NewClient(&redis.Options{Addr: mr.Addr()})}
 	t.Cleanup(func() { _ = redisShards[1].Close() })
 
-	assert.True(t, pingConnectedRedisShards(context.Background(), redisShards))
+	assert.True(t, shardadmin.PingConnectedRedisShards(context.Background(), redisShards))
 }
 
 func TestPingConnectedRedisShards_allNilUnhealthy(t *testing.T) {
-	assert.False(t, pingConnectedRedisShards(context.Background(), []redis.UniversalClient{nil, nil}))
+	assert.False(t, shardadmin.PingConnectedRedisShards(context.Background(), []redis.UniversalClient{nil, nil}))
 }

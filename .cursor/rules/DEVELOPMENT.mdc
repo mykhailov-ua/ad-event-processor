@@ -83,7 +83,7 @@ Do **not** start ClickHouse for routine work. CH pulls ~4G compose limit, heavy 
 
 Forbidden without operator ask: `stack.sh full`, `infra`, `single-vps` with CH; `make test-integration` that needs CH while CH container runs for unrelated work; leaving `clickhouse` up overnight.
 
-Default: `CH_ENABLED=0` in `.env.example` and compose. Processor/control skip CH when disabled (`pkg/doctor` skips CH probe).
+Default: `CH_ENABLED=0` in `.env.example` and compose. Processor/control skip CH when disabled (`internal/doctor` skips CH probe).
 
 ```bash
 bash scripts/dev/stack.sh ingest-only   # canonical laptop path

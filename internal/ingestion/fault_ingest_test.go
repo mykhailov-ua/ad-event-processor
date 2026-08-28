@@ -20,7 +20,7 @@ import (
 
 type infraErrFilter struct{}
 
-func (infraErrFilter) Check(ctx context.Context, evt *domain.Event) error {
+func (f infraErrFilter) Check(ctx context.Context, evt *domain.Event) error {
 	return ErrInfraNetwork
 }
 

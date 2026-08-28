@@ -15,6 +15,8 @@ import (
 
 const maxChartSeriesPoints = 366
 
+const MaxChartSeriesPoints = maxChartSeriesPoints
+
 type DashboardSeriesPointDTO struct {
 	Label       string `json:"label"`
 	Impressions int64  `json:"impressions"`

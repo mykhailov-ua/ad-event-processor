@@ -78,6 +78,11 @@ func (s *campaignFraudStub) PreviewCampaignFraudImpact(_ context.Context, campai
 	}, nil
 }
 
+func mapPublisherTestError(err error) (status int, code string, message string) {
+	_ = err
+	return http.StatusInternalServerError, "INTERNAL", "internal error"
+}
+
 func newCampaignFraudHandlers(stub *campaignFraudStub) *controlplane.CampaignsHTTPHandlers {
 	return &controlplane.CampaignsHTTPHandlers{
 		Campaigns:     &campaignListStub{},

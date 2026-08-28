@@ -473,3 +473,10 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 		routes.TelegramHTTP.Register(mux)
 	}
 }
+
+func RegisterRegionIngestRoutes(mux *http.ServeMux, h *Handler) {
+	if h.cfg == nil || !h.cfg.MultiRegionGlobal() {
+		return
+	}
+	mux.HandleFunc("POST /api/v1/region/ingest/batch", h.pgHigh(h.postRegionIngestBatch))
+}

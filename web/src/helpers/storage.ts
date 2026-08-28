@@ -1,116 +1,56 @@
 import { clampSidebarWidth, SIDEBAR_WIDTH_DEFAULT } from './sidebar_layout.js';
-import { invalidateChartThemeCache } from '../charts/canvas_util.js';
 
 const ALLOWED_KEYS = new Set([
   'ui.theme',
-  'ui.theme-palette',
   'ui.sidebar.collapsed',
   'ui.sidebar.width',
-  'ui.reports.range',
   'ui.dev_mode',
-  'ui.ops.charts_layout',
-  'ui.ops.charts_range',
   'nav.lastCustomerId',
   'nav.recentCustomerIds',
 ]);
 const IDEM_PREFIX = 'idem.pending.';
-const QUOTA_LIMIT = 4096;
-
-function withStorageErrorHandler<T>(fn: () => T, fallback: T, _context?: string): T {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
-}
 
 export type ColorTheme = 'dark' | 'light';
 
 export function getTheme(): ColorTheme {
-  const v = _get('ui.theme');
+  const v = localStorageGet('ui.theme');
   return v === 'light' || v === 'dark' ? v : 'dark';
 }
 
 export function setTheme(theme: ColorTheme): void {
   if (theme !== 'dark' && theme !== 'light') return;
-  _set('ui.theme', theme);
+  localStorageSet('ui.theme', theme);
   document.documentElement.setAttribute('data-theme', theme);
-  invalidateChartThemeCache();
-}
-
-export function getThemePalette(): 'default' {
-  return 'default';
-}
-
-export function setThemePalette(_palette: 'default' | 'neutral'): void {
-  document.documentElement.removeAttribute('data-theme-palette');
 }
 
 export function getSidebarCollapsed(): boolean {
-  return _get('ui.sidebar.collapsed') === 'true';
+  return localStorageGet('ui.sidebar.collapsed') === 'true';
 }
 
 export function setSidebarCollapsed(collapsed: boolean): void {
-  _set('ui.sidebar.collapsed', String(collapsed));
+  localStorageSet('ui.sidebar.collapsed', String(collapsed));
 }
 
 export function getSidebarWidth(): number {
-  const raw = _get('ui.sidebar.width');
+  const raw = localStorageGet('ui.sidebar.width');
   const n = raw ? Number.parseInt(raw, 10) : SIDEBAR_WIDTH_DEFAULT;
   if (!Number.isFinite(n)) return clampSidebarWidth(SIDEBAR_WIDTH_DEFAULT);
   return clampSidebarWidth(n);
 }
 
 export function setSidebarWidth(width: number): void {
-  _set('ui.sidebar.width', String(clampSidebarWidth(width)));
-}
-
-export type OpsChartsLayout = 'grid' | 'stack';
-
-export function getOpsChartsLayout(): OpsChartsLayout {
-  return _get('ui.ops.charts_layout') === 'stack' ? 'stack' : 'grid';
-}
-
-export function setOpsChartsLayout(layout: OpsChartsLayout): void {
-  _set('ui.ops.charts_layout', layout === 'stack' ? 'stack' : 'grid');
-}
-
-export type OpsChartsRangeHours = 1 | 6 | 12 | 24;
-
-export function getOpsChartsRangeHours(): OpsChartsRangeHours {
-  const raw = Number(_get('ui.ops.charts_range'));
-  if (raw === 1 || raw === 6 || raw === 12 || raw === 24) return raw;
-  return 24;
-}
-
-export function setOpsChartsRangeHours(hours: number): void {
-  const h = Number(hours);
-  if (h === 1 || h === 6 || h === 12 || h === 24) {
-    _set('ui.ops.charts_range', String(h));
-  }
+  localStorageSet('ui.sidebar.width', String(clampSidebarWidth(width)));
 }
 
 export function getDevMode(): boolean {
-  return _get('ui.dev_mode') === 'true';
+  return localStorageGet('ui.dev_mode') === 'true';
 }
 
 export function setDevMode(enabled: boolean): void {
-  _set('ui.dev_mode', String(enabled));
+  localStorageSet('ui.dev_mode', String(enabled));
 }
 
 export { getSidebarWidthBounds, SIDEBAR_COLLAPSED_WIDTH } from './sidebar_layout.js';
-
-export type ReportRange = { from: string; to: string };
-
-export function getReportRange(): ReportRange | null {
-  const v = _get('ui.reports.range');
-  if (!v) return null;
-  return withStorageErrorHandler(() => JSON.parse(v) as ReportRange, null, 'getReportRange');
-}
-
-export function setReportRange(range: ReportRange): void {
-  _set('ui.reports.range', JSON.stringify(range));
-}
 
 export type IdempotencyPending = {
   key: string;
@@ -119,61 +59,54 @@ export type IdempotencyPending = {
 };
 
 export function getIdempotencyPending(scope: string): IdempotencyPending | null {
-  const v = _getRaw(IDEM_PREFIX + scope);
+  const v = localStorageGetRaw(IDEM_PREFIX + scope);
   if (!v) return null;
-  return withStorageErrorHandler(
-    () => {
-      const parsed = JSON.parse(v) as IdempotencyPending;
-      const ageMs = Date.now() - (parsed.ts ?? 0);
-      if (ageMs > 24 * 60 * 60 * 1000) {
-        removeIdempotencyPending(scope);
-        return null;
-      }
-      return parsed;
-    },
-    null,
-    'getIdempotencyPending'
-  );
+  try {
+    const parsed = JSON.parse(v) as IdempotencyPending;
+    if (Date.now() - (parsed.ts ?? 0) > 24 * 60 * 60 * 1000) {
+      removeIdempotencyPending(scope);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 export function setIdempotencyPending(scope: string, data: IdempotencyPending): void {
-  _setRaw(IDEM_PREFIX + scope, JSON.stringify(data));
+  localStorageSetRaw(IDEM_PREFIX + scope, JSON.stringify(data));
 }
 
 export function removeIdempotencyPending(scope: string): void {
-  withStorageErrorHandler(
-    () => {
-      localStorage.removeItem(IDEM_PREFIX + scope);
-    },
-    undefined,
-    'removeIdempotencyPending'
-  );
+  try {
+    localStorage.removeItem(IDEM_PREFIX + scope);
+  } catch {
+    /* ignore */
+  }
 }
 
 export function getLastCustomerId(): string | null {
-  return _get('nav.lastCustomerId');
+  return localStorageGet('nav.lastCustomerId');
 }
 
 export function setLastCustomerId(id: string): void {
-  _set('nav.lastCustomerId', id);
+  localStorageSet('nav.lastCustomerId', id);
 }
 
 const RECENT_CUSTOMERS_MAX = 8;
 
 export function getRecentCustomerIds(): string[] {
-  const v = _get('nav.recentCustomerIds');
+  const v = localStorageGet('nav.recentCustomerIds');
   if (!v) return [];
-  return withStorageErrorHandler(
-    () => {
-      const parsed = JSON.parse(v) as unknown;
-      if (!Array.isArray(parsed)) return [];
-      return parsed
-        .filter((x): x is string => typeof x === 'string' && x.length > 0)
-        .slice(0, RECENT_CUSTOMERS_MAX);
-    },
-    [],
-    'getRecentCustomerIds'
-  );
+  try {
+    const parsed = JSON.parse(v) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((x): x is string => typeof x === 'string' && x.length > 0)
+      .slice(0, RECENT_CUSTOMERS_MAX);
+  } catch {
+    return [];
+  }
 }
 
 export function pushRecentCustomerId(id: string): void {
@@ -183,76 +116,53 @@ export function pushRecentCustomerId(id: string): void {
     0,
     RECENT_CUSTOMERS_MAX
   );
-  _set('nav.recentCustomerIds', JSON.stringify(next));
+  localStorageSet('nav.recentCustomerIds', JSON.stringify(next));
   setLastCustomerId(trimmed);
 }
 
-function _get(key: string): string | null {
-  if (!ALLOWED_KEYS.has(key)) return null;
-  return withStorageErrorHandler(() => localStorage.getItem(key), null, '_get');
-}
-
-function _set(key: string, value: string): void {
-  if (!ALLOWED_KEYS.has(key)) return;
-  withStorageErrorHandler(
-    () => {
-      localStorage.setItem(key, value);
-      _enforceQuota();
-    },
-    undefined,
-    '_set'
-  );
-}
-
-function _getRaw(key: string): string | null {
-  return withStorageErrorHandler(() => localStorage.getItem(key), null, '_getRaw');
-}
-
-function _setRaw(key: string, value: string): void {
-  withStorageErrorHandler(
-    () => {
-      localStorage.setItem(key, value);
-      _enforceQuota();
-    },
-    undefined,
-    '_setRaw'
-  );
-}
-
 export function clearIdempotencyPendingAll(): void {
-  withStorageErrorHandler(
-    () => {
-      const keys: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k?.startsWith(IDEM_PREFIX)) keys.push(k);
-      }
-      for (const k of keys) localStorage.removeItem(k);
-    },
-    undefined,
-    'clearIdempotencyPendingAll'
-  );
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(IDEM_PREFIX)) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch {
+    /* ignore */
+  }
 }
 
-function _enforceQuota(): void {
-  withStorageErrorHandler(
-    () => {
-      let total = 0;
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (!k) continue;
-        total += k.length + (localStorage.getItem(k) ?? '').length;
-      }
-      if (total > QUOTA_LIMIT) {
-        const idemKeys: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k?.startsWith(IDEM_PREFIX)) idemKeys.push(k);
-        }
-        for (const k of idemKeys) localStorage.removeItem(k);
-      }
-    },
-    undefined,
-    '_enforceQuota'
-  );
+function localStorageGet(key: string): string | null {
+  if (!ALLOWED_KEYS.has(key)) return null;
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function localStorageSet(key: string, value: string): void {
+  if (!ALLOWED_KEYS.has(key)) return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+function localStorageGetRaw(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function localStorageSetRaw(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
 }

@@ -1,0 +1,161 @@
+---
+description: Admin SPA modular monolith - layer isolation, package map, lead-intent parity
+globs:
+  - web/**
+  - api/openapi/**
+  - deploy/vendor/*_MILESTONE.md
+  - scripts/ci/check_ui*.sh
+  - scripts/ci/admin_web.sh
+alwaysApply: false
+---
+
+# Frontend Modular Monolith
+
+## Purpose
+
+Admin UI (`web/`) is a **modular monolith in the browser**: one SPA build (`web/dist`), domain folders as compile-time modules. Same invariants as Go `cmd/control` (`modular-monolith.mdc`, `structure.mdc`):
+
+- Thin composition root (`pages/`)
+- Domain-owned UI (`ui/<domain>/`)
+- No ceremony trees (`dto/`, `usecase/`, `providers/`)
+- Cold path first: server owns filter/sort/aggregate (`ui.mdc`, `cold-path.mdc`)
+
+**Quality reference:** `lead-intent-processor` — `internal/crm/{admin,store,webhook}` owns CRM surface; `internal/app` (~18 prod `.go`) wires only. Admin SPA mirrors that split: `pages/` = wire, `ui/<domain>/` = product.
+
+Cross-ref: `ui.mdc` (layout, grid, milestones), `react.mdc` (render hot path), `boundaries.mdc` (coupling limits), `naming.mdc`.
+
+## Status (2026-08-28)
+
+| Fact | State |
+| :--- | :--- |
+| `web/` tree | Restored; legacy `components/`, `models/`, global `styles/` still present |
+| Target `web/src/ui/<domain>/` | **In progress** — `ui/shell/` (admin_shell), `ui/system/` (admin_tokens + admin_page_chrome); domain folders pending |
+| Contract | `api/openapi/` + `web/src/types/generated/` |
+| Embed | `web/dist` via `web/embed.go` |
+
+Do not extend legacy patterns while migrating. New pages follow this file + `ui.mdc`.
+
+## Isolation levels (coupling limits)
+
+One agent task = **one layer owner**. Crossing layers without milestone `Depends on` is a boundary violation (`boundaries.mdc`).
+
+| Level | Path | Owns | Must not own |
+| :--- | :--- | :--- | :--- |
+| L0 Contract | `api/openapi/`, Go `*_handlers.go` | Query params, DTO, validation, SQL/CH | `web/src` pages (unless milestone section 7 closes both) |
+| L1 Transport | `web/src/helpers/*_api.ts` | HTTP, abort, parse JSON to typed snapshot | `useMemo` filter/sort over full `items[]` |
+| L2 Composition | `web/src/pages/*` | Section compose, URL → fetch params, route entry | `*.module.css`, business rules, invented API fields |
+| L3 Domain UI | `web/src/ui/<domain>/` | Grid, chips, dropdown open state, CSS modules | Cross-page Context, server logic |
+| L4 Shared chrome | `web/src/ui/shell/`, `web/src/ui/system/` | Nav, login, PageChrome, tokens consumers | Domain-specific API shapes |
+| L5 Tokens | `web/src/styles/tokens.css` | Design tokens (`rem`, semantic colors) | Component layout |
+| L6 Static embed | `web/src/static/` | `track.js` snippet (not admin) | Admin React imports |
+
+### Hard FE/BE boundary
+
+| Concern | Server | Browser |
+| :--- | :--- | :--- |
+| Filter, search, sort | Query params + handler | Pass params; render `items` |
+| Pagination, totals | `limit`, `offset`, `total` | Controls only |
+| Labels, money | `*_label`, `*_display`, micros | Map tone enum; format display fields |
+| Validation | 400 + field map | Show API errors |
+| Export / long jobs | Async endpoint + poll | Job id + poll UI |
+
+Forbidden: React Context for list filter state; root `FilterProvider`; client KPI math; hand-written TS types diverging from OpenAPI.
+
+## Target package map
+
+```
+web/src/
+  pages/                 # compose only; <= ~120 lines; no *.module.css
+  ui/
+    <domain>/            # one folder per admin domain (customers, campaigns, billing, …)
+      *.tsx
+      *.module.css
+      *.variants.ts        # CVA + cn()
+    shell/               # login, nav, layout chrome
+    system/              # Button, ErrorBlock, DataGrid primitives
+  helpers/
+    <domain>_api.ts      # fetch + parse only
+    use_resource.ts      # shared fetch hook (not domain logic)
+  types/
+    generated/openapi.d.ts
+    index.ts             # thin re-exports only
+  lib/
+    cn.ts
+  styles/
+    tokens.css           # tokens only in new work; legacy global CSS sunsets
+  static/
+    track.js
+```
+
+### Banned trees and patterns
+
+| Pattern | Why | Replacement |
+| :--- | :--- | :--- |
+| `web/src/dto/`, `usecase/`, `providers/` | Ceremony hides contracts | `helpers/` + `ui/<domain>/` |
+| `web/src/models/` with business rules | Duplicate server logic | Delete on migrate; server DTO only |
+| `web/src/components/` monolith | No domain boundary | Split into `ui/<domain>/` + `ui/system/` |
+| Page imports `*.module.css` | CSS ownership leak | `check_ui_surface_gate.sh` |
+| BEM `__` under `ui/` | Unscoped global classes | CSS Modules + CVA |
+| Global `btn--*` on pages | Layout escape | `<Button>` from `ui/system/` |
+| Product-prefixed static (`ad-event-processor-track.js`) | Legacy token | `track.js`, export `trackEvent` (`naming.mdc`) |
+
+## Domain module shape (exemplar)
+
+One admin domain = one `ui/<domain>/` folder + one `helpers/<domain>_api.ts` + one or more thin `pages/*`.
+
+```
+ui/customers/
+  customers_directory.tsx       # section: toolbar + grid + footer
+  customers_directory.module.css
+  customers_grid.tsx
+  customers_grid.module.css
+  customers_grid.variants.ts
+
+helpers/customers_api.ts
+
+pages/customers_page.tsx        # <CustomersDirectory /> + useResource + URL params
+```
+
+Rules:
+
+- Section owns CSS Grid template (`ui.mdc` Layout).
+- Page never formats rows; grid receives pre-labeled fields from API.
+- Variants in `*.variants.ts`; `cn()` string-only in hot row loops (`react.mdc` DoD / hot render path).
+
+List/grid performance (DoD, prefetch, GC): `react.mdc`.
+
+## Migration from legacy tree
+
+| Legacy | Action |
+| :--- | :--- |
+| `web/src/components/*` | Move to `ui/system/` or `ui/<domain>/`; delete when unused |
+| `web/src/models/*` | Remove; use OpenAPI types + server fields |
+| `web/src/styles/*.css` (non-token) | Inline into domain CSS modules; keep shrinking globals |
+| Client `sortRows` / `filter` in pages | Replace with server query params + refetch |
+| `<table>` data grids | `role="grid"` + subgrid (`ui.mdc`) |
+
+Ship order: `admin_contract_gate` → `admin_shell` → `admin_directory_pattern` for first list page → replicate pattern.
+
+## Verification
+
+```bash
+cd web && npm run typecheck
+bash scripts/ci/check_ui_surface_gate.sh
+bash scripts/ci/admin_web.sh
+```
+
+Milestone PR: paste section 7 commands (`ui.mdc`). Per-page spec shape: `ui-backlog.mdc` sections 4.1–4.7.
+
+## Agent checklist
+
+| Step | Action |
+| :--- | :--- |
+| 1 | One layer owner per task |
+| 2 | Handler/DTO before UI field |
+| 3 | New UI under `ui/<domain>/`, not `components/` |
+| 4 | No client list business logic |
+| 5 | `typecheck` + surface gate on touched paths |
+
+## Related rules
+
+`ui.mdc`, `react.mdc`, `boundaries.mdc`, `anti-slop.mdc`, `modular-monolith.mdc`, `structure.mdc`.

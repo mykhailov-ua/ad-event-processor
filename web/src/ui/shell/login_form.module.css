@@ -1,0 +1,107 @@
+.page {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.card {
+  display: grid;
+  gap: var(--space-lg);
+  width: min(100%, 22rem);
+  padding: var(--space-xl);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-elevated);
+}
+
+.header {
+  display: grid;
+  gap: var(--space-xs);
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--text-md-leading);
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text-muted);
+}
+
+.form {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.label {
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text-muted);
+}
+
+.input {
+  height: var(--control-height-md);
+  padding: 0 var(--control-padding-x-md);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  font-family: var(--font-family);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text);
+  background: var(--input-bg);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--input-border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+.actions {
+  display: grid;
+}
+
+.submit {
+  width: 100%;
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-sm);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+}
+
+.noticeWarning {
+  margin: 0;
+  padding: var(--space-sm);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+  color: var(--color-warning);
+  background: var(--warning-subtle);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+}
+
+.loading {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--text-sm-leading);
+  color: var(--color-text-muted);
+  text-align: center;
+}

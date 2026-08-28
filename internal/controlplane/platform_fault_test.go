@@ -9,6 +9,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/payment"
 	ingestdb "ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
@@ -46,8 +47,8 @@ func TestFault_BatchSettlementDrain(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	result := handler.batchApplySettlement(ctx, settlementBatchParams{
-		Credits: []settlementCreditParams{
+	result := handler.BatchApplySettlement(ctx, payment.SettlementBatchParams{
+		Credits: []payment.SettlementCreditParams{
 			{
 				CustomerID:           customerID,
 				AmountMicro:          5_000_000,

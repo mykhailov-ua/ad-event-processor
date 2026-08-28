@@ -5,6 +5,6 @@
 // Import: may use controlplane/authz; must NOT import controlplane root.
 //
 // Verify:
+//   go test ./internal/campaign/ -short -count=1
 //
-//	go test ./internal/campaign/ -short -count=1
 package campaign

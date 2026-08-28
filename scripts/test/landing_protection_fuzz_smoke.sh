@@ -20,6 +20,6 @@ echo "landing_protection_fuzz_smoke: FuzzSafePageVerifyParse 30s"
 go test ./internal/ingestion -run='^$' -fuzz=FuzzSafePageVerifyParse -fuzztime=30s -count=1
 
 echo "landing_protection_fuzz_smoke: FuzzBanditWeightSnapshot 30s"
-go test ./internal/controlplane -run='^$' -fuzz=FuzzBanditWeightSnapshot -fuzztime=30s -count=1
+go test ./internal/flow -run='^$' -fuzz=FuzzBanditWeightSnapshot -fuzztime=30s -count=1
 
 echo "landing_protection_fuzz_smoke: OK"

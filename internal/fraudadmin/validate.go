@@ -26,6 +26,13 @@ func ValidMLIPHashHex(s string) bool {
 	return true
 }
 
+func ValidateMLIPHash(s string) error {
+	if !ValidMLIPHashHex(s) {
+		return ValidationError("ip_hash must be 32 hex characters")
+	}
+	return nil
+}
+
 const (
 	ManualLabelsDefaultLimit = 50
 	ManualLabelsMaxLimit     = 100

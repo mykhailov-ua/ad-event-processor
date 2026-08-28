@@ -7,8 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"ad-event-processor/pkg/bandit"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -181,7 +179,7 @@ func applyThompsonLanders(landers *[]banditLanderJSON, stats map[uuid.UUID]Entit
 	if totalClicks < banditMinClicks || len(arms) < 2 {
 		return false
 	}
-	weights := bandit.ThompsonWeights(arms, rng)
+	weights := ThompsonWeights(arms, rng)
 	return applyEntityWeights(landers, weights, func(l *banditLanderJSON, w int32) { l.Weight = w })
 }
 
@@ -193,34 +191,34 @@ func applyThompsonOffers(offers *[]banditOfferJSON, stats map[uuid.UUID]EntityBa
 	if totalClicks < banditMinClicks || len(arms) < 2 {
 		return false
 	}
-	weights := bandit.ThompsonWeights(arms, rng)
+	weights := ThompsonWeights(arms, rng)
 	return applyOfferWeights(offers, weights)
 }
 
 func banditLanderArms(
 	landers []banditLanderJSON,
 	stats map[uuid.UUID]EntityBanditStat,
-) (map[uuid.UUID]bandit.ArmStat, int64) {
-	arms := make(map[uuid.UUID]bandit.ArmStat)
+) (map[uuid.UUID]ArmStat, int64) {
+	arms := make(map[uuid.UUID]ArmStat)
 	var totalClicks int64
 	for _, l := range landers {
 		st := stats[l.LanderID]
 		totalClicks += st.Clicks
 		if st.Clicks > 0 {
-			arms[l.LanderID] = bandit.ArmStat{Clicks: st.Clicks, Conversions: st.Conversions}
+			arms[l.LanderID] = ArmStat{Clicks: st.Clicks, Conversions: st.Conversions}
 		}
 	}
 	return arms, totalClicks
 }
 
-func banditOfferArms(offers []banditOfferJSON, stats map[uuid.UUID]EntityBanditStat) (map[uuid.UUID]bandit.ArmStat, int64) {
-	arms := make(map[uuid.UUID]bandit.ArmStat)
+func banditOfferArms(offers []banditOfferJSON, stats map[uuid.UUID]EntityBanditStat) (map[uuid.UUID]ArmStat, int64) {
+	arms := make(map[uuid.UUID]ArmStat)
 	var totalClicks int64
 	for _, o := range offers {
 		st := stats[o.OfferID]
 		totalClicks += st.Clicks
 		if st.Clicks > 0 {
-			arms[o.OfferID] = bandit.ArmStat{Clicks: st.Clicks, Conversions: st.Conversions}
+			arms[o.OfferID] = ArmStat{Clicks: st.Clicks, Conversions: st.Conversions}
 		}
 	}
 	return arms, totalClicks

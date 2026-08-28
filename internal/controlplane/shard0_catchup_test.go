@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -29,8 +30,8 @@ func attachMiniredisShard0(t *testing.T, redisShards []redis.UniversalClient) re
 
 func seedGlobalStateOnShard(t *testing.T, ctx context.Context, redisClient redis.UniversalClient) {
 	t.Helper()
-	require.NoError(t, redisClient.HSet(ctx, redisConfigValuesKey, "emergency_breaker", "true", "rate_limit_per_min", "42").Err())
-	require.NoError(t, redisClient.Set(ctx, redisConfigVersionKey, 99, 0).Err())
+	require.NoError(t, redisClient.HSet(ctx, shardadmin.RedisConfigValuesKey, "emergency_breaker", "true", "rate_limit_per_min", "42").Err())
+	require.NoError(t, redisClient.Set(ctx, shardadmin.RedisConfigVersionKey, 99, 0).Err())
 	require.NoError(t, redisClient.SAdd(ctx, "blacklist:manual", "10.0.0.1", "10.0.0.2").Err())
 	require.NoError(t, redisClient.SAdd(ctx, "blacklist:auto", "203.0.113.10").Err())
 	require.NoError(t, redisClient.Set(ctx, "ml:model:version", "v-test", 0).Err())
@@ -41,15 +42,15 @@ func seedGlobalStateOnShard(t *testing.T, ctx context.Context, redisClient redis
 func assertShardGlobalsMatch(t *testing.T, ctx context.Context, want, got redis.UniversalClient) {
 	t.Helper()
 
-	wantBreaker, err := want.HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
+	wantBreaker, err := want.HGet(ctx, shardadmin.RedisConfigValuesKey, "emergency_breaker").Result()
 	require.NoError(t, err)
-	gotBreaker, err := got.HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
+	gotBreaker, err := got.HGet(ctx, shardadmin.RedisConfigValuesKey, "emergency_breaker").Result()
 	require.NoError(t, err)
 	assert.Equal(t, wantBreaker, gotBreaker)
 
-	wantVersion, err := want.Get(ctx, redisConfigVersionKey).Int64()
+	wantVersion, err := want.Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 	require.NoError(t, err)
-	gotVersion, err := got.Get(ctx, redisConfigVersionKey).Int64()
+	gotVersion, err := got.Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, wantVersion, gotVersion)
 
@@ -87,12 +88,12 @@ func TestPickGlobalReconcileSource_fresherShard0Wins(t *testing.T) {
 	})
 
 	seedGlobalStateOnShard(t, ctx, redisShards[0])
-	require.NoError(t, redisShards[0].Set(ctx, redisConfigVersionKey, 200, 0).Err())
+	require.NoError(t, redisShards[0].Set(ctx, shardadmin.RedisConfigVersionKey, 200, 0).Err())
 
-	require.NoError(t, redisShards[1].Set(ctx, redisConfigVersionKey, 5, 0).Err())
+	require.NoError(t, redisShards[1].Set(ctx, shardadmin.RedisConfigVersionKey, 5, 0).Err())
 	require.NoError(t, redisShards[1].SAdd(ctx, "blacklist:manual", "stale-ip").Err())
 
-	source := pickGlobalReconcileSource(ctx, redisShards)
+	source := shardadmin.PickGlobalReconcileSource(ctx, redisShards)
 	assert.Equal(t, redisShards[0], source)
 }
 
@@ -115,10 +116,10 @@ func TestShard0Catchup_staleShard1DoesNotOverwriteFresherShard0(t *testing.T) {
 	})
 
 	seedGlobalStateOnShard(t, ctx, redisShards[0])
-	require.NoError(t, redisShards[0].Set(ctx, redisConfigVersionKey, 200, 0).Err())
+	require.NoError(t, redisShards[0].Set(ctx, shardadmin.RedisConfigVersionKey, 200, 0).Err())
 
-	require.NoError(t, redisShards[1].Set(ctx, redisConfigVersionKey, 3, 0).Err())
-	require.NoError(t, redisShards[1].HSet(ctx, redisConfigValuesKey, "emergency_breaker", "false").Err())
+	require.NoError(t, redisShards[1].Set(ctx, shardadmin.RedisConfigVersionKey, 3, 0).Err())
+	require.NoError(t, redisShards[1].HSet(ctx, shardadmin.RedisConfigValuesKey, "emergency_breaker", "false").Err())
 	require.NoError(t, redisShards[1].Del(ctx, "blacklist:manual", "blacklist:auto").Err())
 	require.NoError(t, redisShards[1].SAdd(ctx, "blacklist:manual", "stale-ip").Err())
 
@@ -131,11 +132,11 @@ func TestShard0Catchup_staleShard1DoesNotOverwriteFresherShard0(t *testing.T) {
 	after := testutil.ToFloat64(metrics.Shard0CatchupLastSuccessTimestamp)
 	assert.Greater(t, after, before)
 
-	ver, err := redisShards[0].Get(ctx, redisConfigVersionKey).Int64()
+	ver, err := redisShards[0].Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 	require.NoError(t, err)
 	assert.Equal(t, int64(200), ver)
 
-	breaker, err := redisShards[0].HGet(ctx, redisConfigValuesKey, "emergency_breaker").Result()
+	breaker, err := redisShards[0].HGet(ctx, shardadmin.RedisConfigValuesKey, "emergency_breaker").Result()
 	require.NoError(t, err)
 	assert.Equal(t, "true", breaker)
 
@@ -150,11 +151,11 @@ func TestShard0Nil_CatchupAfterRecovery(t *testing.T) {
 	ctx := context.Background()
 
 	seedGlobalStateOnShard(t, ctx, redisShards[1])
-	require.NoError(t, syncGlobalSetMemberToAllShards(ctx, redisShards, "blacklist:manual", "10.0.0.1", true))
-	require.NoError(t, syncGlobalConfigToAllShards(ctx, redisShards, map[string]string{"emergency_breaker": "true"}, 99))
+	require.NoError(t, shardadmin.SyncGlobalSetMemberToAllShards(ctx, redisShards, "blacklist:manual", "10.0.0.1", true))
+	require.NoError(t, shardadmin.SyncGlobalConfigToAllShards(ctx, redisShards, map[string]string{"emergency_breaker": "true"}, 99))
 
 	shard0 := attachMiniredisShard0(t, redisShards)
-	require.NoError(t, shard0.Set(ctx, redisConfigVersionKey, 1, 0).Err())
+	require.NoError(t, shard0.Set(ctx, shardadmin.RedisConfigVersionKey, 1, 0).Err())
 	require.NoError(t, shard0.SAdd(ctx, "blacklist:manual", "1.2.3.4").Err())
 
 	svc := &Service{
@@ -165,7 +166,7 @@ func TestShard0Nil_CatchupAfterRecovery(t *testing.T) {
 
 	require.NoError(t, svc.RunShard0Catchup(ctx))
 	assertShardGlobalsMatch(t, ctx, redisShards[1], redisShards[0])
-	require.NoError(t, validateEdgeBlacklistSource(ctx, redisShards))
+	require.NoError(t, shardadmin.ValidateEdgeBlacklistSource(ctx, redisShards))
 
 	epoch, err := redisShards[0].Get(ctx, domain.CampaignEpochKey).Int64()
 	require.NoError(t, err)
@@ -190,7 +191,7 @@ func TestReplicateGlobalsFromPrimary(t *testing.T) {
 	t.Cleanup(func() { _ = source.Close(); _ = target.Close() })
 
 	seedGlobalStateOnShard(t, ctx, source)
-	require.NoError(t, replicateGlobalsToTarget(ctx, source, target))
+	require.NoError(t, shardadmin.ReplicateGlobalsToTarget(ctx, source, target))
 	assertShardGlobalsMatch(t, ctx, source, target)
 }
 
@@ -213,7 +214,7 @@ func TestReplicateConfigVersionFromPrimary_allGlobals(t *testing.T) {
 	})
 
 	seedGlobalStateOnShard(t, ctx, redisShards[1])
-	require.NoError(t, replicateConfigVersionFromPrimary(ctx, redisShards))
+	require.NoError(t, shardadmin.ReplicateConfigVersionFromPrimary(ctx, redisShards))
 	assertShardGlobalsMatch(t, ctx, redisShards[1], redisShards[0])
 }
 
@@ -227,14 +228,10 @@ func TestShard0CatchupWorker_runsOnNilToHealthy(t *testing.T) {
 		cfg:         &config.Config{CampaignUpdateChannel: "campaigns:update"},
 	}
 	worker := NewShard0CatchupWorker(svc, database.RedisShardOptions{})
-	require.True(t, worker.shard0Seen)
-
 	attachMiniredisShard0(t, redisShards)
-	worker.shard0Seen = true
-	worker.tick(ctx)
+	worker.Tick(ctx)
 
 	assertShardGlobalsMatch(t, ctx, redisShards[1], redisShards[0])
-	assert.False(t, worker.shard0Seen)
 }
 
 func TestShard0NeedsCatchup_detectsLag(t *testing.T) {
@@ -243,8 +240,8 @@ func TestShard0NeedsCatchup_detectsLag(t *testing.T) {
 	seedGlobalStateOnShard(t, ctx, redisShards[1])
 	shard0 := attachMiniredisShard0(t, redisShards)
 
-	assert.True(t, shard0NeedsCatchup(ctx, redisShards))
+	assert.True(t, shardadmin.Shard0NeedsCatchup(ctx, redisShards))
 
-	require.NoError(t, replicateGlobalsToTarget(ctx, redisShards[1], shard0))
-	assert.False(t, shard0NeedsCatchup(ctx, redisShards))
+	require.NoError(t, shardadmin.ReplicateGlobalsToTarget(ctx, redisShards[1], shard0))
+	assert.False(t, shardadmin.Shard0NeedsCatchup(ctx, redisShards))
 }

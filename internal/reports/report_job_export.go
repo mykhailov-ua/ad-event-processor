@@ -112,14 +112,31 @@ func writeReportCSV(ctx context.Context, deps ReportExportDeps, path string, spe
 			return err
 		}
 		err = paginateCHExport(reportExportPageSize,
-			func(offset, limit int) ([]ivtBySourceCHRow, int64, error) {
-				return queryIVTBySourceRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
+			func(offset, limit int) ([]IVTBySourceRowDTO, int64, error) {
+				raw, total, err := queryIVTBySourceRows(ctx, deps.ClickHouseQuery, campaignIDs, from, to, limit, offset)
+				if err != nil {
+					return nil, 0, err
+				}
+				rows := make([]IVTBySourceRowDTO, 0, len(raw))
+				for _, row := range raw {
+					rows = append(rows, IVTBySourceRowDTO{
+						CampaignID:  row.CampaignID,
+						Sub1:        row.Sub1,
+						Sub2:        row.Sub2,
+						Country:     row.Country,
+						Impressions: row.Impressions,
+						Clicks:      row.Clicks,
+						IVTEvents:   row.IVTEvents,
+						IVTRate:     calcIVTRate(row.IVTEvents, row.Clicks),
+					})
+				}
+				return rows, total, nil
 			},
-			func(row ivtBySourceCHRow) error {
+			func(row IVTBySourceRowDTO) error {
 				return w.Write([]string{
 					row.CampaignID, row.Sub1, row.Sub2, row.Country,
 					fmt.Sprintf("%d", row.Impressions), fmt.Sprintf("%d", row.Clicks),
-					fmt.Sprintf("%d", row.IVTEvents), fmt.Sprintf("%.6f", calcIVTRate(row.IVTEvents, row.Clicks)),
+					fmt.Sprintf("%d", row.IVTEvents), fmt.Sprintf("%.6f", row.IVTRate),
 				})
 			},
 		)

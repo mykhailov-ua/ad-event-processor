@@ -16,7 +16,7 @@ func TestOpsAlerter_AlertOutboxStuck(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
+	alerter := NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 	assert.Equal(t, 120, alerter.OutboxStuckThresholdSec())
 
@@ -33,7 +33,7 @@ func TestOpsAlerter_AlertCHEmergencyDrop(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
+	alerter := NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertCHEmergencyDrop(context.Background(), "impressions", "202401", 92.5, 90)
@@ -50,7 +50,7 @@ func TestOpsAlerter_AlertBlacklistJanitorFailed(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
+	alerter := NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertBlacklistJanitorFailed(context.Background(), assert.AnError)
@@ -66,7 +66,7 @@ func TestOpsAlerter_AlertSlotMigrationError(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
+	alerter := NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertSlotMigrationError(context.Background(), "copy", assert.AnError)
@@ -83,10 +83,10 @@ func TestOutboxMetrics_AlertsWhenStale(t *testing.T) {
 	cfg.Management.OpsAlertsEnabled = true
 	cfg.Management.OpsAlertOutboxStuckSec = 60
 
-	svc := &Service{alerter: NewOpsAlerter(testNotifierClient(stub), cfg)}
-	worker := &OutboxWorker{svc: svc}
+	svc := &Service{alerter: NewOpsAlerter(stub, cfg)}
+	worker := NewOutboxWorker(svc)
 
-	worker.recordOutboxLagFromValues(context.Background(), 5, 90)
+	worker.RecordOutboxLagFromValues(context.Background(), 5, 90)
 	time.Sleep(100 * time.Millisecond)
 
 	requests := stub.snapshot()
@@ -94,24 +94,12 @@ func TestOutboxMetrics_AlertsWhenStale(t *testing.T) {
 	assert.Contains(t, requests[0].Body, "Outbox backlog stale")
 }
 
-func TestOpsAlerter_EnqueueFailureMetaAlert(t *testing.T) {
-	stub := &stubNotifierAPITest{fail: true}
-	cfg := testNotifierConfig()
-	cfg.Management.OpsAlertsEnabled = true
-
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
-	require.NotNil(t, alerter)
-
-	err := alerter.enqueueNotification(context.Background(), "test", "test", "body", false)
-	require.Error(t, err)
-}
-
 func TestFault_opsAlertExtendedCoverage(t *testing.T) {
 	stub := &stubNotifierAPITest{}
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
+	alerter := NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertBlacklistJanitorFailed(context.Background(), assert.AnError)

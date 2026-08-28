@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -56,7 +55,7 @@ func newFraudDecisionsHandlers(stub *fraudDecisionsStub) *fraudadmin.HTTPHandler
 			return customerID, nil
 		},
 		WriteServiceError: func(w http.ResponseWriter, err error) {
-			if errors.Is(err, controlplane.ErrFraudDecisionNotFound) {
+			if errors.Is(err, fraudadmin.ErrFraudDecisionNotFound) {
 				httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "resource not found")
 				return
 			}
@@ -107,7 +106,7 @@ func TestGetFraudDecision_returnsBreakdown(t *testing.T) {
 }
 
 func TestGetFraudDecision_notFound(t *testing.T) {
-	stub := &fraudDecisionsStub{err: controlplane.ErrFraudDecisionNotFound}
+	stub := &fraudDecisionsStub{err: fraudadmin.ErrFraudDecisionNotFound}
 	h := newFraudDecisionsHandlers(stub)
 	mux := http.NewServeMux()
 	h.Register(mux)

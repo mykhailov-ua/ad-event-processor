@@ -37,7 +37,7 @@ func TestImportAndApplyCampaignTemplates(t *testing.T) {
 	svc := controlplane.NewService(ctx, pool, nil, nil, nil)
 	h := &controlplane.IntegrationSchemaHTTPHandlers{
 		Pool:            pool,
-		TemplateCatalog: svc,
+		TemplateCatalog: svc.TemplateCatalog(pool),
 		ResolveTrackingDomain: func(context.Context) string {
 			return "trk.example.com"
 		},

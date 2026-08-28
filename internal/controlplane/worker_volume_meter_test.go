@@ -12,7 +12,7 @@ func TestComputeWeightedUnitsFromRows_goldenFixture(t *testing.T) {
 	campA := uuid.MustParse("10000000-0000-4000-8000-000000000001")
 	campB := uuid.MustParse("10000000-0000-4000-8000-000000000002")
 
-	rows := []rollupRow{
+	rows := []RollupRow{
 		{CampaignID: campA, EventType: "click", Count: 1000},
 		{CampaignID: campA, EventType: "duplicate", Count: 100},
 		{CampaignID: campB, EventType: "ebpf_drop", Count: 500},

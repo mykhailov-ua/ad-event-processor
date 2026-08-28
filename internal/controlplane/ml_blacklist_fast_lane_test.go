@@ -9,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/edge"
 	"ad-event-processor/pkg/faultproof"
 
 	"github.com/google/uuid"
@@ -16,6 +17,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type quarantinePublishCounter struct {
+	redis.UniversalClient
+	count *atomic.Int64
+}
+
+func (c *quarantinePublishCounter) Publish(ctx context.Context, channel string, message interface{}) *redis.IntCmd {
+	if channel == edge.FraudQuarantineChannel {
+		c.count.Add(1)
+	}
+	return c.UniversalClient.Publish(ctx, channel, message)
+}
 
 func TestFault_MLBlacklistFastLaneDuringBacklog_holdout(t *testing.T) {
 	if testing.Short() {

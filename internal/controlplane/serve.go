@@ -9,8 +9,10 @@ import (
 	"strings"
 	"time"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
@@ -19,11 +21,17 @@ import (
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/notify"
+	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/openapivalidate"
+	"ad-event-processor/internal/opsadmin"
+	"ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/rtbadmin"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/httpresponse"
 	"ad-event-processor/pkg/netaddr"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -42,15 +50,22 @@ type InProcessNotifierModule interface {
 	StartWorkers(ctx context.Context)
 }
 
+type TCPControlPublisher interface {
+	PublishSnapshot(ctx context.Context, routingEpoch int64, slotVersion int32)
+}
+
+type ControlServersStarter func(ctx context.Context, cfg *config.Config, pool *pgxpool.Pool, sharder domain.Sharder, numShards int) (TCPControlPublisher, func(), error)
+
 type ServeOptions struct {
-	Auth           *AuthClient
-	Billing        *BillingClient
-	Payment        *PaymentClient
-	Notifier       *NotifierClient
-	BillingModule  InProcessBillingModule
-	PaymentModule  InProcessPaymentModule
-	NotifierModule InProcessNotifierModule
-	RtbBidShadeSim RtbBidShadeSimulator
+	Auth                *identity.AuthClient
+	Billing             *ledger.BillingClient
+	Payment             *payment.APIClient
+	Notifier            *notify.Client
+	BillingModule       InProcessBillingModule
+	PaymentModule       InProcessPaymentModule
+	NotifierModule      InProcessNotifierModule
+	RtbBidShadeSim      rtbadmin.BidShadeSimulator
+	StartControlServers ControlServersStarter
 }
 
 func (o ServeOptions) Monolith() bool {
@@ -91,7 +106,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Error("failed to connect to redis shards", "error", err)
 		return err
 	}
-	licensing.StartLicenseEpochSync(ctx, PickHealthyControlShard(redisShards))
+	licensing.StartLicenseEpochSync(ctx, shardadmin.PickHealthyControlShard(redisShards))
 
 	sharder := domain.NewStaticSlotSharder(len(redisShards))
 
@@ -102,32 +117,25 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return err
 	}
 
-	SetTrustedProxies(cfg.TrustedProxies)
+	ctrlhttp.SetTrustedProxies(cfg.TrustedProxies)
 
-	authMiddleware := NewAuthMiddleware(tokenMaker, PickHealthyControlShard(redisShards), cfg, controlAuthClient)
+	authMiddleware := NewAuthMiddleware(tokenMaker, shardadmin.PickHealthyControlShard(redisShards), cfg, controlAuthClient)
 	authMiddleware.SetControlRedisShards(redisShards)
-	policyStore := InitPolicyStore()
+	policyStore := ctrlhttp.InitPolicyStore()
 	authMiddleware.SetPolicyStore(policyStore)
 	authMiddleware.SetPool(pool)
 	authHandler := NewAuthHandler(controlAuthClient, tokenMaker, redisShards, cfg, authMiddleware)
 
-	if cfg.UDPControlEnabled {
-		udpSrv := NewUDPControlServer(cfg, pool, sharder, len(redisShards))
-		if err := udpSrv.Start(ctx); err != nil {
-			slog.Error("udp control server start failed", "error", err)
+	var tcpControl TCPControlPublisher
+	if opts.StartControlServers != nil {
+		tcpPub, closeControl, err := opts.StartControlServers(ctx, cfg, pool, sharder, len(redisShards))
+		if err != nil {
 			return err
 		}
-		defer func() { _ = udpSrv.Close() }()
-	}
-
-	var tcpSrv *TCPControlServer
-	if cfg.TCPControlEnabled {
-		tcpSrv = NewTCPControlServer(cfg, pool, sharder, len(redisShards))
-		if err := tcpSrv.Start(ctx); err != nil {
-			slog.Error("tcp control server start failed", "error", err)
-			return err
+		if closeControl != nil {
+			defer closeControl()
 		}
-		defer func() { _ = tcpSrv.Close() }()
+		tcpControl = tcpPub
 	}
 
 	if cfg.MultiRegionEnabled {
@@ -156,8 +164,8 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return fmt.Errorf("management service init failed")
 	}
 	svc.SetPaymentPool(pool)
-	if tcpSrv != nil {
-		svc.SetTCPControlServer(tcpSrv)
+	if tcpControl != nil {
+		svc.SetTCPControlPublisher(tcpControl)
 	}
 
 	if cfg.IsClickHouseEnabled() {
@@ -300,7 +308,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		}
 		budgetDeltaAgg := domain.NewBudgetDeltaAggregator()
 		svc.SetBrokerDeltas(budgetDeltaAgg)
-		deltaConsumer := NewBudgetDeltaConsumer(budgetDeltaAgg, domain.BrokerConsumerConfig{
+		deltaConsumer := rtb.NewBudgetDeltaConsumer(budgetDeltaAgg, rtb.BudgetDeltaConsumerConfig{
 			BrokerAddr: cfg.Broker.URL,
 			RedisURL:   brokerRedisURL,
 			Topic:      cfg.BudgetDeltaTopic,
@@ -449,13 +457,17 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 			slog.Info("notifier module client enabled")
 		}
 	}
-	opsAlerter := NewOpsAlerter(notifierClient, cfg)
+	var notifierAPI notify.NotifierAPI
+	if notifierClient != nil {
+		notifierAPI = notifierClient.API()
+	}
+	opsAlerter := opsadmin.NewOpsAlerter(notifierAPI, cfg)
 	if opsAlerter != nil {
 		svc.SetOpsAlerter(opsAlerter)
 		slog.Info("ops alerts enabled")
 	}
 
-	alertmanagerWebhook := NewAlertmanagerWebhook(notifierClient, cfg)
+	alertmanagerWebhook := NewAlertmanagerWebhook(notifierClient.API(), cfg)
 
 	if cfg.SlotMigrationEnabled {
 		migrationInterval := time.Duration(cfg.SlotMigrationIntervalMs) * time.Millisecond
@@ -477,11 +489,16 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	controlHandler := NewHandler(svc, cfg, authMiddleware, controlAuthClient, paymentClient, billingClient)
 	if mod, ok := opts.BillingModule.(*ledger.Module); ok && mod != nil {
-		controlHandler.invoiceDelivery = newInvoiceDeliveryRetryer(mod.Ledger(), redisShards)
+		controlHandler.invoiceDelivery = billingadmin.NewInvoiceDeliveryRetryer(mod.Ledger(), redisShards)
 	}
 
 	mux := http.NewServeMux()
-	RegisterOpsRoutes(ctx, mux, pool, redisShards, cfg)
+	opsadmin.RegisterOpsRoutes(ctx, mux, opsadmin.PlatformRoutesDeps{
+		Pool:         pool,
+		RedisShards:  redisShards,
+		Config:       cfg,
+		LicenseReady: licenseIngestReady,
+	})
 	if alertmanagerWebhook != nil {
 		alertmanagerWebhook.Register(mux)
 		slog.Info("alertmanager webhook adapter enabled")
@@ -490,7 +507,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if scrapeURL == "" {
 		scrapeURL = "http://127.0.0.1:" + cfg.ManagementPort + "/metrics"
 	}
-	svc.StartOpsMetricScraper(ctx, scrapeURL)
+	svc.startOpsMetricScraper(ctx, scrapeURL)
 	slog.Info("ops metric scraper enabled", "url", scrapeURL)
 	svc.StartFilterRejectRollupWorker(ctx, scrapeURL)
 	wireReportExportHooks()
@@ -519,9 +536,9 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		return err
 	}
 
-	corsMdl := NewCORSMiddleware(cfg.AllowedOrigins)
-	csrfMdl := NewCSRFMiddleware(string(cfg.AdminAPIKey))
-	gatewayHandler := SecurityHeadersMiddleware(corsMdl(csrfMdl(validateMW(mux))))
+	corsMdl := ctrlhttp.NewCORSMiddleware(cfg.AllowedOrigins)
+	csrfMdl := ctrlhttp.NewCSRFMiddleware(string(cfg.AdminAPIKey))
+	gatewayHandler := ctrlhttp.SecurityHeadersMiddleware(corsMdl(csrfMdl(validateMW(mux))))
 
 	slog.Info("starting management gateway server", "port", cfg.ManagementPort)
 
@@ -609,7 +626,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	svc.Close()
 
-	closeConnectedRedisShards(redisShards)
+	shardadmin.CloseConnectedRedisShards(redisShards)
 	slog.Info("management server shutdown complete")
 	return ctx.Err()
 }

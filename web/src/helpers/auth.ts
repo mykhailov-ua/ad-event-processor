@@ -1,11 +1,10 @@
-import * as idempotency from './idempotency.js';
-import * as storage from './storage.js';
 import type { AuthUser } from '../types/auth.js';
+import * as storage from './storage.js';
 
-export type { AuthUser } from '../types/auth.js';
+export type { AuthUser };
 
-let _user: AuthUser | null = null;
-let _csrf: string | null = null;
+let user: AuthUser | null = null;
+let csrf: string | null = null;
 
 export function hydrateFromBoot(scriptId = '__BOOT__'): AuthUser | null {
   const el = document.getElementById(scriptId);
@@ -15,12 +14,12 @@ export function hydrateFromBoot(scriptId = '__BOOT__'): AuthUser | null {
       user?: AuthUser | null;
       permissions?: string[];
     };
-    _user = data.user ?? null;
-    if (_user && Array.isArray(data.permissions)) {
-      _user.permissions = data.permissions;
+    user = data.user ?? null;
+    if (user && Array.isArray(data.permissions)) {
+      user.permissions = data.permissions;
     }
     hydrateCsrfFromCookie();
-    return _user;
+    return user;
   } catch {
     return hydrateCsrfFromCookie();
   }
@@ -28,8 +27,8 @@ export function hydrateFromBoot(scriptId = '__BOOT__'): AuthUser | null {
 
 function hydrateCsrfFromCookie(): AuthUser | null {
   const fromCookie = readCsrfCookie();
-  if (fromCookie) _csrf = fromCookie;
-  return _user;
+  if (fromCookie) csrf = fromCookie;
+  return user;
 }
 
 function readCsrfCookie(): string | null {
@@ -44,26 +43,25 @@ function readCsrfCookie(): string | null {
   return null;
 }
 
-export function setUser(user: AuthUser): void {
-  _user = user;
+export function setUser(next: AuthUser): void {
+  user = next;
 }
 
 export function getUser(): AuthUser | null {
-  return _user;
+  return user;
 }
 
 export function setCsrfFromLoginResponse(header: string): void {
-  _csrf = header;
+  csrf = header;
 }
 
 export function getCsrfToken(): string | null {
-  if (_csrf) return _csrf;
+  if (csrf) return csrf;
   return readCsrfCookie();
 }
 
 export function logoutLocal(): void {
-  _user = null;
-  _csrf = null;
-  idempotency.clearAll();
+  user = null;
+  csrf = null;
   storage.clearIdempotencyPendingAll();
 }

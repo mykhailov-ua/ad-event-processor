@@ -1,12 +1,8 @@
 package controlplane
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -19,10 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func testNotifierClient(stub notify.NotifierAPI) *NotifierClient {
-	return &NotifierClient{api: stub}
-}
 
 type stubNotifierAPITest struct {
 	mu     sync.Mutex
@@ -90,7 +82,7 @@ func testNotifierConfig() *config.Config {
 }
 
 func TestResolveOpsAlertTargets_MultiChannel(t *testing.T) {
-	targets := resolveOpsAlertTargets(testNotifierConfig())
+	targets := notify.ResolveOpsAlertTargets(testNotifierConfig())
 	require.Len(t, targets, 3)
 	assert.Equal(t, notify.ProviderTelegram, targets[0].Provider)
 	assert.Equal(t, notify.ProviderSlack, targets[1].Provider)
@@ -98,183 +90,11 @@ func TestResolveOpsAlertTargets_MultiChannel(t *testing.T) {
 }
 
 func TestResolveBroadcastProviders_AllConfigured(t *testing.T) {
-	providers := resolveBroadcastProviders(testNotifierConfig())
+	providers := notify.ResolveBroadcastProviders(testNotifierConfig())
 	require.Len(t, providers, 3)
 	assert.Equal(t, notify.ProviderTelegram, providers[0])
 	assert.Equal(t, notify.ProviderSlack, providers[1])
 	assert.Equal(t, notify.ProviderSMS, providers[2])
-}
-
-func TestAlertSeverityBroadcast(t *testing.T) {
-	assert.True(t, alertSeverityBroadcast(AlertmanagerAlert{
-		Labels: map[string]string{"severity": "critical"},
-	}))
-	assert.False(t, alertSeverityBroadcast(AlertmanagerAlert{
-		Labels: map[string]string{"severity": "warning"},
-	}))
-	assert.False(t, alertSeverityBroadcast(AlertmanagerAlert{
-		Labels: map[string]string{},
-	}))
-}
-
-func TestAlertmanagerWebhook_CriticalUsesBroadcast(t *testing.T) {
-	stub := &stubNotifierAPITest{}
-	cfg := testNotifierConfig()
-	cfg.Management.AlertmanagerWebhookEnabled = true
-
-	h := &AlertmanagerWebhook{
-		client:             testNotifierClient(stub),
-		provider:           notify.ProviderTelegram,
-		recipient:          cfg.Notifier.TelegramChatID,
-		broadcastProviders: resolveBroadcastProviders(cfg),
-	}
-
-	payload := AlertmanagerPayload{
-		Alerts: []AlertmanagerAlert{{
-			Status: "firing",
-			Labels: map[string]string{
-				"alertname": "HighErrorRate",
-				"severity":  "critical",
-			},
-			Annotations: map[string]string{
-				"summary":     "Tracker errors elevated",
-				"description": "5xx ratio above SLO",
-			},
-			StartsAt: time.Now().UTC(),
-		}},
-	}
-	body, err := json.Marshal(payload)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/ops/alertmanager/webhook", bytes.NewReader(body))
-	rec := httptest.NewRecorder()
-	h.handle(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	requests := stub.snapshot()
-	require.Len(t, requests, 1)
-	assert.True(t, requests[0].Broadcast)
-	assert.Len(t, requests[0].BroadcastProviders, 3)
-	assert.Equal(t, "alertmanager:HighErrorRate:firing", requests[0].DedupKey)
-}
-
-func TestAlertmanagerWebhook_WarningUsesFallback(t *testing.T) {
-	stub := &stubNotifierAPITest{}
-	cfg := testNotifierConfig()
-
-	h := &AlertmanagerWebhook{
-		client:             testNotifierClient(stub),
-		provider:           notify.ProviderTelegram,
-		recipient:          cfg.Notifier.TelegramChatID,
-		broadcastProviders: resolveBroadcastProviders(cfg),
-	}
-
-	payload := AlertmanagerPayload{
-		Alerts: []AlertmanagerAlert{{
-			Status: "firing",
-			Labels: map[string]string{
-				"alertname": "LogCompactorHotLagHigh",
-				"severity":  "warning",
-			},
-			Annotations: map[string]string{"summary": "Hot lag high"},
-			StartsAt:    time.Now().UTC(),
-		}},
-	}
-	body, err := json.Marshal(payload)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/ops/alertmanager/webhook", bytes.NewReader(body))
-	rec := httptest.NewRecorder()
-	h.handle(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	requests := stub.snapshot()
-	require.Len(t, requests, 1)
-	assert.False(t, requests[0].Broadcast)
-	assert.Empty(t, requests[0].BroadcastProviders)
-}
-
-func TestOpsAlerter_CriticalEventBroadcast(t *testing.T) {
-	stub := &stubNotifierAPITest{}
-	cfg := testNotifierConfig()
-	cfg.Management.OpsAlertsEnabled = true
-
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
-	require.NotNil(t, alerter)
-
-	err := alerter.enqueueNotification(context.Background(), "recon", "recon", "body", true)
-	require.NoError(t, err)
-
-	requests := stub.snapshot()
-	require.Len(t, requests, 1)
-	assert.True(t, requests[0].Broadcast)
-	assert.Len(t, requests[0].BroadcastProviders, 3)
-}
-
-func TestOpsAlerter_WarningEventFallback(t *testing.T) {
-	stub := &stubNotifierAPITest{}
-	cfg := testNotifierConfig()
-	cfg.Management.OpsAlertsEnabled = true
-
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
-	require.NotNil(t, alerter)
-
-	err := alerter.enqueueNotification(context.Background(), "migration", "migration", "body", false)
-	require.NoError(t, err)
-
-	requests := stub.snapshot()
-	require.Len(t, requests, 1)
-	assert.False(t, requests[0].Broadcast)
-}
-
-func TestFault_alertmanagerWebhookFanOut(t *testing.T) {
-	stub := &stubNotifierAPITest{}
-	cfg := testNotifierConfig()
-	cfg.Management.AlertmanagerWebhookEnabled = true
-
-	h := &AlertmanagerWebhook{
-		client:             testNotifierClient(stub),
-		provider:           notify.ProviderTelegram,
-		recipient:          cfg.Notifier.TelegramChatID,
-		broadcastProviders: resolveBroadcastProviders(cfg),
-	}
-
-	const alertCount = 3
-	alerts := make([]AlertmanagerAlert, 0, alertCount)
-	for i := range alertCount {
-		alerts = append(alerts, AlertmanagerAlert{
-			Status: "firing",
-			Labels: map[string]string{
-				"alertname": "RedisInstanceDown",
-				"severity":  "critical",
-			},
-			Annotations: map[string]string{"summary": "Redis down"},
-			StartsAt:    time.Now().UTC(),
-		})
-		_ = i
-	}
-
-	payload := AlertmanagerPayload{Alerts: alerts}
-	body, err := json.Marshal(payload)
-	require.NoError(t, err)
-
-	req := httptest.NewRequest(http.MethodPost, "/ops/alertmanager/webhook", bytes.NewReader(body))
-	rec := httptest.NewRecorder()
-	h.handle(rec, req)
-
-	requests := stub.snapshot()
-	require.Len(t, requests, alertCount)
-	for _, req := range requests {
-		assert.True(t, req.Broadcast)
-		assert.Len(t, req.BroadcastProviders, 3)
-	}
-
-	faultproof.Log(t, "alertmanager_webhook_fanout", map[string]string{
-		"alerts":   "3",
-		"channels": "3",
-		"mode":     "BROADCAST",
-		"severity": "critical",
-	})
 }
 
 func TestFault_opsEventFanOut(t *testing.T) {
@@ -282,7 +102,7 @@ func TestFault_opsEventFanOut(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(testNotifierClient(stub), cfg)
+	alerter := NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertReconDiscrepancy(context.Background(), 42, 3, 1000, "2026-07-04")

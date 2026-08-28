@@ -1,0 +1,48 @@
+.root {
+  display: grid;
+  grid-template-rows: auto auto auto 1fr auto;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: var(--page-max-width);
+  min-height: 0;
+}
+
+.filters {
+  display: grid;
+}
+
+.filterRow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, max-content));
+  gap: var(--space-sm);
+  align-items: end;
+}
+
+.filterField {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.filterLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.textInput {
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  min-width: 10rem;
+}
+
+.content {
+  display: grid;
+  min-height: 0;
+  overflow: auto;
+}
+
+.footer {
+  display: grid;
+}

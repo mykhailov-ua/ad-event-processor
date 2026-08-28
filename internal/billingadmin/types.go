@@ -39,6 +39,10 @@ type ItemsResponse[T any] struct {
 }
 
 type LedgerLinesListResponse = CursorListResponse[LedgerLineDTO]
+
+type ExportJobCreatedResponse struct {
+	JobID string `json:"job_id"`
+}
 type DeliveryListResponse = ItemsResponse[DeliveryDTO]
 
 var ErrForbidden = errors.New("forbidden")

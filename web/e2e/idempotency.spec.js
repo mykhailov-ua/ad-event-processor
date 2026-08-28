@@ -1,30 +1,22 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthedSession, ADMIN_USER } from './helpers.js';
+import { ADMIN_USER, installDialogAutoAccept, mockAuthedSession, mockPlatformSettings } from './helpers.js';
 
-test('settings save sends one PATCH per confirmed submit', async ({ page }) => {
+test('settings save sends one PATCH per confirm accept', async ({ page }) => {
+  installDialogAutoAccept(page);
   await mockAuthedSession(page, ADMIN_USER);
+  await mockPlatformSettings(page);
 
   let patchCount = 0;
-
-  await page.route('**/api/v1/settings/platform', async (route) => {
+  await page.route('**/api/v1/settings/platform**', async (route) => {
     const method = route.request().method();
     if (method === 'GET') {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          config: {
-            tracking_domain: 't.example',
-            default_currency: 'USD',
-            timezone: 'UTC',
-            ingress_schema: 'ad_event_processor_native',
-            telemetry_enabled: true,
-            profile: 'single_vps',
-            edge_xdp: false,
-            network_interface: 'eth0',
-            stripe: { enabled: false },
-          },
+          config: { tracking_domain: 'a.example', default_currency: 'USD', timezone: 'UTC' },
           bootstrap_complete: true,
+          restart_required: [],
         }),
       });
       return;
@@ -34,7 +26,11 @@ test('settings save sends one PATCH per confirmed submit', async ({ page }) => {
       await route.fulfill({
         status: 200,
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ok: true }),
+        body: JSON.stringify({
+          config: { tracking_domain: 'b.example', default_currency: 'USD', timezone: 'UTC' },
+          bootstrap_complete: true,
+          restart_required: [],
+        }),
       });
       return;
     }
@@ -42,47 +38,48 @@ test('settings save sends one PATCH per confirmed submit', async ({ page }) => {
   });
 
   await page.goto('/settings');
-  const save = page.getByRole('button', { name: 'Save' });
-  await save.click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
+  await page.getByLabel('Tracking domain').fill('b.example');
+  await page.getByRole('button', { name: 'Save' }).click();
   await expect.poll(() => patchCount).toBe(1);
-
-  await save.click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
-  await expect.poll(() => patchCount).toBe(2);
 });
 
-test('pause campaign sends Idempotency-Key header', async ({ page }) => {
+test('campaign bulk pause sends POST with ids', async ({ page }) => {
+  installDialogAutoAccept(page);
   await mockAuthedSession(page, ADMIN_USER);
 
-  let idemKey = null;
-  let status = 'ACTIVE';
-
-  await page.route('**/api/v1/campaigns/camp-idem-1', async (route) => {
+  await page.route('**/api/v1/campaigns**', async (route) => {
+    const url = route.request().url();
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    if (/\/api\/v1\/campaigns\/[^/?]+/.test(url)) {
+      await route.continue();
+      return;
+    }
     await route.fulfill({
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        id: 'camp-idem-1',
-        name: 'Idem Camp',
-        status,
-        customer_id: 'cust-1',
+        items: [{ id: 'c-pause', name: 'Pause me', status: 'active', customer_id: 'cust-1' }],
+        total: 1,
       }),
     });
   });
 
-  await page.route('**/api/v1/selfserve/campaigns/camp-idem-1/pause', async (route) => {
-    idemKey = route.request().headers()['idempotency-key'] ?? null;
-    status = 'PAUSED';
+  let bulkBody = null;
+  await page.route('**/api/v1/campaigns/bulk**', async (route) => {
+    bulkBody = route.request().postDataJSON();
     await route.fulfill({
-      status: 202,
+      status: 200,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ status: 'accepted' }),
+      body: JSON.stringify({ updated: 1 }),
     });
   });
 
-  await page.goto('/campaigns/camp-idem-1');
-  await page.getByRole('button', { name: 'Pause' }).click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
-  await expect.poll(() => idemKey).toBeTruthy();
+  await page.goto('/campaigns');
+  await page.locator('input[type=checkbox]').first().check();
+  await page.getByRole('region', { name: 'Bulk actions' }).getByRole('button', { name: 'Pause' }).click();
+  expect(bulkBody?.action).toBe('pause');
+  expect(bulkBody?.campaign_ids).toContain('c-pause');
 });

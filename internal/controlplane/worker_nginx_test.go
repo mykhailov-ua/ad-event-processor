@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -63,7 +64,8 @@ func TestNginxConfigWorker(t *testing.T) {
 	})
 
 	t.Run("IPValidationAndInjectionPrevention", func(t *testing.T) {
-		worker := &NginxConfigWorker{exportPath: t.TempDir()}
+		exportDir := t.TempDir()
+		worker := platformadmin.NewNginxWorkerForTest(exportDir)
 
 		ips := []string{
 			"1.2.3.4",
@@ -74,10 +76,10 @@ func TestNginxConfigWorker(t *testing.T) {
 			"2001:db8::/32",
 		}
 
-		err := worker.writeDenyFile("test_validation.conf", ips)
+		err := worker.WriteDenyFile("test_validation.conf", ips)
 		require.NoError(t, err)
 
-		contentBytes, err := os.ReadFile(filepath.Join(worker.exportPath, "test_validation.conf"))
+		contentBytes, err := os.ReadFile(filepath.Join(exportDir, "test_validation.conf"))
 		require.NoError(t, err)
 		content := string(contentBytes)
 
@@ -92,13 +94,13 @@ func TestNginxConfigWorker(t *testing.T) {
 }
 
 func BenchmarkNginxConfigWorker_writeDenyFile(b *testing.B) {
-	worker := &NginxConfigWorker{exportPath: b.TempDir()}
+	worker := platformadmin.NewNginxWorkerForTest(b.TempDir())
 	ips := make([]string, 1000)
 	for i := range 1000 {
 		ips[i] = "192.168.1.1"
 	}
 	b.ReportAllocs()
 	for b.Loop() {
-		_ = worker.writeDenyFile("test.conf", ips)
+		_ = worker.WriteDenyFile("test.conf", ips)
 	}
 }

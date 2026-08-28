@@ -32,7 +32,7 @@ type failScriptLoadRedis struct {
 	mockRedisClient
 }
 
-func (failScriptLoadRedis) ScriptLoad(ctx context.Context, script string) *redis.StringCmd {
+func (c failScriptLoadRedis) ScriptLoad(ctx context.Context, script string) *redis.StringCmd {
 	cmd := redis.NewStringCmd(ctx)
 	cmd.SetErr(errors.New("script load failed"))
 	return cmd

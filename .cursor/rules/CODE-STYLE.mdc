@@ -31,8 +31,10 @@ Apply when editing Go, Lua, or sqlc SQL. Layout follows `structure.mdc`. Naming 
 | :--- | :--- |
 | Production | snake_case `<role>_<rest>.go` — `track_core.go`, `runtime_patch.go` |
 | Package-local | Inside `internal/<domain>/`, omit the package name from the filename (`dto.go`, not `campaign_dto.go` in `internal/campaign/`) — `naming.mdc` |
-| Composition root | Cross-domain files in `controlplane` keep domain token: `campaign_runtime_bridge.go`, `service_campaign.go` |
+| Composition root | Cross-domain files in `controlplane` keep domain token: `campaign_runtime_bridge.go` |
+| Bridge in controlplane | `fraudadmin_bridge.go` — domain token OK outside domain package |
 | Split threshold | Near 500 lines or when transport mixes with core logic |
+| **Banned new** | `*_aliases.go`, `service_<domain>_*.go` in controlplane, `<domain>_<role>.go` inside `internal/<domain>/` |
 | God package | >40 prod `.go` files or ~8k LOC — split (`modular-monolith.mdc`) |
 | Micro-package | New domain dir without handlers/store + wire in same PR — forbidden (`modular-monolith.mdc`) |
 | Bridge file | <=200 lines; wiring only — no domain rules (`modular-monolith.mdc`) |

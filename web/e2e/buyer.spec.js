@@ -1,20 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthedSession, BUYER_USER } from './helpers.js';
+import { BUYER_USER, mockAuthedSession } from './helpers.js';
 
 const CAMPAIGN = {
   id: 'camp-buyer-1',
-  name: 'Buyer Campaign',
-  status: 'ACTIVE',
+  name: 'Masked campaign',
+  status: 'active',
   customer_id: 'cust-1',
-  budget_limit: '$100.00',
-  current_spend: '$10.00',
-  daily_budget: '$5.00',
-  pacing_mode: 'even',
-  target_url: 'https://secret.example/click',
-  creative_payload: { title: 'Ad' },
+  target_url: 'https://secret.example/track',
 };
 
-test('buyer campaign detail hides creative tab', async ({ page }) => {
+test('buyer sees masked campaign tabs only', async ({ page }) => {
   await mockAuthedSession(page, BUYER_USER);
 
   await page.route('**/api/v1/campaigns/camp-buyer-1', async (route) => {
@@ -27,8 +22,7 @@ test('buyer campaign detail hides creative tab', async ({ page }) => {
 
   await page.goto('/campaigns/camp-buyer-1');
   await expect(page.getByRole('tab', { name: 'Overview' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Statistics' })).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Configuration' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Creative' })).toHaveCount(0);
-  await expect(page.getByText('https://secret.example/click')).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Fraud' })).toHaveCount(0);
+  await expect(page.getByRole('tab', { name: 'Postbacks' })).toHaveCount(0);
 });

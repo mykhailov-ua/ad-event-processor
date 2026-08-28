@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -106,7 +107,7 @@ func TestBlockIP_MultipleShards(t *testing.T) {
 
 		assert.Eventually(t, func() bool {
 			for _, redisClient := range []redis.UniversalClient{rdb1, rdb2, rdb3} {
-				val, err := redisClient.HGet(ctx, redisConfigValuesKey, "rate_limit_per_min").Result()
+				val, err := redisClient.HGet(ctx, shardadmin.RedisConfigValuesKey, "rate_limit_per_min").Result()
 				if err != nil || val != "77" {
 					return false
 				}

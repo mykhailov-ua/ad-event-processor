@@ -1,3 +1,3 @@
-// Binary broker: mmap WAL ingest broker (pkg/broker/server).
+// Binary broker: mmap WAL ingest broker (internal/broker).
 //
 package main

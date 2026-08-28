@@ -96,6 +96,8 @@ One agent task = **one owning layer**. Crossing layers in the same PR without mi
 | `web/src/pages/` | Compose sections, URL -> fetch params | Filter/sort/aggregate logic, OpenAPI edits |
 | `web/src/ui/<domain>/` | Grid, chips, local open state | API field invention, cross-page Context |
 | `web/src/helpers/*_api.ts` | HTTP + parse to typed snapshot | `useMemo` filter over full `items[]` |
+
+Full frontend isolation levels (L0–L6): `frontend-modular.mdc`.
 | Milestone doc | Scope, invariants, verification tier | Implementation before sections 1.1-1.4, 4-7 filled |
 
 ### Admin FE/BE boundary (hard)

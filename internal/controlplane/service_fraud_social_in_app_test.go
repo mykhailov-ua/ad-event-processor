@@ -36,7 +36,7 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	preset := domain.FraudPresetSocialInApp
-	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, CampaignFraudConfigUpdate{Preset: &preset})
+	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, PatchCampaignFraudRequest{Preset: &preset})
 	require.NoError(t, err)
 
 	var (
@@ -68,14 +68,4 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.True(t, camp.TLSFingerprintBlockEnabled)
 	require.Equal(t, domain.ConnTypeMobileOnly, camp.ConnTypePolicy)
 	require.Equal(t, domain.SocialInAppConnTypePolicy, camp.ConnTypePolicy)
-}
-
-func TestResolveFraudPresetThresholds_socialInApp(t *testing.T) {
-	svc := &Service{}
-	pass, suspect, ivt, block, err := svc.resolveFraudPresetThresholds(t.Context(), domain.FraudPresetSocialInApp)
-	require.NoError(t, err)
-	require.Equal(t, domain.DefaultFraudThresholdPass, pass)
-	require.Equal(t, domain.DefaultFraudThresholdSuspect, suspect)
-	require.Equal(t, domain.DefaultFraudThresholdIVT, ivt)
-	require.Equal(t, domain.DefaultFraudThresholdBlock, block)
 }

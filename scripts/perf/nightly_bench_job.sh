@@ -17,7 +17,7 @@ case "$KIND" in
   broker)
     BASELINE_DIR=".ci-baselines/broker"
     BENCH_PATTERN='Benchmark(BrokerThroughput|SegmentWrite)'
-    BENCH_PKG='./pkg/broker/server/... ./pkg/broker/log/... ./pkg/broker/protocol/'
+    BENCH_PKG='./internal/broker/... ./pkg/broker/log/... ./pkg/broker/protocol/'
     OUT_BENCH="broker_proto_bench.txt"
     OUT_GATE="broker_proto_gate.txt"
     RUN_SQLC=0

@@ -43,7 +43,7 @@ func TestAuditExportWorker_exportDay(t *testing.T) {
 		WHERE action = 'EXPORT_TEST'`, day.Add(12*time.Hour))
 	require.NoError(t, err)
 
-	require.NoError(t, worker.exportDay(ctx, day))
+	require.NoError(t, worker.ExportDay(ctx, day))
 
 	csvPath := filepath.Join(exportPath, "2026-07-07.csv")
 	content, err := os.ReadFile(csvPath)
@@ -69,7 +69,7 @@ func TestAuditExportWorker_retentionCleanup(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(exportPath, recentDay.Format("2006-01-02")+".csv"), []byte("recent"), 0o644))
 
 	now := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
-	require.NoError(t, worker.cleanupOldExports(now))
+	require.NoError(t, worker.CleanupOldExports(now))
 
 	_, err := os.Stat(filepath.Join(exportPath, oldDay.Format("2006-01-02")+".csv"))
 	assert.True(t, os.IsNotExist(err))

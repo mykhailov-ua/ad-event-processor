@@ -48,19 +48,19 @@ func (m *budgetMissOnceRedis) Process(ctx context.Context, cmd redis.Cmder) erro
 
 type panicCampaignRepo struct{}
 
-func (panicCampaignRepo) GetByID(context.Context, uuid.UUID) (*domain.Campaign, error) {
+func (r panicCampaignRepo) GetByID(context.Context, uuid.UUID) (*domain.Campaign, error) {
 	panic("PG must not be called when registry has budget snapshot")
 }
 
-func (panicCampaignRepo) UpdateStatus(context.Context, uuid.UUID, domain.CampaignStatus) error {
+func (r panicCampaignRepo) UpdateStatus(context.Context, uuid.UUID, domain.CampaignStatus) error {
 	return nil
 }
 
-func (panicCampaignRepo) UpdateSpend(context.Context, uuid.UUID, int64, string) error {
+func (r panicCampaignRepo) UpdateSpend(context.Context, uuid.UUID, int64, string) error {
 	return nil
 }
 
-func (panicCampaignRepo) ListActive(context.Context) ([]*domain.Campaign, error) {
+func (r panicCampaignRepo) ListActive(context.Context) ([]*domain.Campaign, error) {
 	return nil, nil
 }
 

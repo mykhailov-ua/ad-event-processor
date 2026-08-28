@@ -124,7 +124,7 @@ func formatCampaignOptionalUUID(u pgtype.UUID) string {
 	return uuid.UUID(u.Bytes).String()
 }
 
-func scrubCampaignFields(c CampaignDTO, level authz.MaskLevel) CampaignDTO {
+func ScrubCampaignFields(c CampaignDTO, level authz.MaskLevel) CampaignDTO {
 	if level == authz.MaskFull {
 		return c
 	}
@@ -145,18 +145,18 @@ func scrubCampaignFields(c CampaignDTO, level authz.MaskLevel) CampaignDTO {
 	if out.BudgetLimit != "" {
 		redacted = append(redacted, "budget_limit")
 		out.BudgetLimit = ""
-		out.BudgetLimitDisplay = redactedMoneyDisplay()
+		out.BudgetLimitDisplay = RedactedMoneyDisplay()
 	}
 	if out.DailyBudget != "" {
 		redacted = append(redacted, "daily_budget")
 		out.DailyBudget = ""
-		out.DailyBudgetDisplay = redactedMoneyDisplay()
+		out.DailyBudgetDisplay = RedactedMoneyDisplay()
 	}
 	out.FieldsRedacted = redacted
 	return out
 }
 
-func redactedMoneyDisplay() string {
+func RedactedMoneyDisplay() string {
 	return "—"
 }
 
@@ -238,7 +238,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) CampaignDTO {
 		}
 	}
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
-		out := scrubCampaignFields(dto, snap.Mask)
+		out := ScrubCampaignFields(dto, snap.Mask)
 		attachCampaignPresentation(ctx, &out)
 		return out
 	}

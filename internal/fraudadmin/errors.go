@@ -2,7 +2,10 @@ package fraudadmin
 
 import "errors"
 
-var ErrValidation = errors.New("validation")
+var (
+	ErrValidation            = errors.New("validation")
+	ErrFraudDecisionNotFound = errors.New("fraud decision not found")
+)
 
 type validationError string
 

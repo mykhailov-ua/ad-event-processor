@@ -66,7 +66,14 @@ else
   fi
   echo "admin: playwright e2e"
   (cd "$WEB_DIR" && node scripts/build.mjs)
+  set +e
   (cd "$E2E_DIR" && npm ci && npx playwright install chromium && npm run test:e2e)
+  e2e_status=$?
+  set -e
+  if [ "$e2e_status" -ne 0 ]; then
+    echo "admin: playwright e2e FAILED (exit $e2e_status)"
+    exit "$e2e_status"
+  fi
 fi
 
 echo "Admin web checks PASSED."

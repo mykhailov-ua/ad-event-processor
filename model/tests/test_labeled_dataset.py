@@ -6,8 +6,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from labeled_dataset import LabeledRecord, time_based_split
-
+from train.labeled_dataset import LabeledRecord, time_based_split
 
 def _record(minute: int, label: int = 0) -> LabeledRecord:
     window = datetime(2026, 1, 1, 0, minute, tzinfo=UTC)
@@ -21,14 +20,12 @@ def _record(minute: int, label: int = 0) -> LabeledRecord:
     }
     return LabeledRecord(window_start=window, row=row, label=label, label_source="test")
 
-
 def test_time_based_split_preserves_order() -> None:
     records = [_record(i) for i in range(10)]
     train, val = time_based_split(records, val_fraction=0.2)
     assert len(train) == 8
     assert len(val) == 2
     assert train[-1].window_start < val[0].window_start
-
 
 def test_time_based_split_rejects_overlap() -> None:
     records = [_record(i) for i in range(6)]

@@ -25,8 +25,8 @@ GO_BIN="$(cd "$ROOT" && go env GOROOT)/bin/go"
 if [[ ! -x "$GO_BIN" ]]; then
   GO_BIN="$(command -v go)"
 fi
-log "unit: pkg/cpuset"
-"$GO_BIN" test ./pkg/cpuset/ -count=1
+log "unit: internal/ingestion cpuset"
+"$GO_BIN" test ./internal/ingestion/ -run TestCount -count=1
 
 if [[ "$CPU_ISOLATION_ENABLED" != "1" ]]; then
   log "skip live (CPU_ISOLATION_ENABLED!=1; unit ok)"

@@ -1,0 +1,8 @@
+.margin_guard.module.css
+.colsPolicies {
+  grid-template-columns: 1fr 6rem 8rem 8rem 6rem;
+}
+
+.colsActivity {
+  grid-template-columns: 10rem 10rem 1fr 8rem 1fr;
+}

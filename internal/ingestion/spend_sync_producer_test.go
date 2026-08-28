@@ -8,7 +8,7 @@ import (
 	"ad-event-processor/pkg/dedupkey"
 	"ad-event-processor/pkg/iogate"
 	rpclient "ad-event-processor/pkg/regionproxy/client"
-	rserver "ad-event-processor/pkg/regionproxy/server"
+	rserver "ad-event-processor/internal/regionproxy"
 	"ad-event-processor/pkg/regionproxy/wal"
 
 	"github.com/google/uuid"

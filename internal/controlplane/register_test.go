@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/telegram"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
@@ -63,7 +65,7 @@ func TestCatalog_reportRoutesRegistered(t *testing.T) {
 	(&ReportsHTTPHandlers{}).Register(mux)
 	(&ReportJobHTTPHandlers{Runner: &ReportJobRunner{}}).Register(mux)
 	(&StubHTTPHandlers{}).Register(mux)
-	(&TelegramHTTPHandlers{Telegram: telegramServiceStub{}}).Register(mux)
+	(&TelegramHTTPHandlers{Telegram: telegram.ServiceStub{}}).Register(mux)
 
 	for _, route := range Catalog() {
 		if !strings.HasPrefix(route.Path, "/api/v1/reports/") {

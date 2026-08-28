@@ -1,343 +1,233 @@
-import { api, ApiError } from './api_client.js';
+import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
-import { probeStart, probeEnd } from './perf_probe.js';
-import { stubReportPath } from '../models/report.js';
-import { to } from '../lib/to.js';
+import { downloadBlob, fetchBlob } from './api_blob.js';
 
-export type StubProbeResult = {
-  ok: boolean;
-  status: number;
-  stub: boolean;
-  message: string;
-  path: string;
+export type ReportCatalogRow = {
+  key?: string;
+  title?: string;
+  description?: string;
+  category?: string;
+  required_permissions?: string[];
+  default_range?: string;
+  export_formats?: string[];
+  license_gated?: boolean;
+  feature_key?: string;
 };
 
-export type ReportJobPollResult = {
-  ok: boolean;
-  status: string;
-  message: string;
+export type ReportCatalogResponse = {
+  rows: ReportCatalogRow[];
 };
 
-export type ReportExportSubmitResult = {
-  ok: boolean;
-  status: number;
-  stub: boolean;
-  message: string;
-  jobId?: string;
-  rateLimited?: boolean;
-};
-
-export type SavedViewInput = {
-  customerId: string;
-  name: string;
-  reportKey: string;
-  spec: Record<string, unknown>;
-};
-
-/** Builds a server-validated saved view spec from report filter state. */
-export function buildReportViewSpec(input: {
+export type ReportJobSpec = {
+  customer_id: string;
+  report_key: string;
   from: string;
   to: string;
-  compare?: boolean;
-  campaignId?: string;
-  limit?: number;
-  columns?: string[];
-}): Record<string, unknown> {
-  const spec: Record<string, unknown> = {
-    from: input.from,
-    to: input.to,
-  };
-  if (input.compare) {
-    spec.compare = 'previous';
-  }
-  if (input.campaignId) {
-    spec.campaign_id = input.campaignId;
-  }
-  if (input.limit != null) {
-    spec.limit = input.limit;
-  }
-  if (input.columns?.length) {
-    spec.columns = input.columns;
-  }
-  return spec;
-}
+  format?: 'csv' | 'json';
+};
 
-export type SavedViewRow = {
+export type ReportJobStatus = {
   id?: string;
+  job_id?: string;
+  customer_id?: string;
+  report_key?: string;
+  format?: string;
+  status?: string;
+  bytes?: number;
+  error?: string;
+  created_at?: string;
+};
+
+export type SavedView = {
+  id?: string;
+  owner_id?: string;
+  owner_mask_level?: 'full' | 'masked';
+  customer_id?: string;
   name?: string;
   report_key?: string;
-  customer_id?: string;
-  spec?: Record<string, unknown> | string;
-};
-
-export type PollReportJobOpts = {
-  intervalMs?: number;
-  maxAttempts?: number;
-  signal?: AbortSignal;
-};
-
-export type SubmitReportExportSpec = {
-  customerId: string;
-  reportKey: string;
-  from: string;
-  to: string;
-  signal?: AbortSignal;
-};
-
-export function parseRetryAfterMs(
-  err:
-    | {
-        status?: number;
-        responseHeaders?: Headers | null;
-      }
-    | null
-    | undefined
-): number {
-  const raw = err?.responseHeaders?.get?.('Retry-After');
-  const sec = raw ? Number.parseInt(raw, 10) : 0;
-  if (Number.isFinite(sec) && sec > 0) return sec * 1000;
-  return 2500;
-}
-
-function sleepMs(ms: number, signal?: AbortSignal): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) {
-      reject(new Error('aborted'));
-      return;
-    }
-    const timer = setTimeout(resolve, ms);
-    if (signal) {
-      signal.addEventListener(
-        'abort',
-        () => {
-          clearTimeout(timer);
-          reject(new Error('aborted'));
-        },
-        { once: true }
-      );
-    }
-  });
-}
-
-export async function probeStubReport(
-  reportKey: string,
-  customerId = ''
-): Promise<StubProbeResult> {
-  const path = stubReportPath(reportKey);
-  if (!path) {
-    return { ok: false, status: 0, stub: false, message: 'unknown report key', path: '' };
-  }
-  const probe = probeStart('report.stub.fetch');
-  const params = new URLSearchParams();
-  if (customerId) params.set('customer_id', customerId);
-  const qs = params.toString();
-  const url = qs ? `${path}?${qs}` : path;
-  const [, err] = await to(api(url));
-  if (!err) {
-    probeEnd(probe, { allocs: 1, bytes: 64 });
-    return { ok: true, status: 200, stub: false, message: 'live', path: url };
-  }
-  probeEnd(probe, { allocs: 1, bytes: 128 });
-  const apiErr = err instanceof ApiError ? err : null;
-  const status = apiErr?.status ?? 0;
-  const stub = status === 501 || apiErr?.code === 'NOT_IMPLEMENTED' || apiErr?.stub === true;
-  return {
-    ok: false,
-    status,
-    stub,
-    message: err.message ?? String(err),
-    path: url,
-  };
-}
-
-export async function downloadReportExport(jobId: string, filename = 'report.csv'): Promise<void> {
-  const { apiBlob } = await import('./api_blob.js');
-  const blob = await apiBlob(`/api/v1/reports/jobs/${jobId}/download`);
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-export async function pollReportJob(
-  jobId: string,
-  opts: PollReportJobOpts = {}
-): Promise<ReportJobPollResult> {
-  const intervalMs = opts.intervalMs ?? 1500;
-  const maxAttempts = opts.maxAttempts ?? 20;
-  let rateLimitHits = 0;
-  for (let i = 0; i < maxAttempts; i++) {
-    if (opts.signal?.aborted) {
-      return { ok: false, status: 'ABORTED', message: 'polling aborted' };
-    }
-    const [res, err] = await to(api(`/api/v1/reports/jobs/${jobId}`, { signal: opts.signal }));
-    if (err) {
-      const apiErr = err instanceof ApiError ? err : null;
-      if (apiErr?.status === 429 && rateLimitHits < 5) {
-        rateLimitHits += 1;
-        const wait = parseRetryAfterMs(apiErr);
-        try {
-          await sleepMs(wait, opts.signal);
-        } catch {
-          return { ok: false, status: 'ABORTED', message: 'polling aborted' };
-        }
-        i -= 1;
-        continue;
-      }
-      return { ok: false, status: 'ERROR', message: err.message ?? String(err) };
-    }
-    const payload = res?.data as { status?: string; error?: string } | null | undefined;
-    const status = payload?.status ?? '';
-    if (status === 'COMPLETED' || status === 'FAILED') {
-      return {
-        ok: status === 'COMPLETED',
-        status,
-        message: status === 'COMPLETED' ? 'Export ready' : (payload?.error ?? 'Export failed'),
-      };
-    }
-    try {
-      await sleepMs(intervalMs, opts.signal);
-    } catch {
-      return { ok: false, status: 'ABORTED', message: 'polling aborted' };
-    }
-  }
-  return { ok: false, status: 'TIMEOUT', message: 'Export job polling timed out' };
-}
-
-export async function submitReportExport(
-  spec: SubmitReportExportSpec
-): Promise<ReportExportSubmitResult> {
-  const probe = probeStart('report.export.submit');
-  const body = {
-    customer_id: spec.customerId,
-    report_key: spec.reportKey,
-    from: spec.from,
-    to: spec.to,
-    format: 'csv',
-  };
-  const [res, err] = await to(
-    api('/api/v1/reports/jobs', {
-      method: 'POST',
-      body: JSON.stringify(body),
-      idempotencyScope: `report-export:${spec.customerId}:${spec.reportKey}`,
-      signal: spec.signal,
-    })
-  );
-  if (!err) {
-    probeEnd(probe, { allocs: 1, bytes: 96 });
-    const payload = res?.data as { job_id?: string; id?: string } | null | undefined;
-    return {
-      ok: true,
-      status: 201,
-      stub: false,
-      message: 'export job created',
-      jobId: payload?.job_id ?? payload?.id,
-    };
-  }
-  const apiErr = err instanceof ApiError ? err : null;
-  if (apiErr?.status === 429) {
-    probeEnd(probe, { allocs: 1, bytes: 128 });
-    return {
-      ok: false,
-      status: 429,
-      stub: false,
-      rateLimited: true,
-      message: `Rate limited - retry in ${Math.ceil(parseRetryAfterMs(apiErr) / 1000)}s`,
-    };
-  }
-  probeEnd(probe, { allocs: 1, bytes: 128 });
-  const status = apiErr?.status ?? 0;
-  const stub = status === 501 || apiErr?.code === 'NOT_IMPLEMENTED';
-  return {
-    ok: false,
-    status,
-    stub,
-    message: err.message ?? String(err),
-  };
-}
-
-export async function listSavedViews(customerId: string): Promise<unknown[]> {
-  const probe = probeStart('views.list');
-  const params = new URLSearchParams({ customer_id: customerId });
-  const { data } = await api(`/api/v1/views?${params.toString()}`);
-  const payload = data as unknown[] | { items?: unknown[] } | null | undefined;
-  const items = Array.isArray(payload) ? payload : (payload?.items ?? []);
-  probeEnd(probe, { allocs: 1, bytes: items.length * 120 });
-  return items;
-}
-
-export async function createSavedView(input: SavedViewInput): Promise<unknown> {
-  const probe = probeStart('views.create');
-  const { data } = await apiConfirmed('/api/v1/views', {
-    method: 'POST',
-    body: JSON.stringify({
-      customer_id: input.customerId,
-      name: input.name,
-      report_key: input.reportKey,
-      spec: input.spec,
-      is_shared: false,
-    }),
-  });
-  probeEnd(probe, { allocs: 1, bytes: 160 });
-  return data;
-}
-
-export async function deleteSavedView(viewId: string): Promise<void> {
-  await apiConfirmed(`/api/v1/views/${encodeURIComponent(viewId)}`, { method: 'DELETE' });
-}
-
-export function savedViewHref(view: SavedViewRow): string {
-  const base = `/reports/${view.report_key ?? 'placements'}`;
-  let spec: Record<string, unknown> = {};
-  if (view.spec) {
-    try {
-      spec =
-        typeof view.spec === 'string'
-          ? (JSON.parse(view.spec) as Record<string, unknown>)
-          : view.spec;
-    } catch {
-      spec = {};
-    }
-  }
-  const qs = new URLSearchParams();
-  if (view.customer_id) qs.set('customer_id', view.customer_id);
-  if (spec.from) qs.set('from', String(spec.from));
-  if (spec.to) qs.set('to', String(spec.to));
-  if (spec.compare === true || spec.compare === 'previous') qs.set('compare', 'previous');
-  if (spec.campaign_id) qs.set('campaign_id', String(spec.campaign_id));
-  const q = qs.toString();
-  return q ? `${base}?${q}` : base;
-}
-
-export type ReportScheduleInput = {
-  customerId: string;
-  reportKey: string;
-  cronExpr: string;
   spec?: Record<string, unknown>;
-  format?: string;
-  enabled?: boolean;
+  is_shared?: boolean;
+  created_at?: string;
 };
 
-export async function listReportSchedules(customerId: string): Promise<unknown[]> {
-  const params = new URLSearchParams({ customer_id: customerId });
-  const { data } = await api(`/api/v1/report-schedules?${params.toString()}`);
-  return Array.isArray(data) ? data : [];
+export type ReportQueryParams = {
+  from?: string;
+  to?: string;
+  customer_id?: string;
+  campaign_id?: string;
+  limit?: number;
+  offset?: number;
+  cursor?: string;
+};
+
+export type ReportFreshness = {
+  stale?: boolean;
+  ch_lag_seconds?: number;
+  lag_seconds?: number;
+  as_of?: string;
+  consistency?: string;
+};
+
+export type ReportFetchResponse = {
+  rows?: Array<Record<string, unknown>>;
+  freshness?: ReportFreshness;
+  next_cursor?: string;
+  total?: number;
+  [key: string]: unknown;
+};
+
+export function reportApiPath(reportKey: string): string {
+  switch (reportKey) {
+    case 'click-log':
+      return '/api/v1/reports/click-log';
+    case 'rtb-overview':
+      return '/api/v1/reports/rtb/overview';
+    case 'rtb-no-bid-reasons':
+      return '/api/v1/reports/rtb/no-bid-reasons';
+    case 'rtb-geo-device':
+      return '/api/v1/reports/rtb/geo-device';
+    case 'telegram':
+      return '/api/v1/reports/telegram/summary';
+    case 'telegram-funnel':
+      return '/api/v1/reports/telegram/funnel';
+    case 'telegram-bots':
+      return '/api/v1/reports/telegram/bots';
+    case 'telegram-premium':
+      return '/api/v1/reports/telegram/premium';
+    case 'telegram-fraud':
+      return '/api/v1/reports/telegram/fraud';
+    case 'ghost-impression-funnel':
+      return '/api/v1/reports/ghost-impression-funnel';
+    default:
+      return `/api/v1/reports/${reportKey}`;
+  }
 }
 
-export async function createReportSchedule(input: ReportScheduleInput): Promise<unknown> {
-  return (
-    await apiConfirmed('/api/v1/report-schedules', {
-      method: 'POST',
-      body: JSON.stringify({
-        customer_id: input.customerId,
-        report_key: input.reportKey,
-        cron_expr: input.cronExpr,
-        spec: input.spec ?? {},
-        format: input.format ?? 'csv',
-        enabled: input.enabled ?? true,
-      }),
-    })
-  ).data;
+export function buildReportQueryString(params: ReportQueryParams): string {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  if (params.customer_id) qs.set('customer_id', params.customer_id);
+  if (params.campaign_id) qs.set('campaign_id', params.campaign_id);
+  if (params.limit !== undefined) qs.set('limit', String(params.limit));
+  if (params.offset !== undefined) qs.set('offset', String(params.offset));
+  if (params.cursor) qs.set('cursor', params.cursor);
+  return qs.toString();
+}
+
+export function buildReportUrl(reportKey: string, params: ReportQueryParams): string {
+  const base = reportApiPath(reportKey);
+  const query = buildReportQueryString(params);
+  return query ? `${base}?${query}` : base;
+}
+
+export async function fetchReportCatalog(signal?: AbortSignal): Promise<ReportCatalogResponse> {
+  const result = await api<ReportCatalogResponse>('/api/v1/reports/catalog', { signal });
+  return result.data;
+}
+
+export async function fetchSavedViews(
+  customerId: string | undefined,
+  signal?: AbortSignal
+): Promise<SavedView[]> {
+  const qs = customerId ? `?customer_id=${encodeURIComponent(customerId)}` : '';
+  const result = await api<{ items?: SavedView[]; rows?: SavedView[] }>(
+    `/api/v1/views${qs}`,
+    { signal }
+  );
+  const body = result.data;
+  if (Array.isArray(body.items)) return body.items;
+  if (Array.isArray(body.rows)) return body.rows;
+  if (Array.isArray(body)) return body as SavedView[];
+  return [];
+}
+
+export async function submitReportExportJob(
+  spec: ReportJobSpec
+): Promise<ReportJobStatus> {
+  const result = await apiConfirmed<ReportJobStatus>('/api/v1/reports/jobs', {
+    method: 'POST',
+    body: JSON.stringify(spec),
+  });
+  return result.data;
+}
+
+export async function pollReportJob(jobId: string, signal?: AbortSignal): Promise<ReportJobStatus> {
+  const result = await api<ReportJobStatus>(`/api/v1/reports/jobs/${encodeURIComponent(jobId)}`, {
+    signal,
+  });
+  return result.data;
+}
+
+export async function downloadReportJobExport(
+  jobId: string,
+  filename: string
+): Promise<void> {
+  const result = await fetchBlob(`/api/v1/reports/jobs/${encodeURIComponent(jobId)}/download`);
+  downloadBlob(result.blob, filename);
+}
+
+export function reportJobId(status: ReportJobStatus): string | null {
+  return status.job_id ?? status.id ?? null;
+}
+
+export function isReportJobComplete(status: ReportJobStatus): boolean {
+  const value = (status.status ?? '').toLowerCase();
+  return value === 'complete' || value === 'completed' || value === 'done';
+}
+
+export function isReportJobFailed(status: ReportJobStatus): boolean {
+  const value = (status.status ?? '').toLowerCase();
+  return value === 'failed' || value === 'error' || value === 'cancelled';
+}
+
+export async function waitForReportJob(
+  jobId: string,
+  options: { signal?: AbortSignal; intervalMs?: number; maxAttempts?: number } = {}
+): Promise<ReportJobStatus> {
+  const intervalMs = options.intervalMs ?? 1500;
+  const maxAttempts = options.maxAttempts ?? 120;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (options.signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+    const status = await pollReportJob(jobId, options.signal);
+    if (isReportJobComplete(status) || isReportJobFailed(status)) {
+      return status;
+    }
+    await new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(resolve, intervalMs);
+      if (options.signal) {
+        const onAbort = () => {
+          window.clearTimeout(timer);
+          reject(new DOMException('Aborted', 'AbortError'));
+        };
+        if (options.signal.aborted) {
+          onAbort();
+          return;
+        }
+        options.signal.addEventListener('abort', onAbort, { once: true });
+        window.setTimeout(() => {
+          options.signal?.removeEventListener('abort', onAbort);
+        }, intervalMs + 50);
+      }
+    });
+  }
+  throw new Error('Report export job timed out');
+}
+
+export function extractReportRows(payload: ReportFetchResponse | null): Array<Record<string, unknown>> {
+  if (!payload) return [];
+  if (Array.isArray(payload.rows)) {
+    return payload.rows as Array<Record<string, unknown>>;
+  }
+  return [];
+}
+
+export function extractReportFreshness(payload: ReportFetchResponse | null): ReportFreshness | null {
+  if (!payload) return null;
+  if (payload.freshness && typeof payload.freshness === 'object') {
+    return payload.freshness as ReportFreshness;
+  }
+  return null;
 }

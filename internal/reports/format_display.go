@@ -7,8 +7,16 @@ import (
 	"ad-event-processor/pkg/money"
 )
 
+func FormatMicro(m int64) string {
+	return formatMicro(m)
+}
+
 func formatMicro(m int64) string {
 	return money.FormatFixed2(m)
+}
+
+func FormatRateDisplay(rate float64) string {
+	return formatRateDisplay(rate)
 }
 
 func formatRateDisplay(rate float64) string {
@@ -18,11 +26,19 @@ func formatRateDisplay(rate float64) string {
 	return fmt.Sprintf("%.1f%%", rate*100)
 }
 
+func FormatShareLabel(sharePct float64) string {
+	return formatShareLabel(sharePct)
+}
+
 func formatShareLabel(sharePct float64) string {
 	if math.IsNaN(sharePct) || math.IsInf(sharePct, 0) {
 		return "0.0% of filtered events"
 	}
 	return fmt.Sprintf("%.1f%% of filtered events", sharePct)
+}
+
+func FormatDeltaLabel(deltaPct float64) string {
+	return formatDeltaLabel(deltaPct)
 }
 
 func formatDeltaLabel(deltaPct float64) string {
@@ -34,6 +50,10 @@ func formatDeltaLabel(deltaPct float64) string {
 		sign = ""
 	}
 	return fmt.Sprintf("%s%.1f%% vs prior period", sign, deltaPct)
+}
+
+func DeltaTone(deltaPct float64) string {
+	return deltaTone(deltaPct)
 }
 
 func deltaTone(deltaPct float64) string {

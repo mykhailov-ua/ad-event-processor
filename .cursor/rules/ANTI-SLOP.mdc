@@ -420,6 +420,7 @@ Forbidden in admin copy and embed snippets (when `web/` exists):
 - Cold-path ML enforcement that mutates operator campaign config (`silent_reject_enabled`) instead of per-IP Redis/CH effects.
 - Empty `garble_policy.go` or missing `//garble:ignore` while `TestGarblePolicy_ingestionPackageIgnored` expects it.
 - God package or god `controlplane` growth: new domain logic in composition root or bridge instead of `internal/<domain>/` (`modular-monolith.mdc`).
+- New `*_aliases.go` or filename-prefix `domains.go` classification (`modular-monolith.mdc` **Migration cruft ban**).
 - Bridge file with SQL, validation, or report math — wiring and DTO map only (`modular-monolith.mdc`).
 - `Host` / `Effects` port expanded past 12 methods without splitting the port first.
 - New `internal/<domain>/` stub (types/host only, or missing `doc.go`) or `internal/common` util package — minimum viable extraction (`modular-monolith.mdc`).

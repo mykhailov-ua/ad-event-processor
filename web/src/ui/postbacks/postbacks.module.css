@@ -1,0 +1,8 @@
+.postbacks.module.css
+.colsStatus {
+  grid-template-columns: 1fr 8rem 10rem 6rem;
+}
+
+.colsDlq {
+  grid-template-columns: 4rem 1fr 8rem 6rem 8rem 6rem;
+}

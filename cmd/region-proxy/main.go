@@ -8,15 +8,15 @@ import (
 	"os"
 	"time"
 
+	"ad-event-processor/internal/broker"
 	"ad-event-processor/internal/config"
 	_ "ad-event-processor/internal/metrics"
-	"ad-event-processor/pkg/broker/server"
+	rserver "ad-event-processor/internal/regionproxy"
 	"ad-event-processor/pkg/iogate"
 	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/netaddr"
 	"ad-event-processor/pkg/regionproxy/keygen"
 	"ad-event-processor/pkg/regionproxy/opkey"
-	rserver "ad-event-processor/pkg/regionproxy/server"
 	"ad-event-processor/pkg/regionproxy/uplink"
 	"ad-event-processor/pkg/runtimepaths"
 )
@@ -87,7 +87,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	coord, err := server.NewCoordinator(*nodeID, srv.Addr(), *redisURL, srv)
+	coord, err := broker.NewCoordinator(*nodeID, srv.Addr(), *redisURL, srv)
 	if err != nil {
 		slog.Error("region-proxy coordinator failed", "error", err)
 		os.Exit(1)

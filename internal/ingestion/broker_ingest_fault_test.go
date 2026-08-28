@@ -11,7 +11,7 @@ import (
 	"ad-event-processor/internal/ingestion/pb"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/pkg/broker/client"
-	bserver "ad-event-processor/pkg/broker/server"
+	bserver "ad-event-processor/internal/broker"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus/testutil"

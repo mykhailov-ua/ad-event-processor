@@ -41,7 +41,7 @@ type policyDecideWant struct {
 func TestScoringPolicyParityFixtures(t *testing.T) {
 	fixturesDir := fraudMLFixtureDir(t)
 	path := filepath.Join(fixturesDir, "policy_parity.json")
-	require.FileExists(t, path, "run model/fixture_generator.py if missing")
+	require.FileExists(t, path, "run python3 -m train.fixture_generator if missing")
 
 	data, err := os.ReadFile(path)
 	require.NoError(t, err)

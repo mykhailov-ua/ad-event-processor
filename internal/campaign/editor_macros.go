@@ -2,8 +2,6 @@ package campaign
 
 import (
 	"strings"
-
-	"ad-event-processor/pkg/campaignmacro"
 )
 
 type MacroPreviewRequestDTO struct {
@@ -31,7 +29,7 @@ func previewCampaignMacros(campaign CampaignDTO, req MacroPreviewRequestDTO, mas
 	if strings.TrimSpace(baseURL) == "" {
 		return MacroPreviewResponseDTO{}, errValidation("target_url is required for macro preview")
 	}
-	macroCtx := campaignmacro.PreviewContext(campaign.ID, campaignmacro.PreviewRequest{
+	macroCtx := PreviewContext(campaign.ID, PreviewRequest{
 		Sub1:    req.Sub1,
 		Country: req.Country,
 		ClickID: req.ClickID,
@@ -40,11 +38,11 @@ func previewCampaignMacros(campaign CampaignDTO, req MacroPreviewRequestDTO, mas
 		GCLID:   req.GCLID,
 		TTCLID:  req.TTCLID,
 	})
-	resolved, unresolved := campaignmacro.Expand(baseURL, macroCtx)
+	resolved, unresolved := Expand(baseURL, macroCtx)
 	if params := campaign.ClickQueryParams; len(params) > 0 {
 		var parts []string
 		for k, v := range params {
-			expanded, paramUnresolved := campaignmacro.Expand(v, macroCtx)
+			expanded, paramUnresolved := Expand(v, macroCtx)
 			unresolved = append(unresolved, paramUnresolved...)
 			parts = append(parts, k+"="+expanded)
 		}

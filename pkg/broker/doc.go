@@ -1,7 +1,8 @@
-// Package broker: mmap WAL broker protocol root. Subpackages: client, server, consumer,
-// protocol, log.
+// Package broker: mmap WAL broker wire protocol root. Subpackages: client, consumer,
+// protocol, log. Daemon server lives in internal/broker (cmd/broker).
 //
-// Fault tier:
-//   make test-fault   # pkg/broker fault tests
+// Verify:
 //
+//	bash scripts/ci/pkg_boundary_gate.sh
+//	go build -o /dev/null ./cmd/broker/
 package broker

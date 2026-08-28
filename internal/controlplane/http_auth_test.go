@@ -89,7 +89,7 @@ func TestAuthHandler_Login(t *testing.T) {
 		},
 	}
 
-	h := NewAuthHandler(NewAuthClientFromAPI(mockClient), tokenMaker, nil, cfg, nil)
+	h := NewAuthHandler(identity.NewAuthClientFromAPI(mockClient), tokenMaker, nil, cfg, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
@@ -169,7 +169,7 @@ func TestAuthHandler_Logout(t *testing.T) {
 		},
 	}
 
-	h := NewAuthHandler(NewAuthClientFromAPI(mockClient), tokenMaker, nil, cfg, nil)
+	h := NewAuthHandler(identity.NewAuthClientFromAPI(mockClient), tokenMaker, nil, cfg, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
@@ -206,7 +206,7 @@ func TestAuthHandler_Refresh(t *testing.T) {
 		},
 	}
 
-	h := NewAuthHandler(NewAuthClientFromAPI(mockClient), tokenMaker, nil, cfg, nil)
+	h := NewAuthHandler(identity.NewAuthClientFromAPI(mockClient), tokenMaker, nil, cfg, nil)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

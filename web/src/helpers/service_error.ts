@@ -1,24 +1,11 @@
 import { ApiError, AuthError, NetworkError } from './api_client.js';
 
-export type ServiceErrorKind =
-  | 'inline'
-  | 'page'
-  | 'toast'
-  | 'redirect_login'
-  | 'stub'
-  | 'retry'
-  | 'conflict'
-  | 'empty'
-  | 'unavailable';
-
 export type ServiceErrorView = {
-  kind: ServiceErrorKind;
+  kind: string;
   title: string;
   message: string;
   status?: number;
   code?: string;
-  stub?: boolean;
-  retryAfterSec?: number;
 };
 
 export function mapServiceError(err: unknown): ServiceErrorView {
@@ -51,136 +38,21 @@ export function mapServiceError(err: unknown): ServiceErrorView {
     };
   }
 
-  const retryAfterSec = parseRetryAfter(err.responseHeaders?.get('Retry-After'));
+  if (err.status === 403) {
+    return {
+      kind: 'page',
+      title: 'Access denied',
+      message: 'You do not have permission for this resource.',
+      status: err.status,
+      code: err.code,
+    };
+  }
 
-  const base = {
+  return {
+    kind: 'toast',
+    title: 'Error',
+    message: err.message || err.code,
     status: err.status,
     code: err.code,
-    message: err.message,
-    stub: err.stub,
-    retryAfterSec,
   };
-
-  switch (err.code) {
-    case 'BAD_REQUEST':
-      return {
-        ...base,
-        kind: 'inline',
-        title: 'Invalid request',
-        message: err.message,
-      };
-    case 'UNAUTHORIZED':
-      return {
-        ...base,
-        kind: 'redirect_login',
-        title: 'Session expired',
-        message: err.message,
-      };
-    case 'FORBIDDEN':
-      return {
-        ...base,
-        kind: 'page',
-        title: 'Access denied',
-        message: 'You do not have permission for this resource.',
-      };
-    case 'NOT_FOUND':
-      return {
-        ...base,
-        kind: 'empty',
-        title: 'Not found',
-        message: 'The resource does not exist or was removed.',
-      };
-    case 'CONFLICT':
-      return {
-        ...base,
-        kind: 'conflict',
-        title: 'Conflict',
-        message: err.message || 'conflict',
-      };
-    case 'LEDGER_DRIFT':
-      return {
-        ...base,
-        kind: 'conflict',
-        title: 'Ledger drift',
-        message: err.message,
-      };
-    case 'LIMIT_EXCEEDED':
-      return {
-        ...base,
-        kind: 'inline',
-        title: 'Limit exceeded',
-        message: err.message,
-      };
-    case 'RATE_LIMITED':
-    case 'TOO_MANY_REQUESTS':
-      return {
-        ...base,
-        kind: 'retry',
-        title: 'Rate limited',
-        message: retryAfterSec
-          ? `Retry after ${retryAfterSec}s`
-          : err.message || 'too many requests',
-        retryAfterSec,
-      };
-    case 'NOT_IMPLEMENTED':
-      return {
-        ...base,
-        kind: 'stub',
-        title: 'Not implemented',
-        message: err.message,
-        stub: true,
-      };
-    case 'BILLING_UNAVAILABLE':
-    case 'FORECAST_UNAVAILABLE':
-    case 'CLICKHOUSE_UNAVAILABLE':
-    case 'UNAVAILABLE':
-    case 'SERVICE_UNAVAILABLE':
-      return {
-        ...base,
-        kind: 'unavailable',
-        title: 'Service unavailable',
-        message: partial503Message(err) || err.message,
-      };
-    case 'INTERNAL':
-    case 'INTERNAL_ERROR':
-      return {
-        ...base,
-        kind: 'toast',
-        title: 'Internal error',
-        message: 'internal error',
-      };
-    default:
-      if (err.status === 503) {
-        return {
-          ...base,
-          kind: 'unavailable',
-          title: 'Service unavailable',
-          message: partial503Message(err) || err.message,
-        };
-      }
-      return {
-        ...base,
-        kind: 'toast',
-        title: 'Error',
-        message: err.message || err.code,
-      };
-  }
-}
-
-function partial503Message(err: ApiError): string | null {
-  const errors = err.payload?.errors;
-  if (Array.isArray(errors) && errors.length > 0) {
-    return errors.join('; ');
-  }
-  return null;
-}
-
-function parseRetryAfter(header: string | null | undefined): number | undefined {
-  if (!header) return undefined;
-  const n = Number.parseInt(header, 10);
-  return Number.isFinite(n) && n > 0 ? n : undefined;
-}
-
-export function isPageBlockingError(view: ServiceErrorView): boolean {
-  return view.kind === 'page' || view.kind === 'unavailable';
 }

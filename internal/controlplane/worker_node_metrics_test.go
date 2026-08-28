@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/nodeadmin"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -56,7 +57,7 @@ func TestNodeMetricsWorker_FlushWindowAndTTL(t *testing.T) {
 	_, err = pool.Exec(ctx, `
 		INSERT INTO node_metric_buckets (node_id, region_code, role, bucket_ts, metric, value_mean, sample_count)
 		VALUES ($1, 1, 'management', $2, 'stale_metric', 1.0, 1)`,
-		worker.nodeID, oldTS)
+		worker.NodeID(), oldTS)
 	require.NoError(t, err)
 
 	require.NoError(t, worker.Flush(ctx, now))
@@ -75,7 +76,7 @@ func TestNodeMetricsWorker_FlushWindowAndTTL(t *testing.T) {
 }
 
 func TestAggregateSamples_percentiles(t *testing.T) {
-	p50, p99, mean, count := aggregateSamples([]float64{1, 2, 3, 4, 100})
+	p50, p99, mean, count := nodeadmin.AggregateSamples([]float64{1, 2, 3, 4, 100})
 	assert.Equal(t, int64(5), count)
 	assert.InDelta(t, 22, mean, 0.01)
 	assert.InDelta(t, 3, p50, 0.01)

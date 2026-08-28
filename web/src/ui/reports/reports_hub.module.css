@@ -1,0 +1,16 @@
+.root {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.intro {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}

@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -98,12 +99,12 @@ func TestDryRun_BlockIPNoSideEffects(t *testing.T) {
 func TestParseDryRun(t *testing.T) {
 	t.Parallel()
 	req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns/x/pause?dry_run=1", http.NoBody)
-	assert.True(t, ParseDryRun(req))
+	assert.True(t, coldpath.ParseDryRun(req))
 
 	req, _ = http.NewRequest("POST", "/api/v1/selfserve/campaigns/x/pause", http.NoBody)
 	req.Header.Set("X-Dry-Run", "1")
-	assert.True(t, ParseDryRun(req))
+	assert.True(t, coldpath.ParseDryRun(req))
 
 	req, _ = http.NewRequest("POST", "/api/v1/selfserve/campaigns/x/pause", http.NoBody)
-	assert.False(t, ParseDryRun(req))
+	assert.False(t, coldpath.ParseDryRun(req))
 }

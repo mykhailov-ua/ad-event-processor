@@ -1,24 +1,24 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthedSession, ADMIN_USER } from './helpers.js';
+import { ADMIN_USER, mockAuthedSession } from './helpers.js';
 
-test('customers list shows rows from API', async ({ page }) => {
+test('customers list renders API rows', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
 
-  await page.route('**/api/v1/customers?**', async (route) => {
+  await page.route('**/api/v1/customers**', async (route) => {
+    const url = route.request().url();
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    if (/\/api\/v1\/customers\/[^/?]/.test(url)) {
+      await route.continue();
+      return;
+    }
     await route.fulfill({
       status: 200,
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        items: [
-          {
-            id: 'cust-list-1',
-            name: 'Acme Corp',
-            balance: '1200.50',
-            currency: 'USD',
-            active_campaigns: 3,
-            created_at: '2026-01-15T00:00:00Z',
-          },
-        ],
+        items: [{ id: 'cust-1', name: 'Acme Corp', currency: 'USD', created_at: '2026-01-01T00:00:00Z' }],
         total: 1,
       }),
     });
@@ -26,22 +26,31 @@ test('customers list shows rows from API', async ({ page }) => {
 
   await page.goto('/customers');
   await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
-  await expect(page.getByRole('cell', { name: 'Acme Corp' })).toBeVisible();
+  await expect(page.getByRole('grid')).toBeVisible();
+  await expect(page.getByText('Acme Corp')).toBeVisible();
 });
 
 test('customers list 503 shows error block', async ({ page }) => {
   await mockAuthedSession(page, ADMIN_USER);
 
-  await page.route('**/api/v1/customers?**', async (route) => {
+  await page.route('**/api/v1/customers**', async (route) => {
+    const url = route.request().url();
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    if (/\/api\/v1\/customers\/[^/?]/.test(url)) {
+      await route.continue();
+      return;
+    }
     await route.fulfill({
       status: 503,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: 'customers store down' } }),
+      body: JSON.stringify({ error: { code: 'UNAVAILABLE', message: 'upstream down' } }),
     });
   });
 
   await page.goto('/customers');
-  await expect(page.getByText('Service unavailable')).toBeVisible();
-  await expect(page.getByText('customers store down')).toBeVisible();
-  await expect(page.getByText('503')).toBeVisible();
+  await expect(page.getByRole('alert')).toBeVisible();
+  await expect(page.getByText('upstream down')).toBeVisible();
 });

@@ -49,7 +49,7 @@ func TestColdPathJSON_RegionIngestRejectsOversizeBody(t *testing.T) {
 
 	h := &Handler{cfg: testRegionIngestConfig(t)}
 	mux := http.NewServeMux()
-	h.registerRegionIngestRoutes(mux)
+	RegisterRegionIngestRoutes(mux, h)
 
 	body := strings.Repeat("x", coldpath.RegionIngestMaxBody+1)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/region/ingest/batch", strings.NewReader(body))

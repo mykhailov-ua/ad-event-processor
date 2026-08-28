@@ -1,105 +1,94 @@
 import { api } from './api_client.js';
 import { apiConfirmed } from './confirmed_api.js';
-import type { components } from '../types/generated/openapi.js';
 
-export type DomainHealthRow = components['schemas']['DomainHealth'];
-export type DomainSSLSetupResult = components['schemas']['DomainSSLSetupResult'];
-export type ParkDomainRequest = components['schemas']['ParkDomainRequest'];
-export type ParkDomainResponse = components['schemas']['ParkDomainResponse'];
+export type DomainHealth = {
+  hostname?: string;
+  role?: string;
+  health_status?: string;
+  ssl_status?: string;
+  ssl_not_after?: string;
+  http_status?: number;
+  probe_latency_ms?: number;
+  probe_detail?: string;
+  last_probe_at?: string;
+  updated_at?: string;
+};
 
-/**
- * List domain health rows (tracking, admin, custom).
- */
-export async function fetchDomains(): Promise<DomainHealthRow[]> {
-  const res = await api<DomainHealthRow[]>('/api/v1/domains');
-  return Array.isArray(res.data) ? res.data : [];
+export type DomainSslSetupResult = {
+  hostname?: string;
+  status?: string;
+  message?: string;
+  output?: string;
+};
+
+export type ParkDomainRequest = {
+  domain: string;
+  cloudflare_zone_id: string;
+  pool_id?: string;
+};
+
+export type ParkDomainResponse = {
+  success?: boolean;
+  dns_record_id?: string;
+  ssl_status?: string;
+  hostname?: string;
+  pool_id?: string;
+};
+
+export async function fetchDomains(signal?: AbortSignal): Promise<DomainHealth[]> {
+  const result = await api<DomainHealth[]>('/api/v1/domains', { signal });
+  return Array.isArray(result.data) ? result.data : [];
 }
 
-/**
- * Register a custom tracking hostname.
- */
-export async function addCustomDomain(hostname: string): Promise<DomainHealthRow> {
-  const res = await apiConfirmed<DomainHealthRow>('/api/v1/domains', {
+export async function addDomain(hostname: string): Promise<DomainHealth> {
+  const result = await apiConfirmed<DomainHealth>('/api/v1/domains', {
     method: 'POST',
     body: JSON.stringify({ hostname }),
   });
-  return res.data;
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error('add domain failed');
+  }
+  return result.data ?? {};
 }
 
-/**
- * Remove a custom domain from health tracking.
- */
-export async function deleteCustomDomain(hostname: string): Promise<void> {
-  await apiConfirmed(`/api/v1/domains/${encodeURIComponent(hostname)}`, {
+export async function deleteDomain(hostname: string): Promise<void> {
+  const result = await apiConfirmed(`/api/v1/domains/${encodeURIComponent(hostname)}`, {
     method: 'DELETE',
   });
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error('delete domain failed');
+  }
 }
 
-/**
- * Run an immediate HTTP/TLS probe for one hostname.
- */
-export async function probeDomain(hostname: string): Promise<DomainHealthRow> {
-  const res = await apiConfirmed<DomainHealthRow>(
+export async function probeDomain(hostname: string): Promise<DomainHealth> {
+  const result = await apiConfirmed<DomainHealth>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/probe`,
-    { method: 'POST' }
+    { method: 'POST', body: '{}' }
   );
-  return res.data;
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error('domain probe failed');
+  }
+  return result.data ?? {};
 }
 
-/**
- * Trigger appliance TLS setup for a hostname.
- */
-export async function setupDomainSSL(hostname: string): Promise<DomainSSLSetupResult> {
-  const res = await apiConfirmed<DomainSSLSetupResult>(
+export async function setupDomainSsl(hostname: string): Promise<DomainSslSetupResult> {
+  const result = await apiConfirmed<DomainSslSetupResult>(
     `/api/v1/domains/${encodeURIComponent(hostname)}/ssl/setup`,
-    { method: 'POST' }
+    { method: 'POST', body: '{}' }
   );
-  return res.data;
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error('ssl setup failed');
+  }
+  return result.data ?? {};
 }
 
-/**
- * Park a domain via Cloudflare DNS integration.
- */
-export async function parkDomain(req: ParkDomainRequest): Promise<ParkDomainResponse> {
-  const res = await apiConfirmed<ParkDomainResponse>('/api/v1/domains/park', {
+export async function parkDomain(body: ParkDomainRequest): Promise<ParkDomainResponse> {
+  const result = await apiConfirmed<ParkDomainResponse>('/api/v1/domains/park', {
     method: 'POST',
-    body: JSON.stringify(req),
+    body: JSON.stringify(body),
   });
-  return (
-    res.data ?? {
-      success: false,
-      dns_record_id: '',
-      ssl_status: '',
-    }
-  );
-}
-
-/** Map health_status wire value to operator label. */
-export function healthStatusLabel(status: string): string {
-  switch (status) {
-    case 'healthy':
-      return 'Healthy';
-    case 'degraded':
-      return 'Degraded';
-    case 'down':
-      return 'Down';
-    default:
-      return 'Unknown';
+  if (result.status < 200 || result.status >= 300) {
+    throw new Error('park domain failed');
   }
-}
-
-/** Map ssl_status wire value to operator label. */
-export function sslStatusLabel(status: string): string {
-  switch (status) {
-    case 'valid':
-      return 'Valid';
-    case 'expiring':
-      return 'Expiring';
-    case 'expired':
-      return 'Expired';
-    case 'missing':
-      return 'Missing';
-    default:
-      return 'Unknown';
-  }
+  return result.data ?? {};
 }

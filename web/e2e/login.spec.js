@@ -1,37 +1,37 @@
 import { test, expect } from '@playwright/test';
-import { mockLoginSuccess } from './helpers.js';
+import { installDialogAutoAccept, mockLoginSuccess } from './helpers.js';
 
-test('valid login navigates to shell with overview heading', async ({ page }) => {
+test('valid login navigates to customers directory', async ({ page }) => {
+  installDialogAutoAccept(page);
   await mockLoginSuccess(page);
 
   await page.goto('/login');
-  await page.fill('input[type=email]', 'admin@test.local');
-  await page.fill('input[type=password]', 'secret');
-  await page.click('button[type=submit]');
-
-  await page.waitForURL('/');
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await page.fill('#login-email', 'admin@test.local');
+  await page.fill('#login-password', 'secret');
+  await Promise.all([
+    page.waitForURL(/\/customers/, { timeout: 15_000 }),
+    page.getByRole('button', { name: 'Sign in' }).click(),
+  ]);
+  await expect(page.getByRole('heading', { name: 'Customers' })).toBeVisible();
 });
 
-test('logout confirms and returns to login page', async ({ page }) => {
+test('logout returns to login page', async ({ page }) => {
+  installDialogAutoAccept(page);
   await mockLoginSuccess(page);
 
   await page.goto('/login');
-  await page.fill('input[type=email]', 'admin@test.local');
-  await page.fill('input[type=password]', 'secret');
-  await page.click('button[type=submit]');
-  await page.waitForURL('/');
+  await page.fill('#login-email', 'admin@test.local');
+  await page.fill('#login-password', 'secret');
+  await Promise.all([
+    page.waitForURL(/\/customers/, { timeout: 15_000 }),
+    page.getByRole('button', { name: 'Sign in' }).click(),
+  ]);
 
   await page.route('**/api/v1/auth/logout', async (route) => {
-    await route.fulfill({
-      status: 204,
-      headers: { 'content-type': 'application/json' },
-      body: '',
-    });
+    await route.fulfill({ status: 204, body: '' });
   });
 
   await page.getByRole('button', { name: 'Logout' }).click();
-  await page.getByRole('button', { name: 'Confirm' }).click();
   await page.waitForURL('/login');
   await expect(page.getByText('Admin Control Plane')).toBeVisible();
 });

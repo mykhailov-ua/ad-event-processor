@@ -12,6 +12,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/identity"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -42,7 +43,7 @@ func TestGetShardHealth_reportsPingAndConfigVersion(t *testing.T) {
 	).Scan(&lastProcessed))
 	require.Greater(t, lastProcessed, int64(0))
 
-	version, err := redisClient.Get(ctx, redisConfigVersionKey).Int64()
+	version, err := redisClient.Get(ctx, shardadmin.RedisConfigVersionKey).Int64()
 	require.NoError(t, err)
 	require.Equal(t, lastProcessed, version)
 
@@ -86,7 +87,7 @@ func TestGetShardHealth_configVersionLag(t *testing.T) {
 	).Scan(&lastProcessed))
 	require.GreaterOrEqual(t, lastProcessed, int64(2))
 
-	require.NoError(t, redisClient.Set(ctx, redisConfigVersionKey, lastProcessed-1, 0).Err())
+	require.NoError(t, redisClient.Set(ctx, shardadmin.RedisConfigVersionKey, lastProcessed-1, 0).Err())
 
 	report, err := svc.GetShardHealth(ctx)
 	require.NoError(t, err)

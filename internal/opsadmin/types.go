@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/shardadmin"
 )
 
 type DLQRetryPayload struct {
@@ -49,27 +50,11 @@ type ShardStreamLag struct {
 	DLQLength int64  `json:"dlq_length"`
 }
 
-type OutboxHealthSummary struct {
-	Pending              int64   `json:"pending"`
-	OldestPendingSeconds float64 `json:"oldest_pending_seconds"`
-	LastProcessedEventID int64   `json:"last_processed_event_id"`
-}
+type OutboxHealthSummary = shardadmin.OutboxHealthSummary
 
-type ShardHealthStatus struct {
-	ShardID             int     `json:"shard_id"`
-	PingOK              bool    `json:"ping_ok"`
-	PingError           string  `json:"ping_error,omitempty"`
-	PingLatencyMs       float64 `json:"ping_latency_ms,omitempty"`
-	ConfigVersion       *int64  `json:"config_version,omitempty"`
-	ConfigVersionLag    int64   `json:"config_version_lag"`
-	ConfigVersionSynced bool    `json:"config_version_synced"`
-}
+type ShardHealthStatus = shardadmin.ShardHealthStatus
 
-type ShardHealthReport struct {
-	EmergencyBreaker string              `json:"emergency_breaker"`
-	Outbox           OutboxHealthSummary `json:"outbox"`
-	Shards           []ShardHealthStatus `json:"shards"`
-}
+type ShardHealthReport = shardadmin.ShardHealthReport
 
 type IncidentSnapshotDTO struct {
 	EmergencyBreaker  string                `json:"emergency_breaker"`

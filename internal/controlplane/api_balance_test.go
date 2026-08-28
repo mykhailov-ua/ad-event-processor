@@ -196,9 +196,7 @@ func TestAPI_ExportCustomerBalance_RateLimit(t *testing.T) {
 	cfg := &config.Config{AdminAPIKey: "test-secret"}
 	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	h.customerLimiter = newCustomerRateLimiter()
-	h.customerLimiter.limit = 0
-	h.customerLimiter.burst = 1
+	h.customerLimiter = newCustomerRateLimiterWith(0, 1)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

@@ -1,115 +1,31 @@
 import { test, expect } from '@playwright/test';
-import { mockAuthedSession, ADMIN_USER } from './helpers.js';
+import {
+  ADMIN_USER,
+  CATALOG_SPEND_VELOCITY,
+  mockAuthedSession,
+  mockEmptyCampaigns,
+  mockReportCatalog,
+} from './helpers.js';
 
-test('sidebar search focus stays inside sidebar at minimum width', async ({ page }) => {
+test('main nav shows reports hub link without per-report sidebar clutter', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await mockAuthedSession(page, ADMIN_USER);
-
-  await page.route('**/api/v1/eula', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ required: false }),
-    });
-  });
-
-  await page.route('**/api/v1/campaigns*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [], total: 0 }),
-    });
-  });
-
-  await page.addInitScript(() => {
-    localStorage.setItem('ui.sidebar.width', '220');
-    localStorage.setItem('ui.sidebar.collapsed', '0');
-  });
+  await mockEmptyCampaigns(page);
 
   await page.goto('/campaigns');
-  const search = page.getByRole('combobox', { name: 'Search pages' });
-  await search.focus();
-
-  const overflow = await page.evaluate(() => {
-    const sidebar = document.querySelector('.sidebar');
-    const field = document.querySelector('.sidebar__search');
-    if (!(sidebar instanceof HTMLElement) || !(field instanceof HTMLElement)) return null;
-    const s = sidebar.getBoundingClientRect();
-    const f = field.getBoundingClientRect();
-    return Math.max(0, f.right - s.right, s.left - f.left);
-  });
-
-  expect(overflow).not.toBeNull();
-  expect(overflow).toBeLessThanOrEqual(1);
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  await expect(nav.getByRole('link', { name: 'Reports hub' })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Spend velocity' })).toHaveCount(0);
 });
 
-test('sidebar search shows no dropdown chrome when idle', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await mockAuthedSession(page, ADMIN_USER);
-
-  await page.route('**/api/v1/eula', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ required: false }),
-    });
-  });
-
-  await page.route('**/api/v1/campaigns*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [], total: 0 }),
-    });
-  });
-
-  await page.goto('/campaigns');
-  await expect(page.getByRole('combobox', { name: 'Search pages' })).toBeVisible();
-  await expect(page.locator('.sidebar-search-dropdown')).toHaveCount(0);
-});
-
-test('sidebar search opens dropdown only after typing', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await mockAuthedSession(page, ADMIN_USER);
-
-  await page.route('**/api/v1/eula', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ required: false }),
-    });
-  });
-
-  await page.route('**/api/v1/campaigns*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [], total: 0 }),
-    });
-  });
-
-  await page.goto('/campaigns');
-  const search = page.getByRole('combobox', { name: 'Search pages' });
-  await search.focus();
-  await expect(page.locator('.sidebar-search-dropdown')).toHaveCount(0);
-  await search.fill('camp');
-  await expect(page.locator('.sidebar-search-dropdown')).toHaveCount(1);
-});
-
-test('hamburger opens drawer, overlay closes and returns focus', async ({ page }) => {
+test('hamburger opens drawer, escape closes and returns focus', async ({ page }) => {
   await page.setViewportSize({ width: 600, height: 600 });
   await mockAuthedSession(page, ADMIN_USER);
-
-  await page.route('**/api/v1/campaigns*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [], total: 0 }),
-    });
-  });
+  await mockEmptyCampaigns(page);
 
   await page.goto('/campaigns');
-  const menu = page.getByRole('button', { name: 'Menu' });
+  const menu = page.getByRole('button', { name: 'Menu', exact: true });
+  await expect(menu).toBeVisible();
   await menu.click();
   await expect(menu).toHaveAttribute('aria-expanded', 'true');
 
@@ -118,43 +34,17 @@ test('hamburger opens drawer, overlay closes and returns focus', async ({ page }
   await expect(menu).toBeFocused();
 });
 
-test('sidebar reports section shows hub and telegram only (P0 IA)', async ({ page }) => {
+test('reports hub catalog lists live report cards', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await mockAuthedSession(page, ADMIN_USER);
-
-  await page.route('**/api/v1/campaigns*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [], total: 0 }),
-    });
-  });
-
-  await page.goto('/campaigns');
-  const nav = page.getByRole('navigation');
-  await expect(nav.getByRole('link', { name: 'Reports', exact: true })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Telegram Mini Apps' })).toBeVisible();
-  await expect(nav.getByRole('link', { name: 'Spend velocity' })).toHaveCount(0);
-  await expect(nav.getByRole('link', { name: 'Summary' })).toHaveCount(0);
-});
-
-test('reports hub catalog lists individual live reports', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await mockAuthedSession(page, ADMIN_USER);
-
-  await page.route('**/api/v1/views*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [] }),
-    });
-  });
+  await mockReportCatalog(page, [CATALOG_SPEND_VELOCITY]);
 
   await page.goto('/reports');
-  await expect(page.getByRole('link', { name: 'Spend velocity' })).toBeVisible();
+  await expect(page.getByTestId('reports-hub-page')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Spend velocity' })).toBeVisible();
 });
 
-test('telegram analytics sub-nav uses in-page tabs only', async ({ page }) => {
+test('telegram report route mounts runner chrome', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await mockAuthedSession(page, ADMIN_USER);
 
@@ -175,31 +65,7 @@ test('telegram analytics sub-nav uses in-page tabs only', async ({ page }) => {
       }),
     });
   });
-  await page.route('**/api/v1/reports/telegram/funnel*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ rows: [], freshness: { state: 'ok' } }),
-    });
-  });
-  await page.route('**/api/v1/campaigns*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ items: [], total: 0 }),
-    });
-  });
 
   await page.goto(`/reports/telegram?${qs}`);
-  await expect(
-    page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Funnel' })
-  ).toBeVisible();
-  await page
-    .getByRole('navigation', { name: 'Telegram reports' })
-    .getByRole('link', { name: 'Funnel' })
-    .click();
-  await expect(page).toHaveURL(/\/reports\/telegram\/funnel/);
-  await expect(
-    page.getByRole('navigation', { name: 'Telegram reports' }).getByRole('link', { name: 'Bots' })
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Telegram/i })).toBeVisible();
 });

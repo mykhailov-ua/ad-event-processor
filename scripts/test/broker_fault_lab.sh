@@ -18,7 +18,7 @@ if command -v cpulimit > /dev/null 2>&1; then
 else
   echo "cpulimit not installed; CPU throttle test will skip"
 fi
-go test -count=1 -v -run 'TestFault_(SlowFsync|PageCache|CPUThrottle|RedisOutage|RedisSentinel)' -timeout 25m ./pkg/broker/server/... 2>&1 | tee "$LOG"
+go test -count=1 -v -run 'TestFault_(SlowFsync|PageCache|CPUThrottle|RedisOutage|RedisSentinel)' -timeout 25m ./internal/broker/... 2>&1 | tee "$LOG"
 
 PROOFS="$(grep -c 'fault_proof fault=' "$LOG" || true)"
 echo "fault_proof lines: $PROOFS"
@@ -40,7 +40,7 @@ if command -v docker > /dev/null 2>&1 && [ "${BROKER_FAULT_SKIP_SENTINEL:-0}" !=
   export BROKER_REDIS_URL=redis://127.0.0.1:6379/0
   export BROKER_FAULT_SENTINEL_STOP_CONTAINER=ad-event-processor-broker-redis
 
-  go test -count=1 -v -run 'TestFault_RedisSentinelFailover' -timeout 10m ./pkg/broker/server/... 2>&1 | tee -a "$LOG"
+  go test -count=1 -v -run 'TestFault_RedisSentinelFailover' -timeout 10m ./internal/broker/... 2>&1 | tee -a "$LOG"
 
   SENTINEL_PROOFS="$(grep -c 'fault_proof fault=redis_sentinel_failover' "$LOG" || true)"
   test "$SENTINEL_PROOFS" -ge 1

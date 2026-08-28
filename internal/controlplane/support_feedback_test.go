@@ -14,6 +14,8 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/platformadmin"
+
 	"github.com/google/uuid"
 )
 
@@ -120,7 +122,7 @@ func TestSupportFeedbackPost_bundleRedaction(t *testing.T) {
 	if len(feedback.last.BundleGzip) < 2 {
 		t.Fatal("expected gzip bundle")
 	}
-	if err := validateFeedbackBundleRedaction(feedback.last.BundleGzip); err != nil {
+	if err := platformadmin.ValidateFeedbackBundleRedaction(feedback.last.BundleGzip); err != nil {
 		t.Fatalf("bundle redaction: %v", err)
 	}
 	logBody, err := readBundleLog(feedback.last.BundleGzip)

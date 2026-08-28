@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
-
-	"ad-event-processor/internal/config"
 )
 
 type Timeouts struct {
@@ -16,18 +16,36 @@ type Timeouts struct {
 	Wait     time.Duration
 }
 
-func TimeoutsFromConfig(cfg *config.Config) Timeouts {
+func TimeoutsFromMillis(shutdownMs, waitMs int) Timeouts {
+	if shutdownMs <= 0 {
+		shutdownMs = 15000
+	}
+	if waitMs <= 0 {
+		waitMs = 5000
+	}
 	return Timeouts{
-		Shutdown: time.Duration(cfg.Lifecycle.ShutdownTimeoutMs) * time.Millisecond,
-		Wait:     time.Duration(cfg.Lifecycle.WaitTimeoutMs) * time.Millisecond,
+		Shutdown: time.Duration(shutdownMs) * time.Millisecond,
+		Wait:     time.Duration(waitMs) * time.Millisecond,
 	}
 }
 
 func TimeoutsFromEnv() Timeouts {
 	return Timeouts{
-		Shutdown: config.LifecycleShutdownTimeout(),
-		Wait:     config.LifecycleWaitTimeout(),
+		Shutdown: time.Duration(envInt("SHUTDOWN_TIMEOUT_MS", 15000)) * time.Millisecond,
+		Wait:     time.Duration(envInt("WAIT_TIMEOUT_MS", 5000)) * time.Millisecond,
 	}
+}
+
+func envInt(name string, def int) int {
+	s := strings.TrimSpace(os.Getenv(name))
+	if s == "" {
+		return def
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return def
+	}
+	return n
 }
 
 func NotifyContext(parent context.Context) (context.Context, context.CancelFunc) {

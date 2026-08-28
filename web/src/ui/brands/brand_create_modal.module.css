@@ -1,0 +1,55 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+
+.panel {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  min-width: 20rem;
+  max-width: 28rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+}
+
+.title {
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.textInput {
+  padding: var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  gap: var(--space-sm);
+  justify-content: end;
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger, #c00);
+}

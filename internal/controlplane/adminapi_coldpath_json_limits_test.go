@@ -14,13 +14,13 @@ import (
 
 type stubConsentRecorder struct{}
 
-func (stubConsentRecorder) RecordConsent(_ context.Context, _ ConsentRecord) error {
+func (r stubConsentRecorder) RecordConsent(_ context.Context, _ ConsentRecord) error {
 	return nil
 }
 
 type stubConsentVerifier struct{}
 
-func (stubConsentVerifier) Verify(_ []byte, _ string) error {
+func (v stubConsentVerifier) Verify(_ []byte, _ string) error {
 	return nil
 }
 
@@ -29,7 +29,7 @@ func TestColdPathJSON_SelfServePaymentIntentRejectsOversizeBody(t *testing.T) {
 
 	h := &SelfServeHTTPHandlers{}
 	mux := http.NewServeMux()
-	mux.HandleFunc("POST /api/v1/selfserve/payment-intents", h.createPaymentIntent)
+	h.Register(mux)
 
 	body := strings.Repeat("x", coldpath.SelfServePaymentIntentMaxBody+1)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/selfserve/payment-intents", strings.NewReader(body))

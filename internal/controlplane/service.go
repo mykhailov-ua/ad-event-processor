@@ -22,15 +22,17 @@ import (
 	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/privacyadmin"
 	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/internal/settingsadmin"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/domainhealth"
 	"ad-event-processor/pkg/landerhost"
 	"ad-event-processor/pkg/money"
-	"ad-event-processor/pkg/pgfailover"
+	"ad-event-processor/internal/pgfailover"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -46,7 +48,7 @@ type Service struct {
 	redisShards              []redis.UniversalClient
 	sharder                  domain.Sharder
 	cfg                      *config.Config
-	postgresGate             *PostgresGate
+	postgresGate             *shardadmin.PostgresGate
 	alerter                  *OpsAlerter
 	clickhouseWriteConn      driver.Conn
 	clickhouseQuery          *database.ClickHouseQuery
@@ -62,14 +64,14 @@ type Service struct {
 	cachedFraudExplainScorer fraud.Scorer
 	fraudExplainScorerErr    error
 	fraudExplainScorerMutex  sync.Mutex
-	tcpControl               *TCPControlServer
+	tcpControl               TCPControlPublisher
 	nodeMetrics              *NodeMetricsWorker
 	scoringWeights           *ScoringWeightsStore
 	leaseWorker              *OperationLeaseWorker
 	pgFencing                *pgfailover.FencingGate
 	globalSpend              *GlobalSpendReconciler
-	rtbBidShadeSim           RtbBidShadeSimulator
-	cloudflare               CloudflareAPI
+	rtbBidShadeSim           rtbadmin.BidShadeSimulator
+	cloudflare               platformadmin.CloudflareAPI
 	reputation               *domainhealth.ReputationChecker
 	shard0Mu                 sync.Mutex
 	reportJobRunner          *reportjob.ReportJobRunner
@@ -86,7 +88,7 @@ type Service struct {
 	privacyStore             *privacyadmin.Store
 }
 
-func (s *Service) SetRtbBidShadeSimulator(sim RtbBidShadeSimulator) {
+func (s *Service) SetRtbBidShadeSimulator(sim rtbadmin.BidShadeSimulator) {
 	if s != nil {
 		s.rtbBidShadeSim = sim
 	}
@@ -136,8 +138,8 @@ func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.Uni
 		cancel:      cancel,
 	}
 	if cfg != nil {
-		s.postgresGate = NewPostgresGate(cfg.DBTrackerMaxConns)
-		s.cloudflare = NewCloudflareClient(string(cfg.Management.CloudflareAPIToken), cfg.Management.CloudflareAPIBase)
+		s.postgresGate = shardadmin.NewPostgresGate(cfg.DBTrackerMaxConns)
+		s.cloudflare = platformadmin.NewCloudflareClient(string(cfg.Management.CloudflareAPIToken), cfg.Management.CloudflareAPIBase)
 		s.initLanderStore()
 	}
 	s.startWorker(func() {
@@ -153,7 +155,7 @@ func NewService(ctx context.Context, pool *pgxpool.Pool, redisShards []redis.Uni
 		}
 	})
 	s.startWorker(func() {
-		adapter := s.dedupAdapter(ctx)
+		adapter := s.DedupAdapter(ctx)
 		if adapter == nil {
 			return
 		}
@@ -276,7 +278,7 @@ func (s *Service) GetPool() *pgxpool.Pool {
 	return s.pool
 }
 
-func (s *Service) PostgresGate() *PostgresGate {
+func (s *Service) PostgresGate() *shardadmin.PostgresGate {
 	if s == nil {
 		return nil
 	}
@@ -332,7 +334,7 @@ func (s *Service) GetCampaignRow(ctx context.Context, id uuid.UUID) (db.Campaign
 }
 
 func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string, balance int64, currency string) error {
-	if err := s.enforceDeploymentTenantCap(ctx); err != nil {
+	if err := s.EnforceDeploymentLicenseCampaignCap(ctx); err != nil {
 		return err
 	}
 	_, err := db.New(s.pool).CreateCustomer(ctx, db.CreateCustomerParams{
@@ -811,7 +813,7 @@ func (s *Service) campaignUpdateChannel() string {
 func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) error {
 	var pubErr error
 	if len(s.redisShards) > 0 {
-		pubErr = publishCampaignControlToAllShards(ctx, s.redisShards, s.campaignUpdateChannel(), campaignID, time.Time{})
+		pubErr = shardadmin.PublishCampaignControlToAllShards(ctx, s.redisShards, s.campaignUpdateChannel(), campaignID, time.Time{})
 	} else {
 		pubErr = fmt.Errorf("no redis pubsub client available")
 	}
@@ -1052,7 +1054,7 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 	})
 }
 
-func (s *Service) SetTCPControlServer(tcp *TCPControlServer) {
+func (s *Service) SetTCPControlPublisher(tcp TCPControlPublisher) {
 	s.tcpControl = tcp
 }
 

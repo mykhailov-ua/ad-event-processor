@@ -19,6 +19,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -51,9 +52,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	authMW, tokenMaker := integrationTestAuth(t, redisClient, cfg)
 	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, authMW, nil, nil, nil)
-	h.customerLimiter = newCustomerRateLimiter()
-	h.customerLimiter.limit = 1000
-	h.customerLimiter.burst = 128
+	h.customerLimiter = newCustomerRateLimiterWith(1000, 128)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
@@ -80,7 +79,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	require.NoError(t, json.NewDecoder(ownerResp.Body).Decode(&ownerReport))
 	leakMarker := ownerReport.Balance
 	require.NotEmpty(t, leakMarker)
-	paths := tenantIsolationProbePaths(victimID.String(), campID.String())
+	paths := platformadmin.TenantIsolationProbePaths(victimID.String(), campID.String())
 
 	var forbidden atomic.Int32
 	var wg sync.WaitGroup
@@ -237,9 +236,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 	cfg.Management.RateLimitBurst = 10_000
 	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	h := NewHandler(svc, cfg, nil, nil, nil, nil)
-	h.customerLimiter = newCustomerRateLimiter()
-	h.customerLimiter.limit = 1000
-	h.customerLimiter.burst = 64
+	h.customerLimiter = newCustomerRateLimiterWith(1000, 64)
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 

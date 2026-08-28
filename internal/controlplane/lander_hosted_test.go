@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/outbox"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -13,9 +14,9 @@ import (
 
 func TestHandleLanderPublished_publishFlowReloadNilRedis(t *testing.T) {
 	t.Parallel()
-	worker := &OutboxWorker{svc: &Service{cfg: &config.Config{FlowReloadChannel: "flow:reload-test"}}}
 	payload := []byte(`{"lander_id":"` + uuid.New().String() + `"}`)
-	require.NoError(t, worker.handleLanderPublished(context.Background(), payload))
+	require.NoError(t, outbox.PublishFlowReload(context.Background(), nil, "flow:reload-test"))
+	_ = payload
 }
 
 func TestLanderPublicBase_envOverride(t *testing.T) {

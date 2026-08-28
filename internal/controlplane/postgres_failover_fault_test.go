@@ -16,8 +16,8 @@ import (
 	"ad-event-processor/pkg/faultproof"
 
 	"ad-event-processor/internal/config"
-	bserver "ad-event-processor/pkg/broker/server"
-	"ad-event-processor/pkg/pgfailover"
+	bserver "ad-event-processor/internal/broker"
+	"ad-event-processor/internal/pgfailover"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

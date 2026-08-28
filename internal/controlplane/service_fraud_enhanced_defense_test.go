@@ -36,7 +36,7 @@ func TestUpdateCampaignFraud_enhancedDefensePreset_appliesDefenseFlags(t *testin
 	require.NoError(t, err)
 
 	preset := domain.FraudPresetEnhancedDefense
-	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, CampaignFraudConfigUpdate{Preset: &preset})
+	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, PatchCampaignFraudRequest{Preset: &preset})
 	require.NoError(t, err)
 
 	var (
@@ -75,14 +75,4 @@ func TestUpdateCampaignFraud_enhancedDefensePreset_appliesDefenseFlags(t *testin
 	require.True(t, camp.AttestationEnabled)
 	require.True(t, camp.ProxyVPNBlockEnabled)
 	require.True(t, camp.TLSFingerprintBlockEnabled)
-}
-
-func TestResolveFraudPresetThresholds_enhancedDefense(t *testing.T) {
-	svc := &Service{}
-	pass, suspect, ivt, block, err := svc.resolveFraudPresetThresholds(t.Context(), domain.FraudPresetEnhancedDefense)
-	require.NoError(t, err)
-	require.Equal(t, uint8(20), pass)
-	require.Equal(t, uint8(45), suspect)
-	require.Equal(t, uint8(65), ivt)
-	require.Equal(t, uint8(85), block)
 }

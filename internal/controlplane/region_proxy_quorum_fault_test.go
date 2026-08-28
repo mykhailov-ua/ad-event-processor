@@ -200,7 +200,7 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 	committer.Complete(ctx, &slot)
 	require.Equal(t, uint64(1), committer.Committed())
 
-	st, err := quorum.ReadStatus(ctx, redisClient, opIDBytes(opID), len(replicas))
+	st, err := quorum.ReadStatus(ctx, redisClient, quorumOpIDBytes(opID), len(replicas))
 	require.NoError(t, err)
 	require.Equal(t, quorum.StateCompleted, st.State)
 
@@ -212,4 +212,10 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 		"opkey_commits": "1",
 		"baseline_ok":   "true",
 	})
+}
+
+func quorumOpIDBytes(id uuid.UUID) [16]byte {
+	var out [16]byte
+	copy(out[:], id[:])
+	return out
 }
