@@ -84,7 +84,7 @@ func TestFault_ivtIntervalAutoblock(t *testing.T) {
 
 	blocker := &poolBlacklistBlocker{pool: pool}
 
-	err = bb.BlockIP(ctx, protectedIP)
+	err = blocker.BlockIP(ctx, protectedIP)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "protected by allowlist")
 

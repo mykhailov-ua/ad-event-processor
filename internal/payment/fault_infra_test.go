@@ -149,8 +149,8 @@ func (fi *FaultInfra) SetSettlementUp() {
 }
 
 func NewOutboxWorkerForFault(infra *FaultInfra) *payment.OutboxWorker {
-	worker := payment.NewOutboxWorker(fi.Pool, fi.Cfg)
-	worker.SetSettlementAPI(fi.SettlementGate)
+	worker := payment.NewOutboxWorker(infra.Pool, infra.Cfg)
+	worker.SetSettlementAPI(infra.SettlementGate)
 	return worker
 }
 
@@ -174,9 +174,9 @@ func SeedCustomer(t *testing.T, pool *pgxpool.Pool, customerID uuid.UUID) {
 func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID uuid.UUID, amountMicro int64, idempotencyKey string) SeededPayment {
 	t.Helper()
 	ctx := context.Background()
-	SeedCustomer(t, fi.Pool, customerID)
+	SeedCustomer(t, infra.Pool, customerID)
 
-	svc := payment.NewService(fi.Pool, fi.Cfg)
+	svc := payment.NewService(infra.Pool, infra.Cfg)
 	result, err := svc.CreatePaymentIntent(ctx, customerID, amountMicro, "USD", idempotencyKey, nil)
 	require.NoError(t, err)
 	intent := result.Intent
@@ -187,7 +187,7 @@ func SeedSucceededIntentWithOutbox(t *testing.T, infra *FaultInfra, customerID u
 	err = svc.ProcessStripeWebhook(ctx, "evt_"+idempotencyKey, "payment_intent.succeeded", []byte(payload), providerRef, amountMicro, payload)
 	require.NoError(t, err)
 
-	outboxRows, err := db.New(fi.Pool).GetPendingOutboxEventsForUpdate(ctx, 10)
+	outboxRows, err := db.New(infra.Pool).GetPendingOutboxEventsForUpdate(ctx, 10)
 	require.NoError(t, err)
 	require.Len(t, outboxRows, 1)
 
@@ -210,8 +210,8 @@ func SeedSettledIntent(t *testing.T, infra *FaultInfra, customerID uuid.UUID, am
 	n, err := worker.ProcessOutbox(context.Background(), 10)
 	require.NoError(t, err)
 	require.Equal(t, 1, n)
-	require.Equal(t, "PROCESSED", PaymentOutboxStatus(t, fi.Pool, seed.OutboxID))
-	AssertPaymentFaultInvariants(t, fi.Pool, seed, seed.AmountMicro, 1)
+	require.Equal(t, "PROCESSED", PaymentOutboxStatus(t, infra.Pool, seed.OutboxID))
+	AssertPaymentFaultInvariants(t, infra.Pool, seed, seed.AmountMicro, 1)
 	return seed
 }
 

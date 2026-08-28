@@ -144,7 +144,7 @@ func TestFault_ivtDetectorExactlyOnce(t *testing.T) {
 	close(start)
 	wg.Wait()
 
-	assert.Equal(t, 1, m.count("198.51.100.10"))
+	assert.Equal(t, 1, mgmt.count("198.51.100.10"))
 	assert.Equal(t, int32(1), success.Load())
 
 	hasClaim, err := detector.idem.HasClaim(ctx, "198.51.100.10")
@@ -187,7 +187,7 @@ func TestFault_ivtDetectorOutboxBackpressure(t *testing.T) {
 	result, err := detector.Run(ctx)
 	require.ErrorIs(t, err, ErrOutboxBackpressure)
 	assert.True(t, result.Backlogged)
-	assert.Equal(t, 0, m.count("198.51.100.20"))
+	assert.Equal(t, 0, mgmt.count("198.51.100.20"))
 
 	faultproof.Log(t, "ivt_detector_outbox_backpressure", map[string]string{
 		"subsystem":           "ivt_detector",
@@ -206,7 +206,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 
 	ctx := context.Background()
 	mgmt := &countingManagement{}
-	m.fail.Store(1)
+	mgmt.fail.Store(1)
 
 	detector := NewDetector(
 		stubFinder{ips: []SuspiciousIP{{IP: "198.51.100.30", Reason: "ivt_detected", Score: 7}}},
@@ -218,7 +218,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 
 	_, err := detector.Run(ctx)
 	require.Error(t, err)
-	assert.Equal(t, 0, m.count("198.51.100.30"))
+	assert.Equal(t, 0, mgmt.count("198.51.100.30"))
 
 	hasClaim, err := detector.idem.HasClaim(ctx, "198.51.100.30")
 	require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestFault_ivtDetectorManagementRetry(t *testing.T) {
 	result, err := detector.Run(ctx)
 	require.NoError(t, err)
 	assert.Equal(t, 1, result.Enqueued)
-	assert.Equal(t, 1, m.count("198.51.100.30"))
+	assert.Equal(t, 1, mgmt.count("198.51.100.30"))
 
 	faultproof.Log(t, "ivt_detector_management_retry", map[string]string{
 		"subsystem":    "ivt_detector",

@@ -96,6 +96,6 @@ func ensureFraudScoringShadowTables(t *testing.T, conn driver.Conn) {
 		ORDER BY (model_name, created_at, ip_hash)`,
 	}
 	for _, stmt := range ddl {
-		require.NoError(t, ch.Exec(ctx, stmt))
+		require.NoError(t, conn.Exec(ctx, stmt))
 	}
 }
