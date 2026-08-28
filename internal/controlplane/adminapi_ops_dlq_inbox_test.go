@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"io"
 	"net/http"
@@ -12,23 +14,23 @@ import (
 )
 
 type stubOpsReaderInbox struct {
-	inbox DLQInboxListResult
+	inbox opsadmin.DLQInboxListResult
 	err   error
 }
 
-func (s stubOpsReaderInbox) GetIncidentSnapshot(ctx context.Context) (IncidentSnapshotDTO, error) {
-	return IncidentSnapshotDTO{}, nil
+func (s stubOpsReaderInbox) GetIncidentSnapshot(ctx context.Context) (opsadmin.IncidentSnapshotDTO, error) {
+	return opsadmin.IncidentSnapshotDTO{}, nil
 }
 
-func (s stubOpsReaderInbox) ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (OutboxListResult, error) {
-	return OutboxListResult{}, nil
+func (s stubOpsReaderInbox) ListOutboxEvents(ctx context.Context, status, eventType, cursor string, limit int32) (opsadmin.OutboxListResult, error) {
+	return opsadmin.OutboxListResult{}, nil
 }
 
-func (s stubOpsReaderInbox) ListDLQEntries(ctx context.Context, cursor string, limit int) (FanOutResult[DLQEntryDTO], error) {
-	return FanOutResult[DLQEntryDTO]{}, nil
+func (s stubOpsReaderInbox) ListDLQEntries(ctx context.Context, cursor string, limit int) (opsadmin.FanOutResult[opsadmin.DLQEntryDTO], error) {
+	return opsadmin.FanOutResult[opsadmin.DLQEntryDTO]{}, nil
 }
 
-func (s stubOpsReaderInbox) ListDLQInbox(ctx context.Context, source, cursor string, limit int) (DLQInboxListResult, error) {
+func (s stubOpsReaderInbox) ListDLQInbox(ctx context.Context, source, cursor string, limit int) (opsadmin.DLQInboxListResult, error) {
 	return s.inbox, s.err
 }
 
@@ -36,55 +38,55 @@ func (s stubOpsReaderInbox) RetryDLQInbox(ctx context.Context, source, id, idemp
 	return nil
 }
 
-func (s stubOpsReaderInbox) EnqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, idempotencyKey string) error {
+func (s stubOpsReaderInbox) EnqueueDLQRetry(ctx context.Context, payload opsadmin.DLQRetryPayload, idempotencyKey string) error {
 	return nil
 }
 
-func (s stubOpsReaderInbox) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (ConsentProofListResult, error) {
-	return ConsentProofListResult{}, nil
+func (s stubOpsReaderInbox) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (opsadmin.ConsentProofListResult, error) {
+	return opsadmin.ConsentProofListResult{}, nil
 }
 
-func (s stubOpsReaderInbox) ListDomainRotation(ctx context.Context) (DomainRotationListResult, error) {
-	return DomainRotationListResult{}, nil
+func (s stubOpsReaderInbox) ListDomainRotation(ctx context.Context) (opsadmin.DomainRotationListResult, error) {
+	return opsadmin.DomainRotationListResult{}, nil
 }
 
-func (s stubOpsReaderInbox) GetShardHealthFanOut(ctx context.Context) (ShardHealthAPIResponse, error) {
-	return ShardHealthAPIResponse{}, nil
+func (s stubOpsReaderInbox) GetShardHealthFanOut(ctx context.Context) (opsadmin.ShardHealthAPIResponse, error) {
+	return opsadmin.ShardHealthAPIResponse{}, nil
 }
 
-func (s stubOpsReaderInbox) ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (AuditExportResult, error) {
-	return AuditExportResult{}, nil
+func (s stubOpsReaderInbox) ExportAuditCSV(ctx context.Context, cursor string, redactPII bool, w io.Writer) (opsadmin.AuditExportResult, error) {
+	return opsadmin.AuditExportResult{}, nil
 }
 
 func (s stubOpsReaderInbox) LookupLedgerIDForPaymentIntent(ctx context.Context, intentID string) (string, error) {
 	return "", nil
 }
 
-func (s stubOpsReaderInbox) ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]ReconRunDTO, int64, error) {
+func (s stubOpsReaderInbox) ListReconRuns(ctx context.Context, service string, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
 	return nil, 0, nil
 }
 
-func (s stubOpsReaderInbox) GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, error) {
-	return DashboardSummaryDTO{}, nil
+func (s stubOpsReaderInbox) GetDashboardSummary(ctx context.Context) (opsadmin.DashboardSummaryDTO, error) {
+	return opsadmin.DashboardSummaryDTO{}, nil
 }
 
-func (s stubOpsReaderInbox) GetStackHealthSnapshot(ctx context.Context) (StackHealthSnapshot, error) {
-	return StackHealthSnapshot{Status: "ok", LicenseState: "ACTIVE"}, nil
+func (s stubOpsReaderInbox) GetStackHealthSnapshot(ctx context.Context) (opsadmin.StackHealthSnapshot, error) {
+	return opsadmin.StackHealthSnapshot{Status: "ok", LicenseState: "ACTIVE"}, nil
 }
 
-func (s stubOpsReaderInbox) GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (DashboardMetricsDTO, error) {
-	return DashboardMetricsDTO{}, nil
+func (s stubOpsReaderInbox) GetDashboardMetrics(ctx context.Context, rangeHours int, metricName string) (opsadmin.DashboardMetricsDTO, error) {
+	return opsadmin.DashboardMetricsDTO{}, nil
 }
 
-func (s stubOpsReaderInbox) GetMLModelStatus(ctx context.Context) (MLModelStatusDTO, error) {
-	return MLModelStatusDTO{}, nil
+func (s stubOpsReaderInbox) GetMLModelStatus(ctx context.Context) (opsadmin.MLModelStatusDTO, error) {
+	return opsadmin.MLModelStatusDTO{}, nil
 }
 
-func (s stubOpsReaderInbox) GetMLEvalReport(ctx context.Context) (MLEvalReportDTO, error) {
-	return MLEvalReportDTO{
+func (s stubOpsReaderInbox) GetMLEvalReport(ctx context.Context) (opsadmin.MLEvalReportDTO, error) {
+	return opsadmin.MLEvalReportDTO{
 		Status:         "empty",
-		ProxyMetrics:   MLEvalMetricsBlockDTO{Status: "empty", LabelMethod: "proxy", LabeledRows: 0},
-		AuditedMetrics: DefaultEmptyAuditedMetrics(),
+		ProxyMetrics:   opsadmin.MLEvalMetricsBlockDTO{Status: "empty", LabelMethod: "proxy", LabeledRows: 0},
+		AuditedMetrics: opsadmin.DefaultEmptyAuditedMetrics(),
 	}, nil
 }
 
@@ -92,14 +94,14 @@ func (s stubOpsReaderInbox) AddMLManualLabel(ctx context.Context, ipHash string,
 	return nil
 }
 
-func (s stubOpsReaderInbox) ListMLManualLabels(ctx context.Context) ([]MLManualLabelDTO, error) {
+func (s stubOpsReaderInbox) ListMLManualLabels(ctx context.Context) ([]fraudadmin.MLManualLabelDTO, error) {
 	return nil, nil
 }
 
 func TestOpsHTTPHandlers_listDLQInbox_ok(t *testing.T) {
-	h := &OpsHTTPHandlers{
-		OpsReader: stubOpsReaderInbox{inbox: DLQInboxListResult{
-			Items: []DLQInboxEntryDTO{{ID: "1", Source: "postback", CampaignID: "c-1"}},
+	h := &opsadmin.HTTPHandlers{
+		OpsReader: stubOpsReaderInbox{inbox: opsadmin.DLQInboxListResult{
+			Items: []opsadmin.DLQInboxEntryDTO{{ID: "1", Source: "postback", CampaignID: "c-1"}},
 		}},
 	}
 
@@ -123,7 +125,7 @@ func (s *recordingOpsReaderInbox) RetryDLQInbox(ctx context.Context, source, id,
 }
 
 func TestOpsHTTPHandlers_retryDLQInbox_requiresSource(t *testing.T) {
-	h := &OpsHTTPHandlers{OpsReader: stubOpsReaderInbox{}}
+	h := &opsadmin.HTTPHandlers{OpsReader: stubOpsReaderInbox{}}
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/dlq/inbox/7/retry", http.NoBody)
 	req.Header.Set("Idempotency-Key", "k1")
 	req.SetPathValue("id", "7")
@@ -134,7 +136,7 @@ func TestOpsHTTPHandlers_retryDLQInbox_requiresSource(t *testing.T) {
 
 func TestOpsHTTPHandlers_retryDLQInbox_delegatesBySource(t *testing.T) {
 	reader := &recordingOpsReaderInbox{}
-	h := &OpsHTTPHandlers{OpsReader: reader}
+	h := &opsadmin.HTTPHandlers{OpsReader: reader}
 	body := `{"source":"capi"}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/dlq/inbox/42/retry", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -148,13 +150,13 @@ func TestOpsHTTPHandlers_retryDLQInbox_delegatesBySource(t *testing.T) {
 }
 
 func TestOpsHTTPHandlers_listConsentProofs_ok(t *testing.T) {
-	h := &OpsHTTPHandlers{
+	h := &opsadmin.HTTPHandlers{
 		OpsReader: stubOpsReaderInbox{},
 	}
 
 	consentStub := consentProofStub{
-		result: ConsentProofListResult{
-			Items: []ConsentProofDTO{{ID: 1, Source: "cmp", UserIDHash: "abc"}},
+		result: opsadmin.ConsentProofListResult{
+			Items: []opsadmin.ConsentProofDTO{{ID: 1, Source: "cmp", UserIDHash: "abc"}},
 		},
 	}
 	h.OpsReader = consentStub
@@ -167,10 +169,10 @@ func TestOpsHTTPHandlers_listConsentProofs_ok(t *testing.T) {
 
 type consentProofStub struct {
 	stubOpsReaderInbox
-	result ConsentProofListResult
+	result opsadmin.ConsentProofListResult
 	err    error
 }
 
-func (s consentProofStub) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (ConsentProofListResult, error) {
+func (s consentProofStub) ListConsentProofs(ctx context.Context, userID, cursor string, limit int32) (opsadmin.ConsentProofListResult, error) {
 	return s.result, s.err
 }

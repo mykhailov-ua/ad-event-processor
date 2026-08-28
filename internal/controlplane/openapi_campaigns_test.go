@@ -6,7 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/brand"
+	"ad-event-processor/internal/campaign"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -23,14 +24,14 @@ func TestOpenAPI_campaignSchemaKeys(t *testing.T) {
 	props, ok := schemas["Campaign"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.CampaignDTO
+	var dto campaign.CampaignDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "CampaignDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "campaign.CampaignDTO json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -45,14 +46,14 @@ func TestOpenAPI_patchCampaignRequestKeys(t *testing.T) {
 	props, ok := schemas["PatchCampaignRequest"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.PatchCampaignRequest
+	var dto campaign.PatchCampaignRequest
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "PatchCampaignRequest json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "campaign.PatchCampaignRequest json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -67,14 +68,14 @@ func TestOpenAPI_importValidateJobRequestKeys(t *testing.T) {
 	props, ok := schemas["ImportValidateJobRequest"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.ImportValidateJobRequest
+	var dto campaign.ImportValidateJobRequest
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "ImportValidateJobRequest json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "campaign.ImportValidateJobRequest json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -89,7 +90,7 @@ func TestOpenAPI_brandCreativeSchemaKeys(t *testing.T) {
 	props, ok := schemas["BrandCreative"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.BrandCreativeDTO
+	var dto brand.CreativeDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any

@@ -102,7 +102,7 @@ GROUP BY day
 ORDER BY day
 LIMIT ?`, campaignIDs, from, to, maxChartSeriesPoints)
 		if err == nil {
-			defer blockRows.Close()
+			defer func() { _ = blockRows.Close() }()
 			for blockRows.Next() {
 				var day time.Time
 				var blocks int64

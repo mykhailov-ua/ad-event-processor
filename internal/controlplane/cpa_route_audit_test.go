@@ -73,7 +73,7 @@ func TestCPA_PatchCampaignRequest_parity(t *testing.T) {
 		patchBlock = patchBlock[:idx[0]+1]
 	}
 	for _, field := range required {
-		require.Contains(t, patchBlock, "`json:\""+field, "PatchCampaignRequest must expose %s (harness: %s)", field, HarnessCampaignPatchHonest)
+		require.Contains(t, patchBlock, "`json:\""+field, "campaign.PatchCampaignRequest must expose %s (harness: %s)", field, HarnessCampaignPatchHonest)
 	}
 }
 

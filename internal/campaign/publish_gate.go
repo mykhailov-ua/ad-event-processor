@@ -27,7 +27,7 @@ type PublishGateEvalInput struct {
 	IntegrationHealthOK bool
 }
 
-func EvaluatePublishBlocked(input PublishGateEvalInput) *CampaignPublishBlockedError {
+func EvaluatePublishBlocked(ctx context.Context, input PublishGateEvalInput) *CampaignPublishBlockedError {
 	fieldErrors := make(map[string]string)
 	var warningSlugs []string
 
@@ -75,7 +75,7 @@ func EvaluatePublishBlocked(input PublishGateEvalInput) *CampaignPublishBlockedE
 		}
 	}
 
-	if err := proxyupstream.ValidateDeliveryPair(context.Background(), input.ClickDelivery, input.ProxyUpstreamURL, input.AllowHTTPInsecure); err != nil {
+	if err := proxyupstream.ValidateDeliveryPair(ctx, input.ClickDelivery, input.ProxyUpstreamURL, input.AllowHTTPInsecure); err != nil {
 		fieldErrors["click_delivery"] = err.Error()
 	}
 

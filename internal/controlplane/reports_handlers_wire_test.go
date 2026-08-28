@@ -1,6 +1,9 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/dashboardadmin"
+	"ad-event-processor/internal/reportjob"
+	"ad-event-processor/internal/reports"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -17,13 +20,13 @@ func TestRouteRegistration(t *testing.T) {
 	t.Parallel()
 
 	mux := http.NewServeMux()
-	reportsHandler := &ReportsHTTPHandlers{}
-	dashboardsHandler := &DashboardsHTTPHandlers{}
-	viewsHandler := &ViewsHTTPHandlers{Store: NewViewsStore(nil)}
+	reportsHandler := &reports.ReportsHTTPHandlers{}
+	dashboardsHandler := &dashboardadmin.HTTPHandlers{}
+	viewsHandler := &reports.ViewsHTTPHandlers{Store: reports.NewViewsStore(nil)}
 
 	registry := RouteRegistry{
 		ReportsHTTP:    reportsHandler,
-		ReportJobHTTP:  &ReportJobHTTPHandlers{Runner: &ReportJobRunner{}},
+		ReportJobHTTP:  &reportjob.HTTPHandlers{Runner: &reportjob.ReportJobRunner{}},
 		DashboardsHTTP: dashboardsHandler,
 		ViewsHTTP:      viewsHandler,
 	}
@@ -52,7 +55,7 @@ func TestRouteRegistration(t *testing.T) {
 func TestDashboards_Campaign(t *testing.T) {
 	t.Parallel()
 
-	h := &DashboardsHTTPHandlers{}
+	h := &dashboardadmin.HTTPHandlers{}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -63,7 +66,7 @@ func TestDashboards_Campaign(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 
-	var resp CampaignDashboardDTO
+	var resp dashboardadmin.CampaignDashboardDTO
 	err := json.Unmarshal(w.Body.Bytes(), &resp)
 	require.NoError(t, err)
 
@@ -76,13 +79,13 @@ func TestDashboards_Campaign(t *testing.T) {
 func TestViews_CRUD(t *testing.T) {
 	t.Parallel()
 
-	h := &ViewsHTTPHandlers{Store: NewViewsStore(nil)}
+	h := &reports.ViewsHTTPHandlers{Store: reports.NewViewsStore(nil)}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
 	customerID := uuid.New().String()
 
-	createReq := CreateViewRequest{
+	createReq := reports.CreateViewRequest{
 		CustomerID: customerID,
 		Name:       "My Placement View",
 		ReportKey:  "placements",
@@ -96,7 +99,7 @@ func TestViews_CRUD(t *testing.T) {
 
 	require.Equal(t, http.StatusCreated, w.Code)
 
-	var created SavedViewDTO
+	var created reports.SavedViewDTO
 	err := json.Unmarshal(w.Body.Bytes(), &created)
 	require.NoError(t, err)
 
@@ -110,7 +113,7 @@ func TestViews_CRUD(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, wList.Code)
 
-	var list []SavedViewDTO
+	var list []reports.SavedViewDTO
 	err = json.Unmarshal(wList.Body.Bytes(), &list)
 	require.NoError(t, err)
 
@@ -123,13 +126,13 @@ func TestViews_CRUD(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, wGet.Code)
 
-	var fetched SavedViewDTO
+	var fetched reports.SavedViewDTO
 	err = json.Unmarshal(wGet.Body.Bytes(), &fetched)
 	require.NoError(t, err)
 
 	assert.Equal(t, created.ID, fetched.ID)
 
-	updateReq := UpdateViewRequest{
+	updateReq := reports.UpdateViewRequest{
 		Name:      "Updated View Name",
 		ReportKey: "placements",
 		Spec:      json.RawMessage(`{"limit":20}`),
@@ -142,7 +145,7 @@ func TestViews_CRUD(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, wUpdate.Code)
 
-	var updated SavedViewDTO
+	var updated reports.SavedViewDTO
 	err = json.Unmarshal(wUpdate.Body.Bytes(), &updated)
 	require.NoError(t, err)
 
@@ -168,8 +171,8 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 	customerID := uuid.New().String()
 	otherCustomer := uuid.New().String()
 
-	h := &ViewsHTTPHandlers{
-		Store: NewViewsStore(nil),
+	h := &reports.ViewsHTTPHandlers{
+		Store: reports.NewViewsStore(nil),
 		AuthorizeCustomerAccess: func(_ *http.Request, custID string) error {
 			if custID != customerID {
 				return ErrForbidden
@@ -187,7 +190,7 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	createReq := CreateViewRequest{
+	createReq := reports.CreateViewRequest{
 		CustomerID: otherCustomer,
 		Name:       "blocked",
 		ReportKey:  "placements",
@@ -204,7 +207,7 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 	mux.ServeHTTP(wList, reqList)
 	require.Equal(t, http.StatusForbidden, wList.Code)
 
-	allowed := CreateViewRequest{
+	allowed := reports.CreateViewRequest{
 		CustomerID: customerID,
 		Name:       "allowed",
 		ReportKey:  "placements",
@@ -220,11 +223,11 @@ func TestViews_CustomerAccessDenied(t *testing.T) {
 func TestViews_ValidationRejectsUnknownSpecKey(t *testing.T) {
 	t.Parallel()
 
-	h := &ViewsHTTPHandlers{Store: NewViewsStore(nil)}
+	h := &reports.ViewsHTTPHandlers{Store: reports.NewViewsStore(nil)}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	body, _ := json.Marshal(CreateViewRequest{
+	body, _ := json.Marshal(reports.CreateViewRequest{
 		CustomerID: uuid.New().String(),
 		Name:       "bad spec",
 		ReportKey:  "placements",

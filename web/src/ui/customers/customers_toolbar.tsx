@@ -6,7 +6,7 @@ export function CustomersToolbar() {
   const navigate = useNavigate();
   return (
     <div className={styles.toolbar}>
-      <Button variant="secondary" size="sm" onClick={() => navigate('/billing')}>
+      <Button variant="secondary" onClick={() => navigate('/billing')}>
         Open billing
       </Button>
     </div>

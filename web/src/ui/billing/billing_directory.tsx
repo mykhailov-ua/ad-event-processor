@@ -1,5 +1,6 @@
 import type { BillingSummary, Invoice } from '../../helpers/billing_api.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PaginationBar } from '../system/pagination_bar.js';
 import { BillingFilter, type BillingFilterValues } from './billing_filter.js';
@@ -38,7 +39,7 @@ export function BillingDirectory({
 
   return (
     <div className={styles.root}>
-      <PageChrome title="Billing" badge={loading ? null : <span>{total} invoices</span>} />
+      <PageChrome title="Billing" badge={<LoadingCountBadge loading={loading} label={`${total} invoices`} />} />
       {summary ? <BillingSummaryStrip summary={summary} /> : null}
       <BillingFilter values={filterValues} onApply={onFilterApply} />
       <div className={styles.content}>

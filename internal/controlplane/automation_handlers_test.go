@@ -16,11 +16,11 @@ import (
 )
 
 func TestAutomationHandlers_listPresets(t *testing.T) {
-	h := &AutomationHTTPHandlers{Rules: &automation.RulesService{}}
+	h := &automation.HTTPHandlers{Rules: &automation.RulesService{}}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/automation/presets", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/automation/presets", http.NoBody)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -33,7 +33,7 @@ func TestAutomationHandlers_listPresets(t *testing.T) {
 func TestCreateAutomationRule_evalIntervalBelowFloor_holdout(t *testing.T) {
 	svc := &Service{cfg: &config.Config{}}
 	svc.cfg.Management.AutomationRulesIntervalMin = 15
-	req := UpsertAutomationRuleRequest{
+	req := automation.UpsertRuleRequest{
 		CustomerID:          uuid.New().String(),
 		Name:                "fast",
 		Metric:              "roi_pct",
@@ -51,7 +51,7 @@ func TestCreateAutomationRule_evalIntervalBelowFloor_holdout(t *testing.T) {
 }
 
 func TestApplyAutomationPreset_expandsPlacementRoiGuard(t *testing.T) {
-	req := UpsertAutomationRuleRequest{
+	req := automation.UpsertRuleRequest{
 		CustomerID: uuid.New().String(),
 		PresetKey:  "placement_roi_guard",
 		PresetParameters: map[string]float64{
@@ -59,7 +59,7 @@ func TestApplyAutomationPreset_expandsPlacementRoiGuard(t *testing.T) {
 		},
 		Enabled: true,
 	}
-	out, err := ApplyAutomationPreset(req)
+	out, err := automation.ApplyPreset(req)
 	require.NoError(t, err)
 	assert.Equal(t, "placement_roi_guard", out.PresetKey)
 	assert.Equal(t, "roi_pct", out.Metric)
@@ -71,6 +71,6 @@ func TestApplyAutomationPreset_expandsPlacementRoiGuard(t *testing.T) {
 }
 
 func TestApplyAutomationPreset_unknownPreset_holdout(t *testing.T) {
-	_, err := ApplyAutomationPreset(UpsertAutomationRuleRequest{PresetKey: "nope"})
+	_, err := automation.ApplyPreset(automation.UpsertRuleRequest{PresetKey: "nope"})
 	require.Error(t, err)
 }

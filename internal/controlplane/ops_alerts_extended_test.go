@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"testing"
 	"time"
@@ -16,7 +17,7 @@ func TestOpsAlerter_AlertOutboxStuck(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(stub, cfg)
+	alerter := opsadmin.NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 	assert.Equal(t, 120, alerter.OutboxStuckThresholdSec())
 
@@ -33,7 +34,7 @@ func TestOpsAlerter_AlertCHEmergencyDrop(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(stub, cfg)
+	alerter := opsadmin.NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertCHEmergencyDrop(context.Background(), "impressions", "202401", 92.5, 90)
@@ -50,7 +51,7 @@ func TestOpsAlerter_AlertBlacklistJanitorFailed(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(stub, cfg)
+	alerter := opsadmin.NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertBlacklistJanitorFailed(context.Background(), assert.AnError)
@@ -66,7 +67,7 @@ func TestOpsAlerter_AlertSlotMigrationError(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(stub, cfg)
+	alerter := opsadmin.NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertSlotMigrationError(context.Background(), "copy", assert.AnError)
@@ -83,7 +84,7 @@ func TestOutboxMetrics_AlertsWhenStale(t *testing.T) {
 	cfg.Management.OpsAlertsEnabled = true
 	cfg.Management.OpsAlertOutboxStuckSec = 60
 
-	svc := &Service{alerter: NewOpsAlerter(stub, cfg)}
+	svc := &Service{alerter: opsadmin.NewOpsAlerter(stub, cfg)}
 	worker := NewOutboxWorker(svc)
 
 	worker.RecordOutboxLagFromValues(context.Background(), 5, 90)
@@ -99,7 +100,7 @@ func TestFault_opsAlertExtendedCoverage(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(stub, cfg)
+	alerter := opsadmin.NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertBlacklistJanitorFailed(context.Background(), assert.AnError)

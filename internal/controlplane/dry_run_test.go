@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
@@ -32,7 +33,7 @@ func TestDryRun_PauseCampaignNoSideEffects(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "dry-run-advertiser", 5_000_000, "USD"))
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       customerID,
 		Name:             "dry-run-pause",
 		BudgetLimitMicro: 5_000_000,

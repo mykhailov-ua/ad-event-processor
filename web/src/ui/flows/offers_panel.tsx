@@ -89,7 +89,7 @@ export function OffersPanel({ items, loading, canWrite, onReload }: OffersPanelP
               aria-label="Offer URL"
             />
           </label>
-          <Button type="submit" variant="primary" size="sm" disabled={busy}>
+          <Button type="submit" variant="primary" disabled={busy}>
             Create offer
           </Button>
           {createError ? <span className={styles.uploadHint}>{createError}</span> : null}

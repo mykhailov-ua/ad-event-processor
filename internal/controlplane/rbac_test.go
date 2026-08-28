@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,20 +12,20 @@ func TestNormalizeRole(t *testing.T) {
 		in  string
 		out string
 	}{
-		{"A", RoleAdmin},
-		{"admin", RoleAdmin},
-		{"SA", RoleAdmin},
-		{"M", RoleManager},
-		{"manager", RoleManager},
-		{"U", RoleUser},
-		{"user", RoleUser},
-		{"C", RoleUser},
-		{"customer", RoleUser},
+		{"A", ctrlhttp.RoleAdmin},
+		{"admin", ctrlhttp.RoleAdmin},
+		{"SA", ctrlhttp.RoleAdmin},
+		{"M", ctrlhttp.RoleManager},
+		{"manager", ctrlhttp.RoleManager},
+		{"U", ctrlhttp.RoleUser},
+		{"user", ctrlhttp.RoleUser},
+		{"C", ctrlhttp.RoleUser},
+		{"customer", ctrlhttp.RoleUser},
 		{"unknown", "UNKNOWN"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.in, func(t *testing.T) {
-			assert.Equal(t, tc.out, NormalizeRole(tc.in))
+			assert.Equal(t, tc.out, ctrlhttp.NormalizeRole(tc.in))
 		})
 	}
 }
@@ -57,12 +58,12 @@ func TestGetPermissionsForRole(t *testing.T) {
 		role          string
 		expectedPerms []string
 	}{
-		{RoleAdmin, adminPerms},
+		{ctrlhttp.RoleAdmin, adminPerms},
 		{"admin", adminPerms},
 		{"SA", adminPerms},
-		{RoleManager, managerPerms},
+		{ctrlhttp.RoleManager, managerPerms},
 		{"manager", managerPerms},
-		{RoleUser, userPerms},
+		{ctrlhttp.RoleUser, userPerms},
 		{"user", userPerms},
 		{"C", userPerms},
 		{"unknown", []string{}},
@@ -70,14 +71,14 @@ func TestGetPermissionsForRole(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.role, func(t *testing.T) {
-			perms := GetPermissionsForRole(tc.role)
+			perms := ctrlhttp.GetPermissionsForRole(tc.role)
 			assert.ElementsMatch(t, tc.expectedPerms, perms)
 		})
 	}
 }
 
 func TestHasPermission(t *testing.T) {
-	assert.True(t, HasPermission(RoleAdmin, "users:write"))
-	assert.False(t, HasPermission(RoleUser, "users:write"))
-	assert.True(t, HasPermission(RoleUser, "brands:write"))
+	assert.True(t, ctrlhttp.HasPermission(ctrlhttp.RoleAdmin, "users:write"))
+	assert.False(t, ctrlhttp.HasPermission(ctrlhttp.RoleUser, "users:write"))
+	assert.True(t, ctrlhttp.HasPermission(ctrlhttp.RoleUser, "brands:write"))
 }

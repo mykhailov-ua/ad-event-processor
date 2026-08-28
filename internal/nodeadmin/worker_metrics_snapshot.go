@@ -136,8 +136,6 @@ func nextSnapshotRunUTC(now time.Time) time.Time {
 	return runAt
 }
 
-const auditExportBatchSize = 1000
-
 func nodeMetricDailyP99(v interface{}) pgtype.Float8 {
 	switch x := v.(type) {
 	case float64:

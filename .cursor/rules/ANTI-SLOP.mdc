@@ -21,6 +21,7 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Plausible wrong logic | Parser budget bypass, budget invariant drift, outbox double-apply |
 | Weakened tests | Green CI by removing `AssertBudgetInvariant` or chaos assertions |
 | Unrun claims | Claiming `make test-alloc-gate` or `pr_fast.sh` passed without executing |
+| Compile/test ritual | `go build ./...`, `go test -c ./...`, repeated package builds, or `npm run typecheck` without operator ask; burns RAM/CPU on shared dev machines |
 | Tautological test | `require.Equal(t, x, x)` or table that only mirrors mock setup; survives revert of fix |
 | Mutation survivor | Tests stay green if production `if` inverted; no `*_holdout` negative |
 | Black-box fiction | "Hidden CI will catch it" without naming `test-integration` / `test-fault` tier |
@@ -435,12 +436,27 @@ Forbidden in admin copy and embed snippets (when `web/` exists):
 
 ## Agent local environment (operator-owned)
 
-The operator machine is not a CI runner. Agents must not start or widen infra scope unless the operator **explicitly** asks in the current turn.
+The operator machine is not a CI runner. Shared dev hosts OOM when agents loop `go build`, `go test`, or full-repo typecheck. **Default: read code, `read_lints`, `grep`, `gofmt -e` on touched files only.** Do not compile or test to "double-check" or "be safe" unless the operator asked in the current turn or a named gate is required for the claim (see **When compile/test is allowed**).
+
+### Compile and test ritual ban (never)
+
+| Pattern | Why banned |
+| :--- | :--- |
+| `go build ./...`, `go test ./...`, `go test -c ./...` | Full module graph; downloads deps; OOM risk |
+| `go build` / `go test -c` on whole packages after a green run in the same turn | Ritual re-verify; no new signal |
+| Chaining builds (`build` then `test -c` then `vet` on same scope) without operator ask | Multiplies RAM/CPU for the same package |
+| `npm run typecheck` / `npx tsc` on full `web/` without operator ask or UI claim | Heavy; use `read_lints` on edited TSX first |
+| "Verify syntax" via compile when `read_lints` + `gofmt -e` + `go list -e` on touched package suffice | Compile is not the default syntax check |
+| Claiming green build/tests without pasted command + exit code | `quality.mdc` verification honesty |
 
 ### Forbidden without explicit operator ask
 
 | Action | Why |
 | :--- | :--- |
+| `go build ./...`, `go test ./...`, `go test -c ./...` | Full-repo compile/test; OOM on shared machines |
+| `go build -o /dev/null ./internal/...` or `./cmd/...` (multi-package) | Same; scope wider than one edited package |
+| `go test -c -o /dev/null ./internal/<pkg>/` when operator did not ask to verify that package | Test compile still links deps; not a default step |
+| `npm run typecheck`, `bash scripts/ci/admin_web.sh` (full web gate) | Full admin web tier |
 | `bash scripts/dev/stack.sh` (any subcommand except `down` when operator asks to stop) | Full compose: tracker, processor, control, PG, Redis, ClickHouse, nginx, broker |
 | `docker compose up` / `docker compose start` under `deploy/compose/` | Same stack; duplicates `stack.sh` |
 | `bash scripts/ci/prepare_test.sh` | Brings up compose and waits for ClickHouse |
@@ -449,22 +465,37 @@ The operator machine is not a CI runner. Agents must not start or widen infra sc
 | Repeated `escape_heap_gate.sh` / `go build -gcflags=-m` on unchanged hot files | Large logs; marginal value per rerun |
 | Load test / BPF gates (`malformed.sh`, `parser_chaos_load.sh`, `bpf_resource_gate.sh`) | Needs running stack and sustained traffic |
 
-### Allowed default verification
+### When compile/test is allowed
+
+Only if **one** of these is true in the current turn:
+
+| Trigger | Allowed scope |
+| :--- | :--- |
+| Operator explicitly asks ("run tests", "build", "verify compile", "pr_fast") | Exactly what they asked; paste command + exit code |
+| Claiming a specific gate passed (`test-alloc-gate`, `pr_fast`, named `-run`) | That gate only; once per claim |
+| Hot-path binary wiring change and operator asked for tracker proof | `go build -o /dev/null ./cmd/tracker/` once |
+| Scoped test operator named | `go test ./<pkg>/ -short -run TestFoo -count=1` once |
+
+If none apply: state **not run** and what lightweight check you used (`read_lints`, `grep`, `gofmt -e`, `go list -e ./path/...`).
+
+### Allowed default verification (no compile)
 
 | Scope | Example |
 | :--- | :--- |
-| One package, `-short`, named `-run` | `go test ./internal/ingestion/ -short -run TestFoo_holdout -count=1` |
+| IDE / static diagnostics | `read_lints` on edited paths |
+| Obvious syntax / import drift | `grep`, `gofmt -e` on touched `.go` files |
+| Package graph error without linking | `go list -e ./internal/controlplane/...` (single subtree; not `./...`) |
+| One holdout, operator asked or behavior claim | `go test ./internal/ingestion/ -short -run TestFoo_holdout -count=1` |
 | Single static gate on touched files | `bash scripts/ci/escape_heap_gate.sh` once after hot-path edit |
-| Compile check | `go build -o /dev/null ./cmd/tracker/` |
 | Stop stack when operator complains or asks | `bash scripts/dev/stack.sh down` |
 
-When verification needs integration tier, **name the command** and ask the operator to run it locally; do not auto-start compose.
+When verification needs integration tier or full compile, **name the command** and ask the operator to run it locally; do not auto-start compose or loop builds.
 
 ## Agent checklist before "done"
 
 | Step | Command / action |
 | :--- | :--- |
-| 1 | Every new symbol resolves (`go build` / `go test -c`) |
+| 1 | New symbols: `read_lints` + `grep`/`gofmt -e` on touched files; `go build`/`go test` only when operator asked or step 3 names a gate |
 | 2 | Hot path does not import cold fraud scoring |
 | 3 | Paste command + package path for verification runs actually executed |
 | 4 | Explain why scripts/tests changed |

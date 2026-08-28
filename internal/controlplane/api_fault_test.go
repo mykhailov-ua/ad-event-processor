@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 
 	"ad-event-processor/pkg/faultproof"
 
+	"ad-event-processor/internal/billingadmin"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
@@ -60,7 +63,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	victimID := uuid.New()
 	attackerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, victimID, "Victim", apiFaultVictimBalance, "USD"))
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       victimID,
 		Name:             "Secret",
 		BudgetLimitMicro: 99_000_000,
@@ -71,11 +74,11 @@ func TestFault_APITenantIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	ownerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+victimID.String()+"/balance", http.NoBody)
-	withSessionUser(ownerReq, tokenMaker, RoleUser, victimID)
+	withSessionUser(ownerReq, tokenMaker, ctrlhttp.RoleUser, victimID)
 	ownerResp := httptest.NewRecorder()
 	mux.ServeHTTP(ownerResp, ownerReq)
 	require.Equal(t, http.StatusOK, ownerResp.Code)
-	var ownerReport CustomerBalanceDTO
+	var ownerReport campaign.CustomerBalanceDTO
 	require.NoError(t, json.NewDecoder(ownerResp.Body).Decode(&ownerReport))
 	leakMarker := ownerReport.Balance
 	require.NotEmpty(t, leakMarker)
@@ -89,7 +92,7 @@ func TestFault_APITenantIsolation(t *testing.T) {
 			go func(p string) {
 				defer wg.Done()
 				req, _ := http.NewRequest("GET", p, http.NoBody)
-				withSessionUser(req, tokenMaker, RoleUser, attackerID)
+				withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, attackerID)
 				resp := httptest.NewRecorder()
 				mux.ServeHTTP(resp, req)
 				if resp.Code == http.StatusForbidden {
@@ -146,7 +149,7 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "CH lag", 500_000_000, "USD"))
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Lag Camp",
 		BudgetLimitMicro: 100_000_000,
@@ -176,12 +179,12 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 		"stale-click", campID, staleHour.Add(5*time.Minute)))
 
 	reqStale, _ := http.NewRequest("GET", statsURL, http.NoBody)
-	withSessionUser(reqStale, tokenMaker, RoleUser, custID)
+	withSessionUser(reqStale, tokenMaker, ctrlhttp.RoleUser, custID)
 	respStale := httptest.NewRecorder()
 	mux.ServeHTTP(respStale, reqStale)
 	require.Equal(t, http.StatusOK, respStale.Code)
 
-	var staleReport CampaignStatsDTO
+	var staleReport campaign.CampaignStatsDTO
 	require.NoError(t, json.NewDecoder(respStale.Body).Decode(&staleReport))
 	require.True(t, staleReport.Stale, "ingestion lag >5m must set stale=true")
 	assert.Equal(t, "eventual", staleReport.Consistency)
@@ -193,11 +196,11 @@ func TestFault_APIChLagStaleOK(t *testing.T) {
 		"fresh-click", campID, now))
 
 	reqFresh, _ := http.NewRequest("GET", statsURL, http.NoBody)
-	withSessionUser(reqFresh, tokenMaker, RoleUser, custID)
+	withSessionUser(reqFresh, tokenMaker, ctrlhttp.RoleUser, custID)
 	respFresh := httptest.NewRecorder()
 	mux.ServeHTTP(respFresh, reqFresh)
 	require.Equal(t, http.StatusOK, respFresh.Code)
-	var freshReport CampaignStatsDTO
+	var freshReport campaign.CampaignStatsDTO
 	require.NoError(t, json.NewDecoder(respFresh.Body).Decode(&freshReport))
 	require.False(t, freshReport.Stale, "fresh CH ingest must clear stale flag")
 
@@ -269,7 +272,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 			if resp.Code == http.StatusOK && resp.Header().Get("X-Export-Truncated") == "true" {
 				truncations.Add(1)
 				bytesWritten, _ := strconv.Atoi(resp.Header().Get("X-Export-Bytes"))
-				assert.LessOrEqual(t, bytesWritten, defaultExportChunkMaxBytes)
+				assert.LessOrEqual(t, bytesWritten, billingadmin.DefaultExportChunkMaxBytes)
 			}
 		}()
 	}
@@ -287,8 +290,8 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 
 	page1IDs := parseExportCSVIds(t, resp1.Body.String())
 	bytesWritten, _ := strconv.Atoi(resp1.Header().Get("X-Export-Bytes"))
-	require.LessOrEqual(t, bytesWritten, defaultExportChunkMaxBytes)
-	require.Greater(t, bytesWritten, defaultExportChunkMaxBytes-50_000)
+	require.LessOrEqual(t, bytesWritten, billingadmin.DefaultExportChunkMaxBytes)
+	require.Greater(t, bytesWritten, billingadmin.DefaultExportChunkMaxBytes-50_000)
 
 	req2, _ := http.NewRequest("GET", exportURL+"&cursor="+cursor, http.NoBody)
 	withAdminAPIKey(req2, cfg)
@@ -316,7 +319,7 @@ func TestFault_LedgerExportCursor(t *testing.T) {
 		"rows_seeded":      strconv.Itoa(rows),
 		"workers":          strconv.Itoa(apiFaultWorkers),
 		"truncated":        "true",
-		"max_bytes":        strconv.Itoa(defaultExportChunkMaxBytes),
+		"max_bytes":        strconv.Itoa(billingadmin.DefaultExportChunkMaxBytes),
 		"cursor_resume_ok": "true",
 		"baseline_ok":      "true",
 		"fault_type":       "oversized_ledger_export",

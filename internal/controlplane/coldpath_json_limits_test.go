@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/opsadmin"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,7 +17,7 @@ import (
 func TestColdPathJSON_AuthLoginRejectsOversizeBody(t *testing.T) {
 	t.Parallel()
 
-	h := &AuthHandler{}
+	h := &ctrlhttp.AuthHandler{}
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
@@ -31,7 +33,7 @@ func TestColdPathJSON_AuthLoginRejectsOversizeBody(t *testing.T) {
 func TestColdPathJSON_AlertmanagerWebhookRejectsOversizeBody(t *testing.T) {
 	t.Parallel()
 
-	h := &AlertmanagerWebhook{}
+	h := &opsadmin.AlertmanagerWebhook{}
 	mux := http.NewServeMux()
 	h.Register(mux)
 

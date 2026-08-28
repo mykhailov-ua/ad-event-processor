@@ -11,6 +11,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensingadmin"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/httpresponse"
 
@@ -145,7 +146,7 @@ func licenseFeatureAllowed(featureKey string) (allowed bool, planCode string) {
 }
 
 func writeLicenseFeatureRequired(w http.ResponseWriter, featureKey, planCode string) {
-	httpresponse.JSON(w, http.StatusForbidden, LicenseFeatureRequiredBody{
+	httpresponse.JSON(w, http.StatusForbidden, licensingadmin.LicenseFeatureRequiredBody{
 		Error:       "feature_required",
 		FeatureKey:  featureKey,
 		PlanCode:    planCode,

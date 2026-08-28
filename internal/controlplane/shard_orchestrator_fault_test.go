@@ -52,7 +52,7 @@ func TestFault_ShardOrchestrator_NoFalseMigrate(t *testing.T) {
 	require.NoError(t, err)
 
 	provider := &mockShardMetricsProvider{
-		metrics: map[int16]ShardMetrics{
+		metrics: map[int16]shardadmin.ShardMetrics{
 			0: {ShardID: 0, CPUUsage: 40.0, MemoryPct: 30.0, OpsPerSec: 10000},
 			1: {ShardID: 1, CPUUsage: 10.0, MemoryPct: 15.0, OpsPerSec: 1000},
 		},
@@ -122,7 +122,7 @@ func TestFault_ShardOrchestrator_CampaignRoutingMigration(t *testing.T) {
 	require.NoError(t, rdb0.Set(ctx, key, "850000", 0).Err())
 
 	provider := &mockShardMetricsProvider{
-		metrics: map[int16]ShardMetrics{
+		metrics: map[int16]shardadmin.ShardMetrics{
 			0: {ShardID: 0, CPUUsage: 95.0, MemoryPct: 90.0, OpsPerSec: 60000},
 			1: {ShardID: 1, CPUUsage: 10.0, MemoryPct: 15.0, OpsPerSec: 1000},
 		},

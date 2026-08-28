@@ -244,7 +244,7 @@ WHERE campaign_id = ?
  AND silent_reject_event = 0
  AND fraud_reason != ''`, campaignID, from, to)
 		if err == nil {
-			defer rows.Close()
+			defer func() { _ = rows.Close() }()
 			if rows.Next() {
 				_ = rows.Scan(&out.rejects)
 			}

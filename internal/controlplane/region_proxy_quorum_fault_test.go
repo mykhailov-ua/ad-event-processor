@@ -13,6 +13,7 @@ import (
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/dedupkey"
 	"ad-event-processor/pkg/regionproxy/opkey"
 	"ad-event-processor/pkg/regionproxy/quorum"
@@ -44,7 +45,7 @@ func TestFault_RegionProxyQuorumBook_1of3NoExecute(t *testing.T) {
 	opID := uuid.New()
 	replicaSetID := uuid.New()
 	scope := dedup.NewAdapter(pool, 1, 1).RegionScope(dedupkey.RelaySourceID(1), 51, 51)
-	_, err = worker.Book(ctx, OperationLeaseBookRequest{
+	_, err = worker.Book(ctx, shardadmin.OperationLeaseBookRequest{
 		OpID:         opID,
 		RegionCode:   1,
 		Role:         "management",
@@ -55,7 +56,7 @@ func TestFault_RegionProxyQuorumBook_1of3NoExecute(t *testing.T) {
 		ReplicaNodes: []string{"proxy-a", "proxy-b", "proxy-c"},
 		BookAckNodes: []string{"proxy-a"},
 	})
-	require.ErrorIs(t, err, ErrLeaseQuorumNotMet)
+	require.ErrorIs(t, err, shardadmin.ErrLeaseQuorumNotMet)
 
 	var proposalCount int
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM dedup_key_proposals`).Scan(&proposalCount))
@@ -84,7 +85,7 @@ func TestFault_RegionProxyQuorumBook_1of3NoExecute(t *testing.T) {
 
 	lease, err := db.New(pool).GetOperationLease(ctx, domain.ToUUID(opID))
 	require.NoError(t, err)
-	require.Equal(t, string(LeaseStateCompleted), lease.LeaseState)
+	require.Equal(t, string(shardadmin.LeaseStateCompleted), lease.LeaseState)
 
 	faultproof.Log(t, "mr_quorum_book", map[string]string{
 		"subsystem":     "region_proxy_quorum",
@@ -112,7 +113,7 @@ func TestFault_RegionProxyQuorumBook_Kill2of3Simulated(t *testing.T) {
 
 	opID := uuid.New()
 	scope := dedup.NewAdapter(pool, 1, 1).RegionScope(dedupkey.RelaySourceID(1), 52, 52)
-	bookRes, err := worker.Book(ctx, OperationLeaseBookRequest{
+	bookRes, err := worker.Book(ctx, shardadmin.OperationLeaseBookRequest{
 		OpID:         opID,
 		RegionCode:   1,
 		Role:         "management",
@@ -123,7 +124,7 @@ func TestFault_RegionProxyQuorumBook_Kill2of3Simulated(t *testing.T) {
 		ReplicaNodes: []string{"proxy-a", "proxy-b", "proxy-c"},
 		BookAckNodes: []string{"proxy-a"},
 	})
-	require.ErrorIs(t, err, ErrLeaseQuorumNotMet)
+	require.ErrorIs(t, err, shardadmin.ErrLeaseQuorumNotMet)
 	require.False(t, bookRes.QuorumMet)
 	require.Equal(t, int32(1), bookRes.AckCount)
 
@@ -164,7 +165,7 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 		return infra.Pool.Ping(ctx) != nil
 	}, 15*time.Second, 200*time.Millisecond)
 
-	bookRes, err := worker.Book(ctx, OperationLeaseBookRequest{
+	bookRes, err := worker.Book(ctx, shardadmin.OperationLeaseBookRequest{
 		OpID:         opID,
 		RegionCode:   1,
 		Role:         "region-proxy",
@@ -175,7 +176,7 @@ func TestFault_QuorumBook_WithPGDown(t *testing.T) {
 		ReplicaNodes: replicas,
 		BookAckNodes: []string{"proxy-a"},
 	})
-	require.ErrorIs(t, err, ErrLeaseQuorumNotMet)
+	require.ErrorIs(t, err, shardadmin.ErrLeaseQuorumNotMet)
 	require.False(t, bookRes.QuorumMet)
 	require.Equal(t, int32(1), bookRes.AckCount)
 

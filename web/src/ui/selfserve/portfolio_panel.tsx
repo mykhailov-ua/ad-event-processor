@@ -124,7 +124,7 @@ const PortfolioRow = memo(function PortfolioRow({
         {canMutate && showPause ? (
           <Button
             type="button"
-            size="sm"
+           
             disabled={busy}
             data-row-id={id}
             data-row-action="pause"
@@ -136,7 +136,7 @@ const PortfolioRow = memo(function PortfolioRow({
         {canMutate && showResume ? (
           <Button
             type="button"
-            size="sm"
+           
             disabled={busy}
             data-row-id={id}
             data-row-action="resume"
@@ -285,13 +285,13 @@ export function PortfolioPanel({
       {canMutate && selectedIds.size > 0 ? (
         <div className={styles.toolbar}>
           <span>{selectedIds.size} selected</span>
-          <Button type="button" size="sm" disabled={bulkBusy} onClick={onBulkPause}>
+          <Button type="button" disabled={bulkBusy} onClick={onBulkPause}>
             Pause
           </Button>
-          <Button type="button" size="sm" disabled={bulkBusy} onClick={onBulkResume}>
+          <Button type="button" disabled={bulkBusy} onClick={onBulkResume}>
             Resume
           </Button>
-          <Button type="button" size="sm" disabled={bulkBusy} onClick={onClearSelection}>
+          <Button type="button" disabled={bulkBusy} onClick={onClearSelection}>
             Clear
           </Button>
         </div>

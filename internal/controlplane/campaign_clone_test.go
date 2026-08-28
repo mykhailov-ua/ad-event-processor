@@ -63,7 +63,7 @@ func TestCloneCampaign_holdout(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(0), srcBefore.CurrentSpend)
 
-	result, err := svc.CloneCampaign(ctx, CloneCampaignSpec{
+	result, err := svc.CloneCampaign(ctx, campaign.CloneCampaignSpec{
 		SourceID:       srcID,
 		IdempotencyKey: "clone-camp-idem-1",
 	})
@@ -104,7 +104,7 @@ func TestCloneCampaign_holdout(t *testing.T) {
 	assert.Equal(t, srcBefore.CurrentSpend, srcAfter.CurrentSpend)
 	assert.Equal(t, flowID, uuid.UUID(srcAfter.FlowID.Bytes))
 
-	dup, err := svc.CloneCampaign(ctx, CloneCampaignSpec{
+	dup, err := svc.CloneCampaign(ctx, campaign.CloneCampaignSpec{
 		SourceID:       srcID,
 		IdempotencyKey: "clone-camp-idem-1",
 	})
@@ -140,10 +140,10 @@ func TestCloneCampaign_excludeFraud_holdout(t *testing.T) {
 		WHERE id = $1`, srcID)
 	require.NoError(t, err)
 
-	result, err := svc.CloneCampaign(ctx, CloneCampaignSpec{
+	result, err := svc.CloneCampaign(ctx, campaign.CloneCampaignSpec{
 		SourceID:       srcID,
 		IdempotencyKey: "clone-fraud-exclude",
-		Options: CloneCampaignOptions{
+		Options: campaign.CloneCampaignOptions{
 			IncludeFlow:      true,
 			IncludePostbacks: true,
 			IncludeFraud:     false,
@@ -184,10 +184,10 @@ func TestCloneCampaign_placementBlocks_holdout(t *testing.T) {
 	srcKey := domain.PlacementBlacklistKey(srcID)
 	require.NoError(t, redisClient.HSet(ctx, srcKey, "zone-high-ivt", "1").Err())
 
-	result, err := svc.CloneCampaign(ctx, CloneCampaignSpec{
+	result, err := svc.CloneCampaign(ctx, campaign.CloneCampaignSpec{
 		SourceID:       srcID,
 		IdempotencyKey: "clone-placement-blocks",
-		Options: CloneCampaignOptions{
+		Options: campaign.CloneCampaignOptions{
 			IncludeFlow:            true,
 			IncludePostbacks:       true,
 			IncludePlacementBlocks: true,

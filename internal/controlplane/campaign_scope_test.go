@@ -11,7 +11,6 @@ import (
 
 	"ad-event-processor/internal/config"
 	ctrlhttp "ad-event-processor/internal/control/http"
-	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
@@ -61,7 +60,7 @@ func TestCampaignList_MediaBuyerScope(t *testing.T) {
 		campA, buyerA, campB, custID, buyerB)
 	require.NoError(t, err)
 
-	token, err := tokenMaker.CreateToken(buyerA, uuid.New(), authz.RoleMediaBuyer, custID, time.Hour)
+	token, err := tokenMaker.CreateToken(buyerA, uuid.New(), ctrlhttp.RoleMediaBuyer, custID, time.Hour)
 	require.NoError(t, err)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns?limit=50", http.NoBody)

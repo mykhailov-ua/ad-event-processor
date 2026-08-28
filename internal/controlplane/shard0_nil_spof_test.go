@@ -162,7 +162,6 @@ func TestShard0Nil_SyncGlobalConfigHealthyShards(t *testing.T) {
 	}
 }
 
-
 func TestShard0Nil_SetNXOnAllShardsRequiresAllShards(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
 	ctx := context.Background()

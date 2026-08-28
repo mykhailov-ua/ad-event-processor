@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/reports"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
@@ -32,7 +32,7 @@ func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 	_, err := dbPool.Exec(ctx, "INSERT INTO customers (id, name, balance, currency) VALUES ($1, $2, 0, 'USD')", customerID, "Basic Customer")
 	require.NoError(t, err)
 
-	reportsHandler := &controlplane.ReportsHTTPHandlers{
+	reportsHandler := &reports.ReportsHTTPHandlers{
 		Pool: dbPool,
 		ResolveForecastCustomerID: func(r *http.Request, bodyID *uuid.UUID) (*uuid.UUID, error) {
 			if custIDStr := r.URL.Query().Get("customer_id"); custIDStr != "" {
@@ -45,8 +45,8 @@ func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 		},
 	}
 
-	viewsHandler := &controlplane.ViewsHTTPHandlers{
-		Store: controlplane.NewViewsStore(nil),
+	viewsHandler := &reports.ViewsHTTPHandlers{
+		Store: reports.NewViewsStore(nil),
 	}
 
 	mux := http.NewServeMux()
@@ -68,7 +68,7 @@ func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 	})
 
 	t.Run("Views_CRUD_AllowedWithoutSubscription", func(t *testing.T) {
-		createReq := controlplane.CreateViewRequest{
+		createReq := reports.CreateViewRequest{
 			CustomerID: customerID.String(),
 			Name:       "Saved View",
 			ReportKey:  "placements",

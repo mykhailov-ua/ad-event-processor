@@ -119,7 +119,7 @@ export function SupplyPanel({
           <p className={shared.hint}>No validation snapshot loaded.</p>
         )}
         <div className={shared.toolbar}>
-          <Button size="sm" variant="secondary" onClick={onReloadValidation}>
+          <Button variant="secondary" onClick={onReloadValidation}>
             Refresh validation
           </Button>
           {exportPath?.path ? (
@@ -132,14 +132,14 @@ export function SupplyPanel({
         <h2 className={shared.sectionTitle}>Preview</h2>
         <div className={styles.tabs}>
           <Button
-            size="sm"
+           
             variant={previewTab === 'sellers' ? 'primary' : 'secondary'}
             onClick={() => onPreviewTabChange('sellers')}
           >
             sellers.json
           </Button>
           <Button
-            size="sm"
+           
             variant={previewTab === 'ads_txt' ? 'primary' : 'secondary'}
             onClick={() => onPreviewTabChange('ads_txt')}
           >
@@ -207,7 +207,7 @@ export function SupplyPanel({
                 <span className={shared.gridCell} role="gridcell">
                   {canWrite && row.id != null ? (
                     <Button
-                      size="sm"
+                     
                       variant="secondary"
                       disabled={busy}
                       onClick={() => onDeleteSeller(row.id as number)}
@@ -257,7 +257,7 @@ export function SupplyPanel({
               />
             </label>
             <Button
-              size="sm"
+             
               variant="primary"
               disabled={busy}
               onClick={() =>
@@ -322,7 +322,7 @@ export function SupplyPanel({
                 <span className={shared.gridCell} role="gridcell">
                   {canWrite && row.id != null ? (
                     <Button
-                      size="sm"
+                     
                       variant="secondary"
                       disabled={busy}
                       onClick={() => onDeleteAdsTxt(row.id as number)}
@@ -364,7 +364,7 @@ export function SupplyPanel({
               />
             </label>
             <Button
-              size="sm"
+             
               variant="primary"
               disabled={busy}
               onClick={() =>

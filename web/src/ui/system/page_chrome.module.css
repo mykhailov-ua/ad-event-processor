@@ -18,5 +18,8 @@
 }
 
 .badge {
+  display: inline-grid;
+  align-items: center;
   justify-self: end;
+  min-height: var(--control-height-md);
 }

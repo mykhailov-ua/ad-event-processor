@@ -74,7 +74,7 @@ func collectCampaignPublishBlocked(ctx context.Context, fx Effects, campaignID u
 	if err != nil {
 		return nil, err
 	}
-	return EvaluatePublishBlocked(input), nil
+	return EvaluatePublishBlocked(ctx, input), nil
 }
 
 func BuildPublishGateInput(ctx context.Context, fx Effects, campaignID uuid.UUID, row db.Campaign) (PublishGateEvalInput, error) {

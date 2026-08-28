@@ -53,9 +53,13 @@ func TelemetryMetadata(ctx context.Context, pool *pgxpool.Pool) (telemetry.Metad
 	return meta, nil
 }
 
-func StartProductTelemetryPulse(host ProductTelemetryHost) {
+func StartProductTelemetryPulse(ctx context.Context, host ProductTelemetryHost) {
 	if host == nil || !host.TelemetryOptIn() {
 		return
+	}
+	runCtx := ctx
+	if runCtx == nil {
+		runCtx = host.WorkerContext()
 	}
 	worker := telemetry.NewWorker(telemetry.Config{
 		OptIn:            host.TelemetryOptIn(),
@@ -71,6 +75,6 @@ func StartProductTelemetryPulse(host ProductTelemetryHost) {
 		return
 	}
 	host.StartWorker(func() {
-		worker.Start(host.WorkerContext())
+		worker.Start(runCtx)
 	})
 }

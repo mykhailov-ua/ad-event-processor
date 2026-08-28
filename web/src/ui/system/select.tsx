@@ -88,7 +88,7 @@ export function Select({
           {options.map((option) => {
             const selectedOption = option.value === value;
             return (
-              <li key={option.value} role="presentation">
+              <li key={option.value} role="presentation" className={styles.listItem}>
                 <button
                   type="button"
                   role="option"
@@ -96,7 +96,7 @@ export function Select({
                   className={cn(styles.option, selectedOption ? styles.optionSelected : '')}
                   onClick={() => selectValue(option.value)}
                 >
-                  {option.label}
+                  <span className={styles.optionLabel}>{option.label}</span>
                 </button>
               </li>
             );

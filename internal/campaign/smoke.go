@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"ad-event-processor/pkg/branding"
-
 	"github.com/google/uuid"
 )
 
@@ -79,51 +77,6 @@ func buildCampaignSmokeClickURL(base string, campaignID uuid.UUID, clickID strin
 	q.Set("smoke", "1")
 	u.RawQuery = q.Encode()
 	return u.String(), nil
-}
-
-func followCampaignSmokeRedirects(ctx context.Context, client *http.Client, startURL string, maxHops int) ([]CampaignSmokeRedirectHop, string, string, error) {
-	chain := make([]CampaignSmokeRedirectHop, 0, maxHops+1)
-	current := startURL
-	for hop := 0; hop <= maxHops; hop++ {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, current, nil)
-		if err != nil {
-			return chain, "tracker_unreachable", "", err
-		}
-		req.Header.Set("User-Agent", branding.HTTPUserAgent("CampaignSmoke"))
-		resp, err := client.Do(req)
-		if err != nil {
-			return chain, "tracker_unreachable", "", err
-		}
-		chain = append(chain, CampaignSmokeRedirectHop{URL: current, StatusCode: resp.StatusCode})
-		if hop == 0 && resp.StatusCode == http.StatusForbidden {
-			drainHTTPBody(resp.Body)
-			return chain, "click_rejected", hostFromURL(current), nil
-		}
-		if resp.StatusCode == http.StatusTooManyRequests {
-			drainHTTPBody(resp.Body)
-			return chain, "click_rejected", hostFromURL(current), nil
-		}
-		if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-			location := strings.TrimSpace(resp.Header.Get("Location"))
-			drainHTTPBody(resp.Body)
-			if location == "" {
-				return chain, "redirect_missing_location", hostFromURL(current), nil
-			}
-			next, err := resolveCampaignSmokeRedirect(current, location)
-			if err != nil {
-				return chain, "redirect_invalid_location", hostFromURL(current), nil
-			}
-			current = next
-			continue
-		}
-		drainHTTPBody(resp.Body)
-		finalHost := hostFromURL(current)
-		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			return chain, "", finalHost, nil
-		}
-		return chain, "non_success_status", finalHost, nil
-	}
-	return chain, "redirect_limit_exceeded", hostFromURL(current), nil
 }
 
 func resolveCampaignSmokeRedirect(current, location string) (string, error) {

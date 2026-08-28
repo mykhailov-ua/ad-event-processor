@@ -90,7 +90,7 @@ export function DecisionsPanel({
           />
         </label>
         <div className={styles.actions}>
-          <Button type="submit" size="sm" variant="secondary" disabled={!customerId || loading}>
+          <Button type="submit" variant="secondary" disabled={!customerId || loading}>
             Explain
           </Button>
         </div>

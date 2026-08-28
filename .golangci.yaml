@@ -68,6 +68,9 @@ linters:
       - path: "(/|^)(.*/)?pb/"
         linters:
           - errcheck
+      - path: internal/controlplane/outboxpb/
+        linters:
+          - staticcheck
       - path: "(/|^)(.*/)?db/"
         linters:
           - errcheck

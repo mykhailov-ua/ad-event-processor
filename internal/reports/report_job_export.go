@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"strings"
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/reportjob"
@@ -50,9 +51,13 @@ func writeReportCSV(ctx context.Context, deps ReportExportDeps, path string, spe
 	w := csv.NewWriter(f)
 	profile := spec.RedactionProfile
 	if profile == "" {
-		profile = ExportProfileOperatorFull
+		profile = resolveExportRedactionProfile(ctx)
 	}
-	if err := writeExportMetaHeader(w, spec.ExportedBy, exportDeploymentID()); err != nil {
+	exportedBy := strings.TrimSpace(spec.ExportedBy)
+	if exportedBy == "" {
+		exportedBy = exportActorLabel(ctx)
+	}
+	if err := writeExportMetaHeader(w, exportedBy, exportDeploymentID()); err != nil {
 		return err
 	}
 	freshness := DataFreshnessFromClickHouse(ctx, deps.ClickHouseQuery)

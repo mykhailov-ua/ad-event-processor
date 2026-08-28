@@ -202,7 +202,7 @@ export function CustomersGrid({ items, loading, sort, order, onSortHeader }: Cus
           <EmptyState
             message="No customers yet."
             action={
-              <Button variant="secondary" size="sm" onClick={() => navigate('/billing')}>
+              <Button variant="secondary" onClick={() => navigate('/billing')}>
                 Open billing
               </Button>
             }

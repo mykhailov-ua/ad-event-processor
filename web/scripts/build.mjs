@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import * as esbuild from 'esbuild';
-import { cpSync, mkdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -19,46 +19,78 @@ try {
 }
 
 const ts = Date.now();
-const FONT_LINKS = `    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css" />
+function baseFontLinks() {
+  return `    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-sans@5.2.5/400.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/geist-mono@5.2.5/400.css" />
     <link rel="stylesheet" href="/src/styles/tokens.css?v=${ts}" />
     <link rel="stylesheet" href="/src/styles/base.css?v=${ts}" />
 `;
+}
 
-const INDEX_HTML = `<!doctype html>
+function distCssHref(cssBundlePath) {
+  const webPath = cssBundlePath.replace(/^dist\//, '/');
+  return `${webPath}?v=${ts}`;
+}
+
+function stylesheetLink(href) {
+  return `    <link rel="stylesheet" href="${href}" />\n`;
+}
+
+function htmlShell({ title, scriptSrc, bundleCssHref }) {
+  const bundleLink = bundleCssHref ? stylesheetLink(bundleCssHref) : '';
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ad-event-processor Admin</title>
-${FONT_LINKS}
-  </head>
+    <title>${title}</title>
+${baseFontLinks()}${bundleLink}  </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/src/main.js?v=${ts}"></script>
+    <script type="module" src="${scriptSrc}"></script>
   </body>
 </html>
 `;
+}
 
-const LOGIN_HTML = `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign in - ad-event-processor Admin</title>
-${FONT_LINKS}
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/login.js?v=${ts}"></script>
-  </body>
-</html>
-`;
+const HTML_CSS_ENTRIES = new Set(['src/main.tsx', 'src/login.tsx']);
+
+function cssImportPath(jsOutPath, cssBundlePath) {
+  const rel = relative(dirname(jsOutPath), cssBundlePath).replace(/\\/g, '/');
+  return rel.startsWith('.') ? rel : `./${rel}`;
+}
+
+function cssLinkLoaderSnippet(cssRelPath) {
+  return `(()=>{const href=new URL(${JSON.stringify(cssRelPath)},import.meta.url).href;if(document.querySelector(\`link[data-esbuild-css="\${href}"]\`))return;const link=document.createElement("link");link.rel="stylesheet";link.href=href;link.setAttribute("data-esbuild-css",href);document.head.appendChild(link)})();\n`;
+}
+
+function attachCssBundles(metafile) {
+  for (const [jsOutPath, output] of Object.entries(metafile.outputs)) {
+    if (!output.cssBundle || !jsOutPath.endsWith('.js')) continue;
+    if (output.entryPoint && HTML_CSS_ENTRIES.has(output.entryPoint)) continue;
+    const jsAbs = join(ROOT, jsOutPath);
+    const cssRelPath = cssImportPath(jsOutPath, output.cssBundle);
+    const loader = cssLinkLoaderSnippet(cssRelPath);
+    let source = readFileSync(jsAbs, 'utf8');
+    if (source.includes(`data-esbuild-css`)) continue;
+    writeFileSync(jsAbs, `${loader}${source}`);
+  }
+}
+
+function entryCssHref(metafile, entryPoint) {
+  const entrySuffix = entryPoint.replace(`${ROOT}/`, '');
+  for (const output of Object.values(metafile.outputs)) {
+    if (output.entryPoint === entrySuffix && output.cssBundle) {
+      return distCssHref(output.cssBundle);
+    }
+  }
+  return null;
+}
 
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'src'), { recursive: true });
 
-await esbuild.build({
+const bundleResult = await esbuild.build({
   absWorkingDir: ROOT,
   entryPoints: [join(SRC, 'main.tsx'), join(SRC, 'login.tsx')],
   bundle: true,
@@ -75,6 +107,7 @@ await esbuild.build({
   assetNames: 'assets/[name]-[hash]',
   sourcemap: true,
   minify: true,
+  metafile: true,
   logLevel: 'info',
   loader: {
     '.ts': 'ts',
@@ -82,6 +115,8 @@ await esbuild.build({
     '.js': 'js',
   },
 });
+
+attachCssBundles(bundleResult.metafile);
 
 cpSync(join(SRC, 'styles'), join(DIST, 'src', 'styles'), { recursive: true });
 
@@ -143,8 +178,27 @@ await esbuild.build({
   },
 });
 
-writeFileSync(join(DIST, 'index.html'), INDEX_HTML, 'utf8');
-writeFileSync(join(DIST, 'login.html'), LOGIN_HTML, 'utf8');
+const mainCssHref = entryCssHref(bundleResult.metafile, join(SRC, 'main.tsx'));
+const loginCssHref = entryCssHref(bundleResult.metafile, join(SRC, 'login.tsx'));
+
+writeFileSync(
+  join(DIST, 'index.html'),
+  htmlShell({
+    title: 'ad-event-processor Admin',
+    scriptSrc: `/src/main.js?v=${ts}`,
+    bundleCssHref: mainCssHref,
+  }),
+  'utf8'
+);
+writeFileSync(
+  join(DIST, 'login.html'),
+  htmlShell({
+    title: 'Sign in - ad-event-processor Admin',
+    scriptSrc: `/src/login.js?v=${ts}`,
+    bundleCssHref: loginCssHref,
+  }),
+  'utf8'
+);
 
 console.log('dist: esbuild bundle -> dist/src/{main,login,chunks} + styles + HTML shells');
 

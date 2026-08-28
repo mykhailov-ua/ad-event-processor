@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"testing"
 
-	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/db"
@@ -39,7 +39,7 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "VPP Customer", 1_000_000_000, "USD"))
 
-	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campaignID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       customerID,
 		Name:             "VPP Campaign",
 		BudgetLimitMicro: 100_000_000,
@@ -86,7 +86,7 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "VPP On-pace", 1_000_000_000, "USD"))
 
-	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campaignID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       customerID,
 		Name:             "VPP On Pace",
 		BudgetLimitMicro: 100_000_000,
@@ -131,7 +131,7 @@ func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "EVEN Customer", 1_000_000_000, "USD"))
 
-	campaignID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campaignID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       customerID,
 		Name:             "EVEN Campaign",
 		BudgetLimitMicro: 100_000_000,

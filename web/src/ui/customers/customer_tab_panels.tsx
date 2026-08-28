@@ -57,7 +57,7 @@ export function CustomerToolbar({ customerId }: { customerId: string }) {
     <div className={styles.toolbar}>
       <Button
         variant="secondary"
-        size="sm"
+       
         type="button"
         onClick={() => {
           window.location.assign(balanceExportUrl(customerId));
@@ -66,7 +66,7 @@ export function CustomerToolbar({ customerId }: { customerId: string }) {
         Export balance CSV
       </Button>
       <Link to="/billing">
-        <Button variant="secondary" size="sm">
+        <Button variant="secondary">
           Open billing
         </Button>
       </Link>

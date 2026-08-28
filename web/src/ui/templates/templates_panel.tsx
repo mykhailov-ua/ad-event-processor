@@ -134,7 +134,7 @@ export function TemplatesPanel({
         {canWrite ? (
           <div className={shared.toolbar}>
             <Button
-              size="sm"
+             
               variant="primary"
               disabled={busy || selectedNames.length === 0}
               data-testid="template-import-submit"
@@ -143,7 +143,7 @@ export function TemplatesPanel({
               Import selected
             </Button>
             <Button
-              size="sm"
+             
               variant="secondary"
               disabled={busy}
               onClick={() => onImport([])}

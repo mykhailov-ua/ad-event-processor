@@ -88,7 +88,7 @@ func TestFault_SupplyOutboxRedelivery(t *testing.T) {
 	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
 	ctx := context.Background()
 
-	_, err := svc.CreateSeller(ctx, SellerCreateSpec{
+	_, err := svc.CreateSeller(ctx, supply.SellerCreateSpec{
 		SellerID:   "redelivery-pub",
 		Domain:     "redelivery.example.com",
 		SellerType: "PUBLISHER",

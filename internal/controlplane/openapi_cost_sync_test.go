@@ -1,13 +1,12 @@
 package controlplane_test
 
 import (
+	"ad-event-processor/internal/billingadmin"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
-
-	"ad-event-processor/internal/controlplane"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -33,7 +32,7 @@ func TestOpenAPI_costSyncCredentialSchemaKeys(t *testing.T) {
 	props, ok := credSchema["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.CostSyncCredentialDTO
+	var dto billingadmin.CostSyncCredentialDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
@@ -44,6 +43,6 @@ func TestOpenAPI_costSyncCredentialSchemaKeys(t *testing.T) {
 			continue
 		}
 		_, inSpec := props[key]
-		require.True(t, inSpec, "CostSyncCredentialDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "billingadmin.CostSyncCredentialDTO json field %q missing from OpenAPI schema", key)
 	}
 }

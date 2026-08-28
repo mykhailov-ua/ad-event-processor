@@ -182,13 +182,6 @@ func ReportPermsFraudCustomer() []string {
 	return []string{"audit:read", "campaigns:read", "campaigns:read:masked"}
 }
 
-func reportPermsCustomerFraudEvidence() []string {
-	if fraudExports.ReportPermsCustomerFraudEvidence != nil {
-		return fraudExports.ReportPermsCustomerFraudEvidence()
-	}
-	return []string{"campaigns:read"}
-}
-
 func FraudReasonToCategory(reason string) (string, string) {
 	if fraudExports.FraudReasonToCategory != nil {
 		return fraudExports.FraudReasonToCategory(reason)
@@ -236,51 +229,11 @@ func QueryWorstIVTCountries(ctx context.Context, clickhouseQuery *database.Click
 	return fraudExports.QueryWorstIVTCountries(ctx, clickhouseQuery, campaignIDs, from, to, limit)
 }
 
-func queryFraudBreakdownRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]FraudBreakdownRowDTO, int64, error) {
-	return fraudExports.QueryFraudBreakdownRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
-}
-
-func queryIVTBySourceRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]IVTBySourceRowDTO, int64, error) {
-	return fraudExports.QueryIVTBySourceRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
-}
-
-func querySilentRejectImpressionFunnelRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]SilentRejectImpressionFunnelRowDTO, int64, error) {
-	return fraudExports.QuerySilentRejectImpressionFunnelRows(ctx, clickhouseQuery, campaignIDs, from, to, limit, offset)
-}
-
-func aggregateCustomerFraudByType(rows []FraudBreakdownRowDTO, categoryFilter string) []CustomerFraudByTypeRowDTO {
-	return fraudExports.AggregateCustomerFraudByType(rows, categoryFilter)
-}
-
-func buildCustomerFraudByDimensionRows(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, dimension string, scrubCtx context.Context) ([]CustomerFraudByDimensionRowDTO, bool, error) {
-	return fraudExports.BuildCustomerFraudByDimensionRows(ctx, clickhouseQuery, campaignIDs, from, to, dimension, scrubCtx)
-}
-
-func writeFraudEvidencePackBulkZip(ctx context.Context, deps ReportExportDeps, path string, spec reportjob.ReportJobSpec) error {
-	return fraudExports.WriteFraudEvidencePackBulkZip(ctx, deps, path, spec)
-}
-
-func queryFraudEvidencePackFraudCH(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, clickID string, from, to time.Time) ([]FraudEvidenceFraudRowDTO, error) {
-	return fraudExports.QueryFraudEvidencePackFraudCH(ctx, clickhouseQuery, campaignIDs, clickID, from, to)
-}
-
-func aggregateFraudEvidenceSignals(rows []FraudEvidenceFraudRowDTO) FraudEvidenceSignalsDTO {
-	return fraudExports.AggregateFraudEvidenceSignals(rows)
-}
-
 func CalcSilentRejectRatio(silentRejectCount, eventCount int64) float64 {
 	if eventCount <= 0 {
 		return 0
 	}
 	return float64(silentRejectCount) / float64(eventCount)
-}
-
-func maskLevelFromContext(ctx context.Context) authz.MaskLevel {
-	snap, ok := authz.SnapshotFromContext(ctx)
-	if !ok {
-		return authz.MaskMasked
-	}
-	return snap.Mask
 }
 
 func ScrubFraudBreakdownRow(ctx context.Context, row FraudBreakdownRowDTO) FraudBreakdownRowDTO {

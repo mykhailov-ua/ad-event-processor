@@ -22,7 +22,7 @@ func SetTrustedProxyRanges(cidrs []*net.IPNet) {
 			entries = append(entries, cidr.String())
 		}
 	}
-	SetTrustedProxies(entries)
+	ctrlhttp.SetTrustedProxies(entries)
 }
 
 type ExportedRateLimiterEntry struct {

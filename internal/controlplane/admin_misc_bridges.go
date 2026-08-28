@@ -8,12 +8,13 @@ import (
 
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/internal/brand"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
+	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/smartalerts"
-	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -151,7 +152,7 @@ func (s *Service) BrandStore() *brand.Store {
 	return s.brandStore
 }
 
-func (s *Service) ErrBrandNotFound() error { return ErrBrandNotFound }
+func (s *Service) ErrBrandNotFound() error        { return ErrBrandNotFound }
 func (s *Service) ErrCreativeNotFound() error     { return ErrCreativeNotFound }
 func (s *Service) ErrWeightMustBePositive() error { return ErrWeightMustBePositive }
 func (s *Service) ErrCreativeStatusInvalid() error {
@@ -194,11 +195,11 @@ func (s *Service) CreateBrand(ctx context.Context, customerID uuid.UUID, name st
 	return s.BrandStore().CreateBrand(ctx, customerID, name)
 }
 
-func (s *Service) GetBrandDTO(ctx context.Context, id uuid.UUID) (BrandDTO, error) {
+func (s *Service) GetBrandDTO(ctx context.Context, id uuid.UUID) (brand.DTO, error) {
 	return s.BrandStore().GetBrandDTO(ctx, id)
 }
 
-func (s *Service) ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID) ([]BrandDTO, error) {
+func (s *Service) ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID) ([]brand.DTO, error) {
 	return s.BrandStore().ListBrandsByCustomer(ctx, customerID)
 }
 
@@ -210,7 +211,7 @@ func (s *Service) UpsertBrandCreative(ctx context.Context, brandID uuid.UUID, na
 	return s.BrandStore().UpsertBrandCreative(ctx, brandID, name, landingURL, weight, status)
 }
 
-func (s *Service) ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]BrandCreativeDTO, error) {
+func (s *Service) ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]brand.CreativeDTO, error) {
 	return s.BrandStore().ListBrandCreatives(ctx, brandID)
 }
 
@@ -256,26 +257,26 @@ func (s *Service) ListMarginGuardPolicies(ctx context.Context, campaignID uuid.U
 	return s.MarginGuardStore().ListPolicies(ctx, campaignID)
 }
 
-func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error) {
+func (s *Service) GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (campaign.CampaignMarginDTO, error) {
 	m, err := s.MarginGuardStore().GetCampaignMargin(ctx, campaignID)
 	if err != nil {
-		return CampaignMarginDTO{}, err
+		return campaign.CampaignMarginDTO{}, err
 	}
 	return campaignMarginToDTO(m), nil
 }
 
-func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []CampaignDTO) {
+func (s *Service) AttachCampaignListMarginBreach(ctx context.Context, items []campaign.CampaignDTO) {
 	s.MarginGuardStore().AttachCampaignListMarginBreach(ctx, items)
 }
 
-func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]MarginGuardActivityRow, error) {
+func (s *Service) GetMarginGuardActivity(ctx context.Context, campaignID uuid.UUID) ([]marginguard.ActivityRow, error) {
 	rows, err := s.MarginGuardStore().ListActivity(ctx, campaignID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]MarginGuardActivityRow, len(rows))
+	out := make([]marginguard.ActivityRow, len(rows))
 	for i, row := range rows {
-		out[i] = MarginGuardActivityRow(row)
+		out[i] = marginguard.ActivityRow(row)
 	}
 	return out, nil
 }
@@ -292,8 +293,8 @@ func (s *Service) batchCampaignMarginBreach(ctx context.Context, campaignIDs []u
 	return s.MarginGuardStore().BatchMarginBreach(ctx, campaignIDs)
 }
 
-func campaignMarginToDTO(m marginguard.CampaignMargin) CampaignMarginDTO {
-	return CampaignMarginDTO{
+func campaignMarginToDTO(m marginguard.CampaignMargin) campaign.CampaignMarginDTO {
+	return campaign.CampaignMarginDTO{
 		CampaignID:           m.CampaignID,
 		WindowStart:          m.WindowStart,
 		WindowHours:          m.WindowHours,

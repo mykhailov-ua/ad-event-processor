@@ -10,7 +10,7 @@ export function NotFoundPage() {
         The requested route does not exist or is not implemented yet.
       </div>
       <Link to="/customers">
-        <Button variant="secondary" size="sm">
+        <Button variant="secondary">
           Customers
         </Button>
       </Link>

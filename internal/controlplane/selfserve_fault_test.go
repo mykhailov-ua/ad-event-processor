@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -54,7 +55,7 @@ func TestFault_SelfServeIdempotentCreate(t *testing.T) {
 		req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Idempotency-Key", idemKey)
-		withSessionUser(req, tokenMaker, RoleUser, custID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, http.StatusCreated, rr.Code, "attempt %d", i+1)

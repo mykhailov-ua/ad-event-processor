@@ -590,21 +590,6 @@ func BumpFencesForPendingMigrations(ctx context.Context, host Host) error {
 	return nil
 }
 
-func listActiveCampaignUUIDs(ctx context.Context, pool *pgxpool.Pool) ([]uuid.UUID, error) {
-	rows, err := db.New(pool).ListCampaignIDs(ctx)
-	if err != nil {
-		return nil, err
-	}
-	out := make([]uuid.UUID, 0, len(rows))
-	for _, row := range rows {
-		if !row.Valid {
-			continue
-		}
-		out = append(out, uuid.UUID(row.Bytes))
-	}
-	return out, nil
-}
-
 func VerifySlotMigrationR5(ctx context.Context, host Host) error {
 	if len(host.RedisShards()) == 0 {
 		return fmt.Errorf("no redis shards configured")

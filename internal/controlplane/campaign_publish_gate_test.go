@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
 
@@ -37,7 +38,7 @@ func TestCampaignPublishGate_resumeBlockedWithoutFlow_holdout(t *testing.T) {
 	require.NoError(t, svc.PauseCampaign(ctx, campID, "manual"))
 	err = svc.ResumeCampaign(ctx, campID, "manual")
 	require.Error(t, err)
-	var blocked *CampaignPublishBlockedError
+	var blocked *campaign.CampaignPublishBlockedError
 	require.ErrorAs(t, err, &blocked)
 	assert.Contains(t, blocked.FieldErrors, "flow_id")
 
@@ -70,14 +71,14 @@ func TestCampaignPublishGate_patchActiveBlockedWithoutFlow_holdout(t *testing.T)
 	require.NoError(t, svc.PauseCampaign(ctx, campID, "manual"))
 
 	active := "ACTIVE"
-	_, err = svc.PatchCampaign(ctx, campID, PatchCampaignRequest{Status: &active})
+	_, err = svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{Status: &active})
 	require.Error(t, err)
-	var blocked *CampaignPublishBlockedError
+	var blocked *campaign.CampaignPublishBlockedError
 	require.ErrorAs(t, err, &blocked)
 	assert.Contains(t, blocked.FieldErrors, "flow_id")
 
 	attachPublishableFlowFixture(t, ctx, pool, svc, campID)
-	updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{Status: &active})
+	updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{Status: &active})
 	require.NoError(t, err)
 	assert.Equal(t, "ACTIVE", updated.Status)
 }
@@ -92,10 +93,10 @@ func attachPublishableFlowFixture(t *testing.T, ctx context.Context, pool *pgxpo
 	require.NoError(t, err)
 
 	flowID := uuid.New()
-	paths, err := json.Marshal([]FlowPathDTO{{
+	paths, err := json.Marshal([]campaign.FlowPathDTO{{
 		Weight:  100,
-		Landers: []FlowPathLanderRef{{LanderID: landerID, Weight: 100}},
-		Offers:  []FlowPathOfferRef{{OfferID: offerID, Weight: 100}},
+		Landers: []campaign.FlowPathLanderRef{{LanderID: landerID, Weight: 100}},
+		Offers:  []campaign.FlowPathOfferRef{{OfferID: offerID, Weight: 100}},
 	}})
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO flows (id, name, paths) VALUES ($1, 'publish-flow', $2)`, flowID, paths)

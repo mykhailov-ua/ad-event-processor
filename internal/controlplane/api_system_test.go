@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 
@@ -73,7 +74,7 @@ func TestManagementAPI_System(t *testing.T) {
 		assert.Equal(t, http.StatusOK, respList.Code)
 		assert.NotEmpty(t, respList.Header().Get("X-Total-Count"))
 
-		var bl []BlacklistDTO
+		var bl []campaign.BlacklistDTO
 		err := json.NewDecoder(respList.Body).Decode(&bl)
 		require.NoError(t, err)
 		require.NotEmpty(t, bl)

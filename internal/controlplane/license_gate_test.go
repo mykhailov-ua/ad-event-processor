@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/licensingadmin"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,7 +23,7 @@ func TestWriteLicenseFeatureRequired_bodyShape(t *testing.T) {
 	w := httptest.NewRecorder()
 	writeLicenseFeatureRequired(w, "openrtb", "pilot")
 	require.Equal(t, http.StatusForbidden, w.Code)
-	var body LicenseFeatureRequiredBody
+	var body licensingadmin.LicenseFeatureRequiredBody
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	require.Equal(t, "feature_required", body.Error)
 	require.Equal(t, "openrtb", body.FeatureKey)

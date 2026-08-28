@@ -140,7 +140,7 @@ export function DealsGrid({
               message="No RTB deals yet."
               action={
                 canWrite ? (
-                  <Button variant="primary" size="sm" onClick={onCreate}>
+                  <Button variant="primary" onClick={onCreate}>
                     Create deal
                   </Button>
                 ) : undefined
@@ -173,7 +173,7 @@ export function DealsGrid({
                 <>
                   <Button
                     variant="secondary"
-                    size="sm"
+                   
                     data-row-id={rowView.keys[index]}
                     data-row-action="edit"
                     onClick={onRowAction}
@@ -182,7 +182,7 @@ export function DealsGrid({
                   </Button>
                   <Button
                     variant="danger"
-                    size="sm"
+                   
                     data-row-id={rowView.keys[index]}
                     data-row-action="delete"
                     onClick={onRowAction}

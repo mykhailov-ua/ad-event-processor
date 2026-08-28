@@ -15,8 +15,8 @@ import (
 
 	"ad-event-processor/pkg/faultproof"
 
-	"ad-event-processor/internal/config"
 	bserver "ad-event-processor/internal/broker"
+	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/pgfailover"
 
 	"github.com/google/uuid"

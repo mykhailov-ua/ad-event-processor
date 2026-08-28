@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import type { Campaign, CampaignSortField } from '../../helpers/campaigns_api.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PaginationBar } from '../system/pagination_bar.js';
 import { CampaignsBulkBar } from './campaigns_bulk_bar.js';
@@ -65,7 +66,7 @@ export function CampaignsDirectory({
     <div className={styles.root}>
       <PageChrome
         title="Campaigns"
-        badge={loading ? null : <span>{total} total</span>}
+        badge={<LoadingCountBadge loading={loading} label={`${total} total`} />}
       />
       <CampaignsToolbar />
       <CampaignsFilter values={filterValues} onApply={onFilterApply} />

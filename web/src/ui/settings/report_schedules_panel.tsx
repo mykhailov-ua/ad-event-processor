@@ -166,7 +166,7 @@ export function ReportSchedulesPanel({
                       {canWrite && row.id ? (
                         <Button
                           type="button"
-                          size="sm"
+                         
                           variant="danger"
                           disabled={busy}
                           onClick={() => onDelete(row.id!)}

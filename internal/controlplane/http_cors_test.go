@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,7 +11,7 @@ import (
 
 func TestCORSMiddleware(t *testing.T) {
 	origins := []string{"https://dashboard.example.com", "http://localhost:8188"}
-	mdl := NewCORSMiddleware(origins)
+	mdl := ctrlhttp.NewCORSMiddleware(origins)
 
 	dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -64,7 +65,7 @@ func TestCORSMiddleware(t *testing.T) {
 	})
 
 	t.Run("WildcardOrigin", func(t *testing.T) {
-		wild := NewCORSMiddleware([]string{"*"})
+		wild := ctrlhttp.NewCORSMiddleware([]string{"*"})
 		handler := wild(dummyHandler)
 		req, _ := http.NewRequest("GET", "/api/v1/audit", http.NoBody)
 		req.Header.Set("Origin", "https://any.example")

@@ -1,12 +1,11 @@
 package controlplane_test
 
 import (
+	"ad-event-processor/internal/campaign"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"ad-event-processor/internal/controlplane"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -23,14 +22,14 @@ func TestOpenAPI_postbackConfigSchemaKeys(t *testing.T) {
 	props, ok := schemas["PostbackConfig"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.PostbackConfigDTO
+	var dto campaign.PostbackConfigDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "PostbackConfigDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "campaign.PostbackConfigDTO json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -45,13 +44,13 @@ func TestOpenAPI_integrationSchemaKeys(t *testing.T) {
 	props, ok := schemas["IntegrationSchema"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.IntegrationSchemaDTO
+	var dto campaign.IntegrationSchemaDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "IntegrationSchemaDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "campaign.IntegrationSchemaDTO json field %q missing from OpenAPI schema", key)
 	}
 }

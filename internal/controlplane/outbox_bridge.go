@@ -9,7 +9,6 @@ import (
 	"ad-event-processor/internal/governance"
 	"ad-event-processor/internal/outbox"
 	"ad-event-processor/internal/reconciliation"
-	"ad-event-processor/internal/settingsadmin"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/internal/telegram"
@@ -29,14 +28,9 @@ type (
 	CohortSnapshotPayload    = outbox.CohortSnapshotPayload
 	RtbCatalogReloadPayload  = outbox.RtbCatalogReloadPayload
 
-	campaignIDPayload             = outbox.CampaignIDPayload
-	brandIDPayload                = outbox.BrandIDPayload
-	brandFcapOutboxPayload        = outbox.BrandFcapPayload
-	campaignScheduleOutboxPayload = outbox.CampaignSchedulePayload
-	campaignPacingPayload         = outbox.CampaignPacingPayload
-	userConsentOutboxPayload      = outbox.UserConsentPayload
-	purgeUserDataPayload          = outbox.PurgeUserDataPayload
-	telegramEventPayload          = outbox.TelegramEventPayload
+	brandIDPayload         = outbox.BrandIDPayload
+	brandFcapOutboxPayload = outbox.BrandFcapPayload
+	campaignPacingPayload  = outbox.CampaignPacingPayload
 )
 
 var (
@@ -133,8 +127,4 @@ func (s *Service) ApplyReconciliationAdjust(ctx context.Context, eventID int64, 
 
 func (s *Service) HandleTelegramEvent(ctx context.Context, payload []byte) error {
 	return telegram.NewService(s).HandleOutboxEvent(ctx, payload)
-}
-
-func normalizeBlacklistReason(reason string) string {
-	return settingsadmin.NormalizeBlacklistReason(reason)
 }

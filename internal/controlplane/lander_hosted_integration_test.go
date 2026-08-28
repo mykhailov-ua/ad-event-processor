@@ -12,6 +12,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/flow"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -43,11 +44,11 @@ func TestHostedLanderZip_uploadServeRoundTrip_integration(t *testing.T) {
 	_, err = svc.UploadHostedLanderZip(ctx, landerID, bytes.NewReader(zipBytes), zipSize)
 	require.NoError(t, err)
 
-	fh := &FlowHTTPHandlers{Service: svc}
+	fh := &flow.HTTPHandlers{Service: svc}
 	mux := http.NewServeMux()
 	fh.RegisterHostedLanderRoutes(mux)
 
-	req := httptest.NewRequest(http.MethodGet, "/lp/"+landerID.String()+"/index.html", nil)
+	req := httptest.NewRequest(http.MethodGet, "/lp/"+landerID.String()+"/index.html", http.NoBody)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())

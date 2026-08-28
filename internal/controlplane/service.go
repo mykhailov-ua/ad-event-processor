@@ -21,10 +21,14 @@ import (
 	"ad-event-processor/internal/fraud"
 	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/nodeadmin"
+	"ad-event-processor/internal/opsadmin"
+	"ad-event-processor/internal/pgfailover"
 	"ad-event-processor/internal/platformadmin"
-	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/privacyadmin"
+	"ad-event-processor/internal/reconciliation"
 	"ad-event-processor/internal/reportjob"
+	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/settingsadmin"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/supply"
@@ -32,7 +36,6 @@ import (
 	"ad-event-processor/pkg/domainhealth"
 	"ad-event-processor/pkg/landerhost"
 	"ad-event-processor/pkg/money"
-	"ad-event-processor/internal/pgfailover"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -49,7 +52,7 @@ type Service struct {
 	sharder                  domain.Sharder
 	cfg                      *config.Config
 	postgresGate             *shardadmin.PostgresGate
-	alerter                  *OpsAlerter
+	alerter                  *opsadmin.OpsAlerter
 	clickhouseWriteConn      driver.Conn
 	clickhouseQuery          *database.ClickHouseQuery
 	paymentPool              *pgxpool.Pool
@@ -60,16 +63,16 @@ type Service struct {
 	workerMutex              sync.Mutex
 	closed                   atomic.Bool
 	timezoneLocationCache    sync.Map
-	brokerDeltas             BrokerPendingDeltaReader
+	brokerDeltas             reconciliation.BrokerPendingDeltaReader
 	cachedFraudExplainScorer fraud.Scorer
 	fraudExplainScorerErr    error
 	fraudExplainScorerMutex  sync.Mutex
 	tcpControl               TCPControlPublisher
-	nodeMetrics              *NodeMetricsWorker
-	scoringWeights           *ScoringWeightsStore
-	leaseWorker              *OperationLeaseWorker
+	nodeMetrics              *nodeadmin.MetricsWorker
+	scoringWeights           *nodeadmin.ScoringWeightsStore
+	leaseWorker              *shardadmin.OperationLeaseWorker
 	pgFencing                *pgfailover.FencingGate
-	globalSpend              *GlobalSpendReconciler
+	globalSpend              *reconciliation.GlobalSpendReconciler
 	rtbBidShadeSim           rtbadmin.BidShadeSimulator
 	cloudflare               platformadmin.CloudflareAPI
 	reputation               *domainhealth.ReputationChecker
@@ -240,7 +243,7 @@ func (s *Service) StartReconWorker(interval time.Duration) {
 	})
 }
 
-func (s *Service) StartAuditCleaner(retention Days) {
+func (s *Service) StartAuditCleaner(retention platformadmin.Days) {
 	s.startWorker(func() {
 		s.RunAuditCleaner(s.ctx, retention)
 	})
@@ -252,15 +255,15 @@ func (s *Service) StartBlacklistJanitor(interval time.Duration) {
 	})
 }
 
-func (s *Service) SetBrokerDeltas(reader BrokerPendingDeltaReader) {
+func (s *Service) SetBrokerDeltas(reader reconciliation.BrokerPendingDeltaReader) {
 	s.brokerDeltas = reader
 }
 
-func (s *Service) SetGlobalSpendReconciler(reconciler *GlobalSpendReconciler) {
+func (s *Service) SetGlobalSpendReconciler(reconciler *reconciliation.GlobalSpendReconciler) {
 	s.globalSpend = reconciler
 }
 
-func (s *Service) GlobalSpendReconciler() *GlobalSpendReconciler {
+func (s *Service) GlobalSpendReconciler() *reconciliation.GlobalSpendReconciler {
 	if s == nil {
 		return nil
 	}
@@ -299,7 +302,7 @@ func (s *Service) SetPayment(api domain.PaymentAPI) {
 	}
 }
 
-func (s *Service) SetOpsAlerter(alerter *OpsAlerter) {
+func (s *Service) SetOpsAlerter(alerter *opsadmin.OpsAlerter) {
 	s.alerter = alerter
 }
 
@@ -344,7 +347,7 @@ func (s *Service) CreateCustomer(ctx context.Context, id uuid.UUID, name string,
 		Currency: currency,
 	})
 	if err == nil {
-		s.AuditLog(ctx, nil, uuid.Nil, "CREATE_CUSTOMER", "customer", &id, auditCreateCustomerChange{
+		s.AuditLog(ctx, nil, uuid.Nil, "CREATE_CUSTOMER", "customer", &id, platformadmin.AuditCreateCustomerChange{
 			Name:    name,
 			Balance: balance,
 		}, nil)
@@ -385,7 +388,7 @@ func (s *Service) TopUpBalance(ctx context.Context, customerID uuid.UUID, amount
 		})
 		if err == nil {
 			metrics.AddControlBalanceTopup("USD", money.APIValueFloat(amount))
-			s.AuditLog(ctx, q, uuid.Nil, "TOPUP_BALANCE", "customer", &customerID, auditAmountChange{Amount: amount}, auditIdempotencyMeta{IdempotencyKey: idempotencyKey})
+			s.AuditLog(ctx, q, uuid.Nil, "TOPUP_BALANCE", "customer", &customerID, platformadmin.AuditAmountChange{Amount: amount}, platformadmin.AuditIdempotencyMeta{IdempotencyKey: idempotencyKey})
 		}
 		return err
 	})
@@ -459,12 +462,12 @@ func (s *Service) ApplyPaymentCredit(ctx context.Context, customerID uuid.UUID, 
 		applied = true
 
 		metrics.AddControlBalanceTopup("USD", money.APIValueFloat(amount))
-		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_SETTLEMENT", "customer", &customerID, auditPaymentSettlementChange{
+		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_SETTLEMENT", "customer", &customerID, platformadmin.AuditPaymentSettlementChange{
 			Amount:          amount,
 			PaymentIntentID: paymentIntentID.String(),
 			Provider:        provider,
 			ProviderRef:     providerRef,
-		}, auditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
+		}, platformadmin.AuditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
 		return nil
 	})
 
@@ -545,13 +548,13 @@ func (s *Service) ApplyPaymentRefund(ctx context.Context, customerID uuid.UUID, 
 		applied = true
 
 		s.AuditLog(ctx, q, uuid.Nil, "PAYMENT_REFUND", "customer", &customerID,
-			auditPaymentRefundChange{
+			platformadmin.AuditPaymentRefundChange{
 				Amount:           amountMicro,
 				PaymentIntentID:  paymentIntentID.String(),
 				Provider:         provider,
 				ProviderRefundID: providerRefundID,
 			},
-			auditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
+			platformadmin.AuditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
 		return nil
 	})
 
@@ -674,13 +677,13 @@ func (s *Service) applyPaymentChargebackMovement(
 			action = "PAYMENT_CHARGEBACK_REVERSAL"
 		}
 		s.AuditLog(ctx, q, uuid.Nil, action, "customer", &customerID,
-			auditPaymentDisputeChange{
+			platformadmin.AuditPaymentDisputeChange{
 				Amount:            amountMicro,
 				PaymentIntentID:   paymentIntentID.String(),
 				Provider:          provider,
 				ProviderDisputeID: providerDisputeID,
 			},
-			auditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
+			platformadmin.AuditIdempotencyMeta{IdempotencyKey: ledgerIdempotencyKey})
 		return nil
 	})
 
@@ -799,7 +802,7 @@ func (s *Service) finalizeDrainingCampaign(ctx context.Context, q db.Querier, ca
 	}); err != nil {
 		return err
 	}
-	s.AuditLog(ctx, q, uuid.Nil, "CANCEL_CAMPAIGN", "campaign", &campaignID, auditReasonChange{Reason: reason}, nil)
+	s.AuditLog(ctx, q, uuid.Nil, "CANCEL_CAMPAIGN", "campaign", &campaignID, platformadmin.AuditReasonChange{Reason: reason}, nil)
 	return nil
 }
 
@@ -1033,7 +1036,7 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 					}
 
 					campID := uuid.UUID(locked.ID.Bytes)
-					s.AuditLog(ctx, q, uuid.Nil, "SUSPEND_CAMPAIGN", "campaign", &campID, auditReasonChange{Reason: "overdraft_reduced"}, nil)
+					s.AuditLog(ctx, q, uuid.Nil, "SUSPEND_CAMPAIGN", "campaign", &campID, platformadmin.AuditReasonChange{Reason: "overdraft_reduced"}, nil)
 				}
 			}
 		}
@@ -1046,7 +1049,7 @@ func (s *Service) UpdateOverdraft(ctx context.Context, id uuid.UUID, newOverdraf
 			return err
 		}
 
-		s.AuditLog(ctx, q, uuid.Nil, "UPDATE_CUSTOMER_OVERDRAFT", "customer", &id, auditOverdraftChange{
+		s.AuditLog(ctx, q, uuid.Nil, "UPDATE_CUSTOMER_OVERDRAFT", "customer", &id, platformadmin.AuditOverdraftChange{
 			OldOverdraft: money.FormatDecimal(prevOverdraft),
 			NewOverdraft: money.FormatDecimal(newOverdraft),
 		}, nil)

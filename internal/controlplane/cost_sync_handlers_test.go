@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/costsync"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/testutil"
@@ -33,14 +34,14 @@ func TestCostSyncHandlers_microsoftAdsExtraConfigRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	key := []byte("postback-encryption-secret-key32")
-	handler := &CostSyncHTTPHandlers{
+	handler := &billingadmin.CostSyncHTTPHandlers{
 		Pool:          pool,
 		EncryptionKey: key,
 	}
 	mux := http.NewServeMux()
 	handler.Register(mux)
 
-	upsertBody, err := json.Marshal(UpsertCostSyncCredentialRequest{
+	upsertBody, err := json.Marshal(billingadmin.UpsertCostSyncCredentialRequest{
 		CustomerID:  customerID.String(),
 		AccountID:   "acct-1",
 		AccessToken: "oauth-access",
@@ -56,7 +57,7 @@ func TestCostSyncHandlers_microsoftAdsExtraConfigRoundTrip(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
-	var upsertResp CostSyncCredentialDTO
+	var upsertResp billingadmin.CostSyncCredentialDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &upsertResp))
 	require.Equal(t, "998877", upsertResp.Extra["customer_id"])
 	require.Empty(t, upsertResp.Extra["developer_token"])
@@ -67,7 +68,7 @@ func TestCostSyncHandlers_microsoftAdsExtraConfigRoundTrip(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	var listed []CostSyncCredentialDTO
+	var listed []billingadmin.CostSyncCredentialDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &listed))
 	require.Len(t, listed, 1)
 	require.Equal(t, "998877", listed[0].Extra["customer_id"])
@@ -85,7 +86,7 @@ func TestCostSyncHandlers_microsoftAdsExtraConfigRoundTrip(t *testing.T) {
 	require.Equal(t, "998877", cred.ExtraConfig["customer_id"])
 	require.Equal(t, "dev-secret-token", cred.ExtraConfig["developer_token"])
 
-	patchBody, err := json.Marshal(UpsertCostSyncCredentialRequest{
+	patchBody, err := json.Marshal(billingadmin.UpsertCostSyncCredentialRequest{
 		CustomerID: customerID.String(),
 		AccountID:  "acct-1",
 		ExtraConfig: map[string]string{

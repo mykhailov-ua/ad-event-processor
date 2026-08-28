@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"encoding/json"
 	"strconv"
@@ -112,12 +113,12 @@ func TestCPA_HeldOut_ListConsentProofs_filtersByUser(t *testing.T) {
 	ctx := context.Background()
 	reader := newOpsReader(svc)
 
-	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{
+	require.NoError(t, svc.RecordConsent(ctx, opsadmin.ConsentRecord{
 		UserID:   "heldout-user-a",
 		Purposes: domain.ConsentPurposeAdStorage,
 		Source:   "cmp",
 	}))
-	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{
+	require.NoError(t, svc.RecordConsent(ctx, opsadmin.ConsentRecord{
 		UserID:   "heldout-user-b",
 		Purposes: domain.ConsentPurposeAnalytics,
 		Source:   "web",

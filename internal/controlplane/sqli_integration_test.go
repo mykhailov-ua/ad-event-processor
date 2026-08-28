@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -70,7 +72,7 @@ func TestSQLiIntegration_MaliciousInputs(t *testing.T) {
 	for _, tc := range pathPayloads {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, tc.path, http.NoBody)
-			withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+			withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 			w := httptest.NewRecorder()
 			mux.ServeHTTP(w, req)
 			assert.Equal(t, tc.want, w.Code, "body=%s", w.Body.String())
@@ -89,12 +91,12 @@ func TestSQLiIntegration_MaliciousInputs(t *testing.T) {
 	for _, tc := range listPayloads {
 		t.Run(tc.name, func(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, "/api/v1/customers?"+tc.query, http.NoBody)
-			withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+			withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 			w := httptest.NewRecorder()
 			mux.ServeHTTP(w, req)
 			require.Equal(t, http.StatusOK, w.Code, "body=%s", w.Body.String())
 
-			var resp CustomerListResponse
+			var resp platformadmin.CustomerListResponse
 			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 			assert.GreaterOrEqual(t, resp.Total, int64(2))
 		})
@@ -102,12 +104,12 @@ func TestSQLiIntegration_MaliciousInputs(t *testing.T) {
 
 	t.Run("malicious_name_stored_and_returned", func(t *testing.T) {
 		req, _ := http.NewRequest(http.MethodGet, "/api/v1/customers/"+evilID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		require.Equal(t, http.StatusOK, w.Code)
 
-		var dto CustomerDTO
+		var dto platformadmin.CustomerDTO
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &dto))
 		assert.Equal(t, evilName, dto.Name)
 	})

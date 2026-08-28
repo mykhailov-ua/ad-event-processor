@@ -55,10 +55,10 @@ export function BrandCreateModal({
         </label>
         {error ? <div className={styles.error}>{error}</div> : null}
         <div className={styles.actions}>
-          <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onClose}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" size="sm" disabled={busy || !customerId}>
+          <Button type="submit" variant="primary" disabled={busy || !customerId}>
             Create
           </Button>
         </div>

@@ -3,20 +3,12 @@ package reports
 import (
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func routeRegistered(rec *httptest.ResponseRecorder) bool {
-	if rec.Code != http.StatusNotFound {
-		return true
-	}
-	return !strings.Contains(rec.Body.String(), "page not found")
-}
 
 func TestReports_Placements(t *testing.T) {
 	t.Parallel()

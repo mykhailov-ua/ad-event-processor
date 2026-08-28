@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +19,7 @@ func TestResolveCampaignsCustomerID_BuyerUsesSessionCustomer(t *testing.T) {
 	req := httptest.NewRequest("GET", "/api/v1/campaigns", http.NoBody)
 	ctx := authz.WithAuthenticatedUser(req.Context(), authz.AuthenticatedUser{
 		UserID:     uuid.New(),
-		Role:       authz.RoleBuyer,
+		Role:       ctrlhttp.RoleBuyer,
 		CustomerID: custID,
 	})
 	req = req.WithContext(ctx)
@@ -30,9 +31,9 @@ func TestResolveCampaignsCustomerID_BuyerUsesSessionCustomer(t *testing.T) {
 
 func TestAuthenticatedUser_HasBoundCustomer(t *testing.T) {
 	t.Parallel()
-	require.True(t, (AuthenticatedUser{Role: RoleUser}).HasBoundCustomer())
-	require.True(t, (AuthenticatedUser{Role: RoleBuyer}).HasBoundCustomer())
-	require.True(t, (AuthenticatedUser{Role: RoleMediaBuyer}).HasBoundCustomer())
-	require.True(t, (AuthenticatedUser{Role: RolePublisher}).HasBoundCustomer())
-	require.False(t, (AuthenticatedUser{Role: RoleAdmin}).HasBoundCustomer())
+	require.True(t, (authz.AuthenticatedUser{Role: ctrlhttp.RoleUser}).HasBoundCustomer())
+	require.True(t, (authz.AuthenticatedUser{Role: ctrlhttp.RoleBuyer}).HasBoundCustomer())
+	require.True(t, (authz.AuthenticatedUser{Role: ctrlhttp.RoleMediaBuyer}).HasBoundCustomer())
+	require.True(t, (authz.AuthenticatedUser{Role: ctrlhttp.RolePublisher}).HasBoundCustomer())
+	require.False(t, (authz.AuthenticatedUser{Role: ctrlhttp.RoleAdmin}).HasBoundCustomer())
 }

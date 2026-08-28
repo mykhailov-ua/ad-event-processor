@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -52,7 +54,7 @@ func TestManagementAPI_Customers(t *testing.T) {
 		assert.Greater(t, total, int64(0))
 		require.NotEmpty(t, customers)
 
-		var found *CustomerDTO
+		var found *platformadmin.CustomerDTO
 		for i := range customers {
 			if customers[i].ID == custID.String() {
 				found = &customers[i]
@@ -84,7 +86,7 @@ func TestManagementAPI_Customers(t *testing.T) {
 		otherCustID := uuid.New()
 
 		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance", http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)

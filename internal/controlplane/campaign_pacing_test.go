@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"errors"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
@@ -47,7 +49,7 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 	err := svc.CreateCustomer(ctx, custID, "Advertiser Pacing", 500_000_000, "USD")
 	require.NoError(t, err)
 
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Spring Sale Pacing",
 		BudgetLimitMicro: 100_000_000,
@@ -71,7 +73,7 @@ func TestManagementAPI_CampaignPacing(t *testing.T) {
 		otherCustID := uuid.New()
 
 		req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)

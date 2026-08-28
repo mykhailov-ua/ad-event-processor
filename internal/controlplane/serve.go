@@ -21,9 +21,11 @@ import (
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/notify"
-	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/openapivalidate"
 	"ad-event-processor/internal/opsadmin"
+	"ad-event-processor/internal/payment"
+	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/internal/reconciliation"
 	"ad-event-processor/internal/rtb"
 	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/shardadmin"
@@ -258,7 +260,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	}
 
 	if cfg.MultiRegionGlobal() {
-		globalSpend := NewGlobalSpendReconciler(postgresPools.Settle, redisShards, sharder, GlobalSpendReconcilerConfig{
+		globalSpend := reconciliation.NewGlobalSpendReconciler(postgresPools.Settle, redisShards, sharder, reconciliation.GlobalSpendReconcilerConfig{
 			MinBatchSize:   cfg.GlobalSpendBatchMin,
 			MaxConcurrency: cfg.GlobalSpendMaxConcurrency,
 		})
@@ -350,7 +352,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("started autoscale budget worker", "interval", autoscaleInterval)
 	}
 
-	svc.StartAuditCleaner(Days(cfg.Management.RetentionDays))
+	svc.StartAuditCleaner(platformadmin.Days(cfg.Management.RetentionDays))
 	slog.Info("started audit cleaner", "retention_days", cfg.Management.RetentionDays)
 
 	svc.StartBackgroundWorker(func() {
@@ -379,8 +381,8 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("started blacklist TTL janitor", "interval", janitorInterval)
 	}
 
-	svc.StartVendorTelemetryWorker()
-	svc.StartProductTelemetryPulse()
+	svc.StartVendorTelemetryWorker(ctx)
+	svc.StartProductTelemetryPulse(ctx)
 	if cfg.TelemetryOptIn {
 		slog.Info("product telemetry pulse enabled",
 			"interval_sec", cfg.TelemetryIntervalSec,
@@ -467,7 +469,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 		slog.Info("ops alerts enabled")
 	}
 
-	alertmanagerWebhook := NewAlertmanagerWebhook(notifierClient.API(), cfg)
+	alertmanagerWebhook := opsadmin.NewAlertmanagerWebhook(notifierClient.API(), cfg)
 
 	if cfg.SlotMigrationEnabled {
 		migrationInterval := time.Duration(cfg.SlotMigrationIntervalMs) * time.Millisecond
@@ -480,7 +482,7 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 
 	if cfg.ShardOrchestratorEnabled {
 		interval := time.Duration(cfg.ShardOrchestratorIntervalMs) * time.Millisecond
-		shardOrch := NewShardOrchestrator(svc, &RealShardMetricsProvider{}, interval)
+		shardOrch := NewShardOrchestrator(svc, &shardadmin.RealShardMetricsProvider{}, interval)
 		svc.StartBackgroundWorker(func() {
 			shardOrch.Start(ctx)
 		})

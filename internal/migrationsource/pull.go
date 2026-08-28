@@ -53,7 +53,7 @@ func pullKeitaroAdminAPI(ctx context.Context, spec PullSpec) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func pullBinomReportAPI(ctx context.Context, spec PullSpec) ([]byte, error) {
 	q := parsed.Query()
 	q.Set("api_key", spec.APIToken)
 	parsed.RawQuery = q.Encode()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, parsed.String(), http.NoBody)
 	if err != nil {
 		return nil, err
 	}

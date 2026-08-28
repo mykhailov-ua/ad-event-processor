@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"io"
 	"net/http"
@@ -23,7 +24,7 @@ func (s stubBundler) WriteSupportBundle(ctx context.Context, w io.Writer) error 
 
 func TestBundleRedaction_handler(t *testing.T) {
 	t.Parallel()
-	h := &OpsHTTPHandlers{
+	h := &opsadmin.HTTPHandlers{
 		SupportBundle: stubBundler{logDir: t.TempDir()},
 	}
 	mux := http.NewServeMux()

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func (s *fraudPresetsOpsStub) UpdateFraudPolicyPreset(_ context.Context, name st
 
 func TestPatchFraudPolicyPresetHandler_updatesPreset(t *testing.T) {
 	stub := &fraudPresetsOpsStub{}
-	ops := &OpsHTTPHandlers{
+	ops := &opsadmin.HTTPHandlers{
 		FraudPresets: stub,
 		RequirePermission: func(_ string, next http.HandlerFunc) http.HandlerFunc {
 			return next

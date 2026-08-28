@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/billingadmin"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -52,23 +55,23 @@ func TestAPI_GetCustomerBalance(t *testing.T) {
 	}
 
 	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 
 	require.Equal(t, http.StatusOK, resp.Code)
-	var report CustomerBalanceDTO
+	var report campaign.CustomerBalanceDTO
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	assert.Equal(t, "250.00", report.Balance)
 	assert.Empty(t, report.Ledger)
 
 	ledgerReq, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/ledger?limit=50&offset=0", http.NoBody)
-	withSessionUser(ledgerReq, tokenMaker, RoleUser, custID)
+	withSessionUser(ledgerReq, tokenMaker, ctrlhttp.RoleUser, custID)
 	ledgerResp := httptest.NewRecorder()
 	mux.ServeHTTP(ledgerResp, ledgerReq)
 
 	require.Equal(t, http.StatusOK, ledgerResp.Code)
-	var ledgerPage LedgerListResponse
+	var ledgerPage billingadmin.LedgerListResponse
 	require.NoError(t, json.NewDecoder(ledgerResp.Body).Decode(&ledgerPage))
 	assert.Equal(t, int64(3), ledgerPage.Total)
 	assert.Len(t, ledgerPage.Items, 3)
@@ -100,7 +103,7 @@ func TestAPI_GetCustomerBalance_TenantIsolation(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(context.Background(), ownerID, "Owner", 100_000_000, "USD"))
 
 	req, _ := http.NewRequest("GET", "/api/v1/customers/"+ownerID.String()+"/balance", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, otherID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, otherID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusForbidden, resp.Code)
@@ -134,7 +137,7 @@ func TestAPI_ExportCustomerBalance_CSV(t *testing.T) {
 	require.NoError(t, err)
 
 	req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String()+"/balance/export?format=csv", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 
@@ -183,8 +186,8 @@ func TestAPI_ExportCustomerBalance_BufferOverflowCap(t *testing.T) {
 	assert.NotEmpty(t, resp.Header().Get("X-Next-Cursor"))
 
 	bytesWritten, _ := strconv.Atoi(resp.Header().Get("X-Export-Bytes"))
-	assert.LessOrEqual(t, bytesWritten, defaultExportChunkMaxBytes)
-	assert.Greater(t, bytesWritten, defaultExportChunkMaxBytes-50_000)
+	assert.LessOrEqual(t, bytesWritten, billingadmin.DefaultExportChunkMaxBytes)
+	assert.Greater(t, bytesWritten, billingadmin.DefaultExportChunkMaxBytes-50_000)
 }
 
 func TestAPI_ExportCustomerBalance_RateLimit(t *testing.T) {

@@ -111,8 +111,11 @@ func (dh *DomainHealth) ProbeDomainNow(ctx context.Context, hostname string) (Do
 }
 
 func (dh *DomainHealth) SetupDomainSSL(ctx context.Context, hostname string) (DomainSSLSetupResult, error) {
+	if dh == nil || dh.host == nil {
+		return DomainSSLSetupResult{}, fmt.Errorf("service unavailable")
+	}
 	cfg := dh.host.Config()
-	if dh == nil || dh.host == nil || cfg == nil {
+	if cfg == nil {
 		return DomainSSLSetupResult{}, fmt.Errorf("service unavailable")
 	}
 	if !cfg.Management.DomainSSLSetupEnabled {

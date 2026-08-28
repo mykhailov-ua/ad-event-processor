@@ -1,6 +1,7 @@
 package controlplane_test
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -8,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
@@ -60,13 +61,13 @@ func TestTeamHandlers_overview(t *testing.T) {
 		deploymentID, licenseID)
 	require.NoError(t, err)
 
-	h := &controlplane.TeamHTTPHandlers{
-		Team: &controlplane.TeamOverviewService{Pool: pool},
+	h := &platformadmin.TeamHTTPHandlers{
+		Team: &platformadmin.TeamOverviewService{Pool: pool},
 		SnapshotFromRequest: func(_ *http.Request) (authz.Snapshot, bool) {
 			return authz.Snapshot{
 				Permissions: map[string]struct{}{
-					authz.PermBillingRead:   {},
-					authz.PermCampaignsRead: {},
+					ctrlhttp.PermBillingRead:   {},
+					ctrlhttp.PermCampaignsRead: {},
 				},
 			}, true
 		},
@@ -82,7 +83,7 @@ func TestTeamHandlers_overview(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
-	var body controlplane.TeamOverviewDTO
+	var body platformadmin.TeamOverviewDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
 	require.Equal(t, customerID.String(), body.CustomerID)
 	require.Equal(t, int64(5000000), body.BalanceMicro)

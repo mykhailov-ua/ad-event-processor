@@ -62,12 +62,12 @@ export function InvoiceToolbar({
   return (
     <div className={styles.panel}>
       <div className={styles.toolbar}>
-        <Button variant="secondary" size="sm" type="button" disabled={voiding} onClick={() => void onVoid()}>
+        <Button variant="secondary" type="button" disabled={voiding} onClick={() => void onVoid()}>
           {voiding ? 'Voiding...' : 'Void invoice'}
         </Button>
         <Button
           variant="secondary"
-          size="sm"
+         
           type="button"
           disabled={retrying}
           onClick={() => void onRetryDelivery()}
@@ -178,7 +178,7 @@ export function InvoiceLedgerPanel({ invoiceId }: { invoiceId: string }) {
         <div className={styles.actions}>
           <Button
             variant="secondary"
-            size="sm"
+           
             type="button"
             disabled={loadingMore}
             onClick={() => void loadPage(nextCursor, true)}

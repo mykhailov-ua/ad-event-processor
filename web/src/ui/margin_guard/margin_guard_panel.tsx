@@ -134,7 +134,7 @@ export function MarginGuardPanel({
                   />
                 </label>
                 <Button
-                  size="sm"
+                 
                   variant="primary"
                   disabled={busy || !policyName.trim()}
                   onClick={() =>
@@ -218,7 +218,7 @@ export function MarginGuardPanel({
                   />
                 </label>
                 <Button
-                  size="sm"
+                 
                   variant="secondary"
                   disabled={busy || !overridePlacement.trim()}
                   onClick={() => onRemoveOverride(overridePlacement.trim())}

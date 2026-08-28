@@ -125,10 +125,10 @@ export function DealFormModal({
         </label>
         {error ? <div className={styles.error}>{error}</div> : null}
         <div className={styles.actions}>
-          <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={onClose}>
+          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" variant="primary" size="sm" disabled={busy}>
+          <Button type="submit" variant="primary" disabled={busy}>
             {mode === 'create' ? 'Create' : 'Save'}
           </Button>
         </div>

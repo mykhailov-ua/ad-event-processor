@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '../system/button.js';
+import { FieldInput } from '../system/field_input.js';
 import styles from './brands_directory.module.css';
 
 export type BrandsFilterProps = {
@@ -25,8 +26,7 @@ export function BrandsFilter({ customerId, onApply }: BrandsFilterProps) {
       <div className={styles.filterRow}>
         <label className={styles.filterField}>
           <span className={styles.filterLabel}>Customer ID (required)</span>
-          <input
-            className={styles.textInput}
+          <FieldInput
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="UUID"
@@ -34,7 +34,7 @@ export function BrandsFilter({ customerId, onApply }: BrandsFilterProps) {
             aria-label="Customer ID"
           />
         </label>
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="secondary">
           Apply
         </Button>
       </div>

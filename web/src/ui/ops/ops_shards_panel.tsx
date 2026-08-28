@@ -2,6 +2,7 @@ import type { ShardHealthStatus, ShardStatus } from '../../helpers/ops_api.js';
 import { Button } from '../system/button.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import styles from './ops_shared.module.css';
@@ -29,9 +30,9 @@ export function OpsShardsPanel({
 
   return (
     <div className={styles.root} data-testid="ops-shards-page">
-      <PageChrome title="Shard health" badge={loading ? null : <span>{shards.length} shards</span>} />
+      <PageChrome title="Shard health" badge={<LoadingCountBadge loading={loading} label={`${shards.length} shards`} />} />
       <div className={styles.toolbar}>
-        <Button type="button" size="sm" disabled={catchupBusy} onClick={onCatchup}>
+        <Button type="button" disabled={catchupBusy} onClick={onCatchup}>
           Run shard 0 catch-up
         </Button>
       </div>

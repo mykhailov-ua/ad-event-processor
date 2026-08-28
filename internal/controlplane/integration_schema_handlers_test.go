@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
@@ -33,7 +33,7 @@ func TestIntegrationSchemaHandlers_createAndApply(t *testing.T) {
 	_, err = pool.Exec(ctx, `INSERT INTO campaigns (id, name, status, customer_id) VALUES ($1,'camp','ACTIVE',$2)`, campaignID, customerID)
 	require.NoError(t, err)
 
-	h := &controlplane.IntegrationSchemaHTTPHandlers{Pool: pool}
+	h := &campaign.IntegrationSchemaHTTPHandlers{Pool: pool}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -53,7 +53,7 @@ func TestIntegrationSchemaHandlers_createAndApply(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusCreated, rec.Code, rec.Body.String())
 
-	var created controlplane.IntegrationSchemaDTO
+	var created campaign.IntegrationSchemaDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &created))
 	require.Equal(t, "outbound_postback", created.Kind)
 
@@ -84,7 +84,7 @@ func TestIntegrationSchemaHandlers_invalidSchema400(t *testing.T) {
 	pool, cleanup := testutil.SetupPostgres(t, cfg)
 	defer cleanup()
 
-	h := &controlplane.IntegrationSchemaHTTPHandlers{Pool: pool}
+	h := &campaign.IntegrationSchemaHTTPHandlers{Pool: pool}
 	mux := http.NewServeMux()
 	h.Register(mux)
 

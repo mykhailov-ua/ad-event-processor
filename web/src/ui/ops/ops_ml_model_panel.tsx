@@ -122,7 +122,7 @@ export function OpsMlModelPanel({
                     onChange={(event) => onReasonChange(event.target.value)}
                   />
                 </label>
-                <Button type="submit" size="sm" disabled={formBusy || !ipHash.trim()}>
+                <Button type="submit" disabled={formBusy || !ipHash.trim()}>
                   Save label
                 </Button>
               </form>

@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -103,8 +104,8 @@ func TestSlotMapAPI_markMigratingAndActivate(t *testing.T) {
 }
 
 func TestHasPermission_shardsRBAC(t *testing.T) {
-	assert.True(t, HasPermission(RoleAdmin, PermShardsWrite))
-	assert.True(t, HasPermission(RoleAdmin, PermShardsRead))
-	assert.False(t, HasPermission(RoleManager, PermShardsWrite))
-	assert.False(t, HasPermission(RoleUser, PermShardsRead))
+	assert.True(t, ctrlhttp.HasPermission(ctrlhttp.RoleAdmin, ctrlhttp.PermShardsWrite))
+	assert.True(t, ctrlhttp.HasPermission(ctrlhttp.RoleAdmin, ctrlhttp.PermShardsRead))
+	assert.False(t, ctrlhttp.HasPermission(ctrlhttp.RoleManager, ctrlhttp.PermShardsWrite))
+	assert.False(t, ctrlhttp.HasPermission(ctrlhttp.RoleUser, ctrlhttp.PermShardsRead))
 }

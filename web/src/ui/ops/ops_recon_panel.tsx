@@ -2,6 +2,7 @@ import type { ReconRun } from '../../helpers/ops_api.js';
 import { Button } from '../system/button.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import { PaginationBar } from '../system/pagination_bar.js';
@@ -38,7 +39,7 @@ export function OpsReconPanel({
 
   return (
     <div className={styles.root} data-testid="ops-recon-page">
-      <PageChrome title="Reconciliation runs" badge={loading ? null : <span>{total} runs</span>} />
+      <PageChrome title="Reconciliation runs" badge={<LoadingCountBadge loading={loading} label={`${total} runs`} />} />
       <div className={styles.toolbar}>
         <label className={styles.field}>
           <span className={styles.fieldLabel}>Service</span>
@@ -49,7 +50,7 @@ export function OpsReconPanel({
             placeholder="optional filter"
           />
         </label>
-        <Button type="button" size="sm" onClick={onApplyService}>
+        <Button type="button" onClick={onApplyService}>
           Apply
         </Button>
       </div>

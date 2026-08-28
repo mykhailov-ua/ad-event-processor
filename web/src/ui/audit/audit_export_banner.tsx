@@ -21,11 +21,11 @@ export function AuditExportBanner({
       <span>Export was truncated. More rows are available.</span>
       <div className={styles.actions}>
         {nextCursor && onContinue ? (
-          <Button variant="secondary" size="sm" onClick={onContinue}>
+          <Button variant="secondary" onClick={onContinue}>
             Continue export
           </Button>
         ) : null}
-        <Button variant="secondary" size="sm" onClick={onDismiss}>
+        <Button variant="secondary" onClick={onDismiss}>
           Dismiss
         </Button>
       </div>

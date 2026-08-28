@@ -1,5 +1,6 @@
 import type { AuditLog } from '../../helpers/audit_api.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PaginationBar } from '../system/pagination_bar.js';
 import { AuditExportBanner } from './audit_export_banner.js';
@@ -49,7 +50,7 @@ export function AuditDirectory({
 
   return (
     <div className={styles.root}>
-      <PageChrome title="Audit log" badge={loading ? null : <span>{total} entries</span>} />
+      <PageChrome title="Audit log" badge={<LoadingCountBadge loading={loading} label={`${total} entries`} />} />
       <AuditToolbar exporting={exporting} onExport={onExport} />
       <AuditFilter redactPii={redactPii} onChange={onRedactPiiChange} />
       <AuditExportBanner

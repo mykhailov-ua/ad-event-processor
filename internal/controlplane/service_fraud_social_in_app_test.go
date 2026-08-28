@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 
@@ -25,7 +26,7 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "Social In-App Cust", 10_000_000, "USD"))
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Social In-App Camp",
 		BudgetLimitMicro: 10_000_000,
@@ -36,7 +37,7 @@ func TestUpdateCampaignFraud_socialInAppPreset_appliesFlags(t *testing.T) {
 	require.NoError(t, err)
 
 	preset := domain.FraudPresetSocialInApp
-	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, PatchCampaignFraudRequest{Preset: &preset})
+	_, err = svc.UpdateCampaignFraudConfig(ctx, campID, campaign.PatchCampaignFraudRequest{Preset: &preset})
 	require.NoError(t, err)
 
 	var (

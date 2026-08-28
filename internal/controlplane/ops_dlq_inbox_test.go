@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"testing"
 	"time"
@@ -53,20 +54,20 @@ func TestListDLQInbox_includesStreamEntries(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result.Items, 1)
 	assert.Equal(t, "stream", result.Items[0].Source)
-	assert.Equal(t, dlqRouteID(0, msgID), result.Items[0].ID)
+	assert.Equal(t, opsadmin.DLQRouteID(0, msgID), result.Items[0].ID)
 	assert.Equal(t, campaignID.String(), result.Items[0].CampaignID)
 }
 
 func TestDlqInboxSourceFromProvider(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, "capi", dlqInboxSourceFromProvider("facebook"))
-	assert.Equal(t, "capi", dlqInboxSourceFromProvider("Google"))
-	assert.Equal(t, "postback", dlqInboxSourceFromProvider("webhook"))
+	assert.Equal(t, "capi", opsadmin.DLQInboxSourceFromProvider("facebook"))
+	assert.Equal(t, "capi", opsadmin.DLQInboxSourceFromProvider("Google"))
+	assert.Equal(t, "postback", opsadmin.DLQInboxSourceFromProvider("webhook"))
 }
 
 func TestParseInboxStreamRouteID(t *testing.T) {
 	t.Parallel()
 	id := "shard-2-1700000000000-0"
-	assert.Equal(t, 2, parseInboxStreamShard(id))
-	assert.Equal(t, "1700000000000-0", parseInboxStreamEntryID(id))
+	assert.Equal(t, 2, opsadmin.ParseInboxStreamShard(id))
+	assert.Equal(t, "1700000000000-0", opsadmin.ParseInboxStreamEntryID(id))
 }

@@ -1,14 +1,17 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -46,17 +49,17 @@ func TestCustomersList_Handler(t *testing.T) {
 
 	t.Run("list returns items and total as admin", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/customers?limit=50&offset=0", http.NoBody)
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var resp CustomerListResponse
+		var resp platformadmin.CustomerListResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Greater(t, resp.Total, int64(0))
 		require.NotEmpty(t, resp.Items)
 
-		var found *CustomerDTO
+		var found *platformadmin.CustomerDTO
 		for i := range resp.Items {
 			if resp.Items[i].ID == custID.String() {
 				found = &resp.Items[i]
@@ -70,12 +73,12 @@ func TestCustomersList_Handler(t *testing.T) {
 
 	t.Run("get by id returns customer", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var dto CustomerDTO
+		var dto platformadmin.CustomerDTO
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &dto))
 		assert.Equal(t, custID.String(), dto.ID)
 		assert.Equal(t, "250.00", dto.Balance)
@@ -83,7 +86,7 @@ func TestCustomersList_Handler(t *testing.T) {
 
 	t.Run("get by malformed id returns 400", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/customers/not-a-uuid", http.NoBody)
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusBadRequest, w.Code)
@@ -91,7 +94,7 @@ func TestCustomersList_Handler(t *testing.T) {
 
 	t.Run("get by unknown id returns 404", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/customers/"+uuid.New().String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusNotFound, w.Code)
@@ -99,7 +102,7 @@ func TestCustomersList_Handler(t *testing.T) {
 
 	t.Run("role U sees only own customer", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, custID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusOK, w.Code)
@@ -108,7 +111,7 @@ func TestCustomersList_Handler(t *testing.T) {
 	t.Run("role U forbidden on another customer", func(t *testing.T) {
 		otherID := uuid.New()
 		req, _ := http.NewRequest("GET", "/api/v1/customers/"+custID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, otherID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, otherID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusForbidden, w.Code)
@@ -149,7 +152,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "Camp List Corp", 500_000_000, "USD"))
 
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Test Campaign",
 		BudgetLimitMicro: 100_000_000,
@@ -161,12 +164,12 @@ func TestCampaignsList_Handler(t *testing.T) {
 
 	t.Run("list returns items filtered by customer_id", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/campaigns?customer_id="+custID.String()+"&limit=50", http.NoBody)
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var resp CampaignListResponse
+		var resp campaign.CampaignListResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		assert.Greater(t, resp.Total, int64(0))
 
@@ -184,12 +187,12 @@ func TestCampaignsList_Handler(t *testing.T) {
 
 	t.Run("role U sees only own customer campaigns", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/campaigns", http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, custID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
 		require.Equal(t, http.StatusOK, w.Code)
-		var resp CampaignListResponse
+		var resp campaign.CampaignListResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 		for _, c := range resp.Items {
 			assert.Equal(t, custID.String(), c.CustomerID)
@@ -199,7 +202,7 @@ func TestCampaignsList_Handler(t *testing.T) {
 	t.Run("role U forbidden when customer_id is another", func(t *testing.T) {
 		otherID := uuid.New()
 		req, _ := http.NewRequest("GET", "/api/v1/campaigns?customer_id="+otherID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, custID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusForbidden, w.Code)

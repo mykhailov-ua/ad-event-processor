@@ -1,12 +1,14 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/pkg/httpresponse"
@@ -37,7 +39,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	})
 
 	t.Run("APIKey_Success", func(t *testing.T) {
-		handler := m.RequireAuth(RoleAdmin)(targetHandler)
+		handler := m.RequireAuth(ctrlhttp.RoleAdmin)(targetHandler)
 
 		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "secret-api-key")
@@ -46,12 +48,12 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 		handler.ServeHTTP(resp, req)
 
 		assert.Equal(t, http.StatusOK, resp.Code)
-		assert.Equal(t, "role:"+RoleAdmin, resp.Body.String())
+		assert.Equal(t, "role:"+ctrlhttp.RoleAdmin, resp.Body.String())
 	})
 
 	t.Run("APIKey_StablePrincipal", func(t *testing.T) {
-		var captured AuthenticatedUser
-		handler := m.RequirePermission(PermSettingsWrite)(func(w http.ResponseWriter, r *http.Request) {
+		var captured authz.AuthenticatedUser
+		handler := m.RequirePermission(ctrlhttp.PermSettingsWrite)(func(w http.ResponseWriter, r *http.Request) {
 			u, ok := GetUser(r.Context())
 			if !ok {
 				http.Error(w, "missing user", http.StatusInternalServerError)
@@ -72,7 +74,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	})
 
 	t.Run("ValidToken_AllowedRole", func(t *testing.T) {
-		handler := m.RequireAuth(RoleManager, RoleAdmin)(targetHandler)
+		handler := m.RequireAuth(ctrlhttp.RoleManager, ctrlhttp.RoleAdmin)(targetHandler)
 
 		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), "manager", uuid.New(), time.Hour)
 		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
@@ -86,7 +88,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	})
 
 	t.Run("ValidToken_ForbiddenRole", func(t *testing.T) {
-		handler := m.RequireAuth(RoleAdmin)(targetHandler)
+		handler := m.RequireAuth(ctrlhttp.RoleAdmin)(targetHandler)
 
 		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), "customer", uuid.New(), time.Hour)
 		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
@@ -99,7 +101,7 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	})
 
 	t.Run("MissingToken", func(t *testing.T) {
-		handler := m.RequireAuth(RoleAdmin)(targetHandler)
+		handler := m.RequireAuth(ctrlhttp.RoleAdmin)(targetHandler)
 
 		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		resp := httptest.NewRecorder()
@@ -110,9 +112,9 @@ func TestAuthMiddleware_RequireAuth(t *testing.T) {
 	})
 
 	t.Run("ExpiredToken", func(t *testing.T) {
-		handler := m.RequireAuth(RoleAdmin)(targetHandler)
+		handler := m.RequireAuth(ctrlhttp.RoleAdmin)(targetHandler)
 
-		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleAdmin, uuid.New(), -time.Hour)
+		token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleAdmin, uuid.New(), -time.Hour)
 		req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 		req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 		resp := httptest.NewRecorder()
@@ -145,9 +147,9 @@ func TestAuthMiddleware_RedisOutage(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := m.RequireAuth(RoleAdmin)(targetHandler)
+	handler := m.RequireAuth(ctrlhttp.RoleAdmin)(targetHandler)
 
-	token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleAdmin, uuid.New(), time.Hour)
+	token, _ := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleAdmin, uuid.New(), time.Hour)
 	req, _ := http.NewRequest("GET", "/protected", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	resp := httptest.NewRecorder()

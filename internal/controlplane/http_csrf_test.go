@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,7 +11,7 @@ import (
 )
 
 func TestCSRFMiddleware(t *testing.T) {
-	mdl := NewCSRFMiddleware("")
+	mdl := ctrlhttp.NewCSRFMiddleware("")
 
 	dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -19,7 +20,7 @@ func TestCSRFMiddleware(t *testing.T) {
 
 	handler := mdl(dummyHandler)
 
-	token, err := GenerateSecureToken(32)
+	token, err := ctrlhttp.GenerateSecureToken(32)
 	require.NoError(t, err)
 
 	t.Run("GET_Request_Allowed", func(t *testing.T) {
@@ -91,7 +92,7 @@ func TestCSRFMiddleware(t *testing.T) {
 	})
 
 	t.Run("POST_AdminAPIKey_SkipsCSRF", func(t *testing.T) {
-		mdl := NewCSRFMiddleware("secret-key")
+		mdl := ctrlhttp.NewCSRFMiddleware("secret-key")
 		handler := mdl(dummyHandler)
 		req, _ := http.NewRequest("POST", "/api/v1/consent", http.NoBody)
 		req.Header.Set("X-Admin-API-Key", "secret-key")

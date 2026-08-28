@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/testutil"
 
@@ -33,11 +34,11 @@ func TestPostbackConfig_PreservesTokenOnEmptyUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	key := []byte("postback-encryption-secret-key32")
-	h := &PostbackHTTPHandlers{Pool: pool, EncryptionKey: key}
+	h := &campaign.PostbackHTTPHandlers{Pool: pool, EncryptionKey: key}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	put := func(body UpdatePostbackConfigRequest) *httptest.ResponseRecorder {
+	put := func(body campaign.UpdatePostbackConfigRequest) *httptest.ResponseRecorder {
 		raw, err := json.Marshal(body)
 		require.NoError(t, err)
 		req := httptest.NewRequest(http.MethodPut, "/api/v1/postbacks/config/"+campaignID.String(), bytes.NewReader(raw))
@@ -46,7 +47,7 @@ func TestPostbackConfig_PreservesTokenOnEmptyUpdate(t *testing.T) {
 		return rec
 	}
 
-	rec := put(UpdatePostbackConfigRequest{
+	rec := put(campaign.UpdatePostbackConfigRequest{
 		Provider:    "facebook",
 		URLTemplate: "999888777",
 		APIToken:    "secret-token",
@@ -54,7 +55,7 @@ func TestPostbackConfig_PreservesTokenOnEmptyUpdate(t *testing.T) {
 	})
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	rec = put(UpdatePostbackConfigRequest{
+	rec = put(campaign.UpdatePostbackConfigRequest{
 		Provider:    "facebook",
 		URLTemplate: "999888777",
 		TargetEvent: "conversion",
@@ -71,7 +72,7 @@ func TestPostbackConfig_PreservesTokenOnEmptyUpdate(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	var dtos []PostbackConfigDTO
+	var dtos []campaign.PostbackConfigDTO
 	require.NoError(t, json.NewDecoder(rec.Body).Decode(&dtos))
 	require.Len(t, dtos, 1)
 	require.True(t, dtos[0].HasAPIToken)
@@ -91,11 +92,11 @@ func TestPostbackConfig_CAPIRequiresToken(t *testing.T) {
 	_, err = pool.Exec(ctx, `INSERT INTO campaigns (id, name, status, customer_id) VALUES ($1, 'Camp', 'ACTIVE', $2)`, campaignID, customerID)
 	require.NoError(t, err)
 
-	h := &PostbackHTTPHandlers{Pool: pool, EncryptionKey: []byte("postback-encryption-secret-key32")}
+	h := &campaign.PostbackHTTPHandlers{Pool: pool, EncryptionKey: []byte("postback-encryption-secret-key32")}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	body, err := json.Marshal(UpdatePostbackConfigRequest{
+	body, err := json.Marshal(campaign.UpdatePostbackConfigRequest{
 		Provider:    "google",
 		URLTemplate: "customers/1/conversionActions/2",
 		TargetEvent: "conversion",
@@ -126,11 +127,11 @@ func TestPostbackConfig_DryRunWebhook(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	h := &PostbackHTTPHandlers{Pool: pool, EncryptionKey: []byte("postback-encryption-secret-key32")}
+	h := &campaign.PostbackHTTPHandlers{Pool: pool, EncryptionKey: []byte("postback-encryption-secret-key32")}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	putBody, err := json.Marshal(UpdatePostbackConfigRequest{
+	putBody, err := json.Marshal(campaign.UpdatePostbackConfigRequest{
 		Provider:    "webhook",
 		URLTemplate: srv.URL + "?click_id={click_id}&payout={payout}",
 		TargetEvent: "conversion",

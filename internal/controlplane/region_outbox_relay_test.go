@@ -14,6 +14,7 @@ import (
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
@@ -186,7 +187,7 @@ func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 	opID := uuid.New()
 	factorU := dedupkey.FactorU(dedupkey.CanonicalRelayPayload(eventID, "CREATE_CAMPAIGN", payload))
 	scope := dedup.NewAdapter(pool, 1, 1).RegionScope(dedupkey.RelaySourceID(1), eventID, eventID)
-	_, err = leaseWorker.Book(ctx, OperationLeaseBookRequest{
+	_, err = leaseWorker.Book(ctx, shardadmin.OperationLeaseBookRequest{
 		OpID:         opID,
 		RegionCode:   1,
 		Role:         "management",
@@ -211,7 +212,7 @@ func TestRegionOutboxRelay_WithOperationLease(t *testing.T) {
 
 	lease, err := db.New(pool).GetOperationLease(ctx, domain.ToUUID(opID))
 	require.NoError(t, err)
-	require.Equal(t, string(LeaseStateCompleted), lease.LeaseState)
+	require.Equal(t, string(shardadmin.LeaseStateCompleted), lease.LeaseState)
 
 	budgetKey := "budget:campaign:" + campaignID.String()
 	val, err := redisClient.Get(ctx, budgetKey).Int64()

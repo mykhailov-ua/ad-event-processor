@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"testing"
 	"time"
@@ -52,7 +53,7 @@ func TestListDLQEntries_readsRedisShard(t *testing.T) {
 	result, err := reader.ListDLQEntries(context.Background(), "", 50)
 	require.NoError(t, err)
 	require.Len(t, result.Items, 1)
-	assert.Equal(t, dlqRouteID(0, msgID), result.Items[0].ID)
+	assert.Equal(t, opsadmin.DLQRouteID(0, msgID), result.Items[0].ID)
 	assert.Equal(t, 0, result.Items[0].ShardID)
 	assert.Equal(t, campaignID.String(), result.Items[0].CampaignID)
 	assert.Equal(t, "click", result.Items[0].EventType)
@@ -94,10 +95,10 @@ func TestEnqueueDLQRetry_requeuesAndDeletes(t *testing.T) {
 	svc := &Service{redisShards: []redis.UniversalClient{redisClient}, cfg: cfg}
 	reader := newOpsReader(svc)
 
-	err = reader.EnqueueDLQRetry(context.Background(), DLQRetryPayload{
+	err = reader.EnqueueDLQRetry(context.Background(), opsadmin.DLQRetryPayload{
 		ShardID: 0,
 		EntryID: msgID,
-		DLQID:   dlqRouteID(0, msgID),
+		DLQID:   opsadmin.DLQRouteID(0, msgID),
 	}, "idem-1")
 	require.NoError(t, err)
 
@@ -133,10 +134,10 @@ func TestEnqueueDLQRetry_idempotent(t *testing.T) {
 	cfg := &config.Config{RedisStreamName: "ad:events:stream"}
 	svc := &Service{redisShards: []redis.UniversalClient{redisClient}, cfg: cfg}
 	reader := newOpsReader(svc)
-	payload := DLQRetryPayload{
+	payload := opsadmin.DLQRetryPayload{
 		ShardID: 0,
 		EntryID: msgID,
-		DLQID:   dlqRouteID(0, msgID),
+		DLQID:   opsadmin.DLQRouteID(0, msgID),
 	}
 
 	require.NoError(t, reader.EnqueueDLQRetry(context.Background(), payload, "idem-dup"))

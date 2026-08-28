@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/reportjob"
+	"ad-event-processor/internal/reports"
 	"ad-event-processor/internal/telegram"
 
 	"github.com/google/uuid"
@@ -62,10 +64,10 @@ func TestCatalog_reportRoutesRegistered(t *testing.T) {
 	t.Parallel()
 
 	mux := http.NewServeMux()
-	(&ReportsHTTPHandlers{}).Register(mux)
-	(&ReportJobHTTPHandlers{Runner: &ReportJobRunner{}}).Register(mux)
+	(&reports.ReportsHTTPHandlers{}).Register(mux)
+	(&reportjob.HTTPHandlers{Runner: &reportjob.ReportJobRunner{}}).Register(mux)
 	(&StubHTTPHandlers{}).Register(mux)
-	(&TelegramHTTPHandlers{Telegram: telegram.ServiceStub{}}).Register(mux)
+	(&telegram.HTTPHandlers{Telegram: telegram.ServiceStub{}}).Register(mux)
 
 	for _, route := range Catalog() {
 		if !strings.HasPrefix(route.Path, "/api/v1/reports/") {

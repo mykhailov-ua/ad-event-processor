@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/platformadmin"
 	"context"
 	"errors"
 	"testing"
@@ -11,7 +12,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 	svc := &Service{}
 	ctx := context.Background()
 
-	_, err := svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
+	_, err := svc.RecordSupportFeedback(ctx, platformadmin.SupportFeedbackRecord{
 		Type:         "invalid",
 		ContactEmail: "ops@example.com",
 		Message:      "hello",
@@ -20,7 +21,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 		t.Fatalf("type err=%v", err)
 	}
 
-	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
+	_, err = svc.RecordSupportFeedback(ctx, platformadmin.SupportFeedbackRecord{
 		Type:         "bug",
 		ContactEmail: "not-an-email",
 		Message:      "hello",
@@ -29,7 +30,7 @@ func TestRecordSupportFeedback_validation(t *testing.T) {
 		t.Fatalf("email err=%v", err)
 	}
 
-	_, err = svc.RecordSupportFeedback(ctx, SupportFeedbackRecord{
+	_, err = svc.RecordSupportFeedback(ctx, platformadmin.SupportFeedbackRecord{
 		Type:         "bug",
 		ContactEmail: "ops@example.com",
 		Message:      " ",

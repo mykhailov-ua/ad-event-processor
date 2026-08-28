@@ -173,7 +173,7 @@ export function CostSyncPanel({
                   {canWrite ? (
                     <div className={shared.actions}>
                       <Button
-                        size="sm"
+                       
                         variant="primary"
                         disabled={busyNetwork === key}
                         onClick={() =>
@@ -188,7 +188,7 @@ export function CostSyncPanel({
                       </Button>
                       {cred ? (
                         <Button
-                          size="sm"
+                         
                           variant="secondary"
                           disabled={busyNetwork === key}
                           onClick={() => onDeleteCredential(key)}
@@ -197,7 +197,7 @@ export function CostSyncPanel({
                         </Button>
                       ) : null}
                       <Button
-                        size="sm"
+                       
                         variant="secondary"
                         disabled={busyNetwork === key}
                         onClick={() => onRunSync(key)}

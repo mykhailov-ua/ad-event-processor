@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"encoding/json"
 	"io"
@@ -8,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	webstatic "ad-event-processor/web"
 	"ad-event-processor/pkg/httpresponse"
+	webstatic "ad-event-processor/web"
 )
 
 func adminStaticFS() (fs.FS, error) {
@@ -17,8 +18,8 @@ func adminStaticFS() (fs.FS, error) {
 }
 
 type AdminBootJSON struct {
-	User        UserDTO  `json:"user"`
-	Permissions []string `json:"permissions"`
+	User        ctrlhttp.UserDTO `json:"user"`
+	Permissions []string         `json:"permissions"`
 }
 
 type AdminUIGate struct {
@@ -40,8 +41,8 @@ func (g *AdminUIGate) bootFromRequest(r *http.Request) (AdminBootJSON, bool) {
 	if !ok {
 		return AdminBootJSON{}, false
 	}
-	perms := GetPermissionsForRole(user.Role)
-	dto := UserDTO{
+	perms := ctrlhttp.GetPermissionsForRole(user.Role)
+	dto := ctrlhttp.UserDTO{
 		ID:          user.UserID.String(),
 		Role:        user.Role,
 		CustomerID:  user.CustomerID.String(),

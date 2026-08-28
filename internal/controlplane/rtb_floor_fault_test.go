@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/rtbadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -38,7 +39,7 @@ func TestFault_floor_optimizer_dry_run(t *testing.T) {
 
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Fault Floor", 1_000_000, "USD"))
-	_, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
+	_, err := svc.CreateRtbDeal(ctx, rtbadmin.DealCreateSpec{
 		DealID:     "fault-floor-deal",
 		FloorMicro: 150_000,
 		CustomerID: customerID.String(),
@@ -86,7 +87,7 @@ func TestApplyRtbFloorSuggestions_liveWritesRedisAndOutbox(t *testing.T) {
 
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Floor Live", 1_000_000, "USD"))
-	_, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
+	_, err := svc.CreateRtbDeal(ctx, rtbadmin.DealCreateSpec{
 		DealID:     "live-deal",
 		FloorMicro: 200_000,
 		CustomerID: customerID.String(),

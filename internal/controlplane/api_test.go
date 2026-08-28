@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
@@ -42,7 +44,7 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "API Stats", 500_000_000, "USD"))
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(context.Background(), campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Stats Camp",
 		BudgetLimitMicro: 100_000_000,
@@ -63,13 +65,13 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	url := "/api/v1/campaigns/" + campID.String() + "/stats?from=" + from + "&to=" + to + "&granularity=hour"
 
 	req, _ := http.NewRequest("GET", url, http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 
 	require.Equal(t, http.StatusOK, resp.Code)
 
-	var report CampaignStatsDTO
+	var report campaign.CampaignStatsDTO
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	assert.Equal(t, campID.String(), report.CampaignID)
 	assert.Equal(t, "0.00", report.CurrentSpend)
@@ -106,7 +108,7 @@ func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 	ownerID := uuid.New()
 	otherID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), ownerID, "Owner", 500_000_000, "USD"))
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(context.Background(), campaign.CreateCampaignSpec{
 		CustomerID:       ownerID,
 		Name:             "Private",
 		BudgetLimitMicro: 50_000_000,
@@ -117,7 +119,7 @@ func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {
 	require.NoError(t, err)
 
 	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, otherID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, otherID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusForbidden, resp.Code)
@@ -151,7 +153,7 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "CH Stats", 500_000_000, "USD"))
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(context.Background(), campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "CH Camp",
 		BudgetLimitMicro: 100_000_000,
@@ -170,12 +172,12 @@ func TestAPI_GetCampaignStats_ClickHouseStaleOK(t *testing.T) {
 	from := staleHour.Add(-time.Hour).Format(time.RFC3339)
 	to := staleHour.Add(2 * time.Hour).Format(time.RFC3339)
 	req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String()+"/stats?from="+from+"&to="+to, http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 
 	require.Equal(t, http.StatusOK, resp.Code)
-	var report CampaignStatsDTO
+	var report campaign.CampaignStatsDTO
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	assert.True(t, report.Stale, "ingestion lag >5m must set stale=true")
 	assert.Equal(t, "eventual", report.Consistency)

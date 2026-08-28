@@ -44,7 +44,7 @@ export function CampaignsBulkBar({ selectedIds, onClear, onSuccess }: CampaignsB
       <span className={styles.count}>{selectedIds.length} selected</span>
       <Button
         variant="secondary"
-        size="sm"
+       
         disabled={busy}
         onClick={() => void runBulk('pause')}
       >
@@ -52,13 +52,13 @@ export function CampaignsBulkBar({ selectedIds, onClear, onSuccess }: CampaignsB
       </Button>
       <Button
         variant="secondary"
-        size="sm"
+       
         disabled={busy}
         onClick={() => void runBulk('resume')}
       >
         Resume
       </Button>
-      <Button variant="secondary" size="sm" disabled={busy} onClick={onClear}>
+      <Button variant="secondary" disabled={busy} onClick={onClear}>
         Clear
       </Button>
       {error ? <span className={styles.count}>{error}</span> : null}

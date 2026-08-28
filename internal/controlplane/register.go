@@ -1,44 +1,64 @@
 package controlplane
 
-import "net/http"
+import (
+	"ad-event-processor/internal/automation"
+	"ad-event-processor/internal/billingadmin"
+	"ad-event-processor/internal/brand"
+	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/dashboardadmin"
+	"ad-event-processor/internal/doctor"
+	"ad-event-processor/internal/flow"
+	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/licensingadmin"
+	"ad-event-processor/internal/marginguard"
+	"ad-event-processor/internal/opsadmin"
+	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/internal/reportjob"
+	"ad-event-processor/internal/reports"
+	"ad-event-processor/internal/rtbadmin"
+	"ad-event-processor/internal/smartalerts"
+	"ad-event-processor/internal/supply"
+	"ad-event-processor/internal/telegram"
+	"net/http"
+)
 
 type RouteRegistry struct {
-	BillingHTTP           *BillingHTTPHandlers
-	CryptoBillingWebhook  *CryptoBillingWebhookHandlers
-	OpsHTTP               *OpsHTTPHandlers
-	DoctorHTTP            *DoctorHTTPHandlers
-	ExportHTTP            *ExportHTTPHandlers
-	LicensingHTTP         *LicensingHTTPHandlers
-	ReportsHTTP           *ReportsHTTPHandlers
-	ReportJobHTTP         *ReportJobHTTPHandlers
-	DashboardsHTTP        *DashboardsHTTPHandlers
-	ViewsHTTP             *ViewsHTTPHandlers
-	SelfServeHTTP         *SelfServeHTTPHandlers
-	PostbackHTTP          *PostbackHTTPHandlers
-	CostSyncHTTP          *CostSyncHTTPHandlers
-	PlatformCampaignHTTP  *PlatformCampaignHTTPHandlers
-	MarginGuardHTTP       *MarginGuardHTTPHandlers
-	SmartAlertsHTTP       *SmartAlertsHTTPHandlers
-	AutomationHTTP        *AutomationHTTPHandlers
-	DomainHealthHTTP      *DomainHealthHTTPHandlers
-	FlowHTTP              *FlowHTTPHandlers
-	IntegrationSchemaHTTP *IntegrationSchemaHTTPHandlers
-	TeamHTTP              *TeamHTTPHandlers
-	PublisherHTTP         *PublisherHTTPHandlers
-	RtbFloorsHTTP         *RtbFloorsHTTPHandlers
-	RtbHTTP               *RtbHTTPHandlers
-	CampaignsHTTP         *CampaignsHTTPHandlers
-	FraudHTTP             *FraudHTTPHandlers
-	CustomersHTTP         *CustomersHTTPHandlers
-	SupportHTTP           *SupportHTTPHandlers
-	MetaHTTP              *MetaHTTPHandlers
-	SessionHTTP           *SessionHTTPHandlers
-	EulaHTTP              *EulaHTTPHandlers
-	PlatformHTTP          *PlatformHTTPHandlers
-	BrandHTTP             *BrandHTTPHandlers
-	SupplyHTTP            *SupplyHTTPHandlers
+	BillingHTTP           *billingadmin.HTTPHandlers
+	CryptoBillingWebhook  *billingadmin.CryptoWebhookHandlers
+	OpsHTTP               *opsadmin.HTTPHandlers
+	DoctorHTTP            *doctor.DoctorHTTPHandlers
+	ExportHTTP            *billingadmin.ExportHTTPHandlers
+	LicensingHTTP         *licensingadmin.HTTPHandlers
+	ReportsHTTP           *reports.ReportsHTTPHandlers
+	ReportJobHTTP         *reportjob.HTTPHandlers
+	DashboardsHTTP        *dashboardadmin.HTTPHandlers
+	ViewsHTTP             *reports.ViewsHTTPHandlers
+	SelfServeHTTP         *campaign.SelfServeHTTPHandlers
+	PostbackHTTP          *campaign.PostbackHTTPHandlers
+	CostSyncHTTP          *billingadmin.CostSyncHTTPHandlers
+	PlatformCampaignHTTP  *platformadmin.PlatformCampaignHTTPHandlers
+	MarginGuardHTTP       *marginguard.HTTPHandlers
+	SmartAlertsHTTP       *smartalerts.HTTPHandlers
+	AutomationHTTP        *automation.HTTPHandlers
+	DomainHealthHTTP      *platformadmin.DomainHealthHTTPHandlers
+	FlowHTTP              *flow.HTTPHandlers
+	IntegrationSchemaHTTP *campaign.IntegrationSchemaHTTPHandlers
+	TeamHTTP              *platformadmin.TeamHTTPHandlers
+	PublisherHTTP         *dashboardadmin.PublisherHTTPHandlers
+	RtbFloorsHTTP         *rtbadmin.FloorsHTTPHandlers
+	RtbHTTP               *rtbadmin.HTTPHandlers
+	CampaignsHTTP         *campaign.CampaignsHTTPHandlers
+	FraudHTTP             *fraudadmin.HTTPHandlers
+	CustomersHTTP         *platformadmin.CustomersHTTPHandlers
+	SupportHTTP           *platformadmin.SupportHTTPHandlers
+	MetaHTTP              *platformadmin.MetaHTTPHandlers
+	SessionHTTP           *platformadmin.SessionHTTPHandlers
+	EulaHTTP              *licensingadmin.EulaHTTPHandlers
+	PlatformHTTP          *platformadmin.HTTPHandlers
+	BrandHTTP             *brand.HTTPHandlers
+	SupplyHTTP            *supply.HTTPHandlers
 	StubHTTP              *StubHTTPHandlers
-	TelegramHTTP          *TelegramHTTPHandlers
+	TelegramHTTP          *telegram.HTTPHandlers
 }
 
 func Catalog() []Route {

@@ -1,12 +1,11 @@
 package controlplane_test
 
 import (
+	"ad-event-processor/internal/licensingadmin"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"ad-event-processor/internal/controlplane"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -23,13 +22,13 @@ func TestOpenAPI_licenseFeatureRequiredSchemaKeys(t *testing.T) {
 	props, ok := schemas["LicenseFeatureRequiredBody"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.LicenseFeatureRequiredBody
+	var dto licensingadmin.LicenseFeatureRequiredBody
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "LicenseFeatureRequiredBody json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "licensingadmin.LicenseFeatureRequiredBody json field %q missing from OpenAPI schema", key)
 	}
 }

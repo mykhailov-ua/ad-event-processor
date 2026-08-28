@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -37,15 +38,15 @@ func TestJobRunner_ExportLedgerNonZeroBytes(t *testing.T) {
 		VALUES ($1, 1500000, 'TOPUP', 'billing-export-held-out-1')`, domain.ToUUID(custID))
 	require.NoError(t, err)
 
-	composite := NewCompositeReadService(pool, &config.Config{})
+	composite := billingadmin.NewCompositeReadService(pool, &config.Config{})
 	require.NotNil(t, composite)
 
 	exportDir := t.TempDir()
-	runner := NewJobRunner(composite, exportDir)
+	runner := billingadmin.NewJobRunner(composite, exportDir)
 
 	from := time.Now().UTC().Add(-24 * time.Hour).Format(time.RFC3339)
 	to := time.Now().UTC().Add(24 * time.Hour).Format(time.RFC3339)
-	jobID, err := runner.CreateJob(ctx, JobSpec{
+	jobID, err := runner.CreateJob(ctx, billingadmin.JobSpec{
 		CustomerID: custID.String(),
 		From:       from,
 		To:         to,
@@ -54,16 +55,16 @@ func TestJobRunner_ExportLedgerNonZeroBytes(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, jobID)
 
-	var status JobStatusDTO
+	var status billingadmin.JobStatusDTO
 	deadline := time.Now().Add(10 * time.Second)
 	for time.Now().Before(deadline) {
 		var ok bool
 		status, ok = runner.GetJob(jobID)
 		require.True(t, ok)
 		switch status.Status {
-		case JobStatusCompleted:
+		case billingadmin.JobStatusCompleted:
 			goto done
-		case JobStatusFailed:
+		case billingadmin.JobStatusFailed:
 			t.Fatalf("export job failed: %s", status.Error)
 		}
 		time.Sleep(25 * time.Millisecond)

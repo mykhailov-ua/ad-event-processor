@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/clickhouse/migrate"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
@@ -63,7 +65,7 @@ func TestFault_ForecastDeterministic(t *testing.T) {
 	for i := range 2 {
 		req, _ := http.NewRequest("POST", "/api/v1/forecast/campaign", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
-		withSessionUser(req, tokenMaker, RoleUser, custID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		require.Equal(t, http.StatusOK, rr.Code, "attempt %d body=%s", i+1, rr.Body.String())
@@ -82,7 +84,7 @@ func TestFault_ForecastDeterministic(t *testing.T) {
 func TestFault_ForecastCHTimeout(t *testing.T) {
 	t.Parallel()
 	rec := httptest.NewRecorder()
-	writeForecastError(rec, ErrForecastClickHouseTimeout)
+	writeForecastError(rec, campaign.ErrForecastClickHouseTimeout)
 	assert.Equal(t, http.StatusServiceUnavailable, rec.Code)
 	assert.Equal(t, "30", rec.Header().Get("Retry-After"))
 	var resp map[string]any

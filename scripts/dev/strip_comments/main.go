@@ -65,7 +65,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "walk: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("stripped go=%d fail=%d sh=%d lua=%d\n", goOK, goFail, shOK, luaOK)
+	_, _ = fmt.Fprintf(os.Stdout, "stripped go=%d fail=%d sh=%d lua=%d\n", goOK, goFail, shOK, luaOK)
 	if goFail > 0 {
 		os.Exit(1)
 	}

@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"encoding/json"
 	"os"
@@ -151,7 +152,7 @@ func TestOpsReader_AddMLManualLabel_Validation(t *testing.T) {
 func TestTopFeatureImportance(t *testing.T) {
 	t.Parallel()
 	meta := []byte(`{"importance":{"z_feat":0.1,"a_feat":0.9,"m_feat":0.5}}`)
-	out := topFeatureImportance(meta, 2)
+	out := opsadmin.TopFeatureImportance(meta, 2)
 	require.Len(t, out, 2)
 	assert.Equal(t, "a_feat", out[0].Name)
 	assert.InDelta(t, 0.9, out[0].Value, 0.001)

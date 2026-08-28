@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -17,7 +17,7 @@ import (
 
 type selfServeTemplatesStub struct{}
 
-func (s selfServeTemplatesStub) ListCampaignTemplates(_ context.Context, _ uuid.UUID, _, _ int32) ([]controlplane.CampaignTemplateDTO, int64, error) {
+func (s selfServeTemplatesStub) ListCampaignTemplates(_ context.Context, _ uuid.UUID, _, _ int32) ([]campaign.CampaignTemplateDTO, int64, error) {
 	return nil, 0, nil
 }
 
@@ -26,7 +26,7 @@ func (s selfServeTemplatesStub) CreateCampaignFromTemplate(_ context.Context, _,
 }
 
 func TestSelfServeCreateCampaign_requiresTemplateID(t *testing.T) {
-	h := &controlplane.SelfServeHTTPHandlers{
+	h := &campaign.SelfServeHTTPHandlers{
 		Templates: selfServeTemplatesStub{},
 		ResolveSelfServeCustomerID: func(_ *http.Request, _ *uuid.UUID) (uuid.UUID, error) {
 			return uuid.New(), nil
@@ -45,7 +45,7 @@ func TestSelfServeCreateCampaign_requiresTemplateID(t *testing.T) {
 }
 
 func TestSelfServeListTemplates_operatorPermBlocked(t *testing.T) {
-	h := &controlplane.SelfServeHTTPHandlers{
+	h := &campaign.SelfServeHTTPHandlers{
 		Templates: selfServeTemplatesStub{},
 		RequireAnyPermission: func(_ []string, next http.HandlerFunc) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {

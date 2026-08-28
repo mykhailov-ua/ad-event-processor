@@ -26,12 +26,6 @@ const (
 	workerBatchTimeout  = 2 * time.Minute
 	workerDrainTimeout  = 30 * time.Second
 	workerOutboxTimeout = 30 * time.Second
-
-	incrementUsageMeterSQL = `
-INSERT INTO billing.usage_meters (customer_id, meter, period, value)
-VALUES ($1, $2, $3, $4)
-ON CONFLICT (customer_id, meter, period) DO UPDATE
-SET value = billing.usage_meters.value + EXCLUDED.value`
 )
 
 func workerContext(parent context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {

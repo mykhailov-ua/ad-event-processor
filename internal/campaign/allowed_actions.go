@@ -36,16 +36,19 @@ func computeCampaignAllowedActions(ctx context.Context, status string) ([]string
 		add("edit_fraud")
 		add("edit_budget")
 		add("export")
-	} else if snap.Has(authz.PermCampaignsWriteMask) {
-		denied["edit_fraud"] = "requires_campaigns_write"
-		denied["edit_budget"] = "requires_campaigns_write"
-		denied["clone"] = "requires_campaigns_write"
 	} else {
-		denied["edit_general"] = "requires_campaigns_write"
-		denied["edit_fraud"] = "requires_campaigns_write"
-		denied["edit_budget"] = "requires_campaigns_write"
-		denied["clone"] = "requires_campaigns_write"
-		denied["export"] = "requires_campaigns_read"
+		switch {
+		case snap.Has(authz.PermCampaignsWriteMask):
+			denied["edit_fraud"] = "requires_campaigns_write"
+			denied["edit_budget"] = "requires_campaigns_write"
+			denied["clone"] = "requires_campaigns_write"
+		default:
+			denied["edit_general"] = "requires_campaigns_write"
+			denied["edit_fraud"] = "requires_campaigns_write"
+			denied["edit_budget"] = "requires_campaigns_write"
+			denied["clone"] = "requires_campaigns_write"
+			denied["export"] = "requires_campaigns_read"
+		}
 	}
 	if !snap.Has(authz.PermCampaignsRead) && !snap.Has(authz.PermCampaignsReadMasked) {
 		return nil, denied

@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
@@ -46,7 +48,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	err := svc.CreateCustomer(ctx, custID, "Advertiser", 500_000_000, "USD")
 	require.NoError(t, err)
 
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Spring Sale",
 		BudgetLimitMicro: 100_000_000,
@@ -66,7 +68,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		assert.Greater(t, total, int64(0))
 		require.NotEmpty(t, campaigns)
 
-		var found *CampaignDTO
+		var found *campaign.CampaignDTO
 		for i := range campaigns {
 			if campaigns[i].ID == campID.String() {
 				found = &campaigns[i]
@@ -104,7 +106,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		freqLimit := int32(10)
 		freqWindow := int32(7200)
 
-		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{
 			Name:             &name,
 			DailyBudgetMicro: &dailyMicro,
 			TargetURL:        &targetURL,
@@ -123,7 +125,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPatch, "/api/v1/campaigns/"+campID.String(), strings.NewReader(body))
 		require.NoError(t, err)
 		req.Header.Set("Content-Type", "application/json")
-		withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)
@@ -134,7 +136,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	t.Run("PatchCampaign_clickUrlPreset", func(t *testing.T) {
 		templateID := "meta-facebook"
 		params := map[string]string{"sub2": "{{campaign.id}}"}
-		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{
 			TrafficTemplateID: &templateID,
 			ClickQueryParams:  &params,
 		})
@@ -150,7 +152,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		end := start.Add(7 * 24 * time.Hour)
 		daypart := []int16{9, 10, 11}
 
-		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{
 			BudgetLimitMicro: &budgetMicro,
 			Status:           &status,
 			StartAt:          &start,
@@ -176,7 +178,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		linkSign := true
 		linkTTL := int32(1200)
 
-		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{
 			CIDRBlockEnabled:           &cidrBlock,
 			ProxyVPNBlockEnabled:       &proxyVPNBlock,
 			TLSFingerprintBlockEnabled: &tlsBlock,
@@ -197,7 +199,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		brandID, err := svc.CreateBrand(ctx, custID, "Patch Brand")
 		require.NoError(t, err)
 
-		updated, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{
+		updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{
 			BrandID: &brandID,
 		})
 		require.NoError(t, err)
@@ -216,7 +218,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 
 	t.Run("PatchCampaign_EmptyNameRejected", func(t *testing.T) {
 		empty := " "
-		_, err := svc.PatchCampaign(ctx, campID, PatchCampaignRequest{Name: &empty})
+		_, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{Name: &empty})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "name is required")
 	})
@@ -225,7 +227,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 		otherCustID := uuid.New()
 
 		req, _ := http.NewRequest("GET", "/api/v1/campaigns/"+campID.String(), http.NoBody)
-		withSessionUser(req, tokenMaker, RoleUser, otherCustID)
+		withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, otherCustID)
 
 		resp := httptest.NewRecorder()
 		mux.ServeHTTP(resp, req)

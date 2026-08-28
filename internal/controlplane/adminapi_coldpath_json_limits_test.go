@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/stretchr/testify/require"
@@ -14,7 +16,7 @@ import (
 
 type stubConsentRecorder struct{}
 
-func (r stubConsentRecorder) RecordConsent(_ context.Context, _ ConsentRecord) error {
+func (r stubConsentRecorder) RecordConsent(_ context.Context, _ opsadmin.ConsentRecord) error {
 	return nil
 }
 
@@ -27,7 +29,7 @@ func (v stubConsentVerifier) Verify(_ []byte, _ string) error {
 func TestColdPathJSON_SelfServePaymentIntentRejectsOversizeBody(t *testing.T) {
 	t.Parallel()
 
-	h := &SelfServeHTTPHandlers{}
+	h := &campaign.SelfServeHTTPHandlers{}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -43,7 +45,7 @@ func TestColdPathJSON_SelfServePaymentIntentRejectsOversizeBody(t *testing.T) {
 func TestColdPathJSON_ConsentRejectsOversizeBody(t *testing.T) {
 	t.Parallel()
 
-	h := &OpsHTTPHandlers{
+	h := &opsadmin.HTTPHandlers{
 		ConsentRecorder: stubConsentRecorder{},
 		ConsentVerifier: stubConsentVerifier{},
 	}

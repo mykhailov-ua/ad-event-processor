@@ -150,7 +150,7 @@ export function DomainsPanel({
                       <>
                         <Button
                           type="button"
-                          size="sm"
+                         
                           disabled={busy}
                           onClick={() => onProbe(host)}
                         >
@@ -158,7 +158,7 @@ export function DomainsPanel({
                         </Button>
                         <Button
                           type="button"
-                          size="sm"
+                         
                           disabled={busy}
                           onClick={() => onSslSetup(host)}
                         >
@@ -166,7 +166,7 @@ export function DomainsPanel({
                         </Button>
                         <Button
                           type="button"
-                          size="sm"
+                         
                           variant="danger"
                           disabled={busy}
                           onClick={() => onDelete(host)}

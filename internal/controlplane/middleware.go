@@ -28,15 +28,8 @@ type contextKey string
 
 const UserContextKey contextKey = "authenticated_user"
 
-type AuthenticatedUser = authz.AuthenticatedUser
-
-func GetUser(ctx context.Context) (AuthenticatedUser, bool) {
+func GetUser(ctx context.Context) (authz.AuthenticatedUser, bool) {
 	return authz.GetUser(ctx)
-}
-
-func withAuthenticatedUser(ctx context.Context, user AuthenticatedUser) context.Context {
-	ctx = context.WithValue(ctx, UserContextKey, user)
-	return authz.WithAuthenticatedUser(ctx, user)
 }
 
 type AuthMiddleware struct {
@@ -97,7 +90,7 @@ func (m *AuthMiddleware) SetPool(pool *pgxpool.Pool) {
 	m.pool = pool
 }
 
-func (m *AuthMiddleware) attachAuthz(ctx context.Context, user AuthenticatedUser) context.Context {
+func (m *AuthMiddleware) attachAuthz(ctx context.Context, user authz.AuthenticatedUser) context.Context {
 	if m.policy == nil {
 		ctx = authz.WithAuthenticatedUser(ctx, user)
 		return context.WithValue(ctx, UserContextKey, user)
@@ -117,11 +110,11 @@ func (m *AuthMiddleware) attachAuthz(ctx context.Context, user AuthenticatedUser
 	return context.WithValue(ctx, UserContextKey, user)
 }
 
-func (m *AuthMiddleware) checkPermission(ctx context.Context, user AuthenticatedUser, permission string) bool {
+func (m *AuthMiddleware) checkPermission(ctx context.Context, user authz.AuthenticatedUser, permission string) bool {
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
 		return snap.Has(permission)
 	}
-	return HasPermission(user.Role, permission)
+	return ctrlhttp.HasPermission(user.Role, permission)
 }
 
 func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
@@ -205,7 +198,7 @@ func (m *AuthMiddleware) RequireAuth(allowedRoles ...string) func(http.HandlerFu
 			}
 			roleAllowed := false
 			for _, allowed := range allowedRoles {
-				if user.Role == NormalizeRole(allowed) || user.Role == RoleAdmin {
+				if user.Role == ctrlhttp.NormalizeRole(allowed) || user.Role == ctrlhttp.RoleAdmin {
 					roleAllowed = true
 					break
 				}
@@ -225,88 +218,88 @@ func apiKeyDigest(rawKey string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Request, rawKey string) (AuthenticatedUser, bool) {
+func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Request, rawKey string) (authz.AuthenticatedUser, bool) {
 	if m.authClient == nil {
 		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 	if m.apiKeyLimiter != nil && !m.apiKeyLimiter.Allow(apiKeyDigest(rawKey)) {
 		httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "api key rate limit exceeded")
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 
 	user, err := m.authClient.VerifyAPIKey(r.Context(), rawKey)
 	if err != nil {
 		if errors.Is(err, identity.ErrInvalidAPIKey) || errors.Is(err, identity.ErrInvalidCredentials) {
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid api key")
-			return AuthenticatedUser{}, false
+			return authz.AuthenticatedUser{}, false
 		}
 		if errors.Is(err, identity.ErrRateLimitExceeded) {
 			httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "api key rate limit exceeded")
-			return AuthenticatedUser{}, false
+			return authz.AuthenticatedUser{}, false
 		}
 		if st, ok := status.FromError(err); ok {
 			switch st.Code() {
 			case codes.Unauthenticated:
 				httpresponse.WriteGRPCError(w, err)
-				return AuthenticatedUser{}, false
+				return authz.AuthenticatedUser{}, false
 			case codes.ResourceExhausted:
 				httpresponse.WriteGRPCError(w, err)
-				return AuthenticatedUser{}, false
+				return authz.AuthenticatedUser{}, false
 			}
 		}
 		slog.Error("api key verification failed", "error", err)
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to verify api key")
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 	if user.ID == uuid.Nil {
 		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid api key")
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 
-	return AuthenticatedUser{
+	return authz.AuthenticatedUser{
 		UserID:       user.ID,
-		Role:         NormalizeRole(user.Role),
+		Role:         ctrlhttp.NormalizeRole(user.Role),
 		CustomerID:   user.CustomerID,
 		AuthSource:   "api_key",
 		APIKeyScopes: user.Scopes,
 	}, true
 }
 
-func (m *AuthMiddleware) SessionFromRequest(r *http.Request) (AuthenticatedUser, bool) {
+func (m *AuthMiddleware) SessionFromRequest(r *http.Request) (authz.AuthenticatedUser, bool) {
 	if m == nil || m.tokenMaker == nil {
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 	cookie, err := r.Cookie("accessToken")
 	if err != nil || cookie.Value == "" {
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 
 	payload, err := m.tokenMaker.VerifyToken(cookie.Value)
 	if err != nil {
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 
 	if redisShards := m.controlRedis(); len(redisShards) > 0 {
 		revoked, errRev := m.checkTokenRevocation(r.Context(), redisShards, payload)
 		if errRev != nil || revoked {
-			return AuthenticatedUser{}, false
+			return authz.AuthenticatedUser{}, false
 		}
 	}
 
-	return AuthenticatedUser{
+	return authz.AuthenticatedUser{
 		UserID:     payload.UserID,
-		Role:       NormalizeRole(payload.Role),
+		Role:       ctrlhttp.NormalizeRole(payload.Role),
 		CustomerID: payload.CustomerID,
 		AuthSource: "session",
 	}, true
 }
 
-func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (AuthenticatedUser, bool) {
+func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (authz.AuthenticatedUser, bool) {
 	if key := r.Header.Get("X-Admin-API-Key"); key != "" && m.cfg != nil && key == string(m.cfg.AdminAPIKey) {
-		return AuthenticatedUser{
+		return authz.AuthenticatedUser{
 			UserID:     apiKeyPrincipalID(key),
-			Role:       RoleAdmin,
+			Role:       ctrlhttp.RoleAdmin,
 			CustomerID: uuid.Nil,
 			AuthSource: "api_key",
 			Scope:      authz.ScopeGlobal,
@@ -316,13 +309,13 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 	cookie, err := r.Cookie("accessToken")
 	if err != nil || cookie.Value == "" {
 		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: missing token")
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 
 	payload, err := m.tokenMaker.VerifyToken(cookie.Value)
 	if err != nil {
 		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid token")
-		return AuthenticatedUser{}, false
+		return authz.AuthenticatedUser{}, false
 	}
 
 	if redisShards := m.controlRedis(); len(redisShards) > 0 {
@@ -330,17 +323,17 @@ func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (A
 		if errRev != nil {
 			slog.Error("redis revocation check failed, blocking request to prevent security bypass", "error", errRev)
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
-			return AuthenticatedUser{}, false
+			return authz.AuthenticatedUser{}, false
 		}
 		if revoked {
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: session revoked")
-			return AuthenticatedUser{}, false
+			return authz.AuthenticatedUser{}, false
 		}
 	}
 
-	return AuthenticatedUser{
+	return authz.AuthenticatedUser{
 		UserID:     payload.UserID,
-		Role:       NormalizeRole(payload.Role),
+		Role:       ctrlhttp.NormalizeRole(payload.Role),
 		CustomerID: payload.CustomerID,
 		AuthSource: "session",
 	}, true

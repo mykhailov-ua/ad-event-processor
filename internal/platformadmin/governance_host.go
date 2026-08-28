@@ -2,6 +2,7 @@ package platformadmin
 
 import (
 	"context"
+	"errors"
 
 	db "ad-event-processor/internal/domain/db"
 
@@ -58,7 +59,7 @@ func AssignCampaignOwner(ctx context.Context, host GovernanceHost, campaignID, o
 	var memberCustomer uuid.UUID
 	err = pool.QueryRow(ctx, `SELECT customer_id FROM users WHERE id = $1`, ownerUserID).Scan(&memberCustomer)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return host.ErrTeamMemberNotFound()
 		}
 		return err

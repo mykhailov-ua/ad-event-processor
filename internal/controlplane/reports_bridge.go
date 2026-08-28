@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"log/slog"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/internal/reports"
@@ -16,116 +18,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type (
-	ReportJobRunner          = reportjob.ReportJobRunner
-	ReportJobSpec            = reportjob.ReportJobSpec
-	ReportJobStatusDTO       = reportjob.ReportJobStatusDTO
-	ReportJobHTTPHandlers    = reportjob.HTTPHandlers
-	ReportExportDeps         = reports.ReportExportDeps
-	ExportDeps               = reportjob.ExportDeps
-	ReportsHTTPHandlers      = reports.ReportsHTTPHandlers
-	FraudEvidencePackDTO     = reports.FraudEvidencePackDTO
-	DataFreshnessDTO         = reports.DataFreshnessDTO
-	DataSourceFreshnessDTO   = reports.DataSourceFreshnessDTO
-	DashboardSeriesPointDTO  = reports.DashboardSeriesPointDTO
-	CustomerFraudOverviewDTO = reports.CustomerFraudOverviewDTO
-	PlacementReportRowDTO    = reports.PlacementReportRowDTO
-)
-
-var (
-	NewReportJobRunner         = reportjob.NewReportJobRunner
-	NewReportScheduleWorker    = reportjob.NewReportScheduleWorker
-	DefaultReportExportDirPath = reportjob.DefaultReportExportDirPath
-)
-
-const permCampaignsReadMasked = "campaigns:read:masked"
-
-var reportClickHouseQueryTimeout = reports.ReportClickHouseQueryTimeout()
-
 func ReportClickHouseQueryTimeout() time.Duration {
 	return reports.ReportClickHouseQueryTimeout()
-}
-
-var (
-	reportPermsFraudCustomer                = reports.ReportPermsFraudCustomer
-	parseReportRange                        = reports.ParseReportRange
-	queryPlacementReportRows                = reports.QueryPlacementReportRows
-	queryPlacementIVTRates                  = reports.QueryPlacementIVTRates
-	toPlacementReportRowDTO                 = reports.ToPlacementReportRowDTO
-	reportMetricsKey                        = reports.ReportMetricsKey
-	queryClickHouseCampaignDailyEventTotals = reports.QueryClickHouseCampaignDailyEventTotals
-	parseReportRangeFromStrings             = reportjob.ParseReportRangeFromStrings
-	campaignDailyTotalKey                   = reports.CampaignDailyTotalKey
-	queryCustomerFraudOverview              = reports.QueryCustomerFraudOverview
-	queryCustomerFraudDailySeries           = reports.QueryCustomerFraudDailySeries
-	campaignDashboardFreshness              = reports.CampaignDashboardFreshness
-)
-
-var (
-	QueryCampaignEconomicsCH = reports.QueryCampaignEconomicsCH
-	ListCustomerCampaignIDs  = reports.ListCustomerCampaignIDs
-	listCustomerCampaignIDs  = reports.ListCustomerCampaignIDs
-	QueryWorstIVTSources     = reports.QueryWorstIVTSources
-	QueryWorstIVTCountries   = reports.QueryWorstIVTCountries
-	CalcROIPct               = reports.CalcROIPct
-	CalcQualityFromDrift     = reports.CalcQualityFromDrift
-	filterReportCatalog      = reports.FilterReportCatalog
-	reportCatalogEntries     = reports.ReportCatalogEntries
-	observeReportHandler     = reports.ObserveReportHandler
-	liveReportExportKeys     = reports.LiveReportExportKeys
-)
-
-func fraudGeoHintsFromReports(hints []reports.FraudGeoHintDTO) []FraudGeoHintDTO {
-	if len(hints) == 0 {
-		return nil
-	}
-	out := make([]FraudGeoHintDTO, len(hints))
-	for i := range hints {
-		h := hints[i]
-		out[i] = FraudGeoHintDTO{
-			Country: h.Country, IVTRate: h.IVTRate, IVTEvents: h.IVTEvents,
-			Clicks: h.Clicks, CampaignID: h.CampaignID,
-		}
-	}
-	return out
-}
-
-func sourceRowsFromReports(rows []reports.SourceRowDTO) []SourceRowDTO {
-	if len(rows) == 0 {
-		return nil
-	}
-	out := make([]SourceRowDTO, len(rows))
-	for i := range rows {
-		r := rows[i]
-		out[i] = SourceRowDTO{
-			CampaignID: r.CampaignID, Sub1: r.Sub1, Sub2: r.Sub2, Country: r.Country,
-			Impressions: r.Impressions, Clicks: r.Clicks, Conversions: r.Conversions,
-			SpendMicro: r.SpendMicro, RevenueMicro: r.RevenueMicro, ProfitMicro: r.ProfitMicro,
-			CPAMicro: r.CPAMicro, ROIPct: r.ROIPct, CTR: r.CTR, IVTRate: r.IVTRate, QualityScore: r.QualityScore,
-		}
-	}
-	return out
-}
-
-type (
-	ForecastUnavailableResponse = reports.ForecastUnavailableResponse
-	ForecastErrorDetail         = reports.ForecastErrorDetail
-	FraudEvidenceTimelineRowDTO = reports.FraudEvidenceTimelineRowDTO
-	FraudEvidenceFraudRowDTO    = reports.FraudEvidenceFraudRowDTO
-)
-
-var (
-	writeBuyerFraudExportPreamble     = reports.WriteBuyerFraudExportPreamble
-	buildSignedFraudEvidencePack      = reports.BuildSignedFraudEvidencePack
-	verifyFraudEvidencePackSignature  = reports.VerifyFraudEvidencePackSignature
-	campaignImportValidationReportKey = reportjob.CampaignImportValidationReportKey
-)
-
-func maskLevelFromContext(ctx context.Context) authz.MaskLevel {
-	if snap, ok := authz.SnapshotFromContext(ctx); ok {
-		return snap.Mask
-	}
-	return authz.MaskFull
 }
 
 func requestHasShardsRead(r *http.Request) bool {
@@ -136,39 +30,15 @@ func requestHasShardsRead(r *http.Request) bool {
 	if !ok {
 		return false
 	}
-	return HasPermission(user.Role, PermShardsRead)
+	return ctrlhttp.HasPermission(user.Role, ctrlhttp.PermShardsRead)
 }
 
-func portfolioFreshness(now time.Time, chQueryAvailable bool, chLag time.Duration) DataFreshnessDTO {
+func portfolioFreshness(now time.Time, chQueryAvailable bool, chLag time.Duration) reports.DataFreshnessDTO {
 	return reports.PortfolioFreshness(now, chQueryAvailable, chLag)
 }
 
-func dataFreshnessFromClickHouse(ctx context.Context, clickhouseQuery *database.ClickHouseQuery) DataFreshnessDTO {
-	return reports.DataFreshnessFromClickHouse(ctx, clickhouseQuery)
-}
-
-func validateChartRange(from, to time.Time) error {
-	return reports.ValidateChartRange(from, to)
-}
-
-func buildCustomerFraudOverview(totalEvents, blockedEvents, silentRejectEvents int64, freshness DataFreshnessDTO) CustomerFraudOverviewDTO {
-	return reports.BuildCustomerFraudOverview(totalEvents, blockedEvents, silentRejectEvents, freshness)
-}
-
-func attachInvalidSpendKPI(out *CustomerFraudOverviewDTO, blockedEvents, silentRejectEvents, totalEvents int64, spendMicros int64, attributionCoverage float64) {
-	reports.AttachInvalidSpendKPI(out, blockedEvents, silentRejectEvents, totalEvents, spendMicros, attributionCoverage)
-}
-
-func queryCustomerDashboardSeries(ctx context.Context, pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time) ([]DashboardSeriesPointDTO, error) {
+func queryCustomerDashboardSeries(ctx context.Context, pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time) ([]reports.DashboardSeriesPointDTO, error) {
 	return reports.QueryCustomerDashboardSeries(ctx, pool, clickhouseQuery, customerID, campaignIDs, from, to)
-}
-
-func scrubCustomerFraudEvidencePack(pack FraudEvidencePackDTO) FraudEvidencePackDTO {
-	return reports.ScrubCustomerFraudEvidencePack(pack)
-}
-
-func computeAttributionCoverage(totalEvents, attributedEvents int64) float64 {
-	return reports.ComputeAttributionCoverage(totalEvents, attributedEvents)
 }
 
 type campaignStatsAdapter struct {
@@ -242,7 +112,7 @@ func (a buyerPortfolioAdapter) GetBuyerPortfolioRange(ctx context.Context, custo
 	return buyerPortfolioToReports(p), err
 }
 
-func buyerPortfolioToReports(p BuyerPortfolioDTO) reports.BuyerPortfolioDTO {
+func buyerPortfolioToReports(p dashboardadmin.BuyerPortfolioDTO) reports.BuyerPortfolioDTO {
 	out := reports.BuyerPortfolioDTO{
 		CustomerID:     p.CustomerID,
 		Active:         p.Active,

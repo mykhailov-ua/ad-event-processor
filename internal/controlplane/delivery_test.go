@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/db"
@@ -15,8 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testCampaignSpec(customerID uuid.UUID, name string, budgetMicro int64, idem string) CampaignCreateSpec {
-	return CampaignCreateSpec{
+func testCampaignSpec(customerID uuid.UUID, name string, budgetMicro int64, idem string) campaign.CreateCampaignSpec {
+	return campaign.CreateCampaignSpec{
 		CustomerID:       customerID,
 		Name:             name,
 		BudgetLimitMicro: budgetMicro,
@@ -93,7 +94,7 @@ func TestScheduledCampaignStartsPaused(t *testing.T) {
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Sched", 200_000_000, "USD"))
 
 	start := time.Now().Add(2 * time.Hour)
-	id, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	id, err := svc.CreateCampaign(context.Background(), campaign.CreateCampaignSpec{
 		CustomerID: custID, Name: "Future", BudgetLimitMicro: 50_000_000,
 		PacingMode: string(db.PacingModeTypeASAP), Timezone: "UTC", FreqWindow: 86400,
 		StartAt: &start, IdempotencyKey: "sched-idem",

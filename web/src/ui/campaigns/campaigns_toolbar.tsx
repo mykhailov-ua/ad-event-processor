@@ -15,10 +15,10 @@ export function CampaignsToolbar() {
 
   return (
     <div className={styles.toolbar}>
-      <Button variant="primary" size="sm" onClick={() => navigate('/campaigns/wizard')}>
+      <Button variant="primary" onClick={() => navigate('/campaigns/wizard')}>
         Create campaign
       </Button>
-      <Button variant="secondary" size="sm" onClick={() => navigate('/campaigns/migrate')}>
+      <Button variant="secondary" onClick={() => navigate('/campaigns/migrate')}>
         Migrate
       </Button>
     </div>

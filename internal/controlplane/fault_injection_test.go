@@ -11,6 +11,7 @@ import (
 
 	"ad-event-processor/pkg/faultproof"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -269,7 +270,7 @@ func TestFault_ConcurrentBalanceDepletion(t *testing.T) {
 	for i := range workers {
 		go func(idx int) {
 			defer wg.Done()
-			_, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+			_, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 				CustomerID:       customerID,
 				Name:             "Camp",
 				BudgetLimitMicro: campaignBudget,

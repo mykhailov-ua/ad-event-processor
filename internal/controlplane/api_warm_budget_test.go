@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/rtbadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -168,7 +169,7 @@ func TestOptimizeBidFloors_writesRedis(t *testing.T) {
 	ctx := context.Background()
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Floor Co", 1_000_000, "USD"))
-	_, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
+	_, err := svc.CreateRtbDeal(ctx, rtbadmin.DealCreateSpec{
 		DealID:     "opt-deal-1",
 		FloorMicro: 200_000,
 		CustomerID: customerID.String(),

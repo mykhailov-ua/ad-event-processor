@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"encoding/json"
 	"net/http"
@@ -48,7 +49,7 @@ func TestMigrationHandlers_previewRequiresWritePermission(t *testing.T) {
 	require.NoError(t, err)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/campaigns/migrate/preview", bytes.NewReader(body))
-	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleSupport, uuid.New(), time.Hour)
+	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleSupport, uuid.New(), time.Hour)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 	rec := httptest.NewRecorder()

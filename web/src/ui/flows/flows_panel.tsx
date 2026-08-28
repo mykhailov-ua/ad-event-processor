@@ -94,7 +94,7 @@ export function FlowsPanel({ items, loading, canWrite, onReload }: FlowsPanelPro
               aria-label="Flow name"
             />
           </label>
-          <Button type="submit" variant="primary" size="sm" disabled={busy}>
+          <Button type="submit" variant="primary" disabled={busy}>
             Create flow
           </Button>
           {createError ? <span className={styles.uploadHint}>{createError}</span> : null}

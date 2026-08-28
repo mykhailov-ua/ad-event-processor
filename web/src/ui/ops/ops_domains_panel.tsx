@@ -1,6 +1,7 @@
 import type { DomainRotation, DomainTlsAllowed } from '../../helpers/ops_api.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import { StubBanner } from '../system/stub_banner.js';
@@ -29,7 +30,7 @@ export function OpsDomainsPanel({
 
   return (
     <div className={styles.root} data-testid="ops-domains-page">
-      <PageChrome title="Domain rotation" badge={loading ? null : <span>{hosts.length} hosts</span>} />
+      <PageChrome title="Domain rotation" badge={<LoadingCountBadge loading={loading} label={`${hosts.length} hosts`} />} />
       {stub ? (
         <StubBanner title="Domains unavailable" message="Rotation endpoint returned stub or 501." />
       ) : null}

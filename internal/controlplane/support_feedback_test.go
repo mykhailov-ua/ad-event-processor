@@ -20,16 +20,16 @@ import (
 )
 
 type stubFeedbackRecorder struct {
-	meta    SupportFeedbackMeta
-	last    SupportFeedbackRecord
+	meta    platformadmin.SupportFeedbackMeta
+	last    platformadmin.SupportFeedbackRecord
 	created uuid.UUID
 }
 
-func (s *stubFeedbackRecorder) SupportFeedbackMeta(context.Context) (SupportFeedbackMeta, error) {
+func (s *stubFeedbackRecorder) SupportFeedbackMeta(context.Context) (platformadmin.SupportFeedbackMeta, error) {
 	return s.meta, nil
 }
 
-func (s *stubFeedbackRecorder) RecordSupportFeedback(_ context.Context, in SupportFeedbackRecord) (uuid.UUID, error) {
+func (s *stubFeedbackRecorder) RecordSupportFeedback(_ context.Context, in platformadmin.SupportFeedbackRecord) (uuid.UUID, error) {
 	s.last = in
 	if s.created == uuid.Nil {
 		s.created = uuid.New()
@@ -40,12 +40,12 @@ func (s *stubFeedbackRecorder) RecordSupportFeedback(_ context.Context, in Suppo
 func TestSupportFeedbackMeta_handler(t *testing.T) {
 	t.Parallel()
 	rec := &stubFeedbackRecorder{
-		meta: SupportFeedbackMeta{
+		meta: platformadmin.SupportFeedbackMeta{
 			DeploymentID:  "dep-1",
 			BinaryVersion: "1.2.3",
 		},
 	}
-	h := &SupportHTTPHandlers{Feedback: rec}
+	h := &platformadmin.SupportHTTPHandlers{Feedback: rec}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -56,7 +56,7 @@ func TestSupportFeedbackMeta_handler(t *testing.T) {
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
-	var got SupportFeedbackMeta
+	var got platformadmin.SupportFeedbackMeta
 	if err := json.Unmarshal(recorder.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
@@ -68,9 +68,9 @@ func TestSupportFeedbackMeta_handler(t *testing.T) {
 func TestSupportFeedbackPost_handler(t *testing.T) {
 	t.Parallel()
 	feedback := &stubFeedbackRecorder{
-		meta: SupportFeedbackMeta{BinaryVersion: "dev"},
+		meta: platformadmin.SupportFeedbackMeta{BinaryVersion: "dev"},
 	}
-	h := &SupportHTTPHandlers{Feedback: feedback}
+	h := &platformadmin.SupportHTTPHandlers{Feedback: feedback}
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -102,8 +102,8 @@ func TestSupportFeedbackPost_bundleRedaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	feedback := &stubFeedbackRecorder{meta: SupportFeedbackMeta{BinaryVersion: "dev"}}
-	h := &SupportHTTPHandlers{
+	feedback := &stubFeedbackRecorder{meta: platformadmin.SupportFeedbackMeta{BinaryVersion: "dev"}}
+	h := &platformadmin.SupportHTTPHandlers{
 		Feedback:      feedback,
 		SupportBundle: stubBundler{logDir: dir},
 	}

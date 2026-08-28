@@ -131,10 +131,10 @@ export function LanderEditorDetail({ landerId, onReload }: LanderEditorDetailPro
           onChange={(e) => setContent(e.target.value)}
         />
         <div className={styles.actions}>
-          <Button variant="primary" size="sm" type="button" disabled={saving || !selectedPath} onClick={() => void onSave()}>
+          <Button variant="primary" type="button" disabled={saving || !selectedPath} onClick={() => void onSave()}>
             {saving ? 'Saving...' : 'Save file'}
           </Button>
-          <Button variant="secondary" size="sm" type="button" disabled={publishing} onClick={() => void onPublish()}>
+          <Button variant="secondary" type="button" disabled={publishing} onClick={() => void onPublish()}>
             {publishing ? 'Publishing...' : 'Publish'}
           </Button>
           {state?.preview_url ? (

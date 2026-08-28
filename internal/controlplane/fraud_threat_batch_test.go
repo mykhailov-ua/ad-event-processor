@@ -13,6 +13,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
@@ -32,9 +33,9 @@ func TestEnqueueFraudThreatBatch_insertsOutboxRows(t *testing.T) {
 	campaignID := uuid.New().String()
 
 	const n = 5
-	items := make([]FraudThreatEnqueueItem, n)
+	items := make([]opsadmin.FraudThreatEnqueueItem, n)
 	for i := range n {
-		items[i] = FraudThreatEnqueueItem{
+		items[i] = opsadmin.FraudThreatEnqueueItem{
 			Action:     "blacklist",
 			IP:         fmt.Sprintf("203.0.113.%d", i),
 			CampaignID: campaignID,
@@ -61,7 +62,7 @@ func (s *stubFraudThreatEnqueuer) EnqueueFraudThreat(context.Context, string, st
 	return nil
 }
 
-func (s *stubFraudThreatEnqueuer) EnqueueFraudThreatBatch(_ context.Context, items []FraudThreatEnqueueItem) (int, error) {
+func (s *stubFraudThreatEnqueuer) EnqueueFraudThreatBatch(_ context.Context, items []opsadmin.FraudThreatEnqueueItem) (int, error) {
 	s.batchCalls++
 	return len(items), nil
 }
@@ -70,7 +71,7 @@ func TestFraudThreatHTTP_batchBody(t *testing.T) {
 	t.Parallel()
 
 	stub := &stubFraudThreatEnqueuer{}
-	ops := &OpsHTTPHandlers{FraudThreat: stub}
+	ops := &opsadmin.HTTPHandlers{FraudThreat: stub}
 	mux := http.NewServeMux()
 	ops.RegisterFraudThreatRoutes(mux)
 
@@ -87,7 +88,7 @@ func TestFraudThreatHTTP_batchBody(t *testing.T) {
 func TestFraudThreatHTTP_rejectsOversizeBody(t *testing.T) {
 	t.Parallel()
 
-	ops := &OpsHTTPHandlers{FraudThreat: &stubFraudThreatEnqueuer{}}
+	ops := &opsadmin.HTTPHandlers{FraudThreat: &stubFraudThreatEnqueuer{}}
 	mux := http.NewServeMux()
 	ops.RegisterFraudThreatRoutes(mux)
 
@@ -110,9 +111,9 @@ func TestEnqueueFraudThreatBatch_rejectsOverLimit(t *testing.T) {
 
 	svc := newBareService(t, pool, nil, &config.Config{})
 	campaignID := uuid.New().String()
-	items := make([]FraudThreatEnqueueItem, fraudadmin.ThreatBatchMax+1)
+	items := make([]opsadmin.FraudThreatEnqueueItem, fraudadmin.ThreatBatchMax+1)
 	for i := range items {
-		items[i] = FraudThreatEnqueueItem{
+		items[i] = opsadmin.FraudThreatEnqueueItem{
 			Action:     "boost",
 			IP:         "1.2.3.4",
 			CampaignID: campaignID,
@@ -139,7 +140,7 @@ func TestFraudThreatHTTP_batchJSONRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	stub := &stubFraudThreatEnqueuer{}
-	ops := &OpsHTTPHandlers{FraudThreat: stub}
+	ops := &opsadmin.HTTPHandlers{FraudThreat: stub}
 	mux := http.NewServeMux()
 	ops.RegisterFraudThreatRoutes(mux)
 

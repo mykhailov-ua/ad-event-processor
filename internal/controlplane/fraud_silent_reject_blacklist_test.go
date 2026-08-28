@@ -6,6 +6,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/internal/ingestion"
 
 	"github.com/google/uuid"
@@ -74,7 +75,7 @@ func TestMLSilentRejectAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, exists)
 
-	err = svc.ApplyFraudScoringOverride(ctx, FraudScoringOverrideRequest{
+	err = svc.ApplyFraudScoringOverride(ctx, fraudadmin.FraudScoringOverrideRequest{
 		CampaignID: fraudStringPtr(campaignID.String()),
 	})
 	require.NoError(t, err)
@@ -83,7 +84,7 @@ func TestMLSilentRejectAndBlacklist_EndToEnd(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, processed, 0)
 
-	err = svc.ApplyFraudScoringOverride(ctx, FraudScoringOverrideRequest{
+	err = svc.ApplyFraudScoringOverride(ctx, fraudadmin.FraudScoringOverrideRequest{
 		IP: fraudStringPtr("9.9.9.9"),
 	})
 	require.NoError(t, err)

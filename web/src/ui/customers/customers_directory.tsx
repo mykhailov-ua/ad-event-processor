@@ -1,5 +1,6 @@
 import type { Customer, CustomerSortField, CustomerSortOrder } from '../../helpers/customers_api.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PaginationBar } from '../system/pagination_bar.js';
 import { CustomersFilter } from './customers_filter.js';
@@ -42,7 +43,7 @@ export function CustomersDirectory({
     <div className={styles.root}>
       <PageChrome
         title="Customers"
-        badge={loading ? null : <span>{total} total</span>}
+        badge={<LoadingCountBadge loading={loading} label={`${total} total`} />}
       />
       <CustomersToolbar />
       <CustomersFilter sort={sort} order={order} onApply={onFilterApply} />

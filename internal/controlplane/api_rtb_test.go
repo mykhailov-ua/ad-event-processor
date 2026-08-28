@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/rtbadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -33,7 +34,7 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "RTB Advertiser", 1_000_000, "USD"))
 
-	created, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
+	created, err := svc.CreateRtbDeal(ctx, rtbadmin.DealCreateSpec{
 		DealID:     "deal-premium-1",
 		FloorMicro: 250_000,
 		GeoMask:    255,
@@ -49,7 +50,7 @@ func TestRtbDealsAPI_CRUDAndOutbox(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 
-	updated, err := svc.UpdateRtbDeal(ctx, created.ID, RtbDealUpdateSpec{
+	updated, err := svc.UpdateRtbDeal(ctx, created.ID, rtbadmin.DealUpdateSpec{
 		DealID:     "deal-premium-1",
 		FloorMicro: 300_000,
 		GeoMask:    255,
@@ -106,7 +107,7 @@ func TestRtbDealsAPI_duplicateDealID(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Dup Co", 1_000_000, "USD"))
 
-	spec := RtbDealCreateSpec{
+	spec := rtbadmin.DealCreateSpec{
 		DealID:     "dup-deal",
 		FloorMicro: 100,
 		CustomerID: customerID.String(),
@@ -134,7 +135,7 @@ func TestRtbDealsAPI_invalidSeats(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Seats Co", 1_000_000, "USD"))
 
-	_, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
+	_, err := svc.CreateRtbDeal(ctx, rtbadmin.DealCreateSpec{
 		DealID:     "bad-seats",
 		FloorMicro: 100,
 		Seats:      -1,

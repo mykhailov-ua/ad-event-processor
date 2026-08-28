@@ -35,9 +35,13 @@ func (m vendorProbeMetrics) ObserveProbeError(vendor string) {
 	metrics.VendorProbeErrorsTotal.WithLabelValues(vendor).Inc()
 }
 
-func StartVendorTelemetryWorker(host VendorTelemetryHost) {
+func StartVendorTelemetryWorker(ctx context.Context, host VendorTelemetryHost) {
 	if host == nil || !host.VendorTelemetryEnabled() {
 		return
+	}
+	runCtx := ctx
+	if runCtx == nil {
+		runCtx = host.WorkerContext()
 	}
 	opts := Options{
 		GeoIPDBPath:      host.GeoIPDBPath(),
@@ -52,6 +56,6 @@ func StartVendorTelemetryWorker(host VendorTelemetryHost) {
 		Timeout:  host.VendorTelemetryTimeout(),
 	}, vendorProbeMetrics{})
 	host.StartWorker(func() {
-		worker.Start(host.WorkerContext())
+		worker.Start(runCtx)
 	})
 }

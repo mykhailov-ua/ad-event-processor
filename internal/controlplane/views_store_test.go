@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/reports"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -28,8 +29,8 @@ func TestViewsStore_PG_CRUD(t *testing.T) {
 		VALUES ($1, 'Views PG', 0, 'USD')`, domain.ToUUID(custID))
 	require.NoError(t, err)
 
-	store := NewViewsStore(pool)
-	created, err := store.CreateView(ctx, CreateViewRequest{
+	store := reports.NewViewsStore(pool)
+	created, err := store.CreateView(ctx, reports.CreateViewRequest{
 		CustomerID: custID.String(),
 		Name:       "Weekly placements",
 		ReportKey:  "placements",
@@ -47,7 +48,7 @@ func TestViewsStore_PG_CRUD(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, created.Name, got.Name)
 
-	updated, err := store.UpdateView(ctx, created.ID, UpdateViewRequest{
+	updated, err := store.UpdateView(ctx, created.ID, reports.UpdateViewRequest{
 		Name:      "Updated",
 		ReportKey: "placements",
 		Spec:      json.RawMessage(`{"limit":50}`),
@@ -58,5 +59,5 @@ func TestViewsStore_PG_CRUD(t *testing.T) {
 
 	require.NoError(t, store.DeleteView(ctx, created.ID))
 	_, err = store.GetView(ctx, created.ID)
-	require.ErrorIs(t, err, ErrViewNotFound)
+	require.ErrorIs(t, err, reports.ErrViewNotFound)
 }

@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -11,8 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/supply"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -46,7 +49,7 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 		ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
 	require.NoError(t, err)
 
-	seller, err := svc.CreateSeller(ctx, SellerCreateSpec{
+	seller, err := svc.CreateSeller(ctx, supply.SellerCreateSpec{
 		SellerID:   "pub-001",
 		Domain:     "publisher.example.com",
 		SellerType: "PUBLISHER",
@@ -55,7 +58,7 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "pub-001", seller.SellerID)
 
-	_, err = svc.CreateAdsTxtEntry(ctx, AdsTxtEntryCreateSpec{
+	_, err = svc.CreateAdsTxtEntry(ctx, supply.AdsTxtEntryCreateSpec{
 		Domain:             "google.com",
 		PublisherAccountID: "pub-12345",
 		Relationship:       "RESELLER",
@@ -98,7 +101,7 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Supply Co", 200_000_000, "USD"))
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       customerID,
 		Name:             "Chain Camp",
 		BudgetLimitMicro: 10_000_000,
@@ -108,7 +111,7 @@ func TestSupplyAPI_CRUDAndExport(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	_, err = svc.UpdateCampaignSupplyChain(ctx, campID, []SupplyChainNode{
+	_, err = svc.UpdateCampaignSupplyChain(ctx, campID, []supply.ChainNode{
 		{ASI: "exchange.example.com", SID: "1234", HP: 1},
 	})
 	require.NoError(t, err)
@@ -142,7 +145,7 @@ func TestSupplyAPI_RBAC(t *testing.T) {
 
 	managerID := uuid.New()
 	attachManager := func(req *http.Request) {
-		token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleManager, managerID, time.Hour)
+		token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleManager, managerID, time.Hour)
 		if err != nil {
 			t.Fatal(err)
 		}

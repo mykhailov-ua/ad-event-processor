@@ -143,7 +143,7 @@ export function TelegramDetailView({
               <div className={styles.actions}>
                 <Button
                   variant="secondary"
-                  size="sm"
+                 
                   type="button"
                   onClick={() =>
                     void configureTelegramBot(bots[0].bot_id ?? '', { campaign_id: campaignId }).then(() =>

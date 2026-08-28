@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/billingadmin"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 
 func TestParseStatementPeriod_month(t *testing.T) {
 	t.Parallel()
-	from, to, err := ParseStatementPeriod("", "", "2026-06")
+	from, to, err := billingadmin.ParseStatementPeriod("", "", "2026-06")
 	require.NoError(t, err)
 	assert.Equal(t, 2026, from.Year())
 	assert.Equal(t, time.June, from.Month())

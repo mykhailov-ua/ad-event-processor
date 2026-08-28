@@ -7,6 +7,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
@@ -51,14 +52,14 @@ func TestProxyUplink_IngestUsesOperationLease(t *testing.T) {
 	var leaseState string
 	require.NoError(t, pool.QueryRow(ctx, `
 		SELECT lease_state FROM operation_leases WHERE op_id = $1`, domain.ToUUID(opID)).Scan(&leaseState))
-	require.Equal(t, string(LeaseStateCompleted), leaseState)
+	require.Equal(t, string(shardadmin.LeaseStateCompleted), leaseState)
 }
 
 func TestRelayDeliveryOpID_Deterministic(t *testing.T) {
 	t.Parallel()
-	a := RelayDeliveryOpID(1, 99)
-	b := RelayDeliveryOpID(1, 99)
-	c := RelayDeliveryOpID(1, 100)
+	a := shardadmin.RelayDeliveryOpID(1, 99)
+	b := shardadmin.RelayDeliveryOpID(1, 99)
+	c := shardadmin.RelayDeliveryOpID(1, 100)
 	require.Equal(t, a, b)
 	require.NotEqual(t, a, c)
 }

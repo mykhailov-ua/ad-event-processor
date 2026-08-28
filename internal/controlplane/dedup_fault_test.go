@@ -11,6 +11,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -78,11 +79,11 @@ func TestFault_DedupMultiRegionDuplicate(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM dedup_key_proposals`).Scan(&proposalCount))
 	require.Equal(t, 1, proposalCount)
 
-	opID := RelayDeliveryOpID(1, eventID)
+	opID := shardadmin.RelayDeliveryOpID(1, eventID)
 	var leaseState string
 	require.NoError(t, pool.QueryRow(ctx, `
 		SELECT lease_state FROM operation_leases WHERE op_id = $1`, domain.ToUUID(opID)).Scan(&leaseState))
-	require.Equal(t, string(LeaseStateCompleted), leaseState)
+	require.Equal(t, string(shardadmin.LeaseStateCompleted), leaseState)
 
 	var idemCount int
 	require.NoError(t, pool.QueryRow(ctx, `

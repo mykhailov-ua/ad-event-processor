@@ -23,13 +23,6 @@ func NewStore(pool *pgxpool.Pool, host Host) *Store {
 	return &Store{pool: pool, host: host}
 }
 
-func (st *Store) poolOrNil() *pgxpool.Pool {
-	if st == nil {
-		return nil
-	}
-	return st.pool
-}
-
 const (
 	sellersJSONCacheTTL  = 60 * time.Second
 	sellersJSONVersion   = "1.0"

@@ -370,7 +370,9 @@ WHERE id = $1`, newCampaignID, integrationID, statusIntegrationID, flowIDOrNil(u
 			return err
 		}
 
-		host.AuditImportCampaign(ctx, q, newCampaignID, ImportCampaignAuditChange{Name: importedName}, ImportCampaignIdempotencyMeta{IdempotencyKey: spec.IdempotencyKey})
+		if err := host.AuditImportCampaign(ctx, q, newCampaignID, ImportCampaignAuditChange{Name: importedName}, ImportCampaignIdempotencyMeta{IdempotencyKey: spec.IdempotencyKey}); err != nil {
+			return err
+		}
 
 		return host.EmitCampaignLifecycleOutbox(ctx, q, newCampaignID, initialStatus, budget)
 	})

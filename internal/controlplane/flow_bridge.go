@@ -7,6 +7,7 @@ import (
 	"io"
 	"strings"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/outbox"
 	"ad-event-processor/pkg/landerhost"
@@ -46,35 +47,35 @@ func (s *Service) PublishFlowReload(ctx context.Context) error {
 	return outbox.PublishFlowReload(ctx, s.redisShards, channel)
 }
 
-func (s *Service) CreateLander(ctx context.Context, req CreateLanderRequest) (LanderDTO, error) {
+func (s *Service) CreateLander(ctx context.Context, req flow.CreateLanderRequest) (flow.LanderDTO, error) {
 	return s.FlowStore().CreateLander(ctx, req)
 }
 
-func (s *Service) ListLanders(ctx context.Context) ([]LanderDTO, error) {
+func (s *Service) ListLanders(ctx context.Context) ([]flow.LanderDTO, error) {
 	return s.FlowStore().ListLanders(ctx)
 }
 
-func (s *Service) CreateOffer(ctx context.Context, req CreateOfferRequest) (OfferDTO, error) {
+func (s *Service) CreateOffer(ctx context.Context, req flow.CreateOfferRequest) (flow.OfferDTO, error) {
 	return s.FlowStore().CreateOffer(ctx, req)
 }
 
-func (s *Service) ListOffers(ctx context.Context) ([]OfferDTO, error) {
+func (s *Service) ListOffers(ctx context.Context) ([]flow.OfferDTO, error) {
 	return s.FlowStore().ListOffers(ctx)
 }
 
-func (s *Service) CreateFlow(ctx context.Context, req CreateFlowRequest) (FlowDTO, error) {
+func (s *Service) CreateFlow(ctx context.Context, req flow.CreateFlowRequest) (flow.DTO, error) {
 	return s.FlowStore().CreateFlow(ctx, req)
 }
 
-func (s *Service) ListFlows(ctx context.Context) ([]FlowDTO, error) {
+func (s *Service) ListFlows(ctx context.Context) ([]flow.DTO, error) {
 	return s.FlowStore().ListFlows(ctx)
 }
 
-func (s *Service) GetFlow(ctx context.Context, flowID uuid.UUID) (FlowDTO, error) {
+func (s *Service) GetFlow(ctx context.Context, flowID uuid.UUID) (flow.DTO, error) {
 	return s.FlowStore().GetFlow(ctx, flowID)
 }
 
-func (s *Service) UpdateFlow(ctx context.Context, flowID uuid.UUID, req UpdateFlowRequest) (FlowDTO, error) {
+func (s *Service) UpdateFlow(ctx context.Context, flowID uuid.UUID, req flow.UpdateFlowRequest) (flow.DTO, error) {
 	return s.FlowStore().UpdateFlow(ctx, flowID, req)
 }
 
@@ -128,7 +129,7 @@ func (s *Service) campaignFlowID(ctx context.Context, campaignID uuid.UUID) (str
 	return uuid.UUID(flowID.Bytes).String(), nil
 }
 
-func (s *Service) ValidateCampaignFlowPaths(ctx context.Context, paths []FlowPathDTO) error {
+func (s *Service) ValidateCampaignFlowPaths(ctx context.Context, paths []campaign.FlowPathDTO) error {
 	return flow.ValidatePathRefs(ctx, s, paths)
 }
 
@@ -214,7 +215,7 @@ func (s *Service) initLanderStore() *landerhost.Store {
 	return st
 }
 
-func (s *Service) UploadHostedLanderZip(ctx context.Context, landerID uuid.UUID, zipReader io.ReaderAt, zipSize int64) (LanderDTO, error) {
+func (s *Service) UploadHostedLanderZip(ctx context.Context, landerID uuid.UUID, zipReader io.ReaderAt, zipSize int64) (flow.LanderDTO, error) {
 	return flow.UploadHostedLanderZip(ctx, s, landerID, zipReader, zipSize)
 }
 
@@ -222,19 +223,19 @@ func (s *Service) ServeHostedLanderFile(ctx context.Context, landerID uuid.UUID,
 	return flow.ServeHostedLanderFile(ctx, s, landerID, relPath)
 }
 
-func (s *Service) GetHostedEditorState(ctx context.Context, landerID uuid.UUID) (HostedEditorStateDTO, error) {
+func (s *Service) GetHostedEditorState(ctx context.Context, landerID uuid.UUID) (flow.HostedEditorStateDTO, error) {
 	return flow.GetHostedEditorState(ctx, s, landerID)
 }
 
-func (s *Service) ReadHostedEditorFile(ctx context.Context, landerID uuid.UUID, relPath string) (HostedEditorFileBodyDTO, error) {
+func (s *Service) ReadHostedEditorFile(ctx context.Context, landerID uuid.UUID, relPath string) (flow.HostedEditorFileBodyDTO, error) {
 	return flow.ReadHostedEditorFile(ctx, s, landerID, relPath)
 }
 
-func (s *Service) SaveHostedEditorFile(ctx context.Context, landerID uuid.UUID, relPath, content string) (HostedEditorSaveResultDTO, error) {
+func (s *Service) SaveHostedEditorFile(ctx context.Context, landerID uuid.UUID, relPath, content string) (flow.HostedEditorSaveResultDTO, error) {
 	return flow.SaveHostedEditorFile(ctx, s, landerID, relPath, content)
 }
 
-func (s *Service) PublishHostedDraft(ctx context.Context, landerID uuid.UUID, version int) (LanderDTO, error) {
+func (s *Service) PublishHostedDraft(ctx context.Context, landerID uuid.UUID, version int) (flow.LanderDTO, error) {
 	return flow.PublishHostedDraft(ctx, s, landerID, version)
 }
 

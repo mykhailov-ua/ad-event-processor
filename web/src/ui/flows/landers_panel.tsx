@@ -134,7 +134,7 @@ export function LandersPanel({ items, loading, canWrite, onReload }: LandersPane
                 aria-label="Lander URL"
               />
             </label>
-            <Button type="submit" variant="primary" size="sm" disabled={busy}>
+            <Button type="submit" variant="primary" disabled={busy}>
               Create lander
             </Button>
             {createError ? <span className={styles.uploadHint}>{createError}</span> : null}

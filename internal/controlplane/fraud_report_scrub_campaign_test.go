@@ -11,7 +11,7 @@ import (
 
 func TestScrubCampaignFields_holdoutRedactsBudget(t *testing.T) {
 	t.Parallel()
-	out := campaign.ScrubCampaignFields(CampaignDTO{
+	out := campaign.ScrubCampaignFields(campaign.CampaignDTO{
 		BudgetLimit: "100.00",
 		DailyBudget: "10.00",
 		TargetURL:   "https://example.com",

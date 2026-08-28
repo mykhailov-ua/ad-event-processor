@@ -1,12 +1,14 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 
@@ -38,7 +40,7 @@ func TestAPI_GetCampaignStats_DayGranularityRequiresOps(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Day Stats", 0, "USD"))
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(context.Background(), campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Day Camp",
 		BudgetLimitMicro: 100_000_000,
@@ -49,7 +51,7 @@ func TestAPI_GetCampaignStats_DayGranularityRequiresOps(t *testing.T) {
 	require.NoError(t, err)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String()+"/stats?granularity=day", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
@@ -73,7 +75,7 @@ func TestAPI_GetCampaignStats_DayGranularityAdmin(t *testing.T) {
 
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(context.Background(), custID, "Day Admin", 0, "USD"))
-	campID, err := svc.CreateCampaign(context.Background(), CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(context.Background(), campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Day Admin Camp",
 		BudgetLimitMicro: 100_000_000,
@@ -89,7 +91,7 @@ func TestAPI_GetCampaignStats_DayGranularityAdmin(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusOK, resp.Code)
 
-	var report CampaignStatsDTO
+	var report campaign.CampaignStatsDTO
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	assert.Equal(t, "day", report.Granularity)
 	assert.NotNil(t, report.Daily)

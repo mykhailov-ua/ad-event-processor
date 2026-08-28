@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/costsync"
 	"ad-event-processor/internal/testutil"
 
@@ -35,7 +35,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mem := &costsync.MemorySnapshotInserter{}
 	worker := costsync.NewWorker(pool, key, costsync.WithMemorySnapshots(mem))
 
-	handler := &controlplane.CostSyncHTTPHandlers{
+	handler := &billingadmin.CostSyncHTTPHandlers{
 		Pool:          pool,
 		EncryptionKey: key,
 		Worker:        worker,
@@ -43,7 +43,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mux := http.NewServeMux()
 	handler.Register(mux)
 
-	upsertBody, _ := json.Marshal(controlplane.UpsertCostSyncCredentialRequest{
+	upsertBody, _ := json.Marshal(billingadmin.UpsertCostSyncCredentialRequest{
 		CustomerID:   customerID.String(),
 		AccountID:    "act_test",
 		AccessToken:  "token",
@@ -59,7 +59,7 @@ func TestCostSyncAdminAPIIntegration(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	runBody, _ := json.Marshal(controlplane.RunCostSyncRequest{
+	runBody, _ := json.Marshal(billingadmin.RunCostSyncRequest{
 		CustomerID: customerID.String(),
 		Network:    "facebook",
 		From:       "2026-07-01",

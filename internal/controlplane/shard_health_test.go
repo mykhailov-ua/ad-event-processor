@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -122,7 +123,7 @@ func TestHandler_OpsShards_requiresPermShardsRead(t *testing.T) {
 	mux.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusOK, resp.Code)
 
-	var report ShardHealthReport
+	var report opsadmin.ShardHealthReport
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&report))
 	require.Len(t, report.Shards, 1)
 }

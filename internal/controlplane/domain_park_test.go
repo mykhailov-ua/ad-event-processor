@@ -49,7 +49,7 @@ func TestDomainPark_createsPoolDomainAndHealthRow(t *testing.T) {
 	}
 	svc.SetCloudflareAPI(&mockCloudflareAPI{recordID: "rec-456", sslStatus: "full"})
 
-	resp, err := svc.ParkDomain(ctx, ParkDomainRequest{
+	resp, err := svc.ParkDomain(ctx, platformadmin.ParkDomainRequest{
 		Domain:           "track.buyer.test",
 		CloudflareZoneID: "zone-abc",
 	})

@@ -7,6 +7,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -81,7 +82,7 @@ func TestSlotMigration_DualWriteActivateBlockedOnLag(t *testing.T) {
 	}))
 
 	err := svc.ActivateSlotMapVersion(ctx, uuid.Nil, v)
-	require.ErrorIs(t, err, ErrSlotMigrationLagNotCaughtUp)
+	require.ErrorIs(t, err, shardadmin.ErrSlotMigrationLagNotCaughtUp)
 
 	job, err := domain.NewSlotMigrationRepo(pool).Get(ctx, v, slot)
 	require.NoError(t, err)

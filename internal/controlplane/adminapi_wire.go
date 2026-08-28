@@ -1,6 +1,8 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/telegram"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +12,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"ad-event-processor/internal/automation"
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/brand"
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/controlplane/authz"
@@ -18,13 +22,19 @@ import (
 	"ad-event-processor/internal/doctor"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/edge"
+	"ad-event-processor/internal/flow"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensingadmin"
+	"ad-event-processor/internal/marginguard"
 	"ad-event-processor/internal/openrtb"
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/platformsync"
+	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/internal/reports"
+	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/platformconfig"
 	"ad-event-processor/pkg/supportbundle"
@@ -118,7 +128,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 
 	svc := h.svc
-	composite := NewCompositeReadService(pool, h.cfg)
+	composite := billingadmin.NewCompositeReadService(pool, h.cfg)
 	if composite != nil {
 		composite.SetClickHouseQuery(svc.ClickHouseQuery())
 	}
@@ -127,13 +137,13 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	if exportDir == "" {
 		exportDir = filepath.Join(".", "data", "billing-exports")
 	}
-	var exportHTTP *ExportHTTPHandlers
+	var exportHTTP *billingadmin.ExportHTTPHandlers
 	if composite != nil {
-		jobRunner := NewJobRunner(composite, exportDir)
+		jobRunner := billingadmin.NewJobRunner(composite, exportDir)
 		if h.cfg != nil {
 			jobRunner.ConfigureExport(int32(h.cfg.Billing.ExportFetchRows), time.Duration(h.cfg.Billing.ExportJobTimeoutMin)*time.Minute)
 		}
-		exportHTTP = &ExportHTTPHandlers{
+		exportHTTP = &billingadmin.ExportHTTPHandlers{
 			JobRunner:               jobRunner,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
@@ -175,7 +185,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 
 	return RouteRegistry{
-		BillingHTTP: &BillingHTTPHandlers{
+		BillingHTTP: &billingadmin.HTTPHandlers{
 			Billing:                          h.billing,
 			InvoiceDelivery:                  h.invoiceDelivery,
 			CompositeReads:                   composite,
@@ -194,13 +204,13 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			LimitExportByCustomer:            h.limitExportByCustomer,
 			ResolveDisputeCustomerFilter:     h.resolveDisputeCustomerFilter,
 		},
-		CryptoBillingWebhook: &CryptoBillingWebhookHandlers{
+		CryptoBillingWebhook: &billingadmin.CryptoWebhookHandlers{
 			Processor:           svc,
 			CryptoWebhookSecret: string(h.cfg.CryptoWebhookSecret),
 			BTCPayWebhookSecret: string(h.cfg.BTCPayWebhookSecret),
 			CryptomusAPIKey:     string(h.cfg.CryptomusAPIKey),
 		},
-		DoctorHTTP: &DoctorHTTPHandlers{
+		DoctorHTTP: &doctor.DoctorHTTPHandlers{
 			Config: h.cfg,
 			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
 				cfg, _, err := svc.GetPlatformConfig(ctx)
@@ -224,7 +234,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		OpsHTTP: &OpsHTTPHandlers{
+		OpsHTTP: &opsadmin.HTTPHandlers{
 			OpsReader:               opsReader,
 			PaymentIntents:          h.payment,
 			ConsentRecorder:         svc,
@@ -246,7 +256,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			FraudPresets: fraudPresets,
 		},
 		ExportHTTP: exportHTTP,
-		LicensingHTTP: &LicensingHTTPHandlers{
+		LicensingHTTP: &licensingadmin.HTTPHandlers{
 			Pool:                  pool,
 			LicenseService:        svc,
 			LicenseDiagnostics:    licenseWatcherDiagnostics,
@@ -255,7 +265,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequirePermission:     perm,
 			WriteServiceError:     writeErr,
 		},
-		ReportsHTTP: &ReportsHTTPHandlers{
+		ReportsHTTP: &reports.ReportsHTTPHandlers{
 			CampaignStats:      campaignStatsAdapter{svc: svc},
 			CampaignForecaster: campaignForecasterAdapter{svc: svc},
 			Pool:               pool,
@@ -281,19 +291,19 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError:         writeErr,
 			RequestHasShardsRead:      requestHasShardsRead,
 			RequireLicenseFeature:     requireLicenseFeature,
-			DenyScopedAPIKeyReport:    DenyScopedAPIKeyOperatorReport,
+			DenyScopedAPIKeyReport:    campaign.DenyScopedAPIKeyOperatorReport,
 		},
-		ReportJobHTTP: &ReportJobHTTPHandlers{
+		ReportJobHTTP: &reportjob.HTTPHandlers{
 			Runner:                  reportJobs,
 			Pool:                    pool,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
-			ValidateReportSchedule:  ValidateReportScheduleForActor,
+			ValidateReportSchedule:  reports.ValidateReportScheduleForActor,
 			WriteServiceError:       writeErr,
 		},
-		DashboardsHTTP: &DashboardsHTTPHandlers{
+		DashboardsHTTP: &dashboardadmin.HTTPHandlers{
 			BuyerPortfolio:       svc,
 			CampaignDashboard:    svc,
 			RoleDashboards:       svc,
@@ -318,15 +328,15 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 				return edge.ReadRedisAny(ctx, svc.RedisShards())
 			},
 		},
-		ViewsHTTP: &ViewsHTTPHandlers{
-			Store:                   NewViewsStore(pool),
+		ViewsHTTP: &reports.ViewsHTTPHandlers{
+			Store:                   reports.NewViewsStore(pool),
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			RequireAnyPermission:    permAny,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
-		SelfServeHTTP: &SelfServeHTTPHandlers{
+		SelfServeHTTP: &campaign.SelfServeHTTPHandlers{
 			Campaigns:                  svc,
 			Templates:                  campaign.NewSelfServeTemplatesAdapter(svc),
 			PaymentIntents:             h.payment,
@@ -338,24 +348,24 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ResolveSelfServeCustomerID: h.resolveSelfServeCustomerIDForSelfServe,
 			AuthorizeCampaignAccess:    authCampaign,
 			WriteServiceError:          writeErr,
-			WriteBillingError:          WriteBillingError,
+			WriteBillingError:          billingadmin.WriteBillingError,
 			DefaultPaymentProvider:     selfServePaymentProvider,
 			CryptoSubProvider:          selfServeCryptoSubProvider,
 		},
-		PostbackHTTP: &PostbackHTTPHandlers{
+		PostbackHTTP: &campaign.PostbackHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		CostSyncHTTP: &CostSyncHTTPHandlers{
+		CostSyncHTTP: &billingadmin.CostSyncHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
 			Worker:            costWorker,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		PlatformCampaignHTTP: &PlatformCampaignHTTPHandlers{
+		PlatformCampaignHTTP: &platformadmin.PlatformCampaignHTTPHandlers{
 			Pool:              pool,
 			Worker:            platformWorker,
 			ApplyRateLimit:    limit,
@@ -371,7 +381,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 				return u.UserID
 			},
 		},
-		MarginGuardHTTP: &MarginGuardHTTPHandlers{
+		MarginGuardHTTP: &marginguard.HTTPHandlers{
 			Service:           marginGuardServiceAdapter{svc: svc},
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
@@ -388,24 +398,24 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 				return u.UserID
 			},
 		},
-		AutomationHTTP: &AutomationHTTPHandlers{
+		AutomationHTTP: &automation.HTTPHandlers{
 			Rules:             svc.AutomationRules(),
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		DomainHealthHTTP: &DomainHealthHTTPHandlers{
+		DomainHealthHTTP: &platformadmin.DomainHealthHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			TLSAskToken:       string(h.cfg.Management.CaddyTLSAskToken),
 			TLSAskAllowLocal:  h.cfg.Management.CaddyTLSAskAllowLocal,
 		},
-		FlowHTTP: &FlowHTTPHandlers{
+		FlowHTTP: &flow.HTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		IntegrationSchemaHTTP: &IntegrationSchemaHTTPHandlers{
+		IntegrationSchemaHTTP: &campaign.IntegrationSchemaHTTPHandlers{
 			Pool:              pool,
 			EncryptionKey:     encKey,
 			TemplateCatalog:   svc.TemplateCatalog(pool),
@@ -419,8 +429,8 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 				return cfg.TrackingDomain
 			},
 		},
-		TeamHTTP: &TeamHTTPHandlers{
-			Team:                 &TeamOverviewService{Pool: pool},
+		TeamHTTP: &platformadmin.TeamHTTPHandlers{
+			Team:                 &platformadmin.TeamOverviewService{Pool: pool},
 			Governance:           svc,
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
@@ -435,7 +445,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			},
 			WriteServiceError: writeErr,
 		},
-		PublisherHTTP: &PublisherHTTPHandlers{
+		PublisherHTTP: &dashboardadmin.PublisherHTTPHandlers{
 			Publisher:            svc,
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
@@ -445,27 +455,27 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			},
 			WriteServiceError: writeErr,
 		},
-		BrandHTTP: &BrandHTTPHandlers{
+		BrandHTTP: &brand.HTTPHandlers{
 			Admin:                   brand.NewAdminAdapter(svc),
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
-		SupplyHTTP: &SupplyHTTPHandlers{
+		SupplyHTTP: &supply.HTTPHandlers{
 			Admin:                supply.NewAdminAdapter(supplyAdminHost{svc: svc}),
 			ApplyRateLimit:       limit,
 			RequirePermission:    perm,
 			RequireAnyPermission: permAny,
 			WriteServiceError:    writeErr,
 		},
-		RtbFloorsHTTP: &RtbFloorsHTTPHandlers{
+		RtbFloorsHTTP: &rtbadmin.FloorsHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		RtbHTTP: &RtbHTTPHandlers{
+		RtbHTTP: &rtbadmin.HTTPHandlers{
 			Service:           svc.RtbAdminService(),
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
@@ -489,7 +499,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 				return stats.Bids, stats.Wins, stats.SpendMicro, true
 			},
 		},
-		CampaignsHTTP: &CampaignsHTTPHandlers{
+		CampaignsHTTP: &campaign.CampaignsHTTPHandlers{
 			Campaigns:                 svc.CampaignRuntime(),
 			CampaignFraud:             campaignFraudAPIAdapter{svc: svc},
 			ConversionMappings:        svc,
@@ -506,7 +516,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ReportJobs:                reportJobs,
 			WriteServiceError:         writeErr,
 		},
-		FraudHTTP: &FraudHTTPHandlers{
+		FraudHTTP: &fraudadmin.HTTPHandlers{
 			Labels:                  fraudLabelsAPIAdapter{svc: svc},
 			Decisions:               fraudDecisionsAPIAdapter{svc: svc},
 			Integrations:            fraudIntegrationsAPIAdapter{svc: svc},
@@ -520,7 +530,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			AuthorizeCampaignAccess: authCampaign,
 			WriteServiceError:       writeErr,
 		},
-		CustomersHTTP: &CustomersHTTPHandlers{
+		CustomersHTTP: &platformadmin.CustomersHTTPHandlers{
 			Customers:               svc,
 			CostCenter:              svc,
 			ApplyRateLimit:          limit,
@@ -528,7 +538,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			AuthorizeCustomerAccess: authCustomer,
 			WriteServiceError:       writeErr,
 		},
-		SupportHTTP: &SupportHTTPHandlers{
+		SupportHTTP: &platformadmin.SupportHTTPHandlers{
 			Feedback: svc,
 			SupportBundle: supportBundleWriter{
 				pool:   pool,
@@ -538,29 +548,29 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			RequireAuth:       h.adminRequireAuth(),
 			WriteServiceError: writeErr,
 		},
-		MetaHTTP: &MetaHTTPHandlers{
+		MetaHTTP: &platformadmin.MetaHTTPHandlers{
 			ApplyRateLimit: limit,
 			Enrich:         platformadmin.NewMetaEnricher(h.svc),
 			WriteError:     writeErr,
 		},
-		SessionHTTP: func() *SessionHTTPHandlers {
-			sh := wireSessionHTTPHandlers(func(ctx context.Context) DataFreshnessDTO {
+		SessionHTTP: func() *platformadmin.SessionHTTPHandlers {
+			sh := wireSessionHTTPHandlers(func(ctx context.Context) reports.DataFreshnessDTO {
 				if h.svc != nil && h.svc.clickhouseQuery != nil {
 					lag, _ := h.svc.clickHouseIngestionLag(ctx)
 					return portfolioFreshness(time.Now().UTC(), true, lag)
 				}
-				return DataFreshnessDTO{Consistency: "eventual"}
+				return reports.DataFreshnessDTO{Consistency: "eventual"}
 			})
 			sh.ApplyRateLimit = limit
 			return sh
 		}(),
-		EulaHTTP: &EulaHTTPHandlers{
+		EulaHTTP: &licensingadmin.EulaHTTPHandlers{
 			Service:           svc,
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 			WriteServiceError: writeErr,
 		},
-		PlatformHTTP: &PlatformHTTPHandlers{
+		PlatformHTTP: &platformadmin.HTTPHandlers{
 			Service:           svc,
 			AuthClient:        platformAuthAdapter{client: h.authClient},
 			Cfg:               h.cfg,
@@ -572,7 +582,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			ApplyRateLimit:    limit,
 			RequirePermission: perm,
 		},
-		TelegramHTTP: &TelegramHTTPHandlers{
+		TelegramHTTP: &telegram.HTTPHandlers{
 			Telegram:             NewTelegramService(svc),
 			ApplyRateLimit:       limit,
 			RequireAnyPermission: permAny,
@@ -590,7 +600,7 @@ func (h *Handler) adminRequirePermission() func(string, http.HandlerFunc) http.H
 func (h *Handler) adminRequireAuth() func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		if h.authMiddleware != nil {
-			return h.authMiddleware.RequireAuth(RoleAdmin, RoleManager, RoleUser, RoleBuyer, RoleSupport)(next)
+			return h.authMiddleware.RequireAuth(ctrlhttp.RoleAdmin, ctrlhttp.RoleManager, ctrlhttp.RoleUser, ctrlhttp.RoleBuyer, ctrlhttp.RoleSupport)(next)
 		}
 		return h.authFallback(next)
 	}
@@ -668,7 +678,7 @@ func (h *Handler) adminRequireTeamWrite() func(http.HandlerFunc) http.HandlerFun
 				writeServiceError(w, errForbidden)
 				return
 			}
-			if u.IsTeamLead() || HasPermission(u.Role, PermUsersWrite) {
+			if u.IsTeamLead() || ctrlhttp.HasPermission(u.Role, ctrlhttp.PermUsersWrite) {
 				next(w, r)
 				return
 			}

@@ -56,7 +56,7 @@ export function CustomersFilter({ sort, order, onApply }: CustomersFilterProps) 
             aria-label="Sort order"
           />
         </label>
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="secondary">
           Apply
         </Button>
       </div>

@@ -14,8 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const batchTimeout = 2 * time.Minute
-
 type UsageDailyFlushWorker struct {
 	pool     *pgxpool.Pool
 	interval time.Duration

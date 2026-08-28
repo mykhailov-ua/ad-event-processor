@@ -14,16 +14,16 @@ import (
 
 func TestCore_NormalizeRole(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, RoleAdmin, NormalizeRole("superadmin"))
-	assert.Equal(t, RoleManager, NormalizeRole("manager"))
-	assert.Equal(t, RoleUser, NormalizeRole("customer"))
+	assert.Equal(t, ctrlhttp.RoleAdmin, ctrlhttp.NormalizeRole("superadmin"))
+	assert.Equal(t, ctrlhttp.RoleManager, ctrlhttp.NormalizeRole("manager"))
+	assert.Equal(t, ctrlhttp.RoleUser, ctrlhttp.NormalizeRole("customer"))
 }
 
 func TestCore_HasPermission(t *testing.T) {
 	t.Parallel()
-	assert.True(t, HasPermission(RoleAdmin, "shards:write"))
-	assert.False(t, HasPermission(RoleUser, "shards:write"))
-	assert.True(t, HasPermission(RoleUser, "campaigns:read"))
+	assert.True(t, ctrlhttp.HasPermission(ctrlhttp.RoleAdmin, "shards:write"))
+	assert.False(t, ctrlhttp.HasPermission(ctrlhttp.RoleUser, "shards:write"))
+	assert.True(t, ctrlhttp.HasPermission(ctrlhttp.RoleUser, "campaigns:read"))
 }
 
 func TestCore_clientIP(t *testing.T) {
@@ -46,7 +46,7 @@ func TestCore_mapNotFound(t *testing.T) {
 
 func TestCore_GetPermissionsForRole_unknown(t *testing.T) {
 	t.Parallel()
-	assert.Empty(t, GetPermissionsForRole("unknown"))
+	assert.Empty(t, ctrlhttp.GetPermissionsForRole("unknown"))
 }
 
 func TestCore_apiKeyRateLimiter(t *testing.T) {

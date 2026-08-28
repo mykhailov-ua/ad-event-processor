@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -19,16 +19,16 @@ type teamGovStub struct {
 	invited bool
 }
 
-func (s *teamGovStub) InviteTeamMember(_ context.Context, _ uuid.UUID, _, _ string) (controlplane.TeamMemberDTO, error) {
+func (s *teamGovStub) InviteTeamMember(_ context.Context, _ uuid.UUID, _, _ string) (platformadmin.TeamMemberDTO, error) {
 	s.invited = true
-	return controlplane.TeamMemberDTO{}, nil
+	return platformadmin.TeamMemberDTO{}, nil
 }
 
-func (s *teamGovStub) UpdateTeamMember(_ context.Context, _, _ uuid.UUID, _ controlplane.UpdateTeamMemberRequest) (controlplane.TeamMemberDTO, error) {
-	return controlplane.TeamMemberDTO{}, nil
+func (s *teamGovStub) UpdateTeamMember(_ context.Context, _, _ uuid.UUID, _ platformadmin.UpdateTeamMemberRequest) (platformadmin.TeamMemberDTO, error) {
+	return platformadmin.TeamMemberDTO{}, nil
 }
 
-func (s *teamGovStub) ListTeamBudgetApprovals(_ context.Context, _ uuid.UUID) ([]controlplane.TeamBudgetApprovalDTO, error) {
+func (s *teamGovStub) ListTeamBudgetApprovals(_ context.Context, _ uuid.UUID) ([]platformadmin.TeamBudgetApprovalDTO, error) {
 	return nil, nil
 }
 
@@ -39,8 +39,8 @@ func (s *teamGovStub) ResolveTeamBudgetApproval(_ context.Context, _, _, _ uuid.
 func TestTeamInvite_mediaBuyerForbidden(t *testing.T) {
 	stub := &teamGovStub{}
 	customerID := uuid.New()
-	h := &controlplane.TeamHTTPHandlers{
-		Team:       &controlplane.TeamOverviewService{},
+	h := &platformadmin.TeamHTTPHandlers{
+		Team:       &platformadmin.TeamOverviewService{},
 		Governance: stub,
 		RequireTeamWrite: func(next http.HandlerFunc) http.HandlerFunc {
 			return func(w http.ResponseWriter, _ *http.Request) {
@@ -54,7 +54,7 @@ func TestTeamInvite_mediaBuyerForbidden(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	body, err := json.Marshal(controlplane.InviteTeamMemberRequest{Email: "buyer@test.com", Role: "MB"})
+	body, err := json.Marshal(platformadmin.InviteTeamMemberRequest{Email: "buyer@test.com", Role: "MB"})
 	require.NoError(t, err)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/team/members", bytes.NewReader(body))
 	rec := httptest.NewRecorder()

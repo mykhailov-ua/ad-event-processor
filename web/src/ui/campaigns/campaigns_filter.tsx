@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CampaignSortField, CampaignSortOrder } from '../../helpers/campaigns_api.js';
 import { Button } from '../system/button.js';
+import { FieldInput } from '../system/field_input.js';
 import { Select } from '../system/select.js';
 import styles from './campaigns_directory.module.css';
 
@@ -41,7 +42,7 @@ const PACING_OPTIONS = [
   { value: '', label: 'All pacing' },
   { value: 'even', label: 'Even' },
   { value: 'asap', label: 'ASAP' },
-  { value: 'front_loaded', label: 'Front loaded' },
+  { value: 'front_loaded', label: 'Front-load' },
 ] as const;
 
 export function CampaignsFilter({ values, onApply }: CampaignsFilterProps) {
@@ -62,8 +63,7 @@ export function CampaignsFilter({ values, onApply }: CampaignsFilterProps) {
       <div className={styles.filterRow}>
         <label className={styles.filterField}>
           <span className={styles.filterLabel}>Customer ID</span>
-          <input
-            className={styles.searchInput}
+          <FieldInput
             type="text"
             value={draft.customer_id}
             onChange={(event) => setDraft((prev) => ({ ...prev, customer_id: event.target.value }))}
@@ -82,8 +82,7 @@ export function CampaignsFilter({ values, onApply }: CampaignsFilterProps) {
         </label>
         <label className={styles.filterField}>
           <span className={styles.filterLabel}>Search</span>
-          <input
-            className={styles.searchInput}
+          <FieldInput
             type="search"
             value={draft.q}
             onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
@@ -118,7 +117,7 @@ export function CampaignsFilter({ values, onApply }: CampaignsFilterProps) {
             aria-label="Sort order"
           />
         </label>
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="secondary">
           Apply
         </Button>
       </div>

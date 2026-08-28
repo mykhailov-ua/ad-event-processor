@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -16,18 +16,18 @@ import (
 )
 
 type campaignFraudStub struct {
-	cfg        controlplane.CampaignFraudConfigDTO
+	cfg        campaign.CampaignFraudConfigDTO
 	getErr     error
-	patch      controlplane.PatchCampaignFraudRequest
+	patch      campaign.PatchCampaignFraudRequest
 	patchOK    bool
-	preview    controlplane.PreviewCampaignFraudRequest
+	preview    campaign.PreviewCampaignFraudRequest
 	previewOK  bool
-	previewOut controlplane.CampaignFraudPreviewDTO
+	previewOut campaign.CampaignFraudPreviewDTO
 }
 
-func (s *campaignFraudStub) GetCampaignFraudConfig(_ context.Context, campaignID uuid.UUID) (controlplane.CampaignFraudConfigDTO, error) {
+func (s *campaignFraudStub) GetCampaignFraudConfig(_ context.Context, campaignID uuid.UUID) (campaign.CampaignFraudConfigDTO, error) {
 	if s.getErr != nil {
-		return controlplane.CampaignFraudConfigDTO{}, s.getErr
+		return campaign.CampaignFraudConfigDTO{}, s.getErr
 	}
 	out := s.cfg
 	if out.CampaignID == "" {
@@ -36,11 +36,11 @@ func (s *campaignFraudStub) GetCampaignFraudConfig(_ context.Context, campaignID
 	return out, nil
 }
 
-func (s *campaignFraudStub) UpdateCampaignFraudConfig(_ context.Context, campaignID uuid.UUID, req controlplane.PatchCampaignFraudRequest) (controlplane.CampaignFraudConfigDTO, error) {
+func (s *campaignFraudStub) UpdateCampaignFraudConfig(_ context.Context, campaignID uuid.UUID, req campaign.PatchCampaignFraudRequest) (campaign.CampaignFraudConfigDTO, error) {
 	s.patch = req
 	s.patchOK = true
 	if s.getErr != nil {
-		return controlplane.CampaignFraudConfigDTO{}, s.getErr
+		return campaign.CampaignFraudConfigDTO{}, s.getErr
 	}
 	out := s.cfg
 	out.CampaignID = campaignID.String()
@@ -56,20 +56,20 @@ func (s *campaignFraudStub) UpdateCampaignFraudConfig(_ context.Context, campaig
 	return out, nil
 }
 
-func (s *campaignFraudStub) PreviewCampaignFraudImpact(_ context.Context, campaignID uuid.UUID, req controlplane.PreviewCampaignFraudRequest) (controlplane.CampaignFraudPreviewDTO, error) {
+func (s *campaignFraudStub) PreviewCampaignFraudImpact(_ context.Context, campaignID uuid.UUID, req campaign.PreviewCampaignFraudRequest) (campaign.CampaignFraudPreviewDTO, error) {
 	s.preview = req
 	s.previewOK = true
 	if s.getErr != nil {
-		return controlplane.CampaignFraudPreviewDTO{}, s.getErr
+		return campaign.CampaignFraudPreviewDTO{}, s.getErr
 	}
 	if s.previewOut.CampaignID != "" {
 		return s.previewOut, nil
 	}
-	return controlplane.CampaignFraudPreviewDTO{
+	return campaign.CampaignFraudPreviewDTO{
 		CampaignID:    campaignID.String(),
 		AffectedIPs7d: 12,
 		SampleSize:    100,
-		ByTier: controlplane.FraudPreviewTierCountsDTO{
+		ByTier: campaign.FraudPreviewTierCountsDTO{
 			Suspect: 5,
 			IVT:     4,
 			Block:   3,
@@ -83,8 +83,8 @@ func mapPublisherTestError(err error) (status int, code string, message string) 
 	return http.StatusInternalServerError, "INTERNAL", "internal error"
 }
 
-func newCampaignFraudHandlers(stub *campaignFraudStub) *controlplane.CampaignsHTTPHandlers {
-	return &controlplane.CampaignsHTTPHandlers{
+func newCampaignFraudHandlers(stub *campaignFraudStub) *campaign.CampaignsHTTPHandlers {
+	return &campaign.CampaignsHTTPHandlers{
 		Campaigns:     &campaignListStub{},
 		CampaignFraud: stub,
 		RequireAnyPermission: func(required []string, next http.HandlerFunc) http.HandlerFunc {
@@ -113,7 +113,7 @@ func newCampaignFraudHandlers(stub *campaignFraudStub) *controlplane.CampaignsHT
 func TestGetCampaignFraud_returnsConfig(t *testing.T) {
 	campaignID := uuid.New()
 	stub := &campaignFraudStub{
-		cfg: controlplane.CampaignFraudConfigDTO{
+		cfg: campaign.CampaignFraudConfigDTO{
 			CampaignID:            campaignID.String(),
 			FraudThresholdPass:    30,
 			FraudThresholdSuspect: 60,
@@ -131,7 +131,7 @@ func TestGetCampaignFraud_returnsConfig(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	var out controlplane.CampaignFraudConfigDTO
+	var out campaign.CampaignFraudConfigDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	require.Equal(t, uint8(30), out.FraudThresholdPass)
 	require.True(t, out.SilentRejectEnabled)
@@ -140,7 +140,7 @@ func TestGetCampaignFraud_returnsConfig(t *testing.T) {
 func TestPatchCampaignFraud_legacySilentRejectJSONField(t *testing.T) {
 	campaignID := uuid.New()
 	stub := &campaignFraudStub{
-		cfg: controlplane.CampaignFraudConfigDTO{
+		cfg: campaign.CampaignFraudConfigDTO{
 			FraudThresholdPass:    30,
 			FraudThresholdSuspect: 60,
 			FraudThresholdIVT:     80,
@@ -161,7 +161,7 @@ func TestPatchCampaignFraud_legacySilentRejectJSONField(t *testing.T) {
 	require.NotNil(t, stub.patch.SilentRejectEnabled)
 	require.True(t, *stub.patch.SilentRejectEnabled)
 
-	var out controlplane.CampaignFraudConfigDTO
+	var out campaign.CampaignFraudConfigDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	require.True(t, out.SilentRejectEnabled)
 }
@@ -169,7 +169,7 @@ func TestPatchCampaignFraud_legacySilentRejectJSONField(t *testing.T) {
 func TestPatchCampaignFraud_appliesPreset(t *testing.T) {
 	campaignID := uuid.New()
 	stub := &campaignFraudStub{
-		cfg: controlplane.CampaignFraudConfigDTO{
+		cfg: campaign.CampaignFraudConfigDTO{
 			FraudThresholdPass:    30,
 			FraudThresholdSuspect: 60,
 			FraudThresholdIVT:     80,
@@ -190,7 +190,7 @@ func TestPatchCampaignFraud_appliesPreset(t *testing.T) {
 	require.NotNil(t, stub.patch.Preset)
 	require.Equal(t, "aggressive", *stub.patch.Preset)
 
-	var out controlplane.CampaignFraudConfigDTO
+	var out campaign.CampaignFraudConfigDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	require.Equal(t, uint8(20), out.FraudThresholdPass)
 	require.True(t, out.SilentRejectEnabled)
@@ -213,7 +213,7 @@ func TestPatchCampaignFraud_invalidJSON(t *testing.T) {
 func TestPostCampaignFraudPreview_returnsEstimate(t *testing.T) {
 	campaignID := uuid.New()
 	stub := &campaignFraudStub{
-		cfg: controlplane.CampaignFraudConfigDTO{
+		cfg: campaign.CampaignFraudConfigDTO{
 			FraudThresholdPass:    30,
 			FraudThresholdSuspect: 60,
 			FraudThresholdIVT:     80,
@@ -234,7 +234,7 @@ func TestPostCampaignFraudPreview_returnsEstimate(t *testing.T) {
 	require.NotNil(t, stub.preview.FraudThresholdPass)
 	require.Equal(t, uint8(25), *stub.preview.FraudThresholdPass)
 
-	var out controlplane.CampaignFraudPreviewDTO
+	var out campaign.CampaignFraudPreviewDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	require.Equal(t, int64(12), out.AffectedIPs7d)
 	require.Equal(t, int64(100), out.SampleSize)

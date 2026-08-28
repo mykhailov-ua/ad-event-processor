@@ -38,7 +38,7 @@ ClickHouse canonical DDL: `internal/clickhouse/migrate/00000_bootstrap_tables.sq
 
 ## Local stack
 
-Operator-owned. **Agents:** do not run `stack.sh up`, `docker compose up`, or `prepare_test.sh` unless the operator explicitly requests it in the current turn (`anti-slop.mdc` **Agent local environment**). Stopping: `bash scripts/dev/stack.sh down`.
+Operator-owned. **Agents:** do not run `stack.sh up`, `docker compose up`, `prepare_test.sh`, or loop `go build`/`go test`/`typecheck` unless the operator explicitly requests it in the current turn (`anti-slop.mdc` **Compile and test ritual ban**, **Agent local environment**). Stopping: `bash scripts/dev/stack.sh down`.
 
 ```bash
 cp .env.example .env

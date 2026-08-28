@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -48,7 +49,7 @@ func TestSelfServe_CreateCampaign_requiresIdempotencyKey(t *testing.T) {
 	})
 	req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
@@ -90,7 +91,7 @@ func TestSelfServe_CreateCampaign_insufficientBalance(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", "ss-create-1")
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
@@ -154,14 +155,14 @@ func TestSelfServe_PauseResume(t *testing.T) {
 
 	pauseReq, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns/"+campID.String()+"/pause", bytes.NewReader([]byte("{}")))
 	pauseReq.Header.Set("Content-Type", "application/json")
-	withSessionUser(pauseReq, tokenMaker, RoleUser, custID)
+	withSessionUser(pauseReq, tokenMaker, ctrlhttp.RoleUser, custID)
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, pauseReq)
 	assert.Equal(t, http.StatusAccepted, rr.Code)
 
 	resumeReq, _ := http.NewRequest("POST", "/api/v1/selfserve/campaigns/"+campID.String()+"/resume", bytes.NewReader([]byte("{}")))
 	resumeReq.Header.Set("Content-Type", "application/json")
-	withSessionUser(resumeReq, tokenMaker, RoleUser, custID)
+	withSessionUser(resumeReq, tokenMaker, ctrlhttp.RoleUser, custID)
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, resumeReq)
 	assert.Equal(t, http.StatusAccepted, rr.Code)
@@ -194,7 +195,7 @@ func TestSelfServe_PaymentIntent_requiresIdempotencyKey(t *testing.T) {
 	body, _ := json.Marshal(map[string]any{"amount_micro": int64(5_000_000)})
 	req, _ := http.NewRequest("POST", "/api/v1/selfserve/payment-intents", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	withSessionUser(req, tokenMaker, RoleUser, custID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, custID)
 
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)

@@ -107,7 +107,7 @@ export function SchemasPanel({
                 </span>
                 <span className={shared.gridCell} role="gridcell">
                   <Button
-                    size="sm"
+                   
                     variant="secondary"
                     onClick={() => row.id && onSelect(row.id)}
                   >
@@ -146,7 +146,7 @@ export function SchemasPanel({
                 />
               </label>
               <Button
-                size="sm"
+               
                 variant="primary"
                 disabled={busy || !selected.id || !applyCampaignId.trim()}
                 data-testid="schema-apply-submit"
@@ -193,7 +193,7 @@ export function SchemasPanel({
               />
             </label>
             <Button
-              size="sm"
+             
               variant="primary"
               disabled={busy}
               data-testid="schema-author-submit"

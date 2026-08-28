@@ -57,8 +57,8 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 
 	buyerID := uuid.New()
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), http.NoBody)
-	withSessionUser(req, tokenMaker, RoleBuyer, custID)
-	token, err := tokenMaker.CreateToken(buyerID, uuid.New(), RoleBuyer, custID, time.Hour)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleBuyer, custID)
+	token, err := tokenMaker.CreateToken(buyerID, uuid.New(), ctrlhttp.RoleBuyer, custID, time.Hour)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 
@@ -74,7 +74,7 @@ func TestFault_RBACMaskEnforced(t *testing.T) {
 	faultproof.Log(t, "rbac_mask_enforced", map[string]string{
 		"fault":       "rbac_mask_enforced",
 		"campaign_id": campID.String(),
-		"role":        RoleBuyer,
+		"role":        ctrlhttp.RoleBuyer,
 	})
 }
 
@@ -112,7 +112,7 @@ func TestAPI_GetCampaign_BuyerMasking(t *testing.T) {
 	require.NoError(t, err)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), http.NoBody)
-	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), RoleBuyer, custID, time.Hour)
+	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleBuyer, custID, time.Hour)
 	require.NoError(t, err)
 	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
 

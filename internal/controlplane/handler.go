@@ -9,15 +9,25 @@ import (
 	"net/http"
 	"strconv"
 
+	"ad-event-processor/internal/billingadmin"
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/internal/ledger"
+	"ad-event-processor/internal/licensingadmin"
+	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/payment"
+	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/internal/reports"
+	"ad-event-processor/internal/rtbadmin"
+	"ad-event-processor/internal/shardadmin"
+	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/dedupkey"
 	"ad-event-processor/pkg/httpresponse"
@@ -38,7 +48,7 @@ type Handler struct {
 	authClient           *identity.AuthClient
 	payment              *payment.APIClient
 	billing              *ledger.BillingClient
-	invoiceDelivery      InvoiceRetryer
+	invoiceDelivery      billingadmin.InvoiceRetryer
 }
 
 func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware, authClient *identity.AuthClient, paymentClient *payment.APIClient, billingClient *ledger.BillingClient) *Handler {
@@ -130,9 +140,9 @@ func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized")
 			return
 		}
-		user := AuthenticatedUser{
+		user := authz.AuthenticatedUser{
 			UserID:     apiKeyPrincipalID(key),
-			Role:       RoleAdmin,
+			Role:       ctrlhttp.RoleAdmin,
 			AuthSource: "api_key",
 		}
 		ctx := authz.WithAuthenticatedUser(context.WithValue(r.Context(), UserContextKey, user), user)
@@ -141,10 +151,6 @@ func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 }
 
 type invalidQueryError string
-
-func errInvalidQuery(msg string) error {
-	return invalidQueryError(msg)
-}
 
 func (e invalidQueryError) Error() string { return string(e) }
 
@@ -219,10 +225,10 @@ func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error
 }
 
 func writeForecastError(w http.ResponseWriter, err error) {
-	if errors.Is(err, ErrForecastClickHouseTimeout) || errors.Is(err, ErrForecastUnavailable) {
+	if errors.Is(err, campaign.ErrForecastClickHouseTimeout) || errors.Is(err, campaign.ErrForecastUnavailable) {
 		w.Header().Set("Retry-After", strconv.Itoa(ForecastRetryAfterSec()))
-		httpresponse.JSON(w, http.StatusServiceUnavailable, ForecastUnavailableResponse{
-			Error: ForecastErrorDetail{
+		httpresponse.JSON(w, http.StatusServiceUnavailable, reports.ForecastUnavailableResponse{
+			Error: reports.ForecastErrorDetail{
 				Code:    "FORECAST_UNAVAILABLE",
 				Message: err.Error(),
 			},
@@ -341,7 +347,7 @@ func (s *Service) ingestRegionProxyBatchLeased(ctx context.Context, in RegionIng
 	if worker == nil {
 		worker = NewOperationLeaseWorker(s)
 	}
-	bookReq := ProxyBatchBookRequest(ctx, s, ProxyBatchBookInput{
+	bookReq := shardadmin.ProxyBatchBookRequest(ctx, s, shardadmin.ProxyBatchBookInput{
 		RegionCode:  in.RegionCode,
 		NodeID:      in.NodeID,
 		SourceEpoch: in.SourceEpoch,
@@ -425,8 +431,8 @@ func mapServiceError(err error) (status int, code, message string) {
 	if errors.Is(err, errForbidden) {
 		return http.StatusForbidden, "FORBIDDEN", "forbidden"
 	}
-	if errors.Is(err, ErrInstallTokenInvalid) {
-		return http.StatusUnauthorized, "UNAUTHORIZED", ErrInstallTokenInvalid.Error()
+	if errors.Is(err, platformadmin.ErrInstallTokenInvalid) {
+		return http.StatusUnauthorized, "UNAUTHORIZED", platformadmin.ErrInstallTokenInvalid.Error()
 	}
 
 	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) || errors.Is(err, ErrDeploymentCampaignLimit) || errors.Is(err, ErrDeploymentTenantLimit) {
@@ -451,7 +457,7 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusConflict, "APPROVAL_AUTO_DENIED", err.Error()
 	}
 
-	if errors.Is(err, ErrPublisherScopeRequired) {
+	if errors.Is(err, dashboardadmin.ErrPublisherScopeRequired) {
 		return http.StatusForbidden, "FORBIDDEN", err.Error()
 	}
 
@@ -467,8 +473,8 @@ func mapServiceError(err error) (status int, code, message string) {
 		return http.StatusConflict, "CONFLICT", ErrCampaignRevisionConflict.Error()
 	}
 
-	if errors.Is(err, ErrSellersJSONInvalid) {
-		return http.StatusServiceUnavailable, "SUPPLY_INVALID", ErrSellersJSONInvalid.Error()
+	if errors.Is(err, supply.ErrSellersJSONInvalid) {
+		return http.StatusServiceUnavailable, "SUPPLY_INVALID", supply.ErrSellersJSONInvalid.Error()
 	}
 
 	if msg, ok := badRequestMessage(err); ok {
@@ -488,25 +494,25 @@ func isNotFoundError(err error) bool {
 		errors.Is(err, ErrCreativeNotFound) ||
 		errors.Is(err, ErrTemplateNotFound) ||
 		errors.Is(err, ErrTeamMemberNotFound) ||
-		errors.Is(err, ErrRtbDealNotFound) ||
-		errors.Is(err, ErrDealCustomerMissing) ||
-		errors.Is(err, ErrSellerNotFound) ||
-		errors.Is(err, ErrAdsTxtEntryNotFound) ||
+		errors.Is(err, rtbadmin.ErrRtbDealNotFound) ||
+		errors.Is(err, rtbadmin.ErrDealCustomerMissing) ||
+		errors.Is(err, supply.ErrSellerNotFound) ||
+		errors.Is(err, supply.ErrAdsTxtEntryNotFound) ||
 		errors.Is(err, domain.ErrSlotMapVersionNotFound) ||
-		errors.Is(err, ErrDLQEntryNotFound)
+		errors.Is(err, opsadmin.ErrDLQEntryNotFound)
 }
 
 func isConflictError(err error) bool {
-	return errors.Is(err, ErrSlotMigrationNotReady) ||
+	return errors.Is(err, shardadmin.ErrSlotMigrationNotReady) ||
 		errors.Is(err, domain.ErrSlotMapAlreadyActive) ||
-		errors.Is(err, ErrPlatformConfigBootstrapped) ||
+		errors.Is(err, platformadmin.ErrConfigBootstrapped) ||
 		errors.Is(err, ErrCampaignRevisionConflict)
 }
 
 func conflictMessage(err error) string {
 	switch {
-	case errors.Is(err, ErrSlotMigrationNotReady):
-		return ErrSlotMigrationNotReady.Error()
+	case errors.Is(err, shardadmin.ErrSlotMigrationNotReady):
+		return shardadmin.ErrSlotMigrationNotReady.Error()
 	case errors.Is(err, domain.ErrSlotMapAlreadyActive):
 		return domain.ErrSlotMapAlreadyActive.Error()
 	default:
@@ -516,8 +522,8 @@ func conflictMessage(err error) string {
 
 func badRequestMessage(err error) (string, bool) {
 	switch {
-	case errors.Is(err, ErrEulaVersionMismatch):
-		return ErrEulaVersionMismatch.Error(), true
+	case errors.Is(err, licensingadmin.ErrEulaVersionMismatch):
+		return licensingadmin.ErrEulaVersionMismatch.Error(), true
 	case errors.Is(err, ErrFeedbackInvalidType),
 		errors.Is(err, ErrFeedbackInvalidEmail),
 		errors.Is(err, ErrFeedbackEmptyMessage):
@@ -540,20 +546,20 @@ func badRequestMessage(err error) (string, bool) {
 		errors.Is(err, ErrUnsupportedGranularity),
 		errors.Is(err, ErrInvalidTimeRange),
 		errors.Is(err, ErrInvalidServiceFilter),
-		errors.Is(err, ErrInvalidDealPacing),
-		errors.Is(err, ErrDuplicateDealID),
-		errors.Is(err, ErrInvalidDealSeats),
-		errors.Is(err, ErrInvalidSellerType),
-		errors.Is(err, ErrInvalidRelationship),
-		errors.Is(err, ErrSupplyChainTooLong),
+		errors.Is(err, rtbadmin.ErrInvalidDealPacing),
+		errors.Is(err, rtbadmin.ErrDuplicateDealID),
+		errors.Is(err, rtbadmin.ErrInvalidDealSeats),
+		errors.Is(err, supply.ErrInvalidSellerType),
+		errors.Is(err, supply.ErrInvalidRelationship),
+		errors.Is(err, supply.ErrChainTooLong),
 		errors.Is(err, ErrRefundExceedsTopup),
 		errors.Is(err, ErrChargebackExceedsTopup),
 		errors.Is(err, ErrChargebackReversalExceedsWithdrawn),
-		errors.Is(err, errExportLimit),
+		errors.Is(err, billingadmin.ErrExportLimit),
 		errors.Is(err, domain.ErrSlotMapIncomplete),
 		errors.Is(err, domain.ErrSlotMapInvalidSlot),
 		errors.Is(err, domain.ErrSlotMapInvalidShard),
-		errors.Is(err, ErrPlatformConfigNotBootstrapped):
+		errors.Is(err, platformadmin.ErrConfigNotBootstrapped):
 		return err.Error(), true
 	default:
 		return "", false

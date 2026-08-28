@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/platformadmin"
 	"testing"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 
 func TestBuildMetaLicense_tierWarnings(t *testing.T) {
 	validUntil := time.Now().Add(3 * 24 * time.Hour)
-	lic := BuildMetaLicense(MetaLicenseBuildInput{
+	lic := platformadmin.BuildMetaLicense(platformadmin.MetaLicenseBuildInput{
 		State:         "ACTIVE",
 		PlanCode:      "pro",
 		ValidUntil:    validUntil,
@@ -25,5 +26,5 @@ func TestBuildMetaLicense_tierWarnings(t *testing.T) {
 }
 
 func TestBuildMetaLicense_emptyState(t *testing.T) {
-	assert.Nil(t, BuildMetaLicense(MetaLicenseBuildInput{}))
+	assert.Nil(t, platformadmin.BuildMetaLicense(platformadmin.MetaLicenseBuildInput{}))
 }

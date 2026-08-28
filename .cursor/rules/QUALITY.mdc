@@ -13,12 +13,12 @@ Agents must not invent environment, generated artifacts, or benchmark runs.
 
 ## Verification honesty (summary)
 
-Before claiming done, see `anti-slop.mdc` (lie modes, CI gates, agent checklist):
+Before claiming done, see `anti-slop.mdc` (lie modes, CI gates, agent checklist, **Compile and test ritual ban**):
 
-1. Every new symbol resolves.
+1. New symbols: default `read_lints`, `grep`, `gofmt -e` on edited paths — not `go build ./...` or package `go test -c` unless operator asked or you cite a named gate.
 2. Hot path does not import cold fraud scoring.
 3. Explain why scripts/tests changed.
-4. Paste command + package path for verification runs actually executed.
+4. Paste command + exit code for runs actually executed; if none, say **not run** and which lightweight check you used.
 5. Add a holdout test that fails without the change when behavior is non-obvious (`testing.mdc`).
 
 ## Method receivers

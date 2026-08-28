@@ -15,6 +15,7 @@ import (
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/rtb"
+	"ad-event-processor/internal/rtbadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -39,7 +40,7 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 	customerID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, customerID, "Test RTB", 1_000_000, "USD"))
 
-	created, err := svc.CreateRtbDeal(ctx, RtbDealCreateSpec{
+	created, err := svc.CreateRtbDeal(ctx, rtbadmin.DealCreateSpec{
 		DealID:     "fault-reload-deal",
 		FloorMicro: 100_000,
 		CustomerID: customerID.String(),
@@ -61,7 +62,7 @@ func TestFault_rtb_catalog_reload_outbox(t *testing.T) {
 	_, err = pool.Exec(ctx, "DELETE FROM outbox_events")
 	require.NoError(t, err)
 
-	updated, err := svc.UpdateRtbDeal(ctx, created.ID, RtbDealUpdateSpec{
+	updated, err := svc.UpdateRtbDeal(ctx, created.ID, rtbadmin.DealUpdateSpec{
 		DealID:     "fault-reload-deal",
 		FloorMicro: 275_000,
 		CustomerID: customerID.String(),

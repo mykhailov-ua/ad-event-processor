@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/dedupkey"
 
 	"github.com/google/uuid"
@@ -54,11 +55,11 @@ func TestFault_RegionUplinkDedup(t *testing.T) {
 	require.NoError(t, pool.QueryRow(ctx, `SELECT COUNT(*) FROM dedup_key_proposals`).Scan(&proposalCount))
 	require.Equal(t, 1, proposalCount)
 
-	opID := ProxyBatchOpID(1, "proxy-node-1", 0, uuid.Nil)
+	opID := shardadmin.ProxyBatchOpID(1, "proxy-node-1", 0, uuid.Nil)
 	var leaseState string
 	require.NoError(t, pool.QueryRow(ctx, `
 		SELECT lease_state FROM operation_leases WHERE op_id = $1`, domain.ToUUID(opID)).Scan(&leaseState))
-	require.Equal(t, string(LeaseStateCompleted), leaseState)
+	require.Equal(t, string(shardadmin.LeaseStateCompleted), leaseState)
 
 	faultproof.Log(t, "mr_uplink_dedup", map[string]string{
 		"subsystem":     "region_proxy_uplink",

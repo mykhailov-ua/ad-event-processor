@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,7 +14,7 @@ func TestInjectAdminBoot(t *testing.T) {
 	t.Parallel()
 	index := []byte(`<body><div id="root"></div></body>`)
 	boot := AdminBootJSON{
-		User:        UserDTO{ID: "u1", Role: RoleAdmin, CustomerID: "c1"},
+		User:        ctrlhttp.UserDTO{ID: "u1", Role: ctrlhttp.RoleAdmin, CustomerID: "c1"},
 		Permissions: []string{"customers:read"},
 	}
 	out, err := injectAdminBoot(index, boot)

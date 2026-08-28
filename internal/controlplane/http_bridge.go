@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/controlplane/authz"
 	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/notify"
@@ -52,75 +52,13 @@ func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, p
 	return err
 }
 
-type AuthHandler = ctrlhttp.AuthHandler
-
-type UserDTO = ctrlhttp.UserDTO
-
-type LoginRequest = ctrlhttp.LoginRequest
-
-type RegisterRequest = ctrlhttp.RegisterRequest
-
-type (
-	IPRateLimiter       = ctrlhttp.IPRateLimiter
-	APIKeyRateLimiter   = ctrlhttp.APIKeyRateLimiter
-	CustomerRateLimiter = ctrlhttp.CustomerRateLimiter
-)
-
-var (
-	SetTrustedProxies         = ctrlhttp.SetTrustedProxies
-	NewCORSMiddleware         = ctrlhttp.NewCORSMiddleware
-	NewCSRFMiddleware         = ctrlhttp.NewCSRFMiddleware
-	SecurityHeadersMiddleware = ctrlhttp.SecurityHeadersMiddleware
-	GenerateSecureToken       = ctrlhttp.GenerateSecureToken
-	NormalizeRole             = ctrlhttp.NormalizeRole
-	GetPermissionsForRole     = ctrlhttp.GetPermissionsForRole
-	HasPermission             = ctrlhttp.HasPermission
-)
-
-const (
-	PermCustomersRead        = ctrlhttp.PermCustomersRead
-	PermCustomersWrite       = ctrlhttp.PermCustomersWrite
-	PermCampaignsRead        = ctrlhttp.PermCampaignsRead
-	PermCampaignsWrite       = ctrlhttp.PermCampaignsWrite
-	PermCampaignsReadMasked  = ctrlhttp.PermCampaignsReadMasked
-	PermCampaignsWriteMasked = ctrlhttp.PermCampaignsWriteMasked
-	PermCampaignsPause       = ctrlhttp.PermCampaignsPause
-	PermBillingRead          = ctrlhttp.PermBillingRead
-	PermBillingWrite         = ctrlhttp.PermBillingWrite
-	PermBrandsRead           = ctrlhttp.PermBrandsRead
-	PermBrandsWrite          = ctrlhttp.PermBrandsWrite
-	PermSettingsRead         = ctrlhttp.PermSettingsRead
-	PermSettingsWrite        = ctrlhttp.PermSettingsWrite
-	PermBlacklistRead        = ctrlhttp.PermBlacklistRead
-	PermBlacklistWrite       = ctrlhttp.PermBlacklistWrite
-	PermAuditRead            = ctrlhttp.PermAuditRead
-	PermUsersWrite           = ctrlhttp.PermUsersWrite
-	PermShardsRead           = ctrlhttp.PermShardsRead
-	PermShardsWrite          = ctrlhttp.PermShardsWrite
-	PermOpsWrite             = ctrlhttp.PermOpsWrite
-	PermRtbRead              = ctrlhttp.PermRtbRead
-	PermRtbWrite             = ctrlhttp.PermRtbWrite
-	PermSupplyReadScoped     = ctrlhttp.PermSupplyReadScoped
-)
-
-const (
-	RoleAdmin      = ctrlhttp.RoleAdmin
-	RoleManager    = ctrlhttp.RoleManager
-	RoleUser       = ctrlhttp.RoleUser
-	RoleBuyer      = ctrlhttp.RoleBuyer
-	RoleSupport    = ctrlhttp.RoleSupport
-	RoleTeamLead   = ctrlhttp.RoleTeamLead
-	RoleMediaBuyer = ctrlhttp.RoleMediaBuyer
-	RolePublisher  = ctrlhttp.RolePublisher
-)
-
 func NewAuthHandler(
 	authClient *identity.AuthClient,
 	tokenMaker identity.Maker,
 	redisShards []redis.UniversalClient,
 	cfg *config.Config,
 	authMiddleware *AuthMiddleware,
-) *AuthHandler {
+) *ctrlhttp.AuthHandler {
 	return ctrlhttp.NewAuthHandler(authClient, tokenMaker, redisShards, cfg, authMiddleware, authMiddleware, shardadmin.PickHealthyControlShard)
 }
 
@@ -128,45 +66,21 @@ func apiKeyPrincipalID(apiKey string) uuid.UUID {
 	return ctrlhttp.APIKeyPrincipalID(apiKey)
 }
 
-func newIPRateLimiter(rps float64, burst int) *IPRateLimiter {
+func newIPRateLimiter(rps float64, burst int) *ctrlhttp.IPRateLimiter {
 	return ctrlhttp.NewIPRateLimiter(rps, burst)
 }
 
-func newAPIKeyRateLimiter(rps float64, burst int) *APIKeyRateLimiter {
+func newAPIKeyRateLimiter(rps float64, burst int) *ctrlhttp.APIKeyRateLimiter {
 	return ctrlhttp.NewAPIKeyRateLimiter(rps, burst)
 }
 
-func newCustomerRateLimiter() *CustomerRateLimiter {
-	return ctrlhttp.NewCustomerRateLimiter()
-}
-
-func newCustomerRateLimiterWith(rps float64, burst int) *CustomerRateLimiter {
+func newCustomerRateLimiterWith(rps float64, burst int) *ctrlhttp.CustomerRateLimiter {
 	return ctrlhttp.NewCustomerRateLimiterWith(rps, burst)
-}
-
-func newFraudDecisionLimiter() *CustomerRateLimiter {
-	return ctrlhttp.NewFraudDecisionLimiter()
-}
-
-func newFraudPreviewLimiter() *CustomerRateLimiter {
-	return ctrlhttp.NewFraudPreviewLimiter()
 }
 
 func isAdminSPAPath(path string) bool {
 	return ctrlhttp.IsAdminSPAPath(path)
 }
-
-type (
-	TelegramHTTPHandlers = telegram.HTTPHandlers
-	TelegramService      = telegram.TelegramService
-
-	ValidateResult       = telegram.ValidateResult
-	ClickMintResult      = telegram.ClickMintResult
-	BotDTO               = telegram.BotDTO
-	DeeplinkDTO          = telegram.DeeplinkDTO
-	PostbackDTO          = telegram.PostbackDTO
-	TelegramReportFilter = telegram.ReportFilter
-)
 
 var _ telegram.Host = (*Service)(nil)
 
@@ -213,8 +127,8 @@ func resolveSessionUser(ctx context.Context) (platformadmin.SessionUser, bool) {
 	return out, true
 }
 
-func wireSessionHTTPHandlers(freshness func(context.Context) DataFreshnessDTO) *SessionHTTPHandlers {
-	return &SessionHTTPHandlers{
+func wireSessionHTTPHandlers(freshness func(context.Context) reports.DataFreshnessDTO) *platformadmin.SessionHTTPHandlers {
+	return &platformadmin.SessionHTTPHandlers{
 		Freshness:     freshness,
 		BuildNav:      buildSessionNav,
 		ResolveUser:   resolveSessionUser,

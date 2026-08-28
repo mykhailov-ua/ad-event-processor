@@ -95,7 +95,7 @@ export function OpsHub({
       <div className={styles.toolbar}>
         <TabBar tabs={OPS_TABS} active={activeTab} onChange={onTabChange} />
         {canReloadRoles ? (
-          <Button type="button" size="sm" disabled={rolesBusy} onClick={onReloadRoles}>
+          <Button type="button" disabled={rolesBusy} onClick={onReloadRoles}>
             Reload RBAC
           </Button>
         ) : null}
@@ -270,7 +270,7 @@ export function OpsHub({
                       <span className={styles.gridCell} role="gridcell">
                         <Button
                           type="button"
-                          size="sm"
+                         
                           disabled={dlqRetryBusyId === row.id}
                           data-row-id={row.id}
                           onClick={onRetryDlqClick}

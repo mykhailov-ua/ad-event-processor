@@ -46,6 +46,8 @@ A fresh clone is not runnable out of the box. Required bootstrap:
 
 **Root clutter ban:** no `*.txt` or `*.log` in repo root (except README, LICENSE). Gate and test transcripts go in `var/ci/` (`CI_ARTIFACT_DIR`); load-test and fault drill output in other `var/` subtrees. Compiled binaries go in `bin/`, not root.
 
+**Agent verification on operator machines:** shared dev hosts are not CI. Agents must not loop `go build`, `go test`, or full-repo typecheck without an explicit operator ask. Default checks: `read_lints`, `grep`, `gofmt -e`, scoped `go list -e`. Full table: `anti-slop.mdc` (**Agent local environment**, **Compile and test ritual ban**).
+
 ## Commit policy
 
 | Rule | Detail |

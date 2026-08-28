@@ -105,13 +105,13 @@ export function DisputesPanel({
       </div>
 
       <div className={styles.toolbar}>
-        <Button type="button" size="sm" disabled={!hasPrev} onClick={() => onPageChange(Math.max(0, offset - limit))}>
+        <Button type="button" disabled={!hasPrev} onClick={() => onPageChange(Math.max(0, offset - limit))}>
           Previous
         </Button>
         <span className={styles.hint}>
           {total > 0 ? `${offset + 1}-${Math.min(offset + limit, total)} of ${total}` : '0 rows'}
         </span>
-        <Button type="button" size="sm" disabled={!hasNext} onClick={() => onPageChange(offset + limit)}>
+        <Button type="button" disabled={!hasNext} onClick={() => onPageChange(offset + limit)}>
           Next
         </Button>
       </div>

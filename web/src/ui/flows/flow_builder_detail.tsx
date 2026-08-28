@@ -203,13 +203,13 @@ export function FlowBuilderDetail({
             <div className={styles.actions}>
               <Button
                 variant="secondary"
-                size="sm"
+               
                 type="button"
                 onClick={() => setPaths([...paths, { weight: '0', lander_id: '', offer_id: '' }])}
               >
                 Add path
               </Button>
-              <Button variant="primary" size="sm" type="button" disabled={saving} onClick={() => void onSave()}>
+              <Button variant="primary" type="button" disabled={saving} onClick={() => void onSave()}>
                 {saving ? 'Saving...' : 'Save flow'}
               </Button>
             </div>
@@ -270,7 +270,7 @@ export function FlowBuilderDetail({
             <div className={styles.actions}>
               <Button
                 variant="secondary"
-                size="sm"
+               
                 type="button"
                 disabled={validating || !campaignIdDraft.trim()}
                 onClick={() => void onValidate()}

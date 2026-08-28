@@ -120,7 +120,7 @@ export function BrandsGrid({
               <div className={gridStyles.expandCell} role="gridcell">
                 <Button
                   variant="secondary"
-                  size="sm"
+                 
                   data-row-id={id}
                   onClick={onExpandClick}
                 >

@@ -2,6 +2,7 @@ import * as auth from '../../helpers/auth.js';
 import { can, canReadCampaigns } from '../../helpers/permissions.js';
 import type { Brand } from '../../helpers/brands_api.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { Button } from '../system/button.js';
 import { BrandCreateModal } from './brand_create_modal.js';
@@ -56,11 +57,11 @@ export function BrandsDirectory({
 
   return (
     <div className={styles.root}>
-      <PageChrome title="Brands" badge={loading ? null : <span>{items.length} brands</span>} />
+      <PageChrome title="Brands" badge={<LoadingCountBadge loading={loading} label={`${items.length} brands`} />} />
       <BrandsFilter customerId={customerId} onApply={onCustomerApply} />
       {canWrite && customerId ? (
         <div className={styles.toolbar}>
-          <Button variant="primary" size="sm" onClick={onOpenCreate}>
+          <Button variant="primary" onClick={onOpenCreate}>
             Create brand
           </Button>
         </div>

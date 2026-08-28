@@ -1,6 +1,7 @@
 import type { FraudPolicyPresetDTO } from '../../helpers/fraud_api.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import { FraudSubNav } from './fraud_sub_nav.js';
@@ -19,7 +20,7 @@ export function PresetsPanel({ presets, loading, error }: PresetsPanelProps) {
 
   return (
     <div className={styles.root} data-testid="fraud-presets-page">
-      <PageChrome title="Fraud policy presets" badge={loading ? null : <span>{presets.length} presets</span>} />
+      <PageChrome title="Fraud policy presets" badge={<LoadingCountBadge loading={loading} label={`${presets.length} presets`} />} />
       <FraudSubNav />
       <p className={styles.intro}>
         Read-only tier thresholds (pass, suspect, IVT, block) applied by preset name. Updates are

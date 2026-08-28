@@ -166,7 +166,7 @@ export function PostbacksPanel({
                   <span className={shared.gridCell} role="gridcell">
                     {canWrite && row.status !== 'RETRIED' ? (
                       <Button
-                        size="sm"
+                       
                         variant="secondary"
                         disabled={retryBusyId === rowId}
                         data-testid={`postback-dlq-retry-${rowId}`}

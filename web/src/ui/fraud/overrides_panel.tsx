@@ -89,7 +89,7 @@ export function OverridesPanel({
           <div className={styles.actions}>
             <Button
               type="submit"
-              size="sm"
+             
               variant="danger"
               disabled={formBusy || !customerId || (!ip.trim() && !ipHash.trim())}
             >

@@ -2,6 +2,7 @@ import type { BlacklistEntry } from '../../helpers/ops_api.js';
 import { Button } from '../system/button.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import { PaginationBar } from '../system/pagination_bar.js';
@@ -46,7 +47,7 @@ export function OpsBlacklistPanel({
 
   return (
     <div className={styles.root} data-testid="ops-blacklist-page">
-      <PageChrome title="IP blacklist" badge={loading ? null : <span>{total} entries</span>} />
+      <PageChrome title="IP blacklist" badge={<LoadingCountBadge loading={loading} label={`${total} entries`} />} />
       <form
         className={styles.formStack}
         onSubmit={(event) => {
@@ -73,7 +74,7 @@ export function OpsBlacklistPanel({
           />
         </label>
         <div className={styles.actions}>
-          <Button type="submit" size="sm" variant="danger" disabled={formBusy || !ip.trim()}>
+          <Button type="submit" variant="danger" disabled={formBusy || !ip.trim()}>
             Block IP
           </Button>
         </div>
@@ -120,7 +121,7 @@ export function OpsBlacklistPanel({
                   {row.ip ? (
                     <Button
                       type="button"
-                      size="sm"
+                     
                       variant="danger"
                       disabled={formBusy}
                       onClick={() => onUnblock(row.ip!, row.reason ?? 'manual')}

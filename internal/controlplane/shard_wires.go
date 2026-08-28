@@ -139,8 +139,6 @@ func (s *Service) WithPostgresLow(ctx context.Context, fn func(context.Context) 
 
 var ErrStalePgFencingEpoch = shardadmin.ErrStalePgFencingEpoch
 
-type PostgresFailoverRuntime = shardadmin.PostgresFailoverRuntime
-
 var _ shardadmin.PostgresFailoverHost = (*Service)(nil)
 
 func (s *Service) FailoverConfig() *config.Config {
@@ -163,7 +161,7 @@ func (s *Service) SetPgFencing(g *pgfailover.FencingGate) {
 	}
 }
 
-func (s *Service) StartPostgresFailover(ctx context.Context) *PostgresFailoverRuntime {
+func (s *Service) StartPostgresFailover(ctx context.Context) *shardadmin.PostgresFailoverRuntime {
 	return shardadmin.StartPostgresFailover(ctx, s)
 }
 
@@ -173,8 +171,4 @@ func (s *Service) requirePgFencing(ctx context.Context) error {
 
 func (s *Service) AuditLedgerDuplicatesSinceFailover(ctx context.Context) (int, error) {
 	return shardadmin.AuditLedgerDuplicatesSinceFailover(ctx, s)
-}
-
-func (s *Service) outboxHealthSummary(ctx context.Context) (OutboxHealthSummary, error) {
-	return shardadmin.QueryOutboxHealth(ctx, s.GetPool())
 }

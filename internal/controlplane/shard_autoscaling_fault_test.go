@@ -14,6 +14,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -22,13 +23,13 @@ import (
 )
 
 type mockShardMetricsProvider struct {
-	metrics map[int16]ShardMetrics
+	metrics map[int16]shardadmin.ShardMetrics
 }
 
-func (p *mockShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16, redisClient redis.UniversalClient) (ShardMetrics, error) {
+func (p *mockShardMetricsProvider) GetMetrics(ctx context.Context, shardID int16, redisClient redis.UniversalClient) (shardadmin.ShardMetrics, error) {
 	m, ok := p.metrics[shardID]
 	if !ok {
-		return ShardMetrics{ShardID: shardID}, nil
+		return shardadmin.ShardMetrics{ShardID: shardID}, nil
 	}
 	return m, nil
 }
@@ -77,13 +78,13 @@ func TestFault_ShardAutoscale_SuddenLoadSpike(t *testing.T) {
 	require.NoError(t, rdb0.Set(ctx, key, "850000", 0).Err())
 
 	provider := &mockShardMetricsProvider{
-		metrics: map[int16]ShardMetrics{
+		metrics: map[int16]shardadmin.ShardMetrics{
 			0: {ShardID: 0, CPUUsage: 95.0, MemoryPct: 90.0, OpsPerSec: 60000, LuaP99Ms: 25.0},
 			1: {ShardID: 1, CPUUsage: 10.0, MemoryPct: 15.0, OpsPerSec: 1000, LuaP99Ms: 1.0},
 		},
 	}
 
-	autoscaleCfg := ShardAutoscaleConfig{
+	autoscaleCfg := shardadmin.ShardAutoscaleConfig{
 		Enabled:        true,
 		CPULimit:       80.0,
 		MemoryPctLimit: 85.0,
@@ -165,13 +166,13 @@ func TestFault_ShardAutoscale_ShuffledShards(t *testing.T) {
 	require.NoError(t, rdb1.Set(ctx, key, "700000", 0).Err())
 
 	provider := &mockShardMetricsProvider{
-		metrics: map[int16]ShardMetrics{
+		metrics: map[int16]shardadmin.ShardMetrics{
 			0: {ShardID: 0, CPUUsage: 90.0, MemoryPct: 90.0, OpsPerSec: 60000, LuaP99Ms: 20.0},
 			1: {ShardID: 1, CPUUsage: 10.0, MemoryPct: 10.0, OpsPerSec: 500, LuaP99Ms: 1.0},
 		},
 	}
 
-	autoscaleCfg := ShardAutoscaleConfig{
+	autoscaleCfg := shardadmin.ShardAutoscaleConfig{
 		Enabled:        true,
 		CPULimit:       80.0,
 		MemoryPctLimit: 85.0,
@@ -253,13 +254,13 @@ func TestFault_ShardAutoscale_ConcurrentAutoscaleDeadlock(t *testing.T) {
 	}
 
 	provider := &mockShardMetricsProvider{
-		metrics: map[int16]ShardMetrics{
+		metrics: map[int16]shardadmin.ShardMetrics{
 			0: {ShardID: 0, CPUUsage: 95.0, MemoryPct: 90.0, OpsPerSec: 60000, LuaP99Ms: 25.0},
 			1: {ShardID: 1, CPUUsage: 10.0, MemoryPct: 15.0, OpsPerSec: 1000, LuaP99Ms: 1.0},
 		},
 	}
 
-	autoscaleCfg := ShardAutoscaleConfig{
+	autoscaleCfg := shardadmin.ShardAutoscaleConfig{
 		Enabled:        true,
 		CPULimit:       80.0,
 		MemoryPctLimit: 85.0,

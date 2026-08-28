@@ -24,7 +24,7 @@ export function PaginationBar({ limit, offset, total, onOffsetChange }: Paginati
       <Button
         type="button"
         variant="secondary"
-        size="sm"
+       
         disabled={prevDisabled}
         onClick={() => onOffsetChange(Math.max(0, offset - limit))}
       >
@@ -34,7 +34,7 @@ export function PaginationBar({ limit, offset, total, onOffsetChange }: Paginati
       <Button
         type="button"
         variant="secondary"
-        size="sm"
+       
         disabled={nextDisabled}
         onClick={() => onOffsetChange(offset + limit)}
       >

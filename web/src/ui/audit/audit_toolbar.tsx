@@ -16,7 +16,7 @@ export function AuditToolbar({ exporting, onExport }: AuditToolbarProps) {
 
   return (
     <div className={styles.root}>
-      <Button variant="secondary" size="sm" disabled={exporting} onClick={onExport}>
+      <Button variant="secondary" disabled={exporting} onClick={onExport}>
         Export CSV
       </Button>
     </div>

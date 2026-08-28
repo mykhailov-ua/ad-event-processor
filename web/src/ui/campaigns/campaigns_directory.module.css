@@ -16,6 +16,7 @@
 
 .filters {
   display: grid;
+  overflow: visible;
 }
 
 .filterRow {
@@ -23,25 +24,19 @@
   grid-template-columns: repeat(6, minmax(0, max-content));
   gap: var(--space-sm);
   align-items: end;
+  overflow: visible;
 }
 
 .filterField {
   display: grid;
   gap: var(--space-1);
+  min-width: 8.75rem;
+  overflow: visible;
 }
 
 .filterLabel {
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-}
-
-.searchInput {
-  padding: var(--space-sm);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 4px);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  min-width: 10rem;
 }
 
 .content {

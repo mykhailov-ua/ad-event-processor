@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -101,7 +102,7 @@ func TestWorkspaceBilling_usageExportTenantIsolation(t *testing.T) {
 
 	path := "/api/v1/billing/usage/export?format=csv&from=2026-08-01&to=2026-08-31&customer_id=" + victimID.String()
 	req, _ := http.NewRequest("GET", path, http.NoBody)
-	withSessionUser(req, tokenMaker, RoleUser, attackerID)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleUser, attackerID)
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	require.Equal(t, http.StatusForbidden, resp.Code)
@@ -111,7 +112,7 @@ func TestWorkspaceBilling_usageExportTenantIsolation(t *testing.T) {
 func TestParseUsageExportCursor_roundTrip(t *testing.T) {
 	t.Parallel()
 	customerID := uuid.New()
-	cursor, err := ParseUsageExportCursor(customerID.String() + "|2026-08-01|events")
+	cursor, err := billingadmin.ParseUsageExportCursor(customerID.String() + "|2026-08-01|events")
 	require.NoError(t, err)
 	require.True(t, cursor.Valid)
 	assert.Equal(t, customerID, cursor.CustomerID)

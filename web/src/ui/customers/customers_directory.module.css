@@ -13,6 +13,7 @@
 
 .filters {
   display: grid;
+  overflow: visible;
 }
 
 .filterRow {
@@ -20,11 +21,14 @@
   grid-template-columns: repeat(3, minmax(0, max-content));
   gap: var(--space-sm);
   align-items: end;
+  overflow: visible;
 }
 
 .filterField {
   display: grid;
   gap: var(--space-1);
+  min-width: 8.75rem;
+  overflow: visible;
 }
 
 .filterLabel {

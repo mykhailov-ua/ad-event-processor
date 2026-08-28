@@ -3,6 +3,7 @@ package controlplane
 import (
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/migrationsource"
 
 	"github.com/google/uuid"
@@ -12,7 +13,7 @@ import (
 func TestImportMigrationCampaigns_invalidPayloadNoCampaignImport_holdout(t *testing.T) {
 	t.Parallel()
 	svc := &Service{}
-	_, err := svc.ImportMigrationCampaigns(t.Context(), ImportMigrationSpec{
+	_, err := svc.ImportMigrationCampaigns(t.Context(), campaign.ImportMigrationSpec{
 		CustomerID:     uuid.New(),
 		IdempotencyKey: "batch-1",
 		SourceKind:     migrationsource.SourceKind("unknown-source"),
@@ -24,7 +25,7 @@ func TestImportMigrationCampaigns_invalidPayloadNoCampaignImport_holdout(t *test
 func TestPreviewMigrationPull_invalidPayloadNoPG_holdout(t *testing.T) {
 	t.Parallel()
 	svc := &Service{}
-	_, err := svc.PreviewMigrationPull(t.Context(), PullMigrationPreviewSpec{
+	_, err := svc.PreviewMigrationPull(t.Context(), campaign.PullMigrationPreviewSpec{
 		SourceKind: migrationsource.SourceKind("unknown-source"),
 		BaseURL:    "https://example.test",
 	})

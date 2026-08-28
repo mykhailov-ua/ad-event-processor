@@ -5,6 +5,7 @@ import { canWriteFraudLabels } from '../../helpers/fraud_api.js';
 import { Button } from '../system/button.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import { CustomerScopeBar } from '../integrations/customer_scope_bar.js';
@@ -63,7 +64,7 @@ export function LabelsPanel({
     <div className={styles.root} data-testid="fraud-labels-page">
       <PageChrome
         title="Fraud labels"
-        badge={loading ? null : <span>{labels.length} rows</span>}
+        badge={<LoadingCountBadge loading={loading} label={`${labels.length} rows`} />}
       />
       <FraudSubNav customerId={customerId} />
       <p className={styles.intro}>
@@ -124,7 +125,7 @@ export function LabelsPanel({
               />
             </label>
             <div className={styles.actions}>
-              <Button type="submit" size="sm" disabled={formBusy || !customerId || !ipHash.trim()}>
+              <Button type="submit" disabled={formBusy || !customerId || !ipHash.trim()}>
                 Save label
               </Button>
             </div>
@@ -141,7 +142,7 @@ export function LabelsPanel({
             <div className={styles.actions}>
               <Button
                 type="button"
-                size="sm"
+               
                 variant="secondary"
                 disabled={formBusy || !customerId || !bulkJson.trim()}
                 onClick={onBulkImport}

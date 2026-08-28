@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Select } from '../system/select.js';
 import { Button } from '../system/button.js';
+import { FieldInput } from '../system/field_input.js';
 import styles from './billing_directory.module.css';
 
 export type BillingFilterValues = {
@@ -40,8 +41,7 @@ export function BillingFilter({ values, onApply }: BillingFilterProps) {
       <div className={styles.filterRow}>
         <label className={styles.filterField}>
           <span className={styles.filterLabel}>Customer ID</span>
-          <input
-            className={styles.textInput}
+          <FieldInput
             value={draft.customer_id}
             onChange={(event) => setDraft((prev) => ({ ...prev, customer_id: event.target.value }))}
             placeholder="UUID"
@@ -59,8 +59,7 @@ export function BillingFilter({ values, onApply }: BillingFilterProps) {
         </label>
         <label className={styles.filterField}>
           <span className={styles.filterLabel}>Month</span>
-          <input
-            className={styles.textInput}
+          <FieldInput
             value={draft.month}
             onChange={(event) => setDraft((prev) => ({ ...prev, month: event.target.value }))}
             placeholder="YYYY-MM"
@@ -69,15 +68,14 @@ export function BillingFilter({ values, onApply }: BillingFilterProps) {
         </label>
         <label className={styles.filterField}>
           <span className={styles.filterLabel}>Min total (micro)</span>
-          <input
-            className={styles.textInput}
+          <FieldInput
             type="number"
             value={draft.min_total}
             onChange={(event) => setDraft((prev) => ({ ...prev, min_total: event.target.value }))}
             aria-label="Minimum total micro filter"
           />
         </label>
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="secondary">
           Apply
         </Button>
       </div>

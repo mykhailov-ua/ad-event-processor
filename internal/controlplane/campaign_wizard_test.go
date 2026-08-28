@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 
 	"github.com/google/uuid"
@@ -61,28 +62,28 @@ func TestCampaignWizard_commitCreatesCampaignFlow_holdout(t *testing.T) {
 	sessionID, err := uuid.Parse(session.SessionID)
 	require.NoError(t, err)
 
-	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepTrafficSource, mustWizardJSON(t, CampaignWizardTrafficSourceStep{
+	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepTrafficSource, mustWizardJSON(t, campaign.CampaignWizardTrafficSourceStep{
 		Name:              "Wizard Camp",
 		TrafficTemplateID: "meta-facebook",
 	}))
 	require.NoError(t, err)
-	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepIntegrationTemplate, mustWizardJSON(t, CampaignWizardIntegrationTemplateStep{
+	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepIntegrationTemplate, mustWizardJSON(t, campaign.CampaignWizardIntegrationTemplateStep{
 		IntegrationSchema: "traffic_facebook",
 	}))
 	require.NoError(t, err)
-	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepFlowSkeleton, mustWizardJSON(t, CampaignWizardFlowSkeletonStep{
+	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepFlowSkeleton, mustWizardJSON(t, campaign.CampaignWizardFlowSkeletonStep{
 		FlowName: "wizard-flow",
-		Lander: CampaignWizardAssetRef{
+		Lander: campaign.CampaignWizardAssetRef{
 			Name: "Wizard Lander",
 			URL:  "https://lander.example/wizard",
 		},
-		Offer: CampaignWizardAssetRef{
+		Offer: campaign.CampaignWizardAssetRef{
 			Name: "Wizard Offer",
 			URL:  "https://offer.example/wizard",
 		},
 	}))
 	require.NoError(t, err)
-	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepBudget, mustWizardJSON(t, CampaignWizardBudgetStep{
+	_, err = svc.UpdateCampaignWizardSessionStep(ctx, sessionID, wizardStepBudget, mustWizardJSON(t, campaign.CampaignWizardBudgetStep{
 		BudgetLimitMicro: 25_000_000,
 		Timezone:         "UTC",
 		TargetCountries:  []string{"US"},
@@ -108,11 +109,11 @@ func TestCampaignWizard_commitCreatesCampaignFlow_holdout(t *testing.T) {
 }
 
 func TestCampaignWizardSessionGET_omitsSecrets(t *testing.T) {
-	dto := CampaignWizardSessionDTO{
+	dto := campaign.CampaignWizardSessionDTO{
 		SessionID:  uuid.NewString(),
 		CustomerID: uuid.NewString(),
-		Steps: CampaignWizardStepsDTO{
-			IntegrationTemplate: &CampaignWizardIntegrationTemplateStep{
+		Steps: campaign.CampaignWizardStepsDTO{
+			IntegrationTemplate: &campaign.CampaignWizardIntegrationTemplateStep{
 				IntegrationSchema: "traffic_facebook",
 				TrackingDomain:    "https://trk.example",
 			},

@@ -1,6 +1,7 @@
 package controlplane_test
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"fmt"
 	"net"
 	"net/http"
@@ -43,7 +44,7 @@ func TestClientIPXFFTrustedWithProxy(t *testing.T) {
 }
 
 func TestCORSWildcardNoCredentials(t *testing.T) {
-	handler := controlplane.NewCORSMiddleware([]string{"*"})(
+	handler := ctrlhttp.NewCORSMiddleware([]string{"*"})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
@@ -60,7 +61,7 @@ func TestCORSWildcardNoCredentials(t *testing.T) {
 }
 
 func TestCORSExplicitAllowlistHasCredentials(t *testing.T) {
-	handler := controlplane.NewCORSMiddleware([]string{"https://dashboard.example.com"})(
+	handler := ctrlhttp.NewCORSMiddleware([]string{"https://dashboard.example.com"})(
 		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}),
 	)
 	r := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
@@ -74,7 +75,7 @@ func TestCORSExplicitAllowlistHasCredentials(t *testing.T) {
 }
 
 func TestCSRFPatchBlocked(t *testing.T) {
-	mw := controlplane.NewCSRFMiddleware("secret-admin-key")
+	mw := ctrlhttp.NewCSRFMiddleware("secret-admin-key")
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -92,7 +93,7 @@ func TestCSRFPatchBlocked(t *testing.T) {
 }
 
 func TestCSRFPatchAccepted(t *testing.T) {
-	mw := controlplane.NewCSRFMiddleware("secret-admin-key")
+	mw := ctrlhttp.NewCSRFMiddleware("secret-admin-key")
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -112,7 +113,7 @@ func TestCSRFPatchAccepted(t *testing.T) {
 
 func TestAdminKeyWrongKeyRejected(t *testing.T) {
 	correctKey := "super-secret-admin-key-xyz"
-	mw := controlplane.NewCSRFMiddleware(correctKey)
+	mw := ctrlhttp.NewCSRFMiddleware(correctKey)
 	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

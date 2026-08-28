@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -67,7 +68,7 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), outboxCount)
 
-	campAID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campAID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		BrandID:          &brandID,
 		Name:             "Air Max Run",
@@ -82,7 +83,7 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	campBID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campBID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		BrandID:          &brandID,
 		Name:             "Air Max Walk",

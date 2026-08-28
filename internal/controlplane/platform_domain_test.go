@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/shardadmin"
+	"ad-event-processor/internal/supply"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
@@ -26,10 +28,10 @@ func TestPlatform_errorMapping(t *testing.T) {
 		}{
 			{nil, http.StatusOK, "", ""},
 			{errForbidden, http.StatusForbidden, "FORBIDDEN", ""},
-			{ErrSlotMigrationNotReady, http.StatusConflict, "CONFLICT", "migration"},
+			{shardadmin.ErrSlotMigrationNotReady, http.StatusConflict, "CONFLICT", "migration"},
 			{ErrSelfServeActiveCampaignLimit, http.StatusTooManyRequests, "LIMIT_EXCEEDED", ""},
 			{invalidQueryError("bad filter"), http.StatusBadRequest, "BAD_REQUEST", "bad filter"},
-			{ErrSellersJSONInvalid, http.StatusServiceUnavailable, "SUPPLY_INVALID", ""},
+			{supply.ErrSellersJSONInvalid, http.StatusServiceUnavailable, "SUPPLY_INVALID", ""},
 		}
 		for _, tc := range cases {
 			status, code, msg := mapServiceError(tc.err)

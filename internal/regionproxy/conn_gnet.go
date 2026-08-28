@@ -29,7 +29,11 @@ func (s *Server) connMaxLifetimeExceeded(ctx *proxyConnState) bool {
 }
 
 func (s *Server) closeConnIdle(c gnet.Conn, reason string) gnet.Action {
-	metrics.RegionProxyConnIdleCloseTotal.WithLabelValues(reason).Inc()
+	if recordConnIdleClose != nil {
+		recordConnIdleClose(reason)
+	} else {
+		metrics.RegionProxyConnIdleCloseTotal.WithLabelValues(reason).Inc()
+	}
 	gnetutil.ClearReadDeadline(c)
 	return gnet.Close
 }

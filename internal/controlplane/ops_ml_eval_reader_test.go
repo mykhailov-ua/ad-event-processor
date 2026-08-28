@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"encoding/json"
 	"testing"
 
@@ -27,7 +28,7 @@ func TestParseMLEvalReportJSON_mixedBlocks(t *testing.T) {
 			"confidence": "low"
 		}
 	}`)
-	out, err := parseMLEvalReportJSON(raw)
+	out, err := opsadmin.ParseMLEvalReportJSON(raw)
 	require.NoError(t, err)
 	require.Equal(t, "ok", out.Status)
 	require.Equal(t, int64(120), out.ProxyMetrics.LabeledRows)
@@ -44,7 +45,7 @@ func TestParseMLEvalReportJSON_legacyTopLevelFillsProxy(t *testing.T) {
 		"precision": 0.5,
 		"recall": 0.4
 	}`)
-	out, err := parseMLEvalReportJSON(raw)
+	out, err := opsadmin.ParseMLEvalReportJSON(raw)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), out.AuditedMetrics.LabeledRows)
 	require.Equal(t, "manual", out.AuditedMetrics.LabelMethod)
@@ -52,28 +53,28 @@ func TestParseMLEvalReportJSON_legacyTopLevelFillsProxy(t *testing.T) {
 }
 
 func TestNormalizeMLEvalReport_alwaysIncludesAuditedRows(t *testing.T) {
-	out := normalizeMLEvalReport(MLEvalReportDTO{})
+	out := opsadmin.NormalizeMLEvalReport(opsadmin.MLEvalReportDTO{})
 	require.Equal(t, int64(0), out.AuditedMetrics.LabeledRows)
 	require.Equal(t, "low", out.AuditedMetrics.Confidence)
 }
 
 func TestParseMLEvalReportJSON_roundTrip(t *testing.T) {
-	in := MLEvalReportDTO{
+	in := opsadmin.MLEvalReportDTO{
 		Status:      "ok",
 		GeneratedAt: "2026-03-01T10:00:00Z",
 		Hours:       24,
 		Threshold:   0.6,
-		ProxyMetrics: MLEvalMetricsBlockDTO{
+		ProxyMetrics: opsadmin.MLEvalMetricsBlockDTO{
 			Status:      "ok",
 			LabelMethod: "proxy",
 			LabeledRows: 10,
 			Precision:   0.9,
 		},
-		AuditedMetrics: DefaultEmptyAuditedMetrics(),
+		AuditedMetrics: opsadmin.DefaultEmptyAuditedMetrics(),
 	}
 	data, err := json.Marshal(in)
 	require.NoError(t, err)
-	out, err := parseMLEvalReportJSON(data)
+	out, err := opsadmin.ParseMLEvalReportJSON(data)
 	require.NoError(t, err)
 	require.Equal(t, in.ProxyMetrics.LabeledRows, out.ProxyMetrics.LabeledRows)
 	require.Equal(t, in.AuditedMetrics.LabeledRows, out.AuditedMetrics.LabeledRows)

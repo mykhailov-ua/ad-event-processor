@@ -1,6 +1,7 @@
 package campaign
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,7 +11,7 @@ import (
 
 func TestEvaluatePublishBlocked_missingFlow_holdout(t *testing.T) {
 	t.Parallel()
-	blocked := EvaluatePublishBlocked(PublishGateEvalInput{
+	blocked := EvaluatePublishBlocked(context.Background(), PublishGateEvalInput{
 		CampaignID:  uuid.New(),
 		Name:        "camp",
 		BudgetLimit: 100,
@@ -22,7 +23,7 @@ func TestEvaluatePublishBlocked_missingFlow_holdout(t *testing.T) {
 
 func TestEvaluatePublishBlocked_validMinimal(t *testing.T) {
 	t.Parallel()
-	blocked := EvaluatePublishBlocked(PublishGateEvalInput{
+	blocked := EvaluatePublishBlocked(context.Background(), PublishGateEvalInput{
 		CampaignID:          uuid.New(),
 		Name:                "camp",
 		BudgetLimit:         100,

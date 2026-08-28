@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,10 +13,10 @@ import (
 )
 
 type stubRUMStore struct {
-	events []ClientRUMIngestDTO
+	events []opsadmin.ClientRUMIngestDTO
 }
 
-func (s *stubRUMStore) AppendClientRUM(ev ClientRUMIngestDTO) {
+func (s *stubRUMStore) AppendClientRUM(ev opsadmin.ClientRUMIngestDTO) {
 	s.events = append(s.events, ev)
 }
 
@@ -30,7 +31,7 @@ func (s *stubRUMStore) SnapshotClientRUM() []any {
 func TestPostClientRUM_Accepted(t *testing.T) {
 	t.Parallel()
 	store := &stubRUMStore{}
-	h := &OpsHTTPHandlers{RUMStore: store}
+	h := &opsadmin.HTTPHandlers{RUMStore: store}
 
 	body := `{"path":"/campaigns","api":{"slowPaths":[]}}`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/ops/rum", strings.NewReader(body))
@@ -44,8 +45,8 @@ func TestPostClientRUM_Accepted(t *testing.T) {
 func TestGetClientRUM_OK(t *testing.T) {
 	t.Parallel()
 	store := &stubRUMStore{}
-	store.AppendClientRUM(ClientRUMIngestDTO{Path: "/ops"})
-	h := &OpsHTTPHandlers{
+	store.AppendClientRUM(opsadmin.ClientRUMIngestDTO{Path: "/ops"})
+	h := &opsadmin.HTTPHandlers{
 		RUMStore: store,
 		RequirePermission: func(_ string, next http.HandlerFunc) http.HandlerFunc {
 			return next

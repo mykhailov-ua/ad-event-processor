@@ -9,8 +9,8 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
-	"ad-event-processor/internal/payment"
 	ingestdb "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/payment"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

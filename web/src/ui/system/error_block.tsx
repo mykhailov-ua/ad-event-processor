@@ -20,7 +20,7 @@ export function ErrorBlock({ error, fallbackTitle = 'Error', onRetry }: ErrorBlo
       ) : null}
       {onRetry ? (
         <div className={styles.actions}>
-          <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
+          <Button type="button" variant="secondary" onClick={onRetry}>
             Retry
           </Button>
         </div>

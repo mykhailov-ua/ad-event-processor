@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -135,11 +136,11 @@ func TestAuthHandler_Login(t *testing.T) {
 		assert.True(t, csrfSet)
 		assert.NotEmpty(t, resp.Header().Get("X-CSRF-Token"))
 
-		var res map[string]UserDTO
+		var res map[string]ctrlhttp.UserDTO
 		err := json.NewDecoder(resp.Body).Decode(&res)
 		require.NoError(t, err)
 		assert.Equal(t, "00000000-0000-0000-0000-000000000123", res["user"].ID)
-		assert.Equal(t, RoleAdmin, res["user"].Role)
+		assert.Equal(t, ctrlhttp.RoleAdmin, res["user"].Role)
 		assert.Contains(t, res["user"].Permissions, "customers:write")
 	})
 
@@ -249,11 +250,11 @@ func TestAuthHandler_Me(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.Code)
 
-	var dto UserDTO
+	var dto ctrlhttp.UserDTO
 	err = json.NewDecoder(resp.Body).Decode(&dto)
 	require.NoError(t, err)
 	assert.Equal(t, userID.String(), dto.ID)
-	assert.Equal(t, RoleAdmin, dto.Role)
+	assert.Equal(t, ctrlhttp.RoleAdmin, dto.Role)
 	assert.Equal(t, customerID.String(), dto.CustomerID)
 	assert.Contains(t, dto.Permissions, "campaigns:write")
 	assert.NotEmpty(t, resp.Header().Get("X-CSRF-Token"))
@@ -276,7 +277,7 @@ func TestAuthHandler_MeRedisOutage(t *testing.T) {
 
 	userID := uuid.New()
 	customerID := uuid.New()
-	token, err := tokenMaker.CreateToken(userID, uuid.New(), RoleAdmin, customerID, time.Hour)
+	token, err := tokenMaker.CreateToken(userID, uuid.New(), ctrlhttp.RoleAdmin, customerID, time.Hour)
 	require.NoError(t, err)
 
 	h := NewAuthHandler(nil, tokenMaker, []redis.UniversalClient{redisClient}, cfg, nil)

@@ -275,7 +275,7 @@ export function TeamHub({
                       <>
                         <Button
                           type="button"
-                          size="sm"
+                         
                           disabled={busy}
                           onClick={() => onApprove(row.id!)}
                         >
@@ -283,7 +283,7 @@ export function TeamHub({
                         </Button>
                         <Button
                           type="button"
-                          size="sm"
+                         
                           variant="danger"
                           disabled={busy}
                           onClick={() => onDeny(row.id!)}

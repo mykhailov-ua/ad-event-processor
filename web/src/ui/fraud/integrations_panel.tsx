@@ -1,6 +1,7 @@
 import type { FraudIntegrationDTO } from '../../helpers/fraud_api.js';
 import { EmptyState } from '../system/empty_state.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { PageSkeleton } from '../system/page_skeleton.js';
 import { CustomerScopeBar } from '../integrations/customer_scope_bar.js';
@@ -34,7 +35,7 @@ export function IntegrationsPanel({
     <div className={styles.root} data-testid="fraud-integrations-page">
       <PageChrome
         title="Fraud integrations"
-        badge={loading ? null : <span>{integrations.length} campaigns</span>}
+        badge={<LoadingCountBadge loading={loading} label={`${integrations.length} campaigns`} />}
       />
       <FraudSubNav customerId={customerId} />
       <p className={styles.intro}>

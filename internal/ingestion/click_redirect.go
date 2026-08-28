@@ -658,7 +658,7 @@ func (h *AdsPacketHandler) reactClickRedirect(req parsedHTTPRequest, c gnet.Conn
 	evt.TLSJA4 = unsafeString(req.TLSJA4)
 	evt.SecCHUA = unsafeString(req.SecCHUA)
 	evt.AcceptLang = unsafeString(req.AcceptLang)
-	fillIngressH2(evt, ctx != nil && ctx.protoH2)
+	fillIngressH2(evt, ctx.protoH2)
 	fillWireMetadataFromRequest(evt, &req)
 	attachFraudAccumulator(evt)
 	if parsed.attestationLightMissing {

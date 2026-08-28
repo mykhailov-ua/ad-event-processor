@@ -69,10 +69,10 @@ export function CampaignToolbar({
   return (
     <div className={styles.panel}>
       <div className={styles.toolbar}>
-        <Button variant="secondary" size="sm" type="button" disabled={checking} onClick={() => void onPublishCheck()}>
+        <Button variant="secondary" type="button" disabled={checking} onClick={() => void onPublishCheck()}>
           {checking ? 'Checking...' : 'Publish check'}
         </Button>
-        <Button variant="primary" size="sm" type="button" disabled={publishing} onClick={() => void onPublish()}>
+        <Button variant="primary" type="button" disabled={publishing} onClick={() => void onPublish()}>
           {publishing ? 'Publishing...' : 'Publish'}
         </Button>
       </div>
@@ -400,7 +400,7 @@ export function CampaignStatsPanel({ campaignId }: { campaignId: string }) {
           {stats.stale ? ' (stale)' : ''}
         </p>
       ) : null}
-      <Button variant="secondary" size="sm" type="button" onClick={load}>
+      <Button variant="secondary" type="button" onClick={load}>
         Refresh
       </Button>
     </div>

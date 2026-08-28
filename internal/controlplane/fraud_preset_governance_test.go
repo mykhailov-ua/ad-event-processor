@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/opsadmin"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,17 +27,17 @@ func (s fraudPresetsGovernanceStub) UpdateFraudPolicyPreset(context.Context, str
 
 func TestFraudPresetGovernance_supportCannotPatchGlobal_holdout(t *testing.T) {
 	t.Parallel()
-	assert.False(t, HasPermission(RoleSupport, PermShardsWrite))
-	assert.False(t, HasPermission(RoleSupport, PermOpsWrite))
+	assert.False(t, ctrlhttp.HasPermission(ctrlhttp.RoleSupport, ctrlhttp.PermShardsWrite))
+	assert.False(t, ctrlhttp.HasPermission(ctrlhttp.RoleSupport, ctrlhttp.PermOpsWrite))
 }
 
 func TestPatchFraudPolicyPreset_supportRoleForbidden(t *testing.T) {
 	t.Parallel()
-	ops := &OpsHTTPHandlers{
+	ops := &opsadmin.HTTPHandlers{
 		FraudPresets: fraudPresetsGovernanceStub{},
 		RequirePermission: func(perm string, next http.HandlerFunc) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {
-				if !HasPermission(RoleSupport, perm) {
+				if !ctrlhttp.HasPermission(ctrlhttp.RoleSupport, perm) {
 					http.Error(w, "forbidden", http.StatusForbidden)
 					return
 				}

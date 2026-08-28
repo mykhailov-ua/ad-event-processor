@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"bytes"
 	"context"
 	"crypto/hmac"
@@ -44,7 +45,7 @@ func TestFault_ConsentWebhookReplay(t *testing.T) {
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
 
-	body, _ := json.Marshal(ConsentRecord{
+	body, _ := json.Marshal(opsadmin.ConsentRecord{
 		UserID:   "replay-user",
 		Purposes: domain.ConsentPurposeAdStorage,
 		Source:   "cmp",
@@ -86,7 +87,7 @@ func TestFault_ConsentReadYourWrites(t *testing.T) {
 	store.StartWatch(ctx, redisClient, cfg.ConsentUpdateChannel)
 	worker := NewOutboxWorker(svc)
 
-	require.NoError(t, svc.RecordConsent(ctx, ConsentRecord{
+	require.NoError(t, svc.RecordConsent(ctx, opsadmin.ConsentRecord{
 		UserID:   "ryw-user",
 		Purposes: domain.ConsentPurposeAdStorage | domain.ConsentPurposeAnalytics,
 		Source:   "web",

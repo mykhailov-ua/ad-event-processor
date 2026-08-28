@@ -40,6 +40,18 @@ if ! grep -q '/src/login.js' "$DIST/login.html"; then
   echo "Error: login.html must reference /src/login.js"
   missing=1
 fi
+if ! grep -q '/src/main.css' "$DIST/index.html"; then
+  echo "Error: index.html must reference /src/main.css (esbuild cssBundle)"
+  missing=1
+fi
+if ! grep -q '/src/login.css' "$DIST/login.html"; then
+  echo "Error: login.html must reference /src/login.css (esbuild cssBundle)"
+  missing=1
+fi
+if grep -q 'import "./.*\.css"' "$DIST/src/login.js" 2>/dev/null; then
+  echo "Error: login.js must not import .css as ESM (breaks browser module load)"
+  missing=1
+fi
 
 if [ "$missing" -ne 0 ]; then
   exit 1

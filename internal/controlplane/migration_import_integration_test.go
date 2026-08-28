@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/migrationsource"
@@ -42,7 +43,7 @@ func TestImportMigrationCampaigns_keitaro_holdout(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "migrationsource", "testdata", "keitaro_facebook_campaign.json"))
 	require.NoError(t, err)
 
-	result, err := svc.ImportMigrationCampaigns(ctx, ImportMigrationSpec{
+	result, err := svc.ImportMigrationCampaigns(ctx, campaign.ImportMigrationSpec{
 		CustomerID:     custID,
 		IdempotencyKey: "migrate-import-idem-1",
 		SourceKind:     migrationsource.SourceKindKeitaroJSON,
@@ -64,7 +65,7 @@ func TestImportMigrationCampaigns_keitaro_holdout(t *testing.T) {
 	assert.Equal(t, "meta-facebook", got.TrafficTemplateID)
 	assert.Equal(t, "{{campaign.id}}", got.ClickQueryParams["sub2"])
 
-	dup, err := svc.ImportMigrationCampaigns(ctx, ImportMigrationSpec{
+	dup, err := svc.ImportMigrationCampaigns(ctx, campaign.ImportMigrationSpec{
 		CustomerID:     custID,
 		IdempotencyKey: "migrate-import-idem-1",
 		SourceKind:     migrationsource.SourceKindKeitaroJSON,
@@ -115,7 +116,7 @@ func TestImportMigrationCampaigns_keitaroStreams_holdout(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "migrationsource", "testdata", "keitaro_facebook_streams.json"))
 	require.NoError(t, err)
 
-	result, err := svc.ImportMigrationCampaigns(ctx, ImportMigrationSpec{
+	result, err := svc.ImportMigrationCampaigns(ctx, campaign.ImportMigrationSpec{
 		CustomerID:     custID,
 		IdempotencyKey: "migrate-streams-idem-1",
 		SourceKind:     migrationsource.SourceKindKeitaroJSON,
@@ -146,7 +147,7 @@ func TestImportMigrationCampaigns_keitaroStreams_holdout(t *testing.T) {
 	var importPaths json.RawMessage
 	err = pool.QueryRow(ctx, `SELECT paths FROM flows WHERE id = $1`, uuid.UUID(importRow.FlowID.Bytes)).Scan(&importPaths)
 	require.NoError(t, err)
-	var parsedPaths []FlowPathDTO
+	var parsedPaths []campaign.FlowPathDTO
 	require.NoError(t, json.Unmarshal(importPaths, &parsedPaths))
 	require.Len(t, parsedPaths, 2)
 	assert.Equal(t, int32(60), parsedPaths[0].Weight)

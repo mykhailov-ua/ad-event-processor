@@ -6,13 +6,11 @@ export type SystemButtonVariant = 'primary' | 'secondary' | 'danger';
 
 export type SystemButtonProps = {
   variant?: SystemButtonVariant;
-  size?: 'sm' | 'md';
   children: ReactNode;
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'>;
 
 export function Button({
   variant = 'secondary',
-  size = 'md',
   className,
   type = 'button',
   children,
@@ -25,7 +23,6 @@ export function Button({
         styles.root,
         variant === 'primary' ? styles.primary : '',
         variant === 'danger' ? styles.danger : '',
-        size === 'sm' ? styles.sm : '',
         className
       )}
       {...rest}

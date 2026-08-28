@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/doctor"
+	"ad-event-processor/internal/reportjob"
+	"ad-event-processor/internal/reports"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -23,7 +25,7 @@ func TestOpenAPI_dataFreshnessSchemaKeys(t *testing.T) {
 	props, ok := schemas["DataFreshness"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.DataFreshnessDTO
+	var dto reports.DataFreshnessDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
@@ -45,7 +47,7 @@ func TestOpenAPI_placementReportRowSchemaKeys(t *testing.T) {
 	props, ok := schemas["PlacementReportRow"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.PlacementReportRowDTO
+	var dto reports.PlacementReportRowDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
@@ -67,14 +69,14 @@ func TestOpenAPI_savedViewSchemaKeys(t *testing.T) {
 	props, ok := schemas["SavedView"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.SavedViewDTO
+	var dto reports.SavedViewDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "SavedViewDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "reports.SavedViewDTO json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -89,14 +91,14 @@ func TestOpenAPI_doctorSummarySchemaKeys(t *testing.T) {
 	props, ok := schemas["DoctorSummary"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.DoctorResponseDTO
+	var dto doctor.DoctorResponseDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "DoctorResponseDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "doctor.DoctorResponseDTO json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -111,7 +113,7 @@ func TestOpenAPI_reportJobStatusSchemaKeys(t *testing.T) {
 	props, ok := schemas["ReportJobStatus"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.ReportJobStatusDTO
+	var dto reportjob.ReportJobStatusDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any

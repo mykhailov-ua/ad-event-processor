@@ -43,9 +43,3 @@
 .danger:hover:not(:disabled) {
   background: var(--btn-bg-danger-hover);
 }
-
-.sm {
-  height: var(--control-height-sm);
-  padding: 0 var(--control-padding-x-sm);
-  font-size: var(--text-xs);
-}

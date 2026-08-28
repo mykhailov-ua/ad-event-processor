@@ -178,7 +178,7 @@ export function AutomationPanel({
                     <div className={shared.actions}>
                       {row.id ? (
                         <Button
-                          size="sm"
+                         
                           variant="secondary"
                           disabled={busy}
                           onClick={() => onDryRun(row.id as string)}
@@ -188,7 +188,7 @@ export function AutomationPanel({
                       ) : null}
                       {canWrite && row.id ? (
                         <Button
-                          size="sm"
+                         
                           variant="secondary"
                           disabled={busy}
                           onClick={() => onDeleteRule(row.id as string)}
@@ -266,7 +266,7 @@ export function AutomationPanel({
                 </>
               ) : null}
               <Button
-                size="sm"
+               
                 variant="primary"
                 disabled={busy || !name.trim()}
                 onClick={() =>

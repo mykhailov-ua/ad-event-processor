@@ -167,18 +167,18 @@ export function WizardDetail() {
           />
         </label>
         <div className={styles.actions}>
-          <Button variant="secondary" size="sm" type="button" disabled={saving} onClick={() => void onLoadSession()}>
+          <Button variant="secondary" type="button" disabled={saving} onClick={() => void onLoadSession()}>
             Load session
           </Button>
-          <Button variant="secondary" size="sm" type="button" disabled={saving} onClick={() => void onCreate()}>
+          <Button variant="secondary" type="button" disabled={saving} onClick={() => void onCreate()}>
             {saving ? 'Working...' : 'Create session'}
           </Button>
-          <Button variant="primary" size="sm" type="button" disabled={saving || !sessionId} onClick={() => void onUpdate()}>
+          <Button variant="primary" type="button" disabled={saving || !sessionId} onClick={() => void onUpdate()}>
             {saving ? 'Working...' : 'Update step'}
           </Button>
           <Button
             variant="secondary"
-            size="sm"
+           
             type="button"
             disabled={stepIndex >= STEPS.length - 1}
             onClick={() => setStepIndex((i) => Math.min(i + 1, STEPS.length - 1))}

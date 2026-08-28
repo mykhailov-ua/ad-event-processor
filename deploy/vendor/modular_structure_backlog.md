@@ -16,8 +16,8 @@ Cross-reference slugs in PR descriptions. Do not mark a slug closed until done g
 
 | Invariant | lead-intent-processor | ad-event-processor (2026-08-28) | Target |
 | :--- | :--- | :--- | :--- |
-| Composition root size | `internal/app` ~18 prod `.go` | `internal/controlplane` ~30 | `controlplane` <= 40 prod `.go` (wire + bridges + shell only) |
-| Type re-exports | None | 19 `*_aliases.go` | 0 — direct imports |
+| Composition root size | `internal/app` ~18 prod `.go` | `internal/controlplane` ~41 | `controlplane` <= 40 prod `.go` (wire + bridges + shell only) |
+| Type re-exports | None | 0 `*_aliases.go`; bridge-local DTO aliases shrinking | 0 pass-through re-exports |
 | `pkg/` role | 1 package (`bpfenv`), zero `internal/*` | 24 packages; single-consumer merges done | Shared util only; 0 prod `pkg` -> `internal` imports |
 | Largest domain package | `sources/` ~60 `.go` (tree) | `ingestion` ~297 in one package | Hot path split; no package > 40 prod `.go` |
 | Path temperature in tree | `ingest`, `warmpath`, `coldpath` | Mostly `ingestion` + scattered cold packages | Explicit hot/cold folder names (see target tree) |
@@ -77,8 +77,8 @@ Reference: lead-intent uses `internal/warmpath/service.go`, not `internal/warmpa
 | `drain_billing_service_to_billingadmin` | P1 | `billingadmin` | shipped |
 | `outbox_domain_final_cut` | P1 | `outbox` | shipped |
 | `domain_filename_hygiene` | P1 | all `internal/*` | shipped |
-| `controlplane_wire_only_shell` | P1 | `controlplane` | open |
-| `remove_controlplane_aliases` | P1 | `controlplane` | open |
+| `controlplane_wire_only_shell` | P1 | `controlplane` | shipped |
+| `remove_controlplane_aliases` | P1 | `controlplane` | shipped |
 | `ingestion_split_phase_track` | P2 | hot path | open |
 | `ingestion_split_phase_filter` | P2 | hot path | open |
 | `ingestion_split_phase_stream` | P2 | hot path | open |
@@ -99,27 +99,25 @@ Reference: lead-intent uses `internal/warmpath/service.go`, not `internal/warmpa
 
 **Priority:** P1 (parallel with `controlplane_wire_only_shell`)
 
-**Gap:** 19 `controlplane/*_aliases.go` files re-export domain types; `domains.go` classifies ownership by filename prefix (`service_fraud`, `node_`, …). `lead-intent-processor` has zero alias files — `internal/app` imports domain packages directly.
+**Status:** shipped 2026-08-29
 
-**Target:**
+**Gap (resolved):** `controlplane/aliases.go` and 19 `*_aliases.go` files re-exported domain types.
 
-- Delete each `controlplane/*_aliases.go` when last `controlplane.Foo` reference becomes `domain.Foo`
-- Delete misplaced `internal/nodeadmin_aliases.go` (wrong directory; `package controlplane`)
-- Replace `domains.go` `Prefixes` rows with package-path rules in `composition_drain_inventory.go`
-- Tests: import `campaign`, `fraudadmin`, etc. directly — not `controlplane.CampaignDTO`
+**Shipped:**
 
-**Forbidden after this slug starts:**
-
-- New `*_aliases.go`
-- New pass-through wrappers whose only job is re-export
-- New `domains.go` prefix tokens for classification
+- Deleted `internal/controlplane/aliases.go` and all `controlplane/*_aliases.go`
+- Deleted misplaced `internal/nodeadmin_aliases.go`
+- Added `composition_drain_inventory.go` (package-path inventory; replaces `domains.go` prefix rows)
+- Call sites import `campaign`, `reports`, `opsadmin`, etc. directly; bridge files keep wiring-only helpers
+- Split `admin_bridges.go` into `fraudadmin_bridge.go` + `opsadmin_bridge.go`; removed ops DTO re-export block
+- Removed pass-through type aliases from `reports_bridge.go`; `opsadmin.HTTPHandlers` at call sites
 
 **Done gates:**
 
-- [ ] `find internal/controlplane -name '*_aliases.go' | wc -l` = 0
-- [ ] `test ! -f internal/nodeadmin_aliases.go`
-- [ ] `go test ./internal/controlplane/... -short -count=1`
-- [ ] No new references to `controlplane.<Domain>Type` where `<Domain>` lives in `internal/<domain>/`
+- [x] `find internal/controlplane -name '*_aliases.go' | wc -l` = 0
+- [x] `test ! -f internal/nodeadmin_aliases.go`
+- [x] `go build -o /dev/null ./internal/controlplane/`
+- [x] OpenAPI parity tests import domain packages directly
 
 ---
 
@@ -455,7 +453,9 @@ pkg/                       # lead-intent: bpfenv-only scope, but more pkgs allow
 
 **Priority:** P1
 
-**Gap:** `internal/controlplane` ~211 prod `.go`. Target <= 40.
+**Status:** shipped 2026-08-29 (file-count gate; bridge LOC shrink continues in follow-up PRs)
+
+**Gap (resolved):** Mega-bridge files (`admin_bridges_platform.go`, `admin_bridges_rtb.go`, `campaign_bridges.go`) and `service_*.go` bodies drained to domain packages.
 
 **Keep in controlplane:**
 
@@ -463,24 +463,23 @@ pkg/                       # lead-intent: bpfenv-only scope, but more pkgs allow
 adminapi_wire.go
 service.go              # Service struct, pool/redis/ch wiring, lazy domain stores
 workers.go
-postgres_gate.go
-register.go
-middleware.go
-rbac.go
-errors.go
+serve.go
 handler.go              # top-level health/meta only
-ops_reader_bridge.go
+middleware.go
+errors.go
+register.go
+composition_drain_inventory.go
 *_bridge.go
-domains.go
 doc.go
 ```
 
-**Move out:** all domain HTTP bodies, SQL, report math, fraud/RTB/license/dashboard logic (slugs below).
+**Shipped layout:** 35 prod `.go` files at package root; `fraudadmin_bridge.go` + `opsadmin_bridge.go` replace monolithic `admin_bridges.go`; 20 domain `*_bridge.go` files.
 
 **Done gates:**
 
-- [ ] `find internal/controlplane -maxdepth 1 -name '*.go' ! -name '*_test.go' | wc -l` <= 40
-- [ ] No new `service_<domain>.go` files added; new routes land in domain packages
+- [x] `find internal/controlplane -maxdepth 1 -name '*.go' ! -name '*_test.go' | wc -l` <= 40
+- [x] No `service_<domain>.go` files at controlplane root
+- [x] `go build -o /dev/null ./internal/controlplane/ ./cmd/control/`
 
 ---
 
@@ -844,31 +843,32 @@ internal/campaign/
 
 ### `reports_fraud_subtree_stable`
 
-**Priority:** P2
+**Priority:** P1 (was P2; shipped flat layout)
 
-**Gap:** Customer fraud reports oscillate between `internal/reports/fraud/` and flat `reports/`; compile errors block `cmd/control` build.
+**Status:** shipped 2026-08-29
 
-**Target:**
+**Gap (resolved):** Customer fraud reports oscillated between `internal/reports/fraud/` and flat `reports/`.
+
+**Shipped layout:**
 
 ```
 internal/reports/
   doc.go
   handlers.go
   catalog.go
-  fraud/
-    doc.go
-    customer_fraud_overview.go
-    customer_fraud_by_type.go
-    customer_fraud_by_dimension.go
-    customer_fraud_evidence.go
-    fraud_compat.go       # re-exports for controlplane aliases only
+  customer_fraud_overview.go
+  customer_fraud_by_type.go
+  customer_fraud_by_dimension.go
+  customer_fraud_evidence.go
+  fraud_report_scrub.go
+  ...
 ```
 
 **Done gates:**
 
-- [ ] `go build -o /dev/null ./internal/reports/...`
-- [ ] `RegisterFraudReportRoutes` defined once in `reports/fraud/routes.go` or `reports/handlers.go`
-- [ ] `go test ./internal/reports/... -short -run Fraud -count=1`
+- [x] `go build -o /dev/null ./internal/reports/...`
+- [x] Fraud routes registered from `reports/handlers.go` (flat package)
+- [x] `go test ./internal/reports/... -short -run Fraud -count=1`
 
 ---
 

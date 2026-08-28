@@ -141,7 +141,7 @@ export function SmartAlertsPanel({
                     <span className={shared.gridCell} role="gridcell">
                       {canWrite && row.id ? (
                         <Button
-                          size="sm"
+                         
                           variant="secondary"
                           disabled={busy}
                           onClick={() => onDeleteRule(row.id as string)}
@@ -209,7 +209,7 @@ export function SmartAlertsPanel({
                   />
                 </label>
                 <Button
-                  size="sm"
+                 
                   variant="primary"
                   disabled={busy || !name.trim()}
                   onClick={() =>
@@ -298,7 +298,7 @@ export function SmartAlertsPanel({
                         'acked'
                       ) : canWrite && row.id ? (
                         <Button
-                          size="sm"
+                         
                           variant="secondary"
                           disabled={busy}
                           onClick={() => onAckEvent(row.id as string)}

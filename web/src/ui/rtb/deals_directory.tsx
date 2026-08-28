@@ -3,6 +3,7 @@ import { can } from '../../helpers/permissions.js';
 import type { RtbDeal } from '../../helpers/rtb_api.js';
 import { ContextBar } from '../shell/context_bar.js';
 import { ErrorBlock } from '../system/error_block.js';
+import { LoadingCountBadge } from '../system/loading_count_badge.js';
 import { PageChrome } from '../system/page_chrome.js';
 import { Button } from '../system/button.js';
 import { DealFormModal } from './deal_form_modal.js';
@@ -55,11 +56,11 @@ export function DealsDirectory({
 
   return (
     <div className={styles.root}>
-      <PageChrome title="RTB deals" badge={loading ? null : <span>{items.length} deals</span>} />
+      <PageChrome title="RTB deals" badge={<LoadingCountBadge loading={loading} label={`${items.length} deals`} />} />
       <ContextBar parentLabel="RTB" parentTo="/rtb/integration" currentLabel="Deals" />
       {canWrite ? (
         <div className={styles.toolbar}>
-          <Button variant="primary" size="sm" onClick={onOpenCreate}>
+          <Button variant="primary" onClick={onOpenCreate}>
             Create deal
           </Button>
         </div>

@@ -38,7 +38,7 @@ export function CustomerScopeBar({
             aria-label={label}
           />
         </label>
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="secondary">
           Apply
         </Button>
       </div>
@@ -77,7 +77,7 @@ export function CampaignScopeBar({ campaignId, onApply }: CampaignScopeBarProps)
             aria-label="Campaign ID"
           />
         </label>
-        <Button type="submit" variant="secondary" size="sm">
+        <Button type="submit" variant="secondary">
           Apply
         </Button>
       </div>

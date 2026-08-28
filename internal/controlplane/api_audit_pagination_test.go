@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 
@@ -54,7 +55,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "55", resp.Header().Get("X-Total-Count"))
 
-		var items []AuditLogDTO
+		var items []campaign.AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 50)
 	})
@@ -68,7 +69,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 		require.Equal(t, http.StatusOK, resp.Code)
 		assert.Equal(t, "55", resp.Header().Get("X-Total-Count"))
 
-		var items []AuditLogDTO
+		var items []campaign.AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 5)
 	})
@@ -81,7 +82,7 @@ func TestHandlerAudit_pagination(t *testing.T) {
 
 		require.Equal(t, http.StatusOK, resp.Code)
 
-		var items []AuditLogDTO
+		var items []campaign.AuditLogDTO
 		require.NoError(t, json.NewDecoder(resp.Body).Decode(&items))
 		assert.Len(t, items, 55)
 	})

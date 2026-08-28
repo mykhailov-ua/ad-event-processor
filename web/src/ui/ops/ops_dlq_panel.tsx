@@ -60,7 +60,7 @@ export function OpsDlqPanel({
             placeholder="e.g. postback"
           />
         </label>
-        <Button type="button" size="sm" onClick={onApplySource}>
+        <Button type="button" onClick={onApplySource}>
           Apply
         </Button>
       </div>
@@ -123,7 +123,7 @@ export function OpsDlqPanel({
                     <span className={styles.gridCell} role="gridcell">
                       <Button
                         type="button"
-                        size="sm"
+                       
                         disabled={retryBusyId === row.id}
                         data-row-id={row.id}
                         onClick={onRetryDlqClick}
@@ -185,7 +185,7 @@ export function OpsDlqPanel({
                       {row.id && row.source ? (
                         <Button
                           type="button"
-                          size="sm"
+                         
                           disabled={retryBusyId === row.id}
                           data-row-id={row.id}
                           data-row-source={row.source}
@@ -200,10 +200,10 @@ export function OpsDlqPanel({
               )}
             </div>
             <div className={styles.cursorFooter}>
-              <Button type="button" size="sm" disabled={!cursor} onClick={onPrevCursor}>
+              <Button type="button" disabled={!cursor} onClick={onPrevCursor}>
                 First page
               </Button>
-              <Button type="button" size="sm" disabled={!nextCursor} onClick={onNextCursor}>
+              <Button type="button" disabled={!nextCursor} onClick={onNextCursor}>
                 Next page
               </Button>
             </div>

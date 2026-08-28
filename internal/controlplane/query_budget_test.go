@@ -1,14 +1,17 @@
 package controlplane
 
 import (
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -45,7 +48,7 @@ func TestQueryBudget_ListCampaigns_HTTP(t *testing.T) {
 	ctx := context.Background()
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "Query Budget Corp", 100_000_000, "USD"))
-	_, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	_, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Budget Camp",
 		BudgetLimitMicro: 50_000_000,
@@ -57,7 +60,7 @@ func TestQueryBudget_ListCampaigns_HTTP(t *testing.T) {
 
 	counter.Reset()
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns?customer_id="+custID.String()+"&limit=50", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -90,7 +93,7 @@ func TestQueryBudget_GetCampaign_HTTP(t *testing.T) {
 	ctx := context.Background()
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "Query Budget Corp", 100_000_000, "USD"))
-	campID, err := svc.CreateCampaign(ctx, CampaignCreateSpec{
+	campID, err := svc.CreateCampaign(ctx, campaign.CreateCampaignSpec{
 		CustomerID:       custID,
 		Name:             "Budget Camp",
 		BudgetLimitMicro: 50_000_000,
@@ -102,7 +105,7 @@ func TestQueryBudget_GetCampaign_HTTP(t *testing.T) {
 
 	counter.Reset()
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/campaigns/"+campID.String(), http.NoBody)
-	withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -138,12 +141,12 @@ func TestQueryBudget_ListCustomers_HTTP(t *testing.T) {
 
 	counter.Reset()
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/customers?limit=50&offset=0", http.NoBody)
-	withSessionUser(req, tokenMaker, RoleAdmin, uuid.Nil)
+	withSessionUser(req, tokenMaker, ctrlhttp.RoleAdmin, uuid.Nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	var resp CustomerListResponse
+	var resp platformadmin.CustomerListResponse
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	assert.Greater(t, resp.Total, int64(0))
 

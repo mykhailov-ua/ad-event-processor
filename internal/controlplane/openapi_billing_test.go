@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"ad-event-processor/internal/controlplane"
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/domain"
 
 	"github.com/stretchr/testify/require"
@@ -25,14 +25,14 @@ func TestOpenAPI_billingInvariantSchemaKeys(t *testing.T) {
 	props, ok := schemas["BillingInvariant"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.InvariantDTO
+	var dto billingadmin.InvariantDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "InvariantDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "billingadmin.InvariantDTO json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -47,14 +47,14 @@ func TestOpenAPI_billingStatementSchemaKeys(t *testing.T) {
 	props, ok := schemas["BillingStatement"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.StatementDTO
+	var dto billingadmin.StatementDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "StatementDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "billingadmin.StatementDTO json field %q missing from OpenAPI schema", key)
 	}
 }
 
@@ -96,13 +96,13 @@ func TestOpenAPI_walletSchemaKeys(t *testing.T) {
 	props, ok := schemas["Wallet"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto controlplane.WalletDTO
+	var dto billingadmin.WalletDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any
 	require.NoError(t, json.Unmarshal(sample, &got))
 	for key := range got {
 		_, inSpec := props[key]
-		require.True(t, inSpec, "WalletDTO json field %q missing from OpenAPI schema", key)
+		require.True(t, inSpec, "billingadmin.WalletDTO json field %q missing from OpenAPI schema", key)
 	}
 }

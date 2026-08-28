@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/opsadmin"
 	"context"
 	"fmt"
 	"sync"
@@ -102,7 +103,7 @@ func TestFault_opsEventFanOut(t *testing.T) {
 	cfg := testNotifierConfig()
 	cfg.Management.OpsAlertsEnabled = true
 
-	alerter := NewOpsAlerter(stub, cfg)
+	alerter := opsadmin.NewOpsAlerter(stub, cfg)
 	require.NotNil(t, alerter)
 
 	alerter.AlertReconDiscrepancy(context.Background(), 42, 3, 1000, "2026-07-04")

@@ -15,6 +15,7 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"
@@ -153,7 +154,7 @@ func TestFault_SlotMigrationActivateBeforeCopyRejected(t *testing.T) {
 
 	err := svc.ActivateSlotMapVersion(ctx, uuid.Nil, v)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrSlotMigrationNotReady)
+	assert.ErrorIs(t, err, shardadmin.ErrSlotMigrationNotReady)
 
 	active, err := mapRepo.GetActiveVersion(ctx)
 	require.NoError(t, err)

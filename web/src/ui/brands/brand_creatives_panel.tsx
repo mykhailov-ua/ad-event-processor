@@ -131,7 +131,7 @@ export function BrandCreativesPanel({ brandId, canWrite, onReloadBrands }: Brand
             onChange={(event) => setStatus(event.target.value)}
             aria-label="Status"
           />
-          <Button type="submit" variant="secondary" size="sm" disabled={busy}>
+          <Button type="submit" variant="secondary" disabled={busy}>
             Add creative
           </Button>
         </form>

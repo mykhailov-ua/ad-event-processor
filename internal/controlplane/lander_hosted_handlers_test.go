@@ -1,6 +1,7 @@
 package controlplane
 
 import (
+	"ad-event-processor/internal/flow"
 	"net/http"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 func TestRegisterHostedLanderRoutes_noServeMuxConflict(t *testing.T) {
 	t.Parallel()
 	mux := http.NewServeMux()
-	h := &FlowHTTPHandlers{Service: &Service{}}
+	h := &flow.HTTPHandlers{Service: &Service{}}
 	require.NotPanics(t, func() {
 		h.RegisterHostedLanderRoutes(mux)
 	})

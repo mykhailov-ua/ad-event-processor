@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/stretchr/testify/require"
 )
@@ -26,14 +27,14 @@ func TestBuildSessionNav_buyerOmitsOpsLink(t *testing.T) {
 
 func TestSessionRoute_returnsNavItems(t *testing.T) {
 	t.Parallel()
-	h := &SessionHTTPHandlers{}
+	h := &platformadmin.SessionHTTPHandlers{BuildNav: buildSessionNav}
 	mux := http.NewServeMux()
 	h.Register(mux)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/session", http.NoBody)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 	require.Equal(t, http.StatusOK, w.Code)
-	var body SessionResponseDTO
+	var body platformadmin.SessionResponseDTO
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	require.NotEmpty(t, body.NavItems)
 }
