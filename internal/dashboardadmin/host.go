@@ -25,17 +25,17 @@ type BillingInvariant struct {
 }
 
 type FraudMLSnapshot struct {
-	VersionID         string
-	ArtifactHash      string
-	Precision         float64
-	Recall            float64
-	DriftDetected     bool
-	DriftSummary      string
-	EvalGeneratedAt   string
-	EvalStatus        string
-	EvalStale         bool
-	LabelMethod       string
-	ShardsConsistent  *bool
+	VersionID        string
+	ArtifactHash     string
+	Precision        float64
+	Recall           float64
+	DriftDetected    bool
+	DriftSummary     string
+	EvalGeneratedAt  string
+	EvalStatus       string
+	EvalStale        bool
+	LabelMethod      string
+	ShardsConsistent *bool
 }
 
 type RoleHost interface {

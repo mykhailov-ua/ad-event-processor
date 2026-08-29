@@ -1,14 +1,15 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/fraudadmin"
-	"ad-event-processor/internal/opsadmin"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"ad-event-processor/internal/fraudadmin"
+	"ad-event-processor/internal/opsadmin"
 
 	"github.com/stretchr/testify/require"
 )

@@ -1,3 +1,0 @@
-//garble:ignore
-
-package ingestion

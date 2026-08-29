@@ -84,7 +84,7 @@ Limits (see [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md)):
 - Behind CDN/ALB without edge TCP fingerprint sync, TCP MSS / TTL signals fail-open or must be disabled.
 - Cold-path ML `silent_reject` action adds IP to `blacklist:fraud`; it does not flip `silent_reject_enabled` on campaigns.
 
-Open parity gaps: [deploy/vendor/competitive_backlog.md](deploy/vendor/competitive_backlog.md). Admin UI rebuild: [deploy/vendor/admin_ui_redesign_backlog.md](deploy/vendor/admin_ui_redesign_backlog.md).
+Admin contracts: `api/openapi/` and `.cursor/rules/ui.mdc`. Buyer-facing feature list: [deploy/vendor/MARKETING.md](deploy/vendor/MARKETING.md).
 
 ### OpenRTB / in-process RTB
 
@@ -100,7 +100,7 @@ Open parity gaps: [deploy/vendor/competitive_backlog.md](deploy/vendor/competiti
 
 Single `cmd/control` modular monolith:
 
-- React admin SPA (`web/`) with role dashboards (buyer, adops, fraud, CFO, operator, campaign) and integration screens under `/integrations/*` (see below).
+- Admin HTTP API (`/api/v1/*`); React SPA (`web/`) not shipped in this tree — static boot stub only until UI returns.
 - ~290 `/api/v1` routes: campaigns, customers, brands/creatives, supply (`sellers.json`, `ads.txt`), billing/invoices, ledger, disputes, margin guard, smart alerts, domains/TLS, flows/landers/offers, team/RBAC, integration schemas, postbacks, RTB admin, recon, reports, self-serve, Telegram, license, ops (DLQ, outbox, shards, doctor).
 
 Outbox: every config mutation + `outbox_events` in the same PG transaction; `OutboxWorker` polls ~20 ms and applies Redis side effects. Tracker never polls outbox.
@@ -136,15 +136,32 @@ Hot-path static gates (no `fmt.Sprintf`, no `interface{}` boxing on ingest), all
 
 ## Documentation
 
+### Guides by directory
+
+| Path | Guide |
+| :--- | :--- |
+| [deploy/DEPLOY.md](deploy/DEPLOY.md) | Compose, nginx, Redis, CH, edge, production ops |
+| [cmd/CMD.md](cmd/CMD.md) | Binaries, ports, wiring conventions |
+| [internal/INTERNAL.md](internal/INTERNAL.md) | Packages, hot/cold rules, import matrix |
+| [pkg/PKG.md](pkg/PKG.md) | Shared libraries |
+| [api/API.md](api/API.md) | OpenAPI and protobuf contracts |
+| [scripts/SCRIPTS.md](scripts/SCRIPTS.md) | CI, stack, fault, security scripts |
+| [tests/TESTS.md](tests/TESTS.md) | Test tiers and holdouts |
+| [model/MODEL.md](model/MODEL.md) | ML train/eval and fraud-scorer deploy |
+| [docs/DOCS.md](docs/DOCS.md) | Index of human docs |
+
+### Architecture and operators
+
 | Document | Content |
 | :--- | :--- |
-| [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Cost Sync, CAPI, bundled schemas, platform sync |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Hot/cold boundary, topology, ports, Redis sharding |
-| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Local stack, codegen, tests, SLA gates |
-| [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md) | Fraud signals, layers, edge/XDP, cold-path ML |
-| [deploy/vendor/competitive_backlog.md](deploy/vendor/competitive_backlog.md) | Open parity gaps vs Keitaro/Binom |
-| [deploy/vendor/admin_ui_redesign_backlog.md](deploy/vendor/admin_ui_redesign_backlog.md) | Admin UI rebuild milestones |
-| [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml) | License SKU limits and feature flags |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Hot/cold boundary, topology, ports |
+| [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Bootstrap, codegen, test commands |
+| [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) | Cost Sync, CAPI, templates |
+| [deploy/vendor/VENDOR.md](deploy/vendor/VENDOR.md) | Vendor docs index |
+| [deploy/vendor/MARKETING.md](deploy/vendor/MARKETING.md) | Buyer-facing features |
+| [deploy/vendor/SALES.md](deploy/vendor/SALES.md) | SKU tiers and pilot workflow |
+| [deploy/vendor/ANTIFRAUD.md](deploy/vendor/ANTIFRAUD.md) | Fraud reference |
+| [.github/workflows/WORKFLOWS.md](.github/workflows/WORKFLOWS.md) | CI workflows |
 | `.cursor/rules/` | Engineering constraints (SLA, hot path, CI) |
 
 ---
@@ -199,7 +216,7 @@ Manual steps (equivalent):
 make gen
 make proto
 cp .env.example .env
-bash scripts/dev/stack.sh full
+bash scripts/dev/stack/stack.sh full
 ```
 
 License file default path: `var/license.jwt`. Issue JWT: `go run ./cmd/license-issue` (see `deploy/vendor/KEYS.md`).

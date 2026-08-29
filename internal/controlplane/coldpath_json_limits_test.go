@@ -1,12 +1,13 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
-	"ad-event-processor/internal/opsadmin"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/opsadmin"
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/pkg/coldpath"

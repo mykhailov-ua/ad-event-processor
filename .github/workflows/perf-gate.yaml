@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'internal/ingestion/**'
+      - 'internal/ingest/**'
       - 'internal/rtb/**'
       - 'internal/config/**'
       - 'internal/database/redis*.go'
@@ -54,7 +54,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run performance gate
-        run: bash scripts/lib/tee_ci_log.sh gate_run.log bash scripts/test/gate_run.sh
+        run: bash scripts/lib/tee_ci_log.sh gate_run.log bash scripts/test/load/gate_run.sh
 
       - name: Upload Benchmark Artifacts
         if: always() && env.PERF_GATE_STRICT == 'true'

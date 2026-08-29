@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/selfserve"
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/pkg/coldpath"
 
@@ -29,7 +29,7 @@ func (v stubConsentVerifier) Verify(_ []byte, _ string) error {
 func TestColdPathJSON_SelfServePaymentIntentRejectsOversizeBody(t *testing.T) {
 	t.Parallel()
 
-	h := &campaign.SelfServeHTTPHandlers{}
+	h := &selfserve.SelfServeHTTPHandlers{}
 	mux := http.NewServeMux()
 	h.Register(mux)
 

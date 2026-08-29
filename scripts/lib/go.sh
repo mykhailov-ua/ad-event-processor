@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ad_event_processor_go_bin() {
+aed_go_bin() {
   if [[ -n "${AD_EVENT_PROCESSOR_GO_BIN:-}" && -x "${AD_EVENT_PROCESSOR_GO_BIN}" ]]; then
     printf '%s' "${AD_EVENT_PROCESSOR_GO_BIN}"
     return 0
@@ -22,19 +22,19 @@ ad_event_processor_go_bin() {
   printf '%s' "$go_bin"
 }
 
-ad_event_processor_go_run() {
+aed_go_run() {
   local go_bin
-  if ! go_bin="$(ad_event_processor_go_bin)"; then
-    printf 'ad-event-processor-go: ERROR: go not found (set AD_EVENT_PROCESSOR_GO_BIN or install Go)\n' >&2
+  if ! go_bin="$(aed_go_bin)"; then
+    printf 'aed-go: ERROR: go not found (set AD_EVENT_PROCESSOR_GO_BIN or install Go)\n' >&2
     return 127
   fi
   "$go_bin" run "$@"
 }
 
-ad_event_processor_go_build() {
+aed_go_build() {
   local go_bin
-  if ! go_bin="$(ad_event_processor_go_bin)"; then
-    printf 'ad-event-processor-go: ERROR: go not found (set AD_EVENT_PROCESSOR_GO_BIN or install Go)\n' >&2
+  if ! go_bin="$(aed_go_bin)"; then
+    printf 'aed-go: ERROR: go not found (set AD_EVENT_PROCESSOR_GO_BIN or install Go)\n' >&2
     return 127
   fi
   "$go_bin" build "$@"

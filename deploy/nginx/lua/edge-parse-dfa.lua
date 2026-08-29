@@ -35,13 +35,29 @@ local function format_campaign_id(raw)
         local g = function(i)
             return byte_to_hex(byte(raw, i))
         end
-        return table.concat({
-            g(1), g(2), g(3), g(4), "-",
-            g(5), g(6), "-",
-            g(7), g(8), "-",
-            g(9), g(10), "-",
-            g(11), g(12), g(13), g(14), g(15), g(16),
-        }), nil
+        return table.concat {
+            g(1),
+            g(2),
+            g(3),
+            g(4),
+            "-",
+            g(5),
+            g(6),
+            "-",
+            g(7),
+            g(8),
+            "-",
+            g(9),
+            g(10),
+            "-",
+            g(11),
+            g(12),
+            g(13),
+            g(14),
+            g(15),
+            g(16),
+        },
+            nil
     end
     if #raw > MAX_CAMPAIGN_LEN then
         return nil, ERR_OVERSIZE
@@ -649,7 +665,7 @@ function _M.extract_campaign_id(body, content_length, schema)
     end
 
     if not schema or schema == "" then
-        schema = os.getenv("TRACKER_INGRESS_SCHEMA") or "ad_event_processor_native"
+        schema = os.getenv "TRACKER_INGRESS_SCHEMA" or "ad_event_processor_native"
     end
 
     local pos = 1

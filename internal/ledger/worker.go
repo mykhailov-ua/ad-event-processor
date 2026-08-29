@@ -292,7 +292,7 @@ WHERE action = 'pause' AND created_at > now() - interval '1 day'
 
 	br := w.pool.SendBatch(ctx, batch)
 	defer func() { _ = br.Close() }()
-	for i := 0; i < batch.Len(); i++ {
+	for i := range batch.Len() {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("margin guard batch item %d: %w", i, err)
 		}

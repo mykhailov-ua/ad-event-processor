@@ -296,7 +296,7 @@ func parseOptions(args []string) (replayOptions, error) {
 		limit:       1000,
 		minutes:     5,
 	}
-	for i := 0; i < len(args); i++ {
+	for i := range len(args) {
 		switch args[i] {
 		case "-model":
 			i++

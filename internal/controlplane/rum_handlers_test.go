@@ -1,12 +1,13 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/opsadmin"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"ad-event-processor/internal/opsadmin"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,10 +1,11 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -8,9 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
-const weightSumTarget = 100.0
-const weightSumTolerance = 0.01
-const maxPaths = 32
+const (
+	weightSumTarget    = 100.0
+	weightSumTolerance = 0.01
+	maxPaths           = 32
+)
 
 var allowedPathDevices = map[string]struct{}{
 	"desktop": {},

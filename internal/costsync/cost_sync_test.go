@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/costsync/provider"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/testutil"
 
@@ -71,7 +72,7 @@ func TestOAuthRefresh_Meta(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	token, expires, err := refreshMetaOAuth(context.Background(), &http.Client{
+	token, expires, err := provider.RefreshMetaOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, "app", "secret", Credential{RefreshToken: "rt"})
 	require.NoError(t, err)
@@ -91,7 +92,7 @@ func TestOAuthRefresh_GoogleHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	token, expires, err := refreshGoogleOAuth(context.Background(), &http.Client{
+	token, expires, err := provider.RefreshGoogleOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, "cid", "sec", Credential{RefreshToken: "rt"})
 	require.NoError(t, err)
@@ -122,7 +123,7 @@ func TestOAuthRefresh_TikTokHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	access, refresh, expires, err := refreshTikTokOAuth(context.Background(), &http.Client{
+	access, refresh, expires, err := provider.RefreshTikTokOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, srv.URL+"/open_api/v1.3", "tt-app", "tt-secret", Credential{RefreshToken: "rt-old"})
 	require.NoError(t, err)
@@ -147,7 +148,7 @@ func TestOAuthRefresh_RevcontentHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	token, expires, err := refreshRevcontentOAuth(context.Background(), &http.Client{
+	token, expires, err := provider.RefreshRevcontentOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, srv.URL, Credential{AccountID: "rc-client", APIKey: "rc-secret"})
 	require.NoError(t, err)
@@ -169,7 +170,7 @@ func TestOAuthRefresh_MicrosoftAdsHttptest(t *testing.T) {
 	defer srv.Close()
 
 	client := &http.Client{Transport: roundTripRewriteHost(srv.URL, nil)}
-	token, expires, err := refreshMicrosoftOAuth(context.Background(), client, "ms-client", "ms-secret", Credential{RefreshToken: "rt-ms"})
+	token, expires, err := provider.RefreshMicrosoftOAuth(context.Background(), client, "ms-client", "ms-secret", Credential{RefreshToken: "rt-ms"})
 	require.NoError(t, err)
 	require.Equal(t, "ms-new", token)
 	require.True(t, expires.After(time.Now()))
@@ -189,7 +190,7 @@ func TestOAuthRefresh_SnapchatHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	access, refresh, expires, err := refreshSnapchatOAuth(context.Background(), &http.Client{
+	access, refresh, expires, err := provider.RefreshSnapchatOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, srv.URL+"/login/oauth2/access_token", "snap-client", "snap-secret", Credential{RefreshToken: "rt-snap"})
 	require.NoError(t, err)
@@ -212,7 +213,7 @@ func TestOAuthRefresh_LinkedInHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	access, refresh, expires, err := refreshLinkedInOAuth(context.Background(), &http.Client{
+	access, refresh, expires, err := provider.RefreshLinkedInOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, srv.URL+"/oauth/v2/accessToken", "li-client", "li-secret", Credential{RefreshToken: "rt-li"})
 	require.NoError(t, err)
@@ -235,7 +236,7 @@ func TestOAuthRefresh_PinterestHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	access, refresh, expires, err := refreshPinterestOAuth(context.Background(), &http.Client{
+	access, refresh, expires, err := provider.RefreshPinterestOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, srv.URL+"/v5/oauth/token", "pin-client", "pin-secret", Credential{RefreshToken: "rt-pin"})
 	require.NoError(t, err)
@@ -258,7 +259,7 @@ func TestOAuthRefresh_TrafficStarsHttptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	token, expires, err := refreshTrafficStarsOAuth(context.Background(), &http.Client{
+	token, expires, err := provider.RefreshTrafficStarsOAuth(context.Background(), &http.Client{
 		Transport: roundTripRewriteHost(srv.URL, nil),
 	}, srv.URL, Credential{RefreshToken: "offline-key"})
 	require.NoError(t, err)
@@ -401,7 +402,7 @@ func TestRSOC_TonicGoldenFixture(t *testing.T) {
 	defer srv.Close()
 
 	customerID := uuid.New()
-	lines, err := fetchTonicRSOCCosts(context.Background(), srv.Client(), srv.URL, Credential{CustomerID: customerID}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
+	lines, err := provider.FetchNetworkCosts(context.Background(), srv.Client(), "tonic_rsoc", srv.URL, Credential{CustomerID: customerID}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.Len(t, lines, 1)
 	require.Equal(t, LineTypeRevenue, lines[0].LineType)
@@ -422,7 +423,7 @@ func TestRSOC_System1GoldenFixture(t *testing.T) {
 	defer srv.Close()
 
 	customerID := uuid.New()
-	lines, err := fetchSystem1RSOCCosts(context.Background(), srv.Client(), srv.URL, Credential{CustomerID: customerID, APIKey: "k"}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
+	lines, err := provider.FetchNetworkCosts(context.Background(), srv.Client(), "system1_rsoc", srv.URL, Credential{CustomerID: customerID, APIKey: "k"}, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	require.Len(t, lines, 1)
 	require.Equal(t, int64(8_750_000), lines[0].AmountMicro)
@@ -444,7 +445,7 @@ func TestFacebookProvider_Httptest(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	lines, err := fetchFacebookCosts(context.Background(), srv.Client(), srv.URL, Credential{
+	lines, err := provider.FetchNetworkCosts(context.Background(), srv.Client(), "facebook", srv.URL, Credential{
 		CustomerID:  customerID,
 		AccessToken: "tok",
 		AccountID:   "act_123",

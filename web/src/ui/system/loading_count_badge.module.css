@@ -1,9 +1,0 @@
-.root {
-  display: inline-grid;
-  align-items: center;
-  justify-items: end;
-  min-width: 4.5rem;
-  font-size: var(--text-sm);
-  line-height: var(--text-sm-leading);
-  color: var(--color-text-muted);
-}

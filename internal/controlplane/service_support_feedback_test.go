@@ -1,10 +1,11 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/platformadmin"
 	"context"
 	"errors"
 	"testing"
+
+	"ad-event-processor/internal/platformadmin"
 )
 
 func TestRecordSupportFeedback_validation(t *testing.T) {

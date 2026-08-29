@@ -13,7 +13,7 @@ import (
 
 	"ad-event-processor/pkg/faultproof"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/stretchr/testify/require"
 )

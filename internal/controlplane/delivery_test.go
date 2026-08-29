@@ -35,9 +35,9 @@ func TestResolveScheduleStatus(t *testing.T) {
 	start := now.Add(2 * time.Hour)
 	end := now.Add(24 * time.Hour)
 
-	assert.Equal(t, db.CampaignStatusTypePAUSED, resolveScheduleStatus(now, &start, &end))
-	assert.Equal(t, db.CampaignStatusTypeACTIVE, resolveScheduleStatus(now.Add(3*time.Hour), &start, &end))
-	assert.Equal(t, db.CampaignStatusTypePAUSED, resolveScheduleStatus(end.Add(time.Minute), &start, &end))
+	assert.Equal(t, db.CampaignStatusTypePAUSED, campaign.ResolveScheduleStatus(now, &start, &end))
+	assert.Equal(t, db.CampaignStatusTypeACTIVE, campaign.ResolveScheduleStatus(now.Add(3*time.Hour), &start, &end))
+	assert.Equal(t, db.CampaignStatusTypePAUSED, campaign.ResolveScheduleStatus(end.Add(time.Minute), &start, &end))
 }
 
 func TestCampaignTemplateCloneAndPauseResume(t *testing.T) {
@@ -107,6 +107,6 @@ func TestScheduledCampaignStartsPaused(t *testing.T) {
 }
 
 func TestValidateDaypartHours(t *testing.T) {
-	assert.NoError(t, validateDaypartHours([]int16{0, 23}))
-	assert.Error(t, validateDaypartHours([]int16{24}))
+	assert.NoError(t, campaign.ValidateDaypartHours([]int16{0, 23}))
+	assert.Error(t, campaign.ValidateDaypartHours([]int16{24}))
 }

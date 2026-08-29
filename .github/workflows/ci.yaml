@@ -28,7 +28,7 @@ jobs:
           filters: |
             openrtb:
               - 'internal/openrtb/**'
-              - 'internal/ingestion/openrtb*.go'
+              - 'internal/ingest/openrtb*.go'
               - 'scripts/test/openrtb_fuzz_smoke.sh'
             model:
               - 'model/**'
@@ -63,17 +63,27 @@ jobs:
       - name: Lint Go (golangci-lint, full repository)
         env:
           LINT_STRICT: '1'
-        run: bash scripts/ci/lint_go_gate.sh all
+        run: bash scripts/ci/lint/go.sh all
       - name: Vet Go packages
         run: go vet ./...
+      - name: Lint Go (rangeint modernize gate)
+        run: bash scripts/ci/lint/go_modernize.sh
       - name: Lint Go (gopls check, warning+)
-        run: bash scripts/ci/lint_gopls_gate.sh
+        run: bash scripts/ci/lint/gopls.sh
       - name: Lint Lua (luacheck + lua-language-server)
-        run: bash scripts/ci/lint_lua_gate.sh
+        run: bash scripts/ci/lint/lua.sh
+      - name: Lint shell (shellcheck)
+        run: bash scripts/ci/lint/shell.sh
+      - name: Lint Python (ruff)
+        run: bash scripts/ci/lint/python.sh
+      - name: Lint protobuf (buf lint)
+        run: bash scripts/ci/lint/proto.sh
+      - name: Lint GitHub workflows (actionlint)
+        run: bash scripts/ci/lint/workflows.sh
       - name: Lint TypeScript/JavaScript (tsc)
-        run: bash scripts/ci/lint_ts_gate.sh
+        run: bash scripts/ci/lint/ts.sh
       - name: Lint configs (compose + nginx)
-        run: bash scripts/ci/lint_configs_gate.sh
+        run: bash scripts/ci/lint/configs.sh
 
   merge-pr-fast:
     name: Gate - merge-pr-fast
@@ -173,7 +183,7 @@ jobs:
           go-version: '1.25.12'
           cache: true
       - name: Perf smoke (zero-alloc; benchstat skipped on github-hosted)
-        run: bash scripts/lib/tee_ci_log.sh perf_smoke.log bash scripts/ci/perf_smoke.sh
+        run: bash scripts/lib/tee_ci_log.sh perf_smoke.log bash scripts/ci/bpf/perf_smoke.sh
       - name: Upload perf smoke log
         if: failure()
         uses: actions/upload-artifact@v4

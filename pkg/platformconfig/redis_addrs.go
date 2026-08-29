@@ -12,7 +12,7 @@ func RedisAddrsUDS(shardCount int) string {
 		shardCount = RedisShardCountAppliance
 	}
 	addrs := make([]string, shardCount)
-	for i := 0; i < shardCount; i++ {
+	for i := range shardCount {
 		addrs[i] = runtimepaths.RedisSocket(i)
 	}
 	out := ""

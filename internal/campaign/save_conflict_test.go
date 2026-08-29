@@ -171,7 +171,7 @@ func TestPatchCampaign_sameRevisionRetry_idempotent_holdout(t *testing.T) {
 	}
 	h := &CampaignsHTTPHandlers{Campaigns: stub}
 	body := `{"name":"Draft"}`
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		req := httptest.NewRequest(http.MethodPatch, "/api/v1/campaigns/"+campID.String(), strings.NewReader(body))
 		req.SetPathValue("id", campID.String())
 		req.Header.Set("If-Match", revision)

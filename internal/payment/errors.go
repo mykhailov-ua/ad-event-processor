@@ -1,30 +1,16 @@
 package payment
 
-import (
-	"errors"
-
-	"github.com/jackc/pgx/v5"
-)
+import checkout "ad-event-processor/internal/payment/checkout"
 
 var (
-	ErrProviderNotConfigured = errors.New("stripe provider not configured")
-	ErrIdempotencyConflict   = errors.New("idempotency key conflict")
-	ErrCheckoutUnavailable   = errors.New("checkout unavailable")
-	ErrCustomerNotFound      = errors.New("customer not found")
-	ErrInvalidAmount         = errors.New("invalid payment amount")
-	ErrInvalidCustomerID     = errors.New("invalid customer id")
-	ErrInvalidRequestBody    = errors.New("invalid request body")
-	ErrInvalidIntentID       = errors.New("invalid intent id")
-	ErrPaymentIntentNotFound = errors.New("payment intent not found")
-	ErrWebhookEventNotFound  = errors.New("webhook event not found")
+	ErrProviderNotConfigured = checkout.ErrProviderNotConfigured
+	ErrIdempotencyConflict   = checkout.ErrIdempotencyConflict
+	ErrCheckoutUnavailable   = checkout.ErrCheckoutUnavailable
+	ErrCustomerNotFound      = checkout.ErrCustomerNotFound
+	ErrInvalidAmount         = checkout.ErrInvalidAmount
+	ErrInvalidCustomerID     = checkout.ErrInvalidCustomerID
+	ErrInvalidRequestBody    = checkout.ErrInvalidRequestBody
+	ErrInvalidIntentID       = checkout.ErrInvalidIntentID
+	ErrPaymentIntentNotFound = checkout.ErrPaymentIntentNotFound
+	ErrWebhookEventNotFound  = checkout.ErrWebhookEventNotFound
 )
-
-func mapNotFound(err, notFound error) error {
-	if err == nil {
-		return nil
-	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return notFound
-	}
-	return err
-}

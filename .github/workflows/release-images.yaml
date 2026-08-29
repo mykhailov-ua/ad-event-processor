@@ -84,7 +84,7 @@ jobs:
       - name: Asset seal salt smoke
         env:
           ASSET_SEAL_SALT: ${{ steps.seal.outputs.salt }}
-        run: bash scripts/ci/asset_seal_salt_smoke.sh
+        run: bash scripts/ci/license/asset_seal_salt_smoke.sh
 
       - uses: docker/setup-buildx-action@v3
 

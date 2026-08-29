@@ -1,8 +1,8 @@
 package fraud
 
-import "time"
+import "ad-event-processor/internal/fraud/scorer"
 
-const ScoreBoostTTL = 900 * time.Second
+const ScoreBoostTTL = scorer.ScoreBoostTTL
 
 func microbatchBoostScore(row FeatureRow, mlProbability float64) (int, bool) {
 	decision := DecideWithPolicy(row, mlProbability, GetPolicyConfig())

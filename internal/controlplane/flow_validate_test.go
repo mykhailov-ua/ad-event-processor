@@ -1,9 +1,9 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/campaign"
-	"ad-event-processor/internal/flow"
 	"testing"
+
+	"ad-event-processor/internal/flow"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -14,13 +14,13 @@ func TestValidateFlowPathShape_holdout(t *testing.T) {
 	t.Parallel()
 	landerID := uuid.New()
 	offerID := uuid.New()
-	valid := []campaign.FlowPathDTO{{
+	valid := []flow.PathDTO{{
 		Weight: 100,
-		Landers: []campaign.FlowPathLanderRef{{
+		Landers: []flow.PathLanderRef{{
 			LanderID: landerID,
 			Weight:   50,
 		}},
-		Offers: []campaign.FlowPathOfferRef{{
+		Offers: []flow.PathOfferRef{{
 			OfferID: offerID,
 			Weight:  100,
 		}},
@@ -31,6 +31,6 @@ func TestValidateFlowPathShape_holdout(t *testing.T) {
 	bad[0].Landers[0].Weight = 0
 	assert.Error(t, flow.ValidatePathShape(bad))
 
-	empty := []campaign.FlowPathDTO{}
+	empty := []flow.PathDTO{}
 	assert.Error(t, flow.ValidatePathShape(empty))
 }

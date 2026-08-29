@@ -39,7 +39,7 @@ ngx = {
     },
 }
 
-local node_weights = require("edge-node-weights")
+local node_weights = require "edge-node-weights"
 
 local passed, failed = 0, 0
 
@@ -111,7 +111,7 @@ assert_true(node_weights.drain_frozen(), "conservative freezes drain when stale"
 
 package.loaded["edge-node-weights"] = nil
 local orig_getenv = os.getenv
-local node_weights_fo = require("edge-node-weights")
+local node_weights_fo = require "edge-node-weights"
 node_weights_fo.set_getenv_for_test(function(name)
     if name == "CONTROL_FAIL_OPEN" then
         return "1"

@@ -1,7 +1,6 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"

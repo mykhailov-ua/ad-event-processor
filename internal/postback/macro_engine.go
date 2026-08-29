@@ -86,7 +86,7 @@ func (mt *MacroTemplate) pushToken(kind TokenKind, static string) {
 }
 
 func indexByte(s string, c byte) int {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] == c {
 			return i
 		}
@@ -168,7 +168,7 @@ func eqFoldASCII(s, lit string) bool {
 	if len(s) != len(lit) {
 		return false
 	}
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		a := s[i]
 		if a >= 'A' && a <= 'Z' {
 			a += 'a' - 'A'

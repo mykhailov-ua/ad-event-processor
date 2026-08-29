@@ -163,50 +163,50 @@ type Config struct {
 	SelfServeBudgetMaxMicro     int64
 	SelfServeAPIKeyRPS          float64
 	Management                  struct {
-		RetentionDays               int
-		CancellationFeePercent      float64
-		ReconIntervalMs             int
-		ReconSnapshotIntervalMs     int
-		PacingIntervalMs            int
-		RateLimitRPS                float64
-		RateLimitBurst              int
-		OpsAlertsEnabled            bool
-		OpsAlertCooldownSec         int
-		DrainStuckThresholdSec      int
-		BlacklistJanitorEnabled     bool
-		BlacklistJanitorIntervalSec int
-		BlacklistAutoTTLHours       int
-		BlacklistFraudTTLHours      int
-		AlertmanagerWebhookEnabled  bool
-		AlertmanagerWebhookToken    string
-		OpsAlertOutboxStuckSec      int
-		AuditExportPath             string
-		AuditExportRetentionDays    int
-		BillingExportPath           string
-		SupplyExportPath            string
-		AdminFanoutMaxConcurrency   int
-		LowBalanceThresholdMicro    int64
-		LowBalanceAlertEnabled      bool
-		SmartAlertsEnabled          bool
-		SmartAlertsIntervalMin      int
-		AutomationRulesEnabled                   bool
-		AutomationRulesIntervalMin               int
+		RetentionDays                             int
+		CancellationFeePercent                    float64
+		ReconIntervalMs                           int
+		ReconSnapshotIntervalMs                   int
+		PacingIntervalMs                          int
+		RateLimitRPS                              float64
+		RateLimitBurst                            int
+		OpsAlertsEnabled                          bool
+		OpsAlertCooldownSec                       int
+		DrainStuckThresholdSec                    int
+		BlacklistJanitorEnabled                   bool
+		BlacklistJanitorIntervalSec               int
+		BlacklistAutoTTLHours                     int
+		BlacklistFraudTTLHours                    int
+		AlertmanagerWebhookEnabled                bool
+		AlertmanagerWebhookToken                  string
+		OpsAlertOutboxStuckSec                    int
+		AuditExportPath                           string
+		AuditExportRetentionDays                  int
+		BillingExportPath                         string
+		SupplyExportPath                          string
+		AdminFanoutMaxConcurrency                 int
+		LowBalanceThresholdMicro                  int64
+		LowBalanceAlertEnabled                    bool
+		SmartAlertsEnabled                        bool
+		SmartAlertsIntervalMin                    int
+		AutomationRulesEnabled                    bool
+		AutomationRulesIntervalMin                int
 		AutomationRulesMaxEvalsPerCustomerPerTick int
-		DomainHealthEnabled         bool
-		DomainHealthIntervalMin     int
-		DomainSSLSetupEnabled       bool
-		DomainSSLSetupScript        string
-		DomainSSLAcmeEmail          string
-		CaddyTLSAskToken            Secret
-		CaddyTLSAskAllowLocal       bool
-		CloudflareAPIToken          Secret
-		CloudflareAPIBase           string
-		CloudflareDNSTarget         string
-		DomainReputationEnabled     bool
-		SafeBrowsingAPIKey          Secret
-		FacebookGraphAccessToken    Secret
-		FacebookGraphAPIBase        string
-		OpenAPIRequestValidation    bool
+		DomainHealthEnabled                       bool
+		DomainHealthIntervalMin                   int
+		DomainSSLSetupEnabled                     bool
+		DomainSSLSetupScript                      string
+		DomainSSLAcmeEmail                        string
+		CaddyTLSAskToken                          Secret
+		CaddyTLSAskAllowLocal                     bool
+		CloudflareAPIToken                        Secret
+		CloudflareAPIBase                         string
+		CloudflareDNSTarget                       string
+		DomainReputationEnabled                   bool
+		SafeBrowsingAPIKey                        Secret
+		FacebookGraphAccessToken                  Secret
+		FacebookGraphAPIBase                      string
+		OpenAPIRequestValidation                  bool
 	}
 	Control struct {
 		EnableAuth                 bool
@@ -437,6 +437,7 @@ type Config struct {
 	TCPControlAddr                      string
 	TCPTrackerAddrs                     []string
 	ManagementURL                       string
+	AdminPublicURL                      string
 
 	LuaFastPathEnabled bool
 
@@ -848,6 +849,10 @@ func Load() (*Config, error) {
 	}
 	if cfg.ManagementURL == "" && cfg.ManagementPort != "" {
 		cfg.ManagementURL = "http://127.0.0.1:" + cfg.ManagementPort
+	}
+	cfg.AdminPublicURL = os.Getenv("ADMIN_PUBLIC_URL")
+	if cfg.AdminPublicURL == "" {
+		cfg.AdminPublicURL = cfg.ManagementURL
 	}
 
 	loadControlplaneModules(cfg)

@@ -451,6 +451,54 @@ SupportFeedbackResponse:
       type: string
       format: uuid
 
+PublicActivateRequest:
+  type: object
+  required: [license_token, email, password, team_name]
+  properties:
+    license_token:
+      type: string
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      format: password
+    team_name:
+      type: string
+
+PublicAcceptInviteRequest:
+  type: object
+  required: [token, password]
+  properties:
+    token:
+      type: string
+    password:
+      type: string
+      format: password
+
+PublicLoginResponse:
+  type: object
+  required: [user]
+  properties:
+    user:
+      type: object
+      required: [id, role, customer_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        role:
+          type: string
+        customer_id:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            type: string
+
 TeamMember:
   type: object
   properties:

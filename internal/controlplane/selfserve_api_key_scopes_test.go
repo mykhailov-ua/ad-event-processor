@@ -1,8 +1,9 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/campaign"
 	"testing"
+
+	"ad-event-processor/internal/campaign"
 
 	"github.com/stretchr/testify/require"
 )

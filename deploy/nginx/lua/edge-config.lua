@@ -14,8 +14,8 @@ local DEFAULT_RETRY_IVT = 60
 local DEFAULT_RETRY_BLOCK = 120
 
 function _M.get()
-    local limit = dict:get("limit_per_min")
-    local window_ms = dict:get("window_ms")
+    local limit = dict:get "limit_per_min"
+    local window_ms = dict:get "window_ms"
     if not limit or limit <= 0 then
         limit = DEFAULT_LIMIT
     end
@@ -27,28 +27,28 @@ end
 
 function _M.get_tier_pct(tier)
     if tier == "suspect" then
-        return dict:get("rl_pct_suspect") or DEFAULT_SUSPECT_PCT
+        return dict:get "rl_pct_suspect" or DEFAULT_SUSPECT_PCT
     end
     if tier == "ivt" then
-        return dict:get("rl_pct_ivt") or DEFAULT_IVT_PCT
+        return dict:get "rl_pct_ivt" or DEFAULT_IVT_PCT
     end
     if tier == "block" then
-        return dict:get("rl_pct_block") or DEFAULT_BLOCK_PCT
+        return dict:get "rl_pct_block" or DEFAULT_BLOCK_PCT
     end
     return 100
 end
 
 function _M.get_retry_after(tier)
     if tier == "block" then
-        return dict:get("retry_block_sec") or DEFAULT_RETRY_BLOCK
+        return dict:get "retry_block_sec" or DEFAULT_RETRY_BLOCK
     end
     if tier == "ivt" then
-        return dict:get("retry_ivt_sec") or DEFAULT_RETRY_IVT
+        return dict:get "retry_ivt_sec" or DEFAULT_RETRY_IVT
     end
     if tier == "suspect" then
-        return dict:get("retry_suspect_sec") or DEFAULT_RETRY_SUSPECT
+        return dict:get "retry_suspect_sec" or DEFAULT_RETRY_SUSPECT
     end
-    return dict:get("retry_suspect_sec") or DEFAULT_RETRY_SUSPECT
+    return dict:get "retry_suspect_sec" or DEFAULT_RETRY_SUSPECT
 end
 
 function _M.get_flag(name)

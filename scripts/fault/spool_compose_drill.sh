@@ -74,7 +74,7 @@ count_d_state_tracker() {
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then
   log "preparing stack"
-  bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
+  bash "$SCRIPTS/test/load/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
 fi
 
 log "pausing clickhouse (processor should spool batches)"

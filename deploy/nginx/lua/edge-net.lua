@@ -8,14 +8,14 @@ function _M.is_unix_socket(addr)
 end
 
 function _M.parse_redis_addr(addr)
-    addr = addr:match("^%s*(.-)%s*$") or ""
+    addr = addr:match "^%s*(.-)%s*$" or ""
     if addr == "" then
         return nil
     end
     if _M.is_unix_socket(addr) then
         return { unix_socket = addr }
     end
-    local host, port = addr:match("([^:]+):(%d+)")
+    local host, port = addr:match "([^:]+):(%d+)"
     if host and port then
         return { host = host, port = tonumber(port) }
     end
@@ -93,15 +93,17 @@ function _M.http_get_json(url)
         return nil, err
     end
     local host_header = parsed.host or "localhost"
-    local req = "GET " ..
-    (parsed.path or "/") ..
-    " HTTP/1.1\r\nHost: " .. host_header .. "\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
+    local req = "GET "
+        .. (parsed.path or "/")
+        .. " HTTP/1.1\r\nHost: "
+        .. host_header
+        .. "\r\nConnection: close\r\nAccept: application/json\r\n\r\n"
     local sent, send_err = sock:send(req)
     if not sent then
         sock:close()
         return nil, send_err
     end
-    local data, read_err = sock:receive("*a")
+    local data, read_err = sock:receive "*a"
     sock:close()
     if not data then
         return nil, read_err

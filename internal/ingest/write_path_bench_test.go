@@ -1,0 +1,186 @@
+package ingest
+
+import (
+	"context"
+	"os"
+	"runtime"
+	"strconv"
+	"testing"
+	"time"
+
+	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
+)
+
+func benchWritePathEvent() *domain.Event {
+	return &domain.Event{
+		ClickID:    "bench-click",
+		CampaignID: uuid.New(),
+		Type:       "click",
+		IP:         "203.0.113.1",
+		UA:         "bench-agent",
+		Payload:    []byte(`{"bench":true}`),
+		CreatedAt:  time.Unix(1_700_000_000, 0).UTC(),
+	}
+}
+
+func BenchmarkCHSpoolAppendDurably(b *testing.B) {
+	dir := b.TempDir()
+	spool, err := OpenClickHouseSpool(dir)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = spool.Close() }()
+
+	evt := benchWritePathEvent()
+	events := []*domain.Event{evt}
+	token := "bench-dedup-token"
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := spool.AppendDurably(token, events); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkCHSpoolMarshalPayload(b *testing.B) {
+	evt := benchWritePathEvent()
+	events := []*domain.Event{evt}
+	token := "bench-dedup-token"
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := marshalCHSpoolPayload(token, events); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkPostgresStoreBatch_Mock(b *testing.B) {
+	store := &MockEventStore{}
+	evt := benchWritePathEvent()
+	events := []*domain.Event{evt}
+	ctx := context.Background()
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := store.StoreBatch(ctx, events); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkClickHouseStoreBatch_Spooled(b *testing.B) {
+	dir := b.TempDir()
+	spool, err := OpenClickHouseSpool(dir)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer func() { _ = spool.Close() }()
+
+	conn := newFailingCHConn(true)
+	store := NewClickHouseStore(conn, time.Second, "", DefaultClickHouseSpoolConfig(), nil)
+	store.SetSpool(spool)
+
+	evt := benchWritePathEvent()
+	events := []*domain.Event{evt}
+	ctx := context.WithValue(context.Background(), domain.DeduplicationTokenKey, "bench-ch-spool")
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := store.StoreBatch(ctx, events); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func setupPostgresStoreBench(b *testing.B) (*PostgresStore, func()) {
+	ctx := context.Background()
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:16-alpine",
+		postgres.WithDatabase("write_path_bench_db"),
+		postgres.WithUsername("user"),
+		postgres.WithPassword("pass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(20*time.Second)),
+	)
+	if err != nil {
+		b.Fatalf("failed to start postgres container: %s", err)
+	}
+
+	connStr, err := pgContainer.ConnectionString(ctx, "sslmode=disable")
+	if err != nil {
+		b.Fatalf("postgres connection string: %s", err)
+	}
+	pool, err := pgxpool.New(ctx, connStr)
+	if err != nil {
+		b.Fatalf("postgres pool: %s", err)
+	}
+	applyAdsMigrations(b, pool)
+
+	pm := database.NewPartitionManager(pool, 7, 1)
+	if err := pm.Run(ctx); err != nil {
+		b.Fatalf("partition manager: %s", err)
+	}
+
+	store := NewPostgresStore(db.New(pool), 2*time.Second)
+	cleanup := func() {
+		pool.Close()
+		_ = pgContainer.Terminate(ctx)
+	}
+	return store, cleanup
+}
+
+func BenchmarkPostgresStoreBatch_integration(b *testing.B) {
+	if testing.Short() {
+		b.Skip()
+	}
+	store, cleanup := setupPostgresStoreBench(b)
+	defer cleanup()
+
+	evt := benchWritePathEvent()
+	events := []*domain.Event{evt}
+	ctx := context.Background()
+	b.ReportAllocs()
+	benchN := 0
+	for b.Loop() {
+		evt.ClickID = "bench-pg-" + strconv.Itoa(benchN)
+		if err := store.StoreBatch(ctx, events); err != nil {
+			b.Fatal(err)
+		}
+		benchN++
+	}
+}
+
+func BenchmarkCHSpoolOpenFdDelta(b *testing.B) {
+	if runtime.GOOS != "linux" {
+		b.Skip("requires /proc/self/fd")
+	}
+	before, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Logf("fd_before=%d", len(before))
+
+	dir := b.TempDir()
+	spool, err := OpenClickHouseSpool(dir)
+	if err != nil {
+		b.Fatal(err)
+	}
+	afterOpen, err := os.ReadDir("/proc/self/fd")
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Logf("fd_after_open=%d delta=%d", len(afterOpen), len(afterOpen)-len(before))
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = spool.WritePos()
+	}
+	_ = spool.Close()
+}

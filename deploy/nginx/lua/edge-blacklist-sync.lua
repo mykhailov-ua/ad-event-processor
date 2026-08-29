@@ -60,13 +60,13 @@ function _M.shard_try_order(shard_count)
 end
 
 local function load_env()
-    REDIS_HOST = getenv("REDIS_HOST") or REDIS_HOST
-    REDIS_PORT = getenv("REDIS_PORT") or REDIS_PORT
-    REDIS_PASS = getenv("REDIS_PASS") or ""
-    REDIS_ADDRS = getenv("REDIS_ADDRS") or ""
-    REDIS_SENTINEL_ADDRS = getenv("REDIS_SENTINEL_ADDRS") or ""
-    REDIS_MASTER_NAMES = getenv("REDIS_MASTER_NAMES") or ""
-    CHANGELOG_MAX_IPS = tonumber(getenv("EDGE_BLACKLIST_CHANGELOG_MAX_IPS") or "") or CHANGELOG_MAX_IPS
+    REDIS_HOST = getenv "REDIS_HOST" or REDIS_HOST
+    REDIS_PORT = getenv "REDIS_PORT" or REDIS_PORT
+    REDIS_PASS = getenv "REDIS_PASS" or ""
+    REDIS_ADDRS = getenv "REDIS_ADDRS" or ""
+    REDIS_SENTINEL_ADDRS = getenv "REDIS_SENTINEL_ADDRS" or ""
+    REDIS_MASTER_NAMES = getenv "REDIS_MASTER_NAMES" or ""
+    CHANGELOG_MAX_IPS = tonumber(getenv "EDGE_BLACKLIST_CHANGELOG_MAX_IPS" or "") or CHANGELOG_MAX_IPS
 end
 
 local function parse_addr_list(raw)
@@ -151,7 +151,13 @@ local function shard_target(shard_idx)
         if resolved then
             target = resolved
         else
-            ngx.log(ngx.WARN, "edge_blacklist_sync: sentinel resolve failed for shard ", shard_idx - 1, ": ", resolve_err)
+            ngx.log(
+                ngx.WARN,
+                "edge_blacklist_sync: sentinel resolve failed for shard ",
+                shard_idx - 1,
+                ": ",
+                resolve_err
+            )
         end
     end
     return target
@@ -212,7 +218,7 @@ local function append_pending_ips(ips)
     if not ips or #ips == 0 then
         return
     end
-    local raw = cache:get("_bl_pending") or ""
+    local raw = cache:get "_bl_pending" or ""
     for _, ip in ipairs(ips) do
         if ip and ip ~= "" then
             raw = raw .. ip .. "\n"
@@ -242,7 +248,7 @@ function _M.stamp_ips(ips, bump_version)
         end
     end
 
-    local ver = cache:get("_bl_ver") or 0
+    local ver = cache:get "_bl_ver" or 0
     if bump_version or ver == 0 then
         ver = ver + 1
         cache:set("_bl_ver", ver)
@@ -269,15 +275,24 @@ function _M.stamp_ips(ips, bump_version)
     if bump_version then
         cache:set("_bl_count", stamped)
     else
-        local prev = cache:get("_bl_count") or 0
+        local prev = cache:get "_bl_count" or 0
         cache:set("_bl_count", prev + stamped)
     end
-    ngx.log(ngx.INFO, "edge_blacklist_sync: stamped ", stamped, " IPs (ver=", ver, ", bump=", tostring(bump_version), ")")
+    ngx.log(
+        ngx.INFO,
+        "edge_blacklist_sync: stamped ",
+        stamped,
+        " IPs (ver=",
+        ver,
+        ", bump=",
+        tostring(bump_version),
+        ")"
+    )
     return true
 end
 
 function _M.drain_pending_changelog()
-    local raw = cache:get("_bl_pending")
+    local raw = cache:get "_bl_pending"
     if not raw or raw == "" then
         return 0
     end
@@ -286,10 +301,10 @@ function _M.drain_pending_changelog()
         ips[#ips + 1] = ip
     end
     if #ips == 0 then
-        cache:delete("_bl_pending")
+        cache:delete "_bl_pending"
         return 0
     end
-    cache:delete("_bl_pending")
+    cache:delete "_bl_pending"
     if _M.stamp_ips(ips, false) then
         return math.min(#ips, CHANGELOG_MAX_IPS)
     end
@@ -317,9 +332,9 @@ function _M.sync()
         return false
     end
 
-    local manual, err1 = red:smembers("blacklist:manual")
-    local auto, err2 = red:smembers("blacklist:auto")
-    local fraud, err3 = red:smembers("blacklist:fraud")
+    local manual, err1 = red:smembers "blacklist:manual"
+    local auto, err2 = red:smembers "blacklist:auto"
+    local fraud, err3 = red:smembers "blacklist:fraud"
     red:set_keepalive(10000, 8)
 
     if not manual or not auto or not fraud then
@@ -327,7 +342,7 @@ function _M.sync()
         return false
     end
 
-    local new_ver = (cache:get("_bl_ver") or 0) + 1
+    local new_ver = (cache:get "_bl_ver" or 0) + 1
     local count = 0
     local seen = {}
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/selfserve"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -26,7 +27,7 @@ func (s selfServeTemplatesStub) CreateCampaignFromTemplate(_ context.Context, _,
 }
 
 func TestSelfServeCreateCampaign_requiresTemplateID(t *testing.T) {
-	h := &campaign.SelfServeHTTPHandlers{
+	h := &selfserve.SelfServeHTTPHandlers{
 		Templates: selfServeTemplatesStub{},
 		ResolveSelfServeCustomerID: func(_ *http.Request, _ *uuid.UUID) (uuid.UUID, error) {
 			return uuid.New(), nil
@@ -45,7 +46,7 @@ func TestSelfServeCreateCampaign_requiresTemplateID(t *testing.T) {
 }
 
 func TestSelfServeListTemplates_operatorPermBlocked(t *testing.T) {
-	h := &campaign.SelfServeHTTPHandlers{
+	h := &selfserve.SelfServeHTTPHandlers{
 		Templates: selfServeTemplatesStub{},
 		RequireAnyPermission: func(_ []string, next http.HandlerFunc) http.HandlerFunc {
 			return func(w http.ResponseWriter, r *http.Request) {

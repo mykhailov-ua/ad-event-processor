@@ -1,21 +1,23 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"bytes"
+	"context"
+	"embed"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 
-	"ad-event-processor/pkg/httpresponse"
-	webstatic "ad-event-processor/web"
-)
+	"ad-event-processor/internal/config"
+	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/openapivalidate"
 
-func adminStaticFS() (fs.FS, error) {
-	return webstatic.FS()
-}
+	"ad-event-processor/pkg/httpresponse"
+)
 
 type AdminBootJSON struct {
 	User        ctrlhttp.UserDTO `json:"user"`
@@ -152,8 +154,8 @@ func RegisterAdminStaticRoutes(mux *http.ServeMux, gate *AdminUIGate) {
 			return
 		}
 
-		if r.URL.Path == "/login" {
-			if gate != nil {
+		if r.URL.Path == "/login" || r.URL.Path == "/start" || strings.HasPrefix(r.URL.Path, "/invite/accept") {
+			if gate != nil && r.URL.Path == "/login" {
 				if _, ok := gate.bootFromRequest(r); ok {
 					http.Redirect(w, r, "/", http.StatusFound)
 					return
@@ -222,4 +224,43 @@ func (h *StubHTTPHandlers) Register(mux *http.ServeMux) {
 func writeStubNotImplemented(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("X-API-Stub", "true")
 	httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", stubNotImplementedMessage)
+}
+
+//go:embed admin_static_stub/*
+var adminStaticEmbed embed.FS
+
+func adminStaticFS() (fs.FS, error) {
+	return fs.Sub(adminStaticEmbed, "admin_static_stub")
+}
+
+func registerAdminGoneRoutes(mux *http.ServeMux) {
+	gone := func(w http.ResponseWriter, r *http.Request) {
+		httpresponse.Error(w, http.StatusGone, "GONE",
+			"legacy /admin HTMX routes removed; use /api/v1 JSON API (see docs/DEVELOPMENT.md)")
+	}
+	for _, method := range []string{"GET", "POST", "PUT", "DELETE", "PATCH"} {
+		mux.HandleFunc(method+" /admin/{path...}", gone)
+	}
+}
+
+func registerRootRoute(mux *http.ServeMux, gate *AdminUIGate) {
+	RegisterAdminStaticRoutes(mux, gate)
+}
+
+func wireOpenAPIRequestValidation(ctx context.Context, cfg *config.Config) (func(http.Handler) http.Handler, error) {
+	if cfg == nil {
+		return openapivalidate.NewRequestValidationMiddleware(ctx, openapivalidate.RequestValidationOptions{Enabled: false})
+	}
+	bundlePath := strings.TrimSpace(os.Getenv("OPENAPI_BUNDLE_PATH"))
+	if bundlePath != "" {
+		return openapivalidate.NewRequestValidationMiddleware(ctx, openapivalidate.RequestValidationOptions{
+			Enabled:    cfg.Management.OpenAPIRequestValidation,
+			BundlePath: bundlePath,
+		})
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("openapi request validation: working directory: %w", err)
+	}
+	return openapivalidate.ResolveRequestValidationMiddleware(ctx, wd, cfg.Management.OpenAPIRequestValidation)
 }

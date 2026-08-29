@@ -20,9 +20,11 @@ type Service interface {
 	AckSmartAlertEvent(ctx context.Context, eventID, actorID uuid.UUID) error
 }
 
-type RuleDTO = SmartAlertRuleDTO
-type EventDTO = SmartAlertEventDTO
-type UpsertRuleRequest = UpsertSmartAlertRuleRequest
+type (
+	RuleDTO           = SmartAlertRuleDTO
+	EventDTO          = SmartAlertEventDTO
+	UpsertRuleRequest = UpsertSmartAlertRuleRequest
+)
 
 type HTTPHandlers struct {
 	Service           Service

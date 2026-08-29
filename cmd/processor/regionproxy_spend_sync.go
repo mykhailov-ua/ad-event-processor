@@ -1,7 +1,7 @@
 package main
 
 import (
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 	rpclient "ad-event-processor/pkg/regionproxy/client"
 )
 

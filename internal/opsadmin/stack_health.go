@@ -25,11 +25,11 @@ const (
 )
 
 type StackHealthDeps struct {
-	Pool            *pgxpool.Pool
-	LicenseState    func() (licensing.LicenseState, bool)
-	ClickHouseLag   func(ctx context.Context) (time.Duration, error)
-	ShardHealth     func(ctx context.Context) (shardadmin.ShardHealthReport, error)
-	OutboxHealth    func(ctx context.Context, pool *pgxpool.Pool) (shardadmin.OutboxHealthSummary, error)
+	Pool          *pgxpool.Pool
+	LicenseState  func() (licensing.LicenseState, bool)
+	ClickHouseLag func(ctx context.Context) (time.Duration, error)
+	ShardHealth   func(ctx context.Context) (shardadmin.ShardHealthReport, error)
+	OutboxHealth  func(ctx context.Context, pool *pgxpool.Pool) (shardadmin.OutboxHealthSummary, error)
 }
 
 func BuildStackHealthSnapshot(ctx context.Context, deps StackHealthDeps) (StackHealthSnapshot, error) {

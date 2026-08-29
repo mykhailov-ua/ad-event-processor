@@ -63,7 +63,7 @@ func RunProgram(prog *ebpf.Program, opts ProgramOptions) (ProgramResult, error) 
 		res.InvalidActions++
 	}
 
-	for i := 0; i < opts.MalformedIters; i++ {
+	for i := range opts.MalformedIters {
 		pktLen := 14 + rng.Intn(1486)
 		pkt := make([]byte, pktLen)
 		rng.Read(pkt)
@@ -79,7 +79,7 @@ func RunProgram(prog *ebpf.Program, opts ProgramOptions) (ProgramResult, error) 
 
 	src := net.IPv4(198, 51, 100, 50)
 	pkt := BuildSYNPacket(src, opts.Dst, opts.DPort)
-	for i := 0; i < opts.FloodPackets; i++ {
+	for i := range opts.FloodPackets {
 		ret, _, err := prog.Test(pkt)
 		if err != nil {
 			return res, err

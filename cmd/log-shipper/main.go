@@ -37,7 +37,7 @@ func main() {
 	jobs := make(chan []byte, 10000)
 	var wg sync.WaitGroup
 
-	for i := 0; i < *workersCount; i++ {
+	for i := range *workersCount {
 		wg.Add(1)
 		go runWorker(ctx, &wg, workerConfig{
 			id:         i,

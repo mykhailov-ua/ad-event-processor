@@ -1,17 +1,17 @@
 package controlplane
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/outbox"
-	"ad-event-processor/internal/reconciliation"
 	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/pkg/coldpath"
-	"context"
-	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -197,14 +197,4 @@ func (r rtbRuntimeConfig) RtbExchangeNoBidMode() string {
 		return ""
 	}
 	return r.cfg.RtbExchangeNoBidMode
-}
-
-var (
-	_ rtbadmin.Host               = rtbAdminHost{}
-	_ rtbadmin.FloorsHost         = rtbAdminHost{}
-	_ rtbadmin.FloorOptimizerHost = (*Service)(nil)
-)
-
-func (s *Service) RtbReconcileCHStats(ctx context.Context, requestID string, window time.Duration) (reconciliation.RtbReconcileCHStats, bool) {
-	return reconciliation.RTBCHStats(ctx, s, requestID, window)
 }

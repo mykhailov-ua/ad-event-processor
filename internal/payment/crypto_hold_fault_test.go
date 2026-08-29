@@ -7,7 +7,7 @@ import (
 
 	"ad-event-processor/pkg/faultproof"
 
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/payment"
 
 	"github.com/google/uuid"

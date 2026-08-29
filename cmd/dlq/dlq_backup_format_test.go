@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/proto"

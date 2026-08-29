@@ -1,0 +1,10 @@
+t13d1516h2=chrome
+t13d0102=chrome
+t13d0712=chrome
+t13d1113=chrome
+t13i0408=go
+t13i0010=go,okhttp
+t12d0408=go
+t13d0410=firefox
+t13d0511=safari
+t13d0309=okhttp

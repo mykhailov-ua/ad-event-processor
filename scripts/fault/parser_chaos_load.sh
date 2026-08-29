@@ -51,7 +51,7 @@ export CHAOS_LOAD_P99_MS="$P99_MS"
 export CHAOS_LOAD_WORKERS="$WORKERS"
 
 echo "parser-chaos-load: duration=${DURATION} rps=${RPS} chaos_pct=${CHAOS_PCT} p99_ms=${P99_MS} workers=${WORKERS}"
-go test ./internal/ingestion/ -run='TestChaos_ParserLoad_CX02' -count=1 -timeout=15m -v 2>&1 | tee "$LOG"
+go test ./internal/ingest/ -run='TestChaos_ParserLoad_CX02' -count=1 -timeout=15m -v 2>&1 | tee "$LOG"
 
 if ! grep -q 'fault_proof fault=parser_chaos_load' "$LOG"; then
   echo "parser-chaos-load: missing fault_proof line" >&2

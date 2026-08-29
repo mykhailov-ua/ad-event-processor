@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"ad-event-processor/internal/domain"
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
 	bserver "ad-event-processor/internal/broker"
+	"ad-event-processor/internal/domain"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

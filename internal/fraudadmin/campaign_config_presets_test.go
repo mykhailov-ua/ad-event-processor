@@ -16,14 +16,16 @@ import (
 
 type presetThresholdHost struct{}
 
-func (h presetThresholdHost) ConfigPool() *pgxpool.Pool { return nil }
+func (h presetThresholdHost) ConfigPool() *pgxpool.Pool                   { return nil }
 func (h presetThresholdHost) ConfigClickHouse() *database.ClickHouseQuery { return nil }
-func (h presetThresholdHost) ConfigActorID(context.Context) uuid.UUID    { return uuid.Nil }
+func (h presetThresholdHost) ConfigActorID(context.Context) uuid.UUID     { return uuid.Nil }
 func (h presetThresholdHost) ConfigAuditUpdate(context.Context, db.Querier, uuid.UUID, uuid.UUID, CampaignFraudAuditChange) {
 }
+
 func (h presetThresholdHost) ConfigResolvePresetThresholds(ctx context.Context, name string) (uint8, uint8, uint8, uint8, error) {
 	return ResolvePresetThresholds(ctx, nil, name)
 }
+
 func (h presetThresholdHost) ConfigEnqueueUpdateCampaignFraud(context.Context, db.Querier, uuid.UUID) error {
 	return nil
 }

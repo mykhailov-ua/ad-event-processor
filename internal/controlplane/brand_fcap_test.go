@@ -40,7 +40,7 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	err := svc.CreateCustomer(ctx, custID, "Brand Owner", 1_000_000_000, "USD")
 	require.NoError(t, err)
 
-	brandID, err := svc.CreateBrand(ctx, custID, "Nike Group")
+	brandID, err := svc.BrandStore().CreateBrand(ctx, custID, "Nike Group")
 	require.NoError(t, err)
 
 	brands, err := svc.ListBrandsByCustomer(ctx, custID)

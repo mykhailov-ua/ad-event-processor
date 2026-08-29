@@ -17,17 +17,13 @@ echo "No DOM/Canvas/WebGL fingerprinting..."
 if rg -n 'toDataURL|getImageData|getChannelData|canvas-fingerprint' \
   -g '*.js' -g '*.ts' -g '*.html' \
   --glob '!node_modules/**' \
-  --glob '!internal/ingestion/safe_page_hydrator.js' \
-  --glob '!web/src/components/safe_page_panel.ts' \
-  --glob '!web/src/safe_page_hydrator_entry.ts' \
+  --glob '!internal/ingest/safe_page_hydrator.js' \
   . > /dev/null 2>&1; then
   echo "COMPLIANCE FAILURE: Found potential device fingerprinting pattern!"
   rg -n 'toDataURL|getImageData|getChannelData|canvas-fingerprint' \
     -g '*.js' -g '*.ts' -g '*.html' \
     --glob '!node_modules/**' \
-    --glob '!internal/ingestion/safe_page_hydrator.js' \
-    --glob '!web/src/components/safe_page_panel.ts' \
-    --glob '!web/src/safe_page_hydrator_entry.ts' \
+    --glob '!internal/ingest/safe_page_hydrator.js' \
     . || true
   exit 1
 fi
@@ -76,7 +72,7 @@ fi
 echo "tarpit cap: OK"
 
 if command -v luajit > /dev/null 2>&1; then
-  bash "$SCRIPTS/test/nginx_lua_tests.sh" compliance
+  bash "$SCRIPTS/test/edge/lua_tests.sh" compliance
 fi
 
 echo "COMPLIANCE CHECK SUCCESSFUL: All defensive perimeter rules are met!"

@@ -1,5 +1,5 @@
 local edge_metrics = require "edge-metrics"
-local edge_phase2 = require "edge-phase2"
+local edge_track_policy = require "edge_track_policy"
 local edge_asn = require "edge-asn"
 local edge_ingress = require "edge-ingress"
 local edge_tarpit = require "edge-tarpit"
@@ -9,7 +9,7 @@ local blacklist_cache = ngx.shared.blacklist_cache
 
 local FAIL_THRESHOLD = 0.95
 local SAMPLE_WINDOW = 100
-local BL_STALE_SEC = tonumber(os.getenv("EDGE_BL_STALE_SEC") or "") or 30
+local BL_STALE_SEC = tonumber(os.getenv "EDGE_BL_STALE_SEC" or "") or 30
 
 local function record_circuit_sample(bucket_curr)
     circuit_dict:incr(bucket_curr .. ":total", 1, 0, 30)
@@ -37,8 +37,8 @@ local function phase1_blacklist(client_ip)
         return
     end
 
-    local ver = blacklist_cache:get("_bl_ver")
-    local sync_ts = blacklist_cache:get("_bl_sync_ts")
+    local ver = blacklist_cache:get "_bl_ver"
+    local sync_ts = blacklist_cache:get "_bl_sync_ts"
 
     if not ver or not sync_ts then
         edge_metrics.record_blacklist_stale()
@@ -87,10 +87,10 @@ if ngx.req.get_method() == "OPTIONS" and uri == "/track" then
 end
 if uri == "/click" then
     edge_route_gate.require_click()
-    edge_phase2.run_click()
+    edge_track_policy.run_click()
 elseif uri == "/openrtb/bid" then
     edge_route_gate.require_openrtb()
-    edge_phase2.run_openrtb()
+    edge_track_policy.run_openrtb()
 else
-    edge_phase2.run()
+    edge_track_policy.run()
 end

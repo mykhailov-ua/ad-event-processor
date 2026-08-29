@@ -3,12 +3,14 @@ package platformadmin
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	db "ad-event-processor/internal/domain/db"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 type GovernanceHost interface {
@@ -21,6 +23,9 @@ type GovernanceHost interface {
 	AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any)
 	ApplyCampaignBudgetPatch(ctx context.Context, q db.Querier, locked db.Campaign, newLimit int64) error
 	MapCampaignNotFound(err error) error
+	InviteRedis() redis.UniversalClient
+	PublicPanelBaseURL(r *http.Request) string
+	EnqueueInviteEmail(ctx context.Context, email, url string)
 }
 
 type Governance struct {

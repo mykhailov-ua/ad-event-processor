@@ -135,7 +135,8 @@ func ApplyFraudScoringOverride(ctx context.Context, host OverridesHost, req Frau
 
 func assertCampaignOwnedByCustomer(ctx context.Context, pool interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
-}, customerID, campaignID uuid.UUID) error {
+}, customerID, campaignID uuid.UUID,
+) error {
 	var exists bool
 	err := pool.QueryRow(ctx, `
 		SELECT EXISTS(SELECT 1 FROM campaigns WHERE id = $1 AND customer_id = $2)`,

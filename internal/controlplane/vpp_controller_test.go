@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/campaign"
+	campaignworker "ad-event-processor/internal/campaign/worker"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -59,7 +60,7 @@ func TestRunVPPPacingController_writesRedisRatio(t *testing.T) {
 
 	require.NoError(t, svc.RunVPPPacingController(ctx))
 
-	raw, err := redisClient.Get(ctx, campaign.VPPPacingRedisKey(campaignID)).Result()
+	raw, err := redisClient.Get(ctx, campaignworker.VPPPacingRedisKey(campaignID)).Result()
 	require.NoError(t, err)
 	ratio, err := strconv.ParseFloat(raw, 32)
 	require.NoError(t, err)
@@ -106,7 +107,7 @@ func TestRunVPPPacingController_onPaceWritesFullRatio(t *testing.T) {
 
 	require.NoError(t, svc.RunVPPPacingController(ctx))
 
-	raw, err := redisClient.Get(ctx, campaign.VPPPacingRedisKey(campaignID)).Result()
+	raw, err := redisClient.Get(ctx, campaignworker.VPPPacingRedisKey(campaignID)).Result()
 	require.NoError(t, err)
 	ratio, err := strconv.ParseFloat(raw, 32)
 	require.NoError(t, err)
@@ -145,7 +146,7 @@ func TestRunVPPPacingController_skipsNonVPP(t *testing.T) {
 
 	require.NoError(t, svc.RunVPPPacingController(ctx))
 
-	exists, err := redisClient.Exists(ctx, campaign.VPPPacingRedisKey(campaignID)).Result()
+	exists, err := redisClient.Exists(ctx, campaignworker.VPPPacingRedisKey(campaignID)).Result()
 	require.NoError(t, err)
 	assert.Equal(t, int64(0), exists)
 }

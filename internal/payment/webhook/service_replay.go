@@ -1,0 +1,132 @@
+package webhook
+
+import (
+	"context"
+	"fmt"
+
+	"ad-event-processor/internal/payment/checkout"
+	"ad-event-processor/internal/payment/db"
+	"ad-event-processor/pkg/coldpath"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+func (s *Service) ListDisputes(ctx context.Context, customerID *uuid.UUID, limit, offset int32) ([]checkout.DisputeListItem, int64, error) {
+	q := db.New(s.pool)
+	var cust pgtype.UUID
+	if customerID != nil && *customerID != uuid.Nil {
+		cust = pgtype.UUID{Bytes: *customerID, Valid: true}
+	}
+	listParams := db.ListDisputedPaymentIntentsParams{
+		Limit:      limit,
+		Offset:     offset,
+		CustomerID: cust,
+	}
+	intents, total, err := coldpath.PaginatedQuery(
+		func() (int64, error) { return q.CountDisputedPaymentIntents(ctx, cust) },
+		func() ([]db.PaymentPaymentIntent, error) { return q.ListDisputedPaymentIntents(ctx, listParams) },
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]checkout.DisputeListItem, 0, len(intents))
+	if len(intents) == 0 {
+		return items, total, nil
+	}
+	intentIDs := make([]pgtype.UUID, len(intents))
+	for i := range intents {
+		intentIDs[i] = intents[i].ID
+	}
+	disputes, err := q.ListLatestDisputesForIntents(ctx, intentIDs)
+	if err != nil {
+		return nil, 0, err
+	}
+	disputeByIntent := make(map[[16]byte]db.PaymentPaymentDispute, len(disputes))
+	for i := range disputes {
+		disputeByIntent[disputes[i].PaymentIntentID.Bytes] = disputes[i]
+	}
+	for i := range intents {
+		item := checkout.DisputeListItem{Intent: intents[i]}
+		if dispute, ok := disputeByIntent[intents[i].ID.Bytes]; ok {
+			item.ProviderDisputeID = dispute.ProviderDisputeID
+		}
+		items = append(items, item)
+	}
+	return items, total, nil
+}
+
+func (s *Service) ReplayWebhook(ctx context.Context, provider, providerEventID string) (string, error) {
+	if provider != "stripe" {
+		return "", fmt.Errorf("%w: unsupported provider %q", ErrInvalidRequestBody, provider)
+	}
+	if providerEventID == "" {
+		return "", ErrInvalidRequestBody
+	}
+
+	q := db.New(s.pool)
+	ev, err := q.GetWebhookEvent(ctx, db.GetWebhookEventParams{
+		Provider:        provider,
+		ProviderEventID: providerEventID,
+	})
+	if err != nil {
+		return "", mapNotFound(err, ErrWebhookEventNotFound)
+	}
+	if len(ev.PayloadRedacted) == 0 {
+		return "", fmt.Errorf("%w: webhook payload_redacted is empty", ErrInvalidRequestBody)
+	}
+
+	switch ev.Status {
+	case db.PaymentWebhookEventStatusPROCESSED, db.PaymentWebhookEventStatusIGNORED:
+		return "already_processed", nil
+	}
+
+	body := ev.PayloadRedacted
+	event, err := coldpath.DecodeBody[stripeEvent](body)
+	if err != nil {
+		return "", fmt.Errorf("decode stored webhook payload: %w", err)
+	}
+	if event.ID == "" {
+		event.ID = providerEventID
+	}
+	if event.Type == "" {
+		event.Type = ev.EventType
+	}
+
+	if err := s.dispatchStripeWebhook(ctx, event, body); err != nil {
+		return "", err
+	}
+	return "processed", nil
+}
+
+func (s *Service) dispatchStripeWebhook(ctx context.Context, event stripeEvent, body []byte) error {
+	switch event.Type {
+	case "refund.created", "refund.updated", "refund.failed":
+		providerRefundID := event.Data.Object.ID
+		paymentIntentRef := event.Data.Object.PaymentIntent
+		refundStatus := event.Data.Object.Status
+		if event.Type == "refund.failed" {
+			refundStatus = "failed"
+		}
+		return s.ProcessStripeRefundWebhook(
+			ctx, event.ID, event.Type, body, providerRefundID, paymentIntentRef,
+			checkout.StripeAmountToMicro(event.Data.Object.Amount), refundStatus,
+		)
+	case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed",
+		"charge.dispute.funds_withdrawn", "charge.dispute.funds_reinstated":
+		return s.ProcessStripeDisputeWebhook(
+			ctx, event.ID, event.Type, body, event.Data.Object.ID, event.Data.Object.PaymentIntent,
+			checkout.StripeAmountToMicro(event.Data.Object.Amount), event.Data.Object.Status,
+		)
+	default:
+		providerRef := event.Data.Object.ID
+		if providerRef == "" {
+			return fmt.Errorf("%w: stripe event missing provider ref", ErrInvalidRequestBody)
+		}
+		return s.ProcessStripeWebhook(
+			ctx, event.ID, event.Type, body, providerRef,
+			checkout.StripeAmountToMicro(event.Data.Object.Amount), string(body),
+		)
+	}
+}

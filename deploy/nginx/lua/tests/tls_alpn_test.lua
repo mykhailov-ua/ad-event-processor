@@ -1,6 +1,6 @@
 package.path = arg[1] .. "/?.lua;;"
 
-local tls_fp = require("edge-tls-fingerprint")
+local tls_fp = require "edge-tls-fingerprint"
 
 local passed, failed = 0, 0
 
@@ -18,7 +18,7 @@ local http11 = string.char(8) .. "http/1.1"
 local ext = string.char(0, #h2 + #http11) .. h2 .. http11
 assert_eq(tls_fp.parse_alpn_list(ext), "h2,http/1.1", "dual alpn")
 
-assert_eq(tls_fp.parse_alpn_list(""), "", "empty ext")
+assert_eq(tls_fp.parse_alpn_list "", "", "empty ext")
 assert_eq(tls_fp.parse_alpn_list(string.char(0)), "", "short ext")
 
 if failed > 0 then

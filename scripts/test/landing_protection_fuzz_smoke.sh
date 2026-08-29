@@ -11,13 +11,13 @@ if ! command -v go > /dev/null 2>&1; then
 fi
 
 echo "landing_protection_fuzz_smoke: FuzzJA3Parse 30s"
-go test ./internal/ingestion -run='^$' -fuzz=FuzzJA3Parse -fuzztime=30s -count=1
+go test ./internal/ingest -run='^$' -fuzz=FuzzJA3Parse -fuzztime=30s -count=1
 
 echo "landing_protection_fuzz_smoke: FuzzLinkSignerVerify 30s"
-go test ./internal/ingestion -run='^$' -fuzz=FuzzLinkSignerVerify -fuzztime=30s -count=1
+go test ./internal/ingest -run='^$' -fuzz=FuzzLinkSignerVerify -fuzztime=30s -count=1
 
 echo "landing_protection_fuzz_smoke: FuzzSafePageVerifyParse 30s"
-go test ./internal/ingestion -run='^$' -fuzz=FuzzSafePageVerifyParse -fuzztime=30s -count=1
+go test ./internal/ingest -run='^$' -fuzz=FuzzSafePageVerifyParse -fuzztime=30s -count=1
 
 echo "landing_protection_fuzz_smoke: FuzzBanditWeightSnapshot 30s"
 go test ./internal/flow -run='^$' -fuzz=FuzzBanditWeightSnapshot -fuzztime=30s -count=1

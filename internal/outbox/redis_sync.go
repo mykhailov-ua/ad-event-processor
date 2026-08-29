@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	redisConfigValuesKey  = "config:values"
-	redisConfigVersionKey = "config:version"
+	redisConfigValuesKey     = "config:values"
+	redisConfigVersionKey    = "config:version"
 	defaultFlowReloadChannel = "flow:reload"
 )
 

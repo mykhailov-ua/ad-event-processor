@@ -128,7 +128,7 @@ func TestRegistry_concurrentRecord(t *testing.T) {
 
 	const workers = 8
 	errCh := make(chan error, workers)
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		i := i
 		go func() {
 			dep := "550e8400-e29b-41d4-a716-44665544000" + string(rune('0'+i))
@@ -140,7 +140,7 @@ func TestRegistry_concurrentRecord(t *testing.T) {
 			})
 		}()
 	}
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		require.NoError(t, <-errCh)
 	}
 }

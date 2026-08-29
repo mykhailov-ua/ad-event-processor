@@ -47,13 +47,13 @@ linters:
         - pattern: 'panic\('
           msg: "avoid panics"
         - pattern: 'fmt\.Sprintf'
-          pkg: "^ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          pkg: "^ad-event-processor/(internal/(ingest|filter|track|stream|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "fmt.Sprintf is forbidden on the hot path (allocates)"
         - pattern: 'context\.(WithTimeout|WithCancel|WithValue)'
-          pkg: "^ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          pkg: "^ad-event-processor/(internal/(ingest|filter|track|stream|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "context manipulation is forbidden on the hot path"
         - pattern: 'defer\s'
-          pkg: "^ad-event-processor/(internal/(ingestion|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
+          pkg: "^ad-event-processor/(internal/(ingest|filter|track|stream|domain|rtb)|cmd/tracker|pkg/broker)(/|$)"
           msg: "defer is forbidden on the hot path (allocates in old Go, discouraged in ad-event-processor)"
   exclusions:
     generated: lax
@@ -80,7 +80,34 @@ linters:
       - path: "internal/installer/"
         linters:
           - forbidigo
-      - path: "internal/ingestion/"
+      - path: "internal/ingest/"
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: "internal/filter/"
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: "internal/track/"
+        linters:
+          - errcheck
+          - gocritic
+          - noctx
+          - bodyclose
+          - contextcheck
+          - errorlint
+          - forbidigo
+      - path: "internal/stream/"
         linters:
           - errcheck
           - gocritic

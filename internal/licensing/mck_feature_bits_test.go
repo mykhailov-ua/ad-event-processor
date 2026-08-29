@@ -1,4 +1,4 @@
-package licensing_test
+package licensing
 
 import (
 	"encoding/hex"
@@ -6,8 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"ad-event-processor/internal/licensing"
 
 	"github.com/stretchr/testify/require"
 )
@@ -30,31 +28,31 @@ func TestMCKFeatureBits_FromStretchedGoldenVector(t *testing.T) {
 	var work [32]byte
 	copy(work[:], workBytes)
 
-	bits := licensing.MCKFeatureBitsFromWork(work)
+	bits := MCKFeatureBitsFromWork(work)
 	require.Equal(t, work[16], bits)
 
-	licensing.ResetFeatureSeedForTest()
-	t.Cleanup(licensing.ResetFeatureSeedForTest)
-	licensing.SetSeedCouplingRequired(true)
+	ResetFeatureSeedForTest()
+	t.Cleanup(ResetFeatureSeedForTest)
+	SetSeedCouplingRequired(true)
 
 	seedBytes, err := hex.DecodeString(doc.MCKStretchV1[0].FeatureSeedHex)
 	require.NoError(t, err)
 	var seedU32 uint32
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		seedU32 = (seedU32 << 8) | uint32(seedBytes[i])
 	}
-	licensing.PublishFeatureSeed(seedU32, true)
+	PublishFeatureSeed(seedU32, true)
 
-	ent := licensing.Entitlements{}
+	ent := Entitlements{}
 	ent.Features.OpenRTBEngine = true
 	ent.Features.RtbLive = true
 
-	licensing.PublishMCKFeatureBits(bits)
-	require.Equal(t, bits&licensing.MCKFeatureBitOpenRTB != 0, licensing.SeedGateOpenRTB(ent))
+	PublishMCKFeatureBits(bits)
+	require.Equal(t, bits&MCKFeatureBitOpenRTB != 0, SeedGateOpenRTB(ent))
 
-	licensing.PublishMCKFeatureBits(bits | licensing.MCKFeatureBitOpenRTB)
-	require.True(t, licensing.SeedGateOpenRTB(ent))
+	PublishMCKFeatureBits(bits | MCKFeatureBitOpenRTB)
+	require.True(t, SeedGateOpenRTB(ent))
 
-	licensing.PublishMCKFeatureBits(bits &^ licensing.MCKFeatureBitOpenRTB)
-	require.False(t, licensing.SeedGateOpenRTB(ent))
+	PublishMCKFeatureBits(bits &^ MCKFeatureBitOpenRTB)
+	require.False(t, SeedGateOpenRTB(ent))
 }

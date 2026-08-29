@@ -3,9 +3,9 @@ package governance
 import "errors"
 
 var (
-	ErrBudgetApprovalRequired  = errors.New("budget approval required")
+	ErrBudgetApprovalRequired   = errors.New("budget approval required")
 	ErrBudgetApprovalAutoDenied = errors.New("budget approval auto-denied")
-	ErrTeamMemberNotFound      = errors.New("team member not found")
+	ErrTeamMemberNotFound       = errors.New("team member not found")
 )
 
 func ValidationError(msg string) error {

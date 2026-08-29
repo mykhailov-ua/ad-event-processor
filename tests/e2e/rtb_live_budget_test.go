@@ -8,8 +8,8 @@ import (
 
 	"ad-event-processor/internal/config"
 	db "ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/rtb"
 	"ad-event-processor/internal/testutil"
 

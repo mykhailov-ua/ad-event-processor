@@ -1,113 +1,77 @@
 # Vendor license reference
 
-Internal. Not shipped in customer packages. Runtime limits: [sku.yaml](./sku.yaml). JWT issue: `go run ./cmd/license-issue --sku <code> ...`.
+Internal. Not shipped to customers. Limits: [sku.yaml](./sku.yaml). Issue JWT: `go run ./cmd/license-issue --sku <code> ...`.
 
-Self-hosted only: buyer runs the appliance on their VPS; license is an Ed25519 JWT applied locally (Admin Settings -> License or `license-apply`). No outbound license ping.
-
-**No vendor hosting.** We do not operate managed cells or shared cloud stacks. Every paid SKU assumes the buyer supplies compute (see deploy profiles below). Workspace `customers` are teams inside one buyer deployment, not vendor-hosted tenants.
+Self-hosted: buyer runs the appliance; license is Ed25519 JWT applied locally (Admin API or `license-apply`). No outbound license ping. No vendor-hosted tenants.
 
 ---
 
-## Positioning (self-hosted buyers)
+## Tier positioning
 
-| Buyer profile | Typical tier | Why |
+| Profile | SKU | Why |
 | :--- | :--- | :--- |
-| Solo affiliate, redirect + postback | `starter` | Rules-only fraud on tracker; no ClickHouse ML workers required |
-| Media buyer / small team, CPA waste is the pain | `pro` | **IVT detector** on buyer's own ClickHouse: bot rules, auto-blacklist, silent reject |
-| Network or high volume, needs programmatic + advanced ML | `scale`+ | OpenRTB engine + **ML fraud boost** + residential / moderator intel feeds |
+| Solo affiliate | `starter` | Rules-only fraud; no ClickHouse ML workers required |
+| Media buyer, CPA waste | `pro` | IVT detector on buyer ClickHouse |
+| Network, OpenRTB + ML | `scale`+ | OpenRTB engine, ML boost, residential/moderator intel |
 
-OpenRTB (`/openrtb/bid`, in-process auction) starts at **Scale**. Audience is narrow (SSP/exchange integrations); most self-hosted buyers run click URL + S2S `/track` only.
+OpenRTB starts at **Scale**. Most buyers use click URL + S2S `/track` only.
 
-**Pro tier choice: IVT, not ML.** Both are cold-path sidecars (`cmd/ivt-detector`, `cmd/fraud-scorer`). For license upsell without vendor data:
-
-| | IVT (`ivt_ml_detector`) | ML (`ml_fraud_boost`) |
-| :--- | :--- | :--- |
-| Data | Buyer ClickHouse `ml_features_1m` | Same + optional local model artifact |
-| Setup | Compose `analytics-ml` + `full` profile (CH required) | Above + `FRAUD_SCORING_ENABLED`, model path |
-| Buyer-visible outcome | Blacklist / silent reject / boost via outbox | Campaign-level score boost (needs existing fraud signals) |
-| Works day one | Yes (rule registry, no training) | Bootstrap model ok; prod fit is buyer-operated |
-| Upsell story | "Stops bot farms on your traffic" | "Tightens scoring on your aggregates" |
-
-IVT wins Pro because it enforces without a model training story; ML stays the Scale upsell paired with OpenRTB and intel feeds.
+**Pro upsell:** IVT (`ivt_ml_detector`) — works with rule registry, no model training story. ML (`ml_fraud_boost`) stays Scale+.
 
 ---
 
-## Billing dimensions
+## SKU table
 
-License JWT enforces:
-
-- `max_activations` (host count)
-- `max_rps` (peak ingest RPS)
-- Feature flags in `sku.yaml` (`ivt_ml_detector`, `openrtb_engine`, `ml_fraud_boost`, `ebpf_xdp_edge`, etc.)
-
-`max_active_campaigns: 0` and `max_events_per_month: 0` in SKU schema mean no license cap on those fields.
-
----
-
-## SKU table (from sku.yaml)
-
-| SKU | USDT/mo | Hosts | Peak RPS | IVT detector | ML boost | OpenRTB | eBPF XDP |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| SKU | USDT/mo | Hosts | Peak RPS | IVT | ML | OpenRTB | XDP |
+| :--- | ---: | ---: | ---: | :---: | :---: | :---: | :---: |
 | `starter` | 129 | 1 | 10k | no | no | no | no |
-| `pro` | 329 | 1 | 25k | **yes** | no | no | no |
+| `pro` | 329 | 1 | 25k | yes | no | no | no |
 | `scale` | 649 | 3 | 75k | yes | yes | yes | no |
 | `network` | 1199 | 10 | 150k | yes | yes | yes | no |
 | `enterprise` | 2500+ | 99 | custom | yes | yes | yes | yes |
 | `pilot` | 0 | 1 | 5k | no | no | no | no |
 
-Full fields: `deploy/vendor/sku.yaml`.
-
-### Upgrade ladder (quote to buyer)
-
-1. **Starter -> Pro ($+200/mo):** +15k peak RPS, +7 tenants, **IVT detector** (requires `full` / `single-vps` stack with ClickHouse).
-2. **Pro -> Scale ($+320/mo):** +2 hosts, +50k RPS, **OpenRTB engine**, **ML fraud boost**, residential + moderator intel feeds.
-3. **Scale -> Network:** multi-region, slot migration, more hosts/RPS.
-
-Do not quote OpenRTB on Pro; issue JWT with SKU `pro` from `sku.yaml` only.
+`max_active_campaigns: 0` and `max_events_per_month: 0` in schema = no license cap.
 
 ---
 
-## Deploy profiles (operator choice, not SKU-gated)
+## Deploy profiles (operator, not SKU-gated)
 
-| Profile | ClickHouse | IVT / ML workers | Typical RAM |
+| Profile | ClickHouse | IVT / ML | RAM hint |
 | :--- | :---: | :---: | :---: |
-| `ingest-only` | no | no (license flags no-op without CH) | 6-8 GB |
-| `single-vps` / `full` | yes | `analytics-ml` profile: `ivt-detector`, `fraud-scorer` | 16+ GB |
+| `ingest-only` | no | no | 6–8 GB |
+| `full` / `single-vps` | yes | `analytics-ml` adds workers | 16+ GB |
 
-Campaign state and settlement use Postgres. Tracker hot path does not block on ClickHouse.
-
-Pro buyers need `full` + `analytics-ml` for IVT to run; Scale+ for ML microbatch (`FRAUD_SCORING_ENABLED=true`, `ml_fraud_boost` license, model under `var/fraudscore/artifacts/`). Processor defaults: microbatch flush 50ms, CH scorer scan 60s, tracker boost resync 10s.
+Pro needs `full` + `analytics-ml` for IVT. Scale+ needs `FRAUD_SCORING_ENABLED` and model under `var/fraudscore/artifacts/` for ML.
 
 ---
 
-## Pilot workflow
+## Pilot
 
-1. Issue SKU `pilot` (10 days, 5k RPS, hard bind optional).
-2. Customer applies JWT via Admin Settings -> License or `license-apply`.
-3. Paid tier: new JWT for `starter` / `pro` / `scale` with matching `sku.yaml` limits.
+1. Issue `pilot` (10 days, 5k RPS).
+2. Customer applies JWT.
+3. Paid: re-issue `starter` / `pro` / `scale` with matching limits.
 
-Trial registry and repeat-pilot rules: `.cursor/rules/licensing.mdc`.
+Trial registry: `.cursor/rules/licensing.mdc`.
 
 ---
 
-## Related vendor files
+## Related files
 
 | File | Use |
 | :--- | :--- |
 | [KEYS.md](./KEYS.md) | Ed25519 public keys |
 | [INVOICE.md](./INVOICE.md) | USDT invoice template |
-| [ANTIFRAUD.md](./ANTIFRAUD.md) | Fraud behavior reference |
-| [competitive_backlog.md](./competitive_backlog.md) | Open parity gaps vs Keitaro/Binom/BeMob |
-| [admin_ui_redesign_backlog.md](./admin_ui_redesign_backlog.md) | Admin UI rebuild milestones |
-| [licensing_security_backlog.md](./licensing_security_backlog.md) | Licensing pentest catalog |
+| [MARKETING.md](./MARKETING.md) | Buyer-facing feature list |
+| [ANTIFRAUD.md](./ANTIFRAUD.md) | Fraud behavior (operators) |
 
 ---
 
-## Support SLA (invoice template defaults)
+## Support SLA (invoice defaults)
 
 | Tier | JWT after USDT confirm |
 | :--- | :--- |
 | Pro, Scale | 12 h |
 | Starter, Network, Enterprise | 24 h |
 
-Onboarding: included with first paid month (see INVOICE.md).
+Onboarding included with first paid month ([INVOICE.md](./INVOICE.md)).

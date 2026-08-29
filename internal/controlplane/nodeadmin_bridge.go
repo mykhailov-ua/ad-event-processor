@@ -1,11 +1,12 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/nodeadmin"
 	"context"
 	"os"
 	"time"
+
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/nodeadmin"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -27,10 +28,6 @@ func (s *Service) RegionCode() int16 {
 		return 0
 	}
 	return int16(s.cfg.RegionCode)
-}
-
-func (s *Service) MultiRegionGlobal() bool {
-	return s != nil && s.cfg != nil && s.cfg.MultiRegionGlobal()
 }
 
 func (s *Service) UDPSyncInterval() time.Duration {

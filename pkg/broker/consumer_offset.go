@@ -45,7 +45,7 @@ func (t *ConsumerOffsetTracker) filename(topic string, partition uint16, group s
 
 func sanitizeFilename(s string) string {
 	buf := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
 			buf[i] = c

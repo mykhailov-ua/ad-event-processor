@@ -1,14 +1,15 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/opsadmin"
 	"context"
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/opsadmin"
+
 	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/google/uuid"

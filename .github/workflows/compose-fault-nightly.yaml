@@ -23,7 +23,7 @@ jobs:
           cache: true
 
       - name: Host tune (sysctl backlog)
-        run: sudo bash scripts/test/host_tune.sh
+        run: sudo bash scripts/test/load/host_tune.sh
 
       - name: Compose fault drill (all)
         run: bash scripts/lib/tee_ci_log.sh compose-fault.log bash scripts/fault/compose_fault_drill.sh all

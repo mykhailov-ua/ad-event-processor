@@ -184,7 +184,7 @@ func runConstant(run *runner, wg *sync.WaitGroup, stop <-chan struct{}, rps, wor
 	if interval < time.Microsecond {
 		interval = time.Microsecond
 	}
-	for i := 0; i < workers; i++ {
+	for i := range workers {
 		wg.Add(1)
 		workerIdx := i
 		go func() {

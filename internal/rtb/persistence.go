@@ -114,7 +114,7 @@ func (r *Registry) LoadSnapshot(path string) error {
 	if version == snapshotVersionLegacy {
 		shardLimit = legacyGeoShardCount
 	}
-	for i := 0; i < shardLimit; i++ {
+	for i := range shardLimit {
 		count, err := readUint32(reader)
 		if err != nil {
 			return err

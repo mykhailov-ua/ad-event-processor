@@ -1,9 +1,0 @@
-.root {
-  display: grid;
-  gap: var(--space-md);
-}
-
-.mono {
-  font-family: var(--font-mono, monospace);
-  font-size: var(--text-sm);
-}

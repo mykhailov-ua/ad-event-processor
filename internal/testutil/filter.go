@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 
 	"github.com/google/uuid"
 	redis "github.com/redis/go-redis/v9"

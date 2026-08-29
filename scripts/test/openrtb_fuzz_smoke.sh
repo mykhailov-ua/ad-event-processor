@@ -15,7 +15,7 @@ run_fuzz() {
   done
 }
 
-run_fuzz ./internal/ingestion/ \
+run_fuzz ./internal/ingest/ \
   ParseOpenRTB26Split \
   ParseOpenRTB26Helpers \
   ParseOpenRTB3FSM \

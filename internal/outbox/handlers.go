@@ -454,4 +454,3 @@ func (w *Worker) handleReloadRtbCatalog(ctx context.Context, payload []byte) err
 func (w *Worker) handleTelegramEvent(ctx context.Context, payload []byte) error {
 	return w.host.HandleTelegramEvent(ctx, payload)
 }
-

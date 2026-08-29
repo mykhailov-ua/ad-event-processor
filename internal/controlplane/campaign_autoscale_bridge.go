@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"ad-event-processor/internal/campaign"
+	campaignworker "ad-event-processor/internal/campaign/worker"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/reports"
@@ -52,7 +52,7 @@ func (s *Service) AutoscaleShiftAmount() int64 {
 	return s.cfg.AutoscaleShiftAmount
 }
 
-func (s *Service) AuditAutoscaleBudgetTransfer(ctx context.Context, q db.Querier, campaignID uuid.UUID, change campaign.AutoscaleBudgetAuditChange) {
+func (s *Service) AuditAutoscaleBudgetTransfer(ctx context.Context, q db.Querier, campaignID uuid.UUID, change campaignworker.AutoscaleBudgetAuditChange) {
 	s.AuditLog(ctx, q, uuid.Nil, "AUTOSCALE_BUDGET_TRANSFER", "campaign", &campaignID, platformadmin.AuditAutoscaleBudgetTransfer{
 		OldBudget: change.OldBudget,
 		NewBudget: change.NewBudget,
@@ -76,7 +76,7 @@ func (s *Service) MABLookbackDays() int {
 	return s.cfg.MABLookbackDays
 }
 
-func (s *Service) QueryMABCreativeStats(ctx context.Context, from, to time.Time) (map[uuid.UUID]campaign.CreativeMABStat, error) {
+func (s *Service) QueryMABCreativeStats(ctx context.Context, from, to time.Time) (map[uuid.UUID]campaignworker.CreativeMABStat, error) {
 	if s == nil || s.clickhouseQuery == nil {
 		return nil, nil
 	}
@@ -116,7 +116,7 @@ GROUP BY campaign_id, creative_id`
 	}
 	defer func() { _ = rows.Close() }()
 
-	out := make(map[uuid.UUID]campaign.CreativeMABStat)
+	out := make(map[uuid.UUID]campaignworker.CreativeMABStat)
 	for rows.Next() {
 		var campaignID, creativeID string
 		var impressions, clicks uint64
@@ -127,7 +127,7 @@ GROUP BY campaign_id, creative_id`
 		if err != nil {
 			continue
 		}
-		out[statKey] = campaign.CreativeMABStat{
+		out[statKey] = campaignworker.CreativeMABStat{
 			Impressions: int64(impressions),
 			Clicks:      int64(clicks),
 		}

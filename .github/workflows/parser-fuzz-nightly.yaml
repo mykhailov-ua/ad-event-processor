@@ -28,20 +28,20 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Fuzz ParseTrackJSON
-        run: go test ./internal/ingestion/ -fuzz=FuzzParseTrackJSON -fuzztime=2h -count=1
+        run: go test ./internal/ingest/ -fuzz=FuzzParseTrackJSON -fuzztime=2h -count=1
 
       - name: Fuzz SkipJSONValueBudget
-        run: go test ./internal/ingestion/ -fuzz=FuzzSkipJSONValueBudget -fuzztime=2h -count=1
+        run: go test ./internal/ingest/ -fuzz=FuzzSkipJSONValueBudget -fuzztime=2h -count=1
 
       - name: Fuzz HTTP1Chunked
-        run: go test ./internal/ingestion/ -fuzz=FuzzHTTP1Chunked -fuzztime=2h -count=1
+        run: go test ./internal/ingest/ -fuzz=FuzzHTTP1Chunked -fuzztime=2h -count=1
 
       - name: Fuzz ParseOpenRTB3FSM
-        run: go test ./internal/ingestion/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=2h -count=1
+        run: go test ./internal/ingest/ -fuzz=FuzzParseOpenRTB3FSM -fuzztime=2h -count=1
 
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: parser-fuzz-corpus
-          path: internal/ingestion/testdata/fuzz/
+          path: internal/ingest/testdata/fuzz/
           retention-days: 14

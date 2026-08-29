@@ -14,8 +14,8 @@ import (
 	"os/exec"
 	"time"
 
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/pkg/lifecycle"
 
 	"github.com/google/uuid"

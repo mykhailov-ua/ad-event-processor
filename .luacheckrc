@@ -1,4 +1,4 @@
--- OpenResty edge + Redis EVAL scripts; run: luacheck deploy/nginx/lua internal/ingestion
+-- OpenResty edge + Redis EVAL scripts; run: bash scripts/ci/lint/lua.sh
 std = "max"
 globals = {
     "ngx",
@@ -8,5 +8,10 @@ globals = {
     "bit",
     "arg",
     "wrk",
+    "request",
+    "response",
+    "setup",
+    "thread",
+    "done",
 }
 max_line_length = false

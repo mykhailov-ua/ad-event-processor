@@ -1,10 +1,14 @@
 package controlplane
 
 import (
+	"context"
+	"encoding/json"
+
+	"ad-event-processor/internal/campaign/runtime"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/coldpath"
-	"context"
 
 	"github.com/google/uuid"
 )
@@ -167,4 +171,31 @@ func (h supplyAdminHost) ValidateSupplyFiles(ctx context.Context) (supply.Valida
 		AdsTxtLineCount:       report.AdsTxtLineCount,
 		Issues:                report.Issues,
 	}, nil
+}
+
+type supplyChainBridge struct {
+	svc *Service
+}
+
+func (b supplyChainBridge) MapCampaignNotFound(err error) error {
+	return mapNotFound(err, ErrCampaignNotFound)
+}
+
+func (b supplyChainBridge) AuditSupplyChainUpdate(ctx context.Context, q db.Querier, campaignID uuid.UUID, oldNodesJSON, newNodesJSON []byte) {
+	var uid uuid.UUID
+	if u, ok := GetUser(ctx); ok {
+		uid = u.UserID
+	}
+	b.svc.AuditLog(ctx, q, uid, "UPDATE_CAMPAIGN_SUPPLY_CHAIN", "campaign", &campaignID, platformadmin.AuditSupplyChainChange{
+		OldNodes: json.RawMessage(oldNodesJSON),
+		NewNodes: json.RawMessage(newNodesJSON),
+	}, nil)
+}
+
+func (s *Service) GetCampaignSupplyChain(ctx context.Context, campaignID uuid.UUID) (supply.CampaignChainDTO, error) {
+	return runtime.GetCampaignSupplyChain(ctx, s.pool, supplyChainBridge{svc: s}, campaignID)
+}
+
+func (s *Service) UpdateCampaignSupplyChain(ctx context.Context, campaignID uuid.UUID, nodes []supply.ChainNode) (supply.CampaignChainDTO, error) {
+	return runtime.UpdateCampaignSupplyChain(ctx, s.pool, supplyChainBridge{svc: s}, campaignID, nodes)
 }

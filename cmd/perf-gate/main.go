@@ -78,7 +78,7 @@ func verifyRawZeroAlloc(filename string) error {
 		var bytesVal, allocsVal int64
 		var hasBytes, hasAllocs bool
 
-		for i := 0; i < len(fields)-1; i++ {
+		for i := range len(fields) - 1 {
 			if fields[i+1] == "B/op" {
 				val, err := strconv.ParseInt(fields[i], 10, 64)
 				if err == nil {

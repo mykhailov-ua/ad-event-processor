@@ -313,6 +313,48 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/public/activate:
+    post:
+      tags: [public]
+      operationId: publicActivate
+      summary: Activate owner account with license JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/PublicActivateRequest'
+      responses:
+        '200':
+          description: Owner activated and session cookies set
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PublicLoginResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/public/invite/accept:
+    post:
+      tags: [public]
+      operationId: publicInviteAccept
+      summary: Accept team invite and set password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/platform.yaml#/PublicAcceptInviteRequest'
+      responses:
+        '200':
+          description: Invite accepted and session cookies set
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/PublicLoginResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/recon/runs:
     get:
       tags: [recon]

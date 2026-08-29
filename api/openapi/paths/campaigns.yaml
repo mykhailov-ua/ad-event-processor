@@ -23,7 +23,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [name, updated_at, spend]
+            enum: [name, updated_at, spend, budget_limit]
         - name: order
           in: query
           required: false
@@ -35,6 +35,20 @@ paths:
           required: false
           schema:
             type: string
+        - name: budget_min_micro
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+        - name: budget_max_micro
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
         - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:

@@ -123,7 +123,7 @@ func (u *Worker) drainBatch() {
 	if u.pool == nil || u.cfg.GlobalURL == "" {
 		return
 	}
-	for i := 0; i < u.cfg.BatchSize; i++ {
+	for i := range u.cfg.BatchSize {
 		slot, ok := u.pool.Dequeue()
 		if !ok {
 			return

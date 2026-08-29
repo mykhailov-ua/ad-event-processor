@@ -48,7 +48,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Hot BPF gate and baseline compare
-        run: bash scripts/test/bpf_nightly_job.sh hot
+        run: bash scripts/test/bpf/nightly_job.sh hot
 
       - uses: actions/upload-artifact@v4
         if: always() && env.BPF_GATE_STRICT == 'true'
@@ -97,7 +97,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Cold BPF soak and baseline compare
-        run: bash scripts/test/bpf_nightly_job.sh cold
+        run: bash scripts/test/bpf/nightly_job.sh cold
 
       - uses: actions/upload-artifact@v4
         if: always() && env.BPF_GATE_STRICT == 'true'
@@ -149,7 +149,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Report export BPF soak
-        run: bash scripts/test/bpf_nightly_job.sh export
+        run: bash scripts/test/bpf/nightly_job.sh export
 
       - uses: actions/upload-artifact@v4
         if: always() && env.BPF_GATE_STRICT == 'true'

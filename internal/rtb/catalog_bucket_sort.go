@@ -39,7 +39,7 @@ func sortRegistryBuckets(reg *CampaignAuctionRegistry) {
 	if reg == nil || reg.GeoBucketCount == 0 {
 		return
 	}
-	for i := 0; i < reg.GeoBucketCount; i++ {
+	for i := range reg.GeoBucketCount {
 		start := int(reg.GeoBucketStart[i])
 		end := int(reg.GeoBucketStart[i+1])
 		sortBucketSoA(&reg.GeoBucketSoA, start, end)
@@ -47,7 +47,7 @@ func sortRegistryBuckets(reg *CampaignAuctionRegistry) {
 	if reg.TargetBucketCount == 0 {
 		return
 	}
-	for i := 0; i < reg.TargetBucketCount; i++ {
+	for i := range reg.TargetBucketCount {
 		start := int(reg.TargetBucketStart[i])
 		end := int(reg.TargetBucketStart[i+1])
 		sortBucketSoA(&reg.TargetBucketSoA, start, end)

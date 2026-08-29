@@ -48,7 +48,7 @@ fi
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then
   log "preparing constrained stack"
-  bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
+  bash "$SCRIPTS/test/load/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
 fi
 
 log "ensuring trackers + nginx"

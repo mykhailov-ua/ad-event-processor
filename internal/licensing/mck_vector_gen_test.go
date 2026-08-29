@@ -1,4 +1,4 @@
-package licensing
+package licensing_test
 
 import (
 	"crypto/ed25519"
@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing/entitlements"
 
 	"github.com/stretchr/testify/require"
 )
@@ -23,29 +26,29 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 	}
 	priv := ed25519.NewKeyFromSeed(seed)
 	validFrom := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	claims := LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      "mck-vector-subject",
 		DeploymentID: "dep-mck-vector",
 		CustomerName: "Vector Co",
-		Plan:         DefaultSKUCode,
+		Plan:         entitlements.DefaultSKUCode,
 		ValidFrom:    validFrom,
 		ValidUntil:   validFrom.Add(72 * time.Hour),
 		GraceDays:    7,
 	}
-	token, err := SignJWT(claims, priv, DefaultLicenseKeyID)
+	token, err := licensing.SignJWT(claims, priv, licensing.DefaultLicenseKeyID)
 	require.NoError(t, err)
-	tel := HWIDTelemetry{
+	tel := licensing.HWIDTelemetry{
 		DMIUUID:  "mck-fixture-dmi",
 		DiskID:   "mck-fixture-disk",
 		MAC:      "aa:bb:cc:dd:ee:ff",
 		CPUModel: "MCK Fixture CPU",
 		CPUCores: 4,
 	}
-	hwid := HashHWIDFromTelemetry(tel)
-	mck, err := DeriveMCK(token, hwid)
+	hwid := licensing.HashHWIDFromTelemetry(tel)
+	mck, err := licensing.DeriveMCK(token, hwid)
 	require.NoError(t, err)
-	seedU32 := FeatureSeedFromMCK(mck)
+	seedU32 := licensing.FeatureSeedFromMCK(mck)
 	out := struct {
 		MCKInfoLabel string `json:"mck_info_label"`
 		Fixtures     []struct {
@@ -63,7 +66,7 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 			FeatureSeedHex string `json:"feature_seed_hex"`
 		} `json:"mck_stretch_v1"`
 	}{
-		MCKInfoLabel: MCKInfoLabel(),
+		MCKInfoLabel: licensing.MCKInfoLabel(),
 		Fixtures: []struct {
 			Name           string `json:"name"`
 			Token          string `json:"token"`
@@ -78,7 +81,7 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 			FeatureSeedHex: fmt.Sprintf("%08x", seedU32),
 		}},
 	}
-	mckWork, err := StretchMCKForRecheck(mck, claims.DeploymentID)
+	mckWork, err := licensing.StretchMCKForRecheck(mck, claims.DeploymentID)
 	require.NoError(t, err)
 	out.MCKStretchV1 = []struct {
 		Name           string `json:"name"`
@@ -91,7 +94,7 @@ func TestGenMCKVectorArtifacts(t *testing.T) {
 		MCKHex:         hex.EncodeToString(mck[:]),
 		DeploymentID:   claims.DeploymentID,
 		MCKWorkHex:     hex.EncodeToString(mckWork[:]),
-		FeatureSeedHex: fmt.Sprintf("%08x", FeatureSeedFromMCK(mckWork)),
+		FeatureSeedHex: fmt.Sprintf("%08x", licensing.FeatureSeedFromMCK(mckWork)),
 	}}
 	raw, err := json.MarshalIndent(out, "", " ")
 	require.NoError(t, err)

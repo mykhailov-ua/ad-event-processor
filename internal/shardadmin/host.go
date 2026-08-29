@@ -3,8 +3,8 @@ package shardadmin
 import (
 	"context"
 
-	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 

@@ -49,7 +49,7 @@ func (h *TeamHTTPHandlers) inviteMember(w http.ResponseWriter, r *http.Request) 
 	if !ok {
 		return
 	}
-	member, err := h.Governance.InviteTeamMember(r.Context(), customerID, req.Email, req.Role)
+	member, err := h.Governance.InviteTeamMember(WithPanelRequest(r.Context(), r), customerID, req.Email, req.Role)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

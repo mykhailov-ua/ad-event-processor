@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const (
@@ -340,4 +341,9 @@ ORDER BY hr`
 		return 0, nil, err
 	}
 	return total, samples, nil
+}
+
+type ForecastHost interface {
+	ForecastPool() *pgxpool.Pool
+	ForecastClickHouseQuery() *database.ClickHouseQuery
 }

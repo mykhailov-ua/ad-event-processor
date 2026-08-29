@@ -6,8 +6,10 @@ local edge_net = require "edge-net"
 
 local getenv = os.getenv
 
-local CONTROL_URL = os.getenv("CONTROL_URL") or os.getenv("MANAGEMENT_URL") or "unix:///run/ad-event-processor/control/http.sock"
-local SYNC_INTERVAL_SEC = tonumber(os.getenv("NODE_WEIGHTS_SYNC_INTERVAL_SEC") or "") or 10
+local CONTROL_URL = os.getenv "CONTROL_URL"
+    or os.getenv "MANAGEMENT_URL"
+    or "unix:///run/ad-event-processor/control/http.sock"
+local SYNC_INTERVAL_SEC = tonumber(os.getenv "NODE_WEIGHTS_SYNC_INTERVAL_SEC" or "") or 10
 local STALE_EPOCH_LAG = 2
 local WEIGHT_SCALE = 1000000
 
@@ -16,7 +18,7 @@ function _M.sync_interval_sec()
 end
 
 function _M.fail_open()
-    local raw = getenv("CONTROL_FAIL_OPEN") or "0"
+    local raw = getenv "CONTROL_FAIL_OPEN" or "0"
     return raw == "1" or raw == "true" or raw == "TRUE"
 end
 
@@ -25,22 +27,22 @@ function _M.set_getenv_for_test(fn)
 end
 
 function _M.epoch()
-    return dict:get("epoch") or 0
+    return dict:get "epoch" or 0
 end
 
 function _M.epoch_lag()
-    return dict:get("epoch_lag") or 0
+    return dict:get "epoch_lag" or 0
 end
 
 function _M.stale()
-    local sync_ts = dict:get("sync_ts")
+    local sync_ts = dict:get "sync_ts"
     if not sync_ts then
         return true
     end
     if ngx.time() - sync_ts > SYNC_INTERVAL_SEC * STALE_EPOCH_LAG then
         return true
     end
-    local lag = dict:get("epoch_lag") or 0
+    local lag = dict:get "epoch_lag" or 0
     return lag > STALE_EPOCH_LAG
 end
 
@@ -52,7 +54,7 @@ function _M.drain_frozen()
 end
 
 function _M.pick_peer_index()
-    local n = dict:get("peer_count") or 0
+    local n = dict:get "peer_count" or 0
     if n <= 0 then
         return nil
     end

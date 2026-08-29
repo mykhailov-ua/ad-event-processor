@@ -58,7 +58,7 @@ func inviteTeamMember(ctx context.Context, host GovernanceHost, customerID uuid.
 	userID := uuid.New()
 	_, err = pool.Exec(ctx, `
 		INSERT INTO users (id, email, password_hash, role, customer_id, email_verified)
-		VALUES ($1, $2, $3, $4, $5, TRUE)
+		VALUES ($1, $2, $3, $4, $5, FALSE)
 		ON CONFLICT (email) DO NOTHING`,
 		userID, email, hash, normalizedRole, customerID)
 	if err != nil {
@@ -69,6 +69,27 @@ func inviteTeamMember(ctx context.Context, host GovernanceHost, customerID uuid.
 	if err != nil {
 		return TeamMemberDTO{}, err
 	}
+
+	rdb := host.InviteRedis()
+	if rdb == nil {
+		return TeamMemberDTO{}, errTeamServiceUnavailable()
+	}
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return TeamMemberDTO{}, err
+	}
+	token := base64.RawURLEncoding.EncodeToString(tokenBytes)
+	if err := StoreTeamInvite(ctx, rdb, token, TeamInvitePayload{
+		UserID:     gotID,
+		CustomerID: customerID,
+		Email:      email,
+	}); err != nil {
+		return TeamMemberDTO{}, err
+	}
+	baseURL := host.PublicPanelBaseURL(PanelRequestFromContext(ctx))
+	acceptURL := strings.TrimRight(baseURL, "/") + "/invite/accept?token=" + token
+	host.EnqueueInviteEmail(ctx, email, acceptURL)
+
 	return teamMemberDTO(ctx, host, customerID, gotID)
 }
 

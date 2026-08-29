@@ -58,9 +58,9 @@ fi
 log "automated catalog (PT-D04 proxy, PT-D07 proxy, PT-E08 proxy)"
 
 run_case "pt_d04_seed_coupling_rps" \
-  go test ./internal/ingestion/ -run 'LicenseRPSFilter_seedCoupling' -count=1 -short
+  go test ./internal/ingest/ -run 'LicenseRPSFilter_seedCoupling' -count=1 -short
 run_case "pt_d04_openrtb_seed_coupling" \
-  go test ./internal/ingestion/ -run 'OpenRTBLicenseAllowed_seedCoupling' -count=1 -short
+  go test ./internal/ingest/ -run 'OpenRTBLicenseAllowed_seedCoupling' -count=1 -short
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   run_case "pt_d07_text_tamper" \

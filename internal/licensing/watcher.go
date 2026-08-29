@@ -14,6 +14,9 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/ledger/db"
 
+	entitlements "ad-event-processor/internal/licensing/entitlements"
+	"ad-event-processor/internal/licensing/verify"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +29,7 @@ type LicenseWatcher struct {
 	pool        *pgxpool.Pool
 	redisClient redis.UniversalClient
 	controlRdbs []redis.UniversalClient
-	client      *LicenseClient
+	client      *verify.LicenseClient
 	mode        string
 	path        string
 	spoolDir    string
@@ -38,8 +41,8 @@ type LicenseWatcher struct {
 	spool       *LicenseSpool
 
 	mu               sync.RWMutex
-	currentClaims    *LicenseClaims
-	currentState     LicenseState
+	currentClaims    *entitlements.LicenseClaims
+	currentState     entitlements.LicenseState
 	lastVerifiedAt   time.Time
 	lastRefreshError error
 	offlineSince     time.Time
@@ -89,7 +92,7 @@ func NewLicenseWatcher(pool *pgxpool.Pool, redisClient redis.UniversalClient, pu
 		timeout:      timeout,
 		policy:       LoadHeartbeatPolicyFromEnv(),
 		pubKey:       pubKey,
-		currentState: StateExpired,
+		currentState: entitlements.StateExpired,
 	}
 }
 
@@ -112,7 +115,7 @@ func (w *LicenseWatcher) closeSpool() {
 	}
 }
 
-func (w *LicenseWatcher) GetState() (LicenseState, *LicenseClaims) {
+func (w *LicenseWatcher) GetState() (entitlements.LicenseState, *entitlements.LicenseClaims) {
 	w.mu.RLock()
 	defer w.mu.RUnlock()
 	return w.currentState, w.currentClaims
@@ -199,9 +202,9 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 		if err != nil {
 			w.mu.Lock()
 			w.lastRefreshError = err
-			w.currentState = StateExpired
+			w.currentState = entitlements.StateExpired
 			w.mu.Unlock()
-			SetLicenseMetrics(StateExpired, 0)
+			SetLicenseMetrics(entitlements.StateExpired, 0)
 			publishFeatureSeedAfterVerify(w.path, w.pubKey, err)
 			return fmt.Errorf("failed to read local license file: %w", err)
 		}
@@ -211,24 +214,24 @@ func (w *LicenseWatcher) verifyAndReload(ctx context.Context) error {
 	if err != nil {
 		w.mu.Lock()
 		w.lastRefreshError = err
-		w.currentState = StateExpired
+		w.currentState = entitlements.StateExpired
 		w.mu.Unlock()
-		SetLicenseMetrics(StateExpired, 0)
+		SetLicenseMetrics(entitlements.StateExpired, 0)
 		publishFeatureSeedAfterVerify(w.path, w.pubKey, err)
 		return fmt.Errorf("license signature verification failed: %w", err)
 	}
 
-	if err := CheckHostActivation(ctx, w.pool, claims, HostFingerprint()); err != nil {
+	if err := verify.CheckHostActivation(ctx, w.pool, claims, verify.HostFingerprint()); err != nil {
 		w.mu.Lock()
 		w.lastRefreshError = err
-		w.currentState = StateExpired
+		w.currentState = entitlements.StateExpired
 		w.mu.Unlock()
-		SetLicenseMetrics(StateExpired, 0)
+		SetLicenseMetrics(entitlements.StateExpired, 0)
 		publishFeatureSeedAfterVerify(w.path, w.pubKey, err)
 		return fmt.Errorf("license bind verification failed: %w", err)
 	}
 
-	claims.Features = SanitizeFeaturesForSKU(claims.SKU, claims.Features)
+	claims.Features = entitlements.SanitizeFeaturesForSKU(claims.SKU, claims.Features)
 
 	w.mu.Lock()
 	offlineSince := w.offlineSince
@@ -299,7 +302,7 @@ func (w *LicenseWatcher) performOnlineHeartbeat(ctx context.Context) (string, er
 	var uptime int64 = 300
 
 	if err == nil {
-		claims, err := DecodeUnverified(cachedToken)
+		claims, err := verify.DecodeUnverified(cachedToken)
 		if err == nil {
 			deploymentID = claims.DeploymentID
 			fingerprint = claims.Bind.Fingerprint
@@ -366,7 +369,7 @@ func (w *LicenseWatcher) readLocalFile() (string, error) {
 	return string(data), nil
 }
 
-func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token string, claims *LicenseClaims, state LicenseState, offlineSince time.Time, offlineDays int) error {
+func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token string, claims *entitlements.LicenseClaims, state entitlements.LicenseState, offlineSince time.Time, offlineDays int) error {
 	depID, err := uuid.Parse(claims.DeploymentID)
 	if err != nil {
 		return fmt.Errorf("invalid deployment id in claims: %w", err)
@@ -376,12 +379,12 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 		licID = uuid.Nil
 	}
 
-	entitlements := Entitlements{
-		VolumeBand: ParseVolumeBand(string(claims.VolumeBand)),
+	ent := entitlements.Entitlements{
+		VolumeBand: entitlements.VolumeBand(ParseVolumeBand(string(claims.VolumeBand))),
 		Limits:     claims.Limits,
-		Features:   SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
+		Features:   entitlements.SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized(),
 	}
-	entitlementsJSON, err := json.Marshal(entitlements)
+	entitlementsJSON, err := json.Marshal(ent)
 	if err != nil {
 		return err
 	}
@@ -407,7 +410,7 @@ func (w *LicenseWatcher) updateDatabaseAndRedis(ctx context.Context, token strin
 	}
 
 	redisKey := "entitlement:deployment"
-	features := SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized()
+	features := entitlements.SanitizeFeaturesForSKU(claims.SKU, claims.Features).Normalized()
 	fields := map[string]any{
 		"state":                      string(state),
 		"plan":                       claims.Plan,

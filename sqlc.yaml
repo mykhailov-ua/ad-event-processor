@@ -1,7 +1,7 @@
 version: "2"
 sql:
-  - schema: "internal/ingestion/migrations"
-    queries: "internal/ingestion/queries"
+  - schema: "internal/ingest/migrations"
+    queries: "internal/ingest/queries"
     engine: "postgresql"
     gen:
       go:
@@ -49,7 +49,7 @@ sql:
         emit_interface: true
         emit_exact_table_names: false
   - schema:
-      - "internal/ingestion/migrations"
+      - "internal/ingest/migrations"
       - "internal/ledger/migrations"
     queries: "internal/ledger/queries"
     engine: "postgresql"

@@ -65,7 +65,7 @@ func (h *histogram) write(path, generated string) error {
 }
 
 func splitKey(k string) [2]string {
-	for i := 0; i < len(k); i++ {
+	for i := range len(k) {
 		if k[i] == 0 {
 			return [2]string{k[:i], k[i+1:]}
 		}

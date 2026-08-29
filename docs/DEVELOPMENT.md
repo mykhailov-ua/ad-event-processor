@@ -47,12 +47,12 @@ task test-gen -- internal/my-service
 
 ### Control plane OpenAPI (API-first for new routes)
 
-Contract files live under `api/openapi/`. Hand-documented domains: cost-sync (pilot), integrations, campaigns, billing, reports, ops, fraud admin, dashboards, saved views. Every other `routeCatalog` row still appears as a generated stub in `paths/_generated_routes.yaml` until its domain slug is migrated (workflow below).
+Contract files live under `api/openapi/`. Documented domains: cost-sync, integrations, campaigns, billing, reports, ops, fraud admin, dashboards, saved views. Remaining `routeCatalog` rows appear as generated stubs in `paths/_generated_routes.yaml` until exported to a documented fragment.
 
 ```bash
 make openapi-export   # refresh stubs + openapi.bundle.yaml from routeCatalog
 make openapi-types    # regenerate web/src/types/generated/openapi.d.ts
-bash scripts/ci/openapi_gate.sh   # export, catalog parity, Spectral, TS drift
+bash scripts/ci/admin/openapi.sh   # export, catalog parity, Spectral, TS drift
 ```
 
 #### Required workflow for new `/api/v1` routes
@@ -66,9 +66,9 @@ Do not land handler-only routes. Spec, catalog parity, and admin types move in t
 | 3 | Implement the Go handler and DTO to match the schema; add `internal/controlplane/openapi_<domain>_test.go` parity (JSON keys vs YAML properties). |
 | 4 | Wire admin helpers to `web/src/types/generated/openapi.d.ts` via thin re-exports in `web/src/types/*.ts`. Document auth on the operation with `x-permissions: [campaigns:write]` (array of permission strings checked by the handler). |
 
-Legacy routes may stay code-first temporarily; catch up by domain slug (export + documented fragment), not a big-bang rewrite.
+Legacy routes may stay code-first temporarily; catch up per domain (export + documented fragment), not a big-bang rewrite.
 
-**Team default:** treat an undocumented hand spec as a merge blocker for new control-plane surfaces. `bash scripts/ci/openapi_gate.sh` already runs from `lint_configs_gate.sh`; a stricter "no stub-only new routes" gate in `pr_fast.sh` is optional follow-up.
+**Team default:** treat an undocumented hand spec as a merge blocker for new control-plane surfaces. `bash scripts/ci/admin/openapi.sh` already runs from `lint_configs_gate.sh`; a stricter "no stub-only new routes" gate in `pr_fast.sh` is optional follow-up.
 
 #### Cost-sync pilot (copy this shape)
 
@@ -112,15 +112,15 @@ Verify before push:
 ```bash
 go test ./internal/controlplane/ -run TestOpenAPI_
 go test ./internal/openapi/ -count=1
-bash scripts/ci/openapi_gate.sh
+bash scripts/ci/admin/openapi.sh
 cd web && npm run typecheck
 ```
 
-OpenAPI transition closed 2026-08-26; gate: `bash scripts/ci/openapi_gate.sh`.
+OpenAPI gate: `bash scripts/ci/admin/openapi.sh`.
 
 #### Breaking change guard (OpenAPI diff)
 
-`bash scripts/ci/openapi_breaking_gate.sh` runs inside `openapi_gate.sh` (and `lint_configs_gate.sh`). It uses [oasdiff](https://github.com/oasdiff/oasdiff) on the **bundled** spec (`openapi.bundle.yaml`) and fails on ERR-level breaking changes: removed paths or methods, removed response properties, type narrowing, new required fields without defaults, and similar consumer-facing drift.
+`bash scripts/ci/admin/openapi_breaking.sh` runs inside `openapi_gate.sh` (and `lint_configs_gate.sh`). It uses [oasdiff](https://github.com/oasdiff/oasdiff) on the **bundled** spec (`openapi.bundle.yaml`) and fails on ERR-level breaking changes: removed paths or methods, removed response properties, type narrowing, new required fields without defaults, and similar consumer-facing drift.
 
 | Knob | Purpose |
 | :--- | :--- |
@@ -136,7 +136,7 @@ Fixture proof (removed schema property):
 
 ```bash
 go test ./internal/openapi/ -run TestBreakingChangeGate -count=1
-bash scripts/ci/openapi_breaking_gate.sh
+bash scripts/ci/admin/openapi_breaking.sh
 ```
 
 #### Optional request validation (kin-openapi)
@@ -164,8 +164,8 @@ Copy the template environment configuration file and build the local container s
 
 ```bash
 cp .env.example .env
-bash scripts/dev/stack.sh build
-bash scripts/dev/stack.sh full    # Launches PostgreSQL, Redis Shards, and ClickHouse
+bash scripts/dev/stack/stack.sh build
+bash scripts/dev/stack/stack.sh full    # Launches PostgreSQL, Redis Shards, and ClickHouse
 ```
 
 ### Docker Compose Profiles
@@ -200,10 +200,10 @@ Minimum RAM (comfortable dev):
 
 | Profile | RAM | Compose command |
 | :--- | ---: | :--- |
-| `ingest-only` | 4 GB | `bash scripts/dev/stack.sh ingest-only` |
-| `minimal` | 6 GB | `bash scripts/dev/stack.sh minimal` |
-| `full` / `single-vps` | 8 GB | `bash scripts/dev/stack.sh full` |
-| `analytics-ml` | 12 GB+ | `bash scripts/dev/stack.sh analytics-ml` |
+| `ingest-only` | 4 GB | `bash scripts/dev/stack/stack.sh ingest-only` |
+| `minimal` | 6 GB | `bash scripts/dev/stack/stack.sh minimal` |
+| `full` / `single-vps` | 8 GB | `bash scripts/dev/stack/stack.sh full` |
+| `analytics-ml` | 12 GB+ | `bash scripts/dev/stack/stack.sh analytics-ml` |
 
 ### Minimal buyer stack
 
@@ -212,8 +212,8 @@ Same binaries as `full`; compose overlay `deploy/compose/docker-compose.minimal.
 ```bash
 cp .env.example .env
 cat deploy/compose/minimal.stack.env.example >> .env
-bash scripts/dev/stack.sh build
-bash scripts/dev/stack.sh minimal
+bash scripts/dev/stack/stack.sh build
+bash scripts/dev/stack/stack.sh minimal
 ```
 
 Services started: `db`, `redis-0`, `broker`, `processor`, `tracker-0`, `control`, `clickhouse`.
@@ -235,7 +235,7 @@ ClickHouse memory limit is 1536M in minimal overlay vs 4G in default compose. Tr
 To verify that all local systems are operating cleanly, run:
 
 ```bash
-bash scripts/dev/preflight.sh
+bash scripts/dev/stack/preflight.sh
 ```
 
 ---
@@ -264,7 +264,7 @@ Log: `var/admin_dev.log`. PID: `var/admin_dev.pid`.
 ### 2. Admin UI Bootstrap & Production Build
 To seed a local developer account and embed the UI assets directly into the Go `control` binary:
 ```bash
-bash scripts/dev/seed_admin.sh
+bash scripts/dev/stack/seed_admin.sh
 cd web && npm run build
 cd ..
 make build-bin
@@ -354,7 +354,7 @@ These suites verify automatic recovery during common disaster scenarios: Redis s
 
 ## CI and gate artifact output
 
-Local gates and GitHub Actions tee logs write under `var/ci/` (gitignored). Override with `CI_ARTIFACT_DIR`. Perf bench outputs from `scripts/test/gate_run.sh` land in `var/ci/perf-gate/`. Workflows capture transcripts via `bash scripts/lib/tee_ci_log.sh <filename> <command...>`.
+Local gates and GitHub Actions tee logs write under `var/ci/` (gitignored). Override with `CI_ARTIFACT_DIR`. Perf bench outputs from `scripts/test/load/gate_run.sh` land in `var/ci/perf-gate/`. Workflows capture transcripts via `bash scripts/lib/tee_ci_log.sh <filename> <command...>`.
 
 ---
 
@@ -373,15 +373,15 @@ These scripts can be executed on-demand to test integrations, performance bounda
 | :--- | :--- |
 | `scripts/ops/admin_release_preflight_gate.sh` | Compiles the Admin UI, checks integration endpoints, and validates CAPI sync. |
 | `scripts/test/cpa_compliance_smoke.sh` | Verifies campaign spend auditing and accounting rules against the Playwright suite. |
-| `scripts/test/reverse_proxy_close_smoke.sh` | Validates click routing, Safe Page redirection, and interactive attestation handshakes. |
-| `scripts/test/nginx_lua_tests.sh all` | Runs the test corpus against Lua edge scripts (including Nginx tarpit limits). |
+| `scripts/test/edge/reverse_proxy_close_smoke.sh` | Validates click routing, Safe Page redirection, and interactive attestation handshakes. |
+| `scripts/test/edge/lua_tests.sh all` | Runs the test corpus against Lua edge scripts (including Nginx tarpit limits). |
 | `scripts/test/cpu_isolation_smoke.sh` | Verifies thread pinning and cpuset isolation configurations under load. |
 | `scripts/test/uds_transport_smoke.sh` | Validates Unix Domain Socket transport connections for PostgreSQL, Redis, and ClickHouse. |
-| `scripts/security/license_pentest.sh` | Licensing pentest orchestrator (tiers A-C automated, tier D manual). Backlog: `deploy/vendor/licensing_security_backlog.md`. |
+| `scripts/security/license_pentest.sh` | Licensing pentest orchestrator (tiers A-C automated, tier D manual). See `.cursor/rules/licensing.mdc`. |
 
 ### Licensing security pentest
 
-Offline JWT licensing uses Ed25519, Argon2id HWID bind, optional `garble` release builds, and Linux runtime guard (`license_guard` build tag). Full threat model, hardening slugs, and manual root-attacker drills: `deploy/vendor/licensing_security_backlog.md`.
+Offline JWT licensing uses Ed25519, Argon2id HWID bind, optional `garble` release builds, and Linux runtime guard (`license_guard` build tag). Threat model and operator runbook: `.cursor/rules/licensing.mdc`.
 
 ```bash
 # Tier A: CI parity (unit + red team + strings gates)
@@ -419,12 +419,12 @@ make license-red-team
 | `GARBLE_SEED` | **Required** for garbled release builds (`RELEASE_GARBLE=1`). CI and `license_red_team_garbled.sh` always set it. |
 | `RELEASE_GARBLE_SKIP_SEED=1` | Local dev only: allow garble build without `GARBLE_SEED` (non-reproducible). |
 | `GARBLE_LITERALS` | Global override for `-literals` on all commands (default: tracker `0`, control/processor `1`). |
-| `GARBLE_LITERALS_TRACKER=1` | Experimental: enable `-literals` on tracker only. Run `GARBLE_LITERALS_P99_SMOKE=1 bash scripts/test/garble_literals_p99_smoke.sh` before enabling in release policy. |
+| `GARBLE_LITERALS_TRACKER=1` | Experimental: enable `-literals` on tracker only. Run `GARBLE_LITERALS_P99_SMOKE=1 bash scripts/test/license/garble_literals_p99_smoke.sh` before enabling in release policy. |
 | `GARBLE_LITERALS_P99_SMOKE` | `1` runs load-test p99 comparison (tracker literals must stay within budget; default policy keeps tracker literals off). |
 
-`bash scripts/ci/release_strings_gate.sh` scans garbled binaries for licensing symbol anchors, vendor pubkey hex, and raw embedkey byte needles.
+`bash scripts/ci/license/release_strings.sh` scans garbled binaries for licensing symbol anchors, vendor pubkey hex, and raw embedkey byte needles.
 
-Manual tier D (config pubkey injection, HWID sysfs spoof, binary patch lab): see slug `licensing_pentest_playbook` in the security backlog. HWID spoof fixture: `deploy/vendor/fixtures/hwid_spoof/README.md`. Binary patch lab: `deploy/vendor/fixtures/binary_patch/README.md` (`bash scripts/lab/binary_patch_lab.sh`).
+Manual root-attacker drills (pubkey injection, HWID sysfs spoof, binary patch): `deploy/vendor/fixtures/hwid_spoof/README.md`, `deploy/vendor/fixtures/binary_patch/README.md`, `bash scripts/lab/binary_patch_lab.sh`. Licensing policy: `.cursor/rules/licensing.mdc`.
 
 ---
 

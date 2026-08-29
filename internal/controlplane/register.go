@@ -1,10 +1,18 @@
 package controlplane
 
 import (
+	"net/http"
+
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/brand"
 	"ad-event-processor/internal/campaign"
+	_ "ad-event-processor/internal/campaign/editor"
+	"ad-event-processor/internal/campaign/integration"
+	_ "ad-event-processor/internal/campaign/integration"
+	"ad-event-processor/internal/campaign/selfserve"
+	_ "ad-event-processor/internal/campaign/wizard"
+	"ad-event-processor/internal/controlplane/routecatalog"
 	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/doctor"
 	"ad-event-processor/internal/flow"
@@ -15,11 +23,12 @@ import (
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/reportjob"
 	"ad-event-processor/internal/reports"
+	_ "ad-event-processor/internal/reports/export"
+	_ "ad-event-processor/internal/reports/fraud"
 	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/smartalerts"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/internal/telegram"
-	"net/http"
 )
 
 type RouteRegistry struct {
@@ -33,7 +42,7 @@ type RouteRegistry struct {
 	ReportJobHTTP         *reportjob.HTTPHandlers
 	DashboardsHTTP        *dashboardadmin.HTTPHandlers
 	ViewsHTTP             *reports.ViewsHTTPHandlers
-	SelfServeHTTP         *campaign.SelfServeHTTPHandlers
+	SelfServeHTTP         *selfserve.SelfServeHTTPHandlers
 	PostbackHTTP          *campaign.PostbackHTTPHandlers
 	CostSyncHTTP          *billingadmin.CostSyncHTTPHandlers
 	PlatformCampaignHTTP  *platformadmin.PlatformCampaignHTTPHandlers
@@ -42,7 +51,7 @@ type RouteRegistry struct {
 	AutomationHTTP        *automation.HTTPHandlers
 	DomainHealthHTTP      *platformadmin.DomainHealthHTTPHandlers
 	FlowHTTP              *flow.HTTPHandlers
-	IntegrationSchemaHTTP *campaign.IntegrationSchemaHTTPHandlers
+	IntegrationSchemaHTTP *integration.IntegrationSchemaHTTPHandlers
 	TeamHTTP              *platformadmin.TeamHTTPHandlers
 	PublisherHTTP         *dashboardadmin.PublisherHTTPHandlers
 	RtbFloorsHTTP         *rtbadmin.FloorsHTTPHandlers
@@ -55,332 +64,17 @@ type RouteRegistry struct {
 	SessionHTTP           *platformadmin.SessionHTTPHandlers
 	EulaHTTP              *licensingadmin.EulaHTTPHandlers
 	PlatformHTTP          *platformadmin.HTTPHandlers
+	PublicHTTP            *platformadmin.PublicHTTPHandlers
 	BrandHTTP             *brand.HTTPHandlers
 	SupplyHTTP            *supply.HTTPHandlers
 	StubHTTP              *StubHTTPHandlers
 	TelegramHTTP          *telegram.HTTPHandlers
 }
 
+type Route = routecatalog.Route
+
 func Catalog() []Route {
-	return append([]Route(nil), routeCatalog...)
-}
-
-type Route struct {
-	Method string
-	Path   string
-	Stub   bool
-}
-
-func (r Route) Key() string { return r.Method + " " + r.Path }
-
-var routeCatalog = []Route{
-	{Method: "GET", Path: "/api/v1/audit"},
-	{Method: "GET", Path: "/api/v1/audit/export"},
-	{Method: "POST", Path: "/api/v1/billing/exports"},
-	{Method: "GET", Path: "/api/v1/billing/exports/{job_id}"},
-	{Method: "GET", Path: "/api/v1/billing/exports/{job_id}/download"},
-	{Method: "POST", Path: "/api/v1/billing/crypto/webhook"},
-	{Method: "GET", Path: "/api/v1/billing/invariant"},
-	{Method: "GET", Path: "/api/v1/billing/invoices"},
-	{Method: "GET", Path: "/api/v1/billing/invoices/{id}"},
-	{Method: "GET", Path: "/api/v1/billing/invoices/{id}/deliveries"},
-	{Method: "POST", Path: "/api/v1/billing/invoices/{id}/deliveries/retry"},
-	{Method: "GET", Path: "/api/v1/billing/invoices/{id}/ledger-lines"},
-	{Method: "GET", Path: "/api/v1/billing/invoices/{id}/pdf"},
-	{Method: "POST", Path: "/api/v1/billing/invoices/preview"},
-	{Method: "POST", Path: "/api/v1/billing/invoices/{id}/void"},
-	{Method: "GET", Path: "/api/v1/billing/summary"},
-	{Method: "GET", Path: "/api/v1/customers"},
-	{Method: "GET", Path: "/api/v1/customers/{id}"},
-	{Method: "GET", Path: "/api/v1/campaigns"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}"},
-	{Method: "PATCH", Path: "/api/v1/campaigns/{id}"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/clone"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/export"},
-	{Method: "POST", Path: "/api/v1/campaigns/import"},
-	{Method: "GET", Path: "/api/v1/campaigns/migrate/sources"},
-	{Method: "POST", Path: "/api/v1/campaigns/migrate/preview"},
-	{Method: "POST", Path: "/api/v1/campaigns/import/validate"},
-	{Method: "POST", Path: "/api/v1/campaigns/import/validate/jobs"},
-	{Method: "GET", Path: "/api/v1/campaigns/import/validate/jobs/{id}"},
-	{Method: "POST", Path: "/api/v1/campaigns/migrate/import"},
-	{Method: "POST", Path: "/api/v1/campaigns/migrate/pull/preview"},
-	{Method: "POST", Path: "/api/v1/campaigns/migrate/pull/import"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/placement-blocks"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/conversion-mappings"},
-	{Method: "PUT", Path: "/api/v1/campaigns/{id}/conversion-mappings"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/events"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/margin"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/fraud"},
-	{Method: "PATCH", Path: "/api/v1/campaigns/{id}/fraud"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/fraud/preview"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/editor-shell"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/validate"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/publish"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/publish-check"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/smoke"},
-	{Method: "GET", Path: "/api/v1/campaigns/onboarding-templates"},
-	{Method: "GET", Path: "/api/v1/campaigns/wizard/session"},
-	{Method: "POST", Path: "/api/v1/campaigns/wizard/session"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/integration-panel"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/flow/validate"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/macro-preview"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/diff"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/clone/preview"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/placement-block-suggestions"},
-	{Method: "POST", Path: "/api/v1/campaigns/bulk"},
-	{Method: "GET", Path: "/api/v1/campaigns/{id}/stats"},
-	{Method: "POST", Path: "/api/v1/consent"},
-	{Method: "GET", Path: "/api/v1/ops/consent/proofs"},
-	{Method: "GET", Path: "/api/v1/cost-sync/credentials"},
-	{Method: "GET", Path: "/api/v1/cost-sync/networks"},
-	{Method: "PUT", Path: "/api/v1/cost-sync/credentials/{network}"},
-	{Method: "DELETE", Path: "/api/v1/cost-sync/credentials/{network}"},
-	{Method: "GET", Path: "/api/v1/cost-sync/history"},
-	{Method: "POST", Path: "/api/v1/cost-sync/run"},
-	{Method: "GET", Path: "/api/v1/platform-campaigns/links"},
-	{Method: "PUT", Path: "/api/v1/platform-campaigns/links/{campaign_id}/{network}"},
-	{Method: "DELETE", Path: "/api/v1/platform-campaigns/links/{campaign_id}/{network}"},
-	{Method: "POST", Path: "/api/v1/platform-campaigns/links/{campaign_id}/{network}/refresh"},
-	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/pause"},
-	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/resume"},
-	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/budget"},
-	{Method: "POST", Path: "/api/v1/platform-campaigns/sync-run"},
-	{Method: "GET", Path: "/api/v1/brands"},
-	{Method: "POST", Path: "/api/v1/brands"},
-	{Method: "GET", Path: "/api/v1/brands/{id}/creatives"},
-	{Method: "POST", Path: "/api/v1/brands/{id}/creatives"},
-	{Method: "PATCH", Path: "/api/v1/brand-creatives/{id}"},
-	{Method: "DELETE", Path: "/api/v1/brand-creatives/{id}"},
-	{Method: "GET", Path: "/api/v1/supply/sellers"},
-	{Method: "POST", Path: "/api/v1/supply/sellers"},
-	{Method: "PUT", Path: "/api/v1/supply/sellers/{id}"},
-	{Method: "DELETE", Path: "/api/v1/supply/sellers/{id}"},
-	{Method: "GET", Path: "/api/v1/supply/ads-txt"},
-	{Method: "POST", Path: "/api/v1/supply/ads-txt"},
-	{Method: "PUT", Path: "/api/v1/supply/ads-txt/{id}"},
-	{Method: "DELETE", Path: "/api/v1/supply/ads-txt/{id}"},
-	{Method: "GET", Path: "/api/v1/supply/preview/sellers.json"},
-	{Method: "GET", Path: "/api/v1/supply/preview/ads.txt"},
-	{Method: "GET", Path: "/api/v1/supply/validation"},
-	{Method: "GET", Path: "/api/v1/supply/export-path"},
-	{Method: "GET", Path: "/api/v1/publisher/dashboard"},
-	{Method: "GET", Path: "/api/v1/publisher/statements"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/balance"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/ledger"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/balance/export"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/billing/forecast"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/billing/statement"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/payments"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/tax-profile"},
-	{Method: "PUT", Path: "/api/v1/customers/{id}/tax-profile"},
-	{Method: "GET", Path: "/api/v1/customers/{id}/wallet"},
-	{Method: "GET", Path: "/api/v1/dashboards/adops"},
-	{Method: "GET", Path: "/api/v1/dashboards/accountant"},
-	{Method: "GET", Path: "/api/v1/dashboards/buyer"},
-	{Method: "GET", Path: "/api/v1/dashboards/campaign/{id}"},
-	{Method: "GET", Path: "/api/v1/dashboards/cfo"},
-	{Method: "GET", Path: "/api/v1/dashboards/fraud"},
-	{Method: "GET", Path: "/api/v1/fraud/labels"},
-	{Method: "GET", Path: "/api/v1/fraud/decisions"},
-	{Method: "GET", Path: "/api/v1/fraud/integrations"},
-	{Method: "POST", Path: "/api/v1/fraud/labels"},
-	{Method: "POST", Path: "/api/v1/fraud/labels/bulk"},
-	{Method: "POST", Path: "/api/v1/fraud/overrides"},
-	{Method: "GET", Path: "/api/v1/fraud/presets"},
-	{Method: "GET", Path: "/api/v1/dashboards/operator"},
-	{Method: "GET", Path: "/api/v1/disputes"},
-	{Method: "POST", Path: "/api/v1/forecast/campaign"},
-	{Method: "GET", Path: "/api/v1/license/status"},
-	{Method: "POST", Path: "/api/v1/license/apply"},
-	{Method: "GET", Path: "/api/v1/eula"},
-	{Method: "POST", Path: "/api/v1/eula/accept"},
-	{Method: "GET", Path: "/api/v1/meta"},
-	{Method: "GET", Path: "/api/v1/session"},
-	{Method: "GET", Path: "/api/v1/settings/platform"},
-	{Method: "PATCH", Path: "/api/v1/settings/platform"},
-	{Method: "POST", Path: "/api/v1/settings/platform/bootstrap"},
-	{Method: "POST", Path: "/api/v1/settings/platform/apply"},
-	{Method: "GET", Path: "/api/v1/margin-guard/activity"},
-	{Method: "GET", Path: "/api/v1/margin-guard/policies"},
-	{Method: "POST", Path: "/api/v1/margin-guard/policies"},
-	{Method: "POST", Path: "/api/v1/margin-guard/overrides"},
-	{Method: "GET", Path: "/api/v1/smart-alerts/rules"},
-	{Method: "POST", Path: "/api/v1/smart-alerts/rules"},
-	{Method: "PATCH", Path: "/api/v1/smart-alerts/rules/{id}"},
-	{Method: "DELETE", Path: "/api/v1/smart-alerts/rules/{id}"},
-	{Method: "GET", Path: "/api/v1/smart-alerts/history"},
-	{Method: "POST", Path: "/api/v1/smart-alerts/events/{id}/ack"},
-	{Method: "GET", Path: "/api/v1/automation/presets"},
-	{Method: "GET", Path: "/api/v1/automation/rules"},
-	{Method: "POST", Path: "/api/v1/automation/rules"},
-	{Method: "PUT", Path: "/api/v1/automation/rules/{id}"},
-	{Method: "DELETE", Path: "/api/v1/automation/rules/{id}"},
-	{Method: "POST", Path: "/api/v1/automation/rules/{id}/dry-run"},
-	{Method: "GET", Path: "/api/v1/domains"},
-	{Method: "POST", Path: "/api/v1/domains"},
-	{Method: "DELETE", Path: "/api/v1/domains/{hostname}"},
-	{Method: "POST", Path: "/api/v1/domains/{hostname}/probe"},
-	{Method: "POST", Path: "/api/v1/domains/{hostname}/ssl/setup"},
-	{Method: "POST", Path: "/api/v1/domains/park"},
-	{Method: "GET", Path: "/api/v1/flows"},
-	{Method: "POST", Path: "/api/v1/flows"},
-	{Method: "GET", Path: "/api/v1/flows/{id}"},
-	{Method: "PUT", Path: "/api/v1/flows/{id}"},
-	{Method: "GET", Path: "/api/v1/landers"},
-	{Method: "POST", Path: "/api/v1/landers"},
-	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-upload"},
-	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-editor"},
-	{Method: "GET", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
-	{Method: "PUT", Path: "/api/v1/landers/{id}/hosted-files/{path...}"},
-	{Method: "POST", Path: "/api/v1/landers/{id}/hosted-publish"},
-	{Method: "GET", Path: "/lp/{lander_id}/{path...}"},
-	{Method: "GET", Path: "/lp-preview/{lander_id}/{path...}"},
-	{Method: "GET", Path: "/api/v1/offers"},
-	{Method: "POST", Path: "/api/v1/offers"},
-	{Method: "GET", Path: "/api/v1/ops/domains/tls-allowed"},
-	{Method: "GET", Path: "/api/v1/ops/domains/{hostname}/tls-allowed"},
-	{Method: "GET", Path: "/api/v1/ops/blacklist"},
-	{Method: "POST", Path: "/api/v1/ops/blacklist"},
-	{Method: "DELETE", Path: "/api/v1/ops/blacklist"},
-	{Method: "GET", Path: "/api/v1/ops/dashboard/metrics"},
-	{Method: "GET", Path: "/api/v1/ops/dashboard/stream"},
-	{Method: "GET", Path: "/api/v1/ops/dashboard/summary"},
-	{Method: "GET", Path: "/api/v1/ops/doctor"},
-	{Method: "GET", Path: "/api/v1/ops/dlq"},
-	{Method: "GET", Path: "/api/v1/ops/dlq/inbox"},
-	{Method: "POST", Path: "/api/v1/ops/dlq/{id}/retry"},
-	{Method: "POST", Path: "/api/v1/ops/dlq/inbox/{id}/retry"},
-	{Method: "GET", Path: "/api/v1/ops/domains/rotation"},
-	{Method: "GET", Path: "/api/v1/ops/incidents"},
-	{Method: "GET", Path: "/api/v1/ops/outbox"},
-	{Method: "POST", Path: "/api/v1/ops/rum"},
-	{Method: "GET", Path: "/api/v1/ops/rum"},
-	{Method: "POST", Path: "/api/v1/ops/roles/reload"},
-	{Method: "GET", Path: "/api/v1/ops/health/snapshot"},
-	{Method: "GET", Path: "/api/v1/ops/shards"},
-	{Method: "POST", Path: "/api/v1/ops/shards/0/catchup"},
-	{Method: "PATCH", Path: "/api/v1/ops/fraud/presets/{name}"},
-	{Method: "GET", Path: "/api/v1/ops/ml-model"},
-	{Method: "GET", Path: "/api/v1/ops/ml-model/eval"},
-	{Method: "GET", Path: "/api/v1/ops/ml-model/labels"},
-	{Method: "POST", Path: "/api/v1/ops/ml-model/labels"},
-	{Method: "GET", Path: "/api/v1/team/overview"},
-	{Method: "POST", Path: "/api/v1/team/members"},
-	{Method: "PATCH", Path: "/api/v1/team/members/{id}"},
-	{Method: "GET", Path: "/api/v1/team/budget-approvals"},
-	{Method: "POST", Path: "/api/v1/team/budget-approvals/{id}/approve"},
-	{Method: "POST", Path: "/api/v1/team/budget-approvals/{id}/deny"},
-	{Method: "PUT", Path: "/api/v1/campaigns/{id}/owner"},
-	{Method: "GET", Path: "/api/v1/integration/schemas"},
-	{Method: "POST", Path: "/api/v1/integration/schemas"},
-	{Method: "GET", Path: "/api/v1/integration/schemas/{id}"},
-	{Method: "POST", Path: "/api/v1/integration/schemas/{id}/apply"},
-	{Method: "GET", Path: "/api/v1/integration/affiliate-status-presets"},
-	{Method: "GET", Path: "/api/v1/integration/templates"},
-	{Method: "POST", Path: "/api/v1/integration/templates/import"},
-	{Method: "POST", Path: "/api/v1/campaigns/{id}/apply-templates"},
-	{Method: "PUT", Path: "/api/v1/postbacks/config/{campaign_id}"},
-	{Method: "GET", Path: "/api/v1/postbacks/dlq"},
-	{Method: "POST", Path: "/api/v1/postbacks/dlq/{id}/retry"},
-	{Method: "GET", Path: "/api/v1/postbacks/campaign-status"},
-	{Method: "POST", Path: "/api/v1/postbacks/config/{campaign_id}/test"},
-	{Method: "POST", Path: "/api/v1/rtb/floors/apply"},
-	{Method: "POST", Path: "/api/v1/rtb/validate-bid-request"},
-	{Method: "GET", Path: "/api/v1/rtb/integration-profile"},
-	{Method: "GET", Path: "/api/v1/rtb/shadow-diff"},
-	{Method: "GET", Path: "/api/v1/rtb/reconcile/export"},
-	{Method: "GET", Path: "/api/v1/rtb/deals"},
-	{Method: "GET", Path: "/api/v1/rtb/deals/{id}"},
-	{Method: "POST", Path: "/api/v1/rtb/deals"},
-	{Method: "PATCH", Path: "/api/v1/rtb/deals/{id}"},
-	{Method: "DELETE", Path: "/api/v1/rtb/deals/{id}"},
-	{Method: "GET", Path: "/api/v1/recon/runs"},
-	{Method: "GET", Path: "/api/v1/reports/campaign-geo-device"},
-	{Method: "GET", Path: "/api/v1/reports/campaign-overview"},
-	{Method: "GET", Path: "/api/v1/reports/cost-sync-coverage"},
-	{Method: "GET", Path: "/api/v1/reports/customer-portfolio"},
-	{Method: "GET", Path: "/api/v1/reports/data-quality"},
-	{Method: "GET", Path: "/api/v1/reports/edge-parity"},
-	{Method: "GET", Path: "/api/v1/reports/filter-rejects"},
-	{Method: "GET", Path: "/api/v1/reports/catalog"},
-	{Method: "GET", Path: "/api/v1/reports/customer-fraud-by-type"},
-	{Method: "GET", Path: "/api/v1/reports/customer-fraud-by-dimension"},
-	{Method: "GET", Path: "/api/v1/reports/customer-fraud-evidence"},
-	{Method: "GET", Path: "/api/v1/reports/signal-effectiveness"},
-	{Method: "GET", Path: "/api/v1/reports/campaign-toggle-cohort"},
-	{Method: "GET", Path: "/api/v1/reports/layer-desync-drilldown"},
-	{Method: "GET", Path: "/api/v1/reports/wire-signal-breakdown"},
-	{Method: "GET", Path: "/api/v1/reports/fraud-breakdown"},
-	{Method: "GET", Path: "/api/v1/reports/fraud-evidence-pack"},
-	{Method: "GET", Path: "/api/v1/reports/layer-desync-summary"},
-	{Method: "GET", Path: "/api/v1/reports/silent-reject-impression-funnel"},
-	{Method: "GET", Path: "/api/v1/reports/ghost-impression-funnel"},
-	{Method: "GET", Path: "/api/v1/reports/ml/feature-spikes"},
-	{Method: "GET", Path: "/api/v1/reports/ml/score-distribution"},
-	{Method: "GET", Path: "/api/v1/reports/ml/shadow-delta"},
-	{Method: "GET", Path: "/api/v1/reports/pacing-drift"},
-	{Method: "GET", Path: "/api/v1/reports/postback-reconciliation"},
-	{Method: "GET", Path: "/api/v1/reports/conversion-type-payout"},
-	{Method: "GET", Path: "/api/v1/reports/click-log"},
-	{Method: "GET", Path: "/api/v1/reports/clicks"},
-	{Method: "GET", Path: "/api/v1/reports/rtb/geo-device"},
-	{Method: "GET", Path: "/api/v1/reports/rtb/no-bid-reasons"},
-	{Method: "GET", Path: "/api/v1/reports/rtb/overview"},
-	{Method: "GET", Path: "/api/v1/reports/daypart-heatmap"},
-	{Method: "GET", Path: "/api/v1/reports/discrepancy-buy-sell"},
-	{Method: "GET", Path: "/api/v1/reports/geo-roi"},
-	{Method: "GET", Path: "/api/v1/reports/ivt-by-source"},
-	{Method: "GET", Path: "/api/v1/reports/keywords"},
-	{Method: "GET", Path: "/api/v1/reports/placements"},
-	{Method: "POST", Path: "/api/v1/reports/jobs"},
-	{Method: "GET", Path: "/api/v1/reports/jobs/{id}"},
-	{Method: "DELETE", Path: "/api/v1/reports/jobs/{id}"},
-	{Method: "GET", Path: "/api/v1/reports/jobs/{id}/download"},
-	{Method: "GET", Path: "/api/v1/reports/source-quality"},
-	{Method: "GET", Path: "/api/v1/reports/spend-velocity"},
-	{Method: "GET", Path: "/api/v1/reports/traffic-sources"},
-	{Method: "GET", Path: "/api/v1/reports/true-roi"},
-	{Method: "POST", Path: "/api/v1/selfserve/api-keys"},
-	{Method: "GET", Path: "/api/v1/selfserve/billing/statement"},
-	{Method: "POST", Path: "/api/v1/selfserve/campaigns"},
-	{Method: "POST", Path: "/api/v1/selfserve/campaigns/{id}/pause"},
-	{Method: "POST", Path: "/api/v1/selfserve/campaigns/{id}/resume"},
-	{Method: "GET", Path: "/api/v1/selfserve/invoices"},
-	{Method: "GET", Path: "/api/v1/selfserve/templates"},
-	{Method: "POST", Path: "/api/v1/selfserve/payment-intents"},
-	{Method: "GET", Path: "/api/v1/support/feedback/meta"},
-	{Method: "POST", Path: "/api/v1/support/feedback"},
-	{Method: "GET", Path: "/api/v1/views"},
-	{Method: "POST", Path: "/api/v1/views"},
-	{Method: "GET", Path: "/api/v1/views/{id}"},
-	{Method: "PUT", Path: "/api/v1/views/{id}"},
-	{Method: "DELETE", Path: "/api/v1/views/{id}"},
-	{Method: "GET", Path: "/api/v1/report-schedules"},
-	{Method: "POST", Path: "/api/v1/report-schedules"},
-	{Method: "GET", Path: "/api/v1/report-schedules/{id}"},
-	{Method: "PUT", Path: "/api/v1/report-schedules/{id}"},
-	{Method: "DELETE", Path: "/api/v1/report-schedules/{id}"},
-	{Method: "POST", Path: "/api/v1/telegram/validate"},
-	{Method: "POST", Path: "/api/v1/telegram/clicks"},
-	{Method: "POST", Path: "/api/v1/telegram/webhook/{bot_id}"},
-	{Method: "POST", Path: "/api/v1/telegram/deeplink-tokens"},
-	{Method: "GET", Path: "/api/v1/telegram/deeplink-tokens/{token}"},
-	{Method: "GET", Path: "/api/v1/telegram/bots"},
-	{Method: "GET", Path: "/api/v1/telegram/bots/{id}"},
-	{Method: "PUT", Path: "/api/v1/telegram/bots/{id}"},
-	{Method: "GET", Path: "/api/v1/telegram/postbacks"},
-	{Method: "POST", Path: "/api/v1/telegram/postbacks"},
-	{Method: "PUT", Path: "/api/v1/telegram/postbacks/{id}"},
-	{Method: "DELETE", Path: "/api/v1/telegram/postbacks/{id}"},
-	{Method: "POST", Path: "/api/v1/telegram/postbacks/{id}/test"},
-	{Method: "GET", Path: "/api/v1/reports/telegram"},
-	{Method: "GET", Path: "/api/v1/reports/telegram/summary"},
-	{Method: "GET", Path: "/api/v1/reports/telegram/funnel"},
-	{Method: "GET", Path: "/api/v1/reports/telegram/bots"},
-	{Method: "GET", Path: "/api/v1/reports/telegram/premium"},
-	{Method: "GET", Path: "/api/v1/reports/telegram/fraud"},
-	{Method: "POST", Path: "/api/v1/reports/telegram/export"},
+	return routecatalog.Catalog()
 }
 
 func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
@@ -479,6 +173,9 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.PlatformHTTP != nil {
 		routes.PlatformHTTP.Register(mux)
+	}
+	if routes.PublicHTTP != nil {
+		routes.PublicHTTP.Register(mux)
 	}
 	if routes.BrandHTTP != nil {
 		routes.BrandHTTP.Register(mux)

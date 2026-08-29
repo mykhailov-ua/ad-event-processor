@@ -69,9 +69,9 @@ func TestLicense_AdminSmokeScriptsExist(t *testing.T) {
 	t.Parallel()
 	root := repoRoot(t)
 	for _, rel := range []string{
-		"scripts/test/license_admin_smoke.sh",
-		"scripts/test/release_hardening_smoke.sh",
-		"scripts/test/sealed_bpf_xdp_smoke.sh",
+		"scripts/test/license/admin_smoke.sh",
+		"scripts/test/release/hardening_smoke.sh",
+		"scripts/test/edge/sealed_bpf_xdp_smoke.sh",
 	} {
 		path := filepath.Join(root, rel)
 		info, err := os.Stat(path)

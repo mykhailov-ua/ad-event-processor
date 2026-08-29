@@ -109,7 +109,7 @@ func RunDoctor(asJSON bool) error {
 		fmt.Printf("%s: %s\n", k, v)
 	}
 	if !depsOK {
-		fmt.Println("hint: bash scripts/dev/stack.sh status")
+		fmt.Println("hint: bash scripts/dev/stack/stack.sh status")
 		return fmt.Errorf("doctor: dependency checks failed")
 	}
 	if apiResp != nil && apiResp.Overall == "fail" {
@@ -160,6 +160,6 @@ func remediationForDetail(detail string) string {
 	case strings.Contains(lower, "redis"):
 		return doctorRemediation["redis"]
 	default:
-		return "bash scripts/dev/stack.sh single-vps"
+		return "bash scripts/dev/stack/stack.sh single-vps"
 	}
 }

@@ -1,0 +1,997 @@
+package main
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"runtime"
+	"syscall"
+	"time"
+
+	"ad-event-processor/internal/clickhouse/migrate"
+	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/database"
+	db "ad-event-processor/internal/domain/db"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/pgfailover"
+	"ad-event-processor/internal/rtb"
+	"ad-event-processor/pkg/lifecycle"
+	"ad-event-processor/pkg/logger"
+	"ad-event-processor/pkg/netaddr"
+	"ad-event-processor/pkg/piihash"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/panjf2000/gnet/v2"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/redis/go-redis/v9"
+)
+
+func runTracker(cfg *config.Config) {
+	ingestion.SetStoreRetryPolicy(
+		cfg.MaxRetries,
+		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
+		time.Duration(cfg.RetryMaxWaitMs)*time.Millisecond,
+	)
+	ingestion.ApplyRuntimeAutotune()
+	if n := ingestion.DefaultMaxWorkers(); n > 0 {
+		cfg.MaxWorkers = n
+	}
+
+	loggerCfg := logger.Config{
+		LogDir:                cfg.Logger.Dir,
+		FlushBufferSize:       cfg.Logger.FlushSizeKB * 1024,
+		RotateSize:            int64(cfg.Logger.RotateSizeMB) * 1024 * 1024,
+		RotateInterval:        cfg.Logger.RotateInterval,
+		DiskLatencyLimit:      cfg.Logger.LatencyLimit,
+		PersistQueueDepth:     cfg.Logger.PersistQueueDepth,
+		PersistEnqueueTimeout: cfg.Logger.PersistEnqueueTimeout,
+	}
+	appLogger := logger.NewLogger(loggerCfg, cfg.Logger.Shards)
+	defer appLogger.Close()
+
+	logger.RegisterMetrics()
+	appLogger.StartMetricsReporter(15 * time.Second)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	licensing.StartLicenseGuard(ctx, licensing.GuardConfig{
+		Enabled:        licensing.GuardCompiledIn() && config.LicenseGuardEnvEnabled(),
+		PtraceWatchdog: licensing.GuardCompiledIn() && config.LicenseGuardPtraceWatchdogEnabled(),
+		PtraceRequired: licensing.GuardCompiledIn() && config.LicenseGuardPtraceRequired(),
+	})
+
+	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
+	if err != nil {
+		slog.Error("failed to connect to database", "error", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	queries := db.New(pool)
+	registry := ingestion.NewRegistry(queries)
+	registry.SetPool(pool)
+	if cfg.CampaignReplicaPath != "" {
+		registry.SetReplicaPath(cfg.CampaignReplicaPath)
+	}
+	if replicaCount, err := registry.BootstrapFromReplica(); err != nil {
+		slog.Warn("campaign replica bootstrap failed", "error", err)
+	} else if replicaCount > 0 {
+		slog.Info("campaign registry preloaded from replica", "campaigns", replicaCount)
+	}
+	count, err := registry.Sync(ctx)
+	if err != nil {
+		slog.Warn("initial campaign registry sync failed", "error", err)
+	} else {
+		slog.Info("campaign registry loaded", "campaigns", count)
+	}
+	registry.StartSync(ctx, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
+
+	if config.LicenseRequiredFromEnv() {
+		licensePath := config.LicensePathFromEnv()
+		registry.StartLicenseRecheck(ctx, ingestion.RegistryLicenseConfig{
+			Required: true,
+			Path:     licensePath,
+		})
+		slog.Info("license file recheck enabled", "path", licensePath)
+	}
+
+	var redisShards []redis.UniversalClient
+	var breakers []*database.RedisBreaker
+	redisShards, breakers, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
+		PoolSize:         cfg.RedisPoolSize,
+		FilterTimeoutMs:  cfg.FilterTimeoutMs,
+		StickyPinWorkers: cfg.MaxWorkers,
+	})
+	if err != nil {
+		slog.Error("failed to connect to redis shards", "error", err)
+		os.Exit(1)
+	}
+	warmPings := cfg.RedisPoolSize
+	if warmPings <= 0 {
+		warmPings = 10 * runtime.GOMAXPROCS(0)
+	}
+	if cfg.MaxWorkers > 0 {
+		warmPings += cfg.MaxWorkers
+	}
+	database.WarmRedisShardPools(ctx, redisShards, warmPings)
+	database.StartRedisPoolStatsReporter(ctx, redisShards, 15*time.Second)
+	if len(redisShards) > 0 && redisShards[0] != nil {
+		licensing.StartLicenseEpochSync(ctx, redisShards[0])
+	}
+	if redisShards[0] == nil {
+		slog.Warn("redis shard 0 not connected; running in degraded mode",
+			"replica", cfg.CampaignReplicaPath,
+			"broker_fallback", cfg.CampaignUpdateBrokerFallback,
+		)
+	}
+
+	channel := cfg.CampaignUpdateChannel
+	if channel == "" {
+		channel = "campaigns:update"
+	}
+	campaignRepo := ingestion.NewCampaignRepo(queries)
+	sharder := ingestion.NewStaticSlotSharder(len(redisShards))
+	if version, loadErr := ingestion.LoadActiveSlotMap(ctx, pool, sharder, len(redisShards)); loadErr != nil {
+		slog.Warn("slot map load failed, using modulo fallback", "error", loadErr)
+	} else {
+		slog.Info("slot map loaded at startup", "version", version)
+	}
+
+	slotMapWatcher := ingestion.NewSlotMapWatcher(ingestion.SlotMapWatcherConfig{
+		Pool:           pool,
+		Sharder:        sharder,
+		NumShards:      len(redisShards),
+		PollInterval:   time.Duration(cfg.SlotMapPollIntervalMs) * time.Millisecond,
+		BrokerURL:      cfg.Broker.URL,
+		BrokerRedisURL: cfg.Broker.RedisURL,
+		BrokerTopic:    cfg.SlotMapReloadTopic,
+		BrokerTimeout:  time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
+	})
+	go slotMapWatcher.Start(ctx)
+
+	budgetWarmer := ingestion.NewBudgetCacheWarmer(redisShards, sharder)
+	registry.SetBudgetWarmer(budgetWarmer)
+	if warmed, err := budgetWarmer.WarmFromRegistry(ctx, registry); err != nil {
+		slog.Error("initial budget cache warm failed", "error", err)
+	} else {
+		slog.Info("budget cache warmed", "keys_inserted", warmed)
+	}
+
+	registry.ConfigureStaleMode(time.Duration(cfg.RegistryStaleTTLSec) * time.Second)
+	registry.StartWatchShards(ctx, redisShards, channel)
+	registry.StartEpochPoll(ctx, redisShards, time.Duration(cfg.RegistryPollMs)*time.Millisecond)
+
+	if cfg.CampaignUpdateBrokerFallback && cfg.Broker.URL != "" {
+		topic := cfg.CampaignUpdateBrokerTopic
+		if topic == "" {
+			topic = ingestion.DefaultCampaignUpdateBrokerTopic
+		}
+		cuWatcher := ingestion.NewCampaignUpdateWatcher(ingestion.CampaignUpdateWatcherConfig{
+			Registry:       registry,
+			BrokerURL:      cfg.Broker.URL,
+			BrokerRedisURL: cfg.Broker.RedisURL,
+			BrokerTopic:    topic,
+			BrokerTimeout:  time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
+		})
+		go cuWatcher.Start(ctx)
+		slog.Info("campaign update broker fallback enabled", "topic", topic)
+	}
+
+	consentChannel := cfg.ConsentUpdateChannel
+	if consentChannel == "" {
+		consentChannel = ingestion.ConsentDefaultUpdateChannel
+	}
+	consentRdb := firstConnectedRedis(redisShards)
+	consentStore := ingestion.NewConsentStore(consentRdb)
+	if consentRdb != nil {
+		consentStore.StartWatch(ctx, consentRdb, consentChannel)
+	} else {
+		slog.Warn("consent pub/sub disabled: no redis shard available")
+	}
+
+	var geoProvider ingestion.GeoProvider
+	geoProvider, err = ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
+	if err != nil {
+		if cfg.Env == "prod" || cfg.Env == "production" {
+			slog.Error("FATAL: MaxMind DB load failed in production", "error", err)
+			os.Exit(1)
+		}
+		slog.Warn("MaxMind DB load failed, using mock geo provider (development only)", "error", err)
+		geoProvider = &ingestion.MockGeoProvider{}
+	}
+	defer func() { _ = geoProvider.Close() }()
+
+	if mm, ok := geoProvider.(*ingestion.MaxMindProvider); ok {
+		metrics.GeoProviderStatus.Set(1)
+		if err := mm.ReloadASN(cfg.GeoIP.ASNDBPath); err != nil {
+			slog.Warn("geoip asn db load failed; hot DC ASN lookup disabled", "path", cfg.GeoIP.ASNDBPath, "error", err)
+		}
+		watcherInterval := time.Duration(cfg.GeoIP.WatcherIntervalSec) * time.Second
+		go ingestion.NewGeoIPWatcher(mm, cfg.GeoIP.DBPath, cfg.GeoIP.ASNDBPath, watcherInterval).Start(ctx)
+		slog.Info("geoip hot-reload watcher started", "country_path", cfg.GeoIP.DBPath, "asn_path", cfg.GeoIP.ASNDBPath, "interval", watcherInterval)
+	} else {
+		metrics.GeoProviderStatus.Set(0)
+	}
+
+	mobileCarrierASN := ingestion.NewMobileCarrierASNTable(ingestion.ParseMobileCarrierASNs(cfg.CGNATMobileCarrierASNs))
+	var asnLookup ingestion.ASNLookup
+	if lookup, ok := geoProvider.(ingestion.ASNLookup); ok {
+		asnLookup = lookup
+	}
+
+	geoFilter := ingestion.NewGeoFilter(geoProvider, registry)
+	geoFilter.SetAcceptLangGeoEnabled(cfg.AcceptLangGeoEnabled)
+	scheduleFilter := ingestion.NewScheduleFilter(registry)
+	fraudFilter := ingestion.NewFraudFilter(geoProvider)
+	var dcASNTable *ingestion.DCASNTable
+	if cfg.DCASNHotEnabled || cfg.TCPMSSTunnelEnabled {
+		dcASNTable = ingestion.NewDCASNTable()
+	}
+	if cfg.DCASNHotEnabled {
+		if loader := ingestion.NewDCASNFeedLoader(cfg, dcASNTable); loader != nil {
+			go loader.Start(ctx)
+			slog.Info("dc asn hot loader started", "dir", cfg.DCASNFeedDir, "refresh", cfg.DCASNFeedRefresh)
+		}
+		if lookup, ok := geoProvider.(ingestion.ASNLookup); ok {
+			fraudFilter.ConfigureDCASN(dcASNTable, lookup, cfg.DCASNSampleMask)
+		}
+	}
+	var tcpMSSFilter ingestion.EventFilter
+	if cfg.TCPMSSAnomalyEnabled || cfg.TCPMSSTunnelEnabled {
+		mssFilter := ingestion.NewTCPMSSFilter(cfg.TCPMSSAnomalyMinByte)
+		if cfg.TCPMSSTunnelEnabled {
+			mssFilter.ConfigureTunnel(true, cfg.TCPMSSTunnelThreshold, mobileCarrierASN, dcASNTable, asnLookup)
+		}
+		tcpMSSFilter = mssFilter
+	}
+	var residentialProxyFilter ingestion.EventFilter
+	var proxyRing *ingestion.ResidentialProxyRing
+	if config.LicenseFilePresent() {
+		if verified, licErr := licensing.VerifyLicenseFile(config.LicensePathFromEnv(), nil, "", time.Now().UTC()); licErr == nil &&
+			verified.State != licensing.StateExpired && verified.State != licensing.StateRevoked {
+			config.ApplyResidentialIntelHotReadWhenEntitled(cfg, verified.Entitlements.Features.ExternalResidentialIntelEnabled())
+		}
+	}
+	if cfg.ResidentialProxyHotEnabled {
+		proxyRing = ingestion.NewResidentialProxyRing()
+		proxyRing.SetPolicy(ingestion.ResidentialProxyPolicyFromEnv())
+		proxyRing.SetWindow(cfg.ResidentialProxyWindow)
+		slog.Info("residential proxy hot signal enabled", "window", cfg.ResidentialProxyWindow)
+	}
+	var intelTable *ingestion.ResidentialIntelTable
+	if cfg.ResidentialIntelHotReadEnabled {
+		intelTable = ingestion.NewResidentialIntelTable()
+		if intelLoader := ingestion.NewResidentialIntelFeedLoader(cfg, intelTable, firstConnectedRedis(redisShards)); intelLoader != nil {
+			go intelLoader.Start(ctx)
+			slog.Info("residential intel hot read loader started",
+				"dir", cfg.ResidentialIntelFeedDir,
+				"refresh", cfg.ResidentialIntelFeedRefresh)
+		}
+	}
+	if cfg.ResidentialProxyHotEnabled || cfg.ResidentialIntelHotReadEnabled {
+		residentialProxyFilter = ingestion.NewResidentialProxyFilter(proxyRing)
+		if intelTable != nil {
+			if f, ok := residentialProxyFilter.(*ingestion.ResidentialProxyFilter); ok {
+				f.SetIntelTable(intelTable, true)
+			}
+		}
+	}
+
+	settingsWatcher := ingestion.NewSettingsWatcher(redisShards, cfg)
+	settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(pool), registry.IsStaleMode)
+	deviceFilter := ingestion.NewDeviceFilter(settingsWatcher)
+	deviceFilter.SetOSFingerprintEnabled(cfg.OSFingerprintMismatchEnabled)
+	deviceFilter.SetJA4BrowserCorpusEnabled(cfg.TLSJA4BrowserCorpusEnabled)
+	deviceFilter.SetTCPSynSigEnabled(cfg.TCPSynSigEnabled)
+	jsonSerializationFilter := ingestion.NewJSONSerializationFilter(registry)
+	jsonSerializationFilter.SetEnabled(cfg.JSONSerializationFingerprintEnabled)
+	behaviorTelemetryFilter := ingestion.NewBehaviorTelemetryFilter(registry)
+	behaviorTelemetryFilter.SetEnabled(cfg.BehaviorTelemetryEnabled)
+	var l7WireFilter ingestion.EventFilter
+	if cfg.SecFetchValidateEnabled || cfg.ClientHintsPlatformEnabled || cfg.TLSALPNMismatchEnabled ||
+		cfg.H2SettingsFingerprintEnabled || cfg.H2PseudoOrderEnabled || cfg.H2DowngradeArtifactEnabled ||
+		cfg.HTTP1HeaderOrderEnabled || cfg.AcceptEncodingBrowserEnabled {
+		wireFilter := ingestion.NewL7WireFilter()
+		wireFilter.SetSecFetchEnabled(cfg.SecFetchValidateEnabled)
+		wireFilter.SetClientHintsPlatformEnabled(cfg.ClientHintsPlatformEnabled)
+		wireFilter.SetTLSALPNMismatchEnabled(cfg.TLSALPNMismatchEnabled)
+		wireFilter.SetH2SettingsEnabled(cfg.H2SettingsFingerprintEnabled)
+		wireFilter.SetH2PseudoOrderEnabled(cfg.H2PseudoOrderEnabled)
+		wireFilter.SetH2DowngradeEnabled(cfg.H2DowngradeArtifactEnabled)
+		wireFilter.SetHTTP1HeaderOrderEnabled(cfg.HTTP1HeaderOrderEnabled)
+		wireFilter.SetAcceptEncodingEnabled(cfg.AcceptEncodingBrowserEnabled)
+		l7WireFilter = wireFilter
+		slog.Info("l7 wire metadata fraud signals enabled",
+			"sec_fetch", cfg.SecFetchValidateEnabled,
+			"client_hints_platform", cfg.ClientHintsPlatformEnabled,
+			"tls_alpn", cfg.TLSALPNMismatchEnabled,
+			"h2_settings", cfg.H2SettingsFingerprintEnabled,
+			"h2_pseudo_order", cfg.H2PseudoOrderEnabled,
+			"h2_downgrade", cfg.H2DowngradeArtifactEnabled,
+			"http1_header_order", cfg.HTTP1HeaderOrderEnabled,
+			"accept_encoding", cfg.AcceptEncodingBrowserEnabled,
+		)
+	}
+	go settingsWatcher.Start(ctx, time.Second)
+
+	breakerFilter := ingestion.NewEmergencyBreakerFilter(settingsWatcher)
+	consentFilter := ingestion.NewConsentFilter(registry, consentStore)
+
+	streamTrimmer := ingestion.NewRedisStreamTrimmer(ingestion.RedisStreamTrimmerConfig{
+		RedisShards:  redisShards,
+		Streams:      []string{cfg.RedisStreamName, cfg.FraudStreamName},
+		MaxLen:       cfg.StreamMaxLen,
+		TrimInterval: time.Duration(cfg.RedisStreamTrimIntervalMs) * time.Millisecond,
+	})
+	streamTrimmer.Start(ctx)
+
+	trackerStreamName := cfg.RedisStreamName
+	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() {
+		trackerStreamName = "fcap:ignored"
+	}
+
+	if err := ingestion.InitUnifiedFilterLua(); err != nil {
+		slog.Error("unified-filter lua init failed", "error", err)
+		os.Exit(1)
+	}
+
+	unifiedFilter := ingestion.NewUnifiedFilter(
+		redisShards,
+		sharder,
+		registry,
+		campaignRepo,
+		0,
+		time.Duration(cfg.RateLimitWindowMs)*time.Millisecond,
+		time.Duration(cfg.DuplicateTTLSec)*time.Second,
+		time.Duration(cfg.IdempotencyTTLHrs)*time.Hour,
+		cfg.ClickAmount,
+		cfg.ImpressionAmount,
+		trackerStreamName,
+		cfg.StreamMaxLen,
+	)
+	unifiedFilter.SetFilterEvalPinWorkers(cfg.MaxWorkers)
+	unifiedFilter.SetShardBreakers(breakers)
+	unifiedFilter.SetSettingsWatcher(settingsWatcher)
+	if err := unifiedFilter.PreloadScripts(ctx); err != nil {
+		slog.Error("failed to preload redis lua scripts on all shards", "error", err)
+		os.Exit(1)
+	}
+	unifiedFilter.AttachReconnectPreload()
+	unifiedFilter.StartScriptPreheater(ctx, 30*time.Second)
+	unifiedFilter.SetTTCMin(time.Duration(cfg.TTCMinMs) * time.Millisecond)
+	unifiedFilter.SetTTCFailClosed(cfg.TTCFailClosed)
+	if cfg.TTCMinMs > 0 {
+		unifiedFilter.SetLocalTTCCache(ingestion.NewLocalTTCCache())
+	}
+	unifiedFilter.SetRoughPacingGate(ingestion.NewRoughPacingGate())
+	unifiedFilter.SetMetricsSampleMask(cfg.MetricsHistogramSampleMask)
+	unifiedFilter.SetQuotaConfig(cfg.QuotaMode, cfg.QuotaChunkSize, cfg.QuotaRefillThresholdPct)
+	unifiedFilter.SetLuaFastPathEnabled(cfg.LuaFastPathEnabled)
+	unifiedFilter.SetRegionCode(cfg.RegionCode)
+	unifiedFilter.SetPGFallbackAllowed(cfg.TrackerPGFallback)
+
+	var localQuantaLedger *ingestion.LocalQuantaLedger
+	var quotaRefillWorker *ingestion.QuotaRefillWorker
+	var budgetDeltaPublisher *ingestion.BudgetDeltaPublisher
+	var localQuantaFlusher *ingestion.LocalQuantaFlusher
+	var localQuantaStream *ingestion.LocalQuantaStreamPublisher
+	if cfg.LocalQuotaMode == "shadow" || cfg.LocalQuotaMode == "live" {
+		localQuantaLedger = ingestion.NewLocalQuantaLedger()
+		localQuantaStrict := ingestion.NewLocalQuantaStrict(cfg.QuotaStrictThresholdMicro, cfg.QuotaStrictExitMicro)
+		chunkSize := cfg.QuotaChunkSize
+		if chunkSize <= 0 {
+			chunkSize = 5_000_000
+		}
+		quotaRefillWorker = ingestion.NewQuotaRefillWorker(
+			localQuantaLedger,
+			redisShards,
+			sharder,
+			ingestion.QuotaRefillConfig{
+				BaseChunkMicro: chunkSize,
+				ThresholdPct:   cfg.QuotaRefillThresholdPct,
+				MaxPerShard:    cfg.LocalQuotaRefillMaxShard,
+				FloorMicro:     cfg.QuotaAdaptiveFloorMicro,
+				CeilingMicro:   cfg.QuotaAdaptiveCeilingMicro,
+				StrictEnter:    cfg.QuotaStrictThresholdMicro,
+			},
+		)
+		brokerRedisURL := cfg.Broker.RedisURL
+		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
+		}
+		budgetDeltaPublisher = ingestion.NewBudgetDeltaPublisher(ingestion.BudgetDeltaPublisherConfig{
+			BrokerAddr: cfg.Broker.URL,
+			RedisURL:   brokerRedisURL,
+			Topic:      cfg.BudgetDeltaTopic,
+			TrackerID:  cfg.RedisConsumerID,
+			Timeout:    time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
+		})
+		localQuantaFlusher = ingestion.NewLocalQuantaFlusher(localQuantaLedger, redisShards, sharder, budgetDeltaPublisher)
+		idemCache := ingestion.NewLocalClickIdemCache(time.Duration(cfg.IdempotencyTTLHrs) * time.Hour)
+		localQuantaStream = ingestion.NewLocalQuantaStreamPublisher(ingestion.LocalQuantaStreamPublisherConfig{
+			RedisShards:    redisShards,
+			StreamName:     trackerStreamName,
+			MaxLen:         cfg.StreamMaxLen,
+			IdempotencyTTL: time.Duration(cfg.IdempotencyTTLHrs) * time.Hour,
+			IdemCache:      idemCache,
+		})
+		quotaRefillWorker.SetStrictMode(localQuantaStrict, localQuantaFlusher)
+		quotaRefillWorker.SetCampaignRegistry(registry)
+		localQuantaFlusher.SetCampaignRegistry(registry)
+		ingestion.SetRegistryQuantaFlushHook(func(id uuid.UUID) {
+			flushCtx, flushCancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer flushCancel()
+			localQuantaFlusher.FlushLocalQuanta(flushCtx, id, ingestion.FlushReasonPause)
+		})
+		if cfg.Broker.URL != "" {
+			recoveryCtx, recoveryCancel := context.WithTimeout(ctx, 10*time.Second)
+			deltas, recErr := ingestion.FetchRecoveryDeltas(recoveryCtx, ingestion.BrokerConsumerConfig{
+				BrokerAddr: cfg.Broker.URL,
+				RedisURL:   brokerRedisURL,
+				Topic:      cfg.BudgetDeltaTopic,
+				MaxBytes:   uint32(cfg.Broker.MaxBytes),
+				Timeout:    time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond,
+			}, 0)
+			recoveryCancel()
+			if recErr != nil {
+				slog.Warn("local quanta broker recovery skipped", "error", recErr)
+			} else if len(deltas) > 0 {
+				quotaRefillWorker.RecoverFromDeltas(deltas)
+				slog.Info("local quanta ledger recovered from broker", "campaigns", len(deltas))
+			}
+		}
+		unifiedFilter.SetLocalQuantaDeps(ingestion.LocalQuantaDeps{
+			Ledger:    localQuantaLedger,
+			Strict:    localQuantaStrict,
+			Refill:    quotaRefillWorker,
+			Publisher: budgetDeltaPublisher,
+			Stream:    localQuantaStream,
+			Idem:      localQuantaStream.IdemCache(),
+		})
+		unifiedFilter.SetLocalQuantaMode(cfg.LocalQuotaMode)
+		slog.Info("local quanta enabled",
+			"mode", cfg.LocalQuotaMode,
+			"chunk_size", chunkSize,
+			"refill_threshold_pct", cfg.QuotaRefillThresholdPct,
+			"strict_enter_micro", cfg.QuotaStrictThresholdMicro,
+			"strict_exit_micro", cfg.QuotaStrictExitMicro,
+		)
+		if cfg.LocalQuotaMode == "live" {
+			slog.Info("local quota full-skip ratio: rate(ad_local_quota_full_skip_total[5m]) / rate(ad_local_quota_full_skip_eligible_total[5m])")
+		}
+	}
+	unifiedFilter.SetFilterSlowMs(cfg.FilterSlowMs)
+	if cfg.TTCFailClosed {
+		slog.Info("TTC fail-closed enabled: clicks without impression timestamp are rejected")
+	}
+	slog.Info("redis lua scripts preloaded", "shards", len(redisShards))
+
+	creativeStore := ingestion.NewBrandCreativeStore(firstConnectedRedis(redisShards), cfg.FilterTimeoutMs)
+	placementBL := ingestion.NewPlacementBlacklistFilter(redisShards)
+	placementBL.SetSharder(sharder)
+	unifiedFilter.SetPlacementBlacklistFilter(placementBL)
+	fraudBL := ingestion.NewFraudBlacklistFilter(redisShards)
+	unifiedFilter.SetFraudBlacklistFilter(fraudBL)
+	if fraudBL != nil {
+		go fraudBL.RunInvalidationSubscriber(ctx, "")
+	}
+	unifiedFilter.SetIngressRPDHandledExternally(true)
+	licenseFilter := ingestion.NewLicenseFilter(registry)
+	licenseRPSFilter := ingestion.NewLicenseRPSFilter(registry)
+	entitlementsFilter := ingestion.NewEntitlementsFilter(registry, sharder, redisShards)
+	entitlementsFilter.SetRegionCode(uint8(cfg.RegionCode))
+	entitlementsFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
+	unifiedFilter.ConfigureCGNAT(cfg.CGNATMobileIPBypassEnabled(), mobileCarrierASN, asnLookup)
+	piiHasher, piiErr := piihash.NewFromSalt(cfg.PIISaltVersion, string(cfg.PIISaltHex), string(cfg.TokenSymmetricKey))
+	if piiErr != nil {
+		slog.Error("failed to initialize PII hasher for segment filter", "error", piiErr)
+		os.Exit(1)
+	}
+	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
+	segmentFilter := ingestion.NewSegmentFilter(redisShards, registry, piiHasher)
+	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
+	filterEngine.SetSettingsWatcher(settingsWatcher)
+
+	var rtbCatalog *ingestion.RtbCatalog
+	var rtbHybrid *ingestion.HybridBalancer
+	var rtbReconcile *ingestion.RtbBudgetReconcileWorker
+	rtbBudgetSync := ingestion.RtbBudgetSync{
+		Authority: ingestion.BudgetAuthorityShadow,
+		Redis:     redisShards,
+		Sharder:   sharder,
+	}
+	if cfg.RtbEnabled() {
+		rtb.SetMetricsEnabled(true)
+		rtbStore := rtb.NewBudgetStore()
+		rtbBudgetSync.Authority = ingestion.BudgetAuthorityFromConfig(cfg)
+		rtbCatalog = ingestion.NewRtbCatalog(rtbStore, rtbBudgetSync.Authority)
+		rtbHybrid = ingestion.NewHybridBalancer(len(redisShards), ingestion.HybridMaxRPSFromConfig(cfg))
+		if cfg.RtbClearingMode == "first" {
+			rtbCatalog.SetClearingMode(rtb.ClearingFirstPrice)
+		}
+		if cfg.RtbTargetingIndexEnabled() {
+			rtbCatalog.Registry().SetTargetingIndexEnabled(true)
+		}
+		ingestion.StartRtbCatalogSync(ctx, registry, rtbCatalog, cfg, rtbHybrid, rtbBudgetSync, settingsWatcher, time.Duration(cfg.RegistrySyncIntervalMs)*time.Millisecond)
+		if err := ingestion.ReloadRtbDeals(ctx, queries, rtbCatalog); err != nil {
+			slog.Warn("initial rtb deals load failed", "error", err)
+		} else {
+			slog.Info("rtb deals loaded", "count", rtbCatalog.DealCount())
+		}
+		ingestion.StartRtbCatalogReloadWatch(ctx, queries, firstConnectedRedis(redisShards), ingestion.RtbCatalogReloadChannel(cfg), registry, rtbCatalog, cfg, rtbHybrid, rtbBudgetSync, settingsWatcher)
+		dealFloorCache := ingestion.NewDealFloorCache(firstConnectedRedis(redisShards))
+		rtbCatalog.SetDealFloors(dealFloorCache)
+		ingestion.StartDealFloorRefresh(ctx, dealFloorCache, rtbCatalog, time.Duration(cfg.DealFloorRefreshIntervalMs)*time.Millisecond)
+		if allow, err := ingestion.LoadSupplyChainAllowlist(ctx, queries); err == nil {
+			rtbCatalog.SetSupplyChainAllowlist(allow)
+		} else {
+			slog.Warn("initial supply chain allowlist load failed", "error", err)
+		}
+		var rtbBudgetMirror *ingestion.RtbBudgetMirrorWriter
+		if rtbBudgetSync.Authority == ingestion.BudgetAuthorityRTB {
+			rtbBudgetMirror = ingestion.NewRtbBudgetMirrorWriter(rtbCatalog, registry, redisShards, sharder)
+			defer func() {
+				if rtbBudgetMirror != nil {
+					rtbBudgetMirror.Close()
+				}
+			}()
+		}
+		_ = ingestion.NewRtbAuthorityController(cfg, settingsWatcher, unifiedFilter, rtbCatalog, &rtbBudgetSync)
+		rtbReconcile = ingestion.NewRtbBudgetReconcileWorker(
+			ingestion.RtbBudgetReconcileConfig{
+				Interval:            time.Duration(cfg.RtbReconcileIntervalMs) * time.Millisecond,
+				DivergenceThreshold: cfg.RtbBudgetDivergenceMicro,
+				SampleSize:          cfg.RtbReconcileSampleSize,
+			},
+			registry,
+			rtbCatalog,
+			redisShards,
+			sharder,
+		)
+		rtbReconcile.Start(ctx)
+		if snapPath := cfg.RtbSnapshotPath; snapPath != "" {
+			if err := rtbCatalog.Registry().StartPersistence(ctx, snapPath, time.Minute); err != nil {
+				slog.Warn("rtb snapshot persistence disabled", "error", err)
+			} else {
+				slog.Info("rtb snapshot persistence enabled", "path", snapPath)
+			}
+		}
+		slog.Info("rtb catalog enabled",
+			"mode", cfg.RtbMode,
+			"budget_authority", cfg.RtbBudgetAuthority,
+			"targeting_index", cfg.RtbTargetingIndexEnabled(),
+		)
+		if cfg.IsClickHouseEnabled() {
+			clickhouseCtx, chCancel := context.WithTimeout(ctx, 15*time.Second)
+			clickhouseConn, clickhouseErr := database.ConnectClickHouse(clickhouseCtx, string(cfg.ClickHouseDSN))
+			chCancel()
+			if clickhouseErr != nil {
+				slog.Warn("rtb clickhouse writers disabled", "error", clickhouseErr)
+			} else {
+				migCtx, migCancel := context.WithTimeout(ctx, 30*time.Second)
+				if migErr := migrate.ApplyClickHouseMigrations(migCtx, clickhouseConn); migErr != nil {
+					slog.Warn("rtb clickhouse migrate failed", "error", migErr)
+				}
+				migCancel()
+				flush := time.Duration(cfg.RtbDealOutcomeFlushMs) * time.Millisecond
+				dealWriter := ingestion.NewRtbDealOutcomeWriter(clickhouseConn, flush)
+				exchangeWriter := ingestion.NewRtbExchangeLogWriter(clickhouseConn, flush)
+				ingestion.SetRtbDealOutcomeWriter(dealWriter)
+				ingestion.SetRtbExchangeLogWriter(exchangeWriter)
+				defer func() {
+					dealWriter.Close()
+					exchangeWriter.Close()
+					_ = clickhouseConn.Close()
+				}()
+				slog.Info("rtb clickhouse writers enabled", "flush_ms", cfg.RtbDealOutcomeFlushMs)
+			}
+		}
+	}
+
+	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
+
+	if cfg.PostgresFailoverEnabled {
+		ingestPgFailover := pgfailover.StartIngestSubscribers(ctx, redisShards, pgfailover.IngestSubscriberConfig{
+			MaxConns: cfg.DBTrackerMaxConns,
+			MinConns: cfg.DBMinConns,
+			Interval: time.Duration(cfg.PostgresFailoverPollMs) * time.Millisecond,
+		}, func(newPool *pgxpool.Pool) {
+			old := pool
+			pool = newPool
+			registry.SetPool(newPool)
+			slotMapWatcher.SetPool(newPool)
+			gnetHandler.SetPool(newPool)
+			settingsWatcher.SetPGFallback(ingestion.SettingsPGSync(newPool), registry.IsStaleMode)
+			if old != nil && old != newPool {
+				old.Close()
+			}
+			slog.Info("tracker pg failover reconnected read pool")
+		})
+		if ingestPgFailover != nil {
+			defer ingestPgFailover.Stop()
+		}
+	}
+
+	var brokerProducers *ingestion.BrokerProducerSet
+	var fraudBrokerSink *ingestion.FraudBrokerSink
+	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() && cfg.Broker.URL != "" {
+		partCount := cfg.Broker.PartitionCount
+		if partCount <= 0 {
+			partCount = 1
+		}
+		list := make([]*ingestion.BrokerProducer, partCount)
+		var bpErr error
+		for i := range partCount {
+			producerCfg := ingestion.DefaultBrokerProducerConfig()
+			producerCfg.BrokerAddr = cfg.Broker.URL
+			producerCfg.Topic = cfg.Broker.Topic
+			producerCfg.Partition = uint16(i)
+			if cfg.Broker.ProducerCapacity > 0 {
+				producerCfg.Capacity = cfg.Broker.ProducerCapacity
+			}
+			if cfg.Broker.ProducerBatchSize > 0 {
+				producerCfg.BatchSize = cfg.Broker.ProducerBatchSize
+			}
+			if cfg.Broker.ProducerFlushMs > 0 {
+				producerCfg.FlushInterval = time.Duration(cfg.Broker.ProducerFlushMs) * time.Millisecond
+			}
+			if cfg.Broker.TimeoutMs > 0 {
+				producerCfg.Timeout = time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
+			}
+			list[i], bpErr = ingestion.NewBrokerProducer(producerCfg)
+			if bpErr != nil {
+				slog.Error("broker producer init failed (CH_INGEST_SOURCE=broker)", "error", bpErr, "partition", i)
+				os.Exit(1)
+			}
+		}
+		brokerProducers = ingestion.NewBrokerProducerSet(list)
+		gnetHandler.SetBrokerProducers(brokerProducers)
+		slog.Info("broker producer enabled", "addr", cfg.Broker.URL, "topic", cfg.Broker.Topic, "partitions", partCount)
+
+		brokerRedisURL := cfg.Broker.RedisURL
+		if brokerRedisURL == "" && len(cfg.RedisAddrs) > 0 {
+			brokerRedisURL = database.BrokerRedisURL(cfg.RedisAddrs, string(cfg.RedisPassword))
+		}
+		fraudTimeout := time.Duration(cfg.Broker.TimeoutMs) * time.Millisecond
+		if fraudTimeout <= 0 {
+			fraudTimeout = ingestion.DefaultBrokerProducerConfig().Timeout
+		}
+		fraudBrokerSink, bpErr = ingestion.NewFraudBrokerSink(cfg.Broker.URL, brokerRedisURL, cfg.Broker.FraudTopic, fraudTimeout)
+		if bpErr != nil {
+			slog.Error("fraud broker sink init failed (CH_INGEST_SOURCE=broker)", "error", bpErr)
+			os.Exit(1)
+		}
+		if fw := gnetHandler.FraudWriter(); fw != nil {
+			fw.SetBrokerSink(fraudBrokerSink)
+		}
+		slog.Info("fraud broker sink enabled", "addr", cfg.Broker.URL, "topic", cfg.Broker.FraudTopic)
+	} else if cfg.Broker.ClickHouseIngestSource != "broker" && cfg.RedisStreamName != "" {
+		streamProducers := make([]*ingestion.StreamProducer, len(redisShards))
+		writeTimeout := time.Duration(cfg.WriteTimeoutMs) * time.Millisecond
+		if writeTimeout <= 0 {
+			writeTimeout = 2 * time.Second
+		}
+		for i, redisClient := range redisShards {
+			if redisClient == nil {
+				continue
+			}
+			streamProducers[i] = ingestion.NewStreamProducer(
+				redisClient,
+				cfg.RedisStreamName,
+				cfg.StreamMaxLen,
+				writeTimeout,
+				ingestion.StreamProducerConfig{
+					MaxBatchSize: cfg.EventBatchSize,
+					FlushWait:    time.Duration(cfg.EventFlushMs) * time.Millisecond,
+				},
+			)
+		}
+		gnetHandler.SetStreamProducers(streamProducers)
+		slog.Info("redis stream producers enabled", "stream", cfg.RedisStreamName, "shards", len(redisShards))
+	}
+	ingestion.StartFraudBackpressureWatcher(ctx, ingestion.FraudBackpressureConfig{
+		RedisShards: redisShards,
+		Writer:      gnetHandler.FraudWriter(),
+		Stream:      cfg.FraudStreamName,
+		EventStream: cfg.RedisStreamName,
+		Group:       cfg.RedisGroupName,
+		LagSec:      cfg.FraudConsumerLagSec,
+		Interval:    2 * time.Second,
+	})
+	if udpCtrl := ingestion.NewUDPControlFromConfig(cfg, len(redisShards)); udpCtrl != nil {
+		if err := udpCtrl.Start(ctx); err != nil {
+			slog.Error("udp control start failed", "error", err)
+			os.Exit(1)
+		}
+		defer func() { _ = udpCtrl.Close() }()
+		gnetHandler.SetUDPControl(udpCtrl)
+		slog.Info("udp ingress control enabled", "fail_closed", cfg.UDPFailClosed)
+	}
+	if cfg.TCPControlEnabled {
+		tcpClient := ingestion.NewTCPControlClient(ingestion.TCPControlClientConfig{
+			Enabled:     true,
+			Secret:      []byte(cfg.TCPControlHMACSecret),
+			TrackerID:   cfg.UDPTrackerID,
+			ControlAddr: cfg.TCPControlAddr,
+			Sharder:     sharder,
+		})
+		go func() {
+			ticker := time.NewTicker(time.Duration(cfg.SlotMapPollIntervalMs) * time.Millisecond)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if err := tcpClient.RequestSnapshot(ctx); err != nil {
+						slog.Debug("tcp routing snapshot pull", "error", err)
+					}
+				}
+			}
+		}()
+		slog.Info("tcp routing snapshot client enabled", "control_addr", cfg.TCPControlAddr)
+	}
+	gnetHandler.ConfigureIngestGeo(geoProvider)
+	gnetHandler.ConfigureMobileCarrierASN(mobileCarrierASN)
+	if cfg.CIDRBlockEnabled {
+		cidrTable := ingestion.NewCIDRTable()
+		gnetHandler.ConfigureCIDR(cidrTable)
+		if cidrLoader := ingestion.NewCIDRFeedLoader(cfg, cidrTable); cidrLoader != nil {
+			go cidrLoader.Start(ctx)
+			slog.Info("cidr l1 loader started", "dir", cfg.CIDRFeedDir, "refresh", cfg.CIDRFeedRefresh, "download", cfg.CIDRFeedDownloadEnable)
+		}
+	}
+	if cfg.IPv6RotationEnabled {
+		rotTable := ingestion.NewIPv6RotationTable()
+		rotTable.SetMode(cfg.IPv6RotationMode)
+		rotTable.SetPolicy(uint64(cfg.IPv6RotationWindow.Nanoseconds()), cfg.IPv6RotationThreshold)
+		gnetHandler.ConfigureIPv6Rotation(rotTable)
+		slog.Info("ipv6 rotation l1 enabled", "mode", cfg.IPv6RotationMode, "window", cfg.IPv6RotationWindow, "threshold", cfg.IPv6RotationThreshold)
+	}
+	if cfg.IPv4RotationEnabled {
+		v4Rot := ingestion.NewIPv4RotationTable()
+		v4Rot.SetMode(cfg.IPv4RotationMode)
+		v4Rot.SetPolicy(uint64(cfg.IPv4RotationWindow.Nanoseconds()), cfg.IPv4RotationThreshold)
+		gnetHandler.ConfigureIPv4Rotation(v4Rot)
+		slog.Info("ipv4 rotation l1 enabled", "mode", cfg.IPv4RotationMode, "window", cfg.IPv4RotationWindow, "threshold", cfg.IPv4RotationThreshold)
+	}
+	if cfg.ProxyVPNBlockEnabled {
+		proxyTable := ingestion.NewProxyVPNTable()
+		gnetHandler.ConfigureProxyVPN(proxyTable)
+		if proxyLoader := ingestion.NewProxyVPNFeedLoader(cfg, proxyTable); proxyLoader != nil {
+			go proxyLoader.Start(ctx)
+			slog.Info("proxy vpn l1.5 loader started", "dir", cfg.ProxyVPNFeedDir, "refresh", cfg.ProxyVPNFeedRefresh)
+		}
+	}
+	if config.LicenseFilePresent() {
+		if verified, licErr := licensing.VerifyLicenseFile(config.LicensePathFromEnv(), nil, "", time.Now().UTC()); licErr == nil &&
+			verified.State != licensing.StateExpired && verified.State != licensing.StateRevoked {
+			config.ApplyModeratorIntelWhenEntitled(cfg, verified.Entitlements.Features.ModeratorIntelFeedEnabled())
+			config.ApplyResidentialIntelHotReadWhenEntitled(cfg, verified.Entitlements.Features.ExternalResidentialIntelEnabled())
+		}
+	}
+	if cfg.ModeratorIntelEnabled {
+		moderatorTable := ingestion.NewModeratorIPTable()
+		gnetHandler.ConfigureModeratorIntel(moderatorTable)
+		if moderatorLoader := ingestion.NewModeratorIntelFeedLoader(cfg, moderatorTable); moderatorLoader != nil {
+			go moderatorLoader.Start(ctx)
+			slog.Info("moderator intel loader started",
+				"dir", cfg.ModeratorIntelFeedDir,
+				"refresh", cfg.ModeratorIntelFeedRefresh,
+				"download", cfg.ModeratorIntelFeedDownload)
+		}
+	}
+	if cfg.TLSFingerprintEnabled {
+		tlsTable := ingestion.NewTLSFingerprintTable()
+		gnetHandler.ConfigureTLSFingerprint(tlsTable)
+		if tlsLoader := ingestion.NewTLSFingerprintFeedLoader(cfg, tlsTable); tlsLoader != nil {
+			go tlsLoader.Start(ctx)
+			slog.Info("tls fingerprint l1 loader started", "dir", cfg.TLSFingerprintFeedDir, "refresh", cfg.TLSFingerprintFeedRefresh)
+		}
+	}
+	if secret := string(cfg.LinkSigningHMACSecret); secret != "" {
+		gnetHandler.ConfigureLinkSigning([]byte(secret))
+		slog.Info("link signing enabled")
+	}
+	var attestationSecrets [][]byte
+	if secret := string(cfg.AttestationHMACSecret); secret != "" {
+		attestationSecrets = append(attestationSecrets, []byte(secret))
+	}
+	if prev := string(cfg.AttestationHMACSecretPrev); prev != "" {
+		attestationSecrets = append(attestationSecrets, []byte(prev))
+	}
+	if len(attestationSecrets) > 0 {
+		gnetHandler.ConfigureAttestation(attestationSecrets)
+		slog.Info("l2 attestation cookie verify enabled")
+	}
+	if cfg.DomainPoolEnabled {
+		domainPoolTable := ingestion.NewDomainPoolTable()
+		gnetHandler.ConfigureDomainPool(domainPoolTable)
+		if domainPoolSync := ingestion.NewDomainPoolSync(pool, domainPoolTable, cfg.DomainPoolSyncInterval); domainPoolSync != nil {
+			go domainPoolSync.Start(ctx)
+			slog.Info("domain pool sync started", "interval", cfg.DomainPoolSyncInterval)
+		}
+	}
+	if cfg.FlowRoutingEnabled {
+		flowTable := ingestion.NewCampaignFlowTable()
+		gnetHandler.ConfigureCampaignFlow(flowTable)
+		if flowSync := ingestion.NewCampaignFlowSync(pool, flowTable, cfg.FlowSyncInterval, cfg.LanderPublicBaseURL, firstConnectedRedis(redisShards), cfg.FlowReloadChannel); flowSync != nil {
+			go flowSync.Start(ctx)
+			slog.Info("campaign flow sync started", "interval", cfg.FlowSyncInterval)
+		}
+	}
+	if rtbCatalog != nil {
+		gnetHandler.ConfigureRtb(rtbCatalog, geoProvider, unifiedFilter, settingsWatcher)
+	}
+	gnetHandler.SetLogger(appLogger)
+	gnetHandler.StartHealthProbe(ctx)
+
+	workerPool := ingestion.NewPinnedWorkerPool(cfg.MaxWorkers, 8192)
+	gnetHandler.SetWorkerPool(workerPool)
+
+	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort, "unix_socket", cfg.TrackerUnixSocket, "gnet_event_loops", cfg.GnetEventLoopCount(), "max_workers", cfg.MaxWorkers)
+
+	listenURI := "tcp://:" + cfg.ServerPort
+	if cfg.TrackerUnixSocket != "" {
+		if err := netaddr.PrepareUnixSocket(cfg.TrackerUnixSocket); err != nil {
+			slog.Error("tracker unix socket prepare failed", "path", cfg.TrackerUnixSocket, "error", err)
+			os.Exit(1)
+		}
+		listenURI = netaddr.GnetListenURI(cfg.TrackerUnixSocket)
+	}
+
+	go func() {
+		err := gnet.Run(gnetHandler, listenURI,
+			gnet.WithMulticore(true),
+			gnet.WithReusePort(true),
+			gnet.WithTCPNoDelay(gnet.TCPNoDelay),
+			gnet.WithNumEventLoop(cfg.GnetEventLoopCount()),
+			gnet.WithLockOSThread(false),
+		)
+		if err != nil {
+			slog.Error("gnet server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+	if cfg.TrackerUnixSocket != "" {
+		go func(sockPath string) {
+			for range 50 {
+				if err := netaddr.EnsureUnixSocketWritable(sockPath); err == nil {
+					return
+				}
+				time.Sleep(100 * time.Millisecond)
+			}
+			slog.Warn("tracker unix socket chmod failed", "path", sockPath)
+		}(cfg.TrackerUnixSocket)
+	}
+
+	metricsMux := http.NewServeMux()
+	live := &lifecycle.Liveness{}
+	ready := &lifecycle.ReadinessProbe{}
+	ready.StartBackground(ctx, 2*time.Second, func(probeCtx context.Context) bool {
+		return gnetHandler.WarmReady()
+	})
+	lifecycle.Register(metricsMux, live, ready)
+	metricsMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		lifecycle.ServeHealthz(live, w, r)
+	})
+	metricsMux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		if gnetHandler.WarmReady() {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(lifecycle.BodyOK()))
+			return
+		}
+		http.Error(w, "not ready", http.StatusServiceUnavailable)
+	})
+	metricsMux.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gnetHandler.FlushLatency()
+		promhttp.Handler().ServeHTTP(w, r)
+	}))
+	registerMetricsPprof(metricsMux)
+	metricsSrv := &http.Server{
+		Addr:              ":" + cfg.MetricsPort,
+		Handler:           metricsMux,
+		ReadHeaderTimeout: 2 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      time.Duration(metricsServerWriteTimeout()) * time.Second,
+		IdleTimeout:       30 * time.Second,
+	}
+	go func() {
+		if err := metricsSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("metrics sidecar server failed", "error", err)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	sig := <-stop
+	slog.Info("received shutdown signal", "signal", sig.String())
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
+	defer shutdownCancel()
+
+	cancel()
+
+	if rtbReconcile != nil {
+		rtbReconcile.Close()
+		reconcileWaitCtx, reconcileWaitCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.WaitTimeoutMs)*time.Millisecond)
+		if err := rtbReconcile.Wait(reconcileWaitCtx); err != nil {
+			slog.Warn("rtb budget reconcile wait failed", "error", err)
+		}
+		reconcileWaitCancel()
+	}
+
+	if err := gnetHandler.Stop(shutdownCtx); err != nil {
+		slog.Error("gnet server shutdown failed", "error", err)
+	}
+
+	metricsShutdownCtx, metricsCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.WaitTimeoutMs)*time.Millisecond)
+	if err := metricsSrv.Shutdown(metricsShutdownCtx); err != nil {
+		slog.Error("metrics server shutdown failed", "error", err)
+	}
+	metricsCancel()
+
+	workerPool.Shutdown()
+
+	if localQuantaFlusher != nil {
+		flushCtx, flushCancel := context.WithTimeout(context.Background(), 2*time.Second)
+		n := localQuantaFlusher.FlushAll(flushCtx)
+		flushCancel()
+		if n > 0 {
+			slog.Info("local quanta flushed on shutdown", "campaigns", n)
+		}
+		ingestion.SetRegistryQuantaFlushHook(nil)
+	}
+
+	if quotaRefillWorker != nil {
+		quotaRefillWorker.Close()
+	}
+	if budgetDeltaPublisher != nil {
+		budgetDeltaPublisher.Close()
+	}
+	if localQuantaStream != nil {
+		localQuantaStream.Close()
+	}
+	if brokerProducers != nil {
+		if err := brokerProducers.Close(); err != nil {
+			slog.Warn("broker producer close error", "error", err)
+		}
+	}
+	if streamTrimmer != nil {
+		streamTrimmer.Close()
+		streamTrimmer.Wait()
+	}
+
+	registryWaitCtx, registryWaitCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.WaitTimeoutMs)*time.Millisecond)
+	defer registryWaitCancel()
+	if err := registry.Wait(registryWaitCtx); err != nil {
+		slog.Error("registry wait failed", "error", err)
+	}
+
+	unifiedFilter.CloseFilterEvalPins()
+
+	for i, redisClient := range redisShards {
+		if redisClient == nil {
+			continue
+		}
+		if err := redisClient.Close(); err != nil {
+			slog.Error("failed to close redis shard", "shard", i, "error", err)
+		}
+	}
+	slog.Info("ad-event-tracker shutdown complete")
+}
+
+func firstConnectedRedis(redisShards []redis.UniversalClient) redis.UniversalClient {
+	for _, redisClient := range redisShards {
+		if redisClient != nil {
+			return redisClient
+		}
+	}
+	return nil
+}

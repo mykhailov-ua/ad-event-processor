@@ -145,7 +145,7 @@ func worstSourcesFromCampaigns(campaigns []BuyerCampaignRowDTO) []SourceRowDTO {
 			score: score,
 		})
 	}
-	for i := 0; i < len(scoredRows); i++ {
+	for i := range len(scoredRows) {
 		for j := i + 1; j < len(scoredRows); j++ {
 			if scoredRows[j].score > scoredRows[i].score {
 				scoredRows[i], scoredRows[j] = scoredRows[j], scoredRows[i]

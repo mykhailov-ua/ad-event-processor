@@ -27,9 +27,9 @@ type tiktokCampaignListResponse struct {
 }
 
 type tiktokStatusUpdateRequest struct {
-	AdvertiserID     string   `json:"advertiser_id"`
-	CampaignIDs      []string `json:"campaign_ids"`
-	OperationStatus  string   `json:"operation_status"`
+	AdvertiserID    string   `json:"advertiser_id"`
+	CampaignIDs     []string `json:"campaign_ids"`
+	OperationStatus string   `json:"operation_status"`
 }
 
 func tiktokAdvertiserID(cred costsync.Credential) (string, error) {

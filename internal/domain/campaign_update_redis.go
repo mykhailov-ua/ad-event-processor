@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/domain/shard"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -14,7 +15,7 @@ func PublishCampaignUpdateRedis(ctx context.Context, redisShards []redis.Univers
 	}
 	return database.ForEachConnectedShard(ctx, redisShards, "publish_campaign_control", func(_ int, redisClient redis.UniversalClient) error {
 		_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
-			pipe.Incr(ctx, CampaignEpochKey)
+			pipe.Incr(ctx, shard.CampaignEpochKey)
 			pipe.Publish(ctx, channel, campaignID)
 			return nil
 		})

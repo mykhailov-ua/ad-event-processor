@@ -1,14 +1,15 @@
 package controlplane
 
 import (
+	"context"
+	"errors"
+	"fmt"
+
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/governance"
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/reconciliation"
-	"context"
-	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,8 +24,11 @@ var (
 var NewQuotaManager = governance.NewQuotaManager
 
 var (
-	_ governance.Host     = (*Service)(nil)
-	_ reconciliation.Host = (*Service)(nil)
+	_ governance.Host                = (*Service)(nil)
+	_ reconciliation.ReconInfraHost  = (*Service)(nil)
+	_ reconciliation.ReconOpsHost    = (*Service)(nil)
+	_ reconciliation.ReconRepairHost = (*Service)(nil)
+	_ reconciliation.Host            = (*Service)(nil)
 )
 
 func (s *Service) Config() *config.Config {

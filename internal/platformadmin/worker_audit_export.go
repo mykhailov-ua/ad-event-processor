@@ -24,7 +24,7 @@ type AuditExportHost interface {
 const auditExportBatchSize = 1000
 
 type AuditExportWorker struct {
-	host           AuditExportHost
+	host          AuditExportHost
 	exportPath    string
 	retentionDays int
 }
@@ -34,7 +34,7 @@ func NewAuditExportWorker(host AuditExportHost, exportPath string, retentionDays
 		retentionDays = 90
 	}
 	return &AuditExportWorker{
-		host:           host,
+		host:          host,
 		exportPath:    exportPath,
 		retentionDays: retentionDays,
 	}

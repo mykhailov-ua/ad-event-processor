@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
@@ -28,17 +29,17 @@ func TestFault_LicenseServerUnreachableUsesLastKnownGood(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	claims := LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
 		Plan:         "growth",
-		VolumeBand:   VolumeBandMedium,
+		VolumeBand:   entitlements.VolumeBandMedium,
 		ValidFrom:    time.Now().Add(-24 * time.Hour),
 		ValidUntil:   time.Now().Add(24 * time.Hour),
 		GraceDays:    7,
-		Limits:       Limits{MaxRPS: 1000},
-		Features:     FeatureSet{OpenRTBEngine: true},
+		Limits:       entitlements.Limits{MaxRPS: 1000},
+		Features:     entitlements.FeatureSet{OpenRTBEngine: true},
 	}
 	token := signFaultJWT(t, priv, claims)
 	require.NoError(t, os.WriteFile(tokenPath, []byte(token), 0o640))
@@ -59,17 +60,14 @@ func TestFault_LicenseServerUnreachableUsesLastKnownGood(t *testing.T) {
 	require.NoError(t, err)
 
 	now := time.Now()
-	state := DetermineEffectiveState(loaded, now, false, now, true, w.policy)
-	assert.Equal(t, StateOfflineWarn, state)
-	assert.Equal(t, VolumeBandMedium, ParseVolumeBand(string(loaded.VolumeBand)))
+	state := entitlements.DetermineEffectiveState(loaded, now, false, now, true, w.policy)
+	assert.Equal(t, entitlements.StateOfflineWarn, state)
+	assert.Equal(t, entitlements.VolumeBandMedium, entitlements.ParseVolumeBand(string(loaded.VolumeBand)))
 
-	logLicensingFaultProof(t, "license_server_unreachable_last_known_good", map[string]string{
-		"subsystem": "licensing",
-		"state":     string(state),
-	})
+	t.Log("fault_proof fault=license_server_unreachable_last_known_good subsystem=licensing state=" + string(state))
 }
 
-func signFaultJWT(t *testing.T, priv ed25519.PrivateKey, claims LicenseClaims) string {
+func signFaultJWT(t *testing.T, priv ed25519.PrivateKey, claims entitlements.LicenseClaims) string {
 	t.Helper()
 	headerBytes, err := json.Marshal(map[string]string{"alg": "EdDSA", "typ": "JWT", "kid": "2026-01"})
 	require.NoError(t, err)

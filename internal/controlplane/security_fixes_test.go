@@ -1,7 +1,6 @@
 package controlplane_test
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/pkg/coldpath"

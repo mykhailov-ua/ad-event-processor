@@ -73,7 +73,7 @@ log "artifacts -> $OUT"
 log "target_rps=$TARGET_RPS duration=$DURATION"
 
 if [[ "${SKIP_PREPARE:-0}" != "1" ]]; then
-  bash "$SCRIPTS/test/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
+  bash "$SCRIPTS/test/load/prepare_constrained_stack.sh" 2>&1 | tee "$OUT/prepare.log"
 fi
 
 DUAL_PEAK="$(run_phase dual "" 1)"

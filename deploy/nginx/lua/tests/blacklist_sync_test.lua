@@ -58,7 +58,7 @@ local function assert_eq(a, b, msg)
     end
 end
 
-local blacklist_sync = require("edge-blacklist-sync")
+local blacklist_sync = require "edge-blacklist-sync"
 
 local order = blacklist_sync.shard_try_order(4)
 assert_eq(4, #order, "shard_try_order length")
@@ -83,8 +83,9 @@ blacklist_sync.set_connect_shard_for_test(function(shard_idx)
         smembers = function()
             return {}, {}, {}
         end,
-        set_keepalive = function() end
-    }, nil
+        set_keepalive = function() end,
+    },
+        nil
 end)
 
 local red, err, shard_idx = blacklist_sync.connect_any_shard()
@@ -125,19 +126,19 @@ package.loaded["cjson.safe"] = {
     end,
 }
 
-assert_true(blacklist_sync.stamp_ips({ "203.0.113.5", "203.0.113.6" }), "stamp_ips succeeds")
-assert_eq(1, cache:get("_bl_ver"), "stamp_ips bumps version")
-assert_eq(1, cache:get("b:203.0.113.5"), "stamp_ips marks first ip")
-assert_eq(1, cache:get("b:203.0.113.6"), "stamp_ips marks second ip")
+assert_true(blacklist_sync.stamp_ips { "203.0.113.5", "203.0.113.6" }, "stamp_ips succeeds")
+assert_eq(1, cache:get "_bl_ver", "stamp_ips bumps version")
+assert_eq(1, cache:get "b:203.0.113.5", "stamp_ips marks first ip")
+assert_eq(1, cache:get "b:203.0.113.6", "stamp_ips marks second ip")
 
 local batch_payload = '{"ips":["198.51.100.1","198.51.100.2"]}'
 assert_true(blacklist_sync.apply_quarantine_message(batch_payload), "apply_quarantine_message batch json")
-assert_eq(1, cache:get("_bl_ver"), "batch json keeps version on changelog path")
-assert_eq(1, cache:get("b:198.51.100.1"), "batch json marks ip")
+assert_eq(1, cache:get "_bl_ver", "batch json keeps version on changelog path")
+assert_eq(1, cache:get "b:198.51.100.1", "batch json marks ip")
 
-assert_true(blacklist_sync.apply_quarantine_message("203.0.113.99"), "apply_quarantine_message legacy ip")
-assert_eq(1, cache:get("_bl_ver"), "legacy ip keeps version on changelog path")
-assert_eq(1, cache:get("b:203.0.113.99"), "legacy ip marks cache")
+assert_true(blacklist_sync.apply_quarantine_message "203.0.113.99", "apply_quarantine_message legacy ip")
+assert_eq(1, cache:get "_bl_ver", "legacy ip keeps version on changelog path")
+assert_eq(1, cache:get "b:203.0.113.99", "legacy ip marks cache")
 
 blacklist_sync.set_env_for_test(function(name)
     if name == "EDGE_BLACKLIST_CHANGELOG_MAX_IPS" then
@@ -153,8 +154,8 @@ end
 cache:set("_bl_ver", 1)
 local many = { "10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4" }
 assert_true(blacklist_sync.stamp_ips(many, false), "stamp_ips caps changelog batch")
-assert_eq(1, cache:get("b:10.0.0.1"), "first ip stamped")
-assert_eq(1, cache:get("b:10.0.0.2"), "second ip stamped")
+assert_eq(1, cache:get "b:10.0.0.1", "first ip stamped")
+assert_eq(1, cache:get "b:10.0.0.2", "second ip stamped")
 assert_true(blacklist_store["_bl_pending"] ~= nil, "overflow ips queued pending")
 blacklist_sync.reset_test_hooks()
 

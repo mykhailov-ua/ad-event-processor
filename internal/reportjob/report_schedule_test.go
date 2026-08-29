@@ -42,8 +42,10 @@ func TestReportSchedule_enqueueJob(t *testing.T) {
 		VALUES ($1, 'Schedule export', 0, 'USD')`, domain.ToUUID(custID))
 	require.NoError(t, err)
 
-	runner := NewReportJobRunner(t.TempDir(), ExportDeps{Pool: pool,
-		WriteReport: func(context.Context, string, ReportJobSpec) error { return nil }})
+	runner := NewReportJobRunner(t.TempDir(), ExportDeps{
+		Pool:        pool,
+		WriteReport: func(context.Context, string, ReportJobSpec) error { return nil },
+	})
 	created, err := insertReportSchedule(ctx, pool, CreateReportScheduleRequest{
 		CustomerID: custID.String(),
 		ReportKey:  "spend-velocity",

@@ -39,7 +39,7 @@ func buildTargetingIndex(reg *CampaignAuctionRegistry) {
 	}
 
 	buckets := make(map[uint64][]uint32, reg.Count)
-	for i := 0; i < reg.Count; i++ {
+	for i := range reg.Count {
 		geo := reg.GeoHashes[i]
 		forEachDeviceBit(reg.DeviceMasks[i], func(deviceBit uint8) {
 			forEachCategoryBit(reg.CategoryMasks[i], func(categoryBit uint64) {

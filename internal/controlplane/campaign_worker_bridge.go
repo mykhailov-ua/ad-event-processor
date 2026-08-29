@@ -1,24 +1,29 @@
 package controlplane
 
 import (
+	"context"
+	"time"
+
+	"ad-event-processor/internal/automation"
+
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/wizard"
+	campaignworker "ad-event-processor/internal/campaign/worker"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/internal/reports"
-	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func (s *Service) CampaignWorker() *campaign.Worker {
+func (s *Service) CampaignWorker() *campaignworker.Worker {
 	if s == nil {
 		return nil
 	}
 	if s.campaignWorker == nil {
-		s.campaignWorker = campaign.NewWorker(s.CampaignRuntime(), s)
+		s.campaignWorker = campaignworker.NewWorker(s.CampaignRuntime(), s)
 	}
 	return s.campaignWorker
 }
@@ -96,7 +101,7 @@ func (s *Service) ClosedLoopPacingController(ctx context.Context, syncWorkers []
 }
 
 func (s *Service) RunVPPPacingController(ctx context.Context) error {
-	return campaign.RunVPPPacingController(ctx, s)
+	return campaignworker.RunVPPPacingController(ctx, s)
 }
 
 func (s *Service) CampaignShard(campaignID uuid.UUID) int {
@@ -106,8 +111,8 @@ func (s *Service) CampaignShard(campaignID uuid.UUID) int {
 	return s.sharder.GetShard(campaignID)
 }
 
-func (s *Service) QueryVPPCampaignSamplesBatch(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) (map[uuid.UUID][]campaign.VPPCampaignSample, error) {
-	return campaign.QueryVPPCampaignSamplesBatch(ctx, s.clickhouseQuery, from, to, campaignIDs)
+func (s *Service) QueryVPPCampaignSamplesBatch(ctx context.Context, from, to time.Time, campaignIDs []uuid.UUID) (map[uuid.UUID][]campaignworker.VPPCampaignSample, error) {
+	return campaignworker.QueryVPPCampaignSamplesBatch(ctx, s.clickhouseQuery, from, to, campaignIDs)
 }
 
 func (s *Service) DrainWaitTimeoutMs() int64 {
@@ -118,7 +123,11 @@ func (s *Service) DrainWaitTimeoutMs() int64 {
 }
 
 func (s *Service) FinalizeDrainingCampaign(ctx context.Context, q db.Querier, campaignID uuid.UUID, camp db.Campaign, reason string) error {
-	return s.finalizeDrainingCampaign(ctx, q, campaignID, camp, reason)
+	feePercent := 0.0
+	if s.cfg != nil {
+		feePercent = s.cfg.Management.CancellationFeePercent
+	}
+	return campaign.FinalizeDrainingCampaign(ctx, q, s, feePercent, campaignID, camp, reason)
 }
 
 func (s *Service) fetchPacingHourWeights(ctx context.Context) [24]float64 {
@@ -133,3 +142,26 @@ func (s *Service) fetchPacingHourWeights(ctx context.Context) [24]float64 {
 	}
 	return reports.BuildHourWeights(samples)
 }
+
+var (
+	_ campaignworker.DeliveryPostgresHost  = (*Service)(nil)
+	_ campaignworker.PacingDeliveryHost    = (*Service)(nil)
+	_ campaignworker.AutoscaleDeliveryHost = (*Service)(nil)
+	_ campaignworker.BanditDeliveryHost    = (*Service)(nil)
+	_ campaignworker.DeliveryPublishHost   = (*Service)(nil)
+	_ campaignworker.DeliveryHost          = (*Service)(nil)
+	_ campaign.Effects                     = (*Service)(nil)
+	_ campaign.ReadHost                    = (*Service)(nil)
+	_ campaign.IntegrationHost             = (*Service)(nil)
+	_ campaign.PatchHost                   = (*Service)(nil)
+	_ campaign.PublishHost                 = (*Service)(nil)
+	_ campaign.CloneHost                   = (*Service)(nil)
+	_ campaign.MutationNotifyHost          = (*Service)(nil)
+	_ campaign.MigrationHost               = (*Service)(nil)
+	_ campaignworker.LoopHost              = (*Service)(nil)
+	_ campaignworker.VPPHost               = (*Service)(nil)
+	_ campaignworker.DrainHost             = (*Service)(nil)
+	_ wizard.WizardHost                    = (*Service)(nil)
+	_ campaign.TemplateCatalogHost         = (*Service)(nil)
+	_ automation.LicenseGate               = (*Service)(nil)
+)

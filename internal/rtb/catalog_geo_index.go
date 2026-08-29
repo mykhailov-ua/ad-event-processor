@@ -28,7 +28,7 @@ func buildGeoIndex(reg *CampaignAuctionRegistry) {
 	}
 
 	buckets := make(map[uint32][]uint32, reg.Count)
-	for i := 0; i < reg.Count; i++ {
+	for i := range reg.Count {
 		geo := reg.GeoHashes[i]
 		buckets[geo] = append(buckets[geo], uint32(i))
 	}

@@ -75,7 +75,7 @@ func RunIface(opts IfaceOptions) (IfaceResult, error) {
 	pkt := BuildSYNPacket(src, opts.Dst, opts.DPort)
 	WithEthernetMAC(pkt, dstMAC, dstMAC)
 
-	for i := 0; i < opts.MalformedIters; i++ {
+	for i := range opts.MalformedIters {
 		malformed := make([]byte, len(pkt))
 		copy(malformed, pkt)
 		malformed[i%len(malformed)] ^= 0xff
@@ -86,7 +86,7 @@ func RunIface(opts IfaceOptions) (IfaceResult, error) {
 		res.SentMalformed++
 	}
 
-	for i := 0; i < opts.FloodPackets; i++ {
+	for i := range opts.FloodPackets {
 		if err := unix.Sendto(fd, pkt, 0, addr); err != nil {
 			res.SendErrors++
 			continue

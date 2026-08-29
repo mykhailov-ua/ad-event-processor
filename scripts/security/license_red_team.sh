@@ -47,19 +47,19 @@ run_case "licensing_pubkey_production" \
   go test ./internal/licensing/ -run 'ProductionIgnores|ProductionOverride' -count=1
 
 run_case "license_rps_filter" \
-  go test ./internal/ingestion/ -run 'LicenseRPSFilter' -count=1
+  go test ./internal/ingest/ -run 'LicenseRPSFilter' -count=1
 
 run_case "sync_entitlements_expired_default" \
-  go test ./internal/ingestion/ -run 'SyncEntitlements' -count=1
+  go test ./internal/ingest/ -run 'SyncEntitlements' -count=1
 
 run_case "license_seed_coupling_rps" \
-  go test ./internal/ingestion/ -run 'LicenseRPSFilter_seedCoupling' -count=1
+  go test ./internal/ingest/ -run 'LicenseRPSFilter_seedCoupling' -count=1
 
 run_case "mck_seed_coupling_release_gate" \
-  bash scripts/ci/mck_seed_coupling_release_gate.sh
+  bash scripts/ci/static/mck_seed_coupling_release.sh
 
 run_case "sealed_unified_filter_lua" \
-  go test ./internal/ingestion/ -run 'ResolveUnifiedFilterLua' -count=1
+  go test ./internal/ingest/ -run 'ResolveUnifiedFilterLua' -count=1
 
 run_case "licensing_mck_seal" \
   go test ./internal/licensing/ -run 'MCK|Seal|FeatureSeed' -count=1
@@ -69,7 +69,7 @@ run_case "licensing_skew_watch" \
 
 if [[ -n "${ASSET_SEAL_SALT:-}" || -n "${AD_EVENT_PROCESSOR_ASSET_SEAL_SALT:-}" ]]; then
   run_case "asset_seal_salt_smoke" \
-    bash scripts/ci/asset_seal_salt_smoke.sh
+    bash scripts/ci/license/asset_seal_salt_smoke.sh
 else
   skip_case "asset_seal_salt_smoke" "ASSET_SEAL_SALT unset"
 fi
@@ -78,15 +78,15 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   run_case "edge_bpf_sealed_invalid_mck" \
     go test ./internal/edge/ -run 'Sealed' -count=1
   run_case "hwid_strings_gate" \
-    bash scripts/ci/hwid_strings_gate.sh
+    bash scripts/ci/license/hwid_strings.sh
   run_case "public_key_strings_gate" \
-    bash scripts/ci/public_key_strings_gate.sh
+    bash scripts/ci/license/public_key_strings.sh
   run_case "license_hot_path_anchor_gate" \
-    bash scripts/ci/license_hot_path_anchor_gate.sh
+    bash scripts/ci/license/hot_path_anchor.sh
   run_case "licensing_guard" \
     go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
   run_case "license_guard_off_smoke" \
-    bash scripts/test/license_guard_off_smoke.sh
+    bash scripts/test/license/guard_off_smoke.sh
 else
   skip_case "edge_bpf_sealed_invalid_mck" "linux only"
   skip_case "hwid_strings_gate" "linux only"
@@ -97,7 +97,7 @@ fi
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   run_case "license_guard_fault_gate" \
-    bash scripts/ci/license_guard_fault_gate.sh
+    bash scripts/ci/license/guard_fault.sh
 else
   skip_case "license_guard_fault_gate" "linux only"
 fi

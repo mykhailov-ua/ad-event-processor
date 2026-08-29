@@ -109,7 +109,7 @@ func OptimizeFlowBanditTx(ctx context.Context, tx pgx.Tx, host BanditHost) ([]uu
 	}
 	br := tx.SendBatch(ctx, updateBatch)
 	defer func() { _ = br.Close() }()
-	for i := 0; i < updateBatch.Len(); i++ {
+	for i := range updateBatch.Len() {
 		if _, err := br.Exec(); err != nil {
 			return nil, fmt.Errorf("flow bandit update batch %d: %w", i, err)
 		}

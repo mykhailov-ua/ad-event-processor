@@ -35,17 +35,17 @@ tasks:
   up:
     desc: Start the full development stack
     cmds:
-      - bash scripts/dev/stack.sh full
+      - bash scripts/dev/stack/stack.sh full
 
   down:
     desc: Stop the development stack
     cmds:
-      - bash scripts/dev/stack.sh down
+      - bash scripts/dev/stack/stack.sh down
 
   preflight:
     desc: Verify service health
     cmds:
-      - bash scripts/dev/preflight.sh
+      - bash scripts/dev/stack/preflight.sh
 
   test:
     desc: Run fast tests
@@ -63,9 +63,9 @@ tasks:
       - bash scripts/ci/race_short.sh
 
   lint:
-    desc: Run golangci-lint
+    desc: Run full CI lint fan-in (Go, Lua, shell, Python, proto, workflows)
     cmds:
-      - golangci-lint run
+      - bash scripts/ci/lint.sh
 
   ui-dev:
     desc: Start admin UI development server
@@ -85,7 +85,7 @@ tasks:
       Usage: task scaffold -- <service-name>
       Example: task scaffold -- my-new-service
     cmds:
-      - bash scripts/dev/scaffold_service.sh {{.CLI_ARGS}}
+      - bash scripts/dev/stack/scaffold_service.sh {{.CLI_ARGS}}
 
   test-gen:
     desc: Generate integration test boilerplate for a package
@@ -93,7 +93,7 @@ tasks:
       Usage: task test-gen -- internal/<service> [--scenario <name>] [--force]
       Example: task test-gen -- internal/notify
     cmds:
-      - bash scripts/dev/scaffold_test.sh {{.CLI_ARGS}}
+      - bash scripts/dev/stack/scaffold_test.sh {{.CLI_ARGS}}
 
   deps-install:
     desc: Install all development dependencies (Linux only)
@@ -105,12 +105,12 @@ tasks:
   docker-up:
     desc: Start required service containers
     cmds:
-      - bash scripts/dev/stack.sh infra
+      - bash scripts/dev/stack/stack.sh infra
 
   docker-down:
     desc: Stop and remove service containers
     cmds:
-      - bash scripts/dev/stack.sh down
+      - bash scripts/dev/stack/stack.sh down
 
   check-deps:
     desc: Verify database and migration status
@@ -120,7 +120,7 @@ tasks:
   dev-preflight:
     desc: Short HTTP and Redis healthcheck for local development
     cmds:
-      - bash scripts/dev/preflight.sh
+      - bash scripts/dev/stack/preflight.sh
 
   test-full:
     desc: Run all Go tests with race detector
@@ -133,4 +133,4 @@ tasks:
     env:
       BASELINE_WORKTREE: ../baseline-local
     cmds:
-      - bash scripts/test/gate_run.sh
+      - bash scripts/test/load/gate_run.sh

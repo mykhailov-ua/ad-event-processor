@@ -9,7 +9,7 @@ case "$KIND" in
   redis)
     BASELINE_DIR=".ci-baselines/redis"
     BENCH_PATTERN='BenchmarkUnifiedFilter_Check_RealRedis'
-    BENCH_PKG='./internal/ingestion'
+    BENCH_PKG='./internal/ingest'
     OUT_BENCH="redis_lua_bench.txt"
     OUT_GATE="redis_lua_gate.txt"
     RUN_SQLC=1

@@ -4,8 +4,10 @@ import (
 	"ad-event-processor/internal/campaign"
 )
 
-type MutationPreview = campaign.MutationPreviewDTO
-type BlacklistEntry = campaign.BlacklistDTO
+type (
+	MutationPreview = campaign.MutationPreviewDTO
+	BlacklistEntry  = campaign.BlacklistDTO
+)
 
 type BlockIPPreviewChange struct {
 	IP          string `json:"ip"`

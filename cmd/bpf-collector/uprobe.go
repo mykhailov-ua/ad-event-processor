@@ -30,10 +30,10 @@ func (r *probeRun) attachUprobes() {
 	}
 
 	progs := []uprobeAttach{
-		{"ad-event-processor/internal/ingestion/traceprobe.ProcessTrackEnter", r.coll.Progs.MarkProcessTrackEnter},
-		{"ad-event-processor/internal/ingestion/traceprobe.ProcessTrackExit", r.coll.Progs.MarkProcessTrackExit},
-		{"ad-event-processor/internal/ingestion/traceprobe.FilterCheckEnter", r.coll.Progs.MarkFilterCheckEnter},
-		{"ad-event-processor/internal/ingestion/traceprobe.FilterCheckExit", r.coll.Progs.MarkFilterCheckExit},
+		{"ad-event-processor/internal/ingest/traceprobe.ProcessTrackEnter", r.coll.Progs.MarkProcessTrackEnter},
+		{"ad-event-processor/internal/ingest/traceprobe.ProcessTrackExit", r.coll.Progs.MarkProcessTrackExit},
+		{"ad-event-processor/internal/filter.FilterCheckEnter", r.coll.Progs.MarkFilterCheckEnter},
+		{"ad-event-processor/internal/filter.FilterCheckExit", r.coll.Progs.MarkFilterCheckExit},
 	}
 
 	attached := 0

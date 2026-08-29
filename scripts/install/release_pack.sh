@@ -49,7 +49,7 @@ mkdir -p "$STAGE/ad-event-processor/deploy/ingress/caddy/generated" "$STAGE/ad-e
 touch "$STAGE/ad-event-processor/deploy/ingress/caddy/generated/.gitkeep"
 touch "$STAGE/ad-event-processor/deploy/ingress/certs/.gitkeep"
 cp "$ROOT/scripts/install/render_ingress.sh" "$STAGE/ad-event-processor/scripts/install/"
-cp "$ROOT/scripts/dev/stack.sh" "$STAGE/ad-event-processor/scripts/dev/"
+cp "$ROOT/scripts/dev/stack/stack.sh" "$STAGE/ad-event-processor/scripts/dev/"
 cp "$ROOT/scripts/lib/paths.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/installer_env.sh" "$STAGE/ad-event-processor/scripts/lib/"
 cp "$ROOT/scripts/lib/safe_paths.sh" "$STAGE/ad-event-processor/scripts/lib/"

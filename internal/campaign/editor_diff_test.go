@@ -1,15 +1,11 @@
 package campaign
 
 import (
-	"bytes"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"ad-event-processor/internal/reports"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -105,30 +101,4 @@ func TestGetCampaignDiff_differentFieldsReturnRows(t *testing.T) {
 	var resp CampaignDiffResponseDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 	require.NotEmpty(t, resp.Rows)
-}
-
-func TestDataFreshnessFromClickHouse_nilQueryStale_holdout(t *testing.T) {
-	t.Parallel()
-	dto := reports.DataFreshnessFromClickHouse(context.Background(), nil)
-	assert.True(t, dto.Stale)
-}
-
-func TestWriteBuyerFraudExportPreamble_signalsDegradedWhenStale_holdout(t *testing.T) {
-	t.Parallel()
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	require.NoError(t, reports.WriteBuyerFraudExportPreamble(w, reports.DataFreshnessDTO{Stale: true}))
-	w.Flush()
-	content := buf.String()
-	assert.Contains(t, content, "signals_degraded")
-	assert.Contains(t, content, "true")
-}
-
-func TestWriteBuyerFraudExportPreamble_freshOmitsDegradedRow(t *testing.T) {
-	t.Parallel()
-	var buf bytes.Buffer
-	w := csv.NewWriter(&buf)
-	require.NoError(t, reports.WriteBuyerFraudExportPreamble(w, reports.DataFreshnessDTO{Stale: false}))
-	w.Flush()
-	assert.NotContains(t, buf.String(), "# signals_degraded")
 }

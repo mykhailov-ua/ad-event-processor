@@ -81,8 +81,12 @@ format_shell() {
 }
 
 prettier_files() {
+  local -a roots=(internal .github deploy)
+  [[ -d web/src ]] && roots+=(web/src)
+  [[ -d web/scripts ]] && roots+=(web/scripts)
+  [[ -d web/e2e ]] && roots+=(web/e2e)
   {
-    find web/src web/scripts web/e2e internal .github deploy \
+    find "${roots[@]}" \
       -type f \( \
       -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.mjs' \
       -o -name '*.css' -o -name '*.json' -o -name '*.yml' -o -name '*.yaml' \
@@ -143,6 +147,31 @@ format_clang() {
   fi
 }
 
+format_lua() {
+  source "$SCRIPTS/lib/lint_lua_paths.sh"
+  source "$SCRIPTS/lib/lint_stylua.sh"
+  local -a paths=()
+  local dir
+  for dir in "${lint_lua_dirs[@]}"; do
+    [[ -d "$dir" ]] && paths+=("$dir")
+  done
+  if ((${#paths[@]} == 0)); then
+    echo "format: skip lua (no directories)" >&2
+    return 0
+  fi
+  local stylua_bin
+  stylua_bin="$(resolve_stylua)" || {
+    echo "format: skip stylua (install failed)" >&2
+    return 0
+  }
+  echo "format: stylua (${#paths[@]} roots)..."
+  if [[ "$CHECK" -eq 1 ]]; then
+    "$stylua_bin" --config-path .stylua.toml --check "${paths[@]}"
+  else
+    "$stylua_bin" --config-path .stylua.toml "${paths[@]}"
+  fi
+}
+
 collapse_excess_blank_lines() {
   echo "format: collapse excess blank lines..."
   python3 - "$ROOT" << 'PY'
@@ -189,6 +218,7 @@ PY
 
 format_go
 format_shell
+format_lua
 format_prettier
 collapse_excess_blank_lines
 format_clang

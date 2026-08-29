@@ -40,7 +40,7 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 	custID := uuid.New()
 	require.NoError(t, svc.CreateCustomer(ctx, custID, "Delivery Customer", 800_000_000, "USD"))
 
-	brandID, err := svc.CreateBrand(ctx, custID, "Delivery Brand")
+	brandID, err := svc.BrandStore().CreateBrand(ctx, custID, "Delivery Brand")
 	require.NoError(t, err)
 
 	var templateID uuid.UUID
@@ -105,8 +105,8 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, creatives)
 
-		require.NoError(t, svc.UpdateBrandCreative(ctx, creativeID, "Creative A v2", "https://example.com/a2", 200, "ACTIVE"))
-		require.NoError(t, svc.DeleteBrandCreative(ctx, creativeID))
+		require.NoError(t, svc.BrandStore().UpdateBrandCreative(ctx, creativeID, "Creative A v2", "https://example.com/a2", 200, "ACTIVE"))
+		require.NoError(t, svc.BrandStore().DeleteBrandCreative(ctx, creativeID))
 	})
 }
 

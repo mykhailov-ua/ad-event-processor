@@ -1,7 +1,6 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -13,6 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"ad-event-processor/pkg/faultproof"
 

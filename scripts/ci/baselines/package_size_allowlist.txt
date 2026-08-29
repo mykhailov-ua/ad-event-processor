@@ -1,0 +1,3 @@
+# Package size allowlist (modular-monolith.mdc).
+# Empty when all package root counts are <= 40 and every controlplane *_bridge.go is <= 200 lines.
+

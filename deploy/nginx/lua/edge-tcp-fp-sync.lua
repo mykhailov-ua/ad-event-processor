@@ -24,7 +24,7 @@ function _M.sync()
 
     local ips = {}
     for _, member in ipairs(members) do
-        local ip = member:match("^([^:]+)")
+        local ip = member:match "^([^:]+)"
         if ip then
             ips[#ips + 1] = ip
         end

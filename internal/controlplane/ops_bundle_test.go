@@ -1,12 +1,13 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/opsadmin"
 	"context"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"ad-event-processor/internal/opsadmin"
 
 	"ad-event-processor/pkg/supportbundle"
 )

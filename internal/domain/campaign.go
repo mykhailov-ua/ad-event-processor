@@ -178,7 +178,7 @@ const (
 	FraudPresetBalanced              = "balanced"
 	FraudPresetAggressive            = "aggressive"
 	FraudPresetEnhancedDefense       = "enhanced_defense"
-	FraudPresetEnhancedDefenseLegacy = "gray_market" // wire/DB alias for enhanced_defense
+	FraudPresetEnhancedDefenseLegacy = "gray_market"
 	FraudPresetSocialInApp           = "social_in_app"
 )
 

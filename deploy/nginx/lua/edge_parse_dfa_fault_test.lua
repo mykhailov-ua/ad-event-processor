@@ -1,13 +1,10 @@
 package.path = arg[1] .. "/?.lua;;"
-local dfa = require("edge-parse-dfa")
+local dfa = require "edge-parse-dfa"
 
 local passed, failed, gaps = 0, 0, 0
 
 local function uuid_bytes()
-    return string.char(
-        0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4,
-        0xa7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00
-    )
+    return string.char(0x55, 0x0e, 0x84, 0x00, 0xe2, 0x9b, 0x41, 0xd4, 0xa7, 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00)
 end
 
 local function assert_case(id, name, fn)
@@ -29,7 +26,16 @@ end
 
 local function expect_err(err_code, cid, err, id, name)
     if err ~= err_code then
-        error(string.format("[%s] %s: expected err=%s got cid=%s err=%s", id, name, err_code, tostring(cid), tostring(err)))
+        error(
+            string.format(
+                "[%s] %s: expected err=%s got cid=%s err=%s",
+                id,
+                name,
+                err_code,
+                tostring(cid),
+                tostring(err)
+            )
+        )
     end
 end
 
@@ -48,7 +54,7 @@ assert_case("E-P01", "campaign_id_after_scan_budget", function()
     local body = junk .. cid_field
     local cid, err = dfa.extract_campaign_id(body, #body)
     if cid ~= nil then
-        error("GAP E-P01: campaign_id extracted beyond scan budget")
+        error "GAP E-P01: campaign_id extracted beyond scan budget"
     end
     if err ~= nil and err ~= dfa.ERR_MALFORMED then
         error("unexpected err " .. tostring(err))
@@ -103,7 +109,7 @@ assert_case("E-J02", "json_unicode_escape_cid", function()
     local json = '{"campaign_id":"\\u0035\\u0035\\u0030e8400-e29b-41d4-a716-446655440000"}'
     local cid, _ = dfa.extract_campaign_id(json, #json)
     if cid == "550e8400-e29b-41d4-a716-446655440000" then
-        error("GAP: unicode escapes accepted literally without normalization policy")
+        error "GAP: unicode escapes accepted literally without normalization policy"
     end
 end)
 
@@ -111,7 +117,7 @@ assert_case("E-J05", "json_null_in_cid", function()
     local json = '{"campaign_id":"550e8400-e29b-41d4-a716-4466554400\x00"}'
     local cid, _ = dfa.extract_campaign_id(json, #json)
     if cid ~= nil then
-        error("GAP: null byte inside campaign_id accepted")
+        error "GAP: null byte inside campaign_id accepted"
     end
 end)
 
@@ -122,19 +128,20 @@ assert_case("E-J06", "json_numeric_campaign_id", function()
 end)
 
 assert_case("E-J08", "json_empty_object", function()
-    local json = '{}'
+    local json = "{}"
     local cid, err = dfa.extract_campaign_id(json, #json)
     expect_nil(cid, err, "E-J08", "json_empty_object")
 end)
 
 assert_case("E-J04", "json_duplicate_campaign_id", function()
-    local json = '{"campaign_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","campaign_id":"550e8400-e29b-41d4-a716-446655440000"}'
+    local json =
+        '{"campaign_id":"aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa","campaign_id":"550e8400-e29b-41d4-a716-446655440000"}'
     local cid, _ = dfa.extract_campaign_id(json, #json)
     if cid ~= "550e8400-e29b-41d4-a716-446655440000" and cid ~= "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" then
         error("unexpected cid " .. tostring(cid))
     end
     if cid == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" then
-        error("GAP E-J04: duplicate campaign_id first-wins (expected last-wins for fraud consistency)")
+        error "GAP E-J04: duplicate campaign_id first-wins (expected last-wins for fraud consistency)"
     end
 end)
 

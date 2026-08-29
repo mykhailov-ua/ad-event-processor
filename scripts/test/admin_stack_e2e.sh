@@ -4,6 +4,12 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
+if [[ ! -f "$ROOT/web/scripts/build.mjs" ]]; then
+  log() { printf 'admin-stack-e2e: %s\n' "$*"; }
+  log "skipped (web/ absent; OpenAPI contracts remain under api/openapi/)"
+  exit 0
+fi
+
 if [[ -f "$ROOT/.env" ]]; then
   set -a
   source "$ROOT/.env"

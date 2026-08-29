@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 )
 
 const compactOkSuffix = ".compact.ok"

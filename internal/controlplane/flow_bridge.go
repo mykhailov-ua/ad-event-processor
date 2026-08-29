@@ -2,25 +2,22 @@ package controlplane
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
 	"strings"
 
-	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/outbox"
 	"ad-event-processor/pkg/landerhost"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var _ flow.Host = (*Service)(nil)
-var _ flow.HostedLanderHost = (*Service)(nil)
-var _ flow.PathRefChecker = (*Service)(nil)
+var (
+	_ flow.Host             = (*Service)(nil)
+	_ flow.HostedLanderHost = (*Service)(nil)
+	_ flow.PathRefChecker   = (*Service)(nil)
+)
 
 func (s *Service) FlowStore() *flow.Store {
 	if s == nil {
@@ -47,89 +44,7 @@ func (s *Service) PublishFlowReload(ctx context.Context) error {
 	return outbox.PublishFlowReload(ctx, s.redisShards, channel)
 }
 
-func (s *Service) CreateLander(ctx context.Context, req flow.CreateLanderRequest) (flow.LanderDTO, error) {
-	return s.FlowStore().CreateLander(ctx, req)
-}
-
-func (s *Service) ListLanders(ctx context.Context) ([]flow.LanderDTO, error) {
-	return s.FlowStore().ListLanders(ctx)
-}
-
-func (s *Service) CreateOffer(ctx context.Context, req flow.CreateOfferRequest) (flow.OfferDTO, error) {
-	return s.FlowStore().CreateOffer(ctx, req)
-}
-
-func (s *Service) ListOffers(ctx context.Context) ([]flow.OfferDTO, error) {
-	return s.FlowStore().ListOffers(ctx)
-}
-
-func (s *Service) CreateFlow(ctx context.Context, req flow.CreateFlowRequest) (flow.DTO, error) {
-	return s.FlowStore().CreateFlow(ctx, req)
-}
-
-func (s *Service) ListFlows(ctx context.Context) ([]flow.DTO, error) {
-	return s.FlowStore().ListFlows(ctx)
-}
-
-func (s *Service) GetFlow(ctx context.Context, flowID uuid.UUID) (flow.DTO, error) {
-	return s.FlowStore().GetFlow(ctx, flowID)
-}
-
-func (s *Service) UpdateFlow(ctx context.Context, flowID uuid.UUID, req flow.UpdateFlowRequest) (flow.DTO, error) {
-	return s.FlowStore().UpdateFlow(ctx, flowID, req)
-}
-
-func (s *Service) AssignCampaignFlow(ctx context.Context, campaignID, flowID uuid.UUID) error {
-	if s == nil || s.pool == nil {
-		return fmt.Errorf("service unavailable")
-	}
-	if campaignID == uuid.Nil {
-		return fmt.Errorf("campaign id required")
-	}
-	if flowID != uuid.Nil {
-		var one int
-		err := s.pool.QueryRow(ctx, `SELECT 1 FROM flows WHERE id = $1`, flowID).Scan(&one)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return fmt.Errorf("flow not found")
-			}
-			return err
-		}
-	}
-	tag, err := s.pool.Exec(ctx, `UPDATE campaigns SET flow_id = $2, updated_at = now() WHERE id = $1 AND deleted_at IS NULL`, campaignID, flowIDOrNil(flowID))
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("campaign not found")
-	}
-	_ = s.publishCampaignUpdate(ctx, campaignID.String())
-	return nil
-}
-
-func flowIDOrNil(id uuid.UUID) any {
-	if id == uuid.Nil {
-		return nil
-	}
-	return id
-}
-
-func (s *Service) campaignFlowID(ctx context.Context, campaignID uuid.UUID) (string, error) {
-	if s == nil || s.pool == nil {
-		return "", fmt.Errorf("service unavailable")
-	}
-	var flowID pgtype.UUID
-	err := s.pool.QueryRow(ctx, `SELECT flow_id FROM campaigns WHERE id = $1`, campaignID).Scan(&flowID)
-	if err != nil {
-		return "", err
-	}
-	if !flowID.Valid {
-		return "", nil
-	}
-	return uuid.UUID(flowID.Bytes).String(), nil
-}
-
-func (s *Service) ValidateCampaignFlowPaths(ctx context.Context, paths []campaign.FlowPathDTO) error {
+func (s *Service) ValidateCampaignFlowPaths(ctx context.Context, paths []flow.PathDTO) error {
 	return flow.ValidatePathRefs(ctx, s, paths)
 }
 
@@ -241,4 +156,36 @@ func (s *Service) PublishHostedDraft(ctx context.Context, landerID uuid.UUID, ve
 
 func (s *Service) ServeHostedPreviewFile(ctx context.Context, landerID uuid.UUID, version int, relPath, token string) (io.ReadCloser, string, error) {
 	return flow.ServeHostedPreviewFile(ctx, s, landerID, version, relPath, token)
+}
+
+func (s *Service) CreateLander(ctx context.Context, req flow.CreateLanderRequest) (flow.LanderDTO, error) {
+	return s.FlowStore().CreateLander(ctx, req)
+}
+
+func (s *Service) ListLanders(ctx context.Context) ([]flow.LanderDTO, error) {
+	return s.FlowStore().ListLanders(ctx)
+}
+
+func (s *Service) CreateOffer(ctx context.Context, req flow.CreateOfferRequest) (flow.OfferDTO, error) {
+	return s.FlowStore().CreateOffer(ctx, req)
+}
+
+func (s *Service) ListOffers(ctx context.Context) ([]flow.OfferDTO, error) {
+	return s.FlowStore().ListOffers(ctx)
+}
+
+func (s *Service) CreateFlow(ctx context.Context, req flow.CreateFlowRequest) (flow.DTO, error) {
+	return s.FlowStore().CreateFlow(ctx, req)
+}
+
+func (s *Service) ListFlows(ctx context.Context) ([]flow.DTO, error) {
+	return s.FlowStore().ListFlows(ctx)
+}
+
+func (s *Service) GetFlow(ctx context.Context, flowID uuid.UUID) (flow.DTO, error) {
+	return s.FlowStore().GetFlow(ctx, flowID)
+}
+
+func (s *Service) UpdateFlow(ctx context.Context, flowID uuid.UUID, req flow.UpdateFlowRequest) (flow.DTO, error) {
+	return s.FlowStore().UpdateFlow(ctx, flowID, req)
 }

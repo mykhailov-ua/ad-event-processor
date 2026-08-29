@@ -1,10 +1,11 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,17 @@ func TestAdminStaticRoutes(t *testing.T) {
 
 	t.Run("GET /login serves login.html", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/login", http.NoBody)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		body := w.Body.String()
+		assert.Contains(t, body, "<div id=\"root\"></div>")
+		assert.Contains(t, body, "/src/login.js")
+	})
+
+	t.Run("GET /start serves login.html shell", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/start", http.NoBody)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 

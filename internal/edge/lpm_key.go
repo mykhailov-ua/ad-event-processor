@@ -31,7 +31,7 @@ func ParseHost(s string) (uint32, bool) {
 }
 
 func ParsePrefix(s string) (IPv4Key, bool) {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] != '/' {
 			continue
 		}
@@ -61,7 +61,7 @@ func parseIPv4(s string) (uint32, bool) {
 		bits uint32
 		dots int
 	)
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		switch {
 		case c >= '0' && c <= '9':
@@ -91,7 +91,7 @@ func parseUint8(s string) (uint8, bool) {
 		return 0, false
 	}
 	var n uint8
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if c < '0' || c > '9' {
 			return 0, false

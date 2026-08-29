@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"ad-event-processor/internal/domain/shard"
+
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -18,30 +20,30 @@ func NewCampaignRedisKeyCatalog() *CampaignRedisKeyCatalog {
 
 func (c *CampaignRedisKeyCatalog) FixedKeys(id uuid.UUID) []string {
 	idStr := id.String()
-	tag := campaignHashTag(id)
+	tag := shard.CampaignHashTag(id)
 	return []string{
-		budgetCampaignKey(id),
+		shard.BudgetCampaignKey(id),
 		tag + "budget:quota:" + idStr,
 		tag + "budget:refill_lock:" + idStr,
-		BudgetFrozenRedisKey(id),
-		campaignSyncKey(id),
+		shard.BudgetFrozenRedisKey(id),
+		shard.CampaignSyncKey(id),
 		"budget:inflight:campaign:" + idStr,
 		"budget:lock:campaign:" + idStr,
 		"budget:txid:campaign:" + idStr,
 		"campaign:settings:" + idStr,
-		PlacementBlacklistKey(id),
+		shard.PlacementBlacklistKey(id),
 	}
 }
 
 func (c *CampaignRedisKeyCatalog) SourceOnlyKeys(id uuid.UUID) []string {
-	return []string{MigrationFenceRedisKey(id)}
+	return []string{shard.MigrationFenceRedisKey(id)}
 }
 
 func (c *CampaignRedisKeyCatalog) PrefixPatterns(id uuid.UUID) []string {
-	tag := campaignHashTag(id)
+	tag := shard.CampaignHashTag(id)
 	return []string{
-		dailySpendKeyPrefix(id),
-		fcapKeyPrefix(id, ""),
+		shard.DailySpendKeyPrefix(id),
+		shard.FcapKeyPrefix(id, ""),
 		tag + "dup:",
 		tag + "dedup/v2:",
 		tag + "idempotency:click:",
@@ -51,7 +53,7 @@ func (c *CampaignRedisKeyCatalog) PrefixPatterns(id uuid.UUID) []string {
 }
 
 func (c *CampaignRedisKeyCatalog) ActivationRequiredKeys(id uuid.UUID) []string {
-	return []string{budgetCampaignKey(id)}
+	return []string{shard.BudgetCampaignKey(id)}
 }
 
 func (c *CampaignRedisKeyCatalog) VerifyRequiredKeysExist(ctx context.Context, dst redis.Cmdable, id uuid.UUID) error {

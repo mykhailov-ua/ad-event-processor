@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"

@@ -1,0 +1,631 @@
+package fraud
+
+import (
+	"context"
+	"runtime"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/filter"
+	"ad-event-processor/internal/ingest/pb"
+	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/stream/broker"
+	"ad-event-processor/internal/stream/codec"
+
+	"github.com/google/uuid"
+	redis "github.com/redis/go-redis/v9"
+)
+
+const (
+	fraudAnalyticalCapacity = 3584
+	fraudAnalyticalUsable   = fraudAnalyticalCapacity - 1
+
+	fraudCriticalCapacity = 512
+	fraudCriticalMask     = fraudCriticalCapacity - 1
+	fraudCriticalUsable   = fraudCriticalCapacity - 1
+	fraudCriticalSpinMax  = 32
+
+	fraudRingCapacity = fraudAnalyticalCapacity
+	fraudRingUsable   = fraudAnalyticalUsable
+
+	fraudFlushBatch = 64
+
+	fraudSlotClickMax   = 128
+	fraudSlotUserMax    = 128
+	fraudSlotTypeMax    = 32
+	fraudSlotIPMax      = 64
+	fraudSlotUAMax      = 512
+	fraudSlotPayloadMax = 2048
+	fraudSlotReasonMax  = 128
+)
+
+type fraudStreamSlot struct {
+	ready      atomic.Uint32
+	shard      uint8
+	_          [3]byte
+	campaignID uuid.UUID
+	createdAt  int64
+
+	clickLen   uint16
+	userLen    uint16
+	typeLen    uint16
+	ipLen      uint16
+	uaLen      uint16
+	payloadLen uint16
+	reasonLen  uint16
+
+	clickID [fraudSlotClickMax]byte
+	userID  [fraudSlotUserMax]byte
+	evtType [fraudSlotTypeMax]byte
+	ip      [fraudSlotIPMax]byte
+	ua      [fraudSlotUAMax]byte
+	payload [fraudSlotPayloadMax]byte
+	reason  [fraudSlotReasonMax]byte
+
+	fraudScore        uint32
+	layerDesyncCount  uint8
+	silentRejectEvent bool
+}
+
+type FraudStreamWriter struct {
+	_           [64]byte
+	writeCursor uint64
+	_           [64]byte
+	allocCursor uint64
+	_           [64]byte
+	readCursor  uint64
+	_           [64]byte
+	slots       [fraudAnalyticalCapacity]fraudStreamSlot
+
+	_         [64]byte
+	critWrite uint64
+	_         [64]byte
+	critAlloc uint64
+	_         [64]byte
+	critRead  uint64
+	_         [64]byte
+	critSlots [fraudCriticalCapacity]fraudStreamSlot
+
+	_              [64]byte
+	aggregating    uint32
+	forceAgg       uint32
+	_              [56]byte
+	aggOccupied    uint64
+	_              [64]byte
+	aggWindowStart int64
+	_              [56]byte
+	aggSlots       [fraudAggTableSize]fraudAggCell
+	aggValScratch  [12]any
+
+	stream      string
+	maxLen      int64
+	redisShards []redis.UniversalClient
+
+	brokerSink *broker.FraudBrokerSink
+	useBroker  bool
+
+	stopCh chan struct{}
+	wg     sync.WaitGroup
+	aggWg  sync.WaitGroup
+}
+
+func NewFraudStreamWriter(redisShards []redis.UniversalClient, stream string, maxLen int64) *FraudStreamWriter {
+	if len(redisShards) == 0 || stream == "" {
+		return nil
+	}
+	q := &FraudStreamWriter{
+		stream:      stream,
+		maxLen:      maxLen,
+		redisShards: redisShards,
+		stopCh:      make(chan struct{}),
+	}
+	q.wg.Add(1)
+	go q.worker()
+	q.aggWg.Add(1)
+	go q.aggregateFlusher()
+	metrics.FraudStreamMode.WithLabelValues("aggregating").Set(0)
+	metrics.FraudStreamAggTableFill.Set(0)
+	metrics.FraudStreamRingFillRatio.Set(0)
+	metrics.FraudStreamPending.Set(0)
+	return q
+}
+
+func NewFraudStreamWriterNearFullForTest(stream string, maxLen int64, freeSlots uint64) *FraudStreamWriter {
+	q := &FraudStreamWriter{
+		stream: stream,
+		maxLen: maxLen,
+		stopCh: make(chan struct{}),
+	}
+	if freeSlots > fraudRingUsable {
+		freeSlots = fraudRingUsable
+	}
+	q.allocCursor = fraudRingUsable - freeSlots
+	q.writeCursor = q.allocCursor
+	return q
+}
+
+func (q *FraudStreamWriter) SetBrokerSink(sink *broker.FraudBrokerSink) {
+	if q == nil {
+		return
+	}
+	q.brokerSink = sink
+	q.useBroker = sink != nil
+	if q.useBroker {
+		metrics.IngestFraudPath.Set(1)
+	}
+}
+
+func (q *FraudStreamWriter) UseBroker() bool {
+	return q != nil && q.useBroker
+}
+
+func copyFraudField(dst []byte, s string) int {
+	n := len(s)
+	if n > len(dst) {
+		n = len(dst)
+	}
+	if n > 0 {
+		copy(dst[:n], s[:n])
+	}
+	return n
+}
+
+func fillFraudSlot(slot *fraudStreamSlot, shard int, evt *domain.Event) {
+	slot.ready.Store(0)
+	slot.shard = uint8(shard)
+	slot.campaignID = evt.CampaignID
+	slot.createdAt = evt.CreatedAt.UnixNano()
+	slot.clickLen = uint16(copyFraudField(slot.clickID[:], evt.ClickID))
+	slot.userLen = uint16(copyFraudField(slot.userID[:], evt.UserID))
+	slot.typeLen = uint16(copyFraudField(slot.evtType[:], evt.Type))
+	slot.ipLen = uint16(copyFraudField(slot.ip[:], evt.IP))
+	slot.uaLen = uint16(copyFraudField(slot.ua[:], evt.UA))
+	slot.payloadLen = uint16(copyFraudField(slot.payload[:], codec.UnsafeString(evt.Payload)))
+	slot.reasonLen = uint16(copyFraudField(slot.reason[:], evt.FraudReason))
+	slot.fraudScore = evt.FraudScore
+	slot.layerDesyncCount = evt.LayerDesyncCount
+	slot.silentRejectEvent = evt.SilentRejectEvent
+	slot.ready.Store(1)
+}
+
+func (q *FraudStreamWriter) Enqueue(shard int, evt *domain.Event) bool {
+	if q == nil || evt == nil {
+		return true
+	}
+	if shard < 0 || shard >= len(q.redisShards) {
+		shard = 0
+	}
+
+	if fraudAggregateExempt(evt) {
+		return q.enqueueCritical(shard, evt)
+	}
+
+	fill := q.ringFill()
+	q.publishAggMode(fill)
+	q.publishRingGauges(fill)
+	if fill >= fraudAggThreshold || atomic.LoadUint32(&q.forceAgg) == 1 {
+		if q.aggregateEvent(evt) {
+			return true
+		}
+	}
+	return q.enqueueAnalytical(shard, evt)
+}
+
+func (q *FraudStreamWriter) SetForceAggregate(force bool) {
+	if q == nil {
+		return
+	}
+	want := uint32(0)
+	if force {
+		want = 1
+	}
+	prev := atomic.SwapUint32(&q.forceAgg, want)
+	if force && prev == 0 {
+		metrics.FraudStreamBackpressureTotal.Inc()
+		atomic.StoreUint32(&q.aggregating, 1)
+		metrics.FraudStreamMode.WithLabelValues("aggregating").Set(1)
+	}
+	if !force {
+		q.publishAggMode(q.ringFill())
+	}
+}
+
+func (q *FraudStreamWriter) publishRingGauges(fill uint64) {
+	metrics.FraudStreamRingFillRatio.Set(float64(fill) / float64(fraudAnalyticalUsable))
+	metrics.FraudStreamPending.Set(float64(q.Pending()))
+}
+
+func (q *FraudStreamWriter) enqueueCritical(shard int, evt *domain.Event) bool {
+	for {
+		alloc := atomic.LoadUint64(&q.critAlloc)
+		read := atomic.LoadUint64(&q.critRead)
+		if alloc-read >= fraudCriticalUsable {
+			for spin := range fraudCriticalSpinMax {
+				if spin < 8 {
+					runtime.Gosched()
+				} else {
+					time.Sleep(time.Microsecond)
+				}
+				read = atomic.LoadUint64(&q.critRead)
+				if alloc-read < fraudCriticalUsable {
+					goto spaceOK
+				}
+			}
+			metrics.FraudStreamCriticalDropTotal.Inc()
+			return false
+		}
+	spaceOK:
+		if !atomic.CompareAndSwapUint64(&q.critAlloc, alloc, alloc+1) {
+			continue
+		}
+		idx := alloc & fraudCriticalMask
+		fillFraudSlot(&q.critSlots[idx], shard, evt)
+		for {
+			if atomic.LoadUint64(&q.critWrite) == alloc {
+				atomic.StoreUint64(&q.critWrite, alloc+1)
+				return true
+			}
+			runtime.Gosched()
+		}
+	}
+}
+
+func (q *FraudStreamWriter) enqueueAnalytical(shard int, evt *domain.Event) bool {
+	return q.enqueueRing(shard, evt)
+}
+
+func (q *FraudStreamWriter) enqueueRing(shard int, evt *domain.Event) bool {
+	for {
+		alloc := atomic.LoadUint64(&q.allocCursor)
+		read := atomic.LoadUint64(&q.readCursor)
+		if alloc-read >= fraudAnalyticalUsable {
+			for spin := range 100 {
+				if spin < 20 {
+					runtime.Gosched()
+				} else {
+					time.Sleep(time.Microsecond)
+				}
+				read = atomic.LoadUint64(&q.readCursor)
+				if alloc-read < fraudAnalyticalUsable {
+					goto spaceAvailable
+				}
+			}
+			return false
+		}
+		if alloc-read >= fraudAnalyticalUsable-512 {
+			runtime.Gosched()
+		}
+	spaceAvailable:
+		if !atomic.CompareAndSwapUint64(&q.allocCursor, alloc, alloc+1) {
+			continue
+		}
+
+		idx := alloc % fraudAnalyticalCapacity
+		fillFraudSlot(&q.slots[idx], shard, evt)
+
+		for {
+			if atomic.LoadUint64(&q.writeCursor) == alloc {
+				atomic.StoreUint64(&q.writeCursor, alloc+1)
+				return true
+			}
+			runtime.Gosched()
+		}
+	}
+}
+
+func (q *FraudStreamWriter) Pending() uint64 {
+	if q == nil {
+		return 0
+	}
+	return pendingDelta(atomic.LoadUint64(&q.writeCursor), atomic.LoadUint64(&q.readCursor)) +
+		pendingDelta(atomic.LoadUint64(&q.critWrite), atomic.LoadUint64(&q.critRead))
+}
+
+func pendingDelta(head, tail uint64) uint64 {
+	if head <= tail {
+		return 0
+	}
+	return head - tail
+}
+
+func (q *FraudStreamWriter) Stop() {
+	if q == nil {
+		return
+	}
+	select {
+	case <-q.stopCh:
+		return
+	default:
+		close(q.stopCh)
+	}
+	q.wg.Wait()
+	q.aggWg.Wait()
+	if q.brokerSink != nil {
+		_ = q.brokerSink.Close()
+	}
+}
+
+func (q *FraudStreamWriter) worker() {
+	defer q.wg.Done()
+	ticker := time.NewTicker(2 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-q.stopCh:
+			q.drain(true)
+			return
+		case <-ticker.C:
+			q.drain(false)
+		}
+	}
+}
+
+func (q *FraudStreamWriter) drain(final bool) {
+	ctx := context.Background()
+	batch := make([]*fraudStreamSlot, 0, fraudFlushBatch)
+
+	drainLane := func(writePtr, readPtr *uint64, slots []fraudStreamSlot, capacity uint64) {
+		for {
+			writeCursor := atomic.LoadUint64(writePtr)
+			readCursor := atomic.LoadUint64(readPtr)
+			if readCursor >= writeCursor {
+				break
+			}
+			if len(batch) >= fraudFlushBatch {
+				q.flushBatch(ctx, batch)
+				batch = batch[:0]
+			}
+			idx := readCursor % capacity
+			slot := &slots[idx]
+			for slot.ready.Load() == 0 {
+				runtime.Gosched()
+			}
+			batch = append(batch, slot)
+			atomic.StoreUint64(readPtr, readCursor+1)
+		}
+	}
+
+	drainLane(&q.critWrite, &q.critRead, q.critSlots[:], fraudCriticalCapacity)
+	drainLane(&q.writeCursor, &q.readCursor, q.slots[:], fraudAnalyticalCapacity)
+
+	if len(batch) > 0 {
+		q.flushBatch(ctx, batch)
+	}
+
+	if final {
+		for atomic.LoadUint64(&q.writeCursor) != atomic.LoadUint64(&q.readCursor) ||
+			atomic.LoadUint64(&q.critWrite) != atomic.LoadUint64(&q.critRead) {
+			runtime.Gosched()
+		}
+	}
+	q.publishRingGauges(q.ringFill())
+}
+
+func (q *FraudStreamWriter) flushBatch(ctx context.Context, batch []*fraudStreamSlot) {
+	if len(batch) == 0 {
+		return
+	}
+
+	wraps := make([]*codec.ByteSliceValue, 0, len(batch))
+	bufs := make([]*[]byte, 0, len(batch))
+
+	type shardPayloads struct {
+		payloads [][]byte
+	}
+
+	if q.useBroker && q.brokerSink != nil {
+		byShard := make(map[uint8]*shardPayloads)
+		for _, slot := range batch {
+			data, wrap, bufPtr := marshalFraudStreamSlot(slot)
+			if data == nil {
+				filterFraudStreamWriteErrors.Inc()
+				continue
+			}
+			wraps = append(wraps, wrap)
+			bufs = append(bufs, bufPtr)
+			shard := slot.shard
+			sp, ok := byShard[shard]
+			if !ok {
+				sp = &shardPayloads{}
+				byShard[shard] = sp
+			}
+			sp.payloads = append(sp.payloads, data)
+		}
+		for shard, sp := range byShard {
+			if len(sp.payloads) == 0 {
+				continue
+			}
+			if err := q.brokerSink.Produce(ctx, uint16(shard), sp.payloads); err != nil {
+				for range sp.payloads {
+					filterFraudStreamWriteErrors.Inc()
+				}
+			}
+		}
+		for i := range wraps {
+			codec.ByteSliceValuePool.Put(wraps[i])
+			codec.ByteBufPool.Put(bufs[i])
+		}
+		return
+	}
+
+	type shardBatch struct {
+		pipe redis.Pipeliner
+		cmds []*redis.StringCmd
+	}
+	shards := make(map[uint8]*shardBatch)
+	values := make([][]any, 0, len(batch))
+
+	for _, slot := range batch {
+		data, wrap, bufPtr := marshalFraudStreamSlot(slot)
+		if data == nil {
+			filterFraudStreamWriteErrors.Inc()
+			continue
+		}
+		wraps = append(wraps, wrap)
+		bufs = append(bufs, bufPtr)
+		vals := []any{"d", wrap}
+		values = append(values, vals)
+
+		shard := slot.shard
+		if int(shard) >= len(q.redisShards) || q.redisShards[shard] == nil {
+			filterFraudStreamWriteErrors.Inc()
+			continue
+		}
+		sb, ok := shards[shard]
+		if !ok {
+			sb = &shardBatch{pipe: q.redisShards[shard].Pipeline()}
+			shards[shard] = sb
+		}
+		cmd := sb.pipe.XAdd(ctx, &redis.XAddArgs{
+			Stream: q.stream,
+			MaxLen: q.maxLen,
+			Approx: true,
+			Values: vals,
+		})
+		sb.cmds = append(sb.cmds, cmd)
+	}
+
+	for _, sb := range shards {
+		_, _ = sb.pipe.Exec(ctx)
+		for _, cmd := range sb.cmds {
+			if cmd.Err() != nil {
+				filterFraudStreamWriteErrors.Inc()
+			}
+		}
+	}
+
+	for i := range wraps {
+		codec.ByteSliceValuePool.Put(wraps[i])
+		codec.ByteBufPool.Put(bufs[i])
+	}
+	_ = values
+}
+
+func marshalFraudStreamSlot(slot *fraudStreamSlot) ([]byte, *codec.ByteSliceValue, *[]byte) {
+	pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
+	codec.DeepResetAdStreamEvent(pbEvt)
+	pbEvt.ClickId = slot.clickID[:slot.clickLen]
+	pbEvt.CampaignId = slot.campaignID[:]
+	pbEvt.EventType = slot.evtType[:slot.typeLen]
+	pbEvt.Payload = slot.payload[:slot.payloadLen]
+	pbEvt.Ip = slot.ip[:slot.ipLen]
+	pbEvt.Ua = slot.ua[:slot.uaLen]
+	pbEvt.UserId = slot.userID[:slot.userLen]
+	pbEvt.CreatedAtUnix = 0
+	if slot.createdAt > 0 {
+		pbEvt.CreatedAtUnix = slot.createdAt / int64(time.Second)
+	}
+	pbEvt.FraudScore = slot.fraudScore
+	pbEvt.LayerDesyncCount = uint32(slot.layerDesyncCount)
+	pbEvt.FraudReason = slot.reason[:slot.reasonLen]
+	pbEvt.SilentRejectEvent = slot.silentRejectEvent
+
+	size := pbEvt.SizeVT()
+	bufPtr := codec.ByteBufPool.Get().(*[]byte)
+	buf := *bufPtr
+	if cap(buf) < size {
+		buf = make([]byte, size)
+	} else {
+		buf = buf[:size]
+	}
+	n, err := pbEvt.MarshalToSizedBufferVT(buf)
+	codec.ClearAdStreamEvent(pbEvt)
+	codec.StreamEventPool.Put(pbEvt)
+	if err != nil {
+		*bufPtr = buf
+		codec.ByteBufPool.Put(bufPtr)
+		return nil, nil, nil
+	}
+	data := buf[:n]
+	*bufPtr = buf
+	wrap := codec.ByteSliceValuePool.Get().(*codec.ByteSliceValue)
+	wrap.B = data
+	return data, wrap, bufPtr
+}
+
+func marshalFraudAggregateEntry(e fraudAggFlushEntry, windowMs int64) ([]byte, *codec.ByteSliceValue, *[]byte) {
+	pbEvt := codec.StreamEventPool.Get().(*pb.AdStreamEvent)
+	codec.DeepResetAdStreamEvent(pbEvt)
+	pbEvt.EventType = []byte(fraudAggregateEventType)
+
+	subnetStr := ""
+	ipv6Str := ""
+	switch e.kind {
+	case fraudAggPrefixV4:
+		subnetStr = formatIPv4Subnet24(e.subnet)
+	case fraudAggPrefixV6_64:
+		ipv6Str = formatIPv6Prefix(e.v6Hi, e.v6Lo, 64)
+	case fraudAggPrefixV6_48:
+		ipv6Str = formatIPv6Prefix(e.v6Hi, 0, 48)
+	}
+	if subnetStr != "" {
+		pbEvt.Ip = []byte(subnetStr)
+	}
+	if ipv6Str != "" {
+		pbEvt.Payload = []byte(ipv6Str)
+	}
+	pbEvt.FraudReason = []byte(filter.FraudReasonCode(filter.FraudReasonID(e.reason)))
+	pbEvt.ClickId = []byte(strconv.FormatUint(e.count, 10))
+	pbEvt.UserId = []byte(strconv.FormatInt(windowMs, 10))
+
+	size := pbEvt.SizeVT()
+	bufPtr := codec.ByteBufPool.Get().(*[]byte)
+	buf := *bufPtr
+	if cap(buf) < size {
+		buf = make([]byte, size)
+	} else {
+		buf = buf[:size]
+	}
+	n, err := pbEvt.MarshalToSizedBufferVT(buf)
+	codec.ClearAdStreamEvent(pbEvt)
+	codec.StreamEventPool.Put(pbEvt)
+	if err != nil {
+		*bufPtr = buf
+		codec.ByteBufPool.Put(bufPtr)
+		return nil, nil, nil
+	}
+	data := buf[:n]
+	*bufPtr = buf
+	wrap := codec.ByteSliceValuePool.Get().(*codec.ByteSliceValue)
+	wrap.B = data
+	return data, wrap, bufPtr
+}
+
+func EnqueueFraudReject(writer *FraudStreamWriter, shard int, evt *domain.Event) {
+	if writer == nil {
+		return
+	}
+	if !writer.Enqueue(shard, evt) {
+		if !fraudAggregateExempt(evt) {
+			metrics.FraudStreamDropTotal.Inc()
+		}
+	}
+}
+
+func MarshalFraudEventPayloadForTest(evt *domain.Event) ([]byte, func()) {
+	slot := &fraudStreamSlot{}
+	fillFraudSlot(slot, 0, evt)
+	data, wrap, bufPtr := marshalFraudStreamSlot(slot)
+	cleanup := func() {
+		if bufPtr != nil {
+			codec.ByteBufPool.Put(bufPtr)
+		}
+		if wrap != nil {
+			codec.ByteSliceValuePool.Put(wrap)
+		}
+	}
+	return data, cleanup
+}
+
+func firstConnectedRedisShard(redisShards []redis.UniversalClient) redis.UniversalClient {
+	for _, redisClient := range redisShards {
+		if redisClient != nil {
+			return redisClient
+		}
+	}
+	return nil
+}

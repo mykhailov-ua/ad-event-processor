@@ -29,18 +29,18 @@ local function assert_ok(fn, msg)
 end
 
 assert_eq(edge_uuid.normalize(VALID), VALID, "accepts lowercase uuid")
-assert_eq(edge_uuid.normalize("550E8400-E29B-41D4-A716-446655440000"), VALID, "lowercases uuid")
-assert_nil(edge_uuid.normalize("not-a-uuid"), "rejects garbage")
-assert_nil(edge_uuid.normalize("gggggggg-gggg-gggg-gggg-gggggggggggg"), "rejects non-hex")
-assert_nil(edge_uuid.normalize("550e8400-e29b-41d4-a716-44665544000g"), "rejects bad last nibble")
+assert_eq(edge_uuid.normalize "550E8400-E29B-41D4-A716-446655440000", VALID, "lowercases uuid")
+assert_nil(edge_uuid.normalize "not-a-uuid", "rejects garbage")
+assert_nil(edge_uuid.normalize "gggggggg-gggg-gggg-gggg-gggggggggggg", "rejects non-hex")
+assert_nil(edge_uuid.normalize "550e8400-e29b-41d4-a716-44665544000g", "rejects bad last nibble")
 assert_nil(edge_uuid.normalize(VALID .. "x"), "rejects too long")
-assert_nil(edge_uuid.normalize("550e8400-e29b-41d4-a716-44665544000"), "rejects too short")
+assert_nil(edge_uuid.normalize "550e8400-e29b-41d4-a716-44665544000", "rejects too short")
 
 local bytes = edge_uuid.normalize_to_bytes(VALID)
 assert_eq(bytes and #bytes, 16, "produces 16 raw bytes")
 
 assert_ok(function()
-    edge_uuid.normalize_to_bytes("gggggggg-gggg-gggg-gggg-gggggggggggg")
+    edge_uuid.normalize_to_bytes "gggggggg-gggg-gggg-gggg-gggggggggggg"
 end, "invalid hex does not throw")
 
 package.loaded["edge-slot-map"] = nil
@@ -58,9 +58,9 @@ ngx = {
     },
 }
 local slot_map = require "edge-slot-map"
-assert_nil(slot_map.get_shard("gggggggg-gggg-gggg-gggg-gggggggggggg"), "slot_map rejects invalid uuid")
+assert_nil(slot_map.get_shard "gggggggg-gggg-gggg-gggg-gggggggggggg", "slot_map rejects invalid uuid")
 assert_ok(function()
-    slot_map.get_shard("gggggggg-gggg-gggg-gggg-gggggggggggg")
+    slot_map.get_shard "gggggggg-gggg-gggg-gggg-gggggggggggg"
 end, "slot_map get_shard does not throw on invalid uuid")
 
 io.write(string.format("uuid_test: %d passed, %d failed\n", passed, failed))

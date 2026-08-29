@@ -54,5 +54,5 @@ installer_license_required() {
   echo "${v:-1}"
 }
 
-ad_event_processor_read_env() { installer_read_env "$1"; }
-ad_event_processor_use_release_images() { installer_use_release_images; }
+aed_read_env() { installer_read_env "$1"; }
+aed_use_release_images() { installer_use_release_images; }

@@ -12,6 +12,8 @@ var (
 	ErrFeedbackInvalidType          = errors.New("invalid feedback type")
 	ErrFeedbackInvalidEmail         = errors.New("invalid contact email")
 	ErrFeedbackEmptyMessage         = errors.New("message is required")
+	ErrDeploymentAlreadyClaimed     = errors.New("deployment already claimed")
+	ErrInviteInvalid                = errors.New("invalid invite token")
 )
 
 func errPlatformServiceUnavailable() error {

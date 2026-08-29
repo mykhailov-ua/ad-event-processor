@@ -1,9 +1,10 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/opsadmin"
 	"encoding/json"
 	"testing"
+
+	"ad-event-processor/internal/opsadmin"
 
 	"github.com/stretchr/testify/require"
 )

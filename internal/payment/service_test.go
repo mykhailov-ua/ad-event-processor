@@ -50,7 +50,7 @@ func TestProcessStripeWebhook_noDoubleSettlement(t *testing.T) {
 
 	updated, err := svc.GetPaymentIntent(ctx, uuid.MustParse(intent.ID))
 	require.NoError(t, err)
-	assert.Equal(t, paymentIntentStatusString(db.PaymentPaymentIntentStatusSUCCEEDED), updated.Status)
+	assert.Equal(t, "PAYMENT_INTENT_STATUS_SUCCEEDED", updated.Status)
 }
 
 func TestProcessStripeWebhook_zeroAmountRejected(t *testing.T) {

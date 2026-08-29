@@ -12,7 +12,7 @@ BASELINE="$BASELINE_DIR/perf_stat.txt"
 RUN_LOG="${2:-cache_miss_perf_stat.txt}"
 
 BENCH_PATTERN='Benchmark(FilterFraudBoost|GetShard|RunAuction$$)'
-BENCH_PKGS='./internal/ingestion ./internal/rtb'
+BENCH_PKGS='./internal/ingest ./internal/rtb'
 
 export GOMAXPROCS=1
 

@@ -3,7 +3,7 @@ package testutil
 import (
 	"context"
 
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 
 	db "ad-event-processor/internal/domain/db"
 

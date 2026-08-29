@@ -1,7 +1,6 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/campaign"

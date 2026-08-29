@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const maxLicenseTokenBytes = 16 * 1024
+
 func FuzzVerifyJWT(f *testing.F) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

@@ -74,7 +74,8 @@ func mapCampaignNotFound(err error) error {
 
 func getCampaignFraudForCustomer(ctx context.Context, pool interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
-}, customerID, campaignID uuid.UUID) (campaignFraudThresholds, error) {
+}, customerID, campaignID uuid.UUID,
+) (campaignFraudThresholds, error) {
 	var out campaignFraudThresholds
 	if pool == nil {
 		return out, fmt.Errorf("postgres pool not configured")

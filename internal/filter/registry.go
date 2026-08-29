@@ -1,0 +1,791 @@
+package filter
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"os"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"ad-event-processor/internal/domain"
+	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/metrics"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+	redis "github.com/redis/go-redis/v9"
+)
+
+type campaignInfo struct {
+	campaign *domain.Campaign
+	status   db.CampaignStatusType
+}
+
+type campaignMapSnapshot struct {
+	byID map[uuid.UUID]campaignInfo
+}
+
+func (r *Registry) campaignMapSnapshot() *campaignMapSnapshot {
+	v, ok := r.data.Load().(*campaignMapSnapshot)
+	if !ok || v == nil {
+		return &campaignMapSnapshot{}
+	}
+	return v
+}
+
+type campaignReplicaDTO struct {
+	ID                       uuid.UUID             `json:"id"`
+	CustomerID               uuid.UUID             `json:"customer_id"`
+	BrandID                  *uuid.UUID            `json:"brand_id,omitempty"`
+	BrandFcapKey             string                `json:"brand_fcap_key,omitempty"`
+	Name                     string                `json:"name"`
+	BudgetLimit              int64                 `json:"budget_limit"`
+	CurrentSpend             int64                 `json:"current_spend"`
+	Status                   domain.CampaignStatus `json:"status"`
+	PacingMode               domain.PacingMode     `json:"pacing_mode"`
+	DailyBudget              int64                 `json:"daily_budget"`
+	DailyBudgetMicro         int64                 `json:"daily_budget_micro"`
+	Timezone                 string                `json:"timezone"`
+	FreqLimit                int32                 `json:"freq_limit"`
+	FreqWindow               int32                 `json:"freq_window"`
+	TargetCountries          []string              `json:"target_countries,omitempty"`
+	SafePageURL              string                `json:"safe_page_url,omitempty"`
+	SafePageEnabled          bool                  `json:"safe_page_enabled"`
+	CanvasRetestEnabled      bool                  `json:"canvas_retest_enabled"`
+	CgnatIPPolicyEnabled     bool                  `json:"cgnat_ip_policy_enabled"`
+	AcceptLangGeoEnabled     bool                  `json:"accept_lang_geo_enabled"`
+	JSONSerializationEnabled bool                  `json:"json_serialization_enabled"`
+	AttestationEnabled       bool                  `json:"attestation_enabled"`
+	AttestationMode          string                `json:"attestation_mode,omitempty"`
+	AttestationTTLSec        int32                 `json:"attestation_ttl_sec"`
+	DmrEnabled               bool                  `json:"dmr_enabled"`
+
+	CIDRBlockEnabled           bool   `json:"cidr_block_enabled"`
+	ProxyVPNBlockEnabled       bool   `json:"proxy_vpn_block_enabled"`
+	ModeratorIntelEnabled      bool   `json:"moderator_intel_enabled"`
+	ReviewTrafficAction        string `json:"review_traffic_action,omitempty"`
+	TLSFingerprintBlockEnabled bool   `json:"tls_fingerprint_block_enabled"`
+	SocialInAppEnabled         bool   `json:"social_in_app_enabled"`
+	ConnTypePolicy             string `json:"conn_type_policy,omitempty"`
+	LinkSigningEnabled         bool   `json:"link_signing_enabled"`
+	LinkSigningTTLSec          int32  `json:"link_signing_ttl_sec"`
+	ClickDelivery              string `json:"click_delivery,omitempty"`
+	ProxyUpstreamURL           string `json:"proxy_upstream_url,omitempty"`
+	ProxyRewriteAssets         bool   `json:"proxy_rewrite_assets"`
+	RegistryStatus             string `json:"registry_status"`
+}
+
+type entitlementsSnapshot struct {
+	byCustomerID map[uuid.UUID]licensing.Entitlements
+	license      licensing.Entitlements
+	licenseState licensing.LicenseState
+}
+
+type Registry struct {
+	repo          db.Querier
+	pool          *pgxpool.Pool
+	data          atomic.Value
+	entitlements  atomic.Value
+	cohorts       atomic.Value
+	manuallyAdded map[uuid.UUID]bool
+	mu            sync.Mutex
+	replicaPath   string
+	wg            sync.WaitGroup
+	budgetWarmer  *BudgetCacheWarmer
+
+	lastPubSubOKUnix int64
+	staleTTLNano     int64
+	staleMode        int32
+
+	snapGen      atomic.Uint64
+	workerCache  [registryWorkerCacheMax]registryWorkerCacheSlot
+	lastSyncTime atomic.Int64
+
+	licenseEnforced atomic.Bool
+	fileLicense     atomic.Value
+}
+
+func NewRegistry(repo db.Querier) *Registry {
+	r := &Registry{
+		manuallyAdded: make(map[uuid.UUID]bool),
+		repo:          repo,
+		replicaPath:   "campaigns_replica.json",
+	}
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: make(map[uuid.UUID]campaignInfo, 100_000)})
+	r.entitlements.Store(&entitlementsSnapshot{
+		byCustomerID: make(map[uuid.UUID]licensing.Entitlements),
+		licenseState: licensing.StateExpired,
+	})
+	r.cohorts.Store(&cohortRegistrySnapshot{byID: make(map[uuid.UUID]domain.ExperimentCohort)})
+	return r
+}
+
+func (r *Registry) SetPool(pool *pgxpool.Pool) {
+	r.pool = pool
+}
+
+func (r *Registry) SetBudgetWarmer(w *BudgetCacheWarmer) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.budgetWarmer = w
+}
+
+func (r *Registry) UpdateAndWarmCampaign(ctx context.Context, id uuid.UUID) error {
+	start := time.Now()
+	defer func() {
+		metrics.RegistryWarmDuration.Observe(time.Since(start).Seconds())
+	}()
+
+	row, err := r.repo.GetCampaignFull(ctx, pgtype.UUID{Bytes: id, Valid: true})
+	if err != nil {
+		return err
+	}
+
+	r.mu.Lock()
+	currentMap := r.campaignMapSnapshot().byID
+	newMap := make(map[uuid.UUID]campaignInfo, len(currentMap)+1)
+	for k, v := range currentMap {
+		newMap[k] = v
+	}
+	if row.Status == db.CampaignStatusTypeACTIVE {
+		if row.UpdatedAt.Valid {
+			lag := time.Since(row.UpdatedAt.Time).Seconds()
+			if lag >= 0 {
+				metrics.RegistrySyncLag.Observe(lag)
+			}
+		}
+		newMap[id] = campaignInfo{
+			campaign: domain.CampaignFromGetCampaignFullRow(row),
+			status:   row.Status,
+		}
+	} else {
+		delete(newMap, id)
+		InvokeRegistryQuantaFlush(id)
+	}
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: newMap})
+	w := r.budgetWarmer
+	r.mu.Unlock()
+
+	if row.Status != db.CampaignStatusTypeACTIVE || w == nil {
+		return nil
+	}
+	camp := domain.CampaignFromGetCampaignFullRow(row)
+	_, err = w.WarmOne(ctx, camp)
+	return err
+}
+
+func (r *Registry) SetReplicaPath(path string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.replicaPath = path
+}
+
+func (r *Registry) Exists(id uuid.UUID) bool {
+	info, ok := r.campaignMapSnapshot().byID[id]
+	return ok && info.status == db.CampaignStatusTypeACTIVE
+}
+
+func (r *Registry) GetCustomerID(campaignID uuid.UUID) (uuid.UUID, bool) {
+	info, ok := r.campaignMapSnapshot().byID[campaignID]
+	if !ok {
+		return uuid.Nil, false
+	}
+	return info.campaign.CustomerID, true
+}
+
+func (r *Registry) GetCampaign(id uuid.UUID) (*domain.Campaign, bool) {
+	info, ok := r.campaignMapSnapshot().byID[id]
+	if !ok {
+		return nil, false
+	}
+	return info.campaign, true
+}
+
+func (r *Registry) ActiveCampaigns() []*domain.Campaign {
+	m := r.campaignMapSnapshot().byID
+	if len(m) == 0 {
+		return nil
+	}
+	out := make([]*domain.Campaign, 0, len(m))
+	for _, info := range m {
+		if info.status != db.CampaignStatusTypeACTIVE || info.campaign == nil {
+			continue
+		}
+		out = append(out, info.campaign)
+	}
+	return out
+}
+
+func (r *Registry) Add(id, customerID uuid.UUID, brandID *uuid.UUID, brandFcapKey string, pacingMode domain.PacingMode, dailyBudget int64, timezone string, freqLimit, freqWindow int32, targetCountries []string) {
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		slog.Error("invalid timezone in registry Add", "timezone", timezone, "error", err)
+		loc = time.UTC
+	}
+
+	var countries map[string]struct{}
+	if targetCountries != nil {
+		countries = make(map[string]struct{}, len(targetCountries))
+		for _, c := range targetCountries {
+			countries[c] = struct{}{}
+		}
+	}
+
+	idStr := id.String()
+	customerIDStr := customerID.String()
+	dailyBudgetMicro := dailyBudget
+
+	fcapPrefix := fcapKeyPrefix(id, brandFcapKey)
+
+	info := campaignInfo{
+		campaign: &domain.Campaign{
+			ID:                  id,
+			IDStr:               idStr,
+			IDStrAny:            idStr,
+			CustomerID:          customerID,
+			CustomerIDStr:       customerIDStr,
+			CustomerIDStrAny:    customerIDStr,
+			BrandID:             brandID,
+			BrandFcapKey:        brandFcapKey,
+			PacingMode:          pacingMode,
+			DailyBudget:         dailyBudget,
+			DailyBudgetMicro:    dailyBudgetMicro,
+			DailyBudgetMicroAny: dailyBudgetMicro,
+			Timezone:            timezone,
+			Location:            loc,
+			FreqLimit:           freqLimit,
+			FreqLimitAny:        freqLimit,
+			FreqWindow:          freqWindow,
+			FreqWindowAny:       freqWindow,
+			TargetCountries:     countries,
+			Status:              domain.CampaignStatusActive,
+			BudgetCampaignKey:   budgetCampaignKey(id),
+			CampaignSyncKey:     campaignSyncKey(id),
+			CustomerSyncKey:     customerSyncKey(id, customerID),
+			FcapKeyPrefix:       fcapPrefix,
+			DailySpendKeyPrefix: dailySpendKeyPrefix(id),
+		},
+		status: db.CampaignStatusTypeACTIVE,
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	currentMap := r.campaignMapSnapshot().byID
+	newMap := make(map[uuid.UUID]campaignInfo, len(currentMap)+1)
+	for k, v := range currentMap {
+		newMap[k] = v
+	}
+
+	newMap[id] = info
+	r.manuallyAdded[id] = true
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: newMap})
+
+	if err := r.saveReplica(newMap); err != nil {
+		slog.Error("failed to save local file replica in Add", "error", err)
+	}
+}
+
+func (r *Registry) SeedCampaignForTest(camp *domain.Campaign) {
+	if camp == nil {
+		return
+	}
+	if r.manuallyAdded == nil {
+		r.manuallyAdded = make(map[uuid.UUID]bool)
+	}
+	info := campaignInfo{campaign: camp, status: db.CampaignStatusTypeACTIVE}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	currentMap := r.campaignMapSnapshot().byID
+	newMap := make(map[uuid.UUID]campaignInfo, len(currentMap)+1)
+	for k, v := range currentMap {
+		newMap[k] = v
+	}
+	newMap[camp.ID] = info
+	r.manuallyAdded[camp.ID] = true
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: newMap})
+}
+
+func (r *Registry) PatchCampaignForTest(id uuid.UUID, mut func(*domain.Campaign)) {
+	if r == nil || mut == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	snap := r.campaignMapSnapshot()
+	info, ok := snap.byID[id]
+	if !ok || info.campaign == nil {
+		return
+	}
+	campCopy := *info.campaign
+	mut(&campCopy)
+	newMap := make(map[uuid.UUID]campaignInfo, len(snap.byID))
+	for k, v := range snap.byID {
+		newMap[k] = v
+	}
+	newMap[id] = campaignInfo{campaign: &campCopy, status: info.status}
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: newMap})
+}
+
+func (r *Registry) Sync(ctx context.Context) (int, error) {
+	now := time.Now().UnixNano()
+	last := r.lastSyncTime.Load()
+	if last > 0 && now-last < int64(1*time.Second) {
+		return len(r.campaignMapSnapshot().byID), nil
+	}
+	r.lastSyncTime.Store(now)
+
+	if r.pool != nil {
+		if err := r.SyncEntitlements(ctx); err != nil {
+			slog.Error("entitlements sync failed", "error", err)
+		}
+		if err := r.SyncCohorts(ctx); err != nil {
+			slog.Error("cohort sync failed", "error", err)
+		}
+	}
+	rows, err := r.repo.ListActiveCampaigns(ctx)
+	if err != nil {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		currentMap := r.campaignMapSnapshot().byID
+		if len(currentMap) == 0 {
+			slog.Warn("postgres sync failed and memory cache is empty, attempting to load from local file replica")
+			if loaded, loadErr := r.loadReplica(); loadErr == nil {
+				r.storeCampaignSnapshot(loaded)
+				return len(loaded.byID), nil
+			} else {
+				slog.Error("failed to load from local file replica", "error", loadErr)
+			}
+		}
+		return 0, err
+	}
+
+	fresh := make(map[uuid.UUID]campaignInfo, len(rows))
+	for _, row := range rows {
+		id := uuid.UUID(row.ID.Bytes)
+
+		if row.UpdatedAt.Valid {
+			lag := time.Since(row.UpdatedAt.Time).Seconds()
+			if lag >= 0 {
+				metrics.RegistrySyncLag.Observe(lag)
+			}
+		}
+
+		fresh[id] = campaignInfo{
+			campaign: domain.CampaignFromListActiveCampaignsRow(row),
+			status:   row.Status,
+		}
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for id := range fresh {
+		delete(r.manuallyAdded, id)
+	}
+	currentMap := r.campaignMapSnapshot().byID
+	for id := range r.manuallyAdded {
+		if info, ok := currentMap[id]; ok {
+			fresh[id] = info
+		}
+	}
+
+	r.storeCampaignSnapshot(&campaignMapSnapshot{byID: fresh})
+
+	if err := r.saveReplica(fresh); err != nil {
+		slog.Error("failed to save local file replica in Sync", "error", err)
+	}
+
+	return len(fresh), nil
+}
+
+func (r *Registry) saveReplica(m map[uuid.UUID]campaignInfo) error {
+	dtos := make([]campaignReplicaDTO, 0, len(m))
+	for _, info := range m {
+		var targetCountries []string
+		if info.campaign.TargetCountries != nil {
+			targetCountries = make([]string, 0, len(info.campaign.TargetCountries))
+			for c := range info.campaign.TargetCountries {
+				targetCountries = append(targetCountries, c)
+			}
+		}
+
+		dtos = append(dtos, campaignReplicaDTO{
+			ID:                         info.campaign.ID,
+			CustomerID:                 info.campaign.CustomerID,
+			BrandID:                    info.campaign.BrandID,
+			BrandFcapKey:               info.campaign.BrandFcapKey,
+			Name:                       info.campaign.Name,
+			BudgetLimit:                info.campaign.BudgetLimit,
+			CurrentSpend:               info.campaign.CurrentSpend,
+			Status:                     info.campaign.Status,
+			PacingMode:                 info.campaign.PacingMode,
+			DailyBudget:                info.campaign.DailyBudget,
+			DailyBudgetMicro:           info.campaign.DailyBudgetMicro,
+			Timezone:                   info.campaign.Timezone,
+			FreqLimit:                  info.campaign.FreqLimit,
+			FreqWindow:                 info.campaign.FreqWindow,
+			TargetCountries:            targetCountries,
+			SafePageURL:                info.campaign.SafePageURL,
+			SafePageEnabled:            info.campaign.SafePageEnabled,
+			CanvasRetestEnabled:        info.campaign.CanvasRetestEnabled,
+			CgnatIPPolicyEnabled:       info.campaign.CgnatIPPolicyEnabled,
+			AcceptLangGeoEnabled:       info.campaign.AcceptLangGeoEnabled,
+			JSONSerializationEnabled:   info.campaign.JSONSerializationEnabled,
+			AttestationEnabled:         info.campaign.AttestationEnabled,
+			AttestationMode:            string(info.campaign.AttestationMode),
+			AttestationTTLSec:          info.campaign.AttestationTTLSec,
+			DmrEnabled:                 info.campaign.DmrEnabled,
+			CIDRBlockEnabled:           info.campaign.CIDRBlockEnabled,
+			ProxyVPNBlockEnabled:       info.campaign.ProxyVPNBlockEnabled,
+			ModeratorIntelEnabled:      info.campaign.ModeratorIntelEnabled,
+			ReviewTrafficAction:        string(info.campaign.ReviewTrafficAction),
+			TLSFingerprintBlockEnabled: info.campaign.TLSFingerprintBlockEnabled,
+			SocialInAppEnabled:         info.campaign.SocialInAppEnabled,
+			ConnTypePolicy:             string(info.campaign.ConnTypePolicy),
+			LinkSigningEnabled:         info.campaign.LinkSigningEnabled,
+			LinkSigningTTLSec:          info.campaign.LinkSigningTTLSec,
+			ClickDelivery:              info.campaign.ClickDelivery,
+			ProxyUpstreamURL:           info.campaign.ProxyUpstreamURL,
+			ProxyRewriteAssets:         info.campaign.ProxyRewriteAssets,
+			RegistryStatus:             string(info.status),
+		})
+	}
+
+	data, err := json.Marshal(dtos)
+	if err != nil {
+		return err
+	}
+
+	tempFile := r.replicaPath + ".tmp"
+	f, err := os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		if !strings.HasPrefix(r.replicaPath, "/tmp/") {
+			r.replicaPath = "/tmp/campaigns_replica.json"
+			tempFile = r.replicaPath + ".tmp"
+			f, err = os.OpenFile(tempFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	defer func() {
+		_ = f.Close()
+		_ = os.Remove(tempFile)
+	}()
+
+	if _, err := f.Write(data); err != nil {
+		return err
+	}
+	if err := f.Sync(); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(tempFile, r.replicaPath)
+}
+
+func (r *Registry) loadReplica() (*campaignMapSnapshot, error) {
+	data, err := os.ReadFile(r.replicaPath)
+	if err != nil {
+		if !strings.HasPrefix(r.replicaPath, "/tmp/") {
+			data, err = os.ReadFile("/tmp/campaigns_replica.json")
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var dtos []campaignReplicaDTO
+	if err := json.Unmarshal(data, &dtos); err != nil {
+		return nil, err
+	}
+
+	m := make(map[uuid.UUID]campaignInfo, len(dtos))
+	for _, dto := range dtos {
+		loc, err := time.LoadLocation(dto.Timezone)
+		if err != nil {
+			loc = time.UTC
+		}
+
+		var countries map[string]struct{}
+		if dto.TargetCountries != nil {
+			countries = make(map[string]struct{}, len(dto.TargetCountries))
+			for _, c := range dto.TargetCountries {
+				countries[c] = struct{}{}
+			}
+		}
+
+		idStr := dto.ID.String()
+		customerIDStr := dto.CustomerID.String()
+
+		fcapPrefix := fcapKeyPrefix(dto.ID, dto.BrandFcapKey)
+
+		m[dto.ID] = campaignInfo{
+			campaign: &domain.Campaign{
+				ID:                         dto.ID,
+				IDStr:                      idStr,
+				IDStrAny:                   idStr,
+				CustomerID:                 dto.CustomerID,
+				CustomerIDStr:              customerIDStr,
+				CustomerIDStrAny:           customerIDStr,
+				BrandID:                    dto.BrandID,
+				BrandFcapKey:               dto.BrandFcapKey,
+				Name:                       dto.Name,
+				BudgetLimit:                dto.BudgetLimit,
+				CurrentSpend:               dto.CurrentSpend,
+				Status:                     dto.Status,
+				PacingMode:                 dto.PacingMode,
+				DailyBudget:                dto.DailyBudget,
+				DailyBudgetMicro:           dto.DailyBudgetMicro,
+				DailyBudgetMicroAny:        dto.DailyBudgetMicro,
+				Timezone:                   dto.Timezone,
+				Location:                   loc,
+				FreqLimit:                  dto.FreqLimit,
+				FreqLimitAny:               dto.FreqLimit,
+				FreqWindow:                 dto.FreqWindow,
+				FreqWindowAny:              dto.FreqWindow,
+				TargetCountries:            countries,
+				BudgetCampaignKey:          budgetCampaignKey(dto.ID),
+				CampaignSyncKey:            campaignSyncKey(dto.ID),
+				CustomerSyncKey:            customerSyncKey(dto.ID, dto.CustomerID),
+				FcapKeyPrefix:              fcapPrefix,
+				DailySpendKeyPrefix:        dailySpendKeyPrefix(dto.ID),
+				SafePageURL:                dto.SafePageURL,
+				SafePageEnabled:            dto.SafePageEnabled,
+				CanvasRetestEnabled:        dto.CanvasRetestEnabled,
+				CgnatIPPolicyEnabled:       dto.CgnatIPPolicyEnabled,
+				AcceptLangGeoEnabled:       dto.AcceptLangGeoEnabled,
+				JSONSerializationEnabled:   dto.JSONSerializationEnabled,
+				AttestationEnabled:         dto.AttestationEnabled,
+				AttestationMode:            domain.ResolveAttestationMode(domain.ParseAttestationMode(dto.AttestationMode), dto.AttestationEnabled),
+				AttestationTTLSec:          dto.AttestationTTLSec,
+				DmrEnabled:                 dto.DmrEnabled,
+				CIDRBlockEnabled:           dto.CIDRBlockEnabled,
+				ProxyVPNBlockEnabled:       dto.ProxyVPNBlockEnabled,
+				ModeratorIntelEnabled:      dto.ModeratorIntelEnabled,
+				ReviewTrafficAction:        domain.ParseReviewTrafficAction(dto.ReviewTrafficAction),
+				TLSFingerprintBlockEnabled: dto.TLSFingerprintBlockEnabled,
+				SocialInAppEnabled:         dto.SocialInAppEnabled,
+				ConnTypePolicy:             domain.ConnTypePolicyFromString(dto.ConnTypePolicy),
+				LinkSigningEnabled:         dto.LinkSigningEnabled,
+				LinkSigningTTLSec:          dto.LinkSigningTTLSec,
+				ClickDelivery:              dto.ClickDelivery,
+				ProxyUpstreamURL:           dto.ProxyUpstreamURL,
+				ProxyRewriteAssets:         dto.ProxyRewriteAssets,
+			},
+			status: db.CampaignStatusType(dto.RegistryStatus),
+		}
+	}
+	return &campaignMapSnapshot{byID: m}, nil
+}
+
+func (r *Registry) StartSync(ctx context.Context, interval time.Duration) {
+	r.wg.Add(1)
+	go func() {
+		defer r.wg.Done()
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				count, err := r.Sync(ctx)
+				if err != nil {
+					slog.Error("campaign registry sync failed", "error", err)
+					continue
+				}
+				slog.Debug("campaign registry synced", "campaigns", count)
+			}
+		}
+	}()
+}
+
+func (r *Registry) watchPubSubOnce(ctx context.Context, redisClient redis.UniversalClient, channel string, staleDriver bool) error {
+	pubsub := redisClient.Subscribe(ctx, channel)
+	defer func() { _ = pubsub.Close() }()
+
+	if _, err := pubsub.Receive(ctx); err != nil {
+		return err
+	}
+	if staleDriver {
+		r.MarkPubSubOK()
+	}
+
+	ch := pubsub.Channel(redis.WithChannelSize(1000))
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			if err := pubsub.Ping(ctx); err != nil {
+				return err
+			}
+			if staleDriver {
+				r.MarkPubSubOK()
+			}
+		case msg, ok := <-ch:
+			if !ok {
+				return errPubSubClosed
+			}
+			if domain.IsRegistryFullSyncPayload(msg.Payload) {
+				if _, err := r.ReloadFullSnapshot(ctx); err != nil {
+					slog.Error("full campaign registry reload failed", "error", err)
+					continue
+				}
+				if staleDriver {
+					r.MarkPubSubOK()
+				}
+				continue
+			}
+			id := uuid.UUID{}
+			if !ParseUUID(UnsafeBytes(msg.Payload), &id) {
+				slog.Warn("received invalid campaign id in pubsub", "payload", msg.Payload)
+				continue
+			}
+			if err := r.UpdateAndWarmCampaign(ctx, id); err != nil {
+				slog.Error("incremental campaign registry reload failed", "campaign_id", id, "error", err)
+				continue
+			}
+			if staleDriver {
+				r.MarkPubSubOK()
+			}
+			slog.Debug("campaign registry incremental reload", "campaign_id", id)
+		}
+	}
+}
+
+var errPubSubClosed = errors.New("redis pubsub channel closed")
+
+func (r *Registry) Wait(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		r.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func parseLicenseEntitlementsJSON(raw []byte) (licensing.Entitlements, error) {
+	if len(raw) == 0 {
+		return licensing.Entitlements{}, nil
+	}
+	var licEnt licensing.Entitlements
+	if err := json.Unmarshal(raw, &licEnt); err != nil {
+		return licensing.Entitlements{}, err
+	}
+	licEnt.Features = licEnt.Features.Normalized()
+	return licEnt, nil
+}
+
+func (r *Registry) SyncEntitlements(ctx context.Context) error {
+	if r.pool == nil {
+		return nil
+	}
+	if r.licenseEnforced.Load() {
+		return nil
+	}
+
+	var stateStr string
+	var entitlementsBytes []byte
+
+	licState := licensing.StateExpired
+	var licEnt licensing.Entitlements
+
+	row := r.pool.QueryRow(ctx, "SELECT state, entitlements_json FROM billing.license_status LIMIT 1")
+	err := row.Scan(&stateStr, &entitlementsBytes)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			r.storeEntitlementsSnapshot(licState, licEnt)
+			return nil
+		}
+		return err
+	}
+	licState = licensing.LicenseState(stateStr)
+	licEnt, parseErr := parseLicenseEntitlementsJSON(entitlementsBytes)
+	if parseErr != nil {
+		slog.Warn("billing license_status entitlements_json corrupt; empty entitlements limits", "error", parseErr)
+	}
+	r.storeEntitlementsSnapshot(licState, licEnt)
+	return nil
+}
+
+func (r *Registry) storeEntitlementsSnapshot(licState licensing.LicenseState, licEnt licensing.Entitlements) {
+	r.entitlements.Store(&entitlementsSnapshot{
+		byCustomerID: nil,
+		license:      licEnt,
+		licenseState: licState,
+	})
+}
+
+func (r *Registry) SeedCustomerEntitlementsForTest(customerID uuid.UUID, ent licensing.Entitlements, state licensing.LicenseState) {
+	if r == nil {
+		return
+	}
+	r.entitlements.Store(&entitlementsSnapshot{
+		byCustomerID: map[uuid.UUID]licensing.Entitlements{
+			customerID: ent,
+		},
+		licenseState: state,
+		license:      ent,
+	})
+}
+
+func (r *Registry) SetFileLicenseForTest(state licensing.LicenseState, ent licensing.Entitlements, enforced bool) {
+	if r == nil {
+		return
+	}
+	r.licenseEnforced.Store(enforced)
+	r.fileLicense.Store(&fileLicenseSnapshot{
+		state:        state,
+		entitlements: ent,
+	})
+}
+
+func (r *Registry) GetEntitlements(customerID uuid.UUID) (licensing.Entitlements, bool) {
+	if r.licenseEnforced.Load() {
+		if v, ok := r.fileLicense.Load().(*fileLicenseSnapshot); ok && v != nil {
+			return v.entitlements, true
+		}
+		return licensing.Entitlements{}, false
+	}
+	snap, ok := r.entitlements.Load().(*entitlementsSnapshot)
+	if !ok || snap == nil {
+		return licensing.Entitlements{}, false
+	}
+	return snap.license, true
+}
+
+func (r *Registry) GetLicenseState() (licensing.LicenseState, licensing.Entitlements) {
+	if r.licenseEnforced.Load() {
+		if v, ok := r.fileLicense.Load().(*fileLicenseSnapshot); ok && v != nil {
+			return v.state, v.entitlements
+		}
+		return licensing.StateExpired, licensing.Entitlements{}
+	}
+	snap, ok := r.entitlements.Load().(*entitlementsSnapshot)
+	if !ok || snap == nil {
+		return licensing.StateExpired, licensing.Entitlements{}
+	}
+	return snap.licenseState, snap.license
+}

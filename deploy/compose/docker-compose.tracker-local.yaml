@@ -1,6 +1,3 @@
-# Mount locally built tracker binary (CGO_ENABLED=0) for pixel/CAPI live smoke.
-# Usage: CGO_ENABLED=0 go build -o bin/tracker ./cmd/tracker
-#        docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.tracker-local.yaml up -d tracker-0 tracker-1 tracker-2 tracker-3
 x-tracker-local: &tracker_local
   volumes:
     - type: bind

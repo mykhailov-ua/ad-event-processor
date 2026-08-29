@@ -1,6 +1,8 @@
 # Integrations
 
-Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. All configuration surfaces are on the control plane (`:8188`, `/api/v1/*`) and the React admin UI under `/integrations/*`. REST shapes are documented in `api/openapi/`; new routes follow the workflow in `docs/DEVELOPMENT.md` (cost-sync pilot). OpenAPI gate: `bash scripts/ci/openapi_gate.sh`.
+Operator-facing wiring for traffic ingest, spend import, conversion export, and supply metadata. Configuration surfaces on the control plane (`:8188`, `/api/v1/*`). REST shapes are in `api/openapi/`. OpenAPI gate: `bash scripts/ci/admin/openapi.sh`.
+
+The React admin UI (`web/`) is not shipped in this tree — use the HTTP API directly. Routes below describe the intended UI surface when the SPA returns.
 
 This document states what the code ships today. It does not claim parity with cloud trackers (Voluum Automizer sub-hourly cost sync, creative upload, and so on).
 
@@ -83,7 +85,7 @@ Daily campaign-level spend pull for ROI reports. Worker runs in `cmd/control` wh
 
 **Not click-level on hot path:** unless the traffic source sends `{cost}` / CPC on ingest (see ingress macros below).
 
-**UI networks** (`web/src/helpers/cost_sync_api.ts`) match `fetchNetworkCosts` in `internal/costsync/fetch.go`:
+**Cost-sync networks** (`FetchNetworkCosts` in `internal/costsync/provider/fetch.go`):
 
 | Network ID | Auth / notes |
 | :--- | :--- |
@@ -278,4 +280,3 @@ RBAC: `shards:read`. Cold-path JSON for operators and external uptime checks (Gr
 - Sub-5-minute Cost Sync (minimum interval 15 minutes in v1)
 - Full ad platform UI replacement (campaign create, creatives, policy review)
 
-Open competitive gaps: [deploy/vendor/competitive_backlog.md](../deploy/vendor/competitive_backlog.md).

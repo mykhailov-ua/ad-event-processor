@@ -170,7 +170,7 @@ func TestWorker_firesBlacklistOnIVTRate(t *testing.T) {
 	))
 
 	fraudAt := hour.Add(15 * time.Minute)
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.fraud_events
 			(click_id, campaign_id, user_id_hash, event_type, ip_hash, ua_hash, payload, fraud_reason, fraud_score, silent_reject_event, created_at)
@@ -178,7 +178,7 @@ func TestWorker_firesBlacklistOnIVTRate(t *testing.T) {
 			fmt.Sprintf("clk-%d", i), campaignID, fmt.Sprintf(`{"placement_id":"%s"}`, placementID), fraudAt,
 		))
 	}
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.fraud_events
 			(click_id, campaign_id, user_id_hash, event_type, ip_hash, ua_hash, payload, fraud_reason, fraud_score, silent_reject_event, created_at)

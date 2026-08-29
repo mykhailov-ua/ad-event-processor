@@ -1,9 +1,10 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/platformadmin"
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

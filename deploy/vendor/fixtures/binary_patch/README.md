@@ -1,6 +1,6 @@
 # Binary patch lab fixture
 
-Manual pentest **PT-D04**, **PT-D07** (`deploy/vendor/licensing_security_backlog.md` Tier D): verify that a single CFG patch or `.text` byte flip does not yield a full crack when guard and seed coupling are on.
+Manual pentest: verify that a single CFG patch or `.text` byte flip does not yield a full crack when guard and seed coupling are on.
 
 Automated CI proxies (no live binary patch):
 
@@ -43,7 +43,7 @@ export AD_EVENT_PROCESSOR_LICENSE_PATH=/path/to/var/license.jwt
 
 **Pass:** ingest blocks or epoch invalid within one guard probe interval after in-memory patch. On-disk patch alone may not trip until the process maps the modified segment and the probe runs.
 
-## In-memory patch (PT-D07)
+## In-memory patch
 
 When `LICENSE_GUARD=0` or ptrace attach is allowed (`ptrace_scope=0`), use gdb on a running guarded binary:
 
@@ -55,7 +55,7 @@ gdb -p "$(pgrep -n tracker)" -batch \
 
 With guard on and ptrace blocked, prefer the on-disk copy workflow above.
 
-## Patch `LicenseFilter` only (PT-D04)
+## Patch `LicenseFilter` only
 
 Goal: bypass the obvious state check without valid MCK / feature seed.
 
@@ -68,7 +68,7 @@ Goal: bypass the obvious state check without valid MCK / feature seed.
 go test ./internal/ingestion/ -run 'LicenseRPSFilter_seedCoupling|OpenRTBLicenseAllowed_seedCoupling' -count=1
 ```
 
-## Guard trip decoupled from verify (PT-E08)
+## Guard trip decoupled from verify
 
 Patching near `ed25519.Verify` must not disable text hash trips. Unit harness:
 
@@ -81,6 +81,6 @@ go test -tags=license_guard ./internal/licensing/ \
 
 ```bash
 bash scripts/lab/binary_patch_lab.sh
-bash scripts/test/license_red_team_extended.sh
+bash scripts/test/license/red_team_extended.sh
 make license-red-team
 ```

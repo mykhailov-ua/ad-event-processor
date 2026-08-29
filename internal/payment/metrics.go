@@ -1,43 +1,17 @@
 package payment
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	checkout "ad-event-processor/internal/payment/checkout"
+	settlement "ad-event-processor/internal/payment/settlement"
+	webhook "ad-event-processor/internal/payment/webhook"
 )
 
 var (
-	IntentsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "payment_intents_total",
-		Help: "Payment intents created or transitioned by status",
-	}, []string{"status"})
-
-	WebhookEventsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "payment_webhook_events_total",
-		Help: "Stripe webhook events processed by outcome",
-	}, []string{"outcome"})
-
-	OutboxPending = promauto.NewGauge(prometheus.GaugeOpts{
-		Name: "payment_outbox_pending",
-		Help: "Payment outbox rows awaiting settlement",
-	})
-
-	SettlementErrorsTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "payment_settlement_errors_total",
-		Help: "Failed settlement attempts from the payment outbox worker",
-	})
-
-	WebhookSignatureFailuresTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "payment_webhook_signature_failures_total",
-		Help: "Rejected Stripe webhook signatures",
-	})
-
-	FinancialReconRunsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "payment_financial_recon_runs_total",
-		Help: "Payment financial reconciliation runs by terminal status",
-	}, []string{"status"})
-
-	FinancialReconFindingsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "payment_financial_recon_findings_total",
-		Help: "Payment financial reconciliation findings persisted by kind",
-	}, []string{"kind"})
+	IntentsTotal                  = checkout.IntentsTotal
+	WebhookEventsTotal            = webhook.WebhookEventsTotal
+	WebhookSignatureFailuresTotal = webhook.WebhookSignatureFailuresTotal
+	OutboxPending                 = settlement.OutboxPending
+	SettlementErrorsTotal         = settlement.SettlementErrorsTotal
+	FinancialReconRunsTotal       = settlement.FinancialReconRunsTotal
+	FinancialReconFindingsTotal   = settlement.FinancialReconFindingsTotal
 )

@@ -7,18 +7,18 @@ templates:
     integration_schema_refs:
       - traffic_facebook
     sample_macros:
-      sub2: "{{campaign.id}}"
-      ad_campaign_id: "{{campaign.id}}"
-      sub3: "{{adset.id}}"
-      sub4: "{{ad.id}}"
+      sub2: '{{campaign.id}}'
+      ad_campaign_id: '{{campaign.id}}'
+      sub3: '{{adset.id}}'
+      sub4: '{{ad.id}}'
     wizard:
       traffic_template_id: meta-facebook
       integration_schema: traffic_facebook
       click_query_params:
-        sub2: "{{campaign.id}}"
-        ad_campaign_id: "{{campaign.id}}"
-        sub3: "{{adset.id}}"
-        sub4: "{{ad.id}}"
+        sub2: '{{campaign.id}}'
+        ad_campaign_id: '{{campaign.id}}'
+        sub3: '{{adset.id}}'
+        sub4: '{{ad.id}}'
       campaign_name: Meta Social Campaign
       flow_name: social-main
       lander_name: Social prelander
@@ -36,16 +36,16 @@ templates:
     integration_schema_refs:
       - traffic_propellerads
     sample_macros:
-      sub1: "{zoneid}"
-      sub2: "{campaignid}"
-      sub3: "{bannerid}"
+      sub1: '{zoneid}'
+      sub2: '{campaignid}'
+      sub3: '{bannerid}'
     wizard:
       traffic_template_id: propellerads
       integration_schema: traffic_propellerads
       click_query_params:
-        sub1: "{zoneid}"
-        sub2: "{campaignid}"
-        sub3: "{bannerid}"
+        sub1: '{zoneid}'
+        sub2: '{campaignid}'
+        sub3: '{bannerid}'
       campaign_name: Propeller Pop Campaign
       flow_name: pop-main
       lander_name: Pop prelander
@@ -64,16 +64,16 @@ templates:
     integration_schema_refs:
       - traffic_pushhouse
     sample_macros:
-      sub1: "{site_id}"
-      sub2: "{campaign_id}"
-      sub3: "{creative_id}"
+      sub1: '{site_id}'
+      sub2: '{campaign_id}'
+      sub3: '{creative_id}'
     wizard:
       traffic_template_id: push-house
       integration_schema: traffic_pushhouse
       click_query_params:
-        sub1: "{site_id}"
-        sub2: "{campaign_id}"
-        sub3: "{creative_id}"
+        sub1: '{site_id}'
+        sub2: '{campaign_id}'
+        sub3: '{creative_id}'
       campaign_name: Push House Campaign
       flow_name: push-main
       lander_name: Push prelander
@@ -91,16 +91,16 @@ templates:
     integration_schema_refs:
       - traffic_mgid
     sample_macros:
-      sub1: "{widget_id}"
-      sub2: "{campaign_id}"
-      sub3: "{teaser_id}"
+      sub1: '{widget_id}'
+      sub2: '{campaign_id}'
+      sub3: '{teaser_id}'
     wizard:
       traffic_template_id: mgid
       integration_schema: traffic_mgid
       click_query_params:
-        sub1: "{widget_id}"
-        sub2: "{campaign_id}"
-        sub3: "{teaser_id}"
+        sub1: '{widget_id}'
+        sub2: '{campaign_id}'
+        sub3: '{teaser_id}'
       campaign_name: MGID Native Campaign
       flow_name: native-main
       lander_name: Native prelander

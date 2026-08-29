@@ -32,7 +32,7 @@ func ParseIPv6Host(s string) (IPv6Key, bool) {
 }
 
 func ParseIPv6Prefix(s string) (IPv6Key, bool) {
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] != '/' {
 			continue
 		}

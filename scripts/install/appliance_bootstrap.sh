@@ -104,7 +104,7 @@ check_deps() {
       missing=1
     fi
   done
-  if ! ad_event_processor_go_bin > /dev/null 2>&1; then
+  if ! aed_go_bin > /dev/null 2>&1; then
     warn "go not found (set AD_EVENT_PROCESSOR_GO_BIN)"
     missing=1
   fi
@@ -171,7 +171,7 @@ issue_demo_license() {
     return 0
   fi
   log "issuing pilot demo license"
-  VENDOR_TRIAL_FORCE=1 ad_event_processor_go_run ./cmd/license-issue \
+  VENDOR_TRIAL_FORCE=1 aed_go_run ./cmd/license-issue \
     --sku pilot \
     --customer dev-local \
     --deployment-id dev-appliance-bootstrap \
@@ -280,14 +280,14 @@ start_stack() {
     return 0
   fi
   log "building compose images"
-  bash "$SCRIPTS/dev/stack.sh" build
+  bash "$SCRIPTS/dev/stack/stack.sh" build
   log "starting profile ${PROFILE}"
   case "$PROFILE" in
     full)
-      bash "$SCRIPTS/dev/stack.sh" full
+      bash "$SCRIPTS/dev/stack/stack.sh" full
       ;;
     ingest-only)
-      bash "$SCRIPTS/dev/stack.sh" ingest-only
+      bash "$SCRIPTS/dev/stack/stack.sh" ingest-only
       ;;
   esac
   wait_stack_health
@@ -299,7 +299,7 @@ seed_admin() {
     return 0
   fi
   log "seeding platform admin"
-  bash "$SCRIPTS/dev/seed_admin.sh"
+  bash "$SCRIPTS/dev/stack/seed_admin.sh"
 }
 
 print_summary() {
@@ -333,8 +333,8 @@ Import bundled integration templates:
     -H "X-Admin-API-Key: ${api_key}" \\
     -d '{}'
 
-Smoke:       bash scripts/dev/smoke_local.sh
-Status:      bash scripts/dev/stack.sh status
+Smoke:       bash scripts/dev/stack/smoke_local.sh
+Status:      bash scripts/dev/stack/stack.sh status
 
 Pilot license: var/license.jwt (re-issue: go run ./cmd/license-issue --sku pilot --customer dev-local)
 
@@ -354,7 +354,7 @@ main() {
   fi
   start_stack
   seed_admin
-  if ! bash "$SCRIPTS/dev/smoke_local.sh"; then
+  if ! bash "$SCRIPTS/dev/stack/smoke_local.sh"; then
     die "post-bootstrap smoke failed"
   fi
   print_summary

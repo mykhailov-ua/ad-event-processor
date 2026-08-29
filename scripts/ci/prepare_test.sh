@@ -63,7 +63,9 @@ SELECT
       'Quartzlane Partners',
       'Everpeak Media',
       'Bridgeport Digital'
-    ])[(i - 1) % 20 + 1],
+    ])[(i - 1) % 20 + 1]
+    || ' - ' ||
+    (ARRAY['US East', 'US West', 'EU North', 'APAC', 'LATAM'])[((i - 1) / 20) % 5 + 1],
     (2400000000 + ((i * 2817431) % 281600000000) + ((i % 7) * 97000000))::bigint,
     'USD',
     0
@@ -96,13 +98,27 @@ SELECT
       'Mobile Gaming Tier1',
       'EU Ecom Sales',
       'US Performance Push',
-      'Global Brand Lift'
-    ])[(i - 1) % 20 + 1],
-    (4200000000 + ((i % 17) * 650000000))::bigint,
+      'Global Brand Lift',
+      'DE Finance Leads',
+      'BR Nutra Push',
+      'JP Mobile Subs',
+      'CA Insurance CPL',
+      'AU Solar Quotes',
+      'MX Remittance App',
+      'IN UPI Onboarding',
+      'PL Ecom Remarketing',
+      'IT Travel Meta',
+      'ES Telco Prepaid'
+    ])[(i - 1) % 30 + 1]
+    || ' - ' ||
+    (ARRAY['US', 'GB', 'CA', 'UA', 'DE', 'FR', 'JP'])[((i - 1) / 30) % 7 + 1]
+    || ' - ' ||
+    (ARRAY['Alpha desk', 'Bravo desk', 'Cedar desk', 'Delta desk', 'Echo desk'])[((i - 1) / (30 * 7)) % 5 + 1],
+    (4200000000 + ((i % 17) * 650000000) + ((i % 9) * 384729))::bigint,
     'ACTIVE',
     ('00000000-0000-0000-0000-' || LPAD(to_hex(i), 12, '0'))::uuid,
     'ASAP',
-    (380000000 + ((i % 11) * 95000000))::bigint,
+    (380000000 + ((i % 11) * 95000000) + ((i % 6) * 18473))::bigint,
     'UTC',
     100000000,
     3600
@@ -136,7 +152,7 @@ go run ./cmd/migrate-cold-path --only=ads,auth,billing
 
 echo "Repairing schema drift after migrations"
 DB_PORT="$DB_PORT" bash scripts/test/reconcile_ingestion_migrations.sh
-DB_PORT="$DB_PORT" bash scripts/test/verify_load_test_schema.sh
+DB_PORT="$DB_PORT" bash scripts/test/load/verify_schema.sh
 
 echo "Restarting trackers and processor to recreate consumer groups"
 docker compose up -d --build --force-recreate processor tracker-0 tracker-1 tracker-2 tracker-3

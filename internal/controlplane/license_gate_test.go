@@ -1,11 +1,12 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/licensingadmin"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"ad-event-processor/internal/licensingadmin"
 
 	"github.com/stretchr/testify/require"
 )

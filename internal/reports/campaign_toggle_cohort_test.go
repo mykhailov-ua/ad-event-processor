@@ -30,3 +30,11 @@ func TestCampaignToggleCohort_missingCampaignID400(t *testing.T) {
 	mux.ServeHTTP(w, req)
 	require.Equal(t, http.StatusBadRequest, w.Code)
 }
+
+func TestToggleFieldChanged_detectsSilentReject(t *testing.T) {
+	t.Parallel()
+	require.True(t, toggleFieldChanged("silent_reject_enabled",
+		auditCampaignFraudChange{SilentRejectEnabled: true},
+		auditCampaignFraudChange{SilentRejectEnabled: false},
+	))
+}

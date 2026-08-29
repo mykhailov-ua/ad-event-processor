@@ -1,0 +1,50 @@
+package verify
+
+import (
+	"strings"
+
+	entitlements "ad-event-processor/internal/licensing/entitlements"
+)
+
+func BindModeHard(mode string) bool {
+	switch strings.ToLower(strings.TrimSpace(mode)) {
+	case "hard", "fingerprint":
+		return true
+	default:
+		return false
+	}
+}
+
+func BindModeMulti(mode string) bool {
+	return strings.EqualFold(strings.TrimSpace(mode), "multi")
+}
+
+func VerifyDeploymentBind(claims *entitlements.LicenseClaims, hostFingerprint string) error {
+	if claims == nil {
+		return ErrInvalidTokenFormat
+	}
+	if !BindModeHard(claims.Bind.Mode) {
+		return nil
+	}
+	if expectedHWID := strings.TrimSpace(claims.HWIDHash); expectedHWID != "" {
+		hostHWID := HostHWID()
+		if hostHWID == "" {
+			return ErrFingerprintRequired
+		}
+		if hostHWID != expectedHWID {
+			return ErrFingerprintMismatch
+		}
+		return nil
+	}
+	expected := strings.TrimSpace(claims.Bind.Fingerprint)
+	if expected == "" {
+		return nil
+	}
+	if hostFingerprint == "" {
+		return ErrFingerprintRequired
+	}
+	if hostFingerprint != expected {
+		return ErrFingerprintMismatch
+	}
+	return nil
+}

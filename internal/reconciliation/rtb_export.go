@@ -11,7 +11,7 @@ type RtbReconcileCHStats struct {
 	SpendMicro int64
 }
 
-func RTBCHStats(ctx context.Context, host Host, requestID string, window time.Duration) (RtbReconcileCHStats, bool) {
+func RTBCHStats(ctx context.Context, host ReconInfraHost, requestID string, window time.Duration) (RtbReconcileCHStats, bool) {
 	if host == nil || host.ClickHouseQuery() == nil || window <= 0 {
 		return RtbReconcileCHStats{}, false
 	}

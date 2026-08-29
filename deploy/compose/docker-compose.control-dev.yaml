@@ -1,4 +1,3 @@
-# Dev ingest-only override: two redis shards, skip payment/CH, relax license for local .env drift.
 services:
   db:
     environment:

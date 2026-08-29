@@ -30,12 +30,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 echo "parser-slow-body: unit proof (spin close)"
-go test ./internal/ingestion/ -run='TestChaos_ParserSecurity_PS_G01|TestHTTP1Incomplete' -count=1 -timeout=5m -v
+go test ./internal/ingest/ -run='TestChaos_ParserSecurity_PS_G01|TestHTTP1Incomplete' -count=1 -timeout=5m -v
 
 echo "parser-slow-body: in-process p99 isolation (control cohort under ${CONNECTIONS} slow drips)"
 export SLOW_BODY_DRILL_CONNECTIONS="${CONNECTIONS}"
 export SLOW_BODY_DRILL_DURATION="${DURATION}"
 export SLOW_BODY_DRILL_P99_MS=80
-go test ./internal/ingestion/ -run='TestParserSlowBodyDrill_P99Isolation' -count=1 -timeout=15m -v
+go test ./internal/ingest/ -run='TestParserSlowBodyDrill_P99Isolation' -count=1 -timeout=15m -v
 
 echo "fault_proof fault=parser_slow_body_drill gap=closed connections=${CONNECTIONS} rate=${RATE} duration=${DURATION}"

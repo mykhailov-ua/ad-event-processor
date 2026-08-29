@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"

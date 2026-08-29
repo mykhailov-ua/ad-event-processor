@@ -1,0 +1,144 @@
+---
+description: Redis StaticSlot, Lua tiers, Postgres ledger, ClickHouse, streams, broker
+globs:
+  - internal/database/**
+  - internal/clickhouse/**
+  - internal/**/queries/**
+  - internal/ingestion/migrations/**
+  - pkg/broker/**
+alwaysApply: false
+---
+
+# Data Layer - Redis, Postgres, ClickHouse
+
+## Purpose
+
+Redis sharding, Lua script tiers, stream producer, Postgres ledger authority, ClickHouse analytics, and optional broker ingest. Reference: `architecture.mdc`, `tradeoffs.mdc`, `hot-path.mdc`.
+
+Redis: 4 standalone masters + Sentinel (not Cluster). Route `campaign_id` -> CRC32C slot -> shard. Each `EVALSHA` must hit one shard. Hash tag `{campaign_id}` on all campaign-scoped keys.
+
+## Static slot sharding
+
+```
+slot = CRC32C(campaign_id) & 1023
+shard = slot_table[slot] // versioned snapshot, atomic.Value in Go, synced to edge Lua
+```
+
+Production: `StaticSlotSharder` only. Jump Hash = tests/benches. Edge parity mandatory (`edge-slot-map.lua`, `sharding_test.go`).
+
+Resharding: operator-led copy -> fence -> epoch bump -> drain. Not Redis Cluster slot migration. `MIGRATION_FENCE_ENABLED` -> Lua error 11 on fenced slots.
+
+## Shard roles
+
+| Shard | Global (replicated via outbox) | Local (per master) |
+| :--- | :--- | :--- |
+| 0 | pub/sub `campaigns:update`, auth lockout, brand creatives, BPF sync source | ingress counters |
+| 1..N | config, blacklists, fraud boosts, placement pauses (fan-out from 0) | budgets, dedup, streams, fcap |
+
+Key catalog: `internal/domain/redis_key_catalog.go` for slot migration COPY/EXISTS.
+
+Shard-0 outage: reroute via `campaign_routing` triplet when configured; else `503 shard_unavailable`. Control pub/sub SPOF until Sentinel promote. Tracker env: `REDIS_SHARD0_OPTIONAL_STARTUP=1`, `CAMPAIGN_REPLICA_PATH`, `CAMPAIGN_UPDATE_BROKER_FALLBACK=1`.
+
+## Lua script tiers
+
+| Script | Tier | Role |
+| :--- | :--- | :--- |
+| `budget-fast.lua` | B | Impression budget debit |
+| `unified-filter.lua` | C | Fcap, pacing, TTC, placement blacklist, migration fence |
+| `local-quota-refill.lua` | - | Local quanta chunk fetch |
+| `local-quota-return.lua` | - | Crash reconciliation return |
+| `budget-rollback.lua` | - | Undo debit on post-debit enqueue failure |
+
+p99 < 10 ms per shard. IP rate limits at edge/XDP only - not in Lua.
+
+When `SetDeferStreamToProducer(true)`: Lua stream key -> `fcap:ignored`; Go `StreamProducer`/`BrokerProducer` sole `XADD` writer.
+
+## Stream producer and admission
+
+| Rule | Detail |
+| :--- | :--- |
+| Queue | Per-shard bounded queue (50k); vtproto encode on hot path; background pipeline `XADD` |
+| Admission | `STREAM_PRODUCER_ADMISSION_PCT` (default 85%): `TryReserve` before debit; 503 before spend when near full |
+| Post-debit fail | `budget-rollback.lua` (200 ms timeout) or local quanta refund |
+| Metrics | `ad_stream_producer_queue_depth`, `ad_stream_producer_admission_rejected_total`, `ad_stream_producer_post_debit_rejected_total` (should stay ~0) |
+
+## Local quanta
+
+`LOCAL_QUOTA_MODE=live`: refill chunks via Lua; debit in Go memory (~16 ns). Full-skip eliminates sync `EVALSHA` for eligible traffic. Eventual consistency on crash - refill/return scripts reconcile.
+
+## Processor consumers
+
+`cmd/processor` per shard:
+
+- `{REDIS_GROUP_NAME}_pg` - Postgres settlement, `balance_ledger`.
+- `{REDIS_GROUP_NAME}_ch` - ClickHouse telemetry batches.
+
+Independent PEL per group; `XACK` after durable write. At-least-once: PG unique txn IDs; CH `ReplacingMergeTree`.
+
+## pkg/broker (optional CH ingest)
+
+Not a replacement for Redis budget Lua unless explicitly migrated.
+
+| Step | Detail |
+| :--- | :--- |
+| `CH_INGEST_SOURCE=broker` | mmap WAL segments; tracker `BrokerProducer` mirrors admission path |
+| Cutover | Shadow (`BROKER_SHADOW_MODE=1`) -> drain `_ch` PEL -> broker-primary |
+| Rollback | Redis consumers while broker offsets on disk persist |
+| Divergence | `ad_broker_ingest_divergence_high` must be quiet in shadow |
+
+## Postgres
+
+Settlement and budget authority. sqlc per service under `internal/<svc>/db/`.
+
+| Rule | Detail |
+| :--- | :--- |
+| Invariant | `current_spend <= budget_limit` (+/-1 micro-unit in tests) |
+| Outbox | Config mutations in same txn as domain write - never direct Redis from admin handlers |
+| UDS | Appliance: `DB_DSN` with `host=/run/ad-event-processor/postgresql` |
+
+## ClickHouse
+
+Analytics and IVT batch paths only - not hot ingest authority.
+
+| Rule | Detail |
+| :--- | :--- |
+| Canonical DDL | `internal/clickhouse/migrate/00000_bootstrap_tables.sql` |
+| Spool | `CH_SPOOL_DIR` mmap WAL; `RecoverSpool` on recovery |
+| PII | `ip_hash`, `ua_hash`, `pii_salt_version` only (`pkg/piihash`) |
+
+## Circuit breakers
+
+Per-shard `RedisBreaker`: `REDIS_BREAKER_FAIL_THRESHOLD=150` -> open -> `ErrRedisCircuitOpen` -> HTTP 503 fail closed.
+
+## Transport
+
+Redis UDS when co-located: auto-detect socket path in `redis_shards.go` / `redis_connect.go`. Bench: `scripts/perf/redis_uds_benchmark.sh`.
+
+## Shard 0 failure matrix (nil client)
+
+| Component | Behavior |
+| :--- | :--- |
+| Control sync/outbox | Skip nil; fan-out 1..N; `ad_control_shard_fanout_skipped_total` |
+| Tracker campaign on shard 0 slot | `503 shard_unavailable` |
+| Tracker globals/fraud XADD | `firstConnectedRedisShard` |
+| Edge blacklist | `connect_any_shard()` Lua |
+
+Recovery: `Shard0CatchupWorker` or `POST /api/v1/ops/shards/0/catchup`.
+
+Metrics: `ad_shard0_client_nil`, `ad_shard0_catchup_last_success_timestamp`, `ad_registry_stale_mode`.
+
+## Hot campaign sub-shards (`BehaviorHighVolumeDebit`)
+
+Four sub-slots via `{campaign_id:slot_N}` hash tags; single-shard Lua invariant preserved. Pair with `LOCAL_QUOTA_MODE=live` for full-skip.
+
+## Verification
+
+```bash
+go test -count=3 -run 'TestShard0Nil_|TestPingConnectedRedisShards' ./internal/controlplane/ ./internal/ingestion/
+bash scripts/ci/static/state_shard_nil.sh
+go test ./internal/ingestion/ -run='DebitSubshard|MigrationFence|HighVolumeDebit' -count=1
+```
+
+## Related rules
+
+`architecture.mdc`, `control-plane.mdc`, `development.mdc`, `hot-path.mdc`, `tradeoffs.mdc`.

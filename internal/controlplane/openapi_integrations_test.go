@@ -1,11 +1,13 @@
 package controlplane_test
 
 import (
-	"ad-event-processor/internal/campaign"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/integration"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -44,7 +46,7 @@ func TestOpenAPI_integrationSchemaKeys(t *testing.T) {
 	props, ok := schemas["IntegrationSchema"]["properties"].(map[string]any)
 	require.True(t, ok)
 
-	var dto campaign.IntegrationSchemaDTO
+	var dto integration.IntegrationSchemaDTO
 	sample, err := json.Marshal(dto)
 	require.NoError(t, err)
 	var got map[string]any

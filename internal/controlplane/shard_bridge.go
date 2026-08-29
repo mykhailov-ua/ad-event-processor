@@ -1,13 +1,12 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/database"
+	"context"
+
 	"ad-event-processor/internal/dedup"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/shardadmin"
-	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -192,55 +191,4 @@ func (s *Service) GetShardHealth(ctx context.Context) (shardadmin.ShardHealthRep
 
 func (s *Service) PublishRoutingCutover(ctx context.Context, routingEpoch int64, slotVersion int32) {
 	s.publishRoutingCutover(ctx, routingEpoch, slotVersion)
-}
-
-func (s *Service) AutoscaleShards(ctx context.Context, provider shardadmin.ShardMetricsProvider, cfg shardadmin.ShardAutoscaleConfig) (int32, error) {
-	return shardadmin.AutoscaleShards(ctx, s, provider, cfg)
-}
-
-func NewShardOrchestrator(svc *Service, provider shardadmin.ShardMetricsProvider, interval time.Duration) *shardadmin.ShardOrchestrator {
-	return shardadmin.NewShardOrchestrator(svc, provider, interval)
-}
-
-func NewShard0CatchupWorker(svc *Service, redisOpts database.RedisShardOptions) *shardadmin.Shard0CatchupWorker {
-	return shardadmin.NewShard0CatchupWorker(svc, redisOpts)
-}
-
-func (s *Service) TryReconnectShard0(ctx context.Context, opts database.RedisShardOptions) bool {
-	if s == nil || s.cfg == nil {
-		return false
-	}
-	s.shard0Mu.Lock()
-	defer s.shard0Mu.Unlock()
-
-	if len(s.redisShards) == 0 || s.redisShards[0] != nil {
-		return false
-	}
-	redisClient, err := database.ConnectRedisShard(ctx, s.cfg, 0, opts)
-	if err != nil {
-		return false
-	}
-	s.redisShards[0] = redisClient
-	database.SetShard0ClientNilMetric(s.redisShards)
-	return true
-}
-
-func (s *Service) RunShard0Catchup(ctx context.Context) error {
-	return shardadmin.RunShard0Catchup(ctx, s)
-}
-
-func NewSlotMigrationOrchestrator(svc *Service, interval time.Duration) *shardadmin.SlotMigrationOrchestrator {
-	return shardadmin.NewSlotMigrationOrchestrator(svc, interval)
-}
-
-func (s *Service) afterSlotMapActivated(ctx context.Context, version int32) {
-	routingEpoch := int64(0)
-	if row, err := domain.NewCampaignRoutingRepo(s.GetPool()).BumpGlobalRoutingEpoch(ctx); err == nil {
-		routingEpoch = row.RoutingEpoch
-		version = row.ActiveVersion
-	}
-	if ss, ok := s.sharder.(*domain.StaticSlotSharder); ok {
-		_, _ = domain.LoadActiveSlotMap(ctx, s.GetPool(), ss, len(s.redisShards))
-	}
-	s.publishRoutingCutover(ctx, routingEpoch, version)
 }

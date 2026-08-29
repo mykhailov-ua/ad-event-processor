@@ -18,7 +18,7 @@ import (
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/fraud"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/metrics"
 	"ad-event-processor/internal/notify"
@@ -603,7 +603,7 @@ func main() {
 		retryInit := time.Duration(cfg.RetryInitialWaitMs) * time.Millisecond
 		retryMax := time.Duration(cfg.RetryMaxWaitMs) * time.Millisecond
 
-		for p := 0; p < partCount; p++ {
+		for p := range partCount {
 			pgBrokerCfg := brokerBase
 			pgBrokerCfg.Partition = uint16(p)
 			pgBrokerCfg.Group = cfg.RedisGroupName + "_pg_broker"

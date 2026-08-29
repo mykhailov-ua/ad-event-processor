@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/flow"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -93,10 +94,10 @@ func attachPublishableFlowFixture(t *testing.T, ctx context.Context, pool *pgxpo
 	require.NoError(t, err)
 
 	flowID := uuid.New()
-	paths, err := json.Marshal([]campaign.FlowPathDTO{{
+	paths, err := json.Marshal([]flow.PathDTO{{
 		Weight:  100,
-		Landers: []campaign.FlowPathLanderRef{{LanderID: landerID, Weight: 100}},
-		Offers:  []campaign.FlowPathOfferRef{{OfferID: offerID, Weight: 100}},
+		Landers: []flow.PathLanderRef{{LanderID: landerID, Weight: 100}},
+		Offers:  []flow.PathOfferRef{{OfferID: offerID, Weight: 100}},
 	}})
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO flows (id, name, paths) VALUES ($1, 'publish-flow', $2)`, flowID, paths)

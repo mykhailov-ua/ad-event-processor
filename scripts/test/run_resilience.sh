@@ -21,7 +21,7 @@ go test -count=1 -v -run 'Fault' -timeout 20m \
   ./tests/... \
   ./internal/database/... \
   ./internal/identity/... \
-  ./internal/ingestion/... \
+  ./internal/ingest/... \
   ./internal/payment/... \
   ./internal/ledger/... \
   ./internal/licensing/... \

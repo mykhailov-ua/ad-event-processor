@@ -1,5 +1,3 @@
-# Laptop / dev compose overlay: cgroup memory caps below production defaults.
-# Enabled when COMPOSE_MEMORY_PROFILE=dev (default in scripts/dev/stack.sh).
 services:
   db:
     command:
@@ -20,10 +18,12 @@ services:
         '-c',
         'effective_cache_size=256MB',
       ]
+    mem_limit: 320M
+    memswap_limit: 320M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 320M
 
   db-payment:
     command:
@@ -44,143 +44,173 @@ services:
         '-c',
         'effective_cache_size=128MB',
       ]
+    mem_limit: 224M
+    memswap_limit: 224M
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 224M
 
   broker:
+    mem_limit: 160M
+    memswap_limit: 160M
     deploy:
       resources:
         limits:
-          memory: 192M
+          memory: 160M
 
   processor:
     environment:
       - GOMEMLIMIT=384MiB
+    mem_limit: 448M
+    memswap_limit: 448M
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 448M
 
   control:
+    environment:
+      - GOMEMLIMIT=320MiB
+    mem_limit: 384M
+    memswap_limit: 384M
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 384M
 
   tracker-0:
     environment:
-      - GOMEMLIMIT=320MiB
+      - GOMEMLIMIT=288MiB
+    mem_limit: 320M
+    memswap_limit: 320M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 320M
 
   tracker-1:
     environment:
-      - GOMEMLIMIT=320MiB
+      - GOMEMLIMIT=288MiB
+    mem_limit: 320M
+    memswap_limit: 320M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 320M
 
   tracker-2:
     environment:
-      - GOMEMLIMIT=320MiB
+      - GOMEMLIMIT=288MiB
+    mem_limit: 320M
+    memswap_limit: 320M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 320M
 
   tracker-3:
     environment:
-      - GOMEMLIMIT=320MiB
+      - GOMEMLIMIT=288MiB
+    mem_limit: 320M
+    memswap_limit: 320M
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 320M
 
   redis-0:
+    mem_limit: 80M
+    memswap_limit: 80M
     deploy:
       resources:
         limits:
-          memory: 96M
+          memory: 80M
 
   redis-1:
+    mem_limit: 80M
+    memswap_limit: 80M
     deploy:
       resources:
         limits:
-          memory: 96M
+          memory: 80M
 
   redis-2:
+    mem_limit: 80M
+    memswap_limit: 80M
     deploy:
       resources:
         limits:
-          memory: 96M
+          memory: 80M
 
   redis-3:
+    mem_limit: 80M
+    memswap_limit: 80M
     deploy:
       resources:
         limits:
-          memory: 96M
+          memory: 80M
 
   redis-4:
+    mem_limit: 80M
+    memswap_limit: 80M
     deploy:
       resources:
         limits:
-          memory: 96M
+          memory: 80M
 
   redis-5:
+    mem_limit: 80M
+    memswap_limit: 80M
     deploy:
       resources:
         limits:
-          memory: 96M
+          memory: 80M
 
   clickhouse:
+    mem_limit: 768M
+    memswap_limit: 768M
     deploy:
       resources:
         limits:
-          memory: 1024M
+          memory: 768M
 
   ivt-detector:
+    mem_limit: 128M
+    memswap_limit: 128M
     deploy:
       resources:
         limits:
           memory: 128M
 
   fraud-scorer:
+    mem_limit: 256M
+    memswap_limit: 256M
     deploy:
       resources:
         limits:
           memory: 256M
 
   nginx:
+    mem_limit: 128M
+    memswap_limit: 128M
     deploy:
       resources:
         limits:
           memory: 128M
 
   prometheus:
+    mem_limit: 256M
+    memswap_limit: 256M
     deploy:
       resources:
         limits:
           memory: 256M
 
   grafana:
+    mem_limit: 192M
+    memswap_limit: 192M
     deploy:
       resources:
         limits:
           memory: 192M
-
-  loki:
-    deploy:
-      resources:
-        limits:
-          memory: 192M
-
-  promtail:
-    deploy:
-      resources:
-        limits:
-          memory: 96M

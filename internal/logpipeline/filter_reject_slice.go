@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 )
 
 const filterRejectSampleEventType = "filter_reject"

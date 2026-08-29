@@ -7,7 +7,7 @@ Static maps for `internal/migrationsource` when importing campaigns from Keitaro
 | File | Role |
 | :--- | :--- |
 | `keitaro_macros.yaml` | Keitaro URL token -> click query key |
-| `keitaro_sources.yaml` | Keitaro traffic source label -> bundled `traffic_*` slug |
+| `keitaro_sources.yaml` | Keitaro traffic source label → bundled `traffic_*` template key |
 | `binom_macros.yaml` | Binom tokens |
 | `binom_sources.yaml` | Binom source labels |
 
@@ -26,7 +26,7 @@ File upload remains the default. Live HTTP pull is available for `keitaro_admin_
 ### Interchange vs wire
 
 - **Interchange** (`keitaro_json`, `binom_json`): flat campaign rows with `tracking_url`, `lander_url`, `postback_url`, `budget`. Use when an ETL script already flattened tracker data.
-- **Wire** (`keitaro_admin_api`, `binom_report_api`): field names from vendor APIs. Admin API JSON passed to `keitaro_json` **must fail** (holdout: missing `tracking_url`).
+- **Wire** (`keitaro_admin_api`, `binom_report_api`): field names from vendor APIs. Admin API JSON passed to `keitaro_json` must fail when `tracking_url` is missing.
 
 ### Fields not imported as budget
 
@@ -68,6 +68,6 @@ Pull uses `ReadLimitedBody` (1 MiB cap) and a 30 s HTTP timeout. Pull failure re
 
 Loader: `internal/migrationsource/maps.go` (`MapsRootDir` mirrors `integrationschema.SchemaRootDir`).
 
-CI: `bash scripts/ci/migration_maps_gate.sh`.
+CI: `bash scripts/ci/static/migration_maps.sh`.
 
-Tests: `internal/migrationsource/wire_holdout_test.go` (wrong `source_kind` for wire JSON must fail).
+Tests: `internal/migrationsource/wire_holdout_test.go`.

@@ -29,7 +29,7 @@ func ValidatePassword(password string) error {
 	}
 
 	var hasUpper, hasLower, hasDigit, hasSpecial bool
-	for i := 0; i < len(password); i++ {
+	for i := range len(password) {
 		c := password[i]
 		switch {
 		case c >= 'A' && c <= 'Z':

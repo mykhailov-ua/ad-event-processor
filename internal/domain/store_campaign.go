@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+	domainbudget "ad-event-processor/internal/domain/budget"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/domain/shard"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -44,7 +46,7 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 	customerIDStr := customerID.String()
 	dailyBudgetMicro := row.DailyBudget
 
-	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
+	fcapPrefix := shard.FcapKeyPrefix(id, row.BrandFcapKey)
 
 	camp := &Campaign{
 		ID:                       id,
@@ -70,11 +72,11 @@ func CampaignFromDBRow(row db.Campaign) *Campaign {
 		FreqWindow:               row.FreqWindow.Int32,
 		FreqWindowAny:            row.FreqWindow.Int32,
 		TargetCountries:          SliceToMap(row.TargetCountries),
-		BudgetCampaignKey:        budgetCampaignKey(id),
-		CampaignSyncKey:          campaignSyncKey(id),
-		CustomerSyncKey:          customerSyncKey(id, customerID),
+		BudgetCampaignKey:        shard.BudgetCampaignKey(id),
+		CampaignSyncKey:          shard.CampaignSyncKey(id),
+		CustomerSyncKey:          shard.CustomerSyncKey(id, customerID),
 		FcapKeyPrefix:            fcapPrefix,
-		DailySpendKeyPrefix:      dailySpendKeyPrefix(id),
+		DailySpendKeyPrefix:      shard.DailySpendKeyPrefix(id),
 		FraudThresholdPass:       uint8(row.FraudThresholdPass),
 		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:        uint8(row.FraudThresholdIvt),
@@ -125,7 +127,7 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 	customerIDStr := customerID.String()
 	dailyBudgetMicro := row.DailyBudget
 
-	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
+	fcapPrefix := shard.FcapKeyPrefix(id, row.BrandFcapKey)
 
 	camp := &Campaign{
 		ID:                       id,
@@ -151,11 +153,11 @@ func CampaignFromGetCampaignFullRow(row db.GetCampaignFullRow) *Campaign {
 		FreqWindow:               row.FreqWindow.Int32,
 		FreqWindowAny:            row.FreqWindow.Int32,
 		TargetCountries:          SliceToMap(row.TargetCountries),
-		BudgetCampaignKey:        budgetCampaignKey(id),
-		CampaignSyncKey:          campaignSyncKey(id),
-		CustomerSyncKey:          customerSyncKey(id, customerID),
+		BudgetCampaignKey:        shard.BudgetCampaignKey(id),
+		CampaignSyncKey:          shard.CampaignSyncKey(id),
+		CustomerSyncKey:          shard.CustomerSyncKey(id, customerID),
 		FcapKeyPrefix:            fcapPrefix,
-		DailySpendKeyPrefix:      dailySpendKeyPrefix(id),
+		DailySpendKeyPrefix:      shard.DailySpendKeyPrefix(id),
 		FraudThresholdPass:       uint8(row.FraudThresholdPass),
 		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:        uint8(row.FraudThresholdIvt),
@@ -219,7 +221,7 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 	customerIDStr := customerID.String()
 	dailyBudgetMicro := row.DailyBudget
 
-	fcapPrefix := fcapKeyPrefix(id, row.BrandFcapKey)
+	fcapPrefix := shard.FcapKeyPrefix(id, row.BrandFcapKey)
 
 	camp := &Campaign{
 		ID:                       id,
@@ -246,11 +248,11 @@ func CampaignFromListActiveCampaignsRow(row db.ListActiveCampaignsRow) *Campaign
 		FreqWindow:               row.FreqWindow.Int32,
 		FreqWindowAny:            row.FreqWindow.Int32,
 		TargetCountries:          SliceToMap(row.TargetCountries),
-		BudgetCampaignKey:        budgetCampaignKey(id),
-		CampaignSyncKey:          campaignSyncKey(id),
-		CustomerSyncKey:          customerSyncKey(id, customerID),
+		BudgetCampaignKey:        shard.BudgetCampaignKey(id),
+		CampaignSyncKey:          shard.CampaignSyncKey(id),
+		CustomerSyncKey:          shard.CustomerSyncKey(id, customerID),
 		FcapKeyPrefix:            fcapPrefix,
-		DailySpendKeyPrefix:      dailySpendKeyPrefix(id),
+		DailySpendKeyPrefix:      shard.DailySpendKeyPrefix(id),
 		FraudThresholdPass:       uint8(row.FraudThresholdPass),
 		FraudThresholdSuspect:    uint8(row.FraudThresholdSuspect),
 		FraudThresholdIVT:        uint8(row.FraudThresholdIvt),
@@ -548,7 +550,7 @@ func (r *CampaignRepo) applySpendFlush(
 		CampaignID:      pgtype.UUID{Bytes: item.CampaignID, Valid: true},
 		Amount:          -item.AmountMicro,
 		Type:            db.LedgerTypeFEE,
-		IdempotencyHash: pgtype.Text{String: ledgerBatchHash(item.TxID), Valid: true},
+		IdempotencyHash: pgtype.Text{String: domainbudget.LedgerBatchHash(item.TxID), Valid: true},
 		PaymentIntentID: pgtype.UUID{},
 	})
 	if err != nil {

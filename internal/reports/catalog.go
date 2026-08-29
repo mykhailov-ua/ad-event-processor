@@ -28,7 +28,7 @@ var ReportCatalogEntries = []ReportCatalogRowDTO{
 	{Key: "fraud-breakdown", Title: "Fraud breakdown", Description: "Fraud events by reason and placement", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "customer-fraud-by-type", Title: "Fraud by type", Description: "Customer-facing fraud categories and shares", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d", ExportFormats: []string{"csv"}},
 	{Key: "customer-fraud-by-dimension", Title: "Fraud by dimension", Description: "Fraud concentration by placement, geo, or sub", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
-	{Key: "customer-fraud-evidence", Title: "Dispute evidence", Description: "Signed redacted evidence bundle for CPA disputes", Category: "fraud", RequiredPermissions: reportPermsCustomerFraudEvidence(), DefaultRange: "7d"},
+	{Key: "customer-fraud-evidence", Title: "Dispute evidence", Description: "Signed redacted evidence bundle for CPA disputes", Category: "fraud", RequiredPermissions: ReportPermsCustomerFraudEvidence(), DefaultRange: "7d"},
 	{Key: "signal-effectiveness", Title: "Signal effectiveness", Description: "Wire signal block and silent-reject rates", Category: "fraud", RequiredPermissions: ReportPermsFraudCustomer(), DefaultRange: "7d"},
 	{Key: "rtt-split-tunnel", Title: "RTT split tunnel", Description: "RTT split-tunnel distribution by campaign and country", Category: "fraud", RequiredPermissions: reportPermsFraudOperator, DefaultRange: "7d"},
 	{Key: "campaign-toggle-cohort", Title: "Campaign toggle cohort", Description: "Before/after metrics around fraud toggle changes", Category: "fraud", RequiredPermissions: []string{"audit:read", "campaigns:read"}, DefaultRange: "7d"},
@@ -87,3 +87,15 @@ func (h *ReportsHTTPHandlers) getReportCatalog(w http.ResponseWriter, r *http.Re
 	rows := FilterReportCatalog(r.Context(), ReportCatalogEntries)
 	httpresponse.JSON(w, http.StatusOK, ReportCatalogResponse{Rows: rows})
 }
+
+const (
+	ClickhouseDimSub1Expr    = `nullIf(coalesce(nullIf(sub1, ''), nullIf(JSONExtractString(payload, 'sub1'), '')), '')`
+	ClickhouseDimSub2Expr    = `nullIf(coalesce(nullIf(sub2, ''), nullIf(JSONExtractString(payload, 'sub2'), '')), '')`
+	ClickhouseDimCountryExpr = `coalesce(nullIf(country, ''), nullIf(JSONExtractString(payload, 'country'), ''), 'ZZ')`
+	clickhouseDimSub1Expr    = ClickhouseDimSub1Expr
+	clickhouseDimSub2Expr    = ClickhouseDimSub2Expr
+	clickhouseDimCountryExpr = ClickhouseDimCountryExpr
+	clickhouseDimCityExpr    = `nullIf(coalesce(nullIf(city, ''), nullIf(JSONExtractString(payload, 'city'), '')), '')`
+	clickhouseDimDeviceExpr  = `coalesce(nullIf(device_type, ''), nullIf(JSONExtractString(payload, 'device_type'), ''), nullIf(JSONExtractString(payload, 'device'), ''), 'unknown')`
+	clickhouseDimKeywordExpr = `nullIf(coalesce(nullIf(keyword, ''), nullIf(JSONExtractString(payload, 'keyword'), '')), '')`
+)

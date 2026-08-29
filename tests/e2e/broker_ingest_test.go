@@ -5,13 +5,13 @@ import (
 	"testing"
 	"time"
 
+	bserver "ad-event-processor/internal/broker"
 	"ad-event-processor/internal/database"
 	db "ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
+	ingestion "ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/testutil"
 	"ad-event-processor/pkg/broker/client"
-	bserver "ad-event-processor/internal/broker"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

@@ -1,0 +1,181 @@
+package ingest
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"ad-event-processor/internal/domain"
+)
+
+func TestParseOpenRTB3Payload_ReorderedNested(t *testing.T) {
+	payload := []byte(`{
+ "category_mask": 8,
+ "openrtb": {
+ "ver": "3.0",
+ "request": {
+ "context": {
+ "device": {"type": 4, "ip": "203.0.113.42"}
+ },
+ "id": "req-reordered",
+ "item": [
+ {"flr": 2.25, "id": "item-first", "spec": {"placement": {"tagid": "plc-1"}}}
+ ]
+ }
+ },
+ "deal_id": "deal-premium-1"
+}`)
+
+	minBid, deviceType, categoryMask, isOpenRTB := ParseOpenRTB3Payload(payload)
+	assert.True(t, isOpenRTB)
+	assert.Equal(t, int64(2250000), minBid)
+	assert.Equal(t, uint8(2), deviceType)
+	assert.Equal(t, uint64(8), categoryMask)
+
+	var dealBuf [64]byte
+	n := ParseDealIDBytes(payload, dealBuf[:])
+	assert.Equal(t, "deal-premium-1", string(dealBuf[:n]))
+
+	parsed := parseOpenRTB3FSM(payload)
+	assert.True(t, parsed.OK)
+	assert.Equal(t, "item-first", string(ortbSlice(payload, parsed.ItemIDOff, parsed.ItemIDLen)))
+	assert.Equal(t, "req-reordered", string(ortbSlice(payload, parsed.RequestIDOff, parsed.RequestIDLen)))
+	assert.Equal(t, "plc-1", string(ortbSlice(payload, parsed.TagIDOff, parsed.TagIDLen)))
+}
+
+func TestParseOpenRTB3Payload_DealIDZeroAlloc(t *testing.T) {
+	payload := []byte(`{"openrtb":{"request":{"item":[{"id":"x","flr":1}]}},"deal_id":"deal-z"}`)
+	var buf [64]byte
+	allocs := testing.AllocsPerRun(1000, func() {
+		_ = ParseDealIDBytes(payload, buf[:])
+		_, _, _, _ = ParseOpenRTB3Payload(payload)
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
+func TestParseOpenRTB3Ingress(t *testing.T) {
+	camp := "550e8400-e29b-41d4-a716-446655440000"
+	payload := []byte(`{
+ "openrtb": {
+ "request": {
+ "id": "req-abc",
+ "item": [{"id": "` + camp + `", "flr": 1.5}],
+ "context": {"device": {"type": 2}}
+ }
+ },
+ "category_mask": 4,
+ "deal_id": "deal-1"
+}`)
+	var req TrackRequest
+	require.NoError(t, ParseOpenRTB3Ingress(&req, payload))
+	assert.Equal(t, uuid.MustParse(camp), req.CampaignID)
+	assert.Equal(t, "req-abc", req.ClickID)
+	assert.Equal(t, "impression", req.Type)
+	assert.Equal(t, payload, req.Payload)
+
+	allocs := testing.AllocsPerRun(500, func() {
+		req.Reset()
+		_ = ParseOpenRTB3Ingress(&req, payload)
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
+func TestFillTrackEvent_holdoutOpenRTB3PayloadRef(t *testing.T) {
+	camp := "550e8400-e29b-41d4-a716-446655440000"
+	payload := []byte(`{"openrtb":{"request":{"id":"req-abc","item":[{"id":"` + camp + `","flr":1.5}]}}}`)
+	var req TrackRequest
+	require.NoError(t, ParseOpenRTB3Ingress(&req, payload))
+	fields := trackIngestFields{
+		campaignID: req.CampaignID,
+		eventType:  req.Type,
+		clickID:    req.ClickID,
+		payload:    req.Payload,
+	}
+	var evt domain.Event
+	evt.Payload = make([]byte, 0, 1024)
+	fillTrackEvent(&evt, fields, "1.1.1.1", "Mozilla/5.0")
+	assert.Equal(t, payload, evt.Payload)
+
+	allocs := testing.AllocsPerRun(100, func() {
+		evt.Payload = evt.Payload[:0]
+		fillTrackEvent(&evt, fields, "1.1.1.1", "Mozilla/5.0")
+	})
+	assert.Equal(t, float64(0), allocs)
+}
+
+func TestSkipJSONValueOrtb_DeepArrayRejected(t *testing.T) {
+	depth := ortbMaxDepth + 1
+	var b strings.Builder
+	b.WriteByte('[')
+	for range depth {
+		b.WriteByte('[')
+	}
+	b.WriteString(`1`)
+	for range depth {
+		b.WriteByte(']')
+	}
+	b.WriteByte(']')
+	bud := newJSONScanBudget()
+	_, err := skipJSONValueBudgetDepth([]byte(b.String()), 0, &bud, ortbMaxDepth)
+	require.Error(t, err)
+}
+
+func TestSkipJSONValueOrtb_EscapeBombRejected(t *testing.T) {
+	escapes := strings.Repeat(`\"`, MaxJSONStringEscapes+1)
+	body := []byte(`"` + escapes + `"`)
+	bud := newJSONScanBudget()
+	_, err := skipJSONValueBudgetDepth(body, 0, &bud, ortbMaxDepth)
+	require.Error(t, err)
+}
+
+func TestParseOpenRTB3Ingress_RejectsESPXNative(t *testing.T) {
+	payload := []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","type":"click"}`)
+	var req TrackRequest
+	require.Error(t, ParseOpenRTB3Ingress(&req, payload))
+}
+
+func TestParseOpenRTB3FSM_MalformedItemArrayNoHang(t *testing.T) {
+	payload := []byte(`{"rtb":{"ver":"","item":["id":"a","flr":1.5},{"id":"b","fr":1.l`)
+	done := make(chan struct{})
+	go func() {
+		var out OpenRTB3Parsed
+		_ = parseOpenRTB3FSMInto(&out, payload)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("parseOpenRTB3FSMInto hung on malformed item array")
+	}
+}
+
+func TestParseSchainNodesAt_negativeIndex(t *testing.T) {
+	var nodes SchainNodes
+	fuzzNoPanic(t, "parseSchainNodesAt", func() {
+		nodes = parseSchainNodesAt([]byte(`{"schain":{"nodes":[]}}`), -1)
+	})
+	assert.Equal(t, uint8(0), nodes.Count)
+}
+
+func BenchmarkParseOpenRTB3FSM(b *testing.B) {
+	payload := []byte(`{
+ "openrtb": {
+ "ver": "3.0",
+ "request": {
+ "id": "req-123456789",
+ "item": [{"id": "550e8400-e29b-41d4-a716-446655440000", "flr": 1.50}],
+ "context": {"device": {"type": 4}}
+ }
+ },
+ "category_mask": 8,
+ "deal_id": "deal-premium-1"
+}`)
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = parseOpenRTB3FSM(payload)
+	}
+}

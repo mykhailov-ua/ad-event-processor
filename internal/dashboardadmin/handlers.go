@@ -390,40 +390,16 @@ func (h *HTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if h.CampaignDashboard != nil {
-		resp, err := h.CampaignDashboard.GetCampaignDashboard(r.Context(), campaignID)
-		if err != nil {
-			h.writeServiceError(w, err)
-			return
-		}
-		httpresponse.JSON(w, http.StatusOK, resp)
+	if h.CampaignDashboard == nil {
+		httpresponse.Error(w, http.StatusNotImplemented, "NOT_IMPLEMENTED", "campaign dashboard reader not configured")
 		return
 	}
 
-	resp := CampaignDashboardDTO{
-		CampaignID: campaignID.String(),
-		KPIs: MetricsBlockDTO{
-			SpendMicro:   150000000,
-			RevenueMicro: 180000000,
-			ProfitMicro:  30000000,
-			Conversions:  120,
-			CPAMicro:     1250000,
-			ROIPct:       20.0,
-			Freshness: DataFreshnessDTO{
-				AsOf:         time.Now().UTC().Format(time.RFC3339),
-				Consistency:  "eventual",
-				Stale:        true,
-				CHLagSeconds: 360,
-			},
-		},
-		Freshness: DataFreshnessDTO{
-			AsOf:         time.Now().UTC().Format(time.RFC3339),
-			Consistency:  "eventual",
-			Stale:        true,
-			CHLagSeconds: 360,
-		},
+	resp, err := h.CampaignDashboard.GetCampaignDashboard(r.Context(), campaignID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
 	}
-
 	httpresponse.JSON(w, http.StatusOK, resp)
 }
 

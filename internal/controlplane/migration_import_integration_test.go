@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/migrationsource"
 
 	"github.com/google/uuid"
@@ -147,7 +148,7 @@ func TestImportMigrationCampaigns_keitaroStreams_holdout(t *testing.T) {
 	var importPaths json.RawMessage
 	err = pool.QueryRow(ctx, `SELECT paths FROM flows WHERE id = $1`, uuid.UUID(importRow.FlowID.Bytes)).Scan(&importPaths)
 	require.NoError(t, err)
-	var parsedPaths []campaign.FlowPathDTO
+	var parsedPaths []flow.PathDTO
 	require.NoError(t, json.Unmarshal(importPaths, &parsedPaths))
 	require.Len(t, parsedPaths, 2)
 	assert.Equal(t, int32(60), parsedPaths[0].Weight)

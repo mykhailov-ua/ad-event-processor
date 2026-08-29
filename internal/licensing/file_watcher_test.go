@@ -10,21 +10,22 @@ import (
 	"time"
 
 	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing/entitlements"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFileLicenseRecheck_publishesStretchedSeed(t *testing.T) {
-	licensing.ResetFeatureSeedForTest()
-	t.Cleanup(licensing.ResetFeatureSeedForTest)
+	entitlements.ResetFeatureSeedForTest()
+	t.Cleanup(entitlements.ResetFeatureSeedForTest)
 
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
-	claims := licensing.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -43,10 +44,10 @@ func TestFileLicenseRecheck_publishesStretchedSeed(t *testing.T) {
 		PubKey: pub,
 	})
 	require.NoError(t, err)
-	require.Equal(t, licensing.StateActive, snap.State)
+	require.Equal(t, entitlements.StateActive, snap.State)
 	require.True(t, snap.SeedValid)
-	require.True(t, licensing.FeatureSeedValid())
-	require.Equal(t, snap.FeatureSeed, licensing.FeatureSeed())
+	require.True(t, entitlements.FeatureSeedValid())
+	require.Equal(t, snap.FeatureSeed, entitlements.FeatureSeed())
 
 	want, err := licensing.FeatureSeedFromLicenseFileRecheck(path, pub, licensing.HostFingerprint())
 	require.NoError(t, err)
@@ -54,14 +55,14 @@ func TestFileLicenseRecheck_publishesStretchedSeed(t *testing.T) {
 }
 
 func TestStartFileLicenseRecheck_background(t *testing.T) {
-	licensing.ResetFeatureSeedForTest()
-	t.Cleanup(licensing.ResetFeatureSeedForTest)
+	entitlements.ResetFeatureSeedForTest()
+	t.Cleanup(entitlements.ResetFeatureSeedForTest)
 
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	dir := t.TempDir()
 	path := filepath.Join(dir, "license.jwt")
-	claims := licensing.LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -81,7 +82,7 @@ func TestStartFileLicenseRecheck_background(t *testing.T) {
 		PubKey:   pub,
 		Interval: time.Hour,
 	})
-	require.True(t, licensing.FeatureSeedValid())
+	require.True(t, entitlements.FeatureSeedValid())
 	cancel()
 	licensing.WaitFileLicenseRecheckForTest()
 }

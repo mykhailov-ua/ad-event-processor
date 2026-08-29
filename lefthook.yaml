@@ -2,13 +2,13 @@ pre-commit:
   commands:
     staged-not-ignored:
       tags: hygiene
-      run: bash scripts/ci/check_staged_not_ignored.sh
+      run: bash scripts/ci/naming/staged_not_ignored.sh
     tier-a:
       tags: hygiene
       run: bash scripts/ci/tier_a.sh
     lint:
       tags: backend
-      run: bash scripts/ci/lint_go_gate.sh all
+      run: bash scripts/ci/lint/go.sh all
 
 pre-push:
   commands:

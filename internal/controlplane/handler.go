@@ -2,10 +2,7 @@ package controlplane
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -14,26 +11,18 @@ import (
 	"ad-event-processor/internal/config"
 	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
-	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/dedup"
-	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/internal/ledger"
-	"ad-event-processor/internal/licensingadmin"
-	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/payment"
-	"ad-event-processor/internal/platformadmin"
+	"ad-event-processor/internal/regionproxy"
 	"ad-event-processor/internal/reports"
-	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/shardadmin"
-	"ad-event-processor/internal/supply"
 	"ad-event-processor/pkg/coldpath"
-	"ad-event-processor/pkg/dedupkey"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 )
 
 type Handler struct {
@@ -150,47 +139,6 @@ func (h *Handler) authFallback(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-type invalidQueryError string
-
-func (e invalidQueryError) Error() string { return string(e) }
-
-type validationError string
-
-func (e validationError) Error() string { return string(e) }
-
-func errValidation(msg string) error { return validationError(msg) }
-
-var errForbidden = &forbiddenError{}
-
-type forbiddenError struct{}
-
-func (e *forbiddenError) Error() string { return "forbidden" }
-
-type RegionIngestBatchInput struct {
-	RegionCode  uint8
-	NodeID      string
-	SourceEpoch uint32
-	Seq         uint64
-	FactorU     uuid.UUID
-	Payload     []byte
-	OpID        uuid.UUID
-}
-
-type RegionIngestBatchResult struct {
-	Outcome  dedup.Outcome
-	DedupKey string
-}
-
-type regionIngestBatchJSON struct {
-	RegionCode  uint8  `json:"region_code"`
-	NodeID      string `json:"node_id"`
-	SourceEpoch uint32 `json:"source_epoch"`
-	Seq         uint64 `json:"seq"`
-	FactorU     string `json:"factor_u"`
-	Payload     []byte `json:"payload"`
-	OpID        string `json:"op_id,omitempty"`
-}
-
 func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) error {
 	u, ok := GetUser(r.Context())
 	if !ok || !u.HasBoundCustomer() {
@@ -203,7 +151,7 @@ func (h *Handler) ensureCampaignAccess(r *http.Request, campaignID uuid.UUID) er
 	if uuid.UUID(camp.CustomerID.Bytes) != u.CustomerID {
 		return errForbidden
 	}
-	if err := assertMediaBuyerCampaignAccess(r.Context(), camp); err != nil {
+	if err := campaign.AssertMediaBuyerCampaignAccess(r.Context(), camp); err != nil {
 		return err
 	}
 	return nil
@@ -226,13 +174,13 @@ func (h *Handler) ensureCustomerAccess(r *http.Request, customerID string) error
 
 func writeForecastError(w http.ResponseWriter, err error) {
 	if errors.Is(err, campaign.ErrForecastClickHouseTimeout) || errors.Is(err, campaign.ErrForecastUnavailable) {
-		w.Header().Set("Retry-After", strconv.Itoa(ForecastRetryAfterSec()))
+		w.Header().Set("Retry-After", strconv.Itoa(campaign.ForecastRetryAfterSec()))
 		httpresponse.JSON(w, http.StatusServiceUnavailable, reports.ForecastUnavailableResponse{
 			Error: reports.ForecastErrorDetail{
 				Code:    "FORECAST_UNAVAILABLE",
 				Message: err.Error(),
 			},
-			RetryAfter: ForecastRetryAfterSec(),
+			RetryAfter: campaign.ForecastRetryAfterSec(),
 		})
 		return
 	}
@@ -285,64 +233,23 @@ func (h *Handler) resolveSelfServeCustomerID(r *http.Request, bodyCustomerID *uu
 	return *bodyCustomerID, nil
 }
 
-func (s *Service) IngestRegionProxyBatch(ctx context.Context, in RegionIngestBatchInput) (RegionIngestBatchResult, error) {
-	if in.RegionCode == 0 {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: invalid region code", in.RegionCode)
-	}
-	if in.NodeID == "" {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: node_id required", in.RegionCode)
-	}
-	if len(in.Payload) == 0 {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: empty payload", in.RegionCode)
-	}
+type invalidQueryError string
 
-	var canonBuf [4096 + 64]byte
-	canon := dedupkey.WriteCanonicalProxyBatchPayload(canonBuf[:0], in.Seq, in.Payload)
-	expected := dedupkey.FactorU(canon)
-	if expected != in.FactorU {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: factor_u mismatch", in.RegionCode)
-	}
+func (e invalidQueryError) Error() string { return string(e) }
 
-	if s != nil && s.cfg != nil && s.cfg.MultiRegionGlobal() {
-		return s.ingestRegionProxyBatchLeased(ctx, in)
-	}
-	return s.ingestRegionProxyBatchDirect(ctx, in)
+type validationError string
+
+func (e validationError) Error() string { return string(e) }
+
+func (s *Service) MultiRegionGlobal() bool {
+	return s != nil && s.cfg != nil && s.cfg.MultiRegionGlobal()
 }
 
-func (s *Service) ingestRegionProxyBatchDirect(ctx context.Context, in RegionIngestBatchInput) (RegionIngestBatchResult, error) {
-	epoch := in.SourceEpoch
-	if epoch == 0 && s.pool != nil {
-		epoch = dedup.LoadRoutingEpoch(ctx, s.pool)
-	}
-	adapter := dedup.NewAdapter(s.pool, in.RegionCode, epoch)
-	if adapter == nil {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: dedup adapter unavailable", in.RegionCode)
-	}
-
-	seq := int64(in.Seq)
-	scope := adapter.RegionScope(dedupkey.ProxySourceID(in.RegionCode, in.NodeID), seq, seq)
-	claim, err := adapter.ClaimConfirm(ctx, scope, in.FactorU)
-	if err != nil {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
-	}
-	if guardErr := dedup.GuardOutcome(claim); guardErr != nil {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, guardErr)
-	}
-	if claim.ShouldApply() {
-		if err := adapter.RecordApply(ctx, claim.DedupKey); err != nil {
-			return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
-		}
-		if err := s.applyRegionSpendSyncBatch(ctx, claim.DedupKey, in.Payload); err != nil {
-			return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
-		}
-	}
-	return RegionIngestBatchResult{
-		Outcome:  claim.Outcome,
-		DedupKey: claim.DedupKey,
-	}, nil
+func (s *Service) ApplyRegionSpendSyncBatch(ctx context.Context, batchDedupKey string, payload []byte) error {
+	return s.applyRegionSpendSyncBatch(ctx, batchDedupKey, payload)
 }
 
-func (s *Service) ingestRegionProxyBatchLeased(ctx context.Context, in RegionIngestBatchInput) (RegionIngestBatchResult, error) {
+func (s *Service) EnsureProxyBatchBookAndExecute(ctx context.Context, in regionproxy.BatchInput, apply func(ctx context.Context, claim dedup.ClaimResult) error) (regionproxy.BatchResult, error) {
 	worker := s.OperationLeaseWorker()
 	if worker == nil {
 		worker = NewOperationLeaseWorker(s)
@@ -356,24 +263,19 @@ func (s *Service) ingestRegionProxyBatchLeased(ctx context.Context, in RegionIng
 		OpID:        in.OpID,
 	}, 1)
 	if _, err := worker.EnsureBook(ctx, bookReq); err != nil {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
+		return regionproxy.BatchResult{}, err
 	}
-
-	var result RegionIngestBatchResult
+	var result regionproxy.BatchResult
 	err := worker.ExecuteOp(ctx, bookReq.OpID, func(ctx context.Context, _ db.OperationLease, claim dedup.ClaimResult) error {
-		result = RegionIngestBatchResult{
-			Outcome:  claim.Outcome,
-			DedupKey: claim.DedupKey,
-		}
-		if claim.ShouldApply() {
-			return s.applyRegionSpendSyncBatch(ctx, claim.DedupKey, in.Payload)
-		}
-		return nil
+		result.Outcome = claim.Outcome
+		result.DedupKey = claim.DedupKey
+		return apply(ctx, claim)
 	})
-	if err != nil {
-		return RegionIngestBatchResult{}, fmt.Errorf("region ingest batch region=%d: %w", in.RegionCode, err)
-	}
-	return result, nil
+	return result, err
+}
+
+func (s *Service) IngestRegionProxyBatch(ctx context.Context, in regionproxy.BatchInput) (regionproxy.BatchResult, error) {
+	return regionproxy.IngestBatch(ctx, s, in)
 }
 
 func (h *Handler) postRegionIngestBatch(w http.ResponseWriter, r *http.Request) {
@@ -387,33 +289,12 @@ func (h *Handler) postRegionIngestBatch(w http.ResponseWriter, r *http.Request) 
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid body")
 		return
 	}
-	var in regionIngestBatchJSON
-	if err := json.Unmarshal(body, &in); err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid json")
-		return
-	}
-	factorU, err := uuid.Parse(in.FactorU)
+	in, err := regionproxy.DecodeBatchJSON(body)
 	if err != nil {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid factor_u")
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
-	var opID uuid.UUID
-	if in.OpID != "" {
-		opID, err = uuid.Parse(in.OpID)
-		if err != nil {
-			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid op_id")
-			return
-		}
-	}
-	result, err := h.svc.IngestRegionProxyBatch(r.Context(), RegionIngestBatchInput{
-		RegionCode:  in.RegionCode,
-		NodeID:      in.NodeID,
-		SourceEpoch: in.SourceEpoch,
-		Seq:         in.Seq,
-		FactorU:     factorU,
-		Payload:     in.Payload,
-		OpID:        opID,
-	})
+	result, err := h.svc.IngestRegionProxyBatch(r.Context(), in)
 	if err != nil {
 		writeServiceError(w, err)
 		return
@@ -422,155 +303,4 @@ func (h *Handler) postRegionIngestBatch(w http.ResponseWriter, r *http.Request) 
 		"outcome":   string(result.Outcome),
 		"dedup_key": result.DedupKey,
 	})
-}
-
-func mapServiceError(err error) (status int, code, message string) {
-	if err == nil {
-		return http.StatusOK, "", ""
-	}
-	if errors.Is(err, errForbidden) {
-		return http.StatusForbidden, "FORBIDDEN", "forbidden"
-	}
-	if errors.Is(err, platformadmin.ErrInstallTokenInvalid) {
-		return http.StatusUnauthorized, "UNAUTHORIZED", platformadmin.ErrInstallTokenInvalid.Error()
-	}
-
-	if errors.Is(err, ErrSelfServeActiveCampaignLimit) || errors.Is(err, ErrSelfServeDailyCreateLimit) || errors.Is(err, ErrDeploymentCampaignLimit) || errors.Is(err, ErrDeploymentTenantLimit) {
-		return http.StatusTooManyRequests, "LIMIT_EXCEEDED", err.Error()
-	}
-
-	var q invalidQueryError
-	if errors.As(err, &q) {
-		return http.StatusBadRequest, "BAD_REQUEST", string(q)
-	}
-
-	var ve validationError
-	if errors.As(err, &ve) {
-		return http.StatusBadRequest, "BAD_REQUEST", string(ve)
-	}
-
-	if errors.Is(err, ErrBudgetApprovalRequired) {
-		return http.StatusConflict, "APPROVAL_REQUIRED", err.Error()
-	}
-
-	if errors.Is(err, ErrBudgetApprovalAutoDenied) {
-		return http.StatusConflict, "APPROVAL_AUTO_DENIED", err.Error()
-	}
-
-	if errors.Is(err, dashboardadmin.ErrPublisherScopeRequired) {
-		return http.StatusForbidden, "FORBIDDEN", err.Error()
-	}
-
-	if isNotFoundError(err) {
-		return http.StatusNotFound, "NOT_FOUND", "resource not found"
-	}
-
-	if isConflictError(err) {
-		return http.StatusConflict, "CONFLICT", conflictMessage(err)
-	}
-
-	if errors.Is(err, ErrCampaignRevisionConflict) {
-		return http.StatusConflict, "CONFLICT", ErrCampaignRevisionConflict.Error()
-	}
-
-	if errors.Is(err, supply.ErrSellersJSONInvalid) {
-		return http.StatusServiceUnavailable, "SUPPLY_INVALID", supply.ErrSellersJSONInvalid.Error()
-	}
-
-	if msg, ok := badRequestMessage(err); ok {
-		return http.StatusBadRequest, "BAD_REQUEST", msg
-	}
-
-	return http.StatusInternalServerError, "INTERNAL_ERROR", "internal error"
-}
-
-func isNotFoundError(err error) bool {
-	return errors.Is(err, pgx.ErrNoRows) ||
-		errors.Is(err, ErrCustomerNotFound) ||
-		errors.Is(err, ErrPaymentTopupNotFound) ||
-		errors.Is(err, ErrCampaignNotFound) ||
-		errors.Is(err, ErrFraudDecisionNotFound) ||
-		errors.Is(err, ErrBrandNotFound) ||
-		errors.Is(err, ErrCreativeNotFound) ||
-		errors.Is(err, ErrTemplateNotFound) ||
-		errors.Is(err, ErrTeamMemberNotFound) ||
-		errors.Is(err, rtbadmin.ErrRtbDealNotFound) ||
-		errors.Is(err, rtbadmin.ErrDealCustomerMissing) ||
-		errors.Is(err, supply.ErrSellerNotFound) ||
-		errors.Is(err, supply.ErrAdsTxtEntryNotFound) ||
-		errors.Is(err, domain.ErrSlotMapVersionNotFound) ||
-		errors.Is(err, opsadmin.ErrDLQEntryNotFound)
-}
-
-func isConflictError(err error) bool {
-	return errors.Is(err, shardadmin.ErrSlotMigrationNotReady) ||
-		errors.Is(err, domain.ErrSlotMapAlreadyActive) ||
-		errors.Is(err, platformadmin.ErrConfigBootstrapped) ||
-		errors.Is(err, ErrCampaignRevisionConflict)
-}
-
-func conflictMessage(err error) string {
-	switch {
-	case errors.Is(err, shardadmin.ErrSlotMigrationNotReady):
-		return shardadmin.ErrSlotMigrationNotReady.Error()
-	case errors.Is(err, domain.ErrSlotMapAlreadyActive):
-		return domain.ErrSlotMapAlreadyActive.Error()
-	default:
-		return "conflict"
-	}
-}
-
-func badRequestMessage(err error) (string, bool) {
-	switch {
-	case errors.Is(err, licensingadmin.ErrEulaVersionMismatch):
-		return licensingadmin.ErrEulaVersionMismatch.Error(), true
-	case errors.Is(err, ErrFeedbackInvalidType),
-		errors.Is(err, ErrFeedbackInvalidEmail),
-		errors.Is(err, ErrFeedbackEmptyMessage):
-		return err.Error(), true
-	case errors.Is(err, ErrInsufficientBalance):
-		return ErrInsufficientBalance.Error(), true
-	case errors.Is(err, ErrSelfServeActiveCampaignLimit),
-		errors.Is(err, ErrSelfServeDailyCreateLimit),
-		errors.Is(err, ErrSelfServeBudgetOutOfRange):
-		return err.Error(), true
-	case errors.Is(err, ErrBrandBelongsToAnotherCustomer),
-		errors.Is(err, ErrTemplateBelongsToAnotherCustomer),
-		errors.Is(err, ErrCampaignCannotBePaused),
-		errors.Is(err, ErrCampaignNotPaused),
-		errors.Is(err, ErrCampaignOutsideSchedule),
-		errors.Is(err, ErrInvalidPacingMode),
-		errors.Is(err, ErrWeightMustBePositive),
-		errors.Is(err, ErrCreativeStatusInvalid),
-		errors.Is(err, ErrIncompleteIdempotency),
-		errors.Is(err, ErrUnsupportedGranularity),
-		errors.Is(err, ErrInvalidTimeRange),
-		errors.Is(err, ErrInvalidServiceFilter),
-		errors.Is(err, rtbadmin.ErrInvalidDealPacing),
-		errors.Is(err, rtbadmin.ErrDuplicateDealID),
-		errors.Is(err, rtbadmin.ErrInvalidDealSeats),
-		errors.Is(err, supply.ErrInvalidSellerType),
-		errors.Is(err, supply.ErrInvalidRelationship),
-		errors.Is(err, supply.ErrChainTooLong),
-		errors.Is(err, ErrRefundExceedsTopup),
-		errors.Is(err, ErrChargebackExceedsTopup),
-		errors.Is(err, ErrChargebackReversalExceedsWithdrawn),
-		errors.Is(err, billingadmin.ErrExportLimit),
-		errors.Is(err, domain.ErrSlotMapIncomplete),
-		errors.Is(err, domain.ErrSlotMapInvalidSlot),
-		errors.Is(err, domain.ErrSlotMapInvalidShard),
-		errors.Is(err, platformadmin.ErrConfigNotBootstrapped):
-		return err.Error(), true
-	default:
-		return "", false
-	}
-}
-
-func writeServiceError(w http.ResponseWriter, err error, logAttrs ...any) {
-	status, code, message := mapServiceError(err)
-	if status >= http.StatusInternalServerError {
-		attrs := append([]any{slog.Any("err", err)}, logAttrs...)
-		slog.Error("management request failed", attrs...)
-	}
-	httpresponse.Error(w, status, code, message)
 }

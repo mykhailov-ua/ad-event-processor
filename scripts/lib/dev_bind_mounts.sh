@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-ad_event_processor_compose_dev_overlay() {
+aed_compose_dev_overlay() {
   if installer_use_release_images; then
     return 1
   fi
@@ -60,14 +60,14 @@ dev_fix_repo_bind_artifacts() {
 
 dev_prepare_compose_mounts() {
   dev_prune_parent_bind_artifacts
-  if ad_event_processor_compose_dev_overlay; then
+  if aed_compose_dev_overlay; then
     dev_fix_repo_bind_artifacts
   fi
 }
 
 dev_finalize_compose_mounts() {
   dev_prune_parent_bind_artifacts
-  if ad_event_processor_compose_dev_overlay; then
+  if aed_compose_dev_overlay; then
     dev_fix_repo_bind_artifacts
   fi
 }

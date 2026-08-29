@@ -23,11 +23,11 @@ openapi-export:
 	go run ./cmd/openapi-export
 
 .PHONY: openapi-types
-openapi-types: openapi-export
-	cd web && npm run openapi:types
+openapi-types:
+	@echo "openapi-types: skipped (web/ removed; regenerate TS types when admin UI milestone admin_contract_gate starts)"
 
 lint: gen fmt
-	bash scripts/ci/lint_gate.sh
+	bash scripts/ci/lint.sh
 
 test-fast: gen fmt
 	go test -short -count=1 -timeout=240s -p=1 ./internal/... ./pkg/...
@@ -41,16 +41,16 @@ test-fault: gen fmt
 	go test -count=1 -timeout 30m -run 'Fault' ./...
 
 test-alloc-gate: gen fmt
-	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|BrokerProducer|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange|Check_zeroAlloc_localQuantaFullSkip' ./internal/ingestion/...
-	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$|TrackerToBroker$$|CIDR_LPM_Lookup_IPv4$$|CIDR_LPM_Lookup_IPv6$$|TLS_Fingerprint_|LinkSigner_Verify$$|ClickProxy_Stream$$)' -benchmem -count=1 ./internal/ingestion/... ./internal/rtb/
+	go test -short -count=1 -run 'ZeroAlloc|zeroAlloc_fraudScoring|FraudScoring_LatencySLA|BrokerProducer|ApplyRtbAuction_shadow_zeroAlloc|RecordRtbShadow|HTTP1Parse|OpenRTB26_Exchange|Check_zeroAlloc_localQuantaFullSkip' ./internal/ingest/... ./internal/filter/... ./internal/stream/... ./internal/track/...
+	go test -run='^$$' -bench='Benchmark(HTTP1Parse$$|TrackRequest_ParseJSONOpt$$|Auction$$|ParseOpenRTB26Split_hotOnly$$|RunOpenRTBExchangeParsed$$|TrackerToBroker$$|CIDR_LPM_Lookup_IPv4$$|CIDR_LPM_Lookup_IPv6$$|TLS_Fingerprint_|LinkSigner_Verify$$|ClickProxy_Stream$$)' -benchmem -count=1 ./internal/ingest/... ./internal/filter/... ./internal/stream/... ./internal/track/... ./internal/rtb/
 	bash scripts/test/openrtb_fuzz_smoke.sh
-	bash scripts/test/telegram_fuzz_smoke.sh
+	bash scripts/test/telegram/fuzz_smoke.sh
 	bash scripts/test/cidr_fuzz_smoke.sh
-	bash scripts/test/click_proxy_fuzz_smoke.sh
+	bash scripts/test/edge/click_fuzz_smoke.sh
 	bash scripts/test/landing_protection_fuzz_smoke.sh
 
 management-domain-coverage:
-	bash scripts/ci/management_domain_coverage.sh
+	bash scripts/ci/static/management_domain_coverage.sh
 
 test-int: gen fmt
 	go test -v ./tests/...
@@ -139,135 +139,135 @@ license-issue:
 
 license-red-team:
 	bash scripts/security/license_red_team.sh
-	bash scripts/test/license_red_team_extended.sh
+	bash scripts/test/license/red_team_extended.sh
 
 license-pentest:
 	bash scripts/security/license_pentest.sh
 
 license-verify:
-	bash scripts/ci/license_verify_tier.sh
+	bash scripts/ci/license/verify_tier.sh
 
 license-alloc-gate:
-	bash scripts/ci/license_alloc_gate.sh
+	bash scripts/ci/license/alloc.sh
 
 license-differential-gate:
-	bash scripts/ci/license_differential_gate.sh
+	bash scripts/ci/license/differential.sh
 
 asset-seal-salt-smoke:
-	bash scripts/ci/asset_seal_salt_smoke.sh
+	bash scripts/ci/license/asset_seal_salt_smoke.sh
 
 hwid-strings-gate:
-	bash scripts/ci/hwid_strings_gate.sh
+	bash scripts/ci/license/hwid_strings.sh
 
 license-guard-test:
 	go test -tags=license_guard ./internal/licensing/ -run Guard -count=1
 
 license-guard-off-smoke:
-	bash scripts/test/license_guard_off_smoke.sh
+	bash scripts/test/license/guard_off_smoke.sh
 
 license-guard-fault-gate:
-	bash scripts/ci/license_guard_fault_gate.sh
+	bash scripts/ci/license/guard_fault.sh
 
 public-key-strings-gate:
-	bash scripts/ci/public_key_strings_gate.sh
+	bash scripts/ci/license/public_key_strings.sh
 
 license-red-team-garbled:
-	bash scripts/ci/license_red_team_garbled.sh
+	bash scripts/ci/license/red_team_garbled.sh
 
 license-garbled-alloc-gate:
-	bash scripts/ci/license_garbled_alloc_gate.sh
+	bash scripts/ci/license/garbled_alloc.sh
 
 license-red-team-extended:
-	bash scripts/test/license_red_team_extended.sh
+	bash scripts/test/license/red_team_extended.sh
 
 license-fuzz-nightly-gate:
-	bash scripts/ci/license_fuzz_nightly_gate.sh
+	bash scripts/ci/license/fuzz_nightly.sh
 
 release-qa-smoke:
-	bash scripts/test/release_qa_smoke.sh
+	bash scripts/test/release/qa_smoke.sh
 
 license-gdb-guard-smoke:
-	bash scripts/test/license_gdb_guard_smoke.sh
+	bash scripts/test/license/gdb_guard_smoke.sh
 
 release-strings-gate:
-	bash scripts/ci/release_strings_gate.sh \
+	bash scripts/ci/license/release_strings.sh \
 		$(BIN_DIR)/garbled-release/tracker \
 		$(BIN_DIR)/garbled-release/processor \
 		$(BIN_DIR)/garbled-release/control
 
 garble-literals-eval:
-	bash scripts/ci/garble_literals_eval.sh
+	bash scripts/ci/license/garble_literals_eval.sh
 
 garble-literals-policy-gate:
-	bash scripts/ci/garble_literals_policy_gate.sh
+	bash scripts/ci/license/garble_literals_policy.sh
 
 garble-literals-p99-smoke:
-	bash scripts/test/garble_literals_p99_smoke.sh
+	bash scripts/test/license/garble_literals_p99_smoke.sh
 
 bpf-edge-prereq-gate:
-	bash scripts/ci/bpf_edge_prereq_gate.sh
+	bash scripts/ci/bpf/edge_prereq.sh
 
 sealed-bpf-xdp-smoke:
-	bash scripts/test/sealed_bpf_xdp_smoke.sh
+	bash scripts/test/edge/sealed_bpf_xdp_smoke.sh
 
 bpf-dev:
-	bash scripts/dev/bpf_setup.sh
+	bash scripts/dev/stack/bpf_setup.sh
 
 bpf-session-start: bpf-dev
-	sudo bash scripts/dev/bpf_session.sh start
+	sudo bash scripts/dev/stack/bpf_session.sh start
 
 bpf-session-stop:
-	sudo bash scripts/dev/bpf_session.sh stop
+	sudo bash scripts/dev/stack/bpf_session.sh stop
 
 load-test-config:
 	bash scripts/lib/render_load_test_config.sh
 
 load-test-bpf: bpf-dev load-test-config
-	AD_EVENT_PROCESSOR_BPF_PROBE=1 AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE=$${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10} bash scripts/test/malformed.sh business
+	AD_EVENT_PROCESSOR_BPF_PROBE=1 AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE=$${AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE:-10} bash scripts/test/load/malformed.sh business
 
 bpf-resource-gate:
-	BPF_GATE_STRICT=true bash scripts/ci/bpf_resource_gate.sh
+	BPF_GATE_STRICT=true bash scripts/ci/bpf/resource.sh
 
 bpf-nightly-gate:
-	BPF_GATE_STRICT=true bash scripts/test/bpf_nightly_job.sh hot
-	BPF_GATE_STRICT=true bash scripts/test/bpf_nightly_job.sh cold
+	BPF_GATE_STRICT=true bash scripts/test/bpf/nightly_job.sh hot
+	BPF_GATE_STRICT=true bash scripts/test/bpf/nightly_job.sh cold
 
 cache-miss-gate:
 	bash scripts/perf/cache_miss_nightly_job.sh
 
 cold-path-gates:
-	bash scripts/ci/anti_slop_gate.sh
-	bash scripts/ci/diff_assertion_gate.sh
-	bash scripts/ci/sql_safety_gate.sh
-	bash scripts/ci/hot_path_static_gate.sh
-	bash scripts/ci/cold_path_static_gate.sh
+	bash scripts/ci/static/anti_slop.sh
+	bash scripts/ci/static/diff_assertion.sh
+	bash scripts/ci/static/sql_safety.sh
+	bash scripts/ci/static/hot_path_static.sh
+	bash scripts/ci/static/cold_path_static.sh
 
 escape-heap-gate:
-	bash scripts/ci/escape_heap_gate.sh
+	bash scripts/ci/static/escape_heap.sh
 
 check-scripts-layout:
-	bash scripts/ci/check_scripts_layout.sh
+	bash scripts/ci/naming/scripts_layout.sh
 
 dev-preflight-smoke:
-	bash scripts/dev/preflight.sh
+	bash scripts/dev/stack/preflight.sh
 
 seed-admin:
-	bash scripts/dev/seed_admin.sh
+	bash scripts/dev/stack/seed_admin.sh
 
 perf-gate-smoke:
-	PERF_GATE_STRICT=false bash scripts/test/gate_run.sh
+	PERF_GATE_STRICT=false bash scripts/test/load/gate_run.sh
 
 openrtb-fuzz-smoke:
 	bash scripts/test/openrtb_fuzz_smoke.sh
 
 telegram-fuzz-smoke:
-	bash scripts/test/telegram_fuzz_smoke.sh
+	bash scripts/test/telegram/fuzz_smoke.sh
 
 tg-hotpath-soak:
-	bash scripts/test/telegram_hotpath_soak.sh
+	bash scripts/test/telegram/hotpath_soak.sh
 
 telegram-hotpath-gate:
-	bash scripts/test/telegram_hotpath_gate.sh
+	bash scripts/test/telegram/hotpath_gate.sh
 
 edge-preflight:
 	bash scripts/ops/edge_preflight.sh

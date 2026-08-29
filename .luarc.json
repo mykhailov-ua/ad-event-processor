@@ -3,11 +3,16 @@
   "runtime.version": "LuaJIT",
   "runtime.path": [
     "deploy/nginx/lua/?.lua",
+    "internal/ingest/?.lua",
+    "internal/ingest/?/init.lua",
+    "internal/filter/?.lua",
+    "internal/filter/?/init.lua",
+    "internal/stream/?.lua",
     "?.lua",
     "?/init.lua"
   ],
   "workspace.library": [
-    "internal/ingestion/types",
+    "internal/ingest/types",
     "${3rd}/OpenResty/library"
   ],
   "workspace.checkThirdParty": true,
@@ -18,7 +23,12 @@
     "ARGV",
     "bit",
     "arg",
-    "wrk"
+    "wrk",
+    "request",
+    "response",
+    "setup",
+    "thread",
+    "done"
   ],
   "diagnostics.disable": [
     "need-check-nil",

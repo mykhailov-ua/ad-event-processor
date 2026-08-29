@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 type CampaignPayload struct {
 	CampaignID  string `json:"campaign_id"`
 	BudgetLimit int64  `json:"budget_limit,omitempty"`

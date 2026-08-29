@@ -3,7 +3,7 @@ name: BPF Resource Gate
 on:
   pull_request:
     paths:
-      - 'internal/ingestion/**'
+      - 'internal/ingest/**'
       - 'internal/controlplane/**'
       - 'internal/loadreport/**'
       - 'cmd/bpf-collector/**'
@@ -11,19 +11,19 @@ on:
       - 'cmd/loadgen/**'
       - 'deploy/dev/bpf/**'
       - 'scripts/test/bpf_*.sh'
-      - 'scripts/test/malformed.sh'
-      - 'scripts/ci/bpf_resource_gate.sh'
+      - 'scripts/test/load/malformed.sh'
+      - 'scripts/ci/bpf/resource.sh'
       - 'scripts/lib/bpf_collector.sh'
   push:
     branches: [main]
     paths:
-      - 'internal/ingestion/**'
+      - 'internal/ingest/**'
       - 'internal/controlplane/**'
       - 'internal/loadreport/**'
       - 'cmd/bpf-collector/**'
       - 'cmd/load-report/**'
       - 'deploy/dev/bpf/**'
-      - 'scripts/ci/bpf_resource_gate.sh'
+      - 'scripts/ci/bpf/resource.sh'
   workflow_dispatch:
     inputs:
       run_export_soak:
@@ -59,7 +59,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run BPF resource gate
-        run: bash scripts/lib/tee_ci_log.sh bpf_resource_gate.log bash scripts/ci/bpf_resource_gate.sh
+        run: bash scripts/lib/tee_ci_log.sh bpf_resource_gate.log bash scripts/ci/bpf/resource.sh
 
       - name: Upload BPF gate artifacts
         if: always()
@@ -102,7 +102,7 @@ jobs:
         run: bash scripts/perf/stabilize_cpu.sh
 
       - name: Run report export BPF soak
-        run: bash scripts/lib/tee_ci_log.sh bpf_export_soak_gate.log bash scripts/test/bpf_nightly_job.sh export
+        run: bash scripts/lib/tee_ci_log.sh bpf_export_soak_gate.log bash scripts/test/bpf/nightly_job.sh export
 
       - name: Upload BPF export soak artifacts
         if: always()

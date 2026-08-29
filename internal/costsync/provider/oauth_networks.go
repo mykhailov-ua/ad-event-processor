@@ -1,0 +1,454 @@
+package provider
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	"ad-event-processor/pkg/coldpath"
+)
+
+func RefreshSnapchatOAuth(ctx context.Context, client *http.Client, tokenURL, clientID, clientSecret string, cred Credential) (string, string, time.Time, error) {
+	if cred.RefreshToken == "" {
+		return "", "", time.Time{}, fmt.Errorf("snapchat oauth: missing refresh token")
+	}
+	if clientID == "" || clientSecret == "" {
+		return "", "", time.Time{}, fmt.Errorf("snapchat oauth: missing client id or secret")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	endpoint := tokenURL
+	if endpoint == "" {
+		endpoint = "https://accounts.snapchat.com/login/oauth2/access_token"
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", cred.RefreshToken)
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", "", time.Time{}, fmt.Errorf("snapchat oauth refresh: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", time.Time{}, fmt.Errorf("snapchat oauth refresh: status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", "", time.Time{}, err
+	}
+	if parsed.AccessToken == "" {
+		return "", "", time.Time{}, fmt.Errorf("snapchat oauth refresh: empty access_token")
+	}
+	expiresIn := parsed.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 3600
+	}
+	expires := time.Now().Add(time.Duration(expiresIn) * time.Second)
+	refresh := parsed.RefreshToken
+	if refresh == "" {
+		refresh = cred.RefreshToken
+	}
+	return parsed.AccessToken, refresh, expires, nil
+}
+
+func RefreshLinkedInOAuth(ctx context.Context, client *http.Client, tokenURL, clientID, clientSecret string, cred Credential) (string, string, time.Time, error) {
+	if cred.RefreshToken == "" {
+		return "", "", time.Time{}, fmt.Errorf("linkedin oauth: missing refresh token")
+	}
+	if clientID == "" || clientSecret == "" {
+		return "", "", time.Time{}, fmt.Errorf("linkedin oauth: missing client id or secret")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	endpoint := tokenURL
+	if endpoint == "" {
+		endpoint = "https://www.linkedin.com/oauth/v2/accessToken"
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", cred.RefreshToken)
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", "", time.Time{}, fmt.Errorf("linkedin oauth refresh: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", time.Time{}, fmt.Errorf("linkedin oauth refresh: status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", "", time.Time{}, err
+	}
+	if parsed.AccessToken == "" {
+		return "", "", time.Time{}, fmt.Errorf("linkedin oauth refresh: empty access_token")
+	}
+	expiresIn := parsed.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 1800
+	}
+	expires := time.Now().Add(time.Duration(expiresIn) * time.Second)
+	refresh := parsed.RefreshToken
+	if refresh == "" {
+		refresh = cred.RefreshToken
+	}
+	return parsed.AccessToken, refresh, expires, nil
+}
+
+func RefreshPinterestOAuth(ctx context.Context, client *http.Client, tokenURL, clientID, clientSecret string, cred Credential) (string, string, time.Time, error) {
+	if cred.RefreshToken == "" {
+		return "", "", time.Time{}, fmt.Errorf("pinterest oauth: missing refresh token")
+	}
+	if clientID == "" || clientSecret == "" {
+		return "", "", time.Time{}, fmt.Errorf("pinterest oauth: missing client id or secret")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	endpoint := tokenURL
+	if endpoint == "" {
+		endpoint = "https://api.pinterest.com/v5/oauth/token"
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", cred.RefreshToken)
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", "", time.Time{}, fmt.Errorf("pinterest oauth refresh: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", time.Time{}, fmt.Errorf("pinterest oauth refresh: status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", "", time.Time{}, err
+	}
+	if parsed.AccessToken == "" {
+		return "", "", time.Time{}, fmt.Errorf("pinterest oauth refresh: empty access_token")
+	}
+	expiresIn := parsed.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 3600
+	}
+	expires := time.Now().Add(time.Duration(expiresIn) * time.Second)
+	refresh := parsed.RefreshToken
+	if refresh == "" {
+		refresh = cred.RefreshToken
+	}
+	return parsed.AccessToken, refresh, expires, nil
+}
+
+func RefreshTrafficStarsOAuth(ctx context.Context, client *http.Client, baseURL string, cred Credential) (string, time.Time, error) {
+	offlineKey := strings.TrimSpace(cred.RefreshToken)
+	if offlineKey == "" {
+		offlineKey = strings.TrimSpace(cred.APIKey)
+	}
+	if offlineKey == "" {
+		return "", time.Time{}, fmt.Errorf("trafficstars oauth: missing offline api key")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	base := baseURL
+	if base == "" {
+		base = "https://api.trafficstars.com"
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "refresh_token")
+	form.Set("refresh_token", offlineKey)
+
+	endpoint := strings.TrimRight(base, "/") + "/v1/auth/token"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("trafficstars oauth refresh: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", time.Time{}, fmt.Errorf("trafficstars oauth refresh: status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", time.Time{}, err
+	}
+	if parsed.AccessToken == "" {
+		return "", time.Time{}, fmt.Errorf("trafficstars oauth refresh: empty access_token")
+	}
+	expiresIn := parsed.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 36000
+	}
+	expires := time.Now().Add(time.Duration(expiresIn) * time.Second)
+	return parsed.AccessToken, expires, nil
+}
+
+func RefreshRevcontentOAuth(ctx context.Context, client *http.Client, baseURL string, cred Credential) (string, time.Time, error) {
+	clientID := strings.TrimSpace(cred.AccountID)
+	if clientID == "" {
+		clientID = strings.TrimSpace(cred.ExtraConfig["client_id"])
+	}
+	clientSecret := strings.TrimSpace(cred.APIKey)
+	if clientSecret == "" {
+		clientSecret = strings.TrimSpace(cred.ExtraConfig["client_secret"])
+	}
+	if clientID == "" || clientSecret == "" {
+		return "", time.Time{}, fmt.Errorf("revcontent oauth: missing client_id or client_secret")
+	}
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	base := baseURL
+	if base == "" {
+		base = "https://api.revcontent.io"
+	}
+
+	form := url.Values{}
+	form.Set("grant_type", "client_credentials")
+	form.Set("client_id", clientID)
+	form.Set("client_secret", clientSecret)
+
+	endpoint := strings.TrimRight(base, "/") + "/oauth/token"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("revcontent oauth: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", time.Time{}, fmt.Errorf("revcontent oauth: status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var parsed struct {
+		AccessToken string `json:"access_token"`
+		ExpiresIn   int64  `json:"expires_in"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", time.Time{}, err
+	}
+	if parsed.AccessToken == "" {
+		return "", time.Time{}, fmt.Errorf("revcontent oauth: empty access_token")
+	}
+	expiresIn := parsed.ExpiresIn
+	if expiresIn <= 0 {
+		expiresIn = 24 * 3600
+	}
+	expires := time.Now().Add(time.Duration(expiresIn) * time.Second)
+	return parsed.AccessToken, expires, nil
+}
+
+func mondiadClientCredentials(cred Credential) (clientID, clientSecret string, err error) {
+	clientID = strings.TrimSpace(cred.AccountID)
+	if clientID == "" {
+		clientID = strings.TrimSpace(cred.ExtraConfig["client_id"])
+	}
+	clientSecret = strings.TrimSpace(cred.APIKey)
+	if clientSecret == "" {
+		clientSecret = strings.TrimSpace(cred.ExtraConfig["client_secret"])
+	}
+	if clientID == "" || clientSecret == "" {
+		return "", "", fmt.Errorf("mondiad oauth: missing client_id or client_secret")
+	}
+	return clientID, clientSecret, nil
+}
+
+func RefreshMondiadOAuth(ctx context.Context, client *http.Client, baseURL string, cred Credential) (accessToken, refreshToken string, expires time.Time, err error) {
+	if client == nil {
+		client = &http.Client{Timeout: 15 * time.Second}
+	}
+	base := baseURL
+	if base == "" {
+		base = mondiadAPIBaseDefault
+	}
+	if strings.TrimSpace(cred.RefreshToken) != "" {
+		return mondiadRefreshToken(ctx, client, base, cred.RefreshToken)
+	}
+	return MondiadLogin(ctx, client, base, cred)
+}
+
+func MondiadLogin(ctx context.Context, client *http.Client, base string, cred Credential) (accessToken, refreshToken string, expires time.Time, err error) {
+	clientID, clientSecret, err := mondiadClientCredentials(cred)
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	payload, err := json.Marshal(map[string]string{
+		"clientId":     clientID,
+		"clientSecret": clientSecret,
+	})
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	endpoint := strings.TrimRight(base, "/") + "/api/1.0/auth/login"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return mondiadTokenFromRequest(ctx, client, req)
+}
+
+func mondiadRefreshToken(ctx context.Context, client *http.Client, base, refresh string) (accessToken, refreshToken string, expires time.Time, err error) {
+	payload, err := json.Marshal(map[string]string{"refreshToken": refresh})
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	endpoint := strings.TrimRight(base, "/") + "/api/1.0/auth/refreshToken"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	return mondiadTokenFromRequest(ctx, client, req)
+}
+
+func mondiadTokenFromRequest(ctx context.Context, client *http.Client, req *http.Request) (accessToken, refreshToken string, expires time.Time, err error) {
+	resp, err := client.Do(req)
+	if err != nil {
+		coldpath.CloseHTTPResponse(resp)
+		return "", "", time.Time{}, err
+	}
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if err != nil {
+		return "", "", time.Time{}, fmt.Errorf("mondiad oauth: read body: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", time.Time{}, fmt.Errorf("mondiad oauth: status %d: %s", resp.StatusCode, string(body))
+	}
+	var parsed struct {
+		Data struct {
+			Token           string `json:"token"`
+			RefreshToken    string `json:"refreshToken"`
+			DurationSeconds int32  `json:"durationSeconds"`
+			Expired         string `json:"expired"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", "", time.Time{}, err
+	}
+	if parsed.Data.Token == "" {
+		return "", "", time.Time{}, fmt.Errorf("mondiad oauth: empty token")
+	}
+	expiresAt := time.Now().Add(time.Duration(parsed.Data.DurationSeconds) * time.Second)
+	if parsed.Data.DurationSeconds <= 0 {
+		expiresAt = time.Now().Add(55 * time.Second)
+	}
+	if parsed.Data.Expired != "" {
+		if t, parseErr := time.Parse(time.RFC3339, parsed.Data.Expired); parseErr == nil {
+			expiresAt = t
+		}
+	}
+	return parsed.Data.Token, parsed.Data.RefreshToken, expiresAt, nil
+}

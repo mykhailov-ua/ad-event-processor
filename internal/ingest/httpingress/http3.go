@@ -1,0 +1,115 @@
+package httpingress
+
+const (
+	h3FrameData        uint64 = 0x0
+	h3FrameHeaders     uint64 = 0x1
+	h3FrameCancelPush  uint64 = 0x3
+	h3FrameSettings    uint64 = 0x4
+	h3FramePushPromise uint64 = 0x5
+	h3FrameGoAway      uint64 = 0x7
+	h3FrameMaxPushID   uint64 = 0xd
+)
+
+type H3Frame struct {
+	Type    uint64
+	Payload []byte
+}
+
+func quicDecodeVarint(data []byte, off int) (uint64, int, error) {
+	n := len(data)
+	if off >= n {
+		return 0, 0, ErrIncomplete
+	}
+	_ = data[n-1]
+	first := data[off]
+	off++
+	prefix := first >> 6
+	switch prefix {
+	case 0:
+		return uint64(first & 0x3f), off, nil
+	case 1:
+		if off >= n {
+			return 0, 0, ErrIncomplete
+		}
+		return uint64(first&0x3f)<<8 | uint64(data[off]), off + 1, nil
+	case 2:
+		if off+3 > n {
+			return 0, 0, ErrIncomplete
+		}
+		return uint64(first&0x3f)<<24 | uint64(data[off])<<16 | uint64(data[off+1])<<8 | uint64(data[off+2]), off + 3, nil
+	default:
+		if off+7 > n {
+			return 0, 0, ErrIncomplete
+		}
+		var v uint64
+		v |= uint64(first&0x3f) << 56
+		for i := range 7 {
+			v |= uint64(data[off+i]) << (48 - i*8)
+		}
+		return v, off + 7, nil
+	}
+}
+
+func h3DecodeFrame(buf []byte) (H3Frame, int, error) {
+	var fr H3Frame
+	off := 0
+	typ, off, err := quicDecodeVarint(buf, off)
+	if err != nil {
+		return fr, 0, err
+	}
+	length, off, err := quicDecodeVarint(buf, off)
+	if err != nil {
+		return fr, 0, err
+	}
+	if length > 1<<20 {
+		return fr, 0, ErrInvalid
+	}
+	if off+int(length) > len(buf) {
+		return fr, 0, ErrIncomplete
+	}
+	fr.Type = typ
+	if length > 0 {
+		fr.Payload = buf[off : off+int(length)]
+	}
+	return fr, off + int(length), nil
+}
+
+func h3DecodeQPACKBlock(block []byte, req *Request) error {
+	return h2DecodeHeadersBlock(block, req)
+}
+
+func H3ParseRequestFrames(buf []byte, maxBody int64) (consumed int, req Request, err error) {
+	off := 0
+	gotHeaders := false
+	for off < len(buf) {
+		fr, n, ferr := h3DecodeFrame(buf[off:])
+		if ferr != nil {
+			return off, req, ferr
+		}
+		off += n
+		switch fr.Type {
+		case h3FrameHeaders:
+			if err := h3DecodeQPACKBlock(fr.Payload, &req); err != nil {
+				return off, req, err
+			}
+			gotHeaders = true
+		case h3FrameData:
+			if !gotHeaders {
+				return off, req, ErrInvalid
+			}
+			if int64(len(fr.Payload)) > maxBody {
+				return off, req, ErrPayloadTooLarge
+			}
+			req.Body = fr.Payload
+			req.ContentLength = len(fr.Payload)
+			req.HasContentLength = true
+			return off, req, nil
+		default:
+			continue
+		}
+	}
+	if gotHeaders && len(req.Body) == 0 && !req.HasContentLength {
+		return off, req, nil
+	}
+	return off, req, ErrIncomplete
+}

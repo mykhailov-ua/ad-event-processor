@@ -34,6 +34,9 @@ type (
 )
 
 var (
+	_ outbox.OutboxInfraHost = (*Service)(nil)
+	_ outbox.OutboxRedisHost = (*Service)(nil)
+	_ outbox.OutboxApplyHost = (*Service)(nil)
 	_ outbox.Host            = (*Service)(nil)
 	_ outbox.RegionRelayHost = (*regionRelayHost)(nil)
 )

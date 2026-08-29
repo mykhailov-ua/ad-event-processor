@@ -44,7 +44,6 @@ func FcapLookupKey(prefixHash, userHash uint64) uint64 {
 	return h
 }
 
-//go:inline
 func (fa *FcapSnapshot) FcapCount(prefixHash, userHash uint64) (uint32, bool) {
 	if fa == nil || userHash == 0 || prefixHash == 0 {
 		return 0, false

@@ -13,7 +13,7 @@ import (
 	"ad-event-processor/internal/costsync"
 	"ad-event-processor/internal/database"
 	db "ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
+	"ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/ledger"
 	"ad-event-processor/internal/notify"
 	"ad-event-processor/internal/platformsync"
@@ -72,7 +72,7 @@ func Run(ctx context.Context, cfg *config.Config, opts Options) error {
 
 	if opts.Management {
 		slog.Info("control: in-process module wiring enabled")
-		serveOpts.RtbBidShadeSim = ingestion.RunRtbBidShadeSim
+		serveOpts.RtbBidShadeSim = ingest.RunRtbBidShadeSim
 		serveOpts.StartControlServers = StartControlServers
 		err := controlplane.ServeWithOptions(ctx, cfg, serveOpts)
 		wg.Wait()
@@ -107,7 +107,7 @@ func serveMarginGuard(ctx context.Context, cfg *config.Config, inProcess *notify
 	defer pool.Close()
 
 	queries := db.New(pool)
-	registry := ingestion.NewRegistry(queries)
+	registry := ingest.NewRegistry(queries)
 	registry.SetPool(pool)
 	if _, err := registry.Sync(ctx); err != nil {
 		slog.Warn("margin guard initial registry sync failed", "error", err)

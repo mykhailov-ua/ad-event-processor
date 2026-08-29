@@ -1,8 +1,12 @@
 package controlplane
 
 import (
+	"context"
+	"fmt"
+
 	"ad-event-processor/internal/automation"
 	"ad-event-processor/internal/campaign"
+	campaignworker "ad-event-processor/internal/campaign/worker"
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/flow"
@@ -11,15 +15,13 @@ import (
 	"ad-event-processor/internal/outbox"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/pkg/coldpath"
-	"context"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func (s *Service) AutoscaleBudgets(ctx context.Context, syncWorkers []*domain.SyncWorker) error {
-	return campaign.RunAutoscaleBudgetsTick(ctx, s, syncWorkers)
+	return campaignworker.RunAutoscaleBudgetsTick(ctx, s, syncWorkers)
 }
 
 type campaignExperimentsHost struct {
@@ -55,7 +57,7 @@ func (h campaignImportExportHost) Pool() *pgxpool.Pool {
 }
 
 func (h campaignImportExportHost) AssertMediaBuyerCampaignAccess(ctx context.Context, row db.Campaign) error {
-	return assertMediaBuyerCampaignAccess(ctx, row)
+	return campaign.AssertMediaBuyerCampaignAccess(ctx, row)
 }
 
 func (h campaignImportExportHost) GetFlow(ctx context.Context, flowID uuid.UUID) (flow.DTO, error) {

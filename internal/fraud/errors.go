@@ -1,10 +1,14 @@
 package fraud
 
-import "errors"
+import (
+	"errors"
+
+	adminhooks "ad-event-processor/internal/fraud/admin_hooks"
+)
 
 var (
 	ErrScorerNotRegistered   = errors.New("scorer not registered")
 	ErrOutboxBackpressure    = errors.New("management outbox backpressure: pending queue full")
-	ErrManagementUnavailable = errors.New("management blacklist API unavailable")
-	ErrInvalidIP             = errors.New("invalid IP address")
+	ErrManagementUnavailable = adminhooks.ErrManagementUnavailable
+	ErrInvalidIP             = adminhooks.ErrInvalidIP
 )

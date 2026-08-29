@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-func ListRuns(ctx context.Context, host Host, service string, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
+func ListRuns(ctx context.Context, host listRunsHost, service string, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
 	switch service {
 	case "", "all":
 		service = "all"
@@ -84,7 +84,7 @@ func ListRuns(ctx context.Context, host Host, service string, limit, offset int3
 	return runs, total, nil
 }
 
-func listPaymentReconRuns(ctx context.Context, host Host, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
+func listPaymentReconRuns(ctx context.Context, host ReconInfraHost, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
 	pool := host.PaymentQueryPool()
 
 	var total int64

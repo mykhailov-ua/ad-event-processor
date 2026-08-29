@@ -1,13 +1,14 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"ad-event-processor/internal/campaign"
+	ctrlhttp "ad-event-processor/internal/control/http"
+
+	"ad-event-processor/internal/campaign/importexport"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/database"
@@ -166,7 +167,7 @@ func (s *Service) InitReportJobRunner(exportDir string) *reportjob.ReportJobRunn
 			WriteReport: func(ctx context.Context, path string, spec reportjob.ReportJobSpec) error {
 				return reports.WriteReportExport(ctx, exportDeps, path, spec)
 			},
-			WriteCampaignImportValidation: campaign.WriteCampaignImportValidationJSON,
+			WriteCampaignImportValidation: importexport.WriteCampaignImportValidationJSON,
 		})
 	}
 	return s.reportJobRunner
@@ -190,42 +191,4 @@ func (s *Service) StartReportJobWorker(ctx context.Context) {
 		runner.StartWorker(ctx)
 	})
 	slog.Info("report job worker starting")
-}
-
-func (s *Service) StartReportScheduleWorker(ctx context.Context) {
-	if s == nil || s.pool == nil {
-		return
-	}
-	runner := s.ReportJobRunner()
-	if runner == nil || !runner.PgEnabled() {
-		return
-	}
-	w := reportjob.NewReportScheduleWorker(s.pool, runner)
-	s.StartBackgroundWorker(func() {
-		w.Start(ctx)
-	})
-	slog.Info("report schedule worker starting")
-}
-
-func reportExportDirFromWire() string {
-	return reportjob.DefaultReportExportDirPath()
-}
-
-func wireReportExportHooks() {
-	labelFn := func(ctx context.Context) string {
-		if user, ok := GetUser(ctx); ok {
-			return user.UserID.String()
-		}
-		return ""
-	}
-	deploymentFn := func() string {
-		if diag, ok := licenseWatcherDiagnostics(); ok {
-			return diag.DeploymentID
-		}
-		return ""
-	}
-	reports.ExportActorLabel = labelFn
-	reports.ExportDeploymentID = deploymentFn
-	reportjob.ExportActorLabel = labelFn
-	reportjob.ExportDeploymentID = deploymentFn
 }

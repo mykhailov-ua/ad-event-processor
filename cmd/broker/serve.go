@@ -1,18 +1,10 @@
 package main
 
 import (
-	"context"
 	"flag"
-	"log/slog"
 	"os"
-	"os/signal"
 	"strings"
-	"syscall"
 
-	broker "ad-event-processor/internal/broker"
-	"ad-event-processor/internal/config"
-	"ad-event-processor/pkg/broker/log"
-	"ad-event-processor/pkg/lifecycle"
 	"ad-event-processor/pkg/netaddr"
 	"ad-event-processor/pkg/runtimepaths"
 )
@@ -49,42 +41,13 @@ func runServe(args []string) {
 		}
 	}
 
-	maxSeg := int64(*maxSegMB) * 1024 * 1024
-	indexInterval := int64(*indexKB) * 1024
-
-	srv := broker.NewServer(*addr, *dataDir, maxSeg, indexInterval)
-	srv.SetHealthAddr(*healthAddr)
-	srv.SetShutdownTimeout(config.LifecycleShutdownTimeout())
-
-	coord, err := broker.NewCoordinator(*nodeID, *addr, *redisURL, srv)
-	if err != nil {
-		slog.Error("broker coordinator init failed", "error", err)
-		os.Exit(1)
-	}
-	srv.SetCoordinator(coord)
-	srv.SetDurability(log.DefaultDurabilityConfig())
-
-	ctx, stop := lifecycle.NotifyContext(context.Background())
-	coord.Start(ctx)
-
-	if err := srv.Start(); err != nil {
-		slog.Error("broker server start failed", "error", err)
-		stop()
-		os.Exit(1)
-	}
-
-	slog.Info("broker listening",
-		"addr", srv.Addr(),
-		"health_addr", srv.HealthAddr(),
-		"data_dir", *dataDir,
-	)
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-	<-sig
-
-	srv.Stop()
-	coord.Stop()
-	stop()
-	slog.Info("broker shutdown complete")
+	wireAndRunServe(serveWireConfig{
+		Addr:          *addr,
+		HealthAddr:    *healthAddr,
+		DataDir:       *dataDir,
+		NodeID:        *nodeID,
+		RedisURL:      *redisURL,
+		MaxSegBytes:   int64(*maxSegMB) * 1024 * 1024,
+		IndexInterval: int64(*indexKB) * 1024,
+	})
 }

@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+
+	"ad-event-processor/internal/domain/shard"
 )
 
 const (
@@ -106,8 +108,8 @@ func DecodeTCPAckPayload(payload []byte, ack *TCPAckPayload) bool {
 	return true
 }
 
-func EncodeTCPLimitsPayload(dst []byte, limits *UDPControlLimits) int {
-	return udpEncodeShardLimits(dst, limits)
+func EncodeTCPLimitsPayload(dst []byte, limits *shard.UDPControlLimits) int {
+	return shard.UDPEncodeShardLimits(dst, limits)
 }
 
 func computeTCPControlHMAC(secret, headerPrefix []byte, payload []byte) [tcpControlHMACSize]byte {

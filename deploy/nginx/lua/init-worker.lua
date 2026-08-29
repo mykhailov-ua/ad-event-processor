@@ -11,11 +11,11 @@ if ngx.worker.id() ~= 0 then
 end
 
 local CONFIG_SYNC_INTERVAL = 5
-local BLACKLIST_SYNC_INTERVAL = tonumber(os.getenv("EDGE_BLACKLIST_SYNC_INTERVAL_SEC") or "") or 5
-local BLACKLIST_CHANGELOG_DRAIN_INTERVAL = tonumber(os.getenv("EDGE_BLACKLIST_CHANGELOG_DRAIN_SEC") or "") or 1
-local SLOT_MAP_SYNC_INTERVAL = tonumber(os.getenv("SLOT_MAP_SYNC_INTERVAL_SEC") or "") or 10
-local NODE_WEIGHTS_SYNC_INTERVAL = tonumber(os.getenv("NODE_WEIGHTS_SYNC_INTERVAL_SEC") or "") or 10
-local TCP_FP_SYNC_INTERVAL = tonumber(os.getenv("TCP_FP_SYNC_INTERVAL_SEC") or "") or 2
+local BLACKLIST_SYNC_INTERVAL = tonumber(os.getenv "EDGE_BLACKLIST_SYNC_INTERVAL_SEC" or "") or 5
+local BLACKLIST_CHANGELOG_DRAIN_INTERVAL = tonumber(os.getenv "EDGE_BLACKLIST_CHANGELOG_DRAIN_SEC" or "") or 1
+local SLOT_MAP_SYNC_INTERVAL = tonumber(os.getenv "SLOT_MAP_SYNC_INTERVAL_SEC" or "") or 10
+local NODE_WEIGHTS_SYNC_INTERVAL = tonumber(os.getenv "NODE_WEIGHTS_SYNC_INTERVAL_SEC" or "") or 10
+local TCP_FP_SYNC_INTERVAL = tonumber(os.getenv "TCP_FP_SYNC_INTERVAL_SEC" or "") or 2
 
 local function sync_edge_config(premature)
     if premature then
@@ -121,7 +121,7 @@ if not timer_ok then
     ngx.log(ngx.ERR, "failed to start tcp fp sync: ", timer_err)
 end
 
-local ok, err = hc.spawn_checker({
+local ok, err = hc.spawn_checker {
     shm = "healthcheck",
     upstream = "trackers",
     type = "http",
@@ -132,7 +132,7 @@ local ok, err = hc.spawn_checker({
     rise = 2,
     valid_statuses = { 200 },
     concurrency = 4,
-})
+}
 if not ok then
     ngx.log(ngx.ERR, "failed to spawn upstream health checker: ", err)
 end

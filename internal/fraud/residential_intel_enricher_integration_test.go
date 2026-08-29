@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/edge"
+	"ad-event-processor/internal/fraud/features"
 	"ad-event-processor/pkg/piihash"
 
 	"github.com/stretchr/testify/assert"
@@ -30,13 +31,13 @@ func TestResidentialIntelEnricher_integration_clickhouseCache(t *testing.T) {
 	ip := "203.0.113.91"
 	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{IP: ip, TCPHash: 0x123, SeenAt: time.Now().UTC()}))
 
-	enricher := NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
-		Provider: &StubResidentialIntelProvider{
-			Results: map[string]ResidentialIntelResult{
+	enricher := features.NewResidentialIntelEnricher(features.ResidentialIntelEnricherConfig{
+		Provider: &features.StubResidentialIntelProvider{
+			Results: map[string]features.ResidentialIntelResult{
 				ip: {ResidentialProxy: true, VPN: true, Proxy: true},
 			},
 		},
-		Cache:           NewResidentialIntelCache(redisClient, time.Hour),
+		Cache:           features.NewResidentialIntelCache(redisClient, time.Hour),
 		ClickHouseWrite: conn,
 		RedisClient:     redisClient,
 		FeedDir:         t.TempDir(),
@@ -73,13 +74,13 @@ func TestResidentialIntelEnricher_integration_redisCacheAndFeed(t *testing.T) {
 	require.NoError(t, edge.Record(ctx, redisClient, edge.Entry{IP: ip, TCPHash: 0xabc, SeenAt: time.Now().UTC()}))
 
 	feedDir := t.TempDir()
-	enricher := NewResidentialIntelEnricher(ResidentialIntelEnricherConfig{
-		Provider: &StubResidentialIntelProvider{
-			Results: map[string]ResidentialIntelResult{
+	enricher := features.NewResidentialIntelEnricher(features.ResidentialIntelEnricherConfig{
+		Provider: &features.StubResidentialIntelProvider{
+			Results: map[string]features.ResidentialIntelResult{
 				ip: {ResidentialProxy: true, VPN: true},
 			},
 		},
-		Cache:       NewResidentialIntelCache(redisClient, time.Hour),
+		Cache:       features.NewResidentialIntelCache(redisClient, time.Hour),
 		RedisClient: redisClient,
 		FeedDir:     feedDir,
 		RecentLim:   8,
@@ -91,7 +92,7 @@ func TestResidentialIntelEnricher_integration_redisCacheAndFeed(t *testing.T) {
 	assert.Equal(t, 1, stats.LookedUp)
 	assert.Equal(t, 1, stats.FeedAppended)
 
-	cached, hit, err := enricher.cache.Get(ctx, ip)
+	cached, hit, err := enricher.Cache.Get(ctx, ip)
 	require.NoError(t, err)
 	require.True(t, hit)
 	assert.True(t, cached.ResidentialProxy)

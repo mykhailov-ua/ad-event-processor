@@ -69,7 +69,7 @@ local function env_on(name)
 end
 
 package.loaded["edge-tarpit"] = nil
-local edge_tarpit = require("edge-tarpit")
+local edge_tarpit = require "edge-tarpit"
 edge_tarpit.set_getenv_for_test(env_off)
 sleep_calls = {}
 metrics_store = {}
@@ -82,7 +82,7 @@ assert_eq(#sleep_calls, 0, "disabled tarpit must not sleep")
 assert_eq(metrics_store.tarpit_total or 0, 0, "disabled tarpit must not record metrics")
 
 package.loaded["edge-tarpit"] = nil
-edge_tarpit = require("edge-tarpit")
+edge_tarpit = require "edge-tarpit"
 edge_tarpit.set_getenv_for_test(env_on)
 sleep_calls = {}
 metrics_store = {}

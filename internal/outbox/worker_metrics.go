@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
-	"ad-event-processor/internal/metrics"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/internal/metrics"
 )
 
 func (w *Worker) ApplyQuotaRepair(ctx context.Context, eventID int64, payload []byte) error {
@@ -36,7 +36,7 @@ func (w *Worker) recordOutboxLagMetrics(ctx context.Context) {
 		SELECT COUNT(*)::bigint,
 		 COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::float8
 		FROM outbox_events
-		WHERE status = 'PENDING'`).Scan(&pending, & oldestSeconds)
+		WHERE status = 'PENDING'`).Scan(&pending, &oldestSeconds)
 	if err != nil {
 		if ctx.Err() != nil || database.IsShutdownError(err) {
 			return

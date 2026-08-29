@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
@@ -23,7 +24,7 @@ func TestLicenseWatcher_offlineGraceBlocksIngest(t *testing.T) {
 	pub, priv, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 
-	claims := LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      uuid.NewString(),
 		DeploymentID: uuid.NewString(),
@@ -43,14 +44,14 @@ func TestLicenseWatcher_offlineGraceBlocksIngest(t *testing.T) {
 	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_RENEW_BEFORE_DAYS"), "7")
 
 	w := NewLicenseWatcher(nil, nil, pub)
-	w.policy = HeartbeatPolicy{OfflineGraceDays: 14, RenewBeforeDays: 7}
+	w.policy = entitlements.HeartbeatPolicy{OfflineGraceDays: 14, RenewBeforeDays: 7}
 	w.mu.Lock()
 	w.offlineSince = time.Now().Add(-15 * 24 * time.Hour)
 	w.mu.Unlock()
 
 	require.NoError(t, w.verifyAndReload(context.Background()))
 	state, _ := w.GetState()
-	assert.Equal(t, StateExpired, state)
-	assert.False(t, IngestAllowed(state))
+	assert.Equal(t, entitlements.StateExpired, state)
+	assert.False(t, entitlements.IngestAllowed(state))
 	t.Log("fault_proof fault=license_offline_grace_expired subsystem=licensing state=EXPIRED")
 }

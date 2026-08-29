@@ -159,7 +159,7 @@ func batchIncrementUsageMeters(ctx context.Context, pool *pgxpool.Pool, meter st
 	}
 	br := pool.SendBatch(ctx, batch)
 	defer func() { _ = br.Close() }()
-	for i := 0; i < batch.Len(); i++ {
+	for i := range batch.Len() {
 		if _, err := br.Exec(); err != nil {
 			return fmt.Errorf("increment usage meter batch item %d: %w", i, err)
 		}

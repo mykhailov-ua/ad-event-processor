@@ -9,6 +9,8 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/metrics"
+
+	"ad-event-processor/internal/licensing/verify"
 )
 
 type HostActivationFunc func(ctx context.Context, claims *LicenseClaims, hostFingerprint string) error
@@ -107,7 +109,7 @@ func RecheckLicenseFile(ctx context.Context, cfg FileLicenseRecheckConfig) (File
 		}
 	}
 	if err == nil && config.LicenseSeedCouplingEnabled() {
-		if macErr := verifyOrBootstrapLicenseMAC(cfg.Path, cfg.PubKey, hostFP); macErr != nil {
+		if macErr := verify.VerifyOrBootstrapLicenseMAC(cfg.Path, cfg.PubKey, hostFP); macErr != nil {
 			err = macErr
 		}
 	}

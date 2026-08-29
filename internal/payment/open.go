@@ -10,19 +10,22 @@ import (
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/notify"
+	checkout "ad-event-processor/internal/payment/checkout"
+	settlement "ad-event-processor/internal/payment/settlement"
+	webhook "ad-event-processor/internal/payment/webhook"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Module struct {
-	Handler          *Handler
+	Handler          *checkout.Handler
 	pool             *pgxpool.Pool
 	cfg              *config.Config
 	svc              *Service
-	outbox           *OutboxWorker
-	settlementLedger *SettlementLedgerClient
-	cryptoHold       *CryptoHoldWorker
-	recon            *ReconService
+	outbox           *settlement.OutboxWorker
+	settlementLedger *settlement.SettlementLedgerClient
+	cryptoHold       *settlement.CryptoHoldWorker
+	recon            *settlement.ReconService
 	cancel           context.CancelFunc
 	notifierAPI      notify.NotifierAPI
 }
@@ -73,28 +76,35 @@ func (m *Module) StartWorkers(ctx context.Context) {
 	workerCtx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
 
-	var notifierClient *NotifierClient
+	var notifierClient *settlement.NotifierClient
 	if m.notifierAPI != nil {
-		notifierClient = NewInProcessNotifierClient(m.notifierAPI)
+		notifierClient = settlement.NewInProcessNotifierClient(m.notifierAPI)
 	} else if m.cfg.OpsAlertsEnabled() {
 		var err error
-		notifierClient, _, err = ResolveNotifierClient(workerCtx, m.cfg)
+		notifierClient, _, err = settlement.ResolveNotifierClient(workerCtx, m.cfg)
 		if err != nil {
 			slog.Error("payment module notifier client failed", "error", err)
 		}
 	}
 
-	m.outbox.SetSettlementFailedAlerter(NewSettlementFailedAlerter(notifierClient, m.cfg))
+	m.outbox.SetSettlementFailedAlerter(settlement.NewSettlementFailedAlerter(notifierClient, m.cfg))
 	go m.startWebhookServer(workerCtx)
 	go m.outbox.Start(workerCtx, 100*time.Millisecond)
 	go m.cryptoHold.Start(workerCtx, 100*time.Millisecond)
 
 	if m.recon != nil {
-		reconAlerter := NewFinancialReconAlerter(notifierClient, m.cfg)
-		m.recon.alerter = reconAlerter
+		reconAlerter := settlement.NewFinancialReconAlerter(notifierClient, m.cfg)
+		m.recon.SetFinancialReconAlerter(reconAlerter)
 		go m.recon.StartWorker(workerCtx, time.Duration(m.cfg.PaymentFinancialReconIntervalMs)*time.Millisecond)
 		slog.Info("payment financial recon worker started", "interval_ms", m.cfg.PaymentFinancialReconIntervalMs)
 	}
+}
+
+func (m *Module) API(token string) checkout.PaymentAPI {
+	if m == nil || m.Handler == nil {
+		return nil
+	}
+	return checkout.NewPaymentAPI(m.Handler, token)
 }
 
 func OpenAPI(ctx context.Context, cfg *config.Config) (domain.PaymentAPI, func(), error) {
@@ -125,17 +135,17 @@ func OpenModule(ctx context.Context, cfg *config.Config) (*Module, error) {
 		pool.Close()
 		return nil, err
 	}
-	LogProviderMode(cfg)
+	checkout.LogProviderMode(cfg)
 	svc := NewService(pool, cfg)
-	outboxWorker := NewOutboxWorker(pool, cfg)
-	settlementLedger := NewSettlementLedgerClient(cfg)
-	cryptoHoldWorker := NewCryptoHoldWorker(pool, cfg)
-	var reconWorker *ReconService
+	outboxWorker := settlement.NewOutboxWorker(pool, cfg)
+	settlementLedger := settlement.NewSettlementLedgerClient(cfg)
+	cryptoHoldWorker := settlement.NewCryptoHoldWorker(pool, cfg)
+	var reconWorker *settlement.ReconService
 	if cfg.PaymentFinancialReconIntervalMs > 0 {
-		reconWorker = NewReconService(pool, settlementLedger, nil)
+		reconWorker = settlement.NewReconService(pool, settlementLedger, nil)
 	}
 	return &Module{
-		Handler:          NewHandler(svc, cfg),
+		Handler:          checkout.NewHandler(svc.checkout, svc.webhook, cfg),
 		pool:             pool,
 		cfg:              cfg,
 		svc:              svc,
@@ -151,8 +161,8 @@ func (m *Module) startWebhookServer(ctx context.Context) {
 		return
 	}
 	mux := http.NewServeMux()
-	NewWebhookHandler(m.svc, m.cfg).RegisterRoutes(mux)
-	registerLegacyUIRoutes(mux)
+	webhook.NewWebhookHandler(m.svc.webhook, m.cfg).RegisterRoutes(mux)
+	checkout.RegisterLegacyUIRoutes(mux)
 
 	httpServer := &http.Server{
 		Addr:              ":" + m.cfg.PaymentWebhookPort,

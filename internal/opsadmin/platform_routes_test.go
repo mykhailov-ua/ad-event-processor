@@ -37,8 +37,8 @@ func TestOpsNodeWeights_ReturnsTrackerPeers(t *testing.T) {
 	mux := http.NewServeMux()
 	cfg := &config.Config{RegionCode: 1, MultiRegionEnabled: true}
 	RegisterOpsRoutes(t.Context(), mux, PlatformRoutesDeps{
-		Pool:        pool,
-		Config:      cfg,
+		Pool:         pool,
+		Config:       cfg,
 		LicenseReady: func() bool { return true },
 	})
 

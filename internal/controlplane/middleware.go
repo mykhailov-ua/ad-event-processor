@@ -2,360 +2,163 @@ package controlplane
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strings"
 
-	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
 	ctrlhttp "ad-event-processor/internal/control/http"
+	"ad-event-processor/internal/controlplane/adminauth"
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/internal/costsync"
+	"ad-event-processor/internal/fraudadmin"
 	"ad-event-processor/internal/identity"
-	"ad-event-processor/pkg/httpresponse"
+	"ad-event-processor/internal/platformsync"
+	"ad-event-processor/internal/reportjob"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-type contextKey string
+type AuthMiddleware = adminauth.Middleware
 
-const UserContextKey contextKey = "authenticated_user"
+const UserContextKey = adminauth.UserContextKey
 
 func GetUser(ctx context.Context) (authz.AuthenticatedUser, bool) {
 	return authz.GetUser(ctx)
 }
 
-type AuthMiddleware struct {
-	tokenMaker    identity.Maker
-	redisClient   redis.UniversalClient
-	controlRdbs   []redis.UniversalClient
-	cfg           *config.Config
-	authClient    *identity.AuthClient
-	apiKeyLimiter *ctrlhttp.APIKeyRateLimiter
-	policy        *authz.Store
-	pool          *pgxpool.Pool
-}
-
 func NewAuthMiddleware(tokenMaker identity.Maker, redisClient redis.UniversalClient, cfg *config.Config, authClient *identity.AuthClient) *AuthMiddleware {
-	rps := ctrlhttp.DefaultAPIKeyRPS
-	burst := ctrlhttp.DefaultAPIKeyBurst
-	if cfg != nil && cfg.SelfServeAPIKeyRPS > 0 {
-		rps = cfg.SelfServeAPIKeyRPS
-		burst = int(rps * 2)
-		if burst < 1 {
-			burst = ctrlhttp.DefaultAPIKeyBurst
+	return adminauth.New(tokenMaker, redisClient, cfg, authClient)
+}
+
+func (h *Handler) adminRequirePermission() func(string, http.HandlerFunc) http.HandlerFunc {
+	return func(permission string, next http.HandlerFunc) http.HandlerFunc {
+		return h.perm(next, permission)
+	}
+}
+
+func (h *Handler) adminRequireAuth() func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		if h.authMiddleware != nil {
+			return h.authMiddleware.RequireAuth(ctrlhttp.RoleAdmin, ctrlhttp.RoleManager, ctrlhttp.RoleUser, ctrlhttp.RoleBuyer, ctrlhttp.RoleSupport)(next)
 		}
-	}
-	return &AuthMiddleware{
-		tokenMaker:    tokenMaker,
-		redisClient:   redisClient,
-		cfg:           cfg,
-		authClient:    authClient,
-		apiKeyLimiter: ctrlhttp.NewAPIKeyRateLimiter(rps, burst),
+		return h.authFallback(next)
 	}
 }
 
-func (m *AuthMiddleware) RefreshUserPolicy(userID uuid.UUID, role string) {
-	if m != nil && m.policy != nil {
-		m.policy.RefreshUser(userID, role)
+func (h *Handler) adminRequireAnyPermission() func([]string, http.HandlerFunc) http.HandlerFunc {
+	return func(permissions []string, next http.HandlerFunc) http.HandlerFunc {
+		if h.authMiddleware != nil {
+			return h.authMiddleware.RequireAnyPermission(permissions...)(next)
+		}
+		return h.authFallback(next)
 	}
 }
 
-func (m *AuthMiddleware) SetControlRedisShards(redisShards []redis.UniversalClient) {
-	m.controlRdbs = redisShards
+func (h *Handler) adminSelfServePermission() func(string, http.HandlerFunc) http.HandlerFunc {
+	return func(permission string, next http.HandlerFunc) http.HandlerFunc {
+		return h.selfServePerm(next, permission)
+	}
 }
 
-func (m *AuthMiddleware) controlRedis() []redis.UniversalClient {
-	if len(m.controlRdbs) > 0 {
-		return m.controlRdbs
-	}
-	if m.redisClient != nil {
-		return []redis.UniversalClient{m.redisClient}
-	}
-	return nil
+func (h *Handler) authorizeCustomerAccess(r *http.Request, customerID string) error {
+	return h.ensureCustomerAccess(r, customerID)
 }
 
-func (m *AuthMiddleware) SetPolicyStore(store *authz.Store) {
-	m.policy = store
+func (h *Handler) authorizeCampaignAccess(r *http.Request, campaignID uuid.UUID) error {
+	return h.ensureCampaignAccess(r, campaignID)
 }
 
-func (m *AuthMiddleware) SetPool(pool *pgxpool.Pool) {
-	m.pool = pool
+func (h *Handler) resolveSelfServeCustomerIDForBilling(r *http.Request) (uuid.UUID, error) {
+	return h.resolveSelfServeCustomerID(r, nil)
 }
 
-func (m *AuthMiddleware) attachAuthz(ctx context.Context, user authz.AuthenticatedUser) context.Context {
-	if m.policy == nil {
-		ctx = authz.WithAuthenticatedUser(ctx, user)
-		return context.WithValue(ctx, UserContextKey, user)
-	}
-	snap := m.policy.EffectivePermissionsDB(ctx, m.pool, user.UserID, user.Role)
-	if len(user.APIKeyScopes) > 0 {
-		snap = campaign.RestrictSnapshotForAPIKeyScopes(snap, user.APIKeyScopes)
-	}
-	if user.Scope == "" {
-		user.Scope = snap.Scope
-	}
-	if user.AuthSource == "api_key" && user.CustomerID != uuid.Nil {
-		user.Scope = authz.ScopeCustomer
-	}
-	ctx = authz.WithSnapshot(ctx, snap)
-	ctx = authz.WithAuthenticatedUser(ctx, user)
-	return context.WithValue(ctx, UserContextKey, user)
+func (h *Handler) resolveSelfServeCustomerIDForSelfServe(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
+	return h.resolveSelfServeCustomerID(r, bodyCustomerID)
 }
 
-func (m *AuthMiddleware) checkPermission(ctx context.Context, user authz.AuthenticatedUser, permission string) bool {
-	if snap, ok := authz.SnapshotFromContext(ctx); ok {
-		return snap.Has(permission)
+func (h *Handler) resolveDisputeCustomerFilter(r *http.Request) (string, error) {
+	u, ok := GetUser(r.Context())
+	if !ok {
+		return "", errForbidden
 	}
-	return ctrlhttp.HasPermission(user.Role, permission)
+	customerFilter := r.URL.Query().Get("customer_id")
+	if u.IsUser() || u.IsTeamLead() || u.IsMediaBuyer() {
+		if customerFilter != "" && customerFilter != u.CustomerID.String() {
+			return "", errForbidden
+		}
+		return u.CustomerID.String(), nil
+	}
+	return customerFilter, nil
 }
 
-func (m *AuthMiddleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
+func (h *Handler) resolveUsageExportCustomerFilter(r *http.Request, customerID, costCenter string) (string, string, error) {
+	u, ok := GetUser(r.Context())
+	if !ok {
+		return customerID, costCenter, nil
+	}
+	if u.IsUser() || u.IsTeamLead() || u.IsMediaBuyer() {
+		if customerID != "" && customerID != u.CustomerID.String() {
+			return "", "", errForbidden
+		}
+		return u.CustomerID.String(), "", nil
+	}
+	return customerID, costCenter, nil
+}
+
+func (h *Handler) adminRequireTeamWrite() func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			user, ok := m.authenticate(w, r)
+			u, ok := GetUser(r.Context())
 			if !ok {
+				writeServiceError(w, errForbidden)
 				return
 			}
-			ctx := m.attachAuthz(r.Context(), user)
-			if !m.checkPermission(ctx, user, permission) {
-				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
+			if u.IsMediaBuyer() {
+				writeServiceError(w, errForbidden)
 				return
 			}
-			next(w, r.WithContext(ctx))
+			if u.IsTeamLead() || ctrlhttp.HasPermission(u.Role, ctrlhttp.PermUsersWrite) {
+				next(w, r)
+				return
+			}
+			writeServiceError(w, errForbidden)
 		}
 	}
 }
 
-func (m *AuthMiddleware) RequireAnyPermission(permissions ...string) func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			user, ok := m.authenticate(w, r)
-			if !ok {
-				return
-			}
-			ctx := m.attachAuthz(r.Context(), user)
-			allowed := false
-			for _, p := range permissions {
-				if m.checkPermission(ctx, user, p) {
-					allowed = true
-					break
-				}
-			}
-			if !allowed {
-				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
-				return
-			}
-			next(w, r.WithContext(ctx))
-		}
+func (h *Handler) resolveCampaignsCustomerID(r *http.Request, bodyCustomerID *uuid.UUID) (uuid.UUID, error) {
+	u, ok := GetUser(r.Context())
+	if !ok {
+		return uuid.Nil, errForbidden
 	}
+	if u.HasBoundCustomer() {
+		if bodyCustomerID != nil && *bodyCustomerID != uuid.Nil && *bodyCustomerID != u.CustomerID {
+			return uuid.Nil, errForbidden
+		}
+		return u.CustomerID, nil
+	}
+	if bodyCustomerID == nil || *bodyCustomerID == uuid.Nil {
+		return uuid.Nil, nil
+	}
+	return *bodyCustomerID, nil
 }
 
-func (m *AuthMiddleware) RequireSelfServe(permission string) func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			if key := strings.TrimSpace(r.Header.Get("X-API-Key")); key != "" {
-				user, ok := m.authenticateAPIKey(w, r, key)
-				if !ok {
-					return
-				}
-				user.Scope = authz.ScopeCustomer
-				ctx := m.attachAuthz(r.Context(), user)
-				if !m.checkPermission(ctx, user, permission) {
-					httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
-					return
-				}
-				next(w, r.WithContext(ctx))
-				return
-			}
-			user, ok := m.authenticate(w, r)
-			if !ok {
-				return
-			}
-			ctx := m.attachAuthz(r.Context(), user)
-			if !m.checkPermission(ctx, user, permission) {
-				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
-				return
-			}
-			next(w, r.WithContext(ctx))
-		}
-	}
-}
-
-func (m *AuthMiddleware) RequireAuth(allowedRoles ...string) func(http.HandlerFunc) http.HandlerFunc {
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, r *http.Request) {
-			user, ok := m.authenticate(w, r)
-			if !ok {
-				return
-			}
-			roleAllowed := false
-			for _, allowed := range allowedRoles {
-				if user.Role == ctrlhttp.NormalizeRole(allowed) || user.Role == ctrlhttp.RoleAdmin {
-					roleAllowed = true
-					break
-				}
-			}
-			if !roleAllowed {
-				httpresponse.Error(w, http.StatusForbidden, "FORBIDDEN", "forbidden: insufficient permissions")
-				return
-			}
-			ctx := m.attachAuthz(r.Context(), user)
-			next(w, r.WithContext(ctx))
-		}
-	}
-}
-
-func apiKeyDigest(rawKey string) string {
-	sum := sha256.Sum256([]byte(rawKey))
-	return hex.EncodeToString(sum[:])
-}
-
-func (m *AuthMiddleware) authenticateAPIKey(w http.ResponseWriter, r *http.Request, rawKey string) (authz.AuthenticatedUser, bool) {
-	if m.authClient == nil {
-		httpresponse.Error(w, http.StatusServiceUnavailable, "AUTH_UNAVAILABLE", "auth service not configured")
-		return authz.AuthenticatedUser{}, false
-	}
-	if m.apiKeyLimiter != nil && !m.apiKeyLimiter.Allow(apiKeyDigest(rawKey)) {
-		httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "api key rate limit exceeded")
-		return authz.AuthenticatedUser{}, false
-	}
-
-	user, err := m.authClient.VerifyAPIKey(r.Context(), rawKey)
-	if err != nil {
-		if errors.Is(err, identity.ErrInvalidAPIKey) || errors.Is(err, identity.ErrInvalidCredentials) {
-			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid api key")
-			return authz.AuthenticatedUser{}, false
-		}
-		if errors.Is(err, identity.ErrRateLimitExceeded) {
-			httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "api key rate limit exceeded")
-			return authz.AuthenticatedUser{}, false
-		}
-		if st, ok := status.FromError(err); ok {
-			switch st.Code() {
-			case codes.Unauthenticated:
-				httpresponse.WriteGRPCError(w, err)
-				return authz.AuthenticatedUser{}, false
-			case codes.ResourceExhausted:
-				httpresponse.WriteGRPCError(w, err)
-				return authz.AuthenticatedUser{}, false
-			}
-		}
-		slog.Error("api key verification failed", "error", err)
-		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL", "failed to verify api key")
-		return authz.AuthenticatedUser{}, false
-	}
-	if user.ID == uuid.Nil {
-		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid api key")
-		return authz.AuthenticatedUser{}, false
-	}
-
-	return authz.AuthenticatedUser{
-		UserID:       user.ID,
-		Role:         ctrlhttp.NormalizeRole(user.Role),
-		CustomerID:   user.CustomerID,
-		AuthSource:   "api_key",
-		APIKeyScopes: user.Scopes,
-	}, true
-}
-
-func (m *AuthMiddleware) SessionFromRequest(r *http.Request) (authz.AuthenticatedUser, bool) {
-	if m == nil || m.tokenMaker == nil {
-		return authz.AuthenticatedUser{}, false
-	}
-	cookie, err := r.Cookie("accessToken")
-	if err != nil || cookie.Value == "" {
-		return authz.AuthenticatedUser{}, false
-	}
-
-	payload, err := m.tokenMaker.VerifyToken(cookie.Value)
-	if err != nil {
-		return authz.AuthenticatedUser{}, false
-	}
-
-	if redisShards := m.controlRedis(); len(redisShards) > 0 {
-		revoked, errRev := m.checkTokenRevocation(r.Context(), redisShards, payload)
-		if errRev != nil || revoked {
-			return authz.AuthenticatedUser{}, false
-		}
-	}
-
-	return authz.AuthenticatedUser{
-		UserID:     payload.UserID,
-		Role:       ctrlhttp.NormalizeRole(payload.Role),
-		CustomerID: payload.CustomerID,
-		AuthSource: "session",
-	}, true
-}
-
-func (m *AuthMiddleware) authenticate(w http.ResponseWriter, r *http.Request) (authz.AuthenticatedUser, bool) {
-	if key := r.Header.Get("X-Admin-API-Key"); key != "" && m.cfg != nil && key == string(m.cfg.AdminAPIKey) {
-		return authz.AuthenticatedUser{
-			UserID:     apiKeyPrincipalID(key),
-			Role:       ctrlhttp.RoleAdmin,
-			CustomerID: uuid.Nil,
-			AuthSource: "api_key",
-			Scope:      authz.ScopeGlobal,
-		}, true
-	}
-
-	cookie, err := r.Cookie("accessToken")
-	if err != nil || cookie.Value == "" {
-		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: missing token")
-		return authz.AuthenticatedUser{}, false
-	}
-
-	payload, err := m.tokenMaker.VerifyToken(cookie.Value)
-	if err != nil {
-		httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: invalid token")
-		return authz.AuthenticatedUser{}, false
-	}
-
-	if redisShards := m.controlRedis(); len(redisShards) > 0 {
-		revoked, errRev := m.checkTokenRevocation(r.Context(), redisShards, payload)
-		if errRev != nil {
-			slog.Error("redis revocation check failed, blocking request to prevent security bypass", "error", errRev)
-			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: security check failed")
-			return authz.AuthenticatedUser{}, false
-		}
-		if revoked {
-			httpresponse.Error(w, http.StatusUnauthorized, "UNAUTHORIZED", "unauthorized: session revoked")
-			return authz.AuthenticatedUser{}, false
-		}
-	}
-
-	return authz.AuthenticatedUser{
-		UserID:     payload.UserID,
-		Role:       ctrlhttp.NormalizeRole(payload.Role),
-		CustomerID: payload.CustomerID,
-		AuthSource: "session",
-	}, true
-}
-
-func (m *AuthMiddleware) checkTokenRevocation(ctx context.Context, redisShards []redis.UniversalClient, payload *identity.Payload) (bool, error) {
-	for i, redisClient := range redisShards {
-		if redisClient == nil {
-			continue
-		}
-		revoked, err := identity.CheckTokenRevocation(ctx, redisClient, payload)
-		if err != nil {
-			if m.cfg != nil && m.cfg.Env == "development" {
-				slog.Warn("redis revocation check failed in development, allowing session",
-					"shard", i, "error", err)
-				return false, nil
-			}
-			return false, fmt.Errorf("shard %d: %w", i, err)
-		}
-		if revoked {
-			return true, nil
-		}
-	}
-	return false, nil
+type adminWireEnv struct {
+	pool                       *pgxpool.Pool
+	svc                        *Service
+	encKey                     []byte
+	costWorker                 *costsync.Worker
+	platformWorker             *platformsync.Worker
+	selfServePaymentProvider   string
+	selfServeCryptoSubProvider string
+	fraudPresets               fraudadmin.PresetsAPI
+	reportJobs                 *reportjob.ReportJobRunner
+	limit                      func(http.HandlerFunc) http.HandlerFunc
+	perm                       func(string, http.HandlerFunc) http.HandlerFunc
+	permAny                    func([]string, http.HandlerFunc) http.HandlerFunc
+	selfServePerm              func(string, http.HandlerFunc) http.HandlerFunc
+	writeErr                   func(http.ResponseWriter, error)
+	authCustomer               func(*http.Request, string) error
+	authCampaign               func(*http.Request, uuid.UUID) error
 }

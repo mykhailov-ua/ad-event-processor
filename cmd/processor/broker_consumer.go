@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
-	"ad-event-processor/internal/ingestion"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/stream"
 	"ad-event-processor/pkg/broker"
 	"ad-event-processor/pkg/broker/client"
 	"ad-event-processor/pkg/logger"
@@ -91,7 +91,7 @@ func (bc *BrokerConsumerGroup) Start(ctx context.Context) {
 	runCtx, cancel := context.WithCancel(ctx)
 	bc.cancel = cancel
 
-	for p := 0; p < bc.cfg.PartitionCount; p++ {
+	for p := range bc.cfg.PartitionCount {
 		w := &brokerWorker{
 			parent:    bc,
 			partition: uint16(p),
@@ -160,7 +160,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 			if ctx.Err() != nil {
 				break
 			}
-			parseErr := ingestion.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
+			parseErr := stream.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
 				metrics.BrokerIngestMessagesTotal.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group, evt.Type).Inc()
 				if w.parent.cfg.OnMessageProcessed != nil {
 					w.parent.cfg.OnMessageProcessed(evt, iter.Offset)

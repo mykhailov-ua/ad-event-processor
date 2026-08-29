@@ -1,11 +1,12 @@
 package controlplane_test
 
 import (
-	"ad-event-processor/internal/licensingadmin"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"ad-event-processor/internal/licensingadmin"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"

@@ -7,7 +7,7 @@ import (
 	"time"
 	"unsafe"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/google/uuid"
 )

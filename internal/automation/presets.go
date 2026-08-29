@@ -25,14 +25,14 @@ type Preset struct {
 }
 
 type ExpandedRule struct {
-	Name              string
-	Metric            string
-	Operator          string
-	Threshold         float64
-	WindowMinutes     int
-	GroupBy           string
-	Actions           []Action
-	CooldownMinutes   int
+	Name                string
+	Metric              string
+	Operator            string
+	Threshold           float64
+	WindowMinutes       int
+	GroupBy             string
+	Actions             []Action
+	CooldownMinutes     int
 	EvalIntervalMinutes int
 }
 

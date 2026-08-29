@@ -27,7 +27,7 @@ func parseInitDataFields(raw string) (fields []initDataField, hash string, err e
 			continue
 		}
 		eq := -1
-		for i := 0; i < len(seg); i++ {
+		for i := range len(seg) {
 			if seg[i] == '=' {
 				eq = i
 				break

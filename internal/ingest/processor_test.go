@@ -1,0 +1,120 @@
+package ingest
+
+import (
+	"context"
+	"errors"
+	"sync"
+	"testing"
+	"time"
+
+	"ad-event-processor/internal/domain"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+type MockEventStore struct {
+	mu      sync.Mutex
+	flushes [][]*domain.Event
+	Err     error
+}
+
+func (m *MockEventStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
+	if m.Err != nil {
+		return m.Err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	batchCopy := make([]*domain.Event, len(events))
+	copy(batchCopy, events)
+	m.flushes = append(m.flushes, batchCopy)
+	return nil
+}
+
+func (m *MockEventStore) Close() error {
+	return nil
+}
+
+func TestStreamConsumer_Ingestion(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+	redisClient, cleanup := setupTestRedis(t)
+	defer cleanup()
+
+	producer := NewStreamProducer(redisClient, "s1", 1000, 1*time.Second)
+	defer producer.Close()
+
+	err := producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
+	assert.NoError(t, err)
+	producer.Flush()
+}
+
+func TestStreamConsumer_BatchFlushing(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers Redis)")
+	}
+	redisClient, cleanup := setupTestRedis(t)
+	defer cleanup()
+
+	mockStore := &MockEventStore{}
+	producer := NewStreamProducer(redisClient, "s2", 1000, 1*time.Second)
+	defer producer.Close()
+	proc := NewStreamConsumer(mockStore, redisClient, "s2", "g2", "c2", 2, 1, 10*time.Second, 1*time.Second, 10*time.Millisecond, 100*time.Millisecond, 3, 1*time.Minute, 1*time.Second)
+
+	proc.Start(context.Background())
+
+	for range 3 {
+		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
+	}
+	producer.Flush()
+
+	require.Eventually(t, func() bool {
+		mockStore.mu.Lock()
+		defer mockStore.mu.Unlock()
+		return len(mockStore.flushes) >= 1
+	}, 5*time.Second, 10*time.Millisecond, "StoreBatch flush hook must record at least one batch")
+
+	proc.Close()
+	require.NoError(t, proc.Wait(context.Background()))
+}
+
+func TestStreamConsumer_DLQ(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+	redisClient, cleanup := setupTestRedis(t)
+	defer cleanup()
+
+	failStore := &FailingEventStore{
+		failErr: errors.New("simulated poison pill"),
+	}
+
+	producer := NewStreamProducer(redisClient, "s_dlq", 1000, 1*time.Second)
+	defer producer.Close()
+
+	proc := NewStreamConsumer(failStore, redisClient, "s_dlq", "g_dlq", "c_dlq", 2, 1, 10*time.Millisecond, 1*time.Second, 10*time.Millisecond, 10*time.Millisecond, 1, 1*time.Minute, 1*time.Second)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	proc.Start(ctx)
+
+	for range 2 {
+		_ = producer.Process(&domain.Event{CampaignID: uuid.New(), Type: "click"})
+	}
+	producer.Flush()
+
+	assert.Eventually(t, func() bool {
+		size, err := redisClient.XLen(ctx, "ad:events:dlq").Result()
+		return err == nil && size == 2
+	}, 3*time.Second, 50*time.Millisecond, "Should have 2 events in DLQ")
+
+	pending, err := redisClient.XPending(ctx, "s_dlq", "g_dlq").Result()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), pending.Count)
+
+	proc.Close()
+	require.NoError(t, proc.Wait(ctx))
+}

@@ -103,7 +103,7 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 	if h.ResolveCustomerID != nil {
 		resolved, err := h.ResolveCustomerID(r, nonNilUUID(customerID))
 		if err != nil {
-			h.writeServiceError(w, err)
+			h.WriteHandlerError(w, err)
 			return
 		}
 		customerID = resolved
@@ -126,13 +126,13 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 
 	items, total, err := h.Campaigns.ListCampaigns(r.Context(), customerID, status, limit, offset)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	if search != "" || pacingMode != "" || sortField != "updated_at" || order != "desc" {
 		allItems, _, listErr := h.Campaigns.ListCampaigns(r.Context(), customerID, status, 1000, 0)
 		if listErr != nil {
-			h.writeServiceError(w, listErr)
+			h.WriteHandlerError(w, listErr)
 			return
 		}
 		filtered := filterAndSortCampaigns(allItems, search, sortField, order, pacingMode)
@@ -163,33 +163,33 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 }
 
 func (h *CampaignsHTTPHandlers) getCampaign(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
 	campaign, err := h.Campaigns.GetCampaign(r.Context(), campaignID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, campaign)
 }
 
 func (h *CampaignsHTTPHandlers) getCampaignMargin(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
 	margin, err := h.Campaigns.GetCampaignMargin(r.Context(), campaignID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, margin)
 }
 
 func (h *CampaignsHTTPHandlers) patchCampaign(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
@@ -211,7 +211,7 @@ func (h *CampaignsHTTPHandlers) patchCampaign(w http.ResponseWriter, r *http.Req
 	if req.ExpectedRevision != nil {
 		current, getErr := h.Campaigns.GetCampaign(r.Context(), campaignID)
 		if getErr != nil {
-			h.writeServiceError(w, getErr)
+			h.WriteHandlerError(w, getErr)
 			return
 		}
 		if campaignRevision(current.UpdatedAt) != strings.TrimSpace(*req.ExpectedRevision) {
@@ -224,20 +224,20 @@ func (h *CampaignsHTTPHandlers) patchCampaign(w http.ResponseWriter, r *http.Req
 		if errors.Is(err, ErrCampaignRevisionConflict) {
 			current, getErr := h.Campaigns.GetCampaign(r.Context(), campaignID)
 			if getErr != nil {
-				h.writeServiceError(w, getErr)
+				h.WriteHandlerError(w, getErr)
 				return
 			}
 			h.writeCampaignRevisionConflict(w, r, campaignID, current, req)
 			return
 		}
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, updated)
 }
 
 func (h *CampaignsHTTPHandlers) assignCampaignOwner(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
@@ -251,14 +251,14 @@ func (h *CampaignsHTTPHandlers) assignCampaignOwner(w http.ResponseWriter, r *ht
 		return
 	}
 	if err := h.Campaigns.AssignCampaignOwner(r.Context(), campaignID, ownerID); err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *CampaignsHTTPHandlers) blockCampaignPlacement(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
@@ -274,7 +274,7 @@ func (h *CampaignsHTTPHandlers) blockCampaignPlacement(w http.ResponseWriter, r 
 		return
 	}
 	if err := h.Campaigns.BlockCampaignPlacement(r.Context(), campaignID, req.PlacementID); err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusAccepted)
@@ -287,13 +287,13 @@ type CloneCampaignHTTPRequest struct {
 }
 
 func (h *CampaignsHTTPHandlers) exportCampaign(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
 	bundle, err := h.Campaigns.ExportCampaign(r.Context(), campaignID)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, bundle)
@@ -324,7 +324,7 @@ func (h *CampaignsHTTPHandlers) importCampaign(w http.ResponseWriter, r *http.Re
 	if h.ResolveCustomerID != nil {
 		customerID, err = h.ResolveCustomerID(r, nonNilUUID(customerID))
 		if err != nil {
-			h.writeServiceError(w, err)
+			h.WriteHandlerError(w, err)
 			return
 		}
 	}
@@ -336,14 +336,14 @@ func (h *CampaignsHTTPHandlers) importCampaign(w http.ResponseWriter, r *http.Re
 		Bundle:         req.CampaignExportBundle,
 	})
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, result)
 }
 
 func (h *CampaignsHTTPHandlers) cloneCampaign(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
@@ -364,21 +364,21 @@ func (h *CampaignsHTTPHandlers) cloneCampaign(w http.ResponseWriter, r *http.Req
 		Options:        req.Options,
 	})
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	httpresponse.JSON(w, http.StatusCreated, result)
 }
 
 func (h *CampaignsHTTPHandlers) listCampaignEvents(w http.ResponseWriter, r *http.Request) {
-	campaignID, ok := h.parseCampaignID(w, r)
+	campaignID, ok := h.ParseCampaignID(w, r)
 	if !ok {
 		return
 	}
 	limit, offset := coldpath.ParseAPIPagination(r)
 	items, total, err := h.Campaigns.ListCampaignEvents(r.Context(), campaignID, limit, offset)
 	if err != nil {
-		h.writeServiceError(w, err)
+		h.WriteHandlerError(w, err)
 		return
 	}
 	if strings.TrimSpace(r.URL.Query().Get("format")) == "timeline" {
@@ -389,7 +389,7 @@ func (h *CampaignsHTTPHandlers) listCampaignEvents(w http.ResponseWriter, r *htt
 	httpresponse.JSON(w, http.StatusOK, CampaignEventListResponse{Items: items, Total: total})
 }
 
-func (h *CampaignsHTTPHandlers) parseCampaignID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+func (h *CampaignsHTTPHandlers) ParseCampaignID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
 	campaignID, err := coldpath.ParsePathUUID(r, "id")
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign id")
@@ -397,14 +397,14 @@ func (h *CampaignsHTTPHandlers) parseCampaignID(w http.ResponseWriter, r *http.R
 	}
 	if h.AuthorizeCampaignAccess != nil {
 		if err := h.AuthorizeCampaignAccess(r, campaignID); err != nil {
-			h.writeServiceError(w, err)
+			h.WriteHandlerError(w, err)
 			return uuid.Nil, false
 		}
 	}
 	return campaignID, true
 }
 
-func (h *CampaignsHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
+func (h *CampaignsHTTPHandlers) WriteHandlerError(w http.ResponseWriter, err error) {
 	if h.WriteServiceError != nil {
 		h.WriteServiceError(w, err)
 		return

@@ -192,7 +192,7 @@ func (s *TCPControlServer) buildLimits() *domain.UDPControlLimits {
 	if s.cfg != nil && s.cfg.UDPDefaultShardRPS > 0 {
 		fallback = s.cfg.UDPDefaultShardRPS
 	}
-	for i := 0; i < n; i++ {
+	for i := range n {
 		limits.Limits[i] = fallback
 	}
 	return limits

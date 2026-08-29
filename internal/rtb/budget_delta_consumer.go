@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/pkg/broker/client"
 
 	"github.com/google/uuid"

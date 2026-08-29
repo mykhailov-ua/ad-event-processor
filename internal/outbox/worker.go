@@ -368,4 +368,3 @@ func (w *Worker) syncBrandCreativesToRedis(ctx context.Context, brandIDStr strin
 	key := "brand:creatives:" + brandIDStr
 	return SyncKeyToAllShards(ctx, w.host.RedisShards(), key, payload, 0)
 }
-

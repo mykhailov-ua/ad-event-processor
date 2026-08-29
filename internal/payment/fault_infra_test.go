@@ -10,7 +10,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/controlplane"
 	ads_db "ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/payment/db"
 	"ad-event-processor/internal/payment/dbtest"
@@ -67,7 +67,7 @@ func SetupPaymentFaultInfra(t *testing.T) (*FaultInfra, func()) {
 	pool, err := pgxpool.New(ctx, connStr)
 	require.NoError(t, err)
 
-	dbtest.ApplyMigrations(t, pool, filepathJoinMigrations("internal/ingestion/migrations"))
+	dbtest.ApplyMigrations(t, pool, filepathJoinMigrations("internal/ingest/migrations"))
 	dbtest.ApplyMigrations(t, pool, filepathJoinMigrations("internal/payment/migrations"))
 
 	redisContainer, err := rediscontainer.Run(ctx, "redis:7-alpine")

@@ -1,13 +1,15 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
+
+	campaignworker "ad-event-processor/internal/campaign/worker"
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/config"
@@ -196,7 +198,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 	})
 
 	t.Run("PatchCampaign_BrandID", func(t *testing.T) {
-		brandID, err := svc.CreateBrand(ctx, custID, "Patch Brand")
+		brandID, err := svc.BrandStore().CreateBrand(ctx, custID, "Patch Brand")
 		require.NoError(t, err)
 
 		updated, err := svc.PatchCampaign(ctx, campID, campaign.PatchCampaignRequest{
@@ -240,7 +242,7 @@ func TestManagementAPI_Campaigns(t *testing.T) {
 
 		worker := NewOutboxWorker(svc)
 		require.NoError(t, worker.ProcessOutbox(ctx))
-		drain := NewCampaignDrainWorker(svc)
+		drain := campaignworker.NewDrainWorker(svc)
 		require.NoError(t, drain.ProcessDraining(ctx))
 
 		assert.Eventually(t, func() bool {

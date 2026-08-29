@@ -144,7 +144,7 @@ ensure_env() {
     token="$(openssl rand -hex 32)"
     sed -i "s/^INSTALL_BOOTSTRAP_TOKEN=.*/INSTALL_BOOTSTRAP_TOKEN=${token}/" .env
   fi
-  if ! ad_event_processor_compose_dev_overlay; then
+  if ! aed_compose_dev_overlay; then
     ensure_dev_license_file
   fi
 }
@@ -504,7 +504,7 @@ apply_platform_config() {
     return 1
   fi
   echo "ad-event-processor-install: wrote install.compose.env - restarting stack"
-  bash scripts/dev/stack.sh single-vps
+  bash scripts/dev/stack/stack.sh single-vps
 }
 
 run_doctor() {
@@ -515,7 +515,7 @@ run_doctor() {
   url="http://127.0.0.1:${port}/api/v1/ops/doctor"
 
   if ! bash scripts/ci/deps.sh; then
-    echo "hint: bash scripts/dev/stack.sh status" >&2
+    echo "hint: bash scripts/dev/stack/stack.sh status" >&2
     return 1
   fi
 
@@ -623,10 +623,10 @@ cmd_up() {
   else
     echo "ad-event-processor-install: building images (first run may take several minutes)..."
   fi
-  bash scripts/dev/stack.sh build
+  bash scripts/dev/stack/stack.sh build
 
   echo "ad-event-processor-install: starting single_vps stack..."
-  bash scripts/dev/stack.sh single-vps
+  bash scripts/dev/stack/stack.sh single-vps
   wait_control_health
 
   bootstrap_platform
@@ -688,7 +688,7 @@ cmd_status() {
     echo "ad-event-processor-install: docker not available" >&2
     exit 1
   fi
-  bash scripts/dev/stack.sh status
+  bash scripts/dev/stack/stack.sh status
   local port
   port="$(read_env_var MANAGEMENT_PORT)"
   port="${port:-8188}"

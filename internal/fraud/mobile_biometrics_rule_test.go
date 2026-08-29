@@ -33,7 +33,7 @@ func seedConversionMobileBiometrics(
 	campaignID := uuid.New()
 	now := time.Now().UTC()
 
-	for i := 0; i < copies; i++ {
+	for i := range copies {
 		clickID := fmt.Sprintf("mbio-%s-%d", ip, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.conversions

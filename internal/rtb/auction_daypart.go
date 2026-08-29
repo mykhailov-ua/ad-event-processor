@@ -29,7 +29,6 @@ func localHourFromOffset(nowUnix int64, tzOffsetSec int32) int {
 	return int(sec / 3600)
 }
 
-//go:inline
 func scheduleOpen(startUnix, endUnix int64, daypartMask uint32, tzOffsetSec int32, nowUnix int64) bool {
 	if startUnix > 0 && nowUnix < startUnix {
 		return false

@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"strings"
 	"time"
+
+	"ad-event-processor/internal/licensing/verify"
 )
 
 const licenseFileRecheckMaxJitter = 120 * time.Second
@@ -23,11 +25,11 @@ func LicenseFileRecheckIntervalJittered(base time.Duration, deploymentID string)
 }
 
 func DeploymentIDFromLicensePath(path string) string {
-	data, err := readFileTrim(path)
+	data, err := verify.ReadFileTrim(path)
 	if err != nil {
 		return ""
 	}
-	claims, err := DecodeUnverified(string(data))
+	claims, err := verify.DecodeUnverified(string(data))
 	if err != nil || claims == nil {
 		return ""
 	}

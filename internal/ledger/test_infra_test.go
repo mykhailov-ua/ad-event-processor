@@ -11,7 +11,7 @@ import (
 	"time"
 
 	ingestdb "ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"

@@ -1,0 +1,196 @@
+---
+description: Current flat repo layout, cmd map, future split map
+globs:
+  - internal/**
+  - cmd/**
+  - pkg/**
+  - api/**
+alwaysApply: false
+---
+
+# Repository Structure
+
+## Purpose
+
+Documents the **current canonical** layout and **backend migration state** (2026-08-29). Quality reference: **lead-intent-processor** (`internal/app` ~18 prod `.go` wires; logic in `crm/`, `ingest/`, `filter/`, `sink/`). Do not refactor without explicit operator direction (`modular-monolith.mdc`).
+
+## Backend migration snapshot (2026-08-29)
+
+| Surface | Current | Target | Slug |
+| :--- | :--- | :--- | :--- |
+| `internal/controlplane/` root prod `.go` | **39 files**, **~7976 LOC** | <= 40 files + <= ~8000 LOC (wire + bridges + shell) | `controlplane_wire_only_shell` + `controlplane_loc_under_8k` closed |
+| `*_aliases.go` in controlplane | **0** | 0 | shipped (`campaign_flow_aliases_remove` / alias ban) |
+| `domains.go` prefix inventory | removed | Package-path rules + `composition_drain_inventory.go` | shipped |
+| P1 admin drains | fraud, rtb, licensing, dashboard, platform, billing, outbox | shipped | `drain_*` slugs |
+| Hot path packages | `ingest/` (~20 / **~18.6k LOC** residual), `filter/` root ok (~7.8k) + `unified/`/`netintel/`, `stream/` ok, `track/` growing | ingest LOC <= ~8000 | **`ingest_loc_drain_facade` open** (FilterEngine/UnifiedFilter/OpenRTB/RTB drained; landing/http/match_misc remain) |
+| `internal/ingestion/` | **deleted** | — | `ingestion_shim_delete` closed |
+| `internal/campaign/` | root ~23 files / ~11.7k LOC + `campaign/worker/` | root LOC <= ~8000 | `campaign_subpackages_runtime_worker` (files); further LOC drain open |
+| `internal/reports/` | root ~40 / ~8.6k + `reports/fraud/`, `reports/export/` | root LOC <= ~8000 | fraud/export subpackages shipped; LOC residual |
+| `internal/edge/` | ~39 root files (excl. bpf2go) / ~2.8k LOC | <= 40 | `edge_package_split` closed (fixed) |
+| `pkg/` -> `internal/` prod imports | 0 | 0 | `pkg_boundary_hygiene` + `pkg_tier_c_inventory` shipped |
+
+No new `service_*`, `*_aliases.go`, or filename-prefix classification. See `modular-monolith.mdc` (**Migration cruft ban**).
+
+## Current canonical layout
+
+Production code uses **flat domain packages**, not layered ceremony subtrees.
+
+| Package | Role |
+| :--- | :--- |
+| `internal/controlplane/` | Admin API composition root: `Service`, outbox workers, billing, fraud admin, wiring (~shrinking) |
+| `internal/reports/` | Report catalog, ClickHouse query handlers, export hooks, fraud scrub |
+| `internal/reportjob/` | Async report jobs, schedules, PG runner, validation-job HTTP |
+| `internal/fraudadmin/` | Fraud admin HTTP, integrations, presets, decisions, overrides, campaign fraud config (`/api/v1/fraud/*`) |
+| `internal/billingadmin/` | Billing HTTP routes, composite reads, workspace export (`/api/v1/billing/*`). Files omit package-name prefix (`handlers.go`) — `naming.mdc` |
+| `internal/opsadmin/` | Ops HTTP routes, `Reader` (`ManagementOpsReader`), stack health DTOs, fan-out helpers (`/api/v1/ops/*`, audit export, RUM). Files omit package-name prefix (`handlers.go`, `reader_*.go`) — `naming.mdc` |
+| `internal/campaign/` | Campaign DTOs, HTTP handlers, `Runtime`, `WizardStore`, experiments/cohorts, editor/migration routes, integration health. Files omit `campaign_` prefix — `naming.mdc` |
+| `internal/flow/` | Flow/lander/offer DTOs, path validation, HTTP handlers (`/api/v1/flows`, hosted lander routes). Files omit `flow_` prefix (`handlers.go`, `validate.go`) — `naming.mdc` |
+| `internal/brand/` | Brand/creative DTOs, HTTP handlers (`/api/v1/brands`, `/api/v1/brand-creatives/*`). Files omit `brand_` prefix (`handlers.go`, `store.go`) — `naming.mdc` |
+| `internal/supply/` | Sellers/ads.txt DTOs, chain validation, HTTP handlers (`/api/v1/supply/*`). Files omit package-name prefix (`handlers.go`, `store.go`) — `naming.mdc` |
+| `internal/smartalerts/` | Smart alert rules CRUD, worker tick, drain-stuck check (`/api/v1/smart-alerts/*`). Files omit package-name prefix (`store.go`, `handlers.go`, `worker_batch.go`) — `naming.mdc` |
+| `internal/governance/` | Quota manager, quota repair outbox applier, media-buyer spend-cap checks. Team RBAC/budget approval stays in `controlplane/team_*.go` |
+| `internal/reconciliation/` | Recon window, budget snapshot, global spend sync, adjust applier, runs list, RTB CH stats. Depends on `governance` for quota repair tick |
+| `internal/outbox/` | PG outbox poll loop, event dispatch, blacklist batch. `controlplane/outbox_bridge.go` implements `outbox.Host` |
+| `internal/telegram/` | Telegram bots, deeplinks, postbacks, Mini App validate, CH reports |
+| `internal/platformadmin/` | Platform config, customers/team/domain HTTP |
+| `internal/settingsadmin/` | Blacklist TTL, block IP, emergency breaker, settings KV |
+| `internal/licensingadmin/` | License status/apply HTTP, enforce hooks, revoke queue worker |
+| `internal/rtbadmin/` | RTB deal CRUD, floors, shadow mode admin (`/api/v1/rtb/*`) |
+| `internal/dashboardadmin/` | Role/campaign/publisher dashboard HTTP + CH queries |
+| `internal/reports/` | Report catalog, non-fraud CH handlers, export hooks. Files omit `reports_` prefix — `naming.mdc` |
+| `internal/reports/fraud/` | Fraud/IVT/silent-reject report routes and queries; wired via `fraud_exports.go` + blank import in `adminapi_wire.go` |
+| `internal/ingest/` | Hot path gnet/HTTP ingress; residual mega-bundles (`filter_engine_bundle`, `openrtb_bundle`, `rtb_bundle`, `landing_bundle`) — LOC drain open (`ingest_loc_drain_facade`) |
+| `internal/filter/` | Go-local + unified filter helpers (partial); engine types still partly in ingest bundles |
+| `internal/stream/` | Stream/broker producers, CH sink, admission |
+| `internal/track/` | Thin track/click helpers (landing body residual in ingest) |
+| `internal/control/` | Monolith runner for `cmd/control`; bootstrap in `deps.go` |
+| `internal/fraud/` | ML scoring (cold path only) |
+| `internal/domain/` | Shared hot-path types, sharding, budget invariants |
+| `internal/<svc>/` | Side domains: `payment/`, `ledger/`, `notify/`, `identity/`, `edge/`, `rtb/`, `openrtb/` |
+
+Module: `ad-event-processor`. `cmd/<binary>/main.go` wires config only - no business logic in `main`. Tracker/broker deps live in `cmd/<binary>/wire.go`; control bootstrap in `internal/control/deps.go`.
+
+## Modular monolith and bridges
+
+Deployment: **one** `cmd/control` process; domain folders are compile-time modules, not separate services (`modular-monolith.mdc`, `boundaries.mdc`).
+
+| Concept | Meaning |
+| :--- | :--- |
+| Composition root | `internal/controlplane/` — wires routes, workers, outbox; **shrinking** |
+| Bridge | `*_bridge.go` in controlplane only — `Service` implements domain `Host` / `Effects`; **no business logic** |
+| Adapter | `*_admin_adapter.go` — registration and error mapping |
+| God package | **Forbidden** — see ceilings below |
+
+Bridges are **in-process DI** inside the modular monolith, not network adapters between deployables.
+
+### controlplane vs sibling domains
+
+| Surface | Lives in | Notes |
+| :--- | :--- | :--- |
+| `*Service` methods (`PatchCampaign`, `PublishCampaign`, …) | `controlplane` | Postgres/Redis side effects |
+| `CampaignsHTTPHandlers`, report HTTP | `campaign`, `reports`, `reportjob` | Injected callbacks; registered from `adminapi_wire.go` |
+| `FraudHTTPHandlers`, billing HTTP, ops HTTP, flow/brand/supply HTTP | `fraudadmin`, `billingadmin`, `opsadmin`, `flow`, `brand`, `supply` | `*_bridge.go` / `*_admin_adapter.go` wires `Service` -> domain `Host` |
+| Domain types at call sites | Import `campaign.FooDTO`, `fraudadmin.Bar` directly | **No new** `controlplane/*_aliases.go` (`modular-monolith.mdc`) |
+| Scope/auth bridges | `controlplane/campaign_bridge.go`, `campaign_runtime_bridge.go` | Re-exports campaign helpers; `Service` implements `campaign.Effects` |
+| Campaign runtime | `campaign.Runtime` | CRUD, create, templates, patch, publish gate, pause/resume, stats (PG+CH), pacing, schedule, status history, events, import/export via `ImportExportHost`, clone/migration via `Effects` |
+| Campaign worker | `campaign.Worker` + `DeliveryHost` | `ProcessScheduleTick`, `RunDeliveryOptimizerTick`, `RunAutoscaleBudgetTick`, `ClosedLoopPacingController`; autoscale/MAB in `campaign/*_tx.go`; flow bandit in `flow/bandit_tx.go`; `Service` implements `DeliveryHost` in `campaign_delivery_bridge.go` |
+| Campaign wizard | `campaign.WizardStore` + `WizardHost` | Session PG in `wizard_store.go`; `Service` implements host in `campaign_wizard_bridge.go` |
+| Flow admin | `flow.HTTPHandlers` + `flow.Service` | PG CRUD on `*Service`; path shape in `flow/validate.go` |
+| Brand/supply admin | `brand.HTTPHandlers`, `supply.HTTPHandlers` | PG on `*Service`; adapters in `brand_admin_adapter.go`, `supply_admin_adapter.go` |
+| Smart alerts | `smartalerts.Store`, `smartalerts.HTTPHandlers`, worker | `smartalerts_bridge.go`; `Service` implements `smartalerts.Host` |
+| Governance / quota | `governance.QuotaManager`, `QuotaRepairRunner`, spend-cap | `governance_bridge.go`; team approval in `team_budget_approval.go` |
+| Reconciliation | `reconciliation.ReconWorker`, `ReconService`, `GlobalSpendReconciler` | `governance_bridge.go` + `reconciliation_aliases.go` |
+| Outbox worker | `outbox.Worker` | `outbox_bridge.go` |
+| Telegram admin | `telegram.HTTPHandlers`, `telegram.Service` | `telegram_bridge.go` |
+| Platform / team / domains | `platformadmin` HTTP | `platform_bridge.go` |
+| Licensing admin | `licensingadmin` HTTP, revoke worker | `licensing_bridge.go` |
+| RTB admin | `rtbadmin` deals/floors HTTP | `rtbadmin_bridge.go` (not `internal/rtb/` hot path) |
+| Dashboard admin | `dashboardadmin` role/campaign dashboards | `dashboardadmin_bridge.go` |
+| Fraud campaign config | `fraudadmin` campaign config + preview | `fraudadmin_bridge.go`; HTTP in `campaign/fraud_handlers.go` |
+| Campaign experiments | `campaign.UpsertExperimentCohort` | `campaign_experiments_bridge.go` |
+| Fraud reports | `reports/fraud` subpackage | `reports/fraud_exports.go`; `_ "reports/fraud"` in `adminapi_wire.go` |
+
+`service_campaign.go` remains in controlplane for brand PG hooks and campaign supply chain (experiments moved to `campaign/`).
+
+| Ops reader | `opsadmin.Reader` + `ReaderDeps` | `ops_reader_bridge.go` |
+
+## Allowed vs banned subtrees
+
+| Allowed subdirs | Banned ceremony |
+| :--- | :--- |
+| `db/`, `queries/`, `migrations/`, `pb/` | `dto/`, `usecase/`, `providers/`, `repositories/` |
+| `controlplane/authz/`, `controlplane/outboxpb/` | Generic `services/` subtrees |
+
+Root clutter: `core.mdc` Sources-only repository.
+
+## cmd map
+
+| Role | Binaries |
+| :--- | :--- |
+| Hot path | `tracker`, `campaign-shard` |
+| Cold ingest | `processor`, `broker`, log pipeline |
+| Control plane | `control`, `admin`, `operator`, `postback-sender`, `dlq` |
+| Fraud / ML | `fraud-scorer`, `ivt-detector`, `ml-validate`, `ml-replay` |
+| Edge | `edge-xdp`, `edge-bpf-sync`, `region-proxy` |
+| Licensing / vendor | `license-issue`, `trial-registry`, `vendor-trial-bot` |
+
+## Dependency arrows
+
+```
+cmd -> internal/control | cmd/*/main
+ingest hot path must NOT import controlplane admin or internal/fraud scoring
+pkg/* must NOT import internal/*
+
+reportjob -> reports (one-way; reports does not import reportjob)
+campaign -> reports, reportjob, flow, controlplane/authz (not controlplane root)
+campaign -X-> controlplane (no import cycle)
+flow -X-> controlplane (no import cycle)
+fraudadmin -X-> controlplane (no import cycle)
+billingadmin -> campaign (balance DTO aliases); -X-> controlplane
+opsadmin -> campaign, fraudadmin; -X-> controlplane
+reconciliation -> governance (quota repair tick); -X-> controlplane
+governance -X-> controlplane
+smartalerts -X-> controlplane
+outbox -X-> controlplane
+telegram -X-> controlplane; may import outbox payload types
+platformadmin -> billingadmin, controlplane/authz; -X-> controlplane
+settingsadmin -X-> controlplane
+licensingadmin -X-> controlplane
+rtbadmin -X-> controlplane
+dashboardadmin -> reports (scrub helpers); -X-> controlplane
+reports/fraud -> reports (one-way via exports); -X-> controlplane
+fraudadmin -X-> controlplane
+controlplane -> campaign, flow, reports, reportjob, fraudadmin, billingadmin, opsadmin, smartalerts, governance, reconciliation, outbox, telegram, platformadmin, settingsadmin, licensingadmin, rtbadmin, dashboardadmin (composition root)
+```
+
+Tracker (`internal/ingest`, `internal/filter`, `internal/stream`, `internal/track`) must not import `internal/controlplane` admin handlers or `internal/fraud` scoring. `pkg/*` is shared utilities only - no `internal/*` imports.
+
+## Future target (do not implement opportunistically)
+
+Remaining split candidates (not done):
+
+- **`ingest_loc_drain_facade`** — drain ingest mega-bundles (`FilterEngine`/`UnifiedFilter`, openrtb, rtb, landing) into owning packages until ingest root LOC <= ~8000
+- **`controlplane_loc_under_8k`** — shrink controlplane root LOC from ~8939 to <= ~8000 without exceeding 40 files
+- Finish `ingestion_shim_delete` (remove residual `internal/ingestion/` stub)
+- `service_campaign.go` tail (brand hooks, supply chain) if still in controlplane
+- `reports/` root LOC residual after fraud/export subpackages
+
+Package cap when splitting: ~40 files or ~8k LOC per package; one domain per package (`modular-monolith.mdc`).
+
+**Mandatory:** `doc.go` at the root of every production package (`//` package docs, then `package <name>`). Edit in place in the same PR; no codegen script.
+
+Excluded: generated subtrees only (`db/`, `pb/`, `queries/` under a domain package — they do not get their own `doc.go`).
+
+**Hard ban:** god packages and unbounded `controlplane` growth (`modular-monolith.mdc`). New admin code lands in the domain package first; bridges only wire.
+
+**Hard ban:** micro-packages and premature splits — new `internal/<domain>/` only when minimum viable extraction ships in the same change set (`modular-monolith.mdc`).
+
+**Hard ban:** redundant subpackages such as `internal/<domain>/server/` when `internal/<domain>/` suffices. Wire protocol stays in `pkg/<domain>/`; daemon in `internal/<domain>/`.
+
+## Scripts layout
+
+File modularity under `scripts/` (not clean architecture). Path scopes the domain; omit folder-name / `check_` / mandatory `_gate` prefixes inside subdirs. Flat leaf ceiling **20** `.sh`/`.py` per top dir. Product short form in scripts: **`aed`** (`naming.mdc`). Quality reference: lead-intent-processor `scripts/` (thin `ci/`, domain folders). Gate layering: `anti-slop.mdc`, `ci.mdc`.
+
+## Related rules
+
+`boundaries.mdc`, `code-style.mdc`, `naming.mdc`, `architecture.mdc`, `modular-monolith.mdc`.

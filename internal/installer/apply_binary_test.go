@@ -143,7 +143,7 @@ func containsLine(haystack, line string) bool {
 func splitLines(s string) []string {
 	var out []string
 	start := 0
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		if s[i] == '\n' {
 			line := s[start:i]
 			if line != "" && line[len(line)-1] == '\r' {

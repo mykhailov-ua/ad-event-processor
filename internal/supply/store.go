@@ -115,7 +115,7 @@ func (st *Store) CreateSeller(ctx context.Context, spec SellerCreateSpec) (Selle
 			return err
 		}
 
-		var uid = st.host.ActorUserID(ctx)
+		uid := st.host.ActorUserID(ctx)
 		st.host.AuditLog(ctx, q, uid, "CREATE_SELLER", "supply", nil, auditSellerCreateChange{
 			SellerID: row.SellerID,
 			Domain:   row.Domain,
@@ -163,7 +163,7 @@ func (st *Store) UpdateSeller(ctx context.Context, id int64, spec SellerUpdateSp
 			return ErrSellerNotFound
 		}
 
-		var uid = st.host.ActorUserID(ctx)
+		uid := st.host.ActorUserID(ctx)
 		st.host.AuditLog(ctx, q, uid, "UPDATE_SELLER", "supply", nil, auditSellerUpdateChange{
 			ID:       id,
 			SellerID: row.SellerID,
@@ -197,7 +197,7 @@ func (st *Store) DeleteSeller(ctx context.Context, id int64) error {
 			return err
 		}
 
-		var uid = st.host.ActorUserID(ctx)
+		uid := st.host.ActorUserID(ctx)
 		st.host.AuditLog(ctx, q, uid, "DELETE_SELLER", "supply", nil, auditIDChange{ID: id}, nil)
 		return st.enqueueSupplyFilesUpdate(ctx, q, "delete_seller")
 	})
@@ -264,7 +264,7 @@ func (st *Store) CreateAdsTxtEntry(ctx context.Context, spec AdsTxtEntryCreateSp
 			return err
 		}
 
-		var uid = st.host.ActorUserID(ctx)
+		uid := st.host.ActorUserID(ctx)
 		st.host.AuditLog(ctx, q, uid, "CREATE_ADS_TXT", "supply", nil, auditAdsTxtDomainChange{
 			Domain: spec.Domain,
 		}, nil)
@@ -311,7 +311,7 @@ func (st *Store) UpdateAdsTxtEntry(ctx context.Context, id int64, spec AdsTxtEnt
 			return ErrAdsTxtEntryNotFound
 		}
 
-		var uid = st.host.ActorUserID(ctx)
+		uid := st.host.ActorUserID(ctx)
 		st.host.AuditLog(ctx, q, uid, "UPDATE_ADS_TXT", "supply", nil, auditIDChange{ID: id}, nil)
 
 		if err := st.enqueueSupplyFilesUpdate(ctx, q, "update_ads_txt"); err != nil {
@@ -342,11 +342,12 @@ func (st *Store) DeleteAdsTxtEntry(ctx context.Context, id int64) error {
 			return err
 		}
 
-		var uid = st.host.ActorUserID(ctx)
+		uid := st.host.ActorUserID(ctx)
 		st.host.AuditLog(ctx, q, uid, "DELETE_ADS_TXT", "supply", nil, auditIDChange{ID: id}, nil)
 		return st.enqueueSupplyFilesUpdate(ctx, q, "delete_ads_txt")
 	})
 }
+
 type iabSellersJSON struct {
 	ContactEmail string          `json:"contact_email,omitempty"`
 	Version      string          `json:"version"`

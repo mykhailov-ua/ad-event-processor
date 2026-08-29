@@ -58,7 +58,7 @@ func (d *DealIndex) UpdateDeals(deals []DealData) {
 			ln = dealIDMaxLen
 		}
 		e.idLen = uint8(ln)
-		for i := 0; i < ln; i++ {
+		for i := range ln {
 			e.id[i] = d.DealID[i]
 		}
 		e.data = d

@@ -6,7 +6,7 @@ func (r *Registry) LookupCreativeWire(geoHash uint32, campaignID CampaignID, cre
 		return nil, 0, false
 	}
 	catalogIdx := -1
-	for i := 0; i < reg.Count; i++ {
+	for i := range reg.Count {
 		if reg.CampaignIDs[i] == campaignID {
 			catalogIdx = i
 			break

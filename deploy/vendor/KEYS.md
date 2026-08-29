@@ -31,7 +31,7 @@ Lab collection (same code path as production):
 bash scripts/lab/hwid_collect.sh
 ```
 
-Reference bench on a 4-vCPU VPS SKU (2026-08): `go test ./internal/licensing/ -bench=BenchmarkHostHWID -benchmem` ~120-180 ms/op (one-time at process start).
+Reference bench on a 4-vCPU VPS: `go test ./internal/licensing/ -bench=BenchmarkHostHWID -benchmem` ~120–180 ms/op (one-time at process start).
 
 License recheck seed coupling (`StretchMCKForRecheck`): same Argon2id params, ~120-180 ms per recheck (not per `/track` event). Bench: `go test ./internal/licensing/ -bench=BenchmarkStretchMCKForRecheck -benchmem`.
 
@@ -46,4 +46,4 @@ License recheck seed coupling (`StretchMCKForRecheck`): same Argon2id params, ~1
 
 Bump `MCK_INFO_LABEL` on major licensing releases so patched old binaries derive the wrong `feature_seed` and sealed assets fail to open. Golden vectors: `internal/licensing/testdata/mck_derivation.json` field `mck_info_label` must match `MCKInfoLabel()`. Regenerate: `WRITE_MCK_VECTORS=1 go test ./internal/licensing/ -run TestGenMCKVectorArtifacts -count=1`.
 
-Gate: `bash scripts/ci/mck_info_label_gate.sh`.
+Gate: `bash scripts/ci/static/mck_info_label.sh`.

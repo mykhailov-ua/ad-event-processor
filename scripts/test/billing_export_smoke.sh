@@ -13,7 +13,7 @@ if ! command -v docker > /dev/null 2>&1 || ! docker info > /dev/null 2>&1; then
   exit 0
 fi
 
-GO_BIN="$(ad_event_processor_go_bin)"
+GO_BIN="$(aed_go_bin)"
 log "integration test"
 "$GO_BIN" test ./internal/controlplane/ -run '^TestJobRunner_ExportLedgerNonZeroBytes$' -count=1
 

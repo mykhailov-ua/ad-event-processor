@@ -1,4 +1,4 @@
-package licensing
+package licensing_test
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/licensing"
+	"ad-event-processor/internal/licensing/entitlements"
 	"ad-event-processor/pkg/naming"
 
 	"github.com/google/uuid"
@@ -35,7 +37,7 @@ func TestLicenseWatcher_vendorDBRevoke(t *testing.T) {
 
 	depID := uuid.NewString()
 	licenseKey := depID
-	claims := LicenseClaims{
+	claims := entitlements.LicenseClaims{
 		Issuer:       "ad-event-processor-license",
 		Subject:      licenseKey,
 		DeploymentID: depID,
@@ -44,7 +46,8 @@ func TestLicenseWatcher_vendorDBRevoke(t *testing.T) {
 		ValidUntil:   time.Now().Add(24 * time.Hour),
 		GraceDays:    7,
 	}
-	token := signFaultJWT(t, priv, claims)
+	token, err := licensing.SignJWT(claims, priv, licensing.DefaultLicenseKeyID)
+	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(tokenPath, []byte(token), 0o640))
 
 	ctx := context.Background()
@@ -59,9 +62,9 @@ func TestLicenseWatcher_vendorDBRevoke(t *testing.T) {
 	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_MODE"), "file")
 	t.Setenv(naming.LegacyVendorEnvKey("LICENSE_PATH"), tokenPath)
 
-	w := NewLicenseWatcher(pool, redisClient, pub)
-	require.NoError(t, w.verifyAndReload(ctx))
+	w := licensing.NewLicenseWatcher(pool, redisClient, pub)
+	require.NoError(t, w.Reload(ctx))
 
 	state, _ := w.GetState()
-	require.Equal(t, StateRevoked, state)
+	require.Equal(t, entitlements.StateRevoked, state)
 }

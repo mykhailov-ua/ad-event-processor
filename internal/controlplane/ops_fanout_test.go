@@ -1,12 +1,13 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/opsadmin"
 	"context"
 	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/opsadmin"
 
 	"github.com/stretchr/testify/assert"
 

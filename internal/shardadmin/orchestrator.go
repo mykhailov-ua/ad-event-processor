@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 )
+
 type paddedEma struct {
 	Value float64
 	_     [56]byte

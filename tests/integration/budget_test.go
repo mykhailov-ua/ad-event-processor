@@ -7,7 +7,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/testutil"
 
 	"github.com/google/uuid"

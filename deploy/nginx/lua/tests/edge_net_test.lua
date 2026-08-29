@@ -1,6 +1,6 @@
 package.path = arg[1] .. "/?.lua;;"
 
-local edge_net = require("edge-net")
+local edge_net = require "edge-net"
 
 local passed, failed = 0, 0
 

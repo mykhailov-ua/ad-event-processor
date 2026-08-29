@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
-	"ad-event-processor/internal/ingestion"
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -169,26 +169,26 @@ func readDLQShardPage(
 func dlqMessageToDTO(shardID int, dlqStream, eventStream string, msg redis.XMessage) (DLQEntryDTO, error) {
 	pbDLQ := &pb.AdDLQEvent{}
 	if raw, ok := msg.Values["d"].(string); ok {
-		if err := proto.Unmarshal(ingestion.UnsafeBytes(raw), pbDLQ); err != nil {
+		if err := proto.Unmarshal(ingest.UnsafeBytes(raw), pbDLQ); err != nil {
 			return DLQEntryDTO{}, err
 		}
 	} else {
 		pbStream := &pb.AdStreamEvent{}
 		if v, ok := msg.Values["click_id"].(string); ok {
-			pbStream.ClickId = ingestion.UnsafeBytes(v)
+			pbStream.ClickId = ingest.UnsafeBytes(v)
 		}
 		if v, ok := msg.Values["campaign_id"].(string); ok {
 			if u, err := uuid.Parse(v); err == nil {
 				pbStream.CampaignId = u[:]
 			} else {
-				pbStream.CampaignId = ingestion.UnsafeBytes(v)
+				pbStream.CampaignId = ingest.UnsafeBytes(v)
 			}
 		}
 		if v, ok := msg.Values["type"].(string); ok {
-			pbStream.EventType = ingestion.UnsafeBytes(v)
+			pbStream.EventType = ingest.UnsafeBytes(v)
 		}
 		if v, ok := msg.Values["error"].(string); ok {
-			pbDLQ.Error = ingestion.UnsafeBytes(v)
+			pbDLQ.Error = ingest.UnsafeBytes(v)
 		}
 		pbDLQ.OriginalEvent = pbStream
 	}
@@ -296,7 +296,7 @@ func (r *Reader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, i
 	msg := msgs[0]
 	if raw, ok := msg.Values["d"].(string); ok {
 		pbDLQ := &pb.AdDLQEvent{}
-		if unmarshalErr := proto.Unmarshal(ingestion.UnsafeBytes(raw), pbDLQ); unmarshalErr != nil {
+		if unmarshalErr := proto.Unmarshal(ingest.UnsafeBytes(raw), pbDLQ); unmarshalErr != nil {
 			return fmt.Errorf("unmarshal dlq event: %w", unmarshalErr)
 		}
 		if pbDLQ.OriginalEvent == nil {
@@ -306,7 +306,7 @@ func (r *Reader) enqueueDLQRetry(ctx context.Context, payload DLQRetryPayload, i
 		if marshalErr != nil {
 			return fmt.Errorf("marshal original event: %w", marshalErr)
 		}
-		values["d"] = ingestion.UnsafeString(data)
+		values["d"] = ingest.UnsafeString(data)
 	} else {
 		for k, v := range msg.Values {
 			switch k {

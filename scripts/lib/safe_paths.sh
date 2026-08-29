@@ -1,3 +1,5 @@
+# shellcheck shell=bash
+
 _SAFE_REALPATH=
 
 safe_die() {

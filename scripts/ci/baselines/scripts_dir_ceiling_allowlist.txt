@@ -1,0 +1,2 @@
+# Flat scripts/<dir>/ leaf .sh/.py over 20 — one key per line (scripts/<name>).
+# Empty when all tops are under ceiling (scripts_layout_dir_ceiling).

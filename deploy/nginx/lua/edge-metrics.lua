@@ -73,25 +73,25 @@ end
 function _M.render_prometheus()
     ngx.header["Content-Type"] = "text/plain; version=0.0.4; charset=utf-8"
 
-    local phase1_pass = metrics:get("phase1_pass_total") or 0
-    local phase2_pass = metrics:get("phase2_pass_total") or 0
-    local body_read = metrics:get("body_read_total") or 0
-    local circuit_reject = metrics:get("circuit_reject_total") or 0
-    local blocked_ip = metrics:get("blocked_ip_total") or 0
-    local blocked_rl = metrics:get("blocked_campaign_rl_total") or 0
-    local blocked_fraud_tier = metrics:get("blocked_fraud_tier_total") or 0
-    local parse_oversize = metrics:get("parse_oversize_total") or 0
-    local body_stream = metrics:get("body_stream_total") or 0
-    local body_peek = metrics:get("body_peek_total") or 0
-    local chunked_reject = metrics:get("chunked_reject_total") or 0
-    local ingress_h1 = metrics:get("ingress_protocol:http/1.1_total") or 0
-    local ingress_h2 = metrics:get("ingress_protocol:h2_total") or 0
-    local ingress_h3 = metrics:get("ingress_protocol:h3_total") or 0
-    local blacklist_stale = metrics:get("blacklist_stale_total") or 0
-    local tarpit_total = metrics:get("tarpit_total") or 0
-    local tarpit_delay_ms = metrics:get("tarpit_delay_ms_total") or 0
-    local sync_ts = blacklist_cache:get("_bl_sync_ts") or 0
-    local bl_count = blacklist_cache:get("_bl_count") or 0
+    local phase1_pass = metrics:get "phase1_pass_total" or 0
+    local phase2_pass = metrics:get "phase2_pass_total" or 0
+    local body_read = metrics:get "body_read_total" or 0
+    local circuit_reject = metrics:get "circuit_reject_total" or 0
+    local blocked_ip = metrics:get "blocked_ip_total" or 0
+    local blocked_rl = metrics:get "blocked_campaign_rl_total" or 0
+    local blocked_fraud_tier = metrics:get "blocked_fraud_tier_total" or 0
+    local parse_oversize = metrics:get "parse_oversize_total" or 0
+    local body_stream = metrics:get "body_stream_total" or 0
+    local body_peek = metrics:get "body_peek_total" or 0
+    local chunked_reject = metrics:get "chunked_reject_total" or 0
+    local ingress_h1 = metrics:get "ingress_protocol:http/1.1_total" or 0
+    local ingress_h2 = metrics:get "ingress_protocol:h2_total" or 0
+    local ingress_h3 = metrics:get "ingress_protocol:h3_total" or 0
+    local blacklist_stale = metrics:get "blacklist_stale_total" or 0
+    local tarpit_total = metrics:get "tarpit_total" or 0
+    local tarpit_delay_ms = metrics:get "tarpit_delay_ms_total" or 0
+    local sync_ts = blacklist_cache:get "_bl_sync_ts" or 0
+    local bl_count = blacklist_cache:get "_bl_count" or 0
 
     say_metric(
         "ad_event_processor_edge_phase1_pass_total",

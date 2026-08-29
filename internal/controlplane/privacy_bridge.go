@@ -1,14 +1,15 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/domain"
-	"ad-event-processor/internal/opsadmin"
-	"ad-event-processor/internal/privacyadmin"
-	"ad-event-processor/internal/shardadmin"
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
+
+	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/opsadmin"
+	"ad-event-processor/internal/privacyadmin"
+	"ad-event-processor/internal/shardadmin"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"

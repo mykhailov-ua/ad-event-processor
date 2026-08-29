@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/flow"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -41,10 +42,10 @@ func TestCampaignImportExport_holdout(t *testing.T) {
 	require.NoError(t, err)
 
 	flowID := uuid.New()
-	paths, err := json.Marshal([]campaign.FlowPathDTO{{
+	paths, err := json.Marshal([]flow.PathDTO{{
 		Weight:  100,
-		Landers: []campaign.FlowPathLanderRef{{LanderID: landerID, Weight: 100}},
-		Offers:  []campaign.FlowPathOfferRef{{OfferID: offerID, Weight: 100}},
+		Landers: []flow.PathLanderRef{{LanderID: landerID, Weight: 100}},
+		Offers:  []flow.PathOfferRef{{OfferID: offerID, Weight: 100}},
 	}})
 	require.NoError(t, err)
 	_, err = pool.Exec(ctx, `INSERT INTO flows (id, name, paths) VALUES ($1, 'export-flow', $2)`, flowID, paths)
@@ -103,7 +104,7 @@ func TestCampaignImportExport_holdout(t *testing.T) {
 	var importPaths json.RawMessage
 	err = pool.QueryRow(ctx, `SELECT paths FROM flows WHERE id = $1`, uuid.UUID(importRow.FlowID.Bytes)).Scan(&importPaths)
 	require.NoError(t, err)
-	var parsedPaths []campaign.FlowPathDTO
+	var parsedPaths []flow.PathDTO
 	require.NoError(t, json.Unmarshal(importPaths, &parsedPaths))
 	require.Len(t, parsedPaths, 1)
 	require.Len(t, parsedPaths[0].Landers, 1)

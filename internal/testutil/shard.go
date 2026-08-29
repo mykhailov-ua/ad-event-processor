@@ -3,7 +3,7 @@ package testutil
 import (
 	"testing"
 
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 
 	"github.com/google/uuid"
 )

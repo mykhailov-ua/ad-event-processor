@@ -135,8 +135,8 @@ var seedCmd = &cobra.Command{
 			targetCountries := countries[0 : 1+(i%len(countries))]
 
 			pacing := pacingModes[i%len(pacingModes)]
-			budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000))
-			dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000))
+			budgetLimit := int64(4_200_000_000 + (int64(i%17) * 650_000_000) + (int64(i%9) * 384_729))
+			dailyBudget := int64(380_000_000 + (int64(i%11) * 95_000_000) + (int64(i%6) * 18_473))
 
 			_, err = adsQueries.CreateCampaign(ctx, ingestdb.CreateCampaignParams{
 				ID:              pgtype.UUID{Bytes: campID, Valid: true},

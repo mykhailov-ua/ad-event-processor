@@ -1,16 +1,17 @@
 package controlplane
 
 import (
+	"context"
+	"fmt"
+	"time"
+
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/runtime"
 	"ad-event-processor/internal/database"
 	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/flow"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/pkg/coldpath"
-	"context"
-	"fmt"
-	"strings"
-	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 	"github.com/google/uuid"
@@ -57,7 +58,7 @@ func (s *Service) PublishCampaignUpdate(ctx context.Context, campaignID string) 
 	_ = s.publishCampaignUpdate(ctx, campaignID)
 }
 
-func (s *Service) ValidateFlowPaths(ctx context.Context, paths []campaign.FlowPathDTO) error {
+func (s *Service) ValidateFlowPaths(ctx context.Context, paths []flow.PathDTO) error {
 	return flow.ValidatePathRefs(ctx, s, paths)
 }
 
@@ -98,12 +99,12 @@ func (s *Service) CampaignImportExportHost() campaign.ImportExportHost {
 	return campaignImportExportHost{svc: s}
 }
 
-func (s *Service) CampaignRuntime() *campaign.Runtime {
+func (s *Service) CampaignRuntime() *runtime.Runtime {
 	if s == nil {
 		return nil
 	}
 	if s.campaignRuntime == nil {
-		s.campaignRuntime = campaign.NewRuntime(s.pool, s)
+		s.campaignRuntime = runtime.NewRuntime(s.pool, s)
 		if s.clickhouseQuery != nil {
 			s.campaignRuntime.SetClickHouseQuery(s.clickhouseQuery)
 		}
@@ -181,7 +182,7 @@ func (s *Service) UpdateCampaignSchedule(ctx context.Context, campaignID uuid.UU
 }
 
 func (s *Service) clickHouseIngestionLag(ctx context.Context) (time.Duration, error) {
-	return campaign.ClickHouseIngestionLag(ctx, s.clickhouseQuery)
+	return runtime.ClickHouseIngestionLag(ctx, s.clickhouseQuery)
 }
 
 func (s *Service) RunCampaignSmoke(ctx context.Context, campaignID uuid.UUID) (campaign.CampaignSmokeResultDTO, error) {
@@ -190,43 +191,4 @@ func (s *Service) RunCampaignSmoke(ctx context.Context, campaignID uuid.UUID) (c
 
 func (s *Service) SmokeServiceAvailable() bool {
 	return s != nil && s.pool != nil
-}
-
-func (s *Service) AuthorizeCampaignSmoke(ctx context.Context, campaignID uuid.UUID) error {
-	row, err := s.GetCampaignRow(ctx, campaignID)
-	if err != nil {
-		return err
-	}
-	return assertMediaBuyerCampaignAccess(ctx, row)
-}
-
-func (s *Service) TrackerPublicBaseURL() string {
-	if s.cfg != nil {
-		return strings.TrimSpace(s.cfg.LanderPublicBaseURL)
-	}
-	return ""
-}
-
-func (s *Service) EvaluateCampaignPublish(ctx context.Context, campaignID uuid.UUID) (campaign.CampaignPublishCheckDTO, error) {
-	return s.CampaignRuntime().EvaluateCampaignPublish(ctx, campaignID)
-}
-
-func (s *Service) PublishCampaign(ctx context.Context, campaignID uuid.UUID, force bool) (campaign.CampaignDTO, error) {
-	return s.CampaignRuntime().PublishCampaign(ctx, campaignID, force)
-}
-
-func (s *Service) GetCampaignIntegrationHealth(ctx context.Context, campaignID uuid.UUID) (campaign.IntegrationHealthDTO, error) {
-	return campaign.GetCampaignIntegrationHealth(ctx, s.pool, s, campaignID)
-}
-
-func (s *Service) ListCampaignConversionMappings(ctx context.Context, campaignID uuid.UUID) ([]campaign.ConversionMappingDTO, error) {
-	return campaign.ListCampaignConversionMappings(ctx, s.pool, campaignID)
-}
-
-func (s *Service) ReplaceCampaignConversionMappings(ctx context.Context, campaignID uuid.UUID, mappings []campaign.ConversionMappingDTO) ([]campaign.ConversionMappingDTO, error) {
-	return campaign.ReplaceCampaignConversionMappings(ctx, s.pool, campaignID, mappings)
-}
-
-func (s *Service) AuditCampaignRevisionConflict(ctx context.Context, campaignID uuid.UUID, expectedRevision string) {
-	campaign.AuditCampaignRevisionConflict(ctx, s.pool, s, campaignID, expectedRevision)
 }

@@ -1,9 +1,10 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/flow"
 	"net/http"
 	"testing"
+
+	"ad-event-processor/internal/flow"
 
 	"github.com/stretchr/testify/require"
 )

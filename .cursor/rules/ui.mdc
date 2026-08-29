@@ -1,0 +1,363 @@
+---
+description: Admin UI rebuild contract - cold path, OpenAPI, grid, AI honesty
+globs:
+  - api/openapi/**
+  - internal/controlplane/*_handlers.go
+  - scripts/ci/admin/openapi.sh
+  - scripts/ci/admin/web.sh
+alwaysApply: false
+---
+
+# Admin UI (rebuild)
+
+## Status
+
+**`web/` removed (2026-08-29).** Admin contract remains under `api/openapi/`. Boot stub: `internal/controlplane/admin_static_stub/` via `admin_static_embed.go`. Rebuild from `ui.mdc` + `frontend-modular.mdc` + OpenAPI when `web/` returns.
+
+| Artifact | Path |
+| :--- | :--- |
+| HTTP API | `api/openapi/openapi.yaml`, `openapi.bundle.yaml` |
+| Domain handlers | `internal/<domain>/handlers.go`, `internal/controlplane/*_bridge.go` |
+| Admin static (stub) | `internal/controlplane/admin_static_stub/` via `admin_static_embed.go` |
+| Traffic templates (server) | `internal/traffictemplates/generated_templates.json` (`make gen`) |
+
+Target modules when UI returns: `web/src/pages/`, `web/src/ui/<domain>/`, `web/src/helpers/*_api.ts` — see `frontend-modular.mdc` (isolation levels, migration).
+
+Reference: `frontend-modular.mdc`, `boundaries.mdc` (coupling limits), `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
+
+## Before code
+
+Abstract "implement page X" is invalid without an explicit operator spec. Contracts live in `ui.mdc`, `frontend-modular.mdc`, and `api/openapi/`.
+
+## AI laziness and dishonesty (admin UI)
+
+Agents optimize for plausible diffs, not operator intent. Treat these as **lie modes** (`anti-slop.mdc`).
+
+| Failure mode | What agents do | Required behavior |
+| :--- | :--- | :--- |
+| Doc ask -> code | Operator asks for `.mdc` update; agent edits components | Write rules only unless operator asked to implement |
+| Piecemeal teardown | Delete or refactor `web/` file-by-file; half tree + broken CI | Remove or recreate `web/` atomically per operator direction; server embed stays in `internal/controlplane/admin_static_stub/` |
+| History restore | Copy pre-reset `web/` from git without `ui.mdc` contract | Forbidden; rebuild from rules + OpenAPI + cold path |
+| Wrapper stack | `*DirectoryChrome`, `*Workspace`, `*Cluster` over grid | One section = one `ui/<domain>/` folder; page composes sections |
+| Flex/portrait layout | Flex on page/section; portal listbox for filter fields | CSS Grid sections only; field listboxes inline (`Dropdowns` below) |
+| Phantom contract | "See prior width contract" with no table in repo | Contract must live in this file |
+| Unrun verification | "typecheck passed", "admin_web green" | Paste command + package path + outcome (`quality.mdc`) |
+| Client logic smuggle | `useMemo` filter/sort over full API payload | Server query params; browser renders page |
+| Filter pagination relocation | Operator asks to move Prev/Next into filter grid; agent wraps or moves **Apply** | **Directory filter row and pagination** below; Apply stays direct grid child |
+| Double chip chrome | `PageHeader` wrapper + `FreshnessBadge` border | Parent slot renders chip directly (`Chips` below) |
+| Boot HTML drift | Text inside `<div id="root">` | Empty `<div id="root"></div>` only; boot inject in `admin_ui_static.go` |
+
+Rejected slice: revert; do not add compensating wrappers.
+
+## Cold path first (non-negotiable)
+
+Browser **renders** server output. Logic stays in Go.
+
+| Concern | Server | Browser |
+| :--- | :--- | :--- |
+| Filter / search | Query params; SQL/CH in handler | Send params; show `items`, `total` |
+| Sort | `sort`, `order` on API | Refetch |
+| Pagination | `limit`, `offset` or cursor | Controls only |
+| List envelope | `items`, `total`, `limit`, `offset`, `freshness`, `filters_applied`, `sort` on directory handlers (`ListEnvelope` OpenAPI) | Refetch on param change; no client envelope math |
+| KPIs / aggregates | Handler or report row fields | Display |
+| Freshness | `stale`, `ch_lag_seconds`, prefer `freshness_label` | Chip text from API; no client lag math |
+| Money | Micros + currency or `*_display` from API | Format display fields only |
+| Status | `status`, `status_label`, `status_tone` | Map tone enum to chip |
+| Export | Server export endpoint or async job | Download link |
+| Validation | 400 + field errors from handler | Show API errors |
+
+Forbidden in new `web/src/helpers/`: client-side filter/sort/reduce over full datasets; duplicated report keys; business rules that belong in handlers.
+
+**Rule:** need a derived field -> add to handler DTO in the same PR as the UI page.
+
+## API contract workflow
+
+1. Change `api/openapi/` and Go handler together.
+2. `bash scripts/ci/admin/openapi.sh` (export, catalog test, spectral via `npx` when available; no `web/package.json` required while `web/` absent).
+3. After `admin_contract_gate`: regenerate TS from OpenAPI into `web/src/types/generated/`.
+
+`live: true` on a route requires `/api/v1` backend (`report_live_routes_gate.sh` runs when `web/` exists).
+
+## Ship order (foundation first)
+
+| Slug | Delivers | Close when |
+| :--- | :--- | :--- |
+| `admin_contract_gate` | OpenAPI matches handlers | `openapi_gate.sh` green |
+| `admin_tokens` | Design tokens only | `rem` spacing only |
+| `admin_shell` | Login, shell, nav, boot | Replace `admin_static_stub`; `TestAdminStaticRoutes` |
+| `admin_page_chrome` | PageChrome grid section | Badge slot without wrapper chrome |
+| `admin_directory_pattern` | One server-paginated list | No client full-list sort |
+| `admin_detail_pattern` | One detail + PATCH | Fields subset of Go DTO |
+| `admin_report_pattern` | One report page | Keys from OpenAPI/handler |
+| `admin_integrations_hub` | Integrations landing | `StubBanner` on 501 |
+
+## Layout (CSS Grid only)
+
+From `admin_shell` onward. Page = grid of sections. Section owns `grid-template-columns`. Controls are leaves.
+
+| Rule | Detail |
+| :--- | :--- |
+| Section owns template | `grid-template-columns` / `rows` only on section root |
+| Controls are leaves | No `margin-left: auto` escaping the cell |
+| One chrome per region | One `PageChrome`, one filter section, one data section, one footer |
+| Rhythm | `row-gap` / `column-gap` on section grid; not margin stacks between sections |
+| Z-index | Open dropdown: cell z-index; section `position: relative` when `[data-dropdown-open]` |
+| Subgrid | Data grid: one column template; body rows `grid-column: 1 / -1; subgrid` |
+
+Forbidden for page layout:
+
+- `display: flex` on page, section, toolbar, footer
+- `display: table*` / `<table>` for data
+- `position: fixed` filter panels blocking content (inline accordion in flow only)
+- Parallel layout systems (flex page + grid table + portal toolbar)
+- Extra wrapper components that only add chrome (`*Chrome` around `*Chrome`)
+
+### Section stack
+
+`ContextBar` -> `PageChrome` -> `Toolbar` -> `[FilterPanel]` -> `Content` -> `Footer`.
+
+### Directory filter row and pagination
+
+Operator ask: move **Prev/Next** from list footer into the **filter grid** (bottom-right cell). That is **not** permission to relocate **Apply** or invent a second filter layout.
+
+Canonical reference: `web/src/ui/billing/billing_filter.tsx` (Apply only); `web/src/ui/campaigns/campaigns_filter.tsx` (Apply + pagination).
+
+#### Filter row contract
+
+| Rule | Detail |
+| :--- | :--- |
+| One `.filterRow` grid | `grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr))`; `align-items: end` |
+| Field cells | Each filter is a `.filterField` label block (same as billing) |
+| **Apply** | Direct child of `.filterRow`, **after** the last filter field (`Order`, etc.); plain `<Button type="submit">`; **no wrapper** |
+| **Prev/Next** | Separate direct child of `.filterRow`, **after** Apply; `PaginationPrevNext` with `className` for column width only |
+| Column width | Pagination root `width: 100%` of its grid cell; inner `grid-template-columns: 1fr 1fr` splits Prev/Next with gap |
+| Button height | Match field controls (`var(--control-height-md)`, `var(--text-sm)`) — not compact `text-xs` slivers |
+| Footer | Remove duplicate `PaginationBar` from directory footer when pagination lives in filter row |
+
+DOM order (campaigns-shaped directory):
+
+```
+.filterRow
+  .filterField × N   (customer, status, …, sort, order)
+  Button[Apply]      ← unchanged slot
+  PaginationPrevNext ← new cell to the right; does not wrap Apply
+```
+
+#### Agent failure modes (forbidden)
+
+| What agents do | Why it is wrong | Correct |
+| :--- | :--- | :--- |
+| Split `filters` into `filterFields` + `filterEnd` column | Moves Apply out of the filter grid into a side column | Single `.filterRow`; all children are peers |
+| Wrap Apply + pagination in `filterEndCap` / `filterActions` | Groups controls; shrinks or shifts Apply | Apply and pagination are **sibling** grid items |
+| Second row (`filterRowBottom`) for Sort/Order/Apply | Breaks original row flow; operator sees Apply "moved" | Keep Sort/Order in the same `.filterRow` as other fields |
+| Stack Prev/Next **above** Apply | Operator asked for horizontal pair in the grid corner, not a vertical tower | Pagination is its **own** cell beside Apply, not stacked on it |
+| `margin-left: auto` on a wrapper containing Apply | Pushes Apply away from its column after Order | No auto margin on Apply; optional `justify-self` only on pagination cell if the page catalog specifies |
+| Fixed `width: 5.75rem` + `justify-self: end` on pagination | Tiny buttons floating in empty grid space | `width: 100%`; fill the auto-fill column like other fields |
+| Touch Apply styling/position when task is "add pagination" | Operator said pagination moves; Apply stays | Diff Apply line should be **zero** unless explicitly requested |
+
+**Read operator layout literally:** "bottom-right corner of the filter grid" = last **grid cell** on the wrap row, not a new layout system. "Width like Apply" = width of the **grid column** Apply sits in, split 50/50 for Prev/Next — not a arbitrary `rem` constant narrower than the column.
+
+Rejected slice: revert wrapper/column/second-row changes; restore billing-shaped Apply; add pagination as the next sibling only.
+
+## Data grid (no `<table>`)
+
+| Rule | Detail |
+| :--- | :--- |
+| Root | `role="grid"`; `role="row"` / `columnheader` / `gridcell` |
+| Columns | One `grid-template-columns` on `.dataGrid`; header + rows share via subgrid |
+| Widths | Define once as `--<profile>-cols`; name `minmax(8rem, 1.4fr)`; fixed cols in `rem` |
+| Empty / loading | Single cell `grid-column: 1 / -1`; skeleton uses same column template |
+
+Column alignment:
+
+| Kind | `justify-items` |
+| :--- | :--- |
+| name, money, numeric, cost_center | `start` |
+| status, chargeback, created, campaigns, actions | `center` |
+
+Status chips: fixed `rem` width in column so labels align.
+
+## Chips and badges (strict)
+
+Defect class: pills like **Lag unknown** with **unequal inset** or **nested frames** (gray outer box around colored inner pill). Example failure: `.titleBadge` wrapping `FreshnessBadge`.
+
+| Rule | Detail |
+| :--- | :--- |
+| One chrome layer | Chip owns border, fill, padding; parent renders chip directly |
+| Symmetric inset | Same token all sides (`padding: var(--space-1)`); forbidden `padding: var(--space-1) var(--space-2)`, `0.125rem var(--space-2)`, `0 var(--space-2)` |
+| Vertical center | `inline-grid`, `align-items: center`, `line-height: var(--text-caption-leading)`; not ad-hoc `line-height: 1.2` |
+| No nested frames | One `.root`; no wrapper border around semantic chip |
+| Labels from API | Prefer `freshness_label`, `status_label` from handler |
+
+## Dropdowns
+
+| Kind | Mount | Width |
+| :--- | :--- | :--- |
+| Field listbox | Inline `.drop` on `.wrap` / `.anchor` with `width: 100%` | Wrapper box in grid cell |
+| Popover (hint, inbox, row overflow) | `AnchorOverlay` portal | `max(anchor, content)` with care |
+
+### Field listbox width contract
+
+| Failure | Cause | Fix |
+| :--- | :--- | :--- |
+| Menu **narrower** than field | Width on `<button>`; button shrinks to label in grid cell | Wrapper `width: 100%`; `.drop { left: 0; right: 0; width: 100% }` |
+| Menu **wider** than pagination trigger | Portal + `Math.max(anchor, content)`; measure inflated (~192px) | Field listboxes: no portal, no content measure |
+| Menu **clipped** | Filter section `overflow: hidden` | `overflow: visible` when `[data-dropdown-open]` |
+
+Popover width rules do **not** apply to toolbar/filter `Select` / `FilterDropdown`.
+
+## Fetch and error UI
+
+List/grid allocation and scroll budgets: `react.mdc` (DoD, prefetch, GC).
+
+| State | Condition | UI |
+| :--- | :--- | :--- |
+| Initial load | `fetching && !data && !error` | `PageSkeleton` / grid skeleton |
+| Blocking error | `error && !data` | `ErrorBlock` / `ErrorView`; no empty table |
+| Stale revalidate | `data` present + error | Keep rows; toast or `AlertBanner` |
+| Timeout | 15 s (`RESOURCE_FETCH_TIMEOUT_MS`) | Clear `fetching` in `finally` |
+| Mutation | PATCH/POST | `apiConfirmed`; toast only after 2xx |
+| Empty | `items.length === 0`, filters inactive | `EmptyState` + one sentence |
+
+No silent `catch` -> empty table. No `live: true` without `/api/v1`.
+
+## CSS module surface
+
+| Rule | Detail |
+| :--- | :--- |
+| Ownership | `*.module.css` under `web/src/ui/<domain>/` only |
+| Pages | Never import `*.module.css` (`check_ui_surface_gate.sh`) |
+| Class names | No BEM `__` under `web/src/ui`; use CSS Modules + CVA |
+| Variants | `*.variants.ts` + `cn()` from `web/src/lib/cn.ts` |
+
+## Server static embed (while `web/` absent)
+
+| Rule | Detail |
+| :--- | :--- |
+| Embed path | `internal/controlplane/admin_static_stub/` via `admin_static_embed.go` |
+| Boot marker | `index.html` / `login.html` must contain empty `<div id="root"></div>` |
+| Replace | When `admin_shell` ships `web/dist`; embed target switches in same PR as dist build |
+| Docker | No node/web build stage until `web/` returns; control binary embeds stub |
+
+## Target `web/` map (when UI returns)
+
+| Path | Role |
+| :--- | :--- |
+| `web/src/pages/` | Compose sections only; <= ~120 lines |
+| `web/src/ui/<domain>/` | Section grids + CSS modules |
+| `web/src/types/` | OpenAPI + hand DTO mirrors |
+| `web/src/helpers/*_api.ts` | Fetch + parse JSON only |
+
+Banned: `dto/`, `usecase/`, `providers/`.
+
+## Fixture and seed data (user-visible)
+
+**Scope:** any value an operator sees in admin — `web/src/**` fallbacks, handler dev stubs, `cmd/admin db seed`, SQL/CH fixtures, e2e payloads that mirror grid cells. Production pages are API-only (`Cold path first`); this section applies when seed, stub, or fallback data is shown.
+
+Canonical catalog: `cmd/admin/seed_catalog.go` (`seedCustomerNames`, `seedCampaignNames`, `seedCustomerBalanceMicro`, …). Extend those arrays; do not invent parallel trash catalogs in `web/`.
+
+### Trash naming (forbidden)
+
+| Pattern | Examples (banned) | Required |
+| :--- | :--- | :--- |
+| Tutorial tokens | `Foo`, `Bar`, `Baz`, `Qux`, `Lorem ipsum` | Industry-realistic names |
+| Acme / widget | `Acme Corp`, `Widget Inc`, `Test Company`, `Demo LLC` | Distinct company-like names from seed catalog |
+| Ordinal labels | `Customer 1`, `Campaign #42`, `Brand A`, `User 007` | Semantic geo/product/campaign names |
+| Generic personas | `John Doe`, `Jane Doe`, `Test User`, `Admin User` | Role + domain email (`ops+104@horizon-media.io`) |
+| Sequential display ids | `user-001`, `camp-0001`, `CTR_TIER_1` in name columns | UUID or opaque id; human label from catalog |
+| Placeholder leaks | `TBD`, `N/A`, `xxx`, `CHANGE ME`, `your-domain.com` in grid cells | `EmptyState`, `StubBanner`, or omit column |
+| Cryptic suffixes | `m1`, `n1`, `f1`, `v2_old` in visible strings | `naming.mdc` forbidden tokens |
+| Copy-paste chains | `Copy of X`, `X (2)`, `X - test` on seed rows | Unique base name per seeded entity |
+
+Input `placeholder` on empty form fields is allowed; it must not appear as row/cell/KPI data.
+
+### Round numbers (forbidden in metrics and money)
+
+Operators spot fake dashboards instantly. **Banned** in user-visible counts, money, rates, and deltas unless the live API returned that exact production value.
+
+| Surface | Banned examples | Required shape |
+| :--- | :--- | :--- |
+| Impressions / clicks / events | `1000`, `10000`, `50000`, `100000`, `1_000_000` | Irregular last 2–3 digits: `18473`, `902841` |
+| Money (micros or display) | `$100.00`, `$50.00`, `$1,000.00`; every row ends `.00` | Non-zero cent tails; vary per row (`$4,217.38`) |
+| Percentages / rates | `10.00%`, `25%`, `50%`, `100%` on every KPI row | Jagged decimals: `3.17%`, `11.84%` |
+| Budget / spend | `budget == spend`, `spend = 0` on all active rows | `spend < budget`; scattered utilization |
+| Time deltas | `lag: 60s`, `lag: 300s` on every freshness chip | Mixed seconds (`47`, `183`, `912`) from handler |
+| Round multiples only | All values divisible by 100, 1000, or 5000 | Prime-ish offsets (`seedCustomerBalanceMicro` pattern) |
+
+**Exception:** pagination `limit` (`25`, `50`, `100`) and UI control enums are not KPIs.
+
+Hardcoded KPI literals in `web/src/ui/**` are banned — same class as demo KPIs (`anti-slop.mdc`).
+
+### Duplicates (forbidden within one view)
+
+| Rule | Detail |
+| :--- | :--- |
+| Display names | No two visible rows share the same `name` / `title` / `email` in one grid |
+| Composite identity | `(customer_name, campaign_name)` pairs unique in directory views |
+| Metric clones | No column where every row shows the identical number |
+| Catalog modulo | `names[i%len]` only when `total > len(catalog)` **and** row `id` differs — never same name **and** same id twice on one page |
+| Cross-column echo | `spend_display` must not equal `budget_display` on every row |
+
+When seeding `N > len(catalog)`: extend arrays in `seed_catalog.go`; do not modulo-repeat visible labels on one admin page without distinct ids.
+
+### Allowed
+
+| Pattern | When |
+| :--- | :--- |
+| `EmptyState`, `ErrorBlock`, `StubBanner` | No backend / 501 |
+| API-driven values | Production path |
+| Deterministic dev UUIDs | `seedEntityUUID` for stable local dev |
+| Form `placeholder` | Empty input hint only — not grid/KPI data |
+
+### Verification (fixture / fallback touch)
+
+```bash
+rg -n '(?i)\b(Acme|Foo|Bar|Baz|Lorem|Test User|Customer [0-9]+|Campaign [0-9]+|John Doe)\b' web/src/ \
+  --glob '!**/*.spec.*' --glob '!**/placeholder.ts'
+rg -n '\b(10000|50000|100000|1_000_000)\b' web/src/ui/ --glob '!**/*.module.css'
+```
+
+Paste rg output (empty = OK) in the PR, or `not applicable — API-only page`.
+
+## Product honesty
+
+`StubBanner` on 501; toast after 2xx; form fields match PATCH DTO; no demo KPIs; no `(skeleton)` user copy; fixture/seed rules in **Fixture and seed data** above.
+
+## Verification
+
+While `web/` absent:
+
+```bash
+bash scripts/ci/admin/openapi.sh
+bash scripts/ci/admin/web.sh
+go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
+```
+
+After `admin_shell`:
+
+```bash
+cd web && npm run typecheck
+bash scripts/ci/admin/ui_surface.sh
+bash scripts/ci/admin/web.sh
+```
+
+UI PR must paste verification commands actually run.
+
+## Agent checklist
+
+| Step | Action |
+| :--- | :--- |
+| 1 | Confirm operator spec + OpenAPI route/handler contract |
+| 2 | Follow grid, cold path, and pitfalls sections in this file |
+| 3 | Handler/DTO before UI field |
+| 4 | No client list business logic |
+| 5 | Chip: symmetric padding, one layer |
+| 6 | Field listbox: inline drop, wrapper width |
+| 7 | Paste verification commands actually run |
+| 8 | Operator stop -> revert; no wrapper stacks |
+| 9 | Seed/fallback: no trash names, round KPIs, or duplicate display rows in one grid (`Fixture and seed data`) |
+| 10 | Move Prev/Next into filter row without relocating Apply (`Directory filter row and pagination`) |
+
+## Related rules
+
+`frontend-modular.mdc`, `anti-slop.mdc`, `cold-path.mdc`, `control-plane.mdc`, `development.mdc`, `quality.mdc`, `react.mdc`, `structure.mdc`.

@@ -205,7 +205,7 @@ func seedEventsForBench(pool *pgxpool.Pool, count int) {
 		}
 
 		payloads := make([][]byte, currentBatch)
-		for j := 0; j < currentBatch; j++ {
+		for j := range currentBatch {
 			payload := outbox.CampaignPayload{
 				CampaignID:  uuid.New().String(),
 				BudgetLimit: 100_500_000,

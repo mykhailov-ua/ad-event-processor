@@ -1,8 +1,9 @@
 package controlplane
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"testing"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"github.com/stretchr/testify/assert"
 )

@@ -41,7 +41,7 @@ func AppendBidResponseWire(dst []byte, w BidResponseWire) ([]byte, error) {
 	if len(w.RequestID) == 0 || len(w.BidID) == 0 || len(w.Bids) == 0 {
 		return dst, ErrInvalidJSON
 	}
-	for i := 0; i < len(w.Bids); i++ {
+	for i := range w.Bids {
 		b := w.Bids[i]
 		if len(b.ImpID) == 0 || len(b.CampaignID) == 0 {
 			return dst, ErrInvalidJSON
@@ -68,7 +68,7 @@ func AppendBidResponseWire(dst []byte, w BidResponseWire) ([]byte, error) {
 	dst = append(dst, `,"seatbid":[{"seat":`...)
 	dst = appendJSONBytes(dst, seat)
 	dst = append(dst, `,"bid":[`...)
-	for i := 0; i < len(w.Bids); i++ {
+	for i := range w.Bids {
 		if i > 0 {
 			dst = append(dst, ',')
 		}

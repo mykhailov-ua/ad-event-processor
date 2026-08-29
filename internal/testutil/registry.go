@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 )
 
 func NewAdsRegistry(t testing.TB, repo db.Querier) *ingestion.Registry {

@@ -9,7 +9,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/controlplane"
 	ads_db "ad-event-processor/internal/domain/db"
-	"ad-event-processor/internal/ingestion"
+	ingestion "ad-event-processor/internal/ingest"
 	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/payment/db"
 	"ad-event-processor/internal/payment/dbtest"

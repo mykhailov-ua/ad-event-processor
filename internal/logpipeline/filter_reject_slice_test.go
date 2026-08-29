@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"ad-event-processor/internal/ingestion/pb"
+	"ad-event-processor/internal/ingest/pb"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

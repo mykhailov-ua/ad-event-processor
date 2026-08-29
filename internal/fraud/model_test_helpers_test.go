@@ -1,9 +1,12 @@
 package fraud
 
 import (
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"ad-event-processor/internal/fraud/features"
 )
 
 func testModelPath(t *testing.T) string {
@@ -24,4 +27,9 @@ func testModelPath(t *testing.T) string {
 	}
 	t.Skip("fraud model not found; run make fraud-modeling-check locally")
 	return ""
+}
+
+func ipHashHex(ip string) string {
+	h := features.HashIPForClickhouse(ip)
+	return hex.EncodeToString(h[:])
 }

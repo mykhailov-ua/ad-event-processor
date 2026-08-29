@@ -1,18 +1,18 @@
 package controlplane
 
 import (
+	"context"
+	"io"
+	"time"
+
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
-	db "ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/licensing"
 	"ad-event-processor/internal/opsadmin"
 	"ad-event-processor/internal/payment"
 	"ad-event-processor/internal/platformadmin"
 	"ad-event-processor/pkg/domainhealth"
-	"context"
-	"io"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -91,14 +91,6 @@ func (s *Service) ApplyCTVSettlement(
 }
 
 func (s *Service) ErrPaymentTopupNotFound() error { return ErrPaymentTopupNotFound }
-
-func (s *Service) AuditLog(ctx context.Context, q db.Querier, adminID uuid.UUID, action, targetType string, targetID *uuid.UUID, changes, metadata any) {
-	platformadmin.AuditLog(ctx, s, q, adminID, action, targetType, targetID, changes, metadata)
-}
-
-func (s *Service) RunAuditCleaner(ctx context.Context, retention platformadmin.Days) {
-	platformadmin.RunAuditCleaner(ctx, s, retention)
-}
 
 func (s *Service) ListCustomers(ctx context.Context, limit, offset int32, sortField, sortOrder string) ([]platformadmin.CustomerDTO, int64, error) {
 	return s.customersAdmin().ListCustomers(ctx, limit, offset, sortField, sortOrder)
@@ -202,42 +194,4 @@ func (s *Service) SetReputationChecker(c *domainhealth.ReputationChecker) {
 		return
 	}
 	s.reputation = c
-}
-
-func (s *Service) ReputationChecker() *domainhealth.ReputationChecker {
-	if s == nil {
-		return nil
-	}
-	if s.reputation != nil {
-		return s.reputation
-	}
-	if s.cfg == nil || !s.cfg.Management.DomainReputationEnabled {
-		return nil
-	}
-	s.reputation = domainhealth.NewReputationChecker(domainhealth.ReputationConfig{
-		SafeBrowsingAPIKey: string(s.cfg.Management.SafeBrowsingAPIKey),
-		FacebookToken:      string(s.cfg.Management.FacebookGraphAccessToken),
-		FacebookGraphBase:  s.cfg.Management.FacebookGraphAPIBase,
-	})
-	return s.reputation
-}
-
-func (s *Service) SetCloudflareAPI(api platformadmin.CloudflareAPI) {
-	if s == nil {
-		return
-	}
-	s.cloudflare = api
-}
-
-func (s *Service) CloudflareClient() platformadmin.DomainCloudflareClient {
-	if s == nil {
-		return nil
-	}
-	if s.cloudflare != nil {
-		return s.cloudflare
-	}
-	if s.cfg == nil {
-		return nil
-	}
-	return platformadmin.NewCloudflareClient(string(s.cfg.Management.CloudflareAPIToken), s.cfg.Management.CloudflareAPIBase)
 }

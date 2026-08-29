@@ -1,41 +1,26 @@
 package costsync
 
-import (
-	"time"
+import "ad-event-processor/internal/costsync/provider"
 
-	"github.com/google/uuid"
-)
-
-type LineType string
+type LineType = provider.LineType
 
 const (
-	LineTypeSpend   LineType = "spend"
-	LineTypeRevenue LineType = "revenue"
+	LineTypeSpend   = provider.LineTypeSpend
+	LineTypeRevenue = provider.LineTypeRevenue
 )
 
-type CostLine struct {
-	CustomerID   uuid.UUID
-	CampaignID   uuid.UUID
-	Date         time.Time
-	Network      string
-	PlacementID  string
-	AdsetID      string
-	AdID         string
-	LineType     LineType
-	AmountMicro  int64
-	Currency     string
-	SnapshotHour time.Time
-}
+const (
+	AttributionModeToken  = provider.AttributionModeToken
+	AttributionModeSpread = provider.AttributionModeSpread
+)
 
-type Credential struct {
-	CustomerID          uuid.UUID
-	Network             string
-	AccountID           string
-	AccessToken         string
-	RefreshToken        string
-	APIKey              string
-	ExtraConfig         map[string]string
-	ExpiresAt           time.Time
-	SyncIntervalMinutes int
-	TokenMapping        TokenMapping
-}
+type (
+	CostLine     = provider.CostLine
+	Credential   = provider.Credential
+	TokenMapping = provider.TokenMapping
+)
+
+var (
+	ParseTokenMapping        = provider.ParseTokenMapping
+	ValidSyncIntervalMinutes = provider.ValidSyncIntervalMinutes
+)

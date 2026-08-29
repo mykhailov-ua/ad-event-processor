@@ -1,6 +1,6 @@
 # HWID spoof lab fixture
 
-Manual pentest **PT-D03** (`deploy/vendor/licensing_security_backlog.md`): verify that a license bound to donor hardware does not activate when telemetry is spoofed on another host.
+Manual pentest: verify that a license bound to donor hardware does not activate when telemetry is spoofed on another host.
 
 ## Telemetry inputs (HWID v2)
 
@@ -72,6 +72,6 @@ go test ./internal/licensing/ -run TestHWID_Deterministic -count=1
 ## Related gates
 
 ```bash
-bash scripts/ci/hwid_strings_gate.sh
+bash scripts/ci/license/hwid_strings.sh
 go test ./tests/integration/ -run LicenseProtection_hwid -count=1
 ```

@@ -22,7 +22,7 @@ import (
 
 func TestFanout_SetNXOnAllShards_failsOnShardError(t *testing.T) {
 	redisShards := make([]redis.UniversalClient, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		mr, err := miniredis.Run()
 		require.NoError(t, err)
 		t.Cleanup(mr.Close)

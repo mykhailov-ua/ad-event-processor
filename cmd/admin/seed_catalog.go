@@ -79,6 +79,18 @@ var seedUserLocalParts = []string{
 	"ops", "media.buyer", "finance", "growth", "traffic", "analytics", "partnerships", "dev", "campaigns", "billing",
 }
 
+var seedCustomerRegionLabels = []string{
+	"US East", "US West", "EU North", "APAC", "LATAM",
+}
+
+var seedCampaignGeoTags = []string{
+	"US", "GB", "CA", "UA", "DE", "FR", "JP",
+}
+
+var seedCampaignDeskTags = []string{
+	"Alpha desk", "Bravo desk", "Cedar desk", "Delta desk", "Echo desk",
+}
+
 func seedEntityUUID(seq int) uuid.UUID {
 	id, err := uuid.Parse(fmt.Sprintf("00000000-0000-0000-0000-%012x", seq))
 	if err != nil {
@@ -88,11 +100,18 @@ func seedEntityUUID(seq int) uuid.UUID {
 }
 
 func seedCustomerName(seq int) string {
-	return seedCustomerNames[(seq-1)%len(seedCustomerNames)]
+	idx := seq - 1
+	base := seedCustomerNames[idx%len(seedCustomerNames)]
+	region := seedCustomerRegionLabels[(idx/len(seedCustomerNames))%len(seedCustomerRegionLabels)]
+	return fmt.Sprintf("%s — %s", base, region)
 }
 
 func seedCampaignName(seq int) string {
-	return seedCampaignNames[(seq-1)%len(seedCampaignNames)]
+	idx := seq - 1
+	base := seedCampaignNames[idx%len(seedCampaignNames)]
+	geo := seedCampaignGeoTags[(idx/len(seedCampaignNames))%len(seedCampaignGeoTags)]
+	desk := seedCampaignDeskTags[(idx/(len(seedCampaignNames)*len(seedCampaignGeoTags)))%len(seedCampaignDeskTags)]
+	return fmt.Sprintf("%s · %s · %s", base, geo, desk)
 }
 
 func seedBrandName(seq int) string {

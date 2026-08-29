@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/campaign/integration"
 	"ad-event-processor/internal/controlplane"
 	"ad-event-processor/internal/testutil"
 
@@ -36,7 +36,7 @@ func TestImportAndApplyCampaignTemplates(t *testing.T) {
 	require.NoError(t, err)
 
 	svc := controlplane.NewService(ctx, pool, nil, nil, nil)
-	h := &campaign.IntegrationSchemaHTTPHandlers{
+	h := &integration.IntegrationSchemaHTTPHandlers{
 		Pool:            pool,
 		TemplateCatalog: svc.TemplateCatalog(pool),
 		ResolveTrackingDomain: func(context.Context) string {
@@ -46,17 +46,17 @@ func TestImportAndApplyCampaignTemplates(t *testing.T) {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
-	importBody, _ := json.Marshal(campaign.ImportTemplatesRequest{})
+	importBody, _ := json.Marshal(integration.ImportTemplatesRequest{})
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/integration/templates/import", bytes.NewReader(importBody))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 
-	var imported []campaign.IntegrationSchemaDTO
+	var imported []integration.IntegrationSchemaDTO
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &imported))
 	require.GreaterOrEqual(t, len(imported), 7)
 
-	applyBody, _ := json.Marshal(campaign.ApplyCampaignTemplatesRequest{
+	applyBody, _ := json.Marshal(integration.ApplyCampaignTemplatesRequest{
 		TrafficSource:    "traffic_propellerads",
 		AffiliateNetwork: "affiliate_everad",
 		TrackingDomain:   "trk.example.com",

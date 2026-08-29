@@ -244,7 +244,7 @@ func RunFloorOptimizer(ctx context.Context, host FloorsHost) (int, error) {
 
 	br := host.FloorsPool().SendBatch(ctx, batch)
 	defer func() { _ = br.Close() }()
-	for i := 0; i < batch.Len(); i++ {
+	for i := range batch.Len() {
 		if _, err := br.Exec(); err != nil {
 			return i, fmt.Errorf("upsert floor suggestion batch item %d: %w", i, err)
 		}

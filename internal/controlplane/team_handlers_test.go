@@ -1,13 +1,14 @@
 package controlplane_test
 
 import (
-	ctrlhttp "ad-event-processor/internal/control/http"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	ctrlhttp "ad-event-processor/internal/control/http"
 
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/platformadmin"

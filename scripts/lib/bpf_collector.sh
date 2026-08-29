@@ -75,7 +75,7 @@ bpf_require_privileged_collector() {
     return 0
   fi
   printf '%s: ERROR: bpf-collector needs root for memlock/BPF attach\n' "$prefix" >&2
-  printf '%s: run: sudo bash scripts/dev/bpf_session.sh start\n' "$prefix" >&2
+  printf '%s: run: sudo bash scripts/dev/stack/bpf_session.sh start\n' "$prefix" >&2
   printf '%s: or set AD_EVENT_PROCESSOR_BPF_SUDO_PASS for passwordless sudo via -S\n' "$prefix" >&2
   return 1
 }

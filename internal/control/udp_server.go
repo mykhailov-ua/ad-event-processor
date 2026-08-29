@@ -249,7 +249,7 @@ func (s *UDPControlServer) buildLimits(ctx context.Context) *domain.UDPControlLi
 		if shardRPS == 0 {
 			shardRPS = 1
 		}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			limits.Limits[i] = shardRPS
 		}
 	} else {
@@ -257,7 +257,7 @@ func (s *UDPControlServer) buildLimits(ctx context.Context) *domain.UDPControlLi
 		if fallback == 0 {
 			fallback = 50_000
 		}
-		for i := 0; i < n; i++ {
+		for i := range n {
 			limits.Limits[i] = fallback
 		}
 	}

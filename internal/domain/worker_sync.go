@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/dedup"
+	"ad-event-processor/internal/domain/budget"
 	"ad-event-processor/internal/metrics"
 
 	"github.com/google/uuid"
@@ -21,7 +22,7 @@ type PGWriteGate interface {
 
 type SpendSyncBroker interface {
 	Flush(ctx context.Context) error
-	EnqueueRollup(ctx context.Context, w *SyncWorker, id uuid.UUID, entry PendingRollup) error
+	EnqueueRollup(ctx context.Context, w *SyncWorker, id uuid.UUID, entry budget.PendingRollup) error
 }
 
 type SyncWorker struct {
@@ -40,7 +41,7 @@ type SyncWorker struct {
 	wg                   sync.WaitGroup
 	syncMu               sync.Mutex
 	rollupMu             sync.Mutex
-	campaignRollup       map[uuid.UUID]PendingRollup
+	campaignRollup       map[uuid.UUID]budget.PendingRollup
 	lastLedgerFlush      time.Time
 }
 
@@ -66,7 +67,7 @@ func NewSyncWorker(
 		maxConcurrency:       maxConcurrency,
 		lockTTLSec:           60,
 		strictThresholdMicro: 5_000_000,
-		campaignRollup:       make(map[uuid.UUID]PendingRollup, 64),
+		campaignRollup:       make(map[uuid.UUID]budget.PendingRollup, 64),
 	}
 }
 
@@ -145,7 +146,7 @@ func (w *SyncWorker) shouldFlushLedger() bool {
 		return true
 	}
 	if w.ledgerFlushInterval < 0 {
-		w.ledgerFlushInterval = defaultLedgerBatchFlush
+		w.ledgerFlushInterval = budget.DefaultLedgerBatchFlush()
 	}
 	if w.lastLedgerFlush.IsZero() {
 		return true
@@ -259,9 +260,9 @@ func (w *SyncWorker) stageCampaignRollup(ctx context.Context, idStr string) {
 
 	w.rollupMu.Lock()
 	if w.campaignRollup == nil {
-		w.campaignRollup = make(map[uuid.UUID]PendingRollup, 64)
+		w.campaignRollup = make(map[uuid.UUID]budget.PendingRollup, 64)
 	}
-	w.campaignRollup[id] = PendingRollup{
+	w.campaignRollup[id] = budget.PendingRollup{
 		AmountMicro:         amountMicro,
 		TxID:                txID,
 		IDStr:               idStr,
@@ -282,7 +283,7 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 		return
 	}
 	batch := w.campaignRollup
-	w.campaignRollup = make(map[uuid.UUID]PendingRollup, len(batch))
+	w.campaignRollup = make(map[uuid.UUID]budget.PendingRollup, len(batch))
 	w.rollupMu.Unlock()
 
 	if w.spendSync != nil {
@@ -290,7 +291,7 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 		return
 	}
 
-	if batcher, ok := w.campaignRepo.(spendBatchFlusher); ok {
+	if batcher, ok := w.campaignRepo.(budget.SpendBatchFlusher); ok {
 		w.flushCampaignRollupBatched(ctx, batch, batcher)
 		return
 	}
@@ -337,7 +338,7 @@ func (w *SyncWorker) flushCampaignRollup(ctx context.Context) {
 	}
 }
 
-func (w *SyncWorker) flushCampaignRollupProxy(ctx context.Context, batch map[uuid.UUID]PendingRollup) {
+func (w *SyncWorker) flushCampaignRollupProxy(ctx context.Context, batch map[uuid.UUID]budget.PendingRollup) {
 	for id, entry := range batch {
 		if err := w.spendSync.EnqueueRollup(ctx, w, id, entry); err != nil {
 			metrics.SyncLagSeconds.Set(time.Since(w.lastLedgerFlush).Seconds())
@@ -345,20 +346,20 @@ func (w *SyncWorker) flushCampaignRollupProxy(ctx context.Context, batch map[uui
 	}
 }
 
-func (w *SyncWorker) flushCampaignRollupBatched(ctx context.Context, batch map[uuid.UUID]PendingRollup, batcher spendBatchFlusher) {
+func (w *SyncWorker) flushCampaignRollupBatched(ctx context.Context, batch map[uuid.UUID]budget.PendingRollup, batcher budget.SpendBatchFlusher) {
 	ids := make([]uuid.UUID, 0, len(batch))
 	for id := range batch {
 		ids = append(ids, id)
 	}
 
-	for start := 0; start < len(ids); start += maxLedgerBatchSize {
-		end := start + maxLedgerBatchSize
+	for start := 0; start < len(ids); start += budget.MaxLedgerBatchSize() {
+		end := start + budget.MaxLedgerBatchSize()
 		if end > len(ids) {
 			end = len(ids)
 		}
 		chunkIDs := ids[start:end]
 		items := make([]SpendFlushItem, 0, len(chunkIDs))
-		entries := make([]PendingRollup, 0, len(chunkIDs))
+		entries := make([]budget.PendingRollup, 0, len(chunkIDs))
 		for _, id := range chunkIDs {
 			entry := batch[id]
 			item := SpendFlushItem{
@@ -416,11 +417,11 @@ func (w *SyncWorker) flushCampaignRollupBatched(ctx context.Context, batch map[u
 	}
 }
 
-func (w *SyncWorker) retainCampaignRollup(id uuid.UUID, entry PendingRollup) {
+func (w *SyncWorker) retainCampaignRollup(id uuid.UUID, entry budget.PendingRollup) {
 	w.rollupMu.Lock()
 	defer w.rollupMu.Unlock()
 	if w.campaignRollup == nil {
-		w.campaignRollup = make(map[uuid.UUID]PendingRollup, 1)
+		w.campaignRollup = make(map[uuid.UUID]budget.PendingRollup, 1)
 	}
 	if existing, ok := w.campaignRollup[id]; ok {
 		entry.AmountMicro += existing.AmountMicro
@@ -428,7 +429,7 @@ func (w *SyncWorker) retainCampaignRollup(id uuid.UUID, entry PendingRollup) {
 	w.campaignRollup[id] = entry
 }
 
-func (w *SyncWorker) handleCampaignFlushError(ctx context.Context, id uuid.UUID, entry PendingRollup, err error) {
+func (w *SyncWorker) handleCampaignFlushError(ctx context.Context, id uuid.UUID, entry budget.PendingRollup, err error) {
 	if errors.Is(err, ErrInsufficientCustomerBalance) {
 		_ = w.campaignRepo.UpdateStatus(ctx, id, CampaignStatusPaused)
 		metrics.LedgerBatchPauseTotal.Inc()
@@ -439,7 +440,7 @@ func (w *SyncWorker) handleCampaignFlushError(ctx context.Context, id uuid.UUID,
 	w.retainCampaignRollup(id, entry)
 }
 
-func (w *SyncWorker) CommitRollupRedis(ctx context.Context, entry PendingRollup) {
+func (w *SyncWorker) CommitRollupRedis(ctx context.Context, entry budget.PendingRollup) {
 	w.redisClient.Eval(ctx, commitSyncScript,
 		[]string{entry.InFlightKey, entry.DirtySet, entry.LockKey, entry.TxKey, entry.SyncKey},
 		entry.AmountMicro, entry.IDStr)

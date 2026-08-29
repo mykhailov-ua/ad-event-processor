@@ -25,7 +25,7 @@ func seedClickWithRTTSplit(t *testing.T, conn driver.Conn, ip string, deltaMS ui
 	h := testPIIHasher()
 	rttSyn := uint16(40)
 	ttfb := rttSyn + deltaMS
-	for i := 0; i < copies; i++ {
+	for i := range copies {
 		clickID := fmt.Sprintf("rtt-%s-%d-%d", ip, deltaMS, i)
 		require.NoError(t, conn.Exec(ctx, `
 			INSERT INTO ad_event_processor.clicks

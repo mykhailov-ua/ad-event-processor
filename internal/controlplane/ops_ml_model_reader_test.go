@@ -1,13 +1,14 @@
 package controlplane
 
 import (
-	"ad-event-processor/internal/opsadmin"
 	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/opsadmin"
 
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"

@@ -6,7 +6,7 @@ cd "$ROOT"
 
 REPORT="${1:-escape_report.txt}"
 BASELINE_FILE="${2:-}"
-PKG="${ESCAPE_PKG:-./internal/ingestion/...}"
+PKG="${ESCAPE_PKG:-./internal/ingest/...}"
 
 go build -gcflags="-m" $PKG 2>&1 | tee "$REPORT"
 COUNT="$(grep -c 'escapes to heap' "$REPORT" || true)"

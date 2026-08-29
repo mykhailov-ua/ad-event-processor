@@ -1,0 +1,7 @@
+# hash_hex=ua_families (windows,mac,linux,mobile)
+00eaf023=windows
+00eaf022=windows
+00300022=windows
+007a1022=linux
+00310822=linux
+00f7ff22=linux,mac,mobile
