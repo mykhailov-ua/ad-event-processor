@@ -1,3 +1,4 @@
+// log-evacuator entrypoint. Package documentation: doc.go.
 package main
 
 import (

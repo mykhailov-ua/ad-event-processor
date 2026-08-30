@@ -499,7 +499,7 @@ func decideQuotaRepair(r quotaRow, redisExpected int64, quotaKeyMissing bool) (Q
 		if amount > chunk {
 			amount = chunk
 		}
-		return QuotaRepairTopUpRedis, amount, "crash_gap_missing_redis_key"
+		return QuotaRepairTopUpRedis, amount, "crash_window_missing_redis_key"
 	}
 
 	if absDrift <= chunk {

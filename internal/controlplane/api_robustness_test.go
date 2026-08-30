@@ -11,6 +11,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -106,7 +107,7 @@ func TestManagementAPI_Robustness(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			NewSystemStateWorker(svc).Start(ctx)
+			platformadmin.NewSystemStateWorker(svc).Start(ctx)
 		}()
 
 		time.Sleep(50 * time.Millisecond)

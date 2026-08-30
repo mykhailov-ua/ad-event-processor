@@ -1,3 +1,4 @@
+// region-proxy entrypoint. Package documentation: doc.go.
 package main
 
 import (

@@ -4,6 +4,24 @@ package.loaded["resty.redis"] = {}
 
 local blacklist_store = {}
 local sentinel_store = {}
+local circuit_store = {}
+
+local function make_incr_dict(store)
+    return {
+        get = function(_, key)
+            return store[key]
+        end,
+        incr = function(_, key, delta, init)
+            local val = store[key]
+            if val == nil then
+                val = init or 0
+            end
+            val = val + delta
+            store[key] = val
+            return val
+        end,
+    }
+end
 
 local function make_dict(store)
     return {
@@ -35,6 +53,7 @@ ngx = {
     shared = {
         blacklist_cache = make_dict(blacklist_store),
         sentinel_cache = make_dict_with_delete(sentinel_store),
+        circuit_breaker = make_incr_dict(circuit_store),
     },
 }
 
@@ -110,6 +129,13 @@ red, err = blacklist_sync.connect_any_shard()
 assert_true(red == nil, "all shards down returns nil client")
 assert_true(err ~= nil, "all shards down returns error")
 assert_eq(2, #attempts, "attempted every configured shard")
+local circuit_errs = 0
+for key, val in pairs(circuit_store) do
+    if key:sub(-5) == ":errs" then
+        circuit_errs = circuit_errs + val
+    end
+end
+assert_eq(1, circuit_errs, "all shards down records circuit err")
 
 blacklist_sync.reset_test_hooks()
 local cache = ngx.shared.blacklist_cache
@@ -139,6 +165,12 @@ assert_eq(1, cache:get "b:198.51.100.1", "batch json marks ip")
 assert_true(blacklist_sync.apply_quarantine_message "203.0.113.99", "apply_quarantine_message legacy ip")
 assert_eq(1, cache:get "_bl_ver", "legacy ip keeps version on changelog path")
 assert_eq(1, cache:get "b:203.0.113.99", "legacy ip marks cache")
+
+cache:set("_bl_count", 5)
+assert_true(blacklist_sync.stamp_ips({ "203.0.113.5", "203.0.113.6" }, false), "duplicate incremental stamp_ips")
+assert_eq(5, cache:get "_bl_count", "duplicate incremental does not inflate _bl_count")
+assert_true(blacklist_sync.stamp_ips({ "203.0.113.100" }, false), "new incremental ip")
+assert_eq(6, cache:get "_bl_count", "new incremental ip increments _bl_count once")
 
 blacklist_sync.set_env_for_test(function(name)
     if name == "EDGE_BLACKLIST_CHANGELOG_MAX_IPS" then

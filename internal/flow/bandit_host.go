@@ -11,6 +11,14 @@ type EntityBanditStat struct {
 	Clicks      int64
 	Conversions int64
 	Payout      float64
+	SpendMicro  int64
+}
+
+type CreativeBanditStat struct {
+	Impressions int64
+	Clicks      int64
+	Payout      float64
+	SpendMicro  int64
 }
 
 type BanditHost interface {

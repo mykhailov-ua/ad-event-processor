@@ -12,6 +12,7 @@ import (
 	_ "ad-event-processor/internal/campaign/integration"
 	"ad-event-processor/internal/campaign/selfserve"
 	_ "ad-event-processor/internal/campaign/wizard"
+	"ad-event-processor/internal/commandpalette"
 	"ad-event-processor/internal/controlplane/routecatalog"
 	"ad-event-processor/internal/dashboardadmin"
 	"ad-event-processor/internal/doctor"
@@ -29,6 +30,7 @@ import (
 	"ad-event-processor/internal/smartalerts"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/internal/telegram"
+	"ad-event-processor/internal/trafficoptimizer"
 )
 
 type RouteRegistry struct {
@@ -49,6 +51,8 @@ type RouteRegistry struct {
 	MarginGuardHTTP       *marginguard.HTTPHandlers
 	SmartAlertsHTTP       *smartalerts.HTTPHandlers
 	AutomationHTTP        *automation.HTTPHandlers
+	TrafficOptimizerHTTP  *trafficoptimizer.HTTPHandlers
+	CommandPaletteHTTP    *commandpalette.HTTPHandlers
 	DomainHealthHTTP      *platformadmin.DomainHealthHTTPHandlers
 	FlowHTTP              *flow.HTTPHandlers
 	IntegrationSchemaHTTP *integration.IntegrationSchemaHTTPHandlers
@@ -128,6 +132,12 @@ func RegisterRoutes(mux *http.ServeMux, routes RouteRegistry) {
 	}
 	if routes.AutomationHTTP != nil {
 		routes.AutomationHTTP.Register(mux)
+	}
+	if routes.TrafficOptimizerHTTP != nil {
+		routes.TrafficOptimizerHTTP.Register(mux)
+	}
+	if routes.CommandPaletteHTTP != nil {
+		routes.CommandPaletteHTTP.Register(mux)
 	}
 	if routes.DomainHealthHTTP != nil {
 		routes.DomainHealthHTTP.Register(mux)

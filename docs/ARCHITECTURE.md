@@ -22,7 +22,7 @@ HTTP 202 on `/track` means ingest accepted and validated, not that Postgres or C
 
 ### Hot path allowed sync I/O
 
-| Phase | I/O |
+| Stage | I/O |
 | :--- | :--- |
 | Local filters | CPU + in-memory snapshots (GeoIP, registry, fraud boost map) |
 | Budget / dedup | 0 RTTs (local quanta full-skip) or 1x `EVALSHA` |
@@ -101,7 +101,24 @@ Default deploy: nginx perimeter on single VPS. Optional: `edge-xdp` (license `eb
 | `/click` | Tracker | Edge gate `EDGE_EXPOSE_CLICK` |
 | `/admin/*`, `/api/v1/*` | Control 8188 | |
 | `/api/v1/telegram/webhook/*` | Control 8188 | Telegram CIDR allowlist |
-| `/metrics/edge` | Edge 8180 | Prometheus scrape |
+| `/metrics/edge` | Edge 8180 | Prometheus scrape (`edge-metrics.lua`) |
+
+### Nginx ngx.shared (worker 0 sync)
+
+Timers in `deploy/nginx/lua/init-worker.lua` (worker id 0 only). Access phase reads SHM; no per-request Redis on hot path.
+
+| Dict | Size | Sync interval | Invalidation |
+| :--- | :--- | :--- | :--- |
+| `edge_config` | 4m | 5 s | Generational `_asn_ver`; version-last ASN stamp; RL retain on null |
+| `blacklist_cache` | 10m | 5 s + quarantine | Generational `_bl_ver`; `b:{ip}` stamp then ver bump on full sync |
+| `slot_map` | 2m | 10 s | `s:0..1023` then `version` last |
+| `node_weights` | 512k | 10 s | Purge stale `w:*`; `peer_count` last |
+| `edge_rl` | 50m | access | TTL sliding windows (separate zone from config) |
+| `circuit_breaker` | 10m | sync + log | `{bucket}:total` / `:errs` ratio gate |
+
+Circuit breaker writers: Redis connect/HMGET/SMEMBERS failures, blacklist stale, upstream 5xx (`edge-circuit-log.lua`).
+
+Verify: `bash scripts/test/edge/lua_tests.sh compliance` (`edge_config_test.lua`, `edge_slot_map_test.lua`, `circuit_breaker_test.lua`).
 
 ---
 
@@ -109,12 +126,13 @@ Default deploy: nginx perimeter on single VPS. Optional: `edge-xdp` (license `eb
 
 | Service | Port | Metrics |
 | :--- | :---: | :---: |
-| `tracker` | 8181-8184 | 9101-9104 |
-| `processor` | 8186 | 9106 |
-| `control` | 8188 | 9108 |
+| `tracker` | 8181-8184 | 9101-9104 (compose sidecar) |
+| `processor` | 8186 | `/metrics` on 8186 |
+| `control` | 8188 | `/metrics` on 8188 |
 | `payment-webhook` | 8187 | - |
 | `ivt-detector` | - | 9112 |
 | `fraud-scorer` | - | 9114 |
+| nginx edge | 8180, 443 | `/edge/metrics` on 8180 |
 
 Infra defaults: Postgres 5430, Redis 6479-6482, ClickHouse 9000.
 

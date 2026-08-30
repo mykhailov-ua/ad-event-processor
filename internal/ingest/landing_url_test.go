@@ -26,14 +26,10 @@ func TestResolveLandingURLBytes_TgClick(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://offer.example/lp",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{
+		URL:    "https://offer.example/lp",
+		Weight: 100,
+	}}})
 
 	evt := &domain.Event{
 		Type:       "tg_click",

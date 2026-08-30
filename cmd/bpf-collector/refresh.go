@@ -1,3 +1,18 @@
+// Periodic re-resolve of targets.json from bpf_resolve_targets.sh.
+//
+// Role:
+//   - refreshTargetsLoop ticks -refresh-targets; runs scripts/test/bpf_resolve_targets.sh.
+//   - mergeTargetsFile re-reads targets.json and calls trackTarget for new PIDs (idempotent).
+//
+// Topology:
+//   - Default roles_wanted fallback tracker,nginx,redis,processor when meta field empty.
+//
+// Invariants:
+//   - Script failure logs debug only; loop continues on next tick.
+//   - Disabled when -refresh-targets 0 (default).
+//
+// Verify:
+//   bash scripts/test/bpf_resolve_targets.sh var/load-test/<session>/targets.json tracker
 package main
 
 import (

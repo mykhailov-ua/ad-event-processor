@@ -38,6 +38,10 @@ func FilterDeadlineRemainingOnEvent(evt *domain.Event, ctx context.Context) (tim
 	return filterDeadlineRemainingEvt(evt, ctx)
 }
 
+func FilterDeadlineMonoFromContext(ctx context.Context) (int64, bool) {
+	return filterDeadlineMonoFromContext(ctx)
+}
+
 func AcquireBufWrapper() *BufWrapper {
 	return bufPool.Get().(*BufWrapper)
 }

@@ -26,17 +26,17 @@ func TestDeviceFilter_settingsListenerReloadsBlocklist(t *testing.T) {
 
 	evt.TLSHash = "blockedhash"
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+	assert.True(t, acc.Has(FraudReasonTLSBlocklist))
 
-	acc.reset()
+	acc.Reset()
 	evt.TLSHash = "freshhash"
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTLSBlocklist))
+	assert.False(t, acc.Has(FraudReasonTLSBlocklist))
 
 	sw.ApplyConfigForTest(2, map[string]string{"tls_hash_blocklist": "freshhash"})
-	acc.reset()
+	acc.Reset()
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+	assert.True(t, acc.Has(FraudReasonTLSBlocklist))
 }
 
 func TestDeviceFilter_blocklistSnapshotReload(t *testing.T) {
@@ -52,18 +52,18 @@ func TestDeviceFilter_blocklistSnapshotReload(t *testing.T) {
 
 	evt.TLSHash = "blockedhash"
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+	assert.True(t, acc.Has(FraudReasonTLSBlocklist))
 
-	acc.reset()
+	acc.Reset()
 	evt.TLSHash = "otherhash"
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTLSBlocklist))
+	assert.False(t, acc.Has(FraudReasonTLSBlocklist))
 
 	sw.StoreDynamicConfigForTest(&DynamicConfig{TLSHashBlocklist: "otherhash"})
-	f.reloadBlocklist()
-	acc.reset()
+	f.ReloadBlocklist()
+	acc.Reset()
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSBlocklist))
+	assert.True(t, acc.Has(FraudReasonTLSBlocklist))
 }
 
 func TestDeviceFilter_signals(t *testing.T) {
@@ -85,8 +85,8 @@ func TestDeviceFilter_signals(t *testing.T) {
 	evt.UA = "curl/8.0"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSBlocklist))
-	assert.True(t, acc.has(FraudReasonDeviceMismatch))
+	assert.True(t, acc.Has(FraudReasonTLSBlocklist))
+	assert.True(t, acc.Has(FraudReasonDeviceMismatch))
 }
 
 func TestDeviceFilter_pass_clean_client(t *testing.T) {
@@ -103,7 +103,7 @@ func TestDeviceFilter_pass_clean_client(t *testing.T) {
 	evt.SecCHUA = `"Google Chrome";v="120"`
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.Equal(t, uint8(0), acc.count)
+	assert.Equal(t, uint8(0), acc.SignalCount())
 }
 
 func TestDeviceFilter_tlsImpersonation(t *testing.T) {
@@ -121,7 +121,7 @@ func TestDeviceFilter_tlsImpersonation(t *testing.T) {
 	evt.TLSHash = suspiciousJA3PythonHash
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonDeviceMismatch))
+	assert.True(t, acc.Has(FraudReasonDeviceMismatch))
 
 	evt.Reset()
 	acc = attachFraudAccumulator(evt)
@@ -129,7 +129,7 @@ func TestDeviceFilter_tlsImpersonation(t *testing.T) {
 	evt.TLSJA3 = "python-requests-ja3-fingerprint"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonDeviceMismatch))
+	assert.True(t, acc.Has(FraudReasonDeviceMismatch))
 
 	evt.Reset()
 	acc = attachFraudAccumulator(evt)
@@ -137,7 +137,7 @@ func TestDeviceFilter_tlsImpersonation(t *testing.T) {
 	evt.TLSJA3 = "chrome-ja3-fingerprint"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonDeviceMismatch))
+	assert.False(t, acc.Has(FraudReasonDeviceMismatch))
 
 	evt.Reset()
 	acc = attachFraudAccumulator(evt)
@@ -145,7 +145,7 @@ func TestDeviceFilter_tlsImpersonation(t *testing.T) {
 	evt.TLSHash = suspiciousJA3PythonHash
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonDeviceMismatch))
+	assert.False(t, acc.Has(FraudReasonDeviceMismatch))
 }
 
 func TestTlsFingerprintImpersonating(t *testing.T) {

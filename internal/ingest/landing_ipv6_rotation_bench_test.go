@@ -21,7 +21,7 @@ func BenchmarkIPv6Rotation_observe(b *testing.B) {
 	var live bool
 	benchN := 0
 	for b.Loop() {
-		live, _ = table.observe(campaignHash, v6Hi, uint64(benchN&63), now)
+		live, _ = table.Observe(campaignHash, v6Hi, uint64(benchN&63), now)
 		benchN++
 	}
 	ipv6RotationBenchSink = ipv6RotationBenchSink || live
@@ -44,7 +44,7 @@ func BenchmarkIPv6Rotation_ClickHook(b *testing.B) {
 		"2001:db8:85a3::1", "2001:db8:85a3::2", "2001:db8:85a3::3",
 		"2001:db8:85a3::4", "2001:db8:85a3::5", "2001:db8:85a3::6",
 	}
-	parsed := &clickQueryParsed{ok: true, campaignID: cid}
+	parsed := &clickQueryParsed{OK: true, CampaignID: cid}
 	now := monotonicNano()
 
 	b.ReportAllocs()

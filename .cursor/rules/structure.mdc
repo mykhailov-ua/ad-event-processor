@@ -177,7 +177,7 @@ Remaining split candidates (not done):
 
 Package cap when splitting: ~40 files or ~8k LOC per package; one domain per package (`modular-monolith.mdc`).
 
-**Mandatory:** `doc.go` at the root of every production package (`//` package docs, then `package <name>`). Edit in place in the same PR; no codegen script.
+**Mandatory:** `doc.go` at the root of every production package (detailed module doc per `comments.mdc`, then `package <name>`). Edit in place in the same PR; no codegen script.
 
 Excluded: generated subtrees only (`db/`, `pb/`, `queries/` under a domain package — they do not get their own `doc.go`).
 

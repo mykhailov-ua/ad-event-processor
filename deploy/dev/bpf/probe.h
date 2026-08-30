@@ -1,5 +1,7 @@
-
-
+/* Shared types and inline helpers for deploy/dev/bpf/loadtest_probe.bpf.c.
+ * Role IDs (tracker=1, nginx=2, redis=3, k6=4, processor=5), syscall NR constants,
+ * histogram buckets (32), slow event threshold default 10ms (AD_EVENT_PROCESSOR_SLOW_SYSCALL_NS).
+ */
 #ifndef AD_EVENT_PROCESSOR_PROBE_H
 #define AD_EVENT_PROCESSOR_PROBE_H
 

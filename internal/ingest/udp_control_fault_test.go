@@ -43,20 +43,20 @@ func encodeTestEpochPacket(t *testing.T, epoch int64, rps uint64, msgType uint8,
 	return append([]byte(nil), buf[:n]...)
 }
 
-func TestFault_UDP_EpochGapTighten(t *testing.T) {
+func TestFault_UDP_EpochWindowTighten(t *testing.T) {
 	c := newTestUDPControl(2)
 	require.True(t, c.ApplyPacket(encodeTestEpochPacket(t, 1, 10_000, UDPMsgQuotaEpoch, 0, 2)))
 	require.Equal(t, int64(1), c.CurrentEpoch())
 	require.True(t, c.ApplyPacket(encodeTestEpochPacket(t, 5, 1_000, UDPMsgQuotaEpoch, 0, 2)))
 	require.Equal(t, int64(5), c.CurrentEpoch())
 	require.Equal(t, uint64(1_000), c.ShardLimitRPS(0))
-	require.Equal(t, float64(1), testutil.ToFloat64(metrics.UDPControlGapTightenTotal))
-	faultproof.Log(t, "udp_epoch_gap_tighten", map[string]string{
+	require.Equal(t, float64(1), testutil.ToFloat64(metrics.UDPControlEpochTightenTotal))
+	faultproof.Log(t, "udp_epoch_window_tighten", map[string]string{
 		"epoch": "5", "limit_rps": "1000", "fail_closed": "true",
 	})
 }
 
-func TestFault_UDP_EpochGapLoosenBlock(t *testing.T) {
+func TestFault_UDP_EpochWindowLoosenBlock(t *testing.T) {
 	c := newTestUDPControl(2)
 	require.True(t, c.ApplyPacket(encodeTestEpochPacket(t, 1, 5_000, UDPMsgQuotaEpoch, 0, 2)))
 	before := testutil.ToFloat64(metrics.UDPControlLoosenBlockedTotal)
@@ -64,12 +64,12 @@ func TestFault_UDP_EpochGapLoosenBlock(t *testing.T) {
 	require.Equal(t, int64(1), c.CurrentEpoch())
 	require.Equal(t, uint64(5_000), c.ShardLimitRPS(0))
 	require.Equal(t, before+1, testutil.ToFloat64(metrics.UDPControlLoosenBlockedTotal))
-	faultproof.Log(t, "udp_epoch_gap_loosen_block", map[string]string{
+	faultproof.Log(t, "udp_epoch_window_loosen_block", map[string]string{
 		"blocked": "true", "epoch_unchanged": "true",
 	})
 }
 
-func TestFault_UDP_EpochGapLoosenSnapshot(t *testing.T) {
+func TestFault_UDP_EpochWindowLoosenSnapshot(t *testing.T) {
 	c := newTestUDPControl(2)
 	require.True(t, c.ApplyPacket(encodeTestEpochPacket(t, 1, 5_000, UDPMsgQuotaEpoch, 0, 2)))
 	require.True(t, c.ApplyPacket(encodeTestEpochPacket(t, 9, 25_000, UDPMsgConfigSnapshot, UDPFlagSnapshot, 2)))
@@ -79,11 +79,11 @@ func TestFault_UDP_EpochGapLoosenSnapshot(t *testing.T) {
 
 func TestFault_UDP_StaleFailClosed(t *testing.T) {
 	c := newTestUDPControl(2)
-	c.syncInterval = 50 * time.Millisecond
+	c.SetSyncIntervalForTest(50 * time.Millisecond)
 	require.True(t, c.ApplyPacket(encodeTestEpochPacket(t, 1, 20_000, UDPMsgQuotaEpoch, 0, 2)))
-	c.markFresh()
-	c.lastPacketMono.Store(monotonicNano() - int64(200*time.Millisecond))
-	c.checkStale()
+	c.MarkFreshForTest()
+	c.SetLastPacketMonoForTest(monotonicNano() - int64(200*time.Millisecond))
+	c.CheckStaleForTest()
 	require.Equal(t, UDPChannelStale, c.ChannelState())
 	floor := c.ShardLimitRPS(0)
 	require.Equal(t, uint64(1000), floor)

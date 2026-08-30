@@ -1,3 +1,5 @@
+// BrokerConsumerGroup: parallel broker partition workers -> ClickHouse StoreBatch.
+// Used when CH_INGEST_SOURCE=broker; offsets persisted locally + broker CommitOffset RPC.
 package main
 
 import (
@@ -14,21 +16,23 @@ import (
 	"ad-event-processor/pkg/logger"
 )
 
+// BrokerConsumerGroupConfig drives one consumer group across broker partitions.
 type BrokerConsumerGroupConfig struct {
 	BrokerAddr         string
 	RedisURL           string
 	Topic              string
 	Group              string
 	PartitionCount     int
-	BatchSize          int
-	FlushInterval      time.Duration
-	MaxBytes           uint32
-	Timeout            time.Duration
-	DataDir            string
-	ShadowMode         bool
+	BatchSize          int           // events per StoreBatch flush (default 50000)
+	FlushInterval      time.Duration // max wait between flushes (default 1000ms)
+	MaxBytes           uint32        // max Fetch payload bytes (default 64 MiB)
+	Timeout            time.Duration // broker RPC timeout (default 10s)
+	DataDir            string        // local offset tracker directory
+	ShadowMode         bool          // count only; skip StoreBatch (BROKER_SHADOW_MODE)
 	OnMessageProcessed func(evt *domain.Event, brokerOffset uint64)
 }
 
+// BrokerConsumerGroup coordinates per-partition brokerWorker goroutines.
 type BrokerConsumerGroup struct {
 	cfg           BrokerConsumerGroupConfig
 	store         domain.EventStore
@@ -57,7 +61,7 @@ func NewBrokerConsumerGroup(
 		cfg.FlushInterval = 1000 * time.Millisecond
 	}
 	if cfg.MaxBytes == 0 {
-		cfg.MaxBytes = 64 * 1024 * 1024
+		cfg.MaxBytes = 64 * 1024 * 1024 // 64 MiB fetch cap per partition poll
 	}
 	if cfg.Timeout == 0 {
 		cfg.Timeout = 10 * time.Second

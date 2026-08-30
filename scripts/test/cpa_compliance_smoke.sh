@@ -6,7 +6,7 @@ ROOT="$(pwd)"
 
 if [[ "${CPA_COMPLIANCE_SKIP_ADMIN:-0}" != "1" ]]; then
   echo "cpa compliance: route gap"
-  bash scripts/ci/admin/cpa_route_gap.sh
+  bash scripts/ci/admin/cpa_route_audit.sh
 
   echo "cpa compliance: admin web gates"
   bash scripts/ci/admin/web.sh

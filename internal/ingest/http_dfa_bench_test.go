@@ -83,7 +83,7 @@ func BenchmarkHTTP2DFA_Worst(b *testing.B) {
 	b.ReportAllocs()
 	st := newH2ConnState()
 	for b.Loop() {
-		st.resetConn()
+		st.ResetConn()
 		_, _, _, _, err := parseH2Ingress(wire, &st, 1<<20)
 		if err != nil {
 			b.Fatal(err)

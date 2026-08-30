@@ -57,8 +57,8 @@ if ! grep -q 'fault_proof fault=parser_chaos_load' "$LOG"; then
   echo "parser-chaos-load: missing fault_proof line" >&2
   exit 1
 fi
-if grep -q 'fault_proof fault=parser_chaos_load.*gap=open' "$LOG"; then
-  echo "parser-chaos-load: gap still open" >&2
+if grep -q 'fault_proof fault=parser_chaos_load.*proof=open' "$LOG"; then
+  echo "parser-chaos-load: proof still open" >&2
   exit 1
 fi
 

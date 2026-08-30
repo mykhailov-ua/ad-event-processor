@@ -1,3 +1,4 @@
+// edge-xdp entrypoint. Package documentation: doc.go.
 package main
 
 import (
@@ -63,6 +64,7 @@ func main() {
 		slog.Error("pin maps", "error", err)
 		os.Exit(1)
 	}
+	// Pinned map count gauge every 30s for ops dashboards.
 	go func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
@@ -91,6 +93,8 @@ func main() {
 	slog.Info("received shutdown signal", "signal", sig.String(), "iface", *iface)
 }
 
+// ebpfEdgeAttachAllowed checks Redis license epoch when REDIS_ADDRS is set.
+// When unset, attach is allowed (dev convenience; production should set REDIS_ADDRS).
 func ebpfEdgeAttachAllowed() bool {
 	redisAddr := edge.FirstRedisAddr()
 	if redisAddr == "" {

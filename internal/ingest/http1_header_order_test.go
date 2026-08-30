@@ -92,7 +92,7 @@ func TestL7WireFilter_http1HeaderOrder(t *testing.T) {
 	evt.HTTP1HeaderOrder[5] = http1HdrSecFetchDest
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonHeaderOrderMismatch))
+	assert.True(t, acc.Has(FraudReasonHeaderOrderMismatch))
 }
 
 func TestClassifyHTTP1HeaderOrderToken(t *testing.T) {

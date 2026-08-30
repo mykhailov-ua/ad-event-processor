@@ -24,7 +24,7 @@ func benchClickProxyHandler(b *testing.B) (*AdsPacketHandler, *httptest.Server, 
 func BenchmarkClickProxy_Stream(b *testing.B) {
 	h, up, conn := benchClickProxyHandler(b)
 	b.Cleanup(up.Close)
-	ctx := &connContext{bufSlice: make([]byte, 0, 4096)}
+	ctx := &connContext{BufSlice: make([]byte, 0, 4096)}
 	job := clickProxyJob{
 		upstream:  up.URL + "/lp",
 		clientIP:  "203.0.113.1",
@@ -33,10 +33,10 @@ func BenchmarkClickProxy_Stream(b *testing.B) {
 	}
 	b.ReportAllocs()
 	for b.Loop() {
-		conn.Buf = conn.Buf[:0]
+		conn.buf = conn.buf[:0]
 		h.clickProxyDeliver(conn, ctx, job)
 	}
-	clickProxyBenchSink = len(conn.Buf) > 0
+	clickProxyBenchSink = len(conn.buf) > 0
 }
 
 func BenchmarkClickProxy_BuildUpstreamURL(b *testing.B) {

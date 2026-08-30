@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Purpose
 
-Always applied on every agent turn. Go method receivers and verification honesty. Comments: `naming.mdc`. File layout: `code-style.mdc`.
+Always applied on every agent turn. Go method receivers and verification honesty. Comments: `comments.mdc`. File layout: `code-style.mdc`.
 
 Agents must not invent environment, generated artifacts, or benchmark runs.
 
@@ -62,4 +62,4 @@ Use `for b.Loop() { ... }` (Go 1.24+), not `for i := 0; i < b.N; i++`.
 
 ## Related rules
 
-`anti-slop.mdc`, `code-style.mdc`, `naming.mdc`, `hot-path.mdc`.
+`anti-slop.mdc`, `code-style.mdc`, `comments.mdc`, `naming.mdc`, `hot-path.mdc`.

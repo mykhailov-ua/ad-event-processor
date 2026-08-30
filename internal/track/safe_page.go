@@ -118,6 +118,10 @@ func ParseSafePageStubCampaignID(path []byte) (uuid.UUID, bool) {
 //go:embed safe_page_hydrator.js
 var safePageHydratorJS []byte
 
+func SafePageHydratorJS() []byte {
+	return safePageHydratorJS
+}
+
 var (
 	SafePageStubHTMLHead = []byte("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Loading</title></head><body><main><iframe src=\"")
 	SafePageStubHTMLMid  = []byte("\" title=\"content\" style=\"border:0;width:100%;height:100vh\"></iframe></main><script>")

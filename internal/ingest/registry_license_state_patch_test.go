@@ -24,7 +24,7 @@ func TestLicenseStatePatchInsufficient(t *testing.T) {
 	licensing.SetSeedCouplingRequired(true)
 	licensing.PublishFeatureSeed(0, false)
 
-	globalDeploymentRPS.resetForTests()
+	resetGlobalDeploymentRPSForTests()
 	filter := NewLicenseRPSFilter(activeLicenseStaleSeedRegistry{})
 	err := filter.Check(context.Background(), &domain.Event{})
 	require.ErrorIs(t, err, ErrRateLimitExceeded)

@@ -1,3 +1,4 @@
+// edge-bpf-sync daemon entry. Package documentation: doc.go.
 package main
 
 import (

@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/regionproxy"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/dedupkey"
 
@@ -38,7 +39,7 @@ func TestFault_RegionUplinkDedup(t *testing.T) {
 	payload := []byte(`{"batch":"mr-uplink"}`)
 	var buf [256]byte
 	factorU := dedupkey.FactorU(dedupkey.WriteCanonicalProxyBatchPayload(buf[:0], 0, payload))
-	in := RegionIngestBatchInput{
+	in := regionproxy.BatchInput{
 		RegionCode: 1,
 		NodeID:     "proxy-node-1",
 		Seq:        0,
@@ -84,7 +85,7 @@ func TestRegionIngestBatch_FactorMismatchRejected(t *testing.T) {
 	cfg := &config.Config{MultiRegionEnabled: true, RegionCode: 0}
 	svc := newBareService(t, pool, nil, cfg)
 
-	_, err := svc.IngestRegionProxyBatch(ctx, RegionIngestBatchInput{
+	_, err := svc.IngestRegionProxyBatch(ctx, regionproxy.BatchInput{
 		RegionCode: 1,
 		NodeID:     "proxy-node-1",
 		Seq:        1,

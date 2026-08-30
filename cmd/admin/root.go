@@ -1,3 +1,4 @@
+// Cobra root: loads --env-path then config.Load before any subcommand runs.
 package main
 
 import (
@@ -86,10 +87,12 @@ func loadEnvFile(path string) error {
 	return scanner.Err()
 }
 
+// getDB opens a small PG pool (5 max conns) for operator commands.
 func getDB(ctx context.Context) (*pgxpool.Pool, error) {
 	return database.Connect(ctx, string(cfg.DBDSN), 5, 1)
 }
 
+// getRedisShards connects tracker Redis topology for budget/slot-map CLI ops.
 func getRedisShards(ctx context.Context) ([]redis.UniversalClient, *ingestion.StaticSlotSharder, error) {
 	clients, _, err := database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{PoolSize: 10})
 	if err != nil {

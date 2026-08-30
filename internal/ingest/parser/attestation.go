@@ -21,6 +21,7 @@ const (
 	attestationTokenBinaryLen = attestationPayloadLen + attestationMACLen
 	attestationTokenB64Len    = 87
 	AttestationCookiePrefix   = "Attestation-Token="
+	AttestationTokenBinaryLen = attestationTokenBinaryLen
 	attestationDefaultTTL     = 300
 	attestationMinTTL         = 60
 	attestationMaxTTL         = 900
@@ -230,6 +231,18 @@ func decodeAttestationTokenBase64URL(src []byte, dst []byte) (int, bool) {
 	}
 	copy(dst, scratch[:n])
 	return n, true
+}
+
+func DecodeAttestationTokenBase64URL(src []byte, dst []byte) (int, bool) {
+	return decodeAttestationTokenBase64URL(src, dst)
+}
+
+func EncodeAttestationIPPrefix(ip string, dst []byte) bool {
+	return encodeAttestationIPPrefix(ip, dst)
+}
+
+func AttestationIPPrefixMatch(stored []byte, ip string) bool {
+	return attestationIPPrefixMatch(stored, ip)
 }
 
 func putInt64BE(dst []byte, v int64) {

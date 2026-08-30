@@ -25,7 +25,7 @@ func TestKeyGen_10kRecordsDedupReady(t *testing.T) {
 	if testing.Short() {
 		records = 2000
 	}
-	for i := range records {
+	for range records {
 		_, err := w.Append(payload)
 		require.NoError(t, err)
 	}

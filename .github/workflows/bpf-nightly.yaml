@@ -12,6 +12,8 @@ concurrency:
 jobs:
   bpf-hot-baseline:
     name: BPF hot gate baseline compare
+    # Non-obvious: Falls back to github-hosted runner in mock/smoke mode if self-hosted PERF_RUNNER_LABEL is empty,
+    # because standard GitHub runners lack the kernel access/privileges required for strict BPF resource gates.
     runs-on: ${{ vars.PERF_RUNNER_LABEL || 'ubuntu-latest' }}
     timeout-minutes: 45
     env:

@@ -1,6 +1,17 @@
+# Primary VPS architecture profile. Options: single_vps, cluster_node
 profile: single_vps
+
+# Ingress layer deployment type. Options: ad_event_processor_native, external_caddy
 ingress_schema: ad_event_processor_native
+
+# Global telemetry metrics collection flag
 telemetry_enabled: true
+
+# Enable XDP/eBPF kernel packet dropping (requires Enterprise license)
 edge_xdp: false
+
+# Enable multi-region database replication support
 multi_region: false
+
+# Default network interface for traffic ingress
 interface: eth0

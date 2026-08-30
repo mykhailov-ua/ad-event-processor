@@ -1,3 +1,38 @@
+# Load-test compose overlay (deploy/compose/docker-compose.load-test.yaml).
+# Merged by scripts/lib/load_test_env.sh and perf/fault lab scripts; not used by stack.sh.
+# Cross-ref: deploy/DEPLOY.md, .env.load-test, docs/DEVELOPMENT.md (load-test BPF tier).
+#
+# Role:
+# - Constrained cgroup lab for malformed.sh, parser_chaos_load.sh, redis_ram_cutover_compare.sh.
+# - Dual-scale trackers (0-1: 2 CPU / 512M; 2-3: 0.5 CPU / 448M); nginx fronts two trackers only.
+# - TRACKER_BPF_TRACE=1 build arg; Redis AOF off, TCP ports published for host loadgen.
+#
+# Topology:
+# - Compose: docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.load-test.yaml.
+# - Patches: tracker-0..3, processor, nginx, db, clickhouse, redis-0..5, prometheus, grafana,
+#   alertmanager, control.
+# - nginx depends_on reset: tracker-0, tracker-1 only (not tracker-2/3).
+# - Ports from .env.load-test: LOAD_TEST_EDGE_PORT, LOAD_TEST_TRACKER_*_INGEST_PORT, etc.
+#
+# Invariants:
+# - QUOTA_MODE=live and LOCAL_QUOTA_MODE=live on tracker lab env (holdout in load_test_compose_test.go).
+# - TRANSPORT_USE_UDS=0; TRACKER_UNIX_SOCKET empty; HTTP1_BODY_IDLE_MS=60000.
+# - REDIS_ADDRS=${LOAD_TEST_REDIS_ADDRS}; redis appendonly no, maxmemory-policy noeviction.
+# - CH_DSN over TCP 127.0.0.1:9000 (CH_USE_UDS=0 on processor/control).
+#
+# Env knobs:
+# - LOAD_TEST_REDIS_ADDRS, LOAD_TEST_PROCESSOR_PORT, LOAD_TEST_CONTROL_PORT.
+# - LOAD_TEST_TRACKER_N_INGEST_PORT / METRICS_PORT / HEALTH_URL per shard.
+# - SKIP_CODEGEN (default 0), TRACKER_BPF_TRACE=1, GOGC=300 on trackers.
+#
+# Forbidden:
+# - Do not use for routine laptop dev (starts ClickHouse + 6 Redis with published ports).
+# - Do not cite unit mock benches as /track SLA; use load-test Prometheus p99 gates.
+#
+# Verify:
+# make load-test-config
+# go test ./deploy/compose/ -run TestLoadTest -count=1
+# bash scripts/ci/compose_profile_check.sh
 x-go-load-test-env: &go_load_test_env
   GOMAXPROCS: '2'
 

@@ -152,7 +152,7 @@ func measureFaultTrackLatencies(t *testing.T, h *AdsPacketHandler, campaignID uu
 			defer wg.Done()
 			local := make([]time.Duration, 0, n)
 			prefix := fmt.Sprintf("base-w%d-", workerID)
-			for i := range n {
+			for range n {
 				clickID := uuid.NewString()
 				payload := map[string]any{
 					"campaign_id": campaignID,

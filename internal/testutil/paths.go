@@ -11,7 +11,7 @@ func ModuleRoot() string {
 }
 
 func AdsMigrationsDir() string {
-	return filepath.Join(ModuleRoot(), "internal", "ingestion", "migrations")
+	return filepath.Join(ModuleRoot(), "internal", "ingest", "migrations")
 }
 
 func AuthMigrationsDir() string {

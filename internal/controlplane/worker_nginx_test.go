@@ -29,7 +29,7 @@ func TestNginxConfigWorker(t *testing.T) {
 	defer svc.Close()
 
 	exportPath := t.TempDir()
-	worker := NewNginxConfigWorker(svc, exportPath)
+	worker := platformadmin.NewNginxConfigWorker(svc, exportPath)
 
 	ctx := context.Background()
 

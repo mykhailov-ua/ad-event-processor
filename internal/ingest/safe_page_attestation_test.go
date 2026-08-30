@@ -19,10 +19,10 @@ func TestSafePageAttestation_canvasRetestIgnoredWhenDisabled(t *testing.T) {
 	fp.CanvasHashA = testCanvasHash64
 	fp.CanvasHashB = testCanvasHashAlt
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:         fp,
-		events:              humanMouseEvents(18),
-		behaviorScore:       safePageVerifyMinEvents + 3,
-		canvasRetestEnabled: false,
+		Fingerprint:         fp,
+		Events:              humanMouseEvents(18),
+		BehaviorScore:       safePageVerifyMinEvents + 3,
+		CanvasRetestEnabled: false,
 	})
 	require.False(t, fail)
 	require.Equal(t, "", code)
@@ -30,8 +30,8 @@ func TestSafePageAttestation_canvasRetestIgnoredWhenDisabled(t *testing.T) {
 
 func TestSafePageAttestation_webrtcLeakDesktop(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		remoteIP: "8.8.8.8",
-		fingerprint: safePageVerifyFingerprint{
+		RemoteIP: "8.8.8.8",
+		Fingerprint: safePageVerifyFingerprint{
 			Mobile:                 false,
 			CanvasHash:             testCanvasHash64,
 			AudioHash:              testAudioHash64,
@@ -45,8 +45,8 @@ func TestSafePageAttestation_webrtcLeakDesktop(t *testing.T) {
 
 func TestSafePageAttestation_webrtcPublicMatchesRemote(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		remoteIP: "8.8.8.8",
-		fingerprint: safePageVerifyFingerprint{
+		RemoteIP: "8.8.8.8",
+		Fingerprint: safePageVerifyFingerprint{
 			WebRTCLocalIP:          "8.8.8.8",
 			Mobile:                 false,
 			CanvasHash:             testCanvasHash64,
@@ -61,8 +61,8 @@ func TestSafePageAttestation_webrtcPublicMatchesRemote(t *testing.T) {
 
 func TestSafePageAttestation_timezoneMismatch(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		country: "US",
-		fingerprint: safePageVerifyFingerprint{
+		Country: "US",
+		Fingerprint: safePageVerifyFingerprint{
 			Timezone:               "Europe/Moscow",
 			WebRTCLocalIP:          "192.168.1.5",
 			Mobile:                 true,
@@ -71,7 +71,7 @@ func TestSafePageAttestation_timezoneMismatch(t *testing.T) {
 			NotificationPermission: "denied",
 			NotificationQuery:      "denied",
 		},
-		nowUnix: time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
+		NowUnix: time.Date(2026, 8, 16, 12, 0, 0, 0, time.UTC).Unix(),
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestTimezoneSpoof, code)
@@ -79,7 +79,7 @@ func TestSafePageAttestation_timezoneMismatch(t *testing.T) {
 
 func TestSafePageAttestation_webglAutomation(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint: safePageVerifyFingerprint{
+		Fingerprint: safePageVerifyFingerprint{
 			WebGLRenderer:          "Google SwiftShader",
 			WebRTCLocalIP:          "10.0.0.2",
 			Mobile:                 true,
@@ -198,14 +198,10 @@ func testSafePageVerifyHandler(t *testing.T) (*AdsPacketHandler, uuid.UUID) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://money.example/lp?cid={click_id}",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{benchClickBrandID: {{
+		URL:    "https://money.example/lp?cid={click_id}",
+		Weight: 100,
+	}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	engine := NewFilterEngine(0, &countingFilter{})

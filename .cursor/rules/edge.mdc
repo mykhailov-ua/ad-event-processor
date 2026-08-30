@@ -27,7 +27,62 @@ Dev certs: `deploy/nginx/certs/generate-dev-certs.sh`. Perimeter timeouts: `clie
 ## L7 pipeline (`access-check.lua`)
 
 ```
-Rate limit -> circuit breaker -> blacklist cache -> body DFA (edge-parse-dfa.lua) -> per-campaign RL -> proxy to tracker pool (:8181-8184)
+Per-campaign RL (edge_rl) -> circuit breaker -> generational blacklist -> ASN bypass -> body DFA -> fraud tier -> upstream trackers
+```
+
+Log phase (`edge-circuit-log.lua`): upstream 5xx increments `{bucket}:errs` in `circuit_breaker` SHM (pairs with access-phase totals).
+
+## ngx.shared zones (`nginx.conf`)
+
+| Dict | Size | Writer | Invalidation pattern |
+| :--- | :--- | :--- | :--- |
+| `edge_rl` | 50m | access incr | TTL bucket keys `{campaign}:{tier}:{bucket}` |
+| `edge_config` | 4m | worker 0 timer 5 s | Generational `_asn_ver`; ASN stamps last; RL numerics retain on Redis null |
+| `blacklist_cache` | 10m | worker 0 + quarantine thread | Generational `_bl_ver`; full sync stamps `b:{ip}` then `_bl_ver`; incremental reuses ver |
+| `slot_map` | 2m | worker 0 timer 10 s | Write `s:0..1023`, then `routing_epoch`, then `version` last |
+| `node_weights` | 512k | worker 0 timer 10 s | Zero stale `w:*`, write JSON weights, `peer_count` last |
+| `tcp_fp_cache` | 4m | worker 0 timer 2 s | Per-key TTL 3600 s; `ngx.null` skipped on HMGET |
+| `circuit_breaker` | 10m | sync failures + log phase | Sliding `{bucket}:total` / `:errs`; ratio gate in access |
+| `edge_metrics` | 10m | access incr | Monotonic counters only |
+| `sentinel_cache` | 5m | Redis connect path | TTL 5 s on `m:{master_name}` |
+| `healthcheck` | 1m | upstream healthcheck | resty.upstream.healthcheck |
+
+Forbidden on sync timers: `dict:get_keys` full scan (removed from `edge-config.lua`; use generation counters).
+
+## Config mirror (`edge-config.lua`)
+
+Redis `config:values` HMGET every 5 s into `edge_config`:
+
+| Field group | SHM keys | On Redis null / HDEL |
+| :--- | :--- | :--- |
+| RL numerics | `limit_per_min`, `window_ms`, `rl_pct_*`, `retry_*_sec` | Retain prior (fail-open) |
+| ASN CDN / mobile | `asn_*:{asn}` generation stamps | Bump `_asn_ver` without restamp -> stale |
+| Route flags | `edge_expose_click`, `edge_expose_openrtb` | `dict:delete` -> env fallback |
+
+Prometheus gauges (via `edge-metrics.lua`): `ad_event_processor_edge_asn_cdn_entries`, `_asn_mobile_entries`, `ad_event_processor_edge_config_free_bytes`.
+
+## Blacklist L7 (`edge-blacklist-sync.lua`)
+
+Generational model (reference for ASN and slot-map ordering):
+
+| Key | Role |
+| :--- | :--- |
+| `_bl_ver` | Active generation; access blocks when `b:{ip} == _bl_ver` |
+| `_bl_count` | Deduped estimate; full `sync()` sets exact count; incremental adds only new IPs at current ver |
+| `_bl_sync_ts` | Stale gate `EDGE_BL_STALE_SEC` default 30 s |
+| `b:{ip}` | Generation stamp; stale stamps fail-open pass |
+
+Incremental quarantine: `stamp_ips(..., bump_version=false)`; unblocked IPs are not deleted from SHM.
+
+## Prometheus (`/edge/metrics`)
+
+Content handler: `edge-metrics.lua`. Prefix `ad_event_processor_edge_*`. Blacklist gauge reads `_bl_count` and `_bl_sync_ts` from `blacklist_cache`.
+
+Verify:
+
+```bash
+bash scripts/test/edge/lua_tests.sh unit
+bash scripts/test/edge/lua_tests.sh compliance
 ```
 
 ## Tracker ingress schema (`TRACKER_INGRESS_SCHEMA`)
@@ -72,9 +127,9 @@ shard = slot_table[slot]
 
 `EDGE_TARPIT_ENABLED=true` on nginx edge only; capped duration; never on billing/settlement paths.
 
-## XDP (enterprise optional)
+## XDP (license `ebpf_xdp_edge`)
 
-Not appliance SKU. License `features.ebpf_xdp_edge`. Hot path must not import `internal/edge`.
+Not on `single_vps` SKU. Hot path must not import `internal/edge`.
 
 ### Flow
 
@@ -135,6 +190,7 @@ Stop bpf-sync -> stop edge-xdp; Nginx Lua blacklist remains.
 ## Verification
 
 ```bash
+bash scripts/test/edge/lua_tests.sh unit
 bash scripts/ci/compliance.sh
 go test ./internal/edge/... -count=1
 go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1

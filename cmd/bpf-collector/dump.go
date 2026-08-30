@@ -1,3 +1,23 @@
+// BPF map aggregation and bpf/maps/summary.json writer.
+//
+// Role:
+//   - dumpMaps merges per-CPU pid_stats, syscall_hist, net_stats, marker_hist, runqueue_hist.
+//   - Joins proc-samples.ndjson peaks, cgroup-samples.ndjson peaks, mem-start/end major faults.
+//   - collectHardwarePerf (linux) samples cache/branch misses via perf_event_open per tracker/processor PID.
+//
+// Topology:
+//   - Invoked on probeRun.stop and optionally dumpLoop (-dump-interval > 0); overwrites summary.json.
+//
+// Invariants:
+//   - sessionDuration minimum 1s when wall clock non-positive (rate denominators).
+//   - hot_syscalls filtered by name set (read, connect, epoll_wait, futex, etc.).
+//   - loadgen_overhead_pct = loadgen oncpu / all tracked oncpu when both nonzero.
+//
+// Forbidden:
+//   - summary.json oncpu_pct is session wall-time fraction, not Prometheus ad_http_request_duration_seconds.
+//
+// Verify:
+//   go run ./cmd/load-report bpf var/load-test/<session>/
 package main
 
 import (

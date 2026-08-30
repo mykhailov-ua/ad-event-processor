@@ -1,18 +1,18 @@
-
+# ==============================================================================
+# Caddy Ingress Reverse Proxy Configuration Example
+# ==============================================================================
 
 {
+	# Email address used for Let's Encrypt / ZeroSSL ACME certificate registration
 	email {$CADDY_ACME_EMAIL}
-
-
 }
 
-
+# Ingress domain routing for the high-RPS tracking endpoints
 {$TRACKING_DOMAIN} {
 	reverse_proxy 127.0.0.1:8181
 }
 
+# Administrative control plane domain routing
 {$ADMIN_DOMAIN} {
 	reverse_proxy 127.0.0.1:8188
 }
-
-

@@ -108,6 +108,12 @@ func (l *tlsFingerprintFeedLoader) Start(ctx context.Context) {
 	}
 }
 
+func (l *tlsFingerprintFeedLoader) refreshOnce() {
+	if l != nil && l.inner != nil {
+		l.inner.RefreshOnce()
+	}
+}
+
 type residentialIntelFeedLoader struct {
 	inner *conn.ResidentialIntelFeedLoader
 }
@@ -123,6 +129,12 @@ func NewResidentialIntelFeedLoader(cfg *config.Config, table *ResidentialIntelTa
 func (l *residentialIntelFeedLoader) Start(ctx context.Context) {
 	if l != nil && l.inner != nil {
 		l.inner.Start(ctx)
+	}
+}
+
+func (l *residentialIntelFeedLoader) reloadOnce(ctx context.Context) {
+	if l != nil && l.inner != nil {
+		l.inner.ReloadOnce(ctx)
 	}
 }
 
@@ -148,5 +160,11 @@ var (
 )
 
 const suspiciousJA3PythonHash = conn.SuspiciousJA3PythonHash
+
+const (
+	tlsBrowserChrome  = conn.TLSBrowserChrome
+	tlsBrowserGo      = conn.TLSBrowserGo
+	tlsBrowserFirefox = conn.TLSBrowserFirefox
+)
 
 var ja4BrowserCorpusEmbed = conn.JA4BrowserCorpusEmbedBytes()

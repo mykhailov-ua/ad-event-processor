@@ -1,3 +1,19 @@
+// Loadgen PID discovery via /proc comm and cmdline scan.
+//
+// Role:
+//   - discoverLoop ticks -discover-interval (default 2s); scans /proc for loadgen processes.
+//   - Matches comm against -loadgen-comms or AD_EVENT_PROCESSOR_BPF_LOADGEN_COMM; also cmd/loadgen path.
+//   - trackLoadgenChildren attaches threads sharing Tgid with discovered leader PID.
+//
+// Topology:
+//   - Complements static targets.json; does not remove exited PIDs from BPF maps.
+//
+// Invariants:
+//   - Default comm list ["loadgen"] when env/flag empty.
+//   - ReadDir /proc failure skips tick silently.
+//
+// Verify:
+//   go test ./cmd/bpf-collector/... -short -run Discover -count=1
 package main
 
 import (

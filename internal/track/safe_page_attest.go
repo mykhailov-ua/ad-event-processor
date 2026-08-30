@@ -338,6 +338,10 @@ func normalizePermissionState(s string) string {
 	}
 }
 
+func CheckBezierBot(events []SafePageVerifyEvent) string {
+	return checkBezierBot(events)
+}
+
 func checkBezierBot(events []SafePageVerifyEvent) string {
 	pts := collectMousePoints(events)
 	if len(pts) < safePageBezierMinPoints {

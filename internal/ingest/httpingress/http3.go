@@ -15,6 +15,10 @@ type H3Frame struct {
 	Payload []byte
 }
 
+func QuicDecodeVarint(data []byte, off int) (uint64, int, error) {
+	return quicDecodeVarint(data, off)
+}
+
 func quicDecodeVarint(data []byte, off int) (uint64, int, error) {
 	n := len(data)
 	if off >= n {

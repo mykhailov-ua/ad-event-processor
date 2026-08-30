@@ -46,9 +46,8 @@ func TestChaos_TE_TE_Obfuscation(t *testing.T) {
 			require.Less(t, elapsed, 50*time.Microsecond)
 		})
 	}
-	faultproof.Log(t, "parser_security_ps_g05", map[string]string{
-		"gap_id":  "wire_parser_budget",
-		"gap":     "closed",
+	faultproof.Log(t, "parser_security_wire_parser_budget", map[string]string{
+		"proof":   "closed",
 		"vectors": "4",
 	})
 }
@@ -68,9 +67,8 @@ func TestChaos_Proto_FieldBudget(t *testing.T) {
 	})
 	assert.Equal(t, float64(0), allocs)
 
-	faultproof.Log(t, "parser_security_ps_g06", map[string]string{
-		"gap_id":     "proto_max_fields",
-		"gap":        "closed",
+	faultproof.Log(t, "parser_security_proto_max_fields", map[string]string{
+		"proof":      "closed",
 		"fields":     "10000",
 		"elapsed_ns": elapsed.String(),
 	})
@@ -94,9 +92,8 @@ func TestChaos_HPACK_ContinuationBomb(t *testing.T) {
 	require.Equal(t, gnet.Close, act)
 	require.Less(t, elapsed, 50*time.Microsecond)
 
-	faultproof.Log(t, "parser_security_ps_g07", map[string]string{
-		"gap_id":     "wire_parser_overflow",
-		"gap":        "closed",
+	faultproof.Log(t, "parser_security_wire_parser_overflow", map[string]string{
+		"proof":      "closed",
 		"elapsed_ns": elapsed.String(),
 	})
 }

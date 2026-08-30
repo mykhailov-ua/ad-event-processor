@@ -16,7 +16,7 @@ func TestEffectiveDealFloor_usesOptimizedWhenHigher(t *testing.T) {
 	catalog.UpdateDeals([]rtb.DealData{{DealID: "deal-a", FloorMicro: 100_000}})
 	cache := NewDealFloorCache(nil)
 	next := map[string]int64{"deal-a": 150_000}
-	cache.snap.Store(&next)
+	cache.SetSnapshotForTest(next)
 
 	floor := EffectiveDealFloor(catalog, cache, "deal-a", 80_000)
 	assert.Equal(t, int64(150_000), floor)

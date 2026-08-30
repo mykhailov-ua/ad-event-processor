@@ -1,3 +1,4 @@
+// postback-sender worker entrypoint. Package documentation: doc.go.
 package main
 
 import (

@@ -1,3 +1,4 @@
+// db subcommands: transactional seed of customers, campaigns, brands, users.
 package main
 
 import (

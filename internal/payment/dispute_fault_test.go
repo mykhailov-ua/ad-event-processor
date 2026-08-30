@@ -127,8 +127,8 @@ func TestFault_PaymentChargebackPostSettlementMarkGap(t *testing.T) {
 	customerID := uuid.New()
 	seed := SeedSettledIntent(t, infra, customerID, 28_000_000, "fault-cb-gap-"+uuid.New().String())
 	svc := payment.NewService(infra.Pool, infra.Cfg)
-	disputeID := "dp_gap_" + uuid.New().String()
-	ProcessDisputeWebhook(t, infra.Pool, svc, "evt_cb_gap_"+uuid.New().String(), "charge.dispute.funds_withdrawn", seed.ProviderRef, disputeID, 14_000_000, "under_review")
+	disputeID := "dp_fault_" + uuid.New().String()
+	ProcessDisputeWebhook(t, infra.Pool, svc, "evt_cb_fault_"+uuid.New().String(), "charge.dispute.funds_withdrawn", seed.ProviderRef, disputeID, 14_000_000, "under_review")
 	outboxID := LatestOutboxIDByType(t, infra.Pool, payment.OutboxEventApplyChargeback)
 
 	var hookCalls atomic.Int32

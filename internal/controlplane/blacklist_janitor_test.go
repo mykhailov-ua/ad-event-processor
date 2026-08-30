@@ -3,10 +3,12 @@ package controlplane
 import (
 	"testing"
 	"time"
+
+	"ad-event-processor/internal/fraudadmin"
 )
 
 func TestBlacklistJanitor_DefaultInterval(t *testing.T) {
-	j := NewBlacklistJanitor(nil, 0)
+	j := fraudadmin.NewBlacklistJanitor(nil, 0)
 	if j == nil {
 		t.Fatal("expected janitor")
 	}

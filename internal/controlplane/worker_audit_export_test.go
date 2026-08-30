@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/platformadmin"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ func TestAuditExportWorker_exportDay(t *testing.T) {
 	defer svc.Close()
 
 	exportPath := t.TempDir()
-	worker := NewAuditExportWorker(svc, exportPath, 90)
+	worker := platformadmin.NewAuditExportWorker(svc, exportPath, 90)
 
 	ctx := context.Background()
 	day := time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC)
@@ -60,7 +61,7 @@ func TestAuditExportWorker_exportDay(t *testing.T) {
 
 func TestAuditExportWorker_retentionCleanup(t *testing.T) {
 	exportPath := t.TempDir()
-	worker := NewAuditExportWorker(nil, exportPath, 30)
+	worker := platformadmin.NewAuditExportWorker(nil, exportPath, 30)
 
 	oldDay := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	recentDay := time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC)

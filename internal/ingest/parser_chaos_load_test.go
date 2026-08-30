@@ -223,16 +223,16 @@ func TestChaos_ParserLoad_CX02(t *testing.T) {
 	res := runParserChaosLoad(cfg)
 	p99Ms := float64(res.P99Nanos) / float64(time.Millisecond)
 
-	gap := "open"
+	proof := "open"
 	if res.PoolRejects == 0 &&
 		res.ControlReqs >= 500 &&
 		time.Duration(res.P99Nanos) < cfg.P99Budget {
-		gap = "closed"
+		proof = "closed"
 	}
 
 	faultproof.Log(t, "parser_chaos_load", map[string]string{
-		"gap_id":       "parser_chaos_cross_hop",
-		"gap":          gap,
+		"case_id":      "parser_chaos_cross_hop",
+		"proof":        proof,
 		"total_reqs":   fmt.Sprintf("%d", res.TotalReqs),
 		"control_reqs": fmt.Sprintf("%d", res.ControlReqs),
 		"chaos_reqs":   fmt.Sprintf("%d", res.ChaosReqs),
@@ -250,7 +250,7 @@ func TestChaos_ParserLoad_CX02(t *testing.T) {
 		"control cohort p99 %v exceeds budget %v", time.Duration(res.P99Nanos), cfg.P99Budget)
 }
 
-func TestChaos_ParserSecurity_PS_G08_LoadMix(t *testing.T) {
+func TestChaos_ParserSecurity_LoadMix(t *testing.T) {
 	cfg := chaosLoadConfig{
 		Duration:  2 * time.Second,
 		RPS:       2000,
@@ -261,9 +261,9 @@ func TestChaos_ParserSecurity_PS_G08_LoadMix(t *testing.T) {
 	res := runParserChaosLoad(cfg)
 	require.Equal(t, float64(0), res.PoolRejects)
 	require.Greater(t, res.ControlReqs, int64(100))
-	faultproof.Log(t, "parser_security_ps_g08", map[string]string{
-		"gap_id": "parser_chaos_cross_hop",
-		"gap":    "closed",
-		"p99_ms": fmt.Sprintf("%.3f", float64(res.P99Nanos)/float64(time.Millisecond)),
+	faultproof.Log(t, "parser_security_parser_chaos_cross_hop", map[string]string{
+		"case_id": "parser_chaos_cross_hop",
+		"proof":   "closed",
+		"p99_ms":  fmt.Sprintf("%.3f", float64(res.P99Nanos)/float64(time.Millisecond)),
 	})
 }

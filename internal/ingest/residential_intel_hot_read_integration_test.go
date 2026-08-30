@@ -36,7 +36,7 @@ func TestResidentialIntelHotRead_holdoutIntelMatchWithoutRing(t *testing.T) {
 	evt.IP = "198.51.100.55"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonResidentialProxy))
+	assert.True(t, acc.Has(FraudReasonResidentialProxy))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.ResidentialIntelHotMatchTotal))
 }
 
@@ -53,7 +53,7 @@ func TestResidentialIntelHotRead_holdoutUninitializedFailOpen(t *testing.T) {
 	evt.IP = "198.51.100.55"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonResidentialProxy))
+	assert.False(t, acc.Has(FraudReasonResidentialProxy))
 }
 
 func TestResidentialIntelFeedLoader_integrationRedisSnapshot(t *testing.T) {

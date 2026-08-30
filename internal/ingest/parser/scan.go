@@ -37,6 +37,10 @@ func ConfigureSecurity(cfg *config.Config) {
 	strictUTF8Enabled.Store(cfg.JSONStrictUTF8)
 }
 
+func StrictUTF8Atomic() *atomic.Bool {
+	return &strictUTF8Enabled
+}
+
 func strictUTF8() bool {
 	return strictUTF8Enabled.Load()
 }

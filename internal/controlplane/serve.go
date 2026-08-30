@@ -349,6 +349,9 @@ func ServeWithOptions(ctx context.Context, cfg *config.Config, opts ServeOptions
 	if cfg.Management.AutomationRulesEnabled {
 		svc.StartAutomationWorker(ctx, cfg.Management.AutomationRulesIntervalMin)
 	}
+	if cfg.Management.TrafficOptimizerEnabled {
+		svc.StartTrafficOptimizerWorker(ctx, cfg.Management.TrafficOptimizerIntervalMin)
+	}
 	if cfg.Management.DomainHealthEnabled {
 		domainInterval := time.Duration(cfg.Management.DomainHealthIntervalMin) * time.Minute
 		svc.StartDomainHealthWorker(ctx, domainInterval)

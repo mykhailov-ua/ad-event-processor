@@ -36,6 +36,7 @@ type AutoscaleDeliveryHost interface {
 type BanditDeliveryHost interface {
 	MABMinImpressions() int64
 	MABLookbackDays() int
+	TrafficOptimizerEnabled() bool
 	QueryMABCreativeStats(ctx context.Context, from, to time.Time) (map[uuid.UUID]CreativeMABStat, error)
 	QueryFlowBanditStats(ctx context.Context, from, to time.Time) (
 		map[uuid.UUID]map[uuid.UUID]flow.EntityBanditStat,

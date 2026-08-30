@@ -17,3 +17,11 @@ func init() {
 func unifiedFilterLuaForScript() string {
 	return unifiedFilterLua
 }
+
+func EmbeddedUnifiedFilterLua() string {
+	return unifiedFilterLua
+}
+
+func BudgetFastLua() string {
+	return budgetFastLua
+}

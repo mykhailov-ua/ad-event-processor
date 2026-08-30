@@ -42,62 +42,6 @@ var filterRejectSpecs = [...]filterRejectSpec{
 	filter.FilterRejectFraudBlocked:       {http.StatusForbidden, "fraud blocked", respFraudBlocked, "fraud_blocked"},
 }
 
-func (m *PreboundTrackMetrics) recordFilterReject(kind filter.FilterRejectKind) {
-	switch kind {
-	case filter.FilterRejectEmergencyBreaker:
-		m.blockedEmergencyBreaker.Inc()
-		m.decisionEmergencyBreaker.Inc()
-	case filter.FilterRejectRateLimit:
-		m.blockedRateLimit.Inc()
-		m.decisionRateLimited.Inc()
-	case filter.FilterRejectDuplicate:
-		m.blockedDuplicate.Inc()
-		m.decisionDuplicate.Inc()
-	case filter.FilterRejectBudget:
-		m.blockedBudget.Inc()
-		m.decisionBudgetExhausted.Inc()
-	case filter.FilterRejectPacing:
-		m.blockedPacing.Inc()
-		m.decisionPacingLimit.Inc()
-	case filter.FilterRejectFreq:
-		m.blockedFreq.Inc()
-		m.decisionFrequencyCapped.Inc()
-	case filter.FilterRejectGeo:
-		m.blockedGeo.Inc()
-		m.decisionGeoBlocked.Inc()
-	case filter.FilterRejectSchedule:
-		m.blockedSchedule.Inc()
-		m.decisionScheduleBlocked.Inc()
-	case filter.FilterRejectCampaignNotFound:
-		m.blockedCampaignNotFound.Inc()
-		m.decisionCampaignNotFound.Inc()
-	case filter.FilterRejectBidFloor:
-		m.blockedBidFloor.Inc()
-		m.decisionBidFloor.Inc()
-	case filter.FilterRejectTimeout:
-		m.blockedFilterTimeout.Inc()
-		m.decisionFilterTimeout.Inc()
-	case filter.FilterRejectFraud, filter.FilterRejectFraudBlocked:
-		m.blockedFraud.Inc()
-		m.decisionFraud.Inc()
-	case filter.FilterRejectConsent:
-		m.blockedConsent.Inc()
-		m.decisionConsentDenied.Inc()
-	case filter.FilterRejectInfra:
-		m.blockedInfra.Inc()
-		m.decisionInfraUnavailable.Inc()
-	case filter.FilterRejectRegistryStale:
-		m.blockedRegistryStale.Inc()
-		m.decisionRegistryStale.Inc()
-	case filter.FilterRejectShardUnavailable:
-		m.blockedShardUnavailable.Inc()
-		m.decisionShardUnavailable.Inc()
-	case filter.FilterRejectProducerOverload:
-		m.blockedProducerOverload.Inc()
-		m.decisionProducerOverload.Inc()
-	}
-}
-
 func recordHTTPFilterReject(kind filter.FilterRejectKind, evt *domain.Event) {
 	metrics.FilterBlockedTotal.WithLabelValues(filterRejectSpecs[kind].metricLabel).Inc()
 	telemetry.RecordRejected()

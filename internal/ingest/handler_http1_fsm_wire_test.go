@@ -22,9 +22,9 @@ func TestHTTP1Parse_IncompleteTwoReads(t *testing.T) {
 
 	conn := NewGnetHarnessConn(req[:split])
 	assert.Equal(t, gnet.None, h.OnTraffic(conn))
-	assert.NotEmpty(t, conn.inbound, "incomplete request must remain buffered")
+	assert.NotEmpty(t, conn.InboundBytes(), "incomplete request must remain buffered")
 
-	conn.inbound = append(conn.inbound[:0], req...)
+	conn.SetInbound(req)
 	assert.Equal(t, gnet.None, h.OnTraffic(conn))
 	assert.Equal(t, 1, conn.WriteCount())
 	assert.Equal(t, http.StatusAccepted, ParseGnetHTTPStatus(conn.Written()))

@@ -2,20 +2,24 @@ syntax = "proto3";
 
 package ads.v1;
 
-option go_package = "ad-event-processor/internal/ingestion/pb;pb";
+option go_package = "ad-event-processor/internal/ingest/pb;pb";
 
 message AdEvent {
+  // Campaign ID represented as raw 16-byte UUID bytes.
   bytes campaign_id = 1;
   bytes event_type = 2;
   EventMetadata metadata = 3;
 }
 
 message EventMetadata {
+  // Click ID represented as raw 16-byte UUID bytes.
   bytes click_id = 1;
   bytes user_id = 2;
   bytes device_type = 3;
   bytes os = 4;
+  // Parallel array matching extra_values to store custom string attributes.
   repeated bytes extra_keys = 5;
+  // Parallel array matching extra_keys to store custom string attributes.
   repeated bytes extra_values = 7;
   bytes extra_bytes = 6;
 }
@@ -27,18 +31,23 @@ message TrackResponse {
 }
 
 message AdStreamEvent {
+  // Click ID represented as raw 16-byte UUID bytes.
   bytes click_id = 1;
+  // Campaign ID represented as raw 16-byte UUID bytes.
   bytes campaign_id = 2;
   bytes event_type = 3;
   bytes payload = 4;
   bytes ip = 5;
   bytes ua = 6;
   int64 created_at_unix = 7;
+  // Fraud score range [0, 100].
   uint32 fraud_score = 8;
   bytes fraud_reason = 9;
+  // Silent reject means processed/logged but excluded from billing.
   bool silent_reject_event = 10;
   bytes user_id = 11;
   bool review_routed_event = 12;
+  // Out-of-sync count between memory cache and DB layers.
   uint32 layer_desync_count = 13;
 }
 
@@ -53,14 +62,18 @@ message AdDLQEvent {
 
 message AdLogRecord {
   int64 timestamp_unix = 1;
+  // Campaign ID represented as raw 16-byte UUID bytes.
   bytes campaign_id = 2;
+  // Click ID represented as raw 16-byte UUID bytes.
   bytes click_id = 3;
   bytes event_type = 4;
   uint32 priority = 5;
 }
 
 message BudgetDelta {
+  // Campaign ID represented as raw 16-byte UUID bytes.
   bytes campaign_id = 1;
+  // Budget delta in micro-units (10^-6 of base currency).
   int64 amount_micro = 2;
   int64 created_at_unix_nano = 3;
   bytes tracker_id = 4;

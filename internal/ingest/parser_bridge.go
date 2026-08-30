@@ -2,6 +2,8 @@ package ingest
 
 import (
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/domain"
+	filterunified "ad-event-processor/internal/filter/unified"
 	"ad-event-processor/internal/ingest/parser"
 
 	"github.com/google/uuid"
@@ -72,3 +74,22 @@ func marshalExtra(dst []byte, keys, values [][]byte) []byte {
 }
 
 func isDelimiter(b byte) bool { return parser.IsDelimiter(b) }
+
+const attestationTokenBinaryLen = parser.AttestationTokenBinaryLen
+
+var decodeAttestationTokenBase64URL = parser.DecodeAttestationTokenBase64URL
+
+var jsonStrictUTF8Enabled = parser.StrictUTF8Atomic()
+
+func extractAttestationCookie(cookieHeader []byte) []byte {
+	return parser.ExtractAttestationCookie(cookieHeader)
+}
+
+var (
+	encodeAttestationIPPrefix = parser.EncodeAttestationIPPrefix
+	attestationIPPrefixMatch  = parser.AttestationIPPrefixMatch
+)
+
+func debitSubSlot(camp *domain.Campaign, userID, clickID string) int {
+	return filterunified.DebitSubSlot(camp, userID, clickID)
+}

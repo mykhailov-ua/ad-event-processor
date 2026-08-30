@@ -1,3 +1,30 @@
+-- Static slot map mirror: control /ops/shards/slot-map -> ngx.shared.slot_map; CRC32C parity with Go StaticSlotSharder.
+-- Runtime: worker 0 sync timer (init-worker.lua); hot-path read via get_shard on every worker.
+--
+-- Consumers:
+-- - edge-shard-balancer.lua: get_shard(campaign_id) -> ngx.ctx.redis_shard; peer = node_weights or tonumber(shard).
+-- - edge-parse-dfa.lua: campaign_id extraction feeds the same slot routing.
+--
+-- ngx.shared slot_map layout:
+-- - version (number): active map generation; get_shard returns nil when missing or <= 0.
+-- - routing_epoch (number): optional control routing epoch stamp.
+-- - s:{slot} (number): redis shard index for slot 0..1023 (1024 entries required on sync).
+--
+-- Lookup invariant (must match internal/domain/sharding_amd64.s):
+-- slot = CRC32C(edge_uuid.normalize_to_bytes(campaign_id)) & 1023
+-- shard = dict:get("s:" .. slot)
+--
+-- sync(): HTTP GET CONTROL_URL/ops/shards/slot-map; rejects unless #doc.slots == 1024.
+-- Version-last invariant (TOCTOU): write all s:{slot} keys first; routing_epoch then version last.
+-- Readers gate on version > 0 before s:* lookup so partial slot writes never pair with a new generation.
+-- sync failure: WARN log, prior version and s:* entries retained (fail-open on stale map until version invalid).
+--
+-- Forbidden: Jump Hash; per-request Redis or control fetch; CRC32 IEEE table; slot map mismatch with Go sharder.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-slot-map.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/domain/ -run Sharding -count=1
 local edge_uuid = require "edge-uuid"
 local edge_net = require "edge-net"
 
@@ -314,13 +341,13 @@ function _M.sync()
         ngx.log(ngx.WARN, "edge slot map sync: expected 1024 slots, got ", doc.slots and #doc.slots or 0)
         return
     end
-    dict:set("version", doc.version or doc.active_version or 0)
-    if doc.routing_epoch then
-        dict:set("routing_epoch", doc.routing_epoch)
-    end
     for i = 0, 1023 do
         dict:set("s:" .. i, doc.slots[i + 1])
     end
+    if doc.routing_epoch then
+        dict:set("routing_epoch", doc.routing_epoch)
+    end
+    dict:set("version", doc.version or doc.active_version or 0)
 end
 
 return _M

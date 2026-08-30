@@ -1,3 +1,30 @@
+# Release compose overlay (deploy/compose/docker-compose.release.yaml).
+# Auto-merged when AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES=1 or installer release path.
+# Cross-ref: deploy/DEPLOY.md, scripts/install/release_pack.sh.
+#
+# Role:
+# - Swap tracker-0, processor, control from local build to prebuilt AD_EVENT_PROCESSOR_APP_IMAGE.
+# - Used by stack.sh single-vps pull and release installer bundles.
+#
+# Topology:
+# - Patches image on tracker-0, processor, control; build: !reset removes Dockerfile build stanza.
+#
+# Invariants:
+# - AD_EVENT_PROCESSOR_APP_IMAGE must be set (stack.sh calls installer_release_app_image).
+# - stack.sh single-vps: pull + up --no-build when release images enabled.
+# - Pair with production.yaml when ENV=production (TLS Postgres and Redis).
+#
+# Env knobs:
+# - AD_EVENT_PROCESSOR_APP_IMAGE (full image ref with tag).
+# - AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES=1
+#
+# Forbidden:
+# - Do not expect local source edits without rebuild and new image tag.
+# - Do not combine with docker-compose.tracker-local.yaml bind-mount.
+#
+# Verify:
+# bash scripts/ci/compose_profile_check.sh
+# AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES=1 bash scripts/dev/stack/stack.sh build
 services:
   tracker-0:
     image: ${AD_EVENT_PROCESSOR_APP_IMAGE}

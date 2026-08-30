@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/domain"
 
 	"github.com/google/uuid"
+	redis "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,14 +28,26 @@ func TestRegistryStaleMode_TTL(t *testing.T) {
 	require.False(t, r.IsStaleMode())
 }
 
+func debitShardTestFilter(sharder Sharder, shards int) *UnifiedFilter {
+	f := NewDebitShardTestFilter(sharder, make([]redis.UniversalClient, shards))
+	breakers := make([]*database.RedisBreaker, shards)
+	for i := range breakers {
+		breakers[i] = database.NewRedisBreaker(1, 1, time.Hour)
+	}
+	f.SetShardBreakers(breakers)
+	return f
+}
+
 func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 	sharder := NewStaticSlotSharder(4)
-	f := &UnifiedFilter{sharder: sharder, breakers: make([]*database.RedisBreaker, 4)}
-	for i := range f.breakers {
-		f.breakers[i] = database.NewRedisBreaker(1, 1, time.Hour)
+	f := debitShardTestFilter(sharder, 4)
+	breakers := make([]*database.RedisBreaker, 4)
+	for i := range breakers {
+		breakers[i] = database.NewRedisBreaker(1, 1, time.Hour)
 	}
-	f.breakers[0].RecordFailure()
-	require.Equal(t, database.CircuitOpen, f.breakers[0].State())
+	breakers[0].RecordFailure()
+	f.SetShardBreakers(breakers)
+	require.Equal(t, database.CircuitOpen, breakers[0].State())
 
 	var campID uuid.UUID
 	for {
@@ -51,7 +64,7 @@ func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 		ReserveShard:  2,
 	}
 
-	shard, _, err := f.resolveDebitShard(campID, "user-1", "", camp)
+	shard, _, err := f.ResolveDebitShard(campID, "user-1", "", camp)
 	require.NoError(t, err)
 	assert.NotEqual(t, 0, shard)
 	assert.Contains(t, []int{1, 2}, shard)
@@ -59,11 +72,13 @@ func TestResolveDebitShard_RerouteToReserve(t *testing.T) {
 
 func TestResolveDebitShard_UnavailableWithoutTriplet(t *testing.T) {
 	sharder := NewStaticSlotSharder(4)
-	f := &UnifiedFilter{sharder: sharder, breakers: make([]*database.RedisBreaker, 4)}
-	for i := range f.breakers {
-		f.breakers[i] = database.NewRedisBreaker(1, 1, time.Hour)
+	f := debitShardTestFilter(sharder, 4)
+	breakers := make([]*database.RedisBreaker, 4)
+	for i := range breakers {
+		breakers[i] = database.NewRedisBreaker(1, 1, time.Hour)
 	}
-	f.breakers[0].RecordFailure()
+	breakers[0].RecordFailure()
+	f.SetShardBreakers(breakers)
 
 	var campID uuid.UUID
 	for {
@@ -73,6 +88,6 @@ func TestResolveDebitShard_UnavailableWithoutTriplet(t *testing.T) {
 		}
 	}
 
-	_, _, err := f.resolveDebitShard(campID, "user", "", &domain.Campaign{})
+	_, _, err := f.ResolveDebitShard(campID, "user", "", &domain.Campaign{})
 	require.ErrorIs(t, err, ErrShardUnavailable)
 }

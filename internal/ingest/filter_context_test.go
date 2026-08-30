@@ -17,9 +17,9 @@ func TestMapFraudTier_defaults(t *testing.T) {
 
 func TestFraudAccumulator_scoreAndReason(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
-	acc.add(FraudReasonLowTTC)
-	assert.Equal(t, uint32(90), acc.score)
+	acc.Add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonLowTTC)
+	assert.Equal(t, uint32(90), acc.Score())
 
 	evt := &domain.Event{StringBuffer: make([]byte, 0, 64)}
 	tier := applyFraudAccumulatorForCampaign(evt, acc, nil)
@@ -30,10 +30,10 @@ func TestFraudAccumulator_scoreAndReason(t *testing.T) {
 
 func TestFraudAccumulator_dedupesSignals(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonLowTTC)
-	acc.add(FraudReasonLowTTC)
-	assert.Equal(t, uint8(1), acc.count)
-	assert.Equal(t, uint32(45), acc.score)
+	acc.Add(FraudReasonLowTTC)
+	acc.Add(FraudReasonLowTTC)
+	assert.Equal(t, uint8(1), acc.SignalCount())
+	assert.Equal(t, uint32(45), acc.Score())
 }
 
 func TestMapFraudTier_campaignThresholds(t *testing.T) {
@@ -50,19 +50,19 @@ func TestMapFraudTier_campaignThresholds(t *testing.T) {
 func TestAttachFraudAccumulator_reusesWithoutReset(t *testing.T) {
 	evt := &domain.Event{}
 	acc1 := attachFraudAccumulator(evt)
-	acc1.add(FraudReasonIPv4Rotation)
+	acc1.Add(FraudReasonIPv4Rotation)
 	acc2 := attachFraudAccumulator(evt)
 	assert.Equal(t, acc1, acc2)
-	assert.True(t, acc2.has(FraudReasonIPv4Rotation))
+	assert.True(t, acc2.Has(FraudReasonIPv4Rotation))
 }
 
 func TestEventHasFraudL3_holdout(t *testing.T) {
 	evt := &domain.Event{}
 	assert.False(t, eventHasFraudL3(evt))
 	acc := attachFraudAccumulator(evt)
-	acc.add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonDatacenterIP)
 	assert.False(t, eventHasFraudL3(evt))
-	acc.add(FraudReasonL3Blocklist)
+	acc.Add(FraudReasonL3Blocklist)
 	assert.True(t, eventHasFraudL3(evt))
 	releaseFraudAccumulator(evt, acc)
 }

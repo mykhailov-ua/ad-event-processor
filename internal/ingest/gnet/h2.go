@@ -15,6 +15,10 @@ import (
 	pkgnet "github.com/panjf2000/gnet/v2"
 )
 
+func (h *Server) OnTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
+	return h.onTrafficH2(c, buf)
+}
+
 func (h *Server) onTrafficH2(c pkgnet.Conn, buf []byte) pkgnet.Action {
 	maxBody := int64(1 << 20)
 	if h != nil && h.cfg != nil {

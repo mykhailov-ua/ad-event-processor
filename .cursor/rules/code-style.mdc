@@ -22,7 +22,7 @@ Apply when editing Go, Lua, or sqlc SQL. Layout follows `structure.mdc`. Naming 
 | Banned ceremony | `dto/`, `usecase/`, `providers/`, `repositories/` subtrees |
 | `cmd/` | `main.go` wires config and modules only; no business logic in `main` |
 | `pkg/` | No `internal/` imports |
-| `doc.go` | **Mandatory** at package root — `//` package docs then `package <name>` (`naming.mdc`, `modular-monolith.mdc`) |
+| `doc.go` | **Mandatory** at package root — detailed module doc (`comments.mdc`, `modular-monolith.mdc`) |
 | `internal/domain` | Shared hot-path vocabulary only (no json/db tags) |
 
 ## File naming

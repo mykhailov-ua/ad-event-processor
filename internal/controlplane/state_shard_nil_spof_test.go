@@ -7,6 +7,7 @@ import (
 
 	bserver "ad-event-processor/internal/broker"
 	"ad-event-processor/internal/config"
+	"ad-event-processor/internal/controlplane/adminauth"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/identity"
 	"ad-event-processor/internal/metrics"
@@ -212,10 +213,9 @@ func TestShard0Nil_HealthyShardsStillWritable(t *testing.T) {
 
 func TestShard0Nil_MiddlewareRevocationSkipsNil(t *testing.T) {
 	redisShards := rdbsWithNilShard0(t, 4)
-	m := &AuthMiddleware{cfg: &config.Config{Env: "production"}}
 	payload := &identity.Payload{UserID: uuid.New(), Role: "admin"}
 
-	revoked, err := m.checkTokenRevocation(context.Background(), redisShards, payload)
+	revoked, err := adminauth.CheckTokenRevocationForTest(context.Background(), redisShards, &config.Config{Env: "production"}, payload)
 	require.NoError(t, err)
 	assert.False(t, revoked)
 	t.Log("checkTokenRevocation skips nil shard 0 and probes shards 1..3")

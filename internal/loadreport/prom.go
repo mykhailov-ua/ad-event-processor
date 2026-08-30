@@ -224,7 +224,7 @@ func writeBottleneckReport(b *strings.Builder, outDir, promURL string, prom *pro
 	b.WriteString("\n")
 
 	b.WriteString("## Edge (nginx OpenResty)\n\n")
-	fmt.Fprintf(b, "- Phase1 pass/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_phase1_pass_total[5m]))`))
+	fmt.Fprintf(b, "- Edge perimeter pass/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_perimeter_pass_total[5m]))`))
 	fmt.Fprintf(b, "- Circuit reject/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_circuit_reject_total[5m]))`))
 	fmt.Fprintf(b, "- Blocked IP/s: %s\n", prom.scalar(`sum(rate(ad_event_processor_edge_blocked_ip_total[5m]))`))
 	b.WriteString("\n")

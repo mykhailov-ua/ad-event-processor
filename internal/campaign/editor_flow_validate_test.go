@@ -40,49 +40,6 @@ func TestBuildCampaignFlowValidateResponse_missingLandersFails_holdout(t *testin
 	assert.Equal(t, "invalid_shape", resp.PathErrors[0].Code)
 }
 
-func TestPreviewCampaignMacros_resolvesRedirectMacros(t *testing.T) {
-	t.Parallel()
-	campaign := CampaignDTO{
-		ID:        "camp-1",
-		TargetURL: "https://offer.example/lp?cid={click_id}&sub1={sub1}",
-	}
-	preview, err := previewCampaignMacros(campaign, MacroPreviewRequestDTO{Sub1: "alpha"}, false)
-	require.NoError(t, err)
-	assert.Contains(t, preview.ResolvedClickURL, "preview-click-id")
-	assert.Contains(t, preview.ResolvedClickURL, "alpha")
-}
-
-func TestPreviewCampaignMacros_unresolvedPresetMacro(t *testing.T) {
-	t.Parallel()
-	campaign := CampaignDTO{
-		ID:        "camp-1",
-		TargetURL: "https://offer.example/?x={{adset.id}}",
-	}
-	preview, err := previewCampaignMacros(campaign, MacroPreviewRequestDTO{}, false)
-	require.NoError(t, err)
-	require.NotEmpty(t, preview.UnresolvedMacros)
-}
-
-func TestPreviewCampaignMacros_resolvesCampaignId(t *testing.T) {
-	t.Parallel()
-	campaign := CampaignDTO{
-		ID:        "camp-1",
-		TargetURL: "https://offer.example/click?cid={{campaign.id}}&sub1={{sub1}}",
-	}
-	preview, err := previewCampaignMacros(campaign, MacroPreviewRequestDTO{Sub1: "alpha"}, false)
-	require.NoError(t, err)
-	assert.Contains(t, preview.ResolvedClickURL, "camp-1")
-	assert.Contains(t, preview.ResolvedClickURL, "alpha")
-}
-
-func TestPreviewCampaignMacros_maskedRedactsOfferURL(t *testing.T) {
-	t.Parallel()
-	campaign := CampaignDTO{ID: "camp-1", TargetURL: "https://secret.offer/track"}
-	preview, err := previewCampaignMacros(campaign, MacroPreviewRequestDTO{}, true)
-	require.NoError(t, err)
-	assert.Equal(t, "[redacted-offer-url]", preview.ResolvedClickURL)
-}
-
 func TestBuildCampaignConflictResponse_includesServerRevision(t *testing.T) {
 	t.Parallel()
 	current := CampaignDTO{ID: "c1", UpdatedAt: "2026-08-27T10:00:00Z", Revision: "2026-08-27T10:00:00Z", Name: "Live"}

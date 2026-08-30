@@ -29,19 +29,20 @@
     }
   },
   "forwardPorts": [
-    8181,
-    8182,
-    8183,
-    8184,
-    8188,
-    6479,
-    5430,
-    9000,
-    5173
+    8181, // Tracker HTTP ingress (Worker Lane 0)
+    8182, // Tracker HTTP ingress (Worker Lane 1)
+    8183, // Tracker HTTP ingress (Worker Lane 2)
+    8184, // Tracker HTTP ingress (Worker Lane 3)
+    8188, // Controlplane Admin API
+    6479, // Redis dedup and budget cache
+    5430, // Postgres persistent ledger database
+    9000, // ClickHouse OLAP telemetry database
+    5173  // Vite frontend web server
   ],
   "postCreateCommand": "go mod download && npm install --prefix web && task gen",
   "remoteUser": "vscode",
   "containerEnv": {
+    // Keep Go module cache and build artifacts persistent inside VS Code volume
     "GOMODCACHE": "/home/vscode/.cache/go-mod",
     "GOCACHE": "/home/vscode/.cache/go-build",
     "GOTMPDIR": "/tmp/go-tmp"

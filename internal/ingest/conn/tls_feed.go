@@ -47,6 +47,13 @@ func (l *TLSFingerprintFeedLoader) Start(ctx context.Context) {
 	l.loader.Start(ctx)
 }
 
+func (l *TLSFingerprintFeedLoader) RefreshOnce() {
+	if l == nil || l.loader == nil {
+		return
+	}
+	l.loader.refreshOnce()
+}
+
 func (l *tlsFingerprintFeedLoader) Start(ctx context.Context) {
 	l.refreshOnce()
 	ticker := time.NewTicker(l.refresh)
@@ -113,6 +120,10 @@ func readTLSAllowlistFile(dir string) []byte {
 	return out
 }
 
+func ParseTLSFingerprintAllowFeed(data []byte) (ja3, ja4 []uint32) {
+	return parseTLSFingerprintAllowFeed(data)
+}
+
 func parseTLSFingerprintAllowFeed(data []byte) (ja3, ja4 []uint32) {
 	if len(data) == 0 {
 		return nil, nil
@@ -136,6 +147,10 @@ func parseTLSFingerprintAllowFeed(data []byte) (ja3, ja4 []uint32) {
 		}
 	}
 	return ja3, ja4
+}
+
+func ParseTLSFingerprintFeed(data []byte) (ja3, ja4 []uint32) {
+	return parseTLSFingerprintFeed(data)
 }
 
 func parseTLSFingerprintFeed(data []byte) (ja3, ja4 []uint32) {

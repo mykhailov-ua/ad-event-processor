@@ -42,10 +42,10 @@ gnet HTTP ingress, handlers, filter engine bundles, landing/OpenRTB glue.
 **Development rules:**
 
 1. **Run cheap filters before Redis.** License → geo → schedule → fraud snapshot → `UnifiedFilter` last.
-2. **Never block gnet worker on Redis.** `FilterEngine.Check` runs in a detached goroutine; copy strings before async write.
+2. **Never block gnet epoll on Redis.** Tier A enqueues to `PinnedWorkerPool`; synchronous `FilterEngine.Check` (incl. `EVALSHA`) runs on Tier B pinned workers only (`hot-path.mdc` **Tracker thread model**). Copy `Accept`/`Origin` via `string()`; response via `cloneAsyncWriteBytes`.
 3. **At most one `EVALSHA` per accepted event.** Zero when `LOCAL_QUOTA_MODE=live` full-skip eligible.
 4. **Reserve stream admission before debit.** `TryReserve` → Lua → async `XADD`.
-5. **No heap allocs in inner loops.** Pools, stack buffers, `unsafe.String` only while frame valid.
+5. **No heap allocs in inner loops.** Pools, stack buffers; `unsafe.String` only over `OffloadHTTPPin`/arena on Tier B pinned worker.
 6. **No `internal/fraud` import.** Read `ml:score:boost:*` from `SettingsWatcher` snapshot only.
 7. **No `internal/controlplane` import.** Hot path must not see admin handlers.
 
@@ -122,9 +122,16 @@ slot = CRC32C(campaign_id) & 1023
 
 ### `edge/`
 
-BPF map types, sync metrics, XDP helpers. Generated bpf2go under `bpf_edge_bpf*.go` — do not hand-edit.
+BPF map types, Redis blocklist sync into pinned maps, XDP helpers. Generated bpf2go under `bpf_edge_bpf*.go` — do not hand-edit.
 
----
+Parallel L7 path lives in `deploy/nginx/lua/` (not this package): generational `blacklist_cache`, `edge_config` ASN mirror, `slot_map` / `node_weights` version-last writes. `perimeter_blacklist_cache.go` mirrors full-sync L7 semantics for Go unit tests only.
+
+**Test:**
+
+```bash
+go test ./internal/edge/... -short -count=1
+bash scripts/test/edge/lua_tests.sh compliance
+```
 
 ## Control plane composition
 

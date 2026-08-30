@@ -36,7 +36,7 @@ func TestVolumeMeterWorker_PGRunHour(t *testing.T) {
 		"meter-click-1", campaignID, hourStart.Add(10*time.Minute), hourStart.Format("2006-01-02"))
 	require.NoError(t, err)
 
-	w := NewVolumeMeterWorker(pool, nil, VolumeMeterSourcePG, time.Hour, nil)
+	w := billingadmin.NewVolumeMeterWorker(pool, nil, billingadmin.VolumeMeterSourcePG, time.Hour, nil)
 	require.NoError(t, w.RunHour(ctx, hourStart.Add(time.Hour)))
 
 	var value int64

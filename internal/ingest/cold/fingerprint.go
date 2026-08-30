@@ -24,15 +24,30 @@ const (
 	wireSecFetchImage     uint8 = 3
 	wireSecFetchScript    uint8 = 4
 	wireSecFetchDestOther uint8 = 5
-	wireCHUAMobileUnset   uint8 = 0
-	wireCHUAMobileFalse   uint8 = 1
-	wireCHUAMobileTrue    uint8 = 2
-	wirePlatformUnset     uint8 = 0
-	wirePlatformWindows   uint8 = 1
-	wirePlatformLinux     uint8 = 2
-	wirePlatformMac       uint8 = 3
-	wirePlatformAndroid   uint8 = 4
-	wirePlatformOther     uint8 = 5
+)
+
+const (
+	WireSecFetchNavigate = wireSecFetchNavigate
+	WireSecFetchCORS     = wireSecFetchCORS
+	WireSecFetchDocument = wireSecFetchDocument
+	WireSecFetchEmpty    = wireSecFetchEmpty
+	WireSecFetchCross    = wireSecFetchCross
+	WireSecFetchModeBit  = wireSecFetchModeBit
+	WireCHUAMobileUnset  = wireCHUAMobileUnset
+	WireCHUAMobileFalse  = wireCHUAMobileFalse
+	WireCHUAMobileTrue   = wireCHUAMobileTrue
+)
+
+const (
+	wireCHUAMobileUnset uint8 = 0
+	wireCHUAMobileFalse uint8 = 1
+	wireCHUAMobileTrue  uint8 = 2
+	wirePlatformUnset   uint8 = 0
+	wirePlatformWindows uint8 = 1
+	wirePlatformLinux   uint8 = 2
+	wirePlatformMac     uint8 = 3
+	wirePlatformAndroid uint8 = 4
+	wirePlatformOther   uint8 = 5
 )
 
 func ClassifySecFetchSite(b []byte) uint8 {

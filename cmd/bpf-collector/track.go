@@ -1,3 +1,15 @@
+// Target PID and cgroup registration in BPF target_pids / target_cgroups maps.
+//
+// Role:
+//   - trackTarget writes role byte to BPF maps and updates in-memory tracked map for dump labels.
+//   - trackPID is cgroup_id=0 shorthand; duplicate PID updates cgroup only when cgroup_id changes.
+//
+// Invariants:
+//   - pid==0 && cgroup_id==0 returns error; pid==0 with cgroup tracks cgroup-only (redis containers).
+//   - roleName maps role constants to load-report role strings.
+//
+// Verify:
+//   grep tracking pid logs during bpf-collector run
 package main
 
 import (

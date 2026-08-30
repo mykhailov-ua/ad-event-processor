@@ -16,7 +16,7 @@ import (
 
 const edgeBlacklistSyncInterval = 5 * time.Second
 
-func TestFault_EdgePhase1BlocksBlacklistedIP(t *testing.T) {
+func TestFault_EdgePerimeterBlocksBlacklistedIP(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: edge fault test (run make test-integration)")
 	}
@@ -34,17 +34,17 @@ func TestFault_EdgePhase1BlocksBlacklistedIP(t *testing.T) {
 	var metrics Metrics
 	now := time.Now().Unix()
 
-	outcome := cache.Phase1Check(blockedIP, now, &metrics)
-	assert.Equal(t, Phase1Blocked403, outcome)
+	outcome := cache.PerimeterCheck(blockedIP, now, &metrics)
+	assert.Equal(t, PerimeterBlocked403, outcome)
 	assert.Equal(t, int64(1), metrics.BlockedIP)
-	assert.Equal(t, int64(0), metrics.BodyRead, "phase-1 must not read body")
-	assert.Equal(t, int64(0), metrics.Phase1Pass)
+	assert.Equal(t, int64(0), metrics.BodyRead, "blacklist check must not read body")
+	assert.Equal(t, int64(0), metrics.PerimeterPass)
 
-	legitOutcome := cache.Phase1Check("198.51.100.1", now, &metrics)
-	assert.Equal(t, Phase1Pass, legitOutcome)
-	assert.Equal(t, int64(1), metrics.Phase1Pass)
+	legitOutcome := cache.PerimeterCheck("198.51.100.1", now, &metrics)
+	assert.Equal(t, PerimeterPass, legitOutcome)
+	assert.Equal(t, int64(1), metrics.PerimeterPass)
 
-	faultproof.Log(t, "edge_phase1_blacklist", map[string]string{
+	faultproof.Log(t, "edge_perimeter_blacklist", map[string]string{
 		"blocked_before_body": "true",
 		"body_read_total":     strconv.FormatInt(metrics.BodyRead, 10),
 		"blocked_ip_total":    strconv.FormatInt(metrics.BlockedIP, 10),
@@ -66,7 +66,7 @@ func TestFault_EdgeBlacklistPropagation(t *testing.T) {
 	require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 
 	now := time.Now().Unix()
-	require.Equal(t, Phase1Pass, cache.Phase1Check(newIP, now, nil))
+	require.Equal(t, PerimeterPass, cache.PerimeterCheck(newIP, now, nil))
 
 	addedAt := time.Now()
 	require.NoError(t, redisClient.SAdd(ctx, redisKeyBlacklistManual, newIP).Err())
@@ -79,7 +79,7 @@ func TestFault_EdgeBlacklistPropagation(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 		require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 		now = time.Now().Unix()
-		if cache.Phase1Check(newIP, now, &metrics) == Phase1Blocked403 {
+		if cache.PerimeterCheck(newIP, now, &metrics) == PerimeterBlocked403 {
 			blockedWithin = time.Since(addedAt)
 			break
 		}
@@ -117,7 +117,7 @@ func TestFault_EdgeFraudBlacklistPropagation(t *testing.T) {
 	require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 
 	now := time.Now().Unix()
-	require.Equal(t, Phase1Pass, cache.Phase1Check(fraudIP, now, nil))
+	require.Equal(t, PerimeterPass, cache.PerimeterCheck(fraudIP, now, nil))
 
 	addedAt := time.Now()
 	require.NoError(t, redisClient.SAdd(ctx, redisKeyBlacklistFraud, fraudIP).Err())
@@ -130,7 +130,7 @@ func TestFault_EdgeFraudBlacklistPropagation(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 		require.NoError(t, cache.SyncFromRedis(ctx, redisClient))
 		now = time.Now().Unix()
-		if cache.Phase1Check(fraudIP, now, &metrics) == Phase1Blocked403 {
+		if cache.PerimeterCheck(fraudIP, now, &metrics) == PerimeterBlocked403 {
 			blockedWithin = time.Since(addedAt)
 			break
 		}
@@ -165,9 +165,9 @@ func TestFault_ASNWhitelistBypass(t *testing.T) {
 	now := time.Now().Unix()
 	var metrics Metrics
 
-	outcome := cache.Phase1CheckASN(blockedIP, "15169", now, &metrics)
-	assert.Equal(t, Phase1Pass, outcome)
-	assert.Equal(t, int64(1), metrics.Phase1Pass)
+	outcome := cache.PerimeterCheckASN(blockedIP, "15169", now, &metrics)
+	assert.Equal(t, PerimeterPass, outcome)
+	assert.Equal(t, int64(1), metrics.PerimeterPass)
 	assert.Equal(t, int64(0), metrics.BlockedIP)
 	assert.Equal(t, int64(0), metrics.BodyRead)
 
@@ -187,8 +187,8 @@ func TestFault_EdgeBlacklistStale503(t *testing.T) {
 	cache := NewBlacklistCache(defaultStaleSec)
 	var metrics Metrics
 
-	outcome := cache.Phase1Check("198.51.100.1", time.Now().Unix(), &metrics)
-	assert.Equal(t, Phase1Stale503, outcome)
+	outcome := cache.PerimeterCheck("198.51.100.1", time.Now().Unix(), &metrics)
+	assert.Equal(t, PerimeterStale503, outcome)
 	assert.Equal(t, int64(1), metrics.BlacklistStale)
 	assert.Equal(t, int64(0), metrics.BodyRead)
 

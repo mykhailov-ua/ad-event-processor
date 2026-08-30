@@ -105,8 +105,8 @@ func TestFault_LocalQuantaFullSkip_BudgetInvariant(t *testing.T) {
 	require.NoError(t, infra.Pool.QueryRow(ctx,
 		`SELECT current_spend FROM campaigns WHERE id = $1`, ToUUID(campaignID),
 	).Scan(&currentSpend))
-	expectedSpend := int64(iterations) * f.impressionAmountMicro
-	require.InDelta(t, expectedSpend, currentSpend, float64(5*f.impressionAmountMicro),
+	expectedSpend := int64(iterations) * f.ImpressionAmountMicro()
+	require.InDelta(t, expectedSpend, currentSpend, float64(5*f.ImpressionAmountMicro()),
 		"PG spend must match full-skip burst within 5 events")
 
 	syncKey := "budget:sync:campaign:" + campaignID.String()
@@ -178,7 +178,7 @@ func TestAcceptLocalQuantaFullSkip_ZeroAlloc(t *testing.T) {
 	const amount = int64(10_000)
 	allocs := testing.AllocsPerRun(100, func() {
 		ledger.Credit(campID, amount, testQuotaChunkMicro)
-		_ = f.acceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
+		_ = f.AcceptLocalQuantaFullSkip(context.Background(), evt, camp, amount, 0)
 	})
 	if allocs != 0 {
 		t.Fatalf("acceptLocalQuantaFullSkip allocs = %v, want 0", allocs)

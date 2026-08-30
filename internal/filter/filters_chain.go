@@ -128,7 +128,9 @@ func (f *EntitlementsFilter) Check(ctx context.Context, evt *domain.Event) error
 	return nil
 }
 
-const fraudBlacklistKey = "blacklist:fraud"
+const FraudBlacklistKey = "blacklist:fraud"
+
+const fraudBlacklistKey = FraudBlacklistKey
 
 type FraudLayer uint8
 
@@ -137,6 +139,10 @@ const (
 	FraudLayerL2Shadow
 	FraudLayerL1Reject
 )
+
+func DecideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
+	return decideFraudLayer(acc, tier)
+}
 
 func decideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
 	if acc == nil || acc.count == 0 {
@@ -156,6 +162,10 @@ func decideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
 		return FraudLayerL2Shadow
 	}
 	return FraudLayerNone
+}
+
+func ApplyFraudLayerDecision(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign, boost uint8) (FraudLayer, error) {
+	return applyFraudLayerDecision(evt, acc, camp, boost)
 }
 
 func applyFraudLayerDecision(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign, boost uint8) (FraudLayer, error) {
@@ -368,6 +378,10 @@ type deploymentRPSLimiter struct {
 
 var globalDeploymentRPS deploymentRPSLimiter
 
+func LicenseRPSSoftCeil(maxRPS uint64) uint64 {
+	return licenseRPSSoftCeil(maxRPS)
+}
+
 func licenseRPSSoftCeil(maxRPS uint64) uint64 {
 	if maxRPS == 0 {
 		return 0
@@ -379,11 +393,28 @@ func licenseRPSSoftCeil(maxRPS uint64) uint64 {
 	return maxRPS + extra
 }
 
+func LicenseRPSBurstCap(maxRPS uint64) uint64 {
+	return licenseRPSBurstCap(maxRPS)
+}
+
 func licenseRPSBurstCap(maxRPS uint64) uint64 {
 	if maxRPS == 0 {
 		return 0
 	}
 	return maxRPS * licenseRPSBurstWindowSec * uint64(licenseRPSBurstPercent) / 100
+}
+
+func ResetGlobalDeploymentRPSForTests() {
+	globalDeploymentRPS.resetForTests()
+}
+
+func SetGlobalDeploymentRPSBurstForTests(init uint32, remain uint64) {
+	globalDeploymentRPS.burstInit.Store(init)
+	globalDeploymentRPS.burstRemain.Store(remain)
+}
+
+func GlobalDeploymentRPSBurstRemainForTests() uint64 {
+	return globalDeploymentRPS.burstRemain.Load()
 }
 
 func (l *deploymentRPSLimiter) resetForTests() {
@@ -483,9 +514,11 @@ func (f *LicenseRPSFilter) Check(_ context.Context, _ *domain.Event) error {
 }
 
 var (
+	FilterGeoLookupErrors           = filterGeoLookupErrors
 	filterGeoLookupErrors           = metrics.FilterInternalErrors.WithLabelValues("geo_lookup")
 	BrandCreativeReplicaParseErrors = metrics.FilterInternalErrors.WithLabelValues("brand_creative_replica")
 	BrandCreativeLoadTimeout        = metrics.FilterInternalErrors.WithLabelValues("brand_creative_load_timeout")
+	FilterFraudStreamWriteErrors    = filterFraudStreamWriteErrors
 	filterFraudStreamWriteErrors    = metrics.FilterInternalErrors.WithLabelValues("fraud_stream_write")
 	FilterEngineFailures            = metrics.FilterInternalErrors.WithLabelValues("filter_engine")
 	filterGeoDuration               = metrics.FilterGeoDuration
@@ -495,6 +528,10 @@ var (
 const sampledCampaignBuckets = 256
 
 var sampledCampaignBucketLabels [sampledCampaignBuckets]string
+
+func SampledCampaignBucketLabel(bucket int) string {
+	return sampledCampaignBucketLabels[bucket]
+}
 
 func init() {
 	for i := range sampledCampaignBucketLabels {
@@ -557,6 +594,10 @@ func (o *redisShardObservability) RecordAcceptedSpend(shard int, campaignID uuid
 	recordSampledCampaignSpend(o, shard, campaignID, spendMicro)
 }
 
+func SampledCampaignBucket(campaignID uuid.UUID) int {
+	return sampledCampaignBucket(campaignID)
+}
+
 func sampledCampaignBucket(campaignID uuid.UUID) int {
 	return int(campaignID[0]) ^ int(campaignID[15])
 }
@@ -593,6 +634,10 @@ const filterRejectSampleEventType = "filter_reject"
 
 var filterRejectCountrySampleSeq atomic.Uint64
 
+func NormalizeRejectCountry(country string) string {
+	return normalizeRejectCountry(country)
+}
+
 func normalizeRejectCountry(country string) string {
 	if len(country) != 2 {
 		return ""
@@ -609,6 +654,10 @@ func truncateRejectPlacement(placement string) string {
 		return placement
 	}
 	return placement[:64]
+}
+
+func AppendRejectSamplePayload(dst []byte, kind, placement, country string) []byte {
+	return appendRejectSamplePayload(dst, kind, placement, country)
 }
 
 func appendRejectSamplePayload(dst []byte, kind, placement, country string) []byte {
@@ -796,6 +845,10 @@ func fraudDesyncLayerBit(id FraudReasonID) uint8 {
 	}
 }
 
+func (a *fraudAccumulator) LayerDesyncCount() uint8 {
+	return a.layerDesyncCount()
+}
+
 func (a *fraudAccumulator) layerDesyncCount() uint8 {
 	if a == nil || a.count == 0 {
 		return 0
@@ -876,6 +929,10 @@ func RecordFraudMetrics(acc *fraudAccumulator, tier FraudTier, layer FraudLayer)
 	if layer == FraudLayerL1Reject {
 		boundFraudMetrics.l1Reject.Inc()
 	}
+}
+
+func ParseBlacklistUpdatePayload(payload string) (ip, reason string, ok bool) {
+	return parseBlacklistUpdatePayload(payload)
 }
 
 func parseBlacklistUpdatePayload(payload string) (ip, reason string, ok bool) {

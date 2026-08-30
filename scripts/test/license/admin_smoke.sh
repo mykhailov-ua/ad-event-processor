@@ -2,7 +2,7 @@
 
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-bash scripts/ci/license/route_gap.sh
+bash scripts/ci/license/route_audit.sh
 bash scripts/test/release/hardening_smoke.sh
 bash scripts/ci/license/fuzz_nightly.sh
 go test ./internal/edge/ -run '^TestEdgeSealed_MCKMatchesLicenseFilePath$' -count=1

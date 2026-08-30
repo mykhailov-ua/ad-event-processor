@@ -1,5 +1,7 @@
 package httpingress
 
+import "fmt"
+
 func teValueOnlyChunked(val []byte) bool {
 	for i := range val {
 		c := val[i]
@@ -45,8 +47,13 @@ func teValueOnlyChunked(val []byte) bool {
 
 const (
 	chunkScratchInitCap   = 4096
-	chunkScratchRetainCap = 64 << 10
+	ChunkScratchRetainCap = 64 << 10
+	chunkScratchRetainCap = ChunkScratchRetainCap
 )
+
+func GrowChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
+	return growChunkScratch(scratchPtr, totalLen)
+}
 
 func growChunkScratch(scratchPtr *[]byte, totalLen int) []byte {
 	if scratchPtr == nil {
@@ -137,6 +144,21 @@ func ParseHTTP1ChunkedBody(data []byte, off int, maxBody int64, scratchPtr *[]by
 		totalLen += size
 		pos += size + 2
 	}
+}
+
+func FragmentedChunkedOpenRTBRequest() []byte {
+	body := []byte(`{"id":"req-1","imp":[{"id":"1"}]}`)
+	half := len(body) / 2
+	head := []byte("POST /openrtb/bid HTTP/1.1\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json\r\n\r\n")
+	var wire []byte
+	wire = append(wire, head...)
+	wire = append(wire, fmt.Sprintf("%x\r\n", half)...)
+	wire = append(wire, body[:half]...)
+	wire = append(wire, "\r\n"...)
+	wire = append(wire, fmt.Sprintf("%x\r\n", len(body)-half)...)
+	wire = append(wire, body[half:]...)
+	wire = append(wire, "\r\n0\r\n\r\n"...)
+	return wire
 }
 
 func ParseChunkSizeLine(data []byte, pos, n int) (size int, next int, err error) {

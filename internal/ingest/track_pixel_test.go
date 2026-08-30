@@ -22,8 +22,8 @@ func TestTrackPixelGnetRoute(t *testing.T) {
 		"Connection":     "keep-alive",
 		"Content-Length": "0",
 	}, nil))
-	require.Contains(t, string(conn.written), "200 OK")
-	require.Contains(t, string(conn.written), "trackEvent")
+	require.Contains(t, string(conn.Written()), "200 OK")
+	require.Contains(t, string(conn.Written()), "trackEvent")
 }
 
 func TestTrackTelemetryHTTPRoute(t *testing.T) {
@@ -48,6 +48,6 @@ func TestTrackTelemetryGnetRoute(t *testing.T) {
 		"Connection":     "keep-alive",
 		"Content-Length": "0",
 	}, nil))
-	require.Contains(t, string(conn.written), "200 OK")
-	require.Contains(t, string(conn.written), "trackTelemetrySnapshot")
+	require.Contains(t, string(conn.Written()), "200 OK")
+	require.Contains(t, string(conn.Written()), "trackTelemetrySnapshot")
 }

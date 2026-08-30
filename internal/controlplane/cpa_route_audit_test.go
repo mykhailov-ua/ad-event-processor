@@ -7,28 +7,30 @@ import (
 	"strings"
 	"testing"
 
+	"ad-event-processor/internal/controlplane/routecatalog"
+
 	"github.com/stretchr/testify/require"
 )
 
-type cpaProductGap struct {
+type cpaProductRoute struct {
 	Area        string
 	API         string
 	APIRequired bool
 	UI          string
 	UIMissing   bool
-	Phase       string
+	Surface     string
 }
 
-var cpaProductGaps = []cpaProductGap{
-	{Area: "Customer billing forecast", API: "GET /api/v1/customers/{id}/billing/forecast", APIRequired: true, UI: "/customers/:id", UIMissing: false, Phase: "customer_billing"},
-	{Area: "Invoice ledger lines", API: "GET /api/v1/billing/invoices/{id}/ledger-lines", APIRequired: true, UI: "/billing/invoices/:id", UIMissing: false, Phase: "customer_billing"},
-	{Area: "Postback/CAPI DLQ (buyer)", API: "GET /api/v1/postbacks/dlq", APIRequired: true, UI: "/integrations/postbacks", UIMissing: false, Phase: "postback_dlq"},
-	{Area: "Team invite / assign", API: "POST /api/v1/team/members", APIRequired: true, UI: "/team", UIMissing: false, Phase: "team_workspace"},
-	{Area: "Publisher dashboard", API: "GET /api/v1/publisher/dashboard", APIRequired: true, UI: "/publisher", UIMissing: false, Phase: "publisher_portal"},
-	{Area: "Self-serve portal", API: "GET /api/v1/selfserve/templates", APIRequired: true, UI: "/selfserve", UIMissing: false, Phase: "selfserve_portal"},
-	{Area: "Unified DLQ inbox", API: "GET /api/v1/ops/dlq/inbox", APIRequired: true, UI: "/ops/dlq", UIMissing: false, Phase: "ops_console"},
-	{Area: "Consent proof browser", API: "GET /api/v1/ops/consent/proofs", APIRequired: true, UI: "/ops/consent", UIMissing: false, Phase: "ops_console"},
-	{Area: "Support feedback form", API: "POST /api/v1/support/feedback", APIRequired: true, UI: "/support/feedback", UIMissing: false, Phase: "ops_console"},
+var cpaProductRoutes = []cpaProductRoute{
+	{Area: "Customer billing forecast", API: "GET /api/v1/customers/{id}/billing/forecast", APIRequired: true, UI: "/customers/:id", UIMissing: false, Surface: "customer_billing"},
+	{Area: "Invoice ledger lines", API: "GET /api/v1/billing/invoices/{id}/ledger-lines", APIRequired: true, UI: "/billing/invoices/:id", UIMissing: false, Surface: "customer_billing"},
+	{Area: "Postback/CAPI DLQ (buyer)", API: "GET /api/v1/postbacks/dlq", APIRequired: true, UI: "/integrations/postbacks", UIMissing: false, Surface: "postback_dlq"},
+	{Area: "Team invite / assign", API: "POST /api/v1/team/members", APIRequired: true, UI: "/team", UIMissing: false, Surface: "team_workspace"},
+	{Area: "Publisher dashboard", API: "GET /api/v1/publisher/dashboard", APIRequired: true, UI: "/publisher", UIMissing: false, Surface: "publisher_portal"},
+	{Area: "Self-serve portal", API: "GET /api/v1/selfserve/templates", APIRequired: true, UI: "/selfserve", UIMissing: false, Surface: "selfserve_portal"},
+	{Area: "Unified DLQ inbox", API: "GET /api/v1/ops/dlq/inbox", APIRequired: true, UI: "/ops/dlq", UIMissing: false, Surface: "ops_console"},
+	{Area: "Consent proof browser", API: "GET /api/v1/ops/consent/proofs", APIRequired: true, UI: "/ops/consent", UIMissing: false, Surface: "ops_console"},
+	{Area: "Support feedback form", API: "POST /api/v1/support/feedback", APIRequired: true, UI: "/support/feedback", UIMissing: false, Surface: "ops_console"},
 }
 
 func readRepoFile(t *testing.T, root, rel string) string {
@@ -39,8 +41,9 @@ func readRepoFile(t *testing.T, root, rel string) string {
 }
 
 func catalogRouteSet() map[string]struct{} {
-	out := make(map[string]struct{}, len(routeCatalog))
-	for _, r := range routeCatalog {
+	routes := routecatalog.Catalog()
+	out := make(map[string]struct{}, len(routes))
+	for _, r := range routes {
 		out[r.Method+" "+r.Path] = struct{}{}
 	}
 	return out
@@ -51,10 +54,10 @@ func TestCPA_DocumentedProductGaps_open(t *testing.T) {
 	root := repoRoot(t)
 	catalog := catalogRouteSet()
 
-	for _, gap := range cpaProductGaps {
-		if gap.APIRequired && gap.API != "" {
-			_, ok := catalog[gap.API]
-			require.True(t, ok, "gap %q: API %s must exist in catalog (phase %s)", gap.Area, gap.API, gap.Phase)
+	for _, route := range cpaProductRoutes {
+		if route.APIRequired && route.API != "" {
+			_, ok := catalog[route.API]
+			require.True(t, ok, "area %q: API %s must exist in catalog (surface %s)", route.Area, route.API, route.Surface)
 		}
 		_ = root
 	}

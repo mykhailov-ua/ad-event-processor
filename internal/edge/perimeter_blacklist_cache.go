@@ -1,3 +1,20 @@
+// In-process generational blacklist cache mirroring L7 access-check.lua / edge-blacklist-sync.lua.
+//
+// Not used on the BPF hot path. Production L7: ngx.shared blacklist_cache (_bl_ver, b:{ip}).
+// Production L4: BlocklistStore + pinned maps via edge-bpf-sync (blocklist_sync.go).
+//
+// Memory Model Rules (L7 generational semantics):
+//
+//	SyncFromRedis: SMEMBERS manual|auto|fraud -> bump ver, stamp blocked[ip]=newVer (full invalidation
+//	  of prior generation: PerimeterCheck requires ipVer == c.ver).
+//	PerimeterCheck: fail-closed stale when ver==0, syncTS==0, or now-syncTS > staleSec (503 analog).
+//	Block match: blocked[clientIP] == c.ver -> 403 analog.
+//
+// Cache invalidation patterns:
+//   - l7_generational_full: SyncFromRedis increments ver; old generation entries no longer match.
+//   - Unlike BPF path, no explicit delete of stale IP keys; generational mismatch passes.
+//   - Unlike ngx incremental quarantine, this Go helper always bumps ver on sync (no bump_version=false).
+//   - Production _bl_count gauge: deduped on incremental stamp_ips; see edge-blacklist-sync.lua header.
 package edge
 
 import (
@@ -11,16 +28,16 @@ const (
 	defaultStaleSec = 30
 )
 
-type Phase1Outcome int
+type PerimeterOutcome int
 
 const (
-	Phase1Pass Phase1Outcome = iota
-	Phase1Blocked403
-	Phase1Stale503
+	PerimeterPass PerimeterOutcome = iota
+	PerimeterBlocked403
+	PerimeterStale503
 )
 
 type Metrics struct {
-	Phase1Pass     int64
+	PerimeterPass  int64
 	BlockedIP      int64
 	BodyRead       int64
 	BlacklistStale int64
@@ -91,39 +108,39 @@ func (c *BlacklistCache) SyncFromRedis(ctx context.Context, redisClient redis.Cm
 	return nil
 }
 
-func (c *BlacklistCache) Phase1Check(clientIP string, nowUnix int64, m *Metrics) Phase1Outcome {
-	return c.Phase1CheckASN(clientIP, "", nowUnix, m)
+func (c *BlacklistCache) PerimeterCheck(clientIP string, nowUnix int64, m *Metrics) PerimeterOutcome {
+	return c.PerimeterCheckASN(clientIP, "", nowUnix, m)
 }
 
-func (c *BlacklistCache) Phase1CheckASN(clientIP, clientASN string, nowUnix int64, m *Metrics) Phase1Outcome {
+func (c *BlacklistCache) PerimeterCheckASN(clientIP, clientASN string, nowUnix int64, m *Metrics) PerimeterOutcome {
 	if c.asnWhitelist != nil && c.asnWhitelist.IsWhitelisted(clientASN) {
 		if m != nil {
-			m.Phase1Pass++
+			m.PerimeterPass++
 		}
-		return Phase1Pass
+		return PerimeterPass
 	}
 	if c.ver == 0 || c.syncTS == 0 {
 		if m != nil {
 			m.BlacklistStale++
 		}
-		return Phase1Stale503
+		return PerimeterStale503
 	}
 	if nowUnix-c.syncTS > c.staleSec {
 		if m != nil {
 			m.BlacklistStale++
 		}
-		return Phase1Stale503
+		return PerimeterStale503
 	}
 	if ipVer, ok := c.blocked[clientIP]; ok && ipVer == c.ver {
 		if m != nil {
 			m.BlockedIP++
 		}
-		return Phase1Blocked403
+		return PerimeterBlocked403
 	}
 	if m != nil {
-		m.Phase1Pass++
+		m.PerimeterPass++
 	}
-	return Phase1Pass
+	return PerimeterPass
 }
 
 func (c *BlacklistCache) SetASNWhitelist(w *ASNWhitelist) {

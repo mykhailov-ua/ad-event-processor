@@ -40,16 +40,18 @@ func (w *Worker) RunDeliveryOptimizerTick(ctx context.Context, syncWorkers []*do
 				return err
 			}
 			if runMAB {
-				brands, err := OptimizeBrandCreativeMABTx(opCtx, tx, w.delivery)
-				if err != nil {
-					return err
+				if !w.delivery.TrafficOptimizerEnabled() {
+					brands, err := OptimizeBrandCreativeMABTx(opCtx, tx, w.delivery)
+					if err != nil {
+						return err
+					}
+					mabBrands = brands
+					campaigns, err := flow.OptimizeFlowBanditTx(opCtx, tx, flowBanditAdapter{host: w.delivery})
+					if err != nil {
+						return err
+					}
+					flowBanditCampaigns = campaigns
 				}
-				mabBrands = brands
-				campaigns, err := flow.OptimizeFlowBanditTx(opCtx, tx, flowBanditAdapter{host: w.delivery})
-				if err != nil {
-					return err
-				}
-				flowBanditCampaigns = campaigns
 			}
 			if err := merge.Flush(opCtx, tx); err != nil {
 				return err

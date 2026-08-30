@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
@@ -65,7 +66,7 @@ func TestCreditScoringAndOverdraft(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(1_000_000_000), balance)
 
-	worker := NewCreditScoringWorker(svc)
+	worker := billingadmin.NewCreditScoringWorker(svc)
 	err = worker.EvaluateAll(ctx)
 	require.NoError(t, err)
 

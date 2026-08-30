@@ -43,6 +43,10 @@ func FilterDeadlineExceededEvt(evt *domain.Event, ctx context.Context) bool {
 	return filterDeadlineExceededEvt(evt, ctx)
 }
 
+func FilterDeadlineExceeded(ctx context.Context) bool {
+	return filterDeadlineExceeded(ctx)
+}
+
 func FilterDeadlineRemainingEvt(evt *domain.Event, ctx context.Context) (time.Duration, bool) {
 	return filterDeadlineRemainingEvt(evt, ctx)
 }

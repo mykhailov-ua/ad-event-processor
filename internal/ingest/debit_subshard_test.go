@@ -16,10 +16,7 @@ import (
 
 func TestResolveDebitShard_highVolumeSpread(t *testing.T) {
 	sharder := NewStaticSlotSharder(4)
-	f := &UnifiedFilter{
-		sharder:     sharder,
-		redisShards: make([]redis.UniversalClient, 4),
-	}
+	f := NewDebitShardTestFilter(sharder, make([]redis.UniversalClient, 4))
 	campID := uuid.New()
 	camp := &domain.Campaign{
 		ID:            campID,
@@ -29,7 +26,7 @@ func TestResolveDebitShard_highVolumeSpread(t *testing.T) {
 	seen := make(map[int]struct{})
 	for i := range 64 {
 		userID := "user-" + strconv.Itoa(i)
-		shard, sub, err := f.resolveDebitShard(campID, userID, "", camp)
+		shard, sub, err := f.ResolveDebitShard(campID, userID, "", camp)
 		require.NoError(t, err)
 		require.GreaterOrEqual(t, sub, 0)
 		require.Less(t, sub, domain.HighVolumeDebitSubShards)
@@ -76,13 +73,10 @@ func TestDebitSubShard_plainCampaignSingleHashTag_holdout(t *testing.T) {
 	require.NotContains(t, plainKey, ":slot_")
 
 	sharder := NewStaticSlotSharder(4)
-	f := &UnifiedFilter{
-		sharder:     sharder,
-		redisShards: make([]redis.UniversalClient, 4),
-	}
-	shardA, subA, err := f.resolveDebitShard(camp.ID, "user-1", "", camp)
+	f := NewDebitShardTestFilter(sharder, make([]redis.UniversalClient, 4))
+	shardA, subA, err := f.ResolveDebitShard(camp.ID, "user-1", "", camp)
 	require.NoError(t, err)
-	shardB, subB, err := f.resolveDebitShard(camp.ID, "user-99", "click-99", camp)
+	shardB, subB, err := f.ResolveDebitShard(camp.ID, "user-99", "click-99", camp)
 	require.NoError(t, err)
 	require.Equal(t, 0, subA)
 	require.Equal(t, 0, subB)
@@ -113,7 +107,7 @@ func TestUnifiedFilter_highVolumeDebit_debitsSubShardQuotaKey(t *testing.T) {
 	}
 	reg := benchRegistryForCampaign(camp)
 	f := newQuotaUnifiedFilter(t, mr)
-	f.registry = reg
+	f.SetRegistry(reg)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
 	require.NoError(t, f.PreloadScripts(ctx))

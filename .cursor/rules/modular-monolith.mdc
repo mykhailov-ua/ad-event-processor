@@ -39,7 +39,7 @@ Every production Go package **must** include `doc.go` at its directory root.
 
 **Excluded:** generated subtrees (`db/`, `pb/`, sqlc output) inside a domain — no `doc.go` there.
 
-**Content:** `//` package documentation lines, then `package <name>` on the next line with no blank line between (`naming.mdc`). Edit `doc.go` in the same PR when adding a package; no Python/shell codegen.
+**Content:** mandatory detailed package doc in `doc.go` — role, invariants, allowed/forbidden, verification commands (`comments.mdc`). Edit `doc.go` in the same PR when adding a package; no Python/shell codegen.
 
 New package without `doc.go` in the same PR is a **merge blocker**. Legacy tree: add or refresh when touching the package.
 
@@ -117,7 +117,7 @@ Create a **new** domain package only when extracting from `controlplane` or spli
 | :--- | :--- |
 | Bounded surface | Own `/api/v1/...` routes **or** worker tick entry called from `cmd/control` |
 | Persistence or rules | `store.go` / `*_tx.go` **or** pure validators used by handlers (not dead types) |
-| `doc.go` | Package doc as `//` lines at root — **mandatory** (`naming.mdc`) |
+| `doc.go` | Package module doc at root — **mandatory**, may be long (`comments.mdc`) |
 | Wire | Registration in `adminapi_wire.go` or worker bootstrap — not orphan import |
 
 **At least two** of: handlers (or worker), store/tx, behavioral validators/types. A lone `host.go` + `types.go` stub is **rejected**.

@@ -1183,8 +1183,8 @@ var (
 		Name: "ad_udp_control_recovered_total",
 		Help: "UDP control channel recovered from STALE to OK",
 	})
-	UDPControlGapTightenTotal = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "ad_udp_control_gap_tighten_total",
+	UDPControlEpochTightenTotal = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "ad_udp_control_epoch_tighten_total",
 		Help: "Epoch gap applied immediately because limits tightened",
 	})
 	UDPControlLoosenBlockedTotal = promauto.NewCounter(prometheus.CounterOpts{

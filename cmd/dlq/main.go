@@ -1,3 +1,4 @@
+// DLQ operator CLI entrypoint. Package documentation: doc.go.
 package main
 
 import (
@@ -24,6 +25,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// fatal logs JSON to stderr and exits 1 (Redis/IO/parse failures).
 func fatal(msg string, args ...any) {
 	slog.Error(msg, args...)
 	os.Exit(1)
@@ -76,7 +78,8 @@ func main() {
 		}
 	case "edit":
 		if *id == "" {
-			fatal("message id required for edit action", "flag", "-id")
+			fmt.Fprintln(os.Stderr, "message id required for edit action (flag -id)")
+			os.Exit(2)
 		}
 		if err := editDLQMessage(ctx, redisClient, *stream, *id); err != nil {
 			fatal("edit failed", "error", err)
@@ -86,6 +89,9 @@ func main() {
 	}
 }
 
+// archiveDLQ XREADs stream from 0-0, normalizes each row to AdDLQEvent, writes
+// big-endian uint32 length + protobuf to destFile (O_APPEND), pipelines XDEL per batch.
+// Empty XREAD ends loop. Reuses pbDLQ/pbStream per row (Reset). Complexity O(n) stream len.
 func archiveDLQ(ctx context.Context, redisClient *redis.Client, stream, destFile string, batchSize int64) error {
 	file, err := os.OpenFile(destFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
@@ -229,6 +235,9 @@ func archiveDLQ(ctx context.Context, redisClient *redis.Client, stream, destFile
 	return nil
 }
 
+// requeueDLQ moves OriginalEvent from DLQ to targetStream: field d holds marshaled AdStreamEvent.
+// rateLimit > 0 applies golang.org/x/time/rate with burst=rate (events/s). Legacy flat hash
+// copies non-metadata fields. Pipeline XADD + XDEL per batch; does not guarantee processor idempotency.
 func requeueDLQ(ctx context.Context, redisClient *redis.Client, dlqStream, targetStream string, batchSize, rateLimit int64) error {
 	startID := "0-0"
 	var totalProcessed int64
@@ -322,6 +331,8 @@ func requeueDLQ(ctx context.Context, redisClient *redis.Client, dlqStream, targe
 	return nil
 }
 
+// restoreDLQ reads archive file (uint32 BE length + AdDLQEvent) until EOF; XADD field d to targetStream.
+// Batches pipeline Exec every batchSize rows; rateLimit Wait between rows when > 0.
 func restoreDLQ(ctx context.Context, redisClient *redis.Client, srcFile, targetStream string, batchSize, rateLimit int64) error {
 	file, err := os.Open(srcFile)
 	if err != nil {
@@ -426,6 +437,8 @@ func restoreDLQ(ctx context.Context, redisClient *redis.Client, srcFile, targetS
 	return nil
 }
 
+// inspectStream prints human JSON to stdout for each stream message (protobuf d, legacy hash, or unknown).
+// Read-only; advances startID for pagination until empty XREAD. No rate limit.
 func inspectStream(ctx context.Context, redisClient *redis.Client, stream string, batchSize int64) error {
 	startID := "0-0"
 	var totalProcessed int64
@@ -552,6 +565,7 @@ type EditableDLQEvent struct {
 	OriginalEvent EditableStreamEvent `json:"original_event"`
 }
 
+// toEditable maps AdDLQEvent protobuf to JSON-friendly struct for $EDITOR round-trip.
 func toEditable(id string, pbDLQ *pb.AdDLQEvent) EditableDLQEvent {
 	var orig EditableStreamEvent
 	if pbDLQ.OriginalEvent != nil {
@@ -586,6 +600,7 @@ func toEditable(id string, pbDLQ *pb.AdDLQEvent) EditableDLQEvent {
 	}
 }
 
+// fromEditable rebuilds AdDLQEvent from edited JSON; preserves stream metadata fields.
 func fromEditable(edit EditableDLQEvent) *pb.AdDLQEvent {
 	var campID []byte
 	if u, err := uuid.Parse(edit.OriginalEvent.CampaignID); err == nil {
@@ -612,6 +627,7 @@ func fromEditable(edit EditableDLQEvent) *pb.AdDLQEvent {
 	}
 }
 
+// launchEditor opens filepath in $EDITOR, else tries nano, vim, vi sequentially.
 func launchEditor(filepath string) error {
 	editor := os.Getenv("EDITOR")
 	if editor != "" {
@@ -636,6 +652,8 @@ func launchEditor(filepath string) error {
 	return fmt.Errorf("failed to start editor: please set your EDITOR environment variable")
 }
 
+// editDLQMessage XRANGE one id, JSON edit via temp dlq-edit-*.json, pipeline XDEL old + XADD new d field.
+// New stream ID assigned by Redis; operator must note new_id in logs. Blocking on editor until exit.
 func editDLQMessage(ctx context.Context, redisClient *redis.Client, stream, id string) error {
 	msgs, err := redisClient.XRange(ctx, stream, id, id).Result()
 	if err != nil {

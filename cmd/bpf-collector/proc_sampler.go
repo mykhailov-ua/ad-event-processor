@@ -1,3 +1,22 @@
+// Periodic /proc sampler writing proc-samples.ndjson.
+//
+// Role:
+//   - procSampleLoop ticks every 2s; records open_fds, socket_fds, threads, RSS per tracked PID.
+//   - aggregateProcSamples computes peaks and deltas for summary.json proc_samples section.
+//
+// Topology:
+//   - Falls back to mem-start/end only when proc-samples.ndjson missing at dump time.
+//
+// Invariants:
+//   - sampleWG decremented on goroutine exit; probeRun.stop waits before final dump.
+//   - Open file failure exits sampler silently (no proc_samples in summary).
+//
+// Defaults and limits:
+//   - Sample interval 2s (fixed ticker, not flag-gated).
+//
+// Verify:
+//
+//	wc -l var/load-test/<session>/proc-samples.ndjson
 package main
 
 import (

@@ -2,10 +2,12 @@ package ingest
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/filter"
+	filterunified "ad-event-processor/internal/filter/unified"
 	fw "ad-event-processor/internal/ingest/filterwire"
 	"ad-event-processor/pkg/piihash"
 
@@ -71,12 +73,14 @@ type (
 	FraudLayer               = fw.FraudLayer
 	ASNLookup                = fw.ASNLookup
 	BrandCreativeStore       = fw.BrandCreativeStore
+	BrandCreativeFixture     = fw.BrandCreativeFixture
 	SegmentConversionHandler = fw.SegmentConversionHandler
 )
 
 var (
 	NewFilterEngine             = fw.NewFilterEngine
 	NewUnifiedFilter            = fw.NewUnifiedFilter
+	NewDebitShardTestFilter     = fw.NewDebitShardTestFilter
 	NewFraudFilter              = fw.NewFraudFilter
 	NewGeoFilter                = fw.NewGeoFilter
 	NewBudgetFilter             = fw.NewBudgetFilter
@@ -117,6 +121,9 @@ const (
 	FraudTierSuspect    = fw.FraudTierSuspect
 	FraudTierIVT        = fw.FraudTierIVT
 	FraudTierBlock      = fw.FraudTierBlock
+	FraudLayerNone      = filter.FraudLayerNone
+	FraudLayerL2Shadow  = filter.FraudLayerL2Shadow
+	FraudLayerL1Reject  = filter.FraudLayerL1Reject
 )
 
 var filterEngineFailures = fw.FilterEngineFailures
@@ -130,6 +137,121 @@ func recordFraudMetrics(acc *fraudAccumulator, tier FraudTier, layer FraudLayer)
 func pingConnectedRedisShards(ctx context.Context, redisShards []redis.UniversalClient) bool {
 	return fw.PingConnectedRedisShards(ctx, redisShards)
 }
+
+func setFilterDeadlineOnEvent(evt *domain.Event, timeout time.Duration) {
+	filter.SetFilterDeadlineOnEvent(evt, timeout)
+}
+
+func applyFraudAccumulatorForCampaign(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign) FraudTier {
+	return filter.ApplyFraudAccumulatorForCampaign(evt, acc, camp)
+}
+
+func decideFraudLayer(acc *fraudAccumulator, tier FraudTier) FraudLayer {
+	return filter.DecideFraudLayer(acc, tier)
+}
+
+func applyFraudLayerDecision(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign, boost uint8) (FraudLayer, error) {
+	return filter.ApplyFraudLayerDecision(evt, acc, camp, boost)
+}
+
+func fraudThresholdsFromCampaign(camp *domain.Campaign) (pass, suspect, ivt, block uint8) {
+	return filter.FraudThresholdsFromCampaign(camp)
+}
+
+func eventHasFraudL3(evt *domain.Event) bool {
+	return filter.EventHasFraudL3(evt)
+}
+
+func licenseRPSSoftCeil(maxRPS uint64) uint64 {
+	return filter.LicenseRPSSoftCeil(maxRPS)
+}
+
+func licenseRPSBurstCap(maxRPS uint64) uint64 {
+	return filter.LicenseRPSBurstCap(maxRPS)
+}
+
+func resetGlobalDeploymentRPSForTests() {
+	filter.ResetGlobalDeploymentRPSForTests()
+}
+
+func setGlobalDeploymentRPSBurstForTests(init uint32, remain uint64) {
+	filter.SetGlobalDeploymentRPSBurstForTests(init, remain)
+}
+
+func globalDeploymentRPSBurstRemainForTests() uint64 {
+	return filter.GlobalDeploymentRPSBurstRemainForTests()
+}
+
+func newRedisShardObservability(numShards int, sampleMask uint64) filter.RedisShardObservability {
+	return filter.NewRedisShardObservability(numShards, sampleMask)
+}
+
+func sampledCampaignBucket(campaignID uuid.UUID) int {
+	return filter.SampledCampaignBucket(campaignID)
+}
+
+func sampledCampaignBucketLabel(bucket int) string {
+	return filter.SampledCampaignBucketLabel(bucket)
+}
+
+func spendMicroFromAny(amount any) int64 {
+	return filterunified.SpendMicroFromAny(amount)
+}
+
+func normalizeRejectCountry(country string) string {
+	return filter.NormalizeRejectCountry(country)
+}
+
+func appendRejectSamplePayload(dst []byte, kind, placement, country string) []byte {
+	return filter.AppendRejectSamplePayload(dst, kind, placement, country)
+}
+
+func recordFilterRejectCountrySample(kind filter.FilterRejectKind, evt *domain.Event, seq *atomic.Uint64, sampleMask uint64) {
+	filter.RecordFilterRejectCountrySample(kind, evt, seq, sampleMask)
+}
+
+func parseBlacklistUpdatePayload(payload string) (ip, reason string, ok bool) {
+	return filter.ParseBlacklistUpdatePayload(payload)
+}
+
+func newFraudAccumulatorForTest(score uint32, signals ...FraudReasonID) *fraudAccumulator {
+	ids := make([]filter.FraudReasonID, len(signals))
+	for i, s := range signals {
+		ids[i] = filter.FraudReasonID(s)
+	}
+	return filter.NewFraudAccumulatorForTest(score, ids...)
+}
+
+func filterDeadlineExceeded(ctx context.Context) bool {
+	return filter.FilterDeadlineExceeded(ctx)
+}
+
+func filterDeadlineExceededEvt(evt *domain.Event, ctx context.Context) bool {
+	return filter.FilterDeadlineExceededEvt(evt, ctx)
+}
+
+func filterDeadlineRemainingEvt(evt *domain.Event, ctx context.Context) (time.Duration, bool) {
+	return filter.FilterDeadlineRemainingEvt(evt, ctx)
+}
+
+func filterDeadlineMonoFromContext(ctx context.Context) (int64, bool) {
+	return filter.FilterDeadlineMonoFromContext(ctx)
+}
+
+var filterGeoLookupErrors = filter.FilterGeoLookupErrors
+
+var filterFraudStreamWriteErrors = filter.FilterFraudStreamWriteErrors
+
+func attachFilterDeadline(ctx context.Context, timeout time.Duration) context.Context {
+	return filter.AttachFilterDeadline(ctx, timeout)
+}
+
+const fraudBlacklistKey = filter.FraudBlacklistKey
+
+const (
+	placementCacheShards             = filter.PlacementCacheShards
+	placementCacheMaxEntriesPerShard = filter.PlacementCacheMaxEntriesPerShard
+)
 
 func attachFraudAccumulator(evt *domain.Event) *fraudAccumulator {
 	return fw.AttachFraudAccumulator(evt)
@@ -145,6 +267,22 @@ func segmentUserHash(hasher *piihash.Hasher, evt *domain.Event) ([16]byte, bool)
 
 func addSegmentMember(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte, ttl time.Duration) error {
 	return fw.AddSegmentMember(ctx, redisShards, segmentID, userHash, ttl)
+}
+
+func segmentMemberExists(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte) (bool, error) {
+	return fw.SegmentMemberExists(ctx, redisShards, segmentID, userHash)
+}
+
+func pickSegmentShard(redisShards []redis.UniversalClient, segmentID uuid.UUID) redis.UniversalClient {
+	return fw.PickSegmentShard(redisShards, segmentID)
+}
+
+func firstConnectedRedisShard(redisShards []redis.UniversalClient) redis.UniversalClient {
+	return filterunified.FirstConnectedRedisShard(redisShards)
+}
+
+func tcpMSSWireValue(mss uint16) uint16 {
+	return filterunified.TCPMSSWireValue(mss)
 }
 
 func addFraudSignal(evt *domain.Event, id FraudReasonID) {

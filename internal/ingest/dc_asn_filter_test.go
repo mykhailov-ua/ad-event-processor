@@ -52,7 +52,7 @@ func TestFraudFilter_DCASN_positive(t *testing.T) {
 	evt.IP = "54.230.17.9"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonDatacenterIP))
+	assert.True(t, acc.Has(FraudReasonDatacenterIP))
 	assert.Equal(t, beforeCheck+1, testutil.ToFloat64(metrics.DCASNCheckTotal))
 	assert.Equal(t, beforeMatch+1, testutil.ToFloat64(metrics.DCASNMatchTotal))
 }
@@ -73,7 +73,7 @@ func TestFraudFilter_DCASN_mobileAS3215_negative(t *testing.T) {
 	evt.IP = "10.0.0.1"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonDatacenterIP))
+	assert.False(t, acc.Has(FraudReasonDatacenterIP))
 }
 
 func TestFraudFilter_DCASN_mobileAS12322_negative(t *testing.T) {
@@ -92,7 +92,7 @@ func TestFraudFilter_DCASN_mobileAS12322_negative(t *testing.T) {
 	evt.IP = "10.0.0.2"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonDatacenterIP))
+	assert.False(t, acc.Has(FraudReasonDatacenterIP))
 }
 
 func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
@@ -108,7 +108,7 @@ func TestFraudFilter_DCASN_sampledSkips(t *testing.T) {
 	engine.SetRegistry(&mockRegistry{})
 
 	var shadowCount int
-	for i := range 256 {
+	for range 256 {
 		evt.FraudReason = ""
 		evt.FraudScore = 0
 		evt.ShadowEvent = false
@@ -142,7 +142,7 @@ func TestFraudFilter_DCASN_holdout(t *testing.T) {
 		evt.FraudScore = 0
 		evt.StringBuffer = evt.StringBuffer[:0]
 		require.NoError(t, f.Check(context.Background(), evt))
-		assert.True(t, acc.has(FraudReasonDatacenterIP), "non-anonymous hosting ASN must always flag datacenter_ip")
+		assert.True(t, acc.Has(FraudReasonDatacenterIP), "non-anonymous hosting ASN must always flag datacenter_ip")
 	}
 }
 

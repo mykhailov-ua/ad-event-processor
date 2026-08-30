@@ -156,7 +156,7 @@ Flat under `internal/<name>/`:
 - Banned new subtrees: `providers/`, `services/`, `usecase/`, `dto/`.
 - God packages forbidden: ceilings and bridge rules in `modular-monolith.mdc`. `controlplane` is composition root only — domain logic in `internal/<domain>/`.
 - Micro-packages forbidden: no stub domain dirs, no `internal/common` — minimum viable extraction + `doc.go` in same PR (`modular-monolith.mdc`).
-- `doc.go` mandatory: `//` package docs at package root (`naming.mdc`). Edit in the same PR when adding a package.
+- `doc.go` mandatory: detailed package doc at package root (`comments.mdc`, `modular-monolith.mdc`). Edit in the same PR when adding a package.
 
 ## Tests - keep vs delete
 

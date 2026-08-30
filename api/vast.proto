@@ -11,7 +11,9 @@ message VastDocument {
 
 message VastAd {
   bytes id = 1;
+  // Mutually exclusive: inline details or a wrapper redirect to another server.
   VastInline inline = 2;
+  // Mutually exclusive: inline details or a wrapper redirect to another server.
   VastWrapper wrapper = 3;
 }
 
@@ -32,6 +34,7 @@ message VastCreative {
 }
 
 message VastLinear {
+  // Video playback duration in seconds.
   uint32 duration_sec = 1;
   repeated VastMediaFile media_files = 2;
 }
@@ -39,7 +42,10 @@ message VastLinear {
 message VastMediaFile {
   bytes uri = 1;
   bytes mime_type = 2;
+  // Width dimension in pixels.
   uint32 width = 3;
+  // Height dimension in pixels.
   uint32 height = 4;
+  // Media transfer bitrate in kbps.
   uint32 bitrate = 5;
 }

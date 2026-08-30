@@ -1,3 +1,4 @@
+// vendor-trial-bot CLI entrypoint. Package documentation: doc.go.
 package main
 
 import (

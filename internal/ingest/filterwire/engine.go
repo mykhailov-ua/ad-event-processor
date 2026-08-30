@@ -83,6 +83,7 @@ type (
 var (
 	NewFilterEngine             = filter.NewFilterEngine
 	NewUnifiedFilter            = filterunified.NewUnifiedFilter
+	NewDebitShardTestFilter     = filterunified.NewDebitShardTestFilter
 	NewFraudFilter              = filter.NewFraudFilter
 	NewGeoFilter                = filter.NewGeoFilter
 	NewBudgetFilter             = filter.NewBudgetFilter
@@ -168,6 +169,31 @@ func NewBrandCreativeStore(redisClient redis.UniversalClient, loadTimeoutMs int)
 	}
 	s.cache.Store(&brandCreativeMapSnapshot{byBrand: make(map[uuid.UUID][]brandCreativeEntry)})
 	return s
+}
+
+type BrandCreativeFixture struct {
+	ID     string
+	URL    string
+	Weight int32
+}
+
+func (s *BrandCreativeStore) SetFixturesForTest(byBrand map[uuid.UUID][]BrandCreativeFixture) {
+	if s == nil {
+		return
+	}
+	next := make(map[uuid.UUID][]brandCreativeEntry, len(byBrand))
+	for brandID, fixtures := range byBrand {
+		entries := make([]brandCreativeEntry, 0, len(fixtures))
+		for _, f := range fixtures {
+			entries = append(entries, brandCreativeEntry{
+				ID:     f.ID,
+				URL:    f.URL,
+				Weight: f.Weight,
+			})
+		}
+		next[brandID] = brandCreativeEntriesReady(entries)
+	}
+	s.cache.Store(&brandCreativeMapSnapshot{byBrand: next})
 }
 
 func (s *BrandCreativeStore) LoadFromRedis(ctx context.Context, brandID uuid.UUID) {
@@ -361,6 +387,14 @@ func SegmentUserHash(hasher *piihash.Hasher, evt *domain.Event) ([16]byte, bool)
 
 func AddSegmentMember(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte, ttl time.Duration) error {
 	return filter.AddSegmentMember(ctx, redisShards, segmentID, userHash, ttl)
+}
+
+func SegmentMemberExists(ctx context.Context, redisShards []redis.UniversalClient, segmentID uuid.UUID, userHash [16]byte) (bool, error) {
+	return filter.SegmentMemberExists(ctx, redisShards, segmentID, userHash)
+}
+
+func PickSegmentShard(redisShards []redis.UniversalClient, segmentID uuid.UUID) redis.UniversalClient {
+	return filter.PickSegmentShard(redisShards, segmentID)
 }
 
 func AddFraudSignalID(evt *domain.Event, id filter.FraudReasonID) {

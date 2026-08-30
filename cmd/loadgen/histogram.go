@@ -1,3 +1,4 @@
+// status-histogram.json writer: aggregates HTTP status + error kind per loadgen run.
 package main
 
 import (
@@ -22,7 +23,7 @@ type statusHistogram struct {
 type histogram struct {
 	mu       sync.Mutex
 	byStatus map[string]int64
-	buckets  map[string]int64
+	buckets  map[string]int64 // key: status + "\x00" + errKind
 }
 
 func newHistogram() *histogram {

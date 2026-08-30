@@ -16,39 +16,39 @@ func TestUnifiedFilter_needsFullLuaPath(t *testing.T) {
 	evt := &domain.Event{Type: "impression", CampaignID: uuid.New(), UserID: "u1"}
 
 	f.SetLuaFastPathEnabled(true)
-	require.False(t, f.needsFullLuaPath(evt, camp))
+	require.False(t, f.NeedsFullLuaPath(evt, camp))
 
 	f.SetTTCMin(time.Second)
-	require.True(t, f.needsFullLuaPath(evt, camp))
+	require.True(t, f.NeedsFullLuaPath(evt, camp))
 
 	f.SetLocalTTCCache(NewLocalTTCCache())
-	require.False(t, f.needsFullLuaPath(evt, camp))
+	require.False(t, f.NeedsFullLuaPath(evt, camp))
 
 	f.SetTTCMin(0)
 	f.SetLuaFastPathEnabled(false)
-	require.True(t, f.needsFullLuaPath(evt, camp))
+	require.True(t, f.NeedsFullLuaPath(evt, camp))
 
 	f.SetLuaFastPathEnabled(true)
 	evt.Type = "click"
-	require.False(t, f.needsFullLuaPath(evt, camp))
+	require.False(t, f.NeedsFullLuaPath(evt, camp))
 	evt.Type = "impression"
 
 	camp.FreqLimit = 3
-	require.True(t, f.needsFullLuaPath(evt, camp))
+	require.True(t, f.NeedsFullLuaPath(evt, camp))
 	camp.FreqLimit = 0
 
 	camp.PacingMode = domain.PacingModeEven
-	require.True(t, f.needsFullLuaPath(evt, camp))
+	require.True(t, f.NeedsFullLuaPath(evt, camp))
 
 	camp.BehaviorFlags = domain.BehaviorRoughPacing
 	f.SetRoughPacingGate(NewRoughPacingGate())
-	require.False(t, f.needsFullLuaPath(evt, camp))
+	require.False(t, f.NeedsFullLuaPath(evt, camp))
 
 	f.SetQuotaConfig("live", 5_000_000, 20)
 	evt.CampaignID = uuid.UUID{byte(0), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
-	require.True(t, f.needsFullLuaPath(evt, camp))
-	f.localQuantaRefill = &QuotaRefillWorker{}
-	require.False(t, f.needsFullLuaPath(evt, camp))
+	require.True(t, f.NeedsFullLuaPath(evt, camp))
+	f.SetLocalQuantaDeps(LocalQuantaDeps{Refill: &QuotaRefillWorker{}})
+	require.False(t, f.NeedsFullLuaPath(evt, camp))
 }
 
 func TestUnifiedFilter_fastPathDebitMatchesFull(t *testing.T) {

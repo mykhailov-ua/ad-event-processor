@@ -70,7 +70,7 @@ func TestCGNAT_mobileASN_stillBlocksDatacenter(t *testing.T) {
 	evt.Type = "click"
 	evt.CampaignID = uuid.New()
 	require.NoError(t, f.Check(context.Background(), evt))
-	require.True(t, acc.has(FraudReasonDatacenterIP))
+	require.True(t, acc.Has(FraudReasonDatacenterIP))
 
 	carrier := NewMobileCarrierASNTable(nil)
 	require.False(t, carrier.IsMobileCarrier(16509))

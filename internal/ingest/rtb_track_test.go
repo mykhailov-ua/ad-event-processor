@@ -5,6 +5,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/domain"
+	filterunified "ad-event-processor/internal/filter/unified"
 	"ad-event-processor/internal/rtb"
 
 	"github.com/google/uuid"
@@ -103,7 +104,7 @@ func TestConfigureTrackRtb_skipLuaBudget(t *testing.T) {
 	uf := NewUnifiedFilter(nil, nil, nil, nil, 0, 0, 0, 0, 0, 0, "", 0)
 	ConfigureTrackRtb(&proc, cfg, catalog, nil, uf, nil)
 	assert.Equal(t, rtbModeLive, proc.rtbMode)
-	assert.Equal(t, oneAny, uf.skipBudgetDebitAny)
+	assert.True(t, uf.SkipBudgetDebitAny() == filterunified.OneAny)
 }
 
 func TestBuildRtbTargeting_OpenRTB3AndLegacy(t *testing.T) {
@@ -190,7 +191,7 @@ func BenchmarkBuildRtbTargeting_OpenRTB3(b *testing.B) {
 		GeoHash:           12345,
 	}
 	slot := acquireOpenRTBScratchSlot()
-	parseOpenRTB3FSMInto(&slot.parsed, openrtbPayload)
+	parseOpenRTB3FSMInto(&slot.Parsed, openrtbPayload)
 	attachOpenRTB3Scratch(evt, slot)
 	b.Cleanup(func() { releaseOpenRTB3Scratch(evt) })
 	b.ReportAllocs()

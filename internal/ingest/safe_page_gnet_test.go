@@ -52,11 +52,7 @@ func TestClickRedirectGnet_fraudRedirect(t *testing.T) {
 	t.Cleanup(resetStaticCampaignBaseline)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://lander.test/go", Weight: 100}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{URL: "https://lander.test/go", Weight: 100}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	engine := NewFilterEngine(0, &fraudRejectFilter{})
@@ -139,11 +135,7 @@ func TestTrackVerify_success(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://money.example/lp", Weight: 100}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{URL: "https://money.example/lp", Weight: 100}}})
 
 	events := humanMouseEvents(15)
 	events = append(events,

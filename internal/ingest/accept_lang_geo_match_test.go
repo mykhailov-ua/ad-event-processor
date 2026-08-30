@@ -54,7 +54,7 @@ func TestGeoFilter_acceptLangGeo(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonAcceptLangGeoMismatch))
+	assert.True(t, acc.Has(FraudReasonAcceptLangGeoMismatch))
 }
 
 func TestGeoFilter_acceptLangGeoDisabledByCampaign(t *testing.T) {
@@ -76,7 +76,7 @@ func TestGeoFilter_acceptLangGeoDisabledByCampaign(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonAcceptLangGeoMismatch))
+	assert.False(t, acc.Has(FraudReasonAcceptLangGeoMismatch))
 }
 
 func TestGeoFilter_acceptLangGeo_holdoutCGNATDoesNotBypass(t *testing.T) {
@@ -102,5 +102,5 @@ func TestGeoFilter_acceptLangGeo_holdoutCGNATDoesNotBypass(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonAcceptLangGeoMismatch))
+	assert.True(t, acc.Has(FraudReasonAcceptLangGeoMismatch))
 }

@@ -145,6 +145,10 @@ type UnpaddedIngressCounters struct {
 	max      uint64
 }
 
+func NewUnpaddedIngressCountersForTest(max uint64) *UnpaddedIngressCounters {
+	return &UnpaddedIngressCounters{max: max}
+}
+
 func (m *UnpaddedIngressCounters) TryAcquire(worker int) bool {
 	if worker < 0 || worker >= maxIngressWorkers {
 		return true
@@ -677,7 +681,7 @@ func (c *UDPControl) applyLimits(hdr *UDPHeader, limits *UDPControlLimits, nodeW
 		c.commitSnapshot(hdr, limits, nodeWeights)
 		c.currentEpoch.Store(epoch)
 		c.markFresh()
-		metrics.UDPControlGapTightenTotal.Inc()
+		metrics.UDPControlEpochTightenTotal.Inc()
 		return true
 	}
 

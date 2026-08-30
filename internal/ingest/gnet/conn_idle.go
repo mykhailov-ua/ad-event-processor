@@ -62,6 +62,10 @@ func (h *Server) http1MaxBufferedBytes() int64 {
 	return maxBody + http1MaxBufferedOverhead
 }
 
+func HTTP1ConnContext(c pkgnet.Conn) *ConnContext {
+	return http1ConnContext(c)
+}
+
 func http1ConnContext(c pkgnet.Conn) *ConnContext {
 	if c == nil {
 		return nil

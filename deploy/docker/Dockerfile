@@ -12,11 +12,15 @@ COPY --from=modules /go/pkg/mod /go/pkg/mod
 WORKDIR /src
 COPY . .
 RUN if [ "$SKIP_CODEGEN" = "1" ]; then echo "skip codegen (pre-generated tree)"; else bash scripts/ci/gen.sh --proto; fi
+# Compile the binaries. timetzdata embeds the zoneinfo database inside the Go binaries
+# to enable timezone lookups within distroless environments lacking OS timezone configs.
 RUN TRACKER_TAGS="timetzdata"; \
   if [ "$TRACKER_BPF_TRACE" = "1" ]; then TRACKER_TAGS="${TRACKER_TAGS} ad_event_processor_bpf_trace"; fi; \
   if [ "$TRACKER_BPF_TRACE" = "1" ]; then \
+    # Omit -s (symbol stripping) to preserve function symbols required for BPF uprobes
     CGO_ENABLED=0 GOOS=linux go build -tags "$TRACKER_TAGS" -ldflags="-w" -o /bin/tracker ./cmd/tracker; \
   else \
+    # Strip symbols and DWARF table (-s -w) to minimize binary footprint
     CGO_ENABLED=0 GOOS=linux go build -tags "$TRACKER_TAGS" -ldflags="-s -w" -o /bin/tracker ./cmd/tracker; \
   fi
 RUN CGO_ENABLED=0 GOOS=linux go build -tags timetzdata -ldflags="-s -w" -o /bin/processor ./cmd/processor

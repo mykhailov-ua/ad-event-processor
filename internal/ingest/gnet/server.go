@@ -393,6 +393,10 @@ func (s *Server) runOffloadedRequest(WorkerID int, ctx *ConnContext) {
 	}
 }
 
+func (s *Server) ParseHTTP(data []byte, scratchPtr *[]byte) (int, Request, error) {
+	return s.parseHTTP(data, scratchPtr)
+}
+
 func (s *Server) parseHTTP(data []byte, scratchPtr *[]byte) (int, Request, error) {
 	maxBody := int64(1 << 20)
 	if s != nil && s.cfg != nil {

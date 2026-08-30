@@ -151,11 +151,7 @@ func TestClickRedirect_SignedOfferLink_AttestationCapsTTL(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://offer.test/lp", Weight: 100}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{URL: "https://offer.test/lp", Weight: 100}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
@@ -198,11 +194,7 @@ func TestClickRedirect_SignedOfferLink_AppendsSig(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://offer.test/lp", Weight: 100}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{URL: "https://offer.test/lp", Weight: 100}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)

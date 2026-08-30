@@ -119,7 +119,7 @@ func TestRedisLua_ReconnectPreloadSingleShard(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, filter.PreloadScripts(ctx))
 	require.NoError(t, redisClient.ScriptFlush(ctx).Err())
-	require.NoError(t, filter.preloadScriptsShard(ctx, 0, redisClient))
+	require.NoError(t, filter.PreloadScriptsShard(ctx, 0, redisClient))
 
 	evt := &domain.Event{
 		CampaignID: campID,

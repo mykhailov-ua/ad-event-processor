@@ -1,3 +1,30 @@
+# Production compose overlay (deploy/compose/production.yaml).
+# Merged when ENV=production or installer release path; not used by default laptop stack.
+# Cross-ref: deploy/DEPLOY.md, docker-compose.release.yaml.
+#
+# Role:
+# - TLS Postgres (ssl=on) and TLS Redis (tls-port 6379); production control profile.
+# - Does not set COMPOSE_MEMORY_PROFILE; pair memory-dev overlay on laptops only.
+#
+# Topology:
+# - Patches: db (PG TLS certs), redis-0 (TLS command), control, processor env.
+#
+# Invariants:
+# - AD_EVENT_PROCESSOR_PROFILE=production on control.
+# - Redis appendonly yes; Postgres max_connections=600, shared_buffers=1GB.
+# - EVENTS_RETENTION_DAYS default 90; EVENTS_HASH_IP_AT_INSERT default 0 on processor.
+#
+# Env knobs:
+# - PG_TLS_CERT_DIR (default ./deploy/tls/postgres).
+# - REDIS_TLS_CERT_DIR (default ./deploy/tls/redis).
+# - EVENTS_RETENTION_DAYS, EVENTS_HASH_IP_AT_INSERT.
+#
+# Forbidden:
+# - Do not merge on laptop dev without release images and TLS material in deploy/tls/.
+#
+# Verify:
+# go test ./deploy/compose/ -run TestProductionOverlayDocumentsTLS -count=1
+# bash scripts/ci/compose_profile_check.sh
 services:
   db:
     command:

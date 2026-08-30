@@ -101,7 +101,7 @@ func TestResidentialProxyFilter_positiveFarm(t *testing.T) {
 	evt.UA = "ua-final"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonResidentialProxy))
+	assert.True(t, acc.Has(FraudReasonResidentialProxy))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.ResidentialProxySignalTotal))
 }
 
@@ -130,7 +130,7 @@ func TestResidentialProxyFilter_negativeHighCTR(t *testing.T) {
 	evt.UA = "ua-extra"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonResidentialProxy))
+	assert.False(t, acc.Has(FraudReasonResidentialProxy))
 }
 
 func itoaResidential(n int) string {

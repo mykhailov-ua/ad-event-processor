@@ -1,3 +1,31 @@
+-- Worker 0 sync orchestrator: Redis/control mirrors, quarantine thread bootstrap, tracker healthcheck.
+-- Runtime: init_worker_by_lua; ngx.worker.id() ~= 0 returns immediately (no duplicate timers or pub/sub).
+--
+-- Worker 0 timer matrix (self-rescheduling ngx.timer.at chains; initial fire at 0 unless noted):
+--
+-- | Timer            | Interval (env override)              | Callback                         | Degradation on reschedule fail      |
+-- | edge_config      | 5 s                                  | edge-config.sync                 | ERR log; chain stops until reload    |
+-- | blacklist full   | 5 s (EDGE_BLACKLIST_SYNC_INTERVAL_SEC) | edge-blacklist-sync.sync       | ERR log; chain stops                 |
+-- | blacklist drain  | 1 s (EDGE_BLACKLIST_CHANGELOG_DRAIN_SEC) | drain_pending_changelog        | ERR log; chain stops                 |
+-- | slot_map         | 10 s (SLOT_MAP_SYNC_INTERVAL_SEC)    | edge-slot-map.sync               | ERR log; chain stops                 |
+-- | node_weights     | 10 s (NODE_WEIGHTS_SYNC_INTERVAL_SEC) | edge-node-weights.sync          | ERR log; chain stops                 |
+-- | tcp_fp           | 2 s (TCP_FP_SYNC_INTERVAL_SEC)       | edge-tcp-fp-sync.sync            | WARN on sync fail; ERR on reschedule |
+-- | quarantine sub   | once at 0                            | edge-quarantine-sub.start        | ERR on timer or thread spawn fail    |
+--
+-- Initial ngx.timer.at(0, ...) failure logs ERR and never starts that chain (cold-path dead for that mirror).
+-- Reschedule failure inside a callback logs ERR and ends that chain; other timers keep running independently.
+--
+-- Healthcheck: resty.upstream.healthcheck spawn_checker on trackers pool; shm healthcheck; 2000 ms interval,
+-- 1000 ms timeout, fall/rise 2, valid 200, concurrency 4; spawn failure logs ERR only.
+--
+-- Data sources: Redis via edge-blacklist-sync.connect_any_shard; control unix socket for slot-map and node-weights.
+--
+-- Forbidden: duplicate sync on all workers; blocking Redis beyond cosocket timeout in timer callbacks.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/init-worker.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- bash scripts/ci/compliance.sh
 local hc = require "resty.upstream.healthcheck"
 local edge_config = require "edge-config"
 local blacklist_sync = require "edge-blacklist-sync"

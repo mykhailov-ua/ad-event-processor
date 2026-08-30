@@ -160,6 +160,13 @@ func (f *UnifiedFilter) SetSkipBudgetDebit(skip bool) {
 	}
 }
 
+func (f *UnifiedFilter) SkipBudgetDebitAny() any {
+	if f == nil {
+		return zeroAny
+	}
+	return f.skipBudgetDebitAny
+}
+
 func (f *UnifiedFilter) ClickAmountMicro() int64 {
 	if f == nil {
 		return 0
@@ -390,6 +397,10 @@ func (f *UnifiedFilter) SetSLATargets(p95, recovery float64, stable time.Duratio
 	f.emaAlpha = alpha
 }
 
+func (f *UnifiedFilter) SLAPenaltyActive() *atomic.Bool {
+	return &f.slaPenaltyActive
+}
+
 func (f *UnifiedFilter) ResizeTrackers(size int) {
 	f.latencyMu.Lock()
 	defer f.latencyMu.Unlock()
@@ -506,6 +517,10 @@ func (f *UnifiedFilter) checkGeoBidFloor(evt *domain.Event) error {
 	return nil
 }
 
+func (f *UnifiedFilter) CheckFreqLimitGo(evt *domain.Event, campInfo *domain.Campaign) (bool, error) {
+	return f.checkFreqLimitGo(evt, campInfo)
+}
+
 func (f *UnifiedFilter) checkFreqLimitGo(evt *domain.Event, campInfo *domain.Campaign) (bool, error) {
 	if campInfo == nil || campInfo.FreqLimit <= 0 || evt.UserID == "" {
 		return false, nil
@@ -524,6 +539,12 @@ func (f *UnifiedFilter) checkFreqLimitGo(evt *domain.Event, campInfo *domain.Cam
 		return true, filt.ErrFreqLimitExceeded
 	}
 	return false, nil
+}
+
+func (f *UnifiedFilter) SetRegistry(reg domain.CampaignRegistry) {
+	if f != nil {
+		f.registry = reg
+	}
 }
 
 func (f *UnifiedFilter) getCampaign(evt *domain.Event) (*domain.Campaign, bool) {
@@ -922,6 +943,10 @@ func (f *UnifiedFilter) recordAcceptedSpendIfDebited(shard int, campaignID uuid.
 	f.redisObservability.RecordAcceptedSpend(shard, campaignID, spendMicroFromAny(amount), sample)
 }
 
+func SpendMicroFromAny(amount any) int64 {
+	return spendMicroFromAny(amount)
+}
+
 func spendMicroFromAny(amount any) int64 {
 	v, ok := amount.(int64)
 	if !ok {
@@ -970,6 +995,10 @@ func sealedUnifiedFilterBlob() ([]byte, error) {
 		return nil, os.ErrNotExist
 	}
 	return data, nil
+}
+
+func ResolveUnifiedFilterLuaSource() (string, error) {
+	return resolveUnifiedFilterLuaSource()
 }
 
 func resolveUnifiedFilterLuaSource() (string, error) {

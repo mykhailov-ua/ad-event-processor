@@ -1,3 +1,6 @@
+# Prometheus alert rules for ad-event-processor (deploy/monitoring/prometheus.rules.yaml).
+# Thresholds tie to core.mdc SLAs: tracker p95 50ms, p99 80ms, Redis Lua p99 10ms/shard.
+# Budget/stream alerts: post-debit reject, DLQ non-empty, PG/Redis circuit breakers, shard-0 pub/sub stale.
 groups:
   - name: ad-event-processor-alerts
     rules:

@@ -212,7 +212,7 @@ func TestFraudModelSync_StaleEpochTighten(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, exists)
 
-	faultproof.Log(t, "ml_epoch_gap_tighten", map[string]string{
+	faultproof.Log(t, "ml_epoch_window_tighten", map[string]string{
 		"subsystem":   "management",
 		"stale":       "true",
 		"tightened":   "true",

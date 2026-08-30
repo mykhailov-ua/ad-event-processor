@@ -1,7 +1,8 @@
 ---
 description: Rejected alternatives, hot-path strategy, verification evidence matrix
 globs:
-  - internal/ingestion/**
+  - internal/ingest/**
+  - internal/filter/**
   - internal/domain/**
   - pkg/broker/**
   - internal/rtb/**
@@ -41,9 +42,18 @@ Full-skip = zero sync `EVALSHA` for eligible traffic; eventual consistency on cr
 
 `CH_INGEST_SOURCE=broker`: mmap WAL via `pkg/broker`. Shadow mode (`BROKER_SHADOW_MODE=1`) before cutover. Divergence metric `ad_broker_ingest_divergence_high` must be quiet in shadow.
 
-## unsafe.String
+## unsafe.String and offload buffers
 
-Lifetime <= gnet read frame. Copy `Accept`/`Origin` and event strings before async write from filter goroutine - enforced by cross-hop tests.
+Tracker uses a **two-tier thread model** (`hot-path.mdc` **Tracker thread model**). gnet epoll discards the peek frame before filter runs.
+
+| Surface | Lifetime rule |
+| :--- | :--- |
+| gnet peek frame | Tier A only; discarded after `SubmitOffload` |
+| `OffloadHTTPPin` / worker arena | Tier B pinned worker until `releaseOffloadBuffers` |
+| `evt` string fields | May alias pin/arena during synchronous `FilterEngine.Check` on Tier B |
+| Response write | `cloneAsyncWriteBytes` before arena release; `string(req.Accept)` / `string(req.Origin)` for CORS |
+
+**Rejected:** spawning `go func()` around `FilterEngine.Check` (breaks lifetime and zero-alloc contract). Cross-hop parity: `TestChaos_CrossHop_NginxGnet`.
 
 ## Verification matrix
 

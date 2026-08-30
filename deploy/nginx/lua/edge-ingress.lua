@@ -1,3 +1,42 @@
+-- Forward ingress protocol, TLS, and TCP fingerprint signals to tracker upstream request headers.
+-- Runtime: all workers access phase (access-check.lua after tarpit, before edge_track_policy).
+-- No ngx.shared writes; reads tcp_fp_cache populated by edge-tcp-fp-sync worker 0 timer.
+--
+-- Consumers: tracker pool :8181-8184 via proxy; edge-metrics.record_ingress_protocol on each request.
+-- TLS ctx from ssl phases: edge-tls-hash.lua, edge-tls-fingerprint.lua set ngx.ctx.tls_* before access.
+--
+-- Cache invalidation (read path): tcp_fp_cache TTL 3600 s per key from edge-tcp-fp-sync sync;
+-- miss fail-open (header omitted). ngx.ctx tcp_* overrides SHM when set in ssl phase.
+--
+-- ngx.shared tcp_fp_cache keys (types, remote_addr = client IP string):
+-- - {ip} (number 0..255): MSS -> X-TCP-MSS.
+-- - t:{ip} (number 0..255): TTL -> X-TCP-TTL.
+-- - w:{ip} (number 0..65535): window -> X-TCP-WINDOW.
+-- - h:{ip} (string 8 hex): tcp_hash -> X-TCP-SIG.
+--
+-- ngx.ctx inputs (optional, override SHM):
+-- - tls_hash, tls_ja3, tls_ja4, tls_alpn; tcp_mss, tcp_ttl, tcp_window, tcp_sig.
+--
+-- State machine: record ingress proto -> set X-Original-Method/Path -> TLS headers -> TCP fp -> timing headers.
+--
+-- Upstream headers when data present:
+-- - X-Original-Method, X-Original-Path.
+-- - X-TLS-Hash (ctx or ssl_protocol:ssl_cipher), X-TLS-JA3, X-TLS-JA4, X-TLS-ALPN.
+-- - X-TCP-MSS, X-TCP-TTL, X-TCP-WINDOW, X-TCP-SIG.
+-- - X-TTFB-APP-MS from connection_time (1..65535 ms); X-RTT-SYN-MS from tcpinfo_rtt us.
+--
+-- Constants and limits:
+-- - ingress_protocol labels: h3 (http3), h2 (http2 or HTTP/2.0), else http/1.1.
+-- - TTFB/RTT headers only when computed ms in 1..65535.
+--
+-- CDN/L4 LB: TCP SYN signals absent without edge-xdp + tcp_fp_sync; tracker may skip OS fingerprint checks.
+--
+-- Forbidden: blocking Redis cosocket in access phase; per-request tcp_fp_sync.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-ingress.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 local edge_metrics = require "edge-metrics"
 
 local _M = {}

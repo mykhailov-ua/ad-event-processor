@@ -795,3 +795,174 @@ AutomationDryRunResult:
       items:
         type: object
         additionalProperties: true
+
+TrafficOptimizerPreset:
+  type: object
+  required: [key, title, description, parameters_schema]
+  properties:
+    key:
+      type: string
+    title:
+      type: string
+    description:
+      type: string
+    parameters_schema:
+      type: array
+      items:
+        $ref: '#/AutomationPresetParameter'
+
+TrafficOptimizerRule:
+  type: object
+  required:
+    - id
+    - customer_id
+    - name
+    - scope
+    - objective
+    - algorithm
+    - lookback_minutes
+    - min_clicks
+    - min_conversions
+    - min_spend_micro
+    - eval_interval_minutes
+    - cooldown_minutes
+    - max_weight_delta_pct
+    - enabled
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    flow_id:
+      type: string
+      format: uuid
+    brand_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    scope:
+      type: string
+      enum: [lander, offer, creative]
+    objective:
+      type: string
+      enum: [cr, epc, roi, revenue]
+    algorithm:
+      type: string
+      enum: [thompson, proportional]
+    lookback_minutes:
+      type: integer
+    min_clicks:
+      type: integer
+    min_conversions:
+      type: integer
+    min_spend_micro:
+      type: integer
+      format: int64
+    eval_interval_minutes:
+      type: integer
+      enum: [5, 10, 15, 30, 60]
+    cooldown_minutes:
+      type: integer
+    max_weight_delta_pct:
+      type: integer
+    preset_key:
+      type: string
+      enum: [cr_best_performer, epc_best_performer, revenue_best_performer, roi_best_performer]
+    enabled:
+      type: boolean
+    last_evaluated_at:
+      type: string
+      format: date-time
+    created_at:
+      type: string
+      format: date-time
+    updated_at:
+      type: string
+      format: date-time
+
+UpsertTrafficOptimizerRuleRequest:
+  type: object
+  required: [customer_id, enabled]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    campaign_id:
+      type: string
+      format: uuid
+    flow_id:
+      type: string
+      format: uuid
+    brand_id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    scope:
+      type: string
+      enum: [lander, offer, creative]
+    objective:
+      type: string
+      enum: [cr, epc, roi, revenue]
+    algorithm:
+      type: string
+      enum: [thompson, proportional]
+    lookback_minutes:
+      type: integer
+    min_clicks:
+      type: integer
+    min_conversions:
+      type: integer
+    min_spend_micro:
+      type: integer
+      format: int64
+    eval_interval_minutes:
+      type: integer
+      enum: [5, 10, 15, 30, 60]
+    cooldown_minutes:
+      type: integer
+    max_weight_delta_pct:
+      type: integer
+    enabled:
+      type: boolean
+    preset_key:
+      type: string
+      enum: [cr_best_performer, epc_best_performer, revenue_best_performer, roi_best_performer]
+    preset_parameters:
+      type: object
+      additionalProperties:
+        type: number
+        format: double
+
+TrafficOptimizerDryRunResult:
+  type: object
+  required: [stale_weights, arms]
+  properties:
+    stale_weights:
+      type: boolean
+    arms:
+      type: array
+      items:
+        type: object
+        required: [entity_id, current_weight, proposed_weight, observed_value]
+        properties:
+          entity_id:
+            type: string
+            format: uuid
+          current_weight:
+            type: integer
+            format: int32
+          proposed_weight:
+            type: integer
+            format: int32
+          observed_value:
+            type: number
+            format: double

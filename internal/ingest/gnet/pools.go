@@ -4,11 +4,19 @@ import "sync"
 
 const maxPoolObjectSize = 64 * 1024
 
+const MaxPoolObjectSize = maxPoolObjectSize
+
+var RequestBufferPool = requestBufferPool
+
 var requestBufferPool = sync.Pool{
 	New: func() any {
 		b := make([]byte, 4096)
 		return &b
 	},
+}
+
+func PutRequestBuffer(buf *[]byte) {
+	putRequestBuffer(buf)
 }
 
 func putRequestBuffer(buf *[]byte) {

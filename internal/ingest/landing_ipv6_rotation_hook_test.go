@@ -104,15 +104,15 @@ func TestIPv6RotationTable_observe_resetsWindow(t *testing.T) {
 	v6Hi := uint64(0x20010db885a30000)
 	now := monotonicNano()
 
-	live, shadow := table.observe(campaignHash, v6Hi, 1, now)
+	live, shadow := table.Observe(campaignHash, v6Hi, 1, now)
 	require.False(t, live)
 	require.False(t, shadow)
 
-	live, shadow = table.observe(campaignHash, v6Hi, 2, now)
+	live, shadow = table.Observe(campaignHash, v6Hi, 2, now)
 	require.True(t, live)
 	require.False(t, shadow)
 
-	live, shadow = table.observe(campaignHash, v6Hi, 3, now+int64(100*time.Millisecond))
+	live, shadow = table.Observe(campaignHash, v6Hi, 3, now+int64(100*time.Millisecond))
 	require.False(t, live)
 	require.False(t, shadow)
 }
@@ -133,12 +133,12 @@ func TestIPv6RotationTable_distinctLoOnly(t *testing.T) {
 	v6Hi := uint64(0x20010db885a30000)
 	now := monotonicNano()
 
-	for i := range 5 {
-		live, _ := table.observe(campaignHash, v6Hi, 0xabc, now)
+	for range 5 {
+		live, _ := table.Observe(campaignHash, v6Hi, 0xabc, now)
 		require.False(t, live)
 	}
-	live, _ := table.observe(campaignHash, v6Hi, 0xdef, now)
+	live, _ := table.Observe(campaignHash, v6Hi, 0xdef, now)
 	require.False(t, live)
-	live, _ = table.observe(campaignHash, v6Hi, 0x123, now)
+	live, _ = table.Observe(campaignHash, v6Hi, 0x123, now)
 	require.True(t, live)
 }

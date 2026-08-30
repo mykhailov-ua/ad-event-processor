@@ -11,6 +11,7 @@ const (
 	H2FrameHeaders      = h2FrameHeaders
 	H2FrameSettings     = h2FrameSettings
 	H2FrameContinuation = h2FrameContinuation
+	H2FrameRSTStream    = h2FrameRSTStream
 
 	H2MaxHeaderBlock = h2MaxHeaderBlock
 

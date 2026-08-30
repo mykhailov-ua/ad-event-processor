@@ -1,3 +1,34 @@
+# Minimal compose overlay (deploy/compose/docker-compose.minimal.yaml).
+# Merged by scripts/dev/stack/stack.sh minimal via AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES.
+# Cross-ref: deploy/DEPLOY.md, docs/DEVELOPMENT.md, deploy/compose/minimal.stack.env.example.
+#
+# Role:
+# - Buyer-demo stack: single Redis shard + ClickHouse + core ingest; antifraud ML disabled.
+# - Same binaries as full; no tracker-1..3, no payment/cost-sync/margin workers.
+#
+# Topology:
+# - stack.sh --profile minimal: db, redis-0, broker, processor, tracker-0, control, clickhouse.
+# - control depends_on: db, redis-0, clickhouse. processor depends_on: clickhouse.
+# - tracker-0 HTTP :8181 health; PG port 5430; clickhouse deploy limit 1536M in overlay.
+#
+# Invariants:
+# - REDIS_SHARD_COUNT=1; REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock.
+# - CH_ENABLED=1 on control and processor (ClickHouse required).
+# - FRAUD_SCORING_ENABLED=false, FRAUD_MICROBATCH_ENABLED=false.
+# - CONTROL_ENABLE_PAYMENT/BILLING/NOTIFIER/MARGIN_GUARD/COST_SYNC/PLATFORM_CAMPAIGN_SYNC=0.
+#
+# Env knobs:
+# - FILTER_TIMEOUT_MS=5000; GOMAXPROCS=4 on tracker-0.
+# - stack.sh exports CH_ENABLED=1 REDIS_SHARD_COUNT=1 at launch.
+#
+# Forbidden:
+# - Do not assume redis-1..3 or multi-tracker HA; stack.sh stops VPS extras after up.
+# - Do not leave clickhouse running overnight on laptop (~6 GB profile budget).
+#
+# Verify:
+# cat deploy/compose/minimal.stack.env.example >> .env
+# bash scripts/dev/stack/stack.sh minimal
+# bash scripts/dev/stack/preflight.sh
 services:
   db:
     environment:

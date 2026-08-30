@@ -78,7 +78,7 @@ func TestJSONSerializationFilter_holdoutCampaignDisabledFailOpen(t *testing.T) {
 	evt.JSONSerializationFlags = jsonSerFlagSortedKeys
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonJSONSerializationBot))
+	assert.False(t, acc.Has(FraudReasonJSONSerializationBot))
 }
 
 func TestJSONSerializationFilter_holdoutEnabledFlagsSignal(t *testing.T) {
@@ -102,7 +102,7 @@ func TestJSONSerializationFilter_holdoutEnabledFlagsSignal(t *testing.T) {
 	evt.JSONSerializationFlags = jsonSerFlagSortedKeys
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonJSONSerializationBot))
+	assert.True(t, acc.Has(FraudReasonJSONSerializationBot))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.JSONSerializationBotTotal))
 }
 

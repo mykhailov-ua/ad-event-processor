@@ -430,9 +430,13 @@ type placementCacheItem struct {
 
 const placementCacheShards = 128
 
+const PlacementCacheShards = placementCacheShards
+
 const placementBlacklistCacheTTL = 5 * time.Second
 
 const placementCacheMaxEntriesPerShard = 2048
+
+const PlacementCacheMaxEntriesPerShard = placementCacheMaxEntriesPerShard
 
 type placementCacheKey struct {
 	campaignID uuid.UUID
@@ -467,6 +471,17 @@ func (f *PlacementBlacklistFilter) SetSharder(sharder Sharder) {
 	if f != nil {
 		f.sharder = sharder
 	}
+}
+
+func (f *PlacementBlacklistFilter) CachedEntryCount(shardIdx int) int {
+	if f == nil || shardIdx < 0 || shardIdx >= placementCacheShards {
+		return 0
+	}
+	snap := f.shards[shardIdx].snap.Load()
+	if snap == nil {
+		return 0
+	}
+	return len(snap.entries)
 }
 
 func placementShardStore(shard *placementCacheShard, key placementCacheKey, item placementCacheItem, nowMs int64) {
@@ -594,6 +609,10 @@ var fraudAccPool = sync.Pool{
 	},
 }
 
+func (a *fraudAccumulator) Reset() {
+	a.reset()
+}
+
 func (a *fraudAccumulator) reset() {
 	a.magic = fraudAccumulatorMagic
 	a.score = 0
@@ -608,6 +627,22 @@ func (a *fraudAccumulator) has(id FraudReasonID) bool {
 		}
 	}
 	return false
+}
+
+func (a *fraudAccumulator) SignalCount() uint8 {
+	return a.count
+}
+
+func (a *fraudAccumulator) Has(id FraudReasonID) bool {
+	return a.has(id)
+}
+
+func (a *fraudAccumulator) Add(id FraudReasonID) {
+	a.add(id)
+}
+
+func (a *fraudAccumulator) Score() uint32 {
+	return a.score
 }
 
 func (a *fraudAccumulator) add(id FraudReasonID) {
@@ -647,6 +682,24 @@ func (a *fraudAccumulator) hasFlags(want uint8) bool {
 	return a.countFlags(want) > 0
 }
 
+func NewFraudAccumulatorForTest(score uint32, signals ...FraudReasonID) *fraudAccumulator {
+	acc := &fraudAccumulator{}
+	acc.reset()
+	acc.score = score
+	for _, id := range signals {
+		if acc.count >= maxFraudSignals {
+			break
+		}
+		acc.signals[acc.count] = id
+		acc.count++
+	}
+	return acc
+}
+
+func (a *fraudAccumulator) ShouldShortCircuitFraudBudget() bool {
+	return a.shouldShortCircuitFraudBudget()
+}
+
 func (a *fraudAccumulator) shouldShortCircuitFraudBudget() bool {
 	if a == nil || a.count == 0 {
 		return false
@@ -665,12 +718,20 @@ func eventHasFraudL3(evt *domain.Event) bool {
 	return acc.hasFlags(FraudSignalL3)
 }
 
+func AttachFilterDeadline(ctx context.Context, timeout time.Duration) context.Context {
+	return attachFilterDeadline(ctx, timeout)
+}
+
 func attachFilterDeadline(ctx context.Context, timeout time.Duration) context.Context {
 	if timeout <= 0 {
 		return ctx
 	}
 	deadlineMono := MonotonicNano() + timeout.Nanoseconds()
 	return context.WithValue(ctx, filterDeadlineKey{}, deadlineMono)
+}
+
+func SetFilterDeadlineOnEvent(evt *domain.Event, timeout time.Duration) {
+	setFilterDeadlineOnEvent(evt, timeout)
 }
 
 func setFilterDeadlineOnEvent(evt *domain.Event, timeout time.Duration) {
@@ -772,6 +833,10 @@ func MapFraudTier(score uint8, pass, suspect, ivt, block uint8) FraudTier {
 	return FraudTierBlock
 }
 
+func FraudThresholdsFromCampaign(camp *domain.Campaign) (pass, suspect, ivt, block uint8) {
+	return fraudThresholdsFromCampaign(camp)
+}
+
 func fraudThresholdsFromCampaign(camp *domain.Campaign) (pass, suspect, ivt, block uint8) {
 	if camp == nil {
 		return domain.DefaultFraudThresholdPass, domain.DefaultFraudThresholdSuspect,
@@ -786,6 +851,10 @@ func fraudThresholdsFromCampaign(camp *domain.Campaign) (pass, suspect, ivt, blo
 			domain.DefaultFraudThresholdIVT, domain.DefaultFraudThresholdBlock
 	}
 	return pass, suspect, ivt, block
+}
+
+func ApplyFraudAccumulatorForCampaign(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign) FraudTier {
+	return applyFraudAccumulatorForCampaign(evt, acc, camp)
 }
 
 func applyFraudAccumulatorForCampaign(evt *domain.Event, acc *fraudAccumulator, camp *domain.Campaign) FraudTier {

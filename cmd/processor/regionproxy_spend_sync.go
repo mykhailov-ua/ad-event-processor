@@ -1,3 +1,5 @@
+// regionProxySpendSync adapts pkg/regionproxy/client for SyncWorker spend batches.
+// Active when MULTI_REGION_ENABLED=1 and REGION_PROXY_ADDR is set (processor main).
 package main
 
 import (

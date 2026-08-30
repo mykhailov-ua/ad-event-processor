@@ -1,0 +1,126 @@
+paths:
+  /api/v1/command-palette/search:
+    get:
+      tags: [command-palette]
+      operationId: commandPaletteSearch
+      summary: Global command palette typeahead search
+      description: |
+        Typeahead across campaigns, flows, landers, offers, reports, routes, and actions.
+        Requires at least two characters in `q` when provided.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 2
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 25
+            default: 25
+        - name: kinds
+          in: query
+          required: false
+          description: Optional result kind filter (entity search and later kinds)
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [campaign, flow, lander, offer, report, route, action]
+          style: form
+          explode: true
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/command_palette.yaml#/CommandPaletteSearchResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/command-palette/routes:
+    get:
+      tags: [command-palette]
+      operationId: commandPaletteListRoutes
+      summary: Static admin navigation entries for command palette
+      description: Returns RBAC- and license-filtered route, report, and action entries.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      responses:
+        '200':
+          description: Navigation catalog
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/command_palette.yaml#/CommandPaletteRoutesResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/command-palette/open:
+    post:
+      tags: [command-palette]
+      operationId: commandPaletteOpen
+      summary: Record command palette open event for metrics
+      description: Server-side open counter for future admin UI telemetry.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                source:
+                  type: string
+      responses:
+        '200':
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/command-palette/recents:
+    get:
+      tags: [command-palette]
+      operationId: commandPaletteListRecents
+      summary: Recent command palette selections for the authenticated user
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '200':
+          description: Recent items
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/command_palette.yaml#/CommandPaletteRecentsResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [command-palette]
+      operationId: commandPaletteRecordRecent
+      summary: Record a command palette selection
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/command_palette.yaml#/CommandPaletteRecordRecentRequest'
+      responses:
+        '204':
+          description: Recorded
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

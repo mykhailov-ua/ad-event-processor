@@ -63,15 +63,15 @@ func TestUnifiedFilter_localQuantaEligible_click(t *testing.T) {
 	click := &domain.Event{Type: "click", CampaignID: uuid.New(), UserID: "u1"}
 	impression := &domain.Event{Type: "impression", CampaignID: click.CampaignID, UserID: "u1"}
 
-	require.True(t, f.localQuantaEligible(click, camp))
-	require.True(t, f.localQuantaEligible(impression, camp))
+	require.True(t, f.LocalQuantaEligible(click, camp))
+	require.True(t, f.LocalQuantaEligible(impression, camp))
 
 	click.Type = "conversion"
-	require.False(t, f.localQuantaEligible(click, camp))
+	require.False(t, f.LocalQuantaEligible(click, camp))
 
 	click.Type = "click"
 	camp.FreqLimit = 1
-	require.False(t, f.localQuantaEligible(click, camp))
+	require.False(t, f.LocalQuantaEligible(click, camp))
 }
 
 func TestUnifiedFilter_localQuanta_clickLiveSkipsRedisDebit(t *testing.T) {
@@ -108,7 +108,7 @@ func TestUnifiedFilter_localQuanta_clickLiveSkipsRedisDebit(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, beforeQuota, afterQuota, "live local quanta must skip Redis budget debit for clicks")
 
-	require.Equal(t, localCredit-f.clickAmountMicro, ledger.Remaining(campID))
+	require.Equal(t, localCredit-f.ClickAmountMicro(), ledger.Remaining(campID))
 	require.Equal(t, beforeSpend+1, testutil.ToFloat64(metrics.LocalQuotaSpendTotal))
 }
 
@@ -153,7 +153,7 @@ func TestUnifiedFilter_localQuanta_clickFastPathMatchesImpression(t *testing.T) 
 
 	remaining, err := redisClient.Get(ctx, quotaKey(campID)).Int64()
 	require.NoError(t, err)
-	expected := int64(10_000_000) - 2*fFast.clickAmountMicro
+	expected := int64(10_000_000) - 2*fFast.ClickAmountMicro()
 	require.Equal(t, expected, remaining)
 }
 
@@ -178,9 +178,9 @@ func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
 	}
 	click := &domain.Event{Type: "click", CampaignID: uuid.New(), UserID: "u1"}
 
-	require.True(t, f.localQuantaEligible(click, camp))
+	require.True(t, f.LocalQuantaEligible(click, camp))
 
-	exceeded, err := f.checkFreqLimitGo(click, camp)
+	exceeded, err := f.CheckFreqLimitGo(click, camp)
 	require.NoError(t, err)
 	require.False(t, exceeded)
 
@@ -191,7 +191,7 @@ func TestUnifiedFilter_localQuantaEligible_fcap_settingsWatcher(t *testing.T) {
 		lookup: 2,
 	}))
 
-	exceeded, err = f.checkFreqLimitGo(click, camp)
+	exceeded, err = f.CheckFreqLimitGo(click, camp)
 	require.ErrorIs(t, err, ErrFreqLimitExceeded)
 	require.True(t, exceeded)
 }

@@ -371,6 +371,10 @@ func OpenRTBDeviceType(dt int64) uint8 {
 	}
 }
 
+func ParseQuotedField(payload []byte, start int, dst []byte) int {
+	return parseQuotedField(payload, start, dst)
+}
+
 func parseQuotedField(payload []byte, start int, dst []byte) int {
 	n := len(payload)
 	if start >= n {

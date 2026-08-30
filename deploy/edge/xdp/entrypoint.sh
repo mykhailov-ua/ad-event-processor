@@ -1,4 +1,8 @@
 #!/bin/sh
+# edge-xdp container entrypoint (deploy/edge/xdp/entrypoint.sh).
+# Requires INGRESS_INTERFACE; pins BPF maps under BPF_PIN_DIR (default /sys/fs/bpf/ad-event-processor).
+# Starts edge-xdp in background, waits up to 10s for blocklist_v4 pin at BPF_BLOCKLIST_MAP, then exec edge-bpf-sync.
+# Compose profile: enterprise-xdp; needs privileged + CAP_BPF, CAP_NET_ADMIN.
 set -eu
 
 if [ -z "${INGRESS_INTERFACE:-}" ]; then

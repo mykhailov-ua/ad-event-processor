@@ -94,7 +94,7 @@ func TestHTTP1Incomplete_ResetsOnCompleteRequest(t *testing.T) {
 	conn := NewGnetHarnessConn(req[:split])
 	assert.Equal(t, gnet.None, h.OnTraffic(conn))
 
-	conn.inbound = append(conn.inbound[:0], req...)
+	conn.SetInbound(req)
 	assert.Equal(t, gnet.None, h.OnTraffic(conn))
 	assert.Equal(t, 1, conn.WriteCount())
 }

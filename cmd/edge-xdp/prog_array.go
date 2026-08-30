@@ -1,3 +1,4 @@
+// prog_array wiring: index 0 -> xdp_syn_cookie tail-call program when loaded.
 package main
 
 import (

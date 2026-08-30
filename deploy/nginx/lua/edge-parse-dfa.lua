@@ -1,3 +1,35 @@
+-- Zero-copy body DFA: extract campaign_id from JSON, OpenRTB 3, or native protobuf wire.
+-- Runtime: all workers access phase via edge_track_policy (no ngx.shared; pure scan on body chunk).
+-- Must match Go ParseTrackRequestJSON* / vtproto budgets (parser.mdc).
+--
+-- Consumers: edge_track_policy sets ngx.ctx.campaign_id; edge-slot-map.get_shard uses same id bytes.
+-- edge-shard-balancer routes slot = CRC32C(campaign_id) & 1023.
+--
+-- Cache invalidation: none (no SHM).
+--
+-- Return codes (string):
+-- - ERR_OVERSIZE: CL or field exceeds budget.
+-- - ERR_MALFORMED: wire/JSON shape break inside scan window.
+-- - nil campaign_id: allowed when id not found in scan window (may proxy without shard affinity).
+--
+-- State machine: check_content_length -> extract_campaign_id(body, cl, schema) -> format UUID or raw id.
+--
+-- Constants and limits (must match tracker):
+-- - MAX_BODY_BYTES 1048576 (1 MiB Content-Length cap).
+-- - MAX_SCAN_BYTES 8192 scan/peek window.
+-- - MAX_CAMPAIGN_LEN 64; MAX_FIELD_LEN 65536.
+-- - TRACKER_INGRESS_SCHEMA ad_event_processor_native (protobuf field 1) or openrtb_3 (item[0].id JSON).
+-- - scan_limit_for: min(body_len, content_length, MAX_SCAN_BYTES).
+-- - protobuf varint shift cap 35 bits; 16-byte binary UUID expanded to hyphenated hex.
+--
+-- HTTP mapping (via edge_track_policy): ERR_OVERSIZE -> 413; malformed may proxy with nil campaign_id.
+--
+-- Forbidden: full JSON decode; allocations beyond scan budget; schema drift from http1IngressCanonical.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-parse-dfa.lua
+-- bash scripts/test/edge/lua_tests.sh edge_parse_dfa_fault
+-- go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 local bit = require "bit"
 
 local _M = {}

@@ -1,0 +1,72 @@
+api/openapi/components/schemas/command_palette.yaml
+CommandPaletteItem:
+  type: object
+  required: [id, kind, label, href]
+  properties:
+    id:
+      type: string
+    kind:
+      type: string
+      enum: [campaign, flow, lander, offer, report, route, action]
+    label:
+      type: string
+    status_label:
+      type: string
+    status_tone:
+      type: string
+    href:
+      type: string
+    meta:
+      type: string
+    group:
+      type: string
+
+CommandPaletteSearchResponse:
+  type: object
+  required: [items, total, limit, degraded]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CommandPaletteItem'
+    total:
+      type: integer
+      format: int64
+    limit:
+      type: integer
+    degraded:
+      type: boolean
+    freshness_label:
+      type: string
+
+CommandPaletteRoutesResponse:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CommandPaletteItem'
+    total:
+      type: integer
+
+CommandPaletteRecentsResponse:
+  type: object
+  required: [items, total]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/CommandPaletteItem'
+    total:
+      type: integer
+
+CommandPaletteRecordRecentRequest:
+  type: object
+  required: [customer_id, item]
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    item:
+      $ref: '#/CommandPaletteItem'

@@ -18,12 +18,12 @@ import (
 func TestSelectLandingURL_StickyWeighted(t *testing.T) {
 	store := NewBrandCreativeStore(nil, 0)
 	brandID := uuid.New()
-	store.cache.Store(&brandCreativeMapSnapshot{byBrand: map[uuid.UUID][]brandCreativeEntry{
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{
 		brandID: {
 			{ID: "a", URL: "https://a.example", Weight: 70},
 			{ID: "b", URL: "https://b.example", Weight: 30},
 		},
-	}})
+	})
 
 	url1 := store.SelectLandingURL(context.Background(), brandID, "user-sticky-1", nil)
 	url2 := store.SelectLandingURL(context.Background(), brandID, "user-sticky-1", nil)
@@ -85,11 +85,11 @@ func TestBrandCreativeStore_LoadFromRedis(t *testing.T) {
 
 	store := NewBrandCreativeStore(nil, 0)
 	brandID := uuid.New()
-	raw, err := json.Marshal([]brandCreativeEntry{{ID: "x", URL: "https://x.test", Weight: 100}})
+	raw, err := json.Marshal([]BrandCreativeFixture{{ID: "x", URL: "https://x.test", Weight: 100}})
 	require.NoError(t, err)
 	_ = raw
-	store.cache.Store(&brandCreativeMapSnapshot{byBrand: map[uuid.UUID][]brandCreativeEntry{
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{
 		brandID: {{ID: "x", URL: "https://x.test", Weight: 100}},
-	}})
+	})
 	assert.Equal(t, "https://x.test", store.SelectLandingURL(context.Background(), brandID, "u1", nil))
 }

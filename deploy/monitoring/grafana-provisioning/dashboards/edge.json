@@ -75,13 +75,13 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
       "targets": [
         {
-          "expr": "sum(rate(ad_event_processor_edge_phase1_pass_total[1m]))",
-          "legendFormat": "phase1 pass",
+          "expr": "sum(rate(ad_event_processor_edge_perimeter_pass_total[1m]))",
+          "legendFormat": "perimeter pass",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(ad_event_processor_edge_phase2_pass_total[1m]))",
-          "legendFormat": "phase2 pass",
+          "expr": "sum(rate(ad_event_processor_edge_track_policy_pass_total[1m]))",
+          "legendFormat": "track policy pass",
           "refId": "B"
         },
         {

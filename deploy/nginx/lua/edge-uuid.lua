@@ -1,3 +1,16 @@
+-- Strict campaign UUID normalize and binary conversion for slot_map CRC32C input.
+-- Runtime: nginx worker Lua VM; shared by edge-click-query, edge-slot-map, edge-parse-dfa.
+--
+-- Contract: 36-char lowercase UUID with hyphens; 16-byte big-endian payload for CRC32C.
+--
+-- Returns: nil on invalid, embedded null, or malformed hex.
+--
+-- Invariant: normalize_to_bytes output must match Go UUID wire used by StaticSlotSharder.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-uuid.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/domain/ -run Sharding -count=1
 local _M = {}
 
 local UUID_PATTERN = "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$"

@@ -40,7 +40,7 @@ bash scripts/dev/stack/stack.sh ingest-only
 | No ML inference | `internal/fraud` is cold only; read boost snapshot |
 | At most **one** sync Redis `EVALSHA` per accept | Multi-RTT kills budget |
 | `TryReserve` before Lua debit | Admission race — spend without sink |
-| Filter `Check` in detached goroutine | gnet workers must not block on Redis |
+| Two-tier threads: no Redis on gnet epoll; sync `FilterEngine.Check` on `PinnedWorkerPool` worker | `hot-path.mdc` **Tracker thread model** |
 | Zero heap allocs on `/track` | `make test-alloc-gate` |
 | No `fmt.Sprintf`, `interface{}`, `context.With*` on hot path | CI static gates |
 
@@ -60,7 +60,7 @@ bash scripts/test/load/gate_run.sh                     # perf tier
 | | |
 | :--- | :--- |
 | **Port** | 8186 |
-| **Metrics** | 9106 |
+| **Metrics** | `/metrics` on 8186 (same listener) |
 | **Role** | Consume Redis streams / broker → Postgres, ClickHouse |
 
 **Responsibilities:**
@@ -81,7 +81,7 @@ bash scripts/test/load/gate_run.sh                     # perf tier
 | | |
 | :--- | :--- |
 | **Port** | 8188 |
-| **Metrics** | 9108 |
+| **Metrics** | `http://127.0.0.1:8188/metrics` (same listener as admin API) |
 | **Routes** | `/api/v1/*`, admin static stub, outbox workers in-process |
 
 **Responsibilities:**
@@ -116,7 +116,7 @@ go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
 
 | Binary | Role | When to run |
 | :--- | :--- | :--- |
-| `edge-xdp` | Attach XDP, NIC-level drops | Enterprise license, dedicated edge host |
+| `edge-xdp` | Attach XDP, NIC-level drops | `ebpf_xdp_edge` license feature, dedicated edge host |
 | `edge-bpf-sync` | Redis → BPF maps | With `edge-xdp` |
 | `broker` | mmap WAL ingest broker | `CH_INGEST_SOURCE=broker` |
 | `region-proxy` | Multi-region WAL/quorum | `multi_region` license |

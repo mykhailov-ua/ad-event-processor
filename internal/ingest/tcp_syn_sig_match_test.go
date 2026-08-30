@@ -65,7 +65,7 @@ func TestDeviceFilter_tcpSynSigMismatch(t *testing.T) {
 	evt.TCPSig = hashTCPSynFields(64, 29200, 5, 10)
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTCPSynOSMismatch))
+	assert.True(t, acc.Has(FraudReasonTCPSynOSMismatch))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.TCPSynSigMismatchTotal))
 }
 
@@ -85,7 +85,7 @@ func TestDeviceFilter_tcpSynSigMissingHeaderFailOpen(t *testing.T) {
 	evt.TCPSigSet = 0
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPSynOSMismatch))
+	assert.False(t, acc.Has(FraudReasonTCPSynOSMismatch))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.TCPSynSigSkippedTotal.WithLabelValues("no_tcp_sig")))
 }
 
@@ -105,7 +105,7 @@ func TestDeviceFilter_tcpSynSigDisabled(t *testing.T) {
 	evt.TCPSig = hashTCPSynFields(64, 29200, 5, 10)
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPSynOSMismatch))
+	assert.False(t, acc.Has(FraudReasonTCPSynOSMismatch))
 }
 
 func TestFilterEngine_tcpSynSigL2Shadow(t *testing.T) {

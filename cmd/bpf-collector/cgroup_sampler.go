@@ -1,3 +1,22 @@
+// Cgroup v2 memory/cpu/io sampler writing cgroup-samples.ndjson.
+//
+// Role:
+//   - cgroupSampleLoop ticks every 2s; reads memory.current, cpu.stat, io.stat under cgroup path.
+//   - aggregateCgroupSamples computes peak memory, throttle deltas, io byte deltas for summary.json.
+//
+// Topology:
+//   - cgroupPathForPID parses /proc/<pid>/cgroup unified hierarchy 0:: path.
+//
+// Invariants:
+//   - Missing cgroup v2 path skips PID for that tick.
+//   - ThrottlePct = throttle_delta / (usage_delta + throttle_delta) * 100 when usage_delta > 0.
+//
+// Defaults and limits:
+//   - Sample interval 2s (fixed ticker).
+//
+// Verify:
+//
+//	wc -l var/load-test/<session>/cgroup-samples.ndjson
 package main
 
 import (

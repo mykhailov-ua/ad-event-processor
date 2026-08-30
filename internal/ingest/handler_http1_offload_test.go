@@ -3,6 +3,7 @@ package ingest
 import (
 	"fmt"
 	"net/http"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,9 +22,9 @@ func TestAdsPacketHandler_workerPoolHonorsReactClose(t *testing.T) {
 	h.SetWorkerPool(pool)
 
 	conn := NewGnetHarnessConn(nil)
-	conn.onWake = func(c *GnetHarnessConn) {
+	conn.SetOnWake(func(c *GnetHarnessConn) {
 		_ = h.OnTraffic(c)
-	}
+	})
 
 	conn.Append(BuildGnetHTTP("POST", "/tg/bid", map[string]string{
 		"Content-Type": "application/json",
@@ -57,9 +58,9 @@ func TestAdsPacketHandler_workerPoolPipelinedTrack(t *testing.T) {
 	}
 
 	conn := NewGnetHarnessConn(nil)
-	conn.onWake = func(c *GnetHarnessConn) {
+	conn.SetOnWake(func(c *GnetHarnessConn) {
 		_ = h.OnTraffic(c)
-	}
+	})
 
 	for i := range 2 {
 		conn.Append(BuildGnetPostTrackJSON(body(i)))
@@ -82,9 +83,9 @@ func TestAdsPacketHandler_workerPoolCoalescedKeepAlive(t *testing.T) {
 	h.SetWorkerPool(pool)
 
 	conn := NewGnetHarnessConn(nil)
-	conn.onWake = func(c *GnetHarnessConn) {
+	conn.SetOnWake(func(c *GnetHarnessConn) {
 		_ = h.OnTraffic(c)
-	}
+	})
 
 	for i := range 2 {
 		body := []byte(fmt.Sprintf(
@@ -111,6 +112,7 @@ func TestAdsPacketHandler_workerPoolCoalescedKeepAlive(t *testing.T) {
 
 type deferAsyncHarnessConn struct {
 	*GnetHarnessConn
+	mu      sync.Mutex
 	pending []func()
 }
 
@@ -118,7 +120,7 @@ func (c *deferAsyncHarnessConn) AsyncWrite(buf []byte, callback gnet.AsyncCallba
 	cp := append([]byte(nil), buf...)
 	c.mu.Lock()
 	c.pending = append(c.pending, func() {
-		_, _ = c.writeLocked(cp)
+		_, _ = c.Write(cp)
 		if callback != nil {
 			_ = callback(c, nil)
 		}
@@ -147,9 +149,9 @@ func TestAdsPacketHandler_workerPoolCoalescedKeepAliveDeferredAsyncWrite(t *test
 
 	base := NewGnetHarnessConn(nil)
 	conn := &deferAsyncHarnessConn{GnetHarnessConn: base}
-	conn.onWake = func(c *GnetHarnessConn) {
+	base.SetOnWake(func(c *GnetHarnessConn) {
 		_ = h.OnTraffic(conn)
-	}
+	})
 
 	for i := range 2 {
 		body := []byte(fmt.Sprintf(
@@ -161,7 +163,7 @@ func TestAdsPacketHandler_workerPoolCoalescedKeepAliveDeferredAsyncWrite(t *test
 	require.Equal(t, gnet.None, h.OnTraffic(conn))
 	pool.WaitIdle()
 	require.Equal(t, 0, conn.WriteCount(), "response must wait for deferred AsyncWrite flush")
-	require.True(t, http1ConnContext(conn).http1OffloadBusy.Load(), "conn stays busy until async write completes")
+	require.True(t, http1ConnContext(conn).HTTP1OffloadBusy.Load(), "conn stays busy until async write completes")
 
 	require.Equal(t, gnet.None, h.OnTraffic(conn))
 	require.Equal(t, 0, conn.WriteCount(), "second request must not run while first write is pending")
@@ -185,15 +187,15 @@ func TestAdsPacketHandler_workerPoolCoalescedKeepAliveDeferredAsyncWrite(t *test
 }
 
 func TestHTTP1ConnContext_followsOffloadParent(t *testing.T) {
-	connCtx := &connContext{workerID: 3}
-	offloadCtx := &connContext{http1ConnCtx: connCtx}
+	connCtx := &connContext{WorkerID: 3}
+	offloadCtx := &connContext{HTTP1ConnCtx: connCtx}
 	conn := NewGnetHarnessConn(nil)
 	conn.SetContext(offloadCtx)
-	connCtx.http1OffloadBusy.Store(true)
+	connCtx.HTTP1OffloadBusy.Store(true)
 
 	got := http1ConnContext(conn)
 	require.Same(t, connCtx, got)
-	require.True(t, got.http1OffloadBusy.Load())
+	require.True(t, got.HTTP1OffloadBusy.Load())
 }
 
 func TestWriteFilterReject_duplicateOnlyClosesConn(t *testing.T) {
@@ -205,14 +207,14 @@ func TestWriteFilterReject_duplicateOnlyClosesConn(t *testing.T) {
 
 	dupConn := NewGnetHarnessConn(nil)
 	dupConnCtx := &connContext{}
-	dupOffload := &connContext{http1ConnCtx: dupConnCtx, offloadConn: dupConn}
+	dupOffload := &connContext{HTTP1ConnCtx: dupConnCtx, OffloadConn: dupConn}
 	h.writeFilterReject(dupConn, respDuplicate, dupOffload)
 	pool.WaitIdle()
 	require.True(t, dupConn.Closed(), "409 duplicate must close conn on offload path")
 
 	budgetConn := NewGnetHarnessConn(nil)
 	budgetConnCtx := &connContext{}
-	budgetOffload := &connContext{http1ConnCtx: budgetConnCtx, offloadConn: budgetConn}
+	budgetOffload := &connContext{HTTP1ConnCtx: budgetConnCtx, OffloadConn: budgetConn}
 	h.writeFilterReject(budgetConn, respBudget, budgetOffload)
 	pool.WaitIdle()
 	require.False(t, budgetConn.Closed(), "non-duplicate reject keeps keep-alive")

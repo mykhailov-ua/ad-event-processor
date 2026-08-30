@@ -1,5 +1,14 @@
-
-
+/* Load-test BPF probe (deploy/dev/bpf/loadtest_probe.bpf.c).
+ * Dev/CI host scheduling and syscall latency instrumentation - NOT production edge-xdp.
+ * Controlled by AD_EVENT_PROCESSOR_BPF_PROBE=1; userspace loader in cmd/bpf-collector.
+ *
+ * Programs: raw_syscalls enter/exit, sched wakeup/switch, page_fault_user, tcp_retransmit_skb kprobe,
+ *   sched fork/exit, uprobe pairs on tracker hot-path markers (process_track, filter_check).
+ *
+ * Targets: target_pids (max 512) and target_cgroups (max 128) maps; roles in probe.h.
+ *
+ * Verify: make bpf-dev; AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/load/malformed.sh business
+ */
 #include <linux/bpf.h>
 #include <linux/sched.h>
 #include <linux/errno.h>

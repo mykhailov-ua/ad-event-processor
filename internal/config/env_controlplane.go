@@ -202,6 +202,21 @@ func loadManagementModules(cfg *Config) {
 	if cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick > 500 {
 		cfg.Management.AutomationRulesMaxEvalsPerCustomerPerTick = 500
 	}
+	cfg.Management.TrafficOptimizerEnabled = getEnvBool("TRAFFIC_OPTIMIZER_ENABLED", false)
+	cfg.Management.TrafficOptimizerIntervalMin = getEnvInt("TRAFFIC_OPTIMIZER_INTERVAL_MIN", 15)
+	if cfg.Management.TrafficOptimizerIntervalMin < 5 {
+		cfg.Management.TrafficOptimizerIntervalMin = 5
+	}
+	if cfg.Management.TrafficOptimizerIntervalMin > 60 {
+		cfg.Management.TrafficOptimizerIntervalMin = 60
+	}
+	cfg.Management.TrafficOptimizerMaxEvalsPerCustomerPerTick = getEnvInt("TRAFFIC_OPTIMIZER_MAX_EVALS_PER_CUSTOMER_PER_TICK", 50)
+	if cfg.Management.TrafficOptimizerMaxEvalsPerCustomerPerTick < 1 {
+		cfg.Management.TrafficOptimizerMaxEvalsPerCustomerPerTick = 1
+	}
+	if cfg.Management.TrafficOptimizerMaxEvalsPerCustomerPerTick > 500 {
+		cfg.Management.TrafficOptimizerMaxEvalsPerCustomerPerTick = 500
+	}
 	cfg.AdminDomain = strings.TrimSpace(os.Getenv("ADMIN_DOMAIN"))
 	cfg.Management.DomainHealthEnabled = getEnvBool("DOMAIN_HEALTH_ENABLED", true)
 	cfg.Management.DomainHealthIntervalMin = getEnvInt("DOMAIN_HEALTH_INTERVAL_MIN", 5)
@@ -224,6 +239,11 @@ func loadManagementModules(cfg *Config) {
 	cfg.Management.CaddyTLSAskToken = Secret(strings.TrimSpace(os.Getenv("CADDY_TLS_ASK_TOKEN")))
 	cfg.Management.CaddyTLSAskAllowLocal = getEnvBool("CADDY_TLS_ASK_ALLOW_LOCAL", true)
 	cfg.Management.OpenAPIRequestValidation = getEnvBool("OPENAPI_REQUEST_VALIDATION", false)
+	cfg.Management.CommandPaletteMaxQLen = getEnvInt("COMMAND_PALETTE_MAX_Q_LEN", 128)
+	if cfg.Management.CommandPaletteMaxQLen < 1 {
+		cfg.Management.CommandPaletteMaxQLen = 128
+	}
+	cfg.Management.CommandPaletteAuditLog = getEnvBool("COMMAND_PALETTE_AUDIT_LOG", false)
 
 	cfg.Control.EnableAuth = getEnvBool("CONTROL_ENABLE_AUTH", true)
 	cfg.Control.EnableManagement = getEnvBool("CONTROL_ENABLE_MANAGEMENT", true)

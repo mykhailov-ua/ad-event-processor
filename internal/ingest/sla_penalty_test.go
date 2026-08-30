@@ -83,7 +83,7 @@ func TestUnifiedFilter_SLAPenalty_Discount(t *testing.T) {
 
 	_ = redisClient.Set(ctx, "sla:penalty:active", "true", time.Minute).Err()
 
-	f.slaPenaltyActive.Store(true)
+	f.SLAPenaltyActive().Store(true)
 
 	evt2 := &domain.Event{
 		CampaignID: campID,
@@ -142,12 +142,12 @@ func TestUnifiedFilter_SLASentinel_AutoDetection(t *testing.T) {
 	f.StartSLASentinel(ctx, 10*time.Millisecond)
 
 	time.Sleep(30 * time.Millisecond)
-	assert.False(t, f.slaPenaltyActive.Load())
+	assert.False(t, f.SLAPenaltyActive().Load())
 
 	mockDB.Healthy.Store(false)
 
 	time.Sleep(50 * time.Millisecond)
-	assert.True(t, f.slaPenaltyActive.Load())
+	assert.True(t, f.SLAPenaltyActive().Load())
 
 	redisVal, err := redisClient.Get(ctx, "sla:penalty:active").Bool()
 	assert.NoError(t, err)
@@ -156,7 +156,7 @@ func TestUnifiedFilter_SLASentinel_AutoDetection(t *testing.T) {
 	mockDB.Healthy.Store(true)
 
 	time.Sleep(150 * time.Millisecond)
-	assert.False(t, f.slaPenaltyActive.Load())
+	assert.False(t, f.SLAPenaltyActive().Load())
 
 	_, err = redisClient.Get(ctx, "sla:penalty:active").Bool()
 	assert.ErrorIs(t, err, redis.Nil)
@@ -198,5 +198,5 @@ func TestSLASentinel_NoRedisPanic(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 	})
 
-	assert.True(t, f.slaPenaltyActive.Load(), "In-memory SLA penalty must be activated due to DB Ping-error")
+	assert.True(t, f.SLAPenaltyActive().Load(), "In-memory SLA penalty must be activated due to DB Ping-error")
 }

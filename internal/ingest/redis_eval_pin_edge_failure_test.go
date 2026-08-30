@@ -99,7 +99,7 @@ func TestEdgePin_WorkerAboveTableFallsBack(t *testing.T) {
 	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := edgeImpressionEvt(campID, 7)
-	require.Nil(t, f.evalPinConn(evt, 0))
+	require.Nil(t, f.EvalPinConn(evt, 0))
 	require.NoError(t, f.Check(ctx, evt))
 }
 
@@ -116,9 +116,9 @@ func TestEdgePin_ReopensClosedConn(t *testing.T) {
 	campID := uuid.New()
 	seedCampaignBudget(t, ctx, redisClient, campID)
 
-	slot := f.evalPins.slot(0, 0)
-	require.NotNil(t, slot.conn)
-	require.NoError(t, slot.conn.Close())
+	slot := f.EvalPinSlot(0, 0)
+	require.NotNil(t, slot.Conn())
+	require.NoError(t, slot.Conn().Close())
 
 	evt := edgeImpressionEvt(campID, 0)
 	require.NoError(t, f.Check(ctx, evt))
@@ -168,7 +168,7 @@ func TestEdgePin_UnsetWorkerIdxSkipsPin(t *testing.T) {
 	seedCampaignBudget(t, ctx, redisClient, campID)
 
 	evt := edgeImpressionEvt(campID, -1)
-	require.Nil(t, f.evalPinConn(evt, 0))
+	require.Nil(t, f.EvalPinConn(evt, 0))
 	require.NoError(t, f.Check(ctx, evt))
 }
 
@@ -182,7 +182,7 @@ func TestEdgePin_DeadlineStringNearDegradeThreshold(t *testing.T) {
 
 	reg := &benchWorstRegistry{}
 	f := edgePinFilter(t, redisClient, 1)
-	f.registry = reg
+	f.SetRegistry(reg)
 	f.SetTTCMin(500 * time.Millisecond)
 	defer f.CloseFilterEvalPins()
 	campID := uuid.New()

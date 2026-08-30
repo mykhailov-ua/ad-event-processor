@@ -60,7 +60,7 @@ bureaucratic_check() {
   fi
 }
 
-milestone_check() {
+legacy_token_check() {
   local label="$1"
   shift
   local pattern='(\bCPA-M[0-9]+\b|\bGM-M[0-9]+\b|\bRP-M[0-9]+\b|\bGMM4\b|\bPS-[GH][0-9]{2}\b|\bL1CIDRBlockEnabled\b|\bL15ProxyVPNBlockEnabled\b|\bIPv6RotationL1Enabled\b|\bIPv4RotationL1Enabled\b|\bTLSFingerprintL1Enabled\b|\bwriteGnetSafeViewL15\b|\bl15HookHandler\b|\bl1HookHandler\b)'
@@ -70,7 +70,7 @@ milestone_check() {
   done < <(rg -n "$pattern" "$@" 2> /dev/null || true)
 
   if ((${#hits[@]} > 0)); then
-    echo "check_no_legacy_naming: milestone or gap token in ${label} (use semantic slug; naming.mdc):"
+    echo "check_no_legacy_naming: legacy backlog token in ${label} (use semantic slug; naming.mdc):"
     printf '  %s\n' "${hits[@]}"
     exit 1
   fi
@@ -91,14 +91,14 @@ bureaucratic_check "docs/" "$ROOT/docs"
 bureaucratic_check "deploy/vendor/" "$ROOT/deploy/vendor"
 bureaucratic_check ".cursor/rules/" "$ROOT/.cursor/rules" --glob '*.mdc'
 
-milestone_check "internal/" "$ROOT/internal"
+legacy_token_check "internal/" "$ROOT/internal"
 if [[ -d "$ROOT/web/src" ]]; then
-  milestone_check "web/src" "$ROOT/web/src"
+  legacy_token_check "web/src" "$ROOT/web/src"
 fi
 if [[ -d "$ROOT/web/e2e" ]]; then
-  milestone_check "web/e2e" "$ROOT/web/e2e" --glob '!**/node_modules/**'
+  legacy_token_check "web/e2e" "$ROOT/web/e2e" --glob '!**/node_modules/**'
 fi
-milestone_check ".env.example" "$ROOT/.env.example"
+legacy_token_check ".env.example" "$ROOT/.env.example"
 
 is_allowlisted() {
   local rel="$1"

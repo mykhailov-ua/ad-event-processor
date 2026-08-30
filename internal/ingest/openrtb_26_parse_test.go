@@ -150,7 +150,7 @@ func BenchmarkParseOpenRTB26Into_connReuse(b *testing.B) {
 	var ctx connContext
 	b.ReportAllocs()
 	for b.Loop() {
-		ParseOpenRTB26Parsed(openrtb26Sample, &ctx.openrtbParsed)
+		ParseOpenRTB26Parsed(openrtb26Sample, &ctx.OpenRTBParsed)
 	}
 }
 
@@ -158,7 +158,7 @@ func BenchmarkParseOpenRTB26Split_hotOnly(b *testing.B) {
 	var ctx connContext
 	b.ReportAllocs()
 	for b.Loop() {
-		ParseOpenRTB26Parsed(openrtb26Sample, &ctx.openrtbParsed)
+		ParseOpenRTB26Parsed(openrtb26Sample, &ctx.OpenRTBParsed)
 	}
 }
 

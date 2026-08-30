@@ -1,3 +1,28 @@
+// Ringbuf slow-event drain to events.ndjson and optional OTEL export.
+//
+// Role:
+//   - drainRingbufRecords appends JSON rows per DecodeSlowEvent to sessionDir/events.ndjson.
+//   - Enriches syscall_id with static x86_64 name table; duration_us = dur_ns / 1000.
+//
+// events.ndjson contract:
+//   - OpenFile CREATE|WRONLY|APPEND; one JSON object per line (json.Encoder.Encode, no array wrapper).
+//   - Fields: ts_ns, pid, role, syscall_id, syscall_name, duration_us, kind, campaign_slot, marker_id, marker_name.
+//   - Append-only for load-report / bpf-report; not a generational snapshot (file grows for session TTL).
+//   - Encoder errors ignored per row (fail-open row drop); OpenFile failure logs warn and returns (no retry).
+//
+// Topology:
+//   - Fed by BPF slow_events map; optional otelLogExporter batches to OTLP /v1/logs HTTP.
+//
+// Invariants:
+//   - ctx.Done() checked only between rd.Read calls; Read blocks in kernel poll until reader close.
+//   - Shutdown: probeRun.stop cancels ctx, closeRingbufReader unblocks rd.Read, then ringWG.Wait.
+//   - releaseRingbufReader is idempotent; stop and drain defer must not double-close the same reader.
+//   - OTEL emit uses non-blocking select; queue full drops event (fail-open, debug log only).
+//
+// Verify:
+//
+//	go test ./cmd/bpf-collector/ -short -run 'TestProbeRun_stop_.*Ringbuf' -count=1
+//	wc -l var/load-test/<session>/events.ndjson
 package main
 
 import (
@@ -10,6 +35,31 @@ import (
 
 	"github.com/cilium/ebpf/ringbuf"
 )
+
+func (r *probeRun) registerRingbufReader(rd *ringbuf.Reader) {
+	r.ringMu.Lock()
+	r.ringRD = rd
+	r.ringMu.Unlock()
+}
+
+func (r *probeRun) closeRingbufReader() {
+	r.ringMu.Lock()
+	rd := r.ringRD
+	r.ringRD = nil
+	r.ringMu.Unlock()
+	if rd != nil {
+		_ = rd.Close()
+	}
+}
+
+func (r *probeRun) releaseRingbufReader(rd *ringbuf.Reader) {
+	r.ringMu.Lock()
+	if r.ringRD == rd {
+		r.ringRD = nil
+		_ = rd.Close()
+	}
+	r.ringMu.Unlock()
+}
 
 func drainRingbufRecords(ctx context.Context, rd *ringbuf.Reader, sessionDir string, otel *otelLogExporter) {
 	outPath := filepath.Join(sessionDir, "events.ndjson")

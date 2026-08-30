@@ -27,13 +27,13 @@ func TestH2Incomplete_IdleClosesDripWithProgress(t *testing.T) {
 	conn.Append(preface)
 	conn.Append(partialFrame)
 
-	buf := conn.inbound
+	buf := conn.InboundBytes()
 	require.Equal(t, gnet.None, h.onTrafficH2(conn, buf))
 
 	for i := range 3 {
 		time.Sleep(25 * time.Millisecond)
 		conn.Append([]byte{0x00})
-		buf = conn.inbound
+		buf = conn.InboundBytes()
 		act := h.onTrafficH2(conn, buf)
 		require.Equal(t, gnet.None, act, "drip byte %d must not close before idle deadline", i)
 	}
@@ -56,7 +56,7 @@ func TestH2Incomplete_IdleIncrementsHostileMetric(t *testing.T) {
 	preface := append([]byte(nil), h2ClientPreface[:]...)
 	conn := newFaultGnetConn()
 	conn.Append(preface)
-	buf := conn.inbound
+	buf := conn.InboundBytes()
 	require.Equal(t, gnet.None, h.onTrafficH2(conn, buf))
 
 	time.Sleep(80 * time.Millisecond)

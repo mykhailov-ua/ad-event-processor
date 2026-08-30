@@ -69,7 +69,7 @@ func applyIngestionMigrations(t testing.TB, pool *pgxpool.Pool) {
 	ctx := context.Background()
 	_, filename, _, _ := runtime.Caller(0)
 	baseDir := filepath.Join(filepath.Dir(filename), "..", "..")
-	migrationsDir := filepath.Join(baseDir, "internal", "ingestion", "migrations")
+	migrationsDir := filepath.Join(baseDir, "internal", "ingest", "migrations")
 	if err := coldpath.ApplyTrackedSchemaMigrations(ctx, pool, migrationsDir); err != nil {
 		t.Fatalf("failed to apply ingestion migrations: %s", err)
 	}

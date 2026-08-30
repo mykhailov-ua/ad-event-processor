@@ -1,3 +1,4 @@
+// Processor entrypoint. Package documentation: doc.go.
 package main
 
 import (
@@ -56,6 +57,7 @@ func main() {
 		slog.Error("failed to load config", "error", err)
 		os.Exit(1)
 	}
+	// Retry policy shared with ingest producers (stream flush backoff).
 	ingestion.SetStoreRetryPolicy(
 		cfg.MaxRetries,
 		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
@@ -106,6 +108,7 @@ func main() {
 	syncCtx, syncCancel := context.WithCancel(context.Background())
 	defer syncCancel()
 
+	// General read pool: campaign repo, dedup, partition manager, failover subscriber.
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBProcessorMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
@@ -113,6 +116,7 @@ func main() {
 	}
 	defer pool.Close()
 
+	// Settlement-dedicated pool; gated by ProcessorPostgresGate slot count.
 	settlementPool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.PostgresPoolSettleConns(cfg.SettlementLaneCount()), 1)
 	if err != nil {
 		slog.Error("failed to connect settlement pool", "error", err)
@@ -261,6 +265,7 @@ func main() {
 		}
 	}
 
+	// clickhouse-first: PG settlement stats-only; events authoritative in CH when enabled.
 	settleStore := domain.EventStore(pgStore)
 	if clickhouseStore != nil {
 		settleStore = ingestion.NewSettlementStore(pgStore, true)
@@ -457,6 +462,7 @@ func main() {
 		)
 	}
 
+	// Per-shard workers: SyncWorker (budget), SettlementWorker (PG stream), CH consumers.
 	for i, redisClient := range redisShards {
 		shardID := fmt.Sprintf("shard_%d", i)
 
@@ -727,6 +733,7 @@ func main() {
 		slog.Info("clickhouse stream consumers skipped", "ch_consumer", "disabled")
 	}
 
+	// HTTP sidecar: /metrics and /health on PROCESSOR_PORT (default 8186).
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
 	live := &lifecycle.Liveness{}

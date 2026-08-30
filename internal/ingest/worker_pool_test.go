@@ -18,8 +18,8 @@ func TestPinnedWorkerPool(t *testing.T) {
 	wg.Add(numTasks)
 	for i := range numTasks {
 		ctx := &connContext{
-			offloadWG: &wg,
-			offloadOnEnter: func() {
+			OffloadWG: &wg,
+			OffloadOnEnter: func() {
 				atomic.AddInt64(&counter, 1)
 			},
 		}

@@ -49,7 +49,14 @@ Control `:8188`, processor `:8186`, payment, ledger, IVT/fraud workers. Postgres
 
 **Banned hot patterns:** sequential Redis round-trips per event; GET-then-SET budget; sync stream write before 202; LISTEN/NOTIFY; message bus publish on `/track` accept path; N filter Redis calls.
 
-Pinned gnet workers must not block on Redis - `FilterEngine.Check` (incl. `EVALSHA`) runs in detached goroutine; copy strings before async response write.
+**Tracker thread model** (detail: `hot-path.mdc` **Tracker thread model**):
+
+| Tier | Sync Redis `EVALSHA` |
+| :--- | :--- |
+| gnet epoll (`WithLockOSThread(false)`) | **Forbidden** — enqueue only |
+| `PinnedWorkerPool` worker (`LockOSThread`) | **Allowed** — synchronous `FilterEngine.Check` on same worker |
+
+Do **not** document filter as a detached goroutine. Copy `Accept`/`Origin` via `string()`; clone response with `cloneAsyncWriteBytes` before `releaseOffloadBuffers`.
 
 ## Memory and correctness (hot path)
 

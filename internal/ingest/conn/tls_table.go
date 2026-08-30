@@ -151,6 +151,10 @@ func tlsHashBlocked(sorted []uint32, h uint32) bool {
 	return false
 }
 
+func TLSHashBlocked(sorted []uint32, h uint32) bool {
+	return tlsHashBlocked(sorted, h)
+}
+
 func BuildTLSFingerprintSnapshot(ja3Block, ja4Block, ja3Allow, ja4Allow []uint32, gen uint64) *FingerprintSnapshot {
 	sortUint32s(ja3Block)
 	sortUint32s(ja4Block)

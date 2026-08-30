@@ -52,8 +52,8 @@ func TestUnifiedFilter_applyGoTTC_attestationFailClosed(t *testing.T) {
 	}
 	acc := attachFraudAccumulator(evt)
 	defer releaseFraudAccumulator(evt, acc)
-	f.applyGoTTC(evt)
-	assert.True(t, acc.has(FraudReasonMissingImpTS))
+	f.ApplyGoTTC(evt)
+	assert.True(t, acc.Has(FraudReasonMissingImpTS))
 }
 
 func TestUnifiedFilter_applyGoTTC_signalsLowTTC(t *testing.T) {
@@ -62,7 +62,7 @@ func TestUnifiedFilter_applyGoTTC_signalsLowTTC(t *testing.T) {
 	f.SetLocalTTCCache(NewLocalTTCCache())
 
 	campID := uuid.New()
-	f.localTTC.Record(campID, "ttc-user")
+	f.LocalTTC().Record(campID, "ttc-user")
 
 	evt := &domain.Event{
 		Type:       "click",
@@ -71,8 +71,8 @@ func TestUnifiedFilter_applyGoTTC_signalsLowTTC(t *testing.T) {
 	}
 	acc := attachFraudAccumulator(evt)
 	defer releaseFraudAccumulator(evt, acc)
-	f.applyGoTTC(evt)
-	assert.True(t, acc.has(FraudReasonLowTTC))
+	f.ApplyGoTTC(evt)
+	assert.True(t, acc.Has(FraudReasonLowTTC))
 }
 
 func TestRoughPacingGate_rejectsBurst(t *testing.T) {

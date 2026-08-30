@@ -32,7 +32,7 @@ func TestBandit_WorkerUpdatesWeights(t *testing.T) {
 		},
 	}
 	rng := rand.New(rand.NewSource(7))
-	out, changed, err := ApplyFlowBanditThompson(raw, []uuid.UUID{campID}, landerStats, nil, rng)
+	out, changed, err := ApplyFlowBanditThompson(raw, []uuid.UUID{campID}, landerStats, nil, rng, BanditApplyConfig{})
 	require.NoError(t, err)
 	require.True(t, changed)
 	require.NotEmpty(t, out)
@@ -63,7 +63,7 @@ func TestApplyFlowBanditThompson_skipsLowClicks(t *testing.T) {
 			landerB: {Clicks: 10, Conversions: 0},
 		},
 	}
-	_, changed, err := ApplyFlowBanditThompson(raw, []uuid.UUID{campID}, stats, nil, rand.New(rand.NewSource(1)))
+	_, changed, err := ApplyFlowBanditThompson(raw, []uuid.UUID{campID}, stats, nil, rand.New(rand.NewSource(1)), BanditApplyConfig{})
 	require.NoError(t, err)
 	require.False(t, changed)
 }

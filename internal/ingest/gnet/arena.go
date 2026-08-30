@@ -26,3 +26,7 @@ func (a *workerArena) acquire(n int) (slot int, buf []byte, release func(), ok b
 	}
 	return 0, nil, nil, false
 }
+
+func (a *WorkerArena) Acquire(n int) (slot int, buf []byte, release func(), ok bool) {
+	return (*workerArena)(a).acquire(n)
+}

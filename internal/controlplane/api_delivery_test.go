@@ -98,10 +98,10 @@ func TestManagementAPI_DeliveryRoutes(t *testing.T) {
 
 	var creativeID uuid.UUID
 	t.Run("BrandCreativesCRUD", func(t *testing.T) {
-		creativeID, err = svc.UpsertBrandCreative(ctx, brandID, "Creative A", "https://example.com/a", 100, "ACTIVE")
+		creativeID, err = svc.BrandStore().UpsertBrandCreative(ctx, brandID, "Creative A", "https://example.com/a", 100, "ACTIVE")
 		require.NoError(t, err)
 
-		creatives, err := svc.ListBrandCreatives(ctx, brandID)
+		creatives, err := svc.BrandStore().ListBrandCreatives(ctx, brandID)
 		require.NoError(t, err)
 		require.NotEmpty(t, creatives)
 

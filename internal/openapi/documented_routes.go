@@ -59,6 +59,19 @@ var documentedRouteList = []string{
 	"DELETE /api/v1/automation/rules/{id}",
 	"POST /api/v1/automation/rules/{id}/dry-run",
 
+	"GET /api/v1/traffic-optimizer/presets",
+	"GET /api/v1/traffic-optimizer/rules",
+	"POST /api/v1/traffic-optimizer/rules",
+	"PUT /api/v1/traffic-optimizer/rules/{id}",
+	"DELETE /api/v1/traffic-optimizer/rules/{id}",
+	"POST /api/v1/traffic-optimizer/rules/{id}/dry-run",
+
+	"GET /api/v1/command-palette/search",
+	"GET /api/v1/command-palette/routes",
+	"POST /api/v1/command-palette/open",
+	"GET /api/v1/command-palette/recents",
+	"POST /api/v1/command-palette/recents",
+
 	"GET /api/v1/platform-campaigns/links",
 	"PUT /api/v1/platform-campaigns/links/{campaign_id}/{network}",
 	"DELETE /api/v1/platform-campaigns/links/{campaign_id}/{network}",

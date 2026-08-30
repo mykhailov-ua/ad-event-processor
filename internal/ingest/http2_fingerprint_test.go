@@ -70,23 +70,23 @@ func TestL7WireFilter_h2Signals(t *testing.T) {
 	evt.H2EnablePush = 1
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonH2SettingsMismatch))
+	assert.True(t, acc.Has(FraudReasonH2SettingsMismatch))
 
-	acc.reset()
+	acc.Reset()
 	evt.H2WireFlags = h2WireFlagPseudo
 	evt.H2PseudoOrder = h2PseudoOrderFirefox
 	evt.H2PseudoOrderCount = 4
 	evt.H2EnablePush = 0
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonH2PseudoOrder))
+	assert.True(t, acc.Has(FraudReasonH2PseudoOrder))
 
-	acc.reset()
+	acc.Reset()
 	evt.H2WireFlags = h2WireFlagDowngrade
 	evt.H2PseudoOrder = h2PseudoOrderChrome
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonH2DowngradeArtifact))
+	assert.True(t, acc.Has(FraudReasonH2DowngradeArtifact))
 }
 
 func buildH2TrackWire(body []byte, prefaceFrames ...[]byte) []byte {

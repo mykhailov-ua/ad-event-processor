@@ -1,3 +1,41 @@
+-- POST /track, GET /click, POST /openrtb/bid body and framing policy; parity with Go http1TrackEdgePolicy.
+-- Runtime: all workers access phase after access-check perimeter (access-check.lua dispatches by uri).
+-- Sets ngx.ctx.campaign_id for edge-shard-balancer; does not write ngx.shared.
+--
+-- Consumers: edge-shard-balancer balance phase; tracker :8181-8184 proxy upstream.
+-- Go pair: internal/ingest/httpingress/http1_policy.go http1TrackEdgePolicy (chunked/CL rules on /track).
+--
+-- Cache invalidation: none (request-scoped ngx.ctx.campaign_id only).
+--
+-- State machine (uri dispatch from access-check):
+-- - /click -> run_click: edge-click-query UUID; optional X-Ad-Event-Processor-Force-Safe without ad click ids.
+-- - /openrtb/bid -> run_openrtb: chunked allowed; peek or full body per TE.
+-- - else -> run(): EDGE_BODY_MODE full|stream|peek -> run_full|run_stream|run_peek.
+--
+-- POST /track parity (must match http1TrackEdgePolicy + parser.mdc):
+-- - Content-Length required; chunked or obfuscated TE -> 411 chunked_reject metric.
+-- - POST /openrtb/bid: chunked allowed; socket peek timeout 500 ms, MAX_SCAN_BYTES window.
+--
+-- apply_campaign_rl pipeline:
+-- - edge-fraud-tier tier block -> 403 fraud block metric + Retry-After.
+-- - edge-rl.allow false -> 429 campaign RL metric + Retry-After.
+-- - pass -> track_policy_pass metric.
+--
+-- Constants and limits:
+-- - EDGE_MAX_BODY_BYTES default MAX_SCAN_BYTES 8192 (env EDGE_MAX_BODY_BYTES or /etc/nginx/lua/.edge_max_body_bytes).
+-- - INGRESS_SCHEMA TRACKER_INGRESS_SCHEMA default openrtb_3 (env or .edge_ingress_schema file).
+-- - EDGE_BODY_MODE default full (env or .edge_body_mode): full|stream|peek.
+-- - edge-parse-dfa MAX_BODY_BYTES 1048576 for CL oversize; MAX_SCAN_BYTES 8192 for scan/peek.
+-- - get_uri_args limit 100 on /click; peek socket timeout 500 ms.
+--
+-- HTTP: 411 missing CL/chunked /track; 413 oversize; 429 RL; 403 fraud tier block.
+--
+-- Forbidden: chunked /track; drift from http1IngressCanonical corpora; claiming edge policy replaces tracker FilterEngine.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge_track_policy.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 local edge_rl = require "edge-rl"
 local edge_metrics = require "edge-metrics"
 local edge_parse_dfa = require "edge-parse-dfa"
@@ -169,7 +207,7 @@ function _M.run_full()
         ngx.ctx.campaign_id = campaign_id
     end
     apply_campaign_rl(campaign_id, fraud_score)
-    edge_metrics.record_phase2_pass()
+    edge_metrics.record_track_policy_pass()
 end
 
 function _M.run_stream()
@@ -183,7 +221,7 @@ function _M.run_stream()
     end
     apply_campaign_rl(hdr_cid, fraud_score)
     edge_metrics.record_body_stream()
-    edge_metrics.record_phase2_pass()
+    edge_metrics.record_track_policy_pass()
 end
 
 function _M.run_peek()
@@ -195,7 +233,7 @@ function _M.run_peek()
     if not sock then
         ngx.log(ngx.ERR, "edge peek: socket unavailable: ", sock_err)
         edge_metrics.record_body_stream()
-        edge_metrics.record_phase2_pass()
+        edge_metrics.record_track_policy_pass()
         return
     end
 
@@ -221,7 +259,7 @@ function _M.run_peek()
         apply_campaign_rl(hdr_cid, fraud_score)
     end
 
-    edge_metrics.record_phase2_pass()
+    edge_metrics.record_track_policy_pass()
 end
 
 function _M.run_click()
@@ -242,7 +280,7 @@ function _M.run_click()
     end
 
     apply_campaign_rl(campaign_id, fraud_score)
-    edge_metrics.record_phase2_pass()
+    edge_metrics.record_track_policy_pass()
 end
 
 function _M.run_openrtb()
@@ -257,7 +295,7 @@ function _M.run_openrtb()
         if not sock then
             ngx.log(ngx.ERR, "edge openrtb peek: socket unavailable: ", sock_err)
             edge_metrics.record_body_stream()
-            edge_metrics.record_phase2_pass()
+            edge_metrics.record_track_policy_pass()
             return
         end
         sock:settimeout(500)
@@ -279,7 +317,7 @@ function _M.run_openrtb()
             end
             apply_campaign_rl(hdr_cid, fraud_score)
         end
-        edge_metrics.record_phase2_pass()
+        edge_metrics.record_track_policy_pass()
         return
     end
 
@@ -293,7 +331,7 @@ function _M.run_openrtb()
         ngx.ctx.campaign_id = campaign_id
     end
     apply_campaign_rl(campaign_id, fraud_score)
-    edge_metrics.record_phase2_pass()
+    edge_metrics.record_track_policy_pass()
 end
 
 function _M.run()

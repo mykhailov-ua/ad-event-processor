@@ -390,6 +390,10 @@ func (f *DeviceFilter) SetTCPSynSigEnabled(enabled bool) {
 	f.tcpSynSigEnabled.Store(enabled)
 }
 
+func (f *DeviceFilter) ReloadBlocklist() {
+	f.reloadBlocklist()
+}
+
 func (f *DeviceFilter) reloadBlocklist() {
 	if f == nil {
 		return

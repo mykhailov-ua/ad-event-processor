@@ -54,27 +54,34 @@ bash scripts/dev/stack/stack.sh down
 
 ### `nginx/`
 
-OpenResty edge: rate limits, circuit breaker, blacklist shared dict, body DFA, shard routing to tracker pool.
+OpenResty edge: rate limits, circuit breaker, generational blacklist, config mirror, body DFA, shard routing to tracker pool.
 
 | Path | Role |
 | :--- | :--- |
-| `lua/access-check.lua` | Request gate before upstream |
-| `lua/edge_track_policy.lua` | Track-specific policy |
-| `lua/edge-blacklist-sync.lua` | Redis shard 0 → `ngx.shared.blacklist_cache` |
-| `lua/edge-slot-map.lua` | Must match Go `StaticSlotSharder` slot table |
+| `lua/access-check.lua` | Perimeter gate before upstream |
+| `lua/edge-circuit.lua`, `edge-circuit-log.lua` | Redis/upstream failure ratio; log-phase 5xx writer |
+| `lua/edge-config.lua` | Redis `config:values` -> `edge_config` (generational ASN, no `get_keys`) |
+| `lua/edge-blacklist-sync.lua` | Redis SETs -> `blacklist_cache` generational `_bl_ver` |
+| `lua/edge-slot-map.lua` | Control slot JSON -> `slot_map`; `version` written last |
+| `lua/edge-node-weights.lua` | Peer weights -> `node_weights`; purge stale `w:*` |
+| `lua/edge_track_policy.lua` | `/track` body policy (parity with gnet) |
+| `lua/init-worker.lua` | Worker 0 sync timer matrix (see file header) |
+| `nginx.conf` | SHM sizes: `edge_config` 4m, `edge_rl` 50m, `blacklist_cache` 10m, `slot_map` 2m |
 
-**Operate:** Edge listens `:8180` / `:443`. Tracker upstreams `8181-8184` by campaign slot.
+**Operate:** Edge listens `:8180` / `:443`. Tracker upstreams `8181-8184` by campaign slot. Metrics: `GET /edge/metrics` on `:8180`.
 
 **Limits:**
 
 - Lua slot map and Go sharding must stay in sync — parity tests in `internal/domain/`.
 - `/track` wire policy: `Content-Length` required, chunked TE rejected (nginx ↔ gnet chaos tests).
+- `edge_config` undersized -> LRU eviction; monitor `ad_event_processor_edge_config_free_bytes`.
 - CDN in front without TCP/TLS fingerprint sync: disable or expect fail-open on MSS/TTL/JA3 signals (`deploy/vendor/ANTIFRAUD.md`).
 
 **Test:**
 
 ```bash
-bash scripts/test/edge/lua_tests.sh all
+bash scripts/test/edge/lua_tests.sh unit
+bash scripts/test/edge/lua_tests.sh compliance
 go test ./internal/ingest/ -run TestChaos_CrossHop_NginxGnet -count=1
 ```
 
@@ -121,14 +128,14 @@ eBPF/XDP C sources and attach specs.
 
 | Component | Binary | License |
 | :--- | :--- | :--- |
-| XDP program | `cmd/edge-xdp` | `ebpf_xdp_edge` (Enterprise) |
+| XDP program | `cmd/edge-xdp` | `ebpf_xdp_edge` (license JWT feature; not on `single_vps` SKU) |
 | Map sync | `cmd/edge-bpf-sync` | same |
 
 **Operate:** Build BPF artifacts: `make gen bpf-dev`. Sync Redis blocklists into LRU/LPM maps.
 
 **Limits:** XDP drops known L3/L4 bad IPs and syn-flood patterns — not residential proxy rotation or app-layer fraud. LRU eviction under map pressure is possible — monitor `edge_blocklist_map_fill_ratio`.
 
-**Test:** `go test ./internal/edge/...`. Manual: `bash scripts/test/edge/xdp_resilience_drill.sh` (enterprise workflow).
+**Test:** `go test ./internal/edge/...`. Manual: `bash scripts/test/edge/xdp_resilience_drill.sh`.
 
 ---
 
@@ -184,10 +191,10 @@ Redis streams → processor (:8186) → Postgres, ClickHouse
 
 | Service | Default port | Metrics |
 | :--- | ---: | ---: |
-| nginx edge | 8180, 443 | edge exporter |
-| tracker | 8181-8184 | 9101-9104 |
-| processor | 8186 | 9106 |
-| control | 8188 | 9108 |
+| nginx edge | 8180, 443 | `/edge/metrics` on 8180 |
+| tracker | 8181-8184 | 9101-9104 (compose sidecar) |
+| processor | 8186 | `/metrics` on 8186 |
+| control | 8188 | `/metrics` on 8188 |
 | payment webhooks | 8187 | — |
 | Postgres | 5430 | — |
 | Redis masters | 6479-6482 | — |

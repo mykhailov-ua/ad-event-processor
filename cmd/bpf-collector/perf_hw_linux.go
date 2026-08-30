@@ -1,5 +1,23 @@
 //go:build linux
 
+// Hardware perf counters via perf_event_open for summary.json hardware_perf.
+//
+// Role:
+//   - readHardwarePerf opens per-PID counters: cache-misses (config 3), branch-misses (config 5).
+//   - collectHardwarePerf includes tracker and processor roles only.
+//
+// Topology:
+//   - Requires CAP_PERFMON or root; failures log debug and omit row.
+//
+// Invariants:
+//   - perf_event_open with PerfBitExcludeKernel | PerfBitExcludeHv; read once then disable.
+//   - perfIOCGroups flag scopes counter to process cgroup.
+//
+// Forbidden:
+//   - Point-in-time counter read at dump; not continuous production PMU profiling.
+//
+// Verify:
+//   jq .hardware_perf var/load-test/<session>/bpf/maps/summary.json
 package main
 
 import (

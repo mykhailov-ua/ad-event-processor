@@ -140,7 +140,7 @@ func TestRegistry_concurrentRecord(t *testing.T) {
 			})
 		}()
 	}
-	for i := range workers {
+	for range workers {
 		require.NoError(t, <-errCh)
 	}
 }

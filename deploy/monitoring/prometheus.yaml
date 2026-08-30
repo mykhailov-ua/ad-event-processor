@@ -1,3 +1,7 @@
+# Prometheus scrape config template (deploy/monitoring/prometheus.yaml).
+# scrape_interval and evaluation_interval: 5s. Alerts: prometheus.rules.yaml.
+# Alertmanager target: 127.0.0.1:9093.
+# Jobs: tracker :9101-9104, processor :8186, broker :8081-8082, nginx-edge :8180/metrics/edge.
 global:
   scrape_interval: 5s
   evaluation_interval: 5s

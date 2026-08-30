@@ -1,3 +1,4 @@
+// Tracker entrypoint. Package documentation: doc.go.
 package main
 
 import (
@@ -10,6 +11,7 @@ import (
 )
 
 func main() {
+	// --health-probe URL: exit 0 when /health or /ready returns 2xx (compose healthcheck).
 	if len(os.Args) > 2 && os.Args[1] == "--health-probe" {
 		if !lifecycle.RunHealthProbe(os.Args[2]) {
 			os.Exit(1)

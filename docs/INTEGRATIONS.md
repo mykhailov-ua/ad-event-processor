@@ -145,6 +145,24 @@ API: `GET /api/v1/automation/presets`, `GET/POST /api/v1/automation/rules`, `PUT
 
 ---
 
+## Traffic optimizer (`internal/trafficoptimizer`)
+
+Cold-path feature: operator rules recompute **lander / offer / brand creative** weights from ClickHouse. Tracker hot path reads precomputed weights from flow snapshots and brand creative reload only (`docs/AUTO_OPTIMIZATION.md`).
+
+| Env | Default | Role |
+| :--- | :--- | :--- |
+| `TRAFFIC_OPTIMIZER_ENABLED` | `0` | When `1`, worker owns flow + creative optimization; delivery tick skips legacy flow bandit and brand CTR MAB |
+| `TRAFFIC_OPTIMIZER_INTERVAL_MIN` | `15` | Worker tick interval (5–60) |
+| `TRAFFIC_OPTIMIZER_MAX_EVALS_PER_CUSTOMER_PER_TICK` | `50` | Per-tick eval cap per customer |
+
+API: `GET /api/v1/traffic-optimizer/presets`, `GET/POST /api/v1/traffic-optimizer/rules`, `PUT/DELETE /api/v1/traffic-optimizer/rules/{id}`, `POST .../dry-run` (preview stub).
+
+Objectives: **CR** (`thompson`, lander/offer), **EPC** / **revenue** / **ROI** (`proportional`). **Creative** scope requires `brand_id` and updates `brand_creatives.weight` (preset `roi_best_performer` + `scope=creative`). `min_clicks` ≥ 100; ROI requires `min_spend_micro`; lookback > 7d needs `AllowExtendedLookback` on `RulesService`.
+
+Metrics: `traffic_optimizer_eval_total`, `traffic_optimizer_weight_updates_total`, `traffic_optimizer_last_tick_seconds`.
+
+---
+
 ## Platform campaign sync (`internal/platformsync`)
 
 Enterprise SKU flag `ad_platform_campaign_api` (`deploy/vendor/sku.yaml`). Cold-path worker when `CONTROL_ENABLE_PLATFORM_CAMPAIGN_SYNC=1`.

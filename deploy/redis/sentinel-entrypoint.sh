@@ -1,4 +1,7 @@
 #!/bin/sh
+# Redis Sentinel bootstrap for compose HA lab (deploy/redis/sentinel-entrypoint.sh).
+# Monitors redis-0..redis-(REDIS_SHARD_COUNT-1) on port 6379; quorum 2; down-after 5000ms;
+# failover-timeout 10000ms. Listens :26379. Standalone masters + Sentinel, not Redis Cluster.
 set -eu
 
 CONF=/tmp/sentinel.conf

@@ -14,11 +14,17 @@ func unsafeBytes(s string) []byte {
 }
 
 const (
-	wireEncGzip     uint8 = 1 << 0
-	wireEncDeflate  uint8 = 1 << 1
-	wireEncBr       uint8 = 1 << 2
-	wireEncZstd     uint8 = 1 << 3
-	wireEncIdentity uint8 = 1 << 4
+	WireEncGzip     uint8 = 1 << 0
+	WireEncDeflate  uint8 = 1 << 1
+	WireEncBr       uint8 = 1 << 2
+	WireEncZstd     uint8 = 1 << 3
+	WireEncIdentity uint8 = 1 << 4
+
+	wireEncGzip     = WireEncGzip
+	wireEncDeflate  = WireEncDeflate
+	wireEncBr       = WireEncBr
+	wireEncZstd     = WireEncZstd
+	wireEncIdentity = WireEncIdentity
 
 	chromeZstdMinMajor = 123
 )

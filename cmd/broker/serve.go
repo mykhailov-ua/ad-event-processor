@@ -1,3 +1,7 @@
+// Broker serve flags: resolves gnet addr, health addr, WAL paths, Redis coord URL.
+//
+// Defaults: gnet listen (9092 or runtimepaths.BrokerGnetSocket), health 8084, data-dir WAL root.
+// WAL segment caps from -max-seg-mb and -index-kb passed to wireAndRunServe as MaxSegBytes / IndexInterval.
 package main
 
 import (

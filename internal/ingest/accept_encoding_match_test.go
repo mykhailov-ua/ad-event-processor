@@ -89,5 +89,5 @@ func TestL7WireFilter_acceptEncoding(t *testing.T) {
 	evt.AcceptEncodingFlags = classifyAcceptEncoding([]byte(chrome128NoZstd))
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonAcceptEncodingMismatch))
+	assert.True(t, acc.Has(FraudReasonAcceptEncodingMismatch))
 }

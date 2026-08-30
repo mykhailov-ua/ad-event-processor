@@ -135,15 +135,15 @@ func TestIPv4RotationTable_observe_resetsWindow(t *testing.T) {
 	subnet24 := uint32(0xCB007100)
 	now := monotonicNano()
 
-	live, shadow := table.observe(campaignHash, userHash, subnet24, 0xCB007101, now)
+	live, shadow := table.Observe(campaignHash, userHash, subnet24, 0xCB007101, now)
 	require.False(t, live)
 	require.False(t, shadow)
 
-	live, shadow = table.observe(campaignHash, userHash, subnet24, 0xCB007102, now)
+	live, shadow = table.Observe(campaignHash, userHash, subnet24, 0xCB007102, now)
 	require.True(t, live)
 	require.False(t, shadow)
 
-	live, shadow = table.observe(campaignHash, userHash, subnet24, 0xCB007103, now+int64(100*time.Millisecond))
+	live, shadow = table.Observe(campaignHash, userHash, subnet24, 0xCB007103, now+int64(100*time.Millisecond))
 	require.False(t, live)
 	require.False(t, shadow)
 }

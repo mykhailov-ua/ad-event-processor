@@ -160,14 +160,14 @@ func TestCIDRTable_EmptyAndNil(t *testing.T) {
 func TestCIDRTable_OracleRandom(t *testing.T) {
 	rng := rand.New(rand.NewSource(42))
 	var cidrs []string
-	for i := range 300 {
+	for range 300 {
 		var a [4]byte
 		rng.Read(a[:])
 		bits := 8 + rng.Intn(25)
 		p := netip.PrefixFrom(netip.AddrFrom4(a), bits).Masked()
 		cidrs = append(cidrs, p.String())
 	}
-	for i := range 100 {
+	for range 100 {
 		var a [16]byte
 		rng.Read(a[:])
 		bits := 32 + rng.Intn(97)
@@ -200,14 +200,14 @@ func TestCIDRTable_InsertOrderInvariant(t *testing.T) {
 		"253.128.0.0/10", "253.154.0.0/15", "252.241.207.0/24", "253.224.0.0/12",
 		"10.0.0.0/8", "10.128.0.0/9", "10.0.0.0/16", "10.0.128.0/17",
 	}
-	for i := range 40 {
+	for range 40 {
 		var a [4]byte
 		rng.Read(a[:])
 		base = append(base, netip.PrefixFrom(netip.AddrFrom4(a), 8+rng.Intn(25)).Masked().String())
 	}
 	var probes []string
 	prng := rand.New(rand.NewSource(7))
-	for i := range 4000 {
+	for range 4000 {
 		probes = append(probes, netip.AddrFrom4([4]byte{byte(prng.Intn(256)), byte(prng.Intn(256)), byte(prng.Intn(256)), byte(prng.Intn(256))}).String())
 	}
 
@@ -233,12 +233,12 @@ func TestCIDRTable_OracleDenseSameLength(t *testing.T) {
 	rng := rand.New(rand.NewSource(7))
 	var cidrs []string
 
-	for i := range 200 {
+	for range 200 {
 		p := netip.PrefixFrom(netip.AddrFrom4([4]byte{54, byte(rng.Intn(256)), byte(rng.Intn(256)), 0}), 24).Masked()
 		cidrs = append(cidrs, p.String())
 	}
 	table, prefs := buildTestTable(t, cidrs...)
-	for i := range 20000 {
+	for range 20000 {
 		ip := netip.AddrFrom4([4]byte{54, byte(rng.Intn(256)), byte(rng.Intn(256)), byte(rng.Intn(256))}).String()
 		got, _ := table.MatchIP(ip)
 		if want := oracleMatch(prefs, ip); got != want {

@@ -44,7 +44,7 @@ func FuzzBanditWeightSnapshot(f *testing.F) {
 				uuid.MustParse("00000000-0000-4000-8000-000000000002"): {Clicks: clicksB, Conversions: convB},
 			},
 		}
-		_, _, _ = ApplyFlowBanditThompson(raw, []uuid.UUID{campID}, stats, nil, rand.New(rand.NewSource(1)))
+		_, _, _ = ApplyFlowBanditThompson(raw, []uuid.UUID{campID}, stats, nil, rand.New(rand.NewSource(1)), BanditApplyConfig{})
 	})
 }
 

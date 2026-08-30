@@ -11,7 +11,7 @@ echo "parser-chaos: TestChaos_ParserSecurity"
 go test ./internal/ingest/ -run='TestChaos_ParserSecurity' -count=1 -timeout=5m -v
 
 echo "parser-chaos: JSON hardening"
-go test ./internal/ingest/ -run='TestChaos_ParserSecurity_PS_G09|TestChaos_ParserSecurity_PS_G1[0-3]' -count=1 -timeout=2m -v
+go test ./internal/ingest/ -run='TestChaos_ParserSecurity_(UnicodeKey|DuplicateKey|LoneSurrogate|DistributedWS|QuoteDense|NestedPayload|ValueLiteral)' -count=1 -timeout=2m -v
 
 echo "parser-chaos: sustained load mix"
 CHAOS_LOAD_DURATION=8s CHAOS_LOAD_RPS=3000 CHAOS_LOAD_WORKERS=4 \
@@ -27,7 +27,7 @@ echo "parser-chaos: slow-body drill"
 bash scripts/fault/parser_slow_body_drill.sh
 
 echo "parser-chaos: buffer pool and hardening proofs"
-go test ./internal/ingest/ -run='TestRequestBufferPool|TestChaos_ParserSecurity_PS_H0|TestHTTP1ChunkedScratch' -count=1 -timeout=2m -v
+go test ./internal/ingest/ -run='TestRequestBufferPool|TestChaos_ParserSecurity_Key|TestHTTP1ChunkedScratch' -count=1 -timeout=2m -v
 
 echo "parser-chaos: fuzz smoke"
 go test ./internal/ingest/ -fuzz=FuzzParseTrackJSON -fuzztime=10s -count=1 || true

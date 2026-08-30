@@ -1,0 +1,299 @@
+# .cursorignore - paths Cursor should not index for AI context (token / clutter control).
+# Mirrors .gitignore where sensible; adds generated, binary, and rarely-edited bulk.
+# Agents can still open ignored paths explicitly via Read/@ when needed.
+# Remove a section temporarily when working in that area.
+
+# Secrets, credentials, local env
+.env
+.env.secrets
+.env.local
+.env.*.local
+*.env
+!/.env.example
+!/.env.load-test
+install.compose.env
+deploy/compose/.env.load-test.runtime
+deploy/installer/install.env
+deploy/**/nic-tune.env
+license.jwt
+license.jwt/
+.license-*.jwt
+var/license.jwt
+deploy/vendor/license_private.key
+deploy/vendor/trial_registry.json
+deploy/vendor/keys/*/license_private.key
+
+# TLS private keys and certs (sources: deploy/nginx/certs/generate-dev-certs.sh)
+deploy/nginx/certs/*.key
+deploy/nginx/certs/*.crt
+deploy/nginx/certs/*.pem
+
+# Build output, vendored deps, compiled binaries
+bin/
+dist/
+vendor/
+node_modules/
+web/dist/
+
+# Root-level go build -o artifacts (canonical: bin/)
+/*.exe
+/*-xdp
+/tracker
+/processor
+/control
+/management
+/auth
+/payment
+/billing
+/notifier
+/ivt-detector
+/fraud-scorer
+/broker
+/region-proxy
+/log-shipper
+/loadgen
+/edge-xdp
+
+# Object files, static libs, shared libs
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Archives and installers
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.deb
+*.rpm
+*.dmg
+*.pkg
+*.msi
+*.apk
+*.jar
+*.war
+
+# Generated code (make gen / make proto / bpf2go / sqlc - edit sources only)
+/api/gen/
+/gen/
+
+# sqlc (sources: queries/*.sql, migrations/*.sql)
+internal/*/db/*.sql.go
+internal/*/db/db.go
+internal/*/db/models.go
+internal/*/db/querier.go
+internal/domain/db/
+
+# protobuf / vtproto (sources: api/*.proto)
+internal/*/pb/*.pb.go
+internal/*/pb/*_grpc.pb.go
+internal/*/pb/*_vtproto.pb.go
+
+# bpf2go (sources: deploy/edge-xdp/bpf/*.c, deploy/edge/xdp/bpf/*.c)
+internal/edge/bpf_edge_bpf*.go
+internal/edge/*.o
+deploy/edge/xdp/bpf/*.o
+deploy/edge/xdp/bpf/*.disasm.txt
+deploy/dev/bpf/*.o
+deploy/dev/bpf/*.disasm.txt
+
+# OpenAPI bundle (sources: api/openapi/openapi.yaml + components/ + paths/)
+api/openapi/openapi.bundle.yaml
+
+# Rendered deploy configs
+**/*.rendered.yaml
+**/*.rendered.yml
+deploy/monitoring/*.rendered.yaml
+deploy/ingress/caddy/generated/*
+!deploy/ingress/caddy/generated/.gitkeep
+
+# Rendered load-test nginx/prometheus/grafana (sources: *.load-test.*.in)
+deploy/nginx/nginx.load-test.conf
+deploy/nginx/lua/edge-tracker-peers.load-test.lua
+deploy/monitoring/prometheus.load-test.yaml
+deploy/monitoring/grafana-provisioning/datasources/datasource.load-test.yaml
+
+# Lock files and dependency checksum blobs (go.mod / package.json are enough)
+go.sum
+**/package-lock.json
+**/pnpm-lock.yaml
+**/yarn.lock
+**/bun.lock
+**/bun.lockb
+**/Cargo.lock
+**/poetry.lock
+**/Pipfile.lock
+**/uv.lock
+
+# Python / ML runtime and caches (sources: model/train, model/eval, model/tests)
+**/__pycache__/
+**/*.py[cod]
+**/*.pyo
+**/.Python
+.venv/
+venv/
+.venv-ml/
+**/.venv/
+**/.ruff_cache/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.hypothesis/
+**/.tox/
+**/.nox/
+**/.coverage
+**/.coverage.*
+**/htmlcov/
+**/.ipynb_checkpoints/
+model/.venv/
+
+# ML artifacts and training scratch (not sources)
+var/fraudscore/
+**/*.onnx
+**/*.pt
+**/*.pth
+**/*.h5
+**/*.keras
+**/*.safetensors
+**/*.ckpt
+**/*.lgb
+**/*.lightgbm
+**/*.joblib
+**/*.pickle
+**/*.pkl
+
+# Local runtime state, logs, CI scratch, profiling
+var/
+.cache/
+coverage/
+coverage.out
+coverage.html
+*.coverprofile
+*.prof
+*.test
+*.trace
+trace.out
+*.log
+
+# Root runtime scratch
+/*.txt
+campaigns_replica.json
+campaigns_replica.json.tmp
+.license-spool/
+*.wal
+
+# Perf gate, benchmark and nightly regression scratch
+.ci-baselines/
+var/ci/
+pr_bench.txt
+baseline_bench.txt
+gate_report.txt
+gate_run.log
+escape_report.txt
+*_bench.txt
+*_gate.txt
+/bpf_resource_gate.log
+/bpf_hot_nightly.log
+/bpf_cold_nightly.log
+/bpf_export_soak_nightly.log
+/bpf_export_soak_gate.log
+/race_short.log
+/integration_test.log
+/perf_smoke.log
+/full_test.log
+/resilience.log
+/sentinel.log
+/mr-resilience.log
+/xdp-resilience.log
+/compose-fault.log
+
+# Load-test / BPF / resilience report artifacts
+fault_proof.txt
+**/REPORT.txt
+**/PROOF.md
+bpf-report.md
+bpf-report.err
+bottleneck-report.md
+bpf-collector.tail.txt
+lua_quantiles.json
+k6_summary.json
+sla-gate.md
+strict-contention-compare.md
+metrics.before.txt
+metrics.after.txt
+stress-ng.log
+listen.bind.txt
+redis.flush.log
+burst.log
+delta.txt
+sysctl.txt
+gomaxprocs.txt
+docker.events.txt
+tracker.oom.log
+tracker.state.txt
+load-report-prom.log
+load-report-all.log
+script_flush.log
+sync-registry.log
+prepare.log
+
+# Terraform state and plugins
+deploy/terraform/**/.terraform/
+deploy/terraform/**/terraform.tfstate
+deploy/terraform/**/terraform.tfstate.*
+deploy/terraform/**/.terraform.lock.hcl
+
+# GeoIP and large binary datasets (download separately; see docs/DEVELOPMENT.md)
+deploy/geoip/*.mmdb
+**/*.mmdb
+**/*.wasm
+**/*.woff
+**/*.woff2
+**/*.ttf
+**/*.eot
+
+# Binary media (no value in code context)
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.ico
+**/*.bmp
+**/*.tiff
+**/*.svg
+**/*.mp4
+**/*.mp3
+**/*.wav
+**/*.avi
+**/*.mov
+**/*.pdf
+
+# IDE, editor swap files, OS junk
+.idea/
+.vscode/
+*~
+*.swp
+*.swo
+.#*
+#*#
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Bulk schema / migration history (rarely needed in default context)
+# Remove lines when editing schema or migrations.
+internal/*/migrations/
+deploy/schemas/
+
+# Grafana dashboard JSON (sources: hand-edited panels; large JSON noise)
+deploy/monitoring/grafana-provisioning/dashboards/*.json
+
+# Git internals (never useful in agent context)
+.git/

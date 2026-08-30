@@ -6,6 +6,7 @@ option go_package = "ad-event-processor/internal/controlplane/outboxpb;outboxpb"
 
 message CampaignPayload {
   string campaign_id = 1;
+  // Budget limit in micro-units (10^-6 value of base currency).
   int64 budget_limit = 2;
 }
 
@@ -20,6 +21,7 @@ message BrandIdPayload {
 message BrandFcapPayload {
   string brand_id = 1;
   int32 freq_limit = 2;
+  // Frequency cap evaluation window duration in seconds.
   int32 freq_window = 3;
 }
 
@@ -27,6 +29,7 @@ message CampaignSchedulePayload {
   string campaign_id = 1;
   int64 start_at_unix = 2;
   int64 end_at_unix = 3;
+  // Active hours of the day in UTC (range 0 to 23).
   repeated int32 daypart_hours = 4;
 }
 
@@ -49,6 +52,7 @@ message FraudThreatPayload {
   string action = 1;
   string ip = 2;
   string campaign_id = 3;
+  // Threat confidence score value from 0.0 to 1.0.
   double score = 4;
   int32 boost = 5;
   int64 ttl_seconds = 6;
@@ -62,6 +66,7 @@ message FraudModelVersionPayload {
 
 message UserConsentPayload {
   string user_id_hash = 1;
+  // Bitmask encoding consent purposes (e.g. bit 0 = targeting, bit 1 = telemetry).
   int32 purposes = 2;
 }
 
@@ -81,10 +86,15 @@ message QuotaRepairPayload {
   string campaign_id = 1;
   int32 shard_id = 2;
   string action = 3;
+  // DB ledger reserved value in micro-units (10^-6 value).
   int64 pg_reserved = 4;
+  // Cache expected value in micro-units (10^-6 value).
   int64 redis_expected = 5;
+  // Allocator transfer block size in micro-units.
   int64 chunk_size = 6;
+  // Deviation in micro-units.
   int64 drift_micro = 7;
+  // Correction adjustment in micro-units.
   int64 repair_micro = 8;
   string reason = 9;
 }
@@ -94,7 +104,9 @@ message ReconciliationAdjustPayload {
   string campaign_id = 2;
   string customer_id = 3;
   int32 shard_id = 4;
+  // Valid balance in the database ledger in micro-units.
   int64 ledger_amount_micro = 5;
+  // Correction delta applied to cache in micro-units.
   int64 redis_delta_micro = 6;
   string reason = 7;
 }
@@ -115,6 +127,7 @@ message CtvGtaxSettlementPayload {
   string settlement_id = 1;
   string customer_id = 2;
   string campaign_id = 3;
+  // Audited financial amount in micro-units (10^-6 value).
   int64 spend_micro = 4;
 }
 
@@ -126,6 +139,7 @@ message TelegramEventPayload {
 
 message SettleBalancePayload {
   string customer_id = 1;
+  // Transaction volume in micro-units (10^-6 value).
   int64 amount_micro = 2;
   string ledger_idempotency_key = 3;
   string payment_intent_id = 4;
@@ -136,6 +150,7 @@ message SettleBalancePayload {
 message ChargebackPayload {
   string payment_intent_id = 1;
   string customer_id = 2;
+  // Revoked volume in micro-units (10^-6 value).
   int64 amount_micro = 3;
   string provider_dispute_id = 4;
 }

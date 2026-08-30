@@ -72,12 +72,12 @@ func TestUDPNodeWeights_V1BackwardCompatible(t *testing.T) {
 
 func TestUDPNodeWeights_StaleChannelEqualizes(t *testing.T) {
 	c := newTestUDPControl(2)
-	c.syncInterval = 50 * time.Millisecond
+	c.SetSyncIntervalForTest(50 * time.Millisecond)
 	weights := sampleNodeWeights()
 	require.True(t, c.ApplyPacket(encodeTestEpochWithWeights(t, 1, 10_000, weights, UDPMsgQuotaEpoch, 0, 2)))
-	c.markFresh()
-	c.lastPacketMono.Store(monotonicNano() - int64(200*time.Millisecond))
-	c.checkStale()
+	c.MarkFreshForTest()
+	c.SetLastPacketMonoForTest(monotonicNano() - int64(200*time.Millisecond))
+	c.CheckStaleForTest()
 	require.Equal(t, UDPChannelStale, c.ChannelState())
 	require.True(t, c.DrainFrozen())
 
@@ -91,7 +91,7 @@ func TestUDPNodeWeights_EpochLagEqualizes(t *testing.T) {
 	c := newTestUDPControl(2)
 	weights := sampleNodeWeights()
 	require.True(t, c.ApplyPacket(encodeTestEpochWithWeights(t, 1, 10_000, weights, UDPMsgQuotaEpoch, 0, 2)))
-	c.lastPublisherEpoch.Store(5)
+	c.SetLastPublisherEpochForTest(5)
 
 	require.True(t, c.DrainFrozen())
 	got := c.NodeWeights()

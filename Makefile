@@ -24,7 +24,7 @@ openapi-export:
 
 .PHONY: openapi-types
 openapi-types:
-	@echo "openapi-types: skipped (web/ removed; regenerate TS types when admin UI milestone admin_contract_gate starts)"
+	@echo "openapi-types: skipped (web/ removed; regenerate TS types when admin_contract_gate ships)"
 
 lint: gen fmt
 	bash scripts/ci/lint.sh

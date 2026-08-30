@@ -8,7 +8,9 @@ import (
 	"ad-event-processor/internal/ingest/httpingress"
 	"ad-event-processor/internal/ingest/pb"
 	"ad-event-processor/internal/metrics"
+	"ad-event-processor/internal/openrtb"
 	"ad-event-processor/internal/stream"
+	"ad-event-processor/internal/stream/recon"
 
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,12 +25,23 @@ func init() {
 
 const wireSecFetchAllBits = cold.WireSecFetchAllBits
 
+const (
+	wireEncGzip    = cold.WireEncGzip
+	wireEncDeflate = cold.WireEncDeflate
+	wireEncBr      = cold.WireEncBr
+	wireEncZstd    = cold.WireEncZstd
+)
+
 func classifySecFetchSite(b []byte) uint8  { return cold.ClassifySecFetchSite(b) }
 func classifySecFetchMode(b []byte) uint8  { return cold.ClassifySecFetchMode(b) }
 func classifySecFetchDest(b []byte) uint8  { return cold.ClassifySecFetchDest(b) }
 func classifySecCHUAMobile(b []byte) uint8 { return cold.ClassifySecCHUAMobile(b) }
 
 func classifyAcceptEncoding(b []byte) uint8 { return cold.ClassifyAcceptEncoding(b) }
+
+func acceptEncodingBrowserMismatch(ua string, flags, encSet uint8) bool {
+	return cold.AcceptEncodingBrowserMismatch(ua, flags, encSet)
+}
 
 func acceptLangGeoMismatch(acceptLang, geoCountry string) bool {
 	return cold.AcceptLangGeoMismatch(acceptLang, geoCountry)
@@ -92,6 +105,40 @@ func ComputeCompositeHashFromTrackCampaignUser(campaignID uuid.UUID, userID stri
 
 func ComputeCompositeHashFromProto(req *pb.AdEvent) uint32 {
 	return cold.ComputeCompositeHashFromProto(req)
+}
+
+func crc32IEEEInplace36(b *[36]byte) uint32 { return cold.Crc32IEEEInplace36(b) }
+
+func rttSplitDeltaMS(rttSyn, ttfbApp uint16) uint16 { return cold.RttSplitDeltaMS(rttSyn, ttfbApp) }
+
+var Count = recon.Count
+
+const (
+	wireSecFetchNavigate = cold.WireSecFetchNavigate
+	wireSecFetchCORS     = cold.WireSecFetchCORS
+	wireSecFetchDocument = cold.WireSecFetchDocument
+	wireSecFetchEmpty    = cold.WireSecFetchEmpty
+	wireSecFetchCross    = cold.WireSecFetchCross
+	wireSecFetchModeBit  = cold.WireSecFetchModeBit
+	wireCHUAMobileUnset  = cold.WireCHUAMobileUnset
+	wireCHUAMobileFalse  = cold.WireCHUAMobileFalse
+	wireCHUAMobileTrue   = cold.WireCHUAMobileTrue
+)
+
+func clientHintsPlatformMismatch(ua, platform string, mobile uint8) bool {
+	return cold.ClientHintsPlatformMismatch(ua, platform, mobile)
+}
+
+func tlsALPNBrowserMismatch(ua, alpn string) bool {
+	return cold.TLSALPNBrowserMismatch(ua, alpn)
+}
+
+func secFetchAnomaly(ua string, present, mode, dest uint8) bool {
+	return cold.SecFetchAnomaly(ua, present, mode, dest)
+}
+
+func parseQuotedField(payload []byte, start int, dst []byte) int {
+	return openrtb.ParseQuotedField(payload, start, dst)
 }
 
 func resetAdEventInPlace(evt *pb.AdEvent) { cold.ResetAdEventInPlace(evt) }

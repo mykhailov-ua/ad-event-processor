@@ -124,7 +124,7 @@ func (m *MicroBatcher) flush(ctx context.Context) {
 	batch := make(map[aggKey]*aggStats)
 	limit := 10000
 
-	for i := range limit {
+	for i := 0; i < limit; i++ {
 		select {
 		case evt := <-m.eventsChan:
 			key := aggKey{IP: evt.IP, CampaignID: evt.CampaignID.String()}

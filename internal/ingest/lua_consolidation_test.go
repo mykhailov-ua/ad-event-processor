@@ -60,7 +60,7 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 
 	reg := &mockRegistry{}
 	f := newRealRedisUnifiedFilter(t, redisClient)
-	f.registry = reg
+	f.SetRegistry(reg)
 	f.SetLuaFastPathEnabled(true)
 	f.SetTTCMin(0)
 	f.SetRegionCode(0)
@@ -93,7 +93,7 @@ func TestUnifiedFilter_LuaConsolidatedPrechecks(t *testing.T) {
 		CampaignRegistry: reg,
 		maxRPD:           1,
 	}
-	f.registry = quotaReg
+	f.SetRegistry(quotaReg)
 	quotaEvt := &domain.Event{
 		Type:       "impression",
 		CampaignID: campID,
@@ -165,7 +165,7 @@ func TestUnifiedFilter_TierDegradationNearDeadline(t *testing.T) {
 
 	reg := &benchWorstRegistry{}
 	f := newRealRedisUnifiedFilter(t, redisClient)
-	f.registry = reg
+	f.SetRegistry(reg)
 	f.SetLuaFastPathEnabled(false)
 	f.SetTTCMin(500 * time.Millisecond)
 	require.NoError(t, f.PreloadScripts(ctx))

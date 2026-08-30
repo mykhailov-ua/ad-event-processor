@@ -1,7 +1,9 @@
 ---
 description: Tracker ingest zero-alloc, parsers, gnet, FilterEngine, SoA, asm, chaos proofs
 globs:
-  - internal/ingestion/**
+  - internal/ingest/**
+  - internal/filter/**
+  - internal/stream/**
   - internal/campaignmodel/**
   - internal/domain/sharding*
   - cmd/tracker/**
@@ -46,7 +48,7 @@ See `architecture.mdc` for full hot/cold boundary.
 | Pattern | Project usage |
 | :--- | :--- |
 | `sync.Pool` | `Event`, buffers, eval wire, OpenRTB scratch (`handler.go` pools) |
-| `unsafe.String` / `unsafe.Slice` | While gnet frame bytes are valid - copy before async (`evt.StringBuffer`, owned `[]byte`) |
+| `unsafe.String` / `unsafe.Slice` | Only over `OffloadHTTPPin`/arena while pinned worker handler runs; copy `Accept`/`Origin` via `string()`; response via `cloneAsyncWriteBytes` before `releaseOffloadBuffers` |
 | Prometheus | Pre-bound counters/histograms with fixed label sets |
 | Stack buffers | `[N]byte` + `append` with known cap; `strconv.AppendInt` into reused buf |
 | Monotonic time | `//go:linkname monotonicNano runtime.nanotime` - no `time.Now` in filter deadline loops |
@@ -92,15 +94,62 @@ Keys: `{campaign_id}` hash tag so multi-key Lua stays on one master. Never Redis
 
 Wire policy, budgets, edge parity, chaos commands: `parser.mdc`. Merge blocked without `TestChaos_CrossHop_NginxGnet` `differential_count=0`.
 
+## Tracker thread model (canonical)
+
+Two tiers. **Do not** document `FilterEngine.Check` as a detached goroutine. Canonical source: `cmd/tracker/doc.go`, `cmd/tracker/wire.go`, `internal/ingest/gnet/server.go`, `internal/ingest/trackwire.go`.
+
+| Tier | Runtime | `LockOSThread` | Sync Redis `EVALSHA` | Returns when |
+| :--- | :--- | :--- | :--- | :--- |
+| **A — gnet epoll** | `gnet.OnTraffic` event loop (`WithLockOSThread(false)`) | No | **Forbidden** | After `SubmitOffloadToWorker` + `Discard` frame |
+| **B — PinnedWorkerPool** | `Worker.start` goroutine per `MAX_WORKERS` | Yes | **Allowed** (sync on worker) | After full `runOffloadedRequest` path |
+
+**Tier A (epoll) — allowed:** peek/parse HTTP, `PinParsedHTTPRequest`, copy bytes to worker arena, enqueue `ConnContext`, metrics.
+
+**Tier A — forbidden:** `FilterEngine.Check`, `processTrack`, synchronous Redis, Postgres, ClickHouse.
+
+**Tier B (pinned worker) — synchronous pipeline on one thread:**
+
+```
+runOffloadedRequest -> React -> parseTrackIngest
+  -> tryAcquireStreamAdmission (TryReserve)
+  -> processTrack -> FilterEngine.Check (incl. EVALSHA when not local-quanta full-skip)
+  -> publishAcceptedTrack
+  -> writeGnetTrackAccepted -> cloneAsyncWriteBytes -> AsyncWrite
+```
+
+- **No** `go func()` around `FilterEngine.Check` on `/track`. `FILTER_TIMEOUT_MS` is a monotonic deadline inside the same worker (`filterDeadlineExceededEvt`).
+- Queue depth **8192 per worker** (not one global queue). Route by conn `WorkerID` (`SubmitOffloadToWorker`).
+- `HTTP1OffloadBusy`: one in-flight offload per HTTP/1 connection.
+- Queue full -> `WorkerPoolRejectTotal`, 503 overload (`TestFault_PinnedWorkerPoolSaturationSpike`).
+
+**Buffer lifetime:**
+
+| Buffer | Lifetime |
+| :--- | :--- |
+| gnet peek frame | Until `Discard` on epoll thread only |
+| `OffloadHTTPPin` | Pinned worker handler (`PinParsedHTTPRequest` copies header/body slices) |
+| Worker arena | Until `releaseOffloadBuffers` after response serialized |
+| `evt` string fields | May reference pin/arena until Tier B handler returns |
+| HTTP response bytes | `cloneAsyncWriteBytes` before arena release; `AsyncWrite` callback frees lease |
+
+**Stale documentation (merge blocker if reintroduced):**
+
+| Lie | Truth |
+| :--- | :--- |
+| `FilterEngine.Check` in detached goroutine | Sync on Tier B pinned worker |
+| Pinned workers return to epoll immediately | **Epoll** returns after enqueue; **workers** block until path completes |
+| Blocking Redis forbidden on pinned workers | Forbidden on **Tier A epoll** only; sync EVALSHA on Tier B is by design |
+| `unsafe.String` lifetime <= gnet read frame | Lifetime <= pin/arena on Tier B worker; frame discarded before filter runs |
+
 ## gnet HTTP FSM
 
 | Rule | Detail |
 | :--- | :--- |
 | HTTP/1.1 | DFA on ring buffer - no `net/http` per request |
-| Workers | `PinnedWorkerPool`: `runtime.LockOSThread()` per worker; route by campaign hash to same core |
-| Queues | MPSC queues: cache-line padded to avoid false sharing |
-| Async filter | After stream admission `TryReserve`, `FilterEngine.Check` (incl. `EVALSHA`) runs in detached goroutine - pinned workers return to epoll loop immediately |
-| Async write | Response written from goroutine; copy `Accept`/`Origin` and event strings before write - no `unsafe.String` over freed frame |
+| Offload | Tier A enqueues to `PinnedWorkerPool`; Tier B runs `React` |
+| Queues | Per-worker MPSC, cache-line padded heads; default depth 8192 per worker |
+| Sync filter | `TryReserve` then synchronous `FilterEngine.Check` on Tier B (incl. `EVALSHA` unless local-quanta full-skip) |
+| Async write | `cloneAsyncWriteBytes` then `releaseOffloadBuffers`; `AsyncWrite` from gnet callback |
 | Microbench ref | HTTP DFA ~539 ns; protobuf ~200 ns; spikes usually Redis/script contention not parse |
 
 ## Filter chain order

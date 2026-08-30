@@ -43,7 +43,7 @@ func TestTCPMSSFilter_lowMSSSignal(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 1
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTCPMSSAnomaly))
+	assert.True(t, acc.Has(FraudReasonTCPMSSAnomaly))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.TCPMSSAnomalyTotal.WithLabelValues("low_mss")))
 }
 
@@ -57,7 +57,7 @@ func TestTCPMSSFilter_normalMSSNoSignal(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 5
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPMSSAnomaly))
+	assert.False(t, acc.Has(FraudReasonTCPMSSAnomaly))
 }
 
 func TestTCPMSSFilter_missingHeaderSkipped(t *testing.T) {
@@ -94,7 +94,7 @@ func TestTCPMSSTunnel_holdoutHomeFiberNormalMSSPasses(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 1460
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPTunnelMSS))
+	assert.False(t, acc.Has(FraudReasonTCPTunnelMSS))
 }
 
 func TestTCPMSSTunnel_holdoutLowMSSResidentialFlags(t *testing.T) {
@@ -110,7 +110,7 @@ func TestTCPMSSTunnel_holdoutLowMSSResidentialFlags(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 1280
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTCPTunnelMSS))
+	assert.True(t, acc.Has(FraudReasonTCPTunnelMSS))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.TCPMSSAnomalyTotal.WithLabelValues("tunnel_mss")))
 }
 
@@ -126,7 +126,7 @@ func TestTCPMSSTunnel_holdoutMobileCarrierSkips(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 1280
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPTunnelMSS))
+	assert.False(t, acc.Has(FraudReasonTCPTunnelMSS))
 }
 
 func TestTCPMSSTunnel_holdoutDatacenterSkips(t *testing.T) {
@@ -143,7 +143,7 @@ func TestTCPMSSTunnel_holdoutDatacenterSkips(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 1280
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPTunnelMSS))
+	assert.False(t, acc.Has(FraudReasonTCPTunnelMSS))
 }
 
 func TestTCPMSSTunnel_holdoutMissingHeaderFailOpen(t *testing.T) {
@@ -157,7 +157,7 @@ func TestTCPMSSTunnel_holdoutMissingHeaderFailOpen(t *testing.T) {
 	evt.IP = "10.0.0.1"
 	evt.TCPMSSSet = 0
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPTunnelMSS))
+	assert.False(t, acc.Has(FraudReasonTCPTunnelMSS))
 }
 
 func TestTCPMSSTunnel_holdoutUnknownASNFailOpen(t *testing.T) {
@@ -172,7 +172,7 @@ func TestTCPMSSTunnel_holdoutUnknownASNFailOpen(t *testing.T) {
 	evt.TCPMSSSet = 1
 	evt.TCPMSS = 1280
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonTCPTunnelMSS))
+	assert.False(t, acc.Has(FraudReasonTCPTunnelMSS))
 }
 
 func TestTCPMSSWireValue(t *testing.T) {

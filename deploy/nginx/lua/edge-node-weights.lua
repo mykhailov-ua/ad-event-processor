@@ -1,3 +1,42 @@
+-- Control /ops/node-weights mirror into ngx.shared.node_weights for weighted tracker peer pick.
+-- Runtime: worker 0 timer NODE_WEIGHTS_SYNC_INTERVAL_SEC default 10 s (init-worker.lua);
+-- all workers read pick_peer_index() from edge-shard-balancer balance phase.
+--
+-- Consumers: edge-shard-balancer.lua pick_peer_index() before slot_map shard fallback.
+-- Peers: edge-tracker-peers.lua unix sockets tracker-0..3 (:8181-8184 logical).
+--
+-- Cache invalidation: purge-then-replace on successful HTTP GET JSON sync.
+-- Zero all w:{idx} for idx in 0..max(#peers.list-1, old_peer_count-1), write new weights, peer_count last.
+-- epoch, epoch_lag, sync_ts updated before w:* purge so stale() stays accurate during replace.
+-- Stale detection: TTL wall-clock on sync_ts (> 2x interval) or epoch_lag > STALE_EPOCH_LAG.
+-- Sync HTTP fail: fail-open on prior weights until stale threshold; then equal-weight or drain freeze.
+--
+-- ngx.shared node_weights (types):
+-- - sync_interval (number): copy of SYNC_INTERVAL_SEC stamped each sync.
+-- - epoch (number): control routing epoch from JSON doc.epoch.
+-- - epoch_lag (number): doc.epoch_lag; stale when > STALE_EPOCH_LAG.
+-- - sync_ts (number unix s): last successful sync wall time.
+-- - peer_count (number): active peer indices 0..n-1.
+-- - w:{idx} (number): fixed-point weight floor(weight * WEIGHT_SCALE); 0 means drained peer.
+--
+-- State machine:
+-- - Cold boot: worker 0 timer at 0 -> sync(); pick_peer_index nil until peer_count > 0.
+-- - Fresh: weighted random by w:* cumulatives; roll from crc32_short(request_id:now) % WEIGHT_SCALE.
+-- - Stale + CONTROL_FAIL_OPEN unset: equal WEIGHT_SCALE per peer (drain freeze semantics off for pick).
+-- - Stale + fail_open false: drain_frozen true; pick still runs equal-weight when stale() in pick loop.
+-- - total weight <= 0: crc32_short fallback % n without weight table.
+--
+-- Constants and limits:
+-- - SYNC_INTERVAL_SEC default 10 (NODE_WEIGHTS_SYNC_INTERVAL_SEC env).
+-- - STALE_EPOCH_LAG 2; stale wall clock = sync_ts older than SYNC_INTERVAL_SEC * STALE_EPOCH_LAG.
+-- - WEIGHT_SCALE 1000000; CONTROL_FAIL_OPEN env 1|true|TRUE skips drain_frozen stale gate.
+-- - CONTROL_URL default unix:///run/ad-event-processor/control/http.sock; HTTP via edge-net.http_get_json.
+--
+-- Forbidden: picking peer without slot_map campaign affinity fallback in edge-shard-balancer.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-node-weights.lua
+-- bash scripts/test/edge/lua_tests.sh
 local _M = {}
 
 local dict = ngx.shared.node_weights
@@ -112,6 +151,15 @@ function _M.sync()
     dict:set("epoch", doc.epoch or 0)
     dict:set("epoch_lag", doc.epoch_lag or 0)
     dict:set("sync_ts", ngx.time())
+
+    local old_peer_count = dict:get("peer_count") or 0
+    local purge_n = #peers.list
+    if old_peer_count > purge_n then
+        purge_n = old_peer_count
+    end
+    for i = 0, purge_n - 1 do
+        dict:set("w:" .. i, 0)
+    end
 
     local max_idx = -1
     for _, node in ipairs(nodes) do

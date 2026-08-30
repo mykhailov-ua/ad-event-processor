@@ -1,3 +1,34 @@
+-- ngx.balancer phase: weighted tracker peer with slot_map Redis-shard affinity fallback.
+-- Runtime: all workers balance phase (balancer_by_lua_file); requires ngx.ctx.campaign_id from edge_track_policy.
+-- No ngx.shared writes; reads slot_map and node_weights SHM only.
+--
+-- Consumers: nginx upstream trackers pool after access-check + edge_track_policy set campaign_id.
+-- Peers: edge-tracker-peers.list unix_socket or host:port; healthcheck from init-worker spawn_checker.
+--
+-- Cache invalidation: none in this file (read-only SHM from edge-slot-map, edge-node-weights).
+--
+-- ngx.ctx outputs (request-scoped):
+-- - campaign_id (string): input from edge_track_policy.
+-- - redis_shard (number): slot_map.get_shard result when non-nil.
+--
+-- State machine (per balance):
+-- - missing campaign_id -> return (nginx default peer).
+-- - slot_map.get_shard(campaign_id) -> optional ngx.ctx.redis_shard.
+-- - idx = node_weights.pick_peer_index(); if nil and shard set -> idx = tonumber(shard).
+-- - idx nil -> return; else set_current_peer(peers.list[idx+1]) unix or TCP.
+--
+-- Invariant (must match Go StaticSlotSharder / sharding_amd64.s):
+-- slot = CRC32C(edge_uuid.normalize_to_bytes(campaign_id)) & 1023; shard = slot_map s:{slot}.
+--
+-- Constants and limits:
+-- - peer_idx = idx + 1 bounded 1..#peers.list; out of range logs WARN and skips set_current_peer.
+--
+-- Forbidden: Jump Hash; random peer when campaign_id present; CRC32 IEEE table; per-request control fetch.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-shard-balancer.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/domain/ -run Sharding -count=1
 local balancer = require "ngx.balancer"
 local slot_map = require "edge-slot-map"
 local node_weights = require "edge-node-weights"

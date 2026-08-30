@@ -1,3 +1,4 @@
+// bpf-collector entrypoint. Package documentation: doc.go.
 package main
 
 import (
@@ -127,6 +128,8 @@ type probeRun struct {
 	coll     *Collection
 	links    []link.Link
 	otel     *otelLogExporter
+	ringMu   sync.Mutex
+	ringRD   *ringbuf.Reader
 	ringWG   sync.WaitGroup
 	sampleWG sync.WaitGroup
 	cancel   context.CancelFunc
@@ -232,6 +235,7 @@ func (r *probeRun) stop() {
 	if r.cancel != nil {
 		r.cancel()
 	}
+	r.closeRingbufReader()
 	r.ringWG.Wait()
 	r.sampleWG.Wait()
 	if r.otel != nil {
@@ -275,7 +279,8 @@ func (r *probeRun) drainRingbuf(ctx context.Context, m *ebpf.Map) {
 		slog.Warn("ringbuf reader", "error", err)
 		return
 	}
-	defer func() { _ = rd.Close() }()
+	r.registerRingbufReader(rd)
+	defer r.releaseRingbufReader(rd)
 	drainRingbufRecords(ctx, rd, r.session.Dir, r.otel)
 }
 

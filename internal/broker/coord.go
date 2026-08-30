@@ -690,7 +690,7 @@ func (c *Coordinator) replicate(ctx context.Context, topic string, leaderID stri
 					_ = cli.Close()
 					cli = nil
 					if errors.Is(fetchErr, log.ErrReplicationGap) {
-						recordReplicationError(topic, "gap")
+						recordReplicationError(topic, "sequence_lag")
 					} else if !errors.Is(fetchErr, io.EOF) {
 						recordReplicationError(topic, "fetch")
 					}

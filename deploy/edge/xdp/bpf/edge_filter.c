@@ -1,5 +1,76 @@
-
-
+/* XDP edge_filter program (deploy/edge/xdp/bpf/edge_filter.c).
+ * Attached by cmd/edge-xdp on INGRESS_INTERFACE; maps synced from Redis via edge-bpf-sync.
+ * License JWT feature: features.ebpf_xdp_edge (not on single_vps SKU).
+ *
+ * Tracker-bound traffic: dest TCP port TRACKER_INGRESS_PORT (default 8180).
+ *
+ * IPv4 lookup order (xdp_edge_filter):
+ *   1. allow_v4 LPM (/32 host key)
+ *   2. blocklist_host_v4 LRU HASH (/32)
+ *   3. blocklist_v4 LPM (/32 host key)
+ *   then syn/rst limits, pps token bucket; optional SYN-cookie tail call.
+ *
+ * IPv6 lookup order (xdp_filter_ipv6_tcp):
+ *   1. allow_v6 LPM (/128)
+ *   2. blocklist_host_v6 LRU HASH
+ *   3. blocklist_v6 LPM (/128)
+ *
+ * Map max_entries:
+ *   blocklist_v4/v6, blocklist_host_v4/v6: 786432
+ *   allow_v4/v6: 65536
+ *   syn_ratelimit_v4: 786432; syn_subnet_ratelimit_v4: 65536
+ *   ratelimit_v4, rst_ratelimit_v4: 1048576
+ *   global_syn: 1 (per-CPU array); config: 1; prog_array: 1
+ *   violations, fingerprints ringbufs: 256 KiB each
+ *
+ * Cross-layer (Redis -> userspace -> kernel maps; parallel L7 path):
+ *   control outbox / admin / fraud worker
+ *     -> Redis SET blacklist:manual|auto|fraud (+ ZSET blacklist:changelog:add|remove)
+ *     -> edge-bpf-sync: LoadPinned maps, BlocklistStore shadow, Update/Delete
+ *     -> this program: bpf_map_lookup_elem only (no writes on deny maps)
+ *   parallel: edge-blacklist-sync.lua -> ngx.shared _bl_ver / b:{ip} (access-check.lua L7)
+ *
+ * Memory Model Rules:
+ *
+ * Allow-before-deny (fail-open for allowlisted host):
+ *   IPv4: allow_v4 LPM lookup before any deny map. Match -> XDP_PASS (XDP_STAT_PASS_ALLOWLIST).
+ *   Deny never evaluated when allow /32 hits. Userspace skips protected IPs on sync
+ *   (edge.IsProtected -> no Update into deny maps).
+ *
+ * blocklist_host_* LRU HASH (786432 entries):
+ *   Host /32 (v4) or full IPv6 addr keys populated by edge-bpf-sync via ebpf.UpdateAny.
+ *   Kernel evicts least-recently-used entry when map is full and a new key is inserted.
+ *   XDP has no bpf_map_delete_elem on deny maps; no in-program delete path.
+ *   Userspace remove path: BlocklistStore.applyHostRemove -> maps.V4Host.Delete (changelog
+ *   or full ApplyDiff). LPM deny maps (blocklist_v4/v6) use explicit Delete on remove too.
+ *
+ * LRU eviction vs userspace shadow (invalidation pattern: bpf_lru_implicit):
+ *   When occupied >= max_entries before insert, edge-bpf-sync increments
+ *   ad_edge_blocklist_lru_eviction_total (recordLRUEvictionBeforeInsert). Kernel may drop
+ *   a cold host entry while BlocklistStore.hosts still lists it until the next 5 min full
+ *   SMEMBERS resync (SyncBlocklistFromRedis ApplyDiff) reconciles shadow to Redis truth.
+ *
+ * L7 generational cache (invalidation pattern: l7_generational_full | l7_generational_incremental):
+ *   Not read by this program. ngx.shared bumps _bl_ver on full SMEMBERS sync; incremental
+ *   quarantine stamps b:{ip} without version bump. Stale b:{ip} with ip_ver != _bl_ver passes L7.
+ *
+ * violations ringbuf (256 KiB, BPF_MAP_TYPE_RINGBUF):
+ *   emit_violation on SYN / global SYN / SYN-subnet / PPS drops when SYN-cookie tail call
+ *   is not taken. Reasons: VIOLATION_SYN=1, VIOLATION_GLOBAL_SYN=2, VIOLATION_PPS=3,
+ *   VIOLATION_SYN_SUBNET=4. bpf_ringbuf_reserve failure is silent (event dropped, packet
+ *   still XDP_DROP). edge-bpf-sync drains -> RecordAutoBan -> Redis -> changelog -> map sync.
+ *
+ * fingerprints ringbuf:
+ *   emit_fingerprint on SYN when CFG_FLAG_FINGERPRINT set. Reserve failure silent.
+ *   Drain -> edge.Record -> Redis edge:tcp_fp:* (L7 OS fingerprint headers, not blocklist).
+ *
+ * prog_array tail call (index PROG_IDX_SYN_COOKIE=0):
+ *   try_syn_cookie -> bpf_tail_call(ctx, &prog_array, 0) -> xdp_syn_cookie program.
+ *   Wired by cmd/edge-xdp wireProgArray when XdpSynCookie object loaded and
+ *   CFG_FLAG_SYN_COOKIE set. Tail-call miss (prog not loaded) falls through to XDP_DROP.
+ *
+ * Verify: make gen bpf-dev; go test ./internal/edge/... -count=1
+ */
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
 #include <linux/in.h>

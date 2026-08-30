@@ -23,14 +23,10 @@ func TestTelegramClickWorkerPoolNoDoubleParse(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://offer.example/lp",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{benchClickBrandID: {{
+		URL:    "https://offer.example/lp",
+		Weight: 100,
+	}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)

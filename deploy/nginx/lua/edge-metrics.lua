@@ -1,14 +1,54 @@
+-- Monotonic edge counters in ngx.shared.edge_metrics; Prometheus text on /edge/metrics content handler.
+-- Runtime: all workers incr on access phase (access-check, edge_track_policy, edge-ingress, edge-tarpit);
+-- render_prometheus() on content handler only (nginx.conf /edge/metrics location).
+--
+-- Consumers: access-check.lua perimeter/circuit; edge_track_policy.lua body/RL rejects;
+-- edge-ingress.lua ingress_protocol; edge-tarpit.lua tarpit_*; blacklist gauges read-only from blacklist_cache.
+--
+-- Cache invalidation: monotonic incr (no TTL, no delete); keys grow by fixed catalog only.
+-- ingress_protocol:{proto}_total uses fixed proto set h1|h2|h3. Fail-open: incr miss logs ERR in ngx.shared impl only.
+--
+-- ngx.shared edge_metrics (counter keys, number):
+-- - perimeter_pass_total, track_policy_pass_total, body_read_total.
+-- - circuit_reject_total, blocked_ip_total, blocked_campaign_rl_total, blocked_fraud_tier_total.
+-- - parse_oversize_total, body_stream_total, body_peek_total, chunked_reject_total.
+-- - ingress_protocol:http/1.1_total, ingress_protocol:h2_total, ingress_protocol:h3_total.
+-- - blacklist_stale_total, tarpit_total, tarpit_delay_ms_total.
+--
+-- ngx.shared blacklist_cache (gauge sources, read-only here):
+-- - _bl_sync_ts (number unix s): last successful blacklist stamp -> ad_event_processor_edge_sync_last_success_timestamp.
+-- - _bl_count (number): deduped active IP estimate -> ad_event_processor_edge_blacklist_entries.
+--
+-- ngx.shared edge_config (gauge sources, read-only here):
+-- - _asn_cdn_count, _asn_mobile_count (number): stamped ASN keys at last config sync.
+-- - dict:free_space() -> ad_event_processor_edge_config_free_bytes.
+--
+-- State machine: cold zero -> per-request incr on branch taken -> render reads snapshot sums (not reset).
+--
+-- Constants and limits:
+-- - tarpit_delay_ms_total accumulates floor(delay_sec * 1000); negative delay clamped to 0.
+-- - Prometheus export prefix ad_event_processor_edge_* (fixed label set; no per-request label keys).
+--
+-- HTTP status mapping (callers):
+-- - 403 blocked IP, fraud tier block; 411 chunked /track; 413 oversize; 429 campaign RL; 503 circuit or blacklist stale.
+--
+-- Forbidden: dynamic per-request metric label keys beyond fixed ingress_protocol:* set.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-metrics.lua
+-- bash scripts/test/edge/lua_tests.sh
 local _M = {}
 
 local metrics = ngx.shared.edge_metrics
 local blacklist_cache = ngx.shared.blacklist_cache
+local edge_config = ngx.shared.edge_config
 
-function _M.record_phase1_pass()
-    metrics:incr("phase1_pass_total", 1, 0)
+function _M.record_perimeter_pass()
+    metrics:incr("perimeter_pass_total", 1, 0)
 end
 
-function _M.record_phase2_pass()
-    metrics:incr("phase2_pass_total", 1, 0)
+function _M.record_track_policy_pass()
+    metrics:incr("track_policy_pass_total", 1, 0)
 end
 
 function _M.record_body_read()
@@ -73,8 +113,8 @@ end
 function _M.render_prometheus()
     ngx.header["Content-Type"] = "text/plain; version=0.0.4; charset=utf-8"
 
-    local phase1_pass = metrics:get "phase1_pass_total" or 0
-    local phase2_pass = metrics:get "phase2_pass_total" or 0
+    local perimeter_pass = metrics:get "perimeter_pass_total" or 0
+    local track_policy_pass = metrics:get "track_policy_pass_total" or 0
     local body_read = metrics:get "body_read_total" or 0
     local circuit_reject = metrics:get "circuit_reject_total" or 0
     local blocked_ip = metrics:get "blocked_ip_total" or 0
@@ -92,18 +132,21 @@ function _M.render_prometheus()
     local tarpit_delay_ms = metrics:get "tarpit_delay_ms_total" or 0
     local sync_ts = blacklist_cache:get "_bl_sync_ts" or 0
     local bl_count = blacklist_cache:get "_bl_count" or 0
+    local asn_cdn_count = edge_config:get "_asn_cdn_count" or 0
+    local asn_mobile_count = edge_config:get "_asn_mobile_count" or 0
+    local config_free_bytes = edge_config:free_space() or 0
 
     say_metric(
-        "ad_event_processor_edge_phase1_pass_total",
+        "ad_event_processor_edge_perimeter_pass_total",
         "counter",
-        "Requests that passed phase-1 edge checks (circuit breaker, IP blacklist).",
-        phase1_pass
+        "Requests that passed perimeter checks (circuit breaker, IP blacklist).",
+        perimeter_pass
     )
     say_metric(
-        "ad_event_processor_edge_phase2_pass_total",
+        "ad_event_processor_edge_track_policy_pass_total",
         "counter",
-        "Requests that passed phase-2 edge checks (body read, parse, campaign RL).",
-        phase2_pass
+        "Requests that passed body read, parse, and campaign rate-limit checks.",
+        track_policy_pass
     )
     say_metric(
         "ad_event_processor_edge_body_read_total",
@@ -144,13 +187,13 @@ function _M.render_prometheus()
     say_metric(
         "ad_event_processor_edge_body_stream_total",
         "counter",
-        "Phase-2 stream mode: no read_body, body proxied without Lua buffering.",
+        "Track policy stream mode: no read_body, body proxied without Lua buffering.",
         body_stream
     )
     say_metric(
         "ad_event_processor_edge_body_peek_total",
         "counter",
-        "Phase-2 peek mode: cosocket read of scan window only.",
+        "Track policy peek mode: cosocket read of scan window only.",
         body_peek
     )
     say_metric(
@@ -210,8 +253,26 @@ function _M.render_prometheus()
     say_metric(
         "ad_event_processor_edge_blacklist_entries",
         "gauge",
-        "Blocked IPs in the last successful blacklist sync.",
+        "Deduped blocked IPs at current blacklist generation (full sync or incremental adds).",
         bl_count
+    )
+    say_metric(
+        "ad_event_processor_edge_asn_cdn_entries",
+        "gauge",
+        "CDN ASN whitelist stamps written at last edge_config sync.",
+        asn_cdn_count
+    )
+    say_metric(
+        "ad_event_processor_edge_asn_mobile_entries",
+        "gauge",
+        "Mobile ASN whitelist stamps written at last edge_config sync.",
+        asn_mobile_count
+    )
+    say_metric(
+        "ad_event_processor_edge_config_free_bytes",
+        "gauge",
+        "Free bytes remaining in ngx.shared edge_config SHM zone.",
+        config_free_bytes
     )
 end
 

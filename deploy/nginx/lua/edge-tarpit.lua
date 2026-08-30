@@ -1,3 +1,29 @@
+-- Optional edge tarpit: bounded ngx.sleep delay for abusive header/body shapes at L7 perimeter.
+-- Runtime: all workers access phase (access-check.lua after perimeter_gate, before edge-ingress).
+-- No ngx.shared; config from env at module load (reload_config); edge-metrics tarpit counters on delay.
+--
+-- Consumers: access-check.lua edge_tarpit.maybe_delay(); compliance.mdc caps duration on edge only.
+--
+-- Cache invalidation: none (env-driven ENABLED flag; set_getenv_for_test for lua_tests tarpit).
+--
+-- State machine:
+-- - EDGE_TARPIT_ENABLED false (default) -> maybe_delay no-op.
+-- - enabled: count request headers; read content_length; compute_delay -> ngx.sleep if delay > 0.
+--
+-- Constants and limits:
+-- - EDGE_TARPIT_MAX_HEADERS default 64.
+-- - EDGE_TARPIT_BODY_BYTES default 65536.
+-- - EDGE_TARPIT_MAX_SEC default 2; hard cap 15 s; negative clamped to 0.
+-- - Header delay: min(MAX_SEC, 0.25 + (headers - MAX_HEADERS) * 0.05).
+-- - Body delay: min(MAX_SEC, 0.5 + (content_length - MAX_BODY) / MAX_BODY); max of header/body terms wins.
+--
+-- Failure modes: disabled -> no-op; enabled -> adds latency only (request still proceeds to tracker).
+--
+-- Forbidden: unbounded sleep; tarpit on tracker unix upstream sockets or billing/settlement paths.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-tarpit.lua
+-- bash scripts/test/edge/lua_tests.sh tarpit
 local edge_metrics = require "edge-metrics"
 
 local _M = {}

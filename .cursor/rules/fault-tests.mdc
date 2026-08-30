@@ -70,7 +70,7 @@ Pass criteria:
 - `differential_count=0` (edge vs gnet same verdict).
 - Control cohort p99 < 80 ms under sustained chaos (`parser_chaos_load.sh`).
 - `WorkerPoolRejectTotal` delta 0 during chaos load.
-- Chaos tests log `fault_proof gap=closed` when fixed.
+- Chaos tests log `fault_proof proof=closed` when fixed.
 
 Slow-body DoS:
 

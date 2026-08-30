@@ -129,7 +129,7 @@ func TestClickDmrEnabled(t *testing.T) {
 func TestWriteGnetClickDmrRedirect_PreSizesConnBuf(t *testing.T) {
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
-	ctx := &connContext{bufSlice: make([]byte, 0, 4096)}
+	ctx := &connContext{BufSlice: make([]byte, 0, 4096)}
 	longURL := make([]byte, 3500)
 	copy(longURL, "https://offer.test/")
 	for i := len("https://offer.test/"); i < len(longURL); i++ {
@@ -140,16 +140,16 @@ func TestWriteGnetClickDmrRedirect_PreSizesConnBuf(t *testing.T) {
 
 	conn := NewGnetHarnessConn(nil)
 	h.writeGnetClickDmrRedirect(ctx, conn, 0, longURL)
-	require.GreaterOrEqual(t, cap(ctx.bufSlice), need)
+	require.GreaterOrEqual(t, cap(ctx.BufSlice), need)
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
 }
 
 func TestWriteGnetClickDmrRedirect_reusesBufSliceNoCorruption(t *testing.T) {
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", nil)
-	ctx := &connContext{bufSlice: make([]byte, 0, 4096)}
-	ctx.bufSlice = append(ctx.bufSlice[:0], "https://offer.example/lp?cid=click-1&token=abc&sub1=test"...)
-	location := ctx.bufSlice
+	ctx := &connContext{BufSlice: make([]byte, 0, 4096)}
+	ctx.BufSlice = append(ctx.BufSlice[:0], "https://offer.example/lp?cid=click-1&token=abc&sub1=test"...)
+	location := ctx.BufSlice
 	conn := NewGnetHarnessConn(nil)
 	h.writeGnetClickDmrRedirect(ctx, conn, 0, location)
 	require.Equal(t, http.StatusOK, ParseGnetHTTPStatus(conn.Written()))
@@ -183,11 +183,11 @@ func BenchmarkWriteGnetClickDmrRedirect_ConnBufCap4096(b *testing.B) {
 		url[i] = 'x'
 	}
 	var ctx connContext
-	ctx.bufSlice = make([]byte, 0, 4096)
+	ctx.BufSlice = make([]byte, 0, 4096)
 	conn := NewGnetHarnessConn(nil)
 	b.ReportAllocs()
 	for b.Loop() {
-		ctx.bufSlice = ctx.bufSlice[:0]
+		ctx.BufSlice = ctx.BufSlice[:0]
 		h.writeGnetClickDmrRedirect(&ctx, conn, 0, url)
 	}
 }

@@ -57,12 +57,12 @@ func TestEnsureIngestGeo_cachesAnonymousForFraudFilter(t *testing.T) {
 func TestBrandCreativeStore_selectCreative_weightedZeroAlloc(t *testing.T) {
 	store := NewBrandCreativeStore(nil, 0)
 	brandID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
-	store.cache.Store(&brandCreativeMapSnapshot{byBrand: map[uuid.UUID][]brandCreativeEntry{
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{
 		brandID: {
 			{ID: "a", URL: "https://a.example", Weight: 70},
 			{ID: "b", URL: "https://b.example", Weight: 30},
 		},
-	}})
+	})
 	ctx := context.Background()
 	for range 100 {
 		_ = store.SelectLandingURLBytes(ctx, brandID, "sticky-user", nil)

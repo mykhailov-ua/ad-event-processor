@@ -285,6 +285,10 @@ func (f *UnifiedFilter) localQuantaActive() bool {
 	return f.localQuotaMode == "shadow" || f.localQuotaMode == "live"
 }
 
+func (f *UnifiedFilter) LocalQuantaEligible(evt *domain.Event, campInfo *domain.Campaign) bool {
+	return f.localQuantaEligible(evt, campInfo)
+}
+
 func (f *UnifiedFilter) localQuantaEligible(evt *domain.Event, campInfo *domain.Campaign) bool {
 	if f.localQuantaLedger == nil || !f.localQuantaActive() {
 		return false
@@ -404,6 +408,10 @@ func (f *UnifiedFilter) rollbackLocalQuantaSpend(campaignID uuid.UUID, subSlot i
 	}
 }
 
+func (f *UnifiedFilter) AcceptLocalQuantaFullSkip(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
+	return f.acceptLocalQuantaFullSkip(ctx, evt, campInfo, amountMicro, subSlot)
+}
+
 func (f *UnifiedFilter) acceptLocalQuantaFullSkip(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
 	if f.localClickIdem != nil && !f.localClickIdem.TryClaim(evt.ClickID) {
 		metrics.FilterLuaBranchTotal.WithLabelValues("duplicate").Inc()
@@ -504,14 +512,23 @@ func (f *ResidentialProxyFilter) Check(ctx context.Context, evt *domain.Event) e
 }
 
 const (
-	luaReturnDailyQuota   int64 = 12
-	luaReturnPlacement    int64 = 14
-	luaReturnTierDegraded int64 = 20
-	luaReturnFraudSignal  int64 = 21
+	LuaReturnDailyQuota   int64 = 12
+	LuaReturnPlacement    int64 = 14
+	LuaReturnTierDegraded int64 = 20
+	LuaReturnFraudSignal  int64 = 21
+
+	luaReturnDailyQuota   = LuaReturnDailyQuota
+	luaReturnPlacement    = LuaReturnPlacement
+	luaReturnTierDegraded = LuaReturnTierDegraded
+	luaReturnFraudSignal  = LuaReturnFraudSignal
 
 	luaPrecheckIngressTTLSec = 28 * 3600
 	luaDegradeThresholdNs    = int64(2_000_000)
 )
+
+func LuaBranchLabel(res int64) string {
+	return luaBranchLabel(res)
+}
 
 func luaBranchLabel(res int64) string {
 	switch res {
@@ -603,6 +620,16 @@ func (f *UnifiedFilter) ConfigureCGNAT(globalBypass bool, table *filt.MobileCarr
 	f.asnLookup = lookup
 }
 
+func (f *UnifiedFilter) ApplyLuaGoPrechecks(
+	ctx context.Context,
+	evt *domain.Event,
+	campInfo *domain.Campaign,
+	redisClient redis.UniversalClient,
+	now time.Time,
+) error {
+	return f.applyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now)
+}
+
 func (f *UnifiedFilter) applyLuaGoPrechecks(
 	ctx context.Context,
 	evt *domain.Event,
@@ -666,6 +693,10 @@ func ttcEnabled(ttcMinMsAny any) bool {
 	default:
 		return false
 	}
+}
+
+func (f *UnifiedFilter) NeedsFullLuaPath(evt *domain.Event, campInfo *domain.Campaign) bool {
+	return f.needsFullLuaPath(evt, campInfo)
 }
 
 func (f *UnifiedFilter) needsFullLuaPath(evt *domain.Event, campInfo *domain.Campaign) bool {

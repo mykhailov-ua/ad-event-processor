@@ -1,0 +1,121 @@
+paths:
+  /api/v1/traffic-optimizer/presets:
+    get:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerListPresets
+      summary: List bundled traffic optimizer presets
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Preset catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/TrafficOptimizerPreset'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/traffic-optimizer/rules:
+    get:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerListRules
+      summary: List traffic optimizer rules for a customer
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+      responses:
+        '200':
+          description: Traffic optimizer rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../components/schemas/integrations.yaml#/TrafficOptimizerRule'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    post:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerCreateRule
+      summary: Create traffic optimizer rule
+      description: Creates rule; returns 501 when writes are disabled.
+      x-permissions: [campaigns:write]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertTrafficOptimizerRuleRequest'
+      responses:
+        '201':
+          description: Rule created
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/TrafficOptimizerRule'
+        '501':
+          description: Not implemented
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/traffic-optimizer/rules/{id}:
+    put:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerUpdateRule
+      summary: Update traffic optimizer rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../components/schemas/integrations.yaml#/UpsertTrafficOptimizerRuleRequest'
+      responses:
+        '200':
+          description: Rule updated
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/TrafficOptimizerRule'
+        '501':
+          description: Not implemented
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+    delete:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerDeleteRule
+      summary: Delete traffic optimizer rule
+      x-permissions: [campaigns:write]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '204':
+          description: Rule deleted
+        '501':
+          description: Not implemented
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/traffic-optimizer/rules/{id}/dry-run:
+    post:
+      tags: [traffic-optimizer]
+      operationId: trafficOptimizerDryRunRule
+      summary: Dry-run traffic optimizer rule against current ClickHouse metrics
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Proposed weights per arm
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/TrafficOptimizerDryRunResult'
+        '501':
+          description: Not implemented
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

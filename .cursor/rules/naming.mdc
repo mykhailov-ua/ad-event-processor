@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Purpose
 
-Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Go receivers: `quality.mdc`. Package layout: `structure.mdc`. Root clutter: `core.mdc`.
+Always applied on every agent turn and every file edit. Forbid cryptic identifiers and legacy product tokens. Enforce semantic clarity aligned with `lead-intent-processor`. Go receivers: `quality.mdc`. Comments: `comments.mdc`. Package layout: `structure.mdc`. Root clutter: `core.mdc`.
 
 ## Forbidden trash naming
 
@@ -38,7 +38,7 @@ Backlog files in `deploy/vendor/` are removed; cross-reference by semantic slug 
 
 CI: `bash scripts/ci/naming/legacy_naming.sh` rejects `GAP-<TEAM>-<digits>` in `README.md`, `docs/`, `deploy/vendor/`, `.cursor/rules/`.
 
-Exception: `fault_proof gap=open` in fault tests is telemetry, not a backlog ID (`fault-tests.mdc`).
+Exception: `fault_proof proof=open` in fault tests is telemetry, not a backlog ID (`fault-tests.mdc`).
 
 ## Legacy token ban
 
@@ -172,19 +172,6 @@ type ClickHouseStore struct {
 }
 ```
 
-## Comments
-
-Prefer self-documenting names. No narrative `//` or block docs in production `.go` except:
-
-| Keep | Where |
-| :--- | :--- |
-| Toolchain / linter | `//go:build`, `//go:generate`, `//go:embed`, `//go:noinline`, `//go:noescape`, `//garble:ignore`, `//nolint:...` |
-| Shell | `#!/usr/bin/env bash`, `# shellcheck disable=...` in `scripts/**/*.sh` |
-| Disabled logic | Valid code commented out; no prose above it |
-| Package boundary | `doc.go` = `//` package docs then `package <name>` (`modular-monolith.mdc`) |
-
-Strip other comments when editing a file. Do not put routes or verify prose in `doc.go` (paths with `/*` break block parsers).
-
 ## Related rules
 
-`anti-slop.mdc`, `code-style.mdc`, `core.mdc`, `quality.mdc`, `structure.mdc`.
+`anti-slop.mdc`, `code-style.mdc`, `comments.mdc`, `core.mdc`, `quality.mdc`, `structure.mdc`.

@@ -8,6 +8,7 @@ import (
 	"ad-event-processor/internal/domain"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const chromeDesktopUAJA4 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -47,9 +48,13 @@ func TestJA4BrowserCorpus_holdoutWebViewBypass(t *testing.T) {
 func TestParseJA4BrowserCorpus_embedded(t *testing.T) {
 	snap := parseJA4BrowserCorpus(ja4BrowserCorpusEmbed)
 	assert.NotNil(t, snap)
-	assert.GreaterOrEqual(t, len(snap.prefixFamilies), 8)
-	assert.Equal(t, tlsBrowserChrome, snap.prefixFamilies["t13d1516h2"])
-	assert.Equal(t, tlsBrowserGo, snap.prefixFamilies["t13i0408"])
+	assert.GreaterOrEqual(t, snap.PrefixFamilyCount(), 8)
+	chromeFamily, ok := snap.PrefixFamily("t13d1516h2")
+	require.True(t, ok)
+	assert.Equal(t, tlsBrowserChrome, chromeFamily)
+	goFamily, ok := snap.PrefixFamily("t13i0408")
+	require.True(t, ok)
+	assert.Equal(t, tlsBrowserGo, goFamily)
 }
 
 func TestDeviceFilter_ja4BrowserCorpus(t *testing.T) {
@@ -64,7 +69,7 @@ func TestDeviceFilter_ja4BrowserCorpus(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 
 	assert.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSJA4Mismatch))
+	assert.True(t, acc.Has(FraudReasonTLSJA4Mismatch))
 }
 
 func domainEventWithJA4(ua, ja4 string) *domain.Event {

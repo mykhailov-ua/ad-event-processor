@@ -1,3 +1,32 @@
+-- Stage XDP-written TCP SYN fingerprints from Redis into ngx.shared.tcp_fp_cache for L7 header forward.
+-- Runtime: worker 0 timer TCP_FP_SYNC_INTERVAL_SEC default 2 s (init-worker.lua); connect via edge-blacklist-sync.
+--
+-- Consumer: edge-ingress.lua reads tcp_fp_cache on access phase -> X-TCP-MSS/TTL/WINDOW/SIG upstream headers.
+--
+-- Redis keys (shard 0 staging, written by edge-xdp):
+-- - edge:tcp_fp:recent ZSET; member {ip}:{tcp_hash_hex}; ZREVRANGE 0 511 picks hot IPs.
+-- - edge:tcp_fp:ip:{ip} HASH fields ttl, window, mss, tcp_hash (Redis TTL 1 h).
+--
+-- ngx.shared tcp_fp_cache mapping (each set TTL 3600 s):
+-- - {ip}           -> mss (0..255)
+-- - t:{ip}         -> ttl (0..255)
+-- - w:{ip}         -> window (0..65535)
+-- - h:{ip}         -> tcp_hash 8-char hex sig
+--
+-- sync pipeline: ZREVRANGE recent -> parse ip from member -> HMGET pipeline per ip -> validate ranges -> cache:set.
+-- Empty recent set: return true (no SHM mutation).
+--
+-- Failure branches (prior tcp_fp_cache entries retained):
+-- - tcp_fp_cache dict missing: return false.
+-- - connect_any_shard fail: return false.
+-- - ZREVRANGE or pipeline fail: return false; init-worker logs WARN, reschedules timer.
+--
+-- Forbidden: Redis read in access phase; claiming tcp_fp replaces tracker FilterEngine or blocks all fraud.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-tcp-fp-sync.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/edge/... -count=1
 local blacklist_sync = require "edge-blacklist-sync"
 
 local _M = {}

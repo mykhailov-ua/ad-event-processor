@@ -48,6 +48,14 @@ func chaosChunkedHTTP1(body []byte, chunkCount int) []byte {
 	return append(wire, "0\r\n\r\n"...)
 }
 
+func chaosWSBomb(prefixLen int, suffix string) []byte {
+	data := make([]byte, 0, prefixLen+len(suffix))
+	for range prefixLen {
+		data = append(data, ' ')
+	}
+	return append(data, suffix...)
+}
+
 func TestChaos_ParserIngress_2026(t *testing.T) {
 	t.Run("C-H04_chunked_50_fragments", func(t *testing.T) {
 		body := []byte(`{"id":"req-1","imp":[{"id":"1"}]}`)

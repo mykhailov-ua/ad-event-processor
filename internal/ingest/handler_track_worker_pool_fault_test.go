@@ -41,8 +41,8 @@ func TestFault_PinnedWorkerPoolSaturationSpike(t *testing.T) {
 	started := make(chan struct{}, p1WorkerPoolWorkers)
 	for range p1WorkerPoolWorkers {
 		ctx := &connContext{
-			offloadOnEnter: func() { started <- struct{}{} },
-			offloadBlock:   unblock,
+			OffloadOnEnter: func() { started <- struct{}{} },
+			OffloadBlock:   unblock,
 		}
 		require.True(t, pool.SubmitOffload(ctx, nil))
 	}
@@ -50,7 +50,7 @@ func TestFault_PinnedWorkerPoolSaturationSpike(t *testing.T) {
 		<-started
 	}
 	for range p1WorkerPoolQueue {
-		require.True(t, pool.SubmitOffload(&connContext{offloadBlock: unblock}, nil))
+		require.True(t, pool.SubmitOffload(&connContext{OffloadBlock: unblock}, nil))
 	}
 
 	before := testutil.ToFloat64(metrics.WorkerPoolRejectTotal)

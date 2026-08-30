@@ -69,7 +69,7 @@ func TestRtbBudgetReconcileWorker_sample(t *testing.T) {
 		[]redis.UniversalClient{redisClient},
 		NewJumpHashSharder(1),
 	)
-	worker.sample(ctx)
+	worker.Sample(ctx)
 	assert.Greater(t, testutil.ToFloat64(metrics.RtbBudgetReconcileSamplesTotal), before)
 }
 

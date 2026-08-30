@@ -1,3 +1,4 @@
+// patch-vtproto-hotpath entrypoint. Package documentation: doc.go.
 package main
 
 import (

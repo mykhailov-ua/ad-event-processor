@@ -21,14 +21,10 @@ func benchSafePageCampaign(b *testing.B) (*AdsPacketHandler, uuid.UUID) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://money.example/lp?cid={click_id}",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{benchClickBrandID: {{
+		URL:    "https://money.example/lp?cid={click_id}",
+		Weight: 100,
+	}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	engine := NewFilterEngine(0, &countingFilter{})
@@ -54,8 +50,8 @@ func BenchmarkClickRedirectGnet_forceSafe(b *testing.B) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
 	for b.Loop() {
-		conn.written = conn.written[:0]
-		conn.responses = conn.responses[:0]
+		conn.ClearWritten()
+		conn.ClearResponses()
 		h.React(req, conn)
 	}
 }
@@ -75,8 +71,8 @@ func BenchmarkSafePageStubGnet_E2E(b *testing.B) {
 	h.React(req, conn)
 	b.ReportAllocs()
 	for b.Loop() {
-		conn.written = conn.written[:0]
-		conn.responses = conn.responses[:0]
+		conn.ClearWritten()
+		conn.ClearResponses()
 		h.React(req, conn)
 	}
 }
@@ -109,8 +105,8 @@ func BenchmarkTrackVerifyGnet_E2E(b *testing.B) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(inbound)))
 	for b.Loop() {
-		conn.written = conn.written[:0]
-		conn.responses = conn.responses[:0]
+		conn.ClearWritten()
+		conn.ClearResponses()
 		h.React(req, conn)
 	}
 }

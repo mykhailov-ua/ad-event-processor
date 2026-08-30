@@ -7,6 +7,7 @@ import (
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/internal/regionproxy"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/pkg/dedupkey"
 
@@ -36,7 +37,7 @@ func TestProxyUplink_IngestUsesOperationLease(t *testing.T) {
 	var buf [256]byte
 	factorU := dedupkey.FactorU(dedupkey.WriteCanonicalProxyBatchPayload(buf[:0], 42, payload))
 	opID := uuid.New()
-	in := RegionIngestBatchInput{
+	in := regionproxy.BatchInput{
 		RegionCode: 1,
 		NodeID:     "proxy-node-1",
 		Seq:        42,

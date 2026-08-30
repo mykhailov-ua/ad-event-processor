@@ -1,3 +1,20 @@
+// Session directory metadata: targets.json input and session.json lifecycle output.
+//
+// Role:
+//   - openSession reads targets.json (required); MkdirAll session dir 0o755.
+//   - markEnded sets ended_at UTC and rewrites session.json on graceful shutdown.
+//
+// Topology:
+//   - Written by bpf_resolve_targets.sh / loadgen session bootstrap; consumed by probeRun at start.
+//   - events.ndjson append contract lives in ringbuf.go (one JSON object per slow ringbuf record).
+//
+// Invariants:
+//   - Missing or invalid targets.json fails openSession (probe start exits 1, fail-closed boot).
+//   - Targets slice is authoritative initial PID/cgroup/role set before discover/refresh loops.
+//   - session.json StartedAt set at open; EndedAt only on graceful markEnded (TTL for session completeness).
+//
+// Verify:
+//   ls var/load-test/<session>/targets.json session.json events.ndjson
 package main
 
 import (

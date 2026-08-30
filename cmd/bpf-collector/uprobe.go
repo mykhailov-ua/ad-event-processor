@@ -1,3 +1,22 @@
+// Tracker uprobes for process_track and filter_check marker histograms.
+//
+// Role:
+//   - attachUprobes opens tracker binary and links mark_* BPF programs to Go traceprobe symbols.
+//   - resolveGoSymbol matches full symbol or traceprobe suffix fallback via ELF dynamic table.
+//
+// Topology:
+//   - Binary from -tracker-binary, /proc/<tracker-pid>/exe, or /proc/<pid>/root/tracker.
+//   - Requires tracker built with ad_event_processor_bpf_trace build tag (naming.BPFTraceBuildTag).
+//
+// Invariants:
+//   - Missing binary or symbols logs info/warn; probe session continues without uprobes.
+//   - Each successful Uprobe appended to probeRun.links for Close on stop.
+//
+// Forbidden:
+//   - Uprobe marker p99 in summary.json is not /track handler p99 (use Prometheus + load-report prom).
+//
+// Verify:
+//   go build -tags ad_event_processor_bpf_trace -o bin/tracker ./cmd/tracker/
 package main
 
 import (

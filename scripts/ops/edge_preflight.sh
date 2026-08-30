@@ -53,13 +53,13 @@ else
 fi
 
 run_check "nginx edge metrics" bash -c '
-	curl -sf --max-time 3 http://127.0.0.1:8180/metrics/edge | grep -q ad_event_processor_edge_phase1_pass_total
+	curl -sf --max-time 3 http://127.0.0.1:8180/metrics/edge | grep -q ad_event_processor_edge_perimeter_pass_total
 ' || warn "nginx :8180 /metrics/edge unreachable (start full stack)"
 
 run_check "prometheus baseline snapshot" bash "$SCRIPTS/ops/baseline.sh" snapshot || true
 
 if [[ "$fail" -ne 0 && "$STRICT" == "1" ]]; then
-  die "one or more Phase 0 checks failed (STRICT=1)"
+  die "one or more edge preflight checks failed (STRICT=1)"
 fi
 
-log "Phase 0 preflight complete (see var/edge-baseline/latest.txt)"
+log "edge preflight complete (see var/edge-baseline/latest.txt)"

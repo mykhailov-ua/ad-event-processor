@@ -1,3 +1,4 @@
+// alertmanager-telegram HTTP bridge entrypoint. Package documentation: doc.go.
 package main
 
 import (

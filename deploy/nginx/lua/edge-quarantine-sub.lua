@@ -1,3 +1,27 @@
+-- Redis pub/sub incremental blacklist stamps; complements periodic full sync in edge-blacklist-sync.
+-- Runtime: worker 0 only (init-worker.lua quarantine_sub.start); ngx.thread for blocking I/O off request path.
+--
+-- Execution model:
+-- - start() schedules ngx.timer.at(0, ...) on worker 0; timer callback ngx.thread.spawn(listen_loop).
+-- - listen_loop runs in a light thread; main worker VM continues serving requests.
+-- - red:read_reply blocks the light thread only; must not run subscribe/read_reply on the request thread.
+--
+-- Message path: fraud:quarantine -> apply_quarantine_message -> stamp_ips(..., false) (no _bl_ver bump).
+-- Payload: JSON {"ips":[...]} or legacy plain IP string; empty payload triggers full sync() fallback.
+--
+-- Reconnect state machine (outer while not ngx.worker.exiting):
+-- 1. connect_any_shard fail -> ERR log, ngx.sleep(2), retry.
+-- 2. subscribe fail -> close, sleep(2), retry from connect.
+-- 3. subscribed -> inner read_reply loop until read fail or worker exiting.
+-- 4. read_reply fail -> WARN, break inner loop, close, outer loop reconnects from step 1.
+--
+-- Failure branches: spawn or initial timer schedule fail -> ERR log, no listener (incremental path dead; full sync timer still runs).
+--
+-- Forbidden: subscribe loop on every worker; blocking pub/sub on access-phase thread.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-quarantine-sub.lua
+-- bash scripts/test/edge/lua_tests.sh
 local blacklist_sync = require "edge-blacklist-sync"
 
 local _M = {}

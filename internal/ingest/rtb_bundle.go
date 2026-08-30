@@ -79,6 +79,25 @@ var (
 	HybridMaxRPSFromConfig               = rtb.HybridMaxRPSFromConfig
 	BuildCampaignMetaList                = rtb.BuildCampaignMetaList
 	SyncRTBBudgetState                   = rtb.SyncRTBBudgetState
+	ReconcileCampaignBudget              = rtb.ReconcileCampaignBudget
+	BoostPPMFromUint8                    = rtb.BoostPPMFromUint8
+	CustomerIDFromCustomerUUID           = rtb.CustomerIDFromCustomerUUID
+	PacingOpenFromManagement             = rtb.PacingOpenFromManagement
+	RtbCampaignInputFromHybrid           = rtb.RtbCampaignInputFromHybrid
+	BuildRtbCatalogRowsFromHybrid        = rtb.BuildRtbCatalogRowsFromHybrid
+	RecordRtbDealOutcome                 = rtb.RecordRtbDealOutcome
+	BuildCustomerBudgetPools             = rtb.BuildCustomerBudgetPools
+	RtbInputForCampaign                  = rtb.RtbInputForCampaign
+)
+
+var (
+	loadRedisDailySpend          = rtb.LoadRedisDailySpend
+	runRtbCatalogReloadDebouncer = rtb.RunRtbCatalogReloadDebouncer
+	fanOutRtbCatalogRows         = rtb.FanOutRtbCatalogRows
+	rtbLiveGateInsufficient      = rtb.RtbLiveGateInsufficient
+	rtbLiveGateMinParityRate     = rtb.RtbLiveGateMinParityRate
+	rtbShadowDiffBucketNow       = rtb.RtbShadowDiffBucketNow
+	resetGlobalRtbOutcomeWriter  = rtb.ResetGlobalRtbOutcomeWriterForTest
 )
 
 const (

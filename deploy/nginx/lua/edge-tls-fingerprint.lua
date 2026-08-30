@@ -1,3 +1,17 @@
+-- TLS ClientHello JA3/JA4/ALPN fingerprint extraction via ngx.ssl.clienthello.
+-- Runtime: ssl_certificate_by_lua / ssl_client_hello phase; stores in ngx.ctx for edge-ingress.
+--
+-- Topology: terminates TLS at edge :443; tracker receives X-TLS-JA3, X-TLS-JA4, X-TLS-ALPN headers.
+--
+-- Extension IDs: supported_groups 10, ec_point_formats 11, alpn 16.
+--
+-- CDN disclaimer: JA3/JA4 reflect CDN-terminated handshake unless client connects directly to edge.
+--
+-- Forbidden: using TLS fingerprint alone as budget debit or ML enforcement on edge.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-tls-fingerprint.lua
+-- bash scripts/test/edge/lua_tests.sh
 local _M = {}
 
 local EXT_SUPPORTED_GROUPS = 10

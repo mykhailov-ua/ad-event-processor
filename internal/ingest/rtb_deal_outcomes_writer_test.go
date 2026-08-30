@@ -7,8 +7,8 @@ import (
 )
 
 func TestRecordRtbDealOutcome_noWriter(t *testing.T) {
-	globalRtbOutcomeWriter.Store(nil)
-	recordRtbDealOutcome("deal-a", 100, rtb.AuctionResult{}, rtb.NoBidNone)
+	resetGlobalRtbOutcomeWriter()
+	RecordRtbDealOutcome("deal-a", 100, rtb.AuctionResult{}, rtb.NoBidNone)
 }
 
 func TestRtbDealOutcomeWriter_enqueue(t *testing.T) {

@@ -91,7 +91,7 @@ func TestDeviceFilter_osFingerprintMismatch(t *testing.T) {
 	evt.TCPTTL = 128
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonOSFingerprint))
+	assert.True(t, acc.Has(FraudReasonOSFingerprint))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.OSFingerprintMismatchTotal))
 }
 
@@ -110,7 +110,7 @@ func TestDeviceFilter_osFingerprintSkippedNoTCPHeaders(t *testing.T) {
 	evt.TCPTTLSet = 0
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonOSFingerprint))
+	assert.False(t, acc.Has(FraudReasonOSFingerprint))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.OSFingerprintSkippedTotal.WithLabelValues("no_tcp_headers")))
 }
 
@@ -129,7 +129,7 @@ func TestDeviceFilter_mobileMatchingTTLClean(t *testing.T) {
 	evt.TCPTTL = 64
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonOSFingerprint))
+	assert.False(t, acc.Has(FraudReasonOSFingerprint))
 }
 
 func TestDeviceFilter_osFingerprintDisabled(t *testing.T) {
@@ -149,7 +149,7 @@ func TestDeviceFilter_osFingerprintDisabled(t *testing.T) {
 	evt.TCPTTL = 128
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonOSFingerprint))
+	assert.False(t, acc.Has(FraudReasonOSFingerprint))
 }
 
 func TestFilterEngine_osFingerprintL2Shadow(t *testing.T) {

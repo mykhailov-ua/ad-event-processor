@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/config"
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/regionproxy"
 	"ad-event-processor/pkg/dedupkey"
 
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ func TestFault_RegionGlobalPGPartition(t *testing.T) {
 	payload := []byte(`{"batch":"mr-global-pg-partition"}`)
 	var buf [256]byte
 	factorU := dedupkey.FactorU(dedupkey.WriteCanonicalProxyBatchPayload(buf[:0], 7, payload))
-	in := RegionIngestBatchInput{
+	in := regionproxy.BatchInput{
 		RegionCode: 1,
 		NodeID:     "proxy-node-7",
 		Seq:        7,

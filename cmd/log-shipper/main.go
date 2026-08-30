@@ -1,3 +1,4 @@
+// log-shipper entrypoint. Package documentation: doc.go.
 package main
 
 import (

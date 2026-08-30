@@ -184,6 +184,13 @@ const (
 	defaultIPv6RotationThresh = 6
 )
 
+const (
+	DefaultIPv6RotationWindow = defaultIPv6RotationWindow
+	DefaultIPv6RotationThresh = defaultIPv6RotationThresh
+)
+
+type IPv6RotationCell = ipv6RotationCell
+
 type ipv6RotationCell struct {
 	campaignHash atomic.Uint32
 	_            uint32

@@ -39,36 +39,36 @@ func TestFraudScenarios_HTTP1_2026(t *testing.T) {
 	var gaps []string
 	for _, tc := range fraudHTTP1Cases2026() {
 		tc := tc
-		t.Run(tc.id+"_"+tc.name, func(t *testing.T) {
+		t.Run(tc.ID+"_"+tc.Name, func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
-					gaps = append(gaps, fmt.Sprintf("%s: PANIC %v", tc.id, r))
+					gaps = append(gaps, fmt.Sprintf("%s: PANIC %v", tc.ID, r))
 					t.Fatalf("panic: %v", r)
 				}
 			}()
 
-			n, req, err := parseHTTP1(tc.payload, tc.maxBody, nil)
-			rest := tc.payload[n:]
+			n, req, err := parseHTTP1(tc.Payload, tc.MaxBody, nil)
+			rest := tc.Payload[n:]
 
 			switch {
-			case tc.mustErr:
+			case tc.MustErr:
 				if err == nil {
-					msg := fmt.Sprintf("%s [%s]: GAP expected reject (%v) got success n=%d rest=%q", tc.id, tc.name, tc.wantErr, n, truncateBytes(rest, 40))
+					msg := fmt.Sprintf("%s [%s]: holdout expected reject (%v) got success n=%d rest=%q", tc.ID, tc.Name, tc.WantErr, n, truncateBytes(rest, 40))
 					gaps = append(gaps, msg)
 					t.Fatal(msg)
 				}
-				if tc.wantErr != nil && !assert.ErrorIs(t, err, tc.wantErr) {
-					msg := fmt.Sprintf("%s [%s]: GAP expected %v got %v", tc.id, tc.name, tc.wantErr, err)
+				if tc.WantErr != nil && !assert.ErrorIs(t, err, tc.WantErr) {
+					msg := fmt.Sprintf("%s [%s]: holdout expected %v got %v", tc.ID, tc.Name, tc.WantErr, err)
 					gaps = append(gaps, msg)
 				}
-			case tc.mustOK:
+			case tc.WantOK:
 				if err != nil {
-					msg := fmt.Sprintf("%s [%s]: GAP expected accept got %v", tc.id, tc.name, err)
+					msg := fmt.Sprintf("%s [%s]: holdout expected accept got %v", tc.ID, tc.Name, err)
 					gaps = append(gaps, msg)
 					t.Fatal(msg)
 				}
 				require.Greater(t, n, 0)
-				if postCheck := fraudHTTP1PostChecks[tc.id]; postCheck != nil {
+				if postCheck := fraudHTTP1PostChecks[tc.ID]; postCheck != nil {
 					postCheck(t, n, req, rest)
 				}
 			}

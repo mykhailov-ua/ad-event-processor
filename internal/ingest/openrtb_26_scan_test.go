@@ -15,7 +15,7 @@ func TestScanOpenRTB26Payload_truncatesQuoteDense(t *testing.T) {
 	payload = append(payload, `,"imp":[{"id":"1"}],"id":"req"}`...)
 
 	scan := scanOpenRTB26Payload(payload)
-	require.Less(t, scan.sec.imp, 0)
+	require.Less(t, scan.SecImp(), 0)
 }
 
 func TestScanOpenRTB26Payload_sectionsParity(t *testing.T) {
@@ -26,13 +26,13 @@ func TestScanOpenRTB26Payload_sectionsParity(t *testing.T) {
 	}
 	for _, payload := range payloads {
 		scan := scanOpenRTB26Payload(payload)
-		require.Equal(t, bytes.Index(payload, openrtbKeyImp), scan.sec.imp, "imp")
-		require.Equal(t, bytes.Index(payload, openrtbKeyDevice), scan.sec.device, "device")
-		require.Equal(t, bytes.Index(payload, openrtbKeySite), scan.sec.site, "site")
-		require.Equal(t, bytes.Index(payload, openrtbKeyApp), scan.sec.app, "app")
-		require.Equal(t, bytes.Index(payload, openrtbKeyUser), scan.sec.user, "user")
-		require.Equal(t, bytes.Index(payload, openrtbKeySource), scan.sec.source, "source")
-		require.Equal(t, bytes.Index(payload, openrtbKeyDOOH), scan.sec.dooh, "dooh")
+		require.Equal(t, bytes.Index(payload, openrtbKeyImp), scan.SecImp(), "imp")
+		require.Equal(t, bytes.Index(payload, openrtbKeyDevice), scan.SecDevice(), "device")
+		require.Equal(t, bytes.Index(payload, openrtbKeySite), scan.SecSite(), "site")
+		require.Equal(t, bytes.Index(payload, openrtbKeyApp), scan.SecApp(), "app")
+		require.Equal(t, bytes.Index(payload, openrtbKeyUser), scan.SecUser(), "user")
+		require.Equal(t, bytes.Index(payload, openrtbKeySource), scan.SecSource(), "source")
+		require.Equal(t, bytes.Index(payload, openrtbKeyDOOH), scan.SecDOOH(), "dooh")
 	}
 }
 
@@ -58,24 +58,24 @@ func TestScanOpenRTB26Payload_topLevelParity(t *testing.T) {
 	if imp > 0 {
 		search = payload[:imp]
 	}
-	require.Equal(t, bytes.Index(search, openrtbKeyID), scan.idxRequestID)
-	require.Equal(t, bytes.Index(search, openrtbKeyBseat), scan.idxBseat)
-	require.Equal(t, bytes.Index(payload, openrtbKeyTmax), scan.idxTmax)
-	require.Equal(t, bytes.Index(payload, openrtbKeyBidfloor), scan.idxBidfloor)
-	require.Equal(t, bytes.Index(payload, openrtbKeyDevicetype), scan.idxDevicetype)
-	require.Equal(t, bytes.Index(payload, openrtbKeyCat), scan.idxCat)
-	require.Equal(t, bytes.Index(payload, openrtbKeyWseat), scan.idxWseat)
-	require.Equal(t, bytes.Index(payload, openrtbKeySchain), scan.idxSchain)
-	require.Equal(t, bytes.Index(payload, openrtbKeyTest), scan.idxTest)
-	require.Equal(t, bytes.Index(payload, openrtbKeyMaxduration), scan.idxMaxduration)
-	require.Equal(t, bytes.Index(payload, openrtbKeyCoppa), scan.idxCoppa)
-	require.Equal(t, bytes.Index(payload, openrtbKeyGDPR), scan.idxGDPR)
-	require.Equal(t, bytes.Index(payload, openrtbKeyUSPrivacy), scan.idxUSPrivacy)
-	require.Equal(t, bytes.Index(payload, openrtbKeyCur), scan.idxCur)
-	require.Equal(t, bytes.Index(payload, openrtbKeyBidfloorcur), scan.idxBidfloorcur)
-	require.Equal(t, bytes.Index(payload, openrtbKeyBCat), scan.idxBCat)
-	require.Equal(t, bytes.Index(payload, openrtbKeyBAdv), scan.idxBAdv)
-	require.Equal(t, bytes.Index(payload, openrtbKeyBApp), scan.idxBApp)
+	require.Equal(t, bytes.Index(search, openrtbKeyID), scan.IdxRequestID())
+	require.Equal(t, bytes.Index(search, openrtbKeyBseat), scan.IdxBseat())
+	require.Equal(t, bytes.Index(payload, openrtbKeyTmax), scan.IdxTmax())
+	require.Equal(t, bytes.Index(payload, openrtbKeyBidfloor), scan.IdxBidfloor())
+	require.Equal(t, bytes.Index(payload, openrtbKeyDevicetype), scan.IdxDevicetype())
+	require.Equal(t, bytes.Index(payload, openrtbKeyCat), scan.IdxCat())
+	require.Equal(t, bytes.Index(payload, openrtbKeyWseat), scan.IdxWseat())
+	require.Equal(t, bytes.Index(payload, openrtbKeySchain), scan.IdxSchain())
+	require.Equal(t, bytes.Index(payload, openrtbKeyTest), scan.IdxTest())
+	require.Equal(t, bytes.Index(payload, openrtbKeyMaxduration), scan.IdxMaxduration())
+	require.Equal(t, bytes.Index(payload, openrtbKeyCoppa), scan.IdxCoppa())
+	require.Equal(t, bytes.Index(payload, openrtbKeyGDPR), scan.IdxGDPR())
+	require.Equal(t, bytes.Index(payload, openrtbKeyUSPrivacy), scan.IdxUSPrivacy())
+	require.Equal(t, bytes.Index(payload, openrtbKeyCur), scan.IdxCur())
+	require.Equal(t, bytes.Index(payload, openrtbKeyBidfloorcur), scan.IdxBidfloorcur())
+	require.Equal(t, bytes.Index(payload, openrtbKeyBCat), scan.IdxBCat())
+	require.Equal(t, bytes.Index(payload, openrtbKeyBAdv), scan.IdxBAdv())
+	require.Equal(t, bytes.Index(payload, openrtbKeyBApp), scan.IdxBApp())
 }
 
 func TestScanOpenRTB26Payload_ZeroAlloc(t *testing.T) {

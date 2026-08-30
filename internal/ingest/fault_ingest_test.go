@@ -194,7 +194,7 @@ func TestUnifiedFilter_budgetMiss_respectsDBLookupTimeout(t *testing.T) {
 		"events-budget-miss",
 		10000,
 	)
-	f.dbLookupTimeout = 50 * time.Millisecond
+	f.SetDBLookupTimeout(50 * time.Millisecond)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
@@ -235,10 +235,10 @@ func TestFilterEngine_budgetMissRespectsEngineDeadline(t *testing.T) {
 		time.Hour,
 		1_000_000,
 		10_000,
-		"events-deadline-gap",
+		"events-deadline-skew",
 		10000,
 	)
-	uf.dbLookupTimeout = 2 * time.Second
+	uf.SetDBLookupTimeout(2 * time.Second)
 
 	engine := NewFilterEngine(50*time.Millisecond, uf)
 	start := time.Now()
@@ -265,13 +265,13 @@ func TestPinnedWorkerPool_queueFullReject(t *testing.T) {
 
 	started := make(chan struct{})
 	ctx1 := &connContext{
-		offloadOnEnter: func() { close(started) },
-		offloadBlock:   unblock,
+		OffloadOnEnter: func() { close(started) },
+		OffloadBlock:   unblock,
 	}
 	require.True(t, pool.SubmitOffload(ctx1, nil))
 	<-started
 
-	ctx2 := &connContext{offloadBlock: unblock}
+	ctx2 := &connContext{OffloadBlock: unblock}
 	require.True(t, pool.SubmitOffload(ctx2, nil))
 	require.False(t, pool.SubmitOffload(&connContext{}, nil))
 }
@@ -290,12 +290,12 @@ func TestAdsPacketHandler_workerPoolSaturated_rejectsAndCounts(t *testing.T) {
 
 	started := make(chan struct{})
 	ctx1 := &connContext{
-		offloadOnEnter: func() { close(started) },
-		offloadBlock:   unblock,
+		OffloadOnEnter: func() { close(started) },
+		OffloadBlock:   unblock,
 	}
 	require.True(t, pool.SubmitOffload(ctx1, nil))
 	<-started
-	ctx2 := &connContext{offloadBlock: unblock}
+	ctx2 := &connContext{OffloadBlock: unblock}
 	require.True(t, pool.SubmitOffload(ctx2, nil))
 
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud", nil)

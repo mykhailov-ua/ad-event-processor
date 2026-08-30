@@ -1,3 +1,4 @@
+// loadgen entrypoint. Package documentation: doc.go.
 package main
 
 import (
@@ -13,6 +14,7 @@ import (
 )
 
 func init() {
+	// Preload load-test env files before flag defaults resolve tracker URLs.
 	applyLoadTestRuntimeEnv()
 }
 
@@ -30,7 +32,7 @@ func main() {
 	outDir := flag.String("out", "", "session output directory")
 	trackers := flag.String("trackers", envDefault("LOAD_TEST_CONSTRAINED_TRACKER_BASES_CSV", "http://127.0.0.1:8181,http://127.0.0.1:8182"), "comma-separated tracker bases")
 	edgeURL := flag.String("edge", envDefault("LOAD_TEST_EDGE_URL", "http://127.0.0.1:8180"), "nginx edge URL (empty to disable)")
-	oversize := flag.Int("oversize-bytes", 65536, "oversize payload for invalid traffic")
+	oversize := flag.Int("oversize-bytes", 65536, "oversize payload for invalid traffic (bytes, default 64 KiB)")
 	pctBroken := flag.Int("pct-broken", 0, "business mode: broken traffic %")
 	pctGray := flag.Int("pct-gray", 0, "business mode: gray/fraud %")
 	pctClickProxy := flag.Int("pct-click-proxy", 0, "GET /click % carved out of the valid bucket (proxy delivery when campaign is configured)")

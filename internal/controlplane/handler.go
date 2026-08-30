@@ -8,6 +8,7 @@ import (
 
 	"ad-event-processor/internal/billingadmin"
 	"ad-event-processor/internal/campaign"
+	"ad-event-processor/internal/commandpalette"
 	"ad-event-processor/internal/config"
 	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
@@ -26,18 +27,19 @@ import (
 )
 
 type Handler struct {
-	svc                  *Service
-	cfg                  *config.Config
-	ipLimiter            *ctrlhttp.IPRateLimiter
-	licenseApplyLimiter  *ctrlhttp.IPRateLimiter
-	customerLimiter      *ctrlhttp.CustomerRateLimiter
-	fraudDecisionLimiter *ctrlhttp.CustomerRateLimiter
-	fraudPreviewLimiter  *ctrlhttp.CustomerRateLimiter
-	authMiddleware       *AuthMiddleware
-	authClient           *identity.AuthClient
-	payment              *payment.APIClient
-	billing              *ledger.BillingClient
-	invoiceDelivery      billingadmin.InvoiceRetryer
+	svc                   *Service
+	cfg                   *config.Config
+	ipLimiter             *ctrlhttp.IPRateLimiter
+	licenseApplyLimiter   *ctrlhttp.IPRateLimiter
+	customerLimiter       *ctrlhttp.CustomerRateLimiter
+	fraudDecisionLimiter  *ctrlhttp.CustomerRateLimiter
+	fraudPreviewLimiter   *ctrlhttp.CustomerRateLimiter
+	commandPaletteLimiter *ctrlhttp.UserRateLimiter
+	authMiddleware        *AuthMiddleware
+	authClient            *identity.AuthClient
+	payment               *payment.APIClient
+	billing               *ledger.BillingClient
+	invoiceDelivery       billingadmin.InvoiceRetryer
 }
 
 func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware, authClient *identity.AuthClient, paymentClient *payment.APIClient, billingClient *ledger.BillingClient) *Handler {
@@ -48,17 +50,18 @@ func NewHandler(svc *Service, cfg *config.Config, authMiddleware *AuthMiddleware
 		burst = cfg.Management.RateLimitBurst
 	}
 	h := &Handler{
-		svc:                  svc,
-		cfg:                  cfg,
-		ipLimiter:            ctrlhttp.NewIPRateLimiter(rps, burst),
-		licenseApplyLimiter:  ctrlhttp.NewIPRateLimiter(ctrlhttp.LicenseApplyRPS, ctrlhttp.LicenseApplyBurst),
-		customerLimiter:      ctrlhttp.NewCustomerRateLimiter(),
-		fraudDecisionLimiter: ctrlhttp.NewFraudDecisionLimiter(),
-		fraudPreviewLimiter:  ctrlhttp.NewFraudPreviewLimiter(),
-		authMiddleware:       authMiddleware,
-		authClient:           authClient,
-		payment:              paymentClient,
-		billing:              billingClient,
+		svc:                   svc,
+		cfg:                   cfg,
+		ipLimiter:             ctrlhttp.NewIPRateLimiter(rps, burst),
+		licenseApplyLimiter:   ctrlhttp.NewIPRateLimiter(ctrlhttp.LicenseApplyRPS, ctrlhttp.LicenseApplyBurst),
+		customerLimiter:       ctrlhttp.NewCustomerRateLimiter(),
+		fraudDecisionLimiter:  ctrlhttp.NewFraudDecisionLimiter(),
+		fraudPreviewLimiter:   ctrlhttp.NewFraudPreviewLimiter(),
+		commandPaletteLimiter: ctrlhttp.NewCommandPaletteSearchLimiter(),
+		authMiddleware:        authMiddleware,
+		authClient:            authClient,
+		payment:               paymentClient,
+		billing:               billingClient,
 	}
 	if paymentClient != nil {
 		svc.SetPayment(paymentClient)
@@ -90,6 +93,12 @@ func (h *Handler) limitLicenseApply(next http.HandlerFunc) http.HandlerFunc {
 
 func (h *Handler) limitExportByCustomer(next http.HandlerFunc) http.HandlerFunc {
 	return ctrlhttp.LimitExportByCustomer(h.customerLimiter, next)
+}
+
+func (h *Handler) limitCommandPaletteSearch(next http.HandlerFunc) http.HandlerFunc {
+	return ctrlhttp.LimitCommandPaletteSearchWith(h.commandPaletteLimiter, func() {
+		commandpalette.IncSearchError("rate_limit")
+	}, next)
 }
 
 func (h *Handler) allowFraudPreview(campaignID string) bool {

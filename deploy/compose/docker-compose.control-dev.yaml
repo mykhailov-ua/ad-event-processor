@@ -1,3 +1,35 @@
+# Control-dev compose overlay (deploy/compose/docker-compose.control-dev.yaml).
+# Merged by scripts/dev/stack/stack.sh ingest-only via AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES.
+# Cross-ref: deploy/DEPLOY.md, docs/DEVELOPMENT.md.
+#
+# Role:
+# - Laptop ingest path: tracker + processor + control + PG + 2 Redis shards; no ClickHouse.
+# - Disables cold-path workers on control (payment, billing, notifier, margin_guard, cost_sync).
+# - Swaps tracker UDS for TCP HTTP health on :8181/:8182 for local debugging.
+#
+# Topology:
+# - Patches: db, control, processor, tracker-0, tracker-1.
+# - tracker depends_on reset: db, broker, redis-0, redis-1 (not redis-2..3).
+# - PG unix socket /run/ad-event-processor/postgresql, port 5430, max_connections=600.
+#
+# Invariants:
+# - CH_ENABLED=0 on control and processor (CH only via stack.sh clickhouse).
+# - REDIS_SHARD_COUNT=2; REDIS_ADDRS lists redis-0 and redis-1 unix sockets.
+# - AD_EVENT_PROCESSOR_LICENSE_MODE=dev, LICENSE_REQUIRED=0.
+# - FILTER_TIMEOUT_MS=5000 (dev default; production <= 100 ms per core.mdc).
+#
+# Env knobs:
+# - GOMAXPROCS / GNET_NUM_EVENT_LOOPS / MAX_WORKERS=12 on trackers.
+# - SERVER_PORT 8181 (tracker-0), 8182 (tracker-1); METRICS_PORT 9102 on tracker-1.
+# - TRANSPORT_USE_UDS=0, TRACKER_UNIX_SOCKET empty (HTTP ingest).
+#
+# Forbidden:
+# - Do not assume redis-2..3 are up; ingest-only stops VPS extras after start.
+# - Do not leave ClickHouse running overnight without explicit CH_ENABLED=1 intent.
+#
+# Verify:
+# bash scripts/dev/stack/stack.sh ingest-only
+# bash scripts/dev/stack/preflight.sh
 services:
   db:
     environment:

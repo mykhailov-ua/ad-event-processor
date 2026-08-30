@@ -1,3 +1,7 @@
+# edge-xdp + edge-bpf-sync runtime image (deploy/edge/xdp/Dockerfile).
+# Build: bpf2go via go generate ./internal/edge/; outputs /usr/local/bin/edge-xdp, edge-bpf-sync.
+# Runtime: debian:bookworm-slim + iproute2; entrypoint attaches XDP then runs Redis map sync.
+# Compose profile: enterprise-xdp; license feature: ebpf_xdp_edge.
 FROM golang:1.25.12-bookworm AS modules
 WORKDIR /src
 COPY go.mod go.sum ./

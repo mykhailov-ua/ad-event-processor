@@ -32,7 +32,7 @@ func TestLicenseRPSBurstCap(t *testing.T) {
 }
 
 func TestLicenseRPSFilter_exceedsCap(t *testing.T) {
-	globalDeploymentRPS.resetForTests()
+	resetGlobalDeploymentRPSForTests()
 
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 2})
 	ctx := context.Background()
@@ -46,9 +46,8 @@ func TestLicenseRPSFilter_exceedsCap(t *testing.T) {
 }
 
 func TestLicenseRPSFilter_burstConsumesCredits(t *testing.T) {
-	globalDeploymentRPS.resetForTests()
-	globalDeploymentRPS.burstInit.Store(1)
-	globalDeploymentRPS.burstRemain.Store(1)
+	resetGlobalDeploymentRPSForTests()
+	setGlobalDeploymentRPSBurstForTests(1, 1)
 
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 2})
 	ctx := context.Background()
@@ -59,11 +58,11 @@ func TestLicenseRPSFilter_burstConsumesCredits(t *testing.T) {
 	require.NoError(t, f.Check(ctx, evt))
 	err := f.Check(ctx, evt)
 	require.ErrorIs(t, err, ErrRateLimitExceeded)
-	assert.Equal(t, uint64(0), globalDeploymentRPS.burstRemain.Load())
+	assert.Equal(t, uint64(0), globalDeploymentRPSBurstRemainForTests())
 }
 
 func TestLicenseRPSFilter_pilotCap(t *testing.T) {
-	globalDeploymentRPS.resetForTests()
+	resetGlobalDeploymentRPSForTests()
 
 	const pilotRPS = uint64(5000)
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: pilotRPS})
@@ -90,7 +89,7 @@ func TestLicenseRPSFilter_seedCouplingBlocksWithoutValidSeed(t *testing.T) {
 	licensing.SetSeedCouplingRequired(true)
 	licensing.PublishFeatureSeed(0, false)
 
-	globalDeploymentRPS.resetForTests()
+	resetGlobalDeploymentRPSForTests()
 	f := NewLicenseRPSFilter(&stubLicenseRPSRegistry{maxRPS: 1000})
 	err := f.Check(context.Background(), &domain.Event{})
 	require.ErrorIs(t, err, ErrRateLimitExceeded)

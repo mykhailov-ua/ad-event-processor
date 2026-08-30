@@ -1,3 +1,18 @@
+// Prometheus /metrics exporter and periodic map dump ticker.
+//
+// Role:
+//   - serveMetrics listens on -metrics-addr; refreshes ad_event_processor_bpf_* gauges per scrape.
+//   - dumpLoop calls dumpMaps each -dump-interval when flag > 0.
+//
+// Topology:
+//   - Sidecar HTTP with lifecycle.ApplySidecarHTTPServerTimeouts; /healthz returns 200 ok.
+//
+// Invariants:
+//   - promExporter.refresh resets all gauge vecs before repopulating from live BPF maps.
+//   - dumpLoop warn-logs periodic dump errors; does not exit process.
+//
+// Verify:
+//   curl -s localhost:<metrics-addr>/metrics | grep ad_event_processor_bpf_
 package main
 
 import (

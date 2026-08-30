@@ -19,7 +19,7 @@ func TestRtbSync_reserveMicro(t *testing.T) {
 		Status:       domain.CampaignStatusActive,
 	}
 	cfg := &config.Config{ClickAmount: 100}
-	input := rtbInputForCampaign(camp, cfg, nil, 0, nil, nil)
+	input := RtbInputForCampaign(camp, cfg, nil, 0, nil, nil)
 	assert.Equal(t, int64(50_000), input.ReserveMicro)
 }
 
@@ -36,7 +36,7 @@ func TestEnrichTargetingDeal_pmp(t *testing.T) {
 	}})
 	var dealBuf [64]byte
 	copy(dealBuf[:], "deal-x")
-	targeting := catalog.enrichTargetingDeal(RtbTargetingInput{
+	targeting := catalog.EnrichTargetingDeal(RtbTargetingInput{
 		DealIDLen:    6,
 		DealIDBuf:    dealBuf,
 		GeoHash:      GeoHashFromCountry("US"),

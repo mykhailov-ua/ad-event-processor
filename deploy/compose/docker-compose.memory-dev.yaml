@@ -1,3 +1,32 @@
+# Memory-dev compose overlay (deploy/compose/docker-compose.memory-dev.yaml).
+# Auto-merged when COMPOSE_MEMORY_PROFILE=dev (default in scripts/dev/stack/stack.sh).
+# Cross-ref: deploy/DEPLOY.md, docs/DEVELOPMENT.md.
+#
+# Role:
+# - Docker cgroup memory limits for 16 GB laptop hosts; reduces OOM during full stack.
+# - Sets mem_limit, memswap_limit, and GOMEMLIMIT on Go services; tightens PG command args.
+#
+# Topology:
+# - Patches all running services when present: db, db-payment, broker, processor, control,
+#   tracker-0..3, redis-0..5, clickhouse, ivt-detector, fraud-scorer, nginx, prometheus, grafana.
+#
+# Invariants:
+# - memswap_limit equals mem_limit (no swap beyond cgroup cap).
+# - Set COMPOSE_MEMORY_PROFILE= empty in .env to use base limits in docker-compose.yaml.
+# - clickhouse capped at 768M here vs 4G in base compose.
+#
+# Env knobs (cgroup limits from this file):
+# - db 320M (max_connections=200); db-payment 224M; broker 160M.
+# - tracker 320M each, GOMEMLIMIT=288MiB; processor 448M; control 384M.
+# - redis shard 80M each; clickhouse 768M; fraud-scorer 256M; nginx 128M.
+#
+# Forbidden:
+# - Do not use these limits for production capacity planning.
+# - Do not run clickhouse + analytics-ml on 16 GB laptop without CH opt-in awareness.
+#
+# Verify:
+# COMPOSE_MEMORY_PROFILE=dev bash scripts/dev/stack/stack.sh status
+# bash scripts/dev/stack/preflight.sh
 services:
   db:
     command:

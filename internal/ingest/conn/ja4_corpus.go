@@ -38,6 +38,29 @@ func JA4BrowserCorpusEmbedBytes() []byte {
 	return ja4BrowserCorpusEmbed
 }
 
+const (
+	TLSBrowserChrome  = tlsBrowserChrome
+	TLSBrowserFirefox = tlsBrowserFirefox
+	TLSBrowserSafari  = tlsBrowserSafari
+	TLSBrowserOkhttp  = tlsBrowserOkhttp
+	TLSBrowserGo      = tlsBrowserGo
+)
+
+func (s *ja4BrowserCorpusSnapshot) PrefixFamilyCount() int {
+	if s == nil {
+		return 0
+	}
+	return len(s.prefixFamilies)
+}
+
+func (s *ja4BrowserCorpusSnapshot) PrefixFamily(prefix string) (uint8, bool) {
+	if s == nil || s.prefixFamilies == nil {
+		return 0, false
+	}
+	v, ok := s.prefixFamilies[prefix]
+	return v, ok
+}
+
 func PublishJA4BrowserCorpus(snap *ja4BrowserCorpusSnapshot) {
 	if snap == nil || len(snap.prefixFamilies) == 0 {
 		return

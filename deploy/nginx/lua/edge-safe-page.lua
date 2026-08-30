@@ -1,3 +1,15 @@
+-- Safe-page response substitution when tracker sets X-Ad-Event-Processor-Safe-Page header.
+-- Runtime: nginx worker header_filter + body_filter phases on proxy response.
+--
+-- Topology: internal location /safe_page_content fetches HTML; campaign_id from ngx.ctx.
+--
+-- HTTP: replaces upstream body with safe page HTML or minimal fallback; strips internal header.
+--
+-- Forbidden: tarpit or safe-page on settlement/billing upstream paths.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-safe-page.lua
+-- bash scripts/test/edge/lua_tests.sh
 local _M = {}
 
 function _M.header_filter()

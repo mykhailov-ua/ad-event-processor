@@ -6,6 +6,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"ad-event-processor/internal/stream"
 )
 
 func BenchmarkIngressQuota_padded(b *testing.B) {
@@ -25,7 +27,7 @@ func BenchmarkIngressQuota_padded(b *testing.B) {
 
 func BenchmarkIngressQuota_unpadded(b *testing.B) {
 	const workers = 8
-	m := &unpaddedIngressCounters{max: 1_000_000_000}
+	m := stream.NewUnpaddedIngressCountersForTest(1_000_000_000)
 	b.SetParallelism(workers)
 	b.RunParallel(func(pb *testing.PB) {
 		worker := int(atomic.AddUint64(new(uint64), 1)-1) % workers
@@ -46,7 +48,7 @@ func TestIngressQuota_falseSharingRatio(t *testing.T) {
 	limits.NumShards = 1
 	limits.Limits[0] = 1_000_000_000
 	padded := BuildIngressQuotaMap(1, &limits, workers)
-	unpadded := &unpaddedIngressCounters{max: 1_000_000_000}
+	unpadded := stream.NewUnpaddedIngressCountersForTest(1_000_000_000)
 
 	paddedNs := benchIngressWorkers(padded, unpadded, workers, iters, true)
 	unpaddedNs := benchIngressWorkers(padded, unpadded, workers, iters, false)

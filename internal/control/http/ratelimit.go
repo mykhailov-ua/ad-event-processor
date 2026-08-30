@@ -5,9 +5,11 @@ import (
 	"sync"
 	"time"
 
+	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/pkg/clientip"
 	"ad-event-processor/pkg/httpresponse"
 
+	"github.com/google/uuid"
 	"golang.org/x/time/rate"
 )
 
@@ -109,6 +111,11 @@ const (
 	DefaultAPIKeyBurst = 60
 )
 
+const (
+	CommandPaletteSearchRPS   = 30.0 / 60.0
+	CommandPaletteSearchBurst = 5
+)
+
 type APIKeyRateLimiter struct {
 	mu      sync.Mutex
 	limit   rate.Limit
@@ -187,6 +194,39 @@ func (l *CustomerRateLimiter) Allow(customerID string) bool {
 	return e.Lim.Allow()
 }
 
+func (l *CustomerRateLimiter) AllowAt(key string, at time.Time) bool {
+	return l.AllowNAt(key, at, 1) == 1
+}
+
+func (l *CustomerRateLimiter) AllowNAt(key string, at time.Time, n int) int {
+	if n <= 0 {
+		return 0
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := at
+	e, ok := l.entries[key]
+	if !ok {
+		if len(l.entries) >= RateLimiterMaxEntries {
+			evictStaleLocked(l.entries, now)
+			if len(l.entries) >= RateLimiterMaxEntries {
+				return 0
+			}
+		}
+		e = &RateLimiterEntry{Lim: rate.NewLimiter(l.limit, l.burst), LastSeen: now}
+		l.entries[key] = e
+	}
+	e.LastSeen = now
+	allowed := 0
+	for i := 0; i < n; i++ {
+		if !e.Lim.AllowN(now, 1) {
+			break
+		}
+		allowed++
+	}
+	return allowed
+}
+
 func NewFraudDecisionLimiter() *CustomerRateLimiter {
 	return &CustomerRateLimiter{
 		limit:   FraudDecisionRPS,
@@ -201,6 +241,37 @@ func NewFraudPreviewLimiter() *CustomerRateLimiter {
 		burst:   FraudPreviewBurst,
 		entries: make(map[string]*RateLimiterEntry),
 	}
+}
+
+type UserRateLimiter = CustomerRateLimiter
+
+func NewCommandPaletteSearchLimiter() *UserRateLimiter {
+	return NewCustomerRateLimiterWith(CommandPaletteSearchRPS, CommandPaletteSearchBurst)
+}
+
+func LimitCommandPaletteSearch(limiter *UserRateLimiter, next http.HandlerFunc) http.HandlerFunc {
+	return LimitCommandPaletteSearchWith(limiter, nil, next)
+}
+
+func LimitCommandPaletteSearchWith(limiter *UserRateLimiter, onRateLimited func(), next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		key := commandPaletteSearchLimitKey(r)
+		if limiter != nil && !limiter.Allow(key) {
+			if onRateLimited != nil {
+				onRateLimited()
+			}
+			httpresponse.Error(w, http.StatusTooManyRequests, "TOO_MANY_REQUESTS", "command palette search rate limit exceeded")
+			return
+		}
+		next(w, r)
+	}
+}
+
+func commandPaletteSearchLimitKey(r *http.Request) string {
+	if u, ok := authz.GetUser(r.Context()); ok && u.UserID != uuid.Nil {
+		return u.UserID.String()
+	}
+	return ClientIP(r)
 }
 
 func LimitByIP(limiter *IPRateLimiter, next http.HandlerFunc) http.HandlerFunc {

@@ -83,10 +83,10 @@ func TestSafePageAttestationAdvanced_canvasRetestMismatch(t *testing.T) {
 	fp.CanvasHashB = testCanvasHashAlt
 	fp.CanvasHash = testCanvasHash64
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:         fp,
-		events:              humanMouseEvents(10),
-		behaviorScore:       safePageVerifyMinEvents + 3,
-		canvasRetestEnabled: true,
+		Fingerprint:         fp,
+		Events:              humanMouseEvents(10),
+		BehaviorScore:       safePageVerifyMinEvents + 3,
+		CanvasRetestEnabled: true,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestCanvasRetestMismatch, code)
@@ -98,10 +98,10 @@ func TestSafePageAttestationAdvanced_canvasRetestMatching(t *testing.T) {
 	fp.CanvasHashB = testCanvasHash64
 	fp.CanvasHash = testCanvasHash64
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:         fp,
-		events:              humanMouseEvents(18),
-		behaviorScore:       safePageVerifyMinEvents + 3,
-		canvasRetestEnabled: true,
+		Fingerprint:         fp,
+		Events:              humanMouseEvents(18),
+		BehaviorScore:       safePageVerifyMinEvents + 3,
+		CanvasRetestEnabled: true,
 	})
 	require.False(t, fail)
 	require.Equal(t, "", code)
@@ -112,9 +112,9 @@ func TestSafePageAttestationAdvanced_permissionsMismatch(t *testing.T) {
 	fp.NotificationPermission = "granted"
 	fp.NotificationQuery = "denied"
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   fp,
-		events:        humanMouseEvents(10),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   fp,
+		Events:        humanMouseEvents(10),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestPermissionsMismatch, code)
@@ -122,9 +122,9 @@ func TestSafePageAttestationAdvanced_permissionsMismatch(t *testing.T) {
 
 func TestSafePageAttestationAdvanced_linearBezierReject(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   validAdvancedFingerprint(),
-		events:        linearMouseEvents(12),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   validAdvancedFingerprint(),
+		Events:        linearMouseEvents(12),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestBezierBot, code)
@@ -132,9 +132,9 @@ func TestSafePageAttestationAdvanced_linearBezierReject(t *testing.T) {
 
 func TestSafePageAttestationAdvanced_humanMousePassesBezier(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   validAdvancedFingerprint(),
-		events:        humanMouseEvents(18),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   validAdvancedFingerprint(),
+		Events:        humanMouseEvents(18),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.False(t, fail)
 	require.Equal(t, "", code)
@@ -144,9 +144,9 @@ func TestSafePageAttestationAdvanced_webglHeldOutStillFails(t *testing.T) {
 	fp := validAdvancedFingerprint()
 	fp.WebGLRenderer = "Google SwiftShader"
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   fp,
-		events:        humanMouseEvents(10),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   fp,
+		Events:        humanMouseEvents(10),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestWebGLAutomation, code)
@@ -157,9 +157,9 @@ func TestSafePageAttestationAdvanced_camoufoxWebGLVendor(t *testing.T) {
 	fp.WebGLVendor = "Google Inc."
 	fp.WebGLRenderer = "ANGLE (NVIDIA, NVIDIA GeForce GTX 1050)"
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   fp,
-		events:        humanMouseEvents(10),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   fp,
+		Events:        humanMouseEvents(10),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestWebGLVendorMismatch, code)
@@ -170,9 +170,9 @@ func TestSafePageAttestationAdvanced_headlessViewport(t *testing.T) {
 	fp.OuterWidth = 0
 	fp.OuterHeight = 0
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   fp,
-		events:        humanMouseEvents(10),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   fp,
+		Events:        humanMouseEvents(10),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestHeadlessViewport, code)
@@ -183,9 +183,9 @@ func TestSafePageAttestationAdvanced_langMismatch(t *testing.T) {
 	fp.Lang = "de-DE"
 	fp.Languages = []string{"en-US", "en"}
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   fp,
-		events:        humanMouseEvents(10),
-		behaviorScore: safePageVerifyMinEvents + 3,
+		Fingerprint:   fp,
+		Events:        humanMouseEvents(10),
+		BehaviorScore: safePageVerifyMinEvents + 3,
 	})
 	require.True(t, fail)
 	require.Equal(t, safePageAttestLangMismatch, code)
@@ -193,9 +193,9 @@ func TestSafePageAttestationAdvanced_langMismatch(t *testing.T) {
 
 func TestSafePageAttestationAdvanced_bezierSkippedBelowTier(t *testing.T) {
 	fail, code := evaluateSafePageAttestation(safePageAttestationInput{
-		fingerprint:   validAdvancedFingerprint(),
-		events:        linearMouseEvents(12),
-		behaviorScore: safePageVerifyMinEvents,
+		Fingerprint:   validAdvancedFingerprint(),
+		Events:        linearMouseEvents(12),
+		BehaviorScore: safePageVerifyMinEvents,
 	})
 	require.False(t, fail)
 	require.Equal(t, "", code)

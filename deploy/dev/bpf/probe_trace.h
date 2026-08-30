@@ -1,5 +1,6 @@
-
-
+/* Tracepoint struct stubs for BPF CO-RE (deploy/dev/bpf/loadtest_probe.bpf.c).
+ * Layout matches kernel trace_event_raw_* for sys_enter/exit, sched_*, page_fault_user.
+ */
 #ifndef AD_EVENT_PROCESSOR_TRACE_H
 #define AD_EVENT_PROCESSOR_TRACE_H
 

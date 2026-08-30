@@ -65,7 +65,7 @@ func TestClickProxyDeliver_streamsBodyAndHeaders(t *testing.T) {
 	h.initClickProxyClient()
 
 	conn := NewGnetHarnessConn(nil)
-	h.clickProxyDeliver(conn, &connContext{bufSlice: make([]byte, 0, 4096)}, clickProxyJob{
+	h.clickProxyDeliver(conn, &connContext{BufSlice: make([]byte, 0, 4096)}, clickProxyJob{
 		upstream:    up.URL + "/offer",
 		clientIP:    "203.0.113.9",
 		userAgent:   "test-ua",
@@ -93,7 +93,7 @@ func TestClickProxyDeliver_largeBodyStreams(t *testing.T) {
 	h.initClickProxyClient()
 
 	conn := newStreamCaptureConn()
-	h.clickProxyDeliver(conn, &connContext{bufSlice: make([]byte, 0, 512)}, clickProxyJob{
+	h.clickProxyDeliver(conn, &connContext{BufSlice: make([]byte, 0, 512)}, clickProxyJob{
 		upstream:  up.URL,
 		clientIP:  "1.1.1.1",
 		startMono: monotonicNano(),
@@ -121,7 +121,7 @@ func TestClickProxy_StreamRSSBounded(t *testing.T) {
 		runtime.ReadMemStats(&before)
 
 		conn := newStreamCaptureConn()
-		h.clickProxyDeliver(conn, &connContext{bufSlice: make([]byte, 0, 512)}, clickProxyJob{
+		h.clickProxyDeliver(conn, &connContext{BufSlice: make([]byte, 0, 512)}, clickProxyJob{
 			upstream:  up.URL,
 			startMono: monotonicNano(),
 		})
@@ -200,7 +200,7 @@ func newStreamCaptureConn() *streamCaptureConn {
 }
 
 func (c *streamCaptureConn) Write(b []byte) (int, error) {
-	c.Buf = append(c.Buf, b...)
+	c.buf = append(c.buf, b...)
 	return len(b), nil
 }
 

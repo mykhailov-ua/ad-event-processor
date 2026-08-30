@@ -382,7 +382,21 @@ type (
 	clickQueryKeyID  = track.ClickQueryKeyID
 	clickQueryParsed = track.ClickQueryParsed
 	redirectMacroID  = track.RedirectMacroID
+	ipv6RotationCell = track.IPv6RotationCell
 )
+
+const (
+	defaultIPv6RotationWindow = track.DefaultIPv6RotationWindow
+	defaultIPv6RotationThresh = track.DefaultIPv6RotationThresh
+)
+
+func hashClickUserID(s string) uint32 {
+	return track.HashClickUserID(s)
+}
+
+func ipv4HostAndSubnet24(ip string) (host, subnet24 uint32, ok bool) {
+	return track.IPv4HostAndSubnet24(ip)
+}
 
 const (
 	clickPathPrefix      = "/click"
@@ -812,13 +826,16 @@ var (
 )
 
 const (
-	safePageAttestOK                  = ""
-	safePageAttestWebRTCLeak          = "webrtc_leak"
-	safePageAttestTimezoneSpoof       = "timezone_spoof"
-	safePageAttestWebGLAutomation     = "webgl_automation"
-	safePageAttestHeadlessViewport    = "headless_viewport"
-	safePageAttestWebGLVendorMismatch = "webgl_vendor_mismatch"
-	safePageAttestLangMismatch        = "lang_mismatch"
+	safePageAttestOK                   = ""
+	safePageAttestWebRTCLeak           = "webrtc_leak"
+	safePageAttestTimezoneSpoof        = "timezone_spoof"
+	safePageAttestWebGLAutomation      = "webgl_automation"
+	safePageAttestHeadlessViewport     = "headless_viewport"
+	safePageAttestWebGLVendorMismatch  = "webgl_vendor_mismatch"
+	safePageAttestLangMismatch         = "lang_mismatch"
+	safePageAttestCanvasRetestMismatch = "canvas_retest_mismatch"
+	safePageAttestPermissionsMismatch  = "permissions_mismatch"
+	safePageAttestBezierBot            = "bezier_bot"
 )
 
 type (

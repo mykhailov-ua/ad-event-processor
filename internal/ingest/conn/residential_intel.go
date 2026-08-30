@@ -22,12 +22,21 @@ import (
 const (
 	residentialIntelFeedFileName = "external_residential.txt"
 	residentialIntelRedisPrefix  = "intel:residential:"
+
+	ResidentialIntelFeedFileName = residentialIntelFeedFileName
+	ResidentialIntelRedisPrefix  = residentialIntelRedisPrefix
 )
 
 type residentialIntelRedisEntry struct {
 	ResidentialProxy bool `json:"residential_proxy"`
 	VPN              bool `json:"vpn"`
 	Proxy            bool `json:"proxy"`
+}
+
+type ResidentialIntelRedisEntry = residentialIntelRedisEntry
+
+func (l *residentialIntelFeedLoader) ReloadOnce(ctx context.Context) {
+	l.reloadOnce(ctx)
 }
 
 func (e residentialIntelRedisEntry) isResidentialFarm() bool {
@@ -77,6 +86,13 @@ func (l *ResidentialIntelFeedLoader) Start(ctx context.Context) {
 		return
 	}
 	l.loader.Start(ctx)
+}
+
+func (l *ResidentialIntelFeedLoader) ReloadOnce(ctx context.Context) {
+	if l == nil || l.loader == nil {
+		return
+	}
+	l.loader.reloadOnce(ctx)
 }
 
 func (l *residentialIntelFeedLoader) Start(ctx context.Context) {

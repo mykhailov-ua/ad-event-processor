@@ -34,8 +34,8 @@ func FuzzSafePageVerifyParse(f *testing.F) {
 			return
 		}
 		evaluateSafePageAttestation(safePageAttestationInput{
-			fingerprint: req.Fingerprint,
-			events:      req.Events,
+			Fingerprint: req.Fingerprint,
+			Events:      req.Events,
 		})
 		checkBezierBot(req.Events)
 	})

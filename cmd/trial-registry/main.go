@@ -1,3 +1,4 @@
+// trial-registry CLI entrypoint. Package documentation: doc.go.
 package main
 
 import (

@@ -1,3 +1,23 @@
+// OTEL logs exporter for slow ringbuf events (optional).
+//
+// Role:
+//   - newOTelLogExporter reads AD_EVENT_PROCESSOR_BPF_OTEL_ENDPOINT or OTEL_EXPORTER_OTLP_* env.
+//   - Batches up to 32 log records or 2s flush interval; POST JSON to OTLP /v1/logs.
+//
+// Topology:
+//   - Called from drainRingbufRecords per event; isolated from Prometheus metrics path.
+//
+// Invariants:
+//   - Nil exporter when endpoint empty; close() drains channel and waits loop goroutine.
+//   - HTTP client timeout 5s per export; marshal/request errors drop batch (debug log).
+//
+// Defaults and limits:
+//   - Channel capacity 256; emit drops when full (non-blocking).
+//   - Batch size 32 records; ticker 2s.
+//
+// Verify:
+//
+//	AD_EVENT_PROCESSOR_BPF_OTEL_ENDPOINT=http://127.0.0.1:4318 go run ./cmd/bpf-collector/ ...
 package main
 
 import (

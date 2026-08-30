@@ -33,7 +33,7 @@ func TestBuildRtbInputsFromRegistry_customerPoolAndHybridBid(t *testing.T) {
 	metaByID := map[uuid.UUID]*CampaignMeta{
 		campA.ID: {ID: campA.ID, BidMicro: 300, CTR: 0.1, RemainingBudget: 800, TotalBudget: 1000},
 	}
-	pools := buildCustomerBudgetPools([]*domain.Campaign{campA, campB})
+	pools := BuildCustomerBudgetPools([]*domain.Campaign{campA, campB})
 	assert.Equal(t, int64(1200), pools[customerID])
 
 	inputs := BuildRtbInputsFromRegistry(registry, cfg, metaByID, pools, nil, nil)

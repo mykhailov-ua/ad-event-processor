@@ -125,14 +125,10 @@ func setupClickRedirectHarness(t *testing.T, mut func(*domain.Campaign)) (*AdsPa
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://lander.test/go?cid={click_id}",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{
+		URL:    "https://lander.test/go?cid={click_id}",
+		Weight: 100,
+	}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
@@ -177,11 +173,7 @@ func TestClickRedirectGnet_302(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			brandID: brandCreativeEntriesReady([]brandCreativeEntry{{URL: "https://lander.test/go?cid={click_id}", Weight: 100}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{brandID: {{URL: "https://lander.test/go?cid={click_id}", Weight: 100}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)

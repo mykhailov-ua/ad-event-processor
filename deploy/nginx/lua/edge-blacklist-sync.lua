@@ -1,5 +1,49 @@
+-- Redis IP blacklist -> ngx.shared.blacklist_cache via generational versioning (no flush_all, no per-IP delete on unblock).
+-- Runtime: worker 0 timers (init-worker.lua); incremental path via edge-quarantine-sub ngx.thread; cosocket Redis.
+--
+-- Consumer: access-check.lua perimeter_blacklist() reads _bl_ver, _bl_sync_ts, b:{ip}; blocks when ip_ver == ver.
+--
+-- Generational model:
+-- - _bl_ver monotonic generation; b:{ip} stores the generation at stamp time, not a boolean.
+-- - Full sync() SMEMBERS blacklist:manual|auto|fraud then bumps _bl_ver and re-stamps every member.
+-- - Unblocked IPs are not deleted from SHM; stale b:{ip} with ip_ver ~= ver is harmless (lookup passes).
+-- - stamp_ips(ips, bump_version): bump_version true (default) or ver==0 increments _bl_ver; false reuses current ver.
+-- - Quarantine pub/sub and drain_pending call stamp_ips(..., false) so incremental adds do not invalidate prior stamps.
+--
+-- ngx.shared blacklist_cache:
+-- - _bl_ver (number): active generation.
+-- - _bl_sync_ts (unix s): last successful stamp_ips or sync; access-check stale gate EDGE_BL_STALE_SEC default 30.
+-- - _bl_count (number): deduped active IP estimate; full sync() sets exact Redis count;
+--   stamp_ips increments only IPs not already at current _bl_ver (no duplicate inflation).
+-- - _bl_pending (string): newline-delimited overflow IPs when batch > CHANGELOG_MAX_IPS; drained by init-worker timer.
+-- - b:{ip} (number): generation stamp for client IP.
+--
+-- ngx.shared sentinel_cache:
+-- - m:{master_name} -> host:port string, TTL SENTINEL_CACHE_TTL 5 s; invalidated on connect failure.
+--
+-- State machine:
+-- - Cold boot: init-worker timer -> sync() full SMEMBERS; must succeed before access-check serves traffic.
+-- - Incremental: fraud:quarantine PUBLISH -> apply_quarantine_message -> stamp_ips(..., false).
+-- - Overflow: stamp_ips defers tail to _bl_pending; drain_pending_changelog timer -> stamp_ips(ips, false).
+-- - Empty quarantine payload: apply_quarantine_message falls back to full sync().
+--
+-- Failure branches (prior SHM retained unless noted):
+-- - connect_any_shard fail: sync/stamp return false; fail-closed at L7 if _bl_ver or _bl_sync_ts missing/stale.
+-- - SMEMBERS fail: sync returns false; prior generation unchanged.
+-- - stamp_ips empty input: returns false; no _bl_sync_ts update.
+-- - Sentinel resolve fail: WARN, fallback to static REDIS_ADDRS target for that shard.
+--
+-- Constants: CHANGELOG_MAX_IPS 64 (EDGE_BLACKLIST_CHANGELOG_MAX_IPS); Redis timeout 500 ms; keepalive 10000 ms pool 8.
+--
+-- Forbidden: flush_all on blacklist_cache; per-IP delete on unblock; claiming L7 cache replaces tracker FilterEngine or XDP for all fraud.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-blacklist-sync.lua
+-- bash scripts/test/edge/lua_tests.sh
+-- go test ./internal/edge/... -count=1
 local redis = require "resty.redis"
 local edge_net = require "edge-net"
+local edge_circuit = require "edge-circuit"
 
 local _M = {}
 
@@ -9,14 +53,14 @@ local sentinel_cache = ngx.shared.sentinel_cache
 local test_env = nil
 local test_connect_shard = nil
 
-local REDIS_HOST = "127.0.0.1"
-local REDIS_PORT = 6379
-local REDIS_PASS = ""
-local REDIS_ADDRS = ""
-local REDIS_SENTINEL_ADDRS = ""
-local REDIS_MASTER_NAMES = ""
-local SENTINEL_CACHE_TTL = 5
-local CHANGELOG_MAX_IPS = 64
+local REDIS_HOST = "127.0.0.1" -- fallback TCP when REDIS_ADDRS unset (dev only)
+local REDIS_PORT = 6379 -- TCP fallback port; production uses unix sockets in REDIS_ADDRS
+local REDIS_PASS = "" -- requirepass; empty in dev compose
+local REDIS_ADDRS = "" -- comma unix:/run/.../redis-N.sock; shard try order from edge-net
+local REDIS_SENTINEL_ADDRS = "" -- host:26379 list when sentinel failover enabled
+local REDIS_MASTER_NAMES = "" -- parallel to sentinel addrs (mymaster per shard)
+local SENTINEL_CACHE_TTL = 5 -- seconds; ngx.shared sentinel_cache master resolution cache
+local CHANGELOG_MAX_IPS = 64 -- max IPs per fraud:quarantine pub/sub incremental stamp batch
 
 local shards
 local sentinel_addrs
@@ -211,6 +255,7 @@ function _M.connect_any_shard()
         last_err = err or "connect failed"
         ngx.log(ngx.WARN, "edge_blacklist_sync: shard ", shard_idx - 1, " connect failed: ", last_err)
     end
+    edge_circuit.record_err()
     return nil, last_err, nil
 end
 
@@ -255,10 +300,15 @@ function _M.stamp_ips(ips, bump_version)
     end
 
     local stamped = 0
+    local added = 0
     for _, ip in ipairs(batch) do
         if ip and ip ~= "" then
+            local was_active = cache:get("b:" .. ip) == ver
             cache:set("b:" .. ip, ver)
             stamped = stamped + 1
+            if not was_active then
+                added = added + 1
+            end
         end
     end
 
@@ -272,12 +322,8 @@ function _M.stamp_ips(ips, bump_version)
     end
 
     cache:set("_bl_sync_ts", ngx.time())
-    if bump_version then
-        cache:set("_bl_count", stamped)
-    else
-        local prev = cache:get "_bl_count" or 0
-        cache:set("_bl_count", prev + stamped)
-    end
+    local prev_count = cache:get "_bl_count" or 0
+    cache:set("_bl_count", prev_count + added)
     ngx.log(
         ngx.INFO,
         "edge_blacklist_sync: stamped ",
@@ -338,6 +384,7 @@ function _M.sync()
     red:set_keepalive(10000, 8)
 
     if not manual or not auto or not fraud then
+        edge_circuit.record_err()
         ngx.log(ngx.ERR, "edge_blacklist_sync: smembers failed: ", err1 or err2 or err3)
         return false
     end

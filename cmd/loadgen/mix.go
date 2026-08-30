@@ -1,3 +1,4 @@
+// Traffic mix percentages and HTTP runner for /track, /click, OpenRTB, edge drills.
 package main
 
 import (
@@ -15,6 +16,7 @@ import (
 	"time"
 )
 
+// mixConfig: percentage buckets must sum to 100 per mode; carved from pctValid for drill flags.
 type mixConfig struct {
 	pctOpenRTB    int
 	pctTelegram   int
@@ -28,6 +30,7 @@ type mixConfig struct {
 	pctJA3Block   int
 }
 
+// defaultMix returns mode-specific traffic percentages (int percent 0-100 per bucket).
 func defaultMix(mode string, pctBroken, pctGray int) mixConfig {
 	switch mode {
 	case "business":

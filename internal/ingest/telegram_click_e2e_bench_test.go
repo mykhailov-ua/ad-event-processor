@@ -23,14 +23,10 @@ func benchTelegramClickHandler(b testing.TB) (*AdsPacketHandler, parsedHTTPReque
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://offer.example/lp?cid={click_id}&token={bridge_token}",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{benchClickBrandID: {{
+		URL:    "https://offer.example/lp?cid={click_id}&token={bridge_token}",
+		Weight: 100,
+	}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
@@ -52,8 +48,8 @@ func benchTelegramClickHandler(b testing.TB) (*AdsPacketHandler, parsedHTTPReque
 func TestTelegramClickRedirectGnet_ZeroAlloc(t *testing.T) {
 	h, req, conn := benchTelegramClickHandler(t)
 	allocs := testing.AllocsPerRun(100, func() {
-		conn.written = conn.written[:0]
-		conn.responses = conn.responses[:0]
+		conn.ClearWritten()
+		conn.ClearResponses()
 		h.React(req, conn)
 	})
 	if allocs != 0.0 {
@@ -73,14 +69,10 @@ func TestTelegramClickRedirectGnet_DMR(t *testing.T) {
 	cachedMockCamp.Store(nil)
 
 	store := NewBrandCreativeStore(nil, 0)
-	store.cache.Store(&brandCreativeMapSnapshot{
-		byBrand: map[uuid.UUID][]brandCreativeEntry{
-			benchClickBrandID: brandCreativeEntriesReady([]brandCreativeEntry{{
-				URL:    "https://offer.example/lp?cid={click_id}&token={bridge_token}",
-				Weight: 100,
-			}}),
-		},
-	})
+	store.SetFixturesForTest(map[uuid.UUID][]BrandCreativeFixture{benchClickBrandID: {{
+		URL:    "https://offer.example/lp?cid={click_id}&token={bridge_token}",
+		Weight: 100,
+	}}})
 
 	cfg := &config.Config{MaxRequestBodySize: 1 << 20}
 	h := NewAdsPacketHandler(cfg, &mockRegistry{}, nil, nil, nil, NewJumpHashSharder(1), "fraud-stream", store)
@@ -99,8 +91,8 @@ func BenchmarkTelegramClickRedirectGnet_E2E(b *testing.B) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(req.Path)))
 	for b.Loop() {
-		conn.written = conn.written[:0]
-		conn.responses = conn.responses[:0]
+		conn.ClearWritten()
+		conn.ClearResponses()
 		h.React(req, conn)
 	}
 }

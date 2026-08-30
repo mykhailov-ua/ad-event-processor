@@ -92,7 +92,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	f.StartSLASentinel(ctx, 10*time.Millisecond)
 
 	time.Sleep(50 * time.Millisecond)
-	assert.False(t, f.slaPenaltyActive.Load(), "SLA penalty should be inactive initially")
+	assert.False(t, f.SLAPenaltyActive().Load(), "SLA penalty should be inactive initially")
 
 	evt1 := &domain.Event{
 		CampaignID: campID,
@@ -111,7 +111,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	mockDB.Delay.Store(300)
 
 	time.Sleep(500 * time.Millisecond)
-	assert.True(t, f.slaPenaltyActive.Load(), "SLA penalty should auto-activate on slow DB latency")
+	assert.True(t, f.SLAPenaltyActive().Load(), "SLA penalty should auto-activate on slow DB latency")
 
 	redisVal, err := redisClient.Get(ctx, "sla:penalty:active").Bool()
 	assert.NoError(t, err)
@@ -134,7 +134,7 @@ func TestUnifiedFilter_LatencySLA(t *testing.T) {
 	mockDB.Delay.Store(0)
 
 	time.Sleep(400 * time.Millisecond)
-	assert.False(t, f.slaPenaltyActive.Load(), "SLA penalty should deactivate automatically once latency stabilizes")
+	assert.False(t, f.SLAPenaltyActive().Load(), "SLA penalty should deactivate automatically once latency stabilizes")
 
 	_, err = redisClient.Get(ctx, "sla:penalty:active").Bool()
 	assert.ErrorIs(t, err, redis.Nil, "Redis key should be cleared after recovery")

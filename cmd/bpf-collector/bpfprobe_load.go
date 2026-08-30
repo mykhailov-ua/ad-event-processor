@@ -1,3 +1,26 @@
+// BPF object load and Go mirrors of loadtest_probe.c map/value layouts.
+//
+// Role:
+//   - Load deploy/dev/bpf/loadtest_probe.o; wire Programs and Maps by prefixed symbol names.
+//   - SetConfig writes sample_rate, slow_syscall_ns, enabled to config map key 0.
+//   - DecodeSlowEvent parses ringbuf raw sample (min 24 bytes; extended fields at 26/28/32).
+//
+// Topology:
+//   - Object built by make bpf-dev; not edge-xdp pinned maps.
+//   - Per-CPU array values aggregated in dump.go (PidStats, SyscallHist, NetStats, MarkerHist).
+//
+// Invariants:
+//   - SysEnter and SysExit programs required; Load closes collection and errors if missing.
+//   - PutTargetCgroup no-ops when cgroup_id == 0 or map nil.
+//
+// Layout constants:
+//   - Hist has 32 exponential latency buckets; p99 derived in dump via histP99Us.
+//   - SlowEvent kind/marker_id: 1=process_track, 3=filter_check (uprobe markers).
+//
+// Verify:
+//
+//	make bpf-dev
+//	go test ./cmd/bpf-collector/... -short -count=1
 package main
 
 import (

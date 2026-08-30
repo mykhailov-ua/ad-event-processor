@@ -16,12 +16,9 @@ func TestEvaluateRtbLiveGate_insufficientShadow(t *testing.T) {
 
 func TestEvaluateRtbLiveGate_parityOk(t *testing.T) {
 	ResetRtbShadowDiffBuckets()
-	b := &rtbShadowDiffRing[rtbShadowDiffBucketIdx(time.Now())]
+	b := rtbShadowDiffBucketNow()
 	for range 120 {
-		b.shadowEvals.Add(1)
-		b.parityMatch.Add(1)
-		b.shadowWinnerMatch.Add(1)
-		b.liveWouldAccept.Add(1)
+		b.RecordParityMatchForTest()
 	}
 	gate := EvaluateRtbLiveGate(time.Hour)
 	assert.True(t, gate.Ready, gate.Reasons)

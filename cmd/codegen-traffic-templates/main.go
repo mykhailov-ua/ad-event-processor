@@ -1,3 +1,4 @@
+// codegen-traffic-templates entrypoint. Package documentation: doc.go.
 package main
 
 import (

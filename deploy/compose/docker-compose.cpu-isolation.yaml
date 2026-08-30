@@ -1,3 +1,41 @@
+# CPU isolation compose overlay (deploy/compose/docker-compose.cpu-isolation.yaml).
+# Merged when CPU_ISOLATION_ENABLED=1 in .env; requires --profile cpu-isolation.
+# Cross-ref: deploy/DEPLOY.md, scripts/ops/cpu_isolation.sh, deploy/systemd/*.cpu-isolation.conf.
+#
+# Role:
+# - Pin tracker, redis, nginx, and cold-path containers to host CPU sets via cpuset.
+# - Reduces scheduler jitter on hot-path ingest; optional on dedicated 8+ core hosts.
+#
+# Topology:
+# - Profile cpu-isolation on all patched services; stack.sh appends file + --profile cpu-isolation.
+# - tracker-0..3: TRACKER_N_CPUSET (default cores 0..3, one lane each).
+# - redis-0..3: REDIS_CPUSET (default 4,5); nginx: EDGE_CPUSET (default 6).
+# - processor, processor-1, broker, control, clickhouse, db, db-payment: COLD_CPUSET (default 7).
+#
+# Invariants:
+# - Services without profile cpu-isolation are unchanged in default stack.sh up.
+# - cpu_shares: tracker 2048, redis/nginx 1536, cold 512-1024.
+# - Does not set COMPOSE_MEMORY_PROFILE or REDIS_SHARD_COUNT.
+#
+# Env knobs:
+# - CPU_ISOLATION_ENABLED=1 (stack.sh gate).
+# - TRACKER_0_CPUSET..TRACKER_3_CPUSET, REDIS_CPUSET, EDGE_CPUSET, COLD_CPUSET.
+#
+# Forbidden:
+# - Do not enable on laptops with < 8 cores without remapping CPUSET vars.
+# - Do not expect isolation without stack.sh hardening verify (scripts/ops/cpu_isolation.sh).
+#
+# Verify:
+# CPU_ISOLATION_ENABLED=1 bash scripts/dev/stack/stack.sh single-vps
+# bash scripts/ops/cpu_isolation.sh verify
+# bash scripts/ci/compose_profile_check.sh
+#
+# Default hardware layout (override via CPUSET env):
+# - Cores 0-3: tracker lanes (one core per shard).
+# - Cores 4-5: Redis shards 0-3 shared pool.
+# - Core 6: nginx edge.
+# - Core 7: cold path (Postgres, ClickHouse, processor, broker, control).
+
 x-cpu-isolation-tracker: &cpu_isolation_tracker
   profiles: [cpu-isolation]
   cpu_shares: 2048

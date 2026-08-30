@@ -43,14 +43,14 @@ func TestBrandFrequencyCapping(t *testing.T) {
 	brandID, err := svc.BrandStore().CreateBrand(ctx, custID, "Nike Group")
 	require.NoError(t, err)
 
-	brands, err := svc.ListBrandsByCustomer(ctx, custID)
+	brands, err := svc.BrandStore().ListBrandsByCustomer(ctx, custID)
 	require.NoError(t, err)
 	require.Len(t, brands, 1)
 	assert.Equal(t, brandID.String(), brands[0].ID)
 	assert.Equal(t, custID.String(), brands[0].CustomerID)
 	assert.Equal(t, "Nike Group", brands[0].Name)
 
-	require.NoError(t, svc.ConfigureBrandFcap(ctx, brandID, 3, 3600))
+	require.NoError(t, svc.BrandStore().ConfigureBrandFcap(ctx, brandID, 3, 3600))
 
 	var dbLimit, dbWindow int32
 	err = pool.QueryRow(ctx, "SELECT freq_limit, freq_window FROM advertiser_brands WHERE id = $1", brandID).Scan(&dbLimit, &dbWindow)

@@ -30,18 +30,18 @@ func TestFault_HTTP1_MalformedCorpus(t *testing.T) {
 	)
 	for _, tc := range http1FaultMalformedCases() {
 		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.Name, func(t *testing.T) {
 			defer func() {
 				if r := recover(); r != nil {
 					panicCount.Add(1)
 					t.Fatalf("parseHTTP1 panicked: %v", r)
 				}
 			}()
-			n, req, err := parseHTTP1(tc.payload, tc.maxBody, nil)
-			if tc.wantOK {
-				require.NoError(t, err, "payload=%q", truncateBytes(tc.payload, 80))
+			n, req, err := parseHTTP1(tc.Payload, tc.MaxBody, nil)
+			if tc.WantOK {
+				require.NoError(t, err, "payload=%q", truncateBytes(tc.Payload, 80))
 				assert.Greater(t, n, 0)
-				assert.LessOrEqual(t, n, len(tc.payload))
+				assert.LessOrEqual(t, n, len(tc.Payload))
 				if req.HasContentLength {
 					assert.Len(t, req.Body, req.ContentLength)
 				}
@@ -49,9 +49,9 @@ func TestFault_HTTP1_MalformedCorpus(t *testing.T) {
 				return
 			}
 			require.Error(t, err)
-			if tc.wantErr != nil {
-				assert.ErrorIs(t, err, tc.wantErr, "payload=%q", truncateBytes(tc.payload, 80))
-				errCounts[tc.wantErr.Error()]++
+			if tc.WantErr != nil {
+				assert.ErrorIs(t, err, tc.WantErr, "payload=%q", truncateBytes(tc.Payload, 80))
+				errCounts[tc.WantErr.Error()]++
 			}
 		})
 	}
@@ -146,10 +146,10 @@ func TestFault_HTTP1_ConcurrentParse(t *testing.T) {
 	)
 	cases := http1FaultMalformedCases()
 	cases = append(cases, http1FaultCase{
-		name:    "valid_corpus",
-		payload: nginxTrackCorpus,
-		maxBody: 1024 * 1024,
-		wantOK:  true,
+		Name:    "valid_corpus",
+		Payload: nginxTrackCorpus,
+		MaxBody: 1024 * 1024,
+		WantOK:  true,
 	})
 
 	var (
@@ -170,7 +170,7 @@ func TestFault_HTTP1_ConcurrentParse(t *testing.T) {
 							panics.Add(1)
 						}
 					}()
-					_, _, err := parseHTTP1(tc.payload, tc.maxBody, nil)
+					_, _, err := parseHTTP1(tc.Payload, tc.MaxBody, nil)
 					if err == nil {
 						ok.Add(1)
 					} else {
@@ -225,7 +225,7 @@ func TestFault_HTTP1_ConcurrentOnTraffic(t *testing.T) {
 					payload = validReq
 				} else {
 					tc := malformed[(workerID*perWorker+i)%len(malformed)]
-					payload = tc.payload
+					payload = tc.Payload
 				}
 				func() {
 					defer func() {
@@ -332,6 +332,12 @@ func (c *faultGnetConn) Append(b []byte) {
 	c.mu.Lock()
 	c.inbound = append(c.inbound, b...)
 	c.mu.Unlock()
+}
+
+func (c *faultGnetConn) InboundBytes() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]byte(nil), c.inbound...)
 }
 
 func (c *faultGnetConn) SetReadDeadline(time.Time) error  { return nil }

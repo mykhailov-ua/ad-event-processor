@@ -68,6 +68,7 @@ Always applied on every agent turn (no glob filter):
 | :--- | :--- |
 | `core.mdc` | SLA, repo policy, commit style, rule index |
 | `naming.mdc` | Identifiers, legacy tokens, marketing ban |
+| `comments.mdc` | Required/forbidden comments, ASCII format, critical-code headers |
 | `quality.mdc` | Go receivers, verification honesty |
 | `anti-slop.mdc` | CI honesty, doc lie modes, slop gates, agent-resistant verification, agent checklist |
 
@@ -112,4 +113,4 @@ When rules conflict, apply in this order:
 
 ## Related rules
 
-`architecture.mdc`, `anti-slop.mdc`, `development.mdc`, `naming.mdc`, `quality.mdc`.
+`architecture.mdc`, `anti-slop.mdc`, `comments.mdc`, `development.mdc`, `naming.mdc`, `quality.mdc`.

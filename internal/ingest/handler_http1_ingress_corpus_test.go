@@ -28,9 +28,9 @@ func TestChaos_CrossHop_NginxGnet(t *testing.T) {
 	}
 	elapsed := time.Since(start)
 
-	faultproof.Log(t, "parser_security_ps_g04", map[string]string{
-		"gap_id":             "http1_ingress_corpus",
-		"gap":                boolGapStr(len(diffs) == 0),
+	faultproof.Log(t, "parser_security_http1_ingress_corpus", map[string]string{
+		"case_id":            "http1_ingress_corpus",
+		"proof":              boolProofStr(len(diffs) == 0),
 		"corpus_cases":       fmt.Sprintf("%d", len(corpus)),
 		"differential_count": fmt.Sprintf("%d", len(diffs)),
 		"elapsed_ms":         fmt.Sprintf("%d", elapsed.Milliseconds()),
@@ -55,7 +55,7 @@ func TestHTTP1IngressCanonical_trackRejectsChunked(t *testing.T) {
 	require.Equal(t, IngressReject, gnet.Verdict)
 }
 
-func boolGapStr(closed bool) string {
+func boolProofStr(closed bool) string {
 	if closed {
 		return "closed"
 	}

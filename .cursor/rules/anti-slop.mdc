@@ -16,7 +16,7 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Lie mode | Project-specific example |
 | :--- | :--- |
 | Wrong naming | Cryptic suffixes (`m8`, `n1`, `f1`) or legacy tokens (`BidShard`, `espx`) per `naming.mdc` |
-| Charset slop | Emojis, Unicode dashes, ellipsis char, `===`/`---` banners in comments and `scripts/` echo/log (`naming.mdc`) |
+| Charset slop | Emojis, Unicode dashes, ellipsis char, `===`/`---` banners in comments and `scripts/` echo/log (`comments.mdc`) |
 | Wrong types | sqlc row field vs admin `FooDTO` `json` tag mismatch on `/api/v1` handlers |
 | Plausible wrong logic | Parser budget bypass, budget invariant drift, outbox double-apply |
 | Weakened tests | Green CI by removing `AssertBudgetInvariant` or chaos assertions |
@@ -311,6 +311,11 @@ Applies to `README.md`, `docs/`, `deploy/vendor/`, admin user-visible copy, Graf
 | JA3/TCP MSS as client signals | Tracker reads edge headers; CDN terminates TCP | CDN disclaimer; `edge.mdc` disable flags |
 | "Guarantee", "never" (ML on hot path) | OK if qualified: ML in sidecar only | "Batch only"; cite `cmd/fraud-scorer` |
 | Mixed ns / us / ms in one claim | Different layers have different budgets | Table per layer: edge, local filter, Redis Lua, handler E2E |
+| Detached filter goroutine | `FilterEngine.Check` is synchronous on `PinnedWorkerPool` Tier B (`trackwire.go`); epoll Tier A only enqueues | `hot-path.mdc` **Tracker thread model**; `cmd/tracker/doc.go` |
+| Pinned workers return to epoll | Only gnet epoll returns after `SubmitOffload`; workers run full path incl. sync `EVALSHA` | Tier A vs Tier B table in `hot-path.mdc` |
+| `unsafe.String` over gnet frame through filter | Frame discarded before filter; pin/arena lifetime on Tier B worker | `tradeoffs.mdc` offload buffers; `cloneAsyncWriteBytes` before release |
+| Magic numbers in `doc.go` | Informal; use Defaults and limits / Env defaults with units | `comments.mdc` **Forbidden in doc.go** |
+| `doc.go` ports or subcommands stale | Must match `main.go` / `wire.go` / `config` defaults | `comments.mdc` **cmd doc.go sync** |
 
 Open implementation gaps: `deploy/vendor/ANTIFRAUD.md` (semantic slugs in prose, not ticket IDs). Do not close gaps in docs alone.
 
@@ -428,7 +433,7 @@ Forbidden in admin copy and embed snippets (when `web/` exists):
 
 ## Fault and chaos proof slop
 
-- `fault_proof gap=open` without follow-up test or explicit PR waiver.
+- `fault_proof proof=open` without follow-up test or explicit PR waiver.
 - Chaos tests that pass only because chaos pct is 0.
 - Parser security change without `TestChaos_CrossHop_NginxGnet` `differential_count=0`.
 - New hot-path write path without fault proof (`fault-tests.mdc`).
@@ -512,8 +517,8 @@ When verification needs integration tier or full compile, **name the command** a
 | 16 | No tautology / mutation-survivor tests; name verification **tier** (`Agent-resistant verification`) |
 | 17 | No god package: new admin logic in domain package; bridge wiring only; port <=12 methods (`modular-monolith.mdc`) |
 | 18 | No micro-package: new domain dir only with handlers/store + wire + `doc.go` in same PR; no `internal/common` (`modular-monolith.mdc`) |
-| 19 | Every production package has `doc.go` with `//` package docs; edit in the same PR when adding a package (`naming.mdc`) |
+| 19 | Every production package has detailed `doc.go` (role, verify commands); edit in the same PR when adding a package (`comments.mdc`, `modular-monolith.mdc`) |
 
 ## Related rules
 
-`boundaries.mdc`, `ci.mdc`, `cold-path.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `load-test-bpf.mdc`, `modular-monolith.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.
+`boundaries.mdc`, `ci.mdc`, `cold-path.mdc`, `comments.mdc`, `fault-tests.mdc`, `hot-path.mdc`, `load-test-bpf.mdc`, `modular-monolith.mdc`, `quality.mdc`, `testing.mdc`, `ui.mdc`.

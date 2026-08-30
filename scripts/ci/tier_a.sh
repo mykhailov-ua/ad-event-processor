@@ -69,13 +69,13 @@ if [[ -d testdata ]]; then
   fail=1
 fi
 
-echo "tier_a: check no milestone references..."
-pattern_milestone='\bM[0-9]+'
-scan_milestone() {
+echo "tier_a: check no version-tag references..."
+pattern_version_tag='\bM[0-9]+'
+scan_version_tag() {
   local path="$1"
-  if rg -n "$pattern_milestone" "$path" > /dev/null 2>&1; then
-    echo "check_no_milestone_refs: milestone tag in $path"
-    rg -n "$pattern_milestone" "$path" || true
+  if rg -n "$pattern_version_tag" "$path" > /dev/null 2>&1; then
+    echo "check_no_version_tag_refs: version tag in $path"
+    rg -n "$pattern_version_tag" "$path" || true
     fail=1
   fi
 }
@@ -87,22 +87,22 @@ while IFS= read -r -d '' file; do
   case "$(basename "$file")" in
     *.pb.go | *_grpc.pb.go | *_vtproto.pb.go | *_bpfel.go | *_bpfeb.go) continue ;;
   esac
-  scan_milestone "$file"
+  scan_version_tag "$file"
 done < <(find internal cmd pkg tests -name '*.go' -print0 2> /dev/null || true)
 
 while IFS= read -r -d '' file; do
-  scan_milestone "$file"
+  scan_version_tag "$file"
 done < <(find scripts -name '*.sh' -print0 2> /dev/null || true)
 
 BASE="${1:-origin/main}"
 if git rev-parse --verify "$BASE" > /dev/null 2>&1; then
   mapfile -t diff_hits < <(
     git diff "$BASE"...HEAD -- '*.go' '*.sh' \
-      | rg "$pattern_milestone" \
-      | rg -v 'milestoneTag|milestoneWord|check_no_milestone_refs' || true
+      | rg "$pattern_version_tag" \
+      | rg -v 'versionTag|versionWord|check_no_version_tag_refs' || true
   )
   if ((${#diff_hits[@]} > 0)); then
-    echo "check_no_milestone_refs: forbidden milestone tag in diff:"
+    echo "check_no_version_tag_refs: forbidden version tag in diff:"
     printf '  %s\n' "${diff_hits[@]}"
     fail=1
   fi

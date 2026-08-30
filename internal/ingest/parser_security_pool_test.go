@@ -25,9 +25,9 @@ func TestRequestBufferPool_NoCapPoisoning(t *testing.T) {
 	putRequestBuffer(got)
 
 	require.LessOrEqual(t, gotCap, maxPoolObjectSize)
-	faultproof.Log(t, "parser_security_ps_h01", map[string]string{
-		"gap_id":  "json_pool_cap_poisoning",
-		"gap":     "closed",
+	faultproof.Log(t, "parser_security", map[string]string{
+		"case_id": "json_pool_cap_poisoning",
+		"proof":   "closed",
 		"max_cap": strconv.Itoa(gotCap),
 	})
 }
@@ -46,7 +46,7 @@ func buildJSONKeyPairSpam(pairs int) []byte {
 	return []byte(b.String())
 }
 
-func TestChaos_ParserSecurity_PS_H02_KeyPairFlood(t *testing.T) {
+func TestChaos_ParserSecurity_KeyPairFlood(t *testing.T) {
 	body := buildJSONKeyPairSpam(MaxJSONKeyPairs + 1)
 	start := time.Now()
 
@@ -59,13 +59,13 @@ func TestChaos_ParserSecurity_PS_H02_KeyPairFlood(t *testing.T) {
 	ok := parseOpenRTB3FSMInto(&parsed, body)
 	require.False(t, ok)
 
-	faultproof.Log(t, "parser_security_ps_h02", map[string]string{
-		"gap_id": "json_key_pair_flood",
-		"gap":    "closed",
+	faultproof.Log(t, "parser_security_json_key_pair_flood", map[string]string{
+		"case_id": "json_key_pair_flood",
+		"proof":   "closed",
 	})
 }
 
-func TestChaos_ParserSecurity_PS_H04_KeyEscapeWalk(t *testing.T) {
+func TestChaos_ParserSecurity_KeyEscapeWalk(t *testing.T) {
 	key := strings.Repeat(`\\`, MaxJSONStringScanBytes+1)
 	body := []byte(`{"` + key + `":1}`)
 	start := time.Now()
@@ -75,13 +75,13 @@ func TestChaos_ParserSecurity_PS_H04_KeyEscapeWalk(t *testing.T) {
 	require.False(t, ok)
 	require.Less(t, time.Since(start), 2*time.Second)
 
-	faultproof.Log(t, "parser_security_ps_h04", map[string]string{
-		"gap_id": "json_key_escape_walk",
-		"gap":    "closed",
+	faultproof.Log(t, "parser_security_json_key_escape_walk", map[string]string{
+		"case_id": "json_key_escape_walk",
+		"proof":   "closed",
 	})
 }
 
-func TestChaos_ParserSecurity_PS_H05_OverlongUTF8(t *testing.T) {
+func TestChaos_ParserSecurity_OverlongUTF8(t *testing.T) {
 	jsonStrictUTF8Enabled.Store(true)
 	t.Cleanup(func() { jsonStrictUTF8Enabled.Store(true) })
 
@@ -90,8 +90,8 @@ func TestChaos_ParserSecurity_PS_H05_OverlongUTF8(t *testing.T) {
 	err := ParseTrackRequestJSON(&req, body)
 	require.Error(t, err)
 
-	faultproof.Log(t, "parser_security_ps_h05", map[string]string{
-		"gap_id": "json_overlong_utf8",
-		"gap":    "closed",
+	faultproof.Log(t, "parser_security_json_overlong_utf8", map[string]string{
+		"case_id": "json_overlong_utf8",
+		"proof":   "closed",
 	})
 }

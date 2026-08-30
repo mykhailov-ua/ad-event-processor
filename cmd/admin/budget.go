@@ -1,3 +1,4 @@
+// budget subcommands: Redis budget:* key cleanup and optional PG spend reset.
 package main
 
 import (

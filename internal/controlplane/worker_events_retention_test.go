@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/internal/privacyadmin"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TestEventsRetentionWorker_DeletesOldRows(t *testing.T) {
 		"retention-recent-1", campaignID, recentAt)
 	require.NoError(t, err)
 
-	worker := NewEventsRetentionWorker(pool, 90)
+	worker := privacyadmin.NewEventsRetentionWorker(pool, 90)
 	deleted := worker.RunOnce(ctx)
 	assert.Equal(t, int64(1), deleted)
 

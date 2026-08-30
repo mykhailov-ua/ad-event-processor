@@ -1,3 +1,31 @@
+-- Per-campaign edge rate limiter with fraud-tier scaling in ngx.shared.edge_rl.
+-- Runtime: all workers access phase via edge_track_policy.apply_campaign_rl (not tracker UnifiedFilter debit).
+--
+-- Consumers: edge_track_policy.lua allow(), retry_after_sec(); tier from edge-fraud-tier.lua.
+-- Limits from edge-config.get() mirror (limit_per_min, window_ms, rl_pct_*, retry_*_sec).
+--
+-- Cache invalidation: TTL bucket keys "{campaign_id}:{tier}:{bucket}" via incr(..., 0, window_sec*2).
+-- Old buckets expire after 2x window; no explicit delete. incr failure: fail-closed (deny request).
+--
+-- ngx.shared edge_rl keys (number count per key):
+-- - {campaign_id}:{tier}:{bucket} where tier is pass|suspect|ivt|block; bucket = floor(ngx.time()/window_sec).
+--
+-- State machine (per request):
+-- - nil/empty campaign_id -> allow (no SHM touch).
+-- - base_limit <= 0 from config -> allow.
+-- - tier block or scaled limit <= 0 -> deny (edge_track_policy -> 403 fraud block).
+-- - incr count <= limit -> allow; else deny (429 with Retry-After from edge-config tier retry).
+--
+-- Constants and limits:
+-- - window_sec = max(1, floor(window_ms / 1000)); incr TTL = window_sec * 2.
+-- - tier_limit: pct <= 0 -> limit 0; pct >= 100 -> base_limit; else max(1, floor(base_limit * pct / 100)).
+-- - fraud_score clamp and tier thresholds owned by edge-fraud-tier.lua.
+--
+-- Forbidden: assuming edge RL replaces Redis campaign budget, UnifiedFilter debit, or tracker fraud blacklist.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-rl.lua
+-- bash scripts/test/edge/lua_tests.sh
 local edge_config = require "edge-config"
 local edge_fraud_tier = require "edge-fraud-tier"
 

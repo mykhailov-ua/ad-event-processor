@@ -167,7 +167,7 @@ Rules:
 
 Use `pkg/faultproof.Log` or `t.Logf("fault_proof fault=%s ...")` so `scripts/fault/resilience_fault_gates.sh` and operators can grep proof lines.
 
-Parser gaps: `faultproof.Log` with `gap_id`, `gap=closed`. `gap=open` requires follow-up test or PR waiver (`anti-slop.mdc`).
+Parser holdouts: `faultproof.Log` with `case_id`, `proof=closed`. `proof=open` requires follow-up test or PR waiver (`anti-slop.mdc`).
 
 ## Integration tests (`*_integration_test.go`)
 

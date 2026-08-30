@@ -79,7 +79,7 @@ func fetchPinterestCosts(ctx context.Context, client *http.Client, baseURL strin
 func pinterestListCampaignIDs(ctx context.Context, client *http.Client, base, adAccountID, token string) ([]string, error) {
 	ids := make([]string, 0, 64)
 	bookmark := ""
-	for page := range 50 {
+	for range 50 {
 		q := url.Values{}
 		q.Set("page_size", "250")
 		if bookmark != "" {

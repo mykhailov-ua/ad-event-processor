@@ -12,40 +12,40 @@ import (
 
 func TestDecideFraudLayer_L3(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonL3Blocklist)
+	acc.Add(FraudReasonL3Blocklist)
 	assert.Equal(t, FraudLayerL1Reject, decideFraudLayer(acc, FraudTierBlock))
 }
 
 func TestDecideFraudLayer_dualL1(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
-	acc.add(FraudReasonLowTTC)
+	acc.Add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonLowTTC)
 	assert.Equal(t, FraudLayerL1Reject, decideFraudLayer(acc, FraudTierBlock))
 }
 
 func TestDecideFraudLayer_singleL1Shadow(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonDatacenterIP)
 	assert.Equal(t, FraudLayerL2Shadow, decideFraudLayer(acc, FraudTierIVT))
 }
 
 func TestDecideFraudLayer_weakSignalShadow(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonMissingImpTS)
+	acc.Add(FraudReasonMissingImpTS)
 	assert.Equal(t, FraudLayerL2Shadow, decideFraudLayer(acc, FraudTierSuspect))
 }
 
 func TestFraudAccumulator_shortCircuitBudget(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
-	assert.False(t, acc.shouldShortCircuitFraudBudget())
+	acc.Add(FraudReasonDatacenterIP)
+	assert.False(t, acc.ShouldShortCircuitFraudBudget())
 
-	acc.add(FraudReasonLowTTC)
-	assert.True(t, acc.shouldShortCircuitFraudBudget())
+	acc.Add(FraudReasonLowTTC)
+	assert.True(t, acc.ShouldShortCircuitFraudBudget())
 
-	acc.reset()
-	acc.add(FraudReasonL3Blocklist)
-	assert.True(t, acc.shouldShortCircuitFraudBudget())
+	acc.Reset()
+	acc.Add(FraudReasonL3Blocklist)
+	assert.True(t, acc.ShouldShortCircuitFraudBudget())
 }
 
 func TestApplyFraudScoreBoost(t *testing.T) {
@@ -53,28 +53,24 @@ func TestApplyFraudScoreBoost(t *testing.T) {
 		CampaignID: uuid.New(),
 	}
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonDatacenterIP)
 
-	assert.Equal(t, uint32(45), acc.score)
+	assert.Equal(t, uint32(45), acc.Score())
 
 	layer, err := applyFraudLayerDecision(evt, acc, nil, 20)
 	assert.NoError(t, err)
 	assert.Equal(t, FraudLayerL2Shadow, layer)
-	assert.Equal(t, uint32(65), acc.score)
+	assert.Equal(t, uint32(65), acc.Score())
 	assert.Equal(t, uint32(65), evt.FraudScore)
 
 	_, err = applyFraudLayerDecision(evt, acc, nil, 20)
 	assert.NoError(t, err)
-	assert.Equal(t, uint32(65), acc.score)
+	assert.Equal(t, uint32(65), acc.Score())
 }
 
 func TestFraudScoreBoost_suspectTierIntegration(t *testing.T) {
 	evt := &domain.Event{CampaignID: uuid.New()}
-	acc := &fraudAccumulator{
-		score:   25,
-		count:   1,
-		signals: [maxFraudSignals]FraudReasonID{FraudReasonMissingImpTS},
-	}
+	acc := newFraudAccumulatorForTest(25, FraudReasonMissingImpTS)
 
 	layer, err := applyFraudLayerDecision(evt, acc, nil, 10)
 	require.NoError(t, err)

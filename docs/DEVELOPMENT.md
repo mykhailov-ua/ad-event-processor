@@ -374,7 +374,9 @@ These scripts can be executed on-demand to test integrations, performance bounda
 | `scripts/ops/admin_release_preflight_gate.sh` | Compiles the Admin UI, checks integration endpoints, and validates CAPI sync. |
 | `scripts/test/cpa_compliance_smoke.sh` | Verifies campaign spend auditing and accounting rules against the Playwright suite. |
 | `scripts/test/edge/reverse_proxy_close_smoke.sh` | Validates click routing, Safe Page redirection, and interactive attestation handshakes. |
-| `scripts/test/edge/lua_tests.sh all` | Runs the test corpus against Lua edge scripts (including Nginx tarpit limits). |
+| `scripts/test/edge/lua_tests.sh unit` | Unit corpus: blacklist, circuit breaker, edge_config, slot_map, node_weights, tarpit, TLS. |
+| `scripts/test/edge/lua_tests.sh compliance` | Subset for CI compliance tier (includes sync-order tests). |
+| `scripts/test/edge/lua_tests.sh all` | Full unit corpus plus optional live tarpit smoke when edge reachable. |
 | `scripts/test/cpu_isolation_smoke.sh` | Verifies thread pinning and cpuset isolation configurations under load. |
 | `scripts/test/uds_transport_smoke.sh` | Validates Unix Domain Socket transport connections for PostgreSQL, Redis, and ClickHouse. |
 | `scripts/security/license_pentest.sh` | Licensing pentest orchestrator (tiers A-C automated, tier D manual). See `.cursor/rules/licensing.mdc`. |

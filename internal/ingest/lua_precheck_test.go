@@ -82,14 +82,14 @@ func TestUnifiedFilter_applyLuaGoPrechecks_ingressRPDHandledExternally_holdout(t
 		ClickID:    uuid.NewString(),
 	}
 	reg := &entitlementsTestRegistry{maxRPD: 100}
-	f := &UnifiedFilter{registry: reg}
+	f := NewUnifiedFilter(nil, nil, reg, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	redisClient := &ingressRPDRedisMock{}
 
 	f.SetIngressRPDHandledExternally(true)
-	require.NoError(t, f.applyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now))
+	require.NoError(t, f.ApplyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now))
 	require.Equal(t, 0, redisClient.incrCalls, "external ingress RPD must skip UnifiedFilter INCR")
 
 	f.SetIngressRPDHandledExternally(false)
-	require.NoError(t, f.applyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now))
+	require.NoError(t, f.ApplyLuaGoPrechecks(ctx, evt, campInfo, redisClient, now))
 	require.Equal(t, 1, redisClient.incrCalls, "without external flag UnifiedFilter must INCR")
 }

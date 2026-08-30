@@ -55,17 +55,17 @@ func TestL7WireFilter_signals(t *testing.T) {
 	evt.SecFetchDest = wireSecFetchDocument
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonSecFetchAnomaly))
+	assert.True(t, acc.Has(FraudReasonSecFetchAnomaly))
 
-	acc.reset()
+	acc.Reset()
 	evt.SecCHUAPlatform = `"Linux"`
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonClientHintsMismatch))
+	assert.True(t, acc.Has(FraudReasonClientHintsMismatch))
 
-	acc.reset()
+	acc.Reset()
 	evt.TLSALPN = "http/1.1"
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonTLSALPNMismatch))
+	assert.True(t, acc.Has(FraudReasonTLSALPNMismatch))
 }
 
 func TestHTTP1AssignWireMetadataHeaders(t *testing.T) {
@@ -125,5 +125,5 @@ func TestL7WireFilter_disabledFlags(t *testing.T) {
 	evt.TLSALPN = "http/1.1"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.Equal(t, uint8(0), acc.count)
+	assert.Equal(t, uint8(0), acc.SignalCount())
 }

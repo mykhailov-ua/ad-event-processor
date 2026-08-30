@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/devcontainers/go:1-1.25-bookworm
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get -y install --no-install-recommends \
+    # eBPF/XDP compilation toolchain and kernel utility dependencies
     clang \
     llvm \
     libelf-dev \

@@ -271,6 +271,10 @@ func debitSubSlot(camp *domain.Campaign, userID, clickID string) int {
 	return int(h % uint32(n))
 }
 
+func DebitSubSlot(camp *domain.Campaign, userID, clickID string) int {
+	return debitSubSlot(camp, userID, clickID)
+}
+
 func spreadHighVolumeShard(shardCount int, campaignID uuid.UUID, subSlot int) int {
 	if shardCount <= 1 {
 		return 0
@@ -294,6 +298,10 @@ func budgetQuotaKeyForDebit(campaignID uuid.UUID, subSlot int) string {
 		return filt.BudgetQuotaKey(campaignID)
 	}
 	return domain.BudgetQuotaKeySub(campaignID, subSlot)
+}
+
+func FcapKeyPrefixForDebit(camp *domain.Campaign, userID, clickID string) string {
+	return fcapKeyPrefixForDebit(camp, userID, clickID)
 }
 
 func fcapKeyPrefixForDebit(camp *domain.Campaign, userID, clickID string) string {
@@ -348,14 +356,23 @@ func (c *LocalTTCCache) Record(campaignID uuid.UUID, userID string) {
 	c.mu.Unlock()
 }
 
-type localTTCOutcome int
+type LocalTTCOutcome int
 
 const (
-	localTTCOK localTTCOutcome = iota
-	localTTCLow
-	localTTCMissingClosed
-	localTTCBypass
+	LocalTTCOK LocalTTCOutcome = iota
+	LocalTTCLow
+	LocalTTCMissingClosed
+	LocalTTCBypass
 )
+
+const (
+	localTTCOK            = LocalTTCOK
+	localTTCLow           = LocalTTCLow
+	localTTCMissingClosed = LocalTTCMissingClosed
+	localTTCBypass        = LocalTTCBypass
+)
+
+type localTTCOutcome = LocalTTCOutcome
 
 func (c *LocalTTCCache) CheckClick(campaignID uuid.UUID, userID string, minMs int64, failClosed bool) localTTCOutcome {
 	if userID == "" {
@@ -394,6 +411,14 @@ func ttcMinMs(ttcMinMsAny any) int64 {
 
 func (f *UnifiedFilter) SetLocalTTCCache(c *LocalTTCCache) {
 	f.localTTC = c
+}
+
+func (f *UnifiedFilter) LocalTTC() *LocalTTCCache {
+	return f.localTTC
+}
+
+func (f *UnifiedFilter) ApplyGoTTC(evt *domain.Event) {
+	f.applyGoTTC(evt)
 }
 
 func (f *UnifiedFilter) applyGoTTC(evt *domain.Event) {

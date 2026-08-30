@@ -25,6 +25,10 @@ tags:
     description: Metric threshold alerts to webhooks
   - name: automation
     description: Campaign automation rules with presets and eval intervals
+  - name: traffic-optimizer
+    description: Traffic weight optimization rules by CR, EPC, ROI, or revenue
+  - name: command-palette
+    description: Admin global search and navigation index (Ctrl+K)
   - name: platform-campaigns
     description: External ad platform link and mutation API (Enterprise SKU)
   - name: campaigns
@@ -258,6 +262,22 @@ paths:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}
   /api/v1/automation/rules/{id}/dry-run:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}~1dry-run
+  /api/v1/traffic-optimizer/presets:
+    $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1presets
+  /api/v1/traffic-optimizer/rules:
+    $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules
+  /api/v1/traffic-optimizer/rules/{id}:
+    $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}
+  /api/v1/traffic-optimizer/rules/{id}/dry-run:
+    $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1dry-run
+  /api/v1/command-palette/search:
+    $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1search
+  /api/v1/command-palette/routes:
+    $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1routes
+  /api/v1/command-palette/open:
+    $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1open
+  /api/v1/command-palette/recents:
+    $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1recents
   /api/v1/platform-campaigns/links:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1platform-campaigns~1links
   /api/v1/platform-campaigns/links/{campaign_id}/{network}:

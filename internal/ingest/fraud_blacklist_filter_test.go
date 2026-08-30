@@ -70,12 +70,12 @@ func TestFraudBlacklistFilter_cacheMissThenHit_holdout(t *testing.T) {
 
 		require.NoError(t, f.Check(ctx, evt))
 		require.Equal(t, int32(1), mock.sisMemberN.Load())
-		assert.True(t, acc.has(FraudReasonL3Blocklist))
+		assert.True(t, acc.Has(FraudReasonL3Blocklist))
 
-		acc.reset()
+		acc.Reset()
 		require.NoError(t, f.Check(ctx, evt))
 		require.Equal(t, int32(1), mock.sisMemberN.Load())
-		assert.True(t, acc.has(FraudReasonL3Blocklist))
+		assert.True(t, acc.Has(FraudReasonL3Blocklist))
 	})
 
 	t.Run("not_blacklisted", func(t *testing.T) {
@@ -91,11 +91,11 @@ func TestFraudBlacklistFilter_cacheMissThenHit_holdout(t *testing.T) {
 
 		require.NoError(t, f.Check(ctx, evt))
 		require.Equal(t, int32(1), mock.sisMemberN.Load())
-		assert.False(t, acc.has(FraudReasonL3Blocklist))
+		assert.False(t, acc.Has(FraudReasonL3Blocklist))
 
 		require.NoError(t, f.Check(ctx, evt))
 		require.Equal(t, int32(1), mock.sisMemberN.Load())
-		assert.False(t, acc.has(FraudReasonL3Blocklist))
+		assert.False(t, acc.Has(FraudReasonL3Blocklist))
 	})
 }
 
@@ -133,7 +133,7 @@ func TestFraudBlacklistFilter_invalidateForcesRedisRecheck(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 	require.NoError(t, f.Check(ctx, evt))
 	require.Equal(t, int32(2), mock.sisMemberN.Load())
-	assert.True(t, acc.has(FraudReasonL3Blocklist))
+	assert.True(t, acc.Has(FraudReasonL3Blocklist))
 }
 
 type errSIsMemberMock struct {
@@ -156,7 +156,7 @@ func TestFraudBlacklistFilter_redisError_failOpen(t *testing.T) {
 	defer releaseFraudAccumulator(evt, acc)
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonL3Blocklist))
+	assert.False(t, acc.Has(FraudReasonL3Blocklist))
 }
 
 func TestFraudBlacklistFilter_zeroAlloc(t *testing.T) {

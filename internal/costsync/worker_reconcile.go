@@ -87,7 +87,7 @@ func (w *Worker) reconcileCampaigns(ctx context.Context, lines []CostLine, date 
 		return nil
 	}
 	br := w.pool.SendBatch(ctx, batch)
-	for i := range adjustments {
+	for range adjustments {
 		if _, err := br.Exec(); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 			_ = br.Close()
 			return err

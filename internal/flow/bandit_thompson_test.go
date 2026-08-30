@@ -14,7 +14,7 @@ func TestThompsonWeights_prefersBetterArm(t *testing.T) {
 	b := uuid.MustParse("00000000-0000-4000-8000-000000000002")
 	rng := rand.New(rand.NewSource(42))
 	var sumA, sumB int32
-	for i := range 200 {
+	for range 200 {
 		w := ThompsonWeights(map[uuid.UUID]ArmStat{
 			a: {Clicks: 1000, Conversions: 100},
 			b: {Clicks: 1000, Conversions: 10},

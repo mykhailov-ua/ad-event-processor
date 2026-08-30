@@ -39,14 +39,16 @@ SELECT
  entity_id,
  sum(clicks) AS clicks,
  sum(conversions) AS conversions,
- sum(payout) AS payout
+ sum(payout) AS payout,
+ sum(spend_micro) AS spend_micro
 FROM (
  SELECT
  campaign_id,
  nullIf(JSONExtractString(payload, 'lander_id'), '') AS entity_id,
  count() AS clicks,
  toUInt64(0) AS conversions,
- toFloat64(0) AS payout
+ toFloat64(0) AS payout,
+ sum(toInt64OrZero(JSONExtractString(payload, 'spend_micro'))) AS spend_micro
  FROM clicks
  WHERE created_at >= ? AND created_at < ?
  AND JSONExtractString(payload, 'lander_id') != ''
@@ -57,7 +59,8 @@ FROM (
  nullIf(JSONExtractString(payload, 'lander_id'), '') AS entity_id,
  toUInt64(0),
  count(),
- sum(toFloat64OrZero(JSONExtractString(payload, 'payout')))
+ sum(toFloat64OrZero(JSONExtractString(payload, 'payout'))),
+ toInt64(0) AS spend_micro
  FROM conversions
  WHERE created_at >= ? AND created_at < ?
  AND JSONExtractString(payload, 'lander_id') != ''
@@ -71,14 +74,16 @@ SELECT
  entity_id,
  sum(clicks) AS clicks,
  sum(conversions) AS conversions,
- sum(payout) AS payout
+ sum(payout) AS payout,
+ sum(spend_micro) AS spend_micro
 FROM (
  SELECT
  campaign_id,
  nullIf(JSONExtractString(payload, 'offer_id'), '') AS entity_id,
  count() AS clicks,
  toUInt64(0) AS conversions,
- toFloat64(0) AS payout
+ toFloat64(0) AS payout,
+ sum(toInt64OrZero(JSONExtractString(payload, 'spend_micro'))) AS spend_micro
  FROM clicks
  WHERE created_at >= ? AND created_at < ?
  AND JSONExtractString(payload, 'offer_id') != ''
@@ -89,7 +94,8 @@ FROM (
  nullIf(JSONExtractString(payload, 'offer_id'), '') AS entity_id,
  toUInt64(0),
  count(),
- sum(toFloat64OrZero(JSONExtractString(payload, 'payout')))
+ sum(toFloat64OrZero(JSONExtractString(payload, 'payout'))),
+ toInt64(0) AS spend_micro
  FROM conversions
  WHERE created_at >= ? AND created_at < ?
  AND JSONExtractString(payload, 'offer_id') != ''
@@ -108,7 +114,8 @@ func (s *Service) scanFlowBanditRows(ctx context.Context, query string, from, to
 		var campStr, entityStr string
 		var clicks, conversions uint64
 		var payout float64
-		if err := rows.Scan(&campStr, &entityStr, &clicks, &conversions, &payout); err != nil {
+		var spendMicro int64
+		if err := rows.Scan(&campStr, &entityStr, &clicks, &conversions, &payout, &spendMicro); err != nil {
 			return nil, err
 		}
 		campID, err := uuid.Parse(campStr)
@@ -128,6 +135,7 @@ func (s *Service) scanFlowBanditRows(ctx context.Context, query string, from, to
 			Clicks:      int64(clicks),
 			Conversions: int64(conversions),
 			Payout:      payout,
+			SpendMicro:  spendMicro,
 		}
 	}
 	return out, rows.Err()

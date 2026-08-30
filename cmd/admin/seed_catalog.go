@@ -1,3 +1,5 @@
+// Seed catalog: deterministic display names and UUID helpers for db seed subcommand.
+// Canonical fixture strings per ui.mdc; no trash tokens or round KPIs.
 package main
 
 import (

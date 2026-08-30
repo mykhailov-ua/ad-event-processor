@@ -61,6 +61,15 @@ local function assert_near(want, got, eps, msg)
     end
 end
 
+local function assert_eq(a, b, msg)
+    if a == b then
+        passed = passed + 1
+    else
+        failed = failed + 1
+        io.stderr:write(string.format("FAIL: %s (got %s want %s)\n", msg, tostring(a), tostring(b)))
+    end
+end
+
 dict_store = {}
 dict_store["peer_count"] = 2
 dict_store["w:0"] = math.floor(0.25 * WEIGHT_SCALE + 0.5)
@@ -140,6 +149,37 @@ ratio0 = counts[0] / trials
 ratio1 = counts[1] / trials
 assert_near(0.25, ratio0, 0.05, "fail-open keeps 0.25 weight")
 assert_near(0.75, ratio1, 0.05, "fail-open keeps 0.75 weight")
+
+package.loaded["edge-net"] = {
+    http_get_json = function(_)
+        return {
+            epoch = 7,
+            epoch_lag = 0,
+            node_weights = {
+                { peer_index = 0, weight = 0.5 },
+            },
+        }
+    end,
+}
+
+package.loaded["edge-node-weights"] = nil
+local node_weights_sync = require "edge-node-weights"
+
+dict_store = {}
+dict_store["peer_count"] = 3
+dict_store["w:0"] = math.floor(0.1 * WEIGHT_SCALE + 0.5)
+dict_store["w:1"] = math.floor(0.8 * WEIGHT_SCALE + 0.5)
+dict_store["w:2"] = math.floor(0.9 * WEIGHT_SCALE + 0.5)
+dict_store["sync_ts"] = ngx.time()
+dict_store["epoch_lag"] = 0
+dict_store["sync_interval"] = SYNC_INTERVAL_SEC
+
+node_weights_sync.sync()
+
+assert_eq(dict_store["peer_count"], 1, "sync shrinks peer_count last")
+assert_eq(dict_store["w:0"], math.floor(0.5 * WEIGHT_SCALE + 0.5), "sync writes new weight for peer 0")
+assert_eq(dict_store["w:1"], 0, "sync purges stale w:1")
+assert_eq(dict_store["w:2"], 0, "sync purges stale w:2")
 
 io.write(string.format("node_weights_test: passed=%d failed=%d\n", passed, failed))
 if failed > 0 then

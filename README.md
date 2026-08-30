@@ -34,7 +34,7 @@ On synchronous `/track`, `/click`, `/tg/*`, `/openrtb/bid`:
 
 Sharding: `slot = CRC32C(campaign_id) & 1023`, `shard = slot_table[slot]`. Edge Lua and Go use the same static slot map. Redis: standalone masters + Sentinel (not Cluster); `{campaign_id}` hash tag keeps multi-key Lua on one master.
 
-gnet workers do not block on Redis: `FilterEngine.Check` (including `EVALSHA`) runs in a detached goroutine.
+gnet epoll does not block on Redis: it enqueues to `PinnedWorkerPool`; synchronous `FilterEngine.Check` (incl. `EVALSHA`) runs on pinned workers (`hot-path.mdc` **Tracker thread model**, `cmd/tracker/doc.go`).
 
 ### Traffic endpoints
 
@@ -119,7 +119,7 @@ Traffic ingest, Cost Sync (25 networks, daily campaign-level spend), outbound CA
 
 | Component | Role |
 | :--- | :--- |
-| nginx `:8180` / `:443` | Rate limit, circuit breaker, blacklist shared dict, body DFA, proxy to tracker |
+| nginx `:8180` / `:443` | Circuit breaker, generational blacklist, config mirror, body DFA, shard proxy to tracker |
 | `edge-blacklist-sync.lua` | Redis shard 0 -> nginx cache; changelog + periodic full sync |
 | `edge-xdp` + `edge-bpf-sync` | Optional (Enterprise license); BPF map drops at NIC |
 | Tarpit | Optional `EDGE_TARPIT_ENABLED`; capped; never on billing paths |
@@ -176,7 +176,7 @@ Hot-path static gates (no `fmt.Sprintf`, no `interface{}` boxing on ingest), all
 | `control` | 8188 | Admin UI, `/api/v1/*`, outbox workers |
 | payment webhooks | 8187 | Balance top-up hooks |
 
-Metrics: tracker `9101-9104`, processor `9106`, control `9108`. Postgres `5430`, Redis masters `6479-6482`, ClickHouse `9000` (compose defaults).
+Metrics: tracker sidecar `9101-9104` (compose), processor and control on same HTTP port (`8186/metrics`, `8188/metrics`), edge `8180/edge/metrics`. Postgres `5430`, Redis masters `6479-6482`, ClickHouse `9000` (compose defaults).
 
 ---
 

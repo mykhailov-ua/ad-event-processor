@@ -80,7 +80,7 @@ bash scripts/fault/parser_chaos_load.sh --duration=300s --rps=5000 --chaos-pct=1
 go test ./internal/ingestion/ -run=TestChaos_ParserSecurity -count=1
 ```
 
-Chaos tests emit `fault_proof gap=open|closed`.
+Chaos tests emit `fault_proof proof=open|closed`.
 
 ## Verification
 
@@ -89,7 +89,7 @@ Chaos tests emit `fault_proof gap=open|closed`.
 | Cross-hop | `go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet` |
 | TE/proto/HPACK | `go test ./internal/ingestion/ -run='TestChaos_TE_TE\|TestChaos_Proto_FieldBudget\|TestChaos_HPACK'` |
 | Alloc gates | `make test-alloc-gate` |
-| Slow body | `go test ./internal/ingestion/ -run=TestChaos_ParserSecurity_PS_G01 -count=1 -v` |
+| Slow body | `go test ./internal/ingest/ -run=TestChaos_ParserSecurity_SlowBodyStall -count=1 -v` |
 
 ## Related rules
 

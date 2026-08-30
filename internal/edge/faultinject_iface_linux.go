@@ -86,7 +86,7 @@ func RunIface(opts IfaceOptions) (IfaceResult, error) {
 		res.SentMalformed++
 	}
 
-	for i := range opts.FloodPackets {
+	for range opts.FloodPackets {
 		if err := unix.Sendto(fd, pkt, 0, addr); err != nil {
 			res.SendErrors++
 			continue

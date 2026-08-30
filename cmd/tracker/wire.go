@@ -1,3 +1,12 @@
+// Tracker wiring: runTracker constructs deps and blocks until SIGTERM.
+//
+// Memory model (internal/ingest, internal/filter, internal/stream):
+//   - gnet epoll loop offloads HTTP parse to PinnedWorkerPool; FilterEngine.Check runs on pinned workers, not the epoll thread.
+//   - Response bytes cloned before AsyncWrite; request bytes copied into worker arena before offload (see internal/ingest/gnet).
+//   - Registry and slot map: generational atomic.Value snapshots; readers never lock.
+//   - StreamProducer/BrokerProducer TryReserve before debit; local quanta full-skip uses a separate async lane (internal/stream).
+//
+// PG pool is boot/background only; no synchronous PG on gnet or pinned worker request path.
 package main
 
 import (
@@ -32,6 +41,7 @@ import (
 )
 
 func runTracker(cfg *config.Config) {
+	// Phase 1: retry policy, autotune, structured logger (15s disk metrics reporter).
 	ingestion.SetStoreRetryPolicy(
 		cfg.MaxRetries,
 		time.Duration(cfg.RetryInitialWaitMs)*time.Millisecond,
@@ -66,6 +76,15 @@ func runTracker(cfg *config.Config) {
 		PtraceRequired: licensing.GuardCompiledIn() && config.LicenseGuardPtraceRequired(),
 	})
 
+	// Phase 2: PG read pool for registry/slot-map/settings sync only (not request thread).
+	//
+	// Campaign registry snapshot (internal/filter.Registry):
+	//   - data atomic.Value holds *campaignMapSnapshot (generational: Store replaces whole map; readers Load once per lookup).
+	//   - snapGen atomic.Uint64 bumps on every storeCampaignSnapshot; per-worker registryWorkerCacheSlot uses gen+id (LRU-ish one-entry).
+	//   - StartWatchShards: Redis pub/sub campaigns:update; UUID payload -> UpdateAndWarmCampaign (incremental PG row);
+	//     full-sync payload -> ReloadFullSnapshot. MarkPubSubOK resets stale TTL driver.
+	//   - StartEpochPoll: per-shard GET campaign:registry:epoch; when val > local, ReloadFullSnapshot (epoch catch-up if pub/sub missed).
+	//   - ConfigureStaleMode(REGISTRY_STALE_TTL_SEC): if lastPubSubOK exceeds TTL, IsStaleMode fail-open for settings PG fallback.
 	pool, err := database.Connect(ctx, string(cfg.DBDSN), cfg.DBTrackerMaxConns, cfg.DBMinConns)
 	if err != nil {
 		slog.Error("failed to connect to database", "error", err)
@@ -101,6 +120,7 @@ func runTracker(cfg *config.Config) {
 		slog.Info("license file recheck enabled", "path", licensePath)
 	}
 
+	// Phase 3: Redis shards, pool warm (REDIS_POOL_SIZE + MAX_WORKERS extra pings), breakers.
 	var redisShards []redis.UniversalClient
 	var breakers []*database.RedisBreaker
 	redisShards, breakers, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
@@ -136,6 +156,8 @@ func runTracker(cfg *config.Config) {
 		channel = "campaigns:update"
 	}
 	campaignRepo := ingestion.NewCampaignRepo(queries)
+	// StaticSlotSharder (internal/domain/shard): snapshot atomic.Value *SlotMapSnapshot (1024 slot table + version + routing_epoch).
+	// LoadActiveSlotMap: one-shot PG read at boot; on failure SwapSnapshot modulo fallback (fail-open routing).
 	sharder := ingestion.NewStaticSlotSharder(len(redisShards))
 	if version, loadErr := ingestion.LoadActiveSlotMap(ctx, pool, sharder, len(redisShards)); loadErr != nil {
 		slog.Warn("slot map load failed, using modulo fallback", "error", loadErr)
@@ -143,6 +165,9 @@ func runTracker(cfg *config.Config) {
 		slog.Info("slot map loaded at startup", "version", version)
 	}
 
+	// SlotMapWatcher: background ReloadStaticSlotMapIfChanged when PG active_version changes.
+	// Poll loop (SLOT_MAP_POLL_INTERVAL_MS) + optional broker topic (SLOT_MAP_RELOAD_TOPIC) for push reload.
+	// Independent of registry pub/sub; both must match edge Lua slot table (generational swap, zero-lock GetShard).
 	slotMapWatcher := ingestion.NewSlotMapWatcher(ingestion.SlotMapWatcherConfig{
 		Pool:           pool,
 		Sharder:        sharder,
@@ -195,6 +220,7 @@ func runTracker(cfg *config.Config) {
 		slog.Warn("consent pub/sub disabled: no redis shard available")
 	}
 
+	// Phase 4: consent pub/sub, GeoIP (fatal in prod on miss), local filter construction.
 	var geoProvider ingestion.GeoProvider
 	geoProvider, err = ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
 	if err != nil {
@@ -336,6 +362,7 @@ func runTracker(cfg *config.Config) {
 		trackerStreamName = "fcap:ignored"
 	}
 
+	// Phase 5: unified-filter Lua preload; stream key fcap:ignored when CH_INGEST_SOURCE=broker.
 	if err := ingestion.InitUnifiedFilterLua(); err != nil {
 		slog.Error("unified-filter lua init failed", "error", err)
 		os.Exit(1)
@@ -495,9 +522,15 @@ func runTracker(cfg *config.Config) {
 	}
 	vppFilter := ingestion.NewVPPFilter(registry, settingsWatcher)
 	segmentFilter := ingestion.NewSegmentFilter(redisShards, registry, piiHasher)
+	// FilterEngine assembled here; execution stays off gnet epoll loop:
+	//   - PinnedWorkerPool (phase 12) runs React/processTrack on LockOSThread workers.
+	//   - tryAcquireStreamAdmission (TryReserve on StreamProducer or BrokerProducer) runs before Check (fail-closed 503 overload).
+	//   - evt fields on ConnContext use unsafeString over copied offload buffer; AsyncWrite clones response bytes (no frame lifetime).
+	//   - LOCAL_QUOTA_MODE live: local quanta full-skip skips sync EVALSHA; LocalQuantaStreamPublisher async lane is separate from TryReserve.
 	filterEngine := ingestion.NewFilterEngine(time.Duration(cfg.FilterTimeoutMs)*time.Millisecond, licenseFilter, licenseRPSFilter, breakerFilter, geoFilter, scheduleFilter, vppFilter, fraudFilter, residentialProxyFilter, tcpMSSFilter, deviceFilter, l7WireFilter, jsonSerializationFilter, behaviorTelemetryFilter, consentFilter, segmentFilter, entitlementsFilter, unifiedFilter)
 	filterEngine.SetSettingsWatcher(settingsWatcher)
 
+	// Phase 6: optional RTB catalog (in-process auction; no full FilterEngine on /openrtb/bid).
 	var rtbCatalog *ingestion.RtbCatalog
 	var rtbHybrid *ingestion.HybridBalancer
 	var rtbReconcile *ingestion.RtbBudgetReconcileWorker
@@ -594,6 +627,7 @@ func runTracker(cfg *config.Config) {
 		}
 	}
 
+	// Phase 7: gnet handler; optional PG failover swaps pool on background subscriber only.
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
 
 	if cfg.PostgresFailoverEnabled {
@@ -618,6 +652,13 @@ func runTracker(cfg *config.Config) {
 		}
 	}
 
+	// Phase 8: async sink - BrokerProducer (mmap WAL) or per-shard StreamProducer (Redis XADD).
+	//
+	// Admission vs local quanta (internal/stream):
+	//   - STREAM_PRODUCER_ADMISSION_PCT: TryReserve on bounded queue before Lua debit (fail-closed overload).
+	//   - CH_INGEST_SOURCE=broker: trackerStreamName fcap:ignored; SetDeferStreamToProducer on handler wires BrokerProducer as sole CH writer.
+	//   - LOCAL_QUOTA_MODE live full-skip: debit in Go ledger; LocalQuantaStreamPublisher MPSC lane (fcap/budget sync Redis, optional XADD);
+	//     authoritative CH path remains TryReserve + publishAcceptedTrack -> BrokerProducer or StreamProducer ProcessReserved.
 	var brokerProducers *ingestion.BrokerProducerSet
 	var fraudBrokerSink *ingestion.FraudBrokerSink
 	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() && cfg.Broker.URL != "" {
@@ -832,6 +873,7 @@ func runTracker(cfg *config.Config) {
 	gnetHandler.SetLogger(appLogger)
 	gnetHandler.StartHealthProbe(ctx)
 
+	// Phase 9: pinned worker pool (queue depth 8192 slots), gnet listen, METRICS_PORT sidecar.
 	workerPool := ingestion.NewPinnedWorkerPool(cfg.MaxWorkers, 8192)
 	gnetHandler.SetWorkerPool(workerPool)
 

@@ -16,5 +16,5 @@ func TestSetBrokerProducer_defersLuaStreamWrite(t *testing.T) {
 	defer func() { _ = bp.Close() }()
 
 	h.SetBrokerProducer(bp)
-	require.Equal(t, "fcap:ignored", uf.streamKeyVal.s)
+	require.True(t, uf.StreamDeferredToProducer())
 }

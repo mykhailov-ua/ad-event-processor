@@ -1,0 +1,184 @@
+---
+description: Comment policy for critical and low-level code - always applied
+alwaysApply: true
+---
+
+# Comments
+
+## Purpose
+
+Always applied on every agent turn and every file edit. Governs when comments are required, forbidden, and how they are formatted across Go, Lua, TypeScript, JavaScript, shell, SQL, configs, and other production sources. Naming clarity: `naming.mdc`. Charset slop gates: `anti-slop.mdc`.
+
+## Default policy
+
+Prefer self-documenting identifiers. Remove trivial or redundant comments when editing a file. Add or preserve comments only where this rule marks them required, where a non-obvious invariant or pipeline trick is used, or where a new developer/LLM needs critical context to understand the design. Avoid commenting on obvious self-documenting properties or fields.
+
+## Required comments
+
+Document these surfaces in the file or immediately above the symbol/step they describe:
+
+| Surface | Include |
+| :--- | :--- |
+| Execution context | Runtime (Redis Lua VM, goroutine pool, kernel/eBPF, edge Nginx worker), pipeline role (fast-path vs fallback), concurrency invariants, external deps |
+| ABI / contract | Exact index mapping for `KEYS[]`, `ARGV[]`, positional args, bitmasks, syscalls: type, units (ms, ns, bytes), bounds (document ONLY if non-obvious or critical) |
+| Return codes and side effects | Numeric error codes, degradation flags, mutated keys/tables/streams, idempotency behavior |
+| Low-level optimizations | Cache-line padding, false-sharing avoidance, memory barriers, atomics, alignment, zero-alloc guarantees |
+| Load shedding and tradeoffs | Timeout skip conditions, fail-open vs fail-closed, consistency degradation, rationale for non-obvious choices |
+| CI/CD & Containers | Non-obvious pipeline logic, runner/caching fallbacks, kernel capabilities/eBPF requirements, or environment dependencies in Github Workflows and `.devcontainer` |
+| Verification commands | Runnable CLI with concrete args: `redis-cli --eval`, `curl`, `go test -run`, named benchmarks |
+
+Scope: Redis Lua scripts, unified-filter and quota paths, ingest/gnet/rtb hot paths, eBPF/XDP, edge Lua, broker/stream admission, CI/CD pipeline steps, environment scripts, and any code where behavior, wire layout, or numeric codes are not obvious from names alone.
+
+## Forbidden comments
+
+| Pattern | Why |
+| :--- | :--- |
+| Syntax narration | `// increment counter` above `counter += amount` |
+| Obvious API / Schema fields | `// Campaign ID` above `string campaign_id = 1;` - redundant noise |
+| Generic validation | `if err != nil` or nil checks without domain-specific consequence |
+| Bare TODO | No tracker URL and no boundary condition |
+| Trivial accessors | Getters, setters, or factories with no side effects and obvious types |
+| Verification fiction | `// zero-alloc verified` or `// escapes heap: no` without a named gate (`anti-slop.mdc`) |
+
+## Formatting
+
+| Rule | Detail |
+| :--- | :--- |
+| Charset | ASCII only in comments |
+| Banned in comments | Emojis, Unicode dashes or arrows, ellipsis char, `===` / `---` banners, box-drawing |
+| Language | English, imperative engineering tone, dense facts |
+| Lists | `*` or `-` markers, or space-aligned columns |
+| Single-line | `//`, `#`, `--` per language convention |
+| Block comments | `/* */` or language equivalent only when the comment spans multiple lines; do not wrap one-liners |
+| Headings in comments | Sentence case; no ALL CAPS section titles |
+
+## Package documentation (`doc.go`)
+
+Every production Go package must have `doc.go` at the package root (`modular-monolith.mdc`, `structure.mdc`). **`doc.go` is the canonical long-form module doc** for that package. It may be as detailed as the domain requires; other files carry only local comments for non-obvious symbols.
+
+### Required in `doc.go`
+
+| Section | Include when applicable |
+| :--- | :--- |
+| Role | What the package owns, who calls it (admin API, tracker hot path, worker tick), fast-path vs cold-path |
+| Topology | Goroutine model, Redis/PG/CH usage, bridge/host ports, forbidden import directions |
+| Invariants | Budget, admission, idempotency, concurrency, fail-open vs fail-closed |
+| Contracts | Wire layouts, error code tables, env knobs with units - duplicate here if package-wide, not only in one `.lua` file |
+| Tradeoffs | Rejected alternatives, degradation modes, load-shedding triggers |
+| Allowed / forbidden | What callers may do; what this package must not import or mutate |
+| Verification | Runnable commands with concrete package paths and `-run` filters |
+
+Refresh `doc.go` in the same PR when package role, invariants, or verification commands change.
+
+### Format in `doc.go`
+
+| Rule | Detail |
+| :--- | :--- |
+| Placement | Comment block immediately before `package <name>`; no blank line between last comment line and `package` |
+| Line style | Prefer consecutive `//` lines (godoc-friendly); `/* */` allowed for a single multi-line block when it reads clearer |
+| Commands | One command per `//` line or indented under a `// Verify:` label; copy-paste ready, no placeholders |
+| Paths in comments | Use `//` lines for HTTP routes or globs that contain `*`; do not put `*/` inside a `/* */` block |
+| Depth | No upper bound; split into labeled subsections with `//` headings rather than repeating the same essay in handlers |
+| Duplication | Package-wide narrative lives in `doc.go` only; do not copy the full module essay into every `.go` file |
+
+### Forbidden in `doc.go`
+
+| Pattern | Why |
+| :--- | :--- |
+| One-liner only on complex packages | Hot-path, bridge, or multi-worker packages need role + verify sections |
+| Marketing prose | `naming.mdc` forbidden terms |
+| Verification fiction | Gate claims without command name (`anti-slop.mdc`) |
+| Stale commands | Paths or `-run` names that no longer exist in tree |
+| Generated subtrees | No `doc.go` under `db/`, `pb/`, sqlc output (`modular-monolith.mdc`) |
+| Informal section titles | No `Magic numbers`, stale-doc meta (`prior doc was wrong`, `Banned doc lies`) — use `Defaults and limits`, `Env defaults`, `Layout constants` |
+| Meta doc commentary | No apologies or history about past wrong docs; state current behavior only |
+| Duplicated package essay in `main.go` | Long module narrative belongs in `doc.go`; `cmd/*/main.go` may point to `doc.go` |
+
+### `cmd/*/doc.go` and `cmd/*/main.go` sync
+
+When editing a binary entrypoint, keep `cmd/<binary>/doc.go` aligned with flags, ports, subcommands, and lifecycle in `main.go` / `wire.go` in the same package.
+
+| Surface | `doc.go` must match |
+| :--- | :--- |
+| Listen ports / metrics paths | `config` defaults and `ListenAndServe` registration in code |
+| Cobra subcommands | Every `rootCmd.AddCommand` in the package |
+| Env knobs | Names, units, and defaults from `flag` / `config` |
+| Thread / goroutine model | Actual `go func`, worker pools, and blocking I/O in code — not aspirational design |
+| Forbidden / not-in-scope | What the binary does **not** do (no Postgres, no hot path, etc.) |
+
+Cross-ref tracker ingest thread tiers: `hot-path.mdc` **Tracker thread model**, `cmd/tracker/doc.go`.
+
+### Example: detailed `doc.go`
+
+Illustrative shape; expand or shrink per package.
+
+```go
+// Package ingest accepts tracker HTTP on the hot path and runs the filter chain
+// before stream or broker enqueue.
+//
+// Role:
+//   - gnet and HTTP/1 handlers; UnifiedFilter is the last Redis round-trip.
+//   - Must not import controlplane admin or internal/fraud scoring.
+//
+// Invariants:
+//   - At most one EVALSHA per accepted event (zero when local quanta full-skip).
+//   - TryReserve before Lua debit; rollback on post-debit enqueue failure.
+//
+// Forbidden:
+//   - Postgres, ClickHouse, or outbox on the synchronous accept path.
+//
+// Verify:
+//   go test ./internal/ingest/ -short -run TestStreamProducerAdmissionRaceWithoutReserve -count=1
+//   go test ./internal/ingest/ -short -run TestUnifiedFilter_RollbackDebit_LocalQuanta -count=1
+//   make test-alloc-gate
+//
+// Benchmark (mock Redis only; not ingress SLA):
+//   go test ./internal/ingest/ -bench=BenchmarkUnifiedFilter_Check_mock -benchmem -count=1
+package ingest
+```
+
+## Always allowed (not "narrative slop")
+
+| Kind | Where |
+| :--- | :--- |
+| Toolchain / linter | `//go:build`, `//go:generate`, `//go:embed`, `//go:noinline`, `//go:noescape`, `//garble:ignore`, `//nolint:...` |
+| Shell | `#!/usr/bin/env bash`, `# shellcheck disable=...` |
+| Disabled logic | Commented-out code with no prose above it |
+| Package boundary | Full module doc in `doc.go` per section above |
+
+## Example: complex file header (Lua)
+
+Illustrative shape only; adapt keys and argv to the script.
+
+```lua
+-- Ad spend sync and fallback adjudication (Redis Lua).
+-- Runs synchronously in the Redis single-threaded event loop.
+-- Fallback path: local quanta exhausted, quota refill, or non-eligible strict campaigns.
+-- Target: p50 < 500us; hard deadline 2ms triggers degradation (see return code 20).
+--
+-- KEYS[2]  dedup lock ({campaign_id}:dedup:{click_id})
+-- KEYS[3]  campaign budget
+-- ...
+-- ARGV[4]  spend amount, micro-units (int)
+-- ARGV[29] hard deadline monotonic ns (int)
+--
+-- Returns: -1 budget missing; 0 success; 2 duplicate; 3 insufficient budget;
+--   6 TTC below minimum; 11 routing epoch mismatch; 20 degraded success.
+--
+-- Verify:
+--   luac -p path/to/script.lua
+--   redis-cli --eval path/to/script.lua , <keys...> , <argv...>
+```
+
+## Agent checklist
+
+| Step | Action |
+| :--- | :--- |
+| 1 | Touching critical/low-level file: add or refresh required sections if contract or codes changed |
+| 2 | Touching any file: strip forbidden and redundant comments in the edited region |
+| 3 | New or materially changed package: write or refresh `doc.go` (role, invariants, allowed/forbidden, verify commands) |
+| 4 | Claim gated property in a comment: name the gate command (`anti-slop.mdc`) |
+
+## Related rules
+
+`naming.mdc`, `anti-slop.mdc`, `hot-path.mdc`, `edge.mdc`, `data-layer.mdc`, `code-style.mdc`, `modular-monolith.mdc`.

@@ -184,6 +184,10 @@ func swarHasHighBit(x uint64) bool {
 	return x&swarByteHi != 0
 }
 
+func HTTPTokenValid(b []byte) bool {
+	return httpTokenValid(b)
+}
+
 func httpTokenValid(b []byte) bool {
 	n := len(b)
 	if n == 0 {
@@ -211,6 +215,10 @@ func httpTokenValid(b []byte) bool {
 		i++
 	}
 	return true
+}
+
+func HTTPHeaderValValid(b []byte) bool {
+	return httpHeaderValValid(b)
 }
 
 func httpHeaderValValid(b []byte) bool {

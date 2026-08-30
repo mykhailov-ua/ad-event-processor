@@ -1,3 +1,18 @@
+// Process memory snapshots at session start and end.
+//
+// Role:
+//   - writeMemSnapshot reads /proc/<pid>/status, stat, and fd dir for each tracked target.
+//   - mem-start.json at probe start; mem-end.json in probeRun.stop before markEnded.
+//
+// Topology:
+//   - enrichMajorFaultsFromMem in dump.go diffs majflt between start/end snapshots.
+//
+// Invariants:
+//   - Per-PID read errors skipped silently (partial snapshot allowed).
+//   - VMRSS/VmHWM/VmData/RssAnon units are kB per /proc/status.
+//
+// Verify:
+//   jq .processes var/load-test/<session>/mem-end.json
 package main
 
 import (

@@ -1,3 +1,4 @@
+// Metrics sidecar helpers: optional pprof on METRICS_PORT (not the gnet ingest listener).
 package main
 
 import (
@@ -6,6 +7,8 @@ import (
 	"os"
 )
 
+// registerMetricsPprof mounts /debug/pprof/* when TRACKER_PPROF_ENABLED=1.
+// Cold-path only; never on SERVER_PORT ingest listener.
 func registerMetricsPprof(mux *http.ServeMux) {
 	if os.Getenv("TRACKER_PPROF_ENABLED") != "1" {
 		return
@@ -17,6 +20,8 @@ func registerMetricsPprof(mux *http.ServeMux) {
 	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 }
 
+// metricsServerWriteTimeout returns HTTP WriteTimeout seconds for the metrics sidecar.
+// 120s when pprof enabled (long profile captures); 10s otherwise.
 func metricsServerWriteTimeout() int {
 	if os.Getenv("TRACKER_PPROF_ENABLED") == "1" {
 		return 120

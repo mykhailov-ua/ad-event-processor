@@ -1,3 +1,4 @@
+// slot-map subcommands: PG-backed StaticSlot table CRUD for operator debugging.
 package main
 
 import (
@@ -17,7 +18,7 @@ import (
 
 var slotMapCmd = &cobra.Command{
 	Use:   "slot-map",
-	Short: "Fixed Slot Map control plane (Phase 2.1)",
+	Short: "Fixed Slot Map control plane",
 }
 
 var slotMapShowCmd = &cobra.Command{

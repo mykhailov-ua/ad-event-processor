@@ -11,6 +11,8 @@ import (
 	pkgnet "github.com/panjf2000/gnet/v2"
 )
 
+var GnetHarnessRemoteAddr = gnetHarnessRemoteAddr
+
 var gnetHarnessRemoteAddr = &net.TCPAddr{IP: net.IPv4(1, 1, 1, 1), Port: 1234}
 
 type GnetHarnessConn struct {
@@ -70,6 +72,10 @@ func (c *GnetHarnessConn) AsyncWrite(buf []byte, callback pkgnet.AsyncCallback) 
 	return err
 }
 
+func (c *GnetHarnessConn) SetOnWake(fn func(*GnetHarnessConn)) {
+	c.onWake = fn
+}
+
 func (c *GnetHarnessConn) Wake(callback pkgnet.AsyncCallback) error {
 	if c.onWake != nil {
 		c.onWake(c)
@@ -112,6 +118,18 @@ func (c *GnetHarnessConn) RemoteAddr() net.Addr {
 	return gnetHarnessRemoteAddr
 }
 
+func (c *GnetHarnessConn) SetInbound(b []byte) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.inbound = append(c.inbound[:0], b...)
+}
+
+func (c *GnetHarnessConn) InboundBytes() []byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]byte(nil), c.inbound...)
+}
+
 func (c *GnetHarnessConn) Append(b []byte) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -122,6 +140,18 @@ func (c *GnetHarnessConn) Written() []byte {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return append([]byte(nil), c.written...)
+}
+
+func (c *GnetHarnessConn) ClearWritten() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.written = c.written[:0]
+}
+
+func (c *GnetHarnessConn) ClearResponses() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.responses = c.responses[:0]
 }
 
 func (c *GnetHarnessConn) WriteCount() int {

@@ -10,28 +10,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFault_SecurityGap_H1_04b_ObsFoldContinuation(t *testing.T) {
+func TestFault_SecurityHoldout_ObsFoldContinuation(t *testing.T) {
 	payload := []byte("POST /track HTTP/1.1\r\nX-Evil: safe\r\n continuation\r\nContent-Length: 0\r\n\r\n")
 	_, _, err := parseHTTP1(payload, 1024, nil)
 
 	disposition := "rejected"
-	gap := "closed"
+	proof := "closed"
 	if err == nil {
 		disposition = "accepted"
-		gap = "open"
+		proof = "open"
 	}
 
-	faultproof.Log(t, "security_gap_h1_04b", map[string]string{
-		"gap_id":      "http1_obs_fold_continuation",
-		"gap":         gap,
+	faultproof.Log(t, "security_holdout_http1_obs_fold_continuation", map[string]string{
+		"case_id":     "http1_obs_fold_continuation",
+		"proof":       proof,
 		"disposition": disposition,
 		"risk":        "header_injection_obs_fold",
 		"err":         fmt.Sprintf("%v", err),
 	})
-	require.Equal(t, "closed", gap)
+	require.Equal(t, "closed", proof)
 }
 
-func TestFault_SecurityGap_XDFA_04_ProtoAsJSON(t *testing.T) {
+func TestFault_SecurityHoldout_ProtoAsJSON(t *testing.T) {
 	proto := testProtoTrackBody(t)
 	wire := append([]byte(fmt.Sprintf("POST /track HTTP/1.1\r\nContent-Length: %d\r\n\r\n", len(proto))), proto...)
 	n, req, err := parseHTTP1(wire, 1<<20, nil)
@@ -42,23 +42,23 @@ func TestFault_SecurityGap_XDFA_04_ProtoAsJSON(t *testing.T) {
 	parseErr := ParseTrackRequestJSON(&tr, req.Body)
 
 	disposition := "rejected"
-	gap := "closed"
+	proof := "closed"
 	if parseErr == nil {
 		disposition = "accepted"
-		gap = "open"
+		proof = "open"
 	}
 
-	faultproof.Log(t, "security_gap_xdfa_04", map[string]string{
-		"gap_id":      "track_proto_json_confusion",
-		"gap":         gap,
+	faultproof.Log(t, "security_holdout_track_proto_json_confusion", map[string]string{
+		"case_id":     "track_proto_json_confusion",
+		"proof":       proof,
 		"disposition": disposition,
 		"risk":        "content_type_confusion_proto_json",
 		"parse_err":   fmt.Sprintf("%v", parseErr),
 	})
-	require.Equal(t, "closed", gap)
+	require.Equal(t, "closed", proof)
 }
 
-func TestFault_SecurityGap_G_J05b_DeepNestedJSON(t *testing.T) {
+func TestFault_SecurityHoldout_DeepNestedJSON(t *testing.T) {
 	const depth = 200
 	validCID := "550e8400-e29b-41d4-a716-446655440000"
 	var nested strings.Builder
@@ -79,9 +79,9 @@ func TestFault_SecurityGap_G_J05b_DeepNestedJSON(t *testing.T) {
 	require.Error(t, parseErr, "deep nested JSON must be rejected")
 	require.ErrorIs(t, parseErr, ErrMalformed)
 
-	faultproof.Log(t, "security_gap_g_j05b", map[string]string{
-		"gap_id":      "json_deep_nested_stack",
-		"gap":         "closed",
+	faultproof.Log(t, "security_holdout_json_deep_nested_stack", map[string]string{
+		"case_id":     "json_deep_nested_stack",
+		"proof":       "closed",
 		"disposition": "rejected",
 		"risk":        "deep_nested_json_stack",
 		"depth":       fmt.Sprintf("%d", depth),

@@ -10,7 +10,7 @@ import (
 
 func TestPreboundFraudMetrics_tierAndReason(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonDatacenterIP)
 
 	beforeTier := testutil.ToFloat64(boundFraudMetrics.tierIVT)
 	beforeReason := testutil.ToFloat64(boundFraudMetrics.reason[FraudReasonDatacenterIP])
@@ -23,8 +23,8 @@ func TestPreboundFraudMetrics_tierAndReason(t *testing.T) {
 
 func TestPreboundFraudMetrics_l1Reject(t *testing.T) {
 	acc := &fraudAccumulator{}
-	acc.add(FraudReasonDatacenterIP)
-	acc.add(FraudReasonLowTTC)
+	acc.Add(FraudReasonDatacenterIP)
+	acc.Add(FraudReasonLowTTC)
 
 	before := testutil.ToFloat64(boundFraudMetrics.l1Reject)
 	recordFraudMetrics(acc, FraudTierBlock, FraudLayerL1Reject)

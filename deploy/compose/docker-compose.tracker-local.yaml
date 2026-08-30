@@ -1,3 +1,30 @@
+# Tracker-local compose overlay (deploy/compose/docker-compose.tracker-local.yaml).
+# Merged manually for host-built tracker bind-mount; not used by default stack.sh profiles.
+# Cross-ref: deploy/DEPLOY.md, scripts/test/edge/live_smoke.sh, scripts/test/edge/trace_session.sh.
+#
+# Role:
+# - Replace container /tracker with bind-mount bin/tracker for fast rebuild/test loops.
+# - Enables TRACKER_PPROF_ENABLED, dev CORS, native ingress schema on tracker-0..3.
+#
+# Topology:
+# - Patches tracker-0..3 volumes and environment only; base compose supplies redis/db/broker.
+# - Build first: go build -o bin/tracker ./cmd/tracker (repo root project directory).
+#
+# Invariants:
+# - AD_EVENT_PROCESSOR_LICENSE_MODE=dev, LICENSE_REQUIRED=0.
+# - TRACKER_INGRESS_SCHEMA=ad_event_processor_native (nginx/gnet chaos parity).
+# - Does not change REDIS_SHARD_COUNT or CH_ENABLED; pair with base or control-dev overlay.
+#
+# Env knobs:
+# - TRACK_CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+# - TRACKER_PPROF_ENABLED=1
+#
+# Forbidden:
+# - Do not use bind-mount ./bin/tracker in production (use docker-compose.release.yaml).
+#
+# Verify:
+# docker compose -f docker-compose.yaml -f deploy/compose/docker-compose.tracker-local.yaml up -d tracker-0
+# bash scripts/test/edge/live_smoke.sh
 x-tracker-local: &tracker_local
   volumes:
     - type: bind

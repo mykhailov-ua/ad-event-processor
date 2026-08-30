@@ -363,6 +363,14 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}
     /api/v1/automation/rules/{id}/dry-run:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}~1dry-run
+    /api/v1/traffic-optimizer/presets:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1presets
+    /api/v1/traffic-optimizer/rules:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules
+    /api/v1/traffic-optimizer/rules/{id}:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}
+    /api/v1/traffic-optimizer/rules/{id}/dry-run:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1dry-run
     /api/v1/billing/crypto/webhook:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1crypto~1webhook
     /api/v1/billing/exports:
@@ -901,6 +909,8 @@ tags:
       name: smart-alerts
     - description: Campaign automation rules with presets and eval intervals
       name: automation
+    - description: Traffic weight optimization rules by CR, EPC, ROI, or revenue
+      name: traffic-optimizer
     - description: External ad platform link and mutation API (Enterprise SKU)
       name: platform-campaigns
     - description: Campaign CRUD, fraud, stats, clone, and owner assignment

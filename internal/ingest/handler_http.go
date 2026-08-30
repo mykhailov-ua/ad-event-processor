@@ -2,7 +2,10 @@ package ingest
 
 import (
 	"ad-event-processor/internal/domain"
+	ingestgnet "ad-event-processor/internal/ingest/gnet"
 	"ad-event-processor/internal/ingest/httpingress"
+
+	pkgnet "github.com/panjf2000/gnet/v2"
 )
 
 type h2ConnState = httpingress.H2ConnState
@@ -62,6 +65,14 @@ func http1HeaderOrderPathRecords(method, path []byte) bool {
 	return false
 }
 
+func http1ConnContext(c pkgnet.Conn) *ConnContext {
+	return ingestgnet.HTTP1ConnContext(c)
+}
+
+func httpHeaderValValid(b []byte) bool {
+	return httpingress.HTTPHeaderValValid(b)
+}
+
 func parseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, Request, error) {
 	return httpingress.ParseHTTP1(data, maxBody, scratchPtr)
 }
@@ -85,6 +96,14 @@ func h3ParseRequestFrames(buf []byte, maxBody int64) (int, Request, error) {
 func resetChunkScratch(scratchPtr *[]byte) {
 	httpingress.ResetChunkScratch(scratchPtr)
 }
+
+const chunkScratchRetainCap = httpingress.ChunkScratchRetainCap
+
+var (
+	growChunkScratch                = httpingress.GrowChunkScratch
+	parseChunkSizeLine              = httpingress.ParseChunkSizeLine
+	fragmentedChunkedOpenRTBRequest = httpingress.FragmentedChunkedOpenRTBRequest
+)
 
 func http1HeadersComplete(data []byte) bool {
 	return httpingress.HeadersComplete(data)
@@ -150,6 +169,8 @@ func copyHTTP1HeaderOrderToEvent(evt *domain.Event, req *Request) {
 }
 
 type ingressDisposition = httpingress.Disposition
+
+const IngressReject = httpingress.IngressReject
 
 type ingressCorpusCase = httpingress.CorpusCase
 

@@ -1,3 +1,27 @@
+-- Redis and control-plane HTTP connection helpers (unix socket, TCP, minimal GET JSON).
+-- Runtime: worker 0 sync timers only (edge-config, edge-slot-map, edge-node-weights, edge-blacklist-sync);
+-- not called from access phase. Cosocket tcp with bounded settimeout.
+--
+-- Consumers: edge-blacklist-sync.connect_any_shard; edge-slot-map.sync HTTP GET;
+-- edge-node-weights.sync; parse_redis_addr for REDIS_ADDRS env lists.
+--
+-- Cache invalidation: none (no ngx.shared in this module).
+--
+-- State machine: parse url/addr -> connect -> single request -> close or redis set_keepalive (callers).
+--
+-- Constants and limits:
+-- - http_get_json socket settimeout 2000 ms.
+-- - parse_http_url default HTTP port 8188 when omitted.
+-- - redis_connect unix uses pool name "_" for unix: paths.
+-- - parse_addr_list splits comma-separated REDIS_ADDRS / sentinel lists.
+--
+-- Failure modes: invalid url/addr -> nil err string; connect/send/receive fail -> nil to caller (caller retains prior SHM).
+--
+-- Forbidden: http_get_json or redis_connect from access-check or edge_track_policy hot path.
+--
+-- Verify:
+-- luac -p deploy/nginx/lua/edge-net.lua
+-- bash scripts/test/edge/lua_tests.sh
 local _M = {}
 
 function _M.is_unix_socket(addr)

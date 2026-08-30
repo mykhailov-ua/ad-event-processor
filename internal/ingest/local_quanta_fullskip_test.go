@@ -55,7 +55,7 @@ func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, beforeQuota, afterQuota)
 
-	require.Equal(t, localCredit-f.clickAmountMicro, ledger.Remaining(campID))
+	require.Equal(t, localCredit-f.ClickAmountMicro(), ledger.Remaining(campID))
 	require.Equal(t, beforeSkip+1, testutil.ToFloat64(metrics.RedisLuaSkippedTotal))
 	require.Equal(t, beforeFull+1, testutil.ToFloat64(metrics.LocalQuotaFullSkipTotal))
 
@@ -189,7 +189,7 @@ func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 	reg.SeedCustomerEntitlementsForTest(custID, ent, licensing.StateActive)
 
 	uf, ledger, stream := newLocalQuantaUnifiedFilter(t, counter)
-	uf.registry = reg
+	uf.SetRegistry(reg)
 	require.NoError(t, uf.PreloadScripts(ctx))
 	counter.evals.Store(0)
 
@@ -246,7 +246,7 @@ func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	camp := &domain.Campaign{ID: campID, PacingMode: domain.PacingModeAsap}
 	evt := &domain.Event{Type: "click", CampaignID: campID, UserID: "u1", ClickID: "c1"}
 
-	require.False(t, f.localQuantaFullSkipEligible(evt, camp))
+	require.False(t, f.LocalQuantaFullSkipEligible(evt, camp))
 }
 
 func TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout(t *testing.T) {
@@ -264,7 +264,7 @@ func TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout(t *testing.T) {
 		ID:         campID,
 		PacingMode: domain.PacingModeAsap,
 	})
-	f.registry = reg
+	f.SetRegistry(reg)
 	engine := NewFilterEngine(time.Second, f)
 	engine.SetRegistry(reg)
 	require.NoError(t, f.PreloadScripts(ctx))

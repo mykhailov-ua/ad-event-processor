@@ -92,6 +92,10 @@ func PostTrackGnetJSON(h *AdsPacketHandler, body []byte) (int, []byte) {
 	return gnet.PostTrackGnetJSON(h.Server, body)
 }
 
+func PostTrackGnet(h *AdsPacketHandler, body []byte, contentType, accept string) (int, []byte) {
+	return gnet.PostTrackGnet(h.Server, body, contentType, accept)
+}
+
 func PostTrackGnetJSONWait(h *AdsPacketHandler, body []byte, timeout time.Duration) (int, []byte) {
 	return gnet.PostTrackGnetJSONWait(h.Server, body, timeout)
 }

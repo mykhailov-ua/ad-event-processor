@@ -127,7 +127,7 @@ func TestFault_PaymentRefundPostSettlementMarkGap(t *testing.T) {
 	customerID := uuid.New()
 	seed := SeedSettledIntent(t, infra, customerID, 24_000_000, "fault-ref-gap-"+uuid.New().String())
 	svc := payment.NewService(infra.Pool, infra.Cfg)
-	outboxID := ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_gap_"+uuid.New().String(), seed.ProviderRef, "re_gap_"+uuid.New().String(), 12_000_000)
+	outboxID := ProcessRefundWebhook(t, infra.Pool, svc, "evt_ref_fault_"+uuid.New().String(), seed.ProviderRef, "re_fault_"+uuid.New().String(), 12_000_000)
 
 	var hookCalls atomic.Int32
 	payment.SetPostSettlementMarkHookForTest(func(ctx context.Context, ev db.PaymentPaymentOutbox) error {

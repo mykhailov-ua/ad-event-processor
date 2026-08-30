@@ -11,6 +11,8 @@ Human-readable architecture and operator guides. **Engineering constraints live 
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Engineers | Hot/cold boundary, topology, ports, Redis sharding, wire policy |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Engineers | Clone bootstrap, codegen, compose profiles, test tiers, OpenAPI workflow, licensing ops |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | Operators | Cost Sync, CAPI, traffic templates, platform sync, migration import |
+| [AUTO_OPTIMIZATION.md](AUTO_OPTIMIZATION.md) | Engineers | Traffic weight rules (CR/EPC/ROI/revenue), test tiers, hot-path SLA |
+| [COMMAND_PALETTE.md](COMMAND_PALETTE.md) | Engineers | Admin Ctrl+K global search, API + UI rollout, cold-path SLA |
 
 ---
 

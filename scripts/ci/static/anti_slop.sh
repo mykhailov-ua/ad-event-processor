@@ -205,7 +205,7 @@ if rg -n 'func (Benchmark[^ (]*_Legacy|func parse[A-Za-z]*Legacy)' internal --gl
 fi
 
 if rg -n 'func Test[A-Za-z0-9]+_m[0-9]+\(' internal --glob '*_test.go' 2> /dev/null; then
-  fail "milestone trash test names (Test*_mN) - use domain behavior names"
+  fail "version-tag trash test names (Test*_mN) - use domain behavior names"
 fi
 
 if rg -n '[\u2013\u2014\u2026\u00b7]' scripts/ --glob '*.sh' 2> /dev/null \

@@ -75,7 +75,7 @@ func FuzzCIDRBuild(f *testing.F) {
 		root4, root6 := int32(cidrNoIndex), int32(cidrNoIndex)
 		var prefs []netip.Prefix
 		n := 1 + rng.Intn(64)
-		for i := range n {
+		for range n {
 			var a4 [4]byte
 			rng.Read(a4[:])
 			p := netip.PrefixFrom(netip.AddrFrom4(a4), rng.Intn(33)).Masked()
@@ -84,7 +84,7 @@ func FuzzCIDRBuild(f *testing.F) {
 		}
 		table := NewCIDRTable()
 		table.Publish(b.snapshot(root4, root6, 1))
-		for i := range 200 {
+		for range 200 {
 			var a4 [4]byte
 			rng.Read(a4[:])
 			ip := netip.AddrFrom4(a4)

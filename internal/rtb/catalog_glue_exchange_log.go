@@ -286,6 +286,13 @@ func NewDealFloorCache(redisClient redis.UniversalClient) *DealFloorCache {
 	return c
 }
 
+func (c *DealFloorCache) SetSnapshotForTest(m map[string]int64) {
+	if c == nil {
+		return
+	}
+	c.snap.Store(&m)
+}
+
 func (c *DealFloorCache) Get(dealID string) (int64, bool) {
 	if dealID == "" {
 		return 0, false

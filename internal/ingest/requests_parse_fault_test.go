@@ -24,12 +24,12 @@ func fraudTrackJSONCases2026() []fraudJSONCase {
 	validCID := "550e8400-e29b-41d4-a716-446655440000"
 	return []fraudJSONCase{
 		{
-			id: "G-J01", name: "truncated_no_close",
+			id: "truncated_no_close", name: "truncated_no_close",
 			body:    []byte(`{"campaign_id":"550e8400`),
 			mustErr: true,
 		},
 		{
-			id: "G-J02", name: "type_impression_on_click",
+			id: "type_impression_on_click", name: "type_impression_on_click",
 			body:   []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","type":"impression"}`),
 			mustOK: true,
 			check: func(t *testing.T, req *TrackRequest) {
@@ -37,12 +37,12 @@ func fraudTrackJSONCases2026() []fraudJSONCase {
 			},
 		},
 		{
-			id: "G-J03", name: "oversized_uuid_string",
+			id: "oversized_uuid_string", name: "oversized_uuid_string",
 			body:    []byte(`{"campaign_id":"` + strings.Repeat("a", 128) + `"}`),
 			mustErr: true,
 		},
 		{
-			id: "G-J04", name: "duplicate_user_id_last_wins",
+			id: "duplicate_user_id_last_wins", name: "duplicate_user_id_last_wins",
 			body:   []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","user_id":"first","user_id":"second"}`),
 			mustOK: true,
 			check: func(t *testing.T, req *TrackRequest) {
@@ -50,22 +50,22 @@ func fraudTrackJSONCases2026() []fraudJSONCase {
 			},
 		},
 		{
-			id: "G-J05", name: "nested_payload_shallow",
+			id: "nested_payload_shallow", name: "nested_payload_shallow",
 			body:   []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000","payload":{"a":{"b":"c"}}}`),
 			mustOK: true,
 		},
 		{
-			id: "G-J06", name: "unicode_escaped_key",
+			id: "unicode_escaped_key", name: "unicode_escaped_key",
 			body:    []byte(`{"campaign\u005fid":"550e8400-e29b-41d4-a716-446655440000"}`),
 			mustErr: true,
 		},
 		{
-			id: "G-J07", name: "numeric_campaign_id",
+			id: "numeric_campaign_id", name: "numeric_campaign_id",
 			body:    []byte(`{"campaign_id":12345}`),
 			mustErr: true,
 		},
 		{
-			id: "G-J08", name: "reordered_keys",
+			id: "reordered_keys", name: "reordered_keys",
 			body:   []byte(`{"type":"click","campaign_id":"550e8400-e29b-41d4-a716-446655440000"}`),
 			mustOK: true,
 			check: func(t *testing.T, req *TrackRequest) {
@@ -73,27 +73,27 @@ func fraudTrackJSONCases2026() []fraudJSONCase {
 			},
 		},
 		{
-			id: "G-J09", name: "unicode_escape_in_uuid_value_rejected",
+			id: "unicode_escape_in_uuid_value_rejected", name: "unicode_escape_in_uuid_value_rejected",
 			body:    []byte(`{"campaign_id":"\u0035\u0035\u0030e8400-e29b-41d4-a716-446655440000"}`),
 			mustErr: true,
 		},
 		{
-			id: "G-J10", name: "null_campaign_id_value",
+			id: "null_campaign_id_value", name: "null_campaign_id_value",
 			body:    []byte(`{"campaign_id":null,"type":"click"}`),
 			mustErr: true,
 		},
 		{
-			id: "G-J11", name: "empty_object",
+			id: "empty_object", name: "empty_object",
 			body:   []byte(`{}`),
 			mustOK: true,
 		},
 		{
-			id: "G-J12", name: "bom_prefix",
+			id: "bom_prefix", name: "bom_prefix",
 			body:    append([]byte{0xEF, 0xBB, 0xBF}, []byte(`{"campaign_id":"550e8400-e29b-41d4-a716-446655440000"}`)...),
 			mustErr: true,
 		},
 		{
-			id: "G-J13", name: "null_byte_in_string",
+			id: "null_byte_in_string", name: "null_byte_in_string",
 			body:    []byte("{\"campaign_id\":\"550e8400-e29b-41d4-a716-4466554400\x000\"}"),
 			mustErr: true,
 		},
@@ -101,7 +101,7 @@ func fraudTrackJSONCases2026() []fraudJSONCase {
 }
 
 func TestFraudScenarios_TrackJSON_2026(t *testing.T) {
-	var gaps []string
+	var failures []string
 	for _, tc := range fraudTrackJSONCases2026() {
 		tc := tc
 		t.Run(tc.id+"_"+tc.name, func(t *testing.T) {
@@ -110,14 +110,14 @@ func TestFraudScenarios_TrackJSON_2026(t *testing.T) {
 			switch {
 			case tc.mustErr:
 				if err == nil {
-					msg := fmt.Sprintf("%s [%s]: GAP expected malformed got success req=%+v", tc.id, tc.name, req)
-					gaps = append(gaps, msg)
+					msg := fmt.Sprintf("%s [%s]: holdout expected malformed got success req=%+v", tc.id, tc.name, req)
+					failures = append(failures, msg)
 					t.Fatal(msg)
 				}
 			case tc.mustOK:
 				if err != nil {
-					msg := fmt.Sprintf("%s [%s]: GAP expected accept got %v", tc.id, tc.name, err)
-					gaps = append(gaps, msg)
+					msg := fmt.Sprintf("%s [%s]: holdout expected accept got %v", tc.id, tc.name, err)
+					failures = append(failures, msg)
 					t.Fatal(msg)
 				}
 				if tc.check != nil {
@@ -127,8 +127,8 @@ func TestFraudScenarios_TrackJSON_2026(t *testing.T) {
 		})
 	}
 	faultproof.Log(t, "fraud_track_json_2026", map[string]string{
-		"cases": fmt.Sprintf("%d", len(fraudTrackJSONCases2026())),
-		"gaps":  fmt.Sprintf("%d", len(gaps)),
+		"cases":    fmt.Sprintf("%d", len(fraudTrackJSONCases2026())),
+		"failures": fmt.Sprintf("%d", len(failures)),
 	})
 }
 
@@ -165,7 +165,7 @@ func TestFraudScenarios_TrackJSON_DeepNestedPayload(t *testing.T) {
 	var req TrackRequest
 	err := ParseTrackRequestJSON(&req, []byte(nested.String()))
 	if err != nil {
-		t.Logf("GAP G-J05b: deep nested payload rejected at depth 200: %v", err)
+		t.Logf("case json_deep_nested_stack: deep nested payload rejected at depth 200: %v", err)
 	}
 }
 
@@ -183,6 +183,6 @@ func TestFraudScenarios_TrackJSON_LargePayloadWithinBody(t *testing.T) {
 	var req TrackRequest
 	err := ParseTrackRequestJSON(&req, []byte(body))
 	if err != nil {
-		t.Logf("GAP: large but valid JSON array payload rejected: %v", err)
+		t.Logf("holdout: large but valid JSON array payload rejected: %v", err)
 	}
 }

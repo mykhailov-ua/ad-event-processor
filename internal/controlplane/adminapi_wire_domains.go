@@ -11,6 +11,7 @@ import (
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/campaign/integration"
 	"ad-event-processor/internal/campaign/selfserve"
+	"ad-event-processor/internal/commandpalette"
 	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/dashboardadmin"
@@ -29,6 +30,7 @@ import (
 	"ad-event-processor/internal/rtbadmin"
 	"ad-event-processor/internal/supply"
 	"ad-event-processor/internal/telegram"
+	"ad-event-processor/internal/trafficoptimizer"
 	"ad-event-processor/pkg/platformconfig"
 
 	"github.com/google/uuid"
@@ -188,6 +190,22 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		Rules:             svc.AutomationRules(),
 		ApplyRateLimit:    limit,
 		RequirePermission: perm,
+	}
+	reg.TrafficOptimizerHTTP = &trafficoptimizer.HTTPHandlers{
+		Rules:             svc.TrafficOptimizerRules(),
+		ApplyRateLimit:    limit,
+		RequirePermission: perm,
+	}
+	reg.CommandPaletteHTTP = &commandpalette.HTTPHandlers{
+		Search:                         svc.CommandPaletteService(),
+		Recents:                        svc.CommandPaletteService().Recents,
+		LicenseFeatureAllowed:          licenseFeatureAllowed,
+		ApplyCommandPaletteSearchLimit: h.limitCommandPaletteSearch,
+		ApplyRateLimit:                 limit,
+		RequireAnyPermission:           permAny,
+		ResolveCustomerID:              h.resolveCampaignsCustomerID,
+		MaxQueryLen:                    h.cfg.Management.CommandPaletteMaxQLen,
+		AuditLogEnabled:                h.cfg.Management.CommandPaletteAuditLog,
 	}
 	reg.DomainHealthHTTP = &platformadmin.DomainHealthHTTPHandlers{
 		Service:           svc,

@@ -1,3 +1,4 @@
+// user subcommands: PASETO token minting and identity user CRUD for API testing.
 package main
 
 import (

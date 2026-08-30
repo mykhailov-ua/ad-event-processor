@@ -85,7 +85,7 @@ func TestBehaviorTelemetryFilter_holdoutMissingOnConversion(t *testing.T) {
 	evt.UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.True(t, acc.has(FraudReasonBehaviorTelemetryMissing))
+	assert.True(t, acc.Has(FraudReasonBehaviorTelemetryMissing))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.BehaviorTelemetryMissingTotal))
 }
 
@@ -110,7 +110,7 @@ func TestBehaviorTelemetryFilter_holdoutClickSkips(t *testing.T) {
 	evt.UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonBehaviorTelemetryMissing))
+	assert.False(t, acc.Has(FraudReasonBehaviorTelemetryMissing))
 }
 
 func TestBehaviorTelemetryFilter_holdoutHumanCurvePasses(t *testing.T) {
@@ -140,8 +140,8 @@ func TestBehaviorTelemetryFilter_holdoutHumanCurvePasses(t *testing.T) {
 	}
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonBehaviorTelemetryMissing))
-	assert.False(t, acc.has(FraudReasonBehaviorBezierBot))
+	assert.False(t, acc.Has(FraudReasonBehaviorTelemetryMissing))
+	assert.False(t, acc.Has(FraudReasonBehaviorBezierBot))
 }
 
 func TestBehaviorTelemetryFilter_holdoutLinearMouseFlagsBezier(t *testing.T) {
@@ -172,7 +172,7 @@ func TestBehaviorTelemetryFilter_holdoutLinearMouseFlagsBezier(t *testing.T) {
 	}
 
 	require.NoError(t, f.Check(context.Background(), evt))
-	assert.False(t, acc.has(FraudReasonBehaviorTelemetryMissing))
-	assert.True(t, acc.has(FraudReasonBehaviorBezierBot))
+	assert.False(t, acc.Has(FraudReasonBehaviorTelemetryMissing))
+	assert.True(t, acc.Has(FraudReasonBehaviorBezierBot))
 	assert.Equal(t, before+1, testutil.ToFloat64(metrics.BehaviorBezierBotTotal))
 }

@@ -30,7 +30,7 @@ func TestIPv6RotationTable_parallelObserveRace(t *testing.T) {
 			defer wg.Done()
 			now := monotonicNano()
 			for i := range 2000 {
-				_, _ = table.observe(campaignHash, v6Hi, uint64(i+seed*1000), now)
+				_, _ = table.Observe(campaignHash, v6Hi, uint64(i+seed*1000), now)
 			}
 		}(g)
 	}

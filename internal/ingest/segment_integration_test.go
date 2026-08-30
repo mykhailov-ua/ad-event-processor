@@ -96,7 +96,7 @@ func TestSegmentIntegration_conversionExcludeAndTTL(t *testing.T) {
 	member, err = segmentMemberExists(ctx, redisShards, segmentID, userHash)
 	require.NoError(t, err)
 	require.False(t, member)
-	filter.invalidateMemberCache(segmentID, userHash)
+	filter.InvalidateMemberCacheForTest(segmentID, userHash)
 	require.NoError(t, filter.Check(ctx, evt))
 }
 
@@ -116,12 +116,6 @@ func (m *segmentGetMock) Get(ctx context.Context, key string) *redis.StringCmd {
 		staticStringCmd.SetErr(redis.Nil)
 	}
 	return staticStringCmd
-}
-
-func (f *SegmentFilter) invalidateMemberCache(segmentID uuid.UUID, userHash [16]byte) {
-	if f != nil && f.memberCache != nil {
-		f.memberCache.invalidate(segmentID, userHash)
-	}
 }
 
 func TestSegmentFilter_steadyStateNoGET(t *testing.T) {
