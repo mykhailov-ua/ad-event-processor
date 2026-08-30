@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Create Python venv under model/ with pip, requirements, and pyright.
+# Execution context: Repo root; downloads get-pip.py (network required).
+# Env knobs: none.
+# Verify: bash scripts/dev/codegen/model_venv.sh && model/.venv/bin/python -c 'import sys; print(sys.version)'
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

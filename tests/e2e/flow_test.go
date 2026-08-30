@@ -1,3 +1,8 @@
+// Role: Full /track path: UnifiedFilter Lua, Redis stream, StreamConsumer, Postgres persistence (JSON and protobuf).
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), single Redis.
+// Invariants proved: accepted track debits and enqueues; consumer writes campaign_stats and events within timeout.
+// Verify: make test-integration
 package e2e_test
 
 import (

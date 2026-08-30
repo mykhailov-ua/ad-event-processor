@@ -1,3 +1,8 @@
+// Role: Settlement parity between Redis stream _pg worker and broker _pg_broker consumer paths.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), single Redis; in-process broker.
+// Invariants proved: identical campaign_stats for both sinks; broker path inserts events rows; Redis _pg path is stats-only (zero events rows).
+// Verify: make test-integration
 package e2e_test
 
 import (
@@ -25,6 +30,7 @@ type settlementSnapshot struct {
 	Impressions int64
 }
 
+// Holdout: Redis _pg settlement must not insert events rows (stats-only path).
 func TestE2E_BrokerPGSettlementParity(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: broker pg settlement parity e2e (run make test-integration)")

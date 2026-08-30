@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Restore tc qdisc, sysctl, and stop stress-ng after purgatory torture session.
+# Execution context: Linux root; reads state from purgatory state dir.
+# Env knobs: STRESS_PID_FILE; TC_BACKUP (from common.sh).
+# Verify: sudo bash scripts/perf/purgatory/cleanup_purgatory.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Fault-tier orchestrator; runs TestFault* across tests/ and internal packages, counts fault_proof lines.
+# Execution context: CI main resilience job and operator fault drills; may install stress-ng on github-hosted runners.
+# Invariants/contracts enforced: MIN_PROOFS (default 52) and MIN_MR_PROOFS (default 12) fault_proof log lines; resilience_fault_gates.sh tail audit.
+# Verify: bash scripts/fault/run.sh
+# Env: RESILIENCE_LOG, RESILIENCE_MIN_PROOFS, RESILIENCE_MIN_PROOFS_MR, BROKER_FAULT_LAB=1
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

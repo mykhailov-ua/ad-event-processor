@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Compare Redis RAM before/after cutover config under sustained load.
+# Execution context: Load stack; writes report under var/ram-proof/cutover-compare-*.
+# Env knobs: TARGET_RPS (50000); DURATION (45s); WORKERS (24); TRACKER_BASES.
+# Verify: bash scripts/perf/redis_ram_cutover_compare.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

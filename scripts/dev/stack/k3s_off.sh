@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Stop, disable, and mask k3s to free resources on dev laptops.
+# Execution context: Dev host as root; runs k3s-killall.sh when present.
+# Env knobs: none.
+# Verify: sudo bash scripts/dev/stack/k3s_off.sh && ! systemctl is-active k3s
 set -euo pipefail
 
 if [[ "$(id -u)" -ne 0 ]]; then

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Generic microbench runner with fixed count and GOMAXPROCS=1 for reproducible output.
+# Execution context: Repo root; args: bench_regex then package paths.
+# Env knobs: none (benchtime 200ms, count 10).
+# Verify: bash scripts/perf/run_bench.sh 'BenchmarkGetShard' ./internal/domain/shard/
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

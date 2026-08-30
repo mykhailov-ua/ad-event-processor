@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Report export soak against control API; sustained CSV/JSON export under load-test control URL.
+# Execution context: Load-test or analytics profile with control plane up; writes artifacts to OUT_DIR.
+# Invariants/contracts enforced: Export endpoints return 2xx; no silent empty body on configured report keys.
+# Verify: bash scripts/test/report_export_soak.sh <out_dir>
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/load_test_env.sh"
 cd "$ROOT"

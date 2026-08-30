@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Hot-path heap escape gate vs baseline count and changed-file diff.
+# Execution context: CI merge-pr-fast; compiles hot packages with -gcflags=-m.
+# Invariants/contracts enforced: Escape line count must not exceed baseline; new escapes in changed hot files fail.
+# Verify: bash scripts/ci/static/escape_heap.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

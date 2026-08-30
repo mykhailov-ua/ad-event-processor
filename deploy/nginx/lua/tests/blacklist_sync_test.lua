@@ -1,3 +1,7 @@
+-- Role: edge-blacklist-sync shard failover, quarantine apply, and changelog cap behavior.
+-- Execution context: ngx.shared blacklist_cache; connect_any_shard tries REDIS_ADDRS order.
+-- Invariants proved: connect_any_shard fails closed through all shards; stamp_ips caps EDGE_BLACKLIST_CHANGELOG_MAX_IPS pending queue.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 package.loaded["resty.redis"] = {}
@@ -185,6 +189,7 @@ for k in pairs(blacklist_store) do
 end
 cache:set("_bl_ver", 1)
 local many = { "10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4" }
+-- EDGE_BLACKLIST_CHANGELOG_MAX_IPS=2: overflow IPs queue _bl_pending instead of dropping silently.
 assert_true(blacklist_sync.stamp_ips(many, false), "stamp_ips caps changelog batch")
 assert_eq(1, cache:get "b:10.0.0.1", "first ip stamped")
 assert_eq(1, cache:get "b:10.0.0.2", "second ip stamped")

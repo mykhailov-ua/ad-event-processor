@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Static gate: Binary and package size ceilings.
+# Execution context: CI merge-pr-fast via pr_fast unless noted.
+# Invariants/contracts enforced: Non-zero exit on contract violation; no silent pass on failure.
+# Verify: bash scripts/ci/static/package_size.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -51,6 +55,7 @@ for bridge in internal/controlplane/*_bridge.go; do
   fi
 done
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   echo "package_size_gate: FAILED" >&2
   exit 1

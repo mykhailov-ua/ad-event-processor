@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Format check orchestrator.
+# Execution context: CI and operator.
+# Invariants/contracts enforced: Unformatted sources fail.
+# Verify: bash scripts/ci/format.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

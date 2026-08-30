@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: License gate: Garble literals policy static check.
+# Execution context: CI license-verify tier or release QA.
+# Invariants/contracts enforced: Required rows fail closed; optional rows use skip_gate with env flags.
+# Verify: bash scripts/ci/license/garble_literals_policy.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$ROOT/scripts/lib/garble_literals_policy.sh"
 source "$ROOT/scripts/lib/release_garble_policy.sh"

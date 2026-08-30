@@ -11,10 +11,10 @@ GARBLE_VERSION ?= v0.15.0
 BIN_CMDS := tracker processor control ivt-detector fraud-scorer broker region-proxy log-shipper alertmanager-telegram log-evacuator log-compactor edge-xdp edge-bpf-sync
 
 fmt:
-	bash scripts/ci/format.sh
+	bash scripts/dev/fmt.sh
 
 fmt-check:
-	bash scripts/ci/format.sh --check
+	bash scripts/dev/fmt.sh --check
 
 gen:
 	bash scripts/ci/gen.sh --proto

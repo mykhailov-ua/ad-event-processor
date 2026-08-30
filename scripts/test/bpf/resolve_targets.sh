@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Resolve cgroup/PID targets for bpf-collector from running compose roles (tracker, nginx, redis, processor).
+# Execution context: probe_session start; scans /proc for role-labeled processes.
+# Invariants/contracts enforced: WANT roles subset must resolve or entry omitted; writes JSON array to OUT_JSON.
+# Verify: bash scripts/test/bpf/resolve_targets.sh /tmp/targets.json tracker,nginx
+# Env: AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE, AD_EVENT_PROCESSOR_BPF_NATIVE
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 
 OUT_JSON="${1:?targets.json path required}"

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Seed Redis config:values rate limits for load tests (raises per-min ceiling).
+# Execution context: Host redis-cli or docker exec into redis-0 when stack is up.
+# Env knobs: REDIS_PORT (6479); LOAD_TEST_RATE_LIMIT_PER_MIN (500000); LOAD_TEST_RATE_LIMIT_WINDOW_MS (60000).
+# Verify: bash scripts/test/load/seed_limits.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

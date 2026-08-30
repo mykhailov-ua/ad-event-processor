@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: TCP listen overflow/drop gate under SYN flood load at TARGET_RPS.
+# Execution context: Load stack with trackers; checks sysctl tcp backlog minimum.
+# Env knobs: TARGET_RPS (30000); DURATION (60s); MAX_LISTEN_OVERFLOW_DELTA (0); TCP_BACKLOG_SYSCTL_MIN (2048).
+# Verify: bash scripts/perf/tcp_syn_drop_gate.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

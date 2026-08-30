@@ -1,3 +1,8 @@
+// Role: Reports and saved-views admin routes must not 403 for customers without subscription tier.
+// Tier: integration.
+// Infra: testcontainers Postgres (ads + billing migrations).
+// Invariants proved: placements/keywords reports and views CRUD allowed without license subscription gate (not 403).
+// Verify: make test-integration
 package integration_test
 
 import (
@@ -16,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: report routes must not return 403 solely due to missing subscription tier.
 func TestIntegration_ReportsDashboardsViews_NoTierGate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: reports dashboards views (run make test-integration)")

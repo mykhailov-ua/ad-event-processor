@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Run hot-path microbenchmark suite for perf-gate and nightly bench jobs.
+# Execution context: Repo root; GOMAXPROCS=1 for stable benchstat comparison.
+# Env knobs: PERF_GATE_STRICT (true uses BENCH_COUNT=10, else 2 for smoke).
+# Verify: bash scripts/test/load/gate_bench.sh | tail -5
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

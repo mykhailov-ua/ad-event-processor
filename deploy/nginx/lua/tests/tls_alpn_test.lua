@@ -1,3 +1,7 @@
+-- Role: TLS ClientHello ALPN extension parser for edge TLS fingerprinting.
+-- Execution context: edge-tls-fingerprint on handshake metadata; pure Lua bit unpack.
+-- Invariants proved: parse_alpn_list returns comma-separated protocols; empty/short ext returns "" without error.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local tls_fp = require "edge-tls-fingerprint"

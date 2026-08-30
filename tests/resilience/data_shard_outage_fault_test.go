@@ -1,3 +1,8 @@
+// Role: Kill one Redis data shard; prove 503 shard_unavailable on killed shard and continued accept on others.
+// Tier: resilience.
+// Infra: testcontainers Postgres (ads schema), Redis x4 via harness; container stop on shard 2.
+// Invariants proved: killed shard 503 with shard_unavailable body; unaffected shards accept under load; AssertBudgetInvariant per healthy shard.
+// Verify: make test-resilience
 package resilience_test
 
 import (
@@ -16,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Fail-closed: killed shard must 503 shard_unavailable; healthy shards must keep accepting under concurrent load.
 func TestFault_DataShardOutage(t *testing.T) {
 	const (
 		killedShard = 2

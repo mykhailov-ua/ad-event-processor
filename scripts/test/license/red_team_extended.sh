@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Extended license red-team cases beyond scripts/security/license_red_team.sh.
+# Execution context: Repo root; tallies PASS/FAIL/SKIP per case.
+# Env knobs: none.
+# Verify: bash scripts/test/license/red_team_extended.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

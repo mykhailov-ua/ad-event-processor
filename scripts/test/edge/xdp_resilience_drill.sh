@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: XDP attach resilience drill with Redis-backed edge state and fault_proof logging.
+# Execution context: Linux root; requires BTF and .env Redis credentials.
+# Env knobs: XDP_RESILIENCE_IFACE (lo); XDP_RESILIENCE_LOG (CI_ARTIFACT_DIR path).
+# Verify: sudo bash scripts/test/edge/xdp_resilience_drill.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
@@ -67,6 +70,7 @@ export XDP_RESILIENCE_DRILL=1
 log "attach on ${IFACE}, sync blocklist, assert drop counter (prog.Test on same maps)"
 go test ./internal/edge/ -run='^TestResilienceDrill_LoopbackBlocklistDrop$' -count=1 -v 2>&1 | tee "$LOG"
 
+# fault_proof line is required CI telemetry; test must log fault=xdp_resilience_drill on success.
 grep -q 'fault_proof fault=xdp_resilience_drill ' "$LOG" || die "missing fault_proof line in $LOG"
 
 log "soft bench gate (generic mode)"

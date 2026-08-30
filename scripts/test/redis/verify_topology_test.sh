@@ -1,5 +1,8 @@
-#!/bin/sh
-
+#!/usr/bin/env bash
+# Role: Shell harness asserting REDIS_ADDRS count matches REDIS_SHARD_COUNT via ops verifier.
+# Execution context: Standalone test; writes temp env files (no running Redis).
+# Env knobs: none (cases use REDIS_SHARD_COUNT 2, 4, and reject 6 addrs with count 4).
+# Verify: bash scripts/test/redis/verify_topology_test.sh
 set -eu
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -20,6 +23,7 @@ EOF
 
 bash "$ROOT/scripts/ops/verify_redis_topology.sh" "$TMP"
 
+# Negative: six REDIS_ADDRS with REDIS_SHARD_COUNT=4 must fail (production expects addr count match).
 cat > "$TMP" << 'EOF'
 REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock,/run/ad-event-processor/redis/redis-2.sock,/run/ad-event-processor/redis/redis-3.sock,/run/ad-event-processor/redis/redis-4.sock,/run/ad-event-processor/redis/redis-5.sock
 EOF

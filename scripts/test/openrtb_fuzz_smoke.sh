@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: OpenRTB 2.6 parser fuzz smoke across ingest and rtb packages.
+# Execution context: Nightly parser-fuzz workflow; no Docker.
+# Invariants/contracts enforced: No panic within OPENRTB_FUZZ_TIME (default 5s) per Fuzz* target.
+# Verify: bash scripts/test/openrtb_fuzz_smoke.sh
+# Env: OPENRTB_FUZZ_TIME
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

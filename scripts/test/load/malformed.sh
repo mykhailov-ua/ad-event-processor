@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Role: Primary load-test driver with chaos mix, BPF probes, and SLA gate via load-report.
+# Execution context: Dev or dedicated load runner; constrained mode uses docker-compose.load-test.yaml.
+# Env knobs: CONSTRAINED (1 default); RATE, DURATION (loadgen); AD_EVENT_PROCESSOR_BPF_PROBE (1 enables BPF);
+#   PREPARE (1 runs prepare_constrained_stack); LOAD_SLA_GATE (1 abort on p99>80ms for 30s or budget violation).
+# Verify: AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/load/malformed.sh smoke
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
@@ -164,6 +169,7 @@ fi
 bash "$SCRIPTS/test/snapshot_runtime.sh" "$OUT/runtime-post" 10
 
 export LOAD_SLA_GATE=1
+# LOAD_SLA_GATE=0 only for cold-path report-export soak; otherwise abort on handler p99>80ms for 30s.
 if [[ "${BPF_COLD_GATE:-0}" == "1" && "$REPORT_EXPORT_SOAK" == "1" ]]; then
   export LOAD_SLA_GATE=0
 fi

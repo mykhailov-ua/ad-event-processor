@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Broker durability fault lab (WAL, page cache, CPU throttle); BROKER_FAULT_LAB=1 enables extended tests.
+# Execution context: Operator machine; stress-ng/cpulimit optional (tests skip when missing).
+# Invariants/contracts enforced: broker fault_proof lines in BROKER_FAULT_LAB_LOG; no event loss on cutover paths.
+# Verify: bash scripts/test/broker_fault_lab.sh
+# Env: BROKER_FAULT_LAB_LOG, BROKER_FAULT_LAB=1
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

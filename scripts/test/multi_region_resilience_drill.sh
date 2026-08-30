@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Multi-region fault subset (region proxy, lease, quorum); counts mr_ fault_proof lines in controlplane tests.
+# Execution context: Operator or nightly; testcontainers Docker required.
+# Invariants/contracts enforced: MIN_MR_PROOFS (default 12); named mr_* faults must appear in log.
+# Verify: bash scripts/test/multi_region_resilience_drill.sh
+# Env: MR_RESILIENCE_DRILL_LOG, RESILIENCE_MIN_PROOFS_MR
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

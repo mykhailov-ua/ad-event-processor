@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Tier-A repo hygiene: docs layout, version tags, HTML ban in controlplane, brand boundary.
+# Execution context: CI merge-pr-fast (via pr_fast) and local; scans tree plus optional diff vs BASE.
+# Invariants/contracts enforced: Fail-closed on forbidden docs paths, M-number tags, HTMX/HTML in cold handlers.
+# Verify: bash scripts/ci/tier_a.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -181,6 +185,7 @@ if [[ -n "$pkg_hits" ]]; then
   fail=1
 fi
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   echo "tier_a: FAILED"
   exit 1

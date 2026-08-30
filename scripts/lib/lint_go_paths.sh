@@ -1,4 +1,9 @@
 # shellcheck shell=bash
+
+# Role: Library: Go path lint helper.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/lint_go_paths.sh
 lint_go_hot_path_dirs=(
   internal/ingest
   internal/filter

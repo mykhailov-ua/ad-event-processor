@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Naming gate: Legacy product tokens and long Go receivers.
+# Execution context: CI via pr_fast or full_test.
+# Invariants/contracts enforced: Legacy tokens and layout violations fail closed.
+# Verify: bash scripts/ci/naming/legacy_naming.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

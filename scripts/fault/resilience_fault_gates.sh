@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Fault/resilience: Grep fault_proof lines from resilience log.
+# Execution context: CI main-resilience or operator fault tier; needs Docker for compose drills.
+# Invariants/contracts enforced: Success logs fault_proof fault=<name>; resilience_fault_gates.sh greps required proofs.
+# Verify: bash scripts/fault/resilience_fault_gates.sh
 LOG="${1:-${RESILIENCE_LOG:-/tmp/ad-event-processor-resilience.log}}"
 if [ ! -f "$LOG" ]; then
   echo "FAIL: resilience log not found: $LOG" >&2

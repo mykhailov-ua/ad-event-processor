@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: One-shot dev appliance bootstrap: codegen, demo license, GeoIP, compose, admin seed.
+# Execution context: Fresh clone on dev host; wraps stack.sh and seed_admin.sh.
+# Env knobs: --profile ingest-only|full; --with-bpf; --skip-gen, --skip-geoip, --skip-up, --skip-seed.
+# Verify: bash scripts/install/appliance_bootstrap.sh --dry-run
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

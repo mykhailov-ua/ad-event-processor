@@ -1,3 +1,7 @@
+-- Role: edge-net redis_connect UDS vs TCP host/port wiring for state Redis shards.
+-- Execution context: OpenResty worker; luajit standalone via lua_tests.sh (mock resty.redis).
+-- Invariants proved: unix_socket maps to unix:/path host; TCP passes host and numeric port separately.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local edge_net = require "edge-net"

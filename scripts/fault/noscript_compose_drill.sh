@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Fault/resilience: NOSCRIPT compose fault drill.
+# Execution context: CI main-resilience or operator fault tier; needs Docker for compose drills.
+# Invariants/contracts enforced: Success logs fault_proof fault=<name>; resilience_fault_gates.sh greps required proofs.
+# Verify: bash scripts/fault/noscript_compose_drill.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

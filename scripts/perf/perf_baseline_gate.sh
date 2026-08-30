@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Compare current bench output to baseline via cmd/perf-gate; seeds baseline on first run.
+# Execution context: CI perf tier; two file arguments baseline.txt and current.txt.
+# Env knobs: none.
+# Verify: bash scripts/perf/perf_baseline_gate.sh /tmp/base.txt /tmp/cur.txt
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

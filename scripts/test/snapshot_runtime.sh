@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Capture compose container stats and logs snapshot for load-test postmortem (OUT dir, SAMPLE_SEC window).
+# Execution context: Operator during or after load test; no assertions beyond artifact write.
+# Invariants/contracts enforced: OUT dir created; docker stats sample written per running service.
+# Verify: bash scripts/test/snapshot_runtime.sh <out_dir> [sample_sec]
 OUT="${1:?output dir required}"
 SAMPLE_SEC="${2:-30}"
 mkdir -p "$OUT"

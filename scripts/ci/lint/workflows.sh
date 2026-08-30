@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Lint gate: actionlint on GitHub workflows.
+# Execution context: CI merge-lint via lint.sh.
+# Invariants/contracts enforced: Child linter failure propagates to exit 1.
+# Verify: bash scripts/ci/lint/workflows.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

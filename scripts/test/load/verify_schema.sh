@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Assert load-test required Postgres columns exist before loadgen runs.
+# Execution context: docker-compose.load-test.yaml stack with db service up.
+# Env knobs: DB_PORT (5430); DB_USER, DB_NAME (ad_event_processor defaults).
+# Verify: bash scripts/test/load/verify_schema.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

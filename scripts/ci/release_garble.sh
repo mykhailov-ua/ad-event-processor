@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Release garble build gate.
+# Execution context: Release CI.
+# Invariants/contracts enforced: Garbled build must compile.
+# Verify: bash scripts/ci/release_garble.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$ROOT/scripts/lib/garble_literals_policy.sh"
 source "$ROOT/scripts/lib/release_garble_policy.sh"

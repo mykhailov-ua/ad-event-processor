@@ -170,7 +170,7 @@ function _M.asn_whitelisted(asn)
         return false
     end
     asn = string.match(asn, "^%s*(.-)%s*$")
-    local ver = dict:get("_asn_ver")
+    local ver = dict:get "_asn_ver"
     if not ver then
         return false
     end
@@ -278,21 +278,21 @@ function _M.sync()
         end
     end
 
-    local new_asn_ver = (dict:get("_asn_ver") or 0) + 1
+    local new_asn_ver = (dict:get "_asn_ver" or 0) + 1
     local cdn_stamped, cdn_failed = 0, 0
     local mobile_stamped, mobile_failed = 0, 0
     if redis_value_ok(vals[9]) then
         dict:set("asn_cdn_raw", vals[9])
         cdn_stamped, cdn_failed = stamp_asn_list(vals[9], "asn_cdn:", new_asn_ver)
     elseif vals[9] == "" then
-        dict:delete("asn_cdn_raw")
+        dict:delete "asn_cdn_raw"
     end
     dict:set("_asn_cdn_count", cdn_stamped)
     if redis_value_ok(vals[10]) then
         dict:set("asn_mobile_raw", vals[10])
         mobile_stamped, mobile_failed = stamp_asn_list(vals[10], "asn_mobile:", new_asn_ver)
     elseif vals[10] == "" then
-        dict:delete("asn_mobile_raw")
+        dict:delete "asn_mobile_raw"
     end
     dict:set("_asn_mobile_count", mobile_stamped)
     dict:set("_asn_ver", new_asn_ver)

@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Role: Bring up compose stack for integration prep (operator/CI integration tier).
+# Execution context: CI merge-integration prep and operator; starts Docker compose services.
+# Invariants/contracts enforced: Waits for Postgres/Redis/ClickHouse health before tests.
+# Verify: bash scripts/ci/prepare_test.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

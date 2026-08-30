@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Library: Redis memory measurement helper.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/redis_memory.sh
 redis_memory_used_bytes() {
   local shard="$1"
   shift

@@ -1,4 +1,11 @@
-"""Metadata contract: no fabricated training metrics."""
+"""Metadata contract: no fabricated training metrics.
+
+Role: write_metadata must not invent accuracy/AUC when metrics omitted.
+Tier: fast (unit).
+Infra: tempfile artifact dir only.
+Invariants proved: metrics key absent unless explicitly passed; placeholder note allowed without fake scores.
+Verify: cd model && python3 -m pytest tests/test_artifact_metadata.py -q
+"""
 
 from __future__ import annotations
 

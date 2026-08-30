@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Bootstrap CAPI test fixtures with mock Meta server and postback-sender wiring.
+# Execution context: Compose db/redis or full stack; builds postback-sender when missing.
+# Env knobs: META_MOCK_PORT (9199); META_TEST_EVENT_CODE; TRACK_URL (8181); CONTROL_URL (8188).
+# Verify: bash scripts/test/capi/meta_bootstrap.sh run
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

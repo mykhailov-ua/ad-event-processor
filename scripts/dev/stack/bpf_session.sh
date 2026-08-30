@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Start, stop, or report BPF probe collection sessions under var/bpf-session.
+# Execution context: Dev host; bpf-collector requires root for attach (invoked via sudo from stack.sh probe).
+# Env knobs: AD_EVENT_PROCESSOR_BPF_SESSION_ROOT (session dir); .env for tracker/redis targets.
+# Verify: bash scripts/dev/stack/stack.sh probe status
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

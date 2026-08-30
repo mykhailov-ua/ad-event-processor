@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Static gate: MCK seed coupling on release builds.
+# Execution context: CI merge-pr-fast via pr_fast unless noted.
+# Invariants/contracts enforced: Non-zero exit on contract violation; no silent pass on failure.
+# Verify: bash scripts/ci/static/mck_seed_coupling_release.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Nightly BPF gate wrapper for hot, cold, or export-soak baselines under .ci-baselines/bpf/.
+# Execution context: Scheduled CI runner with PERF_RUNNER_LABEL or dedicated load host.
+# Invariants/contracts enforced: KIND hot|cold|export selects gate script and baseline dir; compare fails on regression.
+# Verify: bash scripts/test/bpf/nightly_job.sh hot
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

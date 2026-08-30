@@ -1,3 +1,8 @@
+// Role: OpenRTB 2.6 bid request through live exchange handler; RTB budget authority and PG budget invariant.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), single Redis.
+// Invariants proved: bid response contains golden id and x-openrtb-version 2.6; RTB store debited; AssertBudgetInvariant holds.
+// Verify: make test-integration
 package e2e_test
 
 import (
@@ -18,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: live OpenRTB auction must debit RTB store and keep PG budget invariant.
 func TestE2E_OpenRTB26LiveBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

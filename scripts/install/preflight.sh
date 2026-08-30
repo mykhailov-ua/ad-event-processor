@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Installer host preflight: docker, disk, ports, redis topology, and optional strict checks.
+# Execution context: Before ad-event-processor-install.sh; reads .env and install.compose.env.
+# Env knobs: --strict (fail on warnings); REDIS_SHARD_COUNT must match REDIS_ADDRS.
+# Verify: bash scripts/install/preflight.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

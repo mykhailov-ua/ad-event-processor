@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Set CPU governor to performance for stable microbench and load-test runs.
+# Execution context: Linux host; requires sudo for cpufreq and optional cpupower.
+# Env knobs: none.
+# Verify: bash scripts/perf/stabilize_cpu.sh
 set -euo pipefail
 
 if [[ -d /sys/devices/system/cpu/cpu0/cpufreq ]]; then

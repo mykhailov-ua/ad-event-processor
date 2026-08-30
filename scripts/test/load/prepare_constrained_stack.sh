@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Bring up load-test compose overlay with control plane, trackers, and seed data.
+# Execution context: Pre-step for malformed.sh business mode and constrained load tests.
+# Env knobs: SKIP_CODEGEN (1 default); DB_PORT (5430); LOAD_TEST_CONTROL_PORT (8800); REDIS_SHARD_COUNT via .env.
+# Verify: bash scripts/test/load/prepare_constrained_stack.sh && curl -sf http://127.0.0.1:8800/health
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
@@ -7,6 +11,7 @@ cd "$ROOT"
 
 load_test_compose COMPOSE "$ROOT"
 load_test_export_derived
+# docker-compose.load-test.yaml overlay: pinned ports, control on 8800, six redis shards.
 export SKIP_CODEGEN="${SKIP_CODEGEN:-1}"
 
 if [[ -f "$ROOT/.env" ]]; then

@@ -1,4 +1,11 @@
-"""Tests for ClickHouse client lifecycle helpers."""
+"""Tests for ClickHouse client lifecycle helpers.
+
+Role: Context manager closes clickhouse_client on exit; close_client is idempotent.
+Tier: fast (unit).
+Infra: fake client only; no live ClickHouse.
+Invariants proved: clickhouse_client context calls close; monkeypatched connect_client not leaked.
+Verify: cd model && python3 -m pytest tests/test_clickhouse_client.py -q
+"""
 
 from __future__ import annotations
 

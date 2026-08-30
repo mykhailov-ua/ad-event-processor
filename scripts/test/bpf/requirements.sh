@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Preflight BPF load-test toolchain (clang, bpftool, bpf-collector binary, kernel BTF).
+# Execution context: Operator or CI before bpf/resource.sh; warn_check for optional tools.
+# Invariants/contracts enforced: Required checks fail exit 1; optional gaps print WARN only.
+# Verify: bash scripts/test/bpf/requirements.sh
 _SCRIPTS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 source "$_SCRIPTS/lib/go.sh"

@@ -1,3 +1,7 @@
+-- Role: edge-tarpit slow-path delay on oversized headers/body; disabled by default.
+-- Execution context: access phase before upstream; EDGE_TARPIT_* env knobs (max headers, body bytes, max sec).
+-- Invariants proved: disabled never sleeps; normal requests skip; delay capped at min(EDGE_TARPIT_MAX_SEC, 15s hard max).
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local metrics_store = {}

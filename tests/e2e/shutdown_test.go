@@ -1,3 +1,8 @@
+// Role: Concurrent /track via HTTP router; consumer drain on Close/Wait must persist all accepted events.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), single Redis.
+// Invariants proved: events row count equals accepted 202 count after graceful consumer shutdown (no stream loss).
+// Verify: make test-integration
 package e2e_test
 
 import (
@@ -24,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: accepted event count must match PG rows after consumer Close/Wait (regression = stream drain gap).
 func TestE2E_GracefulShutdown_NoDataLoss(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

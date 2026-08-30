@@ -1,3 +1,8 @@
+// Role: BudgetFilter debit, Redis budget key, SyncWorker PG spend sync, click_id dedup.
+// Tier: integration.
+// Infra: testcontainers Postgres (ads schema), single Redis.
+// Invariants proved: debit reduces Redis budget; duplicate click_id skips second debit; SyncAll aligns campaign current_spend and customer balance.
+// Verify: make test-integration
 package integration_test
 
 import (
@@ -15,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: second Check with same click_id must not debit Redis again; SyncAll must not double-apply spend.
 func TestIntegration_BudgetFlow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

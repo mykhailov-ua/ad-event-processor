@@ -1,3 +1,7 @@
+-- Role: edge-slot-map versioned 1024-slot table sync and atomic get_shard during partial sync.
+-- Execution context: controlplane slot map HTTP JSON; ngx.shared.slot_map dict.
+-- Invariants proved: get_shard nil when version 0/missing; version key written after all s:* keys; mid-sync reads old map.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local slot_map_store = {}
@@ -122,6 +126,7 @@ for i, entry in ipairs(set_log) do
 end
 assert_true(version_idx ~= nil, "sync sets version")
 assert_true(last_s_idx ~= nil, "sync sets s:* keys")
+-- Holdout: version bump must be last so get_shard never sees partial slot table.
 assert_true(version_idx > last_s_idx, "version set after all s:* keys")
 
 reset_store()

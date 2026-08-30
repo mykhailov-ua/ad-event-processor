@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: BPF uprobe trace session for /track pixel path with bpf_trace-tagged tracker build.
+# Execution context: Compose stack with active campaign; writes session under var/bpf-session/pixel.
+# Env knobs: PIXEL_TRACE_TRACK_REPS (50); PIXEL_TRACE_METRICS_PORT (9101); TRACK_URL, CORS_ORIGIN.
+# Verify: bash scripts/test/edge/trace_session.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

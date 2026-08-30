@@ -1,10 +1,18 @@
-"""Bootstrap must fail loudly when synthetic training is invalid."""
+"""Bootstrap must fail loudly when synthetic training is invalid.
+
+Role: Holdout for artifact_bootstrap synthetic_dataset class balance.
+Tier: fast (unit); lightgbm optional via importorskip.
+Infra: none; monkeypatches synthetic_dataset to single-class output.
+Invariants proved: bootstrap_synthetic raises ValueError on single-class labels (no silent fake metrics).
+Verify: cd model && python3 -m pytest tests/test_bootstrap_contract.py -q
+"""
 
 from __future__ import annotations
 
 import pytest
 
 def test_bootstrap_synthetic_rejects_single_class_dataset() -> None:
+    """Holdout: single-class synthetic labels must not produce a shippable bootstrap artifact."""
     pytest.importorskip("lightgbm")
     import numpy as np
 

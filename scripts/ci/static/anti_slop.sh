@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Anti-slop static scan: skip reasons, handler errcheck, mock bench names, CI branches.
+# Execution context: CI merge-pr-fast via pr_fast.
+# Invariants/contracts enforced: Bare t.Skip(), weak integration skips, and BenchmarkUnifiedFilter_Check without _mock fail.
+# Verify: bash scripts/ci/static/anti_slop.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -225,6 +229,7 @@ if rg -n '[\u2013\u2014\u2026\u00a7\u00b7]' deploy/monitoring --glob '*.yaml' 2>
   rg -n '[\u2013\u2014\u2026\u00a7\u00b7]' deploy/monitoring --glob '*.yaml' || true
 fi
 
+# Gate failed accumulator exits non-zero
 if [[ "$failed" -ne 0 ]]; then
   echo "anti-slop: remediation - .cursor/rules/ci.mdc and anti-slop.mdc; integration skips: integration: run make test-integration (Docker testcontainers)"
   exit 1

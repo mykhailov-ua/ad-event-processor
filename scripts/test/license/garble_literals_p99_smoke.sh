@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Garbled release binary load test with p99 budget check against Prometheus.
+# Execution context: docker-compose.load-test.yaml stack; compares garbled vs baseline handler p99.
+# Env knobs: GARBLE_LITERALS_P99_BUDGET_PCT (10); GARBLE_LITERALS_LOAD_DURATION (25s); GARBLE_SEED.
+# Verify: bash scripts/test/license/garble_literals_p99_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

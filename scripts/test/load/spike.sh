@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Spike load profile via loadgen against constrained or default tracker bases.
+# Execution context: Load runner with compose stack up; optional BPF probe session.
+# Env knobs: CONSTRAINED (1); BASE_RATE (req/s); SPIKE_MULT (multiplier); RAMP_UP, HOLD, RAMP_DOWN (duration).
+# Verify: bash scripts/test/load/spike.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

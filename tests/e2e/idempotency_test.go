@@ -1,3 +1,8 @@
+// Role: click_id idempotency across UnifiedFilter Lua, Redis stream length, PG events, SyncWorker sync_idempotency.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), single Redis.
+// Invariants proved: duplicate POST accepts but debits once; XLen=1; sync_idempotency row count stable on retry SyncAll.
+// Verify: make test-integration
 package e2e_test
 
 import (
@@ -23,6 +28,7 @@ import (
 
 const e2eClickAmountMicro = 100_000
 
+// Holdout: duplicate click_id must not double-debit budget or grow stream past one entry.
 func TestE2E_Idempotency(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

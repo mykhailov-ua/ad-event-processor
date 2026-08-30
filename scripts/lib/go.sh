@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Go toolchain resolution: aed_go_bin, aed_go_run, aed_go_build.
+# Execution context: Sourced by dev stack and test scripts on operator machines.
+# Invariants/contracts enforced: AD_EVENT_PROCESSOR_GO_BIN overrides search; missing go returns 127.
+# Verify: source scripts/lib/go.sh
 aed_go_bin() {
   if [[ -n "${AD_EVENT_PROCESSOR_GO_BIN:-}" && -x "${AD_EVENT_PROCESSOR_GO_BIN}" ]]; then
     printf '%s' "${AD_EVENT_PROCESSOR_GO_BIN}"

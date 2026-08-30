@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Edge rollout workflow: preflight, canary baseline, signoff, and post-deploy reconcile.
+# Execution context: Production edge with Prometheus; compares SLA during canary soak.
+# Env knobs: CANARY_HOURS (48); PROMETHEUS_URL (9190); BASELINE_DIR; STRICT (1).
+# Verify: bash scripts/ops/rollout.sh preflight
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

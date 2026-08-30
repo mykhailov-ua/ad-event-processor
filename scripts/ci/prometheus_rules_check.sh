@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Prometheus rules validation.
+# Execution context: CI via tier_a tail.
+# Invariants/contracts enforced: Invalid rules fail.
+# Verify: bash scripts/ci/prometheus_rules_check.sh
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 

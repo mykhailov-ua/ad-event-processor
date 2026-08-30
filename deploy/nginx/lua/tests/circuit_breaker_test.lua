@@ -1,3 +1,7 @@
+-- Role: edge-circuit breaker bucket math and upstream 5xx err recording.
+-- Execution context: ngx.shared.circuit_breaker dict; time mocked via ngx._test_time.
+-- Invariants proved: open() requires sample window >= 101 and err rate above threshold; empty upstream_addr skips err.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local circuit_store = {}
@@ -91,6 +95,7 @@ for _ = 1, 101 do
     edge_circuit.record_total()
     edge_circuit.record_err()
 end
+-- Holdout: 100% error rate in sample window must open circuit (fail-closed to tracker).
 assert_true(edge_circuit.open(bucket_curr, bucket_prev), "100% errs opens circuit")
 
 reset_store()

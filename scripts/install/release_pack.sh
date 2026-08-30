@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Stage release installer tarball (compose, scripts, deploy trees) under dist/.
+# Execution context: Release engineer machine from git checkout; VERSION arg or git describe.
+# Env knobs: VERSION (arg or git describe); output dist/ad-event-processor-installer-<version>.tar.gz.
+# Verify: bash scripts/install/release_pack.sh dev && ls dist/ad-event-processor-installer-dev.tar.gz
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

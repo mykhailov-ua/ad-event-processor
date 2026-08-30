@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Fault/resilience: Compose-level fault drill orchestrator.
+# Execution context: CI main-resilience or operator fault tier; needs Docker for compose drills.
+# Invariants/contracts enforced: Success logs fault_proof fault=<name>; resilience_fault_gates.sh greps required proofs.
+# Verify: bash scripts/fault/compose_fault_drill.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -20,6 +24,7 @@ run_drill() {
 case "$SCOPE" in
   all)
     run_drill "RAM proof" bash "$SCRIPTS/perf/redis_ram_proof.sh"
+    # Child drills assume stack already up; skip nested prepare
     export SKIP_PREPARE=1
     run_drill "RAM cutover compare" bash "$SCRIPTS/perf/redis_ram_cutover_compare.sh"
     run_drill "NOSCRIPT" bash "$SCRIPTS/fault/noscript_compose_drill.sh"

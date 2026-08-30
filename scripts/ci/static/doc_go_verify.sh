@@ -3,6 +3,10 @@
 # Full test execution is operator-owned; use DOC_GO_VERIFY_RUN=1 to run go test -short per command.
 set -euo pipefail
 
+# Role: Validate // Verify: commands in production doc.go files.
+# Execution context: CI merge-pr-fast; default is path/list checks without running full go test.
+# Invariants/contracts enforced: DOC_GO_VERIFY_RUN=1 runs go test -short per command (operator-only, slow).
+# Verify: bash scripts/ci/static/doc_go_verify.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -16,7 +20,7 @@ checked_cmds=0
 gap_files=0
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: bash scripts/ci/static/doc_go_verify.sh [options]
 
 Options (env):
@@ -263,6 +267,7 @@ if [[ "$REPORT_GAPS" == "1" ]]; then
   echo "doc_go_verify: ${gap_files} files missing Invariants or Tradeoffs (non-obvious decisions backlog)"
 fi
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   echo "doc_go_verify: FAILED" >&2
   exit 1

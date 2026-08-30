@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Edge cascade failure drill under purgatory cgroup with multi-hop load and SLA checks.
+# Execution context: Compose stack with trackers; writes under var/purgatory/edge-*.
+# Env knobs: RUN_DIR; TRACKER_BASES; cascade step timeouts from script env.
+# Verify: sudo bash scripts/perf/purgatory/run_edge_cascade.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

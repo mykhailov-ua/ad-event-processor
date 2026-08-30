@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-
+# Role: Bootstrap dev admin credentials and platform install token; create admin user when needed.
+# Execution context: Repo root with .env; may start ingest_only compose profile if control is down.
+# Env knobs: ADMIN_BOOTSTRAP_EMAIL, ADMIN_BOOTSTRAP_PASSWORD, INSTALL_BOOTSTRAP_TOKEN, MANAGEMENT_PORT (8188);
+#   CONTROL_URL (override); --no-up skips compose start.
+# Verify: bash scripts/dev/stack/seed_admin.sh && curl -sf http://127.0.0.1:8188/health
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
@@ -167,6 +171,7 @@ fi
 
 if [[ "$NO_UP" -eq 0 && "$control_up" -eq 0 ]]; then
   log "control not healthy; starting ingest-only stack"
+  # ingest_only profile: CH off, cold-path workers disabled for laptop dev.
   CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 \
     CONTROL_ENABLE_NOTIFIER=0 CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
     docker compose --profile ingest_only up -d db redis-0 control

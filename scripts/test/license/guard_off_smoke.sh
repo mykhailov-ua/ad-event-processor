@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Verify license guard kill switches and default build omits license_guard tag.
+# Execution context: Repo root go test; Linux-only ptrace launcher test.
+# Env knobs: none.
+# Verify: bash scripts/test/license/guard_off_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

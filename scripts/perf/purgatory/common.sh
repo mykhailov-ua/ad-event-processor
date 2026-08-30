@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Shared cgroup v2, CPU pinning, and state paths for perf purgatory torture runs.
+# Execution context: Sourced by purgatory/*.sh; not invoked directly.
+# Env knobs: CGROUP_NAME (purgatory); SUT_CPU (0); POLLUTE_CPU (1); MEMORY_MAX_BYTES (64 MiB).
+# Verify: source scripts/perf/purgatory/common.sh && echo "$CGROUP_PATH"
 set -euo pipefail
 
 PURGATORY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

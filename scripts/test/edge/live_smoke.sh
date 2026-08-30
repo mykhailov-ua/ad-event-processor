@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Live pixel/track smoke via Unix socket or local tracker against nginx edge.
+# Execution context: Compose tracker with UDS volume or USE_LOCAL_TRACKER=1 host binary.
+# Env knobs: TRACKER_SOCK_VOL; REBUILD_TRACKER (0); DEPLOY_COMPOSE_TRACKER (1); USE_LOCAL_TRACKER (0).
+# Verify: bash scripts/test/edge/live_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

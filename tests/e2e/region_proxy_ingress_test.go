@@ -1,3 +1,8 @@
+// Role: Region-proxy ingress TCP produce batch, WAL segment persistence, record replay after reopen.
+// Tier: e2e.
+// Infra: none (in-process region-proxy server, temp WAL dir).
+// Invariants proved: register topic + produce batch ack; wal.segment non-empty; reopened WAL NextSeq and payload match.
+// Verify: make test-integration
 package e2e_test
 
 import (

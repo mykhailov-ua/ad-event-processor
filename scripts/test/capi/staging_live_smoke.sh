@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Admin release CAPI live smoke via meta_bootstrap when Docker stack is available.
+# Execution context: Starts db/redis compose services if absent; builds postback-sender.
+# Env knobs: none (delegates to meta_bootstrap.sh).
+# Verify: ADMIN_RELEASE_CAPI_LIVE=1 bash scripts/test/capi/staging_live_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Landing protection fuzz (JA3 parse, referrer checks) on ingest; skips when go missing.
+# Execution context: Nightly parser security tier; no Docker.
+# Invariants/contracts enforced: No panic on FuzzJA3Parse (30s) and related ingest fuzz targets.
+# Verify: bash scripts/test/landing_protection_fuzz_smoke.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

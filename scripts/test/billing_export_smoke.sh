@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Billing export API smoke via testcontainers Postgres; exercises export handler without full stack.
+# Execution context: CPA compliance child or standalone; skips exit 0 when Docker unavailable.
+# Invariants/contracts enforced: Export rows match seeded billing fixtures when Docker runs.
+# Verify: bash scripts/test/billing_export_smoke.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/go.sh"
 cd "$ROOT"

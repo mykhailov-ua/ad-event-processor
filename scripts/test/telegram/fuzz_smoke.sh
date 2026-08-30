@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Short fuzz runs for Telegram click query and initData parsers.
+# Execution context: Repo root go test fuzz on ingest and controlplane packages.
+# Env knobs: TELEGRAM_FUZZ_TIME (5s per target).
+# Verify: bash scripts/test/telegram/fuzz_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

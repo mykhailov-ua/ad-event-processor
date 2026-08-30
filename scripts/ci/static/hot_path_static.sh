@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Hot-path static forbid: fmt.Sprintf, context.With*, interface{} in ingest/rtb.
+# Execution context: CI merge-pr-fast.
+# Invariants/contracts enforced: Banned APIs in resolved hot file set fail the gate.
+# Verify: bash scripts/ci/static/hot_path_static.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -65,6 +69,7 @@ for path in "${HOT_FILES[@]}"; do
   fi
 done
 
+# Gate failed accumulator exits non-zero
 if [[ "$failed" -ne 0 ]]; then
   echo "hot-path-static: see .cursor/rules/ci.mdc#bpf-hot-static and .cursor/rules/hot-path.mdc"
   exit 1

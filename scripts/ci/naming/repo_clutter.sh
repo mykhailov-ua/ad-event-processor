@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Naming gate: Root clutter ban (*.txt, *.log, license.jwt).
+# Execution context: CI via pr_fast or full_test.
+# Invariants/contracts enforced: Legacy tokens and layout violations fail closed.
+# Verify: bash scripts/ci/naming/repo_clutter.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -87,6 +91,7 @@ while IFS= read -r -d '' path; do
   fail=1
 done < <(git ls-files -z 'deploy/' '*.txt')
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi

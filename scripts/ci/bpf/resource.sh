@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: eBPF resource gate under load test: tracker p99, Redis Lua, outbound connect counters.
+# Execution context: Self-hosted perf runner when PERF_RUNNER_LABEL set; otherwise exits 0 with hint.
+# Invariants/contracts enforced: BPF_GATE_STRICT=true enforces FAIL thresholds from load-test-bpf.mdc.
+# Verify: BPF_GATE_STRICT=true bash scripts/ci/bpf/resource.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/bpf_collector.sh"
 source "$SCRIPTS/lib/load_test_env.sh"
@@ -13,10 +17,12 @@ load_test_export_derived 2> /dev/null || true
 log() { printf 'bpf-resource-gate: %s\n' "$*"; }
 
 STRICT="${BPF_GATE_STRICT:-false}"
+# Self-hosted perf runner forces strict BPF gate
 if [[ "${PERF_RUNNER_LABEL:-}" != "" ]]; then
   STRICT="true"
 fi
 
+# github-hosted skips strict eBPF unless BPF_GATE_STRICT or PERF_RUNNER_LABEL
 if [[ "$STRICT" != "true" ]]; then
   log "SKIPPED (github-hosted): set repo variable PERF_RUNNER_LABEL for strict eBPF gate"
   log "hint: BPF_GATE_STRICT=true bash scripts/ci/bpf/resource.sh"

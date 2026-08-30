@@ -1,3 +1,7 @@
+-- Role: edge-uuid normalize/normalize_to_bytes and slot_map get_shard reject invalid campaign_id.
+-- Execution context: click and shard routing; must match Go UUID parse fail-closed (nil, no throw on hot path).
+-- Invariants proved: invalid hex never normalizes; normalize_to_bytes invalid does not throw; get_shard returns nil on bad uuid.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local edge_uuid = require "edge-uuid"

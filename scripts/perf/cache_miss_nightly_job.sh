@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: perf stat cache-miss ratio gate for FilterFraudBoost, GetShard, RunAuction benches.
+# Execution context: Self-hosted runner with perf installed; skips when perf missing.
+# Env knobs: baseline dir arg (default .ci-baselines/cache-miss).
+# Verify: bash scripts/perf/cache_miss_nightly_job.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

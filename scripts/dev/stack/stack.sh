@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# Role: Dev compose orchestrator for ingest-only, single-vps, minimal, analytics-ml, and auxiliary profiles.
+# Execution context: Operator laptop or shared dev host; sources scripts/lib and docker compose from repo root.
+# Env knobs: REDIS_SHARD_COUNT (shards, max 6); INGEST_REDIS_SHARD_COUNT (ingest-only subset);
+#   CH_ENABLED (0 default, 1 for clickhouse/minimal); COMPOSE_MEMORY_PROFILE (dev applies memory-dev overlay);
+#   CPU_ISOLATION_ENABLED (1 adds cpu-isolation profile); EDGE_SYSCTL_AUTO_APPLY (1 applies host sysctl);
+#   INGRESS_ENABLED (1 adds ingress profile); AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES (comma compose overlays).
+# Verify: bash scripts/dev/stack/stack.sh ingest-only && bash scripts/dev/stack/preflight.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
@@ -67,6 +74,7 @@ aed_append_compose_extra_file() {
 
 aed_compose() {
   dev_prepare_compose_mounts
+  # memory-dev overlay caps cgroup RAM on laptops; unset COMPOSE_MEMORY_PROFILE for compose defaults.
   if [[ "${COMPOSE_MEMORY_PROFILE:-dev}" == "dev" ]]; then
     aed_append_compose_extra_file "deploy/compose/docker-compose.memory-dev.yaml"
   else
@@ -107,6 +115,7 @@ aed_compose() {
 
 CMD="${1:-status}"
 
+# REDIS_SHARD_COUNT drives redis-0..N compose services; INGEST_REDIS_SHARD_COUNT may start fewer on ingest-only.
 REDIS_SHARD_COUNT="$(redis_topology_count)"
 read -ra REDIS_SHARDS <<< "$(redis_topology_services "$REDIS_SHARD_COUNT")"
 
@@ -157,6 +166,7 @@ case "$CMD" in
     aed_compose --profile infra up -d "${INFRA[@]}"
     ;;
   clickhouse | up-clickhouse)
+    # ClickHouse is explicit opt-in; never started by ingest-only or full without this subcommand.
     echo "stack.sh: ClickHouse is heavy (RAM/IO). Use only for hotfix, P0 e2e, or IOPS drills." >&2
     CH_ENABLED=1 aed_compose --profile single_vps up -d clickhouse
     ;;
@@ -180,6 +190,7 @@ case "$CMD" in
     aed_stack_hardening
     ;;
   ingest-only | up-ingest-only)
+    # Canonical laptop path: no CH, cold-path workers off, control-dev overlay for payment stubs.
     aed_stop_vps_extras
     CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
       CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
@@ -209,6 +220,7 @@ case "$CMD" in
     aed_stack_hardening
     ;;
   analytics-ml | up-analytics-ml)
+    # analytics_ml profile requires ClickHouse for fraud-scorer and ivt-detector sidecars.
     aed_compose --profile analytics_ml --profile fraud-scorer up -d ivt-detector fraud-scorer clickhouse
     ;;
   sentinel | up-sentinel)

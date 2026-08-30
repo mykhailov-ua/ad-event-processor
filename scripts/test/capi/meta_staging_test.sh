@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Negative/dry-run harness for meta_staging.sh contract (metric hint and TRACK_URL guard).
+# Execution context: Standalone shell test; no live Meta or stack required.
+# Env knobs: CAPI_STAGING_DRY_RUN (1 for dry-run path).
+# Verify: bash scripts/test/capi/meta_staging_test.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"

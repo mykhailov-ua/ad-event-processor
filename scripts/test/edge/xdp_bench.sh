@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Run userspace XDP benchmark harness (BenchmarkXDP_* via xdp_prog_test, not kernel RX).
+# Execution context: Linux host with BTF vmlinux; skips when BTF missing.
+# Env knobs: AD_EVENT_PROCESSOR_GO_BIN (via aed_go_bin).
+# Verify: bash scripts/test/edge/xdp_bench.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"

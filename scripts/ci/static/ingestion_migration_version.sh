@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Static gate: Ingest migration version alignment.
+# Execution context: CI merge-pr-fast via pr_fast unless noted.
+# Invariants/contracts enforced: Non-zero exit on contract violation; no silent pass on failure.
+# Verify: bash scripts/ci/static/ingestion_migration_version.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 
 dir="$ROOT/internal/ingest/migrations"

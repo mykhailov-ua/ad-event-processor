@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Attach sealed BPF XDP program on loopback and verify load/unload lifecycle.
+# Execution context: Linux root with BTF; skips without vmlinux or when non-root without passwordless sudo.
+# Env knobs: SEALED_BPF_XDP_IFACE (lo); SEALED_BPF_XDP_LOG (output file).
+# Verify: sudo SEALED_BPF_XDP_SMOKE=1 bash scripts/test/edge/sealed_bpf_xdp_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

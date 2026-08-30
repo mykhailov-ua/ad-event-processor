@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: HTTP health smoke for tracker, processor, and optional Redis after local stack up.
+# Execution context: Repo root; reads .env for ports and REDIS_PASSWORD.
+# Env knobs: SERVER_PORT (tracker, default 8181); PROCESSOR_PORT (8186); EDGE_PORT (8180); REDIS_PORT (6479).
+# Verify: bash scripts/dev/stack/stack.sh ingest-only && bash scripts/dev/stack/smoke_local.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

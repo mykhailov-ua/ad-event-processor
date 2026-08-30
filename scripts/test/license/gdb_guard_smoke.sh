@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: GDB attach denial smoke for license_guard release build on Linux.
+# Execution context: Requires gdb in PATH; skips on non-Linux or missing gdb.
+# Env knobs: LICENSE_GDB_SMOKE (1 forced).
+# Verify: bash scripts/test/license/gdb_guard_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

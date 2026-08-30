@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Remove gitignored build artifacts and permission-blocked paths (bin, var, .cache) via git clean and docker alpine.
+# Execution context: Operator cleanup only; destructive to ignored generated files.
+# Invariants/contracts enforced: dev_prune_parent_bind_artifacts runs first; never touches tracked sources.
+# Verify: bash scripts/clean/gitignored.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/dev_bind_mounts.sh"
 cd "$ROOT"

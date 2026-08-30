@@ -1,4 +1,11 @@
-"""Time-based split invariants for labeled training sets."""
+"""Time-based split invariants for labeled training sets.
+
+Role: time_based_split preserves chronological order and rejects overlapping train/val windows.
+Tier: fast (unit).
+Infra: in-memory LabeledRecord rows only.
+Invariants proved: val_fraction tail is strictly after train; overlapping train_until/val_from raises ValueError.
+Verify: cd model && python3 -m pytest tests/test_labeled_dataset.py -q
+"""
 
 from __future__ import annotations
 

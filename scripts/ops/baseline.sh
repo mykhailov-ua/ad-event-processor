@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Role: Capture or verify Prometheus SLA baseline for edge tracker and Redis Lua.
+# Execution context: Running stack with Prometheus; snapshot or verify mode.
+# Env knobs: PROMETHEUS_URL (9190); BASELINE_DIR (var/edge-baseline); STRICT (1 fails on breach);
+#   TRACKER_P95_MAX_MS (50); TRACKER_P99_MAX_MS (80); REDIS_LUA_P99_MAX_MS (15).
+# Verify: bash scripts/ops/baseline.sh snapshot
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -10,6 +15,7 @@ STRICT="${STRICT:-0}"
 
 TRACKER_P95_MAX_MS=50
 TRACKER_P99_MAX_MS=80
+# Abort thresholds align with core.mdc: handler p99 hard ceiling 80 ms, p95 50 ms.
 REDIS_LUA_P99_MAX_MS=15
 
 log() { printf 'edge-baseline: %s\n' "$*"; }

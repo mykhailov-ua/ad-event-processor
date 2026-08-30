@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Reverse-proxy close cohort: RP baseline tests, attestation fuzz, optional constrained load.
+# Execution context: Repo root; load tier needs Docker and REVERSE_PROXY_SKIP_LOAD=0.
+# Env knobs: REVERSE_PROXY_SKIP_LOAD (1 skips load/BPF); ATTESTATION_FUZZ_TIME (3s).
+# Verify: bash scripts/test/edge/reverse_proxy_close_smoke.sh
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 ROOT="$(pwd)"

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Telegram hot-path load soak with constrained stack and load-report telegram gate.
+# Execution context: Load runner; optional PREPARE runs prepare_constrained_stack.sh.
+# Env knobs: PREPARE (1); DURATION (30s); RATE (200 req/s); TG_SOAK_CAMPAIGN_ID, TG_SOAK_CLICK_ID.
+# Verify: bash scripts/test/telegram/hotpath_soak.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

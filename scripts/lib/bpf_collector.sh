@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Library: BPF metric collector helpers.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/bpf_collector.sh
 bpf_collector_pid_alive() {
   local pid="${1:-}"
   [[ -n "$pid" ]] || return 1

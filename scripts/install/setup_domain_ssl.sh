@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Obtain Let's Encrypt cert and wire DOMAIN into install.env for Caddy ingress.
+# Execution context: Production host with DNS pointing at machine; requires certbot.
+# Env knobs: DOMAIN (arg or env); TLS_EMAIL from install.env or .env.
+# Verify: bash scripts/install/setup_domain_ssl.sh track.example.com --help 2>&1 | head -1
 set -euo pipefail
 
 HOST="${1:-${DOMAIN:-}}"

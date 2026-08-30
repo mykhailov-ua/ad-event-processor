@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Apply tc netem and cache pollution via stress-ng for degraded-network torture runs.
+# Execution context: Linux root on ingress interface; backs up qdisc to state dir.
+# Env knobs: IFACE (from common.sh); netem delay/loss from degrade script env.
+# Verify: sudo bash scripts/perf/purgatory/degrade_network_and_cache.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

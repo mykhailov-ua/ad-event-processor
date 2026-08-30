@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Smoke-test nginx kTLS support in OpenResty container image.
+# Execution context: Docker required; skips when EDGE_KTLS=0 unless NGINX_KTLS_SMOKE_FORCE=1.
+# Env knobs: EDGE_KTLS (1 default); OPENRESTY_IMAGE (openresty/openresty:alpine).
+# Verify: bash scripts/test/edge/ktls_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

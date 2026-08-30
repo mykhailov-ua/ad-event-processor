@@ -155,7 +155,7 @@ function _M.sync()
     dict:set("epoch_lag", doc.epoch_lag or 0)
     dict:set("sync_ts", ngx.time())
 
-    local old_peer_count = dict:get("peer_count") or 0
+    local old_peer_count = dict:get "peer_count" or 0
     local purge_n = #peers.list
     if old_peer_count > purge_n then
         purge_n = old_peer_count

@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Static gate: CAPI staging route and handler contract.
+# Execution context: CI merge-pr-fast via pr_fast unless noted.
+# Invariants/contracts enforced: Non-zero exit on contract violation; no silent pass on failure.
+# Verify: bash scripts/ci/static/capi_staging.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

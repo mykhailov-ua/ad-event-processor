@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: CI artifact directory default (var/ci) and ci_artifact_path helper.
+# Execution context: Sourced via paths.sh on CI runners and local gate runs.
+# Invariants/contracts enforced: Creates CI_ARTIFACT_DIR if missing; respects ROOT when set.
+# Verify: echo "${CI_ARTIFACT_DIR:-}" after sourcing paths.sh
 if [[ -z "${CI_ARTIFACT_DIR:-}" ]]; then
   if [[ -n "${ROOT:-}" ]]; then
     CI_ARTIFACT_DIR="$ROOT/var/ci"

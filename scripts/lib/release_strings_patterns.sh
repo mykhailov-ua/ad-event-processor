@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Library: Release string pattern helper.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/release_strings_patterns.sh
 release_strings_forbidden_core() {
   printf '%s\n' \
     'IngestAllowed' \

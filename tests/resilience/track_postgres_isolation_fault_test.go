@@ -1,3 +1,8 @@
+// Role: ACCESS EXCLUSIVE lock on campaigns must not block /track hot path (in-memory registry).
+// Tier: resilience.
+// Infra: testcontainers Postgres (ads schema), Redis x4 via harness; PG lock held in open txn.
+// Invariants proved: concurrent track posts return 202 while PG read on campaigns blocks; hot path does not sync-query PG per request.
+// Verify: make test-resilience
 package resilience_test
 
 import (
@@ -14,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: campaigns table lock must block cold PG read but not /track accept (regression = sync PG on hot path).
 func TestFault_TrackHotPathPostgresIsolation(t *testing.T) {
 	const workers = 24
 

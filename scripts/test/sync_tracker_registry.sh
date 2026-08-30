@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Push tracker registry snapshot to running compose tracker after campaign seed during load prep.
+# Execution context: Load-test seed phase; requires compose tracker and control registry endpoints up.
+# Invariants/contracts enforced: Registry epoch advances; seeded campaigns visible on tracker before wrk traffic.
+# Verify: bash scripts/test/sync_tracker_registry.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/load_test_env.sh"
 cd "$ROOT"

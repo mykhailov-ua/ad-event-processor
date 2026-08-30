@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-
+# Role: Admin release preflight orchestrator (CAPI, redis topology, pr_fast or admin_web).
+# Execution context: Repo root before tag; invokes scripts/ci/* gates.
+# Env knobs: ADMIN_RELEASE_CAPI_LIVE (1 runs staging_live_smoke); ADMIN_RELEASE_SKIP_PR_FAST (1);
+#   ENV_FILE (.env.example default).
+# Verify: bash scripts/ops/admin_release_preflight_gate.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

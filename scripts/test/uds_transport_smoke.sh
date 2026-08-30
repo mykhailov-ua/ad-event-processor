@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+# Role: Unix domain socket transport smoke for filter/config UDS paths under /run/ad-event-processor.
+# Execution context: Operator with tracker stack; creates RUN_DIR sockets and exercises hot-path UDS readers.
+# Invariants/contracts enforced: UDS_SMOKE_RUN_DIR writable; config/filter UDS handshake succeeds.
+# Verify: bash scripts/test/uds_transport_smoke.sh
+# Env: UDS_SMOKE_RUN_DIR (default /run/ad-event-processor)
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

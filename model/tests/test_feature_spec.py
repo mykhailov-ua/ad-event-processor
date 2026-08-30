@@ -1,4 +1,11 @@
-"""Feature vector contract: must match internal/fraud/features.go and tracked fixtures."""
+"""Feature vector contract: must match internal/fraud/features.go and tracked fixtures.
+
+Role: Cross-language parity gate for FEATURE_DIMS, FEATURE_NAMES, row_to_vector.
+Tier: fast (unit).
+Infra: tracked JSON fixtures under contract/fixture_catalog (no DB).
+Invariants proved: 16-dim vector matches Go fixtures; catalog IDs match files; formula holdout on events/clicks ratio.
+Verify: cd model && python3 -m pytest tests/test_feature_spec.py -q
+"""
 
 from __future__ import annotations
 
@@ -37,7 +44,7 @@ def test_fixture_catalog_rows_match_tracked_files() -> None:
     assert catalog_ids == file_ids
 
 def test_row_to_vector_changes_when_formula_breaks() -> None:
-    """Fails if row_to_vector is stubbed or FEATURE_NAMES order drifts."""
+    """Holdout: fails if row_to_vector is stubbed or FEATURE_NAMES order drifts."""
     _, row = FIXTURE_ROWS[0]
     vector = row_to_vector(row)
     assert vector[0] == float(row["events"])

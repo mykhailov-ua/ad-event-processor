@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Naming gate: State shard control file consistency.
+# Execution context: CI via pr_fast or full_test.
+# Invariants/contracts enforced: Legacy tokens and layout violations fail closed.
+# Verify: bash scripts/ci/naming/state_shard_control.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

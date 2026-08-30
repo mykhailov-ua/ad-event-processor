@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Unit test for redis_topology lib helpers (count, UDS addrs, service names).
+# Execution context: Sources scripts/lib/redis_topology.sh directly (not go test).
+# Env knobs: REDIS_SHARD_COUNT (2 default, 4 in second case).
+# Verify: bash scripts/test/redis/topology_lib_test.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"

@@ -1,3 +1,8 @@
+// Role: Region-proxy uplink ForwardOnce posts batch to controlplane ingest; dedup_key_proposals row created.
+// Tier: e2e.
+// Infra: testcontainers Postgres (controlplane schema via SetupTestDB).
+// Invariants proved: WAL flags ForwardClaimed and RemoteAcked set; dedup_key_proposals count=1 after uplink.
+// Verify: make test-integration
 package e2e_test
 
 import (

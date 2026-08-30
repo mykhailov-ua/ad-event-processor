@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: End-to-end Meta CAPI staging postback with live track click and metrics assertion.
+# Execution context: Running stack with TRACK_URL, ADMIN_API_KEY, META_TEST_EVENT_CODE set.
+# Env knobs: CAPI_STAGING_DRY_RUN (1 prints plan only); TRACK_URL; CONTROL_URL (8188); CAMPAIGN_ID.
+# Verify: CAPI_STAGING_DRY_RUN=1 bash scripts/test/capi/meta_staging.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

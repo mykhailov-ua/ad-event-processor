@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Apply or verify NIC IRQ affinity and ring buffer tuning for ingress interface.
+# Execution context: Root for apply; auto-detects default-route interface unless INGRESS_INTERFACE set.
+# Env knobs: IRQ_STRATEGY (auto); DRY_RUN (0); INGRESS_INTERFACE (override).
+# Verify: bash scripts/ops/nic_tune.sh verify
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Full lint orchestrator for merge-lint (Go, Lua, shell, Python, proto, workflows, TS, configs).
+# Execution context: CI merge-lint job; operator machine when run directly.
+# Invariants/contracts enforced: CI=true sets LINT_STRICT=1 unless LINT_INCREMENTAL=1; any child failure exits non-zero.
+# Verify: bash scripts/ci/lint.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
+# CI merge-lint enables LINT_STRICT unless incremental lint
 if [[ "${CI:-}" == "true" && "${LINT_INCREMENTAL:-}" != "1" ]]; then
   export LINT_STRICT=1
 fi

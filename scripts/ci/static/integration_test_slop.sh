@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Integration test slop gate: short guard, real infra helper, behavioral asserts.
+# Execution context: CI merge-pr-fast.
+# Invariants/contracts enforced: Every *_integration_test.go must skip with integration: prefix and forbid mocks.
+# Verify: bash scripts/ci/static/integration_test_slop.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -61,6 +65,7 @@ while IFS= read -r -d '' file; do
   fi
 done < <(find internal pkg -type f -name '*integration_test.go' -print0 2> /dev/null || true)
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   echo "integration-test-slop: FAILED ($checked files checked)" >&2
   exit 1

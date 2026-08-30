@@ -1,3 +1,8 @@
+// Role: Licensing entitlements merge, grace state, file watcher PG sync, hot-path daily quota filter.
+// Tier: integration.
+// Infra: testcontainers Postgres (ads + billing), single Redis.
+// Invariants proved: Effective() min/max limits; grace after expiry; watcher writes ACTIVE to billing.license_status; EntitlementsFilter enforces max_requests_per_day after third event.
+// Verify: make test-integration
 package integration_test
 
 import (
@@ -22,6 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: third impression must hit ErrDailyQuotaExceeded when max_requests_per_day=2.
 func TestIntegration_Licensing(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: licensing subscription (run make test-integration)")

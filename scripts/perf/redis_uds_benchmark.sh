@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Benchmark Redis UDS vs TCP dial latency for shard socket paths.
+# Execution context: Ephemeral redis container; writes under var/uds-bench/.
+# Env knobs: UDS_DIAL_P50_BUDGET_NS (5000 ns); UDS_BENCH_REQUESTS (100000); REDIS_VERSION (7-alpine).
+# Verify: bash scripts/perf/redis_uds_benchmark.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

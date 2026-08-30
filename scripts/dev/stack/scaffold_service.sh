@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Scaffold new internal service package with migrations, sqlc layout, and cmd entrypoint.
+# Execution context: Repo root via git rev-parse; one argument: service name (kebab-case).
+# Env knobs: none.
+# Verify: bash scripts/dev/stack/scaffold_service.sh my-svc && test -d internal/my-svc
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then

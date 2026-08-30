@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Load-test port math and .env.load-test sourcing for BPF and perf gates.
+# Execution context: Sourced by bpf/resource.sh and load-test scripts.
+# Invariants/contracts enforced: Missing .env.load-test fails load_test_source_env with exit 1.
+# Verify: source scripts/lib/load_test_env.sh
 load_test_env_file() {
   local root="${1:-${ROOT:-}}"
   if [[ -z "$root" ]]; then

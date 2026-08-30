@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: PR-fast merge orchestrator; composes static gates, alloc gate, and test-fast once.
+# Execution context: CI merge-pr-fast job and local pre-PR; not a full integration/fault tier.
+# Invariants/contracts enforced: Each child gate runs at most once; SKIP_LINT=1 skips lint because merge-lint owns it.
+# Verify: bash scripts/ci/pr_fast.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -14,6 +18,7 @@ bash "$SCRIPTS/ci/static/package_size.sh"
 bash "$SCRIPTS/ci/naming/scripts_layout.sh"
 bash "$SCRIPTS/ci/compliance.sh"
 bash "$SCRIPTS/ci/ch_direct.sh"
+# merge-lint owns lint; pr_fast skips when SKIP_LINT=1
 if [[ "${SKIP_LINT:-}" != "1" ]]; then
   bash "$SCRIPTS/ci/lint.sh"
 fi

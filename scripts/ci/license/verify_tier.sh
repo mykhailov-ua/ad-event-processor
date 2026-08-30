@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: License verify tier matrix: baseline, crypto, entanglement, optional release rows.
+# Execution context: CI license-verify and release QA; optional rows skip unless env flags set.
+# Invariants/contracts enforced: run_gate fails closed; skip_gate only for optional tiers with documented reason.
+# Verify: bash scripts/ci/license/verify_tier.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -49,6 +53,7 @@ run_gate crypto-1 go test ./internal/licensing/ -run HKDF_RFC5869 -count=1
 run_gate crypto-2 go test ./internal/licensing/ -run HWID -count=1
 run_gate crypto-3 go test ./internal/licensing/ -run HWID_Deterministic -count=1
 run_gate crypto-4 go test ./internal/licensing/ -rapid.checks=200 -run Property -count=1
+# Optional 10s JWT fuzz; off by default in verify_tier
 if [[ "${LICENSE_VERIFY_FUZZ:-0}" == "1" ]]; then
   run_gate crypto-5 go test ./internal/licensing/ -fuzz=FuzzVerifyJWT -fuzztime=10s -count=1
 else
@@ -90,6 +95,7 @@ else
 fi
 
 log "Tier release (optional spot-check)"
+# Garbled release check is optional release row
 if [[ "${LICENSE_VERIFY_GARBLED:-0}" == "1" ]]; then
   run_gate release-3 bash scripts/ci/license/red_team_garbled.sh
 else
@@ -108,6 +114,7 @@ run_gate license-alloc bash scripts/ci/license/alloc.sh
 
 echo ""
 log "summary: pass=$PASS fail=$FAIL skip=$SKIP"
+# verify_tier summary: any run_gate FAIL fails the matrix
 if [[ "$FAIL" -gt 0 ]]; then
   exit 1
 fi

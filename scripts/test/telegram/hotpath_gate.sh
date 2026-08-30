@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Telegram hot-path gate combining fuzz smoke, alloc tests, and optional soak report.
+# Execution context: Repo root; optional SESSION_DIR for load-report telegram subcommand.
+# Env knobs: PROMETHEUS_URL (9190); PREPARE (0 for soak); first arg SESSION_DIR optional.
+# Verify: bash scripts/test/telegram/hotpath_gate.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

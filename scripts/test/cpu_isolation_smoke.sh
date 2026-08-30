@@ -2,6 +2,11 @@
 
 set -euo pipefail
 
+# Role: CPU isolation smoke; verifies TRACKER_CPU_SET and compose cgroup profile when CPU_ISOLATION_ENABLED=1.
+# Execution context: Operator host with .env; optional stack running tracker.
+# Invariants/contracts enforced: Isolation env knobs present; tracker process affinity matches config when enabled.
+# Verify: bash scripts/test/cpu_isolation_smoke.sh
+# Env: CPU_ISOLATION_ENABLED, TRACKER_CPU_SET
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

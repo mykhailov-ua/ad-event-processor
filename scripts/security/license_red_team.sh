@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Primary license red-team case matrix (JWT tamper, HWID, docker integration smoke).
+# Execution context: Repo root; optional Docker for integration_license_protection case.
+# Env knobs: none (SKIP when docker unavailable).
+# Verify: make license-red-team
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

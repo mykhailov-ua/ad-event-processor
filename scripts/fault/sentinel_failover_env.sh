@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Fault/resilience: Sentinel failover env setup.
+# Execution context: CI main-resilience or operator fault tier; needs Docker for compose drills.
+# Invariants/contracts enforced: Success logs fault_proof fault=<name>; resilience_fault_gates.sh greps required proofs.
+# Verify: bash scripts/fault/sentinel_failover_env.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

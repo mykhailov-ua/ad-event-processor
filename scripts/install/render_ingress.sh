@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Render Caddy ingress config from DOMAIN and TLS env into deploy/ingress/caddy/generated.
+# Execution context: Called by stack.sh single-vps when INGRESS_ENABLED=1.
+# Env knobs: DOMAIN; TLS_EMAIL; INGRESS_HTTP_PORT; INGRESS_HTTPS_PORT (from .env or install.env).
+# Verify: bash scripts/install/render_ingress.sh && test -f deploy/ingress/caddy/generated/Caddyfile
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

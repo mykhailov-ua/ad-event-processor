@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Build BPF load-test probe object, bpf-collector, and optional tracker uprobes binary.
+# Execution context: Dev host with clang/llvm; invoked by stack.sh build or stack.sh bpf.
+# Env knobs: AD_EVENT_PROCESSOR_GO_BIN (go binary path); --check skips build, requirements only.
+# Verify: bash scripts/dev/stack/bpf_setup.sh --check
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

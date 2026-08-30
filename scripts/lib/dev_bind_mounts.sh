@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Library: Dev compose bind mount helpers.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/dev_bind_mounts.sh
 aed_compose_dev_overlay() {
   if installer_use_release_images; then
     return 1

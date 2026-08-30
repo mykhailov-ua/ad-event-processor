@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Redis Sentinel failover drill with sustained /track load; measures failover RTO under compose sentinel overlay.
+# Execution context: Operator machine with Docker; not pr_fast tier.
+# Invariants/contracts enforced: SENTINEL_FAILOVER_MAX_MS (default 15000 ms) ceiling; tracker stays reachable after promote.
+# Verify: bash scripts/test/sentinel.sh
+# Env: ENV_FILE, SENTINEL_FAILOVER_MAX_MS, SENTINEL_LOAD_WARMUP_SEC, SENTINEL_LOAD_TARGET_RPS
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

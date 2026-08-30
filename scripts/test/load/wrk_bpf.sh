@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: wrk-based load with optional BPF probes for ingest-only or constrained-ch profiles.
+# Execution context: Dev host; requires bin/wrk and deploy/dev/bpf/loadtest_probe.o.
+# Env knobs: WRK_DURATION (30s); WRK_THREADS (4); WRK_CONNECTIONS (200); AD_EVENT_PROCESSOR_BPF_PROBE (1).
+# Verify: bash scripts/test/load/wrk_bpf.sh ingest-only
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

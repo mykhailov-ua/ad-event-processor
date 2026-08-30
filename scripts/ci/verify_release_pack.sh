@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Release pack verification.
+# Execution context: Release operator.
+# Invariants/contracts enforced: Missing release artifacts fail.
+# Verify: bash scripts/ci/verify_release_pack.sh
 TARBALL="${1:?usage: verify_release_pack.sh <tarball>}"
 
 FORBIDDEN_PATTERNS=(

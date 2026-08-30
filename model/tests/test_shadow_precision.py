@@ -1,4 +1,11 @@
-"""Shadow precision reports must disclose proxy labels."""
+"""Shadow precision reports must disclose proxy labels.
+
+Role: eval reports distinguish PROXY vs AUDITED label methods in JSON and markdown output.
+Tier: fast (unit).
+Infra: fake ClickHouse client; no live CH queries on empty audited path.
+Invariants proved: proxy labels disclosed as not human-audited; audited empty skips CH; mixed markdown never sells proxy as accuracy.
+Verify: cd model && python3 -m pytest tests/test_shadow_precision.py -q
+"""
 
 from __future__ import annotations
 

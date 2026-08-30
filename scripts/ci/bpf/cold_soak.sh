@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: BPF gate: Cold-path BPF soak nightly.
+# Execution context: Perf runner or nightly; resource.sh skips on github-hosted without PERF_RUNNER_LABEL.
+# Invariants/contracts enforced: Strict BPF thresholds from load-test-bpf.mdc when enabled.
+# Verify: bash scripts/ci/bpf/cold_soak.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/bpf_collector.sh"
 cd "$ROOT"
@@ -9,10 +13,12 @@ cd "$ROOT"
 log() { printf 'bpf-cold-soak: %s\n' "$*"; }
 
 STRICT="${BPF_GATE_STRICT:-false}"
+# Self-hosted perf runner forces strict BPF gate
 if [[ "${PERF_RUNNER_LABEL:-}" != "" ]]; then
   STRICT="true"
 fi
 
+# github-hosted skips strict eBPF unless BPF_GATE_STRICT or PERF_RUNNER_LABEL
 if [[ "$STRICT" != "true" ]]; then
   log "SKIPPED (github-hosted): set repo variable PERF_RUNNER_LABEL for cold soak"
   exit 0

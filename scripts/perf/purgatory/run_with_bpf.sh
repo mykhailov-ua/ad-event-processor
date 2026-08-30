@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: BPF-instrumented wrk load inside purgatory cgroup with collector session.
+# Execution context: Root for BPF attach; requires bpf-collector and loadtest_probe.o.
+# Env knobs: BENCH_DURATION (60s); BENCH_CONNECTIONS (10000); TRACKER_CTR; TARGET_URL.
+# Verify: sudo AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/perf/purgatory/run_with_bpf.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

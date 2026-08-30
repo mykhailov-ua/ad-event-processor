@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Run ruff check --fix and normalize blank lines in model/ Python sources.
+# Execution context: model/ directory; uses .venv/bin/ruff when system ruff is absent.
+# Env knobs: none.
+# Verify: bash scripts/dev/codegen/model_format.sh
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"

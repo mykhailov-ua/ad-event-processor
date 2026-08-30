@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: ClickHouse direct ingest policy check.
+# Execution context: CI via pr_fast.
+# Invariants/contracts enforced: Validates CH wiring contracts.
+# Verify: bash scripts/ci/ch_direct.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

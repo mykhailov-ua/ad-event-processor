@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Nightly bench job comparing redis_lua or broker benches against .ci-baselines via perf-gate.
+# Execution context: CI self-hosted runner; KIND arg redis|broker selects bench pattern and package.
+# Env knobs: none (baseline under .ci-baselines/<kind>/).
+# Verify: bash scripts/perf/nightly_bench_job.sh redis
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

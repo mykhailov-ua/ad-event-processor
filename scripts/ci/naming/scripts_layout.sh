@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Naming gate: Required scripts and Makefile refs.
+# Execution context: CI via pr_fast or full_test.
+# Invariants/contracts enforced: Legacy tokens and layout violations fail closed.
+# Verify: bash scripts/ci/naming/scripts_layout.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -21,6 +25,7 @@ for path in "${workflow_refs[@]}"; do
   fi
 done
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi
@@ -56,6 +61,7 @@ for top in ci test fault lib ops perf security dev install lab clean tools; do
   fi
 done
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi

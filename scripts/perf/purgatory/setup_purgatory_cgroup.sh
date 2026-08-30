@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Create purgatory cgroup v2 with CPU and memory limits for isolated torture benches.
+# Execution context: Linux root; cgroup v2 required.
+# Env knobs: CGROUP_PATH; CPU_MAX (quota); MEMORY_MAX_BYTES (67108864).
+# Verify: sudo bash scripts/perf/purgatory/setup_purgatory_cgroup.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: License gate: Release string patterns.
+# Execution context: CI license-verify tier or release QA.
+# Invariants/contracts enforced: Required rows fail closed; optional rows use skip_gate with env flags.
+# Verify: bash scripts/ci/license/release_strings.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/release_strings_patterns.sh"
 
 if [[ $# -lt 1 ]]; then

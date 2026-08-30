@@ -1,3 +1,8 @@
+// Role: Postback admin API (config CRUD, DLQ list, retry) with encrypted token storage.
+// Tier: integration.
+// Infra: testcontainers Postgres (ads + billing migrations).
+// Invariants proved: PUT config persists encrypted row; DLQ retry marks RETRIED and enqueues SEND_POSTBACK outbox event.
+// Verify: make test-integration
 package integration_test
 
 import (

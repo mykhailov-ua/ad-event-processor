@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Lint gate: golangci-lint over Go packages.
+# Execution context: CI merge-lint via lint.sh.
+# Invariants/contracts enforced: Child linter failure propagates to exit 1.
+# Verify: bash scripts/ci/lint/go.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/lint_go_paths.sh"
 cd "$ROOT"

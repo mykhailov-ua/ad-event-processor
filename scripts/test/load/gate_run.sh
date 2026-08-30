@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: CI perf gate comparing PR microbench output against detached baseline worktree.
+# Execution context: CI runner or local strict perf check; writes to CI_ARTIFACT_DIR/perf-gate.
+# Env knobs: BASELINE_REF (git ref, default main); PERF_GATE_STRICT (true runs benchstat + alloc gate).
+# Verify: PERF_GATE_STRICT=true bash scripts/test/load/gate_run.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

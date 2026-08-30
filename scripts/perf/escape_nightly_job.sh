@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Nightly escape-to-heap line count report for ingest package vs baseline file.
+# Execution context: CI; go build -gcflags=-m on ESCAPE_PKG (default ./internal/ingest/...).
+# Env knobs: ESCAPE_PKG (package glob); baseline file arg optional for regression fail.
+# Verify: bash scripts/perf/escape_nightly_job.sh /tmp/escape.txt
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

@@ -1,3 +1,7 @@
+-- Role: edge-node-weights peer pick, stale equalization, fail-open drain, and sync purge.
+-- Execution context: region-proxy peer selection; WEIGHT_SCALE=1000000 fixed-point weights.
+-- Invariants proved: stale sync equalizes 50/50; CONTROL_FAIL_OPEN=1 keeps weighted pick when stale; sync zeroes removed peer weights last.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local WEIGHT_SCALE = 1000000
@@ -92,6 +96,7 @@ assert_near(0.25, ratio0, 0.05, "weighted ratio peer 0")
 assert_near(0.75, ratio1, 0.05, "weighted ratio peer 1")
 
 dict_store["sync_ts"] = ngx.time() - (SYNC_INTERVAL_SEC * STALE_EPOCH_LAG + 1)
+-- Stale weights: equalize peers 50/50 and freeze drain until sync recovers (unless CONTROL_FAIL_OPEN).
 assert_true(node_weights.stale(), "stale when sync aged out")
 assert_true(node_weights.drain_frozen(), "drain frozen when stale")
 

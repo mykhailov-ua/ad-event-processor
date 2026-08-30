@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+
+# Role: Timeboxed attestation token/HMAC fuzz smoke on ingest package.
+# Execution context: Nightly or release QA; no Docker.
+# Invariants/contracts enforced: No panic within ATTESTATION_FUZZ_TIME (default 3s) per fuzz target.
+# Verify: bash scripts/test/attestation_fuzz_smoke.sh
+# Env: ATTESTATION_FUZZ_TIME
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 FUZZ_TIME="${ATTESTATION_FUZZ_TIME:-3s}"

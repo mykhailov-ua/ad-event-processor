@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Fraudtrain model and testdata gate.
+# Execution context: CI optional path filter.
+# Invariants/contracts enforced: Model artifacts must match policy.
+# Verify: bash scripts/ci/fraudtrain.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

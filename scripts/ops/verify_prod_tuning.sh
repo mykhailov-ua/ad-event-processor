@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Fail when production ENV has FILTER_TIMEOUT_MS above SLA ceiling or unset.
+# Execution context: Post-deploy or release preflight; sources env file argument.
+# Env knobs: ENV (production triggers check); FILTER_TIMEOUT_MS (max 100 ms in production).
+# Verify: bash scripts/ops/verify_prod_tuning.sh .env.prod.example
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -28,6 +32,7 @@ if [[ "$ENV" != "production" ]]; then
   exit 0
 fi
 
+# Production FILTER_TIMEOUT_MS ceiling 100 ms per core.mdc ingest SLA.
 if [[ "$FILTER_TIMEOUT_MS" -le 0 ]]; then
   die "production requires explicit FILTER_TIMEOUT_MS (see .env.prod.example)"
 fi

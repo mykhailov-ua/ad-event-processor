@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Start/stop bpf-collector session during load test; writes targets.json and collector.pid under OUT_DIR/bpf.
+# Execution context: load-test BPF tier (malformed.sh, wrk_bpf.sh); requires CAP_BPF or perf runner label.
+# Invariants/contracts enforced: start waits for collector.ready; stop drains probes before exit.
+# Verify: bash scripts/test/bpf/probe_session.sh start /tmp/bpf-out
+# Env: AD_EVENT_PROCESSOR_BPF_SAMPLE_RATE, AD_EVENT_PROCESSOR_BPF_NATIVE
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/go.sh"
 source "$SCRIPTS/lib/bpf_collector.sh"

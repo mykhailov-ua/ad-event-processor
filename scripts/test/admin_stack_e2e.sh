@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Playwright admin stack E2E against control :8188; exercises login and core routes when web/ exists.
+# Execution context: CI admin-stack-e2e workflow or operator with full stack; exits 0 when web/scripts/build.mjs absent.
+# Invariants/contracts enforced: CONTROL_URL reachable; bootstrap credentials from ADMIN_STACK_E2E_* or INSTALL_BOOTSTRAP_TOKEN.
+# Verify: bash scripts/test/admin_stack_e2e.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

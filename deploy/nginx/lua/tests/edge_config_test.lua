@@ -1,3 +1,7 @@
+-- Role: edge-config Redis HMGET sync into ngx.shared.edge_config and ASN generation stamps.
+-- Execution context: periodic sync from state Redis; mocks edge-blacklist-sync connect_shard.
+-- Invariants proved: ngx.null retains prior numerics; ASN generation bump invalidates stale whitelist; expose flags stored 0/1 or deleted.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 package.loaded["resty.redis"] = {}
@@ -94,14 +98,14 @@ local edge_config = require "edge-config"
 
 assert_true(not edge_config.redis_value_ok(nil), "redis_value_ok rejects nil")
 assert_true(not edge_config.redis_value_ok(ngx.null), "redis_value_ok rejects ngx.null")
-assert_true(not edge_config.redis_value_ok(""), "redis_value_ok rejects empty string")
-assert_true(edge_config.redis_value_ok("0"), "redis_value_ok accepts zero string")
+assert_true(not edge_config.redis_value_ok "", "redis_value_ok rejects empty string")
+assert_true(edge_config.redis_value_ok "0", "redis_value_ok accepts zero string")
 assert_true(edge_config.redis_value_ok(0), "redis_value_ok accepts zero number")
 
-assert_true(edge_config.truthy_flag("true"), "truthy_flag true")
-assert_true(edge_config.truthy_flag("1"), "truthy_flag 1")
-assert_true(not edge_config.truthy_flag("false"), "truthy_flag false")
-assert_true(not edge_config.truthy_flag("0"), "truthy_flag 0")
+assert_true(edge_config.truthy_flag "true", "truthy_flag true")
+assert_true(edge_config.truthy_flag "1", "truthy_flag 1")
+assert_true(not edge_config.truthy_flag "false", "truthy_flag false")
+assert_true(not edge_config.truthy_flag "0", "truthy_flag 0")
 assert_true(not edge_config.truthy_flag(ngx.null), "truthy_flag ngx.null")
 
 local function mock_hmget(vals)
@@ -136,7 +140,7 @@ edge_config.sync()
 assert_eq(42, config_store.limit_per_min, "null numerics retain prior limit")
 assert_eq(1, config_store._asn_ver, "asn generation bumped on sync")
 assert_eq(1, config_store["asn_cdn:15169"], "cdn asn stamped with new generation")
-assert_true(edge_config.asn_whitelisted("15169"), "asn_whitelisted matches current generation")
+assert_true(edge_config.asn_whitelisted "15169", "asn_whitelisted matches current generation")
 assert_eq(1, config_store.edge_expose_click, "truthy expose click stored as 1")
 assert_nil(config_store.edge_expose_openrtb, "null expose openrtb deleted")
 
@@ -160,7 +164,7 @@ mock_hmget {
 edge_config.sync()
 assert_eq(2, config_store._asn_ver, "empty asn csv bumps generation")
 assert_eq(1, config_store["asn_cdn:15169"], "stale asn stamp not deleted")
-assert_true(not edge_config.asn_whitelisted("15169"), "stale asn stamp no longer whitelisted")
+assert_true(not edge_config.asn_whitelisted "15169", "stale asn stamp no longer whitelisted")
 assert_eq(200, config_store.limit_per_min, "numeric limit updated")
 assert_eq(0, config_store.edge_expose_click, "false expose click stored as 0")
 assert_eq(0, config_store.edge_expose_openrtb, "false expose openrtb stored as 0")
@@ -186,8 +190,8 @@ assert_eq(2, config_store._asn_cdn_count, "cdn asn count tracked")
 assert_eq(1, config_store._asn_mobile_count, "mobile asn count tracked")
 assert_eq(1, config_store["asn_cdn:15169"], "first cdn stamp")
 assert_eq(1, config_store["asn_mobile:31000"], "mobile stamp")
-assert_true(edge_config.asn_whitelisted("20940"), "trimmed cdn asn whitelisted")
-assert_true(edge_config.asn_whitelisted("31000"), "mobile asn whitelisted")
+assert_true(edge_config.asn_whitelisted "20940", "trimmed cdn asn whitelisted")
+assert_true(edge_config.asn_whitelisted "31000", "mobile asn whitelisted")
 
 mock_hmget {
     "100",
@@ -209,8 +213,8 @@ assert_eq(1, config_store._asn_cdn_count, "cdn count after partial restamp")
 assert_eq(0, config_store._asn_mobile_count, "mobile count zero when redis null clears active stamps")
 assert_eq(2, config_store["asn_cdn:20940"], "restamped cdn asn at new generation")
 assert_eq(1, config_store["asn_cdn:15169"], "removed cdn asn left stale")
-assert_true(not edge_config.asn_whitelisted("15169"), "removed asn not whitelisted")
-assert_true(edge_config.asn_whitelisted("20940"), "restamped asn whitelisted")
+assert_true(not edge_config.asn_whitelisted "15169", "removed asn not whitelisted")
+assert_true(edge_config.asn_whitelisted "20940", "restamped asn whitelisted")
 assert_nil(config_store.edge_expose_click, "null expose flag deleted for env fallback")
 assert_nil(config_store.edge_expose_openrtb, "null expose openrtb deleted")
 

@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: License gate: License guard fault integration.
+# Execution context: CI license-verify tier or release QA.
+# Invariants/contracts enforced: Required rows fail closed; optional rows use skip_gate with env flags.
+# Verify: bash scripts/ci/license/guard_fault.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

@@ -1,5 +1,9 @@
 # shellcheck shell=bash
 
+# Role: Safe path helpers: repo-bound realpath, guarded rm -rf, proto sync for codegen.
+# Execution context: Sourced by gen.sh and scripts that mutate generated trees.
+# Invariants/contracts enforced: Paths outside ROOT or dangerous patterns call safe_die (exit 1).
+# Verify: source scripts/lib/safe_paths.sh
 _SAFE_REALPATH=
 
 safe_die() {

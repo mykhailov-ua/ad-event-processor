@@ -1,5 +1,9 @@
 # shellcheck shell=bash
 
+# Role: Library: Stylua lint helper.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/lint_stylua.sh
 STYLUA_VERSION="${STYLUA_VERSION:-2.0.2}"
 
 resolve_stylua() {

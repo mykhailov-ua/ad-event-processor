@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Naming gate: ANTIFRAUD.md vs hot-path code parity.
+# Execution context: CI via pr_fast or full_test.
+# Invariants/contracts enforced: Legacy tokens and layout violations fail closed.
+# Verify: bash scripts/ci/naming/antifraud_doc.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

@@ -1,4 +1,11 @@
-"""policy_config parity vs internal/fraud/testdata/policy_config_parity.json."""
+"""policy_config parity vs internal/fraud/testdata/policy_config_parity.json.
+
+Role: Python policy_config loaders match Go parity JSON cases (metadata, env, resolve auto).
+Tier: fast (unit).
+Infra: tmp_path metadata files; env vars restored after each case.
+Invariants proved: ml_threshold, residential_proxy_floor, fp_guard_cap match want per case id.
+Verify: cd model && python3 -m pytest tests/test_policy_config_parity.py -q
+"""
 
 from __future__ import annotations
 

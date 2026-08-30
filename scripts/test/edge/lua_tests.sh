@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Run OpenResty Lua unit tests for edge modules (tarpit, routing) locally or in nginx container.
+# Execution context: deploy/nginx/lua/tests; luajit on host or ad-event-processor-nginx-1 running.
+# Env knobs: EDGE_URL (8180); EDGE_METRICS_URL (for live tarpit smoke); MODE (all or single test).
+# Verify: bash scripts/test/edge/lua_tests.sh all
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

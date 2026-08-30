@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: wrk/wrk2 torture benchmark inside purgatory cgroup with latency percentile capture.
+# Execution context: Linux root; requires setup_purgatory_cgroup.sh and optional degrade step.
+# Env knobs: BENCH_DURATION; BENCH_CONNECTIONS (10000); BENCH_THREADS (4); TARGET_URL.
+# Verify: sudo bash scripts/perf/purgatory/run_torture_benchmark.sh
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

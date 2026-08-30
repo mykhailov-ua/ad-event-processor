@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Insert 100 active campaigns into Postgres for ingest-only load and dev testing.
+# Execution context: Compose ingest_only profile with control-dev overlay; reads .env for DB_PORT.
+# Env knobs: DB_PORT (5430); REDIS_PASSWORD (for compose env-file).
+# Verify: bash scripts/test/load/seed_ingest_only_campaigns.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

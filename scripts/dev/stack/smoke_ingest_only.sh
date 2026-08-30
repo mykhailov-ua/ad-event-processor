@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
+# Role: Validate ingest_only compose profile and operator doctor without starting containers.
+# Execution context: CI or pre-flight; compose config dry-run plus cmd/operator doctor.
+# Env knobs: CH_ENABLED=0 (forced); CONTROL_ENABLE_* cold workers off; DB_DSN, REDIS_PASSWORD.
+# Verify: bash scripts/dev/stack/smoke_ingest_only.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
 export CH_ENABLED=0
+# ingest_only profile: no ClickHouse, cold-path control workers disabled for config dry-run.
 export CONTROL_ENABLE_PAYMENT=0
 export CONTROL_ENABLE_BILLING=0
 export CONTROL_ENABLE_NOTIFIER=0

@@ -1,3 +1,8 @@
+// Role: Cost-sync admin HTTP handlers (credentials upsert, run, history) against real PG.
+// Tier: integration.
+// Infra: testcontainers Postgres (ads + billing migrations).
+// Invariants proved: credential CRUD and async run enqueue return expected HTTP codes; no silent handler failures on cold path.
+// Verify: make test-integration
 package integration_test
 
 import (

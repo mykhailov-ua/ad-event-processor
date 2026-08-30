@@ -52,8 +52,10 @@ func serveHTTPTrackCORSPreflight(w http.ResponseWriter, r *http.Request, cors tr
 	track.ServeHTTPCORSPreflight(w, r, cors)
 }
 
-const trackPixelPath = track.TrackPixelPath
-const trackTelemetryPath = track.TrackTelemetryPath
+const (
+	trackPixelPath     = track.TrackPixelPath
+	trackTelemetryPath = track.TrackTelemetryPath
+)
 
 func serveHTTPTrackPixel(w http.ResponseWriter) {
 	track.ServeHTTPTrackPixel(w)

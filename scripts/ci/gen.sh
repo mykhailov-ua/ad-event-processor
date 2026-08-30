@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: CI codegen entry: sqlc, traffic templates, optional proto/templ/bpf via flags.
+# Execution context: CI integration/full_test and operator after schema/proto changes.
+# Invariants/contracts enforced: safe_validate_codegen_configs before writes; bpf skipped when clang missing.
+# Verify: bash scripts/ci/gen.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -29,6 +33,7 @@ go run github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0 generate
 echo "gen: traffic source templates..."
 go run ./cmd/codegen-traffic-templates
 
+# templ generate optional; skipped when binary missing
 if [[ "$RUN_TEMPL" -eq 1 ]]; then
   if command -v templ > /dev/null 2>&1; then
     echo "gen: templ..."
@@ -38,6 +43,7 @@ if [[ "$RUN_TEMPL" -eq 1 ]]; then
   fi
 fi
 
+# buf generate only when --proto or --all
 if [[ "$RUN_PROTO" -eq 1 ]]; then
   echo "gen: buf (messages)..."
   safe_rm_rf "$ROOT/api/gen"
@@ -51,6 +57,7 @@ if [[ "$RUN_PROTO" -eq 1 ]]; then
   (cd "$ROOT" && go run ./cmd/patch-vtproto-hotpath)
 fi
 
+# bpf2go only when --bpf or --all; clang optional on laptop
 if [[ "$RUN_BPF" -eq 1 ]]; then
   if command -v clang > /dev/null 2>&1; then
     echo "gen: bpf2go..."

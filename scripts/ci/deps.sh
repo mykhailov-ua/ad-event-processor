@@ -2,6 +2,10 @@
 
 set -eo pipefail
 
+# Role: Dependency and toolchain pin checks.
+# Execution context: CI and operator.
+# Invariants/contracts enforced: Pinned versions must match policy.
+# Verify: bash scripts/ci/deps.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

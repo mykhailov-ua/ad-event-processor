@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Role: Full appliance installer: compose profiles, license, GeoIP, stack up, and admin seed.
+# Execution context: Repo root or release tarball; primary production install entrypoint.
+# Env knobs: INGRESS_ENABLED; REDIS_SHARD_COUNT; CH_ENABLED; AD_EVENT_PROCESSOR_USE_RELEASE_IMAGES;
+#   profile flags via install subcommands (ingest-only, single-vps, etc.).
+# Verify: bash scripts/install/ad-event-processor-install.sh --help
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

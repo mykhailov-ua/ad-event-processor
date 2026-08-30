@@ -1,4 +1,11 @@
-"""Scoring policy parity vs internal/fraud/testdata/policy_parity.json."""
+"""Scoring policy parity vs internal/fraud/testdata/policy_parity.json.
+
+Role: adjust_probability, decide, residential_proxy_signal match Go policy_parity.json rows.
+Tier: fast (unit).
+Infra: fixture JSON only; no ML model inference.
+Invariants proved: tier, score, adjusted_probability, fp_guard flags per parametrized case id.
+Verify: cd model && python3 -m pytest tests/test_scoring_policy_parity.py -q
+"""
 
 from __future__ import annotations
 

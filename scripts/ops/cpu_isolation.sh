@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Apply or verify Docker cpuset/cpu quota for tracker under cpu-isolation profile.
+# Execution context: Host with Docker; reads .env CPU_ISOLATION_ENABLED.
+# Env knobs: CPU_ISOLATION_ENABLED (1 default); CPU_ISOLATION_COMPOSE_FILE (compose path).
+# Verify: bash scripts/ops/cpu_isolation.sh verify
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

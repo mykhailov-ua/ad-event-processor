@@ -1,3 +1,8 @@
+// Role: sqlc campaign queries, stats batch upsert, events CHECK constraint, batch deadlock stress.
+// Tier: integration.
+// Infra: testcontainers Postgres (ads schema).
+// Invariants proved: ListCampaignIDs excludes PAUSED; stats batch sums on conflict; invalid event_type rejected; concurrent batch updates do not deadlock.
+// Verify: make test-integration
 package integration_test
 
 import (
@@ -101,6 +106,7 @@ func TestIntegration_StatsBatching(t *testing.T) {
 	assert.Equal(t, int64(1), convs)
 }
 
+// Fail-closed: invalid event_type must be rejected by PG CHECK, not stored.
 func TestIntegration_InvalidEventType(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -180,6 +186,7 @@ ON CONFLICT (campaign_id, date) DO UPDATE SET
 	require.NoError(t, rows.Err())
 }
 
+// Concurrent shuffled batch order must not deadlock; regression surfaces as PG deadlock error.
 func TestIntegration_StatsDeadlockStress(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

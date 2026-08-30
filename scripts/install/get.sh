@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-
+# Role: Remote installer curl entrypoint; clones or downloads release tarball to INSTALL_DIR.
+# Execution context: Operator host with curl/git; not run from repo checkout directly.
+# Env knobs: AD_EVENT_PROCESSOR_INSTALL_REPO; AD_EVENT_PROCESSOR_VERSION (latest); AD_EVENT_PROCESSOR_INSTALL_DIR;
+#   AD_EVENT_PROCESSOR_INSTALL_FROM_GIT (0).
+# Verify: AD_EVENT_PROCESSOR_VERSION=latest bash scripts/install/get.sh --help 2>&1 | head -1
 set -euo pipefail
 
 REPO="${AD_EVENT_PROCESSOR_INSTALL_REPO:-ad-event-processor/ad-event-processor}"

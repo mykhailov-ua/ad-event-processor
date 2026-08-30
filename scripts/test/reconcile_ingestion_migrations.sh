@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Compare live Postgres schema_version against ingestion migration manifest after load-test stack.
+# Execution context: Load-test prep or post-drill; requires compose Postgres on DB_PORT (default 5430).
+# Invariants/contracts enforced: ingestion_migration_version.sh gate parity; drift fails reconcile.
+# Verify: bash scripts/test/reconcile_ingestion_migrations.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/load_test_env.sh"
 

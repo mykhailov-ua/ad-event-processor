@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Library: TCP listen counter helpers for BPF.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/tcp_listen_counters.sh
 tcp_listen_counter() {
   local name="$1"
   if command -v nstat > /dev/null 2>&1; then

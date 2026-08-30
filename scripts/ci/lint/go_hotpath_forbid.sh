@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Lint gate: Hot-path forbidden API lint companion.
+# Execution context: CI merge-lint via lint.sh.
+# Invariants/contracts enforced: Child linter failure propagates to exit 1.
+# Verify: bash scripts/ci/lint/go_hotpath_forbid.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/lint_go_paths.sh"
 cd "$ROOT"
@@ -37,6 +41,7 @@ while IFS= read -r -d '' file; do
   fi
 done < <(find internal/domain -maxdepth 1 -type f -name '*.go' ! -name '*_test.go' -print0 2> /dev/null || true)
 
+# Aggregate fail flag: exit 1 after all checks
 if [[ "$fail" -ne 0 ]]; then
   echo "lint_go_hotpath_forbid_gate: FAILED" >&2
   exit 1

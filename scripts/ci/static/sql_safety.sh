@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Static gate: SQL string safety in queries and migrations.
+# Execution context: CI merge-pr-fast via pr_fast unless noted.
+# Invariants/contracts enforced: Non-zero exit on contract violation; no silent pass on failure.
+# Verify: bash scripts/ci/static/sql_safety.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -31,6 +35,7 @@ scan 'interpolated SQL string literal' \
 scan 'concatenated SQL string' \
   '"(SELECT|INSERT|UPDATE|DELETE) .*"\s*\+'
 
+# Gate failed accumulator exits non-zero
 if [[ "$failed" -ne 0 ]]; then
   echo "sql-safety: use sqlc queries under internal/*/queries/ - see .cursor/rules/ci.mdc#sql-safety"
   exit 1

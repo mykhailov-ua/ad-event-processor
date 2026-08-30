@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: License gate: Asset seal salt smoke.
+# Execution context: CI license-verify tier or release QA.
+# Invariants/contracts enforced: Required rows fail closed; optional rows use skip_gate with env flags.
+# Verify: bash scripts/ci/license/asset_seal_salt_smoke.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$ROOT/scripts/lib/release_garble_policy.sh"
 cd "$ROOT"

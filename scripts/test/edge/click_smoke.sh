@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Unit smoke for click-proxy deliver, redirect, and upstream URL builders.
+# Execution context: Repo root go test; skips when go is missing.
+# Env knobs: none.
+# Verify: bash scripts/test/edge/click_smoke.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

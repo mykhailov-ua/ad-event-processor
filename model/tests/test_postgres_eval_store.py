@@ -1,4 +1,11 @@
-"""Tests for Postgres eval report persistence."""
+"""Tests for Postgres eval report persistence.
+
+Role: upsert_ml_eval_report no-op without DB_DSN; writes EVAL_REPORT_ID row when DSN set.
+Tier: fast (unit).
+Infra: monkeypatched psycopg2.connect; no live Postgres.
+Invariants proved: missing DSN skips silently; status and report id passed to SQL params.
+Verify: cd model && python3 -m pytest tests/test_postgres_eval_store.py -q
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Apply or verify host sysctl for edge and load-test tiers (somaxconn, tcp buffers).
+# Execution context: Load runner as root for apply; report mode needs no root.
+# Env knobs: AD_EVENT_PROCESSOR_SYSCTL_CONF, AD_EVENT_PROCESSOR_LOADTEST_SYSCTL_CONF (dst paths under /etc/sysctl.d).
+# Verify: bash scripts/test/load/host_tune.sh report
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

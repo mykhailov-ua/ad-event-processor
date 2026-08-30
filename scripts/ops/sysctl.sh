@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Apply or verify host sysctl from deploy/edge sysctl conf for edge listeners.
+# Execution context: Root for apply; verify mode checks current vs expected net.* keys.
+# Env knobs: AD_EVENT_PROCESSOR_SYSCTL_CONF (src); AD_EVENT_PROCESSOR_SYSCTL_CONF_DST (/etc/sysctl.d path).
+# Verify: bash scripts/ops/sysctl.sh verify
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

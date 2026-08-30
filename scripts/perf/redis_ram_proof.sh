@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: Prove Redis RAM stays under budget at TARGET_RPS across REDIS_SHARD_COUNT shards.
+# Execution context: Load stack up; samples redis memory during sustained loadgen.
+# Env knobs: TARGET_RPS (100000); RAM_MAX_BYTES (300 MiB); DURATION (90s); REDIS_SHARD_COUNT (6).
+# Verify: bash scripts/perf/redis_ram_proof.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
@@ -20,6 +23,7 @@ DURATION="${DURATION:-90s}"
 SAMPLE_INTERVAL_SEC="${SAMPLE_INTERVAL_SEC:-5}"
 WORKERS="${WORKERS:-32}"
 TRACKER_BASES="${TRACKER_BASES:-http://127.0.0.1:8181,http://127.0.0.1:8182}"
+# REDIS_SHARD_COUNT samples all shard containers for aggregate RAM during proof run.
 REDIS_SHARD_COUNT="${REDIS_SHARD_COUNT:-6}"
 
 TS="$(date -u +%Y%m%dT%H%M%SZ)"

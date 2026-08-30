@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+
+# Role: CPA compliance orchestrator; admin route audit, web gates, held-out DLQ/consent unit tests.
+# Execution context: Release preflight; CPA_COMPLIANCE_SKIP_ADMIN=1 skips admin web tier.
+# Invariants/contracts enforced: cpa_route_audit.sh gaps fail; CPA_HELD_OUT_INTEGRATION=1 enables Docker tier.
+# Verify: bash scripts/test/cpa_compliance_smoke.sh
+# Env: CPA_COMPLIANCE_SKIP_ADMIN, CPA_HELD_OUT_INTEGRATION
 cd "$(dirname "$0")/../.."
 ROOT="$(pwd)"
 

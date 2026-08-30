@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Library: Redis topology verify helpers.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/redis_topology.sh
 redis_topology_max_shards() {
   echo 6
 }

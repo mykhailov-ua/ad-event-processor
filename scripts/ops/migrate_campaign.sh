@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
+# Role: Migrate campaign Redis keys from one shard to another (operator maintenance).
+# Execution context: Production Redis with REDIS_ADDRS and REDIS_PASSWORD in env file.
+# Env knobs: REDIS_SHARD_COUNT (4 default); ENV_FILE; campaign UUID and optional source/target shard args.
+# Verify: bash scripts/ops/migrate_campaign.sh <campaign_uuid> --help 2>&1 | head -1
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 ENV_FILE="${ENV_FILE:-$ROOT/.env}"
+# REDIS_SHARD_COUNT must match comma-separated REDIS_ADDRS length (production default 4).
 SHARD_COUNT="${REDIS_SHARD_COUNT:-4}"
 
 if [[ $# -lt 1 ]]; then

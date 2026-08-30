@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Generate integration test boilerplate with held-out negative and testcontainers wiring.
+# Execution context: Repo root; package path argument (e.g. internal/notify).
+# Env knobs: --force overwrites existing; --scenario names generated test case.
+# Verify: bash scripts/dev/stack/scaffold_test.sh internal/notify --scenario enqueue
 set -euo pipefail
 
 usage() {

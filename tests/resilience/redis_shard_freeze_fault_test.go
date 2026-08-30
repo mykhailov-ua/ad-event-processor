@@ -1,3 +1,8 @@
+// Role: Inject Redis process delay on one shard; prove 504 filter timeout isolation without stalling healthy shards.
+// Tier: resilience.
+// Infra: testcontainers Postgres (ads schema), Redis x4 via harness; redisProcessDelayHook on frozen shard.
+// Invariants proved: frozen shard returns 504; healthy shards keep 202 under burst; goroutine growth bounded after burst.
+// Verify: make test-resilience
 package resilience_test
 
 import (
@@ -17,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: filter deadline (50 ms) on delayed shard must 504 without unbounded goroutine growth on healthy shards.
 func TestFault_RedisShardFreezeIsolation(t *testing.T) {
 	const (
 		frozenShard   = 1

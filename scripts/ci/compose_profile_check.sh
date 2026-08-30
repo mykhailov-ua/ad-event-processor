@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Compose profile consistency check.
+# Execution context: CI full_test.
+# Invariants/contracts enforced: Profile/env mismatch fails.
+# Verify: bash scripts/ci/compose_profile_check.sh
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 

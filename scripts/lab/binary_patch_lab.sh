@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Binary patch red-team lab; verifies garble/license guard detects tampered tracker binary cases.
+# Execution context: Security lab only; not CI merge gate.
+# Invariants/contracts enforced: Each run_case must PASS; any FAIL fails script exit 1.
+# Verify: bash scripts/lab/binary_patch_lab.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 

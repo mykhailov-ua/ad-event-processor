@@ -1,3 +1,15 @@
+// Role: Shared multishard /track harness for resilience fault tests (PG, Redis shards, breakers, gnet handler).
+// Tier: resilience.
+// Infra: testcontainers Postgres (ads schema), Redis xN via SetupRedisShardsFault (default N=4).
+// Invariants proved: harness wires StaticSlotSharder, UnifiedFilter with shard breakers, AdsPacketHandler; one campaign per shard.
+// Verify: make test-resilience
+//
+// multiShardTrackHarness contract:
+// - setupMultiShardTrackHarness builds PG + fault-capable Redis shards, seeds one campaign per shard slot.
+// - Shard count: opts.NumShards; when <= 0, defaultTrackShards (4) is used.
+// - Filter timeout: opts.FilterTimeoutMs; when <= 0, 500 ms; passed to FilterEngine and cfg.FilterTimeoutMs.
+// - baselineLatency posts one accepted click and returns elapsed for testutil.LatencyBudget.
+// - postClickCampaign* helpers POST JSON click via PostTrackGnetJSON without starting HTTP server.
 package resilience_test
 
 import (

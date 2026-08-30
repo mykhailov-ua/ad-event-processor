@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Post-deploy Redis shard reconciliation (version keys, routing epoch alignment).
+# Execution context: All REDIS_ADDRS shards reachable; uses REDIS_SHARD_COUNT from env file.
+# Env knobs: REDIS_SHARD_COUNT (4); REDIS_ADDRS; REDIS_PASSWORD; ENV_FILE.
+# Verify: bash scripts/ops/reconcile_post_deploy.sh .env
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

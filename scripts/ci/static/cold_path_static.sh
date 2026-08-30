@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Static gate: Cold-path Redis and handler static rules.
+# Execution context: CI merge-pr-fast via pr_fast unless noted.
+# Invariants/contracts enforced: Non-zero exit on contract violation; no silent pass on failure.
+# Verify: bash scripts/ci/static/cold_path_static.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -49,6 +53,7 @@ else
   echo "cold-path-static: SKIP N+1 diff scan (no merge base)"
 fi
 
+# Gate failed accumulator exits non-zero
 if [[ "$failed" -ne 0 ]]; then
   echo "cold-path-static: see .cursor/rules/ci.mdc#bpf-cold-gate"
   exit 1

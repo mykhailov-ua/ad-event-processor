@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: License gate: Trial registry audit confirm.
+# Execution context: CI license-verify tier or release QA.
+# Invariants/contracts enforced: Required rows fail closed; optional rows use skip_gate with env flags.
+# Verify: bash scripts/ci/license/confirm_registry_audit.sh
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
 if [[ ! -d "$ROOT/web/src" ]]; then

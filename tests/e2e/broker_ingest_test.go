@@ -1,3 +1,8 @@
+// Role: In-process broker server, broker client Produce, BrokerStreamConsumer to Postgres events and stats.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema); in-process broker (no compose broker).
+// Invariants proved: broker topic message lands in events and campaign_stats within flush window.
+// Verify: make test-integration
 package e2e_test
 
 import (

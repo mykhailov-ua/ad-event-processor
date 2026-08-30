@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Edge host preflight combining sysctl, NIC tune, prod tuning, and baseline checks.
+# Execution context: Operator machine before traffic; reads .env for feature flags.
+# Env knobs: STRICT (1); ENV_FILE (.env path).
+# Verify: bash scripts/ops/edge_preflight.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"

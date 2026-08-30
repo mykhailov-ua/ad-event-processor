@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# Role: Library: Release garble policy helper.
+# Execution context: Sourced by CI, fault, and dev scripts; not a standalone gate.
+# Invariants/contracts enforced: Helpers must not exit 0 on error paths when used as gate prerequisites.
+# Verify: source scripts/lib/release_garble_policy.sh
 release_garble_seed_ok() {
   if [[ "${RELEASE_GARBLE:-1}" != "1" ]]; then
     return 0

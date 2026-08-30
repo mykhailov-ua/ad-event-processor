@@ -1,3 +1,8 @@
+// Role: RTB live mode with BudgetAuthorityRTB: Lua skip_budget leaves Redis unchanged; RTB store debits clearing price.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), single Redis.
+// Invariants proved: Redis campaign budget unchanged after RTB-selected click; rtb.BudgetStore debited; stream consumer persists stats.
+// Verify: make test-integration
 package e2e_test
 
 import (
@@ -27,6 +32,7 @@ func (g staticGeoCountry) GetCountry(string) (string, error) { return g.country,
 func (g staticGeoCountry) IsAnonymous(string) (bool, error)  { return false, nil }
 func (g staticGeoCountry) Close() error                      { return nil }
 
+// Holdout: RTB authority must debit in-memory store, not Redis Lua campaign budget key.
 func TestE2E_RtbLiveBudgetAuthority(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

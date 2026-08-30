@@ -1,3 +1,8 @@
+// Role: StaticSlotSharder routes budget keys and stream XADD to correct Redis shard among four containers.
+// Tier: e2e.
+// Infra: testcontainers Postgres (ads schema), Redis x4 shards.
+// Invariants proved: budget key exists only on mapped shard; each shard stream length 1; all campaigns settle in PG.
+// Verify: make test-integration
 package e2e_test
 
 import (
@@ -23,6 +28,7 @@ import (
 
 const multishardCount = 4
 
+// Holdout: budget key must not appear on non-home shards after track accept.
 func TestE2E_Multishard(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

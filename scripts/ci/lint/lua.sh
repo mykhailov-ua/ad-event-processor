@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Role: Lint gate: luacheck and lua-language-server.
+# Execution context: CI merge-lint via lint.sh.
+# Invariants/contracts enforced: Child linter failure propagates to exit 1.
+# Verify: bash scripts/ci/lint/lua.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 source "$SCRIPTS/lib/lint_lua_paths.sh"
 cd "$ROOT"
@@ -33,6 +37,7 @@ run_lua_layout_gate() {
       fail=1
     fi
   done < <(find "${lint_lua_dirs[@]}" -name '*.lua' -print0 2> /dev/null)
+  # Aggregate fail flag: exit 1 after all checks
   if [[ "$fail" -ne 0 ]]; then
     exit 1
   fi

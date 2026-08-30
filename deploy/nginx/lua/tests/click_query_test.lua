@@ -1,3 +1,7 @@
+-- Role: GET /click campaign_id extraction; strict UUID v4 lowercase normalization.
+-- Execution context: edge-click-query on nginx access phase; mock ngx.req.get_uri_args.
+-- Invariants proved: rejects invalid, multi-value, and missing campaign_id; lowercases hex.
+-- Verify: bash scripts/test/edge/lua_tests.sh all
 package.path = arg[1] .. "/?.lua;;"
 
 local args_store = {}

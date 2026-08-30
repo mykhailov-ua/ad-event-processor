@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Admin gate: Admin UI release orchestrator.
+# Execution context: CI via admin/web.sh or pr_fast.
+# Invariants/contracts enforced: Missing web/ uses stub embed checks; live routes need OpenAPI backend.
+# Verify: bash scripts/ci/admin/ui_release.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
@@ -19,6 +23,7 @@ skip_e2e="${ADMIN_RELEASE_SKIP_E2E:-1}"
 echo "admin ui release: CI gates (e2e skipped by default)"
 ADMIN_SKIP_E2E=1 bash "$SCRIPTS/ci/admin/web.sh"
 
+# E2E off by default; ADMIN_RELEASE_SKIP_E2E=0 runs Playwright bundle
 if [ "$skip_e2e" = "1" ]; then
   echo "admin ui release: e2e skipped (set ADMIN_RELEASE_SKIP_E2E=0 to run Playwright bundle)"
   echo "admin ui release gate PASSED (typecheck + unit + slop gates only)."

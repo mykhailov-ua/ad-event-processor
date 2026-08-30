@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-
+# Role: License admin release smoke orchestrating route audit, hardening, fuzz, and alloc gates.
+# Execution context: Repo root; invokes scripts/ci/license/* (not modified in this pass).
+# Env knobs: none.
+# Verify: bash scripts/test/license/admin_smoke.sh
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 bash scripts/ci/license/route_audit.sh

@@ -1,3 +1,8 @@
+// Role: Shard 0 Redis outage matrix: track 503, registry stale 503, partial outbox fanout, recovery after restart.
+// Tier: resilience.
+// Infra: testcontainers Postgres (ads schema), Redis x4 with fault infra and circuit breakers.
+// Invariants proved: shard 0 track 503 shard_unavailable; unknown campaign 503 registry_stale; shards 1-3 accept; outbox partial fanout PROCESSED; shard 0 recovers; budget invariant on shards 1-3.
+// Verify: make test-resilience
 package resilience_test
 
 import (
@@ -21,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: shard 0 down must 503 track and registry_stale for unknown campaign; partial outbox fanout must succeed on shards 1-3.
 func TestFault_Shard0Outage(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

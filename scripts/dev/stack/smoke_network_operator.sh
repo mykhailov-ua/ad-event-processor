@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# Role: Validate network_operator compose profile (multi-shard Redis, db-payment, ClickHouse).
+# Execution context: Pre-flight before network-operator stack profile.
+# Env knobs: CH_ENABLED (default 1); CH_DSN, DB_DSN, REDIS_PASSWORD.
+# Verify: bash scripts/dev/stack/smoke_network_operator.sh
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"

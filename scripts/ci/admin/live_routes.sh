@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Role: Admin gate: live:true routes must have backend.
+# Execution context: CI via admin/web.sh or pr_fast.
+# Invariants/contracts enforced: Missing web/ uses stub embed checks; live routes need OpenAPI backend.
+# Verify: bash scripts/ci/admin/live_routes.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
