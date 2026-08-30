@@ -8,7 +8,7 @@ import (
 
 const (
 	// DefaultConnReadIdle closes incomplete reads with no further bytes (broker framing stall).
-	DefaultConnReadIdle    = 30 * time.Second
+	DefaultConnReadIdle = 30 * time.Second
 	// DefaultConnMaxLifetime hard cap from accept; independent of per-frame progress.
 	DefaultConnMaxLifetime = 120 * time.Second
 )

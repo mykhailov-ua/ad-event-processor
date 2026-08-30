@@ -76,7 +76,7 @@ type DiskWriteGate struct {
 
 	cfg Config
 
-	degraded   atomic.Uint32  // 1 after EMA exceeds budget or DiskWritable false; sticky until SetDegraded(false)
+	degraded   atomic.Uint32 // 1 after EMA exceeds budget or DiskWritable false; sticky until SetDegraded(false)
 	emaLatency atomic.Uint64 // fsync latency EMA in nanoseconds (alpha 0.1 in recordFsyncLatency)
 
 	inFlight atomic.Int32

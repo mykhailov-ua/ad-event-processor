@@ -51,7 +51,8 @@
 //   - Use TierLow for budget debit or stream admission on tracker hot path.
 //
 // Verify:
-//   go test ./pkg/iogate/... -short -run TestDiskGateAcquire_zeroAlloc -count=1
-//   go test ./pkg/iogate/... -short -run TestDiskWriteGate_DegradedShedsTierLowBlocksTierHigh -count=1
-//   go test ./pkg/iogate/... -short -run TestGroupCommit_FsyncReduction70Percent -count=1
+//
+//	go test ./pkg/iogate/... -short -run TestDiskGateAcquire_zeroAlloc -count=1
+//	go test ./pkg/iogate/... -short -run TestDiskWriteGate_DegradedShedsTierLowBlocksTierHigh -count=1
+//	go test ./pkg/iogate/... -short -run TestGroupCommit_FsyncReduction70Percent -count=1
 package iogate

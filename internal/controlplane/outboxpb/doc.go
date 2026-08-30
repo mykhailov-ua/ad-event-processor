@@ -28,8 +28,9 @@
 //   - Tracker hot-path imports.
 //
 // Verify:
-//   go list -e ./internal/controlplane/outboxpb/
-//   make proto
-//   go test ./internal/outbox/ -short -run TestProto_roundTripCampaign -count=1
-//   go test ./internal/outbox/ -short -run TestProto_legacyJSONCampaign -count=1
+//
+//	go list -e ./internal/controlplane/outboxpb/
+//	make proto
+//	go test ./internal/outbox/ -short -run TestProto_roundTripCampaign -count=1
+//	go test ./internal/outbox/ -short -run TestProto_legacyJSONCampaign -count=1
 package outboxpb

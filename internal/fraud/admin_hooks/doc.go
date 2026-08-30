@@ -21,7 +21,8 @@
 //   - Import internal/ingest hot handlers or run synchronous enforcement on /track.
 //
 // Verify:
-//   go list -e ./internal/fraud/admin_hooks/
-//   go test ./internal/fraud/ -short -run TestTrackerDepGraphExcludesFraudScoringRuntime -count=1
-//   make test-integration (TestFault_FraudSilentRejectAddsBlacklistNotCampaignFlag in internal/outbox)
+//
+//	go list -e ./internal/fraud/admin_hooks/
+//	go test ./internal/fraud/ -short -run TestTrackerDepGraphExcludesFraudScoringRuntime -count=1
+//	make test-integration (TestFault_FraudSilentRejectAddsBlacklistNotCampaignFlag in internal/outbox)
 package admin_hooks

@@ -30,8 +30,9 @@
 //   - Tracker /track handler wiring (cmd/tracker only).
 //
 // Verify:
-//   go test ./internal/control/ -short -count=1
-//   go test ./internal/control/ -short -run TestRuntimePolicy_devModeUsesEmbed -count=1
-//   go test ./internal/control/ -short -run TestFault_TCP_SnapshotHMACACK -count=1
-//   go list -e ./cmd/control/
+//
+//	go test ./internal/control/ -short -count=1
+//	go test ./internal/control/ -short -run TestRuntimePolicy_devModeUsesEmbed -count=1
+//	go test ./internal/control/ -short -run TestFault_TCP_SnapshotHMACACK -count=1
+//	go list -e ./cmd/control/
 package control

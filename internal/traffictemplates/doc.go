@@ -20,6 +20,7 @@
 //   - Hand-editing generated_templates.json without rerunning codegen.
 //
 // Verify:
-//   go test ./internal/traffictemplates/ -short -run TestGenerate_coversCatalogAndCuratedMeta -count=1
-//   go run ./cmd/codegen-traffic-templates -check
+//
+//	go test ./internal/traffictemplates/ -short -run TestGenerate_coversCatalogAndCuratedMeta -count=1
+//	go run ./cmd/codegen-traffic-templates -check
 package traffictemplates

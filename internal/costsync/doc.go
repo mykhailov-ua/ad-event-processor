@@ -28,12 +28,13 @@
 //   - Storing raw API secrets in CH columns or structured logs.
 //
 // Verify:
-//   go list -e ./internal/costsync/
-//   go test ./internal/costsync/ -short -count=1
-//   go test ./internal/costsync/ -short -run TestIdempotency_DuplicateImport -count=1
-//   go test ./internal/costsync/ -short -run TestFault_DuplicateReportLedgerBalanced -count=1
-//   go test ./internal/costsync/ -short -run TestWorker_AdvisoryLock -count=1
-//   go test ./internal/costsync/ -short -run TestMaskExtraConfigForResponse_hidesSecrets -count=1
-//   go test ./internal/costsync/ -short -run TestOAuthRefresh_Meta -count=1
-//   go test ./internal/costsync/ -short -run TestAttribute_tokenMatch_integration -count=1
+//
+//	go list -e ./internal/costsync/
+//	go test ./internal/costsync/ -short -count=1
+//	go test ./internal/costsync/ -short -run TestIdempotency_DuplicateImport -count=1
+//	go test ./internal/costsync/ -short -run TestFault_DuplicateReportLedgerBalanced -count=1
+//	go test ./internal/costsync/ -short -run TestWorker_AdvisoryLock -count=1
+//	go test ./internal/costsync/ -short -run TestMaskExtraConfigForResponse_hidesSecrets -count=1
+//	go test ./internal/costsync/ -short -run TestOAuthRefresh_Meta -count=1
+//	go test ./internal/costsync/ -short -run TestAttribute_tokenMatch_integration -count=1
 package costsync

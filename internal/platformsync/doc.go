@@ -25,9 +25,10 @@
 //   - Local campaign pause/resume without corresponding vendor write when mutation is non-noop.
 //
 // Verify:
-//   go list -e ./internal/platformsync/
-//   go test ./internal/platformsync/ -short -count=1
-//   go test ./internal/platformsync/ -short -run TestPreviewMutation -count=1
-//   go test ./internal/platformsync/ -short -run TestMutationFault_remoteFailureDoesNotImplyLocalPause_holdout -count=1
-//   go test ./internal/platformsync/ -short -run TestMutateFacebookCampaign_pause_httptest -count=1
+//
+//	go list -e ./internal/platformsync/
+//	go test ./internal/platformsync/ -short -count=1
+//	go test ./internal/platformsync/ -short -run TestPreviewMutation -count=1
+//	go test ./internal/platformsync/ -short -run TestMutationFault_remoteFailureDoesNotImplyLocalPause_holdout -count=1
+//	go test ./internal/platformsync/ -short -run TestMutateFacebookCampaign_pause_httptest -count=1
 package platformsync

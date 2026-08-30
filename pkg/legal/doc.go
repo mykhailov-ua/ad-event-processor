@@ -25,5 +25,6 @@
 //   - Hot-path tracker or filter imports (admin/licensing cold path only).
 //
 // Verify:
-//   go test ./pkg/legal/... -short -count=1
+//
+//	go test ./pkg/legal/... -short -count=1
 package legal

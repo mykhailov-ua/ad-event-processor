@@ -22,9 +22,11 @@ import (
 var localQuotaRefillLua string
 
 // local-quota-refill.lua (embedded):
-//   KEYS[1] = budget quota key ({campaign_id}:budget:quota or debit sub-slot variant)
-//   ARGV[1] = chunk micro-units to pull from Redis into local ledger
-//   Returns: credited amount (chunk) on success; -1 when quota < chunk or chunk <= 0 (exhausted).
+//
+//	KEYS[1] = budget quota key ({campaign_id}:budget:quota or debit sub-slot variant)
+//	ARGV[1] = chunk micro-units to pull from Redis into local ledger
+//	Returns: credited amount (chunk) on success; -1 when quota < chunk or chunk <= 0 (exhausted).
+//
 // Verify: redis-cli --eval internal/stream/local-quota-refill.lua , <quota_key> , <chunk_micro>
 var localQuotaRefillScript = redis.NewScript(localQuotaRefillLua)
 

@@ -20,6 +20,7 @@
 //   - encoding/json for production audit payloads (vtproto only).
 //
 // Verify:
-//   go test ./internal/stream/auditlog/ -short -count=1
-//   go test ./internal/stream/auditlog/ -short -run TestWriteAuditLog_criticalNotSampled -count=1
+//
+//	go test ./internal/stream/auditlog/ -short -count=1
+//	go test ./internal/stream/auditlog/ -short -run TestWriteAuditLog_criticalNotSampled -count=1
 package auditlog

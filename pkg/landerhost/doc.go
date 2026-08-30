@@ -46,7 +46,8 @@
 //   - Serve paths outside LiveDir or VersionDir roots (callers must use Store methods, not raw Join).
 //
 // Verify:
-//   go test ./pkg/landerhost/... -short -run TestExtractZipSafe_holdoutPathTraversal -count=1
-//   go test ./pkg/landerhost/... -short -run TestExtractZipPublish_roundTrip -count=1
-//   go test ./pkg/landerhost/... -short -run TestPreviewToken_roundTrip -count=1
+//
+//	go test ./pkg/landerhost/... -short -run TestExtractZipSafe_holdoutPathTraversal -count=1
+//	go test ./pkg/landerhost/... -short -run TestExtractZipPublish_roundTrip -count=1
+//	go test ./pkg/landerhost/... -short -run TestPreviewToken_roundTrip -count=1
 package landerhost

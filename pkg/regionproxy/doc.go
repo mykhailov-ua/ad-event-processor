@@ -6,11 +6,11 @@
 //   - Global control IngestRegionProxyBatch consumes uplink JSON; quorum leases gate replica-forward paths.
 //
 // Pipeline (primary region-proxy cell):
-//   1. Ingress: gnet produce-batch or broker fan-in appends payloads to mmap WAL (pkg/regionproxy/wal).
-//   2. Keygen: background goroutine stamps WalFlagDedupReady + FactorU per record (pkg/regionproxy/keygen).
-//   3. Opkey: MPSC pool assigns 16-byte operation IDs and queues dedup-ready slots (pkg/regionproxy/opkey).
-//   4. Uplink (optional): HTTP POST each slot to GLOBAL_INGEST_URL; WAL forward/remote-ack flags (pkg/regionproxy/uplink).
-//   5. Quorum (optional): Redis lease book/ack before forward when opkey.BatchCommitter wired (pkg/regionproxy/quorum).
+//  1. Ingress: gnet produce-batch or broker fan-in appends payloads to mmap WAL (pkg/regionproxy/wal).
+//  2. Keygen: background goroutine stamps WalFlagDedupReady + FactorU per record (pkg/regionproxy/keygen).
+//  3. Opkey: MPSC pool assigns 16-byte operation IDs and queues dedup-ready slots (pkg/regionproxy/opkey).
+//  4. Uplink (optional): HTTP POST each slot to GLOBAL_INGEST_URL; WAL forward/remote-ack flags (pkg/regionproxy/uplink).
+//  5. Quorum (optional): Redis lease book/ack before forward when opkey.BatchCommitter wired (pkg/regionproxy/quorum).
 //
 // Subpackages:
 //   - wal: mmap append-only wal.segment; group commit via iogate.DiskWriteGate; Recover discards torn tail.

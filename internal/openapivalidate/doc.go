@@ -18,6 +18,7 @@
 //   - OpenAPI request validation on tracker /track or other hot-path handlers.
 //
 // Verify:
+//
 //	go test ./internal/openapivalidate/ -short -count=1
 //	go test ./internal/openapivalidate/ -short -run TestOpenAPIRequestValidation -count=1
 package openapivalidate

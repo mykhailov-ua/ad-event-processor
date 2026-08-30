@@ -25,9 +25,10 @@
 //   - Hot-path ingest imports of controlplane admin handlers.
 //
 // Verify:
-//   go list -e ./internal/pgfailover/
-//   go test ./internal/pgfailover/ -short -count=1
-//   go test ./internal/pgfailover/ -run TestEnsureWritablePrimary -count=1
-//   go test ./internal/pgfailover/ -run TestStartIngestSubscribers_reconnectOnPublish -count=1
-//   go test ./internal/controlplane/ -run TestFault_PostgresMasterFailover -count=1
+//
+//	go list -e ./internal/pgfailover/
+//	go test ./internal/pgfailover/ -short -count=1
+//	go test ./internal/pgfailover/ -run TestEnsureWritablePrimary -count=1
+//	go test ./internal/pgfailover/ -run TestStartIngestSubscribers_reconnectOnPublish -count=1
+//	go test ./internal/controlplane/ -run TestFault_PostgresMasterFailover -count=1
 package pgfailover

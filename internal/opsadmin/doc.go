@@ -22,6 +22,7 @@
 //   - Redis KEYS, FLUSHALL, or FLUSHDB from ops handlers.
 //
 // Verify:
+//
 //	go test ./internal/opsadmin/ -short -count=1
 //	go test ./internal/opsadmin/ -short -run TestComputeStackHealthStatus -count=1
 //	go test ./internal/opsadmin/ -short -run TestStackHealthSnapshot -count=1

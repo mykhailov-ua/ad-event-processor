@@ -12,10 +12,11 @@
 //   - Holdout tests for debit/admission/rollback currently live in internal/ingest (pre-drain wiring).
 //
 // Lua return codes (unified-filter.lua):
-//   -1 budget key missing; 0 success; 2 duplicate (dedup SET NX failed after checks);
-//   3 insufficient budget; 4 daily pacing quota; 5 frequency cap; 6 TTC below minimum;
-//   7 TTC missing when fail-closed; 10 TTC bypass (missing imp ts, fail-open); 11 routing epoch / migration fence;
-//   20 degraded accept (remaining deadline < degrade_ns, default 2ms).
+//
+//	-1 budget key missing; 0 success; 2 duplicate (dedup SET NX failed after checks);
+//	3 insufficient budget; 4 daily pacing quota; 5 frequency cap; 6 TTC below minimum;
+//	7 TTC missing when fail-closed; 10 TTC bypass (missing imp ts, fail-open); 11 routing epoch / migration fence;
+//	20 degraded accept (remaining deadline < degrade_ns, default 2ms).
 //
 // Budget invariants:
 //   - TryReserve on stream producer must succeed before Lua debit (ingest tryAcquireStreamAdmission).

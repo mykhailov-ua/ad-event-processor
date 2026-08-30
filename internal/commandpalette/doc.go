@@ -24,8 +24,9 @@
 //   - Redis KEYS or full-table scan without per-kind LIMIT (holdout TestCommandPalette_search_noThousandRowScan_holdout).
 //
 // Verify:
-//   go test ./internal/commandpalette/ -short -count=1
-//   go test ./internal/commandpalette/ -short -run TestCommandPalette_emptyQuery_holdout -count=1
-//   go test ./internal/commandpalette/ -short -run TestHTTPHandlers_listRecents_foreignCustomer_holdout -count=1
-//   go test ./internal/commandpalette/ -short -run TestCommandPalette_reportSearchParity_holdout -count=1
+//
+//	go test ./internal/commandpalette/ -short -count=1
+//	go test ./internal/commandpalette/ -short -run TestCommandPalette_emptyQuery_holdout -count=1
+//	go test ./internal/commandpalette/ -short -run TestHTTPHandlers_listRecents_foreignCustomer_holdout -count=1
+//	go test ./internal/commandpalette/ -short -run TestCommandPalette_reportSearchParity_holdout -count=1
 package commandpalette

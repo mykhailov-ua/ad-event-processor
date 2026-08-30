@@ -27,8 +27,9 @@
 //   - Doc or handler claims of per-IP ghosting via campaign silent_reject_enabled auto-flip from ML enqueue.
 //
 // Verify:
-//   go test ./internal/fraud/ -short -run TestTrackerDepGraphExcludesFraudScoringRuntime -count=1
-//   go test ./internal/fraud/ -short -run TestPolicyConfigParityFixtures -count=1
-//   go test ./internal/fraud/ -short -run TestMicrobatchBoostScore_suspectTierOnly -count=1
-//   make test-integration (TestFraudScoringRule_*, TestFault_FraudSilentRejectAddsBlacklistNotCampaignFlag)
+//
+//	go test ./internal/fraud/ -short -run TestTrackerDepGraphExcludesFraudScoringRuntime -count=1
+//	go test ./internal/fraud/ -short -run TestPolicyConfigParityFixtures -count=1
+//	go test ./internal/fraud/ -short -run TestMicrobatchBoostScore_suspectTierOnly -count=1
+//	make test-integration (TestFraudScoringRule_*, TestFault_FraudSilentRejectAddsBlacklistNotCampaignFlag)
 package fraud

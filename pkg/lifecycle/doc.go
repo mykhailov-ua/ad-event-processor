@@ -37,5 +37,6 @@
 //   - Not a substitute for domain-specific readiness (Redis/PG checks stay in caller check func).
 //
 // Verify:
-//   go test ./pkg/lifecycle/... -short -count=1
+//
+//	go test ./pkg/lifecycle/... -short -count=1
 package lifecycle

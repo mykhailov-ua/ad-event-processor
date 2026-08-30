@@ -21,8 +21,9 @@
 //   - Import internal/ingest hot handlers.
 //
 // Verify:
-//   go test ./internal/trafficoptimizer/ -short -count=1
-//   go test ./internal/trafficoptimizer/ -short -run TestRuleSupported_holdout -count=1
-//   go test ./internal/trafficoptimizer/ -short -run TestApplyRuleTx_holdout -count=1
-//   go test ./internal/trafficoptimizer/ -short -run TestWorker_ruleOnCooldown_holdout -count=1
+//
+//	go test ./internal/trafficoptimizer/ -short -count=1
+//	go test ./internal/trafficoptimizer/ -short -run TestRuleSupported_holdout -count=1
+//	go test ./internal/trafficoptimizer/ -short -run TestApplyRuleTx_holdout -count=1
+//	go test ./internal/trafficoptimizer/ -short -run TestWorker_ruleOnCooldown_holdout -count=1
 package trafficoptimizer

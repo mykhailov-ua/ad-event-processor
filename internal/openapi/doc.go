@@ -18,6 +18,7 @@
 //   - Hand-written admin TS types diverging from bundle without openapi_gate and type regen.
 //
 // Verify:
+//
 //	go test ./internal/openapi/ -short -count=1
 //	go test ./internal/openapi/ -short -run TestAssertCatalogParity -count=1
 //	bash scripts/ci/admin/openapi.sh

@@ -27,9 +27,10 @@
 //   - Per-request platformconfig load on /track (snapshots only on hot path).
 //
 // Verify:
-//   go list -e ./internal/platformadmin/
-//   go test ./internal/platformadmin/ -short -count=1
-//   go test ./internal/platformadmin/ -short -run TestInviteToken_roundTrip -count=1
-//   go test ./internal/platformadmin/ -short -run TestRedactJSONPII_masksEmailAndIP -count=1
-//   go test ./internal/platformadmin/domains/ -short -run TestCloudflareClient_ListZones -count=1
+//
+//	go list -e ./internal/platformadmin/
+//	go test ./internal/platformadmin/ -short -count=1
+//	go test ./internal/platformadmin/ -short -run TestInviteToken_roundTrip -count=1
+//	go test ./internal/platformadmin/ -short -run TestRedactJSONPII_masksEmailAndIP -count=1
+//	go test ./internal/platformadmin/domains/ -short -run TestCloudflareClient_ListZones -count=1
 package platformadmin

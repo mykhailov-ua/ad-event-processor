@@ -13,11 +13,11 @@
 //   - Payment Postgres schema payment.* (intents, webhook_events, payment_outbox); DSN from PAYMENT_DB_DSN.
 //
 // Settlement outbox path (async ledger; no sync INSERT in webhook handler):
-//   1. webhook.Service validates provider event, updates payment_intent in same PG txn.
-//   2. INSERT payment.payment_outbox (event_type SETTLE_BALANCE, REVERSE_BALANCE, APPLY_CHARGEBACK, ...).
-//   3. settlement.OutboxWorker polls payment.payment_outbox (100 ms idle; immediate repoll when batch processed).
-//   4. domain.PaymentSettlement.ApplyPaymentCredit/Refund/Chargeback (controlplane.NewSettlementHandler).
-//   5. public.balance_ledger rows via controlplane settlement host.
+//  1. webhook.Service validates provider event, updates payment_intent in same PG txn.
+//  2. INSERT payment.payment_outbox (event_type SETTLE_BALANCE, REVERSE_BALANCE, APPLY_CHARGEBACK, ...).
+//  3. settlement.OutboxWorker polls payment.payment_outbox (100 ms idle; immediate repoll when batch processed).
+//  4. domain.PaymentSettlement.ApplyPaymentCredit/Refund/Chargeback (controlplane.NewSettlementHandler).
+//  5. public.balance_ledger rows via controlplane settlement host.
 //
 // Invariants:
 //   - Webhook bodies limited to pkg/coldpath.PaymentWebhookMaxBody (64 KiB).

@@ -22,9 +22,10 @@
 //   - Direct platformconfig mutation from domains package (patch flows stay in platformadmin store).
 //
 // Verify:
-//   go list -e ./internal/platformadmin/domains/
-//   go test ./internal/platformadmin/domains/ -short -run 'TestCloudflare|TestApplyReputation|TestDomainHealthTLSAllowed_tokenRequired|TestCloudflareRecordType' -count=1
-//   go test ./internal/platformadmin/domains/ -short -run TestCloudflareClient_ListZones -count=1
-//   go test ./internal/platformadmin/domains/ -short -run TestApplyReputationToProbe -count=1
-//   go test ./internal/platformadmin/domains/ -run TestDomainHealth_markPoolDomainBanned -count=1
+//
+//	go list -e ./internal/platformadmin/domains/
+//	go test ./internal/platformadmin/domains/ -short -run 'TestCloudflare|TestApplyReputation|TestDomainHealthTLSAllowed_tokenRequired|TestCloudflareRecordType' -count=1
+//	go test ./internal/platformadmin/domains/ -short -run TestCloudflareClient_ListZones -count=1
+//	go test ./internal/platformadmin/domains/ -short -run TestApplyReputationToProbe -count=1
+//	go test ./internal/platformadmin/domains/ -run TestDomainHealth_markPoolDomainBanned -count=1
 package domains

@@ -16,9 +16,9 @@ const (
 )
 
 type DurabilityConfig struct {
-	Mode               DurabilityMode  // selects fsync cadence in PartitionLog.append/flush loop
-	FlushInterval      time.Duration   // async/group ticker when gate absent or interval due
-	GroupCommitRecords int64           // batch size before syncLocked when DiskWriteGate nil
+	Mode               DurabilityMode // selects fsync cadence in PartitionLog.append/flush loop
+	FlushInterval      time.Duration  // async/group ticker when gate absent or interval due
+	GroupCommitRecords int64          // batch size before syncLocked when DiskWriteGate nil
 }
 
 func DefaultDurabilityConfig() DurabilityConfig {

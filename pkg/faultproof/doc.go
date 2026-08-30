@@ -34,7 +34,8 @@
 //   - Rename fault tokens referenced by scripts/fault/*.sh without updating gate lists in the same PR.
 //
 // Verify:
-//   go test ./pkg/faultproof/... -short -count=1
-//   go test ./internal/rtb/ -short -run TestFault_rtb_catalog_reload -count=1
-//   bash scripts/fault/resilience_fault_gates.sh /tmp/ad-event-processor-resilience.log
+//
+//	go test ./pkg/faultproof/... -short -count=1
+//	go test ./internal/rtb/ -short -run TestFault_rtb_catalog_reload -count=1
+//	bash scripts/fault/resilience_fault_gates.sh /tmp/ad-event-processor-resilience.log
 package faultproof

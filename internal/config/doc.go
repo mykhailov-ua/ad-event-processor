@@ -35,8 +35,9 @@
 //   - Import internal/domain business rules into config parsers.
 //
 // Verify:
-//   go test ./internal/config/ -short -count=1
-//   go test ./internal/config/ -short -run TestLoad_productionFilterTimeoutCeiling -count=1
-//   go test ./internal/config/ -short -run TestLoad_productionRequiresExpectedShardCount -count=1
-//   go test ./internal/config/ -short -run TestValidateBrokerPrimaryRequiresBrokerURL -count=1
+//
+//	go test ./internal/config/ -short -count=1
+//	go test ./internal/config/ -short -run TestLoad_productionFilterTimeoutCeiling -count=1
+//	go test ./internal/config/ -short -run TestLoad_productionRequiresExpectedShardCount -count=1
+//	go test ./internal/config/ -short -run TestValidateBrokerPrimaryRequiresBrokerURL -count=1
 package config

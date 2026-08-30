@@ -32,12 +32,13 @@
 //   - Unparameterized dynamic SQL in report paths (use clickhouse_safe identifier validation).
 //
 // Verify:
-//   go list -e ./internal/database/
-//   go test ./internal/database/ -short -count=1
-//   go test ./internal/database/ -short -run TestRedisBreaker_TripsAfterThreshold -count=1
-//   go test ./internal/database/ -short -run TestCHQuery_acquireRejectWhenSaturated -count=1
-//   go test ./internal/database/ -short -run TestSyncGlobalStringToAllShards -count=1
-//   go test ./internal/database/ -short -run TestValidClickHouseIdentifier -count=1
-//   go test ./internal/database/ -short -run TestPartitionManager_Cleanup -count=1
-//   bash scripts/ci/static/cold_path_static.sh
+//
+//	go list -e ./internal/database/
+//	go test ./internal/database/ -short -count=1
+//	go test ./internal/database/ -short -run TestRedisBreaker_TripsAfterThreshold -count=1
+//	go test ./internal/database/ -short -run TestCHQuery_acquireRejectWhenSaturated -count=1
+//	go test ./internal/database/ -short -run TestSyncGlobalStringToAllShards -count=1
+//	go test ./internal/database/ -short -run TestValidClickHouseIdentifier -count=1
+//	go test ./internal/database/ -short -run TestPartitionManager_Cleanup -count=1
+//	bash scripts/ci/static/cold_path_static.sh
 package database

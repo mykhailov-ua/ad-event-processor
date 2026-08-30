@@ -44,6 +44,7 @@
 //   - Use on cmd/tracker /track ingress without explicit hot-path review.
 //
 // Verify:
-//   go test ./pkg/gnetutil/... -short -count=1
-//   go test ./internal/broker/ -short -run TestFault_StaleLeaderFencingRejected -count=1
+//
+//	go test ./pkg/gnetutil/... -short -count=1
+//	go test ./internal/broker/ -short -run TestFault_StaleLeaderFencingRejected -count=1
 package gnetutil

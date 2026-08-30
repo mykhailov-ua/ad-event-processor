@@ -30,5 +30,6 @@
 //   - float64 money math on tracker hot path (use int64 micros from domain/budget).
 //
 // Verify:
-//   go test ./pkg/money/... -short -count=1
+//
+//	go test ./pkg/money/... -short -count=1
 package money

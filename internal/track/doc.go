@@ -23,7 +23,8 @@
 //   - Postgres, ClickHouse, outbox, or ML inference in track helper functions on synchronous accept path.
 //
 // Verify:
-//   go test ./internal/track/ -short -count=1
-//   go test ./internal/track/ -short -run TestEnrichAnalyticsPayload_holdout -count=1
-//   go test ./internal/ingest/ -short -run TestProcessTrack_fraud -count=1
+//
+//	go test ./internal/track/ -short -count=1
+//	go test ./internal/track/ -short -run TestEnrichAnalyticsPayload_holdout -count=1
+//	go test ./internal/ingest/ -short -run TestProcessTrack_fraud -count=1
 package track

@@ -20,8 +20,9 @@
 //   - Issuing JWTs from this package (cmd/license-issue owns signing).
 //
 // Verify:
-//   go test ./internal/trialregistry/ -short -count=1
-//   go test ./internal/trialregistry/ -short -run TestCheckPilotEligible_telegram -count=1
-//   go test ./internal/trialregistry/ -short -run TestEnqueuePending_idempotentOpen -count=1
-//   go test ./internal/trialregistry/ -short -run TestRegistry_forceOverrideAudit -count=1
+//
+//	go test ./internal/trialregistry/ -short -count=1
+//	go test ./internal/trialregistry/ -short -run TestCheckPilotEligible_telegram -count=1
+//	go test ./internal/trialregistry/ -short -run TestEnqueuePending_idempotentOpen -count=1
+//	go test ./internal/trialregistry/ -short -run TestRegistry_forceOverrideAudit -count=1
 package trialregistry

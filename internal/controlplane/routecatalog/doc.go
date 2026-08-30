@@ -21,9 +21,10 @@
 //   - Tracker or ingest imports.
 //
 // Verify:
-//   go list -e ./internal/controlplane/routecatalog/
-//   bash scripts/ci/admin/openapi.sh
-//   go test ./internal/controlplane/ -short -run TestCatalog_reportRoutesRegistered -count=1
-//   go test ./internal/controlplane/ -short -run TestCatalog_noRetiredReportPaths -count=1
-//   go test ./internal/openapi/ -short -run TestAssertCatalogParity -count=1
+//
+//	go list -e ./internal/controlplane/routecatalog/
+//	bash scripts/ci/admin/openapi.sh
+//	go test ./internal/controlplane/ -short -run TestCatalog_reportRoutesRegistered -count=1
+//	go test ./internal/controlplane/ -short -run TestCatalog_noRetiredReportPaths -count=1
+//	go test ./internal/openapi/ -short -run TestAssertCatalogParity -count=1
 package routecatalog

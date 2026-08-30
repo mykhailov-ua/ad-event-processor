@@ -19,7 +19,8 @@
 //   - Using this breaker as a substitute for tracker TryReserve admission or Redis shard breakers.
 //
 // Verify:
-//   go test ./internal/stream/breaker/ -short -count=1
-//   go test ./internal/stream/breaker/ -short -run TestCircuitBreaker_TripsAfterThreshold -count=1
-//   go test ./internal/stream/breaker/ -short -run TestCircuitBreaker_HalfOpenFailureReopens -count=1
+//
+//	go test ./internal/stream/breaker/ -short -count=1
+//	go test ./internal/stream/breaker/ -short -run TestCircuitBreaker_TripsAfterThreshold -count=1
+//	go test ./internal/stream/breaker/ -short -run TestCircuitBreaker_HalfOpenFailureReopens -count=1
 package breaker

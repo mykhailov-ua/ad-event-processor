@@ -25,7 +25,8 @@
 //   - Tracker ingest or filter chain imports.
 //
 // Verify:
-//   go list -e ./internal/campaign/wizard/
-//   go test ./internal/controlplane/ -short -run TestCampaignWizard -count=1
-//   go test ./internal/controlplane/ -short -run TestCampaignWizardSessionGET_omitsSecrets -count=1
+//
+//	go list -e ./internal/campaign/wizard/
+//	go test ./internal/controlplane/ -short -run TestCampaignWizard -count=1
+//	go test ./internal/controlplane/ -short -run TestCampaignWizardSessionGET_omitsSecrets -count=1
 package wizard

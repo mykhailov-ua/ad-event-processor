@@ -117,5 +117,5 @@ var (
 const (
 	ortbDealIDMax = openrtb.OrtbDealIDMax
 	// Shared with track JSON scanner; nested bid-request walks abort past this depth.
-	ortbMaxDepth  = openrtb.OrtbMaxDepth
+	ortbMaxDepth = openrtb.OrtbMaxDepth
 )

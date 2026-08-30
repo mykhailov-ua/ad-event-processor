@@ -18,9 +18,11 @@ import (
 var localQuotaReturnLua string
 
 // local-quota-return.lua (embedded):
-//   KEYS[1] = budget quota key
-//   ARGV[1] = micro-units to return from local ledger to Redis (INCRBY)
-//   Returns: new quota balance after INCRBY (or current GET when amt <= 0).
+//
+//	KEYS[1] = budget quota key
+//	ARGV[1] = micro-units to return from local ledger to Redis (INCRBY)
+//	Returns: new quota balance after INCRBY (or current GET when amt <= 0).
+//
 // Verify: redis-cli --eval internal/stream/local-quota-return.lua , <quota_key> , <amount_micro>
 var localQuotaReturnScript = redis.NewScript(localQuotaReturnLua)
 

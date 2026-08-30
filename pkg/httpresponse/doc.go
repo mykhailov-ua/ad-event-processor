@@ -38,6 +38,7 @@
 //   - Use on /track, /click, or internal/ingest gnet handlers (prebuilt bytes + filter rejects only).
 //
 // Verify:
-//   go test ./pkg/httpresponse/... -short -run 'TestError|TestWriteGRPCError' -count=1
-//   go test ./pkg/httpresponse/... -short -bench=BenchmarkError -benchmem -count=1
+//
+//	go test ./pkg/httpresponse/... -short -run 'TestError|TestWriteGRPCError' -count=1
+//	go test ./pkg/httpresponse/... -short -bench=BenchmarkError -benchmem -count=1
 package httpresponse

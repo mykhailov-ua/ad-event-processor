@@ -28,5 +28,6 @@
 //   - Hot-path per-request HTTP fetch (loader refreshes on background tick only).
 //
 // Verify:
-//   go test ./pkg/moderatorintel/... -short -count=1
+//
+//	go test ./pkg/moderatorintel/... -short -count=1
 package moderatorintel

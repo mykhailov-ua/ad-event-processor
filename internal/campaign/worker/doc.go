@@ -27,8 +27,9 @@
 //   - Tracker hot-path imports or synchronous /track work.
 //
 // Verify:
-//   go test ./internal/campaign/worker/ -short -count=1
-//   go test ./internal/campaign/worker/ -short -run TestDeliveryOutboxMerge_priority -count=1
-//   go test ./internal/campaign/worker/ -short -run TestComputeMABWeights_proportionalCTR -count=1
-//   go test ./internal/campaign/worker/ -short -run TestPipelineWriteVPPRatios_batchesPerShard -count=1
+//
+//	go test ./internal/campaign/worker/ -short -count=1
+//	go test ./internal/campaign/worker/ -short -run TestDeliveryOutboxMerge_priority -count=1
+//	go test ./internal/campaign/worker/ -short -run TestComputeMABWeights_proportionalCTR -count=1
+//	go test ./internal/campaign/worker/ -short -run TestPipelineWriteVPPRatios_batchesPerShard -count=1
 package worker

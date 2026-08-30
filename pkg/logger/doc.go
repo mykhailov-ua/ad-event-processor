@@ -40,7 +40,8 @@
 //   - fmt.Sprintf or per-request heap growth on WriteToShard path (hot-path.mdc).
 //
 // Verify:
-//   go test ./pkg/logger/... -short -count=1
-//   go test ./pkg/logger/... -short -run TestLoggerZeroAlloc -count=1
-//   go test ./pkg/logger/... -run='^$' -bench=BenchmarkLoggerWriteToShard -benchmem -count=1
+//
+//	go test ./pkg/logger/... -short -count=1
+//	go test ./pkg/logger/... -short -run TestLoggerZeroAlloc -count=1
+//	go test ./pkg/logger/... -run='^$' -bench=BenchmarkLoggerWriteToShard -benchmem -count=1
 package logger

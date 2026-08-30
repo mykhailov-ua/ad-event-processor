@@ -25,10 +25,11 @@
 //   - Hot-path ingest imports.
 //
 // Verify:
-//   go list -e ./internal/postback/
-//   go test ./internal/postback/ -short -count=1
-//   go test ./internal/postback/ -short -run TestMacroSubstitution -count=1
-//   go test ./internal/postback/ -short -run TestMacroRender_ZeroAlloc -count=1
-//   go test ./internal/postback/ -short -run TestConversionReject_rejectSkipsOutboxEnqueue -count=1
-//   go test ./internal/postback/ -run TestPostbackIntegration_IdempotencyAndEgress -count=1
+//
+//	go list -e ./internal/postback/
+//	go test ./internal/postback/ -short -count=1
+//	go test ./internal/postback/ -short -run TestMacroSubstitution -count=1
+//	go test ./internal/postback/ -short -run TestMacroRender_ZeroAlloc -count=1
+//	go test ./internal/postback/ -short -run TestConversionReject_rejectSkipsOutboxEnqueue -count=1
+//	go test ./internal/postback/ -run TestPostbackIntegration_IdempotencyAndEgress -count=1
 package postback
