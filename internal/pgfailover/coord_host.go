@@ -20,6 +20,7 @@ func (p *coordPartition) NextOffset() uint64 {
 	return p.nextOffset.Load()
 }
 
+// AppendReplicatedAt: in-memory PG failover log offset; ErrReplicationGap on hole (network partition).
 func (p *coordPartition) AppendReplicatedAt(expectedOffset uint64, payload []byte) (uint64, error) {
 	next := p.nextOffset.Load()
 	if expectedOffset < next {

@@ -105,6 +105,7 @@ HAVING ad_spend_micro > 0 OR revenue_micro > 0 OR conversions > 0
 ORDER BY ad_spend_micro DESC
 LIMIT ? OFFSET ?`
 
+// QuerySpendVelocityRows: hourly spend from placement_stats_hourly (no separate timeout; caller ctx).
 func QuerySpendVelocityRows(
 	ctx context.Context,
 	clickhouseQuery *database.ClickHouseQuery,

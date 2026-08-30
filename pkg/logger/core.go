@@ -46,24 +46,24 @@ type LogPayload struct {
 	ready    atomic.Uint32
 	Priority uint8
 	Length   uint32
-	Data     [500]byte
+	Data     [500]byte // max line payload per slot (bytes copied, not NUL-terminated)
 }
 
 type LogShard struct {
-	_           [64]byte
+	_           [64]byte // cache-line pad before writeCursor
 	writeCursor uint64
-	_           [64]byte
+	_           [64]byte // cache-line pad before allocCursor
 	allocCursor uint64
-	_           [64]byte
+	_           [64]byte // cache-line pad before readCursor
 	readCursor  uint64
-	_           [64]byte
+	_           [64]byte // cache-line pad before slots ring
 	slots       [65536]LogPayload
 }
 
 const (
 	RingCapacity = 65536
 	RingMask     = RingCapacity - 1
-	ringUsable   = RingCapacity - 1
+	ringUsable   = RingCapacity - 1 // one slot reserved: alloc-read must stay < ringUsable
 )
 
 func NewLogShard() *LogShard {
@@ -79,6 +79,7 @@ func (s *LogShard) Write(priority uint8, data []byte) bool {
 		alloc := atomic.LoadUint64(&s.allocCursor)
 		read := atomic.LoadUint64(&s.readCursor)
 		if alloc-read >= ringUsable {
+			// spin up to 100x (Gosched then 1us sleep); shed when still full.
 			for spin := range 100 {
 				if spin < 20 {
 					runtime.Gosched()
@@ -92,7 +93,7 @@ func (s *LogShard) Write(priority uint8, data []byte) bool {
 			}
 			return false
 		}
-		if alloc-read >= ringUsable-8192 {
+		if alloc-read >= ringUsable-8192 { // within 8192 slots of full: yield before CAS
 			runtime.Gosched()
 		}
 	spaceAvailable:

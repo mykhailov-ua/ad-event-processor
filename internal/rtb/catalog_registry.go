@@ -4,7 +4,11 @@ import (
 	"sync/atomic"
 )
 
+// Registry owns the hot-path catalog snapshot and BudgetStore slot map.
+// Cold path (UpdateCampaigns) builds immutable SoA registries per geo shard and publishes via atomic.Pointer;
+// RunAuction / RunAuctionEval load once per request with no mutex.
 type Registry struct {
+	// catalog: [64]*CampaignAuctionRegistry keyed by GeoHashVal & geoShardMask (63).
 	catalog               atomic.Pointer[catalogSnapshot]
 	store                 *BudgetStore
 	snapGen               atomic.Uint64
@@ -41,6 +45,7 @@ func (r *Registry) TargetingIndexEnabled() bool {
 	return r.targetingIndexEnabled.Load()
 }
 
+// LoadShard returns the SoA registry for req.GeoHash & geoShardMask (64-way geo partition).
 func (r *Registry) LoadShard(idx uint32) *CampaignAuctionRegistry {
 	snap := r.catalog.Load()
 	if snap == nil {
@@ -73,6 +78,9 @@ func (r *Registry) UpdateCreatives(creatives []CreativeData) {
 	r.pendingCreatives = append(r.pendingCreatives[:0], creatives...)
 }
 
+// UpdateCampaigns cold-rebuilds columnar CampaignAuctionRegistry slices per geo shard,
+// materializes GeoBucketSoA/TargetBucketSoA, presorts buckets, then atomically swaps catalog.
+// Hot readers never observe partial rebuilds.
 func (r *Registry) UpdateCampaigns(campaigns []CampaignData) {
 	var counts [geoShardCount]int
 	for i := range campaigns {
@@ -125,6 +133,8 @@ func (r *Registry) UpdateCampaigns(campaigns []CampaignData) {
 		reg.GeoHashes[wIdx] = c.GeoHashVal
 		reg.Weights[wIdx] = c.Weight
 		reg.BoostPPM[wIdx] = normalizeCTRPPM(c.BoostPPM)
+		// BudgetIndices map into BudgetStore CAS slices; consumed by CheckAndSpendAll when
+		// RTB_BUDGET_AUTHORITY=rtb and RunAuction(spend=true). Shadow RunAuctionEval skips spend.
 		reg.BudgetIndices[wIdx] = r.store.GetOrAllocateSlot(c.ID, c.Budget)
 		reg.CustomerBudgetIndices[wIdx] = r.store.GetOrAllocateCustomerSlot(c.CustomerID, c.CustomerBudget)
 		reg.DaypartMasks[wIdx] = c.DaypartMask
@@ -141,10 +151,12 @@ func (r *Registry) UpdateCampaigns(campaigns []CampaignData) {
 	shardCreatives := partitionCreativesByShard(campaigns, r.pendingCreatives)
 	for shardIdx := range geoShardCount {
 		buildCreativeCache(registries[shardIdx], shardCreatives[shardIdx])
+		// Geo buckets: campaigns grouped by GeoHashVal; GeoBucketSoA holds denormalized rows for linear scan.
 		buildGeoIndex(registries[shardIdx])
 		if targetingEnabled {
 			buildTargetingIndex(registries[shardIdx])
 		}
+		// Presort by effective score so rankCandidates can early-break below floor.
 		sortRegistryBuckets(registries[shardIdx])
 	}
 
@@ -170,6 +182,7 @@ func partitionCreativesByShard(campaigns []CampaignData, creatives []CreativeDat
 	return out
 }
 
+// publishCatalog swaps the immutable catalogSnapshot; never mutate a published registry in place.
 func (r *Registry) publishCatalog(shards [geoShardCount]*CampaignAuctionRegistry) {
 	r.catalog.Store(&catalogSnapshot{shards: shards})
 	r.snapGen.Add(1)

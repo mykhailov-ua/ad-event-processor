@@ -395,6 +395,7 @@ var ingressSnapshotPool = sync.Pool{
 	},
 }
 
+// UDPControl: recvLoop on :8191 applies quota epoch from control plane; failClosed blocks ingest on stale epoch.
 type UDPControl struct {
 	enabled            bool
 	failClosed         bool

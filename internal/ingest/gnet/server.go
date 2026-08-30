@@ -260,6 +260,7 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 
 		var scratchPtr *[]byte
 		connCtx := s.http1EnsureConnContext(c)
+		// Tier A invariant: one in-flight offload per HTTP/1 conn; epoll stops parsing until Tier B clears busy.
 		if connCtx.HTTP1OffloadBusy.Load() {
 			break
 		}
@@ -312,6 +313,7 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 			offloadCtx.OffloadBlock = nil
 			offloadCtx.OffloadWG = nil
 
+			// Tier A -> B: enqueue pinned ConnContext, then Discard peek frame on epoll thread only.
 			connCtx.HTTP1OffloadBusy.Store(true)
 			submitted := s.workerPool.SubmitOffloadToWorker(connCtx.WorkerID, offloadCtx, buf[:reqLen])
 			if _, err := c.Discard(reqLen); err != nil {
@@ -343,6 +345,7 @@ func (s *Server) OnTraffic(c pkgnet.Conn) (action pkgnet.Action) {
 	return pkgnet.None
 }
 
+// runOffloadedRequest runs Tier B on a pinned worker: React, sync FilterEngine.Check (incl. EVALSHA), response write.
 func (s *Server) runOffloadedRequest(WorkerID int, ctx *ConnContext) {
 	if ctx == nil {
 		return
@@ -352,6 +355,7 @@ func (s *Server) runOffloadedRequest(WorkerID int, ctx *ConnContext) {
 		s.retireOffloadContext(ctx)
 		return
 	}
+	// AsyncWrite path: defer skips arena retire until callback; cloneAsyncWriteBytes owns response bytes.
 	defer func() {
 		if !ctx.OffloadAsyncWrite.Load() {
 			s.releaseOffloadBuffers(ctx)

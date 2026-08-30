@@ -13,6 +13,7 @@ import (
 
 const residentialIntelRedisPrefix = "intel:residential:"
 
+// ResidentialIntelCache: cold-path Redis cache for ML feature writer (not on /track filter hot path).
 type ResidentialIntelCache struct {
 	redisClient redis.Cmdable
 	ttl         time.Duration

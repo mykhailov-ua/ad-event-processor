@@ -49,6 +49,10 @@ local function client_asn()
     return ngx.var.http_x_client_asn
 end
 
+-- Generational blacklist gate (ngx.shared blacklist_cache).
+-- Fail-closed: missing _bl_ver/_bl_sync_ts or sync older than BL_STALE_SEC -> 503 + circuit err.
+-- Fail-closed: b:{ip} == _bl_ver -> 403. Stale stamp (ip_ver ~= ver) or absent key -> pass.
+-- ASN CDN/mobile whitelist skips this gate only (edge-asn.lua); not tracker FilterEngine bypass.
 local function perimeter_blacklist(client_ip)
     if edge_asn.is_whitelisted(client_asn()) then
         return
@@ -78,6 +82,8 @@ local function perimeter_blacklist(client_ip)
     end
 end
 
+-- Circuit breaker runs before blacklist: record_total every request; open -> 503 fail-closed.
+-- Below SAMPLE_WINDOW 100 combined bucket samples circuit stays closed (fail-open on infra noise).
 local function perimeter_gate(client_ip, bucket_curr, bucket_prev)
     edge_circuit.record_total()
     if edge_circuit.open(bucket_curr, bucket_prev) then
@@ -97,6 +103,8 @@ perimeter_gate(client_ip, bucket_curr, bucket_prev)
 edge_tarpit.maybe_delay()
 edge_ingress.record_and_forward()
 
+-- Route dispatch: OPTIONS /track returns 204 upstream; /click and /openrtb/bid use route gates
+-- then edge_track_policy; default /track sets ngx.ctx.campaign_id for edge-shard-balancer.
 local edge_route_gate = require "edge-route-gate"
 local uri = ngx.var.uri
 if ngx.req.get_method() == "OPTIONS" and uri == "/track" then

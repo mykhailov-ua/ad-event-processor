@@ -1,6 +1,6 @@
 # BPF resource gate (hot path)
 
-Generated: 2026-08-29T12:36:11Z
+Generated: 2026-08-30T10:46:02Z
 Session: `testdata/bpf_gate_pass`
 Prometheus: `http://127.0.0.1:1`
 Strict: `false`

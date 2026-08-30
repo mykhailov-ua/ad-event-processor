@@ -1,5 +1,24 @@
 #!/usr/bin/env python3
-"""Bootstrap LightGBM and iforest artifacts; calibrate policy; validate fixtures."""
+"""Bootstrap LightGBM and iforest artifacts; calibrate policy; validate fixtures.
+
+Role:
+- bootstrap: synthetic traffic_simulator train + policy_calibrate holdout.
+- fit: time-split labeled dataset from features_export output.
+- validate: fixture vector parity vs model.txt (Python or cmd/ml-validate fallback).
+- export: refresh metadata.json hashes from existing artifacts.
+
+Outputs (FRAUD_ARTIFACT_DIR or var/fraudscore/artifacts/):
+- model.txt (LightGBM)
+- iforest.onnx (optional; FRAUD_BOOTSTRAP_IFOREST=1)
+- metadata.json (hashes, policy, calibration, raw_stats for drift)
+
+Subcommands:
+- bootstrap, bootstrap-validate, fit, fit-validate, export, validate, validate-artifacts
+
+Verify:
+  python3 model/train/artifact_bootstrap.py bootstrap-validate
+  pytest model/tests/test_bootstrap_contract.py model/tests/test_artifact_metadata.py -q
+"""
 
 from __future__ import annotations
 
@@ -38,7 +57,9 @@ if TYPE_CHECKING:
 ARTIFACT_DIR = str(REPO_ROOT / os.environ.get("FRAUD_ARTIFACT_DIR", "var/fraudscore/artifacts"))
 DEFAULT_ARTIFACT_MODEL = os.path.join(ARTIFACT_DIR, "model.txt")
 FIXTURES_DIR = REPO_ROOT / "var" / "fraudscore" / "fixtures"
+# skl2onnx target opset for iforest sidecar (optional).
 ONNX_TARGET_OPSET = {"": 12, "ai.onnx.ml": 3}
+# Synthetic bootstrap defaults when no labeled CH export exists.
 SYNTHETIC_ROW_COUNT = 12_000
 SYNTHETIC_VAL_FRACTION = 0.2
 SYNTHETIC_BOOST_ROUNDS = 50

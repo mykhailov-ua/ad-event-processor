@@ -13,6 +13,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Runtime: PG reads/writes in ops.go; campaign.Effects (controlplane Service) owns outbox rows,
+// publish gates, and post-commit Redis epoch fanout. No direct Redis or tracker I/O here.
 type Runtime struct {
 	pool            *pgxpool.Pool
 	effects         campaign.Effects

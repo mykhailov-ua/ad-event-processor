@@ -5,14 +5,20 @@ import (
 )
 
 const (
-	ViolationSYN       = 1
+	// ViolationSYN: per-source SYN rate (syn_ratelimit_v4 PERCPU_HASH).
+	ViolationSYN = 1
+	// ViolationGlobalSYN: cluster-wide SYN budget (global_syn PERCPU_ARRAY).
 	ViolationGlobalSYN = 2
-	ViolationPPS       = 3
+	// ViolationPPS: generic PPS token bucket on tracker port.
+	ViolationPPS = 3
+	// ViolationSYNSubnet: /24 SYN aggregate (syn_subnet_ratelimit_v4 LRU; CGNAT/mobile).
 	ViolationSYNSubnet = 4
 )
 
-const DefaultSynSubnetLimit = 256
+// DefaultSynSubnetLimit matches DEFAULT_SYN_SUBNET_LIMIT in deploy/edge/xdp/bpf/edge_filter.c.
+const DefaultSynSubnetLimit = 4096
 
+// ViolationEvent wire layout matches emit_violation in edge_filter.c (13 bytes ringbuf sample).
 type ViolationEvent struct {
 	TSNs   uint64
 	SrcIP  uint32

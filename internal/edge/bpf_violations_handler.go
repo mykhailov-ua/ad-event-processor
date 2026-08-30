@@ -17,6 +17,8 @@ func NewViolationHandler(onEvent func(ViolationEvent) error) *ViolationHandler {
 	return &ViolationHandler{onEvent: onEvent}
 }
 
+// Drain reads violations ringbuf until idle window; dedupes by SrcIP per drain pass
+// before onEvent (typically RecordAutoBan -> Redis blacklist:auto).
 func (h *ViolationHandler) Drain(rd *ringbuf.Reader, idle time.Duration) (int, error) {
 	if rd == nil || h.onEvent == nil {
 		return 0, nil

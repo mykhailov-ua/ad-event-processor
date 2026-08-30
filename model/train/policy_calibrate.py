@@ -1,4 +1,17 @@
-"""Grid search for policy thresholds; persists best config to metadata.json."""
+"""Grid search for policy heuristic thresholds; persists best config to metadata.json.
+
+Role:
+- Search ml_threshold, proxy_floor, proxy_max_ml, fp_guard_cap under FPR caps.
+- Objective weights recall, residential_proxy_bot cohort recall, grey_noise FPR penalty.
+
+Env:
+- FRAUD_POLICY_CALIB_GRID=coarse | full (default full)
+- FRAUD_POLICY_CALIB_MAX_FPR=0.01 (suspect+ tier)
+- FRAUD_POLICY_CALIB_MAX_BLOCK_FPR=0.005 (block tier)
+
+Verify:
+  pytest model/tests/test_bootstrap_contract.py -q
+"""
 
 from __future__ import annotations
 
@@ -15,12 +28,14 @@ from contract.scoring_policy import (
     scores_suspect_positive,
 )
 
+
 def _confusion(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[int, int, int, int]:
     tp = int(np.sum((y_true == 1) & (y_pred == 1)))
     tn = int(np.sum((y_true == 0) & (y_pred == 0)))
     fp = int(np.sum((y_true == 0) & (y_pred == 1)))
     fn = int(np.sum((y_true == 1) & (y_pred == 0)))
     return tp, tn, fp, fn
+
 
 def _rates(tp: int, tn: int, fp: int, fn: int) -> dict[str, float]:
     precision = tp / (tp + fp) if (tp + fp) else 0.0
@@ -29,11 +44,14 @@ def _rates(tp: int, tn: int, fp: int, fn: int) -> dict[str, float]:
     fpr = fp / (fp + tn) if (fp + tn) else 0.0
     return {"precision": precision, "recall": recall, "f1": f1, "false_positive_rate": fpr}
 
+
 def _rates_from_preds(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     tp, tn, fp, fn = _confusion(y_true, y_pred)
     return _rates(tp, tn, fp, fn)
 
+
 def _calibration_grid() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return (ml_thresholds, proxy_floors, proxy_max_ml, fp_caps) search grids."""
     coarse = os.environ.get("FRAUD_POLICY_CALIB_GRID", "full").lower() == "coarse"
     if coarse:
         return (
@@ -49,6 +67,7 @@ def _calibration_grid() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
         np.arange(0.75, 0.83, 0.02),
     )
 
+
 def calibrate_policy(
     rows: list[dict[str, int]],
     labels: list[int],
@@ -58,7 +77,11 @@ def calibrate_policy(
     max_fpr: float = 0.01,
     max_block_fpr: float = 0.005,
 ) -> tuple[PolicyConfig, dict[str, Any]]:
-    """Select thresholds under FPR caps; maximize recall with proxy cohort weight."""
+    """Select heuristic knobs under FPR caps; maximize weighted recall objective.
+
+    Tier thresholds (tier_pass/ivt/block) stay at default_policy_config(); only
+    ml_threshold, proxy floors, and fp_guard_cap are tuned here.
+    """
     base = default_policy_config()
     y_true = np.asarray(labels, dtype=np.int32)
     probability_vector = np.asarray(probs, dtype=np.float64)
@@ -91,6 +114,7 @@ def calibrate_policy(
                         float(fp_guard_cap_candidate),
                         block_prob,
                     )
+                    # Suspect+ positive: score above tier_pass (not raw ML threshold).
                     suspect_pred = scores_suspect_positive(scores, base.tier_pass).astype(np.int32)
                     block_pred = scores_block_positive(scores, base.tier_ivt).astype(np.int32)
 
@@ -112,6 +136,7 @@ def calibrate_policy(
                     else:
                         grey_fpr = 0.0
 
+                    # Weighted objective: recall primary, proxy cohort secondary, grey FPR penalty.
                     objective = suspect_metrics["recall"] * 0.6 + proxy_recall * 0.3 - grey_fpr * 0.1
                     if objective > best_score:
                         best_score = objective

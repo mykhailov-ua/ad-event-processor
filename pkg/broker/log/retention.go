@@ -7,10 +7,10 @@ import (
 )
 
 type RetentionPolicy struct {
-	MaxAge         time.Duration
-	MaxBytes       int64
-	FloorOffset    uint64
-	SafetyMessages uint64
+	MaxAge         time.Duration // delete sealed segments older than this
+	MaxBytes       int64         // delete oldest sealed segments until total on-disk bytes <= cap
+	FloorOffset    uint64        // never delete segments covering offsets below this
+	SafetyMessages uint64        // keep at least this many messages below head offset
 }
 
 func (p RetentionPolicy) Enabled() bool {
@@ -56,6 +56,7 @@ func (s *Segment) ModTime() (time.Time, error) {
 	return info.ModTime(), nil
 }
 
+// ApplyRetention holds writeMu; only sealed segments are candidates (activeSeg never deleted).
 func (p *PartitionLog) ApplyRetention(policy RetentionPolicy) (RetentionResult, error) {
 	var result RetentionResult
 	if !policy.Enabled() {
@@ -205,6 +206,7 @@ func segmentHighOffset(baseOffset, nextBaseOffset, headOffset uint64) uint64 {
 }
 
 func retentionSafeOffset(headOffset uint64, policy RetentionPolicy) (safe uint64, enforce bool) {
+	// highOffset of a sealed segment must stay below safe when enforceOffset (floor + tail safety).
 	enforce = policy.SafetyMessages > 0 || policy.FloorOffset > 0
 	if policy.SafetyMessages > 0 && headOffset > policy.SafetyMessages {
 		safe = headOffset - policy.SafetyMessages
@@ -279,6 +281,7 @@ func selectRetentionVictims(metas []segmentMeta, policy RetentionPolicy, safeOff
 }
 
 func removeSegmentFiles(seg *Segment) error {
+	// OS boundary: Munmap via Close, then unlink .log and .index paths.
 	_ = seg.Close()
 	var errs []error
 	if err := os.Remove(seg.logPath); err != nil && !os.IsNotExist(err) {

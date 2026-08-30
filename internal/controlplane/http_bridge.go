@@ -1,5 +1,6 @@
 package controlplane
 
+// http_bridge: cold-path adapters between Handler/Service and domain HTTP (auth, session nav, ops reader).
 import (
 	"context"
 	"log/slog"
@@ -56,6 +57,7 @@ func (a platformAuthAdapter) Register(ctx context.Context, adminAPIKey, email, p
 	return err
 }
 
+// NewAuthHandler: /api/v1/auth/* login and token refresh; picks healthy control Redis shard for session state.
 func NewAuthHandler(
 	authClient *identity.AuthClient,
 	tokenMaker identity.Maker,
@@ -92,6 +94,7 @@ func NewTelegramService(svc *Service) *telegram.Service {
 	return telegram.NewService(svc)
 }
 
+// buildSessionNav: RBAC snapshot from request context; no per-nav-item PG round-trip.
 func buildSessionNav(ctx context.Context) []platformadmin.SessionNavItemDTO {
 	catalogRows := reports.FilterReportCatalog(ctx, reports.ReportCatalogEntries)
 	items := []platformadmin.SessionNavItemDTO{
@@ -146,6 +149,7 @@ func (s *Service) startOpsMetricScraper(ctx context.Context, scrapeURL string) {
 	opsadmin.StartMetricScraper(s, ctx, scrapeURL)
 }
 
+// NewManagementOpsReader: ops stack health fan-out (PG pool, Redis shards, optional ClickHouseQuery readonly).
 func NewManagementOpsReader(svc *Service) opsadmin.ManagementOpsReader {
 	if svc == nil {
 		return nil
@@ -174,6 +178,7 @@ func newOpsReader(svc *Service) opsadmin.ManagementOpsReader {
 	return NewManagementOpsReader(svc)
 }
 
+// StartFilterRejectRollupWorker: background CH->PG rollup; requires PG pool and clickhouseQuery (readonly).
 func (s *Service) StartFilterRejectRollupWorker(ctx context.Context, scrapeURL string) {
 	if s == nil || s.GetPool() == nil || s.clickhouseQuery == nil {
 		slog.Warn("filter reject rollup worker not started: postgres or clickhouse unavailable")

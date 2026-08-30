@@ -49,6 +49,8 @@ func DefaultClickHouseSpoolConfig() ClickHouseSpoolConfig {
 	}
 }
 
+// ClickHouseSpool: mmap WAL segments when live CH insert fails. errCHSpoolMaxSegments is
+// retriable (processor keeps PEL); segment cap from sealed processor_ch_ingest_policy.json.
 type ClickHouseSpool struct {
 	dir          string
 	cfg          ClickHouseSpoolConfig
@@ -267,6 +269,7 @@ func bytesEqual4(a, b []byte) bool {
 	return len(a) >= 4 && len(b) >= 4 && a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
 }
 
+// StartAsyncFlusher batches mmap msync/fsync on a side goroutine (appendLockedAsync path).
 func (s *ClickHouseSpool) StartAsyncFlusher(interval time.Duration) {
 	s.mu.Lock()
 	if s.asyncFlusher {
@@ -312,6 +315,8 @@ func (s *ClickHouseSpool) Sync() error {
 	return nil
 }
 
+// AppendDurably writes length-prefixed CHSP records to the active mmap segment; rotates
+// when full. dedupToken is replayed with the batch so CH insert stays idempotent.
 func (s *ClickHouseSpool) AppendDurably(dedupToken string, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
@@ -500,6 +505,8 @@ type CHSpoolRecord struct {
 	LastInSegment bool
 }
 
+// Scan returns all complete CHSP records in segment order (rotated files first, then active).
+// Incomplete tail record is excluded (LastInSegment marks the open segment edge).
 func (s *ClickHouseSpool) Scan() ([]CHSpoolRecord, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -617,6 +624,7 @@ func unmarshalCHSpoolPayload(payload []byte) (string, []*domain.Event, error) {
 	return token, events, nil
 }
 
+// ReleaseRecord truncates consumed prefix on the active segment or deletes a fully drained rotated file.
 func (s *ClickHouseSpool) ReleaseRecord(rec CHSpoolRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

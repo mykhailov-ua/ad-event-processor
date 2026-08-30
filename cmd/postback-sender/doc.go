@@ -18,6 +18,7 @@
 //   - Not on /track accept path; no synchronous postback from ingest handlers.
 //
 // Verify:
-// go test ./internal/postback/... -short -count=1
-// go build -o bin/postback-sender ./cmd/postback-sender/
+//
+//	go test ./internal/postback/... -short -count=1
+//	go build -o bin/postback-sender ./cmd/postback-sender/
 package main

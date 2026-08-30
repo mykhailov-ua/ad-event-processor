@@ -15,6 +15,8 @@ import (
 	"unsafe"
 )
 
+// Wire frame body (after 4-byte BE length prefix): cmd u16 + seq u64 + payload + crc32 u32.
+// Min body length 14 (empty payload); CRC32-IEEE covers payload only, not cmd or seq.
 const (
 	CmdProduce           uint16 = 1
 	CmdFetch             uint16 = 2
@@ -26,8 +28,10 @@ const (
 	CmdRegisterTopicResp uint16 = 104
 )
 
+// FetchRespMetaLen: status u8 + msg_count u32 + high_watermark u64 (payload after meta is message blob).
 const FetchRespMetaLen = 13
 
+// ProduceBatchRespMetaLen: status u8 + offset u64 + committed_count u32.
 const ProduceBatchRespMetaLen = 13
 
 type TopicMetadata struct {
@@ -207,6 +211,7 @@ func (r *TopicRegistry) Register(name string) (uint16, error) {
 	return id, nil
 }
 
+// BatchMsgHeader: 8-byte record prefix inside CmdProduceBatch payload (topic_id u16, pad u16, len u32).
 type BatchMsgHeader struct {
 	TopicID    uint16
 	_          uint16
@@ -318,16 +323,16 @@ func readFullConn(c net.Conn, buf []byte) error {
 }
 
 func parseFrame(readBuf []byte, length uint32) (uint16, uint64, []byte, error) {
-	if length < 14 {
+	if length < 14 { // cmd(2) + seq(8) + crc(4); payload may be empty.
 		return 0, 0, nil, errors.New("frame length too short")
 	}
 
 	cmd := binary.BigEndian.Uint16(readBuf[0:2])
 	seq := binary.BigEndian.Uint64(readBuf[2:10])
-	payload := readBuf[10 : length-4]
+	payload := readBuf[10 : length-4] // bytes between seq and trailing CRC.
 
 	expected := binary.BigEndian.Uint32(readBuf[length-4:])
-	calculated := crc32.ChecksumIEEE(payload)
+	calculated := crc32.ChecksumIEEE(payload) // IEEE CRC over payload slice only.
 	if calculated != expected {
 		return 0, 0, nil, errors.New("checksum verification failed")
 	}

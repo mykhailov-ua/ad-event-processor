@@ -24,6 +24,7 @@ type mlModelMeta struct {
 	present   bool
 }
 
+// PickGlobalReconcileSource: shard with highest config:version (or blacklist gen) for shard-0 catch-up.
 func PickGlobalReconcileSource(ctx context.Context, redisShards []redis.UniversalClient) redis.UniversalClient {
 	if len(redisShards) == 0 {
 		return nil
@@ -307,6 +308,7 @@ func Shard0NeedsCatchup(ctx context.Context, redisShards []redis.UniversalClient
 	return sourceSettings != targetSettings
 }
 
+// RunShard0Catchup: copy globals from healthiest shard to shard 0, then registry full-sync publish.
 func RunShard0Catchup(ctx context.Context, host CatchupHost) error {
 	if host == nil {
 		return fmt.Errorf("service not configured")

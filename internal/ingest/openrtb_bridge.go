@@ -2,6 +2,7 @@ package ingest
 
 import "ad-event-processor/internal/openrtb"
 
+// Unexported aliases keep hot ingest on internal/openrtb scanners without openrtb importing ingest.
 type (
 	openrtb26Scan                = openrtb.OpenRTB26Scan
 	openrtb26Sections            = openrtb.OpenRTB26Sections
@@ -62,6 +63,7 @@ func parseDecimalMicro(b []byte) int64 {
 	return openrtb.ParseDecimalMicro(b)
 }
 
+// OrtbSlice returns payload[off:off+ln] from DFA-recorded offset/length; ln is uint8 (max 255 bytes per field).
 func ortbSlice(payload []byte, off int, ln uint8) []byte {
 	return openrtb.OrtbSlice(payload, off, ln)
 }
@@ -70,6 +72,7 @@ func scanOpenRTB26Payload(payload []byte) openrtb26Scan {
 	return openrtb.ScanOpenRTB26Payload(payload)
 }
 
+// sectionWindow bounds nested object scans so imp/device walks never allocate sub-slices of the full body.
 func sectionWindow(payload []byte, start int, maxLen int) []byte {
 	return openrtb.SectionWindow(payload, start, maxLen)
 }
@@ -113,5 +116,6 @@ var (
 
 const (
 	ortbDealIDMax = openrtb.OrtbDealIDMax
+	// Shared with track JSON scanner; nested bid-request walks abort past this depth.
 	ortbMaxDepth  = openrtb.OrtbMaxDepth
 )

@@ -1,20 +1,23 @@
-// Package trial implements pilot SKU trial registry checks shared with cmd/trial-registry and license-issue.
+// Package trial maps pilot and unconfigured license states to admin upgrade-plan hints.
 //
 // Role:
-//   - trial.go reads VENDOR_TRIAL_REGISTRY JSON for telegram/hwid/wallet repeat-trial defense at JWT issue time.
-//   - Complements cmd/vendor-trial-bot automation; not consulted on every ingest request.
+//   - trial.go: UpgradePlanForLicense returns starter SKU for pilot or UNCONFIGURED status rows.
+//   - PilotTrialValidDays (14) is the admin status JSON surface for pilot duration hints.
 //
 // Topology:
-//   - Vendor-plane only paths; appliance may omit registry file.
+//   - Called from licensingadmin status enrichment (enrichLicenseStatusTrialSurface) and
+//     internal/licensing root facade re-exports.
+//   - Repeat-trial defense at JWT issue time lives in internal/trialregistry
+//     (cmd/license-issue, cmd/trial-registry, cmd/vendor-trial-bot) - not in this package.
 //
 // Invariants:
-//   - Reject second pilot for same telegram or hwid with status active|expired unless VENDOR_TRIAL_FORCE.
-//   - USDT wallet one-buyer-line rule enforced at issue, not runtime ingest.
+//   - Active non-pilot plans return empty upgrade hint (no upsell plan_code).
+//   - Pilot and UNCONFIGURED always suggest entitlements.SKUCodeStarter.
 //
 // Forbidden:
-//   - Trial registry network call from tracker hot path.
+//   - Trial registry JSON I/O or vendor-plane checks from tracker hot path.
 //
 // Verify:
 //
-//	go test ./internal/licensing/trial/... -short -count=1
+//	go test ./internal/licensing/trial/... -short -run TestUpgradePlanForLicense -count=1
 package trial

@@ -306,6 +306,8 @@ func (h *redisShardPreloadHook) schedulePreload(ctx context.Context) {
 	}(ctx)
 }
 
+// evalScript: primary unified-filter.lua path is EVALSHA; NOSCRIPT triggers bounded EVAL fallback
+// (evalFallbackGate caps concurrent full-script loads) plus async PreloadScripts.
 func (f *UnifiedFilter) evalScript(ctx context.Context, redisClient redis.UniversalClient, shard int, evt *domain.Event, keyArgs [unifiedFilterKeyCount]any, args []any) (int64, error) {
 	res, err := f.evalShaPooled(ctx, redisClient, shard, evt, f.scriptHashAny, keyArgs, args)
 	if err != nil && isNoScriptErr(err) {
@@ -554,6 +556,7 @@ func (f *UnifiedFilter) runBudgetFastLua(
 	keyArgs := scratch.keyArgs
 	keyArgs[4] = &dirtyCampaignsKeyVal
 	keyArgs[5] = &dirtyCustomersKeyVal
+	// KEYS[7]: stream key or fcap:ignored; budget-fast.lua skips XADD when deferred to Go producer.
 	keyArgs[6] = &f.streamKeyVal
 	keyArgs[9] = &fcapIgnoredKeyVal
 	fillLuaIgnoredPrecheckKeys(keyArgs[:], 11, 10)
@@ -680,6 +683,8 @@ func (f *UnifiedFilter) handleLuaResult(
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
 		return true, nil
 	default:
+		// Lua debit succeeded; ingest publishAcceptedTrack runs after Check returns nil.
+		// Post-debit producer reject must call RollbackDebit (not handled inside this package).
 		metrics.EventsProcessed.Inc()
 		telemetry.RecordAccepted()
 		f.recordAcceptedSpendIfDebited(shard, evt.CampaignID, amount, sampleLua)
@@ -688,6 +693,7 @@ func (f *UnifiedFilter) handleLuaResult(
 }
 
 func (f *UnifiedFilter) evalFastScript(ctx context.Context, redisClient redis.UniversalClient, shard int, evt *domain.Event, keyArgs [budgetFastKeyCount]any, args []any) (int64, error) {
+	// Fast-path debit-only script; same EVALSHA / NOSCRIPT fallback contract as evalScript.
 	res, err := f.evalShaPooledN(ctx, redisClient, shard, evt, f.fastScriptHashAny, keyArgs[:], args, budgetFastKeyCount)
 	if err != nil && isNoScriptErr(err) {
 		incRedisLuaNoScript(f.luaNoScriptCounters, shard)
@@ -725,6 +731,7 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 	if attempt > 0 {
 		return false, filt.ErrBudgetExhausted
 	}
+	// Budget key miss recovery respects evt.FilterDeadlineMono; no PG warm past deadline.
 	if filt.FilterDeadlineExceededEvt(evt, ctx) {
 		return false, filt.ErrFilterTimeout
 	}
@@ -782,6 +789,8 @@ func (f *UnifiedFilter) recoverBudgetAfterMiss(
 //go:embed budget-rollback.lua
 var budgetRollbackLua string
 
+// RollbackRedisDebit runs budget-rollback.lua (EVALSHA) after ingest post-debit enqueue failure
+// on the Redis debit path; restores budget key, idempotency lock, and dirty sync sets.
 func (f *UnifiedFilter) RollbackRedisDebit(
 	ctx context.Context,
 	evt *domain.Event,
@@ -852,6 +861,8 @@ func (f *UnifiedFilter) RollbackRedisDebit(
 	return nil
 }
 
+// RollbackDebit dispatches by debit source: local quanta ledger refund or RollbackRedisDebit.
+// Called from ingest when TryReserve succeeded, Lua or local debit ran, then publish failed.
 func (f *UnifiedFilter) RollbackDebit(
 	ctx context.Context,
 	evt *domain.Event,

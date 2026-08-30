@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+// RegionOutboxRelay: delivers home-region outbox rows to satellite cells (PG FOR UPDATE SKIP LOCKED).
 type RegionOutboxRelay struct {
 	host       RegionRelayHost
 	regionCode uint8
@@ -107,6 +108,7 @@ func (r *RegionOutboxRelay) ProcessPending(ctx context.Context) error {
 	return err
 }
 
+// ProcessPendingWithCount: book op lease, apply handler, mark delivery PROCESSED (dedup via region relay).
 func (r *RegionOutboxRelay) ProcessPendingWithCount(ctx context.Context, limit int32) (int, error) {
 	if r == nil || r.host == nil || r.regionCode == 0 {
 		return 0, nil

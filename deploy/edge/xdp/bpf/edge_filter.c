@@ -18,8 +18,8 @@
  * Map max_entries:
  *   blocklist_v4/v6, blocklist_host_v4/v6: 786432
  *   allow_v4/v6: 65536
- *   syn_ratelimit_v4: 786432; syn_subnet_ratelimit_v4: 65536
- *   ratelimit_v4, rst_ratelimit_v4: 1048576
+ *   syn_ratelimit_v4: 786432 per CPU; syn_subnet_ratelimit_v4: 65536 (LRU)
+ *   ratelimit_v4, rst_ratelimit_v4: 1048576 per CPU
  *   global_syn: 1 (per-CPU array); config: 1; prog_array: 1
  *   violations, fingerprints ringbufs: 256 KiB each
  *
@@ -57,15 +57,25 @@
  * violations ringbuf (256 KiB, BPF_MAP_TYPE_RINGBUF):
  *   emit_violation on SYN / global SYN / SYN-subnet / PPS drops when SYN-cookie tail call
  *   is not taken. Reasons: VIOLATION_SYN=1, VIOLATION_GLOBAL_SYN=2, VIOLATION_PPS=3,
- *   VIOLATION_SYN_SUBNET=4. bpf_ringbuf_reserve failure is silent (event dropped, packet
- *   still XDP_DROP). edge-bpf-sync drains -> RecordAutoBan -> Redis -> changelog -> map sync.
+ *   VIOLATION_SYN_SUBNET=4. ringbuf_used_pct + bpf_ringbuf_query before reserve; under pressure
+ *   sample VIOLATION_PPS first so SYN/global/subnet alerts retain headroom. Reserve failure
+ *   still silent (packet XDP_DROP). edge-bpf-sync drains -> RecordAutoBan -> Redis.
  *
  * fingerprints ringbuf:
- *   emit_fingerprint on SYN when CFG_FLAG_FINGERPRINT set. Reserve failure silent.
+ *   emit_fingerprint on SYN when CFG_FLAG_FINGERPRINT set. Aggressive sampling when ring
+ *   >60% full; skip when >85% (violations map is separate). Reserve failure silent.
  *   Drain -> edge.Record -> Redis edge:tcp_fp:* (L7 OS fingerprint headers, not blocklist).
+ *
+ * syn_ratelimit_v4 / ratelimit_v4 (BPF_MAP_TYPE_PERCPU_HASH):
+ *   Per-CPU shards avoid LRU spinlock contention under spoofed-IP floods. Limit is enforced
+ *   per RSS CPU queue (same as global_syn). syn_subnet_ratelimit_v4 stays LRU (/24 aggregate).
  *
  * prog_array tail call (index PROG_IDX_SYN_COOKIE=0):
  *   try_syn_cookie -> bpf_tail_call(ctx, &prog_array, 0) -> xdp_syn_cookie program.
+ *   emit_ipv4_synack: SYN-ACK uses 20-byte TCP (doff=5), window SYNACK_TCP_WINDOW (non-zero);
+ *   checksum and ip tot_len use out_tcph_len;
+ *   bpf_xdp_adjust_tail trims from ctx->data_end to drop ingress options/payload.
+ *   gen_syncookie_ipv4 still reads full ingress tcph_len (options included).
  *   Wired by cmd/edge-xdp wireProgArray when XdpSynCookie object loaded and
  *   CFG_FLAG_SYN_COOKIE set. Tail-call miss (prog not loaded) falls through to XDP_DROP.
  *
@@ -102,9 +112,10 @@ static long (*const bpf_tcp_gen_syncookie_ipv4)(void *iph, __u16 iph_len, void *
 #define DEFAULT_PPS_RATE 2000
 #define DEFAULT_GLOBAL_SYN_LIMIT 50000
 #define DEFAULT_ASSUMED_CPUS 8
-#define DEFAULT_SYN_SUBNET_LIMIT 256
-#define DEFAULT_RST_RATE 64
-#define DEFAULT_RST_BURST 64
+#define DEFAULT_SYN_SUBNET_LIMIT 4096
+#define DEFAULT_RST_RATE 512
+#define DEFAULT_RST_BURST 512
+#define SYNACK_TCP_WINDOW 64240
 
 #define PROG_IDX_SYN_COOKIE 0
 
@@ -122,6 +133,13 @@ static long (*const bpf_tcp_gen_syncookie_ipv4)(void *iph, __u16 iph_len, void *
 #define VIOLATION_GLOBAL_SYN 2
 #define VIOLATION_PPS 3
 #define VIOLATION_SYN_SUBNET 4
+
+#define RINGBUF_BYTES (256 * 1024)
+#define RINGBUF_FP_SAMPLE_PCT 60
+#define RINGBUF_FP_SKIP_PCT 85
+#define RINGBUF_VIOLATION_PPS_SAMPLE_PCT 80
+#define RINGBUF_VIOLATION_PPS_STOP_PCT 95
+#define RINGBUF_VIOLATION_OTHER_SAMPLE_PCT 90
 
 struct fingerprint_event {
 	__u64 ts_ns;
@@ -240,7 +258,7 @@ struct {
 } allow_v6 SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 786432);
 	__type(key, __u32);
 	__type(value, struct syn_state);
@@ -254,14 +272,16 @@ struct {
 } syn_subnet_ratelimit_v4 SEC(".maps");
 
 struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 1048576);
 	__type(key, __u32);
 	__type(value, struct pps_bucket);
 } ratelimit_v4 SEC(".maps");
 
+/* rst_ratelimit_v4: PERCPU_HASH (not LRU) so RST floods do not evict unrelated /32 keys.
+ * DEFAULT_RST_RATE/BURST 512/s per CPU shard; token bucket like ratelimit_v4. */
 struct {
-	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
 	__uint(max_entries, 1048576);
 	__type(key, __u32);
 	__type(value, struct pps_bucket);
@@ -319,9 +339,66 @@ static __always_inline void stat_inc_if(__u32 idx)
 	stat_inc(idx);
 }
 
+static __always_inline __u32 ringbuf_used_pct(void *ring)
+{
+	__u64 size = bpf_ringbuf_query(ring, BPF_RB_RING_SIZE);
+	__u64 used = bpf_ringbuf_query(ring, BPF_RB_AVAIL_DATA);
+
+	if (!size)
+		return 100;
+	if (used >= size)
+		return 100;
+	return (__u32)((used * 100) / size);
+}
+
+static __always_inline int ringbuf_has_record_space(void *ring, __u32 rec_sz)
+{
+	__u64 size = bpf_ringbuf_query(ring, BPF_RB_RING_SIZE);
+	__u64 used = bpf_ringbuf_query(ring, BPF_RB_AVAIL_DATA);
+
+	if (!size)
+		return 0;
+	if (used + rec_sz + BPF_RINGBUF_HDR_SZ > size)
+		return 0;
+	return 1;
+}
+
+static __always_inline int ringbuf_reserve_allowed(void *ring, __u32 used_pct, __u8 priority)
+{
+	if (!ringbuf_has_record_space(ring, sizeof(struct violation_event)))
+		return 0;
+	if (priority == 1 && used_pct >= RINGBUF_VIOLATION_PPS_STOP_PCT)
+		return 0;
+	return 1;
+}
+
+static __always_inline int ringbuf_reserve_allowed_fp(void *ring, __u32 used_pct)
+{
+	if (!ringbuf_has_record_space(ring, sizeof(struct fingerprint_event)))
+		return 0;
+	if (used_pct >= RINGBUF_FP_SKIP_PCT)
+		return 0;
+	return 1;
+}
+
 static __always_inline void emit_violation(__u32 src_ip, __u8 reason)
 {
 	struct violation_event *evt;
+	__u32 used_pct = ringbuf_used_pct(&violations);
+	__u8 priority = 2;
+
+	if (reason == VIOLATION_PPS)
+		priority = 1;
+	if (used_pct >= RINGBUF_VIOLATION_PPS_SAMPLE_PCT && reason == VIOLATION_PPS) {
+		if ((src_ip ^ reason) & 0x7)
+			return;
+	}
+	if (used_pct >= RINGBUF_VIOLATION_OTHER_SAMPLE_PCT && reason != VIOLATION_GLOBAL_SYN) {
+		if ((src_ip ^ reason) & 0x3)
+			return;
+	}
+	if (!ringbuf_reserve_allowed(&violations, used_pct, priority))
+		return;
 
 	evt = bpf_ringbuf_reserve(&violations, sizeof(*evt), 0);
 	if (!evt)
@@ -363,6 +440,14 @@ static __always_inline void emit_fingerprint(__u64 now, __u32 src_ip, __u32 tcp_
 					     __u16 window, __u8 ttl, __u8 mss)
 {
 	struct fingerprint_event *evt;
+	__u32 used_pct = ringbuf_used_pct(&fingerprints);
+
+	if (used_pct >= RINGBUF_FP_SAMPLE_PCT) {
+		if ((src_ip ^ (__u32)(now >> 20)) & 0xF)
+			return;
+	}
+	if (!ringbuf_reserve_allowed_fp(&fingerprints, used_pct))
+		return;
 
 	evt = bpf_ringbuf_reserve(&fingerprints, sizeof(*evt), 0);
 	if (!evt)
@@ -472,9 +557,11 @@ static __always_inline int emit_ipv4_synack(struct xdp_md *ctx,
 					    __u32 ihl_len, __u32 tcph_len,
 					    __u32 cookie)
 {
+	void *data_end = (void *)(long)ctx->data_end;
 	__s64 csum_val;
 	__u32 old_len;
 	__u32 new_len;
+	__u32 out_tcph_len = sizeof(*tcph);
 	__be32 tmp_ip;
 	__be16 tmp_port;
 
@@ -483,7 +570,7 @@ static __always_inline int emit_ipv4_synack(struct xdp_md *ctx,
 	tmp_ip = iph->saddr;
 	iph->saddr = iph->daddr;
 	iph->daddr = tmp_ip;
-	iph->tot_len = bpf_htons(ihl_len + tcph_len);
+	iph->tot_len = bpf_htons(ihl_len + out_tcph_len);
 	iph->check = 0;
 
 	tmp_port = tcph->source;
@@ -493,14 +580,14 @@ static __always_inline int emit_ipv4_synack(struct xdp_md *ctx,
 	tcph->seq = bpf_htonl(cookie);
 	*(__u8 *)((__u8 *)tcph + 13) = TCP_FLAG_SYN | TCP_FLAG_ACK;
 	tcph->doff = 5;
-	tcph->window = 0;
+	tcph->window = bpf_htons(SYNACK_TCP_WINDOW);
 	tcph->urg_ptr = 0;
 	tcph->check = 0;
 
-	csum_val = bpf_csum_diff(NULL, 0, (__be32 *)tcph, tcph_len, 0);
+	csum_val = bpf_csum_diff(NULL, 0, (__be32 *)tcph, out_tcph_len, 0);
 	if (csum_val < 0)
 		return XDP_DROP;
-	tcph->check = csum_tcpudp_magic(iph->saddr, iph->daddr, tcph_len,
+	tcph->check = csum_tcpudp_magic(iph->saddr, iph->daddr, out_tcph_len,
 					IPPROTO_TCP, (__u32)csum_val);
 
 	csum_val = bpf_csum_diff(NULL, 0, (__be32 *)iph, ihl_len, 0);
@@ -508,8 +595,8 @@ static __always_inline int emit_ipv4_synack(struct xdp_md *ctx,
 		return XDP_DROP;
 	iph->check = csum_fold((__u32)csum_val);
 
-	old_len = (__u8 *)(tcph + 1) - (__u8 *)eth;
-	new_len = sizeof(*eth) + ihl_len + tcph_len;
+	old_len = (__u8 *)data_end - (__u8 *)eth;
+	new_len = sizeof(*eth) + ihl_len + out_tcph_len;
 	if (new_len != old_len) {
 		if (bpf_xdp_adjust_tail(ctx, (__s32)new_len - (__s32)old_len))
 			return XDP_DROP;
@@ -550,6 +637,7 @@ static __always_inline int check_syn_limit(__u32 src_ip, __u64 now, __u32 syn_li
 	return XDP_PASS;
 }
 
+/* check_syn_subnet_limit: keys are IPv4 /24 (CGNAT); DEFAULT_SYN_SUBNET_LIMIT 4096. */
 static __always_inline int check_syn_subnet_limit(__u32 src_ip, __u64 now, __u32 subnet_limit)
 {
 	__u32 subnet = ipv4_subnet24(src_ip);
@@ -630,6 +718,7 @@ static __always_inline int check_pps_limit(__u32 src_ip, __u64 now, __u32 pps_ra
 	return XDP_PASS;
 }
 
+/* check_rst_limit: inbound RST toward tracker port; PERCPU rst_ratelimit_v4 shard. */
 static __always_inline int check_rst_limit(__u32 src_ip, __u64 now)
 {
 	struct pps_bucket *st = bpf_map_lookup_elem(&rst_ratelimit_v4, &src_ip);
@@ -742,6 +831,8 @@ int xdp_syn_cookie(struct xdp_md *ctx)
 
 	tcph_len = tcph->doff * 4;
 	if (tcph_len < sizeof(*tcph))
+		return XDP_DROP;
+	if ((__u8 *)tcph + tcph_len > (__u8 *)data_end)
 		return XDP_DROP;
 
 	cookie = gen_syncookie_ipv4(iph, ihl_len, tcph, tcph_len, &cookie_out);

@@ -12,7 +12,8 @@
 //   - VMRSS/VmHWM/VmData/RssAnon units are kB per /proc/status.
 //
 // Verify:
-//   jq .processes var/load-test/<session>/mem-end.json
+//
+//	jq .processes var/load-test/<session>/mem-end.json
 package main
 
 import (

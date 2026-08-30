@@ -1,7 +1,10 @@
 package rtb
 
+// candidateBucketSoA holds denormalized auction rows for one geo or target bucket.
+// Parallel slices mirror CampaignAuctionRegistry columns so rankCandidates scans cache-friendly
+// indices without per-row pointer chase. Rebuilt on cold catalog publish only.
 type candidateBucketSoA struct {
-	CatalogIdx            []uint32
+	CatalogIdx            []uint32 // index back into shard CampaignIDs / Bids slices
 	CreativeIDs           []CreativeID
 	Bids                  []int64
 	CTRPPM                []uint32
@@ -14,7 +17,7 @@ type candidateBucketSoA struct {
 	BoostPPM              []uint32
 	MediaTypes            []uint8
 	DurationSec           []uint32
-	BudgetIndices         []uint32
+	BudgetIndices         []uint32 // BudgetStore slot; passed to CheckAndSpendAll on live spend
 	CustomerBudgetIndices []uint32
 	DaypartMasks          []uint32
 	TZOffsetSec           []int32
@@ -57,6 +60,7 @@ func (bs *candidateBucketSoA) slicesValid(end int) bool {
 		end <= len(bs.FcapPrefixHash)
 }
 
+// resetBucketSoA truncates bucket slices in place during cold rebuild (GeoBucketSoA / TargetBucketSoA).
 func resetBucketSoA(soa *candidateBucketSoA) {
 	if soa == nil {
 		return
@@ -84,6 +88,7 @@ func resetBucketSoA(soa *candidateBucketSoA) {
 	soa.FcapPrefixHash = soa.FcapPrefixHash[:0]
 }
 
+// appendBucketCandidate expands one catalog row into one or more bucket rows (one per creative when cached).
 func appendBucketCandidate(soa *candidateBucketSoA, reg *CampaignAuctionRegistry, catalogIdx uint32) {
 	crStart, crEnd, hasCreatives := campaignCreativeRange(reg, int(catalogIdx))
 	if hasCreatives {
@@ -96,6 +101,7 @@ func appendBucketCandidate(soa *candidateBucketSoA, reg *CampaignAuctionRegistry
 	appendBucketRow(soa, reg, catalogIdx, 0, reg.Bids[int(catalogIdx)], reg.CTRPPM[int(catalogIdx)], reg.Weights[int(catalogIdx)], 0, 0)
 }
 
+// appendBucketRow copies shard SoA fields into the bucket columnar layout used by the hot scan loop.
 func appendBucketRow(
 	soa *candidateBucketSoA,
 	reg *CampaignAuctionRegistry,

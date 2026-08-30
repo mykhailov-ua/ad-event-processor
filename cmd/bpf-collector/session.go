@@ -14,7 +14,8 @@
 //   - session.json StartedAt set at open; EndedAt only on graceful markEnded (TTL for session completeness).
 //
 // Verify:
-//   ls var/load-test/<session>/targets.json session.json events.ndjson
+//
+//	ls var/load-test/<session>/targets.json session.json events.ndjson
 package main
 
 import (

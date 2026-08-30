@@ -156,6 +156,7 @@ func bytesEqualFoldASCII(b []byte, lit string) bool {
 	return true
 }
 
+// detectPlatformToken scans Sec-CH-UA-Platform; Linux is ignored when Android appears in the same string.
 func detectPlatformToken(platform string) uint8 {
 	if platform == "" {
 		return wirePlatformUnset
@@ -190,6 +191,8 @@ func hasAndroidToken(s string, n int) bool {
 	return false
 }
 
+// SecFetchAnomaly flags Chrome desktop requests missing Sec-Fetch-* or with inconsistent triples.
+// In-app WebViews and non-Chrome UAs are skipped (fail-open). navigate+document with all bits set is normal.
 func SecFetchAnomaly(ua string, present, mode, dest uint8) bool {
 	if ua == "" || filter.UAMatchesInAppWebView(ua) || !filter.UAClaimsChromeNotChromium(ua) {
 		return false

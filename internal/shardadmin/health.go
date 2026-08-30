@@ -12,6 +12,7 @@ import (
 
 const redisConfigVersionKey = "config:version"
 
+// GetShardHealth: PG outbox pending count + per-shard Redis probe (2s timeout each).
 func GetShardHealth(ctx context.Context, host HealthHost) (ShardHealthReport, error) {
 	var report ShardHealthReport
 	report.Shards = make([]ShardHealthStatus, 0, len(host.RedisShards()))
@@ -53,6 +54,7 @@ func QueryOutboxHealth(ctx context.Context, pool *pgxpool.Pool) (OutboxHealthSum
 	return summary, nil
 }
 
+// probeShardHealth: config:version on shard vs last processed outbox id estimates control-plane fanout lag.
 func probeShardHealth(ctx context.Context, shardID int, redisClient redis.UniversalClient, lastProcessedEventID int64) ShardHealthStatus {
 	status := ShardHealthStatus{ShardID: shardID}
 	if redisClient == nil {

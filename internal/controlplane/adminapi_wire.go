@@ -93,11 +93,14 @@ func (r rolesReloader) ReloadRoles() error {
 
 func (r rolesReloader) RolesPath() string { return authz.DefaultRolesPath() }
 
+// BuildAdminAPIRegistry: cold-path RouteRegistry for RegisterRoutes (register.go); no HTTP listen here.
+// Returns empty registry when pool or svc nil so RegisterRoutes is a no-op until serve.go wires PG.
 func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.UniversalClient) RouteRegistry {
 	if h == nil || h.svc == nil || pool == nil {
 		return RouteRegistry{}
 	}
 
+	// Shared middleware closures: limit = IP rate limit + PostgresGate high slot; perm* = AuthMiddleware RBAC.
 	limit := h.limit
 	perm := h.adminRequirePermission()
 	permAny := h.adminRequireAnyPermission()
@@ -113,6 +116,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 	}
 
 	svc := h.svc
+	// CompositeReadService: PG ledger truth; ClickHouseQuery is readonly reporting conn (CH_READONLY_DSN).
 	composite := billingadmin.NewCompositeReadService(pool, h.cfg)
 	if composite != nil {
 		composite.SetClickHouseQuery(svc.ClickHouseQuery())
@@ -169,6 +173,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		reportJobs = h.svc.InitReportJobRunner(reportExportDirFromWire())
 	}
 
+	// Phase-1 registry: billing, ops, doctor, licensing; webhooks and export omit standard perm stack.
 	reg := RouteRegistry{
 		BillingHTTP: &billingadmin.HTTPHandlers{
 			Billing:                          h.billing,
@@ -189,12 +194,14 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			LimitExportByCustomer:            h.limitExportByCustomer,
 			ResolveDisputeCustomerFilter:     h.resolveDisputeCustomerFilter,
 		},
+		// CryptoBillingWebhook: provider POST callbacks; signature verified in handler, not operator JWT.
 		CryptoBillingWebhook: &billingadmin.CryptoWebhookHandlers{
 			Processor:           svc,
 			CryptoWebhookSecret: string(h.cfg.CryptoWebhookSecret),
 			BTCPayWebhookSecret: string(h.cfg.BTCPayWebhookSecret),
 			CryptomusAPIKey:     string(h.cfg.CryptomusAPIKey),
 		},
+		// DoctorHTTP ProbeDeps: synchronous cold probes (Redis shards, PG pool, license, edge XDP snapshot).
 		DoctorHTTP: &doctor.DoctorHTTPHandlers{
 			Config: h.cfg,
 			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
@@ -251,6 +258,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			WriteServiceError:     writeErr,
 		},
 	}
+	// Phase-2: campaigns, reports, fraud, platform, self-serve; same adminWireEnv middleware and scope hooks.
 	h.wireAdminDomainRoutes(&reg, adminWireEnv{
 		pool:                       pool,
 		svc:                        svc,

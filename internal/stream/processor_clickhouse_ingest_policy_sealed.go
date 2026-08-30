@@ -26,6 +26,9 @@ type ProcessorClickHouseIngestPolicy struct {
 	Compress        bool `json:"compress"`
 }
 
+// InitProcessorClickHouseIngestPolicy loads embedded processor_ch_ingest_policy.json or
+// license-sealed blob (AD_EVENT_PROCESSOR_PROCESSOR_CH_INGEST_SEALED_BLOB). Caps WAL
+// segment size via ApplyClickHouseIngestPolicy on spool startup.
 func InitProcessorClickHouseIngestPolicy() error {
 	raw, err := resolveProcessorClickHouseIngestPolicyBytes()
 	if err != nil {

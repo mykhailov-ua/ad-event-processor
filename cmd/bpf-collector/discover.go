@@ -13,7 +13,8 @@
 //   - ReadDir /proc failure skips tick silently.
 //
 // Verify:
-//   go test ./cmd/bpf-collector/... -short -run Discover -count=1
+//
+//	go test ./cmd/bpf-collector/... -short -run Discover -count=1
 package main
 
 import (

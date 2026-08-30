@@ -12,7 +12,8 @@
 //   - Disabled when -refresh-targets 0 (default).
 //
 // Verify:
-//   bash scripts/test/bpf_resolve_targets.sh var/load-test/<session>/targets.json tracker
+//
+//	bash scripts/test/bpf_resolve_targets.sh var/load-test/<session>/targets.json tracker
 package main
 
 import (

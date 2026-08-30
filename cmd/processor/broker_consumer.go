@@ -95,6 +95,7 @@ func (bc *BrokerConsumerGroup) Start(ctx context.Context) {
 	runCtx, cancel := context.WithCancel(ctx)
 	bc.cancel = cancel
 
+	// One brokerWorker goroutine per partition; shared offset tracker under cfg.DataDir.
 	for p := range bc.cfg.PartitionCount {
 		w := &brokerWorker{
 			parent:    bc,
@@ -125,6 +126,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 	}
 	defer func() { _ = w.cli.Close() }()
 
+	// Offset resume: local disk tracker first, then broker CommittedOffset RPC when disk empty.
 	var start uint64
 	if w.parent.offsetTracker != nil {
 		if stored, err := w.parent.offsetTracker.GetCommittedOffset(w.parent.cfg.Topic, w.partition, w.parent.cfg.Group); err == nil && stored > 0 {
@@ -142,6 +144,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 
 	for {
 		if ctx.Err() != nil {
+			// Shutdown: flush partial batch before returning (drain uses len(batch) as commit hint).
 			w.drain(ctx, start, batch)
 			return
 		}
@@ -167,6 +170,7 @@ func (w *brokerWorker) run(ctx context.Context) {
 			parseErr := stream.ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
 				metrics.BrokerIngestMessagesTotal.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group, evt.Type).Inc()
 				if w.parent.cfg.OnMessageProcessed != nil {
+					// CH broker path: fraud microbatch hook runs before StoreBatch (same as Redis _ch consumer).
 					w.parent.cfg.OnMessageProcessed(evt, iter.Offset)
 				}
 				batch = append(batch, evt)
@@ -221,6 +225,7 @@ func (w *brokerWorker) flushBatch(ctx context.Context, batch []*domain.Event, ne
 	}
 
 	if w.parent.cfg.ShadowMode {
+		// BROKER_SHADOW_MODE=1: parse and count only; skip StoreBatch until cutover.
 		metrics.BrokerShadowMessagesTotal.WithLabelValues(w.parent.cfg.Topic, w.parent.cfg.Group).Add(float64(len(batch)))
 		for _, evt := range batch {
 			domain.EventPool.Put(evt)
@@ -234,7 +239,7 @@ func (w *brokerWorker) flushBatch(ctx context.Context, batch []*domain.Event, ne
 
 	if err != nil {
 		slog.Error("clickhouse store batch failed from broker", "partition", w.partition, "events", len(batch), "error", err)
-		return 0, err
+		return 0, err // worker exits; Close/Wait on main shutdown retries via next process start offset
 	}
 
 	for _, evt := range batch {
@@ -246,6 +251,7 @@ func (w *brokerWorker) flushBatch(ctx context.Context, batch []*domain.Event, ne
 }
 
 func (w *brokerWorker) commitOffset(ctx context.Context, offset uint64) {
+	// Dual commit: local mmap tracker for fast resume + broker RPC for HA consumer groups.
 	if w.parent.offsetTracker != nil {
 		_ = w.parent.offsetTracker.CommitOffset(w.parent.cfg.Topic, w.partition, w.parent.cfg.Group, offset)
 	}
@@ -261,6 +267,7 @@ func (w *brokerWorker) drain(ctx context.Context, start uint64, batch []*domain.
 }
 
 func (bc *BrokerConsumerGroup) Close() {
+	// Cancels partition workers; Wait joins goroutines before process exit.
 	if bc.cancel != nil {
 		bc.cancel()
 	}

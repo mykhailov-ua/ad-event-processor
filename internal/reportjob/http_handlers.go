@@ -51,6 +51,7 @@ func (h *HTTPHandlers) registerReportJobs(mux *http.ServeMux) {
 }
 
 func (h *HTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {
+	// 64KiB POST cap; export payload is written async to disk after job enqueue.
 	body, err := coldpath.ReadLimitedBody(w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "failed to read body")
@@ -69,7 +70,7 @@ func (h *HTTPHandlers) postReportJob(w http.ResponseWriter, r *http.Request) {
 	}
 	spec.RedactionProfile = resolveExportRedactionProfile(r.Context())
 	spec.ExportedBy = exportActorLabel(r.Context())
-	idemKey := r.Header.Get("Idempotency-Key")
+	idemKey := r.Header.Get("Idempotency-Key") // PG unique key; duplicate POST returns original job id
 	jobID, err := h.Runner.CreateJob(r.Context(), spec, idemKey)
 	if err != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
@@ -135,6 +136,7 @@ func (h *HTTPHandlers) downloadReportJob(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", reportJobDownloadContentType(status))
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, reportJobDownloadFilename(status)))
+	// Streams completed file from REPORT_EXPORT_DIR; no CH/PG read on download path.
 	http.ServeContent(w, r, reportJobDownloadFilename(status), time.Now().UTC(), f)
 }
 

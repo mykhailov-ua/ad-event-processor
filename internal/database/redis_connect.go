@@ -13,6 +13,8 @@ func ConnectRedis(ctx context.Context, addr, password string) (redis.UniversalCl
 	return ConnectRedisWithBreaker(ctx, addr, password, nil)
 }
 
+// ConnectRedisWithBreaker: UniversalClient from netaddr (TCP or Unix socket). Breaker hook
+// wraps every Process/ProcessPipeline so open circuit fails fast before syscall connect.
 func ConnectRedisWithBreaker(ctx context.Context, addr, password string, breaker *RedisBreaker) (redis.UniversalClient, error) {
 	uopts := netaddr.RedisUniversalOptions(addr, password)
 

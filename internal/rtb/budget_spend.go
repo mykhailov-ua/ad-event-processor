@@ -7,6 +7,10 @@ import (
 
 const invalidCustomerBudgetIdx uint32 = ^uint32(0)
 
+// CheckAndSpendAll debits campaign, optional customer, and daily caps via CAS on BudgetStore slices.
+// Called from runAuction only when spend=true (RunAuction / RTB_MODE=live with authority != shadow).
+// RTB_BUDGET_AUTHORITY=rtb: this is the authoritative debit; unified-filter Lua may skip duplicate budget.
+// RunAuctionEval (shadow soak) never reaches this function.
 func (st *BudgetStore) CheckAndSpendAll(campaignIdx, customerIdx uint32, price, dailyLimit int64) bool {
 	if dailyLimit > 0 {
 		st.maybeRollDaily()
@@ -28,6 +32,7 @@ func (st *BudgetStore) CheckAndSpendAll(campaignIdx, customerIdx uint32, price, 
 
 	if dailyLimit > 0 {
 		if !st.checkAndAddDailySpend(campaignIdx, price, dailyLimit) {
+			// Roll back campaign and customer debits on daily cap failure; winner becomes NoBidSpendFailed.
 			if customerIdx != invalidCustomerBudgetIdx {
 				st.creditOn(&st.customerBudgets, customerIdx, price)
 			}
@@ -54,6 +59,7 @@ func (st *BudgetStore) LoadCustomerBudget(customerIdx uint32) int64 {
 	return st.loadOn(&st.customerBudgets, customerIdx)
 }
 
+// checkAndSpendOn loops CAS until budget slice[idx] >= price; contended live auctions retry here.
 func (st *BudgetStore) checkAndSpendOn(holder *atomic.Pointer[budgetSlice], idx uint32, price int64) bool {
 	slice := holder.Load()
 	if idx >= uint32(len(slice.data)) {

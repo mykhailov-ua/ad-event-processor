@@ -14,12 +14,16 @@ const (
 	localQuantaSlotMask  = localQuantaSlotCount - 1
 )
 
+// LocalQuanta mode: Off disables local debit; Shadow compares without spending; Live uses TrySpendDebit
+// on Tier B (~16 ns) and defers Redis EVALSHA when full-skip eligible (LOCAL_QUOTA_MODE=live).
 const (
 	LocalQuantaOff    uint32 = 0
 	LocalQuantaShadow uint32 = 1
 	LocalQuantaLive   uint32 = 2
 )
 
+// LocalQuantaCell: one open-addressed slot in the fixed 4096-cell ledger. campaignHash tags the
+// occupant; remaining is micro-units debited locally before async stream/refill reconciles Redis.
 type LocalQuantaCell struct {
 	campaignHash uint32
 	_            uint32
@@ -30,6 +34,8 @@ type LocalQuantaCell struct {
 	_            [localQuantaCacheLine - 8 - 8 - 8 - 8 - 16]byte
 }
 
+// LocalQuantaLedger: per-tracker in-memory budget chunks. Refill via local-quota-refill.lua;
+// post-debit rollback and pause/shutdown flush via local-quota-return.lua (see local_quanta_refill.go).
 type LocalQuantaLedger struct {
 	cells [localQuantaSlotCount]LocalQuantaCell
 	mode  atomic.Uint32
@@ -66,6 +72,8 @@ func (l *LocalQuantaLedger) cellFor(id uuid.UUID) (*LocalQuantaCell, uint32) {
 	return l.cellForDebit(id, 0)
 }
 
+// cellForDebit maps campaign_id (+ optional subSlot 0..3 for high-volume debit spread) to a ledger cell.
+// Index = (CRC32C(id) + subSlot*1024) & mask; campaignHash detects stale occupants after eviction.
 func (l *LocalQuantaLedger) cellForDebit(id uuid.UUID, subSlot int) (*LocalQuantaCell, uint32) {
 	base := domain.CRC32Castagnoli(&id)
 	sub := subSlot & 3
@@ -98,6 +106,7 @@ func (l *LocalQuantaLedger) Refund(id uuid.UUID, amountMicro int64) {
 	l.RefundDebit(id, 0, amountMicro)
 }
 
+// RefundDebit restores micro-units after budget-rollback.lua or post-debit enqueue failure (ingest path).
 func (l *LocalQuantaLedger) RefundDebit(id uuid.UUID, subSlot int, amountMicro int64) {
 	if amountMicro <= 0 {
 		return
@@ -113,6 +122,7 @@ func (l *LocalQuantaLedger) TrySpendLocal(id uuid.UUID, amountMicro int64) bool 
 	return l.TrySpendDebit(id, 0, amountMicro)
 }
 
+// TrySpendDebit: hot-path local debit; false when cell empty or hash mismatch (triggers refill Signal).
 func (l *LocalQuantaLedger) TrySpendDebit(id uuid.UUID, subSlot int, amountMicro int64) bool {
 	if amountMicro <= 0 {
 		return true
@@ -137,6 +147,7 @@ func (l *LocalQuantaLedger) Credit(id uuid.UUID, amountMicro, chunkSize int64) {
 	l.CreditDebit(id, 0, amountMicro, chunkSize)
 }
 
+// CreditDebit applies a refill chunk from QuotaRefillWorker after local-quota-refill.lua DECRBY.
 func (l *LocalQuantaLedger) CreditDebit(id uuid.UUID, subSlot int, amountMicro, chunkSize int64) {
 	if amountMicro <= 0 {
 		return
@@ -150,6 +161,7 @@ func (l *LocalQuantaLedger) CreditDebit(id uuid.UUID, subSlot int, amountMicro, 
 	cell.remaining.Add(amountMicro)
 }
 
+// NeedsRefill: true when remaining < thresholdPct of chunkSize; QuotaRefillWorker polls on Signal.
 func (l *LocalQuantaLedger) NeedsRefill(id uuid.UUID, thresholdPct int) bool {
 	cell, h := l.cellFor(id)
 	if cell.campaignHash != h || cell.chunkSize <= 0 {
@@ -184,6 +196,7 @@ func (l *LocalQuantaLedger) recordSpendEMA(cell *LocalQuantaCell) {
 	cell.rpsEMA.Store(next)
 }
 
+// AdaptiveChunkSize scales refill chunk from spend EMA; bounded by floorMicro and ceilingMicro.
 func AdaptiveChunkSize(emaRPS float64, floorMicro, ceilingMicro, baseChunk int64) int64 {
 	if baseChunk <= 0 {
 		baseChunk = 5_000_000

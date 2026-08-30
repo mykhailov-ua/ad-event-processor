@@ -8,6 +8,11 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+// LoadEdgeObjectsLenient: sealed blob when licensed, else bpf2go objects; final fallback
+// loads edge_filter only (drops syn_cookie program) so dev hosts without cookie object still attach XDP.
+//
+// Verify:
+// go test ./internal/edge/ -short -run TestLoadEdge -count=1
 func LoadEdgeObjectsLenient(objs *EdgeObjects, opts *ebpf.CollectionOptions) error {
 	_, sealedErr := sealedEdgeBlob()
 	if sealedErr == nil && !config.LicenseAssetsUnsealed() {

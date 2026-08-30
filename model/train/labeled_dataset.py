@@ -1,4 +1,17 @@
-"""Load labeled feature rows for time-based model training."""
+"""Load labeled feature rows for time-based model training.
+
+Role:
+- Read parquet/csv from features_export (window_start + ROW_FIELDS + label).
+- Time-ordered train/val split; no random shuffle across windows.
+- Optional manual label overrides from FRAUD_MANUAL_LABELS CSV by ip_hash_hex.
+
+Required columns:
+- window_start, events, clicks, spend_micro, budget_limit_micro, unique_users, unique_uas
+- label or is_fraud (0/1)
+
+Verify:
+  pytest model/tests/test_labeled_dataset.py -q
+"""
 
 from __future__ import annotations
 
@@ -26,6 +39,8 @@ TIME_COLUMN = "window_start"
 
 @dataclass(frozen=True)
 class LabeledRecord:
+    """Single training row with UTC window_start and label metadata."""
+
     window_start: datetime
     row: dict[str, int]
     label: int
@@ -208,6 +223,7 @@ def time_based_split(
     else:
         if not 0.0 < val_fraction < 1.0:
             raise ValueError("val_fraction must be between 0 and 1")
+        # Chronological split: earliest (1-val_fraction) rows train, tail validates.
         split_idx = max(1, int(len(records) * (1.0 - val_fraction)))
         split_idx = min(split_idx, len(records) - 1)
         train = records[:split_idx]

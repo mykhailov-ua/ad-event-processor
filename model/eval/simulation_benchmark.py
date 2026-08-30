@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
-"""Offline ML vs policy benchmark on synthetic traffic."""
+"""Offline ML vs policy benchmark on synthetic traffic.
+
+Role:
+- --simulate: train or load LightGBM; compare ml-only vs policy_suspect vs policy_block.
+- --shadow-precision: thin wrapper around shadow_precision.run_shadow_precision.
+
+Modes:
+- ML-only threshold: raw probability >= FRAUD_POLICY_ML_THRESHOLD
+- policy_suspect_plus: action_fraud_positive(block_only=False)
+- policy_block_only: tier == block only
+
+Verify:
+  python3 model/eval/simulation_benchmark.py --simulate --retrain
+  python3 model/eval/simulation_benchmark.py --shadow-precision --allow-offline
+"""
 
 from __future__ import annotations
 

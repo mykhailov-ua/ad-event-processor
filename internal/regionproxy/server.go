@@ -54,6 +54,7 @@ var fetchRespPool = sync.Pool{
 
 type ReadyProbe func(ctx context.Context) error
 
+// Server: region ingress over gnet; local WAL segment + uplink worker to home region broker.
 type Server struct {
 	*gnet.BuiltinEventEngine
 	addr            string

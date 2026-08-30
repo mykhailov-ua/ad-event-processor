@@ -62,6 +62,8 @@
 //   - l7_generational_incremental: stamp_ips without bump; new blocks only; _bl_count deduped;
 //     unblocked IPs not deleted from SHM (stale stamp fail-open).
 //   - violation_autoban: ringbuf drain -> RecordAutoBan -> Redis SADD + changelog -> runSync.
+//   - ringbuf backpressure: edge_filter.c bpf_ringbuf_query(BPF_RB_AVAIL_DATA|RING_SIZE) before
+//     reserve; fingerprint sampling under fill; VIOLATION_PPS sampled before SYN/global alerts.
 //
 // Defaults and limits:
 //   - SYNC_INTERVAL 5s; STATS_INTERVAL 2s; VIOLATION_POLL_INTERVAL 250ms; FINGERPRINT_POLL_INTERVAL 500ms.

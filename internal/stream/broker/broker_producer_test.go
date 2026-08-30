@@ -195,6 +195,11 @@ func TestBrokerProducer_StreamEventEnqueue(t *testing.T) {
 	}, 1*time.Second, 5*time.Millisecond)
 }
 
+// Holdout: reverting MPSC ring cap lets all 10 Enqueue calls succeed or panic; filled==10 and DroppedCount==0.
+// Capacity=4 must accept exactly 4 slots then increment DroppedCount (hard 100% ceiling).
+// Admission (TryReserve at STREAM_PRODUCER_ADMISSION_PCT, default 85%) rejects before Lua debit on
+// the ingest path; without TryReserve, debit can succeed then Enqueue hits ErrRingBufferFull post-debit.
+// See ingest/stream_admission_test.go TestStreamProducerReservePreventsQueueFull.
 func TestBrokerProducer_RingOverflow(t *testing.T) {
 	mockCli := &mockBrokerClient{}
 	bp, err := NewBrokerProducer(BrokerProducerConfig{

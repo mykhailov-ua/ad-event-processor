@@ -18,6 +18,9 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
+// ErrQueueFull: buffered chan has no slot after TryReserve succeeded. Post-debit path; ingest must
+// run budget-rollback.lua and bump ad_stream_producer_post_debit_rejected_total. Distinct from
+// TryReserve false (pre-debit 503 filterRejectProducerOverload).
 var ErrQueueFull = errors.New("producer queue full")
 
 type PregeneratedID struct {
@@ -128,10 +131,10 @@ type StreamProducer struct {
 	streamName    string
 	maxStreamLen  int64
 	writeTimeout  time.Duration
-	queue         chan *[]byte
+	queue         chan *[]byte // Tier B hot path enqueues marshaled vtproto; worker drains async
 	queueCap      uint32
-	queueDepth    atomic.Uint32
-	queueReserved atomic.Uint32
+	queueDepth    atomic.Uint32 // items in queue chan (worker has not dequeued yet)
+	queueReserved atomic.Uint32 // slots held by TryReserve before ProcessReserved fills the chan
 	maxBatchSize  int
 	flushWait     time.Duration
 	flushChan     chan chan struct{}
@@ -177,6 +180,8 @@ func NewStreamProducer(
 	return p
 }
 
+// admissionLimit maps STREAM_PRODUCER_ADMISSION_PCT (default 85) to a fail-closed occupancy ceiling.
+// TryReserve rejects at this limit before Lua debit; remaining queue capacity absorbs post-debit burst.
 func (p *StreamProducer) admissionLimit(admissionPct int) uint32 {
 	if admissionPct <= 0 {
 		return p.queueCap
@@ -192,9 +197,13 @@ func (p *StreamProducer) admissionLimit(admissionPct int) uint32 {
 }
 
 func (p *StreamProducer) occupied() uint32 {
+	// reserved counts slots between TryReserve and ProcessReserved (Lua debit may be in flight).
 	return p.queueDepth.Load() + p.queueReserved.Load()
 }
 
+// TryReserve increments reserved when queueDepth+reserved < admissionLimit. Double-check after CAS
+// rolls back on overshoot. False -> ingest returns 503 filterRejectProducerOverload (no Lua debit).
+// Verify: go test ./internal/ingest/ -short -run TestStreamProducerAdmissionRaceWithoutReserve -count=1
 func (p *StreamProducer) TryReserve(admissionPct int) bool {
 	limit := p.admissionLimit(admissionPct)
 	for {
@@ -222,10 +231,13 @@ func (p *StreamProducer) Process(evt *domain.Event) error {
 	return p.process(evt, false)
 }
 
+// ProcessReserved pairs with ingest tryAcquireStreamAdmission: always releases the reserve token,
+// including on ErrQueueFull (post-debit reject — caller must run budget-rollback.lua).
 func (p *StreamProducer) ProcessReserved(evt *domain.Event) error {
 	return p.process(evt, true)
 }
 
+// process marshals on Tier B and enqueues to the buffered chan; Redis XADD runs in worker goroutine.
 func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 	if reserved {
 		defer p.ReleaseReserve()
@@ -278,6 +290,7 @@ func (p *StreamProducer) process(evt *domain.Event, reserved bool) error {
 		p.queueDepth.Add(1)
 		return nil
 	default:
+		// Chan full despite prior TryReserve (race or miswire); post-debit reject path.
 		*bufPtr = buf[:cap(buf)]
 		codec.ByteBufPool.Put(bufPtr)
 		metrics.EventsDropped.Inc()
@@ -349,6 +362,7 @@ func (p *StreamProducer) Flush() {
 	}
 }
 
+// worker batches dequeue from queue chan and issues async Redis Pipeline XADD (not on Tier B request path).
 func (p *StreamProducer) worker() {
 	defer p.wg.Done()
 
@@ -421,6 +435,8 @@ func (p *StreamProducer) worker() {
 	}
 }
 
+// flushBatch: one Pipeline.Exec per batch; field "d" holds vtproto bytes. Approx MAXLEN trim on stream.
+// Verify: go test ./internal/ingest/ -short -run TestStreamProducerReservePreventsQueueFull -count=1
 func (p *StreamProducer) flushBatch(batch []*[]byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), p.writeTimeout)
 	defer cancel()

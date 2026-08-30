@@ -9,6 +9,7 @@ import (
 
 type brokerConnState = gnetutil.ConnState
 
+// connPolicy: gnet read-idle and max-lifetime; broker closes idle Produce/Fetch clients before kernel RST.
 func (s *Server) connPolicy() gnetutil.ConnPolicy {
 	return gnetutil.ConnPolicy{
 		ReadIdle:    s.connReadIdle,

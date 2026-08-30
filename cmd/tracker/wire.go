@@ -121,6 +121,7 @@ func runTracker(cfg *config.Config) {
 	}
 
 	// Phase 3: Redis shards, pool warm (REDIS_POOL_SIZE + MAX_WORKERS extra pings), breakers.
+	// FILTER_TIMEOUT_MS caps UnifiedFilter EVALSHA on Tier B; breakers fail-closed 503 when shard open.
 	var redisShards []redis.UniversalClient
 	var breakers []*database.RedisBreaker
 	redisShards, breakers, err = database.ConnectRedisShards(ctx, cfg, database.RedisShardOptions{
@@ -220,7 +221,8 @@ func runTracker(cfg *config.Config) {
 		slog.Warn("consent pub/sub disabled: no redis shard available")
 	}
 
-	// Phase 4: consent pub/sub, GeoIP (fatal in prod on miss), local filter construction.
+	// Phase 4: GeoIP (fatal in prod on miss) and local filter construction.
+	// Consent pub/sub already started above; filters here are Go-local only until UnifiedFilter.
 	var geoProvider ingestion.GeoProvider
 	geoProvider, err = ingestion.NewMaxMindProvider(cfg.GeoIP.DBPath)
 	if err != nil {
@@ -359,6 +361,7 @@ func runTracker(cfg *config.Config) {
 
 	trackerStreamName := cfg.RedisStreamName
 	if cfg.BrokerEnabled() && cfg.BrokerPrimaryCH() {
+		// CH_INGEST_SOURCE=broker: Lua stream key ignored; BrokerProducer is sole CH writer (Phase 8).
 		trackerStreamName = "fcap:ignored"
 	}
 
@@ -408,6 +411,7 @@ func runTracker(cfg *config.Config) {
 	var budgetDeltaPublisher *ingestion.BudgetDeltaPublisher
 	var localQuantaFlusher *ingestion.LocalQuantaFlusher
 	var localQuantaStream *ingestion.LocalQuantaStreamPublisher
+	// LOCAL_QUOTA_MODE shadow|live: Go ledger full-skip bypasses sync EVALSHA; async lane uses trackerStreamName.
 	if cfg.LocalQuotaMode == "shadow" || cfg.LocalQuotaMode == "live" {
 		localQuantaLedger = ingestion.NewLocalQuantaLedger()
 		localQuantaStrict := ingestion.NewLocalQuantaStrict(cfg.QuotaStrictThresholdMicro, cfg.QuotaStrictExitMicro)
@@ -627,7 +631,8 @@ func runTracker(cfg *config.Config) {
 		}
 	}
 
-	// Phase 7: gnet handler; optional PG failover swaps pool on background subscriber only.
+	// Phase 7: gnet handler shell; optional PG failover swaps pool on background subscriber only.
+	// Producers attach in Phase 8 after handler exists so SetBrokerProducers/SetStreamProducers wire TryReserve sink.
 	gnetHandler := ingestion.NewAdsPacketHandler(cfg, registry, filterEngine, pool, redisShards, sharder, cfg.FraudStreamName, creativeStore)
 
 	if cfg.PostgresFailoverEnabled {
@@ -746,6 +751,7 @@ func runTracker(cfg *config.Config) {
 		Interval:    2 * time.Second,
 	})
 	if udpCtrl := ingestion.NewUDPControlFromConfig(cfg, len(redisShards)); udpCtrl != nil {
+		// UDP_CONTROL_*: shard control plane (pause/resume, routing epoch); fail-closed when UDP_FAIL_CLOSED=1.
 		if err := udpCtrl.Start(ctx); err != nil {
 			slog.Error("udp control start failed", "error", err)
 			os.Exit(1)
@@ -873,12 +879,14 @@ func runTracker(cfg *config.Config) {
 	gnetHandler.SetLogger(appLogger)
 	gnetHandler.StartHealthProbe(ctx)
 
-	// Phase 9: pinned worker pool (queue depth 8192 slots), gnet listen, METRICS_PORT sidecar.
+	// Phase 9: pinned worker pool (queue depth 8192 slots per worker), gnet listen, METRICS_PORT sidecar.
+	// Tier B: MaxWorkers goroutines with LockOSThread; FilterEngine.Check and EVALSHA run here, not on epoll.
 	workerPool := ingestion.NewPinnedWorkerPool(cfg.MaxWorkers, 8192)
 	gnetHandler.SetWorkerPool(workerPool)
 
 	slog.Info("starting ad-event-tracker via gnet", "port", cfg.ServerPort, "unix_socket", cfg.TrackerUnixSocket, "gnet_event_loops", cfg.GnetEventLoopCount(), "max_workers", cfg.MaxWorkers)
 
+	// TRACKER_UNIX_SOCKET: unix:// for nginx upstream (zero TCP copy); empty uses tcp://:SERVER_PORT.
 	listenURI := "tcp://:" + cfg.ServerPort
 	if cfg.TrackerUnixSocket != "" {
 		if err := netaddr.PrepareUnixSocket(cfg.TrackerUnixSocket); err != nil {
@@ -889,6 +897,8 @@ func runTracker(cfg *config.Config) {
 	}
 
 	go func() {
+		// Tier A epoll: WithLockOSThread(false) so loops never block on Tier B Redis/filter work.
+		// GNET_EVENT_LOOP_COUNT event loops x multicore accept; ReusePort for SO_REUSEPORT fan-out.
 		err := gnet.Run(gnetHandler, listenURI,
 			gnet.WithMulticore(true),
 			gnet.WithReusePort(true),
@@ -916,6 +926,7 @@ func runTracker(cfg *config.Config) {
 	metricsMux := http.NewServeMux()
 	live := &lifecycle.Liveness{}
 	ready := &lifecycle.ReadinessProbe{}
+	// WarmReady: registry + Lua preload + shard ping; /ready 503 until false (compose depends on METRICS_PORT).
 	ready.StartBackground(ctx, 2*time.Second, func(probeCtx context.Context) bool {
 		return gnetHandler.WarmReady()
 	})
@@ -955,6 +966,13 @@ func runTracker(cfg *config.Config) {
 	sig := <-stop
 	slog.Info("received shutdown signal", "signal", sig.String())
 
+	// Shutdown drain (LIFECYCLE_SHUTDOWN_TIMEOUT_MS / LIFECYCLE_WAIT_TIMEOUT_MS):
+	// 1) cancel ctx stops registry/slot-map/geo/sync goroutines
+	// 2) gnet Stop drains Tier A accepts + in-flight Tier B offload
+	// 3) metrics sidecar Shutdown
+	// 4) PinnedWorkerPool Shutdown (queued work)
+	// 5) local quanta FlushAll before broker/stream Close
+	// 6) registry Wait, filter eval pins Close, Redis shard Close
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), time.Duration(cfg.Lifecycle.ShutdownTimeoutMs)*time.Millisecond)
 	defer shutdownCancel()
 
@@ -979,6 +997,7 @@ func runTracker(cfg *config.Config) {
 	}
 	metricsCancel()
 
+	// After gnet Stop: drain per-worker MPSC queues before closing producers (post-debit events still flushing).
 	workerPool.Shutdown()
 
 	if localQuantaFlusher != nil {
@@ -1001,6 +1020,7 @@ func runTracker(cfg *config.Config) {
 		localQuantaStream.Close()
 	}
 	if brokerProducers != nil {
+		// BrokerProducerSet Close fsyncs mmap WAL partitions; must run after worker pool and quanta flush.
 		if err := brokerProducers.Close(); err != nil {
 			slog.Warn("broker producer close error", "error", err)
 		}

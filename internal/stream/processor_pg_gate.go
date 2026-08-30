@@ -10,8 +10,12 @@ import (
 
 const ProcessorPgReserve = 1
 
+// ProcessorChReserve: one connection slot held back so health probes and admin queries
+// are not starved when the processor saturates ClickHouse write concurrency.
 const ProcessorChReserve = 1
 
+// ProcessorWriteGate bounds concurrent StoreBatch writes per backend (postgres/clickhouse).
+// WaitEMA feeds ProcessorWeightController pgDrainActive (floor weight when PG saturated).
 type ProcessorWriteGate struct {
 	sem      chan struct{}
 	capacity int

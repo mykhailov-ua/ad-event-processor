@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: without ORTB_MAX_QUOTE_CHECKS budget scan walks 1<<20 quotes; SecImp stays -1 (imp past cap).
 func TestScanOpenRTB26Payload_truncatesQuoteDense(t *testing.T) {
 	payload := make([]byte, 0, (1<<20)+64)
 	for range 1 << 20 {
@@ -78,6 +79,7 @@ func TestScanOpenRTB26Payload_topLevelParity(t *testing.T) {
 	require.Equal(t, bytes.Index(payload, openrtbKeyBApp), scan.IdxBApp())
 }
 
+// Holdout: production scan must stay 0 allocs/op; heap escape or string concat fails this bench.
 func TestScanOpenRTB26Payload_ZeroAlloc(t *testing.T) {
 	payload := openrtb26Sample
 	avg := testing.AllocsPerRun(100, func() {

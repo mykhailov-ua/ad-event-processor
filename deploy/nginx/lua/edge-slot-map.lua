@@ -316,6 +316,8 @@ function _M.routing_epoch()
     return dict:get "routing_epoch" or 0
 end
 
+-- Hot-path read: gate on version > 0 before s:{slot} lookup (partial sync never pairs with new gen).
+-- slot = CRC32C(normalize_to_bytes(campaign_id)) & 1023; same polynomial as sharding_amd64.s / Go fallback.
 function _M.get_shard(campaign_id)
     local ver = dict:get "version"
     if not ver or ver <= 0 then
@@ -330,6 +332,8 @@ function _M.get_shard(campaign_id)
     return shard
 end
 
+-- Control push: write all s:0..1023, then routing_epoch, then version last (TOCTOU for readers).
+-- HTTP fail retains prior map; get_shard returns nil when version missing/<=0 (balancer uses weights only).
 function _M.sync()
     local url = CONTROL_URL .. "/ops/shards/slot-map"
     local doc, err = http_get_json(url)

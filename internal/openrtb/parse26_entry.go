@@ -156,6 +156,7 @@ func ParseOpenRTB26Into(payload []byte, out *OpenRTB26Parsed) {
 	ParseOpenRTB26Parsed(payload, out)
 }
 
+// ParseOpenRTB26Parsed reuses out across requests (connContext); resetOpenRTB26Parsed clears prior imp slots.
 func ParseOpenRTB26Parsed(payload []byte, out *OpenRTB26Parsed) {
 	if out == nil {
 		return
@@ -174,6 +175,7 @@ func ParseOpenRTB26Split(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold)
 	parseOpenRTB26Fields(payload, hot, cold)
 }
 
+// parseOpenRTB26Fields: DFA scan only (no encoding/json). Defaults before field extract: DeviceType=1, TmaxMs=200, SeatCount=1.
 func parseOpenRTB26Fields(payload []byte, hot *OpenRTB26Hot, cold *OpenRTB26Cold) {
 	n := len(payload)
 	if n < 12 {

@@ -9,7 +9,8 @@
 //   - roleName maps role constants to load-report role strings.
 //
 // Verify:
-//   grep tracking pid logs during bpf-collector run
+//
+//	grep tracking pid logs during bpf-collector run
 package main
 
 import (

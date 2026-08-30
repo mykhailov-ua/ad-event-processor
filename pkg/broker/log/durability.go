@@ -7,6 +7,8 @@ import (
 
 type DurabilityMode int
 
+// DurabilityAsync: mmap append only; background flush loop calls Sync on FlushInterval.
+// DurabilityGroupCommit: fsync after GroupCommitRecords or gate interval; DurabilitySync: fsync every leader append.
 const (
 	DurabilityAsync DurabilityMode = iota
 	DurabilityGroupCommit
@@ -14,9 +16,9 @@ const (
 )
 
 type DurabilityConfig struct {
-	Mode               DurabilityMode
-	FlushInterval      time.Duration
-	GroupCommitRecords int64
+	Mode               DurabilityMode  // selects fsync cadence in PartitionLog.append/flush loop
+	FlushInterval      time.Duration   // async/group ticker when gate absent or interval due
+	GroupCommitRecords int64           // batch size before syncLocked when DiskWriteGate nil
 }
 
 func DefaultDurabilityConfig() DurabilityConfig {

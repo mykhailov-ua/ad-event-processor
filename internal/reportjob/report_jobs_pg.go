@@ -26,6 +26,7 @@ func (r *ReportJobRunner) pgEnabled() bool {
 }
 
 func (r *ReportJobRunner) createJobPG(ctx context.Context, spec ReportJobSpec, idempotencyKey string) (string, error) {
+	// PG idempotency_key unique index: replay returns existing job id without second INSERT.
 	if idempotencyKey != "" {
 		existing, ok, err := r.lookupReportJobByIdempotency(ctx, idempotencyKey)
 		if err != nil {
@@ -175,6 +176,7 @@ func (r *ReportJobRunner) openDownloadPG(ctx context.Context, jobID string) (str
 }
 
 func claimReportJobs(ctx context.Context, pool *pgxpool.Pool, limit int) ([]claimedReportJob, error) {
+	// Single PG transaction: lock pending rows, conditional status flip avoids double claim under concurrency.
 	var claimed []claimedReportJob
 	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `
@@ -258,6 +260,7 @@ func (r *ReportJobRunner) cancelJobPG(ctx context.Context, jobID string) (Report
 	if err != nil {
 		return ReportJobStatusDTO{}, false, err
 	}
+	// Cancel only PENDING rows; RUNNING export is not aborted (no worker interrupt).
 	tag, err := r.deps.Pool.Exec(ctx, `
 UPDATE report_jobs
 SET status = $2, updated_at = NOW()

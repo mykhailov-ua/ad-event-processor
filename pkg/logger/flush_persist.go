@@ -19,7 +19,7 @@ func (l *Logger) StartPersister() {
 
 func (l *Logger) writeBuffer(buf *AlignedBuffer) {
 	l.checkRotation()
-	if l.diskDegraded.Load() == 1 {
+	if l.diskDegraded.Load() == 1 { // shed persist while degraded; drop buffered bytes
 		l.loadSheddingEvents.Add(uint64(buf.offset / 100))
 		return
 	}
@@ -28,7 +28,7 @@ func (l *Logger) writeBuffer(buf *AlignedBuffer) {
 
 	n, err := l.activeFile.Write(data)
 	if err == nil {
-		err = syscall.Fdatasync(int(l.activeFile.Fd()))
+		err = syscall.Fdatasync(int(l.activeFile.Fd())) // fdatasync(2): data only, no metadata
 	}
 	duration := time.Since(start)
 	LogNVMEWriteDurationSeconds.Observe(duration.Seconds())
@@ -43,7 +43,7 @@ func (l *Logger) writeBuffer(buf *AlignedBuffer) {
 	if currentEMA == 0 {
 		newEMA = latencyNs
 	} else {
-		newEMA = (latencyNs + 9*currentEMA) / 10
+		newEMA = (latencyNs + 9*currentEMA) / 10 // EMA alpha=0.1 (ns)
 	}
 	l.emaLatency.Store(newEMA)
 	if newEMA > uint64(l.cfg.DiskLatencyLimit.Nanoseconds()) {
@@ -60,7 +60,7 @@ func (l *Logger) checkDiskSpace() {
 		return
 	}
 	freeSpace := stat.Bavail * uint64(stat.Bsize)
-	if freeSpace < 1024*1024*1024 {
+	if freeSpace < 1024*1024*1024 { // < 1 GiB free: set degraded (shed new persists)
 		l.diskDegraded.Store(1)
 	} else {
 		ema := l.emaLatency.Load()

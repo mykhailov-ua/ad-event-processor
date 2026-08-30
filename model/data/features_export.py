@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""Export ml_features_1m rows to parquet or CSV."""
+"""Export ml_features_1m rows to parquet or CSV for labeled_dataset training.
+
+Role:
+- Batch-read 1-minute feature aggregates from ClickHouse ml_features_1m.
+- Optionally LEFT JOIN ml_manual_labels from Postgres when DB_DSN is set.
+
+CH table columns exported:
+- window_start, ip_hash (hex), campaign_id, events, clicks, spend_micro,
+  budget_limit_micro, unique_users, unique_uas
+
+Env:
+- CH_DSN / CH_READONLY_DSN, CH_HTTP_PORT (via clickhouse_client)
+- DB_DSN: when set, adds label + label_source columns from ml_manual_labels
+
+Verify:
+  python3 model/data/features_export.py --smoke --allow-offline
+  python3 model/data/features_export.py --since 2026-01-01T00:00:00Z --output /tmp/features.csv
+"""
 
 from __future__ import annotations
 
@@ -12,6 +29,7 @@ from pathlib import Path
 
 from data.clickhouse_client import clickhouse_config_from_env, connect_client, ping_client
 
+# Parameterized query; window_start is half-open [since, until).
 EXPORT_SQL = """
 SELECT
     window_start,

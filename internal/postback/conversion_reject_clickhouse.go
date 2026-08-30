@@ -39,6 +39,7 @@ func newClickHouseConversionClickStore(clickhouseQuery *database.ClickHouseQuery
 	return &clickhouseConversionClickStore{clickhouseQuery: clickhouseQuery}
 }
 
+// LoadClicks: bounded CH lookup for conversion reject path (15s timeout; not tracker hot path).
 func (s *clickhouseConversionClickStore) LoadClicks(ctx context.Context, clickIDs []string) (map[string]clickSnapshot, error) {
 	if s == nil || s.clickhouseQuery == nil || len(clickIDs) == 0 {
 		return nil, nil

@@ -1,4 +1,21 @@
-"""Post-ML heuristics; mirrors internal/fraud/scoring_policy.go."""
+"""Post-ML tier mapping and heuristic score adjustments.
+
+Role:
+- Convert LightGBM probability to pass/suspect/ivt/block tier.
+- Boost residential-proxy cohort when ML score is below proxy_max_ml.
+- Cap non-structural high scores with fp_guard_cap (false-positive guard).
+- Structural fraud signals bypass FP guard (single UA bot, budget drain).
+
+Go mirror: internal/fraud/scoring_policy.go (parity fixtures in testdata/policy_parity.json).
+
+Tier mapping:
+- score = int(probability * 100 + 0.5), clamped to [0, 100]
+- tier_pass/suspect/ivt/block are inclusive upper bounds on score
+
+Verify:
+  pytest model/tests/test_scoring_policy_parity.py -q
+  go test ./internal/fraud/ -short -run TestScoringPolicy -count=1
+"""
 
 from __future__ import annotations
 
@@ -10,6 +27,8 @@ from contract.policy_config import PolicyConfig, get_policy_config
 
 @dataclass(frozen=True)
 class TierDecision:
+    """Final tier after ML probability and heuristic adjustments."""
+
     tier: str
     score: int
     ml_probability: float
@@ -141,10 +160,12 @@ def policy_scores_vector(
     fp_guard_cap: float,
     block_prob: float,
 ) -> np.ndarray:
-    """Vectorized adjust_probability + score; matches row-wise policy for fixed tier thresholds."""
+    """Vectorized adjust_probability + score for policy_calibrate grid search."""
     adj = np.asarray(probs, dtype=np.float64).copy()
+    # Proxy farm: lift sub-threshold ML scores to residential_proxy_floor.
     boost = proxy & (adj < proxy_max_ml)
     adj[boost] = np.maximum(adj[boost], proxy_floor)
+    # FP guard: cap block-level scores unless structural or proxy cohort.
     cap = (adj >= block_prob) & (~structural) & (~proxy)
     adj[cap] = fp_guard_cap
     return (np.clip(adj, 0.0, 1.0) * 100.0 + 0.5).astype(np.int32)
@@ -205,7 +226,7 @@ def decide_with_campaign(
     tier_ivt: int,
     tier_block: int,
 ) -> TierDecision:
-    """Campaign tier overrides; 0 keeps global default."""
+    """Apply per-campaign tier overrides; 0 means keep global default."""
     base = get_policy_config()
     cfg = PolicyConfig(
         tier_pass=tier_pass or base.tier_pass,

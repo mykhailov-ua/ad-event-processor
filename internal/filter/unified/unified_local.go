@@ -46,6 +46,8 @@ var budgetArgsPool = sync.Pool{
 	},
 }
 
+// budgetLuaScript: legacy RTB CheckAndSpend path (not unified-filter.lua).
+// KEYS[1] budget micro-units; KEYS[2] click idempotency. Returns -1 missing; 0 insufficient; 1 spent or idempotent hit.
 const budgetLuaScript = `
 if redis.call("EXISTS", KEYS[2]) == 1 then
  return 1
@@ -125,6 +127,7 @@ func (m *RedisBudgetManager) CheckAndSpend(ctx context.Context, customerID, camp
 	ba.args[2] = &ba.campaignIDStr
 	ba.args[3] = &ba.customerIDStr
 
+	// Two-pass: -1 on first attempt hydrates budget:campaign from PG snapshot via SetNX, then retries once.
 	for i := range 2 {
 		res, err := m.redisClient.Eval(ctx, budgetLuaScript, ba.keys[:], ba.args[:]...).Int64()
 		if err != nil {
@@ -223,6 +226,7 @@ func (l *IPRateLimiter) evalRateLimit(ctx context.Context, key string) (int64, e
 	}
 	evalCmdPool.Put(cmd)
 	if err != nil && isNoScriptErr(err) {
+		// NOSCRIPT after deploy: fall back to EVAL once; PreloadScripts repopulates SHA on background goroutine.
 		return l.evalRateLimitScript(ctx, key)
 	}
 	if err != nil {
@@ -253,6 +257,7 @@ func (l *IPRateLimiter) evalRateLimitScript(ctx context.Context, key string) (in
 	return val, nil
 }
 
+// debitSubSlot picks a debit sub-shard from user_id or click_id so high-volume campaigns spread quota keys.
 func debitSubSlot(camp *domain.Campaign, userID, clickID string) int {
 	n := camp.DebitSubShardCount()
 	if n <= 1 {
@@ -312,6 +317,7 @@ func fcapKeyPrefixForDebit(camp *domain.Campaign, userID, clickID string) string
 	return domain.FcapKeyPrefixSub(camp.ID, camp.BrandFcapKey, sub)
 }
 
+// LocalTTCCache mirrors impression timestamps in-process when ttc_in_go (ARGV[34]=1) skips Lua KEYS[12] reads.
 const localTTCCapacity = 65536
 
 type localTTCSlot struct {
@@ -374,6 +380,7 @@ const (
 
 type localTTCOutcome = LocalTTCOutcome
 
+// CheckClick returns localTTCLow (maps to Lua 6), localTTCMissingClosed (7), or localTTCBypass (Lua 10).
 func (c *LocalTTCCache) CheckClick(campaignID uuid.UUID, userID string, minMs int64, failClosed bool) localTTCOutcome {
 	if userID == "" {
 		if failClosed {
@@ -386,6 +393,7 @@ func (c *LocalTTCCache) CheckClick(campaignID uuid.UUID, userID string, minMs in
 	c.mu.RLock()
 	slot := c.slots[idx]
 	c.mu.RUnlock()
+	// Fixed-size ring: hash collision evicts prior slot; attestation mode forces failClosed on miss.
 	if !slot.valid || slot.campaignID != campaignID || slot.userHash != uh {
 		if failClosed {
 			return localTTCMissingClosed
@@ -421,6 +429,7 @@ func (f *UnifiedFilter) ApplyGoTTC(evt *domain.Event) {
 	f.applyGoTTC(evt)
 }
 
+// applyGoTTC records impressions and tags click fraud signals before EVALSHA; sets ARGV[34] via args[33] in unified.go.
 func (f *UnifiedFilter) applyGoTTC(evt *domain.Event) {
 	if f == nil || f.localTTC == nil || evt == nil || !ttcEnabled(f.ttcMinMsAny) {
 		return
@@ -451,6 +460,7 @@ func (f *UnifiedFilter) applyGoTTC(evt *domain.Event) {
 	}
 }
 
+// RoughPacingGate is a Go-local even pacing precheck; Lua still enforces KEYS[10] when ARGV[14]=1 and not degraded.
 const roughPacingCells = 4096
 
 type roughPacingCell struct {
@@ -566,6 +576,7 @@ func newRedisLuaNoScriptCounters(numShards int) []prometheus.Counter {
 	return counters
 }
 
+// resolveDebitShard picks Redis master for EVALSHA; subSlot feeds KEYS[13] quota key when quota mode is on.
 func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID, clickID string, campInfo *domain.Campaign) (shard int, subSlot int, err error) {
 	shard = f.sharder.GetShard(campaignID)
 	subSlot = 0
@@ -574,6 +585,7 @@ func (f *UnifiedFilter) resolveDebitShard(campaignID uuid.UUID, userID, clickID 
 		subSlot = debitSubSlot(campInfo, userID, clickID)
 		shard = spreadHighVolumeShard(len(f.redisShards), campaignID, subSlot)
 	} else if campInfo != nil && campInfo.HasTriplet {
+		// Triplet A/B/reserve split by composite hash; used when sub-shard count is zero.
 		hash := ComputeCompositeHashUUID(campaignID, []byte(userID))
 		pct := hash % 100
 		switch {

@@ -102,6 +102,9 @@ var slicePool = sync.Pool{
 	},
 }
 
+// ClickHouseStore implements domain.EventStore for the stream processor. Live CH insert with
+// retry; on persistent failure appends to mmap ClickHouseSpool WAL (eventually consistent).
+// ProcessorClickHouseGate serializes concurrent StoreBatch against max_conns.
 type ClickHouseStore struct {
 	conn             driver.Conn
 	writeTimeout     time.Duration
@@ -138,6 +141,11 @@ func NewClickHouseStore(conn driver.Conn, writeTimeout time.Duration, spoolDir s
 	return st
 }
 
+// StoreBatch: conversion side effects, gate acquire, insertToClickHouse with backoff, then
+// spool fallback. Deduplication token from context prevents double-insert on PEL replay.
+//
+// Verify:
+// go test ./internal/stream/ -short -run TestClickHouseStore -count=1
 func (st *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Event) error {
 	if len(events) == 0 {
 		return nil
@@ -200,6 +208,11 @@ func (st *ClickHouseStore) StoreBatch(ctx context.Context, events []*domain.Even
 	return nil
 }
 
+// startSpoolReplayer drains mmap WAL in the background when live CH insert failed.
+// One record per tick (2s); ReleaseRecord truncates active segment only after insert OK.
+//
+// Verify:
+// go test ./internal/stream/ -short -run TestClickHouseSpool -count=1
 func (st *ClickHouseStore) startSpoolReplayer() {
 	if st.spool == nil || st.replayRunning.Swap(true) {
 		return
@@ -221,6 +234,8 @@ func (st *ClickHouseStore) startSpoolReplayer() {
 	}()
 }
 
+// replaySpoolOnce: Scan oldest CHSP record, insertToClickHouse with stored DedupToken, then ReleaseRecord.
+// Failure leaves the record in the WAL for the next tick (processor PEL unaffected).
 func (st *ClickHouseStore) replaySpoolOnce() {
 	if st.spool == nil {
 		return
@@ -251,6 +266,7 @@ func (st *ClickHouseStore) replaySpoolOnce() {
 	metrics.ClickHouseSpoolReplayTotal.Inc()
 }
 
+// RecoverSpool blocks until the WAL is empty (startup / admin drain). Used before cutover tests.
 func (st *ClickHouseStore) RecoverSpool(ctx context.Context) error {
 	if st.spool == nil {
 		return nil

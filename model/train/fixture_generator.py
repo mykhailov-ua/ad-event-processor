@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
-"""Write tracked + ephemeral features_*.json fixtures for ml-validate."""
+"""Write tracked + ephemeral features_*.json fixtures for ml-validate.
+
+Role:
+- Emit features_<id>.json with row, vector, feature_names for each FIXTURE_ROWS entry.
+- Writes to internal/fraud/testdata (tracked) and var/fraudscore/fixtures (ephemeral).
+
+Verify:
+  python3 model/train/fixture_generator.py
+  go run ./cmd/ml-validate -fixtures internal/fraud/testdata
+"""
 
 from __future__ import annotations
 
@@ -10,7 +19,9 @@ from contract.feature_spec import FEATURE_NAMES, row_to_vector
 from contract.fixture_catalog import EPHEMERAL_FIXTURE_DIR, FIXTURE_ROWS, TRACKED_FIXTURE_DIR
 from repo_paths import REPO_ROOT
 
+
 def write_fixture_dirs(*dirs: Path) -> int:
+    """Write all FIXTURE_ROWS JSON files under each output directory; return file count."""
     vectors = [row_to_vector(row) for _, row in FIXTURE_ROWS]
     written = 0
 
@@ -32,9 +43,11 @@ def write_fixture_dirs(*dirs: Path) -> int:
 
     return written
 
+
 def main() -> int:
     write_fixture_dirs(TRACKED_FIXTURE_DIR, EPHEMERAL_FIXTURE_DIR)
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

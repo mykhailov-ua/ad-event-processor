@@ -20,6 +20,9 @@ import (
 )
 
 var (
+	// ErrRingBufferFull: MPSC ring has no free slot (seq lagging head). Returned from Enqueue after
+	// TryReserve succeeded — post-debit path; ingest must rollback Lua debit and bump
+	// ad_stream_producer_post_debit_rejected_total. Distinct from TryReserve false (pre-debit 503 overload).
 	ErrRingBufferFull = errors.New("broker producer ring buffer full")
 	ErrProducerClosed = errors.New("broker producer closed")
 )
@@ -29,8 +32,10 @@ type BrokerClient interface {
 	Close() error
 }
 
+// brokerProducerSlot: fixed-size SoA cell in the power-of-two MPSC ring. Hot path copies strings into
+// inline arrays (no heap); worker goroutine rebuilds pb.AdStreamEvent views for vtproto marshal.
 type brokerProducerSlot struct {
-	sequence          uint64
+	sequence          uint64 // sequence == head: slot free; sequence == head+1: ready for worker tail drain
 	createdAtUnix     int64
 	fraudScore        uint32
 	clickIDLen        uint8
@@ -74,7 +79,7 @@ func DefaultBrokerProducerConfig() BrokerProducerConfig {
 }
 
 type BrokerProducer struct {
-	_             cpu.CacheLinePad
+	_             cpu.CacheLinePad // head/tail on separate cache lines: Tier B producers vs flush worker
 	head          uint64
 	_             cpu.CacheLinePad
 	tail          uint64
@@ -91,8 +96,8 @@ type BrokerProducer struct {
 	closed   atomic.Bool
 	done     chan struct{}
 	wg       sync.WaitGroup
-	dropped  atomic.Uint64
-	reserved atomic.Uint64
+	dropped  atomic.Uint64 // ring-full rejects after CAS on head (ErrRingBufferFull)
+	reserved atomic.Uint64 // slots held by TryReserve before EnqueueReserved fills the ring
 }
 
 func NewBrokerProducer(cfg BrokerProducerConfig) (*BrokerProducer, error) {
@@ -142,6 +147,8 @@ func NewBrokerProducer(cfg BrokerProducerConfig) (*BrokerProducer, error) {
 	return bp, nil
 }
 
+// Enqueue claims the next ring slot on the Tier B hot path. Caller should hold a TryReserve token
+// (EnqueueReserved) so overload is rejected before UnifiedFilter Lua debit; bare Enqueue is for tests.
 func (bp *BrokerProducer) Enqueue(evt *domain.Event) error {
 	if bp.closed.Load() {
 		return ErrProducerClosed
@@ -164,6 +171,7 @@ func (bp *BrokerProducer) Enqueue(evt *domain.Event) error {
 				return nil
 			}
 		} else if diff < 0 {
+			// Worker has not drained slot; ring physically full despite prior TryReserve (race or miswire).
 			bp.dropped.Add(1)
 			metrics.EventsDropped.Inc()
 			telemetry.RecordRejected()
@@ -194,6 +202,8 @@ func (bp *BrokerProducer) QueuePressurePct() int {
 	return occupied * 100 / queueCap
 }
 
+// admissionLimit maps STREAM_PRODUCER_ADMISSION_PCT (default 85) to a fail-closed occupancy ceiling.
+// TryReserve rejects at this limit before debit; remaining ring capacity absorbs post-debit enqueue burst.
 func (bp *BrokerProducer) admissionLimit(admissionPct int) uint64 {
 	ringCap := bp.mask + 1
 	if admissionPct <= 0 {
@@ -213,9 +223,12 @@ func (bp *BrokerProducer) occupied() uint64 {
 	head := atomic.LoadUint64(&bp.head)
 	tail := atomic.LoadUint64(&bp.tail)
 	pending := head - tail
+	// reserved counts slots between TryReserve and EnqueueReserved (debit may be in flight).
 	return pending + bp.reserved.Load()
 }
 
+// TryReserve increments reserved when head-tail+reserved < admissionLimit. Double-check after CAS
+// rolls back on overshoot. False -> ingest returns 503 filterRejectProducerOverload (no Lua debit).
 func (bp *BrokerProducer) TryReserve(admissionPct int) bool {
 	limit := bp.admissionLimit(admissionPct)
 	for {
@@ -238,6 +251,8 @@ func (bp *BrokerProducer) ReleaseReserve() {
 	bp.reserved.Add(^uint64(0))
 }
 
+// EnqueueReserved pairs with ingest tryAcquireStreamAdmission: always releases the reserve token,
+// including on ErrRingBufferFull (post-debit reject — caller must run budget-rollback.lua).
 func (bp *BrokerProducer) EnqueueReserved(evt *domain.Event) error {
 	defer bp.ReleaseReserve()
 	return bp.Enqueue(evt)
@@ -327,6 +342,8 @@ func copyBytesToFixed(dst []byte, src []byte) uint8 {
 	return uint8(n)
 }
 
+// workerLoop runs off the request thread: drains tail, batches vtproto frames, calls mmap WAL Produce.
+// Shadow mode (BROKER_SHADOW_MODE) is consumer-side only — producer always appends to the broker topic.
 func (bp *BrokerProducer) workerLoop() {
 	defer bp.wg.Done()
 
@@ -392,6 +409,8 @@ func (bp *BrokerProducer) flushPending(batch []pb.AdStreamEvent, buf *[]byte) {
 	}
 }
 
+// dispatchBatch encodes length-prefixed AdStreamEvent VT records into one payload, then one
+// pkg/broker/client.Produce (mmap WAL append on broker daemon). DiskWriteGate may shed before append.
 func (bp *BrokerProducer) dispatchBatch(events []pb.AdStreamEvent, bufPtr *[]byte) {
 	if bp.client == nil {
 		metrics.BrokerProducedEventsTotal.WithLabelValues("dropped_no_client").Add(float64(len(events)))
@@ -410,6 +429,7 @@ func (bp *BrokerProducer) dispatchBatch(events []pb.AdStreamEvent, bufPtr *[]byt
 
 	buf := (*bufPtr)[:0]
 	var lenBuf [binary.MaxVarintLen64]byte
+	// Wire: repeated uvarint(msg_len) || vtproto(AdStreamEvent); ParseBrokerPayloadStream on consumer.
 	for i := range events {
 		evt := &events[i]
 		size := evt.SizeVT()
@@ -437,6 +457,7 @@ func (bp *BrokerProducer) dispatchBatch(events []pb.AdStreamEvent, bufPtr *[]byt
 	}
 	*bufPtr = buf
 
+	// Single Produce per flush tick; broker persists length-prefixed batch to mmap segment.
 	_, err := bp.client.Produce(context.Background(), bp.topic, bp.partition, buf)
 	dur := time.Since(start).Seconds()
 

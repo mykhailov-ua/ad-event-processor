@@ -143,10 +143,13 @@ Pin dir default: `/sys/fs/bpf/ad-event-processor`.
 
 | Map type | Content |
 | :--- | :--- |
-| LRU HASH | Host keys (`/32`, `/128`) |
+| LRU HASH | Host keys (`/32`, `/128`) on deny maps |
 | LPM TRIE | CIDR prefixes |
+| PERCPU HASH | `syn_ratelimit_v4`, `ratelimit_v4` (per-CPU shards; no LRU lock under spoofed-IP flood) |
 
 Lookup: host HASH before prefix LPM. Allowlist before deny.
+
+Ringbuf backpressure (`bpf_ringbuf_query`): fingerprint events sampled above 60% fill; violations prioritize SYN/global/subnet over PPS sampling.
 
 Scale: LPM `max_entries=786432`. Incremental sync via `blacklist:changelog:{add,remove}` ZSETs on shard 0; full `SMEMBERS` at startup + every 5 min.
 
@@ -154,8 +157,10 @@ Scale: LPM `max_entries=786432`. Incremental sync via `blacklist:changelog:{add,
 
 | Binary | Role |
 | :--- | :--- |
-| `edge-xdp` | CAP_BPF + CAP_NET_ADMIN attach; decision path < 10 us; silent drop at NIC |
+| `edge-xdp` | CAP_BPF + CAP_NET_ADMIN attach; silent drop at NIC |
 | `edge-bpf-sync` | Redis -> maps; `SYNC_INTERVAL=5s` default |
+
+`xdp_syn_cookie` / `emit_ipv4_synack`: SYN-ACK frame is 20-byte TCP (doff=5); tail trimmed from `ctx->data_end`; ingress options used only for cookie generation. Holdouts: `TestFault_XDPSynCookieWithTCPOptions`, `TestFault_XDPSynCookieWithPayload`.
 
 Control never writes kernel maps directly. Requires BTF, modern kernel. Not a substitute for L7 parser budgets.
 

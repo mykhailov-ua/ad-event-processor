@@ -1,11 +1,13 @@
 // Package dashboardadmin serves role-specific dashboard HTTP and ClickHouse-backed KPI panels.
 //
 // Role:
-//   - HTTP under /api/v1/dashboards/* (operator, campaign, buyer, adops, cfo, accountant, fraud) and /api/v1/publisher/*.
-//   - portfolio.go and service_role.go assemble billing, fraud ML snapshot, and edge metrics blocks per role.
+//   - HTTPHandlers under /api/v1/dashboards/* (operator, campaign, buyer, adops, cfo, accountant, fraud).
+//   - PublisherHTTPHandlers under /api/v1/publisher/dashboard and /api/v1/publisher/statements.
+//   - RoleService and portfolio.go assemble buyer portfolio, billing, fraud ML snapshot, and edge metrics per role.
+//   - portfolio_commercial.go and portfolio_recommendations.go derive utilization, overspend alerts, and recommendation cards.
 //
 // Topology:
-//   - Wired via dashboardadmin_bridge.go; RoleHost and RoleReportHost ports read PG, CH, and ledger via injected deps.
+//   - Wired via dashboardadmin_bridge.go; RoleHost, RoleReportHost, CampaignHost, PortfolioHost, and PublisherHost ports read PG, CH, and ledger via injected deps.
 //   - Uses internal/reports scrub helpers for masked campaign reads; publisher routes scope by customer permission.
 //
 // Invariants:
@@ -20,5 +22,6 @@
 // Verify:
 //
 //	go test ./internal/dashboardadmin/ -short -count=1
-//	go test ./internal/dashboardadmin/ -short -run TestOperator -count=1
+//	go test ./internal/dashboardadmin/ -short -run TestGetOperatorDashboard -count=1
+//	go test ./internal/dashboardadmin/ -short -run TestGetBuyerDashboard -count=1
 package dashboardadmin

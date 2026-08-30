@@ -11,6 +11,7 @@ import (
 
 const redisOffsetsKeyPrefix = "ad_event_processor:broker:offsets:"
 
+// commitOffsetScript: monotonic HSET per consumer group; concurrent commits cannot regress offset.
 var commitOffsetScript = redis.NewScript(`
 local cur = redis.call('HGET', KEYS[1], ARGV[1])
 if cur then

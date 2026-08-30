@@ -12,6 +12,7 @@ var (
 	hexTokenRE   = regexp.MustCompile(`^[0-9a-f]+$`)
 )
 
+// ValidClickHouseIdentifier: dynamic table names in reports must pass before string concat to CH SQL.
 func ValidClickHouseIdentifier(name string) bool {
 	if name == "" || len(name) > 128 {
 		return false

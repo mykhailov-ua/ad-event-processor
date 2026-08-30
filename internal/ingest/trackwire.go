@@ -30,6 +30,9 @@ func newTrackProcessor(filterEngine *FilterEngine, registry domain.CampaignRegis
 	}
 }
 
+// processTrack runs synchronously on a Tier B pinned worker (LockOSThread). Caller must
+// tryAcquireStreamAdmission (TryReserve) before debit and publishAcceptedTrack after accept;
+// this file owns filter + landing only, not stream enqueue.
 func processTrack(ctx context.Context, p trackProcessor, evt *domain.Event, deviceType []byte) trackOutcome {
 	slot := uint32(0)
 	if evt != nil {
@@ -43,15 +46,18 @@ func processTrack(ctx context.Context, p trackProcessor, evt *domain.Event, devi
 
 func processTrackInner(ctx context.Context, p trackProcessor, evt *domain.Event, deviceType []byte) trackOutcome {
 	ensureIngestGeo(p.ingestGeo, evt)
+	// RTB_MODE live/shadow may rewrite campaign_id and spend before the main filter chain runs.
 	if out, handled := applyRtbAuction(p, evt, deviceType); handled {
 		releaseOpenRTB3Scratch(evt)
 		return out
 	}
 	releaseOpenRTB3Scratch(evt)
+	// FilterEngine.Check is synchronous on this worker (no go func); includes EVALSHA unless local-quanta full-skip.
 	if p.filterEngine != nil {
 		if err := p.filterEngine.Check(ctx, evt); err != nil {
 			if kind, ok := filter.ClassifyFilterErr(err); ok {
 				if kind == filter.FilterRejectFraud {
+					// Registry-driven silent accept (202) vs hard 403; not a generic filter reject.
 					return fraudTrackOutcome(p.registry, evt)
 				}
 				return trackOutcome{Status: trackStatusRejected, RejectKind: kind}
@@ -60,6 +66,7 @@ func processTrackInner(ctx context.Context, p trackProcessor, evt *domain.Event,
 			return trackOutcome{Status: trackStatusInternalError}
 		}
 	}
+	// FilterEngine clears FilterDeadlineMono on return; re-arm only for ResolveLandingURL bounded work.
 	if evt != nil && p.filterEngine != nil {
 		if d := p.filterEngine.Timeout(); d > 0 {
 			evt.FilterDeadlineMono = monotonicNano() + d.Nanoseconds()

@@ -11,6 +11,8 @@ import (
 )
 
 func TestStreamProducerAdmissionRaceWithoutReserve(t *testing.T) {
+	// Holdout: read-only rejectIfStreamProducerOverloaded passes at 71% fill; bare Process after debit
+	// would lose 7/16 events. Must fail if TryReserve before debit is removed.
 	const queueCapLimit = 32
 	const admissionPct = 75
 

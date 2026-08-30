@@ -30,6 +30,7 @@ func (h *HTTPHandlers) registerReportSchedules(mux *http.ServeMux) {
 }
 
 func (h *HTTPHandlers) createReportSchedule(w http.ResponseWriter, r *http.Request) {
+	// 64KiB body cap (coldpath.DefaultMaxBody); schedule spec JSON only, no export payload.
 	req, err := coldpath.DecodeRequest[CreateReportScheduleRequest](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return
@@ -116,6 +117,7 @@ func (h *HTTPHandlers) getReportSchedule(w http.ResponseWriter, r *http.Request)
 
 func (h *HTTPHandlers) updateReportSchedule(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	// Same 64KiB limit as create; full schedule replace, not partial patch.
 	req, err := coldpath.DecodeRequest[UpdateReportScheduleRequest](w, r, coldpath.DefaultMaxBody)
 	if err != nil {
 		return

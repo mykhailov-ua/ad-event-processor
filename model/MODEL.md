@@ -37,6 +37,18 @@ model/
   requirements-dev.txt
 ```
 
+Each production module has a module-level docstring (Role, Verify, Go parity where applicable). Prefer reading source docstrings over duplicating contracts here.
+
+| Package | Module doc | Topic |
+| :--- | :--- | :--- |
+| `contract/` | `feature_spec.py`, `policy_config.py`, `scoring_policy.py` | 16-dim vector, FRAUD_POLICY_*, post-ML heuristics |
+| `data/` | `clickhouse_client.py`, `features_export.py`, `manual_labels_export.py` | CH export, PG label feedback |
+| `train/` | `artifact_bootstrap.py`, `labeled_dataset.py`, `policy_calibrate.py` | Bootstrap, fit, calibration grid |
+| `eval/` | `shadow_precision.py`, `evaluate.py`, `postgres_eval_store.py` | Proxy/audited metrics, PG upsert |
+| root | `repo_paths.py` | REPO_ROOT, fixture dirs |
+
+Inline `#` comments mark non-obvious formulas, SQL label definitions, and calibration objectives.
+
 ---
 
 ## Operate

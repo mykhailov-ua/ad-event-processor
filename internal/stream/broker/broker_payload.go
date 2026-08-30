@@ -12,6 +12,10 @@ import (
 	"github.com/google/uuid"
 )
 
+// ParseBrokerPayloadStream walks a broker mmap fetch blob: repeated uvarint(len) || vtproto message.
+// Used by BrokerStreamConsumer after pkg/broker/client.Fetch; tolerates legacy single-message blobs.
+//
+// Verify: go test ./internal/ingest/ -short -run TestFault_BrokerLiveConsumer_CorruptPayload -count=1
 func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
 	if len(data) == 0 {
 		return nil
@@ -22,6 +26,7 @@ func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
 	for offset < len(data) {
 		length, n := binary.Uvarint(data[offset:])
 		if n <= 0 || offset+n+int(length) > len(data) {
+			// Truncated tail or non-framed blob: try whole buffer as one AdStreamEvent (older producers).
 			if !parsedAny {
 				evt, err := ParseBrokerPayload(data)
 				if err != nil {
@@ -35,6 +40,7 @@ func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
 		msgBytes := data[offset+n : offset+n+int(length)]
 		evt, err := ParseBrokerPayload(msgBytes)
 		if err != nil {
+			// First frame corrupt: fall back to raw parse once; partial batch stops at first bad frame.
 			if !parsedAny && offset == 0 {
 				if rawEvt, rawErr := ParseBrokerPayload(data); rawErr == nil {
 					fn(rawEvt)
@@ -44,6 +50,7 @@ func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
 			if !parsedAny {
 				return err
 			}
+			// Mid-batch corrupt frame: return nil so consumer skips this WAL offset and keeps prior events.
 			break
 		}
 		fn(evt)
@@ -53,6 +60,8 @@ func ParseBrokerPayloadStream(data []byte, fn func(evt *domain.Event)) error {
 	return nil
 }
 
+// ParseBrokerPayload decodes one broker record into domain.Event. Tries AdStreamEvent VT first
+// (tracker BrokerProducer path), then AdLogRecord (legacy / fraud batch). Returns pooled event on success.
 func ParseBrokerPayload(data []byte) (*domain.Event, error) {
 	evt := domain.EventPool.Get().(*domain.Event)
 	evt.Reset()
@@ -90,6 +99,8 @@ func ParseBrokerPayload(data []byte) (*domain.Event, error) {
 	return nil, ErrBrokerPayloadUnrecognized
 }
 
+// fillEventFromStreamProto maps hot-path vtproto fields into domain.Event with one StringBuffer arena.
+// Strings alias StringBuffer until consumer returns evt to EventPool (cold path only).
 func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *domain.Event) {
 	totalLen := len(pbEvt.ClickId) + len(pbEvt.EventType) + len(pbEvt.Ip) + len(pbEvt.Ua) + len(pbEvt.FraudReason)
 	if cap(evt.StringBuffer) < totalLen {
@@ -129,6 +140,7 @@ func fillEventFromStreamProto(pbEvt *pb.AdStreamEvent, evt *domain.Event) {
 	}
 }
 
+// fillEventFromLogRecord handles compact AdLogRecord wire (click_id + event_type + campaign_id bytes).
 func fillEventFromLogRecord(rec *pb.AdLogRecord, evt *domain.Event) {
 	if cap(evt.StringBuffer) < len(rec.ClickId)+len(rec.EventType) {
 		evt.StringBuffer = make([]byte, 0, len(rec.ClickId)+len(rec.EventType)+64)

@@ -37,6 +37,7 @@ func (s *batchPoisonStore) StoreBatch(ctx context.Context, events []*domain.Even
 
 func (s *batchPoisonStore) Close() error { return nil }
 
+// Holdout: binary split must isolate poison row without O(n) per-row StoreBatch calls.
 func TestSplitStoreBatch_BinarySplitNotPerRow(t *testing.T) {
 	t.Parallel()
 

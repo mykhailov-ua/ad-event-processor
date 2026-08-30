@@ -16,6 +16,7 @@ import (
 )
 
 type BrokerPendingDeltaReader interface {
+	// PendingDeltaMicro: spend accepted to broker ring but not yet reflected in Redis budget keys.
 	PendingDeltaMicro(ctx context.Context, campaignID uuid.UUID) (int64, error)
 }
 
@@ -36,6 +37,7 @@ type ReconInfraHost interface {
 	RedisShards() []redis.UniversalClient
 	Sharder() domain.Sharder
 	Config() *config.Config
+	// WithPostgresLow: recon worker defers ticks when PG write gate rejects cold-path work.
 	WithPostgresLow(ctx context.Context, fn func(context.Context) error) error
 	ClickHouseQuery() *database.ClickHouseQuery
 	RedisClientForCampaign(campaignID uuid.UUID) redis.UniversalClient
@@ -53,6 +55,7 @@ type ReconRepairHost interface {
 	ForceRefillCampaignFromPG(ctx context.Context, campaignID uuid.UUID, currentSpend int64) error
 }
 
+// Host is the controlplane bridge port: infra reads, outbox adjust side effects, optional force-refill repair.
 type Host interface {
 	ReconInfraHost
 	ReconOpsHost

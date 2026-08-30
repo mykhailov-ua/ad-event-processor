@@ -7,6 +7,8 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
+// settlementModeStore wraps PostgresStore: statsOnly uses StoreStatsBatch (rollup path),
+// otherwise full settlement StoreBatch with in-batch dedupe.
 type settlementModeStore struct {
 	pg        *PostgresStore
 	statsOnly bool

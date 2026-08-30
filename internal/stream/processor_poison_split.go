@@ -8,6 +8,12 @@ import (
 	"ad-event-processor/internal/metrics"
 )
 
+// splitStoreBatch bisects a failed StoreBatch on non-retriable errors to isolate poison
+// rows. Retriable errors (isRetriableStoreError) fail the whole sub-batch without split.
+// DeduplicationTokenKey uses first+last msg ID for CH batch idempotency.
+//
+// Verify:
+// go test ./internal/stream/ -short -run TestPoison -count=1
 func (c *StreamConsumer) splitStoreBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, baseIdx int) (successIdx, failIdx []int) {
 	if len(batch) == 0 {
 		return nil, nil

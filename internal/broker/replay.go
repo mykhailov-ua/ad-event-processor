@@ -54,6 +54,7 @@ func NewReplayer(cfg ReplayConfig, store domain.EventStore, parse PayloadStreamP
 	}
 }
 
+// Replay reads mmap broker segments from dataDir and replays into EventStore (disaster / CH backfill).
 func (r *Replayer) Replay(ctx context.Context) (*ReplayResult, error) {
 	if r.parse == nil {
 		return nil, errors.New("broker replay: payload parser is required")

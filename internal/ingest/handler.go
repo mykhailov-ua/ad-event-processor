@@ -387,6 +387,8 @@ func NewRouter(cfg *config.Config, registry domain.CampaignRegistry, filterEngin
 
 		var landing string
 		if filterEngine != nil {
+			// net/http worker (not Tier B gnet): TryReserve before FilterEngine.Check (Lua debit);
+			// release lease on all reject paths; publish after accept; RollbackDebit on post-debit publish fail.
 			lease, kind, acquired := tryAcquireStreamAdmissionForFilter(cfg, sharder, streamProducers, brokerProducers, campaignID, filterEngine)
 			if !acquired {
 				spec := filterRejectSpecs[kind]
@@ -748,6 +750,7 @@ func (h *AdsPacketHandler) SetBrokerProducers(set *BrokerProducerSet) {
 		return
 	}
 	h.brokerProducers = set
+	// Go producer wired: Lua stream lane fcap:ignored; single writer is StreamProducer or BrokerProducer.
 	if set != nil && set.Len() > 0 && h.filterEngine != nil {
 		h.filterEngine.SetDeferStreamToProducer(true)
 	}
@@ -763,6 +766,8 @@ func (h *AdsPacketHandler) SetStreamProducers(producers []*StreamProducer) {
 	}
 }
 
+// publishAcceptedTrack enqueues to shard StreamProducer or BrokerProducer after filter accept.
+// false increments ad_stream_producer_post_debit_rejected_total; caller must RollbackDebit and 503.
 func (h *AdsPacketHandler) publishAcceptedTrack(evt *domain.Event, lease *streamAdmissionLease) bool {
 	if h == nil || evt == nil {
 		return true
@@ -1315,6 +1320,7 @@ func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 	}
 
 	if h.filterEngine != nil {
+		// Tier B pinned worker: reserve producer headroom (STREAM_PRODUCER_ADMISSION_PCT) before sync EVALSHA.
 		lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 		if !acquired {
 			spec := filterRejectSpecs[kind]
@@ -1331,6 +1337,7 @@ func (h *AdsPacketHandler) React(req Request, c pkgnet.Conn) pkgnet.Action {
 	}
 
 	releaseOpenRTB3Scratch(evt)
+	// No FilterEngine: admission still gates async enqueue; no RollbackDebit on publish fail (no Lua debit).
 	lease, kind, acquired := h.tryAcquireStreamAdmission(evt.CampaignID)
 	if !acquired {
 		spec := filterRejectSpecs[kind]

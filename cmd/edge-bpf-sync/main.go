@@ -1,4 +1,7 @@
 // edge-bpf-sync daemon entry. Package documentation: doc.go.
+//
+// Single goroutine select loop: Redis block/allow sync, ringbuf drains, Prometheus sidecar.
+// Pairs with cmd/edge-xdp; requires ebpf_xdp_edge license for sync/autoban ticks.
 package main
 
 import (
@@ -20,6 +23,7 @@ import (
 )
 
 func main() {
+	// Env knobs (edge.EnvDuration/EnvOr): poll intervals, AUTOBAN_TTL, METRICS_PORT default 9090.
 	syncInterval := edge.EnvDuration("SYNC_INTERVAL", 5*time.Second)
 	statsInterval := edge.EnvDuration("STATS_INTERVAL", 2*time.Second)
 	violationInterval := edge.EnvDuration("VIOLATION_POLL_INTERVAL", 250*time.Millisecond)
@@ -51,6 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Phase 1: open pinned BPF maps from edge-xdp (fail-closed deny/allow; stats/violations/fingerprints optional).
 	denyMap, err := edge.LoadPinnedBlocklistMap(blocklistPath)
 	if err != nil {
 		slog.Error("open pinned blocklist map", "path", blocklistPath, "error", err)
@@ -133,6 +138,7 @@ func main() {
 	redisClient := redis.NewClient(netaddr.RedisClientOptions(redisAddr, os.Getenv("REDIS_PASS")))
 	defer func() { _ = redisClient.Close() }()
 
+	// lifecycle.NotifyContext: SIGINT/SIGTERM cancels ctx; serveMetrics shuts down on ctx.Done.
 	ctx, cancel := lifecycle.NotifyContext(context.Background())
 	defer cancel()
 
@@ -168,6 +174,7 @@ func main() {
 	})
 
 	if edge.EbpfEdgeLicensed(ctx, redisClient) {
+		// Initial full sync before tickers start (changelog delta + allowlist on first SYNC_INTERVAL).
 		if err := runSync(ctx, redisClient, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 			slog.Warn("initial edge bpf sync failed", "error", err)
 		}
@@ -191,6 +198,7 @@ func main() {
 	fingerprintTicker := time.NewTicker(fingerprintInterval)
 	defer fingerprintTicker.Stop()
 
+	// Phase 2: single select loop; ringbuf drains run synchronously per tick (no worker pool).
 	for {
 		select {
 		case <-ctx.Done():
@@ -206,6 +214,7 @@ func main() {
 				continue
 			}
 			if n > 0 {
+				// Autoban wrote Redis changelog; push delta into BPF maps immediately.
 				if err := runSync(ctx, redisClient, denyMaps, allowMap, allowV6Map, denyStore, allowStore, &denySyncState); err != nil {
 					slog.Warn("post-violation bpf sync failed", "error", err)
 				}
@@ -233,6 +242,7 @@ func main() {
 }
 
 func serveMetrics(ctx context.Context, port string) {
+	// METRICS_PORT sidecar: GET /metrics only; shutdown via lifecycle sidecar timeout 5s on ctx.Done.
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", promhttp.Handler())
 	srv := &http.Server{
@@ -253,6 +263,7 @@ func serveMetrics(ctx context.Context, port string) {
 }
 
 func runSync(ctx context.Context, redisClient *redis.Client, denyMaps edge.BlocklistMaps, allowMap, allowV6Map *ebpf.Map, denyStore *edge.BlocklistStore, allowStore *edge.AllowlistStore, denyState *edge.BlocklistSyncState) error {
+	// Incremental deny via changelog ZSET or 5 min SMEMBERS full resync; allowlist SMEMBERS each tick.
 	denyAdded, denyRemoved, err := edge.SyncBlocklistIncremental(ctx, redisClient, denyMaps, denyStore, denyState)
 	if err != nil {
 		return err
@@ -275,6 +286,7 @@ func runSync(ctx context.Context, redisClient *redis.Client, denyMaps edge.Block
 }
 
 func exportStats(ctx context.Context, redisClient *redis.Client, statsMap *ebpf.Map, last []uint64) []uint64 {
+	// Per-CPU stats map -> Prometheus gauges + Redis snapshot for edge Lua/ops dashboards.
 	last = edge.ExportStatsToPrometheus(statsMap, last)
 	totals, err := edge.AggregateStats(statsMap)
 	if err != nil {

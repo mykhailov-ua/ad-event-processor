@@ -1,5 +1,6 @@
 package httpingress
 
+// Chaos/load harness only: fixed 31-byte name, case-folded compare. Not an auth bypass in prod edge.
 func http1MatchForceSafeHeader(key []byte) bool {
 	if len(key) != 31 {
 		return false
@@ -24,6 +25,8 @@ func http1ForceSafeValue(val []byte) bool {
 	return false
 }
 
+// Second Transfer-Encoding header is ErrInvalid. Only a lone "chunked" token (no gzip, deflate, etc.)
+// sets http1flChunkedTE; anything else marks http1flInvalidTE for later rejection.
 func http1AssignTransferEncoding(hFlags *uint8, val []byte) error {
 	if *hFlags&http1flHasTE != 0 {
 		return ErrInvalid
@@ -37,6 +40,7 @@ func http1AssignTransferEncoding(hFlags *uint8, val []byte) error {
 	return nil
 }
 
+// Canonical POST /track wire for TestChaos_CrossHop_NginxGnet; disposition must match edge Lua + gnet.
 var NginxTrackCorpus = []byte(
 	"POST /track HTTP/1.1\r\n" +
 		"Host: edge.local\r\n" +
@@ -65,6 +69,8 @@ func http1HeadersComplete(data []byte) bool {
 	return false
 }
 
+// Edge/nginx parity for POST /track: require Content-Length, forbid chunked TE before body read.
+// Rejects TE.TE obfuscation and slow-body patterns; OpenRTB bid keeps chunked (http1_fsm.go).
 func http1TrackEdgePolicy(req *Request, hFlags uint8) error {
 	if req == nil || !isPOSTTrack(req) {
 		return nil

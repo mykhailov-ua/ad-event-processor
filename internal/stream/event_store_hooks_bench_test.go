@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// Scope: decorator dispatch + noop hook only; not ClickHouse insert, PII hash, or pg settlement.
 func BenchmarkWrapEventStoreAfterBatch_overhead(b *testing.B) {
 	inner := &recordingEventStore{}
 	var hookCalls int

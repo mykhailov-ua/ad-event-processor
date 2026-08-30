@@ -51,6 +51,8 @@ func FormatUUIDCanonical(dst *[36]byte, id uuid.UUID) {
 }
 
 func ComputeCompositeHashUUID(campaignID uuid.UUID, userID []byte) uint32 {
+	// CRC32-IEEE chain: canonical 36-char campaign UUID then raw user_id bytes.
+	// Matches Redis stream sharding and CH dedup; returns 0 only when both inputs empty.
 	var crc uint32
 	var started bool
 
@@ -77,6 +79,7 @@ func Crc32IEEEInplace36(b *[36]byte) uint32 {
 	return crc32IEEEInplace36(b)
 }
 
+// crc32IEEEInplace36 hashes exactly 36 ASCII bytes (canonical UUID) without heap alloc.
 func crc32IEEEInplace36(b *[36]byte) uint32 {
 	crc := ^uint32(0)
 	tab := crc32.IEEETable
@@ -102,6 +105,7 @@ func ComputeCompositeHashFromProto(req *pb.AdEvent) uint32 {
 	return ComputeCompositeHashUUID(camp, userID)
 }
 
+// ResetAdEventInPlace clears vtproto slice fields in place so pooled *pb.AdEvent avoids new backing arrays.
 func ResetAdEventInPlace(evt *pb.AdEvent) {
 	evt.CampaignId = evt.CampaignId[:0]
 	evt.EventType = evt.EventType[:0]
@@ -134,6 +138,8 @@ func NewConversionDatacenterIPChecker(geo netintel.GeoProvider, dc *netintel.DCA
 	return &ConversionDatacenterIPChecker{geo: geo, dc: dc}
 }
 
+// IsDatacenterIP: geo anonymous flag first; else ASN lookup + DCASNTable (both must be ready).
+// Fail-open when geo lacks ASNLookup or DC table not loaded.
 func (c *ConversionDatacenterIPChecker) IsDatacenterIP(ip string) bool {
 	if c == nil || ip == "" {
 		return false

@@ -21,6 +21,11 @@ import (
 //go:embed local-quota-refill.lua
 var localQuotaRefillLua string
 
+// local-quota-refill.lua (embedded):
+//   KEYS[1] = budget quota key ({campaign_id}:budget:quota or debit sub-slot variant)
+//   ARGV[1] = chunk micro-units to pull from Redis into local ledger
+//   Returns: credited amount (chunk) on success; -1 when quota < chunk or chunk <= 0 (exhausted).
+// Verify: redis-cli --eval internal/stream/local-quota-refill.lua , <quota_key> , <chunk_micro>
 var localQuotaRefillScript = redis.NewScript(localQuotaRefillLua)
 
 const (
@@ -35,6 +40,8 @@ type refillSignal struct {
 	shard      int
 }
 
+// QuotaRefillWorker: background goroutine refills LocalQuantaLedger from Redis when remaining
+// drops below adaptive threshold. Signal() is non-blocking; herd limited per shard (maxPerShard).
 type QuotaRefillWorker struct {
 	ledger       *LocalQuantaLedger
 	redisShards  []redis.UniversalClient
@@ -115,6 +122,7 @@ func (w *QuotaRefillWorker) SetCampaignRegistry(reg domain.CampaignRegistry) {
 	w.registry = reg
 }
 
+// Signal enqueues a refill request after TrySpendDebit miss or NeedsRefill; drops when signalCh full.
 func (w *QuotaRefillWorker) Signal(campaignID uuid.UUID) {
 	if w == nil {
 		return
@@ -180,6 +188,8 @@ func (w *QuotaRefillWorker) tryRefill(sig refillSignal) bool {
 	return w.tryRefillSlot(sig.campaignID, sig.shard, 0)
 }
 
+// tryRefillSlot: SETNX budget:refill_lock:{campaign_id}, GET quota, EVALSHA local-quota-refill.lua,
+// then CreditDebit on success. Strict-mode transition may trigger LocalQuantaFlusher flush first.
 func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot int) bool {
 	if shard < 0 || shard >= len(w.redisShards) {
 		metrics.LocalQuotaRefillTotal.WithLabelValues("skipped").Inc()
@@ -243,6 +253,7 @@ func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot i
 		return false
 	}
 	if res < 0 {
+		// Lua returned -1: Redis quota below chunk or chunk invalid.
 		metrics.LocalQuotaRefillTotal.WithLabelValues("exhausted").Inc()
 		return true
 	}
@@ -255,6 +266,7 @@ func (w *QuotaRefillWorker) tryRefillSlot(campaignID uuid.UUID, shard, subSlot i
 	return true
 }
 
+// RecoverFromDeltas credits ledger after crash/restart from persisted budget delta snapshots.
 func (w *QuotaRefillWorker) RecoverFromDeltas(deltas map[uuid.UUID]int64) {
 	if w == nil || w.ledger == nil || len(deltas) == 0 {
 		return

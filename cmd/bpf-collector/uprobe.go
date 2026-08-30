@@ -16,7 +16,8 @@
 //   - Uprobe marker p99 in summary.json is not /track handler p99 (use Prometheus + load-report prom).
 //
 // Verify:
-//   go build -tags ad_event_processor_bpf_trace -o bin/tracker ./cmd/tracker/
+//
+//	go build -tags ad_event_processor_bpf_trace -o bin/tracker ./cmd/tracker/
 package main
 
 import (

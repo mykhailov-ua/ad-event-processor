@@ -1,4 +1,19 @@
-"""Shared ML feature fixtures for Go ml-validate and Python/Go vector tests."""
+"""Shared ML feature fixtures for Go ml-validate and Python/Go vector tests.
+
+Role:
+- FIXTURE_ROWS: named (id, row) pairs covering edge cases (zero budget, bot UA, proxy farm).
+- Writers emit features_<id>.json with row + precomputed vector for cross-language checks.
+
+Fixture ids:
+- basic, high_volume: nominal traffic
+- zero_events, zero_budget: denominator guards in row_to_vector
+- bot_single_ua, residential_proxy: policy heuristic regression rows
+
+Verify:
+  python3 model/train/fixture_generator.py
+  go run ./cmd/ml-validate -fixtures internal/fraud/testdata
+  pytest model/tests/test_bootstrap_contract.py -q
+"""
 
 from __future__ import annotations
 

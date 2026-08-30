@@ -18,6 +18,8 @@
 //   - Not sqlc codegen (use make gen); does not migrate controlplane public schema beyond listed sets.
 //
 // Verify:
-// DB_DSN=postgres://... go run ./cmd/migrate-cold-path/
-// DB_DSN=postgres://... go run ./cmd/migrate-cold-path/ -only billing,notifier
+//
+//	go list -e ./cmd/migrate-cold-path/
+//	go test ./pkg/coldpath/ -short -run TestReadLimitedBody -count=1
+//	DB_DSN=postgres://... go run ./cmd/migrate-cold-path/ -only billing,notifier
 package main

@@ -326,6 +326,9 @@ func (f *UnifiedFilter) StreamDeferredToProducer() bool {
 	return f.streamKeyVal.S == fcapIgnoredKeyVal.S
 }
 
+// SetDeferStreamToProducer switches Lua KEYS[9] to fcap:ignored so unified-filter.lua
+// skips XADD; StreamProducer or BrokerProducer in ingest is the sole stream writer.
+// localQuantaStream must use the same sentinel to avoid dual XADD on full-skip traffic.
 func (f *UnifiedFilter) SetDeferStreamToProducer(deferWrite bool) {
 	if f == nil {
 		return
@@ -568,6 +571,9 @@ func (f *UnifiedFilter) Check(ctx context.Context, evt *domain.Event) error {
 	return f.checkPass(ctx, evt)
 }
 
+// checkPass runs after ingest tryAcquireStreamAdmission (TryReserve on stream/broker).
+// Debit paths here assume producer capacity is reserved; post-debit enqueue failure
+// in ingest must call RollbackDebit to undo Redis or local-quanta spend.
 func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error {
 	nowNano := filt.MonotonicNano()
 	if f.quotaMode == "live" && f.localQuotaCache.IsBlocked(evt.CampaignID, nowNano) {
@@ -635,6 +641,8 @@ func (f *UnifiedFilter) checkPass(ctx context.Context, evt *domain.Event) error 
 		return err
 	}
 
+	// Local-quanta live full-skip: Go TrySpendDebit plus async stream enqueue, zero sync EVALSHA.
+	// Partial local-quanta live still runs budget-fast.lua with skipBudgetDebit for dedup/sync only.
 	if handled, err := f.checkLocalQuanta(ctx, evt, campInfo, amountMicro); handled {
 		return err
 	}
@@ -813,6 +821,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 	keyArgs[5] = &kv[5]
 	keyArgs[6] = &dirtyCampaignsKeyVal
 	keyArgs[7] = &dirtyCustomersKeyVal
+	// KEYS[9]: real stream name or fcap:ignored when SetDeferStreamToProducer(true).
 	keyArgs[8] = &f.streamKeyVal
 	keyArgs[9] = &kv[9]
 	keyArgs[11] = &kv[11]
@@ -878,6 +887,8 @@ func (f *UnifiedFilter) runUnifiedLua(
 	args[25] = f.quotaChunkSizeAny
 	args[26] = f.quotaRefillThresholdPctAny
 	args[27] = campInfo.LuaRoutingEpoch()
+	// ARGV[28-29]: monotonic filter deadline (ns) and now; Lua returns 20 (tier degraded)
+	// when elapsed exceeds ARGV[30] (luaDegradeThresholdNs, 2ms) inside the script.
 	if evt.FilterDeadlineMono <= 0 {
 		args[28] = zeroAny
 		args[29] = zeroAny
@@ -909,6 +920,7 @@ func (f *UnifiedFilter) runUnifiedLua(
 		}
 		f.redisObservability.RecordLuaOp(shard, evt.CampaignID, sampleLua)
 		incRedisLuaTier(f.luaFullPathCounters, shard)
+		// Full-path debit: one EVALSHA (unified-filter.lua) per accept; NOSCRIPT falls back to EVAL.
 		res, err := f.evalScript(ctx, redisClient, shard, evt, keyArgs, args[:34])
 
 		f.noteLuaEvalDuration(shard, evt.CampaignID, "full", luaStart, sampleLua, false)

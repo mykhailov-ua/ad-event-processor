@@ -163,6 +163,8 @@ local function stamp_asn_list(raw, prefix, ver)
     return stamped, failed
 end
 
+-- ASN generational whitelist: asn_*:{asn} must equal _asn_ver; stale stamps fail closed for that ASN.
+-- Does not bypass perimeter blacklist unless edge-asn.is_whitelisted (CDN/mobile CSV from config:values).
 function _M.asn_whitelisted(asn)
     if not asn or asn == "" then
         return false
@@ -193,6 +195,8 @@ local function sync_expose_flag(field, val)
     end
 end
 
+-- HMGET config:values on worker 0 timer only; Redis down retains prior SHM (fail-open on RL numerics).
+-- ASN: bump _asn_ver last after stamping asn_cdn:* / asn_mobile:*; empty CSV clears via generation bump.
 function _M.sync()
     local red, err = blacklist_sync.connect_any_shard()
     if not red then

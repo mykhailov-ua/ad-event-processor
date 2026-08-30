@@ -1,4 +1,24 @@
-"""FRAUD_POLICY_* env + metadata.json; mirrors internal/fraud/policy_config.go."""
+"""FRAUD_POLICY_* env parsing and metadata.json policy section.
+
+Role:
+- Load tier thresholds and heuristic knobs for scoring_policy.py calibration.
+- Merge env overrides onto metadata policy when FRAUD_POLICY_SOURCE=auto.
+
+Go mirror: internal/fraud/policy_config.go (field names and defaults must match).
+
+Env defaults (balanced preset tiers):
+- FRAUD_POLICY_TIER_PASS=30, TIER_SUSPECT=60, TIER_IVT=80, TIER_BLOCK=100
+- FRAUD_POLICY_ML_THRESHOLD=0.50
+- FRAUD_POLICY_SOURCE=env | metadata | auto
+
+Invariants:
+- tier_pass <= tier_suspect <= tier_ivt <= tier_block (operator responsibility).
+- merge_policy_config only applies env values that differ from default_policy_config().
+
+Verify:
+  pytest model/tests/test_policy_config_parity.py -q
+  go test ./internal/fraud/ -short -run TestPolicyConfig -count=1
+"""
 
 from __future__ import annotations
 
@@ -17,6 +37,8 @@ FRAUD_POLICY_PRESET_DEFAULTS: dict[str, dict[str, int]] = {
 
 @dataclass(frozen=True)
 class PolicyConfig:
+    """Thresholds and heuristic floors for post-ML scoring_policy."""
+
     tier_pass: int = 30
     tier_suspect: int = 60
     tier_ivt: int = 80
@@ -45,7 +67,10 @@ class PolicyConfig:
     structural_spend_min_ctr: float = 0.4
 
     def block_probability(self) -> float:
-        """Score threshold (as prob) above which FP-guard may apply."""
+        """Score threshold (as prob) above which FP-guard may apply.
+
+        Prefer tier_block when set below 100; else tier_ivt; else 0.80 fallback.
+        """
         if 0 < self.tier_block < 100:
             return self.tier_block / 100.0
         if self.tier_ivt > 0:
@@ -142,7 +167,11 @@ def resolve_policy_config(
     metadata_path: Path,
     source: str,
 ) -> PolicyConfig:
-    """source: env | metadata | auto (metadata + non-default env overrides)."""
+    """Resolve active policy from env, metadata, or merged auto mode.
+
+    Args:
+        source: ``env`` | ``metadata`` | ``auto`` (metadata base + non-default env).
+    """
     if source == "env":
         return env_policy
     metadata_policy = load_policy_from_metadata(metadata_path)
@@ -153,6 +182,8 @@ def resolve_policy_config(
     return env_policy
 
 def merge_policy_config(base: PolicyConfig, override: PolicyConfig) -> PolicyConfig:
+    """Overlay env overrides onto metadata base; skip fields still at Go defaults."""
+
     def pick_int(name: str, current: int) -> int:
         new_val = getattr(override, name)
         default_val = getattr(default_policy_config(), name)
@@ -215,7 +246,9 @@ def format_policy_env(cfg: PolicyConfig) -> str:
     ]
     return "\n".join(lines) + "\n"
 
+# Process-wide cache; set_policy_config() used after bootstrap calibration.
 _active_policy_config: PolicyConfig | None = None
+
 
 def get_policy_config() -> PolicyConfig:
     global _active_policy_config

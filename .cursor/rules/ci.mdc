@@ -21,7 +21,7 @@ Toolchain: Go **1.25.12**, Node **22**. Job prefix: `Gate merge-*` (GitHub Actio
 | Check | Script | Blocks merge |
 | :--- | :--- | :---: |
 | Gate merge-lint | `lint/go.sh all` + `go vet` + `lint/go_modernize.sh` + `lint/gopls.sh` + `lint/lua.sh` + `lint/shell.sh` + `lint/python.sh` + `lint/proto.sh` + `lint/workflows.sh` + `lint/ts.sh` + `lint/configs.sh` | Yes |
-| Gate merge-pr-fast | `bash scripts/ci/pr_fast.sh` | Yes |
+| Gate merge-pr-fast | `bash scripts/ci/pr_fast.sh` (includes `static/doc_go_verify.sh`) | Yes |
 | Gate merge-race-short | `bash scripts/ci/race_short.sh` | Yes |
 | Gate merge-integration | `bash scripts/ci/integration_test.sh` | Yes |
 

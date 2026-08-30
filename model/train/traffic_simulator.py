@@ -1,4 +1,17 @@
-"""Labeled synthetic traffic for bootstrap and offline benchmarks."""
+"""Labeled synthetic traffic archetypes for bootstrap and offline benchmarks.
+
+Role:
+- Sample realistic ml_features_1m-shaped rows with known fraud/legit labels.
+- ARCHETYPES weights drive class balance in bootstrap_synthetic() holdout calibration.
+
+Archetype cohorts:
+- Legit: organic_display, mobile_in_app, search_brand, affiliate_long_tail, grey_noise
+- Fraud: click_farm, bot_script, residential_proxy_bot, budget_drain
+
+Verify:
+  python3 model/eval/simulation_benchmark.py --simulate --retrain
+  pytest model/tests/test_labeled_dataset.py -q
+"""
 
 from __future__ import annotations
 
@@ -11,6 +24,8 @@ Row = dict[str, int]
 
 @dataclass(frozen=True)
 class TrafficArchetype:
+    """Named sampler with fraud label and mixture weight."""
+
     name: str
     is_fraud: bool
     weight: float
@@ -182,6 +197,7 @@ ARCHETYPES: tuple[TrafficArchetype, ...] = (
     TrafficArchetype("residential_proxy_bot", True, 0.03, sample_residential_proxy_bot),
     TrafficArchetype("budget_drain", True, 0.01, sample_budget_drain),
 )
+# Weights sum to 1.0; residential_proxy_bot used in calibrate_policy proxy_recall objective.
 
 def generate_network_batch(
     count: int,

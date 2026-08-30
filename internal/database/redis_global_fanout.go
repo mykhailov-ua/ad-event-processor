@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+// ForEachConnectedShard: best-effort fanout; succeeds if any shard writes (partial fanout metric).
 func ForEachConnectedShard(ctx context.Context, redisClients []redis.UniversalClient, op string, fn func(shard int, redisClient redis.UniversalClient) error) error {
 	if len(redisClients) == 0 {
 		return fmt.Errorf("%s: no redis client available", op)

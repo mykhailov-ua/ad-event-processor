@@ -1,3 +1,4 @@
+// reports_bridge: delegates admin report handlers to reports/* with CH query gate from Service.
 package controlplane
 
 import (

@@ -28,6 +28,7 @@ type FingerprintSnapshot struct {
 	ja4Allow []uint32
 }
 
+// TLSFingerprintTable: atomic.Pointer snapshot from edge/redis feed; hot path is crc32 + sorted slice lookup.
 type TLSFingerprintTable struct {
 	active atomic.Pointer[FingerprintSnapshot]
 }

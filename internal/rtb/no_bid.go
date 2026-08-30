@@ -1,19 +1,21 @@
 package rtb
 
+// NoBidReason is the typed reject code for RunAuction / RunAuctionEval.
+// Wire string via String(); metrics and OpenRTB no-bid paths map these values.
 type NoBidReason uint8
 
 const (
 	NoBidNone NoBidReason = iota
 	NoBidInvalidRequest
-	NoBidEmptyShard
+	NoBidEmptyShard // geo shard (GeoHash & 63) has zero campaigns
 	NoBidCorruptCatalog
-	NoBidNoCandidates
-	NoBidSpendFailed
+	NoBidNoCandidates // geo/target bucket miss or all rows filtered
+	NoBidSpendFailed  // live RunAuction only: CheckAndSpendAll CAS rejected winner price
 	NoBidPacingClosed
 	NoBidDailyCapExceeded
 	NoBidTimeout
 	NoBidDealMismatch
-	NoBidScanLimit
+	NoBidScanLimit // rankMaxScanCandidates (500) exceeded; load-shed large buckets
 	NoBidPrebidIVT
 	NoBidSchainInvalid
 	NoBidBreakerOpen

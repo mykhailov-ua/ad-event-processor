@@ -27,6 +27,8 @@ type budgetDeltaSlot struct {
 	campaignID  uuid.UUID
 }
 
+// BudgetDeltaPublisher async-produces local-quanta budget deltas to mmap broker (recovery lane).
+// Not the post-accept event enqueue path (StreamProducer/BrokerProducer on /track). Ring full drops silently.
 type BudgetDeltaPublisher struct {
 	_           [64]byte
 	writeCursor uint64

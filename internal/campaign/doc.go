@@ -1,27 +1,44 @@
-// Package campaign owns campaign admin DTOs, HTTP handlers, Runtime, and publish/import orchestration.
+// Package campaign owns campaign admin DTOs, HTTP handlers, lifecycle helpers, and
+// orchestration ports for publish, import/export, and fraud preview on cmd/control.
 //
 // Role:
-//   - HTTP: /api/v1/campaigns/* CRUD, events, margin, clone, import/export, postbacks (PostbackHTTPHandlers).
-//   - Runtime (subpackage runtime): list/get/patch/publish with Effects port for outbox-heavy mutations.
-//   - Subpackages register extra routes via init: editor, wizard, integration, selfserve (see each doc.go).
-//   - Worker ticks (subpackage worker) started from controlplane for schedule, delivery, autoscale, drain.
+//   - CampaignsHTTPHandlers (handlers.go): GET/PATCH /api/v1/campaigns/{id}, list with
+//     customer_id/status/q/pacing_mode sort; owner assign; events, margin, placement-blocks,
+//     clone, export, import; migration and conversion-mapping routes via bundle registrars.
+//   - Publish routes (publish_bundle.go): POST /api/v1/campaigns/{id}/publish and publish-check.
+//   - Fraud preview (fraud_bundle.go): POST /api/v1/campaigns/{id}/fraud/preview.
+//   - PostbackHTTPHandlers (misc_helpers.go): postback config, DLQ, campaign status probe.
+//   - lifecycle.go: CancelCampaign / FinalizeCancelledCampaign with outbox in same PG txn.
+//   - runtime subpackage: PG list/get/patch/publish without HTTP (Effects delegation).
+//   - worker subpackage: schedule, delivery optimizer, autoscale, drain ticks (see worker/doc.go).
+//   - editor, wizard, integration, selfserve, importexport subpackages register extra routes
+//     via route_registrars.go init hooks (each has doc.go).
 //
 // Topology:
-//   - Host/Effects ports implemented by controlplane bridges (campaign_*_bridge.go).
-//   - Imports reports/reportjob for validation jobs; must not import controlplane root (acyclic).
-//   - Fraud campaign config HTTP in fraud_handlers.go; fraudadmin supplies read integrations.
+//   - Host/Effects ports (effects_hosts.go) implemented by controlplane bridges
+//     (campaign_*_bridge.go, campaign_delivery_bridge.go).
+//   - Imports reports, reportjob, flow, controlplane/authz; must not import controlplane root
+//     (acyclic composition).
+//   - Report validation jobs use reportjob.ReportJobRunner on handlers when wired.
+//   - Fraud campaign config reads integrate fraudadmin types; enforcement stays cold path.
 //
 // Invariants:
-//   - Publish and budget mutations enqueue outbox_events in the same PG transaction as domain row updates.
-//   - Media-buyer scope enforced via authz snapshot + AssertMediaBuyerCampaignAccess on reads/writes.
+//   - Publish, budget, and status mutations enqueue outbox_events in the same PG transaction
+//     as domain row updates (via Effects / lifecycle helpers).
+//   - Media-buyer scope via authz snapshot and AssertMediaBuyerCampaignAccess on Effects paths.
 //   - Cold-path JSON bodies use pkg/coldpath limits on handlers.
+//   - List search/sort/pacing filters may refetch up to 1000 rows server-side when query
+//     params require post-filter (handlers.go listCampaigns).
+//   - Filename convention: no campaign_ prefix on files inside this directory (naming.mdc).
 //
 // Forbidden:
-//   - Tracker hot-path filter or UnifiedFilter imports.
-//   - New campaign_* filename prefixes inside this directory (naming.mdc).
+//   - Tracker hot path (internal/ingest), UnifiedFilter, or filter engine imports.
+//   - Direct Redis writes from handlers (Effects/outbox/bridge only).
 //
 // Verify:
 //
-//	go test ./internal/campaign/ -short -count=1
-//	go test ./internal/campaign/editor/ -short -count=1
+//	go list -e ./internal/campaign/...
+//	go test ./internal/campaign/ -short -run TestMigrationHandlers_listSources -count=1
+//	go test ./internal/campaign/editor/ -short -run TestValidateCampaignPatch -count=1
+//	go test ./internal/campaign/worker/ -short -count=1
 package campaign

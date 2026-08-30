@@ -17,6 +17,11 @@ import (
 //go:embed local-quota-return.lua
 var localQuotaReturnLua string
 
+// local-quota-return.lua (embedded):
+//   KEYS[1] = budget quota key
+//   ARGV[1] = micro-units to return from local ledger to Redis (INCRBY)
+//   Returns: new quota balance after INCRBY (or current GET when amt <= 0).
+// Verify: redis-cli --eval internal/stream/local-quota-return.lua , <quota_key> , <amount_micro>
 var localQuotaReturnScript = redis.NewScript(localQuotaReturnLua)
 
 var LocalQuotaReturnScript = localQuotaReturnScript
@@ -27,6 +32,7 @@ const (
 	FlushReasonStrict   = "strict"
 )
 
+// TakeRemaining atomically drains all sub-slots (0..3) for one campaign; used before Redis return.
 func (l *LocalQuantaLedger) TakeRemaining(id uuid.UUID) int64 {
 	if l == nil {
 		return 0
@@ -79,6 +85,8 @@ func (l *LocalQuantaLedger) FlushOccupied(fn func(campaignID uuid.UUID, remainin
 	}
 }
 
+// LocalQuantaFlusher returns unused local chunks to Redis via local-quota-return.lua on pause,
+// shutdown, or strict-mode entry. Publishes return deltas for cross-region budget sync when wired.
 type LocalQuantaFlusher struct {
 	ledger      *LocalQuantaLedger
 	redisShards []redis.UniversalClient
@@ -111,6 +119,7 @@ func (f *LocalQuantaFlusher) SetCampaignRegistry(reg domain.CampaignRegistry) {
 	f.registry = reg
 }
 
+// FlushLocalQuanta drains ledger for one campaign and INCRBY quota on the campaign shard.
 func (f *LocalQuantaFlusher) FlushLocalQuanta(ctx context.Context, campaignID uuid.UUID, reason string) int64 {
 	if f == nil || f.ledger == nil {
 		return 0
@@ -132,6 +141,7 @@ func (f *LocalQuantaFlusher) FlushLocalQuanta(ctx context.Context, campaignID uu
 	return taken
 }
 
+// FlushAll walks every occupied ledger cell on shutdown; reason FlushReasonShutdown.
 func (f *LocalQuantaFlusher) FlushAll(ctx context.Context) int {
 	if f == nil || f.ledger == nil {
 		return 0
@@ -186,6 +196,7 @@ func (f *LocalQuantaFlusher) returnToRedis(ctx context.Context, campaignID uuid.
 	return firstErr
 }
 
+// returnToRedisSlot runs embedded local-quota-return.lua on the debit sub-slot quota key.
 func (f *LocalQuantaFlusher) returnToRedisSlot(ctx context.Context, campaignID uuid.UUID, amount int64, shard, subSlot int) error {
 	if amount <= 0 {
 		return nil
@@ -200,6 +211,7 @@ func (f *LocalQuantaFlusher) returnToRedisSlot(ctx context.Context, campaignID u
 	return err
 }
 
+// AdaptiveChunkSizeStrict shrinks refill floor when Redis remaining nears strictEnter threshold.
 func AdaptiveChunkSizeStrict(emaRPS float64, floorMicro, ceilingMicro, baseChunk, redisRemaining, strictThreshold int64) int64 {
 	floor := floorMicro
 	if strictThreshold > 0 && redisRemaining > 0 && redisRemaining < strictThreshold*2 {

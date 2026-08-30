@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
-"""Export manual labels from Postgres for ML training feedback loop."""
+"""Export manual labels from Postgres for ML training feedback loop.
+
+Role:
+- Read ml_manual_labels (ip_hash, label, source, reason) to CSV.
+- Used by features_export LEFT JOIN and artifact_bootstrap manual override path.
+
+Env:
+- DB_DSN: Postgres connection string (required for export)
+- FRAUD_MANUAL_LABELS: output path (default var/fraudscore/training/manual_labels.csv)
+
+Verify:
+  DB_DSN=postgres://... python3 model/data/manual_labels_export.py
+"""
 
 from __future__ import annotations
 
@@ -27,6 +39,7 @@ def load_manual_labels(dsn: str) -> list[tuple[str, int]]:
         if not ip_hash:
             continue
         normalized = str(ip_hash).strip().lower()
+        # ml_manual_labels stores 128-bit ip_hash as 32-char hex.
         if len(normalized) != 32:
             continue
         out.append((normalized, int(label)))

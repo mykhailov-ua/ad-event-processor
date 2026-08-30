@@ -14,9 +14,10 @@ import (
 )
 
 const (
+	// In-memory dev fallback caps; PG-backed runner uses report_jobs rows instead.
 	reportJobMaxRecords = 512
 	reportJobTTL        = 24 * time.Hour
-	reportJobRunTimeout = 2 * time.Minute
+	reportJobRunTimeout = 2 * time.Minute // bounds WriteReport/CH query per job goroutine
 )
 
 type ReportJobSpec struct {
@@ -99,6 +100,7 @@ func (r *ReportJobRunner) CreateJob(ctx context.Context, spec ReportJobSpec, ide
 		return r.createJobPG(ctx, spec, idempotencyKey)
 	}
 
+	// In-memory queue: local idempotency map + eviction; export runs in goroutine (no SKIP LOCKED worker).
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.evictLocked(time.Now().UTC())
@@ -242,6 +244,7 @@ func (r *ReportJobRunner) toDTO(jobID string, rec *reportJobRecord) ReportJobSta
 }
 
 func (r *ReportJobRunner) evictLocked(now time.Time) {
+	// TTL eviction drops in-memory rows and deletes export files on local disk (OS boundary).
 	for id, rec := range r.jobs {
 		if now.Sub(rec.createdAt) <= reportJobTTL {
 			continue

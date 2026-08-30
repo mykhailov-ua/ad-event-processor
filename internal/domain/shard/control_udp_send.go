@@ -8,6 +8,7 @@ func EncodeQuotaEpochDatagram(dst []byte, msgType uint8, hdr *UDPHeader, limits 
 	return EncodeQuotaEpochDatagramWithWeights(dst, msgType, hdr, limits, nil)
 }
 
+// EncodeQuotaEpochDatagramWithWeights: binary UDP wire to trackers (v3 adds processor node weights).
 func EncodeQuotaEpochDatagramWithWeights(dst []byte, msgType uint8, hdr *UDPHeader, limits *UDPControlLimits, weights []UDPNodeWeight) int {
 	if hdr == nil || limits == nil {
 		return 0

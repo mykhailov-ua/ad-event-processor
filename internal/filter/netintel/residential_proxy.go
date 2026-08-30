@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// ResidentialIntelTable wraps CIDRTable for residential proxy feed (Redis/file reload -> Publish).
 type ResidentialIntelTable struct {
 	table *CIDRTable
 }

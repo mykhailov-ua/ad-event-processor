@@ -1,4 +1,15 @@
-"""Persist shadow eval reports to Postgres for control plane readers."""
+"""Persist shadow eval reports to Postgres for control plane readers.
+
+Role:
+- Upsert single row id=shadow_eval into ml_eval_reports after evaluate.py runs.
+- No-op when DB_DSN unset (local-only eval without control plane).
+
+Table: ml_eval_reports (id, generated_at, precision, recall, drift_json, status, label_method, report_json)
+
+Verify:
+  pytest model/tests/test_postgres_eval_store.py -q
+  DB_DSN=postgres://... python3 model/eval/evaluate.py --allow-offline
+"""
 
 from __future__ import annotations
 
@@ -7,10 +18,13 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
+# Single logical report slot; control plane reads latest shadow eval snapshot.
 EVAL_REPORT_ID = "shadow_eval"
+
 
 class EvalReportStoreError(Exception):
     """Postgres persistence failure for shadow eval reports."""
+
 
 def _parse_generated_at(report: dict[str, Any]) -> datetime:
     raw = report.get("generated_at")
@@ -20,6 +34,7 @@ def _parse_generated_at(report: dict[str, Any]) -> datetime:
         except ValueError:
             pass
     return datetime.now(UTC)
+
 
 def upsert_ml_eval_report(report: dict[str, Any]) -> None:
     """Upsert the latest shadow eval row; no-op when DB_DSN is unset."""

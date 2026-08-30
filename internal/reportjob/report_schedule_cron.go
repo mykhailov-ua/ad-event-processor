@@ -12,7 +12,7 @@ var errInvalidCronExpr = fmt.Errorf("invalid cron expression")
 func validateReportCronExpr(expr string) error {
 	fields := strings.Fields(strings.TrimSpace(expr))
 	if len(fields) != 5 {
-		return errInvalidCronExpr
+		return errInvalidCronExpr // minute hour dom month dow; no year field
 	}
 	for i, field := range fields {
 		if field == "" {
@@ -104,7 +104,7 @@ func nextReportCronRun(expr string, after time.Time) (time.Time, error) {
 	}
 	fields := strings.Fields(strings.TrimSpace(expr))
 	start := after.UTC().Truncate(time.Minute).Add(time.Minute)
-	deadline := start.Add(366 * 24 * time.Hour)
+	deadline := start.Add(366 * 24 * time.Hour) // reject expr with no match within one year
 	for t := start; t.Before(deadline); t = t.Add(time.Minute) {
 		if cronMatches(fields, t) {
 			return t, nil

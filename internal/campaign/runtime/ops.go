@@ -61,8 +61,11 @@ func createCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 	now := time.Now()
 	initialStatus := campaign.ResolveScheduleStatus(now, spec.StartAt, spec.EndAt)
 
+	// One PG txn: idempotency ledger, customer balance freeze, campaign insert, FREEZE ledger,
+	// status history, audit, and lifecycle outbox (Effects.EmitCampaignLifecycleOutbox).
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
+		// Idempotency: ledger hash replays return existing campaign_id; row without campaign_id fails closed.
 		existing, err := q.GetLedgerByHashForUpdate(ctx, pgtype.Text{String: spec.IdempotencyKey, Valid: true})
 		if err == nil {
 			if existing.CampaignID.Valid {
@@ -83,6 +86,7 @@ func createCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 		}
 
 		var brandIDParam pgtype.UUID
+		// brandFcapKey is stored on the campaign row; outbox worker mirrors it to Redis fcap hash.
 		brandFcapKey := "fcap:c:" + campaignID.String()
 		if spec.BrandID != nil {
 			brand, err := q.GetBrand(ctx, domain.ToUUID(*spec.BrandID))
@@ -101,6 +105,7 @@ func createCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 			templateIDParam = domain.ToUUID(*spec.TemplateID)
 		}
 
+		// Budget limit is prepaid: debit customer balance; FREEZE ledger row pairs with campaign row.
 		if _, err = q.UpdateCustomerBalanceManagement(ctx, db.UpdateCustomerBalanceManagementParams{
 			ID:      domain.ToUUID(spec.CustomerID),
 			Balance: -spec.BudgetLimitMicro,
@@ -162,6 +167,7 @@ func createCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 			DaypartHours: spec.DaypartHours,
 		}, campaign.AuditIdempotencyMeta{IdempotencyKey: spec.IdempotencyKey})
 
+		// Lifecycle outbox: CREATE_CAMPAIGN when initial status is ACTIVE; PAUSE when scheduled PAUSED.
 		return fx.EmitCampaignLifecycleOutbox(ctx, q, campaignID, initialStatus, spec.BudgetLimitMicro)
 	})
 	return campaignID, err
@@ -221,6 +227,7 @@ func pauseCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	if pool == nil || fx == nil {
 		return campaign.ErrServiceUnavailable()
 	}
+	// PAUSE_CAMPAIGN outbox row is inserted in the same PG txn as status_history (Effects.EnqueueCampaignOutbox).
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
@@ -230,6 +237,7 @@ func pauseCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
 			return err
 		}
+		// Idempotent pause: already PAUSED skips outbox enqueue.
 		if camp.Status == db.CampaignStatusTypePAUSED {
 			return nil
 		}
@@ -260,6 +268,7 @@ func resumeCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 	if pool == nil || fx == nil {
 		return campaign.ErrServiceUnavailable()
 	}
+	// RESUME_CAMPAIGN outbox mirrors pause: same PG txn as status row + EnqueueCampaignOutbox.
 	return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		camp, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
@@ -283,6 +292,7 @@ func resumeCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects
 		if campaign.ResolveScheduleStatus(now, startAt, endAt) != db.CampaignStatusTypeACTIVE {
 			return campaign.ErrCampaignOutsideSchedule
 		}
+		// Publish gate (flow paths, integration blockers) before resume; force skips warnings only.
 		if err := fx.EnforceCampaignPublishGate(ctx, campaignID, camp, publishForce); err != nil {
 			return err
 		}
@@ -528,6 +538,7 @@ func scrubCampaignDTO(ctx context.Context, c db.Campaign) campaign.CampaignDTO {
 			}
 		}
 	}
+	// RBAC mask from request context: partial mask redacts URL/budget fields in list/get JSON.
 	if snap, ok := authz.SnapshotFromContext(ctx); ok {
 		out := ScrubCampaignFields(dto, snap.Mask)
 		campaign.AttachCampaignPresentation(ctx, &out)
@@ -557,6 +568,7 @@ func updateCampaignPacing(ctx context.Context, pool *pgxpool.Pool, fx campaign.E
 	}
 
 	var updatedCamp db.Campaign
+	// Pacing mode PG update and UPDATE_CAMPAIGN_PACING outbox row share one txn for Redis mirror.
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 
@@ -629,6 +641,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	if err := campaign.AssertMediaBuyerCampaignAccess(ctx, camp); err != nil {
 		return campaign.CampaignDTO{}, err
 	}
+	// Optimistic concurrency: If-Match revision is campaigns.updated_at as RFC3339 (CampaignRevision).
 	if req.ExpectedRevision != nil {
 		currentRev := campaign.CampaignRevision(camp.UpdatedAt.Time.Format(time.RFC3339))
 		if currentRev != strings.TrimSpace(*req.ExpectedRevision) {
@@ -636,6 +649,7 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		}
 	}
 
+	// Flow, brand, ingress-cost, and click-preset patches run via Effects outside the PG txn below.
 	if req.FlowID != nil {
 		if err := fx.AssignCampaignFlow(ctx, campaignID, *req.FlowID); err != nil {
 			return campaign.CampaignDTO{}, err
@@ -691,6 +705,8 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 	}
 
 	var updated db.Campaign
+	// Locked patch txn: budget/schedule/status Effects helpers enqueue outbox_events on this tx
+	// when Redis campaign config must change (CREATE_CAMPAIGN, PAUSE_CAMPAIGN, etc.).
 	err = pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		q := db.New(tx)
 		locked, err := q.GetCampaignForUpdate(ctx, domain.ToUUID(campaignID))
@@ -937,6 +953,8 @@ func patchCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effects,
 		return campaign.CampaignDTO{}, err
 	}
 
+	// Post-commit: INCR campaign epoch + PUBLISH on every Redis shard (tracker registry reload).
+	// Complements outbox worker apply; not rolled back if PG txn already committed.
 	fx.PublishCampaignUpdate(ctx, campaignID.String())
 	return scrubCampaignDTO(ctx, updated), nil
 }
@@ -980,6 +998,7 @@ func publishCampaign(ctx context.Context, pool *pgxpool.Pool, fx campaign.Effect
 	if err := campaign.AssertMediaBuyerCampaignAccess(ctx, row); err != nil {
 		return campaign.CampaignDTO{}, err
 	}
+	// Publish is idempotent: ACTIVE re-runs gate only; PAUSED resumes when gate passes.
 	switch row.Status {
 	case db.CampaignStatusTypeACTIVE:
 		if err := fx.EnforceCampaignPublishGate(ctx, campaignID, row, force); err != nil {
@@ -1023,6 +1042,7 @@ func updateCampaignSchedule(
 		if err != nil {
 			return mapCampaignStoreError(err)
 		}
+		// ApplyCampaignSchedulePatch may auto-pause/resume and enqueue UPDATE_CAMPAIGN_SCHEDULE outbox.
 		return fx.ApplyCampaignSchedulePatch(ctx, q, campaignID, locked, startAt, endAt, daypartHours)
 	})
 }
@@ -1039,6 +1059,7 @@ type clickhouseLagCache struct {
 
 const clickhouseLagCacheTTL = 30 * time.Second
 
+// Process-wide CH ingestion lag cache; stale=true when lag exceeds clickHouseStaleThreshold (5 min).
 var globalClickHouseLagCache clickhouseLagCache
 
 func getCampaignStats(
@@ -1074,6 +1095,7 @@ func getCampaignStats(
 		return campaign.CampaignStatsDTO{}, err
 	}
 
+	// PG campaign_stats rollup is strong-consistency default; CH buckets overlay below when wired.
 	report := campaign.CampaignStatsDTO{
 		CampaignID:   campaignID.String(),
 		CurrentSpend: formatCampaignMicro(camp.CurrentSpend),
@@ -1117,6 +1139,7 @@ func getCampaignStats(
 	}
 	report.Consistency = "eventual"
 	report.Source = "ch"
+	// Stale when CH ingest lag exceeds clickHouseStaleThreshold; PG totals remain authoritative for spend.
 	report.Stale = lag > clickHouseStaleThreshold
 	return report, nil
 }
@@ -1262,6 +1285,7 @@ func clickHouseIngestionLag(ctx context.Context, clickhouseQuery *database.Click
 		return 0, nil
 	}
 
+	// Double-checked lock: one max(created_at) probe per clickhouseLagCacheTTL across handlers.
 	globalClickHouseLagCache.mu.Lock()
 	if time.Since(globalClickHouseLagCache.updated) < clickhouseLagCacheTTL {
 		lag := globalClickHouseLagCache.lag

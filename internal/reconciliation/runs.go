@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+// ListRuns merges management recon_runs (PG/Redis spend window) with payment.financial_recon_runs.
 func ListRuns(ctx context.Context, host listRunsHost, service string, limit, offset int32) ([]opsadmin.ReconRunDTO, int64, error) {
 	switch service {
 	case "", "all":
@@ -73,6 +74,7 @@ func ListRuns(ctx context.Context, host listRunsHost, service string, limit, off
 	}
 
 	if service == "all" {
+		// Cross-service view: merge then trim to limit (per-service offset not preserved).
 		sort.Slice(runs, func(i, j int) bool {
 			return runs[i].CreatedAt > runs[j].CreatedAt
 		})
@@ -149,6 +151,7 @@ func listPaymentReconRuns(ctx context.Context, host ReconInfraHost, limit, offse
 	return runs, total, rows.Err()
 }
 
+// isMissingPaymentSchema: payment DB optional on single-VPS; empty list instead of 500.
 func isMissingPaymentSchema(err error) bool {
 	if err == nil {
 		return false

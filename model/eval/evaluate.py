@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
-"""Evaluate fraud shadow precision from ClickHouse proxy labels."""
+"""Evaluate fraud shadow precision from ClickHouse proxy and audited labels.
+
+Role:
+- Compose proxy_metrics (CH fraud_events proxy labels) and audited_metrics (PG manual).
+- Optional drift analysis when metadata.json raw_stats present.
+- Upsert ml_eval_reports when DB_DSN set; write JSON/markdown to var/fraudscore/.
+
+Env:
+- FRAUD_EVAL_HOURS (default 168), FRAUD_POLICY_ML_THRESHOLD, DB_DSN, CH_DSN
+
+Verify:
+  python3 model/eval/evaluate.py --allow-offline
+  pytest model/tests/test_shadow_precision.py -q
+"""
 
 from __future__ import annotations
 

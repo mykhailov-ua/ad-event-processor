@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	reportJobWorkerPollInterval = 2 * time.Second
+	reportJobWorkerPollInterval = 2 * time.Second // PG poll backoff when queue idle
 	reportJobWorkerBatchSize    = 4
 	defaultReportExportDir      = "./data/report-export"
 )
@@ -22,7 +22,7 @@ func DefaultReportExportDirPath() string {
 
 func (r *ReportJobRunner) StartWorker(ctx context.Context) {
 	if r == nil || !r.pgEnabled() {
-		return
+		return // in-memory mode: CreateJob spawns runJob goroutine per job
 	}
 	ticker := time.NewTicker(reportJobWorkerPollInterval)
 	defer ticker.Stop()
@@ -47,6 +47,7 @@ func (r *ReportJobRunner) ProcessOnce(ctx context.Context) (int, error) {
 	if r == nil || !r.pgEnabled() {
 		return 0, nil
 	}
+	// PG txn: SELECT pending FOR UPDATE SKIP LOCKED, then UPDATE to RUNNING.
 	claimed, err := claimReportJobs(ctx, r.deps.Pool, reportJobWorkerBatchSize)
 	if err != nil {
 		return 0, err

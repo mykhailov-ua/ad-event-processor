@@ -28,6 +28,7 @@ type CampaignEconomicsCH struct {
 	Conversions  int64
 }
 
+// QueryCampaignEconomicsCH: single-campaign rollup from placement_stats_hourly (read-only CH path).
 func QueryCampaignEconomicsCH(
 	ctx context.Context,
 	clickhouseQuery *database.ClickHouseQuery,

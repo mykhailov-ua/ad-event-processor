@@ -267,6 +267,9 @@ func fillTrackEventWithMobileBiometrics(evt *domain.Event, fields trackIngestFie
 	}
 }
 
+// deliverGnetTrack maps processTrack outcome to gnet response. On accept, publishAcceptedTrack consumes
+// the admission lease (ProcessReserved); publish false -> RollbackDebit + filterRejectProducerOverload 503.
+// Caller always Release() lease after return (clears reserve if publish skipped).
 func (h *AdsPacketHandler) deliverGnetTrack(
 	ctx *ConnContext,
 	accept string,
@@ -287,6 +290,7 @@ func (h *AdsPacketHandler) deliverGnetTrack(
 		h.writeGnetTrackAccepted(ctx, accept, origin, c, startMono, wReqID, requestIDStr, "")
 		return gnet.None
 	case trackStatusRejected:
+		// Filter reject before accept: no publish; caller Release() returns TryReserve slot.
 		spec := filterRejectSpecs[outcome.RejectKind]
 		h.recordTrackReject(ctx, evt, outcome.RejectKind)
 		if outcome.RejectKind == filterRejectFraudBlocked {
@@ -356,6 +360,9 @@ func trackIngestRequiresPublisher(filterEngine *FilterEngine) bool {
 	return filterEngine.StreamDeferredToProducer()
 }
 
+// publishAcceptedTrackIngress async-enqueues one accepted event. Broker lane preferred when wired;
+// else shard-indexed StreamProducer. With TryReserve lease: EnqueueReserved/ProcessReserved; lease.Clear on success.
+// Deferred mode (fcap:ignored) without publisher -> false before enqueue; increments post_debit_rejected if miswired after debit.
 func publishAcceptedTrackIngress(
 	sharder Sharder,
 	streamProducers []*StreamProducer,
@@ -431,6 +438,7 @@ func publishAcceptedTrackIngress(
 	return true
 }
 
+// httpTrackRejectProducerOverload: post-debit publish failure on net/http /track. RollbackDebit then 503 Retry-After: 1.
 func httpTrackRejectProducerOverload(ctx context.Context, w http.ResponseWriter, filterEngine *FilterEngine, evt *domain.Event, registry domain.CampaignRegistry) int {
 	if filterEngine != nil {
 		filterEngine.RollbackDebit(ctx, evt, registry)
@@ -923,6 +931,7 @@ func NewFastUUID() uuid.UUID {
 	return filter.NewFastUUID()
 }
 
+// streamAdmissionLease holds one TryReserve slot until Release (reject path) or Clear (successful enqueue).
 type streamAdmissionLease struct {
 	release func()
 }
@@ -1022,6 +1031,10 @@ func streamAdmissionTargetFor(
 	return streamProducerAdmissionTarget{producer: p, shard: strconv.Itoa(shard)}, true
 }
 
+// tryAcquireStreamAdmission reserves producer queue headroom before Lua debit.
+// requirePublisher true when defer-stream (fcap:ignored): fail filterRejectInfra if no StreamProducer/BrokerProducer.
+// STREAM_PRODUCER_ADMISSION_PCT (default 85): occupied >= limit -> filterRejectProducerOverload 503, no debit.
+// Verify: go test ./internal/ingest/ -short -run TestStreamProducerAdmission -count=1
 func tryAcquireStreamAdmission(
 	cfg *config.Config,
 	sharder Sharder,

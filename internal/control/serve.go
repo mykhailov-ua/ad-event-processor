@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// StartControlServers: optional UDP/TCP control plane to push quota epoch and slot map to trackers.
 func StartControlServers(
 	ctx context.Context,
 	cfg *config.Config,

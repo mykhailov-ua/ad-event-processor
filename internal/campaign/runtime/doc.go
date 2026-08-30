@@ -1,17 +1,35 @@
-// Package runtime implements campaign.Runtime: PG-backed list/get/patch/publish without HTTP transport.
+// Package runtime implements campaign.Runtime: Postgres-backed campaign admin logic without HTTP transport.
 //
 // Role:
-//   - Delegates mutations to campaign.Effects (controlplane Service) for outbox and validation gates.
-//   - Optional ClickHouseQuery for stats-enriched list margin breach attachment.
-//   - Used by controlplane campaign_handlers_bridge and tests; HTTP stays in parent campaign package.
+//   - List/get/patch/publish/pause/resume/create, schedule and pacing updates, events and status history.
+//   - Templates (create/list/from-template/save-as-template), clone/import/export/migration via Effects ports.
+//   - Optional ClickHouseQuery for GetCampaignStats and list margin breach attachment via Effects.
+//   - Implements campaign.CampaignReader; wired as Campaigns on CampaignsHTTPHandlers and campaign worker.
+//
+// Topology:
+//   - NewRuntime(pool, effects) held on controlplane.Service; lazy init in CampaignRuntime().
+//   - Mutations call campaign.Effects (Service bridges: campaign_handlers_bridge, campaign_wizard_bridge,
+//     campaign_import_bridge, campaign_delivery_bridge) for outbox-heavy patches, publish, pause, clone.
+//   - PG reads and scrubbing in ops.go; patch/publish transactions enqueue outbox_events through Effects
+//     in the same transaction as domain row updates (not in Runtime public methods directly).
+//   - HTTP routes stay in parent internal/campaign/handlers.go and subpackages (editor, selfserve, integration).
 //
 // Invariants:
-//   - PoolOrNil guards nil pool; callers must not bypass Effects on publish/patch budget fields.
+//   - Nil Runtime, pool, or effects returns campaign.ErrServiceUnavailable on mutating entrypoints.
+//   - CreateCampaign uses idempotency ledger hash and EnforceDeploymentLicenseCampaignCap before insert.
+//   - PatchCampaign honors If-Match revision (see parent save_conflict tests); publish runs EvaluateCampaignPublish gate.
+//   - Export/import delegate to importexport with Effects.CampaignImportExportHost().
 //
 // Forbidden:
-//   - Direct Redis writes (Effects/outbox only).
+//   - HTTP handlers, ServeMux registration, or direct Redis writes (Effects/outbox only).
+//   - internal/ingest hot-path imports.
+//
+// Defaults and limits:
+//   - GetCampaignStats marks stale when ClickHouse ingestion lag exceeds 5 minutes (ops.go helper).
+//   - Campaign list/get field scrubbing via authz.MaskLevel from context (ScrubCampaignFields).
 //
 // Verify:
 //
-//	go test ./internal/campaign/ -short -run Runtime -count=1
+//	go test ./internal/campaign/ -short -run TestPatchCampaign -count=1
+//	go test ./internal/campaign/ -short -run TestEvaluatePublishBlocked -count=1
 package runtime

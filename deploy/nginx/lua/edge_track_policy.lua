@@ -89,6 +89,8 @@ local function header_value(name)
     return request_headers[name] or request_headers[string.lower(name)]
 end
 
+-- Parity with http1TrackEdgePolicy: obfuscated TE (tab/vertical tab) treated as non-chunked on /track.
+-- Chunked on POST /track -> 411; allowed only on POST /openrtb/bid (run_openrtb).
 local function transfer_encoding_chunked()
     local te = header_value "Transfer-Encoding" or header_value "TE"
     if not te or te == "" then
@@ -131,6 +133,7 @@ local function check_edge_limits(cl)
     end
 end
 
+-- POST /track: Content-Length mandatory; chunked rejected (TestChaos_CrossHop_NginxGnet differential_count=0).
 local function require_content_length()
     local cl = content_length()
     if not cl then
@@ -155,6 +158,8 @@ local function reject_fraud_block(fraud_score)
     ngx.exit(ngx.HTTP_FORBIDDEN)
 end
 
+-- Edge RL pipeline before proxy: fraud tier block -> 403; edge_rl deny -> 429 Retry-After from edge-config.
+-- Sets ngx.ctx.campaign_id upstream of edge-shard-balancer; no ngx.shared writes here.
 local function apply_campaign_rl(campaign_id, fraud_score)
     local tier = edge_fraud_tier.tier_from_score(fraud_score or 0)
     if tier == "block" then

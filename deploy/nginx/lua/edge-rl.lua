@@ -51,6 +51,8 @@ function _M.retry_after_sec(fraud_score)
     return edge_config.get_retry_after(tier)
 end
 
+-- Per-campaign edge_rl incr: key {campaign_id}:{tier}:{bucket}; TTL 2x window_sec. incr fail -> deny (fail-closed).
+-- Tier scaling from edge-config rl_pct_*; does not debit Redis campaign budget (tracker UnifiedFilter owns spend).
 function _M.allow(campaign_id, fraud_score)
     if not campaign_id or campaign_id == "" then
         return true

@@ -27,6 +27,12 @@ type laneMsg struct {
 	msgID string
 }
 
+// SettlementWorker: single XReadGroup reader fans out to per-campaign lanes (crc32 hash)
+// so Postgres settlement batches do not contend on one flush mutex. Uses StreamConsumer
+// FlushBatch (store then XAck) on each lane; maxWorkers=0 on the embedded consumer.
+//
+// Verify:
+// go test ./internal/stream/ -short -run TestSettlement -count=1
 type SettlementWorker struct {
 	consumer   *StreamConsumer
 	lanes      int
@@ -109,6 +115,7 @@ func (w *SettlementWorker) SetOnMessageProcessed(cb func(evt *domain.Event, msgI
 	}
 }
 
+// settlementLaneIndex: stable campaign_id -> lane for ordered PG settlement without cross-campaign batching.
 func settlementLaneIndex(campaignID uuid.UUID, lanes int) int {
 	if lanes <= 1 {
 		return 0
@@ -176,6 +183,8 @@ func (w *SettlementWorker) Wait(ctx context.Context) error {
 	}
 }
 
+// readLoop: one consumer reads ">" and enqueues laneMsg; lanes own batching and ACK.
+// recoverPending runs on the reader ID before live reads (PEL replay).
 func (w *SettlementWorker) readLoop(ctx context.Context) {
 	workerID := w.consumerID + "-reader"
 	initCtx, initCancel := context.WithTimeout(ctx, w.consumer.writeTimeout*2)
@@ -236,6 +245,8 @@ func (w *SettlementWorker) readLoop(ctx context.Context) {
 	}
 }
 
+// runLane micro-batches by flushInt/batchSize; SettlementSeedGateAllowed blocks PG writes
+// when trial SKU disallows settlement seed (events dropped, not ACKed until gate opens).
 func (w *SettlementWorker) runLane(ctx context.Context, laneIdx int) {
 	workerID := fmt.Sprintf("%s-lane-%d", w.consumerID, laneIdx)
 	laneLabel := strconv.Itoa(laneIdx)

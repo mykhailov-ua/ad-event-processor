@@ -168,6 +168,7 @@ func (s *Service) campaignUpdateChannel() string {
 	return "campaigns:update"
 }
 
+// publishCampaignUpdate: INCR campaign epoch + PUBLISH on every Redis shard; broker fallback when configured.
 func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) error {
 	var pubErr error
 	if len(s.redisShards) > 0 {
@@ -206,6 +207,7 @@ func (s *Service) publishCampaignUpdate(ctx context.Context, campaignID string) 
 	return pubErr
 }
 
+// redisClientForCampaign: StaticSlotSharder index into redisShards (hash-tag colocation with unified-filter).
 func (s *Service) redisClientForCampaign(campaignID uuid.UUID) redis.UniversalClient {
 	if len(s.redisShards) == 0 {
 		return nil
@@ -221,6 +223,7 @@ func (s *Service) SetTCPControlPublisher(tcp TCPControlPublisher) {
 	s.tcpControl = tcp
 }
 
+// publishRoutingCutover: in-process slot map swap, TCP snapshot to trackers, broker slot-map reload topic.
 func (s *Service) publishRoutingCutover(ctx context.Context, routingEpoch int64, slotVersion int32) {
 	if ss, ok := s.sharder.(*domain.StaticSlotSharder); ok {
 		prev := ss.Snapshot()

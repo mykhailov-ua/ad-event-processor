@@ -34,6 +34,7 @@ local edge_node_weights = require "edge-node-weights"
 local quarantine_sub = require "edge-quarantine-sub"
 local tcp_fp_sync = require "edge-tcp-fp-sync"
 
+-- Worker 0 only: all Redis/control SHM mirrors and quarantine ngx.thread live here; other workers read SHM.
 if ngx.worker.id() ~= 0 then
     return
 end
@@ -72,6 +73,7 @@ if not timer_ok then
     ngx.log(ngx.ERR, "failed to start edge config sync: ", timer_err)
 end
 
+-- Cold boot: timer.at(0) for each mirror; reschedule failure ends that chain (ERR log) until nginx reload.
 timer_ok, timer_err = ngx.timer.at(0, sync_blacklist)
 if not timer_ok then
     ngx.log(ngx.ERR, "failed to start blacklist sync: ", timer_err)
@@ -149,6 +151,8 @@ if not timer_ok then
     ngx.log(ngx.ERR, "failed to start tcp fp sync: ", timer_err)
 end
 
+-- Tracker pool healthcheck: marks peers down on 2 consecutive failures; balancer skips unhealthy unix sockets.
+-- Separate from circuit_breaker SHM (infra sync/upstream 5xx ratio), which gates entire edge perimeter.
 local ok, err = hc.spawn_checker {
     shm = "healthcheck",
     upstream = "trackers",

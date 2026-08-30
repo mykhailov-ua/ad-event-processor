@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	defaultReportLookback        = 7 * 24 * time.Hour
+	defaultReportLookback = 7 * 24 * time.Hour
+	// reportClickHouseQueryTimeout: admin report API ceiling; uses ClickHouseQuery sem + SETTINGS max_memory.
 	reportClickHouseQueryTimeout = 10 * time.Second
 )
 
@@ -197,6 +198,7 @@ func ListCustomerCampaignIDs(ctx context.Context, pool *pgxpool.Pool, customerID
 	return listCustomerCampaignIDs(ctx, pool, customerID)
 }
 
+// QueryPlacementReportRows: UNION impressions fact + placement_stats_hourly; 10s CH timeout per request.
 func QueryPlacementReportRows(
 	ctx context.Context,
 	clickhouseQuery *database.ClickHouseQuery,

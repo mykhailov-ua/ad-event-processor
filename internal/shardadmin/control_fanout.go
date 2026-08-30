@@ -26,6 +26,7 @@ func PublishFraudQuarantineBatch(ctx context.Context, redisShards []redis.Univer
 	return PublishControlChannelToAllShards(ctx, redisShards, edge.FraudQuarantineChannel, payload)
 }
 
+// PublishCampaignControlToAllShards: pipeline INCR campaign epoch + PUBLISH per shard (tracker registry reload).
 func PublishCampaignControlToAllShards(ctx context.Context, redisShards []redis.UniversalClient, channel, campaignID string, queuedAt time.Time) error {
 	return ForEachConnectedShard(ctx, redisShards, "publish_campaign_control", func(i int, redisClient redis.UniversalClient) error {
 		_, err := redisClient.Pipelined(ctx, func(pipe redis.Pipeliner) error {
@@ -59,6 +60,7 @@ func PublishControlMessagesToAllShards(ctx context.Context, redisShards []redis.
 	})
 }
 
+// SetNXOnAllShards: strict fanout; allNew false if any shard already holds the lease key.
 func SetNXOnAllShards(ctx context.Context, redisShards []redis.UniversalClient, key, value string, ttl time.Duration) (bool, error) {
 	allNew := true
 	err := ForEachConnectedShardStrict(ctx, redisShards, "setnx", func(_ int, redisClient redis.UniversalClient) error {

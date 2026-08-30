@@ -12,6 +12,7 @@ func isFraudStreamLayerDesyncTelemetry(evt *domain.Event) bool {
 	return evt.FraudReason != "" || evt.FraudScore > 0
 }
 
+// observeFraudStreamLayerDesync: LayerDesyncCount from stream row (edge vs tracker vs Redis divergence).
 func observeFraudStreamLayerDesync(count uint8) {
 	if count > 5 {
 		count = 5

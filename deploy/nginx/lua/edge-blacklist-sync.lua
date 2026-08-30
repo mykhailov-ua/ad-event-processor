@@ -244,6 +244,7 @@ local function connect_shard(shard_idx)
     return red, nil
 end
 
+-- connect_any_shard exhaustion records circuit err; access-check fail-closed when _bl_ver never set.
 function _M.connect_any_shard()
     ensure_redis_topology()
     local last_err = "no redis shard configured"
@@ -272,6 +273,8 @@ local function append_pending_ips(ips)
     cache:set("_bl_pending", raw)
 end
 
+-- Incremental stamp: bump_version false reuses _bl_ver (quarantine pub/sub); true or ver==0 bumps generation.
+-- Overflow tail goes to _bl_pending; init-worker drain timer calls stamp_ips(..., false). No per-IP delete on unblock.
 function _M.stamp_ips(ips, bump_version)
     load_env()
     if not ips or #ips == 0 then
@@ -371,6 +374,8 @@ function _M.apply_quarantine_message(payload)
     return _M.stamp_ips({ payload }, false)
 end
 
+-- Full refresh: SMEMBERS blacklist:manual|auto|fraud on shard 0; always bumps _bl_ver and re-stamps all IPs.
+-- Complements XDP edge-bpf-sync L4 deny maps; L7 uses generational b:{ip} stamps only (no flush_all).
 function _M.sync()
     local red, err, shard_idx = _M.connect_any_shard()
     if not red then

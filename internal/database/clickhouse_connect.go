@@ -9,6 +9,8 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
+// ConnectClickHouse: native protocol with async_insert + wait_for_async_insert (server-side batching).
+// ConnMaxLifetime avoids stale TCP behind L4 idle timeout.
 func ConnectClickHouse(ctx context.Context, dsn string) (driver.Conn, error) {
 	opts, err := clickhouse.ParseDSN(dsn)
 	if err != nil {

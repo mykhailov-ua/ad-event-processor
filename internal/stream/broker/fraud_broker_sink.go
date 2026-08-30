@@ -8,6 +8,12 @@ import (
 	"ad-event-processor/pkg/broker/client"
 )
 
+// FraudBrokerSink publishes length-prefixed vtproto batches to a dedicated fraud broker topic
+// when CH_INGEST_SOURCE=broker (replaces per-shard Redis fraud XADD on the cold path).
+// Lane is separate from tracker BrokerProducer (main ad-events topic): own topic, partition, and
+// consumer group in cmd/processor; wire layout matches brokerConcatLengthPrefixedMessages.
+//
+// Verify: go test ./internal/stream/broker/ -short -run TestBrokerProducer_EnqueueAndFlush -count=1
 type FraudBrokerSink struct {
 	client BrokerClient
 	topic  string
@@ -42,6 +48,8 @@ func (s *FraudBrokerSink) Produce(ctx context.Context, partition uint16, payload
 	if s == nil || s.client == nil || len(payloads) == 0 {
 		return nil
 	}
+	// Wire: brokerConcatLengthPrefixedMessages joins N AdLogRecord/AdStreamEvent frames as
+	// uvarint(len)||payload... for one mmap WAL Produce (same encoding as main events path).
 	buf := brokerConcatLengthPrefixedMessages(payloads)
 	if len(buf) == 0 {
 		return nil

@@ -24,6 +24,12 @@ import (
 	redis "github.com/redis/go-redis/v9"
 )
 
+// StreamConsumer drains Redis stream consumer groups into domain.EventStore (ClickHouse
+// spool or direct). Invariant: XAck only after StoreBatch succeeds; PEL retains messages
+// on retriable store errors. Poison rows split via splitStoreBatch then DLQ.
+//
+// Verify:
+// go test ./internal/stream/ -short -run TestStreamConsumer -count=1
 type StreamConsumer struct {
 	store              domain.EventStore
 	redisClient        redis.UniversalClient
@@ -128,6 +134,8 @@ func NewStreamConsumer(
 	}
 }
 
+// Start creates the consumer group, maxWorkers XReadGroup loops, janitor (XAutoClaim),
+// and DLQ depth monitor. Each worker gets a unique consumer ID suffix (-wN).
 func (c *StreamConsumer) Start(ctx context.Context) {
 	c.startMu.Lock()
 	defer c.startMu.Unlock()
@@ -189,6 +197,9 @@ func (c *StreamConsumer) workerConsumerID(workerIdx int) string {
 	return fmt.Sprintf("%s-w%d", c.consumerID, workerIdx)
 }
 
+// worker: micro-batch XReadGroup (">"), optional ProcessorWeightController throttle,
+// flush on batchSize or flushInt. Shutdown drains in-flight batch and pending ">" reads
+// before returning (drainTimeout bounds wait).
 func (c *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 	workerID := c.workerConsumerID(workerIdx)
 	defer func() {
@@ -317,6 +328,8 @@ func (c *StreamConsumer) worker(ctx context.Context, workerIdx int) {
 	}
 }
 
+// pauseStreamReads blocks XReadGroup while the store circuit breaker is open so workers
+// do not grow the PEL during ClickHouse outages (ad_processor_stream_backpressure_active).
 func (c *StreamConsumer) pauseStreamReads(ctx context.Context) bool {
 	if c.cb.State() != CircuitOpen {
 		metrics.ProcessorStreamBackpressureActive.WithLabelValues(c.groupName).Set(0)
@@ -354,6 +367,9 @@ func (c *StreamConsumer) recordCancellation(workerID string) {
 	metrics.CircuitBreakerState.WithLabelValues(c.groupName).Set(float64(c.cb.State()))
 }
 
+// tryFlush runs StoreBatch+XAck via flushBatch. On failure increments ad:events:retries
+// per msg ID; after maxRetries non-retriable errors decomposes batch (splitStoreBatch)
+// and moves poison rows to DLQ stream (XAck+XDel on success).
 func (c *StreamConsumer) tryFlush(ctx context.Context, batch *[]*domain.Event, msgIDs *[]string, retryCount *int, workerID string, ticker *time.Ticker, retryWait *time.Duration) {
 	if !c.cb.Allow() {
 		wait := c.cb.WaitDuration()
@@ -515,6 +531,8 @@ var (
 	}
 )
 
+// moveToDLQ marshals AdDLQEvent protobuf into dlq stream, then XAck+XDel source rows per
+// successful XAdd. Partial pipeline failure retains failed rows in PEL (no silent drop).
 func (c *StreamConsumer) moveToDLQ(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string, retryCount int, err error) error {
 	errStr := err.Error()
 
@@ -671,6 +689,9 @@ func (c *StreamConsumer) StartMaintenance(ctx context.Context) {
 	}()
 }
 
+// parseMessage decodes stream field "d" as AdStreamEvent protobuf (tracker hot path).
+// Strings alias into event.StringBuffer (zero extra alloc). Legacy flat hash fields and
+// fraud_aggregate_event_type remain for older stream rows.
 func (c *StreamConsumer) parseMessage(id string, values map[string]interface{}) *domain.Event {
 	event := domain.EventPool.Get().(*domain.Event)
 	event.Reset()
@@ -813,6 +834,8 @@ func firstN(ids []string, n int) []string {
 	return ids[:n]
 }
 
+// flushBatch: StoreBatch then XAck. domain.DeduplicationTokenKey scopes CH insert idempotency
+// to first+last Redis msg ID in the batch. Never ACK on store error (message stays in PEL).
 func (c *StreamConsumer) flushBatch(ctx context.Context, batch []*domain.Event, msgIDs []string, workerID string) error {
 	if len(batch) == 0 {
 		return nil
@@ -870,6 +893,8 @@ func (c *StreamConsumer) flushBatch(ctx context.Context, batch []*domain.Event, 
 	return nil
 }
 
+// recoverPending replays this worker's PEL (stream "0") on startup before reading ">".
+// Retriable store errors leave messages in PEL; hard failures go to DLQ.
 func (c *StreamConsumer) recoverPending(ctx context.Context, consumerID string) {
 	for {
 		select {
@@ -977,6 +1002,7 @@ func (c *StreamConsumer) drainNewMessages(ctx context.Context, consumerID string
 	}
 }
 
+// janitor periodically XAutoClaim messages idle longer than streamMinIdle from dead consumers.
 func (c *StreamConsumer) janitor(ctx context.Context) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -997,6 +1023,7 @@ func (c *StreamConsumer) janitor(ctx context.Context) {
 	}
 }
 
+// claimStuckMessages: autoclaim + retry counter in ad:events:retries; exceeds maxRetries -> DLQ.
 func (c *StreamConsumer) claimStuckMessages(ctx context.Context) {
 	startID := "0-0"
 	for {

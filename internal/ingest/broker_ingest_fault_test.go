@@ -35,6 +35,8 @@ func produceBrokerStreamEvent(t *testing.T, producer *client.Client, topic strin
 	require.NoError(t, err)
 }
 
+// Holdout: reverting corrupt-payload skip stalls the consumer group or drops the following valid event;
+// parse_errors must increment, one good event must flush, committed offset must reach 2.
 func TestFault_BrokerLiveConsumer_CorruptPayload(t *testing.T) {
 	_, addr := startBrokerFaultServer(t)
 
@@ -99,6 +101,8 @@ func TestFault_BrokerLiveConsumer_CorruptPayload(t *testing.T) {
 	t.Fatal("broker consumer did not skip corrupt payload and flush valid event")
 }
 
+// Holdout: reverting offset persistence replays the first event on reconnect or skips the second;
+// second consumer must flush exactly one new batch and committed offset must be >= 2.
 func TestFault_BrokerLiveConsumer_ReconnectOffsetResume(t *testing.T) {
 	_, addr := startBrokerFaultServer(t)
 	topic := "tracker-logs"
@@ -167,6 +171,8 @@ func TestFault_BrokerLiveConsumer_ReconnectOffsetResume(t *testing.T) {
 	})
 }
 
+// Holdout: reverting shadow semantics loses events at cutover or double-writes during shadow;
+// shadow must observe 2 events without StoreBatch or offset commit; live cutover must store >= 2.
 func TestFault_BrokerShadowCutover_NoEventLoss(t *testing.T) {
 	_, addr := startBrokerFaultServer(t)
 	topic := "tracker-logs"

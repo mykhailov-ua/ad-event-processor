@@ -1,5 +1,7 @@
 package gnet
 
+// PinParsedHTTPRequest copies header/body slices into ConnContext.OffloadHTTPPin so Tier B
+// can run after gnet discards the peek frame. Slices in the returned Request alias the pin buffer.
 func PinParsedHTTPRequest(ctx *ConnContext, req Request) Request {
 	ctx.OffloadHTTPPin = ctx.OffloadHTTPPin[:0]
 	pin := func(b []byte) []byte {

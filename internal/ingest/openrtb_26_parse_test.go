@@ -17,6 +17,7 @@ var openrtb26Sample = []byte(`{
  "site":{"cat":["IAB1"]}
 }`)
 
+// Contract: bidfloor is dollars on wire; BidFloorMicro is micro-units (1.25 -> 1_250_000).
 func TestParseOpenRTB26_fields(t *testing.T) {
 	p := ParseOpenRTB26(openrtb26Sample)
 	require.True(t, p.OK)
@@ -79,6 +80,7 @@ func TestParseOpenRTB26_extensionFields(t *testing.T) {
 	assert.Equal(t, uint8(1), targeting.Input.PMPPrivate)
 }
 
+// Holdout: site traffic with badv match blocks; site domain not in badv passes (app bundle path differs).
 func TestParseOpenRTB26_blocklists(t *testing.T) {
 	body := []byte(`{
 	 "id":"blk-1",
@@ -116,6 +118,7 @@ func TestParseOpenRTB26_exchangeReady(t *testing.T) {
 	require.True(t, p.ExchangeReady(openrtb.ExchangeConfig{MultiImpMax: 1}))
 }
 
+// ExchangeReady gates auction entry: MultiImpMax caps imp slots; missing device UA rejects.
 func TestParseOpenRTB26_exchangeReady_rejectsMissingUA(t *testing.T) {
 	body := []byte(`{"id":"b1","imp":[{"id":"1","bidfloor":0.5,"banner":{}}],"site":{},"device":{"ip":"1.2.3.4"}}`)
 	p := ParseOpenRTB26(body)
@@ -146,6 +149,7 @@ func BenchmarkParseOpenRTB26(b *testing.B) {
 	}
 }
 
+// BenchmarkParseOpenRTB26Into_connReuse: OpenRTB26Parsed lives on connContext across requests (0 alloc hot path).
 func BenchmarkParseOpenRTB26Into_connReuse(b *testing.B) {
 	var ctx connContext
 	b.ReportAllocs()

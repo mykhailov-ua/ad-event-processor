@@ -19,6 +19,7 @@ var ErrPostgresGateRejected = errors.New("postgres gate rejected")
 
 const postgresGateReserve = 1
 
+// PostgresGate: high-priority admin/outbox slots vs low-priority reports; one conn reserved for probes.
 type PostgresGate struct {
 	sem      chan struct{}
 	capacity int
@@ -188,6 +189,7 @@ func NewShard0CatchupWorker(svc *Service, redisOpts database.RedisShardOptions) 
 	return shardadmin.NewShard0CatchupWorker(svc, redisOpts)
 }
 
+// TryReconnectShard0: lazy dial when shard 0 was nil at startup (degraded ingest path).
 func (s *Service) TryReconnectShard0(ctx context.Context, opts database.RedisShardOptions) bool {
 	if s == nil || s.cfg == nil {
 		return false
@@ -215,6 +217,7 @@ func NewSlotMigrationOrchestrator(svc *Service, interval time.Duration) *shardad
 	return shardadmin.NewSlotMigrationOrchestrator(svc, interval)
 }
 
+// afterSlotMapActivated: bump routing_epoch in PG, reload StaticSlotSharder, publish TCP+broker cutover.
 func (s *Service) afterSlotMapActivated(ctx context.Context, version int32) {
 	routingEpoch := int64(0)
 	if row, err := domain.NewCampaignRoutingRepo(s.GetPool()).BumpGlobalRoutingEpoch(ctx); err == nil {

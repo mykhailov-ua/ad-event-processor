@@ -4,7 +4,7 @@ Shared libraries **importable without `internal/`**. `pkg/*` must **not** import
 
 Use when two or more binaries or domain packages need the same stable, transport-level helper. Do not create `pkg/` wrappers around single-use domain logic.
 
-Cross-ref: `.cursor/rules/boundaries.mdc`, `.cursor/rules/code-style.mdc`.
+Cross-ref: `.cursor/rules/boundaries.mdc`, `.cursor/rules/code-style.mdc`, per-package `doc.go`.
 
 ---
 
@@ -12,30 +12,34 @@ Cross-ref: `.cursor/rules/boundaries.mdc`, `.cursor/rules/code-style.mdc`.
 
 | Package | Role | Hot/cold |
 | :--- | :--- | :--- |
-| `broker` | Broker wire protocol — client/server framing, ring buffer types | Hot producer path |
+| `broker` | Consumer offset files; wire in `protocol/`, `log/`, `client/` | Hot ingest (client/consumer) |
 | `coldpath` | Limited body read, JSON decode, UUID parse for admin HTTP | Cold only |
-| `clientip` | Extract client IP from headers/socket | Hot |
-| `dedupkey` | Dedup key formatting for streams | Hot |
+| `clientip` | Client IP from X-Forwarded-For when peer trusted | Cold (control, identity) |
+| `dedupkey` | Dedup key formatting for streams and spend sync | Hot |
 | `domainhealth` | Domain health check helpers | Cold |
-| `faultproof` | Fault test telemetry (`fault_proof` lines) | Test |
-| `gnetutil` | gnet server utilities | Hot |
-| `httpresponse` | Prebuilt response byte slices | Hot |
-| `iogate` | I/O backpressure gate | Hot |
-| `landerhost` | Lander host resolution | Hot/cold |
-| `legal` | Legal snippet strings | Cold |
-| `lifecycle` | Graceful shutdown registration | Both |
-| `logger` | Structured logging setup | Both |
-| `moderatorintel` | Moderator intel snapshot types | Hot read |
+| `faultproof` | Fault test telemetry (`fault_proof` lines) | Test harness |
+| `gnetutil` | gnet conn idle / max lifetime on accept | Hot (broker, region-proxy servers) |
+| `httpresponse` | JSON success/error envelopes for admin HTTP | Cold only |
+| `iogate` | Disk write gate, group commit, writev coalesce | Hot (broker WAL, logger, region WAL) |
+| `landerhost` | Hosted lander store, preview tokens, zip publish | Cold (flow + filter routing snapshot) |
+| `legal` | Embedded EULA text and acceptance JSON | Cold |
+| `lifecycle` | Graceful shutdown, health probes, metrics sidecar | Both |
+| `logger` | MPSC ring log shard, disk evacuator | Hot (tracker) + sidecars |
+| `moderatorintel` | Signed moderator IP prefix feed (JSON object) | Hot read (filter, ingest) |
 | `money` | Money micros formatting | Cold |
 | `naming` | Shared product naming constants | Both |
-| `netaddr` | Network address parsing | Hot |
-| `piihash` | PII hashing for exports | Cold |
-| `platformconfig` | Platform config key constants | Cold |
-| `proxyupstream` | Upstream proxy configuration | Edge |
-| `regionproxy` | Region proxy wire types | Cold |
-| `runtimepaths` | Runtime path resolution (`var/`, `bin/`) | Both |
-| `supportbundle` | Support bundle tar layout | Cold |
-| `branding` | Product branding strings | Cold |
+| `netaddr` | gnet listen URI, Redis URL, unix socket detect | Both |
+| `piihash` | HighwayHash PII columns (ip, ua, user id, subnet) | Hot (tracker, filter, stream) |
+| `platformconfig` | install.yaml schema, Redis render | Cold |
+| `proxyupstream` | SSRF-safe click proxy upstream URL validation | Hot (ingest click proxy) + cold (campaign editor) |
+| `regionproxy` | Multi-region WAL, quorum, uplink (Enterprise) | Cold (regional cell) |
+| `runtimepaths` | Runtime path resolution (`var/`, `bin/`, broker socket) | Both |
+| `supportbundle` | Support bundle tar layout and redaction | Cold |
+| `branding` | Product/vendor strings and safe-view HTTP headers | Hot (ingest decoy bytes) + cold (admin) |
+
+Hot/cold reflects **production** import paths. Fault tests may import additional packages.
+
+Module-level contracts live in each package `doc.go` (Role, Verify, Go importers).
 
 ---
 
@@ -55,13 +59,21 @@ Handlers must not use raw `io.ReadAll` on admin routes.
 
 ## `broker` (hot ingest)
 
-Ring buffer producer types used by `internal/stream` and `cmd/broker`.
+| Subpackage | Role |
+| :--- | :--- |
+| `protocol` | Frame codec, produce/fetch/offset wire |
+| `log` | mmap WAL segments, durability modes |
+| `client` | TCP/unix client; optional Redis leader discovery |
+| `consumer` | Fetch loop with file-backed offsets |
+| root | `ConsumerOffsetTracker` persistence |
+
+Ring-buffer producer lives in `internal/stream/broker/broker_producer.go`, not in `pkg/broker` root.
 
 **Test:**
 
 ```bash
 go test ./pkg/broker/... -count=1
-go test ./internal/ingest/ -run TestFault_Broker -count=1
+go test ./internal/ingest/ -short -run TestFault_Broker -count=1
 ```
 
 **Pitfalls:**
@@ -79,7 +91,7 @@ Even in `pkg/`, code called from `/track` must obey hot-path rules:
 - No `interface{}` boxing on ingest path.
 - No allocations in bench-critical helpers — verify with `make test-alloc-gate` when touched.
 
-Files used only on cold path (`coldpath`, `money`) have normal Go style freedom.
+Files used only on cold path (`coldpath`, `money`, `httpresponse`) have normal Go style freedom.
 
 ---
 
@@ -88,8 +100,8 @@ Files used only on cold path (`coldpath`, `money`) have normal Go style freedom.
 | Situation | Action |
 | :--- | :--- |
 | One domain needs helper | Keep in `internal/<domain>/` |
-| Tracker + processor need same bytes | `pkg/httpresponse` or `pkg/dedupkey` |
-| Admin-only JSON helper | `pkg/coldpath` |
+| Tracker + processor need same hash/key bytes | `pkg/dedupkey`, `pkg/piihash` |
+| Admin-only JSON helper | `pkg/coldpath`, `pkg/httpresponse` |
 | New `internal/common` or `util` | **Banned** — use domain or `pkg/coldpath` |
 
 ---
@@ -98,10 +110,11 @@ Files used only on cold path (`coldpath`, `money`) have normal Go style freedom.
 
 ```bash
 go test ./pkg/<package>/ -short -count=1
+bash scripts/ci/static/pkg_boundary.sh
 bash scripts/ci/static/hot_path_static.sh    # if hot consumer touched
 ```
 
-Import lint: `pkg/*` must not appear in `internal/` import graph as importer of domain — only as imported by `internal/`.
+Import lint: `pkg/*` must not import `internal/*`.
 
 ---
 
@@ -110,3 +123,4 @@ Import lint: `pkg/*` must not appear in `internal/` import graph as importer of 
 1. **Putting business rules in `pkg/`** — belongs in `internal/<domain>/`.
 2. **Importing `internal/` from `pkg/`** — compile error by policy; fix design.
 3. **Duplicating `coldpath` in handlers** — use shared helper for body limits.
+4. **Treating `httpresponse` as hot** — ingest uses prebuilt bytes and branding headers, not JSON writers.

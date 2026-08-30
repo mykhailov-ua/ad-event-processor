@@ -40,6 +40,7 @@ func MaybeRunGuardWatchdogCLI(args []string) bool {
 	return true
 }
 
+// launchPtraceWatchdog: child re-execs with PTRACE_ATTACH on parent; FD 3 signals ready to parent.
 func launchPtraceWatchdog(ctx context.Context) {
 	readyR, readyW, err := os.Pipe()
 	if err != nil {

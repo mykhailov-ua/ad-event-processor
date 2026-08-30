@@ -54,6 +54,9 @@ func ProcessorWeightConfigFromApp(cfg *config.Config) ProcessorWeightConfig {
 	}
 }
 
+// ProcessorWeightController scales XReadGroup batch size and inter-read delay from
+// cluster weights (UDP gossip or /ops/processor-weights HTTP). pgDrainActive floors
+// weight when Postgres gate wait EMA exceeds DrainPgWait.
 type ProcessorWeightController struct {
 	cfg          ProcessorWeightConfig
 	postgresGate *ProcessorPostgresGate
@@ -206,6 +209,7 @@ func (c *ProcessorWeightController) InstanceLabel() string {
 	return c.cfg.InstanceLabel
 }
 
+// EffectiveReadCount scales XReadGroup Count by local weight (min 1 row when weight > 0).
 func (c *ProcessorWeightController) EffectiveReadCount(batchSize int) int64 {
 	if c == nil {
 		return int64(batchSize)
@@ -221,6 +225,8 @@ func (c *ProcessorWeightController) EffectiveReadCount(batchSize int) int64 {
 	return int64(n)
 }
 
+// ThrottleBeforeRead sleeps proportionally to (1/weight - 1) so low-weight nodes
+// ingest slower without skipping PEL recovery or janitor paths.
 func (c *ProcessorWeightController) ThrottleBeforeRead(ctx context.Context) {
 	if c == nil {
 		return

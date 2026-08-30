@@ -36,6 +36,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// wireAdminDomainRoutes: phase-2 RouteRegistry fill; handlers own route paths and coldpath body limits.
 func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	pool := e.pool
 	svc := e.svc
@@ -53,6 +54,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	selfServePaymentProvider := e.selfServePaymentProvider
 	selfServeCryptoSubProvider := e.selfServeCryptoSubProvider
 	fraudPresets := e.fraudPresets
+	// ReportsHTTP: CH readonly stats/forecasts; PG views store; license feature gate on premium catalog rows.
 	reg.ReportsHTTP = &reports.ReportsHTTPHandlers{
 		CampaignStats:      campaignStatsAdapter{svc: svc},
 		CampaignForecaster: campaignForecasterAdapter{svc: svc},
@@ -81,6 +83,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		RequireLicenseFeature:     requireLicenseFeature,
 		DenyScopedAPIKeyReport:    selfserve.DenyScopedAPIKeyOperatorReport,
 	}
+	// ReportJobHTTP: async CH/PG export jobs; schedule validation is server-side only.
 	reg.ReportJobHTTP = &reportjob.HTTPHandlers{
 		Runner:                  reportJobs,
 		Pool:                    pool,
@@ -124,6 +127,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		AuthorizeCustomerAccess: authCustomer,
 		WriteServiceError:       writeErr,
 	}
+	// SelfServeHTTP: /api/v1/selfserve/*; API-key auth via selfServePerm; customer scope enforced in resolver.
 	reg.SelfServeHTTP = &selfserve.SelfServeHTTPHandlers{
 		Campaigns:                  svc,
 		Templates:                  selfserve.NewSelfServeTemplatesAdapter(svc),
@@ -303,6 +307,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 			return stats.Bids, stats.Wins, stats.SpendMicro, true
 		},
 	}
+	// CampaignsHTTP: PG mutations via CampaignRuntime; ClickHouseQuery read-only for event stats.
 	reg.CampaignsHTTP = &campaign.CampaignsHTTPHandlers{
 		Campaigns:                 svc.CampaignRuntime(),
 		CampaignFraud:             fraudadmin.CampaignFraudAPI{Host: svc, MapErr: mapFraudadminErr},
@@ -342,6 +347,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		AuthorizeCustomerAccess: authCustomer,
 		WriteServiceError:       writeErr,
 	}
+	// SupportHTTP: auth-only (no perm string); support bundle streams PG metadata + local log dir.
 	reg.SupportHTTP = &platformadmin.SupportHTTPHandlers{
 		Feedback: svc,
 		SupportBundle: supportBundleWriter{
@@ -357,6 +363,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		Enrich:         platformadmin.NewMetaEnricher(h.svc),
 		WriteError:     writeErr,
 	}
+	// SessionHTTP: SPA bootstrap; CH ingestion lag probe when clickhouseQuery configured (readonly).
 	reg.SessionHTTP = func() *platformadmin.SessionHTTPHandlers {
 		sh := wireSessionHTTPHandlers(func(ctx context.Context) reports.DataFreshnessDTO {
 			if h.svc != nil && h.svc.clickhouseQuery != nil {
@@ -382,6 +389,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		RequirePermission: perm,
 		WriteServiceError: writeErr,
 	}
+	// PublicHTTP: unauthenticated activation; license-apply IP limit; PolicyRefresh reloads authz roles YAML.
 	reg.PublicHTTP = &platformadmin.PublicHTTPHandlers{
 		Activation: platformadmin.NewPublicActivation(svc),
 		AuthClient: h.authClient,

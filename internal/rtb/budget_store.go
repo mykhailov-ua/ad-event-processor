@@ -7,15 +7,20 @@ import (
 
 const defaultBudgetCap = 10000
 
+// AlignedBudget pads Value to 64 bytes so concurrent CAS on adjacent slots avoids
+// false sharing on the auction hot path (BudgetStore checkAndSpendOn spin loop).
 type AlignedBudget struct {
 	Value int64
 	_     [7]int64
 }
 
+// budgetSlice is swapped atomically; readers Load pointer, writers publish new slice.
 type budgetSlice struct {
 	data []AlignedBudget
 }
 
+// BudgetStore holds campaign, customer, and daily spend columns. Hot path: LoadBudget
+// and CheckAndSpendAll (budget_spend.go CAS). Cold path: mu + map slot allocation.
 type BudgetStore struct {
 	mu              sync.Mutex
 	slots           map[CampaignID]uint32
@@ -66,6 +71,7 @@ func (st *BudgetStore) GetOrAllocateCustomerSlot(id CustomerID, initialBudget in
 }
 
 func (st *BudgetStore) LoadBudget(idx uint32) int64 {
+	// Lock-free atomic load; slice pointer fixed for lifetime of this read.
 	return st.loadOn(&st.budgets, idx)
 }
 
@@ -75,6 +81,7 @@ func (st *BudgetStore) budgetSlotExists(idx uint32) bool {
 }
 
 func (st *BudgetStore) CheckAndSpend(idx uint32, limit int64) bool {
+	// Single-dimension CAS debit; RunAuction uses CheckAndSpendAll for campaign+customer+daily.
 	return st.checkAndSpendOn(&st.budgets, idx, limit)
 }
 
@@ -153,6 +160,8 @@ func (st *BudgetStore) SetCustomerBudget(id CustomerID, val int64) {
 }
 
 func (st *BudgetStore) appendSlotLocked(val int64) uint32 {
+	// Copy-on-write grow: new []AlignedBudget published via atomic.Store; in-flight
+	// auction readers keep the old slice until Load sees the replacement.
 	currSlice := st.budgets.Load()
 	idx := uint32(len(currSlice.data))
 
@@ -175,6 +184,7 @@ func (st *BudgetStore) appendSlotLocked(val int64) uint32 {
 }
 
 func (st *BudgetStore) appendCustomerSlotLocked(val int64) uint32 {
+	// Same COW pattern as appendSlotLocked for customerBudgets atomic.Pointer.
 	currSlice := st.customerBudgets.Load()
 	idx := uint32(len(currSlice.data))
 

@@ -1,4 +1,18 @@
-"""ClickHouse HTTP client from CH_DSN / CH_READONLY_DSN and CH_HTTP_PORT."""
+"""ClickHouse HTTP client from CH_DSN / CH_READONLY_DSN and CH_HTTP_PORT.
+
+Role:
+- Resolve connection params from DSN URL or CH_HOST/CH_USER/CH_PASSWORD fallbacks.
+- Prefer CH_READONLY_DSN for training/export jobs (read-only CH user).
+
+Env:
+- CH_READONLY_DSN or CH_DSN: clickhouse://user:pass@host/dbname
+- CH_HTTP_PORT: HTTP interface port (default 8123)
+- CH_HOST, CH_USER, CH_PASSWORD, CH_NAME: used when DSN unset
+
+Verify:
+  pytest model/tests/test_clickhouse_client.py -q
+  python3 -c "from data.clickhouse_client import clickhouse_config_from_env; print(clickhouse_config_from_env())"
+"""
 
 from __future__ import annotations
 
@@ -9,15 +23,20 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+
 @dataclass(frozen=True)
 class ClickHouseConfig:
+    """Resolved ClickHouse HTTP endpoint and credentials."""
+
     host: str
     port: int
     username: str
     password: str
     database: str
 
+
 def clickhouse_config_from_env() -> ClickHouseConfig:
+    """Build config from env; readonly DSN wins over primary CH_DSN."""
     dsn = os.environ.get("CH_READONLY_DSN") or os.environ.get("CH_DSN", "")
     http_port = int(os.environ.get("CH_HTTP_PORT", "8123"))
     if dsn:
@@ -41,7 +60,9 @@ def clickhouse_config_from_env() -> ClickHouseConfig:
         database=os.environ.get("CH_NAME", "ad_event_processor"),
     )
 
+
 def connect_client(config: ClickHouseConfig | None = None) -> Any:
+    """Return clickhouse_connect client; lazy-imports optional dependency."""
     import clickhouse_connect
 
     resolved_config = config or clickhouse_config_from_env()
@@ -53,10 +74,12 @@ def connect_client(config: ClickHouseConfig | None = None) -> Any:
         database=resolved_config.database,
     )
 
+
 def close_client(client: Any) -> None:
     close = getattr(client, "close", None)
     if callable(close):
         close()
+
 
 @contextmanager
 def clickhouse_client(config: ClickHouseConfig | None = None) -> Iterator[Any]:
@@ -67,7 +90,9 @@ def clickhouse_client(config: ClickHouseConfig | None = None) -> Iterator[Any]:
     finally:
         close_client(client)
 
+
 def ping_client(client: Any) -> bool:
+    """Return True when SELECT 1 succeeds."""
     try:
         client.command("SELECT 1")
     except (OSError, ConnectionError, TimeoutError, ValueError):

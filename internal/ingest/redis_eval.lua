@@ -1,5 +1,0 @@
-redis = {}
-
-KEYS = {}
-
-ARGV = {}

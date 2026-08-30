@@ -1,3 +1,4 @@
+// shard_bridge: Service hosts slot migration, Redis health, dedup adapter, and PG failover wiring.
 package controlplane
 
 import (
@@ -186,6 +187,7 @@ func (s *Service) LeaseReplicaNodes() []string {
 }
 
 func (s *Service) GetShardHealth(ctx context.Context) (shardadmin.ShardHealthReport, error) {
+	// PG outbox lag + per-shard Redis PING and config:version vs last processed outbox id.
 	return shardadmin.GetShardHealth(ctx, s)
 }
 

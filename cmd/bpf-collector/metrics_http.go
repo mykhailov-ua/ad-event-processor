@@ -12,7 +12,8 @@
 //   - dumpLoop warn-logs periodic dump errors; does not exit process.
 //
 // Verify:
-//   curl -s localhost:<metrics-addr>/metrics | grep ad_event_processor_bpf_
+//
+//	curl -s localhost:<metrics-addr>/metrics | grep ad_event_processor_bpf_
 package main
 
 import (

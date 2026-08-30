@@ -1,4 +1,17 @@
-"""Shadow precision report from ml_shadow_scores vs proxy labels in ClickHouse."""
+"""Shadow precision report from ml_shadow_scores vs proxy labels in ClickHouse.
+
+Role:
+- Proxy labels: fraud_events with fraud_reason vs impression negatives (capped sample).
+- Audited labels: ml_manual_labels joined to shadow scores (human-reviewed; not accuracy).
+- Drift: compare live ml_features_1m averages to metadata raw_stats from training.
+
+Important:
+- Proxy and audited metrics are diagnostic only; not ground-truth campaign accuracy.
+
+Verify:
+  pytest model/tests/test_shadow_precision.py -q
+  python3 model/eval/evaluate.py --allow-offline
+"""
 
 from __future__ import annotations
 
@@ -15,6 +28,8 @@ AUDITED_LABEL_METHOD = "manual"
 AUDITED_LABEL_DEFINITION = "human-reviewed labels from ml_manual_labels (buyer or ops UI)"
 AUDITED_LOW_CONFIDENCE_ROWS = 30
 
+# Proxy positives: CH fraud_events with non-empty fraud_reason in lookback window.
+# Negatives: impressions excluding positives, LIMIT 10000 for bounded query cost.
 SHADOW_PRECISION_SQL = """
 WITH
     shadow AS (
@@ -435,5 +450,6 @@ def run_drift_analysis(
         "hours": hours,
         "drift": drift,
         "max_drift": max_drift,
+        # Relative mean shift above 30% flags drift_detected for operator review.
         "drift_detected": max_drift > 0.3,
     }

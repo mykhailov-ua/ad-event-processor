@@ -20,6 +20,8 @@ import (
 
 type BrokerConsumerConfig = domain.BrokerConsumerConfig
 
+// BrokerStreamConsumer runs in cmd/processor: one goroutine per instance fetches a single
+// WAL partition, batches decoded events, and flushes to EventStore (ClickHouse sink).
 type BrokerStreamConsumer struct {
 	store        domain.EventStore
 	cfg          BrokerConsumerConfig
@@ -123,6 +125,8 @@ func (b *BrokerStreamConsumer) Wait(ctx context.Context) error {
 	}
 }
 
+// run loops Fetch -> parse -> batch until BatchSize or FlushInt, then flushAndCommit.
+// ShadowMode skips CH StoreBatch and broker group offset commits (local start only).
 func (b *BrokerStreamConsumer) run(ctx context.Context) {
 	if err := b.cli.Connect(); err != nil {
 		slog.Error("broker consumer failed to connect", "group", b.cfg.Group, "error", err)
@@ -130,10 +134,12 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 	}
 	defer func() { _ = b.cli.Close() }()
 
+	// Consumer group offset lives in broker Redis (per topic/partition/group). CommittedOffset is the
+	// mmap WAL replay cursor: fetch resumes at the first record not yet durably stored in CH.
 	start, err := b.cli.CommittedOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group)
 	if err != nil {
 		slog.Warn("broker consumer committed offset unavailable; starting from head", "group", b.cfg.Group, "error", err)
-		start = 0
+		start = 0 // head replay; live cutover after shadow must use a fresh group or accept re-read
 	}
 
 	batch := make([]*domain.Event, 0, b.cfg.BatchSize)
@@ -147,6 +153,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			return
 		}
 
+		// Fetch reads up to MaxBytes from the mmap WAL segment at offset start (not Redis streams).
 		iter, err := b.cli.Fetch(ctx, b.cfg.Topic, b.cfg.Partition, start, b.cfg.MaxBytes)
 		if err != nil {
 			slog.Error("broker consumer fetch failed", "group", b.cfg.Group, "error", err)
@@ -165,6 +172,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			if ctx.Err() != nil {
 				break
 			}
+			// One WAL record may hold N length-prefixed vtproto frames; callback appends each decoded event.
 			parseErr := ParseBrokerPayloadStream(iter.Payload, func(evt *domain.Event) {
 				metrics.BrokerIngestMessagesTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group, evt.Type).Inc()
 				if len(batch) == 0 {
@@ -174,6 +182,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 				processed++
 			})
 			if parseErr != nil {
+				// Corrupt frame: skip event, bump metric, still advance nextCommit so the group does not stall.
 				metrics.BrokerIngestParseErrorsTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group).Inc()
 				slog.Warn("broker payload parse failed", "group", b.cfg.Group, "offset", iter.Offset, "error", parseErr)
 			}
@@ -203,6 +212,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 			lastFlush = time.Now()
 		} else if nextCommit > start {
 			if b.cfg.ShadowMode {
+				// Parsed-only advance: shadow never calls CommitOffset; live cutover replays from head.
 				start = nextCommit
 				batchCommit = start
 			} else {
@@ -232,6 +242,7 @@ func (b *BrokerStreamConsumer) run(ctx context.Context) {
 	}
 }
 
+// drain flushes a partial batch on shutdown so in-flight events are not lost after ctx cancel.
 func (b *BrokerStreamConsumer) drain(ctx context.Context, nextCommit uint64, batch []*domain.Event) {
 	if len(batch) == 0 || nextCommit == 0 {
 		return
@@ -240,6 +251,8 @@ func (b *BrokerStreamConsumer) drain(ctx context.Context, nextCommit uint64, bat
 	_, _ = b.flushAndCommit(ctx, batch, startOffset, nextCommit)
 }
 
+// flushAndCommit writes batch to CH (live) or audit-only (shadow), then commits broker offset.
+// Returns 0, err on store/breaker failure so run() stops without advancing the group past undurable data.
 func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*domain.Event, offsetStart, nextCommit uint64) (uint64, error) {
 	if len(batch) == 0 {
 		return nextCommit, nil
@@ -259,6 +272,7 @@ func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*doma
 	}
 
 	if b.cfg.ShadowMode {
+		// Shadow: count and audit; no StoreBatch, no dedup claim, no CommitOffset (goto commitOffset is no-op).
 		metrics.BrokerShadowMessagesTotal.WithLabelValues(b.cfg.Topic, b.cfg.Group).Add(float64(len(batch)))
 		for _, evt := range batch {
 			b.writeAudit(evt)
@@ -266,6 +280,7 @@ func (b *BrokerStreamConsumer) flushAndCommit(ctx context.Context, batch []*doma
 		}
 		b.cb.RecordSuccess(b.cfg.Group)
 	} else {
+		// Live: optional dedup.ClaimConfirm scopes broker topic/partition/group + offset range before StoreBatch.
 		var claim dedup.ClaimResult
 		if b.dedup != nil {
 			clickIDs := make([]string, len(batch))
@@ -324,6 +339,7 @@ commitOffset:
 		return nextCommit, nil
 	}
 
+	// Live only: offset commit follows durable CH write (and dedup RecordApply when configured).
 	stored, err := b.cli.CommitOffset(b.cfg.Topic, b.cfg.Partition, b.cfg.Group, nextCommit)
 	if err != nil {
 		slog.Error("broker offset commit failed", "group", b.cfg.Group, "error", err)
@@ -333,6 +349,8 @@ commitOffset:
 	return stored, nil
 }
 
+// storeWithRetry flushes the in-memory batch to EventStore.StoreBatch (ClickHouse sink). Offset commit
+// in flushAndCommit runs only after this succeeds so the group never skips undurable events.
 func (b *BrokerStreamConsumer) storeWithRetry(ctx context.Context, batch []*domain.Event) error {
 	wait := b.retryInit
 	for attempt := 0; attempt <= b.maxRetries; attempt++ {

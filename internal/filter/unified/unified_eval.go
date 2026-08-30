@@ -308,6 +308,8 @@ func (f *UnifiedFilter) localQuantaEligible(evt *domain.Event, campInfo *domain.
 	return true
 }
 
+// localQuantaFullSkipEligible: LOCAL_QUOTA_MODE=live, stream publisher wired, fast-path eligible.
+// Accept path debits in Go and enqueues async; no sync EVALSHA on this worker.
 func (f *UnifiedFilter) localQuantaFullSkipEligible(evt *domain.Event, campInfo *domain.Campaign) bool {
 	if f.localQuotaMode != "live" || f.localQuantaStream == nil {
 		return false
@@ -337,6 +339,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 		}
 	}
 
+	// Shadow: mirror TrySpendDebit for diff metrics; Lua still owns the authoritative debit.
 	if f.localQuotaMode == "shadow" {
 		subSlot := debitSubSlot(campInfo, evt.UserID, evt.ClickID)
 		localOK := f.localQuantaLedger.TrySpendDebit(evt.CampaignID, subSlot, amount)
@@ -367,6 +370,7 @@ func (f *UnifiedFilter) checkLocalQuanta(
 	metrics.LocalQuotaSpendTotal.Inc()
 	f.publishLocalDelta(evt.CampaignID, amount)
 
+	// Full-skip: local debit already taken; skip budget-fast.lua entirely.
 	if f.localQuantaFullSkipEligible(evt, campInfo) {
 		metrics.LocalQuotaFullSkipEligibleTotal.Inc()
 		err := f.acceptLocalQuantaFullSkip(ctx, evt, campInfo, amount, subSlot)
@@ -412,6 +416,8 @@ func (f *UnifiedFilter) AcceptLocalQuantaFullSkip(ctx context.Context, evt *doma
 	return f.acceptLocalQuantaFullSkip(ctx, evt, campInfo, amountMicro, subSlot)
 }
 
+// acceptLocalQuantaFullSkip publishes via localQuantaStream after local TrySpendDebit.
+// Enqueue failure or duplicate click_id refunds ledger and releases idem (ingest RollbackDebit path).
 func (f *UnifiedFilter) acceptLocalQuantaFullSkip(ctx context.Context, evt *domain.Event, campInfo *domain.Campaign, amountMicro int64, subSlot int) error {
 	if f.localClickIdem != nil && !f.localClickIdem.TryClaim(evt.ClickID) {
 		metrics.FilterLuaBranchTotal.WithLabelValues("duplicate").Inc()
@@ -428,6 +434,7 @@ func (f *UnifiedFilter) acceptLocalQuantaFullSkip(ctx context.Context, evt *doma
 		return err
 	}
 
+	// Post-debit enqueue failure: refund local quanta before returning to ingest (503 / retry).
 	if !f.localQuantaStream.Enqueue(shard, evt, campInfo, amountMicro) {
 		if f.localClickIdem != nil {
 			f.localClickIdem.Release(evt.ClickID)
@@ -567,6 +574,7 @@ func luaBranchLabel(res int64) string {
 
 var luaDegradeThresholdAny any = luaDegradeThresholdNs
 
+// fcap:ignored sentinel keys: Lua skips ingress-RPD and placement blacklist when Go prechecks ran.
 var (
 	placementIgnoredKeyVal = filt.StringVal{S: "fcap:ignored"}
 	ingressIgnoredKeyVal   = filt.StringVal{S: "fcap:ignored"}
@@ -794,6 +802,8 @@ func isStickyConnRetryable(err error) bool {
 		strings.Contains(s, "reset by peer")
 }
 
+// processFilterEval routes EVALSHA through a pinned redis.Conn per FilterWorkerIdx when enabled.
+// Sticky conn retry reopens the pin on EOF/closed without falling back to a fresh dial per event.
 func (f *UnifiedFilter) processFilterEval(ctx context.Context, c redis.UniversalClient, shard int, evt *domain.Event, cmd redis.Cmder) error {
 	pin := f.evalPinConn(evt, shard)
 	err := processRedisCmd(ctx, c, pin, cmd)

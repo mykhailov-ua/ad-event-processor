@@ -4,6 +4,7 @@ import (
 	"unsafe"
 )
 
+// Header parse accumulates transfer/body flags in hFlags (not on Request) until body routing runs.
 const (
 	http1flChunkedTE uint8 = 1 << iota
 	http1flHasTE
@@ -31,11 +32,13 @@ func ParseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, Request, e
 		return 0, req, err
 	}
 
+	// Track policy runs on headers only; chunked /track is rejected before any body bytes are consumed.
 	if err := http1TrackEdgePolicy(&req, hFlags); err != nil {
 		return 0, req, err
 	}
 
 	if hFlags&http1flChunkedTE != 0 {
+		// RFC 7230: chunked and Content-Length together are invalid on any route.
 		if hFlags&http1flCLSet != 0 {
 			return 0, req, ErrInvalid
 		}
@@ -56,6 +59,7 @@ func ParseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, Request, e
 		if i+clValue > n {
 			return 0, req, ErrIncomplete
 		}
+		// Body aliases peek buffer until gnet PinParsedHTTPRequest copies on Tier B offload.
 		if clValue > 0 {
 			req.Body = data[i : i+clValue]
 		}
@@ -64,6 +68,7 @@ func ParseHTTP1(data []byte, maxBody int64, scratchPtr *[]byte) (int, Request, e
 		return i + clValue, req, nil
 	}
 
+	// POST /track without Content-Length or chunked TE: ErrInvalid (implicit empty body not allowed).
 	if isPOSTTrack(&req) {
 		return 0, req, ErrInvalid
 	}
@@ -74,6 +79,7 @@ func parseHTTP1RequestLine(data []byte, n int, req *Request) (int, error) {
 	if n < 22 {
 		return 0, ErrIncomplete
 	}
+	// Fast path: constant compare for canonical POST /track line before generic request-line DFA.
 	if n >= 22 && *(*[22]byte)(unsafe.Pointer(&data[0])) == trackReqLine {
 		req.Method = data[0:4]
 		req.Path = data[5:11]

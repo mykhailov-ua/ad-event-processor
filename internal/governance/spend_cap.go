@@ -44,6 +44,7 @@ func MemberBudgetAllocationMicro(
 	return total, nil
 }
 
+// MemberSpendCapMicro: team governance cap read from PG before campaign budget PATCH (cold path).
 func MemberSpendCapMicro(ctx context.Context, pool *pgxpool.Pool, userID uuid.UUID) (int64, bool, error) {
 	var spendCap int64
 	err := pool.QueryRow(ctx, `

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Connect warms minConns with parallel Ping so first /track burst does not pay pgx dial latency.
 func Connect(ctx context.Context, dsn string, maxConns, minConns int) (*pgxpool.Pool, error) {
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

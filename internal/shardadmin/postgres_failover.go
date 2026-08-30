@@ -33,6 +33,7 @@ func (rt *PostgresFailoverRuntime) Fencing() *pgfailover.FencingGate {
 	return rt.fencing
 }
 
+// StartPostgresFailover: Redis-coordinated PG role change; FencingGate blocks stale writers after promote.
 func StartPostgresFailover(ctx context.Context, host PostgresFailoverHost) *PostgresFailoverRuntime {
 	if host == nil {
 		return nil

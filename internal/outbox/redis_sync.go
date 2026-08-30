@@ -40,6 +40,7 @@ func DeleteGlobalKeyFromAllShards(ctx context.Context, redisShards []redis.Unive
 	return database.DeleteGlobalKeyFromAllShards(ctx, redisShards, key)
 }
 
+// SyncGlobalSetMemberToAllShards: SADD/SREM on every Redis shard; changelog on shard[0] for edge-bpf-sync.
 func SyncGlobalSetMemberToAllShards(ctx context.Context, redisShards []redis.UniversalClient, key, member string, add bool) error {
 	err := database.ForEachConnectedShard(ctx, redisShards, "sync_global_set_member", func(_ int, redisClient redis.UniversalClient) error {
 		if add {

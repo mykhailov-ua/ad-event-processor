@@ -17,7 +17,8 @@
 //   - Point-in-time counter read at dump; not continuous production PMU profiling.
 //
 // Verify:
-//   jq .hardware_perf var/load-test/<session>/bpf/maps/summary.json
+//
+//	jq .hardware_perf var/load-test/<session>/bpf/maps/summary.json
 package main
 
 import (

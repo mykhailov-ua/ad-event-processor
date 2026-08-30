@@ -11,11 +11,13 @@ type RtbReconcileCHStats struct {
 	SpendMicro int64
 }
 
+// RTBCHStats reads rtb_exchange_log for reconcile windows; caller should bound ctx (see clickhouseQueryContext).
 func RTBCHStats(ctx context.Context, host ReconInfraHost, requestID string, window time.Duration) (RtbReconcileCHStats, bool) {
 	if host == nil || host.ClickHouseQuery() == nil || window <= 0 {
 		return RtbReconcileCHStats{}, false
 	}
 	since := time.Now().UTC().Add(-window)
+	// spend_micro sums won bids only; aligns with PG settlement lag checks in RTB admin reconcile.
 	query := `
 SELECT
  count() AS bids,

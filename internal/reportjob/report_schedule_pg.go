@@ -259,6 +259,7 @@ func deleteReportSchedule(ctx context.Context, pool *pgxpool.Pool, id string) er
 }
 
 func claimDueReportSchedules(ctx context.Context, pool *pgxpool.Pool, limit int) ([]reportScheduleRow, error) {
+	// Txn claims due rows (SKIP LOCKED) and advances next_run_at before enqueue to prevent double-fire.
 	var claimed []reportScheduleRow
 	err := pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `
@@ -336,7 +337,7 @@ func buildReportJobSpecFromSchedule(row reportScheduleRow) (ReportJobSpec, strin
 	to := now.Add(time.Duration(rangeSpec.ToOffsetDays) * 24 * time.Hour)
 	fromDays := rangeSpec.FromOffsetDays
 	if fromDays <= 0 {
-		fromDays = 7
+		fromDays = 7 // default lookback when spec omits from_offset_days
 	}
 	from := now.Add(-time.Duration(fromDays) * 24 * time.Hour)
 	if rangeSpec.From != "" {
@@ -357,6 +358,7 @@ func buildReportJobSpecFromSchedule(row reportScheduleRow) (ReportJobSpec, strin
 	if format == "" {
 		format = "csv"
 	}
+	// PG report_jobs.idempotency_key: one job per schedule fired slot; replays return same job id.
 	idem := fmt.Sprintf("schedule:%s:%s", row.id.String(), row.nextRunAt.UTC().Format("2006-01-02T15:04"))
 	return ReportJobSpec{
 		CustomerID: row.customerID.String(),

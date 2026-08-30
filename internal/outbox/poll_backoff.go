@@ -20,6 +20,7 @@ func NewPollBackoff() *PollBackoff {
 	return &PollBackoff{idle: PollActiveInterval}
 }
 
+// Next: 20ms when rows processed, exponential idle up to 250ms (reduces PG spin when outbox empty).
 func (pb *PollBackoff) Next(processed int) time.Duration {
 	if processed > 0 {
 		pb.idle = PollActiveInterval

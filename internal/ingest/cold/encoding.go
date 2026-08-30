@@ -6,6 +6,8 @@ import (
 	"ad-event-processor/internal/filter"
 )
 
+// unsafeBytes aliases string storage for Tier B JSON append paths only.
+// Caller must not retain the slice past the lifetime of s (pinned arena / offload pin).
 func unsafeBytes(s string) []byte {
 	if s == "" {
 		return nil
@@ -14,6 +16,7 @@ func unsafeBytes(s string) []byte {
 }
 
 const (
+	// WireEnc* bits: OR of Accept-Encoding tokens seen on the wire (not q-values).
 	WireEncGzip     uint8 = 1 << 0
 	WireEncDeflate  uint8 = 1 << 1
 	WireEncBr       uint8 = 1 << 2
@@ -26,9 +29,11 @@ const (
 	wireEncZstd     = WireEncZstd
 	wireEncIdentity = WireEncIdentity
 
-	chromeZstdMinMajor = 123
+	chromeZstdMinMajor = 123 // Chrome stable advertises zstd in Accept-Encoding from M123.
 )
 
+// ClassifyAcceptEncoding scans raw Accept-Encoding header bytes (comma-separated).
+// Zero alloc; rejects q= weights (token must match whole field after trim).
 func ClassifyAcceptEncoding(b []byte) uint8 {
 	var flags uint8
 	start := 0
@@ -108,6 +113,9 @@ func ParseChromeMajorVersion(ua string) (int, bool) {
 	return 0, false
 }
 
+// AcceptEncodingBrowserMismatch is a Chrome-family fraud hint, not a hard parse reject.
+// Returns false (no signal) for in-app WebViews, Chromium UAs, empty encSet, or when br is absent.
+// Mismatch when Chrome claims br but omits zstd on builds >= chromeZstdMinMajor.
 func AcceptEncodingBrowserMismatch(ua string, encFlags, encSet uint8) bool {
 	if encSet == 0 || ua == "" || filter.UAMatchesInAppWebView(ua) || !filter.UAClaimsChromeNotChromium(ua) {
 		return false

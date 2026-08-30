@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
+// AppendAttributionPayload merges publisher payload + sub/clid fields into one JSON object without encoding/json.
+// If payload is already {...}, strips the closing brace and appends keys; empty result returns len 0 (no "{}").
 func AppendAttributionPayload(dst, payload []byte, subs track.SubIDSlots, fbclid, gclid, ttclid, msclkid, tblci, obClickID, eventID, txID string) []byte {
 	dst = dst[:0]
 	switch {

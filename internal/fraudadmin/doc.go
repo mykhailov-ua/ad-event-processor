@@ -1,13 +1,14 @@
 // Package fraudadmin serves operator fraud configuration, labels, decisions, and integration health HTTP.
 //
 // Role:
-//   - HTTP under /api/v1/fraud/*: labels, overrides, decisions, presets, integrations list.
-//   - Campaign fraud editor routes live in internal/campaign (fraud_handlers.go); bridge supplies Host reads.
-//   - Background workers: MLEvalMetricsWorker, MLShadowDeltaSnapshotWorker (started from controlplane).
-//   - Explain/live LGBM scorer cached on Service for audit/explain endpoints when configured.
+//   - HTTP under /api/v1/fraud/*: labels, decisions, overrides, presets, integrations list.
+//   - Campaign fraud GET/PATCH/POST preview routes register in internal/campaign/fraud_bundle.go; config and preview logic live here (campaign_config.go, campaign_config_preview.go).
+//   - Fraud editor shell route GET /api/v1/campaigns/{id}/fraud-editor registers in internal/campaign/editor.
+//   - Background workers started from controlplane: MLEvalMetricsWorker, MLShadowDeltaSnapshotWorker, MLSyncWorker (model meta sync + stale epoch tighten), BlacklistJanitor.
+//   - Live explain uses fraud.Scorer from controlplane Service.FraudExplainScorer when FraudExplainLiveScoreEnabled.
 //
 // Topology:
-//   - fraudadmin_bridge.go wires Service as fraudadmin.Host; handlers stay in this package.
+//   - fraudadmin_bridge.go wires Service as fraudadmin.Host ports; HTTP handlers stay in this package.
 //   - ML enforcement on hot path is batch-only (cmd/fraud-scorer); admin toggles enqueue outbox Redis effects.
 //   - Silent reject and blacklist actions must not auto-flip campaign PG flags without operator intent.
 //
@@ -23,5 +24,6 @@
 // Verify:
 //
 //	go test ./internal/fraudadmin/ -short -count=1
-//	go test ./internal/controlplane/ -short -run Fraud -count=1
+//	go test ./internal/fraudadmin/ -short -run TestGetFraudDecision_returnsBreakdown -count=1
+//	go test ./internal/controlplane/ -short -run TestGetCampaignFraud_returnsConfig -count=1
 package fraudadmin

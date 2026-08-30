@@ -12,6 +12,7 @@ import (
 
 func (c *Client) RegisterTopic(ctx context.Context, topic string) (uint16, error) {
 	var lastErr error
+	// Partition 0 leader lookup for topic registration (metadata RPC before ProduceBatch).
 	for attempt := range 5 {
 		if attempt > 0 {
 			time.Sleep(500 * time.Millisecond)
@@ -94,8 +95,8 @@ func (c *Client) RegisterTopic(ctx context.Context, topic string) (uint16, error
 }
 
 type ProduceBatchResult struct {
-	Offset    uint64
-	Committed uint32
+	Offset    uint64 // first record offset in batch
+	Committed uint32 // records durably appended server-side before response
 }
 
 func (c *Client) ProduceBatch(ctx context.Context, topic string, topicID uint16, payloads [][]byte) (ProduceBatchResult, error) {
@@ -104,6 +105,7 @@ func (c *Client) ProduceBatch(ctx context.Context, topic string, topicID uint16,
 		return zero, errors.New("broker client: empty produce batch")
 	}
 
+	// One CmdProduceBatch frame; server appends each record to mmap WAL (iogate TierHigh on broker).
 	var batch []byte
 	for _, payload := range payloads {
 		batch = protocol.AppendBatchMessage(batch, topicID, payload)
@@ -173,7 +175,7 @@ func (c *Client) ProduceBatch(ctx context.Context, topic string, topicID uint16,
 		if status == 4 || status == 5 || status == 6 || status == 7 {
 			_ = c.closeRawConn()
 			c.mu.Unlock()
-			lastErr = brokerStatusError(status)
+			lastErr = brokerStatusError(status) // admission/leader shed; same retry contract as Produce
 			if c.redisURL != "" {
 				if newAddr, rErr := c.resolveLeaderAddr(ctx, topic, 0); rErr == nil && newAddr != c.addr {
 					c.addr = newAddr
@@ -192,6 +194,7 @@ func (c *Client) ProduceBatch(ctx context.Context, topic string, topicID uint16,
 }
 
 func brokerStatusError(status byte) error {
+	// Wire status bytes 4-7 from internal/broker admission and HA fencing.
 	switch status {
 	case 5:
 		return errors.New("stale fencing epoch")

@@ -88,10 +88,12 @@ type Worker struct {
 }
 
 func (w *Worker) start() {
+	// Tier B: pin goroutine to OS thread; sync Redis EVALSHA and filter deadline run here, not on epoll.
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
 	run := func(ctx *ConnContext) {
+		// Full offload path (parse, React, filter, write) completes before wg.Done for shutdown drain.
 		if h := w.pool.handler; h != nil {
 			h.runOffloadedRequest(w.id, ctx)
 		} else {
@@ -193,6 +195,7 @@ func (p *PinnedWorkerPool) SubmitOffloadToWorker(WorkerID int, ctx *ConnContext,
 func (p *PinnedWorkerPool) submitOffloadToWorkerIdx(idx int, ctx *ConnContext, src []byte) bool {
 	p.wg.Add(1)
 	w := p.workers[idx]
+	// Copy peek frame into worker arena before PushCtx; epoll Discard invalidates gnet peek buffer.
 	if len(src) > 0 && ctx.OffloadReqSlice == nil && ctx.OffloadReqBuf == nil {
 		if slot, buf, release, ok := w.arena.acquire(len(src)); ok {
 			copy(buf, src)

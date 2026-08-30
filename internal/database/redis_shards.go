@@ -24,6 +24,7 @@ type RedisShardOptions struct {
 	StickyPinWorkers int
 }
 
+// ConnectRedisShards: per-shard UniversalClient; shard 0 may be nil at startup (breaker forced open).
 func ConnectRedisShards(ctx context.Context, cfg *config.Config, opts RedisShardOptions) ([]redis.UniversalClient, []*RedisBreaker, error) {
 	names := cfg.ResolveRedisMasterNames()
 	if cfg.RedisSentinelEnabled() && len(names) != len(cfg.RedisAddrs) {

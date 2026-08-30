@@ -31,6 +31,8 @@ func EnsureIngestGeo(geo netintel.GeoProvider, evt *domain.Event) {
 	filter.EnsureIngestGeo(geo, evt)
 }
 
+// ParseCategoryMask finds "category_mask":<digits> in track JSON via fixed 8-byte key load (no full parse).
+// Returns 0 when field absent; used for IVT category bitmask on accept path.
 func ParseCategoryMask(payload []byte) uint64 {
 	n := len(payload)
 	if n < 15 {

@@ -61,6 +61,7 @@ func ledgerIdempotencyKey(intentID uuid.UUID) string {
 	return "payment:" + intentID.String()
 }
 
+// ProcessStripeWebhook: idempotent on provider event_id in PG; settlement runs inside one transaction.
 func (s *Service) ProcessStripeWebhook(ctx context.Context, eventID, eventType string, payload []byte, providerRef string, amountMicro int64, rawEvent string) error {
 	h := sha256.New()
 	h.Write(payload)

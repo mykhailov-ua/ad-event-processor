@@ -1,24 +1,27 @@
-// Package notify owns notification persistence, provider dispatch, rate limits, and retention janitor.
+// Package notify owns notifier-schema persistence, provider dispatch, rate limits, and retention.
 //
 // Role:
-//   - Service CRUD on notifier schema; workers deliver email/webhook/slack with breaker and per-recipient rate limits.
-//   - Broadcast and retry paths use outbox-style PG rows; retention_janitor prunes old delivered notifications.
+//   - OpenModule in cmd/control wires PG pool, HTTP Handler, and StartWorkers (pending poller, optional retention janitor, queue metrics scraper).
+//   - Service enqueues notifier.notifications rows; Worker pool calls processPending with per-provider circuit breakers and rate limiters.
+//   - Providers: Telegram, Slack (incoming webhook URL), SMS, SMTP; broadcast tries configured providers in fallback order.
 //
 // Topology:
-//   - In-process module in cmd/control; sqlc queries under internal/notify/db.
-//   - Breakers injected at construction; no Provider interface maps (cold-path.mdc).
+//   - Postgres schema notifier; sqlc queries in internal/notify/db.
+//   - Breakers and delivery Config injected at Service construction; Send* functions, not Provider interface maps (cold-path.mdc).
+//   - Async delivery only via Worker tick and StartWorkers goroutines, not per-request handler goroutines.
 //
 // Invariants:
-//   - Duplicate provider delivery prevented by idempotency keys on enqueue.
-//   - Rate limiter rejects with ErrRateLimitExceeded before provider HTTP.
-//   - GetNotification returns ErrNotFound for unknown ids (no silent empty).
+//   - DedupKey suppresses duplicate enqueue within dedup cooldown window.
+//   - Recipient and provider rate limiters return ErrRateLimited before outbound HTTP/SMTP.
+//   - GetNotification returns ErrNotificationNotFound for unknown ids (no silent empty row).
+//   - Circuit open returns ErrCircuitOpen; provider 429 maps to ProviderRateLimitedError with RetryAfter.
 //
 // Forbidden:
-//   - go func per notification in handler (worker tick only).
-//   - Hot-path tracker imports.
+//   - go func per notification inside HTTP handlers.
+//   - Tracker hot-path imports.
 //
 // Verify:
-//
 //	go test ./internal/notify/ -short -count=1
-//	go test ./internal/notify/ -short -run TestBreaker -count=1
+//	go test ./internal/notify/ -short -run TestCircuitBreaker -count=1
+//	go test ./internal/notify/ -short -run TestRetentionJanitor -count=1
 package notify

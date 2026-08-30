@@ -15,6 +15,7 @@ type campaignStatRollup struct {
 	conversions int64
 }
 
+// compactSettlementBatch dedupes click_id+type within a lane batch before PG upsert.
 func compactSettlementBatch(events []*domain.Event) ([]*domain.Event, int) {
 	if len(events) <= 1 {
 		return events, 0
@@ -38,6 +39,8 @@ func compactSettlementBatch(events []*domain.Event) ([]*domain.Event, int) {
 	return out, dropped
 }
 
+// rollupCampaignStats aggregates impression/click/conversion counts per campaign for
+// StoreStatsBatch; skips fraud_aggregate rows and pending conversion validation.
 func rollupCampaignStats(events []*domain.Event) map[uuid.UUID]campaignStatRollup {
 	if len(events) == 0 {
 		return nil

@@ -29,6 +29,7 @@ var (
 
 const fencingEpochFile = "fencing.epoch"
 
+// FetchBufPool: 1 MiB slabs for ReadRawMessages; caller Put(*buf) when second return is non-nil.
 var FetchBufPool = sync.Pool{
 	New: func() interface{} {
 		b := make([]byte, 1024*1024)
@@ -131,6 +132,7 @@ func NewSegment(dir string, baseOffset uint64, maxSegSize int64, indexInterval i
 	var mmapData []byte
 	var mmapIndex []byte
 
+	// Writable segment: syscall.Mmap MAP_SHARED at maxSegSize/maxIdxSize; append writes via unsafe stores (no per-record write syscall).
 	if writeable {
 		if logSize < maxSegSize {
 			if err := logFile.Truncate(maxSegSize); err != nil {
@@ -170,6 +172,7 @@ func NewSegment(dir string, baseOffset uint64, maxSegSize int64, indexInterval i
 			_ = mmapIndex[i]
 		}
 	} else {
+		// Sealed segment: PROT_READ mmap sized to actual file length; madvise WILLNEED before fetch scan.
 		if logSize > 0 {
 			mmapData, err = syscall.Mmap(int(logFile.Fd()), 0, int(logSize), syscall.PROT_READ, syscall.MAP_SHARED)
 			if err != nil {
@@ -242,6 +245,7 @@ func (s *Segment) Close() error {
 	return nil
 }
 
+// On-disk log record: length u32 (8+payload) + offset u64 + payload; length field is big-endian on disk.
 func (s *Segment) Write(offset uint64, payload []byte) (int64, error) {
 	payloadLen := len(payload)
 	length := uint32(8 + payloadLen)
@@ -269,6 +273,7 @@ func (s *Segment) Write(offset uint64, payload []byte) (int64, error) {
 	return pos, nil
 }
 
+// Index entry: 16 bytes = logical offset u64 + byte position in segment log u64 (sparse, every indexInterval).
 func (s *Segment) WriteIndexEntry(offset uint64, position int64) error {
 	idxSize := atomic.LoadInt64(&s.indexSize)
 	if idxSize+16 > s.maxIdxSize {
@@ -710,6 +715,7 @@ func (p *PartitionLog) AppendReplicatedAt(expectedOffset uint64, payload []byte)
 	return p.appendPayloadLocked(expectedOffset, payload, false, 0)
 }
 
+// AppendFenced rejects epoch < fencing.epoch; epoch 0 skips fencing; leader append bumps fencing.epoch via atomic rename.
 func (p *PartitionLog) AppendFenced(epoch uint64, payload []byte) (uint64, error) {
 	if epoch == 0 {
 		p.writeMu.Lock()
@@ -733,6 +739,7 @@ func (p *PartitionLog) AppendFenced(epoch uint64, payload []byte) (uint64, error
 	return offset, p.applyDurabilityAfterLeaderAppend()
 }
 
+// applyDurabilityAfterLeaderAppend: DurabilitySync fsyncs every append; GroupCommit batches; Async relies on flush loop ticker.
 func (p *PartitionLog) applyDurabilityAfterLeaderAppend() error {
 	switch p.durability.Mode {
 	case DurabilitySync:
@@ -852,6 +859,7 @@ func (p *PartitionLog) rollLocked(old *segmentSnapshot) error {
 func (p *PartitionLog) rollLockedInner(old *segmentSnapshot) error {
 	activeSeg := old.activeSeg
 
+	// Rotation: fsync active segment, truncate to logical tail, reopen sealed segment read-only, mmap new writable at nextOffset.
 	p.syncLocked()
 
 	activeLogSize := atomic.LoadInt64(&activeSeg.logSize)

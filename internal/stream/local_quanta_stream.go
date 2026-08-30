@@ -18,7 +18,7 @@ import (
 const (
 	localQuantaStreamCapacity = 8192
 	localQuantaStreamMask     = localQuantaStreamCapacity - 1
-	localQuantaStreamUsable   = localQuantaStreamCapacity - 1
+	localQuantaStreamUsable   = localQuantaStreamCapacity - 1 // one slot reserved to distinguish full vs empty
 	localQuantaStreamBatch    = 128
 	localQuantaStreamFlush    = 2 * time.Millisecond
 
@@ -28,6 +28,8 @@ const (
 
 const LocalQuantaStreamUsable = localQuantaStreamUsable
 
+// localQuantaStreamSlot: fixed cell in the per-shard MPSC ring. ready=1 publishes slot to laneWorker;
+// inline arrays avoid heap on Tier B Enqueue after local-quanta full-skip debit.
 type localQuantaStreamSlot struct {
 	ready       atomic.Uint32
 	shard       uint8
@@ -51,6 +53,8 @@ type localQuantaStreamSlot struct {
 	bufPtr *[]byte
 }
 
+// localQuantaStreamLane: power-of-two MPSC ring per Redis shard. allocCursor claims slots on Tier B;
+// writeCursor publishes; readCursor drained by laneWorker (separate cache lines on alloc/read/write).
 type localQuantaStreamLane struct {
 	_           [64]byte
 	writeCursor uint64
@@ -62,6 +66,9 @@ type localQuantaStreamLane struct {
 	slots       []localQuantaStreamSlot
 }
 
+// LocalQuantaStreamPublisher: async stream lane for LOCAL_QUOTA_MODE=live full-skip. Tier B Enqueue
+// after local debit; laneWorker batches XADD + budget:sync INCRBY + fcap INCR off the request path.
+// When StreamProducer is wired, stream name is fcap:ignored so only one Go writer issues XADD.
 type LocalQuantaStreamPublisher struct {
 	stream       string
 	maxLen       int64
@@ -246,6 +253,8 @@ func fillLocalQuantaStreamSlot(slot *localQuantaStreamSlot, shard int, evt *doma
 	slot.ready.Store(1)
 }
 
+// Enqueue claims the next lane slot on Tier B after local TrySpendDebit. False on ring full (drop
+// metric); no TryReserve here — ingest TryReserve covers StreamProducer/BrokerProducer admission.
 func (p *LocalQuantaStreamPublisher) Enqueue(shard int, evt *domain.Event, camp *domain.Campaign, amountMicro int64) bool {
 	if p == nil || evt == nil {
 		return false
@@ -362,6 +371,7 @@ func (p *LocalQuantaStreamPublisher) Close() {
 	p.wg.Wait()
 }
 
+// laneWorker drains readCursor..writeCursor on a ticker; Redis I/O stays off Tier B.
 func (p *LocalQuantaStreamPublisher) laneWorker(shard int) {
 	defer p.wg.Done()
 	ticker := time.NewTicker(localQuantaStreamFlush)
@@ -438,6 +448,8 @@ type streamPipelineItem struct {
 	hasClick bool
 }
 
+// flushShardPipeline: (1) SetNX idempotency:click:* when click_id present, (2) Pipeline XADD unless
+// stream is fcap:ignored (deferred to StreamProducer), (3) budget:sync INCRBY + fcap INCR side effects.
 func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, shard int, slots []*localQuantaStreamSlot) int {
 	if shard < 0 || shard >= len(p.redisShards) {
 		return 0
@@ -521,6 +533,7 @@ func (p *LocalQuantaStreamPublisher) flushShardPipeline(ctx context.Context, sha
 	flushed := 0
 
 	if p.stream != "fcap:ignored" && p.stream != "" {
+		// Async XADD batch; field "d" holds vtproto bytes (same layout as StreamProducer.flushBatch).
 		xaddPipe := redisClient.Pipeline()
 		xaddCmds := make([]*redis.StringCmd, len(accepted))
 		for i, item := range accepted {

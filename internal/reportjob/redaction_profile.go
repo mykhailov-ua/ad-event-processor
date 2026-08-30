@@ -13,6 +13,7 @@ const (
 )
 
 func resolveExportRedactionProfile(ctx context.Context) string {
+	// HTTP-edge profile selection; column scrub runs inside reports.WriteReport, not here.
 	snap, ok := authz.SnapshotFromContext(ctx)
 	if !ok {
 		return exportProfileOperatorFull

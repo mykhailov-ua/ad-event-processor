@@ -12,7 +12,7 @@ import (
 
 const (
 	defaultDeadShardQuorum = 90 * time.Second
-	trackerBreakerOpenPct  = 0.5
+	trackerBreakerOpenPct  = 0.5 // control:tracker_breaker_open_pct:{shard} >= 0.5 counts as open
 )
 
 type ShardQuorumTracker struct {
@@ -47,6 +47,7 @@ func (q *ShardQuorumTracker) SetBreakerPctFunc(fn func(ctx context.Context, shar
 	q.mu.Unlock()
 }
 
+// ObserveShard samples ping, replication INFO, and tracker breaker pct per shard index.
 func (q *ShardQuorumTracker) ObserveShard(ctx context.Context, shard int, redisClient redis.UniversalClient) {
 	if q == nil || shard < 0 || shard >= q.numShards || redisClient == nil {
 		return
@@ -101,6 +102,7 @@ func (q *ShardQuorumTracker) touch(slot *time.Time, active bool, now time.Time) 
 	*slot = time.Time{}
 }
 
+// DeadShardConfirmed: all three failure signals held for quorum duration; snapshot recon skips the shard.
 func (q *ShardQuorumTracker) DeadShardConfirmed(shard int) bool {
 	if q == nil || shard < 0 || shard >= q.numShards {
 		return false

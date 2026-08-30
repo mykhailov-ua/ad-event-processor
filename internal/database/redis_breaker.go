@@ -35,6 +35,7 @@ func (s CircuitState) String() string {
 	}
 }
 
+// RedisBreaker: process-wide open/half-open gate on redis hook; distinct from stream processor CB.
 type RedisBreaker struct {
 	state            int32
 	failures         int64

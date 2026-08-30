@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: revert calls Redis EVALSHA, mutates quota key, or skips async XADD (full-skip contract).
 func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -70,6 +71,7 @@ func TestUnifiedFilter_localQuanta_fullSkipNoRedisEval(t *testing.T) {
 	_ = stream
 }
 
+// Holdout: revert allows duplicate click_id through local quanta (dedup must reject second Check).
 func TestUnifiedFilter_localQuanta_fullSkipDuplicate(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -168,6 +170,7 @@ func TestUnifiedFilter_localQuanta_fullSkipEmptyPlacement(t *testing.T) {
 	require.Equal(t, int64(0), counter.evals.Load(), "empty placement_id must full-skip when other gates pass")
 }
 
+// Holdout: revert lets EntitlementsFilter ingress RPD force sync Lua (eval count > 0).
 func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")
@@ -224,6 +227,7 @@ func TestFilterEngine_localQuanta_fullSkipIngressRPD(t *testing.T) {
 	_ = stream
 }
 
+// Holdout: revert returns true for strict-mode campaigns; they must always take sync Lua path.
 func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	ledger := NewLocalQuantaLedger()
 	stream := NewLocalQuantaStreamPublisher(LocalQuantaStreamPublisherConfig{
@@ -249,6 +253,7 @@ func TestLocalQuantaFullSkipEligible_strictModeExcluded_holdout(t *testing.T) {
 	require.False(t, f.LocalQuantaFullSkipEligible(evt, camp))
 }
 
+// Holdout: revert full-skips L3 blocklist (EVAL runs, local quanta debited, skip metrics increment).
 func TestUnifiedFilter_localQuanta_fullSkip_L3Blacklist_holdout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("integration: run make test-integration (Docker testcontainers)")

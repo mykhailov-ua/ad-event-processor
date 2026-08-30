@@ -6,6 +6,7 @@ import (
 	filt "ad-event-processor/internal/filter"
 )
 
+// Stable StringVal roots for KEYS slots passed by pointer; address must not escape per Check call.
 var (
 	dirtyCampaignsKeyVal = filt.StringVal{S: "budget:dirty_campaigns"}
 	dirtyCustomersKeyVal = filt.StringVal{S: "budget:dirty_customers"}
@@ -29,6 +30,8 @@ type UnifiedStringWrappers struct {
 	placementID filt.StringVal
 }
 
+// UnifiedCheckScratch holds reusable EVALSHA wire buffers for unified-filter.lua (19 KEYS, 34 ARGV).
+// BufWrapper fields build {campaign_id}-tagged keys; keyArgs[i] points at keyVals[i-1] or stable literals.
 type UnifiedCheckScratch struct {
 	wDup, wIdem, wDate, wDS, wFcap, wImpTS, wQuota, wRefillLock, wFence, wFrozen filt.BufWrapper
 	wDeadlineMono, wNowMono                                                      filt.BufWrapper
@@ -39,6 +42,7 @@ type UnifiedCheckScratch struct {
 	keyArgs                                                                      [unifiedFilterKeyCount]any
 }
 
+// UnifiedScratchPool: one scratch per Check on PinnedWorkerPool Tier B; Release is no-op (returned via defer Put).
 var UnifiedScratchPool = sync.Pool{
 	New: func() any {
 		s := &UnifiedCheckScratch{

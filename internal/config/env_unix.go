@@ -10,6 +10,7 @@ import (
 	"ad-event-processor/pkg/runtimepaths"
 )
 
+// applyUnixTransportDefaults: appliance mode uses Unix sockets for tracker, broker gnet, CH native, control.
 func applyUnixTransportDefaults(cfg *Config) {
 	cfg.TrackerUnixSocket = strings.TrimSpace(os.Getenv("TRACKER_UNIX_SOCKET"))
 	cfg.ControlUnixSocket = strings.TrimSpace(os.Getenv("CONTROL_UNIX_SOCKET"))

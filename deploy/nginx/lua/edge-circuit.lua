@@ -43,6 +43,8 @@ function _M.record_err()
     circuit_dict:incr(bucket_curr .. ":errs", 1, 0, KEY_TTL)
 end
 
+-- Open when combined errs/(total_curr+total_prev) > 0.95 after 100 samples across two 10 s buckets.
+-- Tracker upstream 5xx counted in log_by_lua via log_upstream_err; not edge-generated 503/blacklist exits.
 function _M.open(bucket_curr, bucket_prev)
     local total_curr = circuit_dict:get(bucket_curr .. ":total") or 0
     local total_prev = circuit_dict:get(bucket_prev .. ":total") or 0
@@ -56,6 +58,7 @@ function _M.open(bucket_curr, bucket_prev)
     return (redis_errs / total_reqs) > FAIL_THRESHOLD
 end
 
+-- Log phase: upstream_addr set and upstream_status empty or any 5xx -> record_err (pairs with access record_total).
 function _M.log_upstream_err()
     local upstream_addr = ngx.var.upstream_addr
     if not upstream_addr or upstream_addr == "" then

@@ -1,7 +1,9 @@
 package rtb
 
 const (
+	// Amortize monotonic deadline checks: every 128 candidates, not every iteration.
 	rankDeadlineCheckMask = 127
+	// Hard scan ceiling (core.mdc RTB catalog scan p99 < 500). Exceed -> NoBidScanLimit.
 	rankMaxScanCandidates = 500
 )
 
@@ -9,6 +11,8 @@ func GeoBitFromHash(geoHash uint32) uint64 {
 	return uint64(1) << (geoHash & 63)
 }
 
+// catalogSlicesValid checks CampaignAuctionRegistry Count against every parallel
+// SoA slice and nested GeoBucketSoA / TargetBucketSoA bounds before hot subviews.
 func (r *Registry) catalogSlicesValid(reg *CampaignAuctionRegistry) bool {
 	count := reg.Count
 	if count > len(reg.CampaignIDs) || count > len(reg.Bids) ||
@@ -35,6 +39,8 @@ func bidsAt(reg *CampaignAuctionRegistry, idx int) int64 {
 	return reg.Bids[idx]
 }
 
+// candidateRange picks TargetBucketSoA when targeting index is on, else GeoBucketSoA.
+// Buckets are presorted by effective score so rankCandidates can early-break below floor.
 func (r *Registry) candidateRange(
 	reg *CampaignAuctionRegistry,
 	req *BidRequest,
@@ -48,6 +54,8 @@ func (r *Registry) candidateRange(
 	return &reg.GeoBucketSoA, start, end, ok
 }
 
+// rankCandidates scans candidateBucketSoA with stack-local subviews only (no alloc).
+// Budget checks use LoadBudget / loadDailyHeadroom (atomic load); CAS spend is in RunAuction.
 func (r *Registry) rankCandidates(
 	reg *CampaignAuctionRegistry,
 	req *BidRequest,
@@ -71,6 +79,7 @@ func (r *Registry) rankCandidates(
 		return -1, 0, -1, 0, NoBidCorruptCatalog
 	}
 
+	// Subviews alias immutable bucket slices from the catalog snapshot; bounds checked above.
 	catalogIdx := soa.CatalogIdx[bucketStart:bucketEnd]
 	creativeIDs := soa.CreativeIDs[bucketStart:bucketEnd]
 	bids := soa.Bids[bucketStart:bucketEnd]
@@ -108,6 +117,7 @@ func (r *Registry) rankCandidates(
 	fcapUserHash := req.FcapUserHash
 	fcapSnap := r.LoadFcapSnapshot()
 
+	// Touch last element so compiler keeps one bounds check for the loop body (0-alloc path).
 	n := len(catalogIdx)
 	if n > 0 {
 		_ = catalogIdx[n-1]
@@ -158,6 +168,7 @@ func (r *Registry) rankCandidates(
 		}
 
 		scanned++
+		// Enforce rankMaxScanCandidates before deeper filter work on oversized buckets.
 		if scanned > rankMaxScanCandidates {
 			return -1, 0, -1, scanned, NoBidScanLimit
 		}
@@ -213,6 +224,7 @@ func (r *Registry) rankCandidates(
 		}
 
 		score := effectiveScoreWithBoost(bid, ctrppm[pos], boostPPM[pos])
+		// Presorted bucket: once score drops below current max, remaining rows cannot win.
 		if winnerIdx >= 0 && secondBid >= 0 && score < maxScore {
 			break
 		}

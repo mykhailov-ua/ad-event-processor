@@ -38,6 +38,7 @@ type checkpointStore interface {
 	Save(record CheckpointRecord) error
 }
 
+// Compactor: hot tier JSONL -> zstd warm tier; FileLeaderLock avoids duplicate compaction on HA pair.
 type Compactor struct {
 	cfg        CompactorConfig
 	store      TierStore

@@ -15,17 +15,17 @@ import (
 type Tier int
 
 const (
-	TierHigh Tier = iota
-	TierLow
+	TierHigh Tier = iota // WAL/broker mmap: fail-open while degraded; still waits on appendSem
+	TierLow              // forward/dedup: shed with ErrShed when degraded or disk not writable
 )
 
 var ErrShed = errors.New("disk gate shed")
 
 const (
-	DefaultDiskLatencyBudget   = 50 * time.Millisecond
-	DefaultGroupCommitRecords  = 64
-	DefaultGroupCommitInterval = 100 * time.Millisecond
-	DefaultAppendCapacity      = 32
+	DefaultDiskLatencyBudget   = 50 * time.Millisecond  // fsync EMA above this sets degraded
+	DefaultGroupCommitRecords  = 64                     // NoteAppend fsync trigger (record count)
+	DefaultGroupCommitInterval = 100 * time.Millisecond // NoteAppend fsync trigger (wall clock)
+	DefaultAppendCapacity      = 32                     // appendSem buffered capacity
 	envDiskLatencyBudgetMS     = "DISK_LATENCY_BUDGET_MS"
 )
 
@@ -67,17 +67,20 @@ func diskLatencyBudgetFromEnv() time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
+// DiskWriteGate batches append concurrency and fsync on broker WAL / mmap paths.
+// Callers bracket write(2)/writev(2) with AcquireAppend/ReleaseAppend and fsync(2)
+// with AcquireFsync/ReleaseFsync; degraded is driven by fsync EMA vs DiskLatencyBudget.
 type DiskWriteGate struct {
-	appendSem chan struct{}
-	fsyncSem  chan struct{}
+	appendSem chan struct{} // caps concurrent write syscalls at AppendCapacity
+	fsyncSem  chan struct{} // serializes fsync/fdatasync (buffered cap 1)
 
 	cfg Config
 
-	degraded   atomic.Uint32
-	emaLatency atomic.Uint64
+	degraded   atomic.Uint32  // 1 after EMA exceeds budget or DiskWritable false; sticky until SetDegraded(false)
+	emaLatency atomic.Uint64 // fsync latency EMA in nanoseconds (alpha 0.1 in recordFsyncLatency)
 
 	inFlight atomic.Int32
-	_        cpu.CacheLinePad
+	_        cpu.CacheLinePad // pad inFlight from fsyncInFlight (false-sharing)
 
 	fsyncInFlight atomic.Int32
 	pendingFsync  atomic.Int64
@@ -108,13 +111,15 @@ func (g *DiskWriteGate) AcquireAppend(ctx context.Context, tier Tier) error {
 	if g == nil {
 		return nil
 	}
+	// TierLow shed; TierHigh fail-open and proceeds to appendSem.
 	if tier == TierLow && g.degraded.Load() == 1 {
 		incShedTotal()
 		return fmt.Errorf("disk gate acquire tier=%d: %w", tier, ErrShed)
 	}
+	// DiskWritable is the disk-health probe boundary (e.g. statfs, ENOSPC); false sets degraded immediately.
 	if g.cfg.DiskWritable != nil && !g.cfg.DiskWritable() {
 		g.setDegraded(1)
-		if tier == TierLow {
+		if tier == TierLow { // TierHigh still acquires append slot
 			incShedTotal()
 			return fmt.Errorf("disk gate acquire tier=%d: %w", tier, ErrShed)
 		}
@@ -141,6 +146,7 @@ func (g *DiskWriteGate) ReleaseAppend(tier Tier) {
 	_ = tier
 }
 
+// AcquireFsync blocks until the single fsync slot is free; pair with ReleaseFsync after syscall returns.
 func (g *DiskWriteGate) AcquireFsync(ctx context.Context) error {
 	if g == nil {
 		return nil
@@ -159,7 +165,7 @@ func (g *DiskWriteGate) ReleaseFsync(latency time.Duration) {
 	if g == nil {
 		return
 	}
-	g.recordFsyncLatency(latency)
+	g.recordFsyncLatency(latency) // EMA may set degraded; affects subsequent TierLow AcquireAppend
 	g.fsyncInFlight.Add(-1)
 	setFsyncInFlight(float64(g.fsyncInFlight.Load()))
 	<-g.fsyncSem
@@ -171,7 +177,7 @@ func (g *DiskWriteGate) NoteAppend() bool {
 		return false
 	}
 	n := g.pendingFsync.Add(1)
-	if n >= g.cfg.GroupCommitRecords {
+	if n >= g.cfg.GroupCommitRecords { // group-commit record threshold
 		g.pendingFsync.Store(0)
 		g.resetGroupCommitClock()
 		return true
@@ -182,7 +188,7 @@ func (g *DiskWriteGate) NoteAppend() bool {
 		g.lastFlushAt.Store(now)
 		return false
 	}
-	if time.Duration(now-last) >= g.cfg.GroupCommitInterval {
+	if time.Duration(now-last) >= g.cfg.GroupCommitInterval { // group-commit interval threshold
 		g.pendingFsync.Store(0)
 		g.resetGroupCommitClock()
 		return true
@@ -202,7 +208,7 @@ func (g *DiskWriteGate) recordFsyncLatency(latency time.Duration) {
 		if cur == 0 {
 			newEMA = latencyNs
 		} else {
-			newEMA = (latencyNs + 9*cur) / 10
+			newEMA = (latencyNs + 9*cur) / 10 // EMA alpha=0.1 (ns)
 		}
 		if g.emaLatency.CompareAndSwap(cur, newEMA) {
 			break
@@ -272,6 +278,7 @@ func (g *DiskWriteGate) PendingFsyncRecords() int64 {
 	return g.pendingFsync.Load()
 }
 
+// FlushDueByInterval is the shutdown/drain hook: pending records past GroupCommitInterval without NoteAppend trip.
 func (g *DiskWriteGate) FlushDueByInterval() bool {
 	if g == nil || g.pendingFsync.Load() == 0 {
 		return false

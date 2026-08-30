@@ -18,6 +18,7 @@ func (s *recordingEventStore) StoreBatch(ctx context.Context, events []*domain.E
 
 func (s *recordingEventStore) Close() error { return nil }
 
+// Holdout: before hook must run before inner StoreBatch; removing the before call fails this test.
 func TestWrapEventStoreBeforeBatch_order(t *testing.T) {
 	inner := &recordingEventStore{}
 	var beforeCalled bool

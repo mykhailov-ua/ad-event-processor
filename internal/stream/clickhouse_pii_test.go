@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Holdout: default-table append must use hashed ip/ua columns (indices 3,4,5), never raw strings.
 func TestClickHouseStore_StoreBatch_hashesPII(t *testing.T) {
 	hasher := piihash.TestHasher()
 	var captured [][]any
@@ -64,6 +65,7 @@ func TestClickHouseStore_StoreBatch_hashesPII(t *testing.T) {
 	}
 }
 
+// Holdout: fraud_events user_id_hash is column 2; silent_reject maps via fraudSilentRejectFlag in insertTable.
 func TestClickHouseStore_StoreBatch_fraudEventUserIDHash(t *testing.T) {
 	hasher := piihash.TestHasher()
 	var captured [][]any

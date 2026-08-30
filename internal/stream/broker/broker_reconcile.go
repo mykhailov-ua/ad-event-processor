@@ -25,6 +25,8 @@ type BrokerReconcileConfig struct {
 	DivergenceThreshold uint64
 }
 
+// BrokerReconcileWorker samples on Interval: compares Redis stream XLEN sum to broker committed
+// offsets and sets ad_broker_ingest_divergence_* / ad_broker_consumer_lag_messages gauges.
 type BrokerReconcileWorker struct {
 	cfg    BrokerReconcileConfig
 	shards []redis.UniversalClient
@@ -114,6 +116,7 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 	sampleCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// Legacy Redis stream depth (sum across shards) for cutover divergence vs broker consumer offset.
 	var streamLen int64
 	for _, shard := range w.shards {
 		if shard == nil {
@@ -127,6 +130,7 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 		streamLen += n
 	}
 
+	// Sum broker consumer group commits across partitions (mmap WAL replay position per lane).
 	var committedSum uint64
 	for p := range w.cfg.PartitionCount {
 		part := uint16(p)
@@ -146,6 +150,7 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 		if hwmShard == nil {
 			continue
 		}
+		// Prefer broker Redis log_hwm; fall back to Fetch HighWatermark when key missing.
 		hwmStr, err := hwmShard.Get(sampleCtx, "ad_event_processor:topics:"+tpKey+":log_hwm").Result()
 		if err == nil {
 			if v, parseErr := strconv.ParseUint(hwmStr, 10, 64); parseErr == nil {
@@ -172,6 +177,7 @@ func (w *BrokerReconcileWorker) sample(ctx context.Context) {
 	}
 	metrics.BrokerIngestDivergenceMessages.WithLabelValues(w.cfg.Topic, w.cfg.BrokerGroup).Set(float64(divergence))
 
+	// DivergenceThreshold breach sets ad_broker_ingest_divergence_high=1 (operator rollback signal during shadow).
 	if uint64(divergence) > w.cfg.DivergenceThreshold {
 		metrics.BrokerIngestDivergenceHigh.WithLabelValues(w.cfg.Topic, w.cfg.BrokerGroup).Set(1)
 	} else {

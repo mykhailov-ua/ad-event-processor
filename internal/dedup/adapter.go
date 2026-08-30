@@ -80,6 +80,7 @@ func (a *Adapter) RegionScope(sourceID uuid.UUID, seqStart, seqEnd int64) dedupk
 	}
 }
 
+// ClaimConfirm calls dedup_claim_confirm in PG (region sync); nil pool is no-op for single-node dev.
 func (a *Adapter) ClaimConfirm(ctx context.Context, scope dedupkey.Scope, factorU uuid.UUID) (ClaimResult, error) {
 	if a == nil || a.pool == nil {
 		key := dedupkey.FormatCanonical(scope, factorU, uuid.Nil)

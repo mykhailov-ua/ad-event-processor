@@ -17,7 +17,8 @@
 //   - summary.json oncpu_pct is session wall-time fraction, not Prometheus ad_http_request_duration_seconds.
 //
 // Verify:
-//   go run ./cmd/load-report bpf var/load-test/<session>/
+//
+//	go run ./cmd/load-report bpf var/load-test/<session>/
 package main
 
 import (

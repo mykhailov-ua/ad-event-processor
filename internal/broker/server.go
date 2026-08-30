@@ -42,6 +42,8 @@ var fetchRespPool = sync.Pool{
 	},
 }
 
+// Server: gnet event loop + mmap partition logs (pkg/broker/log). diskGate blocks Append when
+// dataDir is not writable; coord gates Produce to Redis-elected leader per topic partition.
 type Server struct {
 	*gnet.BuiltinEventEngine
 	addr            string
@@ -309,6 +311,7 @@ func (s *Server) runDiskHealthWorker() {
 	}
 }
 
+// probeDisk: create+unlink under dataDir; feeds diskOK and iogate before WAL append syscalls.
 func (s *Server) probeDisk() bool {
 	testFile := filepath.Join(s.dataDir, ".healthcheck")
 	f, err := os.OpenFile(testFile, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0o600)
@@ -436,6 +439,7 @@ func (s *Server) isAdmissionShedding() bool {
 	return s.connCount.Load() >= threshold
 }
 
+// OnTraffic: length-prefixed broker frames on gnet; malformed length closes conn (DoS guard).
 func (s *Server) OnTraffic(c gnet.Conn) gnet.Action {
 	ctx := s.ensureConnState(c)
 	if s.connMaxLifetimeExceeded(ctx) {
@@ -676,6 +680,7 @@ func (s *Server) requestTopicClaim(tpKey string) {
 	s.coord.RequestClaim(tpKey)
 }
 
+// appendLeader: fencing epoch from Redis coord; AppendFenced rejects stale leader writes.
 func (s *Server) appendLeader(topic string, pl *log.PartitionLog, payload []byte) (uint64, byte, error) {
 	var epoch uint64
 	if s.coord != nil {

@@ -53,6 +53,8 @@ const (
 	MaxJSONStringEscapes = 16384
 )
 
+// ScanBudget is a multi-counter bomb budget for hand-rolled JSON scan (not a single byte cap).
+// Separate ws/str/esc/pairs limits defeat whitespace-only and escape-loop DoS without rejecting valid /track.
 type ScanBudget struct {
 	wsLeft    int
 	strLeft   int
@@ -242,6 +244,8 @@ func SkipValueBudget(data []byte, start int, bud *ScanBudget) (int, error) {
 	return SkipValueBudgetDepth(data, start, bud, MaxJSONDepth)
 }
 
+// SkipValueBudgetDepth walks one JSON value; maxDepth is 16 (/track) or 32 (OpenRTB) per caller.
+// Each nested { or [ consumes str budget and depth; exceeding either returns ErrMalformed.
 func SkipValueBudgetDepth(data []byte, start int, bud *ScanBudget, maxDepth int) (int, error) {
 	n := len(data)
 	if start >= n {

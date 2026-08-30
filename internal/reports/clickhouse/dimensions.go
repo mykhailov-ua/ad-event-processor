@@ -1,5 +1,6 @@
 package clickhouse
 
+// Dimension SQL: prefer typed CH columns, fall back to JSONExtractString(payload) for legacy rows.
 const (
 	ClickhouseDimSub1Expr    = `nullIf(coalesce(nullIf(sub1, ''), nullIf(JSONExtractString(payload, 'sub1'), '')), '')`
 	ClickhouseDimSub2Expr    = `nullIf(coalesce(nullIf(sub2, ''), nullIf(JSONExtractString(payload, 'sub2'), '')), '')`

@@ -7,18 +7,21 @@ import (
 )
 
 const (
-	CmdCommitOffset            uint16 = 5
-	CmdCommittedOffset         uint16 = 6
-	CmdCommitOffsetResp        uint16 = 105
-	CmdCommittedOffsetResp     uint16 = 106
-	CommitOffsetRespMetaLen           = 9
-	CommittedOffsetRespMetaLen        = 9
+	CmdCommitOffset        uint16 = 5
+	CmdCommittedOffset     uint16 = 6
+	CmdCommitOffsetResp    uint16 = 105
+	CmdCommittedOffsetResp uint16 = 106
+	// CommitOffsetRespMetaLen: status u8 + stored_offset u64 (frame body 23, on-wire 27 with length prefix).
+	CommitOffsetRespMetaLen = 9
+	// CommittedOffsetRespMetaLen: status u8 + committed_offset u64 (same 27-byte response frame).
+	CommittedOffsetRespMetaLen = 9
 
-	OffsetStatusOK               byte = 0
-	OffsetStatusBadRequest       byte = 1
-	OffsetStatusStoreUnavailable byte = 2
+	OffsetStatusOK               byte = 0 // success
+	OffsetStatusBadRequest       byte = 1 // malformed key or offset
+	OffsetStatusStoreUnavailable byte = 2 // offset store down; client may treat as offset 0
 )
 
+// Offset key wire: topic_len u16 + topic + partition u16 + group_len u16 + group (commit adds offset u64).
 func DecodeOffsetKeyRequest(payload []byte) (topic string, partition uint16, group string, err error) {
 	if len(payload) < 6 {
 		return "", 0, "", errors.New("malformed offset request")

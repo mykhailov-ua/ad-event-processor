@@ -18,6 +18,7 @@ type InitOptions struct {
 	DisableFingerprint bool
 }
 
+// DefaultConfig seeds the config BPF map; syn_subnet_limit must stay in sync with edge_filter.c.
 func DefaultConfig(opts InitOptions) EdgeEdgeConfig {
 	cfg := EdgeEdgeConfig{
 		SynLimit:           DefaultSynLimit,

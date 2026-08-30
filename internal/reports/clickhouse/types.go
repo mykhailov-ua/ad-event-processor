@@ -3,6 +3,7 @@ package clickhouse
 import "time"
 
 const (
+	// maxStatsRange: admin API guard against unbounded CH scans (90d ceiling).
 	maxStatsRange = 90 * 24 * time.Hour
 )
 

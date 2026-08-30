@@ -47,6 +47,7 @@ type OperationLeaseBookResult struct {
 
 type OperationLeaseExecuteFunc func(ctx context.Context, lease db.OperationLease, claim dedup.ClaimResult) error
 
+// OperationLeaseWorker: PG operation_leases + on-disk fencing epoch; region relay books before cross-cell apply.
 type OperationLeaseWorker struct {
 	host           LeaseHost
 	nodeID         string

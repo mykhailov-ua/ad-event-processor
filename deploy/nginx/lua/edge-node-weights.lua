@@ -92,6 +92,8 @@ function _M.drain_frozen()
     return _M.stale()
 end
 
+-- Weighted peer pick: crc32_short(request_id:now) drives roll; stale map -> equal WEIGHT_SCALE per peer
+-- unless CONTROL_FAIL_OPEN. total<=0 falls back to crc32_short % n. Returns 0-based idx for balancer.
 function _M.pick_peer_index()
     local n = dict:get "peer_count" or 0
     if n <= 0 then
@@ -133,6 +135,7 @@ function _M.pick_peer_index()
     return n - 1
 end
 
+-- Purge-then-replace: zero w:0..n-1, write new weights, peer_count last. epoch/epoch_lag from control JSON.
 function _M.sync()
     dict:set("sync_interval", SYNC_INTERVAL_SEC)
     local url = CONTROL_URL .. "/ops/node-weights"

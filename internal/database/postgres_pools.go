@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// PostgresPools: separate pgx pools so settlement lanes cannot exhaust tracker read conns.
 type PostgresPools struct {
 	Read   *pgxpool.Pool
 	Settle *pgxpool.Pool

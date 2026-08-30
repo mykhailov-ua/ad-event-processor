@@ -77,6 +77,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 	}
 	_ = data[len(data)-1]
 
+	// Hand-rolled scanner (not encoding/json) for zero-alloc /track parse on Tier B worker.
 	n := len(data)
 	bud := newJSONScanBudget()
 	i, ok := skipJSONWSBudget(data, 0, n, &bud)
@@ -147,6 +148,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 				return parser.ErrMalformed
 			}
 			valStart := i + 1
+			// UUID must be a literal JSON string (no \\u escapes); scanJSONStringEnd would allow obfuscation.
 			end, ok := scanJSONLiteralStringEnd(data, i, n, &bud)
 			if !ok {
 				return parser.ErrMalformed
@@ -161,6 +163,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			if err != nil {
 				return err
 			}
+			// Payload sub-tree aliases req.Body wire until fillTrackEvent copies or merges attribution.
 			v.Payload = data[valStart:valEnd]
 			i = valEnd
 		default:
@@ -173,6 +176,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 				if !ok {
 					return parser.ErrMalformed
 				}
+				// subs alias body bytes; lifetime ends when TrackRequest returns to pool after parseTrackIngest.
 				v.subs[idx-1] = unsafeString(data[valStart : end-1])
 				i = end
 			} else if matchTelemetryKey(keyBytes) {
@@ -192,6 +196,7 @@ func parseTrackRequestJSON(v *TrackRequest, data []byte) error {
 			}
 		}
 
+		// parser.ScanBudget key-pair cap; exceed -> ErrMalformed (JSON bomb load-shedding).
 		if !bud.consumeKeyPair() {
 			return parser.ErrMalformed
 		}

@@ -87,6 +87,7 @@
 //   - Synchronous Redis EVALSHA on gnet epoll event-loop threads.
 //   - Spawning go func() around FilterEngine.Check on /track (breaks buffer lifetime and zero-alloc contract).
 //
+// Thread model invariants:
 //   - FilterEngine.Check runs synchronously on PinnedWorkerPool Tier B, not on gnet epoll threads.
 //   - gnet epoll returns after SubmitOffload; pinned workers run the full accept path before picking next job.
 //

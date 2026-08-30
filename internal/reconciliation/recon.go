@@ -54,6 +54,8 @@ func NewReconService(host Host) *ReconService {
 	return &ReconService{host: host}
 }
 
+// ReconcileWindow compares Redis campaign sync spend (hot-path mirror) against PG balance_ledger
+// sums for [start,end). Drift is recorded in recon_discrepancies; small deltas enqueue outbox adjust.
 func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time) error {
 	opCtx, cancel := workerContext(ctx, workerBatchTimeout)
 	defer cancel()
@@ -115,6 +117,7 @@ func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time
 			return err
 		}
 
+		// Positive delta: Redis sync ahead of PG ledger for the window; adjust payload negates both sides.
 		delta := syncVal - ledgerSpent
 		if delta == 0 {
 			continue
@@ -150,6 +153,7 @@ func (s *ReconService) ReconcileWindow(ctx context.Context, start, end time.Time
 
 		shardID := int16(s.host.Sharder().GetShard(campID))
 		custUUID, _ := uuid.FromBytes(customerID.Bytes[:])
+		// LedgerAmt=-delta, RedisDelta=delta: outbox applier moves PG current_spend and Redis sync key together.
 		if err := s.enqueueReconciliationAdjust(opCtx, run.ID, campID, custUUID, shardID, -delta, delta, "hourly_window_recon"); err != nil {
 			slog.Error("failed to enqueue recon adjustment", "campaign_id", campID, "delta", delta, "error", err)
 			metrics.ReconAdjustmentErrors.Inc()
@@ -245,6 +249,7 @@ func (s *ReconService) AlertStaleUnresolvedDiscrepancies(ctx context.Context) {
 	}
 }
 
+// adjustRedisBudgetAtomically INCRBYs {campaign_id}:sync; DEL when non-positive. Used only after PG adjust commits.
 func (s *ReconService) adjustRedisBudgetAtomically(ctx context.Context, redisClient redis.UniversalClient, campID uuid.UUID, delta int64) error {
 	script := `
 		local key = KEYS[1]
@@ -288,6 +293,8 @@ func (s *ReconService) failRun(ctx context.Context, id int64, err error) {
 	slog.Error("reconciliation run failed", "run_id", id, "error", err)
 }
 
+// reconciliationRedisAdjustApplied: window/snapshot adjusts use recon_discrepancies.redis_adjusted;
+// ad-hoc adjusts use recon:redis_applied:{outboxEventID} (7d TTL) for at-least-once outbox retries.
 func (s *ReconService) reconciliationRedisAdjustApplied(
 	ctx context.Context,
 	redisClient redis.UniversalClient,
@@ -390,6 +397,7 @@ func reconGraceWindow(cfg *config.Config) time.Duration {
 	return time.Duration(ms) * time.Millisecond
 }
 
+// reconToleranceMicro: 0.01% of budget_limit, min 1 micro-unit; snapshot drift within tolerance skips adjust.
 func reconToleranceMicro(budgetLimit int64) int64 {
 	pct := int64(math.Max(1, float64(budgetLimit)*0.0001))
 	if pct < 1 {

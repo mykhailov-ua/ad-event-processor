@@ -34,6 +34,7 @@ type ClickHouseQueryConfig struct {
 	SlowQueryThreshold  time.Duration
 }
 
+// ClickHouseQuery: sem limits concurrent admin/report queries; per-query max_memory via SETTINGS.
 type ClickHouseQuery struct {
 	conn          driver.Conn
 	maxMemory     uint64

@@ -33,6 +33,7 @@ func normalizeBlacklistReason(reason string) string {
 	return reason
 }
 
+// Start: PG poll loop with adaptive backoff; reclaims PROCESSING rows stuck >1m (crash recovery).
 func (w *Worker) Start(ctx context.Context, interval time.Duration) {
 	if err := w.ProcessOutbox(ctx); err != nil {
 		slog.Error("outbox startup cold sync failed", "err", err)

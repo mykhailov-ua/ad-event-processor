@@ -7,7 +7,9 @@ import (
 )
 
 const (
+	// DefaultConnReadIdle closes incomplete reads with no further bytes (broker framing stall).
 	DefaultConnReadIdle    = 30 * time.Second
+	// DefaultConnMaxLifetime hard cap from accept; independent of per-frame progress.
 	DefaultConnMaxLifetime = 120 * time.Second
 )
 
@@ -31,7 +33,7 @@ func (p ConnPolicy) MaxLifetimeDuration() time.Duration {
 }
 
 type ConnState struct {
-	OpenedAt         time.Time
+	OpenedAt         time.Time // accept time; MaxLifetimeExceeded compares wall clock since this
 	readIdleArmed    bool
 	readIdleDeadline time.Time
 }
@@ -51,6 +53,7 @@ func EnsureConnState(c gnet.Conn) *ConnState {
 
 func OpenConn(c gnet.Conn, p ConnPolicy, ctx *ConnState) {
 	c.SetContext(ctx)
+	// Arms kernel read deadline at max lifetime; OnFrameProgress slides remaining time per frame.
 	_ = c.SetReadDeadline(time.Now().Add(p.MaxLifetimeDuration()))
 }
 
@@ -65,7 +68,7 @@ func OnFrameProgress(c gnet.Conn, p ConnPolicy, ctx *ConnState) {
 	if ctx == nil {
 		return
 	}
-	ctx.readIdleArmed = false
+	ctx.readIdleArmed = false // fresh bytes arrived; disarm read-idle until next incomplete wait
 	remaining := p.MaxLifetimeDuration() - time.Since(ctx.OpenedAt)
 	if remaining <= 0 {
 		return
@@ -78,7 +81,7 @@ func WaitIncomplete(c gnet.Conn, p ConnPolicy, ctx *ConnState) string {
 		return ""
 	}
 	if MaxLifetimeExceeded(p, ctx) {
-		return "max_lifetime"
+		return "max_lifetime" // hard cap from OpenedAt; checked before read-idle
 	}
 	if ctx.readIdleArmed && time.Now().After(ctx.readIdleDeadline) {
 		return "read_idle"
@@ -88,9 +91,9 @@ func WaitIncomplete(c gnet.Conn, p ConnPolicy, ctx *ConnState) string {
 		deadline := time.Now().Add(idle)
 		maxEnd := ctx.OpenedAt.Add(p.MaxLifetimeDuration())
 		if deadline.After(maxEnd) {
-			deadline = maxEnd
+			deadline = maxEnd // read-idle never extends past max lifetime
 		}
-		_ = c.SetReadDeadline(deadline)
+		_ = c.SetReadDeadline(deadline) // syscall boundary: gnet maps to SO_RCVTIMEO / poll deadline
 		ctx.readIdleDeadline = deadline
 		ctx.readIdleArmed = true
 	}
@@ -98,5 +101,6 @@ func WaitIncomplete(c gnet.Conn, p ConnPolicy, ctx *ConnState) string {
 }
 
 func ClearReadDeadline(c gnet.Conn) {
+	// Zero time clears deadline before explicit close (avoids spurious timeout on teardown).
 	_ = c.SetReadDeadline(time.Time{})
 }

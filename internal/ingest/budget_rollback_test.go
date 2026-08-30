@@ -39,6 +39,8 @@ func TestUnifiedFilter_SetDeferStreamToProducer_DualStreamWriteFix(t *testing.T)
 }
 
 func TestUnifiedFilter_RollbackDebit_LocalQuanta(t *testing.T) {
+	// Holdout: post-debit publish failure must refund local quanta ledger via RollbackDebit.
+	// Must fail if rollback branch is removed or inverted.
 	ledger := NewLocalQuantaLedger()
 	f := NewUnifiedFilter(nil, nil, nil, nil, 0, time.Minute, time.Hour, time.Hour, 100, 10, "events", 1000)
 	f.SetLocalQuantaDeps(LocalQuantaDeps{Ledger: ledger})

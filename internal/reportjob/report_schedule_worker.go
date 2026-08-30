@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	reportScheduleWorkerPollInterval = 30 * time.Second
+	reportScheduleWorkerPollInterval = 30 * time.Second // polls PG next_run_at; not in-process cron timer
 	reportScheduleWorkerBatchSize    = 8
 )
 
@@ -60,11 +60,13 @@ func (w *ReportScheduleWorker) ProcessOnce(ctx context.Context) (int, error) {
 			slog.Warn("report schedule spec invalid", "schedule_id", row.id.String(), "err", err)
 			continue
 		}
+		// idem from buildReportJobSpecFromSchedule dedupes enqueue per schedule slot minute.
 		jobID, err := w.runner.CreateJob(ctx, spec, idem)
 		if err != nil {
 			slog.Warn("report schedule enqueue failed", "schedule_id", row.id.String(), "err", err)
 			continue
 		}
+		// Best-effort last_job_id; next_run_at already advanced in claimDueReportSchedules txn.
 		if err := markReportScheduleJob(ctx, w.pool, row.id.String(), jobID); err != nil {
 			slog.Warn("report schedule job mark failed", "schedule_id", row.id.String(), "err", err)
 		}

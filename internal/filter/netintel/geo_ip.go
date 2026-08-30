@@ -70,6 +70,7 @@ var asnPool = sync.Pool{
 	},
 }
 
+// MaxMindProvider: mmap MaxMind DB readers; GeoIPWatcher hot-swaps under RWMutex without restart.
 type MaxMindProvider struct {
 	reader    *maxminddb.Reader
 	asnReader *maxminddb.Reader

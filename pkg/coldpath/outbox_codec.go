@@ -10,7 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-const OutboxProtoMagic byte = 0x1f
+const OutboxProtoMagic byte = 0x1f // payload[0]; registered codecs use bytes [1:]
 
 var (
 	outboxCodecMu  sync.RWMutex
@@ -47,6 +47,7 @@ func MarshalOutbox(v any) ([]byte, error) {
 }
 
 func wrapOutboxProto(body []byte) []byte {
+	// wire: [0]=0x1f magic, [1:]=proto or registered codec body
 	out := make([]byte, 1+len(body))
 	out[0] = OutboxProtoMagic
 	copy(out[1:], body)
@@ -64,6 +65,7 @@ func OutboxProtoBody(payload []byte) []byte {
 	return payload[1:]
 }
 
+// UnmarshalStrict returns error on bad magic, missing codec, or JSON decode failure.
 func UnmarshalStrict[T any](payload []byte) (T, error) {
 	var zero T
 	if IsOutboxProto(payload) {
@@ -88,6 +90,7 @@ func UnmarshalStrict[T any](payload []byte) (T, error) {
 	return p, nil
 }
 
+// UnmarshalLenient logs warn and returns zero T on UnmarshalStrict error (handler best-effort).
 func UnmarshalLenient[T any](payload []byte) T {
 	p, err := UnmarshalStrict[T](payload)
 	if err != nil {

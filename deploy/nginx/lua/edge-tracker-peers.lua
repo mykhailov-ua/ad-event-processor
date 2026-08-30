@@ -16,6 +16,8 @@
 -- bash scripts/test/edge/lua_tests.sh
 local _M = {}
 
+-- Balancer index mapping: pick_peer_index and slot_map shard return 0-based idx; list is 1-based (idx+1).
+-- node_id strings (tracker-1..4) match control /ops/node-weights JSON; unix sockets to :8181-8184 trackers.
 _M.list = {
     { unix_socket = "/run/ad-event-processor/tracker/tracker-0.sock", node_id = "tracker-1" },
     { unix_socket = "/run/ad-event-processor/tracker/tracker-1.sock", node_id = "tracker-2" },

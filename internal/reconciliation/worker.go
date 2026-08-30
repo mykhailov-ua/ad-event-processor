@@ -101,6 +101,7 @@ func (w *ReconWorker) Start(ctx context.Context) {
 				slog.Error("budget snapshot recon failed", "err", err)
 			}
 		case <-ticker.C:
+			// Hourly window lags 2h so ledger batch flush and stream settlement can land in PG.
 			end := time.Now().Truncate(time.Hour).Add(-2 * time.Hour)
 			start := end.Add(-time.Hour)
 			if err := w.host.WithPostgresLow(ctx, func(runCtx context.Context) error {
@@ -167,6 +168,7 @@ func (w *ReconWorker) runHYG30Audits(ctx context.Context) {
 	slog.Debug("hyg30 recon audits completed", "duration_ms", time.Since(start).Milliseconds())
 }
 
+// auditRedisPGLedger (HYG30-A): campaigns.current_spend vs balance_ledger sum vs Redis {id}:sync per shard.
 func (w *ReconWorker) auditRedisPGLedger(ctx context.Context, pool *pgxpool.Pool) {
 	if pool == nil {
 		return
@@ -312,6 +314,7 @@ func (w *ReconWorker) auditPostgresClickHouseStats(ctx context.Context) {
 		return
 	}
 
+	// HYG30-B: PG campaign_stats vs CH daily event totals; bounded by reports.ClickHouseQueryContext (10s).
 	clickhouseCtx, cancel := clickhouseQueryContext(ctx)
 	defer cancel()
 
@@ -340,6 +343,7 @@ func (w *ReconWorker) auditPostgresClickHouseStats(ctx context.Context) {
 	}
 }
 
+// auditLedgerInvariantSample (HYG30-C): TABLESAMPLE customers; mismatch enqueues PAUSE_CAMPAIGN (AssertBudgetInvariant tier).
 func (w *ReconWorker) auditLedgerInvariantSample(ctx context.Context, pool *pgxpool.Pool) {
 	if pool == nil {
 		return
@@ -428,6 +432,7 @@ func (w *ReconWorker) ReconcileBudgetSnapshot(ctx context.Context) {
 	if w == nil || w.host == nil || w.host.Pool() == nil {
 		return
 	}
+	// Ping/replication/breaker quorum: skip dirty campaigns on shards confirmed dead.
 	w.observeShardQuorum(ctx)
 
 	reconSvc := NewReconService(w.host)
@@ -563,6 +568,7 @@ func (w *ReconWorker) reconcileCampaignSnapshot(
 	brokerPending := int64(0)
 	if deltas := w.host.BrokerDeltas(); deltas != nil {
 		var brokerErr error
+		// Broker mmap ring may hold spend not yet in Redis budget keys; include in redisTotal compare.
 		brokerPending, brokerErr = deltas.PendingDeltaMicro(ctx, campID)
 		if brokerErr != nil {
 			slog.Warn("budget snapshot recon: broker pending delta unavailable",

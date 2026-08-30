@@ -24,5 +24,5 @@
 // Verify:
 // go test ./cmd/loadgen/... -short -count=1
 // AD_EVENT_PROCESSOR_BPF_PROBE=1 bash scripts/test/load/malformed.sh business
-// go run ./cmd/load-report all
+// go run ./cmd/load-report all var/load-test/<session>/
 package main

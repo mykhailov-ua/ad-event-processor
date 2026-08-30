@@ -17,6 +17,7 @@ local edge_uuid = require "edge-uuid"
 
 local _M = {}
 
+-- Strict UUID from query campaign_id only; duplicate key (table) rejected. Feeds slot_map CRC32C routing.
 function _M.extract_campaign_id()
     local args, err = ngx.req.get_uri_args(100)
     if not args then

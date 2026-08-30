@@ -96,3 +96,16 @@ func TestCompliance_edgeNoFingerprintBlockMap(t *testing.T) {
 		}
 	}
 }
+
+func TestEdgeFilterRateLimitPerCPUHash_holdout(t *testing.T) {
+	data, err := os.ReadFile("../../deploy/edge/xdp/bpf/edge_filter.c")
+	require.NoError(t, err)
+	src := string(data)
+	assert.Contains(t, src, "BPF_MAP_TYPE_PERCPU_HASH")
+	assert.Contains(t, src, "} syn_ratelimit_v4 SEC(\".maps\");")
+	assert.Contains(t, src, "} ratelimit_v4 SEC(\".maps\");")
+	assert.Contains(t, src, "} rst_ratelimit_v4 SEC(\".maps\");")
+	assert.Contains(t, src, "bpf_ringbuf_query")
+	assert.Contains(t, src, "ringbuf_used_pct")
+	assert.Contains(t, src, "RINGBUF_VIOLATION_PPS_SAMPLE_PCT")
+}

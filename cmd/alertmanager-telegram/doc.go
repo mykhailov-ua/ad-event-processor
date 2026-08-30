@@ -20,5 +20,7 @@
 //   - Do not treat dry-run mode as delivered alerts.
 //
 // Verify:
-// curl -X POST http://127.0.0.1:8222/alerts -d '{"status":"firing","alerts":[]}'
+//
+//	go list -e ./cmd/alertmanager-telegram/
+// Manual smoke (requires TELEGRAM_BOT_TOKEN): curl -X POST http://127.0.0.1:8222/alerts -d '{"status":"firing","alerts":[]}'
 package main

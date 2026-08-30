@@ -121,6 +121,7 @@ func (s *LeaseFencingStore) load() error {
 	return nil
 }
 
+// persist: write+rename epoch file on local disk; broker AppendFenced rejects epochs below Floor().
 func (s *LeaseFencingStore) persist(epoch uint64) error {
 	path := filepath.Join(s.dir, leaseFencingEpochFile)
 	tmp := path + ".tmp"

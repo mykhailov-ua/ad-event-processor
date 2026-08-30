@@ -17,6 +17,7 @@ type batchJSON struct {
 	OpID        string `json:"op_id,omitempty"`
 }
 
+// DecodeBatchJSON: HTTP ingress wire for cross-region batches (dedup scope in FactorU/SourceEpoch).
 func DecodeBatchJSON(body []byte) (BatchInput, error) {
 	var in batchJSON
 	if err := json.Unmarshal(body, &in); err != nil {
