@@ -137,17 +137,36 @@ load_env() {
   ADMIN_BOOTSTRAP_EMAIL="$(read_env_var ADMIN_BOOTSTRAP_EMAIL)"
   ADMIN_BOOTSTRAP_PASSWORD="$(read_env_var ADMIN_BOOTSTRAP_PASSWORD)"
   INSTALL_BOOTSTRAP_TOKEN="$(read_env_var INSTALL_BOOTSTRAP_TOKEN)"
+  DB_USER="$(read_env_var DB_USER)"
+  DB_PASSWORD="$(read_env_var DB_PASSWORD)"
+  DB_NAME="$(read_env_var DB_NAME)"
+  DB_PORT="$(read_env_var DB_PORT)"
+  DB_SSLMODE="$(read_env_var DB_SSLMODE)"
   export DB_DSN="$(read_env_var DB_DSN)"
+}
+
+# Host-side admin CLI cannot use compose PG unix sockets; published TCP port is canonical.
+host_db_dsn() {
+  local user="${DB_USER:-ad_event_processor_user}"
+  local pass="${DB_PASSWORD:-secure_pass_123}"
+  local name="${DB_NAME:-ad_event_processor}"
+  local port="${DB_PORT:-5430}"
+  local ssl="${DB_SSLMODE:-disable}"
+  printf 'postgres://%s:%s@127.0.0.1:%s/%s?sslmode=%s' "$user" "$pass" "$port" "$name" "$ssl"
+}
+
+run_admin() {
+  DB_DSN="$(host_db_dsn)" go run ./cmd/admin --env-path .env "$@"
 }
 
 ensure_admin_user() {
   local email="$1" password="$2"
-  if go run ./cmd/admin --env-path .env user get "$email" > /dev/null 2>&1; then
+  if run_admin user get "$email" > /dev/null 2>&1; then
     log "admin user exists: $email"
     return 0
   fi
-  log "creating admin user: $email"
-  go run ./cmd/admin --env-path .env user create \
+  log "creating admin user: $email (host DB via 127.0.0.1:${DB_PORT:-5430})"
+  run_admin user create \
     --email "$email" \
     --password "$password" \
     --role A
