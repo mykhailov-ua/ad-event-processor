@@ -38,6 +38,7 @@
 //   - ebpf_xdp_edge license required for sync/autoban loops; idle when unlicensed.
 //   - REDIS_ADDRS unset: edge-xdp attach allowed with warn (dev only).
 //   - Per-CPU HASH on syn/global/pps/rst limits avoids LRU lock contention under spoofed-IP floods;
+//     existing PERCPU_HASH/PERCPU_ARRAY slots mutate in place; bpf_map_update_elem on first insert only.
 //     subnet limit stays LRU because keys are /24 aggregates.
 //
 // Forbidden:
@@ -46,7 +47,9 @@
 //
 // Verify:
 // go test ./internal/edge/ -short -run TestXDP_dropSynSubnetFlood -count=1
+// go test ./internal/edge/ -short -run TestTokenBucket_ -count=1
 // go test ./internal/edge/ -short -run TestEdgeFilterRateLimitPerCPUHash_holdout -count=1
+// BPF C contracts: .cursor/rules/xdp-bpf.mdc
 // go test ./internal/edge/ -short -run TestFault_XDPSynCookieWithTCPOptions -count=1
 // go test ./internal/edge/... -short -count=1
 // bash scripts/test/edge/lua_tests.sh compliance

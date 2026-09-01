@@ -87,18 +87,21 @@ Always applied on every agent turn (no glob filter):
 | `boundaries.mdc` | Import matrix, layer coupling, agent scope, test dishonesty catalog |
 | `control-plane.mdc` | Outbox, workers, admin API |
 | `modular-monolith.mdc` | Modular monolith, bridges, god- and micro-package policy, migration cruft ban |
-| `frontend-modular.mdc` | Admin SPA modular monolith, layer isolation, `web/` package map |
+| `frontend-modular.mdc` | Admin SPA layers, Tailwind + shadcn/ui package map |
 | `rtb.mdc` | OpenRTB auction, shadow to live |
-| `edge.mdc` | Nginx Lua, XDP, tracker parity |
+| `edge.mdc` | Nginx Lua, XDP sync operators, fingerprint pipeline |
+| `xdp-bpf.mdc` | XDP/eBPF C hot path: maps, token bucket, verifier, test tiers |
 | `compliance.mdc` | Defensive perimeter |
 | `licensing.mdc` | JWT, trial registry, USDT tiers |
 | `regions.mdc` | Enterprise multi-region |
-| `ui.mdc` | Admin layout, grid, cold path, AI honesty |
-| `react.mdc` | React render path, DoD/SoA lists, prefetch, V8 GC, allocation budgets |
+| `ui.mdc` | Admin layout, macro/micro layout, cold path, AI honesty |
+| `react.mdc` | React Hot (charts/telemetry) vs Cold (CRUD), heap leaks, canvas |
+| `frontend-hot-path.mdc` | Suboptimal ops taxonomy, scale regimes S/L/F, Big-O vs locality |
 | `tradeoffs.mdc` | Rejected alternatives, evidence matrix |
 | `fault-tests.mdc` | Chaos/outbox/parser proofs |
 | `testing.mdc` | Test taxonomy, holdouts |
 | `load-test-bpf.mdc` | Load test + BPF probes |
+| `xdp-bpf.mdc` | XDP/eBPF C per-packet contracts and verification |
 
 ## Precedence
 

@@ -8,7 +8,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-if rg -P -n '\p{Cyrillic}' web/src/ui web/src/helpers web/src/pages web/src/components --glob '*.{js,ts,tsx}' 2> /dev/null; then
+if rg -P -n '\p{Cyrillic}' web/src/ui web/src/helpers web/src/pages web/src/components web/src/domains --glob '*.{js,ts,tsx}' 2> /dev/null; then
   echo "Error: Cyrillic UI strings found (use English)."
   exit 1
 fi

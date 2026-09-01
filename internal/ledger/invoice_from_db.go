@@ -7,6 +7,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/ledger/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -56,16 +57,19 @@ func invoiceFromDBRow(invoice db.BillingInvoice, lineRows []db.BillingInvoiceLin
 
 	monthTime := invoice.BillingMonth.Time.UTC()
 	return domain.Invoice{
-		ID:            uuid.UUID(invoice.ID.Bytes).String(),
-		CustomerID:    uuid.UUID(invoice.CustomerID.Bytes).String(),
-		BillingMonth:  time.Date(monthTime.Year(), monthTime.Month(), 1, 0, 0, 0, 0, time.UTC),
-		SubtotalMicro: invoice.SubtotalMicro,
-		TaxMicro:      invoice.TaxMicro,
-		TotalMicro:    invoice.TotalMicro,
-		Currency:      invoice.Currency,
-		TaxScheme:     string(MapSchemeFromDB(invoice.TaxScheme)),
-		TaxRateBps:    invoice.TaxRateBps,
-		Lines:         lines,
-		CreatedAt:     invoice.CreatedAt.Time.UTC(),
+		ID:                   uuid.UUID(invoice.ID.Bytes).String(),
+		CustomerID:           uuid.UUID(invoice.CustomerID.Bytes).String(),
+		BillingMonth:         time.Date(monthTime.Year(), monthTime.Month(), 1, 0, 0, 0, 0, time.UTC),
+		SubtotalMicro:        invoice.SubtotalMicro,
+		SubtotalMicroDisplay: coldpath.FormatMicroDisplay(invoice.SubtotalMicro),
+		TaxMicro:             invoice.TaxMicro,
+		TaxMicroDisplay:      coldpath.FormatMicroDisplay(invoice.TaxMicro),
+		TotalMicro:           invoice.TotalMicro,
+		TotalMicroDisplay:    coldpath.FormatMicroDisplay(invoice.TotalMicro),
+		Currency:             invoice.Currency,
+		TaxScheme:            string(MapSchemeFromDB(invoice.TaxScheme)),
+		TaxRateBps:           invoice.TaxRateBps,
+		Lines:                lines,
+		CreatedAt:            invoice.CreatedAt.Time.UTC(),
 	}
 }

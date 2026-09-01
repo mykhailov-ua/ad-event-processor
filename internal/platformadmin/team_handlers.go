@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/controlplane/authz"
+	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -17,13 +18,14 @@ import (
 )
 
 type TeamMemberDTO struct {
-	UserID         string `json:"user_id"`
-	Email          string `json:"email"`
-	Role           string `json:"role"`
-	CampaignsOwned int64  `json:"campaigns_owned"`
-	CreatedAt      string `json:"created_at,omitempty"`
-	IsBlocked      bool   `json:"is_blocked,omitempty"`
-	SpendCapMicro  int64  `json:"spend_cap_micro,omitempty"`
+	UserID           string `json:"user_id"`
+	Email            string `json:"email"`
+	Role             string `json:"role"`
+	CampaignsOwned   int64  `json:"campaigns_owned"`
+	CreatedAt        string `json:"created_at,omitempty"`
+	CreatedAtDisplay string `json:"created_at_display,omitempty"`
+	IsBlocked        bool   `json:"is_blocked,omitempty"`
+	SpendCapMicro    int64  `json:"spend_cap_micro,omitempty"`
 }
 
 type TeamBudgetApprovalDTO struct {
@@ -34,6 +36,34 @@ type TeamBudgetApprovalDTO struct {
 	PreviousBudgetMicro  int64  `json:"previous_budget_micro"`
 	Status               string `json:"status"`
 	CreatedAt            string `json:"created_at,omitempty"`
+	CreatedAtDisplay     string `json:"created_at_display,omitempty"`
+}
+
+type TeamBudgetApprovalsListResponse struct {
+	Items  []TeamBudgetApprovalDTO `json:"items"`
+	Total  int64                   `json:"total"`
+	Limit  int                     `json:"limit"`
+	Offset int                     `json:"offset"`
+}
+
+type TeamMembersListResponse struct {
+	Items  []TeamMemberDTO `json:"items"`
+	Total  int64           `json:"total"`
+	Limit  int             `json:"limit"`
+	Offset int             `json:"offset"`
+}
+
+const (
+	TeamMembersDefaultLimit = TeamBudgetApprovalsDefaultLimit
+	TeamMembersMaxLimit     = TeamBudgetApprovalsMaxLimit
+)
+
+func normalizeTeamMembersLimit(limit int) int {
+	return normalizeTeamBudgetApprovalsLimit(limit)
+}
+
+func normalizeTeamMembersOffset(offset int) int {
+	return normalizeTeamBudgetApprovalsOffset(offset)
 }
 
 type InviteTeamMemberRequest struct {
@@ -69,6 +99,7 @@ type TeamOverviewDTO struct {
 
 type TeamOverviewReader interface {
 	GetTeamOverview(ctx context.Context, customerID uuid.UUID, includeBalance, includeLicense bool) (TeamOverviewDTO, error)
+	ListTeamMembers(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamMemberDTO, int64, error)
 }
 
 type TeamHTTPHandlers struct {
@@ -195,7 +226,27 @@ func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uu
 		}
 	}
 
-	rows, err := s.Pool.Query(ctx, `
+	out.Members = []TeamMemberDTO{}
+	return out, nil
+}
+
+func (s *TeamOverviewService) ListTeamMembers(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamMemberDTO, int64, error) {
+	if s == nil || s.Pool == nil {
+		return nil, 0, errors.New("team service unavailable")
+	}
+	return listTeamMembers(ctx, s.Pool, customerID, limit, offset)
+}
+
+func listTeamMembers(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID, limit, offset int) ([]TeamMemberDTO, int64, error) {
+	limit = normalizeTeamMembersLimit(limit)
+	offset = normalizeTeamMembersOffset(offset)
+
+	var total int64
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM users WHERE customer_id = $1`, customerID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := pool.Query(ctx, `
 		SELECT u.id, u.email, u.role, u.created_at, u.is_blocked,
 			COALESCE(cc.campaigns_owned, 0) AS campaigns_owned,
 			COALESCE(l.spend_cap_micro, 0)
@@ -208,22 +259,28 @@ func (s *TeamOverviewService) GetTeamOverview(ctx context.Context, customerID uu
 			GROUP BY owner_user_id
 		) cc ON cc.owner_user_id = u.id
 		WHERE u.customer_id = $1
-		ORDER BY u.email`, customerID)
+		ORDER BY u.email
+		LIMIT $2 OFFSET $3`, customerID, limit, offset)
 	if err != nil {
-		return TeamOverviewDTO{}, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
+	out := make([]TeamMemberDTO, 0, limit)
 	for rows.Next() {
 		var member TeamMemberDTO
 		var userID uuid.UUID
 		var created time.Time
 		if err := rows.Scan(&userID, &member.Email, &member.Role, &created, &member.IsBlocked, &member.CampaignsOwned, &member.SpendCapMicro); err != nil {
-			return TeamOverviewDTO{}, err
+			return nil, 0, err
 		}
 		member.UserID = userID.String()
 		member.CreatedAt = created.UTC().Format(time.RFC3339)
-		out.Members = append(out.Members, member)
+		member.CreatedAtDisplay = coldpath.RFC3339Display(member.CreatedAt)
+		out = append(out, member)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return out, total, nil
 }

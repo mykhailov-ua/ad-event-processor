@@ -18,10 +18,15 @@ const maxChartSeriesPoints = 366
 const MaxChartSeriesPoints = maxChartSeriesPoints
 
 type DashboardSeriesPointDTO struct {
-	Label       string `json:"label"`
-	Impressions int64  `json:"impressions"`
-	Blocks      int64  `json:"blocks"`
-	SpendMicros int64  `json:"spend_micros"`
+	Label        string `json:"label"`
+	Impressions  int64  `json:"impressions"`
+	Clicks       int64  `json:"clicks"`
+	Conversions  int64  `json:"conversions"`
+	Blocks       int64  `json:"blocks"`
+	SpendMicros  int64  `json:"spend_micros"`
+	SpendMicro   int64  `json:"spend_micro,omitempty"`
+	RevenueMicro int64  `json:"revenue_micro,omitempty"`
+	ProfitMicro  int64  `json:"profit_micro,omitempty"`
 }
 
 func ValidateChartRange(from, to time.Time) error {
@@ -57,7 +62,9 @@ func QueryCustomerDashboardSeries(
 	}
 	rows, err := pool.Query(ctx, `
 		SELECT cs.date,
-		 COALESCE(SUM(cs.impressions_count), 0)::bigint
+		 COALESCE(SUM(cs.impressions_count), 0)::bigint,
+		 COALESCE(SUM(cs.clicks_count), 0)::bigint,
+		 COALESCE(SUM(cs.conversions_count), 0)::bigint
 		FROM campaign_stats cs
 		INNER JOIN campaigns c ON c.id = cs.campaign_id
 		WHERE c.customer_id = $1
@@ -79,17 +86,34 @@ func QueryCustomerDashboardSeries(
 	byDay := make(map[string]DashboardSeriesPointDTO, 32)
 	for rows.Next() {
 		var day time.Time
-		var impressions int64
-		if err := rows.Scan(&day, &impressions); err != nil {
+		var impressions, clicks, conversions int64
+		if err := rows.Scan(&day, &impressions, &clicks, &conversions); err != nil {
 			return nil, err
 		}
 		label := day.UTC().Format("2006-01-02")
-		byDay[label] = DashboardSeriesPointDTO{Label: label, Impressions: impressions}
+		byDay[label] = DashboardSeriesPointDTO{
+			Label:       label,
+			Impressions: impressions,
+			Clicks:      clicks,
+			Conversions: conversions,
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 	if clickhouseQuery != nil && len(campaignIDs) > 0 {
+		econByDay, econErr := QueryCustomerDailyEconomicsCH(ctx, clickhouseQuery, campaignIDs, from, to)
+		if econErr == nil {
+			for label, econ := range econByDay {
+				point := byDay[label]
+				point.Label = label
+				point.SpendMicro = econ.SpendMicro
+				point.SpendMicros = econ.SpendMicro
+				point.RevenueMicro = econ.RevenueMicro
+				point.ProfitMicro = econ.RevenueMicro - econ.SpendMicro
+				byDay[label] = point
+			}
+		}
 		blockRows, err := clickhouseQuery.Query(ctx, `
 SELECT toDate(created_at) AS day, count() AS blocks
 FROM fraud_events
@@ -119,6 +143,12 @@ LIMIT ?`, campaignIDs, from, to, maxChartSeriesPoints)
 	}
 	out := make([]DashboardSeriesPointDTO, 0, len(byDay))
 	for _, point := range byDay {
+		if point.SpendMicro > 0 && point.SpendMicros == 0 {
+			point.SpendMicros = point.SpendMicro
+		}
+		if point.RevenueMicro > 0 || point.SpendMicro > 0 {
+			point.ProfitMicro = point.RevenueMicro - point.SpendMicro
+		}
 		out = append(out, point)
 	}
 	sort.Slice(out, func(i, j int) bool {

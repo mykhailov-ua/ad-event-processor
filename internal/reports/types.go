@@ -140,6 +140,7 @@ type EdgeMetricsPanelDTO struct {
 
 type DataFreshnessDTO struct {
 	AsOf         string                   `json:"as_of"`
+	AsOfDisplay  string                   `json:"as_of_display,omitempty"`
 	Consistency  string                   `json:"consistency"`
 	Stale        bool                     `json:"stale"`
 	CHLagSeconds int                      `json:"ch_lag_seconds,omitempty"`
@@ -183,7 +184,7 @@ type BuyerPortfolioDTO struct {
 
 type BuyerPortfolioReader interface {
 	GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error)
-	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
+	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
 }
 
 type FraudBreakdownRowDTO struct {
@@ -231,18 +232,19 @@ type FraudEvidenceSignalsDTO struct {
 }
 
 type FraudEvidencePackDTO struct {
-	Version      string                        `json:"version"`
-	ClickID      string                        `json:"click_id"`
-	CustomerID   string                        `json:"customer_id"`
-	CampaignID   string                        `json:"campaign_id,omitempty"`
-	GeneratedAt  string                        `json:"generated_at"`
-	RangeFrom    string                        `json:"range_from"`
-	RangeTo      string                        `json:"range_to"`
-	Timeline     []FraudEvidenceTimelineRowDTO `json:"timeline"`
-	FraudEvents  []FraudEvidenceFraudRowDTO    `json:"fraud_events"`
-	Signals      FraudEvidenceSignalsDTO       `json:"signals"`
-	DigestSHA256 string                        `json:"digest_sha256"`
-	Signature    string                        `json:"signature"`
+	Version            string                        `json:"version"`
+	ClickID            string                        `json:"click_id"`
+	CustomerID         string                        `json:"customer_id"`
+	CampaignID         string                        `json:"campaign_id,omitempty"`
+	GeneratedAt        string                        `json:"generated_at"`
+	GeneratedAtDisplay string                        `json:"generated_at_display,omitempty"`
+	RangeFrom          string                        `json:"range_from"`
+	RangeTo            string                        `json:"range_to"`
+	Timeline           []FraudEvidenceTimelineRowDTO `json:"timeline"`
+	FraudEvents        []FraudEvidenceFraudRowDTO    `json:"fraud_events"`
+	Signals            FraudEvidenceSignalsDTO       `json:"signals"`
+	DigestSHA256       string                        `json:"digest_sha256"`
+	Signature          string                        `json:"signature"`
 }
 
 type IVTBySourceRowDTO struct {

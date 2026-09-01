@@ -1,5 +1,5 @@
 ---
-description: Nginx/OpenResty edge, Lua DFA, tracker alignment, XDP BPF sync
+description: Nginx/OpenResty edge, Lua DFA, tracker alignment; XDP operators -> xdp-bpf.mdc for BPF C
 globs:
   - deploy/nginx/**
   - deploy/edge/**
@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Purpose
 
-Edge: OpenResty/nginx ingress + optional XDP L4 filter. Compliance map policy: `compliance.mdc`. Parser alignment: `parser.mdc`, `hot-path.mdc`.
+Edge: OpenResty/nginx ingress + optional XDP L4 filter. BPF C hot path: `xdp-bpf.mdc`. Compliance: `compliance.mdc`. Parser alignment: `parser.mdc`, `hot-path.mdc`.
 
 ## Listeners
 
@@ -160,9 +160,9 @@ Scale: LPM `max_entries=786432`. Incremental sync via `blacklist:changelog:{add,
 | `edge-xdp` | CAP_BPF + CAP_NET_ADMIN attach; silent drop at NIC |
 | `edge-bpf-sync` | Redis -> maps; `SYNC_INTERVAL=5s` default |
 
-`xdp_syn_cookie` / `emit_ipv4_synack`: SYN-ACK frame is 20-byte TCP (doff=5); tail trimmed from `ctx->data_end`; ingress options used only for cookie generation. Holdouts: `TestFault_XDPSynCookieWithTCPOptions`, `TestFault_XDPSynCookieWithPayload`.
-
 Control never writes kernel maps directly. Requires BTF, modern kernel. Not a substitute for L7 parser budgets.
+
+**BPF C contracts** (maps, token bucket, syn-cookie, ICMP, verifier, verification tiers): `xdp-bpf.mdc`. Long-form narrative also in `deploy/edge/xdp/bpf/edge_filter.c` header.
 
 ### OS fingerprint
 
@@ -201,6 +201,8 @@ go test ./internal/edge/... -count=1
 go test ./internal/ingestion/ -run=TestChaos_CrossHop_NginxGnet -count=1
 ```
 
+XDP/BPF C verification: `xdp-bpf.mdc` **Verification tiers**.
+
 ## Related rules
 
-`compliance.mdc`, `data-layer.mdc`, `hot-path.mdc`, `licensing.mdc`, `parser.mdc`, `traffic.mdc`.
+`compliance.mdc`, `data-layer.mdc`, `hot-path.mdc`, `licensing.mdc`, `parser.mdc`, `traffic.mdc`, `xdp-bpf.mdc`.

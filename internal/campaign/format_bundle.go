@@ -6,11 +6,29 @@ import (
 	"math"
 	"strings"
 
+	"ad-event-processor/pkg/coldpath"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 func attachCampaignMoneyDisplay(dto *CampaignDTO) {
 	AttachCampaignMoneyDisplay(dto)
+}
+
+func attachCampaignTimestampDisplay(dto *CampaignDTO) {
+	if dto == nil {
+		return
+	}
+	if dto.CreatedAtDisplay == "" && dto.CreatedAt != "" {
+		dto.CreatedAtDisplay = coldpath.RFC3339Display(dto.CreatedAt)
+	}
+	if dto.UpdatedAtDisplay == "" && dto.UpdatedAt != "" {
+		dto.UpdatedAtDisplay = coldpath.RFC3339Display(dto.UpdatedAt)
+	}
+}
+
+func AttachCampaignTimestampDisplay(raw string) string {
+	return coldpath.RFC3339Display(raw)
 }
 
 func AttachCampaignMoneyDisplay(dto *CampaignDTO) {

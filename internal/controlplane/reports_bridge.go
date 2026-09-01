@@ -109,8 +109,8 @@ func (a buyerPortfolioAdapter) GetBuyerPortfolio(ctx context.Context, customerID
 	return buyerPortfolioToReports(p), err
 }
 
-func (a buyerPortfolioAdapter) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (reports.BuyerPortfolioDTO, error) {
-	p, err := a.svc.GetBuyerPortfolioRange(ctx, customerID, from, to)
+func (a buyerPortfolioAdapter) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (reports.BuyerPortfolioDTO, error) {
+	p, err := a.svc.GetBuyerPortfolioRange(ctx, customerID, campaignFilter, from, to)
 	return buyerPortfolioToReports(p), err
 }
 

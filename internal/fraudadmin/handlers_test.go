@@ -22,16 +22,24 @@ type fraudLabelsStub struct {
 	bulkRows   []fraudadmin.FraudManualLabelRow
 }
 
-func (s *fraudLabelsStub) ListMLManualLabelsForCustomer(_ context.Context, customerID uuid.UUID, limit int) ([]fraudadmin.MLManualLabelDTO, error) {
+func (s *fraudLabelsStub) ListMLManualLabelsForCustomer(_ context.Context, customerID uuid.UUID, limit, offset int) ([]fraudadmin.MLManualLabelDTO, int64, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	out := s.labels
-	if len(out) > limit {
-		out = out[:limit]
+	if offset < 0 {
+		offset = 0
 	}
+	end := offset + limit
+	if end > len(s.labels) {
+		end = len(s.labels)
+	}
+	start := offset
+	if start > len(s.labels) {
+		start = len(s.labels)
+	}
+	out := s.labels[start:end]
 	s.customerID = customerID
-	return out, nil
+	return out, int64(len(s.labels)), nil
 }
 
 func (s *fraudLabelsStub) UpsertMLManualLabelForCustomer(_ context.Context, customerID uuid.UUID, ipHash string, label int, reason string) error {
@@ -83,9 +91,12 @@ func TestListFraudLabels_customerScoped(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	require.Equal(t, http.StatusOK, rec.Code)
 
-	var out []fraudadmin.MLManualLabelDTO
+	var out fraudadmin.FraudLabelsListResponse
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
-	require.Len(t, out, 1)
+	require.Len(t, out.Items, 1)
+	require.Equal(t, int64(1), out.Total)
+	require.Equal(t, 50, out.Limit)
+	require.Equal(t, 0, out.Offset)
 	require.Equal(t, stub.customerID, uuid.MustParse("550e8400-e29b-41d4-a716-446655440000"))
 }
 

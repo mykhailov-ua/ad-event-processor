@@ -108,4 +108,9 @@ func TestEdgeFilterRateLimitPerCPUHash_holdout(t *testing.T) {
 	assert.Contains(t, src, "bpf_ringbuf_query")
 	assert.Contains(t, src, "ringbuf_used_pct")
 	assert.Contains(t, src, "RINGBUF_VIOLATION_PPS_SAMPLE_PCT")
+	assert.Contains(t, src, "token_bucket_consume_existing")
+	assert.Contains(t, src, "st->last_ns += (added * NS_PER_SEC) / rate")
+	assert.Contains(t, src, "TCPOPT_NOP")
+	assert.Contains(t, src, "ICMP_FRAG_NEEDED")
+	assert.Contains(t, src, "syn_cookie_tail_call")
 }

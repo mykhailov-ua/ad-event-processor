@@ -11,6 +11,7 @@ import (
 	"ad-event-processor/internal/campaign"
 	"ad-event-processor/internal/domain"
 	"ad-event-processor/internal/fraud"
+	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/piihash"
 
 	"github.com/google/uuid"
@@ -279,11 +280,13 @@ func ExplainFraudDecision(ctx context.Context, host DecisionsHost, customerID uu
 		evaluatedAt = chRow.scoreCreatedAt.UTC()
 	}
 
+	evaluatedAtWire := evaluatedAt.Format(time.RFC3339)
 	return FraudDecisionDTO{
 		IPHash:              ipHash,
 		CampaignID:          resolvedCampaignID.String(),
 		WindowStart:         chRow.windowStart.UTC().Format(time.RFC3339),
-		EvaluatedAt:         evaluatedAt.Format(time.RFC3339),
+		EvaluatedAt:         evaluatedAtWire,
+		EvaluatedAtDisplay:  coldpath.RFC3339Display(evaluatedAtWire),
 		Disclaimer:          DecisionDisclaimer,
 		Tier:                string(decision.Tier),
 		Score:               decision.Score,

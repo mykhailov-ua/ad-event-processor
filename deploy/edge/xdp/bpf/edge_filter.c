@@ -66,20 +66,59 @@
  *   >60% full; skip when >85% (violations map is separate). Reserve failure silent.
  *   Drain -> edge.Record -> Redis edge:tcp_fp:* (L7 OS fingerprint headers, not blocklist).
  *
- * syn_ratelimit_v4 / ratelimit_v4 (BPF_MAP_TYPE_PERCPU_HASH):
+ * syn_ratelimit_v4 / ratelimit_v4 / rst_ratelimit_v4 (BPF_MAP_TYPE_PERCPU_HASH):
  *   Per-CPU shards avoid LRU spinlock contention under spoofed-IP floods. Limit is enforced
- *   per RSS CPU queue (same as global_syn). syn_subnet_ratelimit_v4 stays LRU (/24 aggregate).
+ *   per RSS CPU queue (same as global_syn PERCPU_ARRAY). syn_subnet_ratelimit_v4 stays
+ *   LRU_HASH (/24 aggregate; shared keys, not per-CPU).
+ *
+ * Design trade-offs (reviewed; do not re-litigate without new operator evidence):
+ *
+ * PERCPU rate-limit map updates (changed):
+ *   check_pps_limit, check_syn_limit, check_rst_limit, check_global_syn mutate existing
+ *   slots in place via the bpf_map_lookup_elem pointer. bpf_map_update_elem runs only when
+ *   the key is absent (first insert on PERCPU_HASH; global_syn PERCPU_ARRAY slot 0 is always
+ *   present so update_elem was removed there). Token bucket (pps/rst): on refill, advance
+ *   last_ns by (added * NS_PER_SEC) / rate only; do not set last_ns = now on consume when
+ *   added == 0 (preserves fractional credit). Verify: token_bucket_sim_test.go holdouts.
+ *
+ * LPM blocklist/allow maps (BPF_F_NO_PREALLOC, unchanged):
+ *   blocklist_v4/v6 and allow_v4/v6 set BPF_F_NO_PREALLOC to save RAM at idle. Trade-off:
+ *   edge-bpf-sync inserts (changelog ZSET + 5 min full SMEMBERS resync) allocate trie nodes
+ *   via the kernel page allocator; under hundreds of thousands of prefixes that can add
+ *   allocator latency during bulk sync. Removing NO_PREALLOC pre-reserves capacity and
+ *   avoids insert-time alloc at the cost of resident memory. Kept as-is until prod metrics
+ *   show alloc stalls during sync on high-load edge nodes.
+ *
+ * SYN-cookie SYN-ACK TCP options (unchanged, intentional):
+ *   emit_ipv4_synack builds 20-byte TCP (doff=5); bpf_xdp_adjust_tail drops ingress options
+ *   and payload. SYNACK_TCP_WINDOW 64240 is set in the fixed window field without MSS,
+ *   WScale, or Timestamp options in the outbound SYN-ACK. gen_syncookie_ipv4 still passes
+ *   full ingress tcph_len to kernel syncookie helpers; read_tcp_mss on ingress is used for
+ *   fingerprinting (CFG_FLAG_FINGERPRINT), not echoed in SYN-ACK. Syn-cookie tail call runs
+ *   only when SYN/global/subnet limits breach and CFG_FLAG_SYN_COOKIE is set; traffic under
+ *   limits XDP_PASS to the normal stack handshake. Without option negotiation in SYN-ACK,
+ *   a client that completes this mitigation path may see a smaller effective TCP window
+ *   than with client-offered WScale (64 KiB-class cap vs BDP on fat pipes). Acceptable for
+ *   flood mitigation; not Cloudflare-style MSS/WScale encoding in seq/options. Holdouts:
+ *   TestFault_XDPSynCookieWithTCPOptions, TestFault_XDPSynCookieWithPayload.
+ *
+ * SYN-ACK IPv4 checksum (unchanged, deferred micro-opt):
+ *   emit_ipv4_synack zeros iph->check and recomputes via bpf_csum_diff over full ihl_len
+ *   after saddr/daddr swap and tot_len change. Incremental RFC 1624 update on the few
+ *   changed 16/32-bit fields would save a handful of cycles on the rare syn-cookie path;
+ *   left as full recompute until profiling shows it matters.
  *
  * prog_array tail call (index PROG_IDX_SYN_COOKIE=0):
- *   try_syn_cookie -> bpf_tail_call(ctx, &prog_array, 0) -> xdp_syn_cookie program.
- *   emit_ipv4_synack: SYN-ACK uses 20-byte TCP (doff=5), window SYNACK_TCP_WINDOW (non-zero);
- *   checksum and ip tot_len use out_tcph_len;
- *   bpf_xdp_adjust_tail trims from ctx->data_end to drop ingress options/payload.
- *   gen_syncookie_ipv4 still reads full ingress tcph_len (options included).
+ *   syn_cookie_tail_call -> bpf_tail_call(ctx, &prog_array, 0) -> xdp_syn_cookie program.
+ *   On tail-call miss, caller emits violation + stat_inc (same as non-cookie drop path).
  *   Wired by cmd/edge-xdp wireProgArray when XdpSynCookie object loaded and
- *   CFG_FLAG_SYN_COOKIE set. Tail-call miss (prog not loaded) falls through to XDP_DROP.
+ *   CFG_FLAG_SYN_COOKIE set.
  *
- * Verify: make gen bpf-dev; go test ./internal/edge/... -count=1
+ * Non-TCP on ingress (drop_non_tcp_tracker):
+ *   UDP/SCTP: XDP_DROP only when dest == TRACKER_INGRESS_PORT. ICMP: XDP_PASS for Type 3
+ *   Code 4 (PMTUD fragmentation needed); other ICMP types still XDP_DROP.
+ *
+ * Verify: make gen bpf-dev; go test ./internal/edge/ -short -run TestTokenBucket_ -count=1
  */
 #include <linux/bpf.h>
 #include <linux/if_ether.h>
@@ -129,7 +168,12 @@ static long (*const bpf_tcp_gen_syncookie_ipv4)(void *iph, __u16 iph_len, void *
 #define TCP_FLAG_ACK 0x10
 #define TCP_FLAG_URG 0x20
 
-#define VIOLATION_SYN 1
+#define TCPOPT_EOL 0
+#define TCPOPT_NOP 1
+#define TCPOPT_MSS 2
+
+#define ICMP_DEST_UNREACH 3
+#define ICMP_FRAG_NEEDED 4
 #define VIOLATION_GLOBAL_SYN 2
 #define VIOLATION_PPS 3
 #define VIOLATION_SYN_SUBNET 4
@@ -412,18 +456,51 @@ static __always_inline void emit_violation(__u32 src_ip, __u8 reason)
 static __always_inline __u8 read_tcp_mss(struct tcphdr *tcph, void *data_end)
 {
 	__u32 doff = tcph->doff * 4;
+	__u32 opt_len;
+	__u8 *base;
+	__u32 off;
 
 	if (doff <= sizeof(*tcph))
 		return 0;
 	if ((__u8 *)tcph + doff > (__u8 *)data_end)
 		return 0;
 
-	__u8 *p = (__u8 *)tcph + sizeof(*tcph);
-	if (p + 4 > (__u8 *)data_end)
+	opt_len = doff - (__u32)sizeof(*tcph);
+	if (opt_len < 4)
 		return 0;
-	if (p[0] != 2 || p[1] < 4)
-		return 0;
-	return (__u8)(bpf_ntohs(*(__be16 *)(p + 2)) >> 8);
+
+	base = (__u8 *)tcph + sizeof(*tcph);
+	off = 0;
+
+	#pragma unroll
+	for (__u32 step = 0; step < 10; step++) {
+		__u8 *p;
+		__u8 kind;
+		__u8 olen;
+
+		if (off >= opt_len)
+			break;
+		p = base + off;
+		if (p + 2 > (__u8 *)data_end)
+			break;
+		kind = p[0];
+		if (kind == TCPOPT_NOP) {
+			off++;
+			continue;
+		}
+		if (kind == TCPOPT_EOL)
+			break;
+		olen = p[1];
+		if (olen < 2 || off + olen > opt_len)
+			break;
+		if (kind == TCPOPT_MSS && olen >= 4) {
+			if (p + 4 > (__u8 *)data_end)
+				return 0;
+			return (__u8)(bpf_ntohs(*(__be16 *)(p + 2)) >> 8);
+		}
+		off += olen;
+	}
+	return 0;
 }
 
 static __always_inline __u32 hash_tcp_syn_fields(__u8 ttl, __u16 window, __u8 mss, __u8 doff)
@@ -605,34 +682,31 @@ static __always_inline int emit_ipv4_synack(struct xdp_md *ctx,
 	return XDP_TX;
 }
 
-static __always_inline int try_syn_cookie(struct xdp_md *ctx)
+static __always_inline void syn_cookie_tail_call(struct xdp_md *ctx)
 {
-	__u32 idx = PROG_IDX_SYN_COOKIE;
-
-	bpf_tail_call(ctx, &prog_array, idx);
-	return XDP_DROP;
+	bpf_tail_call(ctx, &prog_array, PROG_IDX_SYN_COOKIE);
 }
 
 static __always_inline int check_syn_limit(__u32 src_ip, __u64 now, __u32 syn_limit)
 {
 	struct syn_state *st = bpf_map_lookup_elem(&syn_ratelimit_v4, &src_ip);
-	struct syn_state new_st = {};
 
 	if (st) {
 		if (now - st->window_start_ns < SYN_WINDOW_NS) {
 			if (st->count >= syn_limit)
 				return XDP_DROP;
-			new_st.window_start_ns = st->window_start_ns;
-			new_st.count = st->count + 1;
+			st->count++;
 		} else {
-			new_st.window_start_ns = now;
-			new_st.count = 1;
+			st->window_start_ns = now;
+			st->count = 1;
 		}
-	} else {
-		new_st.window_start_ns = now;
-		new_st.count = 1;
+		return XDP_PASS;
 	}
 
+	struct syn_state new_st = {};
+
+	new_st.window_start_ns = now;
+	new_st.count = 1;
 	bpf_map_update_elem(&syn_ratelimit_v4, &src_ip, &new_st, BPF_ANY);
 	return XDP_PASS;
 }
@@ -668,7 +742,6 @@ static __always_inline int check_global_syn(__u64 now, __u32 global_limit, __u32
 	__u32 key = 0;
 	__u32 per_cpu = global_limit / assumed_cpus;
 	struct syn_state *st = bpf_map_lookup_elem(&global_syn, &key);
-	struct syn_state new_st = {};
 
 	if (!st || per_cpu == 0)
 		return XDP_PASS;
@@ -676,44 +749,59 @@ static __always_inline int check_global_syn(__u64 now, __u32 global_limit, __u32
 	if (now - st->window_start_ns < SYN_WINDOW_NS) {
 		if (st->count >= per_cpu)
 			return XDP_DROP;
-		new_st.window_start_ns = st->window_start_ns;
-		new_st.count = st->count + 1;
+		st->count++;
 	} else {
-		new_st.window_start_ns = now;
-		new_st.count = 1;
+		st->window_start_ns = now;
+		st->count = 1;
 	}
+	return XDP_PASS;
+}
 
-	bpf_map_update_elem(&global_syn, &key, &new_st, BPF_ANY);
+/* token_bucket_consume_existing: refill with last_ns += (added * NS_PER_SEC) / rate. */
+static __always_inline int token_bucket_consume_existing(struct pps_bucket *st, __u64 now,
+							 __u32 rate, __u32 burst)
+{
+	__u32 tokens = st->tokens;
+	__u64 elapsed;
+	__u64 added;
+
+	if (!rate)
+		return XDP_DROP;
+
+	elapsed = now - st->last_ns;
+	if (elapsed > NS_PER_SEC)
+		elapsed = NS_PER_SEC;
+	if (elapsed > 0) {
+		added = (elapsed * (__u64)rate) / NS_PER_SEC;
+		if (added > 0) {
+			tokens += (__u32)added;
+			if (tokens > burst)
+				tokens = burst;
+			st->last_ns += (added * NS_PER_SEC) / rate;
+			if (st->last_ns > now)
+				st->last_ns = now;
+		}
+	}
+	if (!tokens)
+		return XDP_DROP;
+	st->tokens = tokens - 1;
 	return XDP_PASS;
 }
 
 static __always_inline int check_pps_limit(__u32 src_ip, __u64 now, __u32 pps_rate)
 {
 	struct pps_bucket *st = bpf_map_lookup_elem(&ratelimit_v4, &src_ip);
-	struct pps_bucket new_st = {};
-	__u32 burst = pps_rate;
-	__u32 tokens = burst;
 
-	if (st) {
-		tokens = st->tokens;
-		__u64 elapsed = now - st->last_ns;
-		if (elapsed > NS_PER_SEC)
-			elapsed = NS_PER_SEC;
-		if (elapsed > 0) {
-			__u64 added = (elapsed * pps_rate) / NS_PER_SEC;
-			if (added > 0) {
-				tokens += (__u32)added;
-				if (tokens > burst)
-					tokens = burst;
-			}
-		}
-	}
+	if (st)
+		return token_bucket_consume_existing(st, now, pps_rate, pps_rate);
 
-	if (!tokens)
+	if (!pps_rate)
 		return XDP_DROP;
 
+	struct pps_bucket new_st = {};
+
 	new_st.last_ns = now;
-	new_st.tokens = tokens - 1;
+	new_st.tokens = pps_rate - 1;
 	bpf_map_update_elem(&ratelimit_v4, &src_ip, &new_st, BPF_ANY);
 	return XDP_PASS;
 }
@@ -722,29 +810,14 @@ static __always_inline int check_pps_limit(__u32 src_ip, __u64 now, __u32 pps_ra
 static __always_inline int check_rst_limit(__u32 src_ip, __u64 now)
 {
 	struct pps_bucket *st = bpf_map_lookup_elem(&rst_ratelimit_v4, &src_ip);
+
+	if (st)
+		return token_bucket_consume_existing(st, now, DEFAULT_RST_RATE, DEFAULT_RST_BURST);
+
 	struct pps_bucket new_st = {};
-	__u32 tokens = DEFAULT_RST_BURST;
-
-	if (st) {
-		tokens = st->tokens;
-		__u64 elapsed = now - st->last_ns;
-		if (elapsed > NS_PER_SEC)
-			elapsed = NS_PER_SEC;
-		if (elapsed > 0) {
-			__u64 added = (elapsed * DEFAULT_RST_RATE) / NS_PER_SEC;
-			if (added > 0) {
-				tokens += (__u32)added;
-				if (tokens > DEFAULT_RST_BURST)
-					tokens = DEFAULT_RST_BURST;
-			}
-		}
-	}
-
-	if (!tokens)
-		return XDP_DROP;
 
 	new_st.last_ns = now;
-	new_st.tokens = tokens - 1;
+	new_st.tokens = DEFAULT_RST_BURST - 1;
 	bpf_map_update_elem(&rst_ratelimit_v4, &src_ip, &new_st, BPF_ANY);
 	return XDP_PASS;
 }
@@ -794,8 +867,15 @@ static __always_inline int drop_non_tcp_tracker(__u8 proto, void *l4, void *data
 		return XDP_PASS;
 	}
 
-	if (proto == IPPROTO_ICMP)
+	if (proto == IPPROTO_ICMP) {
+		__u8 *icmp = l4;
+
+		if (icmp + 2 > (__u8 *)data_end)
+			return XDP_PASS;
+		if (icmp[0] == ICMP_DEST_UNREACH && icmp[1] == ICMP_FRAG_NEEDED)
+			return XDP_PASS;
 		return XDP_DROP;
+	}
 
 	return XDP_PASS;
 }
@@ -1004,24 +1084,39 @@ int xdp_edge_filter(struct xdp_md *ctx)
 			fp_stat = 1;
 		}
 		if (check_global_syn(now, global_syn_limit, assumed_cpus) == XDP_DROP) {
-			if (cfg_flags & CFG_FLAG_SYN_COOKIE)
-				return try_syn_cookie(ctx);
+			if (cfg_flags & CFG_FLAG_SYN_COOKIE) {
+				syn_cookie_tail_call(ctx);
+				emit_violation(src_ip, VIOLATION_GLOBAL_SYN);
+				action = XDP_DROP;
+				stat_idx = XDP_STAT_DROP_GLOBAL_SYN;
+				goto out;
+			}
 			emit_violation(src_ip, VIOLATION_GLOBAL_SYN);
 			action = XDP_DROP;
 			stat_idx = XDP_STAT_DROP_GLOBAL_SYN;
 			goto out;
 		}
 		if (check_syn_subnet_limit(src_ip, now, syn_subnet_limit) == XDP_DROP) {
-			if (cfg_flags & CFG_FLAG_SYN_COOKIE)
-				return try_syn_cookie(ctx);
+			if (cfg_flags & CFG_FLAG_SYN_COOKIE) {
+				syn_cookie_tail_call(ctx);
+				emit_violation(src_ip, VIOLATION_SYN_SUBNET);
+				action = XDP_DROP;
+				stat_idx = XDP_STAT_DROP_SYN_SUBNET;
+				goto out;
+			}
 			emit_violation(src_ip, VIOLATION_SYN_SUBNET);
 			action = XDP_DROP;
 			stat_idx = XDP_STAT_DROP_SYN_SUBNET;
 			goto out;
 		}
 		if (check_syn_limit(src_ip, now, syn_limit) == XDP_DROP) {
-			if (cfg_flags & CFG_FLAG_SYN_COOKIE)
-				return try_syn_cookie(ctx);
+			if (cfg_flags & CFG_FLAG_SYN_COOKIE) {
+				syn_cookie_tail_call(ctx);
+				emit_violation(src_ip, VIOLATION_SYN);
+				action = XDP_DROP;
+				stat_idx = XDP_STAT_DROP_SYN;
+				goto out;
+			}
 			emit_violation(src_ip, VIOLATION_SYN);
 			action = XDP_DROP;
 			stat_idx = XDP_STAT_DROP_SYN;

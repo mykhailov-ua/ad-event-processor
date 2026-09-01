@@ -107,6 +107,7 @@ func attachCampaignPresentation(ctx context.Context, dto *CampaignDTO) {
 	dto.StatusLabel = campaignStatusLabel(dto.Status)
 	dto.StatusTone = campaignStatusTone(dto.Status)
 	attachCampaignMoneyDisplay(dto)
+	attachCampaignTimestampDisplay(dto)
 	actions, denied := computeCampaignAllowedActions(ctx, dto.Status)
 	dto.AllowedActions = actions
 	if len(denied) > 0 {
@@ -1304,6 +1305,7 @@ func (h *PostbackHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/postbacks/dlq", limit(perm("campaigns:read", h.getDLQ)))
 	mux.HandleFunc("POST /api/v1/postbacks/dlq/{id}/retry", limit(perm("campaigns:write", h.retryDLQ)))
 	mux.HandleFunc("GET /api/v1/postbacks/campaign-status", limit(perm("campaigns:read", h.getCampaignStatus)))
+	mux.HandleFunc("GET /api/v1/postbacks/snapshot", limit(perm("campaigns:read", h.getPostbacksSnapshot)))
 	mux.HandleFunc("POST /api/v1/postbacks/config/{campaign_id}/test", limit(perm("campaigns:write", h.testPostbackConfig)))
 }
 
@@ -1317,29 +1319,11 @@ type PostbackConfigDTO struct {
 }
 
 func (h *PostbackHTTPHandlers) getPostbacksConfig(w http.ResponseWriter, r *http.Request) {
-	q := db.New(h.Pool)
-	configs, err := q.ListPostbackConfigs(r.Context())
+	dtos, err := ListPostbackConfigs(r.Context(), h.Pool)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-
-	dtos := make([]PostbackConfigDTO, 0, len(configs))
-	for _, c := range configs {
-		var campaignIDStr string
-		if c.CampaignID.Valid {
-			campaignIDStr = ingestionUUIDToString(c.CampaignID)
-		}
-		dtos = append(dtos, PostbackConfigDTO{
-			CampaignID:    campaignIDStr,
-			Provider:      c.Provider,
-			URLTemplate:   c.UrlTemplate,
-			TargetEvent:   c.TargetEvent,
-			TestEventCode: c.TestEventCode,
-			HasAPIToken:   len(c.ApiTokenEncrypted) > 0,
-		})
-	}
-
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
@@ -1460,28 +1444,11 @@ type PostbackDlqDTO struct {
 }
 
 func (h *PostbackHTTPHandlers) getDLQ(w http.ResponseWriter, r *http.Request) {
-	q := db.New(h.Pool)
-	dlqs, err := q.ListPostbackDLQ(r.Context())
+	dtos, err := ListPostbackDlqEntries(r.Context(), h.Pool)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
 	}
-
-	dtos := make([]PostbackDlqDTO, 0, len(dlqs))
-	for _, d := range dlqs {
-		dtos = append(dtos, PostbackDlqDTO{
-			ID:            d.ID,
-			OutboxEventID: d.OutboxEventID,
-			CampaignID:    ingestionUUIDToString(d.CampaignID),
-			ClickID:       d.ClickID,
-			EventType:     d.EventType,
-			Payload:       json.RawMessage(d.Payload),
-			FailuresCount: d.FailuresCount,
-			LastError:     d.LastError.String,
-			Status:        d.Status,
-		})
-	}
-
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
 
@@ -1562,24 +1529,10 @@ type PostbackCampaignStatusDTO struct {
 }
 
 func (h *PostbackHTTPHandlers) getCampaignStatus(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.New(h.Pool).ListPostbackCampaignStatus(r.Context())
+	out, err := ListPostbackCampaignStatusRows(r.Context(), h.Pool)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
-	}
-
-	out := make([]PostbackCampaignStatusDTO, 0, len(rows))
-	for _, row := range rows {
-		dto := PostbackCampaignStatusDTO{
-			CampaignID:      uuid.UUID(row.CampaignID.Bytes).String(),
-			Provider:        row.Provider,
-			DLQPendingCount: row.DlqPendingCount,
-		}
-		if row.LastSuccessAt.Valid {
-			t := row.LastSuccessAt.Time
-			dto.LastSuccessAt = &t
-		}
-		out = append(out, dto)
 	}
 	httpresponse.JSON(w, http.StatusOK, out)
 }
@@ -2440,7 +2393,9 @@ type CampaignDTO struct {
 	TrafficTemplateID          string                `json:"traffic_template_id,omitempty"`
 	ClickQueryParams           map[string]string     `json:"click_query_params,omitempty"`
 	CreatedAt                  string                `json:"created_at"`
+	CreatedAtDisplay           string                `json:"created_at_display,omitempty"`
 	UpdatedAt                  string                `json:"updated_at"`
+	UpdatedAtDisplay           string                `json:"updated_at_display,omitempty"`
 	Revision                   string                `json:"revision,omitempty"`
 	MarginBreach               bool                  `json:"margin_breach,omitempty"`
 	StatusLabel                string                `json:"status_label,omitempty"`
@@ -2453,11 +2408,13 @@ type CampaignDTO struct {
 }
 
 type BlacklistDTO struct {
-	ID        int64  `json:"id"`
-	IP        string `json:"ip"`
-	Reason    string `json:"reason"`
-	CreatedAt string `json:"created_at"`
-	ExpiresAt string `json:"expires_at,omitempty"`
+	ID               int64  `json:"id"`
+	IP               string `json:"ip"`
+	Reason           string `json:"reason"`
+	CreatedAt        string `json:"created_at"`
+	CreatedAtDisplay string `json:"created_at_display,omitempty"`
+	ExpiresAt        string `json:"expires_at,omitempty"`
+	ExpiresAtDisplay string `json:"expires_at_display,omitempty"`
 }
 
 type IngressCostConfigDTO struct {
@@ -2570,15 +2527,16 @@ type UsageExportResult struct {
 }
 
 type AuditLogDTO struct {
-	ID         int64           `json:"id"`
-	AdminID    string          `json:"admin_id,omitempty"`
-	Action     string          `json:"action"`
-	TargetType string          `json:"target_type"`
-	TargetID   string          `json:"target_id,omitempty"`
-	Changes    json.RawMessage `json:"changes"`
-	Metadata   json.RawMessage `json:"metadata"`
-	IsMasked   bool            `json:"is_masked"`
-	CreatedAt  string          `json:"created_at"`
+	ID               int64           `json:"id"`
+	AdminID          string          `json:"admin_id,omitempty"`
+	Action           string          `json:"action"`
+	TargetType       string          `json:"target_type"`
+	TargetID         string          `json:"target_id,omitempty"`
+	Changes          json.RawMessage `json:"changes"`
+	Metadata         json.RawMessage `json:"metadata"`
+	IsMasked         bool            `json:"is_masked"`
+	CreatedAt        string          `json:"created_at"`
+	CreatedAtDisplay string          `json:"created_at_display,omitempty"`
 }
 
 type AuditLogListResponse = ListResponse[AuditLogDTO]

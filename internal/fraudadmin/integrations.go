@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -115,6 +116,7 @@ func ListIntegrationsForCustomer(ctx context.Context, pool *pgxpool.Pool, custom
 		}
 		if lastSuccessAt != nil && !lastSuccessAt.IsZero() {
 			dto.LastSuccessAt = lastSuccessAt.UTC().Format(time.RFC3339)
+			dto.LastSuccessAtDisplay = coldpath.RFC3339Display(dto.LastSuccessAt)
 		}
 		out = append(out, dto)
 	}

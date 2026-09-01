@@ -11,7 +11,7 @@ Cross-ref: [.github/workflows/WORKFLOWS.md](../.github/workflows/WORKFLOWS.md), 
 | Directory | Role | Entry |
 | :--- | :--- | :--- |
 | `ci/` | Merge gates, static analysis | `pr_fast.sh`, `lint.sh` |
-| `dev/` | Local stack, codegen helpers | `stack/stack.sh` |
+| `dev/` | Local stack, codegen helpers | `stack/stack.sh`, `admin_ui.sh` |
 | `test/` | Integration, load, edge, BPF, license | domain subdirs |
 | `fault/` | Chaos and resilience proofs | `run.sh` |
 | `security/` | License red-team, pentest | `license_red_team.sh` |

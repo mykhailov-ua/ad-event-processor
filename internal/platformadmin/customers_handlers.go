@@ -11,15 +11,17 @@ import (
 )
 
 type CustomerDTO struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Balance         string `json:"balance"`
-	Currency        string `json:"currency"`
-	CostCenter      string `json:"cost_center,omitempty"`
-	ActiveCampaigns int64  `json:"active_campaigns"`
-	TotalSpend      string `json:"total_spend"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Balance          string `json:"balance"`
+	Currency         string `json:"currency"`
+	CostCenter       string `json:"cost_center,omitempty"`
+	ActiveCampaigns  int64  `json:"active_campaigns"`
+	TotalSpend       string `json:"total_spend"`
+	CreatedAt        string `json:"created_at"`
+	CreatedAtDisplay string `json:"created_at_display,omitempty"`
+	UpdatedAt        string `json:"updated_at"`
+	UpdatedAtDisplay string `json:"updated_at_display,omitempty"`
 }
 
 type CustomerListResponse = ListEnvelope[CustomerDTO]
@@ -68,8 +70,10 @@ func (h *CustomersHTTPHandlers) Register(mux *http.ServeMux) {
 func (h *CustomersHTTPHandlers) listCustomers(w http.ResponseWriter, r *http.Request) {
 	limit, offset := coldpath.ParseAPIPagination(r)
 	sortField, order, sortErr := parseListSort(r, map[string]struct{}{
-		"name":       {},
-		"created_at": {},
+		"name":             {},
+		"created_at":       {},
+		"balance":          {},
+		"active_campaigns": {},
 	}, "created_at")
 	if sortErr != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", sortErr.Error())

@@ -123,3 +123,22 @@ paths:
                   $ref: '../components/schemas/cost_sync.yaml#/CostSyncRun'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/cost-sync/snapshot:
+    get:
+      tags: [cost-sync]
+      operationId: costSyncSnapshot
+      summary: Cost sync networks, credentials, and history snapshot
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+      responses:
+        '200':
+          description: Composite cost sync snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/cost_sync.yaml#/CostSyncSnapshot'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'

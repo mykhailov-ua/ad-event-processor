@@ -107,11 +107,7 @@ func getMLShadowDeltaReport(h *reports.ReportsHTTPHandlers, w http.ResponseWrite
 	if int64(page.Offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, reports.ReportRowsResponse{
-		Rows:       rows,
-		Freshness:  MLShadowDeltaSnapshotFreshness(snap, time.Now().UTC()),
-		NextCursor: nextCursor,
-	})
+	httpresponse.JSON(w, http.StatusOK, reports.NewReportRowsResponse(rows, MLShadowDeltaSnapshotFreshness(snap, time.Now().UTC()), nextCursor))
 }
 
 func getMLFeatureSpikesReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *http.Request) {
@@ -146,11 +142,7 @@ func writeMLReport(h *reports.ReportsHTTPHandlers, w http.ResponseWriter, r *htt
 	if int64(page.Offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, reports.ReportRowsResponse{
-		Rows:       rows,
-		Freshness:  h.ReportFreshness(r.Context()),
-		NextCursor: nextCursor,
-	})
+	httpresponse.JSON(w, http.StatusOK, reports.NewReportRowsResponse(rows, h.ReportFreshness(r.Context()), nextCursor))
 }
 
 func queryMLScoreDistributionRows(

@@ -1115,6 +1115,15 @@ func getCampaignStats(
 	}
 
 	if clickhouseQuery == nil {
+		if granularity == "hour" {
+			report.Hourly = synthesizeHourlyBuckets(
+				campaignID,
+				stats.Impressions,
+				stats.Clicks,
+				stats.Conversions,
+				to,
+			)
+		}
 		return report, nil
 	}
 
@@ -1127,8 +1136,30 @@ func getCampaignStats(
 		if err != nil {
 			return campaign.CampaignStatsDTO{}, err
 		}
-		report.Hourly = hourly
-		lag = lagVal
+		resolved := hourlyBucketsForReport(
+			campaignID,
+			stats.Impressions,
+			stats.Clicks,
+			stats.Conversions,
+			to,
+			hourly,
+		)
+		report.Hourly = resolved
+		if hourlyBucketsHaveActivity(hourly) {
+			lag = lagVal
+			report.Consistency = "eventual"
+			report.Source = "ch"
+			report.Stale = lag > clickHouseStaleThreshold
+		} else if hourlyBucketsHaveActivity(resolved) {
+			report.Consistency = "strong"
+			report.Source = "pg"
+			report.Stale = true
+		} else {
+			lag = lagVal
+			report.Consistency = "eventual"
+			report.Source = "ch"
+			report.Stale = lag > clickHouseStaleThreshold
+		}
 	} else {
 		daily, lagVal, err := queryClickHouseDaily(clickhouseCtx, clickhouseQuery, campaignID, from, to)
 		if err != nil {
@@ -1137,10 +1168,11 @@ func getCampaignStats(
 		report.Daily = daily
 		lag = lagVal
 	}
-	report.Consistency = "eventual"
-	report.Source = "ch"
-	// Stale when CH ingest lag exceeds clickHouseStaleThreshold; PG totals remain authoritative for spend.
-	report.Stale = lag > clickHouseStaleThreshold
+	if granularity != "hour" {
+		report.Consistency = "eventual"
+		report.Source = "ch"
+		report.Stale = lag > clickHouseStaleThreshold
+	}
 	return report, nil
 }
 

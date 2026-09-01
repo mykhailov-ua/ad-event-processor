@@ -35,7 +35,28 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: web/e2e/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            web/e2e/package-lock.json
+      - name: Prepare stack e2e env
+        if: steps.web.outputs.present == '1'
+        run: |
+          cp -n .env.example .env || true
+          mkdir -p var
+          if [[ ! -f var/license.jwt ]]; then
+            go run ./cmd/license-issue \
+              --sku pilot \
+              --customer admin-stack-e2e \
+              --out var/license.jwt \
+              --force \
+              --force-reason admin_stack_e2e
+          fi
+          if ! grep -q '^INSTALL_BOOTSTRAP_TOKEN=.' .env; then
+            echo "INSTALL_BOOTSTRAP_TOKEN=$(openssl rand -hex 32)" >> .env
+          fi
       - name: Run admin stack e2e
         if: steps.web.outputs.present == '1'
+        env:
+          ADMIN_WEB_E2E_NIGHTLY: '1'
+          CONTROL_URL: http://127.0.0.1:8188
         run: bash scripts/test/admin_stack_e2e.sh

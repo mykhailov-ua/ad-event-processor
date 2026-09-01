@@ -93,31 +93,124 @@ var seedCampaignDeskTags = []string{
 	"Alpha desk", "Bravo desk", "Cedar desk", "Delta desk", "Echo desk",
 }
 
+const seedUUIDNamespaceDNS = "ad-event-processor.local.seed"
+
+var seedUUIDNamespace = uuid.NewSHA1(uuid.NameSpaceDNS, []byte(seedUUIDNamespaceDNS))
+
+func seedDeterministicUUID(entityKind string, seq int) uuid.UUID {
+	return uuid.NewSHA1(seedUUIDNamespace, []byte(fmt.Sprintf("%s:%d", entityKind, seq)))
+}
+
+func seedCustomerUUID(seq int) uuid.UUID {
+	return seedDeterministicUUID("customer", seq)
+}
+
+func seedBrandUUID(seq int) uuid.UUID {
+	return seedDeterministicUUID("brand", seq)
+}
+
+func seedCreativeUUID(seq int) uuid.UUID {
+	return seedDeterministicUUID("creative", seq)
+}
+
+func seedCampaignUUID(seq int) uuid.UUID {
+	return seedDeterministicUUID("campaign", seq)
+}
+
+func seedDeploymentUUID() uuid.UUID {
+	return seedDeterministicUUID("deployment", 1)
+}
+
+func seedLicenseRecordUUID() uuid.UUID {
+	return seedDeterministicUUID("license", 1)
+}
+
+// seedEntityUUID is the campaign id helper used by UI demo seed and legacy callers.
 func seedEntityUUID(seq int) uuid.UUID {
-	id, err := uuid.Parse(fmt.Sprintf("00000000-0000-0000-0000-%012x", seq))
-	if err != nil {
-		panic(err)
-	}
-	return id
+	return seedCampaignUUID(seq)
 }
 
 func seedCustomerName(seq int) string {
 	idx := seq - 1
 	base := seedCustomerNames[idx%len(seedCustomerNames)]
-	region := seedCustomerRegionLabels[(idx/len(seedCustomerNames))%len(seedCustomerRegionLabels)]
-	return fmt.Sprintf("%s — %s", base, region)
+	region := seedCustomerRegionLabels[(idx*2+seq/3)%len(seedCustomerRegionLabels)]
+	var name string
+	switch idx % 4 {
+	case 0:
+		name = base
+	case 1:
+		name = fmt.Sprintf("%s — %s", base, region)
+	case 2:
+		name = fmt.Sprintf("%s (%s)", region, base)
+	default:
+		name = fmt.Sprintf("%s · %s desk", base, region)
+	}
+	if idx >= len(seedCustomerNames) {
+		name = fmt.Sprintf("%s · group %d", name, 1+(seq%41))
+	}
+	return name
 }
 
 func seedCampaignName(seq int) string {
 	idx := seq - 1
 	base := seedCampaignNames[idx%len(seedCampaignNames)]
-	geo := seedCampaignGeoTags[(idx/len(seedCampaignNames))%len(seedCampaignGeoTags)]
-	desk := seedCampaignDeskTags[(idx/(len(seedCampaignNames)*len(seedCampaignGeoTags)))%len(seedCampaignDeskTags)]
-	return fmt.Sprintf("%s · %s · %s", base, geo, desk)
+	geo := seedCampaignGeoTags[(idx*3+seq)%len(seedCampaignGeoTags)]
+	desk := seedCampaignDeskTags[(idx*5+seq/3)%len(seedCampaignDeskTags)]
+	wave := 1 + (seq % 53)
+
+	var name string
+	switch idx % 6 {
+	case 0:
+		name = base
+	case 1:
+		name = fmt.Sprintf("%s · %s", base, geo)
+	case 2:
+		name = fmt.Sprintf("%s (%s)", geo, base)
+	case 3:
+		goal := []string{"Install", "Lead gen", "Checkout", "Signup", "Trial", "LAL"}[(idx+seq)%6]
+		name = fmt.Sprintf("%s — %s", base, goal)
+	case 4:
+		period := []string{"Q1", "Q2", "Q3", "Q4", "H2", "FY"}[(idx+seq/7)%6]
+		name = fmt.Sprintf("%s %s %s", period, base, geo)
+	default:
+		name = fmt.Sprintf("%s / %s / %s", base, geo, desk)
+	}
+	if seq > len(seedCampaignNames) {
+		name = fmt.Sprintf("%s · wave %d", name, wave)
+	}
+	return name
 }
 
 func seedBrandName(seq int) string {
 	return seedBrandNames[(seq-1)%len(seedBrandNames)]
+}
+
+var seedCreativeNames = []string{
+	"Hero carousel",
+	"Video pre-roll",
+	"Static banner",
+	"Native card",
+	"Interstitial",
+	"Playable unit",
+	"Rich media",
+	"Search text",
+	"Product feed",
+	"Story placement",
+	"Audio spot",
+	"CTV bumper",
+}
+
+func seedCreativeDisplayName(seq int) string {
+	idx := seq - 1
+	geo := seedCampaignGeoTags[(idx/12)%len(seedCampaignGeoTags)]
+	desk := seedCampaignDeskTags[(idx/(12*len(seedCampaignGeoTags)))%len(seedCampaignDeskTags)]
+	return fmt.Sprintf("%s - %s - %s", seedCreativeNames[idx%len(seedCreativeNames)], geo, desk)
+}
+
+func seedBrandDisplayName(seq int) string {
+	idx := seq - 1
+	region := seedCustomerRegionLabels[(idx/10)%len(seedCustomerRegionLabels)]
+	return fmt.Sprintf("%s - %s", seedBrandName(seq), region)
 }
 
 func seedCustomerBalanceMicro(seq int) int64 {

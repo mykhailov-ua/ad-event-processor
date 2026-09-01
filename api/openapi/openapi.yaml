@@ -200,6 +200,8 @@ paths:
     $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1run
   /api/v1/cost-sync/history:
     $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1history
+  /api/v1/cost-sync/snapshot:
+    $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1snapshot
   /api/v1/postbacks/config:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1config
   /api/v1/postbacks/config/{campaign_id}:
@@ -212,12 +214,16 @@ paths:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq~1{id}~1retry
   /api/v1/postbacks/campaign-status:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1campaign-status
+  /api/v1/postbacks/snapshot:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1snapshot
   /api/v1/integration/schemas:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas
   /api/v1/integration/schemas/{id}:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas~1{id}
   /api/v1/integration/schemas/{id}/apply:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas~1{id}~1apply
+  /api/v1/integration/snapshot:
+    $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1snapshot
   /api/v1/integration/templates:
     $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates
   /api/v1/integration/templates/import:
@@ -400,6 +406,8 @@ paths:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1dlq~1{id}~1retry
   /api/v1/ops/doctor:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1doctor
+  /api/v1/ops/home:
+    $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1home
   /api/v1/ops/domains/rotation:
     $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1domains~1rotation
   /api/v1/ops/domains/tls-allowed:
@@ -556,6 +564,8 @@ paths:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1meta
   /api/v1/session:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1session
+  /api/v1/session/bootstrap:
+    $ref: paths/platform.yaml#/paths/~1api~1v1~1session~1bootstrap
   /api/v1/publisher/dashboard:
     $ref: paths/platform.yaml#/paths/~1api~1v1~1publisher~1dashboard
   /api/v1/publisher/statements:

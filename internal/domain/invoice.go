@@ -13,13 +13,16 @@ type InvoiceLine struct {
 }
 
 type Invoice struct {
-	ID            string        `json:"id"`
-	CustomerID    string        `json:"customer_id"`
-	BillingMonth  time.Time     `json:"-"`
-	SubtotalMicro int64         `json:"subtotal_micro"`
-	TaxMicro      int64         `json:"tax_micro"`
-	TotalMicro    int64         `json:"total_micro"`
-	Currency      string        `json:"currency"`
+	ID                   string        `json:"id"`
+	CustomerID           string        `json:"customer_id"`
+	BillingMonth         time.Time     `json:"-"`
+	SubtotalMicro        int64         `json:"subtotal_micro"`
+	SubtotalMicroDisplay string        `json:"subtotal_micro_display,omitempty"`
+	TaxMicro             int64         `json:"tax_micro"`
+	TaxMicroDisplay      string        `json:"tax_micro_display,omitempty"`
+	TotalMicro           int64         `json:"total_micro"`
+	TotalMicroDisplay    string        `json:"total_micro_display,omitempty"`
+	Currency             string        `json:"currency"`
 	TaxScheme     string        `json:"tax_scheme"`
 	TaxRateBps    int32         `json:"tax_rate_bps"`
 	Lines         []InvoiceLine `json:"lines"`
@@ -33,29 +36,35 @@ func (i Invoice) MarshalJSON() ([]byte, error) {
 		month = i.BillingMonth.UTC().Format("2006-01")
 	}
 	return json.Marshal(struct {
-		ID            string        `json:"id"`
-		CustomerID    string        `json:"customer_id"`
-		BillingMonth  string        `json:"billing_month"`
-		SubtotalMicro int64         `json:"subtotal_micro"`
-		TaxMicro      int64         `json:"tax_micro"`
-		TotalMicro    int64         `json:"total_micro"`
-		Currency      string        `json:"currency"`
-		TaxScheme     string        `json:"tax_scheme"`
-		TaxRateBps    int32         `json:"tax_rate_bps"`
-		Lines         []InvoiceLine `json:"lines"`
-		PDFURL        string        `json:"pdf_url,omitempty"`
+		ID                   string        `json:"id"`
+		CustomerID           string        `json:"customer_id"`
+		BillingMonth         string        `json:"billing_month"`
+		SubtotalMicro        int64         `json:"subtotal_micro"`
+		SubtotalMicroDisplay string        `json:"subtotal_micro_display,omitempty"`
+		TaxMicro             int64         `json:"tax_micro"`
+		TaxMicroDisplay      string        `json:"tax_micro_display,omitempty"`
+		TotalMicro           int64         `json:"total_micro"`
+		TotalMicroDisplay    string        `json:"total_micro_display,omitempty"`
+		Currency             string        `json:"currency"`
+		TaxScheme            string        `json:"tax_scheme"`
+		TaxRateBps           int32         `json:"tax_rate_bps"`
+		Lines                []InvoiceLine `json:"lines"`
+		PDFURL               string        `json:"pdf_url,omitempty"`
 	}{
-		ID:            i.ID,
-		CustomerID:    i.CustomerID,
-		BillingMonth:  month,
-		SubtotalMicro: i.SubtotalMicro,
-		TaxMicro:      i.TaxMicro,
-		TotalMicro:    i.TotalMicro,
-		Currency:      i.Currency,
-		TaxScheme:     i.TaxScheme,
-		TaxRateBps:    i.TaxRateBps,
-		Lines:         i.Lines,
-		PDFURL:        i.PDFURL,
+		ID:                   i.ID,
+		CustomerID:           i.CustomerID,
+		BillingMonth:         month,
+		SubtotalMicro:        i.SubtotalMicro,
+		SubtotalMicroDisplay: i.SubtotalMicroDisplay,
+		TaxMicro:             i.TaxMicro,
+		TaxMicroDisplay:      i.TaxMicroDisplay,
+		TotalMicro:           i.TotalMicro,
+		TotalMicroDisplay:    i.TotalMicroDisplay,
+		Currency:             i.Currency,
+		TaxScheme:            i.TaxScheme,
+		TaxRateBps:           i.TaxRateBps,
+		Lines:                i.Lines,
+		PDFURL:               i.PDFURL,
 	})
 }
 
@@ -65,14 +74,17 @@ type ListInvoicesResult struct {
 }
 
 type InvoiceSummary struct {
-	ID            string `json:"id"`
-	CustomerID    string `json:"customer_id,omitempty"`
-	BillingMonth  string `json:"billing_month"`
-	SubtotalMicro int64  `json:"subtotal_micro"`
-	TaxMicro      int64  `json:"tax_micro"`
-	TotalMicro    int64  `json:"total_micro"`
-	Status        string `json:"status"`
-	Currency      string `json:"currency"`
+	ID                   string `json:"id"`
+	CustomerID           string `json:"customer_id,omitempty"`
+	BillingMonth         string `json:"billing_month"`
+	SubtotalMicro        int64  `json:"subtotal_micro"`
+	SubtotalMicroDisplay string `json:"subtotal_micro_display,omitempty"`
+	TaxMicro             int64  `json:"tax_micro"`
+	TaxMicroDisplay      string `json:"tax_micro_display,omitempty"`
+	TotalMicro           int64  `json:"total_micro"`
+	TotalMicroDisplay    string `json:"total_micro_display,omitempty"`
+	Status               string `json:"status"`
+	Currency             string `json:"currency"`
 }
 
 type PaymentSummary struct {

@@ -27,9 +27,13 @@ func customerListOrderClause(sortField, sortOrder string) string {
 	}
 	switch strings.TrimSpace(sortField) {
 	case "name":
-		return "name " + dir
+		return "c.name " + dir
+	case "balance":
+		return "c.balance " + dir
+	case "active_campaigns":
+		return "COALESCE(stats.active_campaigns, 0) " + dir
 	default:
-		return "created_at " + dir
+		return "c.created_at " + dir
 	}
 }
 
@@ -39,8 +43,17 @@ func (c *Customers) listCustomerRows(ctx context.Context, limit, offset int32, s
 		return nil, errPlatformServiceUnavailable()
 	}
 	orderClause := customerListOrderClause(sortField, sortOrder)
-	query := fmt.Sprintf(
-		`SELECT id, name, balance, currency, cost_center, created_at, updated_at FROM customers ORDER BY %s LIMIT $1 OFFSET $2`,
+	query := fmt.Sprintf(`
+SELECT c.id, c.name, c.balance, c.currency, c.cost_center, c.created_at, c.updated_at
+FROM customers c
+LEFT JOIN (
+	SELECT customer_id, COUNT(*)::bigint AS active_campaigns
+	FROM campaigns
+	WHERE status = 'ACTIVE'
+	GROUP BY customer_id
+) stats ON stats.customer_id = c.id
+ORDER BY %s
+LIMIT $1 OFFSET $2`,
 		orderClause,
 	)
 	rows, err := pool.Query(ctx, query, limit, offset)
@@ -103,16 +116,20 @@ func (c *Customers) ListCustomers(ctx context.Context, limit, offset int32, sort
 	return coldpath.MapSlice(rows, func(r db.Customer) CustomerDTO {
 		uid := uuid.UUID(r.ID.Bytes)
 		st := statsMap[uid]
+		createdAt := r.CreatedAt.Time.Format(time.RFC3339)
+		updatedAt := r.UpdatedAt.Time.Format(time.RFC3339)
 		return CustomerDTO{
-			ID:              uid.String(),
-			Name:            r.Name,
-			Balance:         formatCustomerMicro(r.Balance),
-			Currency:        r.Currency,
-			CostCenter:      r.CostCenter,
-			ActiveCampaigns: st.ActiveCampaigns,
-			TotalSpend:      formatCustomerMicro(st.TotalSpend),
-			CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
-			UpdatedAt:       r.UpdatedAt.Time.Format(time.RFC3339),
+			ID:               uid.String(),
+			Name:             r.Name,
+			Balance:          formatCustomerMicro(r.Balance),
+			Currency:         r.Currency,
+			CostCenter:       r.CostCenter,
+			ActiveCampaigns:  st.ActiveCampaigns,
+			TotalSpend:       formatCustomerMicro(st.TotalSpend),
+			CreatedAt:        createdAt,
+			CreatedAtDisplay: coldpath.RFC3339Display(createdAt),
+			UpdatedAt:        updatedAt,
+			UpdatedAtDisplay: coldpath.RFC3339Display(updatedAt),
 		}
 	}), total, nil
 }
@@ -137,16 +154,20 @@ func (c *Customers) GetCustomerDTO(ctx context.Context, id uuid.UUID) (CustomerD
 		st = stats[0]
 	}
 
+	createdAt := r.CreatedAt.Time.Format(time.RFC3339)
+	updatedAt := r.UpdatedAt.Time.Format(time.RFC3339)
 	return CustomerDTO{
-		ID:              uuid.UUID(r.ID.Bytes).String(),
-		Name:            r.Name,
-		Balance:         formatCustomerMicro(r.Balance),
-		Currency:        r.Currency,
-		CostCenter:      r.CostCenter,
-		ActiveCampaigns: st.ActiveCampaigns,
-		TotalSpend:      formatCustomerMicro(st.TotalSpend),
-		CreatedAt:       r.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt:       r.UpdatedAt.Time.Format(time.RFC3339),
+		ID:               uuid.UUID(r.ID.Bytes).String(),
+		Name:             r.Name,
+		Balance:          formatCustomerMicro(r.Balance),
+		Currency:         r.Currency,
+		CostCenter:       r.CostCenter,
+		ActiveCampaigns:  st.ActiveCampaigns,
+		TotalSpend:       formatCustomerMicro(st.TotalSpend),
+		CreatedAt:        createdAt,
+		CreatedAtDisplay: coldpath.RFC3339Display(createdAt),
+		UpdatedAt:        updatedAt,
+		UpdatedAtDisplay: coldpath.RFC3339Display(updatedAt),
 	}, nil
 }
 

@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/identity"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -160,38 +161,77 @@ func teamMemberDTO(ctx context.Context, host GovernanceHost, customerID, userID 
 	}
 	m.UserID = userID.String()
 	m.CreatedAt = created.UTC().Format(time.RFC3339)
+	m.CreatedAtDisplay = coldpath.RFC3339Display(m.CreatedAt)
 	m.IsBlocked = blocked
 	return m, nil
 }
 
-func listTeamBudgetApprovals(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID) ([]TeamBudgetApprovalDTO, error) {
-	if pool == nil {
-		return nil, errTeamServiceUnavailable()
+const (
+	TeamBudgetApprovalsDefaultLimit = 50
+	TeamBudgetApprovalsMaxLimit     = 100
+)
+
+func normalizeTeamBudgetApprovalsLimit(limit int) int {
+	if limit <= 0 {
+		return TeamBudgetApprovalsDefaultLimit
 	}
+	if limit > TeamBudgetApprovalsMaxLimit {
+		return TeamBudgetApprovalsMaxLimit
+	}
+	return limit
+}
+
+func normalizeTeamBudgetApprovalsOffset(offset int) int {
+	if offset < 0 {
+		return 0
+	}
+	return offset
+}
+
+func listTeamBudgetApprovals(ctx context.Context, pool *pgxpool.Pool, customerID uuid.UUID, limit, offset int) ([]TeamBudgetApprovalDTO, int64, error) {
+	if pool == nil {
+		return nil, 0, errTeamServiceUnavailable()
+	}
+	limit = normalizeTeamBudgetApprovalsLimit(limit)
+	offset = normalizeTeamBudgetApprovalsOffset(offset)
+
+	var total int64
+	if err := pool.QueryRow(ctx, `
+		SELECT count(*)
+		FROM team_budget_approvals
+		WHERE customer_id = $1 AND status = 'PENDING'`, customerID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	rows, err := pool.Query(ctx, `
 		SELECT id, user_id, campaign_id, requested_budget_micro, previous_budget_micro, status, created_at
 		FROM team_budget_approvals
 		WHERE customer_id = $1 AND status = 'PENDING'
-		ORDER BY created_at DESC`, customerID)
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3`, customerID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	out := make([]TeamBudgetApprovalDTO, 0, 8)
+	out := make([]TeamBudgetApprovalDTO, 0, limit)
 	for rows.Next() {
 		var row TeamBudgetApprovalDTO
 		var id, userID, campaignID uuid.UUID
 		var created time.Time
 		if err := rows.Scan(&id, &userID, &campaignID, &row.RequestedBudgetMicro, &row.PreviousBudgetMicro, &row.Status, &created); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		row.ID = id.String()
 		row.UserID = userID.String()
 		row.CampaignID = campaignID.String()
 		row.CreatedAt = created.UTC().Format(time.RFC3339)
+		row.CreatedAtDisplay = coldpath.RFC3339Display(row.CreatedAt)
 		out = append(out, row)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return out, total, nil
 }
 
 func resolveTeamBudgetApproval(ctx context.Context, host GovernanceHost, customerID, approvalID, resolverID uuid.UUID, approve bool) error {

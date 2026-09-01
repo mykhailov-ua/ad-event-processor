@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 )
@@ -51,6 +52,7 @@ func mapAuditRows(rows []db.AdminAuditLog, redactPII bool) []AuditLogDTO {
 		}
 		if row.CreatedAt.Valid {
 			dto.CreatedAt = row.CreatedAt.Time.UTC().Format("2006-01-02T15:04:05Z")
+			dto.CreatedAtDisplay = coldpath.RFC3339Display(dto.CreatedAt)
 		}
 		out[i] = dto
 	}

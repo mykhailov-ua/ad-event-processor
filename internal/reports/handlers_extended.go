@@ -83,7 +83,7 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: h.reportFreshness(r.Context())})
+		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(nil, h.reportFreshness(r.Context()), ""))
 		return
 	}
 	groupBy := parseSourceQualityGroupBy(r)
@@ -109,11 +109,7 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 		if int64(offset)+int64(len(out)) < total {
 			nextCursor = coldpath.EncodeCursor(offset + limit)
 		}
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
-			Rows:       out,
-			Freshness:  h.reportFreshness(r.Context()),
-			NextCursor: nextCursor,
-		})
+		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(out, h.reportFreshness(r.Context()), nextCursor))
 		return
 	}
 
@@ -179,11 +175,7 @@ func (h *ReportsHTTPHandlers) getSourceQualityReport(w http.ResponseWriter, r *h
 	if int64(offset)+int64(len(out)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
-		Rows:       out,
-		Freshness:  h.reportFreshness(r.Context()),
-		NextCursor: nextCursor,
-	})
+	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(out, h.reportFreshness(r.Context()), nextCursor))
 }
 
 func (h *ReportsHTTPHandlers) getDiscrepancyBuySellReport(w http.ResponseWriter, r *http.Request) {
@@ -217,10 +209,7 @@ func (h *ReportsHTTPHandlers) getCampaignOverviewReport(w http.ResponseWriter, r
 			"overspend_risk":   c.OverspendRisk,
 		})
 	}
-	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
-		Rows:      rows,
-		Freshness: h.reportFreshness(r.Context()),
-	})
+	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(rows, h.reportFreshness(r.Context()), ""))
 }
 
 func (h *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, r *http.Request) {
@@ -262,10 +251,7 @@ func (h *ReportsHTTPHandlers) getCustomerPortfolioReport(w http.ResponseWriter, 
 			"row_type":         "campaign",
 		})
 	}
-	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
-		Rows:      rows,
-		Freshness: h.reportFreshness(r.Context()),
-	})
+	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(rows, h.reportFreshness(r.Context()), ""))
 }
 
 type clickhouseReportRowsFunc func(ctx context.Context, clickhouseQuery *database.ClickHouseQuery, campaignIDs []uuid.UUID, from, to time.Time, limit, offset int) ([]map[string]any, int64, error)
@@ -301,7 +287,7 @@ func (h *ReportsHTTPHandlers) writeClickHouseReportRows(
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: h.reportFreshness(r.Context())})
+		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(nil, h.reportFreshness(r.Context()), ""))
 		return
 	}
 	clickhouseCtx, cancel := context.WithTimeout(r.Context(), reportClickHouseQueryTimeout)
@@ -324,9 +310,5 @@ func (h *ReportsHTTPHandlers) writeClickHouseReportRows(
 	if int64(offset)+int64(len(rows)) < total {
 		nextCursor = coldpath.EncodeCursor(offset + limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
-		Rows:       rows,
-		Freshness:  h.reportFreshness(r.Context()),
-		NextCursor: nextCursor,
-	})
+	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(rows, h.reportFreshness(r.Context()), nextCursor))
 }

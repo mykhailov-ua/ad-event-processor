@@ -176,7 +176,7 @@ func buildSCTPPacket(t *testing.T, src, dst net.IP, dport uint16) []byte {
 	return pkt
 }
 
-func buildICMPPacket(t *testing.T, src, dst net.IP) []byte {
+func buildICMPPacket(t *testing.T, src, dst net.IP, icmpType, icmpCode uint8) []byte {
 	t.Helper()
 	src4 := src.To4()
 	dst4 := dst.To4()
@@ -189,9 +189,53 @@ func buildICMPPacket(t *testing.T, src, dst net.IP) []byte {
 
 	ip := pkt[ethLen:]
 	ip[0] = 0x45
+	binary.BigEndian.PutUint16(ip[2:4], uint16(len(pkt)-ethLen))
 	ip[9] = 1
 	copy(ip[12:16], src4)
 	copy(ip[16:20], dst4)
+
+	icmp := pkt[ethLen+20:]
+	icmp[0] = icmpType
+	icmp[1] = icmpCode
+	return pkt
+}
+
+func buildSYNPacketWithNOPBeforeMSS(t *testing.T, src, dst net.IP, dport, window uint16, ttl byte, mss uint16) []byte {
+	t.Helper()
+	src4 := src.To4()
+	dst4 := dst.To4()
+	require.NotNil(t, src4)
+	require.NotNil(t, dst4)
+
+	const (
+		ethLen  = 14
+		ipLen   = 20
+		tcpDoff = 7 // 28 bytes: 20 header + NOP + MSS(4) + padding
+		tcpLen  = tcpDoff * 4
+	)
+	pkt := make([]byte, ethLen+ipLen+tcpLen)
+
+	binary.BigEndian.PutUint16(pkt[12:14], 0x0800)
+
+	ip := pkt[ethLen:]
+	ip[0] = 0x45
+	binary.BigEndian.PutUint16(ip[2:4], uint16(ipLen+tcpLen))
+	ip[8] = ttl
+	ip[9] = 6
+	copy(ip[12:16], src4)
+	copy(ip[16:20], dst4)
+
+	tcp := pkt[ethLen+ipLen:]
+	tcp[12] = byte(tcpDoff) << 4
+	binary.BigEndian.PutUint16(tcp[0:2], 12345)
+	binary.BigEndian.PutUint16(tcp[2:4], dport)
+	binary.BigEndian.PutUint16(tcp[14:16], window)
+	tcp[13] = 0x02
+	tcp[20] = 0x01 // NOP
+	tcp[21] = 0x02 // MSS kind
+	tcp[22] = 0x04 // MSS len
+	binary.BigEndian.PutUint16(tcp[23:25], mss)
+
 	return pkt
 }
 
@@ -417,8 +461,13 @@ func TestXDP_dropNonTCPOnTrackerPort(t *testing.T) {
 	})
 
 	t.Run("icmp", func(t *testing.T) {
-		pkt := buildICMPPacket(t, src, dst)
+		pkt := buildICMPPacket(t, src, dst, 8, 0)
 		assert.Equal(t, uint32(1), runXDP(t, objs.XdpEdgeFilter, pkt))
+	})
+
+	t.Run("icmp_pmtud_pass", func(t *testing.T) {
+		pkt := buildICMPPacket(t, src, dst, 3, 4)
+		assert.Equal(t, uint32(2), runXDP(t, objs.XdpEdgeFilter, pkt))
 	})
 
 	t.Run("udp_non_tracker_pass", func(t *testing.T) {

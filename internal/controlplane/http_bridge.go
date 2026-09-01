@@ -19,6 +19,7 @@ import (
 	"ad-event-processor/internal/reports"
 	"ad-event-processor/internal/shardadmin"
 	"ad-event-processor/internal/telegram"
+	"ad-event-processor/pkg/legal"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -122,6 +123,35 @@ func buildSessionNav(ctx context.Context) []platformadmin.SessionNavItemDTO {
 	return items
 }
 
+func resolveBootstrapAuthUser(ctx context.Context) (platformadmin.BootstrapUserDTO, bool) {
+	u, ok := GetUser(ctx)
+	if !ok {
+		return platformadmin.BootstrapUserDTO{}, false
+	}
+	role := authz.NormalizeRole(u.Role)
+	return platformadmin.BootstrapUserDTO{
+		ID:          u.UserID.String(),
+		Role:        role,
+		CustomerID:  u.CustomerID.String(),
+		Permissions: ctrlhttp.GetPermissionsForRole(u.Role),
+	}, true
+}
+
+func resolveEulaBootstrap(ctx context.Context, svc *Service) (platformadmin.EulaBootstrapDTO, error) {
+	out := platformadmin.EulaBootstrapDTO{}
+	if svc == nil {
+		return out, nil
+	}
+	_, accepted, err := svc.GetEulaStatus(ctx)
+	if err != nil {
+		return out, err
+	}
+	out.EulaAccepted = accepted
+	out.EulaRequired = !accepted
+	out.EulaVersion = legal.Version
+	return out, nil
+}
+
 func resolveSessionUser(ctx context.Context) (platformadmin.SessionUser, bool) {
 	u, ok := GetUser(ctx)
 	if !ok {
@@ -134,11 +164,18 @@ func resolveSessionUser(ctx context.Context) (platformadmin.SessionUser, bool) {
 	return out, true
 }
 
-func wireSessionHTTPHandlers(freshness func(context.Context) reports.DataFreshnessDTO) *platformadmin.SessionHTTPHandlers {
+func wireSessionHTTPHandlers(
+	svc *Service,
+	freshness func(context.Context) reports.DataFreshnessDTO,
+) *platformadmin.SessionHTTPHandlers {
 	return &platformadmin.SessionHTTPHandlers{
-		Freshness:     freshness,
-		BuildNav:      buildSessionNav,
-		ResolveUser:   resolveSessionUser,
+		Freshness:       freshness,
+		BuildNav:        buildSessionNav,
+		ResolveUser:     resolveSessionUser,
+		ResolveAuthUser: resolveBootstrapAuthUser,
+		EulaSnapshot: func(ctx context.Context) (platformadmin.EulaBootstrapDTO, error) {
+			return resolveEulaBootstrap(ctx, svc)
+		},
 		NormalizeRole: authz.NormalizeRole,
 	}
 }

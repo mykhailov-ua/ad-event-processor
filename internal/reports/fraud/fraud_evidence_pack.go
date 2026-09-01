@@ -9,6 +9,7 @@ import (
 	"ad-event-processor/internal/reports"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
@@ -125,6 +126,7 @@ func getFraudEvidencePackReport(h *reports.ReportsHTTPHandlers, w http.ResponseW
 		reports.WriteReportsHandlerError(h, w, err)
 		return
 	}
+	signed.GeneratedAtDisplay = coldpath.RFC3339Display(signed.GeneratedAt)
 	httpresponse.JSON(w, http.StatusOK, signed)
 }
 

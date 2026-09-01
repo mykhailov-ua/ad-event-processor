@@ -1,5 +1,5 @@
 ---
-description: React render hot path, DoD lists, prefetch, V8 GC, allocation budgets
+description: React admin runtime - Hot (charts/telemetry) vs Cold (CRUD), heap leaks, canvas
 globs:
   - web/src/pages/**
   - web/src/ui/**
@@ -10,252 +10,108 @@ globs:
 alwaysApply: false
 ---
 
-# React Runtime - Browser Hot Path
+# React Runtime - Admin SPA
 
 ## Status
 
-Applies when `web/src/pages` and `web/src/ui` exist (`ui.mdc`, `frontend-modular.mdc`). Layout and cold-path contracts: `ui.mdc`. Modular boundaries: `frontend-modular.mdc`.
+Applies when `web/src/pages` and `web/src/ui` exist (`ui.mdc`, `frontend-modular.mdc`). Layout and server contracts: `ui.mdc`. Layer boundaries: `frontend-modular.mdc`.
 
 ## Purpose
 
-Maps tracker ingest discipline (`hot-path.mdc`) to **V8 + React 19** in the admin SPA. Tracker optimizes **0 allocs/op** on `/track`; admin UI optimizes **low allocation rate per frame** and **bounded reconciliation** on list surfaces.
+Admin UI is **mostly Cold** (standard React). **Hot** rules apply only to live charts and streaming telemetry — not to CRUD directories.
 
-## Hot vs cold UI surfaces
+Tracker ingest (`hot-path.mdc`) optimizes 0 allocs/op on `/track`. Admin Cold surfaces optimize **correct fetch lifecycle** (abort, snapshot replace). Admin Hot surfaces optimize **allocation rate per frame** and **bounded reconciliation**.
 
-| Surface | Hot rules apply | Budget |
+Formal taxonomy (Big-O vs cache locality, scale regimes S/L/F, suboptimal operation classes A/L/S/F): `frontend-hot-path.mdc`.
+
+## Scope: Hot vs Cold
+
+| Tier | Surfaces | Required patterns |
 | :--- | :--- | :--- |
-| Data grid scroll / sort / page change | Yes | < 16 ms/frame during scroll |
-| Filter keystroke (server refetch) | Yes (debounced) | Spike on Apply only, not per key |
-| 1 Hz freshness ticker | Yes (isolated leaf) | Must not commit whole page |
-| Chart tick / resize | Yes (imperative lib) | React owns container only |
-| Detail form PATCH | Cold | Normal React patterns OK |
-| One-off settings pages | Cold | No SoA required |
+| **Cold** (default) | CRUD directories, detail forms, login, settings, integrations, billing lists | Server pagination + sort; `AbortController`; `items.map()`; immutable snapshot replace |
+| **Hot** (strict) | Live real-time charts, streaming telemetry, sub-second series updates | DoD/SoA buffers, canvas imperatives, DOM windowing when client holds large visible sets |
 
-**List pages with 500+ rows** (or 50+ visible without windowing) follow all sections below.
+**Default assumption: Cold.** A server-paginated directory with 50 rows per page is Cold — do not apply SoA, row windowing, or Profiler budgets unless the page is explicitly Hot.
 
-## Go hot path parity (mental model)
-
-| Go ingest (`hot-path.mdc`) | Browser admin (`react.mdc`) |
-| :--- | :--- |
-| `atomic.Pointer` catalog snapshot | Immutable fetch snapshot in state; replace whole `data`, do not mutate DTO in place |
-| SoA parallel slices (`CampaignIDs`, `Bids`, …) | Parallel arrays or `Map<id, display>` built once in `useMemo` |
-| `sync.Pool` reuse | Module-scope constants; reuse `TypedArray` in workers; no per-row object spread |
-| Zero `interface{}` / no `fmt.Sprintf` in loop | No inline `style={{}}`, no object-form `cn()`, no template concat in row loop |
-| `TryReserve` before debit | Debounce/prefetch before refetch; abort stale fetch before `setState` |
-| Pinned worker, no block on Redis | `requestAnimationFrame` coalesce scroll; JSON parse in Worker for large payloads |
-| Bench: 0 allocs/op | Profiler: allocation spike on page change only, not per scroll frame |
-| Fail closed on miswire | `ErrorBlock` on fetch fail; no silent empty table (`ui.mdc`) |
-
-## Runtime model (V8)
-
-V8 **Orinoco** generational GC: short-lived objects die in nursery (minor GC / Scavenge); survivors promote to old space; major GC reclaims old space when heuristics fire.
-
-| Fact | UI implication |
-| :--- | :--- |
-| Allocation rate drives jank | Treat **objects per frame** like Go **allocs/op** — minimize in scroll/filter paths |
-| No manual `free()` | Reduce churn; reuse refs; drop unreachable graphs (listeners, closures over `items[]`) |
-| Hidden classes (maps) | Stable object shapes; same key order on DTOs; never `delete obj.k` on hot rows |
-| Immutable strings | Format once in `useMemo`; server sends `*_display` when possible (`ui.mdc`) |
-| `map`/`filter`/`flatMap` allocate | One pass in `useMemo` when client slice needed; prefer **server page** over client full-list ops |
-
-No `GOGC` in the browser. Levers: **allocation rate**, **retained graph size**, **React commit count**.
-
-## Interaction budgets (admin UI)
-
-| Surface | Target | Knob |
-| :--- | :--- | :--- |
-| Keystroke filter | Perceived < 50 ms | Debounce 150–300 ms; server refetch on Apply |
-| Data grid scroll | < 16 ms/frame (60 Hz) | Row windowing; `passive` scroll listener; no layout read in handler |
-| Sort / page change | One commit for visible window | Server sort; or single `useMemo` slice |
-| 1 Hz ticker | No full-page commit | Leaf `memo` + local `useState` |
-| Chart update | No React series rebuild | uPlot/ECharts `setData` in place |
-| Large JSON (> 256 KiB) | Main thread stays interactive | `web/src/workers/parse_json.worker.ts` |
-
-## Data-oriented design (DoD)
-
-Hot path favors **flat homogeneous columns, snapshot readers, and indexes** over pointer graphs and per-row object factories. Same spirit as `catalogSnapshot` SoA in `internal/rtb/catalog_shard.go` (`hot-path.mdc`).
-
-### Snapshot reader (immutable swap)
-
-```
-Fetch completes
-  -> setState(nextSnapshot)   // replace reference, never mutate prev.items[i]
-  -> useMemo derives view from snapshot + UI primitives (page, sort key)
-  -> render reads snapshot + derived columns only
-```
+### Cold path (standard React)
 
 | Rule | Detail |
 | :--- | :--- |
-| One writer | Only fetch handler / effect replaces snapshot |
-| No in-place row patch | `items[i].status = x` breaks `memo` and hidden classes |
-| Generation id | Increment on fetch; ignore stale responses before `setState` |
-| Server labels | Prefer `status_label`, `balance_display` from API — less format alloc |
+| Pagination | `limit`, `offset`, `total` from API; refetch on page/sort change |
+| Render | `data.items.map((row) => <Row key={row.id} row={row} />)` — 50 rows is sub-ms; **no SoA** |
+| Fetch lifecycle | `AbortController` per request; abort on param change and unmount |
+| Snapshot | Replace whole `data` on fetch complete; never mutate `items[i]` in place |
+| Labels | Prefer `*_display`, `*_label` from handler — no client money/status math |
+| Filters | Draft local; Apply copies to URL params once; server refetch (`ui.mdc`) |
+| Errors | `ErrorBlock` on blocking error; stale-while-revalidate when `data` present (`ui.mdc`) |
 
-### Array of structs vs structure of arrays (AoS vs SoA)
+Forbidden on Cold directory tables:
 
-**AoS** (default API): `items: CustomerDTO[]` — fine when **visible row count is small** (< 50) and fields are read once per row.
+- Parallel string arrays / SoA `useMemo` builds for display columns
+- Client windowing when server already pages at 25/50/100
+- Client sort/filter over full datasets
+- Profiler / SoA requirements in PR for standard list pages
 
-**SoA** (homogeneous columns): when one grid renders the same 6–12 fields for hundreds of rows and formats repeat every render.
+Optional on Cold (not required):
 
-| AoS (avoid in hot grid) | SoA / parallel (prefer) |
+- Prefetch next page into `useRef` on idle
+- `memo` on row component when props are stable
+- Worker `JSON.parse` for payloads > 256 KiB
+
+### Hot path (strict DoD / canvas)
+
+Apply **only** when the page has:
+
+- Live chart series updating at animation-frame or streaming cadence
+- Telemetry tables fed by WebSocket/SSE with sustained high-frequency appends
+- Client-visible sets in the hundreds+ **without** server pagination, and Profiler shows Scripting scales with point/row count during scroll or tick
+
+Hot techniques (not for Cold CRUD):
+
+| Technique | When |
 | :--- | :--- |
-| `rows.map(r => formatMoney(r.balance))` each render | `useMemo`: `balanceDisplay: string[]` aligned by index |
-| `selectedIds.includes(id)` per row O(n) | `Set<string>` built once when selection changes |
-| Row receives whole DTO + 3 formatters | Row receives `id`, `name`, `balanceDisplay`, `statusLabel` primitives |
-| Nested `items.map` inside cell | Precomputed `Map<parentId, childIds[]>` |
+| SoA column buffers | Homogeneous numeric/time series in canvas or virtualized grid |
+| DOM windowing | Client-held list with hundreds+ visible rows and measured scroll jank |
+| rAF coalescing | Scroll/resize handlers on high-frequency surfaces |
+| Imperative chart API | `setData` / `setOption` in place — React owns container ref only |
 
-Example (conceptual):
+Go RTB SoA (`hot-path.mdc`, `catalog_shard.go`) is the mental model for **Hot admin only** — not for `customers_page.tsx`.
+
+## Shared rules (Cold and Hot)
+
+### Fetch and abort
 
 ```ts
-// Built once when snapshot changes — not inside rows.map
-const rowView = useMemo(() => {
-  const n = items.length;
-  const ids = new Array<string>(n);
-  const names = new Array<string>(n);
-  const balances = new Array<string>(n);
-  for (let i = 0; i < n; i++) {
-    ids[i] = items[i].id;
-    names[i] = items[i].name ?? '';
-    balances[i] = items[i].balance_display ?? '-';
-  }
-  return { ids, names, balances, len: n };
-}, [items]);
-```
-
-Use SoA when Profiler shows **Scripting** scales with row count during scroll. Otherwise server pagination + primitives per row is enough.
-
-### Windowing (scan cap)
-
-Go RTB caps candidates scanned (p99 < 500). Grids cap **DOM nodes + React fibers**:
-
-| Rule | Detail |
-| :--- | :--- |
-| Visible window | Render `start..start+windowSize` only; spacer rows for scroll height |
-| Stable `key` | `row.id` — never index-only on sorted lists |
-| Overscan | +3–5 rows above/below viewport — trade memory for scroll smoothness |
-| Full list client sort | **Banned** on large N — server sort + page (`ui.mdc`) |
-
-### Indexes (O(1) lookup)
-
-| Need | Structure |
-| :--- | :--- |
-| Row by id | `Map<string, CustomerDTO>` once per snapshot |
-| Selected set | `Set<string>` |
-| Group children | `Map<string, string[]>` built in one pass |
-| Text search (client, small N only) | Inverted index in `useMemo` — not `.includes` per row per render |
-
-## Prefetch and decode
-
-Analog to **warm catalog before auction** and **reserve before debit** — hide latency without allocating on the scroll hot path.
-
-### Fetch prefetch
-
-| Pattern | When |
-| :--- | :--- |
-| Next page prefetch | After page N renders, `idleCallback` or `setTimeout(0)` fetch page N+1 with same filters; store in ref, commit on "Next" |
-| Route prefetch | On nav item `mouseenter`, dynamic `import()` of page chunk only — not data until route active |
-| Stale-while-revalidate | Keep previous `data` visible while refetching; toast on error (`ui.mdc`) |
-| Abort | New params -> `AbortController.abort()`; do not stack in-flight lists |
-
-```ts
-// Prefetch: ref only — no setState until user advances page
-const prefetchRef = useRef<CustomerListResponse | null>(null);
-
 useEffect(() => {
-  if (!hasNextPage) return;
   const ctrl = new AbortController();
-  const run = () => {
-    void listCustomers({ ...params, offset: params.offset + params.limit }, ctrl.signal)
-      .then((res) => { prefetchRef.current = res; })
-      .catch(() => {});
-  };
-  const id = requestIdleCallback?.(run) ?? window.setTimeout(run, 200);
-  return () => {
-    ctrl.abort();
-    if (typeof id === 'number') clearTimeout(id);
-    else cancelIdleCallback(id);
-  };
-}, [params, hasNextPage]);
-```
-
-### Worker offload
-
-| Workload | Thread |
-| :--- | :--- |
-| `JSON.parse` on large list payloads | `parse_json.worker.ts` |
-| CSV / aggregate report post-process | `report_aggregate.worker.ts` |
-| Small `< 64 KiB` responses | Main thread `api()` is fine |
-
-Worker rules:
-
-- Transferable buffers when possible (`postMessage(buf, [buf])`) to avoid copy alloc on main thread.
-- One long-lived worker per page session; `terminate()` on unmount.
-- Parsed result still replaces snapshot once — no per-row postMessage.
-
-### Debounce and coalescing
-
-| Input | Pattern |
-| :--- | :--- |
-| Search field | Debounce 150–300 ms before server refetch |
-| Scroll sync | `requestAnimationFrame` flag — one layout read per frame |
-| Resize | rAF-debounced `ResizeObserver` callback |
-
-## Hot render path (forbidden)
-
-Inside `rows.map`, scroll handlers, filter handlers, chart ticks:
-
-| Category | Forbidden |
-| :--- | :--- |
-| Alloc per row | `rows.map(r => ({ ...r, label: format(r) }))` |
-| O(n²) | `.find` / `.filter` inside cell render; nested full-dataset `map` |
-| Fresh objects | Inline `style={{}}`; object-form `cn()` every row |
-| Fresh functions | Inline `onClick={() => ...}` on `memo` rows without stable handler |
-| JSON | `JSON.parse` / `stringify` in render |
-| Client sort/filter | Full `items[]` sort/filter without `useMemo` or server params |
-| Context broadcast | 1 Hz `now`, scroll offset, mouse position at page root |
-| Intervals | `setInterval` on page parent |
-| DOM retention | `document` listeners without cleanup; closure over full `items[]` |
-| Spread churn | `{...prev, ...patch}` on large state each keystroke |
-| Layout thrash | `getBoundingClientRect` per row in scroll handler |
-
-## Allowed patterns
-
-| Pattern | Usage |
-| :--- | :--- |
-| Snapshot state | Fetch once; derive in `useMemo` |
-| SoA columns | Parallel string arrays for display fields |
-| `Map` / `Set` indexes | Selection, lookup — built when snapshot changes |
-| Colocated state | Dropdown open, hover in leaf component |
-| `useRef` | Prefetch cache, generation id, abort controller |
-| `memo` + stable props | Rows when visible count > ~50 |
-| `useCallback` | Stable handlers for `memo` children only |
-| `useMemo` | Column defs, SoA build, page slice (if client windowed) |
-| Debounce / rAF | Search, scroll, resize |
-| Abort + generation | Ignore stale fetch before `setState` |
-| Imperative charts | Chart lib mutates buffers; React holds `div` ref |
-| `WeakMap` | Optional cache keyed by row identity — not correctness |
-
-## State shape
-
-**Cold snapshot + derived view** — same as `atomic.Pointer` swap in Go.
-
-```
-Server snapshot (useState / useResource)
-  -> useMemo: rowView (SoA) or pageItems (slice)
-  -> render: windowed map(Row)
+  void listCustomers(params, ctrl.signal)
+    .then(setData)
+    .catch((err) => {
+      if (err.name === 'AbortError') return;
+      setError(err);
+    });
+  return () => ctrl.abort();
+}, [params]);
 ```
 
 | Rule | Detail |
 | :--- | :--- |
-| One source of truth | API DTO in `data`; UI toggles separate primitives |
-| Draft vs applied | Filter draft local; Apply copies to URL params once |
-| Minimal lift | Share only what siblings need |
-| URL sync | On Apply / page change — not every keystroke |
-| Error | Single `error` object; explicit branches (`ui.mdc`) |
+| Stale response | Generation id or abort before `setState` after param change |
+| Unmount | Always abort in effect cleanup |
+| Timeout | `RESOURCE_FETCH_TIMEOUT_MS` (15 s) — clear `fetching` in `finally` (`ui.mdc`) |
 
-Forbidden: giant spread state; duplicated row arrays in state; formatted strings in state when derivable in `useMemo`.
+### Freshness ticker (isolated leaf)
 
-## Closures and retention (heap leaks)
+1 Hz (or slower) freshness chips must **not** re-render the page tree.
+
+| Rule | Detail |
+| :--- | :--- |
+| Placement | Ticker as **sibling** to table/content — not parent of list |
+| Component | Dedicated `memo` leaf with local `useState` / `useEffect` interval |
+| Context | Do not put `now` or lag seconds in page-level Context |
+| Cleanup | `return () => clearInterval(t)` in effect |
+
+### Closures and retention (heap leaks)
 
 | Leak | Fix |
 | :--- | :--- |
@@ -263,12 +119,22 @@ Forbidden: giant spread state; duplicated row arrays in state; formatted strings
 | `document.addEventListener` | Remove in effect cleanup |
 | Fetch after unmount | `AbortController` + generation check |
 | Closure over `items` in timer | `itemsRef.current = items` |
-| Portal menu left mounted | Unmount on close |
+| Portal menu left mounted | Unmount on close (Radix handles most cases) |
 | Unbounded module `Map` cache | Cap or `WeakMap` |
 
 `WeakRef` / `FinalizationRegistry`: optional caches only.
 
-## Effects and subscriptions
+### Charts and canvas (Hot)
+
+| Rule | Detail |
+| :--- | :--- |
+| Ownership | React: container `div` + resize observer only |
+| Update | `setOption` / `setData` / buffer write in place — no React series rebuild per tick |
+| Ref | Chart instance lives in `useRef`; created once on mount |
+| Unmount | `dispose()` / `destroy()` in effect cleanup |
+| Resize | rAF-debounced `ResizeObserver`; one layout read per frame |
+
+### Effects and subscriptions
 
 | Rule | Detail |
 | :--- | :--- |
@@ -278,62 +144,128 @@ Forbidden: giant spread state; duplicated row arrays in state; formatted strings
 | Fetch | `useResource` or effect + abort — never in render |
 | Poll | Single effect; push snapshot, not per-tick spread of list |
 
-## React reconciliation
+## Hot-only: data-oriented design (DoD)
+
+When a surface is classified **Hot** (see scope table above).
+
+### Snapshot reader
+
+```
+Fetch or stream event
+  -> setState(nextSnapshot)     // replace reference
+  -> useMemo: SoA columns or window slice (Hot only)
+  -> render: windowed map or canvas draw
+```
 
 | Rule | Detail |
 | :--- | :--- |
-| Split trees | Ticker sibling to grid — not child |
-| Context split | Auth / theme / data separate |
-| `key` | Stable `row.id` |
-| `memo` | Row when parent hot, props stable |
-| `children` | No inline `<Heavy />` on hot parent |
+| One writer | Only fetch/stream handler replaces snapshot |
+| No in-place patch | `items[i].status = x` breaks `memo` and hidden classes |
+| Generation id | Ignore stale responses before `setState` |
 
-React Compiler does not remove GC pressure from new arrays.
+### SoA (Hot only)
 
-## V8-friendly habits
+Structure-of-arrays for **homogeneous columns** when hundreds+ values update per frame (chart buffers, virtualized telemetry grid).
+
+| Cold (default) | Hot (when Profiler proves need) |
+| :--- | :--- |
+| `items.map(row => <Row row={row} />)` | Parallel `Float64Array` / `string[]` aligned by index |
+| Server `*_display` on each DTO | Pre-built column buffers for canvas `setData` |
+| 50 rows from API page | Windowed DOM slice + spacer rows |
+
+Do **not** build SoA for a standard 50-row directory page.
+
+### Windowing (Hot only)
+
+When client holds a large visible set without server pagination:
+
+| Rule | Detail |
+| :--- | :--- |
+| Visible window | Render `start..start+windowSize` only; spacer rows for scroll height |
+| Stable `key` | `row.id` — never index-only on sorted lists |
+| Overscan | +3–5 rows above/below viewport |
+
+### Hot render path (forbidden)
+
+Inside high-frequency `map`, scroll handlers, or chart ticks on **Hot** surfaces — **Class F** in `frontend-hot-path.mdc`:
+
+| Category | Forbidden |
+| :--- | :--- |
+| Alloc per point/row | `map(r => ({ ...r, label: format(r) }))` each tick |
+| O(n²) | `.find` / `.filter` inside cell render on full dataset |
+| Fresh objects | Inline `style={{}}`; object-form `cn()` every row |
+| JSON | `JSON.parse` / `stringify` in render |
+| Context broadcast | Scroll offset, mouse position at page root |
+| Layout thrash | `getBoundingClientRect` per row in scroll handler |
+
+## Worker offload (optional)
+
+| Workload | Thread |
+| :--- | :--- |
+| `JSON.parse` on payloads > 256 KiB | `parse_json.worker.ts` |
+| CSV / aggregate report post-process | `report_aggregate.worker.ts` |
+| Typical list page (< 64 KiB) | Main thread `api()` is fine |
+
+- Transferable buffers when possible (`postMessage(buf, [buf])`).
+- One long-lived worker per page session; `terminate()` on unmount.
+
+## State shape (Cold)
+
+```
+Server snapshot (useState / useResource)
+  -> render: items.map(Row)
+```
+
+| Rule | Detail |
+| :--- | :--- |
+| One source of truth | API DTO in `data`; UI toggles separate primitives |
+| Draft vs applied | Filter draft local; Apply copies to URL params once |
+| URL sync | On Apply / page change — not every keystroke |
+
+Forbidden: giant spread state; duplicated row arrays; client sort over full `items[]`.
+
+## V8-friendly habits (Hot surfaces)
 
 | Habit | Detail |
 | :--- | :--- |
 | Module-scope options | `const STATUS_OPTIONS = [...] as const` |
-| Column defs at module scope | `as const` tuples |
+| `cn()` in row loop | String args only (`lib/utils.ts`) |
 | Avoid `delete` on DTOs | Treat API objects as read-only |
-| `cn()` in row loop | String args only |
-| Hidden class stability | Same fields on each row object from API |
-
-## Charts and canvas
-
-| Rule | Detail |
-| :--- | :--- |
-| Ownership | React: container + resize observer |
-| Update | `setOption` / `setData` in place |
-| Unmount | `dispose()` in cleanup |
-| Resize | rAF-debounced; one `getBoundingClientRect` per frame |
 
 ## Verification
 
+### Cold pages (default)
+
+```bash
+cd web && npm run typecheck
+bash scripts/ci/admin/ui_surface.sh
+bash scripts/ci/admin/web.sh
+```
+
+No Profiler requirement for standard directory pages.
+
+### Hot pages (charts / streaming)
+
 | Step | Command / tool |
 | :--- | :--- |
-| Types | `cd web && npm run typecheck` |
-| UI gates | `bash scripts/ci/admin/ui_surface.sh` && `bash scripts/ci/admin/web.sh` |
-| React Profiler | 500-row fixture: scroll + sort — page chrome not in every commit |
-| Performance (6x slowdown) | **Scripting** + **GC** during scroll — GC bar should not track scroll frame-by-frame |
-| Allocation sampling | Filter: spike on Apply only |
+| React Profiler | Scroll/tick — page chrome not in every commit |
+| Performance (6x slowdown) | Scripting + GC during tick — GC bar should not track frame-by-frame |
 | Memory | 10 navigate cycles — detached nodes stable |
-| Honesty | Admin microbench ≠ tracker p99 (`anti-slop.mdc`) |
+| Honesty | Admin chart microbench ≠ tracker p99 (`anti-slop.mdc`) |
 
-Before claiming list perf: paste Profiler note or row window size + visible count.
+Before claiming Hot surface perf: paste Profiler note + visible point/row count.
 
 ## Agent checklist
 
 | Step | Action |
 | :--- | :--- |
-| 1 | Server pagination/sort when N > 100 |
-| 2 | Snapshot replace; SoA or primitives for hot grids |
-| 3 | Prefetch next page in ref; abort stale fetches |
-| 4 | Ticker isolated in `memo` leaf |
-| 5 | Large JSON -> worker parse |
-| 6 | Profiler check on changed list page |
+| 1 | Classify page: Cold (default) or Hot (charts/streaming) |
+| 2 | Cold: server pagination + AbortController + `items.map()` — no SoA |
+| 3 | Hot: SoA/windowing/canvas refs only when scope table applies |
+| 4 | Ticker: isolated `memo` leaf; `clearInterval` on cleanup |
+| 5 | Charts: imperative update via ref; `dispose()` on unmount |
+| 6 | Paste `typecheck` + gates for Cold; Profiler note for Hot |
 
 ## Related rules
 
-`frontend-modular.mdc`, `ui.mdc`, `anti-slop.mdc`, `quality.mdc`, `hot-path.mdc`, `cold-path.mdc`, `boundaries.mdc`.
+`frontend-hot-path.mdc`, `frontend-modular.mdc`, `ui.mdc`, `anti-slop.mdc`, `quality.mdc`, `hot-path.mdc`, `cold-path.mdc`, `boundaries.mdc`.

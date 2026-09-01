@@ -1,1 +1,2 @@
-export {};
+import{Ca as a,Da as f,Ia as d,Ka as n,L as i,b as t,e as v,k as o,l as r,m,ya as p}from"./chunks/chunk-7P2WQ4LY.js";var P=t(v(),1);var e=t(i(),1),u=document.getElementById("root");u&&(0,P.createRoot)(u).render((0,e.jsx)(m,{children:(0,e.jsx)(n,{children:(0,e.jsx)(p,{children:(0,e.jsxs)(r,{children:[(0,e.jsx)(o,{element:(0,e.jsx)(d,{}),path:"/setup"}),(0,e.jsx)(o,{element:(0,e.jsx)(a,{}),path:"/activate"}),(0,e.jsx)(o,{element:(0,e.jsx)(f,{}),path:"*"})]})})})}));
+//# sourceMappingURL=login.js.map

@@ -42,7 +42,7 @@ func TestLicense_StatusDTOFields_documentedInTypes(t *testing.T) {
 	t.Parallel()
 	skipIfAdminWebRemoved(t)
 	root := repoRoot(t)
-	licenseTS := readRepoFile(t, root, "web/src/helpers/settings_api.ts")
+	licenseTS := readRepoFile(t, root, "web/src/types/generated/openapi.d.ts")
 	for _, field := range []string{"host_fingerprint", "hwid_v2", "hwid_match", "days_to_expiry"} {
 		require.Contains(t, licenseTS, field, "LicenseStatus missing %s", field)
 	}

@@ -148,8 +148,8 @@ func (s *Service) BlacklistJanitorAlerter() fraudadmin.BlacklistJanitorAlerter {
 	return s.alerter
 }
 
-func (s *Service) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit int) ([]fraudadmin.MLManualLabelDTO, error) {
-	return fraudadmin.NewLabels(s).ListMLManualLabelsForCustomer(ctx, customerID, limit)
+func (s *Service) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]fraudadmin.MLManualLabelDTO, int64, error) {
+	return fraudadmin.NewLabels(s).ListMLManualLabelsForCustomer(ctx, customerID, limit, offset)
 }
 
 func (s *Service) GetCampaignFraudConfig(ctx context.Context, campaignID uuid.UUID) (campaign.CampaignFraudConfigDTO, error) {

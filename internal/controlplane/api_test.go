@@ -83,7 +83,12 @@ func TestAPI_GetCampaignStats_PostgresOnly(t *testing.T) {
 	assert.Equal(t, "strong", report.Consistency)
 	assert.True(t, report.Stale)
 	assert.Equal(t, "pg", report.Source)
-	assert.Empty(t, report.Hourly)
+	require.Len(t, report.Hourly, 24)
+	var hourlyClicks int64
+	for _, bucket := range report.Hourly {
+		hourlyClicks += bucket.Clicks
+	}
+	assert.Equal(t, int64(10), hourlyClicks)
 }
 
 func TestAPI_GetCampaignStats_TenantIsolation(t *testing.T) {

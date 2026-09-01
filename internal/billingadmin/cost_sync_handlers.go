@@ -42,6 +42,7 @@ func (h *CostSyncHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/v1/cost-sync/credentials/{network}", limit(perm("campaigns:write", h.deleteCredential)))
 	mux.HandleFunc("POST /api/v1/cost-sync/run", limit(perm("campaigns:write", h.runSync)))
 	mux.HandleFunc("GET /api/v1/cost-sync/history", limit(perm("campaigns:read", h.listHistory)))
+	mux.HandleFunc("GET /api/v1/cost-sync/snapshot", limit(perm("campaigns:read", h.getCostSyncSnapshot)))
 }
 
 type CostSyncCredentialDTO struct {
@@ -126,33 +127,17 @@ func costSyncCredentialDTO(row db.CostSyncCredential) (CostSyncCredentialDTO, er
 }
 
 func (h *CostSyncHTTPHandlers) listCredentials(w http.ResponseWriter, r *http.Request) {
-	q := db.New(h.Pool)
-	var rows []db.CostSyncCredential
-	var err error
-
-	if custStr := r.URL.Query().Get("customer_id"); custStr != "" {
-		custID, parseErr := uuid.Parse(custStr)
-		if parseErr != nil {
+	customerID := r.URL.Query().Get("customer_id")
+	if customerID != "" {
+		if _, err := uuid.Parse(customerID); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
 			return
 		}
-		rows, err = q.ListCostSyncCredentialsByCustomer(r.Context(), pgtype.UUID{Bytes: custID, Valid: true})
-	} else {
-		rows, err = q.ListCostSyncCredentials(r.Context())
 	}
+	dtos, err := h.listCostSyncCredentials(r.Context(), customerID)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
-	}
-
-	dtos := make([]CostSyncCredentialDTO, 0, len(rows))
-	for _, row := range rows {
-		dto, err := costSyncCredentialDTO(row)
-		if err != nil {
-			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "invalid cost sync extra config")
-			return
-		}
-		dtos = append(dtos, dto)
 	}
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }
@@ -338,48 +323,18 @@ func (h *CostSyncHTTPHandlers) runSync(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *CostSyncHTTPHandlers) listHistory(w http.ResponseWriter, r *http.Request) {
-	var cust pgtype.UUID
-	if custStr := r.URL.Query().Get("customer_id"); custStr != "" {
-		cid, err := uuid.Parse(custStr)
-		if err != nil {
+	customerID := r.URL.Query().Get("customer_id")
+	if customerID != "" {
+		if _, err := uuid.Parse(customerID); err != nil {
 			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
 			return
 		}
-		cust = pgtype.UUID{Bytes: cid, Valid: true}
 	}
-
 	limit, offset := coldpath.ParseAPIPagination(r)
-	rows, err := db.New(h.Pool).ListCostSyncRuns(r.Context(), db.ListCostSyncRunsParams{
-		Column1: cust,
-		Limit:   limit,
-		Offset:  offset,
-	})
+	dtos, err := h.listCostSyncHistoryRows(r.Context(), customerID, limit, offset)
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
-	}
-
-	dtos := make([]CostSyncRunDTO, 0, len(rows))
-	for _, row := range rows {
-		dto := CostSyncRunDTO{
-			ID:                  row.ID,
-			CustomerID:          pgUUIDToString(row.CustomerID),
-			Network:             row.Network,
-			CostDate:            row.CostDate.Time.Format("2006-01-02"),
-			Status:              row.Status,
-			RowsImported:        row.RowsImported,
-			TotalAmountUSDMicro: row.TotalAmountUsdMicro,
-			TriggerSource:       row.TriggerSource,
-			StartedAt:           row.StartedAt.Time,
-		}
-		if row.ErrorMessage.Valid {
-			dto.ErrorMessage = row.ErrorMessage.String
-		}
-		if row.CompletedAt.Valid {
-			t := row.CompletedAt.Time
-			dto.CompletedAt = &t
-		}
-		dtos = append(dtos, dto)
 	}
 	httpresponse.JSON(w, http.StatusOK, dtos)
 }

@@ -11,6 +11,8 @@ import (
 
 	db "ad-event-processor/internal/domain/db"
 
+	"ad-event-processor/pkg/coldpath"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -91,6 +93,9 @@ func (r *Reader) ListDLQInbox(ctx context.Context, source, cursor string, limit 
 	out.NextCursor = nextCursor
 	if out.Items == nil {
 		out.Items = []DLQInboxEntryDTO{}
+	}
+	for i := range out.Items {
+		out.Items[i].FailedAtDisplay = coldpath.RFC3339Display(out.Items[i].FailedAt)
 	}
 	return out, nil
 }

@@ -62,7 +62,7 @@ var seedCmd = &cobra.Command{
 		fmt.Println("Seeding 100 customers...")
 		customerIDs := make([]uuid.UUID, 100)
 		for i := 1; i <= 100; i++ {
-			cID := seedEntityUUID(i)
+			cID := seedCustomerUUID(i)
 			customerIDs[i-1] = cID
 			_, err = adsQueries.CreateCustomer(ctx, ingestdb.CreateCustomerParams{
 				ID:       pgtype.UUID{Bytes: cID, Valid: true},
@@ -105,7 +105,7 @@ var seedCmd = &cobra.Command{
 		fmt.Println("Seeding 10 advertiser brands...")
 		brandIDs := make([]uuid.UUID, 10)
 		for i := 1; i <= 10; i++ {
-			bID := uuid.New()
+			bID := seedBrandUUID(i)
 			brandIDs[i-1] = bID
 			_, err = adsQueries.CreateBrand(ctx, ingestdb.CreateBrandParams{
 				ID:         pgtype.UUID{Bytes: bID, Valid: true},
@@ -122,7 +122,7 @@ var seedCmd = &cobra.Command{
 		pacingModes := []ingestdb.PacingModeType{ingestdb.PacingModeTypeASAP, ingestdb.PacingModeTypeEVEN}
 
 		for i := 1; i <= 1000; i++ {
-			campID := uuid.New()
+			campID := seedCampaignUUID(i)
 			custIdx := (i - 1) % 100
 			cID := customerIDs[custIdx]
 
@@ -638,6 +638,7 @@ func init() {
 	blacklistCmd.AddCommand(deleteBlacklistCmd)
 
 	dbCmd.AddCommand(seedCmd)
+	dbCmd.AddCommand(seedUIDemoCmd)
 
 	rootCmd.AddCommand(dbCmd)
 	rootCmd.AddCommand(campaignCmd)

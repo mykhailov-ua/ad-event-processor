@@ -147,10 +147,6 @@ func (h *ReportsHTTPHandlers) getClickLogReport(w http.ResponseWriter, r *http.R
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
 		return
 	}
-	if clickID == "" && !campaignFilterSet {
-		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "click_id or campaign_id required")
-		return
-	}
 	if campaignFilterSet && !h.authorizeReportCampaign(w, r, campaignFilter) {
 		return
 	}
@@ -309,6 +305,22 @@ func QueryClickLogTimelineCH(
 	limit int,
 ) ([]ClickLogEventDTO, error) {
 	return queryClickLogTimelineCH(ctx, clickhouseQuery, campaignIDs, clickID, from, to, limit)
+}
+
+const recentClickLogLimit = 20
+
+func QueryRecentClickLogCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	limit int,
+) ([]ClickLogEventDTO, error) {
+	if limit <= 0 {
+		limit = recentClickLogLimit
+	}
+	events, _, err := queryClickLogBrowseCH(ctx, clickhouseQuery, campaignIDs, from, to, limit, 0)
+	return events, err
 }
 
 func queryClickLogTimelineCH(

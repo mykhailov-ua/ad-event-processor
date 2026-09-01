@@ -29,6 +29,7 @@ type HTTPHandlers struct {
 	Blacklist               BlacklistAdmin
 	Shard0Catchup           Shard0CatchupRunner
 	FraudThreat             FraudThreatEnqueuer
+	DoctorSnapshot          DoctorSnapshotBuilder
 	ApplyRateLimit          func(http.HandlerFunc) http.HandlerFunc
 	RequirePermission       func(string, http.HandlerFunc) http.HandlerFunc
 	WriteServiceError       func(http.ResponseWriter, error)
@@ -69,6 +70,7 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	h.registerBlacklistRoutes(mux)
 	h.RegisterFraudThreatRoutes(mux)
 	h.registerDashboardRoutes(mux)
+	h.registerHomeRoutes(mux)
 	h.registerSupportBundleRoutes(mux)
 	h.registerRUMRoutes(mux)
 	h.registerMLModelRoutes(mux)

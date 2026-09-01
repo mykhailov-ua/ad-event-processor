@@ -22,10 +22,15 @@ type PeriodDTO struct {
 
 type MetricsBlockDTO struct {
 	SpendMicro   int64            `json:"spend_micro"`
+	CostMicro    int64            `json:"cost_micro,omitempty"`
 	RevenueMicro int64            `json:"revenue_micro"`
 	ProfitMicro  int64            `json:"profit_micro"`
 	Conversions  int64            `json:"conversions"`
+	UniqueClicks int64            `json:"unique_clicks,omitempty"`
+	CPCMicro     int64            `json:"cpc_micro,omitempty"`
 	CPAMicro     int64            `json:"cpa_micro"`
+	EPCMicro     int64            `json:"epc_micro,omitempty"`
+	CRPct        float64          `json:"cr_pct,omitempty"`
 	ROIPct       float64          `json:"roi_pct"`
 	Freshness    DataFreshnessDTO `json:"freshness"`
 }
@@ -86,6 +91,7 @@ type BuyerPortfolioDTO struct {
 	Archived        int                            `json:"archived"`
 	Impressions7d   int64                          `json:"impressions_7d"`
 	Clicks7d        int64                          `json:"clicks_7d"`
+	UniqueClicks7d  int64                          `json:"unique_clicks_7d,omitempty"`
 	OverspendCount  int                            `json:"overspend_count,omitempty"`
 	KPIs            *MetricsBlockDTO               `json:"kpis,omitempty"`
 	Series          []DashboardSeriesPointDTO      `json:"series,omitempty"`
@@ -93,12 +99,21 @@ type BuyerPortfolioDTO struct {
 	Alerts          []AlertCardDTO                 `json:"alerts,omitempty"`
 	Attention       []BuyerAttentionDTO            `json:"attention"`
 	Campaigns       []BuyerCampaignPortfolioRowDTO `json:"campaigns"`
+	RecentClicks    []reports.ClickLogEventDTO     `json:"recent_clicks,omitempty"`
+	Breakdowns      *DashboardBreakdownsDTO        `json:"breakdowns,omitempty"`
 	Fraud           *CustomerFraudOverviewDTO      `json:"fraud,omitempty"`
+}
+
+type DashboardBreakdownsDTO struct {
+	Campaigns reports.DashboardBreakdownTableDTO `json:"campaigns"`
+	Sources   reports.DashboardBreakdownTableDTO `json:"sources"`
+	Landers   reports.DashboardBreakdownTableDTO `json:"landers,omitempty"`
+	Offers    reports.DashboardBreakdownTableDTO `json:"offers,omitempty"`
 }
 
 type BuyerPortfolioReader interface {
 	GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error)
-	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
+	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
 }
 
 type CampaignDashboardReader interface {
@@ -366,12 +381,22 @@ func (h *HTTPHandlers) getBuyerDashboard(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	resp, err := h.BuyerPortfolio.GetBuyerPortfolioRange(r.Context(), customerID, from, to)
+	var campaignFilter *uuid.UUID
+	if campaignRaw := strings.TrimSpace(r.URL.Query().Get("campaign_id")); campaignRaw != "" {
+		campaignID, parseErr := uuid.Parse(campaignRaw)
+		if parseErr != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+			return
+		}
+		campaignFilter = &campaignID
+	}
+
+	resp, err := h.BuyerPortfolio.GetBuyerPortfolioRange(r.Context(), customerID, campaignFilter, from, to)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func (h *HTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {
@@ -400,7 +425,7 @@ func (h *HTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Reque
 		h.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func (h *HTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *http.Request) {
@@ -426,7 +451,7 @@ func (h *HTTPHandlers) getOperatorDashboard(w http.ResponseWriter, r *http.Reque
 			resp.Edge = edge
 		}
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func (h *HTTPHandlers) resolveRoleCustomerID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
@@ -468,7 +493,7 @@ func (h *HTTPHandlers) getAdOpsDashboard(w http.ResponseWriter, r *http.Request)
 		h.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func (h *HTTPHandlers) getCFODashboard(w http.ResponseWriter, r *http.Request) {
@@ -485,7 +510,7 @@ func (h *HTTPHandlers) getCFODashboard(w http.ResponseWriter, r *http.Request) {
 		h.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func (h *HTTPHandlers) getAccountantDashboard(w http.ResponseWriter, r *http.Request) {
@@ -513,7 +538,7 @@ func (h *HTTPHandlers) getAccountantDashboard(w http.ResponseWriter, r *http.Req
 			})
 		}
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func (h *HTTPHandlers) getFraudDashboard(w http.ResponseWriter, r *http.Request) {
@@ -535,7 +560,7 @@ func (h *HTTPHandlers) getFraudDashboard(w http.ResponseWriter, r *http.Request)
 		h.writeServiceError(w, err)
 		return
 	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	writeRoleDashboardJSON(w, resp)
 }
 
 func parseDashboardRange(r *http.Request) (time.Time, time.Time, error) {

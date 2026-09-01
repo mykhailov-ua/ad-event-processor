@@ -73,7 +73,7 @@ func (s *Service) FraudMLSnapshot(ctx context.Context) (dashboardadmin.FraudMLSn
 }
 
 func (s *Service) ListMLManualLabels(ctx context.Context, customerID uuid.UUID, limit int) ([]dashboardadmin.MLManualLabelDTO, error) {
-	rows, err := s.ListMLManualLabelsForCustomer(ctx, customerID, limit)
+	rows, _, err := s.ListMLManualLabelsForCustomer(ctx, customerID, limit, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +136,8 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 	return s.buyerPortfolio().GetBuyerPortfolio(ctx, customerID)
 }
 
-func (s *Service) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, from, to time.Time) (dashboardadmin.BuyerPortfolioDTO, error) {
-	return s.buyerPortfolio().GetBuyerPortfolioRange(ctx, customerID, from, to)
+func (s *Service) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (dashboardadmin.BuyerPortfolioDTO, error) {
+	return s.buyerPortfolio().GetBuyerPortfolioRange(ctx, customerID, campaignFilter, from, to)
 }
 
 func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID) (dashboardadmin.CampaignDashboardDTO, error) {

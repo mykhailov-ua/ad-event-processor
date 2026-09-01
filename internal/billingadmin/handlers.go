@@ -1144,10 +1144,14 @@ type InvariantDTO struct {
 }
 
 type SummaryDTO struct {
-	InvoicedMTDMicro                int64 `json:"invoiced_mtd_micro"`
-	InvoiceCountMTD                 int64 `json:"invoice_count_mtd"`
-	UndeliveredInvoiceNotifications int64 `json:"undelivered_invoice_notifications"`
-	CustomersWithSpendInMonth       int64 `json:"customers_with_spend_in_month"`
+	InvoicedMTDMicro                      int64  `json:"invoiced_mtd_micro"`
+	InvoicedMTDDisplay                    string `json:"invoiced_mtd_display,omitempty"`
+	InvoiceCountMTD                       int64  `json:"invoice_count_mtd"`
+	InvoiceCountMTDDisplay                string `json:"invoice_count_mtd_display,omitempty"`
+	UndeliveredInvoiceNotifications       int64  `json:"undelivered_invoice_notifications"`
+	UndeliveredInvoiceNotificationsDisplay string `json:"undelivered_invoice_notifications_display,omitempty"`
+	CustomersWithSpendInMonth             int64  `json:"customers_with_spend_in_month"`
+	CustomersWithSpendInMonthDisplay      string `json:"customers_with_spend_in_month_display,omitempty"`
 }
 
 type DeliveryDTO struct {
@@ -1243,6 +1247,8 @@ func (s *CompositeReadService) BuildStatement(ctx context.Context, customerID uu
 			Status:        string(inv.Status),
 			Currency:      inv.Currency,
 		})
+		summary := &invoiceDTOs[len(invoiceDTOs)-1]
+		attachInvoiceSummaryDisplay(summary)
 		if inv.Status == billingdb.BillingInvoiceStatusFINALIZED {
 			invoiceTotal += inv.TotalMicro
 		}
@@ -1509,10 +1515,14 @@ func (s *CompositeReadService) GetSummary(ctx context.Context) (SummaryDTO, erro
 	}
 
 	return SummaryDTO{
-		InvoicedMTDMicro:                mtd.Column1,
-		InvoiceCountMTD:                 mtd.Column2,
-		UndeliveredInvoiceNotifications: undelivered,
-		CustomersWithSpendInMonth:       customersSpend,
+		InvoicedMTDMicro:                       mtd.Column1,
+		InvoicedMTDDisplay:                     coldpath.FormatMicroDisplay(mtd.Column1),
+		InvoiceCountMTD:                        mtd.Column2,
+		InvoiceCountMTDDisplay:                 coldpath.FormatCountDisplay(mtd.Column2),
+		UndeliveredInvoiceNotifications:        undelivered,
+		UndeliveredInvoiceNotificationsDisplay: coldpath.FormatCountDisplay(undelivered),
+		CustomersWithSpendInMonth:              customersSpend,
+		CustomersWithSpendInMonthDisplay:       coldpath.FormatCountDisplay(customersSpend),
 	}, nil
 }
 

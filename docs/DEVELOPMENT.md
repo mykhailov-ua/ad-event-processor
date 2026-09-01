@@ -252,14 +252,24 @@ npm ci
 npm run dev
 ```
 
-Detached daemon (survives IDE terminal teardown; auto-restarts on crash):
+Background compose stack + web dev server (survives terminal close):
 ```bash
-cd web
-npm run dev:daemon
-npm run dev:status
-npm run dev:stop
+source scripts/dev/admin_ui_aliases.sh   # optional; or: bash scripts/dev/aed-admin up
+aed-admin up          # ingest-only compose (db, redis, control :8188) + seed + web :5173
+aed-admin status
+aed-admin down        # stops web only; compose stack stays up
+aed-admin stack       # compose only
+aed-admin seed        # bootstrap admin user when control is already healthy
 ```
-Log: `var/admin_dev.log`. PID: `var/admin_dev.pid`.
+
+Foreground (one process per terminal):
+```bash
+aed-admin stack       # ensure db/redis/control in compose first
+aed-admin control     # local go run :8188 (stops docker control to free the port)
+aed-admin web         # :5173, proxies /api to control
+```
+
+Logs: `var/admin_web.log`; compose control: `docker logs ad-event-processor-control-1`. Without sourcing aliases: `bash scripts/dev/aed-admin up`.
 
 ### 2. Admin UI Bootstrap & Production Build
 To seed a local developer account and embed the UI assets directly into the Go `control` binary:

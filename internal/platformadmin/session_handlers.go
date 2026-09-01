@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 
-	"ad-event-processor/internal/controlplane/authz"
 	"ad-event-processor/internal/reports"
 	"ad-event-processor/pkg/httpresponse"
 )
@@ -30,11 +29,14 @@ type SessionUser struct {
 }
 
 type SessionHTTPHandlers struct {
-	ApplyRateLimit func(http.HandlerFunc) http.HandlerFunc
-	Freshness      func(context.Context) reports.DataFreshnessDTO
-	BuildNav       func(context.Context) []SessionNavItemDTO
-	ResolveUser    func(context.Context) (SessionUser, bool)
-	NormalizeRole  func(string) string
+	ApplyRateLimit  func(http.HandlerFunc) http.HandlerFunc
+	RequireAuth     func(http.HandlerFunc) http.HandlerFunc
+	Freshness       func(context.Context) reports.DataFreshnessDTO
+	BuildNav        func(context.Context) []SessionNavItemDTO
+	ResolveUser     func(context.Context) (SessionUser, bool)
+	ResolveAuthUser BootstrapAuthUserResolver
+	EulaSnapshot    EulaBootstrapResolver
+	NormalizeRole   func(string) string
 }
 
 func (h *SessionHTTPHandlers) Register(mux *http.ServeMux) {
@@ -42,37 +44,17 @@ func (h *SessionHTTPHandlers) Register(mux *http.ServeMux) {
 		return
 	}
 	limit := h.ApplyRateLimit
+	auth := h.RequireAuth
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	mux.HandleFunc("GET /api/v1/session", limit(h.getSession))
+	if auth == nil {
+		auth = func(next http.HandlerFunc) http.HandlerFunc { return next }
+	}
+	mux.HandleFunc("GET /api/v1/session", limit(auth(h.getSession)))
+	mux.HandleFunc("GET /api/v1/session/bootstrap", limit(auth(h.getSessionBootstrap)))
 }
 
 func (h *SessionHTTPHandlers) getSession(w http.ResponseWriter, r *http.Request) {
-	resp := SessionResponseDTO{
-		Timezone: "UTC",
-	}
-	if h.BuildNav != nil {
-		resp.NavItems = h.BuildNav(r.Context())
-	}
-	if snap, ok := authz.SnapshotFromContext(r.Context()); ok {
-		resp.MaskLevel = string(snap.Mask)
-	}
-	if h.ResolveUser != nil {
-		if u, ok := h.ResolveUser(r.Context()); ok {
-			role := u.Role
-			if h.NormalizeRole != nil {
-				role = h.NormalizeRole(role)
-			}
-			resp.Role = role
-			resp.DefaultCustomerID = u.DefaultCustomerID
-		}
-	}
-	if h.Freshness != nil {
-		fresh := h.Freshness(r.Context())
-		if fresh.Stale {
-			resp.StaleBanner = "Analytics may be delayed while ClickHouse catches up."
-		}
-	}
-	httpresponse.JSON(w, http.StatusOK, resp)
+	httpresponse.JSON(w, http.StatusOK, h.buildSessionResponse(r.Context()))
 }

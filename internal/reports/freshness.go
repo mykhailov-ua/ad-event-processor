@@ -6,7 +6,13 @@ import (
 	"time"
 
 	"ad-event-processor/internal/database"
+	"ad-event-processor/pkg/coldpath"
 )
+
+func finalizeDataFreshness(dto DataFreshnessDTO) DataFreshnessDTO {
+	dto.AsOfDisplay = coldpath.RFC3339Display(dto.AsOf)
+	return dto
+}
 
 func DataFreshnessFromClickHouse(ctx context.Context, clickhouseQuery *database.ClickHouseQuery) DataFreshnessDTO {
 	dto := DataFreshnessDTO{
@@ -15,15 +21,15 @@ func DataFreshnessFromClickHouse(ctx context.Context, clickhouseQuery *database.
 	}
 	if clickhouseQuery == nil {
 		dto.Stale = true
-		return dto
+		return finalizeDataFreshness(dto)
 	}
 	lag, err := clickhouseQuery.IngestionLag(ctx)
 	if err != nil {
 		dto.Stale = true
-		return dto
+		return finalizeDataFreshness(dto)
 	}
 	dto.Stale, dto.CHLagSeconds = database.Freshness(lag, 5*time.Minute)
-	return dto
+	return finalizeDataFreshness(dto)
 }
 
 type DataSourceFreshnessDTO struct {
@@ -45,7 +51,7 @@ func PortfolioFreshness(now time.Time, chQueryAvailable bool, chLag time.Duratio
 		Sources:     sources,
 	}
 	if !chQueryAvailable {
-		return dto
+		return finalizeDataFreshness(dto)
 	}
 	sources = append(sources, DataSourceFreshnessDTO{
 		Name:         "money",
@@ -57,7 +63,7 @@ func PortfolioFreshness(now time.Time, chQueryAvailable bool, chLag time.Duratio
 	dto.Consistency = "mixed"
 	dto.Stale = chStale
 	dto.CHLagSeconds = lagSec
-	return dto
+	return finalizeDataFreshness(dto)
 }
 
 func CampaignDashboardFreshness(now time.Time, usedCHMoney bool, chLag time.Duration, chAvailable bool) DataFreshnessDTO {
@@ -72,25 +78,25 @@ func CampaignDashboardFreshness(now time.Time, usedCHMoney bool, chLag time.Dura
 			Stale:        chStale,
 			CHLagSeconds: lagSec,
 		})
-		return DataFreshnessDTO{
+		return finalizeDataFreshness(DataFreshnessDTO{
 			AsOf:         now.Format(time.RFC3339),
 			Consistency:  "mixed",
 			Stale:        chStale,
 			CHLagSeconds: lagSec,
 			Sources:      sources,
-		}
+		})
 	}
 	sources = append(sources, DataSourceFreshnessDTO{
 		Name:        "money",
 		Consistency: "strong",
 		Stale:       false,
 	})
-	return DataFreshnessDTO{
+	return finalizeDataFreshness(DataFreshnessDTO{
 		AsOf:        now.Format(time.RFC3339),
 		Consistency: "strong",
 		Stale:       !chAvailable,
 		Sources:     sources,
-	}
+	})
 }
 
 func WriteBuyerFraudExportPreamble(w *csv.Writer, freshness DataFreshnessDTO) error {

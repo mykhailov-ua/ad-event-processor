@@ -365,7 +365,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 	}
 	// SessionHTTP: SPA bootstrap; CH ingestion lag probe when clickhouseQuery configured (readonly).
 	reg.SessionHTTP = func() *platformadmin.SessionHTTPHandlers {
-		sh := wireSessionHTTPHandlers(func(ctx context.Context) reports.DataFreshnessDTO {
+		sh := wireSessionHTTPHandlers(h.svc, func(ctx context.Context) reports.DataFreshnessDTO {
 			if h.svc != nil && h.svc.clickhouseQuery != nil {
 				lag, _ := h.svc.clickHouseIngestionLag(ctx)
 				return portfolioFreshness(time.Now().UTC(), true, lag)
@@ -373,6 +373,7 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 			return reports.DataFreshnessDTO{Consistency: "eventual"}
 		})
 		sh.ApplyRateLimit = limit
+		sh.RequireAuth = h.adminRequireAuth()
 		return sh
 	}()
 	reg.EulaHTTP = &licensingadmin.EulaHTTPHandlers{

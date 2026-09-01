@@ -327,14 +327,18 @@ func (st *Store) ListBlacklist(ctx context.Context, limit, offset int32) ([]Blac
 }
 
 func blacklistToDTO(r db.IpBlacklist) BlacklistEntry {
+	createdAt := r.CreatedAt.Time.Format(time.RFC3339)
 	dto := BlacklistEntry{
-		ID:        r.ID,
-		IP:        r.Ip,
-		Reason:    r.Reason,
-		CreatedAt: r.CreatedAt.Time.Format(time.RFC3339),
+		ID:               r.ID,
+		IP:               r.Ip,
+		Reason:           r.Reason,
+		CreatedAt:        createdAt,
+		CreatedAtDisplay: coldpath.RFC3339Display(createdAt),
 	}
 	if r.ExpiresAt.Valid {
-		dto.ExpiresAt = r.ExpiresAt.Time.UTC().Format(time.RFC3339)
+		expiresAt := r.ExpiresAt.Time.UTC().Format(time.RFC3339)
+		dto.ExpiresAt = expiresAt
+		dto.ExpiresAtDisplay = coldpath.RFC3339Display(expiresAt)
 	}
 	return dto
 }

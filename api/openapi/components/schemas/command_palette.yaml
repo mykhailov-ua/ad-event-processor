@@ -1,4 +1,3 @@
-api/openapi/components/schemas/command_palette.yaml
 CommandPaletteItem:
   type: object
   required: [id, kind, label, href]

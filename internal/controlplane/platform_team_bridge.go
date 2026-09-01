@@ -149,8 +149,8 @@ func (s *Service) UpdateTeamMember(ctx context.Context, customerID, userID uuid.
 	return s.teamGovernance().UpdateTeamMember(ctx, customerID, userID, in)
 }
 
-func (s *Service) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID) ([]platformadmin.TeamBudgetApprovalDTO, error) {
-	return s.teamGovernance().ListTeamBudgetApprovals(ctx, customerID)
+func (s *Service) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]platformadmin.TeamBudgetApprovalDTO, int64, error) {
+	return s.teamGovernance().ListTeamBudgetApprovals(ctx, customerID, limit, offset)
 }
 
 func (s *Service) ResolveTeamBudgetApproval(ctx context.Context, customerID, approvalID, resolverID uuid.UUID, approve bool) error {

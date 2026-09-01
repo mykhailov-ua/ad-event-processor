@@ -25,5 +25,5 @@
 //
 //	go test ./internal/opsadmin/ -short -count=1
 //	go test ./internal/opsadmin/ -short -run TestComputeStackHealthStatus -count=1
-//	go test ./internal/opsadmin/ -short -run TestStackHealthSnapshot -count=1
+//	go test ./internal/opsadmin/ -short -run TestGetOpsHome -count=1
 package opsadmin

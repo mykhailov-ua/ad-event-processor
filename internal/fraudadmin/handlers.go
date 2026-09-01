@@ -72,7 +72,17 @@ func (h *HTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.Request) {
 		limit = ManualLabelsMaxLimit
 	}
 
-	labels, err := h.Labels.ListMLManualLabelsForCustomer(r.Context(), customerID, limit)
+	offset := 0
+	if raw := strings.TrimSpace(r.URL.Query().Get("offset")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid offset")
+			return
+		}
+		offset = parsed
+	}
+
+	labels, total, err := h.Labels.ListMLManualLabelsForCustomer(r.Context(), customerID, limit, offset)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -80,7 +90,12 @@ func (h *HTTPHandlers) listFraudLabels(w http.ResponseWriter, r *http.Request) {
 	if labels == nil {
 		labels = []MLManualLabelDTO{}
 	}
-	httpresponse.JSON(w, http.StatusOK, labels)
+	httpresponse.JSON(w, http.StatusOK, FraudLabelsListResponse{
+		Items:  labels,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	})
 }
 
 func (h *HTTPHandlers) postFraudLabel(w http.ResponseWriter, r *http.Request) {

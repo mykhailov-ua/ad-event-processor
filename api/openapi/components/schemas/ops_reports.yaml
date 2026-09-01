@@ -18,6 +18,8 @@ DataFreshness:
     as_of:
       type: string
       format: date-time
+    as_of_display:
+      type: string
     consistency:
       type: string
       description: eventual or strong
@@ -338,12 +340,28 @@ DoctorSummary:
     rtb_enabled:
       type: boolean
 
+OpsHomeSnapshot:
+  type: object
+  properties:
+    doctor:
+      $ref: '#/DoctorSummary'
+    stackHealth:
+      $ref: '#/StackHealthSnapshot'
+    dashboardSummary:
+      $ref: '#/DashboardSummary'
+  required:
+  - doctor
+  - stackHealth
+  - dashboardSummary
+
 DashboardSummary:
   type: object
   properties:
     generated_at:
       type: string
       format: date-time
+    generated_at_display:
+      type: string
     services:
       type: array
       items:
@@ -618,6 +636,8 @@ DLQInboxEntry:
     failed_at:
       type: string
       format: date-time
+    failed_at_display:
+      type: string
     status:
       type: string
     retry_count:
@@ -664,9 +684,13 @@ OpsBlacklistEntry:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
     expires_at:
       type: string
       format: date-time
+    expires_at_display:
+      type: string
 
 OpsBlacklistListResponse:
   type: object
@@ -717,6 +741,23 @@ MLManualLabel:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
+
+FraudLabelsListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/MLManualLabel'
+    total:
+      type: integer
+      format: int64
+    limit:
+      type: integer
+    offset:
+      type: integer
 
 FraudManualLabelRequest:
   type: object
@@ -766,6 +807,8 @@ FraudPolicyPreset:
     updated_at:
       type: string
       format: date-time
+    updated_at_display:
+      type: string
 
 PatchFraudPolicyPresetRequest:
   type: object
@@ -813,6 +856,8 @@ FraudDecision:
     evaluated_at:
       type: string
       format: date-time
+    evaluated_at_display:
+      type: string
     disclaimer:
       type: string
     tier:
@@ -850,7 +895,141 @@ FraudDecision:
 RoleDashboard:
   type: object
   additionalProperties: true
-  description: Role-specific dashboard payload (buyer, cfo, adops, accountant, fraud, operator, campaign).
+  description: Role-specific dashboard payload (buyer, cfo, adops, accountant, fraud, operator, campaign). Object-array fields may be capped at 100 rows; when truncated, table_sections_meta maps section keys to { truncated, total }.
+
+DashboardSeriesPoint:
+  type: object
+  properties:
+    label:
+      type: string
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    blocks:
+      type: integer
+      format: int64
+    spend_micros:
+      type: integer
+      format: int64
+    spend_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+
+DashboardBreakdownRow:
+  type: object
+  properties:
+    id:
+      type: string
+    name:
+      type: string
+    clicks:
+      type: integer
+      format: int64
+    unique_clicks:
+      type: integer
+      format: int64
+    impressions:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    cost_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    roi_pct:
+      type: number
+      format: double
+
+DashboardBreakdownTotals:
+  type: object
+  properties:
+    clicks:
+      type: integer
+      format: int64
+    unique_clicks:
+      type: integer
+      format: int64
+    impressions:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    cost_micro:
+      type: integer
+      format: int64
+    revenue_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    roi_pct:
+      type: number
+      format: double
+
+DashboardBreakdownTable:
+  type: object
+  properties:
+    rows:
+      type: array
+      items:
+        $ref: '#/DashboardBreakdownRow'
+    totals:
+      $ref: '#/DashboardBreakdownTotals'
+    truncated:
+      type: boolean
+    total:
+      type: integer
+
+DashboardBreakdowns:
+  type: object
+  properties:
+    campaigns:
+      $ref: '#/DashboardBreakdownTable'
+    sources:
+      $ref: '#/DashboardBreakdownTable'
+    landers:
+      $ref: '#/DashboardBreakdownTable'
+    offers:
+      $ref: '#/DashboardBreakdownTable'
+
+BuyerPortfolioDashboard:
+  type: object
+  properties:
+    customer_id:
+      type: string
+      format: uuid
+    series:
+      type: array
+      items:
+        $ref: '#/DashboardSeriesPoint'
+    breakdowns:
+      $ref: '#/DashboardBreakdowns'
+    recent_clicks:
+      type: array
+      items:
+        $ref: '#/ClickLogEvent'
+  description: Buyer dashboard home payload (subset of RoleDashboard buyer response).
 
 ClickLogEvent:
   type: object
@@ -1138,6 +1317,8 @@ FraudEvidencePack:
     generated_at:
       type: string
       format: date-time
+    generated_at_display:
+      type: string
     range_from:
       type: string
       format: date-time

@@ -100,10 +100,20 @@ Admin contracts: `api/openapi/` and `.cursor/rules/ui.mdc`. Buyer-facing feature
 
 Single `cmd/control` modular monolith:
 
-- Admin HTTP API (`/api/v1/*`); React SPA (`web/`) not shipped in this tree — static boot stub only until UI returns.
+- Admin HTTP API (`/api/v1/*`) and React operator SPA in `web/` (esbuild + Tailwind + shadcn/ui). `npm run build` syncs assets into `internal/controlplane/admin_static_stub/` for `go:embed`.
 - ~290 `/api/v1` routes: campaigns, customers, brands/creatives, supply (`sellers.json`, `ads.txt`), billing/invoices, ledger, disputes, margin guard, smart alerts, domains/TLS, flows/landers/offers, team/RBAC, integration schemas, postbacks, RTB admin, recon, reports, self-serve, Telegram, license, ops (DLQ, outbox, shards, doctor).
 
 Outbox: every config mutation + `outbox_events` in the same PG transaction; `OutboxWorker` polls ~20 ms and applies Redis side effects. Tracker never polls outbox.
+
+**Admin UI verification** (see [FRONTEND.md](FRONTEND.md)):
+
+```bash
+make openapi-types
+cd web && npm ci && npm run typecheck && npm run build
+bash scripts/ci/admin/web.sh
+ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web.sh          # smoke Playwright (stack on :8188)
+ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/test/admin_stack_e2e.sh  # compose + smoke + full matrix
+```
 
 ### Integrations
 

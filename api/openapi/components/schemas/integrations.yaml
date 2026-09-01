@@ -85,6 +85,36 @@ PostbackCampaignStatus:
       type: integer
       format: int64
 
+PostbacksSnapshot:
+  type: object
+  required: [configs, dlq, campaignStatus]
+  properties:
+    configs:
+      type: array
+      items:
+        $ref: '#/PostbackConfig'
+    dlq:
+      type: array
+      items:
+        $ref: '#/PostbackDlqEntry'
+    campaignStatus:
+      type: array
+      items:
+        $ref: '#/PostbackCampaignStatus'
+
+IntegrationSnapshot:
+  type: object
+  required: [schemas, templates]
+  properties:
+    schemas:
+      type: array
+      items:
+        $ref: '#/IntegrationSchema'
+    templates:
+      type: array
+      items:
+        $ref: '#/IntegrationTemplateCatalogEntry'
+
 PostbackDryRunResult:
   type: object
   required: [ok, provider, test_event]

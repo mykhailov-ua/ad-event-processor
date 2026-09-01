@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/domain"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -21,22 +22,39 @@ func normalizeFraudLabelLimit(limit int) int {
 	return limit
 }
 
-func (l *Labels) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit int) ([]MLManualLabelDTO, error) {
+func normalizeFraudLabelOffset(offset int) int {
+	if offset < 0 {
+		return 0
+	}
+	return offset
+}
+
+func (l *Labels) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]MLManualLabelDTO, int64, error) {
 	if customerID == uuid.Nil {
-		return nil, ValidationError("customer_id is required")
+		return nil, 0, ValidationError("customer_id is required")
 	}
 	if l == nil || l.host == nil || l.host.LabelsPool() == nil {
-		return nil, fmt.Errorf("postgres pool not configured")
+		return nil, 0, fmt.Errorf("postgres pool not configured")
 	}
 	limit = normalizeFraudLabelLimit(limit)
+	offset = normalizeFraudLabelOffset(offset)
+
+	var total int64
+	if err := l.host.LabelsPool().QueryRow(ctx, `
+		SELECT count(*)
+		FROM ml_manual_labels
+		WHERE customer_id = $1`, domain.ToUUID(customerID)).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count ml_manual_labels: %w", err)
+	}
+
 	rows, err := l.host.LabelsPool().Query(ctx, `
 		SELECT ip_hash, label, reason, source, created_at
 		FROM ml_manual_labels
 		WHERE customer_id = $1
 		ORDER BY created_at DESC
-		LIMIT $2`, domain.ToUUID(customerID), limit)
+		LIMIT $2 OFFSET $3`, domain.ToUUID(customerID), limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("query ml_manual_labels: %w", err)
+		return nil, 0, fmt.Errorf("query ml_manual_labels: %w", err)
 	}
 	defer rows.Close()
 
@@ -45,12 +63,16 @@ func (l *Labels) ListMLManualLabelsForCustomer(ctx context.Context, customerID u
 		var row MLManualLabelDTO
 		var createdAt time.Time
 		if err := rows.Scan(&row.IPHash, &row.Label, &row.Reason, &row.Source, &createdAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		row.CreatedAt = createdAt.UTC().Format(time.RFC3339)
+		row.CreatedAtDisplay = coldpath.RFC3339Display(row.CreatedAt)
 		out = append(out, row)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, 0, err
+	}
+	return out, total, nil
 }
 
 func (l *Labels) UpsertMLManualLabelForCustomer(ctx context.Context, customerID uuid.UUID, ipHash string, label int, reason string) error {

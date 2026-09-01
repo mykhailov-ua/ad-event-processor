@@ -10,6 +10,7 @@ import (
 
 	"ad-event-processor/internal/domain"
 	db "ad-event-processor/internal/domain/db"
+	"ad-event-processor/pkg/coldpath"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -41,13 +42,15 @@ func InvalidatePolicyPresetCache() {
 }
 
 func policyPresetDTO(row policyPresetRow) FraudPolicyPresetDTO {
+	updatedAt := row.updatedAt.UTC().Format(time.RFC3339)
 	return FraudPolicyPresetDTO{
-		Name:      row.name,
-		Pass:      row.pass,
-		Suspect:   row.suspect,
-		IVT:       row.ivt,
-		Block:     row.block,
-		UpdatedAt: row.updatedAt.UTC().Format(time.RFC3339),
+		Name:             row.name,
+		Pass:             row.pass,
+		Suspect:          row.suspect,
+		IVT:              row.ivt,
+		Block:            row.block,
+		UpdatedAt:        updatedAt,
+		UpdatedAtDisplay: coldpath.RFC3339Display(updatedAt),
 	}
 }
 

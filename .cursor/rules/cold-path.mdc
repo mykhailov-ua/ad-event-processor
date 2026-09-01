@@ -178,7 +178,7 @@ Flat under `internal/<name>/`:
 
 ## Admin UI (cold surface)
 
-React 19 + TypeScript in `web/`. Tokens in `web/src/styles/tokens.css` - no hard-coded hex.
+React 19 + TypeScript in `web/`. Styling: Tailwind CSS + shadcn/ui theme tokens in `globals.css` — no hard-coded hex.
 
 Anti-slop: `ui.mdc`, `anti-slop.mdc`. Run `bash scripts/ci/admin/web.sh` before claiming UI done.
 

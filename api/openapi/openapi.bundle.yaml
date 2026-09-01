@@ -363,14 +363,6 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}
     /api/v1/automation/rules/{id}/dry-run:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1automation~1rules~1{id}~1dry-run
-    /api/v1/traffic-optimizer/presets:
-        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1presets
-    /api/v1/traffic-optimizer/rules:
-        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules
-    /api/v1/traffic-optimizer/rules/{id}:
-        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}
-    /api/v1/traffic-optimizer/rules/{id}/dry-run:
-        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1dry-run
     /api/v1/billing/crypto/webhook:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1billing~1crypto~1webhook
     /api/v1/billing/exports:
@@ -479,6 +471,14 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1onboarding-templates
     /api/v1/campaigns/wizard/session:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1wizard~1session
+    /api/v1/command-palette/open:
+        $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1open
+    /api/v1/command-palette/recents:
+        $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1recents
+    /api/v1/command-palette/routes:
+        $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1routes
+    /api/v1/command-palette/search:
+        $ref: paths/command_palette.yaml#/paths/~1api~1v1~1command-palette~1search
     /api/v1/consent:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1consent
     /api/v1/cost-sync/credentials:
@@ -491,6 +491,8 @@ paths:
         $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1networks
     /api/v1/cost-sync/run:
         $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1run
+    /api/v1/cost-sync/snapshot:
+        $ref: paths/cost_sync.yaml#/paths/~1api~1v1~1cost-sync~1snapshot
     /api/v1/customers:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1customers
     /api/v1/customers/{id}:
@@ -567,6 +569,8 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas~1{id}
     /api/v1/integration/schemas/{id}/apply:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1schemas~1{id}~1apply
+    /api/v1/integration/snapshot:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1snapshot
     /api/v1/integration/templates:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1integration~1templates
     /api/v1/integration/templates/import:
@@ -625,6 +629,8 @@ paths:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1fraud~1presets~1{name}
     /api/v1/ops/health/snapshot:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1health~1snapshot
+    /api/v1/ops/home:
+        $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1home
     /api/v1/ops/incidents:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1ops~1incidents
     /api/v1/ops/ml-model:
@@ -669,6 +675,32 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq
     /api/v1/postbacks/dlq/{id}/retry:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1dlq~1{id}~1retry
+    /api/v1/postbacks/snapshot:
+        $ref: paths/integrations.yaml#/paths/~1api~1v1~1postbacks~1snapshot
+    /api/v1/public/activate:
+        post:
+            description: Route stub; schema not yet documented
+            operationId: postPublicActivate
+            responses:
+                "200":
+                    description: OK
+                default:
+                    $ref: openapi.yaml#/components/responses/Error
+            summary: Route stub; schema not yet documented
+            tags:
+                - public
+    /api/v1/public/invite/accept:
+        post:
+            description: Route stub; schema not yet documented
+            operationId: postPublicInviteAccept
+            responses:
+                "200":
+                    description: OK
+                default:
+                    $ref: openapi.yaml#/components/responses/Error
+            summary: Route stub; schema not yet documented
+            tags:
+                - public
     /api/v1/publisher/dashboard:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1publisher~1dashboard
     /api/v1/publisher/statements:
@@ -815,6 +847,8 @@ paths:
         $ref: paths/billing.yaml#/paths/~1api~1v1~1selfserve~1templates
     /api/v1/session:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1session
+    /api/v1/session/bootstrap:
+        $ref: paths/platform.yaml#/paths/~1api~1v1~1session~1bootstrap
     /api/v1/settings/platform:
         $ref: paths/platform.yaml#/paths/~1api~1v1~1settings~1platform
     /api/v1/settings/platform/apply:
@@ -881,6 +915,14 @@ paths:
         $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1validate
     /api/v1/telegram/webhook/{bot_id}:
         $ref: paths/telegram_ops.yaml#/paths/~1api~1v1~1telegram~1webhook~1{bot_id}
+    /api/v1/traffic-optimizer/presets:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1presets
+    /api/v1/traffic-optimizer/rules:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules
+    /api/v1/traffic-optimizer/rules/{id}:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}
+    /api/v1/traffic-optimizer/rules/{id}/dry-run:
+        $ref: paths/traffic_optimizer.yaml#/paths/~1api~1v1~1traffic-optimizer~1rules~1{id}~1dry-run
     /api/v1/views:
         $ref: paths/ops_reports.yaml#/paths/~1api~1v1~1views
     /api/v1/views/{id}:
@@ -911,6 +953,8 @@ tags:
       name: automation
     - description: Traffic weight optimization rules by CR, EPC, ROI, or revenue
       name: traffic-optimizer
+    - description: Admin global search and navigation index (Ctrl+K)
+      name: command-palette
     - description: External ad platform link and mutation API (Enterprise SKU)
       name: platform-campaigns
     - description: Campaign CRUD, fraud, stats, clone, and owner assignment

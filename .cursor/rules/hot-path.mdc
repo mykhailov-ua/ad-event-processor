@@ -20,6 +20,8 @@ Apply when changing `/track`, `/click`, `/tg/click`, `/openrtb/bid`, filters, pa
 
 Reference: `parser.mdc`, `tradeoffs.mdc`, `architecture.mdc`. Anti-slop: `anti-slop.mdc`.
 
+**Out of scope:** `deploy/edge/xdp/bpf/edge_filter.c` and `cmd/edge-xdp` are NIC L4 XDP programs, not tracker ingest. Full BPF C rules: `xdp-bpf.mdc`. Operator/sync context: `edge.mdc`. Tracker must not import `internal/edge` (`architecture.mdc`).
+
 ## SLA
 
 Non-negotiable budgets: `core.mdc`. Financial rule: **fail closed** (503) - never accept spend without debit + stream reservation aligned.
@@ -227,6 +229,12 @@ Agents must not claim production hot-path behavior from unit mocks alone. Full l
 | Admission/rollback | Named holdout tests in `anti-slop.mdc` table |
 | CI green | State tier: `test-fast` vs `test-integration` vs `test-fault` vs `test-alloc-gate` |
 
+## XDP NIC path (not tracker ingest)
+
+Separate layer: `xdp-bpf.mdc` (map contracts, token bucket math, verifier bounds, verification tiers). Do not apply tracker alloc/escape gates to `edge_filter.c`.
+
+Claiming tracker p99 or Redis filter behavior from XDP tests is a boundary violation (`boundaries.mdc`).
+
 ## Related rules
 
-`anti-slop.mdc`, `architecture.mdc`, `core.mdc`, `data-layer.mdc`, `edge.mdc`, `load-test-bpf.mdc`, `parser.mdc`, `rtb.mdc`.
+`anti-slop.mdc`, `architecture.mdc`, `core.mdc`, `data-layer.mdc`, `edge.mdc`, `load-test-bpf.mdc`, `parser.mdc`, `rtb.mdc`, `xdp-bpf.mdc`.

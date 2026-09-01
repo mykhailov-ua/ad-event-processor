@@ -55,9 +55,9 @@ Recurring ways agents ship plausible diffs that fail review. Generalized from ad
 | Unrun verification | typecheck / gate / test passed | Command not executed or no output pasted | Paste command + path + exit code; or state not run (`quality.mdc`) |
 | Piecemeal tree change | Incremental progress | Half-deleted tree, broken imports, mixed eras | Atomic remove or recreate per operator direction; server stub stays embed-only |
 | Scope creep | "Small related fix" | Handlers, embed, Docker, CI touched without ask | List server-touching steps in the PR before doing them |
-| Git archaeology | Restored "working" UI from old commit | Pre-spec patterns return (wrappers, flex, stale components) | Rebuild from `ui.mdc` + OpenAPI; no history copy without waiver |
-| Wrapper stack | New chrome fixes layout | Matryoshka abstractions hide grid violation | One section = one module; revert on reject, no compensating wrappers |
-| Layout contract drift | Page "works" in preview | Flex/portrait/portal listbox instead of agreed grid | Grid contract written before TSX/CSS |
+| Git archaeology | Restored "working" UI from old commit | Pre-spec patterns return (wrappers, stale layout, custom overlays) | Rebuild from `ui.mdc` + OpenAPI; no history copy without waiver |
+| Wrapper stack | New chrome fixes layout | Matryoshka abstractions hide section grid contract | One section = one module; revert on reject, no compensating wrappers |
+| Layout contract drift | Page "works" in preview | Macro shell built from flex columns; hand-rolled overlays | Macro Grid + micro Flex per `ui.mdc`; headless primitives for overlays |
 | Double chrome | Chip/badge looks correct | Nested borders/padding on parent + child | One chip root; parent renders chip directly |
 | Client cold-path smuggle | Fast interactive filters | `useMemo` sort/filter or business rules in browser | Server query params; client fetch + parse only |
 | Layer on rejection | "One more fix" after stop | Rejected architecture compounds | `git revert` slice; deliver only what was asked |
@@ -84,7 +84,7 @@ Stop implementation. Do not add wrappers, portals, or CI layers. Revert the reje
 
 ## Admin UI status
 
-`web/` removed 2026-08-27. Boot stub: `internal/controlplane/admin_static_stub/`. Rebuild from `ui.mdc` + `frontend-modular.mdc` + OpenAPI when `web/` returns. Spec-only or doc-only ask: no code diff in the same turn. Rejected slice: revert; no compensating wrappers or portals.
+`web/` active — React 19 + TSX + Tailwind + shadcn/ui. Boot stub until `web/dist` embeds: `internal/controlplane/admin_static_stub/`. Contract: `ui.mdc` + `frontend-modular.mdc` + OpenAPI. Spec-only or doc-only ask: no code diff in the same turn. Rejected slice: revert; no compensating wrappers or portals.
 
 ## Hot path dishonesty (ingestion, broker, stream, tests)
 
@@ -308,6 +308,13 @@ Applies to `README.md`, `docs/`, `deploy/vendor/`, admin user-visible copy, Graf
 | Fraud stream parity | "All fraud rejects in CH" | Silent accept enqueues fraud stream; hard 403 must too if funnels count blocks |
 | `silent_reject_event` unset | Silent reject returns 202 but analytics empty | Set event flag on silent accept; CH column `silent_reject_event`; not legacy `ghost_event` in new code |
 | XDP stops residential fraud | XDP drops listed L3/L4; rotating proxies evade host maps | "L4 flood + known IPs"; optional `ebpf_xdp_edge` |
+| XDP token bucket "starvation bug" | Legacy `last_ns=now` on every pass is stricter than config, not 100% drop above rate | Cite `TestTokenBucket_subintervalCredit_holdout`; fixed in `token_bucket_consume_existing` |
+| XDP PERCPU "race" on lookup+update | PERCPU shards are per-CPU; in-place mutate is safe; issue was redundant `update_elem` | `edge.mdc` PERCPU table |
+| XDP ICMP "tracker scoped" | IPv4 ICMP was global drop; PMTUD Type 3 Code 4 now `XDP_PASS` | `TestXDP_dropNonTCPOnTrackerPort/icmp_pmtud_pass` |
+| XDP fingerprint MSS | `read_tcp_mss` must TLV-walk options (NOP before MSS) | `TCPOPT_NOP` in `TestEdgeFilterRateLimitPerCPUHash_holdout` |
+| XDP syn-cookie "full TCP" | SYN-ACK is doff=5 by design; not a parser bug | `TestFault_XDPSynCookieWithTCPOptions` |
+| XDP tail-call "wired" | Miss must emit violation+stat; silent return banned | `syn_cookie_tail_call` + `goto out` in `edge.mdc` |
+| XDP math from prog.Test only | `prog.Test` needs CAP_BPF; bucket proof is Go sim | `xdp-bpf.mdc` **Verification tiers** |
 | JA3/TCP MSS as client signals | Tracker reads edge headers; CDN terminates TCP | CDN disclaimer; `edge.mdc` disable flags |
 | "Guarantee", "never" (ML on hot path) | OK if qualified: ML in sidecar only | "Batch only"; cite `cmd/fraud-scorer` |
 | Mixed ns / us / ms in one claim | Different layers have different budgets | Table per layer: edge, local filter, Redis Lua, handler E2E |
@@ -390,7 +397,7 @@ Tracker p95/p99 SLA = load test / Prometheus (`malformed.sh`, `parser_chaos_load
 
 Scripts: `check_ui_slop.sh`, `report_live_routes_gate.sh` (when `web/` exists).
 
-**Status:** `web/` removed (2026-08-27). Before admin UI code: explicit operator spec + `ui.mdc` contract.
+**Status:** `web/` active. Before new admin UI: explicit operator spec + `ui.mdc` contract (Tailwind + shadcn/ui).
 
 Forbidden when `web/src/**` exists:
 

@@ -15,8 +15,8 @@ type LabelsAPI struct {
 	Host LabelsHost
 }
 
-func (a LabelsAPI) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit int) ([]MLManualLabelDTO, error) {
-	return NewLabels(a.Host).ListMLManualLabelsForCustomer(ctx, customerID, limit)
+func (a LabelsAPI) ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]MLManualLabelDTO, int64, error) {
+	return NewLabels(a.Host).ListMLManualLabelsForCustomer(ctx, customerID, limit, offset)
 }
 
 func (a LabelsAPI) UpsertMLManualLabelForCustomer(ctx context.Context, customerID uuid.UUID, ipHash string, label int, reason string) error {

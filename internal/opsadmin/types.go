@@ -74,19 +74,20 @@ type AffectedCampaignDTO struct {
 }
 
 type DLQInboxEntryDTO struct {
-	ID         string `json:"id"`
-	Source     string `json:"source"`
-	CampaignID string `json:"campaign_id,omitempty"`
-	EventType  string `json:"event_type,omitempty"`
-	Error      string `json:"error,omitempty"`
-	FailedAt   string `json:"failed_at,omitempty"`
-	Status     string `json:"status,omitempty"`
-	RetryCount int32  `json:"retry_count,omitempty"`
-	ShardID    int    `json:"shard_id,omitempty"`
-	StreamID   string `json:"stream_id,omitempty"`
-	EntryID    string `json:"entry_id,omitempty"`
-	ClickID    string `json:"click_id,omitempty"`
-	Provider   string `json:"provider,omitempty"`
+	ID              string `json:"id"`
+	Source          string `json:"source"`
+	CampaignID      string `json:"campaign_id,omitempty"`
+	EventType       string `json:"event_type,omitempty"`
+	Error           string `json:"error,omitempty"`
+	FailedAt        string `json:"failed_at,omitempty"`
+	FailedAtDisplay string `json:"failed_at_display,omitempty"`
+	Status          string `json:"status,omitempty"`
+	RetryCount      int32  `json:"retry_count,omitempty"`
+	ShardID         int    `json:"shard_id,omitempty"`
+	StreamID        string `json:"stream_id,omitempty"`
+	EntryID         string `json:"entry_id,omitempty"`
+	ClickID         string `json:"click_id,omitempty"`
+	Provider        string `json:"provider,omitempty"`
 }
 
 type DLQInboxListResult struct {
@@ -237,13 +238,14 @@ type DashboardServiceCard struct {
 }
 
 type DashboardSummaryDTO struct {
-	GeneratedAt      string                 `json:"generated_at"`
-	Services         []DashboardServiceCard `json:"services"`
-	DriftMicroMax    float64                `json:"drift_micro_max"`
-	DriftAlert       bool                   `json:"drift_alert"`
-	RPSEstimate      float64                `json:"rps_estimate"`
-	OutboxPending    int64                  `json:"outbox_pending"`
-	EmergencyBreaker string                 `json:"emergency_breaker"`
+	GeneratedAt        string                 `json:"generated_at"`
+	GeneratedAtDisplay string                 `json:"generated_at_display,omitempty"`
+	Services           []DashboardServiceCard `json:"services"`
+	DriftMicroMax      float64                `json:"drift_micro_max"`
+	DriftAlert         bool                   `json:"drift_alert"`
+	RPSEstimate        float64                `json:"rps_estimate"`
+	OutboxPending      int64                  `json:"outbox_pending"`
+	EmergencyBreaker   string                 `json:"emergency_breaker"`
 }
 
 type DashboardMetricPoint struct {

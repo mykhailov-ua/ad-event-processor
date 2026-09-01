@@ -146,9 +146,13 @@ Campaign:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
     updated_at:
       type: string
       format: date-time
+    updated_at_display:
+      type: string
     margin_breach:
       type: boolean
 

@@ -27,7 +27,7 @@ func (s *stubBuyerPortfolio) GetBuyerPortfolio(_ context.Context, customerID uui
 	return s.portfolio, nil
 }
 
-func (s *stubBuyerPortfolio) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, _, _ time.Time) (BuyerPortfolioDTO, error) {
+func (s *stubBuyerPortfolio) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, _ *uuid.UUID, _, _ time.Time) (BuyerPortfolioDTO, error) {
 	return s.GetBuyerPortfolio(ctx, customerID)
 }
 

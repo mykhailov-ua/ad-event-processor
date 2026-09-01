@@ -23,6 +23,8 @@ AuditLog:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
 
 Customer:
   type: object
@@ -46,9 +48,13 @@ Customer:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
     updated_at:
       type: string
       format: date-time
+    updated_at_display:
+      type: string
 
 CustomerListResponse:
   type: object
@@ -269,6 +275,40 @@ SessionResponse:
       type: array
       items:
         $ref: '#/SessionNavItem'
+
+SessionBootstrapUser:
+  type: object
+  required: [id, role, customer_id]
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+    role:
+      type: string
+    customer_id:
+      type: string
+      format: uuid
+    permissions:
+      type: array
+      items:
+        type: string
+
+SessionBootstrap:
+  type: object
+  required: [user, session]
+  properties:
+    user:
+      $ref: '#/SessionBootstrapUser'
+    session:
+      $ref: '#/SessionResponse'
+    eula_required:
+      type: boolean
+    eula_accepted:
+      type: boolean
+    eula_version:
+      type: string
 
 ConsentRecord:
   type: object
@@ -515,6 +555,8 @@ TeamMember:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
     is_blocked:
       type: boolean
     spend_cap_micro:
@@ -544,6 +586,38 @@ TeamBudgetApproval:
     created_at:
       type: string
       format: date-time
+    created_at_display:
+      type: string
+
+TeamBudgetApprovalsListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/TeamBudgetApproval'
+    total:
+      type: integer
+      format: int64
+    limit:
+      type: integer
+    offset:
+      type: integer
+
+TeamMembersListResponse:
+  type: object
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/TeamMember'
+    total:
+      type: integer
+      format: int64
+    limit:
+      type: integer
+    offset:
+      type: integer
 
 TeamLicense:
   type: object

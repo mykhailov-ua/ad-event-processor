@@ -23,6 +23,8 @@ func RegisterRoutes(h *campaign.CampaignsHTTPHandlers, mux *http.ServeMux, limit
 	mux.HandleFunc("GET /api/v1/campaigns/{id}/diff", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, route(h, getCampaignDiff))))
 	mux.HandleFunc("POST /api/v1/campaigns/{id}/clone-preview", limit(perm([]string{"campaigns:write"}, route(h, postCampaignClonePreview))))
 	mux.HandleFunc("POST /api/v1/campaigns/bulk-action", limit(perm([]string{"campaigns:write"}, route(h, postCampaignBulk))))
+	mux.HandleFunc("POST /api/v1/campaigns/bulk", limit(perm([]string{"campaigns:write"}, route(h, postCampaignBulk))))
+	mux.HandleFunc("GET /api/v1/campaigns/{id}/placement-block-suggestions", limit(perm([]string{"campaigns:read"}, route(h, getPlacementBlockSuggestions))))
 	mux.HandleFunc("GET /api/v1/campaigns/placements/ivt", limit(perm([]string{"campaigns:read"}, route(h, getPlacementBlockSuggestions))))
 }
 

@@ -86,7 +86,7 @@ func (h *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r
 		return
 	}
 	if len(campaignIDs) == 0 {
-		httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{Rows: []map[string]any{}, Freshness: h.reportFreshness(r.Context())})
+		httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(nil, h.reportFreshness(r.Context()), ""))
 		return
 	}
 
@@ -112,11 +112,7 @@ func (h *ReportsHTTPHandlers) getCostSyncCoverageReport(w http.ResponseWriter, r
 	if int64(page.Offset)+int64(len(out)) < total {
 		nextCursor = coldpath.EncodeCursor(page.Offset + page.Limit)
 	}
-	httpresponse.JSON(w, http.StatusOK, ReportRowsResponse{
-		Rows:       out,
-		Freshness:  h.reportFreshness(r.Context()),
-		NextCursor: nextCursor,
-	})
+	httpresponse.JSON(w, http.StatusOK, NewReportRowsResponse(out, h.reportFreshness(r.Context()), nextCursor))
 }
 
 func queryCostCoverageRows(

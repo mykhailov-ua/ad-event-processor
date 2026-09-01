@@ -265,6 +265,27 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/session/bootstrap:
+    get:
+      tags: [meta]
+      operationId: sessionBootstrap
+      summary: Authenticated user, session shell, and EULA flags in one response
+      responses:
+        '200':
+          description: Session bootstrap payload
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/SessionBootstrap'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/publisher/dashboard:
     get:
       tags: [publisher]
@@ -601,7 +622,8 @@ paths:
     get:
       tags: [team]
       operationId: teamOverview
-      summary: Team roster and license snapshot
+      summary: Team license and balance snapshot
+      description: Member roster is paginated via GET /api/v1/team/members; members is always an empty array.
       x-permissions: [campaigns:read, billing:read]
       parameters:
         - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
@@ -616,6 +638,24 @@ paths:
           $ref: '../openapi.yaml#/components/responses/Error'
 
   /api/v1/team/members:
+    get:
+      tags: [team]
+      operationId: teamMembersList
+      summary: Paginated team members for a customer
+      x-permissions: [campaigns:read, billing:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
+      responses:
+        '200':
+          description: Members page
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/platform.yaml#/TeamMembersListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
     post:
       tags: [team]
       operationId: teamInviteMember
@@ -666,15 +706,17 @@ paths:
       operationId: teamBudgetApprovalsList
       summary: Pending budget approval requests
       x-permissions: [campaigns:read, billing:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQueryRequired'
+        - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
+        - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:
         '200':
-          description: Approvals
+          description: Approvals page
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '../components/schemas/platform.yaml#/TeamBudgetApproval'
+                $ref: '../components/schemas/platform.yaml#/TeamBudgetApprovalsListResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

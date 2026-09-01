@@ -7,6 +7,8 @@ import (
 
 	"ad-event-processor/internal/domain/db"
 
+	"ad-event-processor/pkg/coldpath"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -28,14 +30,16 @@ func (r *Reader) GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, 
 	if err != nil {
 		return DashboardSummaryDTO{}, err
 	}
+	generatedAt := now.Format(time.RFC3339)
 	return DashboardSummaryDTO{
-		GeneratedAt:      now.Format(time.RFC3339),
-		Services:         services,
-		DriftMicroMax:    driftMax,
-		DriftAlert:       driftMax > 0,
-		RPSEstimate:      rps,
-		OutboxPending:    snap.Outbox.Pending,
-		EmergencyBreaker: snap.EmergencyBreaker,
+		GeneratedAt:        generatedAt,
+		GeneratedAtDisplay: coldpath.RFC3339Display(generatedAt),
+		Services:           services,
+		DriftMicroMax:      driftMax,
+		DriftAlert:         driftMax > 0,
+		RPSEstimate:        rps,
+		OutboxPending:      snap.Outbox.Pending,
+		EmergencyBreaker:   snap.EmergencyBreaker,
 	}, nil
 }
 

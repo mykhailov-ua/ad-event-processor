@@ -69,7 +69,7 @@ internal/ingestion -> internal/domain, pkg/*, internal/rtb (auction glue)
 pkg/* -> stdlib and other pkg/* only
 internal/controlplane -> internal/<svc>/db, pkg/*, NOT internal/ingestion hot handlers
 web/src/helpers/*_api.ts -> fetch + JSON parse only; NO business rules
-web/src/pages/* -> compose ui/<domain>/ sections; NO *.module.css import
+web/src/pages/* -> compose ui/<domain>/ sections; no page-level Tailwind layout
 ```
 
 Banned import/ceremony patterns:
@@ -93,7 +93,7 @@ One agent task = **one owning layer**. Crossing layers in the same PR without ex
 | `api/openapi/` + `*_handlers.go` | Wire contract, query params, handler DTO, validation, SQL/CH in handler | `web/src` pages (unless PR closes both) |
 | `internal/ingestion/` | Accept/reject, filter, stream/broker enqueue | Admin PATCH semantics, outbox workers |
 | `web/src/pages/` | Compose sections, URL -> fetch params | Filter/sort/aggregate logic, OpenAPI edits |
-| `web/src/ui/<domain>/` | Grid, chips, local open state | API field invention, cross-page Context |
+| `web/src/ui/<domain>/` | Macro Grid, micro Flex, chips, shadcn overlays | API field invention, cross-page Context |
 | `web/src/helpers/*_api.ts` | HTTP + parse to typed snapshot | `useMemo` filter over full `items[]` |
 
 Full frontend isolation levels (L0–L6): `frontend-modular.mdc`.
@@ -213,6 +213,8 @@ Debit/accept succeeds; **no row** on authoritative sink. Trace every hop before 
 | Budget drift | Spend path fault | `AssertBudgetInvariant` |
 | Parser edge drift | Nginx vs gnet | `TestChaos_CrossHop_NginxGnet` `differential_count=0` |
 | Broker cutover loss | Shadow only | `TestFault_BrokerShadowCutover_NoEventLoss` |
+| XDP token bucket credit | Revert `last_ns += (added*NS)/rate` | `TestTokenBucket_subintervalCredit_holdout` (fixed must beat legacy) |
+| XDP PERCPU in-place update | Revert to always `update_elem` | `TestEdgeFilterRateLimitPerCPUHash_holdout` source grep |
 
 Weakening or deleting these holdouts to green CI is a boundary violation.
 
@@ -225,6 +227,8 @@ Weakening or deleting these holdouts to green CI is a boundary violation.
 | "Filter SLA" | `BenchmarkUnifiedFilter_Check_mock` | Load test p99 (`core.mdc`) |
 | "Admin API matches UI" | Go unit only | `openapi_gate.sh` + handler parity test |
 | "E2E admin" | Stub static only | Milestone section 7 with `typecheck` when `web/` exists |
+| "XDP bucket correct" | `TestXDP_*` only | `TestTokenBucket_*` sim + source holdout (`testing.mdc`) |
+| "XDP BPF compiled" | Source edit only | `make gen bpf-dev` pasted exit code |
 
 ### Lie type F - admin / contract tests
 
@@ -258,6 +262,7 @@ Weakening or deleting these holdouts to green CI is a boundary violation.
 | 5 | Mock in PR description -> valid scope row from table above |
 | 6 | Touch hot producer/filter -> cite holdout tests by name |
 | 7 | Operator rejects slice -> revert; no compensating layer |
+| 8 | XDP `edge_filter.c` edit -> `xdp-bpf.mdc` checklist + named verification tier |
 
 ## Related rules
 

@@ -173,6 +173,31 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 		reportJobs = h.svc.InitReportJobRunner(reportExportDirFromWire())
 	}
 
+	doctorHTTP := &doctor.DoctorHTTPHandlers{
+		Config: h.cfg,
+		PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
+			cfg, _, err := svc.GetPlatformConfig(ctx)
+			return cfg, err
+		},
+		ProbeDeps: doctor.ProbeDeps{
+			Config: h.cfg,
+			Redis: func(ctx context.Context) ([]redis.UniversalClient, error) {
+				return svc.RedisShards(), nil
+			},
+			PGPool: func(ctx context.Context) (*pgxpool.Pool, error) {
+				return svc.GetPool(), nil
+			},
+			LicenseState:       licenseWatcherState,
+			LicenseDiagnostics: licenseWatcherDiagnostics,
+			XDPStatsReader: func(ctx context.Context) (edge.Snapshot, error) {
+				return edge.ReadRedisAny(ctx, svc.RedisShards())
+			},
+		},
+		ApplyRateLimit:    limit,
+		RequirePermission: perm,
+		WriteServiceError: writeErr,
+	}
+
 	// Phase-1 registry: billing, ops, doctor, licensing; webhooks and export omit standard perm stack.
 	reg := RouteRegistry{
 		BillingHTTP: &billingadmin.HTTPHandlers{
@@ -202,30 +227,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			CryptomusAPIKey:     string(h.cfg.CryptomusAPIKey),
 		},
 		// DoctorHTTP ProbeDeps: synchronous cold probes (Redis shards, PG pool, license, edge XDP snapshot).
-		DoctorHTTP: &doctor.DoctorHTTPHandlers{
-			Config: h.cfg,
-			PlatformConfig: func(ctx context.Context) (platformconfig.Config, error) {
-				cfg, _, err := svc.GetPlatformConfig(ctx)
-				return cfg, err
-			},
-			ProbeDeps: doctor.ProbeDeps{
-				Config: h.cfg,
-				Redis: func(ctx context.Context) ([]redis.UniversalClient, error) {
-					return svc.RedisShards(), nil
-				},
-				PGPool: func(ctx context.Context) (*pgxpool.Pool, error) {
-					return svc.GetPool(), nil
-				},
-				LicenseState:       licenseWatcherState,
-				LicenseDiagnostics: licenseWatcherDiagnostics,
-				XDPStatsReader: func(ctx context.Context) (edge.Snapshot, error) {
-					return edge.ReadRedisAny(ctx, svc.RedisShards())
-				},
-			},
-			ApplyRateLimit:    limit,
-			RequirePermission: perm,
-			WriteServiceError: writeErr,
-		},
+		DoctorHTTP: doctorHTTP,
 		OpsHTTP: &opsadmin.HTTPHandlers{
 			OpsReader:               opsReader,
 			PaymentIntents:          h.payment,
@@ -236,6 +238,7 @@ func (h *Handler) BuildAdminAPIRegistry(pool *pgxpool.Pool, redisShards []redis.
 			Blacklist:               svc,
 			Shard0Catchup:           svc,
 			FraudThreat:             svc,
+			DoctorSnapshot:          doctorHTTP.BuildSnapshot,
 			ApplyRateLimit:          limit,
 			RequirePermission:       perm,
 			WriteServiceError:       writeErr,

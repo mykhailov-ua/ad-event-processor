@@ -55,7 +55,7 @@ bash scripts/test/sentinel.sh
 
 Playwright (or similar) admin stack tests. **Requires `web/` tree.**
 
-CI: `.github/workflows/admin-stack-e2e.yaml` — no-ops when `web/scripts/build.mjs` missing (current default).
+CI: `.github/workflows/admin-stack-e2e.yaml` — smoke + nightly Playwright when `web/` present; no-ops when `web/scripts/build.mjs` missing.
 
 ```bash
 bash scripts/test/admin_stack_e2e.sh

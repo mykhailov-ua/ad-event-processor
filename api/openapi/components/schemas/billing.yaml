@@ -26,12 +26,18 @@ Invoice:
     subtotal_micro:
       type: integer
       format: int64
+    subtotal_micro_display:
+      type: string
     tax_micro:
       type: integer
       format: int64
+    tax_micro_display:
+      type: string
     total_micro:
       type: integer
       format: int64
+    total_micro_display:
+      type: string
     currency:
       type: string
     tax_scheme:
@@ -63,12 +69,18 @@ InvoiceSummary:
     subtotal_micro:
       type: integer
       format: int64
+    subtotal_micro_display:
+      type: string
     tax_micro:
       type: integer
       format: int64
+    tax_micro_display:
+      type: string
     total_micro:
       type: integer
       format: int64
+    total_micro_display:
+      type: string
     status:
       type: string
     currency:
@@ -128,12 +140,18 @@ InvoicePreview:
     subtotal_micro:
       type: integer
       format: int64
+    subtotal_micro_display:
+      type: string
     tax_micro:
       type: integer
       format: int64
+    tax_micro_display:
+      type: string
     total_micro:
       type: integer
       format: int64
+    total_micro_display:
+      type: string
     tax_scheme:
       type: string
     tax_rate_bps:
@@ -323,15 +341,23 @@ BillingSummary:
     invoiced_mtd_micro:
       type: integer
       format: int64
+    invoiced_mtd_display:
+      type: string
     invoice_count_mtd:
       type: integer
       format: int64
+    invoice_count_mtd_display:
+      type: string
     undelivered_invoice_notifications:
       type: integer
       format: int64
+    undelivered_invoice_notifications_display:
+      type: string
     customers_with_spend_in_month:
       type: integer
       format: int64
+    customers_with_spend_in_month_display:
+      type: string
 
 InvoiceDelivery:
   type: object

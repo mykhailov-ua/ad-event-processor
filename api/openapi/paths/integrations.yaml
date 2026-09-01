@@ -122,6 +122,22 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/postbacks/snapshot:
+    get:
+      tags: [postbacks]
+      operationId: postbacksSnapshot
+      summary: Postbacks configs, DLQ, and campaign status snapshot
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Composite postbacks snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/PostbacksSnapshot'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/integration/schemas:
     get:
       tags: [integration]
@@ -200,6 +216,22 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/integrations.yaml#/ApplyIntegrationSchemaResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/integration/snapshot:
+    get:
+      tags: [integration]
+      operationId: integrationSnapshot
+      summary: Integration schemas and bundled templates snapshot
+      x-permissions: [campaigns:read]
+      responses:
+        '200':
+          description: Composite integration snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/integrations.yaml#/IntegrationSnapshot'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

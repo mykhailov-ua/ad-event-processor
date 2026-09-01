@@ -27,7 +27,7 @@ Document these surfaces in the file or immediately above the symbol/step they de
 | CI/CD & Containers | Non-obvious pipeline logic, runner/caching fallbacks, kernel capabilities/eBPF requirements, or environment dependencies in Github Workflows and `.devcontainer` |
 | Verification commands | Runnable CLI with concrete args: `redis-cli --eval`, `curl`, `go test -run`, named benchmarks |
 
-Scope: Redis Lua scripts, unified-filter and quota paths, ingest/gnet/rtb hot paths, eBPF/XDP, edge Lua, broker/stream admission, CI/CD pipeline steps, environment scripts, and any code where behavior, wire layout, or numeric codes are not obvious from names alone.
+Scope: Redis Lua scripts, unified-filter and quota paths, ingest/gnet/rtb hot paths, eBPF/XDP (`xdp-bpf.mdc`), edge Lua, broker/stream admission, CI/CD pipeline steps, environment scripts, and any code where behavior, wire layout, or numeric codes are not obvious from names alone.
 
 ## Forbidden comments
 

@@ -69,31 +69,15 @@ func (h *IntegrationSchemaHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/integration/schemas/{id}", limit(perm("campaigns:read", h.getSchema)))
 	mux.HandleFunc("POST /api/v1/integration/schemas/{id}/apply", limit(perm("campaigns:write", h.applySchema)))
 	mux.HandleFunc("GET /api/v1/integration/affiliate-status-presets", limit(perm("campaigns:read", h.listAffiliateStatusPresets)))
+	h.registerSnapshotRoute(mux)
 	h.RegisterTemplateRoutes(mux)
 }
 
 func (h *IntegrationSchemaHTTPHandlers) listSchemas(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.Pool.Query(r.Context(), `
-		SELECT id, name, version, kind, body, created_at, updated_at
-		FROM integration_schemas
-		ORDER BY name, version DESC`)
+	out, err := h.listIntegrationSchemas(r.Context())
 	if err != nil {
 		httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 		return
-	}
-	defer rows.Close()
-
-	var out []IntegrationSchemaDTO
-	for rows.Next() {
-		dto, err := scanIntegrationSchemaRow(rows.Scan)
-		if err != nil {
-			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
-			return
-		}
-		out = append(out, dto)
-	}
-	if out == nil {
-		out = []IntegrationSchemaDTO{}
 	}
 	httpresponse.JSON(w, http.StatusOK, out)
 }
@@ -704,14 +688,10 @@ func (h *IntegrationSchemaHTTPHandlers) RegisterTemplateRoutes(mux *http.ServeMu
 }
 
 func (h *IntegrationSchemaHTTPHandlers) listBundledTemplates(w http.ResponseWriter, r *http.Request) {
-	svc, ok := h.TemplateCatalog.(TemplateCatalogService)
-	if !ok || svc == nil {
-		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "template catalog unavailable")
+	out, err := h.listIntegrationTemplates(r.Context())
+	if err != nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", err.Error())
 		return
-	}
-	out := svc.ListBundledTemplates(r.Context())
-	if out == nil {
-		out = []integrationschema.TemplateCatalogEntry{}
 	}
 	httpresponse.JSON(w, http.StatusOK, out)
 }

@@ -43,6 +43,11 @@ func calcCPAMicro(spendMicro, conversions int64) int64 {
 	return spendMicro / conversions
 }
 
+// ComputeCPAMicro returns cost per acquisition in micro-units.
+func ComputeCPAMicro(costMicro, conversions int64) int64 {
+	return calcCPAMicro(costMicro, conversions)
+}
+
 func CalcQualityFromDrift(pacingDriftPct float64) float64 {
 	return calcQualityFromDrift(pacingDriftPct)
 }

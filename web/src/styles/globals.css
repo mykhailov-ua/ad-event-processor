@@ -1,0 +1,360 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * Admin surfaces: Inter (proportional) + tabular-nums (tnum) for metrics; JetBrains Mono for code.
+   * Depth from background steps, not shadows. HSL components without hsl() wrapper.
+   */
+  .light {
+    color-scheme: light;
+    --background: 0 0% 99%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 12%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 42%;
+    --accent: 0 0% 93%;
+    --accent-foreground: 0 0% 12%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 88%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 28%;
+    --chart-1: 0 0% 18%;
+    --chart-2: 0 0% 32%;
+    --chart-3: 0 0% 46%;
+    --chart-4: 0 0% 60%;
+    --chart-5: 0 0% 74%;
+    --radius: 1rem;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 8%;
+    --secondary: 0 0% 14%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 18%;
+    --input: 0 0% 20%;
+    --ring: 0 0% 72%;
+    --chart-1: 0 0% 92%;
+    --chart-2: 0 0% 78%;
+    --chart-3: 0 0% 64%;
+    --chart-4: 0 0% 50%;
+    --chart-5: 0 0% 36%;
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'calt' 1;
+    font-variant-numeric: proportional-nums;
+    font-optical-sizing: auto;
+  }
+
+  :where(code, kbd, samp, pre) {
+    @apply font-mono;
+    font-feature-settings: 'kern' 1, 'liga' 0, 'zero' 1;
+  }
+
+  .font-mono {
+    font-feature-settings: 'kern' 1, 'liga' 0, 'zero' 1;
+  }
+
+  .font-numeric {
+    font-family: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
+    font-feature-settings: 'kern' 1, 'liga' 0, 'zero' 1, 'tnum' 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :root {
+    --font-numeric: 'Geist Mono Variable', 'Geist Mono', ui-monospace, monospace;
+  }
+
+  .tabular-nums {
+    font-family: inherit;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'tnum' 1, 'lnum' 1;
+  }
+
+  :where(h1, h2, h3, .text-lg, .text-xl, .text-2xl) {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.28);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--muted-foreground) / 0.45);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .ui-shell {
+    @apply overflow-hidden rounded-2xl border border-border/50 bg-popover;
+  }
+
+  .ui-shell-lg {
+    @apply overflow-hidden rounded-2xl border border-border/50 bg-popover;
+  }
+
+  .ui-shell-panel {
+    @apply bg-popover text-popover-foreground;
+  }
+
+  .ui-shell-panel-lg {
+    @apply bg-popover text-popover-foreground;
+  }
+
+  .ui-surface {
+    @apply rounded-2xl bg-muted/30;
+  }
+
+  .ui-surface-raised {
+    @apply rounded-2xl border border-border/40 bg-card/80;
+  }
+
+  .ui-bento-card {
+    @apply rounded-2xl bg-card/90 transition-colors;
+  }
+
+  .ui-bento-card:hover {
+    @apply bg-muted/35;
+  }
+
+  .ui-table-frame {
+    @apply overflow-hidden rounded-2xl border border-border/40 bg-card/40;
+  }
+
+  /*
+   * Nested radius scale: outer shell (2xl) -> inner panels (xl) -> controls (lg).
+   * Matches --radius (1rem) tokens in tailwind.config.ts.
+   */
+  .ui-date-range-picker {
+    --picker-radius-outer: calc(var(--radius) + 0.5rem);
+    --picker-radius-inner: var(--radius);
+    --picker-radius-control: calc(var(--radius) - 0.25rem);
+  }
+
+  .ui-date-range-picker .ui-shell {
+    border-radius: var(--picker-radius-outer);
+  }
+
+  .ui-filter-panel {
+    @apply ui-surface grid gap-4 overflow-hidden p-4 md:p-5;
+  }
+
+  .ui-code-block {
+    @apply overflow-x-auto rounded-xl bg-muted/30 p-3 font-mono text-xs;
+  }
+
+  .ui-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.28) transparent;
+  }
+
+  .ui-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .ui-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.28);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  /*
+   * Preferences modal surface ladder.
+   * Shell/footer darkened; section (raised) sits above shell.
+   * Input is recessed: L * 0.85 (darken 1.5/10) below raised.
+   */
+  .ui-preferences-dialog {
+    --prefs-shell: 0 0% 7%;
+    --prefs-raised: 0 0% 11%;
+    --prefs-input: 0 0% 9.2%;
+    --prefs-chip: 0 0% 13%;
+    --prefs-footer: 0 0% 7%;
+    --prefs-border: 0 0% 16%;
+    background-color: hsl(var(--prefs-shell));
+    color: hsl(var(--foreground));
+  }
+
+  .ui-preferences-dialog .ui-preferences-section {
+    border-color: hsl(var(--prefs-border) / 0.55);
+    background-color: hsl(var(--prefs-raised));
+  }
+
+  .ui-preferences-dialog .ui-preferences-field-trigger {
+    border-color: hsl(var(--prefs-border) / 0.65);
+    background-color: hsl(var(--prefs-input));
+    color: hsl(var(--foreground));
+  }
+
+  .ui-preferences-dialog .ui-preferences-field-trigger:hover {
+    background-color: hsl(var(--prefs-input) / 0.88);
+  }
+
+  .ui-preferences-dialog .ui-preferences-chip {
+    border-color: hsl(var(--prefs-border) / 0.75);
+    background-color: hsl(var(--prefs-chip));
+    color: hsl(var(--foreground));
+  }
+
+  .ui-preferences-menu {
+    --prefs-menu: 0 0% 8%;
+    --prefs-menu-item: 0 0% 13%;
+    --prefs-menu-border: 0 0% 16%;
+  }
+
+  .ui-preferences-menu .ui-shell-panel {
+    background-color: hsl(var(--prefs-menu));
+    overflow: hidden;
+  }
+
+  .ui-preferences-menu .ui-preferences-menu-list {
+    max-height: 12rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .ui-preferences-menu [cmdk-input-wrapper] {
+    flex-shrink: 0;
+    background-color: hsl(var(--prefs-menu));
+    border-color: hsl(var(--prefs-menu-border) / 0.6);
+  }
+
+  .ui-preferences-menu [cmdk-group-items] {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .ui-preferences-menu [cmdk-item] {
+    margin: 0;
+  }
+
+  .ui-preferences-menu .ui-scrollbar,
+  .ui-preferences-dialog-body.ui-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.5) hsl(var(--prefs-border) / 0.35);
+  }
+
+  .ui-preferences-menu .ui-scrollbar::-webkit-scrollbar,
+  .ui-preferences-dialog-body.ui-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .ui-preferences-menu .ui-scrollbar::-webkit-scrollbar-thumb,
+  .ui-preferences-dialog-body.ui-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+  }
+
+  .ui-preferences-menu .ui-scrollbar::-webkit-scrollbar-track,
+  .ui-preferences-dialog-body.ui-scrollbar::-webkit-scrollbar-track {
+    background-color: hsl(var(--prefs-border) / 0.25);
+    border-radius: 9999px;
+  }
+
+  .ui-preferences-dialog .ui-preferences-footer {
+    border-color: hsl(var(--prefs-border) / 0.55);
+    background-color: hsl(var(--prefs-footer));
+  }
+
+  .ui-preferences-dialog .ui-preferences-header {
+    border-color: hsl(var(--prefs-border) / 0.55);
+    background-color: hsl(var(--prefs-footer));
+  }
+
+  .ui-preferences-dialog .ui-scrollbar {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.5) hsl(var(--prefs-border) / 0.35);
+  }
+
+  .ui-preferences-dialog .ui-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .ui-preferences-dialog .ui-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.5);
+  }
+
+  .ui-preferences-dialog .ui-scrollbar::-webkit-scrollbar-track {
+    background-color: hsl(var(--prefs-border) / 0.25);
+  }
+}

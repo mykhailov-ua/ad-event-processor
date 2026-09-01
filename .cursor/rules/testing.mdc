@@ -143,6 +143,27 @@ Wire / framing: TE.TE obfuscation, HPACK continuation bomb, protobuf field budge
 
 Same pattern for TLS fingerprint feeds, residential intel, DC ASN tables: corrupt refresh must not wipe last good snapshot.
 
+## XDP edge_filter token bucket (math holdouts)
+
+Full XDP/BPF policy: `xdp-bpf.mdc`. BPF `token_bucket_consume_existing` in `deploy/edge/xdp/bpf/edge_filter.c` is verified by Go simulation in `internal/edge/token_bucket_sim_test.go` (no CAP_BPF required). Do not claim bucket correctness from `prog.Test` alone.
+
+| Test | Proves |
+| :--- | :--- |
+| `TestTokenBucket_subintervalCredit_holdout` | Fixed refill admits strictly more than legacy (`last_ns = now` on every pass) under sub-interval flood |
+| `TestTokenBucket_refillInterval_matchesRate` | After `tokens=0`, next pass near `NS_PER_SEC/rate` |
+| `TestTokenBucket_sustainedAboveRate_converges` | Offered load above rate: fixed admission bounded; legacy never exceeds fixed |
+| `TestTokenBucket_lastNSInvariant` | `last_ns` monotonic and `last_ns <= now` |
+| `TestTokenBucket_averageOfferedBelowRate_neverStarves` | Offered below rate: zero drops |
+
+Source shape holdout: `TestEdgeFilterRateLimitPerCPUHash_holdout` (reads `edge_filter.c` for PERCPU_HASH, `token_bucket_consume_existing`, `TCPOPT_NOP`, `ICMP_FRAG_NEEDED`, `syn_cookie_tail_call`).
+
+```bash
+go test ./internal/edge/ -short -run TestTokenBucket_ -count=1
+go test ./internal/edge/ -short -run TestEdgeFilterRateLimitPerCPUHash_holdout -count=1
+```
+
+BPF prog integration (CAP_BPF): `TestXDP_dropNonTCPOnTrackerPort`, `TestFault_XDPSynCookieWithTCPOptions`.
+
 ## Cross-hop and parity
 
 Edge nginx Lua and tracker gnet must agree on the same wire:

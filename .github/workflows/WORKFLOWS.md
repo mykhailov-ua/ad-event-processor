@@ -120,7 +120,7 @@ Describe each workflow file under this directory. Run merge gates locally with t
 
 **Purpose:** Admin stack E2E via `scripts/test/admin_stack_e2e.sh` when `web/scripts/build.mjs` exists.
 
-**Behavior:** Exits successfully when `web/` tree is absent (current default).
+**Behavior:** Builds `web/` (embed sync), starts ingest-only compose, runs smoke Playwright bundle, then full `web/e2e/` matrix when `ADMIN_WEB_E2E_NIGHTLY=1` (set in workflow). Exits successfully when `web/` tree is absent.
 
 ---
 

@@ -168,3 +168,20 @@ CostSyncRun:
     completed_at:
       type: string
       format: date-time
+
+CostSyncSnapshot:
+  type: object
+  required: [networks, credentials, history]
+  properties:
+    networks:
+      type: array
+      items:
+        $ref: '#/CostSyncNetworkSchema'
+    credentials:
+      type: array
+      items:
+        $ref: '#/CostSyncCredential'
+    history:
+      type: array
+      items:
+        $ref: '#/CostSyncRun'

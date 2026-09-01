@@ -7,11 +7,19 @@ import (
 )
 
 type MLManualLabelDTO struct {
-	IPHash    string `json:"ip_hash"`
-	Label     int    `json:"label"`
-	Reason    string `json:"reason"`
-	Source    string `json:"source"`
-	CreatedAt string `json:"created_at"`
+	IPHash           string `json:"ip_hash"`
+	Label            int    `json:"label"`
+	Reason           string `json:"reason"`
+	Source           string `json:"source"`
+	CreatedAt        string `json:"created_at"`
+	CreatedAtDisplay string `json:"created_at_display,omitempty"`
+}
+
+type FraudLabelsListResponse struct {
+	Items  []MLManualLabelDTO `json:"items"`
+	Total  int64              `json:"total"`
+	Limit  int                `json:"limit"`
+	Offset int                `json:"offset"`
 }
 
 type FraudManualLabelRow struct {
@@ -49,6 +57,7 @@ type FraudDecisionDTO struct {
 	CampaignID          string                 `json:"campaign_id"`
 	WindowStart         string                 `json:"window_start"`
 	EvaluatedAt         string                 `json:"evaluated_at"`
+	EvaluatedAtDisplay  string                 `json:"evaluated_at_display,omitempty"`
 	Disclaimer          string                 `json:"disclaimer"`
 	Tier                string                 `json:"tier"`
 	Score               int                    `json:"score"`
@@ -65,14 +74,15 @@ type FraudDecisionDTO struct {
 }
 
 type FraudIntegrationDTO struct {
-	CampaignID    string `json:"campaign_id"`
-	Name          string `json:"name"`
-	Provider      string `json:"provider,omitempty"`
-	Configured    bool   `json:"configured"`
-	HealthStatus  string `json:"health_status"`
-	LastSuccessAt string `json:"last_success_at,omitempty"`
-	DLQCount      int64  `json:"dlq_count"`
-	LastError     string `json:"last_error,omitempty"`
+	CampaignID           string `json:"campaign_id"`
+	Name                 string `json:"name"`
+	Provider             string `json:"provider,omitempty"`
+	Configured           bool   `json:"configured"`
+	HealthStatus         string `json:"health_status"`
+	LastSuccessAt        string `json:"last_success_at,omitempty"`
+	LastSuccessAtDisplay string `json:"last_success_at_display,omitempty"`
+	DLQCount             int64  `json:"dlq_count"`
+	LastError            string `json:"last_error,omitempty"`
 }
 
 type FraudOverrideRequest struct {
@@ -87,12 +97,13 @@ type FraudScoringOverrideRequest struct {
 }
 
 type FraudPolicyPresetDTO struct {
-	Name      string `json:"name"`
-	Pass      uint8  `json:"pass"`
-	Suspect   uint8  `json:"suspect"`
-	IVT       uint8  `json:"ivt"`
-	Block     uint8  `json:"block"`
-	UpdatedAt string `json:"updated_at"`
+	Name             string `json:"name"`
+	Pass             uint8  `json:"pass"`
+	Suspect          uint8  `json:"suspect"`
+	IVT              uint8  `json:"ivt"`
+	Block            uint8  `json:"block"`
+	UpdatedAt        string `json:"updated_at"`
+	UpdatedAtDisplay string `json:"updated_at_display,omitempty"`
 }
 
 type PatchFraudPolicyPresetRequest struct {
@@ -103,7 +114,7 @@ type PatchFraudPolicyPresetRequest struct {
 }
 
 type LabelsService interface {
-	ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit int) ([]MLManualLabelDTO, error)
+	ListMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]MLManualLabelDTO, int64, error)
 	UpsertMLManualLabelForCustomer(ctx context.Context, customerID uuid.UUID, ipHash string, label int, reason string) error
 	BulkUpsertMLManualLabelsForCustomer(ctx context.Context, customerID uuid.UUID, rows []FraudManualLabelRow) (int, error)
 }

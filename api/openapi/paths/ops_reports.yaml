@@ -42,6 +42,7 @@ paths:
       operationId: dashboardBuyer
       parameters:
       - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
+      - $ref: ../openapi.yaml#/components/parameters/CampaignIdQuery
       - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
       - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
       responses:
@@ -189,15 +190,14 @@ paths:
       parameters:
       - $ref: ../openapi.yaml#/components/parameters/CustomerIdQueryRequired
       - $ref: ../openapi.yaml#/components/parameters/LimitQuery
+      - $ref: ../openapi.yaml#/components/parameters/OffsetQuery
       responses:
         '200':
           content:
             application/json:
               schema:
-                items:
-                  $ref: ../components/schemas/ops_reports.yaml#/MLManualLabel
-                type: array
-          description: Manual labels
+                $ref: ../components/schemas/ops_reports.yaml#/FraudLabelsListResponse
+          description: Manual labels page
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: List ML manual labels for customer
@@ -507,6 +507,23 @@ paths:
         default:
           $ref: ../openapi.yaml#/components/responses/Error
       summary: Platform health doctor checks
+      tags:
+      - ops
+      x-permissions:
+      - shards:read
+  /api/v1/ops/home:
+    get:
+      operationId: opsHome
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/ops_reports.yaml#/OpsHomeSnapshot
+          description: Ops home composite snapshot
+        default:
+          $ref: ../openapi.yaml#/components/responses/Error
+      summary: Ops home doctor, stack health, and dashboard summary
       tags:
       - ops
       x-permissions:

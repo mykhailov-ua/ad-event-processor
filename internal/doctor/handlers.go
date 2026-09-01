@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -45,11 +46,14 @@ func (h *DoctorHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/ops/doctor", limit(perm("shards:read", h.getDoctor)))
 }
 
-func (h *DoctorHTTPHandlers) getDoctor(w http.ResponseWriter, r *http.Request) {
-	platCfg, err := h.PlatformConfig(r.Context())
+func (h *DoctorHTTPHandlers) BuildSnapshot(ctx context.Context) (DoctorResponseDTO, error) {
+	if h == nil || h.PlatformConfig == nil {
+		return DoctorResponseDTO{}, fmt.Errorf("doctor handler not configured")
+	}
+
+	platCfg, err := h.PlatformConfig(ctx)
 	if err != nil {
-		h.writeServiceError(w, err)
-		return
+		return DoctorResponseDTO{}, err
 	}
 
 	deps := h.ProbeDeps
@@ -57,7 +61,7 @@ func (h *DoctorHTTPHandlers) getDoctor(w http.ResponseWriter, r *http.Request) {
 		deps.Config = h.Config
 	}
 
-	report := RunPlatform(r.Context(), deps, platCfg, Options{
+	report := RunPlatform(ctx, deps, platCfg, Options{
 		Timeout: 30 * time.Second,
 	})
 	checks := ReportToDTO(report)
@@ -69,14 +73,23 @@ func (h *DoctorHTTPHandlers) getDoctor(w http.ResponseWriter, r *http.Request) {
 		rtbEnabled = h.Config.RtbEnabled()
 	}
 
-	httpresponse.JSON(w, http.StatusOK, DoctorResponseDTO{
+	return DoctorResponseDTO{
 		Overall:          OverallStatus(checks),
 		Checks:           checks,
 		ClickURLTemplate: platformconfig.ClickURLTemplate(platCfg.TrackingDomain),
 		TrackingDomain:   platCfg.TrackingDomain,
 		RtbMode:          rtbMode,
 		RtbEnabled:       rtbEnabled,
-	})
+	}, nil
+}
+
+func (h *DoctorHTTPHandlers) getDoctor(w http.ResponseWriter, r *http.Request) {
+	snap, err := h.BuildSnapshot(r.Context())
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, snap)
 }
 
 func (h *DoctorHTTPHandlers) writeServiceError(w http.ResponseWriter, err error) {

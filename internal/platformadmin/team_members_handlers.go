@@ -3,6 +3,8 @@ package platformadmin
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"ad-event-processor/pkg/coldpath"
 	"ad-event-processor/pkg/httpresponse"
@@ -13,7 +15,7 @@ import (
 type TeamGovernance interface {
 	InviteTeamMember(ctx context.Context, customerID uuid.UUID, email, role string) (TeamMemberDTO, error)
 	UpdateTeamMember(ctx context.Context, customerID, userID uuid.UUID, req UpdateTeamMemberRequest) (TeamMemberDTO, error)
-	ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID) ([]TeamBudgetApprovalDTO, error)
+	ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamBudgetApprovalDTO, int64, error)
 	ResolveTeamBudgetApproval(ctx context.Context, customerID, approvalID, resolverID uuid.UUID, approve bool) error
 }
 
@@ -25,6 +27,10 @@ func (h *TeamHTTPHandlers) registerTeamGovernanceRoutes(mux *http.ServeMux, limi
 	if teamWrite == nil {
 		teamWrite = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
+	mux.HandleFunc("GET /api/v1/team/members", limit(perm(
+		[]string{"campaigns:read", "billing:read"},
+		h.listMembers,
+	)))
 	mux.HandleFunc("POST /api/v1/team/members", limit(teamWrite(h.inviteMember)))
 	mux.HandleFunc("PATCH /api/v1/team/members/{id}", limit(teamWrite(h.patchMember)))
 	mux.HandleFunc("GET /api/v1/team/budget-approvals", limit(perm(
@@ -33,6 +39,55 @@ func (h *TeamHTTPHandlers) registerTeamGovernanceRoutes(mux *http.ServeMux, limi
 	)))
 	mux.HandleFunc("POST /api/v1/team/budget-approvals/{id}/approve", limit(teamWrite(h.approveBudget)))
 	mux.HandleFunc("POST /api/v1/team/budget-approvals/{id}/deny", limit(teamWrite(h.denyBudget)))
+}
+
+func (h *TeamHTTPHandlers) listMembers(w http.ResponseWriter, r *http.Request) {
+	if h.Team == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "team service unavailable")
+		return
+	}
+	customerID, err := h.ResolveCustomerID(r, nil)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if customerID == uuid.Nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
+		return
+	}
+	limit := TeamMembersDefaultLimit
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid limit")
+			return
+		}
+		limit = parsed
+	}
+	offset := 0
+	if raw := strings.TrimSpace(r.URL.Query().Get("offset")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid offset")
+			return
+		}
+		offset = parsed
+	}
+
+	items, total, err := h.Team.ListTeamMembers(r.Context(), customerID, limit, offset)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if items == nil {
+		items = []TeamMemberDTO{}
+	}
+	httpresponse.JSON(w, http.StatusOK, TeamMembersListResponse{
+		Items:  items,
+		Total:  total,
+		Limit:  normalizeTeamMembersLimit(limit),
+		Offset: normalizeTeamMembersOffset(offset),
+	})
 }
 
 func (h *TeamHTTPHandlers) inviteMember(w http.ResponseWriter, r *http.Request) {
@@ -94,7 +149,26 @@ func (h *TeamHTTPHandlers) listBudgetApprovals(w http.ResponseWriter, r *http.Re
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id required")
 		return
 	}
-	items, err := h.Governance.ListTeamBudgetApprovals(r.Context(), customerID)
+	limit := TeamBudgetApprovalsDefaultLimit
+	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid limit")
+			return
+		}
+		limit = parsed
+	}
+	offset := 0
+	if raw := strings.TrimSpace(r.URL.Query().Get("offset")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 0 {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid offset")
+			return
+		}
+		offset = parsed
+	}
+
+	items, total, err := h.Governance.ListTeamBudgetApprovals(r.Context(), customerID, limit, offset)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return
@@ -102,7 +176,12 @@ func (h *TeamHTTPHandlers) listBudgetApprovals(w http.ResponseWriter, r *http.Re
 	if items == nil {
 		items = []TeamBudgetApprovalDTO{}
 	}
-	httpresponse.JSON(w, http.StatusOK, items)
+	httpresponse.JSON(w, http.StatusOK, TeamBudgetApprovalsListResponse{
+		Items:  items,
+		Total:  total,
+		Limit:  normalizeTeamBudgetApprovalsLimit(limit),
+		Offset: normalizeTeamBudgetApprovalsOffset(offset),
+	})
 }
 
 func (h *TeamHTTPHandlers) approveBudget(w http.ResponseWriter, r *http.Request) {

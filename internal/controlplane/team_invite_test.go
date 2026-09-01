@@ -28,8 +28,8 @@ func (s *teamGovStub) UpdateTeamMember(_ context.Context, _, _ uuid.UUID, _ plat
 	return platformadmin.TeamMemberDTO{}, nil
 }
 
-func (s *teamGovStub) ListTeamBudgetApprovals(_ context.Context, _ uuid.UUID) ([]platformadmin.TeamBudgetApprovalDTO, error) {
-	return nil, nil
+func (s *teamGovStub) ListTeamBudgetApprovals(_ context.Context, _ uuid.UUID, _, _ int) ([]platformadmin.TeamBudgetApprovalDTO, int64, error) {
+	return nil, 0, nil
 }
 
 func (s *teamGovStub) ResolveTeamBudgetApproval(_ context.Context, _, _, _ uuid.UUID, _ bool) error {

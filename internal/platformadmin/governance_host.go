@@ -44,8 +44,8 @@ func (g *Governance) UpdateTeamMember(ctx context.Context, customerID, userID uu
 	return updateTeamMember(ctx, g.host, customerID, userID, in)
 }
 
-func (g *Governance) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID) ([]TeamBudgetApprovalDTO, error) {
-	return listTeamBudgetApprovals(ctx, g.host.Pool(), customerID)
+func (g *Governance) ListTeamBudgetApprovals(ctx context.Context, customerID uuid.UUID, limit, offset int) ([]TeamBudgetApprovalDTO, int64, error) {
+	return listTeamBudgetApprovals(ctx, g.host.Pool(), customerID, limit, offset)
 }
 
 func (g *Governance) ResolveTeamBudgetApproval(ctx context.Context, customerID, approvalID, resolverID uuid.UUID, approve bool) error {
