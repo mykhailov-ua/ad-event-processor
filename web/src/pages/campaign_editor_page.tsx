@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
@@ -21,6 +21,7 @@ import {
   type MacroPreviewResponse,
 } from '@/api/campaigns_api';
 import { isAbortError } from '@/api/client';
+import { getFlow } from '@/api/flows_api';
 import type {
   Campaign,
   CampaignPublishBlockedError,
@@ -33,9 +34,9 @@ import {
   campaignToFormState,
   type CampaignEditorFormState,
   type MacroPreviewFormState,
-} from '@/domains/campaigns/campaign_editor';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
-import { useResource } from '@/hooks/use_resource';
+} from '@/domains/campaigns/editor/campaign_editor';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
+import { useResource } from '@/api/use_resource';
 
 const DEFAULT_CLONE_OPTIONS: Required<CloneCampaignOptions> = {
   include_flow: true,
@@ -59,6 +60,7 @@ function buildCloneRequestBody(
 
 export function CampaignEditorPage() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [form, setForm] = useState<CampaignEditorFormState | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>(undefined);
@@ -117,6 +119,18 @@ export function CampaignEditorPage() {
       return getCampaign(id, signal);
     },
     [id],
+  );
+
+  const flowId = (campaignSnapshot ?? data)?.flow_id?.trim() ?? '';
+
+  const { data: flowData } = useResource(
+    (signal) => {
+      if (!flowId) {
+        return Promise.resolve(undefined);
+      }
+      return getFlow(flowId, signal);
+    },
+    [flowId],
   );
 
   useEffect(() => {
@@ -208,6 +222,41 @@ export function CampaignEditorPage() {
         setSaving(false);
       });
   }, [campaignSnapshot, form, id]);
+
+  const onSaveAndClose = useCallback(() => {
+    if (!id || !campaignSnapshot || !form) {
+      return;
+    }
+
+    const patchResult = buildCampaignPatchBody(campaignSnapshot, form);
+    if (!patchResult.ok) {
+      setSaveError(new Error(patchResult.error));
+      return;
+    }
+    if (Object.keys(patchResult.body).length === 0) {
+      navigate('/campaigns');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(undefined);
+
+    void patchCampaign(id, patchResult.body)
+      .then((updated) => {
+        setCampaignSnapshot(updated);
+        setForm(campaignToFormState(updated));
+        navigate('/campaigns');
+      })
+      .catch((err: unknown) => {
+        if (isAbortError(err)) {
+          return;
+        }
+        setSaveError(err instanceof Error ? err : new Error(String(err)));
+      })
+      .finally(() => {
+        setSaving(false);
+      });
+  }, [campaignSnapshot, form, id, navigate]);
 
   const onCheckPublish = useCallback(() => {
     if (!id) {
@@ -490,12 +539,18 @@ export function CampaignEditorPage() {
   const campaign = campaignSnapshot ?? data;
   const effectiveForm =
     form ?? (campaign ? campaignToFormState(campaign) : undefined);
+  const flowPaths = useMemo(() => {
+    const paths = flowData?.paths;
+    return Array.isArray(paths) ? paths : undefined;
+  }, [flowData?.paths]);
 
   useBreadcrumbSegmentLabel(id, campaign?.name);
 
   return (
     <CampaignEditor
       campaign={campaign}
+      clickUrl={macroPreviewResult?.resolved_click_url}
+      flowPaths={flowPaths}
       form={
         effectiveForm ?? {
           name: '',
@@ -519,6 +574,7 @@ export function CampaignEditorPage() {
       hasSnapshot={campaignSnapshot != null || data != null}
       onFieldChange={onFieldChange}
       onSave={onSave}
+      onSaveAndClose={onSaveAndClose}
       checking={checking}
       validating={validating}
       publishing={publishing}

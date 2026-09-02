@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react';
 
-import { PanelSection } from '@/components/system/stat_panel';
+import { PanelSection } from '@/shell/stat_panel';
 import type { DashboardSeriesPoint } from '@/domains/dashboards/buyer_dashboard_types';
 import { displayCount, displayMicro } from '@/lib/display';
 import { cn } from '@/lib/utils';

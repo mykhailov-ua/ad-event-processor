@@ -1,10 +1,11 @@
 import { Link, Navigate } from 'react-router-dom';
 
 import { PlatformBootstrapForm } from '@/domains/onboarding/platform_bootstrap_form';
-import { ErrorBlock } from '@/components/system/error_block';
+import { AdminDevModeEntry } from '@/shell/admin_dev_mode_entry';
+import { ErrorBlock } from '@/shell/error_block';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMeta } from '@/hooks/use_meta';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageSkeleton } from '@/shell/page_skeleton';
 
 export function SetupPage() {
   const { bootstrapComplete, error, loading, refreshMeta } = useMeta();
@@ -15,8 +16,11 @@ export function SetupPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-4">
         <ErrorBlock title="Could not load install status" message={error.message} />
+        <div className="w-full max-w-sm">
+          <AdminDevModeEntry />
+        </div>
       </div>
     );
   }

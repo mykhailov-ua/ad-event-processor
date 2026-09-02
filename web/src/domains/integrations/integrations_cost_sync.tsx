@@ -1,7 +1,7 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { CustomerScopeBar } from '@/components/system/customer_scope_bar';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ErrorBlock } from '@/components/system/error_block';
+import { ErrorBlock } from '@/shell/error_block';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -147,7 +147,7 @@ export function IntegrationsCostSync({
               }
               disabled={!appliedCustomerId || runSyncForm.running}
             >
-              <SelectTrigger id="cost-sync-run-network" className="h-9 w-full text-sm">
+              <SelectTrigger id="cost-sync-run-network" className="w-full text-sm">
                 <SelectValue placeholder="All networks" />
               </SelectTrigger>
               <SelectContent>

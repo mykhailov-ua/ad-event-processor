@@ -12,7 +12,7 @@ import {
   type IntegrationsCostSyncPanel,
 } from '@/domains/integrations/integrations_cost_sync';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 function defaultSyncDateUtc(): string {
   const date = new Date();

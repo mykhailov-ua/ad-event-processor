@@ -6,7 +6,7 @@ import {
   FraudPresets,
   type FraudPresetEditDraft,
 } from '@/domains/fraud/fraud_presets';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 function parseThresholdField(
   label: string,

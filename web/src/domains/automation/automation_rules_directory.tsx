@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Gauge, Hash, Sigma, Zap } from 'lucide-react';
-import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { CustomerScopeBar } from '@/components/system/customer_scope_bar';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { FormSectionLabel, InputWithIcon } from '@/components/system/form_shell';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { FormSectionLabel, InputWithIcon } from '@/shell/form_shell';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,

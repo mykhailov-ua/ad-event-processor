@@ -1,13 +1,7 @@
-import { Link } from 'react-router-dom';
+import { AdminErrorPage } from '@/shell/admin_error_page';
+import { useSession } from '@/hooks/use_session';
 
 export function NotFoundPage() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-      <h1 className="text-lg font-semibold">Page not found</h1>
-      <p className="text-sm text-muted-foreground">The route does not exist in this console.</p>
-      <Link className="text-sm underline" to="/">
-        Go home
-      </Link>
-    </div>
-  );
+  const { authenticated } = useSession();
+  return <AdminErrorPage kind="not-found" layout={authenticated ? 'embedded' : 'standalone'} />;
 }

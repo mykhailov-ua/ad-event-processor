@@ -1,20 +1,16 @@
-import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/shell/empty_state';
 import type { DashboardMetrics, DashboardSummary } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
-import { OpsNav, opsPanelError } from '@/domains/ops/ops_nav';
+import { cn } from '@/lib/utils';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import {
+  OpsActionGroup,
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
+import { OpsTable } from '@/domains/ops/ops_table';
 
 export type OpsMetricsProps = {
   metrics: DashboardMetrics | undefined;
@@ -42,86 +38,93 @@ export function OpsMetrics({
   onLiveEnabledChange,
 }: OpsMetricsProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="Dashboard metrics">
-        <OpsNav />
-        {opsPanelError(error, 'Could not load dashboard metrics')}
-      </PageChrome>
+      <OpsPageBlockingError
+        error={error}
+        pageTitle="Dashboard metrics"
+        title="Could not load dashboard metrics"
+      />
     );
   }
 
   const points = metrics?.points ?? [];
 
   return (
-    <PageChrome title="Dashboard metrics">
-      <OpsNav />
-
-      <div className="grid max-w-md grid-cols-[1fr_auto_auto] items-end gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="metrics-range">Range</Label>
-          <Input
+    <OpsPageShell
+      filters={
+        <label className="admin-label">
+          Range
+          <input
+            className="admin-input"
             id="metrics-range"
-            value={draftRange}
             placeholder="1h"
+            value={draftRange}
             onChange={(event) => onDraftRangeChange(event.target.value)}
           />
-        </div>
-        <PrimaryActionButton disabled={fetching} loading={fetching} onClick={onLoad} type="button">
-          Load metrics
-        </PrimaryActionButton>
-        <SecondaryActionButton
-          onClick={() => onLiveEnabledChange(!liveEnabled)}
-          type="button"
-          variant={liveEnabled ? 'default' : 'outline'}
-        >
-          {liveEnabled ? 'Live on' : 'Live'}
-        </SecondaryActionButton>
-      </div>
-
+        </label>
+      }
+      title="Dashboard metrics"
+      actions={
+        <>
+          <OpsActionGroup label="Metrics">
+            <Button disabled={fetching} loading={fetching} type="button" onClick={onLoad}>
+              Load metrics
+            </Button>
+          </OpsActionGroup>
+          <OpsActionGroup label="Live stream">
+            <Button
+              className={cn(liveEnabled && 'is-active')}
+              type="button"
+              variant="secondary"
+              onClick={() => onLiveEnabledChange(!liveEnabled)}
+            >
+              {liveEnabled ? 'Live on' : 'Live'}
+            </Button>
+          </OpsActionGroup>
+        </>
+      }
+    >
       {liveSummary ? (
-        <p className="text-sm text-muted-foreground">
-          Live stream * outbox pending {liveSummary.outbox_pending ?? ''} * generated{' '}
+        <p className="admin-muted">
+          Live stream  /  outbox pending {liveSummary.outbox_pending ?? ''}  /  generated{' '}
           {displayTimestamp(liveSummary.generated_at, liveSummary.generated_at_display)}
         </p>
       ) : null}
 
       {metrics ? (
-        <p className="text-sm text-muted-foreground">
-          Range {metrics.range ?? draftRange} * bucket {metrics.bucket_sec ?? ''}s * generated{' '}
+        <p className="admin-muted">
+          Range {metrics.range ?? draftRange}  /  bucket {metrics.bucket_sec ?? ''}s  /  generated{' '}
           {displayTimestamp(metrics.generated_at)}
         </p>
       ) : null}
 
       {points.length === 0 && hasSnapshot ? (
-        <EmptyState title="No metric points" description="Handler returned an empty points array." />
+        <EmptyState description="Handler returned an empty points array." title="No metric points" />
       ) : null}
 
       {points.length > 0 ? (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {points.map((point, index) => (
-                <TableRow key={`${point.ts ?? 'point'}-${index}`}>
-                  <TableCell>{displayTimestamp(point.ts)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{point.value ?? ''}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <OpsTable
+          head={
+            <tr>
+              <th>Timestamp</th>
+              <th className="num">Value</th>
+            </tr>
+          }
+        >
+          {points.map((point, index) => (
+            <tr key={`${point.ts ?? 'point'}-${index}`}>
+              <td>{displayTimestamp(point.ts)}</td>
+              <td className="num">{point.value ?? ''}</td>
+            </tr>
+          ))}
+        </OpsTable>
       ) : null}
 
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </OpsPageShell>
   );
 }

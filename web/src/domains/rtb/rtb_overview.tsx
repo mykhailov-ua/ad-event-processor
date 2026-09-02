@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { StubBanner } from '@/components/system/stub_banner';
+import { FilterApplyButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { StubBanner } from '@/shell/stub_banner';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import {

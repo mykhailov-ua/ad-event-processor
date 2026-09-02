@@ -1,6 +1,6 @@
 import { getOpsConsentProofs } from '@/api/ops_api';
 import { OpsConsent } from '@/domains/ops/ops_consent';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function OpsConsentPage() {
   const { data, error, fetching } = useResource(

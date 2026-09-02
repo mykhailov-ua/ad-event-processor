@@ -11,7 +11,7 @@ import {
   IntegrationsPostbacks,
   type IntegrationsPostbacksTab,
 } from '@/domains/integrations/integrations_postbacks';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function IntegrationsPostbacksPage() {
   const [tab, setTab] = useState<IntegrationsPostbacksTab>('configs');

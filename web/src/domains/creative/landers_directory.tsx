@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -83,7 +83,7 @@ export function LandersDirectory({
       title="Landers"
       actions={
         onCreateLander ? (
-          <Button className="h-9 text-sm" onClick={() => setCreateOpen(true)} type="button">
+          <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
             Create lander
           </Button>
         ) : undefined
@@ -102,7 +102,7 @@ export function LandersDirectory({
                 <Label htmlFor="lander-create-name">Name</Label>
                 <Input
                   id="lander-create-name"
-                  placeholder="Lander name…"
+                  placeholder="Lander name..."
                   value={draftName}
                   onChange={(event) => onDraftNameChange?.(event.target.value)}
                 />
@@ -111,7 +111,7 @@ export function LandersDirectory({
                 <Label htmlFor="lander-create-url">URL</Label>
                 <Input
                   id="lander-create-url"
-                  placeholder="https://…"
+                  placeholder="https://..."
                   value={draftUrl}
                   onChange={(event) => onDraftUrlChange?.(event.target.value)}
                 />

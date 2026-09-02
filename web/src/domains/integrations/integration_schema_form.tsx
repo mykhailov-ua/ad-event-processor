@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { ErrorBlock } from '@/components/system/error_block';
+import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -153,7 +153,7 @@ export function IntegrationSchemaApplyForm({
           <Label htmlFor="integration-apply-schema">Schema</Label>
           {schemas.length > 0 ? (
             <Select value={draftSchemaId} onValueChange={onDraftSchemaIdChange}>
-              <SelectTrigger id="integration-apply-schema" className="h-9 w-full text-sm">
+              <SelectTrigger id="integration-apply-schema" className="w-full text-sm">
                 <SelectValue placeholder="Select schema" />
               </SelectTrigger>
               <SelectContent>

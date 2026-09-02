@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router-dom';
 
 import { listCustomers } from '@/api/customers_api';
 import { getClickLogReport } from '@/api/reports_api';
-import type { CustomerComboboxOption } from '@/components/system/customer_combobox';
+import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { ClickLogDirectory } from '@/domains/reports/click_log_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 import { defaultReportRange } from '@/lib/report_paths';

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { listOpsOutbox } from '@/api/ops_api';
 import { OpsOutbox } from '@/domains/ops/ops_outbox';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { parseListLimit } from '@/lib/list_query';
 
 const CURSOR_STACK_KEY = 'cursor_stack';

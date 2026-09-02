@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -99,10 +99,10 @@ export function BrandCreativesDirectory({
   const [createOpen, setCreateOpen] = useState(false);
 
   useEffect(() => {
-    if (createSuccess) {
+    if (actionSuccess) {
       setCreateOpen(false);
     }
-  }, [createSuccess]);
+  }, [actionSuccess]);
 
   useEffect(() => {
     if (editSuccess) {

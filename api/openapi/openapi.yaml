@@ -88,6 +88,8 @@ tags:
 paths:
   /api/v1/campaigns:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns
+  /api/v1/campaigns/metrics:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics
   /api/v1/campaigns/{id}:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}
   /api/v1/campaigns/{id}/owner:
@@ -122,8 +124,8 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1margin
   /api/v1/campaigns/{id}/integration-health:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-health
-  /api/v1/campaigns/{id}/editor-shell:
-    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1editor-shell
+  /api/v1/campaigns/{id}/editor:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1editor
   /api/v1/campaigns/{id}/integration-panel:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1integration-panel
   /api/v1/campaigns/{id}/flow/validate:
@@ -132,8 +134,8 @@ paths:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1macro-preview
   /api/v1/campaigns/{id}/diff:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1diff
-  /api/v1/campaigns/{id}/clone/preview:
-    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone~1preview
+  /api/v1/campaigns/{id}/clone-preview:
+    $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone-preview
   /api/v1/campaigns/{id}/placement-block-suggestions:
     $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1placement-block-suggestions
   /api/v1/campaigns/bulk:

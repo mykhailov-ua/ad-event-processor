@@ -13,7 +13,7 @@ import {
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
 import { IntegrationsPlatformCampaigns } from '@/domains/integrations/integrations_platform_campaigns';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function IntegrationsPlatformCampaignsPage() {
   const {

@@ -28,6 +28,8 @@ func filterAndSortCampaigns(items []CampaignDTO, q, sortField, order, pacingMode
 			less = strings.ToLower(filtered[i].Name) < strings.ToLower(filtered[j].Name)
 		case "spend":
 			less = filtered[i].CurrentSpend < filtered[j].CurrentSpend
+		case "budget_limit":
+			less = filtered[i].BudgetLimit < filtered[j].BudgetLimit
 		default:
 			less = filtered[i].UpdatedAt < filtered[j].UpdatedAt
 		}

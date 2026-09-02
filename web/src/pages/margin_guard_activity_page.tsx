@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { listMarginGuardActivity, removeMarginGuardOverride } from '@/api/margin_guard_api';
 import { MarginGuardActivityDirectory } from '@/domains/automation/margin_guard_activity_directory';
 import { useCampaignScope } from '@/hooks/use_campaign_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function MarginGuardActivityPage() {
   const {

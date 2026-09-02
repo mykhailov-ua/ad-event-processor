@@ -1,7 +1,7 @@
 import { getRtbIntegrationProfile } from '@/api/rtb_api';
 import { RtbIntegrationProfilePanel } from '@/domains/rtb/rtb_integration_profile';
 import { rtbLicenseGated } from '@/domains/rtb/rtb_nav';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function RtbIntegrationProfilePage() {
   const { data, error, fetching } = useResource(

@@ -226,15 +226,33 @@ SELECT COUNT(*) FROM recon_runs;
 SELECT COUNT(*) FROM campaigns
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
-  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid);
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint);
 
 -- name: ListCampaigns :many
 SELECT * FROM campaigns
 WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: SumCampaignStatsByCampaignIDsInRange :many
+SELECT
+    campaign_id,
+    COALESCE(SUM(impressions_count), 0)::bigint AS impressions,
+    COALESCE(SUM(clicks_count), 0)::bigint AS clicks,
+    COALESCE(SUM(conversions_count), 0)::bigint AS conversions
+FROM campaign_stats
+WHERE campaign_id = ANY(@campaign_ids::uuid[])
+  AND date >= @from_date::date
+  AND date <= @to_date::date
+GROUP BY campaign_id;
 
 -- name: ListCampaignIDsByCustomers :many
 SELECT customer_id, id AS campaign_id

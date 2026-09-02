@@ -6,12 +6,12 @@ import { listCustomers } from '@/api/customers_api';
 import { getRoleDashboard, isDashboardRole } from '@/api/dashboards_api';
 import { ApiError } from '@/api/client';
 import type { DashboardRole } from '@/api/types';
-import type { CustomerComboboxOption } from '@/components/system/customer_combobox';
+import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import {
   RoleDashboardView,
 } from '@/domains/dashboards/role_dashboard_view';
 import type { DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_types';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { dashboardPresetRange } from '@/lib/dashboard_range';
 import { defaultReportRange } from '@/lib/report_paths';

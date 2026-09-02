@@ -1,16 +1,10 @@
+import { devMockResponse } from '@/api/dev_mock/index';
+import { ApiError } from '@/api/api_error';
+import { isAdminDevMode } from '@/lib/admin_dev_mode';
+
+export { ApiError } from '@/api/api_error';
+
 export const RESOURCE_FETCH_TIMEOUT_MS = 15_000;
-
-export class ApiError extends Error {
-  readonly status: number;
-  readonly code: string;
-
-  constructor(status: number, code: string, message: string) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-  }
-}
 
 export type ApiRequestInit = Omit<RequestInit, 'signal'> & {
   signal?: AbortSignal;
@@ -90,6 +84,13 @@ export function isAbortError(err: unknown): boolean {
 }
 
 export async function apiFetch(path: string, init: ApiRequestInit = {}): Promise<Response> {
+  if (isAdminDevMode()) {
+    const mocked = devMockResponse(path, init);
+    if (mocked) {
+      return mocked;
+    }
+  }
+
   const timeoutCtrl = new AbortController();
   const timeoutId = setTimeout(() => {
     timeoutCtrl.abort();

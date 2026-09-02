@@ -405,14 +405,14 @@ paths:
         $ref: paths/integrations.yaml#/paths/~1api~1v1~1campaigns~1{id}~1apply-templates
     /api/v1/campaigns/{id}/clone:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone
-    /api/v1/campaigns/{id}/clone/preview:
-        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone~1preview
+    /api/v1/campaigns/{id}/clone-preview:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1clone-preview
     /api/v1/campaigns/{id}/conversion-mappings:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1conversion-mappings
     /api/v1/campaigns/{id}/diff:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1diff
-    /api/v1/campaigns/{id}/editor-shell:
-        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1editor-shell
+    /api/v1/campaigns/{id}/editor:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1editor
     /api/v1/campaigns/{id}/events:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1{id}~1events
     /api/v1/campaigns/{id}/export:
@@ -457,6 +457,8 @@ paths:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs
     /api/v1/campaigns/import/validate/jobs/{id}:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1import~1validate~1jobs~1{id}
+    /api/v1/campaigns/metrics:
+        $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1metrics
     /api/v1/campaigns/migrate/import:
         $ref: paths/campaigns.yaml#/paths/~1api~1v1~1campaigns~1migrate~1import
     /api/v1/campaigns/migrate/preview:

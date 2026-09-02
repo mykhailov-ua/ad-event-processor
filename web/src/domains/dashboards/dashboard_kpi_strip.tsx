@@ -29,7 +29,7 @@ export function DashboardKpiStrip({ tiles, className }: DashboardKpiStripProps) 
           key={tile.id}
           className="ui-surface-raised grid min-w-0 gap-0.5 px-3 py-2.5 text-center sm:px-4 sm:py-3"
         >
-          <p className="truncate text-[11px] uppercase tracking-wide text-muted-foreground sm:text-xs">
+          <p className="truncate text-[11px] tracking-wide text-muted-foreground sm:text-xs">
             {tile.label}
           </p>
           <p className="truncate font-numeric text-base font-semibold tabular-nums tracking-tight sm:text-lg">

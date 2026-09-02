@@ -1,9 +1,13 @@
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableHeader } from '@/components/ui/table';
+import { PageLayout } from '@/shell/page_layout';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import type { Customer } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 import { listPageRange } from '@/lib/list_page_stats';
@@ -43,20 +47,26 @@ function SortableHeader({
   onSort: () => void;
 }) {
   return (
-    <button
-      className={cn(
-        'inline-flex w-full items-center gap-1 justify-start text-left',
-        active && 'text-[var(--campaigns-ws-text)]',
-      )}
+    <Button
+      className={cn(active && 'font-semibold')}
       disabled={disabled}
       type="button"
+      variant="ghost"
       onClick={onSort}
     >
-      <span className="truncate">{label}</span>
-      <span aria-hidden className="text-[0.625rem] leading-none">
-        {active ? (activeOrder === 'asc' ? '▲' : '▼') : '↕'}
+      <span>{label}</span>
+      <span aria-hidden className="admin-muted inline-flex">
+        {active ? (
+          activeOrder === 'asc' ? (
+            <ArrowUp className="h-3 w-3" />
+          ) : (
+            <ArrowDown className="h-3 w-3" />
+          )
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-50" />
+        )}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -109,22 +119,14 @@ export function CustomersDirectory({
       : '0 of 0';
 
   return (
-    <div className="campaigns-list-workspace flex min-h-full flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--campaigns-ws-border)] bg-white px-3 py-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <h1 className="text-lg font-semibold text-[var(--campaigns-ws-text)]">Customers</h1>
-          {freshnessLabel ? (
-            <span className="rounded border border-[var(--campaigns-ws-border)] bg-[#f7f7f7] px-2 py-0.5 text-xs text-[var(--campaigns-ws-muted)]">
-              {freshnessLabel}
-            </span>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--campaigns-ws-muted)]">
-          <label className="flex items-center gap-1.5">
-            <span>Per page</span>
+    <PageLayout
+      badge={freshnessLabel ? <span className="admin-chip">{freshnessLabel}</span> : null}
+      footer={
+        <>
+          <label className="admin-label">
+            Per page
             <input
-              className="campaigns-list-workspace-page-size tabular-nums"
+              className="admin-select"
               disabled={fetching}
               inputMode="numeric"
               value={pageSizeDraft}
@@ -138,39 +140,39 @@ export function CustomersDirectory({
               }}
             />
           </label>
-          <button
-            className="campaigns-list-workspace-btn-secondary"
+          <Button
             disabled={fetching || !canGoPrev}
             type="button"
+            variant="secondary"
             onClick={() => onPageChange(Math.max(0, offset - limit))}
           >
             Previous
-          </button>
-          <button
-            className="campaigns-list-workspace-btn-secondary"
+          </Button>
+          <Button
             disabled={fetching || !canGoNext}
             type="button"
+            variant="secondary"
             onClick={() => onPageChange(offset + limit)}
           >
             Next
-          </button>
-          <span className="tabular-nums">{rangeLabel}</span>
-        </div>
-      </div>
-
-      <div aria-atomic="true" aria-live="polite" className="flex min-h-0 flex-1 flex-col bg-white">
-        {items.length === 0 ? (
-          <EmptyState
-            variant="blank-slate"
-            title="No customers"
-            description="Customers are provisioned through billing and platform setup."
-            actionLabel="View documentation"
-            actionHref="/docs"
-          />
-        ) : (
-          <div className="campaigns-list-workspace-table-wrap ui-scrollbar">
-            <table className="campaigns-list-workspace-table campaigns-list-workspace-table--no-row-accent">
-              <thead>
+          </Button>
+          <span className="admin-muted tabular-nums">{rangeLabel}</span>
+        </>
+      }
+      title="Customers"
+    >
+      {items.length === 0 ? (
+        <EmptyState
+          actionHref="/docs"
+          actionLabel="View documentation"
+          description="Customers are provisioned through billing and platform setup."
+          title="No customers"
+          variant="blank-slate"
+        />
+      ) : (
+        <div className="admin-table-wrap">
+          <Table bare className="admin-table">
+              <TableHeader>
                 <tr>
                   <th className="w-[28%]">
                     <SortableHeader
@@ -181,7 +183,7 @@ export function CustomersDirectory({
                       onSort={() => onColumnSort('name')}
                     />
                   </th>
-                  <th className="campaigns-list-workspace-num w-[11%]">
+                  <th className="num w-[11%]">
                     <SortableHeader
                       active={appliedSort === 'balance'}
                       activeOrder={appliedOrder}
@@ -192,7 +194,7 @@ export function CustomersDirectory({
                   </th>
                   <th className="w-[7%]">Currency</th>
                   <th className="w-[14%]">Cost center</th>
-                  <th className="campaigns-list-workspace-num w-[10%]">
+                  <th className="num w-[10%]">
                     <SortableHeader
                       active={appliedSort === 'active_campaigns'}
                       activeOrder={appliedOrder}
@@ -201,8 +203,8 @@ export function CustomersDirectory({
                       onSort={() => onColumnSort('active_campaigns')}
                     />
                   </th>
-                  <th className="campaigns-list-workspace-num w-[12%]">Total spend</th>
-                  <th className="campaigns-list-workspace-num w-[18%]">
+                  <th className="num w-[12%]">Total spend</th>
+                  <th className="num w-[18%]">
                     <SortableHeader
                       active={appliedSort === 'created_at'}
                       activeOrder={appliedOrder}
@@ -212,8 +214,8 @@ export function CustomersDirectory({
                     />
                   </th>
                 </tr>
-              </thead>
-              <tbody>
+              </TableHeader>
+              <TableBody>
                 {items.map((customer) => {
                   const createdLabel = displayTimestamp(
                     customer.created_at,
@@ -224,7 +226,7 @@ export function CustomersDirectory({
                       <td className="max-w-0 truncate font-medium">
                         {customer.id ? (
                           <Link
-                            className="campaigns-list-workspace-link block truncate"
+                            className="block truncate"
                             title={customer.name ?? customer.id}
                             to={`/customers/${customer.id}`}
                           >
@@ -236,26 +238,25 @@ export function CustomersDirectory({
                           </span>
                         )}
                       </td>
-                      <td className="campaigns-list-workspace-num">{customer.balance ?? ''}</td>
+                      <td className="num">{customer.balance ?? ''}</td>
                       <td className="truncate">{customer.currency ?? ''}</td>
                       <td className="max-w-0 truncate" title={customer.cost_center ?? undefined}>
                         {customer.cost_center ?? ''}
                       </td>
-                      <td className="campaigns-list-workspace-num">
+                      <td className="num">
                         {customer.active_campaigns ?? ''}
                       </td>
-                      <td className="campaigns-list-workspace-num">{customer.total_spend ?? ''}</td>
-                      <td className="campaigns-list-workspace-num max-w-0 truncate" title={createdLabel}>
+                      <td className="num">{customer.total_spend ?? ''}</td>
+                      <td className="admin-muted max-w-0 truncate" title={createdLabel}>
                         {createdLabel}
                       </td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
-      </div>
-    </div>
+    </PageLayout>
   );
 }

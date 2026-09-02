@@ -11,6 +11,9 @@ export type ErrorBody = components['schemas']['ErrorBody'];
 
 export type Campaign = components['schemas']['Campaign'];
 export type CampaignListResponse = components['schemas']['CampaignListResponse'];
+export type CampaignListMetricsRow = components['schemas']['CampaignListMetricsRow'];
+export type CampaignListMetricsBatchResponse =
+  components['schemas']['CampaignListMetricsBatchResponse'];
 export type PatchCampaignRequest = components['schemas']['PatchCampaignRequest'];
 export type BillingSummary = components['schemas']['BillingSummary'];
 export type Invoice = components['schemas']['Invoice'];

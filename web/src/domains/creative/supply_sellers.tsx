@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
 import { SUPPLY_PREVIEW_SELLERS_JSON_PATH } from '@/api/supply_api';
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import {
   Dialog,
   DialogContent,

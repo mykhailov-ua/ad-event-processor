@@ -7,15 +7,12 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
     return (
       <input
         type={type}
-        className={cn(
-          'flex h-10 w-full rounded-full border border-border/50 bg-muted/40 px-4 py-1 text-base transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm',
-          className
-        )}
+        className={cn('admin-input w-full', className)}
         ref={ref}
         {...props}
       />
     );
-  }
+  },
 );
 Input.displayName = 'Input';
 

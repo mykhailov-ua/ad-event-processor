@@ -58,6 +58,14 @@ func (s campaignListStub) ListCampaigns(context.Context, uuid.UUID, string, int3
 	return nil, 0, nil
 }
 
+func (s campaignListStub) ListCampaignsFiltered(context.Context, campaign.ListCampaignsFilter) ([]campaign.CampaignDTO, int64, error) {
+	return nil, 0, nil
+}
+
+func (s campaignListStub) CountCampaignStatusTotals(context.Context, campaign.ListCampaignsFilter, string, string) (campaign.CampaignStatusTotalsDTO, error) {
+	return campaign.CampaignStatusTotalsDTO{}, nil
+}
+
 func (s campaignListStub) AttachCampaignListMarginBreach(context.Context, []campaign.CampaignDTO) {
 }
 

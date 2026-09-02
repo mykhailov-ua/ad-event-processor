@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { AppShell } from '@/app_shell';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { useSession } from '@/hooks/use_session';
 import { useMeta } from '@/hooks/use_meta';
 import { defaultHomePath } from '@/lib/session';
@@ -94,6 +94,7 @@ import { SettingsLicensePage } from '@/pages/settings_license_page';
 import { SettingsPage } from '@/pages/settings_page';
 import { TeamPage } from '@/pages/team_page';
 import { DocsPage } from '@/pages/docs_page';
+import { RouteErrorPage } from '@/pages/route_error_page';
 
 function ProtectedLayout() {
   const { bootstrapComplete, licenseNeedsSetup, loading: metaLoading } = useMeta();
@@ -135,15 +136,16 @@ function HomeRedirect() {
 export function AppRoutes() {
   return (
     <Routes>
-      <Route element={<SetupPage />} path="/setup" />
-      <Route element={<LoginPage />} path="/login" />
-      <Route element={<ActivatePage />} path="/activate" />
-      <Route element={<InviteAcceptPage />} path="/invite/accept" />
-      <Route element={<ForbiddenPage />} path="/forbidden" />
-      <Route element={<Navigate replace to="/settings/license" />} path="/licence" />
-      <Route element={<Navigate replace to="/settings/license" />} path="/license" />
-      <Route element={<Navigate replace to="/settings/license" />} path="/settings/licence" />
-      <Route element={<ProtectedLayout />}>
+      <Route errorElement={<RouteErrorPage layout="standalone" />}>
+        <Route element={<SetupPage />} path="/setup" />
+        <Route element={<LoginPage />} path="/login" />
+        <Route element={<ActivatePage />} path="/activate" />
+        <Route element={<InviteAcceptPage />} path="/invite/accept" />
+        <Route element={<ForbiddenPage />} path="/forbidden" />
+        <Route element={<Navigate replace to="/settings/license" />} path="/licence" />
+        <Route element={<Navigate replace to="/settings/license" />} path="/license" />
+        <Route element={<Navigate replace to="/settings/license" />} path="/settings/licence" />
+        <Route element={<ProtectedLayout />} errorElement={<RouteErrorPage layout="embedded" />}>
         <Route element={<HomeRedirect />} index />
         <Route element={<CustomersPage />} path="customers" />
         <Route element={<CustomerDetailPage />} path="customers/:id" />
@@ -228,8 +230,10 @@ export function AppRoutes() {
         <Route element={<SavedViewsPage />} path="views" />
         <Route element={<CampaignForecastPage />} path="forecast/campaign" />
         <Route element={<DocsPage />} path="docs/*" />
+        <Route element={<NotFoundPage />} path="*" />
+        </Route>
+        <Route element={<NotFoundPage />} path="*" />
       </Route>
-      <Route element={<NotFoundPage />} path="*" />
     </Routes>
   );
 }

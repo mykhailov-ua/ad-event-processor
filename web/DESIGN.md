@@ -1,203 +1,153 @@
-# Admin UI design system (Grok surfaces)
+# web
 
-Operator-facing admin SPA (`web/`). Policy and agent rules: `.cursor/rules/ui.mdc`. This file is the **visual and component reference**.
+Operator admin SPA served by control plane (`:8188`, `/api/v1/*`). Layout and anti-slop policy: `.cursor/rules/ui.mdc`, `.cursor/rules/frontend-modular.mdc`. This file is the **visual and component reference** for `web/src/`.
 
-Theme direction: **Grok surfaces + Geist density** — true-black canvas, depth from surface shades (not shadows), pill navigation, soft hairline borders.
+Cross-ref: `FRONTEND.md` (route status), `docs/DEVELOPMENT.md` (OpenAPI types, CI).
 
-## Tokens
+Theme: **surface depth + Inter density** — hierarchy from OKLCH shade steps, hairline borders, compact radii (`--admin-radius-sm`).
 
-Defined in `web/src/styles/globals.css` and `web/tailwind.config.ts`. HSL components without `hsl()` wrapper in CSS variables.
+---
 
-| Token | Default | Role |
+## Tree
+
+| Path | Role |
+| :--- | :--- |
+| `web/src/api/` | HTTP client, resource hooks, dev mock (`?admin_dev=1`) |
+| `web/src/domains/` | Route-owned screens (`campaigns/list`, `ops`, …) |
+| `web/src/shell/` | Page chrome, directory frames, empty/error states |
+| `web/src/components/ui/` | shadcn primitives (`Button`, `Table`, …) |
+| `web/src/styles/globals.css` | Surface ladder, admin utilities, typography |
+| `web/src/lib/control_size.ts` | Control height contract (no manual `h-7`/`h-8`/`h-9`) |
+
+Embed: `npm run build` → `sync_embed.mjs` → `internal/controlplane/admin_static_stub/`.
+
+---
+
+## Surface hierarchy
+
+Defined in `web/src/styles/globals.css` (`:root`, `.dark`).
+
+| Level | Variable | Utility | Nesting role |
+| :--- | :--- | :--- | :--- |
+| 0 | `--admin-surface-0` | `.admin-surface-0` | App canvas (`admin-main`, `--admin-bg`) |
+| 1 | `--admin-surface-1` | `.admin-surface-1` | Chrome on canvas: sidebar, header, control panel, table wrap |
+| 2 | `--admin-surface-2` | `.admin-surface-2` | Controls inside L1: buttons, inputs, table head/foot, dialogs |
+| 3 | `--admin-surface-3` | `.admin-surface-3` | Deepest inset: kbd chip, column-menu presets |
+
+Each step multiplies OKLCH lightness by `--admin-surface-step: 0.98` from `--admin-surface-base` (`#f4f4f5` light, `#13151a` dark).
+
+**Rule:** child surface = parent + 1 (max 3). Toolbars bump control fills via descendant selectors (`.admin-control-panel .admin-btn` → L2).
+
+Semantic aliases (`--admin-surface`, `--admin-input-bg`, `--admin-btn-bg`, …) map onto the ladder for backward compatibility.
+
+Borders: `--admin-border` = 50% mix of `--admin-border-strong` toward transparent. Do not drop borders for elevation; use surface step + `1px solid var(--admin-border)`.
+
+---
+
+## Typography
+
+Canonical roles: `web/src/lib/admin_typography.ts`. Fonts: `@fontsource-variable/inter`, `@fontsource-variable/jetbrains-mono` in `globals.css`.
+
+| Role | Face | Classes | Use for |
+| :--- | :--- | :--- | :--- |
+| UI prose | Inter | `font-sans` | Labels, nav, names |
+| Numeric | Inter + tnum | `tabular-nums`, `admin-tabular-nums`, `.num` | Money, counts, rates, KPIs, chart ticks |
+| Wire / code | JetBrains Mono | `font-mono`, `ui-code-block` | UUID, JSON editor, cron, secrets |
+
+Table metrics use Inter tnum, not mono. Headings: `tracking-tight`, `-0.02em` letter-spacing.
+
+---
+
+## Controls and primitives
+
+Interactive controls use `@/components/ui/button` (wraps `.admin-btn`), not raw `<button className="admin-btn">`. CI: `bash scripts/ci/admin/ui_slop.sh`.
+
+| Primitive | Default radius | Notes |
 | :--- | :--- | :--- |
-| `--background` | `0 0% 0%` | Page canvas |
-| `--foreground` | `0 0% 98%` | Primary text |
-| `--card` | `0 0% 4%` | Sidebar, elevated panels |
-| `--popover` | `0 0% 7%` | Menus, dialogs, dropdowns |
-| `--muted` | `0 0% 6%` | Input fills, table hover, chips |
-| `--secondary` | `0 0% 10%` | Active nav pill, unselected chip variant |
-| `--border` | `0 0% 14%` | Hairline separators |
-| `--primary` | `0 0% 98%` | Inverted CTA (white on black) |
-| `--radius` | `1rem` | Base corner radius |
-| `--chart-1` … `--chart-5` | grayscale steps | Sparklines and charts |
+| `Button`, `Input`, `Select` | `--admin-radius-sm` | Default size = `--admin-control-height` (32px) |
+| `Card`, panels, tables | `--admin-radius` | `admin-table-wrap`, `ui-surface*` |
+| Nav pills, chips | `rounded-full` | `SectionNav`, `ToggleChipGroup` only |
+| `Button` `shape="pill"` | `rounded-full` | Opt-in; not default |
 
-Semantic surface ladder (conceptual):
+Depth: no drop shadows on panels. Motion: `transition-colors` on interactive nodes; Radix enter/exit on overlays; `prefers-reduced-motion` in globals.
 
-| Level | Token / utility | Use |
-| :--- | :--- | :--- |
-| 0 | `bg-background` | App canvas, main scroll area |
-| 1 | `ui-surface` | Filter panels, toolbars, inline grouping (no border) |
-| 2 | `ui-surface-raised` | Hub cards, KPI tiles, clickable panels |
-| 3 | `ui-table-frame` | Data tables, directory lists |
-| 4 | `ui-shell` / `bg-popover` | Popover, select menu, dialog shell |
+shadcn HSL tokens (`--background`, `--card`, `--muted`, …) mirror the ladder for `bg-muted`, command palette, etc. Prefer `--admin-surface-*` for new admin chrome.
 
-Typography:
+---
 
-- Font: Geist Variable (`font-sans`), Geist Mono for code (`font-mono`, `ui-code-block`).
-- Headings: `tracking-tight`, `letter-spacing: -0.02em` (globals).
-- Metrics: `tabular-nums` on counts, money, dates.
-
-Motion:
-
-- `transition-colors` on interactive surfaces only.
-- Radix enter/exit on overlays (dialog, popover, sheet).
-- `prefers-reduced-motion` respected in globals.
-
-## Utility classes (`globals.css` `@layer components`)
-
-| Class | Maps to | When to use |
-| :--- | :--- | :--- |
-| `ui-surface` | `rounded-2xl bg-muted/30` | Filter/toolbar background |
-| `ui-surface-raised` | `rounded-2xl border border-border/40 bg-card/80` | Hub link cards, stat tiles |
-| `ui-table-frame` | `rounded-2xl border border-border/40 bg-card/40` | Table wrappers |
-| `ui-filter-panel` | `ui-surface` + `grid gap-4 p-4 md:p-5` | Prefer `<FilterPanel>` component |
-| `ui-shell` | popover/dialog outer chrome | Used inside shadcn primitives |
-| `ui-code-block` | mono pre blocks | JSON preview, logs |
-| `ui-scrollbar` | thin scrollbar | Long nav, tables, popovers |
-
-**Banned in new JSX:** raw `rounded-md border` wrappers. Use utilities or system components below.
-
-## System components (`web/src/components/system/`)
-
-### Page shell
+## Shell components (`web/src/shell/`)
 
 | Component | File | Role |
 | :--- | :--- | :--- |
 | `PageChrome` | `page_chrome.tsx` | Title, description, badge, actions |
 | `PageBreadcrumbs` | `page_breadcrumbs.tsx` | Route trail |
-| `SectionNav` | `section_nav.tsx` | Pill nav for domain sections (Ops, Integrations, …) |
-| `PageToolbar` | `page_toolbar.tsx` | Action row (`ui-surface` flex bar) |
-
-### Directory pattern (reference: Campaigns)
-
-| Component | File | Role |
-| :--- | :--- | :--- |
-| `FilterPanel` | `filter_panel.tsx` | Filter section wrapper (`ui-filter-panel`) |
-| `DirectoryFilterForm` | `filter_panel.tsx` | Grid form: `layout="directory"` or `"auto-fill"` |
-| `FilterField` | `filter_panel.tsx` | Label + control cell |
-| `ToggleChipGroup` | `toggle_chip_group.tsx` | Server-driven status/filter chips with counts |
-| `DirectoryListMeta` | `directory_list_meta.tsx` | "Showing X–Y of Z" line |
-| `DirectoryTable` | `directory_table.tsx` | Scrollable semantic table frame |
+| `SectionNav` | `section_nav.tsx` | Pill nav for domain sections |
+| `PageToolbar` | `page_toolbar.tsx` | Action row on `ui-surface` |
+| `FilterPanel` / `DirectoryFilterForm` | `filter_panel.tsx` | Directory filter grid |
+| `ToggleChipGroup` | `toggle_chip_group.tsx` | Server-driven status chips with counts |
+| `DirectoryListMeta` | `directory_list_meta.tsx` | Showing X–Y of Z |
+| `DirectoryTable` | `directory_table.tsx` | Scrollable table frame (`admin-table-wrap`) |
 | `PaginationPrevNext` | `pagination_prev_next.tsx` | Prev/Next in filter row |
-| `FilterApplyButton` / `FilterResetButton` | `action_buttons.tsx` | Submit actions (`h-9`, pill) |
-| `EmptyState` | `empty_state.tsx` | Blank / no-results |
-| `ErrorBlock` | `error_block.tsx` | Blocking errors |
-| `AppliedCustomerBanner` | `applied_customer_banner.tsx` | Customer scope chip bar |
+| `EmptyState` / `ErrorBlock` | `empty_state.tsx`, `error_block.tsx` | Blank and blocking errors |
+| `HubLinkGrid` / `StatPanel` | `hub_link_card.tsx`, `stat_panel.tsx` | Hubs and KPI tiles |
 
-### Hub and KPI
+**Banned in new JSX:** raw `rounded-md border` wrappers; raw `<table>`; raw `fetch()` in domains/shell/pages.
 
-| Component | File | Role |
-| :--- | :--- | :--- |
-| `HubLinkGrid` / `HubLinkCard` | `hub_link_card.tsx` | Domain hub landing cards |
-| `StatPanel` / `StatRow` | `stat_panel.tsx` | KPI metric tiles |
-| `PanelSection` | `stat_panel.tsx` | Titled block + table (Ops, JSON dashboard) |
-
-### shadcn primitives (`web/src/components/ui/`)
-
-Interactive controls use **pill shape** by default (`Button`, `Input`, `Select` trigger). Cards use `rounded-2xl border border-border/40`.
+---
 
 ## Page patterns
 
-### A. Directory list (canonical)
+### Directory list (canonical)
 
-Stack:
+Reference: `web/src/domains/campaigns/list/campaigns_directory.tsx`.
 
-```
-PageChrome
-  [AppliedCustomerBanner]
-  FilterPanel
-    DirectoryFilterForm
-      FilterField × N
-      FilterApplyButton
-      [FilterResetButton]
-      PaginationPrevNext
-  DirectoryListMeta
-  ToggleChipGroup          (optional quick filters)
-  DirectoryTable | EmptyState
-```
+Stack: `PageChrome` → optional `AppliedCustomerBanner` → `FilterPanel` / `DirectoryFilterForm` → `DirectoryListMeta` → optional `ToggleChipGroup` → `DirectoryTable` | `EmptyState`.
 
-Reference implementation: `web/src/domains/campaigns/campaigns_directory.tsx`.
+Filter layouts: `layout="directory"` (campaigns matrix) or `layout="auto-fill"` (`minmax(12rem, 1fr)`). Apply and pagination are sibling grid children, not nested.
 
-Filter grid layouts:
+### Domain hub
 
-- `layout="directory"` — campaigns-shaped wide matrix (customer, status, search, actions).
-- `layout="auto-fill"` — `minmax(12rem, 1fr)` columns (customers, audit, billing).
+`PageChrome` → `SectionNav` → `HubLinkGrid`. Examples: `fraud_hub.tsx`, `integrations_hub.tsx`.
 
-Apply and pagination are **sibling** grid children of the filter form, not wrapped together.
+### Ops / JSON dashboard
 
-### B. Domain hub
+`PageChrome` → `SectionNav` → `PageToolbar` → `StatPanel` grid → `PanelSection` tables. Reference: `ops_home.tsx`, `json_dashboard_view.tsx`.
 
-```
-PageChrome
-  SectionNav
-  HubLinkGrid
-    HubLinkCard × N
-```
-
-Examples: `fraud_hub.tsx`, `integrations_hub.tsx`, `ops_home.tsx` (nav only; home uses KPI pattern).
-
-### C. Ops / JSON dashboard
-
-```
-PageChrome
-  SectionNav
-  PageToolbar
-  StatPanel × N  (grid)
-  PanelSection   (tables)
-```
-
-Reference: `web/src/domains/ops/ops_home.tsx`, `json_dashboard_view.tsx`.
-
-### D. Settings / forms
-
-```
-PageChrome
-  JsonDashboardView | read-only payload
-  PageToolbar
-  Dialog / Sheet for mutations
-```
-
-### E. Progressive disclosure (Campaigns metrics)
+### Campaigns metrics disclosure
 
 | Tier | Trigger | Surface |
 | :--- | :--- | :--- |
-| 0 | Table row | Slim columns only |
-| 1 | Budget used cell | `Popover` + `HourlyTrendChart` |
-| 2 | Row menu / popover link | `Sheet` overview |
+| 0 | Table row | Column cells |
+| 1 | Budget used cell | `Popover` + trend chart |
+| 2 | Row menu / link | `Sheet` overview |
 
-Shared metrics UI: `campaign_metrics_shared.tsx`.
+Shared: `campaign_metrics_shared.tsx`.
 
-## Shape rules
-
-| Element | Radius | Notes |
-| :--- | :--- | :--- |
-| Buttons, inputs, selects | `rounded-full` | Default `Button` shape |
-| Panels, tables, cards | `rounded-2xl` | `ui-surface*`, `Card` |
-| Code blocks | `rounded-xl` | `ui-code-block` |
-| Nav pills, status chips | `rounded-full` | `SectionNav`, `ToggleChipGroup` |
-| Dropdown/select items | `rounded-lg` | Inside `ui-shell` |
-
-Depth: **no drop shadows** on panels. Elevation = background step + optional `border-border/40`.
+---
 
 ## Charts
 
-- Colors: `hsl(var(--primary))`, `hsl(var(--muted-foreground) / 0.7)`, `hsl(var(--border))` for grid lines.
-- Container: `rounded-xl bg-muted/20` (no heavy border).
-- Empty state copy when series has no activity.
+Colors: `hsl(var(--primary))`, `hsl(var(--muted-foreground) / 0.7)`, `hsl(var(--border))` for grid. Container: `rounded-xl bg-muted/20`. Empty copy when series has no points.
+
+---
 
 ## Verification
 
 ```bash
+bash scripts/ci/admin/ui_slop.sh
+bash scripts/ci/admin/web.sh
 cd web && npm test
-cd web && npm run typecheck    # when changing types or many files
-rg 'rounded-md border' web/src --glob '*.tsx'   # expect 0
+cd web && npm run typecheck    # when changing types across many files
+rg 'className="admin-btn' web/src/domains web/src/shell web/src/pages   # expect 0
+rg 'rounded-md border' web/src --glob '*.tsx'   # expect 0 in new JSX
 ```
 
-## Roadmap (not required for every PR)
+---
 
-| Phase | Item |
+## Related docs
+
+| Doc | Content |
 | :--- | :--- |
-| A | Migrate remaining `ui-filter-panel` class strings to `<FilterPanel>` |
-| B | `/design` dev route showcasing all system components |
-| C | Semantic `--surface-0..3` aliases in CSS |
-| D | Playwright screenshot smoke on Campaigns, Ops, Settings |
+| `FRONTEND.md` | Route maturity, backlog, e2e tiers |
+| `.cursor/rules/ui.mdc` | Layout grid, error honesty, fixture ban |
+| `.cursor/rules/frontend-hot-path.mdc` | Client sort/filter regimes (S/L/F) |

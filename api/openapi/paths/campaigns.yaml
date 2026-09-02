@@ -49,6 +49,19 @@ paths:
             type: integer
             format: int64
             minimum: 0
+        - name: owner_user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
         - $ref: '../openapi.yaml#/components/parameters/LimitQuery'
         - $ref: '../openapi.yaml#/components/parameters/OffsetQuery'
       responses:
@@ -58,6 +71,32 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/CampaignListResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/metrics:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListMetrics
+      summary: Batch campaign list metrics
+      description: Returns impressions, clicks, conversions, unique clicks, margin window, and blocks for up to 100 campaigns in one request.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - name: ids
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Comma-separated campaign UUIDs (max 100).
+        - $ref: '../openapi.yaml#/components/parameters/ReportFromQuery'
+        - $ref: '../openapi.yaml#/components/parameters/ReportToQuery'
+      responses:
+        '200':
+          description: Batch metrics keyed by campaign id
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignListMetricsBatchResponse'
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
@@ -543,7 +582,7 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
-  /api/v1/campaigns/{id}/editor-shell:
+  /api/v1/campaigns/{id}/editor:
     get:
       tags: [campaigns]
       operationId: campaignsEditorShell
@@ -815,7 +854,7 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
-  /api/v1/campaigns/{id}/clone/preview:
+  /api/v1/campaigns/{id}/clone-preview:
     post:
       tags: [campaigns]
       operationId: campaignsClonePreview

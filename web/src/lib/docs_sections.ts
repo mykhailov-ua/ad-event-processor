@@ -47,7 +47,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       {
         problem: 'Stuck on /setup',
         symptom: 'Bootstrap never completes.',
-        fix: 'Open GET /api/v1/meta — bootstrap_complete must be true. Finish platform bootstrap in Settings or run stack seed.',
+        fix: 'Open GET /api/v1/meta - bootstrap_complete must be true. Finish platform bootstrap in Settings or run stack seed.',
       },
       {
         problem: 'EULA modal blocks navigation',

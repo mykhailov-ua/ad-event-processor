@@ -1,14 +1,14 @@
-import { SecondaryActionButton } from '@/components/system/action_buttons';
-import { DirectoryListMeta } from '@/components/system/directory_list_meta';
+import { SecondaryActionButton } from '@/shell/action_buttons';
+import { DirectoryListMeta } from '@/shell/directory_list_meta';
 import {
   DirectoryFilterForm,
   FilterPanel,
-} from '@/components/system/filter_panel';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
+} from '@/shell/filter_panel';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';

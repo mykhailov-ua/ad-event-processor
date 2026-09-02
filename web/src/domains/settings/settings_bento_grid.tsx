@@ -1,7 +1,7 @@
 import { Activity, Globe, Server, Shield } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
-import { CopyButton } from '@/components/system/copy_button';
+import { CopyButton } from '@/shell/copy_button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +35,7 @@ export function BentoColumn({
 }) {
   return (
     <div className="flex min-w-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground">
         {icon}
         <span>{title}</span>
       </div>
@@ -112,7 +112,7 @@ function SettingsUrlCopyChip({
   const trimmed = value.trim();
   if (!trimmed) {
     return (
-      <span className="inline-flex h-7 items-center rounded-full border border-dashed border-border/60 px-2.5 text-xs text-muted-foreground">
+      <span className="inline-flex h-7 items-center rounded-[var(--admin-radius-sm)] border border-dashed border-border/60 px-2.5 text-xs text-muted-foreground">
         {shortLabel}
       </span>
     );
@@ -121,7 +121,7 @@ function SettingsUrlCopyChip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex h-7 items-center gap-0.5 rounded-full border border-border/60 bg-muted/25 pl-2.5 pr-0.5 text-xs text-foreground">
+        <span className="inline-flex h-7 items-center gap-0.5 rounded-[var(--admin-radius-sm)] border border-border/60 bg-muted/25 pl-2.5 pr-0.5 text-xs text-foreground">
           <span>{shortLabel}</span>
           <CopyButton className="size-7" label={label} value={trimmed} />
         </span>
@@ -202,7 +202,7 @@ function StripeSecretsDialog({
       open={open}
     >
       <DialogTrigger asChild>
-        <Button className="h-8 rounded-full px-3 text-xs" size="sm" type="button" variant="outline">
+        <Button className="px-3 text-xs" type="button" variant="outline">
           Configure
         </Button>
       </DialogTrigger>
@@ -284,7 +284,7 @@ export function SettingsBentoGrid({
   const timezone = snapshot.config.timezone.trim();
   const localeLine =
     currency || timezone
-      ? [currency || '—', timezone || '—'].join(' · ')
+      ? [currency || '-', timezone || '-'].join('  /  ')
       : settingsTextValue('', 'default_currency');
 
   const networkInterface = snapshot.config.networkInterface.trim();
@@ -386,7 +386,7 @@ export function SettingsBentoGrid({
           label="Stripe secrets"
           value={
             <span className="inline-flex items-center gap-2">
-              <span className="font-mono text-xs tracking-widest text-muted-foreground">••••••••</span>
+              <span className="font-mono text-xs tracking-widest text-muted-foreground">--------</span>
               <StripeSecretsDialog onSave={onPatchPlatform} patching={patching} snapshot={snapshot} />
             </span>
           }

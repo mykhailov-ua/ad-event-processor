@@ -16,7 +16,7 @@ import {
   type TeamMemberEditDraft,
   type TeamRosterTab,
 } from '@/domains/team/team_overview';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 

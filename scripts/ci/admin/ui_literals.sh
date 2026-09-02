@@ -8,12 +8,12 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-if rg -P -n '\p{Cyrillic}' web/src/ui web/src/helpers web/src/pages web/src/components web/src/domains --glob '*.{js,ts,tsx}' 2> /dev/null; then
+if rg -P -n '\p{Cyrillic}' web/src/domains web/src/shell web/src/api web/src/pages web/src/components --glob '*.{js,ts,tsx}' 2> /dev/null; then
   echo "Error: Cyrillic UI strings found (use English)."
   exit 1
 fi
 
-if rg -n '\$\$\{' web/src/views web/src/ui --glob '*.{js,ts}' 2> /dev/null; then
+if rg -n '\$\$\{' web/src/views web/src/domains web/src/shell --glob '*.{js,ts}' 2> /dev/null; then
   echo "Error: raw dollar template in views; use money.js helpers."
   exit 1
 fi

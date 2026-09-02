@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { listDisputes } from '@/api/platform_api';
 import { DisputesDirectory } from '@/domains/platform/disputes_directory';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function DisputesPage() {
   const {

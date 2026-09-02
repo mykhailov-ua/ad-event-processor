@@ -108,11 +108,7 @@ export function DatetimePicker({
             />
           </div>
           <div className="flex justify-end border-t p-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
+            <Button type="button" variant="ghost" onClick={() => {
                 onChange('');
                 setOpen(false);
               }}

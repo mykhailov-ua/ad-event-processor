@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
-import { CampaignScopeBar } from '@/components/system/campaign_scope_bar';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
+import { CampaignScopeBar } from '@/shell/campaign_scope_bar';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import {
   Dialog,
   DialogContent,

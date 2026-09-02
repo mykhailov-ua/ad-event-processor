@@ -2,8 +2,8 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { bootstrapPlatformSettings } from '@/api/settings_api';
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { ErrorBlock } from '@/shell/error_block';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';

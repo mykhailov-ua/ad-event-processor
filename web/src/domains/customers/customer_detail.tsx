@@ -13,11 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
 import type {
   BalanceLedgerEntry,
   BillingForecast,
@@ -626,7 +626,7 @@ function LedgerTab({
         onSubmit={(event) => event.preventDefault()}
       >
         <Button
-          className="h-9 text-sm"
+          className="text-sm"
           disabled={exporting}
           onClick={onExportCsv}
           type="button"

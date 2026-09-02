@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import * as esbuild from 'esbuild';
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -66,8 +66,21 @@ function aliasAtPlugin() {
             return { path: candidate };
           }
         }
-        if (existsSync(base) && !base.endsWith('/')) {
-          return { path: base };
+        if (existsSync(base)) {
+          try {
+            if (statSync(base).isDirectory()) {
+              for (const ext of exts) {
+                const indexCandidate = join(base, `index${ext}`);
+                if (existsSync(indexCandidate)) {
+                  return { path: indexCandidate };
+                }
+              }
+            } else {
+              return { path: base };
+            }
+          } catch {
+            // Fall through to default extension probe below.
+          }
         }
         return { path: base + '.tsx' };
       });
@@ -98,12 +111,7 @@ async function buildGlobalsCss() {
   const inputPath = join(SRC, 'styles', 'globals.css');
   const outDir = join(DIST, 'src', 'styles');
   let input = readFileSync(inputPath, 'utf8');
-  for (const pkg of [
-    '@fontsource-variable/inter',
-    '@fontsource-variable/jetbrains-mono',
-    '@fontsource-variable/geist',
-    '@fontsource-variable/geist-mono',
-  ]) {
+  for (const pkg of ['@fontsource-variable/inter', '@fontsource-variable/jetbrains-mono']) {
     const token = `@import '${pkg}';`;
     if (input.includes(token)) {
       input = input.replace(token, loadFontCss(pkg, outDir));
@@ -117,10 +125,23 @@ async function buildGlobalsCss() {
   writeFileSync(join(outDir, 'globals.css'), result.css, 'utf8');
 }
 
+function copyCountryFlagSvgs() {
+  const pkgJson = require.resolve('country-flag-icons/package.json');
+  const flagsSrc = join(dirname(pkgJson), '3x2');
+  const flagsDest = join(DIST, 'src', 'flags', '3x2');
+  if (!existsSync(flagsSrc)) {
+    console.error('Error: country-flag-icons 3x2 SVGs missing. Run: cd web && npm install');
+    process.exit(1);
+  }
+  mkdirSync(flagsDest, { recursive: true });
+  cpSync(flagsSrc, flagsDest, { recursive: true });
+}
+
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'src'), { recursive: true });
 
 await buildGlobalsCss();
+copyCountryFlagSvgs();
 
 await esbuild.build({
   absWorkingDir: ROOT,

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { listPublisherStatements } from '@/api/publisher_api';
 import { PublisherStatementsPanel } from '@/domains/portals/publisher_statements_panel';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function PublisherStatementsPage() {
   const { data, error, fetching } = useResource(

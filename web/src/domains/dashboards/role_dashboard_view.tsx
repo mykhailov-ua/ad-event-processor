@@ -1,33 +1,33 @@
-import { Link } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageToolbar } from '@/components/system/page_toolbar';
-import { CustomerCombobox, type CustomerComboboxOption } from '@/components/system/customer_combobox';
-import { FilterField } from '@/components/system/filter_panel';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { StubBanner } from '@/components/system/stub_banner';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DatetimePicker } from '@/components/ui/datetime_picker';
-import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { PageLayout } from '@/shell/page_layout';
+import type { CustomerComboboxOption } from '@/shell/customer_combobox';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { StubBanner } from '@/shell/stub_banner';
 import { DASHBOARD_ROLES, formatDashboardRoleLabel } from '@/api/dashboards_api';
 import type { DashboardRole } from '@/api/types';
+import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
 import { BuyerDashboardToolbar, type BuyerDashboardCampaignOption } from '@/domains/dashboards/buyer_dashboard_toolbar';
 import { BuyerDashboardView } from '@/domains/dashboards/buyer_dashboard_view';
 import { parseBuyerPortfolio, type DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_types';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { opsStatusTone } from '@/domains/ops/ops_status';
 import { useBuyerDashboardPreferences } from '@/hooks/use_buyer_dashboard_preferences';
+import { cn } from '@/lib/utils';
 
 export type { DashboardRangePreset };
+
+const ALL_OPTION_VALUE = '__all__';
+
+const RANGE_PRESET_OPTIONS = [
+  { value: 'today', label: 'Today' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: 'custom', label: 'Custom' },
+];
 
 export type RoleDashboardViewProps = {
   role: DashboardRole;
@@ -63,7 +63,120 @@ function freshnessBadge(payload: Record<string, unknown> | undefined) {
     return undefined;
   }
   const stale = portfolio?.kpis?.freshness?.stale === true;
-  return <Badge variant={stale ? 'secondary' : 'outline'}>{label}</Badge>;
+  return (
+    <span className={cn('admin-stat-note', stale ? opsStatusTone('warn') : opsStatusTone('ok'))}>
+      {label}
+    </span>
+  );
+}
+
+function RoleDashboardFilters({
+  role,
+  draftRole,
+  draftCustomerId,
+  draftFrom,
+  draftTo,
+  rangePreset,
+  customerOptions,
+  fetching,
+  onDraftRoleChange,
+  onDraftCustomerIdChange,
+  onRangePresetChange,
+  onDraftFromChange,
+  onDraftToChange,
+  onApply,
+}: {
+  role: DashboardRole;
+  draftRole: DashboardRole;
+  draftCustomerId: string;
+  draftFrom: string;
+  draftTo: string;
+  rangePreset: DashboardRangePreset;
+  customerOptions: CustomerComboboxOption[];
+  fetching: boolean;
+  onDraftRoleChange: (role: DashboardRole) => void;
+  onDraftCustomerIdChange: (value: string) => void;
+  onRangePresetChange: (preset: DashboardRangePreset) => void;
+  onDraftFromChange: (value: string) => void;
+  onDraftToChange: (value: string) => void;
+  onApply: () => void;
+}) {
+  const roleOptions = DASHBOARD_ROLES.map((item) => ({
+    value: item,
+    label: formatDashboardRoleLabel(item),
+  }));
+
+  const customerSelectOptions = [
+    { value: ALL_OPTION_VALUE, label: 'All customers' },
+    ...customerOptions.map((customer) => ({
+      value: customer.id,
+      label: customer.name,
+    })),
+  ];
+
+  return (
+    <div className="admin-stack admin-stack--compact">
+      <div
+        aria-label="Dashboard filters"
+        className="admin-toolbar-row admin-toolbar-row--filters"
+        role="search"
+      >
+        <CampaignsListFilterSelect
+          aria-label="Role"
+          options={roleOptions}
+          value={draftRole}
+          onValueChange={(value) => onDraftRoleChange(value as DashboardRole)}
+        />
+        <CampaignsListFilterSelect
+          aria-label="Customer"
+          disabled={fetching}
+          options={customerSelectOptions}
+          value={draftCustomerId || ALL_OPTION_VALUE}
+          onValueChange={(value) =>
+            onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
+          }
+        />
+        <CampaignsListFilterSelect
+          aria-label="Range preset"
+          options={RANGE_PRESET_OPTIONS}
+          value={rangePreset}
+          onValueChange={(value) => onRangePresetChange(value as DashboardRangePreset)}
+        />
+        <label className="admin-label">
+          From
+          <input
+            className="admin-input"
+            disabled={fetching || rangePreset !== 'custom'}
+            id="dashboard-from"
+            type="datetime-local"
+            value={draftFrom}
+            onChange={(event) => onDraftFromChange(event.target.value)}
+          />
+        </label>
+        <label className="admin-label">
+          To
+          <input
+            className="admin-input"
+            disabled={fetching || rangePreset !== 'custom'}
+            id="dashboard-to"
+            type="datetime-local"
+            value={draftTo}
+            onChange={(event) => onDraftToChange(event.target.value)}
+          />
+        </label>
+        <Button disabled={fetching || !draftCustomerId.trim()} type="button" onClick={onApply}>
+          Load
+        </Button>
+      </div>
+      {role !== 'buyer' ? (
+        <p className="admin-muted">
+          <Link className="admin-text-link" to="/rtb">
+            RTB overview
+          </Link>
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 export function RoleDashboardView({
@@ -100,140 +213,95 @@ export function RoleDashboardView({
 
   if (licenseGated) {
     return (
-      <PageChrome title="Dashboards">
+      <PageLayout title="Dashboards">
         <StubBanner
-          title="License required"
           message="This dashboard is not available on the current license tier."
+          title="License required"
         />
-      </PageChrome>
+      </PageLayout>
     );
   }
 
   if (error && !hasSnapshot) {
     return (
       <ErrorBlock
+        error={error}
         title={`Could not load ${formatDashboardRoleLabel(role)} dashboard`}
-        message={error.message}
       />
     );
   }
 
   const buyerPortfolio = role === 'buyer' ? parseBuyerPortfolio(payload) : undefined;
+  const pageTitle = role === 'buyer' ? 'Dashboard' : `${formatDashboardRoleLabel(role)} dashboard`;
 
   return (
-    <PageChrome
-      title={role === 'buyer' ? 'Dashboard' : `${formatDashboardRoleLabel(role)} dashboard`}
+    <PageLayout
       badge={freshnessBadge(payload)}
-      actions={
+      controlPanel={
+        role === 'buyer' ? (
+          <BuyerDashboardToolbar
+              campaignOptions={campaignOptions}
+              customerOptions={customerOptions}
+              draftCampaignId={draftCampaignId}
+              draftCustomerId={draftCustomerId}
+              draftFrom={draftFrom}
+              draftTo={draftTo}
+              fetching={fetching}
+              preferences={preferences}
+              showApply={showApply}
+              onApply={onApply}
+              onDraftCampaignIdChange={onDraftCampaignIdChange}
+              onDraftCustomerIdChange={onDraftCustomerIdChange}
+              onDraftRangeChange={onDraftRangeChange}
+              onPreferencesApply={applyPreferences}
+            />
+        ) : (
+          <RoleDashboardFilters
+              customerOptions={customerOptions}
+              draftCustomerId={draftCustomerId}
+              draftFrom={draftFrom}
+              draftRole={draftRole}
+              draftTo={draftTo}
+              fetching={fetching}
+              rangePreset={rangePreset}
+              role={role}
+              onApply={onApply}
+              onDraftCustomerIdChange={onDraftCustomerIdChange}
+              onDraftFromChange={onDraftFromChange}
+              onDraftRoleChange={onDraftRoleChange}
+              onDraftToChange={onDraftToChange}
+              onRangePresetChange={onRangePresetChange}
+            />
+        )
+      }
+      headerActions={
         <Button
+          aria-label="Refresh dashboard"
           disabled={fetching || !draftCustomerId.trim()}
-          onClick={onApply}
+          loading={fetching}
           size="icon"
           type="button"
-          variant="outline"
-          aria-label="Refresh dashboard"
+          variant="secondary"
+          onClick={onApply}
         >
-          <RefreshCw className={fetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} />
+          <RefreshCw aria-hidden className="h-4 w-4" />
         </Button>
       }
+      title={pageTitle}
     >
-      {role === 'buyer' ? (
-        <BuyerDashboardToolbar
-          campaignOptions={campaignOptions}
-          customerOptions={customerOptions}
-          draftCampaignId={draftCampaignId}
-          draftCustomerId={draftCustomerId}
-          draftFrom={draftFrom}
-          draftTo={draftTo}
-          fetching={fetching}
-          preferences={preferences}
-          showApply={showApply}
-          onApply={onApply}
-          onDraftCampaignIdChange={onDraftCampaignIdChange}
-          onDraftCustomerIdChange={onDraftCustomerIdChange}
-          onDraftRangeChange={onDraftRangeChange}
-          onPreferencesApply={applyPreferences}
-        />
-      ) : (
-        <PageToolbar className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] md:items-end">
-          <div className="grid gap-2">
-            <Label htmlFor="dashboard-role">Role</Label>
-            <Select value={draftRole} onValueChange={(value) => onDraftRoleChange(value as DashboardRole)}>
-              <SelectTrigger id="dashboard-role">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DASHBOARD_ROLES.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {formatDashboardRoleLabel(item)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <FilterField htmlFor="dashboard-customer" label="Customer">
-            <CustomerCombobox
-              id="dashboard-customer"
-              disabled={fetching}
-              options={customerOptions}
-              value={draftCustomerId}
-              onValueChange={onDraftCustomerIdChange}
-            />
-          </FilterField>
-          <div className="grid gap-2">
-            <Label htmlFor="dashboard-range-preset">Range</Label>
-            <Select
-              value={rangePreset}
-              onValueChange={(value) => onRangePresetChange(value as DashboardRangePreset)}
-            >
-              <SelectTrigger id="dashboard-range-preset">
-                <SelectValue placeholder="Custom" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DatetimePicker
-            id="dashboard-from"
-            label="From"
-            value={draftFrom}
-            onChange={onDraftFromChange}
+      <div className="admin-stack">
+        {buyerPortfolio ? (
+          <BuyerDashboardView
+            clickLogHref={clickLogHref}
+            portfolio={buyerPortfolio}
+            preferences={preferences}
           />
-          <DatetimePicker id="dashboard-to" label="To" value={draftTo} onChange={onDraftToChange} />
-          <Button
-            className="md:col-span-5 md:justify-self-end"
-            disabled={fetching || !draftCustomerId.trim()}
-            onClick={onApply}
-            type="button"
-          >
-            Load
-          </Button>
-        </PageToolbar>
-      )}
+        ) : null}
 
-      {role !== 'buyer' ? (
-        <div className="text-sm text-muted-foreground">
-          <Link className="hover:underline" to="/rtb">
-            RTB overview
-          </Link>
-        </div>
-      ) : null}
+        {!buyerPortfolio && payload ? <JsonDashboardView payload={payload} /> : null}
 
-      {buyerPortfolio ? (
-        <BuyerDashboardView
-          clickLogHref={clickLogHref}
-          portfolio={buyerPortfolio}
-          preferences={preferences}
-        />
-      ) : null}
-
-      {!buyerPortfolio && payload ? <JsonDashboardView payload={payload} /> : null}
-
-      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
-    </PageChrome>
+        {error && hasSnapshot ? <ErrorBlock error={error} title="Refresh failed" /> : null}
+      </div>
+    </PageLayout>
   );
 }

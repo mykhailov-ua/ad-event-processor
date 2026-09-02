@@ -29,6 +29,7 @@ if has_dist || has_fresh_embed; then
     bash "$SCRIPTS/ci/admin/ui_slop.sh"
     bash "$SCRIPTS/ci/admin/ui_surface.sh"
     bash "$SCRIPTS/ci/admin/ui_literals.sh"
+    bash "$SCRIPTS/ci/admin/web_security.sh"
   fi
   if has_dist; then
     bash "$SCRIPTS/ci/admin/web_dist.sh"
@@ -49,6 +50,7 @@ else
     bash "$SCRIPTS/ci/admin/ui_slop.sh"
     bash "$SCRIPTS/ci/admin/ui_surface.sh"
     bash "$SCRIPTS/ci/admin/ui_literals.sh"
+    bash "$SCRIPTS/ci/admin/web_security.sh"
   fi
   run_static_tests
   echo "Admin web checks PASSED (stub only)."

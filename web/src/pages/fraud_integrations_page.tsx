@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { listFraudIntegrations } from '@/api/fraud_api';
 import { FraudIntegrations } from '@/domains/fraud/fraud_integrations';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 
 export function FraudIntegrationsPage() {

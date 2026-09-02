@@ -7,8 +7,8 @@ import {
   TableCell,
   TableHeader,
   TableRow,
-} from '@/components/system/directory_table';
-import { PanelSection } from '@/components/system/stat_panel';
+} from '@/shell/directory_table';
+import { PanelSection } from '@/shell/stat_panel';
 import type { ClickLogEvent } from '@/domains/dashboards/buyer_dashboard_types';
 import { formatDashboardUsdFromMicro } from '@/domains/dashboards/dashboard_format';
 import type { DashboardRecentClickColumnId } from '@/domains/dashboards/dashboard_preferences';
@@ -43,22 +43,22 @@ function renderRecentClickCell(columnId: DashboardRecentClickColumnId, event: Cl
           {event.campaign_id}
         </Link>
       ) : (
-        '—'
+        '-'
       );
     case 'country':
-      return event.country ?? '—';
+      return event.country ?? '-';
     case 'sub1':
-      return event.sub1 ?? '—';
+      return event.sub1 ?? '-';
     case 'placement_id':
-      return event.placement_id ?? '—';
+      return event.placement_id ?? '-';
     case 'goal_name':
-      return event.goal_name ?? '—';
+      return event.goal_name ?? '-';
     case 'cost':
       return formatDashboardUsdFromMicro(event.attributed_cost_micro);
     case 'revenue':
       return formatDashboardUsdFromMicro(event.revenue_micro);
     default:
-      return '—';
+      return '-';
   }
 }
 
@@ -81,7 +81,7 @@ export function DashboardRecentClicks({ events, columns, viewAllHref }: Dashboar
       {events.length === 0 ? (
         <p className="px-5 py-6 text-sm text-muted-foreground">No recent clicks in this range.</p>
       ) : (
-        <DirectoryTable className="rounded-none border-0 bg-transparent" scrollable>
+        <DirectoryTable className="border-0 bg-transparent shadow-none" scrollable>
           <TableHeader>
             <TableRow>
               {visibleColumns.map((columnId) => (

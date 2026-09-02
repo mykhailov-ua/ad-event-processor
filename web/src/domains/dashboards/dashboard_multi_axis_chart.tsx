@@ -114,7 +114,7 @@ function ChartTooltipContent({
     }
     return (
       <div className="grid gap-1">
-        <p className="font-numeric text-[10px] uppercase tracking-wide text-muted-foreground">
+        <p className="font-numeric text-[10px] tracking-wide text-muted-foreground">
           {title}
         </p>
         {metrics.map((metric) => {
@@ -277,8 +277,6 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
               <CartesianGrid
                 stroke="hsl(var(--border) / 0.28)"
                 syncWithTicks
-                xAxisId="dateBottom"
-                yAxisId="volume"
               />
               <XAxis
                 xAxisId="dateTop"
@@ -296,7 +294,8 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
                 xAxisId="dateBottom"
                 dataKey="label"
                 ticks={dateAxisTicks}
-                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, angle: -35, textAnchor: 'end' }}
+                angle={-35}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, textAnchor: 'end' }}
                 tickLine={false}
                 axisLine={axisLineStyle}
                 tickFormatter={formatChartDate}
@@ -355,7 +354,7 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
               ) : null}
               <Tooltip
                 shared
-                trigger="axis"
+                trigger="hover"
                 cursor={{ stroke: 'hsl(var(--foreground) / 0.22)', strokeWidth: 1 }}
                 content={<ChartTooltipContent selected={activeMetricIds} />}
                 isAnimationActive={false}

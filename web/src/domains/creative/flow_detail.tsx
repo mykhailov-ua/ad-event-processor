@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -90,7 +90,7 @@ export function FlowDetail({
             <Label htmlFor="flow-edit-name">Name</Label>
             <Input
               id="flow-edit-name"
-              placeholder="Flow name…"
+              placeholder="Flow name..."
               value={draftName}
               onChange={(event) => onDraftNameChange?.(event.target.value)}
             />

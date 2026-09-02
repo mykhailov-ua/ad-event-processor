@@ -3,7 +3,7 @@ import { createContext, useMemo, type ReactNode } from 'react';
 import { getSessionBootstrap } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
 import type { AuthUser, SessionResponse } from '@/api/types';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 type SessionState = {
   me: AuthUser;

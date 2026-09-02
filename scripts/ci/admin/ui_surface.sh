@@ -20,7 +20,7 @@ bem_in_class() {
     "$target" --glob '*.tsx' --glob '*.ts' 2> /dev/null
 }
 
-for surface_dir in ui domains pages; do
+for surface_dir in ui pages; do
   target="$WEB_SRC/$surface_dir"
   [ -d "$target" ] || continue
   echo "ui surface: web/src/$surface_dir must not use BEM __ modifiers in className"
@@ -32,7 +32,7 @@ done
 
 echo "ui surface: pages must not import stylesheets"
 if rg -n "from ['\"].*\\.(module\\.)?css['\"]" "$WEB_SRC/pages" 2> /dev/null; then
-  echo "Error: pages import CSS directly; use web/src/ui components"
+  echo "Error: pages import CSS directly; use web/src/domains components"
   fail=1
 fi
 

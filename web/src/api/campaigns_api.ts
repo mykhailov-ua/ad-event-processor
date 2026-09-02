@@ -12,6 +12,10 @@ import type {
   CampaignIntegrationPanel,
   CampaignListQuery,
   CampaignListResponse,
+  CampaignListMetricsBatchResponse,
+  CampaignListMetricsQuery,
+  CampaignListMetricsRow,
+  CampaignStatusTotals,
   CampaignMargin,
   CampaignOnboardingTemplate,
   CampaignPublishBlockedError,
@@ -72,6 +76,12 @@ export function buildCampaignsListPath(params: CampaignListQuery = {}): string {
   if (params.budget_max_micro != null) {
     search.set('budget_max_micro', String(params.budget_max_micro));
   }
+  if (params.owner_user_id) {
+    search.set('owner_user_id', params.owner_user_id);
+  }
+  if (params.country) {
+    search.set('country', params.country);
+  }
   if (params.limit != null) {
     search.set('limit', String(params.limit));
   }
@@ -90,32 +100,7 @@ export async function listCampaigns(
   return apiJson<CampaignListResponse>(buildCampaignsListPath(params), { signal });
 }
 
-export type CampaignStatusTotals = {
-  active: number;
-  paused: number;
-  archived: number;
-  total: number;
-};
-
-export async function fetchCampaignStatusTotals(
-  base: Pick<CampaignListQuery, 'customer_id' | 'q'>,
-  signal?: AbortSignal,
-): Promise<CampaignStatusTotals> {
-  const common = { ...base, limit: 1, offset: 0 };
-  const [active, paused, archived, all] = await Promise.all([
-    listCampaigns({ ...common, status: 'ACTIVE' }, signal),
-    listCampaigns({ ...common, status: 'PAUSED' }, signal),
-    listCampaigns({ ...common, status: 'ARCHIVED' }, signal),
-    listCampaigns(common, signal),
-  ]);
-
-  return {
-    active: active.total,
-    paused: paused.total,
-    archived: archived.total,
-    total: all.total,
-  };
-}
+export type { CampaignStatusTotals };
 
 export async function getCampaign(id: string, signal?: AbortSignal): Promise<Campaign> {
   return apiJson<Campaign>(`/api/v1/campaigns/${encodeURIComponent(id)}`, { signal });
@@ -373,7 +358,7 @@ export async function bulkCampaignAction(
   body: CampaignBulkActionRequest,
   signal?: AbortSignal,
 ): Promise<CampaignBulkActionResponse> {
-  return apiJson<CampaignBulkActionResponse>('/api/v1/campaigns/bulk-action', {
+  return apiJson<CampaignBulkActionResponse>('/api/v1/campaigns/bulk', {
     method: 'POST',
     body: JSON.stringify(body),
     signal,
@@ -612,44 +597,100 @@ export async function getCampaignStats(
   return apiJson<CampaignStats>(path, { signal });
 }
 
-export type CampaignListMetrics = {
-  impressions?: number;
-  clicks?: number;
-  conversions?: number;
-  stale?: boolean;
-};
+export type CampaignListMetrics = Pick<
+  CampaignListMetricsRow,
+  | 'impressions'
+  | 'clicks'
+  | 'conversions'
+  | 'unique_clicks'
+  | 'blocks'
+  | 'leads_raw'
+  | 'hold_leads'
+  | 'rejected_leads'
+  | 'lp_clicks'
+  | 'lp_views'
+  | 'bots'
+  | 'stale'
+>;
 
-export async function fetchCampaignListMetrics(
+export function buildCampaignListMetricsPath(
   campaignIds: string[],
+  params: Pick<CampaignListMetricsQuery, 'from' | 'to'> = {},
+): string {
+  const search = new URLSearchParams();
+  search.set('ids', campaignIds.join(','));
+  if (params.from) {
+    search.set('from', params.from);
+  }
+  if (params.to) {
+    search.set('to', params.to);
+  }
+  return `/api/v1/campaigns/metrics?${search.toString()}`;
+}
+
+function marginFromMetricsRow(row: CampaignListMetricsRow): CampaignMargin {
+  return {
+    campaign_id: row.campaign_id ?? '',
+    window_start: new Date(0).toISOString(),
+    window_hours: 0,
+    advertiser_spend_micro: row.advertiser_spend_micro ?? 0,
+    rtb_cost_micro: row.rtb_cost_micro ?? 0,
+    operator_margin_micro: row.operator_margin_micro ?? 0,
+    publisher_payout_micro: row.publisher_payout_micro ?? 0,
+    cost_over_revenue_limit: 0,
+    threshold_bps: 0,
+    margin_breach: row.margin_breach ?? false,
+  };
+}
+
+export async function fetchCampaignListMetricsBatch(
+  campaignIds: string[],
+  statsQuery: CampaignStatsQuery = {},
   signal?: AbortSignal,
-): Promise<Record<string, CampaignListMetrics>> {
+): Promise<{
+  metricsById: Record<string, CampaignListMetrics>;
+  marginsById: Record<string, CampaignMargin>;
+  stale: boolean;
+}> {
   if (campaignIds.length === 0) {
-    return {};
+    return { metricsById: {}, marginsById: {}, stale: false };
   }
 
-  const settled = await Promise.allSettled(
-    campaignIds.map(async (campaignId) => {
-      const stats = await getCampaignStats(campaignId, {}, signal);
-      return {
-        campaignId,
-        metrics: {
-          impressions: stats.metrics?.impressions,
-          clicks: stats.metrics?.clicks,
-          conversions: stats.metrics?.conversions,
-          stale: stats.stale,
-        } satisfies CampaignListMetrics,
-      };
-    }),
+  const batch = await apiJson<CampaignListMetricsBatchResponse>(
+    buildCampaignListMetricsPath(campaignIds, statsQuery),
+    { signal },
   );
 
   const metricsById: Record<string, CampaignListMetrics> = {};
-  for (const result of settled) {
-    if (result.status !== 'fulfilled') {
-      continue;
-    }
-    metricsById[result.value.campaignId] = result.value.metrics;
+  const marginsById: Record<string, CampaignMargin> = {};
+  for (const [campaignId, row] of Object.entries(batch.items ?? {})) {
+    metricsById[campaignId] = {
+      impressions: row.impressions,
+      clicks: row.clicks,
+      conversions: row.conversions,
+      unique_clicks: row.unique_clicks,
+      blocks: row.blocks,
+      leads_raw: row.leads_raw,
+      hold_leads: row.hold_leads,
+      rejected_leads: row.rejected_leads,
+      lp_clicks: row.lp_clicks,
+      lp_views: row.lp_views,
+      bots: row.bots,
+      stale: row.stale ?? batch.stale,
+    };
+    marginsById[campaignId] = marginFromMetricsRow({ ...row, campaign_id: campaignId });
   }
-  return metricsById;
+
+  return { metricsById, marginsById, stale: batch.stale };
+}
+
+export async function fetchCampaignListMetrics(
+  campaignIds: string[],
+  statsQuery: CampaignStatsQuery = {},
+  signal?: AbortSignal,
+): Promise<Record<string, CampaignListMetrics>> {
+  const batch = await fetchCampaignListMetricsBatch(campaignIds, statsQuery, signal);
+  return batch.metricsById;
 }
 
 export async function listCampaignEvents(
@@ -682,27 +723,11 @@ export async function getCampaignMargin(
 
 export async function fetchCampaignListMargins(
   campaignIds: string[],
+  statsQuery: CampaignStatsQuery = {},
   signal?: AbortSignal,
 ): Promise<Record<string, CampaignMargin>> {
-  if (campaignIds.length === 0) {
-    return {};
-  }
-
-  const settled = await Promise.allSettled(
-    campaignIds.map(async (campaignId) => {
-      const margin = await getCampaignMargin(campaignId, signal);
-      return { campaignId, margin };
-    }),
-  );
-
-  const marginsById: Record<string, CampaignMargin> = {};
-  for (const result of settled) {
-    if (result.status !== 'fulfilled') {
-      continue;
-    }
-    marginsById[result.value.campaignId] = result.value.margin;
-  }
-  return marginsById;
+  const batch = await fetchCampaignListMetricsBatch(campaignIds, statsQuery, signal);
+  return batch.marginsById;
 }
 
 export async function listCampaignConversionMappings(

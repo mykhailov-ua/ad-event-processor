@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import { createOffer, listOffers } from '@/api/offers_api';
 import { OffersDirectory } from '@/domains/creative/offers_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function OffersPage() {
   const [reloadToken, setReloadToken] = useState(0);

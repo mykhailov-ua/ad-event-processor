@@ -11,7 +11,7 @@ import {
 } from '@/api/domains_api';
 import type { DomainSSLSetupResult } from '@/api/types';
 import { DomainsDirectory } from '@/domains/creative/domains_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function DomainsPage() {
   const [reloadToken, setReloadToken] = useState(0);

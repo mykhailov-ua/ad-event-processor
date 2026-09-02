@@ -34,7 +34,7 @@ const PopoverContent = React.forwardRef<
       >
         <div
           className={cn(
-            'ui-shell min-w-[var(--radix-popover-trigger-width)]',
+            'ui-shell admin-overlay-elevated min-w-[var(--radix-popover-trigger-width)]',
             flush &&
               'w-auto max-w-[min(calc(100vw-2rem),var(--radix-popover-content-available-width))]',
             !flush && 'w-[var(--radix-popover-trigger-width)]',

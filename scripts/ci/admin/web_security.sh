@@ -22,9 +22,13 @@ react_violations=()
 while IFS= read -r file; do
   case "$file" in
     web/src/pages/* | */web/src/pages/* | \
-      web/src/ui/* | */web/src/ui/* | \
+      web/src/domains/* | */web/src/domains/* | \
+      web/src/shell/* | */web/src/shell/* | \
       web/src/components/* | */web/src/components/* | \
-      web/src/helpers/use_*.ts | */web/src/helpers/use_*.ts | \
+      web/src/api/use_*.ts | */web/src/api/use_*.ts | \
+      web/src/providers/* | */web/src/providers/* | \
+      web/src/hooks/* | */web/src/hooks/* | \
+      web/src/lib/*_context.tsx | */web/src/lib/*_context.tsx | \
       web/src/main.tsx | */web/src/main.tsx | \
       web/src/login.tsx | */web/src/login.tsx | \
       web/src/app_*.tsx | */web/src/app_*.tsx | \
@@ -37,7 +41,7 @@ while IFS= read -r file; do
 done < <(rg -l "from ['\"]react" web/src 2> /dev/null || true)
 
 if [ "${#react_violations[@]}" -gt 0 ]; then
-  echo "Error: React imports outside pages/ui/components/helpers/use_* or entry shells:"
+  echo "Error: React imports outside pages/ui/components/api/use_* or entry shells:"
   printf '  %s\n' "${react_violations[@]}"
   exit 1
 fi

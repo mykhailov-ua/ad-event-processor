@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ackSmartAlertEvent, listSmartAlertHistory } from '@/api/smart_alerts_api';
 import { SmartAlertsHistoryDirectory } from '@/domains/automation/smart_alerts_history_directory';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function SmartAlertsHistoryPage() {
   const {

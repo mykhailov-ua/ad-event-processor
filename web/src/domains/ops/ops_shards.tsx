@@ -1,18 +1,15 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { EmptyState } from '@/shell/empty_state';
 import type { OpsShardsResponse } from '@/api/types';
-import { OpsNav, opsPanelError } from '@/domains/ops/ops_nav';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import {
+  OpsActionGroup,
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
+import { OpsStatusChip } from '@/domains/ops/ops_status';
+import { OpsTable } from '@/domains/ops/ops_table';
 
 export type OpsShardsProps = {
   snapshot: OpsShardsResponse | undefined;
@@ -36,76 +33,67 @@ export function OpsShards({
   onCatchup,
 }: OpsShardsProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
-    return (
-      <PageChrome title="Shards">
-        <OpsNav />
-        {opsPanelError(error, 'Could not load shards')}
-      </PageChrome>
-    );
+    return <OpsPageBlockingError error={error} pageTitle="Shards" title="Could not load shards" />;
   }
 
   const shards = snapshot?.shards ?? [];
 
   return (
-    <PageChrome
-      title="Shards"
+    <OpsPageShell
       badge={
         snapshot?.emergency_breaker ? (
-          <Badge variant="destructive">{snapshot.emergency_breaker}</Badge>
+          <OpsStatusChip status={snapshot.emergency_breaker} />
         ) : undefined
       }
+      title="Shards"
+      actions={
+        <OpsActionGroup label="Shard maintenance">
+          <Button disabled={catchingUp} loading={catchingUp} type="button" onClick={onCatchup}>
+            Shard 0 catch-up
+          </Button>
+        </OpsActionGroup>
+      }
     >
-      <OpsNav />
-
-      <div className="flex flex-wrap gap-2">
-        <Button disabled={catchingUp} onClick={onCatchup} type="button" variant="secondary">
-          {catchingUp ? 'Starting catch-up...' : 'Shard 0 catch-up'}
-        </Button>
-      </div>
-
       {catchupStatus ? (
-        <p className="text-sm text-muted-foreground" role="status">
+        <p className="admin-muted" role="status">
           Catch-up status: {catchupStatus}
         </p>
       ) : null}
       {catchupError ? opsPanelError(catchupError, 'Catch-up failed') : null}
 
       {shards.length === 0 ? (
-        <EmptyState title="No shard rows" description="Shard health matrix is empty." />
+        <EmptyState description="Shard health matrix is empty." title="No shard rows" />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Shard</TableHead>
-                <TableHead>Ping</TableHead>
-                <TableHead>Latency (ms)</TableHead>
-                <TableHead>Config version</TableHead>
-                <TableHead>Lag</TableHead>
-                <TableHead>Synced</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shards.map((shard) => (
-                <TableRow key={shard.shard_id ?? shard.ping_error}>
-                  <TableCell>{shard.shard_id ?? ''}</TableCell>
-                  <TableCell>{shard.ping_ok ? 'ok' : shard.ping_error ?? 'fail'}</TableCell>
-                  <TableCell>{shard.ping_latency_ms ?? ''}</TableCell>
-                  <TableCell>{shard.config_version ?? ''}</TableCell>
-                  <TableCell>{shard.config_version_lag ?? ''}</TableCell>
-                  <TableCell>{shard.config_version_synced ? 'yes' : 'no'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <OpsTable
+          head={
+            <tr>
+              <th>Shard</th>
+              <th>Ping</th>
+              <th className="num">Latency (ms)</th>
+              <th className="num">Config version</th>
+              <th className="num">Lag</th>
+              <th>Synced</th>
+            </tr>
+          }
+        >
+          {shards.map((shard) => (
+            <tr key={shard.shard_id ?? shard.ping_error}>
+              <td className="num">{shard.shard_id ?? ''}</td>
+              <td>{shard.ping_ok ? 'ok' : (shard.ping_error ?? 'fail')}</td>
+              <td className="num">{shard.ping_latency_ms ?? ''}</td>
+              <td className="num">{shard.config_version ?? ''}</td>
+              <td className="num">{shard.config_version_lag ?? ''}</td>
+              <td>{shard.config_version_synced ? 'yes' : 'no'}</td>
+            </tr>
+          ))}
+        </OpsTable>
       )}
 
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </OpsPageShell>
   );
 }

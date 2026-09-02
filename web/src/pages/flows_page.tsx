@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { createFlow, listFlows } from '@/api/flows_api';
 import type { FlowPath } from '@/api/types';
 import { FlowsDirectory } from '@/domains/creative/flows_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function FlowsPage() {
   const [reloadToken, setReloadToken] = useState(0);

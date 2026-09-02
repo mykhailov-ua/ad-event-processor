@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { createRtbDeal, listRtbDeals } from '@/api/rtb_api';
 import { RtbDealsDirectory } from '@/domains/rtb/rtb_deals_directory';
 import { rtbLicenseGated } from '@/domains/rtb/rtb_nav';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 
 export function RtbDealsPage() {

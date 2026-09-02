@@ -8,7 +8,7 @@ import {
   patchPlatformSettings,
 } from '@/api/settings_api';
 import { PlatformSettings } from '@/domains/settings/platform_settings';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 function readBootstrapComplete(payload: Record<string, unknown> | undefined): boolean {
   const value = payload?.bootstrap_complete;

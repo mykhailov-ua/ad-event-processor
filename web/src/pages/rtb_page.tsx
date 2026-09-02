@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ApiError } from '@/api/client';
 import { runReport } from '@/api/reports_api';
 import { RtbOverview } from '@/domains/rtb/rtb_overview';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { defaultReportRange } from '@/lib/report_paths';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 

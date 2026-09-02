@@ -1,5 +1,5 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';

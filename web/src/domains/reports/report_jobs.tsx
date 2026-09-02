@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { PageChrome } from '@/components/system/page_chrome';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PageChrome } from '@/shell/page_chrome';
+import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';

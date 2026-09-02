@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { HubLinkCard, HubLinkGrid } from '@/components/system/hub_link_card';
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import type { ReportCatalogRow } from '@/api/types';
 
 export type ReportsHubProps = {
@@ -47,7 +47,7 @@ export function ReportsHub({ rows, fetching, error, hasSnapshot }: ReportsHubPro
               row.export_formats?.length ? `export: ${row.export_formats.join(', ')}` : null,
             ]
               .filter(Boolean)
-              .join(' · ');
+              .join('  /  ');
 
             return (
               <HubLinkCard

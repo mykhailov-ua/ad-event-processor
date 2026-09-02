@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton, PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
+import { FilterApplyButton, PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -117,7 +117,7 @@ export function FraudLabels({
           <Label htmlFor="labels-customer-id">Customer ID</Label>
           <Input
             id="labels-customer-id"
-            className="h-9 text-sm"
+            className="text-sm"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />
@@ -137,7 +137,7 @@ export function FraudLabels({
         <div className="grid gap-2">
           <Label htmlFor="labels-label">Label (0 or 1)</Label>
           <Select value={draftLabel} onValueChange={onDraftLabelChange}>
-            <SelectTrigger id="labels-label" className="h-9 w-full text-sm">
+            <SelectTrigger id="labels-label" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -8,7 +8,7 @@ import {
   updateSupplySeller,
 } from '@/api/supply_api';
 import { SupplySellersDirectory } from '@/domains/creative/supply_sellers';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 type SellerEditRow = {
   seller_id: string;

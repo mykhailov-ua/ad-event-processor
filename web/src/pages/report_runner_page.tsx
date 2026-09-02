@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { runEvidencePackReport, runReport, exportTelegramReport } from '@/api/reports_api';
 import type { DataFreshness, FraudEvidencePack, ReportMapRow } from '@/api/types';
 import { ReportRunner } from '@/domains/reports/report_runner';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import {
   EVIDENCE_PACK_REPORT_KEYS,

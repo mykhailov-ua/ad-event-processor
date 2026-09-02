@@ -17,12 +17,12 @@ Admin UI (`web/`) is a **modular monolith in the browser**: one SPA build (`web/
 Same invariants as Go `cmd/control` (`modular-monolith.mdc`, `structure.mdc`):
 
 - Thin composition root (`pages/`)
-- Domain-owned UI (`ui/<domain>/`)
+- Domain-owned UI (`domains/<domain>/`)
 - Shared shadcn primitives (`components/ui/`)
 - No ceremony trees (`dto/`, `usecase/`, `providers/`)
 - Cold path first: server owns filter/sort/aggregate (`ui.mdc`, `cold-path.mdc`)
 
-**Quality reference:** `lead-intent-processor` — `internal/crm/{admin,store,webhook}` owns CRM surface; `internal/app` (~18 prod `.go`) wires only. Admin SPA mirrors that split: `pages/` = wire, `ui/<domain>/` = product.
+**Quality reference:** `lead-intent-processor` — `internal/crm/{admin,store,webhook}` owns CRM surface; `internal/app` (~18 prod `.go`) wires only. Admin SPA mirrors that split: `pages/` = wire, `domains/<domain>/` = product.
 
 Cross-ref: `ui.mdc` (macro Grid / micro Flex layout, styling stack), `react.mdc` (Hot vs Cold runtime), `frontend-hot-path.mdc` (suboptimal ops, scale regimes), `boundaries.mdc` (coupling limits), `naming.mdc`.
 
@@ -44,10 +44,10 @@ One agent task = **one layer owner**. Crossing layers without explicit `Depends 
 | Level | Path | Owns | Must not own |
 | :--- | :--- | :--- | :--- |
 | L0 Contract | `api/openapi/`, Go `*_handlers.go` | Query params, DTO, validation, SQL/CH | `web/src` pages (unless PR closes both) |
-| L1 Transport | `web/src/helpers/*_api.ts` | HTTP, abort, parse JSON to typed snapshot | `useMemo` filter/sort over full `items[]` |
-| L2 Composition | `web/src/pages/*` | Section compose, URL → fetch params, route entry; pass props to `ui/<domain>/` | Tailwind layout on pages, business rules, invented API fields |
-| L3 Domain UI | `web/src/ui/<domain>/` | Macro Grid / micro Flex via Tailwind; domain tables and forms | Cross-page Context, server logic, hand-rolled overlays |
-| L4 Shared chrome | `web/src/ui/shell/`, `web/src/components/ui/` | Nav, login, PageChrome; shadcn primitives | Domain-specific API shapes |
+| L1 Transport | `web/src/api/*_api.ts` | HTTP, abort, parse JSON to typed snapshot | `useMemo` filter/sort over full `items[]` |
+| L2 Composition | `web/src/pages/*` | Section compose, URL → fetch params, route entry; pass props to `domains/<domain>/` | Tailwind layout on pages, business rules, invented API fields |
+| L3 Domain UI | `web/src/domains/<domain>/` | Macro Grid / micro Flex via Tailwind; domain tables and forms | Cross-page Context, server logic, hand-rolled overlays |
+| L4 Shared chrome | `web/src/shell/`, `web/src/components/ui/` | Nav, login, PageChrome; shadcn primitives | Domain-specific API shapes |
 | L5 Theme | `globals.css`, `tailwind.config.ts` | shadcn CSS variables, spacing scale, semantic colors | Domain-specific layout rules |
 | L6 Static embed | `web/src/static/` | `track.js` snippet (not admin) | Admin React imports |
 
@@ -71,13 +71,13 @@ web/
   tailwind.config.ts
   src/
     pages/                 # compose only; <= ~120 lines; no styling
-    ui/
+    domains/
       <domain>/            # customers, campaigns, billing, …
         *.tsx              # Tailwind className in TSX
-      shell/               # login, nav, layout chrome
+    shell/                 # login, nav, layout chrome
     components/
       ui/                  # shadcn primitives (Button, Select, Dialog, Table, Badge, …)
-    helpers/
+    api/
       <domain>_api.ts      # fetch + parse only
       use_resource.ts      # shared fetch hook (not domain logic)
     types/
@@ -95,22 +95,33 @@ web/
 
 | Pattern | Why | Replacement |
 | :--- | :--- | :--- |
-| `web/src/dto/`, `usecase/`, `providers/` | Ceremony hides contracts | `helpers/` + `ui/<domain>/` |
+| `web/src/dto/`, `usecase/`, `providers/` | Ceremony hides contracts | `api/` + `domains/<domain>/` |
 | `web/src/models/` with business rules | Duplicate server logic | Delete on migrate; server DTO only |
-| `web/src/components/` monolith (non-shadcn) | No domain boundary | `ui/<domain>/` + `components/ui/` |
+| `web/src/components/` monolith (non-shadcn) | No domain boundary | `domains/<domain>/` + `components/ui/` |
 | New `*.module.css` | Legacy CSS Modules stack | Tailwind in TSX |
 | New `*.variants.ts` per domain file | CVA sprawl | shadcn `cva` inside `components/ui/` only |
-| BEM `__` under `web/src/ui` | Unscoped global classes | Tailwind utilities |
+| BEM `__` under `web/src/domains` | Unscoped global classes | Tailwind utilities |
 | Global `btn--*` on pages | Layout escape | shadcn `<Button>` from `components/ui/button` |
 | Raw `@radix-ui/*` outside shadcn | Duplicate overlay logic | `npx shadcn@latest add <component>` |
 | Product-prefixed static (`ad-event-processor-track.js`) | Legacy token | `track.js`, export `trackEvent` (`naming.mdc`) |
 
 ## Domain module shape (exemplar)
 
-One admin domain = one `ui/<domain>/` folder + one `helpers/<domain>_api.ts` + one or more thin `pages/*`.
+One admin domain = one `domains/<domain>/` folder + one `api/<domain>_api.ts` + one or more thin `pages/*`.
 
 ```
-ui/customers/
+domains/campaigns/
+  list/                         # campaigns directory, table, columns, metrics cells
+    campaigns_directory.tsx
+    campaigns_list_table.tsx
+    campaign_list_columns.ts
+  editor/                       # campaign editor, wizard, clone, panels
+    campaign_editor.tsx
+    campaign_wizard_panel.tsx
+  report/                       # per-campaign report tables
+    campaign_report_directory.tsx
+
+domains/customers/
   customers_directory.tsx       # section: toolbar + table + footer
   customers_grid.tsx            # <Table> from shadcn + Tailwind columns
 
@@ -119,16 +130,16 @@ components/ui/
   table.tsx
   select.tsx
 
-helpers/customers_api.ts
+api/customers_api.ts
 
 pages/customers_page.tsx        # <CustomersDirectory /> + useResource + URL params
 ```
 
 Rules:
 
-- Pages fetch via `helpers/*_api.ts` + `use_resource.ts`; pass typed props into section components — no layout styling on pages.
+- Pages fetch via `api/*_api.ts` + `use_resource.ts`; pass typed props into section components — no layout styling on pages.
 - Section owns macro Grid / micro Flex via Tailwind (`ui.mdc` Layout).
-- Presentational: `ui/<domain>/` components accept props and render markup only.
+- Presentational: `domains/<domain>/` components accept props and render markup only.
 - Interactive primitives from `components/ui/` — install via shadcn CLI, do not copy-paste Radix wiring.
 - `cn()` from `web/src/lib/utils.ts`.
 - Cold list pages: server pagination + `items.map()` (`react.mdc` Cold path). Hot rules only for charts/streaming.
@@ -139,8 +150,8 @@ List fetch lifecycle (abort, ticker isolation, charts): `react.mdc`.
 
 | Legacy | Action |
 | :--- | :--- |
-| `web/src/components/*` (non-shadcn) | Move to `ui/<domain>/` or replace with shadcn |
-| `web/src/ui/system/*` | Migrate to `components/ui/` shadcn equivalents |
+| `web/src/components/*` (non-shadcn) | Move to `domains/<domain>/` or replace with shadcn |
+| Legacy `web/src/ui/*` tree | Migrated to `domains/` + `shell/`; shadcn in `components/ui/` |
 | `*.module.css` | Convert to Tailwind on touch; delete file when unused |
 | `web/src/styles/tokens.css` | Merge into `globals.css` + `tailwind.config` theme |
 | `web/src/lib/cn.ts` | Rename/merge to `lib/utils.ts` (shadcn default) |
@@ -166,7 +177,7 @@ Milestone PR: paste verification commands (`ui.mdc`).
 | :--- | :--- |
 | 1 | One layer owner per task |
 | 2 | Handler/DTO before UI field |
-| 3 | New UI under `ui/<domain>/`; primitives from `components/ui/` |
+| 3 | New UI under `domains/<domain>/`; primitives from `components/ui/` |
 | 4 | No client list business logic |
 | 5 | No new CSS Modules; Tailwind + shadcn only |
 | 6 | `typecheck` + surface gate on touched paths |

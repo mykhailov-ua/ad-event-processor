@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { createSupportFeedback, getSupportFeedbackMeta } from '@/api/platform_api';
 import { SupportFeedbackForm } from '@/domains/platform/support_feedback_form';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function SupportFeedbackPage() {
   const { data: meta, error: metaError, fetching: fetchingMeta } = useResource(

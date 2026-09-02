@@ -9,9 +9,9 @@ import {
   Workflow,
 } from 'lucide-react';
 
-import { BentoSection } from '@/components/system/bento_card';
-import { HubLinkCard, HubLinkGrid } from '@/components/system/hub_link_card';
-import { PageChrome } from '@/components/system/page_chrome';
+import { BentoSection } from '@/shell/bento_card';
+import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
+import { PageChrome } from '@/shell/page_chrome';
 import { AutomationNav } from '@/domains/automation/automation_nav';
 
 const CATALOG_LINKS = [

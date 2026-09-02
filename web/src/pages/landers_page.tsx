@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 
 import { createLander, listLanders } from '@/api/landers_api';
 import { LandersDirectory } from '@/domains/creative/landers_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function LandersPage() {
   const [reloadToken, setReloadToken] = useState(0);

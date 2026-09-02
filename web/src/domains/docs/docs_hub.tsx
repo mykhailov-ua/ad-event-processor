@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom';
 
-import { PageChrome } from '@/components/system/page_chrome';
+import { PageChrome } from '@/shell/page_chrome';
 import {
   Table,
   TableBody,
@@ -32,7 +32,7 @@ export function DocsHub({ sectionId }: DocsHubProps) {
 
       <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
         <aside className="ui-surface p-3 lg:sticky lg:top-6">
-          <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="mb-2 px-3 text-xs font-medium tracking-wide text-muted-foreground">
             Sections
           </p>
           <DocsNav />

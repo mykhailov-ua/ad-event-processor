@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { listReconRuns } from '@/api/ops_api';
 import { OpsRecon } from '@/domains/ops/ops_recon';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { DEFAULT_LIST_LIMIT, parseListLimit, parseListOffset } from '@/lib/list_query';
 
 export function OpsReconPage() {

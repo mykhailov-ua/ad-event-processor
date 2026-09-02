@@ -12,7 +12,7 @@ import {
 import type { APIKeyCreatedResponse, BillingStatement, PaymentIntentCreatedResponse } from '@/api/types';
 import { SelfServePortal } from '@/domains/portals/selfserve_portal';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function SelfServePortalPage() {
   const {

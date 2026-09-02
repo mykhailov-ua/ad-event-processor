@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 
 import { applyLicense, getLicenseStatus } from '@/api/platform_api';
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { ErrorBlock } from '@/shell/error_block';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { LicenseStatus } from '@/api/types';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export type LicenseApplyFormProps = {
   title?: string;

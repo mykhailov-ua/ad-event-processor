@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,

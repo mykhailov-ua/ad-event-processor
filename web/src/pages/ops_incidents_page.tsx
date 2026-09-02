@@ -1,6 +1,6 @@
 import { getOpsIncidents } from '@/api/ops_api';
 import { OpsIncidents } from '@/domains/ops/ops_incidents';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function OpsIncidentsPage() {
   const { data, error, fetching } = useResource((signal) => getOpsIncidents(signal), []);

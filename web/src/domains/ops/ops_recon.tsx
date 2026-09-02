@@ -1,21 +1,16 @@
-import { FilterApplyButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/shell/empty_state';
 import type { ReconRun } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
-import { OpsNav, opsPanelError } from '@/domains/ops/ops_nav';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import { OpsListFooter } from '@/domains/ops/ops_list_footer';
+import {
+  OpsActionGroup,
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
+import { OpsTable } from '@/domains/ops/ops_table';
 
 export type OpsReconProps = {
   items: ReconRun[];
@@ -43,15 +38,16 @@ export function OpsRecon({
   onPageChange,
 }: OpsReconProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="Reconciliation runs">
-        <OpsNav />
-        {opsPanelError(error, 'Could not load recon runs')}
-      </PageChrome>
+      <OpsPageBlockingError
+        error={error}
+        pageTitle="Reconciliation runs"
+        title="Could not load recon runs"
+      />
     );
   }
 
@@ -59,68 +55,68 @@ export function OpsRecon({
   const canGoNext = items.length >= limit;
 
   return (
-    <PageChrome title="Reconciliation runs">
-      <OpsNav />
-
-      <form
-        className="grid max-w-xl grid-cols-[1fr_auto_auto] items-end gap-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onApplyFilters();
-        }}
-      >
-        <div className="grid gap-2">
-          <Label htmlFor="recon-service">Service</Label>
-          <Input
+    <OpsPageShell
+      filters={
+        <label className="admin-label">
+          Service
+          <input
+            className="admin-input"
             id="recon-service"
             value={draftService}
             onChange={(event) => onDraftServiceChange(event.target.value)}
           />
-        </div>
-        <FilterApplyButton disabled={fetching}>Apply</FilterApplyButton>
-        <PaginationPrevNext
-          canGoPrev={canGoPrev}
+        </label>
+      }
+      footer={
+        <OpsListFooter
           canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
           disabled={fetching}
-          onPrev={() => onPageChange(Math.max(0, offset - limit))}
+          summary={`Offset ${offset}`}
           onNext={() => onPageChange(offset + limit)}
+          onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
-      </form>
-
+      }
+      title="Reconciliation runs"
+      actions={
+        <OpsActionGroup label="Filters">
+          <Button disabled={fetching} loading={fetching} type="button" onClick={onApplyFilters}>
+            Apply
+          </Button>
+        </OpsActionGroup>
+      }
+    >
       {items.length === 0 ? (
-        <EmptyState title="No recon runs" description="No reconciliation runs match filters." />
+        <EmptyState description="No reconciliation runs match filters." title="No recon runs" />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Service</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Period start</TableHead>
-                <TableHead>Period end</TableHead>
-                <TableHead>Discrepancies</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((row) => (
-                <TableRow key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
-                  <TableCell>{row.id ?? ''}</TableCell>
-                  <TableCell>{row.service ?? ''}</TableCell>
-                  <TableCell>{row.status ?? ''}</TableCell>
-                  <TableCell>{displayTimestamp(row.period_start)}</TableCell>
-                  <TableCell>{displayTimestamp(row.period_end)}</TableCell>
-                  <TableCell>{row.discrepancies_found ?? ''}</TableCell>
-                  <TableCell>{displayTimestamp(row.created_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <OpsTable
+          head={
+            <tr>
+              <th>ID</th>
+              <th>Service</th>
+              <th>Status</th>
+              <th>Period start</th>
+              <th>Period end</th>
+              <th>Discrepancies</th>
+              <th>Created</th>
+            </tr>
+          }
+        >
+          {items.map((row) => (
+            <tr key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
+              <td className="admin-table-td--id">{row.id ?? ''}</td>
+              <td>{row.service ?? ''}</td>
+              <td>{row.status ?? ''}</td>
+              <td>{displayTimestamp(row.period_start)}</td>
+              <td>{displayTimestamp(row.period_end)}</td>
+              <td className="num">{row.discrepancies_found ?? ''}</td>
+              <td>{displayTimestamp(row.created_at)}</td>
+            </tr>
+          ))}
+        </OpsTable>
       )}
 
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </OpsPageShell>
   );
 }

@@ -6,28 +6,27 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
+  'admin-btn inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:transform-none',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline:
-          'border border-border/60 bg-transparent hover:bg-muted/50 hover:text-foreground',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'hover:bg-muted/50 hover:text-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
+        default: 'admin-btn--primary',
+        destructive: 'border-destructive/30 bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        outline: 'border-border bg-background hover:bg-secondary hover:text-secondary-foreground',
+        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'border-transparent bg-transparent hover:bg-secondary hover:text-secondary-foreground',
+        link: 'border-0 bg-transparent text-primary underline-offset-4 hover:underline',
       },
       size: {
-        default: 'h-9 px-4 py-2',
-        sm: 'h-8 px-3 text-xs',
-        lg: 'h-10 px-8',
-        icon: 'h-9 w-9',
+        default: '',
+        sm: '',
+        lg: 'px-5 text-sm',
+        icon: 'admin-btn--icon',
       },
       shape: {
-        default: 'rounded-full',
+        default: '',
         pill: 'rounded-full',
-        square: 'rounded-xl',
+        square: 'rounded-[var(--admin-radius-sm)]',
       },
     },
     defaultVariants: {
@@ -35,7 +34,7 @@ const buttonVariants = cva(
       size: 'default',
       shape: 'default',
     },
-  }
+  },
 );
 
 export interface ButtonProps
@@ -69,7 +68,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         aria-busy={loading || undefined}
         {...props}
       >
-        {loading ? <Loader2 className="motion-safe:animate-spin" aria-hidden="true" /> : null}
+        {loading ? <Loader2 className="h-4 w-4" aria-hidden="true" /> : null}
         {children}
       </Comp>
     );

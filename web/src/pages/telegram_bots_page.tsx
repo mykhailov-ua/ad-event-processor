@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import { listTelegramBots } from '@/api/telegram_api';
 import { TelegramBotsDirectory } from '@/domains/telegram/bots_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function TelegramBotsPage() {
   const navigate = useNavigate();

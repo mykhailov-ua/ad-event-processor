@@ -5,7 +5,7 @@ import {
   listSupplySellers,
 } from '@/api/supply_api';
 import { SupplyHub } from '@/domains/creative/supply_hub';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 type SupplySnapshot = {
   sellers: Awaited<ReturnType<typeof listSupplySellers>>;

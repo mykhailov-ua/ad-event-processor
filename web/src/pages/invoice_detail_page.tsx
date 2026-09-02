@@ -11,8 +11,8 @@ import {
 } from '@/api/billing_api';
 import type { BillingLedgerLine } from '@/api/types';
 import { InvoiceDetail } from '@/domains/billing/invoice_detail';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
-import { useResource } from '@/hooks/use_resource';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 

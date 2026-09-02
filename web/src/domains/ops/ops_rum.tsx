@@ -1,8 +1,12 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
 import { Button } from '@/components/ui/button';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
-import { OpsNav, opsPanelError } from '@/domains/ops/ops_nav';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import {
+  OpsActionGroup,
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
 
 export type OpsRumProps = {
   payload: Record<string, unknown> | undefined;
@@ -14,30 +18,32 @@ export type OpsRumProps = {
 
 export function OpsRum({ payload, fetching, error, hasSnapshot, onLoad }: OpsRumProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="RUM">
-        <OpsNav />
-        {opsPanelError(error, 'Could not load RUM samples')}
-      </PageChrome>
+      <OpsPageBlockingError error={error} pageTitle="RUM" title="Could not load RUM samples" />
     );
   }
 
   return (
-    <PageChrome title="RUM">
-      <OpsNav />
-      <Button disabled={fetching} onClick={onLoad} type="button" variant="outline">
-        {fetching ? 'Loading...' : 'Load samples'}
-      </Button>
+    <OpsPageShell
+      title="RUM"
+      actions={
+        <OpsActionGroup label="RUM">
+          <Button disabled={fetching} loading={fetching} type="button" onClick={onLoad}>
+            Load samples
+          </Button>
+        </OpsActionGroup>
+      }
+    >
       {payload ? (
         <JsonDashboardView payload={payload} />
       ) : (
-        <p className="text-sm text-muted-foreground">Load RUM samples from the control plane.</p>
+        <p className="admin-muted">Load RUM samples from the control plane.</p>
       )}
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </OpsPageShell>
   );
 }

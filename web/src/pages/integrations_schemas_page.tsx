@@ -13,7 +13,7 @@ import {
   IntegrationsSchemas,
   type IntegrationsSchemasTab,
 } from '@/domains/integrations/integrations_schemas';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function IntegrationsSchemasPage() {
   const [tab, setTab] = useState<IntegrationsSchemasTab>('schemas');

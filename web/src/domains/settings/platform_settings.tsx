@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 
-import { FilterApplyButton, PrimaryActionButton } from '@/components/system/action_buttons';
-import { ErrorBlock } from '@/components/system/error_block';
-import { FilterField, FilterPanel } from '@/components/system/filter_panel';
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PanelSection } from '@/components/system/stat_panel';
+import { FilterApplyButton, PrimaryActionButton } from '@/shell/action_buttons';
+import { ErrorBlock } from '@/shell/error_block';
+import { FilterField, FilterPanel } from '@/shell/filter_panel';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -196,7 +196,7 @@ export function PlatformSettings({
           </PanelSection>
 
           <SettingsCollapsibleSection
-            badge={`JSON · ${formatJsonPayloadSize(payload)}`}
+            badge={`JSON  /  ${formatJsonPayloadSize(payload)}`}
             title="Raw configuration payload"
           >
             <pre className="ui-code-block max-h-96 overflow-auto text-xs">

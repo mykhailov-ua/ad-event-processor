@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { exportAuditCsv, listAudit } from '@/api/audit_api';
 import type { AuditListQuery } from '@/api/types';
 import { AuditDirectory } from '@/domains/audit/audit_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { DEFAULT_LIST_LIMIT, parseListLimit, parseListOffset } from '@/lib/list_query';
 
 function buildListQuery(params: URLSearchParams): AuditListQuery {

@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { bulkUpsertFraudLabels, listFraudLabels, upsertFraudLabel } from '@/api/fraud_api';
 import type { FraudManualLabelBulkRequest } from '@/api/types';
 import { FraudLabels } from '@/domains/fraud/fraud_labels';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 

@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton, PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
-import { StubBanner } from '@/components/system/stub_banner';
+import { FilterApplyButton, PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { StubBanner } from '@/shell/stub_banner';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';

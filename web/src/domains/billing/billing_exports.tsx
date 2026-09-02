@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { PageChrome } from '@/components/system/page_chrome';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PageChrome } from '@/shell/page_chrome';
+import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
@@ -79,7 +79,7 @@ export function BillingExports({
         <div className="grid gap-2">
           <Label htmlFor="export-format">Format</Label>
           <Select value={draftFormat} onValueChange={(value) => onDraftFormatChange(value as 'csv' | 'ndjson')}>
-            <SelectTrigger id="export-format" className="h-9 w-full text-sm">
+            <SelectTrigger id="export-format" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ErrorBlock } from '@/components/system/error_block';
+import { ErrorBlock } from '@/shell/error_block';
 import {
   Table,
   TableBody,
@@ -109,7 +109,7 @@ export function BillingPreviewPanel({
           <Input
             id="preview-month"
             type="month"
-            className="h-9 text-sm"
+            className="text-sm"
             value={draftMonth}
             onChange={(event) => onDraftMonthChange(event.target.value)}
           />

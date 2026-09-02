@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 
 import { listAffiliateStatusPresets } from '@/api/integrations_api';
 import { IntegrationsAffiliatePresets } from '@/domains/integrations/integrations_affiliate_presets';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function IntegrationsAffiliatePresetsPage() {
   const { data, error, fetching } = useResource(

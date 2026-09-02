@@ -2,8 +2,9 @@
 description: React admin runtime - Hot (charts/telemetry) vs Cold (CRUD), heap leaks, canvas
 globs:
   - web/src/pages/**
-  - web/src/ui/**
-  - web/src/helpers/**
+  - web/src/domains/**
+  - web/src/shell/**
+  - web/src/api/**
   - web/src/workers/**
   - scripts/ci/admin/web.sh
   - scripts/ci/check_ui*.sh
@@ -14,7 +15,7 @@ alwaysApply: false
 
 ## Status
 
-Applies when `web/src/pages` and `web/src/ui` exist (`ui.mdc`, `frontend-modular.mdc`). Layout and server contracts: `ui.mdc`. Layer boundaries: `frontend-modular.mdc`.
+Applies when `web/src/pages` and `web/src/domains` exist (`ui.mdc`, `frontend-modular.mdc`). Layout and server contracts: `ui.mdc`. Layer boundaries: `frontend-modular.mdc`.
 
 ## Purpose
 

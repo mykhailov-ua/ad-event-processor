@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import type { PublisherDashboard } from '@/api/types';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';

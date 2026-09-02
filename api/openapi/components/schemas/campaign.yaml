@@ -42,6 +42,10 @@ Campaign:
     id:
       type: string
       format: uuid
+    display_id:
+      type: string
+      description: Eight-digit operator-facing campaign number (deterministic from id).
+      pattern: '^\d{8}$'
     name:
       type: string
     status:
@@ -156,6 +160,23 @@ Campaign:
     margin_breach:
       type: boolean
 
+CampaignStatusTotals:
+  type: object
+  required: [active, paused, archived, total]
+  properties:
+    active:
+      type: integer
+      format: int64
+    paused:
+      type: integer
+      format: int64
+    archived:
+      type: integer
+      format: int64
+    total:
+      type: integer
+      format: int64
+
 CampaignListResponse:
   type: object
   required: [items, total, limit, offset]
@@ -177,6 +198,8 @@ CampaignListResponse:
       type: object
       additionalProperties:
         type: string
+    status_totals:
+      $ref: '#/CampaignStatusTotals'
     sort:
       $ref: '#/ListSort'
 
@@ -321,6 +344,80 @@ CampaignMargin:
     threshold_bps:
       type: integer
     margin_breach:
+      type: boolean
+
+CampaignListMetricsRow:
+  type: object
+  required: [campaign_id]
+  properties:
+    campaign_id:
+      type: string
+      format: uuid
+    impressions:
+      type: integer
+      format: int64
+    clicks:
+      type: integer
+      format: int64
+    conversions:
+      type: integer
+      format: int64
+    unique_clicks:
+      type: integer
+      format: int64
+    blocks:
+      type: integer
+      format: int64
+    leads_raw:
+      type: integer
+      format: int64
+    hold_leads:
+      type: integer
+      format: int64
+    rejected_leads:
+      type: integer
+      format: int64
+    lp_clicks:
+      type: integer
+      format: int64
+    lp_views:
+      type: integer
+      format: int64
+    bots:
+      type: integer
+      format: int64
+    stale:
+      type: boolean
+    advertiser_spend_micro:
+      type: integer
+      format: int64
+    rtb_cost_micro:
+      type: integer
+      format: int64
+    operator_margin_micro:
+      type: integer
+      format: int64
+    publisher_payout_micro:
+      type: integer
+      format: int64
+    margin_breach:
+      type: boolean
+
+CampaignListMetricsBatchResponse:
+  type: object
+  required: [items, from, to, stale]
+  properties:
+    items:
+      type: object
+      additionalProperties:
+        $ref: '#/CampaignListMetricsRow'
+    from:
+      type: string
+      format: date-time
+    to:
+      type: string
+      format: date-time
+    stale:
       type: boolean
 
 CloneCampaignRequest:

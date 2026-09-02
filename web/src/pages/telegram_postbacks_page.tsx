@@ -10,7 +10,7 @@ import {
 } from '@/api/telegram_api';
 import { TelegramPostbacksDirectory } from '@/domains/telegram/postbacks_directory';
 import { useCampaignScope } from '@/hooks/use_campaign_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function TelegramPostbacksPage() {
   const {

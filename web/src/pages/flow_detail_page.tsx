@@ -5,8 +5,8 @@ import { toast } from 'sonner';
 import { getFlow, updateFlow } from '@/api/flows_api';
 import type { FlowPath } from '@/api/types';
 import { FlowDetail } from '@/domains/creative/flow_detail';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
-import { useResource } from '@/hooks/use_resource';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
+import { useResource } from '@/api/use_resource';
 
 function pathsToJson(paths: unknown): string {
   if (Array.isArray(paths)) {

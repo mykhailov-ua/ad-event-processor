@@ -1,4 +1,4 @@
-import { ErrorBlock } from '@/components/system/error_block';
+import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -92,7 +92,7 @@ export function PostbackConfigForm({
         <div className="grid gap-2">
           <Label htmlFor="postback-provider">Provider</Label>
           <Select value={draftProvider} onValueChange={onDraftProviderChange}>
-            <SelectTrigger id="postback-provider" className="h-9 w-full text-sm">
+            <SelectTrigger id="postback-provider" className="w-full text-sm">
               <SelectValue placeholder="Select provider" />
             </SelectTrigger>
             <SelectContent>

@@ -10,9 +10,9 @@ import {
   validateTelegramInitData,
 } from '@/api/telegram_api';
 import { getCampaign } from '@/api/campaigns_api';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { TelegramBotEditor } from '@/domains/telegram/bot_editor';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 function parseAuthDateTtl(value: string): number | undefined {
   const trimmed = value.trim();

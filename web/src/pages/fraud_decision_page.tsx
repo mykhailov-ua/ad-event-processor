@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { getFraudDecision } from '@/api/fraud_api';
 import { FraudDecisionView } from '@/domains/fraud/fraud_decision';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 
 export function FraudDecisionPage() {

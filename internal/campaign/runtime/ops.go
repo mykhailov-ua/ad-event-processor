@@ -324,9 +324,7 @@ func listCampaigns(
 	ctx context.Context,
 	pool *pgxpool.Pool,
 	effects campaign.Effects,
-	customerID uuid.UUID,
-	status string,
-	limit, offset int32,
+	filter campaign.ListCampaignsFilter,
 ) ([]campaign.CampaignDTO, int64, error) {
 	if pool == nil {
 		return nil, 0, fmt.Errorf("service unavailable")
@@ -334,26 +332,42 @@ func listCampaigns(
 	q := db.New(pool)
 
 	var cid pgtype.UUID
-	if customerID != uuid.Nil {
-		cid = domain.ToUUID(customerID)
+	if filter.CustomerID != uuid.Nil {
+		cid = domain.ToUUID(filter.CustomerID)
 	}
 
 	var st pgtype.Text
-	if status != "" {
-		st = pgtype.Text{String: status, Valid: true}
+	if filter.Status != "" {
+		st = pgtype.Text{String: filter.Status, Valid: true}
+	}
+
+	var targetCountry pgtype.Text
+	if filter.TargetCountry != "" {
+		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
+	}
+
+	ownerUserID := filter.OwnerUserID
+	if !ownerUserID.Valid {
+		ownerUserID = campaign.CampaignOwnerUserFilter(ctx)
 	}
 
 	countParams := db.CountCampaignsParams{
-		CustomerID:  cid,
-		Status:      st,
-		OwnerUserID: campaign.CampaignOwnerUserFilter(ctx),
+		CustomerID:     cid,
+		Status:         st,
+		OwnerUserID:    ownerUserID,
+		TargetCountry:  targetCountry,
+		BudgetMinMicro: filter.BudgetMinMicro,
+		BudgetMaxMicro: filter.BudgetMaxMicro,
 	}
 	listParams := db.ListCampaignsParams{
-		Limit:       limit,
-		Offset:      offset,
-		CustomerID:  cid,
-		Status:      st,
-		OwnerUserID: campaign.CampaignOwnerUserFilter(ctx),
+		Limit:          filter.Limit,
+		Offset:         filter.Offset,
+		CustomerID:     cid,
+		Status:         st,
+		OwnerUserID:    ownerUserID,
+		TargetCountry:  targetCountry,
+		BudgetMinMicro: filter.BudgetMinMicro,
+		BudgetMaxMicro: filter.BudgetMaxMicro,
 	}
 
 	items, total, err := coldpath.PaginatedList(
@@ -368,6 +382,78 @@ func listCampaigns(
 		effects.AttachCampaignListBudgetApprovalStates(ctx, items)
 	}
 	return items, total, nil
+}
+
+func countCampaignStatusTotals(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	filter campaign.ListCampaignsFilter,
+	searchQuery, pacingMode string,
+) (campaign.CampaignStatusTotalsDTO, error) {
+	if strings.TrimSpace(searchQuery) != "" || strings.TrimSpace(pacingMode) != "" {
+		// In-memory filter: fetch up to 1000 rows without status, then count by lifecycle.
+		probe := filter
+		probe.Status = ""
+		probe.Limit = 1000
+		probe.Offset = 0
+		items, _, err := listCampaigns(ctx, pool, nil, probe)
+		if err != nil {
+			return campaign.CampaignStatusTotalsDTO{}, err
+		}
+		return campaign.CountStatusTotalsFromItems(campaign.FilterCampaignsByQuery(items, searchQuery, pacingMode)), nil
+	}
+	if pool == nil {
+		return campaign.CampaignStatusTotalsDTO{}, fmt.Errorf("service unavailable")
+	}
+	dbq := db.New(pool)
+
+	var cid pgtype.UUID
+	if filter.CustomerID != uuid.Nil {
+		cid = domain.ToUUID(filter.CustomerID)
+	}
+
+	var targetCountry pgtype.Text
+	if filter.TargetCountry != "" {
+		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
+	}
+
+	ownerUserID := filter.OwnerUserID
+	if !ownerUserID.Valid {
+		ownerUserID = campaign.CampaignOwnerUserFilter(ctx)
+	}
+
+	base := db.CountCampaignsParams{
+		CustomerID:     cid,
+		OwnerUserID:    ownerUserID,
+		TargetCountry:  targetCountry,
+		BudgetMinMicro: filter.BudgetMinMicro,
+		BudgetMaxMicro: filter.BudgetMaxMicro,
+	}
+
+	var totals campaign.CampaignStatusTotalsDTO
+	for _, status := range []string{"ACTIVE", "PAUSED", "ARCHIVED"} {
+		params := base
+		params.Status = pgtype.Text{String: status, Valid: true}
+		count, err := dbq.CountCampaigns(ctx, params)
+		if err != nil {
+			return campaign.CampaignStatusTotalsDTO{}, err
+		}
+		switch status {
+		case "ACTIVE":
+			totals.Active = count
+		case "PAUSED":
+			totals.Paused = count
+		case "ARCHIVED":
+			totals.Archived = count
+		}
+	}
+
+	total, err := dbq.CountCampaigns(ctx, base)
+	if err != nil {
+		return campaign.CampaignStatusTotalsDTO{}, err
+	}
+	totals.Total = total
+	return totals, nil
 }
 
 func getCampaign(

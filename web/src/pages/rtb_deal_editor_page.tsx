@@ -5,8 +5,8 @@ import { deleteRtbDeal, getRtbDeal, patchRtbDeal } from '@/api/rtb_api';
 import type { RtbDealUpdateSpec } from '@/api/types';
 import { RtbDealEditor } from '@/domains/rtb/rtb_deal_editor';
 import { rtbLicenseGated } from '@/domains/rtb/rtb_nav';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
-import { useResource } from '@/hooks/use_resource';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
+import { useResource } from '@/api/use_resource';
 
 function dealToDraft(deal: {
   deal_id?: string;

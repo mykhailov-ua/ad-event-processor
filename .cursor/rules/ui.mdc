@@ -1,37 +1,60 @@
 ---
-description: Admin UI rebuild contract - cold path, OpenAPI, macro/micro layout, AI honesty
+description: Admin UI rebuild contract - cold path, OpenAPI, macro/micro layout, scroll/overflow, AI honesty
 globs:
   - api/openapi/**
   - internal/controlplane/*_handlers.go
   - scripts/ci/admin/openapi.sh
   - scripts/ci/admin/web.sh
+  - web/**
 alwaysApply: false
 ---
 
-# Admin UI (rebuild)
+# Admin UI
 
 ## Status
 
-Admin SPA: `web/` (React 19 + TypeScript + **Tailwind CSS** + **shadcn/ui**). Boot/embed: `internal/controlplane/admin_static_stub/` until `web/dist` ships. Contracts: `api/openapi/`.
+Admin SPA: `web/` (React 19 + TypeScript + **Tailwind CSS** + **shadcn/ui**). Boot/embed: `internal/controlplane/admin_static_stub/` until `web/dist` ships. HTTP contracts: `api/openapi/`.
 
 | Artifact | Path |
 | :--- | :--- |
 | HTTP API | `api/openapi/openapi.yaml`, `openapi.bundle.yaml` |
 | Domain handlers | `internal/<domain>/handlers.go`, `internal/controlplane/*_bridge.go` |
 | Admin static (stub) | `internal/controlplane/admin_static_stub/` via `admin_static_embed.go` |
-| Traffic templates (server) | `internal/traffictemplates/generated_templates.json` (`make gen`) |
+| Visual reference | `web/DESIGN.md` (tokens, utilities, component catalog) |
+| Typography roles | `web/src/lib/admin_typography.ts` |
+| Error copy | `web/src/lib/admin_error.ts` |
 
-Modules: `web/src/pages/`, `web/src/domains/<domain>/`, `web/src/components/ui/` (shadcn), `web/src/api/*_api.ts` — see `frontend-modular.mdc`.
+### Package map (canonical)
 
-Visual reference: `web/DESIGN.md` (tokens, utilities, component catalog, page patterns).
+| Layer | Path | Role |
+| :--- | :--- | :--- |
+| Pages | `web/src/pages/` | Route entry; hooks; URL to query params; compose domain sections only |
+| Domain UI | `web/src/domains/<domain>/` | Presentational sections, tables, toolbars, sheets |
+| System chrome | `web/src/components/system/` | `PageLayout`, filters, tables, states, nav |
+| shadcn primitives | `web/src/components/ui/` | Button, Select, Dialog, Sheet, Popover, ... |
+| API transport | `web/src/api/*_api.ts`, `web/src/api/client.ts` | Typed fetch; parse JSON |
+| Types | `web/src/types/generated/` | OpenAPI-generated TS |
+| Theme | `web/src/styles/globals.css`, `tailwind.config.ts` | Admin tokens in `globals.css` |
+| Hooks | `web/src/hooks/` | `use_session`, shared fetch hooks (no domain business rules) |
 
-Reference implementation: `web/src/domains/campaigns/campaigns_directory.tsx`.
+Reference implementations:
 
-Reference: `frontend-modular.mdc`, `boundaries.mdc` (coupling limits), `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
+| Pattern | File |
+| :--- | :--- |
+| Directory list (campaigns) | `web/src/domains/campaigns/list/campaigns_directory.tsx` |
+| Ops dashboard | `web/src/domains/ops/ops_home.tsx` + `ops_page_shell.tsx` |
+| App shell | `web/src/app_shell.tsx` |
+| Page scaffold | `web/src/components/system/page_layout.tsx` |
+
+Cross-ref: `frontend-modular.mdc`, `boundaries.mdc`, `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
 
 ## Before code
 
-Abstract "implement page X" is invalid without an explicit operator spec. Contracts live in `ui.mdc`, `frontend-modular.mdc`, and `api/openapi/`.
+Abstract "implement page X" is invalid without an explicit operator spec. Contracts live in this file, `frontend-modular.mdc`, and `api/openapi/`.
+
+**Doc-only ask:** update rules only; zero `web/` diff unless operator asked to implement.
+
+**Rejected slice:** `git revert`; no compensating wrappers or portals.
 
 ## AI laziness and dishonesty (admin UI)
 
@@ -39,20 +62,20 @@ Agents optimize for plausible diffs, not operator intent. Treat these as **lie m
 
 | Failure mode | What agents do | Required behavior |
 | :--- | :--- | :--- |
-| Doc ask -> code | Operator asks for `.mdc` update; agent edits components | Write rules only unless operator asked to implement |
-| Piecemeal teardown | Delete or refactor `web/` file-by-file; half tree + broken CI | Remove or recreate `web/` atomically per operator direction; server embed stays in `internal/controlplane/admin_static_stub/` |
-| History restore | Copy pre-reset `web/` from git without `ui.mdc` contract | Forbidden; rebuild from rules + OpenAPI + cold path |
-| Wrapper stack | `*DirectoryChrome`, `*Workspace`, `*Cluster` over section grid | One section = one `ui/<domain>/` folder; page composes sections |
-| Macro layout drift | Page shell or section stack built from nested flex columns | Grid for shell + section stack; Flex only inside components (`Layout` below) |
-| Custom overlay logic | Hand-rolled `[data-dropdown-open]`, manual z-index, click-outside | shadcn/ui overlays (`Overlays` below) |
+| Doc ask -> code | Operator asks for `.mdc` update; agent edits components | Rules only unless implement asked |
+| Piecemeal teardown | Delete/refactor `web/` file-by-file; half tree + broken CI | Remove or recreate `web/` atomically; embed stays in stub |
+| History restore | Copy pre-reset `web/` from git without contract | Rebuild from rules + OpenAPI |
+| Wrapper stack | `*DirectoryChrome`, `*Workspace`, `*Cluster` over section grid | One section = one domain module; page composes sections |
+| Macro layout drift | Page shell built from nested flex columns | Grid for shell + section stack; Flex inside components only |
+| Scroll clip lie | `overflow: hidden` on wrong ancestor; content grows unbounded | Follow **Scroll and overflow** below |
+| Custom overlay logic | Hand-rolled `[data-dropdown-open]`, manual z-index | shadcn/ui overlays (`Overlays` below) |
 | Phantom contract | "See prior width contract" with no table in repo | Contract must live in this file |
-| Unrun verification | "typecheck passed", "admin_web green" | Paste command + package path + outcome (`quality.mdc`) |
+| Unrun verification | "typecheck passed", "admin_web green" | Paste command + path + exit code (`quality.mdc`) |
 | Client logic smuggle | `useMemo` filter/sort over full API payload | Server query params; browser renders page |
-| Filter pagination relocation | Operator asks to move Prev/Next into filter grid; agent wraps or moves **Apply** | **Directory filter row and pagination** below; Apply stays direct grid child |
-| Double chip chrome | `PageHeader` wrapper + `FreshnessBadge` border | Parent slot renders chip directly (`Chips` below) |
-| Boot HTML drift | Text inside `<div id="root">` | Empty `<div id="root"></div>` only; boot inject in `admin_ui_static.go` |
-
-Rejected slice: revert; do not add compensating wrappers.
+| Filter pagination relocation | Move Prev/Next into filter grid; agent wraps or moves **Apply** | **Directory filter row** below; Apply stays direct grid child |
+| Double chip chrome | Parent wrapper + chip both bordered | Parent renders chip directly (`Chips` below) |
+| Boot HTML drift | Text inside `<div id="root">` | Empty `<div id="root"></div>` only |
+| Demo KPIs / trash seed | Round numbers, `Acme`, duplicate row names in grids | **Fixture and seed data** below |
 
 ## Cold path first (non-negotiable)
 
@@ -63,438 +86,796 @@ Browser **renders** server output. Logic stays in Go.
 | Filter / search | Query params; SQL/CH in handler | Send params; show `items`, `total` |
 | Sort | `sort`, `order` on API | Refetch |
 | Pagination | `limit`, `offset` or cursor | Controls only |
-| List envelope | `items`, `total`, `limit`, `offset`, `freshness`, `filters_applied`, `sort` on directory handlers (`ListEnvelope` OpenAPI) | Refetch on param change; no client envelope math |
+| List envelope | `items`, `total`, `limit`, `offset`, `freshness`, `filters_applied`, `status_totals`, `sort` | Refetch on param change; no client envelope math |
 | KPIs / aggregates | Handler or report row fields | Display |
-| Freshness | `stale`, `ch_lag_seconds`, prefer `freshness_label` | Chip text from API; no client lag math |
+| Freshness | `stale`, `ch_lag_seconds`, prefer `freshness_label` | Chip text from API |
 | Money | Micros + currency or `*_display` from API | Format display fields only |
 | Status | `status`, `status_label`, `status_tone` | Map tone enum to chip |
 | Export | Server export endpoint or async job | Download link |
 | Validation | 400 + field errors from handler | Show API errors |
 
-Forbidden in new `web/src/helpers/`: client-side filter/sort/reduce over full datasets; duplicated report keys; business rules that belong in handlers.
+Forbidden in new `web/src/**`: client-side filter/sort/reduce over full datasets; duplicated report keys; business rules that belong in handlers.
 
-**Rule:** need a derived field -> add to handler DTO in the same PR as the UI page.
+**Rule:** need a derived field -> add to handler DTO in the same PR as the UI field.
 
 ## Layer separation
 
-Architecture without ceremony. One task = one layer owner (`frontend-modular.mdc`).
+One task = one layer owner (`frontend-modular.mdc`).
 
 | Layer | Path | Owns | Must not |
 | :--- | :--- | :--- | :--- |
-| Pages | `web/src/pages/` | `useResource` / hook + `helpers/*_api.ts`; compose section components; URL → query params | Tailwind layout on pages, row formatting, overlay logic, invented fields |
-| UI | `web/src/ui/<domain>/` | Presentational sections; macro Grid + micro Flex via Tailwind; shadcn primitives | Fetch, business rules, cross-page Context |
-| API transport | `web/src/helpers/*_api.ts` | Typed fetch wrappers; parse JSON into `web/src/types/generated/` OpenAPI types | Client filter/sort over full `items[]` |
+| Pages | `web/src/pages/` | `useResource` / page hook + `api/*_api.ts`; URL to params; compose domain components | Tailwind layout trees, row formatting, overlay logic, invented fields |
+| Domain UI | `web/src/domains/<domain>/` | Sections; macro Grid + micro Flex; shadcn usage | Fetch (except via props/callbacks), cross-page Context, hand-rolled overlays |
+| API transport | `web/src/api/*_api.ts` | Typed fetch; parse into generated types | Client filter/sort over full `items[]` |
+| System | `web/src/shell/` | Reusable page chrome, directory primitives | Domain-specific API shapes |
 
-Pages pass **props down**; sections do not reach for `fetch` directly except through shared hooks wired at the page boundary.
+Pages pass **props down**; domain sections do not call `fetch` except through callbacks wired at the page boundary.
 
 ## API contract workflow
 
 1. Change `api/openapi/` and Go handler together.
-2. `bash scripts/ci/admin/openapi.sh` (export, catalog test, spectral via `npx` when available; no `web/package.json` required while `web/` absent).
-3. After `admin_contract_gate`: regenerate TS from OpenAPI into `web/src/types/generated/`.
+2. `bash scripts/ci/admin/openapi.sh`
+3. Regenerate TS from OpenAPI into `web/src/types/generated/`.
 
-`live: true` on a route requires `/api/v1` backend (`report_live_routes_gate.sh` runs when `web/` exists).
+`live: true` on a route requires `/api/v1` backend (`report_live_routes_gate.sh`).
 
 ## Ship order (foundation first)
 
 | Slug | Delivers | Close when |
 | :--- | :--- | :--- |
 | `admin_contract_gate` | OpenAPI matches handlers | `openapi_gate.sh` green |
-| `admin_tokens` | Tailwind theme + shadcn CSS variables | `globals.css` + `tailwind.config`; semantic color tokens only |
-| `admin_shell` | Login, shell, nav, boot | Replace `admin_static_stub`; `TestAdminStaticRoutes` |
-| `admin_page_chrome` | PageChrome section (macro Grid) | Badge slot without wrapper chrome |
+| `admin_tokens` | Tailwind theme + shadcn CSS variables | `globals.css` + `tailwind.config` |
+| `admin_shell` | Login, shell, nav, boot | Stub replaced; `TestAdminStaticRoutes` |
+| `admin_page_chrome` | `PageLayout` section stack | Badge slot without wrapper chrome |
 | `admin_directory_pattern` | One server-paginated list | No client full-list sort |
 | `admin_detail_pattern` | One detail + PATCH | Fields subset of Go DTO |
 | `admin_report_pattern` | One report page | Keys from OpenAPI/handler |
 | `admin_integrations_hub` | Integrations landing | `StubBanner` on 501 |
 
+---
+
+## App shell (macro)
+
+DOM chain from viewport to page content:
+
+```
+.admin-app-frame
+  .admin-app[.is-sidebar-collapsed]
+    aside.admin-sidebar
+    .admin-main                    min-height: 0; overflow: hidden
+      header.admin-header          breadcrumbs, search, theme, account
+      main.admin-content#main-content   flex: 1; min-height: 0; overflow: hidden; padding
+        <Outlet />                 route page
+```
+
+| Class | Contract |
+| :--- | :--- |
+| `.admin-main` | `display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden` |
+| `.admin-content` | Fills remaining viewport below header; **clips** overflow; pages must scroll inside descendants |
+| `.admin-header-breadcrumbs` | Route trail; must not overlap page content (no fixed positioning into content area) |
+
+Forbidden: letting page content grow unbounded inside `.admin-content` without an internal scroll region (causes bottom clip).
+
+---
+
+## Page layout (`PageLayout`)
+
+Canonical scaffold: `web/src/shell/page_layout.tsx`. `PageChrome` is a thin alias (`actions` prop maps to `headerActions`).
+
+```
+.admin-page-layout              flex column; flex: 1; min-height: 0
+  header.admin-page-header      title, badge, description, headerActions
+  .admin-page-workspace         flex column; flex: 1; min-height: 0; L1 surface + border
+    .admin-control-panel?       toolbar / filters / section nav (z-index: 5)
+    .admin-page-body            grid; flex: 1; min-height: 0; rows: minmax(0,1fr)
+      main.admin-page-main      flex column; flex: 1; min-height: 0
+      aside.admin-page-aside?   optional right rail
+    footer.admin-page-footer?   pagination, export (z-index: 5)
+```
+
+### Workspace regions
+
+| Region | Class | Surface | Typical content |
+| :--- | :--- | :--- | :--- |
+| Workspace shell | `.admin-page-workspace` | L1 | Border + padding around page body |
+| Control panel | `.admin-control-panel` | L2 | Campaigns toolbar, Ops nav + actions, filter rows |
+| Main | `.admin-page-main` | inherits | Table, stat grids, forms |
+| Footer | `.admin-page-footer` | L2 | Pagination, export buttons |
+
+Campaigns control panel variant: `.admin-control-panel:has(.admin-campaigns-toolbar)` drops side/bottom padding so filter row spans full width.
+
+---
+
+## Scroll and overflow (critical)
+
+Viewport height is fixed at `.admin-content`. Every page must either **fill and scroll internally** or **scroll inside `.admin-page-main`**.
+
+### Flex/grid min-height chain
+
+Every flex/grid ancestor between `.admin-content` and the scroll container needs `min-height: 0` (or `minmax(0, 1fr)` for grid rows):
+
+| Node | Required |
+| :--- | :--- |
+| `.admin-main` | `min-height: 0` |
+| `.admin-page-layout` | `min-height: 0; flex: 1` |
+| `.admin-page-workspace` | `min-height: 0; flex: 1` |
+| `.admin-page-body` | `min-height: 0; flex: 1; grid-template-rows: minmax(0, 1fr)` |
+| `.admin-page-main` | `min-height: 0; flex: 1` |
+
+**Failure mode:** `admin-page-body` rows default to `auto` -> main grows with content -> `.admin-content` clips bottom (Ops tables, import sheet, long forms).
+
+### Scroll modes for `.admin-page-main`
+
+| Page kind | Main overflow | Child scroll |
+| :--- | :--- | :--- |
+| Campaigns directory | `overflow: hidden` | `.admin-campaigns-table-wrap` (`flex: 1; overflow: auto`) with sticky `thead` |
+| Ops / stacked sections | `overflow-y: auto` when `:has(.admin-ops-block)` | Blocks use `flex: none`; no inner table scroll |
+| Generic long form | `overflow-y: auto` on main or dedicated body wrapper | Single scroll container; sticky header/footer in dialogs |
+
+### Table wrap variants
+
+| Class combo | Use | Scroll | Header |
+| :--- | :--- | :--- | :--- |
+| `.admin-table-wrap.admin-campaigns-table-wrap` | Campaigns list | `flex: 1; overflow: auto` on wrap | `position: sticky; top: 0` on `th` |
+| `.admin-table-wrap.admin-table-wrap--static` | Ops tables, small directory tables | `flex: none; overflow: hidden` (clip to `border-radius`) | `position: static` on `th` (no sticky) |
+
+Rules:
+
+- **Never** use `overflow: visible` on `.admin-table-wrap--static` (header background escapes rounded corners).
+- Ops tables: `width: 100%` on table inside static wrap.
+- Campaigns table: `width: auto` on `.admin-table.admin-table--campaigns` (column widths sum to content; horizontal scroll in wrap).
+
+### Dialog, sheet, popover scroll
+
+| Surface | Pattern |
+| :--- | :--- |
+| `Dialog` / `Sheet` | Fixed header + `flex-1 overflow-y-auto` body + optional sticky footer; bottom padding (`pb-6` / `pb-8`) so last field is not clipped |
+| `Popover` / `DropdownMenu` | Radix portal; max-height with `overflow-y-auto` on content |
+| Preferences / reset modals | One scroll container; avoid `flex-1` on empty body regions that create phantom scroll gaps |
+
+Forbidden:
+
+- Nested scroll containers fighting each other (outer `overflow: hidden` + inner `flex: 1` without `min-height: 0`).
+- `position: sticky` table headers inside `overflow: hidden` static wraps (ops).
+
+---
+
 ## Layout (macro Grid, micro Flex)
 
-From `admin_shell` onward. **Grid** owns macro structure; **Flexbox** owns everything inside a component. Do not fight action bars (Apply + pagination, icon + label, button groups) with pure Grid alone.
+**Grid** owns macro structure; **Flexbox** owns everything inside a component.
 
 ### Macro (CSS Grid)
 
 | Surface | Pattern |
 | :--- | :--- |
-| App shell | Sidebar + header + content area |
-| Page | Vertical stack of sections (`PageChrome`, filter, content, footer) |
-| Dashboard cards | `grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))` |
-| Filter field matrix | Optional filter row: `grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4 items-end` |
+| App shell | Sidebar + header + content (`admin-app`) |
+| Page | `PageLayout` vertical stack |
+| Dashboard cards | `grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr))` (`.admin-ops-stat-grid`) |
+| Filter field matrix | `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4 items-end` |
 
 | Rule | Detail |
 | :--- | :--- |
 | Section owns macro template | `grid-template-columns` / `rows` on section root only |
-| One chrome per region | One `PageChrome`, one filter section, one data section, one footer |
-| Rhythm | `row-gap` / `column-gap` on section grid; not margin stacks between sections |
+| One chrome per region | One header, one control panel, one data section, one footer |
+| Rhythm | `gap` on section grid; not margin stacks between sections |
 
 ### Micro (Flexbox)
 
-Use Flex inside components for:
-
 | Pattern | Examples |
 | :--- | :--- |
-| Control internals | Icon + text, label + hint, input adornments |
-| Action bars | Apply + pagination row, toolbar button groups |
-| Alignment | Badge/chip content, pagination Prev/Next pair |
-| Inline clusters | Filter actions cell, footer controls |
+| Control internals | Icon + text, label + hint |
+| Action bars | Toolbar button groups, Apply + pagination |
+| Alignment | Badge/chip content, footer controls |
+| Campaigns toolbar | `.admin-campaigns-toolbar__actions`, `__filters`, `__summary` rows |
 
 | Rule | Detail |
 | :--- | :--- |
-| Flex is local | Flex on toolbar, footer, action clusters, chip root — not a page-wide column replacing the section grid |
-| No layout escape | No `margin-left: auto` pushing controls out of their assigned cell |
-| Prefer Flex for action bars | Apply + pagination in one grid cell: inner Flex row — not a second Grid template |
+| Flex is local | Toolbar, footer, chip root -- not page-wide column replacing section grid |
+| No layout escape | No `margin-left: auto` pushing controls out of assigned cell |
+| Action bars | Inner flex row inside one grid cell -- not a second grid template |
 
 Forbidden for page layout:
 
-- Page shell or section stack as nested flex columns instead of macro Grid
-- Pure Grid for action bars where Flex alignment is the natural fit
-- `position: fixed` filter panels blocking content (inline accordion in flow only)
-- Extra wrapper components that only add chrome (`*Chrome` around `*Chrome`)
-- Hand-rolled overlay open state when a headless primitive covers the behavior (`Overlays` below)
+- Page shell as nested flex columns instead of macro Grid
+- `position: fixed` filter panels (inline accordion in flow only)
+- Extra wrapper components that only add chrome
+- Hand-rolled overlay open state when shadcn covers it
 
-### Section stack
+### Section stack (directory)
 
-`ContextBar` -> `PageChrome` -> `Toolbar` -> `[FilterPanel]` -> `Content` -> `Footer`.
+`PageLayout header` -> `controlPanel` (toolbar + filters) -> `main` (meta + table) -> `footer` (pagination/export).
 
-### Directory filter row and pagination
+Ops stack (`OpsPageShell`):
 
-Operator ask: move **Prev/Next** from list footer into the **filter grid** (bottom-right cell). That is **not** permission to relocate **Apply** or invent a second filter layout.
+```
+controlPanel:
+  OpsNav (section tabs)
+  actions toolbar (optional)
+  filters toolbar (optional)
+main:
+  OpsStatGrid (optional)
+  OpsBlock > OpsTable (repeat)
+footer (optional)
+```
 
-Canonical reference: `web/src/ui/billing/billing_filter.tsx` (Apply only); `web/src/ui/campaigns/campaigns_filter.tsx` (Apply + pagination).
+---
 
-#### Filter row contract
+## Directory filter row and pagination
+
+Operator ask: move **Prev/Next** into the **filter grid** (bottom-right). That is **not** permission to relocate **Apply**.
+
+Canonical reference: `web/src/domains/campaigns/list/campaigns_list_toolbar.tsx`; `web/src/components/system/filter_panel.tsx`.
+
+### Filter row contract
 
 | Rule | Detail |
 | :--- | :--- |
-| One filter row grid | `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]` + `items-end` (Tailwind) |
-| Field cells | Each filter is a labeled field block (shadcn `Label` + control) |
-| **Apply** | Direct child of filter row grid, **after** last field; shadcn `Button type="submit"`; **no wrapper** |
-| **Prev/Next** | Separate direct grid child **after** Apply; `PaginationPrevNext` with `className` for column width only |
-| Column width | Pagination root `w-full` of grid cell; inner **Flex** row splits Prev/Next with gap |
-| Button height | Match field controls (`h-9`, `text-sm`) — not compact `text-xs` slivers |
-| Footer | Remove duplicate `PaginationBar` from directory footer when pagination lives in filter row |
+| One filter row grid | `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]` + `items-end` |
+| Field cells | Labeled field block (shadcn `Label` + control) |
+| **Apply** | Direct child of filter row grid, after last field; `type="submit"`; **no wrapper** |
+| **Prev/Next** | Separate direct grid child after Apply; `PaginationPrevNext` |
+| Column width | Pagination cell `w-full`; inner flex splits Prev/Next |
+| Button height | Match field controls (`h-9`, `text-sm`) |
+| Footer | Remove duplicate pagination from footer when it lives in filter row |
 
-DOM order (campaigns-shaped directory):
+DOM order:
 
 ```
 .filterRow (grid)
-  .filterField × N
+  .filterField x N
   Button[Apply]
   PaginationPrevNext
 ```
 
-#### Agent failure modes (forbidden)
+### Agent failure modes (forbidden)
 
-| What agents do | Why it is wrong | Correct |
-| :--- | :--- | :--- |
-| Split `filters` into `filterFields` + `filterEnd` column | Moves Apply out of the filter grid into a side column | Single `.filterRow`; all children are peers |
-| Wrap Apply + pagination in `filterEndCap` / `filterActions` | Groups controls; shrinks or shifts Apply | Apply and pagination are **sibling** grid items |
-| Second row (`filterRowBottom`) for Sort/Order/Apply | Breaks original row flow; operator sees Apply "moved" | Keep Sort/Order in the same `.filterRow` as other fields |
-| Stack Prev/Next **above** Apply | Operator asked for horizontal pair in the grid corner, not a vertical tower | Pagination is its **own** cell beside Apply, not stacked on it |
-| `margin-left: auto` on a wrapper containing Apply | Pushes Apply away from its column after Order | No auto margin on Apply; optional `justify-self` only on pagination cell if the page catalog specifies |
-| Fixed `width: 5.75rem` + `justify-self: end` on pagination | Tiny buttons floating in empty grid space | `width: 100%`; fill the auto-fill column like other fields |
-| Touch Apply styling/position when task is "add pagination" | Operator said pagination moves; Apply stays | Diff Apply line should be **zero** unless explicitly requested |
+| What agents do | Correct |
+| :--- | :--- |
+| Split filters into side column with Apply | Single grid row; all peers |
+| Wrap Apply + pagination together | Sibling grid items |
+| Second row for Sort/Apply | Same row as other fields |
+| Stack Prev/Next above Apply | Pagination is its own cell beside Apply |
+| `margin-left: auto` on Apply wrapper | No auto margin on Apply |
+| Fixed `width: 5.75rem` on pagination | `width: 100%` of grid column |
+| Touch Apply when task is pagination only | Diff Apply line should be zero |
 
-**Read operator layout literally:** "bottom-right corner of the filter grid" = last **grid cell** on the wrap row, not a new layout system. "Width like Apply" = width of the **grid column** Apply sits in, split 50/50 for Prev/Next — not a arbitrary `rem` constant narrower than the column.
+Campaigns toolbar: filter row uses `.admin-campaigns-toolbar__filters` with `width: 100%`; actions/summary rows keep horizontal padding.
 
-Rejected slice: revert wrapper/column/second-row changes; restore billing-shaped Apply; add pagination as the next sibling only.
+---
 
 ## Data tables
 
-Admin lists are server-paginated (typically < 500 rows per page). Prefer a **semantic `<table>`** over custom CSS Grid / subgrid data matrices.
+Admin lists are server-paginated. Prefer semantic `<table>` over CSS grid data matrices.
+
+### Markup
 
 | Rule | Detail |
 | :--- | :--- |
-| Markup | `<table>`, `<thead>`, `<tbody>`, `<th>`, `<td>` |
-| Scroll | `overflow-x-auto` wrapper; table `w-full` |
-| Columns | `<colgroup>` or Tailwind column classes on `th`/`td` |
-| Empty / loading | One `<tr>` with `colSpan`; or skeleton overlay — same column contract |
-| Alignment | `text-align` on `th`/`td` or column class — name/money `start`, status/actions `center` |
+| Elements | `<table>`, `<thead>`, `<tbody>`, `<th>`, `<td>` |
+| Wrapper | `.admin-table-wrap` (see scroll variants above) |
+| Table class | `.admin-table.admin-table--campaigns` (shared density/typography) |
+| Empty / loading | One `<tr colSpan={n}>` or skeleton overlay |
+| Numeric columns | `.num` or `tabular-nums` on `th`/`td` |
+| Alignment | Name/start; money/status per column class |
 
-Forbidden: bespoke subgrid row factories for standard directory tables; `display: table*` CSS pretending to be a table.
+Forbidden: bespoke subgrid row factories; `display: table*` CSS pretending to be a table.
 
-Status chips: consistent column width (`w-*` or `min-w-*` in Tailwind) so labels align across rows.
+### Campaigns column widths
+
+| Rule | Detail |
+| :--- | :--- |
+| Layout | `table-layout: fixed`; explicit `width` on `col` / `th` from `campaign_list_columns.ts` |
+| Table width | `width: auto` on table (sum of columns); horizontal scroll in wrap |
+| Clamps | `clampCampaignListColumnWidthPx()` caps saved widths (name max 320px, metrics ~160px) |
+| Resize | Column grips on `th`; persist in `localStorage` key `aed.campaigns.listColumns.v7` |
+| Gap bug | Unbounded saved `name` width + `width: 100%` on table causes empty column gap -- never remove clamp |
+
+### Ops tables
+
+Use `OpsTable` (`ops_table.tsx`): static wrap, full width, no sticky header. Section title in `OpsBlock` above table (not inside wrap).
+
+Status chips: consistent `min-w-*` so labels align across rows.
+
+---
 
 ## Chips and badges
 
-Defect class: **nested frames** (gray outer box around colored inner pill). Example failure: `.titleBadge` wrapping `FreshnessBadge`.
+Defect class: **nested frames** (outer box around inner pill).
 
 | Rule | Detail |
 | :--- | :--- |
-| One chrome layer | Chip owns border, fill, padding; parent renders chip directly |
-| Spacing | Padding from Tailwind utilities or shadcn `Badge` variants — no global padding prescription in rules |
-| Vertical center | `inline-flex items-center` or shadcn `Badge` defaults inside the chip component |
-| No nested frames | One `.root`; no wrapper border around semantic chip |
-| Labels from API | Prefer `freshness_label`, `status_label` from handler |
+| One chrome layer | Chip owns border, fill, padding |
+| Spacing | Tailwind or shadcn `Badge` variants |
+| Vertical center | `inline-flex items-center` |
+| Labels from API | `freshness_label`, `status_label` |
+
+---
 
 ## Overlays (shadcn/ui)
 
-Complex controls are **not** built from scratch. Use **shadcn/ui** components (Radix primitives + Tailwind): `Select`, `DropdownMenu`, `Dialog`, `Popover`, `Tooltip`, `Sheet`.
+Use shadcn copies in `web/src/components/ui/`: `Select`, `DropdownMenu`, `Dialog`, `Popover`, `Tooltip`, `Sheet`.
 
 | Rule | Detail |
 | :--- | :--- |
-| Source | Copy into `web/src/components/ui/` via shadcn CLI — do not hand-roll Radix wiring |
-| Behavior from library | Focus trap, Escape, click-outside, keyboard nav, portal mount, z-index |
-| Style | Tailwind on shadcn `className` slots; extend variants with `cva` inside `components/ui/` only |
-| Field width | Trigger `w-full` in grid cell; content at least anchor width |
-| Banned | Custom `[data-dropdown-open]` toggles, manual `document` listeners for dismiss, hand-rolled popover measure loops |
+| Source | `npx shadcn@latest add <component>` |
+| Behavior | Focus trap, Escape, click-outside, portal, z-index from Radix |
+| Style | Tailwind on `className` slots; `cva` variants inside `components/ui/` only |
+| Field width | Trigger `w-full` in grid cell |
+| Banned | Custom `[data-dropdown-open]`, manual `document` listeners, hand-rolled measure loops |
 
-Install new primitives with `npx shadcn@latest add <component>` — keep versions aligned with `components.json`.
+Date range picker, column menu, import sheet: must not clip bottom of popover/sheet content (see **Dialog, sheet, popover scroll**).
+
+---
 
 ## Fetch and error UI
 
-List fetch lifecycle, ticker isolation, and chart rules: `react.mdc` (Hot vs Cold).
+List lifecycle and charts: `react.mdc` (Hot vs Cold).
 
 | State | Condition | UI |
 | :--- | :--- | :--- |
 | Initial load | `fetching && !data && !error` | `PageSkeleton` / grid skeleton |
-| Blocking error | `error && !data` | `ErrorBlock` / `ErrorView`; no empty table |
-| Stale revalidate | `data` present + error | Keep rows; toast or `AlertBanner` |
+| Blocking error | `error && !data` | `ErrorBlock`; no empty table |
+| Stale revalidate | `data` present + error | Keep rows; toast or banner |
 | Timeout | 15 s (`RESOURCE_FETCH_TIMEOUT_MS`) | Clear `fetching` in `finally` |
-| Mutation | PATCH/POST | `apiConfirmed`; toast only after 2xx |
-| Empty | `items.length === 0`, filters inactive | `EmptyState` + one sentence |
+| Mutation | PATCH/POST | Toast only after 2xx (`apiConfirmed`) |
+| Empty | `items.length === 0`, filters inactive | `EmptyState` |
+
+Use `admin_error.ts` for operator-facing titles/messages; show technical details only in dev mode (`shouldShowAdminErrorDetails()`).
 
 No silent `catch` -> empty table. No `live: true` without `/api/v1`.
 
-## Styling stack (Tailwind + shadcn/ui)
+---
 
-Markup stays **HTML via TSX**. Styling is **Tailwind utility classes** in component files. Shared controls come from **shadcn/ui** (not bespoke CSS Modules).
+## Styling stack (Tailwind + shadcn/ui)
 
 | Layer | Path | Role |
 | :--- | :--- | :--- |
-| Theme | `web/src/styles/globals.css`, `tailwind.config.ts` | `@tailwind` layers; shadcn CSS variables (`--background`, `--primary`, …) |
-| Primitives | `web/src/components/ui/` | shadcn copies: `Button`, `Select`, `Dialog`, `Table`, `Badge`, … |
-| Utilities | `web/src/lib/utils.ts` | `cn()` — `clsx` + `tailwind-merge` |
-| Domain UI | `web/src/ui/<domain>/*.tsx` | Section layout + table markup; Tailwind `className` on elements |
-| Pages | `web/src/pages/*.tsx` | Compose sections only; no layout styling |
+| Theme | `globals.css`, `tailwind.config.ts` | `@tailwind` layers; `--admin-surface-*`; shadcn HSL |
+| Primitives | `components/ui/` | shadcn copies |
+| Utilities | `lib/utils.ts` | `cn()` |
+| Domain UI | `domains/<domain>/` | Section layout; `className` on elements |
+| Pages | `pages/` | Compose only |
 
 | Rule | Detail |
 | :--- | :--- |
-| New work | Tailwind classes in TSX; shadcn for interactive primitives |
-| `cn()` | Merge conditional classes; string args in row loops (`react.mdc`) |
-| Colors | Theme tokens only (`bg-background`, `text-muted-foreground`, …) — no hard-coded hex |
-| Layout | Tailwind `grid`, `flex`, `gap-*` per macro/micro rules above |
-| Legacy | Existing `*.module.css` sunsets on touch — do not add new CSS Module files |
+| New work | Tailwind in TSX; shadcn for interactive primitives |
+| `cn()` | Merge conditional classes |
+| Colors | Theme tokens (`bg-background`, `text-muted-foreground`, `--admin-surface-*`) -- no hard-coded hex in TSX |
+| Legacy | `*.module.css` sunsets on touch -- no new CSS Module files |
 
 Forbidden:
 
-- New `*.module.css` or per-domain `*.variants.ts` files
-- Raw `@radix-ui/*` imports outside `components/ui/` shadcn wrappers
-- Global BEM (`btn--*`, `block__element`) under `web/src/ui`
+- New `*.module.css` or per-domain `*.variants.ts`
+- Raw `@radix-ui/*` outside `components/ui/`
+- Global BEM under `domains/`
 - `style={{}}` for layout (Tailwind instead)
-- Pages importing stylesheets or heavy `className` trees
+- Pages importing stylesheets or heavy layout `className` trees
 
 Gate: `bash scripts/ci/admin/ui_surface.sh`.
 
-## Grok surfaces design system
+---
 
-Dark admin theme: **Grok surfaces + Geist density**. Full token table, utilities, and examples: `web/DESIGN.md`.
+## Visual guidelines (simple)
 
-### Principles
+Operator agreement: **one plain admin skin** for all routes. Linear scaffold, basic tables, light depth from surface steps -- not pixel-perfect tracker clones (Keitaro/Binom) and not a second theme per page.
+
+**Priority:** data density and workflow > decoration. Small alignment gaps are acceptable; broken scroll, clipped tables, and invented demo data are not.
+
+Token source of truth: `web/src/styles/globals.css`. Extended reference: `web/DESIGN.md`. Typography roles: `web/src/lib/admin_typography.ts`.
+
+### Product stance
+
+| OK | Not required / banned |
+| :--- | :--- |
+| Dense directory tables, many columns, server pagination | Pixel-perfect copy of external tracker UIs |
+| Functional color (status, ROI, GEO, conversion columns) | Per-route CSS skins (`binom-*`, `campaigns-list-workspace`, `tracker-shell--*`) |
+| One dark + one light theme via existing toggle | Third "workspace" theme that only applies on campaigns/customers |
+| `admin-*` classes and CSS variables | Hard-coded hex/rgb in TSX |
+| shadcn/Radix for overlays only | Hand-rolled dropdown positioning |
+
+### Linear layout (fixed scaffold)
+
+Every page uses the same macro skeleton. Do not invent alternate page chrome.
+
+**App shell** (`app_shell.tsx`):
+
+```
++-------------+------------------------------------------+
+|             |  admin-header (breadcrumbs, search)      |
+| admin-      +------------------------------------------+
+| sidebar     |  admin-content                           |
+| (nav)       |    PageLayout (see below)                |
+|             |                                          |
++-------------+------------------------------------------+
+```
+
+**Page** (`PageLayout`):
+
+```
+admin-page-header          title, badge, header actions
+admin-page-workspace       L1 panel (border + padding)
+  admin-control-panel?     filters, section nav, toolbar buttons
+  admin-page-body          grid: main [| aside]
+    admin-page-main        table / forms / stat blocks
+    admin-page-aside?      optional right rail
+  admin-page-footer?       pagination, export
+```
+
+Rules:
+
+- Sidebar stays left; header stays above content; control panel is **inside** workspace, above main -- never floating over content.
+- Main and aside share one row; footer spans full width below body.
+- Optional `aside` is content, not a second menu.
+
+### Surfaces and depth
+
+Hierarchy = **shade step + hairline border**, not shadows.
+
+| Level | Token | Use |
+| :--- | :--- | :--- |
+| 0 | `--admin-surface-0` / `--admin-bg` | Canvas: `admin-main`, page background |
+| 1 | `--admin-surface-1` | Workspace shell, sidebar, table wrap, footer, control panel |
+| 2 | `--admin-surface-2` | Inputs/buttons inside L1, table header, menu/dialog body |
+| 3 | `--admin-surface-3` | Deepest inset: search kbd, column preset chips |
+
+**Nesting rule:** child surface = parent level + 1 (max 3). Example: workspace (L1) -> control panel content (L2) -> input (L2/L3 per globals descendants).
+
+**Borders:** always `1px solid var(--admin-border)` or `var(--admin-border-light)` on panel edges and table rows. Do not remove borders to "flatten" UI.
+
+**Shadows:** no drop shadow on panels, cards, or table wraps. Allowed: `var(--admin-overlay-shadow)` on popovers, dropdowns, dialogs, date picker -- floating layers only.
+
+Formula and OKLCH ladder: `web/DESIGN.md` (**Surface hierarchy**).
+
+### Corners (basic, not pill UI)
+
+| Token | Value | Apply to |
+| :--- | :--- | :--- |
+| `--admin-radius` | `6px` | Workspace, table wrap, control panel, footer, dialog shell |
+| `--admin-radius-sm` | `4px` | Buttons, inputs, selects, calendar cells, small chips |
 
 | Rule | Detail |
 | :--- | :--- |
-| Canvas | True black (`--background`); main content breathes on `lg:p-8` |
-| Depth | Surface shade steps (`ui-surface`, `ui-surface-raised`, `ui-table-frame`) — not box-shadow |
-| Borders | Hairline only: `border-border/40` or `/50`; never heavy `border` on panels |
-| Shape | Pill: nav, buttons, inputs, chips (`rounded-full`). Panels/tables: `rounded-2xl` |
-| Motion | `transition-colors` on hover; Radix overlay animations; respect `prefers-reduced-motion` |
-| Typography | Geist; `tabular-nums` on metrics; headings `tracking-tight` |
+| Default shape | Slightly rounded rectangles -- not `rounded-full` on fields and buttons |
+| Table wrap | `border-radius: var(--admin-radius)` + `overflow: hidden` on static wraps (Ops) so header bg respects corners |
+| Banned | `rounded-2xl` / heavy pill chrome on new panels; `rounded-md border` ad-hoc wrappers in TSX |
+| Consistency | Popover/menu/calendar/date-range use same tokens as column menu (`admin-columns-menu`, `admin-date-range-menu`) |
 
-### Banned (new JSX)
+### Color
 
-| Pattern | Use instead |
+| Role | Token / pattern |
 | :--- | :--- |
-| `rounded-md border` table/panel wrappers | `DirectoryTable`, `ui-table-frame`, `FilterPanel` |
-| `bg-accent` for active nav | `bg-secondary` pill (`SectionNav`) |
-| Hand-rolled status chip rows | `ToggleChipGroup` |
-| Raw `ui-filter-panel` class on new pages | `<FilterPanel>` component |
-| Hub page `Card` + "Open" link stacks | `HubLinkGrid` + `HubLinkCard` |
-| KPI `Card` without `StatPanel` | `StatPanel` / `PanelSection` |
+| Brand / primary CTA | `--admin-brand`, `--admin-brand-hover`; `.admin-btn--primary` |
+| Body text | `--admin-fg`, `--admin-fg-strong` |
+| Secondary / labels | `--admin-muted`, `--admin-fg-secondary` |
+| Positive money / OK status | `--admin-positive-fg`, `--admin-status-active-*` |
+| Negative money / fail | `--admin-negative-fg`, `--admin-status-*` for paused/archived |
+| Row emphasis | `--admin-row-warning-*`, `--admin-row-negative-*`, `--admin-row-selected-*` (subtle; no full-row neon) |
+| Metric zero / empty | `--admin-metric-zero-fg` or muted class -- zeros and em-dash must recede |
+| Key conversion column | `--admin-metric-conversion-fg` -- slightly stronger weight/color (e.g. Leads) |
+| Filter strip | `--admin-filters-bg` on campaigns toolbar filter row |
 
-### System components (canonical)
+Use color **only** to encode data or state. Decorative gradients, glow, and per-country random pill colors (except stable GEO badge mapping) are banned.
+
+### Typography
+
+| Content | Face | Class |
+| :--- | :--- | :--- |
+| Labels, names, nav, buttons | Inter Variable | `font-sans`, body default |
+| Money, counts, %, ROI, IDs in grids | Inter + tnum | `.num`, `tabular-nums`, `admin-tabular-nums` |
+| UUID, JSON, URLs, secrets | JetBrains Mono | `font-mono`, `admin-data-mono`, `ui-code-block` |
+
+| Rule | Detail |
+| :--- | :--- |
+| Table body | `13px`; headers `12px`, `font-weight: 600`, `--admin-muted` |
+| Row height | `34px` in `.admin-table--campaigns` (dense tracker-like, not airy cards) |
+| Headings | `tracking-tight`; page title in `admin-page-header` only |
+| Mono misuse | Never `font-mono` for money or KPI columns |
+
+### Controls
+
+Shared classes in `globals.css` -- prefer these over one-off Tailwind on domain pages.
+
+| Control | Class | Notes |
+| :--- | :--- | :--- |
+| Button | `.admin-btn`, `.admin-btn--primary`, `.admin-btn--icon` | Height `--admin-control-height` (~32px); subtle radius |
+| Text field | `.admin-input`, `.admin-select`, `.admin-textarea` | L1/L2 background per parent surface |
+| Label | `.admin-label` | Above field in filter grids |
+| Muted hint | `.admin-muted` | Secondary copy, column headers |
+| Link | `.admin-text-link` | In-table links only; not for buttons |
+
+Toolbar pattern (campaigns): `.admin-campaigns-toolbar` with `__actions`, `__filters` (full width), `__summary` rows.
+
+### Tables (visual)
+
+| Rule | Detail |
+| :--- | :--- |
+| Markup | Semantic `<table>` inside `.admin-table-wrap` |
+| Density | Fixed row height; horizontal scroll when many columns; no card-per-row layouts |
+| Header | L2 background (`--admin-table-header-bg`); sticky only inside **scrollable** campaigns wrap |
+| Ops / small tables | `.admin-table-wrap--static`: full width, no sticky, `overflow: hidden` |
+| Hover | `--admin-table-row-hover` on body rows |
+| Totals row | `--admin-table-totals-bg` in `tfoot` when present |
+| Alignment | Names start-aligned; metrics `.num` end-aligned with tabular figures |
+
+Campaigns: table `width: auto` (sum of columns); column widths clamped in `campaign_list_columns.ts` -- never stretch name column to create a dead gap.
+
+### Chips, badges, GEO
+
+| Rule | Detail |
+| :--- | :--- |
+| One chrome layer | Chip owns border + fill; no wrapper box around chip |
+| Status | Map API `status_tone` to existing status classes |
+| Country | `CountryFlagIcon` -- SVG **16x12**, not emoji; optional ISO code beside flag |
+| Nav sections | `OpsNav`, `SectionNav` -- simple text/tabs in control panel, not underline-only links |
+
+### Overlays (look and feel)
+
+shadcn/Radix components skinned to admin tokens:
+
+| Surface | Must match |
+| :--- | :--- |
+| Dropdown / column menu | `admin-dropdown-content`, `admin-columns-menu` |
+| Date range | `admin-date-range-menu` |
+| Dialog / sheet | `admin-surface-2` body, `var(--admin-radius)`, `admin-overlay-shadow` |
+| Scroll | Single scroll region in body; padding bottom so last control is not clipped |
+
+### Data hierarchy in grids
+
+| Value | Treatment |
+| :--- | :--- |
+| `0`, `—`, empty | Muted (`--admin-metric-zero-fg`) |
+| Ordinary metrics | Default `--admin-fg` + tabular nums |
+| Primary conversion (e.g. Leads) | Slightly bolder + `--admin-metric-conversion-fg` |
+| Profit / ROI | `--admin-positive-fg` / `--admin-negative-fg`; optional subtle row bg via row tone helpers |
+| Rates with warning band | `--admin-metric-rate-warn-fg` when server signals warn tone |
+
+All thresholds and tones come from API or shared format helpers -- not hardcoded per-row `if` in TSX for business rules.
+
+### Motion
+
+| Allowed | Banned |
+| :--- | :--- |
+| `transition-colors` on buttons/rows | Bouncy layout animations |
+| Radix open/close on overlays | Parallax, scale-on-hover on tables |
+| `prefers-reduced-motion` respected | Auto-playing chart motion |
+
+### Visual banned list
+
+| Pattern | Why |
+| :--- | :--- |
+| `campaigns-list-workspace`, `binom-*`, `tracker-shell--workspace` | Competing skins -- use global theme only |
+| Emoji country flags | Inconsistent rendering; use SVG |
+| Hex colors in TSX | Use CSS variables |
+| Nested bordered chip wrappers | Double chrome |
+| Box shadow on static panels | Depth = surface step |
+| `rounded-full` on inputs/buttons (new code) | Conflicts with simple 4px radius system |
+| Decorative icons on every toolbar action | Text labels + density first |
+| Demo KPI literals in components | `anti-slop.mdc` fixture rules |
+
+### Visual agent checklist
+
+| Step | Check |
+| :--- | :--- |
+| 1 | Page uses `PageLayout` linear slots -- no custom shell |
+| 2 | Panels use `--admin-surface-*` + `--admin-border`; no ad-hoc `border-gray-*` |
+| 3 | Corners: `6px` panels, `4px` controls |
+| 4 | Table in `.admin-table-wrap`; Ops uses `--static` variant |
+| 5 | Metrics use `.num` / tabular; zeros muted |
+| 6 | Overlays match column menu / date picker tokens |
+| 7 | No per-route theme CSS; no hex in TSX |
+| 8 | Scroll: content not clipped at viewport bottom (`Scroll and overflow` above) |
+
+---
+
+## System components
 
 Import from `web/src/components/system/`. Do not duplicate layout in domain files.
 
-| Pattern | Components |
-| :--- | :--- |
-| Page header | `PageChrome`, `PageBreadcrumbs` |
-| Section tabs | `SectionNav` |
-| Toolbar | `PageToolbar` |
-| Directory filters | `FilterPanel`, `DirectoryFilterForm`, `FilterField`, `FilterApplyButton`, `PaginationPrevNext` |
-| Quick filters | `ToggleChipGroup` |
-| List meta | `DirectoryListMeta` |
-| Table | `DirectoryTable`, `SortableTableHead`, `RowActionsMenu` |
-| Hub landing | `HubLinkGrid`, `HubLinkCard` |
-| KPI / ops | `StatPanel`, `StatRow`, `PanelSection` |
-| States | `EmptyState`, `ErrorBlock`, `StubBanner`, `PageSkeleton` |
+### Page shell
 
-### Directory page stack (required shape)
+| Component | Role |
+| :--- | :--- |
+| `PageLayout` | Full page scaffold (canonical) |
+| `PageChrome` | Alias for `PageLayout` |
+| `PageBreadcrumbs` | Route trail in app header |
+| `SectionNav` | Pill nav for domain sections |
+| `PageToolbar` | Action row |
+
+### Directory pattern
+
+| Component | Role |
+| :--- | :--- |
+| `FilterPanel`, `DirectoryFilterForm`, `FilterField` | Filter section |
+| `FilterApplyButton`, `FilterResetButton` | Submit actions |
+| `PaginationPrevNext`, `PaginationPageSize` | Pagination controls |
+| `ToggleChipGroup` | Server-driven quick filters |
+| `DirectoryListMeta` | "Showing X-Y of Z" |
+| `DirectoryTable`, `DirectoryTableSkeleton` | Scrollable semantic table frame |
+| `RowActionsMenu` | Row kebab menu |
+| `AppliedCustomerBanner`, `CustomerScopeBar` | Customer scope |
+
+### States
+
+| Component | Role |
+| :--- | :--- |
+| `EmptyState` | No data / no results |
+| `ErrorBlock` | Blocking errors |
+| `StubBanner` | 501 / not wired |
+| `PageSkeleton` | Initial load |
+
+### Hub and KPI
+
+| Component | Role |
+| :--- | :--- |
+| `HubLinkGrid`, `HubLinkCard` | Domain hub landing |
+| `StatPanel`, `StatRow` | KPI tiles |
+| `BentoCard` | Settings bento grid |
+
+### Ops-specific (domain)
+
+| Component | Path | Role |
+| :--- | :--- | :--- |
+| `OpsPageShell` | `ops_page_shell.tsx` | Ops `PageLayout` + nav/actions |
+| `OpsTable`, `OpsBlock` | `ops_table.tsx` | Static tables + section titles |
+| `OpsStatGrid`, `OpsStatPanel` | `ops_stat_panel.tsx` | Health / summary cards |
+| `OpsNav` | `ops_nav.tsx` | Ops section tabs |
+| `OpsStatusChip` | `ops_status.tsx` | Pass/warn/fail chips |
+
+---
+
+## Page patterns
+
+### A. Directory list (canonical -- Campaigns)
 
 ```
-PageChrome
-  [AppliedCustomerBanner]
-  FilterPanel > DirectoryFilterForm > FilterField… + Apply [+ Reset] + PaginationPrevNext
-  DirectoryListMeta
-  [ToggleChipGroup]
-  DirectoryTable | EmptyState
+PageLayout
+  controlPanel: CampaignsListToolbar (actions, filters, summary)
+  main: CampaignsListTable
+  footer: pagination + export
 ```
 
-`layout="directory"` on `DirectoryFilterForm` for campaigns-shaped grids; `layout="auto-fill"` for standard field matrices.
+Reference: `list/campaigns_directory.tsx`. Table fills viewport; scroll inside `.admin-campaigns-table-wrap`.
 
-Apply and `PaginationPrevNext` remain **sibling** direct children of `DirectoryFilterForm` (see **Directory filter row and pagination** below).
+Filter layouts on `DirectoryFilterForm`:
 
-### Hub / dashboard stack
+- `layout="directory"` -- campaigns-shaped wide matrix.
+- `layout="auto-fill"` -- `minmax(12rem, 1fr)` (customers, audit, billing).
 
-| Page kind | Stack |
-| :--- | :--- |
-| Domain hub | `PageChrome` → `SectionNav` → `HubLinkGrid` |
-| Ops home | `PageChrome` → `SectionNav` → `PageToolbar` → `StatPanel` grid → `PanelSection` tables |
-| JSON settings view | `JsonDashboardView` (`StatPanel` + `PanelSection` internally) |
+### B. Domain hub
 
-### Progressive disclosure (directories with metrics)
+```
+PageChrome / PageLayout
+  SectionNav
+  HubLinkGrid > HubLinkCard
+```
 
-Campaigns reference: Tier 0 slim table → Tier 1 popover on metric cell → Tier 2 overview sheet. Shared chart/tiles: `campaign_metrics_shared.tsx`.
+Examples: `fraud_hub.tsx`, `integrations_hub.tsx`.
 
-### Agent checklist (design)
+### C. Ops dashboard
 
-| Step | Action |
-| :--- | :--- |
-| 1 | New directory page: compose from system components; match Campaigns stack |
-| 2 | New hub: `HubLinkCard` only — no bespoke Card grids |
-| 3 | New section nav: `SectionNav` — no underline-only links |
-| 4 | Tokens/colors: theme variables only — no hex in TSX |
-| 5 | Details and roadmap: `web/DESIGN.md` |
+```
+OpsPageShell
+  OpsStatGrid (optional)
+  OpsBlock > OpsTable (repeat)
+```
 
-## Server static embed (while `web/` absent)
+Reference: `ops_home.tsx`. Main scrolls (`:has(.admin-ops-block)`); tables use static wrap.
 
-| Rule | Detail |
-| :--- | :--- |
-| Embed path | `internal/controlplane/admin_static_stub/` via `admin_static_embed.go` |
-| Boot marker | `index.html` / `login.html` must contain empty `<div id="root"></div>` |
-| Replace | When `admin_shell` ships `web/dist`; embed target switches in same PR as dist build |
-| Docker | No node/web build stage until `web/` returns; control binary embeds stub |
+### D. Settings / forms
 
-## Target `web/` map (when UI returns)
+```
+PageLayout
+  read-only panels + PageToolbar
+  Dialog / Sheet for mutations
+```
 
-| Path | Role |
-| :--- | :--- |
-| `web/src/pages/` | Fetch via hook/API; compose sections only; <= ~120 lines |
-| `web/src/ui/<domain>/` | Presentational sections; Tailwind layout |
-| `web/src/components/ui/` | shadcn primitives (shared across domains) |
-| `web/src/types/` | OpenAPI + hand DTO mirrors |
-| `web/src/helpers/*_api.ts` | Typed fetch wrappers; parse JSON to generated OpenAPI types |
+### E. Progressive disclosure (Campaigns metrics)
 
-Banned: `dto/`, `usecase/`, `providers/`.
+| Tier | Trigger | Surface |
+| :--- | :--- | :--- |
+| 0 | Table row | Slim columns |
+| 1 | Metric cell | `Popover` + chart |
+| 2 | Row menu | `Sheet` overview |
+
+Shared: `campaign_metrics_shared.tsx`.
+
+---
 
 ## Fixture and seed data (user-visible)
 
-**Scope:** any value an operator sees in admin — `web/src/**` fallbacks, handler dev stubs, `cmd/admin db seed`, SQL/CH fixtures, e2e payloads that mirror grid cells. Production pages are API-only (`Cold path first`); this section applies when seed, stub, or fallback data is shown.
+**Scope:** fallbacks, dev mock (`web/src/api/dev_mock/`), seed catalog, e2e payloads. Production pages are API-only; this applies when stub/seed data is shown.
 
-Canonical catalog: `cmd/admin/seed_catalog.go` (`seedCustomerNames`, `seedCampaignNames`, `seedCustomerBalanceMicro`, …). Extend those arrays; do not invent parallel trash catalogs in `web/`.
+Canonical catalog: `cmd/admin/seed_catalog.go`. Extend arrays there; no parallel trash catalogs in `web/`.
 
 ### Trash naming (forbidden)
 
 | Pattern | Examples (banned) | Required |
 | :--- | :--- | :--- |
-| Tutorial tokens | `Foo`, `Bar`, `Baz`, `Qux`, `Lorem ipsum` | Industry-realistic names |
-| Acme / widget | `Acme Corp`, `Widget Inc`, `Test Company`, `Demo LLC` | Distinct company-like names from seed catalog |
-| Ordinal labels | `Customer 1`, `Campaign #42`, `Brand A`, `User 007` | Semantic geo/product/campaign names |
-| Generic personas | `John Doe`, `Jane Doe`, `Test User`, `Admin User` | Role + domain email (`ops+104@horizon-media.io`) |
-| Sequential display ids | `user-001`, `camp-0001`, `CTR_TIER_1` in name columns | UUID or opaque id; human label from catalog |
-| Placeholder leaks | `TBD`, `N/A`, `xxx`, `CHANGE ME`, `your-domain.com` in grid cells | `EmptyState`, `StubBanner`, or omit column |
-| Cryptic suffixes | `m1`, `n1`, `f1`, `v2_old` in visible strings | `naming.mdc` forbidden tokens |
-| Copy-paste chains | `Copy of X`, `X (2)`, `X - test` on seed rows | Unique base name per seeded entity |
+| Tutorial tokens | `Foo`, `Bar`, `Lorem` | Industry-realistic names |
+| Acme / widget | `Acme Corp`, `Test Company` | Names from seed catalog |
+| Ordinal labels | `Customer 1`, `Campaign #42` | Semantic names |
+| Generic personas | `John Doe`, `Test User` | Role + domain email |
+| Placeholder leaks | `TBD`, `N/A` in grid cells | `EmptyState`, `StubBanner`, or omit |
 
-Input `placeholder` on empty form fields is allowed; it must not appear as row/cell/KPI data.
+### Round numbers (forbidden in metrics)
 
-### Round numbers (forbidden in metrics and money)
-
-Operators spot fake dashboards instantly. **Banned** in user-visible counts, money, rates, and deltas unless the live API returned that exact production value.
-
-| Surface | Banned examples | Required shape |
+| Surface | Banned | Required |
 | :--- | :--- | :--- |
-| Impressions / clicks / events | `1000`, `10000`, `50000`, `100000`, `1_000_000` | Irregular last 2–3 digits: `18473`, `902841` |
-| Money (micros or display) | `$100.00`, `$50.00`, `$1,000.00`; every row ends `.00` | Non-zero cent tails; vary per row (`$4,217.38`) |
-| Percentages / rates | `10.00%`, `25%`, `50%`, `100%` on every KPI row | Jagged decimals: `3.17%`, `11.84%` |
-| Budget / spend | `budget == spend`, `spend = 0` on all active rows | `spend < budget`; scattered utilization |
-| Time deltas | `lag: 60s`, `lag: 300s` on every freshness chip | Mixed seconds (`47`, `183`, `912`) from handler |
-| Round multiples only | All values divisible by 100, 1000, or 5000 | Prime-ish offsets (`seedCustomerBalanceMicro` pattern) |
+| Counts | `10000`, `50000`, `100000` | Irregular digits: `18473`, `902841` |
+| Money | Every row `$100.00` | Non-zero cent tails, vary per row |
+| Rates | `10.00%`, `50%` on every row | Jagged: `3.17%`, `11.84%` |
+| Lag | `60s`, `300s` everywhere | Mixed seconds from handler |
 
-**Exception:** pagination `limit` (`25`, `50`, `100`) and UI control enums are not KPIs.
+**Exception:** pagination `limit` enums are not KPIs.
 
-Hardcoded KPI literals in `web/src/ui/**` are banned — same class as demo KPIs (`anti-slop.mdc`).
+### Duplicates (forbidden in one view)
 
-### Duplicates (forbidden within one view)
+No two rows with same display `name`/`title`/`email`; no column with identical value on every row; no `(customer, campaign)` pair duplicates.
 
-| Rule | Detail |
-| :--- | :--- |
-| Display names | No two visible rows share the same `name` / `title` / `email` in one grid |
-| Composite identity | `(customer_name, campaign_name)` pairs unique in directory views |
-| Metric clones | No column where every row shows the identical number |
-| Catalog modulo | `names[i%len]` only when `total > len(catalog)` **and** row `id` differs — never same name **and** same id twice on one page |
-| Cross-column echo | `spend_display` must not equal `budget_display` on every row |
-
-When seeding `N > len(catalog)`: extend arrays in `seed_catalog.go`; do not modulo-repeat visible labels on one admin page without distinct ids.
-
-### Allowed
-
-| Pattern | When |
-| :--- | :--- |
-| `EmptyState`, `ErrorBlock`, `StubBanner` | No backend / 501 |
-| API-driven values | Production path |
-| Deterministic dev UUIDs | `seedEntityUUID` for stable local dev |
-| Form `placeholder` | Empty input hint only — not grid/KPI data |
-
-### Verification (fixture / fallback touch)
+### Verification (fixture touch)
 
 ```bash
 rg -n '(?i)\b(Acme|Foo|Bar|Baz|Lorem|Test User|Customer [0-9]+|Campaign [0-9]+|John Doe)\b' web/src/ \
   --glob '!**/*.spec.*' --glob '!**/placeholder.ts'
-rg -n '\b(10000|50000|100000|1_000_000)\b' web/src/ui/ --glob '*.tsx'
+rg -n '\b(10000|50000|100000|1_000_000)\b' web/src/domains/ --glob '*.tsx'
 ```
 
-Paste rg output (empty = OK) in the PR, or `not applicable — API-only page`.
+---
 
 ## Product honesty
 
-`StubBanner` on 501; toast after 2xx; form fields match PATCH DTO; no demo KPIs; no `(skeleton)` user copy; fixture/seed rules in **Fixture and seed data** above.
+`StubBanner` on 501; toast after 2xx; form fields match PATCH DTO; no demo KPIs; no `(skeleton)` user copy; fixture rules above.
+
+Report naming: canonical `silent-reject-*` routes/fields; no user-visible "Ghost" when API uses `silent_reject_*`.
+
+---
+
+## Server static embed
+
+| Rule | Detail |
+| :--- | :--- |
+| Embed path | `internal/controlplane/admin_static_stub/` |
+| Boot marker | Empty `<div id="root"></div>` in `index.html` / `login.html` |
+| Replace | Same PR as `web/dist` when `admin_shell` ships dist |
+
+---
 
 ## Verification
-
-While `web/` absent:
 
 ```bash
 bash scripts/ci/admin/openapi.sh
 bash scripts/ci/admin/web.sh
 go test ./internal/controlplane/ -run TestAdminStaticRoutes -count=1
-```
-
-After `admin_shell`:
-
-```bash
 cd web && npm run typecheck
 bash scripts/ci/admin/ui_surface.sh
-bash scripts/ci/admin/web.sh
 ```
 
-UI PR must paste verification commands actually run.
+UI PR must paste commands actually run.
+
+Layout regression checks (manual):
+
+- Ops home: scroll to bottom of Doctor checks; table corners flush with wrap radius.
+- Campaigns: table fills viewport; horizontal scroll; no gap between Name and metrics.
+- Import sheet / Preferences dialog: last field visible above fold when scrolled.
+
+---
 
 ## Agent checklist
 
 | Step | Action |
 | :--- | :--- |
 | 1 | Confirm operator spec + OpenAPI route/handler contract |
-| 2 | Follow macro Grid / micro Flex, cold path, and pitfalls sections in this file |
+| 2 | Follow cold path; no client list business logic |
 | 3 | Handler/DTO before UI field |
-| 4 | No client list business logic |
-| 5 | Chip: one chrome layer; spacing via Tailwind / shadcn `Badge` |
-| 6 | Overlays: shadcn/ui; no custom open-state positioning |
-| 7 | Paste verification commands actually run |
-| 8 | Operator stop -> revert; no wrapper stacks |
-| 9 | Seed/fallback: no trash names, round KPIs, or duplicate display rows in one grid (`Fixture and seed data`) |
-| 10 | Move Prev/Next into filter row without relocating Apply (`Directory filter row and pagination`) |
-| 11 | Grok surfaces: system components from `web/DESIGN.md`; no `rounded-md border` wrappers |
+| 4 | Use `PageLayout` section stack; respect **Scroll and overflow** |
+| 5 | Campaigns table: scrollable wrap + column clamps; Ops: static wrap |
+| 6 | Chip: one chrome layer; overlays: shadcn only |
+| 7 | Apply/pagination filter row rules if touching directory toolbar |
+| 8 | Seed/fallback: no trash names, round KPIs, duplicate rows |
+| 9 | Paste verification commands actually run |
+| 10 | Operator stop -> revert; no wrapper stacks |
+| 11 | **Visual guidelines (simple):** linear layout, admin tokens, no per-route skins |
+| 12 | Scroll/overflow + fixture rules when touching layout or seed data |
 
 ## Related rules
 

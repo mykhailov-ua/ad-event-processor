@@ -1,6 +1,6 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { CustomerScopeBar } from '@/components/system/customer_scope_bar';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -16,7 +16,7 @@ export function DocsNav() {
             key={section.id}
             to={path}
             className={cn(
-              'rounded-full px-3 py-2 transition-colors',
+              'rounded-[var(--admin-radius-sm)] px-3 py-2 transition-colors',
               active
                 ? 'bg-secondary font-medium text-foreground'
                 : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',

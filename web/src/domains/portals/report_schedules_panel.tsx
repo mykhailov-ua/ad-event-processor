@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { CustomerScopeBar } from '@/components/system/customer_scope_bar';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -116,7 +116,7 @@ export function ReportSchedulesPanel({
     <PageChrome
       title="Report schedules"
       actions={
-        <Button className="h-9 text-sm" onClick={() => setCreateOpen(true)} type="button">
+        <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
           Create schedule
         </Button>
       }
@@ -140,7 +140,7 @@ export function ReportSchedulesPanel({
               <Label htmlFor="schedule-report-key">Report key</Label>
               <Input
                 id="schedule-report-key"
-                className="h-9 text-sm"
+                className="text-sm"
                 value={draftReportKey}
                 onChange={(event) => onDraftReportKeyChange(event.target.value)}
               />
@@ -149,7 +149,7 @@ export function ReportSchedulesPanel({
               <Label htmlFor="schedule-cron-expr">Cron expression</Label>
               <Input
                 id="schedule-cron-expr"
-                className="h-9 text-sm"
+                className="text-sm"
                 value={draftCronExpr}
                 onChange={(event) => onDraftCronExprChange(event.target.value)}
               />
@@ -158,7 +158,7 @@ export function ReportSchedulesPanel({
               <Label htmlFor="schedule-format">Format</Label>
               <Input
                 id="schedule-format"
-                className="h-9 text-sm"
+                className="text-sm"
                 value={draftFormat}
                 onChange={(event) => onDraftFormatChange(event.target.value)}
               />
@@ -194,7 +194,7 @@ export function ReportSchedulesPanel({
               Cancel
             </SecondaryActionButton>
             <Button
-              className="h-9 text-sm"
+              className="text-sm"
               disabled={acting}
               loading={acting}
               onClick={() => {
@@ -254,7 +254,7 @@ export function ReportSchedulesPanel({
                         <TableCell>
                           {id ? (
                             <Input
-                              className="h-9 font-mono text-xs"
+                              className="font-mono text-xs"
                               value={edit.report_key}
                               onChange={(event) =>
                                 onEditRowChange(id, 'report_key', event.target.value)
@@ -267,7 +267,7 @@ export function ReportSchedulesPanel({
                         <TableCell>
                           {id ? (
                             <Input
-                              className="h-9 text-sm"
+                              className="text-sm"
                               value={edit.format}
                               onChange={(event) =>
                                 onEditRowChange(id, 'format', event.target.value)
@@ -280,7 +280,7 @@ export function ReportSchedulesPanel({
                         <TableCell>
                           {id ? (
                             <Input
-                              className="h-9 font-mono text-xs"
+                              className="font-mono text-xs"
                               value={edit.cron_expr}
                               onChange={(event) =>
                                 onEditRowChange(id, 'cron_expr', event.target.value)
@@ -293,7 +293,7 @@ export function ReportSchedulesPanel({
                         <TableCell>
                           {id ? (
                             <Input
-                              className="h-9 text-sm"
+                              className="text-sm"
                               value={edit.enabled}
                               onChange={(event) =>
                                 onEditRowChange(id, 'enabled', event.target.value)

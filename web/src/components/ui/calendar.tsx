@@ -7,6 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>['variant'];
+  variant?: 'default' | 'admin';
 };
 
 function Calendar({
@@ -15,17 +16,21 @@ function Calendar({
   showOutsideDays = true,
   captionLayout = 'label',
   buttonVariant = 'ghost',
+  variant = 'default',
   formatters,
   components,
   ...props
 }: CalendarProps) {
   const defaultClassNames = getDefaultClassNames();
+  const isAdmin = variant === 'admin';
 
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn(
-        'group/calendar p-3 [--cell-size:2rem] bg-transparent [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent',
+        isAdmin
+          ? 'group/calendar [--cell-size:1.875rem] bg-transparent p-0'
+          : 'group/calendar p-3 [--cell-size:2rem] bg-transparent [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent',
         String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
         String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
         className,
@@ -44,17 +49,22 @@ function Calendar({
           defaultClassNames.nav,
         ),
         button_previous: cn(
-          buttonVariants({ variant: buttonVariant, shape: 'square' }),
-          'h-[--cell-size] w-[--cell-size] select-none p-0 aria-disabled:opacity-50',
+          isAdmin
+            ? 'admin-btn admin-btn--icon h-[--cell-size] w-[--cell-size] min-h-0 p-0 aria-disabled:opacity-50'
+            : buttonVariants({ variant: buttonVariant, shape: 'square' }),
+          'h-[--cell-size] w-[--cell-size] select-none',
           defaultClassNames.button_previous,
         ),
         button_next: cn(
-          buttonVariants({ variant: buttonVariant, shape: 'square' }),
-          'h-[--cell-size] w-[--cell-size] select-none p-0 aria-disabled:opacity-50',
+          isAdmin
+            ? 'admin-btn admin-btn--icon h-[--cell-size] w-[--cell-size] min-h-0 p-0 aria-disabled:opacity-50'
+            : buttonVariants({ variant: buttonVariant, shape: 'square' }),
+          'h-[--cell-size] w-[--cell-size] select-none',
           defaultClassNames.button_next,
         ),
         month_caption: cn(
           'flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]',
+          isAdmin && 'text-[13px] font-semibold text-[var(--admin-fg-emphasis)]',
           defaultClassNames.month_caption,
         ),
         dropdowns: cn(
@@ -62,21 +72,30 @@ function Calendar({
           defaultClassNames.dropdowns,
         ),
         dropdown_root: cn(
-          'has-focus:border-ring border-input has-focus:ring-ring/50 has-focus:ring-[3px] relative rounded-xl border border-border/50',
+          isAdmin
+            ? 'has-focus:border-[var(--admin-brand)] relative rounded-[var(--admin-radius-sm)] border border-[var(--admin-border)] bg-[var(--admin-input-bg)]'
+            : 'has-focus:border-ring border-input has-focus:ring-ring/50 has-focus:ring-[3px] relative rounded-xl border border-border/50',
           defaultClassNames.dropdown_root,
         ),
-        dropdown: cn('bg-popover absolute inset-0 opacity-0', defaultClassNames.dropdown),
+        dropdown: cn(
+          isAdmin ? 'bg-[var(--admin-surface-2)] absolute inset-0 opacity-0' : 'bg-popover absolute inset-0 opacity-0',
+          defaultClassNames.dropdown,
+        ),
         caption_label: cn(
           'select-none font-medium',
           captionLayout === 'label'
-            ? 'text-sm'
+            ? isAdmin
+              ? 'text-[13px] font-semibold text-[var(--admin-fg-emphasis)]'
+              : 'text-sm'
             : '[&>svg]:text-muted-foreground flex h-8 items-center gap-1 rounded-md pl-2 pr-1 text-sm [&>svg]:size-3.5',
           defaultClassNames.caption_label,
         ),
         month_grid: cn('w-full border-collapse', defaultClassNames.month_grid),
         weekdays: cn('flex', defaultClassNames.weekdays),
         weekday: cn(
-          'text-muted-foreground flex-1 select-none rounded-lg text-[0.8rem] font-normal',
+          isAdmin
+            ? 'flex-1 select-none rounded-[var(--admin-radius-sm)] text-[12px] font-semibold text-[var(--admin-muted)]'
+            : 'text-muted-foreground flex-1 select-none rounded-lg text-[0.8rem] font-normal',
           defaultClassNames.weekday,
         ),
         week: cn('mt-2 flex w-full gap-1', defaultClassNames.week),
@@ -93,14 +112,21 @@ function Calendar({
         range_middle: cn(defaultClassNames.range_middle),
         range_end: cn(defaultClassNames.range_end),
         today: cn(
-          'rounded-lg bg-accent/80 text-accent-foreground data-[selected=true]:rounded-lg',
+          isAdmin
+            ? 'rounded-[var(--admin-radius-sm)] bg-[var(--admin-accent)] text-[var(--admin-fg-emphasis)] data-[selected=true]:rounded-[var(--admin-radius-sm)]'
+            : 'rounded-lg bg-accent/80 text-accent-foreground data-[selected=true]:rounded-lg',
           defaultClassNames.today,
         ),
         outside: cn(
-          'text-muted-foreground opacity-40 aria-selected:opacity-40',
+          isAdmin
+            ? 'text-[var(--admin-muted)] opacity-40 aria-selected:opacity-40'
+            : 'text-muted-foreground opacity-40 aria-selected:opacity-40',
           defaultClassNames.outside,
         ),
-        disabled: cn('text-muted-foreground opacity-50', defaultClassNames.disabled),
+        disabled: cn(
+          isAdmin ? 'text-[var(--admin-muted)] opacity-50' : 'text-muted-foreground opacity-50',
+          defaultClassNames.disabled,
+        ),
         hidden: cn('invisible', defaultClassNames.hidden),
         ...classNames,
       }}
@@ -117,7 +143,9 @@ function Calendar({
           }
           return <ChevronDown className={cn('size-4', chevronClassName)} {...chevronProps} />;
         },
-        DayButton: CalendarDayButton,
+        DayButton: (dayButtonProps) => (
+          <CalendarDayButton {...dayButtonProps} variant={variant} />
+        ),
         WeekNumber: ({ children, ...weekProps }) => (
           <td {...weekProps}>
             <div className="flex size-[--cell-size] items-center justify-center text-center">
@@ -137,10 +165,12 @@ function CalendarDayButton({
   className,
   day,
   modifiers,
+  variant = 'default',
   ...props
-}: React.ComponentProps<typeof DayButton>) {
+}: React.ComponentProps<typeof DayButton> & { variant?: 'default' | 'admin' }) {
   const defaultClassNames = getDefaultClassNames();
   const ref = React.useRef<HTMLButtonElement>(null);
+  const isAdmin = variant === 'admin';
 
   React.useEffect(() => {
     if (modifiers.focused) {
@@ -164,16 +194,14 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        'size-[calc(var(--cell-size)-0.3rem)] rounded-[var(--picker-radius-control,var(--radius))] p-0 font-normal leading-none',
-        'data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground',
-        'data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground',
-        'data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground',
-        'data-[range-middle=true]:bg-accent/55 data-[range-middle=true]:text-foreground',
-        'group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10',
-        'group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 group-data-[focused=true]/day:ring-[3px]',
+        'size-[calc(var(--cell-size)-0.3rem)] p-0 font-normal leading-none',
+        isAdmin
+          ? 'min-h-0 border border-transparent bg-transparent shadow-none hover:bg-[var(--admin-btn-hover-bg)] rounded-[var(--admin-radius-sm)] data-[selected-single=true]:border-[var(--admin-brand)] data-[selected-single=true]:bg-[var(--admin-brand)] data-[selected-single=true]:text-white data-[range-start=true]:border-[var(--admin-brand)] data-[range-start=true]:bg-[var(--admin-brand)] data-[range-start=true]:text-white data-[range-end=true]:border-[var(--admin-brand)] data-[range-end=true]:bg-[var(--admin-brand)] data-[range-end=true]:text-white data-[range-middle=true]:border-transparent data-[range-middle=true]:bg-[var(--admin-brand-soft)] data-[range-middle=true]:text-[var(--admin-fg)] group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-[var(--admin-brand)] group-data-[focused=true]/day:ring-0'
+          : 'rounded-[var(--picker-radius-control,var(--radius))] data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-accent/55 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 group-data-[focused=true]/day:ring-[3px]',
         'flex items-center justify-center',
         '[&>span]:text-xs [&>span]:opacity-70',
-        modifiers.outside && 'text-muted-foreground opacity-40',
+        modifiers.outside &&
+          (isAdmin ? 'text-[var(--admin-muted)] opacity-40' : 'text-muted-foreground opacity-40'),
         defaultClassNames.day,
         className,
       )}

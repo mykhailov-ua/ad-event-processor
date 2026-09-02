@@ -1,7 +1,7 @@
-import { Gauge } from 'lucide-react';
+import { Gauge, ToggleLeft } from 'lucide-react';
 
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
-import { BentoCard, BentoGrid, bentoToneFromKey } from '@/components/system/bento_card';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
+import { BentoCard, BentoGrid, bentoToneFromKey } from '@/shell/bento_card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -41,17 +41,17 @@ export function AutomationRuleCard({
       action={
         <RowActionsMenu ariaLabel="Rule actions" disabled={!ruleId || updating || deleting}>
           <DropdownMenuItem disabled={!ruleId || updating || deleting} onClick={onSave}>
-            {updating ? 'Saving…' : 'Save'}
+            {updating ? 'Saving...' : 'Save'}
           </DropdownMenuItem>
           <DropdownMenuItem disabled={dryRunning || !ruleId || deleting} onClick={onDryRun}>
-            {dryRunning ? 'Running…' : 'Dry-run'}
+            {dryRunning ? 'Running...' : 'Dry-run'}
           </DropdownMenuItem>
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             disabled={!ruleId || updating || deleting}
             onClick={onDelete}
           >
-            {deleting ? 'Deleting…' : 'Delete'}
+            {deleting ? 'Deleting...' : 'Delete'}
           </DropdownMenuItem>
         </RowActionsMenu>
       }
@@ -66,7 +66,7 @@ export function AutomationRuleCard({
       title={
         <Input
           aria-label={`Name for rule ${ruleId}`}
-          className="h-8 border-transparent bg-transparent px-0 text-base font-medium shadow-none focus-visible:bg-muted/40"
+          className="border-transparent bg-transparent px-0 text-base font-medium shadow-none focus-visible:bg-muted/40"
           value={draft.name}
           onChange={(event) => onDraftChange({ name: event.target.value })}
         />

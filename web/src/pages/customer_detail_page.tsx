@@ -17,8 +17,8 @@ import {
   CustomerDetail,
   type CustomerDetailTab,
 } from '@/domains/customers/customer_detail';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
-import { useResource } from '@/hooks/use_resource';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 
 function currentMonthValue(): string {

@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 import { publicAcceptInvite } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { ErrorBlock } from '@/shell/error_block';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -8,7 +8,7 @@ import {
   type PolicyCreateDraft,
 } from '@/domains/automation/margin_guard_policies_directory';
 import { useCampaignScope } from '@/hooks/use_campaign_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 const EMPTY_CREATE_DRAFT: PolicyCreateDraft = {
   name: '',

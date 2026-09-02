@@ -8,14 +8,14 @@ import {
   previewInvoice,
 } from '@/api/billing_api';
 import type { BillingInvariantQuery, InvoiceListQuery, PreviewInvoiceRequest } from '@/api/types';
-import { PageChrome } from '@/components/system/page_chrome';
+import { PageChrome } from '@/shell/page_chrome';
 import {
   BillingInvoices,
   type InvoiceStatusFilter,
 } from '@/domains/billing/billing_invoices';
 import { BillingSummarySection } from '@/domains/billing/billing_summary';
 import { BillingInvariantPanel, BillingPreviewPanel } from '@/domains/billing/billing_tools';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { DEFAULT_LIST_LIMIT, parseListLimit, parseListOffset } from '@/lib/list_query';
 

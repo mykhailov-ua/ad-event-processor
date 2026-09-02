@@ -7,7 +7,7 @@ import {
   getBillingExportJob,
 } from '@/api/billing_api';
 import { BillingExports } from '@/domains/billing/billing_exports';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';

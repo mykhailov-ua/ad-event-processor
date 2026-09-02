@@ -68,8 +68,8 @@ internal/ingestion -> internal/domain, pkg/*, internal/rtb (auction glue)
  NOT internal/controlplane admin, NOT internal/fraud scoring
 pkg/* -> stdlib and other pkg/* only
 internal/controlplane -> internal/<svc>/db, pkg/*, NOT internal/ingestion hot handlers
-web/src/helpers/*_api.ts -> fetch + JSON parse only; NO business rules
-web/src/pages/* -> compose ui/<domain>/ sections; no page-level Tailwind layout
+web/src/api/*_api.ts -> fetch + JSON parse only; NO business rules
+web/src/pages/* -> compose domains/<domain>/ sections; no page-level Tailwind layout
 ```
 
 Banned import/ceremony patterns:
@@ -93,8 +93,8 @@ One agent task = **one owning layer**. Crossing layers in the same PR without ex
 | `api/openapi/` + `*_handlers.go` | Wire contract, query params, handler DTO, validation, SQL/CH in handler | `web/src` pages (unless PR closes both) |
 | `internal/ingestion/` | Accept/reject, filter, stream/broker enqueue | Admin PATCH semantics, outbox workers |
 | `web/src/pages/` | Compose sections, URL -> fetch params | Filter/sort/aggregate logic, OpenAPI edits |
-| `web/src/ui/<domain>/` | Macro Grid, micro Flex, chips, shadcn overlays | API field invention, cross-page Context |
-| `web/src/helpers/*_api.ts` | HTTP + parse to typed snapshot | `useMemo` filter over full `items[]` |
+| `web/src/domains/<domain>/` | Macro Grid, micro Flex, chips, shadcn overlays | API field invention, cross-page Context |
+| `web/src/api/*_api.ts` | HTTP + parse to typed snapshot | `useMemo` filter over full `items[]` |
 
 Full frontend isolation levels (L0–L6): `frontend-modular.mdc`.
 | Milestone doc | Scope, invariants, verification tier | Implementation before sections 1.1-1.4, 4-7 filled |
@@ -152,7 +152,7 @@ File scope for agents (keep context narrow):
 | :--- | :--- |
 | Go handler | One `*_handlers.go` + matching `api/openapi/paths/*.yaml` fragment |
 | Ingest change | One concern: filter OR producer OR handler wiring |
-| Admin UI page | One `pages/*` + one `ui/<domain>/` + one `helpers/*_api.ts` |
+| Admin UI page | One `pages/*` + one `domains/<domain>/` + one `api/*_api.ts` |
 | Tests | Package under test + holdout named in PR |
 
 ## Test dishonesty catalog (hard)

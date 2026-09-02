@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton } from '@/components/system/action_buttons';
-import { CustomerCombobox, type CustomerComboboxOption } from '@/components/system/customer_combobox';
+import { FilterApplyButton } from '@/shell/action_buttons';
+import { CustomerCombobox, type CustomerComboboxOption } from '@/shell/customer_combobox';
 import {
   DirectoryTable,
   DirectoryTableHead,
@@ -9,17 +9,17 @@ import {
   TableCell,
   TableHeader,
   TableRow,
-} from '@/components/system/directory_table';
+} from '@/shell/directory_table';
 import {
   DirectoryFilterForm,
   FilterField,
   FilterPanel,
-} from '@/components/system/filter_panel';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
+} from '@/shell/filter_panel';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
@@ -193,7 +193,7 @@ export function ClickLogDirectory({
                       {event.click_id}
                     </Link>
                   ) : (
-                    '—'
+                    '-'
                   )}
                 </TableCell>
                 <TableCell className="text-sm tabular-nums">
@@ -208,12 +208,12 @@ export function ClickLogDirectory({
                       {event.campaign_id}
                     </Link>
                   ) : (
-                    '—'
+                    '-'
                   )}
                 </TableCell>
-                <TableCell className="text-sm">{event.country ?? '—'}</TableCell>
+                <TableCell className="text-sm">{event.country ?? '-'}</TableCell>
                 <TableCell className="max-w-0 truncate text-sm" title={event.sub1}>
-                  {event.sub1 ?? '—'}
+                  {event.sub1 ?? '-'}
                 </TableCell>
                 <TableCell className="text-right text-sm tabular-nums">
                   {displayMicro(event.attributed_cost_micro)}
@@ -239,7 +239,7 @@ export function ClickLogDirectory({
       {timelineMode && postbacks.length > 0 ? (
         <section className="ui-surface-raised grid gap-3 p-5">
           <h3 className="text-base font-medium tracking-tight">Postbacks</h3>
-          <DirectoryTable className="rounded-none border-0 bg-transparent">
+          <DirectoryTable className="border-0 bg-transparent shadow-none">
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Status</DirectoryTableHead>
@@ -255,7 +255,7 @@ export function ClickLogDirectory({
                     {displayTimestamp(postback.created_at)}
                   </TableCell>
                   <TableCell className="max-w-0 truncate text-muted-foreground">
-                    {postback.error_message ?? '—'}
+                    {postback.error_message ?? '-'}
                   </TableCell>
                 </TableRow>
               ))}

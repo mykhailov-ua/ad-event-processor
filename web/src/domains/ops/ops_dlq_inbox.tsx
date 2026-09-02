@@ -1,22 +1,17 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
-import { Badge } from '@/components/ui/badge';
+import { EmptyState } from '@/shell/empty_state';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import type { DLQInboxEntry } from '@/api/types';
-import { OpsNav } from '@/domains/ops/ops_nav';
 import { displayTimestamp } from '@/lib/display';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import { OpsListFooter } from '@/domains/ops/ops_list_footer';
+import {
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
+import { OpsStatusChip } from '@/domains/ops/ops_status';
+import { OpsTable } from '@/domains/ops/ops_table';
 
 export type OpsDlqInboxProps = {
   items: DLQInboxEntry[];
@@ -37,7 +32,6 @@ export function OpsDlqInbox({
   items,
   nextCursor,
   partial,
-  limit,
   fetching,
   error,
   hasSnapshot,
@@ -48,99 +42,83 @@ export function OpsDlqInbox({
   onRetry,
 }: OpsDlqInboxProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="DLQ inbox">
-        <OpsNav />
-        <ErrorBlock title="Could not load DLQ inbox" message={error.message} />
-      </PageChrome>
+      <OpsPageBlockingError error={error} pageTitle="DLQ inbox" title="Could not load DLQ inbox" />
     );
   }
 
   return (
-    <PageChrome
-      title="DLQ inbox"
-      badge={partial ? <Badge variant="secondary">partial fan-out</Badge> : undefined}
-    >
-      <OpsNav />
-      <form
-        className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <div className="col-span-full text-sm text-muted-foreground">
-          <span>{items.length} entries on this page</span>
-          {nextCursor ? <span className="ml-2">More pages available</span> : null}
-        </div>
-        <PaginationPrevNext
-          canGoPrev={canGoPrev}
+    <OpsPageShell
+      badge={partial ? <OpsStatusChip status="partial" /> : undefined}
+      footer={
+        <OpsListFooter
           canGoNext={Boolean(nextCursor)}
+          canGoPrev={canGoPrev}
           disabled={fetching}
-          onPrev={onPrev}
+          summary={`${items.length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
           onNext={onNext}
+          onPrev={onPrev}
         />
-      </form>
-
+      }
+      title="DLQ inbox"
+    >
       {items.length === 0 ? (
-        <EmptyState title="DLQ inbox empty" description="No failed deliveries are queued." />
+        <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Source</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Event</TableHead>
-                <TableHead>Error</TableHead>
-                <TableHead>Failed</TableHead>
-                <TableHead className="text-right">Retries</TableHead>
-                <TableHead />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((entry) => {
-                const rowKey = entry.id ?? `${entry.source}-${entry.failed_at}`;
-                const canRetry = Boolean(entry.id && entry.source);
-                return (
-                  <TableRow key={rowKey}>
-                    <TableCell>{entry.source ?? ''}</TableCell>
-                    <TableCell>
-                      {entry.status ? <Badge variant="outline">{entry.status}</Badge> : ''}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">{entry.campaign_id ?? ''}</TableCell>
-                    <TableCell>{entry.event_type ?? ''}</TableCell>
-                    <TableCell className="max-w-xs truncate text-muted-foreground">
-                      {entry.error ?? ''}
-                    </TableCell>
-                    <TableCell>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{entry.retry_count ?? ''}</TableCell>
-                    <TableCell className="text-right">
-                      {canRetry ? (
-                        <RowActionsMenu
-                          ariaLabel="DLQ entry actions"
-                          disabled={fetching || retryingId === entry.id}
-                        >
-                          <DropdownMenuItem
-                            disabled={fetching || retryingId === entry.id}
-                            onClick={() => onRetry(entry)}
-                          >
-                            {retryingId === entry.id ? 'Retrying…' : 'Retry'}
-                          </DropdownMenuItem>
-                        </RowActionsMenu>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <OpsTable
+          head={
+            <tr>
+              <th>Source</th>
+              <th>Status</th>
+              <th>Campaign</th>
+              <th>Event</th>
+              <th>Error</th>
+              <th>Failed</th>
+              <th className="num">Retries</th>
+              <th />
+            </tr>
+          }
+        >
+          {items.map((entry) => {
+            const rowKey = entry.id ?? `${entry.source}-${entry.failed_at}`;
+            const canRetry = Boolean(entry.id && entry.source);
+            return (
+              <tr key={rowKey}>
+                <td>{entry.source ?? ''}</td>
+                <td>
+                  {entry.status ? <OpsStatusChip status={entry.status} /> : ''}
+                </td>
+                <td className="admin-table-td--id">{entry.campaign_id ?? ''}</td>
+                <td>{entry.event_type ?? ''}</td>
+                <td className="admin-muted admin-table-td--truncate">{entry.error ?? ''}</td>
+                <td>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</td>
+                <td className="num">{entry.retry_count ?? ''}</td>
+                <td className="admin-table-td--actions">
+                  {canRetry ? (
+                    <RowActionsMenu
+                      ariaLabel="DLQ entry actions"
+                      disabled={fetching || retryingId === entry.id}
+                    >
+                      <DropdownMenuItem
+                        disabled={fetching || retryingId === entry.id}
+                        onClick={() => onRetry(entry)}
+                      >
+                        {retryingId === entry.id ? 'Retrying...' : 'Retry'}
+                      </DropdownMenuItem>
+                    </RowActionsMenu>
+                  ) : null}
+                </td>
+              </tr>
+            );
+          })}
+        </OpsTable>
       )}
 
-      {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}
-    </PageChrome>
+      {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
+    </OpsPageShell>
   );
 }

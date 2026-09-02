@@ -13,6 +13,7 @@ import (
 	"ad-event-processor/pkg/httpresponse"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type CampaignListResponse = ListResponse[CampaignDTO]
@@ -21,6 +22,8 @@ type CampaignReader interface {
 	GetCampaign(ctx context.Context, campaignID uuid.UUID) (CampaignDTO, error)
 	GetCampaignMargin(ctx context.Context, campaignID uuid.UUID) (CampaignMarginDTO, error)
 	ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]CampaignDTO, int64, error)
+	ListCampaignsFiltered(ctx context.Context, filter ListCampaignsFilter) ([]CampaignDTO, int64, error)
+	CountCampaignStatusTotals(ctx context.Context, filter ListCampaignsFilter, searchQuery, pacingMode string) (CampaignStatusTotalsDTO, error)
 	AttachCampaignListMarginBreach(ctx context.Context, items []CampaignDTO)
 	PatchCampaign(ctx context.Context, campaignID uuid.UUID, req PatchCampaignRequest) (CampaignDTO, error)
 	PublishCampaign(ctx context.Context, campaignID uuid.UUID, force bool) (CampaignDTO, error)
@@ -45,6 +48,8 @@ type CampaignsHTTPHandlers struct {
 	ValidateCampaignFlowPaths CampaignFlowPathValidator
 	RecordRevisionConflict    func(ctx context.Context, campaignID uuid.UUID, expectedRevision string)
 	ClickHouseQuery           *database.ClickHouseQuery
+	PostgresPool              *pgxpool.Pool
+	MarginDefaultThresholdBps int
 	ApplyRateLimit            func(http.HandlerFunc) http.HandlerFunc
 	RequireAnyPermission      func([]string, http.HandlerFunc) http.HandlerFunc
 	AuthorizeCampaignAccess   func(*http.Request, uuid.UUID) error
@@ -68,6 +73,7 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/campaigns", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaigns)))
+	mux.HandleFunc("GET /api/v1/campaigns/metrics", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetrics)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaign)))
 	mux.HandleFunc("PATCH /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:write"}, h.patchCampaign)))
 	mux.HandleFunc("PUT /api/v1/campaigns/{id}/owner", limit(perm([]string{"campaigns:write"}, h.assignCampaignOwner)))
@@ -111,9 +117,10 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 
 	status := q.Get("status")
 	sortField, order, sortErr := parseListSort(r, map[string]struct{}{
-		"name":       {},
-		"spend":      {},
-		"updated_at": {},
+		"name":         {},
+		"spend":        {},
+		"updated_at":   {},
+		"budget_limit": {},
 	}, "updated_at")
 	if sortErr != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", sortErr.Error())
@@ -121,16 +128,28 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 	}
 	search := strings.TrimSpace(q.Get("q"))
 	pacingMode := strings.TrimSpace(q.Get("pacing_mode"))
-
 	limit, offset := coldpath.ParseAPIPagination(r)
+	listFilter := ListCampaignsFilter{
+		CustomerID:     customerID,
+		Status:         status,
+		OwnerUserID:    ResolveListOwnerUserFilter(r.Context(), r),
+		TargetCountry:  parseTargetCountryQuery(r),
+		BudgetMinMicro: parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
+		BudgetMaxMicro: parseOptionalBudgetMicroQuery(r, "budget_max_micro"),
+		Limit:          limit,
+		Offset:         offset,
+	}
 
-	items, total, err := h.Campaigns.ListCampaigns(r.Context(), customerID, status, limit, offset)
+	items, total, err := h.Campaigns.ListCampaignsFiltered(r.Context(), listFilter)
 	if err != nil {
 		h.WriteHandlerError(w, err)
 		return
 	}
 	if search != "" || pacingMode != "" || sortField != "updated_at" || order != "desc" {
-		allItems, _, listErr := h.Campaigns.ListCampaigns(r.Context(), customerID, status, 1000, 0)
+		allFilter := listFilter
+		allFilter.Limit = 1000
+		allFilter.Offset = 0
+		allItems, _, listErr := h.Campaigns.ListCampaignsFiltered(r.Context(), allFilter)
 		if listErr != nil {
 			h.WriteHandlerError(w, listErr)
 			return
@@ -152,14 +171,61 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 		items[i].StatusLabel = campaignStatusLabel(items[i].Status)
 		items[i].StatusTone = campaignStatusTone(items[i].Status)
 	}
+	totalsFilter := listFilter
+	totalsFilter.Status = ""
+	statusTotals, totalsErr := h.Campaigns.CountCampaignStatusTotals(r.Context(), totalsFilter, search, pacingMode)
+	if totalsErr != nil {
+		h.WriteHandlerError(w, totalsErr)
+		return
+	}
 	httpresponse.JSON(w, http.StatusOK, ListEnvelope[CampaignDTO]{
 		Items:          items,
 		Total:          total,
 		Limit:          limit,
 		Offset:         offset,
-		FiltersApplied: filtersAppliedFromQuery(r, "customer_id", "status", "q", "pacing_mode"),
+		FiltersApplied: filtersAppliedFromQuery(r, "customer_id", "status", "q", "pacing_mode", "owner_user_id", "country", "budget_min_micro", "budget_max_micro"),
 		Sort:           &ListSortDTO{Field: sortField, Order: order},
+		StatusTotals:   &statusTotals,
 	})
+}
+
+func (h *CampaignsHTTPHandlers) listCampaignMetrics(w http.ResponseWriter, r *http.Request) {
+	if h.PostgresPool == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "UNAVAILABLE", "service unavailable")
+		return
+	}
+	campaignIDs, err := ParseCampaignListMetricsIDs(r.URL.Query().Get("ids"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	if h.AuthorizeCampaignAccess != nil {
+		for _, campaignID := range campaignIDs {
+			if authErr := h.AuthorizeCampaignAccess(r, campaignID); authErr != nil {
+				h.WriteHandlerError(w, authErr)
+				return
+			}
+		}
+	}
+	from, to, err := parseCampaignListMetricsRange(r)
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+	report, err := BatchCampaignListMetrics(
+		r.Context(),
+		h.PostgresPool,
+		h.ClickHouseQuery,
+		h.MarginDefaultThresholdBps,
+		campaignIDs,
+		from,
+		to,
+	)
+	if err != nil {
+		h.WriteHandlerError(w, err)
+		return
+	}
+	httpresponse.JSON(w, http.StatusOK, report)
 }
 
 func (h *CampaignsHTTPHandlers) getCampaign(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-import { SectionNav } from '@/components/system/section_nav';
+import { SectionNav } from '@/shell/section_nav';
 import type { SectionNavItem } from '@/lib/nav_config';
 
 export const SETTINGS_NAV_ITEMS: SectionNavItem[] = [

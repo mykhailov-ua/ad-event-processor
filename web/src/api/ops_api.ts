@@ -4,7 +4,9 @@ import type {
   DashboardMetricsQuery,
   DashboardSummary,
   DlqInboxListQuery,
+  DlqListQuery,
   DLQInboxListResponse,
+  DLQListResponse,
   DoctorSummary,
   FraudManualLabelRequest,
   IncidentSnapshot,
@@ -66,6 +68,58 @@ export async function listDlqInbox(
   signal?: AbortSignal,
 ): Promise<DLQInboxListResponse> {
   return apiJson<DLQInboxListResponse>(buildDlqInboxPath(params), { signal });
+}
+
+export function buildOpsDlqPath(params: DlqListQuery = {}): string {
+  const search = new URLSearchParams();
+
+  if (params.limit != null) {
+    search.set('limit', String(params.limit));
+  }
+  if (params.cursor) {
+    search.set('cursor', params.cursor);
+  }
+
+  const query = search.toString();
+  return query ? `/api/v1/ops/dlq?${query}` : '/api/v1/ops/dlq';
+}
+
+export async function listOpsDlq(
+  params: DlqListQuery = {},
+  signal?: AbortSignal,
+): Promise<DLQListResponse> {
+  return apiJson<DLQListResponse>(buildOpsDlqPath(params), { signal });
+}
+
+export async function retryOpsDlqEntry(id: string, signal?: AbortSignal): Promise<void> {
+  const response = await apiFetch(`/api/v1/ops/dlq/${encodeURIComponent(id)}/retry`, {
+    method: 'POST',
+    signal,
+  });
+
+  if (!response.ok) {
+    let code = 'HTTP_ERROR';
+    let message = response.statusText || `HTTP ${response.status}`;
+    try {
+      const body: unknown = await response.json();
+      if (body && typeof body === 'object') {
+        const record = body as Record<string, unknown>;
+        const errorField = record.error;
+        if (errorField && typeof errorField === 'object') {
+          const errObj = errorField as Record<string, unknown>;
+          if (typeof errObj.code === 'string') {
+            code = errObj.code;
+          }
+          if (typeof errObj.message === 'string') {
+            message = errObj.message;
+          }
+        }
+      }
+    } catch {
+      // Non-JSON error body.
+    }
+    throw new ApiError(response.status, code, message);
+  }
 }
 
 export async function retryDlqInboxEntry(

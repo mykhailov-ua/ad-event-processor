@@ -9,7 +9,7 @@ import {
 } from '@/api/report_schedules_api';
 import { ReportSchedulesPanel } from '@/domains/portals/report_schedules_panel';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 type ScheduleEditRow = {
   report_key: string;

@@ -8,7 +8,7 @@ import {
   type CustomerSortField,
   type SortOrder,
 } from '@/domains/customers/customers_directory';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { clampListLimit, DEFAULT_LIST_LIMIT, parseListLimit, parseListOffset } from '@/lib/list_query';
 
 function parseSort(raw: string | null): CustomerSortField {
@@ -29,10 +29,14 @@ function parseOrder(raw: string | null): SortOrder {
 }
 
 function buildListQuery(params: URLSearchParams): CustomerListQuery {
+  const parsedSort = parseSort(params.get('sort'));
+  const serverSort: CustomerListQuery['sort'] =
+    parsedSort === 'created_at' ? 'created_at' : 'name';
+
   return {
     limit: parseListLimit(params.get('limit')),
     offset: parseListOffset(params.get('offset')),
-    sort: parseSort(params.get('sort')),
+    sort: serverSort,
     order: parseOrder(params.get('order')),
   };
 }
@@ -50,9 +54,9 @@ export function CustomersPage() {
   );
 
   const updateQuery = useCallback(
-    (patch: Partial<CustomerListQuery>) => {
+    (patch: Partial<Omit<CustomerListQuery, 'sort'>> & { sort?: CustomerSortField; order?: SortOrder }) => {
       const next = new URLSearchParams(searchParams);
-      const merged: CustomerListQuery = { ...query, ...patch };
+      const merged = { ...query, ...patch };
 
       next.set('limit', String(merged.limit ?? DEFAULT_LIST_LIMIT));
       next.set('offset', String(merged.offset ?? 0));

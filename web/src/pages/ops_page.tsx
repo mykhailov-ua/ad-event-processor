@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { fetchOpsHomeSnapshot, postOpsSupportBundle, reloadOpsRoles } from '@/api/ops_api';
 import { OpsHome } from '@/domains/ops/ops_home';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { triggerBlobDownload } from '@/lib/trigger_blob_download';
 
 export function OpsPage() {

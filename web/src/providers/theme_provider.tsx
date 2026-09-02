@@ -39,6 +39,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    const next = readStoredTheme();
+    applyTheme(next);
+    persistTheme(next);
+    setThemeState((current) => (current === next ? current : next));
+  }, []);
+
+  useEffect(() => {
+    const next = readStoredTheme();
+    applyTheme(next);
+    persistTheme(next);
+    setThemeState((current) => (current === next ? current : next));
+  }, []);
+
+  useEffect(() => {
     const onStorage = (event: StorageEvent) => {
       if (event.key !== THEME_STORAGE_KEY) {
         return;

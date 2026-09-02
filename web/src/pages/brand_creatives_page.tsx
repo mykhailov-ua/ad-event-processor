@@ -10,10 +10,10 @@ import {
   patchBrandCreative,
 } from '@/api/brands_api';
 import type { BrandCreative } from '@/api/types';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { BrandCreativesDirectory } from '@/domains/creative/brand_creatives_directory';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function BrandCreativesPage() {
   const { id } = useParams();

@@ -1,4 +1,4 @@
-import { PageChrome } from '@/components/system/page_chrome';
+import { PageChrome } from '@/shell/page_chrome';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';

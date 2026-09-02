@@ -1,17 +1,13 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { EmptyState } from '@/shell/empty_state';
 import type { IncidentSnapshot } from '@/api/types';
-import { OpsNav, opsPanelError } from '@/domains/ops/ops_nav';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import {
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
+import { OpsStatusChip } from '@/domains/ops/ops_status';
+import { OpsTable, OpsBlock } from '@/domains/ops/ops_table';
 
 export type OpsIncidentsProps = {
   snapshot: IncidentSnapshot | undefined;
@@ -22,24 +18,20 @@ export type OpsIncidentsProps = {
 
 export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsIncidentsProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
     return (
-      <PageChrome title="Incidents">
-        <OpsNav />
-        {opsPanelError(error, 'Could not load incidents')}
-      </PageChrome>
+      <OpsPageBlockingError error={error} pageTitle="Incidents" title="Could not load incidents" />
     );
   }
 
   if (!snapshot) {
     return (
-      <PageChrome title="Incidents">
-        <OpsNav />
-        <EmptyState title="No incidents" description="Incident snapshot returned no data." />
-      </PageChrome>
+      <OpsPageShell title="Incidents">
+        <EmptyState description="Incident snapshot returned no data." title="No incidents" />
+      </OpsPageShell>
     );
   }
 
@@ -47,74 +39,65 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
   const campaigns = snapshot.affected_campaigns ?? [];
 
   return (
-    <PageChrome
-      title="Incidents"
+    <OpsPageShell
       badge={
-        snapshot.emergency_breaker ? (
-          <Badge variant="destructive">{snapshot.emergency_breaker}</Badge>
-        ) : undefined
+        <>
+          {snapshot.emergency_breaker ? (
+            <OpsStatusChip status={snapshot.emergency_breaker} />
+          ) : null}
+          {snapshot.partial ? <OpsStatusChip status="partial" /> : null}
+          {snapshot.stale_dashboard ? <OpsStatusChip status="stale" /> : null}
+        </>
       }
+      title="Incidents"
     >
-      <OpsNav />
-
-      {snapshot.partial ? <Badge variant="outline">Partial snapshot</Badge> : null}
-      {snapshot.stale_dashboard ? <Badge variant="secondary">Stale dashboard</Badge> : null}
-
       {shards.length > 0 ? (
-        <section className="grid gap-2">
-          <h2 className="text-base font-semibold">Shard health</h2>
-          <div className="ui-table-frame">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Shard</TableHead>
-                  <TableHead>Ping</TableHead>
-                  <TableHead>Latency (ms)</TableHead>
-                  <TableHead>Config lag</TableHead>
-                  <TableHead>Synced</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {shards.map((shard) => (
-                  <TableRow key={shard.shard_id ?? shard.ping_error}>
-                    <TableCell>{shard.shard_id ?? ''}</TableCell>
-                    <TableCell>{shard.ping_ok ? 'ok' : shard.ping_error ?? 'fail'}</TableCell>
-                    <TableCell>{shard.ping_latency_ms ?? ''}</TableCell>
-                    <TableCell>{shard.config_version_lag ?? ''}</TableCell>
-                    <TableCell>{shard.config_version_synced ? 'yes' : 'no'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
+        <OpsBlock title="Shard health">
+          <OpsTable
+            head={
+              <tr>
+                <th>Shard</th>
+                <th>Ping</th>
+                <th className="num">Latency (ms)</th>
+                <th className="num">Config lag</th>
+                <th>Synced</th>
+              </tr>
+            }
+          >
+            {shards.map((shard) => (
+              <tr key={shard.shard_id ?? shard.ping_error}>
+                <td className="num">{shard.shard_id ?? ''}</td>
+                <td>{shard.ping_ok ? 'ok' : (shard.ping_error ?? 'fail')}</td>
+                <td className="num">{shard.ping_latency_ms ?? ''}</td>
+                <td className="num">{shard.config_version_lag ?? ''}</td>
+                <td>{shard.config_version_synced ? 'yes' : 'no'}</td>
+              </tr>
+            ))}
+          </OpsTable>
+        </OpsBlock>
       ) : null}
 
       {campaigns.length > 0 ? (
-        <section className="grid gap-2">
-          <h2 className="text-base font-semibold">Affected campaigns</h2>
-          <div className="ui-table-frame">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Campaign ID</TableHead>
-                  <TableHead>Name</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {campaigns.map((row) => (
-                  <TableRow key={row.campaign_id ?? row.name}>
-                    <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                    <TableCell>{row.name ?? ''}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </section>
+        <OpsBlock title="Affected campaigns">
+          <OpsTable
+            head={
+              <tr>
+                <th>Campaign ID</th>
+                <th>Name</th>
+              </tr>
+            }
+          >
+            {campaigns.map((row) => (
+              <tr key={row.campaign_id ?? row.name}>
+                <td className="admin-table-td--id">{row.campaign_id ?? ''}</td>
+                <td>{row.name ?? ''}</td>
+              </tr>
+            ))}
+          </OpsTable>
+        </OpsBlock>
       ) : null}
 
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </OpsPageShell>
   );
 }

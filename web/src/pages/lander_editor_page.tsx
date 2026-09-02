@@ -10,8 +10,8 @@ import {
   uploadHostedLanderFiles,
 } from '@/api/landers_api';
 import { LanderHostedEditor } from '@/domains/creative/lander_hosted_editor';
-import { useBreadcrumbSegmentLabel } from '@/components/system/breadcrumb_context';
-import { useResource } from '@/hooks/use_resource';
+import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
+import { useResource } from '@/api/use_resource';
 
 export function LanderEditorPage() {
   const { id } = useParams();

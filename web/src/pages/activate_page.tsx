@@ -3,14 +3,14 @@ import { Link, Navigate } from 'react-router-dom';
 
 import { publicActivate } from '@/api/auth_api';
 import { ApiError } from '@/api/client';
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { ErrorBlock } from '@/shell/error_block';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useMeta } from '@/hooks/use_meta';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageSkeleton } from '@/shell/page_skeleton';
 
 export function ActivatePage() {
   const { bootstrapComplete, loading } = useMeta();

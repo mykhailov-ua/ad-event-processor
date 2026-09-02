@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { CustomerScopeBar } from '@/components/system/customer_scope_bar';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -113,7 +113,7 @@ export function SavedViewsPanel({
     <PageChrome
       title="Saved views"
       actions={
-        <Button className="h-9 text-sm" onClick={() => setCreateOpen(true)} type="button">
+        <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
           Create saved view
         </Button>
       }
@@ -137,7 +137,7 @@ export function SavedViewsPanel({
               <Label htmlFor="view-name">Name</Label>
               <Input
                 id="view-name"
-                className="h-9 text-sm"
+                className="text-sm"
                 value={draftName}
                 onChange={(event) => onDraftNameChange(event.target.value)}
               />
@@ -146,7 +146,7 @@ export function SavedViewsPanel({
               <Label htmlFor="view-report-key">Report key</Label>
               <Input
                 id="view-report-key"
-                className="h-9 text-sm"
+                className="text-sm"
                 value={draftReportKey}
                 onChange={(event) => onDraftReportKeyChange(event.target.value)}
               />
@@ -155,7 +155,7 @@ export function SavedViewsPanel({
               <Label htmlFor="view-spec">Spec JSON (optional)</Label>
               <Input
                 id="view-spec"
-                className="h-9 text-sm"
+                className="text-sm"
                 placeholder="{}"
                 value={draftSpecJson}
                 onChange={(event) => onDraftSpecJsonChange(event.target.value)}
@@ -187,7 +187,7 @@ export function SavedViewsPanel({
               Cancel
             </SecondaryActionButton>
             <Button
-              className="h-9 text-sm"
+              className="text-sm"
               disabled={acting}
               loading={acting}
               onClick={() => {
@@ -244,7 +244,7 @@ export function SavedViewsPanel({
                         <TableCell>
                           {id ? (
                             <Input
-                              className="h-9 text-sm"
+                              className="text-sm"
                               value={edit.name}
                               onChange={(event) => onEditRowChange(id, 'name', event.target.value)}
                             />
@@ -255,7 +255,7 @@ export function SavedViewsPanel({
                         <TableCell>
                           {id ? (
                             <Input
-                              className="h-9 font-mono text-xs"
+                              className="font-mono text-xs"
                               value={edit.report_key}
                               onChange={(event) =>
                                 onEditRowChange(id, 'report_key', event.target.value)

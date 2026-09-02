@@ -8,7 +8,7 @@ import {
   updateSupplyAdsTxt,
 } from '@/api/supply_api';
 import { SupplyAdsTxtDirectory } from '@/domains/creative/supply_ads_txt';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 type AdsTxtEditRow = {
   domain: string;

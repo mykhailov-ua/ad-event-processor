@@ -7,7 +7,7 @@ import {
   removeOpsBlacklistEntry,
 } from '@/api/ops_api';
 import { OpsBlacklist } from '@/domains/ops/ops_blacklist';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
 
 export function OpsBlacklistPage() {

@@ -254,14 +254,14 @@ function buildBreakdownRows(
 }
 
 function sumBreakdownRows(rows: DashboardBreakdownRow[]): DashboardBreakdownTotals {
-  const totals = rows.reduce(
+  const totals = rows.reduce<DashboardBreakdownTotals>(
     (acc, row) => ({
-      clicks: acc.clicks + (row.clicks ?? 0),
-      unique_clicks: acc.unique_clicks + (row.unique_clicks ?? 0),
-      conversions: acc.conversions + (row.conversions ?? 0),
-      cost_micro: acc.cost_micro + (row.cost_micro ?? 0),
-      revenue_micro: acc.revenue_micro + (row.revenue_micro ?? 0),
-      profit_micro: acc.profit_micro + (row.profit_micro ?? 0),
+      clicks: (acc.clicks ?? 0) + (row.clicks ?? 0),
+      unique_clicks: (acc.unique_clicks ?? 0) + (row.unique_clicks ?? 0),
+      conversions: (acc.conversions ?? 0) + (row.conversions ?? 0),
+      cost_micro: (acc.cost_micro ?? 0) + (row.cost_micro ?? 0),
+      revenue_micro: (acc.revenue_micro ?? 0) + (row.revenue_micro ?? 0),
+      profit_micro: (acc.profit_micro ?? 0) + (row.profit_micro ?? 0),
     }),
     {
       clicks: 0,
@@ -272,7 +272,9 @@ function sumBreakdownRows(rows: DashboardBreakdownRow[]): DashboardBreakdownTota
       profit_micro: 0,
     },
   );
-  const roi_pct = totals.cost_micro > 0 ? (totals.profit_micro / totals.cost_micro) * 100 : 0;
+  const costMicro = totals.cost_micro ?? 0;
+  const profitMicro = totals.profit_micro ?? 0;
+  const roi_pct = costMicro > 0 ? (profitMicro / costMicro) * 100 : 0;
   return enrichEconomicsTotals({ ...totals, roi_pct });
 }
 

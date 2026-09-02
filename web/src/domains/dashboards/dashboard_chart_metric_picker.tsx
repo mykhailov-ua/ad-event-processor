@@ -15,7 +15,7 @@ export function DashboardChartMetricPicker({
 }: DashboardChartMetricPickerProps) {
   return (
     <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Metrics</span>
+      <span className="text-[11px] tracking-wide text-muted-foreground">Metrics</span>
       {DASHBOARD_CHART_SERIES_STYLES.map((metric) => {
         const active = selected.includes(metric.id);
         return (
@@ -25,7 +25,7 @@ export function DashboardChartMetricPicker({
             aria-pressed={active}
             onClick={() => onToggle(metric.id)}
             className={cn(
-              'rounded-full border px-2.5 py-1 font-geist text-[11px] font-medium transition-opacity',
+              'rounded-[var(--admin-radius-sm)] border px-2.5 py-1 font-geist text-[11px] font-medium transition-opacity',
               active ? 'opacity-100' : 'opacity-35 hover:opacity-60',
             )}
             style={{

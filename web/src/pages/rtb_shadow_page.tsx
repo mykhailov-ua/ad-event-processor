@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { getRtbReconcileExport, getRtbShadowDiff } from '@/api/rtb_api';
 import { RtbShadowTools } from '@/domains/rtb/rtb_shadow_tools';
 import { rtbLicenseGated } from '@/domains/rtb/rtb_nav';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function RtbShadowPage() {
   const [searchParams, setSearchParams] = useSearchParams();

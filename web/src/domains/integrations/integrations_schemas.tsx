@@ -1,7 +1,7 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -182,7 +182,6 @@ export function IntegrationsSchemas({
                         <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
                         <TableCell>
                           <Button
-                            size="sm"
                             type="button"
                             variant="outline"
                             onClick={(event) => {

@@ -1,4 +1,4 @@
-import { ErrorBlock } from '@/components/system/error_block';
+import { ErrorBlock } from '@/shell/error_block';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -79,7 +79,7 @@ export function CostSyncCredentialForm({
           <Label htmlFor="cost-sync-network">Network</Label>
           {networkOptions.length > 0 ? (
             <Select value={draftNetwork} onValueChange={onDraftNetworkChange} disabled={disabled}>
-              <SelectTrigger id="cost-sync-network" className="h-9 w-full text-sm">
+              <SelectTrigger id="cost-sync-network" className="w-full text-sm">
                 <SelectValue placeholder="Select network" />
               </SelectTrigger>
               <SelectContent>
@@ -115,7 +115,7 @@ export function CostSyncCredentialForm({
             onValueChange={onDraftSyncIntervalMinutesChange}
             disabled={disabled}
           >
-            <SelectTrigger id="cost-sync-sync-interval" className="h-9 w-full text-sm">
+            <SelectTrigger id="cost-sync-sync-interval" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

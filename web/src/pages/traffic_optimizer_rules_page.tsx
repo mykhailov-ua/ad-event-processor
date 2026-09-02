@@ -17,7 +17,7 @@ import {
 } from '@/domains/automation/automation_rule_forms';
 import { TrafficOptimizerRulesDirectory } from '@/domains/automation/traffic_optimizer_rules_directory';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 const EMPTY_CREATE_DRAFT: TrafficOptimizerRuleEditDraft = {
   name: '',

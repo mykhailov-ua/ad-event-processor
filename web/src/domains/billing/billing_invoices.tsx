@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 
-import { FilterApplyButton } from '@/components/system/action_buttons';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
+import { FilterApplyButton } from '@/shell/action_buttons';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -19,9 +19,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import type { Invoice } from '@/api/types';
 import { displayMicro } from '@/lib/display';
 
@@ -85,7 +85,7 @@ export function BillingInvoices({
           <Input
             id="billing-month"
             type="month"
-            className="h-9 text-sm"
+            className="text-sm"
             value={draftMonth}
             onChange={(event) => onDraftMonthChange(event.target.value)}
           />
@@ -99,7 +99,7 @@ export function BillingInvoices({
               onDraftStatusChange(value === 'all' ? '' : (value as InvoiceStatusFilter))
             }
           >
-            <SelectTrigger id="billing-status" className="h-9 w-full text-sm">
+            <SelectTrigger id="billing-status" className="w-full text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

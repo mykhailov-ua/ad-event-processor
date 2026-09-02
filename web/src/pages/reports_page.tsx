@@ -1,5 +1,5 @@
 import { ReportsHub } from '@/domains/reports/reports_hub';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { fetchReportCatalogCached } from '@/lib/report_catalog_cache';
 
 export function ReportsPage() {

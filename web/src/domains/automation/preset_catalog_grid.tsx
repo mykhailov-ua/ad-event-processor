@@ -1,7 +1,7 @@
 import { ListTree, Sparkles, Workflow, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-import { BentoCard, BentoGrid, bentoToneFromKey } from '@/components/system/bento_card';
+import { BentoCard, BentoGrid, bentoToneFromKey } from '@/shell/bento_card';
 
 const PRESET_ICONS: LucideIcon[] = [Sparkles, Workflow, Zap, ListTree];
 

@@ -7,7 +7,7 @@
     "postbuild": "node scripts/sync_embed.mjs",
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test --experimental-strip-types src/lib/cn.test.ts src/lib/list_query.test.ts src/lib/report_table.test.ts src/lib/breadcrumbs.test.ts src/lib/campaign_budget_used.test.ts src/lib/popover_align.test.ts src/domains/campaigns/campaign_list_columns.test.ts src/domains/settings/settings_snapshot.test.ts src/domains/dashboards/dashboard_chart_scale.test.ts src/domains/dashboards/dashboard_series_mock.test.ts src/domains/dashboards/dashboard_format.test.ts src/domains/dashboards/dashboard_preferences.test.ts",
+    "test": "node --import ./scripts/test_aliases.mjs --test --experimental-strip-types 'src/**/*.test.ts'",
     "test:e2e": "npm test --prefix e2e"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "country-flag-icons": "^1.6.20",
     "date-fns": "^4.4.0",
     "lucide-react": "^0.542.0",
     "react": "^19.1.1",

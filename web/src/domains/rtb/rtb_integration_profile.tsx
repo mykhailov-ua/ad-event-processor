@@ -1,5 +1,5 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import type { RtbIntegrationProfile } from '@/api/types';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';

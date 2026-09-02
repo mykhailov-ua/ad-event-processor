@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -198,7 +198,7 @@ export function LanderHostedEditor({
           <h2 className="text-base font-semibold">Edit file</h2>
           <p className="font-mono text-xs text-muted-foreground">{selectedFilePath}</p>
           {fileLoading ? (
-            <p className="text-sm text-muted-foreground">Loading file…</p>
+            <p className="text-sm text-muted-foreground">Loading file...</p>
           ) : (
             <>
               <div className="grid gap-2">

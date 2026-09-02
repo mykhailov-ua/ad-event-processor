@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { createBrand, listBrands } from '@/api/brands_api';
 import { BrandsDirectory } from '@/domains/creative/brands_directory';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function BrandsPage() {
   const {

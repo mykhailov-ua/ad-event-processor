@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 
 import { listOpsShards, triggerOpsShard0Catchup } from '@/api/ops_api';
 import { OpsShards } from '@/domains/ops/ops_shards';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 export function OpsShardsPage() {
   const [catchingUp, setCatchingUp] = useState(false);

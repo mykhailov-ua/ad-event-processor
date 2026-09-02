@@ -79,7 +79,7 @@ Command palette **must not** call `GET /api/v1/campaigns?q=…` with the 1000-ro
 
 | Rule | Requirement |
 | :--- | :--- |
-| Module | `web/src/ui/shell/CommandPalette.tsx` + `web/src/helpers/command_palette_api.ts` |
+| Module | `web/src/shell/command_palette.tsx` + `web/src/api/command_palette_api.ts` |
 | Cold path | Debounced fetch only; **no** `useMemo` filter over full entity lists (`ui.mdc`) |
 | Hot UI path | Open overlay < **100 ms**; keystroke perceived < **50 ms** (`react.mdc`) |
 | Scroll | Virtualized result list when > 20 rows; < **16 ms/frame** during scroll |
@@ -320,11 +320,10 @@ Permissions: `campaigns:read` minimum for entity kinds; route kinds filtered by 
 
 ```
 web/src/
-  ui/shell/
-    CommandPalette.tsx
-    CommandPalette.module.css
+  shell/
+    command_palette.tsx
     use_command_palette.ts      # open state, shortcut listener
-  helpers/
+  api/
     command_palette_api.ts      # fetch + parse only
   nav/
     catalog.ts                  # static routes; source for routes API
@@ -340,7 +339,7 @@ web/src/
 | :--- | :--- |
 | `internal/commandpalette/` | `go test ./internal/commandpalette/... -short -count=1` |
 | OpenAPI | `bash scripts/ci/admin/openapi.sh` |
-| `web/src/ui/shell/` | `npm run typecheck`; `bash scripts/ci/admin/web.sh` |
+| `web/src/shell/` | `npm run typecheck`; `bash scripts/ci/admin/web.sh` |
 | RBAC | `go test ./internal/controlplane/ -run CommandPalette -count=1` |
 | Default merge | `bash scripts/ci/pr_fast.sh` |
 | PG search claim | `make test-integration` (paste exit code) |
@@ -364,7 +363,7 @@ web/src/
 | Doc | Topic |
 | :--- | :--- |
 | `ui.mdc` | Grid, cold path, `admin_shell` ship order |
-| `frontend-modular.mdc` | `ui/shell/` ownership |
+| `frontend-modular.mdc` | `shell/` ownership |
 | `react.mdc` | Debounce, scroll budgets, prefetch |
 | `cold-path.mdc` | Handler body limits, no N+1 |
 | `deploy/vendor/MARKETING.md` | Buyer-facing "Command palette" when shipped |

@@ -8,6 +8,7 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "noUnusedLocals": false,

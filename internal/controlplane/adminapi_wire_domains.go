@@ -316,6 +316,8 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		ValidateCampaignFlowPaths: svc.ValidateCampaignFlowPaths,
 		RecordRevisionConflict:    svc.AuditCampaignRevisionConflict,
 		ClickHouseQuery:           svc.ClickHouseQuery(),
+		PostgresPool:              pool,
+		MarginDefaultThresholdBps: h.cfg.MarginGuardDefaultThresholdBps,
 		ApplyRateLimit:            limit,
 		RequireAnyPermission:      permAny,
 		AuthorizeCampaignAccess:   authCampaign,

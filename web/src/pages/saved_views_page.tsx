@@ -10,7 +10,7 @@ import {
 import type { SavedView } from '@/api/types';
 import { SavedViewsPanel } from '@/domains/portals/saved_views_panel';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 
 type EditRow = {
   name: string;

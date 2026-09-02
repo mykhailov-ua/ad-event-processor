@@ -32,6 +32,17 @@ WHERE campaign_id IN (?)
  AND created_at < ?
 GROUP BY campaign_id`
 
+const blockedClicksByCampaignQuery = `
+SELECT
+ toString(campaign_id) AS campaign_id,
+ toUInt64(count()) AS block_count
+FROM clicks
+WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+ AND fraud_reason != ''
+GROUP BY campaign_id`
+
 const campaignEconomicsQuery = `
 SELECT
  toString(campaign_id) AS campaign_id,
@@ -81,6 +92,32 @@ func QueryUniqueClicksByCampaignCH(
 			return nil, err
 		}
 		out[campaignID] = uniqueClicks
+	}
+	return out, rows.Err()
+}
+
+func QueryBlockedClicksByCampaignCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) (map[string]int64, error) {
+	out := make(map[string]int64)
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return out, nil
+	}
+	rows, err := clickhouseQuery.Query(ctx, blockedClicksByCampaignQuery, campaignIDs, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("blocked clicks by campaign: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var campaignID string
+		var blockCount int64
+		if err := rows.Scan(&campaignID, &blockCount); err != nil {
+			return nil, err
+		}
+		out[campaignID] = blockCount
 	}
 	return out, rows.Err()
 }

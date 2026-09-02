@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 
-import { PanelSection } from '@/components/system/stat_panel';
+import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,

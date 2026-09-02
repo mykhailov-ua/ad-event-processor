@@ -1,7 +1,8 @@
-import { apiJson } from './client.js';
+import { apiFetch, apiJson, ApiError } from './client.js';
 import type {
   AcceptEulaRequest,
   ApplyLicenseRequest,
+  ConsentRecord,
   CreateSupportFeedbackRequest,
   DisputeListQuery,
   DisputeListResponse,
@@ -78,4 +79,43 @@ export async function createSupportFeedback(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+export async function postConsent(
+  body: ConsentRecord,
+  signature: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await apiFetch('/api/v1/consent', {
+    method: 'POST',
+    headers: {
+      'X-Consent-Signature': signature,
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if (!response.ok) {
+    let code = 'HTTP_ERROR';
+    let message = response.statusText || `HTTP ${response.status}`;
+    try {
+      const payload: unknown = await response.json();
+      if (payload && typeof payload === 'object') {
+        const record = payload as Record<string, unknown>;
+        const errorField = record.error;
+        if (errorField && typeof errorField === 'object') {
+          const errObj = errorField as Record<string, unknown>;
+          if (typeof errObj.code === 'string') {
+            code = errObj.code;
+          }
+          if (typeof errObj.message === 'string') {
+            message = errObj.message;
+          }
+        }
+      }
+    } catch {
+      // Non-JSON error body.
+    }
+    throw new ApiError(response.status, code, message);
+  }
 }

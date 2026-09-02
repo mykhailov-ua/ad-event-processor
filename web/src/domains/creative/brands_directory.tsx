@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { CustomerScopeBar } from '@/components/system/customer_scope_bar';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { CustomerScopeBar } from '@/shell/customer_scope_bar';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -111,7 +111,7 @@ export function BrandsDirectory({
       title="Brands"
       actions={
         onCreateBrand ? (
-          <Button className="h-9 text-sm" onClick={() => setCreateOpen(true)} type="button">
+          <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
             Create brand
           </Button>
         ) : undefined

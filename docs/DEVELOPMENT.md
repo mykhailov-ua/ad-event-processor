@@ -81,7 +81,7 @@ Reference implementation for steps 1-4:
 | Documented route key | `internal/openapi/documented_routes.go` (`PUT /api/v1/cost-sync/credentials/{network}`) |
 | Go DTO | `internal/controlplane/cost_sync_handlers.go` (`CostSyncCredentialDTO`) |
 | Parity test | `internal/controlplane/openapi_cost_sync_test.go` (`TestOpenAPI_costSyncCredentialSchemaKeys`) |
-| TS helper | `web/src/helpers/cost_sync_api.ts` (`CostSyncCredentialResponse = components['schemas']['CostSyncCredential']`) |
+| TS helper | `web/src/api/cost_sync_api.ts` (`CostSyncCredentialResponse = components['schemas']['CostSyncCredential']`) |
 
 Example spec fragment (permissions + schema `$ref`):
 
@@ -101,7 +101,7 @@ put:
 Example TS consumption:
 
 ```typescript
-// web/src/helpers/cost_sync_api.ts
+// web/src/api/cost_sync_api.ts
 import type { components } from '../types/generated/openapi.js';
 
 export type CostSyncCredentialResponse = components['schemas']['CostSyncCredential'];

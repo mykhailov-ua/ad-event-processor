@@ -1,7 +1,7 @@
 import { ApiError } from '@/api/client';
-import { ErrorBlock } from '@/components/system/error_block';
-import { SectionNav } from '@/components/system/section_nav';
-import { StubBanner } from '@/components/system/stub_banner';
+import { ErrorBlock } from '@/shell/error_block';
+import { SectionNav } from '@/shell/section_nav';
+import { StubBanner } from '@/shell/stub_banner';
 import type { SectionNavItem } from '@/lib/nav_config';
 
 export const AUTOMATION_NAV_ITEMS: SectionNavItem[] = [

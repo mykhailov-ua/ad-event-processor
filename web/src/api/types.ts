@@ -35,6 +35,16 @@ export type CampaignListQuery = NonNullable<
   operations['campaignsList']['parameters']['query']
 >;
 
+export type CampaignListMetricsQuery = NonNullable<
+  operations['campaignsListMetrics']['parameters']['query']
+>;
+
+export type CampaignListMetricsRow = components['schemas']['CampaignListMetricsRow'];
+export type CampaignListMetricsBatchResponse =
+  components['schemas']['CampaignListMetricsBatchResponse'];
+
+export type CampaignStatusTotals = components['schemas']['CampaignStatusTotals'];
+
 export type InvoiceListQuery = NonNullable<
   operations['billingListInvoices']['parameters']['query']
 >;
@@ -94,6 +104,9 @@ export type TelegramReportExportRequest = components['schemas']['TelegramReportE
 export type ReportJobStatus = components['schemas']['ReportJobStatus'];
 export type DLQInboxEntry = components['schemas']['DLQInboxEntry'];
 export type DLQInboxListResponse = components['schemas']['DLQInboxListResponse'];
+export type DLQEntry = components['schemas']['DLQEntry'];
+export type DLQListResponse = components['schemas']['DLQListResponse'];
+export type ConsentRecord = components['schemas']['ConsentRecord'];
 export type FraudIntegration = {
   campaign_id: string;
   name?: string;
@@ -130,6 +143,8 @@ export type DlqInboxListQuery = {
   cursor?: string;
   source?: string;
 };
+
+export type DlqListQuery = NonNullable<operations['opsListDlq']['parameters']['query']>;
 
 export type MLManualLabel = components['schemas']['MLManualLabel'];
 export type FraudManualLabelRequest = components['schemas']['FraudManualLabelRequest'];

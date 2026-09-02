@@ -2,7 +2,7 @@ import { createContext, useCallback, useMemo, useState, type ReactNode } from 'r
 
 import { getMeta } from '@/api/platform_api';
 import type { MetaResponse } from '@/api/types';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { licenseNeedsSetup, readBootstrapComplete } from '@/lib/install_meta';
 
 export type MetaContextValue = {

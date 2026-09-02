@@ -16,19 +16,20 @@ fi
 
 COPY_SRC=(
   web/src/domains
+  web/src/shell
   web/src/pages
-  web/src/ui
   web/src/views
 )
 BUTTON_SRC=(
   web/src/domains
+  web/src/shell
   web/src/pages
-  web/src/ui
   web/src/views
 )
 CONTROL_SRC=(
   web/src/components
   web/src/domains
+  web/src/shell
   web/src/pages
 )
 
@@ -91,8 +92,8 @@ for dir in "${CONTROL_SRC[@]}"; do
   fi
 done
 
-# Pages and domains must call API modules, not raw fetch (cold-path boundary).
-for dir in web/src/domains web/src/pages; do
+# Pages and UI domains must call API modules, not raw fetch (cold-path boundary).
+for dir in web/src/domains web/src/shell web/src/pages; do
   [ -d "$dir" ] || continue
   if rg -n '\bfetch\(' "$dir" --glob '*.tsx' --glob '*.ts' 2> /dev/null; then
     echo "Error: UI slop - raw fetch() in ${dir}; use web/src/api/* wrappers"
@@ -101,10 +102,35 @@ for dir in web/src/domains web/src/pages; do
 done
 
 # Raw HTML tables in domain UI are banned; use shadcn Table.
-for dir in web/src/domains web/src/pages; do
+for dir in web/src/domains web/src/shell web/src/pages; do
   [ -d "$dir" ] || continue
   if rg -n '<(table|thead|tbody)\b' "$dir" --glob '*.tsx' 2> /dev/null; then
     echo "Error: UI slop - raw <table> in ${dir}; use @/components/ui/table"
+    failed=1
+  fi
+done
+
+# Raw admin-btn on interactive elements bypasses shadcn Button contract (ui.mdc).
+for dir in "${BUTTON_SRC[@]}"; do
+  [ -d "$dir" ] || continue
+  if rg -n '<button[^>]*className="[^"]*admin-btn' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - raw <button className=\"admin-btn\"> under ${dir}; use @/components/ui/button"
+    failed=1
+  fi
+  if rg -n "<button[^>]*className=\\{[^}]*'admin-btn" "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - raw <button> with admin-btn cn() under ${dir}; use @/components/ui/button"
+    failed=1
+  fi
+  if rg -n 'className="admin-btn' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - className=\"admin-btn\" under ${dir}; use @/components/ui/button (multiline <button> included)"
+    failed=1
+  fi
+  if rg -n "className='admin-btn" "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - className='admin-btn' under ${dir}; use @/components/ui/button"
+    failed=1
+  fi
+  if rg -n 'className=\{[^}]*admin-btn' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - admin-btn in className expression under ${dir}; use @/components/ui/button"
     failed=1
   fi
 done

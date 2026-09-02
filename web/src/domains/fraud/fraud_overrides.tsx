@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { ErrorBlock } from '@/components/system/error_block';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { ErrorBlock } from '@/shell/error_block';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 

@@ -9,13 +9,18 @@ const TableFrame = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 );
 TableFrame.displayName = 'TableFrame';
 
-const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
-  ({ className, ...props }, ref) => (
-    <div className="relative w-full min-w-0 max-w-full overflow-x-auto">
-      <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
-    </div>
-  )
-);
+const Table = React.forwardRef<
+  HTMLTableElement,
+  React.HTMLAttributes<HTMLTableElement> & { bare?: boolean }
+>(({ className, bare = false, ...props }, ref) => {
+  const table = (
+    <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
+  );
+  if (bare) {
+    return table;
+  }
+  return <div className="relative w-full min-w-0 max-w-full overflow-x-auto">{table}</div>;
+});
 Table.displayName = 'Table';
 
 const TableHeader = React.forwardRef<

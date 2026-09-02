@@ -8,8 +8,8 @@ import {
   TableCell,
   TableHeader,
   TableRow,
-} from '@/components/system/directory_table';
-import { PanelSection } from '@/components/system/stat_panel';
+} from '@/shell/directory_table';
+import { PanelSection } from '@/shell/stat_panel';
 import type { DashboardBreakdownRow, DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';
 import {
   formatDashboardCrPct,
@@ -82,7 +82,7 @@ export function DashboardBreakdownTableSection({
       {rows.length === 0 ? (
         <p className="px-5 py-6 text-sm text-muted-foreground">{emptyLabel}</p>
       ) : (
-        <DirectoryTable className="rounded-none border-0 bg-transparent" scrollable>
+        <DirectoryTable className="border-0 bg-transparent shadow-none" scrollable>
           <TableHeader>
             <TableRow>
               {visibleColumns.map((columnId) => (

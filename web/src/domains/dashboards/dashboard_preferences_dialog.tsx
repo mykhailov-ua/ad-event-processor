@@ -1,7 +1,7 @@
+import { Button } from '@/components/ui/button';
 import { useEffect, useMemo, useState, type ReactNode, type WheelEvent } from 'react';
 
-import { MultiSelectField } from '@/components/system/multi_select_field';
-import { Button } from '@/components/ui/button';
+import { MultiSelectField } from '@/shell/multi_select_field';
 import {
   Dialog,
   DialogContent,
@@ -49,12 +49,12 @@ function PreferencesSection({
   children: ReactNode;
 }) {
   return (
-    <section className="ui-preferences-section ui-surface-raised grid gap-5 p-5">
-      <div className="grid gap-2 border-b border-border/40 pb-4">
-        <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
-        {description ? <p className="text-xs leading-relaxed text-muted-foreground">{description}</p> : null}
+    <section className="admin-stack">
+      <div className="admin-stack admin-stack--compact">
+        <h3 className="admin-ops-block__title">{title}</h3>
+        {description ? <p className="admin-muted">{description}</p> : null}
       </div>
-      <div className="grid gap-5">{children}</div>
+      <div className="admin-stack admin-stack--compact">{children}</div>
     </section>
   );
 }
@@ -104,22 +104,21 @@ export function DashboardPreferencesDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0">
-        <div className="ui-preferences-dialog flex max-h-[min(80vh,44rem)] flex-col overflow-hidden">
-          <DialogHeader className="ui-preferences-header shrink-0 border-b px-6 py-4 text-left">
-            <DialogTitle className="text-base font-semibold tracking-tight">Preferences</DialogTitle>
+        <div
+          className="admin-preferences-dialog ui-scrollbar max-h-[min(80vh,44rem)] overflow-y-auto overscroll-y-contain"
+          onWheel={stopDialogWheelPropagation}
+        >
+          <DialogHeader className="admin-preferences-dialog__header sticky top-0 z-10 shrink-0 border-b px-4 py-3 text-left">
+            <DialogTitle className="admin-ops-block__title">Preferences</DialogTitle>
           </DialogHeader>
-          <div
-            className="ui-preferences-dialog-body ui-scrollbar grid min-h-0 flex-1 gap-7 overflow-y-auto overscroll-y-contain px-6 py-6"
-            onWheel={stopDialogWheelPropagation}
-          >
+          <div className="admin-preferences-dialog__body grid gap-4 px-4 py-4">
             <PreferencesSection
-              title="Metrics"
               description="KPI tiles and chart lines shown on the dashboard."
+              title="Metrics"
             >
               <MultiSelectField<DashboardMetricId>
                 id="dashboard-prefs-kpi-metrics"
                 label="KPI tiles"
-                labelTone="nested"
                 options={kpiOptions}
                 value={draft.kpiMetrics}
                 onChange={(value) => updateDraft('kpiMetrics', value)}
@@ -127,20 +126,18 @@ export function DashboardPreferencesDialog({
               <MultiSelectField<DashboardMetricId>
                 id="dashboard-prefs-chart-metrics"
                 label="Chart lines"
-                labelTone="nested"
                 options={chartOptions}
                 value={draft.chartMetrics}
                 onChange={(value) => updateDraft('chartMetrics', value)}
               />
             </PreferencesSection>
             <PreferencesSection
-              title="Top blocks"
               description="Breakdown tables and the columns each table shows."
+              title="Top blocks"
             >
               <MultiSelectField
                 id="dashboard-prefs-breakdown-entities"
                 label="Entities"
-                labelTone="nested"
                 options={entityOptions}
                 value={draft.breakdownEntities}
                 onChange={(value) => updateDraft('breakdownEntities', value)}
@@ -148,40 +145,36 @@ export function DashboardPreferencesDialog({
               <MultiSelectField
                 id="dashboard-prefs-breakdown-columns"
                 label="Columns"
-                labelTone="nested"
+                minSelected={2}
                 options={breakdownColumnOptions}
                 value={draft.breakdownColumns}
                 onChange={(value) => updateDraft('breakdownColumns', value)}
-                minSelected={2}
               />
             </PreferencesSection>
-            <PreferencesSection title="Recent clicks" description="Columns in the live click feed.">
+            <PreferencesSection description="Columns in the live click feed." title="Recent clicks">
               <MultiSelectField
                 id="dashboard-prefs-recent-clicks"
                 label="Columns"
-                labelTone="nested"
                 options={recentClickOptions}
                 value={draft.recentClickColumns}
                 onChange={(value) => updateDraft('recentClickColumns', value)}
               />
             </PreferencesSection>
           </div>
-          <DialogFooter className="ui-preferences-footer shrink-0 flex-row items-center justify-between border-t px-6 py-4 sm:justify-between">
-            <Button
+          <DialogFooter className="admin-preferences-dialog__footer sticky bottom-0 z-10 shrink-0 flex-row items-center justify-between border-t px-4 py-3 sm:justify-between">
+            <button
+              className="admin-text-link"
               type="button"
-              variant="link"
-              className="h-auto px-0 text-muted-foreground hover:text-foreground"
               onClick={() => setDraft(defaultBuyerDashboardPreferences())}
             >
               Restore to default
-            </Button>
-            <div className="flex gap-3">
-              <Button type="button" variant="outline" shape="square" onClick={() => onOpenChange(false)}>
+            </button>
+            <div className="admin-toolbar-group">
+              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
               <Button
                 type="button"
-                shape="square"
                 onClick={() => {
                   onApply(draft);
                   onOpenChange(false);

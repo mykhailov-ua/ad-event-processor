@@ -1,18 +1,14 @@
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { EmptyState } from '@/shell/empty_state';
 import type { OutboxEvent } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
-import { OpsNav, opsPanelError } from '@/domains/ops/ops_nav';
+import { opsPanelError } from '@/domains/ops/ops_nav';
+import { OpsListFooter } from '@/domains/ops/ops_list_footer';
+import {
+  OpsPageBlockingError,
+  OpsPageLoading,
+  OpsPageShell,
+} from '@/domains/ops/ops_page_shell';
+import { OpsTable } from '@/domains/ops/ops_table';
 
 export type OpsOutboxProps = {
   items: OutboxEvent[];
@@ -31,7 +27,6 @@ export function OpsOutbox({
   items,
   nextCursor,
   total,
-  limit,
   fetching,
   error,
   hasSnapshot,
@@ -40,66 +35,52 @@ export function OpsOutbox({
   onNext,
 }: OpsOutboxProps) {
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton />;
+    return <OpsPageLoading />;
   }
 
   if (error && !hasSnapshot) {
-    return (
-      <PageChrome title="Outbox">
-        <OpsNav />
-        {opsPanelError(error, 'Could not load outbox')}
-      </PageChrome>
-    );
+    return <OpsPageBlockingError error={error} pageTitle="Outbox" title="Could not load outbox" />;
   }
 
   return (
-    <PageChrome title="Outbox">
-      <OpsNav />
-
-      <form
-        className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
-        onSubmit={(event) => event.preventDefault()}
-      >
-        <p className="col-span-full text-sm text-muted-foreground">
-          {total != null ? `${total} events total` : 'Outbox event tail'}
-        </p>
-        <PaginationPrevNext
-          canGoPrev={canGoPrev}
+    <OpsPageShell
+      footer={
+        <OpsListFooter
           canGoNext={Boolean(nextCursor)}
+          canGoPrev={canGoPrev}
           disabled={fetching}
-          onPrev={onPrev}
+          summary={total != null ? `${total} events total` : 'Outbox event tail'}
           onNext={onNext}
+          onPrev={onPrev}
         />
-      </form>
-
+      }
+      title="Outbox"
+    >
       {items.length === 0 ? (
-        <EmptyState title="No outbox events" description="Outbox tail is empty for this page." />
+        <EmptyState description="Outbox tail is empty for this page." title="No outbox events" />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Event type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((row) => (
-                <TableRow key={row.id ?? `${row.event_type}-${row.created_at}`}>
-                  <TableCell>{row.id ?? ''}</TableCell>
-                  <TableCell>{row.event_type ?? ''}</TableCell>
-                  <TableCell>{row.status ?? ''}</TableCell>
-                  <TableCell>{displayTimestamp(row.created_at)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <OpsTable
+          head={
+            <tr>
+              <th>ID</th>
+              <th>Event type</th>
+              <th>Status</th>
+              <th>Created</th>
+            </tr>
+          }
+        >
+          {items.map((row) => (
+            <tr key={row.id ?? `${row.event_type}-${row.created_at}`}>
+              <td className="admin-table-td--id">{row.id ?? ''}</td>
+              <td>{row.event_type ?? ''}</td>
+              <td>{row.status ?? ''}</td>
+              <td>{displayTimestamp(row.created_at)}</td>
+            </tr>
+          ))}
+        </OpsTable>
       )}
 
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
-    </PageChrome>
+    </OpsPageShell>
   );
 }

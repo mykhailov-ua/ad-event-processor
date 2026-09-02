@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { PrimaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PrimaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -81,7 +81,7 @@ export function OffersDirectory({
       title="Offers"
       actions={
         onCreateOffer ? (
-          <Button className="h-9 text-sm" onClick={() => setCreateOpen(true)} type="button">
+          <Button className="text-sm" onClick={() => setCreateOpen(true)} type="button">
             Create offer
           </Button>
         ) : undefined
@@ -100,7 +100,7 @@ export function OffersDirectory({
                 <Label htmlFor="offer-create-name">Name</Label>
                 <Input
                   id="offer-create-name"
-                  placeholder="Offer name…"
+                  placeholder="Offer name..."
                   value={draftName}
                   onChange={(event) => onDraftNameChange?.(event.target.value)}
                 />
@@ -109,7 +109,7 @@ export function OffersDirectory({
                 <Label htmlFor="offer-create-url">URL</Label>
                 <Input
                   id="offer-create-url"
-                  placeholder="https://…"
+                  placeholder="https://..."
                   value={draftUrl}
                   onChange={(event) => onDraftUrlChange?.(event.target.value)}
                 />

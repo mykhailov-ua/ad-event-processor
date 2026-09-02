@@ -106,6 +106,7 @@ func attachCampaignPresentation(ctx context.Context, dto *CampaignDTO) {
 	}
 	dto.StatusLabel = campaignStatusLabel(dto.Status)
 	dto.StatusTone = campaignStatusTone(dto.Status)
+	attachCampaignDisplayID(dto)
 	attachCampaignMoneyDisplay(dto)
 	attachCampaignTimestampDisplay(dto)
 	actions, denied := computeCampaignAllowedActions(ctx, dto.Status)
@@ -397,13 +398,14 @@ type ListSortDTO struct {
 }
 
 type ListEnvelope[T any] struct {
-	Items          []T               `json:"items"`
-	Total          int64             `json:"total"`
-	Limit          int32             `json:"limit"`
-	Offset         int32             `json:"offset"`
-	Freshness      DataFreshnessDTO  `json:"freshness,omitempty"`
-	FiltersApplied map[string]string `json:"filters_applied,omitempty"`
-	Sort           *ListSortDTO      `json:"sort,omitempty"`
+	Items          []T                      `json:"items"`
+	Total          int64                    `json:"total"`
+	Limit          int32                    `json:"limit"`
+	Offset         int32                    `json:"offset"`
+	Freshness      DataFreshnessDTO         `json:"freshness,omitempty"`
+	FiltersApplied map[string]string        `json:"filters_applied,omitempty"`
+	Sort           *ListSortDTO             `json:"sort,omitempty"`
+	StatusTotals   *CampaignStatusTotalsDTO `json:"status_totals,omitempty"`
 }
 
 type AssignCampaignOwnerRequest struct {
@@ -2349,6 +2351,7 @@ func ForecastRetryAfterSec() int {
 
 type CampaignDTO struct {
 	ID                         string                `json:"id"`
+	DisplayID                  string                `json:"display_id,omitempty"`
 	Name                       string                `json:"name"`
 	Status                     string                `json:"status"`
 	BudgetLimit                string                `json:"budget_limit"`

@@ -1,8 +1,8 @@
 import { LicenseApplyForm } from '@/domains/onboarding/license_apply_form';
 import { settingsEmptyValue, settingsTextValue } from '@/domains/settings/settings_empty';
 import { SettingsNav } from '@/domains/settings/settings_nav';
-import { PageChrome } from '@/components/system/page_chrome';
-import { PanelSection, StatPanel, StatRow } from '@/components/system/stat_panel';
+import { PageChrome } from '@/shell/page_chrome';
+import { PanelSection, StatPanel, StatRow } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
 import { useMeta } from '@/hooks/use_meta';
 import { licenseStateLabel } from '@/lib/install_meta';

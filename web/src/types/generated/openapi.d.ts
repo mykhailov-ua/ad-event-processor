@@ -493,7 +493,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/campaigns/{id}/clone/preview": {
+    "/api/v1/campaigns/{id}/clone-preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -545,7 +545,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/campaigns/{id}/editor-shell": {
+    "/api/v1/campaigns/{id}/editor": {
         parameters: {
             query?: never;
             header?: never;
@@ -943,6 +943,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaigns/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Batch campaign list metrics
+         * @description Returns impressions, clicks, conversions, unique clicks, margin window, and blocks for up to 100 campaigns in one request.
+         */
+        get: operations["campaignsListMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaigns/migrate/import": {
         parameters: {
             query?: never;
@@ -1264,6 +1284,23 @@ export interface paths {
          * @description Enqueues a worker run for the requested UTC date range.
          */
         post: operations["costSyncRunManual"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cost-sync/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Cost sync networks, credentials, and history snapshot */
+        get: operations["costSyncSnapshot"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1928,6 +1965,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integration/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Integration schemas and bundled templates snapshot */
+        get: operations["integrationSnapshot"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integration/templates": {
         parameters: {
             query?: never;
@@ -2427,6 +2481,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/ops/home": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ops home doctor, stack health, and dashboard summary */
+        get: operations["opsHome"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ops/incidents": {
         parameters: {
             query?: never;
@@ -2810,6 +2881,23 @@ export interface paths {
         put?: never;
         /** Re-enqueue a DLQ postback */
         post: operations["postbacksRetryDlq"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/postbacks/snapshot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Postbacks configs, DLQ, and campaign status snapshot */
+        get: operations["postbacksSnapshot"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4209,6 +4297,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/session/bootstrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authenticated user, session shell, and EULA flags in one response */
+        get: operations["sessionBootstrap"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/settings/platform": {
         parameters: {
             query?: never;
@@ -5081,6 +5186,8 @@ export interface components {
         Campaign: {
             /** Format: uuid */
             id: string;
+            /** @description Eight-digit operator-facing campaign number (deterministic from id). */
+            display_id?: string;
             name: string;
             status: string;
             /** @description Decimal USD string (legacy wire format). */
@@ -5224,6 +5331,7 @@ export interface components {
             filters_applied?: {
                 [key: string]: string;
             };
+            status_totals?: components["schemas"]["CampaignStatusTotals"];
             sort?: components["schemas"]["ListSort"];
         };
         CampaignMargin: {
@@ -6365,6 +6473,16 @@ export interface components {
             weight: number;
             status: string;
         };
+        CampaignStatusTotals: {
+            /** Format: int64 */
+            active: number;
+            /** Format: int64 */
+            paused: number;
+            /** Format: int64 */
+            archived: number;
+            /** Format: int64 */
+            total: number;
+        };
         ListSort: {
             field?: string;
             /** @enum {string} */
@@ -6611,6 +6729,52 @@ export interface components {
                 [key: string]: unknown;
             } | unknown[];
         };
+        CampaignListMetricsRow: {
+            /** Format: uuid */
+            campaign_id: string;
+            /** Format: int64 */
+            impressions?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            conversions?: number;
+            /** Format: int64 */
+            unique_clicks?: number;
+            /** Format: int64 */
+            blocks?: number;
+            /** Format: int64 */
+            leads_raw?: number;
+            /** Format: int64 */
+            hold_leads?: number;
+            /** Format: int64 */
+            rejected_leads?: number;
+            /** Format: int64 */
+            lp_clicks?: number;
+            /** Format: int64 */
+            lp_views?: number;
+            /** Format: int64 */
+            bots?: number;
+            stale?: boolean;
+            /** Format: int64 */
+            advertiser_spend_micro?: number;
+            /** Format: int64 */
+            rtb_cost_micro?: number;
+            /** Format: int64 */
+            operator_margin_micro?: number;
+            /** Format: int64 */
+            publisher_payout_micro?: number;
+            margin_breach?: boolean;
+        };
+        CampaignListMetricsBatchResponse: {
+            items: {
+                [key: string]: components["schemas"]["CampaignListMetricsRow"];
+            };
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            stale: boolean;
+        };
         MigrateImportRequest: {
             /** Format: uuid */
             customer_id: string;
@@ -6812,6 +6976,11 @@ export interface components {
             source: string;
             /** Format: date-time */
             timestamp?: string;
+        };
+        CostSyncSnapshot: {
+            networks: components["schemas"]["CostSyncNetworkSchema"][];
+            credentials: components["schemas"]["CostSyncCredential"][];
+            history: components["schemas"]["CostSyncRun"][];
         };
         Customer: {
             /** Format: uuid */
@@ -7098,6 +7267,10 @@ export interface components {
             name?: string;
             statuses?: components["schemas"]["AffiliateStatusPresetEntry"][];
         };
+        IntegrationSnapshot: {
+            schemas: components["schemas"]["IntegrationSchema"][];
+            templates: components["schemas"]["IntegrationTemplateCatalogEntry"][];
+        };
         CreateLanderRequest: {
             name: string;
             url?: string;
@@ -7306,6 +7479,11 @@ export interface components {
             automation_worker_last_tick_seconds?: number | null;
             license_state: string;
         };
+        OpsHomeSnapshot: {
+            doctor: components["schemas"]["DoctorSummary"];
+            stackHealth: components["schemas"]["StackHealthSnapshot"];
+            dashboardSummary: components["schemas"]["DashboardSummary"];
+        };
         ShardHealthStatus: {
             /** Format: int32 */
             shard_id?: number;
@@ -7345,6 +7523,11 @@ export interface components {
             /** Format: int64 */
             total?: number;
             next_cursor?: string;
+        };
+        PostbacksSnapshot: {
+            configs: components["schemas"]["PostbackConfig"][];
+            dlq: components["schemas"]["PostbackDlqEntry"][];
+            campaignStatus: components["schemas"]["PostbackCampaignStatus"][];
         };
         PublisherKPIs: {
             /** Format: int64 */
@@ -7821,6 +8004,22 @@ export interface components {
             timezone?: string;
             stale_banner?: string;
             nav_items?: components["schemas"]["SessionNavItem"][];
+        };
+        SessionBootstrapUser: {
+            /** Format: uuid */
+            id: string;
+            email?: string;
+            role: string;
+            /** Format: uuid */
+            customer_id: string;
+            permissions?: string[];
+        };
+        SessionBootstrap: {
+            user: components["schemas"]["SessionBootstrapUser"];
+            session: components["schemas"]["SessionResponse"];
+            eula_required?: boolean;
+            eula_accepted?: boolean;
+            eula_version?: string;
         };
         /** @description platformconfig.PublicView (config, secrets metadata, restart_required, templates). */
         PlatformSettingsView: {
@@ -8841,6 +9040,8 @@ export interface operations {
                 pacing_mode?: string;
                 budget_min_micro?: number;
                 budget_max_micro?: number;
+                owner_user_id?: string;
+                country?: string;
                 limit?: components["parameters"]["LimitQuery"];
                 offset?: components["parameters"]["OffsetQuery"];
             };
@@ -9700,6 +9901,34 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    campaignsListMetrics: {
+        parameters: {
+            query: {
+                /** @description Comma-separated campaign UUIDs (max 100). */
+                ids: string;
+                /** @description Range start (RFC3339). Default is now minus 7 days. */
+                from?: components["parameters"]["ReportFromQuery"];
+                /** @description Range end (RFC3339). Default is now UTC. */
+                to?: components["parameters"]["ReportToQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Batch metrics keyed by campaign id */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignListMetricsBatchResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     campaignsMigrateImport: {
         parameters: {
             query?: never;
@@ -10195,6 +10424,30 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    costSyncSnapshot: {
+        parameters: {
+            query?: {
+                customer_id?: components["parameters"]["CustomerIdQuery"];
+                limit?: components["parameters"]["LimitQuery"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Composite cost sync snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostSyncSnapshot"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     customersList: {
         parameters: {
             query?: {
@@ -10524,6 +10777,7 @@ export interface operations {
         parameters: {
             query: {
                 customer_id: components["parameters"]["CustomerIdQueryRequired"];
+                campaign_id?: components["parameters"]["CampaignIdQuery"];
                 /** @description Range start (RFC3339). Default is now minus 7 days. */
                 from?: components["parameters"]["ReportFromQuery"];
                 /** @description Range end (RFC3339). Default is now UTC. */
@@ -11283,6 +11537,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApplyIntegrationSchemaResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    integrationSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Composite integration snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSnapshot"];
                 };
             };
             default: components["responses"]["Error"];
@@ -12107,6 +12382,27 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    opsHome: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ops home composite snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpsHomeSnapshot"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     opsIncidents: {
         parameters: {
             query?: never;
@@ -12702,6 +12998,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatusOKResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    postbacksSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Composite postbacks snapshot */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostbacksSnapshot"];
                 };
             };
             default: components["responses"]["Error"];
@@ -15079,6 +15396,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionResponse"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    sessionBootstrap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Session bootstrap payload */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionBootstrap"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorBody"];
                 };
             };
             default: components["responses"]["Error"];

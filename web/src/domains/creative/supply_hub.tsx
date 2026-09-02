@@ -4,9 +4,9 @@ import {
   SUPPLY_PREVIEW_ADS_TXT_PATH,
   SUPPLY_PREVIEW_SELLERS_JSON_PATH,
 } from '@/api/supply_api';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { PageSkeleton } from '@/components/system/page_skeleton';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,

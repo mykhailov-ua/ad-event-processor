@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { listDlqInbox, retryDlqInboxEntry } from '@/api/ops_api';
 import type { DLQInboxEntry } from '@/api/types';
 import { OpsDlqInbox } from '@/domains/ops/ops_dlq_inbox';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { parseListLimit } from '@/lib/list_query';
 
 const CURSOR_STACK_KEY = 'cursor_stack';

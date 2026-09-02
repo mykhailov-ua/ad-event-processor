@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 
-import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { PageChrome } from '@/components/system/page_chrome';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
+import { PrimaryActionButton, SecondaryActionButton } from '@/shell/action_buttons';
+import { PageChrome } from '@/shell/page_chrome';
+import { EmptyState } from '@/shell/empty_state';
+import { ErrorBlock } from '@/shell/error_block';
+import { PageSkeleton } from '@/shell/page_skeleton';
+import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -184,7 +184,7 @@ export function TeamOverviewView({
           <Label htmlFor="team-customer-id">Customer ID</Label>
           <Input
             id="team-customer-id"
-            className="h-9 text-sm"
+            className="text-sm"
             value={draftCustomerId}
             onChange={(event) => onDraftCustomerIdChange(event.target.value)}
           />

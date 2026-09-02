@@ -8,7 +8,7 @@ import {
   getReportJob,
 } from '@/api/reports_api';
 import { ReportJobs } from '@/domains/reports/report_jobs';
-import { useResource } from '@/hooks/use_resource';
+import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { defaultReportRange } from '@/lib/report_paths';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';

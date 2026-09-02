@@ -1,5 +1,5 @@
-import { HubLinkCard, HubLinkGrid } from '@/components/system/hub_link_card';
-import { PageChrome } from '@/components/system/page_chrome';
+import { HubLinkCard, HubLinkGrid } from '@/shell/hub_link_card';
+import { PageChrome } from '@/shell/page_chrome';
 import { CreativeNav } from '@/domains/creative/creative_nav';
 
 const CREATIVE_LINKS = [
