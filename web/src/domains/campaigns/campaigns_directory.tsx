@@ -1,30 +1,13 @@
-import { useState } from 'react';
-import { Plus, Upload, Wand2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useCallback, useMemo, useState } from 'react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
-import { FilterApplyButton, FilterResetButton, PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
-import { AppliedCustomerBanner } from '@/components/system/applied_customer_banner';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  SortableTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/system/directory_table';
-import { DirectoryListMeta } from '@/components/system/directory_list_meta';
-import {
-  DirectoryFilterForm,
-  FilterField,
-  FilterPanel,
-} from '@/components/system/filter_panel';
-import { PageChrome } from '@/components/system/page_chrome';
-import { PaginationPrevNext } from '@/components/system/pagination_prev_next';
-import { RowActionsMenu } from '@/components/system/row_actions_menu';
-import { ToggleChipGroup } from '@/components/system/toggle_chip_group';
-import { CustomerCombobox, type CustomerComboboxOption } from '@/components/system/customer_combobox';
-import { Button } from '@/components/ui/button';
+import type { CampaignListMetrics } from '@/api/campaigns_api';
+import type { CampaignStatusTotals } from '@/api/campaigns_api';
+import type { Campaign, CampaignMargin, SelfServeCampaignTemplate } from '@/api/types';
+import type { CustomerComboboxOption } from '@/components/system/customer_combobox';
+import { PrimaryActionButton, SecondaryActionButton } from '@/components/system/action_buttons';
+import { ErrorBlock } from '@/components/system/error_block';
+import { PageSkeleton } from '@/components/system/page_skeleton';
 import {
   Dialog,
   DialogContent,
@@ -33,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -50,27 +32,41 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { EmptyState } from '@/components/system/empty_state';
-import { ErrorBlock } from '@/components/system/error_block';
-import { PageSkeleton } from '@/components/system/page_skeleton';
-import type { CampaignStatusTotals } from '@/api/campaigns_api';
-import type { Campaign, SelfServeCampaignTemplate } from '@/api/types';
-import { CampaignMetricsPopover } from '@/domains/campaigns/campaign_metrics_popover';
-import {
-  campaignForecastHref,
-  campaignFraudHref,
-  type CampaignWithMoneyDisplay,
-} from '@/domains/campaigns/campaign_metrics_shared';
-import { CampaignOverviewSheet } from '@/domains/campaigns/campaign_overview_sheet';
 import { CampaignImportPanel } from '@/domains/campaigns/campaign_import_panel';
-import { CampaignStatusBadge } from '@/domains/campaigns/campaign_status_badge';
+import { CampaignOverviewSheet } from '@/domains/campaigns/campaign_overview_sheet';
 import { CampaignWizardPanel } from '@/domains/campaigns/campaign_wizard_panel';
-import { displayTimestamp } from '@/lib/display';
+import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/campaign_metrics_shared';
+import {
+  loadCampaignListColumnPrefs,
+  mergeCampaignListColumnWidths,
+  saveCampaignListColumnPrefs,
+  setCampaignListColumnWidth,
+  type CampaignListColumnId,
+  type CampaignListColumnPrefs,
+  visibleCampaignListColumns,
+} from '@/domains/campaigns/campaign_list_columns';
+import {
+  computeCampaignListColumnWidths,
+  defaultCampaignListColumnWidths,
+} from '@/domains/campaigns/campaign_list_column_widths';
+import { CampaignsListTable } from '@/domains/campaigns/campaigns_list_table';
+import { CampaignsListToolbar } from '@/domains/campaigns/campaigns_list_toolbar';
+import {
+  type CampaignSortField,
+  type CampaignStatusFilter,
+  type SortOrder,
+} from '@/domains/campaigns/campaigns_list_types';
 import { listPageRange } from '@/lib/list_page_stats';
+import { clampListLimit } from '@/lib/list_query';
+import { useTrackerHeaderSearchRegistration } from '@/lib/tracker_header_context';
 
-export type CampaignSortField = 'name' | 'updated_at' | 'spend' | 'budget_limit';
-export type SortOrder = 'asc' | 'desc';
-export type CampaignStatusFilter = '' | 'ACTIVE' | 'PAUSED' | 'ARCHIVED';
+export type { CampaignSortField, CampaignStatusFilter, SortOrder } from '@/domains/campaigns/campaigns_list_types';
+
+export type CampaignListColumnWidthProbe = {
+  items: Campaign[];
+  metricsById: Record<string, CampaignListMetrics>;
+  marginsById: Record<string, CampaignMargin>;
+};
 
 export type CampaignsDirectoryProps = {
   items: Campaign[];
@@ -82,6 +78,9 @@ export type CampaignsDirectoryProps = {
   customerOptions: CustomerComboboxOption[];
   customersLoading: boolean;
   customerNameById: Record<string, string>;
+  metricsById: Record<string, CampaignListMetrics>;
+  marginsById: Record<string, CampaignMargin>;
+  columnWidthProbe: CampaignListColumnWidthProbe | undefined;
   appliedCustomerId: string;
   appliedStatus: CampaignStatusFilter;
   appliedSort: CampaignSortField;
@@ -103,33 +102,43 @@ export type CampaignsDirectoryProps = {
   draftCreateName: string;
   draftBudgetLimitMicro: string;
   creating: boolean;
-  actingCampaignId: string | undefined;
   actionError: Error | undefined;
   onDraftCustomerIdChange: (customerId: string) => void;
   onDraftStatusChange: (status: CampaignStatusFilter) => void;
   onDraftQChange: (q: string) => void;
-  onApplyFilters: () => void;
-  onResetFilters: () => void;
-  onClearCustomerScope: () => void;
-  onStatusFilter: (status: CampaignStatusFilter) => void;
+  onSearchApply: () => void;
+  onRefreshList: () => void;
   onColumnSort: (field: CampaignSortField) => void;
   onPageChange: (nextOffset: number) => void;
+  onPageSizeChange: (size: number) => void;
   onDraftTemplateIdChange: (templateId: string) => void;
   onDraftCreateNameChange: (name: string) => void;
   onDraftBudgetLimitMicroChange: (value: string) => void;
   onLoadTemplates: () => void;
   onCreateCampaign: () => void;
-  onPauseCampaign: (campaignId: string) => void;
-  onResumeCampaign: (campaignId: string) => void;
-  onArchiveCampaign: (campaignId: string) => void;
 };
 
-function isPausedStatus(status: string): boolean {
-  return status.toUpperCase() === 'PAUSED';
-}
-
-function isArchivedStatus(status: string): boolean {
-  return status.toUpperCase() === 'ARCHIVED';
+function exportVisibleRowsCsv(items: Campaign[], customerNameById: Record<string, string>) {
+  const header = ['id', 'name', 'status', 'customer', 'budget', 'spend'];
+  const lines = items.map((campaign) =>
+    [
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      customerNameById[campaign.customer_id] ?? campaign.customer_id,
+      campaign.budget_limit,
+      campaign.current_spend,
+    ]
+      .map((value) => `"${String(value).replaceAll('"', '""')}"`)
+      .join(','),
+  );
+  const blob = new Blob([[header.join(','), ...lines].join('\n')], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'campaigns-export.csv';
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export function CampaignsDirectory({
@@ -137,12 +146,11 @@ export function CampaignsDirectory({
   total,
   limit,
   offset,
-  statusTotals,
-  statusTotalsLoading,
   customerOptions,
-  customersLoading,
   customerNameById,
-  appliedCustomerId,
+  metricsById,
+  marginsById,
+  columnWidthProbe,
   appliedStatus,
   appliedSort,
   appliedOrder,
@@ -163,308 +171,191 @@ export function CampaignsDirectory({
   draftCreateName,
   draftBudgetLimitMicro,
   creating,
-  actingCampaignId,
   actionError,
   onDraftCustomerIdChange,
   onDraftStatusChange,
   onDraftQChange,
-  onApplyFilters,
-  onResetFilters,
-  onClearCustomerScope,
-  onStatusFilter,
+  onSearchApply,
+  onRefreshList,
   onColumnSort,
   onPageChange,
+  onPageSizeChange,
   onDraftTemplateIdChange,
   onDraftCreateNameChange,
   onDraftBudgetLimitMicroChange,
   onLoadTemplates,
   onCreateCampaign,
-  onPauseCampaign,
-  onResumeCampaign,
-  onArchiveCampaign,
 }: CampaignsDirectoryProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [archiveCampaignId, setArchiveCampaignId] = useState<string | undefined>();
   const [overviewCampaign, setOverviewCampaign] = useState<CampaignWithMoneyDisplay | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [columnPrefs, setColumnPrefs] = useState<CampaignListColumnPrefs>(() =>
+    loadCampaignListColumnPrefs(),
+  );
+  const [pageSizeDraft, setPageSizeDraft] = useState(String(limit));
+
+  const canGoPrev = offset > 0;
+  const canGoNext = offset + limit < total;
+  const createDisabled =
+    creating || !customerId || !draftTemplateId || templatesLoading;
+  const { rangeStart, rangeEnd } = listPageRange(total, limit, offset, items.length);
+  const rangeLabel = total === 0 ? '0 of 0' : `${rangeStart} - ${rangeEnd} of ${total}`;
+
+  const visibleColumns = useMemo(
+    () => visibleCampaignListColumns(columnPrefs),
+    [columnPrefs],
+  );
+
+  const computedColumnWidths = useMemo((): Record<CampaignListColumnId, number> => {
+    if (!columnWidthProbe?.items.length) {
+      return defaultCampaignListColumnWidths(visibleColumns);
+    }
+    return computeCampaignListColumnWidths({
+      columns: visibleColumns,
+      items: columnWidthProbe.items,
+      metricsById: columnWidthProbe.metricsById,
+      marginsById: columnWidthProbe.marginsById,
+      customerNameById,
+    });
+  }, [columnWidthProbe, customerNameById, visibleColumns]);
+
+  const columnWidths = useMemo(
+    () => mergeCampaignListColumnWidths(computedColumnWidths, columnPrefs.widthPx, visibleColumns),
+    [columnPrefs.widthPx, computedColumnWidths, visibleColumns],
+  );
+
+  const handleColumnWidthCommit = useCallback((columnId: CampaignListColumnId, widthPx: number) => {
+    setColumnPrefs((current) => {
+      const next = setCampaignListColumnWidth(current, columnId, widthPx);
+      saveCampaignListColumnPrefs(next);
+      return next;
+    });
+  }, []);
+
+  const handlePageSizeCommit = useCallback(
+    (raw: string) => {
+      const next = clampListLimit(Number.parseInt(raw, 10));
+      setPageSizeDraft(String(next));
+      if (next !== limit) {
+        onPageSizeChange(next);
+      }
+    },
+    [limit, onPageSizeChange],
+  );
+
+  const headerSearch = useMemo(
+    () => ({
+      value: draftQ,
+      onChange: onDraftQChange,
+      onApply: onSearchApply,
+      disabled: fetching,
+      placeholder: 'Search',
+    }),
+    [draftQ, fetching, onDraftQChange, onSearchApply],
+  );
+
+  useTrackerHeaderSearchRegistration(headerSearch);
 
   if (fetching && !hasSnapshot && !error) {
-    return <PageSkeleton variant="directory" columns={6} />;
+    return <PageSkeleton variant="directory" columns={8} />;
   }
 
   if (error && !hasSnapshot) {
     return <ErrorBlock title="Could not load campaigns" message={error.message} />;
   }
 
-  const canGoPrev = offset > 0;
-  const canGoNext = offset + limit < total;
-  const createDisabled =
-    creating || !customerId || !draftTemplateId || templatesLoading;
-  const scopedCustomerName =
-    customerNameById[appliedCustomerId] ?? appliedCustomerId;
-  const { rangeStart, rangeEnd } = listPageRange(total, limit, offset, items.length);
-  const rangeLabel =
-    total === 0 ? 'No campaigns' : `Showing ${rangeStart}–${rangeEnd} of ${total}`;
-  const statusChipOptions: Array<{
-    value: CampaignStatusFilter;
-    label: string;
-    count?: number;
-  }> = [
-    { value: '', label: 'All', count: statusTotals?.total },
-    { value: 'ACTIVE', label: 'Active', count: statusTotals?.active },
-    { value: 'PAUSED', label: 'Paused', count: statusTotals?.paused },
-    { value: 'ARCHIVED', label: 'Archived', count: statusTotals?.archived },
-  ];
-
   return (
-    <PageChrome
-      title="Campaigns"
-      description="Manage budgets, pacing, and delivery across customers."
-      actions={
-        <>
-          <Button onClick={() => onCreateSectionOpenChange(true)} type="button">
-            <Plus className="h-4 w-4" />
-            Create campaign
-          </Button>
-          <Button onClick={() => setImportOpen(true)} type="button" variant="outline">
-            <Upload className="h-4 w-4" />
-            Import
-          </Button>
-          <Button onClick={() => setWizardOpen(true)} type="button" variant="outline">
-            <Wand2 className="h-4 w-4" />
-            Wizard
-          </Button>
-        </>
-      }
-    >
-      {appliedCustomerId ? (
-        <AppliedCustomerBanner
-          customerId={appliedCustomerId}
-          customerName={scopedCustomerName}
-          onClear={onClearCustomerScope}
+    <div className="campaigns-list-workspace flex min-h-full flex-col">
+      <h1 className="sr-only">Campaigns</h1>
+
+      <CampaignsListToolbar
+        columnPrefs={columnPrefs}
+        customerOptions={customerOptions}
+        draftCustomerId={draftCustomerId}
+        draftStatus={draftStatus}
+        fetching={fetching}
+        onColumnPrefsChange={setColumnPrefs}
+        onCreateClick={() => onCreateSectionOpenChange(true)}
+        onDraftCustomerIdChange={onDraftCustomerIdChange}
+        onDraftStatusChange={onDraftStatusChange}
+        onImportClick={() => setImportOpen(true)}
+        onRefresh={onRefreshList}
+        onWizardClick={() => setWizardOpen(true)}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        <CampaignsListTable
+          appliedOrder={appliedOrder}
+          appliedSort={appliedSort}
+          columnPrefs={columnPrefs}
+          columnWidths={columnWidths}
+          customerNameById={customerNameById}
+          emptyMessage={
+            filtersActive
+              ? 'No campaigns match the current filters.'
+              : 'No campaigns yet. Create one to start tracking spend and delivery.'
+          }
+          fetching={fetching}
+          items={items}
+          marginsById={marginsById}
+          metricsById={metricsById}
+          selectedIds={selectedIds}
+          onColumnPrefsChange={setColumnPrefs}
+          onColumnSort={onColumnSort}
+          onColumnWidthCommit={handleColumnWidthCommit}
+          onCreateClick={() => onCreateSectionOpenChange(true)}
+          onSelectedIdsChange={setSelectedIds}
         />
-      ) : null}
 
-      <FilterPanel>
-        <DirectoryFilterForm
-          layout="directory"
-          onSubmit={(event) => {
-            event.preventDefault();
-            onApplyFilters();
-          }}
-        >
-          <FilterField htmlFor="campaigns-customer" label="Customer">
-            <CustomerCombobox
-              id="campaigns-customer"
-              disabled={fetching}
-              loading={customersLoading}
-              options={customerOptions}
-              value={draftCustomerId}
-              onValueChange={onDraftCustomerIdChange}
-            />
-          </FilterField>
-
-          <FilterField htmlFor="campaigns-status" label="Status">
-            <Select
-              value={draftStatus || 'all'}
-              onValueChange={(value) =>
-                onDraftStatusChange(value === 'all' ? '' : (value as CampaignStatusFilter))
-              }
+        <div className="campaigns-list-workspace-footer">
+          <div className="flex items-center gap-1">
+            <button
+              aria-label="Previous page"
+              className="campaigns-list-workspace-icon-btn"
+              disabled={fetching || !canGoPrev}
+              type="button"
+              onClick={() => onPageChange(Math.max(0, offset - limit))}
             >
-              <SelectTrigger id="campaigns-status" className="h-9 w-full text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="PAUSED">Paused</SelectItem>
-                <SelectItem value="ARCHIVED">Archived</SelectItem>
-              </SelectContent>
-            </Select>
-          </FilterField>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            <button
+              aria-label="Next page"
+              className="campaigns-list-workspace-icon-btn"
+              disabled={fetching || !canGoNext}
+              type="button"
+              onClick={() => onPageChange(offset + limit)}
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-          <FilterField htmlFor="campaigns-q" label="Search" wide>
-            <Input
-              id="campaigns-q"
-              className="h-9 text-sm"
-              placeholder="Name or ID…"
-              value={draftQ}
-              onChange={(event) => onDraftQChange(event.target.value)}
+          <label className="flex items-center gap-1.5">
+            <span>rows per page</span>
+            <input
+              className="campaigns-list-workspace-page-size tabular-nums"
+              disabled={fetching}
+              inputMode="numeric"
+              value={pageSizeDraft}
+              onBlur={() => handlePageSizeCommit(pageSizeDraft)}
+              onChange={(event) => setPageSizeDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  handlePageSizeCommit(pageSizeDraft);
+                }
+              }}
             />
-          </FilterField>
+          </label>
 
-          <FilterApplyButton disabled={fetching}>Apply</FilterApplyButton>
+          <span className="tabular-nums">{rangeLabel}</span>
 
-          <FilterResetButton disabled={fetching} onClick={onResetFilters}>
-            Reset
-          </FilterResetButton>
-
-          <PaginationPrevNext
-            canGoPrev={canGoPrev}
-            canGoNext={canGoNext}
-            disabled={fetching}
-            onPrev={() => onPageChange(Math.max(0, offset - limit))}
-            onNext={() => onPageChange(offset + limit)}
-          />
-        </DirectoryFilterForm>
-      </FilterPanel>
-
-      <div className="grid gap-3">
-        <DirectoryListMeta>{rangeLabel}</DirectoryListMeta>
-
-        <ToggleChipGroup
-          countsLoading={statusTotalsLoading}
-          onChange={onStatusFilter}
-          options={statusChipOptions}
-          value={appliedStatus}
-        />
-      </div>
-
-      <div aria-atomic="true" aria-live="polite">
-        {items.length === 0 ? (
-          filtersActive ? (
-            <EmptyState
-              variant="no-results"
-              title="No campaigns"
-              description="No campaigns match the current filters."
-              actionLabel="Clear filters"
-              onAction={onResetFilters}
+          <div className="ml-auto">
+            <DropdownExport
+              disabled={fetching || items.length === 0}
+              onExport={() => exportVisibleRowsCsv(items, customerNameById)}
             />
-          ) : (
-            <EmptyState
-              variant="blank-slate"
-              title="No campaigns"
-              description="Create a campaign to start tracking spend and delivery."
-              actionLabel="Create campaign"
-              onAction={() => onCreateSectionOpenChange(true)}
-            />
-          )
-        ) : (
-          <DirectoryTable scrollable>
-            <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm [&_tr]:border-b [&_tr]:border-border/40">
-              <TableRow>
-                <SortableTableHead
-                  activeOrder={appliedOrder}
-                  activeSort={appliedSort}
-                  label="Name"
-                  onSort={(field) => onColumnSort(field as CampaignSortField)}
-                  sortField="name"
-                />
-                <DirectoryTableHead>Status</DirectoryTableHead>
-                <SortableTableHead
-                  activeOrder={appliedOrder}
-                  activeSort={appliedSort}
-                  label="Budget used"
-                  onSort={(field) => onColumnSort(field as CampaignSortField)}
-                  sortField="spend"
-                />
-                <DirectoryTableHead>Customer</DirectoryTableHead>
-                <SortableTableHead
-                  activeOrder={appliedOrder}
-                  activeSort={appliedSort}
-                  label="Updated"
-                  onSort={(field) => onColumnSort(field as CampaignSortField)}
-                  sortField="updated_at"
-                />
-                <DirectoryTableHead className="w-[4.5rem]">Actions</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((campaign) => {
-                const row = campaign as CampaignWithMoneyDisplay;
-                const archived = isArchivedStatus(campaign.status);
-                const paused = isPausedStatus(campaign.status);
-                const acting = actingCampaignId === campaign.id;
-                const customerName =
-                  customerNameById[campaign.customer_id] ?? campaign.customer_id;
-
-                return (
-                  <TableRow key={campaign.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        className="text-primary hover:underline"
-                        to={`/campaigns/${campaign.id}/edit`}
-                      >
-                        {campaign.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <CampaignStatusBadge campaign={campaign} className="px-1.5 py-0 font-normal" />
-                    </TableCell>
-                    <TableCell>
-                      <CampaignMetricsPopover
-                        campaign={row}
-                        onOpenOverview={setOverviewCampaign}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        className="text-primary hover:underline"
-                        to={`/customers/${campaign.customer_id}`}
-                      >
-                        {customerName}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {displayTimestamp(campaign.updated_at, campaign.updated_at_display)}
-                    </TableCell>
-                    <TableCell>
-                      <RowActionsMenu ariaLabel={`Actions for ${campaign.name}`} disabled={acting}>
-                        <DropdownMenuItem
-                          onClick={() => setOverviewCampaign(row)}
-                        >
-                          Overview
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to={`/campaigns/${campaign.id}/edit`}>Edit</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={`/dashboards/campaign/${campaign.id}`}>Dashboard</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={campaignForecastHref(campaign.customer_id)}>Forecast</Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to={campaignFraudHref(campaign.id, campaign.customer_id)}>
-                            Fraud explain
-                          </Link>
-                        </DropdownMenuItem>
-                        {!archived ? (
-                          <>
-                            <DropdownMenuSeparator />
-                            {!paused ? (
-                              <DropdownMenuItem
-                                disabled={acting}
-                                onClick={() => onPauseCampaign(campaign.id)}
-                              >
-                                Pause
-                              </DropdownMenuItem>
-                            ) : (
-                              <DropdownMenuItem
-                                disabled={acting}
-                                onClick={() => onResumeCampaign(campaign.id)}
-                              >
-                                Resume
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              disabled={acting}
-                              onClick={() => setArchiveCampaignId(campaign.id)}
-                            >
-                              Archive
-                            </DropdownMenuItem>
-                          </>
-                        ) : null}
-                      </RowActionsMenu>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </DirectoryTable>
-        )}
+          </div>
+        </div>
       </div>
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
@@ -480,7 +371,7 @@ export function CampaignsDirectory({
                   <span className="font-mono text-xs text-foreground">{customerId}</span>
                 </>
               ) : (
-                'Set customer_id in the URL or session to create a campaign.'
+                'Select a customer group filter to create a campaign.'
               )}
             </DialogDescription>
           </DialogHeader>
@@ -499,7 +390,7 @@ export function CampaignsDirectory({
                 value={draftTemplateId}
                 onValueChange={onDraftTemplateIdChange}
               >
-                <SelectTrigger id="campaigns-template" className="h-9 w-full text-sm">
+                <SelectTrigger id="campaigns-template">
                   <SelectValue placeholder={templatesLoading ? 'Loading…' : 'Select template…'} />
                 </SelectTrigger>
                 <SelectContent>
@@ -516,7 +407,6 @@ export function CampaignsDirectory({
               <Label htmlFor="campaigns-create-name">Name</Label>
               <Input
                 id="campaigns-create-name"
-                className="h-9 text-sm"
                 disabled={!customerId}
                 placeholder="Optional display name…"
                 value={draftCreateName}
@@ -528,7 +418,6 @@ export function CampaignsDirectory({
               <Label htmlFor="campaigns-budget-micro">Budget (micro)</Label>
               <Input
                 id="campaigns-budget-micro"
-                className="h-9 text-sm"
                 disabled={!customerId}
                 inputMode="numeric"
                 placeholder="Optional override…"
@@ -558,45 +447,6 @@ export function CampaignsDirectory({
               </PrimaryActionButton>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        onOpenChange={(open) => {
-          if (!open) {
-            setArchiveCampaignId(undefined);
-          }
-        }}
-        open={Boolean(archiveCampaignId)}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Archive campaign</DialogTitle>
-            <DialogDescription>
-              Archived campaigns stop delivery. You can restore status from the campaign editor later.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <SecondaryActionButton onClick={() => setArchiveCampaignId(undefined)} type="button">
-              Cancel
-            </SecondaryActionButton>
-            <Button
-              className="h-9 text-sm"
-              disabled={actingCampaignId === archiveCampaignId}
-              loading={actingCampaignId === archiveCampaignId}
-              shape="pill"
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                if (archiveCampaignId) {
-                  onArchiveCampaign(archiveCampaignId);
-                  setArchiveCampaignId(undefined);
-                }
-              }}
-            >
-              Archive campaign
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -638,6 +488,35 @@ export function CampaignsDirectory({
           </div>
         </SheetContent>
       </Sheet>
-    </PageChrome>
+    </div>
+  );
+}
+
+function DropdownExport({
+  disabled,
+  onExport,
+}: {
+  disabled?: boolean;
+  onExport: () => void;
+}) {
+  return (
+    <div className="inline-flex overflow-hidden rounded-[3px] border border-[var(--campaigns-ws-border)]">
+      <button
+        className="campaigns-list-workspace-btn-secondary rounded-none border-0"
+        disabled={disabled}
+        type="button"
+        onClick={onExport}
+      >
+        Export
+      </button>
+      <button
+        aria-label="Export options"
+        className="campaigns-list-workspace-icon-btn rounded-none border-0 border-l border-[var(--campaigns-ws-border)]"
+        disabled={disabled}
+        type="button"
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
+      </button>
+    </div>
   );
 }

@@ -36,6 +36,7 @@ Commands:
   status    Print service URLs, PIDs, and log paths
   stack     Start ingest-only compose only (db, redis, control on :${MANAGEMENT_PORT})
   seed      Bootstrap admin user + UI demo stats for charts
+  buyer     Seed buyer dashboard demo (PG stats + ClickHouse economics)
   demo      Re-seed campaign stats and spend for admin charts only
   rebuild-control  Rebuild docker control image (CONTROL_BUILD_TIMEOUT, default 45m) and recreate with control-dev overlay
   control   Run control plane locally in foreground (stops docker control on :${MANAGEMENT_PORT} first)
@@ -295,6 +296,11 @@ case "$CMD" in
     ensure_stack
     ensure_seeded
     ensure_ui_demo
+    ;;
+  buyer)
+    ensure_stack
+    ensure_seeded
+    bash "$SCRIPTS/dev/stack/seed_buyer_dashboard.sh"
     ;;
   demo)
     ensure_stack

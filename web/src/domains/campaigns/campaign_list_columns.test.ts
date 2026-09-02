@@ -3,72 +3,106 @@ import assert from 'node:assert/strict';
 
 import {
   defaultCampaignListColumnPrefs,
+  moveDataColumn,
   moveMiddleColumn,
   parseCampaignListColumnPrefs,
   setMiddleColumnVisible,
   visibleCampaignListColumns,
 } from './campaign_list_columns.ts';
 
-test('visibleCampaignListColumns uses level-1 default set', () => {
+test('visibleCampaignListColumns uses campaigns list default set', () => {
   assert.deepEqual(visibleCampaignListColumns(defaultCampaignListColumnPrefs()), [
+    'select',
+    'id',
     'name',
-    'status',
-    'budget',
-    'spend',
+    'source',
+    'cr',
+    'flows',
     'clicks',
     'conversions',
-    'actions',
+    'revenue',
+    'cost',
+    'profit',
+    'roi',
+    'group',
   ]);
 });
 
 test('parseCampaignListColumnPrefs merges unknown and duplicate middle columns', () => {
   const prefs = parseCampaignListColumnPrefs(
     JSON.stringify({
-      middleOrder: ['updated', 'status', 'unknown', 'status', 'budget'],
-      hidden: ['customer', 'bogus'],
+      middleOrder: ['group', 'source', 'unknown', 'source', 'clicks'],
+      hidden: ['roi', 'bogus'],
     }),
   );
 
-  assert.deepEqual(prefs.middleOrder, [
-    'updated',
-    'status',
-    'budget',
-    'spend',
-    'clicks',
-    'conversions',
-    'pacing',
-    'customer',
-  ]);
-  assert.deepEqual(prefs.hidden, ['customer']);
-  assert.deepEqual(visibleCampaignListColumns(prefs), [
+  assert.deepEqual(prefs.dataColumnOrder, [
     'name',
-    'updated',
-    'status',
-    'budget',
-    'spend',
+    'group',
+    'source',
     'clicks',
+    'cr',
+    'flows',
     'conversions',
-    'pacing',
-    'actions',
+    'revenue',
+    'cost',
+    'profit',
+    'roi',
+  ]);
+  assert.deepEqual(prefs.hidden, ['roi']);
+  assert.deepEqual(visibleCampaignListColumns(prefs), [
+    'select',
+    'id',
+    'name',
+    'group',
+    'source',
+    'clicks',
+    'cr',
+    'flows',
+    'conversions',
+    'revenue',
+    'cost',
+    'profit',
   ]);
 });
 
 test('moveMiddleColumn reorders middle metrics', () => {
-  const order = defaultCampaignListColumnPrefs().middleOrder;
+  const order = defaultCampaignListColumnPrefs().dataColumnOrder.filter(
+    (columnId) => columnId !== 'name',
+  );
   assert.deepEqual(moveMiddleColumn(order, 0, 2), [
-    'budget',
-    'spend',
-    'status',
+    'cr',
+    'flows',
+    'source',
     'clicks',
     'conversions',
-    'pacing',
-    'customer',
-    'updated',
+    'revenue',
+    'cost',
+    'profit',
+    'roi',
+    'group',
+  ]);
+});
+
+test('moveDataColumn reorders name and middle columns', () => {
+  const order = defaultCampaignListColumnPrefs().dataColumnOrder;
+  assert.deepEqual(moveDataColumn(order, 'source', 'name'), [
+    'source',
+    'name',
+    'cr',
+    'flows',
+    'clicks',
+    'conversions',
+    'revenue',
+    'cost',
+    'profit',
+    'roi',
+    'group',
   ]);
 });
 
 test('setMiddleColumnVisible toggles hidden set in canonical order', () => {
-  const hidden = setMiddleColumnVisible([], 'pacing', false);
-  assert.deepEqual(hidden, ['pacing']);
-  assert.deepEqual(setMiddleColumnVisible(hidden, 'pacing', true), []);
+  const hidden = setMiddleColumnVisible([], 'cr', false);
+  assert.deepEqual(hidden, ['cr']);
+  assert.deepEqual(setMiddleColumnVisible(hidden, 'cr', true), []);
 });

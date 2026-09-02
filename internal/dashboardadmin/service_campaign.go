@@ -79,7 +79,7 @@ func (st *CampaignService) GetCampaignDashboard(ctx context.Context, campaignID 
 	var series []DashboardSeriesPointDTO
 	if st.host.ClickHouseQuery() != nil {
 		clickhouseCtx, cancel := context.WithTimeout(ctx, st.host.ReportCHTimeout())
-		series, _ = reports.QueryCustomerDashboardSeries(clickhouseCtx, st.host.Pool(), st.host.ClickHouseQuery(), customerID, []uuid.UUID{campaignID}, from, now)
+		series, _ = reports.QueryCustomerDashboardSeries(clickhouseCtx, st.host.Pool(), st.host.ClickHouseQuery(), customerID, []uuid.UUID{campaignID}, from, now, reports.ChartGranularityDay)
 		cancel()
 	}
 

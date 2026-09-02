@@ -293,7 +293,7 @@ func (st *RoleService) GetFraudDashboardRange(ctx context.Context, customerID uu
 	var series []DashboardSeriesPointDTO
 	if st.host.ClickHouseQuery() != nil && st.reportHost != nil {
 		clickhouseCtx, cancel := context.WithTimeout(ctx, st.host.ReportCHTimeout())
-		series, _ = st.reportHost.QueryCustomerDashboardSeries(clickhouseCtx, customerID, campaignIDs, from, to)
+		series, _ = st.reportHost.QueryCustomerDashboardSeries(clickhouseCtx, customerID, campaignIDs, from, to, reports.ChartGranularityDay)
 		cancel()
 	}
 	return FraudDashboardDTO{

@@ -11,6 +11,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"ad-event-processor/internal/reports"
 )
 
 type stubBuyerPortfolio struct {
@@ -27,8 +29,12 @@ func (s *stubBuyerPortfolio) GetBuyerPortfolio(_ context.Context, customerID uui
 	return s.portfolio, nil
 }
 
-func (s *stubBuyerPortfolio) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, _ *uuid.UUID, _, _ time.Time) (BuyerPortfolioDTO, error) {
+func (s *stubBuyerPortfolio) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, _ *uuid.UUID, _, _ time.Time, _ reports.ChartGranularity) (BuyerPortfolioDTO, error) {
 	return s.GetBuyerPortfolio(ctx, customerID)
+}
+
+func (s *stubBuyerPortfolio) GetBuyerDrilldown(_ context.Context, _ uuid.UUID, _ uuid.UUID, _, _ time.Time, _ reports.DashboardDrilldownFilter) (reports.DashboardBreakdownTableDTO, error) {
+	return reports.DashboardBreakdownTableDTO{Rows: []reports.DashboardBreakdownRowDTO{}}, nil
 }
 
 func TestGetBuyerDashboard_OK(t *testing.T) {
@@ -107,5 +113,30 @@ func TestGetBuyerDashboard_requiresCustomerID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer", http.NoBody)
 	rec := httptest.NewRecorder()
 	h.getBuyerDashboard(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+func TestGetBuyerDrilldown_requiresCampaignAndDimension(t *testing.T) {
+	t.Parallel()
+	custID := uuid.New()
+	h := &HTTPHandlers{
+		BuyerPortfolio: &stubBuyerPortfolio{},
+		ResolveCustomerID: func(_ *http.Request, _ *uuid.UUID) (uuid.UUID, error) {
+			return custID, nil
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/dashboards/buyer/drilldown?customer_id="+custID.String(), http.NoBody)
+	rec := httptest.NewRecorder()
+	h.getBuyerDrilldown(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+
+	req = httptest.NewRequest(
+		http.MethodGet,
+		"/api/v1/dashboards/buyer/drilldown?customer_id="+custID.String()+"&campaign_id="+uuid.NewString()+"&dimension=bad",
+		http.NoBody,
+	)
+	rec = httptest.NewRecorder()
+	h.getBuyerDrilldown(rec, req)
 	require.Equal(t, http.StatusBadRequest, rec.Code)
 }

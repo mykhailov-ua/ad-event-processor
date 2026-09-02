@@ -680,6 +680,31 @@ export async function getCampaignMargin(
   );
 }
 
+export async function fetchCampaignListMargins(
+  campaignIds: string[],
+  signal?: AbortSignal,
+): Promise<Record<string, CampaignMargin>> {
+  if (campaignIds.length === 0) {
+    return {};
+  }
+
+  const settled = await Promise.allSettled(
+    campaignIds.map(async (campaignId) => {
+      const margin = await getCampaignMargin(campaignId, signal);
+      return { campaignId, margin };
+    }),
+  );
+
+  const marginsById: Record<string, CampaignMargin> = {};
+  for (const result of settled) {
+    if (result.status !== 'fulfilled') {
+      continue;
+    }
+    marginsById[result.value.campaignId] = result.value.margin;
+  }
+  return marginsById;
+}
+
 export async function listCampaignConversionMappings(
   campaignId: string,
   signal?: AbortSignal,

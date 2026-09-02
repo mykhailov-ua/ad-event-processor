@@ -113,7 +113,8 @@ type DashboardBreakdownsDTO struct {
 
 type BuyerPortfolioReader interface {
 	GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error)
-	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
+	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time, seriesGranularity reports.ChartGranularity) (BuyerPortfolioDTO, error)
+	GetBuyerDrilldown(ctx context.Context, customerID uuid.UUID, campaignID uuid.UUID, from, to time.Time, filter reports.DashboardDrilldownFilter) (reports.DashboardBreakdownTableDTO, error)
 }
 
 type CampaignDashboardReader interface {
@@ -339,6 +340,7 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	}
 	if h.BuyerPortfolio != nil {
 		mux.HandleFunc("GET /api/v1/dashboards/buyer", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.getBuyerDashboard)))
+		mux.HandleFunc("GET /api/v1/dashboards/buyer/drilldown", limit(permAny([]string{"campaigns:read", "campaigns:read:masked"}, h.getBuyerDrilldown)))
 	}
 	if h.RoleDashboards != nil {
 		mux.HandleFunc("GET /api/v1/dashboards/adops", limit(perm("campaigns:read", h.getAdOpsDashboard)))
@@ -380,6 +382,11 @@ func (h *HTTPHandlers) getBuyerDashboard(w http.ResponseWriter, r *http.Request)
 		h.writeServiceError(w, err)
 		return
 	}
+	seriesGranularity := reports.ParseChartGranularity(r.URL.Query().Get("series_granularity"))
+	if err := reports.ValidateChartGranularityRange(seriesGranularity, from, to); err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
 
 	var campaignFilter *uuid.UUID
 	if campaignRaw := strings.TrimSpace(r.URL.Query().Get("campaign_id")); campaignRaw != "" {
@@ -391,7 +398,71 @@ func (h *HTTPHandlers) getBuyerDashboard(w http.ResponseWriter, r *http.Request)
 		campaignFilter = &campaignID
 	}
 
-	resp, err := h.BuyerPortfolio.GetBuyerPortfolioRange(r.Context(), customerID, campaignFilter, from, to)
+	resp, err := h.BuyerPortfolio.GetBuyerPortfolioRange(r.Context(), customerID, campaignFilter, from, to, seriesGranularity)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	writeRoleDashboardJSON(w, resp)
+}
+
+func (h *HTTPHandlers) getBuyerDrilldown(w http.ResponseWriter, r *http.Request) {
+	if h.BuyerPortfolio == nil {
+		httpresponse.Error(w, http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "buyer dashboard unavailable")
+		return
+	}
+
+	var customerID uuid.UUID
+	if custStr := r.URL.Query().Get("customer_id"); custStr != "" {
+		id, err := uuid.Parse(custStr)
+		if err != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid customer_id")
+			return
+		}
+		customerID = id
+	}
+	if h.ResolveCustomerID != nil {
+		resolved, err := h.ResolveCustomerID(r, ptrUUID(customerID))
+		if err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+		customerID = resolved
+	}
+	if customerID == uuid.Nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "customer_id is required")
+		return
+	}
+
+	campaignRaw := strings.TrimSpace(r.URL.Query().Get("campaign_id"))
+	campaignID, err := uuid.Parse(campaignRaw)
+	if err != nil || campaignID == uuid.Nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid campaign_id")
+		return
+	}
+
+	dimension, err := reports.ParseDashboardDrilldownDimension(r.URL.Query().Get("dimension"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	from, to, err := parseDashboardRange(r)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	filter := reports.DashboardDrilldownFilter{
+		Dimension:  dimension,
+		ParentSub1: strings.TrimSpace(r.URL.Query().Get("parent_sub1")),
+		ParentSub2: strings.TrimSpace(r.URL.Query().Get("parent_sub2")),
+		ParentSub3: strings.TrimSpace(r.URL.Query().Get("parent_sub3")),
+		ParentSub4: strings.TrimSpace(r.URL.Query().Get("parent_sub4")),
+		ParentSub5: strings.TrimSpace(r.URL.Query().Get("parent_sub5")),
+	}
+
+	resp, err := h.BuyerPortfolio.GetBuyerDrilldown(r.Context(), customerID, campaignID, from, to, filter)
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

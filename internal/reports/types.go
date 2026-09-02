@@ -184,7 +184,7 @@ type BuyerPortfolioDTO struct {
 
 type BuyerPortfolioReader interface {
 	GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error)
-	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (BuyerPortfolioDTO, error)
+	GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time, seriesGranularity ChartGranularity) (BuyerPortfolioDTO, error)
 }
 
 type FraudBreakdownRowDTO struct {

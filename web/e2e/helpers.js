@@ -86,7 +86,7 @@ export async function gotoCustomers(page) {
  */
 export async function gotoCampaigns(page) {
   await page.goto('/campaigns');
-  await page.getByRole('heading', { name: 'Campaigns' }).waitFor();
+  await page.getByRole('button', { name: 'Create campaign' }).waitFor();
 }
 
 /**

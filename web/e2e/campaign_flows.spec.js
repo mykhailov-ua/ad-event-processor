@@ -6,7 +6,7 @@ test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('campaign directory create section and row actions', async ({ page }) => {
+test('campaign directory create section opens from toolbar', async ({ page }) => {
   await loginAsAdmin(page);
   await gotoCampaigns(page);
 
@@ -21,15 +21,5 @@ test('campaign directory create section and row actions', async ({ page }) => {
     return;
   }
 
-  await expect(page.getByRole('columnheader', { name: 'Actions' })).toBeVisible();
-
-  const pauseButton = page.getByRole('button', { name: 'Pause' }).first();
-  const archiveButton = page.getByRole('button', { name: 'Archive' }).first();
-  const resumeButton = page.getByRole('button', { name: 'Resume' }).first();
-
-  const hasPause = await pauseButton.isVisible();
-  const hasArchive = await archiveButton.isVisible();
-  const hasResume = await resumeButton.isVisible();
-
-  expect(hasPause || hasArchive || hasResume).toBeTruthy();
+  await expect(editLink).toBeVisible();
 });

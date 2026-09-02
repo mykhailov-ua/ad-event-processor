@@ -10,7 +10,8 @@ test('campaigns directory shows import validate controls', async ({ page }) => {
   await loginAsAdmin(page);
   await gotoCampaigns(page);
 
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await page.getByRole('button', { name: 'Columns' }).click();
+  await page.getByRole('menuitem', { name: 'Import' }).click();
   await expect(page.getByRole('heading', { name: 'Import validate' })).toBeVisible();
   await expect(page.getByLabel('Validate job ID')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Poll job' })).toBeVisible();

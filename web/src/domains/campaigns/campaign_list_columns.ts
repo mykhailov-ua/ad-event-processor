@@ -1,73 +1,106 @@
-export const CAMPAIGN_LIST_COLUMNS_STORAGE_KEY = 'aed.campaigns.listColumns.v1';
+export const CAMPAIGN_LIST_COLUMNS_STORAGE_KEY = 'aed.campaigns.listColumns.v4';
 
 export type CampaignListMiddleColumnId =
-  | 'status'
-  | 'budget'
-  | 'spend'
+  | 'source'
+  | 'flows'
   | 'clicks'
   | 'conversions'
-  | 'pacing'
-  | 'customer'
-  | 'updated';
+  | 'cr'
+  | 'revenue'
+  | 'cost'
+  | 'profit'
+  | 'roi'
+  | 'group';
 
-export type CampaignListColumnId = 'name' | CampaignListMiddleColumnId | 'actions';
+export type CampaignListColumnId = 'select' | 'id' | 'name' | CampaignListMiddleColumnId;
+
+export type CampaignListDataColumnId = Exclude<CampaignListColumnId, 'select'>;
+
+export type CampaignListReorderableColumnId = 'name' | CampaignListMiddleColumnId;
 
 export const CAMPAIGN_LIST_MIDDLE_COLUMNS: CampaignListMiddleColumnId[] = [
-  'status',
-  'budget',
-  'spend',
+  'source',
+  'cr',
+  'flows',
   'clicks',
   'conversions',
-  'pacing',
-  'customer',
-  'updated',
+  'revenue',
+  'cost',
+  'profit',
+  'roi',
+  'group',
 ];
 
-export const CAMPAIGN_LIST_DEFAULT_HIDDEN: CampaignListMiddleColumnId[] = [
-  'pacing',
-  'customer',
-  'updated',
-];
+export const CAMPAIGN_LIST_DEFAULT_HIDDEN: CampaignListMiddleColumnId[] = [];
 
 export type CampaignListColumnPrefs = {
-  middleOrder: CampaignListMiddleColumnId[];
+  dataColumnOrder: CampaignListReorderableColumnId[];
   hidden: CampaignListMiddleColumnId[];
+  widthPx: Partial<Record<CampaignListColumnId, number>>;
 };
 
 export const CAMPAIGN_LIST_COLUMN_LABELS: Record<CampaignListColumnId, string> = {
+  select: '',
+  id: 'ID',
   name: 'Name',
-  status: 'Status',
-  budget: 'Budget',
-  spend: 'Spend',
+  source: 'Source',
+  flows: 'Flows',
   clicks: 'Clicks',
   conversions: 'Conv.',
-  pacing: 'Pacing',
-  customer: 'Customer',
-  updated: 'Updated',
-  actions: 'Actions',
+  cr: 'CR (sales)',
+  revenue: 'Revenue (confirmed)',
+  cost: 'Cost',
+  profit: 'Profit/Loss (confirmed)',
+  roi: 'ROI (confirmed)',
+  group: 'Group',
 };
 
 export const CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX = 44;
 
 export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, number> = {
+  select: CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
+  id: 52,
   name: 280,
-  status: 120,
-  budget: 96,
-  spend: 128,
-  clicks: 56,
-  conversions: 56,
-  pacing: 64,
-  customer: 144,
-  updated: 104,
-  actions: 72,
+  source: 120,
+  flows: 56,
+  clicks: 64,
+  conversions: 64,
+  cr: 88,
+  revenue: 112,
+  cost: 88,
+  profit: 120,
+  roi: 96,
+  group: 120,
 };
 
 const MIDDLE_COLUMN_SET = new Set<CampaignListMiddleColumnId>(CAMPAIGN_LIST_MIDDLE_COLUMNS);
 
+const REORDERABLE_COLUMN_SET = new Set<CampaignListReorderableColumnId>([
+  'name',
+  ...CAMPAIGN_LIST_MIDDLE_COLUMNS,
+]);
+
+export function isCampaignListMiddleColumnId(
+  id: CampaignListColumnId,
+): id is CampaignListMiddleColumnId {
+  return MIDDLE_COLUMN_SET.has(id as CampaignListMiddleColumnId);
+}
+
+export function isCampaignListColumnDraggable(
+  id: CampaignListColumnId,
+): id is CampaignListReorderableColumnId {
+  return REORDERABLE_COLUMN_SET.has(id as CampaignListReorderableColumnId);
+}
+
+export function isCampaignListColumnResizable(id: CampaignListColumnId): boolean {
+  return id !== 'select';
+}
+
 export function defaultCampaignListColumnPrefs(): CampaignListColumnPrefs {
   return {
-    middleOrder: [...CAMPAIGN_LIST_MIDDLE_COLUMNS],
+    dataColumnOrder: ['name', ...CAMPAIGN_LIST_MIDDLE_COLUMNS],
     hidden: [...CAMPAIGN_LIST_DEFAULT_HIDDEN],
+    widthPx: {},
   };
 }
 
@@ -81,17 +114,49 @@ export function normalizeMiddleOrder(
     if (!MIDDLE_COLUMN_SET.has(raw as CampaignListMiddleColumnId)) {
       continue;
     }
-    const id = raw as CampaignListMiddleColumnId;
-    if (seen.has(id)) {
+    const columnId = raw as CampaignListMiddleColumnId;
+    if (seen.has(columnId)) {
       continue;
     }
-    seen.add(id);
-    result.push(id);
+    seen.add(columnId);
+    result.push(columnId);
   }
 
-  for (const id of CAMPAIGN_LIST_MIDDLE_COLUMNS) {
-    if (!seen.has(id)) {
-      result.push(id);
+  for (const columnId of CAMPAIGN_LIST_MIDDLE_COLUMNS) {
+    if (!seen.has(columnId)) {
+      result.push(columnId);
+    }
+  }
+
+  return result;
+}
+
+export function normalizeDataColumnOrder(
+  order: ReadonlyArray<string>,
+): CampaignListReorderableColumnId[] {
+  const seen = new Set<CampaignListReorderableColumnId>();
+  const result: CampaignListReorderableColumnId[] = [];
+
+  for (const raw of order) {
+    if (!REORDERABLE_COLUMN_SET.has(raw as CampaignListReorderableColumnId)) {
+      continue;
+    }
+    const columnId = raw as CampaignListReorderableColumnId;
+    if (seen.has(columnId)) {
+      continue;
+    }
+    seen.add(columnId);
+    result.push(columnId);
+  }
+
+  if (!seen.has('name')) {
+    result.unshift('name');
+    seen.add('name');
+  }
+
+  for (const columnId of CAMPAIGN_LIST_MIDDLE_COLUMNS) {
+    if (!seen.has(columnId)) {
+      result.push(columnId);
     }
   }
 
@@ -110,19 +175,67 @@ export function normalizeHidden(
   return CAMPAIGN_LIST_MIDDLE_COLUMNS.filter((id) => set.has(id));
 }
 
+export function normalizeColumnWidthPx(
+  widthPx: unknown,
+): Partial<Record<CampaignListColumnId, number>> {
+  if (!widthPx || typeof widthPx !== 'object') {
+    return {};
+  }
+
+  const result: Partial<Record<CampaignListColumnId, number>> = {};
+  for (const [rawKey, rawValue] of Object.entries(widthPx)) {
+    if (rawKey !== 'select' && rawKey !== 'id' && rawKey !== 'name' && !MIDDLE_COLUMN_SET.has(rawKey as CampaignListMiddleColumnId)) {
+      continue;
+    }
+    const columnId = rawKey as CampaignListColumnId;
+    const parsed = Number(rawValue);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      continue;
+    }
+    result[columnId] = Math.max(
+      CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId],
+      Math.trunc(parsed),
+    );
+  }
+  return result;
+}
+
 export function visibleCampaignListColumns(
   prefs: CampaignListColumnPrefs,
 ): CampaignListColumnId[] {
   const hidden = new Set(prefs.hidden);
-  const middle = normalizeMiddleOrder(prefs.middleOrder).filter((id) => !hidden.has(id));
-  return ['name', ...middle, 'actions'];
+  const tail = normalizeDataColumnOrder(prefs.dataColumnOrder).filter((columnId) => {
+    if (columnId === 'name') {
+      return true;
+    }
+    return !hidden.has(columnId);
+  });
+  return ['select', 'id', ...tail];
+}
+
+export function middleColumnsForSettings(
+  prefs: CampaignListColumnPrefs,
+): CampaignListMiddleColumnId[] {
+  return normalizeDataColumnOrder(prefs.dataColumnOrder).filter(isCampaignListMiddleColumnId);
 }
 
 export function campaignListTableMinWidthPx(columns: ReadonlyArray<CampaignListColumnId>): number {
-  return (
-    CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX +
-    columns.reduce((sum, id) => sum + CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[id], 0)
-  );
+  return columns.reduce((sum, id) => sum + CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[id], 0);
+}
+
+export function mergeCampaignListColumnWidths(
+  computed: Readonly<Record<CampaignListColumnId, number>>,
+  overrides: Readonly<Partial<Record<CampaignListColumnId, number>>>,
+  columns: ReadonlyArray<CampaignListColumnId>,
+): Record<CampaignListColumnId, number> {
+  const merged = { ...computed };
+  for (const columnId of columns) {
+    const override = overrides[columnId];
+    if (override != null) {
+      merged[columnId] = Math.max(CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId], override);
+    }
+  }
+  return merged;
 }
 
 export function parseCampaignListColumnPrefs(raw: string | null): CampaignListColumnPrefs {
@@ -132,17 +245,27 @@ export function parseCampaignListColumnPrefs(raw: string | null): CampaignListCo
 
   try {
     const parsed = JSON.parse(raw) as {
+      dataColumnOrder?: unknown;
       middleOrder?: unknown;
       hidden?: unknown;
+      widthPx?: unknown;
     };
 
+    const dataColumnOrder = Array.isArray(parsed.dataColumnOrder)
+      ? normalizeDataColumnOrder(parsed.dataColumnOrder.map(String))
+      : normalizeDataColumnOrder([
+          'name',
+          ...normalizeMiddleOrder(
+            Array.isArray(parsed.middleOrder) ? parsed.middleOrder.map(String) : [],
+          ),
+        ]);
+
     return {
-      middleOrder: normalizeMiddleOrder(
-        Array.isArray(parsed.middleOrder) ? parsed.middleOrder.map(String) : [],
-      ),
+      dataColumnOrder,
       hidden: normalizeHidden(
         Array.isArray(parsed.hidden) ? parsed.hidden.map(String) : [],
       ),
+      widthPx: normalizeColumnWidthPx(parsed.widthPx),
     };
   } catch {
     return defaultCampaignListColumnPrefs();
@@ -151,8 +274,9 @@ export function parseCampaignListColumnPrefs(raw: string | null): CampaignListCo
 
 export function serializeCampaignListColumnPrefs(prefs: CampaignListColumnPrefs): string {
   const normalized: CampaignListColumnPrefs = {
-    middleOrder: normalizeMiddleOrder(prefs.middleOrder),
+    dataColumnOrder: normalizeDataColumnOrder(prefs.dataColumnOrder),
     hidden: normalizeHidden(prefs.hidden),
+    widthPx: normalizeColumnWidthPx(prefs.widthPx),
   };
   return JSON.stringify(normalized);
 }
@@ -175,6 +299,28 @@ export function moveMiddleColumn(
   return next;
 }
 
+export function moveDataColumn(
+  order: CampaignListReorderableColumnId[],
+  draggedId: CampaignListReorderableColumnId,
+  targetId: CampaignListReorderableColumnId,
+): CampaignListReorderableColumnId[] {
+  if (draggedId === targetId) {
+    return order;
+  }
+  const fromIndex = order.indexOf(draggedId);
+  const toIndex = order.indexOf(targetId);
+  if (fromIndex < 0 || toIndex < 0) {
+    return order;
+  }
+  const next = [...order];
+  const [item] = next.splice(fromIndex, 1);
+  if (!item) {
+    return order;
+  }
+  next.splice(toIndex, 0, item);
+  return normalizeDataColumnOrder(next);
+}
+
 export function setMiddleColumnVisible(
   hidden: CampaignListMiddleColumnId[],
   id: CampaignListMiddleColumnId,
@@ -187,6 +333,23 @@ export function setMiddleColumnVisible(
     set.add(id);
   }
   return normalizeHidden([...set]);
+}
+
+export function setCampaignListColumnWidth(
+  prefs: CampaignListColumnPrefs,
+  columnId: CampaignListColumnId,
+  widthPx: number,
+): CampaignListColumnPrefs {
+  if (!isCampaignListColumnResizable(columnId)) {
+    return prefs;
+  }
+  return {
+    ...prefs,
+    widthPx: {
+      ...prefs.widthPx,
+      [columnId]: Math.max(CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId], Math.trunc(widthPx)),
+    },
+  };
 }
 
 export function loadCampaignListColumnPrefs(): CampaignListColumnPrefs {

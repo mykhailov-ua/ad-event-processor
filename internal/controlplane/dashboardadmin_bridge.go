@@ -100,8 +100,8 @@ func (s *Service) QueryWorstIVTCountries(ctx context.Context, campaignIDs []uuid
 	return reports.QueryWorstIVTCountries(ctx, s.clickhouseQuery, campaignIDs, from, to, limit)
 }
 
-func (s *Service) QueryCustomerDashboardSeries(ctx context.Context, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time) ([]reports.DashboardSeriesPointDTO, error) {
-	return queryCustomerDashboardSeries(ctx, s.GetPool(), s.clickhouseQuery, customerID, campaignIDs, from, to)
+func (s *Service) QueryCustomerDashboardSeries(ctx context.Context, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time, granularity reports.ChartGranularity) ([]reports.DashboardSeriesPointDTO, error) {
+	return queryCustomerDashboardSeries(ctx, s.GetPool(), s.clickhouseQuery, customerID, campaignIDs, from, to, granularity)
 }
 
 func (s *Service) buyerPortfolio() *dashboardadmin.Portfolio {
@@ -136,8 +136,12 @@ func (s *Service) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (
 	return s.buyerPortfolio().GetBuyerPortfolio(ctx, customerID)
 }
 
-func (s *Service) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (dashboardadmin.BuyerPortfolioDTO, error) {
-	return s.buyerPortfolio().GetBuyerPortfolioRange(ctx, customerID, campaignFilter, from, to)
+func (s *Service) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time, seriesGranularity reports.ChartGranularity) (dashboardadmin.BuyerPortfolioDTO, error) {
+	return s.buyerPortfolio().GetBuyerPortfolioRange(ctx, customerID, campaignFilter, from, to, seriesGranularity)
+}
+
+func (s *Service) GetBuyerDrilldown(ctx context.Context, customerID uuid.UUID, campaignID uuid.UUID, from, to time.Time, filter reports.DashboardDrilldownFilter) (reports.DashboardBreakdownTableDTO, error) {
+	return s.buyerPortfolio().GetBuyerDrilldown(ctx, customerID, campaignID, from, to, filter)
 }
 
 func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID) (dashboardadmin.CampaignDashboardDTO, error) {

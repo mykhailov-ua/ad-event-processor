@@ -3,15 +3,21 @@ import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
-  bulkCampaignAction,
+  fetchCampaignListMargins,
+  fetchCampaignListMetrics,
   fetchCampaignStatusTotals,
   listCampaigns,
-  patchCampaign,
 } from '@/api/campaigns_api';
 import { listCustomers } from '@/api/customers_api';
 import { createSelfServeCampaign, listSelfServeTemplates } from '@/api/selfserve_api';
 import type { CampaignListQuery } from '@/api/types';
 import type { CustomerComboboxOption } from '@/components/system/customer_combobox';
+import type { CampaignListMiddleColumnId } from '@/domains/campaigns/campaign_list_columns';
+import {
+  isCampaignClientSortField,
+  isCampaignServerSortField,
+  sortCampaignListItemsClient,
+} from '@/domains/campaigns/campaign_list_sort';
 import {
   CampaignsDirectory,
   type CampaignSortField,
@@ -20,11 +26,30 @@ import {
 } from '@/domains/campaigns/campaigns_directory';
 import { useResource } from '@/hooks/use_resource';
 import { useSession } from '@/hooks/use_session';
-import { DEFAULT_LIST_LIMIT, parseListLimit, parseListOffset } from '@/lib/list_query';
+import { DEFAULT_LIST_LIMIT, OPTIMAL_LIST_LIMIT_MAX, parseListLimit, parseListOffset } from '@/lib/list_query';
+
+const CLIENT_SORT_COLUMNS = new Set<CampaignListMiddleColumnId>([
+  'source',
+  'flows',
+  'clicks',
+  'conversions',
+  'cr',
+  'revenue',
+  'cost',
+  'profit',
+  'roi',
+  'group',
+]);
 
 function parseSort(raw: string | null): CampaignSortField {
   if (raw === 'updated_at' || raw === 'spend' || raw === 'budget_limit') {
     return raw;
+  }
+  if (raw === 'name' || raw === 'id') {
+    return raw === 'id' ? 'updated_at' : 'name';
+  }
+  if (raw && CLIENT_SORT_COLUMNS.has(raw as CampaignListMiddleColumnId)) {
+    return raw as CampaignListMiddleColumnId;
   }
   return 'name';
 }
@@ -51,6 +76,8 @@ function buildListQuery(
   const customerId = params.get('customer_id') ?? defaultCustomerId;
   const status = params.get('status');
   const q = params.get('q');
+  const parsedSort = parseSort(params.get('sort'));
+  const parsedOrder = parseOrder(params.get('order'));
 
   return {
     customer_id: customerId ?? undefined,
@@ -58,21 +85,9 @@ function buildListQuery(
     q: q ?? undefined,
     limit: parseListLimit(params.get('limit')),
     offset: parseListOffset(params.get('offset')),
-    sort: parseSort(params.get('sort')),
-    order: parseOrder(params.get('order')),
+    sort: isCampaignServerSortField(parsedSort) ? parsedSort : 'name',
+    order: isCampaignServerSortField(parsedSort) ? parsedOrder : 'asc',
   };
-}
-
-function bulkActionError(
-  results: { id: string; ok: boolean; error_code?: string }[],
-  campaignId: string,
-  fallback: string,
-): Error | undefined {
-  const row = results.find((entry) => entry.id === campaignId);
-  if (row && !row.ok) {
-    return new Error(row.error_code || fallback);
-  }
-  return undefined;
 }
 
 export function CampaignsPage() {
@@ -85,12 +100,24 @@ export function CampaignsPage() {
   const [draftCreateName, setDraftCreateName] = useState('');
   const [draftBudgetLimitMicro, setDraftBudgetLimitMicro] = useState('');
   const [creating, setCreating] = useState(false);
-  const [actingCampaignId, setActingCampaignId] = useState<string | undefined>();
   const [actionError, setActionError] = useState<Error | undefined>();
 
   const query = useMemo(
     () => buildListQuery(searchParams, session?.default_customer_id),
     [searchParams, session?.default_customer_id],
+  );
+
+  const widthProbeQuery = useMemo(
+    (): CampaignListQuery => ({
+      customer_id: query.customer_id,
+      status: query.status,
+      q: query.q,
+      limit: OPTIMAL_LIST_LIMIT_MAX,
+      offset: 0,
+      sort: 'name',
+      order: 'asc',
+    }),
+    [query.customer_id, query.q, query.status],
   );
   const customerId = query.customer_id;
   const appliedCustomerId = searchParams.get('customer_id') ?? '';
@@ -133,6 +160,69 @@ export function CampaignsPage() {
       refreshToken,
     ],
   );
+
+  const { data: widthProbeData } = useResource(
+    (signal) => listCampaigns(widthProbeQuery, signal),
+    [widthProbeQuery.customer_id, widthProbeQuery.q, widthProbeQuery.status, refreshToken],
+  );
+
+  const widthProbeIds = useMemo(
+    () => (widthProbeData?.items ?? []).map((campaign) => campaign.id),
+    [widthProbeData?.items],
+  );
+
+  const { data: widthProbeMetrics } = useResource(
+    (signal) => fetchCampaignListMetrics(widthProbeIds, signal),
+    [widthProbeIds.join(','), refreshToken],
+  );
+
+  const { data: widthProbeMargins } = useResource(
+    (signal) => fetchCampaignListMargins(widthProbeIds, signal),
+    [widthProbeIds.join(','), refreshToken],
+  );
+
+  const columnWidthProbe = useMemo(() => {
+    if (!widthProbeData?.items?.length) {
+      return undefined;
+    }
+    return {
+      items: widthProbeData.items,
+      metricsById: widthProbeMetrics ?? {},
+      marginsById: widthProbeMargins ?? {},
+    };
+  }, [widthProbeData?.items, widthProbeMargins, widthProbeMetrics]);
+
+  const campaignIds = useMemo(
+    () => (data?.items ?? []).map((campaign) => campaign.id),
+    [data?.items],
+  );
+
+  const { data: metricsById } = useResource(
+    (signal) => fetchCampaignListMetrics(campaignIds, signal),
+    [campaignIds.join(','), refreshToken],
+  );
+
+  const { data: marginsById } = useResource(
+    (signal) => fetchCampaignListMargins(campaignIds, signal),
+    [campaignIds.join(','), refreshToken],
+  );
+
+  const listItems = useMemo(() => {
+    const items = data?.items ?? [];
+    if (isCampaignServerSortField(appliedSort)) {
+      return items;
+    }
+    if (!isCampaignClientSortField(appliedSort)) {
+      return items;
+    }
+    return sortCampaignListItemsClient(
+      items,
+      appliedSort,
+      appliedOrder,
+      metricsById ?? {},
+      marginsById ?? {},
+    );
+  }, [appliedOrder, appliedSort, data?.items, marginsById, metricsById]);
 
   const { data: statusTotals, fetching: statusTotalsFetching } = useResource(
     (signal) =>
@@ -194,9 +284,12 @@ export function CampaignsPage() {
   }, [draftTemplateId, templates]);
 
   const updateQuery = useCallback(
-    (patch: Partial<CampaignListQuery>) => {
+    (patch: Partial<CampaignListQuery> & { sort?: CampaignSortField; order?: SortOrder }) => {
       const next = new URLSearchParams(searchParams);
-      const merged: CampaignListQuery = { ...query, ...patch };
+      const merged: CampaignListQuery & { sort?: CampaignSortField; order?: SortOrder } = {
+        ...query,
+        ...patch,
+      };
 
       if (merged.customer_id) {
         next.set('customer_id', merged.customer_id);
@@ -230,48 +323,41 @@ export function CampaignsPage() {
     [updateQuery],
   );
 
-  const onApplyFilters = useCallback(() => {
-    updateQuery({
-      customer_id: draftCustomerId.trim() || undefined,
-      status: draftStatus || undefined,
-      q: draftQ.trim() || undefined,
-      offset: 0,
-    });
-  }, [draftCustomerId, draftQ, draftStatus, updateQuery]);
+  const onPageSizeChange = useCallback(
+    (size: number) => {
+      updateQuery({ limit: size, offset: 0 });
+    },
+    [updateQuery],
+  );
 
-  const onResetFilters = useCallback(() => {
-    setDraftCustomerId('');
-    setDraftStatus('');
-    setDraftQ('');
-    updateQuery({
-      customer_id: undefined,
-      status: undefined,
-      q: undefined,
-      sort: 'name',
-      order: 'asc',
-      offset: 0,
-    });
-  }, [updateQuery]);
-
-  const onClearCustomerScope = useCallback(() => {
-    setDraftCustomerId('');
-    updateQuery({
-      customer_id: undefined,
-      offset: 0,
-    });
-  }, [updateQuery]);
-
-  const onStatusFilter = useCallback(
-    (status: CampaignStatusFilter) => {
-      const nextStatus = appliedStatus === status ? '' : status;
-      setDraftStatus(nextStatus);
+  const onDraftCustomerIdChange = useCallback(
+    (customerId: string) => {
+      setDraftCustomerId(customerId);
       updateQuery({
-        status: nextStatus || undefined,
+        customer_id: customerId.trim() || undefined,
         offset: 0,
       });
     },
-    [appliedStatus, updateQuery],
+    [updateQuery],
   );
+
+  const onDraftStatusChange = useCallback(
+    (status: CampaignStatusFilter) => {
+      setDraftStatus(status);
+      updateQuery({
+        status: status || undefined,
+        offset: 0,
+      });
+    },
+    [updateQuery],
+  );
+
+  const onSearchApply = useCallback(() => {
+    updateQuery({
+      q: draftQ.trim() || undefined,
+      offset: 0,
+    });
+  }, [draftQ, updateQuery]);
 
   const onColumnSort = useCallback(
     (field: CampaignSortField) => {
@@ -333,71 +419,9 @@ export function CampaignsPage() {
     refreshList,
   ]);
 
-  const onPauseCampaign = useCallback(
-    async (campaignId: string) => {
-      setActingCampaignId(campaignId);
-      setActionError(undefined);
-      try {
-        const response = await bulkCampaignAction({
-          action: 'pause',
-          campaign_ids: [campaignId],
-        });
-        const rowError = bulkActionError(response.results, campaignId, 'Pause failed');
-        if (rowError) {
-          throw rowError;
-        }
-        refreshList();
-      } catch (err) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setActingCampaignId(undefined);
-      }
-    },
-    [refreshList],
-  );
-
-  const onResumeCampaign = useCallback(
-    async (campaignId: string) => {
-      setActingCampaignId(campaignId);
-      setActionError(undefined);
-      try {
-        const response = await bulkCampaignAction({
-          action: 'resume',
-          campaign_ids: [campaignId],
-        });
-        const rowError = bulkActionError(response.results, campaignId, 'Resume failed');
-        if (rowError) {
-          throw rowError;
-        }
-        refreshList();
-      } catch (err) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setActingCampaignId(undefined);
-      }
-    },
-    [refreshList],
-  );
-
-  const onArchiveCampaign = useCallback(
-    async (campaignId: string) => {
-      setActingCampaignId(campaignId);
-      setActionError(undefined);
-      try {
-        await patchCampaign(campaignId, { status: 'ARCHIVED' });
-        refreshList();
-      } catch (err) {
-        setActionError(err instanceof Error ? err : new Error(String(err)));
-      } finally {
-        setActingCampaignId(undefined);
-      }
-    },
-    [refreshList],
-  );
-
   return (
     <CampaignsDirectory
-      items={data?.items ?? []}
+      items={listItems}
       total={data?.total ?? 0}
       limit={data?.limit ?? query.limit ?? DEFAULT_LIST_LIMIT}
       offset={data?.offset ?? query.offset ?? 0}
@@ -406,6 +430,9 @@ export function CampaignsPage() {
       customerOptions={customerOptions}
       customersLoading={customersFetching && customersData == null}
       customerNameById={customerNameById}
+      metricsById={metricsById ?? {}}
+      marginsById={marginsById ?? {}}
+      columnWidthProbe={columnWidthProbe}
       appliedCustomerId={appliedCustomerId}
       appliedStatus={appliedStatus}
       appliedSort={appliedSort}
@@ -427,25 +454,20 @@ export function CampaignsPage() {
       draftCreateName={draftCreateName}
       draftBudgetLimitMicro={draftBudgetLimitMicro}
       creating={creating}
-      actingCampaignId={actingCampaignId}
       actionError={actionError}
-      onDraftCustomerIdChange={setDraftCustomerId}
-      onDraftStatusChange={setDraftStatus}
+      onDraftCustomerIdChange={onDraftCustomerIdChange}
+      onDraftStatusChange={onDraftStatusChange}
       onDraftQChange={setDraftQ}
-      onApplyFilters={onApplyFilters}
-      onResetFilters={onResetFilters}
-      onClearCustomerScope={onClearCustomerScope}
-      onStatusFilter={onStatusFilter}
+      onSearchApply={onSearchApply}
+      onRefreshList={refreshList}
       onColumnSort={onColumnSort}
       onPageChange={onPageChange}
+      onPageSizeChange={onPageSizeChange}
       onDraftTemplateIdChange={setDraftTemplateId}
       onDraftCreateNameChange={setDraftCreateName}
       onDraftBudgetLimitMicroChange={setDraftBudgetLimitMicro}
       onLoadTemplates={onLoadTemplates}
       onCreateCampaign={onCreateCampaign}
-      onPauseCampaign={onPauseCampaign}
-      onResumeCampaign={onResumeCampaign}
-      onArchiveCampaign={onArchiveCampaign}
     />
   );
 }

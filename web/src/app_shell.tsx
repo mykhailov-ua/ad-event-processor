@@ -1,141 +1,74 @@
-import { useMemo, useState, type ReactNode } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
-import {
-  Activity,
-  BookOpen,
-  Layers3,
-  LayoutGrid,
-  LogOut,
-  MoreHorizontal,
-  Palette,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Search,
-  type LucideIcon,
-} from 'lucide-react';
+import { useMemo, useState, type ComponentType } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { LogOut, Menu } from 'lucide-react';
 
 import { logout } from '@/api/auth_api';
-
+import { TrackerShellHeaderActions, TrackerShellHeaderSearch } from '@/components/system/tracker_shell_header';
 import { BreadcrumbProvider } from '@/components/system/breadcrumb_context';
 import { PageBreadcrumbs } from '@/components/system/page_breadcrumbs';
 import { CommandPalette } from '@/components/system/command_palette';
 import { EulaGate } from '@/components/system/eula_gate';
-import { ThemeToggle } from '@/components/system/theme_toggle';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useSession } from '@/hooks/use_session';
-import { filterNavGroups, NAV_GROUPS, type NavGroup, type NavItem } from '@/lib/nav_config';
 import { hasAnyPortalAccess } from '@/lib/portal_access';
-import { persistSidebarCollapsed, readSidebarCollapsed } from '@/lib/sidebar_transition';
+import { listTrackerNavItems } from '@/lib/tracker_nav';
+import { TrackerHeaderProvider } from '@/lib/tracker_header_context';
 import { cn } from '@/lib/utils';
 
-const collapsedSidebarPillClass =
-  'flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-0 text-xs font-medium leading-none whitespace-nowrap';
-
-function navGroupIcon(id: string): LucideIcon {
-  switch (id) {
-    case 'core':
-      return LayoutGrid;
-    case 'operations':
-      return Activity;
-    case 'platform':
-      return Layers3;
-    case 'content':
-      return Palette;
-    case 'more':
-      return MoreHorizontal;
-    default:
-      return LayoutGrid;
-  }
-}
-
-function NavGroupLabel({ children, icon: Icon }: { children: ReactNode; icon: LucideIcon }) {
+function isTrackerWorkspacePath(pathname: string): boolean {
   return (
-    <div className="flex items-center gap-2 px-2">
-      <Icon aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-foreground/55" />
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground/75">
-        {children}
-      </p>
-    </div>
+    pathname === '/campaigns' ||
+    pathname.startsWith('/campaigns/') ||
+    pathname === '/customers' ||
+    pathname.startsWith('/customers/')
   );
 }
 
-function filterGroupsForPortals(groups: NavGroup[], permissions: string[] | undefined): NavGroup[] {
-  return groups.map((group) => ({
-    ...group,
-    items: group.items.filter(
-      (item) => item.path !== '/portals' || hasAnyPortalAccess(permissions),
-    ),
-  }));
-}
-
-function matchesNavQuery(item: NavItem, query: string): boolean {
-  if (!query) {
-    return true;
-  }
-  const haystack = `${item.label} ${item.path}`.toLowerCase();
-  return haystack.includes(query);
-}
-
-function SidebarNavLink({
-  abbrev,
-  collapsed,
+function TrackerSidebarLink({
   end,
+  icon: Icon,
   label,
   to,
 }: {
-  abbrev?: string;
-  collapsed: boolean;
   end?: boolean;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   to: string;
 }) {
-  const glyph = abbrev ?? label.charAt(0);
-
-  const link = (
+  return (
     <NavLink
-      aria-label={collapsed ? label : undefined}
       end={end}
-      title={collapsed ? label : undefined}
+      title={label}
       to={to}
       className={({ isActive }) =>
         cn(
-          'transition-colors',
-          collapsed
-            ? collapsedSidebarPillClass
-            : 'block rounded-full px-3 py-2 whitespace-nowrap',
-          isActive
-            ? 'bg-secondary font-medium text-foreground'
-            : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+          'tracker-shell-nav-link',
+          isActive && 'tracker-shell-nav-link-active',
         )
       }
     >
-      {collapsed ? glyph : label}
+      <Icon aria-hidden className="h-4 w-4 shrink-0 text-[#8a8a8a]" />
+      <span className="truncate">{label}</span>
     </NavLink>
   );
-
-  if (!collapsed) {
-    return link;
-  }
-
-  return <div className="flex justify-center">{link}</div>;
 }
 
 export function AppShell() {
   const { session, user } = useSession();
-  const [navQuery, setNavQuery] = useState('');
-  const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed());
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [signingOut, setSigningOut] = useState(false);
 
-  const toggleCollapsed = () => {
-    setCollapsed((value) => {
-      const next = !value;
-      persistSidebarCollapsed(next);
-      return next;
-    });
-  };
+  const trackerWorkspace = isTrackerWorkspacePath(location.pathname);
+
+  const navItems = useMemo(() => {
+    const items = listTrackerNavItems(user?.permissions);
+    if (!hasAnyPortalAccess(user?.permissions)) {
+      return items.filter((item) => item.path !== '/portals');
+    }
+    return items;
+  }, [user?.permissions]);
 
   const handleSignOut = () => {
     setSigningOut(true);
@@ -148,24 +81,10 @@ export function AppShell() {
       });
   };
 
-  const navGroups = useMemo(() => {
-    const filtered = filterNavGroups(NAV_GROUPS, user?.permissions);
-    const withPortals = filterGroupsForPortals(filtered, user?.permissions);
-    const query = navQuery.trim().toLowerCase();
-    if (!query) {
-      return withPortals;
-    }
-    return withPortals
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) => matchesNavQuery(item, query)),
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [navQuery, user?.permissions]);
-
   return (
     <EulaGate>
       <TooltipProvider>
+        <TrackerHeaderProvider>
         <CommandPalette />
         <Toaster />
         <a
@@ -174,157 +93,91 @@ export function AppShell() {
         >
           Skip to content
         </a>
-        <div className="flex h-screen overflow-hidden bg-background">
+        <div className="tracker-shell flex h-screen overflow-hidden">
           <aside
             className={cn(
-              'flex h-full shrink-0 flex-col overflow-hidden bg-card/60',
-              collapsed ? 'w-16' : 'w-64',
+              'tracker-shell-sidebar flex shrink-0 flex-col border-r border-[#e0e0e0] bg-[#f4f4f4] transition-[width] duration-200',
+              sidebarOpen ? 'w-[13.5rem]' : 'w-0 overflow-hidden border-r-0',
             )}
           >
-            <div
-              className={cn(
-                'shrink-0',
-                collapsed
-                  ? 'grid w-full place-items-center gap-1 py-3'
-                  : 'flex items-center justify-between gap-2 p-4 pb-2',
-              )}
-            >
-              {!collapsed ? (
-                <p className="min-w-0 flex-1 truncate text-sm font-semibold">ad-event-processor</p>
-              ) : null}
-              <div className={cn('flex shrink-0 items-center', collapsed ? 'flex-col gap-1' : 'gap-1')}>
-                <ThemeToggle />
-                <Button
-                  aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                  className={cn('shrink-0 p-0', collapsed ? 'size-9' : 'h-8 w-8')}
-                  onClick={toggleCollapsed}
-                  size={collapsed ? 'icon' : 'sm'}
+            <nav aria-label="Main" className="ui-scrollbar min-h-0 flex-1 overflow-y-auto py-2">
+              {navItems.map((item) => (
+                <TrackerSidebarLink
+                  key={item.path}
+                  end={item.path === '/dashboards/buyer'}
+                  icon={item.icon}
+                  label={item.label}
+                  to={item.path}
+                />
+              ))}
+            </nav>
+            {session ? (
+              <div className="shrink-0 border-t border-[#e5e5e5] p-2">
+                <button
+                  className="tracker-shell-nav-link w-full border-0 bg-transparent text-left"
+                  disabled={signingOut}
                   type="button"
-                  variant="ghost"
+                  onClick={handleSignOut}
                 >
-                  {collapsed ? (
-                    <PanelLeftOpen className="h-4 w-4" />
-                  ) : (
-                    <PanelLeftClose className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {!collapsed ? (
-              <div className="shrink-0 px-4 pb-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    aria-label="Filter navigation"
-                    className="h-9 pl-8 text-sm"
-                    placeholder="Filter nav…"
-                    value={navQuery}
-                    onChange={(event) => setNavQuery(event.target.value)}
-                  />
-                </div>
+                  <LogOut aria-hidden className="h-4 w-4 shrink-0 text-[#8a8a8a]" />
+                  <span>{signingOut ? 'Signing out…' : 'Sign out'}</span>
+                </button>
               </div>
             ) : null}
-
-            <nav
-              aria-label="Main"
-              className={cn(
-                'ui-scrollbar min-h-0 flex-1 overflow-y-auto py-2 text-sm',
-                collapsed ? 'overflow-x-hidden px-0' : 'px-2',
-              )}
-            >
-              <div className={cn('flex flex-col', collapsed ? 'gap-1' : 'gap-2')}>
-                {navGroups.map((group, index) => (
-                  <div
-                    key={group.id}
-                    className={cn(
-                      'flex flex-col gap-1',
-                      !collapsed && index > 0 && 'border-t border-border/40 pt-3',
-                    )}
-                  >
-                    {!collapsed ? (
-                      <NavGroupLabel icon={navGroupIcon(group.id)}>{group.label}</NavGroupLabel>
-                    ) : null}
-                    {group.items.map((item) => (
-                      <SidebarNavLink
-                        key={item.path}
-                        collapsed={collapsed}
-                        label={item.label}
-                        to={item.path}
-                      />
-                    ))}
-                  </div>
-                ))}
-                <div
-                  className={cn(
-                    'flex flex-col gap-1',
-                    !collapsed && 'border-t border-border/40 pt-3',
-                  )}
-                >
-                  {!collapsed ? <NavGroupLabel icon={BookOpen}>Help</NavGroupLabel> : null}
-                  <SidebarNavLink
-                    collapsed={collapsed}
-                    end={false}
-                    label="Documentation"
-                    to="/docs"
-                  />
-                </div>
-              </div>
-            </nav>
-
-            <div
-              className={cn(
-                'shrink-0 border-t border-border/40 text-xs text-muted-foreground',
-                collapsed
-                  ? 'grid w-full place-items-center gap-2 py-3'
-                  : 'flex flex-col gap-2 p-4',
-              )}
-            >
-              {session ? (
-                <>
-                  {!collapsed ? (
-                    <div className="flex w-full items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        {session.role ? (
-                          <p className="font-medium capitalize">{session.role}</p>
-                        ) : null}
-                        {session.timezone ? <p>{session.timezone}</p> : null}
-                      </div>
-                      <p className="shrink-0 text-muted-foreground/80">Search pages… ⌘K</p>
-                    </div>
-                  ) : (
-                    <p className="text-center text-muted-foreground/80">⌘K</p>
-                  )}
-                  <Button
-                    aria-label="Sign out"
-                    className={cn(collapsed ? 'size-9 p-0' : 'w-full')}
-                    disabled={signingOut}
-                    onClick={handleSignOut}
-                    size={collapsed ? 'icon' : 'sm'}
-                    type="button"
-                    variant="outline"
-                  >
-                    <LogOut className={cn('h-4 w-4', !collapsed && 'mr-2')} />
-                    {!collapsed ? (signingOut ? 'Signing out…' : 'Sign out') : null}
-                  </Button>
-                </>
-              ) : null}
-            </div>
           </aside>
 
-          <main
-            className="ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
-            id="main-content"
-            tabIndex={-1}
-          >
-            <BreadcrumbProvider>
-              <div className="min-w-0 max-w-full p-6 lg:p-8">
-                <PageBreadcrumbs />
-                <Outlet />
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <header className="tracker-shell-header">
+              <div className="tracker-shell-header-left">
+                <button
+                  aria-expanded={sidebarOpen}
+                  aria-label={sidebarOpen ? 'Collapse navigation' : 'Expand navigation'}
+                  className="tracker-shell-menu-btn"
+                  type="button"
+                  onClick={() => setSidebarOpen((value) => !value)}
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <span className="tracker-shell-brand">ad-event-processor</span>
               </div>
-            </BreadcrumbProvider>
-          </main>
+
+              {trackerWorkspace ? (
+                <div className="tracker-shell-header-center">
+                  <TrackerShellHeaderSearch />
+                </div>
+              ) : (
+                <div aria-hidden className="tracker-shell-header-center" />
+              )}
+
+              {trackerWorkspace ? (
+                <TrackerShellHeaderActions />
+              ) : (
+                <div aria-hidden className="tracker-shell-header-actions w-[6.5rem]" />
+              )}
+            </header>
+
+            <main
+              className={cn(
+                'ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto',
+                trackerWorkspace ? 'bg-white' : 'bg-background',
+              )}
+              id="main-content"
+              tabIndex={-1}
+            >
+              <BreadcrumbProvider>
+                {trackerWorkspace ? (
+                  <Outlet />
+                ) : (
+                  <div className="min-w-0 max-w-full p-6 lg:p-8">
+                    <PageBreadcrumbs />
+                    <Outlet />
+                  </div>
+                )}
+              </BreadcrumbProvider>
+            </main>
+          </div>
         </div>
+        </TrackerHeaderProvider>
       </TooltipProvider>
     </EulaGate>
   );

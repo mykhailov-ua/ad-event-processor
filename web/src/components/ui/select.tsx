@@ -12,13 +12,18 @@ const SelectValue = SelectPrimitive.Value;
 
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+    /** White Keitaro-style trigger for tracker workspace filters. */
+    plain?: boolean;
+  }
+>(({ className, children, plain = false, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      'flex h-10 w-full min-w-0 items-center justify-between gap-2 whitespace-nowrap rounded-full border border-border/50 bg-muted/40 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span:first-child]:min-w-0 [&>span:first-child]:flex-1 [&>span:first-child]:truncate [&>span:first-child]:text-left',
-      className
+      plain
+        ? 'flex h-[1.875rem] w-full min-w-0 items-center justify-between gap-2 whitespace-nowrap rounded border border-[#dddddd] bg-white px-2 text-[0.8125rem] leading-5 text-[#333333] shadow-none hover:bg-white focus:outline-none focus:ring-0 focus:ring-offset-0 data-[state=open]:border-[#cccccc] data-[state=open]:bg-white disabled:cursor-not-allowed disabled:opacity-50 [&>span:first-child]:min-w-0 [&>span:first-child]:flex-1 [&>span:first-child]:truncate [&>span:first-child]:text-left [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0 [&_svg]:text-[#888888] [&_svg]:opacity-100'
+        : 'flex h-10 w-full min-w-0 items-center justify-between gap-2 whitespace-nowrap rounded-full border border-border/50 bg-muted/40 px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span:first-child]:min-w-0 [&>span:first-child]:flex-1 [&>span:first-child]:truncate [&>span:first-child]:text-left',
+      className,
     )}
     {...props}
   >
@@ -60,8 +65,40 @@ SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayNam
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = 'popper', ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & {
+    /** Light popover without ui-shell chrome (e.g. campaigns workspace filters). */
+    plain?: boolean;
+  }
+>(({ className, children, plain = false, position = 'popper', ...props }, ref) => {
+  if (plain) {
+    return (
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Content
+          ref={ref}
+          className={cn(
+            'relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded border border-[#dddddd] bg-white text-[#333333] shadow-none',
+            'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
+            position === 'popper' &&
+              'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
+            className,
+          )}
+          position={position}
+          {...props}
+        >
+          <SelectPrimitive.Viewport
+            className={cn(
+              'tracker-plain-menu-scrollbar max-h-60 overflow-y-auto overflow-x-hidden p-0',
+              position === 'popper' && 'w-full min-w-[var(--radix-select-trigger-width)]',
+            )}
+          >
+            {children}
+          </SelectPrimitive.Viewport>
+        </SelectPrimitive.Content>
+      </SelectPrimitive.Portal>
+    );
+  }
+
+  return (
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
@@ -88,7 +125,8 @@ const SelectContent = React.forwardRef<
       </div>
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
-));
+  );
+});
 SelectContent.displayName = SelectPrimitive.Content.displayName;
 
 const SelectLabel = React.forwardRef<
@@ -105,13 +143,17 @@ SelectLabel.displayName = SelectPrimitive.Label.displayName;
 
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item> & {
+    plain?: boolean;
+  }
+>(({ className, children, plain = false, ...props }, ref) => (
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex w-full cursor-default select-none items-center rounded-lg py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-muted/60 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      className
+      plain
+        ? 'relative flex w-full cursor-default select-none items-center rounded-none py-1.5 pl-2 pr-8 text-[0.8125rem] outline-none focus:bg-[#f0f0f0] focus:text-[#333333] data-[highlighted]:bg-[#f0f0f0] data-[highlighted]:text-[#333333] data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
+        : 'relative flex w-full cursor-default select-none items-center rounded-lg py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-muted/60 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      className,
     )}
     {...props}
   >

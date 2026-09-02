@@ -58,24 +58,33 @@ DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayNam
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
+    /** Light menu without ui-shell chrome (e.g. campaigns workspace). */
+    plain?: boolean;
+  }
+>(({ className, sideOffset = 4, plain = false, children, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] border-0 bg-transparent p-0',
+        plain
+          ? 'tracker-plain-menu-scrollbar z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded border border-[#dddddd] bg-white p-0 text-[#333333] shadow-none'
+          : 'z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] border-0 bg-transparent p-0',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
-        className
+        className,
       )}
       {...props}
     >
-      <div className="ui-shell">
-        <div className="ui-shell-panel ui-scrollbar max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overflow-x-hidden p-1 text-popover-foreground">
-          {children}
+      {plain ? (
+        children
+      ) : (
+        <div className="ui-shell">
+          <div className="ui-shell-panel ui-scrollbar max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto overflow-x-hidden p-1 text-popover-foreground">
+            {children}
+          </div>
         </div>
-      </div>
+      )}
     </DropdownMenuPrimitive.Content>
   </DropdownMenuPrimitive.Portal>
 ));
@@ -85,14 +94,17 @@ const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
+    plain?: boolean;
   }
->(({ className, inset, ...props }, ref) => (
+>(({ className, inset, plain = false, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors focus:bg-muted/60 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0',
+      plain
+        ? 'relative flex cursor-default select-none items-center gap-2 rounded-none px-2 py-1.5 text-[0.8125rem] text-[#333333] outline-none focus:bg-[#f0f0f0] focus:text-[#333333] data-[highlighted]:bg-[#f0f0f0] data-[highlighted]:text-[#333333] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0'
+        : 'relative flex cursor-default select-none items-center gap-2 rounded-lg px-2 py-1.5 text-sm outline-none transition-colors focus:bg-muted/60 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0',
       inset && 'pl-8',
-      className
+      className,
     )}
     {...props}
   />

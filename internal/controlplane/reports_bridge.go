@@ -39,8 +39,8 @@ func portfolioFreshness(now time.Time, chQueryAvailable bool, chLag time.Duratio
 	return reports.PortfolioFreshness(now, chQueryAvailable, chLag)
 }
 
-func queryCustomerDashboardSeries(ctx context.Context, pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time) ([]reports.DashboardSeriesPointDTO, error) {
-	return reports.QueryCustomerDashboardSeries(ctx, pool, clickhouseQuery, customerID, campaignIDs, from, to)
+func queryCustomerDashboardSeries(ctx context.Context, pool *pgxpool.Pool, clickhouseQuery *database.ClickHouseQuery, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time, granularity reports.ChartGranularity) ([]reports.DashboardSeriesPointDTO, error) {
+	return reports.QueryCustomerDashboardSeries(ctx, pool, clickhouseQuery, customerID, campaignIDs, from, to, granularity)
 }
 
 type campaignStatsAdapter struct {
@@ -109,8 +109,8 @@ func (a buyerPortfolioAdapter) GetBuyerPortfolio(ctx context.Context, customerID
 	return buyerPortfolioToReports(p), err
 }
 
-func (a buyerPortfolioAdapter) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time) (reports.BuyerPortfolioDTO, error) {
-	p, err := a.svc.GetBuyerPortfolioRange(ctx, customerID, campaignFilter, from, to)
+func (a buyerPortfolioAdapter) GetBuyerPortfolioRange(ctx context.Context, customerID uuid.UUID, campaignFilter *uuid.UUID, from, to time.Time, seriesGranularity reports.ChartGranularity) (reports.BuyerPortfolioDTO, error) {
+	p, err := a.svc.GetBuyerPortfolioRange(ctx, customerID, campaignFilter, from, to, seriesGranularity)
 	return buyerPortfolioToReports(p), err
 }
 

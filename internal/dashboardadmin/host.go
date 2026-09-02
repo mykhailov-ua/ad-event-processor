@@ -56,7 +56,7 @@ type RoleReportHost interface {
 	ListCustomerCampaignIDs(ctx context.Context, customerID uuid.UUID) ([]uuid.UUID, error)
 	QueryWorstIVTSources(ctx context.Context, campaignIDs []uuid.UUID, from, to time.Time, limit int) ([]reports.SourceRowDTO, error)
 	QueryWorstIVTCountries(ctx context.Context, campaignIDs []uuid.UUID, from, to time.Time, limit int) ([]reports.FraudGeoHintDTO, error)
-	QueryCustomerDashboardSeries(ctx context.Context, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time) ([]reports.DashboardSeriesPointDTO, error)
+	QueryCustomerDashboardSeries(ctx context.Context, customerID uuid.UUID, campaignIDs []uuid.UUID, from, to time.Time, granularity reports.ChartGranularity) ([]reports.DashboardSeriesPointDTO, error)
 }
 
 type CampaignHost interface {

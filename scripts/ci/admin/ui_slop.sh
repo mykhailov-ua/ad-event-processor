@@ -4,7 +4,7 @@ set -euo pipefail
 
 # Role: Admin gate: Admin UI anti-slop patterns.
 # Execution context: CI via admin/web.sh or pr_fast.
-# Invariants/contracts enforced: Shipped copy, Button sizing, PageChrome badge mount rules.
+# Invariants/contracts enforced: Shipped copy, control height contract, PageChrome badge mount rules.
 # Verify: bash scripts/ci/admin/ui_slop.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
@@ -25,6 +25,11 @@ BUTTON_SRC=(
   web/src/pages
   web/src/ui
   web/src/views
+)
+CONTROL_SRC=(
+  web/src/components
+  web/src/domains
+  web/src/pages
 )
 
 failed=0
@@ -53,7 +58,7 @@ check_rg_dirs 'empty table blames user to "connect API"' '(?i)connect [A-Za-z ]+
 for dir in "${BUTTON_SRC[@]}"; do
   [ -d "$dir" ] || continue
   if rg -n 'size="sm"' "$dir" --glob '*.tsx' 2> /dev/null; then
-    echo "Error: UI slop - mixed Button size=\"sm\" is banned under ${dir}; use default --control-height-md"
+    echo "Error: UI slop - mixed Button size=\"sm\" is banned under ${dir}; use default Button (h-control)"
     failed=1
   fi
 done
@@ -62,6 +67,26 @@ for dir in "${COPY_SRC[@]}"; do
   [ -d "$dir" ] || continue
   if rg -n 'badge=\{loading \? null' "$dir" --glob '*.tsx' 2> /dev/null; then
     echo "Error: UI slop - PageChrome badge must not mount/unmount on load; use LoadingCountBadge (under ${dir})"
+    failed=1
+  fi
+done
+
+# Manual h-* overrides on form controls drift from --control-height; use web/src/lib/control_size.ts shells.
+for dir in "${CONTROL_SRC[@]}"; do
+  [ -d "$dir" ] || continue
+  if rg -n 'SelectTrigger[^>]*className="[^"]*\bh-[789]\b' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - SelectTrigger manual h-7/h-8/h-9 under ${dir}; use default SelectTrigger"
+    failed=1
+  fi
+  if rg -n '<Input[^>]*className="[^"]*\bh-[789]\b' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - Input manual h-7/h-8/h-9 under ${dir}; use default Input"
+    failed=1
+  fi
+  if rg -n '<Button[^>]*className="[^"]*\bh-[789]\b' "$dir" --glob '*.tsx' \
+    --glob '!**/dashboard_surface_radius_demo.tsx' \
+    --glob '!**/dashboard_time_series_plot.tsx' \
+    2> /dev/null; then
+    echo "Error: UI slop - Button manual h-7/h-8/h-9 under ${dir}; use default Button"
     failed=1
   fi
 done
@@ -85,7 +110,7 @@ for dir in web/src/domains web/src/pages; do
 done
 
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: .cursor/rules/ui.mdc anti-slop section."
+  echo "Remediation: .cursor/rules/ui.mdc anti-slop section; control height: web/src/lib/control_size.ts"
   exit 1
 fi
 

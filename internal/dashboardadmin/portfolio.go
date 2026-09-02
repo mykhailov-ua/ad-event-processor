@@ -19,7 +19,7 @@ const portfolioCampaignPageSize int32 = 100
 
 func (p *Portfolio) GetBuyerPortfolio(ctx context.Context, customerID uuid.UUID) (BuyerPortfolioDTO, error) {
 	now := time.Now().UTC()
-	return p.GetBuyerPortfolioRange(ctx, customerID, nil, now.Add(-7*24*time.Hour), now)
+	return p.GetBuyerPortfolioRange(ctx, customerID, nil, now.Add(-7*24*time.Hour), now, reports.ChartGranularityDay)
 }
 
 func (p *Portfolio) GetBuyerPortfolioRange(
@@ -27,6 +27,7 @@ func (p *Portfolio) GetBuyerPortfolioRange(
 	customerID uuid.UUID,
 	campaignFilter *uuid.UUID,
 	from, to time.Time,
+	seriesGranularity reports.ChartGranularity,
 ) (BuyerPortfolioDTO, error) {
 	if p == nil || p.host == nil {
 		return BuyerPortfolioDTO{}, fmt.Errorf("portfolio service unavailable")
@@ -190,7 +191,7 @@ func (p *Portfolio) GetBuyerPortfolioRange(
 	if campaignFilter != nil && *campaignFilter != uuid.Nil {
 		scopedCampaignIDs = []uuid.UUID{*campaignFilter}
 	}
-	if series, seriesErr := reports.QueryCustomerDashboardSeries(ctx, p.host.Pool(), chQuery, customerID, scopedCampaignIDs, from, to); seriesErr == nil {
+	if series, seriesErr := reports.QueryCustomerDashboardSeries(ctx, p.host.Pool(), chQuery, customerID, scopedCampaignIDs, from, to, seriesGranularity); seriesErr == nil {
 		resp.Series = series
 		applySeriesToKPIs(resp.KPIs, series)
 	}
