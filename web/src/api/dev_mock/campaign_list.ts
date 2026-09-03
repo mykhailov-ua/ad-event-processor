@@ -5,6 +5,7 @@ import {
   buildDevMockCampaignMetrics,
   compareDevMockCampaignMetricSort,
   devMockCampaignMetricSortNeedsWindow,
+  enrichDevMockCampaignMetricsDerived,
 } from './campaign_metrics.ts';
 
 type MockListResult = {
@@ -239,5 +240,125 @@ export function devMockListCampaignFacets(
       const rightLabel = right.email ?? right.user_id;
       return leftLabel.localeCompare(rightLabel);
     }),
+  });
+}
+
+function filterDevMockCampaignRows(url: URL, campaigns: Campaign[]): Campaign[] {
+  const customerId = url.searchParams.get('customer_id') ?? '';
+  const status = url.searchParams.get('status') ?? '';
+  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
+  const pacing = url.searchParams.get('pacing_mode') ?? '';
+  const ownerUserId = url.searchParams.get('owner_user_id') ?? '';
+  const country = url.searchParams.get('country') ?? '';
+  const budgetMin = url.searchParams.get('budget_min_micro');
+  const budgetMax = url.searchParams.get('budget_max_micro');
+
+  let rows = [...campaigns];
+  if (customerId) {
+    rows = rows.filter((row) => row.customer_id === customerId);
+  }
+  if (pacing) {
+    rows = rows.filter((row) => row.pacing_mode === pacing);
+  }
+  if (ownerUserId) {
+    rows = rows.filter((row) => row.owner_user_id === ownerUserId);
+  }
+  if (country) {
+    rows = rows.filter((row) => row.target_countries?.includes(country));
+  }
+  if (q) {
+    rows = rows.filter((row) => row.name.toLowerCase().includes(q) || row.id.includes(q));
+  }
+  if (budgetMin) {
+    const min = Number.parseInt(budgetMin, 10);
+    if (Number.isFinite(min)) {
+      rows = rows.filter((row) => campaignMoneyMicro(row.budget_limit) >= min);
+    }
+  }
+  if (budgetMax) {
+    const max = Number.parseInt(budgetMax, 10);
+    if (Number.isFinite(max)) {
+      rows = rows.filter((row) => campaignMoneyMicro(row.budget_limit) <= max);
+    }
+  }
+  if (status) {
+    rows = rows.filter((row) => row.status === status);
+  }
+  return rows;
+}
+
+export function devMockListCampaignMetricsTotals(
+  url: URL,
+  campaigns: Campaign[],
+): MockListResult {
+  const from = url.searchParams.get('from') ?? new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const to = url.searchParams.get('to') ?? new Date().toISOString();
+  const rows = filterDevMockCampaignRows(url, campaigns);
+  const flowCount = rows.filter((row) => row.flow_id).length;
+
+  const totals: Record<string, number> = {
+    impressions: 0,
+    clicks: 0,
+    conversions: 0,
+    unique_clicks: 0,
+    blocks: 0,
+    leads_raw: 0,
+    hold_leads: 0,
+    rejected_leads: 0,
+    lp_clicks: 0,
+    lp_views: 0,
+    bots: 0,
+    advertiser_spend_micro: 0,
+    rtb_cost_micro: 0,
+    operator_margin_micro: 0,
+    publisher_payout_micro: 0,
+  };
+
+  let marginBreachCount = 0;
+
+  rows.forEach((row, index) => {
+    if ((index + 1) % 13 === 0) {
+      marginBreachCount += 1;
+    }
+    const metrics = buildDevMockCampaignMetrics(row.id, index + 1, from, to);
+    totals.impressions += metrics.impressions;
+    totals.clicks += metrics.clicks;
+    totals.conversions += metrics.conversions;
+    totals.unique_clicks += metrics.unique_clicks;
+    totals.blocks += metrics.blocks;
+    totals.leads_raw += metrics.leads_raw;
+    totals.hold_leads += metrics.hold_leads;
+    totals.rejected_leads += metrics.rejected_leads;
+    totals.lp_clicks += metrics.lp_clicks;
+    totals.lp_views += metrics.lp_views;
+    totals.bots += metrics.bots;
+    totals.advertiser_spend_micro += metrics.rtb_cost_micro + metrics.profit_micro;
+    totals.rtb_cost_micro += metrics.rtb_cost_micro;
+    totals.operator_margin_micro += metrics.profit_micro;
+    totals.publisher_payout_micro += Math.floor(metrics.rtb_cost_micro * 0.72);
+  });
+
+  const totalsRow: Record<string, unknown> = { ...totals };
+  enrichDevMockCampaignMetricsDerived(totalsRow, {
+    impressions: totals.impressions,
+    clicks: totals.clicks,
+    conversions: totals.conversions,
+    leads_raw: totals.leads_raw,
+    lp_clicks: totals.lp_clicks,
+    lp_views: totals.lp_views,
+    blocks: totals.blocks,
+    bots: totals.bots,
+    rtb_cost_micro: totals.rtb_cost_micro,
+    profit_micro: totals.operator_margin_micro,
+  });
+
+  return json(200, {
+    campaign_count: rows.length,
+    flow_count: flowCount,
+    margin_breach_count: marginBreachCount,
+    totals: totalsRow,
+    from,
+    to,
+    stale: false,
   });
 }

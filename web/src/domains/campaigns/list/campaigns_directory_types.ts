@@ -3,6 +3,8 @@ import type { CampaignStatusTotals } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin, SelfServeCampaignTemplate } from '@/api/types';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
+import type { CampaignListFilterQuery } from '@/domains/campaigns/list/campaigns_list_query';
 import type {
   CampaignPacingFilter,
   CampaignSortField,
@@ -53,6 +55,8 @@ export type CampaignsDirectoryProps = {
   ownerEmailById: Record<string, string>;
   countryOptions: CampaignsListFilterOption[];
   listFacetsFetching?: boolean;
+  filterTotals?: CampaignListFilterTotalsView;
+  exportFilterQuery: CampaignListFilterQuery;
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;

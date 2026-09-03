@@ -7,6 +7,7 @@ import {
   sumCampaignListTotals,
 } from '@/domains/campaigns/list/campaign_list_format';
 import { sumCampaignFunnelTotals } from '@/domains/campaigns/list/campaign_list_funnel';
+import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import {
   CAMPAIGN_LIST_COLUMN_LABELS,
   CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX,
@@ -49,6 +50,7 @@ export type CampaignsListTableProps = {
   fetching?: boolean;
   emptyMessage?: string;
   onCampaignOverview?: (campaign: Campaign) => void;
+  filterTotals?: CampaignListFilterTotalsView;
 };
 
 export function CampaignsListTable({
@@ -69,6 +71,7 @@ export function CampaignsListTable({
   fetching = false,
   emptyMessage = 'No campaigns match the current filters.',
   onCampaignOverview,
+  filterTotals,
 }: CampaignsListTableProps) {
   const columns = visibleCampaignListColumns(columnPrefs);
   const { localWidths, startResize } = useCampaignListColumnResize({
@@ -86,12 +89,15 @@ export function CampaignsListTable({
     null,
   );
   const allSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id));
-  const totals = sumCampaignListTotals(
-    items as CampaignWithMoneyDisplay[],
-    metricsById,
-    marginsById,
-  );
-  const funnelTotals = sumCampaignFunnelTotals(items, metricsById);
+  const totals =
+    filterTotals?.totals ??
+    sumCampaignListTotals(
+      items as CampaignWithMoneyDisplay[],
+      metricsById,
+      marginsById,
+    );
+  const funnelTotals =
+    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals(items, metricsById);
 
   function toggleAll(checked: boolean) {
     if (!checked) {
@@ -276,6 +282,7 @@ export function CampaignsListTable({
                     funnelTotals={funnelTotals}
                     pageCount={items.length}
                     totals={totals}
+                    totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
                   />
                 </td>
               );

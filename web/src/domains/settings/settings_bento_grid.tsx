@@ -35,7 +35,7 @@ export function BentoColumn({
 }) {
   return (
     <div className="flex min-w-0 flex-col">
-      <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+      <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5 text-admin-caption font-medium tracking-wide text-muted-foreground">
         {icon}
         <span>{title}</span>
       </div>
@@ -126,7 +126,7 @@ function SettingsUrlCopyChip({
           <CopyButton className="size-7" label={label} value={trimmed} />
         </span>
       </TooltipTrigger>
-      <TooltipContent className="max-w-sm break-all font-mono text-[11px] leading-snug">
+      <TooltipContent className="max-w-sm break-all font-mono text-admin-caption leading-snug">
         {trimmed}
       </TooltipContent>
     </Tooltip>

@@ -1,5 +1,6 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
+import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import {
   emptyCampaignListTotals,
   formatTableCount,
@@ -9,13 +10,35 @@ import {
 import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 
 export type CampaignListSummary = CampaignListTotals & {
-  scope: 'page' | 'selection';
+  scope: 'page' | 'selection' | 'filter';
   rowCount: number;
   staleCount: number;
   marginBreachCount: number;
 };
 
-// Page or selection scope only; not the server-filtered list total.
+export function resolveCampaignListSummary(
+  items: Campaign[],
+  selectedIds: Set<string>,
+  metricsById: Record<string, CampaignListMetrics>,
+  marginsById: Record<string, CampaignMargin>,
+  filterTotals?: CampaignListFilterTotalsView,
+): CampaignListSummary {
+  if (selectedIds.size > 0) {
+    return computeCampaignListSummary(items, selectedIds, metricsById, marginsById);
+  }
+  if (filterTotals) {
+    return {
+      ...filterTotals.totals,
+      scope: 'filter',
+      rowCount: filterTotals.campaignCount,
+      staleCount: filterTotals.stale ? 1 : 0,
+      marginBreachCount: filterTotals.marginBreachCount,
+    };
+  }
+  return computeCampaignListSummary(items, selectedIds, metricsById, marginsById);
+}
+
+// Page or selection scope only; filter scope uses resolveCampaignListSummary + metrics-totals API.
 export function computeCampaignListSummary(
   items: Campaign[],
   selectedIds: Set<string>,
@@ -61,6 +84,11 @@ export function formatCampaignListSummaryLine(summary: CampaignListSummary): str
   const clicks = formatTableCount(summary.clicks).text;
   const leads = formatTableCount(summary.conversions).text;
   const profit = formatTableMoneyFromMicro(summary.profitMicro).text;
-  const scopeLabel = summary.scope === 'selection' ? `${summary.rowCount} selected` : 'page';
+  const scopeLabel =
+    summary.scope === 'selection'
+      ? `${summary.rowCount} selected`
+      : summary.scope === 'filter'
+        ? `${summary.rowCount} filtered`
+        : 'page';
   return `${scopeLabel}: ${clicks} clicks, ${leads} leads, ${profit} profit`;
 }

@@ -23,6 +23,7 @@ export type CampaignListTableTotalsCellProps = {
   totals: CampaignListTotals;
   funnelTotals: CampaignFunnelCounts;
   pageCount: number;
+  totalsLabel?: string;
 };
 
 export function CampaignListTableTotalsCell({
@@ -30,13 +31,14 @@ export function CampaignListTableTotalsCell({
   totals,
   funnelTotals,
   pageCount,
+  totalsLabel = 'Total',
 }: CampaignListTableTotalsCellProps) {
   switch (columnId) {
     case 'select':
     case 'id':
       return null;
     case 'name':
-      return <span className="tabular-nums">Total</span>;
+      return <span className="tabular-nums">{totalsLabel}</span>;
     case 'clicks': {
       const res = formatTableCount(totals.clicks);
       return <span className={tableCellClass(res.isZero)}>{res.text}</span>;

@@ -31,8 +31,6 @@ export function CampaignListTableMiddleCell({
           {vm.statusLabel}
         </span>
       );
-    case 'tags':
-      return <span className={tableCellClass(true)}>-</span>;
     case 'clicks':
       return <span className={tableCellClass(vm.clicks.isZero)}>{vm.clicks.text}</span>;
     case 'impressions':

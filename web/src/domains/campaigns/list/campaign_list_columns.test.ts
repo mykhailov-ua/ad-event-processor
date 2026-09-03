@@ -47,7 +47,7 @@ test('parseCampaignListColumnPrefs migrates h_leads to hold_leads', () => {
   assert.equal(prefs.hidden.includes('hold_leads'), true);
 });
 
-test('parseCampaignListColumnPrefs merges unknown and duplicate middle columns', () => {
+test('parseCampaignListColumnPrefs merges unknown and drops legacy tags column', () => {
   const prefs = parseCampaignListColumnPrefs(
     JSON.stringify({
       dataColumnOrder: ['name', 'group', 'tags', 'unknown', 'tags', 'clicks'],
@@ -56,6 +56,7 @@ test('parseCampaignListColumnPrefs merges unknown and duplicate middle columns',
   );
 
   assert.equal(prefs.dataColumnOrder[0], 'name');
+  assert.equal(prefs.dataColumnOrder.includes('tags' as never), false);
   assert.equal(prefs.hidden.includes('roi'), true);
   assert.equal(visibleCampaignListColumns(prefs).includes('roi'), false);
 });

@@ -368,7 +368,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
 
       {commitResult?.campaign ? (
         <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 grid gap-3">
-          <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Campaign created</h3>
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Campaign created</h3>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {commitResult.campaign.name}{' '}
             <span className="font-mono text-xs">({commitResult.campaign.id})</span>
@@ -404,7 +404,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
       {!activeSession ? (
         <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
           <div>
-            <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Setup</h3>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Setup</h3>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Pick a customer and bundled onboarding template. The server stores a draft session for 24 hours.
             </p>
@@ -492,7 +492,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
           <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Session</h3>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Session</h3>
                 <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">{activeSession.session_id}</p>
               </div>
               <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">
@@ -524,7 +524,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
 
           {currentStep === 'traffic_source' ? (
             <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
-              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Traffic source</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Traffic source</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2 grid gap-2">
                   <Label>Campaign name</Label>
@@ -570,7 +570,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
 
           {currentStep === 'integration_template' ? (
             <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
-              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Integration template</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Integration template</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
                   <Label>Integration schema</Label>
@@ -626,7 +626,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
 
           {currentStep === 'flow_skeleton' ? (
             <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
-              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Flow skeleton</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Flow skeleton</h3>
               <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
                   <Label>Flow name</Label>
                   <Input
@@ -684,7 +684,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
 
           {currentStep === 'budget' ? (
             <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
-              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Budget</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Budget</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
                   <Label>Budget limit ($)</Label>
@@ -729,7 +729,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
 
           {currentStep === 'review' ? (
             <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
-              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Review</h3>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Review</h3>
               {activeSession.review?.preview ? (
                 <dl className="grid gap-2 text-sm sm:grid-cols-2">
                   <div>

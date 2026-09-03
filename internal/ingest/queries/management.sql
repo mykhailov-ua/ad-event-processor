@@ -297,6 +297,28 @@ WHERE deleted_at IS NULL
   )
 GROUP BY status;
 
+-- name: CountCampaignFlowsForFilter :one
+SELECT COUNT(*)::bigint FROM campaigns
+WHERE deleted_at IS NULL
+  AND flow_id IS NOT NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  );
+
 -- name: ListCampaignListKeysForFilter :many
 SELECT id, name FROM campaigns
 WHERE deleted_at IS NULL

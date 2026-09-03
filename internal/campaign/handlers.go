@@ -76,6 +76,7 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/campaigns/list-facets", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignListFacets)))
 	mux.HandleFunc("GET /api/v1/campaigns/target-countries", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignTargetCountries)))
 	mux.HandleFunc("GET /api/v1/campaigns/metrics", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetrics)))
+	mux.HandleFunc("GET /api/v1/campaigns/metrics-totals", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetricsTotals)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaign)))
 	mux.HandleFunc("PATCH /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:write"}, h.patchCampaign)))
 	mux.HandleFunc("PUT /api/v1/campaigns/{id}/owner", limit(perm([]string{"campaigns:write"}, h.assignCampaignOwner)))
@@ -230,6 +231,37 @@ func (h *CampaignsHTTPHandlers) listCampaignMetrics(w http.ResponseWriter, r *ht
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, report)
+}
+
+func (h *CampaignsHTTPHandlers) campaignListFilterFromRequest(r *http.Request) (ListCampaignsFilter, error) {
+	q := r.URL.Query()
+
+	var customerID uuid.UUID
+	if custStr := q.Get("customer_id"); custStr != "" {
+		id, err := uuid.Parse(custStr)
+		if err != nil {
+			return ListCampaignsFilter{}, invalidQueryError("invalid customer_id")
+		}
+		customerID = id
+	}
+	if h.ResolveCustomerID != nil {
+		resolved, err := h.ResolveCustomerID(r, nonNilUUID(customerID))
+		if err != nil {
+			return ListCampaignsFilter{}, err
+		}
+		customerID = resolved
+	}
+
+	return ListCampaignsFilter{
+		CustomerID:     customerID,
+		Status:         q.Get("status"),
+		OwnerUserID:    ResolveListOwnerUserFilter(r.Context(), r),
+		TargetCountry:  parseTargetCountryQuery(r),
+		BudgetMinMicro: parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
+		BudgetMaxMicro: parseOptionalBudgetMicroQuery(r, "budget_max_micro"),
+		SearchQuery:    strings.TrimSpace(q.Get("q")),
+		PacingMode:     strings.TrimSpace(q.Get("pacing_mode")),
+	}, nil
 }
 
 func (h *CampaignsHTTPHandlers) getCampaign(w http.ResponseWriter, r *http.Request) {

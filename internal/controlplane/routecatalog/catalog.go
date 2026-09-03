@@ -33,6 +33,8 @@ var routeCatalog = []Route{
 	{Method: "GET", Path: "/api/v1/customers/{id}"},
 	{Method: "GET", Path: "/api/v1/campaigns"},
 	{Method: "GET", Path: "/api/v1/campaigns/list-facets"},
+	{Method: "GET", Path: "/api/v1/campaigns/metrics"},
+	{Method: "GET", Path: "/api/v1/campaigns/metrics-totals"},
 	{Method: "GET", Path: "/api/v1/campaigns/target-countries"},
 	{Method: "GET", Path: "/api/v1/campaigns/{id}"},
 	{Method: "PATCH", Path: "/api/v1/campaigns/{id}"},

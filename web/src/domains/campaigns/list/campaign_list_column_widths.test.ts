@@ -68,3 +68,42 @@ test('campaignListMiddleCellText uses server derived epc micro not client math',
 
   assert.equal(text, '5.00');
 });
+
+test('computeCampaignListColumnWidths uses filter totals label for footer probe', () => {
+  const items: Campaign[] = [
+    { id: 'a', name: 'Short', customer_id: 'c1', status: 'ACTIVE' } as Campaign,
+  ];
+
+  const widths = computeCampaignListColumnWidths({
+    columns: ['name'],
+    items,
+    metricsById: { a: { clicks: 1 } },
+    marginsById: {},
+    customerNameById: {},
+    filterTotals: {
+      totals: {
+        flows: 0,
+        clicks: 0,
+        impressions: 0,
+        blocks: 0,
+        conversions: 0,
+        revenueMicro: 0,
+        costMicro: 0,
+        profitMicro: 0,
+      },
+      funnelTotals: {
+        rawLeads: 0,
+        approved: 0,
+        hold: 0,
+        rejected: 0,
+        lpClicks: 0,
+        lpViews: 0,
+        bots: 0,
+      },
+      campaignCount: 10,
+      stale: false,
+    },
+  });
+
+  assert.ok(widths.name >= 90);
+});

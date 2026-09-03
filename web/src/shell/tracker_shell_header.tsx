@@ -66,7 +66,7 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
         onClick={onOpenCommandPalette}
       >
         <span className="truncate text-left">Search routes, campaigns, reports...</span>
-        <kbd className="hidden rounded border border-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 sm:inline dark:border-zinc-700">Ctrl+K</kbd>
+        <kbd className="hidden rounded border border-zinc-200 px-1.5 py-0.5 text-admin-mini font-medium text-zinc-500 sm:inline dark:border-zinc-700">Ctrl+K</kbd>
       </button>
     </div>
   );

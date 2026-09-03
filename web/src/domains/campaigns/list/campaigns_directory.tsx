@@ -1,7 +1,6 @@
 import { toast } from 'sonner';
 
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
-import { exportVisibleRowsCsv } from '@/domains/campaigns/list/campaign_list_export';
 import { CampaignsListTable } from '@/domains/campaigns/list/campaigns_list_table';
 import { CampaignsListToolbar } from '@/domains/campaigns/list/campaigns_list_toolbar';
 import { CampaignsDirectoryOverlays } from '@/domains/campaigns/list/campaigns_directory_overlays';
@@ -49,6 +48,8 @@ export function CampaignsDirectory({
   ownerEmailById,
   countryOptions,
   listFacetsFetching = false,
+  filterTotals,
+  exportFilterQuery,
   fetching,
   error,
   hasSnapshot,
@@ -90,6 +91,8 @@ export function CampaignsDirectory({
     metricsById,
     marginsById,
     columnWidthProbe,
+    filterTotals,
+    exportFilterQuery,
     onRefreshList,
   });
 
@@ -195,17 +198,17 @@ export function CampaignsDirectory({
             />
             <div aria-label="Export" className="flex flex-wrap items-center gap-2">
               <Button
-                disabled={fetching || items.length === 0 || workspace.exportBusy}
-                title="Download visible table rows as CSV"
+                disabled={fetching || total === 0 || workspace.exportBusy}
+                title="Download CSV for selected campaigns, or all campaigns matching the current filters"
                 type="button"
                 variant="secondary"
-                onClick={() => exportVisibleRowsCsv(items, customerNameById)}
+                onClick={workspace.onExportCsv}
               >
                 Export CSV
               </Button>
               <Button
-                disabled={fetching || items.length === 0 || workspace.exportBusy}
-                title="Download campaign bundle JSON for selected rows, or all rows on this page"
+                disabled={fetching || total === 0 || workspace.exportBusy}
+                title="Download JSON bundles for selected campaigns, or all campaigns matching the current filters"
                 type="button"
                 variant="secondary"
                 onClick={workspace.onExportBundles}
@@ -230,6 +233,7 @@ export function CampaignsDirectory({
               : 'No campaigns yet. Create one to start tracking spend and delivery.'
           }
           fetching={fetching}
+          filterTotals={filterTotals}
           items={items}
           marginsById={marginsById}
           metricsById={metricsById}

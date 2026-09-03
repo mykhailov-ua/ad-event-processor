@@ -11,8 +11,11 @@ import {
 } from '@/domains/campaigns/list/campaign_list_bulk_actions';
 import {
   exportCampaignBundles,
+  exportCampaignRowsCsv,
+  listAllCampaignsForFilter,
 } from '@/domains/campaigns/list/campaign_list_export';
-import { computeCampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
+import type { CampaignListFilterQuery } from '@/domains/campaigns/list/campaigns_list_query';
+import { resolveCampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
 import {
   loadCampaignListColumnPrefs,
   mergeCampaignListColumnWidths,
@@ -28,6 +31,7 @@ import {
   defaultCampaignListColumnWidths,
 } from '@/domains/campaigns/list/campaign_list_column_widths';
 import type { CampaignListColumnWidthProbe } from '@/domains/campaigns/list/campaigns_directory_types';
+import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 
 type UseCampaignsDirectoryWorkspaceArgs = {
   items: Campaign[];
@@ -36,6 +40,8 @@ type UseCampaignsDirectoryWorkspaceArgs = {
   metricsById: Record<string, CampaignListMetrics>;
   marginsById: Record<string, CampaignMargin>;
   columnWidthProbe?: CampaignListColumnWidthProbe;
+  filterTotals?: CampaignListFilterTotalsView;
+  exportFilterQuery: CampaignListFilterQuery;
   onRefreshList: () => void;
 };
 
@@ -46,6 +52,8 @@ export function useCampaignsDirectoryWorkspace({
   metricsById,
   marginsById,
   columnWidthProbe,
+  filterTotals,
+  exportFilterQuery,
   onRefreshList,
 }: UseCampaignsDirectoryWorkspaceArgs) {
   const navigate = useNavigate();
@@ -90,8 +98,9 @@ export function useCampaignsDirectoryWorkspace({
       marginsById: columnWidthProbe.marginsById,
       customerNameById,
       ownerEmailById,
+      filterTotals,
     });
-  }, [columnWidthProbe, customerNameById, ownerEmailById, visibleColumns]);
+  }, [columnWidthProbe, customerNameById, filterTotals, ownerEmailById, visibleColumns]);
 
   const columnWidths = useMemo(
     () => mergeCampaignListColumnWidths(computedColumnWidths, columnPrefs.widthPx, visibleColumns),
@@ -119,8 +128,8 @@ export function useCampaignsDirectoryWorkspace({
   );
 
   const summary = useMemo(
-    () => computeCampaignListSummary(items, selectedIds, metricsById, marginsById),
-    [items, marginsById, metricsById, selectedIds],
+    () => resolveCampaignListSummary(items, selectedIds, metricsById, marginsById, filterTotals),
+    [filterTotals, items, marginsById, metricsById, selectedIds],
   );
 
   const selectedIdsList = useMemo(() => [...selectedIds], [selectedIds]);
@@ -163,19 +172,52 @@ export function useCampaignsDirectoryWorkspace({
     void runBulkAction('Archived', () => archiveCampaigns(selectedIdsList));
   }, [runBulkAction, selectedIdsList]);
 
-  const onExportBundles = useCallback(() => {
-    const ids = selectedIdsList.length > 0 ? selectedIdsList : items.map((item) => item.id);
-    if (ids.length === 0) {
-      return;
+  const resolveExportCampaigns = useCallback(async (): Promise<Campaign[]> => {
+    if (selectedIdsList.length > 0) {
+      const selected = new Set(selectedIdsList);
+      const fromPage = items.filter((item) => selected.has(item.id));
+      if (fromPage.length === selectedIdsList.length) {
+        return fromPage;
+      }
+      const allFiltered = await listAllCampaignsForFilter(exportFilterQuery);
+      return allFiltered.filter((item) => selected.has(item.id));
     }
+    return listAllCampaignsForFilter(exportFilterQuery);
+  }, [exportFilterQuery, items, selectedIdsList]);
+
+  const onExportCsv = useCallback(() => {
     setExportBusy(true);
-    void exportCampaignBundles(ids)
-      .then(() => toast.success('Campaign export downloaded'))
+    void resolveExportCampaigns()
+      .then((rows) => {
+        if (rows.length === 0) {
+          toast.error('No campaigns to export');
+          return;
+        }
+        exportCampaignRowsCsv(rows, customerNameById);
+        toast.success(`Exported ${rows.length} campaign(s) as CSV`);
+      })
       .catch((err: unknown) => {
         toast.error(err instanceof Error ? err.message : String(err));
       })
       .finally(() => setExportBusy(false));
-  }, [items, selectedIdsList]);
+  }, [customerNameById, resolveExportCampaigns]);
+
+  const onExportBundles = useCallback(() => {
+    setExportBusy(true);
+    void resolveExportCampaigns()
+      .then(async (rows) => {
+        if (rows.length === 0) {
+          toast.error('No campaigns to export');
+          return;
+        }
+        await exportCampaignBundles(rows.map((row) => row.id));
+        toast.success('Campaign export downloaded');
+      })
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => setExportBusy(false));
+  }, [resolveExportCampaigns]);
 
   const onReportClick = useCallback(() => {
     if (selectedIds.size !== 1) {
@@ -200,6 +242,7 @@ export function useCampaignsDirectoryWorkspace({
     importOpen,
     onArchiveSelected,
     onExportBundles,
+    onExportCsv,
     onPauseSelected,
     onReportClick,
     onResumeSelected,

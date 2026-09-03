@@ -81,6 +81,26 @@
     @apply relative z-[2] flex h-full items-center justify-center;
   }
 
+  .admin-table--ops {
+    @apply w-auto table-fixed border-collapse text-admin-dense;
+  }
+
+  .admin-table--ops th {
+    @apply sticky top-0 z-[2] bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400;
+  }
+
+  .admin-table--ops td {
+    @apply border-b border-zinc-100 px-3 py-1.5 dark:border-zinc-800;
+  }
+
+  .admin-table--ops td.num {
+    @apply text-right;
+  }
+
+  .admin-table--ops tbody tr:nth-child(even) td {
+    @apply bg-zinc-50/50 dark:bg-zinc-900/40;
+  }
+
   .campaign-metrics-popover > div {
     width: 22rem;
     min-width: 22rem;

@@ -108,6 +108,31 @@ func CampaignListKeysParamsFromFilter(filter ListCampaignsFilter) db.ListCampaig
 	}
 }
 
+func CampaignCountFlowsParamsFromFilter(filter ListCampaignsFilter) db.CountCampaignFlowsForFilterParams {
+	var customerID pgtype.UUID
+	if filter.CustomerID != uuid.Nil {
+		customerID = domain.ToUUID(filter.CustomerID)
+	}
+	var status pgtype.Text
+	if filter.Status != "" {
+		status = pgtype.Text{String: filter.Status, Valid: true}
+	}
+	var targetCountry pgtype.Text
+	if filter.TargetCountry != "" {
+		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
+	}
+	return db.CountCampaignFlowsForFilterParams{
+		CustomerID:     customerID,
+		Status:         status,
+		OwnerUserID:    filter.OwnerUserID,
+		TargetCountry:  targetCountry,
+		BudgetMinMicro: filter.BudgetMinMicro,
+		BudgetMaxMicro: filter.BudgetMaxMicro,
+		SearchQuery:    optionalCampaignSearchText(filter.SearchQuery),
+		PacingMode:     optionalCampaignPacingMode(filter.PacingMode),
+	}
+}
+
 func campaignListBaseParams(filter ListCampaignsFilter) (
 	customerID pgtype.UUID,
 	status pgtype.Text,

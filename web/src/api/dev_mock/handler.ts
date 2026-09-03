@@ -16,7 +16,7 @@ import {
   devMockWizardSessionGet,
   devMockWizardSessionPost,
 } from './wizard_fixtures.ts';
-import { devMockListCampaignFacets, devMockListCampaigns } from './campaign_list.ts';
+import { devMockListCampaignFacets, devMockListCampaignMetricsTotals, devMockListCampaigns } from './campaign_list.ts';
 import {
   buildDevMockCampaignMetrics,
   enrichDevMockCampaignMetricsDerived,
@@ -392,6 +392,9 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   }
   if (method === 'GET' && pathname === '/api/v1/campaigns/metrics') {
     return campaignMetrics(url);
+  }
+  if (method === 'GET' && pathname === '/api/v1/campaigns/metrics-totals') {
+    return devMockListCampaignMetricsTotals(url, devMockStore().campaigns);
   }
   if (method === 'GET' && pathname === '/api/v1/campaigns/onboarding-templates') {
     return json(200, devMockOnboardingTemplates());

@@ -15,6 +15,7 @@ import {
 import {
   applyCampaignListQueryPatch,
   buildCampaignListQuery,
+  campaignListFilterQueryFromListQuery,
   campaignListFiltersActive,
   parseCampaignListOrder,
   parseCampaignListPacing,
@@ -51,6 +52,10 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   const query = useMemo(
     () => buildCampaignListQuery(searchParams, session?.default_customer_id),
     [searchParams, session?.default_customer_id],
+  );
+  const exportFilterQuery = useMemo(
+    () => campaignListFilterQueryFromListQuery(query),
+    [query],
   );
 
   const customerId = query.customer_id;
@@ -149,6 +154,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     templatesError,
     templatesLoading,
     listFacetsFetching,
+    filterTotals,
   } = useCampaignsPageList({
     query,
     statsQuery,
@@ -386,6 +392,8 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     ownerEmailById,
     countryOptions,
     listFacetsFetching,
+    filterTotals,
+    exportFilterQuery,
     fetching,
     error,
     hasSnapshot: data != null,

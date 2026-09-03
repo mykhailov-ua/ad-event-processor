@@ -200,8 +200,6 @@ export function campaignListMiddleCellDisplayText(
   switch (columnId) {
     case 'status':
       return vm.statusLabel;
-    case 'tags':
-      return '-';
     case 'clicks':
       return vm.clicks.text;
     case 'impressions':

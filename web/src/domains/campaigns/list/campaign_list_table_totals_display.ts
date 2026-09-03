@@ -21,13 +21,14 @@ export function campaignListTotalsCellDisplayText(
   totals: CampaignListTotals,
   funnelTotals: CampaignFunnelCounts,
   pageCount: number,
+  totalsLabel = 'Total',
 ): string {
   switch (columnId) {
     case 'select':
     case 'id':
       return '';
     case 'name':
-      return 'Total';
+      return totalsLabel;
     case 'clicks':
       return formatTableCount(totals.clicks).text;
     case 'ctr':

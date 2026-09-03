@@ -113,6 +113,13 @@ export function buildCampaignListQuery(
   return query;
 }
 
+export type CampaignListFilterQuery = Omit<CampaignListQuery, 'limit' | 'offset' | 'sort' | 'order'>;
+
+export function campaignListFilterQueryFromListQuery(query: CampaignListQuery): CampaignListFilterQuery {
+  const { limit: _limit, offset: _offset, sort: _sort, order: _order, ...filter } = query;
+  return filter;
+}
+
 export type CampaignListQueryPatch = Partial<Omit<CampaignListQuery, 'sort'>> & {
   sort?: CampaignSortField;
   order?: SortOrder;

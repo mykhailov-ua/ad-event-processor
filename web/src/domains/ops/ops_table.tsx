@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils';
 import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
 
 /** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
-export const OPS_DIRECTORY_TABLE_CLASS =
-  'w-auto table-fixed text-[13px] [&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-zinc-50 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-zinc-500 [&_td]:border-b [&_td]:border-zinc-100 [&_td]:px-3 [&_td]:py-1.5 dark:[&_th]:bg-zinc-900 dark:[&_th]:text-zinc-400 dark:[&_td]:border-zinc-800 [&_td.num]:text-right [&_tbody_tr:nth-child(even)_td]:bg-zinc-50/50 dark:[&_tbody_tr:nth-child(even)_td]:bg-zinc-900/40';
+export const OPS_DIRECTORY_TABLE_CLASS = 'admin-table--ops';
 
 /** Ops directory table shell; delegates border/scroll to DirectoryTable. */
 export function OpsTable({

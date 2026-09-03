@@ -1,7 +1,45 @@
+import { listCampaigns } from '@/api/campaigns_api';
 import { exportCampaign } from '@/api/campaigns_api';
 import type { Campaign } from '@/api/types';
+import type { CampaignListFilterQuery } from '@/domains/campaigns/list/campaigns_list_query';
 
-export function exportVisibleRowsCsv(
+const CAMPAIGN_LIST_EXPORT_PAGE_SIZE = 1000;
+const CAMPAIGN_LIST_EXPORT_MAX_ROWS = 5000;
+
+export async function listAllCampaignsForFilter(
+  filter: CampaignListFilterQuery,
+  signal?: AbortSignal,
+): Promise<Campaign[]> {
+  const items: Campaign[] = [];
+  let offset = 0;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (offset < total && items.length < CAMPAIGN_LIST_EXPORT_MAX_ROWS) {
+    const page = await listCampaigns(
+      {
+        ...filter,
+        limit: CAMPAIGN_LIST_EXPORT_PAGE_SIZE,
+        offset,
+        sort: 'name',
+        order: 'asc',
+      },
+      signal,
+    );
+    total = page.total;
+    if (page.items.length === 0) {
+      break;
+    }
+    items.push(...page.items);
+    offset += page.items.length;
+    if (items.length >= CAMPAIGN_LIST_EXPORT_MAX_ROWS) {
+      break;
+    }
+  }
+
+  return items;
+}
+
+export function exportCampaignRowsCsv(
   items: Campaign[],
   customerNameById: Record<string, string>,
 ): void {

@@ -15,6 +15,7 @@ import {
   campaignListMiddleCellDisplayText,
 } from '@/domains/campaigns/list/campaign_list_row_vm';
 import { campaignListTotalsCellDisplayText } from '@/domains/campaigns/list/campaign_list_table_totals_display';
+import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 
 const CELL_HORIZONTAL_PADDING_PX = 12;
@@ -66,6 +67,7 @@ export function computeCampaignListColumnWidths({
   marginsById,
   customerNameById,
   ownerEmailById = {},
+  filterTotals,
 }: {
   columns: ReadonlyArray<CampaignListColumnId>;
   items: readonly Campaign[];
@@ -73,14 +75,19 @@ export function computeCampaignListColumnWidths({
   marginsById: Readonly<Record<string, CampaignMargin>>;
   customerNameById: Readonly<Record<string, string>>;
   ownerEmailById?: Readonly<Record<string, string>>;
+  filterTotals?: CampaignListFilterTotalsView;
 }): Record<CampaignListColumnId, number> {
   const widths = defaultCampaignListColumnWidths(columns);
-  const totals = sumCampaignListTotals(
-    items as CampaignWithMoneyDisplay[],
-    metricsById,
-    marginsById,
-  );
-  const funnelTotals = sumCampaignFunnelTotals(items, metricsById);
+  const totals =
+    filterTotals?.totals ??
+    sumCampaignListTotals(
+      items as CampaignWithMoneyDisplay[],
+      metricsById,
+      marginsById,
+    );
+  const funnelTotals =
+    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals(items, metricsById);
+  const totalsLabel = filterTotals ? 'Filtered total' : 'Total';
 
   for (const columnId of columns) {
     const label = CAMPAIGN_LIST_COLUMN_LABELS[columnId];
@@ -116,6 +123,7 @@ export function computeCampaignListColumnWidths({
       totals,
       funnelTotals,
       items.length,
+      totalsLabel,
     );
     if (totalsText) {
       maxWidth = Math.max(maxWidth, columnContentWidth(totalsText, widths[columnId]));

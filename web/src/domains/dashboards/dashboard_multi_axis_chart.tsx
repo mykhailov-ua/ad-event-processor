@@ -114,7 +114,7 @@ function ChartTooltipContent({
     }
     return (
       <div className="grid gap-1">
-        <p className="font-numeric text-[10px] tracking-wide text-muted-foreground">
+        <p className="font-numeric text-admin-mini tracking-wide text-muted-foreground">
           {title}
         </p>
         {metrics.map((metric) => {

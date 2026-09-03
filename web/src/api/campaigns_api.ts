@@ -129,6 +129,68 @@ export async function fetchCampaignListFacets(
   return apiJson<CampaignListFacetsResponse>(path, { signal });
 }
 
+export type CampaignListMetricsTotalsResponse = {
+  campaign_count: number;
+  flow_count: number;
+  margin_breach_count: number;
+  totals: CampaignListMetricsRow;
+  from: string;
+  to: string;
+  stale: boolean;
+};
+
+export function buildCampaignListMetricsTotalsPath(
+  filter: Omit<CampaignListQuery, 'limit' | 'offset' | 'sort' | 'order'> = {},
+  statsQuery: Pick<CampaignListMetricsQuery, 'from' | 'to'> = {},
+): string {
+  const search = new URLSearchParams();
+  if (filter.customer_id) {
+    search.set('customer_id', filter.customer_id);
+  }
+  if (filter.status) {
+    search.set('status', filter.status);
+  }
+  if (filter.q) {
+    search.set('q', filter.q);
+  }
+  if (filter.pacing_mode) {
+    search.set('pacing_mode', filter.pacing_mode);
+  }
+  if (filter.budget_min_micro != null) {
+    search.set('budget_min_micro', String(filter.budget_min_micro));
+  }
+  if (filter.budget_max_micro != null) {
+    search.set('budget_max_micro', String(filter.budget_max_micro));
+  }
+  if (filter.owner_user_id) {
+    search.set('owner_user_id', filter.owner_user_id);
+  }
+  if (filter.country) {
+    search.set('country', filter.country);
+  }
+  if (statsQuery.from) {
+    search.set('from', statsQuery.from);
+  }
+  if (statsQuery.to) {
+    search.set('to', statsQuery.to);
+  }
+  const query = search.toString();
+  return query
+    ? `/api/v1/campaigns/metrics-totals?${query}`
+    : '/api/v1/campaigns/metrics-totals';
+}
+
+export async function fetchCampaignListMetricsTotals(
+  filter: Omit<CampaignListQuery, 'limit' | 'offset' | 'sort' | 'order'>,
+  statsQuery: Pick<CampaignListMetricsQuery, 'from' | 'to'> = {},
+  signal?: AbortSignal,
+): Promise<CampaignListMetricsTotalsResponse> {
+  return apiJson<CampaignListMetricsTotalsResponse>(
+    buildCampaignListMetricsTotalsPath(filter, statsQuery),
+    { signal },
+  );
+}
+
 export type { CampaignStatusTotals };
 
 export async function getCampaign(id: string, signal?: AbortSignal): Promise<Campaign> {

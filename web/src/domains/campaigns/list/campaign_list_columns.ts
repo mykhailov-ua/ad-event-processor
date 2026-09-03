@@ -1,10 +1,9 @@
-export const CAMPAIGN_LIST_COLUMNS_STORAGE_KEY = 'aed.campaigns.listColumns.v7';
+export const CAMPAIGN_LIST_COLUMNS_STORAGE_KEY = 'aed.campaigns.listColumns.v8';
 
 export const COLUMN_DRAG_MIME = 'application/x-aed-campaign-column';
 
 export type CampaignListMiddleColumnId =
   | 'status'
-  | 'tags'
   | 'clicks'
   | 'impressions'
   | 'ctr'
@@ -79,11 +78,9 @@ export const CAMPAIGN_LIST_MIDDLE_COLUMNS: CampaignListMiddleColumnId[] = [
   'flow',
   'owner',
   'countries',
-  'tags',
 ];
 
 export const CAMPAIGN_LIST_DEFAULT_HIDDEN: CampaignListMiddleColumnId[] = [
-  'tags',
   'impressions',
   'unique_clicks',
   'rejected_leads',
@@ -102,7 +99,6 @@ export const CAMPAIGN_LIST_COLUMN_LABELS: Record<CampaignListColumnId, string> =
   id: 'ID',
   name: 'Name',
   status: 'Status',
-  tags: 'Tags',
   clicks: 'Clicks',
   impressions: 'Impressions',
   ctr: 'CTR',
@@ -143,7 +139,6 @@ export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, num
   id: 72,
   name: 200,
   status: 88,
-  tags: 56,
   clicks: 60,
   impressions: 72,
   ctr: 56,
@@ -182,7 +177,6 @@ const CAMPAIGN_LIST_COLUMN_MAX_WIDTH_PX: Partial<Record<CampaignListColumnId, nu
   id: 96,
   name: 320,
   status: 120,
-  tags: 120,
   group: 220,
   owner: 220,
   flow: 160,
@@ -206,6 +200,9 @@ const MIDDLE_COLUMN_SET = new Set<CampaignListMiddleColumnId>(CAMPAIGN_LIST_MIDD
 function migrateLegacyColumnId(raw: string): CampaignListReorderableColumnId | null {
   if (raw === 'h_leads') {
     return 'hold_leads';
+  }
+  if (raw === 'tags') {
+    return null;
   }
   if (raw === 'name') {
     return 'name';

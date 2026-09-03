@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import {
   fetchCampaignListFacets,
   fetchCampaignListMetricsBatch,
+  fetchCampaignListMetricsTotals,
   listCampaigns,
 } from '@/api/campaigns_api';
 import { listCustomers } from '@/api/customers_api';
@@ -22,6 +23,7 @@ import {
   mergeCampaignIdsForMetricsBatch,
 } from '@/domains/campaigns/list/campaign_list_width_probe';
 import { campaignStatsQueryForRange } from '@/domains/campaigns/list/campaign_list_date_range';
+import { campaignListFilterTotalsFromApi } from '@/domains/campaigns/list/campaign_list_filter_totals';
 
 export type UseCampaignsPageListArgs = {
   query: CampaignListQuery;
@@ -126,6 +128,51 @@ export function useCampaignsPageList({
     [metricsCampaignIds.join(','), refreshToken, statsQuery.from, statsQuery.to],
   );
 
+  const filterTotalsQuery = useMemo(
+    () => ({
+      customer_id: query.customer_id,
+      status: query.status,
+      q: query.q,
+      pacing_mode: query.pacing_mode,
+      budget_min_micro: query.budget_min_micro,
+      budget_max_micro: query.budget_max_micro,
+      owner_user_id: query.owner_user_id,
+      country: query.country,
+    }),
+    [
+      query.budget_max_micro,
+      query.budget_min_micro,
+      query.country,
+      query.customer_id,
+      query.owner_user_id,
+      query.pacing_mode,
+      query.q,
+      query.status,
+    ],
+  );
+
+  const { data: metricsTotalsResponse } = useResource(
+    (signal) => fetchCampaignListMetricsTotals(filterTotalsQuery, statsQuery, signal),
+    [
+      filterTotalsQuery.customer_id,
+      filterTotalsQuery.status,
+      filterTotalsQuery.q,
+      filterTotalsQuery.pacing_mode,
+      filterTotalsQuery.budget_min_micro,
+      filterTotalsQuery.budget_max_micro,
+      filterTotalsQuery.owner_user_id,
+      filterTotalsQuery.country,
+      refreshToken,
+      statsQuery.from,
+      statsQuery.to,
+    ],
+  );
+
+  const filterTotals = useMemo(
+    () => campaignListFilterTotalsFromApi(metricsTotalsResponse),
+    [metricsTotalsResponse],
+  );
+
   const metricsById = metricsBatch?.metricsById;
   const marginsById = metricsBatch?.marginsById;
 
@@ -223,5 +270,6 @@ export function useCampaignsPageList({
     templatesError,
     templatesLoading: templatesFetching,
     listFacetsFetching,
+    filterTotals,
   };
 }

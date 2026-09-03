@@ -13,6 +13,7 @@ Human-readable architecture and operator guides. **Engineering constraints live 
 | [INTEGRATIONS.md](INTEGRATIONS.md) | Operators | Cost Sync, CAPI, traffic templates, platform sync, migration import |
 | [AUTO_OPTIMIZATION.md](AUTO_OPTIMIZATION.md) | Engineers | Traffic weight rules (CR/EPC/ROI/revenue), test tiers, hot-path SLA |
 | [COMMAND_PALETTE.md](COMMAND_PALETTE.md) | Engineers | Admin Ctrl+K global search, API + UI rollout, cold-path SLA |
+| [COLD_PATH_SOLUTIONS.md](COLD_PATH_SOLUTIONS.md) | Engineers | Transactional Outbox, payment outbox, financial invariants, cold path helpers |
 
 ---
 

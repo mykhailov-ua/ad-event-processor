@@ -21,6 +21,24 @@ test('dev mock lists campaign list facets for customer scope', () => {
   assert.ok(body.owners.every((owner) => owner.user_id));
 });
 
+test('dev mock aggregates campaign list metrics totals for filters', () => {
+  resetDevMockStore();
+  const customerId = DEV_MOCK_CUSTOMERS[0].id;
+  const response = resolveDevMockRequest(
+    `/api/v1/campaigns/metrics-totals?customer_id=${encodeURIComponent(customerId)}`,
+  );
+  assert.equal(response?.status, 200);
+  const body = response?.body as {
+    campaign_count: number;
+    flow_count: number;
+    totals: { clicks: number; conversions: number };
+    stale: boolean;
+  };
+  assert.ok(body.campaign_count > 0);
+  assert.ok(body.totals.clicks > 0);
+  assert.equal(body.stale, false);
+});
+
 test('dev mock lists campaigns with filters', () => {
   resetDevMockStore();
   const all = resolveDevMockRequest('/api/v1/campaigns?limit=50&offset=0');

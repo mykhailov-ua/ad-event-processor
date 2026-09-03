@@ -6,7 +6,6 @@ import {
   buildCampaignListOwnerEmailById,
   buildCampaignListOwnerOptions,
 } from './campaign_list_filter_options.ts';
-import { sortFieldForCampaignColumn } from './campaign_list_sort.ts';
 
 test('buildCampaignListCountryOptions unions countries and applied filter', () => {
   const options = buildCampaignListCountryOptions(['US', 'CA', 'GB'], 'DE');
@@ -51,8 +50,4 @@ test('buildCampaignListOwnerOptions keeps applied owner email from facets', () =
   );
 
   assert.equal(options.find((option) => option.value === 'user-a')?.label, 'buyer@example.com');
-});
-
-test('sortFieldForCampaignColumn omits tags until list API exposes tag values', () => {
-  assert.equal(sortFieldForCampaignColumn('tags'), undefined);
 });

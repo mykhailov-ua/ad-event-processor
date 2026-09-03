@@ -102,6 +102,69 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/campaigns/metrics-totals:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListMetricsTotals
+      summary: Aggregated campaign list metrics for current filters
+      description: Sums list row metrics across all campaigns matching the list filter (max 5000 campaigns). Requires from/to window.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: pacing_mode
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: budget_min_micro
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+        - name: budget_max_micro
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+        - name: owner_user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: country
+          in: query
+          required: false
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+        - $ref: '../openapi.yaml#/components/parameters/ReportFromQuery'
+        - $ref: '../openapi.yaml#/components/parameters/ReportToQuery'
+      responses:
+        '200':
+          description: Filter-scoped metric totals
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignListMetricsTotalsResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/campaigns/list-facets:
     get:
       tags: [campaigns]

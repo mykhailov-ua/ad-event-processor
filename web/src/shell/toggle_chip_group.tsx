@@ -45,7 +45,7 @@ export function ToggleChipGroup<T extends string>({
             {option.label}
             <span
               className={cn(
-                'inline-flex h-5 min-w-5 items-center justify-center rounded-sm px-1.5 text-[11px] font-medium tabular-nums',
+                'inline-flex h-5 min-w-5 items-center justify-center rounded-sm px-1.5 text-admin-caption font-medium tabular-nums',
                 selected
                   ? 'bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100'
                   : 'bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200',

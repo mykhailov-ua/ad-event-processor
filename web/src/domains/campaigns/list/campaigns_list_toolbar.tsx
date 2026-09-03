@@ -242,7 +242,9 @@ export function CampaignsListToolbar({
         <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           <span>{formatCampaignListSummaryLine(summary)}</span>
           {summary.staleCount > 0 ? (
-            <span className="text-xs">Stale stats: {summary.staleCount}</span>
+            <span className="text-xs">
+              {summary.scope === 'filter' ? 'Filtered totals may be stale' : `Stale stats: ${summary.staleCount}`}
+            </span>
           ) : null}
           {summary.marginBreachCount > 0 ? (
             <span className="text-xs">Margin breach: {summary.marginBreachCount}</span>

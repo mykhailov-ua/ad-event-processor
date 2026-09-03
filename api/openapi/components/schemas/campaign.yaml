@@ -490,6 +490,30 @@ CampaignListMetricsBatchResponse:
     stale:
       type: boolean
 
+CampaignListMetricsTotalsResponse:
+  type: object
+  required: [campaign_count, flow_count, margin_breach_count, totals, from, to, stale]
+  properties:
+    campaign_count:
+      type: integer
+      format: int64
+    flow_count:
+      type: integer
+      format: int64
+    margin_breach_count:
+      type: integer
+      format: int64
+    totals:
+      $ref: '#/CampaignListMetricsRow'
+    from:
+      type: string
+      format: date-time
+    to:
+      type: string
+      format: date-time
+    stale:
+      type: boolean
+
 CloneCampaignRequest:
   type: object
   properties:

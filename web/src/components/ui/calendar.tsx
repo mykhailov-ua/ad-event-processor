@@ -64,7 +64,7 @@ function Calendar({
         ),
         month_caption: cn(
           'flex h-[--cell-size] w-full items-center justify-center px-[--cell-size]',
-          isAdmin && 'text-[13px] font-semibold font-semibold text-zinc-900 dark:text-zinc-50',
+          isAdmin && 'text-admin-dense font-semibold text-zinc-900 dark:text-zinc-50',
           defaultClassNames.month_caption,
         ),
         dropdowns: cn(
@@ -85,7 +85,7 @@ function Calendar({
           'select-none font-medium',
           captionLayout === 'label'
             ? isAdmin
-              ? 'text-[13px] font-semibold font-semibold text-zinc-900 dark:text-zinc-50'
+              ? 'text-admin-dense font-semibold text-zinc-900 dark:text-zinc-50'
               : 'text-sm'
             : '[&>svg]:text-muted-foreground flex h-8 items-center gap-1 rounded-md pl-2 pr-1 text-sm [&>svg]:size-3.5',
           defaultClassNames.caption_label,
@@ -94,14 +94,14 @@ function Calendar({
         weekdays: cn('flex', defaultClassNames.weekdays),
         weekday: cn(
           isAdmin
-            ? 'flex-1 select-none rounded-sm text-[12px] font-semibold text-zinc-500 dark:text-zinc-400'
-            : 'text-muted-foreground flex-1 select-none rounded-lg text-[0.8rem] font-normal',
+            ? 'flex-1 select-none rounded-sm text-xs font-semibold text-zinc-500 dark:text-zinc-400'
+            : 'text-muted-foreground flex-1 select-none rounded-lg text-xs font-normal',
           defaultClassNames.weekday,
         ),
         week: cn('mt-2 flex w-full gap-1', defaultClassNames.week),
         week_number_header: cn('w-[--cell-size] select-none', defaultClassNames.week_number_header),
         week_number: cn(
-          'text-muted-foreground select-none text-[0.8rem]',
+          'text-muted-foreground select-none text-xs',
           defaultClassNames.week_number,
         ),
         day: cn(
