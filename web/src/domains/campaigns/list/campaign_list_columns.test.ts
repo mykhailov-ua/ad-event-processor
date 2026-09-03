@@ -70,8 +70,19 @@ test('moveMiddleColumn reorders middle metrics', () => {
 
 test('moveDataColumn reorders draggable columns', () => {
   const order = defaultCampaignListColumnPrefs().dataColumnOrder;
-  const moved = moveDataColumn(order, 'clicks', 'roi');
-  assert.notEqual(moved.indexOf('clicks'), moved.indexOf('roi'));
+  const clicksIndex = order.indexOf('clicks');
+  const roiIndex = order.indexOf('roi');
+  assert.ok(clicksIndex >= 0);
+  assert.ok(roiIndex >= 0);
+  assert.notEqual(clicksIndex, roiIndex);
+
+  const moved = moveDataColumn(order, 'roi', 'clicks');
+  const nextRoiIndex = moved.indexOf('roi');
+  const nextClicksIndex = moved.indexOf('clicks');
+
+  assert.ok(nextRoiIndex >= 0);
+  assert.ok(nextClicksIndex >= 0);
+  assert.equal(nextRoiIndex, nextClicksIndex - 1);
 });
 
 test('setMiddleColumnVisible toggles hidden set', () => {

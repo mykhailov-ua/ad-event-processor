@@ -10,14 +10,28 @@ export type CampaignFunnelCounts = {
   bots: number;
 };
 
+// Keep aligned with campaignListSortMetrics.syncLeadsRaw in list_sort_extended.go.
+export function syncCampaignFunnelLeadsRaw(
+  approved: number,
+  hold: number,
+  rejected: number,
+  leadsRaw?: number | null,
+): number {
+  if (leadsRaw != null && leadsRaw > 0) {
+    return leadsRaw;
+  }
+  const derived = approved + hold + rejected;
+  return derived > 0 ? derived : approved;
+}
+
 export function resolveCampaignFunnelCounts(metrics?: CampaignListMetrics): CampaignFunnelCounts {
   const approved = metrics?.conversions ?? 0;
   const hold = metrics?.hold_leads ?? 0;
   const rejected = metrics?.rejected_leads ?? 0;
-  const derivedRaw = approved + hold + rejected;
-  const rawLeads = metrics?.leads_raw ?? (derivedRaw > 0 ? derivedRaw : approved);
+  const rawLeads = syncCampaignFunnelLeadsRaw(approved, hold, rejected, metrics?.leads_raw);
   const clicks = metrics?.clicks ?? 0;
   const lpClicks = metrics?.lp_clicks ?? 0;
+  // API may omit lp_views; when lp_clicks exist, default to max(lp_clicks, clicks).
   const lpViews = metrics?.lp_views ?? (lpClicks > 0 ? Math.max(lpClicks, clicks) : 0);
   const bots = metrics?.bots ?? 0;
 

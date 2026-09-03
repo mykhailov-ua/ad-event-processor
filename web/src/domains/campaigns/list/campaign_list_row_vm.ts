@@ -1,18 +1,12 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
+import { formatDashboardCrPct, formatDashboardRoiPct } from '@/domains/dashboards/dashboard_format';
 import {
   formatTableCount,
-  formatTableCr,
   formatTableMoneyFromMicro,
-  formatTableRoi,
   parseAndFormatTableMoneyStr,
 } from '@/domains/campaigns/list/campaign_list_format';
 import {
-  formatApproveRate,
-  formatCpmUsd,
-  formatLpCtr,
-  formatRelativeRate,
-  formatSourceCtr,
   type CampaignFunnelCounts,
 } from '@/domains/campaigns/list/campaign_list_funnel';
 import {
@@ -24,7 +18,6 @@ import {
   campaignListRowStatusEdgeClass,
   campaignStatusBadgeClass,
 } from '@/domains/campaigns/list/campaign_list_row_tone';
-import { rateBenchmarkToneClass, percentRate } from '@/domains/campaigns/list/campaign_list_rate_tone';
 import { profitToneClass, roiToneClass, resolveIndicatorTone } from '@/domains/campaigns/list/campaign_list_tone';
 import { campaignDisplayId } from '@/domains/campaigns/list/campaign_display_id';
 import { parseCampaignListName } from '@/domains/campaigns/list/campaign_list_name';
@@ -32,39 +25,27 @@ import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign
 import { formatCampaignStatusLabel } from '@/lib/admin_typography';
 import { resolveCustomerLabel } from '@/lib/customer_label';
 
-/** Formatted metric cell value - mirrors the output of formatTableCount / formatTableMoneyFromMicro. */
 export type VmCell = { text: string; isZero: boolean };
 
-/** Formatted rate cell - carries the numeric percentage for benchmark tone coloring. */
 export type VmRateCell = { text: string; valPct: number; isZero: boolean };
 
-/**
- * Pre-computed, display-ready view model for one campaign table row.
- * Built once before render via buildCampaignRowVm(); all JSX cells read fields directly.
- * No math or formatting happens inside the render pass.
- */
 export type CampaignRowVm = {
-  // Identity
   id: string;
   displayId: string;
   nameParts: { title: string; meta: string[] };
   rawName: string;
 
-  // Status
   statusLabel: string;
   statusBadgeClass: string;
 
-  // Row decoration
   rowClass: string;
   rowStatusEdgeClass: string;
   hasTraffic: boolean;
 
-  // Profit indicator (left edge column)
   indicatorTone: 'positive' | 'negative' | 'neutral';
   indicatorSymbol: '+' | '-' | '0';
   indicatorTitle: string;
 
-  // Funnel
   funnel: CampaignFunnelCounts;
   clicks: VmCell;
   impressions: VmCell;
@@ -78,8 +59,7 @@ export type CampaignRowVm = {
   blocks: VmCell;
   bots: VmCell;
 
-  // Rates
-  ctr: VmRateCell | null;       // null = not computable
+  ctr: VmRateCell | null;
   lpCtr: VmRateCell | null;
   cr: VmRateCell;
   approveRate: VmRateCell | null;
@@ -87,7 +67,6 @@ export type CampaignRowVm = {
   botPct: string | null;
   cpm: string | null;
 
-  // Money
   revenue: VmCell;
   cost: VmCell;
   profit: VmCell;
@@ -98,10 +77,9 @@ export type CampaignRowVm = {
   cpc: VmCell;
   cpa: VmCell;
   ecpa: VmCell;
-  budgetPct: number | null;    // null = no budget set; value is raw percent
+  budgetPct: number | null;
 
-  // Descriptive
-  groupLabel: string | null;   // customer name, null = no match
+  groupLabel: string | null;
   groupCustomerId: string;
   flowId: string | null;
   ownerLabel: string;
@@ -109,14 +87,32 @@ export type CampaignRowVm = {
   countries: string[];
 };
 
-function isRowWithoutTraffic(row: ReturnType<typeof resolveCampaignListRowMetrics>): boolean {
-  return campaignListRowWithoutTraffic(row);
+function vmOptionalRate(pct?: number | null): VmRateCell | null {
+  if (pct == null || !Number.isFinite(pct)) {
+    return null;
+  }
+  return { text: formatDashboardCrPct(pct), valPct: pct, isZero: pct === 0 };
 }
 
-/**
- * Builds a fully pre-computed row ViewModel from raw API data.
- * Call once per row (in useMemo or derived array) before the render pass.
- */
+function vmRateOrZero(pct?: number | null): VmRateCell {
+  const val = pct ?? 0;
+  return { text: formatDashboardCrPct(val), valPct: val, isZero: val === 0 };
+}
+
+function vmRoi(pct?: number | null): VmRateCell {
+  if (pct == null || !Number.isFinite(pct)) {
+    return { text: '-', valPct: 0, isZero: true };
+  }
+  return { text: formatDashboardRoiPct(pct), valPct: pct, isZero: pct === 0 };
+}
+
+function optionalRateLabel(pct?: number | null): string | null {
+  if (pct == null || !Number.isFinite(pct) || pct <= 0) {
+    return null;
+  }
+  return formatDashboardCrPct(pct);
+}
+
 export function buildCampaignRowVm(
   campaign: Campaign,
   metrics: CampaignListMetrics | undefined,
@@ -130,15 +126,12 @@ export function buildCampaignRowVm(
   const { clicks, impressions, blocks, costMicro, profitMicro, revenueMicro, funnel } =
     resolveCampaignListRowMetrics(metrics, margin);
 
-  // --- Identity ---
   const displayId = campaignDisplayId(campaign);
   const nameParts = parseCampaignListName(campaign.name);
 
-  // --- Status ---
   const statusLabel = formatCampaignStatusLabel(campaign.status, row.status_label);
   const statusBadgeClass = campaignStatusBadgeClass(campaign.status, row.status_tone);
 
-  // --- Row decoration ---
   const rowClass = campaignListRowClass({
     status: campaign.status,
     statusTone: row.status_tone,
@@ -147,7 +140,7 @@ export function buildCampaignRowVm(
     margin,
   });
   const rowStatusEdgeClass = campaignListRowStatusEdgeClass(campaign.status, row.status_tone);
-  const hasTraffic = !isRowWithoutTraffic({
+  const hasTraffic = !campaignListRowWithoutTraffic({
     clicks,
     impressions,
     blocks,
@@ -157,7 +150,6 @@ export function buildCampaignRowVm(
     funnel,
   });
 
-  // --- Profit indicator ---
   const indicatorTone = resolveIndicatorTone(margin);
   const indicatorSymbol: '+' | '-' | '0' =
     indicatorTone === 'positive' ? '+' : indicatorTone === 'negative' ? '-' : '0';
@@ -172,36 +164,18 @@ export function buildCampaignRowVm(
         : 'Unprofitable (ROI -100%)';
   }
 
-  // --- Funnel cells ---
-  const ctr =
-    impressions > 0 && clicks > 0
-      // percentRate is non-null here: both args are > 0
-      ? { text: formatSourceCtr(clicks, impressions), valPct: percentRate(clicks, impressions)!, isZero: false }
-      : null;
+  // KPI rates and per-click money come from CampaignListMetricsRow only (BatchCampaignListMetrics).
+  const ctr = vmOptionalRate(metrics?.ctr_pct);
+  const lpCtr = vmOptionalRate(metrics?.lp_ctr_pct);
+  const cr = vmRateOrZero(metrics?.cr_pct);
+  const approveRate = vmOptionalRate(metrics?.approve_rate_pct);
+  // Omit zero block/bot share labels even when the server sends 0 pct.
+  const blockPct = optionalRateLabel(metrics?.block_pct);
+  const botPct = optionalRateLabel(metrics?.bot_pct);
+  // Server omits cpm_usd when cost or impressions are zero; "0.00" is treated as absent.
+  const cpm = metrics?.cpm_usd && metrics.cpm_usd !== '0.00' ? metrics.cpm_usd : null;
 
-  const lpCtr =
-    clicks > 0 && funnel.lpClicks > 0
-      ? { text: formatLpCtr(funnel.lpClicks, clicks), valPct: percentRate(funnel.lpClicks, clicks)!, isZero: false }
-      : null;
-
-  const crRes = formatTableCr(clicks, funnel.approved);
-  const cr: VmRateCell = crRes;
-
-  const approveRate =
-    funnel.rawLeads > 0
-      ? {
-          text: formatApproveRate(funnel.approved, funnel.rawLeads),
-          // percentRate is non-null: rawLeads > 0 and approved >= 0 (clamped below)
-          valPct: percentRate(Math.max(0, funnel.approved), funnel.rawLeads) ?? 0,
-          isZero: false,
-        }
-      : null;
-
-  const blockPct = clicks > 0 && blocks > 0 ? formatRelativeRate(blocks, clicks) : null;
-  const botPct = clicks > 0 && funnel.bots > 0 ? formatRelativeRate(funnel.bots, clicks) : null;
-  const cpm = impressions > 0 && costMicro > 0 ? formatCpmUsd(costMicro, impressions) : null;
-
-  // --- Money ---
+  // Window margin micros can be zero before metrics load; fall back to campaign lifetime spend labels.
   const revenue =
     revenueMicro > 0
       ? formatTableMoneyFromMicro(revenueMicro)
@@ -213,19 +187,10 @@ export function buildCampaignRowVm(
       : parseAndFormatTableMoneyStr(row.current_spend_display ?? row.current_spend);
 
   const profitRes = formatTableMoneyFromMicro(profitMicro);
-  const roiRes = formatTableRoi(profitMicro, costMicro);
+  const roiRes = vmRoi(metrics?.roi_pct);
 
-  const epcMicro = clicks > 0 ? Math.trunc(revenueMicro / clicks) : 0;
-  const cpcMicro = clicks > 0 ? Math.trunc(costMicro / clicks) : 0;
-  const cpaMicro = funnel.rawLeads > 0 ? Math.trunc(costMicro / funnel.rawLeads) : 0;
-  const ecpaMicro = funnel.approved > 0 ? Math.trunc(costMicro / funnel.approved) : 0;
+  const budgetPct = campaign.budget_used_pct ?? null;
 
-  // --- Budget pct ---
-  const spendUsd = parseAndFormatTableMoneyStr(row.current_spend_display ?? row.current_spend).valUsd;
-  const limitUsd = parseAndFormatTableMoneyStr(row.budget_limit_display ?? row.budget_limit).valUsd;
-  const budgetPct = limitUsd > 0 ? (spendUsd / limitUsd) * 100 : null;
-
-  // --- Descriptive ---
   const groupLabel = resolveCustomerLabel(campaign.customer_id, customerNameById) || null;
   const ownerId = campaign.owner_user_id ?? '';
   const ownerLabel = ownerId ? (ownerEmailById[ownerId] ?? ownerId.slice(0, 8)) : '-';
@@ -274,10 +239,10 @@ export function buildCampaignRowVm(
     profitToneClass: profitToneClass(margin),
     roi: roiRes,
     roiToneClass: roiToneClass(margin),
-    epc: formatTableMoneyFromMicro(epcMicro),
-    cpc: formatTableMoneyFromMicro(cpcMicro),
-    cpa: formatTableMoneyFromMicro(cpaMicro),
-    ecpa: formatTableMoneyFromMicro(ecpaMicro),
+    epc: formatTableMoneyFromMicro(metrics?.epc_micro),
+    cpc: formatTableMoneyFromMicro(metrics?.cpc_micro),
+    cpa: formatTableMoneyFromMicro(metrics?.cpa_micro),
+    ecpa: formatTableMoneyFromMicro(metrics?.ecpa_micro),
     budgetPct,
 
     groupLabel,

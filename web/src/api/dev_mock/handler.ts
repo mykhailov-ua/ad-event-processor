@@ -16,6 +16,11 @@ import {
   devMockWizardSessionGet,
   devMockWizardSessionPost,
 } from './wizard_fixtures.ts';
+import { devMockListCampaigns } from './campaign_list.ts';
+import {
+  buildDevMockCampaignMetrics,
+  enrichDevMockCampaignMetricsDerived,
+} from './campaign_metrics.ts';
 import { DEV_MOCK_CUSTOMERS, DEV_MOCK_USERS, devMockStore } from './store.ts';
 
 type MockResult = {
@@ -54,129 +59,8 @@ function filtersAppliedFromQuery(url: URL, keys: readonly string[]): Record<stri
   return applied;
 }
 
-function countDevMockStatusTotals(
-  rows: Array<{ status?: string }>,
-): { active: number; paused: number; archived: number; total: number } {
-  let active = 0;
-  let paused = 0;
-  let archived = 0;
-  for (const row of rows) {
-    switch (row.status) {
-      case 'ACTIVE':
-        active++;
-        break;
-      case 'PAUSED':
-        paused++;
-        break;
-      case 'ARCHIVED':
-        archived++;
-        break;
-      default:
-        break;
-    }
-  }
-  return { active, paused, archived, total: rows.length };
-}
-
 function listCampaigns(url: URL): MockResult {
-  const { campaigns } = devMockStore();
-  const customerId = url.searchParams.get('customer_id') ?? '';
-  const status = url.searchParams.get('status') ?? '';
-  const q = (url.searchParams.get('q') ?? '').trim().toLowerCase();
-  const pacing = url.searchParams.get('pacing_mode') ?? '';
-  const ownerUserId = url.searchParams.get('owner_user_id') ?? '';
-  const country = url.searchParams.get('country') ?? '';
-  const budgetMin = url.searchParams.get('budget_min_micro');
-  const budgetMax = url.searchParams.get('budget_max_micro');
-  const sort = url.searchParams.get('sort') ?? 'name';
-  const order = url.searchParams.get('order') === 'desc' ? 'desc' : 'asc';
-  const limit = Math.min(200, Math.max(1, Number.parseInt(url.searchParams.get('limit') ?? '50', 10) || 50));
-  const offset = Math.max(0, Number.parseInt(url.searchParams.get('offset') ?? '0', 10) || 0);
-
-  let rows = [...campaigns];
-
-  if (customerId) {
-    rows = rows.filter((row) => row.customer_id === customerId);
-  }
-  if (pacing) {
-    rows = rows.filter((row) => row.pacing_mode === pacing);
-  }
-  if (ownerUserId) {
-    rows = rows.filter((row) => row.owner_user_id === ownerUserId);
-  }
-  if (country) {
-    rows = rows.filter((row) => row.target_countries?.includes(country));
-  }
-  if (q) {
-    rows = rows.filter((row) => row.name.toLowerCase().includes(q) || row.id.includes(q));
-  }
-  if (budgetMin) {
-    const min = Number.parseInt(budgetMin, 10);
-    if (Number.isFinite(min)) {
-      rows = rows.filter((row) => Math.round(Number.parseFloat(row.budget_limit) * 1_000_000) >= min);
-    }
-  }
-  if (budgetMax) {
-    const max = Number.parseInt(budgetMax, 10);
-    if (Number.isFinite(max)) {
-      rows = rows.filter((row) => Math.round(Number.parseFloat(row.budget_limit) * 1_000_000) <= max);
-    }
-  }
-
-  const statusTotals = countDevMockStatusTotals(rows);
-
-  if (status) {
-    rows = rows.filter((row) => row.status === status);
-  }
-
-  rows.sort((left, right) => {
-    let cmp = 0;
-    if (sort === 'name') {
-      cmp = left.name.localeCompare(right.name);
-    } else if (sort === 'updated_at') {
-      cmp = left.updated_at.localeCompare(right.updated_at);
-    } else if (sort === 'spend') {
-      cmp = Number.parseFloat(left.current_spend) - Number.parseFloat(right.current_spend);
-    } else if (sort === 'budget_limit') {
-      cmp = Number.parseFloat(left.budget_limit) - Number.parseFloat(right.budget_limit);
-    } else {
-      cmp = left.name.localeCompare(right.name);
-    }
-    return order === 'desc' ? -cmp : cmp;
-  });
-
-  const total = rows.length;
-  const items = rows.slice(offset, offset + limit);
-  const filtersApplied = filtersAppliedFromQuery(url, [
-    'customer_id',
-    'status',
-    'q',
-    'pacing_mode',
-    'owner_user_id',
-    'country',
-    'budget_min_micro',
-    'budget_max_micro',
-  ]);
-
-  return json(200, {
-    items,
-    total,
-    limit,
-    offset,
-    sort: { field: sort, order },
-    status_totals: statusTotals,
-    ...(Object.keys(filtersApplied).length > 0 ? { filters_applied: filtersApplied } : {}),
-  });
-}
-
-function campaignMetricsRangeScale(fromIso: string, toIso: string): number {
-  const fromMs = Date.parse(fromIso);
-  const toMs = Date.parse(toIso);
-  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) {
-    return 1;
-  }
-  const days = Math.max(1, (toMs - fromMs) / 86_400_000);
-  return days / 7;
+  return devMockListCampaigns(url, devMockStore().campaigns);
 }
 
 function campaignMetrics(url: URL): MockResult {
@@ -186,42 +70,31 @@ function campaignMetrics(url: URL): MockResult {
     .filter(Boolean);
   const from = url.searchParams.get('from') ?? new Date(Date.now() - 7 * 86400_000).toISOString();
   const to = url.searchParams.get('to') ?? new Date().toISOString();
-  const scale = campaignMetricsRangeScale(from, to);
-  const scaleCount = (value: number) => Math.max(0, Math.round(value * scale));
   const items: Record<string, Record<string, unknown>> = {};
 
   for (const [index, campaignId] of ids.entries()) {
-    const seq = index + 1;
-    const impressions = scaleCount(12_000 + seq * 1_340);
-    const clicks = scaleCount(420 + seq * 37);
-    const conversions = scaleCount(18 + (seq % 11));
-    const holdLeads = scaleCount(3 + (seq % 5));
-    const rejectedLeads = scaleCount(2 + (seq % 4));
-    const leadsRaw = conversions + holdLeads + rejectedLeads;
-    const lpClicks = scaleCount(Math.floor((420 + seq * 37) * (0.42 + (seq % 7) * 0.04)));
-    const lpViews = Math.max(lpClicks, scaleCount(Math.floor((420 + seq * 37) * 0.88)));
-    const bots = scaleCount(4 + (seq % 9));
-    const rtbCost = scaleCount(1_200_000 + seq * 88_000);
-    const margin = scaleCount(180_000 + seq * 12_000 - (seq % 5) * 40_000);
-    items[campaignId] = {
+    const metrics = buildDevMockCampaignMetrics(campaignId, index + 1, from, to);
+    const item: Record<string, unknown> = {
       campaign_id: campaignId,
-      impressions,
-      clicks,
-      conversions,
-      leads_raw: leadsRaw,
-      hold_leads: holdLeads,
-      rejected_leads: rejectedLeads,
-      lp_clicks: lpClicks,
-      lp_views: lpViews,
-      unique_clicks: scaleCount(Math.floor((420 + seq * 37) * 0.82)),
-      blocks: seq % 7,
-      bots,
-      advertiser_spend_micro: rtbCost + margin,
-      rtb_cost_micro: rtbCost,
-      operator_margin_micro: margin,
-      publisher_payout_micro: Math.floor(rtbCost * 0.72),
-      margin_breach: seq % 13 === 0,
+      impressions: metrics.impressions,
+      clicks: metrics.clicks,
+      conversions: metrics.conversions,
+      leads_raw: metrics.leads_raw,
+      hold_leads: metrics.hold_leads,
+      rejected_leads: metrics.rejected_leads,
+      lp_clicks: metrics.lp_clicks,
+      lp_views: metrics.lp_views,
+      unique_clicks: metrics.unique_clicks,
+      blocks: metrics.blocks,
+      bots: metrics.bots,
+      advertiser_spend_micro: metrics.rtb_cost_micro + metrics.profit_micro,
+      rtb_cost_micro: metrics.rtb_cost_micro,
+      operator_margin_micro: metrics.profit_micro,
+      publisher_payout_micro: Math.floor(metrics.rtb_cost_micro * 0.72),
+      margin_breach: (index + 1) % 13 === 0,
     };
+    enrichDevMockCampaignMetricsDerived(item, metrics);
+    items[campaignId] = item;
   }
 
   return json(200, { items, from, to, stale: false });

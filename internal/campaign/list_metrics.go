@@ -21,24 +21,39 @@ const campaignListMetricsMaxIDs = 100 // max comma-separated ids= on GET .../cam
 const campaignListMetricsCHTimeout = 5 * time.Second
 
 type CampaignListMetricsRowDTO struct {
-	CampaignID           string `json:"campaign_id"`
-	Impressions          int64  `json:"impressions"`
-	Clicks               int64  `json:"clicks"`
-	Conversions          int64  `json:"conversions"`
-	UniqueClicks         int64  `json:"unique_clicks,omitempty"`
-	Blocks               int64  `json:"blocks,omitempty"`
-	LeadsRaw             int64  `json:"leads_raw,omitempty"`
-	HoldLeads            int64  `json:"hold_leads,omitempty"`
-	RejectedLeads        int64  `json:"rejected_leads,omitempty"`
-	LPClicks             int64  `json:"lp_clicks,omitempty"`
-	LPViews              int64  `json:"lp_views,omitempty"`
-	Bots                 int64  `json:"bots,omitempty"`
-	Stale                bool   `json:"stale"`
-	AdvertiserSpendMicro int64  `json:"advertiser_spend_micro,omitempty"`
-	RtbCostMicro         int64  `json:"rtb_cost_micro,omitempty"`
-	OperatorMarginMicro  int64  `json:"operator_margin_micro,omitempty"`
-	PublisherPayoutMicro int64  `json:"publisher_payout_micro,omitempty"`
-	MarginBreach         bool   `json:"margin_breach,omitempty"`
+	CampaignID           string  `json:"campaign_id"`
+	Impressions          int64   `json:"impressions"`
+	Clicks               int64   `json:"clicks"`
+	Conversions          int64   `json:"conversions"`
+	UniqueClicks         int64   `json:"unique_clicks,omitempty"`
+	Blocks               int64   `json:"blocks,omitempty"`
+	LeadsRaw             int64   `json:"leads_raw,omitempty"`
+	HoldLeads            int64   `json:"hold_leads,omitempty"`
+	RejectedLeads        int64   `json:"rejected_leads,omitempty"`
+	LPClicks             int64   `json:"lp_clicks,omitempty"`
+	LPViews              int64   `json:"lp_views,omitempty"`
+	Bots                 int64   `json:"bots,omitempty"`
+	Stale                bool    `json:"stale"`
+	AdvertiserSpendMicro int64   `json:"advertiser_spend_micro,omitempty"`
+	RtbCostMicro         int64   `json:"rtb_cost_micro,omitempty"`
+	OperatorMarginMicro  int64   `json:"operator_margin_micro,omitempty"`
+	PublisherPayoutMicro int64   `json:"publisher_payout_micro,omitempty"`
+	MarginBreach         bool    `json:"margin_breach,omitempty"`
+	RevenueMicro         int64   `json:"revenue_micro,omitempty"`
+	CostMicro            int64   `json:"cost_micro,omitempty"`
+	ProfitMicro          int64   `json:"profit_micro,omitempty"`
+	EpcMicro             int64   `json:"epc_micro,omitempty"`
+	CpcMicro             int64   `json:"cpc_micro,omitempty"`
+	CpaMicro             int64   `json:"cpa_micro,omitempty"`
+	EcpaMicro            int64   `json:"ecpa_micro,omitempty"`
+	CtrPct               float64 `json:"ctr_pct,omitempty"`
+	LpCtrPct             float64 `json:"lp_ctr_pct,omitempty"`
+	CrPct                float64 `json:"cr_pct,omitempty"`
+	ApproveRatePct       float64 `json:"approve_rate_pct,omitempty"`
+	BlockPct             float64 `json:"block_pct,omitempty"`
+	BotPct               float64 `json:"bot_pct,omitempty"`
+	RoiPct               float64 `json:"roi_pct,omitempty"`
+	CpmUsd               string  `json:"cpm_usd,omitempty"`
 }
 
 type CampaignListMetricsBatchResponse struct {
@@ -219,6 +234,12 @@ func BatchCampaignListMetrics(
 		}
 		limitMicro := ledger.CostOverRevenueLimitMicro(row.AdvertiserSpendMicro, bps)
 		entry.MarginBreach = row.RtbCostMicro > limitMicro && row.AdvertiserSpendMicro > 0
+		items[id] = entry
+	}
+
+	// Display fields for list row VM; leads_raw and lp_views must already be normalized above.
+	for id, entry := range items {
+		enrichCampaignListMetricsRowDerived(&entry)
 		items[id] = entry
 	}
 

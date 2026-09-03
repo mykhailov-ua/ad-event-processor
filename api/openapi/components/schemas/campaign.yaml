@@ -159,6 +159,9 @@ Campaign:
       type: string
     margin_breach:
       type: boolean
+    budget_used_pct:
+      type: number
+      format: double
 
 CampaignStatusTotals:
   type: object
@@ -402,6 +405,50 @@ CampaignListMetricsRow:
       format: int64
     margin_breach:
       type: boolean
+    revenue_micro:
+      type: integer
+      format: int64
+    cost_micro:
+      type: integer
+      format: int64
+    profit_micro:
+      type: integer
+      format: int64
+    epc_micro:
+      type: integer
+      format: int64
+    cpc_micro:
+      type: integer
+      format: int64
+    cpa_micro:
+      type: integer
+      format: int64
+    ecpa_micro:
+      type: integer
+      format: int64
+    ctr_pct:
+      type: number
+      format: double
+    lp_ctr_pct:
+      type: number
+      format: double
+    cr_pct:
+      type: number
+      format: double
+    approve_rate_pct:
+      type: number
+      format: double
+    block_pct:
+      type: number
+      format: double
+    bot_pct:
+      type: number
+      format: double
+    roi_pct:
+      type: number
+      format: double
+    cpm_usd:
+      type: string
 
 CampaignListMetricsBatchResponse:
   type: object

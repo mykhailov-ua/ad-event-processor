@@ -22,19 +22,10 @@ func TestListCampaignsUsesStatsJoin_holdout(t *testing.T) {
 	require.False(t, ListCampaignsUsesStatsJoin(filter))
 }
 
-func TestExtendedSortMetricsQueryCount_customerScoped(t *testing.T) {
+func TestCampaignListSortMetricsRoundTrips_customerScoped(t *testing.T) {
 	t.Parallel()
-	const (
-		campaigns = 2000
-		chunk     = campaignListSortMetricsChunk
-	)
-	chunks := (campaigns + chunk - 1) / chunk
-	beforePG := 1 + chunks*2
-	afterPG := 1 + 2
-	beforeCH := chunks * 2
-	afterCH := chunks
-	require.Equal(t, 17, beforePG)
-	require.Equal(t, 3, afterPG)
-	require.Equal(t, 16, beforeCH)
-	require.Equal(t, 8, afterCH)
+	const campaigns = 2000
+	require.Equal(t, 17, campaignListExtendedSortPGRoundTrips(campaigns, false))
+	require.Equal(t, 3, campaignListExtendedSortPGRoundTrips(campaigns, true))
+	require.Equal(t, 16, campaignListSortMetricsCHRoundTrips(campaigns))
 }

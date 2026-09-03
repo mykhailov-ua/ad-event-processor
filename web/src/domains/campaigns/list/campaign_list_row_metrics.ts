@@ -1,6 +1,5 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignMargin } from '@/api/types';
-import { campaignListRevenueMicro } from '@/domains/campaigns/list/campaign_list_format';
 import {
   resolveCampaignFunnelCounts,
   type CampaignFunnelCounts,
@@ -16,7 +15,6 @@ export type CampaignListRowMetrics = {
   funnel: CampaignFunnelCounts;
 };
 
-/** Shared numeric row inputs for column width probe and row VM formatting. */
 export function resolveCampaignListRowMetrics(
   metrics: CampaignListMetrics | undefined,
   margin: CampaignMargin | undefined,
@@ -24,9 +22,12 @@ export function resolveCampaignListRowMetrics(
   const clicks = metrics?.clicks ?? 0;
   const impressions = metrics?.impressions ?? 0;
   const blocks = metrics?.blocks ?? 0;
-  const costMicro = margin?.rtb_cost_micro ?? 0;
-  const profitMicro = margin?.operator_margin_micro ?? 0;
-  const revenueMicro = campaignListRevenueMicro(margin);
+  // Prefer metrics batch totals; margin fields are a fallback before the batch resolves.
+  const costMicro = metrics?.cost_micro ?? margin?.rtb_cost_micro ?? 0;
+  const profitMicro = metrics?.profit_micro ?? margin?.operator_margin_micro ?? 0;
+  const revenueMicro =
+    metrics?.revenue_micro ??
+    (margin ? (margin.advertiser_spend_micro ?? 0) + (margin.operator_margin_micro ?? 0) : 0);
 
   return {
     clicks,

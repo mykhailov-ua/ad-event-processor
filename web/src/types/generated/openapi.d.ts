@@ -5252,6 +5252,7 @@ export interface components {
             updated_at: string;
             updated_at_display?: string;
             margin_breach?: boolean;
+            budget_used_pct?: number;
         };
         CampaignEventListResponse: {
             items: components["schemas"]["CampaignEvent"][];
@@ -6764,6 +6765,21 @@ export interface components {
             /** Format: int64 */
             publisher_payout_micro?: number;
             margin_breach?: boolean;
+            revenue_micro?: number;
+            cost_micro?: number;
+            profit_micro?: number;
+            epc_micro?: number;
+            cpc_micro?: number;
+            cpa_micro?: number;
+            ecpa_micro?: number;
+            ctr_pct?: number;
+            lp_ctr_pct?: number;
+            cr_pct?: number;
+            approve_rate_pct?: number;
+            block_pct?: number;
+            bot_pct?: number;
+            roi_pct?: number;
+            cpm_usd?: string;
         };
         CampaignListMetricsBatchResponse: {
             items: {

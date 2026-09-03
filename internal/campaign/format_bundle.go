@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"ad-event-processor/pkg/coldpath"
+	"ad-event-processor/pkg/money"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -44,6 +45,32 @@ func AttachCampaignMoneyDisplay(dto *CampaignDTO) {
 	if dto.CurrentSpendDisplay == "" && dto.CurrentSpend != "" {
 		dto.CurrentSpendDisplay = moneyDisplayFromDecimal(dto.CurrentSpend)
 	}
+}
+
+// Clamps to [0, 100]. Omitted when budget_limit is zero or unparsable.
+func AttachCampaignBudgetUsedPct(dto *CampaignDTO) {
+	if dto == nil {
+		return
+	}
+	limitMicro, errLimit := money.ParseDecimal(dto.BudgetLimit)
+	if errLimit != nil || limitMicro <= 0 {
+		return
+	}
+	spendMicro, errSpend := money.ParseDecimal(dto.CurrentSpend)
+	if errSpend != nil {
+		return
+	}
+	pct := float64(spendMicro) / float64(limitMicro) * 100
+	if math.IsNaN(pct) || math.IsInf(pct, 0) {
+		return
+	}
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	dto.BudgetUsedPct = &pct
 }
 
 func moneyDisplayFromDecimal(amount string) string {

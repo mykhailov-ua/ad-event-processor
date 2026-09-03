@@ -617,6 +617,21 @@ export type CampaignListMetrics = Pick<
   | 'lp_views'
   | 'bots'
   | 'stale'
+  | 'revenue_micro'
+  | 'cost_micro'
+  | 'profit_micro'
+  | 'epc_micro'
+  | 'cpc_micro'
+  | 'cpa_micro'
+  | 'ecpa_micro'
+  | 'ctr_pct'
+  | 'lp_ctr_pct'
+  | 'cr_pct'
+  | 'approve_rate_pct'
+  | 'block_pct'
+  | 'bot_pct'
+  | 'roi_pct'
+  | 'cpm_usd'
 >;
 
 export function buildCampaignListMetricsPath(
@@ -683,6 +698,21 @@ export async function fetchCampaignListMetricsBatch(
       lp_views: row.lp_views,
       bots: row.bots,
       stale: row.stale ?? batch.stale,
+      revenue_micro: row.revenue_micro,
+      cost_micro: row.cost_micro,
+      profit_micro: row.profit_micro,
+      epc_micro: row.epc_micro,
+      cpc_micro: row.cpc_micro,
+      cpa_micro: row.cpa_micro,
+      ecpa_micro: row.ecpa_micro,
+      ctr_pct: row.ctr_pct,
+      lp_ctr_pct: row.lp_ctr_pct,
+      cr_pct: row.cr_pct,
+      approve_rate_pct: row.approve_rate_pct,
+      block_pct: row.block_pct,
+      bot_pct: row.bot_pct,
+      roi_pct: row.roi_pct,
+      cpm_usd: row.cpm_usd,
     };
     marginsById[campaignId] = marginFromMetricsRow({ ...row, campaign_id: campaignId });
   }

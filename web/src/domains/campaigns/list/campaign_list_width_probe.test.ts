@@ -52,6 +52,26 @@ test('listResponseCoversWidthProbeDataset when all filtered rows are on the list
   );
 });
 
+test('listResponseCoversWidthProbeDataset_holdout rejects duplicate row ids', () => {
+  assert.equal(
+    listResponseCoversWidthProbeDataset({
+      total: 2,
+      items: [{ id: 'c1' }, { id: 'c1' }],
+    }),
+    false,
+  );
+});
+
+test('listResponseCoversWidthProbeDataset_holdout rejects empty row ids', () => {
+  assert.equal(
+    listResponseCoversWidthProbeDataset({
+      total: 2,
+      items: [{ id: 'c1' }, { id: '' }],
+    }),
+    false,
+  );
+});
+
 test('listResponseCoversWidthProbeDataset false when paginated or over probe cap', () => {
   assert.equal(
     listResponseCoversWidthProbeDataset({

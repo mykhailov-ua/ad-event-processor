@@ -50,7 +50,8 @@ func TestOrderCampaignDTOsByIDs_preservesPageOrder(t *testing.T) {
 	require.Equal(t, first.String(), ordered[1].ID)
 }
 
-func TestCampaignListExtendedSortMaxKeys_positive(t *testing.T) {
+func TestCampaignListExtendedSortMaxKeys_holdout(t *testing.T) {
 	t.Parallel()
-	require.Equal(t, 5000, campaignListExtendedSortMaxKeys)
+	require.NoError(t, validateCampaignListExtendedSortKeyCount(campaignListExtendedSortMaxKeys))
+	require.Error(t, validateCampaignListExtendedSortKeyCount(campaignListExtendedSortMaxKeys+1))
 }

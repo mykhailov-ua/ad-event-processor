@@ -15,6 +15,7 @@ export type CampaignListSummary = CampaignListTotals & {
   marginBreachCount: number;
 };
 
+// Page or selection scope only; not the server-filtered list total.
 export function computeCampaignListSummary(
   items: Campaign[],
   selectedIds: Set<string>,

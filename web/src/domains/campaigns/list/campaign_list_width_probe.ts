@@ -6,10 +6,7 @@ export type CampaignListWidthProbeListSnapshot = {
   total: number;
 };
 
-/**
- * List query for column-width sampling: same filters as the directory list,
- * fixed name sort, first OPTIMAL_LIST_LIMIT_MAX rows.
- */
+// Width probe list: same filters, name sort, first OPTIMAL_LIST_LIMIT_MAX rows.
 export function buildCampaignListWidthProbeQuery(
   query: CampaignListQuery,
 ): CampaignListQuery {
@@ -29,10 +26,7 @@ export function buildCampaignListWidthProbeQuery(
   };
 }
 
-/**
- * True when the current list response already contains every filtered row
- * (total within probe cap), so a separate width-probe list fetch is redundant.
- */
+// True when the page list already includes every filtered row (unique ids, total <= cap).
 export function listResponseCoversWidthProbeDataset(
   data: CampaignListWidthProbeListSnapshot | undefined,
 ): boolean {
@@ -42,10 +36,20 @@ export function listResponseCoversWidthProbeDataset(
   if (data.total > OPTIMAL_LIST_LIMIT_MAX) {
     return false;
   }
-  return data.items.length === data.total;
+  if (data.items.length !== data.total) {
+    return false;
+  }
+  const ids = new Set<string>();
+  for (const item of data.items) {
+    if (!item.id || ids.has(item.id)) {
+      return false;
+    }
+    ids.add(item.id);
+  }
+  return true;
 }
 
-/** Deduped campaign ids for a single metrics batch (page rows + optional probe rows). */
+// Deduped ids for one metrics batch (page rows plus optional width-probe rows).
 export function mergeCampaignIdsForMetricsBatch(
   ...idLists: readonly (readonly string[])[]
 ): string[] {

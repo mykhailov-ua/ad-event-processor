@@ -108,6 +108,7 @@ func attachCampaignPresentation(ctx context.Context, dto *CampaignDTO) {
 	dto.StatusTone = campaignStatusTone(dto.Status)
 	attachCampaignDisplayID(dto)
 	attachCampaignMoneyDisplay(dto)
+	AttachCampaignBudgetUsedPct(dto)
 	attachCampaignTimestampDisplay(dto)
 	actions, denied := computeCampaignAllowedActions(ctx, dto.Status)
 	dto.AllowedActions = actions
@@ -2401,6 +2402,7 @@ type CampaignDTO struct {
 	UpdatedAtDisplay           string                `json:"updated_at_display,omitempty"`
 	Revision                   string                `json:"revision,omitempty"`
 	MarginBreach               bool                  `json:"margin_breach,omitempty"`
+	BudgetUsedPct              *float64              `json:"budget_used_pct,omitempty"`
 	StatusLabel                string                `json:"status_label,omitempty"`
 	StatusTone                 string                `json:"status_tone,omitempty"`
 	AllowedActions             []string              `json:"allowed_actions,omitempty"`
