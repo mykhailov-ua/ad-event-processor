@@ -86,7 +86,7 @@ export function CampaignCountryBadges({
       {visible.map((code) => (
         <span
           key={code}
-          className={cn('inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-zinc-200 px-1 text-[10px] dark:border-zinc-700', countryBadgeTone(code))}
+          className={cn('inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-zinc-200 px-1 text-admin-mini dark:border-zinc-700', countryBadgeTone(code))}
           title={code}
         >
           <CountryFlagIcon className="h-3 w-4 shrink-0" code={code} title={code} />
@@ -94,7 +94,7 @@ export function CampaignCountryBadges({
         </span>
       ))}
       {overflow > 0 ? (
-        <span className="inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-zinc-200 px-1 text-[10px] dark:border-zinc-700 text-[10px] text-zinc-500">+{overflow}</span>
+        <span className="inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-zinc-200 px-1 text-admin-mini text-zinc-500 dark:border-zinc-700">+{overflow}</span>
       ) : null}
     </span>
   );

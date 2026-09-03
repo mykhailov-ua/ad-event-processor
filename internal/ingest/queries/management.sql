@@ -267,6 +267,14 @@ WHERE c.deleted_at IS NULL
   AND (sqlc.narg('customer_id')::uuid IS NULL OR c.customer_id = sqlc.narg('customer_id')::uuid)
 ORDER BY country_code ASC;
 
+-- name: ListCampaignListOwners :many
+SELECT DISTINCT c.owner_user_id::text
+FROM campaigns c
+WHERE c.deleted_at IS NULL
+  AND c.owner_user_id IS NOT NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR c.customer_id = sqlc.narg('customer_id')::uuid)
+ORDER BY 1 ASC;
+
 -- name: CountCampaignsStatusTotals :many
 SELECT status::text AS status, COUNT(*)::bigint AS count
 FROM campaigns

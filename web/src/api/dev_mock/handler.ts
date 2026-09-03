@@ -16,7 +16,7 @@ import {
   devMockWizardSessionGet,
   devMockWizardSessionPost,
 } from './wizard_fixtures.ts';
-import { devMockListCampaigns } from './campaign_list.ts';
+import { devMockListCampaignFacets, devMockListCampaigns } from './campaign_list.ts';
 import {
   buildDevMockCampaignMetrics,
   enrichDevMockCampaignMetricsDerived,
@@ -61,6 +61,11 @@ function filtersAppliedFromQuery(url: URL, keys: readonly string[]): Record<stri
 
 function listCampaigns(url: URL): MockResult {
   return devMockListCampaigns(url, devMockStore().campaigns);
+}
+
+function listCampaignFacets(url: URL): MockResult {
+  const userEmailById = Object.fromEntries(DEV_MOCK_USERS.map((user) => [user.id, user.email]));
+  return devMockListCampaignFacets(url, devMockStore().campaigns, userEmailById);
 }
 
 function campaignMetrics(url: URL): MockResult {
@@ -381,6 +386,9 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   }
   if (method === 'GET' && pathname === '/api/v1/campaigns') {
     return listCampaigns(url);
+  }
+  if (method === 'GET' && pathname === '/api/v1/campaigns/list-facets') {
+    return listCampaignFacets(url);
   }
   if (method === 'GET' && pathname === '/api/v1/campaigns/metrics') {
     return campaignMetrics(url);

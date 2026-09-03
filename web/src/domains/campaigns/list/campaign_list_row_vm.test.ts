@@ -11,6 +11,7 @@ const baseCampaign = {
   status: 'ACTIVE',
   budget_limit: '100.00',
   current_spend: '25.00',
+  current_spend_display: '25.00',
   customer_id: '00000000-0000-4000-8000-000000000010',
   pacing_mode: 'even',
   daily_budget: '0.00',
@@ -45,7 +46,7 @@ test('buildCampaignRowVm_holdout does not derive KPI rates from raw counts', () 
     bots: 10,
   };
 
-  const vm = buildCampaignRowVm(baseCampaign, metrics, baseMargin, {}, {}, false, false);
+  const vm = buildCampaignRowVm(baseCampaign, metrics, baseMargin, {}, {}, false);
 
   assert.equal(vm.ctr, null);
   assert.equal(vm.roi.text, '-');
@@ -71,7 +72,6 @@ test('buildCampaignRowVm maps server derived fields', () => {
     {},
     {},
     false,
-    false,
   );
 
   assert.equal(vm.ctr?.valPct, 5);
@@ -79,4 +79,19 @@ test('buildCampaignRowVm maps server derived fields', () => {
   assert.equal(vm.epc.text, '2.00');
   assert.equal(vm.budgetPct, 25);
   assert.equal(vm.cpm, '0.06');
+});
+
+test('buildCampaignRowVm_holdout does not use current_spend for revenue before metrics load', () => {
+  const vm = buildCampaignRowVm(baseCampaign, undefined, undefined, {}, {}, false);
+
+  assert.equal(vm.revenue.text, '0.00');
+  assert.equal(vm.cost.text, '25.00');
+});
+
+test('buildCampaignRowVm uses profit_micro for profit tone', () => {
+  const metrics: CampaignListMetrics = { profit_micro: 500_000 };
+  const margin: CampaignMargin = { ...baseMargin, operator_margin_micro: 0 };
+  const vm = buildCampaignRowVm(baseCampaign, metrics, margin, {}, {}, false);
+
+  assert.match(vm.profitToneClass, /text-green-700/);
 });

@@ -48,6 +48,7 @@ export function CampaignsDirectory({
   ownerOptions,
   ownerEmailById,
   countryOptions,
+  listFacetsFetching = false,
   fetching,
   error,
   hasSnapshot,
@@ -85,6 +86,7 @@ export function CampaignsDirectory({
   const workspace = useCampaignsDirectoryWorkspace({
     items,
     customerNameById,
+    ownerEmailById,
     metricsById,
     marginsById,
     columnWidthProbe,
@@ -124,6 +126,7 @@ export function CampaignsDirectory({
             draftOwnerUserId={draftOwnerUserId}
             draftPacing={draftPacing}
             fetching={fetching}
+            listFacetsFetching={listFacetsFetching}
             ownerOptions={ownerOptions}
             statusTotals={statusTotals}
             statusTotalsLoading={statusTotalsLoading}
@@ -146,8 +149,6 @@ export function CampaignsDirectory({
             }}
             columnPrefs={workspace.columnPrefs}
             onColumnPrefsChange={workspace.handleColumnPrefsApply}
-            rowDisplayPrefs={workspace.rowDisplayPrefs}
-            onRowDisplayPrefsChange={workspace.handleRowDisplayPrefsChange}
             onCreateClick={() => onCreateSectionOpenChange(true)}
             onStatsRangeChange={onStatsRangeChange}
             onDraftBudgetMaxUsdChange={onDraftBudgetMaxUsdChange}
@@ -221,7 +222,6 @@ export function CampaignsDirectory({
           appliedSort={appliedSort}
           columnPrefs={workspace.columnPrefs}
           columnWidths={workspace.columnWidths}
-          highlightActiveRows={workspace.rowDisplayPrefs.highlightActiveRows}
           customerNameById={customerNameById}
           ownerEmailById={ownerEmailById}
           emptyMessage={

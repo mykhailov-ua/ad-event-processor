@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 
-import { computeCampaignListColumnWidths } from './campaign_list_column_widths.ts';
+import { computeCampaignListColumnWidths, campaignListMiddleCellText } from './campaign_list_column_widths.ts';
 
 test('computeCampaignListColumnWidths uses dataset max not current page only', () => {
   const items: Campaign[] = [
@@ -54,4 +54,17 @@ test('computeCampaignListColumnWidths keeps widths stable when sort order change
   });
 
   assert.equal(forward.clicks, reversed.clicks);
+});
+
+test('campaignListMiddleCellText uses server derived epc micro not client math', () => {
+  const campaign = { id: 'a', name: 'A', customer_id: 'c1', status: 'ACTIVE' } as Campaign;
+  const metrics: CampaignListMetrics = {
+    clicks: 100,
+    revenue_micro: 500_000_000,
+    epc_micro: 5_000_000,
+  };
+
+  const text = campaignListMiddleCellText('epc', campaign, metrics, undefined, { c1: 'Buyer' });
+
+  assert.equal(text, '5.00');
 });

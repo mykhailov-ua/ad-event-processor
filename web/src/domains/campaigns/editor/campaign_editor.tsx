@@ -6,7 +6,7 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { StubBanner } from '@/shell/stub_banner';
 import { formatCampaignStatusLabel } from '@/lib/admin_typography';
 import { CampaignEditorAdvancedPanel } from '@/domains/campaigns/editor/campaign_editor_advanced_panel';
-import { CampaignEditorBinomShell } from '@/domains/campaigns/editor/campaign_editor_binom_shell';
+import { CampaignEditorShell } from '@/domains/campaigns/editor/campaign_editor_shell';
 import { EditorStatusBanners } from '@/domains/campaigns/editor/campaign_editor_shared';
 import type {
   CampaignDisplayFields,
@@ -84,7 +84,7 @@ export function CampaignEditor(props: CampaignEditorProps) {
   const gateBusy = checking || validating || publishing;
 
   return (
-    <CampaignEditorBinomShell
+    <CampaignEditorShell
       campaignId={campaign.id}
       campaignName={campaign.name}
       clickUrl={clickUrl ?? macroPreviewResult?.resolved_click_url}

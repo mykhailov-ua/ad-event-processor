@@ -450,6 +450,29 @@ CampaignListMetricsRow:
     cpm_usd:
       type: string
 
+CampaignListFacetOwner:
+  type: object
+  required: [user_id]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+    email:
+      type: string
+
+CampaignListFacetsResponse:
+  type: object
+  required: [countries, owners]
+  properties:
+    countries:
+      type: array
+      items:
+        type: string
+    owners:
+      type: array
+      items:
+        $ref: '#/CampaignListFacetOwner'
+
 CampaignListMetricsBatchResponse:
   type: object
   required: [items, from, to, stale]

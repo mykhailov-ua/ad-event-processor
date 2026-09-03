@@ -102,6 +102,25 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/campaigns/list-facets:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListFacets
+      summary: Campaign list filter facets
+      description: Returns distinct target countries and campaign owners for list filter dropdowns.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Distinct countries and owners for campaign list filters
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/CampaignListFacetsResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/campaigns/target-countries:
     get:
       tags: [campaigns]

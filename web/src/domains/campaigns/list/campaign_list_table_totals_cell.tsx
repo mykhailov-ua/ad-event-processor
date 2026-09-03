@@ -14,6 +14,7 @@ import {
   type CampaignListTotals,
 } from '@/domains/campaigns/list/campaign_list_format';
 import { percentRate, rateBenchmarkToneClass } from '@/domains/campaigns/list/campaign_list_rate_tone';
+import { profitToneClassFromMicro, roiToneClassFromRate } from '@/domains/campaigns/list/campaign_list_tone';
 import type { CampaignListColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { RateMetricCell, tableCellClass } from '@/domains/campaigns/list/campaign_list_table_cell_format';
 
@@ -140,8 +141,25 @@ export function CampaignListTableTotalsCell({
       return <span className={tableCellClass()}>{formatRelativeRate(funnelTotals.bots, totals.clicks)}</span>;
     }
     case 'ecpa': {
-      const ecpaMicro = funnelTotals.approved > 0 ? Math.trunc(totals.costMicro / funnelTotals.approved) : 0;
+      const ecpaMicro =
+        funnelTotals.approved > 0 ? Math.trunc(totals.costMicro / funnelTotals.approved) : 0;
       const res = formatTableMoneyFromMicro(ecpaMicro);
+      return <span className={tableCellClass(res.isZero)}>{res.text}</span>;
+    }
+    case 'epc': {
+      const epcMicro = totals.clicks > 0 ? Math.trunc(totals.revenueMicro / totals.clicks) : 0;
+      const res = formatTableMoneyFromMicro(epcMicro);
+      return <span className={tableCellClass(res.isZero)}>{res.text}</span>;
+    }
+    case 'cpc': {
+      const cpcMicro = totals.clicks > 0 ? Math.trunc(totals.costMicro / totals.clicks) : 0;
+      const res = formatTableMoneyFromMicro(cpcMicro);
+      return <span className={tableCellClass(res.isZero)}>{res.text}</span>;
+    }
+    case 'cpa': {
+      const cpaMicro =
+        funnelTotals.rawLeads > 0 ? Math.trunc(totals.costMicro / funnelTotals.rawLeads) : 0;
+      const res = formatTableMoneyFromMicro(cpaMicro);
       return <span className={tableCellClass(res.isZero)}>{res.text}</span>;
     }
     case 'revenue': {
@@ -158,15 +176,12 @@ export function CampaignListTableTotalsCell({
     }
     case 'profit': {
       const profitRes = formatTableMoneyFromMicro(totals.profitMicro);
+      const profitTone = profitToneClassFromMicro(totals.profitMicro);
       return (
         <span
           className={tableCellClass(
             profitRes.isZero,
-            profitRes.isZero
-              ? undefined
-              : totals.profitMicro > 0
-                ? 'font-semibold text-green-700 dark:text-green-400'
-                : 'font-semibold text-red-700 dark:text-red-400',
+            profitRes.isZero ? undefined : profitTone,
             profitRes.isZero ? undefined : 'primary',
           )}
         >
@@ -177,16 +192,7 @@ export function CampaignListTableTotalsCell({
     case 'roi': {
       const roiRes = formatTableRoi(totals.profitMicro, totals.costMicro);
       return (
-        <span
-          className={tableCellClass(
-            roiRes.isZero,
-            roiRes.isZero
-              ? undefined
-              : roiRes.valPct >= 0
-                ? 'font-semibold text-green-700 dark:text-green-400'
-                : 'font-semibold text-red-700 dark:text-red-400',
-          )}
-        >
+        <span className={tableCellClass(roiRes.isZero, roiToneClassFromRate(roiRes))}>
           {roiRes.isZero ? '0%' : roiRes.text}
         </span>
       );

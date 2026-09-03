@@ -6,21 +6,15 @@ import {
   formatTableMoneyFromMicro,
   parseAndFormatTableMoneyStr,
 } from '@/domains/campaigns/list/campaign_list_format';
-import {
-  type CampaignFunnelCounts,
-} from '@/domains/campaigns/list/campaign_list_funnel';
-import {
-  campaignListRowWithoutTraffic,
-  resolveCampaignListRowMetrics,
-} from '@/domains/campaigns/list/campaign_list_row_metrics';
+import type { CampaignFunnelCounts } from '@/domains/campaigns/list/campaign_list_funnel';
+import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 import {
   campaignListRowClass,
-  campaignListRowStatusEdgeClass,
   campaignStatusBadgeClass,
 } from '@/domains/campaigns/list/campaign_list_row_tone';
-import { profitToneClass, roiToneClass, resolveIndicatorTone } from '@/domains/campaigns/list/campaign_list_tone';
+import { profitToneClassFromMicro, roiToneClassFromRate } from '@/domains/campaigns/list/campaign_list_tone';
+import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 import { campaignDisplayId } from '@/domains/campaigns/list/campaign_display_id';
-import { parseCampaignListName } from '@/domains/campaigns/list/campaign_list_name';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { formatCampaignStatusLabel } from '@/lib/admin_typography';
 import { resolveCustomerLabel } from '@/lib/customer_label';
@@ -32,19 +26,12 @@ export type VmRateCell = { text: string; valPct: number; isZero: boolean };
 export type CampaignRowVm = {
   id: string;
   displayId: string;
-  nameParts: { title: string; meta: string[] };
   rawName: string;
 
   statusLabel: string;
   statusBadgeClass: string;
 
   rowClass: string;
-  rowStatusEdgeClass: string;
-  hasTraffic: boolean;
-
-  indicatorTone: 'positive' | 'negative' | 'neutral';
-  indicatorSymbol: '+' | '-' | '0';
-  indicatorTitle: string;
 
   funnel: CampaignFunnelCounts;
   clicks: VmCell;
@@ -120,72 +107,30 @@ export function buildCampaignRowVm(
   customerNameById: Record<string, string>,
   ownerEmailById: Record<string, string>,
   selected: boolean,
-  highlightActiveRows: boolean,
 ): CampaignRowVm {
   const row = campaign as CampaignWithMoneyDisplay;
   const { clicks, impressions, blocks, costMicro, profitMicro, revenueMicro, funnel } =
     resolveCampaignListRowMetrics(metrics, margin);
 
   const displayId = campaignDisplayId(campaign);
-  const nameParts = parseCampaignListName(campaign.name);
 
   const statusLabel = formatCampaignStatusLabel(campaign.status, row.status_label);
   const statusBadgeClass = campaignStatusBadgeClass(campaign.status, row.status_tone);
+  const rowClass = campaignListRowClass(selected);
 
-  const rowClass = campaignListRowClass({
-    status: campaign.status,
-    statusTone: row.status_tone,
-    selected,
-    highlightActiveRows,
-    margin,
-  });
-  const rowStatusEdgeClass = campaignListRowStatusEdgeClass(campaign.status, row.status_tone);
-  const hasTraffic = !campaignListRowWithoutTraffic({
-    clicks,
-    impressions,
-    blocks,
-    costMicro,
-    profitMicro,
-    revenueMicro,
-    funnel,
-  });
-
-  const indicatorTone = resolveIndicatorTone(margin);
-  const indicatorSymbol: '+' | '-' | '0' =
-    indicatorTone === 'positive' ? '+' : indicatorTone === 'negative' ? '-' : '0';
-
-  let indicatorTitle = 'Profit = 0.00';
-  if (indicatorTone === 'positive') {
-    indicatorTitle = `Profitable (+${formatTableMoneyFromMicro(profitMicro).text})`;
-  } else if (indicatorTone === 'negative') {
-    indicatorTitle =
-      profitMicro !== 0
-        ? `Unprofitable (${formatTableMoneyFromMicro(profitMicro).text})`
-        : 'Unprofitable (ROI -100%)';
-  }
-
-  // KPI rates and per-click money come from CampaignListMetricsRow only (BatchCampaignListMetrics).
   const ctr = vmOptionalRate(metrics?.ctr_pct);
   const lpCtr = vmOptionalRate(metrics?.lp_ctr_pct);
   const cr = vmRateOrZero(metrics?.cr_pct);
   const approveRate = vmOptionalRate(metrics?.approve_rate_pct);
-  // Omit zero block/bot share labels even when the server sends 0 pct.
   const blockPct = optionalRateLabel(metrics?.block_pct);
   const botPct = optionalRateLabel(metrics?.bot_pct);
-  // Server omits cpm_usd when cost or impressions are zero; "0.00" is treated as absent.
   const cpm = metrics?.cpm_usd && metrics.cpm_usd !== '0.00' ? metrics.cpm_usd : null;
 
-  // Window margin micros can be zero before metrics load; fall back to campaign lifetime spend labels.
-  const revenue =
-    revenueMicro > 0
-      ? formatTableMoneyFromMicro(revenueMicro)
-      : parseAndFormatTableMoneyStr(row.current_spend_display ?? row.current_spend);
-
+  const revenue = formatTableMoneyFromMicro(revenueMicro);
   const cost =
     costMicro > 0
       ? formatTableMoneyFromMicro(costMicro)
       : parseAndFormatTableMoneyStr(row.current_spend_display ?? row.current_spend);
-
   const profitRes = formatTableMoneyFromMicro(profitMicro);
   const roiRes = vmRoi(metrics?.roi_pct);
 
@@ -198,19 +143,12 @@ export function buildCampaignRowVm(
   return {
     id: campaign.id,
     displayId,
-    nameParts,
     rawName: campaign.name,
 
     statusLabel,
     statusBadgeClass,
 
     rowClass,
-    rowStatusEdgeClass,
-    hasTraffic,
-
-    indicatorTone,
-    indicatorSymbol,
-    indicatorTitle,
 
     funnel,
     clicks: formatTableCount(clicks),
@@ -236,9 +174,9 @@ export function buildCampaignRowVm(
     revenue,
     cost,
     profit: profitRes,
-    profitToneClass: profitToneClass(margin),
+    profitToneClass: profitToneClassFromMicro(profitMicro),
     roi: roiRes,
-    roiToneClass: roiToneClass(margin),
+    roiToneClass: roiToneClassFromRate(roiRes),
     epc: formatTableMoneyFromMicro(metrics?.epc_micro),
     cpc: formatTableMoneyFromMicro(metrics?.cpc_micro),
     cpa: formatTableMoneyFromMicro(metrics?.cpa_micro),
@@ -252,4 +190,81 @@ export function buildCampaignRowVm(
     ownerId,
     countries: campaign.target_countries ?? [],
   };
+}
+
+// Width probe strings must match CampaignListTableMiddleCell output.
+export function campaignListMiddleCellDisplayText(
+  columnId: CampaignListMiddleColumnId,
+  vm: CampaignRowVm,
+): string {
+  switch (columnId) {
+    case 'status':
+      return vm.statusLabel;
+    case 'tags':
+      return '-';
+    case 'clicks':
+      return vm.clicks.text;
+    case 'impressions':
+      return vm.impressions.text;
+    case 'ctr':
+      return vm.ctr?.text ?? '-';
+    case 'unique_clicks':
+      return vm.uniqueClicks.text;
+    case 'lp_clicks':
+      return vm.lpClicks.text;
+    case 'lp_views':
+      return vm.lpViews.text;
+    case 'group':
+      return vm.groupLabel ?? vm.groupCustomerId;
+    case 'lp_ctr':
+      return vm.lpCtr?.text ?? '-';
+    case 'cr':
+      return vm.cr.text;
+    case 'leads':
+      return vm.leads.text;
+    case 'approved':
+      return vm.approved.text;
+    case 'hold_leads':
+      return vm.holdLeads.text;
+    case 'rejected_leads':
+      return vm.rejectedLeads.text;
+    case 'approve_rate':
+      return vm.approveRate?.text ?? '-';
+    case 'epc':
+      return vm.epc.text;
+    case 'cpc':
+      return vm.cpc.text;
+    case 'cpa':
+      return vm.cpa.text;
+    case 'ecpa':
+      return vm.ecpa.text;
+    case 'cpm':
+      return vm.cpm ?? '-';
+    case 'blocks':
+      return vm.blocks.text;
+    case 'block_pct':
+      return vm.blockPct ?? '-';
+    case 'bots':
+      return vm.bots.text;
+    case 'bot_pct':
+      return vm.botPct ?? '-';
+    case 'revenue':
+      return vm.revenue.text;
+    case 'cost':
+      return vm.cost.text;
+    case 'profit':
+      return vm.profit.isZero ? '0.00' : vm.profit.text;
+    case 'roi':
+      return vm.roi.isZero ? '0%' : vm.roi.text;
+    case 'budget_pct':
+      return vm.budgetPct == null ? '-' : `${vm.budgetPct.toFixed(1)}%`;
+    case 'flow':
+      return vm.flowId ? vm.flowId.slice(0, 8) : '-';
+    case 'owner':
+      return vm.ownerLabel;
+    case 'countries':
+      return vm.countries.length > 0 ? vm.countries.join(', ') : '-';
+    default:
+      return '';
+  }
 }

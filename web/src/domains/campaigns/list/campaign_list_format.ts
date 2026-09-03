@@ -7,6 +7,7 @@ import { displayCount } from '@/lib/display';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { CampaignMargin } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 
 const MICRO_PER_USD = 1_000_000;
 
@@ -74,38 +75,6 @@ export function formatCampaignListRoi(profitMicro?: number, costMicro?: number):
   return formatTableRoi(profitMicro, costMicro).text;
 }
 
-export function campaignListRevenueMicro(margin?: CampaignMargin): number {
-  if (!margin) {
-    return 0;
-  }
-  return (margin.advertiser_spend_micro ?? 0) + (margin.operator_margin_micro ?? 0);
-}
-
-export function campaignListCostLabel(campaign: CampaignWithMoneyDisplay): string {
-  return parseAndFormatTableMoneyStr(campaign.current_spend_display ?? campaign.current_spend).text;
-}
-
-export function campaignListRevenueLabel(margin?: CampaignMargin): string {
-  const revenueMicro = campaignListRevenueMicro(margin);
-  return formatTableMoneyFromMicro(revenueMicro).text;
-}
-
-export function campaignListProfitLabel(margin?: CampaignMargin): string {
-  return formatTableMoneyFromMicro(margin?.operator_margin_micro).text;
-}
-
-export function campaignListMarginCostLabel(margin?: CampaignMargin): string {
-  return formatTableMoneyFromMicro(margin?.rtb_cost_micro).text;
-}
-
-export function campaignListClicksLabel(metrics?: CampaignListMetrics): string {
-  return formatTableCount(metrics?.clicks).text;
-}
-
-export function campaignListConversionsLabel(metrics?: CampaignListMetrics): string {
-  return formatTableCount(metrics?.conversions).text;
-}
-
 export function microQueryParamToUsdInput(microRaw: string): string {
   if (!microRaw.trim()) {
     return '';
@@ -163,14 +132,15 @@ export function sumCampaignListTotals(
       totals.flows += 1;
     }
     const metrics = metricsById[campaign.id];
-    totals.clicks += metrics?.clicks ?? 0;
-    totals.impressions += metrics?.impressions ?? 0;
-    totals.blocks += metrics?.blocks ?? 0;
-    totals.conversions += metrics?.conversions ?? 0;
     const margin = marginsById[campaign.id];
-    totals.revenueMicro += campaignListRevenueMicro(margin);
-    totals.costMicro += margin?.rtb_cost_micro ?? 0;
-    totals.profitMicro += margin?.operator_margin_micro ?? 0;
+    const row = resolveCampaignListRowMetrics(metrics, margin);
+    totals.clicks += row.clicks;
+    totals.impressions += row.impressions;
+    totals.blocks += row.blocks;
+    totals.conversions += metrics?.conversions ?? 0;
+    totals.revenueMicro += row.revenueMicro;
+    totals.costMicro += row.costMicro;
+    totals.profitMicro += row.profitMicro;
   }
   return totals;
 }

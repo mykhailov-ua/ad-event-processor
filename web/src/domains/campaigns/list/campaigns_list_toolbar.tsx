@@ -22,7 +22,6 @@ import {
 } from '@/domains/campaigns/list/campaign_list_summary';
 import type { CampaignListColumnPrefs } from '@/domains/campaigns/list/campaign_list_columns';
 import { CampaignListColumnsMenu } from '@/domains/campaigns/list/campaign_list_columns_menu';
-import type { CampaignListRowDisplayPrefs } from '@/domains/campaigns/list/campaign_list_row_display';
 import type { CampaignPacingFilter, CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
 import {
   DirectoryFilterForm,
@@ -52,6 +51,7 @@ export type CampaignsListToolbarProps = {
   customerOptions: CustomerComboboxOption[];
   ownerOptions: CampaignsListFilterOption[];
   countryOptions: CampaignsListFilterOption[];
+  listFacetsFetching?: boolean;
   summary: CampaignListSummary;
   statusTotals?: CampaignStatusTotals;
   statusTotalsLoading?: boolean;
@@ -78,8 +78,6 @@ export type CampaignsListToolbarProps = {
   onArchiveClick?: () => void;
   columnPrefs: CampaignListColumnPrefs;
   onColumnPrefsChange: (prefs: CampaignListColumnPrefs) => void;
-  rowDisplayPrefs: CampaignListRowDisplayPrefs;
-  onRowDisplayPrefsChange: (prefs: CampaignListRowDisplayPrefs) => void;
   onResetWorkspaceClick: () => void;
 };
 
@@ -96,6 +94,7 @@ export function CampaignsListToolbar({
   customerOptions,
   ownerOptions,
   countryOptions,
+  listFacetsFetching = false,
   summary,
   statusTotals,
   statusTotalsLoading = false,
@@ -122,8 +121,6 @@ export function CampaignsListToolbar({
   onArchiveClick,
   columnPrefs,
   onColumnPrefsChange,
-  rowDisplayPrefs,
-  onRowDisplayPrefsChange,
   onResetWorkspaceClick,
 }: CampaignsListToolbarProps) {
   const bulkActionBusy = bulkBusy;
@@ -280,7 +277,7 @@ export function CampaignsListToolbar({
           <FilterField label="Owner">
             <CampaignsListFilterSelect
               aria-label="Owner"
-              disabled={fetching || ownerOptions.length <= 1}
+              disabled={fetching || listFacetsFetching}
               options={ownerOptions}
               title="Filter campaigns by owner"
               value={draftOwnerUserId || ALL_OPTION_VALUE}
@@ -292,7 +289,8 @@ export function CampaignsListToolbar({
 
           <FilterField label="Country">
             <CampaignsListFilterSelect
-              aria-label="Country (current page)"
+              aria-label="Country"
+              disabled={fetching || listFacetsFetching}
               options={countryOptions}
               title="Filter campaigns by target country"
               value={draftCountry || ALL_OPTION_VALUE}
@@ -343,14 +341,12 @@ export function CampaignsListToolbar({
               columnPrefs={columnPrefs}
               disabled={fetching}
               onColumnPrefsChange={onColumnPrefsChange}
-              rowDisplayPrefs={rowDisplayPrefs}
-              onRowDisplayPrefsChange={onRowDisplayPrefsChange}
             />
             <Button
               type="button"
               variant="ghost"
               disabled={fetching}
-              title="Reset columns, widths, and row highlight preferences"
+              title="Reset columns and widths"
               onClick={onResetWorkspaceClick}
             >
               Reset view

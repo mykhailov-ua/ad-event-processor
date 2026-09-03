@@ -1,12 +1,12 @@
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 import {
-  campaignListRevenueMicro,
   emptyCampaignListTotals,
   formatTableCount,
   formatTableMoneyFromMicro,
   type CampaignListTotals,
 } from '@/domains/campaigns/list/campaign_list_format';
+import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 
 export type CampaignListSummary = CampaignListTotals & {
   scope: 'page' | 'selection';
@@ -42,9 +42,10 @@ export function computeCampaignListSummary(
     if (margin?.margin_breach) {
       marginBreachCount += 1;
     }
-    totals.revenueMicro += campaignListRevenueMicro(margin);
-    totals.costMicro += margin?.rtb_cost_micro ?? 0;
-    totals.profitMicro += margin?.operator_margin_micro ?? 0;
+    const row = resolveCampaignListRowMetrics(metrics, margin);
+    totals.revenueMicro += row.revenueMicro;
+    totals.costMicro += row.costMicro;
+    totals.profitMicro += row.profitMicro;
   }
 
   return {

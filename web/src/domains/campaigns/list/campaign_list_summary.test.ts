@@ -29,6 +29,33 @@ test('computeCampaignListSummary aggregates current page when nothing selected',
   assert.equal(summary.profitMicro, 50);
 });
 
+test('computeCampaignListSummary_holdout prefers metrics batch micros over margin', () => {
+  const summary = computeCampaignListSummary(
+    [{ id: 'a' } as never],
+    new Set(),
+    {
+      a: {
+        clicks: 1,
+        conversions: 0,
+        revenue_micro: 2_000_000,
+        cost_micro: 1_000_000,
+        profit_micro: 1_000_000,
+      },
+    },
+    {
+      a: {
+        operator_margin_micro: 99,
+        rtb_cost_micro: 99,
+        advertiser_spend_micro: 99,
+      },
+    },
+  );
+
+  assert.equal(summary.revenueMicro, 2_000_000);
+  assert.equal(summary.costMicro, 1_000_000);
+  assert.equal(summary.profitMicro, 1_000_000);
+});
+
 test('computeCampaignListSummary scopes to selected rows only', () => {
   const summary = computeCampaignListSummary(
     [

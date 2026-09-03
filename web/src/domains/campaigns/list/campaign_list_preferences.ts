@@ -76,7 +76,7 @@ export const CAMPAIGN_LIST_COLUMN_CATEGORIES: CampaignListColumnCategory[] = [
   {
     id: 'campaign',
     title: 'Campaign',
-    columns: ['status', 'group', 'flow', 'owner', 'countries', 'tags', 'budget_pct'],
+    columns: ['status', 'group', 'flow', 'owner', 'countries', 'budget_pct'],
   },
   {
     id: 'traffic',

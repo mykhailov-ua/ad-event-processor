@@ -39,7 +39,6 @@ export type CampaignsListTableProps = {
   marginsById: Record<string, CampaignMargin>;
   columnPrefs: CampaignListColumnPrefs;
   columnWidths: Record<CampaignListColumnId, number>;
-  highlightActiveRows?: boolean;
   onColumnPrefsChange: (prefs: CampaignListColumnPrefs) => void;
   selectedIds: Set<string>;
   onSelectedIdsChange: (ids: Set<string>) => void;
@@ -60,7 +59,6 @@ export function CampaignsListTable({
   marginsById,
   columnPrefs,
   columnWidths,
-  highlightActiveRows = false,
   onColumnPrefsChange,
   selectedIds,
   onSelectedIdsChange,
@@ -152,7 +150,7 @@ export function CampaignsListTable({
   return (
     <DirectoryTable
       className="min-h-0 flex-1 overflow-auto"
-      tableClassName="w-auto table-fixed border-collapse text-[13px] [&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-zinc-50 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-zinc-500 [&_td]:border-b [&_td]:border-zinc-100 [&_td]:px-3 [&_td]:py-1.5 dark:[&_th]:bg-zinc-900 dark:[&_th]:text-zinc-400 dark:[&_td]:border-zinc-800 [&_td.num]:text-right [&_tbody_tr:nth-child(even)_td]:bg-zinc-50/50 dark:[&_tbody_tr:nth-child(even)_td]:bg-zinc-900/40"
+      tableClassName="admin-table--campaigns"
       tableStyle={{ width: `${tableWidthPx}px`, tableLayout: 'fixed' }}
     >
         <colgroup>
@@ -179,7 +177,7 @@ export function CampaignsListTable({
                   )}
                 >
                   {isSelect ? (
-                    <div className="relative z-[2] flex h-full items-center justify-center">
+                    <div className="admin-table-cell--select">
                       <Checkbox
                         aria-label="Select all campaigns"
                         checked={allSelected}
@@ -253,7 +251,6 @@ export function CampaignsListTable({
               columns={columns}
               customerNameById={customerNameById}
               fetching={fetching}
-              highlightActiveRows={highlightActiveRows}
               margin={marginsById[campaign.id]}
               metrics={metricsById[campaign.id]}
               ownerEmailById={ownerEmailById}

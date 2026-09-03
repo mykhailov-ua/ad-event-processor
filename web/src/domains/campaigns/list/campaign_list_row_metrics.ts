@@ -39,12 +39,3 @@ export function resolveCampaignListRowMetrics(
     funnel: resolveCampaignFunnelCounts(metrics),
   };
 }
-
-export function campaignListRowWithoutTraffic(row: CampaignListRowMetrics): boolean {
-  return (
-    row.clicks === 0 &&
-    row.costMicro === 0 &&
-    row.profitMicro === 0 &&
-    row.revenueMicro === 0
-  );
-}

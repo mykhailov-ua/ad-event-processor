@@ -50,6 +50,12 @@ const config: Config = {
         md: '0.375rem',
         sm: '0.25rem',
       },
+      fontSize: {
+        'admin-dense': ['0.8125rem', { lineHeight: '1.125rem' }],
+        'admin-caption': ['0.6875rem', { lineHeight: '1rem' }],
+        'admin-mini': ['0.625rem', { lineHeight: '0.875rem' }],
+        'admin-micro': ['0.5rem', { lineHeight: '0.625rem' }],
+      },
     },
   },
   plugins: [animate],

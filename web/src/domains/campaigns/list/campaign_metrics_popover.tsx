@@ -71,7 +71,7 @@ function MetricsPopoverBody({
         <MetricsSection
           meta={
             stats?.stale ? (
-              <span className="text-[11px] text-muted-foreground">Stale ({stats.source})</span>
+              <span className="text-admin-caption text-muted-foreground">Stale ({stats.source})</span>
             ) : null
           }
           title="Delivery"
@@ -205,7 +205,7 @@ export function CampaignMetricsPopover({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="p-0 [&_.ui-shell]:!w-[22rem] [&_.ui-shell]:!min-w-[22rem]"
+        className="campaign-metrics-popover"
         collisionPadding={16}
         onOpenAutoFocus={(event) => event.preventDefault()}
         side="bottom"

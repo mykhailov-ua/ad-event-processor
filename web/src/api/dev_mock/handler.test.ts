@@ -5,6 +5,22 @@ import { resolveDevMockRequest } from './handler.ts';
 import { DEV_MOCK_CUSTOMERS } from './fixtures.ts';
 import { resetDevMockStore } from './store.ts';
 
+test('dev mock lists campaign list facets for customer scope', () => {
+  resetDevMockStore();
+  const customerId = DEV_MOCK_CUSTOMERS[0].id;
+  const facets = resolveDevMockRequest(
+    `/api/v1/campaigns/list-facets?customer_id=${encodeURIComponent(customerId)}`,
+  );
+  assert.equal(facets?.status, 200);
+  const body = facets?.body as {
+    countries: string[];
+    owners: Array<{ user_id: string; email?: string }>;
+  };
+  assert.ok(body.countries.length > 0);
+  assert.ok(body.owners.length > 0);
+  assert.ok(body.owners.every((owner) => owner.user_id));
+});
+
 test('dev mock lists campaigns with filters', () => {
   resetDevMockStore();
   const all = resolveDevMockRequest('/api/v1/campaigns?limit=50&offset=0');

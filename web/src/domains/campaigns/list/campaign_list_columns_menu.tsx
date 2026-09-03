@@ -14,11 +14,6 @@ import {
   setMiddleColumnVisible,
 } from '@/domains/campaigns/list/campaign_list_columns';
 import {
-  defaultCampaignListRowDisplayPrefs,
-  saveCampaignListRowDisplayPrefs,
-  type CampaignListRowDisplayPrefs,
-} from '@/domains/campaigns/list/campaign_list_row_display';
-import {
   CAMPAIGN_LIST_COLUMN_CATEGORIES,
   CAMPAIGN_LIST_COLUMN_PRESET_LABELS,
   campaignListColumnPrefsFromPreset,
@@ -29,16 +24,12 @@ import {
 export type CampaignListColumnsMenuProps = {
   columnPrefs: CampaignListColumnPrefs;
   onColumnPrefsChange: (prefs: CampaignListColumnPrefs) => void;
-  rowDisplayPrefs: CampaignListRowDisplayPrefs;
-  onRowDisplayPrefsChange: (prefs: CampaignListRowDisplayPrefs) => void;
   disabled?: boolean;
 };
 
 export function CampaignListColumnsMenu({
   columnPrefs,
   onColumnPrefsChange,
-  rowDisplayPrefs,
-  onRowDisplayPrefsChange,
   disabled = false,
 }: CampaignListColumnsMenuProps) {
   function persist(next: CampaignListColumnPrefs) {
@@ -59,14 +50,6 @@ export function CampaignListColumnsMenu({
 
   function restoreDefault() {
     persist(defaultCampaignListPreferencesPrefs());
-    onRowDisplayPrefsChange(defaultCampaignListRowDisplayPrefs());
-    saveCampaignListRowDisplayPrefs(defaultCampaignListRowDisplayPrefs());
-  }
-
-  function toggleHighlightActiveRows(enabled: boolean) {
-    const next = { ...rowDisplayPrefs, highlightActiveRows: enabled };
-    onRowDisplayPrefsChange(next);
-    saveCampaignListRowDisplayPrefs(next);
   }
 
   const hidden = new Set(columnPrefs.hidden);
@@ -122,13 +105,6 @@ export function CampaignListColumnsMenu({
         </div>
 
         <div className="border-t border-zinc-200 p-2 dark:border-zinc-800">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={rowDisplayPrefs.highlightActiveRows}
-              onCheckedChange={(next) => toggleHighlightActiveRows(next === true)}
-            />
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Highlight active rows</span>
-          </label>
           <button className="text-blue-600 hover:underline dark:text-blue-400" type="button" onClick={restoreDefault}>
             Restore to default
           </button>

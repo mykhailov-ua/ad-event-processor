@@ -1,10 +1,6 @@
-import type { CampaignMargin } from '@/api/types';
-
 export type CampaignStatusKey = 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | 'UNKNOWN';
 
 export type CampaignStatusTone = 'success' | 'warning' | 'muted' | string;
-
-export type CampaignListPerformanceRowTone = 'negative' | 'warning';
 
 export function normalizeCampaignStatus(status: string): CampaignStatusKey {
   const normalized = status.trim().toUpperCase();
@@ -34,68 +30,9 @@ export function isInactiveCampaignStatus(statusKey: CampaignStatusKey): boolean 
   return statusKey !== 'ACTIVE';
 }
 
-export function resolvePerformanceRowTone(
-  margin?: CampaignMargin,
-): CampaignListPerformanceRowTone | null {
-  if (!margin) {
-    return null;
-  }
-  const profitMicro = margin.operator_margin_micro;
-  if (profitMicro != null && profitMicro < 0) {
-    return 'negative';
-  }
-  if (margin.margin_breach) {
-    return 'warning';
-  }
-  return null;
-}
-
-export function campaignListRowClass(args: {
-  status: string;
-  statusTone?: CampaignStatusTone;
-  selected: boolean;
-  highlightActiveRows?: boolean;
-  margin?: CampaignMargin;
-}): string {
-  if (args.selected) {
+export function campaignListRowClass(selected: boolean): string {
+  if (selected) {
     return 'bg-blue-50 dark:bg-blue-950/30';
-  }
-
-  const performanceTone = resolvePerformanceRowTone(args.margin);
-  if (performanceTone === 'negative') {
-    return '';
-  }
-  if (performanceTone === 'warning') {
-    return '';
-  }
-
-  return '';
-}
-
-export function campaignListStatusDotClass(
-  status: string,
-  statusTone?: CampaignStatusTone,
-): string {
-  const key = resolveCampaignStatusKey(status, statusTone);
-  if (key === 'ACTIVE') {
-    return 'inline-block h-2 w-2 rounded-full bg-green-500';
-  }
-  return 'inline-block h-2 w-2 rounded-full bg-zinc-400';
-}
-
-export function campaignListRowStatusEdgeClass(
-  status: string,
-  statusTone?: CampaignStatusTone,
-): string {
-  const key = resolveCampaignStatusKey(status, statusTone);
-  if (key === 'ACTIVE') {
-    return '';
-  }
-  if (key === 'PAUSED') {
-    return '';
-  }
-  if (key === 'ARCHIVED') {
-    return '';
   }
   return '';
 }

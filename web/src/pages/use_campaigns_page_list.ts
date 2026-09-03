@@ -1,17 +1,21 @@
 import { useMemo } from 'react';
 
 import {
+  fetchCampaignListFacets,
   fetchCampaignListMetricsBatch,
   listCampaigns,
 } from '@/api/campaigns_api';
 import { listCustomers } from '@/api/customers_api';
 import { listSelfServeTemplates } from '@/api/selfserve_api';
-import { listTeamMembers } from '@/api/team_api';
 import type { CampaignListQuery } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import type { CampaignListColumnWidthProbe } from '@/domains/campaigns/list/campaigns_directory_types';
-import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import {
+  buildCampaignListCountryOptions,
+  buildCampaignListOwnerEmailById,
+  buildCampaignListOwnerOptions,
+} from '@/domains/campaigns/list/campaign_list_filter_options';
 import {
   buildCampaignListWidthProbeQuery,
   listResponseCoversWidthProbeDataset,
@@ -139,66 +143,25 @@ export function useCampaignsPageList({
     };
   }, [data?.items, listCoversWidthProbeDataset, marginsById, metricsById, widthProbeData?.items]);
 
-  const countryOptions = useMemo((): CampaignsListFilterOption[] => {
-    const codes = new Set<string>();
-    for (const campaign of data?.items ?? []) {
-      for (const code of campaign.target_countries ?? []) {
-        if (code) {
-          codes.add(code);
-        }
-      }
-    }
-    return [
-      { value: '__all__', label: 'All countries' },
-      ...[...codes].sort().map((code) => ({ value: code, label: code })),
-    ];
-  }, [data?.items]);
-
-  const { data: teamMembersData } = useResource(
-    (signal) => {
-      if (!customerId) {
-        return Promise.resolve(undefined);
-      }
-      return listTeamMembers({ customer_id: customerId, limit: 200 }, signal);
-    },
-    [customerId],
+  const { data: listFacets, fetching: listFacetsFetching } = useResource(
+    (signal) => fetchCampaignListFacets(customerId, signal),
+    [customerId, refreshToken],
   );
 
-  const ownerEmailById = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const member of teamMembersData?.items ?? []) {
-      const userId = member.user_id;
-      if (userId && member.email?.trim()) {
-        map[userId] = member.email.trim();
-      }
-    }
-    return map;
-  }, [teamMembersData?.items]);
+  const countryOptions = useMemo(
+    () => buildCampaignListCountryOptions(listFacets?.countries ?? [], query.country),
+    [listFacets?.countries, query.country],
+  );
 
-  const ownerOptions = useMemo((): CampaignsListFilterOption[] => {
-    const options: CampaignsListFilterOption[] = [{ value: '__all__', label: 'All owners' }];
-    const seen = new Set<string>(['__all__']);
+  const ownerEmailById = useMemo(
+    () => buildCampaignListOwnerEmailById(listFacets?.owners ?? []),
+    [listFacets?.owners],
+  );
 
-    const addOwner = (userId: string, label: string) => {
-      if (!userId || seen.has(userId)) {
-        return;
-      }
-      seen.add(userId);
-      options.push({ value: userId, label: label.trim() || userId.slice(0, 8) });
-    };
-
-    for (const member of teamMembersData?.items ?? []) {
-      addOwner(member.user_id ?? '', member.email?.trim() || member.user_id || '');
-    }
-    for (const campaign of data?.items ?? []) {
-      const userId = campaign.owner_user_id ?? '';
-      addOwner(userId, ownerEmailById[userId] ?? userId);
-    }
-    if (appliedOwnerUserId) {
-      addOwner(appliedOwnerUserId, ownerEmailById[appliedOwnerUserId] ?? appliedOwnerUserId);
-    }
-    return options;
-  }, [appliedOwnerUserId, data?.items, ownerEmailById, teamMembersData?.items]);
+  const ownerOptions = useMemo(
+    () => buildCampaignListOwnerOptions(listFacets?.owners ?? [], appliedOwnerUserId),
+    [appliedOwnerUserId, listFacets?.owners],
+  );
 
   const statusTotals = data?.status_totals;
   const statusTotalsFetching = fetching && statusTotals == null;
@@ -259,5 +222,6 @@ export function useCampaignsPageList({
     templates: templatesData?.items ?? [],
     templatesError,
     templatesLoading: templatesFetching,
+    listFacetsFetching,
   };
 }

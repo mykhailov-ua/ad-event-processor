@@ -23,7 +23,6 @@ export type CampaignListTableBodyRowProps = {
   metrics?: CampaignListMetrics;
   margin?: CampaignMargin;
   selected: boolean;
-  highlightActiveRows: boolean;
   fetching: boolean;
   onToggleSelected: (campaignId: string, checked: boolean) => void;
   onCampaignOverview?: (campaign: Campaign) => void;
@@ -46,7 +45,6 @@ export function CampaignListTableBodyRow({
   metrics,
   margin,
   selected,
-  highlightActiveRows,
   fetching,
   onToggleSelected,
   onCampaignOverview,
@@ -60,14 +58,13 @@ export function CampaignListTableBodyRow({
         customerNameById,
         ownerEmailById,
         selected,
-        highlightActiveRows,
       ),
-    [campaign, customerNameById, highlightActiveRows, margin, metrics, ownerEmailById, selected],
+    [campaign, customerNameById, margin, metrics, ownerEmailById, selected],
   );
 
   return (
     <tr
-      className={cn(vm.rowClass, vm.rowStatusEdgeClass, 'cursor-pointer')}
+      className={cn(vm.rowClass, 'cursor-pointer')}
       onClick={(event) => {
         if (fetching || isCampaignListInteractiveRowTarget(event.target)) {
           return;
@@ -81,7 +78,7 @@ export function CampaignListTableBodyRow({
         if (columnId === 'select') {
           return (
             <td key={columnId} className="w-7 px-1 text-center">
-              <div className="relative z-[2] flex h-full items-center justify-center">
+              <div className="admin-table-cell--select">
                 <Checkbox
                   aria-label={`Select ${campaign.name}`}
                   checked={selected}

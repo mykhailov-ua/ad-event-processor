@@ -148,6 +148,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     templates,
     templatesError,
     templatesLoading,
+    listFacetsFetching,
   } = useCampaignsPageList({
     query,
     statsQuery,
@@ -384,6 +385,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     ownerOptions,
     ownerEmailById,
     countryOptions,
+    listFacetsFetching,
     fetching,
     error,
     hasSnapshot: data != null,

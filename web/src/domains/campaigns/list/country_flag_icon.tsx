@@ -23,7 +23,7 @@ export function CountryFlagIcon({ code, className, title }: CountryFlagIconProps
     return (
       <span
         aria-hidden
-        className={cn('inline-flex h-3 w-4 shrink-0 items-center justify-center rounded bg-zinc-200 text-[8px] font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', className)}
+        className={cn('inline-flex h-3 w-4 shrink-0 items-center justify-center rounded bg-zinc-200 text-admin-micro font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400', className)}
         title={title ?? normalized}
       >
         {normalized.slice(0, 1)}

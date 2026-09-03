@@ -202,3 +202,42 @@ export function devMockListCampaigns(url: URL, campaigns: Campaign[]): MockListR
     ...(Object.keys(filtersApplied).length > 0 ? { filters_applied: filtersApplied } : {}),
   });
 }
+
+export function devMockListCampaignFacets(
+  url: URL,
+  campaigns: Campaign[],
+  userEmailById: Readonly<Record<string, string>>,
+): MockListResult {
+  const customerId = url.searchParams.get('customer_id') ?? '';
+  let rows = [...campaigns];
+  if (customerId) {
+    rows = rows.filter((row) => row.customer_id === customerId);
+  }
+
+  const countries = new Set<string>();
+  const owners = new Map<string, { user_id: string; email?: string }>();
+
+  for (const row of rows) {
+    for (const code of row.target_countries ?? []) {
+      const trimmed = code?.trim();
+      if (trimmed) {
+        countries.add(trimmed);
+      }
+    }
+    const ownerId = row.owner_user_id?.trim();
+    if (!ownerId || owners.has(ownerId)) {
+      continue;
+    }
+    const email = userEmailById[ownerId];
+    owners.set(ownerId, email ? { user_id: ownerId, email } : { user_id: ownerId });
+  }
+
+  return json(200, {
+    countries: [...countries].sort(),
+    owners: [...owners.values()].sort((left, right) => {
+      const leftLabel = left.email ?? left.user_id;
+      const rightLabel = right.email ?? right.user_id;
+      return leftLabel.localeCompare(rightLabel);
+    }),
+  });
+}

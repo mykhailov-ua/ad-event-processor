@@ -52,6 +52,7 @@ export type CampaignsDirectoryProps = {
   ownerOptions: CampaignsListFilterOption[];
   ownerEmailById: Record<string, string>;
   countryOptions: CampaignsListFilterOption[];
+  listFacetsFetching?: boolean;
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;

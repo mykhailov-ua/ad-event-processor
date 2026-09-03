@@ -24,6 +24,7 @@ import {
   MetricTile,
   type CampaignWithMoneyDisplay,
 } from '@/domains/campaigns/list/campaign_metrics_shared';
+import { formatTableMoneyFromMicro } from '@/domains/campaigns/list/campaign_list_format';
 import { displayCount, displayMoneyDecimal, displayTimestamp } from '@/lib/display';
 
 export type CampaignOverviewSheetProps = {
@@ -212,11 +213,11 @@ export function CampaignOverviewSheet({
                   <p className="font-medium">Margin</p>
                   <MetricRow
                     label="Operator margin"
-                    value={displayCount(margin.operator_margin_micro)}
+                    value={formatTableMoneyFromMicro(margin.operator_margin_micro).text}
                   />
                   <MetricRow
                     label="Advertiser spend"
-                    value={displayCount(margin.advertiser_spend_micro)}
+                    value={formatTableMoneyFromMicro(margin.advertiser_spend_micro).text}
                   />
                   <MetricRow
                     label="Margin breach"

@@ -106,6 +106,29 @@ export async function listCampaigns(
   return apiJson<CampaignListResponse>(buildCampaignsListPath(params), { signal });
 }
 
+export type CampaignListFacetOwner = {
+  user_id: string;
+  email?: string;
+};
+
+export type CampaignListFacetsResponse = {
+  countries: string[];
+  owners: CampaignListFacetOwner[];
+};
+
+export async function fetchCampaignListFacets(
+  customerId: string | undefined,
+  signal?: AbortSignal,
+): Promise<CampaignListFacetsResponse> {
+  const search = new URLSearchParams();
+  if (customerId) {
+    search.set('customer_id', customerId);
+  }
+  const query = search.toString();
+  const path = query ? `/api/v1/campaigns/list-facets?${query}` : '/api/v1/campaigns/list-facets';
+  return apiJson<CampaignListFacetsResponse>(path, { signal });
+}
+
 export type { CampaignStatusTotals };
 
 export async function getCampaign(id: string, signal?: AbortSignal): Promise<Campaign> {

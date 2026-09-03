@@ -22,11 +22,6 @@ import {
   type CampaignListColumnPrefs,
   visibleCampaignListColumns,
 } from '@/domains/campaigns/list/campaign_list_columns';
-import {
-  loadCampaignListRowDisplayPrefs,
-  saveCampaignListRowDisplayPrefs,
-  type CampaignListRowDisplayPrefs,
-} from '@/domains/campaigns/list/campaign_list_row_display';
 import { resetCampaignListWorkspacePrefs } from '@/domains/campaigns/list/campaign_list_workspace_prefs';
 import {
   computeCampaignListColumnWidths,
@@ -37,6 +32,7 @@ import type { CampaignListColumnWidthProbe } from '@/domains/campaigns/list/camp
 type UseCampaignsDirectoryWorkspaceArgs = {
   items: Campaign[];
   customerNameById: Record<string, string>;
+  ownerEmailById: Record<string, string>;
   metricsById: Record<string, CampaignListMetrics>;
   marginsById: Record<string, CampaignMargin>;
   columnWidthProbe?: CampaignListColumnWidthProbe;
@@ -46,6 +42,7 @@ type UseCampaignsDirectoryWorkspaceArgs = {
 export function useCampaignsDirectoryWorkspace({
   items,
   customerNameById,
+  ownerEmailById,
   metricsById,
   marginsById,
   columnWidthProbe,
@@ -64,24 +61,15 @@ export function useCampaignsDirectoryWorkspace({
   const [columnPrefs, setColumnPrefs] = useState<CampaignListColumnPrefs>(() =>
     loadCampaignListColumnPrefs(),
   );
-  const [rowDisplayPrefs, setRowDisplayPrefs] = useState<CampaignListRowDisplayPrefs>(() =>
-    loadCampaignListRowDisplayPrefs(),
-  );
 
   const handleColumnPrefsApply = useCallback((prefs: CampaignListColumnPrefs) => {
     setColumnPrefs(prefs);
     saveCampaignListColumnPrefs(prefs);
   }, []);
 
-  const handleRowDisplayPrefsChange = useCallback((prefs: CampaignListRowDisplayPrefs) => {
-    setRowDisplayPrefs(prefs);
-    saveCampaignListRowDisplayPrefs(prefs);
-  }, []);
-
   const handleResetWorkspaceConfirm = useCallback(() => {
     const prefs = resetCampaignListWorkspacePrefs();
     setColumnPrefs(prefs.columnPrefs);
-    setRowDisplayPrefs(prefs.rowDisplayPrefs);
     setResetWorkspaceOpen(false);
     toast.success('Campaign list view reset');
   }, []);
@@ -101,8 +89,9 @@ export function useCampaignsDirectoryWorkspace({
       metricsById: columnWidthProbe.metricsById,
       marginsById: columnWidthProbe.marginsById,
       customerNameById,
+      ownerEmailById,
     });
-  }, [columnWidthProbe, customerNameById, visibleColumns]);
+  }, [columnWidthProbe, customerNameById, ownerEmailById, visibleColumns]);
 
   const columnWidths = useMemo(
     () => mergeCampaignListColumnWidths(computedColumnWidths, columnPrefs.widthPx, visibleColumns),
@@ -208,7 +197,6 @@ export function useCampaignsDirectoryWorkspace({
     handleColumnPrefsApply,
     handleColumnWidthCommit,
     handleResetWorkspaceConfirm,
-    handleRowDisplayPrefsChange,
     importOpen,
     onArchiveSelected,
     onExportBundles,
@@ -217,7 +205,6 @@ export function useCampaignsDirectoryWorkspace({
     onResumeSelected,
     overviewCampaign,
     resetWorkspaceOpen,
-    rowDisplayPrefs,
     selectedCampaign,
     selectedCampaignId,
     selectedIds,

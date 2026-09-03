@@ -73,6 +73,7 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/campaigns", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaigns)))
+	mux.HandleFunc("GET /api/v1/campaigns/list-facets", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignListFacets)))
 	mux.HandleFunc("GET /api/v1/campaigns/target-countries", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignTargetCountries)))
 	mux.HandleFunc("GET /api/v1/campaigns/metrics", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetrics)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaign)))

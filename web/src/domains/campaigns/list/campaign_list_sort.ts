@@ -7,7 +7,6 @@ export const CAMPAIGN_LIST_API_SORT_FIELDS = [
   'spend',
   'budget_limit',
   'status',
-  'tags',
   'group',
   'flow',
   'owner',
@@ -99,7 +98,6 @@ export function sortFieldForCampaignColumn(
       return 'name';
     case 'id':
       return 'updated_at';
-    case 'tags':
     case 'status':
     case 'clicks':
     case 'impressions':
