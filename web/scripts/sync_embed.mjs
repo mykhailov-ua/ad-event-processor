@@ -14,7 +14,7 @@ const required = [
   'login.html',
   'src/main.js',
   'src/login.js',
-  'src/styles/globals.css',
+  'src/styles/app.css',
   'src/static/track.js',
 ];
 

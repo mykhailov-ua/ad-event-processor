@@ -18,13 +18,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { Seller } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 
@@ -172,15 +172,14 @@ export function SupplySellersDirectory({
       {items.length === 0 ? (
         <EmptyState title="No sellers" description="Supply sellers table is empty." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Seller ID</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Seller ID</DirectoryTableHead>
+                <DirectoryTableHead>Domain</DirectoryTableHead>
+                <DirectoryTableHead>Type</DirectoryTableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -244,8 +243,7 @@ export function SupplySellersDirectory({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? creativePanelError(actionError, 'Seller action failed') : null}

@@ -1,10 +1,13 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 import { PageLayout } from '@/shell/page_layout';
 import type { FlowPath } from '@/api/types';
-import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor';
+import type { CampaignEditorFormState } from '@/domains/campaigns/editor/campaign_editor_types';
 
 export type CampaignEditorBinomShellProps = {
   campaignId: string;
@@ -43,17 +46,17 @@ export function CampaignEditorBinomShell({
   const paths = flowPaths.length > 0 ? flowPaths : [{ weight: 100, landers: [], offers: [] }];
 
   const pathsAside = (
-    <section className="admin-panel admin-stack">
-      <h2 className="admin-section-title">Paths</h2>
+    <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-3">
+      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Paths</h2>
       {paths.map((path, pathIndex) => (
-        <div key={`path-${pathIndex}`} className="admin-panel admin-stack">
+        <div key={`path-${pathIndex}`} className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-3">
           <p>
             <strong>Path {pathIndex + 1}</strong>  /  weight {path.weight ?? 100}
           </p>
           <div>
-            <h3 className="admin-section-title">Landers</h3>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Landers</h3>
             {(path.landers ?? []).length === 0 ? (
-              <p className="admin-muted">No landers</p>
+              <p className="text-zinc-500 dark:text-zinc-400">No landers</p>
             ) : (
               <ul>
                 {(path.landers ?? []).map((lander, landerIndex) => (
@@ -66,9 +69,9 @@ export function CampaignEditorBinomShell({
             )}
           </div>
           <div>
-            <h3 className="admin-section-title">Offers</h3>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Offers</h3>
             {(path.offers ?? []).length === 0 ? (
-              <p className="admin-muted">No offers</p>
+              <p className="text-zinc-500 dark:text-zinc-400">No offers</p>
             ) : (
               <ul>
                 {(path.offers ?? []).map((offer, offerIndex) => (
@@ -115,13 +118,12 @@ export function CampaignEditorBinomShell({
     >
       {statusBanner}
 
-      <section className="admin-panel admin-stack">
-        <h2 className="admin-section-title">Main options</h2>
+      <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Main options</h2>
 
-        <div className="admin-field-row">
-          <label htmlFor="binom-campaign-name">Name</label>
-          <input
-            className="admin-input"
+        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+          <Label htmlFor="binom-campaign-name">Name</Label>
+          <Input
             disabled={saving}
             id="binom-campaign-name"
             value={form.name}
@@ -129,10 +131,9 @@ export function CampaignEditorBinomShell({
           />
         </div>
 
-        <div className="admin-field-row">
-          <label htmlFor="binom-traffic-template">Traffic source</label>
-          <input
-            className="admin-input"
+        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+          <Label htmlFor="binom-traffic-template">Traffic source</Label>
+          <Input
             disabled={saving}
             id="binom-traffic-template"
             value={form.traffic_template_id}
@@ -140,10 +141,9 @@ export function CampaignEditorBinomShell({
           />
         </div>
 
-        <div className="admin-field-row">
-          <label htmlFor="binom-budget">Budget limit</label>
-          <input
-            className="admin-input"
+        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+          <Label htmlFor="binom-budget">Budget limit</Label>
+          <Input
             disabled={saving}
             id="binom-budget"
             value={form.budget_limit}
@@ -151,10 +151,9 @@ export function CampaignEditorBinomShell({
           />
         </div>
 
-        <div className="admin-field-row">
-          <label htmlFor="binom-status">Status</label>
-          <input
-            className="admin-input"
+        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+          <Label htmlFor="binom-status">Status</Label>
+          <Input
             disabled={saving}
             id="binom-status"
             value={form.status}
@@ -162,10 +161,9 @@ export function CampaignEditorBinomShell({
           />
         </div>
 
-        <div className="admin-field-row">
-          <label htmlFor="binom-flow">Flow ID</label>
-          <input
-            className="admin-input"
+        <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+          <Label htmlFor="binom-flow">Flow ID</Label>
+          <Input
             disabled={saving}
             id="binom-flow"
             value={form.flow_id}
@@ -173,10 +171,9 @@ export function CampaignEditorBinomShell({
           />
         </div>
 
-        <div className="admin-field">
-          <label htmlFor="binom-url">Campaign URL</label>
-          <textarea
-            className="admin-textarea"
+        <div className="grid gap-2">
+          <Label htmlFor="binom-url">Campaign URL</Label>
+          <Textarea
             id="binom-url"
             readOnly
             rows={3}
@@ -189,20 +186,20 @@ export function CampaignEditorBinomShell({
         </Button>
 
         {advancedOpen ? (
-          <div className="admin-stack">
-            <div className="admin-field-row">
-              <label htmlFor="binom-postback">Postback %</label>
-              <input className="admin-input" defaultValue="100" id="binom-postback" />
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+              <Label htmlFor="binom-postback">Postback %</Label>
+              <Input defaultValue="100" id="binom-postback" />
             </div>
-            <div className="admin-field-row">
-              <label htmlFor="binom-payout">Payout %</label>
-              <input className="admin-input" defaultValue="100" id="binom-payout" />
+            <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
+              <Label htmlFor="binom-payout">Payout %</Label>
+              <Input defaultValue="100" id="binom-payout" />
             </div>
           </div>
         ) : null}
       </section>
 
-      {advancedPanel ? <div className="admin-panel admin-stack">{advancedPanel}</div> : null}
+      {advancedPanel ? <div className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-3">{advancedPanel}</div> : null}
     </PageLayout>
   );
 }

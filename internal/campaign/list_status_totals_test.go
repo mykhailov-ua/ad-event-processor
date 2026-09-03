@@ -3,33 +3,18 @@ package campaign
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestCountStatusTotalsFromItems_groupsByStatus(t *testing.T) {
+func TestApplyCampaignStatusCount(t *testing.T) {
 	t.Parallel()
-
-	totals := CountStatusTotalsFromItems([]CampaignDTO{
-		{Status: "ACTIVE"},
-		{Status: "active"},
-		{Status: "PAUSED"},
-		{Status: "ARCHIVED"},
-		{Status: "EXHAUSTED"},
-	})
-	assert.Equal(t, int64(2), totals.Active)
-	assert.Equal(t, int64(1), totals.Paused)
-	assert.Equal(t, int64(1), totals.Archived)
-	assert.Equal(t, int64(5), totals.Total)
-}
-
-func TestFilterCampaignsByQuery_nameAndPacing(t *testing.T) {
-	t.Parallel()
-
-	items := []CampaignDTO{
-		{ID: "1", Name: "Alpha", PacingMode: "even"},
-		{ID: "2", Name: "Beta", PacingMode: "asap"},
-	}
-	filtered := FilterCampaignsByQuery(items, "alp", "even")
-	assert.Len(t, filtered, 1)
-	assert.Equal(t, "1", filtered[0].ID)
+	var totals CampaignStatusTotalsDTO
+	ApplyCampaignStatusCount(&totals, "ACTIVE", 3)
+	ApplyCampaignStatusCount(&totals, "PAUSED", 2)
+	ApplyCampaignStatusCount(&totals, "ARCHIVED", 1)
+	ApplyCampaignStatusCount(&totals, "UNKNOWN", 4)
+	require.Equal(t, int64(10), totals.Total)
+	require.Equal(t, int64(3), totals.Active)
+	require.Equal(t, int64(2), totals.Paused)
+	require.Equal(t, int64(1), totals.Archived)
 }

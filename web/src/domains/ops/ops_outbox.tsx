@@ -8,7 +8,13 @@ import {
   OpsPageLoading,
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsOutboxProps = {
   items: OutboxEvent[];
@@ -61,21 +67,23 @@ export function OpsOutbox({
       ) : (
         <OpsTable
           head={
-            <tr>
-              <th>ID</th>
-              <th>Event type</th>
-              <th>Status</th>
-              <th>Created</th>
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>ID</OpsTableHead>
+              <OpsTableHead>Event type</OpsTableHead>
+              <OpsTableHead>Status</OpsTableHead>
+              <OpsTableHead>Created</OpsTableHead>
+            </OpsTableHeaderRow>
           }
         >
           {items.map((row) => (
-            <tr key={row.id ?? `${row.event_type}-${row.created_at}`}>
-              <td className="admin-table-td--id">{row.id ?? ''}</td>
-              <td>{row.event_type ?? ''}</td>
-              <td>{row.status ?? ''}</td>
-              <td>{displayTimestamp(row.created_at)}</td>
-            </tr>
+            <OpsTableRow key={row.id ?? `${row.event_type}-${row.created_at}`}>
+              <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                {row.id ?? ''}
+              </OpsTableCell>
+              <OpsTableCell>{row.event_type ?? ''}</OpsTableCell>
+              <OpsTableCell>{row.status ?? ''}</OpsTableCell>
+              <OpsTableCell>{displayTimestamp(row.created_at)}</OpsTableCell>
+            </OpsTableRow>
           ))}
         </OpsTable>
       )}

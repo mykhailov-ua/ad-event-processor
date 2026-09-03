@@ -5,13 +5,13 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type {
   PostbackCampaignStatus,
   PostbackConfig,
@@ -141,14 +141,13 @@ export function IntegrationsPostbacks({
         {configs.length === 0 ? (
           <EmptyState title="No configs" description="No postback configs are configured." />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Target event</TableHead>
-                  <TableHead>Token</TableHead>
+                  <DirectoryTableHead>Campaign</DirectoryTableHead>
+                  <DirectoryTableHead>Provider</DirectoryTableHead>
+                  <DirectoryTableHead>Target event</DirectoryTableHead>
+                  <DirectoryTableHead>Token</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -165,8 +164,7 @@ export function IntegrationsPostbacks({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
         </div>
       </section>
@@ -178,16 +176,15 @@ export function IntegrationsPostbacks({
         {dlq.length === 0 ? (
           <EmptyState title="DLQ empty" description="No failed postback deliveries in DLQ." />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Failures</TableHead>
-                  <TableHead>Last error</TableHead>
-                  <TableHead className="w-28">Actions</TableHead>
+                  <DirectoryTableHead>ID</DirectoryTableHead>
+                  <DirectoryTableHead>Campaign</DirectoryTableHead>
+                  <DirectoryTableHead>Event</DirectoryTableHead>
+                  <DirectoryTableHead>Failures</DirectoryTableHead>
+                  <DirectoryTableHead>Last error</DirectoryTableHead>
+                  <DirectoryTableHead className="w-28">Actions</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -219,8 +216,7 @@ export function IntegrationsPostbacks({
                   );
                 })}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
         {dlqActions.retryError ? (
           <ErrorBlock title="DLQ retry failed" message={dlqActions.retryError.message} />
@@ -237,14 +233,13 @@ export function IntegrationsPostbacks({
             description="No postback delivery status rows returned."
           />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Last success</TableHead>
-                  <TableHead>DLQ pending</TableHead>
+                  <DirectoryTableHead>Campaign</DirectoryTableHead>
+                  <DirectoryTableHead>Provider</DirectoryTableHead>
+                  <DirectoryTableHead>Last success</DirectoryTableHead>
+                  <DirectoryTableHead>DLQ pending</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -263,8 +258,7 @@ export function IntegrationsPostbacks({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </section>
       ) : null}

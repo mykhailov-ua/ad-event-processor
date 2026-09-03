@@ -27,7 +27,7 @@ Hot path reads inline license snapshot only - not `IngestAllowed()` per request.
 | GRACE | JWT expired within `grace_days` (7) |
 | EXPIRED | Blocked |
 
-Pilot SKU (`deploy/vendor/sku.yaml`): 10 days, 5k RPS, OpenRTB off, hard bind optional.
+Pilot SKU (`deploy/vendor/sku.yaml`): 14 days, 5k RPS, OpenRTB off, hard bind. Full feature matrix: `deploy/vendor/SALES.md`.
 
 ## Issue JWT (vendor)
 

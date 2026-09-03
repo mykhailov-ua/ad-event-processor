@@ -101,10 +101,12 @@ func BatchCampaignListMetrics(
 	}
 
 	q := db.New(pool)
+	statsFrom, statsTo := CampaignListPGStatsDates(from, to)
+	marginStart, marginEnd := CampaignListMarginWindow(from, to)
 	statsRows, err := q.SumCampaignStatsByCampaignIDsInRange(ctx, db.SumCampaignStatsByCampaignIDsInRangeParams{
 		CampaignIds: pgIDs,
-		FromDate:    pgtype.Date{Time: from.UTC(), Valid: true},
-		ToDate:      pgtype.Date{Time: to.UTC(), Valid: true},
+		FromDate:    statsFrom,
+		ToDate:      statsTo,
 	})
 	if err != nil {
 		return CampaignListMetricsBatchResponse{}, err
@@ -123,36 +125,57 @@ func BatchCampaignListMetrics(
 		items[id] = entry
 	}
 
-	// stale stays true until ClickHouse returns at least one of unique_clicks or blocks aggregates.
+	// stale stays true until ClickHouse returns sort and funnel aggregates.
 	stale := true
 	if clickhouseQuery != nil {
 		chCtx, cancel := context.WithTimeout(ctx, campaignListMetricsCHTimeout)
-		uniqueByCampaign, errUnique := reports.QueryUniqueClicksByCampaignCH(chCtx, clickhouseQuery, campaignIDs, from, to)
-		blocksByCampaign, errBlocks := reports.QueryBlockedClicksByCampaignCH(chCtx, clickhouseQuery, campaignIDs, from, to)
+		chMetrics, errCH := reports.QueryCampaignListCHSortMetricsCH(chCtx, clickhouseQuery, campaignIDs, from, to)
+		funnelMetrics, errFunnel := reports.QueryCampaignListFunnelMetricsCH(chCtx, clickhouseQuery, campaignIDs, from, to)
 		cancel()
-		if errUnique == nil {
-			for campaignID, uniqueClicks := range uniqueByCampaign {
+		if errCH == nil {
+			for campaignID, row := range chMetrics {
 				entry := items[campaignID]
-				entry.UniqueClicks = uniqueClicks
+				entry.UniqueClicks = row.UniqueClicks
+				entry.Blocks = row.Blocks
+				entry.LPClicks = row.LPClicks
+				entry.Bots = row.Bots
 				items[campaignID] = entry
 			}
 		}
-		if errBlocks == nil {
-			for campaignID, blocks := range blocksByCampaign {
+		if errFunnel == nil {
+			for campaignID, funnel := range funnelMetrics {
 				entry := items[campaignID]
-				entry.Blocks = blocks
+				entry.HoldLeads = funnel.HoldLeads
+				entry.RejectedLeads = funnel.RejectedLeads
+				if funnel.LeadsRaw() > 0 {
+					entry.LeadsRaw = funnel.LeadsRaw()
+				}
 				items[campaignID] = entry
 			}
 		}
-		if errUnique == nil || errBlocks == nil {
+		if errCH == nil && errFunnel == nil {
 			stale = false
 		}
 	}
+	for id, entry := range items {
+		if entry.LeadsRaw == 0 {
+			derived := entry.Conversions + entry.HoldLeads + entry.RejectedLeads
+			if derived > 0 {
+				entry.LeadsRaw = derived
+			} else {
+				entry.LeadsRaw = entry.Conversions
+			}
+		}
+		if entry.LPViews == 0 {
+			entry.LPViews = entry.Impressions
+		}
+		items[id] = entry
+	}
 
-	windowStart := time.Now().Add(-1 * time.Hour)
-	marginRows, err := q.SumCampaignMarginWindowByCampaignIDs(ctx, db.SumCampaignMarginWindowByCampaignIDsParams{
+	marginRows, err := q.SumCampaignMarginWindowByCampaignIDsInRange(ctx, db.SumCampaignMarginWindowByCampaignIDsInRangeParams{
 		CampaignIds: pgIDs,
-		WindowStart: pgtype.Timestamp{Time: windowStart, Valid: true},
+		WindowStart: pgtype.Timestamp{Time: marginStart, Valid: true},
+		WindowEnd:   pgtype.Timestamp{Time: marginEnd, Valid: true},
 	})
 	if err != nil {
 		return CampaignListMetricsBatchResponse{}, err
@@ -205,4 +228,91 @@ func BatchCampaignListMetrics(
 		To:    to.UTC().Format(time.RFC3339),
 		Stale: stale,
 	}, nil
+}
+
+func AttachCampaignListMarginBreachInRange(
+	ctx context.Context,
+	pool *pgxpool.Pool,
+	defaultThresholdBps int,
+	items []CampaignDTO,
+	from, to time.Time,
+) {
+	if pool == nil || len(items) == 0 {
+		return
+	}
+	activeIDs, activeIdx := activeCampaignListIndices(items)
+	if len(activeIDs) == 0 {
+		return
+	}
+
+	pgIDs := make([]pgtype.UUID, len(activeIDs))
+	for i, id := range activeIDs {
+		pgIDs[i] = domain.ToUUID(id)
+	}
+
+	marginStart, marginEnd := CampaignListMarginWindow(from, to)
+	q := db.New(pool)
+	marginRows, err := q.SumCampaignMarginWindowByCampaignIDsInRange(ctx, db.SumCampaignMarginWindowByCampaignIDsInRangeParams{
+		CampaignIds: pgIDs,
+		WindowStart: pgtype.Timestamp{Time: marginStart, Valid: true},
+		WindowEnd:   pgtype.Timestamp{Time: marginEnd, Valid: true},
+	})
+	if err != nil {
+		return
+	}
+
+	thresholdBps := defaultThresholdBps
+	if thresholdBps <= 0 {
+		thresholdBps = 500
+	}
+	policyByCampaign := map[uuid.UUID]int{}
+	policyRows, err := q.ListMarginGuardPoliciesByCampaignIDs(ctx, pgIDs)
+	if err != nil {
+		return
+	}
+	for _, policyRow := range policyRows {
+		id, parseErr := uuid.FromBytes(policyRow.CampaignID.Bytes[:])
+		if parseErr != nil {
+			continue
+		}
+		if _, seen := policyByCampaign[id]; seen {
+			continue
+		}
+		bps := policyRow.CostOverRevenueThresholdBps
+		if bps <= 0 {
+			bps = int32(thresholdBps)
+		}
+		policyByCampaign[id] = int(bps)
+	}
+
+	breachByID := make(map[uuid.UUID]bool, len(activeIDs))
+	for _, row := range marginRows {
+		id := uuid.UUID(row.CampaignID.Bytes)
+		bps := thresholdBps
+		if custom, ok := policyByCampaign[id]; ok {
+			bps = custom
+		}
+		limitMicro := ledger.CostOverRevenueLimitMicro(row.AdvertiserSpendMicro, bps)
+		breachByID[id] = row.RtbCostMicro > limitMicro && row.AdvertiserSpendMicro > 0
+	}
+	for i, id := range activeIDs {
+		items[activeIdx[i]].MarginBreach = breachByID[id]
+	}
+}
+
+func activeCampaignListIndices(items []CampaignDTO) ([]uuid.UUID, []int) {
+	activeIDs := make([]uuid.UUID, 0, len(items))
+	activeIdx := make([]int, 0, len(items))
+	for i := range items {
+		if items[i].Status != "ACTIVE" {
+			continue
+		}
+		campID, err := uuid.Parse(items[i].ID)
+		if err != nil {
+			continue
+		}
+		activeIDs = append(activeIDs, campID)
+		activeIdx = append(activeIdx, i)
+	}
+	return activeIDs, activeIdx
 }

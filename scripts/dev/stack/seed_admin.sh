@@ -230,11 +230,14 @@ else
   log "platform bootstrapped with admin $EMAIL"
 fi
 
+ADMIN_DEV_PORT="${ADMIN_DEV_PORT:-5173}"
+ADMIN_UI_URL="http://127.0.0.1:${ADMIN_DEV_PORT}"
+
 cat << EOF
 
 seed-admin: done
-  Control:  ${CONTROL_URL}
-  Login:    ${CONTROL_URL}/login
+  Admin UI: ${ADMIN_UI_URL}
+  API:      ${CONTROL_URL}
   Email:    ${EMAIL}
   Password: ${PASSWORD}
 

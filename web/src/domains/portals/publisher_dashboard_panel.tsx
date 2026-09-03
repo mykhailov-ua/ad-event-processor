@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { PageChrome } from '@/shell/page_chrome';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import type { PublisherDashboard } from '@/api/types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { PublisherDashboardView } from '@/domains/portals/publisher_dashboard_view';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 
 export type PublisherDashboardPanelProps = {
@@ -39,9 +39,7 @@ export function PublisherDashboardPanel({
         Statements
       </Link>
 
-      {dashboard ? (
-        <JsonDashboardView payload={dashboard as unknown as Record<string, unknown>} />
-      ) : null}
+      {dashboard ? <PublisherDashboardView dashboard={dashboard} /> : null}
 
       {error && hasSnapshot ? portalsPanelError(error, 'Refresh failed') : null}
     </PageChrome>

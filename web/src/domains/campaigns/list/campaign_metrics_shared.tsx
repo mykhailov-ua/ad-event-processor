@@ -249,7 +249,7 @@ export function HourlyTrendChart({
               <path
                 d={buildLinePath(clicks, width, height, padding)}
                 fill="none"
-                stroke="hsl(var(--primary))"
+                stroke="#3b82f6"
                 strokeWidth={1.75}
               />
             </>

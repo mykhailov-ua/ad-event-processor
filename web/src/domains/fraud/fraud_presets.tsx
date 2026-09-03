@@ -7,13 +7,13 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import { ApiError } from '@/api/client';
 import type { FraudPolicyPreset } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -90,17 +90,16 @@ export function FraudPresets({
       {items.length === 0 ? (
         <EmptyState title="No presets" description="No global fraud policy presets returned." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Pass</TableHead>
-                <TableHead>Suspect</TableHead>
-                <TableHead>IVT</TableHead>
-                <TableHead>Block</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Pass</DirectoryTableHead>
+                <DirectoryTableHead>Suspect</DirectoryTableHead>
+                <DirectoryTableHead>IVT</DirectoryTableHead>
+                <DirectoryTableHead>Block</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -173,8 +172,7 @@ export function FraudPresets({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {saveError ? (

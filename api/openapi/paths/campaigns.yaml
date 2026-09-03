@@ -23,13 +23,15 @@ paths:
           required: false
           schema:
             type: string
-            enum: [name, updated_at, spend, budget_limit]
+            enum: [name, updated_at, spend, budget_limit, status, tags, group, flow, owner, countries, budget_pct, clicks, impressions, conversions, unique_clicks, blocks, cost, revenue, profit, roi, ctr, cr, cpc, cpa, ecpa, epc, cpm, block_pct, leads, approved, hold_leads, rejected_leads, approve_rate, lp_clicks, lp_views, lp_ctr, bots, bot_pct]
         - name: order
           in: query
           required: false
           schema:
             type: string
             enum: [asc, desc]
+        - $ref: '../openapi.yaml#/components/parameters/ReportFromQuery'
+        - $ref: '../openapi.yaml#/components/parameters/ReportToQuery'
         - name: pacing_mode
           in: query
           required: false
@@ -97,6 +99,31 @@ paths:
             application/json:
               schema:
                 $ref: '../components/schemas/campaign.yaml#/CampaignListMetricsBatchResponse'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
+  /api/v1/campaigns/target-countries:
+    get:
+      tags: [campaigns]
+      operationId: campaignsListTargetCountries
+      summary: List distinct campaign target countries
+      description: Returns ISO country codes used in campaign target_countries for the scoped customer.
+      x-permissions: [campaigns:read, campaigns:read:masked]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/CustomerIdQuery'
+      responses:
+        '200':
+          description: Distinct target country codes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [countries]
+                properties:
+                  countries:
+                    type: array
+                    items:
+                      type: string
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 

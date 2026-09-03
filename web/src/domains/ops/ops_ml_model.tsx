@@ -1,10 +1,18 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { MLManualLabel } from '@/api/types';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsMlModelProps = {
   status: Record<string, unknown> | undefined;
@@ -69,34 +77,31 @@ export function OpsMlModel({
     <OpsPageShell
       filters={
         <>
-          <label className="admin-label">
-            IP hash
-            <input
-              className="admin-input"
+          <div className="grid gap-2">
+            <Label htmlFor="ml-ip-hash">IP hash</Label>
+            <Input
               id="ml-ip-hash"
               value={draftIpHash}
               onChange={(event) => onDraftIpHashChange(event.target.value)}
             />
-          </label>
-          <label className="admin-label">
-            Label
-            <input
-              className="admin-input"
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="ml-label">Label</Label>
+            <Input
               id="ml-label"
               inputMode="numeric"
               value={draftLabel}
               onChange={(event) => onDraftLabelChange(event.target.value)}
             />
-          </label>
-          <label className="admin-label">
-            Reason
-            <input
-              className="admin-input"
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="ml-reason">Reason</Label>
+            <Input
               id="ml-reason"
               value={draftReason}
               onChange={(event) => onDraftReasonChange(event.target.value)}
             />
-          </label>
+          </div>
         </>
       }
       title="ML model ops"
@@ -130,7 +135,7 @@ export function OpsMlModel({
 
       {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
       {saveSuccess ? (
-        <p className="admin-muted" role="status">
+        <p className="text-zinc-500 dark:text-zinc-400" role="status">
           Label stored.
         </p>
       ) : null}
@@ -142,19 +147,21 @@ export function OpsMlModel({
       {labels.length > 0 ? (
         <OpsTable
           head={
-            <tr>
-              <th>IP hash</th>
-              <th>Label</th>
-              <th>Reason</th>
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>IP hash</OpsTableHead>
+              <OpsTableHead>Label</OpsTableHead>
+              <OpsTableHead>Reason</OpsTableHead>
+            </OpsTableHeaderRow>
           }
         >
           {labels.map((row, index) => (
-            <tr key={`${row.ip_hash ?? 'row'}-${index}`}>
-              <td className="admin-table-td--id">{row.ip_hash ?? ''}</td>
-              <td>{row.label ?? ''}</td>
-              <td>{row.reason ?? ''}</td>
-            </tr>
+            <OpsTableRow key={`${row.ip_hash ?? 'row'}-${index}`}>
+              <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                {row.ip_hash ?? ''}
+              </OpsTableCell>
+              <OpsTableCell>{row.label ?? ''}</OpsTableCell>
+              <OpsTableCell>{row.reason ?? ''}</OpsTableCell>
+            </OpsTableRow>
           ))}
         </OpsTable>
       ) : null}

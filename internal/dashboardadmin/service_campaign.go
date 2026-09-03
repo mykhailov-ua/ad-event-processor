@@ -20,16 +20,19 @@ func NewCampaignService(host CampaignHost) *CampaignService {
 	return &CampaignService{host: host}
 }
 
-func (st *CampaignService) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID) (CampaignDashboardDTO, error) {
-	if campaignID == uuid.Nil {
+func (st *CampaignService) GetCampaignDashboard(ctx context.Context, req CampaignDashboardRequest) (CampaignDashboardDTO, error) {
+	if req.CampaignID == uuid.Nil {
 		return CampaignDashboardDTO{}, st.host.ErrValidation("invalid campaign id")
 	}
 
-	now := time.Now().UTC()
-	from := now.Add(-30 * 24 * time.Hour)
+	from := req.From.UTC()
+	to := req.To.UTC()
+	if !to.After(from) {
+		return CampaignDashboardDTO{}, st.host.ErrValidation("invalid time range")
+	}
 
 	q := db.New(st.host.Pool())
-	camp, err := q.GetCampaign(ctx, domain.ToUUID(campaignID))
+	camp, err := q.GetCampaign(ctx, domain.ToUUID(req.CampaignID))
 	if err != nil {
 		return CampaignDashboardDTO{}, st.host.MapCampaignNotFound(err)
 	}
@@ -42,7 +45,7 @@ func (st *CampaignService) GetCampaignDashboard(ctx context.Context, campaignID 
 	if chAvailable {
 		clickhouseCtx, cancel := context.WithTimeout(ctx, st.host.ReportCHTimeout())
 		defer cancel()
-		econ, err := reports.QueryCampaignEconomicsCH(clickhouseCtx, st.host.ClickHouseQuery(), campaignID, from, now)
+		econ, err := reports.QueryCampaignEconomicsCH(clickhouseCtx, st.host.ClickHouseQuery(), req.CampaignID, from, to)
 		if err != nil {
 			return CampaignDashboardDTO{}, err
 		}
@@ -55,9 +58,9 @@ func (st *CampaignService) GetCampaignDashboard(ctx context.Context, campaignID 
 	if spendMicro == 0 && revenueMicro == 0 {
 		spendMicro = camp.CurrentSpend
 		stats, err := q.SumCampaignStatsInRange(ctx, db.SumCampaignStatsInRangeParams{
-			CampaignID: domain.ToUUID(campaignID),
-			FromDate:   pgtype.Date{Time: from.UTC(), Valid: true},
-			ToDate:     pgtype.Date{Time: now.UTC(), Valid: true},
+			CampaignID: domain.ToUUID(req.CampaignID),
+			FromDate:   pgtype.Date{Time: from, Valid: true},
+			ToDate:     pgtype.Date{Time: to, Valid: true},
 		})
 		if err != nil {
 			return CampaignDashboardDTO{}, err
@@ -73,19 +76,33 @@ func (st *CampaignService) GetCampaignDashboard(ctx context.Context, campaignID 
 		cpaMicro = spendMicro / conversions
 	}
 
+	now := time.Now().UTC()
 	chLag := st.host.ClickHouseLag(ctx)
 	freshness := reports.CampaignDashboardFreshness(now, usedCHMoney, chLag, chAvailable)
 
 	var series []DashboardSeriesPointDTO
 	if st.host.ClickHouseQuery() != nil {
 		clickhouseCtx, cancel := context.WithTimeout(ctx, st.host.ReportCHTimeout())
-		series, _ = reports.QueryCustomerDashboardSeries(clickhouseCtx, st.host.Pool(), st.host.ClickHouseQuery(), customerID, []uuid.UUID{campaignID}, from, now, reports.ChartGranularityDay)
+		series, _ = reports.QueryCustomerDashboardSeries(clickhouseCtx, st.host.Pool(), st.host.ClickHouseQuery(), customerID, []uuid.UUID{req.CampaignID}, from, to, reports.ChartGranularityDay)
 		cancel()
 	}
 
+	breakdown, err := st.queryCampaignReportBreakdown(ctx, req.CampaignID, from, to, req.Dimension)
+	if err != nil {
+		return CampaignDashboardDTO{}, err
+	}
+	breakdown = ApplyCampaignReportBreakdownQuery(breakdown, req.Q, req.SortField, req.SortDesc)
+
 	return CampaignDashboardDTO{
-		CampaignID: campaignID.String(),
-		Series:     series,
+		CampaignID:   req.CampaignID.String(),
+		CampaignName: camp.Name,
+		Period: PeriodDTO{
+			From: from.Format(time.RFC3339),
+			To:   to.Format(time.RFC3339),
+		},
+		ReportDimension: string(req.Dimension),
+		Series:          series,
+		Breakdown:       breakdown,
 		KPIs: MetricsBlockDTO{
 			SpendMicro:   spendMicro,
 			RevenueMicro: revenueMicro,

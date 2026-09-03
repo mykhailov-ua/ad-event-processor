@@ -22,7 +22,7 @@ try {
 }
 
 const ts = Date.now();
-const FONT_LINKS = `    <link rel="stylesheet" href="/src/styles/globals.css?v=${ts}" />
+const FONT_LINKS = `    <link rel="stylesheet" href="/src/styles/app.css?v=${ts}" />
 `;
 
 function buildHtmlShell(sourceName, scriptSrc) {
@@ -107,8 +107,8 @@ function loadFontCss(packageName, fontsOutDir) {
   return css;
 }
 
-async function buildGlobalsCss() {
-  const inputPath = join(SRC, 'styles', 'globals.css');
+async function buildAppCss() {
+  const inputPath = join(SRC, 'styles', 'app.css');
   const outDir = join(DIST, 'src', 'styles');
   let input = readFileSync(inputPath, 'utf8');
   for (const pkg of ['@fontsource-variable/inter', '@fontsource-variable/jetbrains-mono']) {
@@ -122,7 +122,7 @@ async function buildGlobalsCss() {
     autoprefixer,
   ]).process(input, { from: inputPath });
   mkdirSync(outDir, { recursive: true });
-  writeFileSync(join(outDir, 'globals.css'), result.css, 'utf8');
+  writeFileSync(join(outDir, 'app.css'), result.css, 'utf8');
 }
 
 function copyCountryFlagSvgs() {
@@ -140,7 +140,7 @@ function copyCountryFlagSvgs() {
 rmSync(DIST, { recursive: true, force: true });
 mkdirSync(join(DIST, 'src'), { recursive: true });
 
-await buildGlobalsCss();
+await buildAppCss();
 copyCountryFlagSvgs();
 
 await esbuild.build({
@@ -183,4 +183,4 @@ if (existsSync(trackSrc)) {
 writeFileSync(join(DIST, 'index.html'), INDEX_HTML, 'utf8');
 writeFileSync(join(DIST, 'login.html'), LOGIN_HTML, 'utf8');
 
-console.log('dist: esbuild bundle -> dist/src/{main,login,chunks} + tailwind globals.css + HTML shells');
+console.log('dist: esbuild bundle -> dist/src/{main,login,chunks} + tailwind app.css + HTML shells');

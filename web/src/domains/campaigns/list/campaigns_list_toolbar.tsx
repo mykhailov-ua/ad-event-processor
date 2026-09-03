@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DateRangePicker } from '@/components/ui/date_range_picker';
+import { Input } from '@/components/ui/input';
 import {
   CampaignsListFilterSelect,
   type CampaignsListFilterOption,
@@ -23,7 +24,12 @@ import type { CampaignListColumnPrefs } from '@/domains/campaigns/list/campaign_
 import { CampaignListColumnsMenu } from '@/domains/campaigns/list/campaign_list_columns_menu';
 import type { CampaignListRowDisplayPrefs } from '@/domains/campaigns/list/campaign_list_row_display';
 import type { CampaignPacingFilter, CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
-import { cn } from '@/lib/utils';
+import {
+  DirectoryFilterForm,
+  FilterField,
+  FilterPanel,
+} from '@/shell/filter_panel';
+import { ToggleChipGroup } from '@/shell/toggle_chip_group';
 
 const ALL_OPTION_VALUE = '__all__';
 
@@ -135,18 +141,26 @@ export function CampaignsListToolbar({
     [customerOptions],
   );
 
+  const statusChipOptions = useMemo(
+    () => [
+      { value: '' as CampaignStatusFilter, label: 'All', count: statusTotals?.total },
+      { value: 'ACTIVE' as CampaignStatusFilter, label: 'Active', count: statusTotals?.active },
+      { value: 'PAUSED' as CampaignStatusFilter, label: 'Paused', count: statusTotals?.paused },
+      { value: 'ARCHIVED' as CampaignStatusFilter, label: 'Archived', count: statusTotals?.archived },
+    ],
+    [statusTotals],
+  );
+
   return (
-    <div className="admin-campaigns-toolbar">
-      <div aria-label="Campaign actions" className="admin-toolbar-row admin-campaigns-toolbar__actions" role="toolbar">
-        <div className="admin-toolbar-group" aria-label="Create">
-          <Button type="button" onClick={onCreateClick}>
-            Create
-          </Button>
-        </div>
-        <div className="admin-toolbar-group" aria-label="Selected campaigns">
+    <div className="flex w-full flex-col gap-2">
+      <div aria-label="Campaign actions" className="flex flex-wrap items-center gap-2" role="toolbar">
+        <Button type="button" onClick={onCreateClick}>
+          Create
+        </Button>
+        <div className="flex flex-wrap items-center gap-1" aria-label="Selected campaigns">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={bulkActionBusy || !singleSelected}
             title={singleSelected ? 'Clone selected campaign' : 'Select exactly one campaign'}
             onClick={() => onCloneClick?.()}
@@ -155,7 +169,7 @@ export function CampaignsListToolbar({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={bulkActionBusy || !singleSelected}
             title={singleSelected ? 'Open report for selected campaign' : 'Select exactly one campaign'}
             onClick={() => onReportClick?.()}
@@ -164,7 +178,7 @@ export function CampaignsListToolbar({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={bulkActionBusy || !hasSelection}
             title={hasSelection ? 'Pause selected campaigns' : 'Select campaigns first'}
             onClick={() => onPauseClick?.()}
@@ -173,7 +187,7 @@ export function CampaignsListToolbar({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={bulkActionBusy || !hasSelection}
             title={hasSelection ? 'Resume selected campaigns' : 'Select campaigns first'}
             onClick={() => onResumeClick?.()}
@@ -182,7 +196,7 @@ export function CampaignsListToolbar({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="destructive"
             disabled={bulkActionBusy || !hasSelection}
             title={hasSelection ? 'Archive selected campaigns' : 'Select campaigns first'}
             onClick={() => onArchiveClick?.()}
@@ -190,196 +204,160 @@ export function CampaignsListToolbar({
             Archive
           </Button>
         </div>
-        <div className="admin-toolbar-group" aria-label="More actions">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label="More campaign actions"
-                disabled={fetching}
-              >
-                <MoreHorizontal className="h-4 w-4" aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem disabled={!onWizardClick} onSelect={() => onWizardClick?.()}>
-                Wizard
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={!onImportClick} onSelect={() => onImportClick?.()}>
-                Import
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={fetching} onSelect={() => onRefresh()}>
-                Refresh
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-
-      <div aria-label="Status and page summary" className="admin-toolbar-summary admin-campaigns-toolbar__summary">
-        {statusTotalsLoading ? (
-          <span className="admin-muted">Loading counts...</span>
-        ) : statusTotals ? (
-          <span className="admin-status-links" role="group">
-            <button
-              aria-current={appliedStatus === '' ? 'true' : undefined}
-              className={cn('admin-text-link', appliedStatus === '' && 'is-active')}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
               type="button"
-              onClick={() => onDraftStatusChange('')}
+              variant="ghost"
+              size="icon"
+              aria-label="More campaign actions"
+              disabled={fetching}
             >
-              All {statusTotals.total}
-            </button>
-            <span aria-hidden className="admin-summary-sep">
-               / 
-            </span>
-            <button
-              aria-current={appliedStatus === 'ACTIVE' ? 'true' : undefined}
-              className={cn('admin-text-link', appliedStatus === 'ACTIVE' && 'is-active')}
-              type="button"
-              onClick={() => onDraftStatusChange('ACTIVE')}
-            >
-              Active {statusTotals.active}
-            </button>
-            <span aria-hidden className="admin-summary-sep">
-               / 
-            </span>
-            <button
-              aria-current={appliedStatus === 'PAUSED' ? 'true' : undefined}
-              className={cn('admin-text-link', appliedStatus === 'PAUSED' && 'is-active')}
-              type="button"
-              onClick={() => onDraftStatusChange('PAUSED')}
-            >
-              Paused {statusTotals.paused}
-            </button>
-            <span aria-hidden className="admin-summary-sep">
-               / 
-            </span>
-            <button
-              aria-current={appliedStatus === 'ARCHIVED' ? 'true' : undefined}
-              className={cn('admin-text-link', appliedStatus === 'ARCHIVED' && 'is-active')}
-              type="button"
-              onClick={() => onDraftStatusChange('ARCHIVED')}
-            >
-              Archived {statusTotals.archived}
-            </button>
-          </span>
-        ) : null}
-        {statusTotals && !statusTotalsLoading ? (
-          <span aria-hidden className="admin-summary-sep">
-            |
-          </span>
-        ) : null}
-        <span className="admin-muted">{formatCampaignListSummaryLine(summary)}</span>
-        {summary.staleCount > 0 ? (
-          <span className="admin-stat-note">Stale stats: {summary.staleCount}</span>
-        ) : null}
-        {summary.marginBreachCount > 0 ? (
-          <span className="admin-stat-note">Margin breach: {summary.marginBreachCount}</span>
-        ) : null}
+              <MoreHorizontal className="h-4 w-4" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem disabled={!onWizardClick} onSelect={() => onWizardClick?.()}>
+              Wizard
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={!onImportClick} onSelect={() => onImportClick?.()}>
+              Import
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled={fetching} onSelect={() => onRefresh()}>
+              Refresh
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div
-        aria-label="List filters"
-        className="admin-toolbar-row admin-toolbar-row--filters admin-campaigns-toolbar__filters"
-        role="search"
+        aria-label="Status and page summary"
+        className="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-2 dark:border-zinc-800"
       >
-        <CampaignsListFilterSelect
-          aria-label="Customer group"
-          options={groupOptions}
-          value={draftCustomerId || ALL_OPTION_VALUE}
-          onValueChange={(value) =>
-            onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
-          }
-        />
-
-        <CampaignsListFilterSelect
-          aria-label="Pacing"
-          options={PACING_FILTER_OPTIONS}
-          value={draftPacing || ALL_OPTION_VALUE}
-          onValueChange={(value) =>
-            onDraftPacingChange(value === ALL_OPTION_VALUE ? '' : (value as CampaignPacingFilter))
-          }
-        />
-
-        <CampaignsListFilterSelect
-          aria-label="Owner"
-          disabled={fetching || ownerOptions.length <= 1}
-          options={ownerOptions}
-          title="Filter campaigns by owner"
-          value={draftOwnerUserId || ALL_OPTION_VALUE}
-          onValueChange={(value) =>
-            onDraftOwnerUserIdChange(value === ALL_OPTION_VALUE ? '' : value)
-          }
-        />
-
-        <CampaignsListFilterSelect
-          aria-label="Country (current page)"
-          options={countryOptions}
-          title="Client-side filter on loaded rows"
-          value={draftCountry || ALL_OPTION_VALUE}
-          onValueChange={(value) =>
-            onDraftCountryChange(value === ALL_OPTION_VALUE ? '' : value)
-          }
-        />
-
-        <label className="admin-label">
-          Budget min ($)
-          <input
-            className="admin-input"
-            disabled={fetching}
-            inputMode="decimal"
-            placeholder="0.00"
-            title="Server filter; applied when field loses focus"
-            value={draftBudgetMinUsd}
-            onBlur={onBudgetFiltersApply}
-            onChange={(event) => onDraftBudgetMinUsdChange(event.target.value)}
+        {statusTotals || statusTotalsLoading ? (
+          <ToggleChipGroup
+            countsLoading={statusTotalsLoading}
+            options={statusChipOptions}
+            value={appliedStatus}
+            onChange={onDraftStatusChange}
           />
-        </label>
-        <label className="admin-label">
-          Budget max ($)
-          <input
-            className="admin-input"
-            disabled={fetching}
-            inputMode="decimal"
-            placeholder="0.00"
-            title="Server filter; applied when field loses focus"
-            value={draftBudgetMaxUsd}
-            onBlur={onBudgetFiltersApply}
-            onChange={(event) => onDraftBudgetMaxUsdChange(event.target.value)}
-          />
-        </label>
-
-        <DateRangePicker
-          className="admin-label--range"
-          disabled={fetching}
-          from={draftStatsFrom}
-          id="campaign-list-stats-range"
-          label="Period"
-          to={draftStatsTo}
-          variant="admin"
-          onChange={onStatsRangeChange}
-        />
-
-        <CampaignListColumnsMenu
-          columnPrefs={columnPrefs}
-          disabled={fetching}
-          onColumnPrefsChange={onColumnPrefsChange}
-          rowDisplayPrefs={rowDisplayPrefs}
-          onRowDisplayPrefsChange={onRowDisplayPrefsChange}
-        />
-
-        <Button
-          type="button"
-          variant="outline"
-          disabled={fetching}
-          title="Reset columns, widths, and row highlight preferences"
-          onClick={onResetWorkspaceClick}
-        >
-          Reset view
-        </Button>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+          <span>{formatCampaignListSummaryLine(summary)}</span>
+          {summary.staleCount > 0 ? (
+            <span className="text-xs">Stale stats: {summary.staleCount}</span>
+          ) : null}
+          {summary.marginBreachCount > 0 ? (
+            <span className="text-xs">Margin breach: {summary.marginBreachCount}</span>
+          ) : null}
+        </div>
       </div>
+
+      <FilterPanel aria-label="List filters" role="search">
+        <DirectoryFilterForm layout="directory" onSubmit={(event) => event.preventDefault()}>
+          <FilterField label="Customer group">
+            <CampaignsListFilterSelect
+              aria-label="Customer group"
+              options={groupOptions}
+              value={draftCustomerId || ALL_OPTION_VALUE}
+              onValueChange={(value) =>
+                onDraftCustomerIdChange(value === ALL_OPTION_VALUE ? '' : value)
+              }
+            />
+          </FilterField>
+
+          <FilterField label="Pacing">
+            <CampaignsListFilterSelect
+              aria-label="Pacing"
+              options={PACING_FILTER_OPTIONS}
+              value={draftPacing || ALL_OPTION_VALUE}
+              onValueChange={(value) =>
+                onDraftPacingChange(value === ALL_OPTION_VALUE ? '' : (value as CampaignPacingFilter))
+              }
+            />
+          </FilterField>
+
+          <FilterField label="Owner">
+            <CampaignsListFilterSelect
+              aria-label="Owner"
+              disabled={fetching || ownerOptions.length <= 1}
+              options={ownerOptions}
+              title="Filter campaigns by owner"
+              value={draftOwnerUserId || ALL_OPTION_VALUE}
+              onValueChange={(value) =>
+                onDraftOwnerUserIdChange(value === ALL_OPTION_VALUE ? '' : value)
+              }
+            />
+          </FilterField>
+
+          <FilterField label="Country">
+            <CampaignsListFilterSelect
+              aria-label="Country (current page)"
+              options={countryOptions}
+              title="Filter campaigns by target country"
+              value={draftCountry || ALL_OPTION_VALUE}
+              onValueChange={(value) =>
+                onDraftCountryChange(value === ALL_OPTION_VALUE ? '' : value)
+              }
+            />
+          </FilterField>
+
+          <FilterField htmlFor="campaigns-budget-min" label="Budget min ($)">
+            <Input
+              id="campaigns-budget-min"
+              disabled={fetching}
+              inputMode="decimal"
+              placeholder="0.00"
+              title="Server filter; applied when field loses focus"
+              value={draftBudgetMinUsd}
+              onBlur={onBudgetFiltersApply}
+              onChange={(event) => onDraftBudgetMinUsdChange(event.target.value)}
+            />
+          </FilterField>
+
+          <FilterField htmlFor="campaigns-budget-max" label="Budget max ($)">
+            <Input
+              id="campaigns-budget-max"
+              disabled={fetching}
+              inputMode="decimal"
+              placeholder="0.00"
+              title="Server filter; applied when field loses focus"
+              value={draftBudgetMaxUsd}
+              onBlur={onBudgetFiltersApply}
+              onChange={(event) => onDraftBudgetMaxUsdChange(event.target.value)}
+            />
+          </FilterField>
+
+          <DateRangePicker
+            className="min-w-0"
+            disabled={fetching}
+            from={draftStatsFrom}
+            id="campaign-list-stats-range"
+            label="Period"
+            to={draftStatsTo}
+            onChange={onStatsRangeChange}
+          />
+
+          <div className="flex flex-wrap items-end gap-2">
+            <CampaignListColumnsMenu
+              columnPrefs={columnPrefs}
+              disabled={fetching}
+              onColumnPrefsChange={onColumnPrefsChange}
+              rowDisplayPrefs={rowDisplayPrefs}
+              onRowDisplayPrefsChange={onRowDisplayPrefsChange}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={fetching}
+              title="Reset columns, widths, and row highlight preferences"
+              onClick={onResetWorkspaceClick}
+            >
+              Reset view
+            </Button>
+          </div>
+        </DirectoryFilterForm>
+      </FilterPanel>
     </div>
   );
 }

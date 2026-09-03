@@ -40,7 +40,7 @@ func (r *Runtime) PoolOrNil() *pgxpool.Pool {
 }
 
 func (r *Runtime) ListCampaigns(ctx context.Context, customerID uuid.UUID, status string, limit, offset int32) ([]campaign.CampaignDTO, int64, error) {
-	return listCampaigns(ctx, r.PoolOrNil(), r.effects, campaign.ListCampaignsFilter{
+	return listCampaigns(ctx, r.PoolOrNil(), r.clickhouseQuery, r.effects, campaign.ListCampaignsFilter{
 		CustomerID: customerID,
 		Status:     status,
 		Limit:      limit,
@@ -49,7 +49,7 @@ func (r *Runtime) ListCampaigns(ctx context.Context, customerID uuid.UUID, statu
 }
 
 func (r *Runtime) ListCampaignsFiltered(ctx context.Context, filter campaign.ListCampaignsFilter) ([]campaign.CampaignDTO, int64, error) {
-	return listCampaigns(ctx, r.PoolOrNil(), r.effects, filter)
+	return listCampaigns(ctx, r.PoolOrNil(), r.clickhouseQuery, r.effects, filter)
 }
 
 func (r *Runtime) CountCampaignStatusTotals(

@@ -106,6 +106,7 @@ function dayTrafficMultiplier(day: Date, index: number, totalDays: number): numb
 }
 
 export function isDashboardChartMockEnabled(): boolean {
+  // Non-prod tier: synthetic dashboard data when ?chart_mock=1 (see web/DESIGN.md).
   if (typeof window === 'undefined') {
     return false;
   }

@@ -16,7 +16,7 @@ has_dist() {
 }
 
 has_fresh_embed() {
-  [ -f "$STUB/src/styles/globals.css" ] && [ -f "$STUB/src/main.js" ]
+  [ -f "$STUB/src/styles/app.css" ] && [ -f "$STUB/src/main.js" ]
 }
 
 run_static_tests() {
@@ -30,6 +30,8 @@ if has_dist || has_fresh_embed; then
     bash "$SCRIPTS/ci/admin/ui_surface.sh"
     bash "$SCRIPTS/ci/admin/ui_literals.sh"
     bash "$SCRIPTS/ci/admin/web_security.sh"
+    bash "$SCRIPTS/ci/admin/live_routes.sh"
+    bash "$SCRIPTS/ci/admin/client_list_sort.sh"
   fi
   if has_dist; then
     bash "$SCRIPTS/ci/admin/web_dist.sh"
@@ -51,6 +53,8 @@ else
     bash "$SCRIPTS/ci/admin/ui_surface.sh"
     bash "$SCRIPTS/ci/admin/ui_literals.sh"
     bash "$SCRIPTS/ci/admin/web_security.sh"
+    bash "$SCRIPTS/ci/admin/live_routes.sh"
+    bash "$SCRIPTS/ci/admin/client_list_sort.sh"
   fi
   run_static_tests
   echo "Admin web checks PASSED (stub only)."

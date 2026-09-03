@@ -5,13 +5,13 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { SmartAlertEvent } from '@/api/types';
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -94,16 +94,15 @@ export function SmartAlertsHistoryDirectory({
       {items.length === 0 ? (
         <EmptyState title="No alert events" description="No smart alert events for this customer." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Metric</TableHead>
-                <TableHead>Observed</TableHead>
-                <TableHead>Threshold</TableHead>
-                <TableHead>Fired</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Ack</TableHead>
+                <DirectoryTableHead>Metric</DirectoryTableHead>
+                <DirectoryTableHead>Observed</DirectoryTableHead>
+                <DirectoryTableHead>Threshold</DirectoryTableHead>
+                <DirectoryTableHead>Fired</DirectoryTableHead>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>Ack</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -136,8 +135,7 @@ export function SmartAlertsHistoryDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {ackError ? automationPanelError(ackError, 'Ack failed') : null}

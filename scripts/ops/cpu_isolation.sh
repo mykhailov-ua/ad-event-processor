@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
 # Role: Apply or verify Docker cpuset/cpu quota for tracker under cpu-isolation profile.
 # Execution context: Host with Docker; reads .env CPU_ISOLATION_ENABLED.
-# Env knobs: CPU_ISOLATION_ENABLED (1 default); CPU_ISOLATION_COMPOSE_FILE (compose path).
+# Env knobs: CPU_ISOLATION_ENABLED (0 default on laptops); CPU_ISOLATION_COMPOSE_FILE (compose path).
 # Verify: bash scripts/ops/cpu_isolation.sh verify
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/paths.sh"
+source "$SCRIPTS/lib/installer_env.sh"
 cd "$ROOT"
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
-
+  # shellcheck disable=SC1091
   source "$ROOT/.env"
   set +a
 fi
 
-CPU_ISOLATION_ENABLED="${CPU_ISOLATION_ENABLED:-1}"
-COMPOSE_FILE="${CPU_ISOLATION_COMPOSE_FILE:-deploy/compose/docker-compose.yaml}"
+if [[ -z "${CPU_ISOLATION_ENABLED:-}" ]]; then
+  CPU_ISOLATION_ENABLED="$(installer_read_env CPU_ISOLATION_ENABLED)"
+fi
+CPU_ISOLATION_ENABLED="${CPU_ISOLATION_ENABLED:-0}"
+COMPOSE_FILE="${CPU_ISOLATION_COMPOSE_FILE:-$ROOT/docker-compose.yaml}"
 
 log() { printf 'cpu-isolation: %s\n' "$*"; }
 warn() { printf 'cpu-isolation: WARN: %s\n' "$*" >&2; }
@@ -25,16 +29,53 @@ die() {
   exit 1
 }
 
+compose_args() {
+  local -a args=(
+    docker compose
+    --project-directory "$ROOT"
+    -f "$COMPOSE_FILE"
+    -f "$ROOT/deploy/compose/docker-compose.cpu-isolation.yaml"
+    --profile cpu-isolation
+  )
+  if [[ -f "$ROOT/.env" ]]; then
+    args+=(--env-file "$ROOT/.env")
+  fi
+  if [[ -f "$ROOT/install.compose.env" ]]; then
+    args+=(--env-file "$ROOT/install.compose.env")
+  fi
+  printf '%s\n' "${args[@]}"
+}
+
 inspect_container() {
   local name="$1"
   local cid
   cid="$(docker ps -q -f "name=${name}$" | head -1)"
+  if [[ -z "$cid" ]]; then
+    cid="$(docker ps -q -f "name=ad-event-processor-${name}" | head -1)"
+  fi
   if [[ -z "$cid" ]]; then
     warn "container $name not running"
     return 1
   fi
   docker inspect "$cid" --format \
     'name={{.Name}} cpuset={{.HostConfig.CpusetCpus}} cpu_quota={{.HostConfig.CpuQuota}} cpu_shares={{.HostConfig.CpuShares}}'
+}
+
+resolve_tracker_container() {
+  local -a compose
+  mapfile -t compose < <(compose_args)
+  local tracker_cid=""
+  tracker_cid="$("${compose[@]}" ps -q tracker-0 2> /dev/null | head -1 || true)"
+  if [[ -n "$tracker_cid" ]]; then
+    printf '%s' "$tracker_cid"
+    return 0
+  fi
+  tracker_cid="$(docker ps -q -f 'name=ad-event-processor-tracker-0' | head -1 || true)"
+  if [[ -n "$tracker_cid" ]]; then
+    printf '%s' "$tracker_cid"
+    return 0
+  fi
+  return 1
 }
 
 verify_no_cpu_quota() {
@@ -71,8 +112,7 @@ cmd_verify() {
     die "docker required for verify"
   fi
 
-  COMPOSE=(docker compose -f "$COMPOSE_FILE" -f deploy/compose/docker-compose.cpu-isolation.yaml --profile cpu-isolation)
-  TRACKER_CID="$("${COMPOSE[@]}" ps -q tracker-0 2> /dev/null | head -1 || true)"
+  TRACKER_CID="$(resolve_tracker_container || true)"
   if [[ -z "$TRACKER_CID" ]]; then
     die "tracker-0 not running - start stack with --profile cpu-isolation"
   fi

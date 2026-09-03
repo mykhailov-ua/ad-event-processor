@@ -43,6 +43,115 @@ WHERE campaign_id IN (?)
  AND fraud_reason != ''
 GROUP BY campaign_id`
 
+const campaignListCHSortMetricsQuery = `
+SELECT
+ toString(campaign_id) AS campaign_id,
+ toUInt64(uniqExact(click_id)) AS unique_clicks,
+ toUInt64(countIf(fraud_reason != '')) AS block_count,
+ toUInt64(countIf(
+   JSONExtractString(payload, 'lander_id') != ''
+   OR JSONExtractString(payload, 'lp_click') = '1'
+ )) AS lp_clicks,
+ toUInt64(countIf(
+   fraud_reason != ''
+   AND positionCaseInsensitive(fraud_reason, 'bot') > 0
+ )) AS bots
+FROM clicks
+WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+GROUP BY campaign_id`
+
+const campaignListFunnelMetricsQuery = `
+SELECT
+ toString(campaign_id) AS campaign_id,
+ toUInt64(countIf(lower(JSONExtractString(payload, 'status')) IN ('approved', 'sale', 'lead'))) AS approved,
+ toUInt64(countIf(lower(JSONExtractString(payload, 'status')) = 'hold')) AS hold_leads,
+ toUInt64(countIf(lower(JSONExtractString(payload, 'status')) IN ('rejected', 'reject', 'declined'))) AS rejected_leads
+FROM conversions
+WHERE campaign_id IN (?)
+ AND created_at >= ?
+ AND created_at < ?
+GROUP BY campaign_id`
+
+type CampaignListCHSortMetrics struct {
+	UniqueClicks int64
+	Blocks       int64
+	LPClicks     int64
+	Bots         int64
+}
+
+type CampaignListFunnelMetrics struct {
+	Approved      int64
+	HoldLeads     int64
+	RejectedLeads int64
+}
+
+func (f CampaignListFunnelMetrics) LeadsRaw() int64 {
+	return f.Approved + f.HoldLeads + f.RejectedLeads
+}
+
+func QueryCampaignListCHSortMetricsCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) (map[string]CampaignListCHSortMetrics, error) {
+	out := make(map[string]CampaignListCHSortMetrics)
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return out, nil
+	}
+	rows, err := clickhouseQuery.Query(ctx, campaignListCHSortMetricsQuery, campaignIDs, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("campaign list ch sort metrics: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var campaignID string
+		var uniqueClicks, blocks, lpClicks, bots int64
+		if err := rows.Scan(&campaignID, &uniqueClicks, &blocks, &lpClicks, &bots); err != nil {
+			return nil, err
+		}
+		out[campaignID] = CampaignListCHSortMetrics{
+			UniqueClicks: uniqueClicks,
+			Blocks:       blocks,
+			LPClicks:     lpClicks,
+			Bots:         bots,
+		}
+	}
+	return out, rows.Err()
+}
+
+func QueryCampaignListFunnelMetricsCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+) (map[string]CampaignListFunnelMetrics, error) {
+	out := make(map[string]CampaignListFunnelMetrics)
+	if clickhouseQuery == nil || len(campaignIDs) == 0 {
+		return out, nil
+	}
+	rows, err := clickhouseQuery.Query(ctx, campaignListFunnelMetricsQuery, campaignIDs, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("campaign list funnel metrics: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var campaignID string
+		var approved, holdLeads, rejectedLeads int64
+		if err := rows.Scan(&campaignID, &approved, &holdLeads, &rejectedLeads); err != nil {
+			return nil, err
+		}
+		out[campaignID] = CampaignListFunnelMetrics{
+			Approved:      approved,
+			HoldLeads:     holdLeads,
+			RejectedLeads: rejectedLeads,
+		}
+	}
+	return out, rows.Err()
+}
+
 const campaignEconomicsQuery = `
 SELECT
  toString(campaign_id) AS campaign_id,

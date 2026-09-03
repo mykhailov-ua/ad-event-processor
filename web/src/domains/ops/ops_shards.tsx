@@ -9,7 +9,13 @@ import {
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsShardsProps = {
   snapshot: OpsShardsResponse | undefined;
@@ -59,7 +65,7 @@ export function OpsShards({
       }
     >
       {catchupStatus ? (
-        <p className="admin-muted" role="status">
+        <p className="text-zinc-500 dark:text-zinc-400" role="status">
           Catch-up status: {catchupStatus}
         </p>
       ) : null}
@@ -70,25 +76,25 @@ export function OpsShards({
       ) : (
         <OpsTable
           head={
-            <tr>
-              <th>Shard</th>
-              <th>Ping</th>
-              <th className="num">Latency (ms)</th>
-              <th className="num">Config version</th>
-              <th className="num">Lag</th>
-              <th>Synced</th>
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>Shard</OpsTableHead>
+              <OpsTableHead>Ping</OpsTableHead>
+              <OpsTableHead numeric>Latency (ms)</OpsTableHead>
+              <OpsTableHead numeric>Config version</OpsTableHead>
+              <OpsTableHead numeric>Lag</OpsTableHead>
+              <OpsTableHead>Synced</OpsTableHead>
+            </OpsTableHeaderRow>
           }
         >
           {shards.map((shard) => (
-            <tr key={shard.shard_id ?? shard.ping_error}>
-              <td className="num">{shard.shard_id ?? ''}</td>
-              <td>{shard.ping_ok ? 'ok' : (shard.ping_error ?? 'fail')}</td>
-              <td className="num">{shard.ping_latency_ms ?? ''}</td>
-              <td className="num">{shard.config_version ?? ''}</td>
-              <td className="num">{shard.config_version_lag ?? ''}</td>
-              <td>{shard.config_version_synced ? 'yes' : 'no'}</td>
-            </tr>
+            <OpsTableRow key={shard.shard_id ?? shard.ping_error}>
+              <OpsTableCell numeric>{shard.shard_id ?? ''}</OpsTableCell>
+              <OpsTableCell>{shard.ping_ok ? 'ok' : (shard.ping_error ?? 'fail')}</OpsTableCell>
+              <OpsTableCell numeric>{shard.ping_latency_ms ?? ''}</OpsTableCell>
+              <OpsTableCell numeric>{shard.config_version ?? ''}</OpsTableCell>
+              <OpsTableCell numeric>{shard.config_version_lag ?? ''}</OpsTableCell>
+              <OpsTableCell>{shard.config_version_synced ? 'yes' : 'no'}</OpsTableCell>
+            </OpsTableRow>
           ))}
         </OpsTable>
       )}

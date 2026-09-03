@@ -2,6 +2,7 @@ import { RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
+import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { PageLayout } from '@/shell/page_layout';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { ErrorBlock } from '@/shell/error_block';
@@ -13,7 +14,6 @@ import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_li
 import { BuyerDashboardToolbar, type BuyerDashboardCampaignOption } from '@/domains/dashboards/buyer_dashboard_toolbar';
 import { BuyerDashboardView } from '@/domains/dashboards/buyer_dashboard_view';
 import { parseBuyerPortfolio, type DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
 import { opsStatusTone } from '@/domains/ops/ops_status';
 import { useBuyerDashboardPreferences } from '@/hooks/use_buyer_dashboard_preferences';
 import { cn } from '@/lib/utils';
@@ -64,7 +64,7 @@ function freshnessBadge(payload: Record<string, unknown> | undefined) {
   }
   const stale = portfolio?.kpis?.freshness?.stale === true;
   return (
-    <span className={cn('admin-stat-note', stale ? opsStatusTone('warn') : opsStatusTone('ok'))}>
+    <span className={cn('text-xs text-zinc-500 dark:text-zinc-400', stale ? opsStatusTone('warn') : opsStatusTone('ok'))}>
       {label}
     </span>
   );
@@ -115,10 +115,10 @@ function RoleDashboardFilters({
   ];
 
   return (
-    <div className="admin-stack admin-stack--compact">
+    <div className="flex flex-col gap-3 flex flex-col gap-2">
       <div
         aria-label="Dashboard filters"
-        className="admin-toolbar-row admin-toolbar-row--filters"
+        className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2"
         role="search"
       >
         <CampaignsListFilterSelect
@@ -142,35 +142,27 @@ function RoleDashboardFilters({
           value={rangePreset}
           onValueChange={(value) => onRangePresetChange(value as DashboardRangePreset)}
         />
-        <label className="admin-label">
-          From
-          <input
-            className="admin-input"
-            disabled={fetching || rangePreset !== 'custom'}
-            id="dashboard-from"
-            type="datetime-local"
-            value={draftFrom}
-            onChange={(event) => onDraftFromChange(event.target.value)}
-          />
-        </label>
-        <label className="admin-label">
-          To
-          <input
-            className="admin-input"
-            disabled={fetching || rangePreset !== 'custom'}
-            id="dashboard-to"
-            type="datetime-local"
-            value={draftTo}
-            onChange={(event) => onDraftToChange(event.target.value)}
-          />
-        </label>
+        <DatetimePicker
+          disabled={fetching || rangePreset !== 'custom'}
+          id="dashboard-from"
+          label="From"
+          value={draftFrom}
+          onChange={onDraftFromChange}
+        />
+        <DatetimePicker
+          disabled={fetching || rangePreset !== 'custom'}
+          id="dashboard-to"
+          label="To"
+          value={draftTo}
+          onChange={onDraftToChange}
+        />
         <Button disabled={fetching || !draftCustomerId.trim()} type="button" onClick={onApply}>
           Load
         </Button>
       </div>
       {role !== 'buyer' ? (
-        <p className="admin-muted">
-          <Link className="admin-text-link" to="/rtb">
+        <p className="text-zinc-500 dark:text-zinc-400">
+          <Link className="text-blue-600 hover:underline dark:text-blue-400" to="/rtb">
             RTB overview
           </Link>
         </p>
@@ -289,7 +281,7 @@ export function RoleDashboardView({
       }
       title={pageTitle}
     >
-      <div className="admin-stack">
+      <div className="flex flex-col gap-3">
         {buyerPortfolio ? (
           <BuyerDashboardView
             clickLogHref={clickLogHref}
@@ -297,8 +289,6 @@ export function RoleDashboardView({
             preferences={preferences}
           />
         ) : null}
-
-        {!buyerPortfolio && payload ? <JsonDashboardView payload={payload} /> : null}
 
         {error && hasSnapshot ? <ErrorBlock error={error} title="Refresh failed" /> : null}
       </div>

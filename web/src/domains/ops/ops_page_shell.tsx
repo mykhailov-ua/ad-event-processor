@@ -28,17 +28,17 @@ export function OpsPageShell({
     <PageLayout
       badge={badge}
       controlPanel={
-        <div className="admin-stack admin-stack--compact">
-          <div aria-label="Ops sections" className="admin-toolbar-row admin-toolbar-row--sections">
+        <div className="flex flex-col gap-3 flex flex-col gap-2">
+          <div aria-label="Ops sections" className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
             <OpsNav variant="admin" />
           </div>
           {actions ? (
-            <div aria-label="Ops actions" className="admin-toolbar-row" role="toolbar">
+            <div aria-label="Ops actions" className="flex flex-wrap items-center gap-2" role="toolbar">
               {actions}
             </div>
           ) : null}
           {filters ? (
-            <div aria-label="Ops filters" className="admin-toolbar-row admin-toolbar-row--filters" role="search">
+            <div aria-label="Ops filters" className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2" role="search">
               {filters}
             </div>
           ) : null}
@@ -81,7 +81,7 @@ export function OpsActionGroup({
   children: ReactNode;
 }) {
   return (
-    <div aria-label={label} className="admin-toolbar-group">
+    <div aria-label={label} className="flex flex-wrap items-center gap-1">
       {children}
     </div>
   );

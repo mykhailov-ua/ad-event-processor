@@ -247,15 +247,17 @@ License file default path: `var/license.jwt`. Issue JWT: `go run ./cmd/license-i
 
 ## Licensing
 
-Monthly Ed25519 JWT; limits by peak RPS and host count per `deploy/vendor/sku.yaml`. Enforcement in `internal/licensing`. No per-campaign or per-event caps in SKU (`max_active_campaigns: 0`, `max_events_per_month: 0` = unlimited in license schema).
+Monthly Ed25519 JWT on disk (`var/license.jwt`); offline verify, no license-server ping. Limits by peak RPS and host count per [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml). Enforcement in `internal/licensing`. No per-campaign or per-event caps in SKU (`max_active_campaigns: 0`, `max_events_per_month: 0` = unlimited in license schema).
 
-| SKU | Peak RPS | Hosts | IVT detector | ML boost | OpenRTB | eBPF XDP | Multi-region |
-| :--- | ---: | ---: | :---: | :---: | :---: | :---: | :---: |
-| Starter | 10k | 1 | no | no | no | no | no |
-| Pro | 25k | 1 | yes | no | no | no | no |
-| Scale | 75k | 3 | yes | yes | yes | no | no |
-| Network | 150k | 10 | yes | yes | yes | no | yes |
-| Enterprise | custom | 99 | yes | yes | yes | yes | yes |
-| Pilot | 5k | 1 | no | no | no | no | no |
+| SKU | USDT/mo | Peak RPS | Hosts | IVT | ML boost | OpenRTB | Slot migration | eBPF XDP | Platform API |
+| :--- | ---: | ---: | ---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| Starter | 129 | 10k | 1 | no | no | no | no | no | no |
+| Pro | 329 | 25k | 1 | yes | no | no | no | no | no |
+| Scale | 649 | 75k | 3 | yes | yes | yes | no | no | no |
+| Network | 1,199 | 150k | 10 | yes | yes | yes | yes | no | no |
+| Enterprise | 2,500+ | custom | 99 | yes | yes | yes | yes | yes | yes |
+| Pilot | 0 | 5k | 1 | no | no | no | no | no | no |
 
-Full fields: [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml).
+All paid tiers include `margin_guard`. Scale+ adds residential/moderator intel and fraud dispute evidence. Apply JWT via Admin Settings or `POST /api/v1/license/apply`; no restart.
+
+Full matrix, bind modes, pilot workflow: [deploy/vendor/SALES.md](deploy/vendor/SALES.md). Catalog source: [deploy/vendor/sku.yaml](deploy/vendor/sku.yaml).

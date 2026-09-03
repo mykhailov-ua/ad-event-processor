@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { RtbFloorsApplyResult } from '@/api/types';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
 import { displayMicro } from '@/lib/display';
@@ -87,14 +87,13 @@ export function RtbFloorsApplyPanel({
             <Badge variant="outline">outbox {result.outbox_rows ?? 0}</Badge>
           </div>
           {(result.suggestions ?? []).length > 0 ? (
-            <div className="ui-table-frame">
-              <Table>
+            <DirectoryTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Placement</TableHead>
-                    <TableHead>Deal</TableHead>
-                    <TableHead>Current floor</TableHead>
-                    <TableHead>Suggested</TableHead>
+                    <DirectoryTableHead>Placement</DirectoryTableHead>
+                    <DirectoryTableHead>Deal</DirectoryTableHead>
+                    <DirectoryTableHead>Current floor</DirectoryTableHead>
+                    <DirectoryTableHead>Suggested</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -107,8 +106,7 @@ export function RtbFloorsApplyPanel({
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
+              </DirectoryTable>
           ) : null}
         </section>
       ) : applying ? (

@@ -233,14 +233,17 @@ export function CampaignOverviewSheet({
 
           <div className="flex flex-wrap gap-2">
             <Button asChild>
+              <Link to={`/campaigns/${campaign.id}/edit`}>Edit</Link>
+            </Button>
+            <Button asChild>
               <Link to={`/dashboards/campaign/${campaign.id}`}>Report</Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link to={campaignFraudHref(campaign.id, campaign.customer_id)}>
                 Fraud explain
               </Link>
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link to={campaignForecastHref(campaign.customer_id)}>Forecast</Link>
             </Button>
           </div>

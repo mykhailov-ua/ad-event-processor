@@ -8,13 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { HostedEditorState } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 
@@ -153,13 +153,12 @@ export function LanderHostedEditor({
 
       <section className="grid gap-2">
         <h2 className="text-base font-semibold">Files</h2>
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Path</TableHead>
-                <TableHead>Size</TableHead>
-                <TableHead>Editable</TableHead>
+                <DirectoryTableHead>Path</DirectoryTableHead>
+                <DirectoryTableHead>Size</DirectoryTableHead>
+                <DirectoryTableHead>Editable</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -189,8 +188,7 @@ export function LanderHostedEditor({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       </section>
 
       {selectedFilePath && onSaveFile ? (

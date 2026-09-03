@@ -23,13 +23,6 @@ import (
 	"github.com/prometheus/common/expfmt"
 )
 
-var opsScrapeMetricNames = map[string]struct{}{
-	"ad_http_requests_total":          {},
-	"ad_recon_drift_micro":            {},
-	"ad_control_outbox_pending_total": {},
-	"ad_tracker_redis_shard_healthy":  {},
-}
-
 type scrapedMetric struct {
 	Name       string
 	LabelsHash string
@@ -210,6 +203,22 @@ func parsePrometheusMetrics(r io.Reader, contentType string) ([]scrapedMetric, e
 		}
 		name := *mf.Name
 		if _, ok := opsScrapeMetricNames[name]; !ok {
+			continue
+		}
+		if name == "ad_http_requests_total" {
+			var total float64
+			for _, m := range mf.Metric {
+				val, ok := metricValue(m)
+				if !ok {
+					continue
+				}
+				total += val
+			}
+			out = append(out, scrapedMetric{
+				Name:       name,
+				LabelsHash: "",
+				Value:      total,
+			})
 			continue
 		}
 		for _, m := range mf.Metric {

@@ -14,13 +14,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import { useResource } from '@/api/use_resource';
 
 function panelError(error: Error, title: string) {
@@ -159,13 +159,12 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
         </p>
       ) : null}
       {health ? (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Check</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Detail</TableHead>
+                <DirectoryTableHead>Check</DirectoryTableHead>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>Detail</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -177,8 +176,7 @@ export function CampaignIntegrationPanel({ campaignId }: { campaignId: string })
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       ) : null}
     </div>
   );

@@ -1,30 +1,139 @@
 import * as React from 'react';
-import * as TooltipPrimitive from "@radix-ui/react-tooltip"
 
-import { cn } from "@/lib/utils"
+import { adminChrome } from '@/lib/admin_chrome';
+import { OverlayRoot } from '@/lib/overlay_root';
+import { cn } from '@/lib/utils';
 
-const TooltipProvider = TooltipPrimitive.Provider
+function TooltipProvider({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}
 
-const Tooltip = TooltipPrimitive.Root
+type TooltipContextValue = {
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  triggerRef: React.RefObject<HTMLElement | null>;
+};
 
-const TooltipTrigger = TooltipPrimitive.Trigger
+const TooltipContext = React.createContext<TooltipContextValue | null>(null);
+
+function useTooltipContext() {
+  const ctx = React.useContext(TooltipContext);
+  if (!ctx) {
+    throw new Error('Tooltip components must be used within <Tooltip>');
+  }
+  return ctx;
+}
+
+function Tooltip({ children }: { children?: React.ReactNode }) {
+  const [open, setOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLElement | null>(null);
+
+  return (
+    <TooltipContext.Provider value={{ open, setOpen, triggerRef }}>
+      {children}
+    </TooltipContext.Provider>
+  );
+}
+
+const TooltipTrigger = React.forwardRef<
+  HTMLElement,
+  React.HTMLAttributes<HTMLElement> & { asChild?: boolean }
+>(({ asChild = false, className, onMouseEnter, onMouseLeave, onFocus, onBlur, children, ...props }, ref) => {
+  const { setOpen, triggerRef } = useTooltipContext();
+
+  const mergedRef = (node: HTMLElement | null) => {
+    triggerRef.current = node;
+    if (typeof ref === 'function') {
+      ref(node);
+    } else if (ref) {
+      ref.current = node;
+    }
+  };
+
+  const handlers = {
+    onMouseEnter: (event: React.MouseEvent<HTMLElement>) => {
+      onMouseEnter?.(event);
+      setOpen(true);
+    },
+    onMouseLeave: (event: React.MouseEvent<HTMLElement>) => {
+      onMouseLeave?.(event);
+      setOpen(false);
+    },
+    onFocus: (event: React.FocusEvent<HTMLElement>) => {
+      onFocus?.(event);
+      setOpen(true);
+    },
+    onBlur: (event: React.FocusEvent<HTMLElement>) => {
+      onBlur?.(event);
+      setOpen(false);
+    },
+  };
+
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
+      ref: mergedRef,
+      className: cn(className, (children.props as { className?: string }).className),
+      ...handlers,
+      ...props,
+    });
+  }
+
+  return (
+    <span
+      ref={mergedRef}
+      className={cn('inline-flex', className)}
+      {...handlers}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+});
+TooltipTrigger.displayName = 'TooltipTrigger';
 
 const TooltipContent = React.forwardRef<
-  React.ElementRef<typeof TooltipPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <TooltipPrimitive.Portal>
-    <TooltipPrimitive.Content
-      ref={ref}
-      sideOffset={sideOffset}
-      className={cn(
-        'admin-overlay-elevated z-50 overflow-hidden rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-tooltip-content-transform-origin]',
-        className
-      )}
-      {...props}
-    />
-  </TooltipPrimitive.Portal>
-))
-TooltipContent.displayName = TooltipPrimitive.Content.displayName
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { side?: 'top' | 'bottom'; sideOffset?: number }
+>(({ className, side = 'top', sideOffset = 4, style, children, ...props }, ref) => {
+  const { open, triggerRef } = useTooltipContext();
+  const [coords, setCoords] = React.useState<React.CSSProperties>({});
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+  React.useLayoutEffect(() => {
+    if (!open || !triggerRef.current) {
+      return;
+    }
+    const rect = triggerRef.current.getBoundingClientRect();
+    setCoords({
+      position: 'fixed',
+      left: rect.left + rect.width / 2,
+      top: side === 'bottom' ? rect.bottom + sideOffset : rect.top - sideOffset,
+      transform: 'translate(-50%, -100%)',
+      zIndex: 50,
+    });
+  }, [open, side, sideOffset, triggerRef]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <OverlayRoot>
+      <div
+        ref={ref}
+        role="tooltip"
+        className={cn(
+          adminChrome.panel,
+          'px-3 py-1.5 text-xs text-zinc-900 shadow-lg dark:text-zinc-100',
+          className,
+        )}
+        style={{ ...coords, ...style }}
+        {...props}
+      >
+        {children}
+      </div>
+    </OverlayRoot>
+  );
+});
+TooltipContent.displayName = 'TooltipContent';
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider };

@@ -1,0 +1,2 @@
+# Client-side list sort allowlist (Phase 0 inventory gate).
+# Empty: campaign list and campaign report use server sort/filter.

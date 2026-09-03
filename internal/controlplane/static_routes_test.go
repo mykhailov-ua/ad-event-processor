@@ -107,6 +107,39 @@ func TestAdminStaticRoutes(t *testing.T) {
 	})
 }
 
+func TestAdminStaticRoutesDevRedirect(t *testing.T) {
+	t.Setenv("ADMIN_UI_DEV_URL", "http://127.0.0.1:5173")
+	mux := http.NewServeMux()
+	RegisterAdminStaticRoutes(mux, nil)
+
+	t.Run("GET /login redirects to dev server", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/login", http.NoBody)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusFound, w.Code)
+		assert.Equal(t, "http://127.0.0.1:5173/login", w.Header().Get("Location"))
+	})
+
+	t.Run("GET /customers redirects to dev server", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/customers?tab=active", http.NoBody)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusFound, w.Code)
+		assert.Equal(t, "http://127.0.0.1:5173/customers?tab=active", w.Header().Get("Location"))
+	})
+
+	t.Run("GET /api/v1/meta is not redirected", func(t *testing.T) {
+		req, _ := http.NewRequest("GET", "/api/v1/meta", http.NoBody)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Empty(t, w.Header().Get("Location"))
+	})
+}
+
 func TestAdminStaticRoutesWithGateUnauth(t *testing.T) {
 	mux := http.NewServeMux()
 	gate := NewAdminUIGate(&AuthMiddleware{})

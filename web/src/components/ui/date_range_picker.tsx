@@ -113,8 +113,8 @@ export function DateRangePicker({
             type="button"
             disabled={disabled}
             className={cn(
-              'admin-select admin-select-trigger inline-flex max-w-full items-center gap-2',
-              !fromDate && 'text-[var(--admin-muted)]',
+              'relative w-full flex h-8 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950 inline-flex max-w-full items-center gap-2',
+              !fromDate && 'text-zinc-500 dark:text-zinc-400',
             )}
           >
             <CalendarIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
@@ -141,11 +141,11 @@ export function DateRangePicker({
         align={align}
         className={cn(
           'w-auto p-0 [&_.ui-shell]:!w-auto [&_.ui-shell]:!min-w-0 [&_.ui-shell-panel]:overflow-visible',
-          variant === 'admin' && 'admin-date-range-menu',
+          variant === 'admin' && 'rounded-md border border-zinc-200 bg-white p-0 shadow-lg dark:border-zinc-800 dark:bg-zinc-950',
         )}
         side="bottom"
       >
-        <div className={variant === 'admin' ? 'admin-date-range-menu__body' : 'p-3'}>
+        <div className={variant === 'admin' ? 'p-3' : 'p-3'}>
           <Calendar
             mode="range"
             numberOfMonths={monthCount}
@@ -158,12 +158,12 @@ export function DateRangePicker({
         <div
           className={
             variant === 'admin'
-              ? 'admin-date-range-menu__footer'
+              ? 'flex justify-end gap-2 border-t border-zinc-200 p-2 dark:border-zinc-800'
               : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
           }
         >
           <button
-            className="admin-btn h-auto min-h-[var(--admin-control-height)] leading-normal"
+            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 h-auto min-h-8 leading-normal"
             type="button"
             onClick={() => {
               onChange('', '');
@@ -173,7 +173,7 @@ export function DateRangePicker({
             Clear
           </button>
           <button
-            className="admin-btn admin-btn--primary h-auto min-h-[var(--admin-control-height)] leading-normal"
+            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 border border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 h-auto min-h-8 leading-normal"
             disabled={!draftRange?.from || !draftRange?.to}
             type="button"
             onClick={handleApply}
@@ -187,7 +187,7 @@ export function DateRangePicker({
 
   if (variant === 'admin') {
     return (
-      <label className={cn('admin-label', className)}>
+      <label className={cn('text-sm font-medium text-zinc-700 dark:text-zinc-300', className)}>
         {label}
         {trigger}
       </label>

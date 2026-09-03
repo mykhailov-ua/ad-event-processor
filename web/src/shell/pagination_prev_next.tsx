@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import type { ButtonVariant } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
 
 export type PaginationPrevNextProps = {
@@ -8,6 +9,10 @@ export type PaginationPrevNextProps = {
   onPrev: () => void;
   onNext: () => void;
   className?: string;
+  variant?: ButtonVariant;
+  prevLabel?: string;
+  nextLabel?: string;
+  layout?: 'split' | 'inline';
 };
 
 export function PaginationPrevNext({
@@ -17,28 +22,36 @@ export function PaginationPrevNext({
   onPrev,
   onNext,
   className,
+  variant = 'outline',
+  prevLabel = 'Previous',
+  nextLabel = 'Next',
+  layout = 'split',
 }: PaginationPrevNextProps) {
+  const inline = layout === 'inline';
+
   return (
-    <div className={cn('flex w-full gap-2', className)}>
+    <div className={cn(inline ? 'flex items-center gap-2' : 'flex w-full gap-2', className)}>
       <Button
-        type="button"
-        variant="outline"
-        shape="pill"
-        className="flex-1 text-sm"
+        aria-label={prevLabel}
+        className={cn('text-sm', inline ? undefined : 'flex-1')}
         disabled={disabled || !canGoPrev}
+        shape={inline ? undefined : 'pill'}
+        type="button"
+        variant={variant}
         onClick={onPrev}
       >
-        Previous
+        {prevLabel}
       </Button>
       <Button
-        type="button"
-        variant="outline"
-        shape="pill"
-        className="flex-1 text-sm"
+        aria-label={nextLabel}
+        className={cn('text-sm', inline ? undefined : 'flex-1')}
         disabled={disabled || !canGoNext}
+        shape={inline ? undefined : 'pill'}
+        type="button"
+        variant={variant}
         onClick={onNext}
       >
-        Next
+        {nextLabel}
       </Button>
     </div>
   );

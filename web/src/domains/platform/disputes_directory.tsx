@@ -4,13 +4,13 @@ import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { DisputeRow } from '@/api/types';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
@@ -59,15 +59,14 @@ export function DisputesDirectory({
       {disputes.length === 0 ? (
         <EmptyState title="No disputes" description="No payment disputes for the selected scope." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Intent</TableHead>
-                <TableHead>Provider dispute</TableHead>
-                <TableHead>Amount (micro)</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead>Updated</TableHead>
+                <DirectoryTableHead>Intent</DirectoryTableHead>
+                <DirectoryTableHead>Provider dispute</DirectoryTableHead>
+                <DirectoryTableHead>Amount (micro)</DirectoryTableHead>
+                <DirectoryTableHead>Currency</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -81,8 +80,7 @@ export function DisputesDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}

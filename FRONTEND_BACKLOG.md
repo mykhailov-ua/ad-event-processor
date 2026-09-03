@@ -6,7 +6,7 @@ Baseline (2026-09-01): ~90 routes in `web/src/app_routes.tsx`, buyer dashboard a
 
 Contracts: `ui.mdc`, `frontend-modular.mdc`, `boundaries.mdc`, `react.mdc`, `web/DESIGN.md`. Ship order: **OpenAPI + handler -> API helper -> domain UI -> thin page -> e2e**.
 
-Visual target: **Grok surfaces + Geist density** (dark theme). Do not copy Keitaro light/green chrome; copy **information architecture** (KPI strip, multi-metric chart, breakdown grid, recent events).
+Visual target: **Inter + surface ladder** (`web/DESIGN.md`). Do not copy Keitaro light/green chrome; copy **information architecture** (KPI strip, multi-metric chart, breakdown grid, recent events).
 
 Out of scope: hot path (`/track`, `/click`, `/openrtb/bid`), inbound webhooks, hosted lander static (`/lp/*`).
 
@@ -16,8 +16,15 @@ Out of scope: hot path (`/track`, `/click`, `/openrtb/bid`), inbound webhooks, h
 
 | Area | State |
 | :--- | :--- |
-| Shell | Auth, grouped nav, collapsible sidebar, command palette, skip link |
+| Shell, auth, grouped nav, collapsible sidebar, command palette, skip link |
 | Directory pattern | Customers/Campaigns reference; waves A/B/C largely done |
+| Phase 0 inventory gates | `live_routes.sh`, `client_list_sort.sh` in `admin/web.sh`; non-prod tiers in `web/DESIGN.md` |
+| Campaign list server sort | All table columns via `GET /api/v1/campaigns?sort=&from=&to=`; client hybrid sort removed |
+| Campaign report contract | `GET /api/v1/dashboards/campaign/{id}` breakdown with server `dimension`, `q`, `sort`, `order` |
+| Campaign dashboard parity | KPI strip + `DashboardMultiAxisChart` + `DashboardBreakdownTableSection`; removed `CampaignReportTable` |
+| Orphan cleanup | Deleted `dashboard_series_chart.tsx` (unused legacy SVG chart) and `JsonDashboardView` fallback on buyer role |
+| A11y keyboard pass | Skip link, focus rings on `Button`/chart legend, `aria-pressed` dimension pills, KPI region label; `web/e2e/keyboard_navigation.spec.js` |
+| UI surface gate | `bash scripts/ci/admin/ui_surface.sh` green on touched pages |
 | Billing, fraud, team, ops breadth | Routes + core CRUD/read patterns |
 | Integrations, creative write, campaign editor depth | Phases from prior backlog closed |
 | RTB admin, automation, portals, onboarding | Closed |
@@ -32,7 +39,7 @@ Prior backlog files (`FRONTEND_UX_BACKLOG.md`, phases 0-17) are retired. Open po
 | :--- | :--- | :--- |
 | Route exists | `/dashboards/buyer` yes | Mostly yes |
 | API contract | `BuyerPortfolioDTO` incomplete vs target | Reports catalog broad |
-| UI calls API | Yes; client sort on top campaigns | Core paths wired |
+| UI calls API | Yes; client sort on top campaigns (dashboard only) | Campaign list + campaign report server sort |
 | Operator UX | MVP dashboard, not Keitaro parity | Directory/CRUD usable |
 
 ---
@@ -46,7 +53,7 @@ Prior backlog files (`FRONTEND_UX_BACKLOG.md`, phases 0-17) are retired. Open po
 5. **dashboard_recent_clicks** — embedded block + API fields
 6. **dashboard_click_log** — full `/reports/click-log` page
 7. **dashboard_campaign** — campaign-scoped dashboard parity
-8. **deferred_polish** — a11y manual pass, orphan cleanup (as needed)
+8. **deferred_polish** — done (a11y keyboard pass, orphan cleanup, `ui_surface.sh`)
 
 ---
 
@@ -244,8 +251,8 @@ PageChrome title="Dashboard"
 
 | Item | Notes |
 | :--- | :--- |
-| Manual a11y keyboard pass | Campaigns, Customers, Team, Dashboard after chart |
-| `ux_cleanup` verification | `bash scripts/ci/admin/ui_surface.sh` on touch |
+| Manual a11y keyboard pass | done — Campaigns, Customers, Team, Dashboard chart legend (`keyboard_navigation.spec.js`) |
+| `ux_cleanup` verification | done — `bash scripts/ci/admin/ui_surface.sh` |
 | Attention / alerts on buyer home | P2 panel below fold or ops-style `PanelSection` |
 | Light theme | Out of scope |
 | `domains/` vs `ui/` rename | Large churn; no dedicated phase |
@@ -301,7 +308,7 @@ Name e2e spec added or extended. If not run locally, state **not run** and list 
 | dashboard_breakdowns | done | Campaign + source; lander/offer placeholders |
 | dashboard_recent_clicks | done | Embedded block + View all link |
 | dashboard_click_log | done | `/reports/click-log` directory page |
-| dashboard_campaign | open | Campaign-scoped dashboard parity |
-| deferred_polish | open | a11y, orphan cleanup |
+| dashboard_campaign | done | KPI+chart+breakdown reuse; orphan SVG report table removed |
+| deferred_polish | done | a11y keyboard pass, orphan cleanup, ui_surface gate |
 
 Update status when every DoD checkbox in a phase is `[x]`.

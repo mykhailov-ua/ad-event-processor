@@ -6,22 +6,15 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import { ReportMapTable } from '@/shell/report_map_table';
 import { StubBanner } from '@/shell/stub_banner';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import type { DataFreshness, FraudEvidencePack, ReportMapRow } from '@/api/types';
-import { formatMapCell, deriveColumns, reportMapRowKey } from '@/lib/report_table';
+import { deriveColumns } from '@/lib/report_table';
 import { displayTimestamp } from '@/lib/display';
 
 export type ReportRunnerProps = {
@@ -183,12 +176,14 @@ export function ReportRunner({
           </SecondaryActionButton>
         ) : null}
         {mode === 'table' ? (
-          <PaginationPrevNext
-            canGoPrev={canGoPrev}
+          <DirectoryPaginationFooter
             canGoNext={canGoNext}
+            canGoPrev={canGoPrev}
             disabled={fetching}
-            onPrev={() => onPageChange(Math.max(0, offset - limit))}
+            layout="split"
+            variant="outline"
             onNext={() => onPageChange(offset + limit)}
+            onPrev={() => onPageChange(Math.max(0, offset - limit))}
           />
         ) : null}
       </form>
@@ -217,14 +212,14 @@ export function ReportRunner({
         <div className="grid gap-4">
           <CardSummary evidencePack={evidencePack} />
           {evidencePack.timeline && evidencePack.timeline.length > 0 ? (
-            <EvidenceTable
+            <ReportMapTable
               caption="Timeline"
               columns={timelineColumns}
               rows={evidencePack.timeline as ReportMapRow[]}
             />
           ) : null}
           {evidencePack.fraud_events && evidencePack.fraud_events.length > 0 ? (
-            <EvidenceTable
+            <ReportMapTable
               caption="Fraud events"
               columns={fraudEventColumns}
               rows={evidencePack.fraud_events as ReportMapRow[]}
@@ -240,26 +235,7 @@ export function ReportRunner({
             description="Adjust filters and run the report again."
           />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {columns.map((column) => (
-                    <TableHead key={column}>{column}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((row, index) => (
-                  <TableRow key={reportMapRowKey(row, columns, index, reportKey)}>
-                    {columns.map((column) => (
-                      <TableCell key={column}>{formatMapCell(row[column])}</TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ReportMapTable columns={columns} rowKeyPrefix={reportKey} rows={rows} />
         )
       ) : null}
 
@@ -280,40 +256,6 @@ function CardSummary({ evidencePack }: { evidencePack: FraudEvidencePack }) {
         Generated {displayTimestamp(evidencePack.generated_at, evidencePack.generated_at_display)}{' '}
         | digest {evidencePack.digest_sha256}
       </div>
-    </div>
-  );
-}
-
-function EvidenceTable({
-  caption,
-  columns,
-  rows,
-}: {
-  caption: string;
-  columns: string[];
-  rows: ReportMapRow[];
-}) {
-  return (
-    <div className="ui-table-frame">
-      <p className="border-b px-4 py-2 text-sm font-medium">{caption}</p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column}>{column}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row, index) => (
-            <TableRow key={reportMapRowKey(row, columns, index, caption)}>
-              {columns.map((column) => (
-                <TableCell key={column}>{formatMapCell(row[column])}</TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
     </div>
   );
 }

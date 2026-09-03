@@ -9,13 +9,13 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { FraudIntegration } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 
@@ -94,18 +94,17 @@ export function FraudIntegrations({
           description="No fraud integrations are configured for this customer."
         />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Provider</TableHead>
-                <TableHead>Configured</TableHead>
-                <TableHead>Health</TableHead>
-                <TableHead className="text-right">DLQ</TableHead>
-                <TableHead>Last success</TableHead>
-                <TableHead>Error</TableHead>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Provider</DirectoryTableHead>
+                <DirectoryTableHead>Configured</DirectoryTableHead>
+                <DirectoryTableHead>Health</DirectoryTableHead>
+                <DirectoryTableHead className="text-right">DLQ</DirectoryTableHead>
+                <DirectoryTableHead>Last success</DirectoryTableHead>
+                <DirectoryTableHead>Error</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,8 +133,7 @@ export function FraudIntegrations({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? <ErrorBlock title="Refresh failed" message={error.message} /> : null}

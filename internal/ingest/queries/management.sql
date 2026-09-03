@@ -61,6 +61,20 @@ WHERE campaign_id = ANY(@campaign_ids::uuid[])
   AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout')
 GROUP BY campaign_id;
 
+-- name: SumCampaignMarginWindowByCampaignIDsInRange :many
+SELECT
+  campaign_id,
+  COALESCE(SUM(CASE WHEN type = 'FEE' THEN -amount ELSE 0 END), 0)::bigint AS advertiser_spend_micro,
+  COALESCE(SUM(CASE WHEN type = 'rtb_cost' THEN amount ELSE 0 END), 0)::bigint AS rtb_cost_micro,
+  COALESCE(SUM(CASE WHEN type = 'operator_margin' THEN amount ELSE 0 END), 0)::bigint AS operator_margin_micro,
+  COALESCE(SUM(CASE WHEN type = 'publisher_payout' THEN amount ELSE 0 END), 0)::bigint AS publisher_payout_micro
+FROM balance_ledger
+WHERE campaign_id = ANY(@campaign_ids::uuid[])
+  AND created_at >= @window_start
+  AND created_at < @window_end
+  AND type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout')
+GROUP BY campaign_id;
+
 -- name: ListMarginGuardPoliciesByCampaignIDs :many
 SELECT id, campaign_id, name, min_clicks, roi_floor_pct, zero_conv_streak, cost_over_revenue_threshold_bps, is_active
 FROM margin_guard_policies
@@ -224,22 +238,185 @@ SELECT COUNT(*) FROM recon_runs;
 
 -- name: CountCampaigns :one
 SELECT COUNT(*) FROM campaigns
-WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
-  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
-  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
-  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
-  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
-  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint);
-
--- name: ListCampaigns :many
-SELECT * FROM campaigns
-WHERE (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+WHERE deleted_at IS NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
   AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
   AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
   AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
   AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
   AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
-ORDER BY created_at DESC
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  );
+
+-- name: ListCampaignTargetCountries :many
+SELECT DISTINCT country_code::text
+FROM campaigns c
+CROSS JOIN LATERAL unnest(c.target_countries) AS country_code
+WHERE c.deleted_at IS NULL
+  AND country_code IS NOT NULL
+  AND btrim(country_code) <> ''
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR c.customer_id = sqlc.narg('customer_id')::uuid)
+ORDER BY country_code ASC;
+
+-- name: CountCampaignsStatusTotals :many
+SELECT status::text AS status, COUNT(*)::bigint AS count
+FROM campaigns
+WHERE deleted_at IS NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  )
+GROUP BY status;
+
+-- name: ListCampaignListKeysForFilter :many
+SELECT id, name FROM campaigns
+WHERE deleted_at IS NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  );
+
+-- name: ListCampaigns :many
+SELECT campaigns.* FROM campaigns
+LEFT JOIN customers customer_group ON customer_group.id = campaigns.customer_id
+WHERE campaigns.deleted_at IS NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR campaigns.customer_id = sqlc.narg('customer_id')::uuid)
+  AND (sqlc.narg('status')::text IS NULL OR campaigns.status::text = sqlc.narg('status')::text)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR campaigns.owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(campaigns.target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR campaigns.budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR campaigns.budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR campaigns.name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR campaigns.id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR campaigns.pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  )
+ORDER BY
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'name' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'name' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'spend' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.current_spend END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'spend' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.current_spend END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'budget_limit' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.budget_limit END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'budget_limit' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.budget_limit END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'budget_pct' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN CASE WHEN campaigns.budget_limit > 0 THEN campaigns.current_spend::numeric / campaigns.budget_limit::numeric ELSE 0 END END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'budget_pct' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN CASE WHEN campaigns.budget_limit > 0 THEN campaigns.current_spend::numeric / campaigns.budget_limit::numeric ELSE 0 END END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'status' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.status::text END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'status' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.status::text END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'owner' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.owner_user_id END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'owner' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.owner_user_id END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'flow' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.flow_id END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'flow' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.flow_id END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'group' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(customer_group.name) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'group' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(customer_group.name) END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'countries' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN array_to_string(campaigns.target_countries, ',') END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'countries' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN array_to_string(campaigns.target_countries, ',') END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'tags' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'tags' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN lower(campaigns.name) END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'updated_at' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.updated_at END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'updated_at' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN campaigns.updated_at END) ASC NULLS LAST,
+  campaigns.updated_at DESC
+LIMIT $1 OFFSET $2;
+
+-- name: ListCampaignsSortedByStats :many
+SELECT campaigns.* FROM campaigns
+LEFT JOIN (
+  SELECT
+    cs.campaign_id,
+    COALESCE(SUM(cs.impressions_count), 0)::bigint AS stat_impressions,
+    COALESCE(SUM(cs.clicks_count), 0)::bigint AS stat_clicks,
+    COALESCE(SUM(cs.conversions_count), 0)::bigint AS stat_conversions
+  FROM campaign_stats cs
+  INNER JOIN (
+    SELECT id FROM campaigns
+    WHERE deleted_at IS NULL
+      AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+      AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+      AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+      AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+      AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+      AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+      AND (
+        sqlc.narg('search_query')::text IS NULL
+        OR btrim(sqlc.narg('search_query')::text) = ''
+        OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+        OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+      )
+      AND (
+        sqlc.narg('pacing_mode')::text IS NULL
+        OR btrim(sqlc.narg('pacing_mode')::text) = ''
+        OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+      )
+  ) filtered ON filtered.id = cs.campaign_id
+  WHERE cs.date >= sqlc.narg('stats_from')::date
+    AND cs.date <= sqlc.narg('stats_to')::date
+  GROUP BY cs.campaign_id
+) stats ON stats.campaign_id = campaigns.id
+WHERE deleted_at IS NULL
+  AND (sqlc.narg('customer_id')::uuid IS NULL OR customer_id = sqlc.narg('customer_id')::uuid)
+  AND (sqlc.narg('status')::text IS NULL OR status::text = sqlc.narg('status')::text)
+  AND (sqlc.narg('owner_user_id')::uuid IS NULL OR owner_user_id = sqlc.narg('owner_user_id')::uuid)
+  AND (sqlc.narg('target_country')::text IS NULL OR sqlc.narg('target_country')::text = ANY(target_countries))
+  AND (sqlc.narg('budget_min_micro')::bigint IS NULL OR budget_limit >= sqlc.narg('budget_min_micro')::bigint)
+  AND (sqlc.narg('budget_max_micro')::bigint IS NULL OR budget_limit <= sqlc.narg('budget_max_micro')::bigint)
+  AND (
+    sqlc.narg('search_query')::text IS NULL
+    OR btrim(sqlc.narg('search_query')::text) = ''
+    OR name ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+    OR id::text ILIKE '%' || btrim(sqlc.narg('search_query')::text) || '%'
+  )
+  AND (
+    sqlc.narg('pacing_mode')::text IS NULL
+    OR btrim(sqlc.narg('pacing_mode')::text) = ''
+    OR pacing_mode::text ILIKE btrim(sqlc.narg('pacing_mode')::text)
+  )
+ORDER BY
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'clicks' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_clicks, 0) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'clicks' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_clicks, 0) END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'impressions' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_impressions, 0) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'impressions' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_impressions, 0) END) ASC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'conversions' AND COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_conversions, 0) END) DESC NULLS LAST,
+  (CASE WHEN COALESCE(sqlc.narg('sort_field')::text, 'updated_at') = 'conversions' AND NOT COALESCE(sqlc.narg('sort_desc')::boolean, true) THEN COALESCE(stats.stat_conversions, 0) END) ASC NULLS LAST,
+  updated_at DESC
 LIMIT $1 OFFSET $2;
 
 -- name: SumCampaignStatsByCampaignIDsInRange :many
@@ -581,6 +758,21 @@ WHERE c.customer_id = @customer_id
   AND cs.date >= @from_date::date
   AND cs.date <= @to_date::date
 GROUP BY cs.campaign_id;
+
+-- name: SumCustomerMarginWindowInRange :many
+SELECT
+  bl.campaign_id,
+  COALESCE(SUM(CASE WHEN bl.type = 'FEE' THEN -bl.amount ELSE 0 END), 0)::bigint AS advertiser_spend_micro,
+  COALESCE(SUM(CASE WHEN bl.type = 'rtb_cost' THEN bl.amount ELSE 0 END), 0)::bigint AS rtb_cost_micro,
+  COALESCE(SUM(CASE WHEN bl.type = 'operator_margin' THEN bl.amount ELSE 0 END), 0)::bigint AS operator_margin_micro,
+  COALESCE(SUM(CASE WHEN bl.type = 'publisher_payout' THEN bl.amount ELSE 0 END), 0)::bigint AS publisher_payout_micro
+FROM balance_ledger bl
+INNER JOIN campaigns c ON c.id = bl.campaign_id AND c.deleted_at IS NULL
+WHERE c.customer_id = @customer_id
+  AND bl.created_at >= @window_start
+  AND bl.created_at < @window_end
+  AND bl.type IN ('FEE', 'rtb_cost', 'operator_margin', 'publisher_payout')
+GROUP BY bl.campaign_id;
 
 -- name: ListSellers :many
 SELECT * FROM sellers ORDER BY seller_id;

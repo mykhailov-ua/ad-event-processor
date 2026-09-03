@@ -4,13 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBlock } from '@/shell/error_block';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { BillingInvariant, InvoicePreview } from '@/api/types';
 import { displayMicro } from '@/lib/display';
 
@@ -139,13 +139,12 @@ export function BillingPreviewPanel({
             ) : null}
           </div>
           {lines.length > 0 ? (
-            <div className="ui-table-frame">
-              <Table>
+            <DirectoryTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Ledger type</TableHead>
-                    <TableHead className="text-right">Amount (micro)</TableHead>
-                    <TableHead className="text-right">Entries</TableHead>
+                    <DirectoryTableHead>Ledger type</DirectoryTableHead>
+                    <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+                    <DirectoryTableHead className="text-right">Entries</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -159,8 +158,7 @@ export function BillingPreviewPanel({
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
+              </DirectoryTable>
           ) : null}
         </div>
       ) : null}

@@ -4,13 +4,13 @@ import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type {
   ApplyIntegrationSchemaResponse,
   IntegrationSchema,
@@ -158,15 +158,14 @@ export function IntegrationsSchemas({
             {schemas.length === 0 ? (
               <EmptyState title="No schemas" description="Integration schema catalog is empty." />
             ) : (
-              <div className="ui-table-frame">
-                <Table>
+              <DirectoryTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Kind</TableHead>
-                      <TableHead>Version</TableHead>
-                      <TableHead>Updated</TableHead>
-                      <TableHead className="w-[5rem]">Actions</TableHead>
+                      <DirectoryTableHead>Name</DirectoryTableHead>
+                      <DirectoryTableHead>Kind</DirectoryTableHead>
+                      <DirectoryTableHead>Version</DirectoryTableHead>
+                      <DirectoryTableHead>Updated</DirectoryTableHead>
+                      <DirectoryTableHead className="w-[5rem]">Actions</DirectoryTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -195,8 +194,7 @@ export function IntegrationsSchemas({
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </div>
+                </DirectoryTable>
             )}
           </div>
 
@@ -214,7 +212,7 @@ export function IntegrationsSchemas({
                   Close
                 </Button>
               </div>
-              <pre className="ui-table-frame overflow-x-auto rounded-2xl p-4 text-xs">
+              <pre className="overflow-x-auto rounded-2xl border border-zinc-200 p-4 text-xs dark:border-zinc-800">
                 {JSON.stringify(viewSchema.schema.schema, null, 2)}
               </pre>
               <JsonDashboardView
@@ -242,14 +240,13 @@ export function IntegrationsSchemas({
             {templates.length === 0 ? (
               <EmptyState title="No templates" description="Integration template catalog is empty." />
             ) : (
-              <div className="ui-table-frame">
-                <Table>
+              <DirectoryTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Kind</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Version</TableHead>
+                      <DirectoryTableHead>Name</DirectoryTableHead>
+                      <DirectoryTableHead>Kind</DirectoryTableHead>
+                      <DirectoryTableHead>Category</DirectoryTableHead>
+                      <DirectoryTableHead>Version</DirectoryTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -262,8 +259,7 @@ export function IntegrationsSchemas({
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </div>
+                </DirectoryTable>
             )}
           </div>
         </section>

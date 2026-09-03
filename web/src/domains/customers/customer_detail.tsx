@@ -6,18 +6,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import type {
   BalanceLedgerEntry,
   BillingForecast,
@@ -336,12 +336,12 @@ function StatementTab({
               {lines.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No statement lines for this month.</p>
               ) : (
-                <Table>
+                <DirectoryTable className="border-0 shadow-none">
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Ledger type</TableHead>
-                      <TableHead className="text-right">Amount (micro)</TableHead>
-                      <TableHead className="text-right">Entry count</TableHead>
+                      <DirectoryTableHead>Ledger type</DirectoryTableHead>
+                      <DirectoryTableHead align="end">Amount (micro)</DirectoryTableHead>
+                      <DirectoryTableHead align="end">Entry count</DirectoryTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -357,7 +357,7 @@ function StatementTab({
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </DirectoryTable>
               )}
             </CardContent>
           </Card>
@@ -477,12 +477,14 @@ function PaymentsTab({
             className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
             onSubmit={(event) => event.preventDefault()}
           >
-            <PaginationPrevNext
-              canGoPrev={offset > 0}
+            <DirectoryPaginationFooter
               canGoNext={offset + items.length < total}
+              canGoPrev={offset > 0}
               disabled={fetching}
-              onPrev={() => onPageChange(Math.max(0, offset - limit))}
+              layout="split"
+              variant="outline"
               onNext={() => onPageChange(offset + limit)}
+              onPrev={() => onPageChange(Math.max(0, offset - limit))}
             />
           </form>
           <Card>
@@ -490,15 +492,15 @@ function PaymentsTab({
               <CardTitle className="text-base">Payments</CardTitle>
             </CardHeader>
             <CardContent className="overflow-x-auto">
-              <Table>
+              <DirectoryTable className="border-0 shadow-none">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Intent ID</TableHead>
-                    <TableHead className="text-right">Amount (micro)</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Created</TableHead>
+                    <DirectoryTableHead>Intent ID</DirectoryTableHead>
+                    <DirectoryTableHead align="end">Amount (micro)</DirectoryTableHead>
+                    <DirectoryTableHead>Currency</DirectoryTableHead>
+                    <DirectoryTableHead>Status</DirectoryTableHead>
+                    <DirectoryTableHead>Provider</DirectoryTableHead>
+                    <DirectoryTableHead>Created</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -515,7 +517,7 @@ function PaymentsTab({
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </DirectoryTable>
             </CardContent>
           </Card>
         </>
@@ -634,12 +636,14 @@ function LedgerTab({
         >
           {exporting ? 'Exporting...' : 'Export CSV'}
         </Button>
-        <PaginationPrevNext
-          canGoPrev={canGoPrev}
+        <DirectoryPaginationFooter
           canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
           disabled={fetching}
-          onPrev={() => onPageChange(Math.max(0, offset - limit))}
+          layout="split"
+          variant="outline"
           onNext={() => onPageChange(offset + limit)}
+          onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       </form>
 
@@ -662,14 +666,14 @@ function LedgerTab({
 
 function LedgerEntryTable({ items }: { items: BalanceLedgerEntry[] }) {
   return (
-    <Table>
+    <DirectoryTable className="border-0 shadow-none">
       <TableHeader>
         <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
-          <TableHead>Campaign</TableHead>
-          <TableHead>Created</TableHead>
+          <DirectoryTableHead>ID</DirectoryTableHead>
+          <DirectoryTableHead>Type</DirectoryTableHead>
+          <DirectoryTableHead align="end">Amount</DirectoryTableHead>
+          <DirectoryTableHead>Campaign</DirectoryTableHead>
+          <DirectoryTableHead>Created</DirectoryTableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -683,7 +687,7 @@ function LedgerEntryTable({ items }: { items: BalanceLedgerEntry[] }) {
           </TableRow>
         ))}
       </TableBody>
-    </Table>
+    </DirectoryTable>
   );
 }
 

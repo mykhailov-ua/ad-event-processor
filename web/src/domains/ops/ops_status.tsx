@@ -4,20 +4,20 @@ import { cn } from '@/lib/utils';
 export function opsStatusTone(status: string | undefined): string {
   const normalized = (status ?? '').toLowerCase();
   if (normalized === 'ok' || normalized === 'healthy' || normalized === 'pass') {
-    return 'admin-ops-status--ok';
+    return 'text-green-600 dark:text-green-400';
   }
   if (normalized === 'degraded' || normalized === 'warn' || normalized === 'warning') {
-    return 'admin-ops-status--warn';
+    return 'text-amber-600 dark:text-amber-400';
   }
   if (normalized === 'critical' || normalized === 'fail' || normalized === 'down') {
-    return 'admin-ops-status--fail';
+    return 'text-red-600 dark:text-red-400';
   }
-  return 'admin-ops-status--muted';
+  return 'text-zinc-500 dark:text-zinc-400';
 }
 
 export function OpsStatusChip({ status }: { status?: string }) {
   if (!status?.trim()) {
     return null;
   }
-  return <span className={cn('admin-stat-note', opsStatusTone(status))}>{formatAdminEnumLabel(status)}</span>;
+  return <span className={cn('text-xs text-zinc-500 dark:text-zinc-400', opsStatusTone(status))}>{formatAdminEnumLabel(status)}</span>;
 }

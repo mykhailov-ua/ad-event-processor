@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Status
 
-Admin SPA: `web/` (React 19 + TypeScript + **Tailwind CSS** + **shadcn/ui**). Boot/embed: `internal/controlplane/admin_static_stub/` until `web/dist` ships. HTTP contracts: `api/openapi/`.
+Admin SPA: `web/` (React 19 + TypeScript + **Tailwind CSS** + **first-party primitives** in `web/src/components/ui/`). Boot/embed: `internal/controlplane/admin_static_stub/` until `web/dist` ships. HTTP contracts: `api/openapi/`.
 
 | Artifact | Path |
 | :--- | :--- |
@@ -30,11 +30,11 @@ Admin SPA: `web/` (React 19 + TypeScript + **Tailwind CSS** + **shadcn/ui**). Bo
 | :--- | :--- | :--- |
 | Pages | `web/src/pages/` | Route entry; hooks; URL to query params; compose domain sections only |
 | Domain UI | `web/src/domains/<domain>/` | Presentational sections, tables, toolbars, sheets |
-| System chrome | `web/src/components/system/` | `PageLayout`, filters, tables, states, nav |
-| shadcn primitives | `web/src/components/ui/` | Button, Select, Dialog, Sheet, Popover, ... |
+| System chrome | `web/src/shell/` | `PageLayout`, filters, tables, states, nav |
+| UI primitives | `web/src/components/ui/` | Button, Select, Dialog, Sheet, Popover, ... |
 | API transport | `web/src/api/*_api.ts`, `web/src/api/client.ts` | Typed fetch; parse JSON |
 | Types | `web/src/types/generated/` | OpenAPI-generated TS |
-| Theme | `web/src/styles/globals.css`, `tailwind.config.ts` | Admin tokens in `globals.css` |
+| Theme | `web/src/styles/app.css`, `tailwind.config.ts` | Tailwind only; **no `globals.css`** |
 | Hooks | `web/src/hooks/` | `use_session`, shared fetch hooks (no domain business rules) |
 
 Reference implementations:
@@ -44,7 +44,7 @@ Reference implementations:
 | Directory list (campaigns) | `web/src/domains/campaigns/list/campaigns_directory.tsx` |
 | Ops dashboard | `web/src/domains/ops/ops_home.tsx` + `ops_page_shell.tsx` |
 | App shell | `web/src/app_shell.tsx` |
-| Page scaffold | `web/src/components/system/page_layout.tsx` |
+| Page scaffold | `web/src/shell/page_layout.tsx` |
 
 Cross-ref: `frontend-modular.mdc`, `boundaries.mdc`, `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
 
@@ -68,7 +68,7 @@ Agents optimize for plausible diffs, not operator intent. Treat these as **lie m
 | Wrapper stack | `*DirectoryChrome`, `*Workspace`, `*Cluster` over section grid | One section = one domain module; page composes sections |
 | Macro layout drift | Page shell built from nested flex columns | Grid for shell + section stack; Flex inside components only |
 | Scroll clip lie | `overflow: hidden` on wrong ancestor; content grows unbounded | Follow **Scroll and overflow** below |
-| Custom overlay logic | Hand-rolled `[data-dropdown-open]`, manual z-index | shadcn/ui overlays (`Overlays` below) |
+| Custom overlay logic | Hand-rolled `[data-dropdown-open]`, manual z-index | First-party overlays (`Overlays` below) |
 | Phantom contract | "See prior width contract" with no table in repo | Contract must live in this file |
 | Unrun verification | "typecheck passed", "admin_web green" | Paste command + path + exit code (`quality.mdc`) |
 | Client logic smuggle | `useMemo` filter/sort over full API payload | Server query params; browser renders page |
@@ -105,7 +105,7 @@ One task = one layer owner (`frontend-modular.mdc`).
 | Layer | Path | Owns | Must not |
 | :--- | :--- | :--- | :--- |
 | Pages | `web/src/pages/` | `useResource` / page hook + `api/*_api.ts`; URL to params; compose domain components | Tailwind layout trees, row formatting, overlay logic, invented fields |
-| Domain UI | `web/src/domains/<domain>/` | Sections; macro Grid + micro Flex; shadcn usage | Fetch (except via props/callbacks), cross-page Context, hand-rolled overlays |
+| Domain UI | `web/src/domains/<domain>/` | Sections; macro Grid + micro Flex; `components/ui` primitives | Fetch (except via props/callbacks), cross-page Context, hand-rolled overlays |
 | API transport | `web/src/api/*_api.ts` | Typed fetch; parse into generated types | Client filter/sort over full `items[]` |
 | System | `web/src/shell/` | Reusable page chrome, directory primitives | Domain-specific API shapes |
 
@@ -124,7 +124,7 @@ Pages pass **props down**; domain sections do not call `fetch` except through ca
 | Slug | Delivers | Close when |
 | :--- | :--- | :--- |
 | `admin_contract_gate` | OpenAPI matches handlers | `openapi_gate.sh` green |
-| `admin_tokens` | Tailwind theme + shadcn CSS variables | `globals.css` + `tailwind.config` |
+| `admin_tokens` | Tailwind utilities in TSX + `tailwind.config.ts` | `app.css` = fonts + `@tailwind` only |
 | `admin_shell` | Login, shell, nav, boot | Stub replaced; `TestAdminStaticRoutes` |
 | `admin_page_chrome` | `PageLayout` section stack | Badge slot without wrapper chrome |
 | `admin_directory_pattern` | One server-paginated list | No client full-list sort |
@@ -304,7 +304,7 @@ footer (optional)
 
 Operator ask: move **Prev/Next** into the **filter grid** (bottom-right). That is **not** permission to relocate **Apply**.
 
-Canonical reference: `web/src/domains/campaigns/list/campaigns_list_toolbar.tsx`; `web/src/components/system/filter_panel.tsx`.
+Canonical reference: `web/src/domains/campaigns/list/campaigns_list_toolbar.tsx`; `web/src/shell/filter_panel.tsx`.
 
 ### Filter row contract
 
@@ -391,17 +391,17 @@ Defect class: **nested frames** (outer box around inner pill).
 
 ---
 
-## Overlays (shadcn/ui)
+## Overlays (first-party)
 
-Use shadcn copies in `web/src/components/ui/`: `Select`, `DropdownMenu`, `Dialog`, `Popover`, `Tooltip`, `Sheet`.
+Use primitives in `web/src/components/ui/`: `Select`, `DropdownMenu`, `Dialog`, `Popover`, `Tooltip`, `Sheet`. Implementation: portal + `use_overlay_dismiss` (`web/src/lib/`). No `@radix-ui/*`.
 
 | Rule | Detail |
 | :--- | :--- |
-| Source | `npx shadcn@latest add <component>` |
-| Behavior | Focus trap, Escape, click-outside, portal, z-index from Radix |
-| Style | Tailwind on `className` slots; `cva` variants inside `components/ui/` only |
+| Source | Owned in `web/src/components/ui/`; extend `admin_chrome.ts` |
+| Behavior | Escape, click-outside, portal, z-index 50 |
+| Style | Tailwind on `className`; no `class-variance-authority` |
 | Field width | Trigger `w-full` in grid cell |
-| Banned | Custom `[data-dropdown-open]`, manual `document` listeners, hand-rolled measure loops |
+| Banned | Custom `[data-dropdown-open]`, `@radix-ui/*`, `components.json` |
 
 Date range picker, column menu, import sheet: must not clip bottom of popover/sheet content (see **Dialog, sheet, popover scroll**).
 
@@ -426,19 +426,19 @@ No silent `catch` -> empty table. No `live: true` without `/api/v1`.
 
 ---
 
-## Styling stack (Tailwind + shadcn/ui)
+## Styling stack (Tailwind + first-party primitives)
 
 | Layer | Path | Role |
 | :--- | :--- | :--- |
-| Theme | `globals.css`, `tailwind.config.ts` | `@tailwind` layers; `--admin-surface-*`; shadcn HSL |
-| Primitives | `components/ui/` | shadcn copies |
+| Theme | `app.css`, `tailwind.config.ts` | `@tailwind` + minimal base; zinc via `dark:` classes |
+| Primitives | `components/ui/` | First-party copies (`web/DESIGN.md`; no `@radix-ui/*`) |
 | Utilities | `lib/utils.ts` | `cn()` |
 | Domain UI | `domains/<domain>/` | Section layout; `className` on elements |
 | Pages | `pages/` | Compose only |
 
 | Rule | Detail |
 | :--- | :--- |
-| New work | Tailwind in TSX; shadcn for interactive primitives |
+| New work | Tailwind in TSX; `components/ui` for interactive primitives |
 | `cn()` | Merge conditional classes |
 | Colors | Theme tokens (`bg-background`, `text-muted-foreground`, `--admin-surface-*`) -- no hard-coded hex in TSX |
 | Legacy | `*.module.css` sunsets on touch -- no new CSS Module files |
@@ -461,7 +461,7 @@ Operator agreement: **one plain admin skin** for all routes. Linear scaffold, ba
 
 **Priority:** data density and workflow > decoration. Small alignment gaps are acceptable; broken scroll, clipped tables, and invented demo data are not.
 
-Token source of truth: `web/src/styles/globals.css`. Extended reference: `web/DESIGN.md`. Typography roles: `web/src/lib/admin_typography.ts`.
+Styling source of truth: Tailwind in components + `web/src/styles/app.css` (entry only). **Forbidden:** `globals.css`, monolithic `admin-*` CSS, CSS variable theme soup. Reference: `web/DESIGN.md`. Typography: `web/src/lib/admin_typography.ts`.
 
 ### Product stance
 
@@ -573,7 +573,7 @@ Use color **only** to encode data or state. Decorative gradients, glow, and per-
 
 ### Controls
 
-Shared classes in `globals.css` -- prefer these over one-off Tailwind on domain pages.
+Tailwind utilities in TSX -- no shared `admin-*` classes in CSS files.
 
 | Control | Class | Notes |
 | :--- | :--- | :--- |
@@ -669,7 +669,7 @@ All thresholds and tones come from API or shared format helpers -- not hardcoded
 
 ## System components
 
-Import from `web/src/components/system/`. Do not duplicate layout in domain files.
+Import from `web/src/shell/`. Do not duplicate layout in domain files.
 
 ### Page shell
 

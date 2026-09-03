@@ -118,7 +118,7 @@ type BuyerPortfolioReader interface {
 }
 
 type CampaignDashboardReader interface {
-	GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID) (CampaignDashboardDTO, error)
+	GetCampaignDashboard(ctx context.Context, req CampaignDashboardRequest) (CampaignDashboardDTO, error)
 }
 
 type RoleDashboardReader interface {
@@ -291,10 +291,24 @@ type XDPPanelDTO struct {
 }
 
 type CampaignDashboardDTO struct {
-	CampaignID string                    `json:"campaign_id"`
-	KPIs       MetricsBlockDTO           `json:"kpis"`
-	Series     []DashboardSeriesPointDTO `json:"series,omitempty"`
-	Freshness  DataFreshnessDTO          `json:"freshness"`
+	CampaignID      string                             `json:"campaign_id"`
+	CampaignName    string                             `json:"campaign_name,omitempty"`
+	Period          PeriodDTO                          `json:"period,omitempty"`
+	ReportDimension string                             `json:"report_dimension,omitempty"`
+	KPIs            MetricsBlockDTO                    `json:"kpis"`
+	Series          []DashboardSeriesPointDTO          `json:"series,omitempty"`
+	Breakdown       reports.DashboardBreakdownTableDTO `json:"breakdown,omitempty"`
+	Freshness       DataFreshnessDTO                   `json:"freshness"`
+}
+
+type CampaignDashboardRequest struct {
+	CampaignID uuid.UUID
+	From       time.Time
+	To         time.Time
+	Dimension  CampaignReportDimension
+	Q          string
+	SortField  string
+	SortDesc   bool
 }
 
 type HTTPHandlers struct {
@@ -491,7 +505,31 @@ func (h *HTTPHandlers) getCampaignDashboard(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	resp, err := h.CampaignDashboard.GetCampaignDashboard(r.Context(), campaignID)
+	from, to, err := parseDashboardRange(r)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+
+	dimension, err := ParseCampaignReportDimension(r.URL.Query().Get("dimension"))
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	sortField := parseCampaignReportSort(r.URL.Query().Get("sort"), "clicks")
+	order := strings.TrimSpace(strings.ToLower(r.URL.Query().Get("order")))
+	sortDesc := order != "asc"
+
+	resp, err := h.CampaignDashboard.GetCampaignDashboard(r.Context(), CampaignDashboardRequest{
+		CampaignID: campaignID,
+		From:       from,
+		To:         to,
+		Dimension:  dimension,
+		Q:          strings.TrimSpace(r.URL.Query().Get("q")),
+		SortField:  sortField,
+		SortDesc:   sortDesc,
+	})
 	if err != nil {
 		h.writeServiceError(w, err)
 		return

@@ -5,13 +5,13 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import { ErrorBlock } from '@/shell/error_block';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -218,13 +218,12 @@ export function IntegrationsCostSync({
             description="Cost sync network schemas returned no entries."
           />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Network</TableHead>
-                  <TableHead>Label</TableHead>
-                  <TableHead>Account field</TableHead>
+                  <DirectoryTableHead>Network</DirectoryTableHead>
+                  <DirectoryTableHead>Label</DirectoryTableHead>
+                  <DirectoryTableHead>Account field</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -236,8 +235,7 @@ export function IntegrationsCostSync({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </section>
       ) : null}
@@ -287,14 +285,13 @@ export function IntegrationsCostSync({
                 description="No cost sync credentials are stored for this customer."
               />
             ) : (
-              <div className="ui-table-frame">
-                <Table>
+              <DirectoryTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Network</TableHead>
-                      <TableHead>Account</TableHead>
-                      <TableHead>Interval (min)</TableHead>
-                      <TableHead>Updated</TableHead>
+                      <DirectoryTableHead>Network</DirectoryTableHead>
+                      <DirectoryTableHead>Account</DirectoryTableHead>
+                      <DirectoryTableHead>Interval (min)</DirectoryTableHead>
+                      <DirectoryTableHead>Updated</DirectoryTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -311,8 +308,7 @@ export function IntegrationsCostSync({
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </div>
+                </DirectoryTable>
             )}
             </div>
           </section>
@@ -338,16 +334,15 @@ export function IntegrationsCostSync({
                 description="No cost sync runs recorded for this customer."
               />
             ) : (
-              <div className="ui-table-frame">
-                <Table>
+              <DirectoryTable>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Run</TableHead>
-                      <TableHead>Network</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Rows</TableHead>
-                      <TableHead>Amount (USD micro)</TableHead>
+                      <DirectoryTableHead>Run</DirectoryTableHead>
+                      <DirectoryTableHead>Network</DirectoryTableHead>
+                      <DirectoryTableHead>Date</DirectoryTableHead>
+                      <DirectoryTableHead>Status</DirectoryTableHead>
+                      <DirectoryTableHead>Rows</DirectoryTableHead>
+                      <DirectoryTableHead>Amount (USD micro)</DirectoryTableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -364,8 +359,7 @@ export function IntegrationsCostSync({
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              </div>
+                </DirectoryTable>
             )}
           </section>
         )

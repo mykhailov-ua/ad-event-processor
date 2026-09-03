@@ -15,13 +15,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { Offer } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -135,13 +135,12 @@ export function OffersDirectory({
             onAction={onCreateOffer ? () => setCreateOpen(true) : undefined}
           />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Created</TableHead>
+                  <DirectoryTableHead>Name</DirectoryTableHead>
+                  <DirectoryTableHead>URL</DirectoryTableHead>
+                  <DirectoryTableHead>Created</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -153,8 +152,7 @@ export function OffersDirectory({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </div>
 

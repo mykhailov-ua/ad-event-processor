@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
 import { opsPanelError } from '@/domains/ops/ops_nav';
 import { OpsActionGroup, OpsPageLoading, OpsPageShell } from '@/domains/ops/ops_page_shell';
@@ -47,15 +49,14 @@ export function OpsDomains({
   return (
     <OpsPageShell
       filters={
-        <label className="admin-label">
-          Hostname
-          <input
-            className="admin-input"
+        <div className="grid gap-2">
+          <Label htmlFor="ops-tls-hostname">Hostname</Label>
+          <Input
             id="ops-tls-hostname"
             value={draftHostname}
             onChange={(event) => onDraftHostnameChange(event.target.value)}
           />
-        </label>
+        </div>
       }
       title="Domain ops"
       actions={

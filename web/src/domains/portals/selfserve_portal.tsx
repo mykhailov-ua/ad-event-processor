@@ -15,13 +15,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { APIKeyCreatedResponse, BillingStatement, Invoice, PaymentIntentCreatedResponse } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayMicro } from '@/lib/display';
@@ -325,14 +325,13 @@ export function SelfServePortal({
         ) : invoices.length === 0 ? (
           <EmptyState title="No invoices" description="Self-serve invoice list is empty." />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Total (micro)</TableHead>
+                  <DirectoryTableHead>ID</DirectoryTableHead>
+                  <DirectoryTableHead>Status</DirectoryTableHead>
+                  <DirectoryTableHead>Period</DirectoryTableHead>
+                  <DirectoryTableHead>Total (micro)</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -345,8 +344,7 @@ export function SelfServePortal({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </section>
 

@@ -7,13 +7,13 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type {
   BillingInvoiceLine,
   BillingLedgerLine,
@@ -219,13 +219,12 @@ function InvoiceLinesTable({
   return (
     <section className="grid gap-2">
       <h2 className="text-base font-semibold">{caption}</h2>
-      <div className="ui-table-frame">
-        <Table>
+      <DirectoryTable>
           <TableHeader>
             <TableRow>
-              <TableHead>Ledger type</TableHead>
-              <TableHead className="text-right">Amount (micro)</TableHead>
-              <TableHead className="text-right">Entry count</TableHead>
+              <DirectoryTableHead>Ledger type</DirectoryTableHead>
+              <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+              <DirectoryTableHead className="text-right">Entry count</DirectoryTableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -239,22 +238,20 @@ function InvoiceLinesTable({
               </TableRow>
             ))}
           </TableBody>
-        </Table>
-      </div>
+        </DirectoryTable>
     </section>
   );
 }
 
 function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
   return (
-    <div className="ui-table-frame">
-      <Table>
+    <DirectoryTable>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead className="text-right">Amount (micro)</TableHead>
-            <TableHead>Created</TableHead>
+            <DirectoryTableHead>ID</DirectoryTableHead>
+            <DirectoryTableHead>Type</DirectoryTableHead>
+            <DirectoryTableHead className="text-right">Amount (micro)</DirectoryTableHead>
+            <DirectoryTableHead>Created</DirectoryTableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -269,23 +266,21 @@ function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
-    </div>
+      </DirectoryTable>
   );
 }
 
 function DeliveriesTable({ items }: { items: InvoiceDelivery[] }) {
   return (
-    <div className="ui-table-frame">
-      <Table>
+    <DirectoryTable>
         <TableHeader>
           <TableRow>
-            <TableHead>Status</TableHead>
-            <TableHead>Provider</TableHead>
-            <TableHead>Recipient</TableHead>
-            <TableHead>Retries</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead>Error</TableHead>
+            <DirectoryTableHead>Status</DirectoryTableHead>
+            <DirectoryTableHead>Provider</DirectoryTableHead>
+            <DirectoryTableHead>Recipient</DirectoryTableHead>
+            <DirectoryTableHead>Retries</DirectoryTableHead>
+            <DirectoryTableHead>Updated</DirectoryTableHead>
+            <DirectoryTableHead>Error</DirectoryTableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -300,7 +295,6 @@ function DeliveriesTable({ items }: { items: InvoiceDelivery[] }) {
             </TableRow>
           ))}
         </TableBody>
-      </Table>
-    </div>
+      </DirectoryTable>
   );
 }

@@ -124,6 +124,19 @@ func (m *Middleware) checkPermission(ctx context.Context, user authz.Authenticat
 	return ctrlhttp.HasPermission(user.Role, permission)
 }
 
+func (m *Middleware) RequireAuthenticated() func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			user, ok := m.authenticate(w, r)
+			if !ok {
+				return
+			}
+			ctx := m.attachAuthz(r.Context(), user)
+			next(w, r.WithContext(ctx))
+		}
+	}
+}
+
 func (m *Middleware) RequirePermission(permission string) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {

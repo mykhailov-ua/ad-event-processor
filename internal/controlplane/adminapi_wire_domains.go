@@ -379,10 +379,10 @@ func (h *Handler) wireAdminDomainRoutes(reg *RouteRegistry, e adminWireEnv) {
 		return sh
 	}()
 	reg.EulaHTTP = &licensingadmin.EulaHTTPHandlers{
-		Service:           svc,
-		ApplyRateLimit:    limit,
-		RequirePermission: perm,
-		WriteServiceError: writeErr,
+		Service:              svc,
+		ApplyRateLimit:       limit,
+		RequireAuthenticated: h.authMiddleware.RequireAuthenticated(),
+		WriteServiceError:    writeErr,
 	}
 	reg.PlatformHTTP = &platformadmin.HTTPHandlers{
 		Service:           svc,

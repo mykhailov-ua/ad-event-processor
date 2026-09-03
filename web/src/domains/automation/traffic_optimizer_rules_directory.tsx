@@ -20,13 +20,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { TrafficOptimizerDryRunResult, TrafficOptimizerRule } from '@/api/types';
 import {
   type TrafficOptimizerRuleEditDraft,
@@ -191,16 +191,15 @@ export function TrafficOptimizerRulesDirectory({
       {items.length === 0 ? (
         <EmptyState title="No optimizer rules" description="No rules exist for this customer." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Scope</TableHead>
-                <TableHead>Objective</TableHead>
-                <TableHead>Algorithm</TableHead>
-                <TableHead>Enabled</TableHead>
-                <TableHead>Actions</TableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Scope</DirectoryTableHead>
+                <DirectoryTableHead>Objective</DirectoryTableHead>
+                <DirectoryTableHead>Algorithm</DirectoryTableHead>
+                <DirectoryTableHead>Enabled</DirectoryTableHead>
+                <DirectoryTableHead>Actions</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -263,8 +262,7 @@ export function TrafficOptimizerRulesDirectory({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}
@@ -278,14 +276,13 @@ export function TrafficOptimizerRulesDirectory({
             <Badge variant="secondary">Stale weights</Badge>
           ) : null}
           {(dryRunResult.arms ?? []).length > 0 ? (
-            <div className="ui-table-frame">
-              <Table>
+            <DirectoryTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Entity</TableHead>
-                    <TableHead>Current weight</TableHead>
-                    <TableHead>Proposed weight</TableHead>
-                    <TableHead>Observed value</TableHead>
+                    <DirectoryTableHead>Entity</DirectoryTableHead>
+                    <DirectoryTableHead>Current weight</DirectoryTableHead>
+                    <DirectoryTableHead>Proposed weight</DirectoryTableHead>
+                    <DirectoryTableHead>Observed value</DirectoryTableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -298,8 +295,7 @@ export function TrafficOptimizerRulesDirectory({
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            </div>
+              </DirectoryTable>
           ) : null}
         </section>
       ) : null}

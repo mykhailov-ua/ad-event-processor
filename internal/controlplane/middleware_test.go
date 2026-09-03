@@ -159,3 +159,40 @@ func TestAuthMiddleware_RedisOutage(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 }
+
+func TestAuthMiddleware_RequireAuthenticated(t *testing.T) {
+	cfg := &config.Config{
+		TokenSymmetricKey: "01234567890123456789012345678901",
+	}
+	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
+	require.NoError(t, err)
+
+	m := NewAuthMiddleware(tokenMaker, nil, cfg, nil)
+	targetHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, ok := GetUser(r.Context())
+		if !ok {
+			httpresponse.Error(w, http.StatusInternalServerError, "INTERNAL_ERROR", "user not in context")
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	t.Run("NoSession", func(t *testing.T) {
+		handler := m.RequireAuthenticated()(targetHandler)
+		req, _ := http.NewRequest("POST", "/api/v1/eula/accept", http.NoBody)
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusUnauthorized, resp.Code)
+	})
+
+	t.Run("ReadOnlySession", func(t *testing.T) {
+		handler := m.RequireAuthenticated()(targetHandler)
+		token, tokenErr := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleUser, uuid.New(), time.Hour)
+		require.NoError(t, tokenErr)
+		req, _ := http.NewRequest("POST", "/api/v1/eula/accept", http.NoBody)
+		req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp, req)
+		assert.Equal(t, http.StatusOK, resp.Code)
+	})
+}

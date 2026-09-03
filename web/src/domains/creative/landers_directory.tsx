@@ -17,13 +17,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { Lander } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -137,14 +137,13 @@ export function LandersDirectory({
             onAction={onCreateLander ? () => setCreateOpen(true) : undefined}
           />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Hosted</TableHead>
-                  <TableHead>Created</TableHead>
+                  <DirectoryTableHead>Name</DirectoryTableHead>
+                  <DirectoryTableHead>URL</DirectoryTableHead>
+                  <DirectoryTableHead>Hosted</DirectoryTableHead>
+                  <DirectoryTableHead>Created</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -167,8 +166,7 @@ export function LandersDirectory({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </div>
 

@@ -12,6 +12,11 @@ import (
 
 const dashboardBreakdownTopN = 6
 
+var flowEntityBreakdownFields = map[string]struct{}{
+	"lander_id": {},
+	"offer_id":  {},
+}
+
 const sourceBreakdownQuery = `
 SELECT
  source_name,
@@ -82,6 +87,121 @@ type DashboardBreakdownTableDTO struct {
 	Totals    DashboardBreakdownTotalsDTO `json:"totals"`
 	Truncated bool                        `json:"truncated,omitempty"`
 	Total     int                         `json:"total,omitempty"`
+}
+
+func flowEntityBreakdownQuery(entityField string) string {
+	if _, ok := flowEntityBreakdownFields[entityField]; !ok {
+		panic("reports: invalid flow entity breakdown field")
+	}
+	return `
+SELECT
+ entity_id,
+ sum(clicks) AS clicks,
+ sum(unique_clicks) AS unique_clicks,
+ sum(conversions) AS conversions,
+ toInt64(sum(spend_micro)) AS spend_micro,
+ toInt64(sum(payout_micro)) AS revenue_micro
+FROM (
+ SELECT
+  nullIf(JSONExtractString(payload, '` + entityField + `'), '') AS entity_id,
+  toUInt64(count()) AS clicks,
+  toUInt64(uniqExact(click_id)) AS unique_clicks,
+  toUInt64(0) AS conversions,
+  sum(toInt64OrZero(JSONExtractString(payload, 'spend_micro'))) AS spend_micro,
+  toFloat64(0) AS payout_micro
+ FROM clicks
+ WHERE campaign_id IN (?)
+  AND created_at >= ?
+  AND created_at < ?
+  AND JSONExtractString(payload, '` + entityField + `') != ''
+ GROUP BY entity_id
+ UNION ALL
+ SELECT
+  nullIf(JSONExtractString(payload, '` + entityField + `'), ''),
+  toUInt64(0) AS clicks,
+  toUInt64(0) AS unique_clicks,
+  toUInt64(count()) AS conversions,
+  toInt64(0) AS spend_micro,
+  sum(toFloat64OrZero(JSONExtractString(payload, 'payout'))) * 1000000 AS payout_micro
+ FROM conversions
+ WHERE campaign_id IN (?)
+  AND created_at >= ?
+  AND created_at < ?
+  AND JSONExtractString(payload, '` + entityField + `') != ''
+ GROUP BY entity_id
+)
+GROUP BY entity_id
+ORDER BY clicks DESC
+LIMIT ?`
+}
+
+func QueryLanderBreakdownCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	topN int,
+) (DashboardBreakdownTableDTO, error) {
+	return queryFlowEntityBreakdownCH(ctx, clickhouseQuery, campaignIDs, from, to, topN, "lander_id")
+}
+
+func QueryOfferBreakdownCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	topN int,
+) (DashboardBreakdownTableDTO, error) {
+	return queryFlowEntityBreakdownCH(ctx, clickhouseQuery, campaignIDs, from, to, topN, "offer_id")
+}
+
+func queryFlowEntityBreakdownCH(
+	ctx context.Context,
+	clickhouseQuery *database.ClickHouseQuery,
+	campaignIDs []uuid.UUID,
+	from, to time.Time,
+	topN int,
+	entityField string,
+) (DashboardBreakdownTableDTO, error) {
+	out := DashboardBreakdownTableDTO{
+		Rows: []DashboardBreakdownRowDTO{},
+	}
+	if clickhouseQuery == nil || len(campaignIDs) == 0 || topN <= 0 {
+		return out, nil
+	}
+	limit := topN + 1
+	query := flowEntityBreakdownQuery(entityField)
+	rows, err := clickhouseQuery.Query(ctx, query,
+		campaignIDs, from, to,
+		campaignIDs, from, to,
+		limit,
+	)
+	if err != nil {
+		return out, fmt.Errorf("%s breakdown query: %w", entityField, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var all []DashboardBreakdownRowDTO
+	for rows.Next() {
+		var entityID string
+		var clicks, uniqueClicks, conversions, spendMicro, revenueMicro int64
+		if err := rows.Scan(&entityID, &clicks, &uniqueClicks, &conversions, &spendMicro, &revenueMicro); err != nil {
+			return out, err
+		}
+		all = append(all, DashboardBreakdownRowDTO{
+			ID:           entityID,
+			Name:         entityID,
+			Clicks:       clicks,
+			UniqueClicks: uniqueClicks,
+			Conversions:  conversions,
+			CostMicro:    spendMicro,
+			RevenueMicro: revenueMicro,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return out, err
+	}
+	return CapBreakdownTable(all, topN), nil
 }
 
 func QuerySourceBreakdownCH(

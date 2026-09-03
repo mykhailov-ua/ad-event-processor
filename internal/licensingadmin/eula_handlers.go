@@ -26,10 +26,10 @@ type EulaService interface {
 }
 
 type EulaHTTPHandlers struct {
-	Service           EulaService
-	ApplyRateLimit    func(http.HandlerFunc) http.HandlerFunc
-	RequirePermission func(string, http.HandlerFunc) http.HandlerFunc
-	WriteServiceError func(http.ResponseWriter, error)
+	Service              EulaService
+	ApplyRateLimit       func(http.HandlerFunc) http.HandlerFunc
+	RequireAuthenticated func(http.HandlerFunc) http.HandlerFunc
+	WriteServiceError    func(http.ResponseWriter, error)
 }
 
 func (h *EulaHTTPHandlers) Register(mux *http.ServeMux) {
@@ -37,15 +37,15 @@ func (h *EulaHTTPHandlers) Register(mux *http.ServeMux) {
 		return
 	}
 	limit := h.ApplyRateLimit
-	perm := h.RequirePermission
+	auth := h.RequireAuthenticated
 	if limit == nil {
 		limit = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
-	if perm == nil {
-		perm = func(_ string, next http.HandlerFunc) http.HandlerFunc { return next }
+	if auth == nil {
+		auth = func(next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/eula", limit(h.getEula))
-	mux.HandleFunc("POST /api/v1/eula/accept", limit(perm("settings:write", h.postEulaAccept)))
+	mux.HandleFunc("POST /api/v1/eula/accept", limit(auth(h.postEulaAccept)))
 }
 
 func (h *EulaHTTPHandlers) getEula(w http.ResponseWriter, r *http.Request) {

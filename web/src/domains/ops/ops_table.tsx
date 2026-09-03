@@ -1,9 +1,14 @@
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
-import { Table, TableBody, TableFooter, TableHeader } from '@/components/ui/table';
+import { TableCell, TableHead, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
 
-/** Campaigns-standard table shell (admin-table-wrap + admin-table--campaigns). */
+/** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
+export const OPS_DIRECTORY_TABLE_CLASS =
+  'w-auto table-fixed text-[13px] [&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-zinc-50 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-zinc-500 [&_td]:border-b [&_td]:border-zinc-100 [&_td]:px-3 [&_td]:py-1.5 dark:[&_th]:bg-zinc-900 dark:[&_th]:text-zinc-400 dark:[&_td]:border-zinc-800 [&_td.num]:text-right [&_tbody_tr:nth-child(even)_td]:bg-zinc-50/50 dark:[&_tbody_tr:nth-child(even)_td]:bg-zinc-900/40';
+
+/** Ops directory table shell; delegates border/scroll to DirectoryTable. */
 export function OpsTable({
   head,
   children,
@@ -16,14 +21,40 @@ export function OpsTable({
   className?: string;
 }) {
   return (
-    <div className={cn('admin-table-wrap admin-table-wrap--static', className)}>
-      <Table bare className="admin-table admin-table--campaigns">
-        <TableHeader>{head}</TableHeader>
-        <TableBody>{children}</TableBody>
-        {foot ? <TableFooter>{foot}</TableFooter> : null}
-      </Table>
-    </div>
+    <DirectoryTable
+      className={className}
+      fixedLayout
+      tableClassName={OPS_DIRECTORY_TABLE_CLASS}
+    >
+      <TableHeader>{head}</TableHeader>
+      <TableBody>{children}</TableBody>
+      {foot ? <TableFooter>{foot}</TableFooter> : null}
+    </DirectoryTable>
   );
+}
+
+export function OpsTableHeaderRow(props: ComponentProps<typeof TableRow>) {
+  return <TableRow {...props} />;
+}
+
+export function OpsTableRow(props: ComponentProps<typeof TableRow>) {
+  return <TableRow {...props} />;
+}
+
+export function OpsTableHead({
+  numeric,
+  className,
+  ...props
+}: ComponentProps<typeof TableHead> & { numeric?: boolean }) {
+  return <TableHead className={cn(numeric && 'num', className)} {...props} />;
+}
+
+export function OpsTableCell({
+  numeric,
+  className,
+  ...props
+}: ComponentProps<typeof TableCell> & { numeric?: boolean }) {
+  return <TableCell className={cn(numeric && 'num', className)} {...props} />;
 }
 
 /** Section title above a table or block; no extra panel border. */
@@ -43,15 +74,12 @@ export function OpsBlock({
   }
 
   return (
-    <section className={cn('admin-ops-block', className)}>
-      <header className="admin-ops-block__head">
-        {title ? <h2 className="admin-ops-block__title">{title}</h2> : null}
+    <section className={cn('rounded-md border border-zinc-200 p-3 dark:border-zinc-800', className)}>
+      <header className="flex items-center justify-between gap-2">
+        {title ? <h2 className="text-sm font-semibold">{title}</h2> : null}
         {meta}
       </header>
       {children}
     </section>
   );
 }
-
-/** @deprecated Use OpsBlock */
-export const OpsTableSection = OpsBlock;

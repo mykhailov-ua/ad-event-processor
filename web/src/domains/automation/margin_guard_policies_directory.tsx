@@ -18,13 +18,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { MarginGuardPolicy } from '@/api/types';
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
 
@@ -210,14 +210,13 @@ export function MarginGuardPoliciesDirectory({
       {items.length === 0 ? (
         <EmptyState title="No policies" description="No margin guard policies for this campaign." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>ROI floor %</TableHead>
-                <TableHead>Min clicks</TableHead>
-                <TableHead>Active</TableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>ROI floor %</DirectoryTableHead>
+                <DirectoryTableHead>Min clicks</DirectoryTableHead>
+                <DirectoryTableHead>Active</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -234,8 +233,7 @@ export function MarginGuardPoliciesDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

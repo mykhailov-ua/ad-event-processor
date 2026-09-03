@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { getCampaignStats } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
@@ -137,9 +137,11 @@ function formatRemaining(campaign: CampaignWithMoneyDisplay): string {
 export function CampaignMetricsPopover({
   campaign,
   onOpenOverview,
+  triggerContent,
 }: {
   campaign: CampaignWithMoneyDisplay;
   onOpenOverview?: (campaign: CampaignWithMoneyDisplay) => void;
+  triggerContent?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [stats, setStats] = useState<CampaignStats | undefined>();
@@ -198,7 +200,7 @@ export function CampaignMetricsPopover({
           className="block w-full min-w-0 rounded-md text-left transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           type="button"
         >
-          <BudgetUsedSummary campaign={campaign} />
+          {triggerContent ?? <BudgetUsedSummary campaign={campaign} />}
         </button>
       </PopoverTrigger>
       <PopoverContent

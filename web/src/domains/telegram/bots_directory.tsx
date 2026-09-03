@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { TelegramBot } from '@/api/types';
 import { TelegramNav, telegramPanelError } from '@/domains/telegram/telegram_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -79,16 +79,15 @@ export function TelegramBotsDirectory({
       {bots.length === 0 ? (
         <EmptyState title="No bots" description="No Telegram Mini App bots are configured." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Bot ID</TableHead>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Webhook</TableHead>
-                <TableHead>Mini App</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Bot ID</DirectoryTableHead>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Webhook</DirectoryTableHead>
+                <DirectoryTableHead>Mini App</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -116,8 +115,7 @@ export function TelegramBotsDirectory({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? telegramPanelError(actionError, 'Bot action failed') : null}

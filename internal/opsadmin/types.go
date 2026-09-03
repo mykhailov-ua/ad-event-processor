@@ -238,14 +238,26 @@ type DashboardServiceCard struct {
 }
 
 type DashboardSummaryDTO struct {
-	GeneratedAt        string                 `json:"generated_at"`
-	GeneratedAtDisplay string                 `json:"generated_at_display,omitempty"`
-	Services           []DashboardServiceCard `json:"services"`
-	DriftMicroMax      float64                `json:"drift_micro_max"`
-	DriftAlert         bool                   `json:"drift_alert"`
-	RPSEstimate        float64                `json:"rps_estimate"`
-	OutboxPending      int64                  `json:"outbox_pending"`
-	EmergencyBreaker   string                 `json:"emergency_breaker"`
+	GeneratedAt        string                   `json:"generated_at"`
+	GeneratedAtDisplay string                   `json:"generated_at_display,omitempty"`
+	Services           []DashboardServiceCard   `json:"services"`
+	DriftMicroMax      float64                  `json:"drift_micro_max"`
+	DriftAlert         bool                     `json:"drift_alert"`
+	RPSEstimate        float64                  `json:"rps_estimate"`
+	OutboxPending      int64                    `json:"outbox_pending"`
+	EmergencyBreaker   string                   `json:"emergency_breaker"`
+	Infra              InfraResourceSnapshotDTO `json:"infra,omitempty"`
+}
+
+type InfraResourceSnapshotDTO struct {
+	HeapInuseBytes    int64   `json:"heap_inuse_bytes,omitempty"`
+	RSSBytes          int64   `json:"rss_bytes,omitempty"`
+	Goroutines        int64   `json:"goroutines,omitempty"`
+	GnetConnections   int64   `json:"gnet_active_connections,omitempty"`
+	CPUUtilizationPct float64 `json:"cpu_utilization_pct,omitempty"`
+	HTTPRPS           float64 `json:"http_rps,omitempty"`
+	ScrapeStale       bool    `json:"scrape_stale,omitempty"`
+	ObservedAt        string  `json:"observed_at,omitempty"`
 }
 
 type DashboardMetricPoint struct {

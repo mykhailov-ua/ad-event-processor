@@ -3,7 +3,7 @@
 //
 // Role:
 //   - handlers.go: GET /api/v1/license/status, POST /api/v1/license/apply.
-//   - eula_handlers.go / eula.go: GET /api/v1/eula, POST /api/v1/eula/accept (system_settings row).
+//   - eula_handlers.go / eula.go: GET /api/v1/eula, POST /api/v1/eula/accept (any authenticated session).
 //   - gate.go: FeatureAllowed and RequireLicenseFeature for admin route middleware (403 feature_required).
 //   - service.go: ApplyLicenseToken (VerifyJWTResolved, CheckHostActivation, InstallToken, ReloadLicense).
 //   - worker.go: RevokeQueueWorker polls PG revoke queue and reloads when row matches active license key.

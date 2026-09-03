@@ -73,6 +73,7 @@ func (h *CampaignsHTTPHandlers) Register(mux *http.ServeMux) {
 		perm = func(_ []string, next http.HandlerFunc) http.HandlerFunc { return next }
 	}
 	mux.HandleFunc("GET /api/v1/campaigns", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaigns)))
+	mux.HandleFunc("GET /api/v1/campaigns/target-countries", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignTargetCountries)))
 	mux.HandleFunc("GET /api/v1/campaigns/metrics", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.listCampaignMetrics)))
 	mux.HandleFunc("GET /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:read", "campaigns:read:masked"}, h.getCampaign)))
 	mux.HandleFunc("PATCH /api/v1/campaigns/{id}", limit(perm([]string{"campaigns:write"}, h.patchCampaign)))
@@ -116,12 +117,7 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 	}
 
 	status := q.Get("status")
-	sortField, order, sortErr := parseListSort(r, map[string]struct{}{
-		"name":         {},
-		"spend":        {},
-		"updated_at":   {},
-		"budget_limit": {},
-	}, "updated_at")
+	sortField, order, sortErr := parseListSort(r, CampaignListAllowedSortFields(), "updated_at")
 	if sortErr != nil {
 		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", sortErr.Error())
 		return
@@ -136,8 +132,25 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 		TargetCountry:  parseTargetCountryQuery(r),
 		BudgetMinMicro: parseOptionalBudgetMicroQuery(r, "budget_min_micro"),
 		BudgetMaxMicro: parseOptionalBudgetMicroQuery(r, "budget_max_micro"),
+		SearchQuery:    search,
+		PacingMode:     pacingMode,
+		SortField:      sortField,
+		SortOrder:      order,
 		Limit:          limit,
 		Offset:         offset,
+	}
+	if IsCampaignListMetricWindowSortField(sortField) {
+		from, to, rangeErr := parseCampaignListMetricsRange(r)
+		if rangeErr != nil {
+			httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", rangeErr.Error())
+			return
+		}
+		statsFrom, statsTo := CampaignListPGStatsDates(from, to)
+		listFilter.StatsFrom = statsFrom
+		listFilter.StatsTo = statsTo
+		listFilter.StatsRangeFrom = from
+		listFilter.StatsRangeTo = to
+		listFilter.StatsRangeSet = true
 	}
 
 	items, total, err := h.Campaigns.ListCampaignsFiltered(r.Context(), listFilter)
@@ -145,28 +158,18 @@ func (h *CampaignsHTTPHandlers) listCampaigns(w http.ResponseWriter, r *http.Req
 		h.WriteHandlerError(w, err)
 		return
 	}
-	if search != "" || pacingMode != "" || sortField != "updated_at" || order != "desc" {
-		allFilter := listFilter
-		allFilter.Limit = 1000
-		allFilter.Offset = 0
-		allItems, _, listErr := h.Campaigns.ListCampaignsFiltered(r.Context(), allFilter)
-		if listErr != nil {
-			h.WriteHandlerError(w, listErr)
-			return
-		}
-		filtered := filterAndSortCampaigns(allItems, search, sortField, order, pacingMode)
-		total = int64(len(filtered))
-		if int(offset) >= len(filtered) {
-			items = nil
-		} else {
-			end := int(offset) + int(limit)
-			if end > len(filtered) {
-				end = len(filtered)
-			}
-			items = filtered[int(offset):end]
-		}
+	if listFilter.StatsRangeSet {
+		AttachCampaignListMarginBreachInRange(
+			r.Context(),
+			h.PostgresPool,
+			h.MarginDefaultThresholdBps,
+			items,
+			listFilter.StatsRangeFrom,
+			listFilter.StatsRangeTo,
+		)
+	} else {
+		h.Campaigns.AttachCampaignListMarginBreach(r.Context(), items)
 	}
-	h.Campaigns.AttachCampaignListMarginBreach(r.Context(), items)
 	for i := range items {
 		items[i].StatusLabel = campaignStatusLabel(items[i].Status)
 		items[i].StatusTone = campaignStatusTone(items[i].Status)

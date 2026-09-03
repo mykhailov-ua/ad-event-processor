@@ -1,4 +1,4 @@
-// Offline /api/v1 stub when admin dev mode is on (api/client.ts). Unhandled paths return undefined.
+// Non-prod tier: offline API stub when admin dev mode is on (api/client.ts). See web/DESIGN.md.
 import type { Campaign } from '@/api/types';
 
 import {

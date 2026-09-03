@@ -271,6 +271,8 @@ aed-admin web         # :5173, proxies /api to control
 
 Logs: `var/admin_web.log`; compose control: `docker logs ad-event-processor-control-1`. Without sourcing aliases: `bash scripts/dev/aed-admin up`.
 
+**Non-prod UI tiers:** `?admin_dev=1` enables in-browser mock API (`web/src/api/dev_mock/`); `?chart_mock=1` fills buyer dashboard charts with synthetic data (`dashboard_series_mock.ts`). Neither tier proves Go handler wiring. Use `admin_dev=0` with control `:8188` for contract verification. See `web/DESIGN.md` (**Non-prod verification tiers**).
+
 ### 2. Admin UI Bootstrap & Production Build
 To seed a local developer account and embed the UI assets directly into the Go `control` binary:
 ```bash

@@ -78,7 +78,7 @@ function ImportField({
   className?: string;
 }) {
   return (
-    <label className={cn('admin-label admin-label--stacked', className)} htmlFor={id}>
+    <label className={cn('text-sm font-medium text-zinc-700 dark:text-zinc-300 flex flex-col gap-1 text-sm font-medium', className)} htmlFor={id}>
       {label}
       {children}
     </label>
@@ -350,16 +350,16 @@ export function CampaignImportPanel() {
   }, [defaultCustomerId, draftCustomerId]);
 
   return (
-    <div className="admin-import-panel">
-      <section className="admin-import-section">
-        <header className="admin-import-section__head">
-          <h2 className="admin-ops-block__title">Import validate</h2>
-          <p className="admin-muted text-sm">
+    <div className="flex flex-col gap-4">
+      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+        <header className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Import validate</h2>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
             Validate external tracker payloads before migration import.
           </p>
         </header>
 
-        <div className="admin-import-section__body">
+        <div className="mt-2 flex flex-col gap-3">
           <ImportField id="import-customer-id" label="Customer ID">
             <Input
               id="import-customer-id"
@@ -368,13 +368,13 @@ export function CampaignImportPanel() {
             />
           </ImportField>
 
-          <div className="admin-import-panel__grid-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <ImportField id="import-source-kind" label="Source kind">
               <Select
                 value={draftSourceKind}
                 onValueChange={(value) => setDraftSourceKind(value as SourceKind)}
               >
-                <SelectTrigger id="import-source-kind" className="admin-select-trigger w-full">
+                <SelectTrigger id="import-source-kind" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -399,14 +399,14 @@ export function CampaignImportPanel() {
           <ImportField id="import-payload" label="Payload JSON">
             <textarea
               id="import-payload"
-              className="admin-textarea min-h-40 font-mono text-sm"
+              className="min-h-[5rem] w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 min-h-40 font-mono text-sm"
               value={draftPayload}
               onChange={(event) => setDraftPayload(event.target.value)}
             />
           </ImportField>
 
-          <div className="admin-import-panel__actions">
-            <div className="admin-toolbar-group" aria-label="Validate actions">
+          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-1" aria-label="Validate actions">
               <Button disabled={validating} onClick={onValidateSync} type="button">
                 {validating ? 'Validating...' : 'Validate now'}
               </Button>
@@ -417,7 +417,7 @@ export function CampaignImportPanel() {
                 {enqueueing ? 'Enqueueing...' : 'Enqueue validate job'}
               </Button>
             </div>
-            <div className="admin-toolbar-group" aria-label="Import actions">
+            <div className="flex flex-wrap items-center gap-1" aria-label="Import actions">
               <Button disabled={migrating} onClick={onImportMigration} type="button">
                 {migrating ? 'Importing...' : 'Migrate import'}
               </Button>
@@ -427,7 +427,7 @@ export function CampaignImportPanel() {
             </div>
           </div>
 
-          <div className="admin-import-panel__job-row">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <ImportField id="import-job-id" label="Validate job ID">
               <Input
                 id="import-job-id"
@@ -446,13 +446,13 @@ export function CampaignImportPanel() {
           </div>
 
           {jobResource.data?.status ? (
-            <p className="admin-import-section__note text-sm">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-sm">
               Job status: <strong>{jobResource.data.status}</strong>
             </p>
           ) : null}
 
           {importedCampaignIds.length > 0 ? (
-            <p className="admin-import-section__note text-sm" role="status">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-sm" role="status">
               Imported campaign ID(s):{' '}
               <strong className="font-mono">{importedCampaignIds.join(', ')}</strong>
             </p>
@@ -468,21 +468,21 @@ export function CampaignImportPanel() {
         </div>
       </section>
 
-      <section className="admin-import-section">
-        <header className="admin-import-section__head">
-          <h2 className="admin-ops-block__title">Migrate pull</h2>
-          <p className="admin-muted text-sm">
+      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+        <header className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Migrate pull</h2>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
             Pull campaigns from Keitaro or Binom admin APIs.
           </p>
         </header>
 
-        <div className="admin-import-section__body">
+        <div className="mt-2 flex flex-col gap-3">
           <ImportField id="pull-source-kind" label="Pull source">
             <Select
               value={draftPullSourceKind}
               onValueChange={(value) => setDraftPullSourceKind(value as PullSourceKind)}
             >
-              <SelectTrigger id="pull-source-kind" className="admin-select-trigger w-full">
+              <SelectTrigger id="pull-source-kind" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -513,7 +513,7 @@ export function CampaignImportPanel() {
             />
           </ImportField>
 
-          <div className="admin-toolbar-group">
+          <div className="flex flex-wrap items-center gap-1">
             <Button disabled={pullPreviewing} onClick={onPullPreview} type="button" variant="outline">
               {pullPreviewing ? 'Previewing...' : 'Pull preview'}
             </Button>

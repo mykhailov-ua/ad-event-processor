@@ -9,17 +9,10 @@ import { PageSkeleton } from '@/shell/page_skeleton';
 import { StubBanner } from '@/shell/stub_banner';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { ReportMapTable } from '@/shell/report_map_table';
 import type { DataFreshness, ReportMapRow } from '@/api/types';
 import { RtbNav } from '@/domains/rtb/rtb_nav';
-import { deriveColumns, formatMapCell, reportMapRowKey } from '@/lib/report_table';
+import { deriveColumns } from '@/lib/report_table';
 
 export type RtbOverviewProps = {
   overviewRows: ReportMapRow[];
@@ -124,45 +117,11 @@ const RtbReportTables = memo(function RtbReportTables({
   return (
     <div className="grid gap-4">
       {overviewRows.length > 0 ? (
-        <ReportTable caption="Auction overview" columns={overviewColumns} rows={overviewRows} />
+        <ReportMapTable caption="Auction overview" columns={overviewColumns} rows={overviewRows} />
       ) : null}
       {noBidRows.length > 0 ? (
-        <ReportTable caption="No-bid reasons" columns={noBidColumns} rows={noBidRows} />
+        <ReportMapTable caption="No-bid reasons" columns={noBidColumns} rows={noBidRows} />
       ) : null}
     </div>
   );
 });
-
-function ReportTable({
-  caption,
-  columns,
-  rows,
-}: {
-  caption: string;
-  columns: string[];
-  rows: ReportMapRow[];
-}) {
-  return (
-    <div className="ui-table-frame">
-      <p className="border-b px-4 py-2 text-sm font-medium">{caption}</p>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column}>{column}</TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((row, index) => (
-            <TableRow key={reportMapRowKey(row, columns, index, caption)}>
-              {columns.map((column) => (
-                <TableCell key={column}>{formatMapCell(row[column])}</TableCell>
-              ))}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}

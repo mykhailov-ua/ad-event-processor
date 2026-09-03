@@ -29,7 +29,7 @@ require "index.html"
 require "login.html"
 require "src/main.js"
 require "src/login.js"
-require "src/styles/globals.css"
+require "src/styles/app.css"
 require "src/static/track.js"
 
 if ! grep -q '/src/main.js' "$DIST/index.html"; then
@@ -40,12 +40,12 @@ if ! grep -q '/src/login.js' "$DIST/login.html"; then
   echo "Error: login.html must reference /src/login.js"
   missing=1
 fi
-if ! grep -q '/src/styles/globals.css' "$DIST/index.html"; then
-  echo "Error: index.html must reference /src/styles/globals.css (tailwind build output)"
+if ! grep -q '/src/styles/app.css' "$DIST/index.html"; then
+  echo "Error: index.html must reference /src/styles/app.css (tailwind build output)"
   missing=1
 fi
-if ! grep -q '/src/styles/globals.css' "$DIST/login.html"; then
-  echo "Error: login.html must reference /src/styles/globals.css"
+if ! grep -q '/src/styles/app.css' "$DIST/login.html"; then
+  echo "Error: login.html must reference /src/styles/app.css"
   missing=1
 fi
 if grep -q 'import "./.*\.css"' "$DIST/src/login.js" 2> /dev/null; then
@@ -68,4 +68,4 @@ if [ -f "$TRACK_SNIPPET" ]; then
   echo "track.js gzip: ${GZ_BYTES}B (limit ${MAX_GZ}B)"
 fi
 
-echo "Web dist hygiene: OK (embed entry + globals.css + track snippet)"
+echo "Web dist hygiene: OK (embed entry + app.css + track snippet)"

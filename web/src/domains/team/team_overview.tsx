@@ -5,7 +5,15 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import {
+  DirectoryTable,
+  DirectoryTableHead,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/shell/directory_table';
 import { RowActionsMenu } from '@/shell/row_actions_menu';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,14 +29,6 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import type { TeamBudgetApproval, TeamMember, TeamOverview } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 
@@ -281,27 +281,26 @@ export function TeamOverviewView({
             className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
             onSubmit={(event) => event.preventDefault()}
           >
-            <PaginationPrevNext
-              canGoPrev={membersOffset > 0}
+            <DirectoryPaginationFooter
               canGoNext={membersOffset + membersList.length < membersTotal}
+              canGoPrev={membersOffset > 0}
               disabled={membersFetching}
-              onPrev={() => onMembersPageChange(Math.max(0, membersOffset - membersLimit))}
               onNext={() => onMembersPageChange(membersOffset + membersLimit)}
+              onPrev={() => onMembersPageChange(Math.max(0, membersOffset - membersLimit))}
             />
           </form>
-          <div className="ui-table-frame">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Campaigns</TableHead>
-                  <TableHead>Spend cap</TableHead>
-                  <TableHead>Blocked</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
+          <DirectoryTable>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Email</DirectoryTableHead>
+                <DirectoryTableHead>Role</DirectoryTableHead>
+                <DirectoryTableHead>Campaigns</DirectoryTableHead>
+                <DirectoryTableHead>Spend cap</DirectoryTableHead>
+                <DirectoryTableHead>Blocked</DirectoryTableHead>
+                <DirectoryTableHead>Joined</DirectoryTableHead>
+                <DirectoryTableHead />
+              </TableRow>
+            </TableHeader>
               <TableBody>
                 {membersList.map((member) => {
                   const memberId = member.user_id ?? '';
@@ -359,8 +358,7 @@ export function TeamOverviewView({
                   );
                 })}
               </TableBody>
-            </Table>
-          </div>
+          </DirectoryTable>
         </>
       )}
 
@@ -383,27 +381,26 @@ export function TeamOverviewView({
             className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
             onSubmit={(event) => event.preventDefault()}
           >
-            <PaginationPrevNext
-              canGoPrev={approvalsOffset > 0}
+            <DirectoryPaginationFooter
               canGoNext={approvalsOffset + approvals.length < approvalsTotal}
+              canGoPrev={approvalsOffset > 0}
               disabled={approvalsFetching}
-              onPrev={() => onApprovalsPageChange(Math.max(0, approvalsOffset - approvalsLimit))}
               onNext={() => onApprovalsPageChange(approvalsOffset + approvalsLimit)}
+              onPrev={() => onApprovalsPageChange(Math.max(0, approvalsOffset - approvalsLimit))}
             />
           </form>
-          <div className="ui-table-frame">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Campaign</TableHead>
-                  <TableHead>Requested</TableHead>
-                  <TableHead>Previous</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
+          <DirectoryTable>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>User</DirectoryTableHead>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Requested</DirectoryTableHead>
+                <DirectoryTableHead>Previous</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
+                <DirectoryTableHead />
+              </TableRow>
+            </TableHeader>
               <TableBody>
                 {approvals.map((row) => {
                   const rowId = row.id ?? '';
@@ -441,8 +438,7 @@ export function TeamOverviewView({
                   );
                 })}
               </TableBody>
-            </Table>
-          </div>
+          </DirectoryTable>
         </>
       )}
 

@@ -17,13 +17,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { Brand } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -162,13 +162,12 @@ export function BrandsDirectory({
           onAction={onCreateBrand ? () => setCreateOpen(true) : undefined}
         />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Freq limit</TableHead>
-                <TableHead>Updated</TableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Freq limit</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -186,8 +185,7 @@ export function BrandsDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
       </div>
 

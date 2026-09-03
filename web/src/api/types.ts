@@ -31,9 +31,16 @@ export type CustomerListQuery = NonNullable<
   operations['customersList']['parameters']['query']
 >;
 
-export type CampaignListQuery = NonNullable<
-  operations['campaignsList']['parameters']['query']
->;
+import type { CampaignListApiSortField } from '@/domains/campaigns/list/campaign_list_sort';
+
+export type CampaignListQuery = Omit<
+  NonNullable<operations['campaignsList']['parameters']['query']>,
+  'sort'
+> & {
+  sort?: CampaignListApiSortField;
+  from?: string;
+  to?: string;
+};
 
 export type CampaignListMetricsQuery = NonNullable<
   operations['campaignsListMetrics']['parameters']['query']

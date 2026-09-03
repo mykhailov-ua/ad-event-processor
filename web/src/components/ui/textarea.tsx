@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
+import { adminChrome } from '@/lib/admin_chrome';
 import { cn } from '@/lib/utils';
 
 export type TextareaProps = React.ComponentProps<'textarea'> & {
@@ -44,7 +45,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
 
     return (
       <div className="relative">
-        <div className="ui-shell">
+        <div className={cn(adminChrome.panel, 'overflow-hidden')}>
           <textarea
             ref={mergeRefs(ref, innerRef)}
             rows={rows}
@@ -55,7 +56,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               syncHeight();
             }}
             className={cn(
-              'ui-shell-panel flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 font-mono text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+              'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 font-mono text-sm transition-colors placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50',
               showCounter && maxLength != null && 'pb-7',
               className,
             )}
@@ -64,7 +65,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         </div>
         {showCounter && maxLength != null ? (
           <span
-            className="pointer-events-none absolute bottom-2 right-3 text-xs tabular-nums text-muted-foreground"
+            className="pointer-events-none absolute bottom-2 right-3 text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
             aria-hidden="true"
           >
             {length}/{maxLength.toLocaleString()}

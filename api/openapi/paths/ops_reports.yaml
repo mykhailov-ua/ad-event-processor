@@ -64,6 +64,29 @@ paths:
       - $ref: ../openapi.yaml#/components/parameters/CampaignIdPath
       - $ref: ../openapi.yaml#/components/parameters/ReportFromQuery
       - $ref: ../openapi.yaml#/components/parameters/ReportToQuery
+      - name: dimension
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [paths, offers, landers, rules, tokens, connection, device, country, default]
+      - name: q
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [name, clicks, leads, conversions, cost, revenue, profit, roi, cpc, epc, cr]
+      - name: order
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [asc, desc]
       responses:
         '200':
           content:
@@ -376,6 +399,11 @@ paths:
         schema:
           default: 1h
           type: string
+      - in: query
+        name: name
+        schema:
+          type: string
+          description: Prometheus metric name (see OpsDashboardMetricCatalog on control plane)
       responses:
         '200':
           content:

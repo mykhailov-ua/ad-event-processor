@@ -25,8 +25,8 @@ export function CampaignListResetWorkspaceDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-0">
-        <div className="admin-reset-dialog">
-          <DialogHeader className="admin-reset-dialog__header">
+        <div className="max-w-md">
+          <DialogHeader className="space-y-1">
             <DialogTitle>Reset campaign list view</DialogTitle>
             <DialogDescription>
               Restore saved layout preferences for this page. Filters, sort, and pagination are not
@@ -34,13 +34,13 @@ export function CampaignListResetWorkspaceDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <ul className="admin-reset-list">
+          <ul className="list-disc space-y-1 pl-5 text-sm">
             {CAMPAIGN_LIST_WORKSPACE_RESET_ITEMS.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
 
-          <DialogFooter className="admin-reset-dialog__footer">
+          <DialogFooter className="flex justify-end gap-2">
             <SecondaryActionButton disabled={busy} type="button" onClick={() => onOpenChange(false)}>
               Cancel
             </SecondaryActionButton>

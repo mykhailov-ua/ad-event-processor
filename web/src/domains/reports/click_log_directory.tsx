@@ -19,7 +19,7 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
 import { Badge } from '@/components/ui/badge';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
 import { Input } from '@/components/ui/input';
@@ -228,9 +228,11 @@ export function ClickLogDirectory({
       )}
 
       {!timelineMode ? (
-        <PaginationPrevNext
+        <DirectoryPaginationFooter
           canGoNext={canGoNext}
           canGoPrev={canGoPrev}
+          layout="split"
+          variant="outline"
           onNext={onNextPage}
           onPrev={onPrevPage}
         />

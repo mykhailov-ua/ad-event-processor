@@ -19,6 +19,9 @@ import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -364,14 +367,14 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
       {actionError ? panelError(actionError, 'Wizard action failed') : null}
 
       {commitResult?.campaign ? (
-        <section className="admin-panel admin-panel--raised grid gap-3">
-          <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Campaign created</h3>
-          <p className="text-sm text-[var(--admin-muted)]">
+        <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 grid gap-3">
+          <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Campaign created</h3>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {commitResult.campaign.name}{' '}
             <span className="font-mono text-xs">({commitResult.campaign.id})</span>
           </p>
           {commitResult.published ? (
-            <p className="text-sm text-[var(--admin-muted)]">Published after commit.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Published after commit.</p>
           ) : null}
           {commitResult.publish_check && !commitResult.publish_check.valid ? (
             <ErrorBlock
@@ -399,43 +402,49 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
       ) : null}
 
       {!activeSession ? (
-        <section className="admin-panel grid gap-4">
+        <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
           <div>
-            <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Setup</h3>
-            <p className="mt-1 text-sm text-[var(--admin-muted)]">
+            <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Setup</h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               Pick a customer and bundled onboarding template. The server stores a draft session for 24 hours.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="admin-label">
-              Customer
-              <select
-                className="admin-select"
+            <div className="grid gap-2">
+              <Label htmlFor="wizard-customer">Customer</Label>
+              <Select
                 disabled={creating || customerOptions.length === 0}
-                value={draftCustomerId}
-                onChange={(event) => setDraftCustomerId(event.target.value)}
+                value={draftCustomerId || undefined}
+                onValueChange={setDraftCustomerId}
               >
-                {customerOptions.length === 0 ? (
-                  <option value="">No customers</option>
-                ) : (
-                  customerOptions.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+                <SelectTrigger id="wizard-customer">
+                  <SelectValue placeholder="Select customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customerOptions.length === 0 ? (
+                    <SelectItem disabled value="__none__">
+                      No customers
+                    </SelectItem>
+                  ) : (
+                    customerOptions.map((customer) => (
+                      <SelectItem key={customer.id} value={customer.id}>
+                        {customer.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <label className="admin-label">
-              Template
+            <div className="grid gap-2">
+              <Label htmlFor="wizard-template">Template</Label>
               <Select
                 disabled={creating || templates.length === 0}
                 value={draftTemplateKey}
                 onValueChange={(value) => setDraftTemplateKey(value as TemplateKey)}
               >
-                <SelectTrigger className="admin-select h-[var(--admin-control-height)] w-full">
+                <SelectTrigger id="wizard-template">
                   <SelectValue placeholder="Select template" />
                 </SelectTrigger>
                 <SelectContent>
@@ -446,20 +455,20 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                   ))}
                 </SelectContent>
               </Select>
-            </label>
+            </div>
           </div>
 
           {selectedTemplate ? (
-            <div className="grid gap-2 rounded-[var(--admin-radius)] border border-[var(--admin-border)] bg-[var(--admin-surface-2)] p-3 text-sm">
-              <p className="font-medium text-[var(--admin-fg-emphasis)]">{selectedTemplate.title}</p>
-              <p className="text-[var(--admin-muted)]">{selectedTemplate.description}</p>
-              <p className="text-[var(--admin-muted)]">
-                Traffic family: <span className="text-[var(--admin-fg)]">{selectedTemplate.traffic_family}</span>
+            <div className="grid gap-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-3 text-sm">
+              <p className="font-medium font-semibold text-zinc-900 dark:text-zinc-50">{selectedTemplate.title}</p>
+              <p className="text-zinc-500 dark:text-zinc-400">{selectedTemplate.description}</p>
+              <p className="text-zinc-500 dark:text-zinc-400">
+                Traffic family: <span className="text-zinc-900 dark:text-zinc-100">{selectedTemplate.traffic_family}</span>
               </p>
               {selectedTemplate.integration_schema_refs?.length ? (
-                <p className="text-[var(--admin-muted)]">
+                <p className="text-zinc-500 dark:text-zinc-400">
                   Integration schemas:{' '}
-                  <span className="font-mono text-xs text-[var(--admin-fg)]">
+                  <span className="font-mono text-xs text-zinc-900 dark:text-zinc-100">
                     {selectedTemplate.integration_schema_refs.join(', ')}
                   </span>
                 </p>
@@ -480,13 +489,13 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
         </section>
       ) : (
         <>
-          <section className="admin-panel grid gap-4">
+          <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Session</h3>
-                <p className="mt-1 font-mono text-xs text-[var(--admin-muted)]">{activeSession.session_id}</p>
+                <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Session</h3>
+                <p className="mt-1 font-mono text-xs text-zinc-500 dark:text-zinc-400">{activeSession.session_id}</p>
               </div>
-              <div className="text-right text-xs text-[var(--admin-muted)]">
+              <div className="text-right text-xs text-zinc-500 dark:text-zinc-400">
                 <p>Expires {formatTimestamp(activeSession.expires_at)}</p>
                 <p>Updated {formatTimestamp(activeSession.updated_at)}</p>
               </div>
@@ -500,10 +509,10 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                   <li
                     key={step.id}
                     className={cn(
-                      'rounded-[var(--admin-radius-sm)] border px-2.5 py-1 text-xs font-medium',
-                      done && 'border-[var(--admin-brand)]/40 bg-[var(--admin-brand-soft)] text-[var(--admin-brand)]',
-                      active && !done && 'border-[var(--admin-border-strong)] bg-[var(--admin-surface-3)]',
-                      !done && !active && 'border-[var(--admin-border)] text-[var(--admin-muted)]',
+                      'rounded-sm border px-2.5 py-1 text-xs font-medium',
+                      done && 'border-blue-600/40 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+                      active && !done && 'border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800',
+                      !done && !active && 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400',
                     )}
                   >
                     {step.label}
@@ -514,23 +523,21 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
           </section>
 
           {currentStep === 'traffic_source' ? (
-            <section className="admin-panel grid gap-4">
-              <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Traffic source</h3>
+            <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
+              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Traffic source</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="admin-label sm:col-span-2">
-                  Campaign name
-                  <input
-                    className="admin-input"
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2 grid gap-2">
+                  <Label>Campaign name</Label>
+                  <Input
                     value={trafficDraft.name}
                     onChange={(event) =>
                       setTrafficDraft((current) => ({ ...current, name: event.target.value }))
                     }
                   />
-                </label>
-                <label className="admin-label">
-                  Traffic template ID
-                  <input
-                    className="admin-input font-mono text-xs"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Traffic template ID</Label>
+                  <Input
                     value={trafficDraft.traffic_template_id}
                     onChange={(event) =>
                       setTrafficDraft((current) => ({
@@ -539,12 +546,11 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                       }))
                     }
                   />
-                </label>
+                </div>
               </div>
-              <label className="admin-label">
-                Click query params (JSON)
-                <textarea
-                  className="admin-input min-h-28 font-mono text-xs"
+              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Click query params (JSON)</Label>
+                  <Textarea className="min-h-28 font-mono text-xs"
                   value={trafficDraft.click_query_params}
                   onChange={(event) =>
                     setTrafficDraft((current) => ({
@@ -553,7 +559,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                     }))
                   }
                 />
-              </label>
+              </div>
               <div className="flex justify-end">
                 <Button disabled={savingStep} loading={savingStep} type="button" onClick={onSaveStep}>
                   Save step
@@ -563,13 +569,12 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
           ) : null}
 
           {currentStep === 'integration_template' ? (
-            <section className="admin-panel grid gap-4">
-              <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Integration template</h3>
+            <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
+              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Integration template</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="admin-label">
-                  Integration schema
-                  <input
-                    className="admin-input font-mono text-xs"
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Integration schema</Label>
+                  <Input
                     list="wizard-integration-schemas"
                     value={integrationDraft.integration_schema}
                     onChange={(event) =>
@@ -579,11 +584,10 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                       }))
                     }
                   />
-                </label>
-                <label className="admin-label">
-                  Affiliate network (optional)
-                  <input
-                    className="admin-input font-mono text-xs"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Affiliate network (optional)</Label>
+                  <Input
                     value={integrationDraft.affiliate_network}
                     onChange={(event) =>
                       setIntegrationDraft((current) => ({
@@ -592,11 +596,10 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                       }))
                     }
                   />
-                </label>
-                <label className="admin-label sm:col-span-2">
-                  Tracking domain (optional)
-                  <input
-                    className="admin-input"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2 grid gap-2">
+                  <Label>Tracking domain (optional)</Label>
+                  <Input
                     placeholder="track.example.com"
                     value={integrationDraft.tracking_domain}
                     onChange={(event) =>
@@ -606,7 +609,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                       }))
                     }
                   />
-                </label>
+                </div>
               </div>
               <datalist id="wizard-integration-schemas">
                 {selectedTemplate?.integration_schema_refs?.map((ref) => (
@@ -622,59 +625,54 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
           ) : null}
 
           {currentStep === 'flow_skeleton' ? (
-            <section className="admin-panel grid gap-4">
-              <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Flow skeleton</h3>
-              <label className="admin-label">
-                Flow name
-                <input
-                  className="admin-input"
+            <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
+              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Flow skeleton</h3>
+              <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Flow name</Label>
+                  <Input
                   value={flowDraft.flow_name}
                   onChange={(event) =>
                     setFlowDraft((current) => ({ ...current, flow_name: event.target.value }))
                   }
                 />
-              </label>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="admin-label">
-                  Lander name
-                  <input
-                    className="admin-input"
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Lander name</Label>
+                  <Input
                     value={flowDraft.lander_name}
                     onChange={(event) =>
                       setFlowDraft((current) => ({ ...current, lander_name: event.target.value }))
                     }
                   />
-                </label>
-                <label className="admin-label">
-                  Lander URL
-                  <input
-                    className="admin-input font-mono text-xs"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Lander URL</Label>
+                  <Input
                     value={flowDraft.lander_url}
                     onChange={(event) =>
                       setFlowDraft((current) => ({ ...current, lander_url: event.target.value }))
                     }
                   />
-                </label>
-                <label className="admin-label">
-                  Offer name
-                  <input
-                    className="admin-input"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Offer name</Label>
+                  <Input
                     value={flowDraft.offer_name}
                     onChange={(event) =>
                       setFlowDraft((current) => ({ ...current, offer_name: event.target.value }))
                     }
                   />
-                </label>
-                <label className="admin-label">
-                  Offer URL
-                  <input
-                    className="admin-input font-mono text-xs"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Offer URL</Label>
+                  <Input
                     value={flowDraft.offer_url}
                     onChange={(event) =>
                       setFlowDraft((current) => ({ ...current, offer_url: event.target.value }))
                     }
                   />
-                </label>
+                </div>
               </div>
               <div className="flex justify-end">
                 <Button disabled={savingStep} loading={savingStep} type="button" onClick={onSaveStep}>
@@ -685,34 +683,31 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
           ) : null}
 
           {currentStep === 'budget' ? (
-            <section className="admin-panel grid gap-4">
-              <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Budget</h3>
+            <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
+              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Budget</h3>
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="admin-label">
-                  Budget limit ($)
-                  <input
-                    className="admin-input tabular-nums"
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Budget limit ($)</Label>
+                  <Input
                     inputMode="decimal"
                     value={budgetDraft.budget_usd}
                     onChange={(event) =>
                       setBudgetDraft((current) => ({ ...current, budget_usd: event.target.value }))
                     }
                   />
-                </label>
-                <label className="admin-label">
-                  Timezone
-                  <input
-                    className="admin-input"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 grid gap-2">
+                  <Label>Timezone</Label>
+                  <Input
                     value={budgetDraft.timezone}
                     onChange={(event) =>
                       setBudgetDraft((current) => ({ ...current, timezone: event.target.value }))
                     }
                   />
-                </label>
-                <label className="admin-label sm:col-span-2">
-                  Target countries (comma-separated)
-                  <input
-                    className="admin-input"
+                </div>
+                <div className="text-sm font-medium text-zinc-700 dark:text-zinc-300 sm:col-span-2 grid gap-2">
+                  <Label>Target countries (comma-separated)</Label>
+                  <Input
                     placeholder="US, CA, GB"
                     value={budgetDraft.target_countries}
                     onChange={(event) =>
@@ -722,7 +717,7 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
                       }))
                     }
                   />
-                </label>
+                </div>
               </div>
               <div className="flex justify-end">
                 <Button disabled={savingStep} loading={savingStep} type="button" onClick={onSaveStep}>
@@ -733,63 +728,66 @@ export function CampaignWizardPanel({ customerOptions, onCampaignCreated }: Camp
           ) : null}
 
           {currentStep === 'review' ? (
-            <section className="admin-panel grid gap-4">
-              <h3 className="text-sm font-semibold text-[var(--admin-fg-emphasis)]">Review</h3>
+            <section className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950 grid gap-4">
+              <h3 className="text-sm font-semibold font-semibold text-zinc-900 dark:text-zinc-50">Review</h3>
               {activeSession.review?.preview ? (
                 <dl className="grid gap-2 text-sm sm:grid-cols-2">
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Campaign name</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Campaign name</dt>
                     <dd>{activeSession.review.preview.campaign_name ?? '-'}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Traffic template</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Traffic template</dt>
                     <dd className="font-mono text-xs">
                       {activeSession.review.preview.traffic_template_id ?? '-'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Integration schema</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Integration schema</dt>
                     <dd className="font-mono text-xs">
                       {activeSession.review.preview.integration_schema ?? '-'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Flow</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Flow</dt>
                     <dd>{activeSession.review.preview.flow_name ?? '-'}</dd>
                   </div>
                   <div>
-                    <dt className="text-[var(--admin-muted)]">Budget</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Budget</dt>
                     <dd className="tabular-nums">
                       ${microQueryParamToUsdInput(String(activeSession.review.preview.budget_limit_micro ?? ''))}
                     </dd>
                   </div>
                   <div className="sm:col-span-2">
-                    <dt className="text-[var(--admin-muted)]">Target URL</dt>
+                    <dt className="text-zinc-500 dark:text-zinc-400">Target URL</dt>
                     <dd className="break-all font-mono text-xs">
                       {activeSession.review.preview.target_url ?? '-'}
                     </dd>
                   </div>
                 </dl>
               ) : (
-                <p className="text-sm text-[var(--admin-muted)]">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
                   Complete all steps to generate the commit preview.
                 </p>
               )}
               {activeSession.review?.warning_slugs?.length ? (
-                <div className="rounded-[var(--admin-radius-sm)] border border-[var(--admin-border)] bg-[var(--admin-surface-2)] p-3 text-sm text-[var(--admin-muted)]">
+                <div className="rounded-sm border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 p-3 text-sm text-zinc-500 dark:text-zinc-400">
                   Warnings: {activeSession.review.warning_slugs.join(', ')}
                 </div>
               ) : null}
 
-              <label className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm">
                 <Checkbox
                   checked={publishOnCommit}
+                  id="wizard-publish-on-commit"
                   onCheckedChange={(checked) => setPublishOnCommit(checked === true)}
                 />
-                Publish campaign after commit
-              </label>
+                <Label className="font-normal" htmlFor="wizard-publish-on-commit">
+                  Publish campaign after commit
+                </Label>
+              </div>
 
-              <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--admin-border)] pt-4">
+              <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-200 dark:border-zinc-800 pt-4">
                 <Button
                   disabled={committing || !activeSession.ready_to_commit}
                   loading={committing}

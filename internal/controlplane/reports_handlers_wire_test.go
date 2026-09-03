@@ -53,7 +53,7 @@ func TestRouteRegistration(t *testing.T) {
 	}
 }
 
-func TestDashboards_Campaign(t *testing.T) {
+func TestDashboards_Campaign_requiresConfiguredReader(t *testing.T) {
 	t.Parallel()
 
 	h := &dashboardadmin.HTTPHandlers{}
@@ -65,16 +65,7 @@ func TestDashboards_Campaign(t *testing.T) {
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
-	require.Equal(t, http.StatusOK, w.Code)
-
-	var resp dashboardadmin.CampaignDashboardDTO
-	err := json.Unmarshal(w.Body.Bytes(), &resp)
-	require.NoError(t, err)
-
-	assert.Equal(t, campaignID.String(), resp.CampaignID)
-	assert.Equal(t, int64(150000000), resp.KPIs.SpendMicro)
-	assert.Equal(t, int64(180000000), resp.KPIs.RevenueMicro)
-	assert.True(t, resp.Freshness.Stale)
+	assert.Equal(t, http.StatusNotImplemented, w.Code)
 }
 
 func TestViews_CRUD(t *testing.T) {

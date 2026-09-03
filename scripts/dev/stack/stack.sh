@@ -27,6 +27,10 @@ aed_ingress_enabled() {
 }
 
 aed_cpu_isolation_enabled() {
+  if [[ -n "${CPU_ISOLATION_ENABLED:-}" ]]; then
+    [[ "$CPU_ISOLATION_ENABLED" == "1" ]]
+    return
+  fi
   [[ "$(aed_read_env CPU_ISOLATION_ENABLED)" == "1" ]]
 }
 
@@ -192,12 +196,12 @@ case "$CMD" in
   ingest-only | up-ingest-only)
     # Canonical laptop path: no CH, cold-path workers off, control-dev overlay for payment stubs.
     aed_stop_vps_extras
-    CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
+    CPU_ISOLATION_ENABLED=0 CH_ENABLED=0 CONTROL_ENABLE_PAYMENT=0 CONTROL_ENABLE_BILLING=0 CONTROL_ENABLE_NOTIFIER=0 \
       CONTROL_ENABLE_MARGIN_GUARD=0 CONTROL_ENABLE_COST_SYNC=0 \
       AD_EVENT_PROCESSOR_COMPOSE_EXTRA_FILES="$INGEST_DEV_COMPOSE" \
       aed_compose --profile ingest_only up -d "${INGEST_ONLY[@]}"
     aed_stop_vps_extras
-    aed_stack_hardening
+    CPU_ISOLATION_ENABLED=0 aed_stack_hardening
     ;;
   minimal | up-minimal)
     echo "stack.sh: minimal profile runs tracker+control+PG+single Redis+CH; antifraud ML disabled." >&2

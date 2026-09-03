@@ -101,7 +101,7 @@ for dir in web/src/domains web/src/shell web/src/pages; do
   fi
 done
 
-# Raw HTML tables in domain UI are banned; use shadcn Table.
+# Raw HTML tables in domain UI are banned; use @/components/ui/table or DirectoryTable.
 for dir in web/src/domains web/src/shell web/src/pages; do
   [ -d "$dir" ] || continue
   if rg -n '<(table|thead|tbody)\b' "$dir" --glob '*.tsx' 2> /dev/null; then
@@ -110,7 +110,7 @@ for dir in web/src/domains web/src/shell web/src/pages; do
   fi
 done
 
-# Raw admin-btn on interactive elements bypasses shadcn Button contract (ui.mdc).
+# Raw admin-btn on interactive elements bypasses Button contract (ui.mdc).
 for dir in "${BUTTON_SRC[@]}"; do
   [ -d "$dir" ] || continue
   if rg -n '<button[^>]*className="[^"]*admin-btn' "$dir" --glob '*.tsx' 2> /dev/null; then
@@ -131,6 +131,31 @@ for dir in "${BUTTON_SRC[@]}"; do
   fi
   if rg -n 'className=\{[^}]*admin-btn' "$dir" --glob '*.tsx' 2> /dev/null; then
     echo "Error: UI slop - admin-btn in className expression under ${dir}; use @/components/ui/button"
+    failed=1
+  fi
+done
+
+if rg -n '@radix-ui|class-variance-authority|ui\.shadcn\.com' web/src web/package.json 2> /dev/null; then
+  echo "Error: UI slop - shadcn/Radix dependencies are banned; use web/src/components/ui first-party primitives"
+  failed=1
+fi
+
+if [ -f web/components.json ]; then
+  echo "Error: UI slop - web/components.json (shadcn CLI) must not exist"
+  failed=1
+fi
+
+# Legacy ui-table-frame wrapper is retired; use DirectoryTable.
+if rg -n 'ui-table-frame' web/src --glob '*.tsx' 2> /dev/null; then
+  echo "Error: UI slop - ui-table-frame is retired; use DirectoryTable from web/src/shell/directory_table.tsx"
+  failed=1
+fi
+
+# Hand-rolled text inputs bypass Input height contract (web/src/lib/control_size.ts).
+for dir in web/src/domains web/src/shell web/src/pages; do
+  [ -d "$dir" ] || continue
+  if rg -n '<input[^>]*className="[^"]*h-8 w-full rounded-md border' "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - hand-rolled text <input> under ${dir}; use @/components/ui/input + Label"
     failed=1
   fi
 done

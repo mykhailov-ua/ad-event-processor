@@ -19,13 +19,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { SmartAlertRule } from '@/api/types';
 import {
   type SmartAlertRuleEditDraft,
@@ -222,18 +222,17 @@ export function SmartAlertsRulesDirectory({
       {items.length === 0 ? (
         <EmptyState title="No alert rules" description="No smart alert rules for this customer." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Metric</TableHead>
-                <TableHead>Operator</TableHead>
-                <TableHead>Threshold</TableHead>
-                <TableHead>Window</TableHead>
-                <TableHead>Webhook</TableHead>
-                <TableHead>Enabled</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Metric</DirectoryTableHead>
+                <DirectoryTableHead>Operator</DirectoryTableHead>
+                <DirectoryTableHead>Threshold</DirectoryTableHead>
+                <DirectoryTableHead>Window</DirectoryTableHead>
+                <DirectoryTableHead>Webhook</DirectoryTableHead>
+                <DirectoryTableHead>Enabled</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -339,8 +338,7 @@ export function SmartAlertsRulesDirectory({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

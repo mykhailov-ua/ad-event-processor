@@ -8,18 +8,18 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import {
+  DirectoryTable,
+  DirectoryTableHead,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/shell/directory_table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import type { AuditLog } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 
@@ -91,12 +91,12 @@ export function AuditDirectory({
         >
           Export CSV
         </SecondaryActionButton>
-        <PaginationPrevNext
-          canGoPrev={canGoPrev}
+        <DirectoryPaginationFooter
           canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
           disabled={fetching}
-          onPrev={() => onPageChange(Math.max(0, offset - limit))}
           onNext={() => onPageChange(offset + limit)}
+          onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
         </DirectoryFilterForm>
         <DirectoryListMeta>
@@ -119,34 +119,32 @@ export function AuditDirectory({
           description="Admin actions will appear here when recorded."
         />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Admin</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Target</TableHead>
-                <TableHead>Target ID</TableHead>
-                <TableHead>Masked</TableHead>
+        <DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Time</DirectoryTableHead>
+              <DirectoryTableHead>Admin</DirectoryTableHead>
+              <DirectoryTableHead>Action</DirectoryTableHead>
+              <DirectoryTableHead>Target</DirectoryTableHead>
+              <DirectoryTableHead>Target ID</DirectoryTableHead>
+              <DirectoryTableHead>Masked</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((row) => (
+              <TableRow key={row.id ?? `${row.created_at}-${row.action}`}>
+                <TableCell>{displayTimestamp(row.created_at, row.created_at_display)}</TableCell>
+                <TableCell>{row.admin_id ?? ''}</TableCell>
+                <TableCell>{row.action ?? ''}</TableCell>
+                <TableCell>{row.target_type ?? ''}</TableCell>
+                <TableCell className="font-mono text-xs">{row.target_id ?? ''}</TableCell>
+                <TableCell>
+                  {row.is_masked ? <Badge variant="secondary">masked</Badge> : ''}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((row) => (
-                <TableRow key={row.id ?? `${row.created_at}-${row.action}`}>
-                  <TableCell>{displayTimestamp(row.created_at, row.created_at_display)}</TableCell>
-                  <TableCell>{row.admin_id ?? ''}</TableCell>
-                  <TableCell>{row.action ?? ''}</TableCell>
-                  <TableCell>{row.target_type ?? ''}</TableCell>
-                  <TableCell className="font-mono text-xs">{row.target_id ?? ''}</TableCell>
-                  <TableCell>
-                    {row.is_masked ? <Badge variant="secondary">masked</Badge> : ''}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+            ))}
+          </TableBody>
+        </DirectoryTable>
       )}
 
       {error && hasSnapshot && (

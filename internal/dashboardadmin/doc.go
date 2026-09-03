@@ -25,5 +25,6 @@
 //	go test ./internal/dashboardadmin/ -short -run TestGetOperatorDashboard -count=1
 //	go test ./internal/dashboardadmin/ -short -run TestGetBuyerDashboard -count=1
 //	go test ./internal/dashboardadmin/ -short -run TestGetBuyerDrilldown -count=1
-//	go test ./internal/reports/ -short -run TestParseDashboardDrilldownDimension -count=1
+//	go test ./internal/dashboardadmin/ -short -run TestApplyCampaignReportBreakdownQuery -count=1
+//	go test ./internal/dashboardadmin/ -short -run TestParseCampaignReportDimension -count=1
 package dashboardadmin

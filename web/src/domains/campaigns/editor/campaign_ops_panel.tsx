@@ -26,13 +26,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import { displayTimestamp } from '@/lib/display';
 
 function panelError(error: Error, title: string) {
@@ -280,13 +280,12 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
       ) : null}
 
       {events && (events.items?.length ?? 0) > 0 ? (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Time</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Click ID</TableHead>
+                <DirectoryTableHead>Time</DirectoryTableHead>
+                <DirectoryTableHead>Type</DirectoryTableHead>
+                <DirectoryTableHead>Click ID</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -298,8 +297,7 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       ) : null}
 
       {mappings ? (
@@ -376,14 +374,13 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
       ) : null}
 
       {suggestions.length > 0 ? (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Placement</TableHead>
-                <TableHead>IVT rate</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Placement</DirectoryTableHead>
+                <DirectoryTableHead>IVT rate</DirectoryTableHead>
+                <DirectoryTableHead>Reason</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -406,8 +403,7 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       ) : null}
 
       <div className="grid max-w-md grid-cols-[1fr_auto] items-end gap-4">

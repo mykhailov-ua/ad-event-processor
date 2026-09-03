@@ -49,12 +49,12 @@ function PreferencesSection({
   children: ReactNode;
 }) {
   return (
-    <section className="admin-stack">
-      <div className="admin-stack admin-stack--compact">
-        <h3 className="admin-ops-block__title">{title}</h3>
-        {description ? <p className="admin-muted">{description}</p> : null}
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 flex flex-col gap-2">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        {description ? <p className="text-zinc-500 dark:text-zinc-400">{description}</p> : null}
       </div>
-      <div className="admin-stack admin-stack--compact">{children}</div>
+      <div className="flex flex-col gap-3 flex flex-col gap-2">{children}</div>
     </section>
   );
 }
@@ -105,13 +105,13 @@ export function DashboardPreferencesDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl p-0">
         <div
-          className="admin-preferences-dialog ui-scrollbar max-h-[min(80vh,44rem)] overflow-y-auto overscroll-y-contain"
+          className="ui-scrollbar max-h-[min(80vh,44rem)] overflow-y-auto overscroll-y-contain"
           onWheel={stopDialogWheelPropagation}
         >
-          <DialogHeader className="admin-preferences-dialog__header sticky top-0 z-10 shrink-0 border-b px-4 py-3 text-left">
-            <DialogTitle className="admin-ops-block__title">Preferences</DialogTitle>
+          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b px-4 py-3 text-left">
+            <DialogTitle className="text-sm font-semibold">Preferences</DialogTitle>
           </DialogHeader>
-          <div className="admin-preferences-dialog__body grid gap-4 px-4 py-4">
+          <div className="grid gap-4 px-4 py-4">
             <PreferencesSection
               description="KPI tiles and chart lines shown on the dashboard."
               title="Metrics"
@@ -161,15 +161,15 @@ export function DashboardPreferencesDialog({
               />
             </PreferencesSection>
           </div>
-          <DialogFooter className="admin-preferences-dialog__footer sticky bottom-0 z-10 shrink-0 flex-row items-center justify-between border-t px-4 py-3 sm:justify-between">
+          <DialogFooter className="sticky bottom-0 z-10 shrink-0 flex-row items-center justify-between border-t px-4 py-3 sm:justify-between">
             <button
-              className="admin-text-link"
+              className="text-blue-600 hover:underline dark:text-blue-400"
               type="button"
               onClick={() => setDraft(defaultBuyerDashboardPreferences())}
             >
               Restore to default
             </button>
-            <div className="admin-toolbar-group">
+            <div className="flex flex-wrap items-center gap-1">
               <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>

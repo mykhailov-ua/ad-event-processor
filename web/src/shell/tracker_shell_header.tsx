@@ -2,6 +2,7 @@ import { PanelLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/shell/theme_toggle';
 import { useTrackerHeaderSearch } from '@/lib/tracker_header_context';
 
@@ -18,7 +19,7 @@ export function TrackerShellSidebarToggle({
     <Button
       aria-expanded={!collapsed}
       aria-label={collapsed ? 'Show navigation menu' : 'Hide navigation menu'}
-      className="admin-icon-btn"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800"
       size="icon"
       type="button"
       variant="secondary"
@@ -38,10 +39,9 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
 
   if (pageSearch) {
     return (
-      <div className="admin-header-search">
-        <input
+      <div className="w-full max-w-md">
+        <Input
           aria-label="Search"
-          className="admin-input admin-header-search-input"
           disabled={pageSearch.disabled}
           placeholder={pageSearch.placeholder ?? 'Search'}
           value={pageSearch.value}
@@ -59,14 +59,14 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
   }
 
   return (
-    <div className="admin-header-search">
+    <div className="w-full max-w-md">
       <button
-        className="admin-header-search-trigger"
+        className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-500 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:hover:bg-zinc-900"
         type="button"
         onClick={onOpenCommandPalette}
       >
-        <span className="admin-header-search-placeholder">Search routes, campaigns, reports...</span>
-        <kbd className="admin-header-search-kbd">Ctrl+K</kbd>
+        <span className="truncate text-left">Search routes, campaigns, reports...</span>
+        <kbd className="hidden rounded border border-zinc-200 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 sm:inline dark:border-zinc-700">Ctrl+K</kbd>
       </button>
     </div>
   );
@@ -74,7 +74,7 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
 
 export function TrackerShellHeaderActions() {
   return (
-    <div className="admin-header-actions">
+    <div className="flex flex-wrap items-center gap-2">
       <ThemeToggle />
       <Button asChild type="button" variant="secondary">
         <Link to="/settings">Account</Link>

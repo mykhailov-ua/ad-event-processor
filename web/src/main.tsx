@@ -7,7 +7,7 @@ import { MetaProvider } from '@/providers/meta_provider';
 import { SessionProvider } from '@/providers/session_provider';
 import { ThemeProvider } from '@/providers/theme_provider';
 import { initAdminDevModeFromUrl } from '@/lib/admin_dev_mode';
-import '@/styles/globals.css';
+import '@/styles/app.css';
 
 initAdminDevModeFromUrl();
 

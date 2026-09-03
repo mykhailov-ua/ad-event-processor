@@ -17,13 +17,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { DomainHealth, DomainSSLSetupResult } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
@@ -188,16 +188,15 @@ export function DomainsDirectory({
       {items.length === 0 ? (
         <EmptyState title="No domains" description="Domain health list returned no entries." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Hostname</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Health</TableHead>
-                <TableHead>SSL</TableHead>
-                <TableHead>Last probe</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Hostname</DirectoryTableHead>
+                <DirectoryTableHead>Role</DirectoryTableHead>
+                <DirectoryTableHead>Health</DirectoryTableHead>
+                <DirectoryTableHead>SSL</DirectoryTableHead>
+                <DirectoryTableHead>Last probe</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,8 +231,7 @@ export function DomainsDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionMessage ? (

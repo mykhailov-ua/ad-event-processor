@@ -37,10 +37,24 @@ ignored_metric 99
 	assert.Contains(t, names, "ad_tracker_redis_shard_healthy")
 
 	var driftMax float64
+	var httpRequestsTotal float64
 	for _, s := range samples {
 		if s.Name == "ad_recon_drift_micro_max" {
 			driftMax = s.Value
 		}
+		if s.Name == "ad_http_requests_total" {
+			httpRequestsTotal = s.Value
+		}
 	}
 	assert.Equal(t, 25.0, driftMax)
+	assert.Equal(t, 123.0, httpRequestsTotal)
+
+	var httpSamples int
+	for _, s := range samples {
+		if s.Name == "ad_http_requests_total" {
+			httpSamples++
+			assert.Equal(t, "", s.LabelsHash)
+		}
+	}
+	assert.Equal(t, 1, httpSamples)
 }

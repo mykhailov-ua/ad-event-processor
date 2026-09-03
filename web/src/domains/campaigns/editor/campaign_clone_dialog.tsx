@@ -122,8 +122,8 @@ export function CampaignCloneDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="admin-stack">
-          <div className="admin-field">
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-1">
             <Label htmlFor="clone-name-suffix">Name suffix</Label>
             <Input
               id="clone-name-suffix"
@@ -132,7 +132,7 @@ export function CampaignCloneDialog({
             />
           </div>
 
-          <div className="admin-stack">
+          <div className="flex flex-col gap-3">
             {CLONE_OPTION_FIELDS.map(({ field, label }) => (
               <label key={field} className="flex items-center gap-2">
                 <Checkbox
@@ -147,7 +147,7 @@ export function CampaignCloneDialog({
           </div>
 
           {preview ? (
-            <p className="admin-muted text-sm">
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm">
               Preview name: <strong>{preview.name}</strong>
             </p>
           ) : null}

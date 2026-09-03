@@ -36,7 +36,7 @@ export function AdminSelect({
       <Select disabled={disabled} value={value} onValueChange={onValueChange}>
       <SelectTrigger
         aria-label={ariaLabel}
-        className={cn('admin-select-trigger w-auto max-w-[12rem]', className)}
+        className={cn('flex h-8 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950 w-auto max-w-[12rem]', className)}
         title={title}
       >
         <SelectValue />

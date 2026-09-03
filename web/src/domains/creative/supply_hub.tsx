@@ -9,13 +9,13 @@ import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type {
   AdsTxtEntry,
   Seller,
@@ -110,14 +110,13 @@ export function SupplyHub({
         {sellers.length === 0 ? (
           <EmptyState title="No sellers" description="Supply sellers table is empty." />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Seller ID</TableHead>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Name</TableHead>
+                  <DirectoryTableHead>Seller ID</DirectoryTableHead>
+                  <DirectoryTableHead>Domain</DirectoryTableHead>
+                  <DirectoryTableHead>Type</DirectoryTableHead>
+                  <DirectoryTableHead>Name</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -130,8 +129,7 @@ export function SupplyHub({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </section>
 
@@ -140,14 +138,13 @@ export function SupplyHub({
         {adsTxt.length === 0 ? (
           <EmptyState title="No ads.txt rows" description="Supply ads.txt table is empty." />
         ) : (
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Domain</TableHead>
-                  <TableHead>Account</TableHead>
-                  <TableHead>Relationship</TableHead>
-                  <TableHead>Order</TableHead>
+                  <DirectoryTableHead>Domain</DirectoryTableHead>
+                  <DirectoryTableHead>Account</DirectoryTableHead>
+                  <DirectoryTableHead>Relationship</DirectoryTableHead>
+                  <DirectoryTableHead>Order</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -160,8 +157,7 @@ export function SupplyHub({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         )}
       </section>
 

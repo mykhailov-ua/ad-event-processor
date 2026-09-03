@@ -2,13 +2,13 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { AffiliateStatusPreset } from '@/api/types';
 import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
 
@@ -48,12 +48,11 @@ export function IntegrationsAffiliatePresets({
           description="No affiliate status presets are configured."
         />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status mappings</TableHead>
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Status mappings</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -64,8 +63,7 @@ export function IntegrationsAffiliatePresets({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}

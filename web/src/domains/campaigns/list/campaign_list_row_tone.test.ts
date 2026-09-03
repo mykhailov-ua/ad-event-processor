@@ -28,7 +28,7 @@ test('inactive statuses do not tint table rows', () => {
   assert.equal(campaignListRowClass({ status: 'ARCHIVED', selected: false }), '');
 });
 
-test('active rows show red and yellow performance tones', () => {
+test('active rows no longer use row background tones', () => {
   assert.equal(
     resolvePerformanceRowTone({ operator_margin_micro: -100, margin_breach: true }),
     'negative',
@@ -39,7 +39,7 @@ test('active rows show red and yellow performance tones', () => {
       selected: false,
       margin: { operator_margin_micro: -100, margin_breach: true },
     }),
-    'admin-row-negative',
+    '',
   );
   assert.equal(
     campaignListRowClass({
@@ -47,41 +47,33 @@ test('active rows show red and yellow performance tones', () => {
       selected: false,
       margin: { operator_margin_micro: 100, margin_breach: true },
     }),
-    'admin-row-warning',
-  );
-});
-
-test('status row highlight pref no longer tints rows', () => {
-  assert.equal(campaignListRowClass({ status: 'ACTIVE', selected: false }), '');
-  assert.equal(
-    campaignListRowClass({
-      status: 'ACTIVE',
-      selected: false,
-      highlightActiveRows: true,
-    }),
     '',
   );
 });
 
-test('paused rows still show performance tones', () => {
+test('selected row uses highlight class', () => {
+  assert.equal(campaignListRowClass({ status: 'ACTIVE', selected: true }), 'bg-blue-50 dark:bg-blue-950/30');
+});
+
+test('paused rows no longer use row background tones', () => {
   assert.equal(
     campaignListRowClass({
       status: 'PAUSED',
       selected: false,
       margin: { operator_margin_micro: -500, margin_breach: true },
     }),
-    'admin-row-negative',
+    '',
   );
 });
 
 test('status dot is green only for active campaigns', () => {
-  assert.equal(campaignListStatusDotClass('ACTIVE'), 'admin-table-status-dot--active');
-  assert.equal(campaignListStatusDotClass('PAUSED'), 'admin-table-status-dot--muted');
-  assert.equal(campaignListStatusDotClass('ARCHIVED'), 'admin-table-status-dot--muted');
+  assert.equal(campaignListStatusDotClass('ACTIVE'), 'inline-block h-2 w-2 rounded-full bg-green-500');
+  assert.equal(campaignListStatusDotClass('PAUSED'), 'inline-block h-2 w-2 rounded-full bg-zinc-400');
+  assert.equal(campaignListStatusDotClass('ARCHIVED'), 'inline-block h-2 w-2 rounded-full bg-zinc-400');
 });
 
-test('status edge class maps lifecycle to left stripe', () => {
-  assert.equal(campaignListRowStatusEdgeClass('ACTIVE'), 'admin-row-status-edge--active');
-  assert.equal(campaignListRowStatusEdgeClass('PAUSED'), 'admin-row-status-edge--paused');
-  assert.equal(campaignListRowStatusEdgeClass('ARCHIVED'), 'admin-row-status-edge--archived');
+test('status edge class is unused (empty)', () => {
+  assert.equal(campaignListRowStatusEdgeClass('ACTIVE'), '');
+  assert.equal(campaignListRowStatusEdgeClass('PAUSED'), '');
+  assert.equal(campaignListRowStatusEdgeClass('ARCHIVED'), '');
 });

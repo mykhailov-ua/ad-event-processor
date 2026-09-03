@@ -4,13 +4,13 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { PublisherStatement } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
@@ -51,14 +51,13 @@ export function PublisherStatementsPanel({
       {statements.length === 0 ? (
         <EmptyState title="No statements" description="Publisher revenue statements are empty." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Amount (micro)</TableHead>
-                <TableHead>Created</TableHead>
+                <DirectoryTableHead>ID</DirectoryTableHead>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Amount (micro)</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -71,8 +70,7 @@ export function PublisherStatementsPanel({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? portalsPanelError(error, 'Refresh failed') : null}

@@ -7,13 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { Flow, FlowPath } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -131,13 +131,12 @@ export function FlowDetail({
       {paths.length > 0 ? (
         <section className="grid gap-2">
           <h2 className="text-base font-semibold">Paths</h2>
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Weight</TableHead>
-                  <TableHead>Landers</TableHead>
-                  <TableHead>Offers</TableHead>
+                  <DirectoryTableHead>Weight</DirectoryTableHead>
+                  <DirectoryTableHead>Landers</DirectoryTableHead>
+                  <DirectoryTableHead>Offers</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -149,8 +148,7 @@ export function FlowDetail({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         </section>
       ) : null}
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Role: Admin gate: UI surface ownership (Tailwind + shadcn/ui).
+# Role: Admin gate: UI surface ownership (Tailwind + first-party primitives).
 # Execution context: CI via admin/web.sh or pr_fast.
 # Invariants/contracts enforced: No BEM on pages; pages stay thin; no stylesheet imports on pages.
 # Verify: bash scripts/ci/admin/ui_surface.sh
@@ -25,7 +25,7 @@ for surface_dir in ui pages; do
   [ -d "$target" ] || continue
   echo "ui surface: web/src/$surface_dir must not use BEM __ modifiers in className"
   if bem_in_class "$target"; then
-    echo "Error: BEM-style __ class names are banned under web/src/$surface_dir (use Tailwind + shadcn/ui)"
+    echo "Error: BEM-style __ class names are banned under web/src/$surface_dir (use Tailwind + @/components/ui)"
     fail=1
   fi
 done

@@ -7,7 +7,7 @@ import {
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import { OpsTable, OpsBlock } from '@/domains/ops/ops_table';
+import { OpsBlock, OpsTable, OpsTableCell, OpsTableHead, OpsTableHeaderRow, OpsTableRow } from '@/domains/ops/ops_table';
 
 export type OpsIncidentsProps = {
   snapshot: IncidentSnapshot | undefined;
@@ -55,23 +55,23 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
         <OpsBlock title="Shard health">
           <OpsTable
             head={
-              <tr>
-                <th>Shard</th>
-                <th>Ping</th>
-                <th className="num">Latency (ms)</th>
-                <th className="num">Config lag</th>
-                <th>Synced</th>
-              </tr>
+              <OpsTableHeaderRow>
+                <OpsTableHead>Shard</OpsTableHead>
+                <OpsTableHead>Ping</OpsTableHead>
+                <OpsTableHead numeric>Latency (ms)</OpsTableHead>
+                <OpsTableHead numeric>Config lag</OpsTableHead>
+                <OpsTableHead>Synced</OpsTableHead>
+              </OpsTableHeaderRow>
             }
           >
             {shards.map((shard) => (
-              <tr key={shard.shard_id ?? shard.ping_error}>
-                <td className="num">{shard.shard_id ?? ''}</td>
-                <td>{shard.ping_ok ? 'ok' : (shard.ping_error ?? 'fail')}</td>
-                <td className="num">{shard.ping_latency_ms ?? ''}</td>
-                <td className="num">{shard.config_version_lag ?? ''}</td>
-                <td>{shard.config_version_synced ? 'yes' : 'no'}</td>
-              </tr>
+              <OpsTableRow key={shard.shard_id ?? shard.ping_error}>
+                <OpsTableCell numeric>{shard.shard_id ?? ''}</OpsTableCell>
+                <OpsTableCell>{shard.ping_ok ? 'ok' : (shard.ping_error ?? 'fail')}</OpsTableCell>
+                <OpsTableCell numeric>{shard.ping_latency_ms ?? ''}</OpsTableCell>
+                <OpsTableCell numeric>{shard.config_version_lag ?? ''}</OpsTableCell>
+                <OpsTableCell>{shard.config_version_synced ? 'yes' : 'no'}</OpsTableCell>
+              </OpsTableRow>
             ))}
           </OpsTable>
         </OpsBlock>
@@ -81,17 +81,19 @@ export function OpsIncidents({ snapshot, fetching, error, hasSnapshot }: OpsInci
         <OpsBlock title="Affected campaigns">
           <OpsTable
             head={
-              <tr>
-                <th>Campaign ID</th>
-                <th>Name</th>
-              </tr>
+              <OpsTableHeaderRow>
+                <OpsTableHead>Campaign ID</OpsTableHead>
+                <OpsTableHead>Name</OpsTableHead>
+              </OpsTableHeaderRow>
             }
           >
             {campaigns.map((row) => (
-              <tr key={row.campaign_id ?? row.name}>
-                <td className="admin-table-td--id">{row.campaign_id ?? ''}</td>
-                <td>{row.name ?? ''}</td>
-              </tr>
+              <OpsTableRow key={row.campaign_id ?? row.name}>
+                <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                  {row.campaign_id ?? ''}
+                </OpsTableCell>
+                <OpsTableCell>{row.name ?? ''}</OpsTableCell>
+              </OpsTableRow>
             ))}
           </OpsTable>
         </OpsBlock>

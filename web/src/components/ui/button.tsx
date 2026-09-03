@@ -1,79 +1,101 @@
 import * as React from 'react';
-import { Slot } from '@radix-ui/react-slot';
-import { cva, type VariantProps } from 'class-variance-authority';
 import { Loader2 } from 'lucide-react';
 
+import { buttonVariantClass, type ButtonVariant } from '@/lib/admin_chrome';
+import { Slot } from '@/lib/as_child';
 import { cn } from '@/lib/utils';
 
-const buttonVariants = cva(
-  'admin-btn inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 disabled:transform-none',
-  {
-    variants: {
-      variant: {
-        default: 'admin-btn--primary',
-        destructive: 'border-destructive/30 bg-destructive text-destructive-foreground hover:bg-destructive/90',
-        outline: 'border-border bg-background hover:bg-secondary hover:text-secondary-foreground',
-        secondary: 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80',
-        ghost: 'border-transparent bg-transparent hover:bg-secondary hover:text-secondary-foreground',
-        link: 'border-0 bg-transparent text-primary underline-offset-4 hover:underline',
-      },
-      size: {
-        default: '',
-        sm: '',
-        lg: 'px-5 text-sm',
-        icon: 'admin-btn--icon',
-      },
-      shape: {
-        default: '',
-        pill: 'rounded-full',
-        square: 'rounded-[var(--admin-radius-sm)]',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-      shape: 'default',
-    },
-  },
-);
-
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   asChild?: boolean;
   loading?: boolean;
-}
+  variant?: ButtonVariant;
+  size?: 'default' | 'sm' | 'lg' | 'icon';
+  shape?: 'default' | 'pill' | 'square';
+};
+
+const sizeClass: Record<NonNullable<ButtonProps['size']>, string> = {
+  default: '',
+  sm: 'h-7 px-2 text-xs',
+  lg: 'h-10 px-5 text-sm',
+  icon: 'h-8 w-8 p-0',
+};
+
+const shapeClass: Record<NonNullable<ButtonProps['shape']>, string> = {
+  default: '',
+  pill: 'rounded-full',
+  square: 'rounded-sm',
+};
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
     {
       className,
-      variant,
-      size,
-      shape,
+      variant = 'default',
+      size = 'default',
+      shape = 'default',
       asChild = false,
       loading = false,
       disabled,
       children,
+      type = 'button',
       ...props
     },
     ref,
   ) => {
-    const Comp = asChild ? Slot : 'button';
+    const classes = cn(
+      'inline-flex h-8 items-center justify-center gap-2 rounded-sm border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950',
+      buttonVariantClass[variant],
+      sizeClass[size],
+      shapeClass[shape],
+      className,
+    );
+
+    if (asChild) {
+      return (
+        <Slot
+          ref={ref}
+          aria-busy={loading || undefined}
+          aria-disabled={disabled || loading || undefined}
+          className={classes}
+          {...props}
+        >
+          {children}
+        </Slot>
+      );
+    }
+
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, shape, className }))}
+      <button
+        className={classes}
         ref={ref}
         disabled={disabled || loading}
         aria-busy={loading || undefined}
+        type={type}
         {...props}
       >
-        {loading ? <Loader2 className="h-4 w-4" aria-hidden="true" /> : null}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
         {children}
-      </Comp>
+      </button>
     );
   },
 );
 Button.displayName = 'Button';
 
-export { Button, buttonVariants };
+export function buttonVariants({
+  variant = 'default',
+  size = 'default',
+  shape = 'default',
+}: {
+  variant?: ButtonVariant;
+  size?: NonNullable<ButtonProps['size']>;
+  shape?: NonNullable<ButtonProps['shape']>;
+} = {}) {
+  return cn(
+    'inline-flex h-8 items-center justify-center gap-2 rounded-sm border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950',
+    buttonVariantClass[variant],
+    sizeClass[size],
+    shapeClass[shape],
+  );
+}
+
+export { Button };

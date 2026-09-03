@@ -5,7 +5,15 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import {
+  DirectoryTable,
+  DirectoryTableHead,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/shell/directory_table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -15,14 +23,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import type { MLManualLabel } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -206,38 +206,36 @@ export function FraudLabels({
             className="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4"
             onSubmit={(event) => event.preventDefault()}
           >
-            <PaginationPrevNext
-              canGoPrev={offset > 0}
+            <DirectoryPaginationFooter
               canGoNext={offset + items.length < total}
+              canGoPrev={offset > 0}
               disabled={fetching}
-              onPrev={() => onPageChange(Math.max(0, offset - limit))}
               onNext={() => onPageChange(offset + limit)}
+              onPrev={() => onPageChange(Math.max(0, offset - limit))}
             />
           </form>
-          <div className="ui-table-frame">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>IP hash</TableHead>
-                  <TableHead>Label</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Created</TableHead>
+          <DirectoryTable>
+            <TableHeader>
+              <TableRow>
+                <DirectoryTableHead>IP hash</DirectoryTableHead>
+                <DirectoryTableHead>Label</DirectoryTableHead>
+                <DirectoryTableHead>Reason</DirectoryTableHead>
+                <DirectoryTableHead>Source</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((row) => (
+                <TableRow key={`${row.ip_hash}-${row.created_at}`}>
+                  <TableCell className="font-mono text-xs">{row.ip_hash ?? ''}</TableCell>
+                  <TableCell className="tabular-nums">{row.label ?? ''}</TableCell>
+                  <TableCell>{row.reason ?? ''}</TableCell>
+                  <TableCell>{row.source ?? ''}</TableCell>
+                  <TableCell>{displayTimestamp(row.created_at, row.created_at_display)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((row) => (
-                  <TableRow key={`${row.ip_hash}-${row.created_at}`}>
-                    <TableCell className="font-mono text-xs">{row.ip_hash ?? ''}</TableCell>
-                    <TableCell className="tabular-nums">{row.label ?? ''}</TableCell>
-                    <TableCell>{row.reason ?? ''}</TableCell>
-                    <TableCell>{row.source ?? ''}</TableCell>
-                    <TableCell>{displayTimestamp(row.created_at, row.created_at_display)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </DirectoryTable>
         </>
       )}
 

@@ -1,10 +1,53 @@
 # web
 
-Operator admin SPA served by control plane (`:8188`, `/api/v1/*`). Layout and anti-slop policy: `.cursor/rules/ui.mdc`, `.cursor/rules/frontend-modular.mdc`. This file is the **visual and component reference** for `web/src/`.
+Operator admin SPA. Production: control plane embed (`:8188`). Local dev: Vite-style dev server on `:5173` (`bash scripts/dev/aed-admin up`).
 
-Cross-ref: `FRONTEND.md` (route status), `docs/DEVELOPMENT.md` (OpenAPI types, CI).
+Cross-ref: `FRONTEND.md` (route status), `docs/DEVELOPMENT.md` (OpenAPI types, CI, full compose profiles).
 
-Theme: **surface depth + Inter density** — hierarchy from OKLCH shade steps, hairline borders, compact radii (`--admin-radius-sm`).
+Theme: **flat white / zinc dark** — first-party primitives in `web/src/components/ui/`, hairline borders, compact radii (4px controls, 6px panels).
+
+**No shadcn.** Do not add `components.json`, `@radix-ui/*`, or `class-variance-authority`. Overlays use native `<dialog>` / portal + `web/src/lib/overlay_*`.
+
+---
+
+## Local dev
+
+First clone: `make gen`, copy `.env.example` → `.env`, `cd web && npm ci`.
+
+```bash
+bash scripts/dev/aed-admin up
+# or UI only: cd web && npm run dev
+```
+
+| | |
+| :--- | :--- |
+| **Admin UI** | [http://localhost:5173](http://localhost:5173) |
+| **API** | [http://localhost:8188](http://localhost:8188) |
+| **Login** | `admin@test.local` |
+| **Password** | `Password123!` |
+
+Credentials from `seed_admin.sh` (override in `.env`: `ADMIN_BOOTSTRAP_EMAIL`, `ADMIN_BOOTSTRAP_PASSWORD`).
+
+**Mock API (UI without control):** if `:8188` is down, boot probes `/api/v1/meta` and enables mock automatically. Force mock: [http://localhost:5173/?admin_dev=1](http://localhost:5173/?admin_dev=1). Live API: [http://localhost:5173/?admin_dev=0](http://localhost:5173/?admin_dev=0). Mock responses are real HTTP on `:5173` (`X-Admin-Dev-Mock: 1`); unimplemented mock routes return **501** (`X-API-Stub: true`), not fake 200 empty lists. Dev server proxies `/health`, `/healthz`, `/readyz`, `/metrics` to `:8188` (never SPA `index.html`). Banner: *Dev mode - mock API responses*.
+
+### Non-prod verification tiers (admin SPA)
+
+Do not treat these modes as production wiring proof (`anti-slop.mdc` tier honesty).
+
+| Tier | Trigger | What runs | Proves |
+| :--- | :--- | :--- | :--- |
+| **Live API** | `admin_dev=0` or control `:8188` healthy | Real `/api/v1/*` handlers | Operator UX against Go/OpenAPI contract |
+| **Dev mock** | `?admin_dev=1`, localStorage, or meta probe when control is down | `web/src/api/dev_mock/*` intercept in `api/client.ts` | UI layout and fetch lifecycle only; partial API parity |
+| **Chart mock** | `?chart_mock=1` on dashboard | `dashboard_series_mock.ts` synthetic series/KPIs | Chart component preview only; not `GET /api/v1/dashboards/*` data |
+
+CI/e2e and merge claims must use **live API** against control (or documented integration tier). Green UI under dev mock or chart mock does not prove handler wiring.
+
+```bash
+bash scripts/dev/aed-admin status
+bash scripts/dev/aed-admin down
+```
+
+Full stack: `docs/DEVELOPMENT.md`.
 
 ---
 
@@ -15,63 +58,64 @@ Theme: **surface depth + Inter density** — hierarchy from OKLCH shade steps, h
 | `web/src/api/` | HTTP client, resource hooks, dev mock (`?admin_dev=1`) |
 | `web/src/domains/` | Route-owned screens (`campaigns/list`, `ops`, …) |
 | `web/src/shell/` | Page chrome, directory frames, empty/error states |
-| `web/src/components/ui/` | shadcn primitives (`Button`, `Table`, …) |
-| `web/src/styles/globals.css` | Surface ladder, admin utilities, typography |
-| `web/src/lib/control_size.ts` | Control height contract (no manual `h-7`/`h-8`/`h-9`) |
+| `web/src/components/ui/` | First-party primitives (`Button`, `Table`, `Dialog`, …) |
+| `web/src/lib/admin_chrome.ts` | Shared zinc class tokens for primitives |
+| `web/src/styles/app.css` | Tailwind entry (`@tailwind` only + minimal base) |
+| `web/src/lib/control_size.ts` | Control height contract (`h-8` = 32px) |
 
 Embed: `npm run build` → `sync_embed.mjs` → `internal/controlplane/admin_static_stub/`.
 
 ---
 
-## Surface hierarchy
+## Theme
 
-Defined in `web/src/styles/globals.css` (`:root`, `.dark`).
+Styling: Tailwind utility classes in TSX. Entry: `web/src/styles/app.css`. Palette: zinc via `tailwind.config.ts` and `dark:` classes.
 
-| Level | Variable | Utility | Nesting role |
+| Role | Light | Dark | Tailwind |
 | :--- | :--- | :--- | :--- |
-| 0 | `--admin-surface-0` | `.admin-surface-0` | App canvas (`admin-main`, `--admin-bg`) |
-| 1 | `--admin-surface-1` | `.admin-surface-1` | Chrome on canvas: sidebar, header, control panel, table wrap |
-| 2 | `--admin-surface-2` | `.admin-surface-2` | Controls inside L1: buttons, inputs, table head/foot, dialogs |
-| 3 | `--admin-surface-3` | `.admin-surface-3` | Deepest inset: kbd chip, column-menu presets |
+| Canvas | `#ffffff` | `#09090b` | `bg-white` / `dark:bg-zinc-950` |
+| Muted surface | `#fafafa` | `#18181b` | `bg-zinc-50` / `dark:bg-zinc-900` |
+| Inset | `#f4f4f5` | `#27272a` | `bg-zinc-100` / `dark:bg-zinc-800` |
+| Border | `#e4e4e7` | `white/10` | `border-zinc-200` / `dark:border-zinc-800` |
+| Body text | `#09090b` | `#fafafa` | `text-zinc-900` / `dark:text-zinc-100` |
+| Secondary text | `#71717a` | `#a1a1aa` | `text-zinc-500` / `dark:text-zinc-400` |
 
-Each step multiplies OKLCH lightness by `--admin-surface-step: 0.98` from `--admin-surface-base` (`#f4f4f5` light, `#13151a` dark).
-
-**Rule:** child surface = parent + 1 (max 3). Toolbars bump control fills via descendant selectors (`.admin-control-panel .admin-btn` → L2).
-
-Semantic aliases (`--admin-surface`, `--admin-input-bg`, `--admin-btn-bg`, …) map onto the ladder for backward compatibility.
-
-Borders: `--admin-border` = 50% mix of `--admin-border-strong` toward transparent. Do not drop borders for elevation; use surface step + `1px solid var(--admin-border)`.
+**Rule:** do not stack progressively darker gray panels. Canvas + `1px` border; `bg-zinc-50` only for table headers, hovers, filter wells.
 
 ---
 
 ## Typography
 
-Canonical roles: `web/src/lib/admin_typography.ts`. Fonts: `@fontsource-variable/inter`, `@fontsource-variable/jetbrains-mono` in `globals.css`.
+Canonical roles: `web/src/lib/admin_typography.ts`. Fonts: Inter Variable + JetBrains Mono in `app.css`.
 
-| Role | Face | Classes | Use for |
+| Role | Size | Weight | Classes |
 | :--- | :--- | :--- | :--- |
-| UI prose | Inter | `font-sans` | Labels, nav, names |
-| Numeric | Inter + tnum | `tabular-nums`, `admin-tabular-nums`, `.num` | Money, counts, rates, KPIs, chart ticks |
-| Wire / code | JetBrains Mono | `font-mono`, `ui-code-block` | UUID, JSON editor, cron, secrets |
-
-Table metrics use Inter tnum, not mono. Headings: `tracking-tight`, `-0.02em` letter-spacing.
+| Page title | 20px | 600 | `text-xl font-semibold tracking-tight` |
+| Section title | 15px | 600 | `text-[15px] font-semibold` |
+| Body / UI | 13px | 400 | `text-sm` (14px default; table uses `text-[13px]` where dense) |
+| Table header | 12px | 600 | `text-xs font-semibold text-zinc-500` |
+| Numeric | 13px | 500 | `text-sm font-medium tabular-nums` |
+| Code / ID | 12px | 400 | `font-mono text-xs` |
 
 ---
 
 ## Controls and primitives
 
-Interactive controls use `@/components/ui/button` (wraps `.admin-btn`), not raw `<button className="admin-btn">`. CI: `bash scripts/ci/admin/ui_slop.sh`.
+Import from `@/components/ui/*`. Token source: `web/src/lib/admin_chrome.ts`. CI: `bash scripts/ci/admin/ui_slop.sh`.
 
-| Primitive | Default radius | Notes |
-| :--- | :--- | :--- |
-| `Button`, `Input`, `Select` | `--admin-radius-sm` | Default size = `--admin-control-height` (32px) |
-| `Card`, panels, tables | `--admin-radius` | `admin-table-wrap`, `ui-surface*` |
-| Nav pills, chips | `rounded-full` | `SectionNav`, `ToggleChipGroup` only |
-| `Button` `shape="pill"` | `rounded-full` | Opt-in; not default |
+| Primitive | Height | Radius | Notes |
+| :--- | :--- | :--- | :--- |
+| `Button`, `Input`, `SelectTrigger` | 32px (`h-8`) | `rounded-sm` (4px) | `variant`: default / secondary / outline / ghost / destructive |
+| Panels, tables | — | `rounded-md` (6px) | `adminChrome.panel` |
+| Nav pills, status chips | — | `rounded-full` | `ToggleChipGroup`, `SectionNav` only |
 
-Depth: no drop shadows on panels. Motion: `transition-colors` on interactive nodes; Radix enter/exit on overlays; `prefers-reduced-motion` in globals.
+**Button hierarchy:** primary = `default` (zinc-950 fill); bulk toolbar = `secondary`; tertiary = `ghost`; destructive actions = `destructive`. Avoid `outline` on white toolbars (too low contrast).
 
-shadcn HSL tokens (`--background`, `--card`, `--muted`, …) mirror the ladder for `bg-muted`, command palette, etc. Prefer `--admin-surface-*` for new admin chrome.
+Depth: no drop shadows on page panels. Overlays (`Dialog`, `DropdownMenu`, `Popover`) may use `shadow-lg`.
+
+Motion: `transition-colors` on interactive nodes; `prefers-reduced-motion` respected in globals.
+
+**Banned:** `components.json`, `npx shadcn`, `@radix-ui/*`, `class-variance-authority`, raw `<button>` in domains (use `Button`).
 
 ---
 
@@ -82,16 +126,19 @@ shadcn HSL tokens (`--background`, `--card`, `--muted`, …) mirror the ladder f
 | `PageChrome` | `page_chrome.tsx` | Title, description, badge, actions |
 | `PageBreadcrumbs` | `page_breadcrumbs.tsx` | Route trail |
 | `SectionNav` | `section_nav.tsx` | Pill nav for domain sections |
-| `PageToolbar` | `page_toolbar.tsx` | Action row on `ui-surface` |
+| `PageToolbar` | `page_toolbar.tsx` | Action row |
 | `FilterPanel` / `DirectoryFilterForm` | `filter_panel.tsx` | Directory filter grid |
 | `ToggleChipGroup` | `toggle_chip_group.tsx` | Server-driven status chips with counts |
 | `DirectoryListMeta` | `directory_list_meta.tsx` | Showing X–Y of Z |
-| `DirectoryTable` | `directory_table.tsx` | Scrollable table frame (`admin-table-wrap`) |
-| `PaginationPrevNext` | `pagination_prev_next.tsx` | Prev/Next in filter row |
+| `DirectoryTable` | `directory_table.tsx` | Scrollable table frame (replaces legacy `ui-table-frame`) |
+| `DirectoryPaginationFooter` | `directory_pagination_footer.tsx` | Prev/Next + page size + range meta |
+| `PaginationPrevNext` | `pagination_prev_next.tsx` | Prev/Next only (used inside footer shell) |
 | `EmptyState` / `ErrorBlock` | `empty_state.tsx`, `error_block.tsx` | Blank and blocking errors |
 | `HubLinkGrid` / `StatPanel` | `hub_link_card.tsx`, `stat_panel.tsx` | Hubs and KPI tiles |
 
-**Banned in new JSX:** raw `rounded-md border` wrappers; raw `<table>`; raw `fetch()` in domains/shell/pages.
+**Banned in new JSX:** ad-hoc `rounded-md border` panel wrappers in domains; raw `fetch()` in domains/shell/pages; `ui-table-frame` (use `DirectoryTable`).
+
+Directory tables use semantic `<table>` inside `DirectoryTable` / `Table` — not CSS grid matrices.
 
 ---
 
@@ -101,17 +148,17 @@ shadcn HSL tokens (`--background`, `--card`, `--muted`, …) mirror the ladder f
 
 Reference: `web/src/domains/campaigns/list/campaigns_directory.tsx`.
 
-Stack: `PageChrome` → optional `AppliedCustomerBanner` → `FilterPanel` / `DirectoryFilterForm` → `DirectoryListMeta` → optional `ToggleChipGroup` → `DirectoryTable` | `EmptyState`.
+Stack: `PageLayout` → `CampaignsListToolbar` (command + scope + filter well) → `CampaignsListTable` → footer pagination.
 
-Filter layouts: `layout="directory"` (campaigns matrix) or `layout="auto-fill"` (`minmax(12rem, 1fr)`). Apply and pagination are sibling grid children, not nested.
+Use `DirectoryFilterForm layout="directory"` and `ToggleChipGroup` for status chips.
 
 ### Domain hub
 
-`PageChrome` → `SectionNav` → `HubLinkGrid`. Examples: `fraud_hub.tsx`, `integrations_hub.tsx`.
+`PageChrome` → `SectionNav` → `HubLinkGrid`.
 
 ### Ops / JSON dashboard
 
-`PageChrome` → `SectionNav` → `PageToolbar` → `StatPanel` grid → `PanelSection` tables. Reference: `ops_home.tsx`, `json_dashboard_view.tsx`.
+`OpsPageShell` → `OpsStatGrid` → `OpsBlock` tables.
 
 ### Campaigns metrics disclosure
 
@@ -121,13 +168,11 @@ Filter layouts: `layout="directory"` (campaigns matrix) or `layout="auto-fill"` 
 | 1 | Budget used cell | `Popover` + trend chart |
 | 2 | Row menu / link | `Sheet` overview |
 
-Shared: `campaign_metrics_shared.tsx`.
-
 ---
 
 ## Charts
 
-Colors: `hsl(var(--primary))`, `hsl(var(--muted-foreground) / 0.7)`, `hsl(var(--border))` for grid. Container: `rounded-xl bg-muted/20`. Empty copy when series has no points.
+Colors: `text-zinc-900`, `text-zinc-500`, `border-zinc-200` for grid. Container: `adminChrome.panel`. Empty copy when series has no points.
 
 ---
 
@@ -137,9 +182,10 @@ Colors: `hsl(var(--primary))`, `hsl(var(--muted-foreground) / 0.7)`, `hsl(var(--
 bash scripts/ci/admin/ui_slop.sh
 bash scripts/ci/admin/web.sh
 cd web && npm test
-cd web && npm run typecheck    # when changing types across many files
+cd web && npm run typecheck
+cd web && npm run test:e2e
+rg '@radix-ui|class-variance-authority|shadcn' web/   # expect 0
 rg 'className="admin-btn' web/src/domains web/src/shell web/src/pages   # expect 0
-rg 'rounded-md border' web/src --glob '*.tsx'   # expect 0 in new JSX
 ```
 
 ---
@@ -149,5 +195,6 @@ rg 'rounded-md border' web/src --glob '*.tsx'   # expect 0 in new JSX
 | Doc | Content |
 | :--- | :--- |
 | `FRONTEND.md` | Route maturity, backlog, e2e tiers |
+| `docs/DEVELOPMENT.md` | Codegen, compose profiles, stack.sh |
 | `.cursor/rules/ui.mdc` | Layout grid, error honesty, fixture ban |
-| `.cursor/rules/frontend-hot-path.mdc` | Client sort/filter regimes (S/L/F) |
+| `.cursor/rules/frontend-modular.mdc` | Layer map |

@@ -40,6 +40,7 @@ func (r *Reader) GetDashboardSummary(ctx context.Context) (DashboardSummaryDTO, 
 		RPSEstimate:        rps,
 		OutboxPending:      snap.Outbox.Pending,
 		EmergencyBreaker:   snap.EmergencyBreaker,
+		Infra:              r.readInfraResourceSnapshot(ctx, now, rps),
 	}, nil
 }
 
@@ -169,15 +170,12 @@ func (r *Reader) readDashboardLiveSignals(ctx context.Context, now time.Time) (d
 	if qerr != nil || len(rows) < 2 {
 		return driftMax, 0, nil
 	}
-	first := rows[0]
-	last := rows[len(rows)-1]
-	if !first.Ts.Valid || !last.Ts.Valid {
-		return driftMax, 0, nil
+	window := make([]metricWindowRow, len(rows))
+	for i, row := range rows {
+		window[i] = metricWindowRow{Ts: row.Ts, Value: row.Value}
 	}
-	delta := last.Value - first.Value
-	secs := last.Ts.Time.Sub(first.Ts.Time).Seconds()
-	if secs > 0 && delta >= 0 {
-		rps = delta / secs
+	if rate, ok := counterRateFromLabeledSamples(metricSamplePointsFromWindow(window)); ok {
+		rps = rate
 	}
 	return driftMax, rps, nil
 }

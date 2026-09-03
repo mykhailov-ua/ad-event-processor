@@ -15,7 +15,10 @@ export function DirectoryTableSkeleton({
     <div
       aria-busy="true"
       aria-label="Loading table"
-      className={cn('motion-safe:animate-pulse ui-table-frame', className)}
+      className={cn(
+        'motion-safe:animate-pulse overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-800',
+        className,
+      )}
     >
       <div className="flex h-10 border-b border-border/40">
         {Array.from({ length: columns }, (_, index) => (

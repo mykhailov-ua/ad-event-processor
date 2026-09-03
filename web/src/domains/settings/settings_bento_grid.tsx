@@ -112,7 +112,7 @@ function SettingsUrlCopyChip({
   const trimmed = value.trim();
   if (!trimmed) {
     return (
-      <span className="inline-flex h-7 items-center rounded-[var(--admin-radius-sm)] border border-dashed border-border/60 px-2.5 text-xs text-muted-foreground">
+      <span className="inline-flex h-7 items-center rounded-sm border border-dashed border-border/60 px-2.5 text-xs text-muted-foreground">
         {shortLabel}
       </span>
     );
@@ -121,7 +121,7 @@ function SettingsUrlCopyChip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex h-7 items-center gap-0.5 rounded-[var(--admin-radius-sm)] border border-border/60 bg-muted/25 pl-2.5 pr-0.5 text-xs text-foreground">
+        <span className="inline-flex h-7 items-center gap-0.5 rounded-sm border border-border/60 bg-muted/25 pl-2.5 pr-0.5 text-xs text-foreground">
           <span>{shortLabel}</span>
           <CopyButton className="size-7" label={label} value={trimmed} />
         </span>

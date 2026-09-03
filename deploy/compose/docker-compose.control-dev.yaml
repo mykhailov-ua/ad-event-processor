@@ -74,6 +74,7 @@ services:
       - CONTROL_ENABLE_COST_SYNC=0
       - REDIS_ADDRS=/run/ad-event-processor/redis/redis-0.sock,/run/ad-event-processor/redis/redis-1.sock
       - REDIS_SHARD_COUNT=2
+      - ADMIN_UI_DEV_URL=http://127.0.0.1:5173
   processor:
     environment:
       - CH_ENABLED=0

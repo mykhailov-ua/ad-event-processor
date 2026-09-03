@@ -323,6 +323,7 @@ type auditReasonChange struct {
 func listCampaigns(
 	ctx context.Context,
 	pool *pgxpool.Pool,
+	clickhouseQuery *database.ClickHouseQuery,
 	effects campaign.Effects,
 	filter campaign.ListCampaignsFilter,
 ) ([]campaign.CampaignDTO, int64, error) {
@@ -331,48 +332,44 @@ func listCampaigns(
 	}
 	q := db.New(pool)
 
-	var cid pgtype.UUID
-	if filter.CustomerID != uuid.Nil {
-		cid = domain.ToUUID(filter.CustomerID)
-	}
-
-	var st pgtype.Text
-	if filter.Status != "" {
-		st = pgtype.Text{String: filter.Status, Valid: true}
-	}
-
-	var targetCountry pgtype.Text
-	if filter.TargetCountry != "" {
-		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
-	}
-
 	ownerUserID := filter.OwnerUserID
 	if !ownerUserID.Valid {
 		ownerUserID = campaign.CampaignOwnerUserFilter(ctx)
 	}
+	filter.OwnerUserID = ownerUserID
 
-	countParams := db.CountCampaignsParams{
-		CustomerID:     cid,
-		Status:         st,
-		OwnerUserID:    ownerUserID,
-		TargetCountry:  targetCountry,
-		BudgetMinMicro: filter.BudgetMinMicro,
-		BudgetMaxMicro: filter.BudgetMaxMicro,
+	if campaign.IsCampaignListExtendedMetricSortField(filter.SortField) {
+		pageIDs, total, err := campaign.ListCampaignPageByExtendedMetricSort(ctx, pool, clickhouseQuery, filter)
+		if err != nil {
+			return nil, 0, err
+		}
+		if len(pageIDs) == 0 {
+			return []campaign.CampaignDTO{}, total, nil
+		}
+		pgIDs := make([]pgtype.UUID, len(pageIDs))
+		for i, id := range pageIDs {
+			pgIDs[i] = domain.ToUUID(id)
+		}
+		rows, err := q.ListCampaignsByIDs(ctx, pgIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		items := make([]campaign.CampaignDTO, 0, len(rows))
+		for _, row := range rows {
+			items = append(items, scrubCampaignDTO(ctx, row))
+		}
+		items = campaign.OrderCampaignDTOsByIDs(items, pageIDs)
+		if effects != nil {
+			effects.AttachCampaignListBudgetApprovalStates(ctx, items)
+		}
+		return items, total, nil
 	}
-	listParams := db.ListCampaignsParams{
-		Limit:          filter.Limit,
-		Offset:         filter.Offset,
-		CustomerID:     cid,
-		Status:         st,
-		OwnerUserID:    ownerUserID,
-		TargetCountry:  targetCountry,
-		BudgetMinMicro: filter.BudgetMinMicro,
-		BudgetMaxMicro: filter.BudgetMaxMicro,
-	}
+
+	countParams := campaign.CampaignCountParamsFromFilter(filter)
 
 	items, total, err := coldpath.PaginatedList(
 		func() (int64, error) { return q.CountCampaigns(ctx, countParams) },
-		func() ([]db.Campaign, error) { return q.ListCampaigns(ctx, listParams) },
+		func() ([]db.Campaign, error) { return campaign.QueryListCampaignRows(ctx, q, filter) },
 		func(c db.Campaign) campaign.CampaignDTO { return scrubCampaignDTO(ctx, c) },
 	)
 	if err != nil {
@@ -390,69 +387,30 @@ func countCampaignStatusTotals(
 	filter campaign.ListCampaignsFilter,
 	searchQuery, pacingMode string,
 ) (campaign.CampaignStatusTotalsDTO, error) {
-	if strings.TrimSpace(searchQuery) != "" || strings.TrimSpace(pacingMode) != "" {
-		// In-memory filter: fetch up to 1000 rows without status, then count by lifecycle.
-		probe := filter
-		probe.Status = ""
-		probe.Limit = 1000
-		probe.Offset = 0
-		items, _, err := listCampaigns(ctx, pool, nil, probe)
-		if err != nil {
-			return campaign.CampaignStatusTotalsDTO{}, err
-		}
-		return campaign.CountStatusTotalsFromItems(campaign.FilterCampaignsByQuery(items, searchQuery, pacingMode)), nil
-	}
 	if pool == nil {
 		return campaign.CampaignStatusTotalsDTO{}, fmt.Errorf("service unavailable")
 	}
 	dbq := db.New(pool)
 
-	var cid pgtype.UUID
-	if filter.CustomerID != uuid.Nil {
-		cid = domain.ToUUID(filter.CustomerID)
-	}
-
-	var targetCountry pgtype.Text
-	if filter.TargetCountry != "" {
-		targetCountry = pgtype.Text{String: filter.TargetCountry, Valid: true}
-	}
-
 	ownerUserID := filter.OwnerUserID
 	if !ownerUserID.Valid {
 		ownerUserID = campaign.CampaignOwnerUserFilter(ctx)
 	}
+	filter.OwnerUserID = ownerUserID
+	filter.Status = ""
+	filter.SearchQuery = searchQuery
+	filter.PacingMode = pacingMode
 
-	base := db.CountCampaignsParams{
-		CustomerID:     cid,
-		OwnerUserID:    ownerUserID,
-		TargetCountry:  targetCountry,
-		BudgetMinMicro: filter.BudgetMinMicro,
-		BudgetMaxMicro: filter.BudgetMaxMicro,
-	}
+	base := campaign.CampaignCountStatusTotalsParamsFromFilter(filter)
 
-	var totals campaign.CampaignStatusTotalsDTO
-	for _, status := range []string{"ACTIVE", "PAUSED", "ARCHIVED"} {
-		params := base
-		params.Status = pgtype.Text{String: status, Valid: true}
-		count, err := dbq.CountCampaigns(ctx, params)
-		if err != nil {
-			return campaign.CampaignStatusTotalsDTO{}, err
-		}
-		switch status {
-		case "ACTIVE":
-			totals.Active = count
-		case "PAUSED":
-			totals.Paused = count
-		case "ARCHIVED":
-			totals.Archived = count
-		}
-	}
-
-	total, err := dbq.CountCampaigns(ctx, base)
+	rows, err := dbq.CountCampaignsStatusTotals(ctx, base)
 	if err != nil {
 		return campaign.CampaignStatusTotalsDTO{}, err
 	}
-	totals.Total = total
+	var totals campaign.CampaignStatusTotalsDTO
+	for _, row := range rows {
+		campaign.ApplyCampaignStatusCount(&totals, row.Status, row.Count)
+	}
 	return totals, nil
 }
 

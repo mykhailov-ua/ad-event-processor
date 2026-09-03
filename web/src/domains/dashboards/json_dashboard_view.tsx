@@ -2,15 +2,8 @@ import { memo, useMemo } from 'react';
 
 import { PanelSection } from '@/shell/stat_panel';
 import { Badge } from '@/components/ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { deriveColumns, formatMapCell, reportMapRowKey } from '@/lib/report_table';
+import { ReportMapTable } from '@/shell/report_map_table';
+import { deriveColumns, formatMapCell } from '@/lib/report_table';
 import { cn } from '@/lib/utils';
 
 const DASHBOARD_TABLE_ROW_CAP = 100;
@@ -139,28 +132,12 @@ export const JsonDashboardView = memo(function JsonDashboardView({
           }
           title={formatKey ? formatKey(section.key) : section.key}
         >
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {section.columns.map((column) => (
-                    <TableHead key={column}>{column}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {section.rows.map((row, index) => (
-                  <TableRow
-                    key={reportMapRowKey(row, section.columns, index, section.key)}
-                  >
-                    {section.columns.map((column) => (
-                      <TableCell key={column}>{formatMapCell(row[column])}</TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ReportMapTable
+            className="border-0 bg-transparent shadow-none"
+            columns={section.columns}
+            rowKeyPrefix={section.key}
+            rows={section.rows}
+          />
         </PanelSection>
       ))}
     </div>

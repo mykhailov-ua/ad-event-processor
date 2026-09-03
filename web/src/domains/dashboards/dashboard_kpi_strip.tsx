@@ -19,10 +19,12 @@ export function DashboardKpiStrip({ tiles, className }: DashboardKpiStripProps) 
 
   return (
     <div
+      aria-label="Key performance indicators"
       className={cn(
         'grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7',
         className,
       )}
+      role="region"
     >
       {tiles.map((tile) => (
         <div

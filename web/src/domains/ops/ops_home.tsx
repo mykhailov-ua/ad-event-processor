@@ -10,7 +10,7 @@ import {
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import { OpsBlock, OpsTable } from '@/domains/ops/ops_table';
+import { OpsBlock, OpsTable, OpsTableCell, OpsTableHead, OpsTableHeaderRow, OpsTableRow } from '@/domains/ops/ops_table';
 import { displayTimestamp } from '@/lib/display';
 
 export type OpsHomeProps = {
@@ -98,7 +98,7 @@ export function OpsHome({
             {downloadingBundle ? 'Downloading...' : 'Download support bundle'}
           </Button>
           {rolesReloadMessage ? (
-            <span className="admin-muted" role="status">
+            <span className="text-zinc-500 dark:text-zinc-400" role="status">
               {rolesReloadMessage}
             </span>
           ) : null}
@@ -168,21 +168,23 @@ export function OpsHome({
         <OpsBlock title="Services">
           <OpsTable
             head={
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Detail</th>
-              </tr>
+              <OpsTableHeaderRow>
+                <OpsTableHead>Name</OpsTableHead>
+                <OpsTableHead>Status</OpsTableHead>
+                <OpsTableHead>Detail</OpsTableHead>
+              </OpsTableHeaderRow>
             }
           >
             {services.map((service) => (
-              <tr key={service.id ?? service.name}>
-                <td>{service.name ?? service.id}</td>
-                <td>
+              <OpsTableRow key={service.id ?? service.name}>
+                <OpsTableCell>{service.name ?? service.id}</OpsTableCell>
+                <OpsTableCell>
                   <OpsStatusChip status={service.status} />
-                </td>
-                <td className="admin-muted">{service.detail ?? ''}</td>
-              </tr>
+                </OpsTableCell>
+                <OpsTableCell className="text-zinc-500 dark:text-zinc-400">
+                  {service.detail ?? ''}
+                </OpsTableCell>
+              </OpsTableRow>
             ))}
           </OpsTable>
         </OpsBlock>
@@ -190,31 +192,33 @@ export function OpsHome({
 
       <OpsBlock title="Doctor checks">
         {checks.length === 0 ? (
-          <p className="admin-muted admin-ops-empty">No doctor checks returned.</p>
+          <p className="text-zinc-500 dark:text-zinc-400">No doctor checks returned.</p>
         ) : (
           <OpsTable
             head={
-              <tr>
-                <th>Check</th>
-                <th>Status</th>
-                <th>Message</th>
-                <th>Hint</th>
-                <th className="num">Latency</th>
-              </tr>
+              <OpsTableHeaderRow>
+                <OpsTableHead>Check</OpsTableHead>
+                <OpsTableHead>Status</OpsTableHead>
+                <OpsTableHead>Message</OpsTableHead>
+                <OpsTableHead>Hint</OpsTableHead>
+                <OpsTableHead numeric>Latency</OpsTableHead>
+              </OpsTableHeaderRow>
             }
           >
             {checks.map((check) => (
-              <tr key={check.id ?? check.message}>
-                <td>{check.id ?? ''}</td>
-                <td>
+              <OpsTableRow key={check.id ?? check.message}>
+                <OpsTableCell>{check.id ?? ''}</OpsTableCell>
+                <OpsTableCell>
                   <OpsStatusChip status={check.status} />
-                </td>
-                <td>{check.message ?? ''}</td>
-                <td className="admin-muted">{check.hint ?? ''}</td>
-                <td className="num">
+                </OpsTableCell>
+                <OpsTableCell>{check.message ?? ''}</OpsTableCell>
+                <OpsTableCell className="text-zinc-500 dark:text-zinc-400">
+                  {check.hint ?? ''}
+                </OpsTableCell>
+                <OpsTableCell numeric>
                   {check.latency_ms != null ? `${check.latency_ms} ms` : ''}
-                </td>
-              </tr>
+                </OpsTableCell>
+              </OpsTableRow>
             ))}
           </OpsTable>
         )}

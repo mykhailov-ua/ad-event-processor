@@ -18,13 +18,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { ReportSchedule } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -228,16 +228,15 @@ export function ReportSchedulesPanel({
               onAction={() => setCreateOpen(true)}
             />
           ) : (
-            <div className="ui-table-frame">
-              <Table>
+            <DirectoryTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Report</TableHead>
-                    <TableHead>Format</TableHead>
-                    <TableHead>Cron</TableHead>
-                    <TableHead>Enabled</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead />
+                    <DirectoryTableHead>Report</DirectoryTableHead>
+                    <DirectoryTableHead>Format</DirectoryTableHead>
+                    <DirectoryTableHead>Cron</DirectoryTableHead>
+                    <DirectoryTableHead>Enabled</DirectoryTableHead>
+                    <DirectoryTableHead>Updated</DirectoryTableHead>
+                    <DirectoryTableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -329,8 +328,7 @@ export function ReportSchedulesPanel({
                     );
                   })}
                 </TableBody>
-              </Table>
-            </div>
+              </DirectoryTable>
           )}
         </div>
       )}

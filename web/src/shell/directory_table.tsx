@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from 'react';
+import type { ComponentProps, CSSProperties, ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
 import {
@@ -18,6 +18,8 @@ export type DirectoryTableProps = {
   className?: string;
   scrollable?: boolean;
   fixedLayout?: boolean;
+  tableClassName?: string;
+  tableStyle?: CSSProperties;
 };
 
 export function DirectoryTable({
@@ -25,21 +27,25 @@ export function DirectoryTable({
   className,
   scrollable = false,
   fixedLayout = false,
+  tableClassName,
+  tableStyle,
 }: DirectoryTableProps) {
   return (
     <div
       className={cn(
-        'admin-table-wrap',
-        scrollable ? 'max-h-[min(70vh,48rem)]' : 'admin-table-wrap--static',
+        'overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800',
+        scrollable ? 'max-h-[min(70vh,48rem)] overflow-y-auto' : 'overflow-hidden',
         className,
       )}
     >
       <Table
         bare
         className={cn(
-          'admin-table',
+          'w-full border-collapse text-sm',
           fixedLayout && 'table-fixed [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
+          tableClassName,
         )}
+        style={tableStyle}
       >
         {children}
       </Table>
@@ -47,7 +53,7 @@ export function DirectoryTable({
   );
 }
 
-export { TableBody, TableCell, TableHeader, TableRow };
+export { TableBody, TableCell, TableFooter, TableHeader, TableRow } from '@/components/ui/table';
 
 type HeadAlign = 'start' | 'end';
 

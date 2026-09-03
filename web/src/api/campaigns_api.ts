@@ -88,6 +88,12 @@ export function buildCampaignsListPath(params: CampaignListQuery = {}): string {
   if (params.offset != null) {
     search.set('offset', String(params.offset));
   }
+  if (params.from) {
+    search.set('from', params.from);
+  }
+  if (params.to) {
+    search.set('to', params.to);
+  }
 
   const query = search.toString();
   return query ? `/api/v1/campaigns?${query}` : '/api/v1/campaigns';

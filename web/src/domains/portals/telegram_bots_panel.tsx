@@ -2,13 +2,13 @@ import { PageChrome } from '@/shell/page_chrome';
 import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { TelegramBot } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -41,15 +41,14 @@ export function TelegramBotsPanel({ bots, fetching, error, hasSnapshot }: Telegr
       {bots.length === 0 ? (
         <EmptyState title="No bots" description="No Telegram Mini App bots are configured." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Bot ID</TableHead>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Webhook</TableHead>
-                <TableHead>Mini App</TableHead>
-                <TableHead>Updated</TableHead>
+                <DirectoryTableHead>Bot ID</DirectoryTableHead>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Webhook</DirectoryTableHead>
+                <DirectoryTableHead>Mini App</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -67,8 +66,7 @@ export function TelegramBotsPanel({ bots, fetching, error, hasSnapshot }: Telegr
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? portalsPanelError(error, 'Refresh failed') : null}

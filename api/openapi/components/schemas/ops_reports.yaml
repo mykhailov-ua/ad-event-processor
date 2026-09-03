@@ -379,6 +379,35 @@ DashboardSummary:
       format: int64
     emergency_breaker:
       type: string
+    infra:
+      $ref: '#/InfraResourceSnapshot'
+
+InfraResourceSnapshot:
+  type: object
+  properties:
+    heap_inuse_bytes:
+      type: integer
+      format: int64
+    rss_bytes:
+      type: integer
+      format: int64
+    goroutines:
+      type: integer
+      format: int64
+    gnet_active_connections:
+      type: integer
+      format: int64
+    cpu_utilization_pct:
+      type: number
+      format: double
+    http_rps:
+      type: number
+      format: double
+    scrape_stale:
+      type: boolean
+    observed_at:
+      type: string
+      format: date-time
 
 DashboardServiceCard:
   type: object

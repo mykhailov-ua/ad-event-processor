@@ -18,13 +18,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { MarginGuardActivity } from '@/api/types';
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -156,14 +156,13 @@ export function MarginGuardActivityDirectory({
       {items.length === 0 ? (
         <EmptyState title="No activity" description="No margin guard activity for this campaign." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Placement</TableHead>
-                <TableHead>Action</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Created</TableHead>
+                <DirectoryTableHead>Placement</DirectoryTableHead>
+                <DirectoryTableHead>Action</DirectoryTableHead>
+                <DirectoryTableHead>Reason</DirectoryTableHead>
+                <DirectoryTableHead>Created</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -178,8 +177,7 @@ export function MarginGuardActivityDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? <ErrorBlock title="Action failed" message={actionError.message} /> : null}

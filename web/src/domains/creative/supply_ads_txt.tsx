@@ -18,13 +18,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { AdsTxtEntry } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 
@@ -170,15 +170,14 @@ export function SupplyAdsTxtDirectory({
       {items.length === 0 ? (
         <EmptyState title="No ads.txt rows" description="Supply ads.txt table is empty." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Domain</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Relationship</TableHead>
-                <TableHead>Order</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Domain</DirectoryTableHead>
+                <DirectoryTableHead>Account</DirectoryTableHead>
+                <DirectoryTableHead>Relationship</DirectoryTableHead>
+                <DirectoryTableHead>Order</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -242,8 +241,7 @@ export function SupplyAdsTxtDirectory({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionError ? creativePanelError(actionError, 'ads.txt action failed') : null}

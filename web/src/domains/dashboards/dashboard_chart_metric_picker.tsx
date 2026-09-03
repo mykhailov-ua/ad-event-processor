@@ -25,7 +25,7 @@ export function DashboardChartMetricPicker({
             aria-pressed={active}
             onClick={() => onToggle(metric.id)}
             className={cn(
-              'rounded-[var(--admin-radius-sm)] border px-2.5 py-1 font-geist text-[11px] font-medium transition-opacity',
+              'rounded-sm border px-2.5 py-1 font-geist text-[11px] font-medium transition-opacity',
               active ? 'opacity-100' : 'opacity-35 hover:opacity-60',
             )}
             style={{

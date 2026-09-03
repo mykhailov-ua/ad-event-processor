@@ -12,9 +12,9 @@ import {
 } from './admin_typography.ts';
 
 test('admin typography separates tabular metrics from mono wire data', () => {
-  assert.equal(ADMIN_TABULAR_CLASS, 'admin-tabular-nums');
-  assert.equal(ADMIN_NUMERIC_CLASS, 'font-numeric');
-  assert.equal(ADMIN_MONO_CLASS, 'admin-data-mono');
+  assert.equal(ADMIN_TABULAR_CLASS, 'tabular-nums');
+  assert.equal(ADMIN_NUMERIC_CLASS, 'tabular-nums');
+  assert.equal(ADMIN_MONO_CLASS, 'font-mono tabular-nums');
   assert.ok(ADMIN_TABULAR_DATA_KINDS.includes('money'));
   assert.ok(ADMIN_TABULAR_DATA_KINDS.includes('display_id'));
   assert.ok(ADMIN_MONO_DATA_KINDS.includes('uuid'));

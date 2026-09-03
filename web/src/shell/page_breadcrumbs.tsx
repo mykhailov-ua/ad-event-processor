@@ -15,7 +15,7 @@ export function PageBreadcrumbs({ className }: { className?: string }) {
 
   return (
     <nav aria-label="Breadcrumb" className={cn(className)}>
-      <ol className="admin-toolbar admin-muted" style={{ fontSize: '12px' }}>
+      <ol className="flex flex-col gap-2 text-zinc-500 dark:text-zinc-400" style={{ fontSize: '12px' }}>
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
 

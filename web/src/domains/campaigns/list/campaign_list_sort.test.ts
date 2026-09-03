@@ -1,18 +1,30 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { sortCampaignListItemsClient } from './campaign_list_sort.ts';
+import {
+  campaignListSortNeedsMetricWindow,
+  campaignListSortToApi,
+  sortFieldForCampaignColumn,
+} from './campaign_list_sort.ts';
 
-test('sortCampaignListItemsClient orders metric columns on current page', () => {
-  const items = [
-    { id: 'a', name: 'Alpha', customer_id: 'c1', status: 'ACTIVE', budget_limit: '0', current_spend: '0' },
-    { id: 'b', name: 'Beta', customer_id: 'c1', status: 'ACTIVE', budget_limit: '0', current_spend: '0' },
-  ];
-  const metricsById = {
-    a: { clicks: 10, conversions: 1, impressions: 20 },
-    b: { clicks: 5, conversions: 3, impressions: 8 },
-  };
+test('campaignListSortToApi maps UI id column to updated_at', () => {
+  assert.equal(campaignListSortToApi('id'), 'updated_at');
+  assert.equal(campaignListSortToApi('updated_at'), 'updated_at');
+});
 
-  const sorted = sortCampaignListItemsClient(items, 'leads', 'desc', metricsById, {});
-  assert.deepEqual(sorted.map((item) => item.id), ['b', 'a']);
+test('campaignListSortToApi keeps metric and metadata sort fields', () => {
+  assert.equal(campaignListSortToApi('leads'), 'leads');
+  assert.equal(campaignListSortToApi('cost'), 'cost');
+  assert.equal(campaignListSortToApi('status'), 'status');
+});
+
+test('campaignListSortNeedsMetricWindow matches backend metric window sorts', () => {
+  assert.equal(campaignListSortNeedsMetricWindow('clicks'), true);
+  assert.equal(campaignListSortNeedsMetricWindow('roi'), true);
+  assert.equal(campaignListSortNeedsMetricWindow('name'), false);
+  assert.equal(campaignListSortNeedsMetricWindow('budget_pct'), false);
+});
+
+test('sortFieldForCampaignColumn maps cost to cost not spend', () => {
+  assert.equal(sortFieldForCampaignColumn('cost'), 'cost');
 });

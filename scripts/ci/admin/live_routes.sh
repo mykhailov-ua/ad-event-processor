@@ -2,109 +2,110 @@
 
 set -euo pipefail
 
-# Role: Admin gate: live:true routes must have backend.
-# Execution context: CI via admin/web.sh or pr_fast.
-# Invariants/contracts enforced: Missing web/ uses stub embed checks; live routes need OpenAPI backend.
+# Role: Admin gate: report catalog keys must have SPA route + Go HTTP handler (or export-only contract).
+# Execution context: CI via admin/web.sh when web/src exists.
+# Invariants/contracts enforced: ReportCatalogEntries keys wire to /reports/:key runner and /api/v1/reports/*.
 # Verify: bash scripts/ci/admin/live_routes.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/lib/paths.sh"
 cd "$ROOT"
 
-if [[ ! -d "$ROOT/web/src" ]]; then
-  echo "report_live_routes_gate: skipped (web/ removed; live routes return with admin UI rebuild)"
+if [[ ! -d web/src ]]; then
+  echo "report_live_routes_gate: skipped (web/src absent)"
   exit 0
 fi
 
-REPORT_JS="$ROOT/web/src/models/report.ts"
-if [ ! -f "$REPORT_JS" ]; then
-  REPORT_JS="$ROOT/web/src/models/report.js"
-fi
-APP_ROUTES_JS="$ROOT/web/src/app_routes.tsx"
-if [ ! -f "$APP_ROUTES_JS" ]; then
-  APP_ROUTES_JS="$ROOT/web/src/app_routes.js"
-fi
+CATALOG_GO="internal/reports/catalog.go"
+APP_ROUTES="web/src/app_routes.tsx"
+REPORT_PATHS_TS="web/src/lib/report_paths.ts"
+REPORTS_TREE="internal/reports"
 
-if [ ! -f "$REPORT_JS" ] || [ ! -f "$APP_ROUTES_JS" ]; then
-  echo "Error: report.ts/js or app_routes missing"
-  exit 1
-fi
-
-extract_live_report_keys() {
-  local report_file="$1"
-  if command -v python3 > /dev/null 2>&1; then
-    python3 - "$report_file" << 'PY'
-import re, sys
-src = open(sys.argv[1], encoding="utf-8").read()
-for m in re.finditer(r"\{\s*key:\s*'([^']+)'[^}]*live:\s*true", src):
-    print(m.group(1))
-PY
-  elif command -v node > /dev/null 2>&1; then
-    node -e "
-const fs = require('fs');
-const src = fs.readFileSync(process.argv[1], 'utf8');
-const re = /\\{\\s*key:\\s*'([^']+)'[^}]*live:\\s*true/g;
-let m;
-const keys = new Set();
-while ((m = re.exec(src)) !== null) keys.add(m[1]);
-for (const k of keys) console.log(k);
-" "$report_file"
-  else
-    echo "Error: python3 or node required for live report key extraction"
+for path in "$CATALOG_GO" "$APP_ROUTES" "$REPORT_PATHS_TS"; do
+  if [[ ! -f "$path" ]]; then
+    echo "Error: required path missing: $path"
     exit 1
   fi
-}
+done
 
-resolve_report_route_path() {
-  local report_file="$1"
-  local key="$2"
-  if command -v python3 > /dev/null 2>&1; then
-    python3 - "$report_file" "$key" << 'PY'
-import re, sys
-src = open(sys.argv[1], encoding="utf-8").read()
-key = sys.argv[2]
-m = re.search(r"'%s':\s*'([^']+)'" % re.escape(key), src)
-print(m.group(1) if m else "/reports/" + key)
+if ! rg -q 'path="reports/:key"' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES missing Route path=\"reports/:key\" for ReportRunnerPage"
+  exit 1
+fi
+
+if ! rg -q 'path="reports/click-log"' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES missing dedicated click-log report route"
+  exit 1
+fi
+
+if ! rg -q 'path="reports/jobs"' "$APP_ROUTES"; then
+  echo "Error: $APP_ROUTES missing reports/jobs route"
+  exit 1
+fi
+
+if ! command -v python3 > /dev/null 2>&1; then
+  echo "Error: python3 required for report catalog parity check"
+  exit 1
+fi
+
+python3 - "$CATALOG_GO" "$REPORT_PATHS_TS" "$REPORTS_TREE" << 'PY'
+import re
+import sys
+from pathlib import Path
+
+catalog_path = Path(sys.argv[1])
+report_paths_ts = Path(sys.argv[2])
+reports_tree = Path(sys.argv[3])
+
+catalog_src = catalog_path.read_text(encoding="utf-8")
+keys = re.findall(r'Key:\s*"([^"]+)"', catalog_src)
+if not keys:
+    print(f"Error: no ReportCatalogEntries keys in {catalog_path}", file=sys.stderr)
+    sys.exit(1)
+
+rp_src = report_paths_ts.read_text(encoding="utf-8")
+override_block = re.search(
+    r"REPORT_KEY_PATH_OVERRIDES[^=]*=\s*\{([^}]*)\}",
+    rp_src,
+    re.DOTALL,
+)
+overrides: dict[str, str] = {}
+if override_block:
+    for m in re.finditer(r"'([^']+)':\s*'([^']+)'", override_block.group(1)):
+        overrides[m.group(1)] = m.group(2)
+
+export_only_keys: set[str] = set()
+m = re.search(r"EXPORT_ONLY_REPORT_KEYS\s*=\s*new Set\(\[([^\]]*)\]", rp_src, re.DOTALL)
+if m:
+    export_only_keys = set(re.findall(r"'([^']+)'", m.group(1)))
+
+handler_sources: list[str] = []
+for path in reports_tree.rglob("*.go"):
+    if path.name.endswith("_test.go"):
+        continue
+    handler_sources.append(path.read_text(encoding="utf-8", errors="replace"))
+handler_blob = "\n".join(handler_sources)
+
+missing_handler: list[str] = []
+for key in keys:
+    if key in export_only_keys:
+        if f'"{key}"' not in handler_blob and f"'{key}'" not in handler_blob:
+            # export-only keys must appear in export/register or job export switch
+            if key not in handler_blob:
+                missing_handler.append(f"{key} (export-only, no handler reference)")
+        continue
+
+    api_path = overrides.get(key, f"/api/v1/reports/{key}")
+    quoted_key = f'"{key}"'
+    if api_path in handler_blob or quoted_key in handler_blob or f"wrapReport({quoted_key}" in handler_blob:
+        continue
+    if f"WrapReport({quoted_key}" in handler_blob:
+        continue
+    missing_handler.append(f"{key} (expected {api_path})")
+
+if missing_handler:
+    print("Error: catalog keys without Go report handler:", file=sys.stderr)
+    for item in missing_handler:
+        print(f"  - {item}", file=sys.stderr)
+    sys.exit(1)
+
+print(f"Report live routes gate: OK ({len(keys)} catalog keys, SPA reports/:key)")
 PY
-  elif command -v node > /dev/null 2>&1; then
-    node - "$report_file" "$key" << 'NODE'
-const fs = require('fs');
-const src = fs.readFileSync(process.argv[1], 'utf8');
-const key = process.argv[2];
-const esc = key.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-const re = new RegExp("'" + esc + "':\\s*'([^']+)'");
-const m = src.match(re);
-process.stdout.write(m ? m[1] : '/reports/' + key);
-NODE
-  else
-    echo "/reports/${key}"
-  fi
-}
-
-live_markers=$(grep -cE 'live:[[:space:]]*true' "$REPORT_JS" || true)
-keys_tmp=$(mktemp)
-extract_live_report_keys "$REPORT_JS" > "$keys_tmp"
-key_count=$(wc -l < "$keys_tmp" | tr -d ' ')
-
-if [ "$live_markers" -gt 0 ] && [ "$key_count" -eq 0 ]; then
-  echo "Error: found live:true in ${REPORT_JS#$ROOT/} but extracted zero keys (parser/extractor failure)"
-  rm -f "$keys_tmp"
-  exit 1
-fi
-
-missing=0
-while IFS= read -r key; do
-  [ -z "$key" ] && continue
-  route_path=$(resolve_report_route_path "$REPORT_JS" "$key")
-  if grep -q "${route_path}" "$APP_ROUTES_JS"; then
-    :
-  else
-    echo "Error: live report '${key}' has no explicit route in app_routes (expected ${route_path})"
-    missing=1
-  fi
-done < "$keys_tmp"
-rm -f "$keys_tmp"
-
-if [ "$missing" -ne 0 ]; then
-  exit 1
-fi
-
-echo "Report live routes gate: OK"

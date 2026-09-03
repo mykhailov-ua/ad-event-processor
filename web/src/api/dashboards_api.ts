@@ -60,6 +60,10 @@ export async function getRoleDashboard(
 export type CampaignDashboardQuery = {
   from?: string;
   to?: string;
+  dimension?: string;
+  q?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
 };
 
 export function buildCampaignDashboardPath(
@@ -72,6 +76,18 @@ export function buildCampaignDashboardPath(
   }
   if (params.to) {
     search.set('to', params.to);
+  }
+  if (params.dimension) {
+    search.set('dimension', params.dimension);
+  }
+  if (params.q) {
+    search.set('q', params.q);
+  }
+  if (params.sort) {
+    search.set('sort', params.sort);
+  }
+  if (params.order) {
+    search.set('order', params.order);
   }
   const query = search.toString();
   const base = `/api/v1/dashboards/campaign/${encodeURIComponent(campaignId)}`;

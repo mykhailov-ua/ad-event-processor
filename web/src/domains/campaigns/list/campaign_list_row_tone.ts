@@ -58,15 +58,15 @@ export function campaignListRowClass(args: {
   margin?: CampaignMargin;
 }): string {
   if (args.selected) {
-    return 'admin-row-selected';
+    return 'bg-blue-50 dark:bg-blue-950/30';
   }
 
   const performanceTone = resolvePerformanceRowTone(args.margin);
   if (performanceTone === 'negative') {
-    return 'admin-row-negative';
+    return '';
   }
   if (performanceTone === 'warning') {
-    return 'admin-row-warning';
+    return '';
   }
 
   return '';
@@ -78,9 +78,9 @@ export function campaignListStatusDotClass(
 ): string {
   const key = resolveCampaignStatusKey(status, statusTone);
   if (key === 'ACTIVE') {
-    return 'admin-table-status-dot--active';
+    return 'inline-block h-2 w-2 rounded-full bg-green-500';
   }
-  return 'admin-table-status-dot--muted';
+  return 'inline-block h-2 w-2 rounded-full bg-zinc-400';
 }
 
 export function campaignListRowStatusEdgeClass(
@@ -89,15 +89,15 @@ export function campaignListRowStatusEdgeClass(
 ): string {
   const key = resolveCampaignStatusKey(status, statusTone);
   if (key === 'ACTIVE') {
-    return 'admin-row-status-edge--active';
+    return '';
   }
   if (key === 'PAUSED') {
-    return 'admin-row-status-edge--paused';
+    return '';
   }
   if (key === 'ARCHIVED') {
-    return 'admin-row-status-edge--archived';
+    return '';
   }
-  return 'admin-row-status-edge--unknown';
+  return '';
 }
 
 export function campaignStatusBadgeClass(
@@ -106,13 +106,13 @@ export function campaignStatusBadgeClass(
 ): string {
   const key = resolveCampaignStatusKey(status, statusTone);
   if (key === 'ACTIVE') {
-    return 'admin-campaign-status admin-campaign-status--active';
+    return 'inline-flex items-center gap-1.5 text-xs text-green-700 dark:text-green-300';
   }
   if (key === 'PAUSED') {
-    return 'admin-campaign-status admin-campaign-status--paused';
+    return 'inline-flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300';
   }
   if (key === 'ARCHIVED') {
-    return 'admin-campaign-status admin-campaign-status--archived';
+    return 'inline-flex items-center gap-1.5 text-xs text-zinc-500';
   }
-  return 'admin-campaign-status';
+  return 'inline-flex items-center gap-1.5 text-xs';
 }

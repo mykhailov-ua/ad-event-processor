@@ -4,13 +4,13 @@ import { EmptyState } from '@/shell/empty_state';
 import { PageSkeleton } from '@/shell/page_skeleton';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
 import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
 import { PlatformCampaignLinkForm } from '@/domains/integrations/platform_campaign_link_form';
@@ -167,16 +167,15 @@ export function IntegrationsPlatformCampaigns({
           description="No external platform campaign links exist for this customer."
         />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Network</TableHead>
-                <TableHead>External ID</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Daily budget (micro)</TableHead>
-                <TableHead>Last synced</TableHead>
+                <DirectoryTableHead>Campaign</DirectoryTableHead>
+                <DirectoryTableHead>Network</DirectoryTableHead>
+                <DirectoryTableHead>External ID</DirectoryTableHead>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>Daily budget (micro)</DirectoryTableHead>
+                <DirectoryTableHead>Last synced</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -201,8 +200,7 @@ export function IntegrationsPlatformCampaigns({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? integrationsPanelError(error, 'Refresh failed') : null}

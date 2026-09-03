@@ -1,7 +1,15 @@
 import { Link } from 'react-router-dom';
 
 import { FilterApplyButton } from '@/shell/action_buttons';
-import { PaginationPrevNext } from '@/shell/pagination_prev_next';
+import { DirectoryPaginationFooter } from '@/shell/directory_pagination_footer';
+import {
+  DirectoryTable,
+  DirectoryTableHead,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from '@/shell/directory_table';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,14 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { EmptyState } from '@/shell/empty_state';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -113,33 +113,32 @@ export function BillingInvoices({
 
         <FilterApplyButton disabled={fetching}>Apply</FilterApplyButton>
 
-        <PaginationPrevNext
-          canGoPrev={canGoPrev}
+        <DirectoryPaginationFooter
           canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
           disabled={fetching}
-          onPrev={() => onPageChange(Math.max(0, offset - limit))}
           onNext={() => onPageChange(offset + limit)}
+          onPrev={() => onPageChange(Math.max(0, offset - limit))}
         />
       </form>
 
       {items.length === 0 ? (
         <EmptyState title="No invoices" description="No invoices match the current filters." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice</TableHead>
-                <TableHead>Billing month</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Subtotal (micro)</TableHead>
-                <TableHead>Tax (micro)</TableHead>
-                <TableHead>Total (micro)</TableHead>
-                <TableHead>Currency</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <DirectoryTable>
+          <TableHeader>
+            <TableRow>
+              <DirectoryTableHead>Invoice</DirectoryTableHead>
+              <DirectoryTableHead>Billing month</DirectoryTableHead>
+              <DirectoryTableHead>Customer</DirectoryTableHead>
+              <DirectoryTableHead>Status</DirectoryTableHead>
+              <DirectoryTableHead>Subtotal (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Tax (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Total (micro)</DirectoryTableHead>
+              <DirectoryTableHead>Currency</DirectoryTableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
               {items.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell>
@@ -161,8 +160,7 @@ export function BillingInvoices({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+        </DirectoryTable>
       )}
     </section>
   );

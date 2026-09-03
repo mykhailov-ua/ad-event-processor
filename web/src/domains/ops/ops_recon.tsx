@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { ReconRun } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -10,7 +12,13 @@ import {
   OpsPageLoading,
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsReconProps = {
   items: ReconRun[];
@@ -57,15 +65,14 @@ export function OpsRecon({
   return (
     <OpsPageShell
       filters={
-        <label className="admin-label">
-          Service
-          <input
-            className="admin-input"
+        <div className="grid gap-2">
+          <Label htmlFor="recon-service">Service</Label>
+          <Input
             id="recon-service"
             value={draftService}
             onChange={(event) => onDraftServiceChange(event.target.value)}
           />
-        </label>
+        </div>
       }
       footer={
         <OpsListFooter
@@ -91,27 +98,29 @@ export function OpsRecon({
       ) : (
         <OpsTable
           head={
-            <tr>
-              <th>ID</th>
-              <th>Service</th>
-              <th>Status</th>
-              <th>Period start</th>
-              <th>Period end</th>
-              <th>Discrepancies</th>
-              <th>Created</th>
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>ID</OpsTableHead>
+              <OpsTableHead>Service</OpsTableHead>
+              <OpsTableHead>Status</OpsTableHead>
+              <OpsTableHead>Period start</OpsTableHead>
+              <OpsTableHead>Period end</OpsTableHead>
+              <OpsTableHead>Discrepancies</OpsTableHead>
+              <OpsTableHead>Created</OpsTableHead>
+            </OpsTableHeaderRow>
           }
         >
           {items.map((row) => (
-            <tr key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
-              <td className="admin-table-td--id">{row.id ?? ''}</td>
-              <td>{row.service ?? ''}</td>
-              <td>{row.status ?? ''}</td>
-              <td>{displayTimestamp(row.period_start)}</td>
-              <td>{displayTimestamp(row.period_end)}</td>
-              <td className="num">{row.discrepancies_found ?? ''}</td>
-              <td>{displayTimestamp(row.created_at)}</td>
-            </tr>
+            <OpsTableRow key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
+              <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                {row.id ?? ''}
+              </OpsTableCell>
+              <OpsTableCell>{row.service ?? ''}</OpsTableCell>
+              <OpsTableCell>{row.status ?? ''}</OpsTableCell>
+              <OpsTableCell>{displayTimestamp(row.period_start)}</OpsTableCell>
+              <OpsTableCell>{displayTimestamp(row.period_end)}</OpsTableCell>
+              <OpsTableCell numeric>{row.discrepancies_found ?? ''}</OpsTableCell>
+              <OpsTableCell>{displayTimestamp(row.created_at)}</OpsTableCell>
+            </OpsTableRow>
           ))}
         </OpsTable>
       )}

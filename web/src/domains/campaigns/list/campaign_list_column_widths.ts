@@ -17,8 +17,8 @@ import {
   formatLpCtr,
   formatRelativeRate,
   formatSourceCtr,
-  resolveCampaignFunnelCounts,
 } from '@/domains/campaigns/list/campaign_list_funnel';
+import { resolveCampaignListRowMetrics } from '@/domains/campaigns/list/campaign_list_row_metrics';
 import {
   CAMPAIGN_LIST_COLUMN_LABELS,
   CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX,
@@ -51,12 +51,8 @@ export function campaignListMiddleCellText(
   customerName: string,
 ): string {
   const row = campaign as CampaignWithMoneyDisplay;
-  const clicks = metrics?.clicks ?? 0;
-  const impressions = metrics?.impressions ?? 0;
-  const costMicro = margin?.rtb_cost_micro ?? 0;
-  const revenueMicro = (margin?.advertiser_spend_micro ?? 0) + (margin?.operator_margin_micro ?? 0);
-  const funnel = resolveCampaignFunnelCounts(metrics);
-  const blocks = metrics?.blocks ?? 0;
+  const { clicks, impressions, blocks, costMicro, revenueMicro, funnel } =
+    resolveCampaignListRowMetrics(metrics, margin);
 
   switch (columnId) {
     case 'tags':

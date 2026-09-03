@@ -78,6 +78,10 @@ control_healthy() {
   curl -sf "${CONTROL_URL}/health" > /dev/null 2>&1
 }
 
+web_healthy() {
+  curl -sf "http://127.0.0.1:${ADMIN_DEV_PORT}/" > /dev/null 2>&1
+}
+
 wait_control_health() {
   local attempt=0
   local max_attempts=90
@@ -105,6 +109,25 @@ ensure_stack() {
     die "control did not become healthy at ${CONTROL_URL}"
   fi
   log "control healthy at ${CONTROL_URL}"
+}
+
+ensure_control_dev_ui_redirect() {
+  local headers
+  headers="$(curl -sI "${CONTROL_URL}/login" 2>/dev/null || true)"
+  if echo "$headers" | grep -qi "location:.*127.0.0.1:${ADMIN_DEV_PORT}"; then
+    return 0
+  fi
+  compose_control_args
+  log "recreating control for ADMIN_UI_DEV_URL redirect..."
+  docker compose "${COMPOSE_CONTROL_ARGS[@]}" --profile ingest_only up -d --no-build --force-recreate control
+  if ! wait_control_health; then
+    die "control did not become healthy after recreate"
+  fi
+  headers="$(curl -sI "${CONTROL_URL}/login" 2>/dev/null || true)"
+  if echo "$headers" | grep -qi "location:.*127.0.0.1:${ADMIN_DEV_PORT}"; then
+    return 0
+  fi
+  log "WARN: :8188 still serves embedded UI; run: bash scripts/dev/admin_ui.sh rebuild-control"
 }
 
 ensure_seeded() {
@@ -180,9 +203,13 @@ start_local_control() {
 }
 
 start_web() {
-  if pid_alive "$WEB_PID"; then
+  if pid_alive "$WEB_PID" && web_healthy; then
     log "web already running (pid $(<"$WEB_PID"))"
     return 0
+  fi
+  if pid_alive "$WEB_PID"; then
+    log "web pid stale or unhealthy; restarting"
+    stop_one web "$WEB_PID"
   fi
   if [[ ! -d "$ROOT/web/node_modules" ]]; then
     log "installing web dependencies (npm ci)..."
@@ -198,12 +225,21 @@ start_web() {
     npm run dev
   ) >>"$WEB_LOG" 2>&1 &
   echo $! >"$WEB_PID"
-  sleep 1
-  if ! pid_alive "$WEB_PID"; then
-    tail -20 "$WEB_LOG" >&2 || true
-    die "web dev server failed to start; see $WEB_LOG"
-  fi
-  log "web running pid=$(<"$WEB_PID") -> http://127.0.0.1:${ADMIN_DEV_PORT}"
+  local attempt=0
+  while [[ "$attempt" -lt 60 ]]; do
+    if pid_alive "$WEB_PID" && web_healthy; then
+      log "web running pid=$(<"$WEB_PID") -> http://127.0.0.1:${ADMIN_DEV_PORT}"
+      return 0
+    fi
+    if ! pid_alive "$WEB_PID"; then
+      tail -30 "$WEB_LOG" >&2 || true
+      die "web dev server failed to start; see $WEB_LOG"
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+  tail -30 "$WEB_LOG" >&2 || true
+  die "web dev server not responding on :${ADMIN_DEV_PORT}; see $WEB_LOG"
 }
 
 stop_one() {
@@ -238,12 +274,23 @@ print_status() {
   else
     log "control: not reachable ${CONTROL_URL}"
   fi
-  if pid_alive "$WEB_PID"; then
+  if pid_alive "$WEB_PID" && web_healthy; then
     log "web: running pid=$(<"$WEB_PID") http://127.0.0.1:${ADMIN_DEV_PORT}"
+  elif pid_alive "$WEB_PID"; then
+    log "web: pid=$(<"$WEB_PID") unhealthy on :${ADMIN_DEV_PORT}"
   else
     log "web: stopped"
   fi
   log "logs: $CONTROL_LOG, $WEB_LOG"
+}
+
+print_dev_urls() {
+  cat <<EOF
+
+Open admin UI:  http://127.0.0.1:${ADMIN_DEV_PORT}
+API (no UI):    ${CONTROL_URL}
+
+EOF
 }
 
 tail_logs() {
@@ -277,10 +324,12 @@ shift || true
 case "$CMD" in
   up)
     ensure_stack
+    ensure_control_dev_ui_redirect
     ensure_seeded
     ensure_ui_demo
     start_web
     print_status
+    print_dev_urls
     ;;
   down)
     stop_one web "$WEB_PID"

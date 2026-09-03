@@ -1,27 +1,14 @@
-/**
- * Admin typography roles. Inter is the UI face; numeric alignment uses Inter tnum
- * (tabular lining figures), not a separate monospace face.
- *
- * Policy: web/DESIGN.md#typography
- */
+/** Inter + tnum for numeric columns and KPIs. */
+export const ADMIN_TABULAR_CLASS = 'tabular-nums';
 
-/** Inter + tnum: money, counts, rates, %, dates/times in columns, pagination, KPI tiles. */
-export const ADMIN_TABULAR_CLASS = 'admin-tabular-nums';
+/** Alias used in dashboard components. */
+export const ADMIN_NUMERIC_CLASS = 'tabular-nums';
 
-/** Alias used in dashboard components (same as ADMIN_TABULAR_CLASS). */
-export const ADMIN_NUMERIC_CLASS = 'font-numeric';
-
-/**
- * JetBrains Mono: UUIDs, hashes, URLs, JSON/config editors, cron, secrets, code blocks.
- * Do not use for KPI columns - use ADMIN_TABULAR_CLASS instead.
- */
-export const ADMIN_MONO_CLASS = 'admin-data-mono';
+/** JetBrains Mono for UUIDs, hashes, URLs, JSON, secrets. */
+export const ADMIN_MONO_CLASS = 'font-mono tabular-nums';
 
 export type AdminTypographyRole = 'prose' | 'tabular' | 'mono';
 
-/**
- * Data surfaces that get Inter tnum (aligned digits, proportional glyphs elsewhere).
- */
 export const ADMIN_TABULAR_DATA_KINDS = [
   'money',
   'micro_amount',
@@ -39,9 +26,6 @@ export const ADMIN_TABULAR_DATA_KINDS = [
 
 export type AdminTabularDataKind = (typeof ADMIN_TABULAR_DATA_KINDS)[number];
 
-/**
- * Data surfaces that get JetBrains Mono (fixed-width for scan/compare of opaque strings).
- */
 export const ADMIN_MONO_DATA_KINDS = [
   'uuid',
   'hash',
@@ -79,7 +63,6 @@ const ADMIN_LABEL_ABBREVIATIONS = new Map<string, string>([
   ['ok', 'OK'],
 ]);
 
-/** Wire enum / slug -> sentence-style label; preserves known abbreviations. */
 export function formatAdminEnumLabel(raw: string): string {
   const trimmed = raw.trim();
   if (!trimmed) {

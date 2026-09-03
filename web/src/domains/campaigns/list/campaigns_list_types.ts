@@ -1,8 +1,12 @@
 import type { CampaignListMiddleColumnId } from '@/domains/campaigns/list/campaign_list_columns';
 
-export type CampaignServerSortField = 'name' | 'updated_at' | 'spend' | 'budget_limit';
-
-export type CampaignSortField = CampaignServerSortField | CampaignListMiddleColumnId | 'id';
+export type CampaignSortField =
+  | CampaignListMiddleColumnId
+  | 'id'
+  | 'name'
+  | 'updated_at'
+  | 'spend'
+  | 'budget_limit';
 
 export type SortOrder = 'asc' | 'desc';
 

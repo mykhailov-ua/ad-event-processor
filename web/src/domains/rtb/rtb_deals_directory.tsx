@@ -15,13 +15,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { RtbDeal } from '@/api/types';
 import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
@@ -137,15 +137,14 @@ export function RtbDealsDirectory({
       {items.length === 0 ? (
         <EmptyState title="No deals" description="RTB deal catalog returned no entries." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Deal ID</TableHead>
-                <TableHead>Internal ID</TableHead>
-                <TableHead>Floor (micro)</TableHead>
-                <TableHead>Pacing</TableHead>
-                <TableHead>Updated</TableHead>
+                <DirectoryTableHead>Deal ID</DirectoryTableHead>
+                <DirectoryTableHead>Internal ID</DirectoryTableHead>
+                <DirectoryTableHead>Floor (micro)</DirectoryTableHead>
+                <DirectoryTableHead>Pacing</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -167,8 +166,7 @@ export function RtbDealsDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? rtbPanelError(error, 'Refresh failed') : null}

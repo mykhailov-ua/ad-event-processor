@@ -1,60 +1,58 @@
 import type { Config } from 'tailwindcss';
+import animate from 'tailwindcss-animate';
 
 const config: Config = {
+  darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-sans)'],
-        mono: ['var(--font-mono)'],
-        numeric: ['var(--font-numeric)'],
+        sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
+      colors: {
+        muted: {
+          DEFAULT: '#f4f4f5',
+          foreground: '#71717a',
+        },
+        card: {
+          DEFAULT: '#ffffff',
+          foreground: '#09090b',
+        },
+        popover: {
+          DEFAULT: '#ffffff',
+          foreground: '#09090b',
+        },
+        primary: {
+          DEFAULT: '#18181b',
+          foreground: '#fafafa',
+        },
+        secondary: {
+          DEFAULT: '#f4f4f5',
+          foreground: '#18181b',
+        },
+        accent: {
+          DEFAULT: '#f4f4f5',
+          foreground: '#18181b',
+        },
+        destructive: {
+          DEFAULT: '#ef4444',
+          foreground: '#fafafa',
+        },
+        border: '#e4e4e7',
+        input: '#e4e4e7',
+        ring: '#3b82f6',
+        background: '#ffffff',
+        foreground: '#09090b',
       },
       borderRadius: {
-        '2xl': 'var(--admin-radius)',
-        xl: '0.75rem',
         lg: '0.5rem',
         md: '0.375rem',
         sm: '0.25rem',
-        full: '9999px',
-      },
-      colors: {
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
-        card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
-        },
-        popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
-        },
-        primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
-        },
-        secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
-        },
-        muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
-        },
-        accent: {
-          DEFAULT: 'hsl(var(--accent))',
-          foreground: 'hsl(var(--accent-foreground))',
-        },
-        destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
-        },
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
       },
     },
   },
-  plugins: [],
+  plugins: [animate],
 };
 
 export default config;

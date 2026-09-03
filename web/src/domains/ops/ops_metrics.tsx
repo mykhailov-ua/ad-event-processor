@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { DashboardMetrics, DashboardSummary } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -10,7 +12,13 @@ import {
   OpsPageLoading,
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsMetricsProps = {
   metrics: DashboardMetrics | undefined;
@@ -56,16 +64,15 @@ export function OpsMetrics({
   return (
     <OpsPageShell
       filters={
-        <label className="admin-label">
-          Range
-          <input
-            className="admin-input"
+        <div className="grid gap-2">
+          <Label htmlFor="metrics-range">Range</Label>
+          <Input
             id="metrics-range"
             placeholder="1h"
             value={draftRange}
             onChange={(event) => onDraftRangeChange(event.target.value)}
           />
-        </label>
+        </div>
       }
       title="Dashboard metrics"
       actions={
@@ -77,7 +84,7 @@ export function OpsMetrics({
           </OpsActionGroup>
           <OpsActionGroup label="Live stream">
             <Button
-              className={cn(liveEnabled && 'is-active')}
+              className={cn(liveEnabled && 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900')}
               type="button"
               variant="secondary"
               onClick={() => onLiveEnabledChange(!liveEnabled)}
@@ -89,14 +96,14 @@ export function OpsMetrics({
       }
     >
       {liveSummary ? (
-        <p className="admin-muted">
+        <p className="text-zinc-500 dark:text-zinc-400">
           Live stream  /  outbox pending {liveSummary.outbox_pending ?? ''}  /  generated{' '}
           {displayTimestamp(liveSummary.generated_at, liveSummary.generated_at_display)}
         </p>
       ) : null}
 
       {metrics ? (
-        <p className="admin-muted">
+        <p className="text-zinc-500 dark:text-zinc-400">
           Range {metrics.range ?? draftRange}  /  bucket {metrics.bucket_sec ?? ''}s  /  generated{' '}
           {displayTimestamp(metrics.generated_at)}
         </p>
@@ -109,17 +116,17 @@ export function OpsMetrics({
       {points.length > 0 ? (
         <OpsTable
           head={
-            <tr>
-              <th>Timestamp</th>
-              <th className="num">Value</th>
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>Timestamp</OpsTableHead>
+              <OpsTableHead numeric>Value</OpsTableHead>
+            </OpsTableHeaderRow>
           }
         >
           {points.map((point, index) => (
-            <tr key={`${point.ts ?? 'point'}-${index}`}>
-              <td>{displayTimestamp(point.ts)}</td>
-              <td className="num">{point.value ?? ''}</td>
-            </tr>
+            <OpsTableRow key={`${point.ts ?? 'point'}-${index}`}>
+              <OpsTableCell>{displayTimestamp(point.ts)}</OpsTableCell>
+              <OpsTableCell numeric>{point.value ?? ''}</OpsTableCell>
+            </OpsTableRow>
           ))}
         </OpsTable>
       ) : null}

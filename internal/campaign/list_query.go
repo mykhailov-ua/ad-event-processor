@@ -24,8 +24,26 @@ type ListCampaignsFilter struct {
 	TargetCountry  string
 	BudgetMinMicro pgtype.Int8
 	BudgetMaxMicro pgtype.Int8
+	SearchQuery    string
+	PacingMode     string
+	SortField      string
+	SortOrder      string
+	StatsFrom      pgtype.Date
+	StatsTo        pgtype.Date
+	StatsRangeFrom time.Time
+	StatsRangeTo   time.Time
+	StatsRangeSet  bool
 	Limit          int32
 	Offset         int32
+}
+
+func IsCampaignListStatsSortField(field string) bool {
+	switch strings.TrimSpace(field) {
+	case "clicks", "impressions", "conversions":
+		return true
+	default:
+		return false
+	}
 }
 
 func ResolveListOwnerUserFilter(ctx context.Context, r *http.Request) pgtype.UUID {

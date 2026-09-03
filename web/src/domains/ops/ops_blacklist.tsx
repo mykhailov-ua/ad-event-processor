@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/shell/empty_state';
 import type { OpsBlacklistEntry } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
@@ -10,7 +12,13 @@ import {
   OpsPageLoading,
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsBlacklistProps = {
   items: OpsBlacklistEntry[];
@@ -93,33 +101,30 @@ export function OpsBlacklist({
       }
       filters={
         <>
-          <label className="admin-label">
-            IP to block
-            <input
-              className="admin-input"
+          <div className="grid gap-2">
+            <Label htmlFor="blacklist-ip">IP to block</Label>
+            <Input
               id="blacklist-ip"
               value={draftIp}
               onChange={(event) => onDraftIpChange(event.target.value)}
             />
-          </label>
-          <label className="admin-label">
-            Reason
-            <input
-              className="admin-input"
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="blacklist-reason">Reason</Label>
+            <Input
               id="blacklist-reason"
               value={draftReason}
               onChange={(event) => onDraftReasonChange(event.target.value)}
             />
-          </label>
-          <label className="admin-label">
-            IP to unblock
-            <input
-              className="admin-input"
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="blacklist-remove-ip">IP to unblock</Label>
+            <Input
               id="blacklist-remove-ip"
               value={draftRemoveIp}
               onChange={(event) => onDraftRemoveIpChange(event.target.value)}
             />
-          </label>
+          </div>
         </>
       }
       footer={
@@ -143,21 +148,21 @@ export function OpsBlacklist({
       ) : (
         <OpsTable
           head={
-            <tr>
-              <th>IP</th>
-              <th>Reason</th>
-              <th>Created</th>
-              <th>Expires</th>
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>IP</OpsTableHead>
+              <OpsTableHead>Reason</OpsTableHead>
+              <OpsTableHead>Created</OpsTableHead>
+              <OpsTableHead>Expires</OpsTableHead>
+            </OpsTableHeaderRow>
           }
         >
           {items.map((row) => (
-            <tr key={row.id ?? row.ip}>
-              <td>{row.ip ?? ''}</td>
-              <td>{row.reason ?? ''}</td>
-              <td>{displayTimestamp(row.created_at, row.created_at_display)}</td>
-              <td>{displayTimestamp(row.expires_at, row.expires_at_display)}</td>
-            </tr>
+            <OpsTableRow key={row.id ?? row.ip}>
+              <OpsTableCell>{row.ip ?? ''}</OpsTableCell>
+              <OpsTableCell>{row.reason ?? ''}</OpsTableCell>
+              <OpsTableCell>{displayTimestamp(row.created_at, row.created_at_display)}</OpsTableCell>
+              <OpsTableCell>{displayTimestamp(row.expires_at, row.expires_at_display)}</OpsTableCell>
+            </OpsTableRow>
           ))}
         </OpsTable>
       )}

@@ -17,13 +17,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { TelegramPostback } from '@/api/types';
 import { TelegramNav, telegramPanelError } from '@/domains/telegram/telegram_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -145,13 +145,12 @@ export function TelegramPostbacksDirectory({
       ) : postbacks.length === 0 ? (
         <EmptyState title="No postbacks" description="No Telegram postback URLs for this campaign." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>URL</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead />
+                <DirectoryTableHead>URL</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -194,8 +193,7 @@ export function TelegramPostbacksDirectory({
                 );
               })}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {actionMessage ? (

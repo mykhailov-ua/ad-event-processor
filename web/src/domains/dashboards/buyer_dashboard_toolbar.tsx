@@ -73,13 +73,13 @@ export function BuyerDashboardToolbar({
   );
 
   return (
-    <div className="admin-stack admin-stack--compact">
-      <p className="admin-toolbar-summary admin-muted">
+    <div className="flex flex-col gap-3 flex flex-col gap-2">
+      <p className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
         Period and campaign apply immediately. Apply confirms customer change.
       </p>
       <div
         aria-label="Dashboard filters"
-        className="admin-toolbar-row admin-toolbar-row--filters"
+        className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2"
         role="search"
       >
         <CampaignsListFilterSelect
@@ -101,7 +101,7 @@ export function BuyerDashboardToolbar({
           }
         />
         <DateRangePicker
-          className="admin-label--range"
+          className="flex flex-col gap-1"
           id="buyer-dashboard-range"
           disabled={fetching || !draftCustomerId.trim()}
           from={draftFrom}

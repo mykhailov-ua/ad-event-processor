@@ -11,7 +11,13 @@ import {
   OpsPageShell,
 } from '@/domains/ops/ops_page_shell';
 import { OpsStatusChip } from '@/domains/ops/ops_status';
-import { OpsTable } from '@/domains/ops/ops_table';
+import {
+  OpsTable,
+  OpsTableCell,
+  OpsTableHead,
+  OpsTableHeaderRow,
+  OpsTableRow,
+} from '@/domains/ops/ops_table';
 
 export type OpsDlqInboxProps = {
   items: DLQInboxEntry[];
@@ -71,33 +77,37 @@ export function OpsDlqInbox({
       ) : (
         <OpsTable
           head={
-            <tr>
-              <th>Source</th>
-              <th>Status</th>
-              <th>Campaign</th>
-              <th>Event</th>
-              <th>Error</th>
-              <th>Failed</th>
-              <th className="num">Retries</th>
-              <th />
-            </tr>
+            <OpsTableHeaderRow>
+              <OpsTableHead>Source</OpsTableHead>
+              <OpsTableHead>Status</OpsTableHead>
+              <OpsTableHead>Campaign</OpsTableHead>
+              <OpsTableHead>Event</OpsTableHead>
+              <OpsTableHead>Error</OpsTableHead>
+              <OpsTableHead>Failed</OpsTableHead>
+              <OpsTableHead numeric>Retries</OpsTableHead>
+              <OpsTableHead />
+            </OpsTableHeaderRow>
           }
         >
           {items.map((entry) => {
             const rowKey = entry.id ?? `${entry.source}-${entry.failed_at}`;
             const canRetry = Boolean(entry.id && entry.source);
             return (
-              <tr key={rowKey}>
-                <td>{entry.source ?? ''}</td>
-                <td>
+              <OpsTableRow key={rowKey}>
+                <OpsTableCell>{entry.source ?? ''}</OpsTableCell>
+                <OpsTableCell>
                   {entry.status ? <OpsStatusChip status={entry.status} /> : ''}
-                </td>
-                <td className="admin-table-td--id">{entry.campaign_id ?? ''}</td>
-                <td>{entry.event_type ?? ''}</td>
-                <td className="admin-muted admin-table-td--truncate">{entry.error ?? ''}</td>
-                <td>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</td>
-                <td className="num">{entry.retry_count ?? ''}</td>
-                <td className="admin-table-td--actions">
+                </OpsTableCell>
+                <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                  {entry.campaign_id ?? ''}
+                </OpsTableCell>
+                <OpsTableCell>{entry.event_type ?? ''}</OpsTableCell>
+                <OpsTableCell className="max-w-0 truncate text-zinc-500 dark:text-zinc-400">
+                  {entry.error ?? ''}
+                </OpsTableCell>
+                <OpsTableCell>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</OpsTableCell>
+                <OpsTableCell numeric>{entry.retry_count ?? ''}</OpsTableCell>
+                <OpsTableCell className="w-10 text-center">
                   {canRetry ? (
                     <RowActionsMenu
                       ariaLabel="DLQ entry actions"
@@ -111,8 +121,8 @@ export function OpsDlqInbox({
                       </DropdownMenuItem>
                     </RowActionsMenu>
                   ) : null}
-                </td>
-              </tr>
+                </OpsTableCell>
+              </OpsTableRow>
             );
           })}
         </OpsTable>

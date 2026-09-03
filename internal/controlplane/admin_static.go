@@ -89,6 +89,32 @@ func serveLoginHTML(w http.ResponseWriter, staticFS http.FileSystem) {
 	_, _ = w.Write(data)
 }
 
+func adminUIDevRedirectURL() string {
+	return strings.TrimRight(strings.TrimSpace(os.Getenv("ADMIN_UI_DEV_URL")), "/")
+}
+
+func shouldRedirectAdminUIToDev(path string) bool {
+	if strings.HasPrefix(path, "/api/") {
+		return false
+	}
+	switch path {
+	case "/health", "/healthz", "/readyz", "/metrics":
+		return false
+	}
+	if strings.HasPrefix(path, "/src/") || strings.HasPrefix(path, "/assets/") {
+		return false
+	}
+	return true
+}
+
+func redirectToAdminDev(w http.ResponseWriter, r *http.Request, base string) {
+	target := base + r.URL.Path
+	if r.URL.RawQuery != "" {
+		target += "?" + r.URL.RawQuery
+	}
+	http.Redirect(w, r, target, http.StatusFound)
+}
+
 func serveIndexHTML(w http.ResponseWriter, staticFS http.FileSystem, boot *AdminBootJSON) {
 	f, err := staticFS.Open("index.html")
 	if err != nil {
@@ -144,6 +170,11 @@ func RegisterAdminStaticRoutes(mux *http.ServeMux, gate *AdminUIGate) {
 	})
 
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		if devURL := adminUIDevRedirectURL(); devURL != "" && shouldRedirectAdminUIToDev(r.URL.Path) {
+			redirectToAdminDev(w, r, devURL)
+			return
+		}
+
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			httpresponse.Error(w, http.StatusNotFound, "NOT_FOUND", "api route not found")
 			return

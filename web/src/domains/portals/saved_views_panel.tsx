@@ -18,13 +18,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { SavedView } from '@/api/types';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -221,14 +221,13 @@ export function SavedViewsPanel({
               onAction={() => setCreateOpen(true)}
             />
           ) : (
-            <div className="ui-table-frame">
-              <Table>
+            <DirectoryTable>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Report</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead />
+                    <DirectoryTableHead>Name</DirectoryTableHead>
+                    <DirectoryTableHead>Report</DirectoryTableHead>
+                    <DirectoryTableHead>Updated</DirectoryTableHead>
+                    <DirectoryTableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -286,8 +285,7 @@ export function SavedViewsPanel({
                     );
                   })}
                 </TableBody>
-              </Table>
-            </div>
+              </DirectoryTable>
           )}
         </div>
       )}

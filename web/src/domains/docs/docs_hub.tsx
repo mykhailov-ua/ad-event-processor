@@ -2,13 +2,13 @@ import { Navigate } from 'react-router-dom';
 
 import { PageChrome } from '@/shell/page_chrome';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import { DocsNav } from '@/domains/docs/docs_nav';
 import { DEFAULT_DOCS_SECTION_ID, getDocsSection } from '@/lib/docs_sections';
 
@@ -44,13 +44,12 @@ export function DocsHub({ sectionId }: DocsHubProps) {
             <p className="text-sm text-muted-foreground">{section.summary}</p>
           </header>
 
-          <div className="ui-table-frame">
-            <Table>
+          <DirectoryTable>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[12rem]">Problem</TableHead>
-                  <TableHead className="w-[14rem]">What you see</TableHead>
-                  <TableHead>What to try</TableHead>
+                  <DirectoryTableHead className="w-[12rem]">Problem</DirectoryTableHead>
+                  <DirectoryTableHead className="w-[14rem]">What you see</DirectoryTableHead>
+                  <DirectoryTableHead>What to try</DirectoryTableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -62,8 +61,7 @@ export function DocsHub({ sectionId }: DocsHubProps) {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
+            </DirectoryTable>
         </div>
       </div>
     </PageChrome>

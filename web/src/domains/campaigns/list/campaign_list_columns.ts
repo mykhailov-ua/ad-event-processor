@@ -237,6 +237,54 @@ export function isCampaignListColumnResizable(id: CampaignListColumnId): boolean
   return id !== 'select';
 }
 
+const NUMERIC_MIDDLE_COLUMNS = new Set<CampaignListMiddleColumnId>([
+  'clicks',
+  'impressions',
+  'ctr',
+  'unique_clicks',
+  'lp_clicks',
+  'lp_views',
+  'lp_ctr',
+  'cr',
+  'leads',
+  'approved',
+  'hold_leads',
+  'rejected_leads',
+  'approve_rate',
+  'epc',
+  'cpc',
+  'cpa',
+  'ecpa',
+  'cpm',
+  'blocks',
+  'block_pct',
+  'bots',
+  'bot_pct',
+  'revenue',
+  'cost',
+  'profit',
+  'roi',
+  'budget_pct',
+]);
+
+export function isCampaignListNumericColumn(id: CampaignListColumnId): boolean {
+  if (id === 'id') {
+    return true;
+  }
+  return isCampaignListMiddleColumnId(id) && NUMERIC_MIDDLE_COLUMNS.has(id);
+}
+
+export function resolveCampaignListColumnWidthPx(
+  columnId: CampaignListColumnId,
+  localWidths: Readonly<Partial<Record<CampaignListColumnId, number>>>,
+): number {
+  const width = localWidths[columnId];
+  if (width != null && Number.isFinite(width) && width > 0) {
+    return clampCampaignListColumnWidthPx(columnId, width);
+  }
+  return CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+}
+
 export function defaultCampaignListColumnPrefs(): CampaignListColumnPrefs {
   return {
     dataColumnOrder: ['name', ...CAMPAIGN_LIST_MIDDLE_COLUMNS],

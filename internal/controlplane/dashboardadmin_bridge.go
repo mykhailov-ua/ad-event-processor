@@ -144,8 +144,8 @@ func (s *Service) GetBuyerDrilldown(ctx context.Context, customerID uuid.UUID, c
 	return s.buyerPortfolio().GetBuyerDrilldown(ctx, customerID, campaignID, from, to, filter)
 }
 
-func (s *Service) GetCampaignDashboard(ctx context.Context, campaignID uuid.UUID) (dashboardadmin.CampaignDashboardDTO, error) {
-	return s.campaignDashboard().GetCampaignDashboard(ctx, campaignID)
+func (s *Service) GetCampaignDashboard(ctx context.Context, req dashboardadmin.CampaignDashboardRequest) (dashboardadmin.CampaignDashboardDTO, error) {
+	return s.campaignDashboard().GetCampaignDashboard(ctx, req)
 }
 
 func (s *Service) GetAdOpsDashboard(ctx context.Context, customerID uuid.UUID) (dashboardadmin.AdOpsDashboardDTO, error) {

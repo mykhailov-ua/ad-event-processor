@@ -18,13 +18,13 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Table,
+  DirectoryTable,
+  DirectoryTableHead,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/shell/directory_table';
 import type { BrandCreative } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 import { displayTimestamp } from '@/lib/display';
@@ -230,16 +230,15 @@ export function BrandCreativesDirectory({
       {items.length === 0 ? (
         <EmptyState title="No creatives" description="This brand has no creatives yet." />
       ) : (
-        <div className="ui-table-frame">
-          <Table>
+        <DirectoryTable>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Weight</TableHead>
-                <TableHead>Landing URL</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead />
+                <DirectoryTableHead>Name</DirectoryTableHead>
+                <DirectoryTableHead>Status</DirectoryTableHead>
+                <DirectoryTableHead>Weight</DirectoryTableHead>
+                <DirectoryTableHead>Landing URL</DirectoryTableHead>
+                <DirectoryTableHead>Updated</DirectoryTableHead>
+                <DirectoryTableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -272,8 +271,7 @@ export function BrandCreativesDirectory({
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+          </DirectoryTable>
       )}
 
       {error && hasSnapshot ? creativePanelError(error, 'Refresh failed') : null}

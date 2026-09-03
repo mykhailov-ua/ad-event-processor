@@ -177,7 +177,7 @@ function ChartLegendContent({
             <button
               type="button"
               className={cn(
-                'flex items-center gap-1.5 rounded-full px-1 py-0.5 transition-opacity',
+                'flex items-center gap-1.5 rounded-full px-1 py-0.5 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-zinc-950',
                 !active && 'opacity-45',
               )}
               aria-pressed={active}
@@ -257,7 +257,10 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
 
   if (series.length === 0) {
     return (
-      <section className={cn('ui-surface-raised overflow-hidden p-3', className)}>
+      <section
+        aria-label="Performance chart"
+        className={cn('ui-surface-raised overflow-hidden p-3', className)}
+      >
         <div className="rounded-xl border border-border bg-card/20 px-4 py-10 text-center text-sm text-muted-foreground">
           No series data for this range.
         </div>
@@ -266,7 +269,10 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
   }
 
   return (
-    <section className={cn('ui-surface-raised overflow-hidden p-3', className)}>
+    <section
+      aria-label="Performance chart"
+      className={cn('ui-surface-raised overflow-hidden p-3', className)}
+    >
       <div className="rounded-xl border border-border bg-card/25 p-2 sm:p-3">
         <div className="h-[min(30rem,52vh)] min-h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">

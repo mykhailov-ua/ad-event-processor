@@ -64,10 +64,15 @@ export function AppShell() {
         <a className="sr-only" href="#main-content">
           Skip to content
         </a>
-        <div className="admin-app-frame">
+        <div className="flex min-h-screen flex-col">
           <AdminDevBanner />
-          <div className={cn('admin-app', sidebarCollapsed && 'is-sidebar-collapsed')}>
-            <aside className="admin-sidebar">
+          <div className="flex min-h-0 flex-1">
+            <aside
+              className={cn(
+                'flex w-48 shrink-0 flex-col gap-3 overflow-y-auto border-r border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950',
+                sidebarCollapsed && 'hidden',
+              )}
+            >
             <p>
               <strong>ad-event-processor</strong>
             </p>
@@ -76,7 +81,7 @@ export function AppShell() {
                 <NavLink
                   key={item.path}
                   end={item.path === '/dashboards/buyer'}
-                  className="admin-nav-link"
+                  className="relative block rounded px-2 py-1.5 no-underline hover:bg-zinc-100 dark:hover:bg-zinc-800 [&[aria-current=page]]:bg-blue-50 [&[aria-current=page]]:font-semibold [&[aria-current=page]]:text-blue-700 dark:[&[aria-current=page]]:bg-blue-950/40 dark:[&[aria-current=page]]:text-blue-300"
                   to={item.path}
                 >
                   {item.label}
@@ -92,27 +97,27 @@ export function AppShell() {
             ) : null}
           </aside>
 
-          <div className="admin-main">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zinc-50 dark:bg-zinc-950">
             <TrackerHeaderProvider>
               <BreadcrumbProvider>
-                <header className="admin-header">
-                  <div className="admin-header-start">
+                <header className="grid grid-cols-[minmax(0,1fr)_minmax(12rem,28rem)_minmax(0,1fr)] items-center gap-3 border-b border-zinc-200 bg-white px-3 py-2 dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="flex min-w-0 items-center gap-2">
                     <TrackerShellSidebarToggle
                       collapsed={sidebarCollapsed}
                       onToggle={toggleSidebar}
                     />
-                    <PageBreadcrumbs className="admin-header-breadcrumbs" />
+                    <PageBreadcrumbs className="min-w-0 overflow-hidden" />
                   </div>
-                  <div className="admin-header-center">
+                  <div className="flex w-full max-w-md min-w-0 justify-center justify-self-center">
                     <TrackerShellHeaderSearch
                       onOpenCommandPalette={() => setCommandPaletteOpen(true)}
                     />
                   </div>
-                  <div className="admin-header-end">
+                  <div className="flex min-w-0 items-center justify-end justify-self-end gap-2">
                     <TrackerShellHeaderActions />
                   </div>
                 </header>
-                <main className="admin-content" id="main-content" tabIndex={-1}>
+                <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-3" id="main-content" tabIndex={-1}>
                   <AppErrorBoundary layout="embedded">
                     <Outlet />
                   </AppErrorBoundary>

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { CampaignForecast } from '@/api/types';
-import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
+import { CampaignForecastView } from '@/domains/portals/campaign_forecast_view';
 import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 
 export type CampaignForecastPanelProps = {
@@ -95,7 +95,7 @@ export function CampaignForecastPanel({
       ) : error && !hasSnapshot ? (
         portalsPanelError(error, 'Could not run campaign forecast')
       ) : forecast ? (
-        <JsonDashboardView payload={forecast as unknown as Record<string, unknown>} />
+        <CampaignForecastView forecast={forecast} />
       ) : null}
 
       {error && hasSnapshot ? portalsPanelError(error, 'Refresh failed') : null}
