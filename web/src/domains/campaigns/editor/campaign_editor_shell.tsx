@@ -46,16 +46,16 @@ export function CampaignEditorShell({
 
   const pathsAside = (
     <section className="ui-shell ui-shell-panel flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Paths</h2>
+      <h2 className="text-sm font-semibold text-foreground">Paths</h2>
       {paths.map((path, pathIndex) => (
         <div key={`path-${pathIndex}`} className="ui-shell ui-shell-panel flex flex-col gap-3">
           <p>
             <strong>Path {pathIndex + 1}</strong> / weight {path.weight ?? 100}
           </p>
           <div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Landers</h3>
+            <h3 className="text-sm font-semibold text-foreground">Landers</h3>
             {(path.landers ?? []).length === 0 ? (
-              <p className="text-zinc-500 dark:text-zinc-400">No landers</p>
+              <p className="text-muted-foreground">No landers</p>
             ) : (
               <ul>
                 {(path.landers ?? []).map((lander, landerIndex) => (
@@ -68,9 +68,9 @@ export function CampaignEditorShell({
             )}
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Offers</h3>
+            <h3 className="text-sm font-semibold text-foreground">Offers</h3>
             {(path.offers ?? []).length === 0 ? (
-              <p className="text-zinc-500 dark:text-zinc-400">No offers</p>
+              <p className="text-muted-foreground">No offers</p>
             ) : (
               <ul>
                 {(path.offers ?? []).map((offer, offerIndex) => (
@@ -115,7 +115,7 @@ export function CampaignEditorShell({
       {statusBanner}
 
       <section className="ui-shell ui-shell-panel flex flex-col gap-3">
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Main options</h2>
+        <h2 className="text-sm font-semibold text-foreground">Main options</h2>
 
         <div className="grid grid-cols-[8rem_1fr] items-center gap-2">
           <Label htmlFor="campaign-editor-name">Name</Label>

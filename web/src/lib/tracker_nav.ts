@@ -49,6 +49,23 @@ function iconForPath(path: string): LucideIcon {
   return TRACKER_NAV_ICONS[path] ?? Activity;
 }
 
+/** Lucide icon for the current pathname (longest registered nav prefix). */
+export function trackerNavIconForPathname(pathname: string): LucideIcon {
+  const normalized = pathname.replace(/\/$/, '') || '/';
+  if (TRACKER_NAV_ICONS[normalized]) {
+    return TRACKER_NAV_ICONS[normalized];
+  }
+  const parts = normalized.split('/').filter(Boolean);
+  for (let depth = parts.length; depth >= 1; depth -= 1) {
+    const candidate = `/${parts.slice(0, depth).join('/')}`;
+    const icon = TRACKER_NAV_ICONS[candidate];
+    if (icon) {
+      return icon;
+    }
+  }
+  return Activity;
+}
+
 /** Flat sidebar list in tracker-style order (dashboard and campaigns first). */
 const TRACKER_NAV_ORDER: string[] = [
   '/dashboards/buyer',

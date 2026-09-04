@@ -1,4 +1,6 @@
 import { ApiError, apiFetch, apiJson } from './client.js';
+import { CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE } from '@/domains/campaigns/list/campaign_list_limits';
+import { isUuidLike } from '@/lib/customer_label';
 import type {
   ApplyCampaignTemplatesRequest,
   ApplyCampaignTemplatesResult,
@@ -79,7 +81,7 @@ export function buildCampaignsListPath(params: CampaignListQuery = {}): string {
   if (params.owner_user_id) {
     search.set('owner_user_id', params.owner_user_id);
   }
-  if (params.country) {
+  if (params.country && params.country !== '__all__') {
     search.set('country', params.country);
   }
   if (params.limit != null) {
@@ -165,7 +167,7 @@ export function buildCampaignListMetricsTotalsPath(
   if (filter.owner_user_id) {
     search.set('owner_user_id', filter.owner_user_id);
   }
-  if (filter.country) {
+  if (filter.country && filter.country !== '__all__') {
     search.set('country', filter.country);
   }
   if (statsQuery.from) {
@@ -723,8 +725,9 @@ export function buildCampaignListMetricsPath(
   campaignIds: string[],
   params: Pick<CampaignListMetricsQuery, 'from' | 'to'> = {},
 ): string {
+  const validIds = campaignIds.filter((id) => isUuidLike(id));
   const search = new URLSearchParams();
-  search.set('ids', campaignIds.join(','));
+  search.set('ids', validIds.join(','));
   if (params.from) {
     search.set('from', params.from);
   }
@@ -758,51 +761,59 @@ export async function fetchCampaignListMetricsBatch(
   marginsById: Record<string, CampaignMargin>;
   stale: boolean;
 }> {
-  if (campaignIds.length === 0) {
+  const validIds = campaignIds.filter((id) => isUuidLike(id));
+  if (validIds.length === 0) {
     return { metricsById: {}, marginsById: {}, stale: false };
   }
 
-  const batch = await apiJson<CampaignListMetricsBatchResponse>(
-    buildCampaignListMetricsPath(campaignIds, statsQuery),
-    { signal },
-  );
-
   const metricsById: Record<string, CampaignListMetrics> = {};
   const marginsById: Record<string, CampaignMargin> = {};
-  for (const [campaignId, row] of Object.entries(batch.items ?? {})) {
-    metricsById[campaignId] = {
-      impressions: row.impressions,
-      clicks: row.clicks,
-      conversions: row.conversions,
-      unique_clicks: row.unique_clicks,
-      blocks: row.blocks,
-      leads_raw: row.leads_raw,
-      hold_leads: row.hold_leads,
-      rejected_leads: row.rejected_leads,
-      lp_clicks: row.lp_clicks,
-      lp_views: row.lp_views,
-      bots: row.bots,
-      stale: row.stale ?? batch.stale,
-      revenue_micro: row.revenue_micro,
-      cost_micro: row.cost_micro,
-      profit_micro: row.profit_micro,
-      epc_micro: row.epc_micro,
-      cpc_micro: row.cpc_micro,
-      cpa_micro: row.cpa_micro,
-      ecpa_micro: row.ecpa_micro,
-      ctr_pct: row.ctr_pct,
-      lp_ctr_pct: row.lp_ctr_pct,
-      cr_pct: row.cr_pct,
-      approve_rate_pct: row.approve_rate_pct,
-      block_pct: row.block_pct,
-      bot_pct: row.bot_pct,
-      roi_pct: row.roi_pct,
-      cpm_usd: row.cpm_usd,
-    };
-    marginsById[campaignId] = marginFromMetricsRow({ ...row, campaign_id: campaignId });
+  let stale = false;
+
+  for (let start = 0; start < validIds.length; start += CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE) {
+    const chunk = validIds.slice(start, start + CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE);
+    const batch = await apiJson<CampaignListMetricsBatchResponse>(
+      buildCampaignListMetricsPath(chunk, statsQuery),
+      { signal },
+    );
+    if (batch.stale) {
+      stale = true;
+    }
+    for (const [campaignId, row] of Object.entries(batch.items ?? {})) {
+      metricsById[campaignId] = {
+        impressions: row.impressions,
+        clicks: row.clicks,
+        conversions: row.conversions,
+        unique_clicks: row.unique_clicks,
+        blocks: row.blocks,
+        leads_raw: row.leads_raw,
+        hold_leads: row.hold_leads,
+        rejected_leads: row.rejected_leads,
+        lp_clicks: row.lp_clicks,
+        lp_views: row.lp_views,
+        bots: row.bots,
+        stale: row.stale ?? batch.stale,
+        revenue_micro: row.revenue_micro,
+        cost_micro: row.cost_micro,
+        profit_micro: row.profit_micro,
+        epc_micro: row.epc_micro,
+        cpc_micro: row.cpc_micro,
+        cpa_micro: row.cpa_micro,
+        ecpa_micro: row.ecpa_micro,
+        ctr_pct: row.ctr_pct,
+        lp_ctr_pct: row.lp_ctr_pct,
+        cr_pct: row.cr_pct,
+        approve_rate_pct: row.approve_rate_pct,
+        block_pct: row.block_pct,
+        bot_pct: row.bot_pct,
+        roi_pct: row.roi_pct,
+        cpm_usd: row.cpm_usd,
+      };
+      marginsById[campaignId] = marginFromMetricsRow({ ...row, campaign_id: campaignId });
+    }
   }
 
-  return { metricsById, marginsById, stale: batch.stale };
+  return { metricsById, marginsById, stale };
 }
 
 export async function fetchCampaignListMetrics(

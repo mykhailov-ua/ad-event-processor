@@ -54,7 +54,7 @@ export function ReportMapTable({
 
   return (
     <div className="grid gap-0">
-      <p className="rounded-t-md border border-b-0 border-zinc-200 px-4 py-2 text-sm font-medium dark:border-zinc-800">
+      <p className="rounded-t-md border border-b-0 border-border px-4 py-2 text-sm font-medium">
         {caption}
       </p>
       {table}

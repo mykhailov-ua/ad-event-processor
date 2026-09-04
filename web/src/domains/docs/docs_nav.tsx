@@ -7,7 +7,7 @@ export function DocsNav() {
   const location = useLocation();
 
   return (
-    <nav aria-label="Documentation sections" className="flex flex-col gap-1 text-sm">
+    <nav aria-label="Documentation sections" className="flex min-w-0 flex-col gap-0.5">
       {DOCS_SECTIONS.map((section) => {
         const path = `/docs/${section.id}`;
         const active = location.pathname === path;
@@ -15,14 +15,15 @@ export function DocsNav() {
           <Link
             key={section.id}
             to={path}
+            aria-current={active ? 'page' : undefined}
             className={cn(
-              'rounded-sm px-3 py-2 transition-colors',
+              'block min-w-0 rounded-md px-3 py-2 text-sm leading-snug transition-colors',
               active
-                ? 'bg-secondary font-medium text-foreground'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                ? 'bg-primary font-medium text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
             )}
           >
-            {section.title}
+            <span className="block break-words">{section.title}</span>
           </Link>
         );
       })}

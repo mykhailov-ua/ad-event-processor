@@ -43,7 +43,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const classes = cn(
-      'inline-flex h-8 items-center justify-center gap-2 rounded-sm border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950',
+      'inline-flex min-h-7 items-center justify-center gap-2 rounded-[5px] border px-2.5 py-1 text-[13px] font-semibold leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
       buttonVariantClass[variant],
       sizeClass[size],
       shapeClass[shape],
@@ -91,7 +91,7 @@ export function buttonVariants({
   shape?: NonNullable<ButtonProps['shape']>;
 } = {}) {
   return cn(
-    'inline-flex h-8 items-center justify-center gap-2 rounded-sm border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950',
+    'inline-flex min-h-7 items-center justify-center gap-2 rounded-[5px] border px-2.5 py-1 text-[13px] font-semibold leading-[18px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
     buttonVariantClass[variant],
     sizeClass[size],
     shapeClass[shape],

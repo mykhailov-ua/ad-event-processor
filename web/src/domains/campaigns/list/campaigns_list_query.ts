@@ -90,6 +90,10 @@ export function buildCampaignListQuery(
     params.get('stats_range'),
   );
 
+  const countryRaw = params.get('country');
+  const country =
+    countryRaw && countryRaw !== '__all__' ? countryRaw : undefined;
+
   const query: CampaignListQuery = {
     customer_id: customerId ?? undefined,
     status: status ?? undefined,
@@ -98,7 +102,7 @@ export function buildCampaignListQuery(
     budget_min_micro: parseOptionalMicro(params.get('budget_min_micro')),
     budget_max_micro: parseOptionalMicro(params.get('budget_max_micro')),
     owner_user_id: params.get('owner_user_id') ?? undefined,
-    country: params.get('country') ?? undefined,
+    country,
     limit: parseListLimit(params.get('limit')),
     offset: parseListOffset(params.get('offset')),
     sort: apiSort,

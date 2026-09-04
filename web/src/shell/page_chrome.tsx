@@ -10,6 +10,7 @@ export type PageChromeProps = {
   controlPanel?: ReactNode;
   aside?: ReactNode;
   footer?: ReactNode;
+  workspaceClassName?: string;
   children?: ReactNode;
 };
 
@@ -21,6 +22,7 @@ export function PageChrome({
   controlPanel,
   aside,
   footer,
+  workspaceClassName,
   children,
 }: PageChromeProps) {
   return (
@@ -32,6 +34,7 @@ export function PageChrome({
       footer={footer}
       headerActions={actions}
       title={title}
+      workspaceClassName={workspaceClassName}
     >
       {children}
     </PageLayout>

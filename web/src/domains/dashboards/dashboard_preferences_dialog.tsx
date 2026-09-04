@@ -1,7 +1,6 @@
-import { Button } from '@/components/ui/button';
-import { useEffect, useMemo, useState, type ReactNode, type WheelEvent } from 'react';
+import { useEffect, useMemo, useState, type WheelEvent } from 'react';
 
-import { MultiSelectField } from '@/shell/multi_select_field';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +22,10 @@ import {
   KPI_METRIC_LABELS,
   RECENT_CLICK_COLUMN_LABELS,
 } from '@/domains/dashboards/dashboard_preferences';
+import {
+  DashboardPrefsSelectionPanel,
+  type DashboardPrefsOption,
+} from '@/domains/dashboards/dashboard_prefs_selection_panel';
 
 export type DashboardPreferencesDialogProps = {
   open: boolean;
@@ -31,32 +34,12 @@ export type DashboardPreferencesDialogProps = {
   onApply: (preferences: BuyerDashboardPreferences) => void;
 };
 
-function toOptions<T extends string>(ids: readonly T[], labels: Record<T, string>) {
+function toOptions<T extends string>(ids: readonly T[], labels: Record<T, string>): DashboardPrefsOption<T>[] {
   return ids.map((id) => ({ id, label: labels[id] }));
 }
 
 function stopDialogWheelPropagation(event: WheelEvent<HTMLDivElement>) {
   event.stopPropagation();
-}
-
-function PreferencesSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 flex flex-col gap-2">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        {description ? <p className="text-zinc-500 dark:text-zinc-400">{description}</p> : null}
-      </div>
-      <div className="flex flex-col gap-3 flex flex-col gap-2">{children}</div>
-    </section>
-  );
 }
 
 export function DashboardPreferencesDialog({
@@ -103,88 +86,92 @@ export function DashboardPreferencesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0">
+      <DialogContent className="dashboard-preferences-dialog max-w-2xl p-0">
+        <DialogHeader className="dashboard-preferences-dialog__header">
+          <DialogTitle className="dashboard-preferences-dialog__title">Preferences</DialogTitle>
+        </DialogHeader>
+
         <div
-          className="ui-scrollbar max-h-[min(80vh,44rem)] overflow-y-auto overscroll-y-contain"
+          className="dashboard-preferences-dialog__scroll ui-scrollbar"
           onWheel={stopDialogWheelPropagation}
         >
-          <DialogHeader className="sticky top-0 z-10 shrink-0 border-b px-4 py-3 text-left">
-            <DialogTitle className="text-sm font-semibold">Preferences</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 px-4 py-4">
-            <PreferencesSection
-              description="KPI tiles and chart lines shown on the dashboard."
-              title="Metrics"
-            >
-              <MultiSelectField<DashboardMetricId>
+          <section className="dashboard-preferences-dialog__section">
+            <h3 className="dashboard-preferences-dialog__section-title">Metrics</h3>
+            <div className="dashboard-preferences-dialog__section-body">
+              <DashboardPrefsSelectionPanel<DashboardMetricId>
                 id="dashboard-prefs-kpi-metrics"
                 label="KPI tiles"
                 options={kpiOptions}
                 value={draft.kpiMetrics}
                 onChange={(value) => updateDraft('kpiMetrics', value)}
               />
-              <MultiSelectField<DashboardMetricId>
+              <DashboardPrefsSelectionPanel<DashboardMetricId>
                 id="dashboard-prefs-chart-metrics"
                 label="Chart lines"
+                listMaxHeightClassName="max-h-40"
                 options={chartOptions}
                 value={draft.chartMetrics}
                 onChange={(value) => updateDraft('chartMetrics', value)}
               />
-            </PreferencesSection>
-            <PreferencesSection
-              description="Breakdown tables and the columns each table shows."
-              title="Top blocks"
-            >
-              <MultiSelectField
+              <DashboardPrefsSelectionPanel
+                id="dashboard-prefs-breakdown-columns"
+                label="Columns"
+                listMaxHeightClassName="max-h-44"
+                minSelected={2}
+                options={breakdownColumnOptions}
+                showChips={false}
+                value={draft.breakdownColumns}
+                onChange={(value) => updateDraft('breakdownColumns', value)}
+              />
+            </div>
+          </section>
+
+          <section className="dashboard-preferences-dialog__section">
+            <h3 className="dashboard-preferences-dialog__section-title">Recent clicks</h3>
+            <div className="dashboard-preferences-dialog__section-body">
+              <DashboardPrefsSelectionPanel
+                id="dashboard-prefs-recent-clicks"
+                label="Columns"
+                listMaxHeightClassName="max-h-44"
+                options={recentClickOptions}
+                showChips={false}
+                value={draft.recentClickColumns}
+                onChange={(value) => updateDraft('recentClickColumns', value)}
+              />
+              <DashboardPrefsSelectionPanel
                 id="dashboard-prefs-breakdown-entities"
                 label="Entities"
                 options={entityOptions}
                 value={draft.breakdownEntities}
                 onChange={(value) => updateDraft('breakdownEntities', value)}
               />
-              <MultiSelectField
-                id="dashboard-prefs-breakdown-columns"
-                label="Columns"
-                minSelected={2}
-                options={breakdownColumnOptions}
-                value={draft.breakdownColumns}
-                onChange={(value) => updateDraft('breakdownColumns', value)}
-              />
-            </PreferencesSection>
-            <PreferencesSection description="Columns in the live click feed." title="Recent clicks">
-              <MultiSelectField
-                id="dashboard-prefs-recent-clicks"
-                label="Columns"
-                options={recentClickOptions}
-                value={draft.recentClickColumns}
-                onChange={(value) => updateDraft('recentClickColumns', value)}
-              />
-            </PreferencesSection>
-          </div>
-          <DialogFooter className="sticky bottom-0 z-10 shrink-0 flex-row items-center justify-between border-t px-4 py-3 sm:justify-between">
-            <button
-              className="text-blue-600 hover:underline dark:text-blue-400"
-              type="button"
-              onClick={() => setDraft(defaultBuyerDashboardPreferences())}
-            >
-              Restore to default
-            </button>
-            <div className="flex flex-wrap items-center gap-1">
-              <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={() => {
-                  onApply(draft);
-                  onOpenChange(false);
-                }}
-              >
-                Apply
-              </Button>
             </div>
-          </DialogFooter>
+          </section>
         </div>
+
+        <DialogFooter className="dashboard-preferences-dialog__footer">
+          <button
+            className="dashboard-preferences-dialog__restore"
+            type="button"
+            onClick={() => setDraft(defaultBuyerDashboardPreferences())}
+          >
+            Restore to default
+          </button>
+          <div className="dashboard-preferences-dialog__footer-actions">
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                onApply(draft);
+                onOpenChange(false);
+              }}
+            >
+              Apply
+            </Button>
+          </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

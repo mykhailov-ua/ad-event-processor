@@ -106,7 +106,7 @@ function dayTrafficMultiplier(day: Date, index: number, totalDays: number): numb
 }
 
 export function isDashboardChartMockEnabled(): boolean {
-  // Non-prod tier: synthetic dashboard data when ?chart_mock=1 (see web/DESIGN.md).
+  // Non-prod tier: synthetic dashboard data when ?chart_mock=1 (see web/WEB.md).
   if (typeof window === 'undefined') {
     return false;
   }
@@ -115,6 +115,46 @@ export function isDashboardChartMockEnabled(): boolean {
     return false;
   }
   return params.get('chart_mock') === '1';
+}
+
+function isBuyerPortfolioEmpty(portfolio: BuyerPortfolio): boolean {
+  const series = portfolio.series ?? [];
+  const hasSeries = series.some(
+    (point) =>
+      (point.clicks ?? 0) > 0 ||
+      (point.conversions ?? 0) > 0 ||
+      (point.spend_micro ?? point.spend_micros ?? 0) > 0 ||
+      (point.revenue_micro ?? 0) > 0,
+  );
+  const hasKpis =
+    (portfolio.kpis?.conversions ?? 0) > 0 ||
+    (portfolio.kpis?.cost_micro ?? portfolio.kpis?.spend_micro ?? 0) > 0 ||
+    (portfolio.clicks_7d ?? 0) > 0;
+  const hasBreakdown =
+    (portfolio.breakdowns?.campaigns?.rows?.length ?? 0) > 0 ||
+    (portfolio.breakdowns?.landers?.rows?.length ?? 0) > 0 ||
+    (portfolio.breakdowns?.offers?.rows?.length ?? 0) > 0 ||
+    (portfolio.breakdowns?.sources?.rows?.length ?? 0) > 0;
+  const hasRecentClicks = (portfolio.recent_clicks?.length ?? 0) > 0;
+  return !hasSeries && !hasKpis && !hasBreakdown && !hasRecentClicks;
+}
+
+function isLocalAdminDev(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  const { hostname, port } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return true;
+  }
+  return port === '5173';
+}
+
+function shouldFillDashboardDemoData(portfolio: BuyerPortfolio): boolean {
+  if (isDashboardChartMockEnabled()) {
+    return true;
+  }
+  return isLocalAdminDev() && isBuyerPortfolioEmpty(portfolio);
 }
 
 export function buildDashboardMockSeries(
@@ -385,15 +425,18 @@ export function buildDashboardMockPortfolio(portfolio: BuyerPortfolio): BuyerPor
 export function resolveDashboardChartSeries(
   series: DashboardSeriesPoint[] | undefined,
 ): DashboardSeriesPoint[] {
-  if (isDashboardChartMockEnabled()) {
-    return series && series.length > 0 ? series : buildDashboardMockSeries();
+  if (series && series.length > 0) {
+    return series;
   }
-  return series ?? [];
+  if (isDashboardChartMockEnabled()) {
+    return buildDashboardMockSeries();
+  }
+  return [];
 }
 
 export function resolveBuyerDashboardPortfolio(portfolio: BuyerPortfolio): BuyerPortfolio {
-  if (!isDashboardChartMockEnabled()) {
-    return portfolio;
+  if (shouldFillDashboardDemoData(portfolio)) {
+    return buildDashboardMockPortfolio(portfolio);
   }
-  return buildDashboardMockPortfolio(portfolio);
+  return portfolio;
 }

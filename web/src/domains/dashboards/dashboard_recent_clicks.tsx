@@ -8,6 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/shell/directory_table';
+import { CopyableText } from '@/shell/copyable_text';
+import { EmptyState } from '@/shell/empty_state';
 import { PanelSection } from '@/shell/stat_panel';
 import type { ClickLogEvent } from '@/domains/dashboards/buyer_dashboard_types';
 import { formatDashboardUsdFromMicro } from '@/domains/dashboards/dashboard_format';
@@ -23,25 +25,17 @@ export type DashboardRecentClicksProps = {
 
 function renderRecentClickCell(columnId: DashboardRecentClickColumnId, event: ClickLogEvent) {
   switch (columnId) {
-    case 'click_id': {
-      const clickHref = event.click_id
-        ? `/reports/click-log?click_id=${encodeURIComponent(event.click_id)}`
-        : undefined;
-      return clickHref ? (
-        <Link className="text-primary hover:underline" to={clickHref}>
-          {event.click_id}
-        </Link>
+    case 'click_id':
+      return event.click_id ? (
+        <CopyableText label="Click ID" mono value={event.click_id} />
       ) : (
-        event.click_id
+        '-'
       );
-    }
     case 'created_at':
       return displayTimestamp(event.created_at);
     case 'campaign_id':
       return event.campaign_id ? (
-        <Link className="text-primary hover:underline" to={`/campaigns/${event.campaign_id}/edit`}>
-          {event.campaign_id}
-        </Link>
+        <CopyableText label="Campaign ID" mono value={event.campaign_id} />
       ) : (
         '-'
       );
@@ -79,7 +73,11 @@ export function DashboardRecentClicks({ events, columns, viewAllHref }: Dashboar
       }
     >
       {events.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-muted-foreground">No recent clicks in this range.</p>
+        <EmptyState
+          className="border-0 bg-transparent py-8 shadow-none"
+          description="Clicks will appear here when traffic is recorded for the selected period."
+          variant="no-results"
+        />
       ) : (
         <DirectoryTable className="border-0 bg-transparent shadow-none" scrollable>
           <TableHeader>

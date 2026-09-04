@@ -149,17 +149,22 @@ export function CampaignsListTable({
 
   if (items.length === 0) {
     return (
-      <div className="rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-zinc-500 dark:text-zinc-400">{emptyMessage}</p>
+      <div className="admin-campaigns-table-surface p-4">
+        <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
     <DirectoryTable
-      className="min-h-0 flex-1 overflow-auto"
+      className="admin-campaigns-table-surface !rounded-none !border-0 !shadow-none"
+      fixedLayout
       tableClassName="admin-table--campaigns"
-      tableStyle={{ width: `${tableWidthPx}px`, tableLayout: 'fixed' }}
+      tableStyle={{
+        width: `${tableWidthPx}px`,
+        minWidth: `${tableWidthPx}px`,
+        tableLayout: 'fixed',
+      }}
     >
         <colgroup>
           {columns.map((columnId, index) => {
@@ -180,7 +185,12 @@ export function CampaignsListTable({
                 <th
                   key={columnId}
                   className={cn(
-                    isSelect ? 'w-7 px-1 text-center' : isNum ? 'num' : undefined,
+                    isSelect ? 'px-4 text-center' : isNum ? 'num' : undefined,
+                    columnId === 'name'
+                      ? 'campaign-table-th--name campaign-table-cell--tools'
+                      : !isSelect
+                        ? 'campaign-table-cell--tools'
+                        : undefined,
                     draggingColumnId === columnId && 'opacity-60',
                   )}
                 >
@@ -201,6 +211,8 @@ export function CampaignsListTable({
                       disabled={fetching}
                       dragOver={reorderableTarget != null && dragOverColumnId === reorderableTarget}
                       draggable={draggable}
+                      resizable={resizable}
+                      resizeLabel={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
                       onColumnSort={onColumnSort}
                       onDragEnd={clearDragState}
                       onDragEnter={() => {
@@ -231,21 +243,11 @@ export function CampaignsListTable({
                           handleColumnDrop(reorderableTarget, event);
                         }
                       }}
-                    />
-                  )}
-                  {resizable ? (
-                    <div
-                      aria-label={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
-                      className="absolute right-0 top-0 h-full w-1 cursor-col-resize"
-                      data-col-resize=""
-                      role="separator"
-                      onPointerDown={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        startResize(columnId, event.clientX);
+                      onResizePointerDown={(event) => {
+                        startResize(columnId, event);
                       }}
                     />
-                  ) : null}
+                  )}
                 </th>
               );
             })}
@@ -277,16 +279,27 @@ export function CampaignsListTable({
                 <td
                   key={columnId}
                   className={cn(
-                    columnId === 'select' ? 'w-7 px-1 text-center' : isNum ? 'num' : undefined,
+                    columnId === 'select'
+                      ? 'px-4 text-center'
+                      : columnId === 'name'
+                        ? 'campaign-table-td--name campaign-table-cell--tools'
+                        : cn('campaign-table-cell--tools', isNum && 'num'),
                   )}
                 >
-                  <CampaignListTableTotalsCell
-                    columnId={columnId}
-                    funnelTotals={funnelTotals}
-                    pageCount={items.length}
-                    totals={totals}
-                    totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
-                  />
+                  <div className="campaign-table-header-cell">
+                    <div className="campaign-table-cell__content">
+                      <CampaignListTableTotalsCell
+                      columnId={columnId}
+                      funnelTotals={funnelTotals}
+                      pageCount={items.length}
+                      totals={totals}
+                      totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
+                    />
+                    </div>
+                    {columnId !== 'select' && columnId !== 'name' ? (
+                      <div aria-hidden className="campaign-table-body-tools-gutter" />
+                    ) : null}
+                  </div>
                 </td>
               );
             })}

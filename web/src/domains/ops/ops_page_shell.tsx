@@ -29,7 +29,7 @@ export function OpsPageShell({
       badge={badge}
       controlPanel={
         <div className="flex flex-col gap-3 flex flex-col gap-2">
-          <div aria-label="Ops sections" className="flex flex-wrap items-center gap-2 flex flex-wrap items-center gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <div aria-label="Ops sections" className="flex flex-wrap items-center gap-2 border-t border-border pt-2">
             <OpsNav variant="admin" />
           </div>
           {actions ? (

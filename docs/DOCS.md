@@ -38,7 +38,7 @@ Human-readable architecture and operator guides. **Engineering constraints live 
 | Path | File |
 | :--- | :--- |
 | Vendor index | [deploy/vendor/VENDOR.md](../deploy/vendor/VENDOR.md) |
-| Buyer features | [deploy/vendor/MARKETING.md](../deploy/vendor/MARKETING.md) |
+| Buyer features | [deploy/vendor/MARKETING.md](../deploy/vendor/MARKETING.md) — product specification (neutral) |
 | Internal sales | [deploy/vendor/SALES.md](../deploy/vendor/SALES.md) |
 | Fraud ops | [deploy/vendor/ANTIFRAUD.md](../deploy/vendor/ANTIFRAUD.md) |
 | SKU limits | [deploy/vendor/sku.yaml](../deploy/vendor/sku.yaml) |

@@ -135,7 +135,7 @@ export function OpsMlModel({
 
       {saveError ? opsPanelError(saveError, 'Could not add ML label') : null}
       {saveSuccess ? (
-        <p className="text-zinc-500 dark:text-zinc-400" role="status">
+        <p className="text-muted-foreground" role="status">
           Label stored.
         </p>
       ) : null}
@@ -156,7 +156,7 @@ export function OpsMlModel({
         >
           {labels.map((row, index) => (
             <OpsTableRow key={`${row.ip_hash ?? 'row'}-${index}`}>
-              <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+              <OpsTableCell className="font-mono text-xs text-muted-foreground">
                 {row.ip_hash ?? ''}
               </OpsTableCell>
               <OpsTableCell>{row.label ?? ''}</OpsTableCell>

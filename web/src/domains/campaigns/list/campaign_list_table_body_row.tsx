@@ -13,6 +13,7 @@ import {
 import { buildCampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm';
 import { CampaignListTableMiddleCell } from '@/domains/campaigns/list/campaign_list_table_middle_cell';
 import { CampaignListTableRowMenu } from '@/domains/campaigns/list/campaign_list_table_row_menu';
+import { CopyableText } from '@/shell/copyable_text';
 import { cn } from '@/lib/utils';
 
 export type CampaignListTableBodyRowProps = {
@@ -79,7 +80,7 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'select') {
           return (
-            <td key={columnId} className="w-7 px-1 text-center">
+            <td key={columnId} className="px-4 text-center">
               <div className="admin-table-cell--select">
                 <Checkbox
                   aria-label={`Select ${campaign.name}`}
@@ -95,42 +96,39 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'id') {
           return (
-            <td
-              key={columnId}
-              className="num font-mono text-xs text-zinc-500 dark:text-zinc-400"
-              title={campaign.id}
-            >
-              <span className="tabular-nums font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                {vm.displayId}
-              </span>
+            <td key={columnId} className="campaign-table-cell--tools num text-muted-foreground">
+              <div className="campaign-table-header-cell">
+                <div className="campaign-table-cell__content">
+                  <CopyableText label="Campaign ID" mono title={campaign.id} value={vm.displayId} />
+                </div>
+                <div aria-hidden className="campaign-table-body-tools-gutter" />
+              </div>
             </td>
           );
         }
 
         if (columnId === 'name') {
           return (
-            <td key={columnId} className="whitespace-nowrap">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-                  <CampaignCountryBadges
-                    className="shrink-0 text-xs text-zinc-500"
-                    compact
-                    countries={vm.countries}
-                    max={2}
-                  />
-                  <button
-                    className="min-w-0 truncate text-left font-medium hover:underline"
-                    title={vm.rawName}
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onCampaignOverview?.(campaign);
-                    }}
-                  >
-                    {vm.rawName}
-                  </button>
-                </div>
-                <CampaignListTableRowMenu campaign={campaign} onOpenOverview={onCampaignOverview} />
+            <td key={columnId} className="campaign-table-td--name campaign-table-cell--tools">
+              <div className="flex min-h-[34px] max-w-full flex-nowrap items-center gap-1">
+                <CampaignCountryBadges
+                  className="shrink-0"
+                  compact
+                  countries={vm.countries}
+                  max={2}
+                />
+                <span
+                  className="min-w-0 flex-1 select-text truncate font-medium text-foreground"
+                  title={vm.rawName}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  {vm.rawName}
+                </span>
+                <CampaignListTableRowMenu
+                  className="absolute right-1 top-1/2 -translate-y-1/2"
+                  campaign={campaign}
+                  onOpenOverview={onCampaignOverview}
+                />
               </div>
             </td>
           );
@@ -141,15 +139,20 @@ export function CampaignListTableBodyRow({
         }
 
         return (
-          <td key={columnId} className={isNum ? 'num' : undefined}>
-            <CampaignListTableMiddleCell
-              campaign={campaign}
-              columnId={columnId as CampaignListMiddleColumnId}
-              marginBreach={margin?.margin_breach === true}
-              statsQuery={statsQuery}
-              vm={vm}
-              onOpenOverview={onCampaignOverview}
-            />
+          <td key={columnId} className={cn('campaign-table-cell--tools', isNum && 'num')}>
+            <div className="campaign-table-header-cell">
+              <div className="campaign-table-cell__content">
+                <CampaignListTableMiddleCell
+                campaign={campaign}
+                columnId={columnId as CampaignListMiddleColumnId}
+                marginBreach={margin?.margin_breach === true}
+                statsQuery={statsQuery}
+                vm={vm}
+                onOpenOverview={onCampaignOverview}
+              />
+              </div>
+              <div aria-hidden className="campaign-table-body-tools-gutter" />
+            </div>
           </td>
         );
       })}

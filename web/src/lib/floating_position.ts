@@ -13,3 +13,18 @@ export function anchorBelowTrigger(
     zIndex: 50,
   };
 }
+
+export function anchorAboveTrigger(
+  rect: DOMRect,
+  contentHeight: number,
+  options?: { gap?: number; minWidth?: number },
+): CSSProperties {
+  const gap = options?.gap ?? 4;
+  return {
+    position: 'fixed',
+    top: rect.top - contentHeight - gap,
+    left: rect.left,
+    minWidth: options?.minWidth ?? rect.width,
+    zIndex: 50,
+  };
+}

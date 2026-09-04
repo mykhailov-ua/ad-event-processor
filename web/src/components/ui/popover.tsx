@@ -3,7 +3,8 @@ import * as React from 'react';
 import { Slot } from '@/lib/as_child';
 import { adminChrome } from '@/lib/admin_chrome';
 import { useControllableState } from '@/lib/controllable_state';
-import { anchorBelowTrigger } from '@/lib/floating_position';
+import { anchorAboveTrigger, anchorBelowTrigger } from '@/lib/floating_position';
+import { subscribeFloatingPosition } from '@/lib/floating_overlay_position';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
@@ -116,7 +117,7 @@ const PopoverContent = React.forwardRef<
     side?: 'top' | 'bottom' | 'left' | 'right';
     sideOffset?: number;
     collisionPadding?: number;
-    panelScroll?: 'panel' | 'inner';
+    panelScroll?: 'panel' | 'inner' | 'none';
     onOpenAutoFocus?: (event: Event) => void;
     sticky?: string;
   }
@@ -153,17 +154,57 @@ const PopoverContent = React.forwardRef<
       if (!open || !triggerRef.current) {
         return;
       }
-      const rect = triggerRef.current.getBoundingClientRect();
-      const base = anchorBelowTrigger(rect, { gap: sideOffset, minWidth: rect.width });
-      let left = base.left as number;
-      if (align === 'center' && typeof base.minWidth === 'number') {
-        left = rect.left + rect.width / 2 - base.minWidth / 2;
+
+      const edgePadding = 12;
+
+      const updatePosition = () => {
+        const trigger = triggerRef.current;
+        const content = contentRef.current;
+        if (!trigger || !content) {
+          return;
+        }
+        const rect = trigger.getBoundingClientRect();
+        const panel = content.firstElementChild as HTMLElement | null;
+        const contentWidth = panel?.offsetWidth ?? content.offsetWidth;
+        const contentHeight = panel?.offsetHeight ?? content.offsetHeight;
+        const base =
+          side === 'top'
+            ? anchorAboveTrigger(rect, contentHeight, { gap: sideOffset, minWidth: rect.width })
+            : anchorBelowTrigger(rect, { gap: sideOffset, minWidth: rect.width });
+        let left = rect.left;
+        if (align === 'center') {
+          left = rect.left + rect.width / 2 - contentWidth / 2;
+        } else if (align === 'end') {
+          left = rect.right - contentWidth;
+        }
+        left = Math.max(
+          edgePadding,
+          Math.min(left, window.innerWidth - contentWidth - edgePadding),
+        );
+        setPosition({ ...base, left });
+      };
+
+      updatePosition();
+      const raf = window.requestAnimationFrame(updatePosition);
+      const unsubscribeScroll = subscribeFloatingPosition(triggerRef.current, updatePosition);
+      window.addEventListener('resize', updatePosition);
+
+      const panel = contentRef.current?.firstElementChild;
+      const resizeObserver =
+        typeof ResizeObserver !== 'undefined' && panel
+          ? new ResizeObserver(() => updatePosition())
+          : undefined;
+      if (resizeObserver && panel) {
+        resizeObserver.observe(panel);
       }
-      if (align === 'end' && typeof base.minWidth === 'number') {
-        left = rect.right - base.minWidth;
-      }
-      setPosition({ ...base, left });
-    }, [align, open, sideOffset, triggerRef]);
+
+      return () => {
+        window.cancelAnimationFrame(raf);
+        unsubscribeScroll();
+        window.removeEventListener('resize', updatePosition);
+        resizeObserver?.disconnect();
+      };
+    }, [align, open, side, sideOffset, triggerRef, children]);
 
     if (!open) {
       return null;
@@ -181,21 +222,23 @@ const PopoverContent = React.forwardRef<
             }
           }}
           className={cn('border-0 bg-transparent p-0 outline-none', className)}
-          style={{ ...position, ...style }}
+          style={{ position: 'fixed', zIndex: 60, ...position, ...style }}
           {...props}
         >
           <div
             className={cn(
               adminChrome.panel,
               'shadow-lg',
-              flush ? 'w-auto max-w-[min(calc(100vw-2rem),28rem)]' : 'w-full',
+              flush ? 'w-auto max-w-[min(calc(100vw-1rem),44rem)]' : 'w-full',
             )}
             style={{ minWidth: triggerRef.current?.getBoundingClientRect().width }}
           >
             <div
               className={cn(
-                scrollMode === 'panel' && 'ui-scrollbar max-h-[min(70vh,32rem)] overflow-y-auto overflow-x-auto',
+                scrollMode === 'panel' &&
+                  'ui-scrollbar max-h-[min(70vh,32rem)] overflow-y-auto overflow-x-auto',
                 scrollMode === 'inner' && 'max-h-[min(70vh,32rem)] overflow-hidden',
+                scrollMode === 'none' && 'overflow-visible',
                 !flush && 'p-4',
               )}
             >

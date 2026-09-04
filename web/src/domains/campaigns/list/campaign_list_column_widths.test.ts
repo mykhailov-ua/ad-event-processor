@@ -4,7 +4,15 @@ import assert from 'node:assert/strict';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignMargin } from '@/api/types';
 
-import { computeCampaignListColumnWidths, campaignListMiddleCellText } from './campaign_list_column_widths.ts';
+import { computeCampaignListColumnWidths, campaignListMiddleCellText, defaultCampaignListColumnWidths } from './campaign_list_column_widths.ts';
+
+test('defaultCampaignListColumnWidths fits header labels with tools gutter', () => {
+  const widths = defaultCampaignListColumnWidths(['select', 'unique_clicks', 'lp_views']);
+
+  assert.equal(widths.select, 48);
+  assert.ok(widths.unique_clicks >= 150, `unique_clicks too narrow: ${widths.unique_clicks}`);
+  assert.ok(widths.lp_views >= 120, `lp_views too narrow: ${widths.lp_views}`);
+});
 
 test('computeCampaignListColumnWidths uses dataset max not current page only', () => {
   const items: Campaign[] = [

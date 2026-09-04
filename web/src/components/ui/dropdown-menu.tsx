@@ -3,7 +3,10 @@ import * as React from 'react';
 import { Slot } from '@/lib/as_child';
 import { adminChrome } from '@/lib/admin_chrome';
 import { useControllableState } from '@/lib/controllable_state';
-import { anchorBelowTrigger } from '@/lib/floating_position';
+import {
+  computeFloatingPosition,
+  subscribeFloatingPosition,
+} from '@/lib/floating_overlay_position';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
@@ -110,7 +113,10 @@ const DropdownMenuContent = React.forwardRef<
 >(({ className, sideOffset = 4, align = 'start', style, children, ...props }, ref) => {
   const { open, setOpen, triggerRef } = useMenuContext();
   const contentRef = React.useRef<HTMLDivElement | null>(null);
-  const [position, setPosition] = React.useState<React.CSSProperties>({});
+  const [position, setPosition] = React.useState<React.CSSProperties>({
+    position: 'fixed',
+    visibility: 'hidden',
+  });
 
   useOverlayDismiss(open, () => setOpen(false), contentRef, [triggerRef]);
 
@@ -118,14 +124,38 @@ const DropdownMenuContent = React.forwardRef<
     if (!open || !triggerRef.current) {
       return;
     }
-    const rect = triggerRef.current.getBoundingClientRect();
-    const base = anchorBelowTrigger(rect, { gap: sideOffset, minWidth: rect.width });
-    let left = base.left as number;
-    if (align === 'end' && typeof base.minWidth === 'number') {
-      left = rect.right - base.minWidth;
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      const content = contentRef.current;
+      if (!trigger || !content) {
+        return;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const next = computeFloatingPosition(rect, content.offsetWidth, content.offsetHeight, {
+        align,
+        gap: sideOffset,
+      });
+      setPosition({ ...next, visibility: 'visible' });
+    };
+
+    updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
+    const unsubscribeScroll = subscribeFloatingPosition(triggerRef.current, updatePosition);
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' && contentRef.current
+        ? new ResizeObserver(() => updatePosition())
+        : undefined;
+    if (resizeObserver && contentRef.current) {
+      resizeObserver.observe(contentRef.current);
     }
-    setPosition({ ...base, left });
-  }, [align, open, sideOffset, triggerRef]);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      unsubscribeScroll();
+      resizeObserver?.disconnect();
+    };
+  }, [align, open, sideOffset, triggerRef, children]);
 
   if (!open) {
     return null;
@@ -189,7 +219,7 @@ const DropdownMenuLabel = React.forwardRef<
 >(({ className, inset, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn('px-2 py-1 text-xs font-semibold text-zinc-500 dark:text-zinc-400', inset && 'pl-6', className)}
+    className={cn('px-2 py-1 text-xs font-semibold text-muted-foreground', inset && 'pl-6', className)}
     {...props}
   />
 ));
@@ -197,13 +227,13 @@ DropdownMenuLabel.displayName = 'DropdownMenuLabel';
 
 const DropdownMenuSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('my-1 h-px bg-zinc-200 dark:bg-zinc-800', className)} {...props} />
+    <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
   ),
 );
 DropdownMenuSeparator.displayName = 'DropdownMenuSeparator';
 
 const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('ml-auto text-xs text-zinc-500 dark:text-zinc-400', className)} {...props} />
+  <span className={cn('ml-auto text-xs text-muted-foreground', className)} {...props} />
 );
 DropdownMenuShortcut.displayName = 'DropdownMenuShortcut';
 

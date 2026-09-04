@@ -159,7 +159,7 @@ export function CampaignEditorAdvancedPanel({
 }: CampaignEditorAdvancedPanelProps) {
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-zinc-500 dark:text-zinc-400">
+      <p className="text-muted-foreground">
         Status: {statusLabel}
         {checking ? '  /  Checking publish...' : ''}
         {publishCheck && !checking ? (
@@ -333,7 +333,7 @@ export function CampaignEditorAdvancedPanel({
             : null}
 
           {macroPreviewResult ? (
-            <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="grid gap-3 rounded-md border border-border bg-card p-3">
               <div className="grid gap-2">
                 <p className="text-sm font-medium">Resolved click URL</p>
                 <p className="break-all font-mono text-xs text-muted-foreground">
@@ -409,7 +409,7 @@ export function CampaignEditorAdvancedPanel({
           {publishSuccess ? <Badge variant="secondary">Campaign published</Badge> : null}
 
           {publishCheck ? (
-            <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="grid gap-3 rounded-md border border-border bg-card p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium">Publish check</p>
                 <ValidityBadge
@@ -424,7 +424,7 @@ export function CampaignEditorAdvancedPanel({
           ) : null}
 
           {validateResult ? (
-            <div className="grid gap-3 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="grid gap-3 rounded-md border border-border bg-card p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium">Patch validation</p>
                 <ValidityBadge
@@ -439,7 +439,7 @@ export function CampaignEditorAdvancedPanel({
           ) : null}
 
           {publishBlocked ? (
-            <div className="grid gap-3 rounded-md border border-destructive/50 border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="grid gap-3 rounded-md border border-destructive/50 bg-card p-3">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-destructive">Publish blocked</p>
                 <Badge variant="destructive">422</Badge>

@@ -4,7 +4,10 @@ import { Check, ChevronDown } from 'lucide-react';
 import { Slot } from '@/lib/as_child';
 import { adminChrome } from '@/lib/admin_chrome';
 import { useControllableState } from '@/lib/controllable_state';
-import { anchorBelowTrigger } from '@/lib/floating_position';
+import {
+  computeFloatingPosition,
+  subscribeFloatingPosition,
+} from '@/lib/floating_overlay_position';
 import { OverlayRoot } from '@/lib/overlay_root';
 import { useOverlayDismiss } from '@/lib/use_overlay_dismiss';
 import { cn } from '@/lib/utils';
@@ -95,7 +98,7 @@ const SelectValue = ({
   const { value, labels } = useSelectContext();
   const label = value ? labels.get(value) : undefined;
   return (
-    <span className={cn('truncate', !label && 'text-zinc-400', className)}>
+    <span className={cn('truncate', !label && 'text-muted-foreground', className)}>
       {label ?? placeholder ?? 'Select...'}
     </span>
   );
@@ -150,7 +153,10 @@ const SelectContent = React.forwardRef<
 >(({ className, children, plain = false, position = 'popper', ...props }, ref) => {
   const { open, setOpen, triggerRef } = useSelectContext();
   const contentRef = React.useRef<HTMLDivElement | null>(null);
-  const [coords, setCoords] = React.useState<React.CSSProperties>({});
+  const [coords, setCoords] = React.useState<React.CSSProperties>({
+    position: 'fixed',
+    visibility: 'hidden',
+  });
 
   useOverlayDismiss(open, () => setOpen(false), contentRef, [triggerRef]);
 
@@ -158,14 +164,43 @@ const SelectContent = React.forwardRef<
     if (!open || !triggerRef.current) {
       return;
     }
-    const rect = triggerRef.current.getBoundingClientRect();
-    setCoords(
-      anchorBelowTrigger(rect, {
+
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      const content = contentRef.current;
+      if (!trigger || !content) {
+        return;
+      }
+      const rect = trigger.getBoundingClientRect();
+      const width = Math.max(content.offsetWidth, rect.width);
+      const next = computeFloatingPosition(rect, width, content.offsetHeight, {
+        align: 'start',
         gap: 4,
+      });
+      setCoords({
+        ...next,
         minWidth: position === 'popper' ? rect.width : undefined,
-      }),
-    );
-  }, [open, position, triggerRef]);
+        visibility: 'visible',
+      });
+    };
+
+    updatePosition();
+    const raf = window.requestAnimationFrame(updatePosition);
+    const unsubscribeScroll = subscribeFloatingPosition(triggerRef.current, updatePosition);
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' && contentRef.current
+        ? new ResizeObserver(() => updatePosition())
+        : undefined;
+    if (resizeObserver && contentRef.current) {
+      resizeObserver.observe(contentRef.current);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      unsubscribeScroll();
+      resizeObserver?.disconnect();
+    };
+  }, [open, position, triggerRef, children]);
 
   if (!open) {
     return null;
@@ -183,11 +218,11 @@ const SelectContent = React.forwardRef<
           }
         }}
         role="listbox"
-        className={cn(adminChrome.floating, 'max-h-96 overflow-hidden p-1', className)}
+        className={cn(adminChrome.floating, 'max-h-96 w-max overflow-hidden p-1', className)}
         style={coords}
         {...props}
       >
-        <div className="max-h-60 overflow-y-auto p-1">{children}</div>
+        <div className="ui-scrollbar max-h-60 overflow-y-auto p-1">{children}</div>
       </div>
     </OverlayRoot>
   );
@@ -221,7 +256,7 @@ const SelectItem = React.forwardRef<
       role="option"
       aria-selected={selected}
       disabled={disabled}
-      className={cn(adminChrome.menuItem, 'relative pr-8', selected && 'bg-zinc-100 dark:bg-zinc-800', className)}
+      className={cn(adminChrome.menuItem, 'relative pr-8', selected && 'bg-accent text-accent-foreground', className)}
       onClick={(event) => {
         onClick?.(event);
         if (!event.defaultPrevented && !disabled) {
@@ -244,7 +279,7 @@ SelectItem.displayName = 'SelectItem';
 
 const SelectSeparator = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('my-1 h-px bg-zinc-200 dark:bg-zinc-800', className)} {...props} />
+    <div ref={ref} className={cn('my-1 h-px bg-border', className)} {...props} />
   ),
 );
 SelectSeparator.displayName = 'SelectSeparator';

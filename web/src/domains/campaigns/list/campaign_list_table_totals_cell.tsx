@@ -200,7 +200,7 @@ export function CampaignListTableTotalsCell({
       );
     }
     case 'group':
-      return <span className="tabular-nums text-zinc-500 dark:text-zinc-400">{pageCount} on page</span>;
+      return <span className="tabular-nums text-muted-foreground">{pageCount} on page</span>;
     default:
       return null;
   }

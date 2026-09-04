@@ -38,3 +38,21 @@ test('resolvePopoverAlign opens right when trigger is on the left', () => {
 
   assert.equal(resolvePopoverAlign(element, 1280), 'start');
 });
+
+test('resolvePopoverAlign opens left when wide popover does not fit on the right', () => {
+  const element = {
+    getBoundingClientRect: () => ({
+      left: 720,
+      right: 1000,
+      top: 0,
+      bottom: 0,
+      width: 280,
+      height: 36,
+      x: 720,
+      y: 0,
+      toJSON: () => ({}),
+    }),
+  } as HTMLElement;
+
+  assert.equal(resolvePopoverAlign(element, 1280, 560), 'end');
+});

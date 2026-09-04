@@ -16,9 +16,12 @@ export function SettingsCollapsibleSection({
   title: string;
 }) {
   return (
-    <details className="ui-surface-raised group" open={defaultOpen || undefined}>
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
-        <span className="text-base font-medium tracking-tight">{title}</span>
+    <details
+      className="ui-surface-raised group min-w-0 rounded-2xl border border-border/40"
+      open={defaultOpen || undefined}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-5 py-4 marker:content-none [&::-webkit-details-marker]:hidden">
+        <span className="text-base font-medium tracking-tight text-foreground">{title}</span>
         <span className="flex items-center gap-2">
           {badge ? <Badge variant="outline">{badge}</Badge> : null}
           <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />

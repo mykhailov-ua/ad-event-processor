@@ -17,7 +17,7 @@ export function MetricFillBar({ label, value, percent, color, className }: Metri
         <span className="text-muted-foreground">{label}</span>
         <span className="tabular-nums text-foreground">{value}</span>
       </div>
-      <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+      <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
         <div
           className="h-full rounded-full transition-[width] duration-200"
           style={{ width: `${width}%`, backgroundColor: color }}

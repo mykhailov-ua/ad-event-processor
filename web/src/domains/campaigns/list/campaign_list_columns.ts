@@ -132,7 +132,7 @@ export const CAMPAIGN_LIST_COLUMN_LABELS: Record<CampaignListColumnId, string> =
   countries: 'Countries',
 };
 
-export const CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX = 28;
+export const CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX = 48;
 
 export const CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX: Record<CampaignListColumnId, number> = {
   select: CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
@@ -185,6 +185,15 @@ const CAMPAIGN_LIST_COLUMN_MAX_WIDTH_PX: Partial<Record<CampaignListColumnId, nu
 
 const CAMPAIGN_LIST_COLUMN_DEFAULT_MAX_WIDTH_PX = 160;
 
+const CAMPAIGN_LIST_COLUMN_USER_RESIZE_MAX_WIDTH_PX = 480;
+
+const CAMPAIGN_LIST_COLUMN_USER_RESIZE_MAX_BY_ID: Partial<Record<CampaignListColumnId, number>> = {
+  select: CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
+  name: 640,
+  group: 480,
+  owner: 480,
+};
+
 export function clampCampaignListColumnWidthPx(
   columnId: CampaignListColumnId,
   widthPx: number,
@@ -192,6 +201,17 @@ export function clampCampaignListColumnWidthPx(
   const minWidth = CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
   const maxWidth =
     CAMPAIGN_LIST_COLUMN_MAX_WIDTH_PX[columnId] ?? CAMPAIGN_LIST_COLUMN_DEFAULT_MAX_WIDTH_PX;
+  return Math.min(maxWidth, Math.max(minWidth, Math.trunc(widthPx)));
+}
+
+export function clampUserResizedCampaignListColumnWidthPx(
+  columnId: CampaignListColumnId,
+  widthPx: number,
+): number {
+  const minWidth = CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+  const maxWidth =
+    CAMPAIGN_LIST_COLUMN_USER_RESIZE_MAX_BY_ID[columnId] ??
+    CAMPAIGN_LIST_COLUMN_USER_RESIZE_MAX_WIDTH_PX;
   return Math.min(maxWidth, Math.max(minWidth, Math.trunc(widthPx)));
 }
 
@@ -382,7 +402,7 @@ export function normalizeColumnWidthPx(
       if (!Number.isFinite(parsed) || parsed <= 0) {
         continue;
       }
-      result[columnId] = clampCampaignListColumnWidthPx(columnId, parsed);
+      result[columnId] = clampUserResizedCampaignListColumnWidthPx(columnId, parsed);
       continue;
     }
     const columnId = rawKey as CampaignListColumnId;
@@ -390,7 +410,7 @@ export function normalizeColumnWidthPx(
     if (!Number.isFinite(parsed) || parsed <= 0) {
       continue;
     }
-    result[columnId] = clampCampaignListColumnWidthPx(columnId, parsed);
+    result[columnId] = clampUserResizedCampaignListColumnWidthPx(columnId, parsed);
   }
   return result;
 }
@@ -406,6 +426,11 @@ export function visibleCampaignListColumns(
     return !hidden.has(columnId);
   });
   return ['select', 'id', ...tail];
+}
+
+export function visibleMiddleColumnCount(prefs: CampaignListColumnPrefs): number {
+  const hidden = new Set(prefs.hidden);
+  return CAMPAIGN_LIST_MIDDLE_COLUMNS.filter((columnId) => !hidden.has(columnId)).length;
 }
 
 export function middleColumnsForSettings(
@@ -429,7 +454,10 @@ export function mergeCampaignListColumnWidths(
       overrides[columnId] ??
       merged[columnId] ??
       CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
-    merged[columnId] = clampCampaignListColumnWidthPx(columnId, width);
+    merged[columnId] =
+      overrides[columnId] != null
+        ? clampUserResizedCampaignListColumnWidthPx(columnId, width)
+        : clampCampaignListColumnWidthPx(columnId, width);
   }
   return merged;
 }
@@ -543,7 +571,7 @@ export function setCampaignListColumnWidth(
     ...prefs,
     widthPx: {
       ...prefs.widthPx,
-      [columnId]: clampCampaignListColumnWidthPx(columnId, widthPx),
+      [columnId]: clampUserResizedCampaignListColumnWidthPx(columnId, widthPx),
     },
   };
 }

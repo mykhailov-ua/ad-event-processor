@@ -25,6 +25,7 @@ import {
   validateCampaignListStatsDraft,
   type CampaignListQueryPatch,
 } from '@/domains/campaigns/list/campaigns_list_query';
+import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/campaign_list_aux_error';
 import { campaignListSelectionScopeKey } from '@/domains/campaigns/list/campaign_list_selection_scope';
 import {
   campaignListSortNeedsMetricWindow,
@@ -201,13 +202,13 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   }, [data, error]);
 
   useEffect(() => {
-    if (metricsError) {
+    if (metricsError && data != null) {
       toast.error(userErrorMessage(metricsError, 'Could not load campaign metrics'));
     }
-  }, [metricsError]);
+  }, [data, metricsError]);
 
   useEffect(() => {
-    if (filterTotalsError) {
+    if (filterTotalsError && !isCampaignListAuxEndpointUnavailable(filterTotalsError)) {
       toast.error(userErrorMessage(filterTotalsError, 'Could not load filter totals'));
     }
   }, [filterTotalsError]);

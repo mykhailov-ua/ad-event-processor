@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp } from 'lucide-react';
-import type { DragEvent } from 'react';
+import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
+import type { DragEvent, PointerEvent, ReactNode } from 'react';
 
 import {
   CAMPAIGN_LIST_COLUMN_LABELS,
@@ -19,6 +19,9 @@ export type CampaignListTableHeaderCellProps = {
   disabled?: boolean;
   draggable: boolean;
   dragOver: boolean;
+  resizable?: boolean;
+  resizeLabel?: string;
+  onResizePointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragOver: (event: DragEvent<HTMLTableCellElement>) => void;
@@ -35,6 +38,9 @@ export function CampaignListTableHeaderCell({
   disabled,
   draggable,
   dragOver,
+  resizable = false,
+  resizeLabel,
+  onResizePointerDown,
   onDragStart,
   onDragEnter,
   onDragOver,
@@ -51,55 +57,74 @@ export function CampaignListTableHeaderCell({
     return <span className="sr-only">Select</span>;
   }
 
-  return (
-    <>
-      <div
-        className={cn('flex w-full items-center gap-1', isNum && 'num', dragOver && 'bg-zinc-100 dark:bg-zinc-800')}
-        onDragEnd={onDragEnd}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
+  let labelNode: ReactNode;
+  if (sortField != null) {
+    labelNode = (
+      <button
+        className={cn('inline-flex max-w-full items-center gap-0.5 truncate', active && 'text-foreground')}
+        disabled={disabled}
+        title={label}
+        type="button"
+        onClick={() => onColumnSort(sortField)}
       >
-        {sortField != null ? (
-          <button
-            className={cn('inline-flex items-center gap-0.5', isNum && 'text-right', active && 'text-blue-600 dark:text-blue-400')}
-            disabled={disabled}
-            title={label}
-            type="button"
-            onClick={() => onColumnSort(sortField)}
-          >
-            {label}
-            {active ? (
-              appliedOrder === 'asc' ? (
-                <ArrowUp aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
-              ) : (
-                <ArrowDown aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
-              )
-            ) : null}
-          </button>
-        ) : (
-          <span className={cn('truncate', isNum && 'text-right')} title={label}>
-            {label}
-          </span>
-        )}
-      </div>
-      {draggable ? (
-        <button
-          aria-label={`Reorder ${label} column`}
-          className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize"
-          data-col-resize=""
-          draggable
-          type="button"
-          onDragStart={(event) => {
-            event.dataTransfer.setData(COLUMN_DRAG_MIME, columnId);
-            event.dataTransfer.effectAllowed = 'move';
-            onDragStart();
-          }}
-        >
-          ::
-        </button>
+        {label}
+        {active ? (
+          appliedOrder === 'asc' ? (
+            <ArrowUp aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
+          ) : (
+            <ArrowDown aria-hidden className="ml-0.5 h-3 w-3 shrink-0" />
+          )
+        ) : null}
+      </button>
+    );
+  } else {
+    labelNode = (
+      <span className="truncate" title={label}>
+        {label}
+      </span>
+    );
+  }
+
+  const showTools = draggable || resizable;
+
+  return (
+    <div
+      className={cn('campaign-table-header-cell', dragOver && 'bg-muted')}
+      onDragEnd={onDragEnd}
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
+      <div className={cn('campaign-table-header-cell__label', isNum && 'num')}>{labelNode}</div>
+      {showTools ? (
+        <div className="campaign-table-header-tools">
+          {draggable ? (
+            <span
+              aria-label={`Reorder ${label} column`}
+              className="campaign-table-col-drag-grip"
+              data-col-grip=""
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData(COLUMN_DRAG_MIME, columnId);
+                event.dataTransfer.effectAllowed = 'move';
+                onDragStart();
+              }}
+            >
+              <GripVertical aria-hidden className="h-3 w-3" />
+            </span>
+          ) : null}
+        </div>
       ) : null}
-    </>
+      {resizable ? (
+        <div
+          aria-label={resizeLabel ?? `Resize ${label} column`}
+          className="campaign-table-col-grip"
+          data-col-resize=""
+          role="separator"
+          onPointerDown={onResizePointerDown}
+        />
+      ) : null}
+    </div>
   );
 }

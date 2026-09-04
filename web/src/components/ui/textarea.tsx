@@ -56,7 +56,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
               syncHeight();
             }}
             className={cn(
-              'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 font-mono text-sm transition-colors placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 disabled:cursor-not-allowed disabled:opacity-50',
+              'flex min-h-[5rem] w-full resize-none overflow-hidden border-0 bg-transparent px-3 py-2 font-mono text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
               showCounter && maxLength != null && 'pb-7',
               className,
             )}
@@ -65,7 +65,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         </div>
         {showCounter && maxLength != null ? (
           <span
-            className="pointer-events-none absolute bottom-2 right-3 text-xs tabular-nums text-zinc-500 dark:text-zinc-400"
+            className="pointer-events-none absolute bottom-2 right-3 text-xs tabular-nums text-muted-foreground"
             aria-hidden="true"
           >
             {length}/{maxLength.toLocaleString()}

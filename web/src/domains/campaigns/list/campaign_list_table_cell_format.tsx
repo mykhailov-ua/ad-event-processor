@@ -4,14 +4,15 @@ import { cn } from '@/lib/utils';
 export function tableCellClass(
   isZero?: boolean,
   extra?: string,
-  emphasis?: 'primary' | 'secondary' | 'conversion',
+  emphasis?: 'primary' | 'secondary' | 'conversion' | 'approved',
 ): string {
   return cn(
     'tabular-nums num',
-    isZero && 'tabular-nums text-zinc-400 dark:text-zinc-600',
-    emphasis === 'primary' && !isZero && 'tabular-nums font-semibold text-zinc-900 dark:text-zinc-50',
-    emphasis === 'secondary' && !isZero && 'tabular-nums text-zinc-600 dark:text-zinc-400',
-    emphasis === 'conversion' && !isZero && 'tabular-nums font-bold text-indigo-600 dark:text-indigo-400',
+    isZero && 'tabular-nums text-muted-foreground/60',
+    emphasis === 'primary' && !isZero && 'tabular-nums font-semibold text-foreground',
+    emphasis === 'secondary' && !isZero && 'tabular-nums text-muted-foreground',
+    emphasis === 'conversion' && !isZero && 'tabular-nums font-bold text-indigo-600',
+    emphasis === 'approved' && !isZero && 'tabular-nums font-semibold text-emerald-700',
     extra,
   );
 }

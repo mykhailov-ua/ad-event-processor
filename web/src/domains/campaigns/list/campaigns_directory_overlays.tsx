@@ -25,7 +25,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
-import type { SelfServeCampaignTemplate } from '@/api/types';
+import type { CampaignStatsQuery, SelfServeCampaignTemplate } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { CampaignCloneDialog } from '@/domains/campaigns/editor/campaign_clone_dialog';
 import { CampaignImportPanel } from '@/domains/campaigns/editor/campaign_import_panel';
@@ -69,6 +69,7 @@ export type CampaignsDirectoryOverlaysProps = {
   selectedCampaignId: string | undefined;
   selectedCampaignName: string | undefined;
   selectedCount: number;
+  statsQuery: CampaignStatsQuery;
   templates: SelfServeCampaignTemplate[];
   templatesError: Error | undefined;
   templatesLoading: boolean;
@@ -111,6 +112,7 @@ export function CampaignsDirectoryOverlays({
   selectedCampaignId,
   selectedCampaignName,
   selectedCount,
+  statsQuery,
   templates,
   templatesError,
   templatesLoading,
@@ -253,11 +255,12 @@ export function CampaignsDirectoryOverlays({
         }
         onOpenChange={onOverviewOpenChange}
         open={overviewCampaign != null}
+        statsQuery={statsQuery}
       />
 
       <Sheet onOpenChange={onImportOpenChange} open={importOpen}>
         <SheetContent className="flex h-full w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
-          <SheetHeader className="shrink-0 border-b border-zinc-200 px-6 py-4 text-left dark:border-zinc-800">
+          <SheetHeader className="shrink-0 border-b border-border px-6 py-4 text-left">
             <SheetTitle>Import campaign</SheetTitle>
             <SheetDescription>Validate, migrate, or import a campaign bundle.</SheetDescription>
           </SheetHeader>

@@ -12,12 +12,12 @@ export function opsStatusTone(status: string | undefined): string {
   if (normalized === 'critical' || normalized === 'fail' || normalized === 'down') {
     return 'text-red-600 dark:text-red-400';
   }
-  return 'text-zinc-500 dark:text-zinc-400';
+  return 'text-muted-foreground';
 }
 
 export function OpsStatusChip({ status }: { status?: string }) {
   if (!status?.trim()) {
     return null;
   }
-  return <span className={cn('text-xs text-zinc-500 dark:text-zinc-400', opsStatusTone(status))}>{formatAdminEnumLabel(status)}</span>;
+  return <span className={cn('text-xs text-muted-foreground', opsStatusTone(status))}>{formatAdminEnumLabel(status)}</span>;
 }

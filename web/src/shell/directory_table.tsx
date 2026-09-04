@@ -17,6 +17,7 @@ export type DirectoryTableProps = {
   children: ReactNode;
   className?: string;
   scrollable?: boolean;
+  horizontalScroll?: boolean;
   fixedLayout?: boolean;
   tableClassName?: string;
   tableStyle?: CSSProperties;
@@ -26,6 +27,7 @@ export function DirectoryTable({
   children,
   className,
   scrollable = false,
+  horizontalScroll = false,
   fixedLayout = false,
   tableClassName,
   tableStyle,
@@ -33,16 +35,18 @@ export function DirectoryTable({
   return (
     <div
       className={cn(
-        'overflow-x-auto rounded-md border border-zinc-200 dark:border-zinc-800',
-        scrollable ? 'max-h-[min(70vh,48rem)] overflow-y-auto' : 'overflow-hidden',
+        'ui-scrollbar min-w-0 rounded-md border border-border',
+        scrollable && 'max-h-[min(70vh,48rem)] overflow-y-auto',
+        horizontalScroll && 'overflow-x-auto',
         className,
       )}
     >
       <Table
         bare
         className={cn(
-          'w-full border-collapse text-sm',
-          fixedLayout && 'table-fixed [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
+          'border-collapse text-sm',
+          !horizontalScroll && 'w-full',
+          fixedLayout && '[&_td]:whitespace-nowrap [&_th]:whitespace-nowrap',
           tableClassName,
         )}
         style={tableStyle}

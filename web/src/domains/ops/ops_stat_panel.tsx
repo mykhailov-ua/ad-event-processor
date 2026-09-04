@@ -16,7 +16,7 @@ export function OpsStatPanel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+    <section className="rounded-md border border-border bg-card p-3">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">{title}</h2>
         <OpsStatusChip status={status} />
@@ -29,7 +29,7 @@ export function OpsStatPanel({
 export function OpsKvRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2 text-sm">
-      <dt className="text-zinc-500 dark:text-zinc-400">{label}</dt>
+      <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-semibold tabular-nums num">{value}</dd>
     </div>
   );

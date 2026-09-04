@@ -27,13 +27,13 @@ function DocsGuideBlockView({ block }: { block: DocsGuideBlock }) {
       );
     case 'code':
       return (
-        <pre className="overflow-x-auto rounded-sm border border-border bg-muted/40 p-3 text-xs leading-relaxed text-foreground">
+        <pre className="ui-code-block overflow-x-auto text-xs leading-relaxed">
           <code>{block.code}</code>
         </pre>
       );
     case 'table':
       return (
-        <DirectoryTable>
+        <DirectoryTable horizontalScroll className="min-w-0">
           <TableHeader>
             <TableRow>
               {block.headers.map((header) => (
@@ -47,7 +47,10 @@ function DocsGuideBlockView({ block }: { block: DocsGuideBlock }) {
                 {row.map((cell, index) => (
                   <TableCell
                     key={`${row[0]}-${index}`}
-                    className={cn(index === 0 ? 'font-medium' : 'text-muted-foreground')}
+                    className={cn(
+                      'min-w-[8rem] align-top break-words',
+                      index === 0 ? 'font-medium' : 'text-muted-foreground',
+                    )}
                   >
                     {cell}
                   </TableCell>
@@ -59,13 +62,42 @@ function DocsGuideBlockView({ block }: { block: DocsGuideBlock }) {
       );
     case 'note':
       return (
-        <p className="rounded-sm border border-border bg-muted/30 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
+        <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
           {block.text}
         </p>
       );
     default:
       return null;
   }
+}
+
+export function DocsTroubleshootingTable({ topics }: { topics: DocsTopic[] }) {
+  return (
+    <DirectoryTable horizontalScroll className="min-w-0">
+      <TableHeader>
+        <TableRow>
+          <DirectoryTableHead className="min-w-[11rem]">Problem</DirectoryTableHead>
+          <DirectoryTableHead className="min-w-[12rem]">What you see</DirectoryTableHead>
+          <DirectoryTableHead className="min-w-[16rem]">What to try</DirectoryTableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {topics.map((topic) => (
+          <TableRow key={topic.problem}>
+            <TableCell className="min-w-[11rem] align-top break-words font-medium">
+              {topic.problem}
+            </TableCell>
+            <TableCell className="min-w-[12rem] align-top break-words text-muted-foreground">
+              {topic.symptom}
+            </TableCell>
+            <TableCell className="min-w-[16rem] align-top break-words text-sm leading-relaxed">
+              {topic.fix}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </DirectoryTable>
+  );
 }
 
 export type DocsSectionContentProps = {
@@ -75,11 +107,11 @@ export type DocsSectionContentProps = {
 
 export function DocsSectionContent({ guides, topics }: DocsSectionContentProps) {
   return (
-    <div className="grid gap-8">
+    <div className="grid min-w-0 gap-8">
       {guides?.map((guide) => (
-        <article key={guide.id} className="grid gap-3">
+        <article key={guide.id} className="grid min-w-0 gap-3">
           <h3 className="text-sm font-semibold text-foreground">{guide.title}</h3>
-          <div className="grid gap-3">
+          <div className="grid min-w-0 gap-3">
             {guide.blocks.map((block, index) => (
               <DocsGuideBlockView key={`${guide.id}-${index}`} block={block} />
             ))}
@@ -88,31 +120,14 @@ export function DocsSectionContent({ guides, topics }: DocsSectionContentProps) 
       ))}
 
       {topics && topics.length > 0 ? (
-        <section className="grid gap-3">
+        <section className="grid min-w-0 gap-3">
           <header className="grid gap-1">
             <h3 className="text-sm font-semibold text-foreground">Troubleshooting</h3>
             <p className="text-sm text-muted-foreground">
               Common symptoms and what to check when tracking does not match expectations.
             </p>
           </header>
-          <DirectoryTable>
-            <TableHeader>
-              <TableRow>
-                <DirectoryTableHead className="w-[12rem]">Problem</DirectoryTableHead>
-                <DirectoryTableHead className="w-[14rem]">What you see</DirectoryTableHead>
-                <DirectoryTableHead>What to try</DirectoryTableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {topics.map((topic) => (
-                <TableRow key={topic.problem}>
-                  <TableCell className="font-medium">{topic.problem}</TableCell>
-                  <TableCell className="text-muted-foreground">{topic.symptom}</TableCell>
-                  <TableCell>{topic.fix}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </DirectoryTable>
+          <DocsTroubleshootingTable topics={topics} />
         </section>
       ) : null}
     </div>

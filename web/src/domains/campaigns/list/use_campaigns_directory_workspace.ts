@@ -104,19 +104,29 @@ export function useCampaignsDirectoryWorkspace({
   );
 
   const computedColumnWidths = useMemo((): Record<CampaignListColumnId, number> => {
-    if (!columnWidthProbe?.items.length) {
+    const widthItems = columnWidthProbe?.items.length ? columnWidthProbe.items : items;
+    if (!widthItems.length) {
       return defaultCampaignListColumnWidths(visibleColumns);
     }
     return computeCampaignListColumnWidths({
       columns: visibleColumns,
-      items: columnWidthProbe.items,
-      metricsById: columnWidthProbe.metricsById,
-      marginsById: columnWidthProbe.marginsById,
+      items: widthItems,
+      metricsById: columnWidthProbe?.metricsById ?? metricsById,
+      marginsById: columnWidthProbe?.marginsById ?? marginsById,
       customerNameById,
       ownerEmailById,
       filterTotals,
     });
-  }, [columnWidthProbe, customerNameById, filterTotals, ownerEmailById, visibleColumns]);
+  }, [
+    columnWidthProbe,
+    customerNameById,
+    filterTotals,
+    items,
+    marginsById,
+    metricsById,
+    ownerEmailById,
+    visibleColumns,
+  ]);
 
   const columnWidths = useMemo(
     () => mergeCampaignListColumnWidths(computedColumnWidths, columnPrefs.widthPx, visibleColumns),

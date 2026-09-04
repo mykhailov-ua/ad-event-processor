@@ -98,11 +98,11 @@ export function OpsDlqInbox({
                 <OpsTableCell>
                   {entry.status ? <OpsStatusChip status={entry.status} /> : ''}
                 </OpsTableCell>
-                <OpsTableCell className="font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                <OpsTableCell className="font-mono text-xs text-muted-foreground">
                   {entry.campaign_id ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{entry.event_type ?? ''}</OpsTableCell>
-                <OpsTableCell className="max-w-0 truncate text-zinc-500 dark:text-zinc-400">
+                <OpsTableCell className="max-w-0 truncate text-muted-foreground">
                   {entry.error ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</OpsTableCell>

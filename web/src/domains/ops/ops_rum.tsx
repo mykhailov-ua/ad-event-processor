@@ -41,7 +41,7 @@ export function OpsRum({ payload, fetching, error, hasSnapshot, onLoad }: OpsRum
       {payload ? (
         <JsonDashboardView payload={payload} />
       ) : (
-        <p className="text-zinc-500 dark:text-zinc-400">Load RUM samples from the control plane.</p>
+        <p className="text-muted-foreground">Load RUM samples from the control plane.</p>
       )}
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
     </OpsPageShell>

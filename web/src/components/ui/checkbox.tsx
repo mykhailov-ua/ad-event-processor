@@ -14,7 +14,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <input
         ref={ref}
         checked={checked}
-        className="peer sr-only"
+        className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
         disabled={disabled}
         type="checkbox"
         onChange={(event) => {
@@ -26,7 +26,7 @@ const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
       <span
         aria-hidden
         className={cn(
-          'flex h-4 w-4 items-center justify-center rounded-sm border border-zinc-900 bg-white text-white transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-zinc-400 peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:bg-zinc-900 dark:border-zinc-100 dark:bg-zinc-950 dark:peer-checked:bg-zinc-100 dark:peer-checked:text-zinc-900',
+          'pointer-events-none flex h-4 w-4 items-center justify-center rounded-[4px] border border-input bg-background text-primary-foreground transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:border-primary peer-checked:bg-primary',
           className,
         )}
       >

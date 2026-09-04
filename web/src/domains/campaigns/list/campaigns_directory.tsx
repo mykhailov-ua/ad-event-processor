@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import { CampaignListTableCardTools } from '@/domains/campaigns/list/campaign_list_table_card_tools';
 import { CampaignsListTable } from '@/domains/campaigns/list/campaigns_list_table';
 import { CampaignsListToolbar } from '@/domains/campaigns/list/campaigns_list_toolbar';
 import { CampaignsDirectoryOverlays } from '@/domains/campaigns/list/campaigns_directory_overlays';
@@ -108,7 +109,9 @@ export function CampaignsDirectory({
   const createDisabled =
     creating || !customerId || !draftTemplateId || templatesLoading;
   const { rangeStart, rangeEnd } = listPageRange(total, limit, offset, items.length);
-  const rangeLabel = total === 0 ? '0 of 0' : `${rangeStart} - ${rangeEnd} of ${total}`;
+  const rangeLabel = total === 0 ? '0 of 0' : `Showing ${rangeStart}-${rangeEnd} of ${total}`;
+  const page = Math.floor(offset / limit) + 1;
+  const pageCount = total === 0 ? 1 : Math.ceil(total / limit);
 
   if (fetching && !hasSnapshot && !error) {
     return <PageSkeleton variant="directory" columns={8} />;
@@ -121,8 +124,11 @@ export function CampaignsDirectory({
   return (
     <>
       <PageLayout
+        workspaceClassName="flex min-h-0 flex-1 flex-col gap-3 border-0 bg-transparent p-0 dark:bg-transparent"
+        footerClassName="border-0 bg-transparent p-0 dark:bg-transparent"
         controlPanel={
-          <CampaignsListToolbar
+          <div className="flex flex-col gap-3">
+            <CampaignsListToolbar
             bulkBusy={workspace.bulkBusy || workspace.exportBusy}
             countryOptions={countryOptions}
             customerOptions={customerOptions}
@@ -160,8 +166,6 @@ export function CampaignsDirectory({
               }
               workspace.setCloneOpen(true);
             }}
-            columnPrefs={workspace.columnPrefs}
-            onColumnPrefsChange={workspace.handleColumnPrefsApply}
             onCreateClick={() => onCreateSectionOpenChange(true)}
             onStatsRangeChange={onStatsRangeChange}
             onDraftBudgetMaxUsdChange={onDraftBudgetMaxUsdChange}
@@ -180,7 +184,6 @@ export function CampaignsDirectory({
               workspace.onPauseSelected();
             }}
             onRefresh={onRefreshList}
-            onResetWorkspaceClick={() => workspace.setResetWorkspaceOpen(true)}
             onReportClick={workspace.onReportClick}
             onResumeClick={() => {
               if (workspace.selectedIds.size === 0) {
@@ -190,37 +193,51 @@ export function CampaignsDirectory({
               workspace.onResumeSelected();
             }}
             onWizardClick={() => workspace.setWizardOpen(true)}
-          />
+            />
+            <CampaignListTableCardTools
+              columnPrefs={workspace.columnPrefs}
+              disabled={fetching}
+              onColumnPrefsChange={workspace.handleColumnPrefsApply}
+              onResetWorkspaceClick={() => workspace.setResetWorkspaceOpen(true)}
+            />
+          </div>
         }
         footer={
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="admin-campaigns-list-footer flex flex-wrap items-center gap-2">
             <DirectoryPaginationFooter
               canGoNext={canGoNext}
               canGoPrev={canGoPrev}
+              className="gap-2"
               disabled={fetching}
               limit={limit}
+              page={page}
+              pageCount={pageCount}
               pageSizeId="campaigns-page-size"
+              pageSizeLayout="inline"
               prevLabel="Prev"
               rangeLabel={rangeLabel}
               onLimitChange={onPageSizeChange}
               onNext={() => onPageChange(offset + limit)}
+              onPageChange={(nextPage) => onPageChange((nextPage - 1) * limit)}
               onPrev={() => onPageChange(Math.max(0, offset - limit))}
             />
             <div aria-label="Export" className="flex flex-wrap items-center gap-2">
               <Button
+                className="admin-campaigns-toolbar__outline-btn"
                 disabled={fetching || total === 0 || workspace.exportBusy}
                 title="Download CSV for selected campaigns, or all campaigns matching the current filters"
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={workspace.onExportCsv}
               >
                 Export CSV
               </Button>
               <Button
+                className="admin-campaigns-toolbar__outline-btn"
                 disabled={fetching || total === 0 || workspace.exportBusy}
                 title="Download JSON bundles for selected campaigns, or all campaigns matching the current filters"
                 type="button"
-                variant="secondary"
+                variant="outline"
                 onClick={workspace.onExportBundles}
               >
                 Export JSON
@@ -228,35 +245,38 @@ export function CampaignsDirectory({
             </div>
           </div>
         }
-        title="Campaigns"
       >
-        <CampaignsListTable
-          appliedOrder={appliedOrder}
-          appliedSort={appliedSort}
-          columnPrefs={workspace.columnPrefs}
-          columnWidths={workspace.columnWidths}
-          customerNameById={customerNameById}
-          ownerEmailById={ownerEmailById}
-          emptyMessage={
-            filtersActive
-              ? 'No campaigns match the current filters.'
-              : 'No campaigns yet. Create one to start tracking spend and delivery.'
-          }
-          fetching={fetching}
-          filterTotals={filterTotals}
-          items={items}
-          marginsById={marginsById}
-          metricsById={metricsById}
-          selectedIds={workspace.selectedIds}
-          onColumnPrefsChange={workspace.handleColumnPrefsApply}
-          onColumnSort={onColumnSort}
-          onColumnWidthCommit={workspace.handleColumnWidthCommit}
-          onCampaignOverview={(campaign) =>
-            workspace.setOverviewCampaign(campaign as CampaignWithMoneyDisplay)
-          }
-          onSelectedIdsChange={workspace.setSelectedIds}
-          statsQuery={statsQuery}
-        />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="admin-campaigns-table-card">
+            <CampaignsListTable
+              appliedOrder={appliedOrder}
+              appliedSort={appliedSort}
+              columnPrefs={workspace.columnPrefs}
+              columnWidths={workspace.columnWidths}
+              customerNameById={customerNameById}
+              ownerEmailById={ownerEmailById}
+              emptyMessage={
+                filtersActive
+                  ? 'No campaigns match the current filters.'
+                  : 'No campaigns yet. Create one to start tracking spend and delivery.'
+              }
+              fetching={fetching}
+              filterTotals={filterTotals}
+              items={items}
+              marginsById={marginsById}
+              metricsById={metricsById}
+              selectedIds={workspace.selectedIds}
+              onColumnPrefsChange={workspace.handleColumnPrefsApply}
+              onColumnSort={onColumnSort}
+              onColumnWidthCommit={workspace.handleColumnWidthCommit}
+              onCampaignOverview={(campaign) =>
+                workspace.setOverviewCampaign(campaign as CampaignWithMoneyDisplay)
+              }
+              onSelectedIdsChange={workspace.setSelectedIds}
+              statsQuery={statsQuery}
+            />
+          </div>
+        </div>
       </PageLayout>
 
       <CampaignsDirectoryOverlays
@@ -302,6 +322,7 @@ export function CampaignsDirectory({
         selectedCampaignId={workspace.selectedCampaignId}
         selectedCampaignName={workspace.selectedCampaign?.name}
         selectedCount={workspace.selectedIds.size}
+        statsQuery={statsQuery}
         templates={templates}
         templatesError={templatesError}
         templatesLoading={templatesLoading}

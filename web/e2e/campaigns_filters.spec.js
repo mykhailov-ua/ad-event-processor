@@ -12,10 +12,11 @@ test('campaigns directory toolbar and filters are visible', async ({ page }) => 
 
   await expect(page.getByRole('heading', { name: 'Campaigns' })).toBeVisible();
   await expect(page.getByRole('toolbar', { name: 'Campaign actions' })).toBeVisible();
+  const toolbar = page.getByRole('toolbar', { name: 'Campaign actions' });
   await expect(page.getByRole('button', { name: 'Create', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Clone' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Archive' })).toBeVisible();
+  await expect(toolbar.getByRole('button', { name: 'Clone' })).toBeVisible();
+  await expect(toolbar.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await expect(toolbar.getByRole('button', { name: 'Archive', exact: true })).toBeVisible();
   await expect(page.getByLabel('Customer group')).toBeVisible();
   await expect(page.getByLabel('Pacing')).toBeVisible();
   await expect(page.getByLabel('Period')).toBeVisible();
@@ -96,7 +97,7 @@ test('campaigns selection clears when status filter changes', async ({ page }) =
   await loginAsAdmin(page);
   await gotoCampaigns(page);
 
-  const rowCheckbox = page.getByRole('checkbox', { name: /^Select / }).first();
+  const rowCheckbox = page.getByRole('checkbox', { name: /^Select / }).nth(1);
   if ((await rowCheckbox.count()) === 0) {
     test.skip(true, 'integration: no campaigns in directory');
     return;

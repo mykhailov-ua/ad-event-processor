@@ -16,7 +16,7 @@ export function DirectoryTableSkeleton({
       aria-busy="true"
       aria-label="Loading table"
       className={cn(
-        'motion-safe:animate-pulse overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-800',
+        'motion-safe:animate-pulse overflow-hidden rounded-md border border-border bg-card',
         className,
       )}
     >

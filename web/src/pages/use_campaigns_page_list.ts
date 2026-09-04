@@ -17,6 +17,8 @@ import {
   buildCampaignListOwnerEmailById,
   buildCampaignListOwnerOptions,
 } from '@/domains/campaigns/list/campaign_list_filter_options';
+import { isCampaignListAuxEndpointUnavailable } from '@/domains/campaigns/list/campaign_list_aux_error';
+import { campaignListFacetsFromItems } from '@/domains/campaigns/list/campaign_list_facets_from_items';
 import {
   buildCampaignListWidthProbeQuery,
   listResponseCoversWidthProbeDataset,
@@ -159,7 +161,12 @@ export function useCampaignsPageList({
       if (filterTotalsCapped) {
         return Promise.resolve(undefined);
       }
-      return fetchCampaignListMetricsTotals(filterTotalsQuery, statsQuery, signal);
+      return fetchCampaignListMetricsTotals(filterTotalsQuery, statsQuery, signal).catch((err) => {
+        if (isCampaignListAuxEndpointUnavailable(err)) {
+          return undefined;
+        }
+        throw err;
+      });
     },
     [
       filterTotalsQuery.customer_id,
@@ -199,10 +206,26 @@ export function useCampaignsPageList({
     };
   }, [data?.items, listCoversWidthProbeDataset, marginsById, metricsById, widthProbeData?.items]);
 
-  const { data: listFacets, fetching: listFacetsFetching } = useResource(
-    (signal) => fetchCampaignListFacets(customerId, signal),
+  const { data: listFacetsFromApi, fetching: listFacetsFetching } = useResource(
+    (signal) =>
+      fetchCampaignListFacets(customerId, signal).catch((err) => {
+        if (isCampaignListAuxEndpointUnavailable(err)) {
+          return undefined;
+        }
+        throw err;
+      }),
     [customerId, refreshToken],
   );
+
+  const listFacets = useMemo(() => {
+    if (listFacetsFromApi) {
+      return listFacetsFromApi;
+    }
+    if (data?.items?.length) {
+      return campaignListFacetsFromItems(data.items);
+    }
+    return undefined;
+  }, [data?.items, listFacetsFromApi]);
 
   const countryOptions = useMemo(
     () => buildCampaignListCountryOptions(listFacets?.countries ?? [], query.country),

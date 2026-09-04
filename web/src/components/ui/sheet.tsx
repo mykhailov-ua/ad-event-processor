@@ -132,7 +132,7 @@ const SheetContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          'fixed z-50 flex flex-col gap-4 border-zinc-200 bg-white p-6 shadow-lg dark:border-zinc-800 dark:bg-zinc-950',
+          'fixed z-50 flex flex-col gap-4 border-border bg-card p-6 text-card-foreground shadow-lg',
           sideClass[side],
           className,
         )}
@@ -149,7 +149,7 @@ const SheetContent = React.forwardRef<
         {children}
         <button
           type="button"
-          className="absolute right-4 top-4 rounded-sm p-1 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="absolute right-4 top-4 rounded-sm p-1 text-muted-foreground hover:text-foreground"
           aria-label="Close"
           onClick={() => setOpen(false)}
         >
@@ -173,7 +173,7 @@ SheetFooter.displayName = 'SheetFooter';
 
 const SheetTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
   ({ className, ...props }, ref) => (
-    <h2 ref={ref} className={cn('text-lg font-semibold text-zinc-900 dark:text-zinc-50', className)} {...props} />
+    <h2 ref={ref} className={cn('text-lg font-semibold text-foreground', className)} {...props} />
   ),
 );
 SheetTitle.displayName = 'SheetTitle';
@@ -182,7 +182,7 @@ const SheetDescription = React.forwardRef<
   HTMLParagraphElement,
   React.HTMLAttributes<HTMLParagraphElement>
 >(({ className, ...props }, ref) => (
-  <p ref={ref} className={cn('text-sm text-zinc-500 dark:text-zinc-400', className)} {...props} />
+  <p ref={ref} className={cn('text-sm text-muted-foreground', className)} {...props} />
 ));
 SheetDescription.displayName = 'SheetDescription';
 

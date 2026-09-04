@@ -24,6 +24,7 @@ import {
   type DashboardMetricId,
 } from '@/domains/dashboards/dashboard_metrics';
 import { displayCount } from '@/lib/display';
+import { EmptyState } from '@/shell/empty_state';
 import { cn } from '@/lib/utils';
 
 export type DashboardMultiAxisChartProps = {
@@ -261,9 +262,11 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
         aria-label="Performance chart"
         className={cn('ui-surface-raised overflow-hidden p-3', className)}
       >
-        <div className="rounded-xl border border-border bg-card/20 px-4 py-10 text-center text-sm text-muted-foreground">
-          No series data for this range.
-        </div>
+        <EmptyState
+          className="border-0 bg-transparent py-10 shadow-none"
+          description="Try a wider period or confirm the customer has traffic in this range."
+          variant="no-results"
+        />
       </section>
     );
   }

@@ -1,5 +1,6 @@
 import { RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { DatetimePicker } from '@/components/ui/datetime_picker';
@@ -64,7 +65,7 @@ function freshnessBadge(payload: Record<string, unknown> | undefined) {
   }
   const stale = portfolio?.kpis?.freshness?.stale === true;
   return (
-    <span className={cn('text-xs text-zinc-500 dark:text-zinc-400', stale ? opsStatusTone('warn') : opsStatusTone('ok'))}>
+    <span className={cn('text-xs text-muted-foreground', stale ? opsStatusTone('warn') : opsStatusTone('ok'))}>
       {label}
     </span>
   );
@@ -129,7 +130,6 @@ function RoleDashboardFilters({
         />
         <CampaignsListFilterSelect
           aria-label="Customer"
-          disabled={fetching}
           options={customerSelectOptions}
           value={draftCustomerId || ALL_OPTION_VALUE}
           onValueChange={(value) =>
@@ -143,25 +143,45 @@ function RoleDashboardFilters({
           onValueChange={(value) => onRangePresetChange(value as DashboardRangePreset)}
         />
         <DatetimePicker
-          disabled={fetching || rangePreset !== 'custom'}
           id="dashboard-from"
           label="From"
           value={draftFrom}
-          onChange={onDraftFromChange}
+          onChange={(value) => {
+            if (rangePreset !== 'custom') {
+              toast.message('Switch range preset to Custom to edit dates');
+              return;
+            }
+            onDraftFromChange(value);
+          }}
         />
         <DatetimePicker
-          disabled={fetching || rangePreset !== 'custom'}
           id="dashboard-to"
           label="To"
           value={draftTo}
-          onChange={onDraftToChange}
+          onChange={(value) => {
+            if (rangePreset !== 'custom') {
+              toast.message('Switch range preset to Custom to edit dates');
+              return;
+            }
+            onDraftToChange(value);
+          }}
         />
-        <Button disabled={fetching || !draftCustomerId.trim()} type="button" onClick={onApply}>
+        <Button
+          loading={fetching}
+          type="button"
+          onClick={() => {
+            if (!draftCustomerId.trim()) {
+              toast.message('Select a customer');
+              return;
+            }
+            onApply();
+          }}
+        >
           Load
         </Button>
       </div>
       {role !== 'buyer' ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
+        <p className="text-muted-foreground">
           <Link className="text-blue-600 hover:underline dark:text-blue-400" to="/rtb">
             RTB overview
           </Link>
@@ -269,12 +289,17 @@ export function RoleDashboardView({
       headerActions={
         <Button
           aria-label="Refresh dashboard"
-          disabled={fetching || !draftCustomerId.trim()}
           loading={fetching}
           size="icon"
           type="button"
           variant="secondary"
-          onClick={onApply}
+          onClick={() => {
+            if (!draftCustomerId.trim()) {
+              toast.message('Select a customer');
+              return;
+            }
+            onApply();
+          }}
         >
           <RefreshCw aria-hidden className="h-4 w-4" />
         </Button>

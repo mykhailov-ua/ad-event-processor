@@ -1,6 +1,7 @@
+import { Inbox } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import { PrimaryActionButton } from '@/shell/action_buttons';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type EmptyStateVariant = 'default' | 'no-results' | 'blank-slate';
@@ -12,6 +13,7 @@ type EmptyStateProps = {
   actionLabel?: string;
   actionHref?: string;
   onAction?: () => void;
+  className?: string;
 };
 
 const variantDefaults: Record<
@@ -19,8 +21,8 @@ const variantDefaults: Record<
   { title: string; description: string }
 > = {
   default: {
-    title: 'No records',
-    description: 'No customers match the current query.',
+    title: 'No data found',
+    description: 'No records match the current view.',
   },
   'no-results': {
     title: 'No results',
@@ -39,6 +41,7 @@ export function EmptyState({
   actionLabel,
   actionHref,
   onAction,
+  className,
 }: EmptyStateProps) {
   const defaults = variantDefaults[variant];
   const resolvedTitle = title ?? defaults.title;
@@ -46,24 +49,22 @@ export function EmptyState({
   const showAction = Boolean(actionLabel && (actionHref || onAction));
 
   return (
-    <div
-      className={cn(
-        'rounded-2xl border border-dashed border-border/40 bg-muted/20 p-8 text-center',
-        variant === 'blank-slate' && 'bg-muted/30',
-      )}
-    >
-      <p className="font-medium">{resolvedTitle}</p>
-      <p className="mt-1 text-sm text-muted-foreground">{resolvedDescription}</p>
+    <div className={cn('admin-empty-state', className)}>
+      <div className="admin-empty-state__icon">
+        <Inbox aria-hidden className="h-6 w-6" />
+      </div>
+      <p className="admin-empty-state__title">{resolvedTitle}</p>
+      <p className="admin-empty-state__description">{resolvedDescription}</p>
       {showAction ? (
         <div className="mt-4">
           {actionHref ? (
-            <PrimaryActionButton asChild>
+            <Button asChild variant="default">
               <Link to={actionHref}>{actionLabel}</Link>
-            </PrimaryActionButton>
+            </Button>
           ) : (
-            <PrimaryActionButton type="button" onClick={onAction}>
+            <Button type="button" variant="default" onClick={onAction}>
               {actionLabel}
-            </PrimaryActionButton>
+            </Button>
           )}
         </div>
       ) : null}

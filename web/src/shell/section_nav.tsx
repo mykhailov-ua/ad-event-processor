@@ -26,7 +26,10 @@ export function SectionNav({ items, label, className, variant = 'pill' }: Sectio
               key={item.path}
               to={item.path}
               aria-current={active ? 'page' : undefined}
-              className={cn('inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs dark:border-zinc-700 dark:bg-zinc-900', active && 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900')}
+              className={cn(
+                'inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-foreground',
+                active && 'border-primary bg-primary text-primary-foreground',
+              )}
             >
               {item.label}
             </Link>

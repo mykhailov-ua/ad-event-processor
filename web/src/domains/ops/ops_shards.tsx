@@ -65,7 +65,7 @@ export function OpsShards({
       }
     >
       {catchupStatus ? (
-        <p className="text-zinc-500 dark:text-zinc-400" role="status">
+        <p className="text-muted-foreground" role="status">
           Catch-up status: {catchupStatus}
         </p>
       ) : null}

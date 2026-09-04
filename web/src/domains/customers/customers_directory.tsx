@@ -70,7 +70,7 @@ export function CustomersDirectory({
 
   return (
     <PageLayout
-      badge={freshnessLabel ? <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs dark:border-zinc-700 dark:bg-zinc-900">{freshnessLabel}</span> : null}
+      badge={freshnessLabel ? <span className="inline-flex items-center rounded-md border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">{freshnessLabel}</span> : null}
       footer={
         <DirectoryPaginationFooter
           canGoNext={canGoNext}

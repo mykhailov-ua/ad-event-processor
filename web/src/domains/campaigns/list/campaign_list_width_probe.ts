@@ -1,5 +1,6 @@
 import type { CampaignListQuery } from '@/api/types';
 import { OPTIMAL_LIST_LIMIT_MAX } from '@/lib/list_query';
+import { isUuidLike } from '@/lib/customer_label';
 
 export type CampaignListWidthProbeListSnapshot = {
   items: readonly { id: string }[];
@@ -57,7 +58,7 @@ export function mergeCampaignIdsForMetricsBatch(
   const merged: string[] = [];
   for (const ids of idLists) {
     for (const id of ids) {
-      if (!id || seen.has(id)) {
+      if (!id || !isUuidLike(id) || seen.has(id)) {
         continue;
       }
       seen.add(id);

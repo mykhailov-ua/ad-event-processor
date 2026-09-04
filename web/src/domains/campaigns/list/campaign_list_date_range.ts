@@ -27,10 +27,12 @@ export function parseCampaignListStatsRange(
   if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) {
     return fallback;
   }
-  if (fromMs > toMs) {
-    return { from: to, to: from };
-  }
-  return { from, to };
+  const orderedFromMs = Math.min(fromMs, toMs);
+  const orderedToMs = Math.max(fromMs, toMs);
+  return {
+    from: new Date(orderedFromMs).toISOString(),
+    to: new Date(orderedToMs).toISOString(),
+  };
 }
 
 export function campaignStatsQueryForRange(range: CampaignListStatsRange): CampaignStatsQuery {

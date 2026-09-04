@@ -147,7 +147,7 @@ export function CampaignCloneDialog({
           </div>
 
           {preview ? (
-            <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+            <p className="text-sm text-muted-foreground">
               Preview name: <strong>{preview.name}</strong>
             </p>
           ) : null}

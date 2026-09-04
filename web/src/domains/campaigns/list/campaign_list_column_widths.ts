@@ -3,6 +3,7 @@ import type { Campaign, CampaignMargin } from '@/api/types';
 import {
   CAMPAIGN_LIST_COLUMN_LABELS,
   CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX,
+  CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX,
   clampCampaignListColumnWidthPx,
   type CampaignListColumnId,
   type CampaignListMiddleColumnId,
@@ -18,16 +19,38 @@ import { campaignListTotalsCellDisplayText } from '@/domains/campaigns/list/camp
 import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/campaign_list_filter_totals';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 
-const CELL_HORIZONTAL_PADDING_PX = 12;
-const HEADER_EXTRA_PX = 24;
-const CHAR_WIDTH_PX = 7;
+const CELL_HORIZONTAL_PADDING_PX = 32;
+const HEADER_TOOLS_GUTTER_PX = 28;
+const HEADER_SORT_ICON_PX = 12;
+const BODY_TOOLS_GUTTER_PX = 28;
+const NAME_ROW_MENU_PX = 36;
+const NAME_COUNTRY_BADGES_PX = 40;
+
+type ColumnContentWidthOptions = {
+  header?: boolean;
+  tools?: boolean;
+  name?: boolean;
+};
 
 function estimateTextWidthPx(text: string): number {
-  return Math.ceil(text.length * CHAR_WIDTH_PX);
+  return Math.ceil(text.length * 7);
 }
 
-function columnContentWidth(text: string, minWidth: number, header = false): number {
-  const extra = header ? HEADER_EXTRA_PX : 0;
+function columnContentWidth(
+  text: string,
+  minWidth: number,
+  options: ColumnContentWidthOptions = {},
+): number {
+  let extra = 0;
+  if (options.header) {
+    extra += HEADER_TOOLS_GUTTER_PX + HEADER_SORT_ICON_PX;
+  }
+  if (options.tools && !options.header) {
+    extra += BODY_TOOLS_GUTTER_PX;
+  }
+  if (options.name) {
+    extra += NAME_ROW_MENU_PX + NAME_COUNTRY_BADGES_PX;
+  }
   return Math.max(minWidth, estimateTextWidthPx(text) + CELL_HORIZONTAL_PADDING_PX + extra);
 }
 
@@ -55,7 +78,15 @@ export function defaultCampaignListColumnWidths(
 ): Record<CampaignListColumnId, number> {
   const widths = {} as Record<CampaignListColumnId, number>;
   for (const columnId of columns) {
-    widths[columnId] = CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
+    if (columnId === 'select') {
+      widths[columnId] = CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX;
+      continue;
+    }
+    const label = CAMPAIGN_LIST_COLUMN_LABELS[columnId];
+    widths[columnId] = clampCampaignListColumnWidthPx(
+      columnId,
+      columnContentWidth(label, CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId], { header: true }),
+    );
   }
   return widths;
 }
@@ -90,21 +121,29 @@ export function computeCampaignListColumnWidths({
   const totalsLabel = filterTotals ? 'Filtered total' : 'Total';
 
   for (const columnId of columns) {
+    if (columnId === 'select') {
+      widths[columnId] = CAMPAIGN_LIST_SELECTION_COLUMN_WIDTH_PX;
+      continue;
+    }
+
     const label = CAMPAIGN_LIST_COLUMN_LABELS[columnId];
-    let maxWidth = columnContentWidth(label, widths[columnId], true);
+    let maxWidth = columnContentWidth(label, widths[columnId], { header: true });
 
     if (columnId === 'id') {
       for (const campaign of items) {
         maxWidth = Math.max(
           maxWidth,
-          columnContentWidth(campaignDisplayId(campaign), widths[columnId]),
+          columnContentWidth(campaignDisplayId(campaign), widths[columnId], { tools: true }),
         );
       }
     } else if (columnId === 'name') {
       for (const campaign of items) {
-        maxWidth = Math.max(maxWidth, columnContentWidth(campaign.name ?? '', widths[columnId]) + 14);
+        maxWidth = Math.max(
+          maxWidth,
+          columnContentWidth(campaign.name ?? '', widths[columnId], { name: true, tools: true }),
+        );
       }
-    } else if (columnId !== 'select') {
+    } else {
       for (const campaign of items) {
         const text = campaignListMiddleCellText(
           columnId as CampaignListMiddleColumnId,
@@ -114,7 +153,7 @@ export function computeCampaignListColumnWidths({
           customerNameById,
           ownerEmailById,
         );
-        maxWidth = Math.max(maxWidth, columnContentWidth(text, widths[columnId]));
+        maxWidth = Math.max(maxWidth, columnContentWidth(text, widths[columnId], { tools: true }));
       }
     }
 
@@ -126,7 +165,10 @@ export function computeCampaignListColumnWidths({
       totalsLabel,
     );
     if (totalsText) {
-      maxWidth = Math.max(maxWidth, columnContentWidth(totalsText, widths[columnId]));
+      maxWidth = Math.max(
+        maxWidth,
+        columnContentWidth(totalsText, widths[columnId], { tools: columnId !== 'select' }),
+      );
     }
 
     widths[columnId] = clampCampaignListColumnWidthPx(columnId, maxWidth);

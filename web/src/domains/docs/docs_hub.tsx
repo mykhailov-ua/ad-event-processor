@@ -1,15 +1,10 @@
 import { Navigate } from 'react-router-dom';
 
-import { PageChrome } from '@/shell/page_chrome';
-import {
-  DirectoryTable,
-  DirectoryTableHead,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/shell/directory_table';
 import { DocsNav } from '@/domains/docs/docs_nav';
+import { DocsTroubleshootingTable } from '@/domains/docs/docs_section_content';
+import { PageChrome } from '@/shell/page_chrome';
+import { PanelSection } from '@/shell/stat_panel';
+import { Badge } from '@/components/ui/badge';
 import { DEFAULT_DOCS_SECTION_ID, getDocsSection } from '@/lib/docs_sections';
 
 export type DocsHubProps = {
@@ -24,44 +19,33 @@ export function DocsHub({ sectionId }: DocsHubProps) {
   }
 
   return (
-    <PageChrome title="Documentation">
-      <p className="max-w-3xl text-sm text-muted-foreground">
-        Operator notes for common admin issues. Deep runbooks live in docs/DEVELOPMENT.md and
-        deploy/vendor/ on the server.
-      </p>
+    <PageChrome
+      title="Documentation"
+      workspaceClassName="min-h-0 flex-1 border-0 bg-transparent p-0"
+    >
+      <div className="grid min-w-0 gap-4">
+        <p className="rounded-2xl border border-border/40 bg-muted/25 px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+          Operator notes for common admin issues. Deep runbooks live in{' '}
+          <span className="font-mono text-xs text-foreground">docs/DEVELOPMENT.md</span> and{' '}
+          <span className="font-mono text-xs text-foreground">deploy/vendor/</span> on the server.
+        </p>
 
-      <div className="grid gap-6 lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start">
-        <aside className="ui-surface p-3 lg:sticky lg:top-6">
-          <p className="mb-2 px-3 text-xs font-medium tracking-wide text-muted-foreground">
-            Sections
-          </p>
-          <DocsNav />
-        </aside>
+        <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(11rem,14rem)_minmax(0,1fr)] lg:items-start">
+          <PanelSection className="h-fit lg:sticky lg:top-0" title="Sections">
+            <div className="p-2">
+              <DocsNav />
+            </div>
+          </PanelSection>
 
-        <div className="grid gap-4">
-          <header className="grid gap-1">
-            <h2 className="text-base font-semibold">{section.title}</h2>
-            <p className="text-sm text-muted-foreground">{section.summary}</p>
-          </header>
-
-          <DirectoryTable>
-              <TableHeader>
-                <TableRow>
-                  <DirectoryTableHead className="w-[12rem]">Problem</DirectoryTableHead>
-                  <DirectoryTableHead className="w-[14rem]">What you see</DirectoryTableHead>
-                  <DirectoryTableHead>What to try</DirectoryTableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {section.topics.map((topic) => (
-                  <TableRow key={topic.problem}>
-                    <TableCell className="align-top font-medium">{topic.problem}</TableCell>
-                    <TableCell className="align-top text-muted-foreground">{topic.symptom}</TableCell>
-                    <TableCell className="align-top">{topic.fix}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </DirectoryTable>
+          <PanelSection
+            meta={<Badge variant="outline">{section.topics.length} topics</Badge>}
+            title={section.title}
+          >
+            <div className="grid min-w-0 gap-4 p-5">
+              <p className="text-sm leading-relaxed text-muted-foreground">{section.summary}</p>
+              <DocsTroubleshootingTable topics={section.topics} />
+            </div>
+          </PanelSection>
         </div>
       </div>
     </PageChrome>

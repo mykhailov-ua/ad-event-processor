@@ -1,3 +1,6 @@
+import { useMemo } from 'react';
+import { Columns3 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -12,6 +15,7 @@ import {
   type CampaignListMiddleColumnId,
   saveCampaignListColumnPrefs,
   setMiddleColumnVisible,
+  visibleMiddleColumnCount,
 } from '@/domains/campaigns/list/campaign_list_columns';
 import {
   CAMPAIGN_LIST_COLUMN_CATEGORIES,
@@ -20,6 +24,7 @@ import {
   defaultCampaignListPreferencesPrefs,
   type CampaignListColumnPresetId,
 } from '@/domains/campaigns/list/campaign_list_preferences';
+import { cn } from '@/lib/utils';
 
 export type CampaignListColumnsMenuProps = {
   columnPrefs: CampaignListColumnPrefs;
@@ -27,11 +32,29 @@ export type CampaignListColumnsMenuProps = {
   disabled?: boolean;
 };
 
+const PRESET_ORDER: CampaignListColumnPresetId[] = ['full', 'traffic', 'finance', 'minimal'];
+
+function hiddenSignature(hidden: CampaignListMiddleColumnId[]): string {
+  return [...hidden].sort().join(',');
+}
+
+function detectActivePreset(prefs: CampaignListColumnPrefs): CampaignListColumnPresetId | null {
+  const signature = hiddenSignature(prefs.hidden);
+  for (const presetId of PRESET_ORDER) {
+    if (hiddenSignature(campaignListColumnPrefsFromPreset(presetId).hidden) === signature) {
+      return presetId;
+    }
+  }
+  return null;
+}
+
 export function CampaignListColumnsMenu({
   columnPrefs,
   onColumnPrefsChange,
   disabled = false,
 }: CampaignListColumnsMenuProps) {
+  const activePreset = useMemo(() => detectActivePreset(columnPrefs), [columnPrefs]);
+
   function persist(next: CampaignListColumnPrefs) {
     onColumnPrefsChange(next);
     saveCampaignListColumnPrefs(next);
@@ -53,46 +76,64 @@ export function CampaignListColumnsMenu({
   }
 
   const hidden = new Set(columnPrefs.hidden);
-  const visibleCount = CAMPAIGN_LIST_MIDDLE_COLUMNS.filter((id) => !hidden.has(id)).length;
+  const visibleMiddleCount = visibleMiddleColumnCount(columnPrefs);
+  const totalMiddleCount = CAMPAIGN_LIST_MIDDLE_COLUMNS.length;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button disabled={disabled} type="button" variant="secondary">
-          Columns{visibleCount > 0 ? ` (${visibleCount})` : ''}
+        <Button
+          className="admin-campaigns-toolbar__outline-btn shrink-0 whitespace-nowrap px-2 font-medium"
+          disabled={disabled}
+          type="button"
+          variant="outline"
+        >
+          <Columns3 className="mr-1 h-3.5 w-3.5 shrink-0" aria-hidden />
+          Columns ({visibleMiddleCount}/{totalMiddleCount})
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-72 p-0">
-        <div className="flex flex-wrap gap-1 border-b border-zinc-200 p-2 dark:border-zinc-800">
-          {(Object.keys(CAMPAIGN_LIST_COLUMN_PRESET_LABELS) as CampaignListColumnPresetId[]).map(
-            (presetId) => (
+      <DropdownMenuContent align="end" className="campaign-columns-menu p-0">
+        <div className="border-b border-border px-3 py-2.5">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
+            Preset views
+          </p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {PRESET_ORDER.map((presetId) => (
               <button
                 key={presetId}
-                className="text-xs text-blue-600 dark:text-blue-400"
+                className={cn(
+                  'text-[13px] leading-[18px] transition-colors',
+                  activePreset === presetId
+                    ? 'font-semibold text-foreground'
+                    : 'font-normal text-muted-foreground hover:text-foreground',
+                )}
                 type="button"
                 onClick={() => applyPreset(presetId)}
               >
                 {CAMPAIGN_LIST_COLUMN_PRESET_LABELS[presetId]}
               </button>
-            ),
-          )}
+            ))}
+          </div>
         </div>
 
-        <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto p-2">
+        <div className="ui-scrollbar grid max-h-80 grid-cols-2 divide-x divide-border overflow-y-auto">
           {CAMPAIGN_LIST_COLUMN_CATEGORIES.map((category) => (
-            <section key={category.id} className="flex flex-col gap-1">
-              <h3 className="text-xs font-semibold text-zinc-500">{category.title}</h3>
-              <ul className="grid gap-0.5">
+            <section key={category.id} className="px-3 py-2.5">
+              <h3 className="mb-2 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
+                {category.title}
+              </h3>
+              <ul className="grid gap-1.5">
                 {category.columns.map((columnId) => {
                   const checked = !hidden.has(columnId);
                   return (
                     <li key={columnId}>
-                      <label className="flex items-center gap-2 text-sm">
+                      <label className="flex min-h-8 cursor-pointer items-center gap-2">
                         <Checkbox
                           checked={checked}
+                          className="campaign-columns-menu__checkbox"
                           onCheckedChange={(next) => toggleColumn(columnId, next === true)}
                         />
-                        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                        <span className="truncate text-[13px] leading-[18px] text-foreground/80">
                           {CAMPAIGN_LIST_COLUMN_LABELS[columnId]}
                         </span>
                       </label>
@@ -104,8 +145,12 @@ export function CampaignListColumnsMenu({
           ))}
         </div>
 
-        <div className="border-t border-zinc-200 p-2 dark:border-zinc-800">
-          <button className="text-blue-600 hover:underline dark:text-blue-400" type="button" onClick={restoreDefault}>
+        <div className="border-t border-border px-3 py-2.5 text-center">
+          <button
+            className="text-[13px] font-medium leading-[18px] text-primary underline-offset-2 hover:underline"
+            type="button"
+            onClick={restoreDefault}
+          >
             Restore to default
           </button>
         </div>

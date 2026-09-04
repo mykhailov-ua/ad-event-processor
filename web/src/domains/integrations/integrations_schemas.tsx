@@ -212,7 +212,7 @@ export function IntegrationsSchemas({
                   Close
                 </Button>
               </div>
-              <pre className="overflow-x-auto rounded-2xl border border-zinc-200 p-4 text-xs dark:border-zinc-800">
+              <pre className="ui-scrollbar overflow-x-auto rounded-2xl border border-border bg-muted p-4 text-xs text-foreground">
                 {JSON.stringify(viewSchema.schema.schema, null, 2)}
               </pre>
               <JsonDashboardView

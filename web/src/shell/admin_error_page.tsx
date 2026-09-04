@@ -56,21 +56,21 @@ export function AdminErrorPage({
     <div
       className={cn(
         'flex min-h-0 flex-1 items-center justify-center p-6',
-        layout === 'standalone' && 'min-h-screen bg-zinc-50 dark:bg-zinc-950',
+        layout === 'standalone' && 'min-h-screen bg-background',
       )}
       role="alert"
     >
-      <div className="w-full max-w-lg rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{resolvedTitle}</p>
-        <h1 className="mt-2 text-xl font-semibold">
+      <div className="w-full max-w-lg rounded-lg border border-border bg-card p-6 text-card-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{resolvedTitle}</p>
+        <h1 className="mt-2 text-xl font-semibold text-foreground">
           {kind === 'not-found'
             ? '404'
             : kind === 'forbidden'
               ? '403'
               : 'Error'}
         </h1>
-        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{resolvedMessage}</p>
-        {devHint ? <p className="mt-2 font-mono text-xs text-zinc-500">{devHint}</p> : null}
+        <p className="mt-2 text-sm text-muted-foreground">{resolvedMessage}</p>
+        {devHint ? <p className="mt-2 font-mono text-xs text-muted-foreground">{devHint}</p> : null}
         <div className="mt-6 flex flex-wrap gap-2">
           <Button type="button" variant="default" onClick={handleReload}>
             {onRetry ? 'Try again' : 'Reload page'}

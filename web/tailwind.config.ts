@@ -11,44 +11,44 @@ const config: Config = {
         mono: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       colors: {
-        muted: {
-          DEFAULT: '#f4f4f5',
-          foreground: '#71717a',
-        },
-        card: {
-          DEFAULT: '#ffffff',
-          foreground: '#09090b',
-        },
-        popover: {
-          DEFAULT: '#ffffff',
-          foreground: '#09090b',
-        },
+        border: 'hsl(var(--border))',
+        input: 'hsl(var(--input))',
+        ring: 'hsl(var(--ring))',
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: '#18181b',
-          foreground: '#fafafa',
+          DEFAULT: 'hsl(var(--primary))',
+          foreground: 'hsl(var(--primary-foreground))',
         },
         secondary: {
-          DEFAULT: '#f4f4f5',
-          foreground: '#18181b',
-        },
-        accent: {
-          DEFAULT: '#f4f4f5',
-          foreground: '#18181b',
+          DEFAULT: 'hsl(var(--secondary))',
+          foreground: 'hsl(var(--secondary-foreground))',
         },
         destructive: {
-          DEFAULT: '#ef4444',
-          foreground: '#fafafa',
+          DEFAULT: 'hsl(var(--destructive))',
+          foreground: 'hsl(var(--destructive-foreground))',
         },
-        border: '#e4e4e7',
-        input: '#e4e4e7',
-        ring: '#3b82f6',
-        background: '#ffffff',
-        foreground: '#09090b',
+        muted: {
+          DEFAULT: 'hsl(var(--muted))',
+          foreground: 'hsl(var(--muted-foreground))',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent))',
+          foreground: 'hsl(var(--accent-foreground))',
+        },
+        popover: {
+          DEFAULT: 'hsl(var(--popover))',
+          foreground: 'hsl(var(--popover-foreground))',
+        },
+        card: {
+          DEFAULT: 'hsl(var(--card))',
+          foreground: 'hsl(var(--card-foreground))',
+        },
       },
       borderRadius: {
-        lg: '0.5rem',
-        md: '0.375rem',
-        sm: '0.25rem',
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
       fontSize: {
         'admin-dense': ['0.8125rem', { lineHeight: '1.125rem' }],

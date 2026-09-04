@@ -40,13 +40,11 @@ export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: Buy
         id: 'landers' as const,
         title: 'Landing pages',
         table: resolvedPortfolio.breakdowns?.landers,
-        emptyLabel: 'Landing page breakdown is not available yet.',
       },
       {
         id: 'offers' as const,
         title: 'Offers',
         table: resolvedPortfolio.breakdowns?.offers,
-        emptyLabel: 'Offer breakdown is not available yet.',
       },
       {
         id: 'sources' as const,
@@ -68,7 +66,6 @@ export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: Buy
           <DashboardBreakdownTableSection
             key={section.id}
             columns={preferences.breakdownColumns}
-            emptyLabel={section.emptyLabel}
             nameLink={section.nameLink}
             table={section.table}
             title={section.title}

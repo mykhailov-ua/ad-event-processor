@@ -44,25 +44,30 @@ function useTabsContext() {
   return ctx;
 }
 
-const TabsList = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      role="tablist"
-      className={cn(
-        'inline-flex h-9 items-center rounded-sm bg-zinc-100 p-1 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
-        className,
-      )}
-      {...props}
-    />
-  ),
-);
+const TabsList = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement> & { variant?: 'segmented' | 'pill' | 'underline' }
+>(({ className, variant = 'segmented', ...props }, ref) => (
+  <div
+    ref={ref}
+    role="tablist"
+    className={cn(
+      variant === 'segmented' &&
+        'inline-flex h-9 items-center rounded-[5px] bg-muted p-1 text-muted-foreground',
+      variant === 'pill' && 'inline-flex flex-wrap items-center gap-2',
+      variant === 'underline' &&
+        'inline-flex items-center gap-4 border-b border-border',
+      className,
+    )}
+    {...props}
+  />
+));
 TabsList.displayName = 'TabsList';
 
 const TabsTrigger = React.forwardRef<
   HTMLButtonElement,
-  React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string }
->(({ className, value, onClick, ...props }, ref) => {
+  React.ButtonHTMLAttributes<HTMLButtonElement> & { value: string; variant?: 'segmented' | 'pill' | 'underline' }
+>(({ className, value, variant = 'segmented', onClick, ...props }, ref) => {
   const { active, setActive } = useTabsContext();
   const selected = active === value;
 
@@ -73,10 +78,26 @@ const TabsTrigger = React.forwardRef<
       role="tab"
       aria-selected={selected}
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
-        selected
-          ? 'bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100'
-          : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
+        'inline-flex items-center justify-center whitespace-nowrap text-[13px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
+        variant === 'segmented' && 'rounded-[5px] px-3 py-1',
+        variant === 'segmented' &&
+          (selected
+            ? 'bg-background text-foreground shadow-sm'
+            : 'text-muted-foreground hover:text-foreground'),
+        variant === 'pill' &&
+          cn(
+            'min-h-7 rounded-full border px-3 py-1',
+            selected
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border bg-background text-foreground hover:bg-accent',
+          ),
+        variant === 'underline' &&
+          cn(
+            'border-b-2 px-0 pb-2',
+            selected
+              ? 'border-primary text-foreground'
+              : 'border-transparent text-muted-foreground hover:text-foreground',
+          ),
         className,
       )}
       onClick={(event) => {

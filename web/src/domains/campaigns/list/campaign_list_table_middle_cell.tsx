@@ -9,6 +9,7 @@ import { rateBenchmarkToneClass } from '@/domains/campaigns/list/campaign_list_r
 import type { CampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm';
 import { RateMetricCell, tableCellClass } from '@/domains/campaigns/list/campaign_list_table_cell_format';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
+import { cn } from '@/lib/utils';
 
 export type CampaignListTableMiddleCellProps = {
   columnId: CampaignListMiddleColumnId;
@@ -32,8 +33,8 @@ export function CampaignListTableMiddleCell({
   switch (columnId) {
     case 'status':
       return (
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          <span className={vm.statusBadgeClass} title={vm.statusLabel}>
+        <span className="inline-flex max-w-full flex-nowrap items-center gap-1 overflow-hidden">
+          <span className={cn(vm.statusBadgeClass, 'truncate')} title={vm.statusLabel}>
             {vm.statusLabel}
           </span>
           {marginBreach ? <CampaignMarginBreachBadge /> : null}
@@ -61,7 +62,7 @@ export function CampaignListTableMiddleCell({
     case 'group':
       return (
         <Link
-          className="tabular-nums"
+          className="block max-w-full truncate tabular-nums"
           title={vm.groupLabel ?? vm.groupCustomerId}
           to={`/customers/${vm.groupCustomerId}`}
           onClick={(event) => event.stopPropagation()}
@@ -95,7 +96,7 @@ export function CampaignListTableMiddleCell({
       );
     case 'approved':
       return (
-        <span className={tableCellClass(vm.approved.isZero, undefined, 'primary')}>{vm.approved.text}</span>
+        <span className={tableCellClass(vm.approved.isZero, undefined, 'approved')}>{vm.approved.text}</span>
       );
     case 'hold_leads':
       return <span className={tableCellClass(vm.holdLeads.isZero)}>{vm.holdLeads.text}</span>;
@@ -177,13 +178,13 @@ export function CampaignListTableMiddleCell({
       );
     case 'flow':
       return (
-        <span className="tabular-nums text-zinc-600 dark:text-zinc-400" title={vm.flowId ?? ''}>
+        <span className="tabular-nums text-muted-foreground" title={vm.flowId ?? ''}>
           {vm.flowId ? vm.flowId.slice(0, 8) : '-'}
         </span>
       );
     case 'owner':
       return (
-        <span className="tabular-nums text-zinc-600 dark:text-zinc-400" title={vm.ownerId}>
+        <span className="block max-w-full truncate tabular-nums text-muted-foreground" title={vm.ownerId}>
           {vm.ownerLabel}
         </span>
       );
@@ -192,8 +193,8 @@ export function CampaignListTableMiddleCell({
         return <span className={tableCellClass(true)}>-</span>;
       }
       return (
-        <span className="tabular-nums">
-          <CampaignCountryBadges countries={vm.countries} max={5} />
+        <span className="block max-w-full overflow-hidden">
+          <CampaignCountryBadges className="max-w-full" countries={vm.countries} max={3} />
         </span>
       );
     default:

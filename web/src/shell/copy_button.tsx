@@ -14,12 +14,11 @@ export type CopyButtonProps = {
 export function CopyButton({ className, label, value }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
   const trimmed = value.trim();
-  const disabled = trimmed.length === 0;
+  if (!trimmed) {
+    return null;
+  }
 
   const onCopy = async () => {
-    if (disabled) {
-      return;
-    }
     try {
       await navigator.clipboard.writeText(trimmed);
       setCopied(true);
@@ -34,7 +33,6 @@ export function CopyButton({ className, label, value }: CopyButtonProps) {
     <Button
       aria-label={label ? `Copy ${label}` : 'Copy to clipboard'}
       className={cn('size-8 shrink-0 p-0', className)}
-      disabled={disabled}
       onClick={() => {
         void onCopy();
       }}

@@ -1,47 +1,86 @@
 /**
- * First-party admin chrome class strings (flat zinc). Use in @/components/ui only;
+ * First-party admin chrome class strings. Use in @/components/ui only;
  * domains/shell import primitives, not these tokens directly.
  */
+import { adminKit } from '@/lib/admin_kit';
+
 export const adminChrome = {
-  control:
-    'h-8 rounded-sm border border-zinc-200 bg-white px-3 text-sm text-zinc-900 transition-colors placeholder:text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:focus-visible:ring-offset-zinc-950',
+  control: cnControl(),
   controlGhost:
-    'h-8 rounded-sm border border-transparent bg-transparent px-3 text-sm text-zinc-900 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-800',
-  panel:
-    'rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950',
-  panelMuted: 'rounded-md bg-zinc-50 dark:bg-zinc-900',
+    'min-h-7 rounded-[5px] border border-transparent bg-transparent px-2 py-1 text-[13px] leading-[18px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+  panel: 'rounded-[10px] border border-border bg-card text-card-foreground',
+  panelMuted: 'rounded-[10px] bg-muted text-muted-foreground',
   overlayBackdrop: 'fixed inset-0 z-50 bg-black/80',
   floating:
-    'z-50 rounded-md border border-zinc-200 bg-white p-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-950',
+    'z-50 rounded-[5px] border border-border bg-popover text-popover-foreground p-1 shadow-lg',
   menuItem:
-    'relative flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm text-zinc-900 outline-none hover:bg-zinc-100 disabled:pointer-events-none disabled:opacity-50 dark:text-zinc-100 dark:hover:bg-zinc-800',
+    'relative flex w-full cursor-pointer select-none items-center whitespace-nowrap rounded-[5px] px-2 py-1.5 text-[13px] text-foreground outline-none hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50',
   tableHead:
-    'h-10 bg-zinc-50 px-3 text-left align-middle text-xs font-semibold text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400',
-  tableCell: 'px-3 py-2 align-middle text-sm text-zinc-900 dark:text-zinc-100',
-  muted: 'text-zinc-500 dark:text-zinc-400',
-  pageTitle: 'text-xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50',
+    'h-[34px] bg-muted/50 px-4 text-left align-middle text-[11px] font-bold uppercase leading-[14px] text-muted-foreground',
+  tableCell: 'px-4 py-0 align-middle text-[13px] leading-[18px] text-foreground',
+  muted: 'text-muted-foreground',
+  pageTitle: 'text-lg font-bold tracking-tight text-foreground',
 } as const;
 
-export type ButtonVariant = 'default' | 'secondary' | 'outline' | 'ghost' | 'destructive' | 'link';
+function cnControl(): string {
+  return [
+    adminKit.controlHeight,
+    adminKit.controlRadius,
+    adminKit.controlText,
+    'border border-input bg-background px-2 py-1 text-foreground transition-colors',
+    'placeholder:text-muted-foreground',
+    adminKit.focusRing,
+    'disabled:cursor-not-allowed disabled:opacity-50',
+    'aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/30',
+  ].join(' ');
+}
+
+export type ButtonVariant =
+  | 'default'
+  | 'brand'
+  | 'secondary'
+  | 'outline'
+  | 'ghost'
+  | 'destructive'
+  | 'link';
 
 export const buttonVariantClass: Record<ButtonVariant, string> = {
   default:
-    'border-zinc-950 bg-zinc-950 text-white hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200',
+    'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+  brand:
+    'border-emerald-500 bg-emerald-500 text-slate-900 hover:border-emerald-600 hover:bg-emerald-600 dark:hover:border-emerald-400 dark:hover:bg-emerald-400',
   secondary:
-    'border-transparent bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
+    'border-border bg-secondary text-secondary-foreground hover:bg-secondary/80',
   outline:
-    'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900',
+    'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
   ghost:
-    'border-transparent bg-transparent text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800',
-  destructive: 'border-red-600 bg-red-600 text-white hover:bg-red-700',
-  link: 'border-0 bg-transparent text-zinc-900 underline-offset-4 hover:underline dark:text-zinc-100',
+    'border-transparent bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground',
+  destructive:
+    'border-destructive bg-destructive text-destructive-foreground hover:bg-destructive/90',
+  link: 'border-0 bg-transparent text-primary underline-offset-4 hover:underline',
 };
 
-export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
+export type BadgeVariant =
+  | 'default'
+  | 'secondary'
+  | 'destructive'
+  | 'outline'
+  | 'active'
+  | 'paused'
+  | 'archived'
+  | 'error'
+  | 'draft'
+  | 'scheduled';
 
 export const badgeVariantClass: Record<BadgeVariant, string> = {
-  default: 'border-transparent bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900',
-  secondary: 'border-transparent bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100',
-  destructive: 'border-transparent bg-red-600 text-white',
-  outline: 'border-zinc-200 text-zinc-900 dark:border-zinc-700 dark:text-zinc-100',
+  default: 'border-transparent bg-primary text-primary-foreground',
+  secondary: 'border-transparent bg-secondary text-secondary-foreground',
+  destructive: 'border-transparent bg-destructive/10 text-destructive',
+  outline: 'border-border text-foreground',
+  active: 'border-transparent bg-emerald-500/10 text-emerald-500',
+  paused: 'border-transparent bg-amber-500/10 text-amber-500',
+  archived: 'border-border bg-muted text-muted-foreground',
+  error: 'border-transparent bg-destructive/10 text-destructive',
+  draft: 'border-transparent bg-sky-500/10 text-sky-500',
+  scheduled: 'border-transparent bg-orange-500/10 text-orange-500',
 };

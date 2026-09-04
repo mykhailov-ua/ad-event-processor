@@ -19,7 +19,7 @@ export function ThemeToggle({ className, showLabel = false }: ThemeToggleProps) 
   const button = (
     <Button
       aria-label={themeToggleLabel(theme)}
-      className={cn(showLabel ? '' : 'inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800', className)}
+      className={cn(showLabel ? '' : 'inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground', className)}
       size={showLabel ? 'default' : 'icon'}
       type="button"
       variant="secondary"

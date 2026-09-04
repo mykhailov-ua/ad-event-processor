@@ -45,7 +45,7 @@ export function PanelSection({
   meta?: ReactNode;
 }) {
   return (
-    <section className={cn('ui-surface-raised overflow-hidden rounded-2xl border border-border/40', className)}>
+    <section className={cn('ui-surface-raised min-w-0 rounded-2xl border border-border/40', className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-5 py-4">
         <h3 className="text-base font-medium tracking-tight">{title}</h3>
         {meta}

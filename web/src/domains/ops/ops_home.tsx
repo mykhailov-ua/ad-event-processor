@@ -98,7 +98,7 @@ export function OpsHome({
             {downloadingBundle ? 'Downloading...' : 'Download support bundle'}
           </Button>
           {rolesReloadMessage ? (
-            <span className="text-zinc-500 dark:text-zinc-400" role="status">
+            <span className="text-muted-foreground" role="status">
               {rolesReloadMessage}
             </span>
           ) : null}
@@ -181,7 +181,7 @@ export function OpsHome({
                 <OpsTableCell>
                   <OpsStatusChip status={service.status} />
                 </OpsTableCell>
-                <OpsTableCell className="text-zinc-500 dark:text-zinc-400">
+                <OpsTableCell className="text-muted-foreground">
                   {service.detail ?? ''}
                 </OpsTableCell>
               </OpsTableRow>
@@ -192,7 +192,7 @@ export function OpsHome({
 
       <OpsBlock title="Doctor checks">
         {checks.length === 0 ? (
-          <p className="text-zinc-500 dark:text-zinc-400">No doctor checks returned.</p>
+          <p className="text-muted-foreground">No doctor checks returned.</p>
         ) : (
           <OpsTable
             head={
@@ -212,7 +212,7 @@ export function OpsHome({
                   <OpsStatusChip status={check.status} />
                 </OpsTableCell>
                 <OpsTableCell>{check.message ?? ''}</OpsTableCell>
-                <OpsTableCell className="text-zinc-500 dark:text-zinc-400">
+                <OpsTableCell className="text-muted-foreground">
                   {check.hint ?? ''}
                 </OpsTableCell>
                 <OpsTableCell numeric>

@@ -6,21 +6,70 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+    --scrollbar-thumb: 215 16% 76%;
+    --scrollbar-track: 210 20% 94%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --scrollbar-thumb: 240 4% 42%;
+    --scrollbar-track: 240 4% 16%;
+  }
+
   html {
     @apply antialiased;
   }
 
   body {
-    @apply min-h-screen bg-zinc-50 font-sans text-sm text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+    @apply min-h-screen bg-background font-sans text-sm text-foreground;
   }
 
   h1 {
-    @apply m-0 text-xl font-semibold tracking-tight;
+    @apply m-0 text-xl font-semibold tracking-tight text-foreground;
   }
 
   h2,
   h3 {
-    @apply m-0 mb-2 text-base font-semibold tracking-tight;
+    @apply m-0 mb-2 text-base font-semibold tracking-tight text-foreground;
   }
 
   a {
@@ -34,7 +83,7 @@
 
 @layer components {
   .ui-shell {
-    @apply rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950;
+    @apply rounded-md border border-border bg-card text-card-foreground;
   }
 
   .ui-shell-panel {
@@ -46,39 +95,210 @@
   }
 
   .ui-shell-panel-lg {
-    @apply rounded-md border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950;
+    @apply rounded-md border border-border bg-card p-6 text-card-foreground;
   }
 
   .ui-scrollbar {
     scrollbar-width: thin;
+    scrollbar-color: hsl(var(--scrollbar-thumb)) hsl(var(--scrollbar-track));
+  }
+
+  .ui-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .ui-scrollbar::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: hsl(var(--scrollbar-thumb));
+  }
+
+  .ui-scrollbar::-webkit-scrollbar-track {
+    background-color: hsl(var(--scrollbar-track));
   }
 
   .ui-filter-panel {
-    @apply rounded-md bg-zinc-50 p-3 dark:bg-zinc-900;
+    @apply rounded-md bg-muted p-3 text-muted-foreground;
+  }
+
+  .ui-surface {
+    @apply rounded-md border border-border bg-card text-card-foreground;
+  }
+
+  .ui-surface-raised {
+    @apply rounded-2xl border border-border/40 bg-card text-card-foreground;
+  }
+
+  .ui-code-block {
+    @apply ui-scrollbar rounded-md border border-border bg-muted p-4 font-mono text-xs leading-relaxed text-foreground;
+  }
+
+  .admin-campaigns-table-card {
+    @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[10px] border border-border bg-card;
+  }
+
+  .admin-campaigns-table-surface {
+    @apply ui-scrollbar min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-auto bg-card;
   }
 
   .admin-table--campaigns {
-    @apply w-auto table-fixed border-collapse text-admin-dense;
+    @apply w-max min-w-full table-fixed border-separate border-spacing-0 text-[13px] leading-[18px] text-foreground;
+  }
+
+  .admin-table--campaigns :is(th, td) {
+    @apply h-[34px] max-h-[34px] whitespace-nowrap py-0 align-middle;
+    text-overflow: ellipsis;
   }
 
   .admin-table--campaigns th {
-    @apply sticky top-0 z-[2] bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400;
+    @apply overflow-visible;
   }
 
   .admin-table--campaigns td {
-    @apply border-b border-zinc-100 px-3 py-1.5 dark:border-zinc-800;
+    @apply overflow-hidden;
   }
 
-  .admin-table--campaigns td.num {
+  .admin-table--campaigns th {
+    @apply border-b border-r border-border bg-muted/50 px-4 text-[11px] font-bold uppercase leading-[14px] tracking-normal text-muted-foreground;
+  }
+
+  .admin-table--campaigns th:last-child {
+    @apply border-r-0;
+  }
+
+  .admin-table--campaigns td {
+    @apply border-b border-border bg-inherit px-4 text-[13px] text-foreground;
+  }
+
+  .admin-table--campaigns :is(th, td).campaign-table-cell--tools {
+    @apply pr-4;
+  }
+
+  .admin-table--campaigns .campaign-table-th--name,
+  .admin-table--campaigns .campaign-table-td--name {
+    @apply relative pr-9;
+  }
+
+  .admin-table--campaigns .campaign-table-cell__content {
+    @apply block min-w-0 max-w-full truncate;
+  }
+
+  .admin-table--campaigns .campaign-table-header-cell {
+    @apply relative flex h-[34px] min-w-0 items-center gap-0 pr-2;
+  }
+
+  .admin-table--campaigns .campaign-table-header-cell__label {
+    @apply min-w-0 flex-1 truncate;
+  }
+
+  .admin-table--campaigns .campaign-table-header-cell__label.num {
     @apply text-right;
   }
 
+  .admin-table--campaigns .campaign-table-header-tools,
+  .admin-table--campaigns .campaign-table-body-tools-gutter {
+    @apply flex w-4 shrink-0 items-stretch justify-end;
+  }
+
+  .admin-table--campaigns .campaign-table-body-tools-gutter {
+    @apply pointer-events-none;
+  }
+
+  .admin-table--campaigns td.num,
+  .admin-table--campaigns th.num {
+    @apply text-right;
+  }
+
+  .admin-table--campaigns td.num .campaign-table-cell__content {
+    @apply text-right;
+  }
+
+  .admin-table--campaigns tbody tr:nth-child(odd) td {
+    @apply bg-background;
+  }
+
   .admin-table--campaigns tbody tr:nth-child(even) td {
-    @apply bg-zinc-50/50 dark:bg-zinc-900/40;
+    @apply bg-muted/30;
+  }
+
+  .admin-table--campaigns tbody tr:hover td {
+    @apply bg-accent;
+  }
+
+  .admin-table--campaigns tbody tr.campaign-row--selected td {
+    @apply bg-accent/80;
+  }
+
+  .admin-table--campaigns tfoot td {
+    @apply border-t border-border bg-muted font-semibold text-foreground;
   }
 
   .admin-table--campaigns .admin-table-cell--select {
-    @apply relative z-[2] flex h-full items-center justify-center;
+    @apply relative z-[2] flex h-[34px] items-center justify-center overflow-visible;
+  }
+
+  .admin-table--campaigns .campaign-table-col-drag-grip {
+    @apply flex h-full w-4 shrink-0 cursor-grab items-center justify-center text-muted-foreground/40 hover:text-muted-foreground active:cursor-grabbing;
+  }
+
+  .admin-table--campaigns .campaign-table-col-grip {
+    @apply absolute right-0 top-0 z-[3] flex h-full w-3 shrink-0 cursor-col-resize touch-none items-center justify-center text-muted-foreground/30 hover:text-muted-foreground;
+  }
+
+  .admin-table--campaigns .campaign-table-col-grip:hover {
+    @apply text-muted-foreground;
+  }
+
+  .admin-campaigns-filter-label {
+    @apply text-[11px] font-semibold uppercase leading-[14px] tracking-normal text-muted-foreground;
+  }
+
+  .admin-campaigns-filter-field :is(input, button) {
+    @apply !h-auto min-h-7 rounded-[5px] border-border bg-background px-2 py-1 text-[13px] leading-[18px] text-foreground;
+  }
+
+  .admin-campaigns-list-footer :is(button, input) {
+    @apply !h-auto min-h-7 py-1 leading-[18px];
+  }
+
+  .admin-campaigns-list-footer .admin-campaigns-toolbar__outline-btn {
+    @apply !h-auto min-h-7 py-1;
+  }
+
+  .admin-campaigns-toolbar {
+    @apply flex w-full flex-col gap-3;
+  }
+
+  .admin-campaigns-toolbar__page-header {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .admin-campaigns-toolbar__title {
+    @apply m-0 shrink-0 text-lg font-bold text-foreground;
+  }
+
+  .admin-campaigns-toolbar__actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .admin-campaigns-toolbar__create-btn {
+    @apply !h-auto min-h-7 rounded-[5px] border-emerald-500 bg-emerald-500 px-2.5 py-1 text-[13px] font-semibold leading-[18px] text-slate-900 hover:border-emerald-600 hover:bg-emerald-600;
+  }
+
+  .admin-campaigns-toolbar__outline-btn {
+    @apply !h-auto min-h-7 rounded-[5px] border-border bg-background px-2.5 py-1 text-[13px] font-semibold leading-[18px] text-foreground shadow-none;
+  }
+
+  .admin-campaigns-toolbar__archive-btn {
+    @apply !h-auto min-h-7 rounded-[5px] border-destructive bg-destructive/10 px-2.5 py-1 text-[13px] font-semibold leading-[18px] text-destructive shadow-none hover:bg-destructive/20;
+  }
+
+  .admin-campaigns-toolbar__status-row {
+    @apply flex flex-wrap items-center gap-4;
+  }
+
+  .admin-campaigns-toolbar__filters {
+    @apply pt-0;
   }
 
   .admin-table--ops {
@@ -86,11 +306,11 @@
   }
 
   .admin-table--ops th {
-    @apply sticky top-0 z-[2] bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400;
+    @apply sticky top-0 z-[2] bg-muted/50 px-3 py-1.5 text-xs font-semibold text-muted-foreground;
   }
 
   .admin-table--ops td {
-    @apply border-b border-zinc-100 px-3 py-1.5 dark:border-zinc-800;
+    @apply border-b border-border px-3 py-1.5;
   }
 
   .admin-table--ops td.num {
@@ -98,11 +318,307 @@
   }
 
   .admin-table--ops tbody tr:nth-child(even) td {
-    @apply bg-zinc-50/50 dark:bg-zinc-900/40;
+    @apply bg-muted/30;
   }
 
   .campaign-metrics-popover > div {
     width: 22rem;
     min-width: 22rem;
+  }
+
+  .campaign-overview-dialog > div.relative {
+    @apply flex max-h-[min(88vh,44rem)] flex-col overflow-hidden rounded-[10px] border border-border bg-card p-0 text-card-foreground shadow-xl;
+  }
+
+  .campaign-overview-dialog > div.relative > button[aria-label='Close'] {
+    @apply z-10 text-muted-foreground hover:text-foreground;
+  }
+
+  .campaign-overview-dialog__scroll {
+    @apply ui-scrollbar min-h-0 flex-1 overflow-y-auto px-6 pb-4 pt-5;
+  }
+
+  .campaign-overview-dialog__header {
+    @apply mb-4 grid gap-3;
+  }
+
+  .campaign-overview-dialog__section {
+    @apply rounded-[10px] border border-border bg-card p-3;
+  }
+
+  .campaign-overview-dialog__section-title {
+    @apply m-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground;
+  }
+
+  .campaign-overview-dialog__rows {
+    @apply grid;
+  }
+
+  .campaign-overview-dialog__row {
+    @apply flex items-center justify-between gap-4 border-b border-border py-2.5 text-[13px] leading-[18px] last:border-b-0;
+  }
+
+  .campaign-overview-dialog__metric-card {
+    @apply flex min-h-[4.5rem] flex-col items-center justify-center rounded-[8px] border border-border bg-card px-1.5 py-2 text-center;
+  }
+
+  .campaign-overview-dialog__metric-card-label {
+    @apply m-0 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground;
+  }
+
+  .campaign-overview-dialog__metric-card-value {
+    @apply m-0 text-xs font-bold leading-[16px] tabular-nums text-foreground;
+  }
+
+  .campaign-overview-dialog__rates {
+    @apply grid gap-2;
+  }
+
+  .campaign-overview-dialog__rate-row {
+    @apply grid gap-1 border-b border-border py-2 last:border-b-0;
+  }
+
+  .campaign-overview-dialog__empty-banner {
+    @apply m-0 rounded-[8px] bg-muted px-3 py-2 text-center text-[13px] leading-[18px] text-muted-foreground;
+  }
+
+  .campaign-overview-dialog__footer {
+    @apply grid shrink-0 grid-cols-2 gap-2 border-t border-border bg-muted/30 px-6 py-4;
+  }
+
+  .campaign-overview-dialog__btn-outline {
+    @apply !h-auto min-h-9 w-full justify-center rounded-[5px] border-border bg-background px-3 py-2 text-[13px] font-semibold leading-[18px] text-foreground shadow-none;
+  }
+
+  .campaign-overview-dialog__btn-primary {
+    @apply !h-auto min-h-9 w-full justify-center rounded-[5px] border-primary bg-primary px-3 py-2 text-[13px] font-semibold leading-[18px] text-primary-foreground shadow-none hover:bg-primary/90;
+  }
+
+  .campaign-overview-dialog__btn-edit {
+    @apply !h-auto min-h-9 w-full justify-center rounded-[5px] border-border bg-background px-3 py-2 text-[13px] font-semibold leading-[18px] text-foreground shadow-none hover:bg-accent;
+  }
+
+  .dashboard-preferences-dialog > div.relative {
+    @apply flex max-h-[min(88vh,44rem)] flex-col overflow-hidden rounded-[10px] border border-border bg-card p-0 text-card-foreground shadow-xl;
+  }
+
+  .dashboard-preferences-dialog > div.relative > button[aria-label='Close'] {
+    @apply z-10 text-muted-foreground hover:text-foreground;
+  }
+
+  .dashboard-preferences-dialog__header {
+    @apply shrink-0 border-b border-border px-5 py-4 text-left;
+  }
+
+  .dashboard-preferences-dialog__title {
+    @apply m-0 text-base font-semibold leading-6 text-primary;
+  }
+
+  .dashboard-preferences-dialog__scroll {
+    @apply ui-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 py-4;
+  }
+
+  .dashboard-preferences-dialog__section {
+    @apply grid gap-3;
+  }
+
+  .dashboard-preferences-dialog__section + .dashboard-preferences-dialog__section {
+    @apply mt-5 border-t border-border pt-5;
+  }
+
+  .dashboard-preferences-dialog__section-title {
+    @apply m-0 text-sm font-semibold leading-5 text-foreground;
+  }
+
+  .dashboard-preferences-dialog__section-body {
+    @apply grid gap-4;
+  }
+
+  .dashboard-preferences-dialog__field {
+    @apply grid gap-2;
+  }
+
+  .dashboard-preferences-dialog__field-label {
+    @apply m-0 text-[13px] font-medium leading-[18px] text-muted-foreground;
+  }
+
+  .dashboard-preferences-dialog__chip-box {
+    @apply flex min-h-10 flex-wrap items-center gap-1.5 rounded-[8px] border border-border bg-background px-2.5 py-2;
+  }
+
+  .dashboard-preferences-dialog__chip-empty {
+    @apply text-[13px] leading-[18px] text-muted-foreground;
+  }
+
+  .dashboard-preferences-dialog__chip {
+    @apply inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[12px] leading-4 text-foreground;
+  }
+
+  .dashboard-preferences-dialog__chip-label {
+    @apply truncate;
+  }
+
+  .dashboard-preferences-dialog__chip-remove {
+    @apply inline-flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground;
+  }
+
+  .dashboard-preferences-dialog__column-summary {
+    @apply m-0 rounded-[8px] border border-border bg-background px-3 py-2 text-[13px] leading-[18px] text-foreground;
+  }
+
+  .dashboard-preferences-dialog__checkbox-list {
+    @apply ui-scrollbar overflow-y-auto rounded-[8px] border border-border bg-background px-3 py-2;
+  }
+
+  .dashboard-preferences-dialog__checkbox-row {
+    @apply flex cursor-pointer items-center gap-2.5 rounded-[4px] px-1 py-1.5 hover:bg-muted/50;
+  }
+
+  .dashboard-preferences-dialog__checkbox-label {
+    @apply text-[13px] leading-[18px] text-foreground;
+  }
+
+  .dashboard-preferences-dialog__footer {
+    @apply shrink-0 flex-row items-center justify-between gap-3 border-t border-border bg-muted/20 px-5 py-4 sm:justify-between;
+  }
+
+  .dashboard-preferences-dialog__restore {
+    @apply text-[13px] font-medium leading-[18px] text-emerald-600 transition-colors hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300;
+  }
+
+  .dashboard-preferences-dialog__footer-actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .campaign-columns-menu {
+    @apply w-[26rem] overflow-hidden rounded-lg border border-border bg-card shadow-lg;
+  }
+
+  .campaign-columns-menu__checkbox {
+    @apply rounded-[4px] border-border bg-background peer-checked:border-primary peer-checked:bg-primary;
+  }
+
+  .campaign-country-select {
+    @apply w-[min(100vw-2rem,16rem)];
+  }
+
+  .campaign-country-select__trigger {
+    @apply flex !h-auto min-h-7 w-full min-w-0 items-center justify-between gap-2 rounded-[5px] border border-border bg-background px-2 py-1 text-left text-[13px] leading-[18px] text-foreground;
+  }
+
+  .campaign-country-select__search {
+    @apply flex items-center gap-2 border-b border-border px-3 py-2.5;
+  }
+
+  .campaign-country-select__list {
+    @apply ui-scrollbar m-0 max-h-60 list-none overflow-y-auto p-1;
+  }
+
+  .campaign-country-select__option {
+    @apply flex w-full min-h-9 items-center justify-between gap-2 whitespace-nowrap rounded-md px-2.5 py-2 text-left text-[13px] leading-[18px] text-foreground hover:bg-accent;
+  }
+
+  .campaign-country-select__option--selected {
+    @apply bg-accent text-foreground;
+  }
+
+  .campaign-date-range-picker {
+    @apply text-foreground;
+  }
+
+  .campaign-date-range-picker .group\/calendar {
+    --cell-size: 2rem;
+  }
+
+  .campaign-date-range-picker__trigger {
+    @apply flex !h-7 w-full min-w-0 items-center justify-between gap-1.5 rounded-[5px] border border-border bg-background px-2 !py-0 text-[13px] font-normal leading-[18px] text-foreground shadow-none;
+  }
+
+  .campaign-date-range-picker__footer {
+    @apply flex items-center justify-between gap-3 border-t border-border px-4 py-3;
+  }
+
+  .campaign-date-range-picker__btn-clear {
+    @apply inline-flex min-h-8 items-center justify-center rounded-md border border-border bg-background px-3 text-[13px] font-medium leading-[18px] text-foreground hover:bg-accent;
+  }
+
+  .campaign-date-range-picker__btn-apply {
+    @apply inline-flex min-h-8 items-center justify-center rounded-md border border-primary bg-primary px-3 text-[13px] font-medium leading-[18px] text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .admin-sidebar-nav-link {
+    @apply flex items-center gap-1.5 rounded px-2 py-1 text-[13px] font-medium no-underline transition-colors;
+  }
+
+  .admin-sidebar-nav-link--idle {
+    @apply text-muted-foreground hover:bg-accent hover:text-foreground;
+  }
+
+  .admin-sidebar-nav-link--active {
+    @apply border-l-2 border-primary bg-accent pl-[calc(0.5rem-2px)] font-semibold text-foreground;
+  }
+
+  .admin-sidebar-badge {
+    @apply ml-auto inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold tabular-nums text-primary-foreground;
+  }
+
+  .admin-empty-state {
+    @apply flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border bg-muted/30 px-8 py-12 text-center;
+  }
+
+  .admin-empty-state__icon {
+    @apply mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-background text-muted-foreground;
+  }
+
+  .admin-empty-state__title {
+    @apply m-0 text-base font-semibold text-foreground;
+  }
+
+  .admin-empty-state__description {
+    @apply m-0 mt-1 max-w-md text-[13px] leading-[18px] text-muted-foreground;
+  }
+
+  .admin-metric-card {
+    @apply rounded-[10px] border border-border bg-card p-4;
+  }
+
+  .admin-metric-card__label {
+    @apply m-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground;
+  }
+
+  .admin-metric-card__value {
+    @apply m-0 mt-2 text-2xl font-bold leading-none text-foreground;
+  }
+
+  .admin-progress__header {
+    @apply mb-1.5 flex items-center justify-between gap-2 text-[13px] leading-[18px];
+  }
+
+  .admin-progress__label {
+    @apply font-medium text-foreground;
+  }
+
+  .admin-progress__value {
+    @apply font-semibold text-foreground;
+  }
+
+  .admin-progress__track {
+    @apply h-2 overflow-hidden rounded-full bg-muted;
+  }
+
+  .admin-progress__fill {
+    @apply h-full rounded-full bg-primary transition-[width];
+  }
+
+  .admin-search-input {
+    @apply relative flex min-w-0 items-center;
+  }
+
+  .admin-search-input__icon {
+    @apply pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground;
+  }
+
+  .admin-search-input__field {
+    @apply !pl-8 bg-background text-foreground border-border;
   }
 }

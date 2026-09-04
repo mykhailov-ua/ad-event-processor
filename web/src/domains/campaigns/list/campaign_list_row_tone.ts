@@ -1,3 +1,9 @@
+import {
+  adminStatusBadgeBase,
+  adminStatusBadgeClass,
+  campaignStatusToAdminTone,
+} from '@/lib/admin_kit';
+
 export type CampaignStatusKey = 'ACTIVE' | 'PAUSED' | 'ARCHIVED' | 'UNKNOWN';
 
 export type CampaignStatusTone = 'success' | 'warning' | 'muted' | string;
@@ -32,7 +38,7 @@ export function isInactiveCampaignStatus(statusKey: CampaignStatusKey): boolean 
 
 export function campaignListRowClass(selected: boolean): string {
   if (selected) {
-    return 'bg-blue-50 dark:bg-blue-950/30';
+    return 'campaign-row--selected';
   }
   return '';
 }
@@ -41,15 +47,6 @@ export function campaignStatusBadgeClass(
   status: string,
   statusTone?: CampaignStatusTone,
 ): string {
-  const key = resolveCampaignStatusKey(status, statusTone);
-  if (key === 'ACTIVE') {
-    return 'inline-flex items-center gap-1.5 text-xs text-green-700 dark:text-green-300';
-  }
-  if (key === 'PAUSED') {
-    return 'inline-flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-300';
-  }
-  if (key === 'ARCHIVED') {
-    return 'inline-flex items-center gap-1.5 text-xs text-zinc-500';
-  }
-  return 'inline-flex items-center gap-1.5 text-xs';
+  const tone = campaignStatusToAdminTone(status, statusTone);
+  return `${adminStatusBadgeBase} ${adminStatusBadgeClass[tone]}`;
 }

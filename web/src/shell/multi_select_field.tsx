@@ -58,14 +58,14 @@ export function MultiSelectField<T extends string>({
   }
 
   return (
-    <label className={cn('text-sm font-medium text-zinc-700 dark:text-zinc-300 flex flex-col gap-1 text-sm font-medium', className)} htmlFor={id}>
+    <label className={cn('flex flex-col gap-1 text-sm font-medium text-foreground', className)} htmlFor={id}>
       {label}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             id={id}
             aria-expanded={open}
-            className="relative w-full flex h-8 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            className="relative flex h-8 w-full items-center justify-between rounded-md border border-border bg-background px-3 text-sm text-foreground"
             type="button"
           >
             <span className="truncate" title={summary}>
@@ -78,19 +78,17 @@ export function MultiSelectField<T extends string>({
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64 p-0" sideOffset={4}>
-          <ul className="max-h-64 overflow-y-auto p-1">
+          <ul className="ui-scrollbar max-h-64 overflow-y-auto p-1">
             {options.map((option) => {
               const selected = value.includes(option.id);
-              const locked = selected && value.length <= minSelected;
               return (
                 <li key={option.id}>
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox
                       checked={selected}
-                      disabled={locked}
                       onCheckedChange={(next) => toggleOption(option.id, next === true)}
                     />
-                    <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{option.label}</span>
+                    <span className="text-xs font-medium text-muted-foreground">{option.label}</span>
                   </label>
                 </li>
               );

@@ -139,7 +139,7 @@ const TooltipContent = React.forwardRef<
         role="tooltip"
         className={cn(
           adminChrome.panel,
-          'pointer-events-none px-3 py-1.5 text-xs text-zinc-900 shadow-lg dark:text-zinc-100',
+          'pointer-events-none px-3 py-1.5 text-xs text-foreground shadow-lg',
           className,
         )}
         style={{ ...coords, ...style }}

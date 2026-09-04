@@ -97,6 +97,7 @@ export function PlatformSettings({
     <PageChrome
       title="Platform settings"
       description="Active platform configuration, secrets metadata, and persistence actions."
+      workspaceClassName="min-h-0 flex-1 border-0 bg-transparent p-0"
       badge={
         restartRequired ? (
           <Badge variant="secondary">Restart required</Badge>
@@ -109,7 +110,7 @@ export function PlatformSettings({
 
       {showBootstrap ? (
         <PanelSection title="Initial setup">
-          <FilterPanel className="rounded-none border-0 bg-transparent">
+          <FilterPanel className="m-5 rounded-md border-0 bg-muted/50">
             <p className="text-sm text-muted-foreground sm:col-span-2">
               Create the platform configuration on first run using the setup token from your
               deployment bundle.
@@ -186,13 +187,11 @@ export function PlatformSettings({
             }
             title="Platform configuration"
           >
-            <div className="p-5">
-              <SettingsBentoGrid
-                onPatchPlatform={onPatchPlatform}
-                patching={patching}
-                snapshot={snapshot}
-              />
-            </div>
+            <SettingsBentoGrid
+              onPatchPlatform={onPatchPlatform}
+              patching={patching}
+              snapshot={snapshot}
+            />
           </PanelSection>
 
           <SettingsCollapsibleSection

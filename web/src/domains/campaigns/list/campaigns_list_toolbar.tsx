@@ -1,5 +1,6 @@
-import { MoreHorizontal } from 'lucide-react';
+import { BarChart3, MoreHorizontal, Plus } from 'lucide-react';
 import { useMemo } from 'react';
+import { toast } from 'sonner';
 
 import type { CampaignStatusTotals } from '@/api/campaigns_api';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
@@ -12,26 +13,21 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DateRangePicker } from '@/components/ui/date_range_picker';
 import { Input } from '@/components/ui/input';
-import {
-  CampaignsListFilterSelect,
-  type CampaignsListFilterOption,
-} from '@/domains/campaigns/list/campaigns_list_filter_select';
-import {
-  formatCampaignListSummaryLine,
-  type CampaignListSummary,
-} from '@/domains/campaigns/list/campaign_list_summary';
-import type { CampaignListColumnPrefs } from '@/domains/campaigns/list/campaign_list_columns';
-import { CAMPAIGN_LIST_FILTER_TOTALS_MAX } from '@/domains/campaigns/list/campaign_list_limits';
-import { CampaignListColumnsMenu } from '@/domains/campaigns/list/campaign_list_columns_menu';
+import { CampaignListCountrySelect } from '@/domains/campaigns/list/campaign_list_country_select';
+import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import { CampaignsListFilterSelect } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import type { CampaignListSummary } from '@/domains/campaigns/list/campaign_list_summary';
+import { CampaignListSummaryBox } from '@/domains/campaigns/list/campaign_list_summary_box';
+import { CampaignListStatusChips } from '@/domains/campaigns/list/campaign_list_status_chips';
 import type { CampaignPacingFilter, CampaignStatusFilter } from '@/domains/campaigns/list/campaigns_list_types';
 import {
   DirectoryFilterForm,
   FilterField,
   FilterPanel,
 } from '@/shell/filter_panel';
-import { ToggleChipGroup } from '@/shell/toggle_chip_group';
 
 const ALL_OPTION_VALUE = '__all__';
+const FILTER_LABEL_CLASS = 'admin-campaigns-filter-label';
 
 const PACING_FILTER_OPTIONS: CampaignsListFilterOption[] = [
   { value: ALL_OPTION_VALUE, label: 'All pacing' },
@@ -80,9 +76,6 @@ export type CampaignsListToolbarProps = {
   onPauseClick?: () => void;
   onResumeClick?: () => void;
   onArchiveClick?: () => void;
-  columnPrefs: CampaignListColumnPrefs;
-  onColumnPrefsChange: (prefs: CampaignListColumnPrefs) => void;
-  onResetWorkspaceClick: () => void;
 };
 
 export function CampaignsListToolbar({
@@ -126,13 +119,26 @@ export function CampaignsListToolbar({
   onPauseClick,
   onResumeClick,
   onArchiveClick,
-  columnPrefs,
-  onColumnPrefsChange,
-  onResetWorkspaceClick,
 }: CampaignsListToolbarProps) {
   const bulkActionBusy = bulkBusy;
   const hasSelection = selectedCount > 0;
   const singleSelected = selectedCount === 1;
+
+  function runBulkAction(
+    allowed: boolean,
+    hint: string,
+    action?: () => void,
+  ) {
+    if (bulkActionBusy) {
+      toast.message('Bulk action in progress');
+      return;
+    }
+    if (!allowed) {
+      toast.message(hint);
+      return;
+    }
+    action?.();
+  }
 
   const groupOptions = useMemo<CampaignsListFilterOption[]>(
     () => [
@@ -156,121 +162,138 @@ export function CampaignsListToolbar({
   );
 
   return (
-    <div className="flex w-full flex-col gap-2">
-      <div aria-label="Campaign actions" className="flex flex-wrap items-center gap-2" role="toolbar">
-        <Button type="button" onClick={onCreateClick}>
-          Create
-        </Button>
-        <div className="flex flex-wrap items-center gap-1" aria-label="Selected campaigns">
+    <div className="admin-campaigns-toolbar">
+      <div className="admin-campaigns-toolbar__page-header">
+        <h1 className="admin-campaigns-toolbar__title">Campaigns</h1>
+        <div aria-label="Campaign actions" className="admin-campaigns-toolbar__actions" role="toolbar">
+          <Button className="admin-campaigns-toolbar__create-btn" type="button" variant="brand" onClick={onCreateClick}>
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Create
+          </Button>
+          <div className="flex flex-nowrap items-center gap-2" aria-label="Selected campaigns">
           <Button
             type="button"
-            variant="secondary"
-            disabled={bulkActionBusy || !singleSelected}
+            variant="outline"
+            className="admin-campaigns-toolbar__outline-btn"
             title={singleSelected ? 'Clone selected campaign' : 'Select exactly one campaign'}
-            onClick={() => onCloneClick?.()}
+            onClick={() =>
+              runBulkAction(singleSelected, 'Select exactly one campaign', onCloneClick)
+            }
           >
             Clone
           </Button>
           <Button
             type="button"
-            variant="secondary"
-            disabled={bulkActionBusy || !singleSelected}
+            variant="outline"
+            className="admin-campaigns-toolbar__outline-btn"
             title={singleSelected ? 'Open report for selected campaign' : 'Select exactly one campaign'}
-            onClick={() => onReportClick?.()}
+            onClick={() =>
+              runBulkAction(singleSelected, 'Select exactly one campaign', onReportClick)
+            }
           >
+            <BarChart3 className="h-4 w-4" aria-hidden />
             Report
           </Button>
           <Button
             type="button"
-            variant="secondary"
-            disabled={bulkActionBusy || !hasSelection}
+            variant="outline"
+            className="admin-campaigns-toolbar__outline-btn"
             title={hasSelection ? 'Pause selected campaigns' : 'Select campaigns first'}
-            onClick={() => onPauseClick?.()}
+            onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onPauseClick)}
           >
             Pause
           </Button>
           <Button
             type="button"
-            variant="secondary"
-            disabled={bulkActionBusy || !hasSelection}
+            variant="outline"
+            className="admin-campaigns-toolbar__outline-btn"
             title={hasSelection ? 'Resume selected campaigns' : 'Select campaigns first'}
-            onClick={() => onResumeClick?.()}
+            onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onResumeClick)}
           >
             Resume
           </Button>
           <Button
             type="button"
-            variant="destructive"
-            disabled={bulkActionBusy || !hasSelection}
+            variant="outline"
+            className="admin-campaigns-toolbar__archive-btn"
             title={hasSelection ? 'Archive selected campaigns' : 'Select campaigns first'}
-            onClick={() => onArchiveClick?.()}
+            onClick={() => runBulkAction(hasSelection, 'Select campaigns first', onArchiveClick)}
           >
             Archive
           </Button>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="admin-campaigns-toolbar__outline-btn"
+                size="icon"
+                aria-label="More campaign actions"
+              >
+                <MoreHorizontal className="h-4 w-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                onSelect={() => {
+                  if (!onWizardClick) {
+                    toast.message('Wizard is not available');
+                    return;
+                  }
+                  onWizardClick();
+                }}
+              >
+                Wizard
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  if (!onImportClick) {
+                    toast.message('Import is not available');
+                    return;
+                  }
+                  onImportClick();
+                }}
+              >
+                Import
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  if (fetching) {
+                    toast.message('Refresh already in progress');
+                    return;
+                  }
+                  onRefresh();
+                }}
+              >
+                Refresh
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="More campaign actions"
-              disabled={fetching}
-            >
-              <MoreHorizontal className="h-4 w-4" aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem disabled={!onWizardClick} onSelect={() => onWizardClick?.()}>
-              Wizard
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={!onImportClick} onSelect={() => onImportClick?.()}>
-              Import
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled={fetching} onSelect={() => onRefresh()}>
-              Refresh
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
-      <div
-        aria-label="Status and page summary"
-        className="flex flex-wrap items-center gap-3 border-t border-zinc-200 pt-2 dark:border-zinc-800"
-      >
+      <div aria-label="Status and page summary" className="admin-campaigns-toolbar__status-row">
         {statusTotals || statusTotalsLoading ? (
-          <ToggleChipGroup
+          <CampaignListStatusChips
+            className="shrink-0"
             countsLoading={statusTotalsLoading}
             options={statusChipOptions}
             value={appliedStatus}
             onChange={onDraftStatusChange}
           />
         ) : null}
-        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-          <span>{formatCampaignListSummaryLine(summary)}</span>
-          {summary.staleCount > 0 ? (
-            <span className="text-xs">
-              {summary.scope === 'filter' ? 'Filtered totals may be stale' : `Stale stats: ${summary.staleCount}`}
-            </span>
-          ) : null}
-          {summary.marginBreachCount > 0 ? (
-            <span className="text-xs">Margin breach: {summary.marginBreachCount}</span>
-          ) : null}
-          {filterTotalsCapped ? (
-            <span className="text-xs">
-              Filter totals unavailable above {CAMPAIGN_LIST_FILTER_TOTALS_MAX.toLocaleString()} campaigns (
-              {filteredTotal.toLocaleString()} matched)
-            </span>
-          ) : null}
-          {metricsStale && !filterTotalsCapped ? (
-            <span className="text-xs">Page metrics may be stale</span>
-          ) : null}
-        </div>
+        <CampaignListSummaryBox
+          filterTotalsCapped={filterTotalsCapped}
+          filteredTotal={filteredTotal}
+          metricsStale={metricsStale}
+          summary={summary}
+        />
       </div>
 
-      <FilterPanel aria-label="List filters" role="search">
-        <DirectoryFilterForm layout="directory" onSubmit={(event) => event.preventDefault()}>
-          <FilterField label="Customer group">
+      <FilterPanel aria-label="List filters" className="admin-campaigns-toolbar__filters !bg-transparent !p-0" role="search">
+        <DirectoryFilterForm layout="campaigns" onSubmit={(event) => event.preventDefault()}>
+          <FilterField className="admin-campaigns-filter-field" label="Customer group" labelClassName={FILTER_LABEL_CLASS}>
             <CampaignsListFilterSelect
               aria-label="Customer group"
               options={groupOptions}
@@ -281,7 +304,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField label="Pacing">
+          <FilterField className="admin-campaigns-filter-field" label="Pacing" labelClassName={FILTER_LABEL_CLASS}>
             <CampaignsListFilterSelect
               aria-label="Pacing"
               options={PACING_FILTER_OPTIONS}
@@ -292,7 +315,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField label="Owner">
+          <FilterField className="admin-campaigns-filter-field" label="Owner" labelClassName={FILTER_LABEL_CLASS}>
             <CampaignsListFilterSelect
               aria-label="Owner"
               disabled={fetching || listFacetsFetching}
@@ -305,8 +328,8 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField label="Country">
-            <CampaignsListFilterSelect
+          <FilterField className="admin-campaigns-filter-field" label="Country" labelClassName={FILTER_LABEL_CLASS}>
+            <CampaignListCountrySelect
               aria-label="Country"
               disabled={fetching || listFacetsFetching}
               options={countryOptions}
@@ -318,7 +341,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField htmlFor="campaigns-budget-min" label="Budget min ($)">
+          <FilterField className="admin-campaigns-filter-field" htmlFor="campaigns-budget-min" label="Budget min ($)" labelClassName={FILTER_LABEL_CLASS}>
             <Input
               id="campaigns-budget-min"
               disabled={fetching}
@@ -331,7 +354,7 @@ export function CampaignsListToolbar({
             />
           </FilterField>
 
-          <FilterField htmlFor="campaigns-budget-max" label="Budget max ($)">
+          <FilterField className="admin-campaigns-filter-field" htmlFor="campaigns-budget-max" label="Budget max ($)" labelClassName={FILTER_LABEL_CLASS}>
             <Input
               id="campaigns-budget-max"
               disabled={fetching}
@@ -345,31 +368,16 @@ export function CampaignsListToolbar({
           </FilterField>
 
           <DateRangePicker
-            className="min-w-0"
+            className="admin-campaigns-filter-field min-w-0"
             disabled={fetching}
             from={draftStatsFrom}
             id="campaign-list-stats-range"
             label="Period"
+            labelClassName={FILTER_LABEL_CLASS}
             to={draftStatsTo}
+            variant="campaigns"
             onChange={onStatsRangeChange}
           />
-
-          <div className="flex flex-wrap items-end gap-2">
-            <CampaignListColumnsMenu
-              columnPrefs={columnPrefs}
-              disabled={fetching}
-              onColumnPrefsChange={onColumnPrefsChange}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={fetching}
-              title="Reset columns and widths"
-              onClick={onResetWorkspaceClick}
-            >
-              Reset view
-            </Button>
-          </div>
         </DirectoryFilterForm>
       </FilterPanel>
     </div>

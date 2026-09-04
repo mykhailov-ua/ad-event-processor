@@ -84,7 +84,7 @@ export function OpsMetrics({
           </OpsActionGroup>
           <OpsActionGroup label="Live stream">
             <Button
-              className={cn(liveEnabled && 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900')}
+              className={cn(liveEnabled && 'bg-primary text-primary-foreground')}
               type="button"
               variant="secondary"
               onClick={() => onLiveEnabledChange(!liveEnabled)}
@@ -96,14 +96,14 @@ export function OpsMetrics({
       }
     >
       {liveSummary ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
+        <p className="text-muted-foreground">
           Live stream  /  outbox pending {liveSummary.outbox_pending ?? ''}  /  generated{' '}
           {displayTimestamp(liveSummary.generated_at, liveSummary.generated_at_display)}
         </p>
       ) : null}
 
       {metrics ? (
-        <p className="text-zinc-500 dark:text-zinc-400">
+        <p className="text-muted-foreground">
           Range {metrics.range ?? draftRange}  /  bucket {metrics.bucket_sec ?? ''}s  /  generated{' '}
           {displayTimestamp(metrics.generated_at)}
         </p>

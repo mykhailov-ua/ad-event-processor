@@ -33,7 +33,7 @@ export function OpsConsent({ payload, fetching, error, hasSnapshot }: OpsConsent
       {payload ? (
         <JsonDashboardView payload={payload} />
       ) : (
-        <p className="text-zinc-500 dark:text-zinc-400">No consent proof payload returned.</p>
+        <p className="text-muted-foreground">No consent proof payload returned.</p>
       )}
       {error && hasSnapshot ? opsPanelError(error, 'Refresh failed') : null}
     </OpsPageShell>

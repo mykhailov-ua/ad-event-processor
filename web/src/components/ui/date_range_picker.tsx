@@ -23,8 +23,19 @@ export type DateRangePickerProps = {
   onChange: (from: string, to: string) => void;
   disabled?: boolean;
   className?: string;
-  variant?: 'default' | 'admin';
+  labelClassName?: string;
+  variant?: 'default' | 'admin' | 'campaigns';
 };
+
+function formatFooterRange(from: Date | undefined, to: Date | undefined): string {
+  if (!from) {
+    return '';
+  }
+  if (!to) {
+    return format(from, 'MMM d, yyyy');
+  }
+  return `${format(from, 'MMM d, yyyy')} - ${format(to, 'MMM d, yyyy')}`;
+}
 
 function formatRangeLabel(from: Date | undefined, to: Date | undefined): string {
   if (!from) {
@@ -44,6 +55,10 @@ function resolveMonthCount(): number {
     return 2;
   }
   return window.matchMedia('(min-width: 768px)').matches ? 2 : 1;
+}
+
+function estimateCampaignDateRangePopoverWidth(monthCount: number): number {
+  return monthCount * 272 + 48;
 }
 
 function normalizePickerDay(day: Date): Date {
@@ -67,17 +82,23 @@ export function DateRangePicker({
   onChange,
   disabled = false,
   className,
+  labelClassName,
   variant = 'default',
 }: DateRangePickerProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [align, setAlign] = useState<'start' | 'end'>('start');
+  const [side, setSide] = useState<'top' | 'bottom'>('bottom');
   const [monthCount, setMonthCount] = useState(resolveMonthCount);
   const [draftRange, setDraftRange] = useState<DateRange | undefined>();
 
   const fromDate = useMemo(() => parseDatetimeLocalValue(from), [from]);
   const toDate = useMemo(() => parseDatetimeLocalValue(to), [to]);
   const displayLabel = formatRangeLabel(fromDate, toDate);
+  const isCampaigns = variant === 'campaigns';
+  const isStyledPicker = variant === 'admin' || isCampaigns;
+  const calendarVariant = isCampaigns ? 'campaigns' : variant === 'admin' ? 'admin' : 'default';
+  const draftFooterLabel = formatFooterRange(draftRange?.from, draftRange?.to);
 
   function resetDraft() {
     setDraftRange(toDraftRange(fromDate, toDate));
@@ -85,8 +106,24 @@ export function DateRangePicker({
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
-      setAlign(resolvePopoverAlign(triggerRef.current));
-      setMonthCount(resolveMonthCount());
+      const nextMonthCount = resolveMonthCount();
+      setMonthCount(nextMonthCount);
+      const popoverWidth = isCampaigns
+        ? estimateCampaignDateRangePopoverWidth(nextMonthCount)
+        : 320;
+      const trigger = triggerRef.current;
+      if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        const estimatedHeight = isCampaigns ? 360 : 320;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        setSide(
+          spaceBelow < estimatedHeight && spaceAbove > spaceBelow ? 'top' : 'bottom',
+        );
+      } else {
+        setSide('bottom');
+      }
+      setAlign(resolvePopoverAlign(trigger, undefined, popoverWidth));
       resetDraft();
     }
     setOpen(nextOpen);
@@ -106,19 +143,21 @@ export function DateRangePicker({
   const trigger = (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        {variant === 'admin' ? (
+        {variant === 'admin' || isCampaigns ? (
           <button
             ref={triggerRef}
             id={id}
             type="button"
             disabled={disabled}
             className={cn(
-              'relative w-full flex h-8 w-full items-center justify-between rounded-md border border-zinc-200 bg-white px-3 text-sm dark:border-zinc-700 dark:bg-zinc-950 inline-flex max-w-full items-center gap-2',
-              !fromDate && 'text-zinc-500 dark:text-zinc-400',
+              isCampaigns
+                ? 'campaign-date-range-picker__trigger'
+                : 'relative inline-flex min-h-7 w-full max-w-full items-center justify-between gap-2 rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] leading-[18px] text-foreground',
+              !fromDate && 'text-muted-foreground',
             )}
           >
             <CalendarIcon className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
-            <span className="truncate">{displayLabel}</span>
+            <span className="min-w-0 flex-1 truncate text-left">{displayLabel}</span>
           </button>
         ) : (
           <Button
@@ -128,7 +167,7 @@ export function DateRangePicker({
             variant="outline"
             disabled={disabled}
             className={cn(
-              'h-9 w-full justify-start text-left font-normal',
+              'flex min-h-7 w-full items-center justify-between rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] font-normal leading-[18px] text-foreground',
               !fromDate && 'text-muted-foreground',
             )}
           >
@@ -141,62 +180,92 @@ export function DateRangePicker({
         align={align}
         className={cn(
           'w-auto p-0 [&_.ui-shell]:!w-auto [&_.ui-shell]:!min-w-0 [&_.ui-shell-panel]:overflow-visible',
-          variant === 'admin' && 'rounded-md border border-zinc-200 bg-white p-0 shadow-lg dark:border-zinc-800 dark:bg-zinc-950',
+          isStyledPicker && 'rounded-lg border border-border bg-card p-0 shadow-lg',
+          isCampaigns && 'campaign-date-range-picker',
         )}
-        side="bottom"
+        panelScroll={isCampaigns ? 'none' : undefined}
+        side={side}
       >
-        <div className={variant === 'admin' ? 'p-3' : 'p-3'}>
+        <div className={cn(isCampaigns ? 'p-3 pb-2' : 'p-3')}>
           <Calendar
             mode="range"
             numberOfMonths={monthCount}
             selected={draftRange}
             defaultMonth={draftRange?.from ?? fromDate ?? new Date()}
-            variant={variant === 'admin' ? 'admin' : 'default'}
+            variant={calendarVariant}
             onSelect={setDraftRange}
           />
         </div>
-        <div
-          className={
-            variant === 'admin'
-              ? 'flex justify-end gap-2 border-t border-zinc-200 p-2 dark:border-zinc-800'
-              : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
-          }
-        >
-          <button
-            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 h-auto min-h-8 leading-normal"
-            type="button"
-            onClick={() => {
-              onChange('', '');
-              setOpen(false);
-            }}
+        {isCampaigns ? (
+          <div className="campaign-date-range-picker__footer">
+            <span className="min-w-0 truncate text-[13px] leading-[18px] text-muted-foreground">
+              {draftFooterLabel || 'Pick date range'}
+            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                className="campaign-date-range-picker__btn-clear"
+                type="button"
+                onClick={() => {
+                  onChange('', '');
+                  setOpen(false);
+                }}
+              >
+                Clear
+              </button>
+              <button
+                className="campaign-date-range-picker__btn-apply"
+                disabled={!draftRange?.from || !draftRange?.to}
+                type="button"
+                onClick={handleApply}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className={
+              variant === 'admin'
+                ? 'flex justify-end gap-2 border-t border-border p-2'
+                : 'flex justify-end gap-2 border-t border-border/50 px-3 py-3'
+            }
           >
-            Clear
-          </button>
-          <button
-            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 border border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 h-auto min-h-8 leading-normal"
-            disabled={!draftRange?.from || !draftRange?.to}
-            type="button"
-            onClick={handleApply}
-          >
-            Apply
-          </button>
-        </div>
+            <button
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 h-auto min-h-8 leading-normal text-foreground hover:bg-accent"
+              type="button"
+              onClick={() => {
+                onChange('', '');
+                setOpen(false);
+              }}
+            >
+              Clear
+            </button>
+            <button
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-primary bg-primary text-primary-foreground px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 h-auto min-h-8 leading-normal hover:bg-primary/90"
+              disabled={!draftRange?.from || !draftRange?.to}
+              type="button"
+              onClick={handleApply}
+            >
+              Apply
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
 
   if (variant === 'admin') {
     return (
-      <label className={cn('text-sm font-medium text-zinc-700 dark:text-zinc-300', className)}>
-        {label}
+      <label className={cn('text-sm font-medium text-foreground', className)}>
+        <span className={labelClassName}>{label}</span>
         {trigger}
       </label>
     );
   }
 
   return (
-    <div className={cn('grid gap-2', className)}>
-      <Label htmlFor={id}>{label}</Label>
+    <div className={cn('grid w-full min-w-0 gap-1.5', className)}>
+      <Label className={labelClassName} htmlFor={id}>{label}</Label>
       {trigger}
     </div>
   );

@@ -34,6 +34,13 @@ test('parseCampaignListStatsRange orders inverted bounds', () => {
   assert.equal(range.to, '2026-02-10T00:00:00.000Z');
 });
 
+test('parseCampaignListStatsRange normalizes datetime-local URL values to ISO', () => {
+  const range = parseCampaignListStatsRange('2026-02-01T00:00', '2026-02-10T23:59');
+  assert.match(range.from, /Z$/);
+  assert.match(range.to, /Z$/);
+  assert.ok(Date.parse(range.from) < Date.parse(range.to));
+});
+
 test('campaignStatsQueryForRange maps to API query', () => {
   const range = {
     from: '2026-02-01T00:00:00.000Z',

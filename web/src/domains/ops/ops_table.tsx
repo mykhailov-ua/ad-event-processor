@@ -73,7 +73,7 @@ export function OpsBlock({
   }
 
   return (
-    <section className={cn('rounded-md border border-zinc-200 p-3 dark:border-zinc-800', className)}>
+    <section className={cn('rounded-md border border-border bg-card p-3', className)}>
       <header className="flex items-center justify-between gap-2">
         {title ? <h2 className="text-sm font-semibold">{title}</h2> : null}
         {meta}

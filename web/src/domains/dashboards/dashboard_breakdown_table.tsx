@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/shell/directory_table';
 import { PanelSection } from '@/shell/stat_panel';
+import { EmptyState } from '@/shell/empty_state';
 import type { DashboardBreakdownRow, DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';
 import {
   formatDashboardCrPct,
@@ -25,7 +26,7 @@ export type DashboardBreakdownTableProps = {
   table: DashboardBreakdownTable | undefined;
   columns: DashboardBreakdownColumnId[];
   nameLink?: (row: { id?: string; name?: string }) => ReactNode;
-  emptyLabel?: string;
+  emptyDescription?: string;
 };
 
 type BreakdownCellContext = {
@@ -71,7 +72,7 @@ export function DashboardBreakdownTableSection({
   table,
   columns,
   nameLink,
-  emptyLabel = 'No data in this range.',
+  emptyDescription,
 }: DashboardBreakdownTableProps) {
   const rows = table?.rows ?? [];
   const totals = table?.totals;
@@ -80,7 +81,11 @@ export function DashboardBreakdownTableSection({
   return (
     <PanelSection className="min-w-0" title={title}>
       {rows.length === 0 ? (
-        <p className="px-5 py-6 text-sm text-muted-foreground">{emptyLabel}</p>
+        <EmptyState
+          className="border-0 bg-transparent py-8 shadow-none"
+          description={emptyDescription}
+          variant="no-results"
+        />
       ) : (
         <DirectoryTable className="border-0 bg-transparent shadow-none" scrollable>
           <TableHeader>

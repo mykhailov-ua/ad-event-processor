@@ -78,7 +78,7 @@ function ImportField({
   className?: string;
 }) {
   return (
-    <label className={cn('text-sm font-medium text-zinc-700 dark:text-zinc-300 flex flex-col gap-1 text-sm font-medium', className)} htmlFor={id}>
+    <label className={cn('flex flex-col gap-1 text-sm font-medium text-foreground', className)} htmlFor={id}>
       {label}
       {children}
     </label>
@@ -351,10 +351,10 @@ export function CampaignImportPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border bg-card p-3">
         <header className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Import validate</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Validate external tracker payloads before migration import.
           </p>
         </header>
@@ -399,7 +399,7 @@ export function CampaignImportPanel() {
           <ImportField id="import-payload" label="Payload JSON">
             <textarea
               id="import-payload"
-              className="min-h-[5rem] w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950 min-h-40 font-mono text-sm"
+              className="min-h-40 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-sm text-foreground"
               value={draftPayload}
               onChange={(event) => setDraftPayload(event.target.value)}
             />
@@ -446,13 +446,13 @@ export function CampaignImportPanel() {
           </div>
 
           {jobResource.data?.status ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-sm">
+            <p className="text-sm text-muted-foreground text-sm">
               Job status: <strong>{jobResource.data.status}</strong>
             </p>
           ) : null}
 
           {importedCampaignIds.length > 0 ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 text-sm" role="status">
+            <p className="text-sm text-muted-foreground text-sm" role="status">
               Imported campaign ID(s):{' '}
               <strong className="font-mono">{importedCampaignIds.join(', ')}</strong>
             </p>
@@ -468,10 +468,10 @@ export function CampaignImportPanel() {
         </div>
       </section>
 
-      <section className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
+      <section className="rounded-md border border-border bg-card p-3">
         <header className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Migrate pull</h2>
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">
+          <p className="text-muted-foreground text-sm">
             Pull campaigns from Keitaro or Binom admin APIs.
           </p>
         </header>

@@ -139,8 +139,8 @@ export function EulaGate({ children }: EulaGateProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-800">
-            <div className="max-h-96 overflow-y-auto whitespace-pre-wrap p-4 text-sm">
+          <div className="overflow-hidden rounded-md border border-border">
+            <div className="ui-scrollbar max-h-96 overflow-y-auto whitespace-pre-wrap p-4 text-sm">
               {eulaText?.trim() ? eulaText : 'EULA text unavailable from server.'}
             </div>
           </div>

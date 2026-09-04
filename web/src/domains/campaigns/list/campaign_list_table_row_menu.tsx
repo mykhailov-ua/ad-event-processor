@@ -10,12 +10,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+import { cn } from '@/lib/utils';
+
 export type CampaignListTableRowMenuProps = {
   campaign: Campaign;
+  className?: string;
   onOpenOverview?: (campaign: Campaign) => void;
 };
 
-export function CampaignListTableRowMenu({ campaign, onOpenOverview }: CampaignListTableRowMenuProps) {
+export function CampaignListTableRowMenu({
+  campaign,
+  className,
+  onOpenOverview,
+}: CampaignListTableRowMenuProps) {
   const navigate = useNavigate();
 
   return (
@@ -23,7 +30,7 @@ export function CampaignListTableRowMenu({ campaign, onOpenOverview }: CampaignL
       <DropdownMenuTrigger asChild>
         <Button
           aria-label={`Actions for ${campaign.name}`}
-          className="h-7 w-7 shrink-0"
+          className={cn('h-7 w-7 shrink-0', className)}
           size="icon"
           type="button"
           variant="ghost"
