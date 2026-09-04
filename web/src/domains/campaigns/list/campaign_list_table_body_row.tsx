@@ -13,6 +13,16 @@ import {
 import { buildCampaignRowVm } from '@/domains/campaigns/list/campaign_list_row_vm';
 import { CampaignListTableMiddleCell } from '@/domains/campaigns/list/campaign_list_table_middle_cell';
 import { CampaignListTableRowMenu } from '@/domains/campaigns/list/campaign_list_table_row_menu';
+import {
+  campaignListBodyToolsGutterClass,
+  campaignListCellContentClass,
+  campaignListCellToolsClass,
+  campaignListHeaderCellClass,
+  campaignListNumClass,
+  campaignListSelectCellClass,
+  campaignListTdClass,
+  campaignListTdNameClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import { CopyableText } from '@/shell/copyable_text';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +37,7 @@ export type CampaignListTableBodyRowProps = {
   fetching: boolean;
   onToggleSelected: (campaignId: string, checked: boolean) => void;
   onCampaignOverview?: (campaign: Campaign) => void;
+  statsCacheRevision: string;
   statsQuery?: CampaignStatsQuery;
 };
 
@@ -50,6 +61,7 @@ export function CampaignListTableBodyRow({
   fetching,
   onToggleSelected,
   onCampaignOverview,
+  statsCacheRevision,
   statsQuery,
 }: CampaignListTableBodyRowProps) {
   const vm = useMemo(
@@ -80,8 +92,8 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'select') {
           return (
-            <td key={columnId} className="px-4 text-center">
-              <div className="admin-table-cell--select">
+            <td key={columnId} className={cn(campaignListTdClass, 'px-4 text-center')}>
+              <div className={campaignListSelectCellClass}>
                 <Checkbox
                   aria-label={`Select ${campaign.name}`}
                   checked={selected}
@@ -96,12 +108,12 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'id') {
           return (
-            <td key={columnId} className="campaign-table-cell--tools num text-muted-foreground">
-              <div className="campaign-table-header-cell">
-                <div className="campaign-table-cell__content">
+            <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass, campaignListNumClass, 'text-muted-foreground')}>
+              <div className={campaignListHeaderCellClass}>
+                <div className={campaignListCellContentClass}>
                   <CopyableText label="Campaign ID" mono title={campaign.id} value={vm.displayId} />
                 </div>
-                <div aria-hidden className="campaign-table-body-tools-gutter" />
+                <div aria-hidden className={campaignListBodyToolsGutterClass} />
               </div>
             </td>
           );
@@ -109,7 +121,7 @@ export function CampaignListTableBodyRow({
 
         if (columnId === 'name') {
           return (
-            <td key={columnId} className="campaign-table-td--name campaign-table-cell--tools">
+            <td key={columnId} className={cn(campaignListTdClass, campaignListTdNameClass, campaignListCellToolsClass)}>
               <div className="flex min-h-[34px] max-w-full flex-nowrap items-center gap-1">
                 <CampaignCountryBadges
                   className="shrink-0"
@@ -118,7 +130,7 @@ export function CampaignListTableBodyRow({
                   max={2}
                 />
                 <span
-                  className="min-w-0 flex-1 select-text truncate font-medium text-foreground"
+                  className="min-w-0 flex-1 select-text whitespace-nowrap font-medium text-foreground"
                   title={vm.rawName}
                   onClick={(event) => event.stopPropagation()}
                 >
@@ -139,19 +151,21 @@ export function CampaignListTableBodyRow({
         }
 
         return (
-          <td key={columnId} className={cn('campaign-table-cell--tools', isNum && 'num')}>
-            <div className="campaign-table-header-cell">
-              <div className="campaign-table-cell__content">
+          <td key={columnId} className={cn(campaignListTdClass, campaignListCellToolsClass, isNum && campaignListNumClass)}>
+            <div className={campaignListHeaderCellClass}>
+              <div className={campaignListCellContentClass}>
                 <CampaignListTableMiddleCell
                 campaign={campaign}
                 columnId={columnId as CampaignListMiddleColumnId}
+                listMetrics={metrics}
                 marginBreach={margin?.margin_breach === true}
+                statsCacheRevision={statsCacheRevision}
                 statsQuery={statsQuery}
                 vm={vm}
                 onOpenOverview={onCampaignOverview}
               />
               </div>
-              <div aria-hidden className="campaign-table-body-tools-gutter" />
+              <div aria-hidden className={campaignListBodyToolsGutterClass} />
             </div>
           </td>
         );

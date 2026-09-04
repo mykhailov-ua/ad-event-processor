@@ -38,7 +38,7 @@ export function TrafficOptimizerRulesPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listTrafficOptimizerRules({ customer_id: appliedCustomerId }, signal);
     },
@@ -60,15 +60,13 @@ export function TrafficOptimizerRulesPage() {
   const [dryRunError, setDryRunError] = useState<Error | undefined>(undefined);
   const [dryRunning, setDryRunning] = useState(false);
 
-  const items = useMemo(() => data ?? [], [data]);
-
   useEffect(() => {
-    if (items.length === 0) {
+    if (!data?.length) {
       return;
     }
     setRuleDrafts((prev) => {
       const next = { ...prev };
-      for (const row of items) {
+      for (const row of data) {
         const ruleId = row.id ?? '';
         if (!ruleId || next[ruleId]) {
           continue;
@@ -77,7 +75,7 @@ export function TrafficOptimizerRulesPage() {
       }
       return next;
     });
-  }, [items]);
+  }, [data]);
 
   const onCreateDraftChange = useCallback((patch: Partial<TrafficOptimizerRuleEditDraft>) => {
     setCreateDraft((prev) => ({ ...prev, ...patch }));
@@ -121,7 +119,7 @@ export function TrafficOptimizerRulesPage() {
   const onSaveRule = useCallback(
     async (ruleId: string) => {
       const customerId = appliedCustomerId.trim();
-      const row = items.find((item) => item.id === ruleId);
+      const row = data?.find((item) => item.id === ruleId);
       const draft = ruleDrafts[ruleId];
       if (!customerId || !row || !draft) {
         return;
@@ -140,7 +138,7 @@ export function TrafficOptimizerRulesPage() {
         setUpdatingRuleId(undefined);
       }
     },
-    [appliedCustomerId, items, ruleDrafts],
+    [appliedCustomerId, data, ruleDrafts],
   );
 
   const onDeleteRule = useCallback(async (ruleId: string) => {
@@ -178,7 +176,7 @@ export function TrafficOptimizerRulesPage() {
 
   return (
     <TrafficOptimizerRulesDirectory
-      items={items}
+      items={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       createDraft={createDraft}
@@ -188,7 +186,7 @@ export function TrafficOptimizerRulesPage() {
       error={error}
       actionError={actionError}
       createSuccess={createSuccess}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       dryRunRuleId={dryRunRuleId}
       dryRunResult={dryRunResult}
       dryRunError={dryRunError}

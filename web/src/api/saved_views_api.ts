@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   CreateSavedViewRequest,
   SavedView,
@@ -12,7 +12,7 @@ export async function listSavedViews(
 ): Promise<SavedView[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJson<SavedView[]>(`/api/v1/views?${search.toString()}`, { signal });
+  return apiJsonArray<SavedView>(`/api/v1/views?${search.toString()}`, { signal });
 }
 
 export async function getSavedView(id: string, signal?: AbortSignal): Promise<SavedView> {

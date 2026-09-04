@@ -39,6 +39,7 @@ import type {
 } from '@/domains/campaigns/list/campaigns_list_types';
 import { useCampaignsPageList } from '@/pages/use_campaigns_page_list';
 import { useSession } from '@/hooks/use_session';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useTrackerHeaderSearchRegistration } from '@/lib/tracker_header_context';
 import { userErrorMessage } from '@/lib/admin_error';
 import { DEFAULT_LIST_LIMIT } from '@/lib/list_query';
@@ -47,7 +48,7 @@ import { toDatetimeLocalValue } from '@/lib/datetime_range';
 export function useCampaignsPage(): CampaignsDirectoryProps {
   const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useSession();
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
   const [createSectionOpen, setCreateSectionOpen] = useState(false);
   const [templatesRefreshToken, setTemplatesRefreshToken] = useState(0);
   const [draftTemplateId, setDraftTemplateId] = useState('');
@@ -147,10 +148,6 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     appliedStatus,
   ]);
 
-  const refreshList = useCallback(() => {
-    setRefreshToken((value) => value + 1);
-  }, []);
-
   const {
     data,
     error,
@@ -184,6 +181,8 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
     createSectionOpen,
     templatesRefreshToken,
   });
+
+  const refreshList = useCoalescedBumpRefresh(bumpRefresh, fetching);
 
   useEffect(() => {
     if (templates.length === 0) {
@@ -406,7 +405,7 @@ export function useCampaignsPage(): CampaignsDirectoryProps {
   ]);
 
   return {
-    items: data?.items ?? [],
+    items: data?.items,
     total: data?.total ?? 0,
     limit: data?.limit ?? query.limit ?? DEFAULT_LIST_LIMIT,
     offset: data?.offset ?? query.offset ?? 0,

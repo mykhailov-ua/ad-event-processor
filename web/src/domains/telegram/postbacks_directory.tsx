@@ -29,7 +29,7 @@ import { TelegramNav, telegramPanelError } from '@/domains/telegram/telegram_nav
 import { displayTimestamp } from '@/lib/display';
 
 export type TelegramPostbacksDirectoryProps = {
-  postbacks: TelegramPostback[];
+  postbacks?: TelegramPostback[];
   appliedCampaignId: string;
   draftCampaignId: string;
   fetching: boolean;
@@ -142,7 +142,7 @@ export function TelegramPostbacksDirectory({
         <PageSkeleton />
       ) : error && !hasSnapshot ? (
         telegramPanelError(error, 'Could not load postbacks')
-      ) : postbacks.length === 0 ? (
+      ) : (postbacks ?? []).length === 0 ? (
         <EmptyState title="No postbacks" description="No Telegram postback URLs for this campaign." />
       ) : (
         <DirectoryTable>
@@ -154,7 +154,7 @@ export function TelegramPostbacksDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {postbacks.map((row) => {
+              {(postbacks ?? []).map((row) => {
                 const id = row.id ?? '';
                 return (
                   <TableRow key={id || row.postback_url}>

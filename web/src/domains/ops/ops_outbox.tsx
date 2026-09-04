@@ -17,7 +17,7 @@ import {
 } from '@/domains/ops/ops_table';
 
 export type OpsOutboxProps = {
-  items: OutboxEvent[];
+  items?: OutboxEvent[];
   nextCursor?: string;
   total?: number;
   limit: number;
@@ -62,7 +62,7 @@ export function OpsOutbox({
       }
       title="Outbox"
     >
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState description="Outbox tail is empty for this page." title="No outbox events" />
       ) : (
         <OpsTable
@@ -75,7 +75,7 @@ export function OpsOutbox({
             </OpsTableHeaderRow>
           }
         >
-          {items.map((row) => (
+          {(items ?? []).map((row) => (
             <OpsTableRow key={row.id ?? `${row.event_type}-${row.created_at}`}>
               <OpsTableCell className="font-mono text-xs text-muted-foreground">
                 {row.id ?? ''}

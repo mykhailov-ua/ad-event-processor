@@ -38,7 +38,7 @@ export type PolicyCreateDraft = {
 };
 
 export type MarginGuardPoliciesDirectoryProps = {
-  items: MarginGuardPolicy[];
+  items?: MarginGuardPolicy[];
   appliedCampaignId: string;
   draftCampaignId: string;
   createDraft: PolicyCreateDraft;
@@ -207,7 +207,7 @@ export function MarginGuardPoliciesDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No policies" description="No margin guard policies for this campaign." />
       ) : (
         <DirectoryTable>
@@ -220,7 +220,7 @@ export function MarginGuardPoliciesDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.id ?? row.name}>
                   <TableCell>{row.name}</TableCell>
                   <TableCell>{row.roi_floor_pct}</TableCell>

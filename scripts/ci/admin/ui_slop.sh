@@ -160,8 +160,44 @@ for dir in web/src/domains web/src/shell web/src/pages; do
   fi
 done
 
+if rg -n '00000000-\$\{|padStart\(12,\s*['\''"]0['\''"]\)|function devUuid|4000-8000-0000000000' web/src/api/dev_mock --glob '*.ts' --glob '!*.test.ts' 2> /dev/null; then
+  echo "Error: UI slop - trivial sequential UUID generator in dev_mock; use seedDeterministicUuid / newRandomUuid (web/src/api/dev_mock/seed_uuid.ts)"
+  failed=1
+fi
+
+if rg -n "user_id:\s*['\"]user-[0-9]|user_id:\s*['\"]buyer-[0-9]|owner_user_id:\s*['\"]buyer-" web/src/api/dev_mock --glob '*.ts' --glob '!*.test.ts' 2> /dev/null; then
+  echo "Error: UI slop - slug user_id in dev_mock; use seedDeterministicUuid('user', n) from fixtures"
+  failed=1
+fi
+
+if rg -n 'className="[^"]*admin-[^"]*![-a-z]' web/src/domains web/src/shell web/src/pages --glob '*.tsx' 2> /dev/null; then
+  echo "Error: UI slop - Tailwind important utility on same className as admin-* BEM; see frontend-slop.mdc Tailwind vs global CSS collision"
+  failed=1
+fi
+if rg -n "className=\\{cn\\([^)]*admin-[^)]*!" web/src/domains web/src/shell web/src/pages --glob '*.tsx' 2> /dev/null; then
+  echo "Error: UI slop - Tailwind important utility in cn() with admin-* BEM; see frontend-slop.mdc Tailwind vs global CSS collision"
+  failed=1
+fi
+
+# Legacy admin-* BEM hooks in class strings (text-ui-* typography tokens are allowed).
+for dir in web/src/domains web/src/shell web/src/pages; do
+  [ -d "$dir" ] || continue
+  if rg -n "'admin-[a-z][a-z0-9-]*'|\"admin-[a-z][a-z0-9-]*\"" "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - legacy admin-* BEM class hook under ${dir}; use Tailwind utilities in className"
+    failed=1
+  fi
+  if rg -n "'[a-z0-9-]+--[a-z0-9-]+'|\"[a-z0-9-]+--[a-z0-9-]+\"" "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - BEM -- modifier class under ${dir}; use Tailwind utilities in className"
+    failed=1
+  fi
+  if rg -n "'[a-z0-9-]+__[a-z0-9-]+'|\"[a-z0-9-]+__[a-z0-9-]+\"" "$dir" --glob '*.tsx' 2> /dev/null; then
+    echo "Error: UI slop - BEM __ element class under ${dir}; use Tailwind utilities in className"
+    failed=1
+  fi
+done
+
 if [ "$failed" -ne 0 ]; then
-  echo "Remediation: .cursor/rules/ui.mdc anti-slop section; control height: web/src/lib/control_size.ts"
+  echo "Remediation: .cursor/rules/ui.mdc; mocks/tables/styling: .cursor/rules/frontend-slop.mdc (Tailwind vs global CSS collision); control height: web/src/lib/admin_kit.ts"
   exit 1
 fi
 

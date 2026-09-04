@@ -11,7 +11,7 @@ test('visibleMiddleColumnCount excludes hidden middle columns only', () => {
 
   const withHidden = {
     ...prefs,
-    hidden: [...prefs.hidden, 'bots', 'impressions'],
+    hidden: [...prefs.hidden, 'clicks', 'status'],
   };
   assert.equal(visibleMiddleColumnCount(withHidden), allVisible - 2);
 });

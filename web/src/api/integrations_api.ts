@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   AffiliateStatusPreset,
   ApplyIntegrationSchemaRequest,
@@ -35,7 +35,7 @@ import type {
 export async function listCostSyncNetworks(
   signal?: AbortSignal,
 ): Promise<CostSyncNetworkSchema[]> {
-  return apiJson<CostSyncNetworkSchema[]>('/api/v1/cost-sync/networks', { signal });
+  return apiJsonArray<CostSyncNetworkSchema>('/api/v1/cost-sync/networks', { signal });
 }
 
 export async function listCostSyncCredentials(
@@ -50,7 +50,7 @@ export async function listCostSyncCredentials(
   const path = query
     ? `/api/v1/cost-sync/credentials?${query}`
     : '/api/v1/cost-sync/credentials';
-  return apiJson<CostSyncCredential[]>(path, { signal });
+  return apiJsonArray<CostSyncCredential>(path, { signal });
 }
 
 export async function listCostSyncHistory(
@@ -69,7 +69,7 @@ export async function listCostSyncHistory(
   }
   const query = search.toString();
   const path = query ? `/api/v1/cost-sync/history?${query}` : '/api/v1/cost-sync/history';
-  return apiJson<CostSyncRun[]>(path, { signal });
+  return apiJsonArray<CostSyncRun>(path, { signal });
 }
 
 export async function runCostSync(
@@ -138,17 +138,17 @@ export async function fetchIntegrationSnapshot(signal?: AbortSignal): Promise<In
 }
 
 export async function listPostbackConfigs(signal?: AbortSignal): Promise<PostbackConfig[]> {
-  return apiJson<PostbackConfig[]>('/api/v1/postbacks/config', { signal });
+  return apiJsonArray<PostbackConfig>('/api/v1/postbacks/config', { signal });
 }
 
 export async function listPostbackDlq(signal?: AbortSignal): Promise<PostbackDlqEntry[]> {
-  return apiJson<PostbackDlqEntry[]>('/api/v1/postbacks/dlq', { signal });
+  return apiJsonArray<PostbackDlqEntry>('/api/v1/postbacks/dlq', { signal });
 }
 
 export async function listPostbackCampaignStatus(
   signal?: AbortSignal,
 ): Promise<PostbackCampaignStatus[]> {
-  return apiJson<PostbackCampaignStatus[]>('/api/v1/postbacks/campaign-status', { signal });
+  return apiJsonArray<PostbackCampaignStatus>('/api/v1/postbacks/campaign-status', { signal });
 }
 
 export async function retryPostbackDlq(id: string, signal?: AbortSignal): Promise<StatusOKResponse> {
@@ -191,7 +191,7 @@ export async function testPostbackConfig(
 export async function listIntegrationSchemas(
   signal?: AbortSignal,
 ): Promise<IntegrationSchema[]> {
-  return apiJson<IntegrationSchema[]>('/api/v1/integration/schemas', { signal });
+  return apiJsonArray<IntegrationSchema>('/api/v1/integration/schemas', { signal });
 }
 
 export async function getIntegrationSchema(
@@ -234,7 +234,7 @@ export async function importIntegrationTemplates(
   body: ImportIntegrationTemplatesRequest = {},
   signal?: AbortSignal,
 ): Promise<IntegrationSchema[]> {
-  return apiJson<IntegrationSchema[]>('/api/v1/integration/templates/import', {
+  return apiJsonArray<IntegrationSchema>('/api/v1/integration/templates/import', {
     method: 'POST',
     body: JSON.stringify(body),
     signal,
@@ -244,13 +244,13 @@ export async function importIntegrationTemplates(
 export async function listIntegrationTemplates(
   signal?: AbortSignal,
 ): Promise<IntegrationTemplateCatalogEntry[]> {
-  return apiJson<IntegrationTemplateCatalogEntry[]>('/api/v1/integration/templates', { signal });
+  return apiJsonArray<IntegrationTemplateCatalogEntry>('/api/v1/integration/templates', { signal });
 }
 
 export async function listAffiliateStatusPresets(
   signal?: AbortSignal,
 ): Promise<AffiliateStatusPreset[]> {
-  return apiJson<AffiliateStatusPreset[]>('/api/v1/integration/affiliate-status-presets', {
+  return apiJsonArray<AffiliateStatusPreset>('/api/v1/integration/affiliate-status-presets', {
     signal,
   });
 }
@@ -270,7 +270,7 @@ export async function listPlatformCampaignLinks(
   const path = query
     ? `/api/v1/platform-campaigns/links?${query}`
     : '/api/v1/platform-campaigns/links';
-  return apiJson<PlatformCampaignLink[]>(path, { signal });
+  return apiJsonArray<PlatformCampaignLink>(path, { signal });
 }
 
 export async function runPlatformCampaignSync(

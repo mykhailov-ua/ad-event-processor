@@ -3,22 +3,20 @@ import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { getFlow, updateFlow } from '@/api/flows_api';
-import type { FlowPath } from '@/api/types';
+import {
+  buildFlowUpdateBody,
+  DEFAULT_FLOW_PATHS_JSON,
+  flowDraftFromSnapshot,
+} from '@/domains/creative/flow_editor_form';
 import { FlowDetail } from '@/domains/creative/flow_detail';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
-
-function pathsToJson(paths: unknown): string {
-  if (Array.isArray(paths)) {
-    return JSON.stringify(paths, null, 2);
-  }
-  return '[{"weight":100,"landers":[],"offers":[]}]';
-}
 
 export function FlowDetailPage() {
   const { id } = useParams();
   const flowId = id ?? '';
   const [reloadToken, setReloadToken] = useState(0);
+  const snapshotKey = `${flowId}:${reloadToken}`;
 
   const { data, error, fetching } = useResource(
     (signal) => {
@@ -31,34 +29,40 @@ export function FlowDetailPage() {
   );
 
   const [draftName, setDraftName] = useState('');
-  const [draftPathsJson, setDraftPathsJson] = useState(
-    '[{"weight":100,"landers":[],"offers":[]}]',
-  );
+  const [draftPathsJson, setDraftPathsJson] = useState(DEFAULT_FLOW_PATHS_JSON);
+  const [appliedSnapshotKey, setAppliedSnapshotKey] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>();
 
   useEffect(() => {
-    if (!data) {
+    setDraftName('');
+    setDraftPathsJson(DEFAULT_FLOW_PATHS_JSON);
+    setAppliedSnapshotKey('');
+  }, [flowId]);
+
+  useEffect(() => {
+    if (!data || appliedSnapshotKey === snapshotKey) {
       return;
     }
-    setDraftName(data.name);
-    setDraftPathsJson(pathsToJson(data.paths));
-  }, [data]);
+    const draft = flowDraftFromSnapshot(data);
+    setDraftName(draft.name);
+    setDraftPathsJson(draft.pathsJson);
+    setAppliedSnapshotKey(snapshotKey);
+  }, [appliedSnapshotKey, data, snapshotKey]);
 
   const onSaveFlow = useCallback(async () => {
-    const name = draftName.trim();
-    if (!flowId || !name) {
-      setSaveError(new Error('Flow name is required.'));
+    if (!flowId) {
+      return;
+    }
+    const update = buildFlowUpdateBody(draftName, draftPathsJson);
+    if (!update.ok) {
+      setSaveError(new Error(update.error));
       return;
     }
     setSaving(true);
     setSaveError(undefined);
     try {
-      const parsed: unknown = JSON.parse(draftPathsJson);
-      if (!Array.isArray(parsed)) {
-        throw new Error('Paths must be a JSON array.');
-      }
-      await updateFlow(flowId, { name, paths: parsed as FlowPath[] });
+      await updateFlow(flowId, update.body);
       toast.success('Flow saved');
       setReloadToken((value) => value + 1);
     } catch (err) {

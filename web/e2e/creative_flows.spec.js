@@ -1,29 +1,47 @@
 import { test, expect } from '@playwright/test';
 
-import { loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  expectApiListBoundToDom,
+  gotoLive,
+  isApiGet,
+  loginAsAdmin,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('flows list loads', async ({ page }) => {
+test('flows list loads from GET /api/v1/flows', async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/flows');
+  const listResponse = page.waitForResponse(isApiGet('/api/v1/flows'), { timeout: 20_000 });
+  await gotoLive(page, '/flows');
   await expect(page.getByRole('heading', { name: 'Flows' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Creative sections' })).toBeVisible();
 
-  const table = page.getByRole('table');
-  const empty = page.getByText('No flows', { exact: true });
-  await expect(table.or(empty)).toBeVisible({ timeout: 15_000 });
+  const response = await listResponse;
+  const body = await response.json();
+  expect(Array.isArray(body)).toBe(true);
+
+  await expectApiListBoundToDom(page, body, {
+    emptyTitle: 'No flows',
+    rowLabel: (row) => String(row.name ?? ''),
+  });
   await expect(page.getByRole('button', { name: 'Create flow' })).toBeVisible();
 });
 
-test('landers list loads', async ({ page }) => {
+test('landers list loads from GET /api/v1/landers', async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/landers');
+  const listResponse = page.waitForResponse(isApiGet('/api/v1/landers'), { timeout: 20_000 });
+  await gotoLive(page, '/landers');
   await expect(page.getByRole('heading', { name: 'Landers' })).toBeVisible();
 
-  const table = page.getByRole('table');
-  const empty = page.getByText('No landers', { exact: true });
-  await expect(table.or(empty)).toBeVisible({ timeout: 15_000 });
+  const response = await listResponse;
+  const body = await response.json();
+  expect(Array.isArray(body)).toBe(true);
+
+  await expectApiListBoundToDom(page, body, {
+    emptyTitle: 'No landers',
+    rowLabel: (row) => String(row.name ?? ''),
+  });
 });

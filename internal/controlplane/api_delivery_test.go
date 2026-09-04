@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"ad-event-processor/internal/config"
+	ctrlhttp "ad-event-processor/internal/control/http"
 	"ad-event-processor/internal/database"
 	"ad-event-processor/internal/domain/db"
 	"ad-event-processor/internal/identity"
@@ -204,4 +205,36 @@ func TestManagementAPI_RoleUserForbiddenEmergencyBreaker(t *testing.T) {
 	resp := httptest.NewRecorder()
 	mux.ServeHTTP(resp, req)
 	assert.Equal(t, http.StatusForbidden, resp.Code)
+}
+
+func TestManagementAPI_RoleMediaBuyerForbiddenOpsHome(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration: run make test-integration (Docker testcontainers)")
+	}
+
+	pool, cleanupDB := database.SetupTestDB(t)
+	defer cleanupDB()
+	redisClient, cleanupRedis := database.SetupTestRedis(t)
+	defer cleanupRedis()
+
+	cfg := &config.Config{TokenSymmetricKey: "01234567890123456789012345678901"}
+	tokenMaker, err := identity.NewPasetoMaker(string(cfg.TokenSymmetricKey))
+	require.NoError(t, err)
+
+	authMdl := NewAuthMiddleware(tokenMaker, redisClient, cfg, nil)
+	svc := newBareService(t, pool, []redis.UniversalClient{redisClient}, cfg)
+	h := NewHandler(svc, cfg, authMdl, nil, nil, nil)
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	token, err := tokenMaker.CreateToken(uuid.New(), uuid.New(), ctrlhttp.RoleMediaBuyer, uuid.New(), time.Hour)
+	require.NoError(t, err)
+
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/ops/home", http.NoBody)
+	req.AddCookie(&http.Cookie{Name: "accessToken", Value: token})
+	resp := httptest.NewRecorder()
+	mux.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusForbidden, resp.Code)
+	assert.Contains(t, resp.Body.String(), "FORBIDDEN")
 }

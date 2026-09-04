@@ -1,4 +1,4 @@
-import type { ComponentProps, CSSProperties, ReactNode } from 'react';
+import type { ComponentProps, CSSProperties, ReactNode, Ref } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
 import {
@@ -21,6 +21,7 @@ export type DirectoryTableProps = {
   fixedLayout?: boolean;
   tableClassName?: string;
   tableStyle?: CSSProperties;
+  tableRef?: Ref<HTMLTableElement>;
 };
 
 export function DirectoryTable({
@@ -31,6 +32,7 @@ export function DirectoryTable({
   fixedLayout = false,
   tableClassName,
   tableStyle,
+  tableRef,
 }: DirectoryTableProps) {
   return (
     <div
@@ -43,6 +45,7 @@ export function DirectoryTable({
     >
       <Table
         bare
+        ref={tableRef}
         className={cn(
           'border-collapse text-sm',
           !horizontalScroll && 'w-full',
@@ -104,7 +107,7 @@ export function DirectoryTableHead({
   return (
     <DirectoryTableHeadShell className={className} {...props}>
       <DirectoryTableHeadContent align={align} reserveSortIcon={align === 'end'}>
-        <span className="truncate">{children}</span>
+        <span className="whitespace-nowrap">{children}</span>
       </DirectoryTableHeadContent>
     </DirectoryTableHeadShell>
   );
@@ -148,7 +151,7 @@ export function SortableTableHead({
         onClick={() => onSort(sortField)}
         type="button"
       >
-        <span className="truncate">{label}</span>
+        <span className="whitespace-nowrap">{label}</span>
         <Icon
           aria-hidden
           className={cn(SORT_ICON_CLASS, active ? 'opacity-90' : 'opacity-45')}

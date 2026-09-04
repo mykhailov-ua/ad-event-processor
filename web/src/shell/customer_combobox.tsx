@@ -70,7 +70,7 @@ export function CustomerCombobox({
           className="w-full min-w-0 justify-between text-sm font-normal"
           disabled={disabled || loading}
         >
-          <span className="min-w-0 flex-1 truncate text-left">{triggerLabel}</span>
+          <span className="min-w-0 flex-1 whitespace-nowrap text-left">{triggerLabel}</span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

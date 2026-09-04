@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { createBrand, listBrands } from '@/api/brands_api';
@@ -20,7 +20,7 @@ export function BrandsPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listBrands({ customer_id: appliedCustomerId }, signal);
     },
@@ -31,8 +31,6 @@ export function BrandsPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
-
-  const items = useMemo(() => data ?? [], [data]);
 
   const onCreateBrand = useCallback(async () => {
     const name = draftBrandName.trim();
@@ -58,12 +56,12 @@ export function BrandsPage() {
 
   return (
     <BrandsDirectory
-      items={items}
+      items={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       onDraftCustomerIdChange={setDraftCustomerId}
       onApplyCustomerScope={applyCustomerScope}
       draftBrandName={draftBrandName}

@@ -12,6 +12,7 @@ import {
   type IntegrationsCostSyncPanel,
 } from '@/domains/integrations/integrations_cost_sync';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 function defaultSyncDateUtc(): string {
@@ -22,7 +23,7 @@ function defaultSyncDateUtc(): string {
 
 export function IntegrationsCostSyncPage() {
   const [panel, setPanel] = useState<IntegrationsCostSyncPanel>('networks');
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const {
     appliedCustomerId,
@@ -98,7 +99,7 @@ export function IntegrationsCostSyncPage() {
         sync_interval_minutes: (Number.isFinite(interval) ? interval : 60) as 15 | 30 | 60 | 1440,
       });
       setSaveSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -112,6 +113,7 @@ export function IntegrationsCostSyncPage() {
     draftNetwork,
     draftRefreshToken,
     draftSyncIntervalMinutes,
+    bumpRefresh,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -125,13 +127,13 @@ export function IntegrationsCostSyncPage() {
     try {
       await deleteCostSyncCredential(network, appliedCustomerId);
       setDeleteSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setDeleteError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setDeleting(false);
     }
-  }, [appliedCustomerId, draftNetwork]);
+  }, [appliedCustomerId, draftNetwork, bumpRefresh]);
 
   const onRunSync = useCallback(async () => {
     if (!appliedCustomerId) {
@@ -148,13 +150,13 @@ export function IntegrationsCostSyncPage() {
         to: runTo.trim() || undefined,
       });
       setRunSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setRunError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setRunning(false);
     }
-  }, [appliedCustomerId, runFrom, runNetwork, runTo]);
+  }, [appliedCustomerId, runFrom, runNetwork, runTo, bumpRefresh]);
 
   return (
     <IntegrationsCostSync

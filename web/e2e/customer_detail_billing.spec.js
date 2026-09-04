@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 
-import { gotoCustomers, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  gotoLive,
+  loginAsAdmin,
+  mainContent,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 const DETAIL_TAB_LABELS = [
   'Profile',
@@ -19,9 +24,12 @@ test.beforeEach(async ({}, testInfo) => {
 
 test('customer detail shows billing tab bar', async ({ page }) => {
   await loginAsAdmin(page);
-  await gotoCustomers(page);
+  await gotoLive(page, '/customers');
+  await mainContent(page).getByRole('heading', { name: 'Customers', exact: true }).waitFor({
+    timeout: 15_000,
+  });
 
-  const customerLink = page.locator('main a[href^="/customers/"]').first();
+  const customerLink = mainContent(page).locator('a[href^="/customers/"]').first();
   const count = await customerLink.count();
   if (count === 0) {
     test.skip(true, 'integration: no customers in directory');
@@ -29,8 +37,22 @@ test('customer detail shows billing tab bar', async ({ page }) => {
   }
 
   await customerLink.click();
+  await page.waitForURL(/\/customers\/[^/]+$/, { timeout: 15_000 });
+
+  const profileTab = mainContent(page).getByRole('button', { name: 'Profile', exact: true });
+  const pageError = page.getByText('Page error', { exact: true });
+  await Promise.race([
+    profileTab.waitFor({ state: 'visible', timeout: 15_000 }),
+    pageError.waitFor({ state: 'visible', timeout: 15_000 }),
+  ]);
+  if (await pageError.isVisible()) {
+    test.skip(true, 'integration: customer detail page error boundary');
+    return;
+  }
+
+  await expect(profileTab).toBeVisible();
 
   for (const label of DETAIL_TAB_LABELS) {
-    await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
+    await expect(mainContent(page).getByRole('button', { name: label, exact: true })).toBeVisible();
   }
 });

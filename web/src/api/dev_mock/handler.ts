@@ -21,13 +21,14 @@ import {
   buildDevMockCampaignMetrics,
   enrichDevMockCampaignMetricsDerived,
 } from './campaign_metrics.ts';
+import type { MockResult } from './handler_types.ts';
+import {
+  devMockAuthorizeRequest,
+  devMockCurrentPermissions,
+  devMockSessionRoleLabel,
+  getDevMockRole,
+} from './rbac.ts';
 import { DEV_MOCK_CUSTOMERS, DEV_MOCK_USERS, devMockStore } from './store.ts';
-
-type MockResult = {
-  status: number;
-  body?: unknown;
-  contentType?: string;
-};
 
 function json(status: number, body: unknown): MockResult {
   return { status, body, contentType: 'application/json' };
@@ -35,6 +36,88 @@ function json(status: number, body: unknown): MockResult {
 
 function emptyList(limit = 50, offset = 0): MockResult {
   return json(200, { items: [], total: 0, limit, offset });
+}
+
+function emptyArray(): MockResult {
+  return json(200, []);
+}
+
+const BARE_ARRAY_GET_PATHS = new Set([
+  '/api/v1/automation/presets',
+  '/api/v1/automation/rules',
+  '/api/v1/brands',
+  '/api/v1/cost-sync/credentials',
+  '/api/v1/cost-sync/history',
+  '/api/v1/cost-sync/networks',
+  '/api/v1/domains',
+  '/api/v1/flows',
+  '/api/v1/fraud/presets',
+  '/api/v1/integration/affiliate-status-presets',
+  '/api/v1/integration/schemas',
+  '/api/v1/integration/templates',
+  '/api/v1/landers',
+  '/api/v1/margin-guard/activity',
+  '/api/v1/margin-guard/policies',
+  '/api/v1/offers',
+  '/api/v1/ops/ml-model/labels',
+  '/api/v1/postbacks/campaign-status',
+  '/api/v1/postbacks/config',
+  '/api/v1/postbacks/dlq',
+  '/api/v1/report-schedules',
+  '/api/v1/rtb/deals',
+  '/api/v1/smart-alerts/history',
+  '/api/v1/smart-alerts/rules',
+  '/api/v1/supply/ads-txt',
+  '/api/v1/supply/sellers',
+  '/api/v1/telegram/bots',
+  '/api/v1/traffic-optimizer/presets',
+  '/api/v1/traffic-optimizer/rules',
+  '/api/v1/views',
+]);
+
+function isBareArrayListPath(pathname: string): boolean {
+  if (BARE_ARRAY_GET_PATHS.has(pathname)) {
+    return true;
+  }
+  if (pathname.startsWith('/api/v1/fraud/integrations')) {
+    return true;
+  }
+  if (pathname.startsWith('/api/v1/fraud/labels')) {
+    return true;
+  }
+  if (pathname.startsWith('/api/v1/ops/recon')) {
+    return true;
+  }
+  if (pathname.startsWith('/api/v1/integration/platform-campaigns')) {
+    return true;
+  }
+  if (pathname.startsWith('/api/v1/telegram/postbacks')) {
+    return true;
+  }
+  return /^\/api\/v1\/brands\/[^/]+\/creatives$/.test(pathname);
+}
+
+function emptyCostSyncSnapshot(): MockResult {
+  return json(200, { networks: [], credentials: [], history: [] });
+}
+
+function emptyRoleDashboard(url: URL, pathname: string): MockResult {
+  const role = pathname.slice('/api/v1/dashboards/'.length).split('/')[0];
+  if (role === 'buyer') {
+    const customerId = url.searchParams.get('customer_id')?.trim();
+    return json(200, {
+      customer_id: customerId || undefined,
+      series: [],
+      breakdowns: {
+        campaigns: { rows: [] },
+        landers: { rows: [] },
+        offers: { rows: [] },
+        sources: { rows: [] },
+      },
+      recent_clicks: [],
+    });
+  }
+  return json(200, { series: [], totals: {} });
 }
 
 function parseJsonBody(init?: RequestInit): unknown {
@@ -147,26 +230,20 @@ function bulkCampaignAction(body: unknown): MockResult {
 
 function sessionBootstrap(): MockResult {
   const customerId = DEV_MOCK_CUSTOMERS[0].id;
+  const role = getDevMockRole();
+  const permissions = devMockCurrentPermissions();
+  const sessionRole = devMockSessionRoleLabel(role);
   return json(200, {
     user: {
       id: DEV_MOCK_USERS[0].id,
       email: DEV_MOCK_USERS[0].email,
-      role: 'admin',
+      role: sessionRole,
       customer_id: customerId,
-      permissions: [
-        'campaigns:read',
-        'campaigns:write',
-        'customers:read',
-        'customers:write',
-        'audit:read',
-        'settings:read',
-        'rtb:read',
-        'billing:read',
-      ],
+      permissions,
     },
     session: {
-      role: 'admin',
-      mask_level: 'full',
+      role: sessionRole,
+      mask_level: role === 'B' || role === 'S' ? 'masked' : 'full',
       default_customer_id: customerId,
       timezone: 'UTC',
     },
@@ -234,6 +311,19 @@ function campaignById(campaignId: string): MockResult {
     return json(404, { error: { code: 'NOT_FOUND', message: 'Campaign not found' } });
   }
   return json(200, row);
+}
+
+function brandById(brandId: string): MockResult {
+  const now = new Date().toISOString();
+  return json(200, {
+    id: brandId,
+    customer_id: DEV_MOCK_CUSTOMERS[0].id,
+    name: `Brand ${brandId.slice(0, 8)}`,
+    created_at: now,
+    updated_at: now,
+    freq_limit: 0,
+    freq_window: 0,
+  });
 }
 
 function campaignEditorShell(campaignId: string): MockResult {
@@ -319,7 +409,17 @@ function previewCampaignClone(campaignId: string, body: unknown): MockResult {
   });
 }
 
-function genericOk(): MockResult {
+function mockNotImplemented(): MockResult {
+  return json(501, { error: { code: 'NOT_IMPLEMENTED', message: 'Route not implemented in dev mock' } });
+}
+
+function authLoginResponse(): MockResult {
+  const boot = sessionBootstrap();
+  const body = boot.body as { user: unknown };
+  return json(200, { user: body.user });
+}
+
+function authRefreshResponse(): MockResult {
   return json(200, { status: 'ok' });
 }
 
@@ -367,11 +467,17 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     return json(200, body?.session ?? {});
   }
   if (method === 'POST' && (pathname === '/api/v1/auth/login' || pathname === '/api/v1/auth/refresh')) {
-    return genericOk();
+    return pathname.endsWith('/login') ? authLoginResponse() : authRefreshResponse();
   }
   if (method === 'POST' && pathname === '/api/v1/auth/logout') {
     return { status: 204 };
   }
+
+  const denied = devMockAuthorizeRequest(pathname, method);
+  if (denied) {
+    return denied;
+  }
+
   if (method === 'GET' && pathname === '/api/v1/customers') {
     return customersList(url);
   }
@@ -488,6 +594,12 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   if (method === 'GET' && pathname === '/api/v1/selfserve/templates') {
     return selfServeTemplates();
   }
+  if (method === 'GET') {
+    const brandMatch = /^\/api\/v1\/brands\/([^/]+)$/.exec(pathname);
+    if (brandMatch) {
+      return brandById(decodeURIComponent(brandMatch[1]));
+    }
+  }
   if (method === 'GET' && pathname === '/api/v1/team/members') {
     return teamMembers();
   }
@@ -504,7 +616,7 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
     return json(200, { accepted: true, version: 'dev' });
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/dashboards/')) {
-    return json(200, { series: [], totals: {} });
+    return emptyRoleDashboard(url, pathname);
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/reports/')) {
     return json(200, { columns: [], rows: [], total: 0 });
@@ -559,26 +671,20 @@ export function resolveDevMockRequest(path: string, init?: RequestInit): MockRes
   if (method === 'GET' && pathname.startsWith('/api/v1/billing')) {
     return emptyList();
   }
-  if (method === 'GET' && pathname.startsWith('/api/v1/rtb')) {
-    return emptyList();
-  }
-  if (method === 'GET' && pathname.startsWith('/api/v1/fraud')) {
-    return emptyList();
-  }
-  if (method === 'GET' && pathname.startsWith('/api/v1/integrations')) {
-    return emptyList();
-  }
-  if (method === 'GET' && pathname.startsWith('/api/v1/automation')) {
-    return emptyList();
-  }
   if (method === 'POST' && pathname === '/api/v1/consent') {
     return { status: 204 };
+  }
+  if (method === 'GET' && pathname === '/api/v1/cost-sync/snapshot') {
+    return emptyCostSyncSnapshot();
+  }
+  if (method === 'GET' && isBareArrayListPath(pathname)) {
+    return emptyArray();
   }
   if (method === 'GET' && pathname.startsWith('/api/v1/')) {
     return emptyList();
   }
   if (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE') {
-    return genericOk();
+    return mockNotImplemented();
   }
 
   return undefined;

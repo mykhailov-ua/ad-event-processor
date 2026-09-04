@@ -344,13 +344,17 @@ export function devMockListCampaignMetricsTotals(
     impressions: totals.impressions,
     clicks: totals.clicks,
     conversions: totals.conversions,
-    leads_raw: totals.leads_raw,
-    lp_clicks: totals.lp_clicks,
-    lp_views: totals.lp_views,
+    unique_clicks: totals.unique_clicks,
     blocks: totals.blocks,
-    bots: totals.bots,
     rtb_cost_micro: totals.rtb_cost_micro,
     profit_micro: totals.operator_margin_micro,
+    revenue_micro: totals.advertiser_spend_micro,
+    leads_raw: totals.leads_raw,
+    hold_leads: totals.hold_leads,
+    rejected_leads: totals.rejected_leads,
+    lp_clicks: totals.lp_clicks,
+    lp_views: totals.lp_views,
+    bots: totals.bots,
   });
 
   return json(200, {
@@ -425,7 +429,7 @@ export function devMockExportCampaignsBatch(url: URL): MockListResult {
       exported_at: exportedAt,
       campaign: {
         name: row.name,
-        budget_limit_micro: row.budget_limit_micro ?? 0,
+        budget_limit_micro: campaignMoneyMicro(row.budget_limit),
         pacing_mode: row.pacing_mode ?? 'ASAP',
         timezone: row.timezone ?? 'UTC',
       },

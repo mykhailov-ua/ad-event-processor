@@ -161,10 +161,16 @@ No Profiler requirement. Suboptimal = Class A primarily.
 
 | Step | Proves |
 | :--- | :--- |
+| Node microbench | `bash scripts/ci/admin/web_bench.sh` or `cd web && npm run bench` — campaign list widths/VM, dashboard mock series, nav filter, JSON prefs parse |
+| Holdout tests | `campaign_list_perf_holdout.test.ts`, `nav_config_perf_holdout.test.ts` in `npm test` |
+| Go command palette | `go test ./internal/commandpalette/ -bench=BenchmarkPrefixRank -benchmem -count=1` |
 | React Profiler (scroll/tick) | Page chrome not in every commit |
+| Playwright perf (nightly) | `ADMIN_WEB_E2E_PERF=1 bash scripts/ci/admin/web_e2e_perf.sh` — chart/campaigns/palette wall-clock |
 | Performance 6x slowdown | Scripting not O(n) per frame; GC bar not locked to frame |
 | Memory: 10 route cycles | Detached nodes stable |
 | Record `n` | Visible rows/points at test time |
+
+Budgets: `web/src/lib/perf/budgets.ts` (Node, +15% tolerance). Browser marks: `?admin_perf=1` via `web/src/lib/perf/browser_marks.ts`.
 
 Before claiming Hot perf: paste Profiler note + `n` + regime (L/F). Admin chart timing != tracker p99 (`anti-slop.mdc`).
 

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
-import { acceptEula, getEulaStatus, getMeta } from '@/api/platform_api';
+import { acceptEula, getEulaStatus } from '@/api/platform_api';
 import { ApiError } from '@/api/client';
+import { fetchMetaCached } from '@/lib/get_meta_cache';
 import { PrimaryActionButton } from '@/shell/action_buttons';
 import { ErrorBlock } from '@/shell/error_block';
 import {
@@ -62,7 +63,7 @@ export function EulaGate({ children }: EulaGateProps) {
           return;
         }
 
-        const meta = await getMeta(ctrl.signal);
+        const meta = await fetchMetaCached(ctrl.signal);
         const eulaRequired = meta.eula_required === true;
         const eulaAccepted = meta.eula_accepted === true;
         setRequired(eulaRequired);

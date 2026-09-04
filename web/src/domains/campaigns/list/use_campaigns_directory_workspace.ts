@@ -33,6 +33,7 @@ import {
   visibleCampaignListColumns,
 } from '@/domains/campaigns/list/campaign_list_columns';
 import { resetCampaignListWorkspacePrefs } from '@/domains/campaigns/list/campaign_list_workspace_prefs';
+import { clearCampaignStatsCache } from '@/domains/campaigns/list/campaign_list_stats_cache';
 import {
   computeCampaignListColumnWidths,
   defaultCampaignListColumnWidths,
@@ -42,7 +43,7 @@ import type { CampaignListFilterTotalsView } from '@/domains/campaigns/list/camp
 import type { CampaignStatsQuery } from '@/api/types';
 
 type UseCampaignsDirectoryWorkspaceArgs = {
-  items: Campaign[];
+  items?: Campaign[];
   customerNameById: Record<string, string>;
   ownerEmailById: Record<string, string>;
   metricsById: Record<string, CampaignListMetrics>;
@@ -69,6 +70,7 @@ export function useCampaignsDirectoryWorkspace({
   onRefreshList,
 }: UseCampaignsDirectoryWorkspaceArgs) {
   const navigate = useNavigate();
+  const listItems = items ?? [];
   const [importOpen, setImportOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
   const [cloneOpen, setCloneOpen] = useState(false);
@@ -84,6 +86,7 @@ export function useCampaignsDirectoryWorkspace({
 
   useEffect(() => {
     setSelectedIds(new Set());
+    clearCampaignStatsCache();
   }, [listScopeKey]);
 
   const handleColumnPrefsApply = useCallback((prefs: CampaignListColumnPrefs) => {
@@ -104,7 +107,7 @@ export function useCampaignsDirectoryWorkspace({
   );
 
   const computedColumnWidths = useMemo((): Record<CampaignListColumnId, number> => {
-    const widthItems = columnWidthProbe?.items.length ? columnWidthProbe.items : items;
+    const widthItems = columnWidthProbe?.items?.length ? columnWidthProbe.items : (items ?? []);
     if (!widthItems.length) {
       return defaultCampaignListColumnWidths(visibleColumns);
     }
@@ -149,13 +152,13 @@ export function useCampaignsDirectoryWorkspace({
   }, [selectedIds]);
 
   const selectedCampaign = useMemo(
-    () => items.find((item) => item.id === selectedCampaignId),
-    [items, selectedCampaignId],
+    () => listItems.find((item) => item.id === selectedCampaignId),
+    [listItems, selectedCampaignId],
   );
 
   const summary = useMemo(
-    () => resolveCampaignListSummary(items, selectedIds, metricsById, marginsById, filterTotals),
-    [filterTotals, items, marginsById, metricsById, selectedIds],
+    () => resolveCampaignListSummary(listItems, selectedIds, metricsById, marginsById, filterTotals),
+    [filterTotals, listItems, marginsById, metricsById, selectedIds],
   );
 
   const selectedIdsList = useMemo(() => [...selectedIds], [selectedIds]);
@@ -206,7 +209,7 @@ export function useCampaignsDirectoryWorkspace({
   const resolveExportCampaigns = useCallback(async (): Promise<CampaignListExportDataset> => {
     if (selectedIdsList.length > 0) {
       const selected = new Set(selectedIdsList);
-      const fromPage = items.filter((item) => selected.has(item.id));
+      const fromPage = listItems.filter((item) => selected.has(item.id));
       if (fromPage.length === selectedIdsList.length) {
         return {
           items: fromPage,

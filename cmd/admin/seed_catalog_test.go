@@ -31,6 +31,7 @@ func TestSeedCatalog_campaignNamesUniquePer1000(t *testing.T) {
 
 func TestSeedCatalog_deterministicUUIDsAreRealistic(t *testing.T) {
 	placeholderPrefix := "00000000-0000-0000-0000-"
+	legacyDevMockPrefix := "00000000-"
 	seen := make(map[string]struct{})
 
 	check := func(kind string, seq int, id uuid.UUID) {
@@ -38,6 +39,12 @@ func TestSeedCatalog_deterministicUUIDsAreRealistic(t *testing.T) {
 		value := id.String()
 		if strings.HasPrefix(value, placeholderPrefix) {
 			t.Fatalf("%s seq=%d looks like placeholder uuid: %s", kind, seq, value)
+		}
+		if strings.HasPrefix(value, legacyDevMockPrefix) && strings.Contains(value, "-4000-8000-") {
+			t.Fatalf("%s seq=%d looks like legacy dev_mock sequential uuid: %s", kind, seq, value)
+		}
+		if strings.HasSuffix(value, strings.Repeat("0", 11)+"1") {
+			t.Fatalf("%s seq=%d has trivial sequential tail: %s", kind, seq, value)
 		}
 		if _, ok := seen[value]; ok {
 			t.Fatalf("duplicate seed uuid %s for %s seq=%d", value, kind, seq)

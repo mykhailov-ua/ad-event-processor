@@ -20,7 +20,7 @@ import type { FraudIntegration } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 
 export type FraudIntegrationsProps = {
-  items: FraudIntegration[];
+  items?: FraudIntegration[];
   customerId: string;
   draftCustomerId: string;
   fetching: boolean;
@@ -88,13 +88,13 @@ export function FraudIntegrations({
           title="Customer required"
           description="Enter a customer ID to list third-party fraud integration health."
         />
-      ) : items.length === 0 ? (
+      ) : (items ?? []).length === 0 ? (
         <EmptyState
           title="No integrations"
           description="No fraud integrations are configured for this customer."
         />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable horizontalScroll>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Campaign</DirectoryTableHead>
@@ -108,7 +108,7 @@ export function FraudIntegrations({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={`${row.campaign_id}-${row.provider ?? row.name}`}>
                   <TableCell className="font-mono text-xs">{row.campaign_id}</TableCell>
                   <TableCell>{row.name ?? ''}</TableCell>
@@ -127,7 +127,7 @@ export function FraudIntegrations({
                   <TableCell>
                     {displayTimestamp(row.last_success_at)}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate text-muted-foreground">
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
                     {row.last_error ?? ''}
                   </TableCell>
                 </TableRow>

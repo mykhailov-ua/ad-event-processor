@@ -5,6 +5,9 @@ import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Button, buttonVariants } from '@/components/ui/button';
 
+const COMPACT_NAV_BUTTON_CLASS =
+  'inline-flex items-center justify-center rounded-md border border-border bg-background text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 min-h-0 p-0 aria-disabled:opacity-50';
+
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>['variant'];
   variant?: 'default' | 'admin' | 'campaigns';
@@ -61,17 +64,13 @@ function Calendar({
           defaultClassNames.nav,
         ),
         button_previous: cn(
-          isCompact
-            ? 'inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 h-8 w-8 p-0 h-[--cell-size] w-[--cell-size] min-h-0 p-0 aria-disabled:opacity-50'
-            : buttonVariants({ variant: buttonVariant, shape: 'square' }),
-          'h-[--cell-size] w-[--cell-size] select-none',
+          isCompact ? COMPACT_NAV_BUTTON_CLASS : buttonVariants({ variant: buttonVariant, shape: 'square' }),
+          'h-[var(--cell-size)] w-[var(--cell-size)] select-none',
           defaultClassNames.button_previous,
         ),
         button_next: cn(
-          isCompact
-            ? 'inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 h-8 w-8 p-0 h-[--cell-size] w-[--cell-size] min-h-0 p-0 aria-disabled:opacity-50'
-            : buttonVariants({ variant: buttonVariant, shape: 'square' }),
-          'h-[--cell-size] w-[--cell-size] select-none',
+          isCompact ? COMPACT_NAV_BUTTON_CLASS : buttonVariants({ variant: buttonVariant, shape: 'square' }),
+          'h-[var(--cell-size)] w-[var(--cell-size)] select-none',
           defaultClassNames.button_next,
         ),
         month_caption: cn(
@@ -85,8 +84,8 @@ function Calendar({
         ),
         dropdown_root: cn(
           isCompact
-            ? 'has-focus:border-primary relative rounded-sm border border-border bg-background'
-            : 'has-focus:border-ring border-input has-focus:ring-ring/50 has-focus:ring-[3px] relative rounded-xl border border-border/50',
+            ? 'relative rounded-sm border border-border bg-background focus-within:border-primary'
+            : 'relative rounded-xl border border-border/50 border-input focus-within:border-ring focus-within:ring-ring/50 focus-within:ring-[3px]',
           defaultClassNames.dropdown_root,
         ),
         dropdown: cn(
@@ -186,6 +185,7 @@ function CalendarDayButton({
   const ref = React.useRef<HTMLButtonElement>(null);
   const isAdmin = variant === 'admin';
   const isCampaigns = variant === 'campaigns';
+  const isCompactDay = isAdmin || isCampaigns;
 
   React.useEffect(() => {
     if (modifiers.focused) {
@@ -197,7 +197,7 @@ function CalendarDayButton({
     <Button
       ref={ref}
       variant="ghost"
-      size="icon"
+      size={isCompactDay ? 'default' : 'icon'}
       data-day={day.date.toLocaleDateString()}
       data-selected-single={
         modifiers.selected &&
@@ -209,11 +209,13 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        'size-[calc(var(--cell-size)-0.3rem)] p-0 font-normal',
+        isCompactDay
+          ? 'h-[var(--cell-size)] w-[var(--cell-size)] p-0 font-normal'
+          : 'size-[calc(var(--cell-size)-0.3rem)] p-0 font-normal',
         isCampaigns
-          ? 'min-h-0 !h-[--cell-size] !w-[--cell-size] rounded-full border border-transparent bg-transparent p-0 text-[13px] leading-none shadow-none hover:bg-accent data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10'
+          ? 'rounded-full border border-transparent bg-transparent text-[13px] leading-none shadow-none hover:bg-accent data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10'
           : isAdmin
-          ? 'min-h-0 border border-transparent bg-transparent shadow-none hover:bg-accent rounded-sm leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:border-transparent data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-2 group-data-[focused=true]/day:ring-ring'
+          ? 'border border-transparent bg-transparent shadow-none hover:bg-accent rounded-sm leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:border-transparent data-[range-middle=true]:bg-accent/50 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-2 group-data-[focused=true]/day:ring-ring'
           : 'rounded-[var(--picker-radius-control,var(--radius))] leading-none data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground data-[range-middle=true]:bg-accent/55 data-[range-middle=true]:text-foreground group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 group-data-[focused=true]/day:ring-[3px]',
         'flex items-center justify-center',
         '[&>span]:text-xs [&>span]:opacity-100',

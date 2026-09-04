@@ -1,17 +1,32 @@
 import { test, expect } from '@playwright/test';
 
-import { gotoCustomers, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  expectApiListBoundToDom,
+  gotoLive,
+  loginAsAdmin,
+  mainHeading,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('customers directory shows table or empty state', async ({ page }) => {
+test('customers directory loads rows from GET /api/v1/customers', async ({ page }) => {
   await loginAsAdmin(page);
-  await gotoCustomers(page);
+  await gotoLive(page, '/customers');
+  await mainHeading(page, 'Customers').waitFor({ timeout: 15_000 });
 
-  const emptyState = page.getByText('No customers');
-  const tableHeader = page.getByRole('columnheader', { name: 'Name' });
+  const listBody = await page.evaluate(async () => {
+    const response = await fetch('/api/v1/customers', { credentials: 'include' });
+    if (!response.ok) {
+      throw new Error(`customers list failed: ${response.status}`);
+    }
+    return response.json();
+  });
 
-  await expect(emptyState.or(tableHeader)).toBeVisible({ timeout: 15_000 });
+  await expectApiListBoundToDom(page, listBody, {
+    emptyTitle: 'No customers',
+    rowLabel: (row) => String(row.name ?? ''),
+  });
 });

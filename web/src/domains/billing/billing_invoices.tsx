@@ -28,7 +28,7 @@ import { displayMicro } from '@/lib/display';
 export type InvoiceStatusFilter = '' | 'draft' | 'finalized' | 'void';
 
 export type BillingInvoicesProps = {
-  items: Invoice[];
+  items?: Invoice[];
   total: number;
   limit: number;
   offset: number;
@@ -122,7 +122,7 @@ export function BillingInvoices({
         />
       </form>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No invoices" description="No invoices match the current filters." />
       ) : (
         <DirectoryTable>
@@ -139,7 +139,7 @@ export function BillingInvoices({
             </TableRow>
           </TableHeader>
           <TableBody>
-              {items.map((invoice) => (
+              {(items ?? []).map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell>
                     {invoice.id ? (

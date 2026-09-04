@@ -1,5 +1,5 @@
 import { format, isValid, parseISO } from 'date-fns';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   CartesianGrid,
   ComposedChart,
@@ -24,6 +24,7 @@ import {
   type DashboardMetricId,
 } from '@/domains/dashboards/dashboard_metrics';
 import { displayCount } from '@/lib/display';
+import { markAdminPerf, measureAdminPerf, publishAdminPerfDuration } from '@/lib/perf/browser_marks';
 import { EmptyState } from '@/shell/empty_state';
 import { cn } from '@/lib/utils';
 
@@ -115,7 +116,7 @@ function ChartTooltipContent({
     }
     return (
       <div className="grid gap-1">
-        <p className="font-numeric text-admin-mini tracking-wide text-muted-foreground">
+        <p className="font-numeric text-ui-mini tracking-wide text-muted-foreground">
           {title}
         </p>
         {metrics.map((metric) => {
@@ -255,6 +256,17 @@ export function DashboardMultiAxisChart({ series, chartMetricIds, className }: D
     () => buildDateAxisTicks(chartRows.map((row) => row.label)),
     [chartRows],
   );
+
+  useLayoutEffect(() => {
+    if (chartRows.length === 0) {
+      return;
+    }
+    markAdminPerf('dashboard-chart-mount');
+    const duration = measureAdminPerf('dashboard-chart-rows', 'dashboard-chart-mount');
+    if (duration != null) {
+      publishAdminPerfDuration('dashboard-chart-rows', duration);
+    }
+  }, [chartRows]);
 
   if (series.length === 0) {
     return (

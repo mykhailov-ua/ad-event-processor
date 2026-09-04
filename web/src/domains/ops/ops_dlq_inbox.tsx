@@ -20,7 +20,7 @@ import {
 } from '@/domains/ops/ops_table';
 
 export type OpsDlqInboxProps = {
-  items: DLQInboxEntry[];
+  items?: DLQInboxEntry[];
   nextCursor?: string;
   partial?: boolean;
   limit: number;
@@ -65,14 +65,14 @@ export function OpsDlqInbox({
           canGoNext={Boolean(nextCursor)}
           canGoPrev={canGoPrev}
           disabled={fetching}
-          summary={`${items.length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
+          summary={`${(items ?? []).length} entries on this page${nextCursor ? '  /  more pages available' : ''}`}
           onNext={onNext}
           onPrev={onPrev}
         />
       }
       title="DLQ inbox"
     >
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState description="No failed deliveries are queued." title="DLQ inbox empty" />
       ) : (
         <OpsTable
@@ -89,7 +89,7 @@ export function OpsDlqInbox({
             </OpsTableHeaderRow>
           }
         >
-          {items.map((entry) => {
+          {(items ?? []).map((entry) => {
             const rowKey = entry.id ?? `${entry.source}-${entry.failed_at}`;
             const canRetry = Boolean(entry.id && entry.source);
             return (
@@ -102,7 +102,7 @@ export function OpsDlqInbox({
                   {entry.campaign_id ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{entry.event_type ?? ''}</OpsTableCell>
-                <OpsTableCell className="max-w-0 truncate text-muted-foreground">
+                <OpsTableCell className="whitespace-nowrap text-muted-foreground">
                   {entry.error ?? ''}
                 </OpsTableCell>
                 <OpsTableCell>{displayTimestamp(entry.failed_at, entry.failed_at_display)}</OpsTableCell>

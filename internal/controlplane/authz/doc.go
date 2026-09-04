@@ -19,4 +19,7 @@
 //
 //	go test ./internal/controlplane/authz/ -short -count=1
 //	go test ./internal/controlplane/authz/ -short -run 'TestMaskLevelFromPermissions|TestPolicyPermissionMatrix' -count=1
+//	go test ./internal/controlplane/ -short -run 'TestManagementAPI_RoleUserForbidden|TestFault_RBACMaskEnforced' -count=1
+//
+// RBAC contract: .cursor/rules/control-plane.mdc (RBAC section); client UX only: frontend-slop.mdc (RBAC).
 package authz

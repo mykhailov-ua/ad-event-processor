@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { ackSmartAlertEvent, listSmartAlertHistory } from '@/api/smart_alerts_api';
 import { SmartAlertsHistoryDirectory } from '@/domains/automation/smart_alerts_history_directory';
@@ -21,14 +21,12 @@ export function SmartAlertsHistoryPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listSmartAlertHistory({ customer_id: appliedCustomerId, limit: 50 }, signal);
     },
     [appliedCustomerId, reloadKey, shouldFetch],
   );
-
-  const items = useMemo(() => data ?? [], [data]);
 
   const onAck = useCallback(async (eventId: string) => {
     setAckingEventId(eventId);
@@ -45,12 +43,12 @@ export function SmartAlertsHistoryPage() {
 
   return (
     <SmartAlertsHistoryDirectory
-      items={items}
+      items={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       ackingEventId={ackingEventId}
       ackError={ackError}
       onDraftCustomerIdChange={setDraftCustomerId}

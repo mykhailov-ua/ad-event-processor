@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   SmartAlertEvent,
   SmartAlertsListHistoryQuery,
@@ -13,7 +13,7 @@ export async function listSmartAlertRules(
 ): Promise<SmartAlertRule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJson<SmartAlertRule[]>(`/api/v1/smart-alerts/rules?${search.toString()}`, { signal });
+  return apiJsonArray<SmartAlertRule>(`/api/v1/smart-alerts/rules?${search.toString()}`, { signal });
 }
 
 export async function listSmartAlertHistory(
@@ -25,7 +25,7 @@ export async function listSmartAlertHistory(
   if (params.limit != null) {
     search.set('limit', String(params.limit));
   }
-  return apiJson<SmartAlertEvent[]>(`/api/v1/smart-alerts/history?${search.toString()}`, {
+  return apiJsonArray<SmartAlertEvent>(`/api/v1/smart-alerts/history?${search.toString()}`, {
     signal,
   });
 }

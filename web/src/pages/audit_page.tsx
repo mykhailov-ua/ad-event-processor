@@ -70,7 +70,7 @@ export function AuditPage() {
 
   return (
     <AuditDirectory
-      items={data?.items ?? []}
+      items={data?.items}
       total={data?.total ?? 0}
       limit={query.limit ?? DEFAULT_LIST_LIMIT}
       offset={query.offset ?? 0}

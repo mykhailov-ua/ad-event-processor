@@ -30,7 +30,7 @@ import { JsonDashboardView } from '@/domains/dashboards/json_dashboard_view';
 import { displayTimestamp } from '@/lib/display';
 
 export type DomainsDirectoryProps = {
-  items: DomainHealth[];
+  items?: DomainHealth[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -185,7 +185,7 @@ export function DomainsDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No domains" description="Domain health list returned no entries." />
       ) : (
         <DirectoryTable>
@@ -200,7 +200,7 @@ export function DomainsDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.hostname}>
                   <TableCell>{row.hostname}</TableCell>
                   <TableCell>{row.role}</TableCell>

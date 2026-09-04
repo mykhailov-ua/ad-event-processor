@@ -49,12 +49,19 @@ export function EmptyState({
   const showAction = Boolean(actionLabel && (actionHref || onAction));
 
   return (
-    <div className={cn('admin-empty-state', className)}>
-      <div className="admin-empty-state__icon">
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border bg-muted/30 px-8 py-12 text-center',
+        className,
+      )}
+    >
+      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-background text-muted-foreground">
         <Inbox aria-hidden className="h-6 w-6" />
       </div>
-      <p className="admin-empty-state__title">{resolvedTitle}</p>
-      <p className="admin-empty-state__description">{resolvedDescription}</p>
+      <p className="m-0 text-base font-semibold text-foreground">{resolvedTitle}</p>
+      <p className="m-0 mt-1 max-w-md text-[13px] leading-[18px] text-muted-foreground">
+        {resolvedDescription}
+      </p>
       {showAction ? (
         <div className="mt-4">
           {actionHref ? (

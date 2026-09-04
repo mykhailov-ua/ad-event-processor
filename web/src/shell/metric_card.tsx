@@ -15,9 +15,11 @@ export function MetricCard({ label, value, deltaPct, className }: MetricCardProp
   const positive = showDelta && delta >= 0;
 
   return (
-    <div className={cn('admin-metric-card', className)}>
+    <div className={cn('rounded-[10px] border border-border bg-card p-4', className)}>
       <div className="flex items-start justify-between gap-2">
-        <p className="admin-metric-card__label">{label}</p>
+        <p className="m-0 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
+          {label}
+        </p>
         {showDelta ? (
           <span
             className={cn(
@@ -31,7 +33,7 @@ export function MetricCard({ label, value, deltaPct, className }: MetricCardProp
           </span>
         ) : null}
       </div>
-      <p className="admin-metric-card__value tabular-nums">{value}</p>
+      <p className="m-0 mt-2 text-2xl font-bold leading-none text-foreground tabular-nums">{value}</p>
     </div>
   );
 }

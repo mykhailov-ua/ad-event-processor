@@ -13,7 +13,7 @@ import type { AffiliateStatusPreset } from '@/api/types';
 import { IntegrationsNav, integrationsPanelError } from '@/domains/integrations/integrations_nav';
 
 export type IntegrationsAffiliatePresetsProps = {
-  presets: AffiliateStatusPreset[];
+  presets?: AffiliateStatusPreset[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -42,7 +42,7 @@ export function IntegrationsAffiliatePresets({
     <PageChrome title="Affiliate status presets">
       <IntegrationsNav />
 
-      {presets.length === 0 ? (
+      {(presets ?? []).length === 0 ? (
         <EmptyState
           title="No presets"
           description="No affiliate status presets are configured."
@@ -56,7 +56,7 @@ export function IntegrationsAffiliatePresets({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {presets.map((row) => (
+              {(presets ?? []).map((row) => (
                 <TableRow key={row.name ?? 'preset'}>
                   <TableCell>{row.name ?? ''}</TableCell>
                   <TableCell>{row.statuses?.length ?? 0}</TableCell>

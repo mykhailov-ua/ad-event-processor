@@ -24,6 +24,8 @@ Same invariants as Go `cmd/control` (`modular-monolith.mdc`, `structure.mdc`):
 
 **Quality reference:** `lead-intent-processor` — `internal/crm/{admin,store,webhook}` owns CRM surface; `internal/app` (~18 prod `.go`) wires only. Admin SPA mirrors that split: `pages/` = wire, `domains/<domain>/` = product.
 
+**Agent audits:** mandatory toolchain + catalog IDs in `frontend-slop.mdc` **Agent execution protocol** — no subjective "best practices" reviews.
+
 Cross-ref: `ui.mdc` (macro Grid / micro Flex layout, styling stack), `react.mdc` (Hot vs Cold runtime), `frontend-hot-path.mdc` (suboptimal ops, scale regimes), `boundaries.mdc` (coupling limits), `naming.mdc`.
 
 ## Status
@@ -31,7 +33,7 @@ Cross-ref: `ui.mdc` (macro Grid / micro Flex layout, styling stack), `react.mdc`
 | Fact | State |
 | :--- | :--- |
 | `web/` tree | Active — React 19 + TSX + Tailwind + first-party `components/ui/` |
-| Styling | Tailwind utilities in TSX; legacy `*.module.css` sunsets on touch |
+| Styling | Tailwind utilities in TSX; BEM banned; legacy `*.module.css` removed on touch |
 | Contract | `api/openapi/` + generated TS types |
 | Embed | `internal/controlplane/admin_static_stub/` until `web/dist` ships |
 
@@ -43,12 +45,13 @@ One agent task = **one layer owner**. Crossing layers without explicit `Depends 
 
 | Level | Path | Owns | Must not own |
 | :--- | :--- | :--- | :--- |
-| L0 Contract | `api/openapi/`, Go `*_handlers.go` | Query params, DTO, validation, SQL/CH | `web/src` pages (unless PR closes both) |
-| L1 Transport | `web/src/api/*_api.ts` | HTTP, abort, parse JSON to typed snapshot | `useMemo` filter/sort over full `items[]` |
+| L0 Contract | `api/openapi/`, Go `*_handlers.go` | Query params, DTO, **S1-S7 validation before persist**, SQL/CH | `web/src` pages (unless PR closes both) |
+| L1 Transport | `web/src/api/*_api.ts` | HTTP, abort, parse JSON to typed snapshot | `useMemo` filter/sort over full `items[]`; owning UI prefs state |
+| L1b Dev mock | `web/src/api/dev_mock/` | T0 intercept; wire + **server-parity UUIDs** (`seed_uuid.ts`); `handler.test.ts` **M1/M2** | Incremental ids, slug `user_id`, fixtures in `domains/`; FM* fake tests |
 | L2 Composition | `web/src/pages/*` | Section compose, URL → fetch params, route entry; pass props to `domains/<domain>/` | Tailwind layout on pages, business rules, invented API fields |
-| L3 Domain UI | `web/src/domains/<domain>/` | Macro Grid / micro Flex via Tailwind; domain tables and forms | Cross-page Context, server logic, hand-rolled overlays |
+| L3 Domain UI | `web/src/domains/<domain>/` | Macro Grid / micro Flex; semantic `<table>`; **one primary path per intent** | Cross-page Context, server logic, hand-rolled overlays, duplicate mutation entry points |
 | L4 Shared chrome | `web/src/shell/`, `web/src/components/ui/` | Nav, login, PageChrome; UI primitives | Domain-specific API shapes |
-| L5 Theme | `app.css`, `tailwind.config.ts` | `@tailwind` entry; zinc palette in config + `dark:` | Domain-specific layout rules |
+| L5 Theme | `app.css`, `tailwind.config.ts`, `lib/admin_kit.ts`, `lib/admin_chrome.ts` | `@tailwind` entry; zinc palette; **named Tailwind constants** for cross-route chrome (`frontend-slop.mdc` **Shared style contracts**) | Domain-specific layout rules in `app.css` BEM |
 | L6 Static embed | `web/src/static/` | `track.js` snippet (not admin) | Admin React imports |
 
 ### Hard FE/BE boundary
@@ -62,6 +65,27 @@ One agent task = **one layer owner**. Crossing layers without explicit `Depends 
 | Export / long jobs | Async endpoint + poll | Job id + poll UI |
 
 Forbidden: React Context for list filter state; root `FilterProvider`; client KPI math; hand-written TS types diverging from OpenAPI.
+
+### Dev mock entity ID parity (T0 only)
+
+`web/src/api/dev_mock/` is not exempt from server identity rules (`frontend-slop.mdc` **Entity IDs**).
+
+| Need | Use | Never |
+| :--- | :--- | :--- |
+| Catalog row `n` in fixtures | `seedDeterministicUuid('<kind>', n)` | `devUuid()`, `00000000-...-000N`, `padStart(12,'0')` |
+| POST / wizard / commit | `newRandomUuid()` | Static reused id per request |
+| `user_id`, `customer_id`, `campaign_id` FK | Id from `DEV_MOCK_*` or store | `"buyer-1"`, `"user-1"`, integer strings |
+| Display label in table | `display_id` or name from fixture | Raw uuid in customer column |
+
+Parity test: `web/src/api/dev_mock/seed_uuid.test.ts` vectors must match `go test ./cmd/admin/ -run TestSeedCatalog_deterministicUUIDsAreRealistic`.
+
+### Styling ownership (BEM banned; Tailwind only)
+
+BEM (`admin-*__*`, `campaign-*__*`) is **banned** -- not a sunset path. New and touched UI: Tailwind in TSX + `components/ui` primitives only. One DOM node = one styling owner; never stack `app.css` BEM hooks with Tailwind utilities on the same element.
+
+Pure CSS in `app.css` only for Tailwind entry, scrollbar pseudo-elements, and similar cases where utilities cannot apply (`frontend-slop.mdc` **Styling stack**).
+
+Legacy collision taxonomy and file audit: `frontend-slop.mdc` **Styling stack**.
 
 ## Target package map
 
@@ -101,6 +125,9 @@ web/
 | New `*.module.css` | Legacy CSS Modules stack | Tailwind in TSX |
 | New `*.variants.ts` per domain file | CVA sprawl | `admin_chrome.ts` tokens inside `components/ui/` only |
 | BEM `__` under `web/src/domains` | Unscoped global classes | Tailwind utilities |
+| Dual state writers on one resource | Leaf `save*` / `useState` + owner hook for same prefs, filter, or selection | Single owner + `onXChange` up (`frontend-slop.mdc` **State ownership**) |
+| Unguarded user refetch | Refresh handler bumps deps or calls API with no coalesce window | Owner `useCoalescedCallback` or inline guard (`frontend-slop.mdc` **User action coalescing**) |
+| Duplicate UX mutation path | Two controls same intent (e.g. Create + Wizard) without mutex | One primary; script table (`frontend-slop.mdc` **UX scenario contract**) |
 | Raw `@radix-ui/*`, `class-variance-authority`, `components.json` | shadcn stack | First-party `web/src/components/ui/` only |
 | Global `btn--*` on pages | Layout escape | `<Button>` from `components/ui/button` |
 | Product-prefixed static (`ad-event-processor-track.js`) | Legacy token | `track.js`, export `trackEvent` (`naming.mdc`) |
@@ -180,7 +207,8 @@ Milestone PR: paste verification commands (`ui.mdc`).
 | 3 | New UI under `domains/<domain>/`; primitives from `components/ui/` |
 | 4 | No client list business logic |
 | 5 | No new CSS Modules; Tailwind + shadcn only |
-| 6 | `typecheck` + surface gate on touched paths |
+| 6 | Repeated chrome (table header, filter grid, control height): extract to `admin_kit` / `admin_chrome` / shell `const` / `*_classes.ts` -- do not copy-paste utility chains (`frontend-slop.mdc` **Shared style contracts**) |
+| 7 | `typecheck` + surface gate on touched paths |
 
 ## Related rules
 

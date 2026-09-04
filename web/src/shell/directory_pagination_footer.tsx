@@ -23,6 +23,7 @@ export type DirectoryPaginationFooterProps = {
   page?: number;
   pageCount?: number;
   onPageChange?: (page: number) => void;
+  showPrevNext?: boolean;
   className?: string;
 };
 
@@ -44,6 +45,7 @@ export function DirectoryPaginationFooter({
   page,
   pageCount,
   onPageChange,
+  showPrevNext = true,
   className,
 }: DirectoryPaginationFooterProps) {
   const showPageSize =
@@ -58,17 +60,19 @@ export function DirectoryPaginationFooter({
           {rangeLabel}
         </DirectoryListMeta>
       ) : null}
-      <PaginationPrevNext
-        canGoNext={canGoNext}
-        canGoPrev={canGoPrev}
-        disabled={disabled}
-        layout={layout}
-        nextLabel={nextLabel}
-        prevLabel={prevLabel}
-        variant={variant}
-        onNext={onNext}
-        onPrev={onPrev}
-      />
+      {showPrevNext ? (
+        <PaginationPrevNext
+          canGoNext={canGoNext}
+          canGoPrev={canGoPrev}
+          disabled={disabled}
+          layout={layout}
+          nextLabel={nextLabel}
+          prevLabel={prevLabel}
+          variant={variant}
+          onNext={onNext}
+          onPrev={onPrev}
+        />
+      ) : null}
       {showPageNumbers ? (
         <PaginationPages
           disabled={disabled}

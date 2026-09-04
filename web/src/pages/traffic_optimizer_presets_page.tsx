@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-
 import { listTrafficOptimizerPresets } from '@/api/traffic_optimizer_api';
 import { TrafficOptimizerPresetsDirectory } from '@/domains/automation/traffic_optimizer_presets_directory';
 import { useResource } from '@/api/use_resource';
@@ -10,11 +8,9 @@ export function TrafficOptimizerPresetsPage() {
     [],
   );
 
-  const items = useMemo(() => data ?? [], [data]);
-
   return (
     <TrafficOptimizerPresetsDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

@@ -7,7 +7,7 @@ const baseURL =
 
 export default defineConfig({
   testDir: '.',
-  testMatch: '*.spec.js',
+  testMatch: '**/*.spec.js',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -19,6 +19,14 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      use: { browserName: 'chromium' },
+      testIgnore: '**/perf/**',
+    },
+    {
+      name: 'chromium-perf',
+      testMatch: '**/perf/**/*.spec.js',
+      fullyParallel: false,
+      workers: 1,
       use: { browserName: 'chromium' },
     },
   ],

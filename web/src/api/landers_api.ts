@@ -1,8 +1,8 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type { CreateLanderRequest, HostedEditorState, Lander } from './types.js';
 
 export async function listLanders(signal?: AbortSignal): Promise<Lander[]> {
-  return apiJson<Lander[]>('/api/v1/landers', { signal });
+  return apiJsonArray<Lander>('/api/v1/landers', { signal });
 }
 
 export async function createLander(body: CreateLanderRequest, signal?: AbortSignal): Promise<Lander> {

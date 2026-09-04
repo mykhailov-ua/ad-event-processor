@@ -35,16 +35,20 @@ export function FraudOverridesPage() {
 
   const onSubmit = useCallback(async () => {
     if (!customerId) {
+      setSaveError(new Error('Apply a customer before creating an override.'));
+      setSaveSuccess(false);
+      return;
+    }
+    const ipHash = draftIpHash.trim();
+    const ip = draftIp.trim();
+    if (!ipHash && !ip) {
+      setSaveError(new Error('IP hash or IP address is required.'));
+      setSaveSuccess(false);
       return;
     }
     setSaving(true);
     setSaveError(undefined);
     setSaveSuccess(false);
-    const ipHash = draftIpHash.trim();
-    const ip = draftIp.trim();
-    if (!ipHash && !ip) {
-      return;
-    }
     try {
       await createFraudOverride(customerId, {
         campaign_id: draftCampaignId.trim() || undefined,

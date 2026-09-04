@@ -6,8 +6,8 @@ import {
   fetchCampaignListMetricsTotals,
   listCampaigns,
 } from '@/api/campaigns_api';
-import { listCustomers } from '@/api/customers_api';
 import { listSelfServeTemplates } from '@/api/selfserve_api';
+import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';
 import type { CampaignListQuery } from '@/api/types';
 import { useResource } from '@/api/use_resource';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
@@ -109,26 +109,26 @@ export function useCampaignsPageList({
   );
 
   const campaignIds = useMemo(
-    () => (data?.items ?? []).map((campaign) => campaign.id),
+    () => data?.items?.map((campaign) => campaign.id),
     [data?.items],
   );
 
   const widthProbeIds = useMemo(
-    () => (widthProbeData?.items ?? []).map((campaign) => campaign.id),
+    () => widthProbeData?.items?.map((campaign) => campaign.id),
     [widthProbeData?.items],
   );
 
   const metricsCampaignIds = useMemo(
     () =>
       listCoversWidthProbeDataset
-        ? campaignIds
-        : mergeCampaignIdsForMetricsBatch(campaignIds, widthProbeIds),
+        ? (campaignIds ?? [])
+        : mergeCampaignIdsForMetricsBatch(campaignIds ?? [], widthProbeIds ?? []),
     [campaignIds, listCoversWidthProbeDataset, widthProbeIds],
   );
 
   const { data: metricsBatch, error: metricsError } = useResource(
     (signal) => fetchCampaignListMetricsBatch(metricsCampaignIds, statsQuery, signal),
-    [metricsCampaignIds.join(','), refreshToken, statsQuery.from, statsQuery.to],
+    [metricsCampaignIds?.join(',') ?? '', refreshToken, statsQuery.from, statsQuery.to],
   );
 
   const filterTotalsQuery = useMemo(
@@ -194,9 +194,9 @@ export function useCampaignsPageList({
 
   const columnWidthProbe = useMemo((): CampaignListColumnWidthProbe | undefined => {
     const probeItems = listCoversWidthProbeDataset
-      ? (data?.items ?? [])
-      : (widthProbeData?.items ?? []);
-    if (!probeItems.length) {
+      ? data?.items
+      : widthProbeData?.items;
+    if (!probeItems?.length) {
       return undefined;
     }
     return {
@@ -214,7 +214,7 @@ export function useCampaignsPageList({
         }
         throw err;
       }),
-    [customerId, refreshToken],
+    [customerId],
   );
 
   const listFacets = useMemo(() => {
@@ -246,7 +246,7 @@ export function useCampaignsPageList({
   const statusTotalsFetching = fetching && statusTotals == null;
 
   const { data: customersData, fetching: customersFetching } = useResource(
-    (signal) => listCustomers({ limit: 100, sort: 'name', order: 'asc' }, signal),
+    (signal) => fetchCustomersComboboxCached(signal),
     [],
   );
 

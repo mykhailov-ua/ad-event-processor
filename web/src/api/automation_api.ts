@@ -1,4 +1,4 @@
-import { apiJson } from './client.js';
+import { apiJson, apiJsonArray } from './client.js';
 import type {
   AutomationDryRunResult,
   AutomationListRulesQuery,
@@ -8,7 +8,7 @@ import type {
 } from './types.js';
 
 export async function listAutomationPresets(signal?: AbortSignal): Promise<AutomationPreset[]> {
-  return apiJson<AutomationPreset[]>('/api/v1/automation/presets', { signal });
+  return apiJsonArray<AutomationPreset>('/api/v1/automation/presets', { signal });
 }
 
 export async function listAutomationRules(
@@ -17,7 +17,7 @@ export async function listAutomationRules(
 ): Promise<AutomationRule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJson<AutomationRule[]>(`/api/v1/automation/rules?${search.toString()}`, { signal });
+  return apiJsonArray<AutomationRule>(`/api/v1/automation/rules?${search.toString()}`, { signal });
 }
 
 export async function createAutomationRule(

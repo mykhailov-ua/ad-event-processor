@@ -1,8 +1,8 @@
 // Package brand owns advertiser brand and weighted creative CRUD for the admin API.
 //
 // Role:
-//   - HTTPHandlers (handlers.go): GET/POST /api/v1/brands; GET/POST /api/v1/brands/{id}/creatives;
-//     PATCH/DELETE /api/v1/brand-creatives/{id}.
+//   - HTTPHandlers (handlers.go): GET/POST /api/v1/brands; GET /api/v1/brands/{id};
+//     GET/POST /api/v1/brands/{id}/creatives; PATCH/DELETE /api/v1/brand-creatives/{id}.
 //   - Store (store.go) persists brands and creatives in Postgres; ConfigureBrandFcap updates
 //     freq_limit/freq_window in a transaction.
 //   - Host callbacks (implemented by controlplane brand_bridge.go) enqueue fcap and creative

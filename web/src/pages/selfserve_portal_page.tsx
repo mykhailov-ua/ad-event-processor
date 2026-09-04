@@ -27,7 +27,7 @@ export function SelfServePortalPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve({ invoices: [], total: 0 });
+        return Promise.resolve(undefined);
       }
       return listSelfServeInvoices({ customer_id: appliedCustomerId }, signal);
     },
@@ -155,7 +155,7 @@ export function SelfServePortalPage() {
       draftCustomerId={draftCustomerId}
       fetchingInvoices={fetching}
       invoicesError={error}
-      hasInvoicesSnapshot={!shouldFetch || data != null}
+      hasInvoicesSnapshot={data != null}
       draftPaymentAmountMicro={draftPaymentAmountMicro}
       draftApiKeyName={draftApiKeyName}
       draftPauseCampaignId={draftPauseCampaignId}

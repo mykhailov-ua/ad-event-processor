@@ -1,9 +1,34 @@
 import { test, expect } from '@playwright/test';
 
-import { gotoCampaigns, loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  expectApiListBoundToDom,
+  gotoCampaigns,
+  gotoCampaignsLive,
+  isCampaignsListResponse,
+  loginAsAdmin,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
+});
+
+test('campaigns directory loads rows from GET /api/v1/campaigns', async ({ page }) => {
+  await loginAsAdmin(page);
+  const listResponse = page.waitForResponse(isCampaignsListResponse, { timeout: 20_000 });
+  await gotoCampaignsLive(page);
+  const response = await listResponse;
+  const body = await response.json();
+
+  expect(body).toHaveProperty('items');
+  expect(Array.isArray(body.items)).toBe(true);
+  expect(body).toHaveProperty('total');
+  expect(typeof body.total).toBe('number');
+
+  await expectApiListBoundToDom(page, body, {
+    emptyTitle: 'No campaigns yet. Create one to start tracking spend and delivery.',
+    rowLabel: (row) => String(row.name ?? ''),
+  });
 });
 
 test('campaigns directory toolbar and filters are visible', async ({ page }) => {

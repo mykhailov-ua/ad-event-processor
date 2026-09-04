@@ -95,18 +95,18 @@ export function CampaignCountryBadges({
           <span
             key={code}
             className={cn(
-              'inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-border px-1 text-admin-mini',
+              'inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-border px-1 text-ui-mini',
               countryBadgeTone(code),
             )}
             title={code}
           >
             <CountryFlagIcon className="shrink-0" code={code} title={code} />
-            <span className="truncate">{code}</span>
+            <span className="whitespace-nowrap">{code}</span>
           </span>
         ),
       )}
       {overflow > 0 ? (
-        <span className="inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-border px-1 text-admin-mini text-muted-foreground bg-muted/50">+{overflow}</span>
+        <span className="inline-flex max-w-full items-center gap-0.5 overflow-hidden rounded border border-border px-1 text-ui-mini text-muted-foreground bg-muted/50">+{overflow}</span>
       ) : null}
     </span>
   );

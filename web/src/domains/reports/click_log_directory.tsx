@@ -163,7 +163,7 @@ export function ClickLogDirectory({
           description="Adjust filters or pick a different date range."
         />
       ) : (
-        <DirectoryTable scrollable>
+        <DirectoryTable horizontalScroll scrollable>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead className="w-[10%]">Type</DirectoryTableHead>
@@ -184,7 +184,7 @@ export function ClickLogDirectory({
             {events.map((event) => (
               <TableRow key={`${event.click_id}-${event.event_type}-${event.created_at}`}>
                 <TableCell className="capitalize text-sm">{event.event_type ?? 'click'}</TableCell>
-                <TableCell className="max-w-0 truncate font-mono text-xs">
+                <TableCell className="whitespace-nowrap font-mono text-xs">
                   {event.click_id ? (
                     <Link
                       className="text-primary hover:underline"
@@ -199,7 +199,7 @@ export function ClickLogDirectory({
                 <TableCell className="text-sm tabular-nums">
                   {displayTimestamp(event.created_at)}
                 </TableCell>
-                <TableCell className="max-w-0 truncate text-sm">
+                <TableCell className="whitespace-nowrap text-sm">
                   {event.campaign_id ? (
                     <Link
                       className="text-primary hover:underline"
@@ -212,7 +212,7 @@ export function ClickLogDirectory({
                   )}
                 </TableCell>
                 <TableCell className="text-sm">{event.country ?? '-'}</TableCell>
-                <TableCell className="max-w-0 truncate text-sm" title={event.sub1}>
+                <TableCell className="whitespace-nowrap text-sm" title={event.sub1}>
                   {event.sub1 ?? '-'}
                 </TableCell>
                 <TableCell className="text-right text-sm tabular-nums">
@@ -241,7 +241,7 @@ export function ClickLogDirectory({
       {timelineMode && postbacks.length > 0 ? (
         <section className="ui-surface-raised grid gap-3 p-5">
           <h3 className="text-base font-medium tracking-tight">Postbacks</h3>
-          <DirectoryTable className="border-0 bg-transparent shadow-none">
+          <DirectoryTable className="border-0 bg-transparent shadow-none" horizontalScroll>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Status</DirectoryTableHead>
@@ -256,7 +256,7 @@ export function ClickLogDirectory({
                   <TableCell className="tabular-nums">
                     {displayTimestamp(postback.created_at)}
                   </TableCell>
-                  <TableCell className="max-w-0 truncate text-muted-foreground">
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
                     {postback.error_message ?? '-'}
                   </TableCell>
                 </TableRow>

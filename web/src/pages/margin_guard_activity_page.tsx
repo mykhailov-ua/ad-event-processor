@@ -25,14 +25,12 @@ export function MarginGuardActivityPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listMarginGuardActivity({ campaign_id: appliedCampaignId }, signal);
     },
     [appliedCampaignId, reloadKey, shouldFetch],
   );
-
-  const items = data ?? [];
 
   const onRemoveOverride = useCallback(async () => {
     const campaignId = appliedCampaignId.trim();
@@ -58,7 +56,7 @@ export function MarginGuardActivityPage() {
 
   return (
     <MarginGuardActivityDirectory
-      items={items}
+      items={data}
       appliedCampaignId={appliedCampaignId}
       draftCampaignId={draftCampaignId}
       draftPlacementId={draftPlacementId}
@@ -67,7 +65,7 @@ export function MarginGuardActivityPage() {
       removeSuccess={removeSuccess}
       error={error}
       actionError={actionError}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       onDraftCampaignIdChange={setDraftCampaignId}
       onApplyCampaignScope={applyCampaignScope}
       onDraftPlacementIdChange={setDraftPlacementId}

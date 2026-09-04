@@ -33,6 +33,8 @@ Minimum LoC with correct idempotency, audit trail, and operator honesty. Flat co
 
 | Category | Forbidden |
 | :--- | :--- |
+| Admin handler without RBAC | New `/api/v1` route without `RequirePermission` / `RequireAnyPermission` matching OpenAPI `x-permissions` (`control-plane.mdc` **RBAC**, **RB-S1**) |
+| Client-only authorization | Citing nav filter or `user.role` as access control without server `403` test (`frontend-slop.mdc` **RB-L***) |
 | Architecture ceremony | Clean/hexagonal layers, GoF Provider/Factory/Strategy registries |
 | Single-impl interfaces | `type NotifierProvider interface` with one Slack sender |
 | Bundles | `ProviderBundle`, `NewProvidersFromConfig`, `map[string]any` JSON builders |
@@ -87,6 +89,24 @@ Shared cold HTTP/JSON/UUID utilities - use instead of ad-hoc copies:
 Gate: `bash scripts/ci/static/cold_path_json.sh` - `TestReadLimitedBody`, `TestColdPathJSON`, `TestLoginBodySizeLimit`.
 
 Cold path uses `encoding/json` - never the hot-path DFA/jsonScanBudget stack.
+
+## Mutation validation (fail-closed)
+
+Admin and payment mutations must **not** reach Postgres, Redis, or outbox until validation passes. Client-side checks are UX only; **server pipeline is authoritative** (`frontend-slop.mdc` **Mutation validation and error contract**).
+
+| Stage | Rule |
+| :--- | :--- |
+| Decode | `DecodeRequestOrBadRequest` / `ReadLimitedBody` -- reject oversize and malformed JSON with `400` |
+| Domain | Call package `Validate*` / sentinels **before** sqlc write in the same handler or service |
+| Business | License limits, budget/revision conflicts, FK existence -- map to `mapServiceError` codes |
+| Persist | TX rollback on failure; outbox in same TX only after domain success |
+| Respond | `writeServiceError(w, err)` -- never `200` on error; no `_ =` on decode (`anti_slop_gate.sh`) |
+
+**Banned:** blind `INSERT` from request struct; validation only in `web/`; leaking SQL/stack in `error.message`.
+
+**Tests:** `mapServiceError` / validation `*_holdout*` beside changed logic; OpenAPI key parity tests when DTO changes.
+
+**Error responses:** every failure path uses `writeServiceError` or `httpresponse.Error` with truthful status -- never `200` on error (`frontend-slop.mdc` **Explicit error handling vs error slop** ES1-ES7, EH-F*).
 
 ## Control plane topology
 

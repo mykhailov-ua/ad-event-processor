@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ApiError } from '@/api/client';
 import { runReport } from '@/api/reports_api';
 import { RtbOverview } from '@/domains/rtb/rtb_overview';
+import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { defaultReportRange } from '@/lib/report_paths';
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '@/lib/datetime_range';
@@ -41,12 +42,14 @@ export function RtbPage() {
 
   const licenseGated = error instanceof ApiError && error.status === 403;
 
-  const onApply = useCallback(() => {
+  const applyRtbRange = useCallback(() => {
     const next = new URLSearchParams(searchParams);
     next.set('from', fromDatetimeLocalValue(draftFrom) ?? defaultRange.from);
     next.set('to', fromDatetimeLocalValue(draftTo) ?? defaultRange.to);
     setSearchParams(next, { replace: true });
   }, [defaultRange.from, defaultRange.to, draftFrom, draftTo, searchParams, setSearchParams]);
+
+  const onApply = useCoalescedBumpRefresh(applyRtbRange, fetching);
 
   return (
     <RtbOverview

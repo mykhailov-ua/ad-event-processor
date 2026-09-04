@@ -30,7 +30,7 @@ import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayTimestamp } from '@/lib/display';
 
 export type SavedViewsPanelProps = {
-  views: SavedView[];
+  views?: SavedView[];
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
@@ -212,7 +212,7 @@ export function SavedViewsPanel({
         portalsPanelError(error, 'Could not load saved views')
       ) : (
         <div aria-atomic="true" aria-live="polite">
-          {views.length === 0 ? (
+          {(views ?? []).length === 0 ? (
             <EmptyState
               variant="blank-slate"
               title="No saved views"
@@ -231,7 +231,7 @@ export function SavedViewsPanel({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {views.map((row) => {
+                  {(views ?? []).map((row) => {
                     const id = row.id ?? '';
                     const edit = editRows[id] ?? {
                       name: row.name ?? '',

@@ -23,6 +23,19 @@ import {
   RECENT_CLICK_COLUMN_LABELS,
 } from '@/domains/dashboards/dashboard_preferences';
 import {
+  dashboardPrefsDialogContentClass,
+  dashboardPrefsDialogFooterClass,
+  dashboardPrefsDialogHeaderClass,
+  dashboardPrefsDialogScrollClass,
+  dashboardPrefsDialogSectionBodyClass,
+  dashboardPrefsDialogSectionClass,
+  dashboardPrefsDialogSectionDividerClass,
+  dashboardPrefsDialogSectionTitleClass,
+  dashboardPrefsDialogTitleClass,
+  dashboardPrefsFooterActionsClass,
+  dashboardPrefsRestoreClass,
+} from '@/domains/dashboards/dashboard_preferences_classes';
+import {
   DashboardPrefsSelectionPanel,
   type DashboardPrefsOption,
 } from '@/domains/dashboards/dashboard_prefs_selection_panel';
@@ -86,18 +99,18 @@ export function DashboardPreferencesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="dashboard-preferences-dialog max-w-2xl p-0">
-        <DialogHeader className="dashboard-preferences-dialog__header">
-          <DialogTitle className="dashboard-preferences-dialog__title">Preferences</DialogTitle>
+      <DialogContent className={dashboardPrefsDialogContentClass}>
+        <DialogHeader className={dashboardPrefsDialogHeaderClass}>
+          <DialogTitle className={dashboardPrefsDialogTitleClass}>Preferences</DialogTitle>
         </DialogHeader>
 
         <div
-          className="dashboard-preferences-dialog__scroll ui-scrollbar"
+          className={dashboardPrefsDialogScrollClass}
           onWheel={stopDialogWheelPropagation}
         >
-          <section className="dashboard-preferences-dialog__section">
-            <h3 className="dashboard-preferences-dialog__section-title">Metrics</h3>
-            <div className="dashboard-preferences-dialog__section-body">
+          <section className={dashboardPrefsDialogSectionClass}>
+            <h3 className={dashboardPrefsDialogSectionTitleClass}>Metrics</h3>
+            <div className={dashboardPrefsDialogSectionBodyClass}>
               <DashboardPrefsSelectionPanel<DashboardMetricId>
                 id="dashboard-prefs-kpi-metrics"
                 label="KPI tiles"
@@ -126,9 +139,9 @@ export function DashboardPreferencesDialog({
             </div>
           </section>
 
-          <section className="dashboard-preferences-dialog__section">
-            <h3 className="dashboard-preferences-dialog__section-title">Recent clicks</h3>
-            <div className="dashboard-preferences-dialog__section-body">
+          <section className={dashboardPrefsDialogSectionDividerClass}>
+            <h3 className={dashboardPrefsDialogSectionTitleClass}>Recent clicks</h3>
+            <div className={dashboardPrefsDialogSectionBodyClass}>
               <DashboardPrefsSelectionPanel
                 id="dashboard-prefs-recent-clicks"
                 label="Columns"
@@ -149,15 +162,15 @@ export function DashboardPreferencesDialog({
           </section>
         </div>
 
-        <DialogFooter className="dashboard-preferences-dialog__footer">
+        <DialogFooter className={dashboardPrefsDialogFooterClass}>
           <button
-            className="dashboard-preferences-dialog__restore"
+            className={dashboardPrefsRestoreClass}
             type="button"
             onClick={() => setDraft(defaultBuyerDashboardPreferences())}
           >
             Restore to default
           </button>
-          <div className="dashboard-preferences-dialog__footer-actions">
+          <div className={dashboardPrefsFooterActionsClass}>
             <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>

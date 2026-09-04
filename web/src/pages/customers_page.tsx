@@ -99,7 +99,7 @@ export function CustomersPage() {
 
   return (
     <CustomersDirectory
-      items={data?.items ?? []}
+      items={data?.items}
       total={data?.total ?? 0}
       limit={data?.limit ?? query.limit ?? DEFAULT_LIST_LIMIT}
       offset={data?.offset ?? query.offset ?? 0}

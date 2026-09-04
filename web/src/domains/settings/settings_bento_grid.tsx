@@ -1,5 +1,5 @@
 import { Activity, Globe, Server, Shield } from 'lucide-react';
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { CopyButton } from '@/shell/copy_button';
 import { Badge } from '@/components/ui/badge';
@@ -37,21 +37,19 @@ const BENTO_ROW_CLASS =
   'grid min-h-0 min-w-0 grid-cols-1 gap-1 border-b border-border/40 px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:gap-y-1';
 
 const BENTO_HEADER_CLASS =
-  'flex min-w-0 items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2.5 text-admin-caption font-medium tracking-wide text-muted-foreground';
+  'flex min-w-0 items-center gap-2 border-b border-border/40 bg-muted/20 px-4 py-2.5 text-ui-caption font-medium tracking-wide text-muted-foreground';
 
 export function BentoRow({
   className,
   label,
-  style,
   value,
 }: {
   className?: string;
   label: string;
-  style?: CSSProperties;
   value: ReactNode;
 }) {
   return (
-    <div className={cn(BENTO_ROW_CLASS, className)} style={style}>
+    <div className={cn(BENTO_ROW_CLASS, className)}>
       <span className="min-w-0 break-words text-xs leading-snug text-muted-foreground">{label}</span>
       <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-foreground sm:justify-self-end">
         {value}
@@ -63,16 +61,14 @@ export function BentoRow({
 function BentoColumnHeader({
   className,
   icon,
-  style,
   title,
 }: {
   className?: string;
   icon: ReactNode;
-  style?: React.CSSProperties;
   title: string;
 }) {
   return (
-    <div className={cn(BENTO_HEADER_CLASS, className)} style={style}>
+    <div className={cn(BENTO_HEADER_CLASS, className)}>
       {icon}
       <span className="min-w-0 break-words">{title}</span>
     </div>
@@ -168,11 +164,11 @@ function SettingsUrlCopyChip({
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex h-7 max-w-full items-center gap-0.5 rounded-sm border border-border/60 bg-muted/25 pl-2.5 pr-0.5 text-xs text-foreground">
-          <span className="truncate">{shortLabel}</span>
+          <span className="whitespace-nowrap">{shortLabel}</span>
           <CopyButton className="size-7 shrink-0" label={label} value={trimmed} />
         </span>
       </TooltipTrigger>
-      <TooltipContent className="max-w-sm break-all font-mono text-admin-caption leading-snug">
+      <TooltipContent className="max-w-sm break-all font-mono text-ui-caption leading-snug">
         {trimmed}
       </TooltipContent>
     </Tooltip>
@@ -456,48 +452,17 @@ export function SettingsBentoGrid({
   snapshot: PlatformSettingsSnapshot;
 }) {
   const columns = buildColumns(snapshot, onPatchPlatform, patching);
-  const rowCount = columns[0]?.rows.length ?? 0;
 
   return (
-    <div className="min-w-0">
-      <div className="grid min-w-0 divide-y divide-border/40 xl:hidden">
-        {columns.map((column) => (
-          <BentoColumnStack
-            key={column.title}
-            icon={column.icon}
-            rows={column.rows}
-            title={column.title}
-          />
-        ))}
-      </div>
-
-      <div
-        className="hidden min-w-0 xl:grid xl:grid-cols-3"
-        style={{ gridTemplateRows: `auto repeat(${rowCount}, minmax(0, auto))` }}
-      >
-        {columns.map((column, columnIndex) => (
-          <Fragment key={column.title}>
-            <BentoColumnHeader
-              className={columnIndex > 0 ? 'border-l border-border/40' : undefined}
-              icon={column.icon}
-              title={column.title}
-              style={{ gridColumn: columnIndex + 1, gridRow: 1 }}
-            />
-            {column.rows.map((row, rowIndex) => (
-              <BentoRow
-                key={row.label}
-                className={cn(
-                  columnIndex > 0 && 'border-l border-border/40',
-                  rowIndex === column.rows.length - 1 && 'border-b-0',
-                )}
-                label={row.label}
-                style={{ gridColumn: columnIndex + 1, gridRow: rowIndex + 2 }}
-                value={row.value}
-              />
-            ))}
-          </Fragment>
-        ))}
-      </div>
+    <div className="grid min-w-0 divide-y divide-border/40 xl:grid-cols-3 xl:divide-x xl:divide-y-0">
+      {columns.map((column) => (
+        <BentoColumnStack
+          key={column.title}
+          icon={column.icon}
+          rows={column.rows}
+          title={column.title}
+        />
+      ))}
     </div>
   );
 }

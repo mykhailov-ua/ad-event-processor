@@ -1,6 +1,19 @@
 import { X } from 'lucide-react';
 
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  dashboardPrefsCheckboxLabelClass,
+  dashboardPrefsCheckboxListClass,
+  dashboardPrefsCheckboxRowClass,
+  dashboardPrefsChipBoxClass,
+  dashboardPrefsChipClass,
+  dashboardPrefsChipEmptyClass,
+  dashboardPrefsChipLabelClass,
+  dashboardPrefsChipRemoveClass,
+  dashboardPrefsColumnSummaryClass,
+  dashboardPrefsFieldClass,
+  dashboardPrefsFieldLabelClass,
+} from '@/domains/dashboards/dashboard_preferences_classes';
 import { cn } from '@/lib/utils';
 
 export type DashboardPrefsOption<T extends string> = {
@@ -69,30 +82,30 @@ export function DashboardPrefsSelectionPanel<T extends string>({
   }
 
   return (
-    <div className="dashboard-preferences-dialog__field">
-      <p className="dashboard-preferences-dialog__field-label" id={`${id}-label`}>
+    <div className={dashboardPrefsFieldClass}>
+      <p className={dashboardPrefsFieldLabelClass} id={`${id}-label`}>
         {label}
       </p>
       {showChips ? (
         <div
           aria-labelledby={`${id}-label`}
-          className="dashboard-preferences-dialog__chip-box"
+          className={dashboardPrefsChipBoxClass}
           role="group"
         >
           {value.length === 0 ? (
-            <span className="dashboard-preferences-dialog__chip-empty">No items selected</span>
+            <span className={dashboardPrefsChipEmptyClass}>No items selected</span>
           ) : (
             value.map((optionId) => {
               const canRemove = value.length > minSelected;
               return (
-                <span key={optionId} className="dashboard-preferences-dialog__chip">
-                  <span className="dashboard-preferences-dialog__chip-label">
+                <span key={optionId} className={dashboardPrefsChipClass}>
+                  <span className={dashboardPrefsChipLabelClass}>
                     {labelById.get(optionId) ?? optionId}
                   </span>
                   {canRemove ? (
                     <button
                       aria-label={`Remove ${labelById.get(optionId) ?? optionId}`}
-                      className="dashboard-preferences-dialog__chip-remove"
+                      className={dashboardPrefsChipRemoveClass}
                       type="button"
                       onClick={() => removeChip(optionId)}
                     >
@@ -107,7 +120,7 @@ export function DashboardPrefsSelectionPanel<T extends string>({
       ) : (
         <p
           aria-live="polite"
-          className="dashboard-preferences-dialog__column-summary"
+          className={dashboardPrefsColumnSummaryClass}
           title={resolvedSummary}
         >
           {resolvedSummary}
@@ -115,13 +128,13 @@ export function DashboardPrefsSelectionPanel<T extends string>({
       )}
       <div
         aria-labelledby={`${id}-label`}
-        className={cn('dashboard-preferences-dialog__checkbox-list ui-scrollbar', listMaxHeightClassName)}
+        className={cn(dashboardPrefsCheckboxListClass, listMaxHeightClassName)}
         role="group"
       >
         {options.map((option) => {
           const checked = selectedSet.has(option.id);
           return (
-            <label key={option.id} className="dashboard-preferences-dialog__checkbox-row">
+            <label key={option.id} className={dashboardPrefsCheckboxRowClass}>
               <Checkbox
                 checked={checked}
                 id={`${id}-${option.id}`}
@@ -129,7 +142,7 @@ export function DashboardPrefsSelectionPanel<T extends string>({
                   onChange(toggleSelection(value, option.id, nextChecked, minSelected));
                 }}
               />
-              <span className="dashboard-preferences-dialog__checkbox-label">{option.label}</span>
+              <span className={dashboardPrefsCheckboxLabelClass}>{option.label}</span>
             </label>
           );
         })}

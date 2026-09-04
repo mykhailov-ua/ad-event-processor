@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -43,7 +43,7 @@ export function ReportSchedulesPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listReportSchedules({ customer_id: appliedCustomerId }, signal);
     },
@@ -58,11 +58,12 @@ export function ReportSchedulesPage() {
   const [actionError, setActionError] = useState<Error | undefined>(undefined);
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  const schedules = useMemo(() => data ?? [], [data]);
-
   useEffect(() => {
+    if (!data?.length) {
+      return;
+    }
     const next: Record<string, ScheduleEditRow> = {};
-    for (const row of schedules) {
+    for (const row of data) {
       if (row.id) {
         next[row.id] = {
           report_key: row.report_key ?? '',
@@ -73,7 +74,7 @@ export function ReportSchedulesPage() {
       }
     }
     setEditRows(next);
-  }, [schedules]);
+  }, [data]);
 
   const bumpReload = useCallback(() => {
     setReloadToken((value) => value + 1);
@@ -172,12 +173,12 @@ export function ReportSchedulesPage() {
 
   return (
     <ReportSchedulesPanel
-      schedules={schedules}
+      schedules={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       draftReportKey={draftReportKey}
       draftCronExpr={draftCronExpr}
       draftFormat={draftFormat}

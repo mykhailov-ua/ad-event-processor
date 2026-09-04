@@ -5,7 +5,12 @@ import { cn } from '@/lib/utils';
 import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
 
 /** Ops matrix chrome: sticky headers, zebra rows, numeric column alignment. */
-export const OPS_DIRECTORY_TABLE_CLASS = 'admin-table--ops';
+export const OPS_DIRECTORY_TABLE_CLASS = cn(
+  'w-auto table-fixed border-collapse text-ui-dense',
+  '[&_th]:sticky [&_th]:top-0 [&_th]:z-[2] [&_th]:bg-muted/50 [&_th]:px-3 [&_th]:py-1.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:text-muted-foreground',
+  '[&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-1.5',
+  '[&_tbody_tr:nth-child(even)_td]:bg-muted/30',
+);
 
 /** Ops directory table shell; delegates border/scroll to DirectoryTable. */
 export function OpsTable({
@@ -45,7 +50,7 @@ export function OpsTableHead({
   className,
   ...props
 }: ComponentProps<typeof TableHead> & { numeric?: boolean }) {
-  return <TableHead className={cn(numeric && 'num', className)} {...props} />;
+  return <TableHead className={cn(numeric && 'text-right', className)} {...props} />;
 }
 
 export function OpsTableCell({
@@ -53,7 +58,7 @@ export function OpsTableCell({
   className,
   ...props
 }: ComponentProps<typeof TableCell> & { numeric?: boolean }) {
-  return <TableCell className={cn(numeric && 'num', className)} {...props} />;
+  return <TableCell className={cn(numeric && 'text-right', className)} {...props} />;
 }
 
 /** Section title above a table or block; no extra panel border. */

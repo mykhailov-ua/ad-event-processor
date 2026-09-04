@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { beforeEach } from 'node:test';
 
 import { resolveDevMockRequest } from './handler.ts';
-import { DEV_MOCK_CUSTOMERS } from './fixtures.ts';
+import { DEV_MOCK_CUSTOMERS, DEV_MOCK_USERS } from './fixtures.ts';
+import { resetDevMockRoleForTests, setDevMockRoleForTests } from './rbac.ts';
 import { resetDevMockStore } from './store.ts';
+
+beforeEach(() => {
+  resetDevMockRoleForTests();
+});
 
 test('dev mock lists campaign list facets for customer scope', () => {
   resetDevMockStore();
@@ -70,7 +75,8 @@ test('dev mock lists campaigns with filters', () => {
   assert.equal(activeBody.status_totals?.active, activeBody.items.length);
 });
 
-test('dev mock ops home returns composite snapshot', () => {
+test('dev mock ops home returns composite snapshot for admin role', () => {
+  setDevMockRoleForTests('A');
   const home = resolveDevMockRequest('/api/v1/ops/home');
   assert.equal(home?.status, 200);
   const body = home?.body as {
@@ -83,12 +89,41 @@ test('dev mock ops home returns composite snapshot', () => {
   assert.ok(body.dashboardSummary.services.length > 0);
 });
 
-test('dev mock session bootstrap is authenticated', () => {
+test('dev mock ops home returns 403 for media buyer role', () => {
+  setDevMockRoleForTests('MB');
+  const home = resolveDevMockRequest('/api/v1/ops/home');
+  assert.equal(home?.status, 403);
+  const body = home?.body as { error?: { code?: string } };
+  assert.equal(body.error?.code, 'FORBIDDEN');
+});
+
+test('dev mock ops dlq returns 403 for media buyer role', () => {
+  setDevMockRoleForTests('MB');
+  const list = resolveDevMockRequest('/api/v1/ops/dlq?limit=25');
+  assert.equal(list?.status, 403);
+});
+
+test('dev mock session bootstrap is authenticated for admin role', () => {
+  setDevMockRoleForTests('A');
   const boot = resolveDevMockRequest('/api/v1/session/bootstrap');
   assert.equal(boot?.status, 200);
   const body = boot?.body as { user: { email?: string }; session: { role?: string } };
   assert.equal(body.user.email, 'operator@dev.local');
   assert.equal(body.session.role, 'admin');
+});
+
+test('dev mock session bootstrap reflects media buyer permissions', () => {
+  setDevMockRoleForTests('MB');
+  const boot = resolveDevMockRequest('/api/v1/session/bootstrap');
+  assert.equal(boot?.status, 200);
+  const body = boot?.body as {
+    user: { email?: string; role?: string; permissions?: string[] };
+    session: { role?: string };
+  };
+  assert.equal(body.user.email, 'operator@dev.local');
+  assert.equal(body.session.role, 'MB');
+  assert.ok(body.user.permissions?.includes('campaigns:read'));
+  assert.equal(body.user.permissions?.includes('shards:read'), false);
 });
 
 test('dev mock team members use user_id wire field', () => {
@@ -191,21 +226,23 @@ test('dev mock clone-preview and owner assignment', () => {
   assert.match(previewBody.name, / copy$/);
   assert.ok(previewBody.would_create);
 
+  const ownerUserId = DEV_MOCK_USERS[1].id;
   const owner = resolveDevMockRequest(
     `/api/v1/campaigns/${encodeURIComponent(campaignId)}/owner`,
     {
       method: 'PUT',
-      body: JSON.stringify({ user_id: 'buyer-1' }),
+      body: JSON.stringify({ user_id: ownerUserId }),
     },
   );
   assert.equal(owner?.status, 200);
 
   const campaign = resolveDevMockRequest(`/api/v1/campaigns/${encodeURIComponent(campaignId)}`);
   const campaignBody = campaign?.body as { owner_user_id?: string };
-  assert.equal(campaignBody.owner_user_id, 'buyer-1');
+  assert.equal(campaignBody.owner_user_id, ownerUserId);
 });
 
 test('dev mock legacy ops dlq list and retry', () => {
+  setDevMockRoleForTests('A');
   const list = resolveDevMockRequest('/api/v1/ops/dlq?limit=25');
   assert.equal(list?.status, 200);
   const listBody = list?.body as { items: unknown[]; partial?: boolean };
@@ -214,17 +251,149 @@ test('dev mock legacy ops dlq list and retry', () => {
 
   const retry = resolveDevMockRequest('/api/v1/ops/dlq/entry-1/retry', { method: 'POST' });
   assert.equal(retry?.status, 202);
+  assert.equal(retry?.body, undefined);
+
+  const listAfterRetry = resolveDevMockRequest('/api/v1/ops/dlq?limit=25');
+  assert.equal(listAfterRetry?.status, 200);
+  const afterBody = listAfterRetry?.body as { items: unknown[] };
+  assert.ok(Array.isArray(afterBody.items));
 });
 
 test('dev mock consent record returns 204', () => {
   const response = resolveDevMockRequest('/api/v1/consent', {
     method: 'POST',
     body: JSON.stringify({
-      user_id: 'user-1',
+      user_id: DEV_MOCK_USERS[0].id,
       purposes: 1,
       source: 'admin',
     }),
   });
   assert.equal(response?.status, 204);
   assert.equal(response?.body, undefined);
+});
+
+test('dev mock bare-array list endpoints return JSON arrays', () => {
+  for (const path of ['/api/v1/landers', '/api/v1/offers', '/api/v1/flows', '/api/v1/cost-sync/networks']) {
+    const response = resolveDevMockRequest(path);
+    assert.equal(response?.status, 200);
+    assert.ok(Array.isArray(response?.body), path);
+  }
+});
+
+test('dev mock cost-sync snapshot returns array fields', () => {
+  const response = resolveDevMockRequest('/api/v1/cost-sync/snapshot?customer_id=test');
+  assert.equal(response?.status, 200);
+  const body = response?.body as {
+    networks: unknown[];
+    credentials: unknown[];
+    history: unknown[];
+  };
+  assert.ok(Array.isArray(body.networks));
+  assert.ok(Array.isArray(body.credentials));
+  assert.ok(Array.isArray(body.history));
+});
+
+test('dev mock auth login returns user envelope', () => {
+  const response = resolveDevMockRequest('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email: 'operator@dev.local', password: 'dev' }),
+  });
+  assert.equal(response?.status, 200);
+  const body = response?.body as { user?: { email?: string } };
+  assert.equal(body.user?.email, 'operator@dev.local');
+});
+
+test('dev mock auth refresh returns status ok', () => {
+  const response = resolveDevMockRequest('/api/v1/auth/refresh', { method: 'POST' });
+  assert.equal(response?.status, 200);
+  const body = response?.body as { status?: string };
+  assert.equal(body.status, 'ok');
+});
+
+test('dev mock unhandled mutation returns 501', () => {
+  const response = resolveDevMockRequest('/api/v1/example/unhandled', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  assert.equal(response?.status, 501);
+  const body = response?.body as { error?: { code?: string } };
+  assert.equal(body.error?.code, 'NOT_IMPLEMENTED');
+});
+
+test('dev mock missing campaign returns 404', () => {
+  const response = resolveDevMockRequest(
+    '/api/v1/campaigns/00000000-0000-7000-8000-000000000099',
+  );
+  assert.equal(response?.status, 404);
+  const body = response?.body as { error?: { code?: string } };
+  assert.equal(body.error?.code, 'NOT_FOUND');
+});
+
+test('dev mock wizard create rejects missing customer_id with 400', () => {
+  const templates = resolveDevMockRequest('/api/v1/campaigns/onboarding-templates');
+  const templateRows = templates?.body as { key: string }[];
+  const response = resolveDevMockRequest('/api/v1/campaigns/wizard/session', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'create',
+      template_key: templateRows[0]?.key,
+    }),
+  });
+  assert.equal(response?.status, 400);
+  const body = response?.body as { error?: string };
+  assert.match(body.error ?? '', /customer_id/);
+});
+
+test('dev mock buyer dashboard parses as portfolio shell', () => {
+  const response = resolveDevMockRequest(
+    `/api/v1/dashboards/buyer?customer_id=${encodeURIComponent(DEV_MOCK_CUSTOMERS[0].id)}`,
+  );
+  assert.equal(response?.status, 200);
+  const body = response?.body as {
+    customer_id?: string;
+    breakdowns?: { campaigns?: { rows: unknown[] } };
+    recent_clicks?: unknown[];
+  };
+  assert.equal(body.customer_id, DEV_MOCK_CUSTOMERS[0].id);
+  assert.ok(Array.isArray(body.breakdowns?.campaigns?.rows));
+  assert.ok(Array.isArray(body.recent_clicks));
+});
+
+test('dev mock audit list returns 403 for media buyer role', () => {
+  setDevMockRoleForTests('MB');
+  const response = resolveDevMockRequest('/api/v1/audit?limit=25');
+  assert.equal(response?.status, 403);
+  const body = response?.body as { error?: { code?: string } };
+  assert.equal(body.error?.code, 'FORBIDDEN');
+});
+
+test('dev mock settings platform returns 403 for media buyer role', () => {
+  setDevMockRoleForTests('MB');
+  const response = resolveDevMockRequest('/api/v1/settings/platform');
+  assert.equal(response?.status, 403);
+  const body = response?.body as { error?: { code?: string } };
+  assert.equal(body.error?.code, 'FORBIDDEN');
+});
+
+test('dev mock bulk action returns empty results for empty campaign_ids', () => {
+  const response = resolveDevMockRequest('/api/v1/campaigns/bulk', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'pause', campaign_ids: [] }),
+  });
+  assert.equal(response?.status, 200);
+  const body = response?.body as { results?: unknown[] };
+  assert.deepEqual(body.results, []);
+});
+
+test('dev mock patch campaign returns 404 for unknown id', () => {
+  const response = resolveDevMockRequest(
+    '/api/v1/campaigns/00000000-0000-7000-8000-000000000088',
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'missing' }),
+    },
+  );
+  assert.equal(response?.status, 404);
+  const body = response?.body as { error?: { code?: string } };
+  assert.equal(body.error?.code, 'NOT_FOUND');
 });

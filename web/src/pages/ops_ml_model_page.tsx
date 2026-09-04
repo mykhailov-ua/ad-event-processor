@@ -6,65 +6,64 @@ import {
   getOpsMlModelStatus,
   listOpsMlLabels,
 } from '@/api/ops_api';
+import { useResource } from '@/api/use_resource';
 import { OpsMlModel } from '@/domains/ops/ops_ml_model';
+
+function skipLazyFetch(): Promise<never> {
+  return Promise.reject(new DOMException('Skipped', 'AbortError'));
+}
 
 export function OpsMlModelPage() {
   const [draftIpHash, setDraftIpHash] = useState('');
   const [draftLabel, setDraftLabel] = useState('');
   const [draftReason, setDraftReason] = useState('');
-  const [status, setStatus] = useState<Record<string, unknown> | undefined>();
-  const [evalBlock, setEvalBlock] = useState<Record<string, unknown> | undefined>();
-  const [labels, setLabels] = useState<Awaited<ReturnType<typeof listOpsMlLabels>>>([]);
-  const [fetchingStatus, setFetchingStatus] = useState(false);
-  const [fetchingEval, setFetchingEval] = useState(false);
-  const [fetchingLabels, setFetchingLabels] = useState(false);
+  const [statusLoadToken, setStatusLoadToken] = useState(0);
+  const [evalLoadToken, setEvalLoadToken] = useState(0);
+  const [labelsLoadToken, setLabelsLoadToken] = useState(0);
   const [savingLabel, setSavingLabel] = useState(false);
-  const [statusError, setStatusError] = useState<Error | undefined>();
-  const [evalError, setEvalError] = useState<Error | undefined>();
-  const [labelsError, setLabelsError] = useState<Error | undefined>();
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [hasStatusSnapshot, setHasStatusSnapshot] = useState(false);
-  const [hasEvalSnapshot, setHasEvalSnapshot] = useState(false);
-  const [hasLabelsSnapshot, setHasLabelsSnapshot] = useState(false);
 
-  const onLoadStatus = useCallback(async () => {
-    setFetchingStatus(true);
-    setStatusError(undefined);
-    try {
-      setStatus(await getOpsMlModelStatus());
-      setHasStatusSnapshot(true);
-    } catch (err) {
-      setStatusError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setFetchingStatus(false);
-    }
+  const statusResource = useResource(
+    (signal) => {
+      if (statusLoadToken === 0) {
+        return skipLazyFetch();
+      }
+      return getOpsMlModelStatus(signal);
+    },
+    [statusLoadToken],
+  );
+
+  const evalResource = useResource(
+    (signal) => {
+      if (evalLoadToken === 0) {
+        return skipLazyFetch();
+      }
+      return getOpsMlModelEval(signal);
+    },
+    [evalLoadToken],
+  );
+
+  const labelsResource = useResource(
+    (signal) => {
+      if (labelsLoadToken === 0) {
+        return skipLazyFetch();
+      }
+      return listOpsMlLabels(signal);
+    },
+    [labelsLoadToken],
+  );
+
+  const onLoadStatus = useCallback(() => {
+    setStatusLoadToken((value) => value + 1);
   }, []);
 
-  const onLoadEval = useCallback(async () => {
-    setFetchingEval(true);
-    setEvalError(undefined);
-    try {
-      setEvalBlock(await getOpsMlModelEval());
-      setHasEvalSnapshot(true);
-    } catch (err) {
-      setEvalError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setFetchingEval(false);
-    }
+  const onLoadEval = useCallback(() => {
+    setEvalLoadToken((value) => value + 1);
   }, []);
 
-  const onLoadLabels = useCallback(async () => {
-    setFetchingLabels(true);
-    setLabelsError(undefined);
-    try {
-      setLabels(await listOpsMlLabels());
-      setHasLabelsSnapshot(true);
-    } catch (err) {
-      setLabelsError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setFetchingLabels(false);
-    }
+  const onLoadLabels = useCallback(() => {
+    setLabelsLoadToken((value) => value + 1);
   }, []);
 
   const onAddLabel = useCallback(async () => {
@@ -89,41 +88,43 @@ export function OpsMlModelPage() {
         reason: draftReason.trim() || undefined,
       });
       setSaveSuccess(true);
-      await onLoadLabels();
+      setLabelsLoadToken((value) => value + 1);
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSavingLabel(false);
     }
-  }, [draftIpHash, draftLabel, draftReason, onLoadLabels]);
+  }, [draftIpHash, draftLabel, draftReason]);
 
   return (
     <OpsMlModel
-      status={status}
-      evalBlock={evalBlock}
-      labels={labels}
+      status={statusResource.data}
+      evalBlock={evalResource.data}
+      labels={labelsResource.data ?? []}
       draftIpHash={draftIpHash}
       draftLabel={draftLabel}
       draftReason={draftReason}
-      fetchingStatus={fetchingStatus}
-      fetchingEval={fetchingEval}
-      fetchingLabels={fetchingLabels}
+      fetchingStatus={statusResource.fetching}
+      fetchingEval={evalResource.fetching}
+      fetchingLabels={labelsResource.fetching}
       savingLabel={savingLabel}
-      statusError={statusError}
-      evalError={evalError}
-      labelsError={labelsError}
+      statusError={statusResource.error}
+      evalError={evalResource.error}
+      labelsError={labelsResource.error}
       saveError={saveError}
       saveSuccess={saveSuccess}
-      hasStatusSnapshot={hasStatusSnapshot}
-      hasEvalSnapshot={hasEvalSnapshot}
-      hasLabelsSnapshot={hasLabelsSnapshot}
+      hasStatusSnapshot={statusResource.data != null}
+      hasEvalSnapshot={evalResource.data != null}
+      hasLabelsSnapshot={labelsResource.data != null}
       onDraftIpHashChange={setDraftIpHash}
       onDraftLabelChange={setDraftLabel}
       onDraftReasonChange={setDraftReason}
       onLoadStatus={onLoadStatus}
       onLoadEval={onLoadEval}
       onLoadLabels={onLoadLabels}
-      onAddLabel={onAddLabel}
+      onAddLabel={() => {
+        void onAddLabel();
+      }}
     />
   );
 }

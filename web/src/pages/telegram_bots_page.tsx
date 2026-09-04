@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { listTelegramBots } from '@/api/telegram_api';
@@ -12,8 +12,6 @@ export function TelegramBotsPage() {
   const [draftCampaignId, setDraftCampaignId] = useState('');
   const [actionError, setActionError] = useState<Error | undefined>(undefined);
 
-  const bots = useMemo(() => data ?? [], [data]);
-
   const onOpenEditor = useCallback(() => {
     const campaignId = draftCampaignId.trim();
     if (!campaignId) {
@@ -26,7 +24,7 @@ export function TelegramBotsPage() {
 
   return (
     <TelegramBotsDirectory
-      bots={bots}
+      bots={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null || Boolean(error)}

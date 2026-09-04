@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   AddDomainRequest,
   DomainHealth,
@@ -8,7 +8,7 @@ import type {
 } from './types.js';
 
 export async function listDomains(signal?: AbortSignal): Promise<DomainHealth[]> {
-  return apiJson<DomainHealth[]>('/api/v1/domains', { signal });
+  return apiJsonArray<DomainHealth>('/api/v1/domains', { signal });
 }
 
 export async function addDomain(body: AddDomainRequest, signal?: AbortSignal): Promise<DomainHealth> {

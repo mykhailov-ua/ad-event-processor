@@ -17,7 +17,7 @@ import { PlatformCampaignLinkForm } from '@/domains/integrations/platform_campai
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type IntegrationsPlatformCampaignsProps = {
-  links: PlatformCampaignLink[];
+  links?: PlatformCampaignLink[];
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
@@ -161,7 +161,7 @@ export function IntegrationsPlatformCampaigns({
         onSetBudget={linkForm.onSetBudget}
       />
 
-      {links.length === 0 ? (
+      {(links ?? []).length === 0 ? (
         <EmptyState
           title="No links"
           description="No external platform campaign links exist for this customer."
@@ -179,7 +179,7 @@ export function IntegrationsPlatformCampaigns({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {links.map((row) => (
+              {(links ?? []).map((row) => (
                 <TableRow
                   key={`${row.campaign_id}-${row.network}`}
                   className="cursor-pointer"

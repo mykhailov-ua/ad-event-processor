@@ -28,6 +28,7 @@ function newIdempotencyKey(): string {
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [appliedLedgerCursor, setAppliedLedgerCursor] = useState<string | undefined>();
+  const [ledgerAnchorId, setLedgerAnchorId] = useState(id);
   const [ledgerLines, setLedgerLines] = useState<BillingLedgerLine[]>([]);
   const [ledgerNextCursor, setLedgerNextCursor] = useState<string | undefined>();
   const [ledgerEpoch, setLedgerEpoch] = useState(0);
@@ -62,6 +63,8 @@ export function InvoiceDetailPage() {
     [id, invoiceRefreshToken],
   );
 
+  const ledgerFetchCursor = ledgerAnchorId === id ? appliedLedgerCursor : undefined;
+
   const ledgerResource = useResource(
     (signal) => {
       if (!id) {
@@ -69,18 +72,18 @@ export function InvoiceDetailPage() {
       }
       return listInvoiceLedgerLines(
         id,
-        { limit: LEDGER_PAGE_LIMIT, cursor: appliedLedgerCursor },
+        { limit: LEDGER_PAGE_LIMIT, cursor: ledgerFetchCursor },
         signal,
       );
     },
-    [id, appliedLedgerCursor, ledgerEpoch],
+    [id, ledgerFetchCursor, ledgerEpoch],
   );
 
   useEffect(() => {
+    setLedgerAnchorId(id);
     setAppliedLedgerCursor(undefined);
     setLedgerLines([]);
     setLedgerNextCursor(undefined);
-    setLedgerEpoch((value) => value + 1);
   }, [id]);
 
   useEffect(() => {
@@ -88,9 +91,9 @@ export function InvoiceDetailPage() {
       return;
     }
     const items = ledgerResource.data.items ?? [];
-    setLedgerLines((prev) => (appliedLedgerCursor ? [...prev, ...items] : items));
+    setLedgerLines((prev) => (ledgerFetchCursor ? [...prev, ...items] : items));
     setLedgerNextCursor(ledgerResource.data.next_cursor);
-  }, [appliedLedgerCursor, ledgerResource.data]);
+  }, [ledgerFetchCursor, ledgerResource.data]);
 
   const resetLedger = useCallback(() => {
     setAppliedLedgerCursor(undefined);
@@ -167,7 +170,7 @@ export function InvoiceDetailPage() {
   return (
     <InvoiceDetail
       invoice={invoiceResource.data}
-      deliveries={deliveriesResource.data?.items ?? []}
+      deliveries={deliveriesResource.data?.items}
       ledgerLines={ledgerLines}
       ledgerNextCursor={ledgerNextCursor}
       fetching={invoiceResource.fetching}

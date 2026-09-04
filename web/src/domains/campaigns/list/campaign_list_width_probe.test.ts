@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import type { CampaignListQuery } from '@/api/types';
 
+import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid.ts';
+
 import {
   buildCampaignListWidthProbeQuery,
   listResponseCoversWidthProbeDataset,
@@ -92,20 +94,21 @@ test('listResponseCoversWidthProbeDataset false when paginated or over probe cap
 
 test('mergeCampaignIdsForMetricsBatch dedupes page and probe ids', () => {
   const a = '6ba7b810-9dad-11d1-80b4-00c04fd430c8';
-  const b = '00000000-0000-0000-0000-000000000041';
-  const c = '00000000-0000-0000-0000-000000000042';
+  const b = seedDeterministicUuid('campaign', 41);
+  const c = seedDeterministicUuid('campaign', 42);
   assert.deepEqual(mergeCampaignIdsForMetricsBatch([a, b], [b, c]), [a, b, c]);
 });
 
 test('mergeCampaignIdsForMetricsBatch_holdout skips non-uuid ids', () => {
+  const probeId = seedDeterministicUuid('campaign', 41);
   assert.deepEqual(
     mergeCampaignIdsForMetricsBatch(
       ['6ba7b810-9dad-11d1-80b4-00c04fd430c8', 'not-a-uuid'],
-      ['00000000-0000-0000-0000-000000000041', ''],
+      [probeId, ''],
     ),
     [
       '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
-      '00000000-0000-0000-0000-000000000041',
+      probeId,
     ],
   );
 });

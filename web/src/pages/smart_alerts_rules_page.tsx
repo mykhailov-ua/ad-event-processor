@@ -41,7 +41,7 @@ export function SmartAlertsRulesPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listSmartAlertRules({ customer_id: appliedCustomerId }, signal);
     },
@@ -56,15 +56,13 @@ export function SmartAlertsRulesPage() {
   const [updatingRuleId, setUpdatingRuleId] = useState<string | undefined>();
   const [deletingRuleId, setDeletingRuleId] = useState<string | undefined>();
 
-  const items = useMemo(() => data ?? [], [data]);
-
   useEffect(() => {
-    if (items.length === 0) {
+    if (!data?.length) {
       return;
     }
     setRuleDrafts((prev) => {
       const next = { ...prev };
-      for (const row of items) {
+      for (const row of data) {
         const ruleId = row.id ?? '';
         if (!ruleId || next[ruleId]) {
           continue;
@@ -73,7 +71,7 @@ export function SmartAlertsRulesPage() {
       }
       return next;
     });
-  }, [items]);
+  }, [data]);
 
   const onCreateDraftChange = useCallback((patch: Partial<SmartAlertRuleEditDraft>) => {
     setCreateDraft((prev) => ({ ...prev, ...patch }));
@@ -122,7 +120,7 @@ export function SmartAlertsRulesPage() {
   const onSaveRule = useCallback(
     async (ruleId: string) => {
       const customerId = appliedCustomerId.trim();
-      const row = items.find((item) => item.id === ruleId);
+      const row = data?.find((item) => item.id === ruleId);
       const draft = ruleDrafts[ruleId];
       if (!customerId || !row || !draft) {
         return;
@@ -138,7 +136,7 @@ export function SmartAlertsRulesPage() {
         setUpdatingRuleId(undefined);
       }
     },
-    [appliedCustomerId, items, ruleDrafts],
+    [appliedCustomerId, data, ruleDrafts],
   );
 
   const onDeleteRule = useCallback(async (ruleId: string) => {
@@ -161,7 +159,7 @@ export function SmartAlertsRulesPage() {
 
   return (
     <SmartAlertsRulesDirectory
-      items={items}
+      items={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       createDraft={createDraft}
@@ -171,7 +169,7 @@ export function SmartAlertsRulesPage() {
       error={error}
       actionError={actionError}
       createSuccess={createSuccess}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       updatingRuleId={updatingRuleId}
       deletingRuleId={deletingRuleId}
       onDraftCustomerIdChange={setDraftCustomerId}

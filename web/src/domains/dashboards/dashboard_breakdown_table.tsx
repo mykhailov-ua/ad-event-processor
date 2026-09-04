@@ -109,15 +109,15 @@ export function DashboardBreakdownTableSection({
                     key={columnId}
                     className={
                       columnId === 'name'
-                        ? 'max-w-[10rem] truncate font-medium'
-                        : 'font-numeric text-right tabular-nums'
+                        ? 'whitespace-nowrap font-medium'
+                        : 'font-numeric text-right tabular-nums whitespace-nowrap'
                     }
                   >
                     {columnId === 'name' ? (
                       nameLink ? (
                         nameLink(row)
                       ) : (
-                        <span className="block truncate" title={row.name}>
+                        <span className="block whitespace-nowrap" title={row.name}>
                           {row.name}
                         </span>
                       )
@@ -135,8 +135,8 @@ export function DashboardBreakdownTableSection({
                     key={columnId}
                     className={
                       columnId === 'name'
-                        ? 'max-w-[10rem] truncate'
-                        : 'font-numeric text-right tabular-nums'
+                        ? 'whitespace-nowrap'
+                        : 'font-numeric text-right tabular-nums whitespace-nowrap'
                     }
                   >
                     {columnId === 'name' ? (
@@ -163,14 +163,14 @@ export function DashboardBreakdownTableSection({
 export function campaignBreakdownLink(row: { id?: string; name?: string }) {
   if (!row.id) {
     return (
-      <span className="block truncate" title={row.name}>
+      <span className="block whitespace-nowrap" title={row.name}>
         {row.name}
       </span>
     );
   }
   return (
     <Link
-      className="block truncate text-primary hover:underline"
+      className="block whitespace-nowrap text-primary hover:underline"
       title={row.name}
       to={`/campaigns/${row.id}/edit`}
     >

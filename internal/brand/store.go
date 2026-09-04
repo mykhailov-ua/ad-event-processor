@@ -52,6 +52,10 @@ func (st *Store) CreateBrand(ctx context.Context, customerID uuid.UUID, name str
 	return brandID, nil
 }
 
+func (st *Store) GetBrand(ctx context.Context, id uuid.UUID) (DTO, error) {
+	return st.GetBrandDTO(ctx, id)
+}
+
 func (st *Store) GetBrandDTO(ctx context.Context, id uuid.UUID) (DTO, error) {
 	if st.poolOrNil() == nil || st.host == nil {
 		return DTO{}, fmt.Errorf("service unavailable")

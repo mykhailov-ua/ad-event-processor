@@ -20,13 +20,13 @@ export type {
 } from '@/domains/campaigns/list/campaigns_list_types';
 
 export type CampaignListColumnWidthProbe = {
-  items: Campaign[];
+  items?: Campaign[];
   metricsById: Record<string, CampaignListMetrics>;
   marginsById: Record<string, CampaignMargin>;
 };
 
 export type CampaignsDirectoryProps = {
-  items: Campaign[];
+  items?: Campaign[];
   total: number;
   limit: number;
   offset: number;

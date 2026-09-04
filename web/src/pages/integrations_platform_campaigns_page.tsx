@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import {
   deletePlatformCampaignLink,
@@ -12,6 +12,7 @@ import {
 } from '@/api/integrations_api';
 import type { PlatformCampaignLink, PlatformCampaignMutation } from '@/api/types';
 import { IntegrationsPlatformCampaigns } from '@/domains/integrations/integrations_platform_campaigns';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
 import { useResource } from '@/api/use_resource';
 
@@ -24,12 +25,12 @@ export function IntegrationsPlatformCampaignsPage() {
   } = useCustomerScope();
 
   const shouldFetch = Boolean(appliedCustomerId);
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listPlatformCampaignLinks({ customer_id: appliedCustomerId }, signal);
     },
@@ -58,8 +59,6 @@ export function IntegrationsPlatformCampaignsPage() {
   const [refreshSuccess, setRefreshSuccess] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
   const [mutationResult, setMutationResult] = useState<PlatformCampaignMutation | undefined>();
-
-  const links = useMemo(() => data ?? [], [data]);
 
   const clearActionFeedback = useCallback(() => {
     setSaveError(undefined);
@@ -104,7 +103,7 @@ export function IntegrationsPlatformCampaignsPage() {
         account_id: draftAccountId.trim() || undefined,
       });
       setSaveSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -117,6 +116,7 @@ export function IntegrationsPlatformCampaignsPage() {
     draftExternalCampaignId,
     draftNetwork,
     clearActionFeedback,
+    bumpRefresh,
   ]);
 
   const onDelete = useCallback(async () => {
@@ -130,13 +130,13 @@ export function IntegrationsPlatformCampaignsPage() {
     try {
       await deletePlatformCampaignLink(campaignId, network);
       setDeleteSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setDeleteError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setDeleting(false);
     }
-  }, [draftCampaignId, draftNetwork, clearActionFeedback]);
+  }, [draftCampaignId, draftNetwork, clearActionFeedback, bumpRefresh]);
 
   const onRefresh = useCallback(async () => {
     const campaignId = draftCampaignId.trim();
@@ -149,13 +149,13 @@ export function IntegrationsPlatformCampaignsPage() {
     try {
       await refreshPlatformCampaignLink(campaignId, network);
       setRefreshSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setRefreshError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setRefreshing(false);
     }
-  }, [draftCampaignId, draftNetwork, clearActionFeedback]);
+  }, [draftCampaignId, draftNetwork, clearActionFeedback, bumpRefresh]);
 
   const onSyncRun = useCallback(async () => {
     const campaignId = draftCampaignId.trim();
@@ -167,13 +167,13 @@ export function IntegrationsPlatformCampaignsPage() {
     try {
       await runPlatformCampaignSync({ campaign_id: campaignId });
       setSyncSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setSyncError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSyncing(false);
     }
-  }, [clearActionFeedback, draftCampaignId]);
+  }, [clearActionFeedback, draftCampaignId, bumpRefresh]);
 
   const runMutation = useCallback(
     async (
@@ -208,14 +208,21 @@ export function IntegrationsPlatformCampaignsPage() {
           result = await setPlatformCampaignBudget(campaignId, body);
         }
         setMutationResult(result);
-        setRefreshToken((value) => value + 1);
+        bumpRefresh();
       } catch (err) {
         setMutationError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setter(false);
       }
     },
-    [clearActionFeedback, draftCampaignId, draftDailyBudgetMicro, draftNetwork],
+    [clearActionFeedback, draftCampaignId, draftDailyBudgetMicro, draftNetwork, bumpRefresh],
+  );
+
+  const onRefreshLink = useCoalescedBumpRefresh(
+    () => {
+      void onRefresh();
+    },
+    refreshing || fetching,
   );
 
   const onPause = useCallback(() => {
@@ -232,12 +239,12 @@ export function IntegrationsPlatformCampaignsPage() {
 
   return (
     <IntegrationsPlatformCampaigns
-      links={links}
+      links={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       onDraftCustomerIdChange={setDraftCustomerId}
       onApplyCustomerScope={applyCustomerScope}
       linkForm={{
@@ -274,9 +281,7 @@ export function IntegrationsPlatformCampaignsPage() {
         onDelete: () => {
           void onDelete();
         },
-        onRefresh: () => {
-          void onRefresh();
-        },
+        onRefresh: onRefreshLink,
         onSyncRun: () => {
           void onSyncRun();
         },

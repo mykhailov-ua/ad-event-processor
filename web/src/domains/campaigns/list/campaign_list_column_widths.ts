@@ -167,7 +167,7 @@ export function computeCampaignListColumnWidths({
     if (totalsText) {
       maxWidth = Math.max(
         maxWidth,
-        columnContentWidth(totalsText, widths[columnId], { tools: columnId !== 'select' }),
+        columnContentWidth(totalsText, widths[columnId], { tools: true }),
       );
     }
 

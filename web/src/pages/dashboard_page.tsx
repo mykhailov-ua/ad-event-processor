@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { listCampaigns } from '@/api/campaigns_api';
-import { listCustomers } from '@/api/customers_api';
+import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';
 import { getRoleDashboard, isDashboardRole } from '@/api/dashboards_api';
 import { ApiError } from '@/api/client';
 import type { DashboardRole } from '@/api/types';
@@ -11,6 +11,7 @@ import {
   RoleDashboardView,
 } from '@/domains/dashboards/role_dashboard_view';
 import type { DashboardRangePreset } from '@/domains/dashboards/buyer_dashboard_types';
+import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { dashboardPresetRange } from '@/lib/dashboard_range';
@@ -48,7 +49,7 @@ export function DashboardPage() {
   const [rangePreset, setRangePreset] = useState<DashboardRangePreset>('7d');
 
   const { data: customersData } = useResource(
-    (signal) => listCustomers({ limit: 100, offset: 0, sort: 'name', order: 'asc' }, signal),
+    (signal) => fetchCustomersComboboxCached(signal),
     [],
   );
 
@@ -140,7 +141,7 @@ export function DashboardPage() {
     [draftRole, navigate, roleParam, setSearchParams],
   );
 
-  const onApply = useCallback(() => {
+  const applyDashboard = useCallback(() => {
     commitFilters({
       customerId: draftCustomerId,
       campaignId: draftCampaignId,
@@ -158,6 +159,8 @@ export function DashboardPage() {
     draftRole,
     draftTo,
   ]);
+
+  const onApply = useCoalescedBumpRefresh(applyDashboard, fetching);
 
   const onDraftRangeChange = useCallback(
     (from: string, to: string) => {

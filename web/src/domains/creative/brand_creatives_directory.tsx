@@ -31,7 +31,7 @@ import { displayTimestamp } from '@/lib/display';
 
 export type BrandCreativesDirectoryProps = {
   brandId: string;
-  items: BrandCreative[];
+  items?: BrandCreative[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -227,10 +227,10 @@ export function BrandCreativesDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No creatives" description="This brand has no creatives yet." />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable horizontalScroll>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Name</DirectoryTableHead>
@@ -242,14 +242,14 @@ export function BrandCreativesDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{row.status}</Badge>
                   </TableCell>
                   <TableCell>{row.weight}</TableCell>
-                  <TableCell className="max-w-md truncate">{row.landing_url}</TableCell>
+                  <TableCell className="whitespace-nowrap">{row.landing_url}</TableCell>
                   <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
                   <TableCell>
                     <RowActionsMenu ariaLabel="Creative actions" disabled={acting}>

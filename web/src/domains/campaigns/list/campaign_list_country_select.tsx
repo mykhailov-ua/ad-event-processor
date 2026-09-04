@@ -3,6 +3,14 @@ import { Check, ChevronDown, Search, X } from 'lucide-react';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { CampaignsListFilterOption } from '@/domains/campaigns/list/campaigns_list_filter_select';
+import {
+  campaignCountrySelectListClass,
+  campaignCountrySelectOptionClass,
+  campaignCountrySelectOptionSelectedClass,
+  campaignCountrySelectPopoverClass,
+  campaignCountrySelectSearchClass,
+  campaignCountrySelectTriggerClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import { resolvePopoverAlign } from '@/lib/popover_align';
 import { cn } from '@/lib/utils';
 
@@ -84,19 +92,19 @@ export function CampaignListCountrySelect({
           aria-haspopup="listbox"
           aria-label={ariaLabel}
           className={cn(
-            'campaign-country-select__trigger',
+            campaignCountrySelectTriggerClass,
             className,
           )}
           disabled={disabled}
           title={title}
           type="button"
         >
-          <span className="truncate">{selectedLabel}</span>
+          <span className="whitespace-nowrap">{selectedLabel}</span>
           <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align={align} className="campaign-country-select p-0" side="bottom">
-        <div className="campaign-country-select__search">
+      <PopoverContent align={align} className={cn(campaignCountrySelectPopoverClass, 'p-0')} side="bottom">
+        <div className={campaignCountrySelectSearchClass}>
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <input
             aria-label="Search countries"
@@ -117,7 +125,7 @@ export function CampaignListCountrySelect({
             </button>
           ) : null}
         </div>
-        <ul className="campaign-country-select__list" role="listbox">
+        <ul className={campaignCountrySelectListClass} role="listbox">
           {filteredOptions.map((option) => {
             const label = campaignCountryOptionLabel(option.value, option.label);
             const isSelected = option.value === value;
@@ -126,8 +134,8 @@ export function CampaignListCountrySelect({
                 <button
                   aria-selected={isSelected}
                   className={cn(
-                    'campaign-country-select__option',
-                    isSelected && 'campaign-country-select__option--selected',
+                    campaignCountrySelectOptionClass,
+                    isSelected && campaignCountrySelectOptionSelectedClass,
                   )}
                   role="option"
                   type="button"

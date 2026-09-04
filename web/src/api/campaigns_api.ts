@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, apiJson } from './client.js';
+import { ApiError, apiFetch, apiJson, apiJsonArray } from './client.js';
 import { CAMPAIGN_LIST_METRICS_BATCH_CHUNK_SIZE } from '@/domains/campaigns/list/campaign_list_limits';
 import { isUuidLike } from '@/lib/customer_label';
 import type {
@@ -564,7 +564,7 @@ export async function importCampaignMigration(
 export async function listCampaignOnboardingTemplates(
   signal?: AbortSignal,
 ): Promise<CampaignOnboardingTemplate[]> {
-  return apiJson<CampaignOnboardingTemplate[]>('/api/v1/campaigns/onboarding-templates', {
+  return apiJsonArray<CampaignOnboardingTemplate>('/api/v1/campaigns/onboarding-templates', {
     signal,
   });
 }

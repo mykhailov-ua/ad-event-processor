@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { createFlow, listFlows } from '@/api/flows_api';
@@ -21,7 +21,6 @@ export function FlowsPage() {
   const [createError, setCreateError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  const items = useMemo(() => data ?? [], [data]);
 
   const onCreateFlow = useCallback(async () => {
     const name = draftName.trim();
@@ -51,7 +50,7 @@ export function FlowsPage() {
 
   return (
     <FlowsDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

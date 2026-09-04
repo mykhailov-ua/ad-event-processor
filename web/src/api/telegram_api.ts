@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   TelegramBot,
   TelegramDeeplink,
@@ -10,7 +10,7 @@ import type {
 } from './types.js';
 
 export async function listTelegramBots(signal?: AbortSignal): Promise<TelegramBot[]> {
-  return apiJson<TelegramBot[]>('/api/v1/telegram/bots', { signal });
+  return apiJsonArray<TelegramBot>('/api/v1/telegram/bots', { signal });
 }
 
 export async function getTelegramBot(campaignId: string, signal?: AbortSignal): Promise<TelegramBot> {
@@ -38,7 +38,7 @@ export async function listTelegramPostbacks(
 ): Promise<TelegramPostback[]> {
   const search = new URLSearchParams();
   search.set('campaign_id', params.campaign_id);
-  return apiJson<TelegramPostback[]>(`/api/v1/telegram/postbacks?${search.toString()}`, { signal });
+  return apiJsonArray<TelegramPostback>(`/api/v1/telegram/postbacks?${search.toString()}`, { signal });
 }
 
 export async function createTelegramPostback(

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { listCustomers } from '@/api/customers_api';
+import { fetchCustomersComboboxCached } from '@/lib/customers_combobox_cache';
 import { getClickLogReport } from '@/api/reports_api';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
 import { ClickLogDirectory } from '@/domains/reports/click_log_directory';
@@ -44,7 +44,7 @@ export function ClickLogPage() {
   }, [appliedCampaignId, appliedClickId, appliedCustomerId, appliedFrom, appliedTo]);
 
   const { data: customersData } = useResource(
-    (signal) => listCustomers({ limit: 100, offset: 0, sort: 'name', order: 'asc' }, signal),
+    (signal) => fetchCustomersComboboxCached(signal),
     [],
   );
 

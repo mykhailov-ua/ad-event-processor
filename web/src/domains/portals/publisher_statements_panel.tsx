@@ -16,7 +16,7 @@ import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type PublisherStatementsPanelProps = {
-  statements: PublisherStatement[];
+  statements?: PublisherStatement[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -48,7 +48,7 @@ export function PublisherStatementsPanel({
         Dashboard
       </Link>
 
-      {statements.length === 0 ? (
+      {(statements ?? []).length === 0 ? (
         <EmptyState title="No statements" description="Publisher revenue statements are empty." />
       ) : (
         <DirectoryTable>
@@ -61,7 +61,7 @@ export function PublisherStatementsPanel({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {statements.map((row) => (
+              {(statements ?? []).map((row) => (
                 <TableRow key={String(row.id ?? row.idempotency_hash ?? row.created_at)}>
                   <TableCell>{row.id ?? ''}</TableCell>
                   <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>

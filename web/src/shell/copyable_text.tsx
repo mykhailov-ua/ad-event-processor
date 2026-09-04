@@ -24,7 +24,7 @@ export function CopyableText({
   return (
     <span className={cn('inline-flex min-w-0 max-w-full items-center gap-0.5', className)}>
       <span
-        className={cn('min-w-0 select-text truncate', mono && 'font-mono text-xs tabular-nums')}
+        className={cn('min-w-0 select-text whitespace-nowrap', mono && 'font-mono text-xs tabular-nums')}
         title={title ?? trimmed}
       >
         {trimmed}

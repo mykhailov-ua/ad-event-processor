@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 
+import type { CampaignListMetrics } from '@/api/campaigns_api';
 import type { Campaign, CampaignStatsQuery } from '@/api/types';
 import { CampaignCountryBadges } from '@/domains/campaigns/list/campaign_country_badges';
 import { CampaignMarginBreachBadge } from '@/domains/campaigns/list/campaign_margin_badge';
@@ -16,7 +17,9 @@ export type CampaignListTableMiddleCellProps = {
   campaign: Campaign;
   vm: CampaignRowVm;
   marginBreach?: boolean;
+  listMetrics?: CampaignListMetrics;
   onOpenOverview?: (campaign: Campaign) => void;
+  statsCacheRevision: string;
   statsQuery?: CampaignStatsQuery;
 };
 
@@ -25,7 +28,9 @@ export function CampaignListTableMiddleCell({
   campaign,
   vm,
   marginBreach = false,
+  listMetrics,
   onOpenOverview,
+  statsCacheRevision,
   statsQuery,
 }: CampaignListTableMiddleCellProps) {
   const row = campaign as CampaignWithMoneyDisplay;
@@ -34,7 +39,7 @@ export function CampaignListTableMiddleCell({
     case 'status':
       return (
         <span className="inline-flex max-w-full flex-nowrap items-center gap-1 overflow-hidden">
-          <span className={cn(vm.statusBadgeClass, 'truncate')} title={vm.statusLabel}>
+          <span className={cn(vm.statusBadgeClass, 'whitespace-nowrap')} title={vm.statusLabel}>
             {vm.statusLabel}
           </span>
           {marginBreach ? <CampaignMarginBreachBadge /> : null}
@@ -62,7 +67,7 @@ export function CampaignListTableMiddleCell({
     case 'group':
       return (
         <Link
-          className="block max-w-full truncate tabular-nums"
+          className="block max-w-full whitespace-nowrap tabular-nums"
           title={vm.groupLabel ?? vm.groupCustomerId}
           to={`/customers/${vm.groupCustomerId}`}
           onClick={(event) => event.stopPropagation()}
@@ -169,7 +174,9 @@ export function CampaignListTableMiddleCell({
       return (
         <CampaignMetricsPopover
           campaign={row}
+          listMetrics={listMetrics}
           onOpenOverview={onOpenOverview}
+          statsCacheRevision={statsCacheRevision}
           statsQuery={statsQuery}
           triggerContent={
             <span className={tableCellClass()}>{vm.budgetPct.toFixed(1)}%</span>
@@ -184,7 +191,7 @@ export function CampaignListTableMiddleCell({
       );
     case 'owner':
       return (
-        <span className="block max-w-full truncate tabular-nums text-muted-foreground" title={vm.ownerId}>
+        <span className="block max-w-full whitespace-nowrap tabular-nums text-muted-foreground" title={vm.ownerId}>
           {vm.ownerLabel}
         </span>
       );

@@ -29,7 +29,7 @@ import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav
 import { displayTimestamp } from '@/lib/display';
 
 export type FlowsDirectoryProps = {
-  items: Flow[];
+  items?: Flow[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -129,7 +129,7 @@ export function FlowsDirectory({
       ) : null}
 
       <div aria-atomic="true" aria-live="polite">
-        {items.length === 0 ? (
+        {(items ?? []).length === 0 ? (
           <EmptyState
             variant="blank-slate"
             title="No flows"
@@ -147,7 +147,7 @@ export function FlowsDirectory({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((row) => (
+                {(items ?? []).map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <Link className="hover:underline" to={`/flows/${row.id}`}>

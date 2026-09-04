@@ -62,7 +62,7 @@ export type CustomerDetailProps = {
   balanceFetching: boolean;
   balanceError: Error | undefined;
   hasBalanceSnapshot: boolean;
-  ledgerItems: BalanceLedgerEntry[];
+  ledgerItems?: BalanceLedgerEntry[];
   ledgerTotal: number;
   ledgerLimit: number;
   ledgerOffset: number;
@@ -88,7 +88,7 @@ export type CustomerDetailProps = {
   walletFetching: boolean;
   walletError: Error | undefined;
   hasWalletSnapshot: boolean;
-  paymentItems: PaymentHistoryRow[];
+  paymentItems?: PaymentHistoryRow[];
   paymentTotal: number;
   paymentLimit: number;
   paymentOffset: number;
@@ -439,7 +439,7 @@ function PaymentsTab({
   hasSnapshot,
   onPageChange,
 }: {
-  items: PaymentHistoryRow[];
+  items?: PaymentHistoryRow[];
   total: number;
   limit: number;
   offset: number;
@@ -462,7 +462,7 @@ function PaymentsTab({
 
   return (
     <section className="grid gap-6">
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Payments</CardTitle>
@@ -478,7 +478,7 @@ function PaymentsTab({
             onSubmit={(event) => event.preventDefault()}
           >
             <DirectoryPaginationFooter
-              canGoNext={offset + items.length < total}
+              canGoNext={offset + (items ?? []).length < total}
               canGoPrev={offset > 0}
               disabled={fetching}
               layout="split"
@@ -504,7 +504,7 @@ function PaymentsTab({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((row) => (
+                  {(items ?? []).map((row) => (
                     <TableRow key={`${row.intent_id ?? 'payment'}-${row.created_at ?? ''}`}>
                       <TableCell className="font-mono text-xs">{row.intent_id ?? ''}</TableCell>
                       <TableCell className="text-right tabular-nums">
@@ -598,7 +598,7 @@ function LedgerTab({
   onPageChange,
   onExportCsv,
 }: {
-  items: BalanceLedgerEntry[];
+  items?: BalanceLedgerEntry[];
   total: number;
   limit: number;
   offset: number;
@@ -649,12 +649,12 @@ function LedgerTab({
 
       {exportError ? <ErrorBlock title="Export failed" message={exportError.message} /> : null}
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No ledger entries" description="This customer has no ledger rows yet." />
       ) : (
         <Card>
           <CardContent className="overflow-x-auto pt-6">
-            <LedgerEntryTable items={items} />
+            <LedgerEntryTable items={items ?? []} />
           </CardContent>
         </Card>
       )}
@@ -677,7 +677,7 @@ function LedgerEntryTable({ items }: { items: BalanceLedgerEntry[] }) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {items.map((row) => (
+        {(items ?? []).map((row) => (
           <TableRow key={row.id ?? `${row.created_at}-${row.type}`}>
             <TableCell className="tabular-nums">{row.id ?? ''}</TableCell>
             <TableCell>{row.type ?? ''}</TableCell>

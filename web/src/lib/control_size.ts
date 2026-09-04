@@ -1,11 +1,12 @@
 /**
  * Shared control height contract for admin UI.
- * Use h-8 (32px) on Button, SelectTrigger, and Input in domains/shell.
+ * Canonical token: admin_kit.controlHeight (`min-h-7`) via adminChrome.control.
+ * Use default Button / Input / SelectTrigger in domains/shell -- no manual h-* overrides.
  */
-export const ADMIN_CONTROL_HEIGHT_PX = 32;
+export const ADMIN_CONTROL_HEIGHT_PX = 28;
 
 export const adminControlClassNames = {
-  button: 'h-8',
-  select: 'h-8',
-  input: 'h-8',
+  button: 'min-h-7',
+  select: 'min-h-7',
+  input: 'min-h-7',
 } as const;

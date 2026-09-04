@@ -10,9 +10,12 @@ export type SearchInputProps = Omit<ComponentProps<'input'>, 'type'> & {
 
 export function SearchInput({ className, wrapperClassName, ...props }: SearchInputProps) {
   return (
-    <div className={cn('admin-search-input', wrapperClassName)}>
-      <Search aria-hidden className="admin-search-input__icon" />
-      <Input className={cn('admin-search-input__field', className)} type="search" {...props} />
+    <div className={cn('relative flex min-w-0 items-center', wrapperClassName)}>
+      <Search
+        aria-hidden
+        className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-muted-foreground"
+      />
+      <Input className={cn('bg-background pl-8 text-foreground', className)} type="search" {...props} />
     </div>
   );
 }

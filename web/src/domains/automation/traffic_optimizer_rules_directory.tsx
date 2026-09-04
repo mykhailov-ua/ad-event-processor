@@ -35,7 +35,7 @@ import {
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
 
 export type TrafficOptimizerRulesDirectoryProps = {
-  items: TrafficOptimizerRule[];
+  items?: TrafficOptimizerRule[];
   appliedCustomerId: string;
   draftCustomerId: string;
   createDraft: TrafficOptimizerRuleEditDraft;
@@ -188,7 +188,7 @@ export function TrafficOptimizerRulesDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No optimizer rules" description="No rules exist for this customer." />
       ) : (
         <DirectoryTable>
@@ -203,7 +203,7 @@ export function TrafficOptimizerRulesDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => {
+              {(items ?? []).map((row) => {
                 const ruleId = row.id ?? '';
                 const draft = ruleDrafts[ruleId] ?? trafficOptimizerRuleEditFromRow(row);
                 const updating = updatingRuleId === ruleId;

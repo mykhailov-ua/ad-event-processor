@@ -1,5 +1,7 @@
 import type { Campaign } from '@/api/types';
 
+import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid';
+
 function devDisplayId(id: string): string {
   let hash = 0;
   for (let index = 0; index < id.length; index += 1) {
@@ -58,21 +60,15 @@ const STATUSES = ['ACTIVE', 'PAUSED', 'ARCHIVED'] as const;
 
 const COUNTRIES = ['US', 'GB', 'DE', 'CA', 'UA', 'FR', 'JP', 'AU', 'BR', 'MX'] as const;
 
-function devUuid(kind: string, seq: number): string {
-  const suffix = String(seq).padStart(12, '0');
-  const prefix = kind.slice(0, 4).padEnd(4, '0').slice(0, 4);
-  return `00000000-${prefix}-4000-8000-${suffix}`;
-}
-
 export const DEV_MOCK_CUSTOMERS: DevMockCustomer[] = CUSTOMER_NAMES.map((name, index) => ({
-  id: devUuid('cust', index + 1),
+  id: seedDeterministicUuid('customer', index + 1),
   name,
 }));
 
 export const DEV_MOCK_USERS: DevMockUser[] = [
-  { id: devUuid('user', 1), email: 'operator@dev.local' },
-  { id: devUuid('user', 2), email: 'buyer@dev.local' },
-  { id: devUuid('user', 3), email: 'analyst@dev.local' },
+  { id: seedDeterministicUuid('user', 1), email: 'operator@dev.local' },
+  { id: seedDeterministicUuid('user', 2), email: 'buyer@dev.local' },
+  { id: seedDeterministicUuid('user', 3), email: 'analyst@dev.local' },
 ];
 
 function campaignStatus(seq: number): (typeof STATUSES)[number] {
@@ -86,7 +82,7 @@ function campaignStatus(seq: number): (typeof STATUSES)[number] {
 }
 
 function buildCampaign(seq: number): Campaign {
-  const id = devUuid('camp', seq);
+  const id = seedDeterministicUuid('campaign', seq);
   const customer = DEV_MOCK_CUSTOMERS[(seq - 1) % DEV_MOCK_CUSTOMERS.length];
   const owner = DEV_MOCK_USERS[(seq - 1) % DEV_MOCK_USERS.length];
   const status = campaignStatus(seq);

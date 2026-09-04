@@ -12,10 +12,10 @@ export type PresetCatalogRow = {
   parameters_schema?: unknown[] | null;
 };
 
-export function PresetCatalogGrid({ items }: { items: PresetCatalogRow[] }) {
+export function PresetCatalogGrid({ items }: { items?: PresetCatalogRow[] }) {
   return (
     <BentoGrid>
-      {items.map((row, index) => {
+      {(items ?? []).map((row, index) => {
         const key = row.key ?? `preset-${index}`;
         const Icon = PRESET_ICONS[index % PRESET_ICONS.length];
         const paramCount = row.parameters_schema?.length ?? 0;

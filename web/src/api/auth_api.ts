@@ -1,5 +1,5 @@
 import { apiJson, ApiError } from './client.js';
-import { getMeta } from './platform_api.js';
+import { fetchMetaCached } from '@/lib/get_meta_cache';
 import type {
   AuthLoginRequest,
   AuthLoginResponse,
@@ -56,7 +56,7 @@ async function composeSessionBootstrap(signal?: AbortSignal): Promise<SessionBoo
   const [user, session, meta] = await Promise.all([
     getAuthMe(signal),
     getSession(signal),
-    getMeta(signal).catch(() => undefined),
+    fetchMetaCached(signal).catch(() => undefined),
   ]);
   return {
     user,

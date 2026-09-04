@@ -27,7 +27,7 @@ import { RtbNav, RtbLicenseStub, rtbPanelError } from '@/domains/rtb/rtb_nav';
 import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type RtbDealsDirectoryProps = {
-  items: RtbDeal[];
+  items?: RtbDeal[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -134,7 +134,7 @@ export function RtbDealsDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No deals" description="RTB deal catalog returned no entries." />
       ) : (
         <DirectoryTable>
@@ -148,7 +148,7 @@ export function RtbDealsDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.id ?? row.deal_id}>
                   <TableCell>
                     {row.id != null ? (

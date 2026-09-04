@@ -1468,6 +1468,24 @@ paths:
         default:
           $ref: '../openapi.yaml#/components/responses/Error'
 
+  /api/v1/brands/{id}:
+    get:
+      tags: [brands]
+      operationId: brandsGet
+      summary: Get brand by id
+      x-permissions: [campaigns:read]
+      parameters:
+        - $ref: '../openapi.yaml#/components/parameters/UuidPathId'
+      responses:
+        '200':
+          description: Brand
+          content:
+            application/json:
+              schema:
+                $ref: '../components/schemas/campaign.yaml#/Brand'
+        default:
+          $ref: '../openapi.yaml#/components/responses/Error'
+
   /api/v1/brands/{id}/creatives:
     get:
       tags: [brands]

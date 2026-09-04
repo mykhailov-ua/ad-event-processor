@@ -3,11 +3,13 @@ import type { FormHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
+// Named Tailwind layout contracts (shared style contracts). Not BEM / not app.css.
+// Consumers use DirectoryFilterForm layout=... -- do not copy these strings into domains.
 const DIRECTORY_FILTER_GRID =
   'grid grid-cols-[repeat(auto-fill,11rem)] items-end gap-x-3 gap-y-3';
 
 const CAMPAIGNS_FILTER_ROW =
-  'flex w-full flex-nowrap items-start gap-2 [&>.admin-campaigns-filter-field]:min-w-0 [&>.admin-campaigns-filter-field]:flex-1 [&>.admin-campaigns-filter-field]:basis-0';
+  'grid w-full grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4';
 
 const AUTO_FILL_FILTER_GRID =
   'grid grid-cols-[repeat(auto-fill,12rem)] items-end gap-x-4 gap-y-4';

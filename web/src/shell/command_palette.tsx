@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -11,13 +11,12 @@ import {
 import { fetchCommandPaletteRoutesCached } from '@/lib/command_palette_routes_cache';
 import { ApiError } from '@/api/client';
 import { ErrorBlock } from '@/shell/error_block';
-import { Badge } from '@/components/ui/badge';
+import { CommandPaletteRow } from '@/shell/command_palette_row';
 import {
   CommandDialog,
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandItem,
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command';
@@ -44,21 +43,23 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
 
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
-  const setOpen = useCallback(
-    (next: boolean) => {
-      onOpenChange?.(next);
-      if (controlledOpen === undefined) {
-        setInternalOpen(next);
-      }
-    },
-    [controlledOpen, onOpenChange],
-  );
+
+  function setOpen(next: boolean) {
+    onOpenChange?.(next);
+    if (controlledOpen === undefined) {
+      setInternalOpen(next);
+    }
+  }
+
   const [query, setQuery] = useState('');
   const [routes, setRoutes] = useState<CommandPaletteItem[]>([]);
   const [recents, setRecents] = useState<CommandPaletteItem[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<Error | undefined>();
+
   const [searchItems, setSearchItems] = useState<CommandPaletteItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<Error | undefined>(undefined);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<Error | undefined>();
   const [degraded, setDegraded] = useState(false);
 
   const trimmedQuery = query.trim();
@@ -71,68 +72,72 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
     return routes.filter((route) => !recents.some((recent) => recent.id === route.id));
   }, [recents, routes]);
 
-  const loadCatalog = useCallback(async (signal: AbortSignal) => {
-    setLoading(true);
-    setError(undefined);
-    try {
-      const [routes, recentsResponse] = await Promise.all([
-        fetchCommandPaletteRoutesCached(signal),
-        customerId
-          ? listCommandPaletteRecents(customerId, signal)
-          : Promise.resolve({ items: [], total: 0 }),
-      ]);
-      setRoutes(routes);
-      setRecents(recentsResponse.items ?? []);
-    } catch (err) {
-      if (signal.aborted) {
-        return;
-      }
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      if (!signal.aborted) {
-        setLoading(false);
-      }
-    }
-  }, [customerId]);
-
-  const openPalette = useCallback(() => {
-    setOpen(true);
-    setQuery('');
-    setSearchItems([]);
-    setDegraded(false);
-    void recordCommandPaletteOpen({ source: 'keyboard' }).catch(() => undefined);
-  }, [setOpen]);
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        openPalette();
+        onOpenChange?.(true);
+        if (controlledOpen === undefined) {
+          setInternalOpen(true);
+        }
+        setQuery('');
+        setSearchItems([]);
+        setSearchError(undefined);
+        setDegraded(false);
+        void recordCommandPaletteOpen({ source: 'keyboard' }).catch(() => undefined);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [openPalette]);
+  }, [controlledOpen, onOpenChange]);
 
   useEffect(() => {
     if (!open) {
       return;
     }
+
     const ctrl = new AbortController();
+
+    async function loadCatalog(signal: AbortSignal) {
+      setCatalogLoading(true);
+      setCatalogError(undefined);
+      try {
+        const [nextRoutes, recentsResponse] = await Promise.all([
+          fetchCommandPaletteRoutesCached(signal),
+          customerId
+            ? listCommandPaletteRecents(customerId, signal)
+            : Promise.resolve({ items: [], total: 0 }),
+        ]);
+        setRoutes(nextRoutes);
+        setRecents(recentsResponse.items ?? []);
+      } catch (err) {
+        if (signal.aborted) {
+          return;
+        }
+        setCatalogError(err instanceof Error ? err : new Error(String(err)));
+      } finally {
+        if (!signal.aborted) {
+          setCatalogLoading(false);
+        }
+      }
+    }
+
     void loadCatalog(ctrl.signal);
     return () => ctrl.abort();
-  }, [loadCatalog, open]);
+  }, [customerId, open]);
 
   useEffect(() => {
     if (!open || !isSearching || !customerId) {
       setSearchItems([]);
+      setSearchLoading(false);
+      setSearchError(undefined);
       return;
     }
 
     const ctrl = new AbortController();
     const timer = window.setTimeout(() => {
-      setLoading(true);
-      setError(undefined);
+      setSearchLoading(true);
+      setSearchError(undefined);
       void searchCommandPalette({ customer_id: customerId, q: trimmedQuery }, ctrl.signal)
         .then((response) => {
           setSearchItems(response.items ?? []);
@@ -142,11 +147,11 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
           if (ctrl.signal.aborted) {
             return;
           }
-          setError(err instanceof Error ? err : new Error(String(err)));
+          setSearchError(err instanceof Error ? err : new Error(String(err)));
         })
         .finally(() => {
           if (!ctrl.signal.aborted) {
-            setLoading(false);
+            setSearchLoading(false);
           }
         });
     }, SEARCH_DEBOUNCE_MS);
@@ -157,18 +162,17 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
     };
   }, [customerId, isSearching, open, trimmedQuery]);
 
-  const onSelectItem = useCallback(
-    (item: CommandPaletteItem) => {
-      setOpen(false);
-      if (customerId) {
-        void recordCommandPaletteRecent({ customer_id: customerId, item }).catch(() => undefined);
-      }
-      navigate(normalizeHref(item.href));
-    },
-    [customerId, navigate],
-  );
+  function onSelectItem(item: CommandPaletteItem) {
+    setOpen(false);
+    if (customerId) {
+      void recordCommandPaletteRecent({ customer_id: customerId, item }).catch(() => undefined);
+    }
+    navigate(normalizeHref(item.href));
+  }
 
-  const paletteForbidden = error instanceof ApiError && error.status === 403;
+  const activeError = isSearching ? searchError : catalogError;
+  const activeLoading = isSearching ? searchLoading : catalogLoading;
+  const paletteForbidden = activeError instanceof ApiError && activeError.status === 403;
 
   return (
     <CommandDialog onOpenChange={setOpen} open={open} shouldFilter={false}>
@@ -186,29 +190,21 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
       ) : null}
       {paletteForbidden ? (
         <div className="px-3 pb-3">
-          <ErrorBlock title="Command palette forbidden" message={error.message} />
+          <ErrorBlock title="Command palette forbidden" message={activeError.message} />
         </div>
-      ) : error && !paletteForbidden ? (
+      ) : activeError && !paletteForbidden ? (
         <div className="px-3 pb-3">
-          <ErrorBlock title="Command palette failed" message={error.message} />
+          <ErrorBlock title="Command palette failed" message={activeError.message} />
         </div>
       ) : (
         <CommandList aria-label="Command palette results">
-          <CommandEmpty>{loading ? 'Loading...' : isSearching ? 'No matches.' : 'No entries.'}</CommandEmpty>
+          <CommandEmpty>
+            {activeLoading ? 'Loading...' : isSearching ? 'No matches.' : 'No entries.'}
+          </CommandEmpty>
           {isSearching ? (
             <CommandGroup heading="Results">
               {searchItems.map((item) => (
-                <CommandItem key={item.id} value={item.id} onSelect={() => onSelectItem(item)}>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium">{item.label}</span>
-                    {item.meta ? (
-                      <span className="block truncate text-xs text-muted-foreground">{item.meta}</span>
-                    ) : null}
-                  </span>
-                  <Badge className="shrink-0" variant="outline">
-                    {item.kind}
-                  </Badge>
-                </CommandItem>
+                <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
               ))}
             </CommandGroup>
           ) : (
@@ -216,17 +212,7 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
               {recents.length > 0 ? (
                 <CommandGroup heading="Recent">
                   {recents.map((item) => (
-                    <CommandItem key={item.id} value={item.id} onSelect={() => onSelectItem(item)}>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{item.label}</span>
-                        {item.meta ? (
-                          <span className="block truncate text-xs text-muted-foreground">{item.meta}</span>
-                        ) : null}
-                      </span>
-                      <Badge className="shrink-0" variant="outline">
-                        {item.kind}
-                      </Badge>
-                    </CommandItem>
+                    <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
                   ))}
                 </CommandGroup>
               ) : null}
@@ -234,17 +220,7 @@ export function CommandPalette({ open: controlledOpen, onOpenChange }: CommandPa
               {catalogItems.length > 0 ? (
                 <CommandGroup heading="Routes">
                   {catalogItems.map((item) => (
-                    <CommandItem key={item.id} value={item.id} onSelect={() => onSelectItem(item)}>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{item.label}</span>
-                        {item.meta ? (
-                          <span className="block truncate text-xs text-muted-foreground">{item.meta}</span>
-                        ) : null}
-                      </span>
-                      <Badge className="shrink-0" variant="outline">
-                        {item.kind}
-                      </Badge>
-                    </CommandItem>
+                    <CommandPaletteRow key={item.id} item={item} onSelect={onSelectItem} />
                   ))}
                 </CommandGroup>
               ) : null}

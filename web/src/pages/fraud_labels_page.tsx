@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { bulkUpsertFraudLabels, listFraudLabels, upsertFraudLabel } from '@/api/fraud_api';
 import type { FraudManualLabelBulkRequest } from '@/api/types';
 import { FraudLabels } from '@/domains/fraud/fraud_labels';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 import { useSession } from '@/hooks/use_session';
 import { parseListLimit, parseListOffset } from '@/lib/list_query';
@@ -13,7 +14,7 @@ const IP_HASH_PATTERN = /^[0-9a-fA-F]{32}$/;
 export function FraudLabelsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useSession();
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -114,13 +115,13 @@ export function FraudLabelsPage() {
       setSaveSuccess(true);
       setDraftIpHash('');
       setDraftReason('');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setSaving(false);
     }
-  }, [appliedCustomerId, draftIpHash, draftLabel, draftReason]);
+  }, [appliedCustomerId, draftIpHash, draftLabel, draftReason, bumpRefresh]);
 
   const onBulkUpsert = useCallback(async () => {
     if (!appliedCustomerId) {
@@ -147,17 +148,17 @@ export function FraudLabelsPage() {
       setBulkSuccess(true);
       setBulkUpserted(response.upserted);
       setDraftBulkJson('');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setBulkError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setBulkSaving(false);
     }
-  }, [appliedCustomerId, draftBulkJson]);
+  }, [appliedCustomerId, draftBulkJson, bumpRefresh]);
 
   return (
     <FraudLabels
-      items={data?.items ?? []}
+      items={data?.items}
       total={data?.total ?? 0}
       limit={data?.limit ?? appliedLimit}
       offset={data?.offset ?? appliedOffset}

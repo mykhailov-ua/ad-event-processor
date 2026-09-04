@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 
+import type { CampaignListMetrics } from '@/api/campaigns_api';
 import { getCampaignMargin, getCampaignStats } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
 import type { CampaignMargin, CampaignStats, CampaignStatsQuery } from '@/api/types';
@@ -16,6 +17,24 @@ import { formatTableMoneyFromMicro } from '@/domains/campaigns/list/campaign_lis
 import {
   resolveCampaignStatusKey,
 } from '@/domains/campaigns/list/campaign_list_row_tone';
+import {
+  campaignOverviewDialogClass,
+  campaignOverviewEmptyBannerClass,
+  campaignOverviewFooterClass,
+  campaignOverviewHeaderClass,
+  campaignOverviewMetricCardClass,
+  campaignOverviewMetricLabelClass,
+  campaignOverviewMetricValueClass,
+  campaignOverviewOutlineButtonClass,
+  campaignOverviewPrimaryButtonClass,
+  campaignOverviewRateRowClass,
+  campaignOverviewRatesClass,
+  campaignOverviewRowClass,
+  campaignOverviewRowsClass,
+  campaignOverviewScrollClass,
+  campaignOverviewSectionClass,
+  campaignOverviewSectionTitleClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import { ErrorBlock } from '@/shell/error_block';
 import {
   campaignBudgetUsedPercent,
@@ -24,13 +43,22 @@ import {
 import { displayCount, displayMoneyDecimal, displayTimestamp } from '@/lib/display';
 import { isUuidLike } from '@/lib/customer_label';
 import { formatCampaignStatusLabel } from '@/lib/admin_typography';
+import {
+  buildCampaignStatsCacheKey,
+  campaignStatsFromListMetrics,
+  readCachedCampaignStats,
+  writeCachedCampaignStats,
+} from '@/domains/campaigns/list/campaign_list_stats_cache';
 import { cn } from '@/lib/utils';
 
 export type CampaignOverviewSheetProps = {
   campaign: CampaignWithMoneyDisplay | null;
   customerName: string;
+  listMargin?: CampaignMargin;
+  listMetrics?: CampaignListMetrics;
   onOpenChange: (open: boolean) => void;
   open: boolean;
+  statsCacheRevision: string;
   statsQuery?: CampaignStatsQuery;
 };
 
@@ -64,9 +92,9 @@ function OverviewSection({
   meta?: React.ReactNode;
 }) {
   return (
-    <section className={cn('campaign-overview-dialog__section', className)}>
+    <section className={cn(campaignOverviewSectionClass, className)}>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="campaign-overview-dialog__section-title">{title}</h3>
+        <h3 className={campaignOverviewSectionTitleClass}>{title}</h3>
         {meta}
       </div>
       {children}
@@ -84,7 +112,7 @@ function OverviewRow({
   valueClassName?: string;
 }) {
   return (
-    <div className="campaign-overview-dialog__row">
+    <div className={campaignOverviewRowClass}>
       <span className="text-muted-foreground">{label}</span>
       <span className={cn('tabular-nums text-foreground', valueClassName)}>{value}</span>
     </div>
@@ -93,16 +121,16 @@ function OverviewRow({
 
 function DeliveryMetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="campaign-overview-dialog__metric-card">
-      <p className="campaign-overview-dialog__metric-card-label">{label}</p>
-      <p className="campaign-overview-dialog__metric-card-value">{value}</p>
+    <div className={campaignOverviewMetricCardClass}>
+      <p className={campaignOverviewMetricLabelClass}>{label}</p>
+      <p className={campaignOverviewMetricValueClass}>{value}</p>
     </div>
   );
 }
 
 function DeliveryRateRow({ label, percent }: { label: string; percent: number }) {
   return (
-    <div className="campaign-overview-dialog__rate-row">
+    <div className={campaignOverviewRateRowClass}>
       <div className="flex items-center justify-between gap-2 text-[11px] font-semibold uppercase leading-[14px] text-muted-foreground">
         <span>{label}</span>
         <span className="tabular-nums">{percent}%</span>
@@ -155,8 +183,11 @@ function StatsUnavailable({ message }: { message: string }) {
 export function CampaignOverviewSheet({
   campaign,
   customerName,
+  listMargin,
+  listMetrics,
   onOpenChange,
   open,
+  statsCacheRevision,
   statsQuery,
 }: CampaignOverviewSheetProps) {
   const [stats, setStats] = useState<CampaignStats | undefined>();
@@ -164,39 +195,70 @@ export function CampaignOverviewSheet({
   const [statsError, setStatsError] = useState<Error | undefined>();
   const [marginError, setMarginError] = useState<Error | undefined>();
   const [loading, setLoading] = useState(false);
+  const resolvedStatsQuery = useMemo(
+    () => statsQuery ?? {},
+    [statsQuery?.from, statsQuery?.granularity, statsQuery?.to],
+  );
+  const cacheKey = useMemo(
+    () =>
+      campaign && isUuidLike(campaign.id)
+        ? buildCampaignStatsCacheKey(campaign.id, resolvedStatsQuery, statsCacheRevision)
+        : '',
+    [campaign, resolvedStatsQuery, statsCacheRevision],
+  );
 
   useEffect(() => {
     if (!open || !campaign || !isUuidLike(campaign.id)) {
       return;
     }
 
+    const cached = readCachedCampaignStats(cacheKey);
+    if (cached) {
+      setStats(cached);
+      setStatsError(undefined);
+      setMargin(listMargin);
+      setMarginError(undefined);
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
-    setLoading(true);
+    const seededStats = listMetrics
+      ? campaignStatsFromListMetrics(campaign.id, listMetrics, resolvedStatsQuery)
+      : undefined;
+    setStats(seededStats);
+    setMargin(listMargin);
     setStatsError(undefined);
     setMarginError(undefined);
+    setLoading(true);
 
-    void Promise.allSettled([
-      getCampaignStats(campaign.id, statsQuery ?? {}, controller.signal),
-      getCampaignMargin(campaign.id, controller.signal),
-    ])
+    const statsPromise = getCampaignStats(campaign.id, resolvedStatsQuery, controller.signal);
+    const marginPromise = listMargin
+      ? Promise.resolve(listMargin)
+      : getCampaignMargin(campaign.id, controller.signal);
+
+    void Promise.allSettled([statsPromise, marginPromise])
       .then(([statsResult, marginResult]) => {
         if (controller.signal.aborted) {
           return;
         }
 
         if (statsResult.status === 'fulfilled') {
+          writeCachedCampaignStats(cacheKey, statsResult.value);
           setStats(statsResult.value);
+          setStatsError(undefined);
         } else {
           const reason = statsResult.reason;
-          setStats(undefined);
+          setStats(seededStats);
           setStatsError(reason instanceof Error ? reason : new Error(String(reason)));
         }
 
         if (marginResult.status === 'fulfilled') {
           setMargin(marginResult.value);
+          setMarginError(undefined);
         } else {
           const reason = marginResult.reason;
-          setMargin(undefined);
+          setMargin(listMargin);
           if (!(reason instanceof ApiError && reason.status === 501)) {
             setMarginError(reason instanceof Error ? reason : new Error(String(reason)));
           }
@@ -211,7 +273,7 @@ export function CampaignOverviewSheet({
     return () => {
       controller.abort();
     };
-  }, [campaign, open, statsQuery?.from, statsQuery?.granularity, statsQuery?.to]);
+  }, [cacheKey, campaign, listMargin, listMetrics, open, resolvedStatsQuery]);
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -250,9 +312,9 @@ export function CampaignOverviewSheet({
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="campaign-overview-dialog w-[calc(100%-2rem)] max-w-md p-0">
-        <div className="campaign-overview-dialog__scroll">
-          <header className="campaign-overview-dialog__header">
+      <DialogContent className={campaignOverviewDialogClass}>
+        <div className={campaignOverviewScrollClass}>
+          <header className={campaignOverviewHeaderClass}>
             <div className="flex items-center justify-between gap-3">
               <span
                 className={cn(
@@ -276,7 +338,7 @@ export function CampaignOverviewSheet({
           <div className="grid gap-3">
             <OverviewSection title="Budget">
               <BudgetProgress campaign={campaign} />
-              <div className="campaign-overview-dialog__rows">
+              <div className={campaignOverviewRowsClass}>
                 <OverviewRow
                   label="Budget limit"
                   value={overviewMoney(campaign.budget_limit, campaign.budget_limit_display)}
@@ -332,14 +394,14 @@ export function CampaignOverviewSheet({
                     />
                   </div>
 
-                  <div className="campaign-overview-dialog__rates">
+                  <div className={campaignOverviewRatesClass}>
                     <DeliveryRateRow label="Impressions" percent={impressionRate} />
                     <DeliveryRateRow label="Clicks" percent={clickRate} />
                     <DeliveryRateRow label="Conversions" percent={conversionRate} />
                   </div>
 
                   {!loading && !hasDeliveryActivity ? (
-                    <p className="campaign-overview-dialog__empty-banner">No delivery activity</p>
+                    <p className={campaignOverviewEmptyBannerClass}>No delivery activity</p>
                   ) : null}
                 </div>
               ) : null}
@@ -350,7 +412,7 @@ export function CampaignOverviewSheet({
                 <p className="text-[13px] leading-[18px] text-muted-foreground">Loading margin...</p>
               ) : null}
               {margin ? (
-                <div className="campaign-overview-dialog__rows">
+                <div className={campaignOverviewRowsClass}>
                   <OverviewRow
                     label="Operator margin"
                     value={formatTableMoneyFromMicro(margin.operator_margin_micro).text}
@@ -365,7 +427,7 @@ export function CampaignOverviewSheet({
                   />
                 </div>
               ) : !loading && !marginError ? (
-                <div className="campaign-overview-dialog__rows">
+                <div className={campaignOverviewRowsClass}>
                   <OverviewRow label="Margin breach" value={campaign.margin_breach ? 'Yes' : 'No'} />
                 </div>
               ) : null}
@@ -376,17 +438,17 @@ export function CampaignOverviewSheet({
           </div>
         </div>
 
-        <footer className="campaign-overview-dialog__footer">
-          <Button asChild className="campaign-overview-dialog__btn-outline" variant="outline">
+        <footer className={campaignOverviewFooterClass}>
+          <Button asChild className={campaignOverviewOutlineButtonClass} variant="outline">
             <Link to={campaignForecastHref(campaign.customer_id)}>Forecast</Link>
           </Button>
-          <Button asChild className="campaign-overview-dialog__btn-outline" variant="outline">
+          <Button asChild className={campaignOverviewOutlineButtonClass} variant="outline">
             <Link to={campaignFraudHref(campaign.id, campaign.customer_id)}>Fraud explain</Link>
           </Button>
-          <Button asChild className="campaign-overview-dialog__btn-primary">
+          <Button asChild className={campaignOverviewPrimaryButtonClass}>
             <Link to={`/dashboards/campaign/${campaign.id}`}>Report</Link>
           </Button>
-          <Button asChild className="campaign-overview-dialog__btn-edit" variant="outline">
+          <Button asChild className={campaignOverviewOutlineButtonClass} variant="outline">
             <Link to={`/campaigns/${campaign.id}/edit`}>Edit</Link>
           </Button>
         </footer>

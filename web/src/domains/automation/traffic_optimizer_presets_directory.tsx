@@ -6,7 +6,7 @@ import { AutomationNav, automationPanelError } from '@/domains/automation/automa
 import { PresetCatalogGrid } from '@/domains/automation/preset_catalog_grid';
 
 export type TrafficOptimizerPresetsDirectoryProps = {
-  items: TrafficOptimizerPreset[];
+  items?: TrafficOptimizerPreset[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -38,7 +38,7 @@ export function TrafficOptimizerPresetsDirectory({
     >
       <AutomationNav />
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No presets" description="Traffic optimizer preset catalog is empty." />
       ) : (
         <PresetCatalogGrid items={items} />

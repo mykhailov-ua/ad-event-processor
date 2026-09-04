@@ -92,6 +92,7 @@ var routeCatalog = []Route{
 	{Method: "POST", Path: "/api/v1/platform-campaigns/{campaign_id}/budget"},
 	{Method: "POST", Path: "/api/v1/platform-campaigns/sync-run"},
 	{Method: "GET", Path: "/api/v1/brands"},
+	{Method: "GET", Path: "/api/v1/brands/{id}"},
 	{Method: "POST", Path: "/api/v1/brands"},
 	{Method: "GET", Path: "/api/v1/brands/{id}/creatives"},
 	{Method: "POST", Path: "/api/v1/brands/{id}/creatives"},

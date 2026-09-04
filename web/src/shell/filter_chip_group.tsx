@@ -42,7 +42,7 @@ export function FilterChipGroup<T extends string>({
             key={option.value || '__all'}
             aria-pressed={selected}
             className={cn(
-              'admin-filter-chip inline-flex min-h-7 max-w-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-[13px] font-medium leading-[18px] transition-colors',
+              'inline-flex min-h-7 max-w-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-[13px] font-medium leading-[18px] transition-colors',
               selected ? CHIP_ACTIVE : CHIP_IDLE,
             )}
             type="button"

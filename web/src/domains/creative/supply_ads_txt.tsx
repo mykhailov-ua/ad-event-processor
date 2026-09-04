@@ -29,7 +29,7 @@ import type { AdsTxtEntry } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 
 export type SupplyAdsTxtDirectoryProps = {
-  items: AdsTxtEntry[];
+  items?: AdsTxtEntry[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -167,7 +167,7 @@ export function SupplyAdsTxtDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No ads.txt rows" description="Supply ads.txt table is empty." />
       ) : (
         <DirectoryTable>
@@ -181,7 +181,7 @@ export function SupplyAdsTxtDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => {
+              {(items ?? []).map((row) => {
                 const edit = editRows[row.id] ?? {
                   domain: row.domain,
                   publisher_account_id: row.publisher_account_id,

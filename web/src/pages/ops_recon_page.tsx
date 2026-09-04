@@ -56,7 +56,7 @@ export function OpsReconPage() {
 
   return (
     <OpsRecon
-      items={data ?? []}
+      items={data}
       draftService={draftService}
       limit={limit ?? DEFAULT_LIST_LIMIT}
       offset={offset}

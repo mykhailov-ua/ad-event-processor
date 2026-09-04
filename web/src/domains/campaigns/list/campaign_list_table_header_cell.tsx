@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react';
-import type { DragEvent, PointerEvent, ReactNode } from 'react';
+import { useState, type DragEvent, type PointerEvent, type ReactNode } from 'react';
 
 import {
   CAMPAIGN_LIST_COLUMN_LABELS,
@@ -7,6 +7,14 @@ import {
   isCampaignListNumericColumn,
   type CampaignListColumnId,
 } from '@/domains/campaigns/list/campaign_list_columns';
+import {
+  campaignListColDragGripClass,
+  campaignListColGripClass,
+  campaignListHeaderCellClass,
+  campaignListHeaderLabelClass,
+  campaignListHeaderLabelNumClass,
+  campaignListHeaderToolsClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import { sortFieldForCampaignColumn } from '@/domains/campaigns/list/campaign_list_sort';
 import type { CampaignSortField, SortOrder } from '@/domains/campaigns/list/campaigns_list_types';
 import { cn } from '@/lib/utils';
@@ -18,15 +26,11 @@ export type CampaignListTableHeaderCellProps = {
   onColumnSort: (field: CampaignSortField) => void;
   disabled?: boolean;
   draggable: boolean;
-  dragOver: boolean;
   resizable?: boolean;
   resizeLabel?: string;
   onResizePointerDown?: (event: PointerEvent<HTMLDivElement>) => void;
   onDragStart: () => void;
-  onDragEnter: () => void;
-  onDragOver: (event: DragEvent<HTMLTableCellElement>) => void;
-  onDragLeave: () => void;
-  onDrop: (event: DragEvent<HTMLTableCellElement>) => void;
+  onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
 };
 
@@ -37,17 +41,14 @@ export function CampaignListTableHeaderCell({
   onColumnSort,
   disabled,
   draggable,
-  dragOver,
   resizable = false,
   resizeLabel,
   onResizePointerDown,
   onDragStart,
-  onDragEnter,
-  onDragOver,
-  onDragLeave,
   onDrop,
   onDragEnd,
 }: CampaignListTableHeaderCellProps) {
+  const [dragOver, setDragOver] = useState(false);
   const sortField = sortFieldForCampaignColumn(columnId);
   const active = sortField != null && appliedSort === sortField;
   const label = CAMPAIGN_LIST_COLUMN_LABELS[columnId];
@@ -61,7 +62,10 @@ export function CampaignListTableHeaderCell({
   if (sortField != null) {
     labelNode = (
       <button
-        className={cn('inline-flex max-w-full items-center gap-0.5 truncate', active && 'text-foreground')}
+        className={cn(
+          'inline-flex max-w-full items-center gap-0.5 whitespace-nowrap',
+          active && 'text-foreground',
+        )}
         disabled={disabled}
         title={label}
         type="button"
@@ -79,7 +83,7 @@ export function CampaignListTableHeaderCell({
     );
   } else {
     labelNode = (
-      <span className="truncate" title={label}>
+      <span className="whitespace-nowrap" title={label}>
         {label}
       </span>
     );
@@ -89,20 +93,49 @@ export function CampaignListTableHeaderCell({
 
   return (
     <div
-      className={cn('campaign-table-header-cell', dragOver && 'bg-muted')}
-      onDragEnd={onDragEnd}
-      onDragEnter={onDragEnter}
-      onDragLeave={onDragLeave}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      className={cn(campaignListHeaderCellClass, dragOver && 'bg-muted')}
+      onDragEnd={() => {
+        setDragOver(false);
+        onDragEnd();
+      }}
+      onDragEnter={(event) => {
+        if (!draggable) {
+          return;
+        }
+        event.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={(event) => {
+        if (!draggable) {
+          return;
+        }
+        if (event.currentTarget.contains(event.relatedTarget as Node)) {
+          return;
+        }
+        setDragOver(false);
+      }}
+      onDragOver={(event) => {
+        if (!draggable) {
+          return;
+        }
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        setDragOver(true);
+      }}
+      onDrop={(event) => {
+        setDragOver(false);
+        onDrop(event);
+      }}
     >
-      <div className={cn('campaign-table-header-cell__label', isNum && 'num')}>{labelNode}</div>
+      <div className={cn(isNum ? campaignListHeaderLabelNumClass : campaignListHeaderLabelClass)}>
+        {labelNode}
+      </div>
       {showTools ? (
-        <div className="campaign-table-header-tools">
+        <div className={campaignListHeaderToolsClass}>
           {draggable ? (
             <span
               aria-label={`Reorder ${label} column`}
-              className="campaign-table-col-drag-grip"
+              className={campaignListColDragGripClass}
               data-col-grip=""
               draggable
               onDragStart={(event) => {
@@ -119,7 +152,7 @@ export function CampaignListTableHeaderCell({
       {resizable ? (
         <div
           aria-label={resizeLabel ?? `Resize ${label} column`}
-          className="campaign-table-col-grip"
+          className={campaignListColGripClass}
           data-col-resize=""
           role="separator"
           onPointerDown={onResizePointerDown}

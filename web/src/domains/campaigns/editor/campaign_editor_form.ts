@@ -1,11 +1,16 @@
 import type { Campaign, IngressCostConfig, PatchCampaignRequest } from '@/api/types';
+import { resolveOptionalUuidPatchValue } from '@/lib/clear_uuid';
 
 import type { BuildCampaignPatchResult, CampaignEditorFormState } from './campaign_editor_types';
 
-function ingressFromForm(form: CampaignEditorFormState): IngressCostConfig | undefined {
+type IngressFromFormResult =
+  | { ok: true; value: IngressCostConfig | undefined }
+  | { ok: false; error: string };
+
+function ingressFromForm(form: CampaignEditorFormState): IngressFromFormResult {
   const param = form.ingress_param.trim();
   if (param === '') {
-    return undefined;
+    return { ok: true, value: undefined };
   }
 
   const config: IngressCostConfig = { param };
@@ -16,15 +21,16 @@ function ingressFromForm(form: CampaignEditorFormState): IngressCostConfig | und
   const maxMicroText = form.ingress_max_micro.trim();
   if (maxMicroText !== '') {
     const parsed = Number(maxMicroText);
-    if (!Number.isNaN(parsed)) {
-      config.max_micro = parsed;
+    if (Number.isNaN(parsed)) {
+      return { ok: false, error: 'Ingress max micro must be a valid number.' };
     }
+    config.max_micro = parsed;
   }
   const policy = form.ingress_policy.trim();
   if (policy !== '') {
     config.policy = policy;
   }
-  return config;
+  return { ok: true, value: config };
 }
 
 function ingressConfigsEqual(
@@ -34,13 +40,17 @@ function ingressConfigsEqual(
   return (
     (left?.param ?? '') === (right?.param ?? '') &&
     (left?.scale ?? '') === (right?.scale ?? '') &&
-    String(left?.max_micro ?? '') === String(right?.max_micro ?? '') &&
+    (left?.max_micro ?? undefined) === (right?.max_micro ?? undefined) &&
     (left?.policy ?? '') === (right?.policy ?? '')
   );
 }
 
 function clickQueryParamsCanonicalJson(params: Record<string, string> | undefined): string {
-  return JSON.stringify(params ?? {}, null, 2);
+  const sorted: Record<string, string> = {};
+  for (const key of Object.keys(params ?? {}).sort()) {
+    sorted[key] = params![key];
+  }
+  return JSON.stringify(sorted, null, 2);
 }
 
 export function parseClickQueryParamsJson(
@@ -124,31 +134,35 @@ export function buildCampaignPatchBody(
   if (form.pacing_mode !== original.pacing_mode) {
     body.pacing_mode = form.pacing_mode;
   }
-  if (form.flow_id !== (original.flow_id ?? '')) {
-    body.flow_id = form.flow_id;
-  }
-  if (form.brand_id !== (original.brand_id ?? '')) {
-    body.brand_id = form.brand_id;
+
+  const nextFlowId = resolveOptionalUuidPatchValue(form.flow_id, original.flow_id);
+  if (nextFlowId !== undefined) {
+    body.flow_id = nextFlowId;
   }
 
-  const nextIngress = ingressFromForm(form);
-  if (!ingressConfigsEqual(nextIngress, original.ingress_cost_config)) {
-    body.ingress_cost_config = nextIngress;
+  const nextBrandId = resolveOptionalUuidPatchValue(form.brand_id, original.brand_id);
+  if (nextBrandId !== undefined) {
+    body.brand_id = nextBrandId;
+  }
+
+  const ingressResult = ingressFromForm(form);
+  if (!ingressResult.ok) {
+    return ingressResult;
+  }
+  if (!ingressConfigsEqual(ingressResult.value, original.ingress_cost_config)) {
+    body.ingress_cost_config = ingressResult.value;
   }
 
   if (form.traffic_template_id !== (original.traffic_template_id ?? '')) {
     body.traffic_template_id = form.traffic_template_id;
   }
 
-  const originalClickQueryJson = clickQueryParamsCanonicalJson(original.click_query_params);
-  if (form.click_query_params_json !== originalClickQueryJson) {
-    const parsed = parseClickQueryParamsJson(form.click_query_params_json);
-    if (!parsed.ok) {
-      return { ok: false, error: parsed.error };
-    }
-    if (!clickQueryParamsEqual(original.click_query_params, parsed.value)) {
-      body.click_query_params = parsed.value;
-    }
+  const parsedClickQuery = parseClickQueryParamsJson(form.click_query_params_json);
+  if (!parsedClickQuery.ok) {
+    return { ok: false, error: parsedClickQuery.error };
+  }
+  if (!clickQueryParamsEqual(original.click_query_params, parsedClickQuery.value)) {
+    body.click_query_params = parsedClickQuery.value;
   }
 
   return { ok: true, body };

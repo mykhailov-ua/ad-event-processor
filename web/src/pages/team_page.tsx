@@ -24,7 +24,8 @@ export function TeamPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { session } = useSession();
   const [rosterTab, setRosterTab] = useState<TeamRosterTab>('members');
-  const [refreshToken, setRefreshToken] = useState(0);
+  const [overviewRefreshToken, setOverviewRefreshToken] = useState(0);
+  const [rosterRefreshToken, setRosterRefreshToken] = useState(0);
   const [actingId, setActingId] = useState<string | undefined>();
   const [memberUpdatingId, setMemberUpdatingId] = useState<string | undefined>();
   const [actionError, setActionError] = useState<Error | undefined>();
@@ -49,7 +50,7 @@ export function TeamPage() {
 
   const { data, error, fetching } = useResource(
     (signal) => getTeamOverview({ customer_id: appliedCustomerId || undefined }, signal),
-    [appliedCustomerId, refreshToken],
+    [appliedCustomerId, overviewRefreshToken],
   );
 
   const shouldFetchMembers = Boolean(appliedCustomerId) && rosterTab === 'members';
@@ -76,7 +77,7 @@ export function TeamPage() {
       appliedCustomerId,
       appliedMembersLimit,
       appliedMembersOffset,
-      refreshToken,
+      rosterRefreshToken,
       shouldFetchMembers,
       rosterTab,
     ],
@@ -124,7 +125,7 @@ export function TeamPage() {
         signal,
       );
     },
-    [appliedApprovalsLimit, appliedApprovalsOffset, appliedCustomerId, refreshToken, shouldFetchApprovals, rosterTab],
+    [appliedApprovalsLimit, appliedApprovalsOffset, appliedCustomerId, rosterRefreshToken, shouldFetchApprovals, rosterTab],
   );
 
   const updateTeamQuery = useCallback(
@@ -223,7 +224,7 @@ export function TeamPage() {
           is_blocked: draft.is_blocked,
           spend_cap_micro: spendCapMicro,
         });
-        setRefreshToken((value) => value + 1);
+        setRosterRefreshToken((value) => value + 1);
       } catch (err) {
         setActionError(err instanceof Error ? err : new Error(String(err)));
       } finally {
@@ -248,7 +249,8 @@ export function TeamPage() {
       setInviteSuccess(true);
       setDraftInviteEmail('');
       toast.success('Invite sent');
-      setRefreshToken((value) => value + 1);
+      setOverviewRefreshToken((value) => value + 1);
+      setRosterRefreshToken((value) => value + 1);
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -266,7 +268,7 @@ export function TeamPage() {
         } else {
           await denyTeamBudgetApproval(id);
         }
-        setRefreshToken((value) => value + 1);
+        setRosterRefreshToken((value) => value + 1);
       } catch (err) {
         setActionError(err instanceof Error ? err : new Error(String(err)));
       } finally {

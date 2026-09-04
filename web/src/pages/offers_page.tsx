@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { createOffer, listOffers } from '@/api/offers_api';
@@ -18,7 +18,6 @@ export function OffersPage() {
   const [createError, setCreateError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  const items = useMemo(() => data ?? [], [data]);
 
   const onCreateOffer = useCallback(async () => {
     const name = draftName.trim();
@@ -46,7 +45,7 @@ export function OffersPage() {
 
   return (
     <OffersDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

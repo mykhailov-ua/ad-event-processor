@@ -23,7 +23,7 @@ export function PageBreadcrumbs({ className }: { className?: string }) {
         <li className="flex min-w-0 items-center gap-2">
           <PageIcon aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
           {crumbs.length === 1 && lastCrumb ? (
-            <span className="truncate text-[13px] font-medium text-muted-foreground">
+            <span className="whitespace-nowrap text-[13px] font-medium text-muted-foreground">
               {lastCrumb.label}
             </span>
           ) : (
@@ -40,7 +40,7 @@ export function PageBreadcrumbs({ className }: { className?: string }) {
                     ) : isLast ? (
                       <h1
                         aria-current="page"
-                        className="m-0 truncate text-base font-semibold text-foreground"
+                        className="m-0 whitespace-nowrap text-base font-semibold text-foreground"
                       >
                         {crumb.label}
                       </h1>

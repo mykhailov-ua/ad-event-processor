@@ -39,6 +39,26 @@ Remediation gates: `ci.mdc` (static gates), `ui.mdc` (admin anti-slop). Verifica
 | Admin piecemeal tree | Partial `web/` delete/refactor leaving broken imports | Atomic `web/` recreate per operator direction; server stub stays in `internal/controlplane/admin_static_stub/` |
 | Admin phantom contract | "See prior contract" with no table in repo | Width/grid/error contracts live in `ui.mdc` |
 | Admin unrun UI gates | Claims `typecheck` / `admin/web.sh` without output | Paste command + exit code (`quality.mdc`) |
+| Frontend mock lie | T0 `admin_dev` cited as ingest-only / handler proof; fixture rows in `domains/`; wrong JSON envelope in `dev_mock` | Tier table in `frontend-slop.mdc`; falsify with `admin_dev=0` + `:8188`; mock tests **M1+** only |
+| Frontend subjective slop | "Clean code", "best practices", "looks wired" without scoped `rg` + catalog ID (EH-*, FE-*, AP-L*) | **Agent execution protocol** in `frontend-slop.mdc`; paste P1 command + exit code |
+| Frontend RBAC lie | Nav hide or client `role` gate cited as security; MB reaches operator data via URL/mock | **RB-L***/**RB-S*** in `frontend-slop.mdc` + `control-plane.mdc` **RBAC**; httest/curl as denied role |
+| Frontend layout drift lie | "Aligned", "fixed layout", wrapper stack without **VL-*** ID + `rg` on band | **Visual layout drift taxonomy**; `ui_slop.sh`; paste **VL-D3** command |
+| Frontend style / data lie | `truncate` on headings/numbers; inline `style`; `Promise.resolve([])` stub; fetch without `ErrorBlock` | `frontend-slop.mdc` visual + error tables |
+| Frontend table perf lie | "Smooth reorder/resize" while `setState` on `dragover`/`pointermove` repaints tbody | `frontend-slop.mdc` **Directory tables** anti-patterns |
+| Frontend overlay lie | Dropdown "works" but menu stays viewport-fixed while trigger scrolls; page scrolls behind open list; shell nav in `DropdownMenu` | `frontend-slop.mdc` **Overlays, scroll surfaces** classes A/B/C |
+| Frontend control height lie | Mixed `h-8` / `min-h-7` in one filter row; cites stale `control_size.ts` `h-8` | `admin_kit.controlHeight`; default primitives only |
+| Frontend trivial UUID lie | Fixture id `00000000-...-000001` or `devUuid()` sequential generator | `seedDeterministicUuid` / `uuid.NewV7()`; `frontend-slop.mdc` **Entity IDs** |
+| Frontend mock slug id | `user_id: "buyer-1"` in `dev_mock` while OpenAPI expects UUID | `DEV_MOCK_USERS` / `seedDeterministicUuid('user', n)` |
+| Frontend layout lie | `gap` between unrelated bands; `justify-between` toolbar; div grid for directory rows | `frontend-slop.mdc` **Layout contract** |
+| Frontend state ownership lie | Leaf + owner both `save*` / `useState` same prefs or filter; effect resets draft mid-edit | `frontend-slop.mdc` **State ownership** |
+| Frontend refresh hammer | Unguarded `refreshToken++` or leaf fetch; N aborted requests per double-click | `frontend-slop.mdc` **User action coalescing** |
+| Frontend fake mock test | `handler.test.ts` status-only, no round-trip, cited as Go wired | `frontend-slop.mdc` **Test honesty** FM* |
+| Frontend fake E2E | `table.or(empty).or(stub)`, heading-only, mutation theater | `frontend-slop.mdc` **Test honesty** FE* / L1s |
+| Frontend UX scenario lie | Duplicate Create paths; trapped modal; toast before 2xx; navigate without response UUID | `frontend-slop.mdc` **UX scenario contract** |
+| Mutation validation lie | Server writes without `Validate*`; client `catch` -> empty; mock returns 200 on bad input | `frontend-slop.mdc` **Mutation validation** SV*/CV* |
+| Explicit error handling lie | Fake 2xx, `genericOk`, silent catch, empty table on 500, toast before await | `frontend-slop.mdc` **Explicit error handling vs error slop** EH-* |
+| Frontend Tailwind/CSS collision | BEM + `flex`/`!p-0` on same node; `app.css !h-auto` on `Button` | `frontend-slop.mdc` **Styling stack** |
+| Playwright wiring lie | E2E cited as handler proof without **L1+**; smoke bundle as `pr_fast` proof | `frontend-slop.mdc` **Test honesty taxonomy** |
 
 ## LLM dishonesty patterns
 
@@ -525,6 +545,7 @@ When verification needs integration tier or full compile, **name the command** a
 | 17 | No god package: new admin logic in domain package; bridge wiring only; port <=12 methods (`modular-monolith.mdc`) |
 | 18 | No micro-package: new domain dir only with handlers/store + wire + `doc.go` in same PR; no `internal/common` (`modular-monolith.mdc`) |
 | 19 | Every production package has detailed `doc.go` (role, verify commands); edit in the same PR when adding a package (`comments.mdc`, `modular-monolith.mdc`) |
+| 20 | Frontend: **Agent execution protocol** (P0-P4, catalog IDs, no subjective slop); T0/T1/T2; EH-*/EC* on touch; RBAC server-authoritative (`control-plane.mdc`, `frontend-slop.mdc` **RBAC**) |
 
 ## Related rules
 

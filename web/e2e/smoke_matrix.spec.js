@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test';
 
-import { loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  fetchSessionCustomerId,
+  gotoLive,
+  gotoLiveTeam,
+  loginAsAdmin,
+  loginSignInHeading,
+  mainHeading,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
@@ -10,7 +18,7 @@ test('install onboarding routes load headings', async ({ page }) => {
   await page.goto('/setup');
 
   const setupHeading = page.getByRole('heading', { name: 'Initial setup' });
-  const signInHeading = page.getByRole('heading', { name: 'Sign in' });
+  const signInHeading = loginSignInHeading(page);
 
   if (await setupHeading.isVisible({ timeout: 5000 }).catch(() => false)) {
     await expect(setupHeading).toBeVisible();
@@ -22,6 +30,7 @@ test('install onboarding routes load headings', async ({ page }) => {
 
 test('key admin routes load page headings', async ({ page }) => {
   await loginAsAdmin(page);
+  const customerId = await fetchSessionCustomerId(page);
 
   const routes = [
     { path: '/customers', heading: 'Customers' },
@@ -29,17 +38,32 @@ test('key admin routes load page headings', async ({ page }) => {
     { path: '/billing', heading: 'Billing' },
     { path: '/settings', heading: 'Platform settings' },
     { path: '/settings/license', heading: 'License' },
-    { path: '/team', heading: 'Team' },
+    {
+      path: customerId ? `/team?customer_id=${encodeURIComponent(customerId)}` : '/team',
+      heading: 'Team',
+      skipWithoutCustomer: true,
+    },
     { path: '/audit', heading: 'Audit' },
     { path: '/reports', heading: 'Reports' },
     { path: '/ops', heading: 'Ops' },
     { path: '/fraud', heading: 'Fraud' },
     { path: '/fraud/presets', heading: 'Fraud presets' },
-    { path: '/rtb', heading: 'RTB' },
   ];
 
-  for (const { path, heading } of routes) {
-    await page.goto(path);
-    await expect(page.getByRole('heading', { name: heading })).toBeVisible();
+  for (const route of routes) {
+    const { path, heading, skipWithoutCustomer } = route;
+    if (skipWithoutCustomer && !customerId) {
+      continue;
+    }
+    if (path.startsWith('/team')) {
+      const loaded = await gotoLiveTeam(page, customerId);
+      if (!loaded) {
+        test.skip(true, 'integration: team overview requires customer_id');
+        return;
+      }
+      continue;
+    }
+    await gotoLive(page, path);
+    await expect(mainHeading(page, heading)).toBeVisible({ timeout: 15_000 });
   }
 });

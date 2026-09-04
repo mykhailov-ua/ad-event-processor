@@ -85,9 +85,10 @@ Always applied on every agent turn (no glob filter):
 | `cold-path.mdc` | Admin, payment, ledger, notify |
 | `data-layer.mdc` | Redis, Lua, PG, CH, sharding |
 | `boundaries.mdc` | Import matrix, layer coupling, agent scope, test dishonesty catalog |
-| `control-plane.mdc` | Outbox, workers, admin API |
+| `control-plane.mdc` | Outbox, workers, admin API, server-authoritative RBAC |
 | `modular-monolith.mdc` | Modular monolith, bridges, god- and micro-package policy, migration cruft ban |
 | `frontend-modular.mdc` | Admin SPA layers, Tailwind + shadcn/ui package map |
+| `frontend-slop.mdc` | Admin mock tiers, agent execution protocol, visual layout drift **VL-***, RBAC, styling, errors, Playwright honesty |
 | `rtb.mdc` | OpenRTB auction, shadow to live |
 | `edge.mdc` | Nginx Lua, XDP sync operators, fingerprint pipeline |
 | `xdp-bpf.mdc` | XDP/eBPF C hot path: maps, token bucket, verifier, test tiers |
@@ -95,6 +96,7 @@ Always applied on every agent turn (no glob filter):
 | `licensing.mdc` | JWT, trial registry, USDT tiers |
 | `regions.mdc` | Enterprise multi-region |
 | `ui.mdc` | Admin layout, macro/micro layout, cold path, AI honesty |
+| `frontend-slop.mdc` | Admin mock tiers, agent protocol, **Shared style contracts**, visual layout VL-* |
 | `react.mdc` | React Hot (charts/telemetry) vs Cold (CRUD), heap leaks, canvas |
 | `frontend-hot-path.mdc` | Suboptimal ops taxonomy, scale regimes S/L/F, Big-O vs locality |
 | `tradeoffs.mdc` | Rejected alternatives, evidence matrix |

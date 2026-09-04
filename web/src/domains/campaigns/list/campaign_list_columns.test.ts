@@ -19,9 +19,10 @@ test('clampCampaignListColumnWidthPx caps oversized name column', () => {
 });
 
 test('normalizeColumnWidthPx clamps saved widths from localStorage', () => {
-  const widths = normalizeColumnWidthPx({ name: 4096, clicks: 80 });
-  assert.equal(widths.name, 320);
+  const widths = normalizeColumnWidthPx({ name: 4096, clicks: 80, roi: 900 });
+  assert.equal(widths.name, 640);
   assert.equal(widths.clicks, 80);
+  assert.equal(widths.roi, 480);
 });
 
 test('visibleCampaignListColumns hides legacy placeholder columns by default', () => {

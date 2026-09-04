@@ -187,7 +187,7 @@ export function BillingPage() {
       />
 
       <BillingInvoices
-        items={invoicesResource.data?.items ?? []}
+        items={invoicesResource.data?.items}
         total={invoicesResource.data?.total ?? 0}
         limit={invoicesResource.data?.limit ?? invoiceQuery.limit ?? DEFAULT_LIST_LIMIT}
         offset={invoicesResource.data?.offset ?? invoiceQuery.offset ?? 0}

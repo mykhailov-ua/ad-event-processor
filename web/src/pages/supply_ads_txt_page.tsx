@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -33,8 +33,6 @@ export function SupplyAdsTxtPage() {
     [reloadToken],
   );
 
-  const items = useMemo(() => data ?? [], [data]);
-
   const [draftDomain, setDraftDomain] = useState('');
   const [draftAccountId, setDraftAccountId] = useState('');
   const [draftRelationship, setDraftRelationship] = useState('');
@@ -45,8 +43,11 @@ export function SupplyAdsTxtPage() {
   const [createSuccess, setCreateSuccess] = useState(false);
 
   useEffect(() => {
+    if (!data?.length) {
+      return;
+    }
     const next: Record<number, AdsTxtEditRow> = {};
-    for (const row of items) {
+    for (const row of data) {
       next[row.id] = {
         domain: row.domain,
         publisher_account_id: row.publisher_account_id,
@@ -55,7 +56,7 @@ export function SupplyAdsTxtPage() {
       };
     }
     setEditRows(next);
-  }, [items]);
+  }, [data]);
 
   const bumpReload = useCallback(() => {
     setReloadToken((value) => value + 1);
@@ -154,7 +155,7 @@ export function SupplyAdsTxtPage() {
 
   return (
     <SupplyAdsTxtDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

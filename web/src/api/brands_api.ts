@@ -1,4 +1,4 @@
-import { apiJson } from './client.js';
+import { apiJson, apiJsonArray } from './client.js';
 import type {
   Brand,
   BrandCreative,
@@ -13,7 +13,11 @@ export async function listBrands(
 ): Promise<Brand[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJson<Brand[]>(`/api/v1/brands?${search.toString()}`, { signal });
+  return apiJsonArray<Brand>(`/api/v1/brands?${search.toString()}`, { signal });
+}
+
+export async function getBrand(brandId: string, signal?: AbortSignal): Promise<Brand> {
+  return apiJson<Brand>(`/api/v1/brands/${encodeURIComponent(brandId)}`, { signal });
 }
 
 export async function createBrand(
@@ -31,7 +35,7 @@ export async function listBrandCreatives(
   brandId: string,
   signal?: AbortSignal,
 ): Promise<BrandCreative[]> {
-  return apiJson<BrandCreative[]>(`/api/v1/brands/${encodeURIComponent(brandId)}/creatives`, {
+  return apiJsonArray<BrandCreative>(`/api/v1/brands/${encodeURIComponent(brandId)}/creatives`, {
     signal,
   });
 }

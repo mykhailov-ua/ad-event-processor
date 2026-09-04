@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   CreateReportScheduleRequest,
   ReportSchedule,
@@ -12,7 +12,7 @@ export async function listReportSchedules(
 ): Promise<ReportSchedule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJson<ReportSchedule[]>(`/api/v1/report-schedules?${search.toString()}`, { signal });
+  return apiJsonArray<ReportSchedule>(`/api/v1/report-schedules?${search.toString()}`, { signal });
 }
 
 export async function getReportSchedule(id: string, signal?: AbortSignal): Promise<ReportSchedule> {

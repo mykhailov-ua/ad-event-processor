@@ -7,7 +7,7 @@ import { PrimaryActionButton } from '@/shell/action_buttons';
 import { AdminDevModeEntry } from '@/shell/admin_dev_mode_entry';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useMeta } from '@/hooks/use_meta';
@@ -48,7 +48,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Sign in</CardTitle>
+          <h1 className="font-semibold">Sign in</h1>
           <CardDescription>ad-event-processor operator console</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">

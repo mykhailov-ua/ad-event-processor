@@ -22,16 +22,16 @@ test('resolveCampaignStatusKey prefers status_tone', () => {
 
 test('inactive statuses do not tint table rows', () => {
   assert.equal(isInactiveCampaignStatus('PAUSED'), true);
-  assert.equal(campaignListRowClass(false), '');
-  assert.equal(campaignListRowClass(false), '');
+  assert.ok(campaignListRowClass(false).includes('odd:[&_td]:bg-background'));
+  assert.equal(campaignListRowClass(false).includes('[&_td]:bg-accent/80'), false);
 });
 
 test('selected row uses highlight class', () => {
-  assert.equal(campaignListRowClass(true), 'campaign-row--selected');
+  assert.ok(campaignListRowClass(true).includes('[&_td]:bg-accent/80'));
 });
 
 test('campaignStatusBadgeClass tints active campaigns green', () => {
-  assert.match(campaignStatusBadgeClass('ACTIVE'), /text-emerald-600/);
-  assert.match(campaignStatusBadgeClass('PAUSED'), /text-amber-600/);
+  assert.match(campaignStatusBadgeClass('ACTIVE'), /text-emerald-500/);
+  assert.match(campaignStatusBadgeClass('PAUSED'), /text-amber-500/);
   assert.match(campaignStatusBadgeClass('ACTIVE'), /rounded-full/);
 });

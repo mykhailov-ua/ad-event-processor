@@ -29,7 +29,7 @@ import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav
 import { displayTimestamp } from '@/lib/display';
 
 export type LandersDirectoryProps = {
-  items: Lander[];
+  items?: Lander[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -128,7 +128,7 @@ export function LandersDirectory({
       ) : null}
 
       <div aria-atomic="true" aria-live="polite">
-        {items.length === 0 ? (
+        {(items ?? []).length === 0 ? (
           <EmptyState
             variant="blank-slate"
             title="No landers"
@@ -137,7 +137,7 @@ export function LandersDirectory({
             onAction={onCreateLander ? () => setCreateOpen(true) : undefined}
           />
         ) : (
-          <DirectoryTable>
+          <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Name</DirectoryTableHead>
@@ -147,7 +147,7 @@ export function LandersDirectory({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((row) => (
+                {(items ?? []).map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       {row.hosted_asset_id ? (
@@ -158,7 +158,7 @@ export function LandersDirectory({
                         row.name
                       )}
                     </TableCell>
-                    <TableCell className="max-w-md truncate">{row.url ?? row.hosted_url ?? ''}</TableCell>
+                    <TableCell className="whitespace-nowrap">{row.url ?? row.hosted_url ?? ''}</TableCell>
                     <TableCell>
                       {row.hosted_asset_id ? <Badge variant="outline">hosted</Badge> : ''}
                     </TableCell>

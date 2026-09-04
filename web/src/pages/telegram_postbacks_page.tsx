@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -26,14 +26,12 @@ export function TelegramPostbacksPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listTelegramPostbacks({ campaign_id: appliedCampaignId }, signal);
     },
     [appliedCampaignId, shouldFetch, reloadToken],
   );
-
-  const postbacks = useMemo(() => data ?? [], [data]);
 
   const [draftPostbackUrl, setDraftPostbackUrl] = useState('');
   const [editUrls, setEditUrls] = useState<Record<string, string>>({});
@@ -43,14 +41,17 @@ export function TelegramPostbacksPage() {
   const [createSuccess, setCreateSuccess] = useState(false);
 
   useEffect(() => {
+    if (!data?.length) {
+      return;
+    }
     const next: Record<string, string> = {};
-    for (const row of postbacks) {
+    for (const row of data) {
       if (row.id) {
         next[row.id] = row.postback_url ?? '';
       }
     }
     setEditUrls(next);
-  }, [postbacks]);
+  }, [data]);
 
   const bumpReload = useCallback(() => {
     setReloadToken((value) => value + 1);
@@ -155,12 +156,12 @@ export function TelegramPostbacksPage() {
 
   return (
     <TelegramPostbacksDirectory
-      postbacks={postbacks}
+      postbacks={data}
       appliedCampaignId={appliedCampaignId}
       draftCampaignId={draftCampaignId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       draftPostbackUrl={draftPostbackUrl}
       editUrls={editUrls}
       acting={acting}

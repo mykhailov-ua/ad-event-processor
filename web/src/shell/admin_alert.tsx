@@ -16,7 +16,7 @@ export function AdminAlert({ tone, title, description, className, onDismiss }: A
   return (
     <div
       className={cn(
-        'admin-alert flex items-start justify-between gap-3 rounded-[5px] border px-4 py-3 text-[13px] leading-[18px]',
+        'flex items-start justify-between gap-3 rounded-[5px] border px-4 py-3 text-[13px] leading-[18px]',
         adminAlertClass[tone],
         className,
       )}

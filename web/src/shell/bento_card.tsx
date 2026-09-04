@@ -106,7 +106,7 @@ export function BentoCard({
       <div className="grid min-w-0 flex-1 gap-2">
         <div className="text-base font-medium leading-snug tracking-tight">{title}</div>
         {description ? (
-          <p className="line-clamp-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
+          <p className="whitespace-normal text-sm leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
         {children}
       </div>

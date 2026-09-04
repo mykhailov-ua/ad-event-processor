@@ -7,8 +7,9 @@ import { buildKpiTiles } from '@/domains/dashboards/dashboard_metrics';
 import { DashboardMultiAxisChart } from '@/domains/dashboards/dashboard_multi_axis_chart';
 import { DashboardRecentClicks } from '@/domains/dashboards/dashboard_recent_clicks';
 import type { BuyerDashboardPreferences } from '@/domains/dashboards/dashboard_preferences';
-import { resolveBuyerDashboardPortfolio, resolveDashboardChartSeries } from '@/domains/dashboards/dashboard_series_mock';
+import { resolveBuyerDashboardPortfolio, resolveDashboardChartSeries, isDashboardChartMockEnabled } from '@/domains/dashboards/dashboard_series_mock';
 import type { BuyerPortfolio } from '@/domains/dashboards/buyer_dashboard_types';
+import { StubBanner } from '@/shell/stub_banner';
 import { useMemo } from 'react';
 
 export type BuyerDashboardViewProps = {
@@ -57,6 +58,13 @@ export function BuyerDashboardView({ portfolio, preferences, clickLogHref }: Buy
 
   return (
     <div className="grid min-w-0 gap-4">
+      {isDashboardChartMockEnabled() ? (
+        <StubBanner
+          message="KPIs, charts, and tables use fixture series from ?chart_mock=1. Set chart_mock=0 or remove the parameter for live API metrics."
+          title="Synthetic dashboard data"
+        />
+      ) : null}
+
       <DashboardKpiStrip tiles={kpiTiles} />
 
       <DashboardMultiAxisChart series={chartSeries} chartMetricIds={preferences.chartMetrics} />

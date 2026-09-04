@@ -37,10 +37,15 @@ export function isInactiveCampaignStatus(statusKey: CampaignStatusKey): boolean 
 }
 
 export function campaignListRowClass(selected: boolean): string {
+  const tone = [
+    'odd:[&_td]:bg-background',
+    'even:[&_td]:bg-muted/30',
+    'hover:[&_td]:bg-accent',
+  ];
   if (selected) {
-    return 'campaign-row--selected';
+    tone.push('[&_td]:bg-accent/80');
   }
-  return '';
+  return tone.join(' ');
 }
 
 export function campaignStatusBadgeClass(

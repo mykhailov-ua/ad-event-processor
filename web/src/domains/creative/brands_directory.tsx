@@ -29,7 +29,7 @@ import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav
 import { displayTimestamp } from '@/lib/display';
 
 export type BrandsDirectoryProps = {
-  items: Brand[];
+  items?: Brand[];
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
@@ -153,7 +153,7 @@ export function BrandsDirectory({
       ) : null}
 
       <div aria-atomic="true" aria-live="polite">
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState
           variant="blank-slate"
           title="No brands"
@@ -171,10 +171,14 @@ export function BrandsDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>
-                    <Link className="hover:underline" to={`/brand-creatives/${row.id}`}>
+                    <Link
+                      className="hover:underline"
+                      state={{ brandName: row.name }}
+                      to={`/brand-creatives/${row.id}`}
+                    >
                       {row.name}
                     </Link>
                   </TableCell>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import { listFraudIntegrations } from '@/api/fraud_api';
@@ -23,14 +23,12 @@ export function FraudIntegrationsPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listFraudIntegrations(appliedCustomerId, signal);
     },
     [appliedCustomerId, shouldFetch],
   );
-
-  const items = useMemo(() => data ?? [], [data]);
 
   const onApplyCustomer = useCallback(() => {
     const next = new URLSearchParams(searchParams);
@@ -45,12 +43,12 @@ export function FraudIntegrationsPage() {
 
   return (
     <FraudIntegrations
-      items={items}
+      items={data}
       customerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       onDraftCustomerIdChange={setDraftCustomerId}
       onApplyCustomer={onApplyCustomer}
     />

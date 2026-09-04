@@ -26,7 +26,7 @@ export function AppSidebar({ collapsed, items, signingOut, onSignOut }: AppSideb
         >
           <span className="h-3 w-3 rounded-sm border-2 border-primary-foreground/80" />
         </span>
-        <span className="truncate text-sm font-bold text-foreground">ad-event-processor</span>
+        <span className="whitespace-nowrap text-sm font-bold text-foreground">ad-event-processor</span>
       </div>
 
       <nav aria-label="Main" className="ui-scrollbar flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2">
@@ -38,14 +38,16 @@ export function AppSidebar({ collapsed, items, signingOut, onSignOut }: AppSideb
               end={item.path === '/dashboards/buyer'}
               className={({ isActive }) =>
                 cn(
-                  'admin-sidebar-nav-link',
-                  isActive ? 'admin-sidebar-nav-link--active' : 'admin-sidebar-nav-link--idle',
+                  'flex items-center gap-1.5 rounded px-2 py-1 text-[13px] font-medium no-underline transition-colors',
+                  isActive
+                    ? 'border-l-2 border-primary bg-accent pl-[calc(0.5rem-2px)] font-semibold text-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )
               }
               to={item.path}
             >
               <Icon aria-hidden className="h-4 w-4 shrink-0 opacity-90" />
-              <span className="truncate">{item.label}</span>
+              <span className="whitespace-nowrap">{item.label}</span>
             </NavLink>
           );
         })}

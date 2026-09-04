@@ -13,6 +13,13 @@ import {
   startOfDayLocalValue,
 } from '@/lib/datetime_range';
 import { resolvePopoverAlign } from '@/lib/popover_align';
+import {
+  campaignDateRangeApplyButtonClass,
+  campaignDateRangeClearButtonClass,
+  campaignDateRangeFooterClass,
+  campaignDateRangePopoverClass,
+  campaignDateRangeTriggerClass,
+} from '@/lib/campaign_picker_classes';
 import { cn } from '@/lib/utils';
 
 export type DateRangePickerProps = {
@@ -151,7 +158,7 @@ export function DateRangePicker({
             disabled={disabled}
             className={cn(
               isCampaigns
-                ? 'campaign-date-range-picker__trigger'
+                ? campaignDateRangeTriggerClass
                 : 'relative inline-flex min-h-7 w-full max-w-full items-center justify-between gap-2 rounded-[5px] border border-border bg-background px-2 py-1 text-[13px] leading-[18px] text-foreground',
               !fromDate && 'text-muted-foreground',
             )}
@@ -181,7 +188,7 @@ export function DateRangePicker({
         className={cn(
           'w-auto p-0 [&_.ui-shell]:!w-auto [&_.ui-shell]:!min-w-0 [&_.ui-shell-panel]:overflow-visible',
           isStyledPicker && 'rounded-lg border border-border bg-card p-0 shadow-lg',
-          isCampaigns && 'campaign-date-range-picker',
+          isCampaigns && campaignDateRangePopoverClass,
         )}
         panelScroll={isCampaigns ? 'none' : undefined}
         side={side}
@@ -197,13 +204,13 @@ export function DateRangePicker({
           />
         </div>
         {isCampaigns ? (
-          <div className="campaign-date-range-picker__footer">
+          <div className={campaignDateRangeFooterClass}>
             <span className="min-w-0 truncate text-[13px] leading-[18px] text-muted-foreground">
               {draftFooterLabel || 'Pick date range'}
             </span>
             <div className="flex shrink-0 items-center gap-2">
               <button
-                className="campaign-date-range-picker__btn-clear"
+                className={campaignDateRangeClearButtonClass}
                 type="button"
                 onClick={() => {
                   onChange('', '');
@@ -213,7 +220,7 @@ export function DateRangePicker({
                 Clear
               </button>
               <button
-                className="campaign-date-range-picker__btn-apply"
+                className={campaignDateRangeApplyButtonClass}
                 disabled={!draftRange?.from || !draftRange?.to}
                 type="button"
                 onClick={handleApply}
@@ -231,7 +238,7 @@ export function DateRangePicker({
             }
           >
             <button
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 h-auto min-h-8 leading-normal text-foreground hover:bg-accent"
+              className="inline-flex min-h-8 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium leading-normal text-foreground transition active:scale-[0.98] hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
               type="button"
               onClick={() => {
                 onChange('', '');
@@ -241,7 +248,7 @@ export function DateRangePicker({
               Clear
             </button>
             <button
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-primary bg-primary text-primary-foreground px-3 text-sm font-medium transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 h-auto min-h-8 leading-normal hover:bg-primary/90"
+              className="inline-flex min-h-8 items-center justify-center gap-2 rounded-md border border-primary bg-primary px-3 text-sm font-medium leading-normal text-primary-foreground transition active:scale-[0.98] hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
               disabled={!draftRange?.from || !draftRange?.to}
               type="button"
               onClick={handleApply}

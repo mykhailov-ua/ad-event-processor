@@ -13,11 +13,12 @@ import {
   IntegrationsSchemas,
   type IntegrationsSchemasTab,
 } from '@/domains/integrations/integrations_schemas';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function IntegrationsSchemasPage() {
   const [tab, setTab] = useState<IntegrationsSchemasTab>('schemas');
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const { data, error, fetching } = useResource(
     (signal) => fetchIntegrationSnapshot(signal),
@@ -100,13 +101,13 @@ export function IntegrationsSchemasPage() {
       await createIntegrationSchema({ name, version, schema });
       setCreateSuccess(true);
       toast.success('Integration schema created');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setCreateError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setCreating(false);
     }
-  }, [draftName, draftSchemaJson, draftVersion]);
+  }, [draftName, draftSchemaJson, draftVersion, bumpRefresh]);
 
   const onApply = useCallback(async () => {
     const schemaId = draftSchemaId.trim();
@@ -142,13 +143,13 @@ export function IntegrationsSchemasPage() {
       const result = await importIntegrationTemplates(names.length > 0 ? { names } : {});
       setImportedCount(result.length);
       setImportSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setImportError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setImporting(false);
     }
-  }, [draftTemplateNames]);
+  }, [draftTemplateNames, bumpRefresh]);
 
   return (
     <IntegrationsSchemas

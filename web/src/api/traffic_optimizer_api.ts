@@ -1,4 +1,4 @@
-import { apiJson } from './client.js';
+import { apiJson, apiJsonArray } from './client.js';
 import type {
   TrafficOptimizerDryRunResult,
   TrafficOptimizerListRulesQuery,
@@ -10,7 +10,7 @@ import type {
 export async function listTrafficOptimizerPresets(
   signal?: AbortSignal,
 ): Promise<TrafficOptimizerPreset[]> {
-  return apiJson<TrafficOptimizerPreset[]>('/api/v1/traffic-optimizer/presets', { signal });
+  return apiJsonArray<TrafficOptimizerPreset>('/api/v1/traffic-optimizer/presets', { signal });
 }
 
 export async function listTrafficOptimizerRules(
@@ -19,7 +19,7 @@ export async function listTrafficOptimizerRules(
 ): Promise<TrafficOptimizerRule[]> {
   const search = new URLSearchParams();
   search.set('customer_id', params.customer_id);
-  return apiJson<TrafficOptimizerRule[]>(
+  return apiJsonArray<TrafficOptimizerRule>(
     `/api/v1/traffic-optimizer/rules?${search.toString()}`,
     { signal },
   );

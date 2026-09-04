@@ -148,7 +148,7 @@ export function DomainsPage() {
 
   return (
     <DomainsDirectory
-      items={data ?? []}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

@@ -1,40 +1,39 @@
-import { useCallback, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useCallback, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import {
   createBrandCreative,
   deleteBrandCreative,
+  getBrand,
   listBrandCreatives,
-  listBrands,
   patchBrandCreative,
 } from '@/api/brands_api';
 import type { BrandCreative } from '@/api/types';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { BrandCreativesDirectory } from '@/domains/creative/brand_creatives_directory';
-import { useCustomerScope } from '@/hooks/use_customer_scope';
+import { buildBrandCreativeBody } from '@/domains/creative/brand_creative_form';
+import type { BrandCreativesNavState } from '@/domains/creative/brand_creatives_nav';
 import { useResource } from '@/api/use_resource';
 
 export function BrandCreativesPage() {
   const { id } = useParams();
   const brandId = id ?? '';
-  const { appliedCustomerId } = useCustomerScope();
+  const location = useLocation();
+  const navState = (location.state ?? null) as BrandCreativesNavState | null;
   const [reloadToken, setReloadToken] = useState(0);
 
-  const { data: brands } = useResource(
+  const { data: brand } = useResource(
     (signal) => {
-      if (!appliedCustomerId) {
-        return Promise.resolve([]);
+      if (!brandId) {
+        return Promise.resolve(undefined);
       }
-      return listBrands({ customer_id: appliedCustomerId }, signal);
+      return getBrand(brandId, signal);
     },
-    [appliedCustomerId],
+    [brandId],
   );
 
-  const brandName = useMemo(
-    () => brands?.find((brand) => brand.id === brandId)?.name,
-    [brandId, brands],
-  );
+  const brandName = brand?.name ?? navState?.brandName;
   useBreadcrumbSegmentLabel(brandId || undefined, brandName);
 
   const { data, error, fetching } = useResource(
@@ -62,26 +61,21 @@ export function BrandCreativesPage() {
   const [editStatus, setEditStatus] = useState('active');
   const [editSuccess, setEditSuccess] = useState(false);
 
-  const items = useMemo(() => data ?? [], [data]);
-
   const onCreateCreative = useCallback(async () => {
-    const name = draftName.trim();
-    const landingUrl = draftUrl.trim();
-    const weight = Number.parseInt(draftWeight.trim(), 10);
-    if (!brandId || !name || !landingUrl || !Number.isFinite(weight)) {
-      setActionError(new Error('Name, landing URL, and weight are required.'));
+    const built = buildBrandCreativeBody(draftName, draftUrl, draftWeight, draftStatus);
+    if (!built.ok) {
+      setActionError(new Error(built.error));
+      return;
+    }
+    if (!brandId) {
+      setActionError(new Error('Brand ID required'));
       return;
     }
     setActing(true);
     setActionError(undefined);
     setActionSuccess(false);
     try {
-      await createBrandCreative(brandId, {
-        name,
-        landing_url: landingUrl,
-        weight,
-        status: draftStatus.trim() || 'active',
-      });
+      await createBrandCreative(brandId, built.body);
       setActionSuccess(true);
       setDraftName('');
       setDraftUrl('');
@@ -113,23 +107,16 @@ export function BrandCreativesPage() {
     if (!editingCreative) {
       return;
     }
-    const name = editName.trim();
-    const landingUrl = editUrl.trim();
-    const weight = Number.parseInt(editWeight.trim(), 10);
-    if (!name || !landingUrl || !Number.isFinite(weight)) {
-      setActionError(new Error('Name, landing URL, and weight are required.'));
+    const built = buildBrandCreativeBody(editName, editUrl, editWeight, editStatus);
+    if (!built.ok) {
+      setActionError(new Error(built.error));
       return;
     }
     setActing(true);
     setActionError(undefined);
     setEditSuccess(false);
     try {
-      await patchBrandCreative(editingCreative.id, {
-        name,
-        landing_url: landingUrl,
-        weight,
-        status: editStatus.trim() || 'active',
-      });
+      await patchBrandCreative(editingCreative.id, built.body);
       setEditSuccess(true);
       toast.success('Creative saved');
       setReloadToken((value) => value + 1);
@@ -160,7 +147,7 @@ export function BrandCreativesPage() {
   return (
     <BrandCreativesDirectory
       brandId={brandId}
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

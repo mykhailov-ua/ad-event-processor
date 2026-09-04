@@ -7,9 +7,11 @@ import { MetaProvider } from '@/providers/meta_provider';
 import { SessionProvider } from '@/providers/session_provider';
 import { ThemeProvider } from '@/providers/theme_provider';
 import { initAdminDevModeFromUrl } from '@/lib/admin_dev_mode';
+import { initDevMockRoleFromUrl } from '@/lib/dev_mock_role';
 import '@/styles/app.css';
 
 initAdminDevModeFromUrl();
+initDevMockRoleFromUrl();
 
 const root = document.getElementById('root');
 if (root) {

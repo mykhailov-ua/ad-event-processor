@@ -24,7 +24,7 @@ import type { AuditLog } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 
 export type AuditDirectoryProps = {
-  items: AuditLog[];
+  items?: AuditLog[];
   total: number;
   limit: number;
   offset: number;
@@ -101,7 +101,7 @@ export function AuditDirectory({
         </DirectoryFilterForm>
         <DirectoryListMeta>
           {total > 0
-            ? `Showing ${offset + 1}-${Math.min(offset + items.length, total)} of ${total}`
+            ? `Showing ${offset + 1}-${Math.min(offset + (items ?? []).length, total)} of ${total}`
             : 'No audit entries'}
         </DirectoryListMeta>
       </FilterPanel>
@@ -113,7 +113,7 @@ export function AuditDirectory({
         </p>
       ) : null}
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState
           title="No audit entries"
           description="Admin actions will appear here when recorded."
@@ -131,7 +131,7 @@ export function AuditDirectory({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((row) => (
+            {(items ?? []).map((row) => (
               <TableRow key={row.id ?? `${row.created_at}-${row.action}`}>
                 <TableCell>{displayTimestamp(row.created_at, row.created_at_display)}</TableCell>
                 <TableCell>{row.admin_id ?? ''}</TableCell>

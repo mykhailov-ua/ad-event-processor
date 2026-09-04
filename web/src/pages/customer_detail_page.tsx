@@ -297,7 +297,7 @@ export function CustomerDetailPage() {
       balanceFetching={balanceResource.fetching}
       balanceError={balanceResource.error}
       hasBalanceSnapshot={balanceResource.data != null}
-      ledgerItems={ledgerResource.data?.items ?? []}
+      ledgerItems={ledgerResource.data?.items}
       ledgerTotal={ledgerResource.data?.total ?? 0}
       ledgerLimit={ledgerResource.data?.limit ?? LEDGER_PAGE_LIMIT}
       ledgerOffset={ledgerResource.data?.offset ?? ledgerOffset}
@@ -323,7 +323,7 @@ export function CustomerDetailPage() {
       walletFetching={walletResource.fetching}
       walletError={walletResource.error}
       hasWalletSnapshot={walletResource.data != null}
-      paymentItems={paymentsResource.data?.items ?? []}
+      paymentItems={paymentsResource.data?.items}
       paymentTotal={paymentsResource.data?.total ?? 0}
       paymentLimit={paymentsResource.data?.limit ?? PAYMENTS_PAGE_LIMIT}
       paymentOffset={paymentsResource.data?.offset ?? paymentsOffset}

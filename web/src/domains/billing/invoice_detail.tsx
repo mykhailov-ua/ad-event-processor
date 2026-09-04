@@ -24,7 +24,7 @@ import { displayMicro, displayTimestamp } from '@/lib/display';
 
 export type InvoiceDetailProps = {
   invoice: Invoice | undefined;
-  deliveries: InvoiceDelivery[];
+  deliveries?: InvoiceDelivery[];
   ledgerLines: BillingLedgerLine[];
   ledgerNextCursor?: string;
   fetching: boolean;
@@ -165,15 +165,15 @@ export function InvoiceDetail({
 
       <section className="grid gap-4">
         <h2 className="text-base font-semibold">Deliveries</h2>
-        {deliveriesFetching && deliveries.length === 0 ? <PageSkeleton /> : null}
-        {deliveriesError && deliveries.length === 0 ? (
+        {deliveriesFetching && (deliveries ?? []).length === 0 ? <PageSkeleton /> : null}
+        {deliveriesError && (deliveries ?? []).length === 0 ? (
           <ErrorBlock title="Could not load deliveries" message={deliveriesError.message} />
-        ) : deliveries.length === 0 && !deliveriesFetching ? (
+        ) : (deliveries ?? []).length === 0 && !deliveriesFetching ? (
           <EmptyState title="No deliveries" description="No delivery attempts recorded for this invoice." />
         ) : (
           <DeliveriesTable items={deliveries} />
         )}
-        {deliveriesError && deliveries.length > 0 ? (
+        {deliveriesError && (deliveries ?? []).length > 0 ? (
           <ErrorBlock title="Deliveries refresh failed" message={deliveriesError.message} />
         ) : null}
       </section>
@@ -219,7 +219,7 @@ function InvoiceLinesTable({
   return (
     <section className="grid gap-2">
       <h2 className="text-base font-semibold">{caption}</h2>
-      <DirectoryTable>
+      <DirectoryTable horizontalScroll>
           <TableHeader>
             <TableRow>
               <DirectoryTableHead>Ledger type</DirectoryTableHead>
@@ -245,7 +245,7 @@ function InvoiceLinesTable({
 
 function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
   return (
-    <DirectoryTable>
+    <DirectoryTable horizontalScroll>
         <TableHeader>
           <TableRow>
             <DirectoryTableHead>ID</DirectoryTableHead>
@@ -270,9 +270,9 @@ function LedgerLinesTable({ lines }: { lines: BillingLedgerLine[] }) {
   );
 }
 
-function DeliveriesTable({ items }: { items: InvoiceDelivery[] }) {
+function DeliveriesTable({ items }: { items?: InvoiceDelivery[] }) {
   return (
-    <DirectoryTable>
+    <DirectoryTable horizontalScroll>
         <TableHeader>
           <TableRow>
             <DirectoryTableHead>Status</DirectoryTableHead>
@@ -284,14 +284,14 @@ function DeliveriesTable({ items }: { items: InvoiceDelivery[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((row) => (
+          {(items ?? []).map((row) => (
             <TableRow key={row.id}>
               <TableCell>{row.status}</TableCell>
               <TableCell>{row.provider}</TableCell>
               <TableCell>{row.recipient}</TableCell>
               <TableCell className="tabular-nums">{row.retry_count}</TableCell>
               <TableCell>{displayTimestamp(row.updated_at)}</TableCell>
-              <TableCell className="max-w-xs truncate">{row.error_message ?? ''}</TableCell>
+              <TableCell className="whitespace-nowrap">{row.error_message ?? ''}</TableCell>
             </TableRow>
           ))}
         </TableBody>

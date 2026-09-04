@@ -19,7 +19,7 @@ export function TrackerShellSidebarToggle({
     <Button
       aria-expanded={!collapsed}
       aria-label={collapsed ? 'Show navigation menu' : 'Hide navigation menu'}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
+      className="inline-flex min-h-7 w-8 items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground"
       size="icon"
       type="button"
       variant="secondary"
@@ -42,7 +42,7 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
       <div className="w-60 max-w-full">
         <Input
           aria-label="Search"
-          className="h-8 border-border bg-muted/50 text-xs placeholder:text-muted-foreground text-foreground"
+          className="min-h-7 border-border bg-muted/50 text-xs placeholder:text-muted-foreground text-foreground"
           disabled={pageSearch.disabled}
           placeholder={pageSearch.placeholder ?? 'id, name, url'}
           value={pageSearch.value}
@@ -62,12 +62,12 @@ export function TrackerShellHeaderSearch({ onOpenCommandPalette }: TrackerShellH
   return (
     <div className="w-full max-w-md">
       <button
-        className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+        className="flex min-h-7 w-full items-center justify-between gap-2 rounded-md border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         type="button"
         onClick={onOpenCommandPalette}
       >
-        <span className="truncate text-left">Search routes, campaigns, reports...</span>
-        <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-admin-mini font-medium text-muted-foreground sm:inline">Ctrl+K</kbd>
+        <span className="whitespace-nowrap text-left">Search routes, campaigns, reports...</span>
+        <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-ui-mini font-medium text-muted-foreground sm:inline">Ctrl+K</kbd>
       </button>
     </div>
   );

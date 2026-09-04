@@ -21,7 +21,7 @@ import {
 } from '@/domains/ops/ops_table';
 
 export type OpsBlacklistProps = {
-  items: OpsBlacklistEntry[];
+  items?: OpsBlacklistEntry[];
   total: number;
   limit: number;
   offset: number;
@@ -134,7 +134,7 @@ export function OpsBlacklist({
           disabled={fetching}
           summary={
             total > 0
-              ? `Showing ${offset + 1}-${Math.min(offset + items.length, total)} of ${total}`
+              ? `Showing ${offset + 1}-${Math.min(offset + (items ?? []).length, total)} of ${total}`
               : 'No blacklist entries'
           }
           onNext={() => onPageChange(offset + limit)}
@@ -143,7 +143,7 @@ export function OpsBlacklist({
       }
       title="Fraud blacklist"
     >
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState description="No blocked IPs on record." title="Blacklist empty" />
       ) : (
         <OpsTable
@@ -156,7 +156,7 @@ export function OpsBlacklist({
             </OpsTableHeaderRow>
           }
         >
-          {items.map((row) => (
+          {(items ?? []).map((row) => (
             <OpsTableRow key={row.id ?? row.ip}>
               <OpsTableCell>{row.ip ?? ''}</OpsTableCell>
               <OpsTableCell>{row.reason ?? ''}</OpsTableCell>

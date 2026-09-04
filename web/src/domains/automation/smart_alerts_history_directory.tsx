@@ -17,7 +17,7 @@ import { AutomationNav, automationPanelError } from '@/domains/automation/automa
 import { displayTimestamp } from '@/lib/display';
 
 export type SmartAlertsHistoryDirectoryProps = {
-  items: SmartAlertEvent[];
+  items?: SmartAlertEvent[];
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
@@ -91,7 +91,7 @@ export function SmartAlertsHistoryDirectory({
         onDraftCustomerIdChange={onDraftCustomerIdChange}
       />
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No alert events" description="No smart alert events for this customer." />
       ) : (
         <DirectoryTable>
@@ -106,7 +106,7 @@ export function SmartAlertsHistoryDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{row.metric}</TableCell>
                   <TableCell>{row.observed_value}</TableCell>

@@ -42,8 +42,10 @@ Formal taxonomy (Big-O vs cache locality, scale regimes S/L/F, suboptimal operat
 | Render | `data.items.map((row) => <Row key={row.id} row={row} />)` — 50 rows is sub-ms; **no SoA** |
 | Fetch lifecycle | `AbortController` per request; abort on param change and unmount |
 | Snapshot | Replace whole `data` on fetch complete; never mutate `items[i]` in place |
+| Mutation errors | `apiFetch` throws `ApiError` on non-2xx; surface via `ErrorBlock` / `userErrorMessage` -- never silent catch (`frontend-slop.mdc` **Mutation validation**) |
 | Labels | Prefer `*_display`, `*_label` from handler — no client money/status math |
 | Filters | Draft local; Apply copies to URL params once; server refetch (`ui.mdc`) |
+| User action coalescing | Manual refresh: 500 ms leading window + in-flight guard in owner hook; mutations: `disabled` + `loading` until settled (`frontend-slop.mdc` **User action coalescing**) |
 | Errors | `ErrorBlock` on blocking error; stale-while-revalidate when `data` present (`ui.mdc`) |
 
 Forbidden on Cold directory tables:
@@ -100,6 +102,21 @@ useEffect(() => {
 | Stale response | Generation id or abort before `setState` after param change |
 | Unmount | Always abort in effect cleanup |
 | Timeout | `RESOURCE_FETCH_TIMEOUT_MS` (15 s) — clear `fetching` in `finally` (`ui.mdc`) |
+| Manual refresh | Coalesce in owner before dep bump or fetch; `useResource` abort alone is not enough (`frontend-slop.mdc` **User action coalescing**) |
+| One intent, N requests | Count network lanes per Apply/Refresh/open; trim with scoped tokens, parent snapshots, session cache (`frontend-slop.mdc` **RF-***) |
+
+### Request fan-out (one trigger)
+
+Before adding a shared `refreshToken` dep to another `useResource`, ask whether that hook **must** rerun on this operator action.
+
+| Prefer | When |
+| :--- | :--- |
+| Scoped token per surface | Facets, overview, and list refresh on different schedules (**RF-1**) |
+| Parent snapshot -> child overlay | Row metrics, breadcrumb labels (**RF-3**, **RF-5**) |
+| `*_cache.ts` with inflight dedupe | Same GET reused across pages in one session (**RF-4**) |
+| Tab-gated / `skipFetch` hook | Detail page with many tabs (contrast: `customer_detail_page.tsx`) |
+
+`Promise.all` of **distinct** endpoints for one hub screen is not fan-out slop when the UI renders all results. Catalog: `frontend-slop.mdc` **Request fan-out (RF-*)**.
 
 ### Freshness ticker (isolated leaf)
 
@@ -225,6 +242,93 @@ Server snapshot (useState / useResource)
 
 Forbidden: giant spread state; duplicated row arrays; client sort over full `items[]`.
 
+## Memoization and callbacks (Cold)
+
+Default: **plain functions and inline derivations**. `useCallback` / `useMemo` are opt-in tools, not hygiene.
+
+### When `useCallback` is required
+
+| Trigger | Example |
+| :--- | :--- |
+| Prop to `React.memo` child that shallow-compares the callback | Stable `onSelect` on memoized table row |
+| Callback stored in Context consumed by memoized descendants | Rare in admin Cold surfaces |
+| Library requires referential stability | Some Radix/subscription APIs (document in PR) |
+
+### When `useCallback` is slop (**RP-1**)
+
+| Pattern | Why |
+| :--- | :--- |
+| Every handler wrapped "for performance" | No memo child -> zero reconcile savings; deps array alloc on every render |
+| `useCallback` only to satisfy `useEffect` deps | Prefer `useEffect` + ref to latest handler, or extract fetch to `useResource` |
+| Identical deps churn (`[customerId, navigate, setOpen]`) | Same cost as recreating the function |
+
+`setQuery` / `setOpen` from `useState` are already stable -- do not re-wrap them.
+
+### When `useMemo` is required
+
+| Trigger | Example |
+| :--- | :--- |
+| Expensive derivation measured or obviously O(n) on large n | Row VM build over visible page (`buildCampaignRowVm`) |
+| Referential equality required by child/library | Stable options array passed to memoized select |
+
+### When `useMemo` is slop (**RP-2**)
+
+| Pattern | Why |
+| :--- | :--- |
+| `useMemo(() => arr.filter(...), [arr])` on < 200 rows | Cheaper to compute inline than maintain deps |
+| `filter` inside `some` for id dedup | Use `Set` once: `const ids = new Set(recents.map(r => r.id))` |
+| Memo wrapping trivial string/boolean | `trimmedQuery = query.trim()` needs no memo |
+
+Cold list pages: **no default Profiler/memo policy**. Add `memo` on rows only when a parent effect proves full-table reconcile on header interaction.
+
+## Async UI lanes (Cold)
+
+Correlated fetch UI (`loading`, `error`, `items`, `degraded`) must not sprawl as unrelated `useState` hooks that share fields across lanes (**RP-3**, **RP-4**).
+
+| Lane | Canonical owner |
+| :--- | :--- |
+| Single list / detail snapshot | `useResource` (`use_resource.ts`) |
+| Open dialog + catalog load | One `useResource` keyed on `open` |
+| Debounced typeahead search | Separate status object **or** second `useResource` keyed on debounced query |
+| Prerequisite missing | `fetcher` returns `Promise.resolve(undefined)`; `hasSnapshot={data != null}` |
+
+**Banned:** catalog load and debounced search both calling `setLoading` / `setError` on the same primitives -- search keystrokes can clear catalog errors or fight the catalog spinner.
+
+**Banned:** introducing TanStack Query / SWR for admin CRUD when `useResource` exists (**RP-6**). Extend `useResource`, `use_coalesced_callback`, or a domain hook (`use_command_palette.ts`).
+
+### Debounced search (allowed shape)
+
+Trailing debounce on **input** only (`frontend-slop.mdc` coalescing table: command palette **300 ms**). Pattern:
+
+1. Local `query` state (keystrokes).
+2. `useEffect` with `setTimeout` + `AbortController` on debounced value -- same as `react.mdc` **Fetch and abort**.
+3. Separate `searchError` / `searchFetching` from catalog `useResource` when both can be active.
+
+Do not cite "race-prone hand-rolled debounce" as slop without naming **RP-4** shared-state collision.
+
+## Row and list item reuse (**RP-5**)
+
+When the same row chrome appears **twice in one component** (palette item, directory row, menu entry):
+
+| Rule | Detail |
+| :--- | :--- |
+| Extract | `function CommandPaletteRow({ item, onSelect }: …)` or shared shell export |
+| Props | `item` DTO + callbacks only -- no fetch state inside row |
+| Styling | One Tailwind block; change once applies everywhere |
+
+Copy-pasted `map` bodies differing only by `key` source are **RP-5** slop on touch.
+
+### Best-effort side effects (**EH-SI6**)
+
+`record*` / analytics POSTs that must not block navigation:
+
+| Allowed | Banned |
+| :--- | :--- |
+| `void recordFoo(...)` without await when failure is non-blocking | Same pattern on `list*` / `search*` that owns visible data |
+| Shared `fireAndForgetSideEffect(fn)` helper documenting intent | Raw `.catch(() => undefined)` scattered in components |
+
+Operator-visible fetch errors still require `ErrorBlock` / `setActionError` (**EH-SI1**).
+
 ## V8-friendly habits (Hot surfaces)
 
 | Habit | Detail |
@@ -266,6 +370,10 @@ Before claiming Hot surface perf: paste Profiler note + visible point/row count.
 | 4 | Ticker: isolated `memo` leaf; `clearInterval` on cleanup |
 | 5 | Charts: imperative update via ref; `dispose()` on unmount |
 | 6 | Paste `typecheck` + gates for Cold; Profiler note for Hot |
+| 7 | Memo: **RP-1** / **RP-2** -- no blanket `useCallback`; `useMemo` only when justified |
+| 8 | Async: **RP-3** / **RP-4** -- `useResource` per lane; no shared loading/error across search + catalog |
+| 9 | DRY: **RP-5** -- extract repeated list-row JSX before third copy |
+| 10 | Fan-out: map operator action -> Network request count; cite **RF-*** if N > necessary |
 
 ## Related rules
 

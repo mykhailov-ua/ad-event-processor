@@ -1,4 +1,4 @@
-import { apiJson } from './client.js';
+import { apiJson, apiJsonArray } from './client.js';
 import type {
   MarginGuardActivity,
   MarginGuardListActivityQuery,
@@ -13,7 +13,7 @@ export async function listMarginGuardPolicies(
 ): Promise<MarginGuardPolicy[]> {
   const search = new URLSearchParams();
   search.set('campaign_id', params.campaign_id);
-  return apiJson<MarginGuardPolicy[]>(`/api/v1/margin-guard/policies?${search.toString()}`, {
+  return apiJsonArray<MarginGuardPolicy>(`/api/v1/margin-guard/policies?${search.toString()}`, {
     signal,
   });
 }
@@ -24,7 +24,7 @@ export async function listMarginGuardActivity(
 ): Promise<MarginGuardActivity[]> {
   const search = new URLSearchParams();
   search.set('campaign_id', params.campaign_id);
-  return apiJson<MarginGuardActivity[]>(`/api/v1/margin-guard/activity?${search.toString()}`, {
+  return apiJsonArray<MarginGuardActivity>(`/api/v1/margin-guard/activity?${search.toString()}`, {
     signal,
   });
 }

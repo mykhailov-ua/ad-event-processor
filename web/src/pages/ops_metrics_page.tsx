@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { getOpsDashboardMetrics, subscribeOpsDashboardStream } from '@/api/ops_api';
 import type { DashboardSummary } from '@/api/types';
 import { OpsMetrics } from '@/domains/ops/ops_metrics';
+import { useCoalescedBumpRefresh } from '@/hooks/use_coalesced_refresh_token';
 
 export function OpsMetricsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,7 +38,7 @@ export function OpsMetricsPage() {
     );
   }, [liveEnabled]);
 
-  const onLoad = useCallback(async () => {
+  const loadMetrics = useCallback(async () => {
     const range = draftRange.trim() || '1h';
     setFetching(true);
     setError(undefined);
@@ -54,6 +55,10 @@ export function OpsMetricsPage() {
       setFetching(false);
     }
   }, [draftRange, searchParams, setSearchParams]);
+
+  const onLoad = useCoalescedBumpRefresh(() => {
+    void loadMetrics();
+  }, fetching);
 
   return (
     <OpsMetrics

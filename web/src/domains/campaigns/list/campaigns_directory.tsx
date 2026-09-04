@@ -6,6 +6,7 @@ import { CampaignsListTable } from '@/domains/campaigns/list/campaigns_list_tabl
 import { CampaignsListToolbar } from '@/domains/campaigns/list/campaigns_list_toolbar';
 import { CampaignsDirectoryOverlays } from '@/domains/campaigns/list/campaigns_directory_overlays';
 import type { CampaignsDirectoryProps } from '@/domains/campaigns/list/campaigns_directory_types';
+import { campaignListTableCardClass } from '@/domains/campaigns/list/campaign_list_classes';
 import { useCampaignsDirectoryWorkspace } from '@/domains/campaigns/list/use_campaigns_directory_workspace';
 import { ErrorBlock } from '@/shell/error_block';
 import { PageSkeleton } from '@/shell/page_skeleton';
@@ -108,7 +109,7 @@ export function CampaignsDirectory({
   const canGoNext = offset + limit < total;
   const createDisabled =
     creating || !customerId || !draftTemplateId || templatesLoading;
-  const { rangeStart, rangeEnd } = listPageRange(total, limit, offset, items.length);
+  const { rangeStart, rangeEnd } = listPageRange(total, limit, offset, (items ?? []).length);
   const rangeLabel = total === 0 ? '0 of 0' : `Showing ${rangeStart}-${rangeEnd} of ${total}`;
   const page = Math.floor(offset / limit) + 1;
   const pageCount = total === 0 ? 1 : Math.ceil(total / limit);
@@ -193,6 +194,11 @@ export function CampaignsDirectory({
               workspace.onResumeSelected();
             }}
             onWizardClick={() => workspace.setWizardOpen(true)}
+            canGoNext={canGoNext}
+            canGoPrev={canGoPrev}
+            paginationDisabled={fetching}
+            onPageNext={() => onPageChange(offset + limit)}
+            onPagePrev={() => onPageChange(Math.max(0, offset - limit))}
             />
             <CampaignListTableCardTools
               columnPrefs={workspace.columnPrefs}
@@ -203,7 +209,7 @@ export function CampaignsDirectory({
           </div>
         }
         footer={
-          <div className="admin-campaigns-list-footer flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DirectoryPaginationFooter
               canGoNext={canGoNext}
               canGoPrev={canGoPrev}
@@ -214,8 +220,8 @@ export function CampaignsDirectory({
               pageCount={pageCount}
               pageSizeId="campaigns-page-size"
               pageSizeLayout="inline"
-              prevLabel="Prev"
               rangeLabel={rangeLabel}
+              showPrevNext={false}
               onLimitChange={onPageSizeChange}
               onNext={() => onPageChange(offset + limit)}
               onPageChange={(nextPage) => onPageChange((nextPage - 1) * limit)}
@@ -223,7 +229,6 @@ export function CampaignsDirectory({
             />
             <div aria-label="Export" className="flex flex-wrap items-center gap-2">
               <Button
-                className="admin-campaigns-toolbar__outline-btn"
                 disabled={fetching || total === 0 || workspace.exportBusy}
                 title="Download CSV for selected campaigns, or all campaigns matching the current filters"
                 type="button"
@@ -233,7 +238,6 @@ export function CampaignsDirectory({
                 Export CSV
               </Button>
               <Button
-                className="admin-campaigns-toolbar__outline-btn"
                 disabled={fetching || total === 0 || workspace.exportBusy}
                 title="Download JSON bundles for selected campaigns, or all campaigns matching the current filters"
                 type="button"
@@ -247,7 +251,7 @@ export function CampaignsDirectory({
         }
       >
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="admin-campaigns-table-card">
+          <div className={campaignListTableCardClass}>
             <CampaignsListTable
               appliedOrder={appliedOrder}
               appliedSort={appliedSort}
@@ -273,6 +277,7 @@ export function CampaignsDirectory({
                 workspace.setOverviewCampaign(campaign as CampaignWithMoneyDisplay)
               }
               onSelectedIdsChange={workspace.setSelectedIds}
+              statsCacheRevision={listScopeKey}
               statsQuery={statsQuery}
             />
           </div>
@@ -318,6 +323,9 @@ export function CampaignsDirectory({
         onWizardOpenChange={workspace.setWizardOpen}
         onWizardRefresh={onRefreshList}
         overviewCampaign={workspace.overviewCampaign}
+        marginsById={marginsById}
+        metricsById={metricsById}
+        listScopeKey={listScopeKey}
         resetWorkspaceOpen={workspace.resetWorkspaceOpen}
         selectedCampaignId={workspace.selectedCampaignId}
         selectedCampaignName={workspace.selectedCampaign?.name}

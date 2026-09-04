@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   AdsTxtEntry,
   AdsTxtWriteRequest,
@@ -13,7 +13,7 @@ export const SUPPLY_PREVIEW_ADS_TXT_PATH = '/api/v1/supply/preview/ads.txt';
 export const SUPPLY_PREVIEW_SELLERS_JSON_PATH = '/api/v1/supply/preview/sellers.json';
 
 export async function listSupplySellers(signal?: AbortSignal): Promise<Seller[]> {
-  return apiJson<Seller[]>('/api/v1/supply/sellers', { signal });
+  return apiJsonArray<Seller>('/api/v1/supply/sellers', { signal });
 }
 
 export async function createSupplySeller(
@@ -50,7 +50,7 @@ export async function deleteSupplySeller(id: number, signal?: AbortSignal): Prom
 }
 
 export async function listSupplyAdsTxt(signal?: AbortSignal): Promise<AdsTxtEntry[]> {
-  return apiJson<AdsTxtEntry[]>('/api/v1/supply/ads-txt', { signal });
+  return apiJsonArray<AdsTxtEntry>('/api/v1/supply/ads-txt', { signal });
 }
 
 export async function createSupplyAdsTxt(

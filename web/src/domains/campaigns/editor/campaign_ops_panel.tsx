@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   blockCampaignPlacement,
@@ -10,16 +10,25 @@ import {
   replaceCampaignConversionMappings,
   runCampaignSmoke,
   validateCampaignFlow,
+  type CampaignListMetrics,
 } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
 import type {
   CampaignEventListResponse,
   CampaignMargin,
   CampaignStats,
+  CampaignStatsQuery,
   ConversionMapping,
   ConversionMappingListResponse,
   PlacementBlockSuggestion,
 } from '@/api/types';
+import {
+  buildCampaignStatsCacheKey,
+  campaignStatsFromListMetrics,
+  readCachedCampaignStats,
+  readCachedCampaignStatsForCampaign,
+  writeCachedCampaignStats,
+} from '@/domains/campaigns/list/campaign_list_stats_cache';
 import { ErrorBlock } from '@/shell/error_block';
 import { StubBanner } from '@/shell/stub_banner';
 import { Button } from '@/components/ui/button';
@@ -75,7 +84,19 @@ function draftsToMappings(drafts: MappingDraft[]): ConversionMapping[] {
   });
 }
 
-export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
+export type CampaignOpsPanelProps = {
+  campaignId: string;
+  listMetrics?: CampaignListMetrics;
+  listMargin?: CampaignMargin;
+  statsQuery?: CampaignStatsQuery;
+};
+
+export function CampaignOpsPanel({
+  campaignId,
+  listMetrics,
+  listMargin,
+  statsQuery,
+}: CampaignOpsPanelProps) {
   const [draftPlacementId, setDraftPlacementId] = useState('');
   const [blocking, setBlocking] = useState(false);
   const [loadingKey, setLoadingKey] = useState<string | undefined>();
@@ -90,6 +111,12 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
   const [actionError, setActionError] = useState<Error | undefined>();
   const [savingMappings, setSavingMappings] = useState(false);
   const [mappingSaveSuccess, setMappingSaveSuccess] = useState(false);
+
+  const resolvedStatsQuery = useMemo(
+    () => statsQuery ?? {},
+    [statsQuery?.from, statsQuery?.granularity, statsQuery?.to],
+  );
+  const statsCacheRevision = useMemo(() => `editor:${campaignId}`, [campaignId]);
 
   useEffect(() => {
     setStats(undefined);
@@ -128,9 +155,42 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
 
   const onLoadStats = useCallback(() => {
     void runAction('stats', async () => {
-      setStats(await getCampaignStats(campaignId));
+      const editorCacheKey = buildCampaignStatsCacheKey(
+        campaignId,
+        resolvedStatsQuery,
+        statsCacheRevision,
+      );
+
+      if (!stats) {
+        const cached =
+          readCachedCampaignStats(editorCacheKey) ??
+          readCachedCampaignStatsForCampaign(campaignId, resolvedStatsQuery);
+        if (cached) {
+          setStats(cached);
+          return;
+        }
+      }
+
+      const seeded =
+        !stats && listMetrics
+          ? campaignStatsFromListMetrics(campaignId, listMetrics, resolvedStatsQuery)
+          : undefined;
+      if (seeded) {
+        setStats(seeded);
+      }
+
+      const fetched = await getCampaignStats(campaignId, resolvedStatsQuery);
+      writeCachedCampaignStats(editorCacheKey, fetched);
+      setStats(fetched);
     });
-  }, [campaignId, runAction]);
+  }, [
+    campaignId,
+    listMetrics,
+    resolvedStatsQuery,
+    runAction,
+    stats,
+    statsCacheRevision,
+  ]);
 
   const onLoadEvents = useCallback(() => {
     void runAction('events', async () => {
@@ -140,9 +200,13 @@ export function CampaignOpsPanel({ campaignId }: { campaignId: string }) {
 
   const onLoadMargin = useCallback(() => {
     void runAction('margin', async () => {
+      if (listMargin && !margin) {
+        setMargin(listMargin);
+        return;
+      }
       setMargin(await getCampaignMargin(campaignId));
     });
-  }, [campaignId, runAction]);
+  }, [campaignId, listMargin, margin, runAction]);
 
   const onLoadMappings = useCallback(() => {
     void runAction('mappings', async () => {

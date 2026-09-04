@@ -1,4 +1,4 @@
-import { apiFetch, apiJson, ApiError } from './client.js';
+import { apiFetch, apiJson, apiJsonArray, ApiError } from './client.js';
 import type {
   DashboardMetrics,
   DashboardMetricsQuery,
@@ -256,7 +256,7 @@ export async function getOpsMlModelEval(
 }
 
 export async function listOpsMlLabels(signal?: AbortSignal): Promise<MLManualLabel[]> {
-  return apiJson<MLManualLabel[]>('/api/v1/ops/ml-model/labels', { signal });
+  return apiJsonArray<MLManualLabel>('/api/v1/ops/ml-model/labels', { signal });
 }
 
 export async function addOpsMlLabel(
@@ -336,7 +336,7 @@ export async function listReconRuns(
   params: ReconListQuery = {},
   signal?: AbortSignal,
 ): Promise<ReconRun[]> {
-  return apiJson<ReconRun[]>(buildReconRunsPath(params), { signal });
+  return apiJsonArray<ReconRun>(buildReconRunsPath(params), { signal });
 }
 
 export async function reloadOpsRoles(signal?: AbortSignal): Promise<StatusOKResponse> {

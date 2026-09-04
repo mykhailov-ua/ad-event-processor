@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
 import { ApiError } from '@/api/client';
@@ -11,6 +11,7 @@ import {
 import { CampaignDashboardView } from '@/domains/campaigns/report/campaign_dashboard_view';
 import { useBreadcrumbSegmentLabel } from '@/shell/breadcrumb_context';
 import { useResource } from '@/api/use_resource';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { defaultReportRange } from '@/lib/report_paths';
 import type { CampaignDashboardKpis } from '@/domains/campaigns/report/campaign_dashboard_metrics';
 import type { DashboardSeriesPoint, DashboardBreakdownTable } from '@/domains/dashboards/buyer_dashboard_types';
@@ -27,9 +28,9 @@ export function CampaignDashboardPage() {
   const appliedQ = searchParams.get('q') ?? '';
   const appliedSort = parseCampaignReportSort(searchParams.get('sort'));
   const appliedOrderDesc = parseCampaignReportOrder(searchParams.get('order'));
-  const [refreshNonce, setRefreshNonce] = useState(0);
-
   const shouldFetch = Boolean(campaignId);
+
+  const { refreshToken: refreshNonce, bumpRefresh } = useRefreshToken();
 
   const { data, error, fetching } = useResource(
     (signal) => {
@@ -64,9 +65,7 @@ export function CampaignDashboardPage() {
 
   const licenseGated = error instanceof ApiError && error.status === 403;
 
-  const onRefresh = useCallback(() => {
-    setRefreshNonce((value) => value + 1);
-  }, []);
+  const onRefresh = useCoalescedBumpRefresh(bumpRefresh, fetching);
 
   const onDimensionChange = useCallback(
     (dimension: CampaignReportDimension) => {

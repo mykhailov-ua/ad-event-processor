@@ -5,6 +5,7 @@ import { listDlqInbox, retryDlqInboxEntry } from '@/api/ops_api';
 import type { DLQInboxEntry } from '@/api/types';
 import { OpsDlqInbox } from '@/domains/ops/ops_dlq_inbox';
 import { useResource } from '@/api/use_resource';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { parseListLimit } from '@/lib/list_query';
 
 const CURSOR_STACK_KEY = 'cursor_stack';
@@ -27,7 +28,7 @@ function parseCursorStack(raw: string | null): string[] {
 export function OpsDlqPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [retryingId, setRetryingId] = useState<string | undefined>();
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const limit = parseListLimit(searchParams.get('limit'), 200);
   const cursor = searchParams.get('cursor') ?? undefined;
@@ -85,15 +86,15 @@ export function OpsDlqPage() {
     setRetryingId(entry.id);
     try {
       await retryDlqInboxEntry(entry.id, entry.source);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } finally {
       setRetryingId(undefined);
     }
-  }, []);
+  }, [bumpRefresh]);
 
   return (
     <OpsDlqInbox
-      items={data?.items ?? []}
+      items={data?.items}
       nextCursor={data?.next_cursor}
       partial={data?.partial}
       limit={limit}

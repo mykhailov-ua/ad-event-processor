@@ -77,7 +77,7 @@ export function OpsOutboxPage() {
 
   return (
     <OpsOutbox
-      items={data?.items ?? []}
+      items={data?.items}
       nextCursor={data?.next_cursor}
       total={data?.total}
       limit={limit}

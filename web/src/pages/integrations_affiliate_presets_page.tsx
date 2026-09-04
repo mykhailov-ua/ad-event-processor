@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-
 import { listAffiliateStatusPresets } from '@/api/integrations_api';
 import { IntegrationsAffiliatePresets } from '@/domains/integrations/integrations_affiliate_presets';
 import { useResource } from '@/api/use_resource';
@@ -10,11 +8,9 @@ export function IntegrationsAffiliatePresetsPage() {
     [],
   );
 
-  const presets = useMemo(() => data ?? [], [data]);
-
   return (
     <IntegrationsAffiliatePresets
-      presets={presets}
+      presets={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

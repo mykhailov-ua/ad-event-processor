@@ -1,7 +1,10 @@
+import { PORTAL_PERMISSIONS } from '@/lib/portal_access';
+
 export type NavItem = {
   path: string;
   label: string;
   permission?: string;
+  permissionAny?: string[];
 };
 
 export type NavGroup = {
@@ -14,12 +17,16 @@ const CORE_NAV: NavItem[] = [
   { path: '/customers', label: 'Customers', permission: 'customers:read' },
   { path: '/campaigns', label: 'Campaigns', permission: 'campaigns:read' },
   { path: '/billing', label: 'Billing', permission: 'customers:read' },
-  { path: '/dashboards/buyer', label: 'Dashboards' },
+  {
+    path: '/dashboards/buyer',
+    label: 'Dashboards',
+    permissionAny: ['campaigns:read', 'campaigns:read:masked'],
+  },
   { path: '/team', label: 'Team', permission: 'campaigns:read' },
 ];
 
 const OPERATIONS_NAV: NavItem[] = [
-  { path: '/ops', label: 'Ops' },
+  { path: '/ops', label: 'Ops', permission: 'shards:read' },
   { path: '/audit', label: 'Audit', permission: 'audit:read' },
   { path: '/reports', label: 'Reports', permission: 'campaigns:read' },
 ];
@@ -36,7 +43,11 @@ const CONTENT_NAV: NavItem[] = [
 ];
 
 const MORE_NAV: NavItem[] = [
-  { path: '/portals', label: 'Portals' },
+  {
+    path: '/portals',
+    label: 'Portals',
+    permissionAny: Object.values(PORTAL_PERMISSIONS),
+  },
   { path: '/settings', label: 'Settings', permission: 'settings:read' },
 ];
 
@@ -58,9 +69,15 @@ export function filterNavItems(
   if (permissions === undefined) {
     return items;
   }
-  return items.filter(
-    (item) => !item.permission || permissions.includes(item.permission),
-  );
+  return items.filter((item) => {
+    if (item.permissionAny) {
+      return item.permissionAny.some((permission) => permissions.includes(permission));
+    }
+    if (item.permission) {
+      return permissions.includes(item.permission);
+    }
+    return true;
+  });
 }
 
 export function filterNavGroups(

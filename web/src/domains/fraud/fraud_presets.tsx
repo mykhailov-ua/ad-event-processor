@@ -26,7 +26,7 @@ export type FraudPresetEditDraft = {
 };
 
 export type FraudPresetsProps = {
-  items: FraudPolicyPreset[];
+  items?: FraudPolicyPreset[];
   presetDrafts: Record<string, FraudPresetEditDraft>;
   fetching: boolean;
   error: Error | undefined;
@@ -87,7 +87,7 @@ export function FraudPresets({
         Back to fraud hub
       </Link>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No presets" description="No global fraud policy presets returned." />
       ) : (
         <DirectoryTable>
@@ -103,7 +103,7 @@ export function FraudPresets({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => {
+              {(items ?? []).map((row) => {
                 const presetName = row.name ?? '';
                 const draft = presetDrafts[presetName] ?? presetDraftFromRow(row);
                 const saving = savingPresetName === presetName;

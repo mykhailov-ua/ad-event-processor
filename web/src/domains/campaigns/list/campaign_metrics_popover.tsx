@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { getCampaignStats } from '@/api/campaigns_api';
+import type { CampaignListMetrics } from '@/api/campaigns_api';
 import { ApiError } from '@/api/client';
 import type { CampaignStats, CampaignStatsQuery } from '@/api/types';
 import { ErrorBlock } from '@/shell/error_block';
@@ -14,6 +15,13 @@ import {
   MetricsSection,
   type CampaignWithMoneyDisplay,
 } from '@/domains/campaigns/list/campaign_metrics_shared';
+import { campaignMetricsPopoverClass } from '@/domains/campaigns/list/campaign_list_classes';
+import {
+  buildCampaignStatsCacheKey,
+  campaignStatsFromListMetrics,
+  readCachedCampaignStats,
+  writeCachedCampaignStats,
+} from '@/domains/campaigns/list/campaign_list_stats_cache';
 import { displayCount, displayMoneyDecimal } from '@/lib/display';
 
 function MetricsPopoverBody({
@@ -41,7 +49,7 @@ function MetricsPopoverBody({
     <div className="divide-y divide-border">
       <header className="grid gap-3 p-4">
         <div className="grid gap-1">
-          <p className="line-clamp-2 text-sm font-medium leading-snug">{campaign.name}</p>
+          <p className="whitespace-nowrap text-sm font-medium leading-snug">{campaign.name}</p>
           <p className="text-xs text-muted-foreground">Campaign metrics</p>
         </div>
         <BudgetUsedSummary campaign={campaign} className="max-w-none" />
@@ -71,7 +79,7 @@ function MetricsPopoverBody({
         <MetricsSection
           meta={
             stats?.stale ? (
-              <span className="text-admin-caption text-muted-foreground">Stale ({stats.source})</span>
+              <span className="text-ui-caption text-muted-foreground">Stale ({stats.source})</span>
             ) : null
           }
           title="Delivery"
@@ -136,12 +144,16 @@ function formatRemaining(campaign: CampaignWithMoneyDisplay): string {
 
 export function CampaignMetricsPopover({
   campaign,
+  listMetrics,
   onOpenOverview,
+  statsCacheRevision,
   statsQuery,
   triggerContent,
 }: {
   campaign: CampaignWithMoneyDisplay;
+  listMetrics?: CampaignListMetrics;
   onOpenOverview?: (campaign: CampaignWithMoneyDisplay) => void;
+  statsCacheRevision: string;
   statsQuery?: CampaignStatsQuery;
   triggerContent?: ReactNode;
 }) {
@@ -149,18 +161,39 @@ export function CampaignMetricsPopover({
   const [stats, setStats] = useState<CampaignStats | undefined>();
   const [error, setError] = useState<Error | undefined>();
   const [loading, setLoading] = useState(false);
+  const resolvedStatsQuery = useMemo(
+    () => statsQuery ?? {},
+    [statsQuery?.from, statsQuery?.granularity, statsQuery?.to],
+  );
+  const cacheKey = useMemo(
+    () => buildCampaignStatsCacheKey(campaign.id, resolvedStatsQuery, statsCacheRevision),
+    [campaign.id, resolvedStatsQuery, statsCacheRevision],
+  );
 
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    const cached = readCachedCampaignStats(cacheKey);
+    if (cached) {
+      setStats(cached);
+      setError(undefined);
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
+    const seeded = listMetrics
+      ? campaignStatsFromListMetrics(campaign.id, listMetrics, resolvedStatsQuery)
+      : undefined;
+    setStats(seeded);
     setLoading(true);
     setError(undefined);
 
-    void getCampaignStats(campaign.id, statsQuery ?? {}, controller.signal)
+    void getCampaignStats(campaign.id, resolvedStatsQuery, controller.signal)
       .then((next) => {
+        writeCachedCampaignStats(cacheKey, next);
         setStats(next);
       })
       .catch((err: unknown) => {
@@ -178,7 +211,7 @@ export function CampaignMetricsPopover({
     return () => {
       controller.abort();
     };
-  }, [campaign.id, open, statsQuery]);
+  }, [cacheKey, campaign.id, listMetrics, open, resolvedStatsQuery]);
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
@@ -207,7 +240,7 @@ export function CampaignMetricsPopover({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="campaign-metrics-popover"
+        className={campaignMetricsPopoverClass}
         collisionPadding={16}
         onOpenAutoFocus={(event) => event.preventDefault()}
         side="bottom"

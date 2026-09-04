@@ -151,3 +151,11 @@ export async function apiJson<T>(path: string, init: ApiRequestInit = {}): Promi
 
   return (await response.json()) as T;
 }
+
+export async function apiJsonArray<T>(path: string, init: ApiRequestInit = {}): Promise<T[]> {
+  const payload = await apiJson<unknown>(path, init);
+  if (!Array.isArray(payload)) {
+    throw new ApiError(502, 'INVALID_RESPONSE', 'Expected JSON array response');
+  }
+  return payload as T[];
+}

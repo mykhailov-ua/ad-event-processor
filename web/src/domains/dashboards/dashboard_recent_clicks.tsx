@@ -97,8 +97,8 @@ export function DashboardRecentClicks({ events, columns, viewAllHref }: Dashboar
                     key={columnId}
                     className={
                       columnId === 'click_id'
-                        ? 'max-w-0 truncate font-mono text-xs'
-                        : 'max-w-0 truncate text-sm'
+                        ? 'whitespace-nowrap font-mono text-xs'
+                        : 'whitespace-nowrap text-sm'
                     }
                     title={
                       columnId === 'sub1' ? event.sub1 : columnId === 'click_id' ? event.click_id : undefined

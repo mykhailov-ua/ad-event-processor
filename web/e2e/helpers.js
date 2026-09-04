@@ -1,6 +1,10 @@
 /** @typedef {import('@playwright/test').Page} Page */
 /** @typedef {import('@playwright/test').TestType} TestType */
 
+import { randomBytes } from 'node:crypto';
+
+import { expect } from '@playwright/test';
+
 export const baseURL =
   process.env.ADMIN_E2E_BASE_URL ||
   process.env.PLAYWRIGHT_BASE_URL ||
@@ -61,16 +65,322 @@ export async function probeBaseUrl() {
 }
 
 /**
+ * @param {import('@playwright/test').Page} page
+ */
+export async function assertLiveApiMode(page) {
+  await expect(page.getByText('Development mock API', { exact: false })).toHaveCount(0);
+}
+
+/**
+ * Authenticated page body (excludes breadcrumb header chrome).
+ * @param {import('@playwright/test').Page} page
+ */
+export function mainContent(page) {
+  return page.locator('#main-content');
+}
+
+/**
+ * Page title inside #main-content (not breadcrumb duplicate headings).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+export function mainHeading(page, name) {
+  return mainContent(page).getByRole('heading', { name, exact: true });
+}
+
+/**
+ * Standalone auth pages render outside the app shell (no #main-content).
+ * @param {import('@playwright/test').Page} page
+ */
+export function loginSignInHeading(page) {
+  return page.getByRole('heading', { name: 'Sign in', exact: true });
+}
+
+/**
+ * Primary sidebar navigation landmark.
+ * @param {import('@playwright/test').Page} page
+ */
+export function mainNav(page) {
+  return page.getByRole('navigation', { name: 'Main' });
+}
+
+/**
+ * Hub bento card link inside page content.
+ * @param {import('@playwright/test').Page} page
+ * @param {string} href
+ */
+export function hubCardLink(page, href) {
+  return mainContent(page).locator(`a[href="${href}"]`);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} title
+ */
+export async function expandDetailsSection(page, title) {
+  const section = page.locator('details').filter({
+    has: page.getByText(title, { exact: true }),
+  });
+  const isOpen = await section.evaluate((element) => element.open);
+  if (!isOpen) {
+    await section.locator('summary').click();
+  }
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} path
+ */
+export async function gotoLive(page, path) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  const joiner = normalized.includes('?') ? '&' : '?';
+  await page.goto(`${normalized}${joiner}admin_dev=0`);
+  await assertLiveApiMode(page);
+}
+
+/**
+ * @param {string} pathPart
+ * @param {number} [status=200]
+ */
+export function isApiGet(pathPart, status = 200) {
+  return (response) =>
+    response.request().method() === 'GET' &&
+    response.url().includes(pathPart) &&
+    response.status() === status;
+}
+
+/**
+ * @param {string} pathPart
+ * @param {number} [status=200]
+ */
+export function isApiPost(pathPart, status = 200) {
+  return (response) =>
+    response.request().method() === 'POST' &&
+    response.url().includes(pathPart) &&
+    response.status() === status;
+}
+
+/**
+ * @param {string} pathPart
+ * @param {number} [status=200]
+ */
+export function isApiPatch(pathPart, status = 200) {
+  return (response) =>
+    response.request().method() === 'PATCH' &&
+    response.url().includes(pathPart) &&
+    response.status() === status;
+}
+
+/**
+ * @returns {string}
+ */
+export function randomHex32() {
+  return randomBytes(16).toString('hex');
+}
+
+/**
+ * Unique token for integration fixtures (timestamp; safe in emails and DNS labels).
+ * @returns {string}
+ */
+export function integrationRunToken() {
+  return String(Date.now());
+}
+
+/**
+ * @param {string} [runToken]
+ * @returns {string}
+ */
+export function integrationTeamInviteEmail(runToken = integrationRunToken()) {
+  return `team.invite.${runToken}@test.local`;
+}
+
+/**
+ * @param {string} [runToken]
+ * @returns {string}
+ */
+export function integrationSettingsTrackingDomain(runToken = integrationRunToken()) {
+  return `settings.patch.probe.${runToken}.invalid`;
+}
+
+/**
+ * @param {string} [runToken]
+ * @returns {string}
+ */
+export function integrationFraudLabelReason(runToken = integrationRunToken()) {
+  return `manual fraud label integration ${runToken}`;
+}
+
+/**
+ * @param {string} [runToken]
+ * @returns {string}
+ */
+export function integrationCampaignValidateSuffix(runToken = integrationRunToken()) {
+  return ` validate probe ${runToken}`;
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
+export async function fetchSessionCustomerId(page) {
+  const response = await page.request.get(new URL('/api/v1/session', baseURL).toString());
+  if (!response.ok()) {
+    return '';
+  }
+  const body = await response.json();
+  const customerId = body?.default_customer_id;
+  return typeof customerId === 'string' ? customerId.trim() : '';
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ inputSelector: string, buttonName: string, listPathPart: string }} options
+ * @returns {Promise<boolean>}
+ */
+export async function ensureCustomerScopeLoaded(page, options) {
+  const { inputSelector, buttonName, listPathPart } = options;
+  const customerId = await fetchSessionCustomerId(page);
+  if (!customerId) {
+    return false;
+  }
+
+  const input = page.locator(inputSelector);
+  const current = (await input.inputValue().catch(() => '')).trim();
+  if (current !== customerId) {
+    await input.fill(customerId);
+  }
+
+  const listResponse = page.waitForResponse(isApiGet(listPathPart), { timeout: 20_000 });
+  await page.getByRole('button', { name: buttonName, exact: true }).click();
+  await listResponse;
+  return true;
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+export async function applyCustomerScopeIfPrompted(page) {
+  const customerRequired = page.getByText('Customer required', { exact: true });
+  if (await customerRequired.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await page.getByRole('button', { name: 'Apply' }).click();
+  }
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {unknown} body
+ * @param {{ emptyTitle: string, rowLabel: (row: Record<string, unknown>) => string }} options
+ */
+export async function expectApiListBoundToDom(page, body, options) {
+  const { emptyTitle, rowLabel } = options;
+  const items = Array.isArray(body) ? body : body.items;
+  expect(Array.isArray(items)).toBe(true);
+  if (!Array.isArray(body) && body != null && typeof body === 'object' && 'total' in body) {
+    expect(typeof body.total).toBe('number');
+  }
+
+  if (items.length === 0) {
+    await expect(page.getByText(emptyTitle, { exact: true })).toBeVisible({ timeout: 15_000 });
+    return;
+  }
+
+  const main = mainContent(page);
+  for (const item of items) {
+    const label = rowLabel(item);
+    expect(typeof label).toBe('string');
+    expect(label.length).toBeGreaterThan(0);
+
+    const rowLocator = main
+      .getByRole('cell', { name: label, exact: true })
+      .or(main.getByRole('link', { name: label, exact: true }))
+      .or(main.locator(`input[value="${label}"]`))
+      .or(main.getByText(label, { exact: true }));
+    if (await rowLocator.first().isVisible({ timeout: 3000 }).catch(() => false)) {
+      return;
+    }
+  }
+
+  const firstLabel = rowLabel(items[0]);
+  const fallbackLocator = main
+    .getByRole('cell', { name: firstLabel, exact: true })
+    .or(main.getByRole('link', { name: firstLabel, exact: true }))
+    .or(main.locator(`input[value="${firstLabel}"]`))
+    .or(main.getByText(firstLabel, { exact: true }));
+  await expect(fallbackLocator.first()).toBeVisible({ timeout: 15_000 });
+}
+
+/**
+ * @param {import('@playwright/test').Response} response
+ */
+export function isCampaignsListResponse(response) {
+  const url = response.url();
+  return (
+    response.request().method() === 'GET' &&
+    url.includes('/api/v1/campaigns') &&
+    !url.includes('/metrics') &&
+    !url.includes('/list-facets') &&
+    !url.includes('/export') &&
+    !url.includes('/onboarding-templates') &&
+    !url.includes('/wizard/') &&
+    response.status() === 200
+  );
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ */
+export async function gotoCampaignsLive(page) {
+  await page.goto('/campaigns?admin_dev=0');
+  await mainHeading(page, 'Campaigns').waitFor({ timeout: 15_000 });
+  await assertLiveApiMode(page);
+}
+
+/**
  * @param {Page} page
  */
 export async function loginAsAdmin(page) {
   const { email, password } = getAdminCredentials();
 
-  await page.goto('/login');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15_000 });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+
+    const navigated = await page
+      .waitForURL((url) => !url.pathname.endsWith('/login'), { timeout: 15_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (navigated) {
+      await mainNav(page).waitFor({ timeout: 15_000 });
+      return;
+    }
+
+    if (attempt === 1) {
+      const invalidCredentials = await page.getByText('invalid credentials').isVisible().catch(() => false);
+      throw new Error(
+        invalidCredentials ? 'login failed: invalid credentials' : 'login failed: still on /login',
+      );
+    }
+  }
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} [customerId]
+ */
+export async function gotoLiveTeam(page, customerId = '') {
+  const scopedCustomerId = customerId || (await fetchSessionCustomerId(page));
+  const path = scopedCustomerId
+    ? `/team?customer_id=${encodeURIComponent(scopedCustomerId)}`
+    : '/team';
+  await gotoLive(page, path);
+  const teamError = page.getByText('Could not load team overview', { exact: true });
+  if (await teamError.isVisible({ timeout: 3000 }).catch(() => false)) {
+    return false;
+  }
+  await mainHeading(page, 'Team').waitFor({ timeout: 15_000 });
+  return true;
 }
 
 /**
@@ -78,7 +388,7 @@ export async function loginAsAdmin(page) {
  */
 export async function gotoCustomers(page) {
   await page.goto('/customers');
-  await page.getByRole('heading', { name: 'Customers' }).waitFor();
+  await mainHeading(page, 'Customers').waitFor();
 }
 
 /**
@@ -86,7 +396,7 @@ export async function gotoCustomers(page) {
  */
 export async function gotoCampaigns(page) {
   await page.goto('/campaigns');
-  await page.getByRole('heading', { name: 'Campaigns' }).waitFor({ timeout: 15_000 });
+  await mainHeading(page, 'Campaigns').waitFor({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Create', exact: true }).waitFor({ timeout: 15_000 });
 }
 
@@ -95,7 +405,7 @@ export async function gotoCampaigns(page) {
  */
 export async function gotoBilling(page) {
   await page.goto('/billing');
-  await page.getByRole('heading', { name: 'Billing' }).waitFor();
+  await mainHeading(page, 'Billing').waitFor();
 }
 
 /**
@@ -103,4 +413,55 @@ export async function gotoBilling(page) {
  */
 export async function gotoOps(page) {
   await page.goto('/ops');
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string | null>}
+ */
+export async function openFirstCampaignEditor(page) {
+  const listResponse = page.waitForResponse(isCampaignsListResponse, { timeout: 20_000 });
+  await gotoCampaignsLive(page);
+  await listResponse;
+
+  const editLink = page.locator('main a[href$="/edit"]').first();
+  if ((await editLink.count()) === 0) {
+    return null;
+  }
+
+  await editLink.click();
+  await page.getByRole('heading', { name: 'Campaign settings' }).waitFor({ timeout: 15_000 });
+
+  const match = page.url().match(/\/campaigns\/([^/]+)\/edit/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<string>}
+ */
+export async function fetchFirstCampaignId(page) {
+  const response = await page.request.get(
+    new URL('/api/v1/campaigns?limit=1', baseURL).toString(),
+  );
+  if (!response.ok()) {
+    return '';
+  }
+  const body = await response.json();
+  const first = body?.items?.[0];
+  const id = first?.id;
+  return typeof id === 'string' ? id : '';
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} listPathPart
+ * @returns {Promise<boolean>}
+ */
+export async function ensureIntegrationCustomerScope(page, listPathPart) {
+  return ensureCustomerScopeLoaded(page, {
+    inputSelector: '#customer-scope-id',
+    buttonName: 'Apply',
+    listPathPart,
+  });
 }

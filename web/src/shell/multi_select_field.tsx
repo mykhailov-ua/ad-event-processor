@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { adminKit } from '@/lib/admin_kit';
 import { cn } from '@/lib/utils';
 
 export type MultiSelectOption<T extends string> = {
@@ -65,10 +66,13 @@ export function MultiSelectField<T extends string>({
           <button
             id={id}
             aria-expanded={open}
-            className="relative flex h-8 w-full items-center justify-between rounded-md border border-border bg-background px-3 text-sm text-foreground"
+            className={cn(
+              'relative flex w-full items-center justify-between rounded-md border border-border bg-background px-3 text-sm text-foreground',
+              adminKit.controlHeight,
+            )}
             type="button"
           >
-            <span className="truncate" title={summary}>
+            <span className="whitespace-nowrap" title={summary}>
               {summary}
             </span>
             <ChevronDown

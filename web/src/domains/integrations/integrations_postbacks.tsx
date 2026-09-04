@@ -141,7 +141,7 @@ export function IntegrationsPostbacks({
         {configs.length === 0 ? (
           <EmptyState title="No configs" description="No postback configs are configured." />
         ) : (
-          <DirectoryTable>
+          <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Campaign</DirectoryTableHead>
@@ -176,7 +176,7 @@ export function IntegrationsPostbacks({
         {dlq.length === 0 ? (
           <EmptyState title="DLQ empty" description="No failed postback deliveries in DLQ." />
         ) : (
-          <DirectoryTable>
+          <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>ID</DirectoryTableHead>
@@ -196,7 +196,7 @@ export function IntegrationsPostbacks({
                     <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
                     <TableCell>{row.event_type ?? ''}</TableCell>
                     <TableCell>{row.failures_count ?? ''}</TableCell>
-                    <TableCell className="max-w-md truncate">{row.last_error ?? ''}</TableCell>
+                    <TableCell className="whitespace-nowrap">{row.last_error ?? ''}</TableCell>
                     <TableCell>
                       <Button
                         disabled={!rowId || dlqActions.retryingId === rowId}
@@ -233,7 +233,7 @@ export function IntegrationsPostbacks({
             description="No postback delivery status rows returned."
           />
         ) : (
-          <DirectoryTable>
+          <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Campaign</DirectoryTableHead>

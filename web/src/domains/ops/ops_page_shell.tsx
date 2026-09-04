@@ -8,9 +8,9 @@ import { OpsNav } from '@/domains/ops/ops_nav';
 export type OpsPageShellProps = {
   title: string;
   badge?: ReactNode;
-  /** Primary actions row (reload, export, load, etc.). Wrap groups in admin-toolbar-group. */
+  /** Primary actions row (reload, export, load, etc.). Wrap groups in flex with gap-1. */
   actions?: ReactNode;
-  /** Filter controls row (admin-label / admin-input). */
+  /** Filter controls row (Label / Input from components/ui). */
   filters?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;

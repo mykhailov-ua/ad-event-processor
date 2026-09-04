@@ -14,7 +14,7 @@ import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayTimestamp } from '@/lib/display';
 
 export type TelegramBotsPanelProps = {
-  bots: TelegramBot[];
+  bots?: TelegramBot[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -38,10 +38,10 @@ export function TelegramBotsPanel({ bots, fetching, error, hasSnapshot }: Telegr
     <PageChrome title="Telegram bots">
       <PortalsNav />
 
-      {bots.length === 0 ? (
+      {(bots ?? []).length === 0 ? (
         <EmptyState title="No bots" description="No Telegram Mini App bots are configured." />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable horizontalScroll>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Bot ID</DirectoryTableHead>
@@ -52,14 +52,14 @@ export function TelegramBotsPanel({ bots, fetching, error, hasSnapshot }: Telegr
               </TableRow>
             </TableHeader>
             <TableBody>
-              {bots.map((row) => (
+              {(bots ?? []).map((row) => (
                 <TableRow key={String(row.bot_id ?? row.campaign_id ?? row.webhook_url)}>
                   <TableCell>{row.bot_id ?? ''}</TableCell>
                   <TableCell className="font-mono text-xs">{row.campaign_id ?? ''}</TableCell>
-                  <TableCell className="max-w-xs truncate font-mono text-xs">
+                  <TableCell className="whitespace-nowrap font-mono text-xs">
                     {row.webhook_url ?? ''}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate font-mono text-xs">
+                  <TableCell className="whitespace-nowrap font-mono text-xs">
                     {row.mini_app_url ?? ''}
                   </TableCell>
                   <TableCell>{displayTimestamp(row.updated_at)}</TableCell>

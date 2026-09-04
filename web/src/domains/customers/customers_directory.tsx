@@ -22,7 +22,7 @@ export type CustomerSortField = 'name' | 'created_at' | 'balance' | 'active_camp
 export type SortOrder = 'asc' | 'desc';
 
 export type CustomersDirectoryProps = {
-  items: Customer[];
+  items?: Customer[];
   total: number;
   limit: number;
   offset: number;
@@ -62,7 +62,7 @@ export function CustomersDirectory({
 
   const canGoPrev = offset > 0;
   const canGoNext = offset + limit < total;
-  const pageRange = listPageRange(total, limit, offset, items.length);
+  const pageRange = listPageRange(total, limit, offset, (items ?? []).length);
   const rangeLabel =
     pageRange.rangeStart > 0
       ? `${pageRange.rangeStart} - ${pageRange.rangeEnd} of ${total}`
@@ -86,7 +86,7 @@ export function CustomersDirectory({
       }
       title="Customers"
     >
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState
           actionHref="/docs"
           actionLabel="View documentation"
@@ -95,7 +95,7 @@ export function CustomersDirectory({
           variant="blank-slate"
         />
       ) : (
-        <DirectoryTable fixedLayout>
+        <DirectoryTable fixedLayout horizontalScroll>
           <TableHeader>
             <TableRow>
               <SortableTableHead
@@ -140,31 +140,31 @@ export function CustomersDirectory({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((customer) => {
+            {(items ?? []).map((customer) => {
               const createdLabel = displayTimestamp(
                 customer.created_at,
                 customer.created_at_display,
               );
               return (
                 <TableRow key={customer.id ?? customer.name}>
-                  <TableCell className="max-w-0 truncate font-medium">
+                  <TableCell className="whitespace-nowrap font-medium">
                     {customer.id ? (
                       <Link
-                        className="block truncate"
+                        className="whitespace-nowrap"
                         title={customer.name ?? customer.id}
                         to={`/customers/${customer.id}`}
                       >
                         {customer.name ?? customer.id}
                       </Link>
                     ) : (
-                      <span className="block truncate" title={customer.name ?? undefined}>
+                      <span className="whitespace-nowrap" title={customer.name ?? undefined}>
                         {customer.name}
                       </span>
                     )}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{customer.balance ?? ''}</TableCell>
-                  <TableCell className="truncate">{customer.currency ?? ''}</TableCell>
-                  <TableCell className="max-w-0 truncate" title={customer.cost_center ?? undefined}>
+                  <TableCell className="whitespace-nowrap">{customer.currency ?? ''}</TableCell>
+                  <TableCell className="whitespace-nowrap" title={customer.cost_center ?? undefined}>
                     {customer.cost_center ?? ''}
                   </TableCell>
                   <TableCell className="text-right tabular-nums">
@@ -172,7 +172,7 @@ export function CustomersDirectory({
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{customer.total_spend ?? ''}</TableCell>
                   <TableCell
-                    className="max-w-0 truncate text-muted-foreground"
+                    className="whitespace-nowrap text-muted-foreground"
                     title={createdLabel}
                   >
                     {createdLabel}

@@ -23,7 +23,7 @@ import { AutomationRulesGrid } from '@/domains/automation/automation_rule_card';
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
 
 export type AutomationRulesDirectoryProps = {
-  items: AutomationRule[];
+  items?: AutomationRule[];
   appliedCustomerId: string;
   draftCustomerId: string;
   createDraft: AutomationRuleEditDraft;
@@ -222,7 +222,7 @@ export function AutomationRulesDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No automation rules" description="No rules exist for this customer." />
       ) : (
         <AutomationRulesGrid

@@ -10,6 +10,7 @@ import {
 import type { SavedView } from '@/api/types';
 import { SavedViewsPanel } from '@/domains/portals/saved_views_panel';
 import { useCustomerScope } from '@/hooks/use_customer_scope';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 type EditRow = {
@@ -34,13 +35,13 @@ export function SavedViewsPage() {
     applyCustomerScope,
   } = useCustomerScope();
 
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
   const shouldFetch = Boolean(appliedCustomerId);
 
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listSavedViews({ customer_id: appliedCustomerId }, signal);
     },
@@ -55,15 +56,13 @@ export function SavedViewsPage() {
   const [actionError, setActionError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
 
-  const views = useMemo(() => data ?? [], [data]);
-
   useEffect(() => {
-    if (views.length === 0) {
+    if (!data?.length) {
       return;
     }
     setEditRows((current) => {
       const next = { ...current };
-      for (const row of views) {
+      for (const row of data) {
         const id = row.id ?? '';
         if (!id || next[id]) {
           continue;
@@ -72,7 +71,7 @@ export function SavedViewsPage() {
       }
       return next;
     });
-  }, [views]);
+  }, [data]);
 
   const parseSpec = useCallback((raw: string): Record<string, unknown> | undefined => {
     const trimmed = raw.trim();
@@ -124,13 +123,13 @@ export function SavedViewsPage() {
       setDraftSpecJson('{}');
       setCreateSuccess(true);
       toast.success('Saved view created');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setActing(false);
     }
-  }, [appliedCustomerId, draftName, draftReportKey, draftSpecJson, parseSpec]);
+  }, [appliedCustomerId, draftName, draftReportKey, draftSpecJson, parseSpec, bumpRefresh]);
 
   const onUpdateView = useCallback(
     async (id: string) => {
@@ -148,14 +147,14 @@ export function SavedViewsPage() {
           report_key: edit.report_key.trim(),
           spec,
         });
-        setRefreshToken((value) => value + 1);
+        bumpRefresh();
       } catch (err) {
         setActionError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setActing(false);
       }
     },
-    [appliedCustomerId, editRows, parseSpec],
+    [appliedCustomerId, editRows, parseSpec, bumpRefresh],
   );
 
   const onDeleteView = useCallback(async (id: string) => {
@@ -168,22 +167,22 @@ export function SavedViewsPage() {
         delete next[id];
         return next;
       });
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setActionError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setActing(false);
     }
-  }, []);
+  }, [bumpRefresh]);
 
   return (
     <SavedViewsPanel
-      views={views}
+      views={data}
       appliedCustomerId={appliedCustomerId}
       draftCustomerId={draftCustomerId}
       fetching={fetching}
       error={error}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       draftName={draftName}
       draftReportKey={draftReportKey}
       draftSpecJson={draftSpecJson}

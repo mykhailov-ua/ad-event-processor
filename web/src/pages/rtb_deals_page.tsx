@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -24,7 +24,6 @@ export function RtbDealsPage() {
     [reloadKey],
   );
 
-  const items = useMemo(() => data ?? [], [data]);
   const licenseGated = rtbLicenseGated(error);
 
   const onCreateDeal = useCallback(async () => {
@@ -58,7 +57,7 @@ export function RtbDealsPage() {
 
   return (
     <RtbDealsDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={licenseGated ? undefined : error}
       hasSnapshot={data != null || licenseGated}

@@ -26,7 +26,7 @@ fi
 
 echo "admin web e2e smoke: playwright bundle"
 (
-  cd "$E2E_DIR" && npx playwright test \
+  cd "$E2E_DIR" && npx playwright test --workers=1 \
     smoke_matrix.spec.js \
     login.spec.js \
     bootstrap.spec.js \
@@ -34,6 +34,7 @@ echo "admin web e2e smoke: playwright bundle"
     customers_list.spec.js \
     customer_detail_billing.spec.js \
     campaigns_filters.spec.js \
+    campaigns_bulk_pause.spec.js \
     campaign_editor.spec.js \
     campaign_editor_deep.spec.js \
     campaign_integrations.spec.js \

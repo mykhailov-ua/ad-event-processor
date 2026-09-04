@@ -36,7 +36,7 @@ export function PaginationPages({
   const pages = pageRange(page, pageCount, maxVisible);
 
   return (
-    <div className={cn('admin-pagination-pages flex items-center gap-1', className)} aria-label="Pagination">
+    <div className={cn('flex items-center gap-1', className)} aria-label="Pagination">
       {pages.map((pageNumber) => {
         const active = pageNumber === page;
         return (
@@ -45,7 +45,7 @@ export function PaginationPages({
             aria-current={active ? 'page' : undefined}
             aria-label={`Page ${pageNumber}`}
             className={cn(
-              '!h-7 min-w-7 rounded-[5px] px-2 text-[13px] tabular-nums',
+              'min-w-7 rounded-[5px] px-2 text-[13px] tabular-nums',
               active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
             )}
             disabled={disabled}

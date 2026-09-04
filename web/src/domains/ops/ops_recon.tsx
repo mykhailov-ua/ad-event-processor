@@ -21,7 +21,7 @@ import {
 } from '@/domains/ops/ops_table';
 
 export type OpsReconProps = {
-  items: ReconRun[];
+  items?: ReconRun[];
   draftService: string;
   limit: number;
   offset: number;
@@ -60,7 +60,7 @@ export function OpsRecon({
   }
 
   const canGoPrev = offset > 0;
-  const canGoNext = items.length >= limit;
+  const canGoNext = (items ?? []).length >= limit;
 
   return (
     <OpsPageShell
@@ -93,7 +93,7 @@ export function OpsRecon({
         </OpsActionGroup>
       }
     >
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState description="No reconciliation runs match filters." title="No recon runs" />
       ) : (
         <OpsTable
@@ -109,7 +109,7 @@ export function OpsRecon({
             </OpsTableHeaderRow>
           }
         >
-          {items.map((row) => (
+          {(items ?? []).map((row) => (
             <OpsTableRow key={`${row.service ?? 'svc'}-${row.id ?? row.created_at}`}>
               <OpsTableCell className="font-mono text-xs text-muted-foreground">
                 {row.id ?? ''}

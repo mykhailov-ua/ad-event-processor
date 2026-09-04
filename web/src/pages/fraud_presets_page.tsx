@@ -6,6 +6,7 @@ import {
   FraudPresets,
   type FraudPresetEditDraft,
 } from '@/domains/fraud/fraud_presets';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 function parseThresholdField(
@@ -24,7 +25,7 @@ function parseThresholdField(
 }
 
 export function FraudPresetsPage() {
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
   const [savingPresetName, setSavingPresetName] = useState<string | undefined>();
   const [saveError, setSaveError] = useState<Error | undefined>();
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -140,19 +141,19 @@ export function FraudPresetsPage() {
           delete next[name];
           return next;
         });
-        setRefreshToken((value) => value + 1);
+        bumpRefresh();
       } catch (err) {
         setSaveError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setSavingPresetName(undefined);
       }
     },
-    [presetDrafts],
+    [presetDrafts, bumpRefresh],
   );
 
   return (
     <FraudPresets
-      items={data ?? []}
+      items={data}
       presetDrafts={presetDrafts}
       fetching={fetching}
       error={error}

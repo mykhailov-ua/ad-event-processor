@@ -1,0 +1,2028 @@
+---
+description: Admin frontend anti-slop - mocks, tables, styling, errors, Playwright honesty, ingest-only tiers
+globs:
+  - web/**
+  - scripts/ci/admin/web.sh
+  - scripts/ci/admin/ui_slop.sh
+  - scripts/ci/admin/web_e2e*.sh
+  - api/openapi/**
+alwaysApply: false
+---
+
+# Frontend Slop
+
+## Purpose
+
+Agents ship plausible admin UI that **looks wired** while no Go handler ran, styles drift from the single control template, tables truncate instead of sizing columns, errors vanish, or Playwright greens on stubs. This file is the **frontend honesty** catalog. Layout contracts: `ui.mdc` (where not superseded below). General CI lies: `anti-slop.mdc`. Layer map: `frontend-modular.mdc`.
+
+**Operator mandate (2026-09):** no custom one-off styles; one button height; body copy may wrap; headings and numbers must not wrap; table columns width-to-content without ellipsis; no fake `Promise.resolve` stubs; every fetch path surfaces errors; mocks only on dev tier; **mock entity ids must use server-parity UUID algorithms** (`seed_uuid.ts`), never incremental fake ids.
+
+Canonical mock implementation: `web/src/api/dev_mock/` behind `isAdminDevMode()` in `web/src/api/client.ts`. Synthetic chart fill: `web/src/domains/dashboards/dashboard_series_mock.ts`.
+
+**Binding:** every agent turn that touches `web/**`, admin CI scripts, or OpenAPI cited by admin UI **must** follow **Agent execution protocol** below before claiming done. Subjective praise, abstract "best practices", and unread-file inference are lie modes (`anti-slop.mdc`).
+
+## Agent execution protocol (mandatory)
+
+Agents audit and remediate admin frontend **only** through named catalog IDs in this file, `ui.mdc`, and `scripts/ci/admin/ui_slop.sh`. No generic React/Tailwind advice unless it maps to a specific row below.
+
+### Forbidden output (subjective slop)
+
+| Banned phrase class | Examples | Required instead |
+| :--- | :--- | :--- |
+| Quality adjectives | "clean", "nice", "elegant", "modern", "polished", "well-structured" | Catalog ID + file:line + falsify command |
+| Vague practice | "best practices", "industry standard", "should feel smooth", "good UX" | Contract row: R*, EC*, layout rule, overlay class A/B/C |
+| Unfalsified completion | "looks good", "seems wired", "errors handled", "should work" | Tier T0-T2 + proof level M*/L* + pasted command |
+| Drive-by praise | "the codebase is in good shape" | Omit or list open catalog hits still in tree |
+| Gate fiction | "CI will catch it" without gate name | `bash scripts/ci/admin/ui_slop.sh` or **not run** |
+
+### Mandatory toolchain order
+
+Execute in order; skip a step only when the operator scoped a single file and prior steps already ran in the same turn with pasted output.
+
+| Phase | Tool | Action |
+| :--- | :--- | :--- |
+| **P0 Scope** | `ls`, `Glob`, `Read` | List touched paths under `web/src/`; read OpenAPI/handler DTO when claiming wire parity |
+| **P1 Keyword scan** | `rg` / `grep` | Run rows from **Keyword index** on scope (touched dir or `web/src`) |
+| **P2 Classify** | `Read` on hits | Map each hit to **one** catalog ID (EH-*, EC-*, FE-*, ownership class A-J, UX-*, etc.) |
+| **P3 Gate** | `bash`, `node --test` | Named gate from **CI gates** when claiming fix; paste command + exit code |
+| **P4 Logs** | terminal output, `read_lints` | On failure: paste failing lines; no paraphrase-only "gate failed" |
+
+**Compile ritual ban** (`anti-slop.mdc`): default verification is P1-P4 + `read_lints`; full `npm run typecheck` / `web.sh` only when operator asked or PR claims that gate.
+
+### Required analysis report (before "done")
+
+```text
+Tier: T0 | T1 | T1+ | T2
+Scope: <paths>
+Grep: <command> -> exit <code>; <N> hits (or zero)
+Findings:
+  - <ID> <file:line> <one-line fact> -> <fix or waivable with reason>
+Gates: <command> -> exit <code> | not run (<reason>)
+Open in tree (honest): <ID> in <path> if not fixed this turn
+```
+
+Every finding line **must** cite a catalog ID from this file. "No issues found" requires at least one scoped `rg` with zero hits pasted or quoted.
+
+### Keyword index (run on scope; map hits to catalog)
+
+Use `rg -n` from repo root. Prefer scoped path (`web/src/domains/campaigns/`). Gate script duplicates many patterns -- run `ui_slop.sh` for merge parity.
+
+| Keywords / pattern | Catalog ID(s) | Notes |
+| :--- | :--- | :--- |
+| `Promise\.resolve\(\[\]\)` | EH-ST1, CV5 | Fake empty list |
+| `genericOk\(` | EH-F2, FM5 | Fake mutation |
+| `catch\s*\{\s*\}` / `catch\s*\{[^}]*return` | EH-SI1, CV2 | Silent swallow |
+| `catch[^}]*setItems\(\[\]` | EH-SI2, EH-ST1 | Error masks as empty |
+| `console\.error` without `ErrorBlock` / `setActionError` in same handler | EH-SI3, CV3 | Read file -- theater if only log |
+| `toast\.success` before `await` | EH-TH1, CV1, UX-B | Phantom success |
+| `data \?\? \[\]` in route/page (not `*_api.ts` guard) | EH-ST2 | Shape lie |
+| `\.or\(.*empty\).*\.or\(` | EH-TH2, FE2, L1s | Soft E2E |
+| `waitForResponse` absent in `*_write.spec` / mutation spec | FE5, FE10, EH-TH4 | Mutation theater |
+| `saveCampaignListColumnPrefs` / `localStorage\.setItem` in table/menu leaf | ownership **B+D** | Dual persistence |
+| `admin-[a-z-]+__` | BEM ban (**Styling stack**) | No new `__` |
+| `className=.*admin-.*!` | BEM + `!` collision | `ui_slop.sh` |
+| `truncate` on heading/number cells | Visual contract | **Typography and wrapping** |
+| `style=\{` in domains/shell/pages | Custom styles ban | |
+| `\bfetch\(` in `web/src/domains` | `ui_slop.sh` raw fetch | Use `web/src/api/*` |
+| `00000000-.*padStart\|devUuid\|buyer-[0-9]` in `dev_mock` | FM6, entity IDs | `seed_uuid.ts` |
+| `setState` / `useState` inside `onDragOver` / `pointermove` | Directory tables perf | Header-local only |
+| `size="sm"` on `Button` | `ui_slop.sh` | Default control height |
+| `_ = json.Unmarshal` in `*_handlers.go` | EH-SI4, SV2 | Server cold path |
+| `user\?\.role\s*===|role\s*===\s*['\"]MB` in page guard | RB-C2 | Role string gate banned |
+| `filterNavItems` / `permissions\.includes` only guard | RB-L2 | Nav != security |
+| `useCallback\(` in file with no `memo\(` child | RP-1 | Memoization theater |
+| `useMemo\(\(\) => .*\.filter\(.*\.some\(` | RP-2 | Use `Set` for id dedup |
+| Same `CommandItem` / row JSX block 2\+ times in one file | RP-5 | Extract row component |
+| `setLoading` / `setError` in both catalog and search effects | RP-4 | Split lanes or `useResource` |
+| `refreshToken` in deps of 3\+ `useResource` on one page | RF-1 | Scoped refresh tokens |
+| `flow_id: ""` in `PatchCampaignRequest` body | CV-FM1 | `CLEAR_UUID` clear token |
+| `Number\(.*\).*isNaN` with field omitted on fail | CV-FM2 | Return mapper error |
+| `JSON\.stringify\(.*\).*!==.*json` dirty check | CV-FM3 | Semantic object compare |
+| `getCampaignStats` in popover while list has `metricsById` | RF-3 | Seed from parent batch |
+| `listCustomers` in multiple pages without session cache | RF-4 | `*_routes_cache.ts` pattern |
+| `@tanstack/react-query` / `useSWR` in `web/` | RP-6 | Stack drift -- `useResource` |
+
+Extend scan when task touches mutations (grep `writeServiceError`, `parseApiError`, `ErrorBlock`), coalescing (`refreshToken`, duplicate `Refresh`), UX (two `getByRole('button', { name: 'Refresh' })` in E2E), or RBAC (`RequirePermission`, `FORBIDDEN`, `authorizeCustomerAccess`).
+
+### Catalog ID registry (authoritative sections)
+
+| Prefix | Section | Use when |
+| :--- | :--- | :--- |
+| **T0-T2** | Verification tiers | Every PR/runtime claim |
+| **M1-M3**, **FM1-FM8** | Test honesty / mock unit | `handler.test.ts` claims |
+| **L0-L3**, **FE1-FE12** | Test honesty / Playwright | E2E claims |
+| **EH-F/ST/SI/TH/EN*** | Explicit error handling vs slop | Fetch/mutation/error UI |
+| **ES1-ES7**, **EC1-EC9** | Explicit error handling (required) | Required shape on touch |
+| **SV1-SV6**, **CV1-CV7**, **CV-FM1-CV-FM5** | Mutation validation / form patch mapping | POST/PATCH paths; `build*PatchBody` |
+| **UX-A-N** | UX scenario contract | Flows, modals, duplicate actors |
+| **R1-R5** | User action coalescing | Refresh/save storms |
+| **ownership A-J** | State ownership | Dual writer / dual save |
+| **overlay A/B/C** | Overlays, scroll surfaces | Dropdown/modal/shell |
+| Layout / table rows | Layout contract, Directory tables | `gap`, semantic table, DnD |
+| **RB-C***, **RB-L***, **RB-S*** | RBAC (server-authoritative) | `control-plane.mdc` **RBAC** |
+| **VL-*** | Visual layout drift taxonomy | Symptom -> grep -> band -> mechanism |
+| **RP-1-RP-6** | React composition (memo, async lanes, DRY) | `react.mdc` **Memoization**, **Async UI lanes**, **Row reuse** |
+| **RF-1-RF-10** | Request fan-out (one trigger -> N ops) | **Request fan-out**; `react.mdc` **Fetch and abort** |
+
+Do not invent new IDs in PR prose. New pattern -> add row to this file in the correct section first, then cite it.
+
+### Protocol lie modes (never)
+
+| Lie | Reality | Falsify |
+| :--- | :--- | :--- |
+| **AP-L1** | "Reviewed" without `rg`/`Read` on scope | Paste P1 command |
+| **AP-L2** | Finding described without catalog ID | Add ID or remove claim |
+| **AP-L3** | "Fixed errors" without EC*/EH-* mapping | List IDs cleared per file |
+| **AP-L4** | Abstract "refactor for clarity" with no contract row | Name layout/state/error rule |
+| **AP-L5** | `ui_slop.sh` pass claimed without output | Paste exit code |
+| **AP-L6** | Ignored hit in touched file ("pre-existing") | Log under **Open in tree** with ID |
+
+### When operator asks a question only
+
+Answer from `Read`/`rg` evidence. Still no subjective quality judgments. Cite file:line and catalog ID if the question implies slop risk.
+
+## Verification tiers (name the tier in every PR claim)
+
+| Tier | How it runs | API source | Mocks / synthetic UI |
+| :--- | :--- | :--- | :--- |
+| **T0 dev Vite** | `npm run dev` in `web/` (`:5173`) | Proxy to `:8188` when healthy; else auto `admin_dev` mock | `admin_dev` / `dev_mock` when `isAdminDevMode()`; `?chart_mock=1` for dashboard series only |
+| **T1 ingest-only** | `bash scripts/dev/aed-admin up` (db, redis, control `:8188`, web `:5173`) | **Live** `/api/v1` on control | **Forbidden:** `devMockResponse`, page fixtures, silent chart backfill, fake promises |
+| **T1+ data plane** | T1 + ClickHouse / full `stack.sh full` on operator machine | Live API + seeded PG/CH | Same as T1; seeds via `seed_*.sh`, not browser fixtures |
+| **T2 embedded** | `web/dist` served from control binary | Live API same origin | **Forbidden:** any client-side mock intercept |
+
+**Rule:** Claiming handler wiring, OpenAPI parity, or ingest-only readiness from **T0 with `admin_dev` active** is a lie. Falsify on **T1+** with `?admin_dev=0` or `ADMIN_DEV_AUTO_MOCK=0`, `curl -sf :8188/health`, no `AdminDevBanner`, and the same UI path against live API.
+
+`AdminDevBanner` (`web/src/shell/admin_dev_banner.tsx`) must stay visible whenever `isAdminDevMode()` is on.
+
+### T1 sign-off checklist (before claiming ingest-only / handler wired)
+
+Run on operator machine with control `:8188` healthy and mocks off (`?admin_dev=0` or `ADMIN_DEV_AUTO_MOCK=0`):
+
+- [ ] `?admin_dev=0` (or env off) -- no `AdminDevBanner`
+- [ ] `curl -sf http://127.0.0.1:8188/health` -- exit 0
+- [ ] Navigate to the route under test (not T0-only deep link with mock intercept)
+- [ ] Wait for table / primary data surface (not heading-only paint)
+- [ ] Compare row ids to `dev_mock` fixture ids -- **different** means live T1 data
+- [ ] Network tab: no `Promise.resolve([])` stub responses; requests hit `/api/v1/...`
+- [ ] Force or simulate 5xx -- `ErrorBlock` / `role=alert` visible (not silent empty table)
+
+## Visual and control contract (mandatory remediation)
+
+Precedence: this section overrides legacy `ui.mdc` rows that allow `truncate`, fixed column clamps, or mixed button sizes until code is cleaned up.
+
+### Custom styles (banned; remove on touch)
+
+| Banned | Allowed exception |
+| :--- | :--- |
+| `style={{ ... }}` in `web/src/pages/`, `domains/`, `shell/` | Overlay positioning in `components/ui/{popover,select,tooltip,dropdown-menu}.tsx` (fixed coords) until moved to tokens |
+| Per-route `className` height overrides on `Button`, `Input`, `SelectTrigger` | None -- use default primitive |
+| Inline `style` on `<col>` / `<td>` / chart bars except campaigns width-probe pipeline | Campaign list: measured widths from `campaign_list_columns.ts` probe only |
+| New `*.module.css` | None |
+| BEM class hooks (`admin-*__*`, `campaign-*__*`, `block--modifier`) in TSX or new `app.css` blocks | None -- migrate legacy on touch |
+| Arbitrary Tailwind `h-7` / `h-8` / `h-9` / `h-10` on controls in pages/domains/shell | `ui_slop.sh` already fails these |
+
+**Audit (2026-09):** inline `style={{` still in `campaigns_list_table.tsx`, `dashboard_multi_axis_chart.tsx`, `settings_bento_grid.tsx`, `metric_fill_bar.tsx`, `campaign_spend_cell.tsx`, `progress_bar.tsx`, and related -- remove or replace with shared tokens. Legacy BEM + Tailwind collisions: see **Styling stack** below.
+
+### Styling stack (Tailwind only; BEM banned)
+
+**BEM is banned project-wide** (`block__element`, `block--modifier`, `admin-*__*`, `campaign-*__*`). It is a legacy pattern; do not add new blocks, hooks, or `@apply` component sheets. **One DOM node = Tailwind utilities in TSX** (via `components/ui` primitives where applicable).
+
+**Pure CSS** in `web/src/styles/app.css` is allowed only where Tailwind alone cannot express the rule:
+
+| Allowed in `app.css` | Examples |
+| :--- | :--- |
+| Tailwind entry | `@tailwind base/components/utilities`, `@layer base` minimal reset |
+| Scrollbar pseudo-elements | `.ui-scrollbar` (`::-webkit-scrollbar*`) |
+| Print / font face | Rare; prefer `@fontsource` imports in TSX entry |
+| **Forbidden** | Component BEM blocks; descendant selectors targeting `domains/` markup; `@apply` overrides of `components/ui` sizing |
+
+Cross-ref: `ui.mdc` **Styling stack** (no `globals.css`; no new `*.module.css`).
+
+**Canonical owners:**
+
+| Owner | Where | Use for |
+| :--- | :--- | :--- |
+| **Primitive + Tailwind in TSX** | `components/ui/*`, `shell/*`, all `domains/*` | All new and touched UI |
+| **Layout Tailwind on wrapper** | `domains/*` section roots | Macro/micro flex/grid only |
+| **Dynamic inline / CSS var** | Width %, grid placement, overlay coords | Data-driven axis only -- not chrome duplicate |
+| **Shared style contracts** | `admin_kit.ts`, `admin_chrome.ts`, `shell/*` layout consts, `domains/*/*_classes.ts` | Repeated identical chrome -- see **Shared style contracts** below |
+
+#### Shared style contracts (named Tailwind constants)
+
+**Not** CSS preprocessor macros, **not** BEM, **not** new `app.css` `@apply` blocks. These are **named `const` strings** (or small records) holding a **fixed Tailwind utility chain** reused wherever the same visual rule must stay identical.
+
+Example (filter row matrices in `web/src/shell/filter_panel.tsx`):
+
+```ts
+const CAMPAIGNS_FILTER_ROW =
+  'grid w-full grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] items-end gap-4';
+```
+
+Consumers use the shell API (`DirectoryFilterForm layout="campaigns"`) -- they do **not** copy-paste the string.
+
+##### When required (extract; do not duplicate inline)
+
+| Situation | Action |
+| :--- | :--- |
+| Same chrome on **2+** routes or components | Export one named constant; import everywhere |
+| Shell owns a layout matrix (filter grid, page section stack) | `const` beside the shell component; expose via props/`layout` enum |
+| Table header / body / footer density identical across a directory family | `admin_chrome.tableHead` / `tableCell` or domain `*_classes.ts` until promoted |
+| Control height, radius, caps label typography | `admin_kit` + `admin_chrome.control` on primitives -- never re-type `min-h-7 rounded-[5px] ...` per page |
+| Second copy of an 8+ utility chain in a PR | Stop and extract before merge |
+
+##### Where constants live (precedence)
+
+| Tier | Path | Owns |
+| :--- | :--- | :--- |
+| T1 Semantic token | `web/src/lib/admin_kit.ts` | Single-purpose knobs: `controlHeight`, `labelCaps`, `tableRowHeight`, status badge maps |
+| T2 Primitive chrome | `web/src/lib/admin_chrome.ts` | Composed strings consumed by `components/ui/*` (`tableHead`, `tableCell`, `buttonVariantClass`) |
+| T3 Shell layout | Module `const` in `web/src/shell/<file>.tsx` | Layout matrices tied to one shell API (`filter_panel.tsx` `DIRECTORY_FILTER_GRID`, `CAMPAIGNS_FILTER_ROW`, `AUTO_FILL_FILTER_GRID`) |
+| T4 Domain chrome | `web/src/domains/<domain>/*_classes.ts` | Directory-specific table/dialog chrome not yet shared (`campaign_list_classes.ts`) |
+| T5 Cross-layer variant | `web/src/lib/*_classes.ts` (e.g. `campaign_picker_classes.ts`) | Variant strings `components/ui` needs without importing `domains/` |
+
+**Promotion:** T4 -> T2/T1 when a second domain needs the same rule. **Demotion forbidden:** do not paste T3/T4 strings into random leaf TSX.
+
+##### Boundaries (what this pattern is **not**)
+
+| In scope | Out of scope |
+| :--- | :--- |
+| Header background, border width, row height, numeric alignment in tables | One-off gap between two buttons on a single page |
+| Filter field grid template (`repeat(auto-fill,minmax(12rem,1fr))`) | Per-row business conditional classes (`selected && 'bg-accent'`) -- keep local `cn()` |
+| Shared dialog footer button sizing | Data-driven `style={{ width: \`${pct}%\` }}` on spend bars / `<col>` probe widths |
+| `whitespace-nowrap` on table headers and numeric cells | `truncate` on combobox option labels (allowlisted; not table data) |
+| Named export used via shell prop / import | Copy-pasting the same 80-character `className` in five files without a named owner |
+| Tailwind in TSX on the styled node | `app.css` descendant selectors that restyle primitives under a BEM hook |
+
+##### Agent failure modes
+
+| Failure | Correct |
+| :--- | :--- |
+| Re-type full table `th`/`td` classes in every directory | Import from `*_classes.ts` or extend `admin_chrome` |
+| Add fourth filter grid string in a page file | Add `layout` value + `const` in `filter_panel.tsx` |
+| New `app.css` block for "shared" table colors | Named Tailwind const + `className` on cells |
+| Domain imports another domain's `*_classes.ts` | Promote shared slice to `admin_kit` / `admin_chrome` / `shell` |
+| "Macro" = global CSS class hook | Named TS `const` only; `app.css` stays entry + scrollbar |
+
+Verify: `rg -n "grid-cols-\\[repeat\\(auto-fill" web/src/domains` should hit imports or shell usage, not one-off page literals (except during extraction PR).
+
+**Migration on touch:** remove `admin-*` / `campaign-*` from the file; move styles into `className` on the same node or delete the dead `app.css` block. Never add Tailwind `!` to fight leftover BEM.
+
+#### Collision classes (never on new/touched code)
+
+| Class | Mechanism | Symptom | Verdict |
+| :--- | :--- | :--- | :--- |
+| **A. Same-node BEM + utility** | `className="admin-campaigns-list-footer flex flex-wrap gap-2"` | Two layout systems on one node; which `gap` wins depends on source order | **Slop** -- utilities only on wrapper, or migrate BEM to TSX |
+| **B. Primitive + BEM + utility** | `<Button className="admin-campaigns-toolbar__outline-btn shrink-0 px-2" />` | `app.css` uses `@apply !h-auto min-h-7` to override `Button` defaults | **Slop** -- drop BEM hook; use `variant` / `className` on primitive only |
+| **C. Tailwind `!` vs BEM** | `className="admin-campaigns-toolbar__filters !bg-transparent !p-0"` | Fighting parent chrome; symptom patch | **Slop** -- fix `FilterPanel` default styles, not `!` override |
+| **D. Global descendant restyle** | `.admin-campaigns-filter-field :is(input, button) { @apply !h-auto ... }` | Input/Button classes ignored; filter row height drift | **Slop** -- style trigger via primitive `className`, not CSS descendant |
+| **E. Contradictory utilities** | `h-8 ... h-auto min-h-8` on one `<button>` (`date_range_picker.tsx` admin footer) | Both apply; browser picks last in sheet | **Slop** -- one height token |
+| **F. Contradictory layout** | `flex` and `grid` on same node (`metric_fill_bar.tsx`, fixed 2026-09) | Undefined used display | **Bug / slop** |
+| **G. BEM + inline static** | BEM sets `bg-primary`; inline sets `width` only | OK if inline is **data-only** | **Allowed** when inline touches only dynamic axis |
+| **H. Dynamic inline only** | `style={{ width: \`${pct}%\` }}` + Tailwind chrome on same bar fill | Width from data; radius/color from Tailwind | **Allowed** (campaign spend bar, column `<col>`) |
+| **I. Token utilities only** | `text-ui-caption text-muted-foreground` | Both from `tailwind.config.ts` | **OK** -- not `app.css` BEM |
+| **J. Overlay coords** | `style={{ position: 'fixed', top, left }}` in `popover.tsx` | No static layout duplicate in CSS | **Allowed** (`components/ui` only) |
+
+#### Allowed patterns
+
+```tsx
+// OK: wrapper Tailwind + child primitive (no BEM on same node as utilities)
+<div className="flex flex-wrap items-center gap-2">
+  <Button variant="outline">Refresh</Button>
+</div>
+
+// OK: dynamic single property
+<div className="h-full rounded-full bg-primary" style={{ width: `${percent}%` }} />
+
+// OK: campaigns table probe (documented exception)
+<col style={{ width: `${widthPx}px` }} />
+```
+
+#### Anti-patterns (still in tree; remove on touch)
+
+```tsx
+// A + B: BEM + utilities + primitive fight (campaigns_list_toolbar.tsx, columns_menu.tsx)
+<Button className="admin-campaigns-toolbar__outline-btn shrink-0 whitespace-nowrap px-2" />
+
+// C: important override on BEM shell (campaigns_list_toolbar.tsx)
+<FilterPanel className="admin-campaigns-toolbar__filters !bg-transparent !p-0" />
+
+// C: strip chrome via ! on surface (campaigns_list_table.tsx)
+<DirectoryTable className="admin-campaigns-table-surface !rounded-none !border-0 !shadow-none" />
+
+// D: Input carries BEM field class; global CSS adds !pl-8 (search_input.tsx + app.css)
+<Input className="admin-search-input__field" />
+
+// E: raw button with stacked heights (date_range_picker.tsx admin variant footer)
+className="inline-flex h-8 ... h-auto min-h-8 ..."
+
+// Legacy BEM-only subtree -- migrate to Tailwind-only; do not extend
+<DialogContent className="campaign-overview-dialog w-[calc(100%-2rem)] max-w-md p-0" />
+```
+
+#### Legacy `app.css` BEM inventory (remove on touch; do not extend)
+
+| Block prefix | Example file | Collision risk |
+| :--- | :--- | :--- |
+| `admin-campaigns-toolbar__*` | `campaigns_list_toolbar.tsx` | **High** -- paired with `Button` + `!` utilities |
+| `admin-campaigns-filter-*` | `campaigns_list_toolbar.tsx` | **High** -- descendant `input/button` overrides |
+| `admin-campaigns-table-*` | `campaigns_list_table.tsx`, `campaign_list_table_*` | **High** -- mixed with `p-4`, `!border-0` |
+| `campaign-overview-dialog__*` | `campaign_overview_sheet.tsx` | Medium -- mostly BEM-only; dialog adds `p-0` |
+| `campaign-country-select__*` | `campaign_list_country_select.tsx` | **High** -- trigger is raw `<button>` + BEM `!h-auto` |
+| `campaign-date-range-picker__*` | `date_range_picker.tsx` | **High** -- campaigns footer BEM vs admin raw Tailwind buttons |
+| `admin-progress__*` | `progress_bar.tsx` | Medium -- prefer Tailwind shell + inline width only |
+| `admin-metric-card__*`, `admin-empty-state__*` | `metric_card.tsx`, `empty_state.tsx` | Low -- mostly BEM-only until migration |
+
+#### Remediation (when touching a file)
+
+1. Remove `admin-*` / `campaign-*` class from the **same** element as Tailwind utilities; migrate block styles into `className` on that node or delete the CSS block.
+2. Never add `app.css` rules that target `button`, `input`, or `[role=button]` inside domains -- set `className` on the primitive.
+3. Ban new `@apply !` overrides of `components/ui` sizing; fix the primitive or variant once.
+4. Dynamic layout (grid row index, column width, chart color): **inline or CSS variable** for that property only -- do not duplicate radius/padding/border in both layers.
+5. CI: `ui_slop.sh` flags `admin-*` on same `className` as Tailwind `!` important utilities.
+
+### Button (single template)
+
+| Rule | Detail |
+| :--- | :--- |
+| Component | `@/components/ui/button` only -- no raw `<button className="admin-btn">` |
+| Size | **Default only** -- `size` prop must be `default` or omitted |
+| Height | One control height (`min-h-7` / `--admin-control-height`); identical on every toolbar, table, dialog footer |
+| Width | `inline-flex`; width follows label text + padding -- no fixed `w-*` on standard actions |
+| Banned | `size="sm"`, `size="lg"`, `size="icon"` in `pages/`, `domains/`, `shell/` (`ui_slop.sh`) |
+
+### Typography and wrapping
+
+| Content class | Wrap | Classes |
+| :--- | :--- | :--- |
+| **Body / prose** | **Yes** -- descriptions, help text, footers, EULA, error messages, `EmptyState` body, `StubBanner` message | `whitespace-normal`, no `truncate` / `line-clamp` |
+| **Headings** | **No** -- page titles, section titles, table column headers, nav labels | `whitespace-nowrap`; no `truncate`, no `line-clamp` |
+| **Numbers / metrics** | **No** -- KPI values, money, counts, IDs in tables, `tabular-nums` cells | `whitespace-nowrap`; no ellipsis |
+| **Breadcrumb current title** | **No** | Same as headings |
+
+Banned on headings and numeric cells: `truncate`, `line-clamp-*`, `text-overflow: ellipsis`, `max-w-*` used only to force clipping.
+
+**Audit (2026-09):** `truncate` / `line-clamp` in 40+ files under `pages/`, `domains/`, `shell/` including `customers_directory.tsx`, `dashboard_kpi_strip.tsx`, `page_breadcrumbs.tsx`, `copyable_text.tsx`, `customer_combobox.tsx`, `json_dashboard_view.tsx` -- remove; widen columns or horizontal scroll instead.
+
+### Table columns (width = content)
+
+| Rule | Detail |
+| :--- | :--- |
+| Default | `table-layout: auto`; column widths from content; horizontal scroll in directory wrap when needed |
+| Forbidden | `max-w-0` + `truncate` on `TableCell`; `max-w-md` + `truncate` on data cells; dead gap from stretching one column |
+| Campaigns | Width probe + explicit `col` widths allowed; widths must reflect measured content, not arbitrary caps |
+| Header cells | `whitespace-nowrap`; full label visible |
+
+## Overlays, scroll surfaces, and control height
+
+Three **distinct** UI surface classes. Mixing them (sidebar behavior on a combobox, or a popover that scrolls with page content instead of anchoring to its trigger) is frontend slop.
+
+Layout chain for page scroll: `ui.mdc` (**Scroll and overflow**). Implementation: `web/src/lib/overlay_root.tsx`, `web/src/lib/floating_overlay_position.ts`, `web/src/components/ui/{popover,select,dropdown-menu,dialog,sheet}.tsx`.
+
+### Surface taxonomy (required)
+
+| Class | Examples | DOM / position | Scroll owner | Trigger relationship |
+| :--- | :--- | :--- | :--- | :--- |
+| **A. Shell dock** | `AppSidebar`, future mobile nav `Sheet` | In app grid (`app_shell.tsx`); **no** `OverlayRoot` portal | Own `ui-scrollbar overflow-y-auto` region (`app_sidebar.tsx` nav) | Header toggle shows/hides shell; **not** positioned under the toggle like a menu |
+| **B. Anchor float** | `Select`, `DropdownMenu`, `Popover`, `CustomerCombobox`, country picker, date range | `OverlayRoot` -> `document.body`; `position: fixed` coords from **trigger** `getBoundingClientRect()` | **Inner** `max-h-*` + `ui-scrollbar overflow-y-auto` on list body; wheel must not scroll page behind (`CommandList` `stopPropagation`) | Opens at trigger; **repositions** on ancestor scroll/resize via `subscribeFloatingPosition` |
+| **C. Modal / sheet** | `Dialog`, `CommandDialog`, import `Sheet` | Portal + backdrop; centered or edge sheet | One `flex-1 overflow-y-auto` body; bottom padding so last field is not clipped | Blocks page interaction; not anchored to a field trigger |
+
+**Operator rule (2026-09):** left nav and mobile nav sheet = **A**. Campaign/customer/country dropdowns = **B** with their own scrollbar. Never treat **B** as viewport-sticky chrome that rides page scroll while the trigger moves away.
+
+### Anchor float (class B) -- required behavior
+
+| Rule | Detail |
+| :--- | :--- |
+| Primitive only | `Select` / `DropdownMenu` / `Popover` from `components/ui/`; extend `admin_chrome.ts`, not hand-rolled `[data-dropdown-open]` |
+| Trigger ref | `PopoverTrigger` / `DropdownMenuTrigger` / `SelectTrigger` must own `triggerRef` via `Slot` + `mergeRefs`; domain code may add a ref for `resolvePopoverAlign` only -- must not replace context ref |
+| Reposition | `subscribeFloatingPosition(trigger, updatePosition)` on every open float; recomputes `getBoundingClientRect()` on scroll (capture) + `resize` |
+| Detach symptom | Menu stays at fixed viewport Y while trigger scrolls off-screen = **bug** (missing scroll container, broken `triggerRef`, or bypassing primitives) |
+| List scroll | Long lists: `ui-scrollbar max-h-60` (Select inner div), `CommandList`, or domain wrapper (`campaign-columns-menu` grid `max-h-80`) |
+| Panel scroll | `PopoverContent` `panelScroll`: default `panel`; `p-0` comboboxes -> `inner` (child owns scroll); `none` only when content fits viewport (e.g. compact calendar) |
+| z-index | Float `z-index` 60; shell header/control panel `z-[5]` must stay below floats |
+| Dismiss | `useOverlayDismiss` (Escape, outside click) |
+
+Canonical flows: `select.tsx` (inner scroll div), `popover.tsx` + `command.tsx` (`CommandList`), `campaign_list_country_select.tsx` (custom list + `campaign-country-select__list`).
+
+### Shell dock (class A) -- required behavior
+
+| Rule | Detail |
+| :--- | :--- |
+| Layout slot | Sidebar is a column in `app_shell.tsx`, not a portal under the header button |
+| Independent scroll | Nav list scrolls inside aside; `main` / `PageLayout` `.admin-page-main` scrolls page content separately |
+| Collapse | `collapsed && hidden` on aside today; mobile overlay nav must use `Sheet` (class C edge) with **own** nav scroll -- not a class-B popover |
+| Banned | Portal + `position: fixed` for full page nav; duplicating nav in a `DropdownMenu` attached to sidebar toggle without sheet semantics |
+
+### Modal / sheet (class C)
+
+| Rule | Detail |
+| :--- | :--- |
+| Scroll | Single body scroll region; sticky footer outside scroll where needed (`date_range_picker` Apply row, dialog footers) |
+| Page behind | Dialog backdrop; do not rely on page scroll while modal open |
+| Command palette | `CommandDialog` = class C (viewport modal), not class B |
+
+### Control height in one semantic row (filter toolbar, dialog footer, table header actions)
+
+| Rule | Detail |
+| :--- | :--- |
+| Canonical token | `admin_kit.controlHeight` -> `min-h-7` + `text-[13px] leading-[18px]` via `adminChrome.control` on `Input`, `SelectTrigger`, default `Button` |
+| One row | Every interactive control in the same filter row / toolbar / footer: **same** height token -- no mixing `min-h-7` trigger with `h-8` search or `h-10` table header chrome in the same row |
+| Primitives | `Button` default size only in `domains/` / `shell/`; `Input` / `SelectTrigger` without manual `h-*` overrides |
+| Icon-only | Square icon actions in a data row may use `h-7 w-7` when isolated from text controls -- not beside `min-h-7` selects in one filter group |
+| Stale doc | `web/src/lib/control_size.ts` (`h-8`) contradicts `admin_kit` -- do not cite `control_size.ts` until aligned |
+
+### Overlay and height slop (never)
+
+| Slop | Symptom | Correct |
+| :--- | :--- | :--- |
+| **Viewport-stuck float** | Dropdown stays on screen while trigger scrolls away | Fix `triggerRef` + `subscribeFloatingPosition`; scroll container must be in `collectScrollContainers` chain (`overflow` auto/scroll/overlay) |
+| **Page scroll inside menu** | Wheel on open menu scrolls `.admin-page-main` instead of list | Inner `overflow-y-auto` + `max-h-*`; `onWheel` stopPropagation on list (`CommandList`) |
+| **No list cap** | `DropdownMenuContent` grows to full item count; page scrolls | Wrap items in `ui-scrollbar max-h-* overflow-y-auto` (or use `Select` / `CommandList`) |
+| **Shell as popover** | Full nav in `DropdownMenu` from header toggle | `AppSidebar` or mobile `Sheet` with dock scroll |
+| **Height drift** | Customer combobox `Button`, country `min-h-7`, date picker `min-h-7`, header search `h-8` in one toolbar | One `adminChrome.control` / default primitive height on all fields in the row |
+| **Table header vs filters** | `DirectoryTable` head `h-10` beside `min-h-7` filters in same visual band | Accept header as separate band; do not put `h-10` controls in filter `FilterPanel` rows |
+| **Hand-rolled position** | `absolute`/`fixed` menu div in `domains/` without `floating_overlay_position` | Class B primitives only |
+| **Radix fiction** | Docs say Radix portal | First-party `OverlayRoot` + `components/ui/*` |
+
+### Repository audit (overlay + height, 2026-09)
+
+| Area | Path | Verdict |
+| :--- | :--- | :--- |
+| Float reposition wired | `popover.tsx`, `select.tsx`, `dropdown-menu.tsx`, `floating_overlay_position.ts` | **Good** -- `subscribeFloatingPosition` on open |
+| Select list scroll | `select.tsx` inner `max-h-60 ui-scrollbar` | **Good** |
+| Command combobox scroll | `command.tsx` `CommandList` | **Good** |
+| Country picker scroll | `campaign_list_country_select.tsx` + `app.css` `__list` | **Good** |
+| Columns menu scroll | `campaign_list_columns_menu.tsx` `max-h-80` grid | **Good** |
+| DropdownMenu default scroll | `dropdown-menu.tsx` | **Gap** -- no default `max-h`; OK for short action menus; **violates** class B if menu can exceed ~8 items without domain wrapper |
+| Campaigns date range `panelScroll="none"` | `date_range_picker.tsx` | **OK** -- calendar fits; document only |
+| Shell nav scroll | `app_sidebar.tsx` | **Good** (class A) |
+| Mobile nav sheet | `app_shell.tsx` | **Gap** -- sidebar `hidden` when collapsed; no `Sheet` overlay nav |
+| Height token split | `admin_kit.ts` `min-h-7` vs `control_size.ts` `h-8` | **Violation** -- dual contract |
+| Campaigns filter row | `campaigns_list_toolbar.tsx` + `tracker_shell_header.tsx` `h-8` search | **Violation** -- mixed heights in shell chrome vs filters |
+| Multi-select trigger | `multi_select_field.tsx` `h-8` | **Violation** if placed beside `min-h-7` selects |
+| Country option rows | `app.css` `__option` `min-h-9` | **Minor** -- list row taller than trigger (acceptable inside panel) |
+| Raw date footer buttons | `date_range_picker.tsx` `h-8` / `min-h-8` | **Violation** -- raw `<button>` + mixed height vs `Button` default |
+| Row actions icon | `campaign_list_table_row_menu.tsx` `h-7 w-7` | **OK** in table row context |
+| Stale Radix in rules | `ui.mdc` dialog/popover rows | **Doc drift** -- update to first-party primitives |
+
+## Layout contract (Flex, Grid, semantic tables)
+
+Agents confuse **`gap` between unrelated bands**, **`justify-between` as spacer**, **flex page shells**, and **CSS Grid matrices** where a semantic `<table>` is required. Macro/micro split: `ui.mdc` **Layout (macro Grid, micro Flex)**. This section is the **enforcement** catalog for new and touched UI.
+
+### Layer ownership
+
+| Layer | Layout engine | Examples |
+| :--- | :--- | :--- |
+| **Macro page** | CSS Grid (section stack) | `PageLayout` body, filter field matrix, dashboard/bento tiles, `aside` split (`page_layout.tsx`) |
+| **Micro component** | Flexbox | Button label + icon, chip, dialog footer button row, **inside one grid cell** |
+| **Homogeneous data rows** | Semantic `<table>` | Directory lists, ops tables -- **never** a div grid matrix |
+| **Forbidden** | Flex column replacing page grid | Nested `flex flex-col` page roots that own filters + table + footer as one flex child list without section wrappers |
+
+### `gap` semantics (required)
+
+**`gap` only between siblings that are one semantic group at the same hierarchy level.**
+
+| Allowed `gap` | Meaning |
+| :--- | :--- |
+| `flex gap-2` on a **button group** | Refresh, Export, Create -- peers in one toolbar cluster |
+| `grid gap-4` on a **filter field matrix** | Spacing between labeled field cells only (`repeat(auto-fill, minmax(12rem, 1fr))`) |
+| `flex flex-col gap-2` on **one section band** | `PageLayout` workspace: controlPanel / main / footer are separate children; `gap-2` between bands, not `gap-6` mixing unrelated chrome |
+| `gap-1` / `gap-2` inside a control | Select trigger icon + label; metric label + value in one row |
+
+| Banned `gap` use | Why | Fix |
+| :--- | :--- | :--- |
+| Large `gap-*` on a parent mixing filters + table + unrelated actions | `gap` is not section margin between bands | One wrapper per band; small `gap-2` between band wrappers only |
+| `gap` + `justify-between` to push groups apart | `gap` adds space **between every** flex child; fights `justify-between` at wrap | Explicit grid tracks (below) |
+| `gap` between **two tool groups** that should pin to opposite edges | Groups are not one peer set | `grid-cols-[1fr_auto]` or `grid-cols-[auto_1fr_auto]` |
+| `flex-1` sibling + `gap` to fake empty middle | Elastic spacer, unstable at resize | Dedicated `1fr` **empty grid track** |
+
+### Spacing between groups (not `gap`)
+
+When two **distinct** UI bands need separation (title vs actions, left summary vs right buttons, field block vs Apply cluster):
+
+| Pattern | When |
+| :--- | :--- |
+| `grid-cols-[1fr_auto]` | Title / filters left, actions right (`team_overview.tsx`, `customer_scope_bar.tsx`) |
+| `grid-cols-[auto_1fr_auto]` | Left tools, **empty elastic middle track**, right actions |
+| `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))]` + **separate grid children** | Apply and Prev/Next are **direct grid children**, not a flex row with `ml-auto` inside a field cell (`ui.mdc` **Directory filter row**) |
+| `col-span-full` + new row | Pagination or summary on its own row under the filter matrix |
+| Outer `flex flex-col gap-2` between **wrappers** | Each wrapper is one band; inner layout uses `gap` only within the band |
+
+**Banned for inter-group space:**
+
+- `ml-auto` / `ms-auto` on a flex child to escape its grid cell (`ui.mdc` **No layout escape**)
+- Empty `<div className="flex-1" />` spacer nodes
+- `justify-between` on a row with **three or more** unrelated groups (toolbar with filters + bulk actions + pagination)
+
+**Allowed `justify-between`:** exactly **two** peers in one micro-control (Select trigger: value + chevron; alert: message + dismiss; metric row: label + number).
+
+```tsx
+// OK: gap only inside one button group
+<div className="flex flex-wrap items-center gap-2">
+  <Button>Refresh</Button>
+  <Button>Create</Button>
+</div>
+
+// OK: two bands -- elastic left track pushes actions right
+<header className="grid grid-cols-[1fr_auto] items-center gap-2">
+  <h1>Campaigns</h1>
+  <div className="flex items-center gap-2">{actions}</div>
+</header>
+
+// OK: three tracks -- middle 1fr is the empty column (explicit col placement)
+<div className="grid grid-cols-[auto_1fr_auto] items-center">
+  <LeftTools className="col-start-1" />
+  <RightActions className="col-start-3 flex gap-2" />
+</div>
+
+// Slop: justify-between mixes title group + actions + third cluster
+<header className="flex justify-between gap-4">...</header>
+
+// Slop: flex-1 spacer
+<div className="flex">
+  <Filters />
+  <div className="flex-1" />
+  <Apply />
+</div>
+```
+
+### Flex rules
+
+| Rule | Detail |
+| :--- | :--- |
+| One display per node | Never `flex` and `grid` on the same element |
+| Scope | Toolbar button row, chip, footer controls, content **inside one table cell** |
+| `flex-col` | Vertical stack inside **one section** with `min-h-0` chain (`ui.mdc` **Flex/grid min-height chain**) |
+| `flex-1` | Grow scroll regions inside a known flex parent (`main`, table wrap) -- **not** as dead space between unrelated siblings |
+| `flex-wrap` | Button groups that may wrap -- not page macro layout |
+
+### CSS Grid rules (non-tabular)
+
+| Surface | Pattern |
+| :--- | :--- |
+| Filter field matrix | `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4 items-end` |
+| Dashboard / bento | `repeat(auto-fit, minmax(18rem, 1fr))` |
+| Label + value detail | `sm:grid-cols-[10rem_1fr]` |
+| Main + aside | `lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]` (`page_layout.tsx`) |
+
+| Rule | Detail |
+| :--- | :--- |
+| `gap` on grid | Between **peer cells** of the same matrix only |
+| One template per axis | Section root owns `grid-template-columns`; do not nest a second grid for the same row |
+| `min-h-0` / `minmax(0,1fr)` | Required on flex/grid ancestors above scroll containers |
+
+### Semantic `<table>` vs CSS Grid (decision table)
+
+| Use semantic `<table>` (`DirectoryTable`, `OpsTable`, `components/ui/table`) | Use CSS Grid |
+| :--- | :--- |
+| Paginated or sortable **directory** (`items[]` homogeneous rows) | Stat tiles, settings bento, form field matrices |
+| Column resize, reorder, sticky `thead`, `colgroup` widths | Popover mini-grids (`grid-cols-2` inside one cell) |
+| Tabular numbers, column alignment, `tabular-nums` | Key-value detail blocks |
+| Ops / audit lists with stable row identity | Decorative layout with no column contract |
+
+**Mandatory for data directories:** `<table>` + `<thead>` / `<tbody>` + `key={columnId}` on `<th>` / `<td>`. Raw `<table>` in `domains/` is banned -- use `DirectoryTable` / `OpsTable` (`ui_slop.sh`).
+
+**Banned as a data table:**
+
+- `div` with `grid-cols-*` iterating server rows
+- Flex row per "record" mimicking columns
+- Virtualized div lists without per-column cell identity
+
+**Allowed:** CSS Grid **inside** a `<td>` for cell-local layout only.
+
+**Performance:** div-grid "tables" repaint the whole matrix when one header interaction fires; semantic table + `React.memo` body rows + header-local drag/resize state is canonical (**Directory tables** below).
+
+### Layout slop (never)
+
+| Slop | Symptom | Correct |
+| :--- | :--- | :--- |
+| Page root `flex flex-col gap-6` with filters + table + footer as flat children | One `gap` pool treats unrelated bands as one group | `PageLayout` bands; `gap-2` between wrappers |
+| `justify-between` toolbar (3+ clusters) | Wrap breaks alignment; gap uneven | `grid-cols-[auto_1fr_auto]` or separate rows |
+| Filter row `flex` + `ml-auto` on Apply | Apply escapes field grid | Apply as **direct grid child** after fields |
+| Campaigns list as CSS Grid | No `colgroup`, column reorder breaks | `DirectoryTable` + semantic table |
+| `flex` + `grid` on one node | Undefined used `display` | One owner per element |
+
+Reference: `web/src/shell/page_layout.tsx`, `web/src/shell/filter_panel.tsx`, `web/src/domains/campaigns/list/campaigns_list_toolbar.tsx`, `web/src/domains/team/team_overview.tsx`.
+
+## Visual layout drift taxonomy (causes, symptoms, diagnosis)
+
+**Binding:** operators report "съезжает", "плывёт", "не на месте", "порядок нарушен" as **measurable layout defects** -- not taste. Agents must map each report to a **VL-*** catalog ID, DOM band, and falsify command. Subjective "looks aligned" is banned (**AP-L2**).
+
+Cross-ref: **Styling stack** collision **A-J** (style fights); **Layout contract** (gap/grid); **Overlays** class A/B/C; **Directory tables** (column lifecycle); `ui.mdc` **Scroll and overflow**, **Directory filter row**.
+
+### Diagnostic protocol (mandatory before "fixed layout")
+
+| Step | Action | Output |
+| :--- | :--- | :--- |
+| **VL-D1 Band** | Name surface: shell header, filter matrix, table head, table body, footer, dialog body, float menu | One band per finding |
+| **VL-D2 Peers** | List sibling controls in the band (Apply, Select, Search, pagination) | Expected same baseline / grid row |
+| **VL-D3 Grep** | Run **Keyword index (layout drift)** on file + band | Paste `rg` command + hits |
+| **VL-D4 Mechanism** | Assign **VL-*** ID; cite `file:line` + computed cause (not symptom alone) | One ID per root cause |
+| **VL-D5 Verify** | After fix: `bash scripts/ci/admin/ui_slop.sh` on touched paths; visual check at 1280px and narrow wrap | Paste exit code or **not run** |
+
+DevTools (operator or agent with screenshot): compare **computed** `display`, `height`, `gap`, `align-items` on peer controls in one filter row. Mismatched `height` / `min-height` across peers = **VL-11** until proven otherwise.
+
+### Operator symptom -> likely cause (triage)
+
+| Operator symptom (RU/EN) | VL-ID(s) | First check |
+| :--- | :--- | :--- |
+| Кнопки/поля в фильтре на разной высоте | **VL-11**, **VL-12**, **D** | `rg 'h-[789]|min-h-|admin-campaigns-filter'` in toolbar |
+| Apply / Prev-Next не в той ячейке / уехали вправо | **VL-09**, **VL-14** | `filter_panel.tsx` DOM; `ml-auto`, wrapped Apply |
+| Тулбар при сужении окна "ломается" / непредсказуемый перенос | **VL-08**, **VL-07** | `justify-between` with 3+ clusters; large `gap` on mixed parent |
+| Дропдаун остался на экране, триггер уехал | **VL-13** | `triggerRef`, `subscribeFloatingPosition` |
+| Список скроллится под открытым меню | **VL-13b** | `CommandList` `onWheel`, inner `max-h-*` |
+| Низ таблицы / формы обрезан | **VL-10** | `min-h-0` chain from `app_shell.tsx` to scroll region |
+| Колонки таблицы скачут при resize/drag | **VL-17**, **VL-19** | `setState` on `dragover`; `width: 100%` on table + probe |
+| Пустой зазор между колонками campaigns | **VL-19** | `campaign_list_column_widths.ts`, saved widths |
+| Двойная рамка / лишний отступ | **VL-15** | nested `border`/`p-*` on `PageLayout` + inner card |
+| Заголовок/число обрезано многоточием, соседние колонки смещены | **VL-18** | `truncate` on `th`/`td`/metrics |
+| Элементы прыгают при загрузке | **VL-16** | `badge={loading ? null` banned; `LoadingCountBadge` |
+| Стили "то работают, то нет" после правки TSX | **VL-01**..**VL-06** | BEM + Tailwind on same node; `app.css` `@apply !` |
+
+### Root cause catalog (**VL-***)
+
+#### A. Style stack fights (extends collision **A-J**)
+
+| ID | Mechanism | Symptom | Example in tree | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **VL-01** | Same-node BEM + Tailwind layout (**A**) | `gap`/`flex` order depends on CSS load order | `admin-campaigns-list-footer flex flex-wrap gap-2` | Utilities-only wrapper or migrate BEM |
+| **VL-02** | `Button` + BEM + `@apply !h-auto` (**B**) | Toolbar buttons taller/shorter than `Select` | `admin-campaigns-toolbar__outline-btn` on `Button` | Drop BEM; default `Button` |
+| **VL-03** | `!bg-transparent !p-0` on BEM shell (**C**) | Filter panel padding disappears; fields misalign | `FilterPanel className="admin-campaigns-toolbar__filters !p-0"` | Fix `FilterPanel` defaults |
+| **VL-04** | Global descendant `input/button` restyle (**D**) | All fields in row forced height; combobox drift | `app.css` `.admin-campaigns-filter-field :is(input, button)` | Style primitives via `className` |
+| **VL-05** | Stacked `h-8` + `h-auto min-h-8` (**E**) | Footer buttons inconsistent height | `date_range_picker.tsx` raw `<button>` | One `admin_kit.controlHeight` |
+| **VL-06** | `flex` + `grid` on one node (**F**) | Random used `display`; children reorder | Was `metric_fill_bar.tsx` (fixed) | Single display owner |
+
+#### B. Spacing and placement (macro layout)
+
+| ID | Mechanism | Symptom | Example | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **VL-07** | `gap-*` on parent mixing unrelated bands | Vertical rhythm wrong; table too far from filters | Page root `flex-col gap-6` flat children | `PageLayout` bands; `gap-2` between wrappers only |
+| **VL-08** | `justify-between` with 3+ peer clusters | On wrap, groups land on wrong rows | `flex justify-between` toolbars | `grid-cols-[auto_1fr_auto]` or split rows |
+| **VL-09** | `ml-auto` / `flex-1` spacer escape | Apply/pagination leaves filter grid | Filter row flex + `ml-auto` | Direct grid children (`ui.mdc` filter row) |
+| **VL-14** | Apply + pagination wrapped together | DOM order differs from visual spec | Extra `<div>` around Apply | Sibling grid cells per `filter_panel.tsx` |
+
+#### C. Scroll and size chain
+
+| ID | Mechanism | Symptom | Example | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **VL-10** | Missing `min-h-0` / `minmax(0,1fr)` above scroll | Content clipped; footer overlaps table | `overflow-hidden` parent without `min-h-0` child | Chain: `app_shell` -> `PageLayout` -> `main.ui-scrollbar` |
+| **VL-12** | Dual height contracts | Search `h-8` beside filter `min-h-7` | `tracker_shell_header` vs `admin_kit.ts` vs `control_size.ts` | Single `admin_kit.controlHeight`; align `control_size.ts` |
+| **VL-11** | Mixed primitive heights in one row | Baseline jump between Select/Input/Button | `multi_select_field` `h-8` beside `min-h-7` selects | Default primitives only in filter row |
+
+#### D. Overlays and floating UI
+
+| ID | Mechanism | Symptom | Example | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **VL-13** | Class **B** float without reposition | Menu fixed while trigger scrolls away | Broken `triggerRef` / no `subscribeFloatingPosition` | `popover.tsx` / `select.tsx` pattern |
+| **VL-13b** | Wheel propagates to page scroll | Background moves under open list | Missing `CommandList` wheel stop | Inner `overflow-y-auto` + `max-h-*` |
+| **VL-13c** | Class **A** nav in class **B** `DropdownMenu` | Nav position wrong vs shell | Full nav in header dropdown | `AppSidebar` or mobile `Sheet` |
+
+#### E. Tables and data directories
+
+| ID | Mechanism | Symptom | Example | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **VL-17** | `setState` on `dragover` / `pointermove` | Column highlight lag; tbody reflow | HTML5 DnD + parent highlight state | Header-local state only (**Directory tables**) |
+| **VL-18** | `truncate` on headings/numbers | Ellipsis; column width lies | `campaign_list_table_body_row.tsx` name cell | `whitespace-nowrap`; widen column |
+| **VL-19** | `table { width: 100% }` + content-based `col` widths | Dead gap column | Campaigns list width probe | `width: auto` on table; sum of `col` (`ui.mdc`) |
+| **VL-20** | Div grid as data table | Column order breaks on reorder | `grid-cols-*` over `items[]` | `DirectoryTable` semantic `<table>` |
+
+#### F. Chrome and lifecycle reflow
+
+| ID | Mechanism | Symptom | Example | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **VL-15** | Matryoshka wrappers + duplicate border/padding | Double card; title offset | `*DirectoryChrome`, extra `rounded-md border` inside `PageLayout` | One chrome layer (`ui.mdc` chips) |
+| **VL-16** | Badge mount/unmount on load | Header height jumps | `badge={loading ? null : ...}` | `LoadingCountBadge` (`ui_slop.sh`) |
+| **VL-21** | `z-index` inversion | Float under header or behind panel | Shell `z-[5]` above float | Float `z-60`; header below (`Overlays`) |
+
+### State-driven "semantic drift" (layout looks like CSS bug)
+
+Duplicate writers (**State ownership**) produce **visual** symptoms indistinguishable from **VL-07**..**VL-14**:
+
+| State bug | Looks like | Distinguish |
+| :--- | :--- | :--- |
+| Dual `save*` on column prefs | Column width/order snaps back after drop | `rg saveCampaignListColumnPrefs` in table + menu |
+| `useEffect` resets draft mid-type | Field jumps / cursor escape | Edit without Apply -- URL unchanged |
+| Optimistic row + refetch | Row flashes/reorders | Single write path until 2xx |
+
+Assign **ownership A-J** for state; **VL-*** for pure CSS/DOM.
+
+### Agent layout lie modes (never)
+
+| ID | Lie | Falsify |
+| :--- | :--- | :--- |
+| **VL-L1** | "Aligned" without peer height grep | Paste `rg 'h-[789]'` on band |
+| **VL-L2** | "Fixed overflow" without `min-h-0` chain | Trace `app_shell` -> scroll container in code |
+| **VL-L3** | Wrapper added instead of grid track fix | Name **VL-09** / **VL-08**; no new `*Chrome` |
+| **VL-L4** | `!important` Tailwind as fix | **VL-03** -- fix primitive/shell contract |
+| **VL-L5** | Column resize "smooth" while tbody repaints on `dragover` | **VL-17**; DevTools Performance |
+
+### Keyword index (layout drift) -- add to Agent execution protocol scans
+
+| Pattern | VL-ID |
+| :--- | :--- |
+| `admin-[a-z-]+__` + `\bflex\b|\bgrid\b|\bgap-` on same `className` | **VL-01** |
+| `admin-[^"]*!` / `cn\([^)]*admin-[^)]*!` | **VL-03** |
+| `justify-between` in `toolbar` / `page-header` / `filter` | **VL-08** |
+| `\bml-auto\b|\bms-auto\b` in `filter` / `toolbar` | **VL-09** |
+| `flex-1` between unrelated toolbar groups | **VL-09** |
+| `<Button[^>]*\bh-[789]\b` in domains/shell | **VL-11** |
+| `flex.*\bgrid\b|\bgrid\b.*\bflex\b` on same node | **VL-06** |
+| `truncate` on `TableCell` / `columnheader` / KPI | **VL-18** |
+| `setState` / `useState` in `onDragOver` / `onPointerMove` | **VL-17** |
+| `style=\{\{` static layout (non-width%) in domains | **VL-01** + custom styles ban |
+
+### Repository audit pointers (2026-09)
+
+| Hotspot | Path | Typical VL-IDs |
+| :--- | :--- | :--- |
+| Campaigns toolbar BEM | `campaigns_list_toolbar.tsx`, `app.css` `admin-campaigns-toolbar__*` | **VL-01**, **VL-02**, **VL-03**, **VL-04** |
+| Shell search vs filters | `tracker_shell_header.tsx`, `search_input.tsx` | **VL-11**, **VL-12** |
+| Filter matrix reference | `filter_panel.tsx`, `team_overview.tsx` | OK pattern for **VL-14** |
+| Page scroll chain | `app_shell.tsx`, `page_layout.tsx` | **VL-10** reference |
+| Float primitives | `popover.tsx`, `floating_overlay_position.ts` | **VL-13** reference |
+
+## State ownership (single writer; semantic race)
+
+**Problem (parallel to BEM + Tailwind on one node):** multiple actors -- components, hooks, `useEffect`, `localStorage` helpers -- **write the same logical object** without one owner. Updates arrive in unpredictable order (user input, fetch resolve, navigation, Strict Mode remount). Symptom: flicker, reverted fields, prefs that "sometimes stick", last-write-wins bugs. This is **not** Go `-race` / shared-memory concurrency; it is **duplicate ownership** in JS.
+
+**Canonical rule:** one logical resource = **one owner** + **one persistence path** + **read-only or callback-only** descendants.
+
+| Logical resource | Owner (canonical) | Children receive |
+| :--- | :--- | :--- |
+| Directory column prefs | Domain workspace hook (`use_campaigns_directory_workspace`) | `columnPrefs` + `onColumnPrefsChange` only |
+| Applied filters / pagination | URL `searchParams` or page hook that owns `setSearchParams` | `draft*` until Apply/submit |
+| Server list rows | Fetch hook / page; API is source | `items` down; no client re-filter of full dataset |
+| Overlay open (primitive) | Parent **or** internal via `useControllableState` | `open` + `onOpenChange` -- never both fighting |
+| Ephemeral drag/resize pixels | Interaction hook/surface only | Commit once via callback on drop/`pointerup` |
+
+Helper: `web/src/lib/controllable_state.ts` (`useControllableState`) for primitives that support controlled + uncontrolled mode.
+
+### Ownership collision classes (never on new/touched code)
+
+| Class | Mechanism | Symptom | Verdict |
+| :--- | :--- | :--- | :--- |
+| **A. Dual React state** | Parent `useState` + child `useState` for same field + `useEffect` sync | Loops, stale closure, lost keystrokes | **Slop** -- lift state or fully controlled child |
+| **B. Dual persistence** | Leaf calls `localStorage.setItem` / `save*` AND owner callback persists same key | Prefs diverge after navigation; order-dependent | **Slop** -- persist **only** in owner |
+| **C. Uncontrolled mirror** | Child copies `value` prop into local state without `useControllableState` | Drift from parent; "changing props without onChange" | **Slop** -- controlled props or `useControllableState` |
+| **D. Sibling writers** | Table + menu + toolbar each call `save*` on same prefs object | Redundant writes; one path skips `setState` | **Slop** -- notify owner once (`onColumnPrefsChange`) |
+| **E. Effect vs user input** | `useEffect` resets `draft` from URL/props on every parent render while user edits | Cursor jump; field snaps back | **Slop** -- sync `draft` only on **applied** boundary (Apply, navigation, `listScopeKey`) |
+| **F. Dual fetch authority** | Parent passes `items` but child `useMemo` filters/sorts full array | Double filter; wrong totals vs server | **Slop** -- server query params own filter (`cold-path.mdc`) |
+| **G. Context + props same field** | `customerId` from Context and from props | Undefined winner | **Slop** -- one source wired at page |
+| **H. Optimistic + refetch clash** | Local patch and `onRefresh` both mutate visible row without merge rules | Flash revert or duplicate toast | **Slop** -- one write path until server confirms |
+| **I. Ephemeral + committed (allowed)** | Resize: `localWidths` during drag; `columnWidths` from props when idle | Jank if **both** update React state on every `pointermove` | **Allowed** only with handoff guard (`resizeRef` blocks prop sync during drag; commit on `pointerup`) |
+| **J. Read-only leaf** | Cell displays `metricsById[id]`; no local copy | -- | **OK** |
+
+### Write path (required shape)
+
+```
+Owner (hook / page)
+  useState | useReducer  <-- sole React writer
+  side effect once       <-- localStorage, setSearchParams, toast after 2xx
+       |
+       v  props down, callbacks up
+Leaves (table, menu, toolbar fields)
+  render from props
+  onXChange(next)        <-- notify only; NO save*, NO duplicate useState
+```
+
+**Banned in leaves:** `saveCampaignListColumnPrefs`, `localStorage.setItem` for keys the owner already owns, second `useState` for the same pref/filter/selection.
+
+### Good patterns
+
+```tsx
+// Owner: state + persistence in one place
+const [columnPrefs, setColumnPrefs] = useState(() => loadCampaignListColumnPrefs());
+const applyColumnPrefs = useCallback((next: CampaignListColumnPrefs) => {
+  setColumnPrefs(next);
+  saveCampaignListColumnPrefs(next);
+}, []);
+
+<Table columnPrefs={columnPrefs} onColumnPrefsChange={applyColumnPrefs} />
+<ColumnsMenu columnPrefs={columnPrefs} onColumnPrefsChange={applyColumnPrefs} />
+
+// Leaf: notify only
+function onDrop(...) {
+  const next = { ...columnPrefs, dataColumnOrder: moveDataColumn(...) };
+  onColumnPrefsChange(next); // no saveCampaignListColumnPrefs here
+}
+
+// Draft / applied split (filters)
+const appliedStatus = searchParams.get('status') ?? '';
+const [draftStatus, setDraftStatus] = useState(appliedStatus);
+useEffect(() => {
+  setDraftStatus(appliedStatus);
+}, [appliedStatus]); // boundary: URL applied changed, not every keystroke elsewhere
+
+function onApply() {
+  setSearchParams({ status: draftStatus }); // applied owner writes URL once
+}
+
+// Primitive controlled / uncontrolled
+const [open, setOpen] = useControllableState({
+  value: controlledOpen,
+  defaultValue: false,
+  onChange: onOpenChange,
+});
+
+// Ephemeral resize with handoff (use_campaign_list_column_resize.ts)
+// - localWidths during pointer capture
+// - useEffect skips prop sync when resizeRef.current is set
+// - onColumnWidthCommit once on pointerup
+```
+
+### Anti-patterns (still in tree; remove on touch)
+
+| File | Collision | Fix |
+| :--- | :--- | :--- |
+| `campaigns_list_table.tsx` | **B + D:** `onColumnPrefsChange(next)` and `saveCampaignListColumnPrefs(next)` on column drop | Drop handler calls `onColumnPrefsChange` only |
+| `campaign_list_columns_menu.tsx` | **B + D:** `persist()` saves locally after `onColumnPrefsChange` | Remove `save*` from menu; owner persists |
+| `use_campaigns_directory_workspace.ts` | **Owner** -- `handleColumnPrefsApply` / `handleColumnWidthCommit` save here | Keep; delete leaf saves |
+
+Same rule for any new directory: workspace/page hook owns prefs; table/header/menu are leaves.
+
+### Relation to other slop modes
+
+| Dual ownership | Analog |
+| :--- | :--- |
+| Two writers on `columnPrefs` | BEM + Tailwind on same `className` |
+| `justify-between` + child `ml-auto` | Layout escape + second spacing actor |
+| `setState` on every `dragover` + prefs writer on drop | Paint actor + persistence actor fighting table state |
+
+### Verification (ownership claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "Prefs wired" | Grep touched paths for `save*` / `localStorage` -- only owner file |
+| "Controlled filter" | Edit field without Apply -- URL unchanged; no effect reset mid-typing |
+| "Resize smooth" | During drag, prop `columnWidths` must not trigger full sync except via **I** handoff |
+
+## User action coalescing (frontend idempotency)
+
+**Problem:** the user clicks Refresh / Load / Export several times within a short window. Each click starts a new fetch, `setState` cycle, and VDOM reconcile -- even when `useResource` aborts the previous request. Server sees request storms; React sees redundant `fetching` toggles and snapshot replaces. This is **not** server idempotency (`cold-path.mdc` outbox keys); it is **UI-level coalescing**: many clicks in one time slice = **one intent**.
+
+**Canonical rule:** every user-triggered **read** or **write** that hits `/api/v1` must pass through a **single gate** in the **owner** (page hook or workspace hook). Leaves pass `onRefresh` / `onSubmit` only; they do not start fetches directly.
+
+### Action classes
+
+| Class | Examples | Coalesce strategy | Default window |
+| :--- | :--- | :--- | :--- |
+| **R1. Manual read / refetch** | Refresh list, Reload status, `refreshToken++` | **Leading window** + **in-flight guard** | **500 ms** |
+| **R2. Explicit mutation** | Save, Delete, Pause, Import, Export run | **In-flight guard** only (until 2xx or error) | Until settled |
+| **R3. Filter Apply** | Directory filter submit | Single submit event; no per-keystroke fetch | N/A (draft/applied split) |
+| **R4. Pagination / sort** | Prev/Next, column sort header | Intentional discrete actions; no throttle | None |
+| **R5. High-frequency pointer** | Column resize, drag highlight | rAF throttle (`react.mdc`, **Directory tables**) | ~16 ms |
+
+**Leading window:** first click in `windowMs` runs the action; further clicks before the window ends are **dropped** (same user intent). **In-flight guard:** while the async handler promise is pending, ignore additional clicks even after the window expires.
+
+**Not sufficient alone:** `useResource` abort on dep change -- rapid `refreshToken` bumps still **start** N requests and abort N-1. Coalesce **before** bumping deps or calling fetch.
+
+### Required UI contract
+
+| Control | Minimum |
+| :--- | :--- |
+| Mutation button | `disabled={busy}` + `loading={busy}` on `Button` until handler `finally` |
+| Manual refresh | `disabled={fetching}` **and** coalesced handler in owner hook |
+| Form submit | `type="submit"`; block double submit with `submitting` flag |
+| Success toast | Only after `await` resolves 2xx (`anti-slop.mdc` admin slop) |
+
+### Owner hook shape (required for R1/R2)
+
+```tsx
+// R2 mutation -- in-flight guard only (integrations_platform_campaigns_page.tsx pattern)
+const [refreshing, setRefreshing] = useState(false);
+const onRefresh = useCallback(async () => {
+  if (refreshing) return;
+  setRefreshing(true);
+  try {
+    await refreshPlatformCampaignLink(...);
+    setRefreshToken((n) => n + 1);
+  } finally {
+    setRefreshing(false);
+  }
+}, [refreshing, ...]);
+
+// R1 manual list refresh -- coalesce before refreshToken bump
+const refreshList = useCoalescedCallback(
+  () => setRefreshToken((n) => n + 1),
+  { windowMs: 500, inFlightGuard: true, inFlight: listFetching },
+);
+// Canonical helper: web/src/lib/coalesced_user_action.ts (add when touching handlers)
+```
+
+Until `coalesced_user_action.ts` lands, inline `useRef` lastFiredAt + `if (inFlight) return` in the **same** owner hook -- not copy-pasted per leaf button.
+
+### Coalescing collision classes (never on new/touched code)
+
+| Class | Mechanism | Symptom | Verdict |
+| :--- | :--- | :--- | :--- |
+| **A. Unguarded refreshToken** | Each Refresh click `setRefreshToken(n+1)` | Abort storm; list metrics refetch in parallel | **Slop** -- leading window + in-flight |
+| **B. Leaf starts fetch** | Toolbar `onClick={() => void listCampaigns()}` | Bypasses owner; duplicate with `useResource` | **Slop** -- owner gate only |
+| **C. disabled without in-flight** | `disabled={fetching}` but handler has no `if (busy) return` | Keyboard repeat / race before `fetching` flips true | **Slop** -- guard inside handler too |
+| **D. loading without disabled** | Spinner only | Double submit | **Slop** -- `Button` sets both |
+| **E. Toast before await** | `toast.success` before `await` completes | False success on double click | **Slop** |
+| **F. Parallel duplicate hooks** | Two `useResource` for same query keyed only by overlapping deps | Double traffic on one user action | **Slop** -- one fetch owner |
+| **G. Trailing debounce on Refresh** | Wait for click burst to end | User sees no response until pause | **Wrong pattern** for R1 -- use **leading** |
+| **H. Throttle pagination** | Prev/Next throttled | Skipped page turns | **Banned** on R4 |
+
+### Good patterns (already in tree)
+
+| Pattern | File | Class |
+| :--- | :--- | :--- |
+| `bulkBusy` / `exportBusy` + early return in bulk handler | `use_campaigns_directory_workspace.ts` | R2 |
+| `refreshing` + `setRefreshing` + `finally` | `integrations_platform_campaigns_page.tsx` | R2 |
+| `useResource` generation + abort on dep change | `use_resource.ts` | Complements R1; not a substitute |
+| `disabled={fetching} loading={fetching}` on Load | `ops_ml_model.tsx`, `ops_metrics.tsx` | R1 UI half -- still add coalesce on handler |
+
+### Anti-patterns (still in tree; fix on touch)
+
+| File | Issue |
+| :--- | :--- |
+| `use_campaigns_page.ts` `refreshList` | **A:** `setRefreshToken` with no leading window or in-flight guard |
+| Any `onRefresh: () => { void onRefresh(); }` wrapper | Hides guard; keep coalesced callback at owner |
+
+### Default windows (do not invent per page)
+
+| Surface | `windowMs` | Notes |
+| :--- | :--- | :--- |
+| Manual list / snapshot refresh | 500 | Campaigns, ops reload, report reload |
+| Command palette search | 300 | Trailing debounce on **input** only -- not R1 |
+| Column resize / drag | rAF | **R5** -- separate from click coalescing |
+
+### Relation to other contracts
+
+| Topic | Link |
+| :--- | :--- |
+| Fetch abort / stale generation | `use_resource.ts`, `react.mdc` **Fetch and abort** |
+| State owner for refresh | **State ownership** -- coalesce gate lives in owner hook |
+| Server idempotency keys | Go handlers / payment outbox -- UI coalesce does not replace |
+
+### Verification (coalescing claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "Refresh is safe" | DevTools Network: 5 rapid clicks -> **1** request in 500 ms window (or 1 in-flight) |
+| "Mutation guarded" | Double click while `loading` -> one POST; button stays disabled |
+| "No abort storm" | Filtered network log: not N aborted fetches per double Refresh |
+
+## Request fan-out (RF-*)
+
+**Definition:** one operator intent, route transition, or refresh token causes **N network or heavy operations** where a smaller set would satisfy the same UI contract. Distinct from **R1** (same Refresh clicked N times) and **ownership F** (two writers for one object). **R1** stops duplicate *clicks*; **RF-*** stops one click from starting redundant *lanes*.
+
+Normative fetch lifecycle: `react.mdc` **Fetch and abort**. Session dedupe contrast: `lib/command_palette_routes_cache.ts`, `lib/report_catalog_cache.ts`.
+
+### Collision classes (never on new/touched code)
+
+| ID | Pattern | Symptom | Fix |
+| :--- | :--- | :--- | :--- |
+| **RF-1** | Global `refreshToken` in deps of unrelated `useResource` hooks | One Refresh refetches facets, aux endpoints, and lists that did not change | Scoped tokens: `listRefreshToken`, `facetsToken` (bump only when customer changes); drop token from slow-changing aux |
+| **RF-2** | Unguarded `setRefreshToken` / `setReloadToken` on manual Refresh | Each click starts full hook fan-out (abort prior, still N new requests) | `useCoalescedCallback` (**R1**) + scope what the token bumps |
+| **RF-3** | Child overlay fetches data parent already loaded | Popover/sheet `getCampaignStats` while row has `metricsById` / batch metrics | Pass snapshot as initial; fetch only for deeper series or stale miss |
+| **RF-4** | Same session-scoped catalog refetched per page visit | `listCustomers` on campaigns, dashboard, click_log with identical query | Module cache + inflight dedupe (`fetchCommandPaletteRoutesCached` shape) |
+| **RF-5** | List entire collection to resolve one label/id | `listBrands` on creatives page to breadcrumb one brand | `getBrand(id)`, nav state, or breadcrumb from route loader |
+| **RF-6** | Effect epoch bump **and** same key already in `useResource` deps | Double fetch on `id` change (ledger reset + hook rerun) | Reset local cursor in effect only; or epoch for mutations-only |
+| **RF-7** | Boot providers hit same endpoint independently | `MetaProvider` `getMeta` + `composeSessionBootstrap` fallback `getMeta` | Single meta promise cache; bootstrap returns meta; skip MetaProvider fetch when present |
+| **RF-8** | Mutation refresh over-broadcasts to unrelated surfaces | Team invite bumps overview + roster when only roster changed | Split refresh tokens per surface |
+| **RF-9** | Directory snapshot fan-out without scoped lanes | Campaigns Apply -> up to 5 parallel: list, width-probe list, metrics batch, totals, facets | Accept when each endpoint is required; trim: facets off refresh token; probe gated (`listCoversWidthProbeDataset`) |
+| **RF-10** | Open-gated fetch always cold | Metrics popover refetches on every open even when parent batch is fresh | TTL or pass-through props; refetch on explicit "Refresh" only |
+
+### Necessary fan-out (not RF slop)
+
+| Case | Why allowed | Example in tree |
+| :--- | :--- | :--- |
+| Distinct resources for one screen | Operator needs all slices | `supply_page.tsx` `Promise.all` sellers + adsTxt + export + validation |
+| Second list when first page cannot satisfy layout probe | Product: column widths need superset of filtered ids | `use_campaigns_page_list.ts` width-probe `listCampaigns` when `!listCoversWidthProbeDataset` |
+| Tab-gated `useResource` with `skipFetch` | Only active tab hits network | `customer_detail_page.tsx` balance/ledger/statement per `tab` |
+| Sequential dependent fetches | Later call needs earlier id | `use_campaign_editor_page.ts` `getCampaign` then `getFlow` |
+| Export selection beyond visible page | Batch metrics for ids not on current page | `use_campaigns_directory_workspace.ts` export `fetchCampaignListMetricsBatch` |
+| Cached static catalog + fresh dynamic slice | Routes cached; recents per open | `command_palette.tsx` + `fetchCommandPaletteRoutesCached` |
+| Parallel metrics batch for visible rows | Table cells need stats server does not embed in list DTO | `fetchCampaignListMetricsBatch` on campaigns list (baseline cost) |
+
+### Repository audit (2026-09; fix on touch)
+
+| File | ID | Trigger | N ops | Avoidable? |
+| :--- | :--- | :--- | :--- | :--- |
+| `use_campaigns_page_list.ts` | **RF-9**, **RF-1** | Filter Apply / `refreshToken++` | list + optional 2nd list + metrics batch + totals + facets (+ customers once) | Facets on refresh: **fixed WP9.1**; width probe when capped: **no** |
+| `team_page.tsx` | **RF-8**, **RF-1** | `refreshToken` after invite/patch | overview + active tab list | Partially -- split tokens |
+| `campaign_metrics_popover.tsx` | **RF-3**, **RF-10** | Popover open | `getCampaignStats` per open | **fixed WP9.3** — seed + session cache |
+| `campaign_overview_sheet.tsx` | **RF-3** | Sheet open | stats + margin parallel | **fixed WP9.3** — seed + skip margin when batched |
+| `campaign_ops_panel.tsx` | **RF-3** | Load stats/margin | cold `getCampaign*` | **fixed WP12.2** — session cache + list seed |
+| `campaign_overview_sheet.tsx` | **RF-3** | Sheet open | stats + margin parallel | **fixed WP9.3** — seed + skip margin when batched |
+| `dashboard_page.tsx`, `click_log_page.tsx`, `use_campaigns_page_list.ts` | **RF-4** | Page mount | `listCustomers` each visit | **fixed WP9.2** — `fetchCustomersComboboxCached` |
+| `brand_creatives_page.tsx` | **RF-5** | Mount | `listBrands` + `listBrandCreatives` | **Mild** -- `getBrand` or nav state |
+| `invoice_detail_page.tsx` | **RF-6** | `id` route change | ledger `useResource` + `ledgerEpoch` bump | **Yes** -- one trigger |
+| `meta_provider.tsx` + `auth_api.ts` `composeSessionBootstrap` + `eula_gate.tsx` | **RF-7** | App boot | 2x+ `getMeta` on bootstrap fallback path | **fixed WP9.6 / WP12.3** — `fetchMetaCached` |
+| Most `*_page.tsx` with `refreshToken` | **RF-2** | Manual Refresh | 1 hook each (OK) unless fan-out hook | Coalesce missing outside campaigns/dashboard |
+| `billing_page.tsx`, `rtb_page.tsx` | -- | Mount | Parallel distinct endpoints | **Necessary** |
+
+### Good patterns (contrast)
+
+| Pattern | File |
+| :--- | :--- |
+| Session cache + inflight dedupe | `lib/command_palette_routes_cache.ts` |
+| Customer combobox session cache | `lib/customers_combobox_cache.ts` |
+| Platform meta session cache | `lib/get_meta_cache.ts` |
+| Report catalog session cache | `lib/report_catalog_cache.ts` |
+| Width probe skipped when list covers dataset | `use_campaigns_page_list.ts` `listCoversWidthProbeDataset` |
+| Tab mutex fetch (`skipFetch` / `AbortError`) | `customer_detail_page.tsx` |
+| Leading coalesce before refresh bump | `use_campaigns_page.ts`, `campaign_dashboard_page.tsx` |
+
+### Verification (fan-out claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "One Refresh = one request" | DevTools Network: count requests in 500 ms after single Refresh -- cite each URL |
+| "Popover does not re-hit API" | Open cell popover twice with unchanged parent metrics -- no second `getCampaignStats` unless Refresh |
+| "Facets stable on list refresh" | Refresh with same `customer_id` -- no `fetchCampaignListFacets` |
+| "Customers cached session-wide" | Navigate campaigns -> dashboard -> back; second visit no `listCustomers` |
+
+## React composition (RP-*)
+
+Subjective "clean React" is banned without catalog ID. Normative detail: `react.mdc` **Memoization and callbacks**, **Async UI lanes**, **Row and list item reuse**.
+
+### Collision classes (never on new/touched code)
+
+| ID | Pattern | Symptom | Verdict |
+| :--- | :--- | :--- | :--- |
+| **RP-1** | `useCallback` on every handler; no `memo` child | Deps churn; false optimization | Plain functions unless memo child needs stability |
+| **RP-2** | `useMemo` for trivial filter; `filter` + `some` id dedup | O(n*m) for no gain on small lists | Inline or `Set`; memo only when costly |
+| **RP-3** | 5+ correlated `useState` for one async surface (`loading`, `error`, `items`, `degraded`, …) | Desynced flags after overlapping requests | `useResource` or `useReducer` with one status object |
+| **RP-4** | Two fetch lanes share `loading` / `error` | Search typing clears catalog error; spinner fights | Separate lane state or two `useResource` hooks |
+| **RP-5** | Identical list-row JSX duplicated 2+ in one file | Style/copy drift; triple edit on change | Extract `<XRow item onSelect />` in same module or `shell/` |
+| **RP-6** | Add TanStack Query / SWR for admin lists | New stack; diverges from `use_resource.ts` | Domain hook wrapping `useResource` + debounce |
+
+### Good patterns (already in tree)
+
+| Pattern | File | ID |
+| :--- | :--- | :--- |
+| Single fetch owner with abort + generation | `use_resource.ts` | Complements **RP-3** |
+| Leading coalesce on manual refresh | `use_coalesced_callback.ts` | **R1** (not search debounce) |
+| Row VM once per data change | `buildCampaignRowVm` | **RP-2** justified |
+| `memo` on body row when header drags | `campaign_list_table_body_row.tsx` | **RP-1** justified |
+
+### Anti-patterns (still in tree; fix on touch)
+
+| File | Issue |
+| :--- | :--- |
+| `command_palette.tsx` | **RP-1:** blanket `useCallback`; **RP-4:** catalog + search share `loading`/`error`; **RP-5:** `CommandItem` block x3 |
+| `command_palette.tsx` | Debounce effect is **allowed** (trailing input); do not "fix" by adding TanStack Query (**RP-6**) |
+
+### Verification (composition claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "Memoized for perf" | React Profiler: parent state change -- do memo children skip reconcile? If no memo child, cite **RP-1** |
+| "Search is isolated" | Grep `setLoading` / `setError` in file -- two effects writing same setter -> **RP-4** |
+| "DRY row" | `rg -n 'CommandItem key=' file` -- more than one identical block -> **RP-5** |
+
+## UX scenario contract (one intent, one path, dismissible, scripted)
+
+Agents ship **duplicate entry points** for the same operator intent, **trapped modals**, **silent prerequisite failures**, and **parallel overlays** that fight the same state owner (**State ownership**). This section is the **UX-layer** contract; overlay chrome: `ui.mdc` **Overlays** class C; coalesce: **User action coalescing**.
+
+### 1. One canonical path per intent (per page)
+
+**Intent** = what the operator wants to achieve (create campaign, apply filters, export CSV, archive selection). **Path** = visible control + surface (toolbar button, row menu, dialog).
+
+| Rule | Detail |
+| :--- | :--- |
+| **One primary path** | Each intent has exactly **one** primary control in the page chrome (toolbar or page header) |
+| **Overflow alternates** | Secondary paths allowed only when **verb + outcome differ** (e.g. **Import** bundle vs **Create** from template) -- not a second unlabeled "Create" |
+| **Row vs bulk** | Same mutation: either row action **or** bulk toolbar -- not both without selection guard copy |
+| **Footer vs filter row** | Pagination / Apply: one location (`ui.mdc` **Directory filter row**) |
+| **Mutex surfaces** | At most **one** class-C overlay (Dialog/Sheet) owning a mutation intent at a time |
+
+**Banned (duplicate intent):**
+
+| Pattern | Why |
+| :--- | :--- |
+| Same verb, two buttons | "Create" on toolbar + "Create" in empty state + footer without role split |
+| Two modals, same POST | Quick-create Dialog + Wizard Sheet both create `campaign` without mutex |
+| Hidden duplicate | Command palette route + toolbar button with no shared owner callback |
+| Page + global header both Apply same filter | Double fetch / race |
+
+**Campaigns audit (2026-09 -- fix on product decision):**
+
+| Path | Intent label | Verdict |
+| :--- | :--- | :--- |
+| Toolbar **Create** -> Dialog | Quick create from template | **Primary** |
+| More menu **Wizard** -> Sheet | Guided create | **Duplicate intent** with Create until demoted or Create removed |
+| More menu **Import** -> Sheet | Migrate / bundle import | **Distinct** intent (different API) |
+| Row **Edit** link + bulk **Clone** | Different intents | **OK** with selection rules |
+
+New pages: do not add a second create path without removing or demoting the first.
+
+### 2. Modal dismiss (class C -- required exit vectors)
+
+Applies to `Dialog`, `Sheet`, `CommandDialog` (`components/ui/*`). Operator must never be trapped.
+
+| Vector | Required | Provided by |
+| :--- | :--- | :--- |
+| **X control** | Yes | `DialogContent` / `SheetContent` built-in (`aria-label="Close"`) |
+| **Escape** | Yes | `onKeyDown` on content |
+| **Overlay click** | Yes (Dialog); Sheet overlay | `DialogOverlay` / `SheetOverlay` |
+| **Labeled Cancel** | Yes for **destructive** or **multi-step** flows | `SecondaryActionButton` -> `onOpenChange(false)` |
+| **`onOpenChange(false)`** | Owner clears draft or confirms dirty | Page/workspace hook |
+
+**Minimum bar:** at least **three** of X / Escape / overlay / labeled Cancel on every class-C surface. Destructive confirm (archive, delete): **labeled Cancel required** in footer (`campaigns_directory_overlays.tsx` archive dialog -- OK).
+
+**Banned:**
+
+| Pattern | Verdict |
+| :--- | :--- |
+| Hand-rolled modal in `domains/` without Escape | **Slop** -- use `Dialog` / `Sheet` |
+| `onInteractOutside` / `onEscapeKeyDown` that `preventDefault` with no alternative | Trap |
+| Close only via completing mutation | Trap -- always X/Escape/Cancel |
+| Stacked class-C modals for same intent | Race + focus trap |
+
+Popover/Select (class B): dismiss via outside click / Escape per `ui.mdc` -- not a substitute for class-C rules.
+
+### 3. Action scripts (sequence + required data)
+
+Every **mutation intent** must have a documented **script**: ordered steps, required fields, server response gates. Source of truth: OpenAPI request body + Go handler validation -- not invented client rules.
+
+**Script table shape (required in PR when adding mutation):**
+
+| Step | User action | Required data (wire) | UI gate | Server success gate |
+| :--- | :--- | :--- | :--- | :--- |
+| n | ... | field names + types | `disabled` / hidden until met | status + response fields |
+
+**Global gates:**
+
+| Gate | Rule |
+| :--- | :--- |
+| **UUID identity** | Navigate to detail/editor only with `id` from **2xx response** -- never client-generated UUID for persisted entity |
+| **Required fields** | Submit `disabled` until OpenAPI-required fields satisfied -- not silent `return` in handler |
+| **Optional fields** | Label "Optional" in UI; omit from body when empty |
+| **Scope prerequisites** | Missing `customer_id` / license: **disable** primary action or show scope prompt -- not click -> no-op |
+| **Success** | Toast / close modal only after `await` 2xx; then owner refresh (**User action coalescing** R2) |
+| **Failure** | `ErrorBlock` or inline error -- modal stays open (**Mutation validation** C4) |
+
+**Reference script -- campaigns quick create (`use_campaigns_page.ts` + overlays):**
+
+| Step | Action | Required | UI today |
+| :--- | :--- | :--- | :--- |
+| 1 | Customer scope | `customer_id` (filter) | Create disabled without scope -- OK |
+| 2 | Open dialog | -- | Single `createSectionOpen` |
+| 3 | Pick template | `template_id` (UUID) | `createDisabled` without template -- OK |
+| 4 | Name | optional string | Labeled optional -- OK |
+| 5 | Budget | optional micro int | Validated if present -- OK |
+| 6 | Submit | POST body | `creating` guard -- OK |
+| 7 | After success | response `id` | `refreshList()` -- must not invent id |
+
+**Violation to fix:** `onCreateCampaign` early `return` when `!customerId || !draftTemplateId` without user-visible error if button were ever enabled -- keep `createDisabled` in sync.
+
+Wizard / import: separate script tables; must not share draft state with quick-create Dialog unless single owner (**State ownership**).
+
+### 4. UX duplicate actors (scenario races)
+
+UX duplicates cause **State ownership** collisions (class A/D) and **coalescing** failures without extra code paths.
+
+| UX duplicate | Scenario race | Mitigation |
+| :--- | :--- | :--- |
+| Two **Create** entry points | Double POST / two drafts | One primary; mutex `wizardOpen` / `createSectionOpen` |
+| Refresh + auto `useResource` dep bump | Abort storm | Coalesce R1; do not also bump token on mount |
+| **Apply** + live URL sync on every keystroke | Fight draft/applied | Apply boundary only (`ui.mdc` filters) |
+| Toolbar **Pause** + row menu **Pause** | Duplicate bulk API | Shared `onPauseSelected` owner |
+| Pagination in footer **and** filter row | Conflicting offset writers | One pagination owner |
+| Open overview Sheet + Edit route | Two editors for same row | Close sheet on navigate or single path |
+| Double **Export** (toolbar + menu) | Parallel downloads | One handler + `exportBusy` |
+| Modal submit + Enter key while loading | Double POST | `loading` disables submit + in-flight guard |
+
+**Mutex rule:** when `creating`, `bulkBusy`, `exportBusy`, or `wizardOpen` is true, disable **conflicting** primary actions on the same page.
+
+### 5. Invalid UX scenarios (catalog)
+
+| ID | Scenario | Symptom | Verdict |
+| :--- | :--- | :--- | :--- |
+| **UX-A** | Visible action always fails | Button -> toast "not available" every time | Remove or wire (`Wizard` toast when callback missing) |
+| **UX-B** | Phantom success | Toast before 2xx | **Banned** |
+| **UX-C** | Silent no-op | Handler `return` with no UI feedback | **Banned** -- disable control or show scope error |
+| **UX-D** | Orphan draft | Close modal; reopen shows stale draft | Reset draft in `onOpenChange(false)` |
+| **UX-E** | Competing pagination | Prev/Next in two bands | **Banned** (`ui.mdc`) |
+| **UX-F** | Destructive without confirm | Archive/delete immediate | Confirm Dialog with Cancel |
+| **UX-G** | Navigate on invented id | `uuid` from counter before POST | **Banned** -- response id only |
+| **UX-H** | Two Applies | Filter Apply + auto-apply on change | One Apply submit |
+| **UX-I** | Overlay under overlay | Wizard + Create dialog open | Mutex open flags |
+| **UX-J** | Error hidden by soft empty | Failed fetch looks like "no rows" | `ErrorBlock` (`Mock lie` / FE2) |
+| **UX-K** | Selection action without selection | Bulk enabled with 0 rows | Disable or toast once at click |
+| **UX-L** | Long form no Cancel | Sheet wizard multi-step, X only | Add labeled Cancel on step 1+ |
+| **UX-M** | Same label, different behavior | Two "Refresh" with different handlers | Rename or merge |
+| **UX-N** | E2E proves heading only | Operator thinks flow works | **Test honesty** L1+ |
+
+### Verification (UX scenario claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "One way to create" | Grep page for duplicate verbs / POST handlers |
+| "Modal dismissible" | Keyboard-only test: Escape closes; X visible; destructive has Cancel |
+| "Script documented" | PR lists script table or links OpenAPI required fields |
+| "No scenario race" | Cannot open two create surfaces; double-click one POST |
+
+**E2E:** mutation specs must follow script steps (**Test honesty** L2). **Playwright** must not use soft OR to hide UX-J.
+
+Reference: `campaigns_directory.tsx`, `campaigns_directory_overlays.tsx`, `campaigns_list_toolbar.tsx`, `components/ui/dialog.tsx`, `components/ui/sheet.tsx`.
+
+## Mutation validation and error contract (fail-closed)
+
+**Principle:** any action that **changes server state** (POST/PATCH/PUT/DELETE, approve, import commit, outbox enqueue) must pass **validation before persistence**. The server is authoritative; the client mirrors validation for UX only and must **surface every failure** to the operator. Silent accept, silent reject, or "happy toast on error" are lies.
+
+Cross-ref: **UX scenario contract** §3 (action scripts), **Wire safety**, `ui.mdc` **Fetch and error UI**, `cold-path.mdc` **Mutation validation**, `pkg/httpresponse`, `web/src/api/client.ts` (`ApiError`).
+
+### Shared wire contract
+
+| Surface | Shape |
+| :--- | :--- |
+| Success | Handler-specific JSON; status 2xx |
+| Failure | `{"error":{"code":"<CODE>","message":"<text>"}}` via `httpresponse.Error` |
+| Client parse | `apiFetch` -> `parseApiError` -> `ApiError(status, code, message)` |
+
+Common codes (not exhaustive): `BAD_REQUEST`, `NOT_FOUND`, `CONFLICT`, `FORBIDDEN`, `UNAUTHORIZED`, `LIMIT_EXCEEDED`, `INTERNAL_ERROR`, `APPROVAL_REQUIRED`. OpenAPI documents per-route bodies; handlers use `mapServiceError` / `writeServiceError` (`internal/controlplane/license.go`).
+
+### Server pipeline (mandatory; authoritative)
+
+No mutation handler may **write Postgres / Redis / outbox** until its layer passes. Order:
+
+```
+HTTP body -> [size limit] -> [JSON decode] -> [path/auth] -> [domain validate] -> [business rules] -> [TX] -> 2xx
+                  |400              |400           |401/403      |400              |409/404/429
+```
+
+| Stage | Responsibility | On failure |
+| :--- | :--- | :--- |
+| **S1. Body limit** | `coldpath.ReadLimitedBody` / `DecodeRequestOrBadRequest` | `400 BAD_REQUEST` -- never read unbounded body |
+| **S2. Wire decode** | Typed struct from JSON; path UUID via `ParsePathUUID` | `400` -- malformed JSON or bad UUID |
+| **S3. AuthZ / license** | RBAC middleware, license snapshot, tenant scope | `401` / `403` / `LIMIT_EXCEEDED` |
+| **S4. Domain validation** | Package `Validate*` functions (shape, ranges, FK refs, flow weights) | `400 BAD_REQUEST` via `validationError` / sentinels |
+| **S5. Business invariants** | Budget, revision conflict, approval gates, idempotency | `409 CONFLICT`, `404 NOT_FOUND`, domain codes |
+| **S6. Persistence** | sqlc `Queries` inside TX; outbox row same TX when required | Rollback; map DB error -> `mapServiceError` |
+| **S7. Response** | `httpresponse.JSON` or `writeServiceError` | Never `200` with error payload; never swallow `err` |
+
+**Banned on server (never ship):**
+
+| ID | Pattern | Why |
+| :--- | :--- | :--- |
+| **SV1** | `INSERT` / `UPDATE` on raw request fields without S4 | Trusting client |
+| **SV2** | `_ = json.Unmarshal` or ignored `DecodeRequest` error | Silent bad input (`anti_slop_gate.sh`) |
+| **SV3** | `200 OK` + `{ "error": ... }` in body | Breaks client contract |
+| **SV4** | Stack trace or SQL in `message` | Leak; use generic `INTERNAL_ERROR` |
+| **SV5** | Validation only in UI; handler passes through | Client bypass |
+| **SV6** | Partial TX commit on validation failure | Data corruption |
+
+**Required tests (server):** `mapServiceError` table tests; domain `*_holdout*` / `Validate*_holdout` for non-obvious rules (`TestValidateFlowPathShape_holdout`, `TestBuildCampaignFlowValidateResponse_weightSumUnder100Fails_holdout`). OpenAPI field parity: `TestOpenAPI_*` when adding DTOs.
+
+### Client pipeline (mandatory; operator-facing)
+
+Client validation **reduces round-trips**; it does **not** replace server S4-S5.
+
+```
+User submit -> [UI prerequisites] -> [format hints] -> apiFetch -> [ApiError?] -> UI feedback
+                    |disable              |inline              |4xx/5xx
+```
+
+| Stage | Responsibility | On failure |
+| :--- | :--- | :--- |
+| **C1. Prerequisites** | Scope (`customer_id`), selection count, modal script (**UX scenario** §3) | Disable submit or scope message -- not silent `return` |
+| **C2. Format hints** | JSON parse, positive money, required labels | Inline / `setActionError` before fetch |
+| **C3. Transport** | `apiFetch`; `RESOURCE_FETCH_TIMEOUT_MS` | `ApiError` / `TIMEOUT` |
+| **C4. Error display** | `ErrorBlock`, modal `actionError`, `userErrorMessage` | Operator sees **code + message** (details in dev only) |
+| **C5. Success** | Toast / close modal / navigate with **response `id`** | Only after `await` 2xx (**User action coalescing** R2) |
+
+**Banned on client (never ship):**
+
+| ID | Pattern | Why |
+| :--- | :--- | :--- |
+| **CV1** | `toast.success` before `await` completes | Phantom success |
+| **CV2** | `catch { /* ignore */ }` or `catch { setItems([]) }` | UX-J / silent data loss |
+| **CV3** | `console.error` only | Operator blind |
+| **CV4** | Client-only validation; server accepts same garbage | SV5 pair |
+| **CV5** | `Promise.resolve` fake mutation success | **Fake promises** |
+| **CV6** | Generic "Something went wrong" when `ApiError.message` present | Hides server validation text |
+| **CV7** | Close modal and discard error on 4xx | Operator loses context |
+
+#### Form patch mapping (**CV-FM**)
+
+Pure `build*PatchBody` / `*ToFormState` mappers in `web/src/domains/**` (no React). Cross-ref: OpenAPI + Go `Patch*Request` decode rules before mapping empty strings.
+
+| ID | Pattern | Why slop | Fix |
+| :--- | :--- | :--- | :--- |
+| **CV-FM1** | Cleared optional UUID sent as `""` on PATCH | Go `uuid.UUID` decode **400**; `null` is no-op | `CLEAR_UUID` (`00000000-…-000000000000`) via `resolveOptionalUuidPatchValue` |
+| **CV-FM2** | Invalid numeric form input silently omitted from patch body | Operator thinks value saved (**CV4** pair) | Return `{ ok: false, error }` from mapper before fetch |
+| **CV-FM3** | JSON dirty check via raw `form.json !== canonicalJson(snapshot)` | Key reorder false positive; patch or skip wrongly | Parse both sides; `clickQueryParamsEqual` / sorted-key canonical JSON |
+| **CV-FM4** | `String(optionalNumber)` equality for dirty check | `0` vs `undefined` drift | Compare `number \| undefined` directly |
+| **CV-FM5** | Mandate Zod/Valibot on every form mapper | Stack not in `web/` today; duplicative without shared schema | Manual `parse*` + `*_holdout` tests; schema lib only after explicit stack add |
+
+**Required tests:** `*_form.test.ts` holdout for UUID clear (**CV-FM1**), invalid ingress number (**CV-FM2**), JSON key reorder no-op (**CV-FM3**).
+
+**Repository audit (2026-09):** `campaign_editor_form.ts` -- fixed **CV-FM1**-**CV-FM4**; `traffic_template_id` empty string remains valid server clear (not UUID).
+
+**T0 `dev_mock`:** same status + envelope as Go on bad input -- see **Explicit error handling vs error slop** (T0 mock parity, EH-F2).
+
+### Validation ownership (no duplicate fiction)
+
+| Concern | Owner | Client role |
+| :--- | :--- | :--- |
+| Required fields / types | OpenAPI + Go handler S4 | C1/C2 mirror for UX |
+| FK exists (campaign, customer) | Server DB / service lookup | Optional prefetch; server always checks |
+| Money micro-units, UUID shape | Server parse (`ParsePathUUID`, billing helpers) | Input `inputMode`, regex hints only |
+| License / quota | Server S3/S5 | `StubBanner` / `403` message |
+| Idempotency / revision | Server S5 + outbox | Show `409` conflict to operator |
+
+### End-to-end mutation script (template)
+
+Combine **UX scenario** script table with validation columns:
+
+| Step | User action | Client gate (C*) | API | Server gate (S*) | UI on failure |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | Pick customer scope | C1 `customer_id` | -- | -- | Disable Create |
+| 2 | Fill form | C2 required fields | -- | -- | Inline errors |
+| 3 | Submit | C1 + `loading` | POST | S1-S6 | C4 `ErrorBlock`; modal open |
+| 4 | Success | C5 after 2xx | -- | -- | Toast + refresh |
+
+### Verification (validation claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "Validated before DB" | Trace handler: no SQL before `Validate*` / business checks; holdout test fails if check removed |
+| "Errors surfaced in UI" | DevTools: force `400` -> `ErrorBlock` or modal error; no empty table |
+| "Mock parity" | `handler.test.ts` negative row matches Go status for same bad payload |
+| "E2E error path" | **Test honesty** L3 -- not `or(unavailable)` |
+
+Reference: `campaign_wizard_panel.tsx` (client `setActionError` + `ErrorBlock`), `use_campaigns_page.ts` (`createDisabled` + `setActionError`), `mapServiceError` / `writeServiceError`, `pkg/coldpath/http.go`.
+
+## Explicit error handling vs error slop (catalog)
+
+**Explicit error handling** = the operator (or API client) can tell that a request **failed**, sees a **truthful HTTP status**, reads a **safe `error.message`**, and the UI does **not** pretend success. **Error slop** = fake status, stub data, silent swallow, or theater that hides failure.
+
+This section is the **error honesty** catalog. Validation before DB: **Mutation validation and error contract**. Fetch lifecycle: `ui.mdc` **Fetch and error UI**.
+
+### Definitions
+
+| Term | Meaning |
+| :--- | :--- |
+| **Explicit (server)** | Non-2xx uses `httpresponse.Error`; status matches `mapServiceError`; 5xx logged with `slog.Error`; every handler path writes a response |
+| **Explicit (client)** | `apiFetch` failure becomes `ApiError` -> `ErrorBlock` / `StubBanner` / modal `actionError`; no fake empty data |
+| **Stub (allowed)** | `StubBanner` / `AdminDevBanner` / `chart_mock=1` -- **labeled** degraded mode; operator knows data is not live |
+| **Stub (slop)** | Empty table, `Promise.resolve([])`, or `genericOk()` **without** banner -- looks like real API success |
+| **Fake status** | HTTP 2xx while operation failed, validation rejected, or route unimplemented |
+| **Silent swallow** | `catch {}`, `_ = err`, `data ?? []` masking `error` |
+
+### Explicit error handling -- server (required)
+
+| # | Required pattern | Reference |
+| :--- | :--- | :--- |
+| **ES1** | Decode/body limit fails -> `400` via `DecodeRequestOrBadRequest` / `httpresponse.Error` -- **before** SQL | `pkg/coldpath/http.go` |
+| **ES2** | Domain/business failure -> `writeServiceError(w, err)` or mapped `httpresponse.Error` | `license.go` `mapServiceError` |
+| **ES3** | Status matches semantics: `400` validation, `404` missing, `409` conflict, `403` RBAC, `401` auth, `5xx` only for unexpected | `TestMapServiceError` |
+| **ES4** | Response body on error is **only** `{"error":{"code","message"}}` -- never success DTO mixed with error | `pkg/httpresponse/response.go` |
+| **ES5** | `5xx`: operator message generic (`INTERNAL_ERROR`); full `err` in **server logs** only | `writeServiceError` + `slog.Error` |
+| **ES6** | Unimplemented/license-gated -> `501` / `403` with clear code -- not `200` empty success | Handler + OpenAPI |
+| **ES7** | Handler tests: `httptest` asserts `status` + `error.code` on failure rows | `*_handlers_test.go` |
+
+```go
+// Explicit -- map err to truthful status + envelope
+if err := svc.Update(ctx, req); err != nil {
+    writeServiceError(w, err)
+    return
+}
+httpresponse.JSON(w, http.StatusOK, dto)
+
+// Slop -- never
+_ = json.Unmarshal(body, &req)
+w.WriteHeader(http.StatusOK)
+```
+
+### Explicit error handling -- client (required)
+
+| # | Required pattern | Reference |
+| :--- | :--- | :--- |
+| **EC1** | `apiFetch`: `if (!response.ok) throw await parseApiError(response)` | `web/src/api/client.ts` |
+| **EC2** | List route: `error && !hasSnapshot` -> full-page / section `ErrorBlock` | `campaigns_directory.tsx` |
+| **EC3** | `error && hasSnapshot` -> keep rows; toast or inline banner (stale-while-revalidate) | `ui.mdc` |
+| **EC4** | Mutation: `catch` -> `setActionError` / `ErrorBlock`; **modal stays open** on 4xx | `campaigns_directory_overlays.tsx` |
+| **EC5** | Success toast / close / navigate **only after** `await` 2xx | **User action coalescing** CV1 |
+| **EC6** | `501` / license / forbidden: `StubBanner` with **server `message`** -- explicit stub | `campaign_wizard_panel.tsx` `panelError` |
+| **EC7** | `userErrorMessage(err)` surfaces `ApiError.message`; technical details via `shouldShowAdminErrorDetails()` only in T0 dev | `admin_error.ts` |
+| **EC8** | `isAbortError` -> no error UI (cancelled fetch is not a failure) | `client.ts` |
+| **EC9** | Missing prerequisite (no `customer_id`): disable or scope prompt -- not fake `[]` fetch | **Fake promises** |
+
+```tsx
+// Explicit
+try {
+  await createSelfServeCampaign(body);
+  toast.success('Campaign created');
+  onClose();
+} catch (err) {
+  setActionError(err instanceof Error ? err : new Error(String(err)));
+}
+
+// Slop -- never
+try {
+  await createSelfServeCampaign(body);
+} catch {
+  setItems([]);
+}
+toast.success('Campaign created');
+```
+
+### Error slop catalog (never ship; never cite as "handled")
+
+#### Fake HTTP status (**EH-F**)
+
+| ID | Pattern | Why slop | Explicit alternative |
+| :--- | :--- | :--- | :--- |
+| **EH-F1** | `200 OK` on validation failure | Client assumes success | `400 BAD_REQUEST` + envelope |
+| **EH-F2** | `genericOk()` / `{ status: 'ok' }` on unimplemented mutation | Fake save (`dev_mock/handler.ts`) | `404`/`501` or real handler + M2 round-trip |
+| **EH-F3** | `200` + empty list to avoid error UI | Hides `500` | Truthful status + `ErrorBlock` |
+| **EH-F4** | `500` for known validation (`validationError`) | Wrong semantics | `400` via `mapServiceError` |
+| **EH-F5** | `2xx` after TX rollback / partial write | Data lie | Rollback + `409`/`500` |
+
+#### Stub without disclosure (**EH-ST**)
+
+| ID | Pattern | Why slop | Explicit alternative |
+| :--- | :--- | :--- | :--- |
+| **EH-ST1** | `Promise.resolve([])` / `{ items: [], total: 0 }` on guard fail | Fake empty API | `undefined` + scope UI / `EmptyState` |
+| **EH-ST2** | `data ?? []` when fetch errored or shape wrong | Masks `TypeError` / error | `Array.isArray` in `*_api.ts`; show `ErrorBlock` |
+| **EH-ST3** | T0 chart/dashboard fill on T1 without `chart_mock` / banner | Silent KPI fiction | Empty charts or labeled mock |
+| **EH-ST4** | `501` route renders blank main | Operator thinks "no data" | `StubBanner` with server message |
+| **EH-ST5** | `EmptyState` when `error && !hasSnapshot` | Confuses error with zero rows | `ErrorBlock` |
+
+#### Silent swallow (**EH-SI**)
+
+| ID | Pattern | Why slop | Explicit alternative |
+| :--- | :--- | :--- | :--- |
+| **EH-SI1** | `catch {}` / `catch { return }` in mutation or fetch | Operator blind | EC4 / EC2 |
+| **EH-SI2** | `catch { setItems([]) }` | **EH-ST1** + data wipe | EC2 |
+| **EH-SI3** | `console.error` only | Not operator-visible | `ErrorBlock` / toast error |
+| **EH-SI4** | `_ = json.Unmarshal`, `_ = w.Write` in handlers | `anti_slop_gate.sh` | Return `writeServiceError` |
+| **EH-SI5** | Handler `return` without writing response | Hung or default 200 | Always `httpresponse.*` |
+| **EH-SI6** | `.catch(() => undefined)` on operator-visible `list*` / `search*` | Same as **EH-SI1** on blocking fetch | `ErrorBlock` / `setActionError`; telemetry may use `fireAndForgetSideEffect` only |
+
+#### Theater (**EH-TH**)
+
+| ID | Pattern | Why slop | Explicit alternative |
+| :--- | :--- | :--- | :--- |
+| **EH-TH1** | `toast.success` before `await` completes | Phantom success | EC5 |
+| **EH-TH2** | Playwright `table.or(empty).or(stub)` | Greens on failure | **Test honesty** L3 |
+| **EH-TH3** | `AppErrorBoundary` as only fetch error path | Render throw != API fail | EC2 on every route |
+| **EH-TH4** | Button click shows "Saved" with no network | UX theater | `waitForResponse` L2 |
+| **EH-TH5** | `handler.test.ts` asserts `200` only on error paths | Fake mock proof | **M3** negative + body |
+
+#### Wrong envelope (**EH-EN**)
+
+| ID | Pattern | Why slop | Explicit alternative |
+| :--- | :--- | :--- | :--- |
+| **EH-EN1** | Plain `{ "message": "..." }` without `error` wrapper | `parseApiError` misses code | `httpresponse.Error` shape |
+| **EH-EN2** | Success DTO shape on 4xx body | Client parse drift | Error envelope only on non-2xx |
+| **EH-EN3** | Bare `[]` when OpenAPI says `{ items, total }` | `.map` crash / lie | `emptyList()` vs `emptyArray()` |
+
+### Decision matrix (operator-visible)
+
+| Situation | Explicit handling | Slop |
+| :--- | :--- | :--- |
+| GET list returns `500` | `ErrorBlock` "Could not load …" | Empty table, no message |
+| PATCH invalid field | `400` + modal `ErrorBlock` with message | `200` + success toast |
+| Feature not in license | `403`/`501` + `StubBanner` | Demo rows without banner |
+| Network / timeout | `ApiError` / `TIMEOUT` + `ErrorBlock` | Stuck loading or fake `[]` |
+| Stale list + refresh fails | Rows remain + error toast/banner | Clear table |
+| T0 dev mock active | `AdminDevBanner` visible | Mock data presented as production |
+| User aborts fetch | No error UI (`isAbortError`) | Red error for cancel |
+
+### T0 `dev_mock` error parity
+
+Mock is **not** exempt from error honesty:
+
+| Explicit | Slop |
+| :--- | :--- |
+| `json(400, { error: { code: 'BAD_REQUEST', message: '...' } })` matching Go | `genericOk()` on PATCH/POST |
+| `handler.test.ts` **M3** negative row | Happy-path-only mock tests |
+| Unknown route -> `undefined` (no intercept) | Catch-all `200` for every POST |
+
+### Agent PR phrases (error lie modes)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "Errors handled" | Grep `catch` in touched files -- every path reaches EC2/EC4/EC6 |
+| "Graceful degradation" | Often **EH-ST1** -- require `StubBanner` or `ErrorBlock` |
+| "Fails closed" | Force 4xx/5xx in Network -- operator must see message, not empty grid |
+| "Mock wired" | POST bad payload -> non-2xx in mock **and** Go |
+| "E2E covers errors" | **L3** spec with `role=alert` / `ErrorBlock`, not `or(stub)` |
+
+### Verification
+
+| Tier | Command / action |
+| :--- | :--- |
+| Server | `go test ./internal/controlplane/ -short -run TestMapServiceError`; handler tests with 4xx rows |
+| Client | DevTools: throttle + 500 -> `ErrorBlock`; mutation 400 -> modal error text |
+| Mock | `handler.test.ts` M3 negative; no new `genericOk()` on mutations without waiver |
+| Static | `bash scripts/ci/static/anti_slop.sh` (`_ = json.Unmarshal` in handlers) |
+
+## Directory tables (markup, lifecycle, performance)
+
+Applies to all admin lists: `DirectoryTable` / `OpsTable`, campaigns directory, customers, click log, ops DLQ, etc. Scroll and chrome: `ui.mdc` (**Data tables**). Reference (column reorder + resize): `web/src/domains/campaigns/list/campaigns_list_table.tsx`.
+
+### DOM model (required shape)
+
+| Layer | Markup | Role |
+| :--- | :--- | :--- |
+| Scroll shell | `.admin-campaigns-table-surface` or `DirectoryTable` wrap | `overflow-x-auto`; sticky `thead` only in **scrollable** campaigns-style wrap |
+| Column widths | `<colgroup><col /></colgroup>` | One `col` per logical column; width from probe or user commit |
+| Header | `<thead><tr><th>` per column | Sort, drag grip, resize separator -- **header-only** interaction state |
+| Body | `<tbody>` + one `<tr>` per server row | `columns.map(columnId => <td key={columnId}>)` -- cell order follows prefs, not row data |
+| Footer | `<tfoot>` optional totals row | Same `columns` order as header |
+
+**Row/column lifecycle:** column order and width live in **prefs** (`columnPrefs`, localStorage) or server query -- not inside row DTOs. **Single owner:** workspace hook writes prefs; table/menu/toolbar call `onColumnPrefsChange` only (`frontend-slop.mdc` **State ownership**). Each body row is `items[i]`; each cell reads `columnId` and picks field/metric from maps (`metricsById`, `customerNameById`). Reorder permutes `<td>` nodes inside each `<tr>`; React `key={columnId}` preserves cell instances across permute.
+
+**Banned:** CSS `display: grid` / flex matrices pretending to be data tables; bespoke row factories that hide column identity; row keys that change on column reorder. Decision table: **Layout contract** above.
+
+### Scroll variants
+
+| Variant | Wrap | Table width | Header |
+| :--- | :--- | :--- | :--- |
+| **Dense directory** (campaigns, wide metrics) | Scrollable; `flex: 1; min-height: 0` | `width: auto` (sum of columns) | Sticky inside wrap |
+| **Ops / small directory** | `admin-table-wrap--static`; clip radius | `width: 100%` | Not sticky |
+
+### Good patterns (required for new / touched tables)
+
+| Pattern | Why |
+| :--- | :--- |
+| Semantic `<table>`, `DirectoryTable` or `OpsTable` | One scroll contract; `ui_slop.sh` bans raw `<table>` in domains |
+| `key={columnId}` on `<td>` / `<th>` | Safe column reorder without remounting row identity |
+| `key={row.id}` on `<tr>` | Stable row across column permute and pagination |
+| Row VM in `useMemo` (`buildCampaignRowVm` pattern) | Format once per row per data change, not per header paint |
+| `React.memo` on body row component | Parent header/drag state must not reconcile N rows |
+| Column resize: mutate `<col>` / CSS var via **ref** during pointermove; commit width to React state on `pointerup` only | Avoids full-table React + layout on every pixel |
+| Column drag highlight: state or `data-*` on **header row only** | `dragover` must not lift state to component that owns `<tbody>` |
+| `requestAnimationFrame` throttle on pointermove / dragover handlers | Caps main-thread work during drag |
+| Reorder prefs: update order array only; **do not** rerun width probe when only order changed | `computeCampaignListColumnWidths` is O(rows x cols) |
+| Server pagination; client renders `items` page only | No `useMemo` filter over full dataset in browser |
+| Virtualized tbody when row count > ~100 (future) | Constant DOM node count |
+
+### Anti-patterns (never; causes jank and main-thread block)
+
+| Anti-pattern | What happens | Evidence in tree |
+| :--- | :--- | :--- |
+| **`setState` on every `dragover` / `pointermove` in table root** | Full reconcile of header + **all body rows** on each event (10-60 Hz) | `campaigns_list_table.tsx` `setDragOverColumnId` on `onDragOver` |
+| **Resize width via React state each pixel** | `setLocalWidths` -> re-render -> update every `<col style>` -> `table-layout: fixed` reflow on all cells | `use_campaign_list_column_resize.ts` `onPointerMove` |
+| **Global `text-overflow: ellipsis` on all `th, td`** | Layout must measure clipped text on width change | `app.css` `.admin-table--campaigns :is(th, td)` |
+| **No `memo` on body rows** | Any parent state change repaints every cell | `CampaignListTableBodyRow` |
+| **Width recompute on column reorder** | Same numeric widths rescanned across all campaigns | `use_campaigns_directory_workspace.ts` `computedColumnWidths` deps on `visibleColumns` order |
+| **Synchronous `localStorage` on drop** | `JSON.stringify` + write blocks drop frame | `saveCampaignListColumnPrefs` in `handleColumnDrop` |
+| **HTML5 DnD on grip with React highlight in parent** | Extra `dragenter`/`dragleave` churn + browser drag image | `campaign_list_table_header_cell.tsx` |
+| **Thousands of cells without virtualization** | Linear DOM cost magnifies any full-table render | ~35 cols x 100+ campaigns |
+
+**Symptom:** visible lag / frozen UI while dragging column or resizing -- not network; **main-thread layout + React reconcile**, not JS byte copying.
+
+### Column reorder (canonical flow)
+
+1. Grip `onDragStart` -> `dataTransfer.setData(COLUMN_DRAG_MIME, columnId)` only; optional opacity on source header.
+2. `onDragOver` -> `preventDefault()`; highlight target via **header-local** state or `data-drag-over` attribute.
+3. `onDrop` -> `moveDataColumn(order, dragged, target)` -> persist prefs -> single React commit.
+4. Body rows receive new `columns` array order; cells permute by `key={columnId}`.
+
+Banned: calling `onColumnPrefsChange` / `saveCampaignListColumnPrefs` on `dragover`; re-fetching list on reorder.
+
+### Column resize (canonical flow)
+
+1. `pointerdown` on separator -> capture pointer; record `startX` / `startWidth`.
+2. `pointermove` -> update **only** target `col` width (ref or CSS variable); optional rAF throttle.
+3. `pointerup` -> `onColumnWidthCommit(columnId, widthPx)` once -> merge into prefs -> one React render.
+
+Banned: spreading `{ ...widths, [id]: w }` into React state on every move event.
+
+### Performance budget (directory tables)
+
+Targets for campaigns-style directory tables (~35 columns, ~100 rows). Falsify in Chrome DevTools Performance before claiming "smooth" reorder/resize.
+
+| Operation | Budget | Tool |
+| :--- | :--- | :--- |
+| Column drag highlight | < 20 ms per `dragover` event | Performance panel (main thread) |
+| Column resize move | < 16 ms per `pointermove` (60 fps) | Same |
+| Table first paint (100 rows) | < 50 ms | Lighthouse or Performance trace |
+| T0 `dev_mock` handler init | < 500 ms (before `AdminDevBanner` fade) | `performance.now()` in dev |
+
+Violations usually mean full-table React reconcile or `table-layout: fixed` reflow on every move -- see anti-patterns above.
+
+### Verification (table performance claims)
+
+| Claim | Falsify |
+| :--- | :--- |
+| "Reorder is smooth" | Performance panel: no long `Recalculate Style` / `Layout` stacks on `dragover` without drop; dragover handler < 20 ms |
+| "Resize is smooth" | Same during `pointermove` < 16 ms; React profiler: body rows not re-rendering |
+| "No full-table render on header interaction" | React DevTools highlight tbody on drag -- must stay idle until drop |
+
+Reference files: `campaign_list_columns.ts` (`moveDataColumn`, `visibleCampaignListColumns`), `campaign_list_table_header_cell.tsx`, `use_campaign_list_column_resize.ts`, `campaign_list_table_body_row.tsx`, `campaign_list_column_widths.ts` (`computeCampaignListColumnWidths`).
+
+
+### Fake promises (banned)
+
+`useResource` and page fetchers must not simulate API success with in-memory stubs.
+
+| Pattern | Verdict | Fix |
+| :--- | :--- | :--- |
+| `if (!customerId) return Promise.resolve([])` | **Lie** -- UI shows empty table as if API returned `[]` | `return Promise.resolve(undefined)`; `hasSnapshot={data != null}`; show scope prompt / `EmptyState` |
+| `return Promise.resolve({ items: [], total: 0 })` when guard fails | **Lie** | `undefined` + no snapshot |
+| `return Promise.resolve(SEED_ROWS)` with non-empty array | **Lie** | Real `*_api.ts` or T0 `dev_mock` only |
+| `data ?? []` when `data` can be wrong-shaped object | **Lie** | Normalize in `*_api.ts` or fix mock; `Array.isArray` guard |
+
+`Promise.resolve(undefined)` when a prerequisite is missing (no id, fetch disabled) is **OK**.
+
+**Audit (2026-09):** `Promise.resolve([])` in scoped pages including `automation_rules_page.tsx`, `saved_views_page.tsx`, `fraud_integrations_page.tsx`, `report_schedules_page.tsx`, `telegram_postbacks_page.tsx`, `margin_guard_*_page.tsx`, `smart_alerts_*_page.tsx`, `brands_page.tsx`, `traffic_optimizer_rules_page.tsx`, `integrations_platform_campaigns_page.tsx`, `brand_creatives_page.tsx`. `selfserve_portal_page.tsx` uses `Promise.resolve({ invoices: [], total: 0 })`.
+
+### Error handling (required; no silent recover)
+
+Full catalog: **Explicit error handling vs error slop** (ES*/EC* explicit, EH-* slop). Summary:
+
+| Surface | Required |
+| :--- | :--- |
+| `useResource` error | Pass `error` to `ErrorBlock`, `creativePanelError`, or directory `error` prop |
+| `error && !hasSnapshot` | Full-page or section `ErrorBlock` -- not empty table |
+| `error && hasSnapshot` | Stale snapshot + inline refresh error (see campaigns directory pattern) |
+| API 501 / license | `StubBanner` with server message -- not blank main |
+| Render throw | `AppErrorBoundary` is backstop only -- not a substitute for fetch error UI |
+| `catch` in handlers | Surface toast or `ErrorBlock`; never `catch { setItems([]) }` |
+
+Banned: silent `catch` to empty; rendering children without checking `error` when `hasSnapshot` is false; relying on Playwright `table.or(empty)` to hide `TypeError` overlays.
+
+## Mock and API lie modes (never)
+
+| Lie mode | What the agent implies | What is actually true | Falsify |
+| :--- | :--- | :--- | :--- |
+| **Fixture page** | "List loads from API" | `domains/` / `pages/` renders hardcoded rows without `*_api.ts` | Grep data source |
+| **Resolved fake fetch** | "Hook fetches backend" | `Promise.resolve([])` or seed array on guard failure | See fake promises table |
+| **Envelope vs array** | "Mock matches API" | `{ items: [] }` vs bare `[]` | OpenAPI + `handler.test.ts` |
+| **Catch-all 200** | "Empty state works" | Wrong envelope; `.map` crash | `emptyArray()` vs `emptyList()` |
+| **Fake status** | "Save works" | `genericOk()` on mutations | Status + round-trip |
+| **Mutation theater** | "Created in mock" | POST 200 but GET unchanged | POST then GET in `handler.test.ts` |
+| **T0 proof for T1** | "Ingest-only verified" | `npm run dev` + mock banner only | T1+, `admin_dev=0`, `curl :8188/health` |
+| **Silent chart KPIs** | "Dashboard shows API metrics" | `isLocalAdminDev()` fills charts without `chart_mock=1` | T1 empty API -> empty charts |
+| **Demo rows as prod** | "Table populated" | Round KPIs without `StubBanner` / dev banner | Server seed only on T1+ |
+| **Incremental mock ID** | `00000000-cust-...-000001`, `user_id: "buyer-1"` in `dev_mock` | Looks like API; fails T1 parity and operator trust | `seedDeterministicUuid` / `newRandomUuid`; `frontend-slop.mdc` **Entity IDs** |
+| **Unrun UI gate** | "admin_web green" | No output | Paste command + exit code |
+
+### Entity IDs (UUID contract; mocks included)
+
+**Operator mandate (2026-09):** even T0 `dev_mock` must use the **same id algorithms as the server**. Incremental counters (`000...001`, `buyer-1`, `padStart(12,'0')`) are slop in fixtures, handlers, and tests -- not "OK because dev only".
+
+Wire `id` / `*_id` fields are **RFC 4122 UUID strings** (v4 runtime, v5 deterministic seed). A number padded into UUID shape is **not** a UUID. `display_id` is a separate eight-digit hash label -- never substitute for `id`.
+
+| Surface | Algorithm | Canonical implementation |
+| :--- | :--- | :--- |
+| Production create | UUID v7 (preferred) or v4 | Go `uuid.NewV7()` / `uuid.New()` |
+| DB seed row `n` (deterministic) | UUID v5 SHA-1 over namespace + `"kind:n"` | Go `seedDeterministicUUID` in `cmd/admin/seed_catalog.go` |
+| T0 fixture row `n` | **Same** v5 as DB seed | TS `seedDeterministicUuid(kind, n)` in `web/src/api/dev_mock/seed_uuid.ts` |
+| T0 mock runtime create (wizard, POST) | UUID v4 random | TS `newRandomUuid()` (`crypto.randomUUID`) |
+| Campaign `display_id` | Polynomial hash of UUID string | Go `CampaignDisplayID`; TS `devDisplayId` in `fixtures.ts` |
+| Ops / template slugs | Short string ids (`postgres`, `tpl-search`) | **Only** non-entity config keys -- never `customer_id` / `campaign_id` / `user_id` |
+
+**Entity kind strings** (must match Go seed): `customer`, `brand`, `creative`, `campaign`, `user` (mock-only users), `deployment`, `license`. Do not invent parallel kind tokens (`cust`, `camp`) in uuid builders.
+
+**Banned everywhere** (production, seed SQL, `dev_mock`, Playwright fixtures):
+
+| Pattern | Example | Why |
+| :--- | :--- | :--- |
+| Sequential UUID tail | `00000000-0000-0000-0000-000000000041` | Load-test counter |
+| Typed prefix + counter | `00000000-cust-4000-8000-000000000001` | Legacy `devUuid()` |
+| `padStart` / `LPAD` uuid builder | `suffix.padStart(12, '0')` | Trivial increment |
+| Slug as wire user id | `user_id: "buyer-1"`, `"user-1"` | OpenAPI UUID field |
+| Integer as id | `id: 1`, `campaign_id: "42"` | Schema mismatch |
+| Reused static id per POST | wizard `devUuid('camp')` every commit | Must be `newRandomUuid()` |
+
+**Required when adding mock entities:**
+
+1. Stable catalog rows: `seedDeterministicUuid('<kind>', seq)` -- add `seed_uuid.test.ts` vector if new kind.
+2. Handler mutations: `newRandomUuid()`; persist in mock store; subsequent GET returns same id.
+3. Foreign keys: reference ids from `DEV_MOCK_*` fixtures -- not ad-hoc strings.
+4. `handler.test.ts`: assert real fixture ids, not `buyer-1`.
+
+**Detection:** `isTrivialSequentialUuid` / `isPlaceholderSeedUuid` (`customer_label.ts`); `bash scripts/ci/admin/ui_slop.sh` (dev_mock generators); Go `TestSeedCatalog_deterministicUUIDsAreRealistic`.
+
+**Audit (2026-09):** Go seed on SHA-1 v5. `dev_mock` migrated off `devUuid()`. `handler.test.ts` owner/consent use `DEV_MOCK_USERS` ids.
+
+### Session evidence (2026-09-04)
+
+`TypeError: e.map is not a function` on `/landers`, `/offers` in T0: `emptyList()` returned envelope; pages used `data ?? []`. Fix wire shape in `dev_mock`, not per-page `.map` guards.
+
+## Test honesty taxonomy (mock unit + Playwright E2E)
+
+**Runtime lies** (fake fetch, wrong mock wire) live in **Mock and API lie modes** above. This section defines **test lies**: green tests that do not prove what agents claim in PRs.
+
+**Rule:** name **test type**, **tier** (T0-T2 from **Verification tiers**), and **proof level** (`M*`, `L*`) in every PR test claim. Citing a green test without level is a lie.
+
+### What each test type can prove
+
+| Test type | Tier | Proves | Never proves |
+| :--- | :--- | :--- | :--- |
+| `handler.test.ts` (`resolveDevMockRequest`) | **T0** | `dev_mock` URL -> status + JSON shape; in-memory POST -> GET | Go handler, SQL, Redis, OpenAPI on server |
+| `domains/**/*.test.ts` (pure) | T0 | Formatting, column math, query string parse | API wiring, mock wire |
+| `npm run dev` + `admin_dev` manual | T0 | UX with fixture data | T1 ingest-only |
+| Playwright @ `:8188` **L0-L1s** | T1/T2 stack | Route shell, login, heading, soft table/empty | Handler correctness, mutation persistence |
+| Playwright **L1+** (`waitForResponse`) | T1/T2 | Live `/api/v1` read contract | Go unit coverage, CH rows |
+| Playwright **L2+** | T1/T2 | Mutation HTTP round-trip visible in UI | Idempotency under retry, outbox |
+| Go `*_handlers_test.go` / integration | Server | Handler + DB contract | React render |
+
+**Banned citations:**
+
+| Claim | Invalid sole evidence |
+| :--- | :--- |
+| "Go handler wired" | `handler.test.ts`, Playwright smoke, `smoke_matrix.spec.js` |
+| "OpenAPI parity shipped" | `handler.test.ts` only (mock side only) |
+| "E2E verified ingest-only" | Playwright without `admin_dev=0` / no `AdminDevBanner` check |
+| "Mutation works" | `*_write.spec.js` that only opens a form |
+| "List loads from API" | `table.or(empty).or(stub)` |
+
+---
+
+### Mock unit tests (`web/src/api/dev_mock/handler.test.ts`)
+
+**Scope:** T0 mock transport only. Entry: `resolveDevMockRequest(path, method?, body?)` + `resetDevMockStore()` when tests mutate store.
+
+#### Real mock test (minimum bar)
+
+| Level | Required | Purpose |
+| :--- | :--- | :--- |
+| **M1 read** | `resetDevMockStore()` if needed; assert `status`; assert **typed body fields** (counts, keys, envelope vs bare array) | Wire shape per OpenAPI |
+| **M2 mutation** | POST/PATCH/DELETE then GET (or list contains row); **same id** after create; store persists | Not `genericOk()` theater |
+| **M3 negative** | Unknown path -> 404; bad input -> 400; holdout row that fails if envelope reverted | Agent-resistant |
+
+**Good examples in tree:** `dev mock wizard session create and commit`, `dev mock clone-preview and owner assignment`, `dev mock bare-array list endpoints return JSON arrays`, `dev mock lists campaigns with filters` (filters_applied + status_totals).
+
+```ts
+// M2 -- POST then GET same id
+resetDevMockStore();
+const created = resolveDevMockRequest('/api/v1/campaigns', 'POST', body);
+const id = (created?.body as { id: string }).id;
+const got = resolveDevMockRequest(`/api/v1/campaigns/${id}`);
+assert.equal((got?.body as { id: string }).id, id);
+```
+
+#### Fake mock tests (never cite as API / handler proof)
+
+| ID | Pattern | Why fake | Example |
+| :--- | :--- | :--- | :--- |
+| **FM1** | Import / re-export smoke | No request exercised | `assert(typeof resolveDevMockRequest)` |
+| **FM2** | Status-only | 200 with any body passes | `assert.equal(r?.status, 200)` only |
+| **FM3** | Tautology | Asserts fixture constant copied into expected | `expect(row.name).toBe(FIXTURE.name)` with no handler |
+| **FM4** | Wrong envelope | List route asserted as bare array (or reverse) | `emptyList()` path tested with `Array.isArray` only on wrong route |
+| **FM5** | Mutation without round-trip | POST 204/200 but store not read back | Save test without GET |
+| **FM6** | Slug / sequential ids | Not server parity | `user_id: 'buyer-1'` in expected body |
+| **FM7** | Domain bypass | `domains/**` builds fake API response inline | Skips `dev_mock` + `handler.test.ts` |
+| **FM8** | Tier confusion | PR says "handler wired" citing `handler.test.ts` | Mock != Go |
+
+**Allowed:** `handler.test.ts` + `seed_uuid.test.ts` vectors for T0 mock parity with `cmd/admin/seed_catalog.go`.
+
+**Gate:** `node --import ./web/scripts/test_aliases.mjs --test --experimental-strip-types web/src/api/dev_mock/handler.test.ts`
+
+---
+
+### Playwright E2E (`web/e2e/`)
+
+**Defaults:** `baseURL` = `http://localhost:8188` (`helpers.js`) -- live control when stack is up. **Not T0** (`:5173` + `dev_mock`).
+
+**Suite audit (honest, 2026-09):**
+
+| Fact | Implication |
+| :--- | :--- |
+| **Zero** specs call `waitForResponse` | No test currently meets **L1** read contract |
+| Most directory specs use `.or(empty).or(stub)` | **L1s** soft pass only |
+| `skipUnlessIntegrationReady` = `/health` probe | Stack up != API contract tested |
+| Smoke bundle (`web_e2e_smoke.sh`) | Curated **L0 / L1s / DOM audit** -- not wiring proof |
+| Nightly (`web_e2e_nightly.sh`) | Full matrix -- same proof levels unless spec upgraded |
+
+#### E2E proof levels (declare in PR)
+
+| Level | Name | Minimum shape | Proves |
+| :--- | :--- | :--- | :--- |
+| **L0** | Route shell | `loginAsAdmin` + `getByRole('heading')` | Route mounts, auth cookie |
+| **L1s** | Soft read | `table.or(empty).or(stub\|forbidden)` | **Almost nothing** -- hides errors and stubs |
+| **L1** | Read contract | `waitForResponse` GET `/api/v1/...` 200 + JSON field + DOM row bound to response | Live list/read path |
+| **L2** | Mutation contract | `waitForResponse` POST/PATCH 2xx + GET or UI shows new/changed row | Create/update path |
+| **L3** | Error contract | Stimulus 4xx/5xx + `role=alert` / `ErrorBlock` -- no `.or(unavailable)` | Fail-closed UI |
+
+**Upgrade path:** new specs and touched `*_write` / directory specs must target **L1+**; do not add new **L1s** soft OR rows.
+
+#### Fake E2E (never cite as wiring / handler proof)
+
+| ID | Pattern | Symptom | File examples |
+| :--- | :--- | :--- | :--- |
+| **FE1** | Heading-only smoke | Green while API 500 / mock at :5173 | `smoke_matrix.spec.js` |
+| **FE2** | Soft OR pass | Passes on stub, forbidden, empty, or table | `automation_rules.spec.js`, `portals_smoke.spec.js`, `customers_list.spec.js`, `creative_flows.spec.js` |
+| **FE3** | Silent early return | `if (count === 0) return` mid-test | `campaign_flows.spec.js` |
+| **FE4** | Skip as coverage | `test.skip` when no seed row | `campaign_editor.spec.js` (pattern) |
+| **FE5** | Mutation theater | Form/dialog visible; no network assert | `settings_apply.spec.js`, many `*_write.spec.js` |
+| **FE6** | Health-only setup | `skipUnlessIntegrationReady` only | Most specs' `beforeEach` |
+| **FE7** | Tautology | Always-true assert | `ui_buttons_audit.spec.js` `toBeGreaterThanOrEqual(0)` |
+| **FE8** | Stub-as-success | Assert absence of `"404"` text | `ops_console.spec.js` |
+| **FE9** | Tier undeclared | No `AdminDevBanner` absent / `admin_dev=0` | Any `:8188` run while UI could be mock |
+| **FE10** | Toast-only mutation | Click Save; no `waitForResponse` | Patch/write specs without network |
+| **FE11** | DOM chrome audit only | Buttons exist; no API | `ui_buttons_audit.spec.js` (valid **L0** chrome only -- not data) |
+| **FE12** | Smoke / nightly = CI gate | `ADMIN_WEB_E2E_SMOKE=1` cited as `pr_fast` | Optional tier; not default merge proof |
+
+#### Real E2E (minimum bar when claiming L1+)
+
+**Bad** -- heading-only; does not falsify mock intercept or API shape:
+
+```javascript
+test('campaigns load', async ({ page }) => {
+  await page.goto('/campaigns');
+  await expect(page.locator('h1')).toContainText('Campaigns');
+});
+```
+
+**Bad** -- soft OR (FE2):
+
+```javascript
+await expect(table.or(empty).or(stub)).toBeVisible();
+```
+
+**Good** -- **L1** read contract:
+
+```javascript
+test('campaigns load', async ({ page }) => {
+  await loginAsAdmin(page);
+  await page.goto('/campaigns');
+  const response = await page.waitForResponse(
+    (r) => r.url().includes('/api/v1/campaigns') && r.status() === 200,
+  );
+  const json = await response.json();
+  expect(json.items).toEqual(expect.any(Array));
+  if (json.items.length > 0) {
+    await expect(page.getByRole('cell', { name: json.items[0].name })).toBeVisible();
+  } else {
+    await expect(page.getByText('No campaigns', { exact: true })).toBeVisible();
+  }
+});
+```
+
+**Good** -- **L2** mutation (sketch):
+
+```javascript
+const post = page.waitForResponse((r) => r.request().method() === 'POST' && r.url().includes('/api/v1/team/invites'));
+await page.getByRole('button', { name: 'Send invite' }).click();
+expect((await post).status()).toBe(201);
+await expect(page.getByText(uniqueEmail)).toBeVisible();
+```
+
+**T1 ingest-only preamble** (required when claiming live API):
+
+```javascript
+await page.goto('/campaigns?admin_dev=0');
+await expect(page.getByText('Development mock API', { exact: false })).toHaveCount(0);
+```
+
+#### Required when claiming E2E proof
+
+| Claim | Minimum test shape |
+| :--- | :--- |
+| Handler wired (UI) | **L1** `waitForResponse` on `/api/v1/...` + JSON shape + DOM bound to payload |
+| Mutation wired | **L2** POST/PATCH response + GET or visible row change |
+| T1 ingest-only | `:8188`, `admin_dev=0`, no dev banner, **L1+** |
+| Error path | **L3** `ErrorBlock` / `role=alert` -- not `or(unavailable)` |
+| Empty state | Dedicated empty copy when `items.length === 0` -- not OR with stub |
+
+#### CI tiers (honest)
+
+| Gate | Command | Proof ceiling |
+| :--- | :--- | :--- |
+| Default `pr_fast` | No Playwright | Static + `handler.test.ts` (T0 mock) |
+| Smoke (optional) | `ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web_e2e_smoke.sh` | **L0-L1s** shell |
+| Nightly (optional) | `ADMIN_WEB_E2E_NIGHTLY=1 bash scripts/ci/admin/web_e2e_nightly.sh` | Same levels until specs upgraded |
+
+Do not cite smoke green as handler or ingest-only proof.
+
+## RBAC (server-authoritative; client UX only)
+
+**Binding:** role and permission checks on **data access** live in Go (`control-plane.mdc` **RBAC**). The browser may hide nav links; it **must not** be the only gate. Media buyer (`MB`) and other scoped roles must get **no operator payload** when opening forbidden routes by URL.
+
+### What the client may do (UX only)
+
+| ID | Allowed | Purpose |
+| :--- | :--- | :--- |
+| **RB-C1** | `filterNavItems` / `permissions.includes` on `nav_config.ts` | Hide sidebar and command palette entries |
+| **RB-C2** | Disable buttons when `!permissions.includes('campaigns:write')` | Prevent pointless clicks; server still enforces on PATCH |
+| **RB-C3** | `ErrorBlock` / `StubBanner` on `ApiError` status `403` | Operator-visible deny |
+| **RB-C4** | Optional `<Navigate to="/forbidden" />` when route lacks permission | UX redirect only -- cite **RB-C4**; not security proof |
+
+### Client RBAC slop (never ship)
+
+| ID | Pattern | Example in tree | Required |
+| :--- | :--- | :--- | :--- |
+| **RB-C5** | `user.role === 'MB'` (or any role string) as **sole** page gate | Future anti-pattern | Server `403` on every API for that page |
+| **RB-C6** | `Promise.resolve([])` / empty table when fetch returns `403` | **EH-ST1** + RBAC leak fiction | **RB-C3** |
+| **RB-C7** | `catch` on 403 -> navigate home silently | Operator blind | Show forbidden copy (`admin_error.ts`) |
+| **RB-C8** | `dev_mock` returns `200` on operator route for all roles | T0 lie | Mock must `403` when session role lacks `x-permissions` (or document T0 admin-only) |
+| **RB-C9** | E2E soft OR passes on `forbidden` text | `portals_smoke.spec.js` **FE2** | **L3** with `waitForResponse` 403 + alert |
+
+### Client RBAC lie modes (agent PR prose)
+
+| ID | Lie | Falsify |
+| :--- | :--- | :--- |
+| **RB-L1** | "Route protected" with only React Router / nav filter | `curl -b cookie` as `MB` -> `403` on page's primary GET |
+| **RB-L2** | "User cannot access Ops" because link hidden | Direct `/ops` + `GET /api/v1/ops/home` must `403` for `MB` |
+| **RB-L3** | `session/bootstrap` `permissions` cited as enforcement | Name handler `RequirePermission` + negative test **RB-S3** |
+| **RB-L4** | Playwright login as admin proves RBAC | Run as seeded `MB` / role `U` on denied path |
+| **RB-L5** | Client-side `canAccessSettings` without OpenAPI perm | Map to `settings:read` + server test |
+
+### Deep-link contract (MB example)
+
+Operator scenario: media buyer bookmarks `/ops/dlq`.
+
+| Step | Expected |
+| :--- | :--- |
+| SPA route | May mount `OpsDlqPage` (no route guard today) |
+| `GET /api/v1/ops/dlq` | `403` `FORBIDDEN` (requires `shards:read`) |
+| UI | `ErrorBlock` or section `StubBanner` -- **not** empty table, not mock rows |
+| Mutation buttons | Disabled or fail on click with same `403` |
+
+Same pattern for `/audit` (`audit:read`), `/settings` (`settings:read`), `/rtb` (`rtb:read`).
+
+### Verification (RBAC UI claims)
+
+```bash
+rg -n "filterNavItems|permissions\.includes|user\?\.role" web/src/pages web/src/domains web/src/shell
+rg -n "RequirePermission|RequireAnyPermission" internal/opsadmin internal/controlplane --glob '*.go'
+```
+
+Server proof: `control-plane.mdc` **Verification** commands. UI claim without **RB-S*** or **RB-L*** falsify row = **AP-L2**.
+
+### Agent checklist hook
+
+When touching admin pages or handlers, add checklist row: denied role integration test or document **Open in tree** gap per `control-plane.mdc` **Known gaps**.
+
+## Allowed mock surfaces (whitelist)
+
+| Surface | Gate | Must |
+| :--- | :--- | :--- |
+| `web/src/api/dev_mock/**` | `isAdminDevMode()` in `client.ts` only | OpenAPI wire shape; server-parity UUIDs (`seed_uuid.ts`); `handler.test.ts` |
+| `web/scripts/dev_mock_proxy.mjs` | Vite dev server only | Never imported from `pages/` / `domains/` |
+| `dashboard_series_mock.ts` | `?chart_mock=1` or explicit T0 empty preview | Off on T1+ when control is healthy |
+| `AdminDevBanner` | T0 UX | States mock API |
+
+## `dev_mock` wire contract
+
+1. Read OpenAPI `operationId` and response schema.
+2. Read Go handler JSON encode for the same path.
+3. Match top-level shape and status code.
+4. Entity ids: `seedDeterministicUuid` / `newRandomUuid` per **Entity IDs** above -- same algorithms as `cmd/admin/seed_catalog.go` and runtime handlers.
+5. Add `handler.test.ts` row.
+
+| Response style | Examples | Mock helper |
+| :--- | :--- | :--- |
+| Bare array | `GET /api/v1/landers`, `/offers`, `/flows` | `emptyArray()` |
+| List envelope | `GET /api/v1/campaigns`, `/customers` | `emptyList()` or domain builder |
+| Object snapshot | `GET /api/v1/cost-sync/snapshot` | `{ networks: [], credentials: [], history: [] }` |
+| Empty success | consent, logout | `204` |
+| Error | missing id | `404` + `{ error: { code, message } }` |
+
+## Wire safety (cross-ref; server-owned)
+
+JSON depth/size limits are enforced on the **Go handler**, not in browser mock code. Do not invent admin limits (e.g. 10 MiB / depth 100) in frontend docs -- cite repo constants.
+
+| Surface | Limit | Source |
+| :--- | :--- | :--- |
+| Admin `/api/v1` request bodies | 64 KiB default (`ReadLimitedBody` / `DecodeRequestOrBadRequest`) | `pkg/coldpath.DefaultMaxBody` (`cold-path.mdc`) |
+| Track hot-path JSON parse | Max depth 16; max key pairs 10000 | `internal/ingest/parser/scan.go` (`parser.mdc`, `hot-path.mdc`) |
+| OpenRTB JSON | Max depth 32 | same file |
+
+**Gap (honest):** admin cold path uses stdlib `json.Unmarshal` without an explicit nesting-depth cap. Deep JSON bomb tests belong in `pkg/coldpath` / handler tests, not Playwright. Frontend: do not add custom recursive JSON parsers on API responses; use normal `fetch` + typed parse and surface `ErrorBlock` on non-2xx.
+
+## Agent checklist (frontend PR)
+
+| Step | Action |
+| :--- | :--- |
+| 0 | **Agent execution protocol:** P0-P4 complete; report format with catalog IDs; no subjective slop |
+| 1 | State tier (T0 / T1 / T1+ / T2) |
+| 2 | No new `truncate` / inline `style` on touched tables/headings/numbers |
+| 3 | No `Promise.resolve([])` stubs; use `undefined` + empty/scope UI |
+| 4 | `error` wired to `ErrorBlock` / directory on every new fetch |
+| 5 | Mock changes: OpenAPI shape + `handler.test.ts` |
+| 6 | T1+ claim: `admin_dev=0`, no mock banner, control healthy |
+| 7 | E2E claim: name spec file + **proof level L1+** (`waitForResponse`) -- not smoke/L1s |
+| 7b | Mock claim: name `handler.test.ts` row + **M1/M2** -- never cite as Go handler proof |
+| 8 | Table drag/resize: header-local interaction state; no tbody re-render on `dragover`/`pointermove` |
+| 9 | Overlay: class A/B/C correct; anchor floats reposition + inner scroll; no height drift in one filter row |
+| 10 | Mock entity ids: `seedDeterministicUuid` / `newRandomUuid` only; no incremental uuid or slug `user_id` |
+| 11 | BEM banned: no new `__` hooks; migrate legacy BEM on touch; no `!` utility overrides on `admin-*` shells |
+| 12 | Table perf claim: cite performance budget or falsify with DevTools |
+| 13 | T1 claim: complete **T1 sign-off checklist** |
+| 14 | Layout: `gap` only inside one group; inter-group space via grid tracks; data directories use semantic table |
+| 15 | State: one owner per logical resource; leaves call callbacks only -- no duplicate `save*` / `useState` |
+| 16 | Coalescing: R1 refresh 500 ms leading + in-flight; R2 mutations `loading` until settled |
+| 17 | UX: one primary path per intent; class-C dismiss vectors; mutation script table in PR if new flow |
+| 18 | Mutations: server S1-S7 + client C1-C5; `handler.test.ts` M3 negative; UI shows `ApiError` |
+| 19 | Composition: **RP-1**-**RP-6** on touched shell/overlay fetch components |
+| 20 | Fan-out: **RF-*** -- one intent must not start avoidable parallel lanes; paste Network count |
+| 19 | Errors: ES*/EC* on touched paths; no EH-F/EH-ST/EH-SI; `StubBanner` when 501 -- not blank |
+| 20 | RBAC: server `RequirePermission` + `403` envelope; client RB-C* only UX; falsify **RB-L*** for access claims |
+| 21 | Layout drift: map symptom to **VL-***; **VL-D3** grep on band; no `!` / wrapper fixes (**VL-L3**, **VL-L4**) |
+| 22 | Paste `ui_slop.sh` / `handler.test.ts` when claiming fix |
+
+## CI gates
+
+| Gate | Command |
+| :--- | :--- |
+| UI copy/layout slop | `bash scripts/ci/admin/ui_slop.sh` |
+| Admin orchestrator | `bash scripts/ci/admin/web.sh` |
+| Dev mock regression | `node --import ./web/scripts/test_aliases.mjs --test --experimental-strip-types web/src/api/dev_mock/handler.test.ts` |
+| E2E smoke (optional) | `ADMIN_WEB_E2E_SMOKE=1 bash scripts/ci/admin/web_e2e_smoke.sh` |
+
+## Related rules
+
+`anti-slop.mdc`, `ui.mdc`, `frontend-modular.mdc`, `cold-path.mdc`, `quality.mdc`, `boundaries.mdc`, `docs/DEVELOPMENT.md` (Admin Web UI Development).

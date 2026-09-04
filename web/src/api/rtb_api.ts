@@ -1,4 +1,4 @@
-import { apiFetch, apiJson } from './client.js';
+import { apiFetch, apiJson, apiJsonArray } from './client.js';
 import type {
   OpenRtbValidationResult,
   RtbDeal,
@@ -12,7 +12,7 @@ import type {
 } from './types.js';
 
 export async function listRtbDeals(signal?: AbortSignal): Promise<RtbDeal[]> {
-  return apiJson<RtbDeal[]>('/api/v1/rtb/deals', { signal });
+  return apiJsonArray<RtbDeal>('/api/v1/rtb/deals', { signal });
 }
 
 export async function getRtbDeal(id: number, signal?: AbortSignal): Promise<RtbDeal> {

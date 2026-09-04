@@ -33,7 +33,7 @@ export function MarginGuardPoliciesPage() {
   const { data, error, fetching } = useResource(
     (signal) => {
       if (!shouldFetch) {
-        return Promise.resolve([]);
+        return Promise.resolve(undefined);
       }
       return listMarginGuardPolicies({ campaign_id: appliedCampaignId }, signal);
     },
@@ -44,8 +44,6 @@ export function MarginGuardPoliciesPage() {
   const [creating, setCreating] = useState(false);
   const [createSuccess, setCreateSuccess] = useState(false);
   const [actionError, setActionError] = useState<Error | undefined>();
-
-  const items = data ?? [];
 
   const onCreateDraftChange = useCallback((patch: Partial<PolicyCreateDraft>) => {
     setCreateDraft((prev) => ({ ...prev, ...patch }));
@@ -98,7 +96,7 @@ export function MarginGuardPoliciesPage() {
 
   return (
     <MarginGuardPoliciesDirectory
-      items={items}
+      items={data}
       appliedCampaignId={appliedCampaignId}
       draftCampaignId={draftCampaignId}
       createDraft={createDraft}
@@ -107,7 +105,7 @@ export function MarginGuardPoliciesPage() {
       error={error}
       actionError={actionError}
       createSuccess={createSuccess}
-      hasSnapshot={!shouldFetch || data != null}
+      hasSnapshot={data != null}
       onDraftCampaignIdChange={setDraftCampaignId}
       onApplyCampaignScope={applyCampaignScope}
       onCreateDraftChange={onCreateDraftChange}

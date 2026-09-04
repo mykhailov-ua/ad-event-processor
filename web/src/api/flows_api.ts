@@ -1,8 +1,8 @@
-import { apiJson } from './client.js';
+import { apiJson, apiJsonArray } from './client.js';
 import type { CreateFlowRequest, Flow, UpdateFlowRequest } from './types.js';
 
 export async function listFlows(signal?: AbortSignal): Promise<Flow[]> {
-  return apiJson<Flow[]>('/api/v1/flows', { signal });
+  return apiJsonArray<Flow>('/api/v1/flows', { signal });
 }
 
 export async function getFlow(id: string, signal?: AbortSignal): Promise<Flow> {

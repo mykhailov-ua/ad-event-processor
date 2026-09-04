@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -24,8 +24,6 @@ export function SupplySellersPage() {
     [reloadToken],
   );
 
-  const items = useMemo(() => data ?? [], [data]);
-
   const [draftSellerId, setDraftSellerId] = useState('');
   const [draftDomain, setDraftDomain] = useState('');
   const [draftSellerType, setDraftSellerType] = useState('');
@@ -36,8 +34,11 @@ export function SupplySellersPage() {
   const [createSuccess, setCreateSuccess] = useState(false);
 
   useEffect(() => {
+    if (!data?.length) {
+      return;
+    }
     const next: Record<number, SellerEditRow> = {};
-    for (const row of items) {
+    for (const row of data) {
       next[row.id] = {
         seller_id: row.seller_id,
         domain: row.domain,
@@ -46,7 +47,7 @@ export function SupplySellersPage() {
       };
     }
     setEditRows(next);
-  }, [items]);
+  }, [data]);
 
   const bumpReload = useCallback(() => {
     setReloadToken((value) => value + 1);
@@ -143,7 +144,7 @@ export function SupplySellersPage() {
 
   return (
     <SupplySellersDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

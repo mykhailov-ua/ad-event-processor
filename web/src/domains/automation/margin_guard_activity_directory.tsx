@@ -30,7 +30,7 @@ import { AutomationNav, automationPanelError } from '@/domains/automation/automa
 import { displayTimestamp } from '@/lib/display';
 
 export type MarginGuardActivityDirectoryProps = {
-  items: MarginGuardActivity[];
+  items?: MarginGuardActivity[];
   appliedCampaignId: string;
   draftCampaignId: string;
   draftPlacementId: string;
@@ -153,10 +153,10 @@ export function MarginGuardActivityDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No activity" description="No margin guard activity for this campaign." />
       ) : (
-        <DirectoryTable>
+        <DirectoryTable horizontalScroll>
             <TableHeader>
               <TableRow>
                 <DirectoryTableHead>Placement</DirectoryTableHead>
@@ -166,13 +166,13 @@ export function MarginGuardActivityDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={row.id}>
                   <TableCell className="font-mono text-xs">{row.placement_id}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{row.action}</Badge>
                   </TableCell>
-                  <TableCell className="max-w-md truncate">{row.reason}</TableCell>
+                  <TableCell className="whitespace-nowrap">{row.reason}</TableCell>
                   <TableCell>{displayTimestamp(row.created_at)}</TableCell>
                 </TableRow>
               ))}

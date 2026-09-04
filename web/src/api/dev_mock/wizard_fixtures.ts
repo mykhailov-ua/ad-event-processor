@@ -5,6 +5,7 @@ import type {
 } from '@/api/types';
 
 import { DEV_MOCK_CUSTOMERS } from './fixtures.ts';
+import { newRandomUuid } from './seed_uuid.ts';
 
 const TEMPLATES: CampaignOnboardingTemplate[] = [
   {
@@ -69,10 +70,6 @@ const sessions = new Map<string, StoredWizardSession>();
 
 function templateByKey(key: string): CampaignOnboardingTemplate | undefined {
   return TEMPLATES.find((row) => row.key === key);
-}
-
-function devUuid(prefix: string): string {
-  return `00000000-${prefix}-4000-8000-000000000001`;
 }
 
 function defaultSteps(template: CampaignOnboardingTemplate) {
@@ -150,7 +147,7 @@ export function devMockWizardSessionPost(body: Record<string, unknown>): MockWiz
     if (!template) {
       return { status: 400, body: { error: 'unknown template_key' } };
     }
-    const sessionId = devUuid('wizd');
+    const sessionId = newRandomUuid();
     const now = new Date();
     const expires = new Date(now.getTime() + 24 * 60 * 60 * 1000);
     const steps = defaultSteps(template);
@@ -216,7 +213,7 @@ export function devMockWizardSessionPost(body: Record<string, unknown>): MockWiz
     const customer = DEV_MOCK_CUSTOMERS.find((row) => row.id === session.customer_id);
     const result: CampaignWizardCommitResult = {
       campaign: {
-        id: devUuid('camp'),
+        id: newRandomUuid(),
         name: session.steps.traffic_source?.name ?? customer?.name ?? 'New campaign',
       },
       published: Boolean(body.publish),

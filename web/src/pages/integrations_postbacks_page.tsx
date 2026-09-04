@@ -11,11 +11,12 @@ import {
   IntegrationsPostbacks,
   type IntegrationsPostbacksTab,
 } from '@/domains/integrations/integrations_postbacks';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 export function IntegrationsPostbacksPage() {
   const [tab, setTab] = useState<IntegrationsPostbacksTab>('configs');
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const { data, error, fetching } = useResource(
     (signal) => fetchPostbacksSnapshot(signal),
@@ -71,7 +72,7 @@ export function IntegrationsPostbacksPage() {
         test_event_code: draftTestEventCode.trim() || undefined,
       });
       setSaveSuccess(true);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -84,6 +85,7 @@ export function IntegrationsPostbacksPage() {
     draftTargetEvent,
     draftTestEventCode,
     draftUrlTemplate,
+    bumpRefresh,
   ]);
 
   const onTest = useCallback(async () => {
@@ -109,13 +111,13 @@ export function IntegrationsPostbacksPage() {
     setRetryError(undefined);
     try {
       await retryPostbackDlq(id);
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setRetryError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setRetryingId(undefined);
     }
-  }, []);
+  }, [bumpRefresh]);
 
   return (
     <IntegrationsPostbacks

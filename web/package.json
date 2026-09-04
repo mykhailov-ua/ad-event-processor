@@ -8,6 +8,7 @@
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import ./scripts/test_aliases.mjs --test --experimental-strip-types 'src/**/*.test.ts'",
+    "bench": "node --expose-gc --experimental-strip-types --import ./scripts/register_ts.mjs ./scripts/bench/run.mjs && node --expose-gc --experimental-strip-types --import ./scripts/register_ts.mjs ./scripts/bench/hot_path.mjs",
     "test:e2e": "npm test --prefix e2e"
   },
   "dependencies": {

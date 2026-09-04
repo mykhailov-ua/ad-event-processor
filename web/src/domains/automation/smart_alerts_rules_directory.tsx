@@ -34,7 +34,7 @@ import {
 import { AutomationNav, automationPanelError } from '@/domains/automation/automation_nav';
 
 export type SmartAlertsRulesDirectoryProps = {
-  items: SmartAlertRule[];
+  items?: SmartAlertRule[];
   appliedCustomerId: string;
   draftCustomerId: string;
   createDraft: SmartAlertRuleEditDraft;
@@ -219,7 +219,7 @@ export function SmartAlertsRulesDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No alert rules" description="No smart alert rules for this customer." />
       ) : (
         <DirectoryTable>
@@ -236,7 +236,7 @@ export function SmartAlertsRulesDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => {
+              {(items ?? []).map((row) => {
                 const ruleId = row.id ?? '';
                 const draft = ruleDrafts[ruleId] ?? smartAlertRuleEditFromRow(row);
                 const updating = updatingRuleId === ruleId;

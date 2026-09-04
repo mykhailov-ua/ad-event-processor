@@ -68,11 +68,119 @@ Payment webhook -> payment.payment_outbox -> in-process SettlementHandler -> bal
 - No synchronous balance update in webhook handler beyond outbox insert.
 - Budget authority: Postgres `current_spend` + `balance_ledger`.
 
-## RBAC and license
+## RBAC (server-authoritative)
 
-- Permissions on routes: `campaigns:read`, `customers:write`, etc.
-- License snapshot gates modules (multi-region, CH paths).
-- Hot path reads JWT file snapshot only - not per-request license HTTP.
+**Binding:** access control is enforced **only** in Go on `/api/v1/*` before handler business logic. The React SPA, `permissions` on session bootstrap, and nav filters are **UX hints** -- never the security boundary. A media buyer (`MB`) or any under-privileged role **must not** read or mutate operator data via direct URL, DevTools, or crafted `fetch` -- only `401` / `403` / redacted DTOs.
+
+Cross-ref: client lie modes **RB-C***, **RB-L*** in `frontend-slop.mdc`; field mask fault `fault-tests.mdc`.
+
+### Enforcement planes (all required on new routes)
+
+| Plane | When | HTTP | Implementation |
+| :--- | :--- | :--- | :--- |
+| **1. Authentication** | No valid session / API key / revoked token | `401` `UNAUTHORIZED` | `adminauth.Middleware.authenticate` |
+| **2. Permission (RBAC)** | Role lacks `Perm*` for route | `403` `FORBIDDEN` | `RequirePermission` / `RequireAnyPermission` on **every** mutating and listing handler |
+| **3. Tenant scope** | `customer_id` / campaign not owned by session | `403` `FORBIDDEN` | `authorizeCustomerAccess`, `authorizeCampaignAccess`, list filters for bound roles |
+| **4. Field mask** | Masked role may read campaign shell but not secrets | `200` with fields omitted | `authz.MaskLevel`, `IsMaskedMutation`, DTO redaction in domain handlers |
+
+Fail-closed: missing middleware wiring = security bug. Do not rely on "page not in nav" or client `role ===` checks.
+
+### Canonical sources (single matrix; keep in sync)
+
+| Source | Role |
+| :--- | :--- |
+| `deploy/operator/roles.yaml` | Operator-deployed role -> permission list (loaded into `authz.Store`) |
+| `internal/control/http/rbac.go` | `Perm*` constants, embedded `rolePermissions`, `HasPermission` fallback |
+| `internal/controlplane/authz/` | `Snapshot.Has`, scope, mask, DB per-user grants (`policy_db.go`) |
+| `api/openapi/paths/*.yaml` `x-permissions` | Documented contract; must match mux `Require*` on wire |
+| `internal/controlplane/adminauth/middleware.go` | Attaches `authz.Snapshot` after auth; enforces permission |
+
+`InitPolicyStore()` merges embedded matrix + YAML (`internal/control/http/policy_init.go`). Handler checks use `EffectivePermissionsDB` when policy store is configured.
+
+### Role codes (wire)
+
+| Code | Role | Scope (`roles.yaml`) | Typical surface |
+| :--- | :--- | :--- | :--- |
+| `A` | Admin | global | Full operator |
+| `M` | Manager | customer | Customer admin |
+| `U` | User | customer | Campaign editor |
+| `MB` | Media buyer | team | Campaigns + read customers -- **no** ops, audit, settings, RTB, shards |
+| `TL` | Team lead | team | Campaigns + billing read |
+| `B` | Buyer | team | Masked campaign read + pause only |
+| `S` | Support | global | Masked read + audit |
+| `P` | Publisher | customer | Supply scoped + customers read |
+
+**Media buyer (`MB`) permissions (canonical):** `campaigns:read`, `campaigns:write`, `customers:read` only (`deploy/operator/roles.yaml`). **Denied examples:** `shards:read` (all `/api/v1/ops/*` home paths), `audit:read` (`/fraud`, `/audit`), `settings:read`, `rtb:read`, `blacklist:write`, `ops:write`.
+
+### Handler wiring (mandatory)
+
+| Rule | Detail |
+| :--- | :--- |
+| Every new `/api/v1` route | Wrapped with `RequirePermission` or `RequireAnyPermission` matching OpenAPI `x-permissions` |
+| Ops surface | `shards:read` / `shards:write` / `ops:write` per `internal/opsadmin/doc.go` |
+| Self-serve | `RequireSelfServe` + API-key scope restriction (`selfserve.RestrictSnapshotForAPIKeyScopes`) |
+| List endpoints | Permission on route **and** row filter for `ScopeCustomer` / `ScopeTeam` / bound `customer_id` |
+| Mutations on masked roles | Reject budget/url changes when `IsMaskedMutation` or domain `ErrForbidden` |
+| Stubs | `StubHTTPHandlers` still require `route.Permission` (`admin_static.go`) |
+
+**Banned:** handler that reads `customer_id` from query/body without `authorizeCustomerAccess`; `_ = err` on authz failure; `200` + empty body to hide `403`.
+
+### Wire envelope (permission denied)
+
+```json
+{"error":{"code":"FORBIDDEN","message":"forbidden: insufficient permissions"}}
+```
+
+Status `403`. Same shape as other admin errors (`pkg/httpresponse`, `frontend-slop.mdc` **ES3**). Client must show `ErrorBlock` / `StubBanner` -- not fake empty lists (**EH-ST1**).
+
+### SPA and deep links (honest model)
+
+| Layer | Blocks route mount? | Blocks data? |
+| :--- | :--- | :--- |
+| React Router (`app_routes.tsx`) | **No** per-permission guard today | N/A |
+| `filterNavItems` / command palette | Hides nav link only | **No** |
+| `/api/v1/*` handlers | N/A | **Yes** -- authoritative |
+
+**Required behavior:** MB typing `/ops` or `/settings` may render page chrome; **every** API call on that page returns `403` (or license `403`) and UI shows forbidden state -- **zero** rows of operator data, **no** `Promise.resolve([])` substitute.
+
+Optional future UX: client `PermissionGate` redirect to `/forbidden` -- cite as **RB-C4** (UX only); still require server integration test.
+
+### Session bootstrap (`GET /api/v1/session/bootstrap`)
+
+Returns `user.permissions` for nav (`resolveBootstrapAuthUser` uses `GetPermissionsForRole`). **Not** used for authorization decisions on server. **Drift risk:** DB-granted permissions may differ from bootstrap list until bootstrap resolver uses `Snapshot` -- do not cite bootstrap as proof of effective ACL.
+
+### Server RBAC lie modes (never)
+
+| ID | Lie | Falsify |
+| :--- | :--- | :--- |
+| **RB-S1** | New handler without `RequirePermission` | `rg RequirePermission` on registered path |
+| **RB-S2** | OpenAPI `x-permissions` != mux wrapper | Diff OpenAPI path vs `Register` in domain handler |
+| **RB-S3** | Client nav hide cited as security | `curl` / httptest as `MB` -> `403` on API |
+| **RB-S4** | `200` + empty list instead of `403` | Integration test expects `FORBIDDEN` |
+| **RB-S5** | Masked role receives `target_url` / budget | `TestFault_RBACMaskEnforced` |
+| **RB-S6** | Cross-customer read | `TestCustomersList_Handler` role `U` other customer -> `403` |
+| **RB-S7** | Publisher reads campaigns list | `TestPublisher_campaignsForbiddenWithoutCampaignPerm` |
+
+### Verification (paste on RBAC claims)
+
+```bash
+go test ./internal/controlplane/authz/ -short -run 'TestPolicyPermissionMatrix|TestMaskLevelFromPermissions' -count=1
+go test ./internal/controlplane/ -short -run 'TestManagementAPI_RoleUserForbidden|TestCustomersList_Handler|TestFault_RBACMaskEnforced|TestPublisher_campaignsForbidden' -count=1
+```
+
+Integration tier (`make test-integration`) required for new tenant-isolation or mask paths. New permission on existing route: add row to `deploy/operator/roles.yaml`, `roles.yaml` gate if present, OpenAPI `x-permissions`, handler wrapper, and **negative** httptest for denied role (prefer `MB` or `U` on operator-only path).
+
+### Known gaps (honest; fix on touch)
+
+| Gap | Risk | Remediation |
+| :--- | :--- | :--- |
+| `/ops` nav item has no `permission` in `nav_config.ts` | MB sees Ops link; APIs still `403` | Add `permission: 'shards:read'` (UX) |
+| No React route-level permission guard | Deep link shows shell | Server must 403 all fetches; optional `PermissionGate` |
+| Bootstrap `permissions` from static matrix | Nav drift vs DB grants | Align resolver with `Snapshot` when touching bootstrap |
+
+## License (module gates)
+
+License snapshot gates modules (multi-region, CH paths, SKU features) **after** auth and RBAC. Distinct from role permission: may return `403` `LICENSE_FORBIDDEN`. Hot path reads JWT file snapshot only - not per-request license HTTP.
 
 ## Reporting data sources
 
@@ -93,4 +201,4 @@ bash scripts/ci/static/anti_slop.sh
 
 ## Related rules
 
-`boundaries.mdc`, `cold-path.mdc`, `code-style.mdc`, `data-layer.mdc`, `licensing.mdc`.
+`boundaries.mdc`, `cold-path.mdc`, `code-style.mdc`, `data-layer.mdc`, `frontend-slop.mdc`, `licensing.mdc`.

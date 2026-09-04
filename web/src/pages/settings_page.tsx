@@ -8,6 +8,7 @@ import {
   patchPlatformSettings,
 } from '@/api/settings_api';
 import { PlatformSettings } from '@/domains/settings/platform_settings';
+import { useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
 import { useResource } from '@/api/use_resource';
 
 function readBootstrapComplete(payload: Record<string, unknown> | undefined): boolean {
@@ -30,7 +31,7 @@ function readRestartRequired(payload: Record<string, unknown> | undefined): bool
 }
 
 export function SettingsPage() {
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
   const [draftPatchJson, setDraftPatchJson] = useState('');
   const [draftInstallRoot, setDraftInstallRoot] = useState('');
   const [draftInstallToken, setDraftInstallToken] = useState('');
@@ -70,13 +71,13 @@ export function SettingsPage() {
       setPatchSuccess(true);
       toast.success('Platform settings updated');
       setDraftPatchJson('');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setPatchError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setPatching(false);
     }
-  }, [draftPatchJson]);
+  }, [draftPatchJson, bumpRefresh]);
 
   const onPatchPlatform = useCallback(async (patch: Record<string, unknown>) => {
     setPatching(true);
@@ -86,13 +87,13 @@ export function SettingsPage() {
       await patchPlatformSettings(patch);
       setPatchSuccess(true);
       toast.success('Platform settings updated');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setPatchError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setPatching(false);
     }
-  }, []);
+  }, [bumpRefresh]);
 
   const onApplyToDisk = useCallback(async () => {
     setApplying(true);
@@ -131,13 +132,13 @@ export function SettingsPage() {
       toast.success('Initial setup complete');
       setDraftInstallToken('');
       setDraftBootstrapJson('');
-      setRefreshToken((value) => value + 1);
+      bumpRefresh();
     } catch (err) {
       setBootstrapError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setBootstrapping(false);
     }
-  }, [draftInstallToken, draftBootstrapJson]);
+  }, [draftInstallToken, draftBootstrapJson, bumpRefresh]);
 
   return (
     <PlatformSettings

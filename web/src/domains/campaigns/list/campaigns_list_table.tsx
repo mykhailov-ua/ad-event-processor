@@ -1,4 +1,4 @@
-import { useCallback, useState, type DragEvent } from 'react';
+import { useCallback, useRef, useState, type DragEvent } from 'react';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CampaignListMetrics } from '@/api/campaigns_api';
@@ -17,7 +17,6 @@ import {
   isCampaignListNumericColumn,
   moveDataColumn,
   resolveCampaignListColumnWidthPx,
-  saveCampaignListColumnPrefs,
   type CampaignListColumnId,
   type CampaignListColumnPrefs,
   type CampaignListReorderableColumnId,
@@ -29,11 +28,26 @@ import { CampaignListTableTotalsCell } from '@/domains/campaigns/list/campaign_l
 import type { CampaignSortField, SortOrder } from '@/domains/campaigns/list/campaigns_list_types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { useCampaignListColumnResize } from '@/domains/campaigns/list/use_campaign_list_column_resize';
+import {
+  campaignListBodyToolsGutterClass,
+  campaignListCellContentClass,
+  campaignListCellToolsClass,
+  campaignListHeaderCellClass,
+  campaignListNumClass,
+  campaignListSelectCellClass,
+  campaignListTableClass,
+  campaignListTableSurfaceClass,
+  campaignListTdClass,
+  campaignListTdNameClass,
+  campaignListTfootTdClass,
+  campaignListThClass,
+  campaignListThNameClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import { DirectoryTable, TableBody, TableFooter, TableHeader } from '@/shell/directory_table';
 import { cn } from '@/lib/utils';
 
 export type CampaignsListTableProps = {
-  items: Campaign[];
+  items?: Campaign[];
   customerNameById: Record<string, string>;
   ownerEmailById: Record<string, string>;
   metricsById: Record<string, CampaignListMetrics>;
@@ -51,6 +65,7 @@ export type CampaignsListTableProps = {
   emptyMessage?: string;
   onCampaignOverview?: (campaign: Campaign) => void;
   filterTotals?: CampaignListFilterTotalsView;
+  statsCacheRevision: string;
   statsQuery?: CampaignStatsQuery;
 };
 
@@ -73,40 +88,43 @@ export function CampaignsListTable({
   emptyMessage = 'No campaigns match the current filters.',
   onCampaignOverview,
   filterTotals,
+  statsCacheRevision,
   statsQuery,
 }: CampaignsListTableProps) {
   const columns = visibleCampaignListColumns(columnPrefs);
-  const { localWidths, startResize } = useCampaignListColumnResize({
+  const tableRef = useRef<HTMLTableElement>(null);
+  const colgroupRef = useRef<HTMLTableColElement>(null);
+  const { startResize } = useCampaignListColumnResize({
     columnWidths,
+    columns,
+    colgroupRef,
     onColumnWidthCommit,
+    tableRef,
   });
   const columnWidthPxList = columns.map((columnId) =>
-    resolveCampaignListColumnWidthPx(columnId, localWidths),
+    resolveCampaignListColumnWidthPx(columnId, columnWidths),
   );
   const tableWidthPx = columnWidthPxList.reduce((sum, widthPx) => sum + widthPx, 0);
   const [draggingColumnId, setDraggingColumnId] = useState<CampaignListReorderableColumnId | null>(
     null,
   );
-  const [dragOverColumnId, setDragOverColumnId] = useState<CampaignListReorderableColumnId | null>(
-    null,
-  );
-  const allSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id));
+  const allSelected = (items ?? []).length > 0 && (items ?? []).every((item) => selectedIds.has(item.id));
   const totals =
     filterTotals?.totals ??
     sumCampaignListTotals(
-      items as CampaignWithMoneyDisplay[],
+      (items ?? []) as CampaignWithMoneyDisplay[],
       metricsById,
       marginsById,
     );
   const funnelTotals =
-    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals(items, metricsById);
+    filterTotals?.funnelTotals ?? sumCampaignFunnelTotals((items ?? []), metricsById);
 
   function toggleAll(checked: boolean) {
     if (!checked) {
       onSelectedIdsChange(new Set());
       return;
     }
-    onSelectedIdsChange(new Set(items.map((item) => item.id)));
+    onSelectedIdsChange(new Set((items ?? []).map((item) => item.id)));
   }
 
   function toggleOne(campaignId: string, checked: boolean) {
@@ -120,7 +138,7 @@ export function CampaignsListTable({
   }
 
   const handleColumnDrop = useCallback(
-    (targetId: CampaignListReorderableColumnId, event: DragEvent<HTMLTableCellElement>) => {
+    (targetId: CampaignListReorderableColumnId, event: DragEvent) => {
       event.preventDefault();
       const raw = event.dataTransfer.getData(COLUMN_DRAG_MIME);
       if (!isCampaignListColumnDraggable(raw as CampaignListColumnId)) {
@@ -135,21 +153,18 @@ export function CampaignsListTable({
         dataColumnOrder: moveDataColumn(columnPrefs.dataColumnOrder, draggedId, targetId),
       };
       onColumnPrefsChange(next);
-      saveCampaignListColumnPrefs(next);
-      setDragOverColumnId(null);
       setDraggingColumnId(null);
     },
     [columnPrefs, onColumnPrefsChange],
   );
 
   const clearDragState = useCallback(() => {
-    setDragOverColumnId(null);
     setDraggingColumnId(null);
   }, []);
 
-  if (items.length === 0) {
+  if ((items ?? []).length === 0) {
     return (
-      <div className="admin-campaigns-table-surface p-4">
+      <div className={cn(campaignListTableSurfaceClass, 'p-4')}>
         <p className="text-muted-foreground">{emptyMessage}</p>
       </div>
     );
@@ -157,16 +172,17 @@ export function CampaignsListTable({
 
   return (
     <DirectoryTable
-      className="admin-campaigns-table-surface !rounded-none !border-0 !shadow-none"
+      className={cn(campaignListTableSurfaceClass, 'rounded-none border-0 shadow-none')}
       fixedLayout
-      tableClassName="admin-table--campaigns"
+      tableClassName={campaignListTableClass}
+      tableRef={tableRef}
       tableStyle={{
         width: `${tableWidthPx}px`,
         minWidth: `${tableWidthPx}px`,
         tableLayout: 'fixed',
       }}
     >
-        <colgroup>
+        <colgroup ref={colgroupRef}>
           {columns.map((columnId, index) => {
             const widthPx = columnWidthPxList[index] ?? CAMPAIGN_LIST_COLUMN_MIN_WIDTH_PX[columnId];
             return <col key={columnId} style={{ width: `${widthPx}px` }} />;
@@ -185,17 +201,18 @@ export function CampaignsListTable({
                 <th
                   key={columnId}
                   className={cn(
-                    isSelect ? 'px-4 text-center' : isNum ? 'num' : undefined,
+                    campaignListThClass,
+                    isSelect ? 'px-4 text-center' : isNum ? campaignListNumClass : undefined,
                     columnId === 'name'
-                      ? 'campaign-table-th--name campaign-table-cell--tools'
+                      ? cn(campaignListThNameClass, campaignListCellToolsClass)
                       : !isSelect
-                        ? 'campaign-table-cell--tools'
+                        ? campaignListCellToolsClass
                         : undefined,
                     draggingColumnId === columnId && 'opacity-60',
                   )}
                 >
                   {isSelect ? (
-                    <div className="admin-table-cell--select">
+                    <div className={campaignListSelectCellClass}>
                       <Checkbox
                         aria-label="Select all campaigns"
                         checked={allSelected}
@@ -209,30 +226,11 @@ export function CampaignsListTable({
                       appliedSort={appliedSort}
                       columnId={columnId}
                       disabled={fetching}
-                      dragOver={reorderableTarget != null && dragOverColumnId === reorderableTarget}
                       draggable={draggable}
                       resizable={resizable}
                       resizeLabel={`Resize ${CAMPAIGN_LIST_COLUMN_LABELS[columnId]} column`}
                       onColumnSort={onColumnSort}
                       onDragEnd={clearDragState}
-                      onDragEnter={() => {
-                        if (reorderableTarget) {
-                          setDragOverColumnId(reorderableTarget);
-                        }
-                      }}
-                      onDragLeave={() => {
-                        if (dragOverColumnId === reorderableTarget) {
-                          setDragOverColumnId(null);
-                        }
-                      }}
-                      onDragOver={(event) => {
-                        if (!reorderableTarget) {
-                          return;
-                        }
-                        event.preventDefault();
-                        event.dataTransfer.dropEffect = 'move';
-                        setDragOverColumnId(reorderableTarget);
-                      }}
                       onDragStart={() => {
                         if (reorderableTarget) {
                           setDraggingColumnId(reorderableTarget);
@@ -254,7 +252,7 @@ export function CampaignsListTable({
           </tr>
         </TableHeader>
         <TableBody>
-          {items.map((campaign) => (
+          {(items ?? []).map((campaign) => (
             <CampaignListTableBodyRow
               key={campaign.id}
               campaign={campaign}
@@ -267,6 +265,7 @@ export function CampaignsListTable({
               selected={selectedIds.has(campaign.id)}
               onCampaignOverview={onCampaignOverview}
               onToggleSelected={toggleOne}
+              statsCacheRevision={statsCacheRevision}
               statsQuery={statsQuery}
             />
           ))}
@@ -279,25 +278,27 @@ export function CampaignsListTable({
                 <td
                   key={columnId}
                   className={cn(
+                    campaignListTdClass,
+                    campaignListTfootTdClass,
                     columnId === 'select'
                       ? 'px-4 text-center'
                       : columnId === 'name'
-                        ? 'campaign-table-td--name campaign-table-cell--tools'
-                        : cn('campaign-table-cell--tools', isNum && 'num'),
+                        ? cn(campaignListTdNameClass, campaignListCellToolsClass)
+                        : cn(campaignListCellToolsClass, isNum && campaignListNumClass),
                   )}
                 >
-                  <div className="campaign-table-header-cell">
-                    <div className="campaign-table-cell__content">
+                  <div className={campaignListHeaderCellClass}>
+                    <div className={campaignListCellContentClass}>
                       <CampaignListTableTotalsCell
                       columnId={columnId}
                       funnelTotals={funnelTotals}
-                      pageCount={items.length}
+                      pageCount={(items ?? []).length}
                       totals={totals}
                       totalsLabel={filterTotals ? 'Filtered total' : 'Total'}
                     />
                     </div>
                     {columnId !== 'select' && columnId !== 'name' ? (
-                      <div aria-hidden className="campaign-table-body-tools-gutter" />
+                      <div aria-hidden className={campaignListBodyToolsGutterClass} />
                     ) : null}
                   </div>
                 </td>

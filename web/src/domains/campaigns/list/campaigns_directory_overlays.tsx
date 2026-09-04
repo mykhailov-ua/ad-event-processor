@@ -25,7 +25,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import type { CustomerComboboxOption } from '@/shell/customer_combobox';
-import type { CampaignStatsQuery, SelfServeCampaignTemplate } from '@/api/types';
+import type { CampaignListMetrics } from '@/api/campaigns_api';
+import type { CampaignMargin, CampaignStatsQuery, SelfServeCampaignTemplate } from '@/api/types';
 import type { CampaignWithMoneyDisplay } from '@/domains/campaigns/list/campaign_metrics_shared';
 import { CampaignCloneDialog } from '@/domains/campaigns/editor/campaign_clone_dialog';
 import { CampaignImportPanel } from '@/domains/campaigns/editor/campaign_import_panel';
@@ -65,6 +66,9 @@ export type CampaignsDirectoryOverlaysProps = {
   onWizardOpenChange: (open: boolean) => void;
   onWizardRefresh: () => void;
   overviewCampaign: CampaignWithMoneyDisplay | null;
+  marginsById: Record<string, CampaignMargin>;
+  metricsById: Record<string, CampaignListMetrics>;
+  listScopeKey: string;
   resetWorkspaceOpen: boolean;
   selectedCampaignId: string | undefined;
   selectedCampaignName: string | undefined;
@@ -108,6 +112,9 @@ export function CampaignsDirectoryOverlays({
   onWizardOpenChange,
   onWizardRefresh,
   overviewCampaign,
+  marginsById,
+  metricsById,
+  listScopeKey,
   resetWorkspaceOpen,
   selectedCampaignId,
   selectedCampaignName,
@@ -253,8 +260,11 @@ export function CampaignsDirectoryOverlays({
             ? customerNameById[overviewCampaign.customer_id] ?? overviewCampaign.customer_id
             : ''
         }
+        listMargin={overviewCampaign ? marginsById[overviewCampaign.id] : undefined}
+        listMetrics={overviewCampaign ? metricsById[overviewCampaign.id] : undefined}
         onOpenChange={onOverviewOpenChange}
         open={overviewCampaign != null}
+        statsCacheRevision={listScopeKey}
         statsQuery={statsQuery}
       />
 

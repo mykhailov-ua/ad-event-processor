@@ -133,7 +133,7 @@ export function AutomationRulesGrid({
   onDeleteRule,
   onDryRun,
 }: {
-  items: AutomationRule[];
+  items?: AutomationRule[];
   ruleDrafts: Record<string, AutomationRuleEditDraft>;
   updatingRuleId: string | undefined;
   deletingRuleId: string | undefined;
@@ -146,7 +146,7 @@ export function AutomationRulesGrid({
 }) {
   return (
     <BentoGrid>
-      {items.map((row) => {
+      {(items ?? []).map((row) => {
         const ruleId = row.id ?? '';
         const draft = ruleDrafts[ruleId] ?? automationRuleEditFromRow(row);
         return (

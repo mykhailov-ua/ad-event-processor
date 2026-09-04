@@ -9,6 +9,7 @@ const config: Config = {
       fontFamily: {
         sans: ['"Inter Variable"', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
+        numeric: ['"JetBrains Mono Variable"', 'JetBrains Mono', 'ui-monospace', 'monospace'],
       },
       colors: {
         border: 'hsl(var(--border))',
@@ -51,10 +52,10 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontSize: {
-        'admin-dense': ['0.8125rem', { lineHeight: '1.125rem' }],
-        'admin-caption': ['0.6875rem', { lineHeight: '1rem' }],
-        'admin-mini': ['0.625rem', { lineHeight: '0.875rem' }],
-        'admin-micro': ['0.5rem', { lineHeight: '0.625rem' }],
+        'ui-dense': ['0.8125rem', { lineHeight: '1.125rem' }],
+        'ui-caption': ['0.6875rem', { lineHeight: '1rem' }],
+        'ui-mini': ['0.625rem', { lineHeight: '0.875rem' }],
+        'ui-micro': ['0.5rem', { lineHeight: '0.625rem' }],
       },
     },
   },

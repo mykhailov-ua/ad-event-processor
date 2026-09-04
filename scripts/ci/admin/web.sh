@@ -41,6 +41,9 @@ if has_dist || has_fresh_embed; then
   if [ -f web/package.json ]; then
     (cd web && npm run typecheck)
   fi
+  if [ "${ADMIN_WEB_BENCH:-0}" = "1" ] && [ -d web/src ]; then
+    bash "$SCRIPTS/ci/admin/web_bench.sh"
+  fi
   if [ "${ADMIN_WEB_E2E_SMOKE:-0}" = "1" ] && [ -d web/e2e ]; then
     bash "$SCRIPTS/ci/admin/web_e2e_smoke.sh"
   fi

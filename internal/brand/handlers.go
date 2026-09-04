@@ -13,6 +13,7 @@ import (
 
 type AdminService interface {
 	ListBrandsByCustomer(ctx context.Context, customerID uuid.UUID) ([]DTO, error)
+	GetBrand(ctx context.Context, brandID uuid.UUID) (DTO, error)
 	CreateBrand(ctx context.Context, customerID uuid.UUID, name string) (uuid.UUID, error)
 	ListBrandCreatives(ctx context.Context, brandID uuid.UUID) ([]CreativeDTO, error)
 	UpsertBrandCreative(ctx context.Context, brandID uuid.UUID, name, landingURL string, weight int32, status string) (uuid.UUID, error)
@@ -42,6 +43,7 @@ func (h *HTTPHandlers) Register(mux *http.ServeMux) {
 	}
 
 	mux.HandleFunc("GET /api/v1/brands", limit(perm("campaigns:read", h.listBrands)))
+	mux.HandleFunc("GET /api/v1/brands/{id}", limit(perm("campaigns:read", h.getBrand)))
 	mux.HandleFunc("POST /api/v1/brands", limit(perm("campaigns:write", h.createBrand)))
 	mux.HandleFunc("GET /api/v1/brands/{id}/creatives", limit(perm("campaigns:read", h.listBrandCreatives)))
 	mux.HandleFunc("POST /api/v1/brands/{id}/creatives", limit(perm("campaigns:write", h.createBrandCreative)))
@@ -72,6 +74,26 @@ func (h *HTTPHandlers) listBrands(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpresponse.JSON(w, http.StatusOK, rows)
+}
+
+func (h *HTTPHandlers) getBrand(w http.ResponseWriter, r *http.Request) {
+	brandID, err := coldpath.ParsePathUUID(r, "id")
+	if err != nil {
+		httpresponse.Error(w, http.StatusBadRequest, "BAD_REQUEST", "invalid brand id")
+		return
+	}
+	row, err := h.Admin.GetBrand(r.Context(), brandID)
+	if err != nil {
+		h.writeServiceError(w, err)
+		return
+	}
+	if h.AuthorizeCustomerAccess != nil {
+		if err := h.AuthorizeCustomerAccess(r, row.CustomerID); err != nil {
+			h.writeServiceError(w, err)
+			return
+		}
+	}
+	httpresponse.JSON(w, http.StatusOK, row)
 }
 
 func (h *HTTPHandlers) createBrand(w http.ResponseWriter, r *http.Request) {

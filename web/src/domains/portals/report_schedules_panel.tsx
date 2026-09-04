@@ -30,7 +30,7 @@ import { PortalsNav, portalsPanelError } from '@/domains/portals/portals_nav';
 import { displayTimestamp } from '@/lib/display';
 
 export type ReportSchedulesPanelProps = {
-  schedules: ReportSchedule[];
+  schedules?: ReportSchedule[];
   appliedCustomerId: string;
   draftCustomerId: string;
   fetching: boolean;
@@ -219,7 +219,7 @@ export function ReportSchedulesPanel({
         portalsPanelError(error, 'Could not load report schedules')
       ) : (
         <div aria-atomic="true" aria-live="polite">
-          {schedules.length === 0 ? (
+          {(schedules ?? []).length === 0 ? (
             <EmptyState
               variant="blank-slate"
               title="No schedules"
@@ -240,7 +240,7 @@ export function ReportSchedulesPanel({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {schedules.map((row) => {
+                  {(schedules ?? []).map((row) => {
                     const id = row.id ?? '';
                     const edit = editRows[id] ?? {
                       report_key: row.report_key ?? '',

@@ -13,10 +13,13 @@ import {
   CAMPAIGN_LIST_MIDDLE_COLUMNS,
   type CampaignListColumnPrefs,
   type CampaignListMiddleColumnId,
-  saveCampaignListColumnPrefs,
   setMiddleColumnVisible,
   visibleMiddleColumnCount,
 } from '@/domains/campaigns/list/campaign_list_columns';
+import {
+  campaignListColumnsMenuCheckboxClass,
+  campaignListColumnsMenuClass,
+} from '@/domains/campaigns/list/campaign_list_classes';
 import {
   CAMPAIGN_LIST_COLUMN_CATEGORIES,
   CAMPAIGN_LIST_COLUMN_PRESET_LABELS,
@@ -57,7 +60,6 @@ export function CampaignListColumnsMenu({
 
   function persist(next: CampaignListColumnPrefs) {
     onColumnPrefsChange(next);
-    saveCampaignListColumnPrefs(next);
   }
 
   function toggleColumn(columnId: CampaignListMiddleColumnId, visible: boolean) {
@@ -83,7 +85,7 @@ export function CampaignListColumnsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          className="admin-campaigns-toolbar__outline-btn shrink-0 whitespace-nowrap px-2 font-medium"
+          className="shrink-0 whitespace-nowrap px-2 font-medium"
           disabled={disabled}
           type="button"
           variant="outline"
@@ -92,7 +94,7 @@ export function CampaignListColumnsMenu({
           Columns ({visibleMiddleCount}/{totalMiddleCount})
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="campaign-columns-menu p-0">
+      <DropdownMenuContent align="end" className={cn(campaignListColumnsMenuClass, 'p-0')}>
         <div className="border-b border-border px-3 py-2.5">
           <p className="mb-1.5 text-[10px] font-semibold uppercase leading-[14px] text-muted-foreground">
             Preset views
@@ -130,10 +132,10 @@ export function CampaignListColumnsMenu({
                       <label className="flex min-h-8 cursor-pointer items-center gap-2">
                         <Checkbox
                           checked={checked}
-                          className="campaign-columns-menu__checkbox"
+                          className={campaignListColumnsMenuCheckboxClass}
                           onCheckedChange={(next) => toggleColumn(columnId, next === true)}
                         />
-                        <span className="truncate text-[13px] leading-[18px] text-foreground/80">
+                        <span className="whitespace-nowrap text-[13px] leading-[18px] text-foreground/80">
                           {CAMPAIGN_LIST_COLUMN_LABELS[columnId]}
                         </span>
                       </label>

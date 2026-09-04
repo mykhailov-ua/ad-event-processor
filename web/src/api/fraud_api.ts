@@ -1,4 +1,4 @@
-import { apiJson } from './client.js';
+import { apiJson, apiJsonArray } from './client.js';
 import type {
   FraudDecision,
   FraudIntegration,
@@ -26,7 +26,7 @@ export async function listFraudIntegrations(
   customerId: string,
   signal?: AbortSignal,
 ): Promise<FraudIntegration[]> {
-  return apiJson<FraudIntegration[]>(buildFraudIntegrationsPath(customerId), { signal });
+  return apiJsonArray<FraudIntegration>(buildFraudIntegrationsPath(customerId), { signal });
 }
 
 export async function listFraudLabels(
@@ -86,7 +86,7 @@ export async function createFraudOverride(
 }
 
 export async function listFraudPresets(signal?: AbortSignal): Promise<FraudPolicyPreset[]> {
-  return apiJson<FraudPolicyPreset[]>('/api/v1/fraud/presets', { signal });
+  return apiJsonArray<FraudPolicyPreset>('/api/v1/fraud/presets', { signal });
 }
 
 export async function patchFraudPreset(

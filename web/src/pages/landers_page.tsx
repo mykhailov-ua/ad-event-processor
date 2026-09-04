@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
 import { createLander, listLanders } from '@/api/landers_api';
@@ -17,8 +17,6 @@ export function LandersPage() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<Error | undefined>();
   const [createSuccess, setCreateSuccess] = useState(false);
-
-  const items = useMemo(() => data ?? [], [data]);
 
   const onCreateLander = useCallback(async () => {
     const name = draftName.trim();
@@ -45,7 +43,7 @@ export function LandersPage() {
 
   return (
     <LandersDirectory
-      items={items}
+      items={data}
       fetching={fetching}
       error={error}
       hasSnapshot={data != null}

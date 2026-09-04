@@ -1,24 +1,30 @@
 import { test, expect } from '@playwright/test';
 
-import { loginAsAdmin, skipUnlessIntegrationReady } from './helpers.js';
+import {
+  expectApiListBoundToDom,
+  gotoLive,
+  isApiGet,
+  loginAsAdmin,
+  skipUnlessIntegrationReady,
+} from './helpers.js';
 
 test.beforeEach(async ({}, testInfo) => {
   await skipUnlessIntegrationReady(testInfo);
 });
 
-test('automation rules list loads on seed stack', async ({ page }) => {
+test('automation rules list loads from GET /api/v1/automation/rules', async ({ page }) => {
   await loginAsAdmin(page);
-  await page.goto('/automation/rules');
+  const listResponse = page.waitForResponse(isApiGet('/api/v1/automation/rules'), { timeout: 20_000 });
+  await gotoLive(page, '/automation/rules');
   await expect(page.getByRole('heading', { name: 'Automation rules' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Automation sections' })).toBeVisible();
 
-  const customerRequired = page.getByText('Customer required', { exact: true });
-  if (await customerRequired.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await page.getByRole('button', { name: 'Apply' }).click();
-  }
+  const response = await listResponse;
+  const body = await response.json();
+  expect(Array.isArray(body)).toBe(true);
 
-  const table = page.getByRole('table');
-  const empty = page.getByText('No automation rules', { exact: true });
-  const stub = page.getByText('unavailable', { exact: false });
-  await expect(table.or(empty).or(stub)).toBeVisible({ timeout: 15_000 });
+  await expectApiListBoundToDom(page, body, {
+    emptyTitle: 'No automation rules',
+    rowLabel: (row) => String(row.name ?? row.id ?? ''),
+  });
 });

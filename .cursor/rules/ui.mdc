@@ -46,7 +46,11 @@ Reference implementations:
 | App shell | `web/src/app_shell.tsx` |
 | Page scaffold | `web/src/shell/page_layout.tsx` |
 
-Cross-ref: `frontend-modular.mdc`, `boundaries.mdc`, `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
+Cross-ref: `frontend-modular.mdc`, `frontend-slop.mdc` (mocks, styling, errors, Playwright), `boundaries.mdc`, `cold-path.mdc`, `control-plane.mdc`, `naming.mdc`, `react.mdc`, `anti-slop.mdc`, `quality.mdc`.
+
+### Styling and controls (see `frontend-slop.mdc` for full mandate)
+
+Operator override until tree is cleaned: **one default `Button` height**; **no `truncate` on headings, numbers, or table data cells**; **body prose may wrap**. Legacy rows below that recommend column clamps or mixed button sizes are superseded by `frontend-slop.mdc`.
 
 ## Before code
 
@@ -67,8 +71,9 @@ Agents optimize for plausible diffs, not operator intent. Treat these as **lie m
 | History restore | Copy pre-reset `web/` from git without contract | Rebuild from rules + OpenAPI |
 | Wrapper stack | `*DirectoryChrome`, `*Workspace`, `*Cluster` over section grid | One section = one domain module; page composes sections |
 | Macro layout drift | Page shell built from nested flex columns | Grid for shell + section stack; Flex inside components only |
-| Scroll clip lie | `overflow: hidden` on wrong ancestor; content grows unbounded | Follow **Scroll and overflow** below |
-| Custom overlay logic | Hand-rolled `[data-dropdown-open]`, manual z-index | First-party overlays (`Overlays` below) |
+| Scroll clip lie | `overflow: hidden` on wrong ancestor; content grows unbounded | Follow **Scroll and overflow** below; **VL-10** in `frontend-slop.mdc` |
+| Layout drift lie | "Fixed alignment" without **VL-*** catalog ID | **Visual layout drift taxonomy**; grep peer heights in filter band |
+| Custom overlay logic | Hand-rolled `[data-dropdown-open]`, manual z-index | First-party overlays (`Overlays` below); **VL-13** |
 | Phantom contract | "See prior width contract" with no table in repo | Contract must live in this file |
 | Unrun verification | "typecheck passed", "admin_web green" | Paste command + path + exit code (`quality.mdc`) |
 | Client logic smuggle | `useMemo` filter/sort over full API payload | Server query params; browser renders page |
@@ -229,8 +234,9 @@ Rules:
 
 | Surface | Pattern |
 | :--- | :--- |
-| `Dialog` / `Sheet` | Fixed header + `flex-1 overflow-y-auto` body + optional sticky footer; bottom padding (`pb-6` / `pb-8`) so last field is not clipped |
-| `Popover` / `DropdownMenu` | Radix portal; max-height with `overflow-y-auto` on content |
+| `Dialog` / `Sheet` (class C) | Fixed header + `flex-1 overflow-y-auto` body + optional sticky footer; bottom padding (`pb-6` / `pb-8`) so last field is not clipped |
+| `Popover` / `Select` (class B) | `OverlayRoot` portal; trigger-anchored `position: fixed`; list `max-h-*` + `ui-scrollbar overflow-y-auto` (`PopoverContent` `panelScroll`, `SelectContent` inner div, `CommandList`) |
+| `DropdownMenu` (class B) | Same anchor/reposition as Popover; domain adds `max-h-*` wrapper when item count can grow (see `campaign_list_columns_menu.tsx`) |
 | Preferences / reset modals | One scroll container; avoid `flex-1` on empty body regions that create phantom scroll gaps |
 
 Forbidden:
@@ -251,13 +257,13 @@ Forbidden:
 | App shell | Sidebar + header + content (`admin-app`) |
 | Page | `PageLayout` vertical stack |
 | Dashboard cards | `grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr))` (`.admin-ops-stat-grid`) |
-| Filter field matrix | `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4 items-end` |
+| Filter field matrix | `grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4 items-end` -- owned as `CAMPAIGNS_FILTER_ROW` in `filter_panel.tsx`; use `DirectoryFilterForm layout="campaigns"` |
 
 | Rule | Detail |
 | :--- | :--- |
 | Section owns macro template | `grid-template-columns` / `rows` on section root only |
 | One chrome per region | One header, one control panel, one data section, one footer |
-| Rhythm | `gap` on section grid; not margin stacks between sections |
+| Rhythm | `gap` on section grid between **peer cells** of one matrix only -- not between unrelated bands (`frontend-slop.mdc` **Layout contract**) |
 
 ### Micro (Flexbox)
 
@@ -266,13 +272,19 @@ Forbidden:
 | Control internals | Icon + text, label + hint |
 | Action bars | Toolbar button groups, Apply + pagination |
 | Alignment | Badge/chip content, footer controls |
-| Campaigns toolbar | `.admin-campaigns-toolbar__actions`, `__filters`, `__summary` rows |
+| Campaigns toolbar | Flex rows for actions, status chips, filter `FilterPanel` (see `filter_panel.tsx` layout consts) |
 
 | Rule | Detail |
 | :--- | :--- |
 | Flex is local | Toolbar, footer, chip root -- not page-wide column replacing section grid |
-| No layout escape | No `margin-left: auto` pushing controls out of assigned cell |
+| `gap` in flex/grid | Only between siblings in **one semantic group**; inter-group space uses grid tracks (`1fr`, `auto`), not `justify-between` + large `gap` |
+| No layout escape | No `margin-left: auto` / `ms-auto` pushing controls out of assigned cell |
 | Action bars | Inner flex row inside one grid cell -- not a second grid template |
+| Data rows | Homogeneous server lists use semantic `<table>` via `DirectoryTable` / `OpsTable` -- not CSS Grid matrices (`frontend-slop.mdc` **Layout contract**) |
+
+Full gap / spacer / table decision table: `frontend-slop.mdc` **Layout contract (Flex, Grid, semantic tables)**.
+
+**Visual drift (съезжание):** symptom triage, **VL-*** root causes, and **VL-D1-D5** diagnostic protocol in `frontend-slop.mdc` **Visual layout drift taxonomy**. Do not patch with wrappers or `!` utilities -- fix the catalog row.
 
 Forbidden for page layout:
 
@@ -315,7 +327,7 @@ Canonical reference: `web/src/domains/campaigns/list/campaigns_list_toolbar.tsx`
 | **Apply** | Direct child of filter row grid, after last field; `type="submit"`; **no wrapper** |
 | **Prev/Next** | Separate direct grid child after Apply; `PaginationPrevNext` |
 | Column width | Pagination cell `w-full`; inner flex splits Prev/Next |
-| Button height | Match field controls (`h-9`, `text-sm`) |
+| Button height | Match field controls (`admin_kit.controlHeight` / default `Button`) |
 | Footer | Remove duplicate pagination from footer when it lives in filter row |
 
 DOM order:
@@ -339,13 +351,13 @@ DOM order:
 | Fixed `width: 5.75rem` on pagination | `width: 100%` of grid column |
 | Touch Apply when task is pagination only | Diff Apply line should be zero |
 
-Campaigns toolbar: filter row uses `.admin-campaigns-toolbar__filters` with `width: 100%`; actions/summary rows keep horizontal padding.
+Campaigns toolbar: filter row is `FilterPanel` + `DirectoryFilterForm layout="campaigns"`; actions/summary rows are separate flex bands above the grid.
 
 ---
 
 ## Data tables
 
-Admin lists are server-paginated. Prefer semantic `<table>` over CSS grid data matrices.
+Admin lists are server-paginated. Prefer semantic `<table>` over CSS grid data matrices. **Column lifecycle, reorder/resize performance, and anti-patterns:** `frontend-slop.mdc` (**Directory tables**).
 
 ### Markup
 
@@ -362,13 +374,17 @@ Forbidden: bespoke subgrid row factories; `display: table*` CSS pretending to be
 
 ### Campaigns column widths
 
+Legacy note: width probe and `table-layout: fixed` remain in code; **truncate/ellipsis on data cells and resize-via-React-state on every `pointermove` are banned** per `frontend-slop.mdc` until remediated.
+
 | Rule | Detail |
 | :--- | :--- |
-| Layout | `table-layout: fixed`; explicit `width` on `col` / `th` from `campaign_list_columns.ts` |
+| Layout | `table-layout: fixed`; explicit `width` on `col` from `campaign_list_column_widths.ts` probe |
 | Table width | `width: auto` on table (sum of columns); horizontal scroll in wrap |
-| Clamps | `clampCampaignListColumnWidthPx()` caps saved widths (name max 320px, metrics ~160px) |
-| Resize | Column grips on `th`; persist in `localStorage` key `aed.campaigns.listColumns.v7` |
-| Gap bug | Unbounded saved `name` width + `width: 100%` on table causes empty column gap -- never remove clamp |
+| User resize | Commit on `pointerup` only; live width via `col` ref during drag (`frontend-slop.mdc`) |
+| Reorder | `moveDataColumn`; `key={columnId}` on cells; no width recompute when only order changes |
+| Clamps | `clampCampaignListColumnWidthPx()` until content-based widths ship; do not add new arbitrary caps |
+| Persist | `localStorage` key `aed.campaigns.listColumns.v7`; defer write to end of drop if possible |
+| Gap bug | Unbounded saved `name` width + `width: 100%` on table causes empty column gap -- never remove content-based sizing |
 
 ### Ops tables
 
@@ -393,15 +409,25 @@ Defect class: **nested frames** (outer box around inner pill).
 
 ## Overlays (first-party)
 
-Use primitives in `web/src/components/ui/`: `Select`, `DropdownMenu`, `Dialog`, `Popover`, `Tooltip`, `Sheet`. Implementation: portal + `use_overlay_dismiss` (`web/src/lib/`). No `@radix-ui/*`.
+Use primitives in `web/src/components/ui/`: `Select`, `DropdownMenu`, `Dialog`, `Popover`, `Tooltip`, `Sheet`. Implementation: `OverlayRoot` (`createPortal` to `document.body`) + `use_overlay_dismiss` + `floating_overlay_position.ts`. No `@radix-ui/*`.
+
+**Surface taxonomy (A / B / C):** full rules, slop catalog, and repo audit in `frontend-slop.mdc` (**Overlays, scroll surfaces, and control height**). Summary:
+
+| Class | Role | Scroll |
+| :--- | :--- | :--- |
+| **A Shell dock** | `AppSidebar`, mobile nav `Sheet` | Nav scroll inside aside/sheet; independent from page main |
+| **B Anchor float** | Select, combobox, country picker, column menu, short action menus | Portal + fixed coords from trigger; **inner** `ui-scrollbar` list; reposition on ancestor scroll |
+| **C Modal / sheet** | Dialog, command palette, import sheet | Backdrop; single body scroll region; three+ dismiss vectors (`frontend-slop.mdc` **UX scenario contract** §2) |
 
 | Rule | Detail |
 | :--- | :--- |
 | Source | Owned in `web/src/components/ui/`; extend `admin_chrome.ts` |
-| Behavior | Escape, click-outside, portal, z-index 50 |
+| Anchor floats (B) | `subscribeFloatingPosition` on open; never leave menu at stale viewport coords while trigger moves |
+| Behavior | Escape, click-outside, portal, z-index 60 on floats |
 | Style | Tailwind on `className`; no `class-variance-authority` |
 | Field width | Trigger `w-full` in grid cell |
-| Banned | Custom `[data-dropdown-open]`, `@radix-ui/*`, `components.json` |
+| Control height | Same `admin_kit` / `adminChrome.control` height on every control in one filter row |
+| Banned | Custom `[data-dropdown-open]`, hand-rolled fixed menus in `domains/`, `@radix-ui/*`, `components.json` |
 
 Date range picker, column menu, import sheet: must not clip bottom of popover/sheet content (see **Dialog, sheet, popover scroll**).
 
@@ -417,10 +443,10 @@ List lifecycle and charts: `react.mdc` (Hot vs Cold).
 | Blocking error | `error && !data` | `ErrorBlock`; no empty table |
 | Stale revalidate | `data` present + error | Keep rows; toast or banner |
 | Timeout | 15 s (`RESOURCE_FETCH_TIMEOUT_MS`) | Clear `fetching` in `finally` |
-| Mutation | PATCH/POST | Toast only after 2xx (`apiConfirmed`) |
+| Mutation | PATCH/POST | Toast only after 2xx (`apiConfirmed`); errors via `ApiError` -> `ErrorBlock` / `userErrorMessage` (`frontend-slop.mdc` **Mutation validation and error contract**) |
 | Empty | `items.length === 0`, filters inactive | `EmptyState` |
 
-Use `admin_error.ts` for operator-facing titles/messages; show technical details only in dev mode (`shouldShowAdminErrorDetails()`).
+Use `admin_error.ts` for operator-facing titles/messages; show technical details only in dev mode (`shouldShowAdminErrorDetails()`). Explicit vs slop catalog: `frontend-slop.mdc` **Explicit error handling vs error slop**.
 
 No silent `catch` -> empty table. No `live: true` without `/api/v1`.
 
@@ -431,14 +457,16 @@ No silent `catch` -> empty table. No `live: true` without `/api/v1`.
 | Layer | Path | Role |
 | :--- | :--- | :--- |
 | Theme | `app.css`, `tailwind.config.ts` | `@tailwind` + minimal base; zinc via `dark:` classes |
+| Tokens | `lib/admin_kit.ts`, `lib/admin_chrome.ts` | Named Tailwind constants for shared chrome (`frontend-slop.mdc` **Shared style contracts**) |
 | Primitives | `components/ui/` | First-party copies (`web/DESIGN.md`; no `@radix-ui/*`) |
 | Utilities | `lib/utils.ts` | `cn()` |
-| Domain UI | `domains/<domain>/` | Section layout; `className` on elements |
+| Domain UI | `domains/<domain>/` | Section layout; import `*_classes.ts` for repeated chrome |
 | Pages | `pages/` | Compose only |
 
 | Rule | Detail |
 | :--- | :--- |
 | New work | Tailwind in TSX; `components/ui` for interactive primitives |
+| One owner per node | Tailwind only in TSX; BEM banned (`admin-*__*`, `campaign-*__*`); no `!` overrides patching legacy CSS (`frontend-slop.mdc` **Styling stack**) |
 | `cn()` | Merge conditional classes |
 | Colors | Theme tokens (`bg-background`, `text-muted-foreground`, `--admin-surface-*`) -- no hard-coded hex in TSX |
 | Legacy | `*.module.css` sunsets on touch -- no new CSS Module files |
@@ -471,7 +499,7 @@ Styling source of truth: Tailwind in components + `web/src/styles/app.css` (entr
 | Functional color (status, ROI, GEO, conversion columns) | Per-route CSS skins (`binom-*`, `campaigns-list-workspace`, `tracker-shell--*`) |
 | One dark + one light theme via existing toggle | Third "workspace" theme that only applies on campaigns/customers |
 | `admin-*` classes and CSS variables | Hard-coded hex/rgb in TSX |
-| shadcn/Radix for overlays only | Hand-rolled dropdown positioning |
+| First-party `components/ui` overlays only | Hand-rolled dropdown positioning in `domains/` |
 
 ### Linear layout (fixed scaffold)
 
@@ -597,7 +625,7 @@ Toolbar pattern (campaigns): `.admin-campaigns-toolbar` with `__actions`, `__fil
 | Totals row | `--admin-table-totals-bg` in `tfoot` when present |
 | Alignment | Names start-aligned; metrics `.num` end-aligned with tabular figures |
 
-Campaigns: table `width: auto` (sum of columns); column widths clamped in `campaign_list_columns.ts` -- never stretch name column to create a dead gap.
+Campaigns: table `width: auto` (sum of columns); column widths from content probe in `campaign_list_column_widths.ts` -- see `frontend-slop.mdc` for performance and ellipsis ban.
 
 ### Chips, badges, GEO
 
@@ -610,14 +638,14 @@ Campaigns: table `width: auto` (sum of columns); column widths clamped in `campa
 
 ### Overlays (look and feel)
 
-shadcn/Radix components skinned to admin tokens:
+First-party primitives skinned via `admin_chrome.ts` / `app.css` domain hooks:
 
 | Surface | Must match |
 | :--- | :--- |
-| Dropdown / column menu | `admin-dropdown-content`, `admin-columns-menu` |
-| Date range | `admin-date-range-menu` |
-| Dialog / sheet | `admin-surface-2` body, `var(--admin-radius)`, `admin-overlay-shadow` |
-| Scroll | Single scroll region in body; padding bottom so last control is not clipped |
+| Dropdown / column menu | `campaign-columns-menu`, `adminChrome.floating` |
+| Date range | `campaign-date-range-picker` |
+| Dialog / sheet | Card surface tokens; `admin-overlay-shadow` where defined |
+| Scroll | Class B: inner list scroll; class C: single body scroll; bottom padding so last control is not clipped |
 
 ### Data hierarchy in grids
 
@@ -636,7 +664,7 @@ All thresholds and tones come from API or shared format helpers -- not hardcoded
 | Allowed | Banned |
 | :--- | :--- |
 | `transition-colors` on buttons/rows | Bouncy layout animations |
-| Radix open/close on overlays | Parallax, scale-on-hover on tables |
+| Overlay open/close transitions on primitives | Parallax, scale-on-hover on tables |
 | `prefers-reduced-motion` respected | Auto-playing chart motion |
 
 ### Visual banned list
@@ -864,6 +892,9 @@ Layout regression checks (manual):
 
 | Step | Action |
 | :--- | :--- |
+| 0 | `frontend-slop.mdc` **Agent execution protocol**: scoped `rg`, catalog IDs, report format — no subjective praise |
+| 0b | RBAC: server `RequirePermission` on every new `/api/v1` route; client nav/role is UX only (`control-plane.mdc` **RBAC**) |
+| 0c | Layout drift: triage to **VL-*** + **VL-D3** grep; no wrapper/`!` patches (`frontend-slop.mdc` **Visual layout drift taxonomy**) |
 | 1 | Confirm operator spec + OpenAPI route/handler contract |
 | 2 | Follow cold path; no client list business logic |
 | 3 | Handler/DTO before UI field |

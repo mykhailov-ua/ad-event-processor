@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import type { CampaignListMetrics } from '@/api/campaigns_api.ts';
 import type { Campaign, CampaignMargin } from '@/api/types.ts';
+import { seedDeterministicUuid } from '@/api/dev_mock/seed_uuid.ts';
 import { defaultCampaignListColumnPrefs, visibleCampaignListColumns } from './campaign_list_columns.ts';
 import { formatCampaignListExportToast } from './campaign_list_export_toast.ts';
 import {
@@ -14,13 +15,13 @@ import {
 import { buildCampaignRowVm } from './campaign_list_row_vm.ts';
 
 const baseCampaign = {
-  id: '00000000-0000-4000-8000-000000000001',
+  id: seedDeterministicUuid('campaign', 1),
   name: 'Test campaign',
   status: 'ACTIVE',
   budget_limit: '100.00',
   current_spend: '25.00',
   current_spend_display: '25.00',
-  customer_id: '00000000-0000-4000-8000-000000000010',
+  customer_id: seedDeterministicUuid('customer', 1),
   pacing_mode: 'even',
   daily_budget: '0.00',
   timezone: 'UTC',

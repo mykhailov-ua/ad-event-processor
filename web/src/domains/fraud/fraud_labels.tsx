@@ -28,7 +28,7 @@ import type { MLManualLabel } from '@/api/types';
 import { displayTimestamp } from '@/lib/display';
 
 export type FraudLabelsProps = {
-  items: MLManualLabel[];
+  items?: MLManualLabel[];
   total: number;
   limit: number;
   offset: number;
@@ -198,7 +198,7 @@ export function FraudLabels({
 
       {!customerId ? (
         <EmptyState title="Customer required" description="Load labels for a customer first." />
-      ) : items.length === 0 ? (
+      ) : (items ?? []).length === 0 ? (
         <EmptyState title="No labels" description="No manual ML labels for this customer." />
       ) : (
         <>
@@ -207,7 +207,7 @@ export function FraudLabels({
             onSubmit={(event) => event.preventDefault()}
           >
             <DirectoryPaginationFooter
-              canGoNext={offset + items.length < total}
+              canGoNext={offset + (items ?? []).length < total}
               canGoPrev={offset > 0}
               disabled={fetching}
               onNext={() => onPageChange(offset + limit)}
@@ -225,7 +225,7 @@ export function FraudLabels({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => (
+              {(items ?? []).map((row) => (
                 <TableRow key={`${row.ip_hash}-${row.created_at}`}>
                   <TableCell className="font-mono text-xs">{row.ip_hash ?? ''}</TableCell>
                   <TableCell className="tabular-nums">{row.label ?? ''}</TableCell>

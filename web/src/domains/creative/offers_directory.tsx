@@ -27,7 +27,7 @@ import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav
 import { displayTimestamp } from '@/lib/display';
 
 export type OffersDirectoryProps = {
-  items: Offer[];
+  items?: Offer[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -126,7 +126,7 @@ export function OffersDirectory({
       ) : null}
 
       <div aria-atomic="true" aria-live="polite">
-        {items.length === 0 ? (
+        {(items ?? []).length === 0 ? (
           <EmptyState
             variant="blank-slate"
             title="No offers"
@@ -135,7 +135,7 @@ export function OffersDirectory({
             onAction={onCreateOffer ? () => setCreateOpen(true) : undefined}
           />
         ) : (
-          <DirectoryTable>
+          <DirectoryTable horizontalScroll>
               <TableHeader>
                 <TableRow>
                   <DirectoryTableHead>Name</DirectoryTableHead>
@@ -144,10 +144,10 @@ export function OffersDirectory({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((row) => (
+                {(items ?? []).map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>{row.name}</TableCell>
-                    <TableCell className="max-w-md truncate">{row.url}</TableCell>
+                    <TableCell className="whitespace-nowrap">{row.url}</TableCell>
                     <TableCell className="tabular-nums">{displayTimestamp(row.created_at)}</TableCell>
                   </TableRow>
                 ))}

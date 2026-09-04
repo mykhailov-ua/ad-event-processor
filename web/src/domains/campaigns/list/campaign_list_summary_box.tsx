@@ -40,7 +40,7 @@ export function CampaignListSummaryBox({
         className,
       )}
     >
-      <p className="m-0 truncate text-xs leading-[16px] text-muted-foreground">
+      <p className="m-0 whitespace-nowrap text-xs leading-[16px] text-muted-foreground">
         <span>{scopeLabel}: </span>
         <span className="font-bold text-foreground">{clicks}</span>
         <span> clicks, </span>

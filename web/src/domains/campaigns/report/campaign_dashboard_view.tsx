@@ -117,7 +117,7 @@ export function CampaignDashboardView({
           title={DIMENSION_LABELS[dimension]}
           table={breakdown}
           columns={DEFAULT_CAMPAIGN_DASHBOARD_BREAKDOWN_COLUMNS}
-          emptyLabel={dimension === 'paths' ? 'Path-level metrics are not available for this period yet.' : 'No data in this range.'}
+          emptyDescription={dimension === 'paths' ? 'Path-level metrics are not available for this period yet.' : 'No data in this range.'}
         />
       </div>
     </PageLayout>

@@ -41,8 +41,8 @@ export function MetricRow({ label, value }: { label: string; value: string }) {
 export function MetricTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl bg-muted/30 px-3 py-2">
-      <p className="text-admin-caption text-muted-foreground">{label}</p>
-      <p className="truncate text-sm font-medium tabular-nums">{value}</p>
+      <p className="text-ui-caption text-muted-foreground">{label}</p>
+      <p className="whitespace-nowrap text-sm font-medium tabular-nums">{value}</p>
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function MetricsSection({
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-admin-caption font-medium tracking-wide text-muted-foreground">
+        <h3 className="text-ui-caption font-medium tracking-wide text-muted-foreground">
           {title}
         </h3>
         {meta}
@@ -99,7 +99,7 @@ export function BudgetUsedSummary({
         {percent != null ? formatBudgetUsedPercent(percent) : '-'}
       </span>
       {moneySummary ? (
-        <p className="truncate text-xs tabular-nums text-muted-foreground">{moneySummary}</p>
+        <p className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">{moneySummary}</p>
       ) : null}
       {showBar && percent != null ? (
         <div aria-hidden className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -195,7 +195,7 @@ export function HourlyTrendChart({
 
   return (
     <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-2 text-admin-caption text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-ui-caption text-muted-foreground">
         <span>Last 24 hours</span>
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1">
@@ -270,13 +270,13 @@ export function HourlyTrendChart({
         </svg>
 
         {!hasActivity ? (
-          <p className="pb-2 text-center text-admin-caption text-muted-foreground">
+          <p className="pb-2 text-center text-ui-caption text-muted-foreground">
             No delivery activity in the last 24 hours
           </p>
         ) : null}
 
         {firstLabel || lastLabel ? (
-          <div className="flex items-center justify-between px-1 pb-1.5 text-admin-mini tabular-nums text-muted-foreground">
+          <div className="flex items-center justify-between px-1 pb-1.5 text-ui-mini tabular-nums text-muted-foreground">
             <span>{firstLabel ?? ''}</span>
             <span>{lastLabel ?? ''}</span>
           </div>

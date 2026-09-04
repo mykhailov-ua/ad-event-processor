@@ -29,7 +29,7 @@ import type { Seller } from '@/api/types';
 import { CreativeNav, creativePanelError } from '@/domains/creative/creative_nav';
 
 export type SupplySellersDirectoryProps = {
-  items: Seller[];
+  items?: Seller[];
   fetching: boolean;
   error: Error | undefined;
   hasSnapshot: boolean;
@@ -169,7 +169,7 @@ export function SupplySellersDirectory({
         </DialogContent>
       </Dialog>
 
-      {items.length === 0 ? (
+      {(items ?? []).length === 0 ? (
         <EmptyState title="No sellers" description="Supply sellers table is empty." />
       ) : (
         <DirectoryTable>
@@ -183,7 +183,7 @@ export function SupplySellersDirectory({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((row) => {
+              {(items ?? []).map((row) => {
                 const edit = editRows[row.id] ?? {
                   seller_id: row.seller_id,
                   domain: row.domain,

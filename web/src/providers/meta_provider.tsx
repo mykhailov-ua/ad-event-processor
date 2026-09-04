@@ -1,8 +1,9 @@
-import { createContext, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useMemo, type ReactNode } from 'react';
 
-import { getMeta } from '@/api/platform_api';
 import type { MetaResponse } from '@/api/types';
 import { useResource } from '@/api/use_resource';
+import { useCoalescedBumpRefresh, useRefreshToken } from '@/hooks/use_coalesced_refresh_token';
+import { fetchMetaCached, invalidateMetaCache } from '@/lib/get_meta_cache';
 import { licenseNeedsSetup, readBootstrapComplete } from '@/lib/install_meta';
 
 export type MetaContextValue = {
@@ -21,16 +22,17 @@ export type MetaProviderProps = {
 };
 
 export function MetaProvider({ children }: MetaProviderProps) {
-  const [refreshToken, setRefreshToken] = useState(0);
+  const { refreshToken, bumpRefresh } = useRefreshToken();
 
   const { data, error, fetching } = useResource(
-    (signal) => getMeta(signal),
+    (signal) => fetchMetaCached(signal),
     [refreshToken],
   );
 
-  const refreshMeta = useCallback(() => {
-    setRefreshToken((value) => value + 1);
-  }, []);
+  const refreshMeta = useCoalescedBumpRefresh(() => {
+    invalidateMetaCache();
+    bumpRefresh();
+  }, fetching);
 
   const value = useMemo(
     (): MetaContextValue => ({
